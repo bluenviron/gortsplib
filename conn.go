@@ -98,7 +98,3 @@ func (c *Conn) WriteInterleavedFrame(channel int, frame []byte) error {
 	}
 	return nil
 }
-
-func (c *Conn) Read(buf []byte) (int, error) {
-	return c.nconn.Read(buf)
-}
