@@ -29,10 +29,6 @@ func (c *Conn) Close() error {
 	return c.nconn.Close()
 }
 
-func (c *Conn) RemoteAddr() net.Addr {
-	return c.nconn.RemoteAddr()
-}
-
 func (c *Conn) ReadRequest() (*Request, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(_READ_DEADLINE))
 	return requestDecode(c.nconn)
