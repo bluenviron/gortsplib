@@ -25,6 +25,10 @@ func NewConn(nconn net.Conn) *Conn {
 	}
 }
 
+func (c *Conn) NetConn() net.Conn {
+	return c.nconn
+}
+
 func (c *Conn) ReadRequest() (*Request, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(_READ_DEADLINE))
 	return requestDecode(c.nconn)
