@@ -5,12 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"time"
-)
-
-const (
-	_READ_DEADLINE  = 10 * time.Second
-	_WRITE_DEADLINE = 10 * time.Second
 )
 
 type Conn struct {
@@ -30,28 +24,22 @@ func (c *Conn) NetConn() net.Conn {
 }
 
 func (c *Conn) ReadRequest() (*Request, error) {
-	c.nconn.SetReadDeadline(time.Now().Add(_READ_DEADLINE))
 	return requestDecode(c.nconn)
 }
 
 func (c *Conn) WriteRequest(req *Request) error {
-	c.nconn.SetWriteDeadline(time.Now().Add(_WRITE_DEADLINE))
 	return requestEncode(c.nconn, req)
 }
 
 func (c *Conn) ReadResponse() (*Response, error) {
-	c.nconn.SetReadDeadline(time.Now().Add(_READ_DEADLINE))
 	return responseDecode(c.nconn)
 }
 
 func (c *Conn) WriteResponse(res *Response) error {
-	c.nconn.SetWriteDeadline(time.Now().Add(_WRITE_DEADLINE))
 	return responseEncode(c.nconn, res)
 }
 
 func (c *Conn) ReadInterleavedFrame(frame []byte) (int, int, error) {
-	c.nconn.SetReadDeadline(time.Now().Add(_READ_DEADLINE))
-
 	var header [4]byte
 	_, err := io.ReadFull(c.nconn, header[:])
 	if err != nil {
@@ -81,8 +69,6 @@ func (c *Conn) ReadInterleavedFrame(frame []byte) (int, int, error) {
 }
 
 func (c *Conn) WriteInterleavedFrame(channel int, frame []byte) error {
-	c.nconn.SetWriteDeadline(time.Now().Add(_WRITE_DEADLINE))
-
 	c.writeBuf[0] = 0x24
 	c.writeBuf[1] = byte(channel)
 	binary.BigEndian.PutUint16(c.writeBuf[2:], uint16(len(frame)))
