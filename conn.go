@@ -39,7 +39,7 @@ func (c *Conn) WriteResponse(res *Response) error {
 	return responseEncode(c.nconn, res)
 }
 
-func (c *Conn) ReadInterleavedFrame(frame []byte) (int, int, error) {
+func (c *Conn) ReadInterleavedFrame(buf []byte) (int, int, error) {
 	var header [4]byte
 	_, err := io.ReadFull(c.nconn, header[:])
 	if err != nil {
@@ -56,11 +56,11 @@ func (c *Conn) ReadInterleavedFrame(frame []byte) (int, int, error) {
 	}
 
 	framelen := binary.BigEndian.Uint16(header[2:])
-	if framelen > 2048 {
-		return 0, 0, fmt.Errorf("frame length greater than 2048")
+	if int(framelen) > len(buf) {
+		return 0, 0, fmt.Errorf("frame length greater than buffer length")
 	}
 
-	_, err = io.ReadFull(c.nconn, frame[:framelen])
+	_, err = io.ReadFull(c.nconn, buf[:framelen])
 	if err != nil {
 		return 0, 0, err
 	}
