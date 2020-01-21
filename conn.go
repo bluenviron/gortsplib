@@ -79,13 +79,22 @@ func (c *Conn) ReadRequest() (*Request, error) {
 
 func (c *Conn) WriteRequest(req *Request) error {
 	if c.cseqEnabled {
+		if req.Headers == nil {
+			req.Headers = make(map[string]string)
+		}
 		c.cseq += 1
 		req.Headers["CSeq"] = strconv.FormatInt(int64(c.cseq), 10)
 	}
 	if c.session != "" {
+		if req.Headers == nil {
+			req.Headers = make(map[string]string)
+		}
 		req.Headers["Session"] = c.session
 	}
 	if c.authProv != nil {
+		if req.Headers == nil {
+			req.Headers = make(map[string]string)
+		}
 		req.Headers["Authorization"] = c.authProv.generateHeader(req.Method, req.Url)
 	}
 	return requestEncode(c.nconn, req)
