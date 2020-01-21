@@ -93,7 +93,10 @@ func readHeaders(rb *bufio.Reader) (map[string]string, error) {
 			return nil, err
 		}
 
-		ret[key] = val
+		// set only if not set previously
+		if _, ok := ret[key]; !ok {
+			ret[key] = val
+		}
 	}
 
 	return ret, nil
