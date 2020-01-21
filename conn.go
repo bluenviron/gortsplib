@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 )
 
 func md5Hex(in string) string {
@@ -41,10 +42,12 @@ func (ap *authProvider) generateHeader(method string, path string) string {
 }
 
 type Conn struct {
-	nconn    net.Conn
-	writeBuf []byte
-	session  string
-	authProv *authProvider
+	nconn       net.Conn
+	writeBuf    []byte
+	cseqEnabled bool
+	cseq        int
+	session     string
+	authProv    *authProvider
 }
 
 func NewConn(nconn net.Conn) *Conn {
@@ -56,6 +59,10 @@ func NewConn(nconn net.Conn) *Conn {
 
 func (c *Conn) NetConn() net.Conn {
 	return c.nconn
+}
+
+func (c *Conn) EnableCseq() {
+	c.cseqEnabled = true
 }
 
 func (c *Conn) SetSession(v string) {
@@ -71,6 +78,10 @@ func (c *Conn) ReadRequest() (*Request, error) {
 }
 
 func (c *Conn) WriteRequest(req *Request) error {
+	if c.cseqEnabled {
+		c.cseq += 1
+		req.Headers["CSeq"] = strconv.FormatInt(int64(c.cseq), 10)
+	}
 	if c.session != "" {
 		req.Headers["Session"] = c.session
 	}
