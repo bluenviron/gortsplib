@@ -1,15 +1,50 @@
 package gortsplib
 
 import (
+	"crypto/md5"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
 )
 
+func md5Hex(in string) string {
+	h := md5.New()
+	h.Write([]byte(in))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+type authProvider struct {
+	user  string
+	pass  string
+	realm string
+	nonce string
+}
+
+func newAuthProvider(user string, pass string, realm string, nonce string) *authProvider {
+	return &authProvider{
+		user:  user,
+		pass:  pass,
+		realm: realm,
+		nonce: nonce,
+	}
+}
+
+func (ap *authProvider) generateHeader(method string, path string) string {
+	ha1 := md5Hex(ap.user + ":" + ap.realm + ":" + ap.pass)
+	ha2 := md5Hex(method + ":" + path)
+	response := md5Hex(ha1 + ":" + ap.nonce + ":" + ha2)
+
+	return fmt.Sprintf("Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\"",
+		ap.user, ap.realm, ap.nonce, path, response)
+}
+
 type Conn struct {
 	nconn    net.Conn
 	writeBuf []byte
+	session  string
+	authProv *authProvider
 }
 
 func NewConn(nconn net.Conn) *Conn {
@@ -23,11 +58,25 @@ func (c *Conn) NetConn() net.Conn {
 	return c.nconn
 }
 
+func (c *Conn) SetSession(v string) {
+	c.session = v
+}
+
+func (c *Conn) SetCredentials(user string, pass string, realm string, nonce string) {
+	c.authProv = newAuthProvider(user, pass, realm, nonce)
+}
+
 func (c *Conn) ReadRequest() (*Request, error) {
 	return requestDecode(c.nconn)
 }
 
 func (c *Conn) WriteRequest(req *Request) error {
+	if c.session != "" {
+		req.Headers["Session"] = c.session
+	}
+	if c.authProv != nil {
+		req.Headers["Authorization"] = c.authProv.generateHeader(req.Method, req.Url)
+	}
 	return requestEncode(c.nconn, req)
 }
 
