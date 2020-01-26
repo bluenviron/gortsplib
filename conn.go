@@ -74,38 +74,38 @@ func (c *Conn) SetCredentials(user string, pass string, realm string, nonce stri
 }
 
 func (c *Conn) ReadRequest() (*Request, error) {
-	return requestDecode(c.nconn)
+	return readRequest(c.nconn)
 }
 
 func (c *Conn) WriteRequest(req *Request) error {
 	if c.cseqEnabled {
-		if req.Headers == nil {
-			req.Headers = make(map[string]string)
+		if req.Header == nil {
+			req.Header = make(Header)
 		}
 		c.cseq += 1
-		req.Headers["CSeq"] = strconv.FormatInt(int64(c.cseq), 10)
+		req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.cseq), 10)}
 	}
 	if c.session != "" {
-		if req.Headers == nil {
-			req.Headers = make(map[string]string)
+		if req.Header == nil {
+			req.Header = make(Header)
 		}
-		req.Headers["Session"] = c.session
+		req.Header["Session"] = []string{c.session}
 	}
 	if c.authProv != nil {
-		if req.Headers == nil {
-			req.Headers = make(map[string]string)
+		if req.Header == nil {
+			req.Header = make(Header)
 		}
-		req.Headers["Authorization"] = c.authProv.generateHeader(req.Method, req.Url)
+		req.Header["Authorization"] = []string{c.authProv.generateHeader(req.Method, req.Url)}
 	}
-	return requestEncode(c.nconn, req)
+	return req.write(c.nconn)
 }
 
 func (c *Conn) ReadResponse() (*Response, error) {
-	return responseDecode(c.nconn)
+	return readResponse(c.nconn)
 }
 
 func (c *Conn) WriteResponse(res *Response) error {
-	return responseEncode(c.nconn, res)
+	return res.write(c.nconn)
 }
 
 func (c *Conn) ReadInterleavedFrame(buf []byte) (int, int, error) {

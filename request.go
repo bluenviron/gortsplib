@@ -9,11 +9,11 @@ import (
 type Request struct {
 	Method  string
 	Url     string
-	Headers map[string]string
+	Header  Header
 	Content []byte
 }
 
-func requestDecode(r io.Reader) (*Request, error) {
+func readRequest(r io.Reader) (*Request, error) {
 	rb := bufio.NewReader(r)
 
 	req := &Request{}
@@ -53,12 +53,12 @@ func requestDecode(r io.Reader) (*Request, error) {
 		return nil, err
 	}
 
-	req.Headers, err = readHeaders(rb)
+	req.Header, err = readHeader(rb)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Content, err = readContent(rb, req.Headers)
+	req.Content, err = readContent(rb, req.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func requestDecode(r io.Reader) (*Request, error) {
 	return req, nil
 }
 
-func requestEncode(w io.Writer, req *Request) error {
+func (req *Request) write(w io.Writer) error {
 	wb := bufio.NewWriter(w)
 
 	_, err := wb.Write([]byte(req.Method + " " + req.Url + " " + _RTSP_PROTO + "\r\n"))
@@ -74,7 +74,7 @@ func requestEncode(w io.Writer, req *Request) error {
 		return err
 	}
 
-	err = writeHeaders(wb, req.Headers)
+	err = req.Header.write(wb)
 	if err != nil {
 		return err
 	}

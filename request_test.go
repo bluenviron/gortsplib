@@ -22,10 +22,10 @@ var casesRequest = []struct {
 		&Request{
 			Method: "OPTIONS",
 			Url:    "rtsp://example.com/media.mp4",
-			Headers: map[string]string{
-				"CSeq":          "1",
-				"Require":       "implicit-play",
-				"Proxy-Require": "gzipped-messages",
+			Header: Header{
+				"CSeq":          []string{"1"},
+				"Require":       []string{"implicit-play"},
+				"Proxy-Require": []string{"gzipped-messages"},
 			},
 		},
 	},
@@ -37,8 +37,8 @@ var casesRequest = []struct {
 		&Request{
 			Method: "DESCRIBE",
 			Url:    "rtsp://example.com/media.mp4",
-			Headers: map[string]string{
-				"CSeq": "2",
+			Header: Header{
+				"CSeq": []string{"2"},
 			},
 		},
 	},
@@ -65,12 +65,12 @@ var casesRequest = []struct {
 		&Request{
 			Method: "ANNOUNCE",
 			Url:    "rtsp://example.com/media.mp4",
-			Headers: map[string]string{
-				"CSeq":           "7",
-				"Date":           "23 Jan 1997 15:35:06 GMT",
-				"Session":        "12345678",
-				"Content-Type":   "application/sdp",
-				"Content-Length": "306",
+			Header: Header{
+				"CSeq":           []string{"7"},
+				"Date":           []string{"23 Jan 1997 15:35:06 GMT"},
+				"Session":        []string{"12345678"},
+				"Content-Type":   []string{"application/sdp"},
+				"Content-Length": []string{"306"},
 			},
 			Content: []byte("v=0\n" +
 				"o=mhandley 2890844526 2890845468 IN IP4 126.16.64.4\n" +
@@ -99,11 +99,11 @@ var casesRequest = []struct {
 		&Request{
 			Method: "GET_PARAMETER",
 			Url:    "rtsp://example.com/media.mp4",
-			Headers: map[string]string{
-				"CSeq":           "9",
-				"Content-Type":   "text/parameters",
-				"Session":        "12345678",
-				"Content-Length": "24",
+			Header: Header{
+				"CSeq":           []string{"9"},
+				"Content-Type":   []string{"text/parameters"},
+				"Session":        []string{"12345678"},
+				"Content-Length": []string{"24"},
 			},
 			Content: []byte("packets_received\n" +
 				"jitter\n",
@@ -112,21 +112,21 @@ var casesRequest = []struct {
 	},
 }
 
-func TestRequestDecode(t *testing.T) {
+func TestRequestRead(t *testing.T) {
 	for _, c := range casesRequest {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := requestDecode(bytes.NewBuffer(c.byts))
+			req, err := readRequest(bytes.NewBuffer(c.byts))
 			require.NoError(t, err)
 			require.Equal(t, c.req, req)
 		})
 	}
 }
 
-func TestRequestEncode(t *testing.T) {
+func TestRequestWrite(t *testing.T) {
 	for _, c := range casesRequest {
 		t.Run(c.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			err := requestEncode(&buf, c.req)
+			err := c.req.write(&buf)
 			require.NoError(t, err)
 			require.Equal(t, c.byts, buf.Bytes())
 		})

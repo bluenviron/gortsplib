@@ -13,7 +13,7 @@ var casesResponse = []struct {
 	res  *Response
 }{
 	{
-		"ok",
+		"ok with single header",
 		[]byte("RTSP/1.0 200 OK\r\n" +
 			"CSeq: 1\r\n" +
 			"Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n" +
@@ -22,9 +22,33 @@ var casesResponse = []struct {
 		&Response{
 			StatusCode: 200,
 			Status:     "OK",
-			Headers: map[string]string{
-				"CSeq":   "1",
-				"Public": "DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE",
+			Header: Header{
+				"CSeq":   []string{"1"},
+				"Public": []string{"DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE"},
+			},
+		},
+	},
+	{
+		"ok with multiple headers",
+		[]byte("RTSP/1.0 200 OK\r\n" +
+			"CSeq: 2\r\n" +
+			"Date: Sat, Aug 16 2014 02:22:28 GMT\r\n" +
+			"Session: 645252166\r\n" +
+			"WWW-Authenticate: Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"\r\n" +
+			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
+			"\r\n",
+		),
+		&Response{
+			StatusCode: 200,
+			Status:     "OK",
+			Header: Header{
+				"CSeq":    []string{"2"},
+				"Session": []string{"645252166"},
+				"WWW-Authenticate": []string{
+					"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"",
+					"Basic realm=\"4419b63f5e51\"",
+				},
+				"Date": []string{"Sat, Aug 16 2014 02:22:28 GMT"},
 			},
 		},
 	},
@@ -56,11 +80,11 @@ var casesResponse = []struct {
 		&Response{
 			StatusCode: 200,
 			Status:     "OK",
-			Headers: map[string]string{
-				"Content-Base":   "rtsp://example.com/media.mp4",
-				"Content-Length": "444",
-				"Content-Type":   "application/sdp",
-				"CSeq":           "2",
+			Header: Header{
+				"Content-Base":   []string{"rtsp://example.com/media.mp4"},
+				"Content-Length": []string{"444"},
+				"Content-Type":   []string{"application/sdp"},
+				"CSeq":           []string{"2"},
 			},
 			Content: []byte("m=video 0 RTP/AVP 96\n" +
 				"a=control:streamid=0\n" +
@@ -83,21 +107,21 @@ var casesResponse = []struct {
 	},
 }
 
-func TestResponseDecode(t *testing.T) {
+func TestResponseRead(t *testing.T) {
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
-			res, err := responseDecode(bytes.NewBuffer(c.byts))
+			res, err := readResponse(bytes.NewBuffer(c.byts))
 			require.NoError(t, err)
 			require.Equal(t, c.res, res)
 		})
 	}
 }
 
-func TestResponseEncode(t *testing.T) {
+func TestResponseWrite(t *testing.T) {
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			err := responseEncode(&buf, c.res)
+			err := c.res.write(&buf)
 			require.NoError(t, err)
 			require.Equal(t, c.byts, buf.Bytes())
 		})

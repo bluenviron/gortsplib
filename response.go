@@ -10,11 +10,11 @@ import (
 type Response struct {
 	StatusCode int
 	Status     string
-	Headers    map[string]string
+	Header     Header
 	Content    []byte
 }
 
-func responseDecode(r io.Reader) (*Response, error) {
+func readResponse(r io.Reader) (*Response, error) {
 	rb := bufio.NewReader(r)
 
 	res := &Response{}
@@ -56,12 +56,12 @@ func responseDecode(r io.Reader) (*Response, error) {
 		return nil, err
 	}
 
-	res.Headers, err = readHeaders(rb)
+	res.Header, err = readHeader(rb)
 	if err != nil {
 		return nil, err
 	}
 
-	res.Content, err = readContent(rb, res.Headers)
+	res.Content, err = readContent(rb, res.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func responseDecode(r io.Reader) (*Response, error) {
 	return res, nil
 }
 
-func responseEncode(w io.Writer, res *Response) error {
+func (res *Response) write(w io.Writer) error {
 	wb := bufio.NewWriter(w)
 
 	_, err := wb.Write([]byte(_RTSP_PROTO + " " + strconv.FormatInt(int64(res.StatusCode), 10) + " " + res.Status + "\r\n"))
@@ -78,10 +78,10 @@ func responseEncode(w io.Writer, res *Response) error {
 	}
 
 	if len(res.Content) != 0 {
-		res.Headers["Content-Length"] = strconv.FormatInt(int64(len(res.Content)), 10)
+		res.Header["Content-Length"] = []string{strconv.FormatInt(int64(len(res.Content)), 10)}
 	}
 
-	err = writeHeaders(wb, res.Headers)
+	err = res.Header.write(wb)
 	if err != nil {
 		return err
 	}
