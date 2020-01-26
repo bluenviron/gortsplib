@@ -5,9 +5,9 @@ import (
 	"strings"
 )
 
-type TransportHeader map[string]struct{}
+type HeaderTransport map[string]struct{}
 
-func NewTransportHeader(in string) TransportHeader {
+func ReadHeaderTransport(in string) HeaderTransport {
 	th := make(map[string]struct{})
 	for _, t := range strings.Split(in, ";") {
 		th[t] = struct{}{}
@@ -15,7 +15,7 @@ func NewTransportHeader(in string) TransportHeader {
 	return th
 }
 
-func (th TransportHeader) GetValue(key string) string {
+func (th HeaderTransport) GetValue(key string) string {
 	prefix := key + "="
 	for t := range th {
 		if strings.HasPrefix(t, prefix) {
@@ -25,7 +25,7 @@ func (th TransportHeader) GetValue(key string) string {
 	return ""
 }
 
-func (th TransportHeader) GetPorts(key string) (int, int) {
+func (th HeaderTransport) GetPorts(key string) (int, int) {
 	val := th.GetValue(key)
 	if val == "" {
 		return 0, 0
