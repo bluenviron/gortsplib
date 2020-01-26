@@ -1,53 +1,20 @@
 package gortsplib
 
 import (
-	"crypto/md5"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
 	"strconv"
 )
 
-func md5Hex(in string) string {
-	h := md5.New()
-	h.Write([]byte(in))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-type authProvider struct {
-	user  string
-	pass  string
-	realm string
-	nonce string
-}
-
-func newAuthProvider(user string, pass string, realm string, nonce string) *authProvider {
-	return &authProvider{
-		user:  user,
-		pass:  pass,
-		realm: realm,
-		nonce: nonce,
-	}
-}
-
-func (ap *authProvider) generateHeader(method string, path string) string {
-	ha1 := md5Hex(ap.user + ":" + ap.realm + ":" + ap.pass)
-	ha2 := md5Hex(method + ":" + path)
-	response := md5Hex(ha1 + ":" + ap.nonce + ":" + ha2)
-
-	return fmt.Sprintf("Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\"",
-		ap.user, ap.realm, ap.nonce, path, response)
-}
-
 type Conn struct {
-	nconn       net.Conn
-	writeBuf    []byte
-	cseqEnabled bool
-	cseq        int
-	session     string
-	authProv    *authProvider
+	nconn             net.Conn
+	writeBuf          []byte
+	session           string
+	clientCseqEnabled bool
+	clientCseq        int
+	clientAuthProv    *AuthClientProvider
 }
 
 func NewConn(nconn net.Conn) *Conn {
@@ -61,16 +28,16 @@ func (c *Conn) NetConn() net.Conn {
 	return c.nconn
 }
 
-func (c *Conn) EnableCseq() {
-	c.cseqEnabled = true
-}
-
 func (c *Conn) SetSession(v string) {
 	c.session = v
 }
 
-func (c *Conn) SetCredentials(user string, pass string, realm string, nonce string) {
-	c.authProv = newAuthProvider(user, pass, realm, nonce)
+func (c *Conn) ClientEnableCseq() {
+	c.clientCseqEnabled = true
+}
+
+func (c *Conn) ClientSetCredentials(user string, pass string, realm string, nonce string) {
+	c.clientAuthProv = NewAuthClientProvider(user, pass, realm, nonce)
 }
 
 func (c *Conn) ReadRequest() (*Request, error) {
@@ -78,24 +45,24 @@ func (c *Conn) ReadRequest() (*Request, error) {
 }
 
 func (c *Conn) WriteRequest(req *Request) error {
-	if c.cseqEnabled {
-		if req.Header == nil {
-			req.Header = make(Header)
-		}
-		c.cseq += 1
-		req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.cseq), 10)}
-	}
 	if c.session != "" {
 		if req.Header == nil {
 			req.Header = make(Header)
 		}
 		req.Header["Session"] = []string{c.session}
 	}
-	if c.authProv != nil {
+	if c.clientCseqEnabled {
 		if req.Header == nil {
 			req.Header = make(Header)
 		}
-		req.Header["Authorization"] = []string{c.authProv.generateHeader(req.Method, req.Url)}
+		c.clientCseq += 1
+		req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.clientCseq), 10)}
+	}
+	if c.clientAuthProv != nil {
+		if req.Header == nil {
+			req.Header = make(Header)
+		}
+		req.Header["Authorization"] = []string{c.clientAuthProv.generateHeader(req.Method, req.Url)}
 	}
 	return req.write(c.nconn)
 }

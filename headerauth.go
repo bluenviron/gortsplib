@@ -6,13 +6,13 @@ import (
 	"strings"
 )
 
-type HeaderAuthRequest struct {
+type HeaderAuth struct {
 	Prefix string
 	Values map[string]string
 }
 
-func ReadHeaderAuthRequest(in string) (*HeaderAuthRequest, error) {
-	a := &HeaderAuthRequest{
+func ReadHeaderAuth(in string) (*HeaderAuth, error) {
+	a := &HeaderAuth{
 		Values: make(map[string]string),
 	}
 

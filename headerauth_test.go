@@ -6,15 +6,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var casesHeaderAuthRequest = []struct {
+var casesHeaderAuth = []struct {
 	name string
 	byts string
-	har  *HeaderAuthRequest
+	har  *HeaderAuth
 }{
 	{
 		"basic",
 		`Basic realm="4419b63f5e51"`,
-		&HeaderAuthRequest{
+		&HeaderAuth{
 			Prefix: "Basic",
 			Values: map[string]string{
 				"realm": "4419b63f5e51",
@@ -22,9 +22,9 @@ var casesHeaderAuthRequest = []struct {
 		},
 	},
 	{
-		"digest",
+		"digest request",
 		`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`,
-		&HeaderAuthRequest{
+		&HeaderAuth{
 			Prefix: "Digest",
 			Values: map[string]string{
 				"realm": "4419b63f5e51",
@@ -33,12 +33,26 @@ var casesHeaderAuthRequest = []struct {
 			},
 		},
 	},
+	{
+		"digest response",
+		`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`,
+		&HeaderAuth{
+			Prefix: "Digest",
+			Values: map[string]string{
+				"username": "aa",
+				"realm":    "bb",
+				"nonce":    "cc",
+				"uri":      "dd",
+				"response": "ee",
+			},
+		},
+	},
 }
 
-func TestHeaderAuthRequest(t *testing.T) {
-	for _, c := range casesHeaderAuthRequest {
+func TestHeaderAuth(t *testing.T) {
+	for _, c := range casesHeaderAuth {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadHeaderAuthRequest(c.byts)
+			req, err := ReadHeaderAuth(c.byts)
 			require.NoError(t, err)
 			require.Equal(t, c.har, req)
 		})
