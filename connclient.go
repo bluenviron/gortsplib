@@ -42,7 +42,7 @@ func (c *ConnClient) EnableCseq() {
 	c.cseqEnabled = true
 }
 
-// SetCredentials allows to automatically insert Authenticate header into every outgoing request.
+// SetCredentials allows to automatically insert the Authenticate header into every outgoing request.
 // The content of the header is computed with the given user, password, realm and nonce.
 func (c *ConnClient) SetCredentials(user string, pass string, realm string, nonce string) {
 	c.authProv = newAuthClientProvider(user, pass, realm, nonce)
