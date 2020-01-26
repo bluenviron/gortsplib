@@ -53,8 +53,8 @@ func TestHeaderWrite(t *testing.T) {
 			var buf bytes.Buffer
 			bw := bufio.NewWriter(&buf)
 			err := c.header.write(bw)
-			bw.Flush()
 			require.NoError(t, err)
+			bw.Flush()
 			require.Equal(t, c.byts, buf.Bytes())
 		})
 	}

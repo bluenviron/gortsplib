@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bufio"
 	"fmt"
-	"io"
 )
 
 type Request struct {
@@ -13,12 +12,10 @@ type Request struct {
 	Content []byte
 }
 
-func readRequest(r io.Reader) (*Request, error) {
-	rb := bufio.NewReader(r)
-
+func readRequest(br *bufio.Reader) (*Request, error) {
 	req := &Request{}
 
-	byts, err := readBytesLimited(rb, ' ', 255)
+	byts, err := readBytesLimited(br, ' ', 255)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +25,7 @@ func readRequest(r io.Reader) (*Request, error) {
 		return nil, fmt.Errorf("empty method")
 	}
 
-	byts, err = readBytesLimited(rb, ' ', 255)
+	byts, err = readBytesLimited(br, ' ', 255)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +35,7 @@ func readRequest(r io.Reader) (*Request, error) {
 		return nil, fmt.Errorf("empty path")
 	}
 
-	byts, err = readBytesLimited(rb, '\r', 255)
+	byts, err = readBytesLimited(br, '\r', 255)
 	if err != nil {
 		return nil, err
 	}
@@ -48,17 +45,17 @@ func readRequest(r io.Reader) (*Request, error) {
 		return nil, fmt.Errorf("expected '%s', got '%s'", _RTSP_PROTO, proto)
 	}
 
-	err = readByteEqual(rb, '\n')
+	err = readByteEqual(br, '\n')
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header, err = readHeader(rb)
+	req.Header, err = readHeader(br)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Content, err = readContent(rb, req.Header)
+	req.Content, err = readContent(br, req.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -66,23 +63,21 @@ func readRequest(r io.Reader) (*Request, error) {
 	return req, nil
 }
 
-func (req *Request) write(w io.Writer) error {
-	wb := bufio.NewWriter(w)
-
-	_, err := wb.Write([]byte(req.Method + " " + req.Url + " " + _RTSP_PROTO + "\r\n"))
+func (req *Request) write(bw *bufio.Writer) error {
+	_, err := bw.Write([]byte(req.Method + " " + req.Url + " " + _RTSP_PROTO + "\r\n"))
 	if err != nil {
 		return err
 	}
 
-	err = req.Header.write(wb)
+	err = req.Header.write(bw)
 	if err != nil {
 		return err
 	}
 
-	err = writeContent(wb, req.Content)
+	err = writeContent(bw, req.Content)
 	if err != nil {
 		return err
 	}
 
-	return wb.Flush()
+	return bw.Flush()
 }

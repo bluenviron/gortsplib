@@ -8,6 +8,7 @@ import (
 
 type ConnClient struct {
 	nconn       net.Conn
+	br          *bufio.Reader
 	bw          *bufio.Writer
 	session     string
 	cseqEnabled bool
@@ -18,7 +19,8 @@ type ConnClient struct {
 func NewConnClient(nconn net.Conn) *ConnClient {
 	return &ConnClient{
 		nconn: nconn,
-		bw:    bufio.NewWriterSize(nconn, _INTERLEAVED_FRAME_MAX_SIZE),
+		br:    bufio.NewReaderSize(nconn, 4096),
+		bw:    bufio.NewWriterSize(nconn, 4096),
 	}
 }
 
@@ -58,15 +60,15 @@ func (c *ConnClient) WriteRequest(req *Request) error {
 		}
 		req.Header["Authorization"] = []string{c.authProv.generateHeader(req.Method, req.Url)}
 	}
-	return req.write(c.nconn)
+	return req.write(c.bw)
 }
 
 func (c *ConnClient) ReadResponse() (*Response, error) {
-	return readResponse(c.nconn)
+	return readResponse(c.br)
 }
 
 func (c *ConnClient) ReadInterleavedFrame() (*InterleavedFrame, error) {
-	return readInterleavedFrame(c.nconn)
+	return readInterleavedFrame(c.br)
 }
 
 func (c *ConnClient) WriteInterleavedFrame(frame *InterleavedFrame) error {

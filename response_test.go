@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bufio"
 	"bytes"
 	"testing"
 
@@ -110,7 +111,7 @@ var casesResponse = []struct {
 func TestResponseRead(t *testing.T) {
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
-			res, err := readResponse(bytes.NewBuffer(c.byts))
+			res, err := readResponse(bufio.NewReader(bytes.NewBuffer(c.byts)))
 			require.NoError(t, err)
 			require.Equal(t, c.res, res)
 		})
@@ -121,8 +122,10 @@ func TestResponseWrite(t *testing.T) {
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			err := c.res.write(&buf)
+			bw := bufio.NewWriter(&buf)
+			err := c.res.write(bw)
 			require.NoError(t, err)
+			bw.Flush()
 			require.Equal(t, c.byts, buf.Bytes())
 		})
 	}

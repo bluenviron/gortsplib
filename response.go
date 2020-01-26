@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"strconv"
 )
 
@@ -14,12 +13,10 @@ type Response struct {
 	Content    []byte
 }
 
-func readResponse(r io.Reader) (*Response, error) {
-	rb := bufio.NewReader(r)
-
+func readResponse(br *bufio.Reader) (*Response, error) {
 	res := &Response{}
 
-	byts, err := readBytesLimited(rb, ' ', 255)
+	byts, err := readBytesLimited(br, ' ', 255)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +26,7 @@ func readResponse(r io.Reader) (*Response, error) {
 		return nil, fmt.Errorf("expected '%s', got '%s'", _RTSP_PROTO, proto)
 	}
 
-	byts, err = readBytesLimited(rb, ' ', 4)
+	byts, err = readBytesLimited(br, ' ', 4)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +38,7 @@ func readResponse(r io.Reader) (*Response, error) {
 		return nil, fmt.Errorf("unable to parse status code")
 	}
 
-	byts, err = readBytesLimited(rb, '\r', 255)
+	byts, err = readBytesLimited(br, '\r', 255)
 	if err != nil {
 		return nil, err
 	}
@@ -51,17 +48,17 @@ func readResponse(r io.Reader) (*Response, error) {
 		return nil, fmt.Errorf("empty status")
 	}
 
-	err = readByteEqual(rb, '\n')
+	err = readByteEqual(br, '\n')
 	if err != nil {
 		return nil, err
 	}
 
-	res.Header, err = readHeader(rb)
+	res.Header, err = readHeader(br)
 	if err != nil {
 		return nil, err
 	}
 
-	res.Content, err = readContent(rb, res.Header)
+	res.Content, err = readContent(br, res.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -69,10 +66,8 @@ func readResponse(r io.Reader) (*Response, error) {
 	return res, nil
 }
 
-func (res *Response) write(w io.Writer) error {
-	wb := bufio.NewWriter(w)
-
-	_, err := wb.Write([]byte(_RTSP_PROTO + " " + strconv.FormatInt(int64(res.StatusCode), 10) + " " + res.Status + "\r\n"))
+func (res *Response) write(bw *bufio.Writer) error {
+	_, err := bw.Write([]byte(_RTSP_PROTO + " " + strconv.FormatInt(int64(res.StatusCode), 10) + " " + res.Status + "\r\n"))
 	if err != nil {
 		return err
 	}
@@ -81,15 +76,15 @@ func (res *Response) write(w io.Writer) error {
 		res.Header["Content-Length"] = []string{strconv.FormatInt(int64(len(res.Content)), 10)}
 	}
 
-	err = res.Header.write(wb)
+	err = res.Header.write(bw)
 	if err != nil {
 		return err
 	}
 
-	err = writeContent(wb, res.Content)
+	err = writeContent(bw, res.Content)
 	if err != nil {
 		return err
 	}
 
-	return wb.Flush()
+	return bw.Flush()
 }

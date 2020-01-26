@@ -24,11 +24,6 @@ func readInterleavedFrame(r io.Reader) (*InterleavedFrame, error) {
 		return nil, err
 	}
 
-	// connection terminated
-	if header[0] == 0x54 {
-		return nil, io.EOF
-	}
-
 	if header[0] != 0x24 {
 		return nil, fmt.Errorf("wrong magic byte (0x%.2x)", header[0])
 	}

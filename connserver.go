@@ -7,13 +7,15 @@ import (
 
 type ConnServer struct {
 	nconn net.Conn
+	br    *bufio.Reader
 	bw    *bufio.Writer
 }
 
 func NewConnServer(nconn net.Conn) *ConnServer {
 	return &ConnServer{
 		nconn: nconn,
-		bw:    bufio.NewWriterSize(nconn, _INTERLEAVED_FRAME_MAX_SIZE),
+		br:    bufio.NewReaderSize(nconn, 4096),
+		bw:    bufio.NewWriterSize(nconn, 4096),
 	}
 }
 
@@ -22,15 +24,15 @@ func (s *ConnServer) NetConn() net.Conn {
 }
 
 func (s *ConnServer) ReadRequest() (*Request, error) {
-	return readRequest(s.nconn)
+	return readRequest(s.br)
 }
 
 func (s *ConnServer) WriteResponse(res *Response) error {
-	return res.write(s.nconn)
+	return res.write(s.bw)
 }
 
 func (s *ConnServer) ReadInterleavedFrame() (*InterleavedFrame, error) {
-	return readInterleavedFrame(s.nconn)
+	return readInterleavedFrame(s.br)
 }
 
 func (s *ConnServer) WriteInterleavedFrame(frame *InterleavedFrame) error {
