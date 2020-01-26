@@ -22,8 +22,20 @@ var casesHeaderAuth = []struct {
 		},
 	},
 	{
-		"digest request",
+		"digest request 1",
 		`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`,
+		&HeaderAuth{
+			Prefix: "Digest",
+			Values: map[string]string{
+				"realm": "4419b63f5e51",
+				"nonce": "8b84a3b789283a8bea8da7fa7d41f08b",
+				"stale": "FALSE",
+			},
+		},
+	},
+	{
+		"digest request 2",
+		`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale=FALSE`,
 		&HeaderAuth{
 			Prefix: "Digest",
 			Values: map[string]string{
