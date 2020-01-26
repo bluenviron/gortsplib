@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// Response is a RTSP response.
 type Response struct {
 	StatusCode int
 	Status     string

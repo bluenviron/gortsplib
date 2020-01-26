@@ -12,6 +12,7 @@ const (
 	_MAX_HEADER_VALUE_LENGTH = 255
 )
 
+// Header is a RTSP reader, present in both Requests and Responses.
 type Header map[string][]string
 
 func readHeader(rb *bufio.Reader) (Header, error) {

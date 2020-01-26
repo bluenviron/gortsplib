@@ -6,11 +6,13 @@ import (
 	"strings"
 )
 
+// HeaderAuth is an Authenticate or a WWWW-Authenticate header.
 type HeaderAuth struct {
 	Prefix string
 	Values map[string]string
 }
 
+// ReadHeaderAuth parses an Authenticate or a WWW-Authenticate header.
 func ReadHeaderAuth(in string) (*HeaderAuth, error) {
 	a := &HeaderAuth{
 		Values: make(map[string]string),

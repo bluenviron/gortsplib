@@ -12,6 +12,8 @@ const (
 	_INTERLEAVED_FRAME_MAX_CONTENT_SIZE = (_INTERLEAVED_FRAME_MAX_SIZE - 4)
 )
 
+// InterleavedFrame is a wrapper for sending and receiving binary data into RTSP connections.
+// It is usually used to send RTP and RTCP with RTSP.
 type InterleavedFrame struct {
 	Channel uint8
 	Content []byte

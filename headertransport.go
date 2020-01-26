@@ -5,8 +5,10 @@ import (
 	"strings"
 )
 
+// HeaderTransport is a Transport header.
 type HeaderTransport map[string]struct{}
 
+// ReadHeaderTransport parses a Transport header.
 func ReadHeaderTransport(in string) HeaderTransport {
 	th := make(map[string]struct{})
 	for _, t := range strings.Split(in, ";") {
@@ -15,6 +17,7 @@ func ReadHeaderTransport(in string) HeaderTransport {
 	return th
 }
 
+// GetValue gets a value from the header.
 func (th HeaderTransport) GetValue(key string) string {
 	prefix := key + "="
 	for t := range th {
@@ -25,6 +28,7 @@ func (th HeaderTransport) GetValue(key string) string {
 	return ""
 }
 
+// GetPorts gets a given header value and parses its ports.
 func (th HeaderTransport) GetPorts(key string) (int, int) {
 	val := th.GetValue(key)
 	if val == "" {

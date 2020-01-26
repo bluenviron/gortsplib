@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// Request is a RTSP request.
 type Request struct {
 	Method  string
 	Url     string
