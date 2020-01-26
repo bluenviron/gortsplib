@@ -125,7 +125,7 @@ func TestResponseWrite(t *testing.T) {
 			bw := bufio.NewWriter(&buf)
 			err := c.res.write(bw)
 			require.NoError(t, err)
-			bw.Flush()
+			// do NOT call flush(), write() must have already done it
 			require.Equal(t, c.byts, buf.Bytes())
 		})
 	}
