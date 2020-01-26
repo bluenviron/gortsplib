@@ -12,15 +12,15 @@ func md5Hex(in string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-type AuthClientProvider struct {
+type authClientProvider struct {
 	user  string
 	pass  string
 	realm string
 	nonce string
 }
 
-func NewAuthClientProvider(user string, pass string, realm string, nonce string) *AuthClientProvider {
-	return &AuthClientProvider{
+func newAuthClientProvider(user string, pass string, realm string, nonce string) *authClientProvider {
+	return &authClientProvider{
 		user:  user,
 		pass:  pass,
 		realm: realm,
@@ -28,7 +28,7 @@ func NewAuthClientProvider(user string, pass string, realm string, nonce string)
 	}
 }
 
-func (ap *AuthClientProvider) generateHeader(method string, path string) string {
+func (ap *authClientProvider) generateHeader(method string, path string) string {
 	ha1 := md5Hex(ap.user + ":" + ap.realm + ":" + ap.pass)
 	ha2 := md5Hex(method + ":" + path)
 	response := md5Hex(ha1 + ":" + ap.nonce + ":" + ha2)
