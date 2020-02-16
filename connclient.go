@@ -14,7 +14,7 @@ type ConnClient struct {
 	session     string
 	cseqEnabled bool
 	cseq        int
-	authProv    *authClientProvider
+	authProv    *AuthClient
 }
 
 // NewConnClient allocates a ConnClient.
@@ -44,8 +44,10 @@ func (c *ConnClient) EnableCseq() {
 
 // SetCredentials allows to automatically insert the Authenticate header into every outgoing request.
 // The content of the header is computed with the given user, password, realm and nonce.
-func (c *ConnClient) SetCredentials(user string, pass string, realm string, nonce string) {
-	c.authProv = newAuthClientProvider(user, pass, realm, nonce)
+func (c *ConnClient) SetCredentials(wwwAuthenticateHeader []string, user string, pass string) error {
+	var err error
+	c.authProv, err = NewAuthClient(wwwAuthenticateHeader, user, pass)
+	return err
 }
 
 // WriteRequest writes a Request.
@@ -67,7 +69,7 @@ func (c *ConnClient) WriteRequest(req *Request) error {
 		if req.Header == nil {
 			req.Header = make(Header)
 		}
-		req.Header["Authorization"] = []string{c.authProv.generateHeader(req.Method, req.Url)}
+		req.Header["Authorization"] = c.authProv.GenerateHeader(req.Method, req.Url)
 	}
 	return req.write(c.bw)
 }
