@@ -30,7 +30,7 @@ func NewAuthServer(user string, pass string) *AuthServer {
 
 // GenerateHeader generates the WWW-Authenticate header needed by a client to log in.
 func (as *AuthServer) GenerateHeader() []string {
-	return []string{fmt.Sprintf("Digest nonce=%s, realm=%s", as.nonce, as.realm)}
+	return []string{fmt.Sprintf("Digest nonce=\"%s\", realm=\"%s\"", as.nonce, as.realm)}
 }
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
