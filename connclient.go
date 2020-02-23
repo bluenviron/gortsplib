@@ -8,13 +8,12 @@ import (
 
 // ConnClient is a client-side RTSP connection.
 type ConnClient struct {
-	nconn       net.Conn
-	br          *bufio.Reader
-	bw          *bufio.Writer
-	session     string
-	cseqEnabled bool
-	cseq        int
-	authProv    *AuthClient
+	nconn    net.Conn
+	br       *bufio.Reader
+	bw       *bufio.Writer
+	session  string
+	curCseq  int
+	authProv *AuthClient
 }
 
 // NewConnClient allocates a ConnClient.
@@ -36,12 +35,6 @@ func (c *ConnClient) SetSession(v string) {
 	c.session = v
 }
 
-// EnableCseq allows to automatically insert the CSeq header into every outgoing request.
-// CSeq is incremented after every request.
-func (c *ConnClient) EnableCseq() {
-	c.cseqEnabled = true
-}
-
 // SetCredentials allows to automatically insert the Authenticate header into every outgoing request.
 // The content of the header is computed with the given user, password, realm and nonce.
 func (c *ConnClient) SetCredentials(wwwAuthenticateHeader []string, user string, pass string) error {
@@ -58,19 +51,21 @@ func (c *ConnClient) WriteRequest(req *Request) error {
 		}
 		req.Header["Session"] = []string{c.session}
 	}
-	if c.cseqEnabled {
-		if req.Header == nil {
-			req.Header = make(Header)
-		}
-		c.cseq += 1
-		req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.cseq), 10)}
-	}
+
 	if c.authProv != nil {
 		if req.Header == nil {
 			req.Header = make(Header)
 		}
 		req.Header["Authorization"] = c.authProv.GenerateHeader(req.Method, req.Url)
 	}
+
+	// automatically insert cseq into every outgoing request
+	if req.Header == nil {
+		req.Header = make(Header)
+	}
+	c.curCseq += 1
+	req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.curCseq), 10)}
+
 	return req.write(c.bw)
 }
 
