@@ -5,6 +5,12 @@ import (
 	"fmt"
 )
 
+const (
+	_MAX_METHOD_LENGTH   = 128
+	_MAX_PATH_LENGTH     = 1024
+	_MAX_PROTOCOL_LENGTH = 128
+)
+
 // Request is a RTSP request.
 type Request struct {
 	Method  string
@@ -16,7 +22,7 @@ type Request struct {
 func readRequest(br *bufio.Reader) (*Request, error) {
 	req := &Request{}
 
-	byts, err := readBytesLimited(br, ' ', 255)
+	byts, err := readBytesLimited(br, ' ', _MAX_METHOD_LENGTH)
 	if err != nil {
 		return nil, err
 	}
@@ -26,17 +32,17 @@ func readRequest(br *bufio.Reader) (*Request, error) {
 		return nil, fmt.Errorf("empty method")
 	}
 
-	byts, err = readBytesLimited(br, ' ', 255)
+	byts, err = readBytesLimited(br, ' ', _MAX_PATH_LENGTH)
 	if err != nil {
 		return nil, err
 	}
 	req.Url = string(byts[:len(byts)-1])
 
 	if len(req.Url) == 0 {
-		return nil, fmt.Errorf("empty path")
+		return nil, fmt.Errorf("empty url")
 	}
 
-	byts, err = readBytesLimited(br, '\r', 255)
+	byts, err = readBytesLimited(br, '\r', _MAX_PROTOCOL_LENGTH)
 	if err != nil {
 		return nil, err
 	}

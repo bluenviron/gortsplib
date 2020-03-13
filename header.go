@@ -8,8 +8,8 @@ import (
 
 const (
 	_MAX_HEADER_COUNT        = 255
-	_MAX_HEADER_KEY_LENGTH   = 255
-	_MAX_HEADER_VALUE_LENGTH = 255
+	_MAX_HEADER_KEY_LENGTH   = 1024
+	_MAX_HEADER_VALUE_LENGTH = 1024
 )
 
 // Header is a RTSP reader, present in both Requests and Responses.
