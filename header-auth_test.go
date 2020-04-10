@@ -9,7 +9,7 @@ import (
 var casesHeaderAuth = []struct {
 	name string
 	byts string
-	har  *HeaderAuth
+	ha   *HeaderAuth
 }{
 	{
 		"basic",
@@ -66,7 +66,7 @@ func TestHeaderAuth(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			req, err := ReadHeaderAuth(c.byts)
 			require.NoError(t, err)
-			require.Equal(t, c.har, req)
+			require.Equal(t, c.ha, req)
 		})
 	}
 }

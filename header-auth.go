@@ -14,7 +14,7 @@ type HeaderAuth struct {
 
 // ReadHeaderAuth parses an Authenticate or a WWW-Authenticate header.
 func ReadHeaderAuth(in string) (*HeaderAuth, error) {
-	a := &HeaderAuth{
+	ha := &HeaderAuth{
 		Values: make(map[string]string),
 	}
 
@@ -22,7 +22,7 @@ func ReadHeaderAuth(in string) (*HeaderAuth, error) {
 	if i < 0 {
 		return nil, fmt.Errorf("unable to find prefix (%s)", in)
 	}
-	a.Prefix, in = in[:i], in[i+1:]
+	ha.Prefix, in = in[:i], in[i+1:]
 
 	r := regexp.MustCompile("^([a-z]+)=(\"(.+?)\"|([a-zA-Z0-9]+))(, )?")
 
@@ -35,8 +35,8 @@ func ReadHeaderAuth(in string) (*HeaderAuth, error) {
 
 		m[2] = strings.TrimPrefix(m[2], "\"")
 		m[2] = strings.TrimSuffix(m[2], "\"")
-		a.Values[m[1]] = m[2]
+		ha.Values[m[1]] = m[2]
 	}
 
-	return a, nil
+	return ha, nil
 }
