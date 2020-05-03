@@ -21,7 +21,7 @@ var casesResponse = []struct {
 			"\r\n",
 		),
 		&Response{
-			StatusCode: 200,
+			StatusCode: StatusOK,
 			Status:     "OK",
 			Header: Header{
 				"CSeq":   []string{"1"},
@@ -40,7 +40,7 @@ var casesResponse = []struct {
 			"\r\n",
 		),
 		&Response{
-			StatusCode: 200,
+			StatusCode: StatusOK,
 			Status:     "OK",
 			Header: Header{
 				"CSeq":    []string{"2"},

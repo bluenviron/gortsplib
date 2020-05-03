@@ -8,7 +8,7 @@ import (
 
 // Response is a RTSP response.
 type Response struct {
-	StatusCode int
+	StatusCode StatusCode
 	Status     string
 	Header     Header
 	Content    []byte
@@ -34,10 +34,10 @@ func readResponse(br *bufio.Reader) (*Response, error) {
 	statusCodeStr := string(byts[:len(byts)-1])
 
 	statusCode64, err := strconv.ParseInt(statusCodeStr, 10, 32)
-	res.StatusCode = int(statusCode64)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse status code")
 	}
+	res.StatusCode = StatusCode(statusCode64)
 
 	byts, err = readBytesLimited(br, '\r', 255)
 	if err != nil {
