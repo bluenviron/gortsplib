@@ -16,7 +16,7 @@ type ConnClient struct {
 	writeTimeout time.Duration
 	session      string
 	curCSeq      int
-	authProv     *AuthClient
+	auth         *AuthClient
 }
 
 // NewConnClient allocates a ConnClient.
@@ -44,7 +44,7 @@ func (c *ConnClient) SetSession(v string) {
 // The content of the header is computed with the given user, password, realm and nonce.
 func (c *ConnClient) SetCredentials(wwwAuthenticateHeader []string, user string, pass string) error {
 	var err error
-	c.authProv, err = NewAuthClient(wwwAuthenticateHeader, user, pass)
+	c.auth, err = NewAuthClient(wwwAuthenticateHeader, user, pass)
 	return err
 }
 
@@ -57,11 +57,11 @@ func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
 		req.Header["Session"] = []string{c.session}
 	}
 
-	if c.authProv != nil {
+	if c.auth != nil {
 		if req.Header == nil {
 			req.Header = make(Header)
 		}
-		req.Header["Authorization"] = c.authProv.GenerateHeader(req.Method, req.Url)
+		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, req.Url)
 	}
 
 	// automatically insert CSeq

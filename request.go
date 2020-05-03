@@ -11,9 +11,25 @@ const (
 	_MAX_PROTOCOL_LENGTH = 128
 )
 
+// Method is a RTSP request method.
+type Method string
+
+const (
+	OPTIONS       Method = "OPTIONS"
+	DESCRIBE      Method = "DESCRIBE"
+	SETUP         Method = "SETUP"
+	PLAY          Method = "PLAY"
+	PLAY_NOTIFY   Method = "PLAY_NOTIFY"
+	PAUSE         Method = "PAUSE"
+	TEARDOWN      Method = "TEARDOWN"
+	GET_PARAMETER Method = "GET_PARAMETER"
+	SET_PARAMETER Method = "SET_PARAMETER"
+	REDIRECT      Method = "REDIRECT"
+)
+
 // Request is a RTSP request.
 type Request struct {
-	Method  string
+	Method  Method
 	Url     string
 	Header  Header
 	Content []byte
@@ -26,7 +42,7 @@ func readRequest(br *bufio.Reader) (*Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Method = string(byts[:len(byts)-1])
+	req.Method = Method(byts[:len(byts)-1])
 
 	if len(req.Method) == 0 {
 		return nil, fmt.Errorf("empty method")
@@ -71,7 +87,7 @@ func readRequest(br *bufio.Reader) (*Request, error) {
 }
 
 func (req *Request) write(bw *bufio.Writer) error {
-	_, err := bw.Write([]byte(req.Method + " " + req.Url + " " + _RTSP_PROTO + "\r\n"))
+	_, err := bw.Write([]byte(string(req.Method) + " " + req.Url + " " + _RTSP_PROTO + "\r\n"))
 	if err != nil {
 		return err
 	}
