@@ -4,16 +4,13 @@ package gortsplib
 type StatusCode int
 
 const (
-	StatusContinue StatusCode = 100
-
-	StatusOK StatusCode = 200
-
-	StatusMovedPermanently StatusCode = 301
-	StatusFound            StatusCode = 302
-	StatusSeeOther         StatusCode = 303
-	StatusNotModified      StatusCode = 304
-	StatusUseProxy         StatusCode = 305
-
+	StatusContinue                           StatusCode = 100
+	StatusOK                                 StatusCode = 200
+	StatusMovedPermanently                   StatusCode = 301
+	StatusFound                              StatusCode = 302
+	StatusSeeOther                           StatusCode = 303
+	StatusNotModified                        StatusCode = 304
+	StatusUseProxy                           StatusCode = 305
 	StatusBadRequest                         StatusCode = 400
 	StatusUnauthorized                       StatusCode = 401
 	StatusPaymentRequired                    StatusCode = 402
@@ -46,13 +43,12 @@ const (
 	StatusConnectionAuthorizationRequired    StatusCode = 470
 	StatusConnectionCredentialsNotAccepted   StatusCode = 471
 	StatusFailureToEstablishSecureConnection StatusCode = 472
-
-	StatusInternalServerError     StatusCode = 500
-	StatusNotImplemented          StatusCode = 501
-	StatusBadGateway              StatusCode = 502
-	StatusServiceUnavailable      StatusCode = 503
-	StatusGatewayTimeout          StatusCode = 504
-	StatusRTSPVersionNotSupported StatusCode = 505
-	StatusOptionNotSupported      StatusCode = 551
-	StatusProxyUnavailable        StatusCode = 553
+	StatusInternalServerError                StatusCode = 500
+	StatusNotImplemented                     StatusCode = 501
+	StatusBadGateway                         StatusCode = 502
+	StatusServiceUnavailable                 StatusCode = 503
+	StatusGatewayTimeout                     StatusCode = 504
+	StatusRTSPVersionNotSupported            StatusCode = 505
+	StatusOptionNotSupported                 StatusCode = 551
+	StatusProxyUnavailable                   StatusCode = 553
 )
