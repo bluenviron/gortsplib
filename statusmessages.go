@@ -1,7 +1,6 @@
 package gortsplib
 
-// StatusMessages is a map that contains the strings associated with every status code.
-var StatusMessages = map[StatusCode]string{
+var statusMessages = map[StatusCode]string{
 	StatusContinue: "Continue",
 
 	StatusOK: "OK",

@@ -69,7 +69,7 @@ func readResponse(br *bufio.Reader) (*Response, error) {
 
 func (res *Response) write(bw *bufio.Writer) error {
 	if res.Status == "" {
-		if status, ok := StatusMessages[res.StatusCode]; ok {
+		if status, ok := statusMessages[res.StatusCode]; ok {
 			res.Status = status
 		}
 	}
