@@ -15,16 +15,18 @@ const (
 type Method string
 
 const (
-	OPTIONS       Method = "OPTIONS"
+	ANNOUNCE      Method = "ANNOUNCE"
 	DESCRIBE      Method = "DESCRIBE"
-	SETUP         Method = "SETUP"
+	GET_PARAMETER Method = "GET_PARAMETER"
+	OPTIONS       Method = "OPTIONS"
+	PAUSE         Method = "PAUSE"
 	PLAY          Method = "PLAY"
 	PLAY_NOTIFY   Method = "PLAY_NOTIFY"
-	PAUSE         Method = "PAUSE"
-	TEARDOWN      Method = "TEARDOWN"
-	GET_PARAMETER Method = "GET_PARAMETER"
-	SET_PARAMETER Method = "SET_PARAMETER"
+	RECORD        Method = "RECORD"
 	REDIRECT      Method = "REDIRECT"
+	SETUP         Method = "SETUP"
+	SET_PARAMETER Method = "SET_PARAMETER"
+	TEARDOWN      Method = "TEARDOWN"
 )
 
 // Request is a RTSP request.
