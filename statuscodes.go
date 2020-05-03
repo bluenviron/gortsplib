@@ -4,6 +4,7 @@ package gortsplib
 type StatusCode int
 
 // https://tools.ietf.org/html/rfc7826#section-17
+
 const (
 	StatusContinue StatusCode = 100
 
@@ -30,7 +31,6 @@ const (
 	StatusRequestURITooLong                  = 414
 	StatusUnsupportedMediaType               = 415
 	StatusParameterNotUnderstood             = 451
-	StatusIllegalConferenceIdentifier        = 452
 	StatusNotEnoughBandwidth                 = 453
 	StatusSessionNotFound                    = 454
 	StatusMethodNotValidInThisState          = 455
