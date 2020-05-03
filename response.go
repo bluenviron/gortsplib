@@ -68,6 +68,12 @@ func readResponse(br *bufio.Reader) (*Response, error) {
 }
 
 func (res *Response) write(bw *bufio.Writer) error {
+	if res.Status == "" {
+		if status, ok := StatusMessages[res.StatusCode]; ok {
+			res.Status = status
+		}
+	}
+
 	_, err := bw.Write([]byte(_RTSP_PROTO + " " + strconv.FormatInt(int64(res.StatusCode), 10) + " " + res.Status + "\r\n"))
 	if err != nil {
 		return err

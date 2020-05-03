@@ -130,3 +130,32 @@ func TestResponseWrite(t *testing.T) {
 		})
 	}
 }
+
+func TestResponseWriteStatusAutofill(t *testing.T) {
+	res := &Response{
+		StatusCode: StatusMethodNotAllowed,
+		Header: Header{
+			"CSeq":    []string{"2"},
+			"Session": []string{"645252166"},
+			"WWW-Authenticate": []string{
+				"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"",
+				"Basic realm=\"4419b63f5e51\"",
+			},
+			"Date": []string{"Sat, Aug 16 2014 02:22:28 GMT"},
+		},
+	}
+	byts := []byte("RTSP/1.0 405 Method Not Allowed\r\n" +
+		"CSeq: 2\r\n" +
+		"Date: Sat, Aug 16 2014 02:22:28 GMT\r\n" +
+		"Session: 645252166\r\n" +
+		"WWW-Authenticate: Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"\r\n" +
+		"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
+		"\r\n",
+	)
+
+	var buf bytes.Buffer
+	bw := bufio.NewWriter(&buf)
+	err := res.write(bw)
+	require.NoError(t, err)
+	require.Equal(t, byts, buf.Bytes())
+}

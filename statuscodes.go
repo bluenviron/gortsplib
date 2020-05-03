@@ -3,8 +3,6 @@ package gortsplib
 // StatusCode is a RTSP response status code.
 type StatusCode int
 
-// https://tools.ietf.org/html/rfc7826#section-17
-
 const (
 	StatusContinue StatusCode = 100
 
