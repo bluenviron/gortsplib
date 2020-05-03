@@ -4,28 +4,33 @@ import (
 	"bufio"
 	"net"
 	"strconv"
+	"time"
 )
 
 // ConnClient is a client-side RTSP connection.
 type ConnClient struct {
-	nconn    net.Conn
-	br       *bufio.Reader
-	bw       *bufio.Writer
-	session  string
-	curCseq  int
-	authProv *AuthClient
+	nconn        net.Conn
+	br           *bufio.Reader
+	bw           *bufio.Writer
+	readTimeout  time.Duration
+	writeTimeout time.Duration
+	session      string
+	curCSeq      int
+	authProv     *AuthClient
 }
 
 // NewConnClient allocates a ConnClient.
-func NewConnClient(nconn net.Conn) *ConnClient {
+func NewConnClient(nconn net.Conn, readTimeout time.Duration, writeTimeout time.Duration) *ConnClient {
 	return &ConnClient{
-		nconn: nconn,
-		br:    bufio.NewReaderSize(nconn, 4096),
-		bw:    bufio.NewWriterSize(nconn, 4096),
+		nconn:        nconn,
+		br:           bufio.NewReaderSize(nconn, 4096),
+		bw:           bufio.NewWriterSize(nconn, 4096),
+		readTimeout:  readTimeout,
+		writeTimeout: writeTimeout,
 	}
 }
 
-// NetConn returns the underlying new.Conn.
+// NetConn returns the underlying net.Conn.
 func (c *ConnClient) NetConn() net.Conn {
 	return c.nconn
 }
@@ -43,8 +48,8 @@ func (c *ConnClient) SetCredentials(wwwAuthenticateHeader []string, user string,
 	return err
 }
 
-// WriteRequest writes a Request.
-func (c *ConnClient) WriteRequest(req *Request) error {
+// WriteRequest writes a request and reads a response.
+func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
 	if c.session != "" {
 		if req.Header == nil {
 			req.Header = make(Header)
@@ -59,27 +64,31 @@ func (c *ConnClient) WriteRequest(req *Request) error {
 		req.Header["Authorization"] = c.authProv.GenerateHeader(req.Method, req.Url)
 	}
 
-	// automatically insert cseq into every outgoing request
+	// automatically insert CSeq
 	if req.Header == nil {
 		req.Header = make(Header)
 	}
-	c.curCseq += 1
-	req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.curCseq), 10)}
+	c.curCSeq += 1
+	req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.curCSeq), 10)}
 
-	return req.write(c.bw)
-}
+	c.nconn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
+	err := req.write(c.bw)
+	if err != nil {
+		return nil, err
+	}
 
-// ReadResponse reads a response.
-func (c *ConnClient) ReadResponse() (*Response, error) {
+	c.nconn.SetReadDeadline(time.Now().Add(c.readTimeout))
 	return readResponse(c.br)
 }
 
 // ReadInterleavedFrame reads an InterleavedFrame.
 func (c *ConnClient) ReadInterleavedFrame() (*InterleavedFrame, error) {
+	c.nconn.SetReadDeadline(time.Now().Add(c.readTimeout))
 	return readInterleavedFrame(c.br)
 }
 
 // WriteInterleavedFrame writes an InterleavedFrame.
 func (c *ConnClient) WriteInterleavedFrame(frame *InterleavedFrame) error {
+	c.nconn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
 	return frame.write(c.bw)
 }
