@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net/url"
 )
 
 // AuthServer is an object that helps a server validating the credentials of a client.
@@ -35,7 +36,7 @@ func (as *AuthServer) GenerateHeader() []string {
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header provided by GenerateHeader().
-func (as *AuthServer) ValidateHeader(header []string, method Method, path string) error {
+func (as *AuthServer) ValidateHeader(header []string, method Method, ur *url.URL) error {
 	if len(header) != 1 {
 		return fmt.Errorf("Authorization header not provided")
 	}
@@ -82,12 +83,12 @@ func (as *AuthServer) ValidateHeader(header []string, method Method, path string
 		return fmt.Errorf("wrong username")
 	}
 
-	if inUri != path {
-		return fmt.Errorf("wrong uri")
+	if inUri != ur.String() {
+		return fmt.Errorf("wrong url")
 	}
 
 	ha1 := md5Hex(as.user + ":" + as.realm + ":" + as.pass)
-	ha2 := md5Hex(string(method) + ":" + path)
+	ha2 := md5Hex(string(method) + ":" + ur.String())
 	response := md5Hex(ha1 + ":" + as.nonce + ":" + ha2)
 
 	if inResponse != response {

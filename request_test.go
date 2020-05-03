@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"bufio"
 	"bytes"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ var casesRequest = []struct {
 			"\r\n"),
 		&Request{
 			Method: "OPTIONS",
-			Url:    "rtsp://example.com/media.mp4",
+			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
 				"CSeq":          []string{"1"},
 				"Require":       []string{"implicit-play"},
@@ -37,7 +38,7 @@ var casesRequest = []struct {
 			"\r\n"),
 		&Request{
 			Method: "DESCRIBE",
-			Url:    "rtsp://example.com/media.mp4",
+			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
 				"CSeq": []string{"2"},
 			},
@@ -65,7 +66,7 @@ var casesRequest = []struct {
 			"m=video 2232 RTP/AVP 31\n"),
 		&Request{
 			Method: "ANNOUNCE",
-			Url:    "rtsp://example.com/media.mp4",
+			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
 				"CSeq":           []string{"7"},
 				"Date":           []string{"23 Jan 1997 15:35:06 GMT"},
@@ -99,7 +100,7 @@ var casesRequest = []struct {
 			"jitter\n"),
 		&Request{
 			Method: "GET_PARAMETER",
-			Url:    "rtsp://example.com/media.mp4",
+			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
 				"CSeq":           []string{"9"},
 				"Content-Type":   []string{"text/parameters"},

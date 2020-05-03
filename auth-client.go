@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -61,11 +62,11 @@ func NewAuthClient(header []string, user string, pass string) (*AuthClient, erro
 
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
 // the given method and path.
-func (ac *AuthClient) GenerateHeader(method Method, path string) []string {
+func (ac *AuthClient) GenerateHeader(method Method, ur *url.URL) []string {
 	ha1 := md5Hex(ac.user + ":" + ac.realm + ":" + ac.pass)
-	ha2 := md5Hex(string(method) + ":" + path)
+	ha2 := md5Hex(string(method) + ":" + ur.String())
 	response := md5Hex(ha1 + ":" + ac.nonce + ":" + ha2)
 
 	return []string{fmt.Sprintf("Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\"",
-		ac.user, ac.realm, ac.nonce, path, response)}
+		ac.user, ac.realm, ac.nonce, ur.String(), response)}
 }

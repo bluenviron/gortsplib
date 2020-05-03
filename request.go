@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 )
 
 const (
@@ -32,7 +33,7 @@ const (
 // Request is a RTSP request.
 type Request struct {
 	Method  Method
-	Url     string
+	Url     *url.URL
 	Header  Header
 	Content []byte
 }
@@ -46,7 +47,7 @@ func readRequest(br *bufio.Reader) (*Request, error) {
 	}
 	req.Method = Method(byts[:len(byts)-1])
 
-	if len(req.Method) == 0 {
+	if req.Method == "" {
 		return nil, fmt.Errorf("empty method")
 	}
 
@@ -54,10 +55,20 @@ func readRequest(br *bufio.Reader) (*Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Url = string(byts[:len(byts)-1])
+	rawUrl := string(byts[:len(byts)-1])
 
-	if len(req.Url) == 0 {
+	if rawUrl == "" {
 		return nil, fmt.Errorf("empty url")
+	}
+
+	ur, err := url.Parse(rawUrl)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse url '%s'", rawUrl)
+	}
+	req.Url = ur
+
+	if req.Url.Scheme != "rtsp" {
+		return nil, fmt.Errorf("invalid url scheme '%s'", req.Url.Scheme)
 	}
 
 	byts, err = readBytesLimited(br, '\r', _MAX_PROTOCOL_LENGTH)
@@ -89,7 +100,7 @@ func readRequest(br *bufio.Reader) (*Request, error) {
 }
 
 func (req *Request) write(bw *bufio.Writer) error {
-	_, err := bw.Write([]byte(string(req.Method) + " " + req.Url + " " + _RTSP_PROTO + "\r\n"))
+	_, err := bw.Write([]byte(string(req.Method) + " " + req.Url.String() + " " + _RTSP_PROTO + "\r\n"))
 	if err != nil {
 		return err
 	}

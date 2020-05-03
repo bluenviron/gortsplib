@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,8 +13,10 @@ func TestAuthClientServer(t *testing.T) {
 
 	ac, err := NewAuthClient(wwwAuthenticate, "testuser", "testpass")
 	require.NoError(t, err)
-	authorization := ac.GenerateHeader(ANNOUNCE, "rtsp://myhost/mypath")
+	authorization := ac.GenerateHeader(ANNOUNCE,
+		&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath"})
 
-	err = as.ValidateHeader(authorization, ANNOUNCE, "rtsp://myhost/mypath")
+	err = as.ValidateHeader(authorization, ANNOUNCE,
+		&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath"})
 	require.NoError(t, err)
 }
