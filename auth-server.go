@@ -7,7 +7,8 @@ import (
 	"net/url"
 )
 
-// AuthServer is an object that helps a server validating the credentials of a client.
+// AuthServer is an object that helps a server validating the credentials of
+// a client, sent with the Digest authentication method.
 type AuthServer struct {
 	nonce string
 	realm string

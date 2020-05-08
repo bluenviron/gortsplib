@@ -14,7 +14,8 @@ func md5Hex(in string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// AuthClient is an object that helps a client sending its credentials to a server.
+// AuthClient is an object that helps a client sending its credentials to a
+// server, with the Digest authentication method.
 type AuthClient struct {
 	user  string
 	pass  string

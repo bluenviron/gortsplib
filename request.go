@@ -32,9 +32,16 @@ const (
 
 // Request is a RTSP request.
 type Request struct {
-	Method  Method
-	Url     *url.URL
-	Header  Header
+	// request method
+	Method Method
+
+	// request url
+	Url *url.URL
+
+	// map of header values
+	Header Header
+
+	// optional content
 	Content []byte
 }
 

@@ -61,10 +61,17 @@ const (
 
 // Response is a RTSP response.
 type Response struct {
-	StatusCode    StatusCode
+	// numeric status code
+	StatusCode StatusCode
+
+	// status message
 	StatusMessage string
-	Header        Header
-	Content       []byte
+
+	// map of header values
+	Header Header
+
+	// optional content
+	Content []byte
 }
 
 func readResponse(br *bufio.Reader) (*Response, error) {
