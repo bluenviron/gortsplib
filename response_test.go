@@ -21,8 +21,8 @@ var casesResponse = []struct {
 			"\r\n",
 		),
 		&Response{
-			StatusCode: StatusOK,
-			Status:     "OK",
+			StatusCode:    StatusOK,
+			StatusMessage: "OK",
 			Header: Header{
 				"CSeq":   []string{"1"},
 				"Public": []string{"DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE"},
@@ -40,8 +40,8 @@ var casesResponse = []struct {
 			"\r\n",
 		),
 		&Response{
-			StatusCode: StatusOK,
-			Status:     "OK",
+			StatusCode:    StatusOK,
+			StatusMessage: "OK",
 			Header: Header{
 				"CSeq":    []string{"2"},
 				"Session": []string{"645252166"},
@@ -79,8 +79,8 @@ var casesResponse = []struct {
 			"a=StreamName:string;\"hinted audio track\"\n",
 		),
 		&Response{
-			StatusCode: 200,
-			Status:     "OK",
+			StatusCode:    200,
+			StatusMessage: "OK",
 			Header: Header{
 				"Content-Base":   []string{"rtsp://example.com/media.mp4"},
 				"Content-Length": []string{"444"},

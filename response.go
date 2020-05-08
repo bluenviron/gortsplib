@@ -61,10 +61,10 @@ const (
 
 // Response is a RTSP response.
 type Response struct {
-	StatusCode StatusCode
-	Status     string
-	Header     Header
-	Content    []byte
+	StatusCode    StatusCode
+	StatusMessage string
+	Header        Header
+	Content       []byte
 }
 
 func readResponse(br *bufio.Reader) (*Response, error) {
@@ -96,9 +96,9 @@ func readResponse(br *bufio.Reader) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	res.Status = string(byts[:len(byts)-1])
+	res.StatusMessage = string(byts[:len(byts)-1])
 
-	if len(res.Status) == 0 {
+	if len(res.StatusMessage) == 0 {
 		return nil, fmt.Errorf("empty status")
 	}
 
@@ -121,13 +121,13 @@ func readResponse(br *bufio.Reader) (*Response, error) {
 }
 
 func (res *Response) write(bw *bufio.Writer) error {
-	if res.Status == "" {
+	if res.StatusMessage == "" {
 		if status, ok := statusMessages[res.StatusCode]; ok {
-			res.Status = status
+			res.StatusMessage = status
 		}
 	}
 
-	_, err := bw.Write([]byte(_RTSP_PROTO + " " + strconv.FormatInt(int64(res.StatusCode), 10) + " " + res.Status + "\r\n"))
+	_, err := bw.Write([]byte(_RTSP_PROTO + " " + strconv.FormatInt(int64(res.StatusCode), 10) + " " + res.StatusMessage + "\r\n"))
 	if err != nil {
 		return err
 	}

@@ -61,7 +61,7 @@ func NewAuthClient(header []string, user string, pass string) (*AuthClient, erro
 }
 
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
-// the given method and path.
+// the given method and url.
 func (ac *AuthClient) GenerateHeader(method Method, ur *url.URL) []string {
 	ha1 := md5Hex(ac.user + ":" + ac.realm + ":" + ac.pass)
 	ha2 := md5Hex(string(method) + ":" + ur.String())
