@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -66,11 +67,6 @@ func (c *ConnClient) NetConn() net.Conn {
 	return c.conf.NConn
 }
 
-// SetSession sets a Session header that is automatically inserted into every outgoing request.
-func (c *ConnClient) SetSession(v string) {
-	c.session = v
-}
-
 // SetCredentials allows to automatically insert the Authenticate header into every outgoing request.
 // The content of the header is computed with the given user, password, realm and nonce.
 func (c *ConnClient) SetCredentials(wwwAuthenticateHeader []string, user string, pass string) error {
@@ -81,24 +77,21 @@ func (c *ConnClient) SetCredentials(wwwAuthenticateHeader []string, user string,
 
 // WriteRequest writes a request and reads a response.
 func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
-	if c.session != "" {
-		if req.Header == nil {
-			req.Header = make(Header)
-		}
-		req.Header["Session"] = []string{c.session}
-	}
-
-	if c.auth != nil {
-		if req.Header == nil {
-			req.Header = make(Header)
-		}
-		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, req.Url)
-	}
-
-	// automatically insert CSeq
 	if req.Header == nil {
 		req.Header = make(Header)
 	}
+
+	// insert session
+	if c.session != "" {
+		req.Header["Session"] = []string{c.session}
+	}
+
+	// insert auth
+	if c.auth != nil {
+		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, req.Url)
+	}
+
+	// insert cseq
 	c.curCSeq += 1
 	req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.curCSeq), 10)}
 
@@ -109,7 +102,23 @@ func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
 	}
 
 	c.conf.NConn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	return readResponse(c.br)
+	res, err := readResponse(c.br)
+	if err != nil {
+		return nil, err
+	}
+
+	// get session from response
+	if res.StatusCode == StatusOK {
+		if sxRaw, ok := res.Header["Session"]; ok && len(sxRaw) == 1 {
+			sx, err := ReadHeaderSession(sxRaw[0])
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse session header: %s", err)
+			}
+			c.session = sx.Session
+		}
+	}
+
+	return res, nil
 }
 
 // ReadInterleavedFrame reads an InterleavedFrame.
