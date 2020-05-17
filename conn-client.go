@@ -13,10 +13,10 @@ type ConnClientConf struct {
 	// pre-existing TCP connection that will be wrapped
 	NConn net.Conn
 
-	// (optional) a username to authenticate with the server
+	// (optional) a username that will be sent to the server when requested
 	Username string
 
-	// (optional) a password to authenticate with the server
+	// (optional) a password that will be sent to the server when requested
 	Password string
 
 	// (optional) timeout for read requests.
