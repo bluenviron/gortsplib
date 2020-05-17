@@ -63,7 +63,7 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 
 	if conf.Username != "" && conf.Password == "" ||
 		conf.Username == "" && conf.Password != "" {
-		return nil, fmt.Errorf("both username and password must be provided")
+		return nil, fmt.Errorf("username and password must be both provided")
 	}
 
 	return &ConnClient{
