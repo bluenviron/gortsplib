@@ -31,9 +31,10 @@ func readInterleavedFrame(r io.Reader) (*InterleavedFrame, error) {
 		return nil, fmt.Errorf("wrong magic byte (0x%.2x)", header[0])
 	}
 
-	framelen := binary.BigEndian.Uint16(header[2:])
-	if int(framelen) > _INTERLEAVED_FRAME_MAX_SIZE {
-		return nil, fmt.Errorf("frame length greater than maximum allowed")
+	framelen := int(binary.BigEndian.Uint16(header[2:]))
+	if framelen > _INTERLEAVED_FRAME_MAX_SIZE {
+		return nil, fmt.Errorf("frame length greater than maximum allowed (%d vs %d)",
+			framelen, _INTERLEAVED_FRAME_MAX_SIZE)
 	}
 
 	f := &InterleavedFrame{
