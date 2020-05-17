@@ -59,6 +59,9 @@ const (
 	StatusProxyUnavailable                   StatusCode = 553
 )
 
+// StatusMessages contains the status messages associated with each status code.
+var StatusMessages = statusMessages
+
 var statusMessages = map[StatusCode]string{
 	StatusContinue: "Continue",
 
