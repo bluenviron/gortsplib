@@ -3,7 +3,9 @@ package gortsplib
 import (
 	"bufio"
 	"fmt"
+	"net/http"
 	"sort"
+	"strings"
 )
 
 const (
@@ -11,6 +13,20 @@ const (
 	_MAX_HEADER_KEY_LENGTH   = 1024
 	_MAX_HEADER_VALUE_LENGTH = 1024
 )
+
+func normalizeHeaderKey(in string) string {
+	switch strings.ToLower(in) {
+	case "rtp-info":
+		return "RTP-INFO"
+
+	case "www-authenticate":
+		return "WWW-Authenticate"
+
+	case "cseq":
+		return "CSeq"
+	}
+	return http.CanonicalHeaderKey(in)
+}
 
 // Header is a RTSP reader, present in both Requests and Responses.
 type Header map[string][]string
@@ -43,6 +59,7 @@ func readHeader(rb *bufio.Reader) (Header, error) {
 			return nil, err
 		}
 		key += string(byts[:len(byts)-1])
+		key = normalizeHeaderKey(key)
 
 		err = readByteEqual(rb, ' ')
 		if err != nil {

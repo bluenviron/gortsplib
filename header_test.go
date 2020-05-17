@@ -59,3 +59,40 @@ func TestHeaderWrite(t *testing.T) {
 		})
 	}
 }
+
+var casesHeaderNormalization = []struct {
+	name   string
+	byts   []byte
+	header Header
+}{
+	{
+		"standard",
+		[]byte("Content-type: testing\r\n" +
+			"Content-length: value\r\n" +
+			"\r\n"),
+		Header{
+			"Content-Type":   []string{"testing"},
+			"Content-Length": []string{"value"},
+		},
+	},
+	{
+		"non-standard",
+		[]byte("Www-Authenticate: value\r\n" +
+			"Cseq: value\r\n" +
+			"\r\n"),
+		Header{
+			"WWW-Authenticate": []string{"value"},
+			"CSeq":             []string{"value"},
+		},
+	},
+}
+
+func TestHeaderNormalization(t *testing.T) {
+	for _, c := range casesHeaderNormalization {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := readHeader(bufio.NewReader(bytes.NewBuffer(c.byts)))
+			require.NoError(t, err)
+			require.Equal(t, c.header, req)
+		})
+	}
+}
