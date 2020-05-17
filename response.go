@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-// StatusCode is a RTSP response status code.
+// StatusCode is the status code of a RTSP response.
 type StatusCode int
 
 const (
@@ -58,6 +58,60 @@ const (
 	StatusOptionNotSupported                 StatusCode = 551
 	StatusProxyUnavailable                   StatusCode = 553
 )
+
+var statusMessages = map[StatusCode]string{
+	StatusContinue: "Continue",
+
+	StatusOK: "OK",
+
+	StatusMovedPermanently: "Moved Permanently",
+	StatusFound:            "Found",
+	StatusSeeOther:         "See Other",
+	StatusNotModified:      "Not Modified",
+	StatusUseProxy:         "Use Proxy",
+
+	StatusBadRequest:                         "Bad Request",
+	StatusUnauthorized:                       "Unauthorized",
+	StatusPaymentRequired:                    "Payment Required",
+	StatusForbidden:                          "Forbidden",
+	StatusNotFound:                           "Not Found",
+	StatusMethodNotAllowed:                   "Method Not Allowed",
+	StatusNotAcceptable:                      "Not Acceptable",
+	StatusProxyAuthRequired:                  "Proxy Auth Required",
+	StatusRequestTimeout:                     "Request Timeout",
+	StatusGone:                               "Gone",
+	StatusPreconditionFailed:                 "Precondition Failed",
+	StatusRequestEntityTooLarge:              "Request Entity Too Large",
+	StatusRequestURITooLong:                  "Request URI Too Long",
+	StatusUnsupportedMediaType:               "Unsupported Media Type",
+	StatusParameterNotUnderstood:             "Parameter Not Understood",
+	StatusNotEnoughBandwidth:                 "Not Enough Bandwidth",
+	StatusSessionNotFound:                    "Session Not Found",
+	StatusMethodNotValidInThisState:          "Method Not Valid In This State",
+	StatusHeaderFieldNotValidForResource:     "Header Field Not Valid for Resource",
+	StatusInvalidRange:                       "Invalid Range",
+	StatusParameterIsReadOnly:                "Parameter Is Read-Only",
+	StatusAggregateOperationNotAllowed:       "Aggregate Operation Not Allowed",
+	StatusOnlyAggregateOperationAllowed:      "Only Aggregate Operation Allowed",
+	StatusUnsupportedTransport:               "Unsupported Transport",
+	StatusDestinationUnreachable:             "Destination Unreachable",
+	StatusDestinationProhibited:              "Destination Prohibited",
+	StatusDataTransportNotReadyYet:           "Data Transport Not Ready Yet",
+	StatusNotificationReasonUnknown:          "Notification Reason Unknown",
+	StatusKeyManagementError:                 "Key Management Error",
+	StatusConnectionAuthorizationRequired:    "Connection Authorization Required",
+	StatusConnectionCredentialsNotAccepted:   "Connection Credentials Not Accepted",
+	StatusFailureToEstablishSecureConnection: "Failure to Establish Secure Connection",
+
+	StatusInternalServerError:     "Internal Server Error",
+	StatusNotImplemented:          "Not Implemented",
+	StatusBadGateway:              "Bad Gateway",
+	StatusServiceUnavailable:      "Service Unavailable",
+	StatusGatewayTimeout:          "Gateway Timeout",
+	StatusRTSPVersionNotSupported: "RTSP Version Not Supported",
+	StatusOptionNotSupported:      "Option Not Supported",
+	StatusProxyUnavailable:        "Proxy Unavailable",
+}
 
 // Response is a RTSP response.
 type Response struct {
