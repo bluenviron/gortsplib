@@ -77,7 +77,7 @@ func (s *ConnServer) WriteResponse(res *Response) error {
 // ReadInterleavedFrame reads an InterleavedFrame.
 func (s *ConnServer) ReadInterleavedFrame() (*InterleavedFrame, error) {
 	s.conf.NConn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
-	return readInterleavedFrame(s.br)
+	return interleavedFrameRead(s.br)
 }
 
 // WriteInterleavedFrame writes an InterleavedFrame.

@@ -14,7 +14,7 @@ const (
 	_MAX_HEADER_VALUE_LENGTH = 1024
 )
 
-func normalizeHeaderKey(in string) string {
+func headerKeyNormalize(in string) string {
 	switch strings.ToLower(in) {
 	case "rtp-info":
 		return "RTP-INFO"
@@ -31,7 +31,7 @@ func normalizeHeaderKey(in string) string {
 // Header is a RTSP reader, present in both Requests and Responses.
 type Header map[string][]string
 
-func readHeader(rb *bufio.Reader) (Header, error) {
+func headerRead(rb *bufio.Reader) (Header, error) {
 	h := make(Header)
 
 	for {
@@ -59,12 +59,21 @@ func readHeader(rb *bufio.Reader) (Header, error) {
 			return nil, err
 		}
 		key += string(byts[:len(byts)-1])
-		key = normalizeHeaderKey(key)
+		key = headerKeyNormalize(key)
 
-		err = readByteEqual(rb, ' ')
-		if err != nil {
-			return nil, err
+		// https://tools.ietf.org/html/rfc2616
+		// The field value MAY be preceded by any amount of spaces
+		for {
+			byt, err := rb.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+
+			if byt != ' ' {
+				break
+			}
 		}
+		rb.UnreadByte()
 
 		byts, err = readBytesLimited(rb, '\r', _MAX_HEADER_VALUE_LENGTH)
 		if err != nil {

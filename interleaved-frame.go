@@ -20,7 +20,7 @@ type InterleavedFrame struct {
 	Content []byte
 }
 
-func readInterleavedFrame(r io.Reader) (*InterleavedFrame, error) {
+func interleavedFrameRead(r io.Reader) (*InterleavedFrame, error) {
 	var header [4]byte
 	_, err := io.ReadFull(r, header[:])
 	if err != nil {

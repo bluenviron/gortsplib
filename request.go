@@ -45,10 +45,10 @@ type Request struct {
 	Content []byte
 }
 
-func readRequest(br *bufio.Reader) (*Request, error) {
+func readRequest(rb *bufio.Reader) (*Request, error) {
 	req := &Request{}
 
-	byts, err := readBytesLimited(br, ' ', _MAX_METHOD_LENGTH)
+	byts, err := readBytesLimited(rb, ' ', _MAX_METHOD_LENGTH)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func readRequest(br *bufio.Reader) (*Request, error) {
 		return nil, fmt.Errorf("empty method")
 	}
 
-	byts, err = readBytesLimited(br, ' ', _MAX_PATH_LENGTH)
+	byts, err = readBytesLimited(rb, ' ', _MAX_PATH_LENGTH)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func readRequest(br *bufio.Reader) (*Request, error) {
 		return nil, fmt.Errorf("invalid url scheme '%s'", req.Url.Scheme)
 	}
 
-	byts, err = readBytesLimited(br, '\r', _MAX_PROTOCOL_LENGTH)
+	byts, err = readBytesLimited(rb, '\r', _MAX_PROTOCOL_LENGTH)
 	if err != nil {
 		return nil, err
 	}
@@ -88,17 +88,17 @@ func readRequest(br *bufio.Reader) (*Request, error) {
 		return nil, fmt.Errorf("expected '%s', got '%s'", _RTSP_PROTO, proto)
 	}
 
-	err = readByteEqual(br, '\n')
+	err = readByteEqual(rb, '\n')
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header, err = readHeader(br)
+	req.Header, err = headerRead(rb)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Content, err = readContent(br, req.Header)
+	req.Content, err = readContent(rb, req.Header)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ https://godoc.org/github.com/aler9/gortsplib
 
 ## Links
 
-IETF Standard
-* (1.0) https://tools.ietf.org/html/rfc2326
-* (2.0) https://tools.ietf.org/html/rfc7826
+IETF Standards
+* RTSP 1.0 https://tools.ietf.org/html/rfc2326
+* RTSP 2.0 https://tools.ietf.org/html/rfc7826
+* HTTP 1.1 https://tools.ietf.org/html/rfc2616

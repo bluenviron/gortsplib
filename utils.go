@@ -12,23 +12,23 @@ const (
 	_MAX_CONTENT_LENGTH = 4096
 )
 
-func readBytesLimited(br *bufio.Reader, delim byte, n int) ([]byte, error) {
+func readBytesLimited(rb *bufio.Reader, delim byte, n int) ([]byte, error) {
 	for i := 1; i <= n; i++ {
-		byts, err := br.Peek(i)
+		byts, err := rb.Peek(i)
 		if err != nil {
 			return nil, err
 		}
 
 		if byts[len(byts)-1] == delim {
-			br.Discard(len(byts))
+			rb.Discard(len(byts))
 			return byts, nil
 		}
 	}
 	return nil, fmt.Errorf("buffer length exceeds %d", n)
 }
 
-func readByteEqual(br *bufio.Reader, cmp byte) error {
-	byt, err := br.ReadByte()
+func readByteEqual(rb *bufio.Reader, cmp byte) error {
+	byt, err := rb.ReadByte()
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func readByteEqual(br *bufio.Reader, cmp byte) error {
 	return nil
 }
 
-func readContent(br *bufio.Reader, header Header) ([]byte, error) {
+func readContent(rb *bufio.Reader, header Header) ([]byte, error) {
 	cls, ok := header["Content-Length"]
 	if !ok || len(cls) != 1 {
 		return nil, nil
@@ -56,7 +56,7 @@ func readContent(br *bufio.Reader, header Header) ([]byte, error) {
 	}
 
 	ret := make([]byte, cl)
-	n, err := io.ReadFull(br, ret)
+	n, err := io.ReadFull(rb, ret)
 	if err != nil && n != len(ret) {
 		return nil, err
 	}

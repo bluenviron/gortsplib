@@ -131,10 +131,10 @@ type Response struct {
 	Content []byte
 }
 
-func readResponse(br *bufio.Reader) (*Response, error) {
+func readResponse(rb *bufio.Reader) (*Response, error) {
 	res := &Response{}
 
-	byts, err := readBytesLimited(br, ' ', 255)
+	byts, err := readBytesLimited(rb, ' ', 255)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func readResponse(br *bufio.Reader) (*Response, error) {
 		return nil, fmt.Errorf("expected '%s', got '%s'", _RTSP_PROTO, proto)
 	}
 
-	byts, err = readBytesLimited(br, ' ', 4)
+	byts, err = readBytesLimited(rb, ' ', 4)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func readResponse(br *bufio.Reader) (*Response, error) {
 	}
 	res.StatusCode = StatusCode(statusCode64)
 
-	byts, err = readBytesLimited(br, '\r', 255)
+	byts, err = readBytesLimited(rb, '\r', 255)
 	if err != nil {
 		return nil, err
 	}
@@ -166,17 +166,17 @@ func readResponse(br *bufio.Reader) (*Response, error) {
 		return nil, fmt.Errorf("empty status")
 	}
 
-	err = readByteEqual(br, '\n')
+	err = readByteEqual(rb, '\n')
 	if err != nil {
 		return nil, err
 	}
 
-	res.Header, err = readHeader(br)
+	res.Header, err = headerRead(rb)
 	if err != nil {
 		return nil, err
 	}
 
-	res.Content, err = readContent(br, res.Header)
+	res.Content, err = readContent(rb, res.Header)
 	if err != nil {
 		return nil, err
 	}

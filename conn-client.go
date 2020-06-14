@@ -137,7 +137,7 @@ func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
 // ReadInterleavedFrame reads an InterleavedFrame.
 func (c *ConnClient) ReadInterleavedFrame() (*InterleavedFrame, error) {
 	c.conf.NConn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	return readInterleavedFrame(c.br)
+	return interleavedFrameRead(c.br)
 }
 
 // WriteInterleavedFrame writes an InterleavedFrame.
