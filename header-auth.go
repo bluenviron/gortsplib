@@ -46,11 +46,17 @@ func ReadHeaderAuth(in string) (*HeaderAuth, error) {
 func (ha *HeaderAuth) Write() string {
 	ret := ha.Prefix + " "
 
+	// always put realm first, otherwise VLC does not send back the response
 	var sortedKeys []string
 	for key := range ha.Values {
-		sortedKeys = append(sortedKeys, key)
+		if key != "realm" {
+			sortedKeys = append(sortedKeys, key)
+		}
 	}
 	sort.Strings(sortedKeys)
+	if _, ok := ha.Values["realm"]; ok {
+		sortedKeys = append([]string{"realm"}, sortedKeys...)
+	}
 
 	var tmp []string
 	for _, key := range sortedKeys {

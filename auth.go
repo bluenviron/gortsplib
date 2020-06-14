@@ -141,12 +141,35 @@ func (as *AuthServer) ValidateHeader(header []string, method Method, ur *url.URL
 			return fmt.Errorf("wrong username")
 		}
 
-		if inUri != ur.String() {
-			return fmt.Errorf("wrong url")
+		uri := ur.String()
+
+		if inUri != uri {
+			// VLC strips any subpath
+			newUrl := *ur
+			newUrl.Path = func() string {
+				ret := newUrl.Path
+
+				// remove leading slash
+				if len(ret) > 1 {
+					ret = ret[1:]
+				}
+
+				// strip any subpath
+				if n := strings.Index(ret, "/"); n >= 0 {
+					ret = ret[:n]
+				}
+
+				return "/" + ret
+			}()
+			uri = newUrl.String()
+
+			if inUri != uri {
+				return fmt.Errorf("wrong url")
+			}
 		}
 
 		response := md5Hex(md5Hex(as.user+":"+as.realm+":"+as.pass) +
-			":" + as.nonce + ":" + md5Hex(string(method)+":"+ur.String()))
+			":" + as.nonce + ":" + md5Hex(string(method)+":"+uri))
 
 		if inResponse != response {
 			return fmt.Errorf("wrong response")

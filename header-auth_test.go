@@ -26,7 +26,7 @@ var casesHeaderAuth = []struct {
 	{
 		"digest request 1",
 		`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`,
-		`Digest nonce="8b84a3b789283a8bea8da7fa7d41f08b", realm="4419b63f5e51", stale="FALSE"`,
+		`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`,
 		&HeaderAuth{
 			Prefix: "Digest",
 			Values: map[string]string{
@@ -39,7 +39,7 @@ var casesHeaderAuth = []struct {
 	{
 		"digest request 2",
 		`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale=FALSE`,
-		`Digest nonce="8b84a3b789283a8bea8da7fa7d41f08b", realm="4419b63f5e51", stale="FALSE"`,
+		`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`,
 		&HeaderAuth{
 			Prefix: "Digest",
 			Values: map[string]string{
@@ -52,7 +52,7 @@ var casesHeaderAuth = []struct {
 	{
 		"digest response",
 		`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`,
-		`Digest nonce="cc", realm="bb", response="ee", uri="dd", username="aa"`,
+		`Digest realm="bb", nonce="cc", response="ee", uri="dd", username="aa"`,
 		&HeaderAuth{
 			Prefix: "Digest",
 			Values: map[string]string{
