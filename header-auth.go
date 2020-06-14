@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -39,4 +40,23 @@ func ReadHeaderAuth(in string) (*HeaderAuth, error) {
 	}
 
 	return ha, nil
+}
+
+// Write encodes an Authenticate or a WWW-Authenticate header.
+func (ha *HeaderAuth) Write() string {
+	ret := ha.Prefix + " "
+
+	var sortedKeys []string
+	for key := range ha.Values {
+		sortedKeys = append(sortedKeys, key)
+	}
+	sort.Strings(sortedKeys)
+
+	var tmp []string
+	for _, key := range sortedKeys {
+		tmp = append(tmp, key+"=\""+ha.Values[key]+"\"")
+	}
+	ret += strings.Join(tmp, ", ")
+
+	return ret
 }
