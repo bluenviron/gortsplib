@@ -24,6 +24,9 @@ func ReadHeaderSession(in string) (*HeaderSession, error) {
 	hs.Session, parts = parts[0], parts[1:]
 
 	for _, part := range parts {
+		// remove leading spaces
+		part = strings.TrimLeft(part, " ")
+
 		keyval := strings.Split(part, "=")
 		if len(keyval) != 2 {
 			return nil, fmt.Errorf("invalid value")

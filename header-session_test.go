@@ -29,6 +29,17 @@ var casesHeaderSession = []struct {
 			}(),
 		},
 	},
+	{
+		"with timeout and space",
+		`A3eqwsafq3rFASqew; timeout=47`,
+		&HeaderSession{
+			Session: "A3eqwsafq3rFASqew",
+			Timeout: func() *uint {
+				v := uint(47)
+				return &v
+			}(),
+		},
+	},
 }
 
 func TestHeaderSession(t *testing.T) {
