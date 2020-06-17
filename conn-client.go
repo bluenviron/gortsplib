@@ -138,15 +138,13 @@ func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
 	return res, nil
 }
 
-// WriteRequestWithVariableResponse writes a request and reads a response or an interleaved frame.
-// This is necessary since some RTSP servers starts sending interleaved frames before replying to
-// the last RTSP command.
-func (c *ConnClient) WriteRequestWithVariableResponse(req *Request) (interface{}, error) {
-	err := c.writeRequest(req)
-	if err != nil {
-		return nil, err
-	}
+// WriteRequestNoResponse writes a request and does not wait for a response.
+func (c *ConnClient) WriteRequestNoResponse(req *Request) error {
+	return c.writeRequest(req)
+}
 
+// ReadInterleavedFrameOrResponse reads an InterleavedFrame or a Response.
+func (c *ConnClient) ReadInterleavedFrameOrResponse() (interface{}, error) {
 	c.conf.NConn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	b, err := c.br.ReadByte()
 	if err != nil {
