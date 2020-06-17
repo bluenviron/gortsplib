@@ -78,8 +78,7 @@ func (c *ConnClient) NetConn() net.Conn {
 	return c.conf.NConn
 }
 
-// WriteRequest writes a request and reads a response.
-func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
+func (c *ConnClient) writeRequest(req *Request) error {
 	if req.Header == nil {
 		req.Header = make(Header)
 	}
@@ -99,7 +98,12 @@ func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
 	req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.curCSeq), 10)}
 
 	c.conf.NConn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
-	err := req.write(c.bw)
+	return req.write(c.bw)
+}
+
+// WriteRequest writes a request and reads a response.
+func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
+	err := c.writeRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +136,29 @@ func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
 	}
 
 	return res, nil
+}
+
+// WriteRequestWithVariableResponse writes a request and reads a response or an interleaved frame.
+// This is necessary since some RTSP servers starts sending interleaved frames before replying to
+// the last RTSP command.
+func (c *ConnClient) WriteRequestWithVariableResponse(req *Request) (interface{}, error) {
+	err := c.writeRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	c.conf.NConn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	b, err := c.br.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	c.br.UnreadByte()
+
+	if b == _INTERLEAVED_FRAME_MAGIC {
+		return interleavedFrameRead(c.br)
+	}
+
+	return readResponse(c.br)
 }
 
 // ReadInterleavedFrame reads an InterleavedFrame.

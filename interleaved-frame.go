@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	_INTERLEAVED_FRAME_MAGIC            = 0x24
 	_INTERLEAVED_FRAME_MAX_SIZE         = 512 * 1024
 	_INTERLEAVED_FRAME_MAX_CONTENT_SIZE = (_INTERLEAVED_FRAME_MAX_SIZE - 4)
 )
@@ -27,7 +28,7 @@ func interleavedFrameRead(r io.Reader) (*InterleavedFrame, error) {
 		return nil, err
 	}
 
-	if header[0] != 0x24 {
+	if header[0] != _INTERLEAVED_FRAME_MAGIC {
 		return nil, fmt.Errorf("wrong magic byte (0x%.2x)", header[0])
 	}
 
