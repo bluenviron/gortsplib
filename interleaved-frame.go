@@ -8,9 +8,7 @@ import (
 )
 
 const (
-	_INTERLEAVED_FRAME_MAGIC            = 0x24
-	_INTERLEAVED_FRAME_MAX_SIZE         = 512 * 1024
-	_INTERLEAVED_FRAME_MAX_CONTENT_SIZE = (_INTERLEAVED_FRAME_MAX_SIZE - 4)
+	_INTERLEAVED_FRAME_MAGIC = 0x24
 )
 
 // InterleavedFrame is a structure that allows to send and receive binary data
@@ -21,34 +19,32 @@ type InterleavedFrame struct {
 	Content []byte
 }
 
-func interleavedFrameRead(r io.Reader) (*InterleavedFrame, error) {
+func (f *InterleavedFrame) read(r io.Reader) error {
 	var header [4]byte
 	_, err := io.ReadFull(r, header[:])
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if header[0] != _INTERLEAVED_FRAME_MAGIC {
-		return nil, fmt.Errorf("wrong magic byte (0x%.2x)", header[0])
+		return fmt.Errorf("wrong magic byte (0x%.2x)", header[0])
 	}
 
 	framelen := int(binary.BigEndian.Uint16(header[2:]))
-	if framelen > _INTERLEAVED_FRAME_MAX_SIZE {
-		return nil, fmt.Errorf("frame length greater than maximum allowed (%d vs %d)",
-			framelen, _INTERLEAVED_FRAME_MAX_SIZE)
+	if framelen > len(f.Content) {
+		return fmt.Errorf("frame length greater than maximum allowed (%d vs %d)",
+			framelen, len(f.Content))
 	}
 
-	f := &InterleavedFrame{
-		Channel: header[1],
-		Content: make([]byte, framelen),
-	}
+	f.Channel = header[1]
+	f.Content = f.Content[:framelen]
 
 	_, err = io.ReadFull(r, f.Content)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return f, nil
+	return nil
 }
 
 func (f *InterleavedFrame) write(bw *bufio.Writer) error {
