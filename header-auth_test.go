@@ -50,6 +50,19 @@ var casesHeaderAuth = []struct {
 		},
 	},
 	{
+		"digest request 3",
+		`Digest realm="4419b63f5e51",nonce="133767111917411116111311118211673010032",  stale="FALSE"`,
+		`Digest realm="4419b63f5e51", nonce="133767111917411116111311118211673010032", stale="FALSE"`,
+		&HeaderAuth{
+			Prefix: "Digest",
+			Values: map[string]string{
+				"realm": "4419b63f5e51",
+				"nonce": "133767111917411116111311118211673010032",
+				"stale": "FALSE",
+			},
+		},
+	},
+	{
 		"digest response",
 		`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`,
 		`Digest realm="bb", nonce="cc", response="ee", uri="dd", username="aa"`,

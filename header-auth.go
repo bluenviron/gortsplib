@@ -13,6 +13,8 @@ type HeaderAuth struct {
 	Values map[string]string
 }
 
+var regHeaderAuthKeyValue = regexp.MustCompile("^([a-z]+)=(\"(.+?)\"|([a-zA-Z0-9]+))(, *|$)")
+
 // ReadHeaderAuth parses an Authenticate or a WWW-Authenticate header.
 func ReadHeaderAuth(in string) (*HeaderAuth, error) {
 	ha := &HeaderAuth{
@@ -25,10 +27,8 @@ func ReadHeaderAuth(in string) (*HeaderAuth, error) {
 	}
 	ha.Prefix, in = in[:i], in[i+1:]
 
-	r := regexp.MustCompile("^([a-z]+)=(\"(.+?)\"|([a-zA-Z0-9]+))(, )?")
-
 	for len(in) > 0 {
-		m := r.FindStringSubmatch(in)
+		m := regHeaderAuthKeyValue.FindStringSubmatch(in)
 		if m == nil {
 			return nil, fmt.Errorf("unable to parse key-value (%s)", in)
 		}
