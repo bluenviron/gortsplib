@@ -7,7 +7,7 @@
 
 RTSP 1.0 primitives for the Go programming language.
 
-See [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server) and [rtsp-simple-proxy](https://github.com/aler9/rtsp-simple-proxy) for examples on how to use this library.
+See [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server) for examples on how to use this library.
 
 ## Documentation
 
