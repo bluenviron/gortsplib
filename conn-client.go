@@ -78,6 +78,32 @@ func (c *ConnClient) NetConn() net.Conn {
 	return c.conf.NConn
 }
 
+// ReadInterleavedFrameOrResponse reads an InterleavedFrame or a Response.
+func (c *ConnClient) ReadInterleavedFrameOrResponse(frame *InterleavedFrame) (interface{}, error) {
+	c.conf.NConn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	b, err := c.br.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	c.br.UnreadByte()
+
+	if b == _INTERLEAVED_FRAME_MAGIC {
+		err := frame.read(c.br)
+		if err != nil {
+			return nil, err
+		}
+		return frame, err
+	}
+
+	return readResponse(c.br)
+}
+
+// ReadInterleavedFrame reads an InterleavedFrame.
+func (c *ConnClient) ReadInterleavedFrame(frame *InterleavedFrame) error {
+	c.conf.NConn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	return frame.read(c.br)
+}
+
 func (c *ConnClient) writeRequest(req *Request) error {
 	if req.Header == nil {
 		req.Header = make(Header)
@@ -141,32 +167,6 @@ func (c *ConnClient) WriteRequest(req *Request) (*Response, error) {
 // WriteRequestNoResponse writes a request and does not wait for a response.
 func (c *ConnClient) WriteRequestNoResponse(req *Request) error {
 	return c.writeRequest(req)
-}
-
-// ReadInterleavedFrameOrResponse reads an InterleavedFrame or a Response.
-func (c *ConnClient) ReadInterleavedFrameOrResponse(frame *InterleavedFrame) (interface{}, error) {
-	c.conf.NConn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	b, err := c.br.ReadByte()
-	if err != nil {
-		return nil, err
-	}
-	c.br.UnreadByte()
-
-	if b == _INTERLEAVED_FRAME_MAGIC {
-		err := frame.read(c.br)
-		if err != nil {
-			return nil, err
-		}
-		return frame, err
-	}
-
-	return readResponse(c.br)
-}
-
-// ReadInterleavedFrame reads an InterleavedFrame.
-func (c *ConnClient) ReadInterleavedFrame(frame *InterleavedFrame) error {
-	c.conf.NConn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	return frame.read(c.br)
 }
 
 // WriteInterleavedFrame writes an InterleavedFrame.

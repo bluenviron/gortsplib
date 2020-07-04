@@ -68,16 +68,30 @@ func (s *ConnServer) ReadRequest() (*Request, error) {
 	return readRequest(s.br)
 }
 
+// ReadInterleavedFrameOrRequest reads an InterleavedFrame or a Request.
+func (s *ConnServer) ReadInterleavedFrameOrRequest(frame *InterleavedFrame) (interface{}, error) {
+	s.conf.NConn.SetReadDeadline(time.Time{}) // disable deadline
+	b, err := s.br.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	s.br.UnreadByte()
+
+	if b == _INTERLEAVED_FRAME_MAGIC {
+		err := frame.read(s.br)
+		if err != nil {
+			return nil, err
+		}
+		return frame, err
+	}
+
+	return readRequest(s.br)
+}
+
 // WriteResponse writes a response.
 func (s *ConnServer) WriteResponse(res *Response) error {
 	s.conf.NConn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
 	return res.write(s.bw)
-}
-
-// ReadInterleavedFrame reads an InterleavedFrame.
-func (s *ConnServer) ReadInterleavedFrame(frame *InterleavedFrame) error {
-	s.conf.NConn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
-	return frame.read(s.br)
 }
 
 // WriteInterleavedFrame writes an InterleavedFrame.
