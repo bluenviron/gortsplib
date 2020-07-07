@@ -1,9 +1,9 @@
 
 # gortsplib
 
-[![GoDoc](https://godoc.org/github.com/aler9/gortsplib?status.svg)](https://godoc.org/github.com/aler9/gortsplib)
-[![Go Report Card](https://goreportcard.com/badge/github.com/aler9/gortsplib)](https://goreportcard.com/report/github.com/aler9/gortsplib)
 [![Build Status](https://travis-ci.org/aler9/gortsplib.svg?branch=master)](https://travis-ci.org/aler9/gortsplib)
+[![Go Report Card](https://goreportcard.com/badge/github.com/aler9/gortsplib)](https://goreportcard.com/report/github.com/aler9/gortsplib)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue)](https://pkg.go.dev/github.com/aler9/gortsplib?tab=doc)
 
 RTSP 1.0 primitives for the Go programming language.
 
@@ -11,7 +11,7 @@ See [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server) for exampl
 
 ## Documentation
 
-https://godoc.org/github.com/aler9/gortsplib
+https://pkg.go.dev/github.com/aler9/gortsplib
 
 ## Links
 
