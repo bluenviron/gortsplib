@@ -25,7 +25,7 @@ var casesAuth = []struct {
 	},
 }
 
-func TestAuth(t *testing.T) {
+func TestAuthMethods(t *testing.T) {
 	for _, c := range casesAuth {
 		t.Run(c.name, func(t *testing.T) {
 			authServer := NewAuthServer("testuser", "testpass", c.methods)
@@ -41,4 +41,18 @@ func TestAuth(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestAuthBasePath(t *testing.T) {
+	authServer := NewAuthServer("testuser", "testpass", []AuthMethod{Basic, Digest})
+	wwwAuthenticate := authServer.GenerateHeader()
+
+	ac, err := NewAuthClient(wwwAuthenticate, "testuser", "testpass")
+	require.NoError(t, err)
+	authorization := ac.GenerateHeader(ANNOUNCE,
+		&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath/"})
+
+	err = authServer.ValidateHeader(authorization, ANNOUNCE,
+		&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath/trackId=0"})
+	require.NoError(t, err)
 }

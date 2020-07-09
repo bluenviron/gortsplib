@@ -144,22 +144,16 @@ func (as *AuthServer) ValidateHeader(header []string, method Method, ur *url.URL
 		uri := ur.String()
 
 		if inUri != uri {
-			// VLC strips any subpath
+			// VLC strips the subpath
 			newUrl := *ur
 			newUrl.Path = func() string {
 				ret := newUrl.Path
 
-				// remove leading slash
-				if len(ret) > 1 {
-					ret = ret[1:]
+				if n := strings.Index(ret[1:], "/"); n >= 0 {
+					ret = ret[:n+2]
 				}
 
-				// strip any subpath
-				if n := strings.Index(ret, "/"); n >= 0 {
-					ret = ret[:n]
-				}
-
-				return "/" + ret
+				return ret
 			}()
 			uri = newUrl.String()
 
