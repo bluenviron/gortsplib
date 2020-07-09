@@ -63,7 +63,7 @@ var casesHeaderAuth = []struct {
 		},
 	},
 	{
-		"digest response",
+		"digest response 1",
 		`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`,
 		`Digest realm="bb", nonce="cc", response="ee", uri="dd", username="aa"`,
 		&HeaderAuth{
@@ -74,6 +74,21 @@ var casesHeaderAuth = []struct {
 				"nonce":    "cc",
 				"uri":      "dd",
 				"response": "ee",
+			},
+		},
+	},
+	{
+		"digest response with empty field",
+		`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`,
+		`Digest realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", response="c072ae90eb4a27f4cdcb90d62266b2a1", uri="rtsp://localhost:8554/mystream", username=""`,
+		&HeaderAuth{
+			Prefix: "Digest",
+			Values: map[string]string{
+				"username": "",
+				"realm":    "IPCAM",
+				"nonce":    "5d17cd12b9fa8a85ac5ceef0926ea5a6",
+				"uri":      "rtsp://localhost:8554/mystream",
+				"response": "c072ae90eb4a27f4cdcb90d62266b2a1",
 			},
 		},
 	},
