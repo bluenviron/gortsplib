@@ -83,8 +83,11 @@ func (as *AuthServer) GenerateHeader() []string {
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header provided by GenerateHeader().
 func (as *AuthServer) ValidateHeader(header []string, method Method, ur *url.URL) error {
-	if len(header) != 1 {
-		return fmt.Errorf("authorization header not provided or provided multiple times")
+	if len(header) == 0 {
+		return fmt.Errorf("authorization header not provided")
+	}
+	if len(header) > 1 {
+		return fmt.Errorf("authorization header provided multiple times")
 	}
 
 	head := header[0]
