@@ -187,8 +187,9 @@ func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 	return res, nil
 }
 
-// Describe writes a DESCRIBE request and reads a response, that contains
-// a SDP document that describes the stream available in the given url.
+// Describe writes a DESCRIBE request, that means that we want to obtain the SDP
+// document that describes the stream available in the given url. It then
+// reads a Response.
 func (c *ConnClient) Describe(u *url.URL) (*sdp.SessionDescription, *Response, error) {
 	res, err := c.Do(&Request{
 		Method: DESCRIBE,
@@ -288,9 +289,8 @@ func (c *ConnClient) setup(u *url.URL, media *sdp.MediaDescription, transport []
 	return res, nil
 }
 
-// SetupUdp writes a SETUP request, that indicates that we want to read
-// a track with given media and given id with the UDP transport,
-// and reads a response.
+// SetupUdp writes a SETUP request, that means that we want to read
+// a track with given media, id and the UDP transport. It then reads a Response.
 func (c *ConnClient) SetupUdp(u *url.URL, media *sdp.MediaDescription,
 	rtpPort int, rtcpPort int) (int, int, *Response, error) {
 
@@ -317,9 +317,8 @@ func (c *ConnClient) SetupUdp(u *url.URL, media *sdp.MediaDescription,
 	return rtpServerPort, rtcpServerPort, res, nil
 }
 
-// SetupTcp writes a SETUP request, that indicates that we want to read
-// a track with given media and given id with the TCP transport,
-// and reads a response.
+// SetupTcp writes a SETUP request, that means that we want to read
+// a track with given media, given id and the TCP transport. It then reads a Response.
 func (c *ConnClient) SetupTcp(u *url.URL, media *sdp.MediaDescription, trackId int) (*Response, error) {
 	interleaved := fmt.Sprintf("interleaved=%d-%d", (trackId * 2), (trackId*2)+1)
 
@@ -346,8 +345,8 @@ func (c *ConnClient) SetupTcp(u *url.URL, media *sdp.MediaDescription, trackId i
 	return res, nil
 }
 
-// Play writes a PLAY request, that indicates that we want to start the
-// stream, and reads a response.
+// Play writes a PLAY request, that means that we want to start the
+// stream. It then reads a Response.
 func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	err := c.writeRequest(&Request{
 		Method: PLAY,
