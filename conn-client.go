@@ -305,13 +305,13 @@ func (c *ConnClient) SetupUdp(u *url.URL, media *sdp.MediaDescription,
 
 	tsRaw, ok := res.Header["Transport"]
 	if !ok || len(tsRaw) != 1 {
-		return 0, 0, nil, fmt.Errorf("transport header not provided")
+		return 0, 0, nil, fmt.Errorf("SETUP: transport header not provided")
 	}
 
 	th := ReadHeaderTransport(tsRaw[0])
 	rtpServerPort, rtcpServerPort := th.GetPorts("server_port")
 	if rtpServerPort == 0 {
-		return 0, 0, nil, fmt.Errorf("server ports not provided")
+		return 0, 0, nil, fmt.Errorf("SETUP: server ports not provided")
 	}
 
 	return rtpServerPort, rtcpServerPort, res, nil
