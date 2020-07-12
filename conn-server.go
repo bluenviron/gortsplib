@@ -14,7 +14,7 @@ const (
 // ConnServerConf allows to configure a ConnServer.
 type ConnServerConf struct {
 	// pre-existing TCP connection that will be wrapped
-	NConn net.Conn
+	Conn net.Conn
 
 	// (optional) timeout for read requests.
 	// It defaults to 5 seconds
@@ -43,25 +43,25 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 
 	return &ConnServer{
 		conf: conf,
-		br:   bufio.NewReaderSize(conf.NConn, _SERVER_READ_BUFFER_SIZE),
-		bw:   bufio.NewWriterSize(conf.NConn, _SERVER_WRITE_BUFFER_SIZE),
+		br:   bufio.NewReaderSize(conf.Conn, _SERVER_READ_BUFFER_SIZE),
+		bw:   bufio.NewWriterSize(conf.Conn, _SERVER_WRITE_BUFFER_SIZE),
 	}
 }
 
 // NetConn returns the underlying net.Conn.
 func (s *ConnServer) NetConn() net.Conn {
-	return s.conf.NConn
+	return s.conf.Conn
 }
 
 // ReadRequest reads a Request.
 func (s *ConnServer) ReadRequest() (*Request, error) {
-	s.conf.NConn.SetReadDeadline(time.Time{}) // disable deadline
+	s.conf.Conn.SetReadDeadline(time.Time{}) // disable deadline
 	return readRequest(s.br)
 }
 
-// ReadInterleavedFrameOrRequest reads an InterleavedFrame or a Request.
-func (s *ConnServer) ReadInterleavedFrameOrRequest(frame *InterleavedFrame) (interface{}, error) {
-	s.conf.NConn.SetReadDeadline(time.Time{}) // disable deadline
+// ReadFrameOrRequest reads an InterleavedFrame or a Request.
+func (s *ConnServer) ReadFrameOrRequest(frame *InterleavedFrame) (interface{}, error) {
+	s.conf.Conn.SetReadDeadline(time.Time{}) // disable deadline
 	b, err := s.br.ReadByte()
 	if err != nil {
 		return nil, err
@@ -81,12 +81,12 @@ func (s *ConnServer) ReadInterleavedFrameOrRequest(frame *InterleavedFrame) (int
 
 // WriteResponse writes a response.
 func (s *ConnServer) WriteResponse(res *Response) error {
-	s.conf.NConn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
+	s.conf.Conn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
 	return res.write(s.bw)
 }
 
-// WriteInterleavedFrame writes an InterleavedFrame.
-func (s *ConnServer) WriteInterleavedFrame(frame *InterleavedFrame) error {
-	s.conf.NConn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
+// WriteFrame writes an InterleavedFrame.
+func (s *ConnServer) WriteFrame(frame *InterleavedFrame) error {
+	s.conf.Conn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
 	return frame.write(s.bw)
 }

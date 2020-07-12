@@ -43,3 +43,4 @@ IMAGES = $(shell echo test-images/*/ | xargs -n1 basename)
 test-nodocker:
 	$(eval export CGO_ENABLED = 0)
 	go test -v .
+	$(foreach f,$(shell ls examples/*),go build -o /dev/null $(f)$(NL))

@@ -107,7 +107,15 @@ func readRequest(rb *bufio.Reader) (*Request, error) {
 }
 
 func (req *Request) write(bw *bufio.Writer) error {
-	_, err := bw.Write([]byte(string(req.Method) + " " + req.Url.String() + " " + _RTSP_PROTO + "\r\n"))
+	// remove credentials
+	u := &url.URL{
+		Scheme:   req.Url.Scheme,
+		Host:     req.Url.Host,
+		Path:     req.Url.Path,
+		RawQuery: req.Url.RawQuery,
+	}
+
+	_, err := bw.Write([]byte(string(req.Method) + " " + u.String() + " " + _RTSP_PROTO + "\r\n"))
 	if err != nil {
 		return err
 	}
