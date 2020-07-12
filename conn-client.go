@@ -181,7 +181,7 @@ func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 	}
 
 	if res.StatusCode != StatusOK && res.StatusCode != StatusNotFound {
-		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return nil, fmt.Errorf("OPTIONS: bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	return res, nil
@@ -199,16 +199,16 @@ func (c *ConnClient) Describe(u *url.URL) (*sdp.SessionDescription, *Response, e
 	}
 
 	if res.StatusCode != StatusOK {
-		return nil, nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return nil, nil, fmt.Errorf("DESCRIBE: bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	contentType, ok := res.Header["Content-Type"]
 	if !ok || len(contentType) != 1 {
-		return nil, nil, fmt.Errorf("Content-Type not provided")
+		return nil, nil, fmt.Errorf("DESCRIBE: Content-Type not provided")
 	}
 
 	if contentType[0] != "application/sdp" {
-		return nil, nil, fmt.Errorf("wrong Content-Type, expected application/sdp")
+		return nil, nil, fmt.Errorf("DESCRIBE: wrong Content-Type, expected application/sdp")
 	}
 
 	sdpd := &sdp.SessionDescription{}
@@ -220,10 +220,7 @@ func (c *ConnClient) Describe(u *url.URL) (*sdp.SessionDescription, *Response, e
 	return sdpd, res, nil
 }
 
-// Setup writes a SETUP request, that indicates that we want to read
-// a stream described by the given media, with the given transport,
-// and reads a response.
-func (c *ConnClient) Setup(u *url.URL, media *sdp.MediaDescription, transport []string) (*Response, error) {
+func (c *ConnClient) setup(u *url.URL, media *sdp.MediaDescription, transport []string) (*Response, error) {
 	// build an URL with the control attribute from media
 	u = func() *url.URL {
 		control := func() string {
@@ -285,7 +282,65 @@ func (c *ConnClient) Setup(u *url.URL, media *sdp.MediaDescription, transport []
 	}
 
 	if res.StatusCode != StatusOK {
-		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return nil, fmt.Errorf("SETUP: bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+	}
+
+	return res, nil
+}
+
+// SetupUdp writes a SETUP request, that indicates that we want to read
+// a track with given media and given id with the UDP transport,
+// and reads a response.
+func (c *ConnClient) SetupUdp(u *url.URL, media *sdp.MediaDescription,
+	rtpPort int, rtcpPort int) (int, int, *Response, error) {
+
+	res, err := c.setup(u, media, []string{
+		"RTP/AVP/UDP",
+		"unicast",
+		fmt.Sprintf("client_port=%d-%d", rtpPort, rtcpPort),
+	})
+	if err != nil {
+		return 0, 0, nil, err
+	}
+
+	tsRaw, ok := res.Header["Transport"]
+	if !ok || len(tsRaw) != 1 {
+		return 0, 0, nil, fmt.Errorf("transport header not provided")
+	}
+
+	th := ReadHeaderTransport(tsRaw[0])
+	rtpServerPort, rtcpServerPort := th.GetPorts("server_port")
+	if rtpServerPort == 0 {
+		return 0, 0, nil, fmt.Errorf("server ports not provided")
+	}
+
+	return rtpServerPort, rtcpServerPort, res, nil
+}
+
+// SetupTcp writes a SETUP request, that indicates that we want to read
+// a track with given media and given id with the TCP transport,
+// and reads a response.
+func (c *ConnClient) SetupTcp(u *url.URL, media *sdp.MediaDescription, trackId int) (*Response, error) {
+	interleaved := fmt.Sprintf("interleaved=%d-%d", (trackId * 2), (trackId*2)+1)
+
+	res, err := c.setup(u, media, []string{
+		"RTP/AVP/TCP",
+		"unicast",
+		interleaved,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	tsRaw, ok := res.Header["Transport"]
+	if !ok || len(tsRaw) != 1 {
+		return nil, fmt.Errorf("SETUP: transport header not provided")
+	}
+	th := ReadHeaderTransport(tsRaw[0])
+
+	_, ok = th[interleaved]
+	if !ok {
+		return nil, fmt.Errorf("SETUP: transport header does not have %s (%s)", interleaved, tsRaw[0])
 	}
 
 	return res, nil

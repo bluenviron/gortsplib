@@ -10,6 +10,7 @@ RTSP 1.0 library for the Go programming language, written for [rtsp-simple-serve
 ## Examples
 
 [client-tcp.go](examples/client-tcp.go)
+[client-udp.go](examples/client-tcp.go)
 
 ## Documentation
 

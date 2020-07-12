@@ -22,6 +22,7 @@ const (
 	StreamTypeRtcp
 )
 
+// ConvChannelToTrackIdAndStreamType converts a channel into a track id and a streamType.
 func ConvChannelToTrackIdAndStreamType(channel uint8) (int, StreamType) {
 	if (channel % 2) == 0 {
 		return int(channel / 2), StreamTypeRtp
@@ -29,6 +30,7 @@ func ConvChannelToTrackIdAndStreamType(channel uint8) (int, StreamType) {
 	return int((channel - 1) / 2), StreamTypeRtcp
 }
 
+// ConvTrackIdAndStreamTypeToChannel converts a track id and a streamType into a channel.
 func ConvTrackIdAndStreamTypeToChannel(trackId int, StreamType StreamType) uint8 {
 	if StreamType == StreamTypeRtp {
 		return uint8(trackId * 2)

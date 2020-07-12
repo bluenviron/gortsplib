@@ -39,11 +39,7 @@ func main() {
 	}
 
 	for i, media := range sdpd.MediaDescriptions {
-		_, err := rconn.Setup(u, media, []string{
-			"RTP/AVP/TCP",
-			"unicast",
-			fmt.Sprintf("interleaved=%d-%d", (i * 2), (i*2)+1),
-		})
+		_, err := rconn.SetupTcp(u, media, i)
 		if err != nil {
 			panic(err)
 		}
@@ -54,9 +50,7 @@ func main() {
 		panic(err)
 	}
 
-	frame := &gortsplib.InterleavedFrame{
-		Content: make([]byte, 512*1024),
-	}
+	frame := &gortsplib.InterleavedFrame{Content: make([]byte, 512*1024)}
 
 	for {
 		err := rconn.ReadFrame(frame)
@@ -64,6 +58,7 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Println("incoming", frame.Channel, frame.Content)
+		trackId, streamType := gortsplib.ConvChannelToTrackIdAndStreamType(frame.Channel)
+		fmt.Printf("packet from track %d, type %v: %v\n", trackId, streamType, frame.Content)
 	}
 }

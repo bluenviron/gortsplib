@@ -13,6 +13,12 @@ help:
 	@echo "  test           run available tests"
 	@echo ""
 
+blank :=
+define NL
+
+$(blank)
+endef
+
 mod-tidy:
 	docker run --rm -it -v $(PWD):/s $(BASE_IMAGE) \
 	sh -c "apk add git && cd /s && go get && go mod tidy"
