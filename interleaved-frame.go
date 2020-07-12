@@ -11,9 +11,33 @@ const (
 	_INTERLEAVED_FRAME_MAGIC = 0x24
 )
 
+// StreamType is the type of a stream.
+type StreamType int
+
+const (
+	// StreamTypeRtp is a stream that contains RTP packets
+	StreamTypeRtp StreamType = iota
+
+	// StreamTypeRtcp is a stream that contains RTCP packets
+	StreamTypeRtcp
+)
+
+func ConvChannelToTrackIdAndStreamType(channel uint8) (int, StreamType) {
+	if (channel % 2) == 0 {
+		return int(channel / 2), StreamTypeRtp
+	}
+	return int((channel - 1) / 2), StreamTypeRtcp
+}
+
+func ConvTrackIdAndStreamTypeToChannel(trackId int, StreamType StreamType) uint8 {
+	if StreamType == StreamTypeRtp {
+		return uint8(trackId * 2)
+	}
+	return uint8((trackId * 2) + 1)
+}
+
 // InterleavedFrame is a structure that allows to send and receive binary data
-// with RTSP connections.
-// It is usually used to send RTP and RTCP with RTSP.
+// within RTSP connections. It is usually deployed to send RTP and RTCP packets via TCP.
 type InterleavedFrame struct {
 	Channel uint8
 	Content []byte
