@@ -136,7 +136,14 @@ func (c *ConnClient) writeRequest(req *Request) error {
 
 	// insert auth
 	if c.auth != nil {
-		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, req.Url)
+		// remove credentials
+		u := &url.URL{
+			Scheme:   req.Url.Scheme,
+			Host:     req.Url.Host,
+			Path:     req.Url.Path,
+			RawQuery: req.Url.RawQuery,
+		}
+		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, u)
 	}
 
 	// insert cseq
