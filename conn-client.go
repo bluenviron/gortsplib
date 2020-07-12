@@ -88,7 +88,7 @@ func (c *ConnClient) readFrameOrResponse(frame *InterleavedFrame) (interface{}, 
 
 // Do writes a Request and reads a Response.
 func (c *ConnClient) Do(req *Request) (*Response, error) {
-	err := c.WriteRequest(req)
+	err := c.writeRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +124,7 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	return res, nil
 }
 
-// WriteRequest writes a request and does not wait for a response.
-func (c *ConnClient) WriteRequest(req *Request) error {
+func (c *ConnClient) writeRequest(req *Request) error {
 	if req.Header == nil {
 		req.Header = make(Header)
 	}
@@ -288,7 +287,7 @@ func (c *ConnClient) Setup(u *url.URL, media *sdp.MediaDescription, transport []
 // Play writes a PLAY request, that indicates that we want to start the
 // stream, and reads a response.
 func (c *ConnClient) Play(u *url.URL) (*Response, error) {
-	err := c.WriteRequest(&Request{
+	err := c.writeRequest(&Request{
 		Method: PLAY,
 		Url:    u,
 	})
