@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+const (
+	_CLIENT_READ_BUFFER_SIZE  = 4096
+	_CLIENT_WRITE_BUFFER_SIZE = 4096
+)
+
 // ConnClientConf allows to configure a ConnClient.
 type ConnClientConf struct {
 	// pre-existing TCP connection that will be wrapped
@@ -26,14 +31,6 @@ type ConnClientConf struct {
 	// (optional) timeout for write requests.
 	// It defaults to 5 seconds
 	WriteTimeout time.Duration
-
-	// (optional) size of the read buffer.
-	// It defaults to 4096 bytes
-	ReadBufferSize int
-
-	// (optional) size of the write buffer.
-	// It defaults to 4096 bytes
-	WriteBufferSize int
 }
 
 // ConnClient is a client-side RTSP connection.
@@ -54,12 +51,6 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 	if conf.WriteTimeout == time.Duration(0) {
 		conf.WriteTimeout = 5 * time.Second
 	}
-	if conf.ReadBufferSize == 0 {
-		conf.ReadBufferSize = 4096
-	}
-	if conf.WriteBufferSize == 0 {
-		conf.WriteBufferSize = 4096
-	}
 
 	if conf.Username != "" && conf.Password == "" ||
 		conf.Username == "" && conf.Password != "" {
@@ -68,8 +59,8 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 
 	return &ConnClient{
 		conf: conf,
-		br:   bufio.NewReaderSize(conf.NConn, conf.ReadBufferSize),
-		bw:   bufio.NewWriterSize(conf.NConn, conf.WriteBufferSize),
+		br:   bufio.NewReaderSize(conf.NConn, _CLIENT_READ_BUFFER_SIZE),
+		bw:   bufio.NewWriterSize(conf.NConn, _CLIENT_WRITE_BUFFER_SIZE),
 	}, nil
 }
 

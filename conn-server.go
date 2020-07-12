@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+const (
+	_SERVER_READ_BUFFER_SIZE  = 4096
+	_SERVER_WRITE_BUFFER_SIZE = 4096
+)
+
 // ConnServerConf allows to configure a ConnServer.
 type ConnServerConf struct {
 	// pre-existing TCP connection that will be wrapped
@@ -18,14 +23,6 @@ type ConnServerConf struct {
 	// (optional) timeout for write requests.
 	// It defaults to 5 seconds
 	WriteTimeout time.Duration
-
-	// (optional) size of the read buffer.
-	// It defaults to 4096 bytes
-	ReadBufferSize int
-
-	// (optional) size of the write buffer.
-	// It defaults to 4096 bytes
-	WriteBufferSize int
 }
 
 // ConnServer is a server-side RTSP connection.
@@ -43,17 +40,11 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 	if conf.WriteTimeout == time.Duration(0) {
 		conf.WriteTimeout = 5 * time.Second
 	}
-	if conf.ReadBufferSize == 0 {
-		conf.ReadBufferSize = 4096
-	}
-	if conf.WriteBufferSize == 0 {
-		conf.WriteBufferSize = 4096
-	}
 
 	return &ConnServer{
 		conf: conf,
-		br:   bufio.NewReaderSize(conf.NConn, conf.ReadBufferSize),
-		bw:   bufio.NewWriterSize(conf.NConn, conf.ReadBufferSize),
+		br:   bufio.NewReaderSize(conf.NConn, _SERVER_READ_BUFFER_SIZE),
+		bw:   bufio.NewWriterSize(conf.NConn, _SERVER_WRITE_BUFFER_SIZE),
 	}
 }
 
