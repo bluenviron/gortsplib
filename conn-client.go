@@ -155,8 +155,7 @@ func (c *ConnClient) WriteFrame(frame *InterleavedFrame) error {
 }
 
 // Options writes an OPTIONS request and reads a response, that contains
-// the methods allowed by the server. Since this method is not implemented by every
-// RTSP server, the function does not fail if the returned code is not StatusOK.
+// the methods allowed by the server.
 func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 	// strip path
 	u = &url.URL{
@@ -172,6 +171,11 @@ func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// OPTIONS is not available in some cameras, so StatusNotFound is not an error
+	if res.StatusCode != StatusOK && res.StatusCode != StatusNotFound {
+		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	return res, nil
