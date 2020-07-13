@@ -45,6 +45,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		defer rtpl.Close()
 		rtpListeners = append(rtpListeners, rtpl)
 
 		rtcpPort := 9001 + i*2
@@ -52,6 +53,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		defer rtcpl.Close()
 		rtcpListeners = append(rtcpListeners, rtcpl)
 
 		_, _, _, err = rconn.SetupUdp(u, media, rtpPort, rtcpPort)
@@ -65,6 +67,22 @@ func main() {
 		panic(err)
 	}
 
+	done := make(chan struct{})
+
+	// send periodic keepalive
+	go func() {
+		keepaliveTicker := time.NewTicker(30 * time.Second)
+		for range keepaliveTicker.C {
+			_, err = rconn.Options(u)
+			if err != nil {
+				fmt.Println("connection is closed")
+				close(done)
+				break
+			}
+		}
+	}()
+
+	// receive RTP packets
 	for trackId, l := range rtpListeners {
 		go func(trackId int, l net.PacketConn) {
 			buf := make([]byte, 2048)
@@ -79,6 +97,7 @@ func main() {
 		}(trackId, l)
 	}
 
+	// receive RTCP packets
 	for trackId, l := range rtcpListeners {
 		go func(trackId int, l net.PacketConn) {
 			buf := make([]byte, 2048)
@@ -93,5 +112,5 @@ func main() {
 		}(trackId, l)
 	}
 
-	select {}
+	<-done
 }

@@ -47,11 +47,13 @@ func main() {
 		panic(err)
 	}
 
-	frame := &gortsplib.InterleavedFrame{Content: make([]byte, 512*1024)}
+	frame := &gortsplib.InterleavedFrame{Content: make([]byte, 0, 512*1024)}
 	for {
+		frame.Content = frame.Content[:cap(frame.Content)]
 		err := rconn.ReadFrame(frame)
 		if err != nil {
-			panic(err)
+			fmt.Println("connection is closed")
+			break
 		}
 
 		fmt.Printf("packet from track %d, type %v: %v\n",
