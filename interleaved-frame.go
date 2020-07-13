@@ -22,26 +22,27 @@ const (
 	StreamTypeRtcp
 )
 
-// ConvChannelToTrackIdAndStreamType converts a channel into a track id and a streamType.
-func ConvChannelToTrackIdAndStreamType(channel uint8) (int, StreamType) {
-	if (channel % 2) == 0 {
-		return int(channel / 2), StreamTypeRtp
+func (st StreamType) String() string {
+	switch st {
+	case StreamTypeRtp:
+		return "RTP"
+
+	case StreamTypeRtcp:
+		return "RTCP"
 	}
-	return int((channel - 1) / 2), StreamTypeRtcp
+	return "UNKNOWN"
 }
 
-// ConvTrackIdAndStreamTypeToChannel converts a track id and a streamType into a channel.
-func ConvTrackIdAndStreamTypeToChannel(trackId int, StreamType StreamType) uint8 {
-	if StreamType == StreamTypeRtp {
-		return uint8(trackId * 2)
-	}
-	return uint8((trackId * 2) + 1)
-}
-
-// InterleavedFrame is a structure that allows to send and receive binary data
-// within RTSP connections. It is usually deployed to send RTP and RTCP packets via TCP.
+// InterleavedFrame is an object that allows to send and receive binary data
+// within RTSP connections. It is used to send RTP and RTCP packets via TCP.
 type InterleavedFrame struct {
-	Channel uint8
+	// track id
+	TrackId int
+
+	// stream type
+	StreamType StreamType
+
+	// frame content
 	Content []byte
 }
 
@@ -62,19 +63,34 @@ func (f *InterleavedFrame) read(r io.Reader) error {
 			framelen, len(f.Content))
 	}
 
-	f.Channel = header[1]
+	// convert channel into TrackId and StreamType
+	channel := header[1]
+	f.TrackId, f.StreamType = func() (int, StreamType) {
+		if (channel % 2) == 0 {
+			return int(channel / 2), StreamTypeRtp
+		}
+		return int((channel - 1) / 2), StreamTypeRtcp
+	}()
+
 	f.Content = f.Content[:framelen]
 
 	_, err = io.ReadFull(r, f.Content)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
 func (f *InterleavedFrame) write(bw *bufio.Writer) error {
-	_, err := bw.Write([]byte{0x24, f.Channel})
+	// convert TrackId and StreamType into channel
+	channel := func() uint8 {
+		if f.StreamType == StreamTypeRtp {
+			return uint8(f.TrackId * 2)
+		}
+		return uint8((f.TrackId * 2) + 1)
+	}()
+
+	_, err := bw.Write([]byte{0x24, channel})
 	if err != nil {
 		return err
 	}

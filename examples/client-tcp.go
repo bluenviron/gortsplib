@@ -58,7 +58,7 @@ func main() {
 			panic(err)
 		}
 
-		trackId, streamType := gortsplib.ConvChannelToTrackIdAndStreamType(frame.Channel)
-		fmt.Printf("packet from track %d, type %v: %v\n", trackId, streamType, frame.Content)
+		fmt.Printf("packet from track %d, type %v: %v\n",
+			frame.TrackId, frame.StreamType, frame.Content)
 	}
 }
