@@ -367,12 +367,13 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	}
 
 	frame := &InterleavedFrame{
-		Content: make([]byte, 512*1024),
+		Content: make([]byte, 0, 512*1024),
 	}
 
 	// v4lrtspserver sends frames before the response.
 	// ignore them and wait for the response.
 	for {
+		frame.Content = frame.Content[:cap(frame.Content)]
 		recv, err := c.ReadFrameOrResponse(frame)
 		if err != nil {
 			return nil, err
