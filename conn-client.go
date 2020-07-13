@@ -45,7 +45,7 @@ type ConnClient struct {
 	bw      *bufio.Writer
 	session string
 	curCSeq int
-	auth    *AuthClient
+	auth    *authClient
 }
 
 // NewConnClient allocates a ConnClient. See ConnClientConf for the options.
@@ -149,7 +149,7 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	// setup authentication
 	if res.StatusCode == StatusUnauthorized && req.Url.User != nil && c.auth == nil {
 		pass, _ := req.Url.User.Password()
-		auth, err := NewAuthClient(res.Header["WWW-Authenticate"], req.Url.User.Username(), pass)
+		auth, err := newAuthClient(res.Header["WWW-Authenticate"], req.Url.User.Username(), pass)
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup authentication: %s", err)
 		}

@@ -179,9 +179,9 @@ func (as *AuthServer) ValidateHeader(header []string, method Method, ur *url.URL
 	return nil
 }
 
-// AuthClient is an object that helps a client to send its credentials to a
+// authClient is an object that helps a client to send its credentials to a
 // server.
-type AuthClient struct {
+type authClient struct {
 	user   string
 	pass   string
 	method AuthMethod
@@ -189,9 +189,9 @@ type AuthClient struct {
 	nonce  string
 }
 
-// NewAuthClient allocates an AuthClient.
+// newAuthClient allocates an authClient.
 // header is the WWW-Authenticate header provided by the server.
-func NewAuthClient(header []string, user string, pass string) (*AuthClient, error) {
+func newAuthClient(header []string, user string, pass string) (*authClient, error) {
 	// prefer digest
 	headerAuthDigest := func() string {
 		for _, v := range header {
@@ -217,7 +217,7 @@ func NewAuthClient(header []string, user string, pass string) (*AuthClient, erro
 			return nil, fmt.Errorf("nonce not provided")
 		}
 
-		return &AuthClient{
+		return &authClient{
 			user:   user,
 			pass:   pass,
 			method: Digest,
@@ -245,7 +245,7 @@ func NewAuthClient(header []string, user string, pass string) (*AuthClient, erro
 			return nil, fmt.Errorf("realm not provided")
 		}
 
-		return &AuthClient{
+		return &authClient{
 			user:   user,
 			pass:   pass,
 			method: Basic,
@@ -258,7 +258,7 @@ func NewAuthClient(header []string, user string, pass string) (*AuthClient, erro
 
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
 // the given method and url.
-func (ac *AuthClient) GenerateHeader(method Method, ur *url.URL) []string {
+func (ac *authClient) GenerateHeader(method Method, ur *url.URL) []string {
 	switch ac.method {
 	case Basic:
 		response := base64.StdEncoding.EncodeToString([]byte(ac.user + ":" + ac.pass))
