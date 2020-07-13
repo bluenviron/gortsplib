@@ -7,50 +7,50 @@ import (
 	"github.com/pion/rtcp"
 )
 
-type RtcpReceiverEvent interface {
+type rtcpReceiverEvent interface {
 	isRtpReceiverEvent()
 }
 
-type RtcpReceiverEventFrameRtp struct {
+type rtcpReceiverEventFrameRtp struct {
 	sequenceNumber uint16
 }
 
-func (RtcpReceiverEventFrameRtp) isRtpReceiverEvent() {}
+func (rtcpReceiverEventFrameRtp) isRtpReceiverEvent() {}
 
-type RtcpReceiverEventFrameRtcp struct {
+type rtcpReceiverEventFrameRtcp struct {
 	ssrc          uint32
 	ntpTimeMiddle uint32
 }
 
-func (RtcpReceiverEventFrameRtcp) isRtpReceiverEvent() {}
+func (rtcpReceiverEventFrameRtcp) isRtpReceiverEvent() {}
 
-type RtcpReceiverEventLastFrameTime struct {
+type rtcpReceiverEventLastFrameTime struct {
 	res chan time.Time
 }
 
-func (RtcpReceiverEventLastFrameTime) isRtpReceiverEvent() {}
+func (rtcpReceiverEventLastFrameTime) isRtpReceiverEvent() {}
 
-type RtcpReceiverEventReport struct {
+type rtcpReceiverEventReport struct {
 	res chan []byte
 }
 
-func (RtcpReceiverEventReport) isRtpReceiverEvent() {}
+func (rtcpReceiverEventReport) isRtpReceiverEvent() {}
 
-type RtcpReceiverEventTerminate struct{}
+type rtcpReceiverEventTerminate struct{}
 
-func (RtcpReceiverEventTerminate) isRtpReceiverEvent() {}
+func (rtcpReceiverEventTerminate) isRtpReceiverEvent() {}
 
 // RtcpReceiver is an object that helps to build RTCP receiver reports from
 // incoming frames.
 type RtcpReceiver struct {
-	events chan RtcpReceiverEvent
+	events chan rtcpReceiverEvent
 	done   chan struct{}
 }
 
 // NewRtcpReceiver allocates a RtcpReceiver.
 func NewRtcpReceiver() *RtcpReceiver {
 	rr := &RtcpReceiver{
-		events: make(chan RtcpReceiverEvent),
+		events: make(chan rtcpReceiverEvent),
 		done:   make(chan struct{}),
 	}
 	go rr.run()
@@ -68,21 +68,21 @@ func (rr *RtcpReceiver) run() {
 outer:
 	for rawEvt := range rr.events {
 		switch evt := rawEvt.(type) {
-		case RtcpReceiverEventFrameRtp:
+		case rtcpReceiverEventFrameRtp:
 			if evt.sequenceNumber < lastSequenceNumber {
 				sequenceNumberCycles += 1
 			}
 			lastSequenceNumber = evt.sequenceNumber
 			lastFrameTime = time.Now()
 
-		case RtcpReceiverEventFrameRtcp:
+		case rtcpReceiverEventFrameRtcp:
 			publisherSSRC = evt.ssrc
 			lastSenderReport = evt.ntpTimeMiddle
 
-		case RtcpReceiverEventLastFrameTime:
+		case rtcpReceiverEventLastFrameTime:
 			evt.res <- lastFrameTime
 
-		case RtcpReceiverEventReport:
+		case rtcpReceiverEventReport:
 			rr := &rtcp.ReceiverReport{
 				SSRC: receiverSSRC,
 				Reports: []rtcp.ReceptionReport{
@@ -96,7 +96,7 @@ outer:
 			frame, _ := rr.Marshal()
 			evt.res <- frame
 
-		case RtcpReceiverEventTerminate:
+		case rtcpReceiverEventTerminate:
 			break outer
 		}
 	}
@@ -108,7 +108,7 @@ outer:
 
 // Close closes a RtcpReceiver.
 func (rr *RtcpReceiver) Close() {
-	rr.events <- RtcpReceiverEventTerminate{}
+	rr.events <- rtcpReceiverEventTerminate{}
 	<-rr.done
 }
 
@@ -118,7 +118,7 @@ func (rr *RtcpReceiver) OnFrame(streamType StreamType, buf []byte) {
 		// extract sequence number of first frame
 		if len(buf) >= 3 {
 			sequenceNumber := uint16(uint16(buf[2])<<8 | uint16(buf[1]))
-			rr.events <- RtcpReceiverEventFrameRtp{sequenceNumber}
+			rr.events <- rtcpReceiverEventFrameRtp{sequenceNumber}
 		}
 
 	} else {
@@ -126,7 +126,7 @@ func (rr *RtcpReceiver) OnFrame(streamType StreamType, buf []byte) {
 		if err == nil {
 			for _, frame := range frames {
 				if senderReport, ok := (frame).(*rtcp.SenderReport); ok {
-					rr.events <- RtcpReceiverEventFrameRtcp{
+					rr.events <- rtcpReceiverEventFrameRtcp{
 						senderReport.SSRC,
 						uint32(senderReport.NTPTime >> 16),
 					}
@@ -139,13 +139,13 @@ func (rr *RtcpReceiver) OnFrame(streamType StreamType, buf []byte) {
 // LastFrameTime returns the time the last frame was received.
 func (rr *RtcpReceiver) LastFrameTime() time.Time {
 	res := make(chan time.Time)
-	rr.events <- RtcpReceiverEventLastFrameTime{res}
+	rr.events <- rtcpReceiverEventLastFrameTime{res}
 	return <-res
 }
 
 // Report generates a RTCP receiver report.
 func (rr *RtcpReceiver) Report() []byte {
 	res := make(chan []byte)
-	rr.events <- RtcpReceiverEventReport{res}
+	rr.events <- rtcpReceiverEventReport{res}
 	return <-res
 }
