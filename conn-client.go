@@ -71,6 +71,7 @@ func (c *ConnClient) NetConn() net.Conn {
 
 // ReadFrame reads an InterleavedFrame.
 func (c *ConnClient) ReadFrame(frame *InterleavedFrame) error {
+	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	return frame.read(c.br)
 }
 
