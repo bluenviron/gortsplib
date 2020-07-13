@@ -23,10 +23,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	rconn, err := gortsplib.NewConnClient(gortsplib.ConnClientConf{Conn: conn})
-	if err != nil {
-		panic(err)
-	}
+	rconn := gortsplib.NewConnClient(gortsplib.ConnClientConf{Conn: conn})
 
 	_, err = rconn.Options(u)
 	if err != nil {
@@ -51,7 +48,6 @@ func main() {
 	}
 
 	frame := &gortsplib.InterleavedFrame{Content: make([]byte, 512*1024)}
-
 	for {
 		err := rconn.ReadFrame(frame)
 		if err != nil {

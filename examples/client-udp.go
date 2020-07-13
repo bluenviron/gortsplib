@@ -24,10 +24,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	rconn, err := gortsplib.NewConnClient(gortsplib.ConnClientConf{Conn: conn})
-	if err != nil {
-		panic(err)
-	}
+	rconn := gortsplib.NewConnClient(gortsplib.ConnClientConf{Conn: conn})
 
 	_, err = rconn.Options(u)
 	if err != nil {

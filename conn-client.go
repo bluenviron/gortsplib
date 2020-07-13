@@ -49,7 +49,7 @@ type ConnClient struct {
 }
 
 // NewConnClient allocates a ConnClient. See ConnClientConf for the options.
-func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
+func NewConnClient(conf ConnClientConf) *ConnClient {
 	if conf.ReadTimeout == time.Duration(0) {
 		conf.ReadTimeout = 5 * time.Second
 	}
@@ -61,7 +61,7 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		conf: conf,
 		br:   bufio.NewReaderSize(conf.Conn, clientReadBufferSize),
 		bw:   bufio.NewWriterSize(conf.Conn, clientWriteBufferSize),
-	}, nil
+	}
 }
 
 // NetConn returns the underlying net.Conn.
