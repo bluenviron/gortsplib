@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	_CLIENT_READ_BUFFER_SIZE  = 4096
-	_CLIENT_WRITE_BUFFER_SIZE = 4096
+	clientReadBufferSize  = 4096
+	clientWriteBufferSize = 4096
 )
 
 // ConnClientConf allows to configure a ConnClient.
@@ -52,8 +52,8 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 
 	return &ConnClient{
 		conf: conf,
-		br:   bufio.NewReaderSize(conf.Conn, _CLIENT_READ_BUFFER_SIZE),
-		bw:   bufio.NewWriterSize(conf.Conn, _CLIENT_WRITE_BUFFER_SIZE),
+		br:   bufio.NewReaderSize(conf.Conn, clientReadBufferSize),
+		bw:   bufio.NewWriterSize(conf.Conn, clientWriteBufferSize),
 	}, nil
 }
 
@@ -75,7 +75,7 @@ func (c *ConnClient) readFrameOrResponse(frame *InterleavedFrame) (interface{}, 
 	}
 	c.br.UnreadByte()
 
-	if b == _INTERLEAVED_FRAME_MAGIC {
+	if b == interleavedFrameMagicByte {
 		err := frame.read(c.br)
 		if err != nil {
 			return nil, err

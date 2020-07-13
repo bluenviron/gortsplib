@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	_MAX_METHOD_LENGTH   = 128
-	_MAX_PATH_LENGTH     = 1024
-	_MAX_PROTOCOL_LENGTH = 128
+	rtspProtocol10           = "RTSP/1.0"
+	requestMaxLethodLength   = 128
+	requestMaxPathLength     = 1024
+	requestMaxProtocolLength = 128
 )
 
 // Method is a RTSP request method.
@@ -48,7 +49,7 @@ type Request struct {
 func readRequest(rb *bufio.Reader) (*Request, error) {
 	req := &Request{}
 
-	byts, err := readBytesLimited(rb, ' ', _MAX_METHOD_LENGTH)
+	byts, err := readBytesLimited(rb, ' ', requestMaxLethodLength)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func readRequest(rb *bufio.Reader) (*Request, error) {
 		return nil, fmt.Errorf("empty method")
 	}
 
-	byts, err = readBytesLimited(rb, ' ', _MAX_PATH_LENGTH)
+	byts, err = readBytesLimited(rb, ' ', requestMaxPathLength)
 	if err != nil {
 		return nil, err
 	}
@@ -78,14 +79,14 @@ func readRequest(rb *bufio.Reader) (*Request, error) {
 		return nil, fmt.Errorf("invalid url scheme '%s'", req.Url.Scheme)
 	}
 
-	byts, err = readBytesLimited(rb, '\r', _MAX_PROTOCOL_LENGTH)
+	byts, err = readBytesLimited(rb, '\r', requestMaxProtocolLength)
 	if err != nil {
 		return nil, err
 	}
 	proto := string(byts[:len(byts)-1])
 
-	if proto != _RTSP_PROTO {
-		return nil, fmt.Errorf("expected '%s', got '%s'", _RTSP_PROTO, proto)
+	if proto != rtspProtocol10 {
+		return nil, fmt.Errorf("expected '%s', got '%s'", rtspProtocol10, proto)
 	}
 
 	err = readByteEqual(rb, '\n')
@@ -115,7 +116,7 @@ func (req *Request) write(bw *bufio.Writer) error {
 		RawQuery: req.Url.RawQuery,
 	}
 
-	_, err := bw.Write([]byte(string(req.Method) + " " + u.String() + " " + _RTSP_PROTO + "\r\n"))
+	_, err := bw.Write([]byte(string(req.Method) + " " + u.String() + " " + rtspProtocol10 + "\r\n"))
 	if err != nil {
 		return err
 	}

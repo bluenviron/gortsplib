@@ -10,6 +10,7 @@ import (
 type StatusCode int
 
 const (
+	// standard status codes
 	StatusContinue                           StatusCode = 100
 	StatusOK                                 StatusCode = 200
 	StatusMovedPermanently                   StatusCode = 301
@@ -140,8 +141,8 @@ func readResponse(rb *bufio.Reader) (*Response, error) {
 	}
 	proto := string(byts[:len(byts)-1])
 
-	if proto != _RTSP_PROTO {
-		return nil, fmt.Errorf("expected '%s', got '%s'", _RTSP_PROTO, proto)
+	if proto != rtspProtocol10 {
+		return nil, fmt.Errorf("expected '%s', got '%s'", rtspProtocol10, proto)
 	}
 
 	byts, err = readBytesLimited(rb, ' ', 4)
@@ -191,7 +192,7 @@ func (res *Response) write(bw *bufio.Writer) error {
 		}
 	}
 
-	_, err := bw.Write([]byte(_RTSP_PROTO + " " + strconv.FormatInt(int64(res.StatusCode), 10) + " " + res.StatusMessage + "\r\n"))
+	_, err := bw.Write([]byte(rtspProtocol10 + " " + strconv.FormatInt(int64(res.StatusCode), 10) + " " + res.StatusMessage + "\r\n"))
 	if err != nil {
 		return err
 	}

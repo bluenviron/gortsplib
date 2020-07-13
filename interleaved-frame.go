@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	_INTERLEAVED_FRAME_MAGIC = 0x24
+	interleavedFrameMagicByte = 0x24
 )
 
 // StreamType is the type of a stream.
@@ -52,7 +52,7 @@ func (f *InterleavedFrame) read(r io.Reader) error {
 		return err
 	}
 
-	if header[0] != _INTERLEAVED_FRAME_MAGIC {
+	if header[0] != interleavedFrameMagicByte {
 		return fmt.Errorf("wrong magic byte (0x%.2x)", header[0])
 	}
 

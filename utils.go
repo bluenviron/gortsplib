@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	_RTSP_PROTO         = "RTSP/1.0"
-	_MAX_CONTENT_LENGTH = 4096
+	rtspMaxContentLength = 4096
 )
 
 func readBytesLimited(rb *bufio.Reader, delim byte, n int) ([]byte, error) {
@@ -51,8 +50,8 @@ func readContent(rb *bufio.Reader, header Header) ([]byte, error) {
 		return nil, fmt.Errorf("invalid Content-Length")
 	}
 
-	if cl > _MAX_CONTENT_LENGTH {
-		return nil, fmt.Errorf("Content-Length exceeds %d", _MAX_CONTENT_LENGTH)
+	if cl > rtspMaxContentLength {
+		return nil, fmt.Errorf("Content-Length exceeds %d", rtspMaxContentLength)
 	}
 
 	ret := make([]byte, cl)

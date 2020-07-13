@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	_SERVER_READ_BUFFER_SIZE  = 4096
-	_SERVER_WRITE_BUFFER_SIZE = 4096
+	serverReadBufferSize  = 4096
+	serverWriteBufferSize = 4096
 )
 
 // ConnServerConf allows to configure a ConnServer.
@@ -43,8 +43,8 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 
 	return &ConnServer{
 		conf: conf,
-		br:   bufio.NewReaderSize(conf.Conn, _SERVER_READ_BUFFER_SIZE),
-		bw:   bufio.NewWriterSize(conf.Conn, _SERVER_WRITE_BUFFER_SIZE),
+		br:   bufio.NewReaderSize(conf.Conn, serverReadBufferSize),
+		bw:   bufio.NewWriterSize(conf.Conn, serverWriteBufferSize),
 	}
 }
 
@@ -68,7 +68,7 @@ func (s *ConnServer) ReadFrameOrRequest(frame *InterleavedFrame) (interface{}, e
 	}
 	s.br.UnreadByte()
 
-	if b == _INTERLEAVED_FRAME_MAGIC {
+	if b == interleavedFrameMagicByte {
 		err := frame.read(s.br)
 		if err != nil {
 			return nil, err

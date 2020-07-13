@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	_MAX_HEADER_COUNT        = 255
-	_MAX_HEADER_KEY_LENGTH   = 1024
-	_MAX_HEADER_VALUE_LENGTH = 1024
+	headerMaxEntryCount  = 255
+	headerMaxKeyLength   = 1024
+	headerMaxValueLength = 1024
 )
 
 func headerKeyNormalize(in string) string {
@@ -49,12 +49,12 @@ func headerRead(rb *bufio.Reader) (Header, error) {
 			break
 		}
 
-		if len(h) >= _MAX_HEADER_COUNT {
-			return nil, fmt.Errorf("headers count exceeds %d", _MAX_HEADER_COUNT)
+		if len(h) >= headerMaxEntryCount {
+			return nil, fmt.Errorf("headers count exceeds %d", headerMaxEntryCount)
 		}
 
 		key := string([]byte{byt})
-		byts, err := readBytesLimited(rb, ':', _MAX_HEADER_KEY_LENGTH-1)
+		byts, err := readBytesLimited(rb, ':', headerMaxKeyLength-1)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func headerRead(rb *bufio.Reader) (Header, error) {
 		}
 		rb.UnreadByte()
 
-		byts, err = readBytesLimited(rb, '\r', _MAX_HEADER_VALUE_LENGTH)
+		byts, err = readBytesLimited(rb, '\r', headerMaxValueLength)
 		if err != nil {
 			return nil, err
 		}
