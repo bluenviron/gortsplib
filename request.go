@@ -44,6 +44,10 @@ type Request struct {
 
 	// optional content
 	Content []byte
+
+	// whether to wait for a response or not
+	// used only by ConnClient.Do()
+	SkipResponse bool
 }
 
 func readRequest(rb *bufio.Reader) (*Request, error) {

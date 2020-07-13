@@ -67,7 +67,8 @@ func (c *ConnClient) ReadFrame(frame *InterleavedFrame) error {
 	return frame.read(c.br)
 }
 
-func (c *ConnClient) readFrameOrResponse(frame *InterleavedFrame) (interface{}, error) {
+// ReadFrameOrResponse reads an InterleavedFrame or a Response.
+func (c *ConnClient) ReadFrameOrResponse(frame *InterleavedFrame) (interface{}, error) {
 	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	b, err := c.br.ReadByte()
 	if err != nil {
@@ -88,9 +89,39 @@ func (c *ConnClient) readFrameOrResponse(frame *InterleavedFrame) (interface{}, 
 
 // Do writes a Request and reads a Response.
 func (c *ConnClient) Do(req *Request) (*Response, error) {
-	err := c.writeRequest(req)
+	if req.Header == nil {
+		req.Header = make(Header)
+	}
+
+	// insert session
+	if c.session != "" {
+		req.Header["Session"] = []string{c.session}
+	}
+
+	// insert auth
+	if c.auth != nil {
+		// remove credentials
+		u := &url.URL{
+			Scheme:   req.Url.Scheme,
+			Host:     req.Url.Host,
+			Path:     req.Url.Path,
+			RawQuery: req.Url.RawQuery,
+		}
+		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, u)
+	}
+
+	// insert cseq
+	c.curCSeq += 1
+	req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.curCSeq), 10)}
+
+	c.conf.Conn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
+	err := req.write(c.bw)
 	if err != nil {
 		return nil, err
+	}
+
+	if req.SkipResponse {
+		return nil, nil
 	}
 
 	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
@@ -122,36 +153,6 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	}
 
 	return res, nil
-}
-
-func (c *ConnClient) writeRequest(req *Request) error {
-	if req.Header == nil {
-		req.Header = make(Header)
-	}
-
-	// insert session
-	if c.session != "" {
-		req.Header["Session"] = []string{c.session}
-	}
-
-	// insert auth
-	if c.auth != nil {
-		// remove credentials
-		u := &url.URL{
-			Scheme:   req.Url.Scheme,
-			Host:     req.Url.Host,
-			Path:     req.Url.Path,
-			RawQuery: req.Url.RawQuery,
-		}
-		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, u)
-	}
-
-	// insert cseq
-	c.curCSeq += 1
-	req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.curCSeq), 10)}
-
-	c.conf.Conn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
-	return req.write(c.bw)
 }
 
 // WriteFrame writes an InterleavedFrame.
@@ -348,9 +349,10 @@ func (c *ConnClient) SetupTcp(u *url.URL, media *sdp.MediaDescription, trackId i
 // Play writes a PLAY request, that means that we want to start the
 // stream. It then reads a Response.
 func (c *ConnClient) Play(u *url.URL) (*Response, error) {
-	err := c.writeRequest(&Request{
-		Method: PLAY,
-		Url:    u,
+	_, err := c.Do(&Request{
+		Method:       PLAY,
+		Url:          u,
+		SkipResponse: true,
 	})
 	if err != nil {
 		return nil, err
@@ -363,7 +365,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	// v4lrtspserver sends frames before the response.
 	// ignore them and wait for the response.
 	for {
-		recv, err := c.readFrameOrResponse(frame)
+		recv, err := c.ReadFrameOrResponse(frame)
 		if err != nil {
 			return nil, err
 		}
