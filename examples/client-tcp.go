@@ -30,13 +30,13 @@ func main() {
 		panic(err)
 	}
 
-	sdpd, _, err := rconn.Describe(u)
+	tracks, _, err := rconn.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	for i, media := range sdpd.MediaDescriptions {
-		_, err := rconn.SetupTcp(u, media, i)
+	for _, track := range tracks {
+		_, err := rconn.SetupTcp(u, track)
 		if err != nil {
 			panic(err)
 		}

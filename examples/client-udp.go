@@ -31,7 +31,7 @@ func main() {
 		panic(err)
 	}
 
-	sdpd, _, err := rconn.Describe(u)
+	tracks, _, err := rconn.Describe(u)
 	if err != nil {
 		panic(err)
 	}
@@ -39,8 +39,8 @@ func main() {
 	var rtpListeners []net.PacketConn
 	var rtcpListeners []net.PacketConn
 
-	for i, media := range sdpd.MediaDescriptions {
-		rtpPort := 9000 + i*2
+	for _, track := range tracks {
+		rtpPort := 9000 + track.Id*2
 		rtpl, err := net.ListenPacket("udp", ":"+strconv.FormatInt(int64(rtpPort), 10))
 		if err != nil {
 			panic(err)
@@ -48,7 +48,7 @@ func main() {
 		defer rtpl.Close()
 		rtpListeners = append(rtpListeners, rtpl)
 
-		rtcpPort := 9001 + i*2
+		rtcpPort := rtpPort + 1
 		rtcpl, err := net.ListenPacket("udp", ":"+strconv.FormatInt(int64(rtcpPort), 10))
 		if err != nil {
 			panic(err)
@@ -56,7 +56,7 @@ func main() {
 		defer rtcpl.Close()
 		rtcpListeners = append(rtcpListeners, rtcpl)
 
-		_, _, _, err = rconn.SetupUdp(u, media, rtpPort, rtcpPort)
+		_, _, _, err = rconn.SetupUdp(u, track, rtpPort, rtcpPort)
 		if err != nil {
 			panic(err)
 		}

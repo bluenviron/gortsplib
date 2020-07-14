@@ -24,6 +24,15 @@ const (
 	clientWriteBufferSize = 4096
 )
 
+// Track is a track available in a certain URL.
+type Track struct {
+	// track id
+	Id int
+
+	// track codec and info in SDP
+	Media *sdp.MediaDescription
+}
+
 // ConnClientConf allows to configure a ConnClient.
 type ConnClientConf struct {
 	// pre-existing TCP connection that will be wrapped
@@ -197,9 +206,9 @@ func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 }
 
 // Describe writes a DESCRIBE request, that means that we want to obtain the SDP
-// document that describes the stream available in the given url. It then
+// document that describes the tracks available in the given URL. It then
 // reads a Response.
-func (c *ConnClient) Describe(u *url.URL) (*sdp.SessionDescription, *Response, error) {
+func (c *ConnClient) Describe(u *url.URL) ([]*Track, *Response, error) {
 	res, err := c.Do(&Request{
 		Method: DESCRIBE,
 		Url:    u,
@@ -227,7 +236,15 @@ func (c *ConnClient) Describe(u *url.URL) (*sdp.SessionDescription, *Response, e
 		return nil, nil, err
 	}
 
-	return sdpd, res, nil
+	tracks := make([]*Track, len(sdpd.MediaDescriptions))
+	for i, media := range sdpd.MediaDescriptions {
+		tracks[i] = &Track{
+			Id:    i,
+			Media: media,
+		}
+	}
+
+	return tracks, res, nil
 }
 
 func (c *ConnClient) setup(u *url.URL, media *sdp.MediaDescription, transport []string) (*Response, error) {
@@ -242,7 +259,7 @@ func (c *ConnClient) setup(u *url.URL, media *sdp.MediaDescription, transport []
 			return ""
 		}()
 
-		// no control attribute, use original url
+		// no control attribute, use original URL
 		if control == "" {
 			return u
 		}
@@ -300,10 +317,10 @@ func (c *ConnClient) setup(u *url.URL, media *sdp.MediaDescription, transport []
 
 // SetupUdp writes a SETUP request, that means that we want to read
 // a track with given media, id and the UDP transport. It then reads a Response.
-func (c *ConnClient) SetupUdp(u *url.URL, media *sdp.MediaDescription,
-	rtpPort int, rtcpPort int) (int, int, *Response, error) {
+func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
+	rtcpPort int) (int, int, *Response, error) {
 
-	res, err := c.setup(u, media, []string{
+	res, err := c.setup(u, track.Media, []string{
 		"RTP/AVP/UDP",
 		"unicast",
 		fmt.Sprintf("client_port=%d-%d", rtpPort, rtcpPort),
@@ -328,10 +345,10 @@ func (c *ConnClient) SetupUdp(u *url.URL, media *sdp.MediaDescription,
 
 // SetupTcp writes a SETUP request, that means that we want to read
 // a track with given media, given id and the TCP transport. It then reads a Response.
-func (c *ConnClient) SetupTcp(u *url.URL, media *sdp.MediaDescription, trackId int) (*Response, error) {
-	interleaved := fmt.Sprintf("interleaved=%d-%d", (trackId * 2), (trackId*2)+1)
+func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
+	interleaved := fmt.Sprintf("interleaved=%d-%d", (track.Id * 2), (track.Id*2)+1)
 
-	res, err := c.setup(u, media, []string{
+	res, err := c.setup(u, track.Media, []string{
 		"RTP/AVP/TCP",
 		"unicast",
 		interleaved,
