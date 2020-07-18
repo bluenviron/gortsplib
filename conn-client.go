@@ -334,7 +334,7 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 		return 0, 0, nil, fmt.Errorf("SETUP: transport header: %s", err)
 	}
 
-	rtpServerPort, rtcpServerPort := th.GetPorts("server_port")
+	rtpServerPort, rtcpServerPort := th.Ports("server_port")
 	if rtpServerPort == 0 {
 		return 0, 0, nil, fmt.Errorf("SETUP: server ports not provided")
 	}

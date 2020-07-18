@@ -27,8 +27,8 @@ func ReadHeaderTransport(v HeaderValue) (HeaderTransport, error) {
 	return ht, nil
 }
 
-// GetValue gets a value from the header.
-func (ht HeaderTransport) GetValue(key string) string {
+// Value gets a value from the header.
+func (ht HeaderTransport) Value(key string) string {
 	prefix := key + "="
 	for t := range ht {
 		if strings.HasPrefix(t, prefix) {
@@ -38,9 +38,9 @@ func (ht HeaderTransport) GetValue(key string) string {
 	return ""
 }
 
-// GetPorts gets a given header value and parses its ports.
-func (ht HeaderTransport) GetPorts(key string) (int, int) {
-	val := ht.GetValue(key)
+// Ports gets a given header value and parses its ports.
+func (ht HeaderTransport) Ports(key string) (int, int) {
+	val := ht.Value(key)
 	if val == "" {
 		return 0, 0
 	}
