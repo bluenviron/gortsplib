@@ -112,7 +112,7 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 
 	// insert session
 	if c.session != "" {
-		req.Header["Session"] = []string{c.session}
+		req.Header["Session"] = HeaderValue{c.session}
 	}
 
 	// insert auth
@@ -129,7 +129,7 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 
 	// insert cseq
 	c.curCSeq += 1
-	req.Header["CSeq"] = []string{strconv.FormatInt(int64(c.curCSeq), 10)}
+	req.Header["CSeq"] = HeaderValue{strconv.FormatInt(int64(c.curCSeq), 10)}
 
 	c.conf.Conn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
 	err := req.write(c.bw)
@@ -148,8 +148,8 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	}
 
 	// get session from response
-	if sxRaw, ok := res.Header["Session"]; ok && len(sxRaw) == 1 {
-		sx, err := ReadHeaderSession(sxRaw[0])
+	if v, ok := res.Header["Session"]; ok {
+		sx, err := ReadHeaderSession(v)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse session header: %s", err)
 		}
@@ -301,7 +301,7 @@ func (c *ConnClient) setup(u *url.URL, media *sdp.MediaDescription, transport []
 		Method: SETUP,
 		Url:    u,
 		Header: Header{
-			"Transport": []string{strings.Join(transport, ";")},
+			"Transport": HeaderValue{strings.Join(transport, ";")},
 		},
 	})
 	if err != nil {
@@ -329,12 +329,11 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 		return 0, 0, nil, err
 	}
 
-	tsRaw, ok := res.Header["Transport"]
-	if !ok || len(tsRaw) != 1 {
-		return 0, 0, nil, fmt.Errorf("SETUP: transport header not provided")
+	th, err := ReadHeaderTransport(res.Header["Transport"])
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("SETUP: transport header: %s", err)
 	}
 
-	th := ReadHeaderTransport(tsRaw[0])
 	rtpServerPort, rtcpServerPort := th.GetPorts("server_port")
 	if rtpServerPort == 0 {
 		return 0, 0, nil, fmt.Errorf("SETUP: server ports not provided")
@@ -357,15 +356,14 @@ func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
 		return nil, err
 	}
 
-	tsRaw, ok := res.Header["Transport"]
-	if !ok || len(tsRaw) != 1 {
-		return nil, fmt.Errorf("SETUP: transport header not provided")
+	th, err := ReadHeaderTransport(res.Header["Transport"])
+	if err != nil {
+		return nil, fmt.Errorf("SETUP: transport header: %s", err)
 	}
-	th := ReadHeaderTransport(tsRaw[0])
 
-	_, ok = th[interleaved]
+	_, ok := th[interleaved]
 	if !ok {
-		return nil, fmt.Errorf("SETUP: transport header does not have %s (%s)", interleaved, tsRaw[0])
+		return nil, fmt.Errorf("SETUP: transport header does not have %s (%s)", interleaved, res.Header["Transport"])
 	}
 
 	return res, nil

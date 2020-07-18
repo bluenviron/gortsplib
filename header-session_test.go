@@ -7,20 +7,20 @@ import (
 )
 
 var casesHeaderSession = []struct {
-	name string
-	byts string
-	hs   *HeaderSession
+	name  string
+	value HeaderValue
+	hs    *HeaderSession
 }{
 	{
 		"base",
-		`A3eqwsafq3rFASqew`,
+		HeaderValue{`A3eqwsafq3rFASqew`},
 		&HeaderSession{
 			Session: "A3eqwsafq3rFASqew",
 		},
 	},
 	{
 		"with timeout",
-		`A3eqwsafq3rFASqew;timeout=47`,
+		HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
 		&HeaderSession{
 			Session: "A3eqwsafq3rFASqew",
 			Timeout: func() *uint {
@@ -31,7 +31,7 @@ var casesHeaderSession = []struct {
 	},
 	{
 		"with timeout and space",
-		`A3eqwsafq3rFASqew; timeout=47`,
+		HeaderValue{`A3eqwsafq3rFASqew; timeout=47`},
 		&HeaderSession{
 			Session: "A3eqwsafq3rFASqew",
 			Timeout: func() *uint {
@@ -45,7 +45,7 @@ var casesHeaderSession = []struct {
 func TestHeaderSession(t *testing.T) {
 	for _, c := range casesHeaderSession {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadHeaderSession(c.byts)
+			req, err := ReadHeaderSession(c.value)
 			require.NoError(t, err)
 			require.Equal(t, c.hs, req)
 		})

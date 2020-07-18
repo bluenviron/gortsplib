@@ -24,8 +24,8 @@ var casesResponse = []struct {
 			StatusCode:    StatusOK,
 			StatusMessage: "OK",
 			Header: Header{
-				"CSeq":   []string{"1"},
-				"Public": []string{"DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE"},
+				"CSeq":   HeaderValue{"1"},
+				"Public": HeaderValue{"DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE"},
 			},
 		},
 	},
@@ -43,13 +43,13 @@ var casesResponse = []struct {
 			StatusCode:    StatusOK,
 			StatusMessage: "OK",
 			Header: Header{
-				"CSeq":    []string{"2"},
-				"Session": []string{"645252166"},
-				"WWW-Authenticate": []string{
+				"CSeq":    HeaderValue{"2"},
+				"Session": HeaderValue{"645252166"},
+				"WWW-Authenticate": HeaderValue{
 					"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"",
 					"Basic realm=\"4419b63f5e51\"",
 				},
-				"Date": []string{"Sat, Aug 16 2014 02:22:28 GMT"},
+				"Date": HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
 			},
 		},
 	},
@@ -82,10 +82,10 @@ var casesResponse = []struct {
 			StatusCode:    200,
 			StatusMessage: "OK",
 			Header: Header{
-				"Content-Base":   []string{"rtsp://example.com/media.mp4"},
-				"Content-Length": []string{"444"},
-				"Content-Type":   []string{"application/sdp"},
-				"CSeq":           []string{"2"},
+				"Content-Base":   HeaderValue{"rtsp://example.com/media.mp4"},
+				"Content-Length": HeaderValue{"444"},
+				"Content-Type":   HeaderValue{"application/sdp"},
+				"CSeq":           HeaderValue{"2"},
 			},
 			Content: []byte("m=video 0 RTP/AVP 96\n" +
 				"a=control:streamid=0\n" +
@@ -135,13 +135,13 @@ func TestResponseWriteStatusAutofill(t *testing.T) {
 	res := &Response{
 		StatusCode: StatusMethodNotAllowed,
 		Header: Header{
-			"CSeq":    []string{"2"},
-			"Session": []string{"645252166"},
-			"WWW-Authenticate": []string{
+			"CSeq":    HeaderValue{"2"},
+			"Session": HeaderValue{"645252166"},
+			"WWW-Authenticate": HeaderValue{
 				"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"",
 				"Basic realm=\"4419b63f5e51\"",
 			},
-			"Date": []string{"Sat, Aug 16 2014 02:22:28 GMT"},
+			"Date": HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
 		},
 	}
 	byts := []byte("RTSP/1.0 405 Method Not Allowed\r\n" +

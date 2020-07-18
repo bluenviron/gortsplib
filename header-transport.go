@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -9,12 +10,21 @@ import (
 type HeaderTransport map[string]struct{}
 
 // ReadHeaderTransport parses a Transport header.
-func ReadHeaderTransport(in string) HeaderTransport {
+func ReadHeaderTransport(v HeaderValue) (HeaderTransport, error) {
+	if len(v) == 0 {
+		return nil, fmt.Errorf("value not provided")
+	}
+
+	if len(v) > 1 {
+		return nil, fmt.Errorf("value provided multiple times (%v)", v)
+	}
+
 	ht := make(map[string]struct{})
-	for _, t := range strings.Split(in, ";") {
+	for _, t := range strings.Split(v[0], ";") {
 		ht[t] = struct{}{}
 	}
-	return ht
+
+	return ht, nil
 }
 
 // GetValue gets a value from the header.

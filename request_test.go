@@ -25,9 +25,9 @@ var casesRequest = []struct {
 			Method: "OPTIONS",
 			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
-				"CSeq":          []string{"1"},
-				"Require":       []string{"implicit-play"},
-				"Proxy-Require": []string{"gzipped-messages"},
+				"CSeq":          HeaderValue{"1"},
+				"Require":       HeaderValue{"implicit-play"},
+				"Proxy-Require": HeaderValue{"gzipped-messages"},
 			},
 		},
 	},
@@ -40,7 +40,7 @@ var casesRequest = []struct {
 			Method: "DESCRIBE",
 			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
-				"CSeq": []string{"2"},
+				"CSeq": HeaderValue{"2"},
 			},
 		},
 	},
@@ -68,11 +68,11 @@ var casesRequest = []struct {
 			Method: "ANNOUNCE",
 			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
-				"CSeq":           []string{"7"},
-				"Date":           []string{"23 Jan 1997 15:35:06 GMT"},
-				"Session":        []string{"12345678"},
-				"Content-Type":   []string{"application/sdp"},
-				"Content-Length": []string{"306"},
+				"CSeq":           HeaderValue{"7"},
+				"Date":           HeaderValue{"23 Jan 1997 15:35:06 GMT"},
+				"Session":        HeaderValue{"12345678"},
+				"Content-Type":   HeaderValue{"application/sdp"},
+				"Content-Length": HeaderValue{"306"},
 			},
 			Content: []byte("v=0\n" +
 				"o=mhandley 2890844526 2890845468 IN IP4 126.16.64.4\n" +
@@ -102,10 +102,10 @@ var casesRequest = []struct {
 			Method: "GET_PARAMETER",
 			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
-				"CSeq":           []string{"9"},
-				"Content-Type":   []string{"text/parameters"},
-				"Session":        []string{"12345678"},
-				"Content-Length": []string{"24"},
+				"CSeq":           HeaderValue{"9"},
+				"Content-Type":   HeaderValue{"text/parameters"},
+				"Session":        HeaderValue{"12345678"},
+				"Content-Length": HeaderValue{"24"},
 			},
 			Content: []byte("packets_received\n" +
 				"jitter\n",

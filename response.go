@@ -198,7 +198,7 @@ func (res *Response) write(bw *bufio.Writer) error {
 	}
 
 	if len(res.Content) != 0 {
-		res.Header["Content-Length"] = []string{strconv.FormatInt(int64(len(res.Content)), 10)}
+		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Content)), 10)}
 	}
 
 	err = res.Header.write(bw)

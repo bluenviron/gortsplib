@@ -13,8 +13,16 @@ type HeaderSession struct {
 }
 
 // ReadHeaderSession parses a Session header.
-func ReadHeaderSession(in string) (*HeaderSession, error) {
-	parts := strings.Split(in, ";")
+func ReadHeaderSession(v HeaderValue) (*HeaderSession, error) {
+	if len(v) == 0 {
+		return nil, fmt.Errorf("value not provided")
+	}
+
+	if len(v) > 1 {
+		return nil, fmt.Errorf("value provided multiple times (%v)", v)
+	}
+
+	parts := strings.Split(v[0], ";")
 	if len(parts) == 0 {
 		return nil, fmt.Errorf("invalid value")
 	}

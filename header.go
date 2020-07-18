@@ -28,8 +28,11 @@ func headerKeyNormalize(in string) string {
 	return http.CanonicalHeaderKey(in)
 }
 
+// HeaderValue is an header value.
+type HeaderValue []string
+
 // Header is a RTSP reader, present in both Requests and Responses.
-type Header map[string][]string
+type Header map[string]HeaderValue
 
 func headerRead(rb *bufio.Reader) (Header, error) {
 	h := make(Header)

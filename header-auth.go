@@ -16,23 +16,33 @@ type HeaderAuth struct {
 var regHeaderAuthKeyValue = regexp.MustCompile("^([a-z]+)=(\"(.*?)\"|([a-zA-Z0-9]+))(, *|$)")
 
 // ReadHeaderAuth parses an Authenticate or a WWW-Authenticate header.
-func ReadHeaderAuth(in string) (*HeaderAuth, error) {
+func ReadHeaderAuth(v HeaderValue) (*HeaderAuth, error) {
+	if len(v) == 0 {
+		return nil, fmt.Errorf("value not provided")
+	}
+
+	if len(v) > 1 {
+		return nil, fmt.Errorf("value provided multiple times (%v)", v)
+	}
+
 	ha := &HeaderAuth{
 		Values: make(map[string]string),
 	}
 
-	i := strings.IndexByte(in, ' ')
-	if i < 0 {
-		return nil, fmt.Errorf("unable to find prefix (%s)", in)
-	}
-	ha.Prefix, in = in[:i], in[i+1:]
+	v0 := v[0]
 
-	for len(in) > 0 {
-		m := regHeaderAuthKeyValue.FindStringSubmatch(in)
+	i := strings.IndexByte(v[0], ' ')
+	if i < 0 {
+		return nil, fmt.Errorf("unable to find prefix (%s)", v0)
+	}
+	ha.Prefix, v0 = v0[:i], v0[i+1:]
+
+	for len(v0) > 0 {
+		m := regHeaderAuthKeyValue.FindStringSubmatch(v0)
 		if m == nil {
-			return nil, fmt.Errorf("unable to parse key-value (%s)", in)
+			return nil, fmt.Errorf("unable to parse key-value (%s)", v0)
 		}
-		in = in[len(m[0]):]
+		v0 = v0[len(m[0]):]
 
 		m[2] = strings.TrimPrefix(m[2], "\"")
 		m[2] = strings.TrimSuffix(m[2], "\"")
@@ -43,7 +53,7 @@ func ReadHeaderAuth(in string) (*HeaderAuth, error) {
 }
 
 // Write encodes an Authenticate or a WWW-Authenticate header.
-func (ha *HeaderAuth) Write() string {
+func (ha *HeaderAuth) Write() HeaderValue {
 	ret := ha.Prefix + " "
 
 	// always put realm first, otherwise VLC does not send back the response
@@ -64,5 +74,5 @@ func (ha *HeaderAuth) Write() string {
 	}
 	ret += strings.Join(tmp, ", ")
 
-	return ret
+	return HeaderValue{ret}
 }

@@ -55,8 +55,8 @@ func NewAuthServer(user string, pass string, methods []AuthMethod) *AuthServer {
 }
 
 // GenerateHeader generates the WWW-Authenticate header needed by a client to log in.
-func (as *AuthServer) GenerateHeader() []string {
-	var ret []string
+func (as *AuthServer) GenerateHeader() HeaderValue {
+	var ret HeaderValue
 	for _, m := range as.methods {
 		switch m {
 		case Basic:
@@ -65,7 +65,7 @@ func (as *AuthServer) GenerateHeader() []string {
 				Values: map[string]string{
 					"realm": as.realm,
 				},
-			}).Write())
+			}).Write()...)
 
 		case Digest:
 			ret = append(ret, (&HeaderAuth{
@@ -74,7 +74,7 @@ func (as *AuthServer) GenerateHeader() []string {
 					"realm": as.realm,
 					"nonce": as.nonce,
 				},
-			}).Write())
+			}).Write()...)
 		}
 	}
 	return ret
@@ -82,18 +82,18 @@ func (as *AuthServer) GenerateHeader() []string {
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header provided by GenerateHeader().
-func (as *AuthServer) ValidateHeader(header []string, method Method, ur *url.URL) error {
-	if len(header) == 0 {
+func (as *AuthServer) ValidateHeader(v HeaderValue, method Method, ur *url.URL) error {
+	if len(v) == 0 {
 		return fmt.Errorf("authorization header not provided")
 	}
-	if len(header) > 1 {
+	if len(v) > 1 {
 		return fmt.Errorf("authorization header provided multiple times")
 	}
 
-	head := header[0]
+	v0 := v[0]
 
-	if strings.HasPrefix(head, "Basic ") {
-		inResponse := head[len("Basic "):]
+	if strings.HasPrefix(v0, "Basic ") {
+		inResponse := v0[len("Basic "):]
 
 		response := base64.StdEncoding.EncodeToString([]byte(as.user + ":" + as.pass))
 
@@ -101,8 +101,8 @@ func (as *AuthServer) ValidateHeader(header []string, method Method, ur *url.URL
 			return fmt.Errorf("wrong response")
 		}
 
-	} else if strings.HasPrefix(head, "Digest ") {
-		auth, err := ReadHeaderAuth(head)
+	} else if strings.HasPrefix(v0, "Digest ") {
+		auth, err := ReadHeaderAuth(HeaderValue{v0})
 		if err != nil {
 			return err
 		}
@@ -191,18 +191,17 @@ type authClient struct {
 
 // newAuthClient allocates an authClient.
 // header is the WWW-Authenticate header provided by the server.
-func newAuthClient(header []string, user string, pass string) (*authClient, error) {
+func newAuthClient(v HeaderValue, user string, pass string) (*authClient, error) {
 	// prefer digest
-	headerAuthDigest := func() string {
-		for _, v := range header {
-			if strings.HasPrefix(v, "Digest ") {
-				return v
+	if headerAuthDigest := func() string {
+		for _, vi := range v {
+			if strings.HasPrefix(vi, "Digest ") {
+				return vi
 			}
 		}
 		return ""
-	}()
-	if headerAuthDigest != "" {
-		auth, err := ReadHeaderAuth(headerAuthDigest)
+	}(); headerAuthDigest != "" {
+		auth, err := ReadHeaderAuth(HeaderValue{headerAuthDigest})
 		if err != nil {
 			return nil, err
 		}
@@ -226,16 +225,15 @@ func newAuthClient(header []string, user string, pass string) (*authClient, erro
 		}, nil
 	}
 
-	headerAuthBasic := func() string {
-		for _, v := range header {
-			if strings.HasPrefix(v, "Basic ") {
-				return v
+	if headerAuthBasic := func() string {
+		for _, vi := range v {
+			if strings.HasPrefix(vi, "Basic ") {
+				return vi
 			}
 		}
 		return ""
-	}()
-	if headerAuthBasic != "" {
-		auth, err := ReadHeaderAuth(headerAuthBasic)
+	}(); headerAuthBasic != "" {
+		auth, err := ReadHeaderAuth(HeaderValue{headerAuthBasic})
 		if err != nil {
 			return nil, err
 		}
@@ -258,18 +256,18 @@ func newAuthClient(header []string, user string, pass string) (*authClient, erro
 
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
 // the given method and url.
-func (ac *authClient) GenerateHeader(method Method, ur *url.URL) []string {
+func (ac *authClient) GenerateHeader(method Method, ur *url.URL) HeaderValue {
 	switch ac.method {
 	case Basic:
 		response := base64.StdEncoding.EncodeToString([]byte(ac.user + ":" + ac.pass))
 
-		return []string{"Basic " + response}
+		return HeaderValue{"Basic " + response}
 
 	case Digest:
 		response := md5Hex(md5Hex(ac.user+":"+ac.realm+":"+ac.pass) + ":" +
 			ac.nonce + ":" + md5Hex(string(method)+":"+ur.String()))
 
-		return []string{(&HeaderAuth{
+		return (&HeaderAuth{
 			Prefix: "Digest",
 			Values: map[string]string{
 				"username": ac.user,
@@ -278,7 +276,7 @@ func (ac *authClient) GenerateHeader(method Method, ur *url.URL) []string {
 				"uri":      ur.String(),
 				"response": response,
 			},
-		}).Write()}
+		}).Write()
 	}
 
 	return nil

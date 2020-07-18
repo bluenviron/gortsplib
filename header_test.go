@@ -23,8 +23,8 @@ var casesHeader = []struct {
 			"Require: implicit-play\r\n" +
 			"\r\n"),
 		Header{
-			"Require":       []string{"implicit-play"},
-			"Proxy-Require": []string{"gzipped-messages"},
+			"Require":       HeaderValue{"implicit-play"},
+			"Proxy-Require": HeaderValue{"gzipped-messages"},
 		},
 	},
 	{
@@ -36,7 +36,7 @@ var casesHeader = []struct {
 			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
 			"\r\n"),
 		Header{
-			"WWW-Authenticate": []string{
+			"WWW-Authenticate": HeaderValue{
 				`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`,
 				`Basic realm="4419b63f5e51"`,
 			},
@@ -49,7 +49,7 @@ var casesHeader = []struct {
 		[]byte("CSeq: 2\r\n" +
 			"\r\n"),
 		Header{
-			"CSeq": []string{"2"},
+			"CSeq": HeaderValue{"2"},
 		},
 	},
 	{
@@ -59,7 +59,7 @@ var casesHeader = []struct {
 		[]byte("CSeq: 2\r\n" +
 			"\r\n"),
 		Header{
-			"CSeq": []string{"2"},
+			"CSeq": HeaderValue{"2"},
 		},
 	},
 	{
@@ -71,8 +71,8 @@ var casesHeader = []struct {
 			"Content-Type: testing\r\n" +
 			"\r\n"),
 		Header{
-			"Content-Length": []string{"value"},
-			"Content-Type":   []string{"testing"},
+			"Content-Length": HeaderValue{"value"},
+			"Content-Type":   HeaderValue{"testing"},
 		},
 	},
 	{
@@ -84,8 +84,8 @@ var casesHeader = []struct {
 			"WWW-Authenticate: value\r\n" +
 			"\r\n"),
 		Header{
-			"CSeq":             []string{"value"},
-			"WWW-Authenticate": []string{"value"},
+			"CSeq":             HeaderValue{"value"},
+			"WWW-Authenticate": HeaderValue{"value"},
 		},
 	},
 }
