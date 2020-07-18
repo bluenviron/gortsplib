@@ -63,7 +63,7 @@ var casesHeaderAuth = []struct {
 		},
 	},
 	{
-		"digest response 1",
+		"digest response generic",
 		`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`,
 		`Digest realm="bb", nonce="cc", response="ee", uri="dd", username="aa"`,
 		&HeaderAuth{
@@ -89,6 +89,21 @@ var casesHeaderAuth = []struct {
 				"nonce":    "5d17cd12b9fa8a85ac5ceef0926ea5a6",
 				"uri":      "rtsp://localhost:8554/mystream",
 				"response": "c072ae90eb4a27f4cdcb90d62266b2a1",
+			},
+		},
+	},
+	{
+		"digest response with no spaces and additional fields",
+		`Digest realm="Please log in with a valid username",nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE,algorithm=MD5`,
+		`Digest realm="Please log in with a valid username", algorithm="MD5", nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE"`,
+		&HeaderAuth{
+			Prefix: "Digest",
+			Values: map[string]string{
+				"realm":     "Please log in with a valid username",
+				"nonce":     "752a62306daf32b401a41004555c7663",
+				"opaque":    "",
+				"stale":     "FALSE",
+				"algorithm": "MD5",
 			},
 		},
 	},
