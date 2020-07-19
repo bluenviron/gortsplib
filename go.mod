@@ -1,6 +1,6 @@
 module github.com/aler9/gortsplib
 
-go 1.13
+go 1.12
 
 require (
 	github.com/pion/rtcp v1.2.3
