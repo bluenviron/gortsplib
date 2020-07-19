@@ -5,6 +5,7 @@ import (
 	"strconv"
 )
 
+// ConnClientUdpListener is a UDP listener created by SetupUDP() to receive UDP frames.
 type ConnClientUdpListener struct {
 	c             *ConnClient
 	pc            net.PacketConn
@@ -28,10 +29,12 @@ func newConnClientUdpListener(c *ConnClient, port int, trackId int, streamType S
 	}, nil
 }
 
+// Close closes the listener.
 func (l *ConnClientUdpListener) Close() {
 	l.pc.Close()
 }
 
+// Read reads a frame from the publisher.
 func (l *ConnClientUdpListener) Read(buf []byte) (int, error) {
 	for {
 		n, addr, err := l.pc.ReadFrom(buf)

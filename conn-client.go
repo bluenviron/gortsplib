@@ -95,7 +95,7 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 	}, nil
 }
 
-// Close closes all the ConnClient resources
+// Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
 	close(c.receiverReportTerminate)
 	<-c.receiverReportDone
@@ -113,6 +113,11 @@ func (c *ConnClient) Close() error {
 	}
 
 	return c.Close()
+}
+
+// NetConn returns the underlying net.Conn.
+func (c *ConnClient) NetConn() net.Conn {
+	return c.nconn
 }
 
 // ReadFrame reads an InterleavedFrame.
