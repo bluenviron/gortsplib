@@ -51,7 +51,8 @@ type Request struct {
 	SkipResponse bool
 }
 
-func readRequest(rb *bufio.Reader) (*Request, error) {
+// ReadRequest reads a request from a buffered reader.
+func ReadRequest(rb *bufio.Reader) (*Request, error) {
 	req := &Request{}
 
 	byts, err := readBytesLimited(rb, ' ', requestMaxLethodLength)
@@ -112,7 +113,8 @@ func readRequest(rb *bufio.Reader) (*Request, error) {
 	return req, nil
 }
 
-func (req *Request) write(bw *bufio.Writer) error {
+// Write writes a request into a buffered writer.
+func (req *Request) Write(bw *bufio.Writer) error {
 	// remove credentials
 	u := &url.URL{
 		Scheme:   req.Url.Scheme,

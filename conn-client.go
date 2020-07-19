@@ -101,7 +101,7 @@ func (c *ConnClient) ReadFrameOrResponse(frame *InterleavedFrame) (interface{}, 
 		return frame, err
 	}
 
-	return readResponse(c.br)
+	return ReadResponse(c.br)
 }
 
 // Do writes a Request and reads a Response.
@@ -132,7 +132,7 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	req.Header["CSeq"] = HeaderValue{strconv.FormatInt(int64(c.curCSeq), 10)}
 
 	c.conf.Conn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
-	err := req.write(c.bw)
+	err := req.Write(c.bw)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	}
 
 	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	res, err := readResponse(c.br)
+	res, err := ReadResponse(c.br)
 	if err != nil {
 		return nil, err
 	}

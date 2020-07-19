@@ -111,7 +111,7 @@ var casesResponse = []struct {
 func TestResponseRead(t *testing.T) {
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
-			res, err := readResponse(bufio.NewReader(bytes.NewBuffer(c.byts)))
+			res, err := ReadResponse(bufio.NewReader(bytes.NewBuffer(c.byts)))
 			require.NoError(t, err)
 			require.Equal(t, c.res, res)
 		})
@@ -123,7 +123,7 @@ func TestResponseWrite(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			bw := bufio.NewWriter(&buf)
-			err := c.res.write(bw)
+			err := c.res.Write(bw)
 			require.NoError(t, err)
 			// do NOT call flush(), write() must have already done it
 			require.Equal(t, c.byts, buf.Bytes())
@@ -155,7 +155,7 @@ func TestResponseWriteStatusAutofill(t *testing.T) {
 
 	var buf bytes.Buffer
 	bw := bufio.NewWriter(&buf)
-	err := res.write(bw)
+	err := res.Write(bw)
 	require.NoError(t, err)
 	require.Equal(t, byts, buf.Bytes())
 }

@@ -117,7 +117,7 @@ var casesRequest = []struct {
 func TestRequestRead(t *testing.T) {
 	for _, c := range casesRequest {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := readRequest(bufio.NewReader(bytes.NewBuffer(c.byts)))
+			req, err := ReadRequest(bufio.NewReader(bytes.NewBuffer(c.byts)))
 			require.NoError(t, err)
 			require.Equal(t, c.req, req)
 		})
@@ -129,7 +129,7 @@ func TestRequestWrite(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			bw := bufio.NewWriter(&buf)
-			err := c.req.write(bw)
+			err := c.req.Write(bw)
 			require.NoError(t, err)
 			// do NOT call flush(), write() must have already done it
 			require.Equal(t, c.byts, buf.Bytes())

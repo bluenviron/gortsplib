@@ -56,7 +56,7 @@ func (s *ConnServer) NetConn() net.Conn {
 // ReadRequest reads a Request.
 func (s *ConnServer) ReadRequest() (*Request, error) {
 	s.conf.Conn.SetReadDeadline(time.Time{}) // disable deadline
-	return readRequest(s.br)
+	return ReadRequest(s.br)
 }
 
 // ReadFrameOrRequest reads an InterleavedFrame or a Request.
@@ -76,13 +76,13 @@ func (s *ConnServer) ReadFrameOrRequest(frame *InterleavedFrame) (interface{}, e
 		return frame, err
 	}
 
-	return readRequest(s.br)
+	return ReadRequest(s.br)
 }
 
-// WriteResponse writes a response.
+// WriteResponse writes a Response.
 func (s *ConnServer) WriteResponse(res *Response) error {
 	s.conf.Conn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
-	return res.write(s.bw)
+	return res.Write(s.bw)
 }
 
 // WriteFrame writes an InterleavedFrame.

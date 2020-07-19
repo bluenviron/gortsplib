@@ -132,7 +132,8 @@ type Response struct {
 	Content []byte
 }
 
-func readResponse(rb *bufio.Reader) (*Response, error) {
+// ReadResponse reads a response from a buffered reader.
+func ReadResponse(rb *bufio.Reader) (*Response, error) {
 	res := &Response{}
 
 	byts, err := readBytesLimited(rb, ' ', 255)
@@ -185,7 +186,8 @@ func readResponse(rb *bufio.Reader) (*Response, error) {
 	return res, nil
 }
 
-func (res *Response) write(bw *bufio.Writer) error {
+// Write writes a Response into a buffered writer.
+func (res *Response) Write(bw *bufio.Writer) error {
 	if res.StatusMessage == "" {
 		if status, ok := statusMessages[res.StatusCode]; ok {
 			res.StatusMessage = status
