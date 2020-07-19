@@ -4,9 +4,7 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"net/url"
-	"time"
 
 	"github.com/aler9/gortsplib"
 )
@@ -17,42 +15,42 @@ func main() {
 		panic(err)
 	}
 
-	conn, err := net.DialTimeout("tcp", u.Host, 5*time.Second)
+	conn, err := gortsplib.NewConnClient(gortsplib.ConnClientConf{Host: u.Host})
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
-	rconn := gortsplib.NewConnClient(gortsplib.ConnClientConf{Conn: conn})
-
-	_, err = rconn.Options(u)
+	_, err = conn.Options(u)
 	if err != nil {
 		panic(err)
 	}
 
-	tracks, _, err := rconn.Describe(u)
+	tracks, _, err := conn.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
 	for _, track := range tracks {
-		_, err := rconn.SetupTcp(u, track)
+		_, err := conn.SetupTcp(u, track)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	_, err = rconn.Play(u)
+	_, err = conn.Play(u)
 	if err != nil {
 		panic(err)
 	}
 
 	frame := &gortsplib.InterleavedFrame{Content: make([]byte, 0, 512*1024)}
+
 	for {
 		frame.Content = frame.Content[:cap(frame.Content)]
-		err := rconn.ReadFrame(frame)
+
+		err := conn.ReadFrame(frame)
 		if err != nil {
-			fmt.Println("connection is closed")
+			fmt.Println("connection is closed (%s)", err)
 			break
 		}
 

@@ -40,7 +40,7 @@ type rtcpReceiverEventTerminate struct{}
 
 func (rtcpReceiverEventTerminate) isRtpReceiverEvent() {}
 
-// RtcpReceiver is an object that helps to build RTCP receiver reports from
+// RtcpReceiver is an object that helps building RTCP receiver reports, by parsing
 // incoming frames.
 type RtcpReceiver struct {
 	events chan rtcpReceiverEvent

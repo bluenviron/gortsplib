@@ -4,10 +4,8 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"net/url"
-	"strconv"
-	"time"
+	"sync"
 
 	"github.com/aler9/gortsplib"
 )
@@ -18,84 +16,87 @@ func main() {
 		panic(err)
 	}
 
-	conn, err := net.DialTimeout("tcp", u.Host, 5*time.Second)
+	conn, err := gortsplib.NewConnClient(gortsplib.ConnClientConf{Host: u.Host})
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
-	rconn := gortsplib.NewConnClient(gortsplib.ConnClientConf{Conn: conn})
-
-	_, err = rconn.Options(u)
+	_, err = conn.Options(u)
 	if err != nil {
 		panic(err)
 	}
 
-	tracks, _, err := rconn.Describe(u)
+	tracks, _, err := conn.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	var rtpListeners []net.PacketConn
-	var rtcpListeners []net.PacketConn
+	type trackListenerPair struct {
+		rtpl  *gortsplib.ConnClientUdpListener
+		rtcpl *gortsplib.ConnClientUdpListener
+	}
+	var listeners []*trackListenerPair
 
 	for _, track := range tracks {
-		rtpPort := 9000 + track.Id*2
-		rtpl, err := net.ListenPacket("udp", ":"+strconv.FormatInt(int64(rtpPort), 10))
+		rtpl, rtcpl, _, err := conn.SetupUdp(u, track, 9000+track.Id*2, 9001+track.Id*2)
 		if err != nil {
 			panic(err)
 		}
-		defer rtpl.Close()
-		rtpListeners = append(rtpListeners, rtpl)
 
-		rtcpPort := rtpPort + 1
-		rtcpl, err := net.ListenPacket("udp", ":"+strconv.FormatInt(int64(rtcpPort), 10))
-		if err != nil {
-			panic(err)
-		}
-		defer rtcpl.Close()
-		rtcpListeners = append(rtcpListeners, rtcpl)
-
-		_, _, _, err = rconn.SetupUdp(u, track, rtpPort, rtcpPort)
-		if err != nil {
-			panic(err)
-		}
+		listeners = append(listeners, &trackListenerPair{
+			rtpl:  rtpl,
+			rtcpl: rtcpl,
+		})
 	}
 
-	_, err = rconn.Play(u)
+	_, err = conn.Play(u)
 	if err != nil {
 		panic(err)
 	}
 
-	// receive RTP packets
-	for trackId, l := range rtpListeners {
-		go func(trackId int, l net.PacketConn) {
+	var wg sync.WaitGroup
+
+	for trackId, lp := range listeners {
+		wg.Add(2)
+
+		// receive RTP packets
+		go func(trackId int, l *gortsplib.ConnClientUdpListener) {
+			defer wg.Done()
+
 			buf := make([]byte, 2048)
 			for {
-				n, _, err := l.ReadFrom(buf)
+				n, err := l.Read(buf)
 				if err != nil {
 					break
 				}
 
 				fmt.Printf("packet from track %d, type RTP: %v\n", trackId, buf[:n])
 			}
-		}(trackId, l)
-	}
+		}(trackId, lp.rtpl)
 
-	// receive RTCP packets
-	for trackId, l := range rtcpListeners {
-		go func(trackId int, l net.PacketConn) {
+		// receive RTCP packets
+		go func(trackId int, l *gortsplib.ConnClientUdpListener) {
+			defer wg.Done()
+
 			buf := make([]byte, 2048)
 			for {
-				n, _, err := l.ReadFrom(buf)
+				n, err := l.Read(buf)
 				if err != nil {
 					break
 				}
 
 				fmt.Printf("packet from track %d, type RTCP: %v\n", trackId, buf[:n])
 			}
-		}(trackId, l)
+		}(trackId, lp.rtcpl)
 	}
 
-	panic(rconn.LoopUDP(u))
+	err = conn.LoopUDP(u)
+	fmt.Println("connection is closed (%s)", err)
+
+	for _, lp := range listeners {
+		lp.rtpl.Close()
+		lp.rtcpl.Close()
+	}
+	wg.Wait()
 }

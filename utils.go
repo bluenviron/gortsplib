@@ -15,11 +15,8 @@ const (
 type StreamProtocol int
 
 const (
-	// StreamProtocolInvalid is an invalid protocol
-	StreamProtocolInvalid StreamProtocol = iota
-
-	// StreamProtocolUdp means that the stream uses the UDP\ protocol
-	StreamProtocolUdp
+	// StreamProtocolUdp means that the stream uses the UDP protocol
+	StreamProtocolUdp StreamProtocol = iota
 
 	// StreamProtocolTcp means that the stream uses the TCP protocol
 	StreamProtocolTcp
@@ -38,7 +35,7 @@ type StreamType int
 
 const (
 	// StreamTypeRtp means that the stream contains RTP packets
-	StreamTypeRtp StreamType = iota + 1
+	StreamTypeRtp StreamType = iota
 
 	// StreamTypeRtcp means that the stream contains RTCP packets
 	StreamTypeRtcp
