@@ -112,7 +112,7 @@ func (c *ConnClient) Close() error {
 		l.Close()
 	}
 
-	return c.Close()
+	return c.nconn.Close()
 }
 
 // NetConn returns the underlying net.Conn.
