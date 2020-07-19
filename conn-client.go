@@ -83,22 +83,22 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 	}
 
 	return &ConnClient{
-		conf:                    conf,
-		nconn:                   nconn,
-		br:                      bufio.NewReaderSize(nconn, clientReadBufferSize),
-		bw:                      bufio.NewWriterSize(nconn, clientWriteBufferSize),
-		rtcpReceivers:           make(map[int]*RtcpReceiver),
-		rtpListeners:            make(map[int]*ConnClientUdpListener),
-		rtcpListeners:           make(map[int]*ConnClientUdpListener),
-		receiverReportTerminate: make(chan struct{}),
-		receiverReportDone:      make(chan struct{}),
+		conf:          conf,
+		nconn:         nconn,
+		br:            bufio.NewReaderSize(nconn, clientReadBufferSize),
+		bw:            bufio.NewWriterSize(nconn, clientWriteBufferSize),
+		rtcpReceivers: make(map[int]*RtcpReceiver),
+		rtpListeners:  make(map[int]*ConnClientUdpListener),
+		rtcpListeners: make(map[int]*ConnClientUdpListener),
 	}, nil
 }
 
 // Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
-	close(c.receiverReportTerminate)
-	<-c.receiverReportDone
+	if c.receiverReportTerminate != nil {
+		close(c.receiverReportTerminate)
+		<-c.receiverReportDone
+	}
 
 	for _, rr := range c.rtcpReceivers {
 		rr.Close()
@@ -496,6 +496,9 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	c.receiverReportTerminate = make(chan struct{})
+	c.receiverReportDone = make(chan struct{})
 
 	receiverReportTicker := time.NewTicker(clientReceiverReportPeriod)
 	go func() {
