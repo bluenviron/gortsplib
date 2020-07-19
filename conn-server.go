@@ -69,7 +69,7 @@ func (s *ConnServer) ReadFrameOrRequest(frame *InterleavedFrame) (interface{}, e
 	s.br.UnreadByte()
 
 	if b == interleavedFrameMagicByte {
-		err := frame.read(s.br)
+		err := frame.Read(s.br)
 		if err != nil {
 			return nil, err
 		}
@@ -88,5 +88,5 @@ func (s *ConnServer) WriteResponse(res *Response) error {
 // WriteFrame writes an InterleavedFrame.
 func (s *ConnServer) WriteFrame(frame *InterleavedFrame) error {
 	s.conf.Conn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
-	return frame.write(s.bw)
+	return frame.Write(s.bw)
 }

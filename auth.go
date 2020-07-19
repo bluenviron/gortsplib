@@ -84,7 +84,7 @@ func (as *AuthServer) GenerateHeader() HeaderValue {
 }
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
-// WWW-Authenticate header provided by GenerateHeader().
+// WWW-Authenticate header.
 func (as *AuthServer) ValidateHeader(v HeaderValue, method Method, ur *url.URL) error {
 	if len(v) == 0 {
 		return fmt.Errorf("authorization header not provided")

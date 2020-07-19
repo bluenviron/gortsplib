@@ -81,7 +81,7 @@ func (c *ConnClient) NetConn() net.Conn {
 // ReadFrame reads an InterleavedFrame.
 func (c *ConnClient) ReadFrame(frame *InterleavedFrame) error {
 	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	return frame.read(c.br)
+	return frame.Read(c.br)
 }
 
 // ReadFrameOrResponse reads an InterleavedFrame or a Response.
@@ -94,7 +94,7 @@ func (c *ConnClient) ReadFrameOrResponse(frame *InterleavedFrame) (interface{}, 
 	c.br.UnreadByte()
 
 	if b == interleavedFrameMagicByte {
-		err := frame.read(c.br)
+		err := frame.Read(c.br)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +175,7 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 // WriteFrame writes an InterleavedFrame.
 func (c *ConnClient) WriteFrame(frame *InterleavedFrame) error {
 	c.conf.Conn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
-	return frame.write(c.bw)
+	return frame.Write(c.bw)
 }
 
 // Options writes an OPTIONS request and reads a response, that contains

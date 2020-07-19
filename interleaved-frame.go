@@ -24,9 +24,10 @@ type InterleavedFrame struct {
 	Content []byte
 }
 
-func (f *InterleavedFrame) read(r io.Reader) error {
+// Read reads an interleaved frame from a buffered reader.
+func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 	var header [4]byte
-	_, err := io.ReadFull(r, header[:])
+	_, err := io.ReadFull(br, header[:])
 	if err != nil {
 		return err
 	}
@@ -52,14 +53,15 @@ func (f *InterleavedFrame) read(r io.Reader) error {
 
 	f.Content = f.Content[:framelen]
 
-	_, err = io.ReadFull(r, f.Content)
+	_, err = io.ReadFull(br, f.Content)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (f *InterleavedFrame) write(bw *bufio.Writer) error {
+// Write writes an InterleavedFrame into a buffered writer.
+func (f *InterleavedFrame) Write(bw *bufio.Writer) error {
 	// convert TrackId and StreamType into channel
 	channel := func() uint8 {
 		if f.StreamType == StreamTypeRtp {
