@@ -40,7 +40,7 @@ const (
 	// StreamTypeRtp means that the stream contains RTP packets
 	StreamTypeRtp StreamType = iota + 1
 
-	// StreamTypeRtp means that the stream contains RTCP packets
+	// StreamTypeRtcp means that the stream contains RTCP packets
 	StreamTypeRtcp
 )
 

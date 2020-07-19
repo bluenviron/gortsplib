@@ -67,21 +67,6 @@ func main() {
 		panic(err)
 	}
 
-	done := make(chan struct{})
-
-	// send periodic keepalive
-	go func() {
-		keepaliveTicker := time.NewTicker(30 * time.Second)
-		for range keepaliveTicker.C {
-			_, err = rconn.Options(u)
-			if err != nil {
-				fmt.Println("connection is closed")
-				close(done)
-				break
-			}
-		}
-	}()
-
 	// receive RTP packets
 	for trackId, l := range rtpListeners {
 		go func(trackId int, l net.PacketConn) {
@@ -112,5 +97,5 @@ func main() {
 		}(trackId, l)
 	}
 
-	<-done
+	panic(rconn.LoopUDP(u))
 }

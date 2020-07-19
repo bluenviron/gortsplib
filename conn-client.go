@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	clientReadBufferSize  = 4096
-	clientWriteBufferSize = 4096
+	clientReadBufferSize     = 4096
+	clientWriteBufferSize    = 4096
+	clientTcpKeepalivePeriod = 30 * time.Second
 )
 
 // Track is a track available in a certain URL.
@@ -400,6 +401,22 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 			}
 
 			return res, nil
+		}
+	}
+}
+
+// LoopUDP is called after setupping UDP tracks and calling Play(); it keeps
+// the TCP connection open through keepalives, and returns when the TCP
+// connection closes.
+func (c *ConnClient) LoopUDP(u *url.URL) (error) {
+	keepaliveTicker := time.NewTicker(clientTcpKeepalivePeriod)
+	defer keepaliveTicker.Stop()
+
+	for {
+		<- keepaliveTicker.C
+		_, err := c.Options(u)
+		if err != nil {
+			return err
 		}
 	}
 }
