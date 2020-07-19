@@ -13,9 +13,10 @@ const (
 	requestMaxProtocolLength = 128
 )
 
-// Method is a RTSP request method.
+// Method is the method of a RTSP request.
 type Method string
 
+// standard methods
 const (
 	ANNOUNCE      Method = "ANNOUNCE"
 	DESCRIBE      Method = "DESCRIBE"

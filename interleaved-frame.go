@@ -11,8 +11,8 @@ const (
 	interleavedFrameMagicByte = 0x24
 )
 
-// InterleavedFrame is an object that allows to send and receive binary data
-// within RTSP connections. It is used to send RTP and RTCP packets via TCP.
+// InterleavedFrame is a structure that allows to transfer binary frames
+// through RTSP TCP connections. It is used to send RTP and RTCP packets via TCP.
 type InterleavedFrame struct {
 	// track id
 	TrackId int

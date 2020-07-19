@@ -15,13 +15,13 @@ const (
 type StreamProtocol int
 
 const (
-	// invalid protocol
+	// StreamProtocolInvalid is an invalid protocol
 	StreamProtocolInvalid StreamProtocol = iota
 
-	// UDP protocol
+	// StreamProtocolUdp means that the stream uses the UDP\ protocol
 	StreamProtocolUdp
 
-	// TCP protocol
+	// StreamProtocolTcp means that the stream uses the TCP protocol
 	StreamProtocolTcp
 )
 
@@ -37,10 +37,10 @@ func (sp StreamProtocol) String() string {
 type StreamType int
 
 const (
-	// stream that contains RTP packets
+	// StreamTypeRtp means that the stream contains RTP packets
 	StreamTypeRtp StreamType = iota + 1
 
-	// stream that contains RTCP packets
+	// StreamTypeRtp means that the stream contains RTCP packets
 	StreamTypeRtcp
 )
 

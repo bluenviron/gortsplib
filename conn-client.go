@@ -316,7 +316,7 @@ func (c *ConnClient) setup(u *url.URL, media *sdp.MediaDescription, transport []
 }
 
 // SetupUdp writes a SETUP request, that means that we want to read
-// a track with given media, id and the UDP transport. It then reads a Response.
+// a given track with the UDP transport. It then reads a Response.
 func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 	rtcpPort int) (int, int, *Response, error) {
 
@@ -343,7 +343,7 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 }
 
 // SetupTcp writes a SETUP request, that means that we want to read
-// a track with given media, given id and the TCP transport. It then reads a Response.
+// a given track with the TCP transport. It then reads a Response.
 func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
 	interleaved := fmt.Sprintf("interleaved=%d-%d", (track.Id * 2), (track.Id*2)+1)
 
