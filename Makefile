@@ -21,7 +21,7 @@ endef
 
 mod-tidy:
 	docker run --rm -it -v $(PWD):/s $(BASE_IMAGE) \
-	sh -c "apk add git && cd /s && go get && go mod tidy"
+	sh -c "apk add git && cd /s && GOPROXY=direct go get && go mod tidy"
 
 format:
 	docker run --rm -it -v $(PWD):/s $(BASE_IMAGE) \

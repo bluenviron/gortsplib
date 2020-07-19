@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pion/sdp"
+	"github.com/aler9/sdp/v3"
 )
 
 const (
@@ -231,7 +231,7 @@ func (c *ConnClient) Describe(u *url.URL) ([]*Track, *Response, error) {
 	}
 
 	sdpd := &sdp.SessionDescription{}
-	err = sdpd.Unmarshal(string(res.Content))
+	err = sdpd.Unmarshal(res.Content)
 	if err != nil {
 		return nil, nil, err
 	}
