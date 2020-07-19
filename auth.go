@@ -20,7 +20,10 @@ func md5Hex(in string) string {
 type AuthMethod int
 
 const (
+	// basic authentication method
 	Basic AuthMethod = iota
+
+	// digest authentication method
 	Digest
 )
 

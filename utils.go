@@ -11,6 +11,51 @@ const (
 	rtspMaxContentLength = 4096
 )
 
+// StreamProtocol is the protocol of a stream
+type StreamProtocol int
+
+const (
+	// invalid protocol
+	StreamProtocolInvalid StreamProtocol = iota
+
+	// UDP protocol
+	StreamProtocolUdp
+
+	// TCP protocol
+	StreamProtocolTcp
+)
+
+// String implements fmt.Stringer
+func (sp StreamProtocol) String() string {
+	if sp == StreamProtocolUdp {
+		return "udp"
+	}
+	return "tcp"
+}
+
+// StreamType is the type of a stream.
+type StreamType int
+
+const (
+	// stream that contains RTP packets
+	StreamTypeRtp StreamType = iota + 1
+
+	// stream that contains RTCP packets
+	StreamTypeRtcp
+)
+
+// String implements fmt.Stringer
+func (st StreamType) String() string {
+	switch st {
+	case StreamTypeRtp:
+		return "RTP"
+
+	case StreamTypeRtcp:
+		return "RTCP"
+	}
+	return "UNKNOWN"
+}
+
 func readBytesLimited(rb *bufio.Reader, delim byte, n int) ([]byte, error) {
 	for i := 1; i <= n; i++ {
 		byts, err := rb.Peek(i)

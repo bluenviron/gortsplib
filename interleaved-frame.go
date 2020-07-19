@@ -11,28 +11,6 @@ const (
 	interleavedFrameMagicByte = 0x24
 )
 
-// StreamType is the type of a stream.
-type StreamType int
-
-const (
-	// StreamTypeRtp is a stream that contains RTP packets
-	StreamTypeRtp StreamType = iota
-
-	// StreamTypeRtcp is a stream that contains RTCP packets
-	StreamTypeRtcp
-)
-
-func (st StreamType) String() string {
-	switch st {
-	case StreamTypeRtp:
-		return "RTP"
-
-	case StreamTypeRtcp:
-		return "RTCP"
-	}
-	return "UNKNOWN"
-}
-
 // InterleavedFrame is an object that allows to send and receive binary data
 // within RTSP connections. It is used to send RTP and RTCP packets via TCP.
 type InterleavedFrame struct {

@@ -29,7 +29,7 @@ type Track struct {
 	// track id
 	Id int
 
-	// track codec and info in SDP
+	// track codec and info in SDP format
 	Media *sdp.MediaDescription
 }
 
