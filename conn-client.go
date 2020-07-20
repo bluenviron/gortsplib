@@ -42,7 +42,7 @@ type ConnClientConf struct {
 	Host string
 
 	// (optional) timeout for read requests.
-	// It defaults to 5 seconds
+	// It defaults to 10 seconds
 	ReadTimeout time.Duration
 
 	// (optional) timeout for write requests.
@@ -71,7 +71,7 @@ type ConnClient struct {
 // NewConnClient allocates a ConnClient. See ConnClientConf for the options.
 func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 	if conf.ReadTimeout == time.Duration(0) {
-		conf.ReadTimeout = 5 * time.Second
+		conf.ReadTimeout = 10 * time.Second
 	}
 	if conf.WriteTimeout == time.Duration(0) {
 		conf.WriteTimeout = 5 * time.Second
