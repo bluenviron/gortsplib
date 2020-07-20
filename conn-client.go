@@ -382,6 +382,7 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 
 	rtcpListener, err := newConnClientUdpListener(c, rtcpPort, track.Id, StreamTypeRtcp)
 	if err != nil {
+		rtpListener.Close()
 		return nil, nil, nil, err
 	}
 
@@ -391,16 +392,22 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 		fmt.Sprintf("client_port=%d-%d", rtpPort, rtcpPort),
 	})
 	if err != nil {
+		rtpListener.Close()
+		rtcpListener.Close()
 		return nil, nil, nil, err
 	}
 
 	th, err := ReadHeaderTransport(res.Header["Transport"])
 	if err != nil {
+		rtpListener.Close()
+		rtcpListener.Close()
 		return nil, nil, nil, fmt.Errorf("SETUP: transport header: %s", err)
 	}
 
 	rtpServerPort, rtcpServerPort := th.Ports("server_port")
 	if rtpServerPort == 0 {
+		rtpListener.Close()
+		rtcpListener.Close()
 		return nil, nil, nil, fmt.Errorf("SETUP: server ports not provided")
 	}
 
