@@ -84,20 +84,16 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 	if conf.WriteTimeout == time.Duration(0) {
 		conf.WriteTimeout = 5 * time.Second
 	}
+	if conf.DialTimeout == nil {
+		conf.DialTimeout = net.DialTimeout
+	}
+	if conf.ListenPacket == nil {
+		conf.ListenPacket = net.ListenPacket
+	}
 
-	var nconn net.Conn
-	var err error
-
-	if conf.DialTimeout != nil {
-		nconn, err = conf.DialTimeout("tcp", conf.Host, conf.ReadTimeout)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		nconn, err = net.DialTimeout("tcp", conf.Host, conf.ReadTimeout)
-		if err != nil {
-			return nil, err
-		}
+	nconn, err := conf.DialTimeout("tcp", conf.Host, conf.ReadTimeout)
+	if err != nil {
+		return nil, err
 	}
 
 	return &ConnClient{

@@ -16,19 +16,9 @@ type ConnClientUdpListener struct {
 }
 
 func newConnClientUdpListener(c *ConnClient, port int, trackId int, streamType StreamType) (*ConnClientUdpListener, error) {
-	var pc net.PacketConn
-	var err error
-
-	if c.conf.ListenPacket != nil {
-		pc, err = c.conf.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		pc, err = net.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
-		if err != nil {
-			return nil, err
-		}
+	pc, err := c.conf.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
+	if err != nil {
+		return nil, err
 	}
 
 	return &ConnClientUdpListener{
