@@ -559,10 +559,26 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 // the TCP connection open through keepalives, and returns when the TCP
 // connection closes.
 func (c *ConnClient) LoopUDP(u *url.URL) error {
+	// do a first keepalive before start reading
+	_, err := c.Do(&Request{
+		Method: OPTIONS,
+		Url: &url.URL{
+			Scheme: "rtsp",
+			Host:   u.Host,
+			User:   u.User,
+			Path:   "/",
+		},
+		SkipResponse: true,
+	})
+	if err != nil {
+		c.nconn.Close()
+		return err
+	}
+
 	readDone := make(chan error)
 	go func() {
 		for {
-			c.nconn.SetReadDeadline(time.Now().Add(clientUdpKeepalivePeriod * 2))
+			c.nconn.SetReadDeadline(time.Now().Add(clientUdpKeepalivePeriod))
 			_, err := ReadResponse(c.br)
 			if err != nil {
 				readDone <- err
