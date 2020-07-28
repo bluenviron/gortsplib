@@ -24,7 +24,7 @@ const (
 	clientWriteBufferSize      = 4096
 	clientReceiverReportPeriod = 10 * time.Second
 	clientUdpCheckStreamPeriod = 5 * time.Second
-	clientTcpKeepalivePeriod   = 30 * time.Second
+	clientUdpKeepalivePeriod   = 30 * time.Second
 )
 
 // Track is a track available in a certain URL.
@@ -244,17 +244,15 @@ func (c *ConnClient) WriteFrame(frame *InterleavedFrame) error {
 // the methods allowed by the server. Since this method is not implemented by
 // every RTSP server, the function does not fail if the returned code is StatusNotFound.
 func (c *ConnClient) Options(u *url.URL) (*Response, error) {
-	// strip path
-	u = &url.URL{
-		Scheme: "rtsp",
-		Host:   u.Host,
-		User:   u.User,
-		Path:   "/",
-	}
-
 	res, err := c.Do(&Request{
 		Method: OPTIONS,
-		Url:    u,
+		// strip path
+		Url: &url.URL{
+			Scheme: "rtsp",
+			Host:   u.Host,
+			User:   u.User,
+			Path:   "/",
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -561,7 +559,19 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 // the TCP connection open through keepalives, and returns when the TCP
 // connection closes.
 func (c *ConnClient) LoopUDP(u *url.URL) error {
-	keepaliveTicker := time.NewTicker(clientTcpKeepalivePeriod)
+	readDone := make(chan error)
+	go func() {
+		for {
+			c.nconn.SetReadDeadline(time.Now().Add(clientUdpKeepalivePeriod * 2))
+			_, err := ReadResponse(c.br)
+			if err != nil {
+				readDone <- err
+				return
+			}
+		}
+	}()
+
+	keepaliveTicker := time.NewTicker(clientUdpKeepalivePeriod)
 	defer keepaliveTicker.Stop()
 
 	checkStreamTicker := time.NewTicker(clientUdpCheckStreamPeriod)
@@ -569,15 +579,32 @@ func (c *ConnClient) LoopUDP(u *url.URL) error {
 
 	for {
 		select {
+		case err := <-readDone:
+			c.nconn.Close()
+			return err
+
 		case <-keepaliveTicker.C:
-			_, err := c.Options(u)
+			_, err := c.Do(&Request{
+				Method: OPTIONS,
+				Url: &url.URL{
+					Scheme: "rtsp",
+					Host:   u.Host,
+					User:   u.User,
+					Path:   "/",
+				},
+				SkipResponse: true,
+			})
 			if err != nil {
+				c.nconn.Close()
+				<-readDone
 				return err
 			}
 
 		case <-checkStreamTicker.C:
 			for trackId := range c.rtcpReceivers {
 				if time.Since(c.rtcpReceivers[trackId].LastFrameTime()) >= c.conf.ReadTimeout {
+					c.nconn.Close()
+					<-readDone
 					return fmt.Errorf("stream is dead")
 				}
 			}
