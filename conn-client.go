@@ -48,6 +48,12 @@ type ConnClientConf struct {
 	// (optional) timeout for write requests.
 	// It defaults to 5 seconds
 	WriteTimeout time.Duration
+
+	// (optional) allow for custom dialer
+	DialTimeoutFunc func(network, address string, timeout time.Duration) (net.Conn, error)
+
+	// (optional) allow for custom udp listener
+	ListenPacketFunc func(network, address string) (net.PacketConn, error)
 }
 
 // ConnClient is a client-side RTSP connection.
@@ -77,9 +83,19 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		conf.WriteTimeout = 5 * time.Second
 	}
 
-	nconn, err := net.DialTimeout("tcp", conf.Host, conf.ReadTimeout)
-	if err != nil {
-		return nil, err
+	var nconn net.Conn
+	var err error
+
+	if conf.DialTimeoutFunc != nil {
+		nconn, err = conf.DialTimeoutFunc("tcp", conf.Host, conf.ReadTimeout)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		nconn, err = net.DialTimeout("tcp", conf.Host, conf.ReadTimeout)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &ConnClient{
