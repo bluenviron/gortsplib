@@ -19,8 +19,8 @@ func newConnClientUdpListener(c *ConnClient, port int, trackId int, streamType S
 	var pc net.PacketConn
 	var err error
 
-	if c.conf.ListenPacketFunc != nil {
-		pc, err = c.conf.ListenPacketFunc("udp", ":"+strconv.FormatInt(int64(port), 10))
+	if c.conf.ListenPacket != nil {
+		pc, err = c.conf.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
 		if err != nil {
 			return nil, err
 		}
