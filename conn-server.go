@@ -16,11 +16,11 @@ type ConnServerConf struct {
 	// pre-existing TCP connection that will be wrapped
 	Conn net.Conn
 
-	// (optional) timeout for read requests.
+	// (optional) timeout of read operations.
 	// It defaults to 5 seconds
 	ReadTimeout time.Duration
 
-	// (optional) timeout for write requests.
+	// (optional) timeout of write operations.
 	// It defaults to 5 seconds
 	WriteTimeout time.Duration
 }

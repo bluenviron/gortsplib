@@ -41,11 +41,11 @@ type ConnClientConf struct {
 	// target address in format hostname:port
 	Host string
 
-	// (optional) timeout for read requests.
+	// (optional) timeout of read operations.
 	// It defaults to 10 seconds
 	ReadTimeout time.Duration
 
-	// (optional) timeout for write requests.
+	// (optional) timeout of write operations.
 	// It defaults to 5 seconds
 	WriteTimeout time.Duration
 
@@ -559,7 +559,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 // the TCP connection open through keepalives, and returns when the TCP
 // connection closes.
 func (c *ConnClient) LoopUDP(u *url.URL) error {
-	// do a first keepalive before start reading
+	// send a first keepalive before starting reading
 	_, err := c.Do(&Request{
 		Method: OPTIONS,
 		Url: &url.URL{
