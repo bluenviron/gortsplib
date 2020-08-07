@@ -25,6 +25,7 @@ const (
 	clientReceiverReportPeriod = 10 * time.Second
 	clientUdpCheckStreamPeriod = 5 * time.Second
 	clientUdpKeepalivePeriod   = 30 * time.Second
+	clientTcpReadBufferSize    = 128 * 1024
 )
 
 // Track is a track available in a certain URL.
@@ -491,7 +492,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 
 	res, err := func() (*Response, error) {
 		frame := &InterleavedFrame{
-			Content: make([]byte, 0, 512*1024),
+			Content: make([]byte, 0, clientTcpReadBufferSize),
 		}
 
 		// v4lrtspserver sends frames before the response.

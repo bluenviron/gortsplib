@@ -43,7 +43,7 @@ func main() {
 		panic(err)
 	}
 
-	frame := &gortsplib.InterleavedFrame{Content: make([]byte, 0, 512*1024)}
+	frame := &gortsplib.InterleavedFrame{Content: make([]byte, 0, 128*1024)}
 
 	for {
 		frame.Content = frame.Content[:cap(frame.Content)]
