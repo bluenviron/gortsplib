@@ -573,10 +573,10 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	return res, nil
 }
 
-// LoopUDP must be called after SetupUDP() and Play(); it keeps
+// LoopUdp must be called after SetupUDP() and Play(); it keeps
 // the TCP connection open through keepalives, and returns when the TCP
 // connection closes.
-func (c *ConnClient) LoopUDP(u *url.URL) error {
+func (c *ConnClient) LoopUdp(u *url.URL) error {
 	// send a first keepalive before starting reading
 	_, err := c.Do(&Request{
 		Method: OPTIONS,

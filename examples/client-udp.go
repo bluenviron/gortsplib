@@ -60,7 +60,7 @@ func main() {
 	for trackId, lp := range listeners {
 		wg.Add(2)
 
-		// receive RTP packets
+		// receive RTP frames
 		go func(trackId int, l *gortsplib.ConnClientUdpListener) {
 			defer wg.Done()
 
@@ -71,11 +71,11 @@ func main() {
 					break
 				}
 
-				fmt.Printf("packet from track %d, type RTP: %v\n", trackId, buf[:n])
+				fmt.Printf("frame from track %d, type RTP: %v\n", trackId, buf[:n])
 			}
 		}(trackId, lp.rtpl)
 
-		// receive RTCP packets
+		// receive RTCP frames
 		go func(trackId int, l *gortsplib.ConnClientUdpListener) {
 			defer wg.Done()
 
@@ -86,12 +86,12 @@ func main() {
 					break
 				}
 
-				fmt.Printf("packet from track %d, type RTCP: %v\n", trackId, buf[:n])
+				fmt.Printf("frame from track %d, type RTCP: %v\n", trackId, buf[:n])
 			}
 		}(trackId, lp.rtcpl)
 	}
 
-	err = conn.LoopUDP(u)
+	err = conn.LoopUdp(u)
 	fmt.Println("connection is closed (%s)", err)
 
 	for _, lp := range listeners {

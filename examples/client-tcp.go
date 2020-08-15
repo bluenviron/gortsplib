@@ -54,7 +54,7 @@ func main() {
 			break
 		}
 
-		fmt.Printf("packet from track %d, type %v: %v\n",
+		fmt.Printf("frame from track %d, type %v: %v\n",
 			frame.TrackId, frame.StreamType, frame.Content)
 	}
 }
