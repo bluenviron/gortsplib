@@ -485,40 +485,53 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 		return nil, fmt.Errorf("Play() can be called only after SetupUDP() or SetupTCP()")
 	}
 
-	_, err := c.Do(&Request{
-		Method:       PLAY,
-		Url:          u,
-		SkipResponse: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	res, err := func() (*Response, error) {
-		frame := &InterleavedFrame{
-			Content: make([]byte, 0, clientTcpReadBufferSize),
-		}
-
-		// v4lrtspserver sends frames before the response.
-		// ignore them and wait for the response.
-		for {
-			frame.Content = frame.Content[:cap(frame.Content)]
-			recv, err := c.ReadFrameOrResponse(frame)
+		if *c.streamProtocol == StreamProtocolUdp {
+			res, err := c.Do(&Request{
+				Method: PLAY,
+				Url:    u,
+			})
 			if err != nil {
 				return nil, err
 			}
 
-			if res, ok := recv.(*Response); ok {
-				if res.StatusCode != StatusOK {
-					return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+			return res, nil
+
+		} else {
+			_, err := c.Do(&Request{
+				Method:       PLAY,
+				Url:          u,
+				SkipResponse: true,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			frame := &InterleavedFrame{
+				Content: make([]byte, 0, clientTcpReadBufferSize),
+			}
+
+			// v4lrtspserver sends frames before the response.
+			// ignore them and wait for the response.
+			for {
+				frame.Content = frame.Content[:cap(frame.Content)]
+				recv, err := c.ReadFrameOrResponse(frame)
+				if err != nil {
+					return nil, err
 				}
 
-				return res, nil
+				if res, ok := recv.(*Response); ok {
+					return res, nil
+				}
 			}
 		}
 	}()
 	if err != nil {
 		return nil, err
+	}
+
+	if res.StatusCode != StatusOK {
+		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	c.receiverReportTerminate = make(chan struct{})
