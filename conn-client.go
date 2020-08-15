@@ -147,8 +147,7 @@ func (c *ConnClient) ReadFrame(frame *InterleavedFrame) error {
 	return nil
 }
 
-// ReadFrameOrResponse reads an InterleavedFrame or a Response.
-func (c *ConnClient) ReadFrameOrResponse(frame *InterleavedFrame) (interface{}, error) {
+func (c *ConnClient) readFrameOrResponse(frame *InterleavedFrame) (interface{}, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	b, err := c.br.ReadByte()
 	if err != nil {
@@ -479,7 +478,8 @@ func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
 }
 
 // Play writes a PLAY request, that means that we want to start the stream.
-// It then reads a Response. This function can be called only after SetupUDP() or SetupTCP()
+// It then reads a Response. This function can be called only after SetupUDP()
+// or SetupTCP().
 func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	if c.streamProtocol == nil {
 		return nil, fmt.Errorf("Play() can be called only after SetupUDP() or SetupTCP()")
@@ -515,7 +515,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 			// ignore them and wait for the response.
 			for {
 				frame.Content = frame.Content[:cap(frame.Content)]
-				recv, err := c.ReadFrameOrResponse(frame)
+				recv, err := c.readFrameOrResponse(frame)
 				if err != nil {
 					return nil, err
 				}
