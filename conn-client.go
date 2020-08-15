@@ -478,9 +478,13 @@ func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
 	return res, nil
 }
 
-// Play must be called after SetupUDP() or SetupTCP(), and writes a PLAY request,
-// that means that we want to start the stream. It then reads a Response.
+// Play writes a PLAY request, that means that we want to start the stream.
+// It then reads a Response. This function can be called only after SetupUDP() or SetupTCP()
 func (c *ConnClient) Play(u *url.URL) (*Response, error) {
+	if c.streamProtocol == nil {
+		return nil, fmt.Errorf("Play() can be called only after SetupUDP() or SetupTCP()")
+	}
+
 	_, err := c.Do(&Request{
 		Method:       PLAY,
 		Url:          u,
