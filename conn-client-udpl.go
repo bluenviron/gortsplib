@@ -29,8 +29,7 @@ func newConnClientUdpListener(c *ConnClient, port int, trackId int, streamType S
 	}, nil
 }
 
-// Close closes the listener.
-func (l *ConnClientUdpListener) Close() {
+func (l *ConnClientUdpListener) close() {
 	l.pc.Close()
 }
 

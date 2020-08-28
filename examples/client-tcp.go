@@ -50,6 +50,7 @@ func main() {
 
 		err := conn.ReadFrame(frame)
 		if err != nil {
+			conn.Close()
 			fmt.Println("connection is closed (%s)", err)
 			break
 		}

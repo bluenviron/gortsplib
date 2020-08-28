@@ -92,11 +92,7 @@ func main() {
 	}
 
 	err = conn.LoopUdp(u)
-	fmt.Println("connection is closed (%s)", err)
-
-	for _, lp := range listeners {
-		lp.rtpl.Close()
-		lp.rtcpl.Close()
-	}
+	conn.Close()
 	wg.Wait()
+	fmt.Println("connection is closed (%s)", err)
 }
