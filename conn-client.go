@@ -72,6 +72,7 @@ type ConnClient struct {
 	rtcpReceivers  map[int]*RtcpReceiver
 	rtpListeners   map[int]*ConnClientUdpListener
 	rtcpListeners  map[int]*ConnClientUdpListener
+	playUrl        *url.URL
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -110,6 +111,16 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 
 // Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
+	if c.playUrl != nil {
+		c.Do(&Request{
+			Method:       TEARDOWN,
+			Url:          c.playUrl,
+			SkipResponse: true,
+		})
+	}
+
+	err := c.nconn.Close()
+
 	if c.receiverReportTerminate != nil {
 		close(c.receiverReportTerminate)
 		<-c.receiverReportDone
@@ -127,7 +138,7 @@ func (c *ConnClient) Close() error {
 		l.Close()
 	}
 
-	return c.nconn.Close()
+	return err
 }
 
 // NetConn returns the underlying net.Conn.
@@ -534,6 +545,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
+	c.playUrl = u
 	c.receiverReportTerminate = make(chan struct{})
 	c.receiverReportDone = make(chan struct{})
 
