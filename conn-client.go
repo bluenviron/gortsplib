@@ -68,11 +68,11 @@ type ConnClient struct {
 	session        string
 	cseq           int
 	auth           *authClient
+	streamUrl      *url.URL
 	streamProtocol *StreamProtocol
 	rtcpReceivers  map[int]*RtcpReceiver
 	rtpListeners   map[int]*ConnClientUdpListener
 	rtcpListeners  map[int]*ConnClientUdpListener
-	playUrl        *url.URL
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -111,10 +111,10 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 
 // Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
-	if c.playUrl != nil {
+	if c.streamUrl != nil {
 		c.Do(&Request{
 			Method:       TEARDOWN,
-			Url:          c.playUrl,
+			Url:          c.streamUrl,
 			SkipResponse: true,
 		})
 	}
@@ -318,59 +318,60 @@ func (c *ConnClient) Describe(u *url.URL) ([]*Track, *Response, error) {
 	return tracks, res, nil
 }
 
-func (c *ConnClient) setup(u *url.URL, media *sdp.MediaDescription, transport []string) (*Response, error) {
-	// build an URL with the control attribute from media
-	u = func() *url.URL {
-		control := func() string {
-			for _, attr := range media.Attributes {
-				if attr.Key == "control" {
-					return attr.Value
-				}
-			}
-			return ""
-		}()
-
-		// no control attribute, use original URL
-		if control == "" {
-			return u
-		}
-
-		// control attribute with absolute path
-		if strings.HasPrefix(control, "rtsp://") {
-			newu, err := url.Parse(control)
-			if err != nil {
-				return u
-			}
-
-			return &url.URL{
-				Scheme:   "rtsp",
-				Host:     u.Host,
-				User:     u.User,
-				Path:     newu.Path,
-				RawQuery: newu.RawQuery,
+// build an URL by merging baseUrl with the control attribute from track.Media
+func (c *ConnClient) urlForTrack(baseUrl *url.URL, track *Track) *url.URL {
+	// get control attribute
+	control := func() string {
+		for _, attr := range track.Media.Attributes {
+			if attr.Key == "control" {
+				return attr.Value
 			}
 		}
-
-		// control attribute with relative path
-		return &url.URL{
-			Scheme: "rtsp",
-			Host:   u.Host,
-			User:   u.User,
-			Path: func() string {
-				ret := u.Path
-				if len(ret) == 0 || ret[len(ret)-1] != '/' {
-					ret += "/"
-				}
-				ret += control
-				return ret
-			}(),
-			RawQuery: u.RawQuery,
-		}
+		return ""
 	}()
 
+	// no control attribute, use base URL
+	if control == "" {
+		return baseUrl
+	}
+
+	// control attribute contains an absolute path
+	if strings.HasPrefix(control, "rtsp://") {
+		newUrl, err := url.Parse(control)
+		if err != nil {
+			return baseUrl
+		}
+
+		return &url.URL{
+			Scheme:   "rtsp",
+			Host:     baseUrl.Host,
+			User:     baseUrl.User,
+			Path:     newUrl.Path,
+			RawQuery: newUrl.RawQuery,
+		}
+	}
+
+	// control attribute contains a relative path
+	return &url.URL{
+		Scheme: "rtsp",
+		Host:   baseUrl.Host,
+		User:   baseUrl.User,
+		Path: func() string {
+			ret := baseUrl.Path
+			if len(ret) == 0 || ret[len(ret)-1] != '/' {
+				ret += "/"
+			}
+			ret += control
+			return ret
+		}(),
+		RawQuery: baseUrl.RawQuery,
+	}
+}
+
+func (c *ConnClient) setup(u *url.URL, track *Track, transport []string) (*Response, error) {
 	res, err := c.Do(&Request{
 		Method: SETUP,
-		Url:    u,
+		Url:    c.urlForTrack(u, track),
 		Header: Header{
 			"Transport": HeaderValue{strings.Join(transport, ";")},
 		},
@@ -390,6 +391,10 @@ func (c *ConnClient) setup(u *url.URL, media *sdp.MediaDescription, transport []
 // a given track with the UDP transport. It then reads a Response.
 func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 	rtcpPort int) (*ConnClientUdpListener, *ConnClientUdpListener, *Response, error) {
+	if c.streamUrl != nil && *u != *c.streamUrl {
+		fmt.Errorf("setup has already begun with another url")
+	}
+
 	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolUdp {
 		return nil, nil, nil, fmt.Errorf("cannot setup tracks with different protocols")
 	}
@@ -409,7 +414,7 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 		return nil, nil, nil, err
 	}
 
-	res, err := c.setup(u, track.Media, []string{
+	res, err := c.setup(u, track, []string{
 		"RTP/AVP/UDP",
 		"unicast",
 		fmt.Sprintf("client_port=%d-%d", rtpPort, rtcpPort),
@@ -434,9 +439,10 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 		return nil, nil, nil, fmt.Errorf("SETUP: server ports not provided")
 	}
 
-	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
+	c.streamUrl = u
 	streamProtocol := StreamProtocolUdp
 	c.streamProtocol = &streamProtocol
+	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
 
 	rtpListener.publisherIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 	rtpListener.publisherPort = rtpServerPort
@@ -452,6 +458,10 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 // SetupTcp writes a SETUP request, that means that we want to read
 // a given track with the TCP transport. It then reads a Response.
 func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
+	if c.streamUrl != nil && *u != *c.streamUrl {
+		fmt.Errorf("setup has already begun with another url")
+	}
+
 	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolTcp {
 		return nil, fmt.Errorf("cannot setup tracks with different protocols")
 	}
@@ -461,7 +471,7 @@ func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
 	}
 
 	interleaved := fmt.Sprintf("interleaved=%d-%d", (track.Id * 2), (track.Id*2)+1)
-	res, err := c.setup(u, track.Media, []string{
+	res, err := c.setup(u, track, []string{
 		"RTP/AVP/TCP",
 		"unicast",
 		interleaved,
@@ -481,9 +491,10 @@ func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
 			interleaved, res.Header["Transport"])
 	}
 
-	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
+	c.streamUrl = u
 	streamProtocol := StreamProtocolTcp
 	c.streamProtocol = &streamProtocol
+	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
 
 	return res, nil
 }
@@ -492,8 +503,12 @@ func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
 // It then reads a Response. This function can be called only after SetupUDP()
 // or SetupTCP().
 func (c *ConnClient) Play(u *url.URL) (*Response, error) {
-	if c.streamProtocol == nil {
-		return nil, fmt.Errorf("Play() can be called only after SetupUDP() or SetupTCP()")
+	if c.streamUrl == nil {
+		return nil, fmt.Errorf("Play() can be called only after a successful SetupUDP() or SetupTCP()")
+	}
+
+	if *u != *c.streamUrl {
+		fmt.Errorf("Play() must be called with the same url used for SetupUDP() or SetupTCP()")
 	}
 
 	res, err := func() (*Response, error) {
@@ -545,7 +560,6 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	c.playUrl = u
 	c.receiverReportTerminate = make(chan struct{})
 	c.receiverReportDone = make(chan struct{})
 
