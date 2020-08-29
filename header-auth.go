@@ -56,17 +56,40 @@ func ReadHeaderAuth(v HeaderValue) (*HeaderAuth, error) {
 func (ha *HeaderAuth) Write() HeaderValue {
 	ret := ha.Prefix + " "
 
-	// always put realm first, otherwise VLC does not send back the response
+	// follow a specific order, otherwise some clients/servers do not work correctly
 	var sortedKeys []string
 	for key := range ha.Values {
-		if key != "realm" {
-			sortedKeys = append(sortedKeys, key)
+		sortedKeys = append(sortedKeys, key)
+	}
+	score := func(v string) int {
+		switch v {
+		case "username":
+			return 0
+		case "realm":
+			return 1
+		case "nonce":
+			return 2
+		case "uri":
+			return 3
+		case "response":
+			return 4
+		case "opaque":
+			return 5
+		case "stale":
+			return 6
+		case "algorithm":
+			return 7
 		}
+		return 8
 	}
-	sort.Strings(sortedKeys)
-	if _, ok := ha.Values["realm"]; ok {
-		sortedKeys = append([]string{"realm"}, sortedKeys...)
-	}
+	sort.Slice(sortedKeys, func(a, b int) bool {
+		sa := score(sortedKeys[a])
+		sb := score(sortedKeys[b])
+		if sa != sb {
+			return sa < sb
+		}
+		return a < b
+	})
 
 	var tmp []string
 	for _, key := range sortedKeys {

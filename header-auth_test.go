@@ -65,7 +65,7 @@ var casesHeaderAuth = []struct {
 	{
 		"digest response generic",
 		HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
-		HeaderValue{`Digest realm="bb", nonce="cc", response="ee", uri="dd", username="aa"`},
+		HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
 		&HeaderAuth{
 			Prefix: "Digest",
 			Values: map[string]string{
@@ -80,7 +80,7 @@ var casesHeaderAuth = []struct {
 	{
 		"digest response with empty field",
 		HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
-		HeaderValue{`Digest realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", response="c072ae90eb4a27f4cdcb90d62266b2a1", uri="rtsp://localhost:8554/mystream", username=""`},
+		HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
 		&HeaderAuth{
 			Prefix: "Digest",
 			Values: map[string]string{
@@ -95,7 +95,7 @@ var casesHeaderAuth = []struct {
 	{
 		"digest response with no spaces and additional fields",
 		HeaderValue{`Digest realm="Please log in with a valid username",nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE,algorithm=MD5`},
-		HeaderValue{`Digest realm="Please log in with a valid username", algorithm="MD5", nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE"`},
+		HeaderValue{`Digest realm="Please log in with a valid username", nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE", algorithm="MD5"`},
 		&HeaderAuth{
 			Prefix: "Digest",
 			Values: map[string]string{
