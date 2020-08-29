@@ -7,6 +7,10 @@
 
 RTSP 1.0 library for the Go programming language, written for [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
+Features:
+* Provides primitives, a class for building clients (`ConnClient`) and a class for building servers (`ConnServer`)
+* Supports TCP and UDP streaming protocols
+
 ## Examples
 
 * [client-tcp](examples/client-tcp.go)

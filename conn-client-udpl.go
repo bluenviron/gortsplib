@@ -5,8 +5,8 @@ import (
 	"strconv"
 )
 
-// ConnClientUdpListener is a UDP listener created by SetupUDP() to receive UDP frames.
-type ConnClientUdpListener struct {
+// connClientUdpListener is a UDP listener created by SetupUDP() to receive UDP frames.
+type connClientUdpListener struct {
 	c             *ConnClient
 	pc            net.PacketConn
 	trackId       int
@@ -15,13 +15,13 @@ type ConnClientUdpListener struct {
 	publisherPort int
 }
 
-func newConnClientUdpListener(c *ConnClient, port int, trackId int, streamType StreamType) (*ConnClientUdpListener, error) {
+func newConnClientUdpListener(c *ConnClient, port int, trackId int, streamType StreamType) (*connClientUdpListener, error) {
 	pc, err := c.conf.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
 	if err != nil {
 		return nil, err
 	}
 
-	return &ConnClientUdpListener{
+	return &connClientUdpListener{
 		c:          c,
 		pc:         pc,
 		trackId:    trackId,
@@ -29,12 +29,12 @@ func newConnClientUdpListener(c *ConnClient, port int, trackId int, streamType S
 	}, nil
 }
 
-func (l *ConnClientUdpListener) close() {
+func (l *connClientUdpListener) close() {
 	l.pc.Close()
 }
 
 // Read reads a frame from the publisher.
-func (l *ConnClientUdpListener) Read(buf []byte) (int, error) {
+func (l *connClientUdpListener) Read(buf []byte) (int, error) {
 	for {
 		n, addr, err := l.pc.ReadFrom(buf)
 		if err != nil {

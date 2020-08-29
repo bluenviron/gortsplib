@@ -32,22 +32,17 @@ func main() {
 		panic(err)
 	}
 
-	type trackListenerPair struct {
-		rtpl  *gortsplib.ConnClientUdpListener
-		rtcpl *gortsplib.ConnClientUdpListener
-	}
-	var listeners []*trackListenerPair
+	var rtpReads []gortsplib.UdpReadFunc
+	var rtcpReads []gortsplib.UdpReadFunc
 
 	for _, track := range tracks {
-		rtpl, rtcpl, _, err := conn.SetupUdp(u, track, 9000+track.Id*2, 9001+track.Id*2)
+		rtpRead, rtcpRead, _, err := conn.SetupUdp(u, track, 9000+track.Id*2, 9001+track.Id*2)
 		if err != nil {
 			panic(err)
 		}
 
-		listeners = append(listeners, &trackListenerPair{
-			rtpl:  rtpl,
-			rtcpl: rtcpl,
-		})
+		rtpReads = append(rtpReads, rtpRead)
+		rtcpReads = append(rtcpReads, rtcpRead)
 	}
 
 	_, err = conn.Play(u)
@@ -57,38 +52,42 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	for trackId, lp := range listeners {
-		wg.Add(2)
+	// receive RTP frames
+	for trackId, rtpRead := range rtpReads {
+		wg.Add(1)
 
-		// receive RTP frames
-		go func(trackId int, l *gortsplib.ConnClientUdpListener) {
+		go func(trackId int, rtpRead gortsplib.UdpReadFunc) {
 			defer wg.Done()
 
 			buf := make([]byte, 2048)
 			for {
-				n, err := l.Read(buf)
+				n, err := rtpRead(buf)
 				if err != nil {
 					break
 				}
 
 				fmt.Printf("frame from track %d, type RTP: %v\n", trackId, buf[:n])
 			}
-		}(trackId, lp.rtpl)
+		}(trackId, rtpRead)
+	}
 
-		// receive RTCP frames
-		go func(trackId int, l *gortsplib.ConnClientUdpListener) {
+	// receive RTCP frames
+	for trackId, rtcpRead := range rtcpReads {
+		wg.Add(1)
+
+		go func(trackId int, rtcpRead gortsplib.UdpReadFunc) {
 			defer wg.Done()
 
 			buf := make([]byte, 2048)
 			for {
-				n, err := l.Read(buf)
+				n, err := rtcpRead(buf)
 				if err != nil {
 					break
 				}
 
 				fmt.Printf("frame from track %d, type RTCP: %v\n", trackId, buf[:n])
 			}
-		}(trackId, lp.rtcpl)
+		}(trackId, rtcpRead)
 	}
 
 	err = conn.LoopUdp(u)

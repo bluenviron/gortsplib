@@ -71,8 +71,8 @@ type ConnClient struct {
 	streamUrl      *url.URL
 	streamProtocol *StreamProtocol
 	rtcpReceivers  map[int]*RtcpReceiver
-	rtpListeners   map[int]*ConnClientUdpListener
-	rtcpListeners  map[int]*ConnClientUdpListener
+	rtpListeners   map[int]*connClientUdpListener
+	rtcpListeners  map[int]*connClientUdpListener
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -104,8 +104,8 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		br:            bufio.NewReaderSize(nconn, clientReadBufferSize),
 		bw:            bufio.NewWriterSize(nconn, clientWriteBufferSize),
 		rtcpReceivers: make(map[int]*RtcpReceiver),
-		rtpListeners:  make(map[int]*ConnClientUdpListener),
-		rtcpListeners: make(map[int]*ConnClientUdpListener),
+		rtpListeners:  make(map[int]*connClientUdpListener),
+		rtcpListeners: make(map[int]*connClientUdpListener),
 	}, nil
 }
 
@@ -387,10 +387,13 @@ func (c *ConnClient) setup(u *url.URL, track *Track, transport []string) (*Respo
 	return res, nil
 }
 
+// UdpReadFunc is a function used to read UDP packets.
+type UdpReadFunc func([]byte) (int, error)
+
 // SetupUdp writes a SETUP request, that means that we want to read
 // a given track with the UDP transport. It then reads a Response.
 func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
-	rtcpPort int) (*ConnClientUdpListener, *ConnClientUdpListener, *Response, error) {
+	rtcpPort int) (UdpReadFunc, UdpReadFunc, *Response, error) {
 	if c.streamUrl != nil && *u != *c.streamUrl {
 		fmt.Errorf("setup has already begun with another url")
 	}
@@ -452,7 +455,7 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 	rtcpListener.publisherPort = rtcpServerPort
 	c.rtcpListeners[track.Id] = rtcpListener
 
-	return rtpListener, rtcpListener, res, nil
+	return rtpListener.Read, rtcpListener.Read, res, nil
 }
 
 // SetupTcp writes a SETUP request, that means that we want to read
