@@ -60,8 +60,11 @@ func (s *ConnServer) ReadRequest() (*Request, error) {
 }
 
 // ReadFrameOrRequest reads an InterleavedFrame or a Request.
-func (s *ConnServer) ReadFrameOrRequest(frame *InterleavedFrame) (interface{}, error) {
-	s.conf.Conn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
+func (s *ConnServer) ReadFrameOrRequest(frame *InterleavedFrame, timeout bool) (interface{}, error) {
+	if timeout {
+		s.conf.Conn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
+	}
+
 	b, err := s.br.ReadByte()
 	if err != nil {
 		return nil, err
