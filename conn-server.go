@@ -48,6 +48,11 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 	}
 }
 
+// Close closes all the ConnServer resources.
+func (s *ConnServer) Close() error {
+	return s.conf.Conn.Close()
+}
+
 // NetConn returns the underlying net.Conn.
 func (s *ConnServer) NetConn() net.Conn {
 	return s.conf.Conn
