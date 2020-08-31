@@ -27,6 +27,23 @@ func ReadHeaderTransport(v HeaderValue) (HeaderTransport, error) {
 	return ht, nil
 }
 
+// IsUdp check whether the header contains the UDP protocol.
+func (ht HeaderTransport) IsUdp() bool {
+	if _, ok := ht["RTP/AVP"]; ok {
+		return true
+	}
+	if _, ok := ht["RTP/AVP/UDP"]; ok {
+		return true
+	}
+	return false
+}
+
+// IsTcp check whether the header contains the TCP protocol.
+func (ht HeaderTransport) IsTcp() bool {
+	_, ok := ht["RTP/AVP/TCP"]
+	return ok
+}
+
 // Value gets a value from the header.
 func (ht HeaderTransport) Value(key string) string {
 	prefix := key + "="
@@ -38,7 +55,7 @@ func (ht HeaderTransport) Value(key string) string {
 	return ""
 }
 
-// Ports gets a given header value and parses its ports.
+// Ports gets a value from the header and parses its ports.
 func (ht HeaderTransport) Ports(key string) (int, int) {
 	val := ht.Value(key)
 	if val == "" {
