@@ -283,6 +283,9 @@ func (c *ConnClient) Describe(u *url.URL) ([]*Track, *Response, error) {
 	res, err := c.Do(&Request{
 		Method: DESCRIBE,
 		Url:    u,
+		Header: Header{
+			"Accept": HeaderValue{"application/sdp"},
+		},
 	})
 	if err != nil {
 		return nil, nil, err
