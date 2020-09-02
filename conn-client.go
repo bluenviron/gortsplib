@@ -566,6 +566,27 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
+	// open the firewall by sending packets to every channel
+	if *c.streamProtocol == StreamProtocolUdp {
+		for trackId := range c.rtpListeners {
+			c.rtpListeners[trackId].pc.WriteTo(
+				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+				&net.UDPAddr{
+					IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
+					Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
+					Port: c.rtpListeners[trackId].publisherPort,
+				})
+
+			c.rtcpListeners[trackId].pc.WriteTo(
+				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00},
+				&net.UDPAddr{
+					IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
+					Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
+					Port: c.rtcpListeners[trackId].publisherPort,
+				})
+		}
+	}
+
 	c.receiverReportTerminate = make(chan struct{})
 	c.receiverReportDone = make(chan struct{})
 
@@ -655,7 +676,7 @@ func (c *ConnClient) LoopUdp(u *url.URL) error {
 				if time.Since(c.rtcpReceivers[trackId].LastFrameTime()) >= c.conf.ReadTimeout {
 					c.nconn.Close()
 					<-readDone
-					return fmt.Errorf("stream is dead")
+					return fmt.Errorf("no packets received recently (maybe there's a firewall/NAT)")
 				}
 			}
 		}
