@@ -335,20 +335,26 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, track *Track) *url.URL {
 	}
 
 	// control attribute contains a relative path
-	return &url.URL{
-		Scheme: "rtsp",
-		Host:   baseUrl.Host,
-		User:   baseUrl.User,
-		Path: func() string {
-			ret := baseUrl.Path
-			if len(ret) == 0 || ret[len(ret)-1] != '/' {
-				ret += "/"
-			}
-			ret += control
-			return ret
-		}(),
+	u := &url.URL{
+		Scheme:   "rtsp",
+		Host:     baseUrl.Host,
+		User:     baseUrl.User,
+		Path:     baseUrl.Path,
 		RawQuery: baseUrl.RawQuery,
 	}
+	// insert the control attribute after the query, if present
+	if u.RawQuery != "" {
+		if !strings.HasSuffix(u.RawQuery, "/") {
+			u.RawQuery += "/"
+		}
+		u.RawQuery += control
+	} else {
+		if !strings.HasSuffix(u.Path, "/") {
+			u.Path += "/"
+		}
+		u.Path += control
+	}
+	return u
 }
 
 func (c *ConnClient) setup(u *url.URL, track *Track, transport []string) (*Response, error) {
