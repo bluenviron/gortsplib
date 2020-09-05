@@ -268,7 +268,7 @@ func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 // Describe writes a DESCRIBE request, that means that we want to obtain the SDP
 // document that describes the tracks available in the given URL. It then
 // reads a Response.
-func (c *ConnClient) Describe(u *url.URL) ([]*Track, *Response, error) {
+func (c *ConnClient) Describe(u *url.URL) (Tracks, *Response, error) {
 	res, err := c.Do(&Request{
 		Method: DESCRIBE,
 		Url:    u,
