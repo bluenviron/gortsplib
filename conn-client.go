@@ -15,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/aler9/sdp-dirty/v3"
 )
 
 const (
@@ -27,15 +25,6 @@ const (
 	clientUDPKeepalivePeriod   = 30 * time.Second
 	clientTCPReadBufferSize    = 128 * 1024
 )
-
-// Track is a track available in a certain URL.
-type Track struct {
-	// track id
-	Id int
-
-	// track codec and info in SDP format
-	Media *sdp.MediaDescription
-}
 
 // ConnClientConf allows to configure a ConnClient.
 type ConnClientConf struct {
@@ -304,18 +293,9 @@ func (c *ConnClient) Describe(u *url.URL) ([]*Track, *Response, error) {
 		return nil, nil, fmt.Errorf("DESCRIBE: wrong Content-Type, expected application/sdp")
 	}
 
-	sdpd := &sdp.SessionDescription{}
-	err = sdpd.Unmarshal(res.Content)
+	tracks, err := ReadTracks(res.Content)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	tracks := make([]*Track, len(sdpd.MediaDescriptions))
-	for i, media := range sdpd.MediaDescriptions {
-		tracks[i] = &Track{
-			Id:    i,
-			Media: media,
-		}
 	}
 
 	return tracks, res, nil
