@@ -19,13 +19,13 @@ var casesHeaderTransport = []struct {
 		&HeaderTransport{
 			Protocol: StreamProtocolUDP,
 			Cast: func() *StreamCast {
-				ret := StreamUnicast
-				return &ret
+				v := StreamUnicast
+				return &v
 			}(),
 			ClientPorts: &[2]int{3456, 3457},
 			Mode: func() *string {
-				ret := "play"
-				return &ret
+				v := "play"
+				return &v
 			}(),
 		},
 	},
@@ -36,8 +36,8 @@ var casesHeaderTransport = []struct {
 		&HeaderTransport{
 			Protocol: StreamProtocolUDP,
 			Cast: func() *StreamCast {
-				ret := StreamUnicast
-				return &ret
+				v := StreamUnicast
+				return &v
 			}(),
 			ClientPorts: &[2]int{3056, 3057},
 			ServerPorts: &[2]int{5000, 5001},
@@ -50,8 +50,8 @@ var casesHeaderTransport = []struct {
 		&HeaderTransport{
 			Protocol: StreamProtocolUDP,
 			Cast: func() *StreamCast {
-				ret := StreamMulticast
-				return &ret
+				v := StreamMulticast
+				return &v
 			}(),
 		},
 	},

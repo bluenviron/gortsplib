@@ -56,3 +56,14 @@ func ReadHeaderSession(v HeaderValue) (*HeaderSession, error) {
 
 	return hs, nil
 }
+
+// Write encodes a Session header
+func (hs *HeaderSession) Write() HeaderValue {
+	val := hs.Session
+
+	if hs.Timeout != nil {
+		val += ";timeout=" + strconv.FormatUint(uint64(*hs.Timeout), 10)
+	}
+
+	return HeaderValue{val}
+}
