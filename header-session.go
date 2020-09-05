@@ -24,14 +24,14 @@ func ReadHeaderSession(v HeaderValue) (*HeaderSession, error) {
 
 	parts := strings.Split(v[0], ";")
 	if len(parts) == 0 {
-		return nil, fmt.Errorf("invalid value")
+		return nil, fmt.Errorf("invalid value (%v)", v)
 	}
 
 	hs := &HeaderSession{}
 
-	hs.Session, parts = parts[0], parts[1:]
+	hs.Session = parts[0]
 
-	for _, part := range parts {
+	for _, part := range parts[1:] {
 		// remove leading spaces
 		part = strings.TrimLeft(part, " ")
 

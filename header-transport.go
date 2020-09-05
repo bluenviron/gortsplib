@@ -57,24 +57,31 @@ func ReadHeaderTransport(v HeaderValue) (*HeaderTransport, error) {
 	}
 
 	ht := &HeaderTransport{}
-	protoSet := false
 
-	for _, t := range strings.Split(v[0], ";") {
-		if t == "RTP/AVP" || t == "RTP/AVP/UDP" {
-			ht.Protocol = StreamProtocolUDP
-			protoSet = true
+	parts := strings.Split(v[0], ";")
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("invalid value (%v)", v)
+	}
 
-		} else if t == "RTP/AVP/TCP" {
-			ht.Protocol = StreamProtocolTCP
-			protoSet = true
+	switch parts[0] {
+	case "RTP/AVP", "RTP/AVP/UDP":
+		ht.Protocol = StreamProtocolUDP
 
-		} else if t == "unicast" {
-			ret := StreamUnicast
-			ht.Cast = &ret
+	case "RTP/AVP/TCP":
+		ht.Protocol = StreamProtocolTCP
+
+	default:
+		return nil, fmt.Errorf("invalid protocol (%v)", v)
+	}
+
+	for _, t := range parts[1:] {
+		if t == "unicast" {
+			v := StreamUnicast
+			ht.Cast = &v
 
 		} else if t == "multicast" {
-			ret := StreamMulticast
-			ht.Cast = &ret
+			v := StreamMulticast
+			ht.Cast = &v
 
 		} else if strings.HasPrefix(t, "client_port=") {
 			ports, err := parsePorts(t[len("client_port="):])
@@ -98,16 +105,11 @@ func ReadHeaderTransport(v HeaderValue) (*HeaderTransport, error) {
 			ht.InterleavedIds = ports
 
 		} else if strings.HasPrefix(t, "mode=") {
-			ret := strings.ToLower(t[len("mode="):])
-			ret = strings.TrimPrefix(ret, "\"")
-			ret = strings.TrimSuffix(ret, "\"")
-			ht.Mode = &ret
+			v := strings.ToLower(t[len("mode="):])
+			v = strings.TrimPrefix(v, "\"")
+			v = strings.TrimSuffix(v, "\"")
+			ht.Mode = &v
 		}
-	}
-
-	// protocol is the only mandatory field
-	if !protoSet {
-		return nil, fmt.Errorf("protocol not set (%v)", v)
 	}
 
 	return ht, nil
