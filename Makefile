@@ -29,7 +29,7 @@ format:
 
 define DOCKERFILE_TEST
 FROM $(BASE_IMAGE)
-RUN apk add --no-cache make git
+RUN apk add --no-cache make git gcc musl-dev
 WORKDIR /s
 COPY go.mod go.sum ./
 RUN go mod download
@@ -47,6 +47,5 @@ test:
 IMAGES = $(shell echo test-images/*/ | xargs -n1 basename)
 
 test-nodocker:
-	$(eval export CGO_ENABLED = 0)
-	go test -v .
+	go test -race -v .
 	$(foreach f,$(shell ls examples/*),go build -o /dev/null $(f)$(NL))
