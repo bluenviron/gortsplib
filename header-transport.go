@@ -27,8 +27,8 @@ func ReadHeaderTransport(v HeaderValue) (HeaderTransport, error) {
 	return ht, nil
 }
 
-// IsUdp check whether the header contains the UDP protocol.
-func (ht HeaderTransport) IsUdp() bool {
+// IsUDP check whether the header contains the UDP protocol.
+func (ht HeaderTransport) IsUDP() bool {
 	if _, ok := ht["RTP/AVP"]; ok {
 		return true
 	}
@@ -38,8 +38,8 @@ func (ht HeaderTransport) IsUdp() bool {
 	return false
 }
 
-// IsTcp check whether the header contains the TCP protocol.
-func (ht HeaderTransport) IsTcp() bool {
+// IsTCP check whether the header contains the TCP protocol.
+func (ht HeaderTransport) IsTCP() bool {
 	_, ok := ht["RTP/AVP/TCP"]
 	return ok
 }

@@ -23,9 +23,9 @@ const (
 	clientReadBufferSize       = 4096
 	clientWriteBufferSize      = 4096
 	clientReceiverReportPeriod = 10 * time.Second
-	clientUdpCheckStreamPeriod = 5 * time.Second
-	clientUdpKeepalivePeriod   = 30 * time.Second
-	clientTcpReadBufferSize    = 128 * 1024
+	clientUDPCheckStreamPeriod = 5 * time.Second
+	clientUDPKeepalivePeriod   = 30 * time.Second
+	clientTCPReadBufferSize    = 128 * 1024
 )
 
 // Track is a track available in a certain URL.
@@ -71,8 +71,8 @@ type ConnClient struct {
 	streamUrl      *url.URL
 	streamProtocol *StreamProtocol
 	rtcpReceivers  map[int]*RtcpReceiver
-	rtpListeners   map[int]*connClientUdpListener
-	rtcpListeners  map[int]*connClientUdpListener
+	rtpListeners   map[int]*connClientUDPListener
+	rtcpListeners  map[int]*connClientUDPListener
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -104,8 +104,8 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		br:            bufio.NewReaderSize(nconn, clientReadBufferSize),
 		bw:            bufio.NewWriterSize(nconn, clientWriteBufferSize),
 		rtcpReceivers: make(map[int]*RtcpReceiver),
-		rtpListeners:  make(map[int]*connClientUdpListener),
-		rtcpListeners: make(map[int]*connClientUdpListener),
+		rtpListeners:  make(map[int]*connClientUDPListener),
+		rtcpListeners: make(map[int]*connClientUDPListener),
 	}, nil
 }
 
@@ -390,18 +390,18 @@ func (c *ConnClient) setup(u *url.URL, track *Track, transport []string) (*Respo
 	return res, nil
 }
 
-// UdpReadFunc is a function used to read UDP packets.
-type UdpReadFunc func([]byte) (int, error)
+// UDPReadFunc is a function used to read UDP packets.
+type UDPReadFunc func([]byte) (int, error)
 
-// SetupUdp writes a SETUP request, that means that we want to read
+// SetupUDP writes a SETUP request, that means that we want to read
 // a given track with the UDP transport. It then reads a Response.
-func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
-	rtcpPort int) (UdpReadFunc, UdpReadFunc, *Response, error) {
+func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
+	rtcpPort int) (UDPReadFunc, UDPReadFunc, *Response, error) {
 	if c.streamUrl != nil && *u != *c.streamUrl {
 		fmt.Errorf("setup has already begun with another url")
 	}
 
-	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolUdp {
+	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolUDP {
 		return nil, nil, nil, fmt.Errorf("cannot setup tracks with different protocols")
 	}
 
@@ -409,12 +409,12 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 		return nil, nil, nil, fmt.Errorf("track has already been setup")
 	}
 
-	rtpListener, err := newConnClientUdpListener(c, rtpPort, track.Id, StreamTypeRtp)
+	rtpListener, err := newConnClientUDPListener(c, rtpPort, track.Id, StreamTypeRtp)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	rtcpListener, err := newConnClientUdpListener(c, rtcpPort, track.Id, StreamTypeRtcp)
+	rtcpListener, err := newConnClientUDPListener(c, rtcpPort, track.Id, StreamTypeRtcp)
 	if err != nil {
 		rtpListener.close()
 		return nil, nil, nil, err
@@ -446,7 +446,7 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 	}
 
 	c.streamUrl = u
-	streamProtocol := StreamProtocolUdp
+	streamProtocol := StreamProtocolUDP
 	c.streamProtocol = &streamProtocol
 	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
 
@@ -461,14 +461,14 @@ func (c *ConnClient) SetupUdp(u *url.URL, track *Track, rtpPort int,
 	return rtpListener.Read, rtcpListener.Read, res, nil
 }
 
-// SetupTcp writes a SETUP request, that means that we want to read
+// SetupTCP writes a SETUP request, that means that we want to read
 // a given track with the TCP transport. It then reads a Response.
-func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
+func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
 	if c.streamUrl != nil && *u != *c.streamUrl {
 		fmt.Errorf("setup has already begun with another url")
 	}
 
-	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolTcp {
+	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolTCP {
 		return nil, fmt.Errorf("cannot setup tracks with different protocols")
 	}
 
@@ -498,7 +498,7 @@ func (c *ConnClient) SetupTcp(u *url.URL, track *Track) (*Response, error) {
 	}
 
 	c.streamUrl = u
-	streamProtocol := StreamProtocolTcp
+	streamProtocol := StreamProtocolTCP
 	c.streamProtocol = &streamProtocol
 	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
 
@@ -518,7 +518,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	}
 
 	res, err := func() (*Response, error) {
-		if *c.streamProtocol == StreamProtocolUdp {
+		if *c.streamProtocol == StreamProtocolUDP {
 			res, err := c.Do(&Request{
 				Method: PLAY,
 				Url:    u,
@@ -540,7 +540,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 			}
 
 			frame := &InterleavedFrame{
-				Content: make([]byte, 0, clientTcpReadBufferSize),
+				Content: make([]byte, 0, clientTCPReadBufferSize),
 			}
 
 			// v4lrtspserver sends frames before the response.
@@ -567,7 +567,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	}
 
 	// open the firewall by sending packets to every channel
-	if *c.streamProtocol == StreamProtocolUdp {
+	if *c.streamProtocol == StreamProtocolUDP {
 		for trackId := range c.rtpListeners {
 			c.rtpListeners[trackId].pc.WriteTo(
 				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
@@ -604,7 +604,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 				for trackId := range c.rtcpReceivers {
 					frame := c.rtcpReceivers[trackId].Report()
 
-					if *c.streamProtocol == StreamProtocolUdp {
+					if *c.streamProtocol == StreamProtocolUDP {
 						c.rtcpListeners[trackId].pc.WriteTo(frame, &net.UDPAddr{
 							IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
 							Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
@@ -626,14 +626,14 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	return res, nil
 }
 
-// LoopUdp must be called after SetupUDP() and Play(); it keeps
+// LoopUDP must be called after SetupUDP() and Play(); it keeps
 // the TCP connection open through keepalives, and returns when the TCP
 // connection closes.
-func (c *ConnClient) LoopUdp(u *url.URL) error {
+func (c *ConnClient) LoopUDP(u *url.URL) error {
 	readDone := make(chan error)
 	go func() {
 		for {
-			c.nconn.SetReadDeadline(time.Now().Add(clientUdpKeepalivePeriod + c.conf.ReadTimeout))
+			c.nconn.SetReadDeadline(time.Now().Add(clientUDPKeepalivePeriod + c.conf.ReadTimeout))
 			_, err := ReadResponse(c.br)
 			if err != nil {
 				readDone <- err
@@ -642,10 +642,10 @@ func (c *ConnClient) LoopUdp(u *url.URL) error {
 		}
 	}()
 
-	keepaliveTicker := time.NewTicker(clientUdpKeepalivePeriod)
+	keepaliveTicker := time.NewTicker(clientUDPKeepalivePeriod)
 	defer keepaliveTicker.Stop()
 
-	checkStreamTicker := time.NewTicker(clientUdpCheckStreamPeriod)
+	checkStreamTicker := time.NewTicker(clientUDPCheckStreamPeriod)
 	defer checkStreamTicker.Stop()
 
 	for {

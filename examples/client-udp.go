@@ -32,11 +32,11 @@ func main() {
 		panic(err)
 	}
 
-	var rtpReads []gortsplib.UdpReadFunc
-	var rtcpReads []gortsplib.UdpReadFunc
+	var rtpReads []gortsplib.UDPReadFunc
+	var rtcpReads []gortsplib.UDPReadFunc
 
 	for _, track := range tracks {
-		rtpRead, rtcpRead, _, err := conn.SetupUdp(u, track, 9000+track.Id*2, 9001+track.Id*2)
+		rtpRead, rtcpRead, _, err := conn.SetupUDP(u, track, 9000+track.Id*2, 9001+track.Id*2)
 		if err != nil {
 			panic(err)
 		}
@@ -56,7 +56,7 @@ func main() {
 	for trackId, rtpRead := range rtpReads {
 		wg.Add(1)
 
-		go func(trackId int, rtpRead gortsplib.UdpReadFunc) {
+		go func(trackId int, rtpRead gortsplib.UDPReadFunc) {
 			defer wg.Done()
 
 			buf := make([]byte, 2048)
@@ -75,7 +75,7 @@ func main() {
 	for trackId, rtcpRead := range rtcpReads {
 		wg.Add(1)
 
-		go func(trackId int, rtcpRead gortsplib.UdpReadFunc) {
+		go func(trackId int, rtcpRead gortsplib.UDPReadFunc) {
 			defer wg.Done()
 
 			buf := make([]byte, 2048)
@@ -90,7 +90,7 @@ func main() {
 		}(trackId, rtcpRead)
 	}
 
-	err = conn.LoopUdp(u)
+	err = conn.LoopUDP(u)
 	conn.Close()
 	wg.Wait()
 	fmt.Println("connection is closed (%s)", err)

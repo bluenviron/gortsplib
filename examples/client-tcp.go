@@ -32,7 +32,7 @@ func main() {
 	}
 
 	for _, track := range tracks {
-		_, err := conn.SetupTcp(u, track)
+		_, err := conn.SetupTCP(u, track)
 		if err != nil {
 			panic(err)
 		}

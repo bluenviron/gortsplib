@@ -15,16 +15,16 @@ const (
 type StreamProtocol int
 
 const (
-	// StreamProtocolUdp means that the stream uses the UDP protocol
-	StreamProtocolUdp StreamProtocol = iota
+	// StreamProtocolUDP means that the stream uses the UDP protocol
+	StreamProtocolUDP StreamProtocol = iota
 
-	// StreamProtocolTcp means that the stream uses the TCP protocol
-	StreamProtocolTcp
+	// StreamProtocolTCP means that the stream uses the TCP protocol
+	StreamProtocolTCP
 )
 
 // String implements fmt.Stringer
 func (sp StreamProtocol) String() string {
-	if sp == StreamProtocolUdp {
+	if sp == StreamProtocolUDP {
 		return "udp"
 	}
 	return "tcp"
