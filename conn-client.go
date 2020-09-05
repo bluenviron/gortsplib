@@ -464,14 +464,14 @@ func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
 		return nil, fmt.Errorf("track has already been setup")
 	}
 
-	interleavedIds := &[2]int{(track.Id * 2), (track.Id * 2) + 1}
+	interleavedIds := [2]int{(track.Id * 2), (track.Id * 2) + 1}
 	res, err := c.setup(u, track, &HeaderTransport{
 		Protocol: StreamProtocolTCP,
 		Cast: func() *StreamCast {
 			ret := StreamUnicast
 			return &ret
 		}(),
-		InterleavedIds: interleavedIds,
+		InterleavedIds: &interleavedIds,
 	})
 	if err != nil {
 		return nil, err
@@ -482,10 +482,10 @@ func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
 		return nil, fmt.Errorf("SETUP: transport header: %s", err)
 	}
 
-	if th.InterleavedIds == nil || (*th.InterleavedIds)[0] != (*interleavedIds)[0] ||
-		(*th.InterleavedIds)[1] != (*interleavedIds)[1] {
+	if th.InterleavedIds == nil || (*th.InterleavedIds)[0] != interleavedIds[0] ||
+		(*th.InterleavedIds)[1] != interleavedIds[1] {
 		return nil, fmt.Errorf("SETUP: transport header does not have interleaved ids %v (%s)",
-			*interleavedIds, res.Header["Transport"])
+			interleavedIds, res.Header["Transport"])
 	}
 
 	c.streamUrl = u
