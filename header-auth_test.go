@@ -8,9 +8,9 @@ import (
 
 var casesHeaderAuth = []struct {
 	name string
-	dec  HeaderValue
-	enc  HeaderValue
-	ha   *HeaderAuth
+	vin  HeaderValue
+	vout HeaderValue
+	h    *HeaderAuth
 }{
 	{
 		"basic",
@@ -112,9 +112,9 @@ var casesHeaderAuth = []struct {
 func TestHeaderAuthRead(t *testing.T) {
 	for _, c := range casesHeaderAuth {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadHeaderAuth(c.dec)
+			req, err := ReadHeaderAuth(c.vin)
 			require.NoError(t, err)
-			require.Equal(t, c.ha, req)
+			require.Equal(t, c.h, req)
 		})
 	}
 }
@@ -122,8 +122,8 @@ func TestHeaderAuthRead(t *testing.T) {
 func TestHeaderAuthWrite(t *testing.T) {
 	for _, c := range casesHeaderAuth {
 		t.Run(c.name, func(t *testing.T) {
-			req := c.ha.Write()
-			require.Equal(t, c.enc, req)
+			req := c.h.Write()
+			require.Equal(t, c.vout, req)
 		})
 	}
 }

@@ -11,7 +11,7 @@ const (
 	rtspMaxContentLength = 4096
 )
 
-// StreamProtocol is the protocol of a stream
+// StreamProtocol is the protocol of a stream.
 type StreamProtocol int
 
 const (
@@ -28,6 +28,25 @@ func (sp StreamProtocol) String() string {
 		return "udp"
 	}
 	return "tcp"
+}
+
+// StreamCast is the cast of a stream.
+type StreamCast int
+
+const (
+	// Unicast means that the stream will be unicasted
+	StreamUnicast StreamCast = iota
+
+	// Multicast means that the stream will be multicasted
+	StreamMulticast
+)
+
+// String implements fmt.Stringer
+func (sc StreamCast) String() string {
+	if sc == StreamUnicast {
+		return "unicast"
+	}
+	return "multicast"
 }
 
 // StreamType is the type of a stream.

@@ -357,12 +357,12 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, track *Track) *url.URL {
 	return u
 }
 
-func (c *ConnClient) setup(u *url.URL, track *Track, transport []string) (*Response, error) {
+func (c *ConnClient) setup(u *url.URL, track *Track, ht *HeaderTransport) (*Response, error) {
 	res, err := c.Do(&Request{
 		Method: SETUP,
 		Url:    c.urlForTrack(u, track),
 		Header: Header{
-			"Transport": HeaderValue{strings.Join(transport, ";")},
+			"Transport": ht.Write(),
 		},
 	})
 	if err != nil {
@@ -406,10 +406,13 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 		return nil, nil, nil, err
 	}
 
-	res, err := c.setup(u, track, []string{
-		"RTP/AVP/UDP",
-		"unicast",
-		fmt.Sprintf("client_port=%d-%d", rtpPort, rtcpPort),
+	res, err := c.setup(u, track, &HeaderTransport{
+		Protocol: StreamProtocolUDP,
+		Cast: func() *StreamCast {
+			ret := StreamUnicast
+			return &ret
+		}(),
+		ClientPorts: &[2]int{rtpPort, rtcpPort},
 	})
 	if err != nil {
 		rtpListener.close()
@@ -424,8 +427,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 		return nil, nil, nil, fmt.Errorf("SETUP: transport header: %s", err)
 	}
 
-	rtpServerPort, rtcpServerPort := th.Ports("server_port")
-	if rtpServerPort == 0 {
+	if th.ServerPorts == nil {
 		rtpListener.close()
 		rtcpListener.close()
 		return nil, nil, nil, fmt.Errorf("SETUP: server ports not provided")
@@ -437,11 +439,11 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
 
 	rtpListener.publisherIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-	rtpListener.publisherPort = rtpServerPort
+	rtpListener.publisherPort = (*th.ServerPorts)[0]
 	c.rtpListeners[track.Id] = rtpListener
 
 	rtcpListener.publisherIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-	rtcpListener.publisherPort = rtcpServerPort
+	rtcpListener.publisherPort = (*th.ServerPorts)[1]
 	c.rtcpListeners[track.Id] = rtcpListener
 
 	return rtpListener.Read, rtcpListener.Read, res, nil
@@ -462,11 +464,14 @@ func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
 		return nil, fmt.Errorf("track has already been setup")
 	}
 
-	interleaved := fmt.Sprintf("interleaved=%d-%d", (track.Id * 2), (track.Id*2)+1)
-	res, err := c.setup(u, track, []string{
-		"RTP/AVP/TCP",
-		"unicast",
-		interleaved,
+	interleavedIds := &[2]int{(track.Id * 2), (track.Id * 2) + 1}
+	res, err := c.setup(u, track, &HeaderTransport{
+		Protocol: StreamProtocolTCP,
+		Cast: func() *StreamCast {
+			ret := StreamUnicast
+			return &ret
+		}(),
+		InterleavedIds: interleavedIds,
 	})
 	if err != nil {
 		return nil, err
@@ -477,10 +482,10 @@ func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
 		return nil, fmt.Errorf("SETUP: transport header: %s", err)
 	}
 
-	_, ok := th[interleaved]
-	if !ok {
-		return nil, fmt.Errorf("SETUP: transport header does not contain '%s' (%s)",
-			interleaved, res.Header["Transport"])
+	if th.InterleavedIds == nil || (*th.InterleavedIds)[0] != (*interleavedIds)[0] ||
+		(*th.InterleavedIds)[1] != (*interleavedIds)[1] {
+		return nil, fmt.Errorf("SETUP: transport header does not have interleaved ids %v (%s)",
+			*interleavedIds, res.Header["Transport"])
 	}
 
 	c.streamUrl = u

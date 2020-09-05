@@ -7,9 +7,9 @@ import (
 )
 
 var casesHeaderSession = []struct {
-	name  string
-	value HeaderValue
-	hs    *HeaderSession
+	name string
+	v    HeaderValue
+	h    *HeaderSession
 }{
 	{
 		"base",
@@ -45,9 +45,9 @@ var casesHeaderSession = []struct {
 func TestHeaderSession(t *testing.T) {
 	for _, c := range casesHeaderSession {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadHeaderSession(c.value)
+			req, err := ReadHeaderSession(c.v)
 			require.NoError(t, err)
-			require.Equal(t, c.hs, req)
+			require.Equal(t, c.h, req)
 		})
 	}
 }
