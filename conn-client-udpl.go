@@ -33,8 +33,7 @@ func (l *connClientUDPListener) close() {
 	l.pc.Close()
 }
 
-// Read reads a frame from the publisher.
-func (l *connClientUDPListener) Read(buf []byte) (int, error) {
+func (l *connClientUDPListener) read(buf []byte) (int, error) {
 	for {
 		n, addr, err := l.pc.ReadFrom(buf)
 		if err != nil {

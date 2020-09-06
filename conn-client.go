@@ -446,7 +446,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 	rtcpListener.publisherPort = (*th.ServerPorts)[1]
 	c.rtcpListeners[track.Id] = rtcpListener
 
-	return rtpListener.Read, rtcpListener.Read, res, nil
+	return rtpListener.read, rtcpListener.read, res, nil
 }
 
 // SetupTCP writes a SETUP request, that means that we want to read
