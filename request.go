@@ -77,12 +77,12 @@ func ReadRequest(rb *bufio.Reader) (*Request, error) {
 
 	ur, err := url.Parse(rawUrl)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse url '%s'", rawUrl)
+		return nil, fmt.Errorf("unable to parse url (%v)", rawUrl)
 	}
 	req.Url = ur
 
 	if req.Url.Scheme != "rtsp" {
-		return nil, fmt.Errorf("invalid url scheme '%s'", req.Url.Scheme)
+		return nil, fmt.Errorf("invalid url scheme (%v)", rawUrl)
 	}
 
 	byts, err = readBytesLimited(rb, '\r', requestMaxProtocolLength)
