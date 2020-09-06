@@ -234,8 +234,9 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	return res, nil
 }
 
-// WriteFrame writes an InterleavedFrame.
-func (c *ConnClient) WriteFrame(frame *InterleavedFrame) error {
+// this can't be exported
+// otherwise there's a race condition with the rtcp receiver report routine
+func (c *ConnClient) writeFrame(frame *InterleavedFrame) error {
 	c.nconn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
 	return frame.Write(c.bw)
 }
@@ -603,7 +604,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 						})
 
 					} else {
-						c.WriteFrame(&InterleavedFrame{
+						c.writeFrame(&InterleavedFrame{
 							TrackId:    trackId,
 							StreamType: StreamTypeRtcp,
 							Content:    frame,
