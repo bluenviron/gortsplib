@@ -14,6 +14,15 @@ type HeaderTransport struct {
 	// (optional) cast of the stream
 	Cast *StreamCast
 
+	// (optional) destination
+	Destination *string
+
+	// (optional) TTL
+	TTL *uint
+
+	// (optional) ports
+	Ports *[2]int
+
 	// (optional) client ports
 	ClientPorts *[2]int
 
@@ -66,22 +75,47 @@ func ReadHeaderTransport(v HeaderValue) (*HeaderTransport, error) {
 	switch parts[0] {
 	case "RTP/AVP", "RTP/AVP/UDP":
 		ht.Protocol = StreamProtocolUDP
+		parts = parts[1:]
 
 	case "RTP/AVP/TCP":
 		ht.Protocol = StreamProtocolTCP
+		parts = parts[1:]
 
 	default:
 		return nil, fmt.Errorf("invalid protocol (%v)", v)
 	}
 
-	for _, t := range parts[1:] {
-		if t == "unicast" {
-			v := StreamUnicast
-			ht.Cast = &v
+	switch parts[0] {
+	case "unicast":
+		v := StreamUnicast
+		ht.Cast = &v
+		parts = parts[1:]
 
-		} else if t == "multicast" {
-			v := StreamMulticast
-			ht.Cast = &v
+	case "multicast":
+		v := StreamMulticast
+		ht.Cast = &v
+		parts = parts[1:]
+	}
+
+	for _, t := range parts {
+		if strings.HasPrefix(t, "destination=") {
+			v := t[len("destination="):]
+			ht.Destination = &v
+
+		} else if strings.HasPrefix(t, "ttl=") {
+			v, err := strconv.ParseUint(t[len("ttl="):], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			vu := uint(v)
+			ht.TTL = &vu
+
+		} else if strings.HasPrefix(t, "port=") {
+			ports, err := parsePorts(t[len("port="):])
+			if err != nil {
+				return nil, err
+			}
+			ht.Ports = ports
 
 		} else if strings.HasPrefix(t, "client_port=") {
 			ports, err := parsePorts(t[len("client_port="):])

@@ -53,6 +53,15 @@ var casesHeaderTransport = []struct {
 				v := StreamMulticast
 				return &v
 			}(),
+			Destination: func() *string {
+				v := "225.219.201.15"
+				return &v
+			}(),
+			TTL: func() *uint {
+				v := uint(127)
+				return &v
+			}(),
+			Ports: &[2]int{7000, 7001},
 		},
 	},
 	{
