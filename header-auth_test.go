@@ -17,10 +17,11 @@ var casesHeaderAuth = []struct {
 		HeaderValue{`Basic realm="4419b63f5e51"`},
 		HeaderValue{`Basic realm="4419b63f5e51"`},
 		&HeaderAuth{
-			Prefix: "Basic",
-			Values: map[string]string{
-				"realm": "4419b63f5e51",
-			},
+			Method: Basic,
+			Realm: func() *string {
+				v := "4419b63f5e51"
+				return &v
+			}(),
 		},
 	},
 	{
@@ -28,12 +29,19 @@ var casesHeaderAuth = []struct {
 		HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		&HeaderAuth{
-			Prefix: "Digest",
-			Values: map[string]string{
-				"realm": "4419b63f5e51",
-				"nonce": "8b84a3b789283a8bea8da7fa7d41f08b",
-				"stale": "FALSE",
-			},
+			Method: Digest,
+			Realm: func() *string {
+				v := "4419b63f5e51"
+				return &v
+			}(),
+			Nonce: func() *string {
+				v := "8b84a3b789283a8bea8da7fa7d41f08b"
+				return &v
+			}(),
+			Stale: func() *string {
+				v := "FALSE"
+				return &v
+			}(),
 		},
 	},
 	{
@@ -41,12 +49,19 @@ var casesHeaderAuth = []struct {
 		HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale=FALSE`},
 		HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		&HeaderAuth{
-			Prefix: "Digest",
-			Values: map[string]string{
-				"realm": "4419b63f5e51",
-				"nonce": "8b84a3b789283a8bea8da7fa7d41f08b",
-				"stale": "FALSE",
-			},
+			Method: Digest,
+			Realm: func() *string {
+				v := "4419b63f5e51"
+				return &v
+			}(),
+			Nonce: func() *string {
+				v := "8b84a3b789283a8bea8da7fa7d41f08b"
+				return &v
+			}(),
+			Stale: func() *string {
+				v := "FALSE"
+				return &v
+			}(),
 		},
 	},
 	{
@@ -54,12 +69,19 @@ var casesHeaderAuth = []struct {
 		HeaderValue{`Digest realm="4419b63f5e51",nonce="133767111917411116111311118211673010032",  stale="FALSE"`},
 		HeaderValue{`Digest realm="4419b63f5e51", nonce="133767111917411116111311118211673010032", stale="FALSE"`},
 		&HeaderAuth{
-			Prefix: "Digest",
-			Values: map[string]string{
-				"realm": "4419b63f5e51",
-				"nonce": "133767111917411116111311118211673010032",
-				"stale": "FALSE",
-			},
+			Method: Digest,
+			Realm: func() *string {
+				v := "4419b63f5e51"
+				return &v
+			}(),
+			Nonce: func() *string {
+				v := "133767111917411116111311118211673010032"
+				return &v
+			}(),
+			Stale: func() *string {
+				v := "FALSE"
+				return &v
+			}(),
 		},
 	},
 	{
@@ -67,14 +89,27 @@ var casesHeaderAuth = []struct {
 		HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
 		HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
 		&HeaderAuth{
-			Prefix: "Digest",
-			Values: map[string]string{
-				"username": "aa",
-				"realm":    "bb",
-				"nonce":    "cc",
-				"uri":      "dd",
-				"response": "ee",
-			},
+			Method: Digest,
+			Username: func() *string {
+				v := "aa"
+				return &v
+			}(),
+			Realm: func() *string {
+				v := "bb"
+				return &v
+			}(),
+			Nonce: func() *string {
+				v := "cc"
+				return &v
+			}(),
+			URI: func() *string {
+				v := "dd"
+				return &v
+			}(),
+			Response: func() *string {
+				v := "ee"
+				return &v
+			}(),
 		},
 	},
 	{
@@ -82,14 +117,27 @@ var casesHeaderAuth = []struct {
 		HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
 		HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
 		&HeaderAuth{
-			Prefix: "Digest",
-			Values: map[string]string{
-				"username": "",
-				"realm":    "IPCAM",
-				"nonce":    "5d17cd12b9fa8a85ac5ceef0926ea5a6",
-				"uri":      "rtsp://localhost:8554/mystream",
-				"response": "c072ae90eb4a27f4cdcb90d62266b2a1",
-			},
+			Method: Digest,
+			Username: func() *string {
+				v := ""
+				return &v
+			}(),
+			Realm: func() *string {
+				v := "IPCAM"
+				return &v
+			}(),
+			Nonce: func() *string {
+				v := "5d17cd12b9fa8a85ac5ceef0926ea5a6"
+				return &v
+			}(),
+			URI: func() *string {
+				v := "rtsp://localhost:8554/mystream"
+				return &v
+			}(),
+			Response: func() *string {
+				v := "c072ae90eb4a27f4cdcb90d62266b2a1"
+				return &v
+			}(),
 		},
 	},
 	{
@@ -97,14 +145,27 @@ var casesHeaderAuth = []struct {
 		HeaderValue{`Digest realm="Please log in with a valid username",nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE,algorithm=MD5`},
 		HeaderValue{`Digest realm="Please log in with a valid username", nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE", algorithm="MD5"`},
 		&HeaderAuth{
-			Prefix: "Digest",
-			Values: map[string]string{
-				"realm":     "Please log in with a valid username",
-				"nonce":     "752a62306daf32b401a41004555c7663",
-				"opaque":    "",
-				"stale":     "FALSE",
-				"algorithm": "MD5",
-			},
+			Method: Digest,
+			Realm: func() *string {
+				v := "Please log in with a valid username"
+				return &v
+			}(),
+			Nonce: func() *string {
+				v := "752a62306daf32b401a41004555c7663"
+				return &v
+			}(),
+			Opaque: func() *string {
+				v := ""
+				return &v
+			}(),
+			Stale: func() *string {
+				v := "FALSE"
+				return &v
+			}(),
+			Algorithm: func() *string {
+				v := "MD5"
+				return &v
+			}(),
 		},
 	},
 }

@@ -64,19 +64,15 @@ func (as *AuthServer) GenerateHeader() HeaderValue {
 		switch m {
 		case Basic:
 			ret = append(ret, (&HeaderAuth{
-				Prefix: "Basic",
-				Values: map[string]string{
-					"realm": as.realm,
-				},
+				Method: Basic,
+				Realm:  &as.realm,
 			}).Write()...)
 
 		case Digest:
 			ret = append(ret, (&HeaderAuth{
-				Prefix: "Digest",
-				Values: map[string]string{
-					"realm": as.realm,
-					"nonce": as.nonce,
-				},
+				Method: Digest,
+				Realm:  &as.realm,
+				Nonce:  &as.nonce,
 			}).Write()...)
 		}
 	}
@@ -110,46 +106,41 @@ func (as *AuthServer) ValidateHeader(v HeaderValue, method Method, ur *url.URL) 
 			return err
 		}
 
-		inRealm, ok := auth.Values["realm"]
-		if !ok {
+		if auth.Realm == nil {
 			return fmt.Errorf("realm not provided")
 		}
 
-		inNonce, ok := auth.Values["nonce"]
-		if !ok {
+		if auth.Nonce == nil {
 			return fmt.Errorf("nonce not provided")
 		}
 
-		inUsername, ok := auth.Values["username"]
-		if !ok {
+		if auth.Username == nil {
 			return fmt.Errorf("username not provided")
 		}
 
-		inUri, ok := auth.Values["uri"]
-		if !ok {
+		if auth.URI == nil {
 			return fmt.Errorf("uri not provided")
 		}
 
-		inResponse, ok := auth.Values["response"]
-		if !ok {
+		if auth.Response == nil {
 			return fmt.Errorf("response not provided")
 		}
 
-		if inNonce != as.nonce {
+		if *auth.Nonce != as.nonce {
 			return fmt.Errorf("wrong nonce")
 		}
 
-		if inRealm != as.realm {
+		if *auth.Realm != as.realm {
 			return fmt.Errorf("wrong realm")
 		}
 
-		if inUsername != as.user {
+		if *auth.Username != as.user {
 			return fmt.Errorf("wrong username")
 		}
 
 		uri := ur.String()
 
-		if inUri != uri {
+		if *auth.URI != uri {
 			// VLC strips the subpath
 			newUrl := *ur
 			newUrl.Path = func() string {
@@ -163,7 +154,7 @@ func (as *AuthServer) ValidateHeader(v HeaderValue, method Method, ur *url.URL) 
 			}()
 			uri = newUrl.String()
 
-			if inUri != uri {
+			if *auth.URI != uri {
 				return fmt.Errorf("wrong url")
 			}
 		}
@@ -171,7 +162,7 @@ func (as *AuthServer) ValidateHeader(v HeaderValue, method Method, ur *url.URL) 
 		response := md5Hex(md5Hex(as.user+":"+as.realm+":"+as.pass) +
 			":" + as.nonce + ":" + md5Hex(string(method)+":"+uri))
 
-		if inResponse != response {
+		if *auth.Response != response {
 			return fmt.Errorf("wrong response")
 		}
 
@@ -209,13 +200,11 @@ func newAuthClient(v HeaderValue, user string, pass string) (*authClient, error)
 			return nil, err
 		}
 
-		realm, ok := auth.Values["realm"]
-		if !ok {
+		if auth.Realm == nil {
 			return nil, fmt.Errorf("realm not provided")
 		}
 
-		nonce, ok := auth.Values["nonce"]
-		if !ok {
+		if auth.Nonce == nil {
 			return nil, fmt.Errorf("nonce not provided")
 		}
 
@@ -223,8 +212,8 @@ func newAuthClient(v HeaderValue, user string, pass string) (*authClient, error)
 			user:   user,
 			pass:   pass,
 			method: Digest,
-			realm:  realm,
-			nonce:  nonce,
+			realm:  *auth.Realm,
+			nonce:  *auth.Nonce,
 		}, nil
 	}
 
@@ -241,8 +230,7 @@ func newAuthClient(v HeaderValue, user string, pass string) (*authClient, error)
 			return nil, err
 		}
 
-		realm, ok := auth.Values["realm"]
-		if !ok {
+		if auth.Realm == nil {
 			return nil, fmt.Errorf("realm not provided")
 		}
 
@@ -250,7 +238,7 @@ func newAuthClient(v HeaderValue, user string, pass string) (*authClient, error)
 			user:   user,
 			pass:   pass,
 			method: Basic,
-			realm:  realm,
+			realm:  *auth.Realm,
 		}, nil
 	}
 
@@ -271,14 +259,15 @@ func (ac *authClient) GenerateHeader(method Method, ur *url.URL) HeaderValue {
 			ac.nonce + ":" + md5Hex(string(method)+":"+ur.String()))
 
 		return (&HeaderAuth{
-			Prefix: "Digest",
-			Values: map[string]string{
-				"username": ac.user,
-				"realm":    ac.realm,
-				"nonce":    ac.nonce,
-				"uri":      ur.String(),
-				"response": response,
-			},
+			Method:   Digest,
+			Username: &ac.user,
+			Realm:    &ac.realm,
+			Nonce:    &ac.nonce,
+			URI: func() *string {
+				v := ur.String()
+				return &v
+			}(),
+			Response: &response,
 		}).Write()
 	}
 

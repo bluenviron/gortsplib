@@ -75,15 +75,14 @@ func ReadHeaderTransport(v HeaderValue) (*HeaderTransport, error) {
 	switch parts[0] {
 	case "RTP/AVP", "RTP/AVP/UDP":
 		ht.Protocol = StreamProtocolUDP
-		parts = parts[1:]
 
 	case "RTP/AVP/TCP":
 		ht.Protocol = StreamProtocolTCP
-		parts = parts[1:]
 
 	default:
 		return nil, fmt.Errorf("invalid protocol (%v)", v)
 	}
+	parts = parts[1:]
 
 	switch parts[0] {
 	case "unicast":
@@ -144,6 +143,8 @@ func ReadHeaderTransport(v HeaderValue) (*HeaderTransport, error) {
 			v = strings.TrimSuffix(v, "\"")
 			ht.Mode = &v
 		}
+
+		// ignore non-standard keys
 	}
 
 	return ht, nil
