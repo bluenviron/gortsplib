@@ -8,7 +8,10 @@ import (
 
 // HeaderSession is a Session header.
 type HeaderSession struct {
+	// session id
 	Session string
+
+	// (optional) a timeout
 	Timeout *uint
 }
 

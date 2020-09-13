@@ -11,19 +11,19 @@ type HeaderTransport struct {
 	// protocol of the stream
 	Protocol StreamProtocol
 
-	// cast of the stream
+	// (optional) cast of the stream
 	Cast *StreamCast
 
-	// client ports
+	// (optional) client ports
 	ClientPorts *[2]int
 
-	// server ports
+	// (optional) server ports
 	ServerPorts *[2]int
 
-	// interleaved frame ids
+	// (optional) interleaved frame ids
 	InterleavedIds *[2]int
 
-	// mode
+	// (optional) mode
 	Mode *string
 }
 

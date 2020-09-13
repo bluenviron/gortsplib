@@ -32,7 +32,7 @@ type ConnServer struct {
 	bw   *bufio.Writer
 }
 
-// NewConnServer allocates a ConnClient.
+// NewConnServer allocates a ConnServer.
 func NewConnServer(conf ConnServerConf) *ConnServer {
 	if conf.ReadTimeout == time.Duration(0) {
 		conf.ReadTimeout = 5 * time.Second
