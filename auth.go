@@ -38,7 +38,7 @@ type AuthServer struct {
 }
 
 // NewAuthServer allocates an AuthServer.
-// If methods is nil, Basic and Digest authentications are used.
+// If methods is nil, the Basic and Digest methods are used.
 func NewAuthServer(user string, pass string, methods []AuthMethod) *AuthServer {
 	if methods == nil {
 		methods = []AuthMethod{Basic, Digest}
