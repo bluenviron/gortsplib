@@ -3,6 +3,8 @@ package gortsplib
 import (
 	"net"
 	"strconv"
+	"sync/atomic"
+	"time"
 )
 
 // connClientUDPListener is a UDP listener created by SetupUDP() to receive UDP frames.
@@ -46,7 +48,10 @@ func (l *connClientUDPListener) read(buf []byte) (int, error) {
 			continue
 		}
 
+		atomic.StoreInt64(l.c.udpLastFrameTimes[l.trackId], time.Now().Unix())
+
 		l.c.rtcpReceivers[l.trackId].OnFrame(l.streamType, buf[:n])
+
 		return n, nil
 	}
 }

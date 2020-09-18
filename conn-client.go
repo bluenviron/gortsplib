@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -50,18 +51,19 @@ type ConnClientConf struct {
 
 // ConnClient is a client-side RTSP connection.
 type ConnClient struct {
-	conf           ConnClientConf
-	nconn          net.Conn
-	br             *bufio.Reader
-	bw             *bufio.Writer
-	session        string
-	cseq           int
-	auth           *authClient
-	streamUrl      *url.URL
-	streamProtocol *StreamProtocol
-	rtcpReceivers  map[int]*RtcpReceiver
-	rtpListeners   map[int]*connClientUDPListener
-	rtcpListeners  map[int]*connClientUDPListener
+	conf              ConnClientConf
+	nconn             net.Conn
+	br                *bufio.Reader
+	bw                *bufio.Writer
+	session           string
+	cseq              int
+	auth              *authClient
+	streamUrl         *url.URL
+	streamProtocol    *StreamProtocol
+	rtcpReceivers     map[int]*RtcpReceiver
+	udpLastFrameTimes map[int]*int64
+	udpRtpListeners   map[int]*connClientUDPListener
+	udpRtcpListeners  map[int]*connClientUDPListener
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -88,13 +90,14 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 	}
 
 	return &ConnClient{
-		conf:          conf,
-		nconn:         nconn,
-		br:            bufio.NewReaderSize(nconn, clientReadBufferSize),
-		bw:            bufio.NewWriterSize(nconn, clientWriteBufferSize),
-		rtcpReceivers: make(map[int]*RtcpReceiver),
-		rtpListeners:  make(map[int]*connClientUDPListener),
-		rtcpListeners: make(map[int]*connClientUDPListener),
+		conf:              conf,
+		nconn:             nconn,
+		br:                bufio.NewReaderSize(nconn, clientReadBufferSize),
+		bw:                bufio.NewWriterSize(nconn, clientWriteBufferSize),
+		rtcpReceivers:     make(map[int]*RtcpReceiver),
+		udpLastFrameTimes: make(map[int]*int64),
+		udpRtpListeners:   make(map[int]*connClientUDPListener),
+		udpRtcpListeners:  make(map[int]*connClientUDPListener),
 	}, nil
 }
 
@@ -115,15 +118,11 @@ func (c *ConnClient) Close() error {
 		<-c.receiverReportDone
 	}
 
-	for _, rr := range c.rtcpReceivers {
-		rr.Close()
-	}
-
-	for _, l := range c.rtpListeners {
+	for _, l := range c.udpRtpListeners {
 		l.close()
 	}
 
-	for _, l := range c.rtcpListeners {
+	for _, l := range c.udpRtcpListeners {
 		l.close()
 	}
 
@@ -439,13 +438,16 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 	c.streamProtocol = &streamProtocol
 	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
 
+	v := time.Now().Unix()
+	c.udpLastFrameTimes[track.Id] = &v
+
 	rtpListener.publisherIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 	rtpListener.publisherPort = (*th.ServerPorts)[0]
-	c.rtpListeners[track.Id] = rtpListener
+	c.udpRtpListeners[track.Id] = rtpListener
 
 	rtcpListener.publisherIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 	rtcpListener.publisherPort = (*th.ServerPorts)[1]
-	c.rtcpListeners[track.Id] = rtcpListener
+	c.udpRtcpListeners[track.Id] = rtcpListener
 
 	return rtpListener.read, rtcpListener.read, res, nil
 }
@@ -560,21 +562,21 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 
 	// open the firewall by sending packets to every channel
 	if *c.streamProtocol == StreamProtocolUDP {
-		for trackId := range c.rtpListeners {
-			c.rtpListeners[trackId].pc.WriteTo(
+		for trackId := range c.udpRtpListeners {
+			c.udpRtpListeners[trackId].pc.WriteTo(
 				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 				&net.UDPAddr{
 					IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
 					Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
-					Port: c.rtpListeners[trackId].publisherPort,
+					Port: c.udpRtpListeners[trackId].publisherPort,
 				})
 
-			c.rtcpListeners[trackId].pc.WriteTo(
+			c.udpRtcpListeners[trackId].pc.WriteTo(
 				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00},
 				&net.UDPAddr{
 					IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
 					Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
-					Port: c.rtcpListeners[trackId].publisherPort,
+					Port: c.udpRtcpListeners[trackId].publisherPort,
 				})
 		}
 	}
@@ -597,10 +599,10 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 					frame := c.rtcpReceivers[trackId].Report()
 
 					if *c.streamProtocol == StreamProtocolUDP {
-						c.rtcpListeners[trackId].pc.WriteTo(frame, &net.UDPAddr{
+						c.udpRtcpListeners[trackId].pc.WriteTo(frame, &net.UDPAddr{
 							IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
 							Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
-							Port: c.rtcpListeners[trackId].publisherPort,
+							Port: c.udpRtcpListeners[trackId].publisherPort,
 						})
 
 					} else {
@@ -664,11 +666,15 @@ func (c *ConnClient) LoopUDP(u *url.URL) error {
 			}
 
 		case <-checkStreamTicker.C:
-			for trackId := range c.rtcpReceivers {
-				if time.Since(c.rtcpReceivers[trackId].LastFrameTime()) >= c.conf.ReadTimeout {
+			now := time.Now()
+
+			for _, lastUnix := range c.udpLastFrameTimes {
+				last := time.Unix(atomic.LoadInt64(lastUnix), 0)
+
+				if now.Sub(last) >= c.conf.ReadTimeout {
 					c.nconn.Close()
 					<-readDone
-					return fmt.Errorf("no packets received recently (maybe there's a firewall/NAT)")
+					return fmt.Errorf("no packets received recently (maybe there's a firewall/NAT in between)")
 				}
 			}
 		}
