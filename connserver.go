@@ -23,13 +23,20 @@ type ConnServerConf struct {
 	// (optional) timeout of write operations.
 	// It defaults to 5 seconds
 	WriteTimeout time.Duration
+
+	// (optional) read buffer count.
+	// If greater than 1, allows to pass frames to other routines than the one
+	// that is reading frames.
+	// It defaults to 1
+	ReadBufferCount int
 }
 
 // ConnServer is a server-side RTSP connection.
 type ConnServer struct {
-	conf ConnServerConf
-	br   *bufio.Reader
-	bw   *bufio.Writer
+	conf            ConnServerConf
+	br              *bufio.Reader
+	bw              *bufio.Writer
+	tcpFrameReadBuf *MultiBuffer
 }
 
 // NewConnServer allocates a ConnServer.
@@ -40,11 +47,15 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 	if conf.WriteTimeout == time.Duration(0) {
 		conf.WriteTimeout = 5 * time.Second
 	}
+	if conf.ReadBufferCount == 0 {
+		conf.ReadBufferCount = 1
+	}
 
 	return &ConnServer{
-		conf: conf,
-		br:   bufio.NewReaderSize(conf.Conn, serverReadBufferSize),
-		bw:   bufio.NewWriterSize(conf.Conn, serverWriteBufferSize),
+		conf:            conf,
+		br:              bufio.NewReaderSize(conf.Conn, serverReadBufferSize),
+		bw:              bufio.NewWriterSize(conf.Conn, serverWriteBufferSize),
+		tcpFrameReadBuf: NewMultiBuffer(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
 	}
 }
 
@@ -65,7 +76,7 @@ func (s *ConnServer) ReadRequest() (*Request, error) {
 }
 
 // ReadFrameOrRequest reads an InterleavedFrame or a Request.
-func (s *ConnServer) ReadFrameOrRequest(frame *InterleavedFrame, timeout bool) (interface{}, error) {
+func (s *ConnServer) ReadFrameOrRequest(timeout bool) (interface{}, error) {
 	if timeout {
 		s.conf.Conn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
 	}
@@ -77,6 +88,9 @@ func (s *ConnServer) ReadFrameOrRequest(frame *InterleavedFrame, timeout bool) (
 	s.br.UnreadByte()
 
 	if b == interleavedFrameMagicByte {
+		frame := &InterleavedFrame{
+			Content: s.tcpFrameReadBuf.Next(),
+		}
 		err := frame.Read(s.br)
 		if err != nil {
 			return nil, err

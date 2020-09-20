@@ -98,10 +98,7 @@ func TestConnClientTCP(t *testing.T) {
 	_, err = conn.Play(u)
 	require.NoError(t, err)
 
-	frame := &InterleavedFrame{Content: make([]byte, 0, 128*1024)}
-	frame.Content = frame.Content[:cap(frame.Content)]
-
-	err = conn.ReadFrame(frame)
+	_, err = conn.ReadFrame()
 	require.NoError(t, err)
 }
 
@@ -155,7 +152,6 @@ func TestConnClientUDP(t *testing.T) {
 
 	go conn.LoopUDP(u)
 
-	buf := make([]byte, 2048)
-	_, err = rtpReads[0](buf)
+	_, err = rtpReads[0]()
 	require.NoError(t, err)
 }

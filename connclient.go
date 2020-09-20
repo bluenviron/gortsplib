@@ -20,12 +20,13 @@ import (
 )
 
 const (
-	clientReadBufferSize       = 4096
-	clientWriteBufferSize      = 4096
-	clientReceiverReportPeriod = 10 * time.Second
-	clientUDPCheckStreamPeriod = 5 * time.Second
-	clientUDPKeepalivePeriod   = 30 * time.Second
-	clientTCPReadBufferSize    = 128 * 1024
+	clientReadBufferSize         = 4096
+	clientWriteBufferSize        = 4096
+	clientReceiverReportPeriod   = 10 * time.Second
+	clientUDPCheckStreamPeriod   = 5 * time.Second
+	clientUDPKeepalivePeriod     = 30 * time.Second
+	clientTCPFrameReadBufferSize = 128 * 1024
+	clientUDPFrameReadBufferSize = 2048
 )
 
 // ConnClientConf allows to configure a ConnClient.
@@ -40,6 +41,12 @@ type ConnClientConf struct {
 	// (optional) timeout of write operations.
 	// It defaults to 5 seconds
 	WriteTimeout time.Duration
+
+	// (optional) read buffer count.
+	// If greater than 1, allows to pass frames to other routines than the one
+	// that is reading frames.
+	// It defaults to 1
+	ReadBufferCount int
 
 	// (optional) function used to initialize the TCP client.
 	// It defaults to net.DialTimeout
@@ -65,6 +72,7 @@ type ConnClient struct {
 	udpLastFrameTimes map[int]*int64
 	udpRtpListeners   map[int]*connClientUDPListener
 	udpRtcpListeners  map[int]*connClientUDPListener
+	tcpFrameReadBuf   *MultiBuffer
 	playing           bool
 
 	receiverReportTerminate chan struct{}
@@ -78,6 +86,9 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 	}
 	if conf.WriteTimeout == time.Duration(0) {
 		conf.WriteTimeout = 5 * time.Second
+	}
+	if conf.ReadBufferCount == 0 {
+		conf.ReadBufferCount = 1
 	}
 	if conf.DialTimeout == nil {
 		conf.DialTimeout = net.DialTimeout
@@ -137,18 +148,22 @@ func (c *ConnClient) NetConn() net.Conn {
 }
 
 // ReadFrame reads an InterleavedFrame.
-func (c *ConnClient) ReadFrame(frame *InterleavedFrame) error {
+func (c *ConnClient) ReadFrame() (*InterleavedFrame, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	frame := &InterleavedFrame{
+		Content: c.tcpFrameReadBuf.Next(),
+	}
 	err := frame.Read(c.br)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	c.rtcpReceivers[frame.TrackId].OnFrame(frame.StreamType, frame.Content)
-	return nil
+
+	return frame, nil
 }
 
-func (c *ConnClient) readFrameOrResponse(frame *InterleavedFrame) (interface{}, error) {
+func (c *ConnClient) readFrameOrResponse() (interface{}, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	b, err := c.br.ReadByte()
 	if err != nil {
@@ -157,6 +172,9 @@ func (c *ConnClient) readFrameOrResponse(frame *InterleavedFrame) (interface{}, 
 	c.br.UnreadByte()
 
 	if b == interleavedFrameMagicByte {
+		frame := &InterleavedFrame{
+			Content: c.tcpFrameReadBuf.Next(),
+		}
 		err := frame.Read(c.br)
 		if err != nil {
 			return nil, err
@@ -386,9 +404,6 @@ func (c *ConnClient) setup(u *url.URL, track *Track, ht *HeaderTransport) (*Resp
 	return res, nil
 }
 
-// UDPReadFunc is a function used to read UDP packets.
-type UDPReadFunc func([]byte) (int, error)
-
 // SetupUDP writes a SETUP request, that means that we want to read
 // a given track with the UDP transport. It then reads a Response.
 // If rtpPort and rtcpPort are zero, they will be chosen automatically.
@@ -595,15 +610,12 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 				return nil, err
 			}
 
-			frame := &InterleavedFrame{
-				Content: make([]byte, 0, clientTCPReadBufferSize),
-			}
+			c.tcpFrameReadBuf = NewMultiBuffer(c.conf.ReadBufferCount, clientTCPFrameReadBufferSize)
 
 			// v4lrtspserver sends frames before the response.
 			// ignore them and wait for the response.
 			for {
-				frame.Content = frame.Content[:cap(frame.Content)]
-				recv, err := c.readFrameOrResponse(frame)
+				recv, err := c.readFrameOrResponse()
 				if err != nil {
 					return nil, err
 				}
