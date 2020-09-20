@@ -65,6 +65,7 @@ type ConnClient struct {
 	udpLastFrameTimes map[int]*int64
 	udpRtpListeners   map[int]*connClientUDPListener
 	udpRtcpListeners  map[int]*connClientUDPListener
+	playing           bool
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -104,7 +105,7 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 
 // Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
-	if c.streamUrl != nil {
+	if c.playing {
 		c.Do(&Request{
 			Method:       TEARDOWN,
 			Url:          c.streamUrl,
@@ -600,6 +601,8 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 	if res.StatusCode != StatusOK {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
+
+	c.playing = true
 
 	// open the firewall by sending packets to every channel
 	if *c.streamProtocol == StreamProtocolUDP {
