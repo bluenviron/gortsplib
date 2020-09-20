@@ -44,8 +44,6 @@ test:
 	temp \
 	make test-nodocker
 
-IMAGES = $(shell echo test-images/*/ | xargs -n1 basename)
-
 test-nodocker:
 	go test -race -v .
 	$(foreach f,$(shell ls examples/*),go build -o /dev/null $(f)$(NL))
