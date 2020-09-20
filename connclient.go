@@ -10,6 +10,7 @@ package gortsplib
 import (
 	"bufio"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/url"
 	"strconv"
@@ -381,6 +382,7 @@ type UDPReadFunc func([]byte) (int, error)
 
 // SetupUDP writes a SETUP request, that means that we want to read
 // a given track with the UDP transport. It then reads a Response.
+// If rtpPort and rtcpPort are zero, they will be chosen automatically.
 func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 	rtcpPort int) (UDPReadFunc, UDPReadFunc, *Response, error) {
 	if c.streamUrl != nil && *u != *c.streamUrl {
@@ -395,14 +397,53 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 		return nil, nil, nil, fmt.Errorf("track has already been setup")
 	}
 
-	rtpListener, err := newConnClientUDPListener(c, rtpPort, track.Id, StreamTypeRtp)
-	if err != nil {
-		return nil, nil, nil, err
+	if (rtpPort == 0 && rtcpPort != 0) ||
+		(rtpPort != 0 && rtcpPort == 0) {
+		return nil, nil, nil, fmt.Errorf("rtpPort and rtcpPort must be both zero or non-zero")
 	}
 
-	rtcpListener, err := newConnClientUDPListener(c, rtcpPort, track.Id, StreamTypeRtcp)
+	if rtpPort != 0 && rtcpPort != (rtpPort+1) {
+		return nil, nil, nil, fmt.Errorf("rtcpPort must be rtpPort + 1")
+	}
+
+	rtpListener, rtcpListener, err := func() (*connClientUDPListener, *connClientUDPListener, error) {
+		if rtpPort != 0 {
+			rtpListener, err := newConnClientUDPListener(c, rtpPort, track.Id, StreamTypeRtp)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			rtcpListener, err := newConnClientUDPListener(c, rtcpPort, track.Id, StreamTypeRtcp)
+			if err != nil {
+				rtpListener.close()
+				return nil, nil, err
+			}
+
+			return rtpListener, rtcpListener, nil
+
+		} else {
+			for {
+				// choose two consecutive ports in range 65535-10000
+				// rtp must be even and rtcp odd
+				rtpPort = (rand.Intn((65535-10000)/2) * 2) + 10000
+				rtcpPort = rtpPort + 1
+
+				rtpListener, err := newConnClientUDPListener(c, rtpPort, track.Id, StreamTypeRtp)
+				if err != nil {
+					continue
+				}
+
+				rtcpListener, err := newConnClientUDPListener(c, rtcpPort, track.Id, StreamTypeRtcp)
+				if err != nil {
+					rtpListener.close()
+					continue
+				}
+
+				return rtpListener, rtcpListener, nil
+			}
+		}
+	}()
 	if err != nil {
-		rtpListener.close()
 		return nil, nil, nil, err
 	}
 

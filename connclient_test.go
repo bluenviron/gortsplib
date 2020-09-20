@@ -143,7 +143,7 @@ func TestConnClientUDP(t *testing.T) {
 	var rtcpReads []UDPReadFunc
 
 	for _, track := range tracks {
-		rtpRead, rtcpRead, _, err := conn.SetupUDP(u, track, 9000+track.Id*2, 9001+track.Id*2)
+		rtpRead, rtcpRead, _, err := conn.SetupUDP(u, track, 0, 0)
 		require.NoError(t, err)
 
 		rtpReads = append(rtpReads, rtpRead)

@@ -36,7 +36,7 @@ func main() {
 	var rtcpReads []gortsplib.UDPReadFunc
 
 	for _, track := range tracks {
-		rtpRead, rtcpRead, _, err := conn.SetupUDP(u, track, 9000+track.Id*2, 9001+track.Id*2)
+		rtpRead, rtcpRead, _, err := conn.SetupUDP(u, track, 0, 0)
 		if err != nil {
 			panic(err)
 		}
