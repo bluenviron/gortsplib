@@ -52,7 +52,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	// receive RTP frames
+	// read RTP frames
 	for trackId, rtpRead := range rtpReads {
 		wg.Add(1)
 
@@ -70,7 +70,7 @@ func main() {
 		}(trackId, rtpRead)
 	}
 
-	// receive RTCP frames
+	// read RTCP frames
 	for trackId, rtcpRead := range rtcpReads {
 		wg.Add(1)
 

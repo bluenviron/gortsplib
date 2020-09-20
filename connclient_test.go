@@ -56,7 +56,7 @@ func (c *container) wait() int {
 	return int(code)
 }
 
-func TestConnClientTCP(t *testing.T) {
+func TestConnClientReadTCP(t *testing.T) {
 	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
 	require.NoError(t, err)
 	defer cnt1.close()
@@ -102,7 +102,7 @@ func TestConnClientTCP(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestConnClientUDP(t *testing.T) {
+func TestConnClientReadUDP(t *testing.T) {
 	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
 	require.NoError(t, err)
 	defer cnt1.close()
