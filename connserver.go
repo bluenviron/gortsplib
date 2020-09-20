@@ -33,10 +33,10 @@ type ConnServerConf struct {
 
 // ConnServer is a server-side RTSP connection.
 type ConnServer struct {
-	conf            ConnServerConf
-	br              *bufio.Reader
-	bw              *bufio.Writer
-	tcpFrameReadBuf *MultiBuffer
+	conf      ConnServerConf
+	br        *bufio.Reader
+	bw        *bufio.Writer
+	tcpFrames *multiFrame
 }
 
 // NewConnServer allocates a ConnServer.
@@ -52,10 +52,10 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 	}
 
 	return &ConnServer{
-		conf:            conf,
-		br:              bufio.NewReaderSize(conf.Conn, serverReadBufferSize),
-		bw:              bufio.NewWriterSize(conf.Conn, serverWriteBufferSize),
-		tcpFrameReadBuf: NewMultiBuffer(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
+		conf:      conf,
+		br:        bufio.NewReaderSize(conf.Conn, serverReadBufferSize),
+		bw:        bufio.NewWriterSize(conf.Conn, serverWriteBufferSize),
+		tcpFrames: newMultiFrame(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
 	}
 }
 
@@ -88,9 +88,7 @@ func (s *ConnServer) ReadFrameOrRequest(timeout bool) (interface{}, error) {
 	s.br.UnreadByte()
 
 	if b == interleavedFrameMagicByte {
-		frame := &InterleavedFrame{
-			Content: s.tcpFrameReadBuf.Next(),
-		}
+		frame := s.tcpFrames.next()
 		err := frame.Read(s.br)
 		if err != nil {
 			return nil, err

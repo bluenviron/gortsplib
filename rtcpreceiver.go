@@ -56,7 +56,7 @@ func (rr *RtcpReceiver) OnFrame(streamType StreamType, buf []byte) {
 
 	} else {
 		// we can afford to unmarshal all RTCP frames
-		// since they are sent with a frequency much lower than the one of the RTP frames
+		// since they are sent with a frequency much lower than the one of RTP frames
 		frames, err := rtcp.Unmarshal(buf)
 		if err == nil {
 			for _, frame := range frames {

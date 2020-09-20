@@ -72,7 +72,7 @@ type ConnClient struct {
 	udpLastFrameTimes map[int]*int64
 	udpRtpListeners   map[int]*connClientUDPListener
 	udpRtcpListeners  map[int]*connClientUDPListener
-	tcpFrameReadBuf   *MultiBuffer
+	tcpFrames         *multiFrame
 	playing           bool
 
 	receiverReportTerminate chan struct{}
@@ -150,9 +150,7 @@ func (c *ConnClient) NetConn() net.Conn {
 // ReadFrame reads an InterleavedFrame.
 func (c *ConnClient) ReadFrame() (*InterleavedFrame, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	frame := &InterleavedFrame{
-		Content: c.tcpFrameReadBuf.Next(),
-	}
+	frame := c.tcpFrames.next()
 	err := frame.Read(c.br)
 	if err != nil {
 		return nil, err
@@ -172,9 +170,7 @@ func (c *ConnClient) readFrameOrResponse() (interface{}, error) {
 	c.br.UnreadByte()
 
 	if b == interleavedFrameMagicByte {
-		frame := &InterleavedFrame{
-			Content: c.tcpFrameReadBuf.Next(),
-		}
+		frame := c.tcpFrames.next()
 		err := frame.Read(c.br)
 		if err != nil {
 			return nil, err
@@ -610,7 +606,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 				return nil, err
 			}
 
-			c.tcpFrameReadBuf = NewMultiBuffer(c.conf.ReadBufferCount, clientTCPFrameReadBufferSize)
+			c.tcpFrames = newMultiFrame(c.conf.ReadBufferCount, clientTCPFrameReadBufferSize)
 
 			// v4lrtspserver sends frames before the response.
 			// ignore them and wait for the response.
