@@ -59,14 +59,13 @@ func main() {
 		go func(trackId int, rtpRead gortsplib.UDPReadFunc) {
 			defer wg.Done()
 
-			buf := make([]byte, 2048)
 			for {
-				n, err := rtpRead(buf)
+				buf, err := rtpRead()
 				if err != nil {
 					break
 				}
 
-				fmt.Printf("frame from track %d, type RTP: %v\n", trackId, buf[:n])
+				fmt.Printf("frame from track %d, type RTP: %v\n", trackId, buf)
 			}
 		}(trackId, rtpRead)
 	}
@@ -78,14 +77,13 @@ func main() {
 		go func(trackId int, rtcpRead gortsplib.UDPReadFunc) {
 			defer wg.Done()
 
-			buf := make([]byte, 2048)
 			for {
-				n, err := rtcpRead(buf)
+				buf, err := rtcpRead()
 				if err != nil {
 					break
 				}
 
-				fmt.Printf("frame from track %d, type RTCP: %v\n", trackId, buf[:n])
+				fmt.Printf("frame from track %d, type RTCP: %v\n", trackId, buf)
 			}
 		}(trackId, rtcpRead)
 	}

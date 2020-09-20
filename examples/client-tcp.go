@@ -43,12 +43,8 @@ func main() {
 		panic(err)
 	}
 
-	frame := &gortsplib.InterleavedFrame{Content: make([]byte, 0, 128*1024)}
-
 	for {
-		frame.Content = frame.Content[:cap(frame.Content)]
-
-		err := conn.ReadFrame(frame)
+		frame, err := conn.ReadFrame()
 		if err != nil {
 			conn.Close()
 			fmt.Println("connection is closed (%s)", err)

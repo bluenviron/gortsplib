@@ -19,12 +19,13 @@ import (
 )
 
 const (
-	clientReadBufferSize       = 4096
-	clientWriteBufferSize      = 4096
-	clientReceiverReportPeriod = 10 * time.Second
-	clientUDPCheckStreamPeriod = 5 * time.Second
-	clientUDPKeepalivePeriod   = 30 * time.Second
-	clientTCPReadBufferSize    = 128 * 1024
+	clientReadBufferSize         = 4096
+	clientWriteBufferSize        = 4096
+	clientReceiverReportPeriod   = 10 * time.Second
+	clientUDPCheckStreamPeriod   = 5 * time.Second
+	clientUDPKeepalivePeriod     = 30 * time.Second
+	clientTCPFrameReadBufferSize = 128 * 1024
+	clientUDPFrameReadBufferSize = 2048
 )
 
 // ConnClientConf allows to configure a ConnClient.
@@ -47,6 +48,12 @@ type ConnClientConf struct {
 	// (optional) function used to initialize UDP listeners.
 	// It defaults to net.ListenPacket
 	ListenPacket func(network, address string) (net.PacketConn, error)
+
+	// (optional) read buffer count.
+	// If greater than 1, allows to pass frames to other routines than the one
+	// that is reading frames.
+	// It defaults to 1
+	ReadBufferCount int
 }
 
 // ConnClient is a client-side RTSP connection.
@@ -64,6 +71,7 @@ type ConnClient struct {
 	udpLastFrameTimes map[int]*int64
 	udpRtpListeners   map[int]*connClientUDPListener
 	udpRtcpListeners  map[int]*connClientUDPListener
+	tcpFrameReadBuf    *MultiBuffer
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -83,6 +91,9 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 	if conf.ListenPacket == nil {
 		conf.ListenPacket = net.ListenPacket
 	}
+	if conf.ReadBufferCount == 0 {
+		conf.ReadBufferCount = 1
+	}
 
 	nconn, err := conf.DialTimeout("tcp", conf.Host, conf.ReadTimeout)
 	if err != nil {
@@ -98,6 +109,7 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		udpLastFrameTimes: make(map[int]*int64),
 		udpRtpListeners:   make(map[int]*connClientUDPListener),
 		udpRtcpListeners:  make(map[int]*connClientUDPListener),
+		tcpFrameReadBuf:    NewMultiBuffer(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
 	}, nil
 }
 
@@ -135,18 +147,22 @@ func (c *ConnClient) NetConn() net.Conn {
 }
 
 // ReadFrame reads an InterleavedFrame.
-func (c *ConnClient) ReadFrame(frame *InterleavedFrame) error {
+func (c *ConnClient) ReadFrame() (*InterleavedFrame, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	frame := &InterleavedFrame{
+		Content: c.tcpFrameReadBuf.Next(),
+	}
 	err := frame.Read(c.br)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	c.rtcpReceivers[frame.TrackId].OnFrame(frame.StreamType, frame.Content)
-	return nil
+
+	return frame, nil
 }
 
-func (c *ConnClient) readFrameOrResponse(frame *InterleavedFrame) (interface{}, error) {
+func (c *ConnClient) readFrameOrResponse() (interface{}, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	b, err := c.br.ReadByte()
 	if err != nil {
@@ -155,6 +171,9 @@ func (c *ConnClient) readFrameOrResponse(frame *InterleavedFrame) (interface{}, 
 	c.br.UnreadByte()
 
 	if b == interleavedFrameMagicByte {
+		frame := &InterleavedFrame{
+			Content: c.tcpFrameReadBuf.Next(),
+		}
 		err := frame.Read(c.br)
 		if err != nil {
 			return nil, err
@@ -376,9 +395,6 @@ func (c *ConnClient) setup(u *url.URL, track *Track, ht *HeaderTransport) (*Resp
 	return res, nil
 }
 
-// UDPReadFunc is a function used to read UDP packets.
-type UDPReadFunc func([]byte) (int, error)
-
 // SetupUDP writes a SETUP request, that means that we want to read
 // a given track with the UDP transport. It then reads a Response.
 func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
@@ -533,15 +549,10 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 				return nil, err
 			}
 
-			frame := &InterleavedFrame{
-				Content: make([]byte, 0, clientTCPReadBufferSize),
-			}
-
 			// v4lrtspserver sends frames before the response.
 			// ignore them and wait for the response.
 			for {
-				frame.Content = frame.Content[:cap(frame.Content)]
-				recv, err := c.readFrameOrResponse(frame)
+				recv, err := c.readFrameOrResponse()
 				if err != nil {
 					return nil, err
 				}
