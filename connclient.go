@@ -246,6 +246,10 @@ func (c *ConnClient) writeFrame(frame *InterleavedFrame) error {
 // the methods allowed by the server. Since this method is not implemented by
 // every RTSP server, the function does not fail if the returned code is StatusNotFound.
 func (c *ConnClient) Options(u *url.URL) (*Response, error) {
+	if c.playing {
+		return nil, fmt.Errorf("can't be called when playing")
+	}
+
 	res, err := c.Do(&Request{
 		Method: OPTIONS,
 		// strip path
@@ -271,6 +275,10 @@ func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 // document that describes the tracks available in the given URL. It then
 // reads a Response.
 func (c *ConnClient) Describe(u *url.URL) (Tracks, *Response, error) {
+	if c.playing {
+		return nil, nil, fmt.Errorf("can't be called when playing")
+	}
+
 	res, err := c.Do(&Request{
 		Method: DESCRIBE,
 		Url:    u,
@@ -386,6 +394,10 @@ type UDPReadFunc func([]byte) (int, error)
 // If rtpPort and rtcpPort are zero, they will be chosen automatically.
 func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 	rtcpPort int) (UDPReadFunc, UDPReadFunc, *Response, error) {
+	if c.playing {
+		return nil, nil, nil, fmt.Errorf("can't be called when playing")
+	}
+
 	if c.streamUrl != nil && *u != *c.streamUrl {
 		fmt.Errorf("setup has already begun with another url")
 	}
@@ -497,6 +509,10 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 // SetupTCP writes a SETUP request, that means that we want to read
 // a given track with the TCP transport. It then reads a Response.
 func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
+	if c.playing {
+		return nil, fmt.Errorf("can't be called when playing")
+	}
+
 	if c.streamUrl != nil && *u != *c.streamUrl {
 		fmt.Errorf("setup has already begun with another url")
 	}
@@ -545,12 +561,16 @@ func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
 // It then reads a Response. This function can be called only after SetupUDP()
 // or SetupTCP().
 func (c *ConnClient) Play(u *url.URL) (*Response, error) {
+	if c.playing {
+		return nil, fmt.Errorf("can't be called when playing")
+	}
+
 	if c.streamUrl == nil {
-		return nil, fmt.Errorf("Play() can be called only after a successful SetupUDP() or SetupTCP()")
+		return nil, fmt.Errorf("can be called only after a successful SetupUDP() or SetupTCP()")
 	}
 
 	if *u != *c.streamUrl {
-		fmt.Errorf("Play() must be called with the same url used for SetupUDP() or SetupTCP()")
+		fmt.Errorf("must be called with the same url used for SetupUDP() or SetupTCP()")
 	}
 
 	res, err := func() (*Response, error) {
