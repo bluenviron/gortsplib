@@ -13,8 +13,8 @@ Features:
 
 ## Examples
 
-* [client-tcp](examples/client-tcp.go)
-* [client-udp](examples/client-udp.go)
+* [read-tcp](examples/read-tcp.go)
+* [read-udp](examples/read-udp.go)
 
 ## Documentation
 
