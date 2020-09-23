@@ -161,6 +161,14 @@ func (c *ConnClient) ReadFrame() (*InterleavedFrame, error) {
 	return frame, nil
 }
 
+// ReadFrameUDP reads an UDP frame.
+func (c *ConnClient) ReadFrameUDP(track *Track, streamType StreamType) ([]byte, error) {
+	if streamType == StreamTypeRtp {
+		return c.udpRtpListeners[track.Id].read()
+	}
+	return c.udpRtcpListeners[track.Id].read()
+}
+
 func (c *ConnClient) readFrameOrResponse() (interface{}, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	b, err := c.br.ReadByte()
@@ -404,9 +412,9 @@ func (c *ConnClient) setup(u *url.URL, track *Track, ht *HeaderTransport) (*Resp
 // a given track with the UDP transport. It then reads a Response.
 // If rtpPort and rtcpPort are zero, they will be chosen automatically.
 func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
-	rtcpPort int) (UDPReadFunc, UDPReadFunc, *Response, error) {
+	rtcpPort int) (*Response, error) {
 	if c.playing {
-		return nil, nil, nil, fmt.Errorf("can't be called when playing")
+		return nil, fmt.Errorf("can't be called when playing")
 	}
 
 	if c.streamUrl != nil && *u != *c.streamUrl {
@@ -414,20 +422,20 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 	}
 
 	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolUDP {
-		return nil, nil, nil, fmt.Errorf("cannot setup tracks with different protocols")
+		return nil, fmt.Errorf("cannot setup tracks with different protocols")
 	}
 
 	if _, ok := c.rtcpReceivers[track.Id]; ok {
-		return nil, nil, nil, fmt.Errorf("track has already been setup")
+		return nil, fmt.Errorf("track has already been setup")
 	}
 
 	if (rtpPort == 0 && rtcpPort != 0) ||
 		(rtpPort != 0 && rtcpPort == 0) {
-		return nil, nil, nil, fmt.Errorf("rtpPort and rtcpPort must be both zero or non-zero")
+		return nil, fmt.Errorf("rtpPort and rtcpPort must be both zero or non-zero")
 	}
 
 	if rtpPort != 0 && rtcpPort != (rtpPort+1) {
-		return nil, nil, nil, fmt.Errorf("rtcpPort must be rtpPort + 1")
+		return nil, fmt.Errorf("rtcpPort must be rtpPort + 1")
 	}
 
 	rtpListener, rtcpListener, err := func() (*connClientUDPListener, *connClientUDPListener, error) {
@@ -468,7 +476,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 		}
 	}()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	res, err := c.setup(u, track, &HeaderTransport{
@@ -482,20 +490,20 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 	if err != nil {
 		rtpListener.close()
 		rtcpListener.close()
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	th, err := ReadHeaderTransport(res.Header["Transport"])
 	if err != nil {
 		rtpListener.close()
 		rtcpListener.close()
-		return nil, nil, nil, fmt.Errorf("SETUP: transport header: %s", err)
+		return nil, fmt.Errorf("SETUP: transport header: %s", err)
 	}
 
 	if th.ServerPorts == nil {
 		rtpListener.close()
 		rtcpListener.close()
-		return nil, nil, nil, fmt.Errorf("SETUP: server ports not provided")
+		return nil, fmt.Errorf("SETUP: server ports not provided")
 	}
 
 	c.streamUrl = u
@@ -514,7 +522,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 	rtcpListener.publisherPort = (*th.ServerPorts)[1]
 	c.udpRtcpListeners[track.Id] = rtcpListener
 
-	return rtpListener.read, rtcpListener.read, res, nil
+	return res, nil
 }
 
 // SetupTCP writes a SETUP request, that means that we want to read

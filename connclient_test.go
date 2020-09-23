@@ -136,15 +136,9 @@ func TestConnClientReadUDP(t *testing.T) {
 	tracks, _, err := conn.Describe(u)
 	require.NoError(t, err)
 
-	var rtpReads []UDPReadFunc
-	var rtcpReads []UDPReadFunc
-
 	for _, track := range tracks {
-		rtpRead, rtcpRead, _, err := conn.SetupUDP(u, track, 0, 0)
+		_, err := conn.SetupUDP(u, track, 0, 0)
 		require.NoError(t, err)
-
-		rtpReads = append(rtpReads, rtpRead)
-		rtcpReads = append(rtcpReads, rtcpRead)
 	}
 
 	_, err = conn.Play(u)
@@ -152,6 +146,6 @@ func TestConnClientReadUDP(t *testing.T) {
 
 	go conn.LoopUDP(u)
 
-	_, err = rtpReads[0]()
+	_, err = conn.ReadFrameUDP(tracks[0], StreamTypeRtp)
 	require.NoError(t, err)
 }

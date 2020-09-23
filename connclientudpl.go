@@ -7,9 +7,6 @@ import (
 	"time"
 )
 
-// UDPReadFunc is a function used to read UDP packets.
-type UDPReadFunc func() ([]byte, error)
-
 type connClientUDPListener struct {
 	c               *ConnClient
 	pc              net.PacketConn

@@ -24,10 +24,14 @@ const (
 
 // String implements fmt.Stringer
 func (sp StreamProtocol) String() string {
-	if sp == StreamProtocolUDP {
+	switch sp {
+	case StreamProtocolUDP:
 		return "udp"
+
+	case StreamProtocolTCP:
+		return "tcp"
 	}
-	return "tcp"
+	return "unknown"
 }
 
 // StreamCast is the cast of a stream.
@@ -43,10 +47,14 @@ const (
 
 // String implements fmt.Stringer
 func (sc StreamCast) String() string {
-	if sc == StreamUnicast {
+	switch sc {
+	case StreamUnicast:
 		return "unicast"
+
+	case StreamMulticast:
+		return "multicast"
 	}
-	return "multicast"
+	return "unknown"
 }
 
 // StreamType is the type of a stream.
@@ -69,7 +77,7 @@ func (st StreamType) String() string {
 	case StreamTypeRtcp:
 		return "RTCP"
 	}
-	return "UNKNOWN"
+	return "unknown"
 }
 
 func readBytesLimited(rb *bufio.Reader, delim byte, n int) ([]byte, error) {
