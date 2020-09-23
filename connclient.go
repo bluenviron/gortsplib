@@ -164,9 +164,26 @@ func (c *ConnClient) ReadFrame() (*InterleavedFrame, error) {
 // ReadFrameUDP reads an UDP frame.
 func (c *ConnClient) ReadFrameUDP(track *Track, streamType StreamType) ([]byte, error) {
 	if streamType == StreamTypeRtp {
-		return c.udpRtpListeners[track.Id].read()
+		buf, err := c.udpRtpListeners[track.Id].read()
+		if err != nil {
+			return nil, err
+		}
+
+		atomic.StoreInt64(c.udpLastFrameTimes[track.Id], time.Now().Unix())
+		c.rtcpReceivers[track.Id].OnFrame(streamType, buf)
+
+		return buf, nil
 	}
-	return c.udpRtcpListeners[track.Id].read()
+
+	buf, err := c.udpRtcpListeners[track.Id].read()
+	if err != nil {
+		return nil, err
+	}
+
+	atomic.StoreInt64(c.udpLastFrameTimes[track.Id], time.Now().Unix())
+	c.rtcpReceivers[track.Id].OnFrame(streamType, buf)
+
+	return buf, nil
 }
 
 func (c *ConnClient) readFrameOrResponse() (interface{}, error) {
@@ -440,12 +457,12 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 
 	rtpListener, rtcpListener, err := func() (*connClientUDPListener, *connClientUDPListener, error) {
 		if rtpPort != 0 {
-			rtpListener, err := newConnClientUDPListener(c, rtpPort, track.Id, StreamTypeRtp)
+			rtpListener, err := newConnClientUDPListener(c, rtpPort)
 			if err != nil {
 				return nil, nil, err
 			}
 
-			rtcpListener, err := newConnClientUDPListener(c, rtcpPort, track.Id, StreamTypeRtcp)
+			rtcpListener, err := newConnClientUDPListener(c, rtcpPort)
 			if err != nil {
 				rtpListener.close()
 				return nil, nil, err
@@ -460,12 +477,12 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 				rtpPort = (rand.Intn((65535-10000)/2) * 2) + 10000
 				rtcpPort = rtpPort + 1
 
-				rtpListener, err := newConnClientUDPListener(c, rtpPort, track.Id, StreamTypeRtp)
+				rtpListener, err := newConnClientUDPListener(c, rtpPort)
 				if err != nil {
 					continue
 				}
 
-				rtcpListener, err := newConnClientUDPListener(c, rtcpPort, track.Id, StreamTypeRtcp)
+				rtcpListener, err := newConnClientUDPListener(c, rtcpPort)
 				if err != nil {
 					rtpListener.close()
 					continue
