@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net/url"
+	"strconv"
 )
 
 const (
@@ -126,6 +127,10 @@ func (req *Request) Write(bw *bufio.Writer) error {
 	_, err := bw.Write([]byte(string(req.Method) + " " + u.String() + " " + rtspProtocol10 + "\r\n"))
 	if err != nil {
 		return err
+	}
+
+	if len(req.Content) != 0 {
+		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Content)), 10)}
 	}
 
 	err = req.Header.write(bw)
