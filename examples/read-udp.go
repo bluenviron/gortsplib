@@ -48,10 +48,9 @@ func main() {
 	defer wg.Wait()
 	defer conn.CloseUDPListeners()
 
-	// read RTP frames
 	for _, track := range tracks {
+		// read RTP frames
 		wg.Add(1)
-
 		go func(track *gortsplib.Track) {
 			defer wg.Done()
 
@@ -64,12 +63,9 @@ func main() {
 				fmt.Printf("frame from track %d, type RTP: %v\n", track.Id, buf)
 			}
 		}(track)
-	}
 
-	// read RTCP frames
-	for _, track := range tracks {
+		// read RTCP frames
 		wg.Add(1)
-
 		go func(track *gortsplib.Track) {
 			defer wg.Done()
 
