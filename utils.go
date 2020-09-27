@@ -80,6 +80,29 @@ func (st StreamType) String() string {
 	return "unknown"
 }
 
+// SetupMode is a setup mode.
+type SetupMode int
+
+const (
+	// SetupModePlay is the "play" setup mode
+	SetupModePlay SetupMode = iota
+
+	// SetupModeRecord is the "record" setup mode
+	SetupModeRecord
+)
+
+// String implements fmt.Stringer
+func (sm SetupMode) String() string {
+	switch sm {
+	case SetupModePlay:
+		return "play"
+
+	case SetupModeRecord:
+		return "record"
+	}
+	return "unknown"
+}
+
 func readBytesLimited(rb *bufio.Reader, delim byte, n int) ([]byte, error) {
 	for i := 1; i <= n; i++ {
 		byts, err := rb.Peek(i)

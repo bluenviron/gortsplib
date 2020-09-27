@@ -32,7 +32,7 @@ func main() {
 	}
 
 	for _, track := range tracks {
-		_, err := conn.SetupTCP(u, track)
+		_, err := conn.SetupTCP(u, gortsplib.SetupModePlay, track)
 		if err != nil {
 			panic(err)
 		}
@@ -44,9 +44,8 @@ func main() {
 	}
 
 	for {
-		frame, err := conn.ReadFrame()
+		frame, err := conn.ReadFrameTCP()
 		if err != nil {
-			conn.Close()
 			fmt.Println("connection is closed (%s)", err)
 			break
 		}

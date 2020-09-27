@@ -7,20 +7,21 @@ import (
 
 type connClientUDPListener struct {
 	pc              net.PacketConn
-	publisherIp     net.IP
-	publisherPort   int
+	remoteIp        net.IP
+	remoteZone      string
+	remotePort      int
 	udpFrameReadBuf *MultiBuffer
 }
 
-func newConnClientUDPListener(c *ConnClient, port int) (*connClientUDPListener, error) {
-	pc, err := c.conf.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
+func newConnClientUDPListener(conf ConnClientConf, port int) (*connClientUDPListener, error) {
+	pc, err := conf.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
 	if err != nil {
 		return nil, err
 	}
 
 	return &connClientUDPListener{
 		pc:              pc,
-		udpFrameReadBuf: NewMultiBuffer(c.conf.ReadBufferCount, 2048),
+		udpFrameReadBuf: NewMultiBuffer(conf.ReadBufferCount, 2048),
 	}, nil
 }
 
@@ -38,10 +39,19 @@ func (l *connClientUDPListener) read() ([]byte, error) {
 
 		uaddr := addr.(*net.UDPAddr)
 
-		if !l.publisherIp.Equal(uaddr.IP) || l.publisherPort != uaddr.Port {
+		if !l.remoteIp.Equal(uaddr.IP) || l.remotePort != uaddr.Port {
 			continue
 		}
 
 		return buf[:n], nil
 	}
+}
+
+func (l *connClientUDPListener) write(buf []byte) error {
+	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
+		IP:   l.remoteIp,
+		Zone: l.remoteZone,
+		Port: l.remotePort,
+	})
+	return err
 }

@@ -106,7 +106,7 @@ func (s *ConnServer) WriteResponse(res *Response) error {
 }
 
 // WriteFrame writes an InterleavedFrame.
-func (s *ConnServer) WriteFrame(frame *InterleavedFrame) error {
+func (s *ConnServer) WriteFrameTCP(frame *InterleavedFrame) error {
 	s.conf.Conn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
 	return frame.Write(s.bw)
 }

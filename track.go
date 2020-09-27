@@ -1,7 +1,10 @@
 package gortsplib
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"strconv"
+	"strings"
 
 	"github.com/aler9/sdp-dirty/v3"
 )
@@ -13,6 +16,40 @@ type Track struct {
 
 	// track codec and info in SDP format
 	Media *sdp.MediaDescription
+}
+
+// NewTrackH264 initializes an H264 track.
+func NewTrackH264(id int, sps []byte, pps []byte) *Track {
+	spropParameterSets := base64.StdEncoding.EncodeToString(sps) +
+		"," + base64.StdEncoding.EncodeToString(pps)
+	profileLevelId := strings.ToUpper(hex.EncodeToString(sps[1:4]))
+
+	return &Track{
+		Id: id,
+		Media: &sdp.MediaDescription{
+			MediaName: sdp.MediaName{
+				Media:   "video",
+				Protos:  []string{"RTP", "AVP"},
+				Formats: []string{"96"},
+			},
+			Attributes: []sdp.Attribute{
+				{
+					Key:   "rtpmap",
+					Value: "96 H264/90000",
+				},
+				{
+					Key: "fmtp",
+					Value: "96 packetization-mode=1; " +
+						"sprop-parameter-sets=" + spropParameterSets + "; " +
+						"profile-level-id=" + profileLevelId,
+				},
+				{
+					Key:   "control",
+					Value: "trackID=0",
+				},
+			},
+		},
+	}
 }
 
 // Tracks is a list of tracks.

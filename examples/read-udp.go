@@ -33,7 +33,7 @@ func main() {
 	}
 
 	for _, track := range tracks {
-		_, err := conn.SetupUDP(u, track, 0, 0)
+		_, err := conn.SetupUDP(u, gortsplib.SetupModePlay, track, 0, 0)
 		if err != nil {
 			panic(err)
 		}
@@ -45,6 +45,8 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
+	defer wg.Wait()
+	defer conn.CloseUDPListeners()
 
 	// read RTP frames
 	for _, track := range tracks {
@@ -83,7 +85,5 @@ func main() {
 	}
 
 	err = conn.LoopUDP(u)
-	conn.Close()
-	wg.Wait()
 	fmt.Println("connection is closed (%s)", err)
 }

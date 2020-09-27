@@ -29,6 +29,14 @@ const (
 	clientUDPFrameReadBufferSize = 2048
 )
 
+type connClientState int
+
+const (
+	connClientStateInitial connClientState = iota
+	connClientStateReading
+	connClientStatePublishing
+)
+
 // ConnClientConf allows to configure a ConnClient.
 type ConnClientConf struct {
 	// target address in format hostname:port
@@ -66,6 +74,7 @@ type ConnClient struct {
 	session           string
 	cseq              int
 	auth              *authClient
+	state             connClientState
 	streamUrl         *url.URL
 	streamProtocol    *StreamProtocol
 	rtcpReceivers     map[int]*RtcpReceiver
@@ -73,7 +82,6 @@ type ConnClient struct {
 	udpRtpListeners   map[int]*connClientUDPListener
 	udpRtcpListeners  map[int]*connClientUDPListener
 	tcpFrames         *multiFrame
-	playing           bool
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -116,7 +124,7 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 
 // Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
-	if c.playing {
+	if c.state == connClientStateReading {
 		c.Do(&Request{
 			Method:       TEARDOWN,
 			Url:          c.streamUrl,
@@ -142,48 +150,20 @@ func (c *ConnClient) Close() error {
 	return err
 }
 
+// CloseUDPListeners closes any open UDP listener.
+func (c *ConnClient) CloseUDPListeners() {
+	for _, l := range c.udpRtpListeners {
+		l.close()
+	}
+
+	for _, l := range c.udpRtcpListeners {
+		l.close()
+	}
+}
+
 // NetConn returns the underlying net.Conn.
 func (c *ConnClient) NetConn() net.Conn {
 	return c.nconn
-}
-
-// ReadFrame reads an InterleavedFrame.
-func (c *ConnClient) ReadFrame() (*InterleavedFrame, error) {
-	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	frame := c.tcpFrames.next()
-	err := frame.Read(c.br)
-	if err != nil {
-		return nil, err
-	}
-
-	c.rtcpReceivers[frame.TrackId].OnFrame(frame.StreamType, frame.Content)
-
-	return frame, nil
-}
-
-// ReadFrameUDP reads an UDP frame.
-func (c *ConnClient) ReadFrameUDP(track *Track, streamType StreamType) ([]byte, error) {
-	if streamType == StreamTypeRtp {
-		buf, err := c.udpRtpListeners[track.Id].read()
-		if err != nil {
-			return nil, err
-		}
-
-		atomic.StoreInt64(c.udpLastFrameTimes[track.Id], time.Now().Unix())
-		c.rtcpReceivers[track.Id].OnFrame(streamType, buf)
-
-		return buf, nil
-	}
-
-	buf, err := c.udpRtcpListeners[track.Id].read()
-	if err != nil {
-		return nil, err
-	}
-
-	atomic.StoreInt64(c.udpLastFrameTimes[track.Id], time.Now().Unix())
-	c.rtcpReceivers[track.Id].OnFrame(streamType, buf)
-
-	return buf, nil
 }
 
 func (c *ConnClient) readFrameOrResponse() (interface{}, error) {
@@ -204,6 +184,60 @@ func (c *ConnClient) readFrameOrResponse() (interface{}, error) {
 	}
 
 	return ReadResponse(c.br)
+}
+
+// ReadFrameTCP reads an InterleavedFrame.
+// This can't be used when recording.
+func (c *ConnClient) ReadFrameTCP() (*InterleavedFrame, error) {
+	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	frame := c.tcpFrames.next()
+	err := frame.Read(c.br)
+	if err != nil {
+		return nil, err
+	}
+
+	c.rtcpReceivers[frame.TrackId].OnFrame(frame.StreamType, frame.Content)
+
+	return frame, nil
+}
+
+// ReadFrameUDP reads an UDP frame.
+func (c *ConnClient) ReadFrameUDP(track *Track, streamType StreamType) ([]byte, error) {
+	var buf []byte
+	var err error
+	if streamType == StreamTypeRtp {
+		buf, err = c.udpRtpListeners[track.Id].read()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		buf, err = c.udpRtcpListeners[track.Id].read()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	atomic.StoreInt64(c.udpLastFrameTimes[track.Id], time.Now().Unix())
+
+	c.rtcpReceivers[track.Id].OnFrame(streamType, buf)
+
+	return buf, nil
+}
+
+// WriteFrameTCP writes an interleaved frame.
+// this can't be used when playing.
+func (c *ConnClient) WriteFrameTCP(frame *InterleavedFrame) error {
+	c.nconn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
+	return frame.Write(c.bw)
+}
+
+// WriteFrameUDP writes an UDP frame.
+func (c *ConnClient) WriteFrameUDP(track *Track, streamType StreamType, content []byte) error {
+	if streamType == StreamTypeRtp {
+		return c.udpRtpListeners[track.Id].write(content)
+	}
+
+	return c.udpRtcpListeners[track.Id].write(content)
 }
 
 // Do writes a Request and reads a Response.
@@ -274,19 +308,12 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	return res, nil
 }
 
-// this can't be exported
-// otherwise there's a race condition with the rtcp receiver report routine
-func (c *ConnClient) writeFrame(frame *InterleavedFrame) error {
-	c.nconn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
-	return frame.Write(c.bw)
-}
-
 // Options writes an OPTIONS request and reads a response, that contains
 // the methods allowed by the server. Since this method is not implemented by
 // every RTSP server, the function does not fail if the returned code is StatusNotFound.
 func (c *ConnClient) Options(u *url.URL) (*Response, error) {
-	if c.playing {
-		return nil, fmt.Errorf("can't be called when playing")
+	if c.state != connClientStateInitial {
+		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
 
 	res, err := c.Do(&Request{
@@ -304,18 +331,16 @@ func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 	}
 
 	if res.StatusCode != StatusOK && res.StatusCode != StatusNotFound {
-		return nil, fmt.Errorf("OPTIONS: bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	return res, nil
 }
 
-// Describe writes a DESCRIBE request, that means that we want to obtain the SDP
-// document that describes the tracks available in the given URL. It then
-// reads a Response.
+// Describe writes a DESCRIBE request and reads a Response.
 func (c *ConnClient) Describe(u *url.URL) (Tracks, *Response, error) {
-	if c.playing {
-		return nil, nil, fmt.Errorf("can't be called when playing")
+	if c.state != connClientStateInitial {
+		return nil, nil, fmt.Errorf("can't be called when reading or publishing")
 	}
 
 	res, err := c.Do(&Request{
@@ -330,16 +355,16 @@ func (c *ConnClient) Describe(u *url.URL) (Tracks, *Response, error) {
 	}
 
 	if res.StatusCode != StatusOK {
-		return nil, nil, fmt.Errorf("DESCRIBE: bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return nil, nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	contentType, ok := res.Header["Content-Type"]
 	if !ok || len(contentType) != 1 {
-		return nil, nil, fmt.Errorf("DESCRIBE: Content-Type not provided")
+		return nil, nil, fmt.Errorf("Content-Type not provided")
 	}
 
 	if contentType[0] != "application/sdp" {
-		return nil, nil, fmt.Errorf("DESCRIBE: wrong Content-Type, expected application/sdp")
+		return nil, nil, fmt.Errorf("wrong Content-Type, expected application/sdp")
 	}
 
 	tracks, err := ReadTracks(res.Content)
@@ -419,19 +444,18 @@ func (c *ConnClient) setup(u *url.URL, track *Track, ht *HeaderTransport) (*Resp
 	}
 
 	if res.StatusCode != StatusOK {
-		return nil, fmt.Errorf("SETUP: bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	return res, nil
 }
 
-// SetupUDP writes a SETUP request, that means that we want to read
-// a given track with the UDP transport. It then reads a Response.
+// SetupUDP writes a SETUP request and reads a Response.
 // If rtpPort and rtcpPort are zero, they will be chosen automatically.
-func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
+func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort int,
 	rtcpPort int) (*Response, error) {
-	if c.playing {
-		return nil, fmt.Errorf("can't be called when playing")
+	if c.state != connClientStateInitial {
+		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
 
 	if c.streamUrl != nil && *u != *c.streamUrl {
@@ -440,10 +464,6 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 
 	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolUDP {
 		return nil, fmt.Errorf("cannot setup tracks with different protocols")
-	}
-
-	if _, ok := c.rtcpReceivers[track.Id]; ok {
-		return nil, fmt.Errorf("track has already been setup")
 	}
 
 	if (rtpPort == 0 && rtcpPort != 0) ||
@@ -457,12 +477,12 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 
 	rtpListener, rtcpListener, err := func() (*connClientUDPListener, *connClientUDPListener, error) {
 		if rtpPort != 0 {
-			rtpListener, err := newConnClientUDPListener(c, rtpPort)
+			rtpListener, err := newConnClientUDPListener(c.conf, rtpPort)
 			if err != nil {
 				return nil, nil, err
 			}
 
-			rtcpListener, err := newConnClientUDPListener(c, rtcpPort)
+			rtcpListener, err := newConnClientUDPListener(c.conf, rtcpPort)
 			if err != nil {
 				rtpListener.close()
 				return nil, nil, err
@@ -477,12 +497,12 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 				rtpPort = (rand.Intn((65535-10000)/2) * 2) + 10000
 				rtcpPort = rtpPort + 1
 
-				rtpListener, err := newConnClientUDPListener(c, rtpPort)
+				rtpListener, err := newConnClientUDPListener(c.conf, rtpPort)
 				if err != nil {
 					continue
 				}
 
-				rtcpListener, err := newConnClientUDPListener(c, rtcpPort)
+				rtcpListener, err := newConnClientUDPListener(c.conf, rtcpPort)
 				if err != nil {
 					rtpListener.close()
 					continue
@@ -503,6 +523,15 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 			return &ret
 		}(),
 		ClientPorts: &[2]int{rtpPort, rtcpPort},
+		Mode: func() *string {
+			var v string
+			if mode == SetupModeRecord {
+				v = "record"
+			} else {
+				v = "play"
+			}
+			return &v
+		}(),
 	})
 	if err != nil {
 		rtpListener.close()
@@ -514,39 +543,43 @@ func (c *ConnClient) SetupUDP(u *url.URL, track *Track, rtpPort int,
 	if err != nil {
 		rtpListener.close()
 		rtcpListener.close()
-		return nil, fmt.Errorf("SETUP: transport header: %s", err)
+		return nil, fmt.Errorf("transport header: %s", err)
 	}
 
 	if th.ServerPorts == nil {
 		rtpListener.close()
 		rtcpListener.close()
-		return nil, fmt.Errorf("SETUP: server ports not provided")
+		return nil, fmt.Errorf("server ports not provided")
 	}
 
 	c.streamUrl = u
 	streamProtocol := StreamProtocolUDP
 	c.streamProtocol = &streamProtocol
-	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
 
-	v := time.Now().Unix()
-	c.udpLastFrameTimes[track.Id] = &v
+	if mode == SetupModePlay {
+		c.rtcpReceivers[track.Id] = NewRtcpReceiver()
 
-	rtpListener.publisherIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-	rtpListener.publisherPort = (*th.ServerPorts)[0]
+		v := time.Now().Unix()
+		c.udpLastFrameTimes[track.Id] = &v
+	}
+
+	rtpListener.remoteIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+	rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
+	rtpListener.remotePort = (*th.ServerPorts)[0]
 	c.udpRtpListeners[track.Id] = rtpListener
 
-	rtcpListener.publisherIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-	rtcpListener.publisherPort = (*th.ServerPorts)[1]
+	rtcpListener.remoteIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+	rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
+	rtcpListener.remotePort = (*th.ServerPorts)[1]
 	c.udpRtcpListeners[track.Id] = rtcpListener
 
 	return res, nil
 }
 
-// SetupTCP writes a SETUP request, that means that we want to read
-// a given track with the TCP transport. It then reads a Response.
-func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
-	if c.playing {
-		return nil, fmt.Errorf("can't be called when playing")
+// SetupTCP writes a SETUP request and reads a Response.
+func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*Response, error) {
+	if c.state != connClientStateInitial {
+		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
 
 	if c.streamUrl != nil && *u != *c.streamUrl {
@@ -557,10 +590,6 @@ func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
 		return nil, fmt.Errorf("cannot setup tracks with different protocols")
 	}
 
-	if _, ok := c.rtcpReceivers[track.Id]; ok {
-		return nil, fmt.Errorf("track has already been setup")
-	}
-
 	interleavedIds := [2]int{(track.Id * 2), (track.Id * 2) + 1}
 	res, err := c.setup(u, track, &HeaderTransport{
 		Protocol: StreamProtocolTCP,
@@ -569,6 +598,15 @@ func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
 			return &ret
 		}(),
 		InterleavedIds: &interleavedIds,
+		Mode: func() *string {
+			var v string
+			if mode == SetupModeRecord {
+				v = "record"
+			} else {
+				v = "play"
+			}
+			return &v
+		}(),
 	})
 	if err != nil {
 		return nil, err
@@ -576,29 +614,32 @@ func (c *ConnClient) SetupTCP(u *url.URL, track *Track) (*Response, error) {
 
 	th, err := ReadHeaderTransport(res.Header["Transport"])
 	if err != nil {
-		return nil, fmt.Errorf("SETUP: transport header: %s", err)
+		return nil, fmt.Errorf("transport header: %s", err)
 	}
 
-	if th.InterleavedIds == nil || (*th.InterleavedIds)[0] != interleavedIds[0] ||
+	if th.InterleavedIds == nil ||
+		(*th.InterleavedIds)[0] != interleavedIds[0] ||
 		(*th.InterleavedIds)[1] != interleavedIds[1] {
-		return nil, fmt.Errorf("SETUP: transport header does not have interleaved ids %v (%s)",
+		return nil, fmt.Errorf("transport header does not have interleaved ids %v (%s)",
 			interleavedIds, res.Header["Transport"])
 	}
 
 	c.streamUrl = u
 	streamProtocol := StreamProtocolTCP
 	c.streamProtocol = &streamProtocol
-	c.rtcpReceivers[track.Id] = NewRtcpReceiver()
+
+	if mode == SetupModePlay {
+		c.rtcpReceivers[track.Id] = NewRtcpReceiver()
+	}
 
 	return res, nil
 }
 
-// Play writes a PLAY request, that means that we want to start the stream.
-// It then reads a Response. This function can be called only after SetupUDP()
-// or SetupTCP().
+// Play writes a PLAY request and reads a Response
+// This function can be called only after SetupUDP() or SetupTCP().
 func (c *ConnClient) Play(u *url.URL) (*Response, error) {
-	if c.playing {
-		return nil, fmt.Errorf("can't be called when playing")
+	if c.state != connClientStateInitial {
+		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
 
 	if c.streamUrl == nil {
@@ -655,26 +696,16 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	c.playing = true
+	c.state = connClientStateReading
 
 	// open the firewall by sending packets to every channel
 	if *c.streamProtocol == StreamProtocolUDP {
 		for trackId := range c.udpRtpListeners {
-			c.udpRtpListeners[trackId].pc.WriteTo(
-				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-				&net.UDPAddr{
-					IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
-					Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
-					Port: c.udpRtpListeners[trackId].publisherPort,
-				})
+			c.udpRtpListeners[trackId].write(
+				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
-			c.udpRtcpListeners[trackId].pc.WriteTo(
-				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00},
-				&net.UDPAddr{
-					IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
-					Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
-					Port: c.udpRtcpListeners[trackId].publisherPort,
-				})
+			c.udpRtcpListeners[trackId].write(
+				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 		}
 	}
 
@@ -696,14 +727,10 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 					frame := c.rtcpReceivers[trackId].Report()
 
 					if *c.streamProtocol == StreamProtocolUDP {
-						c.udpRtcpListeners[trackId].pc.WriteTo(frame, &net.UDPAddr{
-							IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
-							Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
-							Port: c.udpRtcpListeners[trackId].publisherPort,
-						})
+						c.udpRtcpListeners[trackId].write(frame)
 
 					} else {
-						c.writeFrame(&InterleavedFrame{
+						c.WriteFrameTCP(&InterleavedFrame{
 							TrackId:    trackId,
 							StreamType: StreamTypeRtcp,
 							Content:    frame,
@@ -776,4 +803,58 @@ func (c *ConnClient) LoopUDP(u *url.URL) error {
 			}
 		}
 	}
+}
+
+// Announce writes an ANNOUNCE request and reads a Response.
+func (c *ConnClient) Announce(u *url.URL, tracks Tracks) (*Response, error) {
+	if c.streamUrl != nil {
+		fmt.Errorf("announce has already been sent with another url url")
+	}
+
+	res, err := c.Do(&Request{
+		Method: ANNOUNCE,
+		Url:    u,
+		Header: Header{
+			"Content-Type": HeaderValue{"application/sdp"},
+		},
+		Content: tracks.Write(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != StatusOK {
+		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+	}
+
+	c.streamUrl = u
+
+	return res, nil
+}
+
+// Record writes a RECORD request and reads a Response.
+func (c *ConnClient) Record(u *url.URL) (*Response, error) {
+	if c.state != connClientStateInitial {
+		return nil, fmt.Errorf("can't be called when reading or publishing")
+	}
+
+	if *u != *c.streamUrl {
+		return nil, fmt.Errorf("must be called with the same url used for Announce()")
+	}
+
+	res, err := c.Do(&Request{
+		Method: RECORD,
+		Url:    u,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != StatusOK {
+		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+	}
+
+	c.state = connClientStatePublishing
+
+	return nil, nil
 }
