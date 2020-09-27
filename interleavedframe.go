@@ -12,7 +12,7 @@ const (
 )
 
 // InterleavedFrame is a structure that allows to transfer binary frames
-// through RTSP TCP connections. It is used to send RTP and RTCP packets via TCP.
+// through RTSP/TCP connections. It is used to send RTP and RTCP packets with TCP.
 type InterleavedFrame struct {
 	// track id
 	TrackId int
