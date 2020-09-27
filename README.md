@@ -8,8 +8,8 @@
 RTSP 1.0 library for the Go programming language, written for [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
 Features:
-* Read streams via TCP or UDP
-* Publish streams via TCP or UDP
+* Read streams with TCP or UDP
+* Publish streams with TCP or UDP
 * Provides primitives, a class for building clients (`ConnClient`) and a class for building servers (`ConnServer`)
 
 ## Examples
