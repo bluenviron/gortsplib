@@ -52,6 +52,7 @@ func getH264SPSandPPS(pc net.PacketConn) ([]byte, []byte, error) {
 }
 
 func main() {
+	// open a listener to receive RTP frames
 	pc, err := net.ListenPacket("udp4", "127.0.0.1:9000")
 	if err != nil {
 		panic(err)
@@ -62,41 +63,48 @@ func main() {
 		"gst-launch-1.0 filesrc location=video.mp4 ! qtdemux ! video/x-h264" +
 		" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
 
+	// wait for RTP frames
 	sps, pps, err := getH264SPSandPPS(pc)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("stream connected")
 
-	fmt.Println("stream is ok")
-
+	// parse url
 	u, err := url.Parse("rtsp://localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
 
+	// connect to the server
 	conn, err := gortsplib.NewConnClient(gortsplib.ConnClientConf{Host: u.Host})
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
+	// get allowed commands
 	_, err = conn.Options(u)
 	if err != nil {
 		panic(err)
 	}
 
+	// create a track
 	track := gortsplib.NewTrackH264(0, sps, pps)
 
+	// announce the track
 	_, err = conn.Announce(u, gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)
 	}
 
+	// setup the track with TCP
 	_, err = conn.SetupTCP(u, gortsplib.SetupModeRecord, track)
 	if err != nil {
 		panic(err)
 	}
 
+	// start publishing
 	_, err = conn.Record(u)
 	if err != nil {
 		panic(err)
@@ -104,11 +112,13 @@ func main() {
 
 	buf := make([]byte, 2048)
 	for {
+		// read frames from the source
 		n, _, err := pc.ReadFrom(buf)
 		if err != nil {
 			break
 		}
 
+		// write frames
 		err = conn.WriteFrameTCP(&gortsplib.InterleavedFrame{
 			TrackId:    track.Id,
 			StreamType: gortsplib.StreamTypeRtp,
