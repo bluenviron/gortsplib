@@ -10,6 +10,9 @@ import (
 	"github.com/aler9/gortsplib"
 )
 
+// This example shows how to create a RTSP client, connect to a server, list
+// and read tracks with the UDP protocol.
+
 func main() {
 	// parse url
 	u, err := url.Parse("rtsp://localhost:8554/mystream")

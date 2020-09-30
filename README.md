@@ -5,19 +5,21 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/aler9/gortsplib)](https://goreportcard.com/report/github.com/aler9/gortsplib)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue)](https://pkg.go.dev/github.com/aler9/gortsplib?tab=doc)
 
-RTSP 1.0 library for the Go programming language, written for [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
+RTSP 1.0 client and server library for the Go programming language, written for [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
 Features:
 * Read streams with TCP or UDP
 * Publish streams with TCP or UDP
-* Provides primitives, a class for building clients (`ConnClient`) and a class for building servers (`ConnServer`)
+* Provides primitives
+* Provides a class for building clients (`ConnClient`)
+* Provides a class for building servers (`ConnServer`)
 
 ## Examples
 
-* [read-tcp](examples/read-tcp.go)
-* [read-udp](examples/read-udp.go)
-* [publish-tcp](examples/publish-tcp.go)
-* [publish-udp](examples/publish-udp.go)
+* [client-read-tcp](examples/client-read-tcp.go)
+* [client-read-udp](examples/client-read-udp.go)
+* [client-publish-tcp](examples/client-publish-tcp.go)
+* [client-publish-udp](examples/client-publish-udp.go)
 
 ## Documentation
 

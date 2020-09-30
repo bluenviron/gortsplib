@@ -34,14 +34,14 @@ func (sp StreamProtocol) String() string {
 	return "unknown"
 }
 
-// StreamCast is the cast of a stream.
+// StreamCast is the cast method of a stream.
 type StreamCast int
 
 const (
-	// Unicast means that the stream will be unicasted
+	// StreamUnicast means that the stream will be unicasted
 	StreamUnicast StreamCast = iota
 
-	// Multicast means that the stream will be multicasted
+	// StreamMulticast means that the stream will be multicasted
 	StreamMulticast
 )
 
@@ -57,7 +57,7 @@ func (sc StreamCast) String() string {
 	return "unknown"
 }
 
-// StreamType is the type of a stream.
+// StreamType is the stream type.
 type StreamType int
 
 const (

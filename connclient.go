@@ -698,7 +698,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 
 	c.state = connClientStateReading
 
-	// open the firewall by sending packets to every channel
+	// open the firewall by sending packets to the counterpart
 	if *c.streamProtocol == StreamProtocolUDP {
 		for trackId := range c.udpRtpListeners {
 			c.udpRtpListeners[trackId].write(

@@ -11,7 +11,11 @@ import (
 	"github.com/pion/rtp"
 )
 
-func getH264SPSandPPS(pc net.PacketConn) ([]byte, []byte, error) {
+// This example shows how to generate RTP/H264 frames from a file with Gstreamer,
+// create a RTSP client, connect to a server, announce a H264 track and write
+// the frames with the UDP protocol.
+
+func getRtpH264SPSandPPS(pc net.PacketConn) ([]byte, []byte, error) {
 	var sps []byte
 	var pps []byte
 
@@ -52,7 +56,7 @@ func getH264SPSandPPS(pc net.PacketConn) ([]byte, []byte, error) {
 }
 
 func main() {
-	// open a listener to receive RTP frames
+	// open a listener to receive RTP/H264 frames
 	pc, err := net.ListenPacket("udp4", "127.0.0.1:9000")
 	if err != nil {
 		panic(err)
@@ -63,8 +67,8 @@ func main() {
 		"gst-launch-1.0 filesrc location=video.mp4 ! qtdemux ! video/x-h264" +
 		" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
 
-	// wait for RTP frames
-	sps, pps, err := getH264SPSandPPS(pc)
+	// wait for RTP/H264 frames
+	sps, pps, err := getRtpH264SPSandPPS(pc)
 	if err != nil {
 		panic(err)
 	}
@@ -89,7 +93,7 @@ func main() {
 		panic(err)
 	}
 
-	// create a track
+	// create a H264 track
 	track := gortsplib.NewTrackH264(0, sps, pps)
 
 	// announce the track
@@ -98,8 +102,8 @@ func main() {
 		panic(err)
 	}
 
-	// setup the track with TCP
-	_, err = conn.SetupTCP(u, gortsplib.SetupModeRecord, track)
+	// setup the track with UDP
+	_, err = conn.SetupUDP(u, gortsplib.SetupModeRecord, track, 0, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -118,12 +122,8 @@ func main() {
 			break
 		}
 
-		// write frames
-		err = conn.WriteFrameTCP(&gortsplib.InterleavedFrame{
-			TrackId:    track.Id,
-			StreamType: gortsplib.StreamTypeRtp,
-			Content:    buf[:n],
-		})
+		// write frames to the server
+		err = conn.WriteFrameUDP(track, gortsplib.StreamTypeRtp, buf[:n])
 		if err != nil {
 			break
 		}
