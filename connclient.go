@@ -451,7 +451,7 @@ func (c *ConnClient) setup(u *url.URL, track *Track, ht *HeaderTransport) (*Resp
 }
 
 // SetupUDP writes a SETUP request and reads a Response.
-// If rtpPort and rtcpPort are zero, they will be chosen automatically.
+// If rtpPort and rtcpPort are zero, they are be chosen automatically.
 func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort int,
 	rtcpPort int) (*Response, error) {
 	if c.state != connClientStateInitial {
@@ -745,7 +745,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 }
 
 // LoopUDP must be called after SetupUDP() and Play(); it keeps
-// the TCP connection open through keepalives, and returns when the TCP
+// the TCP connection open with keepalives, and returns when the TCP
 // connection closes.
 func (c *ConnClient) LoopUDP(u *url.URL) error {
 	readDone := make(chan error)

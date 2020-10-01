@@ -13,7 +13,7 @@ const (
 
 // ConnServerConf allows to configure a ConnServer.
 type ConnServerConf struct {
-	// pre-existing TCP connection that will be wrapped
+	// pre-existing TCP connection to wrap
 	Conn net.Conn
 
 	// (optional) timeout of read operations.

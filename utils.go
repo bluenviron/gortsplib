@@ -38,10 +38,10 @@ func (sp StreamProtocol) String() string {
 type StreamCast int
 
 const (
-	// StreamUnicast means that the stream will be unicasted
+	// StreamUnicast means that the stream is unicasted
 	StreamUnicast StreamCast = iota
 
-	// StreamMulticast means that the stream will be multicasted
+	// StreamMulticast means that the stream is multicasted
 	StreamMulticast
 )
 
