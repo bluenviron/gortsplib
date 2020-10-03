@@ -26,28 +26,28 @@ func getRtpH264SPSandPPS(pc net.PacketConn) ([]byte, []byte, error) {
 			return nil, nil, err
 		}
 
-		packet := &rtp.Packet{}
-		err = packet.Unmarshal(buf[:n])
+		pkt := &rtp.Packet{}
+		err = pkt.Unmarshal(buf[:n])
 		if err != nil {
 			return nil, nil, err
 		}
 
 		// require h264
-		if packet.PayloadType != 96 {
+		if pkt.PayloadType != 96 {
 			return nil, nil, fmt.Errorf("wrong payload type '%d', expected 96",
-				packet.PayloadType)
+				pkt.PayloadType)
 		}
 
 		// switch by NALU type
-		switch packet.Payload[0] & 0x1F {
+		switch pkt.Payload[0] & 0x1F {
 		case 0x07: // sps
-			sps = append([]byte(nil), packet.Payload...)
+			sps = append([]byte(nil), pkt.Payload...)
 			if sps != nil && pps != nil {
 				return sps, pps, nil
 			}
 
 		case 0x08: // pps
-			pps = append([]byte(nil), packet.Payload...)
+			pps = append([]byte(nil), pkt.Payload...)
 			if sps != nil && pps != nil {
 				return sps, pps, nil
 			}

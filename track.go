@@ -43,9 +43,35 @@ func NewTrackH264(id int, sps []byte, pps []byte) *Track {
 						"sprop-parameter-sets=" + spropParameterSets + "; " +
 						"profile-level-id=" + profileLevelId,
 				},
+			},
+		},
+	}
+}
+
+// NewTrackAac initializes an AAC track.
+func NewTrackAac(id int, sampleRate int, channelCount int, config []byte) *Track {
+	return &Track{
+		Id: id,
+		Media: &sdp.MediaDescription{
+			MediaName: sdp.MediaName{
+				Media:   "audio",
+				Protos:  []string{"RTP", "AVP"},
+				Formats: []string{"97"},
+			},
+			Attributes: []sdp.Attribute{
 				{
-					Key:   "control",
-					Value: "trackID=0",
+					Key: "rtpmap",
+					Value: "97 MPEG4-GENERIC/" + strconv.FormatInt(int64(sampleRate), 10) +
+						"/" + strconv.FormatInt(int64(channelCount), 10),
+				},
+				{
+					Key: "fmtp",
+					Value: "97 profile-level-id=1; " +
+						"mode=AAC-hbr; " +
+						"sizelength=13; " +
+						"indexlength=3; " +
+						"indexdeltalength=3; " +
+						"config=" + hex.EncodeToString(config),
 				},
 			},
 		},
