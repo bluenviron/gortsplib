@@ -240,7 +240,8 @@ func (c *ConnClient) WriteFrameUDP(track *Track, streamType StreamType, content 
 	return c.udpRtcpListeners[track.Id].write(content)
 }
 
-// Do writes a Request and reads a Response.
+// Do writes a Request and reads a Response. Interleaved frames sent before the
+// response are ignored.
 func (c *ConnClient) Do(req *Request) (*Response, error) {
 	if req.Header == nil {
 		req.Header = make(Header)
@@ -277,8 +278,22 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 		return nil, nil
 	}
 
-	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	res, err := ReadResponse(c.br)
+	// read the response and ignore interleaved frames in between;
+	// interleaved frames are sent in two situations:
+	// * when the server is v4lrtspserver, before the PLAY response
+	// * when the stream is already playing
+	res, err := func() (*Response, error) {
+		for {
+			recv, err := c.readFrameTCPOrResponse()
+			if err != nil {
+				return nil, err
+			}
+
+			if res, ok := recv.(*Response); ok {
+				return res, nil
+			}
+		}
+	}()
 	if err != nil {
 		return nil, err
 	}
@@ -650,44 +665,14 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 		fmt.Errorf("must be called with the same url used for SetupUDP() or SetupTCP()")
 	}
 
-	res, err := func() (*Response, error) {
-		if *c.streamProtocol == StreamProtocolUDP {
-			res, err := c.Do(&Request{
-				Method: PLAY,
-				Url:    u,
-			})
-			if err != nil {
-				return nil, err
-			}
+	if *c.streamProtocol == StreamProtocolTCP {
+		c.tcpFrames = newMultiFrame(c.conf.ReadBufferCount, clientTCPFrameReadBufferSize)
+	}
 
-			return res, nil
-
-		} else {
-			_, err := c.Do(&Request{
-				Method:       PLAY,
-				Url:          u,
-				SkipResponse: true,
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			c.tcpFrames = newMultiFrame(c.conf.ReadBufferCount, clientTCPFrameReadBufferSize)
-
-			// v4lrtspserver sends frames before the response.
-			// ignore them and wait for the response.
-			for {
-				recv, err := c.readFrameTCPOrResponse()
-				if err != nil {
-					return nil, err
-				}
-
-				if res, ok := recv.(*Response); ok {
-					return res, nil
-				}
-			}
-		}
-	}()
+	res, err := c.Do(&Request{
+		Method: PLAY,
+		Url:    u,
+	})
 	if err != nil {
 		return nil, err
 	}
