@@ -166,7 +166,7 @@ func (c *ConnClient) NetConn() net.Conn {
 	return c.nconn
 }
 
-func (c *ConnClient) readFrameOrResponse() (interface{}, error) {
+func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	b, err := c.br.ReadByte()
 	if err != nil {
@@ -677,7 +677,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 			// v4lrtspserver sends frames before the response.
 			// ignore them and wait for the response.
 			for {
-				recv, err := c.readFrameOrResponse()
+				recv, err := c.readFrameTCPOrResponse()
 				if err != nil {
 					return nil, err
 				}
