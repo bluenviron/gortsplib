@@ -26,22 +26,24 @@ func NewTrackH264(id int, sps []byte, pps []byte) (*Track, error) {
 		"," + base64.StdEncoding.EncodeToString(pps)
 	profileLevelId := strings.ToUpper(hex.EncodeToString(sps[1:4]))
 
+	typ := strconv.FormatInt(int64(96+id), 10)
+
 	return &Track{
 		Id: id,
 		Media: &sdp.MediaDescription{
 			MediaName: sdp.MediaName{
 				Media:   "video",
 				Protos:  []string{"RTP", "AVP"},
-				Formats: []string{"96"},
+				Formats: []string{typ},
 			},
 			Attributes: []sdp.Attribute{
 				{
 					Key:   "rtpmap",
-					Value: "96 H264/90000",
+					Value: typ + " H264/90000",
 				},
 				{
 					Key: "fmtp",
-					Value: "96 packetization-mode=1; " +
+					Value: typ + " packetization-mode=1; " +
 						"sprop-parameter-sets=" + spropParameterSets + "; " +
 						"profile-level-id=" + profileLevelId,
 				},
@@ -76,23 +78,25 @@ func NewTrackAac(id int, config []byte) (*Track, error) {
 		return nil, err
 	}
 
+	typ := strconv.FormatInt(int64(96+id), 10)
+
 	return &Track{
 		Id: id,
 		Media: &sdp.MediaDescription{
 			MediaName: sdp.MediaName{
 				Media:   "audio",
 				Protos:  []string{"RTP", "AVP"},
-				Formats: []string{"97"},
+				Formats: []string{typ},
 			},
 			Attributes: []sdp.Attribute{
 				{
 					Key: "rtpmap",
-					Value: "97 MPEG4-GENERIC/" + strconv.FormatInt(int64(codec.Config.SampleRate), 10) +
+					Value: typ + " MPEG4-GENERIC/" + strconv.FormatInt(int64(codec.Config.SampleRate), 10) +
 						"/" + strconv.FormatInt(int64(channelCount), 10),
 				},
 				{
 					Key: "fmtp",
-					Value: "97 profile-level-id=1; " +
+					Value: typ + " profile-level-id=1; " +
 						"mode=AAC-hbr; " +
 						"sizelength=13; " +
 						"indexlength=3; " +
