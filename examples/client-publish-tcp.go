@@ -94,7 +94,10 @@ func main() {
 	}
 
 	// create a H264 track
-	track := gortsplib.NewTrackH264(0, sps, pps)
+	track, err := gortsplib.NewTrackH264(0, sps, pps)
+	if err != nil {
+		panic(err)
+	}
 
 	// announce the track
 	_, err = conn.Announce(u, gortsplib.Tracks{track})

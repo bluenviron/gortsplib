@@ -3,10 +3,12 @@ package gortsplib
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/aler9/sdp-dirty/v3"
+	"github.com/notedit/rtmp/codec/aac"
 )
 
 // Track is a track available in a certain URL.
@@ -19,7 +21,7 @@ type Track struct {
 }
 
 // NewTrackH264 initializes an H264 track.
-func NewTrackH264(id int, sps []byte, pps []byte) *Track {
+func NewTrackH264(id int, sps []byte, pps []byte) (*Track, error) {
 	spropParameterSets := base64.StdEncoding.EncodeToString(sps) +
 		"," + base64.StdEncoding.EncodeToString(pps)
 	profileLevelId := strings.ToUpper(hex.EncodeToString(sps[1:4]))
@@ -45,11 +47,31 @@ func NewTrackH264(id int, sps []byte, pps []byte) *Track {
 				},
 			},
 		},
-	}
+	}, nil
 }
 
 // NewTrackAac initializes an AAC track.
-func NewTrackAac(id int, sampleRate int, channelCount int, config []byte) *Track {
+func NewTrackAac(id int, config []byte) (*Track, error) {
+	codec, err := aac.FromMPEG4AudioConfigBytes(config)
+	if err != nil {
+		return nil, err
+	}
+
+	channelCount, err := func() (int, error) {
+		switch codec.Config.ChannelLayout {
+		case aac.CH_MONO:
+			return 1, nil
+
+		case aac.CH_STEREO:
+			return 2, nil
+		}
+
+		return 0, fmt.Errorf("unsupported channel count: %v", codec.Config.ChannelLayout)
+	}()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Track{
 		Id: id,
 		Media: &sdp.MediaDescription{
@@ -61,7 +83,7 @@ func NewTrackAac(id int, sampleRate int, channelCount int, config []byte) *Track
 			Attributes: []sdp.Attribute{
 				{
 					Key: "rtpmap",
-					Value: "97 MPEG4-GENERIC/" + strconv.FormatInt(int64(sampleRate), 10) +
+					Value: "97 MPEG4-GENERIC/" + strconv.FormatInt(int64(codec.Config.SampleRate), 10) +
 						"/" + strconv.FormatInt(int64(channelCount), 10),
 				},
 				{
@@ -75,7 +97,7 @@ func NewTrackAac(id int, sampleRate int, channelCount int, config []byte) *Track
 				},
 			},
 		},
-	}
+	}, nil
 }
 
 // Tracks is a list of tracks.

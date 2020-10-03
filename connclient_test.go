@@ -238,7 +238,8 @@ func TestConnClientPublishUDP(t *testing.T) {
 		_, err = conn.Options(u)
 		require.NoError(t, err)
 
-		track := NewTrackH264(0, sps, pps)
+		track, err := NewTrackH264(0, sps, pps)
+		require.NoError(t, err)
 
 		_, err = conn.Announce(u, Tracks{track})
 		require.NoError(t, err)
@@ -316,7 +317,8 @@ func TestConnClientPublishTCP(t *testing.T) {
 		_, err = conn.Options(u)
 		require.NoError(t, err)
 
-		track := NewTrackH264(0, sps, pps)
+		track, err := NewTrackH264(0, sps, pps)
+		require.NoError(t, err)
 
 		_, err = conn.Announce(u, Tracks{track})
 		require.NoError(t, err)
