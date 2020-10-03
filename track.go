@@ -45,6 +45,10 @@ func NewTrackH264(id int, sps []byte, pps []byte) (*Track, error) {
 						"sprop-parameter-sets=" + spropParameterSets + "; " +
 						"profile-level-id=" + profileLevelId,
 				},
+				{
+					Key:   "control",
+					Value: "trackID=" + strconv.FormatInt(int64(id), 10),
+				},
 			},
 		},
 	}, nil
@@ -94,6 +98,10 @@ func NewTrackAac(id int, config []byte) (*Track, error) {
 						"indexlength=3; " +
 						"indexdeltalength=3; " +
 						"config=" + hex.EncodeToString(config),
+				},
+				{
+					Key:   "control",
+					Value: "trackID=" + strconv.FormatInt(int64(id), 10),
 				},
 			},
 		},
