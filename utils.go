@@ -10,10 +10,10 @@ type StreamProtocol = headers.StreamProtocol
 
 const (
 	// StreamProtocolUDP means that the stream uses the UDP protocol
-	StreamProtocolUDP = headers.StreamProtocolUDP
+	StreamProtocolUDP StreamProtocol = headers.StreamProtocolUDP
 
 	// StreamProtocolTCP means that the stream uses the TCP protocol
-	StreamProtocolTCP = headers.StreamProtocolTCP
+	StreamProtocolTCP StreamProtocol = headers.StreamProtocolTCP
 )
 
 // StreamCast is the cast method of a stream.
@@ -21,10 +21,10 @@ type StreamCast = headers.StreamCast
 
 const (
 	// StreamUnicast means that the stream is unicasted
-	StreamUnicast = headers.StreamUnicast
+	StreamUnicast StreamCast = headers.StreamUnicast
 
 	// StreamMulticast means that the stream is multicasted
-	StreamMulticast = headers.StreamMulticast
+	StreamMulticast StreamCast = headers.StreamMulticast
 )
 
 // StreamType is the stream type.
@@ -32,10 +32,10 @@ type StreamType = base.StreamType
 
 const (
 	// StreamTypeRtp means that the stream contains RTP packets
-	StreamTypeRtp = base.StreamTypeRtp
+	StreamTypeRtp StreamType = base.StreamTypeRtp
 
 	// StreamTypeRtcp means that the stream contains RTCP packets
-	StreamTypeRtcp = base.StreamTypeRtcp
+	StreamTypeRtcp StreamType = base.StreamTypeRtcp
 )
 
 // TransportMode is a transport mode.
