@@ -38,25 +38,13 @@ const (
 	StreamTypeRtcp = base.StreamTypeRtcp
 )
 
-// SetupMode is the setup mode.
-type SetupMode int
+// TransportMode is a transport mode.
+type TransportMode = headers.TransportMode
 
 const (
-	// SetupModePlay is the "play" setup mode
-	SetupModePlay SetupMode = iota
+	// TransportModePlay is the "play" transport mode
+	TransportModePlay TransportMode = headers.TransportModePlay
 
-	// SetupModeRecord is the "record" setup mode
-	SetupModeRecord
+	// TransportModeRecord is the "record" transport mode
+	TransportModeRecord TransportMode = headers.TransportModeRecord
 )
-
-// String implements fmt.Stringer.
-func (sm SetupMode) String() string {
-	switch sm {
-	case SetupModePlay:
-		return "play"
-
-	case SetupModeRecord:
-		return "record"
-	}
-	return "unknown"
-}

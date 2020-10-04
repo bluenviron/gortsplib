@@ -54,6 +54,29 @@ func (sc StreamCast) String() string {
 	return "unknown"
 }
 
+// TransportMode is a transport mode.
+type TransportMode int
+
+const (
+	// TransportModePlay is the "play" transport mode
+	TransportModePlay TransportMode = iota
+
+	// TransportModeRecord is the "record" transport mode
+	TransportModeRecord
+)
+
+// String implements fmt.Stringer.
+func (sm TransportMode) String() string {
+	switch sm {
+	case TransportModePlay:
+		return "play"
+
+	case TransportModeRecord:
+		return "record"
+	}
+	return "unknown"
+}
+
 // Transport is a Transport header.
 type Transport struct {
 	// protocol of the stream
@@ -81,7 +104,7 @@ type Transport struct {
 	InterleavedIds *[2]int
 
 	// (optional) mode
-	Mode *string
+	Mode *TransportMode
 }
 
 func parsePorts(val string) (*[2]int, error) {
@@ -142,6 +165,8 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 		v := StreamMulticast
 		ht.Cast = &v
 		parts = parts[1:]
+
+		// cast is optional, do not return any error
 	}
 
 	for _, t := range parts {
@@ -186,10 +211,22 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 			ht.InterleavedIds = ports
 
 		} else if strings.HasPrefix(t, "mode=") {
-			v := strings.ToLower(t[len("mode="):])
-			v = strings.TrimPrefix(v, "\"")
-			v = strings.TrimSuffix(v, "\"")
-			ht.Mode = &v
+			str := strings.ToLower(t[len("mode="):])
+			str = strings.TrimPrefix(str, "\"")
+			str = strings.TrimSuffix(str, "\"")
+
+			switch str {
+			case "play":
+				v := TransportModePlay
+				ht.Mode = &v
+
+			case "record":
+				v := TransportModeRecord
+				ht.Mode = &v
+
+			default:
+				return nil, fmt.Errorf("unrecognized transport mode: '%s'", str)
+			}
 		}
 
 		// ignore non-standard keys
@@ -232,7 +269,11 @@ func (ht *Transport) Write() base.HeaderValue {
 	}
 
 	if ht.Mode != nil {
-		vals = append(vals, "mode="+*ht.Mode)
+		if *ht.Mode == TransportModePlay {
+			vals = append(vals, "mode=play")
+		} else {
+			vals = append(vals, "mode=record")
+		}
 	}
 
 	return base.HeaderValue{strings.Join(vals, ";")}

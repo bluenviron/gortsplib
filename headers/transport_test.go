@@ -25,8 +25,8 @@ var casesTransport = []struct {
 				return &v
 			}(),
 			ClientPorts: &[2]int{3456, 3457},
-			Mode: func() *string {
-				v := "play"
+			Mode: func() *TransportMode {
+				v := TransportModePlay
 				return &v
 			}(),
 		},

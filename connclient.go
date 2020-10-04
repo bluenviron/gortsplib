@@ -390,10 +390,10 @@ func (c *ConnClient) Describe(u *url.URL) (Tracks, *base.Response, error) {
 }
 
 // build an URL by merging baseUrl with the control attribute from track.Media
-func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode SetupMode, track *Track) *url.URL {
+func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode TransportMode, track *Track) *url.URL {
 	control := func() string {
 		// if we're recording, get control from track ID
-		if mode == SetupModeRecord {
+		if mode == TransportModeRecord {
 			return "trackID=" + strconv.FormatInt(int64(track.Id), 10)
 		}
 
@@ -450,7 +450,7 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode SetupMode, track *Track)
 	return u
 }
 
-func (c *ConnClient) setup(u *url.URL, mode SetupMode, track *Track, ht *headers.Transport) (*base.Response, error) {
+func (c *ConnClient) setup(u *url.URL, mode TransportMode, track *Track, ht *headers.Transport) (*base.Response, error) {
 	res, err := c.Do(&base.Request{
 		Method: base.SETUP,
 		Url:    c.urlForTrack(u, mode, track),
@@ -471,7 +471,7 @@ func (c *ConnClient) setup(u *url.URL, mode SetupMode, track *Track, ht *headers
 
 // SetupUDP writes a SETUP request and reads a Response.
 // If rtpPort and rtcpPort are zero, they are be chosen automatically.
-func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort int,
+func (c *ConnClient) SetupUDP(u *url.URL, mode TransportMode, track *Track, rtpPort int,
 	rtcpPort int) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
@@ -542,15 +542,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort 
 			return &ret
 		}(),
 		ClientPorts: &[2]int{rtpPort, rtcpPort},
-		Mode: func() *string {
-			var v string
-			if mode == SetupModeRecord {
-				v = "record"
-			} else {
-				v = "play"
-			}
-			return &v
-		}(),
+		Mode:        &mode,
 	})
 	if err != nil {
 		rtpListener.close()
@@ -575,7 +567,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort 
 	streamProtocol := StreamProtocolUDP
 	c.streamProtocol = &streamProtocol
 
-	if mode == SetupModePlay {
+	if mode == TransportModePlay {
 		c.rtcpReceivers[track.Id] = rtcpreceiver.New()
 
 		v := time.Now().Unix()
@@ -596,7 +588,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort 
 }
 
 // SetupTCP writes a SETUP request and reads a Response.
-func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*base.Response, error) {
+func (c *ConnClient) SetupTCP(u *url.URL, mode TransportMode, track *Track) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
@@ -617,15 +609,7 @@ func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*base.R
 			return &ret
 		}(),
 		InterleavedIds: &interleavedIds,
-		Mode: func() *string {
-			var v string
-			if mode == SetupModeRecord {
-				v = "record"
-			} else {
-				v = "play"
-			}
-			return &v
-		}(),
+		Mode:           &mode,
 	})
 	if err != nil {
 		return nil, err
@@ -647,7 +631,7 @@ func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*base.R
 	streamProtocol := StreamProtocolTCP
 	c.streamProtocol = &streamProtocol
 
-	if mode == SetupModePlay {
+	if mode == TransportModePlay {
 		c.rtcpReceivers[track.Id] = rtcpreceiver.New()
 	}
 

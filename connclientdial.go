@@ -30,7 +30,7 @@ func DialRead(address string, proto StreamProtocol) (*ConnClient, Tracks, error)
 
 	if proto == StreamProtocolUDP {
 		for _, track := range tracks {
-			_, err := conn.SetupUDP(u, SetupModePlay, track, 0, 0)
+			_, err := conn.SetupUDP(u, TransportModePlay, track, 0, 0)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -38,7 +38,7 @@ func DialRead(address string, proto StreamProtocol) (*ConnClient, Tracks, error)
 
 	} else {
 		for _, track := range tracks {
-			_, err := conn.SetupTCP(u, SetupModePlay, track)
+			_, err := conn.SetupTCP(u, TransportModePlay, track)
 			if err != nil {
 				conn.Close()
 				return nil, nil, err
@@ -81,7 +81,7 @@ func DialPublish(address string, proto StreamProtocol, tracks Tracks) (*ConnClie
 
 	if proto == StreamProtocolUDP {
 		for _, track := range tracks {
-			_, err = conn.SetupUDP(u, SetupModeRecord, track, 0, 0)
+			_, err = conn.SetupUDP(u, TransportModeRecord, track, 0, 0)
 			if err != nil {
 				conn.Close()
 				return nil, err
@@ -90,7 +90,7 @@ func DialPublish(address string, proto StreamProtocol, tracks Tracks) (*ConnClie
 
 	} else {
 		for _, track := range tracks {
-			_, err = conn.SetupTCP(u, SetupModeRecord, track)
+			_, err = conn.SetupTCP(u, TransportModeRecord, track)
 			if err != nil {
 				conn.Close()
 				return nil, err
