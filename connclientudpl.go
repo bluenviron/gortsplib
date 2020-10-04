@@ -3,6 +3,8 @@ package gortsplib
 import (
 	"net"
 	"strconv"
+
+	"github.com/aler9/gortsplib/multibuffer"
 )
 
 type connClientUDPListener struct {
@@ -10,7 +12,7 @@ type connClientUDPListener struct {
 	remoteIp        net.IP
 	remoteZone      string
 	remotePort      int
-	udpFrameReadBuf *MultiBuffer
+	udpFrameReadBuf *multibuffer.MultiBuffer
 }
 
 func newConnClientUDPListener(conf ConnClientConf, port int) (*connClientUDPListener, error) {
@@ -21,7 +23,7 @@ func newConnClientUDPListener(conf ConnClientConf, port int) (*connClientUDPList
 
 	return &connClientUDPListener{
 		pc:              pc,
-		udpFrameReadBuf: NewMultiBuffer(conf.ReadBufferCount, 2048),
+		udpFrameReadBuf: multibuffer.New(conf.ReadBufferCount, 2048),
 	}, nil
 }
 
