@@ -391,9 +391,14 @@ func (c *ConnClient) Describe(u *url.URL) (Tracks, *Response, error) {
 }
 
 // build an URL by merging baseUrl with the control attribute from track.Media
-func (c *ConnClient) urlForTrack(baseUrl *url.URL, track *Track) *url.URL {
-	// get control attribute
+func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode SetupMode, track *Track) *url.URL {
 	control := func() string {
+		// if we're recording, get control from track ID
+		if mode == SetupModeRecord {
+			return "trackID=" + strconv.FormatInt(int64(track.Id), 10)
+		}
+
+		// otherwise, get from media attributes
 		for _, attr := range track.Media.Attributes {
 			if attr.Key == "control" {
 				return attr.Value
@@ -446,10 +451,10 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, track *Track) *url.URL {
 	return u
 }
 
-func (c *ConnClient) setup(u *url.URL, track *Track, ht *HeaderTransport) (*Response, error) {
+func (c *ConnClient) setup(u *url.URL, mode SetupMode, track *Track, ht *HeaderTransport) (*Response, error) {
 	res, err := c.Do(&Request{
 		Method: SETUP,
-		Url:    c.urlForTrack(u, track),
+		Url:    c.urlForTrack(u, mode, track),
 		Header: Header{
 			"Transport": ht.Write(),
 		},
@@ -531,7 +536,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort 
 		return nil, err
 	}
 
-	res, err := c.setup(u, track, &HeaderTransport{
+	res, err := c.setup(u, mode, track, &HeaderTransport{
 		Protocol: StreamProtocolUDP,
 		Cast: func() *StreamCast {
 			ret := StreamUnicast
@@ -606,7 +611,7 @@ func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*Respon
 	}
 
 	interleavedIds := [2]int{(track.Id * 2), (track.Id * 2) + 1}
-	res, err := c.setup(u, track, &HeaderTransport{
+	res, err := c.setup(u, mode, track, &HeaderTransport{
 		Protocol: StreamProtocolTCP,
 		Cast: func() *StreamCast {
 			ret := StreamUnicast
