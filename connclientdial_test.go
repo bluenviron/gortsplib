@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -9,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/aler9/gortsplib/rtph264"
 )
 
 type container struct {
@@ -56,46 +56,6 @@ func (c *container) wait() int {
 		"--format={{.State.ExitCode}}").Output()
 	code, _ := strconv.ParseInt(string(out[:len(out)-1]), 10, 64)
 	return int(code)
-}
-
-func getH264SPSandPPS(pc net.PacketConn) ([]byte, []byte, error) {
-	var sps []byte
-	var pps []byte
-
-	buf := make([]byte, 2048)
-	for {
-		n, _, err := pc.ReadFrom(buf)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		packet := &rtp.Packet{}
-		err = packet.Unmarshal(buf[:n])
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// require h264
-		if packet.PayloadType != 96 {
-			return nil, nil, fmt.Errorf("wrong payload type '%d', expected 96",
-				packet.PayloadType)
-		}
-
-		// switch by NALU type
-		switch packet.Payload[0] & 0x1F {
-		case 0x07: // sps
-			sps = append([]byte(nil), packet.Payload...)
-			if sps != nil && pps != nil {
-				return sps, pps, nil
-			}
-
-		case 0x08: // pps
-			pps = append([]byte(nil), packet.Payload...)
-			if sps != nil && pps != nil {
-				return sps, pps, nil
-			}
-		}
-	}
 }
 
 func TestConnClientDialReadUDP(t *testing.T) {
@@ -198,7 +158,8 @@ func TestConnClientDialPublishUDP(t *testing.T) {
 		require.NoError(t, err)
 		defer cnt2.close()
 
-		sps, pps, err := getH264SPSandPPS(pc)
+		decoder := rtph264.NewDecoderFromPacketConn(pc)
+		sps, pps, err := decoder.ReadSPSPPS()
 		require.NoError(t, err)
 
 		track, err := NewTrackH264(0, sps, pps)
@@ -267,7 +228,8 @@ func TestConnClientDialPublishTCP(t *testing.T) {
 		require.NoError(t, err)
 		defer cnt2.close()
 
-		sps, pps, err := getH264SPSandPPS(pc)
+		decoder := rtph264.NewDecoderFromPacketConn(pc)
+		sps, pps, err := decoder.ReadSPSPPS()
 		require.NoError(t, err)
 
 		track, err := NewTrackH264(0, sps, pps)

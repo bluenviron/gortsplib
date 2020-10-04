@@ -7,52 +7,12 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
-	"github.com/pion/rtp"
+	"github.com/aler9/gortsplib/rtph264"
 )
 
 // This example shows how to generate RTP/H264 frames from a file with Gstreamer,
 // create a RTSP client, connect to a server, announce a H264 track and write
 // the frames with the UDP protocol.
-
-func getRtpH264SPSandPPS(pc net.PacketConn) ([]byte, []byte, error) {
-	var sps []byte
-	var pps []byte
-
-	buf := make([]byte, 2048)
-	for {
-		n, _, err := pc.ReadFrom(buf)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		pkt := &rtp.Packet{}
-		err = pkt.Unmarshal(buf[:n])
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// require h264
-		if pkt.PayloadType != 96 {
-			return nil, nil, fmt.Errorf("wrong payload type '%d', expected 96",
-				pkt.PayloadType)
-		}
-
-		// switch by NALU type
-		switch pkt.Payload[0] & 0x1F {
-		case 0x07: // sps
-			sps = append([]byte(nil), pkt.Payload...)
-			if sps != nil && pps != nil {
-				return sps, pps, nil
-			}
-
-		case 0x08: // pps
-			pps = append([]byte(nil), pkt.Payload...)
-			if sps != nil && pps != nil {
-				return sps, pps, nil
-			}
-		}
-	}
-}
 
 func main() {
 	// open a listener to receive RTP/H264 frames
@@ -67,7 +27,8 @@ func main() {
 		" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
 
 	// wait for RTP/H264 frames
-	sps, pps, err := getRtpH264SPSandPPS(pc)
+	decoder := rtph264.NewDecoderFromPacketConn(pc)
+	sps, pps, err := decoder.ReadSPSPPS()
 	if err != nil {
 		panic(err)
 	}
