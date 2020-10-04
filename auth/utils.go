@@ -1,4 +1,4 @@
-package gortsplib
+package auth
 
 import (
 	"crypto/md5"

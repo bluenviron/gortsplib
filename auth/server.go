@@ -1,4 +1,4 @@
-package gortsplib
+package auth
 
 import (
 	"crypto/rand"
@@ -12,9 +12,9 @@ import (
 	"github.com/aler9/gortsplib/headers"
 )
 
-// AuthServer is an object that helps a server to validate the credentials of
+// Server is an object that helps a server to validate the credentials of
 // a client.
-type AuthServer struct {
+type Server struct {
 	user    string
 	pass    string
 	methods []headers.AuthMethod
@@ -22,9 +22,9 @@ type AuthServer struct {
 	nonce   string
 }
 
-// NewAuthServer allocates an AuthServer.
+// NewServer allocates an Server.
 // If methods is nil, the Basic and Digest methods are used.
-func NewAuthServer(user string, pass string, methods []headers.AuthMethod) *AuthServer {
+func NewServer(user string, pass string, methods []headers.AuthMethod) *Server {
 	if methods == nil {
 		methods = []headers.AuthMethod{headers.AuthBasic, headers.AuthDigest}
 	}
@@ -33,7 +33,7 @@ func NewAuthServer(user string, pass string, methods []headers.AuthMethod) *Auth
 	rand.Read(nonceByts)
 	nonce := hex.EncodeToString(nonceByts)
 
-	return &AuthServer{
+	return &Server{
 		user:    user,
 		pass:    pass,
 		methods: methods,
@@ -43,7 +43,7 @@ func NewAuthServer(user string, pass string, methods []headers.AuthMethod) *Auth
 }
 
 // GenerateHeader generates the WWW-Authenticate header needed by a client to log in.
-func (as *AuthServer) GenerateHeader() base.HeaderValue {
+func (as *Server) GenerateHeader() base.HeaderValue {
 	var ret base.HeaderValue
 	for _, m := range as.methods {
 		switch m {
@@ -66,7 +66,7 @@ func (as *AuthServer) GenerateHeader() base.HeaderValue {
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header.
-func (as *AuthServer) ValidateHeader(v base.HeaderValue, method base.Method, ur *url.URL) error {
+func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *url.URL) error {
 	if len(v) == 0 {
 		return fmt.Errorf("authorization header not provided")
 	}

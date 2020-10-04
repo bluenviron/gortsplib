@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/aler9/gortsplib/auth"
 	"github.com/aler9/gortsplib/base"
 	"github.com/aler9/gortsplib/headers"
 	"github.com/aler9/gortsplib/rtcpreceiver"
@@ -77,7 +78,7 @@ type ConnClient struct {
 	bw                *bufio.Writer
 	session           string
 	cseq              int
-	auth              *authClient
+	auth              *auth.Client
 	state             connClientState
 	streamUrl         *url.URL
 	streamProtocol    *StreamProtocol
@@ -308,7 +309,7 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	// setup authentication
 	if res.StatusCode == base.StatusUnauthorized && req.Url.User != nil && c.auth == nil {
 		pass, _ := req.Url.User.Password()
-		auth, err := newAuthClient(res.Header["WWW-Authenticate"], req.Url.User.Username(), pass)
+		auth, err := auth.NewClient(res.Header["WWW-Authenticate"], req.Url.User.Username(), pass)
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup authentication: %s", err)
 		}

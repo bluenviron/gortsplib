@@ -1,4 +1,4 @@
-package gortsplib
+package auth
 
 import (
 	"encoding/base64"
@@ -10,9 +10,9 @@ import (
 	"github.com/aler9/gortsplib/headers"
 )
 
-// authClient is an object that helps a client to send its credentials to a
+// Client is an object that helps a client to send its credentials to a
 // server.
-type authClient struct {
+type Client struct {
 	user   string
 	pass   string
 	method headers.AuthMethod
@@ -20,9 +20,9 @@ type authClient struct {
 	nonce  string
 }
 
-// newAuthClient allocates an authClient.
+// NewClient allocates an Client.
 // header is the WWW-Authenticate header provided by the server.
-func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, error) {
+func NewClient(v base.HeaderValue, user string, pass string) (*Client, error) {
 	// prefer digest
 	if headerAuthDigest := func() string {
 		for _, vi := range v {
@@ -45,7 +45,7 @@ func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, e
 			return nil, fmt.Errorf("nonce not provided")
 		}
 
-		return &authClient{
+		return &Client{
 			user:   user,
 			pass:   pass,
 			method: headers.AuthDigest,
@@ -71,7 +71,7 @@ func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, e
 			return nil, fmt.Errorf("realm not provided")
 		}
 
-		return &authClient{
+		return &Client{
 			user:   user,
 			pass:   pass,
 			method: headers.AuthBasic,
@@ -84,7 +84,7 @@ func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, e
 
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
 // the given method and url.
-func (ac *authClient) GenerateHeader(method base.Method, ur *url.URL) base.HeaderValue {
+func (ac *Client) GenerateHeader(method base.Method, ur *url.URL) base.HeaderValue {
 	switch ac.method {
 	case headers.AuthBasic:
 		response := base64.StdEncoding.EncodeToString([]byte(ac.user + ":" + ac.pass))

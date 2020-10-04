@@ -1,4 +1,4 @@
-package gortsplib
+package auth
 
 import (
 	"net/url"
@@ -31,10 +31,10 @@ var casesAuth = []struct {
 func TestAuthMethods(t *testing.T) {
 	for _, c := range casesAuth {
 		t.Run(c.name, func(t *testing.T) {
-			authServer := NewAuthServer("testuser", "testpass", c.methods)
+			authServer := NewServer("testuser", "testpass", c.methods)
 			wwwAuthenticate := authServer.GenerateHeader()
 
-			ac, err := newAuthClient(wwwAuthenticate, "testuser", "testpass")
+			ac, err := NewClient(wwwAuthenticate, "testuser", "testpass")
 			require.NoError(t, err)
 			authorization := ac.GenerateHeader(base.ANNOUNCE,
 				&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath"})
@@ -47,11 +47,11 @@ func TestAuthMethods(t *testing.T) {
 }
 
 func TestAuthBasePath(t *testing.T) {
-	authServer := NewAuthServer("testuser", "testpass",
+	authServer := NewServer("testuser", "testpass",
 		[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
 	wwwAuthenticate := authServer.GenerateHeader()
 
-	ac, err := newAuthClient(wwwAuthenticate, "testuser", "testpass")
+	ac, err := NewClient(wwwAuthenticate, "testuser", "testpass")
 	require.NoError(t, err)
 	authorization := ac.GenerateHeader(base.ANNOUNCE,
 		&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath/"})
