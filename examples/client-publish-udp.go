@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"net"
-	"net/url"
 
 	"github.com/aler9/gortsplib"
 	"github.com/pion/rtp"
@@ -74,48 +73,19 @@ func main() {
 	}
 	fmt.Println("stream connected")
 
-	// parse url
-	u, err := url.Parse("rtsp://localhost:8554/mystream")
-	if err != nil {
-		panic(err)
-	}
-
-	// connect to the server
-	conn, err := gortsplib.NewConnClient(gortsplib.ConnClientConf{Host: u.Host})
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
-
-	// get allowed commands
-	_, err = conn.Options(u)
-	if err != nil {
-		panic(err)
-	}
-
 	// create a H264 track
 	track, err := gortsplib.NewTrackH264(0, sps, pps)
 	if err != nil {
 		panic(err)
 	}
 
-	// announce the track
-	_, err = conn.Announce(u, gortsplib.Tracks{track})
+	// connect to the server and start publishing the track
+	conn, err := gortsplib.DialPublish("rtsp://localhost:8554/mystream",
+		gortsplib.StreamProtocolUDP, gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)
 	}
-
-	// setup the track with UDP
-	_, err = conn.SetupUDP(u, gortsplib.SetupModeRecord, track, 0, 0)
-	if err != nil {
-		panic(err)
-	}
-
-	// start publishing
-	_, err = conn.Record(u)
-	if err != nil {
-		panic(err)
-	}
+	defer conn.Close()
 
 	buf := make([]byte, 2048)
 	for {

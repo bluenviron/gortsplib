@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"fmt"
 	"net"
-	"net/url"
 	"os"
 	"os/exec"
 	"strconv"
@@ -59,108 +58,6 @@ func (c *container) wait() int {
 	return int(code)
 }
 
-func TestConnClientReadUDP(t *testing.T) {
-	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
-	require.NoError(t, err)
-	defer cnt1.close()
-
-	time.Sleep(1 * time.Second)
-
-	cnt2, err := newContainer("ffmpeg", "publish", []string{
-		"-re",
-		"-stream_loop", "-1",
-		"-i", "/emptyvideo.ts",
-		"-c", "copy",
-		"-f", "rtsp",
-		"-rtsp_transport", "udp",
-		"rtsp://localhost:8554/teststream",
-	})
-	require.NoError(t, err)
-	defer cnt2.close()
-
-	time.Sleep(1 * time.Second)
-
-	u, err := url.Parse("rtsp://localhost:8554/teststream")
-	require.NoError(t, err)
-
-	conn, err := NewConnClient(ConnClientConf{Host: u.Host})
-	require.NoError(t, err)
-	defer conn.Close()
-
-	_, err = conn.Options(u)
-	require.NoError(t, err)
-
-	tracks, _, err := conn.Describe(u)
-	require.NoError(t, err)
-
-	for _, track := range tracks {
-		_, err := conn.SetupUDP(u, SetupModePlay, track, 0, 0)
-		require.NoError(t, err)
-	}
-
-	_, err = conn.Play(u)
-	require.NoError(t, err)
-
-	loopDone := make(chan struct{})
-	defer func() { <-loopDone }()
-
-	go func() {
-		defer close(loopDone)
-		conn.LoopUDP(u)
-	}()
-
-	_, err = conn.ReadFrameUDP(tracks[0], StreamTypeRtp)
-	require.NoError(t, err)
-
-	conn.CloseUDPListeners()
-}
-
-func TestConnClientReadTCP(t *testing.T) {
-	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
-	require.NoError(t, err)
-	defer cnt1.close()
-
-	time.Sleep(1 * time.Second)
-
-	cnt2, err := newContainer("ffmpeg", "publish", []string{
-		"-re",
-		"-stream_loop", "-1",
-		"-i", "/emptyvideo.ts",
-		"-c", "copy",
-		"-f", "rtsp",
-		"-rtsp_transport", "udp",
-		"rtsp://localhost:8554/teststream",
-	})
-	require.NoError(t, err)
-	defer cnt2.close()
-
-	time.Sleep(1 * time.Second)
-
-	u, err := url.Parse("rtsp://localhost:8554/teststream")
-	require.NoError(t, err)
-
-	conn, err := NewConnClient(ConnClientConf{Host: u.Host})
-	require.NoError(t, err)
-	defer conn.Close()
-
-	_, err = conn.Options(u)
-	require.NoError(t, err)
-
-	tracks, _, err := conn.Describe(u)
-	require.NoError(t, err)
-
-	for _, track := range tracks {
-		_, err := conn.SetupTCP(u, SetupModePlay, track)
-		require.NoError(t, err)
-	}
-
-	_, err = conn.Play(u)
-	require.NoError(t, err)
-
-	_, err = conn.ReadFrameTCP()
-	require.NoError(t, err)
-}
-
 func getH264SPSandPPS(pc net.PacketConn) ([]byte, []byte, error) {
 	var sps []byte
 	var pps []byte
@@ -201,22 +98,88 @@ func getH264SPSandPPS(pc net.PacketConn) ([]byte, []byte, error) {
 	}
 }
 
-func TestConnClientPublishUDP(t *testing.T) {
+func TestConnClientDialReadUDP(t *testing.T) {
 	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
 	require.NoError(t, err)
 	defer cnt1.close()
 
 	time.Sleep(1 * time.Second)
 
-	u, err := url.Parse("rtsp://localhost:8554/teststream")
+	cnt2, err := newContainer("ffmpeg", "publish", []string{
+		"-re",
+		"-stream_loop", "-1",
+		"-i", "/emptyvideo.ts",
+		"-c", "copy",
+		"-f", "rtsp",
+		"-rtsp_transport", "udp",
+		"rtsp://localhost:8554/teststream",
+	})
+	require.NoError(t, err)
+	defer cnt2.close()
+
+	time.Sleep(1 * time.Second)
+
+	conn, tracks, err := DialRead("rtsp://localhost:8554/teststream", StreamProtocolUDP)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	loopDone := make(chan struct{})
+	defer func() { <-loopDone }()
+
+	go func() {
+		defer close(loopDone)
+		conn.LoopUDP()
+	}()
+
+	_, err = conn.ReadFrameUDP(tracks[0], StreamTypeRtp)
 	require.NoError(t, err)
 
-	conn, err := NewConnClient(ConnClientConf{Host: u.Host})
+	conn.CloseUDPListeners()
+}
+
+func TestConnClientDialReadTCP(t *testing.T) {
+	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
 	require.NoError(t, err)
+	defer cnt1.close()
+
+	time.Sleep(1 * time.Second)
+
+	cnt2, err := newContainer("ffmpeg", "publish", []string{
+		"-re",
+		"-stream_loop", "-1",
+		"-i", "/emptyvideo.ts",
+		"-c", "copy",
+		"-f", "rtsp",
+		"-rtsp_transport", "udp",
+		"rtsp://localhost:8554/teststream",
+	})
+	require.NoError(t, err)
+	defer cnt2.close()
+
+	time.Sleep(1 * time.Second)
+
+	conn, _, err := DialRead("rtsp://localhost:8554/teststream", StreamProtocolTCP)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	_, err = conn.ReadFrameTCP()
+	require.NoError(t, err)
+}
+
+func TestConnClientDialPublishUDP(t *testing.T) {
+	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
+	require.NoError(t, err)
+	defer cnt1.close()
+
+	time.Sleep(1 * time.Second)
 
 	publishDone := make(chan struct{})
 	defer func() { <-publishDone }()
-	defer conn.Close()
+
+	var conn *ConnClient
+	defer func() {
+		conn.Close()
+	}()
 
 	go func() {
 		defer close(publishDone)
@@ -235,19 +198,11 @@ func TestConnClientPublishUDP(t *testing.T) {
 		sps, pps, err := getH264SPSandPPS(pc)
 		require.NoError(t, err)
 
-		_, err = conn.Options(u)
-		require.NoError(t, err)
-
 		track, err := NewTrackH264(0, sps, pps)
 		require.NoError(t, err)
 
-		_, err = conn.Announce(u, Tracks{track})
-		require.NoError(t, err)
-
-		_, err = conn.SetupUDP(u, SetupModeRecord, track, 0, 0)
-		require.NoError(t, err)
-
-		_, err = conn.Record(u)
+		conn, err = DialPublish("rtsp://localhost:8554/teststream",
+			StreamProtocolUDP, Tracks{track})
 		require.NoError(t, err)
 
 		buf := make([]byte, 2048)
@@ -280,22 +235,20 @@ func TestConnClientPublishUDP(t *testing.T) {
 	require.Equal(t, 0, code)
 }
 
-func TestConnClientPublishTCP(t *testing.T) {
+func TestConnClientDialPublishTCP(t *testing.T) {
 	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
 	require.NoError(t, err)
 	defer cnt1.close()
 
 	time.Sleep(1 * time.Second)
 
-	u, err := url.Parse("rtsp://localhost:8554/teststream")
-	require.NoError(t, err)
-
-	conn, err := NewConnClient(ConnClientConf{Host: u.Host})
-	require.NoError(t, err)
-
 	publishDone := make(chan struct{})
 	defer func() { <-publishDone }()
-	defer conn.Close()
+
+	var conn *ConnClient
+	defer func() {
+		conn.Close()
+	}()
 
 	go func() {
 		defer close(publishDone)
@@ -314,19 +267,11 @@ func TestConnClientPublishTCP(t *testing.T) {
 		sps, pps, err := getH264SPSandPPS(pc)
 		require.NoError(t, err)
 
-		_, err = conn.Options(u)
-		require.NoError(t, err)
-
 		track, err := NewTrackH264(0, sps, pps)
 		require.NoError(t, err)
 
-		_, err = conn.Announce(u, Tracks{track})
-		require.NoError(t, err)
-
-		_, err = conn.SetupTCP(u, SetupModeRecord, track)
-		require.NoError(t, err)
-
-		_, err = conn.Record(u)
+		conn, err = DialPublish("rtsp://localhost:8554/teststream",
+			StreamProtocolTCP, Tracks{track})
 		require.NoError(t, err)
 
 		buf := make([]byte, 2048)

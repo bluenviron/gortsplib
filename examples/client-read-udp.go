@@ -4,54 +4,21 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"sync"
 
 	"github.com/aler9/gortsplib"
 )
 
-// This example shows how to create a RTSP client, connect to a server, list
-// and read tracks with the UDP protocol.
+// This example shows how to create a RTSP client, connect to a server and
+// read all tracks with the UDP protocol.
 
 func main() {
-	// parse url
-	u, err := url.Parse("rtsp://localhost:8554/mystream")
-	if err != nil {
-		panic(err)
-	}
-
-	// connect to the server
-	conn, err := gortsplib.NewConnClient(gortsplib.ConnClientConf{Host: u.Host})
+	// connect to the server and start reading all tracks
+	conn, tracks, err := gortsplib.DialRead("rtsp://localhost:8554/mystream", gortsplib.StreamProtocolUDP)
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
-
-	// get allowed commands
-	_, err = conn.Options(u)
-	if err != nil {
-		panic(err)
-	}
-
-	// list tracks published on the path
-	tracks, _, err := conn.Describe(u)
-	if err != nil {
-		panic(err)
-	}
-
-	// setup tracks with UDP
-	for _, track := range tracks {
-		_, err := conn.SetupUDP(u, gortsplib.SetupModePlay, track, 0, 0)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// start reading
-	_, err = conn.Play(u)
-	if err != nil {
-		panic(err)
-	}
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -89,6 +56,6 @@ func main() {
 		}(track)
 	}
 
-	err = conn.LoopUDP(u)
+	err = conn.LoopUDP()
 	fmt.Println("connection is closed (%s)", err)
 }

@@ -737,7 +737,15 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 // LoopUDP must be called after SetupUDP() and Play(); it keeps
 // the TCP connection open with keepalives, and returns when the TCP
 // connection closes.
-func (c *ConnClient) LoopUDP(u *url.URL) error {
+func (c *ConnClient) LoopUDP() error {
+	if c.state != connClientStateReading {
+		return fmt.Errorf("can be called only after a successful Play()")
+	}
+
+	if *c.streamProtocol != StreamProtocolUDP {
+		return fmt.Errorf("stream protocol is not UDP")
+	}
+
 	readDone := make(chan error)
 	go func() {
 		for {
@@ -767,8 +775,8 @@ func (c *ConnClient) LoopUDP(u *url.URL) error {
 				Method: OPTIONS,
 				Url: &url.URL{
 					Scheme: "rtsp",
-					Host:   u.Host,
-					User:   u.User,
+					Host:   c.streamUrl.Host,
+					User:   c.streamUrl.User,
 					Path:   "/",
 				},
 				SkipResponse: true,
