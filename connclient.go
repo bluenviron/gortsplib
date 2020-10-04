@@ -190,7 +190,7 @@ func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
 }
 
 // ReadFrameTCP reads an InterleavedFrame.
-// This can't be used when recording.
+// This can't be used when publishing.
 func (c *ConnClient) ReadFrameTCP() (int, StreamType, []byte, error) {
 	frame := c.tcpFrames.next()
 
@@ -229,7 +229,7 @@ func (c *ConnClient) ReadFrameUDP(trackId int, streamType StreamType) ([]byte, e
 }
 
 // WriteFrameTCP writes an interleaved frame.
-// this can't be used when playing.
+// this can't be used when reading.
 func (c *ConnClient) WriteFrameTCP(trackId int, streamType StreamType, content []byte) error {
 	frame := base.InterleavedFrame{
 		TrackId:    trackId,
@@ -402,7 +402,7 @@ func (c *ConnClient) Describe(u *url.URL) (Tracks, *base.Response, error) {
 // build an URL by merging baseUrl with the control attribute from track.Media
 func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode TransportMode, track *Track) *url.URL {
 	control := func() string {
-		// if we're recording, get control from track ID
+		// if we're reading, get control from track ID
 		if mode == TransportModeRecord {
 			return "trackID=" + strconv.FormatInt(int64(track.Id), 10)
 		}
