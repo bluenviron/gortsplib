@@ -1,4 +1,4 @@
-package gortsplib
+package headers
 
 import (
 	"fmt"
@@ -8,8 +8,54 @@ import (
 	"github.com/aler9/gortsplib/base"
 )
 
-// HeaderTransport is a Transport header.
-type HeaderTransport struct {
+// StreamProtocol is the protocol of a stream.
+type StreamProtocol int
+
+const (
+	// StreamProtocolUDP means that the stream uses the UDP protocol
+	StreamProtocolUDP StreamProtocol = iota
+
+	// StreamProtocolTCP means that the stream uses the TCP protocol
+	StreamProtocolTCP
+)
+
+// String implements fmt.Stringer.
+func (sp StreamProtocol) String() string {
+	switch sp {
+	case StreamProtocolUDP:
+		return "udp"
+
+	case StreamProtocolTCP:
+		return "tcp"
+	}
+	return "unknown"
+}
+
+// StreamCast is the cast method of a stream.
+type StreamCast int
+
+const (
+	// StreamUnicast means that the stream is unicasted
+	StreamUnicast StreamCast = iota
+
+	// StreamMulticast means that the stream is multicasted
+	StreamMulticast
+)
+
+// String implements fmt.Stringer.
+func (sc StreamCast) String() string {
+	switch sc {
+	case StreamUnicast:
+		return "unicast"
+
+	case StreamMulticast:
+		return "multicast"
+	}
+	return "unknown"
+}
+
+// Transport is a Transport header.
+type Transport struct {
 	// protocol of the stream
 	Protocol StreamProtocol
 
@@ -57,8 +103,8 @@ func parsePorts(val string) (*[2]int, error) {
 	return &[2]int{int(port1), int(port2)}, nil
 }
 
-// ReadHeaderTransport parses a Transport header.
-func ReadHeaderTransport(v base.HeaderValue) (*HeaderTransport, error) {
+// ReadTransport parses a Transport header.
+func ReadTransport(v base.HeaderValue) (*Transport, error) {
 	if len(v) == 0 {
 		return nil, fmt.Errorf("value not provided")
 	}
@@ -67,7 +113,7 @@ func ReadHeaderTransport(v base.HeaderValue) (*HeaderTransport, error) {
 		return nil, fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	ht := &HeaderTransport{}
+	ht := &Transport{}
 
 	parts := strings.Split(v[0], ";")
 	if len(parts) == 0 {
@@ -153,7 +199,7 @@ func ReadHeaderTransport(v base.HeaderValue) (*HeaderTransport, error) {
 }
 
 // Write encodes a Transport header
-func (ht *HeaderTransport) Write() base.HeaderValue {
+func (ht *Transport) Write() base.HeaderValue {
 	var vals []string
 
 	if ht.Protocol == StreamProtocolUDP {

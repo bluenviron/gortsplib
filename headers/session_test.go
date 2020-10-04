@@ -1,4 +1,4 @@
-package gortsplib
+package headers
 
 import (
 	"testing"
@@ -8,17 +8,17 @@ import (
 	"github.com/aler9/gortsplib/base"
 )
 
-var casesHeaderSession = []struct {
+var casesSession = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    *HeaderSession
+	h    *Session
 }{
 	{
 		"base",
 		base.HeaderValue{`A3eqwsafq3rFASqew`},
 		base.HeaderValue{`A3eqwsafq3rFASqew`},
-		&HeaderSession{
+		&Session{
 			Session: "A3eqwsafq3rFASqew",
 		},
 	},
@@ -26,7 +26,7 @@ var casesHeaderSession = []struct {
 		"with timeout",
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
-		&HeaderSession{
+		&Session{
 			Session: "A3eqwsafq3rFASqew",
 			Timeout: func() *uint {
 				v := uint(47)
@@ -38,7 +38,7 @@ var casesHeaderSession = []struct {
 		"with timeout and space",
 		base.HeaderValue{`A3eqwsafq3rFASqew; timeout=47`},
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
-		&HeaderSession{
+		&Session{
 			Session: "A3eqwsafq3rFASqew",
 			Timeout: func() *uint {
 				v := uint(47)
@@ -48,18 +48,18 @@ var casesHeaderSession = []struct {
 	},
 }
 
-func TestHeaderSessionRead(t *testing.T) {
-	for _, c := range casesHeaderSession {
+func TestSessionRead(t *testing.T) {
+	for _, c := range casesSession {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadHeaderSession(c.vin)
+			req, err := ReadSession(c.vin)
 			require.NoError(t, err)
 			require.Equal(t, c.h, req)
 		})
 	}
 }
 
-func TestHeaderSessionWrite(t *testing.T) {
-	for _, c := range casesHeaderSession {
+func TestSessionWrite(t *testing.T) {
+	for _, c := range casesSession {
 		t.Run(c.name, func(t *testing.T) {
 			req := c.h.Write()
 			require.Equal(t, c.vout, req)

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/headers"
 	"github.com/aler9/gortsplib/rtcpreceiver"
 )
 
@@ -297,7 +298,7 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 
 	// get session from response
 	if v, ok := res.Header["Session"]; ok {
-		sx, err := ReadHeaderSession(v)
+		sx, err := headers.ReadSession(v)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse session header: %s", err)
 		}
@@ -448,7 +449,7 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode SetupMode, track *Track)
 	return u
 }
 
-func (c *ConnClient) setup(u *url.URL, mode SetupMode, track *Track, ht *HeaderTransport) (*base.Response, error) {
+func (c *ConnClient) setup(u *url.URL, mode SetupMode, track *Track, ht *headers.Transport) (*base.Response, error) {
 	res, err := c.Do(&base.Request{
 		Method: base.SETUP,
 		Url:    c.urlForTrack(u, mode, track),
@@ -533,7 +534,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort 
 		return nil, err
 	}
 
-	res, err := c.setup(u, mode, track, &HeaderTransport{
+	res, err := c.setup(u, mode, track, &headers.Transport{
 		Protocol: StreamProtocolUDP,
 		Cast: func() *StreamCast {
 			ret := StreamUnicast
@@ -556,7 +557,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort 
 		return nil, err
 	}
 
-	th, err := ReadHeaderTransport(res.Header["Transport"])
+	th, err := headers.ReadTransport(res.Header["Transport"])
 	if err != nil {
 		rtpListener.close()
 		rtcpListener.close()
@@ -608,7 +609,7 @@ func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*base.R
 	}
 
 	interleavedIds := [2]int{(track.Id * 2), (track.Id * 2) + 1}
-	res, err := c.setup(u, mode, track, &HeaderTransport{
+	res, err := c.setup(u, mode, track, &headers.Transport{
 		Protocol: StreamProtocolTCP,
 		Cast: func() *StreamCast {
 			ret := StreamUnicast
@@ -629,7 +630,7 @@ func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*base.R
 		return nil, err
 	}
 
-	th, err := ReadHeaderTransport(res.Header["Transport"])
+	th, err := headers.ReadTransport(res.Header["Transport"])
 	if err != nil {
 		return nil, fmt.Errorf("transport header: %s", err)
 	}

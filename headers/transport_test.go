@@ -1,4 +1,4 @@
-package gortsplib
+package headers
 
 import (
 	"testing"
@@ -8,17 +8,17 @@ import (
 	"github.com/aler9/gortsplib/base"
 )
 
-var casesHeaderTransport = []struct {
+var casesTransport = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    *HeaderTransport
+	h    *Transport
 }{
 	{
 		"udp unicast play request",
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode="PLAY"`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
-		&HeaderTransport{
+		&Transport{
 			Protocol: StreamProtocolUDP,
 			Cast: func() *StreamCast {
 				v := StreamUnicast
@@ -35,7 +35,7 @@ var casesHeaderTransport = []struct {
 		"udp unicast play response",
 		base.HeaderValue{`RTP/AVP/UDP;unicast;client_port=3056-3057;server_port=5000-5001`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3056-3057;server_port=5000-5001`},
-		&HeaderTransport{
+		&Transport{
 			Protocol: StreamProtocolUDP,
 			Cast: func() *StreamCast {
 				v := StreamUnicast
@@ -49,7 +49,7 @@ var casesHeaderTransport = []struct {
 		"udp multicast play request / response",
 		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
 		base.HeaderValue{`RTP/AVP;multicast`},
-		&HeaderTransport{
+		&Transport{
 			Protocol: StreamProtocolUDP,
 			Cast: func() *StreamCast {
 				v := StreamMulticast
@@ -70,25 +70,25 @@ var casesHeaderTransport = []struct {
 		"tcp play request / response",
 		base.HeaderValue{`RTP/AVP/TCP;interleaved=0-1`},
 		base.HeaderValue{`RTP/AVP/TCP;interleaved=0-1`},
-		&HeaderTransport{
+		&Transport{
 			Protocol:       StreamProtocolTCP,
 			InterleavedIds: &[2]int{0, 1},
 		},
 	},
 }
 
-func TestHeaderTransportRead(t *testing.T) {
-	for _, c := range casesHeaderTransport {
+func TestTransportRead(t *testing.T) {
+	for _, c := range casesTransport {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadHeaderTransport(c.vin)
+			req, err := ReadTransport(c.vin)
 			require.NoError(t, err)
 			require.Equal(t, c.h, req)
 		})
 	}
 }
 
-func TestHeaderTransportWrite(t *testing.T) {
-	for _, c := range casesHeaderTransport {
+func TestTransportWrite(t *testing.T) {
+	for _, c := range casesTransport {
 		t.Run(c.name, func(t *testing.T) {
 			req := c.h.Write()
 			require.Equal(t, c.vout, req)

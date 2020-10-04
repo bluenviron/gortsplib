@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/headers"
 )
 
 // AuthServer is an object that helps a server to validate the credentials of
@@ -16,16 +17,16 @@ import (
 type AuthServer struct {
 	user    string
 	pass    string
-	methods []AuthMethod
+	methods []headers.AuthMethod
 	realm   string
 	nonce   string
 }
 
 // NewAuthServer allocates an AuthServer.
 // If methods is nil, the Basic and Digest methods are used.
-func NewAuthServer(user string, pass string, methods []AuthMethod) *AuthServer {
+func NewAuthServer(user string, pass string, methods []headers.AuthMethod) *AuthServer {
 	if methods == nil {
-		methods = []AuthMethod{Basic, Digest}
+		methods = []headers.AuthMethod{headers.AuthBasic, headers.AuthDigest}
 	}
 
 	nonceByts := make([]byte, 16)
@@ -46,15 +47,15 @@ func (as *AuthServer) GenerateHeader() base.HeaderValue {
 	var ret base.HeaderValue
 	for _, m := range as.methods {
 		switch m {
-		case Basic:
-			ret = append(ret, (&HeaderAuth{
-				Method: Basic,
+		case headers.AuthBasic:
+			ret = append(ret, (&headers.Auth{
+				Method: headers.AuthBasic,
 				Realm:  &as.realm,
 			}).Write()...)
 
-		case Digest:
-			ret = append(ret, (&HeaderAuth{
-				Method: Digest,
+		case headers.AuthDigest:
+			ret = append(ret, (&headers.Auth{
+				Method: headers.AuthDigest,
 				Realm:  &as.realm,
 				Nonce:  &as.nonce,
 			}).Write()...)
@@ -85,7 +86,7 @@ func (as *AuthServer) ValidateHeader(v base.HeaderValue, method base.Method, ur 
 		}
 
 	} else if strings.HasPrefix(v0, "Digest ") {
-		auth, err := ReadHeaderAuth(base.HeaderValue{v0})
+		auth, err := headers.ReadAuth(base.HeaderValue{v0})
 		if err != nil {
 			return err
 		}

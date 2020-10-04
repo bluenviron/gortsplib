@@ -1,4 +1,4 @@
-package gortsplib
+package headers
 
 import (
 	"testing"
@@ -8,18 +8,18 @@ import (
 	"github.com/aler9/gortsplib/base"
 )
 
-var casesHeaderAuth = []struct {
+var casesAuth = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    *HeaderAuth
+	h    *Auth
 }{
 	{
 		"basic",
 		base.HeaderValue{`Basic realm="4419b63f5e51"`},
 		base.HeaderValue{`Basic realm="4419b63f5e51"`},
-		&HeaderAuth{
-			Method: Basic,
+		&Auth{
+			Method: AuthBasic,
 			Realm: func() *string {
 				v := "4419b63f5e51"
 				return &v
@@ -30,8 +30,8 @@ var casesHeaderAuth = []struct {
 		"digest request 1",
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
-		&HeaderAuth{
-			Method: Digest,
+		&Auth{
+			Method: AuthDigest,
 			Realm: func() *string {
 				v := "4419b63f5e51"
 				return &v
@@ -50,8 +50,8 @@ var casesHeaderAuth = []struct {
 		"digest request 2",
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale=FALSE`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
-		&HeaderAuth{
-			Method: Digest,
+		&Auth{
+			Method: AuthDigest,
 			Realm: func() *string {
 				v := "4419b63f5e51"
 				return &v
@@ -70,8 +70,8 @@ var casesHeaderAuth = []struct {
 		"digest request 3",
 		base.HeaderValue{`Digest realm="4419b63f5e51",nonce="133767111917411116111311118211673010032",  stale="FALSE"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="133767111917411116111311118211673010032", stale="FALSE"`},
-		&HeaderAuth{
-			Method: Digest,
+		&Auth{
+			Method: AuthDigest,
 			Realm: func() *string {
 				v := "4419b63f5e51"
 				return &v
@@ -90,8 +90,8 @@ var casesHeaderAuth = []struct {
 		"digest response generic",
 		base.HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
 		base.HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
-		&HeaderAuth{
-			Method: Digest,
+		&Auth{
+			Method: AuthDigest,
 			Username: func() *string {
 				v := "aa"
 				return &v
@@ -118,8 +118,8 @@ var casesHeaderAuth = []struct {
 		"digest response with empty field",
 		base.HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
 		base.HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
-		&HeaderAuth{
-			Method: Digest,
+		&Auth{
+			Method: AuthDigest,
 			Username: func() *string {
 				v := ""
 				return &v
@@ -146,8 +146,8 @@ var casesHeaderAuth = []struct {
 		"digest response with no spaces and additional fields",
 		base.HeaderValue{`Digest realm="Please log in with a valid username",nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE,algorithm=MD5`},
 		base.HeaderValue{`Digest realm="Please log in with a valid username", nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE", algorithm="MD5"`},
-		&HeaderAuth{
-			Method: Digest,
+		&Auth{
+			Method: AuthDigest,
 			Realm: func() *string {
 				v := "Please log in with a valid username"
 				return &v
@@ -172,18 +172,18 @@ var casesHeaderAuth = []struct {
 	},
 }
 
-func TestHeaderAuthRead(t *testing.T) {
-	for _, c := range casesHeaderAuth {
+func TestAuthRead(t *testing.T) {
+	for _, c := range casesAuth {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadHeaderAuth(c.vin)
+			req, err := ReadAuth(c.vin)
 			require.NoError(t, err)
 			require.Equal(t, c.h, req)
 		})
 	}
 }
 
-func TestHeaderAuthWrite(t *testing.T) {
-	for _, c := range casesHeaderAuth {
+func TestAuthWrite(t *testing.T) {
+	for _, c := range casesAuth {
 		t.Run(c.name, func(t *testing.T) {
 			req := c.h.Write()
 			require.Equal(t, c.vout, req)

@@ -1,4 +1,4 @@
-package gortsplib
+package headers
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	"github.com/aler9/gortsplib/base"
 )
 
-// HeaderSession is a Session header.
-type HeaderSession struct {
+// Session is a Session header.
+type Session struct {
 	// session id
 	Session string
 
@@ -17,8 +17,8 @@ type HeaderSession struct {
 	Timeout *uint
 }
 
-// ReadHeaderSession parses a Session header.
-func ReadHeaderSession(v base.HeaderValue) (*HeaderSession, error) {
+// ReadSession parses a Session header.
+func ReadSession(v base.HeaderValue) (*Session, error) {
 	if len(v) == 0 {
 		return nil, fmt.Errorf("value not provided")
 	}
@@ -32,7 +32,7 @@ func ReadHeaderSession(v base.HeaderValue) (*HeaderSession, error) {
 		return nil, fmt.Errorf("invalid value (%v)", v)
 	}
 
-	hs := &HeaderSession{}
+	hs := &Session{}
 
 	hs.Session = parts[0]
 
@@ -63,7 +63,7 @@ func ReadHeaderSession(v base.HeaderValue) (*HeaderSession, error) {
 }
 
 // Write encodes a Session header
-func (hs *HeaderSession) Write() base.HeaderValue {
+func (hs *Session) Write() base.HeaderValue {
 	val := hs.Session
 
 	if hs.Timeout != nil {

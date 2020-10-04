@@ -7,23 +7,24 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/headers"
 )
 
 var casesAuth = []struct {
 	name    string
-	methods []AuthMethod
+	methods []headers.AuthMethod
 }{
 	{
 		"basic",
-		[]AuthMethod{Basic},
+		[]headers.AuthMethod{headers.AuthBasic},
 	},
 	{
 		"digest",
-		[]AuthMethod{Digest},
+		[]headers.AuthMethod{headers.AuthDigest},
 	},
 	{
 		"both",
-		[]AuthMethod{Basic, Digest},
+		[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest},
 	},
 }
 
@@ -46,7 +47,8 @@ func TestAuthMethods(t *testing.T) {
 }
 
 func TestAuthBasePath(t *testing.T) {
-	authServer := NewAuthServer("testuser", "testpass", []AuthMethod{Basic, Digest})
+	authServer := NewAuthServer("testuser", "testpass",
+		[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
 	wwwAuthenticate := authServer.GenerateHeader()
 
 	ac, err := newAuthClient(wwwAuthenticate, "testuser", "testpass")

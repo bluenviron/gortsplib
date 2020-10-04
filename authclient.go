@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/headers"
 )
 
 // authClient is an object that helps a client to send its credentials to a
@@ -14,7 +15,7 @@ import (
 type authClient struct {
 	user   string
 	pass   string
-	method AuthMethod
+	method headers.AuthMethod
 	realm  string
 	nonce  string
 }
@@ -31,7 +32,7 @@ func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, e
 		}
 		return ""
 	}(); headerAuthDigest != "" {
-		auth, err := ReadHeaderAuth(base.HeaderValue{headerAuthDigest})
+		auth, err := headers.ReadAuth(base.HeaderValue{headerAuthDigest})
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +48,7 @@ func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, e
 		return &authClient{
 			user:   user,
 			pass:   pass,
-			method: Digest,
+			method: headers.AuthDigest,
 			realm:  *auth.Realm,
 			nonce:  *auth.Nonce,
 		}, nil
@@ -61,7 +62,7 @@ func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, e
 		}
 		return ""
 	}(); headerAuthBasic != "" {
-		auth, err := ReadHeaderAuth(base.HeaderValue{headerAuthBasic})
+		auth, err := headers.ReadAuth(base.HeaderValue{headerAuthBasic})
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +74,7 @@ func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, e
 		return &authClient{
 			user:   user,
 			pass:   pass,
-			method: Basic,
+			method: headers.AuthBasic,
 			realm:  *auth.Realm,
 		}, nil
 	}
@@ -85,17 +86,17 @@ func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, e
 // the given method and url.
 func (ac *authClient) GenerateHeader(method base.Method, ur *url.URL) base.HeaderValue {
 	switch ac.method {
-	case Basic:
+	case headers.AuthBasic:
 		response := base64.StdEncoding.EncodeToString([]byte(ac.user + ":" + ac.pass))
 
 		return base.HeaderValue{"Basic " + response}
 
-	case Digest:
+	case headers.AuthDigest:
 		response := md5Hex(md5Hex(ac.user+":"+ac.realm+":"+ac.pass) + ":" +
 			ac.nonce + ":" + md5Hex(string(method)+":"+ur.String()))
 
-		return (&HeaderAuth{
-			Method:   Digest,
+		return (&headers.Auth{
+			Method:   headers.AuthDigest,
 			Username: &ac.user,
 			Realm:    &ac.realm,
 			Nonce:    &ac.nonce,

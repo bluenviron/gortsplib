@@ -1,4 +1,5 @@
-package gortsplib
+// Package headers contains various RTSP headers.
+package headers
 
 import (
 	"fmt"
@@ -7,8 +8,19 @@ import (
 	"github.com/aler9/gortsplib/base"
 )
 
-// HeaderAuth is an Authenticate or a WWWW-Authenticate header.
-type HeaderAuth struct {
+// AuthMethod is an authentication method.
+type AuthMethod int
+
+const (
+	// AuthBasic is the Basic authentication method
+	AuthBasic AuthMethod = iota
+
+	// AuthDigest is the Digest authentication method
+	AuthDigest
+)
+
+// Auth is an Authenticate or a WWWW-Authenticate header.
+type Auth struct {
 	// authentication method
 	Method AuthMethod
 
@@ -67,8 +79,8 @@ func findValue(v0 string) (string, string, error) {
 	}
 }
 
-// ReadHeaderAuth parses an Authenticate or a WWW-Authenticate header.
-func ReadHeaderAuth(v base.HeaderValue) (*HeaderAuth, error) {
+// ReadAuth parses an Authenticate or a WWW-Authenticate header.
+func ReadAuth(v base.HeaderValue) (*Auth, error) {
 	if len(v) == 0 {
 		return nil, fmt.Errorf("value not provided")
 	}
@@ -77,7 +89,7 @@ func ReadHeaderAuth(v base.HeaderValue) (*HeaderAuth, error) {
 		return nil, fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	ha := &HeaderAuth{}
+	ha := &Auth{}
 
 	v0 := v[0]
 
@@ -88,10 +100,10 @@ func ReadHeaderAuth(v base.HeaderValue) (*HeaderAuth, error) {
 
 	switch v0[:i] {
 	case "Basic":
-		ha.Method = Basic
+		ha.Method = AuthBasic
 
 	case "Digest":
-		ha.Method = Digest
+		ha.Method = AuthDigest
 
 	default:
 		return nil, fmt.Errorf("invalid method (%s)", v0[:i])
@@ -156,14 +168,14 @@ func ReadHeaderAuth(v base.HeaderValue) (*HeaderAuth, error) {
 }
 
 // Write encodes an Authenticate or a WWW-Authenticate header.
-func (ha *HeaderAuth) Write() base.HeaderValue {
+func (ha *Auth) Write() base.HeaderValue {
 	ret := ""
 
 	switch ha.Method {
-	case Basic:
+	case AuthBasic:
 		ret += "Basic"
 
-	case Digest:
+	case AuthDigest:
 		ret += "Digest"
 	}
 

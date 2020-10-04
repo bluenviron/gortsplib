@@ -2,53 +2,30 @@ package gortsplib
 
 import (
 	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/headers"
 )
 
 // StreamProtocol is the protocol of a stream.
-type StreamProtocol int
+type StreamProtocol = headers.StreamProtocol
 
 const (
 	// StreamProtocolUDP means that the stream uses the UDP protocol
-	StreamProtocolUDP StreamProtocol = iota
+	StreamProtocolUDP = headers.StreamProtocolUDP
 
 	// StreamProtocolTCP means that the stream uses the TCP protocol
-	StreamProtocolTCP
+	StreamProtocolTCP = headers.StreamProtocolTCP
 )
 
-// String implements fmt.Stringer.
-func (sp StreamProtocol) String() string {
-	switch sp {
-	case StreamProtocolUDP:
-		return "udp"
-
-	case StreamProtocolTCP:
-		return "tcp"
-	}
-	return "unknown"
-}
-
 // StreamCast is the cast method of a stream.
-type StreamCast int
+type StreamCast = headers.StreamCast
 
 const (
 	// StreamUnicast means that the stream is unicasted
-	StreamUnicast StreamCast = iota
+	StreamUnicast = headers.StreamUnicast
 
 	// StreamMulticast means that the stream is multicasted
-	StreamMulticast
+	StreamMulticast = headers.StreamMulticast
 )
-
-// String implements fmt.Stringer.
-func (sc StreamCast) String() string {
-	switch sc {
-	case StreamUnicast:
-		return "unicast"
-
-	case StreamMulticast:
-		return "multicast"
-	}
-	return "unknown"
-}
 
 // StreamType is the stream type.
 type StreamType = base.StreamType
