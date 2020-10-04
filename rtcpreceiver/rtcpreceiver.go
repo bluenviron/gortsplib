@@ -1,10 +1,13 @@
-package gortsplib
+// Package rtcpreceiver implements RtcpReceiver.
+package rtcpreceiver
 
 import (
 	"math/rand"
 	"sync"
 
 	"github.com/pion/rtcp"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 type frameRtpReq struct {
@@ -31,19 +34,19 @@ type RtcpReceiver struct {
 	lastSenderReport     uint32
 }
 
-// NewRtcpReceiver allocates a RtcpReceiver.
-func NewRtcpReceiver() *RtcpReceiver {
+// New allocates a RtcpReceiver.
+func New() *RtcpReceiver {
 	return &RtcpReceiver{
 		receiverSSRC: rand.Uint32(),
 	}
 }
 
 // OnFrame processes a RTP or RTCP frame and extract the data needed by RTCP receiver reports.
-func (rr *RtcpReceiver) OnFrame(streamType StreamType, buf []byte) {
+func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
-	if streamType == StreamTypeRtp {
+	if streamType == base.StreamTypeRtp {
 		if len(buf) >= 3 {
 			// extract the sequence number of the first frame
 			sequenceNumber := uint16(uint16(buf[2])<<8 | uint16(buf[1]))

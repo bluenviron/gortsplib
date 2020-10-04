@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/rtcpreceiver"
 )
 
 const (
@@ -79,7 +80,7 @@ type ConnClient struct {
 	state             connClientState
 	streamUrl         *url.URL
 	streamProtocol    *StreamProtocol
-	rtcpReceivers     map[int]*RtcpReceiver
+	rtcpReceivers     map[int]*rtcpreceiver.RtcpReceiver
 	udpLastFrameTimes map[int]*int64
 	udpRtpListeners   map[int]*connClientUDPListener
 	udpRtcpListeners  map[int]*connClientUDPListener
@@ -117,7 +118,7 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		nconn:             nconn,
 		br:                bufio.NewReaderSize(nconn, clientReadBufferSize),
 		bw:                bufio.NewWriterSize(nconn, clientWriteBufferSize),
-		rtcpReceivers:     make(map[int]*RtcpReceiver),
+		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
 		udpLastFrameTimes: make(map[int]*int64),
 		udpRtpListeners:   make(map[int]*connClientUDPListener),
 		udpRtcpListeners:  make(map[int]*connClientUDPListener),
@@ -573,7 +574,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort 
 	c.streamProtocol = &streamProtocol
 
 	if mode == SetupModePlay {
-		c.rtcpReceivers[track.Id] = NewRtcpReceiver()
+		c.rtcpReceivers[track.Id] = rtcpreceiver.New()
 
 		v := time.Now().Unix()
 		c.udpLastFrameTimes[track.Id] = &v
@@ -645,7 +646,7 @@ func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*base.R
 	c.streamProtocol = &streamProtocol
 
 	if mode == SetupModePlay {
-		c.rtcpReceivers[track.Id] = NewRtcpReceiver()
+		c.rtcpReceivers[track.Id] = rtcpreceiver.New()
 	}
 
 	return res, nil
