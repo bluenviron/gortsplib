@@ -1,4 +1,4 @@
-package gortsplib
+package base
 
 import (
 	"bufio"
@@ -132,7 +132,7 @@ type Response struct {
 	Content []byte
 }
 
-// ReadResponse reads a response from a buffered reader.
+// ReadResponse reads a response.
 func ReadResponse(rb *bufio.Reader) (*Response, error) {
 	res := &Response{}
 
@@ -186,8 +186,8 @@ func ReadResponse(rb *bufio.Reader) (*Response, error) {
 	return res, nil
 }
 
-// Write writes a Response into a buffered writer.
-func (res *Response) Write(bw *bufio.Writer) error {
+// Write writes a Response.
+func (res Response) Write(bw *bufio.Writer) error {
 	if res.StatusMessage == "" {
 		if status, ok := statusMessages[res.StatusCode]; ok {
 			res.StatusMessage = status

@@ -4,26 +4,28 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 var casesHeaderSession = []struct {
 	name string
-	vin  HeaderValue
-	vout HeaderValue
+	vin  base.HeaderValue
+	vout base.HeaderValue
 	h    *HeaderSession
 }{
 	{
 		"base",
-		HeaderValue{`A3eqwsafq3rFASqew`},
-		HeaderValue{`A3eqwsafq3rFASqew`},
+		base.HeaderValue{`A3eqwsafq3rFASqew`},
+		base.HeaderValue{`A3eqwsafq3rFASqew`},
 		&HeaderSession{
 			Session: "A3eqwsafq3rFASqew",
 		},
 	},
 	{
 		"with timeout",
-		HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
-		HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
+		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
+		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
 		&HeaderSession{
 			Session: "A3eqwsafq3rFASqew",
 			Timeout: func() *uint {
@@ -34,8 +36,8 @@ var casesHeaderSession = []struct {
 	},
 	{
 		"with timeout and space",
-		HeaderValue{`A3eqwsafq3rFASqew; timeout=47`},
-		HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
+		base.HeaderValue{`A3eqwsafq3rFASqew; timeout=47`},
+		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
 		&HeaderSession{
 			Session: "A3eqwsafq3rFASqew",
 			Timeout: func() *uint {

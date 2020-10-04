@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 // HeaderTransport is a Transport header.
@@ -56,7 +58,7 @@ func parsePorts(val string) (*[2]int, error) {
 }
 
 // ReadHeaderTransport parses a Transport header.
-func ReadHeaderTransport(v HeaderValue) (*HeaderTransport, error) {
+func ReadHeaderTransport(v base.HeaderValue) (*HeaderTransport, error) {
 	if len(v) == 0 {
 		return nil, fmt.Errorf("value not provided")
 	}
@@ -151,7 +153,7 @@ func ReadHeaderTransport(v HeaderValue) (*HeaderTransport, error) {
 }
 
 // Write encodes a Transport header
-func (ht *HeaderTransport) Write() HeaderValue {
+func (ht *HeaderTransport) Write() base.HeaderValue {
 	var vals []string
 
 	if ht.Protocol == StreamProtocolUDP {
@@ -187,5 +189,5 @@ func (ht *HeaderTransport) Write() HeaderValue {
 		vals = append(vals, "mode="+*ht.Mode)
 	}
 
-	return HeaderValue{strings.Join(vals, ";")}
+	return base.HeaderValue{strings.Join(vals, ";")}
 }

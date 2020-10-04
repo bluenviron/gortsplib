@@ -96,11 +96,7 @@ func main() {
 		}
 
 		// write frames to the server
-		err = conn.WriteFrameTCP(&gortsplib.InterleavedFrame{
-			TrackId:    track.Id,
-			StreamType: gortsplib.StreamTypeRtp,
-			Content:    buf[:n],
-		})
+		err = conn.WriteFrameTCP(track.Id, gortsplib.StreamTypeRtp, buf[:n])
 		if err != nil {
 			break
 		}

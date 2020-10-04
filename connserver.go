@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"net"
 	"time"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 const (
@@ -70,9 +72,9 @@ func (s *ConnServer) NetConn() net.Conn {
 }
 
 // ReadRequest reads a Request.
-func (s *ConnServer) ReadRequest() (*Request, error) {
+func (s *ConnServer) ReadRequest() (*base.Request, error) {
 	s.conf.Conn.SetReadDeadline(time.Time{}) // disable deadline
-	return ReadRequest(s.br)
+	return base.ReadRequest(s.br)
 }
 
 // ReadFrameTCPOrRequest reads an InterleavedFrame or a Request.
@@ -81,32 +83,24 @@ func (s *ConnServer) ReadFrameTCPOrRequest(timeout bool) (interface{}, error) {
 		s.conf.Conn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
 	}
 
-	b, err := s.br.ReadByte()
-	if err != nil {
-		return nil, err
-	}
-	s.br.UnreadByte()
-
-	if b == interleavedFrameMagicByte {
-		frame := s.tcpFrames.next()
-		err := frame.Read(s.br)
-		if err != nil {
-			return nil, err
-		}
-		return frame, err
-	}
-
-	return ReadRequest(s.br)
+	frame := s.tcpFrames.next()
+	return base.ReadInterleavedFrameOrRequest(frame, s.br)
 }
 
 // WriteResponse writes a Response.
-func (s *ConnServer) WriteResponse(res *Response) error {
+func (s *ConnServer) WriteResponse(res *base.Response) error {
 	s.conf.Conn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
 	return res.Write(s.bw)
 }
 
 // WriteFrameTCP writes an InterleavedFrame.
-func (s *ConnServer) WriteFrameTCP(frame *InterleavedFrame) error {
+func (s *ConnServer) WriteFrameTCP(trackId int, streamType StreamType, content []byte) error {
+	frame := base.InterleavedFrame{
+		TrackId:    trackId,
+		StreamType: streamType,
+		Content:    content,
+	}
+
 	s.conf.Conn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
 	return frame.Write(s.bw)
 }

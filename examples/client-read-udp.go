@@ -24,36 +24,36 @@ func main() {
 	defer wg.Wait()
 	defer conn.CloseUDPListeners()
 
-	for _, track := range tracks {
+	for trackId := range tracks {
 		// read RTP frames
 		wg.Add(1)
-		go func(track *gortsplib.Track) {
+		go func(trackId int) {
 			defer wg.Done()
 
 			for {
-				buf, err := conn.ReadFrameUDP(track, gortsplib.StreamTypeRtp)
+				buf, err := conn.ReadFrameUDP(trackId, gortsplib.StreamTypeRtp)
 				if err != nil {
 					break
 				}
 
-				fmt.Printf("frame from track %d, type RTP: %v\n", track.Id, buf)
+				fmt.Printf("frame from track %d, type RTP: %v\n", trackId, buf)
 			}
-		}(track)
+		}(trackId)
 
 		// read RTCP frames
 		wg.Add(1)
-		go func(track *gortsplib.Track) {
+		go func(trackId int) {
 			defer wg.Done()
 
 			for {
-				buf, err := conn.ReadFrameUDP(track, gortsplib.StreamTypeRtcp)
+				buf, err := conn.ReadFrameUDP(trackId, gortsplib.StreamTypeRtcp)
 				if err != nil {
 					break
 				}
 
-				fmt.Printf("frame from track %d, type RTCP: %v\n", track.Id, buf)
+				fmt.Printf("frame from track %d, type RTCP: %v\n", trackId, buf)
 			}
-		}(track)
+		}(trackId)
 	}
 
 	err = conn.LoopUDP()

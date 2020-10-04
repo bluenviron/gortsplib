@@ -4,18 +4,20 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 var casesHeaderTransport = []struct {
 	name string
-	vin  HeaderValue
-	vout HeaderValue
+	vin  base.HeaderValue
+	vout base.HeaderValue
 	h    *HeaderTransport
 }{
 	{
 		"udp unicast play request",
-		HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode="PLAY"`},
-		HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode="PLAY"`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
 		&HeaderTransport{
 			Protocol: StreamProtocolUDP,
 			Cast: func() *StreamCast {
@@ -31,8 +33,8 @@ var casesHeaderTransport = []struct {
 	},
 	{
 		"udp unicast play response",
-		HeaderValue{`RTP/AVP/UDP;unicast;client_port=3056-3057;server_port=5000-5001`},
-		HeaderValue{`RTP/AVP;unicast;client_port=3056-3057;server_port=5000-5001`},
+		base.HeaderValue{`RTP/AVP/UDP;unicast;client_port=3056-3057;server_port=5000-5001`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=3056-3057;server_port=5000-5001`},
 		&HeaderTransport{
 			Protocol: StreamProtocolUDP,
 			Cast: func() *StreamCast {
@@ -45,8 +47,8 @@ var casesHeaderTransport = []struct {
 	},
 	{
 		"udp multicast play request / response",
-		HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
-		HeaderValue{`RTP/AVP;multicast`},
+		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
+		base.HeaderValue{`RTP/AVP;multicast`},
 		&HeaderTransport{
 			Protocol: StreamProtocolUDP,
 			Cast: func() *StreamCast {
@@ -66,8 +68,8 @@ var casesHeaderTransport = []struct {
 	},
 	{
 		"tcp play request / response",
-		HeaderValue{`RTP/AVP/TCP;interleaved=0-1`},
-		HeaderValue{`RTP/AVP/TCP;interleaved=0-1`},
+		base.HeaderValue{`RTP/AVP/TCP;interleaved=0-1`},
+		base.HeaderValue{`RTP/AVP/TCP;interleaved=0-1`},
 		&HeaderTransport{
 			Protocol:       StreamProtocolTCP,
 			InterleavedIds: &[2]int{0, 1},

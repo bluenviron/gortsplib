@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 // HeaderSession is a Session header.
@@ -16,7 +18,7 @@ type HeaderSession struct {
 }
 
 // ReadHeaderSession parses a Session header.
-func ReadHeaderSession(v HeaderValue) (*HeaderSession, error) {
+func ReadHeaderSession(v base.HeaderValue) (*HeaderSession, error) {
 	if len(v) == 0 {
 		return nil, fmt.Errorf("value not provided")
 	}
@@ -61,12 +63,12 @@ func ReadHeaderSession(v HeaderValue) (*HeaderSession, error) {
 }
 
 // Write encodes a Session header
-func (hs *HeaderSession) Write() HeaderValue {
+func (hs *HeaderSession) Write() base.HeaderValue {
 	val := hs.Session
 
 	if hs.Timeout != nil {
 		val += ";timeout=" + strconv.FormatUint(uint64(*hs.Timeout), 10)
 	}
 
-	return HeaderValue{val}
+	return base.HeaderValue{val}
 }

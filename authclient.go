@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 // authClient is an object that helps a client to send its credentials to a
@@ -19,7 +21,7 @@ type authClient struct {
 
 // newAuthClient allocates an authClient.
 // header is the WWW-Authenticate header provided by the server.
-func newAuthClient(v HeaderValue, user string, pass string) (*authClient, error) {
+func newAuthClient(v base.HeaderValue, user string, pass string) (*authClient, error) {
 	// prefer digest
 	if headerAuthDigest := func() string {
 		for _, vi := range v {
@@ -29,7 +31,7 @@ func newAuthClient(v HeaderValue, user string, pass string) (*authClient, error)
 		}
 		return ""
 	}(); headerAuthDigest != "" {
-		auth, err := ReadHeaderAuth(HeaderValue{headerAuthDigest})
+		auth, err := ReadHeaderAuth(base.HeaderValue{headerAuthDigest})
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +61,7 @@ func newAuthClient(v HeaderValue, user string, pass string) (*authClient, error)
 		}
 		return ""
 	}(); headerAuthBasic != "" {
-		auth, err := ReadHeaderAuth(HeaderValue{headerAuthBasic})
+		auth, err := ReadHeaderAuth(base.HeaderValue{headerAuthBasic})
 		if err != nil {
 			return nil, err
 		}
@@ -81,12 +83,12 @@ func newAuthClient(v HeaderValue, user string, pass string) (*authClient, error)
 
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
 // the given method and url.
-func (ac *authClient) GenerateHeader(method Method, ur *url.URL) HeaderValue {
+func (ac *authClient) GenerateHeader(method base.Method, ur *url.URL) base.HeaderValue {
 	switch ac.method {
 	case Basic:
 		response := base64.StdEncoding.EncodeToString([]byte(ac.user + ":" + ac.pass))
 
-		return HeaderValue{"Basic " + response}
+		return base.HeaderValue{"Basic " + response}
 
 	case Digest:
 		response := md5Hex(md5Hex(ac.user+":"+ac.realm+":"+ac.pass) + ":" +

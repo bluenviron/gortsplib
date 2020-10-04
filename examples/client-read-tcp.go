@@ -21,13 +21,13 @@ func main() {
 
 	for {
 		// read frames
-		frame, err := conn.ReadFrameTCP()
+		id, typ, buf, err := conn.ReadFrameTCP()
 		if err != nil {
 			fmt.Println("connection is closed (%s)", err)
 			break
 		}
 
 		fmt.Printf("frame from track %d, type %v: %v\n",
-			frame.TrackId, frame.StreamType, frame.Content)
+			id, typ, buf)
 	}
 }

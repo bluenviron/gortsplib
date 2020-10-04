@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 var casesAuth = []struct {
@@ -33,10 +35,10 @@ func TestAuthMethods(t *testing.T) {
 
 			ac, err := newAuthClient(wwwAuthenticate, "testuser", "testpass")
 			require.NoError(t, err)
-			authorization := ac.GenerateHeader(ANNOUNCE,
+			authorization := ac.GenerateHeader(base.ANNOUNCE,
 				&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath"})
 
-			err = authServer.ValidateHeader(authorization, ANNOUNCE,
+			err = authServer.ValidateHeader(authorization, base.ANNOUNCE,
 				&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath"})
 			require.NoError(t, err)
 		})
@@ -49,10 +51,10 @@ func TestAuthBasePath(t *testing.T) {
 
 	ac, err := newAuthClient(wwwAuthenticate, "testuser", "testpass")
 	require.NoError(t, err)
-	authorization := ac.GenerateHeader(ANNOUNCE,
+	authorization := ac.GenerateHeader(base.ANNOUNCE,
 		&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath/"})
 
-	err = authServer.ValidateHeader(authorization, ANNOUNCE,
+	err = authServer.ValidateHeader(authorization, base.ANNOUNCE,
 		&url.URL{Scheme: "rtsp", Host: "myhost", Path: "mypath/trackId=0"})
 	require.NoError(t, err)
 }

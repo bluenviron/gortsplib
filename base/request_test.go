@@ -1,4 +1,4 @@
-package gortsplib
+package base
 
 import (
 	"bufio"

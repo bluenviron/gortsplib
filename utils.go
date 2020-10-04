@@ -1,14 +1,7 @@
 package gortsplib
 
 import (
-	"bufio"
-	"fmt"
-	"io"
-	"strconv"
-)
-
-const (
-	rtspMaxContentLength = 4096
+	"github.com/aler9/gortsplib/base"
 )
 
 // StreamProtocol is the protocol of a stream.
@@ -22,7 +15,7 @@ const (
 	StreamProtocolTCP
 )
 
-// String implements fmt.Stringer
+// String implements fmt.Stringer.
 func (sp StreamProtocol) String() string {
 	switch sp {
 	case StreamProtocolUDP:
@@ -45,7 +38,7 @@ const (
 	StreamMulticast
 )
 
-// String implements fmt.Stringer
+// String implements fmt.Stringer.
 func (sc StreamCast) String() string {
 	switch sc {
 	case StreamUnicast:
@@ -58,29 +51,17 @@ func (sc StreamCast) String() string {
 }
 
 // StreamType is the stream type.
-type StreamType int
+type StreamType = base.StreamType
 
 const (
 	// StreamTypeRtp means that the stream contains RTP packets
-	StreamTypeRtp StreamType = iota
+	StreamTypeRtp = base.StreamTypeRtp
 
 	// StreamTypeRtcp means that the stream contains RTCP packets
-	StreamTypeRtcp
+	StreamTypeRtcp = base.StreamTypeRtcp
 )
 
-// String implements fmt.Stringer
-func (st StreamType) String() string {
-	switch st {
-	case StreamTypeRtp:
-		return "RTP"
-
-	case StreamTypeRtcp:
-		return "RTCP"
-	}
-	return "unknown"
-}
-
-// SetupMode is a setup mode.
+// SetupMode is the setup mode.
 type SetupMode int
 
 const (
@@ -91,7 +72,7 @@ const (
 	SetupModeRecord
 )
 
-// String implements fmt.Stringer
+// String implements fmt.Stringer.
 func (sm SetupMode) String() string {
 	switch sm {
 	case SetupModePlay:
@@ -101,69 +82,4 @@ func (sm SetupMode) String() string {
 		return "record"
 	}
 	return "unknown"
-}
-
-func readBytesLimited(rb *bufio.Reader, delim byte, n int) ([]byte, error) {
-	for i := 1; i <= n; i++ {
-		byts, err := rb.Peek(i)
-		if err != nil {
-			return nil, err
-		}
-
-		if byts[len(byts)-1] == delim {
-			rb.Discard(len(byts))
-			return byts, nil
-		}
-	}
-	return nil, fmt.Errorf("buffer length exceeds %d", n)
-}
-
-func readByteEqual(rb *bufio.Reader, cmp byte) error {
-	byt, err := rb.ReadByte()
-	if err != nil {
-		return err
-	}
-
-	if byt != cmp {
-		return fmt.Errorf("expected '%c', got '%c'", cmp, byt)
-	}
-
-	return nil
-}
-
-func readContent(rb *bufio.Reader, header Header) ([]byte, error) {
-	cls, ok := header["Content-Length"]
-	if !ok || len(cls) != 1 {
-		return nil, nil
-	}
-
-	cl, err := strconv.ParseInt(cls[0], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid Content-Length")
-	}
-
-	if cl > rtspMaxContentLength {
-		return nil, fmt.Errorf("Content-Length exceeds %d", rtspMaxContentLength)
-	}
-
-	ret := make([]byte, cl)
-	n, err := io.ReadFull(rb, ret)
-	if err != nil && n != len(ret) {
-		return nil, err
-	}
-
-	return ret, nil
-}
-
-func writeContent(bw *bufio.Writer, content []byte) error {
-	if len(content) == 0 {
-		return nil
-	}
-
-	_, err := bw.Write(content)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

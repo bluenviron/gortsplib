@@ -1,5 +1,9 @@
 package gortsplib
 
+import (
+	"github.com/aler9/gortsplib/base"
+)
+
 // MultiBuffer implements software multi buffering, that allows to reuse
 // existing buffers without creating new ones, increasing performance.
 type MultiBuffer struct {
@@ -33,14 +37,14 @@ func (mb *MultiBuffer) Next() []byte {
 
 type multiFrame struct {
 	count  int
-	frames []*InterleavedFrame
+	frames []*base.InterleavedFrame
 	cur    int
 }
 
 func newMultiFrame(count int, bufsize int) *multiFrame {
-	frames := make([]*InterleavedFrame, count)
+	frames := make([]*base.InterleavedFrame, count)
 	for i := 0; i < count; i++ {
-		frames[i] = &InterleavedFrame{
+		frames[i] = &base.InterleavedFrame{
 			Content: make([]byte, 0, bufsize),
 		}
 	}
@@ -51,7 +55,7 @@ func newMultiFrame(count int, bufsize int) *multiFrame {
 	}
 }
 
-func (mf *multiFrame) next() *InterleavedFrame {
+func (mf *multiFrame) next() *base.InterleavedFrame {
 	ret := mf.frames[mf.cur]
 	mf.cur += 1
 	if mf.cur >= mf.count {

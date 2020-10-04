@@ -119,7 +119,7 @@ func TestConnClientDialReadUDP(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	conn, tracks, err := DialRead("rtsp://localhost:8554/teststream", StreamProtocolUDP)
+	conn, _, err := DialRead("rtsp://localhost:8554/teststream", StreamProtocolUDP)
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -131,7 +131,7 @@ func TestConnClientDialReadUDP(t *testing.T) {
 		conn.LoopUDP()
 	}()
 
-	_, err = conn.ReadFrameUDP(tracks[0], StreamTypeRtp)
+	_, err = conn.ReadFrameUDP(0, StreamTypeRtp)
 	require.NoError(t, err)
 
 	conn.CloseUDPListeners()
@@ -162,8 +162,11 @@ func TestConnClientDialReadTCP(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	_, err = conn.ReadFrameTCP()
+	id, typ, _, err := conn.ReadFrameTCP()
 	require.NoError(t, err)
+
+	require.Equal(t, 0, id)
+	require.Equal(t, StreamTypeRtp, typ)
 }
 
 func TestConnClientDialPublishUDP(t *testing.T) {
@@ -212,7 +215,7 @@ func TestConnClientDialPublishUDP(t *testing.T) {
 				break
 			}
 
-			err = conn.WriteFrameUDP(track, StreamTypeRtp, buf[:n])
+			err = conn.WriteFrameUDP(track.Id, StreamTypeRtp, buf[:n])
 			if err != nil {
 				break
 			}
@@ -281,11 +284,7 @@ func TestConnClientDialPublishTCP(t *testing.T) {
 				break
 			}
 
-			err = conn.WriteFrameTCP(&InterleavedFrame{
-				TrackId:    track.Id,
-				StreamType: StreamTypeRtp,
-				Content:    buf[:n],
-			})
+			err = conn.WriteFrameTCP(track.Id, StreamTypeRtp, buf[:n])
 			if err != nil {
 				break
 			}

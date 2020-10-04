@@ -3,6 +3,8 @@ package gortsplib
 import (
 	"fmt"
 	"strings"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 // HeaderAuth is an Authenticate or a WWWW-Authenticate header.
@@ -66,7 +68,7 @@ func findValue(v0 string) (string, string, error) {
 }
 
 // ReadHeaderAuth parses an Authenticate or a WWW-Authenticate header.
-func ReadHeaderAuth(v HeaderValue) (*HeaderAuth, error) {
+func ReadHeaderAuth(v base.HeaderValue) (*HeaderAuth, error) {
 	if len(v) == 0 {
 		return nil, fmt.Errorf("value not provided")
 	}
@@ -154,7 +156,7 @@ func ReadHeaderAuth(v HeaderValue) (*HeaderAuth, error) {
 }
 
 // Write encodes an Authenticate or a WWW-Authenticate header.
-func (ha *HeaderAuth) Write() HeaderValue {
+func (ha *HeaderAuth) Write() base.HeaderValue {
 	ret := ""
 
 	switch ha.Method {
@@ -203,5 +205,5 @@ func (ha *HeaderAuth) Write() HeaderValue {
 
 	ret += strings.Join(vals, ", ")
 
-	return HeaderValue{ret}
+	return base.HeaderValue{ret}
 }

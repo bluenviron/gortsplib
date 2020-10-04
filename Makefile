@@ -49,5 +49,5 @@ test:
 test-nodocker:
 	$(foreach IMG,$(shell echo testimages/*/ | xargs -n1 basename), \
 	docker build -q testimages/$(IMG) -t gortsplib-test-$(IMG)$(NL))
-	go test -race -v .
+	go test -race -v ./...
 	$(foreach f,$(shell ls examples/*),go build -o /dev/null $(f)$(NL))

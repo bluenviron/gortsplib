@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 const (
@@ -119,14 +121,15 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		udpLastFrameTimes: make(map[int]*int64),
 		udpRtpListeners:   make(map[int]*connClientUDPListener),
 		udpRtcpListeners:  make(map[int]*connClientUDPListener),
+		tcpFrames:         newMultiFrame(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
 	}, nil
 }
 
 // Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
 	if c.state == connClientStateReading {
-		c.Do(&Request{
-			Method:       TEARDOWN,
+		c.Do(&base.Request{
+			Method:       base.TEARDOWN,
 			Url:          c.streamUrl,
 			SkipResponse: true,
 		})
@@ -167,89 +170,82 @@ func (c *ConnClient) NetConn() net.Conn {
 }
 
 func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
+	frame := c.tcpFrames.next()
+
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	b, err := c.br.ReadByte()
-	if err != nil {
-		return nil, err
-	}
-	c.br.UnreadByte()
-
-	if b == interleavedFrameMagicByte {
-		frame := c.tcpFrames.next()
-		err := frame.Read(c.br)
-		if err != nil {
-			return nil, err
-		}
-		return frame, err
-	}
-
-	return ReadResponse(c.br)
+	return base.ReadInterleavedFrameOrResponse(frame, c.br)
 }
 
 // ReadFrameTCP reads an InterleavedFrame.
 // This can't be used when recording.
-func (c *ConnClient) ReadFrameTCP() (*InterleavedFrame, error) {
-	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+func (c *ConnClient) ReadFrameTCP() (int, StreamType, []byte, error) {
 	frame := c.tcpFrames.next()
+
+	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	err := frame.Read(c.br)
 	if err != nil {
-		return nil, err
+		return 0, 0, nil, err
 	}
 
 	c.rtcpReceivers[frame.TrackId].OnFrame(frame.StreamType, frame.Content)
 
-	return frame, nil
+	return frame.TrackId, frame.StreamType, frame.Content, nil
 }
 
 // ReadFrameUDP reads an UDP frame.
-func (c *ConnClient) ReadFrameUDP(track *Track, streamType StreamType) ([]byte, error) {
+func (c *ConnClient) ReadFrameUDP(trackId int, streamType StreamType) ([]byte, error) {
 	var buf []byte
 	var err error
 	if streamType == StreamTypeRtp {
-		buf, err = c.udpRtpListeners[track.Id].read()
+		buf, err = c.udpRtpListeners[trackId].read()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		buf, err = c.udpRtcpListeners[track.Id].read()
+		buf, err = c.udpRtcpListeners[trackId].read()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	atomic.StoreInt64(c.udpLastFrameTimes[track.Id], time.Now().Unix())
+	atomic.StoreInt64(c.udpLastFrameTimes[trackId], time.Now().Unix())
 
-	c.rtcpReceivers[track.Id].OnFrame(streamType, buf)
+	c.rtcpReceivers[trackId].OnFrame(streamType, buf)
 
 	return buf, nil
 }
 
 // WriteFrameTCP writes an interleaved frame.
 // this can't be used when playing.
-func (c *ConnClient) WriteFrameTCP(frame *InterleavedFrame) error {
+func (c *ConnClient) WriteFrameTCP(trackId int, streamType StreamType, content []byte) error {
+	frame := base.InterleavedFrame{
+		TrackId:    trackId,
+		StreamType: streamType,
+		Content:    content,
+	}
+
 	c.nconn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
 	return frame.Write(c.bw)
 }
 
 // WriteFrameUDP writes an UDP frame.
-func (c *ConnClient) WriteFrameUDP(track *Track, streamType StreamType, content []byte) error {
+func (c *ConnClient) WriteFrameUDP(trackId int, streamType StreamType, content []byte) error {
 	if streamType == StreamTypeRtp {
-		return c.udpRtpListeners[track.Id].write(content)
+		return c.udpRtpListeners[trackId].write(content)
 	}
-
-	return c.udpRtcpListeners[track.Id].write(content)
+	return c.udpRtcpListeners[trackId].write(content)
 }
 
 // Do writes a Request and reads a Response. Interleaved frames sent before the
 // response are ignored.
-func (c *ConnClient) Do(req *Request) (*Response, error) {
+func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	if req.Header == nil {
-		req.Header = make(Header)
+		req.Header = make(base.Header)
 	}
 
 	// insert session
 	if c.session != "" {
-		req.Header["Session"] = HeaderValue{c.session}
+		req.Header["Session"] = base.HeaderValue{c.session}
 	}
 
 	// insert auth
@@ -266,7 +262,7 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 
 	// insert cseq
 	c.cseq += 1
-	req.Header["CSeq"] = HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
+	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
 
 	c.nconn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
 	err := req.Write(c.bw)
@@ -282,14 +278,14 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	// interleaved frames are sent in two situations:
 	// * when the server is v4lrtspserver, before the PLAY response
 	// * when the stream is already playing
-	res, err := func() (*Response, error) {
+	res, err := func() (*base.Response, error) {
 		for {
 			recv, err := c.readFrameTCPOrResponse()
 			if err != nil {
 				return nil, err
 			}
 
-			if res, ok := recv.(*Response); ok {
+			if res, ok := recv.(*base.Response); ok {
 				return res, nil
 			}
 		}
@@ -308,7 +304,7 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 	}
 
 	// setup authentication
-	if res.StatusCode == StatusUnauthorized && req.Url.User != nil && c.auth == nil {
+	if res.StatusCode == base.StatusUnauthorized && req.Url.User != nil && c.auth == nil {
 		pass, _ := req.Url.User.Password()
 		auth, err := newAuthClient(res.Header["WWW-Authenticate"], req.Url.User.Username(), pass)
 		if err != nil {
@@ -326,13 +322,13 @@ func (c *ConnClient) Do(req *Request) (*Response, error) {
 // Options writes an OPTIONS request and reads a response, that contains
 // the methods allowed by the server. Since this method is not implemented by
 // every RTSP server, the function does not fail if the returned code is StatusNotFound.
-func (c *ConnClient) Options(u *url.URL) (*Response, error) {
+func (c *ConnClient) Options(u *url.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
 
-	res, err := c.Do(&Request{
-		Method: OPTIONS,
+	res, err := c.Do(&base.Request{
+		Method: base.OPTIONS,
 		// strip path
 		Url: &url.URL{
 			Scheme: "rtsp",
@@ -345,7 +341,7 @@ func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 		return nil, err
 	}
 
-	if res.StatusCode != StatusOK && res.StatusCode != StatusNotFound {
+	if res.StatusCode != base.StatusOK && res.StatusCode != base.StatusNotFound {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
@@ -353,23 +349,23 @@ func (c *ConnClient) Options(u *url.URL) (*Response, error) {
 }
 
 // Describe writes a DESCRIBE request and reads a Response.
-func (c *ConnClient) Describe(u *url.URL) (Tracks, *Response, error) {
+func (c *ConnClient) Describe(u *url.URL) (Tracks, *base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, nil, fmt.Errorf("can't be called when reading or publishing")
 	}
 
-	res, err := c.Do(&Request{
-		Method: DESCRIBE,
+	res, err := c.Do(&base.Request{
+		Method: base.DESCRIBE,
 		Url:    u,
-		Header: Header{
-			"Accept": HeaderValue{"application/sdp"},
+		Header: base.Header{
+			"Accept": base.HeaderValue{"application/sdp"},
 		},
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if res.StatusCode != StatusOK {
+	if res.StatusCode != base.StatusOK {
 		return nil, nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
@@ -451,11 +447,11 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode SetupMode, track *Track)
 	return u
 }
 
-func (c *ConnClient) setup(u *url.URL, mode SetupMode, track *Track, ht *HeaderTransport) (*Response, error) {
-	res, err := c.Do(&Request{
-		Method: SETUP,
+func (c *ConnClient) setup(u *url.URL, mode SetupMode, track *Track, ht *HeaderTransport) (*base.Response, error) {
+	res, err := c.Do(&base.Request{
+		Method: base.SETUP,
 		Url:    c.urlForTrack(u, mode, track),
-		Header: Header{
+		Header: base.Header{
 			"Transport": ht.Write(),
 		},
 	})
@@ -463,7 +459,7 @@ func (c *ConnClient) setup(u *url.URL, mode SetupMode, track *Track, ht *HeaderT
 		return nil, err
 	}
 
-	if res.StatusCode != StatusOK {
+	if res.StatusCode != base.StatusOK {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
@@ -473,7 +469,7 @@ func (c *ConnClient) setup(u *url.URL, mode SetupMode, track *Track, ht *HeaderT
 // SetupUDP writes a SETUP request and reads a Response.
 // If rtpPort and rtcpPort are zero, they are be chosen automatically.
 func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort int,
-	rtcpPort int) (*Response, error) {
+	rtcpPort int) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
@@ -597,7 +593,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode SetupMode, track *Track, rtpPort 
 }
 
 // SetupTCP writes a SETUP request and reads a Response.
-func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*Response, error) {
+func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
@@ -657,7 +653,7 @@ func (c *ConnClient) SetupTCP(u *url.URL, mode SetupMode, track *Track) (*Respon
 
 // Play writes a PLAY request and reads a Response
 // This function can be called only after SetupUDP() or SetupTCP().
-func (c *ConnClient) Play(u *url.URL) (*Response, error) {
+func (c *ConnClient) Play(u *url.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
@@ -670,19 +666,15 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 		fmt.Errorf("must be called with the same url used for SetupUDP() or SetupTCP()")
 	}
 
-	if *c.streamProtocol == StreamProtocolTCP {
-		c.tcpFrames = newMultiFrame(c.conf.ReadBufferCount, clientTCPFrameReadBufferSize)
-	}
-
-	res, err := c.Do(&Request{
-		Method: PLAY,
+	res, err := c.Do(&base.Request{
+		Method: base.PLAY,
 		Url:    u,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if res.StatusCode != StatusOK {
+	if res.StatusCode != base.StatusOK {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
@@ -720,11 +712,7 @@ func (c *ConnClient) Play(u *url.URL) (*Response, error) {
 						c.udpRtcpListeners[trackId].write(frame)
 
 					} else {
-						c.WriteFrameTCP(&InterleavedFrame{
-							TrackId:    trackId,
-							StreamType: StreamTypeRtcp,
-							Content:    frame,
-						})
+						c.WriteFrameTCP(trackId, StreamTypeRtcp, frame)
 					}
 				}
 			}
@@ -750,7 +738,7 @@ func (c *ConnClient) LoopUDP() error {
 	go func() {
 		for {
 			c.nconn.SetReadDeadline(time.Now().Add(clientUDPKeepalivePeriod + c.conf.ReadTimeout))
-			_, err := ReadResponse(c.br)
+			_, err := base.ReadResponse(c.br)
 			if err != nil {
 				readDone <- err
 				return
@@ -771,8 +759,8 @@ func (c *ConnClient) LoopUDP() error {
 			return err
 
 		case <-keepaliveTicker.C:
-			_, err := c.Do(&Request{
-				Method: OPTIONS,
+			_, err := c.Do(&base.Request{
+				Method: base.OPTIONS,
 				Url: &url.URL{
 					Scheme: "rtsp",
 					Host:   c.streamUrl.Host,
@@ -804,16 +792,16 @@ func (c *ConnClient) LoopUDP() error {
 }
 
 // Announce writes an ANNOUNCE request and reads a Response.
-func (c *ConnClient) Announce(u *url.URL, tracks Tracks) (*Response, error) {
+func (c *ConnClient) Announce(u *url.URL, tracks Tracks) (*base.Response, error) {
 	if c.streamUrl != nil {
 		fmt.Errorf("announce has already been sent with another url url")
 	}
 
-	res, err := c.Do(&Request{
-		Method: ANNOUNCE,
+	res, err := c.Do(&base.Request{
+		Method: base.ANNOUNCE,
 		Url:    u,
-		Header: Header{
-			"Content-Type": HeaderValue{"application/sdp"},
+		Header: base.Header{
+			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
 		Content: tracks.Write(),
 	})
@@ -821,7 +809,7 @@ func (c *ConnClient) Announce(u *url.URL, tracks Tracks) (*Response, error) {
 		return nil, err
 	}
 
-	if res.StatusCode != StatusOK {
+	if res.StatusCode != base.StatusOK {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
@@ -831,7 +819,7 @@ func (c *ConnClient) Announce(u *url.URL, tracks Tracks) (*Response, error) {
 }
 
 // Record writes a RECORD request and reads a Response.
-func (c *ConnClient) Record(u *url.URL) (*Response, error) {
+func (c *ConnClient) Record(u *url.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
@@ -840,15 +828,15 @@ func (c *ConnClient) Record(u *url.URL) (*Response, error) {
 		return nil, fmt.Errorf("must be called with the same url used for Announce()")
 	}
 
-	res, err := c.Do(&Request{
-		Method: RECORD,
+	res, err := c.Do(&base.Request{
+		Method: base.RECORD,
 		Url:    u,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if res.StatusCode != StatusOK {
+	if res.StatusCode != base.StatusOK {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 

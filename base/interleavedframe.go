@@ -1,4 +1,4 @@
-package gortsplib
+package base
 
 import (
 	"bufio"
@@ -11,7 +11,45 @@ const (
 	interleavedFrameMagicByte = 0x24
 )
 
-// InterleavedFrame is a structure that allows to transfer binary data
+// ReadInterleavedFrameOrResponse reads an InterleavedFrame or a Response.
+func ReadInterleavedFrameOrResponse(frame *InterleavedFrame, br *bufio.Reader) (interface{}, error) {
+	b, err := br.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	br.UnreadByte()
+
+	if b == interleavedFrameMagicByte {
+		err := frame.Read(br)
+		if err != nil {
+			return nil, err
+		}
+		return frame, err
+	}
+
+	return ReadResponse(br)
+}
+
+// ReadInterleavedFrameOrRequest reads an InterleavedFrame or a Response.
+func ReadInterleavedFrameOrRequest(frame *InterleavedFrame, br *bufio.Reader) (interface{}, error) {
+	b, err := br.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	br.UnreadByte()
+
+	if b == interleavedFrameMagicByte {
+		err := frame.Read(br)
+		if err != nil {
+			return nil, err
+		}
+		return frame, err
+	}
+
+	return ReadRequest(br)
+}
+
+// InterleavedFrame is an interleaved frame, and allows to transfer binary data
 // within RTSP/TCP connections. It is used to send and receive RTP and RTCP packets with TCP.
 type InterleavedFrame struct {
 	// track id
@@ -24,7 +62,7 @@ type InterleavedFrame struct {
 	Content []byte
 }
 
-// Read reads an interleaved frame from a buffered reader.
+// Read reads an interleaved frame.
 func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 	var header [4]byte
 	_, err := io.ReadFull(br, header[:])
@@ -61,7 +99,7 @@ func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 }
 
 // Write writes an InterleavedFrame into a buffered writer.
-func (f *InterleavedFrame) Write(bw *bufio.Writer) error {
+func (f InterleavedFrame) Write(bw *bufio.Writer) error {
 	// convert TrackId and StreamType into channel
 	channel := func() uint8 {
 		if f.StreamType == StreamTypeRtp {

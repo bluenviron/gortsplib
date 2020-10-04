@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/aler9/gortsplib/base"
 )
 
 // AuthServer is an object that helps a server to validate the credentials of
@@ -40,8 +42,8 @@ func NewAuthServer(user string, pass string, methods []AuthMethod) *AuthServer {
 }
 
 // GenerateHeader generates the WWW-Authenticate header needed by a client to log in.
-func (as *AuthServer) GenerateHeader() HeaderValue {
-	var ret HeaderValue
+func (as *AuthServer) GenerateHeader() base.HeaderValue {
+	var ret base.HeaderValue
 	for _, m := range as.methods {
 		switch m {
 		case Basic:
@@ -63,7 +65,7 @@ func (as *AuthServer) GenerateHeader() HeaderValue {
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header.
-func (as *AuthServer) ValidateHeader(v HeaderValue, method Method, ur *url.URL) error {
+func (as *AuthServer) ValidateHeader(v base.HeaderValue, method base.Method, ur *url.URL) error {
 	if len(v) == 0 {
 		return fmt.Errorf("authorization header not provided")
 	}
@@ -83,7 +85,7 @@ func (as *AuthServer) ValidateHeader(v HeaderValue, method Method, ur *url.URL) 
 		}
 
 	} else if strings.HasPrefix(v0, "Digest ") {
-		auth, err := ReadHeaderAuth(HeaderValue{v0})
+		auth, err := ReadHeaderAuth(base.HeaderValue{v0})
 		if err != nil {
 			return err
 		}

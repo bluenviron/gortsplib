@@ -1,4 +1,5 @@
-package gortsplib
+// Package base contains the base elements of the RTSP protocol.
+package base
 
 import (
 	"bufio"
@@ -52,7 +53,7 @@ type Request struct {
 	SkipResponse bool
 }
 
-// ReadRequest reads a request from a buffered reader.
+// ReadRequest reads a request.
 func ReadRequest(rb *bufio.Reader) (*Request, error) {
 	req := &Request{}
 
@@ -114,8 +115,8 @@ func ReadRequest(rb *bufio.Reader) (*Request, error) {
 	return req, nil
 }
 
-// Write writes a request into a buffered writer.
-func (req *Request) Write(bw *bufio.Writer) error {
+// Write writes a request.
+func (req Request) Write(bw *bufio.Writer) error {
 	// remove credentials
 	u := &url.URL{
 		Scheme:   req.Url.Scheme,
