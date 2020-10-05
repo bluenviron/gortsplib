@@ -22,13 +22,13 @@ type Encoder struct {
 }
 
 // NewEncoder allocates an Encoder.
-func NewEncoder(relativeType uint8) *Encoder {
+func NewEncoder(relativeType uint8) (*Encoder, error) {
 	return &Encoder{
 		payloadType:    96 + relativeType,
 		sequenceNumber: uint16(0),
 		ssrc:           rand.Uint32(),
 		initialTs:      rand.Uint32(),
-	}
+	}, nil
 }
 
 // Write encodes NALUs into RTP/H264 packets.
