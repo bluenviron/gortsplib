@@ -59,16 +59,17 @@ func NewTrackAac(id int, config []byte) (*Track, error) {
 		return nil, err
 	}
 
+	// https://github.com/notedit/rtmp/blob/6e314ac5b29611431f8fb5468596b05815743c10/codec/aac/aac.go#L106
 	channelCount, err := func() (int, error) {
-		switch codec.Config.ChannelLayout {
-		case aac.CH_MONO:
-			return 1, nil
-
-		case aac.CH_STEREO:
-			return 2, nil
+		if codec.Config.ChannelConfig >= 1 && codec.Config.ChannelConfig <= 6 {
+			return int(codec.Config.ChannelConfig), nil
 		}
 
-		return 0, fmt.Errorf("unsupported channel count: %v", codec.Config.ChannelLayout)
+		if codec.Config.ChannelConfig == 8 {
+			return 7, nil
+		}
+
+		return 0, fmt.Errorf("unsupported channel config: %v", codec.Config.ChannelConfig)
 	}()
 	if err != nil {
 		return nil, err
