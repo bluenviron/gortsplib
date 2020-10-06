@@ -36,7 +36,7 @@ func NewEncoder(relativeType uint8, config []byte) (*Encoder, error) {
 	return &Encoder{
 		payloadType:    96 + relativeType,
 		samplingRate:   float64(codec.Config.SampleRate),
-		sequenceNumber: uint16(0),
+		sequenceNumber: uint16(rand.Uint32()),
 		ssrc:           rand.Uint32(),
 		initialTs:      rand.Uint32(),
 	}, nil

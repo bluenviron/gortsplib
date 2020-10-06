@@ -25,7 +25,7 @@ type Encoder struct {
 func NewEncoder(relativeType uint8) (*Encoder, error) {
 	return &Encoder{
 		payloadType:    96 + relativeType,
-		sequenceNumber: uint16(0),
+		sequenceNumber: uint16(rand.Uint32()),
 		ssrc:           rand.Uint32(),
 		initialTs:      rand.Uint32(),
 	}, nil
