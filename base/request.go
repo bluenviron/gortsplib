@@ -53,66 +53,65 @@ type Request struct {
 	SkipResponse bool
 }
 
-// ReadRequest reads a request.
-func ReadRequest(rb *bufio.Reader) (*Request, error) {
-	req := &Request{}
-
+// Read reads a request.
+func (req *Request) Read(rb *bufio.Reader) error {
 	byts, err := readBytesLimited(rb, ' ', requestMaxLethodLength)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	req.Method = Method(byts[:len(byts)-1])
 
 	if req.Method == "" {
-		return nil, fmt.Errorf("empty method")
+		return fmt.Errorf("empty method")
 	}
 
 	byts, err = readBytesLimited(rb, ' ', requestMaxPathLength)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	rawUrl := string(byts[:len(byts)-1])
 
 	if rawUrl == "" {
-		return nil, fmt.Errorf("empty url")
+		return fmt.Errorf("empty url")
 	}
 
 	ur, err := url.Parse(rawUrl)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse url (%v)", rawUrl)
+		return fmt.Errorf("unable to parse url (%v)", rawUrl)
 	}
 	req.Url = ur
 
 	if req.Url.Scheme != "rtsp" {
-		return nil, fmt.Errorf("invalid url scheme (%v)", rawUrl)
+		return fmt.Errorf("invalid url scheme (%v)", rawUrl)
 	}
 
 	byts, err = readBytesLimited(rb, '\r', requestMaxProtocolLength)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	proto := string(byts[:len(byts)-1])
 
 	if proto != rtspProtocol10 {
-		return nil, fmt.Errorf("expected '%s', got '%s'", rtspProtocol10, proto)
+		return fmt.Errorf("expected '%s', got '%s'", rtspProtocol10, proto)
 	}
 
 	err = readByteEqual(rb, '\n')
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	req.Header, err = headerRead(rb)
+	req.Header = make(Header)
+	err = req.Header.read(rb)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	req.Content, err = readContent(rb, req.Header)
+	req.Content, err = contentRead(rb, req.Header)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return req, nil
+	return nil
 }
 
 // Write writes a request.
@@ -139,7 +138,7 @@ func (req Request) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	err = writeContent(bw, req.Content)
+	err = contentWrite(bw, req.Content)
 	if err != nil {
 		return err
 	}

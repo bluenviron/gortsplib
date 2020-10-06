@@ -11,7 +11,7 @@ import (
 var casesResponse = []struct {
 	name string
 	byts []byte
-	res  *Response
+	res  Response
 }{
 	{
 		"ok with single header",
@@ -20,7 +20,7 @@ var casesResponse = []struct {
 			"Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n" +
 			"\r\n",
 		),
-		&Response{
+		Response{
 			StatusCode:    StatusOK,
 			StatusMessage: "OK",
 			Header: Header{
@@ -39,7 +39,7 @@ var casesResponse = []struct {
 			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
 			"\r\n",
 		),
-		&Response{
+		Response{
 			StatusCode:    StatusOK,
 			StatusMessage: "OK",
 			Header: Header{
@@ -78,7 +78,7 @@ var casesResponse = []struct {
 			"a=AvgBitRate:integer;65790\n" +
 			"a=StreamName:string;\"hinted audio track\"\n",
 		),
-		&Response{
+		Response{
 			StatusCode:    200,
 			StatusMessage: "OK",
 			Header: Header{
@@ -109,9 +109,10 @@ var casesResponse = []struct {
 }
 
 func TestResponseRead(t *testing.T) {
+	var res Response
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
-			res, err := ReadResponse(bufio.NewReader(bytes.NewBuffer(c.byts)))
+			err := res.Read(bufio.NewReader(bytes.NewBuffer(c.byts)))
 			require.NoError(t, err)
 			require.Equal(t, c.res, res)
 		})

@@ -11,8 +11,8 @@ const (
 	interleavedFrameMagicByte = 0x24
 )
 
-// ReadInterleavedFrameOrResponse reads an InterleavedFrame or a Response.
-func ReadInterleavedFrameOrResponse(frame *InterleavedFrame, br *bufio.Reader) (interface{}, error) {
+// ReadInterleavedFrameOrRequest reads an InterleavedFrame or a Response.
+func ReadInterleavedFrameOrRequest(frame *InterleavedFrame, req *Request, br *bufio.Reader) (interface{}, error) {
 	b, err := br.ReadByte()
 	if err != nil {
 		return nil, err
@@ -27,11 +27,15 @@ func ReadInterleavedFrameOrResponse(frame *InterleavedFrame, br *bufio.Reader) (
 		return frame, err
 	}
 
-	return ReadResponse(br)
+	err = req.Read(br)
+	if err != nil {
+		return nil, err
+	}
+	return req, nil
 }
 
-// ReadInterleavedFrameOrRequest reads an InterleavedFrame or a Response.
-func ReadInterleavedFrameOrRequest(frame *InterleavedFrame, br *bufio.Reader) (interface{}, error) {
+// ReadInterleavedFrameOrResponse reads an InterleavedFrame or a Response.
+func ReadInterleavedFrameOrResponse(frame *InterleavedFrame, res *Response, br *bufio.Reader) (interface{}, error) {
 	b, err := br.ReadByte()
 	if err != nil {
 		return nil, err
@@ -46,7 +50,11 @@ func ReadInterleavedFrameOrRequest(frame *InterleavedFrame, br *bufio.Reader) (i
 		return frame, err
 	}
 
-	return ReadRequest(br)
+	err = res.Read(br)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 // InterleavedFrame is an interleaved frame, and allows to transfer binary data

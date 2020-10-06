@@ -93,9 +93,10 @@ var casesHeader = []struct {
 func TestHeaderRead(t *testing.T) {
 	for _, c := range casesHeader {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := headerRead(bufio.NewReader(bytes.NewBuffer(c.dec)))
+			h := make(Header)
+			err := h.read(bufio.NewReader(bytes.NewBuffer(c.dec)))
 			require.NoError(t, err)
-			require.Equal(t, c.header, req)
+			require.Equal(t, c.header, h)
 		})
 	}
 }

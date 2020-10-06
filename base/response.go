@@ -132,58 +132,57 @@ type Response struct {
 	Content []byte
 }
 
-// ReadResponse reads a response.
-func ReadResponse(rb *bufio.Reader) (*Response, error) {
-	res := &Response{}
-
+// Read reads a response.
+func (res *Response) Read(rb *bufio.Reader) error {
 	byts, err := readBytesLimited(rb, ' ', 255)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	proto := string(byts[:len(byts)-1])
 
 	if proto != rtspProtocol10 {
-		return nil, fmt.Errorf("expected '%s', got '%s'", rtspProtocol10, proto)
+		return fmt.Errorf("expected '%s', got '%s'", rtspProtocol10, proto)
 	}
 
 	byts, err = readBytesLimited(rb, ' ', 4)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	statusCodeStr := string(byts[:len(byts)-1])
 
 	statusCode64, err := strconv.ParseInt(statusCodeStr, 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse status code")
+		return fmt.Errorf("unable to parse status code")
 	}
 	res.StatusCode = StatusCode(statusCode64)
 
 	byts, err = readBytesLimited(rb, '\r', 255)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	res.StatusMessage = string(byts[:len(byts)-1])
 
 	if len(res.StatusMessage) == 0 {
-		return nil, fmt.Errorf("empty status")
+		return fmt.Errorf("empty status")
 	}
 
 	err = readByteEqual(rb, '\n')
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	res.Header, err = headerRead(rb)
+	res.Header = make(Header)
+	err = res.Header.read(rb)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	res.Content, err = readContent(rb, res.Header)
+	res.Content, err = contentRead(rb, res.Header)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return res, nil
+	return nil
 }
 
 // Write writes a Response.
@@ -208,7 +207,7 @@ func (res Response) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	err = writeContent(bw, res.Content)
+	err = contentWrite(bw, res.Content)
 	if err != nil {
 		return err
 	}

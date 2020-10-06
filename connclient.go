@@ -184,9 +184,10 @@ func (c *ConnClient) NetConn() net.Conn {
 
 func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
 	frame := c.tcpFrames.next()
+	res := base.Response{}
 
 	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	return base.ReadInterleavedFrameOrResponse(frame, c.br)
+	return base.ReadInterleavedFrameOrResponse(frame, &res, c.br)
 }
 
 // ReadFrameTCP reads an InterleavedFrame.
@@ -735,7 +736,8 @@ func (c *ConnClient) LoopUDP() error {
 	go func() {
 		for {
 			c.conf.Conn.SetReadDeadline(time.Now().Add(clientUDPKeepalivePeriod + c.conf.ReadTimeout))
-			_, err := base.ReadResponse(c.br)
+			var res base.Response
+			err := res.Read(c.br)
 			if err != nil {
 				readDone <- err
 				return

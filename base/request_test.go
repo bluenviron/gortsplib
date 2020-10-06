@@ -12,7 +12,7 @@ import (
 var casesRequest = []struct {
 	name string
 	byts []byte
-	req  *Request
+	req  Request
 }{
 	{
 		"options",
@@ -21,7 +21,7 @@ var casesRequest = []struct {
 			"Proxy-Require: gzipped-messages\r\n" +
 			"Require: implicit-play\r\n" +
 			"\r\n"),
-		&Request{
+		Request{
 			Method: "OPTIONS",
 			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
@@ -36,7 +36,7 @@ var casesRequest = []struct {
 		[]byte("DESCRIBE rtsp://example.com/media.mp4 RTSP/1.0\r\n" +
 			"CSeq: 2\r\n" +
 			"\r\n"),
-		&Request{
+		Request{
 			Method: "DESCRIBE",
 			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
@@ -64,7 +64,7 @@ var casesRequest = []struct {
 			"a=recvonly\n" +
 			"m=audio 3456 RTP/AVP 0\n" +
 			"m=video 2232 RTP/AVP 31\n"),
-		&Request{
+		Request{
 			Method: "ANNOUNCE",
 			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
@@ -98,7 +98,7 @@ var casesRequest = []struct {
 			"\r\n" +
 			"packets_received\n" +
 			"jitter\n"),
-		&Request{
+		Request{
 			Method: "GET_PARAMETER",
 			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
 			Header: Header{
@@ -115,9 +115,10 @@ var casesRequest = []struct {
 }
 
 func TestRequestRead(t *testing.T) {
+	var req Request
 	for _, c := range casesRequest {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadRequest(bufio.NewReader(bytes.NewBuffer(c.byts)))
+			err := req.Read(bufio.NewReader(bytes.NewBuffer(c.byts)))
 			require.NoError(t, err)
 			require.Equal(t, c.req, req)
 		})

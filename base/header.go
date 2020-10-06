@@ -34,32 +34,30 @@ type HeaderValue []string
 // Header is a RTSP reader, present in both Requests and Responses.
 type Header map[string]HeaderValue
 
-func headerRead(rb *bufio.Reader) (Header, error) {
-	h := make(Header)
-
+func (h Header) read(rb *bufio.Reader) error {
 	for {
 		byt, err := rb.ReadByte()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		if byt == '\r' {
 			err := readByteEqual(rb, '\n')
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 			break
 		}
 
 		if len(h) >= headerMaxEntryCount {
-			return nil, fmt.Errorf("headers count exceeds %d", headerMaxEntryCount)
+			return fmt.Errorf("headers count exceeds %d", headerMaxEntryCount)
 		}
 
 		key := string([]byte{byt})
 		byts, err := readBytesLimited(rb, ':', headerMaxKeyLength-1)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		key += string(byts[:len(byts)-1])
 		key = headerKeyNormalize(key)
@@ -69,7 +67,7 @@ func headerRead(rb *bufio.Reader) (Header, error) {
 		for {
 			byt, err := rb.ReadByte()
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 			if byt != ' ' {
@@ -80,23 +78,23 @@ func headerRead(rb *bufio.Reader) (Header, error) {
 
 		byts, err = readBytesLimited(rb, '\r', headerMaxValueLength)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		val := string(byts[:len(byts)-1])
 
 		if len(val) == 0 {
-			return nil, fmt.Errorf("empty header value")
+			return fmt.Errorf("empty header value")
 		}
 
 		err = readByteEqual(rb, '\n')
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		h[key] = append(h[key], val)
 	}
 
-	return h, nil
+	return nil
 }
 
 func (h Header) write(wb *bufio.Writer) error {
