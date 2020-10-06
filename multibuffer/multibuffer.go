@@ -1,4 +1,4 @@
-// Package multibuffer implements MultiBuffer.
+// Package multibuffer implements a buffer with multiple levels.
 package multibuffer
 
 // MultiBuffer implements software multi buffering, that allows to reuse

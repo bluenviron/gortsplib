@@ -1,4 +1,4 @@
-// Package rtcpreceiver implements RtcpReceiver.
+// Package rtcpreceiver implements RTCP receiver reports.
 package rtcpreceiver
 
 import (
