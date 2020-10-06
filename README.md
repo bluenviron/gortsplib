@@ -31,6 +31,8 @@ Related projects
 * https://github.com/aler9/rtsp-simple-server
 * https://github.com/pion/sdp (SDP library used internally)
 * https://github.com/pion/rtcp (RTCP library used internally)
+* https://github.com/pion/rtp (RTP library used internally)
+* https://github.com/notedit/rtmp (RTMP library used internally)
 
 IETF Standards
 * RTSP 1.0 https://tools.ietf.org/html/rfc2326
