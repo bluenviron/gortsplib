@@ -91,6 +91,7 @@ type ConnClient struct {
 	udpRtpListeners   map[int]*connClientUDPListener
 	udpRtcpListeners  map[int]*connClientUDPListener
 	tcpFrames         *multiFrame
+	response          *base.Response
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -135,6 +136,7 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		udpRtpListeners:   make(map[int]*connClientUDPListener),
 		udpRtcpListeners:  make(map[int]*connClientUDPListener),
 		tcpFrames:         newMultiFrame(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
+		response:          &base.Response{},
 	}, nil
 }
 
@@ -184,10 +186,9 @@ func (c *ConnClient) NetConn() net.Conn {
 
 func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
 	frame := c.tcpFrames.next()
-	res := base.Response{}
 
 	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	return base.ReadInterleavedFrameOrResponse(frame, &res, c.br)
+	return base.ReadInterleavedFrameOrResponse(frame, c.response, c.br)
 }
 
 // ReadFrameTCP reads an InterleavedFrame.

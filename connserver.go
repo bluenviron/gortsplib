@@ -39,6 +39,7 @@ type ConnServer struct {
 	br        *bufio.Reader
 	bw        *bufio.Writer
 	tcpFrames *multiFrame
+	request   *base.Request
 }
 
 // NewConnServer allocates a ConnServer.
@@ -58,6 +59,7 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 		br:        bufio.NewReaderSize(conf.Conn, serverReadBufferSize),
 		bw:        bufio.NewWriterSize(conf.Conn, serverWriteBufferSize),
 		tcpFrames: newMultiFrame(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
+		request:   &base.Request{},
 	}
 }
 
@@ -73,27 +75,24 @@ func (s *ConnServer) NetConn() net.Conn {
 
 // ReadRequest reads a Request.
 func (s *ConnServer) ReadRequest() (*base.Request, error) {
-	req := &base.Request{}
-
 	s.conf.Conn.SetReadDeadline(time.Time{}) // disable deadline
-	err := req.Read(s.br)
+	err := s.request.Read(s.br)
 	if err != nil {
 		return nil, err
 	}
 
-	return req, nil
+	return s.request, nil
 }
 
 // ReadFrameTCPOrRequest reads an InterleavedFrame or a Request.
 func (s *ConnServer) ReadFrameTCPOrRequest(timeout bool) (interface{}, error) {
 	frame := s.tcpFrames.next()
-	req := base.Request{}
 
 	if timeout {
 		s.conf.Conn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
 	}
 
-	return base.ReadInterleavedFrameOrRequest(frame, &req, s.br)
+	return base.ReadInterleavedFrameOrRequest(frame, s.request, s.br)
 }
 
 // WriteResponse writes a Response.
