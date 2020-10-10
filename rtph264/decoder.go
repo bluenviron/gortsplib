@@ -24,7 +24,7 @@ type Decoder struct {
 	buf []byte
 }
 
-// NewDecoderFromPacketConn creates a decoder around a Reader.
+// NewDecoder creates a decoder around a Reader.
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
 		r:   r,

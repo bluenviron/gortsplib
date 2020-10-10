@@ -1,4 +1,4 @@
-// Package rtph264 contains a RTP/AAC decoder and encoder.
+// Package rtpaac contains a RTP/AAC decoder and encoder.
 package rtpaac
 
 import (
