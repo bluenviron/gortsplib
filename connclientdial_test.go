@@ -79,7 +79,7 @@ func TestConnClientDialReadUDP(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	conn, _, err := DialRead("rtsp://localhost:8554/teststream", StreamProtocolUDP)
+	conn, err := DialRead("rtsp://localhost:8554/teststream", StreamProtocolUDP)
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -118,7 +118,7 @@ func TestConnClientDialReadTCP(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	conn, _, err := DialRead("rtsp://localhost:8554/teststream", StreamProtocolTCP)
+	conn, err := DialRead("rtsp://localhost:8554/teststream", StreamProtocolTCP)
 	require.NoError(t, err)
 	defer conn.Close()
 

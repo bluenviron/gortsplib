@@ -86,6 +86,7 @@ type ConnClient struct {
 	state             connClientState
 	streamUrl         *url.URL
 	streamProtocol    *StreamProtocol
+	tracks            map[int]*Track
 	rtcpReceivers     map[int]*rtcpreceiver.RtcpReceiver
 	udpLastFrameTimes map[int]*int64
 	udpRtpListeners   map[int]*connClientUDPListener
@@ -131,6 +132,7 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		conf:              conf,
 		br:                bufio.NewReaderSize(conf.Conn, clientReadBufferSize),
 		bw:                bufio.NewWriterSize(conf.Conn, clientWriteBufferSize),
+		tracks:            make(map[int]*Track),
 		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
 		udpLastFrameTimes: make(map[int]*int64),
 		udpRtpListeners:   make(map[int]*connClientUDPListener),
@@ -182,6 +184,11 @@ func (c *ConnClient) CloseUDPListeners() {
 // NetConn returns the underlying net.Conn.
 func (c *ConnClient) NetConn() net.Conn {
 	return c.conf.Conn
+}
+
+// Tracks returns all the tracks passed to SetupUDP() or SetupTCP().
+func (c *ConnClient) Tracks() map[int]*Track {
+	return c.tracks
 }
 
 func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
@@ -579,6 +586,8 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode TransportMode, track *Track, rtpP
 	streamProtocol := StreamProtocolUDP
 	c.streamProtocol = &streamProtocol
 
+	c.tracks[track.Id] = track
+
 	if mode == TransportModePlay {
 		c.rtcpReceivers[track.Id] = rtcpreceiver.New()
 
@@ -642,6 +651,8 @@ func (c *ConnClient) SetupTCP(u *url.URL, mode TransportMode, track *Track) (*ba
 	c.streamUrl = u
 	streamProtocol := StreamProtocolTCP
 	c.streamProtocol = &streamProtocol
+
+	c.tracks[track.Id] = track
 
 	if mode == TransportModePlay {
 		c.rtcpReceivers[track.Id] = rtcpreceiver.New()

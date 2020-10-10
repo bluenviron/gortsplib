@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// connect to the server and start reading all tracks
-	conn, tracks, err := gortsplib.DialRead("rtsp://localhost:8554/mystream", gortsplib.StreamProtocolUDP)
+	conn, err := gortsplib.DialRead("rtsp://localhost:8554/mystream", gortsplib.StreamProtocolUDP)
 	if err != nil {
 		panic(err)
 	}
@@ -24,7 +24,7 @@ func main() {
 	defer wg.Wait()
 	defer conn.CloseUDPListeners()
 
-	for trackId := range tracks {
+	for trackId := range conn.Tracks() {
 		// read RTP frames
 		wg.Add(1)
 		go func(trackId int) {

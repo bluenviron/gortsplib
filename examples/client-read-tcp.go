@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// connect to the server and start reading all tracks
-	conn, _, err := gortsplib.DialRead("rtsp://localhost:8554/mystream", gortsplib.StreamProtocolTCP)
+	conn, err := gortsplib.DialRead("rtsp://localhost:8554/mystream", gortsplib.StreamProtocolTCP)
 	if err != nil {
 		panic(err)
 	}
