@@ -220,7 +220,9 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 				v := TransportModePlay
 				ht.Mode = &v
 
-			case "record":
+				// receive is an old alias for record, used by ffmpeg with the
+				// -listen flag, and by Darwin Streaming Server
+			case "record", "receive":
 				v := TransportModeRecord
 				ht.Mode = &v
 

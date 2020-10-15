@@ -75,6 +75,24 @@ var casesTransport = []struct {
 			InterleavedIds: &[2]int{0, 1},
 		},
 	},
+	{
+		"udp record response with receive",
+		base.HeaderValue{`RTP/AVP/UDP;unicast;mode=receive;source=localhost;client_port=14186-14187;server_port=5000-5001`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=5000-5001;mode=record`},
+		&Transport{
+			Protocol: StreamProtocolUDP,
+			Cast: func() *StreamCast {
+				v := StreamUnicast
+				return &v
+			}(),
+			Mode: func() *TransportMode {
+				v := TransportModeRecord
+				return &v
+			}(),
+			ClientPorts: &[2]int{14186, 14187},
+			ServerPorts: &[2]int{5000, 5001},
+		},
+	},
 }
 
 func TestTransportRead(t *testing.T) {
