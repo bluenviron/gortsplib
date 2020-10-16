@@ -56,6 +56,7 @@ func main() {
 		}(trackId)
 	}
 
+	// wait until the connection is closed
 	err = conn.LoopUDP()
 	fmt.Println("connection is closed (%s)", err)
 }

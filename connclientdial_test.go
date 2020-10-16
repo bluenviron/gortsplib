@@ -161,6 +161,7 @@ func TestConnClientDialPublishUDP(t *testing.T) {
 			var conn *ConnClient
 			defer func() {
 				conn.Close()
+				conn.LoopUDP()
 			}()
 
 			go func() {
