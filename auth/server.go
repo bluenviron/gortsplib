@@ -12,8 +12,7 @@ import (
 	"github.com/aler9/gortsplib/headers"
 )
 
-// Server is an object that helps a server to validate the credentials of
-// a client.
+// Server is an object that helps a server to authenticate a client.
 type Server struct {
 	user    string
 	pass    string
@@ -22,7 +21,7 @@ type Server struct {
 	nonce   string
 }
 
-// NewServer allocates an Server.
+// NewServer allocates a Server.
 // If methods is nil, the Basic and Digest methods are used.
 func NewServer(user string, pass string, methods []headers.AuthMethod) *Server {
 	if methods == nil {
@@ -42,7 +41,8 @@ func NewServer(user string, pass string, methods []headers.AuthMethod) *Server {
 	}
 }
 
-// GenerateHeader generates the WWW-Authenticate header needed by a client to log in.
+// GenerateHeader generates the WWW-Authenticate header needed by a client to
+// authenticate.
 func (as *Server) GenerateHeader() base.HeaderValue {
 	var ret base.HeaderValue
 	for _, m := range as.methods {

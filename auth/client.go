@@ -10,8 +10,7 @@ import (
 	"github.com/aler9/gortsplib/headers"
 )
 
-// Client is an object that helps a client to send its credentials to a
-// server.
+// Client is an object that allows a client to authenticate against a server.
 type Client struct {
 	user   string
 	pass   string
@@ -20,7 +19,7 @@ type Client struct {
 	nonce  string
 }
 
-// NewClient allocates an Client.
+// NewClient allocates a Client.
 // header is the WWW-Authenticate header provided by the server.
 func NewClient(v base.HeaderValue, user string, pass string) (*Client, error) {
 	// prefer digest
