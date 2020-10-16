@@ -351,12 +351,12 @@ func (c *ConnClient) Options(u *url.URL) (*base.Response, error) {
 
 	res, err := c.Do(&base.Request{
 		Method: base.OPTIONS,
-		// strip path
 		Url: &url.URL{
 			Scheme: "rtsp",
 			Host:   u.Host,
 			User:   u.User,
-			Path:   "/",
+			// use the stream path, otherwise some cameras do not reply
+			Path: u.Path,
 		},
 	})
 	if err != nil {
@@ -776,7 +776,8 @@ func (c *ConnClient) LoopUDP() error {
 					Scheme: "rtsp",
 					Host:   c.streamUrl.Host,
 					User:   c.streamUrl.User,
-					Path:   "/",
+					// use the stream path, otherwise some cameras do not reply
+					Path: c.streamUrl.Path,
 				},
 				SkipResponse: true,
 			})
