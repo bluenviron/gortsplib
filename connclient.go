@@ -121,6 +121,10 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 	}
 
 	if conf.Conn == nil {
+		if !strings.Contains(conf.Host, ":") {
+			conf.Host += ":554"
+		}
+
 		var err error
 		conf.Conn, err = conf.DialTimeout("tcp", conf.Host, conf.ReadTimeout)
 		if err != nil {
