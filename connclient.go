@@ -281,6 +281,7 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 			Scheme:   req.Url.Scheme,
 			Host:     req.Url.Host,
 			Path:     req.Url.Path,
+			RawPath:  req.Url.RawPath,
 			RawQuery: req.Url.RawQuery,
 		}
 		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, u)
@@ -446,6 +447,7 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode TransportMode, track *Tr
 			Host:     baseUrl.Host,
 			User:     baseUrl.User,
 			Path:     newUrl.Path,
+			RawPath:  newUrl.RawPath,
 			RawQuery: newUrl.RawQuery,
 		}
 	}
@@ -456,14 +458,23 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode TransportMode, track *Tr
 		Host:     baseUrl.Host,
 		User:     baseUrl.User,
 		Path:     baseUrl.Path,
+		RawPath:  baseUrl.RawPath,
 		RawQuery: baseUrl.RawQuery,
 	}
-	// insert the control attribute after the query, if present
+
+	// insert the control at the end of the url
 	if u.RawQuery != "" {
 		if !strings.HasSuffix(u.RawQuery, "/") {
 			u.RawQuery += "/"
 		}
 		u.RawQuery += control
+
+	} else if u.RawPath != "" {
+		if !strings.HasSuffix(u.RawPath, "/") {
+			u.RawPath += "/"
+		}
+		u.RawPath += control
+
 	} else {
 		if !strings.HasSuffix(u.Path, "/") {
 			u.Path += "/"
@@ -782,7 +793,8 @@ func (c *ConnClient) LoopUDP() error {
 						Host:   c.streamUrl.Host,
 						User:   c.streamUrl.User,
 						// use the stream path, otherwise some cameras do not reply
-						Path: c.streamUrl.Path,
+						Path:    c.streamUrl.Path,
+						RawPath: c.streamUrl.RawPath,
 					},
 					SkipResponse: true,
 				})

@@ -121,6 +121,7 @@ func (req Request) Write(bw *bufio.Writer) error {
 		Scheme:   req.Url.Scheme,
 		Host:     req.Url.Host,
 		Path:     req.Url.Path,
+		RawPath:  req.Url.RawPath,
 		RawQuery: req.Url.RawQuery,
 	}
 

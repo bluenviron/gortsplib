@@ -9,6 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mustParseUrl(s string) *url.URL {
+	u, err := url.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
 var casesRequest = []struct {
 	name string
 	byts []byte
@@ -23,7 +31,7 @@ var casesRequest = []struct {
 			"\r\n"),
 		Request{
 			Method: "OPTIONS",
-			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
+			Url:    mustParseUrl("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"CSeq":          HeaderValue{"1"},
 				"Require":       HeaderValue{"implicit-play"},
@@ -34,13 +42,30 @@ var casesRequest = []struct {
 	{
 		"describe",
 		[]byte("DESCRIBE rtsp://example.com/media.mp4 RTSP/1.0\r\n" +
+			"Accept: application/sdp\r\n" +
 			"CSeq: 2\r\n" +
 			"\r\n"),
 		Request{
 			Method: "DESCRIBE",
-			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
+			Url:    mustParseUrl("rtsp://example.com/media.mp4"),
 			Header: Header{
-				"CSeq": HeaderValue{"2"},
+				"Accept": HeaderValue{"application/sdp"},
+				"CSeq":   HeaderValue{"2"},
+			},
+		},
+	},
+	{
+		"describe with exclamation mark",
+		[]byte("DESCRIBE rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp RTSP/1.0\r\n" +
+			"Accept: application/sdp\r\n" +
+			"CSeq: 3\r\n" +
+			"\r\n"),
+		Request{
+			Method: "DESCRIBE",
+			Url:    mustParseUrl("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
+			Header: Header{
+				"Accept": HeaderValue{"application/sdp"},
+				"CSeq":   HeaderValue{"3"},
 			},
 		},
 	},
@@ -66,7 +91,7 @@ var casesRequest = []struct {
 			"m=video 2232 RTP/AVP 31\n"),
 		Request{
 			Method: "ANNOUNCE",
-			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
+			Url:    mustParseUrl("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"CSeq":           HeaderValue{"7"},
 				"Date":           HeaderValue{"23 Jan 1997 15:35:06 GMT"},
@@ -100,7 +125,7 @@ var casesRequest = []struct {
 			"jitter\n"),
 		Request{
 			Method: "GET_PARAMETER",
-			Url:    &url.URL{Scheme: "rtsp", Host: "example.com", Path: "/media.mp4"},
+			Url:    mustParseUrl("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"CSeq":           HeaderValue{"9"},
 				"Content-Type":   HeaderValue{"text/parameters"},
