@@ -140,6 +140,12 @@ func (ts Tracks) Write() []byte {
 			AddressType:    "IP4",
 			UnicastAddress: "127.0.0.1",
 		},
+		// required by Darwin Streaming Server
+		ConnectionInformation: &sdp.ConnectionInformation{
+			NetworkType: "IN",
+			AddressType: "IP4",
+			Address:     &sdp.Address{Address: "0.0.0.0"},
+		},
 		TimeDescriptions: []sdp.TimeDescription{
 			{Timing: sdp.Timing{0, 0}},
 		},
