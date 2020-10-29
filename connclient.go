@@ -21,6 +21,7 @@ import (
 	"github.com/aler9/gortsplib/auth"
 	"github.com/aler9/gortsplib/base"
 	"github.com/aler9/gortsplib/headers"
+	"github.com/aler9/gortsplib/multibuffer"
 	"github.com/aler9/gortsplib/rtcpreceiver"
 )
 
@@ -61,7 +62,7 @@ type ConnClientConf struct {
 	WriteTimeout time.Duration
 
 	// (optional) read buffer count.
-	// If greater than 1, allows to pass frames to other routines than the one
+	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
 	// It defaults to 1
 	ReadBufferCount int
@@ -91,8 +92,9 @@ type ConnClient struct {
 	udpLastFrameTimes map[int]*int64
 	udpRtpListeners   map[int]*connClientUDPListener
 	udpRtcpListeners  map[int]*connClientUDPListener
-	tcpFrames         *multiFrame
 	response          *base.Response
+	frame             *base.InterleavedFrame
+	tcpFrameBuffer    *multibuffer.MultiBuffer
 
 	receiverReportTerminate chan struct{}
 	receiverReportDone      chan struct{}
@@ -141,8 +143,9 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 		udpLastFrameTimes: make(map[int]*int64),
 		udpRtpListeners:   make(map[int]*connClientUDPListener),
 		udpRtcpListeners:  make(map[int]*connClientUDPListener),
-		tcpFrames:         newMultiFrame(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
 		response:          &base.Response{},
+		frame:             &base.InterleavedFrame{},
+		tcpFrameBuffer:    multibuffer.New(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
 	}, nil
 }
 
@@ -196,26 +199,26 @@ func (c *ConnClient) Tracks() map[int]*Track {
 }
 
 func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
-	frame := c.tcpFrames.next()
+	c.frame.Content = c.tcpFrameBuffer.Next()
 
 	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	return base.ReadInterleavedFrameOrResponse(frame, c.response, c.br)
+	return base.ReadInterleavedFrameOrResponse(c.frame, c.response, c.br)
 }
 
 // ReadFrameTCP reads an InterleavedFrame.
 // This can't be used when publishing.
 func (c *ConnClient) ReadFrameTCP() (int, StreamType, []byte, error) {
-	frame := c.tcpFrames.next()
+	c.frame.Content = c.tcpFrameBuffer.Next()
 
 	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	err := frame.Read(c.br)
+	err := c.frame.Read(c.br)
 	if err != nil {
 		return 0, 0, nil, err
 	}
 
-	c.rtcpReceivers[frame.TrackId].OnFrame(frame.StreamType, frame.Content)
+	c.rtcpReceivers[c.frame.TrackId].OnFrame(c.frame.StreamType, c.frame.Content)
 
-	return frame.TrackId, frame.StreamType, frame.Content, nil
+	return c.frame.TrackId, c.frame.StreamType, c.frame.Content, nil
 }
 
 // ReadFrameUDP reads an UDP frame.

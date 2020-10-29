@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/multibuffer"
 )
 
 const (
@@ -27,7 +28,7 @@ type ConnServerConf struct {
 	WriteTimeout time.Duration
 
 	// (optional) read buffer count.
-	// If greater than 1, allows to pass frames to other routines than the one
+	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
 	// It defaults to 1
 	ReadBufferCount int
@@ -35,11 +36,12 @@ type ConnServerConf struct {
 
 // ConnServer is a server-side RTSP connection.
 type ConnServer struct {
-	conf      ConnServerConf
-	br        *bufio.Reader
-	bw        *bufio.Writer
-	tcpFrames *multiFrame
-	request   *base.Request
+	conf           ConnServerConf
+	br             *bufio.Reader
+	bw             *bufio.Writer
+	request        *base.Request
+	frame          *base.InterleavedFrame
+	tcpFrameBuffer *multibuffer.MultiBuffer
 }
 
 // NewConnServer allocates a ConnServer.
@@ -55,11 +57,12 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 	}
 
 	return &ConnServer{
-		conf:      conf,
-		br:        bufio.NewReaderSize(conf.Conn, serverReadBufferSize),
-		bw:        bufio.NewWriterSize(conf.Conn, serverWriteBufferSize),
-		tcpFrames: newMultiFrame(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
-		request:   &base.Request{},
+		conf:           conf,
+		br:             bufio.NewReaderSize(conf.Conn, serverReadBufferSize),
+		bw:             bufio.NewWriterSize(conf.Conn, serverWriteBufferSize),
+		request:        &base.Request{},
+		frame:          &base.InterleavedFrame{},
+		tcpFrameBuffer: multibuffer.New(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
 	}
 }
 
@@ -86,13 +89,13 @@ func (s *ConnServer) ReadRequest() (*base.Request, error) {
 
 // ReadFrameTCPOrRequest reads an InterleavedFrame or a Request.
 func (s *ConnServer) ReadFrameTCPOrRequest(timeout bool) (interface{}, error) {
-	frame := s.tcpFrames.next()
+	s.frame.Content = s.tcpFrameBuffer.Next()
 
 	if timeout {
 		s.conf.Conn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
 	}
 
-	return base.ReadInterleavedFrameOrRequest(frame, s.request, s.br)
+	return base.ReadInterleavedFrameOrRequest(s.frame, s.request, s.br)
 }
 
 // WriteResponse writes a Response.

@@ -8,11 +8,11 @@ import (
 )
 
 type connClientUDPListener struct {
-	pc              net.PacketConn
-	remoteIp        net.IP
-	remoteZone      string
-	remotePort      int
-	udpFrameReadBuf *multibuffer.MultiBuffer
+	pc             net.PacketConn
+	remoteIp       net.IP
+	remoteZone     string
+	remotePort     int
+	udpFrameBuffer *multibuffer.MultiBuffer
 }
 
 func newConnClientUDPListener(conf ConnClientConf, port int) (*connClientUDPListener, error) {
@@ -22,8 +22,8 @@ func newConnClientUDPListener(conf ConnClientConf, port int) (*connClientUDPList
 	}
 
 	return &connClientUDPListener{
-		pc:              pc,
-		udpFrameReadBuf: multibuffer.New(conf.ReadBufferCount, 2048),
+		pc:             pc,
+		udpFrameBuffer: multibuffer.New(conf.ReadBufferCount, 2048),
 	}, nil
 }
 
@@ -33,7 +33,7 @@ func (l *connClientUDPListener) close() {
 
 func (l *connClientUDPListener) read() ([]byte, error) {
 	for {
-		buf := l.udpFrameReadBuf.Next()
+		buf := l.udpFrameBuffer.Next()
 		n, addr, err := l.pc.ReadFrom(buf)
 		if err != nil {
 			return nil, err
