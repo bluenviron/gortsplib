@@ -154,7 +154,7 @@ func (c *ConnClient) Close() error {
 	if c.state == connClientStateReading {
 		c.Do(&base.Request{
 			Method:       base.TEARDOWN,
-			Url:          c.streamUrl,
+			URL:          c.streamUrl,
 			SkipResponse: true,
 		})
 	}
@@ -281,11 +281,11 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	if c.auth != nil {
 		// remove credentials
 		u := &url.URL{
-			Scheme:   req.Url.Scheme,
-			Host:     req.Url.Host,
-			Path:     req.Url.Path,
-			RawPath:  req.Url.RawPath,
-			RawQuery: req.Url.RawQuery,
+			Scheme:   req.URL.Scheme,
+			Host:     req.URL.Host,
+			Path:     req.URL.Path,
+			RawPath:  req.URL.RawPath,
+			RawQuery: req.URL.RawQuery,
 		}
 		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, u)
 	}
@@ -334,9 +334,9 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	}
 
 	// setup authentication
-	if res.StatusCode == base.StatusUnauthorized && req.Url.User != nil && c.auth == nil {
-		pass, _ := req.Url.User.Password()
-		auth, err := auth.NewClient(res.Header["WWW-Authenticate"], req.Url.User.Username(), pass)
+	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.auth == nil {
+		pass, _ := req.URL.User.Password()
+		auth, err := auth.NewClient(res.Header["WWW-Authenticate"], req.URL.User.Username(), pass)
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup authentication: %s", err)
 		}
@@ -359,7 +359,7 @@ func (c *ConnClient) Options(u *url.URL) (*base.Response, error) {
 
 	res, err := c.Do(&base.Request{
 		Method: base.OPTIONS,
-		Url: &url.URL{
+		URL: &url.URL{
 			Scheme: "rtsp",
 			Host:   u.Host,
 			User:   u.User,
@@ -386,7 +386,7 @@ func (c *ConnClient) Describe(u *url.URL) (Tracks, *base.Response, error) {
 
 	res, err := c.Do(&base.Request{
 		Method: base.DESCRIBE,
-		Url:    u,
+		URL:    u,
 		Header: base.Header{
 			"Accept": base.HeaderValue{"application/sdp"},
 		},
@@ -471,7 +471,7 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode TransportMode, track *Tr
 func (c *ConnClient) setup(u *url.URL, mode TransportMode, track *Track, ht *headers.Transport) (*base.Response, error) {
 	res, err := c.Do(&base.Request{
 		Method: base.SETUP,
-		Url:    c.urlForTrack(u, mode, track),
+		URL:    c.urlForTrack(u, mode, track),
 		Header: base.Header{
 			"Transport": ht.Write(),
 		},
@@ -677,7 +677,7 @@ func (c *ConnClient) Play(u *url.URL) (*base.Response, error) {
 
 	res, err := c.Do(&base.Request{
 		Method: base.PLAY,
-		Url:    u,
+		URL:    u,
 	})
 	if err != nil {
 		return nil, err
@@ -772,7 +772,7 @@ func (c *ConnClient) LoopUDP() error {
 			case <-keepaliveTicker.C:
 				_, err := c.Do(&base.Request{
 					Method: base.OPTIONS,
-					Url: &url.URL{
+					URL: &url.URL{
 						Scheme: "rtsp",
 						Host:   c.streamUrl.Host,
 						User:   c.streamUrl.User,
@@ -818,7 +818,7 @@ func (c *ConnClient) Announce(u *url.URL, tracks Tracks) (*base.Response, error)
 
 	res, err := c.Do(&base.Request{
 		Method: base.ANNOUNCE,
-		Url:    u,
+		URL:    u,
 		Header: base.Header{
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
@@ -849,7 +849,7 @@ func (c *ConnClient) Record(u *url.URL) (*base.Response, error) {
 
 	res, err := c.Do(&base.Request{
 		Method: base.RECORD,
-		Url:    u,
+		URL:    u,
 	})
 	if err != nil {
 		return nil, err

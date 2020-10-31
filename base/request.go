@@ -40,7 +40,7 @@ type Request struct {
 	Method Method
 
 	// request url
-	Url *url.URL
+	URL *url.URL
 
 	// map of header values
 	Header Header
@@ -79,9 +79,9 @@ func (req *Request) Read(rb *bufio.Reader) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse url (%v)", rawUrl)
 	}
-	req.Url = ur
+	req.URL = ur
 
-	if req.Url.Scheme != "rtsp" {
+	if req.URL.Scheme != "rtsp" {
 		return fmt.Errorf("invalid url scheme (%v)", rawUrl)
 	}
 
@@ -118,11 +118,11 @@ func (req *Request) Read(rb *bufio.Reader) error {
 func (req Request) Write(bw *bufio.Writer) error {
 	// remove credentials
 	u := &url.URL{
-		Scheme:   req.Url.Scheme,
-		Host:     req.Url.Host,
-		Path:     req.Url.Path,
-		RawPath:  req.Url.RawPath,
-		RawQuery: req.Url.RawQuery,
+		Scheme:   req.URL.Scheme,
+		Host:     req.URL.Host,
+		Path:     req.URL.Path,
+		RawPath:  req.URL.RawPath,
+		RawQuery: req.URL.RawQuery,
 	}
 
 	_, err := bw.Write([]byte(string(req.Method) + " " + u.String() + " " + rtspProtocol10 + "\r\n"))
