@@ -33,7 +33,8 @@ func TestURLGetBasePath(t *testing.T) {
 			"user=tmp&password=BagRep1!&channel=1&stream=0.sdp",
 		},
 	} {
-		b := URLGetBasePath(ca.u)
+		b, ok := URLGetBasePath(ca.u)
+		require.Equal(t, true, ok)
 		require.Equal(t, ca.b, b)
 	}
 }

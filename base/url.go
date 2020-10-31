@@ -16,27 +16,41 @@ func stringsReverseIndexByte(s string, c byte) int {
 
 // URLGetBasePath returns the base path of a RTSP URL.
 // We assume that the URL doesn't contain a control path.
-func URLGetBasePath(u *url.URL) string {
+func URLGetBasePath(u *url.URL) (string, bool) {
+	var path string
 	if u.RawPath != "" {
-		return u.RawPath[1:] // remove leading slash
+		path = u.RawPath
+	} else {
+		path = u.Path
 	}
-	return u.Path[1:] // remove leading slash
+
+	// remove leading slash
+	if len(path) == 0 || path[0] != '/' {
+		return "", false
+	}
+	path = path[1:]
+
+	return path, true
 }
 
 // URLGetBaseControlPath returns the base path and the control path of a RTSP URL.
 // We assume that the URL contains a control path.
 func URLGetBaseControlPath(u *url.URL) (string, string, bool) {
-	pathAndQuery := ""
+	var pathAndQuery string
 	if u.RawPath != "" {
-		pathAndQuery += u.RawPath
+		pathAndQuery = u.RawPath
 	} else {
-		pathAndQuery += u.Path
+		pathAndQuery = u.Path
 	}
 	if u.RawQuery != "" {
 		pathAndQuery += "?" + u.RawQuery
 	}
 
-	pathAndQuery = pathAndQuery[1:] // remove leading slash
+	// remove leading slash
+	if len(pathAndQuery) == 0 || pathAndQuery[0] != '/' {
+		return "", "", false
+	}
+	pathAndQuery = pathAndQuery[1:]
 
 	pos := stringsReverseIndexByte(pathAndQuery, '/')
 	if pos < 0 {
