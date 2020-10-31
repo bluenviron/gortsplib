@@ -12,7 +12,7 @@ import (
 	"github.com/aler9/gortsplib/headers"
 )
 
-// Server is an object that helps a server to authenticate a client.
+// Server allows a server to authenticate a client.
 type Server struct {
 	user    string
 	pass    string
@@ -126,18 +126,12 @@ func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *url
 		uri := ur.String()
 
 		if *auth.URI != uri {
-			// VLC strips the subpath
-			newUrl := *ur
-			newUrl.Path = func() string {
-				ret := newUrl.Path
-
-				if n := strings.Index(ret[1:], "/"); n >= 0 {
-					ret = ret[:n+2]
-				}
-
-				return ret
-			}()
-			uri = newUrl.String()
+			// VLC strips the control path; do another try without the control path
+			base, _, ok := base.URLGetBaseControlPath(ur)
+			if ok {
+				ur.Path = "/" + base + "/"
+				uri = ur.String()
+			}
 
 			if *auth.URI != uri {
 				return fmt.Errorf("wrong url")

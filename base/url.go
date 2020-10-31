@@ -1,8 +1,8 @@
 package base
 
 import (
-	"strings"
 	"net/url"
+	"strings"
 )
 
 func stringsReverseIndexByte(s string, c byte) int {
