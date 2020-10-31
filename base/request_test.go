@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mustParseUrl(s string) *url.URL {
+func urlMustParse(s string) *url.URL {
 	u, err := url.Parse(s)
 	if err != nil {
 		panic(err)
@@ -31,7 +31,7 @@ var casesRequest = []struct {
 			"\r\n"),
 		Request{
 			Method: "OPTIONS",
-			Url:    mustParseUrl("rtsp://example.com/media.mp4"),
+			Url:    urlMustParse("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"CSeq":          HeaderValue{"1"},
 				"Require":       HeaderValue{"implicit-play"},
@@ -47,7 +47,7 @@ var casesRequest = []struct {
 			"\r\n"),
 		Request{
 			Method: "DESCRIBE",
-			Url:    mustParseUrl("rtsp://example.com/media.mp4"),
+			Url:    urlMustParse("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"Accept": HeaderValue{"application/sdp"},
 				"CSeq":   HeaderValue{"2"},
@@ -55,14 +55,14 @@ var casesRequest = []struct {
 		},
 	},
 	{
-		"describe with exclamation mark",
+		"describe with special chars",
 		[]byte("DESCRIBE rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp RTSP/1.0\r\n" +
 			"Accept: application/sdp\r\n" +
 			"CSeq: 3\r\n" +
 			"\r\n"),
 		Request{
 			Method: "DESCRIBE",
-			Url:    mustParseUrl("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
+			Url:    urlMustParse("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
 			Header: Header{
 				"Accept": HeaderValue{"application/sdp"},
 				"CSeq":   HeaderValue{"3"},
@@ -91,7 +91,7 @@ var casesRequest = []struct {
 			"m=video 2232 RTP/AVP 31\n"),
 		Request{
 			Method: "ANNOUNCE",
-			Url:    mustParseUrl("rtsp://example.com/media.mp4"),
+			Url:    urlMustParse("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"CSeq":           HeaderValue{"7"},
 				"Date":           HeaderValue{"23 Jan 1997 15:35:06 GMT"},
@@ -125,7 +125,7 @@ var casesRequest = []struct {
 			"jitter\n"),
 		Request{
 			Method: "GET_PARAMETER",
-			Url:    mustParseUrl("rtsp://example.com/media.mp4"),
+			Url:    urlMustParse("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"CSeq":           HeaderValue{"9"},
 				"Content-Type":   HeaderValue{"text/parameters"},

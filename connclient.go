@@ -464,26 +464,7 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode TransportMode, track *Tr
 		RawPath:  baseUrl.RawPath,
 		RawQuery: baseUrl.RawQuery,
 	}
-
-	// insert the control at the end of the url
-	if u.RawQuery != "" {
-		if !strings.HasSuffix(u.RawQuery, "/") {
-			u.RawQuery += "/"
-		}
-		u.RawQuery += control
-
-	} else if u.RawPath != "" {
-		if !strings.HasSuffix(u.RawPath, "/") {
-			u.RawPath += "/"
-		}
-		u.RawPath += control
-
-	} else {
-		if !strings.HasSuffix(u.Path, "/") {
-			u.Path += "/"
-		}
-		u.Path += control
-	}
+	base.URLAddControlPath(u, control)
 	return u
 }
 

@@ -23,7 +23,7 @@ type reportReq struct {
 	res chan []byte
 }
 
-// RtcpReceiver is an object that helps building RTCP receiver reports, by parsing
+// RtcpReceiver allows building RTCP receiver reports, by parsing
 // incoming frames.
 type RtcpReceiver struct {
 	mutex                sync.Mutex
