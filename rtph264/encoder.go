@@ -33,7 +33,7 @@ func NewEncoder(relativeType uint8) (*Encoder, error) {
 
 // Write encodes NALUs into RTP/H264 packets.
 func (e *Encoder) Write(nalus [][]byte, timestamp time.Duration) ([][]byte, error) {
-	if e.started == time.Duration(0) {
+	if e.started == 0 {
 		e.started = timestamp
 	}
 

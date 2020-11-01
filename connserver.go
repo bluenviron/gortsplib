@@ -46,11 +46,11 @@ type ConnServer struct {
 
 // NewConnServer allocates a ConnServer.
 func NewConnServer(conf ConnServerConf) *ConnServer {
-	if conf.ReadTimeout == time.Duration(0) {
-		conf.ReadTimeout = 5 * time.Second
+	if conf.ReadTimeout == 0 {
+		conf.ReadTimeout = 10 * time.Second
 	}
-	if conf.WriteTimeout == time.Duration(0) {
-		conf.WriteTimeout = 5 * time.Second
+	if conf.WriteTimeout == 0 {
+		conf.WriteTimeout = 10 * time.Second
 	}
 	if conf.ReadBufferCount == 0 {
 		conf.ReadBufferCount = 1

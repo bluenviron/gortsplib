@@ -44,7 +44,7 @@ func NewEncoder(relativeType uint8, config []byte) (*Encoder, error) {
 
 // Write encodes an AAC frame into RTP/AAC packets.
 func (e *Encoder) Write(data []byte, timestamp time.Duration) ([][]byte, error) {
-	if e.started == time.Duration(0) {
+	if e.started == 0 {
 		e.started = timestamp
 	}
 
