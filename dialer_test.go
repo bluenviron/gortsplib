@@ -58,7 +58,7 @@ func (c *container) wait() int {
 	return int(code)
 }
 
-func TestConnClientDialReadUDP(t *testing.T) {
+func TestDialerReadUDP(t *testing.T) {
 	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
 	require.NoError(t, err)
 	defer cnt1.close()
@@ -97,7 +97,7 @@ func TestConnClientDialReadUDP(t *testing.T) {
 	conn.CloseUDPListeners()
 }
 
-func TestConnClientDialReadTCP(t *testing.T) {
+func TestDialerReadTCP(t *testing.T) {
 	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
 	require.NoError(t, err)
 	defer cnt1.close()
@@ -129,7 +129,7 @@ func TestConnClientDialReadTCP(t *testing.T) {
 	require.Equal(t, StreamTypeRtp, typ)
 }
 
-func TestConnClientDialPublishUDP(t *testing.T) {
+func TestDialerPublishUDP(t *testing.T) {
 	for _, server := range []string{
 		"rtsp-simple-server",
 		"ffmpeg",
@@ -228,7 +228,7 @@ func TestConnClientDialPublishUDP(t *testing.T) {
 	}
 }
 
-func TestConnClientDialPublishTCP(t *testing.T) {
+func TestDialerPublishTCP(t *testing.T) {
 	for _, server := range []string{
 		"rtsp-simple-server",
 		"ffmpeg",
