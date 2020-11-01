@@ -24,7 +24,7 @@ func main() {
 	defer wg.Wait()
 	defer conn.CloseUDPListeners()
 
-	for trackId := range conn.Tracks() {
+	for _, track := range conn.Tracks() {
 		// read RTP frames
 		wg.Add(1)
 		go func(trackId int) {
@@ -38,7 +38,7 @@ func main() {
 
 				fmt.Printf("frame from track %d, type RTP: %v\n", trackId, buf)
 			}
-		}(trackId)
+		}(track.Id)
 
 		// read RTCP frames
 		wg.Add(1)
@@ -53,7 +53,7 @@ func main() {
 
 				fmt.Printf("frame from track %d, type RTCP: %v\n", trackId, buf)
 			}
-		}(trackId)
+		}(track.Id)
 	}
 
 	// wait until the connection is closed
