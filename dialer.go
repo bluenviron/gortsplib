@@ -8,7 +8,7 @@ import (
 )
 
 // DefaultDialer is the default dialer, used by DialRead and DialPublish.
-var DefaultDialer = &Dialer{}
+var DefaultDialer = Dialer{}
 
 // DialRead connects to the address and starts reading all tracks.
 func DialRead(address string, proto StreamProtocol) (*ConnClient, error) {
@@ -46,7 +46,7 @@ type Dialer struct {
 }
 
 // DialRead connects to the address and starts reading all tracks.
-func (d *Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, error) {
+func (d Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func (d *Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, er
 }
 
 // DialPublish connects to the address and starts publishing the tracks.
-func (d *Dialer) DialPublish(address string, proto StreamProtocol, tracks Tracks) (*ConnClient, error) {
+func (d Dialer) DialPublish(address string, proto StreamProtocol, tracks Tracks) (*ConnClient, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
