@@ -126,12 +126,9 @@ func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *bas
 
 		if *auth.URI != uri {
 			// VLC strips the control path; do another try without the control path
-			base, _, ok := ur.BaseControlPath()
-			if ok {
-				ur = ur.Clone()
-				ur.SetPath("/" + base + "/")
-				uri = ur.String()
-			}
+			ur = ur.Clone()
+			ur.RemoveControlPath()
+			uri = ur.String()
 
 			if *auth.URI != uri {
 				return fmt.Errorf("wrong url")

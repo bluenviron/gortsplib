@@ -148,6 +148,16 @@ func (u *URL) BaseControlPath() (string, string, bool) {
 	return basePath, controlPath, true
 }
 
+// SetHost sets the host of a RTSP URL.
+func (u *URL) SetHost(host string) {
+	u.inner.Host = host
+}
+
+// SetUser sets the credentials of a RTSP URL.
+func (u *URL) SetUser(user *url.Userinfo) {
+	u.inner.User = user
+}
+
 // AddControlPath adds a control path to a RTSP url.
 func (u *URL) AddControlPath(controlPath string) {
 	// always insert the control path at the end of the url
@@ -172,21 +182,20 @@ func (u *URL) AddControlPath(controlPath string) {
 	}
 }
 
-// SetHost sets the host of a RTSP URL.
-func (u *URL) SetHost(host string) {
-	u.inner.Host = host
-}
+// RemoveControlPath removes a control path from an URL.
+func (u *URL) RemoveControlPath() {
+	_, controlPath, ok := u.BaseControlPath()
+	if !ok {
+		return
+	}
 
-// SetUser sets the credentials of a RTSP URL.
-func (u *URL) SetUser(user *url.Userinfo) {
-	u.inner.User = user
-}
+	if strings.HasSuffix(u.inner.RawQuery, controlPath) {
+		u.inner.RawQuery = u.inner.RawQuery[:len(u.inner.RawQuery)-len(controlPath)]
 
-// SetPath sets the path of a RTSP URL.
-func (u *URL) SetPath(path string) {
-	if u.inner.RawPath != "" {
-		u.inner.RawPath = path
-	} else {
-		u.inner.Path = path
+	} else if strings.HasSuffix(u.inner.RawPath, controlPath) {
+		u.inner.RawPath = u.inner.RawPath[:len(u.inner.RawPath)-len(controlPath)]
+
+	} else if strings.HasSuffix(u.inner.Path, controlPath) {
+		u.inner.Path = u.inner.Path[:len(u.inner.Path)-len(controlPath)]
 	}
 }

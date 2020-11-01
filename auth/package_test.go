@@ -47,16 +47,30 @@ func TestAuthMethods(t *testing.T) {
 }
 
 func TestAuthVLC(t *testing.T) {
-	authServer := NewServer("testuser", "testpass",
-		[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
-	wwwAuthenticate := authServer.GenerateHeader()
+	for _, ca := range []struct {
+		clientURL string
+		serverURL string
+	}{
+		{
+			"rtsp://myhost/mypath/",
+			"rtsp://myhost/mypath/trackId=0",
+		},
+		{
+			"rtsp://myhost/mypath/test?testing/",
+			"rtsp://myhost/mypath/test?testing/trackId=0",
+		},
+	} {
+		authServer := NewServer("testuser", "testpass",
+			[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
+		wwwAuthenticate := authServer.GenerateHeader()
 
-	ac, err := NewClient(wwwAuthenticate, url.UserPassword("testuser", "testpass"))
-	require.NoError(t, err)
-	authorization := ac.GenerateHeader(base.ANNOUNCE,
-		base.MustParseURL("rtsp://myhost/mypath/"))
+		ac, err := NewClient(wwwAuthenticate, url.UserPassword("testuser", "testpass"))
+		require.NoError(t, err)
+		authorization := ac.GenerateHeader(base.ANNOUNCE,
+			base.MustParseURL(ca.clientURL))
 
-	err = authServer.ValidateHeader(authorization, base.ANNOUNCE,
-		base.MustParseURL("rtsp://myhost/mypath/trackId=0"))
-	require.NoError(t, err)
+		err = authServer.ValidateHeader(authorization, base.ANNOUNCE,
+			base.MustParseURL(ca.serverURL))
+		require.NoError(t, err)
+	}
 }
