@@ -58,8 +58,8 @@ func (c *container) wait() int {
 	return int(code)
 }
 
-func TestDialerReadUDP(t *testing.T) {
-	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
+func TestDialReadUDP(t *testing.T) {
+	cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
 	require.NoError(t, err)
 	defer cnt1.close()
 
@@ -97,8 +97,8 @@ func TestDialerReadUDP(t *testing.T) {
 	conn.CloseUDPListeners()
 }
 
-func TestDialerReadTCP(t *testing.T) {
-	cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
+func TestDialReadTCP(t *testing.T) {
+	cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
 	require.NoError(t, err)
 	defer cnt1.close()
 
@@ -129,7 +129,52 @@ func TestDialerReadTCP(t *testing.T) {
 	require.Equal(t, StreamTypeRtp, typ)
 }
 
-func TestDialerPublishUDP(t *testing.T) {
+func TestDialReadRedirect(t *testing.T) {
+	cnt1, err := newContainer("rtsp-simple-server", "server", []string{
+		"paths:\n" +
+			"  path1:\n" +
+			"    source: redirect\n" +
+			"    sourceRedirect: rtsp://localhost:8554/path2\n" +
+			"  path2:\n",
+	})
+	require.NoError(t, err)
+	defer cnt1.close()
+
+	time.Sleep(1 * time.Second)
+
+	cnt2, err := newContainer("ffmpeg", "publish", []string{
+		"-re",
+		"-stream_loop", "-1",
+		"-i", "/emptyvideo.ts",
+		"-c", "copy",
+		"-f", "rtsp",
+		"-rtsp_transport", "udp",
+		"rtsp://localhost:8554/path2",
+	})
+	require.NoError(t, err)
+	defer cnt2.close()
+
+	time.Sleep(1 * time.Second)
+
+	conn, err := DialRead("rtsp://localhost:8554/path1", StreamProtocolUDP)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	loopDone := make(chan struct{})
+	defer func() { <-loopDone }()
+
+	go func() {
+		defer close(loopDone)
+		conn.LoopUDP()
+	}()
+
+	_, err = conn.ReadFrameUDP(0, StreamTypeRtp)
+	require.NoError(t, err)
+
+	conn.CloseUDPListeners()
+}
+
+func TestDialPublishUDP(t *testing.T) {
 	for _, server := range []string{
 		"rtsp-simple-server",
 		"ffmpeg",
@@ -137,12 +182,12 @@ func TestDialerPublishUDP(t *testing.T) {
 		t.Run(server, func(t *testing.T) {
 			switch server {
 			case "rtsp-simple-server":
-				cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
+				cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
 				require.NoError(t, err)
 				defer cnt1.close()
 
 			default:
-				cnt0, err := newContainer("rtsp-simple-server", "server0", []string{})
+				cnt0, err := newContainer("rtsp-simple-server", "server0", []string{"{}"})
 				require.NoError(t, err)
 				defer cnt0.close()
 
@@ -228,7 +273,7 @@ func TestDialerPublishUDP(t *testing.T) {
 	}
 }
 
-func TestDialerPublishTCP(t *testing.T) {
+func TestDialPublishTCP(t *testing.T) {
 	for _, server := range []string{
 		"rtsp-simple-server",
 		"ffmpeg",
@@ -236,12 +281,12 @@ func TestDialerPublishTCP(t *testing.T) {
 		t.Run(server, func(t *testing.T) {
 			switch server {
 			case "rtsp-simple-server":
-				cnt1, err := newContainer("rtsp-simple-server", "server", []string{})
+				cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
 				require.NoError(t, err)
 				defer cnt1.close()
 
 			default:
-				cnt0, err := newContainer("rtsp-simple-server", "server0", []string{})
+				cnt0, err := newContainer("rtsp-simple-server", "server0", []string{"{}"})
 				require.NoError(t, err)
 				defer cnt0.close()
 

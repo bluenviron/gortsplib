@@ -70,10 +70,16 @@ func (d *Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, er
 		return nil, err
 	}
 
-	tracks, _, err := conn.Describe(u)
+	tracks, res, err := conn.Describe(u)
 	if err != nil {
 		conn.Close()
 		return nil, err
+	}
+
+	if res.StatusCode >= base.StatusMovedPermanently &&
+		res.StatusCode <= base.StatusUseProxy {
+		conn.Close()
+		return d.DialRead(res.Header["Location"][0], proto)
 	}
 
 	if proto == StreamProtocolUDP {

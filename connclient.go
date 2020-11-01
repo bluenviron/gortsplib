@@ -379,25 +379,36 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 		return nil, nil, err
 	}
 
-	if res.StatusCode != base.StatusOK {
+	switch res.StatusCode {
+	case base.StatusOK:
+		contentType, ok := res.Header["Content-Type"]
+		if !ok || len(contentType) != 1 {
+			return nil, nil, fmt.Errorf("Content-Type not provided")
+		}
+
+		if contentType[0] != "application/sdp" {
+			return nil, nil, fmt.Errorf("wrong Content-Type, expected application/sdp")
+		}
+
+		tracks, err := ReadTracks(res.Content)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return tracks, res, nil
+
+	case base.StatusMovedPermanently, base.StatusFound,
+		base.StatusSeeOther, base.StatusNotModified, base.StatusUseProxy:
+		location, ok := res.Header["Location"]
+		if !ok || len(location) != 1 {
+			return nil, nil, fmt.Errorf("Location not provided")
+		}
+
+		return nil, res, nil
+
+	default:
 		return nil, nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
-
-	contentType, ok := res.Header["Content-Type"]
-	if !ok || len(contentType) != 1 {
-		return nil, nil, fmt.Errorf("Content-Type not provided")
-	}
-
-	if contentType[0] != "application/sdp" {
-		return nil, nil, fmt.Errorf("wrong Content-Type, expected application/sdp")
-	}
-
-	tracks, err := ReadTracks(res.Content)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return tracks, res, nil
 }
 
 // build an URL by merging baseUrl with the control attribute from track.Media
