@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/aler9/gortsplib/base"
@@ -66,7 +65,7 @@ func (as *Server) GenerateHeader() base.HeaderValue {
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header.
-func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *url.URL) error {
+func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *base.URL) error {
 	if len(v) == 0 {
 		return fmt.Errorf("authorization header not provided")
 	}
@@ -127,9 +126,10 @@ func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *url
 
 		if *auth.URI != uri {
 			// VLC strips the control path; do another try without the control path
-			base, _, ok := base.URLGetBaseControlPath(ur)
+			base, _, ok := ur.BaseControlPath()
 			if ok {
-				ur.Path = "/" + base + "/"
+				ur = ur.Clone()
+				ur.SetPath("/" + base + "/")
 				uri = ur.String()
 			}
 

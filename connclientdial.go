@@ -1,17 +1,17 @@
 package gortsplib
 
 import (
-	"net/url"
+	"github.com/aler9/gortsplib/base"
 )
 
 // DialRead connects to the address and starts reading all tracks.
 func DialRead(address string, proto StreamProtocol) (*ConnClient, error) {
-	u, err := url.Parse(address)
+	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := NewConnClient(ConnClientConf{Host: u.Host})
+	conn, err := NewConnClient(ConnClientConf{Host: u.Host()})
 	if err != nil {
 		return nil, err
 	}
@@ -57,12 +57,12 @@ func DialRead(address string, proto StreamProtocol) (*ConnClient, error) {
 
 // DialPublish connects to the address and starts publishing the tracks.
 func DialPublish(address string, proto StreamProtocol, tracks Tracks) (*ConnClient, error) {
-	u, err := url.Parse(address)
+	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := NewConnClient(ConnClientConf{Host: u.Host})
+	conn, err := NewConnClient(ConnClientConf{Host: u.Host()})
 	if err != nil {
 		return nil, err
 	}

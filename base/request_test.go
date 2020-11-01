@@ -3,19 +3,10 @@ package base
 import (
 	"bufio"
 	"bytes"
-	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-func urlMustParse(s string) *url.URL {
-	u, err := url.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
 
 var casesRequest = []struct {
 	name string
@@ -31,7 +22,7 @@ var casesRequest = []struct {
 			"\r\n"),
 		Request{
 			Method: "OPTIONS",
-			URL:    urlMustParse("rtsp://example.com/media.mp4"),
+			URL:    MustParseURL("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"CSeq":          HeaderValue{"1"},
 				"Require":       HeaderValue{"implicit-play"},
@@ -47,7 +38,7 @@ var casesRequest = []struct {
 			"\r\n"),
 		Request{
 			Method: "DESCRIBE",
-			URL:    urlMustParse("rtsp://example.com/media.mp4"),
+			URL:    MustParseURL("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"Accept": HeaderValue{"application/sdp"},
 				"CSeq":   HeaderValue{"2"},
@@ -62,7 +53,7 @@ var casesRequest = []struct {
 			"\r\n"),
 		Request{
 			Method: "DESCRIBE",
-			URL:    urlMustParse("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
+			URL:    MustParseURL("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
 			Header: Header{
 				"Accept": HeaderValue{"application/sdp"},
 				"CSeq":   HeaderValue{"3"},
@@ -91,7 +82,7 @@ var casesRequest = []struct {
 			"m=video 2232 RTP/AVP 31\n"),
 		Request{
 			Method: "ANNOUNCE",
-			URL:    urlMustParse("rtsp://example.com/media.mp4"),
+			URL:    MustParseURL("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"CSeq":           HeaderValue{"7"},
 				"Date":           HeaderValue{"23 Jan 1997 15:35:06 GMT"},
@@ -125,7 +116,7 @@ var casesRequest = []struct {
 			"jitter\n"),
 		Request{
 			Method: "GET_PARAMETER",
-			URL:    urlMustParse("rtsp://example.com/media.mp4"),
+			URL:    MustParseURL("rtsp://example.com/media.mp4"),
 			Header: Header{
 				"CSeq":           HeaderValue{"9"},
 				"Content-Type":   HeaderValue{"text/parameters"},

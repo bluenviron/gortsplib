@@ -19,9 +19,12 @@ type Client struct {
 	nonce  string
 }
 
-// NewClient allocates a Client.
-// header is the WWW-Authenticate header provided by the server.
-func NewClient(v base.HeaderValue, user string, pass string) (*Client, error) {
+// NewClient allocates a Client with the WWW-Authenticate header provided by
+// the server and a set of credentials.
+func NewClient(v base.HeaderValue, userinfo *url.Userinfo) (*Client, error) {
+	pass, _ := userinfo.Password()
+	user := userinfo.Username()
+
 	// prefer digest
 	if headerAuthDigest := func() string {
 		for _, vi := range v {
@@ -83,7 +86,9 @@ func NewClient(v base.HeaderValue, user string, pass string) (*Client, error) {
 
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
 // the given method and url.
-func (ac *Client) GenerateHeader(method base.Method, ur *url.URL) base.HeaderValue {
+func (ac *Client) GenerateHeader(method base.Method, ur *base.URL) base.HeaderValue {
+	ur = ur.CloneWithoutCredentials()
+
 	switch ac.method {
 	case headers.AuthBasic:
 		response := base64.StdEncoding.EncodeToString([]byte(ac.user + ":" + ac.pass))

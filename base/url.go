@@ -1,6 +1,7 @@
 package base
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 )
@@ -14,14 +15,84 @@ func stringsReverseIndexByte(s string, c byte) int {
 	return -1
 }
 
-// URLGetBasePath returns the base path of a RTSP URL.
+// URL is a RTSP URL.
+type URL struct {
+	inner *url.URL
+}
+
+// ParseURL parses a RTSP URL.
+func ParseURL(s string) (*URL, error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.Scheme != "rtsp" {
+		return nil, fmt.Errorf("wrong scheme")
+	}
+
+	return &URL{u}, nil
+}
+
+// MustParseURL is like ParseURL but panics in case of errors.
+func MustParseURL(s string) *URL {
+	u, err := ParseURL(s)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
+// String implements fmt.Stringer.
+func (u *URL) String() string {
+	return u.inner.String()
+}
+
+// Clone clones a URL.
+func (u *URL) Clone() *URL {
+	return &URL{&url.URL{
+		Scheme:     u.inner.Scheme,
+		Opaque:     u.inner.Opaque,
+		User:       u.inner.User,
+		Host:       u.inner.Host,
+		Path:       u.inner.Path,
+		RawPath:    u.inner.RawPath,
+		ForceQuery: u.inner.ForceQuery,
+		RawQuery:   u.inner.RawQuery,
+	}}
+}
+
+// CloneWithoutCredentials clones a URL without its credentials.
+func (u *URL) CloneWithoutCredentials() *URL {
+	return &URL{&url.URL{
+		Scheme:     u.inner.Scheme,
+		Opaque:     u.inner.Opaque,
+		Host:       u.inner.Host,
+		Path:       u.inner.Path,
+		RawPath:    u.inner.RawPath,
+		ForceQuery: u.inner.ForceQuery,
+		RawQuery:   u.inner.RawQuery,
+	}}
+}
+
+// Host returns the host of a RTSP URL.
+func (u *URL) Host() string {
+	return u.inner.Host
+}
+
+// User returns the credentials of a RTSP URL.
+func (u *URL) User() *url.Userinfo {
+	return u.inner.User
+}
+
+// BasePath returns the base path of a RTSP URL.
 // We assume that the URL doesn't contain a control path.
-func URLGetBasePath(u *url.URL) (string, bool) {
+func (u *URL) BasePath() (string, bool) {
 	var path string
-	if u.RawPath != "" {
-		path = u.RawPath
+	if u.inner.RawPath != "" {
+		path = u.inner.RawPath
 	} else {
-		path = u.Path
+		path = u.inner.Path
 	}
 
 	// remove leading slash
@@ -33,17 +104,17 @@ func URLGetBasePath(u *url.URL) (string, bool) {
 	return path, true
 }
 
-// URLGetBaseControlPath returns the base path and the control path of a RTSP URL.
+// BaseControlPath returns the base path and the control path of a RTSP URL.
 // We assume that the URL contains a control path.
-func URLGetBaseControlPath(u *url.URL) (string, string, bool) {
+func (u *URL) BaseControlPath() (string, string, bool) {
 	var pathAndQuery string
-	if u.RawPath != "" {
-		pathAndQuery = u.RawPath
+	if u.inner.RawPath != "" {
+		pathAndQuery = u.inner.RawPath
 	} else {
-		pathAndQuery = u.Path
+		pathAndQuery = u.inner.Path
 	}
-	if u.RawQuery != "" {
-		pathAndQuery += "?" + u.RawQuery
+	if u.inner.RawQuery != "" {
+		pathAndQuery += "?" + u.inner.RawQuery
 	}
 
 	// remove leading slash
@@ -77,26 +148,45 @@ func URLGetBaseControlPath(u *url.URL) (string, string, bool) {
 	return basePath, controlPath, true
 }
 
-// URLAddControlPath adds a control path to a RTSP url.
-func URLAddControlPath(u *url.URL, controlPath string) {
+// AddControlPath adds a control path to a RTSP url.
+func (u *URL) AddControlPath(controlPath string) {
 	// always insert the control path at the end of the url
-	if u.RawQuery != "" {
-		if !strings.HasSuffix(u.RawQuery, "/") {
-			u.RawQuery += "/"
+	if u.inner.RawQuery != "" {
+		if !strings.HasSuffix(u.inner.RawQuery, "/") {
+			u.inner.RawQuery += "/"
 		}
-		u.RawQuery += controlPath
+		u.inner.RawQuery += controlPath
 
 	} else {
-		if u.RawPath != "" {
-			if !strings.HasSuffix(u.RawPath, "/") {
-				u.RawPath += "/"
+		if u.inner.RawPath != "" {
+			if !strings.HasSuffix(u.inner.RawPath, "/") {
+				u.inner.RawPath += "/"
 			}
-			u.RawPath += controlPath
+			u.inner.RawPath += controlPath
 		}
 
-		if !strings.HasSuffix(u.Path, "/") {
-			u.Path += "/"
+		if !strings.HasSuffix(u.inner.Path, "/") {
+			u.inner.Path += "/"
 		}
-		u.Path += controlPath
+		u.inner.Path += controlPath
+	}
+}
+
+// SetHost sets the host of a RTSP URL.
+func (u *URL) SetHost(host string) {
+	u.inner.Host = host
+}
+
+// SetUser sets the credentials of a RTSP URL.
+func (u *URL) SetUser(user *url.Userinfo) {
+	u.inner.User = user
+}
+
+// SetPath sets the path of a RTSP URL.
+func (u *URL) SetPath(path string) {
+	if u.inner.RawPath != "" {
+		u.inner.RawPath = path
+	} else {
+		u.inner.Path = path
 	}
 }

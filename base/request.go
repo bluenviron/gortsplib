@@ -4,7 +4,6 @@ package base
 import (
 	"bufio"
 	"fmt"
-	"net/url"
 	"strconv"
 )
 
@@ -40,7 +39,7 @@ type Request struct {
 	Method Method
 
 	// request url
-	URL *url.URL
+	URL *URL
 
 	// map of header values
 	Header Header
@@ -75,15 +74,11 @@ func (req *Request) Read(rb *bufio.Reader) error {
 		return fmt.Errorf("empty url")
 	}
 
-	ur, err := url.Parse(rawUrl)
+	ur, err := ParseURL(rawUrl)
 	if err != nil {
 		return fmt.Errorf("unable to parse url (%v)", rawUrl)
 	}
 	req.URL = ur
-
-	if req.URL.Scheme != "rtsp" {
-		return fmt.Errorf("invalid url scheme (%v)", rawUrl)
-	}
 
 	byts, err = readBytesLimited(rb, '\r', requestMaxProtocolLength)
 	if err != nil {
@@ -116,15 +111,7 @@ func (req *Request) Read(rb *bufio.Reader) error {
 
 // Write writes a request.
 func (req Request) Write(bw *bufio.Writer) error {
-	// remove credentials
-	u := &url.URL{
-		Scheme:   req.URL.Scheme,
-		Host:     req.URL.Host,
-		Path:     req.URL.Path,
-		RawPath:  req.URL.RawPath,
-		RawQuery: req.URL.RawQuery,
-	}
-
+	u := req.URL.CloneWithoutCredentials()
 	_, err := bw.Write([]byte(string(req.Method) + " " + u.String() + " " + rtspProtocol10 + "\r\n"))
 	if err != nil {
 		return err

@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -85,7 +84,7 @@ type ConnClient struct {
 	cseq              int
 	auth              *auth.Client
 	state             connClientState
-	streamUrl         *url.URL
+	streamUrl         *base.URL
 	streamProtocol    *StreamProtocol
 	tracks            map[int]*Track
 	rtcpReceivers     map[int]*rtcpreceiver.RtcpReceiver
@@ -279,15 +278,7 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 
 	// insert auth
 	if c.auth != nil {
-		// remove credentials
-		u := &url.URL{
-			Scheme:   req.URL.Scheme,
-			Host:     req.URL.Host,
-			Path:     req.URL.Path,
-			RawPath:  req.URL.RawPath,
-			RawQuery: req.URL.RawQuery,
-		}
-		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, u)
+		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, req.URL)
 	}
 
 	// insert cseq
@@ -334,9 +325,8 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	}
 
 	// setup authentication
-	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.auth == nil {
-		pass, _ := req.URL.User.Password()
-		auth, err := auth.NewClient(res.Header["WWW-Authenticate"], req.URL.User.Username(), pass)
+	if res.StatusCode == base.StatusUnauthorized && req.URL.User() != nil && c.auth == nil {
+		auth, err := auth.NewClient(res.Header["WWW-Authenticate"], req.URL.User())
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup authentication: %s", err)
 		}
@@ -352,20 +342,14 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 // Options writes an OPTIONS request and reads a response, that contains
 // the methods allowed by the server. Since this method is not implemented by
 // every RTSP server, the function does not fail if the returned code is StatusNotFound.
-func (c *ConnClient) Options(u *url.URL) (*base.Response, error) {
+func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
 
 	res, err := c.Do(&base.Request{
 		Method: base.OPTIONS,
-		URL: &url.URL{
-			Scheme: "rtsp",
-			Host:   u.Host,
-			User:   u.User,
-			// use the stream path, otherwise some cameras do not reply
-			Path: u.Path,
-		},
+		URL:    u,
 	})
 	if err != nil {
 		return nil, err
@@ -379,7 +363,7 @@ func (c *ConnClient) Options(u *url.URL) (*base.Response, error) {
 }
 
 // Describe writes a DESCRIBE request and reads a Response.
-func (c *ConnClient) Describe(u *url.URL) (Tracks, *base.Response, error) {
+func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, nil, fmt.Errorf("can't be called when reading or publishing")
 	}
@@ -417,7 +401,7 @@ func (c *ConnClient) Describe(u *url.URL) (Tracks, *base.Response, error) {
 }
 
 // build an URL by merging baseUrl with the control attribute from track.Media
-func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode TransportMode, track *Track) *url.URL {
+func (c *ConnClient) urlForTrack(baseUrl *base.URL, mode TransportMode, track *Track) *base.URL {
 	control := func() string {
 		// if we're reading, get control from track ID
 		if mode == TransportModeRecord {
@@ -440,35 +424,24 @@ func (c *ConnClient) urlForTrack(baseUrl *url.URL, mode TransportMode, track *Tr
 
 	// control attribute contains an absolute path
 	if strings.HasPrefix(control, "rtsp://") {
-		newUrl, err := url.Parse(control)
+		newUrl, err := base.ParseURL(control)
 		if err != nil {
 			return baseUrl
 		}
 
-		return &url.URL{
-			Scheme:   "rtsp",
-			Host:     baseUrl.Host,
-			User:     baseUrl.User,
-			Path:     newUrl.Path,
-			RawPath:  newUrl.RawPath,
-			RawQuery: newUrl.RawQuery,
-		}
+		// copy host and credentials
+		newUrl.SetHost(baseUrl.Host())
+		newUrl.SetUser(baseUrl.User())
+		return newUrl
 	}
 
-	// control attribute contains a relative path
-	u := &url.URL{
-		Scheme:   "rtsp",
-		Host:     baseUrl.Host,
-		User:     baseUrl.User,
-		Path:     baseUrl.Path,
-		RawPath:  baseUrl.RawPath,
-		RawQuery: baseUrl.RawQuery,
-	}
-	base.URLAddControlPath(u, control)
-	return u
+	// control attribute contains a control path
+	newUrl := baseUrl.Clone()
+	newUrl.AddControlPath(control)
+	return newUrl
 }
 
-func (c *ConnClient) setup(u *url.URL, mode TransportMode, track *Track, ht *headers.Transport) (*base.Response, error) {
+func (c *ConnClient) setup(u *base.URL, mode TransportMode, track *Track, ht *headers.Transport) (*base.Response, error) {
 	res, err := c.Do(&base.Request{
 		Method: base.SETUP,
 		URL:    c.urlForTrack(u, mode, track),
@@ -489,7 +462,7 @@ func (c *ConnClient) setup(u *url.URL, mode TransportMode, track *Track, ht *hea
 
 // SetupUDP writes a SETUP request and reads a Response.
 // If rtpPort and rtcpPort are zero, they are be chosen automatically.
-func (c *ConnClient) SetupUDP(u *url.URL, mode TransportMode, track *Track, rtpPort int,
+func (c *ConnClient) SetupUDP(u *base.URL, mode TransportMode, track *Track, rtpPort int,
 	rtcpPort int) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
@@ -608,7 +581,7 @@ func (c *ConnClient) SetupUDP(u *url.URL, mode TransportMode, track *Track, rtpP
 }
 
 // SetupTCP writes a SETUP request and reads a Response.
-func (c *ConnClient) SetupTCP(u *url.URL, mode TransportMode, track *Track) (*base.Response, error) {
+func (c *ConnClient) SetupTCP(u *base.URL, mode TransportMode, track *Track) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
@@ -662,7 +635,7 @@ func (c *ConnClient) SetupTCP(u *url.URL, mode TransportMode, track *Track) (*ba
 
 // Play writes a PLAY request and reads a Response
 // This function can be called only after SetupUDP() or SetupTCP().
-func (c *ConnClient) Play(u *url.URL) (*base.Response, error) {
+func (c *ConnClient) Play(u *base.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
@@ -772,14 +745,8 @@ func (c *ConnClient) LoopUDP() error {
 			case <-keepaliveTicker.C:
 				_, err := c.Do(&base.Request{
 					Method: base.OPTIONS,
-					URL: &url.URL{
-						Scheme: "rtsp",
-						Host:   c.streamUrl.Host,
-						User:   c.streamUrl.User,
-						// use the stream path, otherwise some cameras do not reply
-						Path:    c.streamUrl.Path,
-						RawPath: c.streamUrl.RawPath,
-					},
+					// use the stream path, otherwise some cameras do not reply
+					URL:          c.streamUrl,
 					SkipResponse: true,
 				})
 				if err != nil {
@@ -811,7 +778,7 @@ func (c *ConnClient) LoopUDP() error {
 }
 
 // Announce writes an ANNOUNCE request and reads a Response.
-func (c *ConnClient) Announce(u *url.URL, tracks Tracks) (*base.Response, error) {
+func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
 	if c.streamUrl != nil {
 		fmt.Errorf("announce has already been sent with another url url")
 	}
@@ -838,7 +805,7 @@ func (c *ConnClient) Announce(u *url.URL, tracks Tracks) (*base.Response, error)
 }
 
 // Record writes a RECORD request and reads a Response.
-func (c *ConnClient) Record(u *url.URL) (*base.Response, error) {
+func (c *ConnClient) Record(u *base.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
