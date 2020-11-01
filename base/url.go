@@ -17,7 +17,7 @@ func stringsReverseIndexByte(s string, c byte) int {
 
 // URL is a RTSP URL.
 type URL struct {
-	inner *url.URL
+	inner url.URL
 }
 
 // ParseURL parses a RTSP URL.
@@ -31,7 +31,7 @@ func ParseURL(s string) (*URL, error) {
 		return nil, fmt.Errorf("wrong scheme")
 	}
 
-	return &URL{u}, nil
+	return &URL{*u}, nil
 }
 
 // MustParseURL is like ParseURL but panics in case of errors.
@@ -50,7 +50,7 @@ func (u *URL) String() string {
 
 // Clone clones a URL.
 func (u *URL) Clone() *URL {
-	return &URL{&url.URL{
+	return &URL{url.URL{
 		Scheme:     u.inner.Scheme,
 		Opaque:     u.inner.Opaque,
 		User:       u.inner.User,
@@ -64,7 +64,7 @@ func (u *URL) Clone() *URL {
 
 // CloneWithoutCredentials clones a URL without its credentials.
 func (u *URL) CloneWithoutCredentials() *URL {
-	return &URL{&url.URL{
+	return &URL{url.URL{
 		Scheme:     u.inner.Scheme,
 		Opaque:     u.inner.Opaque,
 		Host:       u.inner.Host,
