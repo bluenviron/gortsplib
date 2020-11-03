@@ -160,6 +160,12 @@ func (u *URL) SetUser(user *url.Userinfo) {
 
 // AddControlPath adds a control path to a RTSP url.
 func (u *URL) AddControlPath(controlPath string) {
+	// special case: query
+	if controlPath[0] == '?' {
+		u.inner.RawQuery += controlPath[1:]
+		return
+	}
+
 	// always insert the control path at the end of the url
 	if u.inner.RawQuery != "" {
 		if !strings.HasSuffix(u.inner.RawQuery, "/") {

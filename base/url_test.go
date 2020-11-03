@@ -79,31 +79,47 @@ func TestURLBaseControlPath(t *testing.T) {
 
 func TestURLAddControlPath(t *testing.T) {
 	for _, ca := range []struct {
-		u  *URL
-		ou *URL
+		control string
+		u       *URL
+		ou      *URL
 	}{
 		{
+			"trackID=1",
 			MustParseURL("rtsp://localhost:8554/teststream"),
 			MustParseURL("rtsp://localhost:8554/teststream/trackID=1"),
 		},
 		{
+			"trackID=1",
 			MustParseURL("rtsp://localhost:8554/test/stream"),
 			MustParseURL("rtsp://localhost:8554/test/stream/trackID=1"),
 		},
 		{
+			"trackID=1",
 			MustParseURL("rtsp://192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp"),
 			MustParseURL("rtsp://192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1"),
 		},
 		{
+			"trackID=1",
 			MustParseURL("rtsp://192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
 			MustParseURL("rtsp://192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
 		},
 		{
+			"trackID=1",
 			MustParseURL("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
 			MustParseURL("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
 		},
+		{
+			"?ctype=video",
+			MustParseURL("rtsp://192.168.1.99:554/"),
+			MustParseURL("rtsp://192.168.1.99:554/?ctype=video"),
+		},
+		{
+			"?ctype=video",
+			MustParseURL("rtsp://192.168.1.99:554/test"),
+			MustParseURL("rtsp://192.168.1.99:554/test?ctype=video"),
+		},
 	} {
-		ca.u.AddControlPath("trackID=1")
+		ca.u.AddControlPath(ca.control)
 		require.Equal(t, ca.ou, ca.u)
 	}
 }
