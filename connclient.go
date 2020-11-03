@@ -324,8 +324,8 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	}
 
 	// setup authentication
-	if res.StatusCode == base.StatusUnauthorized && req.URL.User() != nil && c.auth == nil {
-		auth, err := auth.NewClient(res.Header["WWW-Authenticate"], req.URL.User())
+	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.auth == nil {
+		auth, err := auth.NewClient(res.Header["WWW-Authenticate"], req.URL.User)
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup authentication: %s", err)
 		}
@@ -440,14 +440,14 @@ func (c *ConnClient) urlForTrack(baseUrl *base.URL, mode TransportMode, track *T
 		}
 
 		// copy host and credentials
-		newUrl.SetHost(baseUrl.Host())
-		newUrl.SetUser(baseUrl.User())
+		newUrl.Host = baseUrl.Host
+		newUrl.User = baseUrl.User
 		return newUrl
 	}
 
-	// control attribute contains a control path
+	// control attribute contains a control attribute
 	newUrl := baseUrl.Clone()
-	newUrl.AddControlPath(control)
+	newUrl.AddControlAttribute(control)
 	return newUrl
 }
 

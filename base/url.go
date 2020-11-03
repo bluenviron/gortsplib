@@ -16,9 +16,9 @@ func stringsReverseIndexByte(s string, c byte) int {
 }
 
 // URL is a RTSP URL.
-type URL struct {
-	inner url.URL
-}
+// This is basically an HTTP url with some additional functions to handle
+// control attributes.
+type URL url.URL
 
 // ParseURL parses a RTSP URL.
 func ParseURL(s string) (*URL, error) {
@@ -31,7 +31,7 @@ func ParseURL(s string) (*URL, error) {
 		return nil, fmt.Errorf("wrong scheme")
 	}
 
-	return &URL{*u}, nil
+	return (*URL)(u), nil
 }
 
 // MustParseURL is like ParseURL but panics in case of errors.
@@ -45,54 +45,44 @@ func MustParseURL(s string) *URL {
 
 // String implements fmt.Stringer.
 func (u *URL) String() string {
-	return u.inner.String()
+	return (*url.URL)(u).String()
 }
 
 // Clone clones a URL.
 func (u *URL) Clone() *URL {
-	return &URL{url.URL{
-		Scheme:     u.inner.Scheme,
-		Opaque:     u.inner.Opaque,
-		User:       u.inner.User,
-		Host:       u.inner.Host,
-		Path:       u.inner.Path,
-		RawPath:    u.inner.RawPath,
-		ForceQuery: u.inner.ForceQuery,
-		RawQuery:   u.inner.RawQuery,
-	}}
+	return (*URL)(&url.URL{
+		Scheme:     u.Scheme,
+		Opaque:     u.Opaque,
+		User:       u.User,
+		Host:       u.Host,
+		Path:       u.Path,
+		RawPath:    u.RawPath,
+		ForceQuery: u.ForceQuery,
+		RawQuery:   u.RawQuery,
+	})
 }
 
 // CloneWithoutCredentials clones a URL without its credentials.
 func (u *URL) CloneWithoutCredentials() *URL {
-	return &URL{url.URL{
-		Scheme:     u.inner.Scheme,
-		Opaque:     u.inner.Opaque,
-		Host:       u.inner.Host,
-		Path:       u.inner.Path,
-		RawPath:    u.inner.RawPath,
-		ForceQuery: u.inner.ForceQuery,
-		RawQuery:   u.inner.RawQuery,
-	}}
-}
-
-// Host returns the host of a RTSP URL.
-func (u *URL) Host() string {
-	return u.inner.Host
-}
-
-// User returns the credentials of a RTSP URL.
-func (u *URL) User() *url.Userinfo {
-	return u.inner.User
+	return (*URL)(&url.URL{
+		Scheme:     u.Scheme,
+		Opaque:     u.Opaque,
+		Host:       u.Host,
+		Path:       u.Path,
+		RawPath:    u.RawPath,
+		ForceQuery: u.ForceQuery,
+		RawQuery:   u.RawQuery,
+	})
 }
 
 // BasePath returns the base path of a RTSP URL.
-// We assume that the URL doesn't contain a control path.
+// We assume that the URL doesn't contain a control attribute.
 func (u *URL) BasePath() (string, bool) {
 	var path string
-	if u.inner.RawPath != "" {
-		path = u.inner.RawPath
+	if u.RawPath != "" {
+		path = u.RawPath
 	} else {
-		path = u.inner.Path
+		path = u.Path
 	}
 
 	// remove leading slash
@@ -104,17 +94,18 @@ func (u *URL) BasePath() (string, bool) {
 	return path, true
 }
 
-// BaseControlPath returns the base path and the control path of a RTSP URL.
-// We assume that the URL contains a control path.
-func (u *URL) BaseControlPath() (string, string, bool) {
+// BasePathControlAttr returns the base path and the control attribute of a RTSP URL.
+// We assume that the URL contains a control attribute.
+// We assume that the base path and control attribute are divided with a slash.
+func (u *URL) BasePathControlAttr() (string, string, bool) {
 	var pathAndQuery string
-	if u.inner.RawPath != "" {
-		pathAndQuery = u.inner.RawPath
+	if u.RawPath != "" {
+		pathAndQuery = u.RawPath
 	} else {
-		pathAndQuery = u.inner.Path
+		pathAndQuery = u.Path
 	}
-	if u.inner.RawQuery != "" {
-		pathAndQuery += "?" + u.inner.RawQuery
+	if u.RawQuery != "" {
+		pathAndQuery += "?" + u.RawQuery
 	}
 
 	// remove leading slash
@@ -148,60 +139,27 @@ func (u *URL) BaseControlPath() (string, string, bool) {
 	return basePath, controlPath, true
 }
 
-// SetHost sets the host of a RTSP URL.
-func (u *URL) SetHost(host string) {
-	u.inner.Host = host
-}
-
-// SetUser sets the credentials of a RTSP URL.
-func (u *URL) SetUser(user *url.Userinfo) {
-	u.inner.User = user
-}
-
-// AddControlPath adds a control path to a RTSP url.
-func (u *URL) AddControlPath(controlPath string) {
-	// special case: query
-	if controlPath[0] == '?' {
-		u.inner.RawQuery += controlPath[1:]
-		return
+// AddControlAttribute adds a control attribute to a RTSP url.
+func (u *URL) AddControlAttribute(controlPath string) {
+	if controlPath[0] != '?' {
+		controlPath = "/" + controlPath
 	}
 
-	// always insert the control path at the end of the url
-	if u.inner.RawQuery != "" {
-		if !strings.HasSuffix(u.inner.RawQuery, "/") {
-			u.inner.RawQuery += "/"
-		}
-		u.inner.RawQuery += controlPath
-
-	} else {
-		if u.inner.RawPath != "" {
-			if !strings.HasSuffix(u.inner.RawPath, "/") {
-				u.inner.RawPath += "/"
-			}
-			u.inner.RawPath += controlPath
-		}
-
-		if !strings.HasSuffix(u.inner.Path, "/") {
-			u.inner.Path += "/"
-		}
-		u.inner.Path += controlPath
-	}
+	// insert the control attribute at the end of the url
+	// if there's a query, insert it after the query
+	// otherwise insert it after the path
+	nu, _ := ParseURL(u.String() + controlPath)
+	*u = *nu
 }
 
-// RemoveControlPath removes a control path from an URL.
-func (u *URL) RemoveControlPath() {
-	_, controlPath, ok := u.BaseControlPath()
+// RemoveControlAttribute removes a control attribute from an URL.
+func (u *URL) RemoveControlAttribute() {
+	_, controlPath, ok := u.BasePathControlAttr()
 	if !ok {
 		return
 	}
 
-	if strings.HasSuffix(u.inner.RawQuery, controlPath) {
-		u.inner.RawQuery = u.inner.RawQuery[:len(u.inner.RawQuery)-len(controlPath)]
-
-	} else if strings.HasSuffix(u.inner.RawPath, controlPath) {
-		u.inner.RawPath = u.inner.RawPath[:len(u.inner.RawPath)-len(controlPath)]
-
-	} else if strings.HasSuffix(u.inner.Path, controlPath) {
-		u.inner.Path = u.inner.Path[:len(u.inner.Path)-len(controlPath)]
-	}
+	urStr := u.String()
+	nu, _ := ParseURL(urStr[:len(urStr)-len(controlPath)])
+	*u = *nu
 }

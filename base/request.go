@@ -111,8 +111,8 @@ func (req *Request) Read(rb *bufio.Reader) error {
 
 // Write writes a request.
 func (req Request) Write(bw *bufio.Writer) error {
-	u := req.URL.CloneWithoutCredentials()
-	_, err := bw.Write([]byte(string(req.Method) + " " + u.String() + " " + rtspProtocol10 + "\r\n"))
+	urStr := req.URL.CloneWithoutCredentials().String()
+	_, err := bw.Write([]byte(string(req.Method) + " " + urStr + " " + rtspProtocol10 + "\r\n"))
 	if err != nil {
 		return err
 	}

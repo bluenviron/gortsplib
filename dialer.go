@@ -53,7 +53,7 @@ func (d Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, err
 	}
 
 	conn, err := NewConnClient(ConnClientConf{
-		Host:            u.Host(),
+		Host:            u.Host,
 		ReadTimeout:     d.ReadTimeout,
 		WriteTimeout:    d.WriteTimeout,
 		ReadBufferCount: d.ReadBufferCount,
@@ -117,7 +117,7 @@ func (d Dialer) DialPublish(address string, proto StreamProtocol, tracks Tracks)
 	}
 
 	conn, err := NewConnClient(ConnClientConf{
-		Host:            u.Host(),
+		Host:            u.Host,
 		ReadTimeout:     d.ReadTimeout,
 		WriteTimeout:    d.WriteTimeout,
 		ReadBufferCount: d.ReadBufferCount,

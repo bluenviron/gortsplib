@@ -87,7 +87,7 @@ func NewClient(v base.HeaderValue, userinfo *url.Userinfo) (*Client, error) {
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
 // the given method and url.
 func (ac *Client) GenerateHeader(method base.Method, ur *base.URL) base.HeaderValue {
-	ur = ur.CloneWithoutCredentials()
+	urStr := ur.CloneWithoutCredentials().String()
 
 	switch ac.method {
 	case headers.AuthBasic:
@@ -97,17 +97,14 @@ func (ac *Client) GenerateHeader(method base.Method, ur *base.URL) base.HeaderVa
 
 	case headers.AuthDigest:
 		response := md5Hex(md5Hex(ac.user+":"+ac.realm+":"+ac.pass) + ":" +
-			ac.nonce + ":" + md5Hex(string(method)+":"+ur.String()))
+			ac.nonce + ":" + md5Hex(string(method)+":"+urStr))
 
 		return (&headers.Auth{
 			Method:   headers.AuthDigest,
 			Username: &ac.user,
 			Realm:    &ac.realm,
 			Nonce:    &ac.nonce,
-			URI: func() *string {
-				v := ur.String()
-				return &v
-			}(),
+			URI:      &urStr,
 			Response: &response,
 		}).Write()
 	}

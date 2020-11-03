@@ -38,7 +38,7 @@ func TestURLBasePath(t *testing.T) {
 	}
 }
 
-func TestURLBaseControlPath(t *testing.T) {
+func TestURLBasePathControlAttr(t *testing.T) {
 	for _, ca := range []struct {
 		u *URL
 		b string
@@ -70,14 +70,14 @@ func TestURLBaseControlPath(t *testing.T) {
 			"trackID=1",
 		},
 	} {
-		b, c, ok := ca.u.BaseControlPath()
+		b, c, ok := ca.u.BasePathControlAttr()
 		require.Equal(t, true, ok)
 		require.Equal(t, ca.b, b)
 		require.Equal(t, ca.c, c)
 	}
 }
 
-func TestURLAddControlPath(t *testing.T) {
+func TestURLAddControlAttribute(t *testing.T) {
 	for _, ca := range []struct {
 		control string
 		u       *URL
@@ -119,7 +119,7 @@ func TestURLAddControlPath(t *testing.T) {
 			MustParseURL("rtsp://192.168.1.99:554/test?ctype=video"),
 		},
 	} {
-		ca.u.AddControlPath(ca.control)
+		ca.u.AddControlAttribute(ca.control)
 		require.Equal(t, ca.ou, ca.u)
 	}
 }
