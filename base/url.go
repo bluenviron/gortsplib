@@ -153,6 +153,7 @@ func (u *URL) AddControlAttribute(controlPath string) {
 }
 
 // RemoveControlAttribute removes a control attribute from an URL.
+// We assume that the base path and control attribute are divided with a slash. 
 func (u *URL) RemoveControlAttribute() {
 	_, controlPath, ok := u.BasePathControlAttr()
 	if !ok {
