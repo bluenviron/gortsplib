@@ -7,8 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aler9/sdp-dirty/v3"
 	"github.com/notedit/rtmp/codec/aac"
+	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/sdp"
 )
 
 // Track is a track available in a certain URL.
@@ -17,7 +19,7 @@ type Track struct {
 	Id int
 
 	// track codec and info in SDP format
-	Media *sdp.MediaDescription
+	Media *psdp.MediaDescription
 }
 
 // NewTrackH264 initializes an H264 track.
@@ -30,13 +32,13 @@ func NewTrackH264(id int, sps []byte, pps []byte) (*Track, error) {
 
 	return &Track{
 		Id: id,
-		Media: &sdp.MediaDescription{
-			MediaName: sdp.MediaName{
+		Media: &psdp.MediaDescription{
+			MediaName: psdp.MediaName{
 				Media:   "video",
 				Protos:  []string{"RTP", "AVP"},
 				Formats: []string{typ},
 			},
-			Attributes: []sdp.Attribute{
+			Attributes: []psdp.Attribute{
 				{
 					Key:   "rtpmap",
 					Value: typ + " H264/90000",
@@ -79,13 +81,13 @@ func NewTrackAac(id int, config []byte) (*Track, error) {
 
 	return &Track{
 		Id: id,
-		Media: &sdp.MediaDescription{
-			MediaName: sdp.MediaName{
+		Media: &psdp.MediaDescription{
+			MediaName: psdp.MediaName{
 				Media:   "audio",
 				Protos:  []string{"RTP", "AVP"},
 				Formats: []string{typ},
 			},
-			Attributes: []sdp.Attribute{
+			Attributes: []psdp.Attribute{
 				{
 					Key: "rtpmap",
 					Value: typ + " MPEG4-GENERIC/" + strconv.FormatInt(int64(codec.Config.SampleRate), 10) +
@@ -109,15 +111,15 @@ func NewTrackAac(id int, config []byte) (*Track, error) {
 type Tracks []*Track
 
 // ReadTracks reads tracks from an encoded SDP.
-func ReadTracks(encodedSdp []byte) (Tracks, error) {
-	sdpd := &sdp.SessionDescription{}
-	err := sdpd.Unmarshal(encodedSdp)
+func ReadTracks(byts []byte) (Tracks, error) {
+	desc := sdp.SessionDescription{}
+	err := desc.Unmarshal(byts)
 	if err != nil {
 		return nil, err
 	}
 
-	ts := make(Tracks, len(sdpd.MediaDescriptions))
-	for i, media := range sdpd.MediaDescriptions {
+	ts := make(Tracks, len(desc.MediaDescriptions))
+	for i, media := range desc.MediaDescriptions {
 		ts[i] = &Track{
 			Id:    i,
 			Media: media,
@@ -130,37 +132,34 @@ func ReadTracks(encodedSdp []byte) (Tracks, error) {
 // Write writes tracks in SDP format.
 func (ts Tracks) Write() []byte {
 	sout := &sdp.SessionDescription{
-		SessionName: func() *sdp.SessionName {
-			ret := sdp.SessionName("Stream")
-			return &ret
-		}(),
-		Origin: &sdp.Origin{
+		SessionName: psdp.SessionName("Stream"),
+		Origin: psdp.Origin{
 			Username:       "-",
 			NetworkType:    "IN",
 			AddressType:    "IP4",
 			UnicastAddress: "127.0.0.1",
 		},
 		// required by Darwin Streaming Server
-		ConnectionInformation: &sdp.ConnectionInformation{
+		ConnectionInformation: &psdp.ConnectionInformation{
 			NetworkType: "IN",
 			AddressType: "IP4",
-			Address:     &sdp.Address{Address: "0.0.0.0"},
+			Address:     &psdp.Address{Address: "0.0.0.0"},
 		},
-		TimeDescriptions: []sdp.TimeDescription{
-			{Timing: sdp.Timing{0, 0}},
+		TimeDescriptions: []psdp.TimeDescription{
+			{Timing: psdp.Timing{0, 0}},
 		},
 	}
 
 	for i, track := range ts {
-		mout := &sdp.MediaDescription{
-			MediaName: sdp.MediaName{
+		mout := &psdp.MediaDescription{
+			MediaName: psdp.MediaName{
 				Media:   track.Media.MediaName.Media,
 				Protos:  []string{"RTP", "AVP"}, // override protocol
 				Formats: track.Media.MediaName.Formats,
 			},
 			Bandwidth: track.Media.Bandwidth,
-			Attributes: func() []sdp.Attribute {
-				var ret []sdp.Attribute
+			Attributes: func() []psdp.Attribute {
+				var ret []psdp.Attribute
 
 				for _, attr := range track.Media.Attributes {
 					if attr.Key == "rtpmap" || attr.Key == "fmtp" {
@@ -170,7 +169,7 @@ func (ts Tracks) Write() []byte {
 
 				// control attribute is the path that is appended
 				// to the stream path in SETUP
-				ret = append(ret, sdp.Attribute{
+				ret = append(ret, psdp.Attribute{
 					Key:   "control",
 					Value: "trackID=" + strconv.FormatInt(int64(i), 10),
 				})
