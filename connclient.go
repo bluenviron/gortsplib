@@ -479,7 +479,7 @@ func (c *ConnClient) SetupUDP(u *base.URL, mode TransportMode, track *Track, rtp
 	}
 
 	if c.streamUrl != nil && *u != *c.streamUrl {
-		fmt.Errorf("setup has already begun with another url")
+		return nil, fmt.Errorf("setup has already begun with another url")
 	}
 
 	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolUDP {
@@ -597,7 +597,7 @@ func (c *ConnClient) SetupTCP(u *base.URL, mode TransportMode, track *Track) (*b
 	}
 
 	if c.streamUrl != nil && *u != *c.streamUrl {
-		fmt.Errorf("setup has already begun with another url")
+		return nil, fmt.Errorf("setup has already begun with another url")
 	}
 
 	if c.streamProtocol != nil && *c.streamProtocol != StreamProtocolTCP {
@@ -655,7 +655,7 @@ func (c *ConnClient) Play(u *base.URL) (*base.Response, error) {
 	}
 
 	if *u != *c.streamUrl {
-		fmt.Errorf("must be called with the same url used for SetupUDP() or SetupTCP()")
+		return nil, fmt.Errorf("must be called with the same url used for SetupUDP() or SetupTCP()")
 	}
 
 	res, err := c.Do(&base.Request{
@@ -790,7 +790,7 @@ func (c *ConnClient) LoopUDP() error {
 // Announce writes an ANNOUNCE request and reads a Response.
 func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
 	if c.streamUrl != nil {
-		fmt.Errorf("announce has already been sent with another url url")
+		return nil, fmt.Errorf("announce has already been sent with another url url")
 	}
 
 	res, err := c.Do(&base.Request{
