@@ -1,6 +1,6 @@
 module github.com/aler9/gortsplib
 
-go 1.12
+go 1.13
 
 require (
 	github.com/notedit/rtmp v0.0.2
