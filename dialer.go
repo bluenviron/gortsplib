@@ -91,7 +91,7 @@ func (d Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, err
 		}
 	}
 
-	_, err = conn.Play(u)
+	_, err = conn.Play()
 	if err != nil {
 		conn.Close()
 		return nil, err
@@ -139,7 +139,7 @@ func (d Dialer) DialPublish(address string, proto StreamProtocol, tracks Tracks)
 		}
 	}
 
-	_, err = conn.Record(u)
+	_, err = conn.Record()
 	if err != nil {
 		conn.Close()
 		return nil, err
