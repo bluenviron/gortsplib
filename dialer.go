@@ -83,21 +83,11 @@ func (d Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, err
 		return d.DialRead(res.Header["Location"][0], proto)
 	}
 
-	if proto == StreamProtocolUDP {
-		for _, track := range tracks {
-			_, err := conn.SetupUDP(u, headers.TransportModePlay, track, 0, 0)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-	} else {
-		for _, track := range tracks {
-			_, err := conn.SetupTCP(u, headers.TransportModePlay, track)
-			if err != nil {
-				conn.Close()
-				return nil, err
-			}
+	for _, track := range tracks {
+		_, err := conn.Setup(u, headers.TransportModePlay, proto, track, 0, 0)
+		if err != nil {
+			conn.Close()
+			return nil, err
 		}
 	}
 
@@ -141,22 +131,11 @@ func (d Dialer) DialPublish(address string, proto StreamProtocol, tracks Tracks)
 		return nil, err
 	}
 
-	if proto == StreamProtocolUDP {
-		for _, track := range tracks {
-			_, err = conn.SetupUDP(u, headers.TransportModeRecord, track, 0, 0)
-			if err != nil {
-				conn.Close()
-				return nil, err
-			}
-		}
-
-	} else {
-		for _, track := range tracks {
-			_, err = conn.SetupTCP(u, headers.TransportModeRecord, track)
-			if err != nil {
-				conn.Close()
-				return nil, err
-			}
+	for _, track := range tracks {
+		_, err = conn.Setup(u, headers.TransportModeRecord, proto, track, 0, 0)
+		if err != nil {
+			conn.Close()
+			return nil, err
 		}
 	}
 
