@@ -97,8 +97,8 @@ type ConnClient struct {
 	frame             *base.InterleavedFrame
 	tcpFrameBuffer    *multibuffer.MultiBuffer
 
-	receiverReportTerminate chan struct{}
-	receiverReportDone      chan struct{}
+	reportWriterTerminate chan struct{}
+	reportWriterDone      chan struct{}
 }
 
 // NewConnClient allocates a ConnClient. See ConnClientConf for the options.
@@ -152,6 +152,9 @@ func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
 // Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
 	if c.state == connClientStatePlay {
+		close(c.reportWriterTerminate)
+		<-c.reportWriterDone
+
 		c.Do(&base.Request{
 			Method:       base.TEARDOWN,
 			URL:          c.streamUrl,
@@ -160,11 +163,6 @@ func (c *ConnClient) Close() error {
 	}
 
 	err := c.conf.Conn.Close()
-
-	if c.receiverReportTerminate != nil {
-		close(c.receiverReportTerminate)
-		<-c.receiverReportDone
-	}
 
 	for _, l := range c.udpRtpListeners {
 		l.close()
@@ -692,20 +690,21 @@ func (c *ConnClient) Play() (*base.Response, error) {
 		}
 	}
 
-	c.receiverReportTerminate = make(chan struct{})
-	c.receiverReportDone = make(chan struct{})
+	c.reportWriterTerminate = make(chan struct{})
+	c.reportWriterDone = make(chan struct{})
 
-	receiverReportTicker := time.NewTicker(clientReceiverReportPeriod)
 	go func() {
-		defer close(c.receiverReportDone)
-		defer receiverReportTicker.Stop()
+		defer close(c.reportWriterDone)
+
+		reportWriterTicker := time.NewTicker(clientReceiverReportPeriod)
+		defer reportWriterTicker.Stop()
 
 		for {
 			select {
-			case <-c.receiverReportTerminate:
+			case <-c.reportWriterTerminate:
 				return
 
-			case <-receiverReportTicker.C:
+			case <-reportWriterTicker.C:
 				for trackId := range c.rtcpReceivers {
 					frame := c.rtcpReceivers[trackId].Report()
 
@@ -870,8 +869,8 @@ func (c *ConnClient) Pause() (*base.Response, error) {
 	}
 
 	if c.state == connClientStatePlay {
-		close(c.receiverReportTerminate)
-		<-c.receiverReportDone
+		close(c.reportWriterTerminate)
+		<-c.reportWriterDone
 	}
 
 	res, err := c.Do(&base.Request{
