@@ -489,7 +489,15 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 
 	var rtpListener *connClientUDPListener
 	var rtcpListener *connClientUDPListener
-	var transport *headers.Transport
+
+	transport := &headers.Transport{
+		Protocol: proto,
+		Delivery: func() *base.StreamDelivery {
+			ret := base.StreamDeliveryUnicast
+			return &ret
+		}(),
+		Mode: &mode,
+	}
 
 	if proto == base.StreamProtocolUDP {
 		if (rtpPort == 0 && rtcpPort != 0) ||
@@ -543,26 +551,10 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 			return nil, err
 		}
 
-		transport = &headers.Transport{
-			Protocol: StreamProtocolUDP,
-			Delivery: func() *base.StreamDelivery {
-				ret := base.StreamDeliveryUnicast
-				return &ret
-			}(),
-			ClientPorts: &[2]int{rtpPort, rtcpPort},
-			Mode:        &mode,
-		}
+		transport.ClientPorts = &[2]int{rtpPort, rtcpPort}
 
 	} else {
-		transport = &headers.Transport{
-			Protocol: StreamProtocolTCP,
-			Delivery: func() *base.StreamDelivery {
-				ret := base.StreamDeliveryUnicast
-				return &ret
-			}(),
-			InterleavedIds: &[2]int{(track.Id * 2), (track.Id * 2) + 1},
-			Mode:           &mode,
-		}
+		transport.InterleavedIds = &[2]int{(track.Id * 2), (track.Id * 2) + 1}
 	}
 
 	res, err := c.setup(u, mode, track, transport)
