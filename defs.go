@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"github.com/aler9/gortsplib/base"
-	"github.com/aler9/gortsplib/headers"
 )
 
 // StreamProtocol is the protocol of a stream.
@@ -36,15 +35,4 @@ const (
 
 	// StreamTypeRtcp means that the stream contains RTCP packets
 	StreamTypeRtcp StreamType = base.StreamTypeRtcp
-)
-
-// TransportMode is a transport mode.
-type TransportMode = headers.TransportMode
-
-const (
-	// TransportModePlay is the "play" transport mode
-	TransportModePlay TransportMode = headers.TransportModePlay
-
-	// TransportModeRecord is the "record" transport mode
-	TransportModeRecord TransportMode = headers.TransportModeRecord
 )

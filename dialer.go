@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/headers"
 )
 
 // DefaultDialer is the default dialer, used by DialRead and DialPublish.
@@ -84,7 +85,7 @@ func (d Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, err
 
 	if proto == StreamProtocolUDP {
 		for _, track := range tracks {
-			_, err := conn.SetupUDP(u, TransportModePlay, track, 0, 0)
+			_, err := conn.SetupUDP(u, headers.TransportModePlay, track, 0, 0)
 			if err != nil {
 				return nil, err
 			}
@@ -92,7 +93,7 @@ func (d Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, err
 
 	} else {
 		for _, track := range tracks {
-			_, err := conn.SetupTCP(u, TransportModePlay, track)
+			_, err := conn.SetupTCP(u, headers.TransportModePlay, track)
 			if err != nil {
 				conn.Close()
 				return nil, err
@@ -142,7 +143,7 @@ func (d Dialer) DialPublish(address string, proto StreamProtocol, tracks Tracks)
 
 	if proto == StreamProtocolUDP {
 		for _, track := range tracks {
-			_, err = conn.SetupUDP(u, TransportModeRecord, track, 0, 0)
+			_, err = conn.SetupUDP(u, headers.TransportModeRecord, track, 0, 0)
 			if err != nil {
 				conn.Close()
 				return nil, err
@@ -151,7 +152,7 @@ func (d Dialer) DialPublish(address string, proto StreamProtocol, tracks Tracks)
 
 	} else {
 		for _, track := range tracks {
-			_, err = conn.SetupTCP(u, TransportModeRecord, track)
+			_, err = conn.SetupTCP(u, headers.TransportModeRecord, track)
 			if err != nil {
 				conn.Close()
 				return nil, err
