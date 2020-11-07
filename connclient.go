@@ -622,18 +622,18 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 }
 
 // Play writes a PLAY request and reads a Response.
-// This function can be called only after SetupUDP() or SetupTCP().
+// This can be called only after Setup().
 func (c *ConnClient) Play(u *base.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
 	}
 
 	if c.streamUrl == nil {
-		return nil, fmt.Errorf("can be called only after a successful SetupUDP() or SetupTCP()")
+		return nil, fmt.Errorf("can be called only after a successful Setup()")
 	}
 
 	if *u != *c.streamUrl {
-		return nil, fmt.Errorf("must be called with the same url used for SetupUDP() or SetupTCP()")
+		return nil, fmt.Errorf("must be called with the same url used for Setup())")
 	}
 
 	res, err := c.Do(&base.Request{
@@ -768,7 +768,7 @@ func (c *ConnClient) LoopUDP() error {
 // Announce writes an ANNOUNCE request and reads a Response.
 func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
 	if c.streamUrl != nil {
-		return nil, fmt.Errorf("announce has already been sent with another url url")
+		return nil, fmt.Errorf("announce has already been sent with another url")
 	}
 
 	res, err := c.Do(&base.Request{
@@ -793,6 +793,7 @@ func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 }
 
 // Record writes a RECORD request and reads a Response.
+// This can be called only after Announce() and Setup().
 func (c *ConnClient) Record(u *base.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")

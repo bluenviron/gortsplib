@@ -204,13 +204,16 @@ func TestDialPublishUDP(t *testing.T) {
 			defer func() { <-publishDone }()
 
 			var conn *ConnClient
-			defer func() {
-				conn.Close()
-				conn.LoopUDP()
-			}()
 
 			go func() {
 				defer close(publishDone)
+
+				var writerDone chan struct{}
+				defer func() {
+					if writerDone != nil {
+						<-writerDone
+					}
+				}()
 
 				pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
 				require.NoError(t, err)
@@ -238,18 +241,26 @@ func TestDialPublishUDP(t *testing.T) {
 					StreamProtocolUDP, Tracks{track})
 				require.NoError(t, err)
 
-				buf := make([]byte, 2048)
-				for {
-					n, _, err := pc.ReadFrom(buf)
-					if err != nil {
-						break
-					}
+				writerDone = make(chan struct{})
 
-					err = conn.WriteFrameUDP(track.Id, StreamTypeRtp, buf[:n])
-					if err != nil {
-						break
+				go func() {
+					defer close(writerDone)
+
+					buf := make([]byte, 2048)
+					for {
+						n, _, err := pc.ReadFrom(buf)
+						if err != nil {
+							break
+						}
+
+						err = conn.WriteFrameUDP(track.Id, StreamTypeRtp, buf[:n])
+						if err != nil {
+							break
+						}
 					}
-				}
+				}()
+
+				conn.LoopUDP()
 			}()
 
 			if server == "ffmpeg" {
@@ -269,6 +280,8 @@ func TestDialPublishUDP(t *testing.T) {
 
 			code := cnt3.wait()
 			require.Equal(t, 0, code)
+
+			conn.Close()
 		})
 	}
 }
@@ -303,9 +316,6 @@ func TestDialPublishTCP(t *testing.T) {
 			defer func() { <-publishDone }()
 
 			var conn *ConnClient
-			defer func() {
-				conn.Close()
-			}()
 
 			go func() {
 				defer close(publishDone)
@@ -367,6 +377,8 @@ func TestDialPublishTCP(t *testing.T) {
 
 			code := cnt3.wait()
 			require.Equal(t, 0, code)
+
+			conn.Close()
 		})
 	}
 }
