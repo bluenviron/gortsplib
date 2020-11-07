@@ -23,24 +23,24 @@ func (sp StreamProtocol) String() string {
 	return "unknown"
 }
 
-// StreamCast is the cast method of a stream.
-type StreamCast int
+// StreamDelivery is the delivery method of a stream.
+type StreamDelivery int
 
 const (
-	// StreamUnicast means that the stream is unicasted
-	StreamUnicast StreamCast = iota
+	// StreamDeliveryUnicast means that the stream is unicasted
+	StreamDeliveryUnicast StreamDelivery = iota
 
-	// StreamMulticast means that the stream is multicasted
-	StreamMulticast
+	// StreamDeliveryMulticast means that the stream is multicasted
+	StreamDeliveryMulticast
 )
 
 // String implements fmt.Stringer.
-func (sc StreamCast) String() string {
+func (sc StreamDelivery) String() string {
 	switch sc {
-	case StreamUnicast:
+	case StreamDeliveryUnicast:
 		return "unicast"
 
-	case StreamMulticast:
+	case StreamDeliveryMulticast:
 		return "multicast"
 	}
 	return "unknown"

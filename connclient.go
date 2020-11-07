@@ -263,8 +263,8 @@ func (c *ConnClient) WriteFrameUDP(trackId int, streamType StreamType, content [
 	return c.udpRtcpListeners[trackId].write(content)
 }
 
-// Do writes a Request and reads a Response. Interleaved frames sent before the
-// response are ignored.
+// Do writes a Request and reads a Response.
+// Interleaved frames sent before the response are ignored.
 func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	if req.Header == nil {
 		req.Header = make(base.Header)
@@ -338,9 +338,9 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	return res, nil
 }
 
-// Options writes an OPTIONS request and reads a response, that contains
-// the methods allowed by the server. Since this method is not implemented by
-// every RTSP server, the function does not fail if the returned code is StatusNotFound.
+// Options writes an OPTIONS request and reads a response.
+// Since this method is not implemented by every RTSP server, the function
+// does not fail if the returned code is StatusNotFound.
 func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {
 		return nil, fmt.Errorf("can't be called when reading or publishing")
@@ -471,7 +471,7 @@ func (c *ConnClient) setup(u *base.URL, mode headers.TransportMode, track *Track
 }
 
 // SetupUDP writes a SETUP request and reads a Response.
-// If rtpPort and rtcpPort are zero, they are be chosen automatically.
+// If rtpPort and rtcpPort are zero, they are chosen automatically.
 func (c *ConnClient) SetupUDP(u *base.URL, mode headers.TransportMode, track *Track, rtpPort int,
 	rtcpPort int) (*base.Response, error) {
 	if c.state != connClientStateInitial {
@@ -538,8 +538,8 @@ func (c *ConnClient) SetupUDP(u *base.URL, mode headers.TransportMode, track *Tr
 
 	res, err := c.setup(u, mode, track, &headers.Transport{
 		Protocol: StreamProtocolUDP,
-		Cast: func() *StreamCast {
-			ret := StreamUnicast
+		Delivery: func() *base.StreamDelivery {
+			ret := base.StreamDeliveryUnicast
 			return &ret
 		}(),
 		ClientPorts: &[2]int{rtpPort, rtcpPort},
@@ -607,8 +607,8 @@ func (c *ConnClient) SetupTCP(u *base.URL, mode headers.TransportMode, track *Tr
 	interleavedIds := [2]int{(track.Id * 2), (track.Id * 2) + 1}
 	res, err := c.setup(u, mode, track, &headers.Transport{
 		Protocol: StreamProtocolTCP,
-		Cast: func() *StreamCast {
-			ret := StreamUnicast
+		Delivery: func() *base.StreamDelivery {
+			ret := base.StreamDeliveryUnicast
 			return &ret
 		}(),
 		InterleavedIds: &interleavedIds,
@@ -643,7 +643,7 @@ func (c *ConnClient) SetupTCP(u *base.URL, mode headers.TransportMode, track *Tr
 	return res, nil
 }
 
-// Play writes a PLAY request and reads a Response
+// Play writes a PLAY request and reads a Response.
 // This function can be called only after SetupUDP() or SetupTCP().
 func (c *ConnClient) Play(u *base.URL) (*base.Response, error) {
 	if c.state != connClientStateInitial {

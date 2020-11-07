@@ -15,17 +15,6 @@ const (
 	StreamProtocolTCP StreamProtocol = base.StreamProtocolTCP
 )
 
-// StreamCast is the cast method of a stream.
-type StreamCast = base.StreamCast
-
-const (
-	// StreamUnicast means that the stream is unicasted
-	StreamUnicast StreamCast = base.StreamUnicast
-
-	// StreamMulticast means that the stream is multicasted
-	StreamMulticast StreamCast = base.StreamMulticast
-)
-
 // StreamType is the stream type.
 type StreamType = base.StreamType
 

@@ -20,8 +20,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
 		&Transport{
 			Protocol: base.StreamProtocolUDP,
-			Cast: func() *base.StreamCast {
-				v := base.StreamUnicast
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
 				return &v
 			}(),
 			ClientPorts: &[2]int{3456, 3457},
@@ -37,8 +37,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3056-3057;server_port=5000-5001`},
 		&Transport{
 			Protocol: base.StreamProtocolUDP,
-			Cast: func() *base.StreamCast {
-				v := base.StreamUnicast
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
 				return &v
 			}(),
 			ClientPorts: &[2]int{3056, 3057},
@@ -51,8 +51,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;multicast`},
 		&Transport{
 			Protocol: base.StreamProtocolUDP,
-			Cast: func() *base.StreamCast {
-				v := base.StreamMulticast
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryMulticast
 				return &v
 			}(),
 			Destination: func() *string {
@@ -81,8 +81,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=5000-5001;mode=record`},
 		&Transport{
 			Protocol: base.StreamProtocolUDP,
-			Cast: func() *base.StreamCast {
-				v := base.StreamUnicast
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
 				return &v
 			}(),
 			Mode: func() *TransportMode {

@@ -36,8 +36,8 @@ type Transport struct {
 	// protocol of the stream
 	Protocol base.StreamProtocol
 
-	// (optional) cast of the stream
-	Cast *base.StreamCast
+	// (optional) delivery method of the stream
+	Delivery *base.StreamDelivery
 
 	// (optional) destination
 	Destination *string
@@ -111,13 +111,13 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 
 	switch parts[0] {
 	case "unicast":
-		v := base.StreamUnicast
-		ht.Cast = &v
+		v := base.StreamDeliveryUnicast
+		ht.Delivery = &v
 		parts = parts[1:]
 
 	case "multicast":
-		v := base.StreamMulticast
-		ht.Cast = &v
+		v := base.StreamDeliveryMulticast
+		ht.Delivery = &v
 		parts = parts[1:]
 
 		// cast is optional, do not return any error
@@ -201,8 +201,8 @@ func (ht *Transport) Write() base.HeaderValue {
 		vals = append(vals, "RTP/AVP/TCP")
 	}
 
-	if ht.Cast != nil {
-		if *ht.Cast == base.StreamUnicast {
+	if ht.Delivery != nil {
+		if *ht.Delivery == base.StreamDeliveryUnicast {
 			vals = append(vals, "unicast")
 		} else {
 			vals = append(vals, "multicast")
