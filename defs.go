@@ -6,25 +6,25 @@ import (
 )
 
 // StreamProtocol is the protocol of a stream.
-type StreamProtocol = headers.StreamProtocol
+type StreamProtocol = base.StreamProtocol
 
 const (
 	// StreamProtocolUDP means that the stream uses the UDP protocol
-	StreamProtocolUDP StreamProtocol = headers.StreamProtocolUDP
+	StreamProtocolUDP StreamProtocol = base.StreamProtocolUDP
 
 	// StreamProtocolTCP means that the stream uses the TCP protocol
-	StreamProtocolTCP StreamProtocol = headers.StreamProtocolTCP
+	StreamProtocolTCP StreamProtocol = base.StreamProtocolTCP
 )
 
 // StreamCast is the cast method of a stream.
-type StreamCast = headers.StreamCast
+type StreamCast = base.StreamCast
 
 const (
 	// StreamUnicast means that the stream is unicasted
-	StreamUnicast StreamCast = headers.StreamUnicast
+	StreamUnicast StreamCast = base.StreamUnicast
 
 	// StreamMulticast means that the stream is multicasted
-	StreamMulticast StreamCast = headers.StreamMulticast
+	StreamMulticast StreamCast = base.StreamMulticast
 )
 
 // StreamType is the stream type.

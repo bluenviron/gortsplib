@@ -8,52 +8,6 @@ import (
 	"github.com/aler9/gortsplib/base"
 )
 
-// StreamProtocol is the protocol of a stream.
-type StreamProtocol int
-
-const (
-	// StreamProtocolUDP means that the stream uses the UDP protocol
-	StreamProtocolUDP StreamProtocol = iota
-
-	// StreamProtocolTCP means that the stream uses the TCP protocol
-	StreamProtocolTCP
-)
-
-// String implements fmt.Stringer.
-func (sp StreamProtocol) String() string {
-	switch sp {
-	case StreamProtocolUDP:
-		return "udp"
-
-	case StreamProtocolTCP:
-		return "tcp"
-	}
-	return "unknown"
-}
-
-// StreamCast is the cast method of a stream.
-type StreamCast int
-
-const (
-	// StreamUnicast means that the stream is unicasted
-	StreamUnicast StreamCast = iota
-
-	// StreamMulticast means that the stream is multicasted
-	StreamMulticast
-)
-
-// String implements fmt.Stringer.
-func (sc StreamCast) String() string {
-	switch sc {
-	case StreamUnicast:
-		return "unicast"
-
-	case StreamMulticast:
-		return "multicast"
-	}
-	return "unknown"
-}
-
 // TransportMode is a transport mode.
 type TransportMode int
 
@@ -80,10 +34,10 @@ func (sm TransportMode) String() string {
 // Transport is a Transport header.
 type Transport struct {
 	// protocol of the stream
-	Protocol StreamProtocol
+	Protocol base.StreamProtocol
 
 	// (optional) cast of the stream
-	Cast *StreamCast
+	Cast *base.StreamCast
 
 	// (optional) destination
 	Destination *string
@@ -145,10 +99,10 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 
 	switch parts[0] {
 	case "RTP/AVP", "RTP/AVP/UDP":
-		ht.Protocol = StreamProtocolUDP
+		ht.Protocol = base.StreamProtocolUDP
 
 	case "RTP/AVP/TCP":
-		ht.Protocol = StreamProtocolTCP
+		ht.Protocol = base.StreamProtocolTCP
 
 	default:
 		return nil, fmt.Errorf("invalid protocol (%v)", v)
@@ -157,12 +111,12 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 
 	switch parts[0] {
 	case "unicast":
-		v := StreamUnicast
+		v := base.StreamUnicast
 		ht.Cast = &v
 		parts = parts[1:]
 
 	case "multicast":
-		v := StreamMulticast
+		v := base.StreamMulticast
 		ht.Cast = &v
 		parts = parts[1:]
 
@@ -241,14 +195,14 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 func (ht *Transport) Write() base.HeaderValue {
 	var vals []string
 
-	if ht.Protocol == StreamProtocolUDP {
+	if ht.Protocol == base.StreamProtocolUDP {
 		vals = append(vals, "RTP/AVP")
 	} else {
 		vals = append(vals, "RTP/AVP/TCP")
 	}
 
 	if ht.Cast != nil {
-		if *ht.Cast == StreamUnicast {
+		if *ht.Cast == base.StreamUnicast {
 			vals = append(vals, "unicast")
 		} else {
 			vals = append(vals, "multicast")
