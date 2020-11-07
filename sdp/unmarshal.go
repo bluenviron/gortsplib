@@ -180,7 +180,7 @@ func unmarshalBandwidth(value string) (*psdp.Bandwidth, error) {
 	experimental := strings.HasPrefix(parts[0], "X-")
 	if experimental {
 		parts[0] = strings.TrimPrefix(parts[0], "X-")
-	} else if i := indexOf(parts[0], []string{"CT", "AS"}); i == -1 {
+	} else if i := indexOf(parts[0], []string{"CT", "AS", "RR"}); i == -1 {
 		// Set according to currently registered with IANA
 		// https://tools.ietf.org/html/rfc4566#section-5.8
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, parts[0])

@@ -202,9 +202,8 @@ var cases = []struct {
 					Bandwidth:    128,
 				},
 				{
-					Experimental: false,
-					Type:         "AS",
-					Bandwidth:    12345,
+					Type:      "AS",
+					Bandwidth: 12345,
 				},
 			},
 			TimeDescriptions: []psdp.TimeDescription{
@@ -633,6 +632,108 @@ var cases = []struct {
 						{"recvonly", ""},
 						{"framerate", "25.0"},
 						{"fmtp", "105 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA=="},
+					},
+				},
+			},
+		},
+	},
+	{
+		"vlc",
+		[]byte("v=0\r\n" +
+			"o=- 16379793953309178445 16379793953309178445 IN IP4 5c2b68da\r\n" +
+			"s=Unnamed\r\n" +
+			"i=N/A\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=tool:vlc 3.0.11\r\n" +
+			"a=recvonly\r\n" +
+			"a=type:broadcast\r\n" +
+			"a=charset:UTF-8\r\n" +
+			"m=audio 0 RTP/AVP 96\r\n" +
+			"b=RR:0\r\n" +
+			"a=rtpmap:96 mpeg4-generic/22050\r\n" +
+			"a=fmtp:96 streamtype=5; profile-level-id=15; mode=AAC-hbr; config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=RR:0\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=640028;sprop-parameter-sets=J2QAKKwrQCgDzQDxImo=,KO4CXLA=;\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 16379793953309178445 16379793953309178445 IN IP4 5c2b68da\r\n" +
+			"s=Unnamed\r\n" +
+			"i=N/A\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=tool:vlc 3.0.11\r\n" +
+			"a=recvonly\r\n" +
+			"a=type:broadcast\r\n" +
+			"a=charset:UTF-8\r\n" +
+			"m=audio 0 RTP/AVP 96\r\n" +
+			"b=RR:0\r\n" +
+			"a=rtpmap:96 mpeg4-generic/22050\r\n" +
+			"a=fmtp:96 streamtype=5; profile-level-id=15; mode=AAC-hbr; config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=RR:0\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=640028;sprop-parameter-sets=J2QAKKwrQCgDzQDxImo=,KO4CXLA=;\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      16379793953309178445,
+				SessionVersion: 16379793953309178445,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "5c2b68da",
+			},
+			SessionName: psdp.SessionName("Unnamed"),
+			SessionInformation: func() *psdp.Information {
+				v := psdp.Information("N/A")
+				return &v
+			}(),
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address:     &psdp.Address{Address: "0.0.0.0"},
+			},
+			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			Attributes: []psdp.Attribute{
+				{"tool", "vlc 3.0.11"},
+				{"recvonly", ""},
+				{"type", "broadcast"},
+				{"charset", "UTF-8"},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Bandwidth: []psdp.Bandwidth{
+						{
+							Type: "RR",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{"rtpmap", "96 mpeg4-generic/22050"},
+						{"fmtp", "96 streamtype=5; profile-level-id=15; mode=AAC-hbr; config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;"},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Bandwidth: []psdp.Bandwidth{
+						{
+							Type: "RR",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{"rtpmap", "96 H264/90000"},
+						{"fmtp", "96 packetization-mode=1;profile-level-id=640028;sprop-parameter-sets=J2QAKKwrQCgDzQDxImo=,KO4CXLA=;"},
 					},
 				},
 			},
