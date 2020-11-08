@@ -69,7 +69,7 @@ func main() {
 			}
 
 			// write frames to the server
-			err = conn.WriteFrameUDP(track.Id, gortsplib.StreamTypeRtp, buf[:n])
+			err = conn.WriteFrame(track.Id, gortsplib.StreamTypeRtp, buf[:n])
 			if err != nil {
 				break
 			}

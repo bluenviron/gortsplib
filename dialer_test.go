@@ -249,7 +249,7 @@ func TestDialPublishUDP(t *testing.T) {
 							break
 						}
 
-						err = conn.WriteFrameUDP(track.Id, StreamTypeRtp, buf[:n])
+						err = conn.WriteFrame(track.Id, StreamTypeRtp, buf[:n])
 						if err != nil {
 							break
 						}
@@ -349,7 +349,7 @@ func TestDialPublishTCP(t *testing.T) {
 						break
 					}
 
-					err = conn.WriteFrameTCP(track.Id, StreamTypeRtp, buf[:n])
+					err = conn.WriteFrame(track.Id, StreamTypeRtp, buf[:n])
 					if err != nil {
 						break
 					}
