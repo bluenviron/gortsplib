@@ -79,12 +79,12 @@ func TestDialReadUDP(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
+	loopDone := make(chan struct{})
+	defer func() { <-loopDone }()
+
 	conn, err := DialRead("rtsp://localhost:8554/teststream", StreamProtocolUDP)
 	require.NoError(t, err)
 	defer conn.Close()
-
-	loopDone := make(chan struct{})
-	defer func() { <-loopDone }()
 
 	go func() {
 		defer close(loopDone)
@@ -93,8 +93,6 @@ func TestDialReadUDP(t *testing.T) {
 
 	_, err = conn.ReadFrameUDP(0, StreamTypeRtp)
 	require.NoError(t, err)
-
-	conn.CloseUDPListeners()
 }
 
 func TestDialReadTCP(t *testing.T) {
@@ -156,12 +154,12 @@ func TestDialReadRedirect(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
+	loopDone := make(chan struct{})
+	defer func() { <-loopDone }()
+
 	conn, err := DialRead("rtsp://localhost:8554/path1", StreamProtocolUDP)
 	require.NoError(t, err)
 	defer conn.Close()
-
-	loopDone := make(chan struct{})
-	defer func() { <-loopDone }()
 
 	go func() {
 		defer close(loopDone)
@@ -170,8 +168,6 @@ func TestDialReadRedirect(t *testing.T) {
 
 	_, err = conn.ReadFrameUDP(0, StreamTypeRtp)
 	require.NoError(t, err)
-
-	conn.CloseUDPListeners()
 }
 
 func TestDialPublishUDP(t *testing.T) {

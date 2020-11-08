@@ -184,17 +184,6 @@ func (c *ConnClient) checkState(allowed map[connClientState]struct{}) error {
 		allowed, c.state)
 }
 
-// CloseUDPListeners closes any open UDP listener.
-func (c *ConnClient) CloseUDPListeners() {
-	for _, l := range c.udpRtpListeners {
-		l.close()
-	}
-
-	for _, l := range c.udpRtcpListeners {
-		l.close()
-	}
-}
-
 // NetConn returns the underlying net.Conn.
 func (c *ConnClient) NetConn() net.Conn {
 	return c.conf.Conn
