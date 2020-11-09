@@ -670,15 +670,21 @@ func (c *ConnClient) Play() (*base.Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
+	if *c.streamProtocol == StreamProtocolUDP {
+		c.writeFrameFunc = c.writeFrameUDP
+	} else {
+		c.writeFrameFunc = c.writeFrameTCP
+	}
+
 	c.state = connClientStatePlay
 
 	// open the firewall by sending packets to the counterpart
 	if *c.streamProtocol == StreamProtocolUDP {
 		for trackId := range c.udpRtpListeners {
-			c.udpRtpListeners[trackId].write(
+			c.WriteFrame(trackId, StreamTypeRtp,
 				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
-			c.udpRtcpListeners[trackId].write(
+			c.WriteFrame(trackId, StreamTypeRtcp,
 				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 		}
 	}
@@ -762,13 +768,13 @@ func (c *ConnClient) Record() (*base.Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	c.state = connClientStateRecord
-
 	if *c.streamProtocol == StreamProtocolUDP {
 		c.writeFrameFunc = c.writeFrameUDP
 	} else {
 		c.writeFrameFunc = c.writeFrameTCP
 	}
+
+	c.state = connClientStateRecord
 
 	return nil, nil
 }
