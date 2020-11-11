@@ -739,6 +739,61 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"mp2t",
+		[]byte("v=0\r\n" +
+			"o=- 1702415089 4281335390 IN IP4 127.0.0.1\r\n" +
+			"s=live\r\n" +
+			"t=0 0\r\n" +
+			"c=IN IP4 239.3.1.142\r\n" +
+			"a=range:clock=0-\r\n" +
+			"m=video 8048 MP2T/AVP 33\r\n" +
+			"b=AS:7655\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 1702415089 4281335390 IN IP4 127.0.0.1\r\n" +
+			"s=live\r\n" +
+			"c=IN IP4 239.3.1.142\r\n" +
+			"t=0 0\r\n" +
+			"a=range:clock=0-\r\n" +
+			"m=video 8048 MP2T/AVP 33\r\n" +
+			"b=AS:7655\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      1702415089,
+				SessionVersion: 4281335390,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "127.0.0.1",
+			},
+			SessionName: psdp.SessionName("live"),
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address:     &psdp.Address{Address: "239.3.1.142"},
+			},
+			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			Attributes: []psdp.Attribute{
+				{"range", "clock=0-"},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Port:    psdp.RangedPort{Value: 8048},
+						Protos:  []string{"MP2T", "AVP"},
+						Formats: []string{"33"},
+					},
+					Bandwidth: []psdp.Bandwidth{
+						{
+							Type:      "AS",
+							Bandwidth: 7655,
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {

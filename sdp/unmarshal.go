@@ -384,7 +384,8 @@ func (s *SessionDescription) unmarshalMediaDescription(value string) error {
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
 	for _, proto := range strings.Split(fields[2], "/") {
-		if i := indexOf(proto, []string{"UDP", "RTP", "AVP", "SAVP", "SAVPF", "TLS", "DTLS", "SCTP", "AVPF", "TCP"}); i == -1 {
+		if i := indexOf(proto, []string{"UDP", "RTP", "AVP", "SAVP", "SAVPF",
+			"MP2T", "TLS", "DTLS", "SCTP", "AVPF", "TCP"}); i == -1 {
 			return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[2])
 		}
 		newMediaDesc.MediaName.Protos = append(newMediaDesc.MediaName.Protos, proto)
