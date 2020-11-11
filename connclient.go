@@ -44,42 +44,10 @@ const (
 	connClientStateRecord
 )
 
-// ConnClientConf allows to configure a ConnClient.
-type ConnClientConf struct {
-	// target address in format hostname:port
-	// either Host or Conn must be non-null
-	Host string
-
-	// pre-existing TCP connection to wrap
-	// either Host or Conn must be non-null
-	Conn net.Conn
-
-	// (optional) timeout of read operations.
-	// It defaults to 10 seconds
-	ReadTimeout time.Duration
-
-	// (optional) timeout of write operations.
-	// It defaults to 5 seconds
-	WriteTimeout time.Duration
-
-	// (optional) read buffer count.
-	// If greater than 1, allows to pass buffers to routines different than the one
-	// that is reading frames.
-	// It defaults to 1
-	ReadBufferCount int
-
-	// (optional) function used to initialize the TCP client.
-	// It defaults to net.DialTimeout
-	DialTimeout func(network, address string, timeout time.Duration) (net.Conn, error)
-
-	// (optional) function used to initialize UDP listeners.
-	// It defaults to net.ListenPacket
-	ListenPacket func(network, address string) (net.PacketConn, error)
-}
-
 // ConnClient is a client-side RTSP connection.
 type ConnClient struct {
-	conf                  ConnClientConf
+	d                     Dialer
+	nconn                 net.Conn
 	br                    *bufio.Reader
 	bw                    *bufio.Writer
 	session               string
@@ -103,54 +71,6 @@ type ConnClient struct {
 	reportWriterDone      chan struct{}
 }
 
-// NewConnClient allocates a ConnClient. See ConnClientConf for the options.
-func NewConnClient(conf ConnClientConf) (*ConnClient, error) {
-	if conf.ReadTimeout == 0 {
-		conf.ReadTimeout = 10 * time.Second
-	}
-	if conf.WriteTimeout == 0 {
-		conf.WriteTimeout = 10 * time.Second
-	}
-	if conf.ReadBufferCount == 0 {
-		conf.ReadBufferCount = 1
-	}
-	if conf.DialTimeout == nil {
-		conf.DialTimeout = net.DialTimeout
-	}
-	if conf.ListenPacket == nil {
-		conf.ListenPacket = net.ListenPacket
-	}
-
-	if conf.Host != "" && conf.Conn != nil {
-		return nil, fmt.Errorf("Host and Conn can't be used together")
-	}
-
-	if conf.Conn == nil {
-		if !strings.Contains(conf.Host, ":") {
-			conf.Host += ":554"
-		}
-
-		var err error
-		conf.Conn, err = conf.DialTimeout("tcp", conf.Host, conf.ReadTimeout)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &ConnClient{
-		conf:              conf,
-		br:                bufio.NewReaderSize(conf.Conn, clientReadBufferSize),
-		bw:                bufio.NewWriterSize(conf.Conn, clientWriteBufferSize),
-		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
-		udpLastFrameTimes: make(map[int]*int64),
-		udpRtpListeners:   make(map[int]*connClientUDPListener),
-		udpRtcpListeners:  make(map[int]*connClientUDPListener),
-		response:          &base.Response{},
-		frame:             &base.InterleavedFrame{},
-		tcpFrameBuffer:    multibuffer.New(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
-	}, nil
-}
-
 // Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
 	if c.state == connClientStatePlay {
@@ -164,7 +84,7 @@ func (c *ConnClient) Close() error {
 		})
 	}
 
-	err := c.conf.Conn.Close()
+	err := c.nconn.Close()
 
 	for _, l := range c.udpRtpListeners {
 		l.close()
@@ -188,7 +108,7 @@ func (c *ConnClient) checkState(allowed map[connClientState]struct{}) error {
 
 // NetConn returns the underlying net.Conn.
 func (c *ConnClient) NetConn() net.Conn {
-	return c.conf.Conn
+	return c.nconn
 }
 
 // Tracks returns all the tracks that the connection is reading or publishing.
@@ -199,7 +119,7 @@ func (c *ConnClient) Tracks() Tracks {
 func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
 	c.frame.Content = c.tcpFrameBuffer.Next()
 
-	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
 	return base.ReadInterleavedFrameOrResponse(c.frame, c.response, c.br)
 }
 
@@ -228,7 +148,7 @@ func (c *ConnClient) ReadFrameUDP(trackId int, streamType StreamType) ([]byte, e
 func (c *ConnClient) ReadFrameTCP() (int, StreamType, []byte, error) {
 	c.frame.Content = c.tcpFrameBuffer.Next()
 
-	c.conf.Conn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
 	err := c.frame.Read(c.br)
 	if err != nil {
 		return 0, 0, nil, err
@@ -253,7 +173,7 @@ func (c *ConnClient) writeFrameTCP(trackId int, streamType StreamType, content [
 		Content:    content,
 	}
 
-	c.conf.Conn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
+	c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
 	return frame.Write(c.bw)
 }
 
@@ -284,7 +204,7 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	c.cseq += 1
 	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
 
-	c.conf.Conn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
+	c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
 	err := req.Write(c.bw)
 	if err != nil {
 		return nil, err
@@ -531,12 +451,12 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 		var err error
 		rtpListener, rtcpListener, err = func() (*connClientUDPListener, *connClientUDPListener, error) {
 			if rtpPort != 0 {
-				rtpListener, err := newConnClientUDPListener(c.conf, rtpPort)
+				rtpListener, err := newConnClientUDPListener(c.d, rtpPort)
 				if err != nil {
 					return nil, nil, err
 				}
 
-				rtcpListener, err := newConnClientUDPListener(c.conf, rtcpPort)
+				rtcpListener, err := newConnClientUDPListener(c.d, rtcpPort)
 				if err != nil {
 					rtpListener.close()
 					return nil, nil, err
@@ -551,12 +471,12 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 					rtpPort = (rand.Intn((65535-10000)/2) * 2) + 10000
 					rtcpPort = rtpPort + 1
 
-					rtpListener, err := newConnClientUDPListener(c.conf, rtpPort)
+					rtpListener, err := newConnClientUDPListener(c.d, rtpPort)
 					if err != nil {
 						continue
 					}
 
-					rtcpListener, err := newConnClientUDPListener(c.conf, rtcpPort)
+					rtcpListener, err := newConnClientUDPListener(c.d, rtcpPort)
 					if err != nil {
 						rtpListener.close()
 						continue
@@ -640,13 +560,13 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 	}
 
 	if proto == StreamProtocolUDP {
-		rtpListener.remoteIp = c.conf.Conn.RemoteAddr().(*net.TCPAddr).IP
-		rtpListener.remoteZone = c.conf.Conn.RemoteAddr().(*net.TCPAddr).Zone
+		rtpListener.remoteIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		rtpListener.remotePort = (*th.ServerPorts)[0]
 		c.udpRtpListeners[track.Id] = rtpListener
 
-		rtcpListener.remoteIp = c.conf.Conn.RemoteAddr().(*net.TCPAddr).IP
-		rtcpListener.remoteZone = c.conf.Conn.RemoteAddr().(*net.TCPAddr).Zone
+		rtcpListener.remoteIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		rtcpListener.remotePort = (*th.ServerPorts)[1]
 		c.udpRtcpListeners[track.Id] = rtcpListener
 	}
@@ -811,7 +731,7 @@ func (c *ConnClient) LoopUDP() error {
 		readDone := make(chan error)
 		go func() {
 			for {
-				c.conf.Conn.SetReadDeadline(time.Now().Add(clientUDPKeepalivePeriod + c.conf.ReadTimeout))
+				c.nconn.SetReadDeadline(time.Now().Add(clientUDPKeepalivePeriod + c.d.ReadTimeout))
 				var res base.Response
 				err := res.Read(c.br)
 				if err != nil {
@@ -830,7 +750,7 @@ func (c *ConnClient) LoopUDP() error {
 		for {
 			select {
 			case err := <-readDone:
-				c.conf.Conn.Close()
+				c.nconn.Close()
 				return err
 
 			case <-keepaliveTicker.C:
@@ -847,7 +767,7 @@ func (c *ConnClient) LoopUDP() error {
 					SkipResponse: true,
 				})
 				if err != nil {
-					c.conf.Conn.Close()
+					c.nconn.Close()
 					<-readDone
 					return err
 				}
@@ -858,8 +778,8 @@ func (c *ConnClient) LoopUDP() error {
 				for _, lastUnix := range c.udpLastFrameTimes {
 					last := time.Unix(atomic.LoadInt64(lastUnix), 0)
 
-					if now.Sub(last) >= c.conf.ReadTimeout {
-						c.conf.Conn.Close()
+					if now.Sub(last) >= c.d.ReadTimeout {
+						c.nconn.Close()
 						<-readDone
 						return fmt.Errorf("no packets received recently (maybe there's a firewall/NAT in between)")
 					}
@@ -869,7 +789,7 @@ func (c *ConnClient) LoopUDP() error {
 	}
 
 	// connClientStateRecord
-	c.conf.Conn.SetReadDeadline(time.Time{}) // disable deadline
+	c.nconn.SetReadDeadline(time.Time{}) // disable deadline
 	var res base.Response
 	return res.Read(c.br)
 }

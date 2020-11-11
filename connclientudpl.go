@@ -15,15 +15,15 @@ type connClientUDPListener struct {
 	udpFrameBuffer *multibuffer.MultiBuffer
 }
 
-func newConnClientUDPListener(conf ConnClientConf, port int) (*connClientUDPListener, error) {
-	pc, err := conf.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
+func newConnClientUDPListener(d Dialer, port int) (*connClientUDPListener, error) {
+	pc, err := d.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
 	if err != nil {
 		return nil, err
 	}
 
 	return &connClientUDPListener{
 		pc:             pc,
-		udpFrameBuffer: multibuffer.New(conf.ReadBufferCount, 2048),
+		udpFrameBuffer: multibuffer.New(d.ReadBufferCount, 2048),
 	}, nil
 }
 
