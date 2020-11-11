@@ -79,24 +79,25 @@ type ConnClientConf struct {
 
 // ConnClient is a client-side RTSP connection.
 type ConnClient struct {
-	conf              ConnClientConf
-	br                *bufio.Reader
-	bw                *bufio.Writer
-	session           string
-	cseq              int
-	auth              *auth.Client
-	state             connClientState
-	streamUrl         *base.URL
-	streamProtocol    *StreamProtocol
-	tracks            Tracks
-	rtcpReceivers     map[int]*rtcpreceiver.RtcpReceiver
-	udpLastFrameTimes map[int]*int64
-	udpRtpListeners   map[int]*connClientUDPListener
-	udpRtcpListeners  map[int]*connClientUDPListener
-	response          *base.Response
-	frame             *base.InterleavedFrame
-	tcpFrameBuffer    *multibuffer.MultiBuffer
-	writeFrameFunc    func(trackId int, streamType StreamType, content []byte) error
+	conf                  ConnClientConf
+	br                    *bufio.Reader
+	bw                    *bufio.Writer
+	session               string
+	cseq                  int
+	auth                  *auth.Client
+	state                 connClientState
+	streamUrl             *base.URL
+	streamProtocol        *StreamProtocol
+	tracks                Tracks
+	rtcpReceivers         map[int]*rtcpreceiver.RtcpReceiver
+	udpLastFrameTimes     map[int]*int64
+	udpRtpListeners       map[int]*connClientUDPListener
+	udpRtcpListeners      map[int]*connClientUDPListener
+	response              *base.Response
+	frame                 *base.InterleavedFrame
+	tcpFrameBuffer        *multibuffer.MultiBuffer
+	writeFrameFunc        func(trackId int, streamType StreamType, content []byte) error
+	getParameterSupported bool
 
 	reportWriterTerminate chan struct{}
 	reportWriterDone      chan struct{}
@@ -208,14 +209,11 @@ func (c *ConnClient) ReadFrameUDP(trackId int, streamType StreamType) ([]byte, e
 	var err error
 	if streamType == StreamTypeRtp {
 		buf, err = c.udpRtpListeners[trackId].read()
-		if err != nil {
-			return nil, err
-		}
 	} else {
 		buf, err = c.udpRtcpListeners[trackId].read()
-		if err != nil {
-			return nil, err
-		}
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	atomic.StoreInt64(c.udpLastFrameTimes[trackId], time.Now().Unix())
@@ -364,6 +362,20 @@ func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
 	if res.StatusCode != base.StatusOK && res.StatusCode != base.StatusNotFound {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
+
+	c.getParameterSupported = func() bool {
+		pub, ok := res.Header["Public"]
+		if !ok || len(pub) != 1 {
+			return false
+		}
+
+		for _, m := range strings.Split(pub[0], ",") {
+			if base.Method(m) == base.GET_PARAMETER {
+				return true
+			}
+		}
+		return false
+	}()
 
 	return res, nil
 }
@@ -823,7 +835,13 @@ func (c *ConnClient) LoopUDP() error {
 
 			case <-keepaliveTicker.C:
 				_, err := c.Do(&base.Request{
-					Method: base.OPTIONS,
+					Method: func() base.Method {
+						// the vlc integrated rtsp server requires GET_PARAMETER
+						if c.getParameterSupported {
+							return base.GET_PARAMETER
+						}
+						return base.OPTIONS
+					}(),
 					// use the stream path, otherwise some cameras do not reply
 					URL:          c.streamUrl,
 					SkipResponse: true,
