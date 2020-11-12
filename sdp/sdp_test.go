@@ -794,6 +794,120 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"empty unicast address in origin",
+		[]byte("v=0\r\n" +
+			"o=RTSP 16381778200090761968 16381778200090839277 IN IP4 \r\n" +
+			"s=RTSP Server\r\n" +
+			"e=NONE\r\n" +
+			"t=0 0\r\n" +
+			"a=recvonly\r\n" +
+			"a=x-dimensions:1920,1080\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=64001e;sprop-parameter-sets=Z2QAHqwsaoMg5puAgICB,aO4xshs=\r\n" +
+			"a=Media_header:MEDIAINFO=494D4B48010100000400010000000000000000000000000000000000000000000000000000000000;\r\n" +
+			"a=appversion:1.0\r\n" +
+			"b=AS:5000\r\n" +
+			"a=control:rtsp://10.10.1.30:8554/onvif2/audio/trackID=0\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"a=rtpmap:0 PCMU/8000/1\r\n" +
+			"b=AS:5000\r\n" +
+			"a=control:rtsp://10.10.1.30:8554/onvif2/audio/trackID=1\r\n"),
+		[]byte("v=0\r\n" +
+			"o=RTSP 16381778200090761968 16381778200090839277 IN IP4 127.0.0.1\r\n" +
+			"s=RTSP Server\r\n" +
+			"e=NONE\r\n" +
+			"t=0 0\r\n" +
+			"a=recvonly\r\n" +
+			"a=x-dimensions:1920,1080\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:5000\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=64001e;sprop-parameter-sets=Z2QAHqwsaoMg5puAgICB,aO4xshs=\r\n" +
+			"a=Media_header:MEDIAINFO=494D4B48010100000400010000000000000000000000000000000000000000000000000000000000;\r\n" +
+			"a=appversion:1.0\r\n" +
+			"a=control:rtsp://10.10.1.30:8554/onvif2/audio/trackID=0\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:5000\r\n" +
+			"a=rtpmap:0 PCMU/8000/1\r\n" +
+			"a=control:rtsp://10.10.1.30:8554/onvif2/audio/trackID=1\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "RTSP",
+				SessionID:      16381778200090761968,
+				SessionVersion: 16381778200090839277,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "127.0.0.1",
+			},
+			SessionName: psdp.SessionName("RTSP Server"),
+			EmailAddress: func() *psdp.EmailAddress {
+				v := psdp.EmailAddress("NONE")
+				return &v
+			}(),
+			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			Attributes: []psdp.Attribute{
+				{"recvonly", ""},
+				{"x-dimensions", "1920,1080"},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address:     &psdp.Address{Address: "0.0.0.0"},
+					},
+					Bandwidth: []psdp.Bandwidth{
+						{
+							Type:      "AS",
+							Bandwidth: 5000,
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{"rtpmap", "96 H264/90000"},
+						{"fmtp", "96 packetization-mode=1;profile-level-id=64001e;sprop-parameter-sets=Z2QAHqwsaoMg5puAgICB,aO4xshs="},
+						{"Media_header", "MEDIAINFO=494D4B48010100000400010000000000000000000000000000000000000000000000000000000000;"},
+						{"appversion", "1.0"},
+						{"control", "rtsp://10.10.1.30:8554/onvif2/audio/trackID=0"},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address:     &psdp.Address{Address: "0.0.0.0"},
+					},
+					Bandwidth: []psdp.Bandwidth{
+						{
+							Type:      "AS",
+							Bandwidth: 5000,
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{"rtpmap", "0 PCMU/8000/1"},
+						{"control", "rtsp://10.10.1.30:8554/onvif2/audio/trackID=1"},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {

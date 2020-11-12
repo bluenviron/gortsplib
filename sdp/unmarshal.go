@@ -65,6 +65,11 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 		value = "- 0 " + value[3:]
 	}
 
+	// special case for sone onvif2 cameras
+	if value[len(value)-1] == ' ' {
+		value += "127.0.0.1"
+	}
+
 	fields := strings.Fields(value)
 	if len(fields) != 6 {
 		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, fields)
