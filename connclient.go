@@ -154,7 +154,12 @@ func (c *ConnClient) ReadFrameTCP() (int, StreamType, []byte, error) {
 		return 0, 0, nil, err
 	}
 
-	c.rtcpReceivers[c.frame.TrackId].OnFrame(c.frame.StreamType, c.frame.Content)
+	recv, ok := c.rtcpReceivers[c.frame.TrackId]
+	if !ok {
+		return 0, 0, nil, fmt.Errorf("invalid track id: %v", c.frame.TrackId)
+	}
+
+	recv.OnFrame(c.frame.StreamType, c.frame.Content)
 
 	return c.frame.TrackId, c.frame.StreamType, c.frame.Content, nil
 }
