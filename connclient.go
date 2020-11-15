@@ -454,26 +454,26 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 
 				return rtpListener, rtcpListener, nil
 
-			} else {
-				for {
-					// choose two consecutive ports in range 65535-10000
-					// rtp must be even and rtcp odd
-					rtpPort = (rand.Intn((65535-10000)/2) * 2) + 10000
-					rtcpPort = rtpPort + 1
+			}
 
-					rtpListener, err := newConnClientUDPListener(c, rtpPort)
-					if err != nil {
-						continue
-					}
+			// choose two consecutive ports in range 65535-10000
+			// rtp must be even and rtcp odd
+			for {
+				rtpPort = (rand.Intn((65535-10000)/2) * 2) + 10000
+				rtcpPort = rtpPort + 1
 
-					rtcpListener, err := newConnClientUDPListener(c, rtcpPort)
-					if err != nil {
-						rtpListener.close()
-						continue
-					}
-
-					return rtpListener, rtcpListener, nil
+				rtpListener, err := newConnClientUDPListener(c, rtpPort)
+				if err != nil {
+					continue
 				}
+
+				rtcpListener, err := newConnClientUDPListener(c, rtcpPort)
+				if err != nil {
+					rtpListener.close()
+					continue
+				}
+
+				return rtpListener, rtcpListener, nil
 			}
 		}()
 		if err != nil {
