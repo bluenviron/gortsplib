@@ -8,6 +8,7 @@
 RTSP 1.0 client and server library for the Go programming language, written for [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
 Features:
+
 * Read streams from servers with TCP or UDP
 * Publish streams to servers with TCP or UDP
 * Build servers
@@ -27,6 +28,7 @@ https://pkg.go.dev/github.com/aler9/gortsplib
 ## Links
 
 Related projects
+
 * https://github.com/aler9/rtsp-simple-server
 * https://github.com/pion/sdp (SDP library used internally)
 * https://github.com/pion/rtcp (RTCP library used internally)
@@ -34,9 +36,11 @@ Related projects
 * https://github.com/notedit/rtmp (RTMP library used internally)
 
 IETF Standards
+
 * RTSP 1.0 https://tools.ietf.org/html/rfc2326
 * RTSP 2.0 https://tools.ietf.org/html/rfc7826
 * HTTP 1.1 https://tools.ietf.org/html/rfc2616
 
 Conventions
+
 * https://github.com/golang-standards/project-layout
