@@ -101,12 +101,12 @@ func (c *ConnClient) backgroundRecordUDP() {
 	case <-c.backgroundTerminate:
 		c.nconn.SetReadDeadline(time.Now())
 		<-readDone
-		c.backgroundUDPError = fmt.Errorf("terminated")
+		c.backgroundError = fmt.Errorf("terminated")
 		c.state.store(connClientStateUDPError)
 		return
 
 	case err := <-readDone:
-		c.backgroundUDPError = err
+		c.backgroundError = err
 		c.state.store(connClientStateUDPError)
 		return
 	}
@@ -119,7 +119,7 @@ func (c *ConnClient) backgroundRecordTCP() {
 func (c *ConnClient) writeFrameUDP(trackId int, streamType StreamType, content []byte) error {
 	switch c.state.load() {
 	case connClientStateUDPError:
-		return c.backgroundUDPError
+		return c.backgroundError
 
 	case connClientStateRecord:
 

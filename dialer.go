@@ -96,14 +96,12 @@ func (d Dialer) Dial(host string) (*ConnClient, error) {
 			v := connClientState(0)
 			return &v
 		}(),
-		rtcpReceivers:      make(map[int]*rtcpreceiver.RtcpReceiver),
-		udpLastFrameTimes:  make(map[int]*int64),
-		udpRtpListeners:    make(map[int]*connClientUDPListener),
-		udpRtcpListeners:   make(map[int]*connClientUDPListener),
-		response:           &base.Response{},
-		frame:              &base.InterleavedFrame{},
-		tcpFrameBuffer:     multibuffer.New(d.ReadBufferCount, clientTCPFrameReadBufferSize),
-		backgroundUDPError: fmt.Errorf("not running"),
+		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
+		udpLastFrameTimes: make(map[int]*int64),
+		udpRtpListeners:   make(map[int]*connClientUDPListener),
+		udpRtcpListeners:  make(map[int]*connClientUDPListener),
+		tcpFrameBuffer:    multibuffer.New(d.ReadBufferCount+1, clientTCPFrameReadBufferSize),
+		backgroundError:   fmt.Errorf("not running"),
 	}, nil
 }
 

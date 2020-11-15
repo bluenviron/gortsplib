@@ -87,17 +87,14 @@ type ConnClient struct {
 	udpLastFrameTimes     map[int]*int64
 	udpRtpListeners       map[int]*connClientUDPListener
 	udpRtcpListeners      map[int]*connClientUDPListener
-	response              *base.Response
-	frame                 *base.InterleavedFrame
 	tcpFrameBuffer        *multibuffer.MultiBuffer
-	readFrameFunc         func() (int, StreamType, []byte, error)
 	writeFrameFunc        func(trackId int, streamType StreamType, content []byte) error
 	getParameterSupported bool
-	backgroundUDPError    error
+	backgroundError       error
 
 	backgroundTerminate chan struct{}
 	backgroundDone      chan struct{}
-	udpFrame            chan base.InterleavedFrame
+	readFrame           chan base.InterleavedFrame
 }
 
 // Close closes all the ConnClient resources.
@@ -117,27 +114,12 @@ func (c *ConnClient) Close() error {
 		})
 	}
 
-	if s == connClientStatePlay {
-		if *c.streamProtocol == StreamProtocolUDP {
-			go func() {
-				for range c.udpFrame {
-				}
-			}()
-		}
-	}
-
 	for _, l := range c.udpRtpListeners {
 		l.close()
 	}
 
 	for _, l := range c.udpRtcpListeners {
 		l.close()
-	}
-
-	if s == connClientStatePlay {
-		if *c.streamProtocol == StreamProtocolUDP {
-			close(c.udpFrame)
-		}
 	}
 
 	err := c.nconn.Close()
@@ -169,10 +151,12 @@ func (c *ConnClient) Tracks() Tracks {
 }
 
 func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
-	c.frame.Content = c.tcpFrameBuffer.Next()
-
 	c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
-	return base.ReadInterleavedFrameOrResponse(c.frame, c.response, c.br)
+	f := base.InterleavedFrame{
+		Content: c.tcpFrameBuffer.Next(),
+	}
+	r := base.Response{}
+	return base.ReadInterleavedFrameOrResponse(&f, &r, c.br)
 }
 
 // Do writes a Request and reads a Response.
@@ -588,23 +572,6 @@ func (c *ConnClient) Pause() (*base.Response, error) {
 
 	close(c.backgroundTerminate)
 	<-c.backgroundDone
-
-	if s == connClientStatePlay {
-		if *c.streamProtocol == StreamProtocolUDP {
-			ch := c.udpFrame
-			go func() {
-				for range ch {
-				}
-			}()
-
-			for trackId := range c.udpRtpListeners {
-				c.udpRtpListeners[trackId].stop()
-				c.udpRtcpListeners[trackId].stop()
-			}
-
-			close(ch)
-		}
-	}
 
 	res, err := c.Do(&base.Request{
 		Method: base.PAUSE,

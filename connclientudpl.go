@@ -76,7 +76,7 @@ func (l *connClientUDPListener) run() {
 
 		l.c.rtcpReceivers[l.trackId].OnFrame(l.streamType, buf[:n])
 
-		l.c.udpFrame <- base.InterleavedFrame{
+		l.c.readFrame <- base.InterleavedFrame{
 			TrackId:    l.trackId,
 			StreamType: l.streamType,
 			Content:    buf[:n],

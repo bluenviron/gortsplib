@@ -251,6 +251,64 @@ func TestDialReadPause(t *testing.T) {
 	}
 }
 
+func TestDialReadPauseParallel(t *testing.T) {
+	for _, proto := range []string{
+		"udp",
+		"tcp",
+	} {
+		t.Run(proto, func(t *testing.T) {
+			cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
+			require.NoError(t, err)
+			defer cnt1.close()
+
+			time.Sleep(1 * time.Second)
+
+			cnt2, err := newContainer("ffmpeg", "publish", []string{
+				"-re",
+				"-stream_loop", "-1",
+				"-i", "/emptyvideo.ts",
+				"-c", "copy",
+				"-f", "rtsp",
+				"-rtsp_transport", "udp",
+				"rtsp://localhost:8554/teststream",
+			})
+			require.NoError(t, err)
+			defer cnt2.close()
+
+			time.Sleep(1 * time.Second)
+
+			dialer := func() Dialer {
+				if proto == "udp" {
+					return Dialer{}
+				}
+				return Dialer{StreamProtocol: StreamProtocolTCP}
+			}()
+
+			conn, err := dialer.DialRead("rtsp://localhost:8554/teststream")
+			require.NoError(t, err)
+
+			readDone := make(chan struct{})
+			go func() {
+				defer close(readDone)
+
+				for {
+					_, _, _, err := conn.ReadFrame()
+					if err != nil {
+						break
+					}
+				}
+			}()
+
+			time.Sleep(1 * time.Second)
+
+			conn.Pause()
+			<-readDone
+
+			conn.Close()
+		})
+	}
+}
+
 func TestDialPublish(t *testing.T) {
 	for _, proto := range []string{
 		"udp",

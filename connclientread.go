@@ -30,33 +30,19 @@ func (c *ConnClient) Play() (*base.Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	if *c.streamProtocol == StreamProtocolUDP {
-		c.readFrameFunc = c.readFrameUDP
-		c.writeFrameFunc = c.writeFrameUDP
-	} else {
-		c.readFrameFunc = c.readFrameTCP
-		c.writeFrameFunc = c.writeFrameTCP
-	}
-
 	c.state.store(connClientStatePlay)
 
+	c.readFrame = make(chan base.InterleavedFrame)
 	c.backgroundTerminate = make(chan struct{})
 	c.backgroundDone = make(chan struct{})
 
 	if *c.streamProtocol == StreamProtocolUDP {
-		c.udpFrame = make(chan base.InterleavedFrame)
-
-		for trackId := range c.udpRtpListeners {
-			c.udpRtpListeners[trackId].start()
-			c.udpRtcpListeners[trackId].start()
-		}
-
 		// open the firewall by sending packets to the counterpart
 		for trackId := range c.udpRtpListeners {
-			c.WriteFrame(trackId, StreamTypeRtp,
+			c.udpRtpListeners[trackId].write(
 				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
-			c.WriteFrame(trackId, StreamTypeRtcp,
+			c.udpRtcpListeners[trackId].write(
 				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 		}
 
@@ -71,7 +57,28 @@ func (c *ConnClient) Play() (*base.Response, error) {
 func (c *ConnClient) backgroundPlayUDP() {
 	defer close(c.backgroundDone)
 
-	c.nconn.SetReadDeadline(time.Time{}) // disable deadline
+	defer func() {
+		ch := c.readFrame
+		go func() {
+			for range ch {
+			}
+		}()
+
+		for trackId := range c.udpRtpListeners {
+			c.udpRtpListeners[trackId].stop()
+			c.udpRtcpListeners[trackId].stop()
+		}
+
+		close(ch)
+	}()
+
+	for trackId := range c.udpRtpListeners {
+		c.udpRtpListeners[trackId].start()
+		c.udpRtcpListeners[trackId].start()
+	}
+
+	// disable deadline
+	c.nconn.SetReadDeadline(time.Time{})
 
 	readDone := make(chan error)
 	go func() {
@@ -99,14 +106,13 @@ func (c *ConnClient) backgroundPlayUDP() {
 		case <-c.backgroundTerminate:
 			c.nconn.SetReadDeadline(time.Now())
 			<-readDone
-			c.backgroundUDPError = fmt.Errorf("terminated")
-			c.state.store(connClientStateUDPError)
+			c.backgroundError = fmt.Errorf("terminated")
 			return
 
 		case <-reportTicker.C:
 			for trackId := range c.rtcpReceivers {
-				frame := c.rtcpReceivers[trackId].Report()
-				c.WriteFrame(trackId, StreamTypeRtcp, frame)
+				report := c.rtcpReceivers[trackId].Report()
+				c.udpRtcpListeners[trackId].write(report)
 			}
 
 		case <-keepaliveTicker.C:
@@ -125,8 +131,7 @@ func (c *ConnClient) backgroundPlayUDP() {
 			if err != nil {
 				c.nconn.SetReadDeadline(time.Now())
 				<-readDone
-				c.backgroundUDPError = err
-				c.state.store(connClientStateUDPError)
+				c.backgroundError = err
 				return
 			}
 
@@ -139,11 +144,14 @@ func (c *ConnClient) backgroundPlayUDP() {
 				if now.Sub(last) >= c.d.ReadTimeout {
 					c.nconn.SetReadDeadline(time.Now())
 					<-readDone
-					c.backgroundUDPError = fmt.Errorf("no packets received recently (maybe there's a firewall/NAT in between)")
-					c.state.store(connClientStateUDPError)
+					c.backgroundError = fmt.Errorf("no packets received recently (maybe there's a firewall/NAT in between)")
 					return
 				}
 			}
+
+		case err := <-readDone:
+			c.backgroundError = err
+			return
 		}
 	}
 }
@@ -151,51 +159,71 @@ func (c *ConnClient) backgroundPlayUDP() {
 func (c *ConnClient) backgroundPlayTCP() {
 	defer close(c.backgroundDone)
 
+	defer func() {
+		ch := c.readFrame
+		go func() {
+			for range ch {
+			}
+		}()
+		close(ch)
+	}()
+
+	readDone := make(chan error)
+	go func() {
+		for {
+			c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
+			frame := base.InterleavedFrame{
+				Content: c.tcpFrameBuffer.Next(),
+			}
+			err := frame.Read(c.br)
+			if err != nil {
+				readDone <- err
+				return
+			}
+
+			c.rtcpReceivers[frame.TrackId].OnFrame(frame.StreamType, frame.Content)
+
+			c.readFrame <- frame
+		}
+	}()
+
 	reportTicker := time.NewTicker(clientReceiverReportPeriod)
 	defer reportTicker.Stop()
 
 	for {
 		select {
 		case <-c.backgroundTerminate:
+			c.nconn.SetReadDeadline(time.Now())
+			<-readDone
+			c.backgroundError = fmt.Errorf("terminated")
 			return
 
 		case <-reportTicker.C:
 			for trackId := range c.rtcpReceivers {
-				frame := c.rtcpReceivers[trackId].Report()
-				c.WriteFrame(trackId, StreamTypeRtcp, frame)
+				report := c.rtcpReceivers[trackId].Report()
+				c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
+				frame := base.InterleavedFrame{
+					TrackId:    trackId,
+					StreamType: StreamTypeRtcp,
+					Content:    report,
+				}
+				frame.Write(c.bw)
 			}
+
+		case err := <-readDone:
+			c.backgroundError = err
+			return
 		}
 	}
-}
-
-func (c *ConnClient) readFrameUDP() (int, StreamType, []byte, error) {
-	if c.state.load() != connClientStatePlay {
-		return 0, 0, nil, fmt.Errorf("not playing")
-	}
-
-	f := <-c.udpFrame
-	return f.TrackId, f.StreamType, f.Content, nil
-}
-
-func (c *ConnClient) readFrameTCP() (int, StreamType, []byte, error) {
-	if c.state.load() != connClientStatePlay {
-		return 0, 0, nil, fmt.Errorf("not playing")
-	}
-
-	c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
-	c.frame.Content = c.tcpFrameBuffer.Next()
-	err := c.frame.Read(c.br)
-	if err != nil {
-		return 0, 0, nil, err
-	}
-
-	c.rtcpReceivers[c.frame.TrackId].OnFrame(c.frame.StreamType, c.frame.Content)
-
-	return c.frame.TrackId, c.frame.StreamType, c.frame.Content, nil
 }
 
 // ReadFrame reads a frame.
 // This can be used only after Play().
 func (c *ConnClient) ReadFrame() (int, StreamType, []byte, error) {
-	return c.readFrameFunc()
+	f, ok := <-c.readFrame
+	if !ok {
+		return 0, 0, nil, c.backgroundError
+	}
+
+	return f.TrackId, f.StreamType, f.Content, nil
 }
