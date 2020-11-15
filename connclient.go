@@ -104,10 +104,12 @@ type ConnClient struct {
 func (c *ConnClient) Close() error {
 	s := c.state.load()
 
-	if s == connClientStatePlay {
+	if s == connClientStatePlay || s == connClientStateRecord {
 		close(c.backgroundTerminate)
 		<-c.backgroundDone
+	}
 
+	if s == connClientStatePlay {
 		c.Do(&base.Request{
 			Method:       base.TEARDOWN,
 			URL:          c.streamUrl,
