@@ -103,7 +103,7 @@ func (e *Encoder) writeFragmented(nalu []byte, rtpTs uint32, isFinal bool) ([][]
 	nalu = nalu[1:] // remove header
 
 	for i := 0; i < frameCount; i++ {
-		indicator := (nri << 5) | uint8(naluTypeFuA)
+		indicator := (nri << 5) | uint8(NALUTypeFuA)
 
 		start := uint8(0)
 		if i == 0 {

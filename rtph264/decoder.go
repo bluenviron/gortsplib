@@ -51,17 +51,23 @@ func (d *Decoder) Read() ([][]byte, error) {
 	}
 	payload := pkt.Payload
 
-	typ := naluType(payload[0] & 0x1F)
-
-	if typ >= naluTypeFirstSingle && typ <= naluTypeLastSingle {
-		return [][]byte{payload}, nil
-	}
+	typ := NALUType(payload[0] & 0x1F)
 
 	switch typ {
-	case naluTypeFuA:
+	case NALUTypeNonIDR, NALUTypeDataPartitionA, NALUTypeDataPartitionB,
+		NALUTypeDataPartitionC, NALUTypeIDR, NALUTypeSei, NALUTypeSPS,
+		NALUTypePPS, NALUTypeAccessUnitDelimiter, NALUTypeEndOfSequence,
+		NALUTypeEndOfStream, NALUTypeFillerData, NALUTypeSPSExtension,
+		NALUTypePrefix, NALUTypeSubsetSPS, NALUTypeReserved16, NALUTypeReserved17,
+		NALUTypeReserved18, NALUTypeSliceLayerWithoutPartitioning,
+		NALUTypeSliceExtension, NALUTypeSliceExtensionDepth, NALUTypeReserved22,
+		NALUTypeReserved23:
+		return [][]byte{payload}, nil
+
+	case NALUTypeFuA:
 		return d.readFragmented(payload)
 
-	case naluTypeStapA, naluTypeStapB, naluTypeMtap16, naluTypeMtap24, naluTypeFuB:
+	case NALUTypeStapA, NALUTypeStapB, NALUTypeMtap16, NALUTypeMtap24, NALUTypeFuB:
 		return nil, fmt.Errorf("NALU type not supported (%d)", typ)
 	}
 
@@ -95,8 +101,8 @@ func (d *Decoder) readFragmented(payload []byte) ([][]byte, error) {
 		}
 		payload := pkt.Payload
 
-		typ := naluType(payload[0] & 0x1F)
-		if typ != naluTypeFuA {
+		typ := NALUType(payload[0] & 0x1F)
+		if typ != NALUTypeFuA {
 			return nil, fmt.Errorf("non-starting NALU is not FU-A")
 		}
 		end := (payload[1] >> 6) & 0x01
@@ -123,14 +129,14 @@ func (d *Decoder) ReadSPSPPS() ([]byte, []byte, error) {
 		}
 
 		for _, nalu := range nalus {
-			switch naluType(nalu[0] & 0x1F) {
-			case naluTypeSPS:
+			switch NALUType(nalu[0] & 0x1F) {
+			case NALUTypeSPS:
 				sps = append([]byte(nil), nalu...)
 				if sps != nil && pps != nil {
 					return sps, pps, nil
 				}
 
-			case naluTypePPS:
+			case NALUTypePPS:
 				pps = append([]byte(nil), nalu...)
 				if sps != nil && pps != nil {
 					return sps, pps, nil
