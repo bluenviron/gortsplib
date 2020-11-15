@@ -11,7 +11,7 @@ import (
 // Play writes a PLAY request and reads a Response.
 // This can be called only after Setup().
 func (c *ConnClient) Play() (*base.Response, error) {
-	_, err := c.checkState(map[connClientState]struct{}{
+	err := c.checkState(map[connClientState]struct{}{
 		connClientStatePrePlay: {},
 	})
 	if err != nil {
@@ -30,7 +30,7 @@ func (c *ConnClient) Play() (*base.Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	c.state.store(connClientStatePlay)
+	c.state = connClientStatePlay
 
 	c.readFrame = make(chan base.InterleavedFrame)
 	c.backgroundTerminate = make(chan struct{})
@@ -80,13 +80,13 @@ func (c *ConnClient) backgroundPlayUDP() {
 	// disable deadline
 	c.nconn.SetReadDeadline(time.Time{})
 
-	readDone := make(chan error)
+	readerDone := make(chan error)
 	go func() {
 		for {
 			var res base.Response
 			err := res.Read(c.br)
 			if err != nil {
-				readDone <- err
+				readerDone <- err
 				return
 			}
 		}
@@ -105,7 +105,7 @@ func (c *ConnClient) backgroundPlayUDP() {
 		select {
 		case <-c.backgroundTerminate:
 			c.nconn.SetReadDeadline(time.Now())
-			<-readDone
+			<-readerDone
 			c.backgroundError = fmt.Errorf("terminated")
 			return
 
@@ -130,7 +130,7 @@ func (c *ConnClient) backgroundPlayUDP() {
 			})
 			if err != nil {
 				c.nconn.SetReadDeadline(time.Now())
-				<-readDone
+				<-readerDone
 				c.backgroundError = err
 				return
 			}
@@ -143,13 +143,13 @@ func (c *ConnClient) backgroundPlayUDP() {
 
 				if now.Sub(last) >= c.d.ReadTimeout {
 					c.nconn.SetReadDeadline(time.Now())
-					<-readDone
+					<-readerDone
 					c.backgroundError = fmt.Errorf("no packets received recently (maybe there's a firewall/NAT in between)")
 					return
 				}
 			}
 
-		case err := <-readDone:
+		case err := <-readerDone:
 			c.backgroundError = err
 			return
 		}
@@ -168,7 +168,7 @@ func (c *ConnClient) backgroundPlayTCP() {
 		close(ch)
 	}()
 
-	readDone := make(chan error)
+	readerDone := make(chan error)
 	go func() {
 		for {
 			c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
@@ -177,7 +177,7 @@ func (c *ConnClient) backgroundPlayTCP() {
 			}
 			err := frame.Read(c.br)
 			if err != nil {
-				readDone <- err
+				readerDone <- err
 				return
 			}
 
@@ -194,7 +194,7 @@ func (c *ConnClient) backgroundPlayTCP() {
 		select {
 		case <-c.backgroundTerminate:
 			c.nconn.SetReadDeadline(time.Now())
-			<-readDone
+			<-readerDone
 			c.backgroundError = fmt.Errorf("terminated")
 			return
 
@@ -210,7 +210,7 @@ func (c *ConnClient) backgroundPlayTCP() {
 				frame.Write(c.bw)
 			}
 
-		case err := <-readDone:
+		case err := <-readerDone:
 			c.backgroundError = err
 			return
 		}

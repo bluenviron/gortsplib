@@ -88,14 +88,10 @@ func (d Dialer) Dial(host string) (*ConnClient, error) {
 	}
 
 	return &ConnClient{
-		d:     d,
-		nconn: nconn,
-		br:    bufio.NewReaderSize(nconn, clientReadBufferSize),
-		bw:    bufio.NewWriterSize(nconn, clientWriteBufferSize),
-		state: func() *connClientState {
-			v := connClientState(0)
-			return &v
-		}(),
+		d:                 d,
+		nconn:             nconn,
+		br:                bufio.NewReaderSize(nconn, clientReadBufferSize),
+		bw:                bufio.NewWriterSize(nconn, clientWriteBufferSize),
 		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
 		udpLastFrameTimes: make(map[int]*int64),
 		udpRtpListeners:   make(map[int]*connClientUDPListener),

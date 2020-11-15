@@ -144,9 +144,9 @@ func TestDialReadParallel(t *testing.T) {
 			conn, err := dialer.DialRead("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
-			readDone := make(chan struct{})
+			readerDone := make(chan struct{})
 			go func() {
-				defer close(readDone)
+				defer close(readerDone)
 
 				for {
 					_, _, _, err := conn.ReadFrame()
@@ -159,7 +159,7 @@ func TestDialReadParallel(t *testing.T) {
 			time.Sleep(1 * time.Second)
 
 			conn.Close()
-			<-readDone
+			<-readerDone
 		})
 	}
 }
@@ -287,9 +287,9 @@ func TestDialReadPauseParallel(t *testing.T) {
 			conn, err := dialer.DialRead("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
-			readDone := make(chan struct{})
+			readerDone := make(chan struct{})
 			go func() {
-				defer close(readDone)
+				defer close(readerDone)
 
 				for {
 					_, _, _, err := conn.ReadFrame()
@@ -301,8 +301,9 @@ func TestDialReadPauseParallel(t *testing.T) {
 
 			time.Sleep(1 * time.Second)
 
-			conn.Pause()
-			<-readDone
+			_, err = conn.Pause()
+			require.NoError(t, err)
+			<-readerDone
 
 			conn.Close()
 		})
@@ -415,8 +416,8 @@ func TestDialPublishParallel(t *testing.T) {
 			track, err := NewTrackH264(0, sps, pps)
 			require.NoError(t, err)
 
-			writeDone := make(chan struct{})
-			defer func() { <-writeDone }()
+			writerDone := make(chan struct{})
+			defer func() { <-writerDone }()
 
 			var conn *ConnClient
 			defer func() { conn.Close() }()
@@ -429,7 +430,7 @@ func TestDialPublishParallel(t *testing.T) {
 			}()
 
 			go func() {
-				defer close(writeDone)
+				defer close(writerDone)
 
 				port := "8554"
 				if ca.server == "ffmpeg" {
@@ -539,6 +540,74 @@ func TestDialPublishPause(t *testing.T) {
 			require.NoError(t, err)
 			err = conn.WriteFrame(track.Id, StreamTypeRtp, buf[:n])
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestDialPublishPauseParallel(t *testing.T) {
+	for _, proto := range []string{
+		"udp",
+		"tcp",
+	} {
+		t.Run(proto, func(t *testing.T) {
+			cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
+			require.NoError(t, err)
+			defer cnt1.close()
+
+			time.Sleep(1 * time.Second)
+
+			pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
+			require.NoError(t, err)
+			defer pc.Close()
+
+			cnt2, err := newContainer("gstreamer", "source", []string{
+				"filesrc location=emptyvideo.ts ! tsdemux ! video/x-h264" +
+					" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=" + strconv.FormatInt(int64(pc.LocalAddr().(*net.UDPAddr).Port), 10),
+			})
+			require.NoError(t, err)
+			defer cnt2.close()
+
+			decoder := rtph264.NewDecoderFromPacketConn(pc)
+			sps, pps, err := decoder.ReadSPSPPS()
+			require.NoError(t, err)
+
+			track, err := NewTrackH264(0, sps, pps)
+			require.NoError(t, err)
+
+			dialer := func() Dialer {
+				if proto == "udp" {
+					return Dialer{}
+				}
+				return Dialer{StreamProtocol: StreamProtocolTCP}
+			}()
+
+			conn, err := dialer.DialPublish("rtsp://localhost:8554/teststream",
+				Tracks{track})
+			require.NoError(t, err)
+
+			writerDone := make(chan struct{})
+			go func() {
+				defer close(writerDone)
+
+				buf := make([]byte, 2048)
+				for {
+					n, _, err := pc.ReadFrom(buf)
+					require.NoError(t, err)
+
+					err = conn.WriteFrame(track.Id, StreamTypeRtp, buf[:n])
+					if err != nil {
+						break
+					}
+				}
+			}()
+
+			time.Sleep(1 * time.Second)
+
+			_, err = conn.Pause()
+			require.NoError(t, err)
+			<-writerDone
+
+			conn.Close()
 		})
 	}
 }

@@ -9,7 +9,7 @@ import (
 
 // Announce writes an ANNOUNCE request and reads a Response.
 func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
-	_, err := c.checkState(map[connClientState]struct{}{
+	err := c.checkState(map[connClientState]struct{}{
 		connClientStateInitial: {},
 	})
 	if err != nil {
@@ -33,7 +33,7 @@ func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 	}
 
 	c.streamUrl = u
-	*c.state = connClientStatePreRecord
+	c.state = connClientStatePreRecord
 
 	return res, nil
 }
@@ -41,7 +41,7 @@ func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 // Record writes a RECORD request and reads a Response.
 // This can be called only after Announce() and Setup().
 func (c *ConnClient) Record() (*base.Response, error) {
-	_, err := c.checkState(map[connClientState]struct{}{
+	err := c.checkState(map[connClientState]struct{}{
 		connClientStatePreRecord: {},
 	})
 	if err != nil {
@@ -60,14 +60,9 @@ func (c *ConnClient) Record() (*base.Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	if *c.streamProtocol == StreamProtocolUDP {
-		c.writeFrameFunc = c.writeFrameUDP
-	} else {
-		c.writeFrameFunc = c.writeFrameTCP
-	}
+	c.state = connClientStateRecord
 
-	c.state.store(connClientStateRecord)
-
+	c.writeFrameOpen = true
 	c.backgroundTerminate = make(chan struct{})
 	c.backgroundDone = make(chan struct{})
 
@@ -83,15 +78,22 @@ func (c *ConnClient) Record() (*base.Response, error) {
 func (c *ConnClient) backgroundRecordUDP() {
 	defer close(c.backgroundDone)
 
-	c.nconn.SetReadDeadline(time.Time{}) // disable deadline
+	defer func() {
+		c.writeFrameMutex.Lock()
+		defer c.writeFrameMutex.Unlock()
+		c.writeFrameOpen = false
+	}()
 
-	readDone := make(chan error)
+	// disable deadline
+	c.nconn.SetReadDeadline(time.Time{})
+
+	readerDone := make(chan error)
 	go func() {
 		for {
 			var res base.Response
 			err := res.Read(c.br)
 			if err != nil {
-				readDone <- err
+				readerDone <- err
 				return
 			}
 		}
@@ -100,42 +102,43 @@ func (c *ConnClient) backgroundRecordUDP() {
 	select {
 	case <-c.backgroundTerminate:
 		c.nconn.SetReadDeadline(time.Now())
-		<-readDone
+		<-readerDone
 		c.backgroundError = fmt.Errorf("terminated")
-		c.state.store(connClientStateUDPError)
 		return
 
-	case err := <-readDone:
+	case err := <-readerDone:
 		c.backgroundError = err
-		c.state.store(connClientStateUDPError)
 		return
 	}
 }
 
 func (c *ConnClient) backgroundRecordTCP() {
 	defer close(c.backgroundDone)
+
+	defer func() {
+		c.writeFrameMutex.Lock()
+		defer c.writeFrameMutex.Unlock()
+		c.writeFrameOpen = false
+	}()
+
+	<-c.backgroundTerminate
 }
 
-func (c *ConnClient) writeFrameUDP(trackId int, streamType StreamType, content []byte) error {
-	switch c.state.load() {
-	case connClientStateUDPError:
+// WriteFrame writes a frame.
+// This can be used only after Record().
+func (c *ConnClient) WriteFrame(trackId int, streamType StreamType, content []byte) error {
+	c.writeFrameMutex.RLock()
+	defer c.writeFrameMutex.RUnlock()
+
+	if !c.writeFrameOpen {
 		return c.backgroundError
-
-	case connClientStateRecord:
-
-	default:
-		return fmt.Errorf("not recording")
 	}
 
-	if streamType == StreamTypeRtp {
-		return c.udpRtpListeners[trackId].write(content)
-	}
-	return c.udpRtcpListeners[trackId].write(content)
-}
-
-func (c *ConnClient) writeFrameTCP(trackId int, streamType StreamType, content []byte) error {
-	if c.state.load() != connClientStateRecord {
-		return fmt.Errorf("not recording")
+	if *c.streamProtocol == StreamProtocolUDP {
+		if streamType == StreamTypeRtp {
+			return c.udpRtpListeners[trackId].write(content)
+		}
+		return c.udpRtcpListeners[trackId].write(content)
 	}
 
 	c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
@@ -145,10 +148,4 @@ func (c *ConnClient) writeFrameTCP(trackId int, streamType StreamType, content [
 		Content:    content,
 	}
 	return frame.Write(c.bw)
-}
-
-// WriteFrame writes a frame.
-// This can be used only after Record().
-func (c *ConnClient) WriteFrame(trackId int, streamType StreamType, content []byte) error {
-	return c.writeFrameFunc(trackId, streamType, content)
 }
