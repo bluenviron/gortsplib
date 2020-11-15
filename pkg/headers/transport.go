@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/pkg/base"
 )
 
 // TransportMode is a transport mode.

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/pkg/base"
 )
 
 // AuthMethod is an authentication method.

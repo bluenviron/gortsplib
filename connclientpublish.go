@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aler9/gortsplib/base"
+	"github.com/aler9/gortsplib/pkg/base"
 )
 
 // Announce writes an ANNOUNCE request and reads a Response.

@@ -17,11 +17,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/aler9/gortsplib/auth"
-	"github.com/aler9/gortsplib/base"
-	"github.com/aler9/gortsplib/headers"
-	"github.com/aler9/gortsplib/multibuffer"
-	"github.com/aler9/gortsplib/rtcpreceiver"
+	"github.com/aler9/gortsplib/pkg/auth"
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/multibuffer"
+	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 )
 
 const (

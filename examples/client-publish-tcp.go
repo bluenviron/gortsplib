@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/rtph264"
+	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
 // This example shows how to generate RTP/H264 frames from a file with Gstreamer,

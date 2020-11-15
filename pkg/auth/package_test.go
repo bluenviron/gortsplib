@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/base"
-	"github.com/aler9/gortsplib/headers"
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
 )
 
 var casesAuth = []struct {

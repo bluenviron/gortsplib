@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/aler9/gortsplib/base"
-	"github.com/aler9/gortsplib/headers"
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
 )
 
 // Client is an object that allows a client to authenticate against a server.

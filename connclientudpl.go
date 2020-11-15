@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/aler9/gortsplib/base"
-	"github.com/aler9/gortsplib/multibuffer"
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
 type connClientUDPListener struct {

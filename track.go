@@ -10,7 +10,7 @@ import (
 	"github.com/notedit/rtmp/codec/aac"
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/sdp"
+	"github.com/aler9/gortsplib/pkg/sdp"
 )
 
 // Track is a track available in a certain URL.

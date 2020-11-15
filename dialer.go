@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aler9/gortsplib/base"
-	"github.com/aler9/gortsplib/headers"
-	"github.com/aler9/gortsplib/multibuffer"
-	"github.com/aler9/gortsplib/rtcpreceiver"
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/multibuffer"
+	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 )
 
 // DefaultDialer is the default dialer, used by Dial, DialRead and DialPublish.

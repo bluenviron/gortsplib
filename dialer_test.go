@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/rtph264"
+	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
 type container struct {
