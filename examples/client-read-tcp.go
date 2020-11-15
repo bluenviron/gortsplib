@@ -22,15 +22,18 @@ func main() {
 	}
 	defer conn.Close()
 
+	readerDone := make(chan struct{})
+	defer func() { <-readerDone }()
+
 	// read frames
-	for {
-		id, typ, buf, err := conn.ReadFrame()
+	conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte, err error) {
 		if err != nil {
-			fmt.Printf("connection is closed (%s)\n", err)
-			break
+			fmt.Printf("ERR: %v\n", err)
+			close(readerDone)
+			return
 		}
 
 		fmt.Printf("frame from track %d, type %v: %v\n",
 			id, typ, buf)
-	}
+	})
 }

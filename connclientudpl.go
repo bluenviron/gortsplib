@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
@@ -33,7 +32,7 @@ func newConnClientUDPListener(c *ConnClient, port int) (*connClientUDPListener, 
 	return &connClientUDPListener{
 		c:              c,
 		pc:             pc,
-		udpFrameBuffer: multibuffer.New(c.d.ReadBufferCount+1, 2048),
+		udpFrameBuffer: multibuffer.New(c.d.ReadBufferCount, 2048),
 	}, nil
 }
 
@@ -76,11 +75,7 @@ func (l *connClientUDPListener) run() {
 
 		l.c.rtcpReceivers[l.trackId].OnFrame(l.streamType, buf[:n])
 
-		l.c.readFrame <- base.InterleavedFrame{
-			TrackId:    l.trackId,
-			StreamType: l.streamType,
-			Content:    buf[:n],
-		}
+		l.c.readCB(l.trackId, l.streamType, buf[:n], nil)
 	}
 }
 

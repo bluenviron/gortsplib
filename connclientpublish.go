@@ -61,7 +61,6 @@ func (c *ConnClient) Record() (*base.Response, error) {
 	}
 
 	c.state = connClientStateRecord
-
 	c.writeFrameOpen = true
 	c.backgroundTerminate = make(chan struct{})
 	c.backgroundDone = make(chan struct{})

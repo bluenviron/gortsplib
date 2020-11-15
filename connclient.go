@@ -80,12 +80,12 @@ type ConnClient struct {
 	tcpFrameBuffer        *multibuffer.MultiBuffer
 	getParameterSupported bool
 	backgroundError       error
+	writeFrameMutex       sync.RWMutex
+	writeFrameOpen        bool
+	readCB                func(int, StreamType, []byte, error)
 
 	backgroundTerminate chan struct{}
 	backgroundDone      chan struct{}
-	readFrame           chan base.InterleavedFrame
-	writeFrameMutex     sync.RWMutex
-	writeFrameOpen      bool
 }
 
 // Close closes all the ConnClient resources.
