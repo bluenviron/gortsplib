@@ -22,7 +22,7 @@ func main() {
 	readerDone := make(chan struct{})
 	defer func() { <-readerDone }()
 
-	// read frames
+	// read frames from the server
 	conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte, err error) {
 		if err != nil {
 			fmt.Printf("ERR: %v\n", err)
@@ -30,7 +30,6 @@ func main() {
 			return
 		}
 
-		fmt.Printf("frame from track %d, type %v: %v\n",
-			id, typ, buf)
+		fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 	})
 }
