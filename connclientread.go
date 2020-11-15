@@ -57,19 +57,15 @@ func (c *ConnClient) Play() (*base.Response, error) {
 func (c *ConnClient) backgroundPlayUDP() {
 	defer close(c.backgroundDone)
 
-	defer func() {
-		ch := c.readFrame
-		go func() {
-			for range ch {
-			}
-		}()
+	readFrame := c.readFrame
 
+	defer func() {
 		for trackId := range c.udpRtpListeners {
 			c.udpRtpListeners[trackId].stop()
 			c.udpRtcpListeners[trackId].stop()
 		}
 
-		close(ch)
+		close(readFrame)
 	}()
 
 	for trackId := range c.udpRtpListeners {
@@ -104,6 +100,10 @@ func (c *ConnClient) backgroundPlayUDP() {
 	for {
 		select {
 		case <-c.backgroundTerminate:
+			go func() {
+				for range readFrame {
+				}
+			}()
 			c.nconn.SetReadDeadline(time.Now())
 			<-readerDone
 			c.backgroundError = fmt.Errorf("terminated")
@@ -129,6 +129,10 @@ func (c *ConnClient) backgroundPlayUDP() {
 				SkipResponse: true,
 			})
 			if err != nil {
+				go func() {
+					for range readFrame {
+					}
+				}()
 				c.nconn.SetReadDeadline(time.Now())
 				<-readerDone
 				c.backgroundError = err
@@ -142,6 +146,10 @@ func (c *ConnClient) backgroundPlayUDP() {
 				last := time.Unix(atomic.LoadInt64(lastUnix), 0)
 
 				if now.Sub(last) >= c.d.ReadTimeout {
+					go func() {
+						for range readFrame {
+						}
+					}()
 					c.nconn.SetReadDeadline(time.Now())
 					<-readerDone
 					c.backgroundError = fmt.Errorf("no packets received recently (maybe there's a firewall/NAT in between)")
@@ -150,6 +158,10 @@ func (c *ConnClient) backgroundPlayUDP() {
 			}
 
 		case err := <-readerDone:
+			go func() {
+				for range readFrame {
+				}
+			}()
 			c.backgroundError = err
 			return
 		}
@@ -159,13 +171,10 @@ func (c *ConnClient) backgroundPlayUDP() {
 func (c *ConnClient) backgroundPlayTCP() {
 	defer close(c.backgroundDone)
 
+	readFrame := c.readFrame
+
 	defer func() {
-		ch := c.readFrame
-		go func() {
-			for range ch {
-			}
-		}()
-		close(ch)
+		close(readFrame)
 	}()
 
 	readerDone := make(chan error)
@@ -183,7 +192,7 @@ func (c *ConnClient) backgroundPlayTCP() {
 
 			c.rtcpReceivers[frame.TrackId].OnFrame(frame.StreamType, frame.Content)
 
-			c.readFrame <- frame
+			readFrame <- frame
 		}
 	}()
 
@@ -193,6 +202,10 @@ func (c *ConnClient) backgroundPlayTCP() {
 	for {
 		select {
 		case <-c.backgroundTerminate:
+			go func() {
+				for range readFrame {
+				}
+			}()
 			c.nconn.SetReadDeadline(time.Now())
 			<-readerDone
 			c.backgroundError = fmt.Errorf("terminated")
@@ -211,6 +224,10 @@ func (c *ConnClient) backgroundPlayTCP() {
 			}
 
 		case err := <-readerDone:
+			go func() {
+				for range readFrame {
+				}
+			}()
 			c.backgroundError = err
 			return
 		}
