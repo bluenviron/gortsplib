@@ -20,11 +20,11 @@ type ConnServerConf struct {
 	Conn net.Conn
 
 	// (optional) timeout of read operations.
-	// It defaults to 5 seconds
+	// It defaults to 10 seconds
 	ReadTimeout time.Duration
 
 	// (optional) timeout of write operations.
-	// It defaults to 5 seconds
+	// It defaults to 10 seconds
 	WriteTimeout time.Duration
 
 	// (optional) read buffer count.

@@ -9,17 +9,21 @@ RTSP 1.0 client and server library for the Go programming language, written for 
 
 Features:
 
-* Read streams from servers with TCP or UDP
-* Publish streams to servers with TCP or UDP
-* Build servers
-* Provides most methods and primitives of the protocol
+* Client
+  * Query servers about published streams
+  * Read streams from servers with UDP or TCP
+  * Publish streams to servers with UDP or TCP
+  * Pause reading or publishing without disconnecting from the server
+* Server
+  * Handle server-side connections
 
 ## Examples
 
-* [client-read-tcp](examples/client-read-tcp.go)
+* [client-query](examples/client-query.go)
 * [client-read-udp](examples/client-read-udp.go)
-* [client-publish-tcp](examples/client-publish-tcp.go)
+* [client-read-tcp](examples/client-read-tcp.go)
 * [client-publish-udp](examples/client-publish-udp.go)
+* [client-publish-tcp](examples/client-publish-tcp.go)
 
 ## Documentation
 

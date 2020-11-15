@@ -13,17 +13,20 @@ import (
 
 func main() {
 	// connect to the server and start reading all tracks
-	conn, err := gortsplib.DialRead("rtsp://localhost:8554/mystream", gortsplib.StreamProtocolTCP)
+	dialer := gortsplib.Dialer{
+		StreamProtocol: gortsplib.StreamProtocolTCP,
+	}
+	conn, err := dialer.DialRead("rtsp://localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
+	// read frames
 	for {
-		// read frames
-		id, typ, buf, err := conn.ReadFrameTCP()
+		id, typ, buf, err := conn.ReadFrame()
 		if err != nil {
-			fmt.Println("connection is closed (%s)", err)
+			fmt.Printf("connection is closed (%s)\n", err)
 			break
 		}
 

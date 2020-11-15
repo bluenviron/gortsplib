@@ -41,8 +41,10 @@ func main() {
 	}
 
 	// connect to the server and start publishing the track
-	conn, err := gortsplib.DialPublish("rtsp://localhost:8554/mystream",
-		gortsplib.StreamProtocolTCP, gortsplib.Tracks{track})
+	dialer := gortsplib.Dialer{
+		StreamProtocol: gortsplib.StreamProtocolTCP,
+	}
+	conn, err := dialer.DialPublish("rtsp://localhost:8554/mystream", gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)
 	}
@@ -59,7 +61,7 @@ func main() {
 		// write frames to the server
 		err = conn.WriteFrame(track.Id, gortsplib.StreamTypeRtp, buf[:n])
 		if err != nil {
-			fmt.Println("connection is closed (%s)", err)
+			fmt.Printf("connection is closed (%s)\n", err)
 			break
 		}
 	}

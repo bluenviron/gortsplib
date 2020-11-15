@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -21,23 +22,27 @@ func Dial(host string) (*ConnClient, error) {
 }
 
 // DialRead connects to a server and starts reading all tracks.
-func DialRead(address string, proto StreamProtocol) (*ConnClient, error) {
-	return DefaultDialer.DialRead(address, proto)
+func DialRead(address string) (*ConnClient, error) {
+	return DefaultDialer.DialRead(address)
 }
 
 // DialPublish connects to a server and starts publishing the tracks.
-func DialPublish(address string, proto StreamProtocol, tracks Tracks) (*ConnClient, error) {
-	return DefaultDialer.DialPublish(address, proto, tracks)
+func DialPublish(address string, tracks Tracks) (*ConnClient, error) {
+	return DefaultDialer.DialPublish(address, tracks)
 }
 
 // Dialer allows to initialize a ConnClient.
 type Dialer struct {
+	// (optional) the stream protocol.
+	// It defaults to StreamProtocolUDP.
+	StreamProtocol StreamProtocol
+
 	// (optional) timeout of read operations.
 	// It defaults to 10 seconds
 	ReadTimeout time.Duration
 
 	// (optional) timeout of write operations.
-	// It defaults to 5 seconds
+	// It defaults to 10 seconds
 	WriteTimeout time.Duration
 
 	// (optional) read buffer count.
@@ -83,22 +88,27 @@ func (d Dialer) Dial(host string) (*ConnClient, error) {
 	}
 
 	return &ConnClient{
-		d:                 d,
-		nconn:             nconn,
-		br:                bufio.NewReaderSize(nconn, clientReadBufferSize),
-		bw:                bufio.NewWriterSize(nconn, clientWriteBufferSize),
-		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
-		udpLastFrameTimes: make(map[int]*int64),
-		udpRtpListeners:   make(map[int]*connClientUDPListener),
-		udpRtcpListeners:  make(map[int]*connClientUDPListener),
-		response:          &base.Response{},
-		frame:             &base.InterleavedFrame{},
-		tcpFrameBuffer:    multibuffer.New(d.ReadBufferCount, clientTCPFrameReadBufferSize),
+		d:     d,
+		nconn: nconn,
+		br:    bufio.NewReaderSize(nconn, clientReadBufferSize),
+		bw:    bufio.NewWriterSize(nconn, clientWriteBufferSize),
+		state: func() *connClientState {
+			v := connClientState(0)
+			return &v
+		}(),
+		rtcpReceivers:      make(map[int]*rtcpreceiver.RtcpReceiver),
+		udpLastFrameTimes:  make(map[int]*int64),
+		udpRtpListeners:    make(map[int]*connClientUDPListener),
+		udpRtcpListeners:   make(map[int]*connClientUDPListener),
+		response:           &base.Response{},
+		frame:              &base.InterleavedFrame{},
+		tcpFrameBuffer:     multibuffer.New(d.ReadBufferCount, clientTCPFrameReadBufferSize),
+		backgroundUDPError: fmt.Errorf("not running"),
 	}, nil
 }
 
 // DialRead connects to the address and starts reading all tracks.
-func (d Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, error) {
+func (d Dialer) DialRead(address string) (*ConnClient, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
@@ -124,11 +134,11 @@ func (d Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, err
 	if res.StatusCode >= base.StatusMovedPermanently &&
 		res.StatusCode <= base.StatusUseProxy {
 		conn.Close()
-		return d.DialRead(res.Header["Location"][0], proto)
+		return d.DialRead(res.Header["Location"][0])
 	}
 
 	for _, track := range tracks {
-		_, err := conn.Setup(u, headers.TransportModePlay, proto, track, 0, 0)
+		_, err := conn.Setup(u, headers.TransportModePlay, d.StreamProtocol, track, 0, 0)
 		if err != nil {
 			conn.Close()
 			return nil, err
@@ -145,7 +155,7 @@ func (d Dialer) DialRead(address string, proto StreamProtocol) (*ConnClient, err
 }
 
 // DialPublish connects to the address and starts publishing the tracks.
-func (d Dialer) DialPublish(address string, proto StreamProtocol, tracks Tracks) (*ConnClient, error) {
+func (d Dialer) DialPublish(address string, tracks Tracks) (*ConnClient, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
@@ -169,7 +179,7 @@ func (d Dialer) DialPublish(address string, proto StreamProtocol, tracks Tracks)
 	}
 
 	for _, track := range tracks {
-		_, err = conn.Setup(u, headers.TransportModeRecord, proto, track, 0, 0)
+		_, err = conn.Setup(u, headers.TransportModeRecord, d.StreamProtocol, track, 0, 0)
 		if err != nil {
 			conn.Close()
 			return nil, err

@@ -3,40 +3,67 @@ package gortsplib
 import (
 	"net"
 	"strconv"
+	"sync/atomic"
+	"time"
 
+	"github.com/aler9/gortsplib/base"
 	"github.com/aler9/gortsplib/multibuffer"
 )
 
 type connClientUDPListener struct {
+	c              *ConnClient
 	pc             net.PacketConn
 	remoteIp       net.IP
 	remoteZone     string
 	remotePort     int
 	udpFrameBuffer *multibuffer.MultiBuffer
+	trackId        int
+	streamType     StreamType
+	running        bool
+
+	done chan struct{}
 }
 
-func newConnClientUDPListener(d Dialer, port int) (*connClientUDPListener, error) {
-	pc, err := d.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
+func newConnClientUDPListener(c *ConnClient, port int) (*connClientUDPListener, error) {
+	pc, err := c.d.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
 	if err != nil {
 		return nil, err
 	}
 
 	return &connClientUDPListener{
+		c:              c,
 		pc:             pc,
-		udpFrameBuffer: multibuffer.New(d.ReadBufferCount, 2048),
+		udpFrameBuffer: multibuffer.New(c.d.ReadBufferCount+1, 2048),
 	}, nil
 }
 
 func (l *connClientUDPListener) close() {
+	if l.running {
+		l.stop()
+	}
 	l.pc.Close()
 }
 
-func (l *connClientUDPListener) read() ([]byte, error) {
+func (l *connClientUDPListener) start() {
+	l.running = true
+	l.pc.SetReadDeadline(time.Time{})
+	l.done = make(chan struct{})
+	go l.run()
+}
+
+func (l *connClientUDPListener) stop() {
+	l.pc.SetReadDeadline(time.Now())
+	<-l.done
+}
+
+func (l *connClientUDPListener) run() {
+	defer close(l.done)
+
 	for {
 		buf := l.udpFrameBuffer.Next()
 		n, addr, err := l.pc.ReadFrom(buf)
 		if err != nil {
-			return nil, err
+			return
 		}
 
 		uaddr := addr.(*net.UDPAddr)
@@ -45,7 +72,15 @@ func (l *connClientUDPListener) read() ([]byte, error) {
 			continue
 		}
 
-		return buf[:n], nil
+		atomic.StoreInt64(l.c.udpLastFrameTimes[l.trackId], time.Now().Unix())
+
+		l.c.rtcpReceivers[l.trackId].OnFrame(l.streamType, buf[:n])
+
+		l.c.udpFrame <- base.InterleavedFrame{
+			TrackId:    l.trackId,
+			StreamType: l.streamType,
+			Content:    buf[:n],
+		}
 	}
 }
 

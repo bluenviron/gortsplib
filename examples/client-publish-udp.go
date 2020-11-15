@@ -15,13 +15,6 @@ import (
 // the frames with the UDP protocol.
 
 func main() {
-	var writerDone chan struct{}
-	defer func() {
-		if writerDone != nil {
-			<-writerDone
-		}
-	}()
-
 	// open a listener to receive RTP/H264 frames
 	pc, err := net.ListenPacket("udp4", "127.0.0.1:9000")
 	if err != nil {
@@ -49,34 +42,25 @@ func main() {
 
 	// connect to the server and start publishing the track
 	conn, err := gortsplib.DialPublish("rtsp://localhost:8554/mystream",
-		gortsplib.StreamProtocolUDP, gortsplib.Tracks{track})
+		gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
-	writerDone = make(chan struct{})
-
-	go func() {
-		defer close(writerDone)
-
-		buf := make([]byte, 2048)
-		for {
-			// read frames from the source
-			n, _, err := pc.ReadFrom(buf)
-			if err != nil {
-				break
-			}
-
-			// write frames to the server
-			err = conn.WriteFrame(track.Id, gortsplib.StreamTypeRtp, buf[:n])
-			if err != nil {
-				break
-			}
+	buf := make([]byte, 2048)
+	for {
+		// read frames from the source
+		n, _, err := pc.ReadFrom(buf)
+		if err != nil {
+			break
 		}
-	}()
 
-	// wait until the connection is closed
-	err = conn.LoopUDP()
-	fmt.Println("connection is closed (%s)", err)
+		// write frames to the server
+		err = conn.WriteFrame(track.Id, gortsplib.StreamTypeRtp, buf[:n])
+		if err != nil {
+			fmt.Printf("connection is closed (%s)\n", err)
+			break
+		}
+	}
 }
