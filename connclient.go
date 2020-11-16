@@ -90,9 +90,7 @@ type ConnClient struct {
 
 // Close closes all the ConnClient resources.
 func (c *ConnClient) Close() error {
-	s := c.state
-
-	if s == connClientStatePlay || s == connClientStateRecord {
+	if c.state == connClientStatePlay || c.state == connClientStateRecord {
 		close(c.backgroundTerminate)
 		<-c.backgroundDone
 
