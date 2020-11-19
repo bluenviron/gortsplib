@@ -10,7 +10,7 @@ import (
 )
 
 // This example shows how to connect to a server and print informations about
-// tracks published on a certain path.
+// tracks published on a path.
 
 func main() {
 	u, err := base.ParseURL("rtsp://myserver/mypath")
@@ -38,5 +38,5 @@ func main() {
 		panic(fmt.Errorf("server returned status %d", res.StatusCode))
 	}
 
-	fmt.Println("tracks: %v\n", tracks)
+	fmt.Println("available tracks: %v\n", tracks)
 }
