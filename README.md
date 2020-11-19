@@ -24,6 +24,7 @@ Features:
 * [client-read-tcp](examples/client-read-tcp.go)
 * [client-publish-udp](examples/client-publish-udp.go)
 * [client-publish-tcp](examples/client-publish-tcp.go)
+* [client-read-pause](examples/client-read-pause.go)
 
 ## Documentation
 

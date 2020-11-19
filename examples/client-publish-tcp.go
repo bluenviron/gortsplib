@@ -10,9 +10,10 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
-// This example shows how to generate RTP/H264 frames from a file with Gstreamer,
-// create a RTSP client, connect to a server, announce a H264 track and write
-// the frames with the TCP protocol.
+// This example shows how to
+// * generate RTP/H264 frames from a file with Gstreamer
+// * connect to a RTSP server, announce a H264 track
+// * write the frames with the TCP protocol
 
 func main() {
 	// open a listener to receive RTP/H264 frames

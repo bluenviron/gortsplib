@@ -8,8 +8,9 @@ import (
 	"github.com/aler9/gortsplib"
 )
 
-// This example shows how to create a RTSP client, connect to a server and
-// read all tracks with the UDP protocol.
+// This example shows how to
+// * connect to a RTSP server
+// * read all tracks with the UDP protocol
 
 func main() {
 	// connect to the server and start reading all tracks
@@ -20,7 +21,6 @@ func main() {
 	defer conn.Close()
 
 	readerDone := make(chan struct{})
-	defer func() { <-readerDone }()
 
 	// read frames from the server
 	conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte, err error) {
@@ -32,4 +32,6 @@ func main() {
 
 		fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 	})
+
+	<-readerDone
 }
