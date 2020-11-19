@@ -79,13 +79,20 @@ type ConnClient struct {
 	udpRtcpListeners      map[int]*connClientUDPListener
 	tcpFrameBuffer        *multibuffer.MultiBuffer
 	getParameterSupported bool
-	backgroundError       error
-	writeFrameMutex       sync.RWMutex
-	writeFrameOpen        bool
-	readCB                func(int, StreamType, []byte, error)
 
+	// read only
+	readCB func(int, StreamType, []byte)
+
+	// publish only
+	publishError error
+	publishMutex sync.RWMutex
+	publishOpen  bool
+
+	// in
 	backgroundTerminate chan struct{}
-	backgroundDone      chan struct{}
+
+	// out
+	backgroundDone chan struct{}
 }
 
 // Close closes all the ConnClient resources.

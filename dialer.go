@@ -97,7 +97,7 @@ func (d Dialer) Dial(host string) (*ConnClient, error) {
 		udpRtpListeners:   make(map[int]*connClientUDPListener),
 		udpRtcpListeners:  make(map[int]*connClientUDPListener),
 		tcpFrameBuffer:    multibuffer.New(d.ReadBufferCount, clientTCPFrameReadBufferSize),
-		backgroundError:   fmt.Errorf("not running"),
+		publishError:      fmt.Errorf("not running"),
 	}, nil
 }
 

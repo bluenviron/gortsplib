@@ -61,7 +61,7 @@ func (c *ConnClient) Record() (*base.Response, error) {
 	}
 
 	c.state = connClientStateRecord
-	c.writeFrameOpen = true
+	c.publishOpen = true
 	c.backgroundTerminate = make(chan struct{})
 	c.backgroundDone = make(chan struct{})
 
@@ -78,9 +78,9 @@ func (c *ConnClient) backgroundRecordUDP() {
 	defer close(c.backgroundDone)
 
 	defer func() {
-		c.writeFrameMutex.Lock()
-		defer c.writeFrameMutex.Unlock()
-		c.writeFrameOpen = false
+		c.publishMutex.Lock()
+		defer c.publishMutex.Unlock()
+		c.publishOpen = false
 	}()
 
 	// disable deadline
@@ -102,11 +102,11 @@ func (c *ConnClient) backgroundRecordUDP() {
 	case <-c.backgroundTerminate:
 		c.nconn.SetReadDeadline(time.Now())
 		<-readerDone
-		c.backgroundError = fmt.Errorf("terminated")
+		c.publishError = fmt.Errorf("terminated")
 		return
 
 	case err := <-readerDone:
-		c.backgroundError = err
+		c.publishError = err
 		return
 	}
 }
@@ -115,9 +115,9 @@ func (c *ConnClient) backgroundRecordTCP() {
 	defer close(c.backgroundDone)
 
 	defer func() {
-		c.writeFrameMutex.Lock()
-		defer c.writeFrameMutex.Unlock()
-		c.writeFrameOpen = false
+		c.publishMutex.Lock()
+		defer c.publishMutex.Unlock()
+		c.publishOpen = false
 	}()
 
 	<-c.backgroundTerminate
@@ -126,11 +126,11 @@ func (c *ConnClient) backgroundRecordTCP() {
 // WriteFrame writes a frame.
 // This can be used only after Record().
 func (c *ConnClient) WriteFrame(trackId int, streamType StreamType, content []byte) error {
-	c.writeFrameMutex.RLock()
-	defer c.writeFrameMutex.RUnlock()
+	c.publishMutex.RLock()
+	defer c.publishMutex.RUnlock()
 
-	if !c.writeFrameOpen {
-		return c.backgroundError
+	if !c.publishOpen {
+		return c.publishError
 	}
 
 	if *c.streamProtocol == StreamProtocolUDP {

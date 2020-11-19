@@ -97,13 +97,7 @@ func TestDialReadParallel(t *testing.T) {
 
 			var firstFrame int32
 			frameRecv := make(chan struct{})
-			readerDone := make(chan struct{})
-			conn.OnFrame(func(id int, typ StreamType, content []byte, err error) {
-				if err != nil {
-					close(readerDone)
-					return
-				}
-
+			done := conn.OnFrame(func(id int, typ StreamType, content []byte) {
 				if atomic.SwapInt32(&firstFrame, 1) == 0 {
 					close(frameRecv)
 				}
@@ -111,14 +105,12 @@ func TestDialReadParallel(t *testing.T) {
 
 			<-frameRecv
 			conn.Close()
-			<-readerDone
+			<-done
 
-			readerDone = make(chan struct{})
-			conn.OnFrame(func(id int, typ StreamType, content []byte, err error) {
-				require.Error(t, err)
-				close(readerDone)
+			done = conn.OnFrame(func(id int, typ StreamType, content []byte) {
+				t.Error("should not happen")
 			})
-			<-readerDone
+			<-done
 		})
 	}
 }
@@ -155,13 +147,7 @@ func TestDialReadRedirectParallel(t *testing.T) {
 
 	var firstFrame int32
 	frameRecv := make(chan struct{})
-	readerDone := make(chan struct{})
-	conn.OnFrame(func(id int, typ StreamType, content []byte, err error) {
-		if err != nil {
-			close(readerDone)
-			return
-		}
-
+	done := conn.OnFrame(func(id int, typ StreamType, content []byte) {
 		if atomic.SwapInt32(&firstFrame, 1) == 0 {
 			close(frameRecv)
 		}
@@ -169,7 +155,7 @@ func TestDialReadRedirectParallel(t *testing.T) {
 
 	<-frameRecv
 	conn.Close()
-	<-readerDone
+	<-done
 }
 
 func TestDialReadPauseParallel(t *testing.T) {
@@ -210,13 +196,7 @@ func TestDialReadPauseParallel(t *testing.T) {
 
 			firstFrame := int32(0)
 			frameRecv := make(chan struct{})
-			readerDone := make(chan struct{})
-			conn.OnFrame(func(id int, typ StreamType, content []byte, err error) {
-				if err != nil {
-					close(readerDone)
-					return
-				}
-
+			done := conn.OnFrame(func(id int, typ StreamType, content []byte) {
 				if atomic.SwapInt32(&firstFrame, 1) == 0 {
 					close(frameRecv)
 				}
@@ -225,20 +205,14 @@ func TestDialReadPauseParallel(t *testing.T) {
 			<-frameRecv
 			_, err = conn.Pause()
 			require.NoError(t, err)
-			<-readerDone
+			<-done
 
 			_, err = conn.Play()
 			require.NoError(t, err)
 
 			firstFrame = int32(0)
 			frameRecv = make(chan struct{})
-			readerDone = make(chan struct{})
-			conn.OnFrame(func(id int, typ StreamType, content []byte, err error) {
-				if err != nil {
-					close(readerDone)
-					return
-				}
-
+			done = conn.OnFrame(func(id int, typ StreamType, content []byte) {
 				if atomic.SwapInt32(&firstFrame, 1) == 0 {
 					close(frameRecv)
 				}
@@ -246,7 +220,7 @@ func TestDialReadPauseParallel(t *testing.T) {
 
 			<-frameRecv
 			conn.Close()
-			<-readerDone
+			<-done
 		})
 	}
 }

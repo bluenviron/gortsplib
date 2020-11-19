@@ -75,7 +75,7 @@ func (l *connClientUDPListener) run() {
 
 		l.c.rtcpReceivers[l.trackId].OnFrame(l.streamType, buf[:n])
 
-		l.c.readCB(l.trackId, l.streamType, buf[:n], nil)
+		l.c.readCB(l.trackId, l.streamType, buf[:n])
 	}
 }
 

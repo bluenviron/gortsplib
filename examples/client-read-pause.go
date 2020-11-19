@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/aler9/gortsplib"
 )
@@ -24,13 +25,7 @@ func main() {
 
 	for {
 		// read frames from the server
-		readerDone := make(chan struct{})
-		conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte, err error) {
-			if err != nil {
-				close(readerDone)
-				return
-			}
-
+		done := conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte) {
 			fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 		})
 
@@ -44,13 +39,13 @@ func main() {
 		}
 
 		// join reader
-		<-readerDone
+		<-done
 
 		// wait
 		time.Sleep(5 * time.Second)
 
 		// play again
-		_, err := conn.Play()
+		_, err = conn.Play()
 		if err != nil {
 			panic(err)
 		}
