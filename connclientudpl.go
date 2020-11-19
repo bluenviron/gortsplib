@@ -80,6 +80,7 @@ func (l *connClientUDPListener) run() {
 }
 
 func (l *connClientUDPListener) write(buf []byte) error {
+	l.pc.SetWriteDeadline(time.Now().Add(l.c.d.WriteTimeout))
 	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
 		IP:   l.remoteIp,
 		Zone: l.remoteZone,
