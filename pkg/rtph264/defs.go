@@ -3,8 +3,8 @@ package rtph264
 // NALUType is the type of a NALU.
 type NALUType uint8
 
+// standard NALU types.
 const (
-	// standard NALU types.
 	NALUTypeNonIDR                        NALUType = 1
 	NALUTypeDataPartitionA                NALUType = 2
 	NALUTypeDataPartitionB                NALUType = 3

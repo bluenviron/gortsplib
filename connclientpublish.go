@@ -124,7 +124,7 @@ func (c *ConnClient) backgroundRecordTCP() {
 }
 
 // WriteFrame writes a frame.
-// This can be used only after Record().
+// This can be called only after Record().
 func (c *ConnClient) WriteFrame(trackId int, streamType StreamType, content []byte) error {
 	c.publishMutex.RLock()
 	defer c.publishMutex.RUnlock()
