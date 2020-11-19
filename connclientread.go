@@ -137,7 +137,6 @@ func (c *ConnClient) backgroundPlayTCP() {
 	readerDone := make(chan error)
 	go func() {
 		for {
-			c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
 			frame := base.InterleavedFrame{
 				Content: c.tcpFrameBuffer.Next(),
 			}
@@ -156,8 +155,17 @@ func (c *ConnClient) backgroundPlayTCP() {
 	reportTicker := time.NewTicker(clientReceiverReportPeriod)
 	defer reportTicker.Stop()
 
+	// for some reason, SetReadDeadline() must always be called in the same
+	// goroutine, otherwise Read() freezes.
+	// therefore, we call it with a ticker.
+	deadlineTicker := time.NewTicker(1 * time.Second)
+	defer deadlineTicker.Stop()
+
 	for {
 		select {
+		case <-deadlineTicker.C:
+			c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
+
 		case <-c.backgroundTerminate:
 			c.nconn.SetReadDeadline(time.Now())
 			<-readerDone
