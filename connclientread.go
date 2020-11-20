@@ -47,6 +47,15 @@ func (c *ConnClient) backgroundPlayUDP(onFrameDone chan error) {
 		onFrameDone <- returnError
 	}()
 
+	// open the firewall by sending packets to the counterpart
+	for trackId := range c.udpRtpListeners {
+		c.udpRtpListeners[trackId].write(
+			[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+
+		c.udpRtcpListeners[trackId].write(
+			[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+	}
+
 	for trackId := range c.udpRtpListeners {
 		c.udpRtpListeners[trackId].start()
 		c.udpRtcpListeners[trackId].start()
@@ -218,15 +227,6 @@ func (c *ConnClient) OnFrame(cb func(int, StreamType, []byte)) chan error {
 	c.backgroundDone = make(chan struct{})
 
 	if *c.streamProtocol == StreamProtocolUDP {
-		// open the firewall by sending packets to the counterpart
-		for trackId := range c.udpRtpListeners {
-			c.udpRtpListeners[trackId].write(
-				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-
-			c.udpRtcpListeners[trackId].write(
-				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
-		}
-
 		go c.backgroundPlayUDP(onFrameDone)
 	} else {
 		go c.backgroundPlayTCP(onFrameDone)
