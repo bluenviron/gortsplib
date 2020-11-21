@@ -101,27 +101,29 @@ func (c *ConnClient) backgroundRecordUDP() {
 	reportTicker := time.NewTicker(clientSenderReportPeriod)
 	defer reportTicker.Stop()
 
-	select {
-	case <-c.backgroundTerminate:
-		c.nconn.SetReadDeadline(time.Now())
-		<-readerDone
-		c.publishError = fmt.Errorf("terminated")
-		return
+	for {
+		select {
+		case <-c.backgroundTerminate:
+			c.nconn.SetReadDeadline(time.Now())
+			<-readerDone
+			c.publishError = fmt.Errorf("terminated")
+			return
 
-	case <-reportTicker.C:
-		c.publishWriteMutex.Lock()
-		now := time.Now()
-		for trackId := range c.rtcpSenders {
-			report := c.rtcpSenders[trackId].Report(now)
-			if report != nil {
-				c.udpRtcpListeners[trackId].write(report)
+		case <-reportTicker.C:
+			c.publishWriteMutex.Lock()
+			now := time.Now()
+			for trackId := range c.rtcpSenders {
+				report := c.rtcpSenders[trackId].Report(now)
+				if report != nil {
+					c.udpRtcpListeners[trackId].write(report)
+				}
 			}
-		}
-		c.publishWriteMutex.Unlock()
+			c.publishWriteMutex.Unlock()
 
-	case err := <-readerDone:
-		c.publishError = err
-		return
+		case err := <-readerDone:
+			c.publishError = err
+			return
+		}
 	}
 }
 
