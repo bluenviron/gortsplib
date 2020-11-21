@@ -506,7 +506,7 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 	c.tracks = append(c.tracks, track)
 
 	if mode == headers.TransportModePlay {
-		c.rtcpReceivers[track.Id] = rtcpreceiver.New()
+		c.rtcpReceivers[track.Id] = rtcpreceiver.New(nil)
 
 		if proto == StreamProtocolUDP {
 			v := time.Now().Unix()
