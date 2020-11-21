@@ -11,7 +11,7 @@ import (
 
 // This example shows how to
 // * connect to a RTSP server
-// * read all tracks with the UDP protocol for 5 seconds
+// * read all tracks for 5 seconds
 // * pause for 5 seconds
 // * repeat
 
@@ -25,7 +25,7 @@ func main() {
 
 	for {
 		// read frames from the server
-		done := conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte) {
+		readerDone := conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte) {
 			fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 		})
 
@@ -39,7 +39,7 @@ func main() {
 		}
 
 		// join reader
-		<-done
+		<-readerDone
 
 		// wait
 		time.Sleep(5 * time.Second)

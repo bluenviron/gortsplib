@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/rtph264"
@@ -13,7 +14,9 @@ import (
 // This example shows how to
 // * generate RTP/H264 frames from a file with Gstreamer
 // * connect to a RTSP server, announce a H264 track
-// * write the frames of the track
+// * write the frames of the track for 5 seconds
+// * pause for 5 seconds
+// * repeat
 
 func main() {
 	// open a listener to receive RTP/H264 frames
@@ -49,19 +52,46 @@ func main() {
 	}
 	defer conn.Close()
 
-	buf := make([]byte, 2048)
 	for {
-		// read frames from the source
-		n, _, err := pc.ReadFrom(buf)
+		writerDone := make(chan struct{})
+		go func() {
+			defer close(writerDone)
+
+			buf := make([]byte, 2048)
+			for {
+				// read frames from the source
+				n, _, err := pc.ReadFrom(buf)
+				if err != nil {
+					break
+				}
+
+				// write frames to the server
+				err = conn.WriteFrame(track.Id, gortsplib.StreamTypeRtp, buf[:n])
+				if err != nil {
+					break
+				}
+			}
+		}()
+
+		// wait
+		time.Sleep(5 * time.Second)
+
+		// pause
+		_, err := conn.Pause()
 		if err != nil {
-			break
+			panic(err)
 		}
 
-		// write frames to the server
-		err = conn.WriteFrame(track.Id, gortsplib.StreamTypeRtp, buf[:n])
+		// join writer
+		<-writerDone
+
+		// wait
+		time.Sleep(5 * time.Second)
+
+		// record again
+		_, err = conn.Record()
 		if err != nil {
-			fmt.Printf("connection is closed (%s)\n", err)
-			break
+			panic(err)
 		}
 	}
 }

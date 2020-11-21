@@ -21,8 +21,11 @@ Features:
 
 * [client-query](examples/client-query.go)
 * [client-read](examples/client-read.go)
+* [client-read-options](examples/client-read-options.go)
 * [client-read-pause](examples/client-read-pause.go)
 * [client-publish](examples/client-publish.go)
+* [client-publish-options](examples/client-publish-options.go)
+* [client-publish-pause](examples/client-publish-pause.go)
 
 ## Documentation
 

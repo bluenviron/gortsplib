@@ -10,7 +10,7 @@ import (
 
 // This example shows how to
 // * connect to a RTSP server
-// * read all tracks with the UDP protocol
+// * read all tracks on a path
 
 func main() {
 	// connect to the server and start reading all tracks
@@ -21,9 +21,9 @@ func main() {
 	defer conn.Close()
 
 	// read frames from the server
-	done := conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte) {
+	readerDone := conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte) {
 		fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 	})
 
-	<-done
+	<-readerDone
 }
