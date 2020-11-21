@@ -22,12 +22,14 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
+	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
 const (
 	clientReadBufferSize         = 4096
 	clientWriteBufferSize        = 4096
 	clientReceiverReportPeriod   = 10 * time.Second
+	clientSenderReportPeriod     = 10 * time.Second
 	clientUDPCheckStreamPeriod   = 5 * time.Second
 	clientUDPKeepalivePeriod     = 30 * time.Second
 	clientTCPFrameReadBufferSize = 128 * 1024
@@ -73,20 +75,21 @@ type ConnClient struct {
 	streamUrl             *base.URL
 	streamProtocol        *StreamProtocol
 	tracks                Tracks
-	rtcpReceivers         map[int]*rtcpreceiver.RtcpReceiver
-	udpLastFrameTimes     map[int]*int64
 	udpRtpListeners       map[int]*connClientUDPListener
 	udpRtcpListeners      map[int]*connClientUDPListener
-	tcpFrameBuffer        *multibuffer.MultiBuffer
 	getParameterSupported bool
 
 	// read only
-	readCB func(int, StreamType, []byte)
+	rtcpReceivers     map[int]*rtcpreceiver.RtcpReceiver
+	udpLastFrameTimes map[int]*int64
+	tcpFrameBuffer    *multibuffer.MultiBuffer
+	readCB            func(int, StreamType, []byte)
 
 	// publish only
-	publishError error
-	publishMutex sync.RWMutex
-	publishOpen  bool
+	rtcpSenders       map[int]*rtcpsender.RtcpSender
+	publishError      error
+	publishWriteMutex sync.RWMutex
+	publishOpen       bool
 
 	// in
 	backgroundTerminate chan struct{}
@@ -512,6 +515,8 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 			v := time.Now().Unix()
 			c.udpLastFrameTimes[track.Id] = &v
 		}
+	} else {
+		c.rtcpSenders[track.Id] = rtcpsender.New()
 	}
 
 	if proto == StreamProtocolUDP {

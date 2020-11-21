@@ -78,8 +78,8 @@ func (c *ConnClient) backgroundRecordUDP() {
 	defer close(c.backgroundDone)
 
 	defer func() {
-		c.publishMutex.Lock()
-		defer c.publishMutex.Unlock()
+		c.publishWriteMutex.Lock()
+		defer c.publishWriteMutex.Unlock()
 		c.publishOpen = false
 	}()
 
@@ -98,12 +98,26 @@ func (c *ConnClient) backgroundRecordUDP() {
 		}
 	}()
 
+	reportTicker := time.NewTicker(clientSenderReportPeriod)
+	defer reportTicker.Stop()
+
 	select {
 	case <-c.backgroundTerminate:
 		c.nconn.SetReadDeadline(time.Now())
 		<-readerDone
 		c.publishError = fmt.Errorf("terminated")
 		return
+
+	case <-reportTicker.C:
+		c.publishWriteMutex.Lock()
+		now := time.Now()
+		for trackId := range c.rtcpSenders {
+			report := c.rtcpSenders[trackId].Report(now)
+			if report != nil {
+				c.udpRtcpListeners[trackId].write(report)
+			}
+		}
+		c.publishWriteMutex.Unlock()
 
 	case err := <-readerDone:
 		c.publishError = err
@@ -115,23 +129,52 @@ func (c *ConnClient) backgroundRecordTCP() {
 	defer close(c.backgroundDone)
 
 	defer func() {
-		c.publishMutex.Lock()
-		defer c.publishMutex.Unlock()
+		c.publishWriteMutex.Lock()
+		defer c.publishWriteMutex.Unlock()
 		c.publishOpen = false
 	}()
 
-	<-c.backgroundTerminate
+	reportTicker := time.NewTicker(clientSenderReportPeriod)
+	defer reportTicker.Stop()
+
+	for {
+		select {
+		case <-c.backgroundTerminate:
+			return
+
+		case <-reportTicker.C:
+			c.publishWriteMutex.Lock()
+			now := time.Now()
+			for trackId := range c.rtcpSenders {
+				report := c.rtcpSenders[trackId].Report(now)
+				if report != nil {
+					c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
+					frame := base.InterleavedFrame{
+						TrackId:    trackId,
+						StreamType: StreamTypeRtcp,
+						Content:    report,
+					}
+					frame.Write(c.bw)
+				}
+			}
+			c.publishWriteMutex.Unlock()
+		}
+	}
 }
 
 // WriteFrame writes a frame.
 // This can be called only after Record().
 func (c *ConnClient) WriteFrame(trackId int, streamType StreamType, content []byte) error {
-	c.publishMutex.RLock()
-	defer c.publishMutex.RUnlock()
+	c.publishWriteMutex.RLock()
+	defer c.publishWriteMutex.RUnlock()
 
 	if !c.publishOpen {
 		return c.publishError
 	}
+
+	now := time.Now()
+
+	c.rtcpSenders[trackId].OnFrame(now, streamType, content)
 
 	if *c.streamProtocol == StreamProtocolUDP {
 		if streamType == StreamTypeRtp {
@@ -140,7 +183,7 @@ func (c *ConnClient) WriteFrame(trackId int, streamType StreamType, content []by
 		return c.udpRtcpListeners[trackId].write(content)
 	}
 
-	c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
+	c.nconn.SetWriteDeadline(now.Add(c.d.WriteTimeout))
 	frame := base.InterleavedFrame{
 		TrackId:    trackId,
 		StreamType: streamType,

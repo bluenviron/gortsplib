@@ -13,6 +13,7 @@ import (
 // RtcpReceiver allows to generate RTCP receiver reports.
 type RtcpReceiver struct {
 	mutex                sync.Mutex
+	firstRtpReceived     bool
 	senderSSRC           uint32
 	receiverSSRC         uint32
 	sequenceNumberCycles uint16
@@ -21,7 +22,6 @@ type RtcpReceiver struct {
 	totalLost            uint32
 	totalLostSinceRR     uint32
 	totalSinceRR         uint32
-	firstRtpReceived     bool
 }
 
 // New allocates a RtcpReceiver.
@@ -36,7 +36,7 @@ func New(receiverSSRC *uint32) *RtcpReceiver {
 	}
 }
 
-// OnFrame processes a RTP or RTCP frame and extract the data needed by RTCP receiver reports.
+// OnFrame processes a RTP or RTCP frame and extract the needed data.
 func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
@@ -46,11 +46,13 @@ func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 			// extract the sequence number of the first frame
 			sequenceNumber := uint16(buf[2])<<8 | uint16(buf[3])
 
+			// first frame
 			if !rr.firstRtpReceived {
 				rr.firstRtpReceived = true
 				rr.totalSinceRR = 1
 				rr.lastSequenceNumber = sequenceNumber
 
+				// subsequent frames
 			} else {
 				diff := (sequenceNumber - rr.lastSequenceNumber)
 

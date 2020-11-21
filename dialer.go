@@ -11,6 +11,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
+	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
 // DefaultDialer is the default dialer, used by Dial, DialRead and DialPublish.
@@ -92,11 +93,12 @@ func (d Dialer) Dial(host string) (*ConnClient, error) {
 		nconn:             nconn,
 		br:                bufio.NewReaderSize(nconn, clientReadBufferSize),
 		bw:                bufio.NewWriterSize(nconn, clientWriteBufferSize),
-		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
-		udpLastFrameTimes: make(map[int]*int64),
 		udpRtpListeners:   make(map[int]*connClientUDPListener),
 		udpRtcpListeners:  make(map[int]*connClientUDPListener),
+		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
+		udpLastFrameTimes: make(map[int]*int64),
 		tcpFrameBuffer:    multibuffer.New(d.ReadBufferCount, clientTCPFrameReadBufferSize),
+		rtcpSenders:       make(map[int]*rtcpsender.RtcpSender),
 		publishError:      fmt.Errorf("not running"),
 	}, nil
 }

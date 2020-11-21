@@ -38,8 +38,6 @@ func TestRtcpReceiverBase(t *testing.T) {
 	byts, _ = rtpPkt.Marshal()
 	rr.OnFrame(base.StreamTypeRtp, byts)
 
-	res := rr.Report()
-
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
 		Reports: []rtcp.ReceptionReport{
@@ -51,7 +49,7 @@ func TestRtcpReceiverBase(t *testing.T) {
 		},
 	}
 	expected, _ := expectedPkt.Marshal()
-	require.Equal(t, expected, res)
+	require.Equal(t, expected, rr.Report())
 }
 
 func TestRtcpReceiverSequenceOverflow(t *testing.T) {
@@ -96,8 +94,6 @@ func TestRtcpReceiverSequenceOverflow(t *testing.T) {
 	byts, _ = rtpPkt.Marshal()
 	rr.OnFrame(base.StreamTypeRtp, byts)
 
-	res := rr.Report()
-
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
 		Reports: []rtcp.ReceptionReport{
@@ -109,7 +105,7 @@ func TestRtcpReceiverSequenceOverflow(t *testing.T) {
 		},
 	}
 	expected, _ := expectedPkt.Marshal()
-	require.Equal(t, expected, res)
+	require.Equal(t, expected, rr.Report())
 }
 
 func TestRtcpReceiverPacketLost(t *testing.T) {
@@ -154,8 +150,6 @@ func TestRtcpReceiverPacketLost(t *testing.T) {
 	byts, _ = rtpPkt.Marshal()
 	rr.OnFrame(base.StreamTypeRtp, byts)
 
-	res := rr.Report()
-
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
 		Reports: []rtcp.ReceptionReport{
@@ -172,7 +166,7 @@ func TestRtcpReceiverPacketLost(t *testing.T) {
 		},
 	}
 	expected, _ := expectedPkt.Marshal()
-	require.Equal(t, expected, res)
+	require.Equal(t, expected, rr.Report())
 }
 
 func TestRtcpReceiverSequenceOverflowPacketLost(t *testing.T) {
@@ -217,8 +211,6 @@ func TestRtcpReceiverSequenceOverflowPacketLost(t *testing.T) {
 	byts, _ = rtpPkt.Marshal()
 	rr.OnFrame(base.StreamTypeRtp, byts)
 
-	res := rr.Report()
-
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
 		Reports: []rtcp.ReceptionReport{
@@ -235,5 +227,5 @@ func TestRtcpReceiverSequenceOverflowPacketLost(t *testing.T) {
 		},
 	}
 	expected, _ := expectedPkt.Marshal()
-	require.Equal(t, expected, res)
+	require.Equal(t, expected, rr.Report())
 }

@@ -32,18 +32,18 @@ func NewEncoder(relativeType uint8) (*Encoder, error) {
 }
 
 // Write encodes NALUs into RTP/H264 packets.
-func (e *Encoder) Write(nalus [][]byte, timestamp time.Duration) ([][]byte, error) {
+func (e *Encoder) Write(nalus [][]byte, ts time.Duration) ([][]byte, error) {
 	if e.started == 0 {
-		e.started = timestamp
+		e.started = ts
 	}
 
 	// rtp/h264 uses a 90khz clock
-	rtpTs := e.initialTs + uint32((timestamp-e.started).Seconds()*90000)
+	rtpTime := e.initialTs + uint32((ts-e.started).Seconds()*90000)
 
 	var frames [][]byte
 
 	for i, nalu := range nalus {
-		naluFrames, err := e.writeNalu(nalu, rtpTs, (i == len(nalus)-1))
+		naluFrames, err := e.writeNALU(nalu, rtpTime, (i == len(nalus)-1))
 		if err != nil {
 			return nil, err
 		}
@@ -53,23 +53,23 @@ func (e *Encoder) Write(nalus [][]byte, timestamp time.Duration) ([][]byte, erro
 	return frames, nil
 }
 
-func (e *Encoder) writeNalu(nalu []byte, rtpTs uint32, isFinal bool) ([][]byte, error) {
+func (e *Encoder) writeNALU(nalu []byte, rtpTime uint32, isFinal bool) ([][]byte, error) {
 	// if the NALU fits into a single RTP packet, use a single NALU payload
 	if len(nalu) < rtpPayloadMaxSize {
-		return e.writeSingle(nalu, rtpTs, isFinal)
+		return e.writeSingle(nalu, rtpTime, isFinal)
 	}
 
 	// otherwise, split the NALU into multiple fragmentation payloads
-	return e.writeFragmented(nalu, rtpTs, isFinal)
+	return e.writeFragmented(nalu, rtpTime, isFinal)
 }
 
-func (e *Encoder) writeSingle(nalu []byte, rtpTs uint32, isFinal bool) ([][]byte, error) {
+func (e *Encoder) writeSingle(nalu []byte, rtpTime uint32, isFinal bool) ([][]byte, error) {
 	rpkt := rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
 			PayloadType:    e.payloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      rtpTs,
+			Timestamp:      rtpTime,
 			SSRC:           e.ssrc,
 		},
 		Payload: nalu,
@@ -88,7 +88,7 @@ func (e *Encoder) writeSingle(nalu []byte, rtpTs uint32, isFinal bool) ([][]byte
 	return [][]byte{frame}, nil
 }
 
-func (e *Encoder) writeFragmented(nalu []byte, rtpTs uint32, isFinal bool) ([][]byte, error) {
+func (e *Encoder) writeFragmented(nalu []byte, rtpTime uint32, isFinal bool) ([][]byte, error) {
 	// use only FU-A, not FU-B, since we always use non-interleaved mode
 	// (packetization-mode=1)
 	frameCount := (len(nalu) - 1) / (rtpPayloadMaxSize - 2)
@@ -125,7 +125,7 @@ func (e *Encoder) writeFragmented(nalu []byte, rtpTs uint32, isFinal bool) ([][]
 				Version:        rtpVersion,
 				PayloadType:    e.payloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      rtpTs,
+				Timestamp:      rtpTime,
 				SSRC:           e.ssrc,
 			},
 			Payload: data,
