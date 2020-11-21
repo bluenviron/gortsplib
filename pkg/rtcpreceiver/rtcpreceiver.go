@@ -1,4 +1,4 @@
-// Package rtcpreceiver implements RTCP receiver reports.
+// Package rtcpreceiver implements a utility to generate RTCP receiver reports.
 package rtcpreceiver
 
 import (
@@ -10,34 +10,25 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-type frameRtpReq struct {
-	sequenceNumber uint16
-}
-
-type frameRtcpReq struct {
-	ssrc          uint32
-	ntpTimeMiddle uint32
-}
-
-type reportReq struct {
-	res chan []byte
-}
-
-// RtcpReceiver allows building RTCP receiver reports, by parsing
-// incoming frames.
+// RtcpReceiver allows to generate RTCP receiver reports.
 type RtcpReceiver struct {
 	mutex                sync.Mutex
-	publisherSSRC        uint32
+	senderSSRC           uint32
 	receiverSSRC         uint32
 	sequenceNumberCycles uint16
 	lastSequenceNumber   uint16
-	lastSenderReport     uint32
+	lastSenderReportTime uint32
 }
 
 // New allocates a RtcpReceiver.
-func New() *RtcpReceiver {
+func New(receiverSSRC *uint32) *RtcpReceiver {
 	return &RtcpReceiver{
-		receiverSSRC: rand.Uint32(),
+		receiverSSRC: func() uint32 {
+			if receiverSSRC == nil {
+				return rand.Uint32()
+			}
+			return *receiverSSRC
+		}(),
 	}
 }
 
@@ -49,7 +40,7 @@ func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 	if streamType == base.StreamTypeRtp {
 		if len(buf) >= 3 {
 			// extract the sequence number of the first frame
-			sequenceNumber := uint16(uint16(buf[2])<<8 | uint16(buf[1]))
+			sequenceNumber := uint16(buf[2])<<8 | uint16(buf[3])
 
 			if sequenceNumber < rr.lastSequenceNumber {
 				rr.sequenceNumberCycles += 1
@@ -63,9 +54,9 @@ func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 		frames, err := rtcp.Unmarshal(buf)
 		if err == nil {
 			for _, frame := range frames {
-				if senderReport, ok := (frame).(*rtcp.SenderReport); ok {
-					rr.publisherSSRC = senderReport.SSRC
-					rr.lastSenderReport = uint32(senderReport.NTPTime >> 16)
+				if sr, ok := (frame).(*rtcp.SenderReport); ok {
+					rr.senderSSRC = sr.SSRC
+					rr.lastSenderReportTime = uint32(sr.NTPTime >> 16)
 				}
 			}
 		}
@@ -81,9 +72,9 @@ func (rr *RtcpReceiver) Report() []byte {
 		SSRC: rr.receiverSSRC,
 		Reports: []rtcp.ReceptionReport{
 			{
-				SSRC:               rr.publisherSSRC,
-				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<8 | uint32(rr.lastSequenceNumber),
-				LastSenderReport:   rr.lastSenderReport,
+				SSRC:               rr.senderSSRC,
+				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
+				LastSenderReport:   rr.lastSenderReportTime,
 			},
 		},
 	}
