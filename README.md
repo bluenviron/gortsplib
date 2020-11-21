@@ -20,11 +20,9 @@ Features:
 ## Examples
 
 * [client-query](examples/client-query.go)
-* [client-read-udp](examples/client-read-udp.go)
-* [client-read-tcp](examples/client-read-tcp.go)
+* [client-read](examples/client-read.go)
 * [client-read-pause](examples/client-read-pause.go)
-* [client-publish-udp](examples/client-publish-udp.go)
-* [client-publish-tcp](examples/client-publish-tcp.go)
+* [client-publish](examples/client-publish.go)
 
 ## Documentation
 
