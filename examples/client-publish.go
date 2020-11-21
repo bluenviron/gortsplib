@@ -57,7 +57,7 @@ func main() {
 			break
 		}
 
-		// write frames to the server
+		// write track frames
 		err = conn.WriteFrame(track.Id, gortsplib.StreamTypeRtp, buf[:n])
 		if err != nil {
 			fmt.Printf("connection is closed (%s)\n", err)

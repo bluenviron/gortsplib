@@ -228,8 +228,6 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 }
 
 // Options writes an OPTIONS request and reads a response.
-// Since this method is not implemented by every RTSP server, the function
-// does not fail if the returned code is StatusNotFound.
 func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
 	err := c.checkState(map[connClientState]struct{}{
 		connClientStateInitial:   {},
@@ -248,8 +246,8 @@ func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
 		return nil, err
 	}
 
-	if res.StatusCode != base.StatusOK && res.StatusCode != base.StatusNotFound {
-		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+	if res.StatusCode != base.StatusOK {
+		return res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	c.getParameterSupported = func() bool {
@@ -291,36 +289,25 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 		return nil, nil, err
 	}
 
-	switch res.StatusCode {
-	case base.StatusOK:
-		contentType, ok := res.Header["Content-Type"]
-		if !ok || len(contentType) != 1 {
-			return nil, nil, fmt.Errorf("Content-Type not provided")
-		}
-
-		if contentType[0] != "application/sdp" {
-			return nil, nil, fmt.Errorf("wrong Content-Type, expected application/sdp")
-		}
-
-		tracks, err := ReadTracks(res.Content)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return tracks, res, nil
-
-	case base.StatusMovedPermanently, base.StatusFound,
-		base.StatusSeeOther, base.StatusNotModified, base.StatusUseProxy:
-		location, ok := res.Header["Location"]
-		if !ok || len(location) != 1 {
-			return nil, nil, fmt.Errorf("Location not provided")
-		}
-
-		return nil, res, nil
-
-	default:
-		return nil, nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+	if res.StatusCode != base.StatusOK {
+		return nil, res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
+
+	contentType, ok := res.Header["Content-Type"]
+	if !ok || len(contentType) != 1 {
+		return nil, nil, fmt.Errorf("Content-Type not provided")
+	}
+
+	if contentType[0] != "application/sdp" {
+		return nil, nil, fmt.Errorf("wrong Content-Type, expected application/sdp")
+	}
+
+	tracks, err := ReadTracks(res.Content)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tracks, res, nil
 }
 
 // build an URL by merging baseUrl with the control attribute from track.Media.
@@ -485,7 +472,7 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 			rtpListener.close()
 			rtcpListener.close()
 		}
-		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	th, err := headers.ReadTransport(res.Header["Transport"])
@@ -575,7 +562,7 @@ func (c *ConnClient) Pause() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
 	switch c.state {

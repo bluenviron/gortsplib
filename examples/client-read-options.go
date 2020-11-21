@@ -10,14 +10,15 @@ import (
 )
 
 // This example shows how to
+// * set additional client options
 // * connect to a RTSP server
 // * read all tracks on a path
 
 func main() {
-	// Dialer allows to set additional options
+	// Dialer allows to set additional client options
 	dialer := gortsplib.Dialer{
-		// the stream protocol
-		StreamProtocol: gortsplib.StreamProtocolUDP,
+		// the stream protocol (UDP or TCP). If nil, it is chosen automatically
+		StreamProtocol: nil,
 		// timeout of read operations
 		ReadTimeout: 10 * time.Second,
 		// timeout of write operations
@@ -35,7 +36,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	// read frames from the server
+	// read track frames
 	readerDone := conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte) {
 		fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 	})

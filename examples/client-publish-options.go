@@ -12,6 +12,7 @@ import (
 )
 
 // This example shows how to
+// * set additional client options
 // * generate RTP/H264 frames from a file with Gstreamer
 // * connect to a RTSP server, announce a H264 track
 // * write the frames of the track
@@ -42,10 +43,10 @@ func main() {
 		panic(err)
 	}
 
-	// Dialer allows to set additional options
+	// Dialer allows to set additional client options
 	dialer := gortsplib.Dialer{
-		// the stream protocol
-		StreamProtocol: gortsplib.StreamProtocolUDP,
+		// the stream protocol (UDP or TCP). If nil, it is chosen automatically
+		StreamProtocol: nil,
 		// timeout of read operations
 		ReadTimeout: 10 * time.Second,
 		// timeout of write operations
@@ -72,7 +73,7 @@ func main() {
 			break
 		}
 
-		// write frames to the server
+		// write track frames
 		err = conn.WriteFrame(track.Id, gortsplib.StreamTypeRtp, buf[:n])
 		if err != nil {
 			fmt.Printf("connection is closed (%s)\n", err)

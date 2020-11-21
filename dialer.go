@@ -33,9 +33,9 @@ func DialPublish(address string, tracks Tracks) (*ConnClient, error) {
 
 // Dialer allows to initialize a ConnClient.
 type Dialer struct {
-	// (optional) the stream protocol.
-	// It defaults to StreamProtocolUDP.
-	StreamProtocol StreamProtocol
+	// (optional) the stream protocol (UDP or TCP).
+	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
+	StreamProtocol *StreamProtocol
 
 	// (optional) timeout of read operations.
 	// It defaults to 10 seconds
@@ -113,29 +113,53 @@ func (d Dialer) DialRead(address string) (*ConnClient, error) {
 		return nil, err
 	}
 
-	_, err = conn.Options(u)
+	res, err := conn.Options(u)
 	if err != nil {
-		conn.Close()
-		return nil, err
+		// since this method is not implemented by every RTSP server,
+		// return only if status code is not 404
+		if res == nil || res.StatusCode != base.StatusNotFound {
+			conn.Close()
+			return nil, err
+		}
 	}
 
 	tracks, res, err := conn.Describe(u)
 	if err != nil {
+		// redirect
+		if res != nil && res.StatusCode >= base.StatusMovedPermanently &&
+			res.StatusCode <= base.StatusUseProxy &&
+			len(res.Header["Location"]) == 1 {
+			conn.Close()
+			return d.DialRead(res.Header["Location"][0])
+		}
+
 		conn.Close()
 		return nil, err
 	}
 
-	if res.StatusCode >= base.StatusMovedPermanently &&
-		res.StatusCode <= base.StatusUseProxy {
-		conn.Close()
-		return d.DialRead(res.Header["Location"][0])
-	}
+	proto := func() StreamProtocol {
+		if d.StreamProtocol != nil {
+			return *d.StreamProtocol
+		}
+		return StreamProtocolUDP
+	}()
 
-	for _, track := range tracks {
-		_, err := conn.Setup(u, headers.TransportModePlay, d.StreamProtocol, track, 0, 0)
+	for i, track := range tracks {
+		res, err := conn.Setup(u, headers.TransportModePlay, proto, track, 0, 0)
 		if err != nil {
-			conn.Close()
-			return nil, err
+			// switch protocol automatically
+			if i == 0 && d.StreamProtocol == nil && res != nil &&
+				res.StatusCode == base.StatusUnsupportedTransport {
+				proto = StreamProtocolTCP
+				_, err := conn.Setup(u, headers.TransportModePlay, proto, track, 0, 0)
+				if err != nil {
+					conn.Close()
+					return nil, err
+				}
+			} else {
+				conn.Close()
+				return nil, err
+			}
 		}
 	}
 
@@ -160,10 +184,14 @@ func (d Dialer) DialPublish(address string, tracks Tracks) (*ConnClient, error) 
 		return nil, err
 	}
 
-	_, err = conn.Options(u)
+	res, err := conn.Options(u)
 	if err != nil {
-		conn.Close()
-		return nil, err
+		// since this method is not implemented by every RTSP server,
+		// return only if status code is not 404
+		if res == nil || res.StatusCode != base.StatusNotFound {
+			conn.Close()
+			return nil, err
+		}
 	}
 
 	_, err = conn.Announce(u, tracks)
@@ -172,11 +200,29 @@ func (d Dialer) DialPublish(address string, tracks Tracks) (*ConnClient, error) 
 		return nil, err
 	}
 
-	for _, track := range tracks {
-		_, err = conn.Setup(u, headers.TransportModeRecord, d.StreamProtocol, track, 0, 0)
+	proto := func() StreamProtocol {
+		if d.StreamProtocol != nil {
+			return *d.StreamProtocol
+		}
+		return StreamProtocolUDP
+	}()
+
+	for i, track := range tracks {
+		res, err := conn.Setup(u, headers.TransportModeRecord, proto, track, 0, 0)
 		if err != nil {
-			conn.Close()
-			return nil, err
+			// switch protocol automatically
+			if i == 0 && d.StreamProtocol == nil && res != nil &&
+				res.StatusCode == base.StatusUnsupportedTransport {
+				proto = StreamProtocolTCP
+				_, err := conn.Setup(u, headers.TransportModePlay, proto, track, 0, 0)
+				if err != nil {
+					conn.Close()
+					return nil, err
+				}
+			} else {
+				conn.Close()
+				return nil, err
+			}
 		}
 	}
 
