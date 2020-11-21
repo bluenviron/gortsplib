@@ -18,6 +18,10 @@ type RtcpReceiver struct {
 	sequenceNumberCycles uint16
 	lastSequenceNumber   uint16
 	lastSenderReportTime uint32
+	totalLost            uint32
+	totalLostSinceRR     uint32
+	totalSinceRR         uint32
+	firstRtpReceived     bool
 }
 
 // New allocates a RtcpReceiver.
@@ -42,10 +46,26 @@ func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 			// extract the sequence number of the first frame
 			sequenceNumber := uint16(buf[2])<<8 | uint16(buf[3])
 
-			if sequenceNumber < rr.lastSequenceNumber {
-				rr.sequenceNumberCycles += 1
+			if !rr.firstRtpReceived {
+				rr.firstRtpReceived = true
+				rr.totalSinceRR = 1
+				rr.lastSequenceNumber = sequenceNumber
+
+			} else {
+				diff := (sequenceNumber - rr.lastSequenceNumber)
+
+				if sequenceNumber != (rr.lastSequenceNumber + 1) {
+					rr.totalLost += uint32(diff) - 1
+					rr.totalLostSinceRR += uint32(diff) - 1
+				}
+
+				if sequenceNumber < rr.lastSequenceNumber {
+					rr.sequenceNumberCycles += 1
+				}
+
+				rr.totalSinceRR += uint32(diff)
+				rr.lastSequenceNumber = sequenceNumber
 			}
-			rr.lastSequenceNumber = sequenceNumber
 		}
 
 	} else {
@@ -75,9 +95,20 @@ func (rr *RtcpReceiver) Report() []byte {
 				SSRC:               rr.senderSSRC,
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
 				LastSenderReport:   rr.lastSenderReportTime,
+				FractionLost: func() uint8 {
+					f := float64(rr.totalLostSinceRR) / float64(rr.totalSinceRR)
+
+					// equivalent to taking the integer part after multiplying the
+					// loss fraction by 256
+					return uint8(f * 256)
+				}(),
+				TotalLost: rr.totalLost,
 			},
 		},
 	}
+
+	rr.totalLostSinceRR = 0
+	rr.totalSinceRR = 0
 
 	byts, _ := report.Marshal()
 	return byts
