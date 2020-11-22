@@ -27,14 +27,14 @@ type Encoder struct {
 }
 
 // NewEncoder allocates an Encoder.
-func NewEncoder(relativeType uint8, config []byte) (*Encoder, error) {
+func NewEncoder(payloadType uint8, config []byte) (*Encoder, error) {
 	codec, err := aac.FromMPEG4AudioConfigBytes(config)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Encoder{
-		payloadType:    96 + relativeType,
+		payloadType:    payloadType,
 		sampleRate:     float64(codec.Config.SampleRate),
 		sequenceNumber: uint16(rand.Uint32()),
 		ssrc:           rand.Uint32(),

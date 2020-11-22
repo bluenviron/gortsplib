@@ -22,9 +22,9 @@ type Encoder struct {
 }
 
 // NewEncoder allocates an Encoder.
-func NewEncoder(relativeType uint8) (*Encoder, error) {
+func NewEncoder(payloadType uint8) (*Encoder, error) {
 	return &Encoder{
-		payloadType:    96 + relativeType,
+		payloadType:    payloadType,
 		sequenceNumber: uint16(rand.Uint32()),
 		ssrc:           rand.Uint32(),
 		initialTs:      rand.Uint32(),
