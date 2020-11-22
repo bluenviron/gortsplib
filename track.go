@@ -107,6 +107,32 @@ func NewTrackAac(id int, config []byte) (*Track, error) {
 	}, nil
 }
 
+// ClockRate returns the clock rate of the track.
+func (t *Track) ClockRate() (int, error) {
+	// https://tools.ietf.org/html/rfc4566
+	// a=rtpmap:<payload type> <encoding name>/<clock rate> [/<encoding parameters>]
+	for _, a := range t.Media.Attributes {
+		if a.Key == "rtpmap" {
+			tmp := strings.Split(a.Value, " ")
+			if len(tmp) != 2 {
+				return 0, fmt.Errorf("invalid format (%s)", a.Value)
+			}
+
+			tmp = strings.Split(tmp[1], "/")
+			if len(tmp) != 2 && len(tmp) != 3 {
+				return 0, fmt.Errorf("invalid format (%s)", a.Value)
+			}
+
+			v, err := strconv.ParseInt(tmp[1], 10, 64)
+			if err != nil {
+				return 0, err
+			}
+			return int(v), nil
+		}
+	}
+	return 0, fmt.Errorf("attribute 'rtpmap' not found")
+}
+
 // Tracks is a list of tracks.
 type Tracks []*Track
 

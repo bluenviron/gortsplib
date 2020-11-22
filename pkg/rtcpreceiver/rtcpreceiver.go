@@ -12,10 +12,10 @@ import (
 
 // RtcpReceiver allows to generate RTCP receiver reports.
 type RtcpReceiver struct {
+	receiverSSRC         uint32
 	mutex                sync.Mutex
 	firstRtpReceived     bool
 	senderSSRC           uint32
-	receiverSSRC         uint32
 	sequenceNumberCycles uint16
 	lastSequenceNumber   uint16
 	lastSenderReportTime uint32

@@ -19,7 +19,7 @@ const (
 // Encoder is a RPT/AAC encoder.
 type Encoder struct {
 	payloadType    uint8
-	samplingRate   float64
+	sampleRate     float64
 	sequenceNumber uint16
 	ssrc           uint32
 	initialTs      uint32
@@ -35,7 +35,7 @@ func NewEncoder(relativeType uint8, config []byte) (*Encoder, error) {
 
 	return &Encoder{
 		payloadType:    96 + relativeType,
-		samplingRate:   float64(codec.Config.SampleRate),
+		sampleRate:     float64(codec.Config.SampleRate),
 		sequenceNumber: uint16(rand.Uint32()),
 		ssrc:           rand.Uint32(),
 		initialTs:      rand.Uint32(),
@@ -52,7 +52,7 @@ func (e *Encoder) Write(data []byte, timestamp time.Duration) ([][]byte, error) 
 		return nil, fmt.Errorf("data is too big")
 	}
 
-	rtpTs := e.initialTs + uint32((timestamp-e.started).Seconds()*e.samplingRate)
+	rtpTs := e.initialTs + uint32((timestamp-e.started).Seconds()*e.sampleRate)
 
 	// 13 bits payload size
 	// 3 bits AU-Index(-delta)
