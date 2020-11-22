@@ -12,7 +12,7 @@ import (
 )
 
 func TestRtcpSender(t *testing.T) {
-	rs := New()
+	rs := New(90000)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
