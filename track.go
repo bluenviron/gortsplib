@@ -54,8 +54,8 @@ func NewTrackH264(id int, sps []byte, pps []byte) (*Track, error) {
 	}, nil
 }
 
-// NewTrackAac initializes an AAC track.
-func NewTrackAac(id int, config []byte) (*Track, error) {
+// NewTrackAAC initializes an AAC track.
+func NewTrackAAC(id int, config []byte) (*Track, error) {
 	codec, err := aac.FromMPEG4AudioConfigBytes(config)
 	if err != nil {
 		return nil, err
