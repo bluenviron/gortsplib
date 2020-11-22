@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/notedit/rtmp/codec/aac"
 	"github.com/pion/rtp"
 )
 
@@ -19,7 +18,7 @@ const (
 // Encoder is a RPT/AAC encoder.
 type Encoder struct {
 	payloadType    uint8
-	sampleRate     float64
+	clockRate      float64
 	sequenceNumber uint16
 	ssrc           uint32
 	initialTs      uint32
@@ -27,15 +26,10 @@ type Encoder struct {
 }
 
 // NewEncoder allocates an Encoder.
-func NewEncoder(payloadType uint8, config []byte) (*Encoder, error) {
-	codec, err := aac.FromMPEG4AudioConfigBytes(config)
-	if err != nil {
-		return nil, err
-	}
-
+func NewEncoder(payloadType uint8, clockRate int) (*Encoder, error) {
 	return &Encoder{
 		payloadType:    payloadType,
-		sampleRate:     float64(codec.Config.SampleRate),
+		clockRate:      float64(clockRate),
 		sequenceNumber: uint16(rand.Uint32()),
 		ssrc:           rand.Uint32(),
 		initialTs:      rand.Uint32(),
@@ -52,7 +46,7 @@ func (e *Encoder) Write(data []byte, timestamp time.Duration) ([][]byte, error) 
 		return nil, fmt.Errorf("data is too big")
 	}
 
-	rtpTs := e.initialTs + uint32((timestamp-e.started).Seconds()*e.sampleRate)
+	rtpTs := e.initialTs + uint32((timestamp-e.started).Seconds()*e.clockRate)
 
 	// 13 bits payload size
 	// 3 bits AU-Index(-delta)
