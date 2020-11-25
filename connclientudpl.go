@@ -9,6 +9,13 @@ import (
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
+const (
+	// use the same buffer size as gstreamer's rtspsrc
+	connClientUDPKernelReadBufferSize = 0x80000
+
+	connClientUDPReadBufferSize = 2048
+)
+
 type connClientUDPListener struct {
 	c              *ConnClient
 	pc             net.PacketConn
@@ -29,10 +36,15 @@ func newConnClientUDPListener(c *ConnClient, port int) (*connClientUDPListener, 
 		return nil, err
 	}
 
+	err = pc.(*net.UDPConn).SetReadBuffer(connClientUDPKernelReadBufferSize)
+	if err != nil {
+		return nil, err
+	}
+
 	return &connClientUDPListener{
 		c:              c,
 		pc:             pc,
-		udpFrameBuffer: multibuffer.New(c.d.ReadBufferCount, 2048),
+		udpFrameBuffer: multibuffer.New(c.d.ReadBufferCount, connClientUDPReadBufferSize),
 	}, nil
 }
 

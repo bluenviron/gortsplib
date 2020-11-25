@@ -33,7 +33,6 @@ const (
 	clientUDPCheckStreamPeriod   = 5 * time.Second
 	clientUDPKeepalivePeriod     = 30 * time.Second
 	clientTCPFrameReadBufferSize = 128 * 1024
-	clientUDPFrameReadBufferSize = 2048
 )
 
 type connClientState int
