@@ -50,7 +50,6 @@ func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 			if !rr.firstRtpReceived {
 				rr.firstRtpReceived = true
 				rr.totalSinceRR = 1
-				rr.lastSequenceNumber = sequenceNumber
 
 				// subsequent frames
 			} else {
@@ -66,8 +65,9 @@ func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 				}
 
 				rr.totalSinceRR += uint32(diff)
-				rr.lastSequenceNumber = sequenceNumber
 			}
+
+			rr.lastSequenceNumber = sequenceNumber
 		}
 
 	} else {
@@ -98,11 +98,9 @@ func (rr *RtcpReceiver) Report() []byte {
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
 				LastSenderReport:   rr.lastSenderReportTime,
 				FractionLost: func() uint8 {
-					f := float64(rr.totalLostSinceRR) / float64(rr.totalSinceRR)
-
 					// equivalent to taking the integer part after multiplying the
 					// loss fraction by 256
-					return uint8(f * 256)
+					return uint8(float64(rr.totalLostSinceRR*256) / float64(rr.totalSinceRR))
 				}(),
 				TotalLost: rr.totalLost,
 			},
