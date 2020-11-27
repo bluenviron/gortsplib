@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	rtspMaxContentLength = 4096
+	rtspMaxContentLength = 128 * 1024
 )
 
 func readByteEqual(rb *bufio.Reader, cmp byte) error {
