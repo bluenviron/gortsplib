@@ -908,6 +908,149 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"bandwidth rs",
+		[]byte("v=0\r\n" +
+			"o=- 200710060441230578 200710060441230578 IN IP4 127.0.0.1\r\n" +
+			"s=<No Title>\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:104\r\n" +
+			"a=maxps:1250\r\n" +
+			"t=0 0\r\n" +
+			"a=control:rtsp://61.135.88.175:554/refuse/unavailable_media.wmv/\r\n" +
+			"a=etag:{CCEE392D-83DF-F4AA-130B-E8A05562CE63}\r\n" +
+			"a=range:npt=3.000-6.185\r\n" +
+			"a=type:notstridable\r\n" +
+			"a=recvonly\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=AS:105\r\n" +
+			"b=X-AV:100\r\n" +
+			"b=RS:0\r\n" +
+			"b=RR:0\r\n" +
+			"a=rtpmap:96 x-asf-pf/1000\r\n" +
+			"a=control:video\r\n" +
+			"a=stream:1\r\n" +
+			"m=application 0 RTP/AVP 96\r\n" +
+			"b=RS:0\r\n" +
+			"b=RR:0\r\n" +
+			"a=rtpmap:96 x-wms-rtx/1000\r\n" +
+			"a=control:rtx\r\n" +
+			"a=stream:65536\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 200710060441230578 200710060441230578 IN IP4 127.0.0.1\r\n" +
+			"s=<No Title>\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:104\r\n" +
+			"t=0 0\r\n" +
+			"a=maxps:1250\r\n" +
+			"a=control:rtsp://61.135.88.175:554/refuse/unavailable_media.wmv/\r\n" +
+			"a=etag:{CCEE392D-83DF-F4AA-130B-E8A05562CE63}\r\n" +
+			"a=range:npt=3.000-6.185\r\n" +
+			"a=type:notstridable\r\n" +
+			"a=recvonly\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=AS:105\r\n" +
+			"b=X-AV:100\r\n" +
+			"b=RS:0\r\n" +
+			"b=RR:0\r\n" +
+			"a=rtpmap:96 x-asf-pf/1000\r\n" +
+			"a=control:video\r\n" +
+			"a=stream:1\r\n" +
+			"m=application 0 RTP/AVP 96\r\n" +
+			"b=RS:0\r\n" +
+			"b=RR:0\r\n" +
+			"a=rtpmap:96 x-wms-rtx/1000\r\n" +
+			"a=control:rtx\r\n" +
+			"a=stream:65536\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      200710060441230578,
+				SessionVersion: 200710060441230578,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "127.0.0.1",
+			},
+			SessionName: psdp.SessionName("<No Title>"),
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address:     &psdp.Address{Address: "0.0.0.0"},
+			},
+			Bandwidth: []psdp.Bandwidth{
+				{
+					Type:      "AS",
+					Bandwidth: 104,
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			Attributes: []psdp.Attribute{
+				{"maxps", "1250"},
+				{"control", "rtsp://61.135.88.175:554/refuse/unavailable_media.wmv/"},
+				{"etag", "{CCEE392D-83DF-F4AA-130B-E8A05562CE63}"},
+				{"range", "npt=3.000-6.185"},
+				{"type", "notstridable"},
+				{"recvonly", ""},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Bandwidth: []psdp.Bandwidth{
+						{
+							Type:      "AS",
+							Bandwidth: 105,
+						},
+						{
+							Experimental: true,
+							Type:         "AV",
+							Bandwidth:    100,
+						},
+						{
+							Type:      "RS",
+							Bandwidth: 0,
+						},
+						{
+							Type:      "RR",
+							Bandwidth: 0,
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{"rtpmap", "96 x-asf-pf/1000"},
+						{"control", "video"},
+						{"stream", "1"},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "application",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Bandwidth: []psdp.Bandwidth{
+						{
+							Type:      "RS",
+							Bandwidth: 0,
+						},
+						{
+							Type:      "RR",
+							Bandwidth: 0,
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{"rtpmap", "96 x-wms-rtx/1000"},
+						{"control", "rtx"},
+						{"stream", "65536"},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
