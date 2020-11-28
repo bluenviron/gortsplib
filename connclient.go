@@ -502,18 +502,23 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 		}
 	}
 
+	clockRate, err := track.ClockRate()
+	if err != nil {
+		if proto == StreamProtocolUDP {
+			rtpListener.close()
+			rtcpListener.close()
+		}
+		return nil, fmt.Errorf("unable to get the track clock rate: %s", err)
+	}
+
 	if mode == headers.TransportModePlay {
-		c.rtcpReceivers[track.Id] = rtcpreceiver.New(nil)
+		c.rtcpReceivers[track.Id] = rtcpreceiver.New(nil, clockRate)
 
 		if proto == StreamProtocolUDP {
 			v := time.Now().Unix()
 			c.udpLastFrameTimes[track.Id] = &v
 		}
 	} else {
-		clockRate, err := track.ClockRate()
-		if err != nil {
-			return nil, fmt.Errorf("unable to get track clock rate: %s", err)
-		}
 		c.rtcpSenders[track.Id] = rtcpsender.New(clockRate)
 	}
 

@@ -113,9 +113,9 @@ func (c *ConnClient) backgroundRecordUDP() {
 			c.publishWriteMutex.Lock()
 			now := time.Now()
 			for trackId := range c.rtcpSenders {
-				report := c.rtcpSenders[trackId].Report(now)
-				if report != nil {
-					c.udpRtcpListeners[trackId].write(report)
+				r := c.rtcpSenders[trackId].Report(now)
+				if r != nil {
+					c.udpRtcpListeners[trackId].write(r)
 				}
 			}
 			c.publishWriteMutex.Unlock()
@@ -148,13 +148,13 @@ func (c *ConnClient) backgroundRecordTCP() {
 			c.publishWriteMutex.Lock()
 			now := time.Now()
 			for trackId := range c.rtcpSenders {
-				report := c.rtcpSenders[trackId].Report(now)
-				if report != nil {
+				r := c.rtcpSenders[trackId].Report(now)
+				if r != nil {
 					c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
 					frame := base.InterleavedFrame{
 						TrackId:    trackId,
 						StreamType: StreamTypeRtcp,
-						Content:    report,
+						Content:    r,
 					}
 					frame.Write(c.bw)
 				}

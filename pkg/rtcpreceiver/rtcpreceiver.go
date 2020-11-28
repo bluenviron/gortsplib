@@ -13,21 +13,29 @@ import (
 
 // RtcpReceiver is a utility to generate RTCP receiver reports.
 type RtcpReceiver struct {
-	receiverSSRC         uint32
-	mutex                sync.Mutex
+	receiverSSRC uint32
+	clockRate    float64
+	mutex        sync.Mutex
+
+	// data from rtp packets
 	firstRtpReceived     bool
-	senderSSRC           uint32
 	sequenceNumberCycles uint16
 	lastSequenceNumber   uint16
+	lastRtpTimeRtp       uint32
+	lastRtpTimeTime      time.Time
+	totalLost            uint32
+	totalLostSinceReport uint32
+	totalSinceReport     uint32
+	jitter               float64
+
+	// data from rtcp packets
+	senderSSRC           uint32
 	lastSenderReport     uint32
 	lastSenderReportTime time.Time
-	totalLost            uint32
-	totalLostSinceRR     uint32
-	totalSinceRR         uint32
 }
 
 // New allocates a RtcpReceiver.
-func New(receiverSSRC *uint32) *RtcpReceiver {
+func New(receiverSSRC *uint32, clockRate int) *RtcpReceiver {
 	return &RtcpReceiver{
 		receiverSSRC: func() uint32 {
 			if receiverSSRC == nil {
@@ -35,41 +43,70 @@ func New(receiverSSRC *uint32) *RtcpReceiver {
 			}
 			return *receiverSSRC
 		}(),
+		clockRate: float64(clockRate),
 	}
 }
 
-// OnFrame processes a RTP or RTCP frame and extract the needed data.
+// OnFrame extracts the needed data from RTP or RTCP frames.
 func (rr *RtcpReceiver) OnFrame(ts time.Time, streamType base.StreamType, buf []byte) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
 	if streamType == base.StreamTypeRtp {
-		if len(buf) >= 3 {
-			// extract the sequence number of the first frame
+		// do not parse the entire packet, extract only the fields we need
+		if len(buf) >= 8 {
 			sequenceNumber := uint16(buf[2])<<8 | uint16(buf[3])
+			rtpTime := uint32(buf[4])<<24 | uint32(buf[5])<<16 | uint32(buf[6])<<8 | uint32(buf[7])
 
 			// first frame
 			if !rr.firstRtpReceived {
 				rr.firstRtpReceived = true
-				rr.totalSinceRR = 1
+				rr.totalSinceReport = 1
+				rr.lastSequenceNumber = sequenceNumber
+				rr.lastRtpTimeRtp = rtpTime
+				rr.lastRtpTimeTime = ts
 
 				// subsequent frames
 			} else {
-				diff := (sequenceNumber - rr.lastSequenceNumber)
+				diff := int32(sequenceNumber) - int32(rr.lastSequenceNumber)
 
-				if sequenceNumber != (rr.lastSequenceNumber + 1) {
-					rr.totalLost += uint32(diff) - 1
-					rr.totalLostSinceRR += uint32(diff) - 1
+				// following frame or following frame after an overflow
+				if diff > 0 || diff < -0x0FFF {
+					// overflow
+					if diff < -0x0FFF {
+						rr.sequenceNumberCycles += 1
+					}
+
+					// detect lost frames
+					if sequenceNumber != (rr.lastSequenceNumber + 1) {
+						rr.totalLost += uint32(uint16(diff) - 1)
+						rr.totalLostSinceReport += uint32(uint16(diff) - 1)
+
+						// allow up to 24 bits
+						if rr.totalLost > 0xFFFFFF {
+							rr.totalLost = 0xFFFFFF
+						}
+						if rr.totalLostSinceReport > 0xFFFFFF {
+							rr.totalLostSinceReport = 0xFFFFFF
+						}
+					}
+
+					// compute jitter
+					// https://tools.ietf.org/html/rfc3550#page-39
+					D := ts.Sub(rr.lastRtpTimeTime).Seconds()*rr.clockRate -
+						(float64(rtpTime) - float64(rr.lastRtpTimeRtp))
+					if D < 0 {
+						D = -D
+					}
+					rr.jitter += (D - rr.jitter) / 16
+
+					rr.totalSinceReport += uint32(uint16(diff))
+					rr.lastSequenceNumber = sequenceNumber
+					rr.lastRtpTimeRtp = rtpTime
+					rr.lastRtpTimeTime = ts
 				}
-
-				if sequenceNumber < rr.lastSequenceNumber {
-					rr.sequenceNumberCycles += 1
-				}
-
-				rr.totalSinceRR += uint32(diff)
+				// ignore invalid frames (diff = 0) or reordered frames (diff < 0)
 			}
-
-			rr.lastSequenceNumber = sequenceNumber
 		}
 
 	} else {
@@ -102,19 +139,24 @@ func (rr *RtcpReceiver) Report(ts time.Time) []byte {
 				LastSenderReport:   rr.lastSenderReport,
 				// equivalent to taking the integer part after multiplying the
 				// loss fraction by 256
-				FractionLost: uint8(float64(rr.totalLostSinceRR*256) / float64(rr.totalSinceRR)),
+				FractionLost: uint8(float64(rr.totalLostSinceReport*256) / float64(rr.totalSinceReport)),
 				TotalLost:    rr.totalLost,
 				// delay, expressed in units of 1/65536 seconds, between
 				// receiving the last SR packet from source SSRC_n and sending this
 				// reception report block
-				Delay: uint32(ts.Sub(rr.lastSenderReportTime).Seconds() * 65536),
+				Delay:  uint32(ts.Sub(rr.lastSenderReportTime).Seconds() * 65536),
+				Jitter: uint32(rr.jitter),
 			},
 		},
 	}
 
-	rr.totalLostSinceRR = 0
-	rr.totalSinceRR = 0
+	rr.totalLostSinceReport = 0
+	rr.totalSinceReport = 0
 
-	byts, _ := report.Marshal()
+	byts, err := report.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
 	return byts
 }

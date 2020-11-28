@@ -13,12 +13,14 @@ import (
 
 // RtcpSender is a utility to generate RTCP sender reports.
 type RtcpSender struct {
-	clockRate        float64
-	mutex            sync.Mutex
+	clockRate float64
+	mutex     sync.Mutex
+
+	// data from rtp packets
 	firstRtpReceived bool
 	senderSSRC       uint32
-	rtpTimeOffset    uint32
-	rtpTimeTime      time.Time
+	lastRtpTimeRtp   uint32
+	lastRtpTimeTime  time.Time
 	packetCount      uint32
 	octetCount       uint32
 }
@@ -30,7 +32,7 @@ func New(clockRate int) *RtcpSender {
 	}
 }
 
-// OnFrame processes a RTP or RTCP frame and extract the needed data.
+// OnFrame extracts the needed data from RTP or RTCP frames.
 func (rs *RtcpSender) OnFrame(ts time.Time, streamType base.StreamType, buf []byte) {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
@@ -45,8 +47,8 @@ func (rs *RtcpSender) OnFrame(ts time.Time, streamType base.StreamType, buf []by
 			}
 
 			// always update time to minimize errors
-			rs.rtpTimeOffset = pkt.Timestamp
-			rs.rtpTimeTime = ts
+			rs.lastRtpTimeRtp = pkt.Timestamp
+			rs.lastRtpTimeTime = ts
 
 			rs.packetCount++
 			rs.octetCount += uint32(len(pkt.Payload))
@@ -74,11 +76,15 @@ func (rs *RtcpSender) Report(ts time.Time) []byte {
 			fractionalPart := uint32((s - float64(integerPart)) * 0xFFFFFFFF)
 			return uint64(integerPart)<<32 | uint64(fractionalPart)
 		}(),
-		RTPTime:     rs.rtpTimeOffset + uint32((ts.Sub(rs.rtpTimeTime)).Seconds()*float64(rs.clockRate)),
+		RTPTime:     rs.lastRtpTimeRtp + uint32((ts.Sub(rs.lastRtpTimeTime)).Seconds()*float64(rs.clockRate)),
 		PacketCount: rs.packetCount,
 		OctetCount:  rs.octetCount,
 	}
 
-	byts, _ := report.Marshal()
+	byts, err := report.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
 	return byts
 }

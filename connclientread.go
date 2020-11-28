@@ -96,8 +96,10 @@ func (c *ConnClient) backgroundPlayUDP(onFrameDone chan error) {
 		case <-reportTicker.C:
 			now := time.Now()
 			for trackId := range c.rtcpReceivers {
-				report := c.rtcpReceivers[trackId].Report(now)
-				c.udpRtcpListeners[trackId].write(report)
+				r := c.rtcpReceivers[trackId].Report(now)
+				if r != nil {
+					c.udpRtcpListeners[trackId].write(r)
+				}
 			}
 
 		case <-keepaliveTicker.C:
@@ -191,14 +193,16 @@ func (c *ConnClient) backgroundPlayTCP(onFrameDone chan error) {
 		case <-reportTicker.C:
 			now := time.Now()
 			for trackId := range c.rtcpReceivers {
-				report := c.rtcpReceivers[trackId].Report(now)
-				c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
-				frame := base.InterleavedFrame{
-					TrackId:    trackId,
-					StreamType: StreamTypeRtcp,
-					Content:    report,
+				r := c.rtcpReceivers[trackId].Report(now)
+				if r != nil {
+					c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
+					frame := base.InterleavedFrame{
+						TrackId:    trackId,
+						StreamType: StreamTypeRtcp,
+						Content:    r,
+					}
+					frame.Write(c.bw)
 				}
-				frame.Write(c.bw)
 			}
 
 		case err := <-readerDone:
