@@ -32,7 +32,7 @@ func NewEncoder(payloadType uint8) (*Encoder, error) {
 }
 
 // Write encodes NALUs into RTP/H264 packets.
-func (e *Encoder) Write(nalus [][]byte, ts time.Duration) ([][]byte, error) {
+func (e *Encoder) Write(ts time.Duration, nalus [][]byte) ([][]byte, error) {
 	if e.started == 0 {
 		e.started = ts
 	}
@@ -43,7 +43,7 @@ func (e *Encoder) Write(nalus [][]byte, ts time.Duration) ([][]byte, error) {
 	var frames [][]byte
 
 	for i, nalu := range nalus {
-		naluFrames, err := e.writeNALU(nalu, rtpTime, (i == len(nalus)-1))
+		naluFrames, err := e.writeNALU(rtpTime, nalu, (i == len(nalus)-1))
 		if err != nil {
 			return nil, err
 		}
@@ -53,17 +53,17 @@ func (e *Encoder) Write(nalus [][]byte, ts time.Duration) ([][]byte, error) {
 	return frames, nil
 }
 
-func (e *Encoder) writeNALU(nalu []byte, rtpTime uint32, isFinal bool) ([][]byte, error) {
+func (e *Encoder) writeNALU(rtpTime uint32, nalu []byte, isFinal bool) ([][]byte, error) {
 	// if the NALU fits into a single RTP packet, use a single NALU payload
 	if len(nalu) < rtpPayloadMaxSize {
-		return e.writeSingle(nalu, rtpTime, isFinal)
+		return e.writeSingle(rtpTime, nalu, isFinal)
 	}
 
 	// otherwise, split the NALU into multiple fragmentation payloads
-	return e.writeFragmented(nalu, rtpTime, isFinal)
+	return e.writeFragmented(rtpTime, nalu, isFinal)
 }
 
-func (e *Encoder) writeSingle(nalu []byte, rtpTime uint32, isFinal bool) ([][]byte, error) {
+func (e *Encoder) writeSingle(rtpTime uint32, nalu []byte, isFinal bool) ([][]byte, error) {
 	rpkt := rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
@@ -88,7 +88,7 @@ func (e *Encoder) writeSingle(nalu []byte, rtpTime uint32, isFinal bool) ([][]by
 	return [][]byte{frame}, nil
 }
 
-func (e *Encoder) writeFragmented(nalu []byte, rtpTime uint32, isFinal bool) ([][]byte, error) {
+func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte, isFinal bool) ([][]byte, error) {
 	// use only FU-A, not FU-B, since we always use non-interleaved mode
 	// (packetization-mode=1)
 	frameCount := (len(nalu) - 1) / (rtpPayloadMaxSize - 2)

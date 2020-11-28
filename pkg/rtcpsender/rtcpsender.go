@@ -11,7 +11,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-// RtcpSender allows to generate RTCP sender reports.
+// RtcpSender is a utility to generate RTCP sender reports.
 type RtcpSender struct {
 	clockRate        float64
 	mutex            sync.Mutex

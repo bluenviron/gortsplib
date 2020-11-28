@@ -10,7 +10,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-// RtcpReceiver allows to generate RTCP receiver reports.
+// RtcpReceiver is a utility to generate RTCP receiver reports.
 type RtcpReceiver struct {
 	receiverSSRC         uint32
 	mutex                sync.Mutex

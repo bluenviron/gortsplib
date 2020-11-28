@@ -37,16 +37,16 @@ func NewEncoder(payloadType uint8, clockRate int) (*Encoder, error) {
 }
 
 // Write encodes an AAC frame into RTP/AAC packets.
-func (e *Encoder) Write(data []byte, timestamp time.Duration) ([][]byte, error) {
+func (e *Encoder) Write(ts time.Duration, data []byte) ([][]byte, error) {
 	if e.started == 0 {
-		e.started = timestamp
+		e.started = ts
 	}
 
 	if len(data) > rtpPayloadMaxSize {
 		return nil, fmt.Errorf("data is too big")
 	}
 
-	rtpTs := e.initialTs + uint32((timestamp-e.started).Seconds()*e.clockRate)
+	rtpTs := e.initialTs + uint32((ts-e.started).Seconds()*e.clockRate)
 
 	// 13 bits payload size
 	// 3 bits AU-Index(-delta)
