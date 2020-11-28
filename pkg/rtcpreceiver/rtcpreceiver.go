@@ -4,6 +4,7 @@ package rtcpreceiver
 import (
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/pion/rtcp"
 
@@ -18,7 +19,8 @@ type RtcpReceiver struct {
 	senderSSRC           uint32
 	sequenceNumberCycles uint16
 	lastSequenceNumber   uint16
-	lastSenderReportTime uint32
+	lastSenderReport     uint32
+	lastSenderReportTime time.Time
 	totalLost            uint32
 	totalLostSinceRR     uint32
 	totalSinceRR         uint32
@@ -37,7 +39,7 @@ func New(receiverSSRC *uint32) *RtcpReceiver {
 }
 
 // OnFrame processes a RTP or RTCP frame and extract the needed data.
-func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
+func (rr *RtcpReceiver) OnFrame(ts time.Time, streamType base.StreamType, buf []byte) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
@@ -78,7 +80,8 @@ func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 			for _, frame := range frames {
 				if sr, ok := (frame).(*rtcp.SenderReport); ok {
 					rr.senderSSRC = sr.SSRC
-					rr.lastSenderReportTime = uint32(sr.NTPTime >> 16)
+					rr.lastSenderReport = uint32(sr.NTPTime >> 16)
+					rr.lastSenderReportTime = ts
 				}
 			}
 		}
@@ -86,7 +89,7 @@ func (rr *RtcpReceiver) OnFrame(streamType base.StreamType, buf []byte) {
 }
 
 // Report generates a RTCP receiver report.
-func (rr *RtcpReceiver) Report() []byte {
+func (rr *RtcpReceiver) Report(ts time.Time) []byte {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
@@ -96,13 +99,15 @@ func (rr *RtcpReceiver) Report() []byte {
 			{
 				SSRC:               rr.senderSSRC,
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
-				LastSenderReport:   rr.lastSenderReportTime,
-				FractionLost: func() uint8 {
-					// equivalent to taking the integer part after multiplying the
-					// loss fraction by 256
-					return uint8(float64(rr.totalLostSinceRR*256) / float64(rr.totalSinceRR))
-				}(),
-				TotalLost: rr.totalLost,
+				LastSenderReport:   rr.lastSenderReport,
+				// equivalent to taking the integer part after multiplying the
+				// loss fraction by 256
+				FractionLost: uint8(float64(rr.totalLostSinceRR*256) / float64(rr.totalSinceRR)),
+				TotalLost:    rr.totalLost,
+				// delay, expressed in units of 1/65536 seconds, between
+				// receiving the last SR packet from source SSRC_n and sending this
+				// reception report block
+				Delay: uint32(ts.Sub(rr.lastSenderReportTime).Seconds() * 65536),
 			},
 		},
 	}

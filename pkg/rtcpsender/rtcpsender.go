@@ -42,11 +42,11 @@ func (rs *RtcpSender) OnFrame(ts time.Time, streamType base.StreamType, buf []by
 			if !rs.firstRtpReceived {
 				rs.firstRtpReceived = true
 				rs.senderSSRC = pkt.SSRC
-
-				// save RTP time offset and correspondent time
-				rs.rtpTimeOffset = pkt.Timestamp
-				rs.rtpTimeTime = ts
 			}
+
+			// always update time to minimize errors
+			rs.rtpTimeOffset = pkt.Timestamp
+			rs.rtpTimeTime = ts
 
 			rs.packetCount++
 			rs.octetCount += uint32(len(pkt.Payload))

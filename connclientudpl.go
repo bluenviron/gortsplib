@@ -83,9 +83,9 @@ func (l *connClientUDPListener) run() {
 			continue
 		}
 
-		atomic.StoreInt64(l.c.udpLastFrameTimes[l.trackId], time.Now().Unix())
-
-		l.c.rtcpReceivers[l.trackId].OnFrame(l.streamType, buf[:n])
+		now := time.Now()
+		atomic.StoreInt64(l.c.udpLastFrameTimes[l.trackId], now.Unix())
+		l.c.rtcpReceivers[l.trackId].OnFrame(now, l.streamType, buf[:n])
 
 		l.c.readCB(l.trackId, l.streamType, buf[:n])
 	}

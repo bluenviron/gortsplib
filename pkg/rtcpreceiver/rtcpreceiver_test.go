@@ -2,6 +2,7 @@ package rtcpreceiver
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
@@ -22,7 +23,8 @@ func TestRtcpReceiverBase(t *testing.T) {
 		OctetCount:  859127,
 	}
 	byts, _ := srPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtcp, byts)
+	ts := time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtcp, byts)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -36,7 +38,8 @@ func TestRtcpReceiverBase(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	byts, _ = rtpPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtp, byts)
+	ts = time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtp, byts)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -45,11 +48,13 @@ func TestRtcpReceiverBase(t *testing.T) {
 				SSRC:               0xba9da416,
 				LastSequenceNumber: 946,
 				LastSenderReport:   0x887a17ce,
+				Delay:              1 * 65536,
 			},
 		},
 	}
 	expected, _ := expectedPkt.Marshal()
-	require.Equal(t, expected, rr.Report())
+	ts = time.Date(2008, 05, 20, 22, 15, 21, 0, time.UTC)
+	require.Equal(t, expected, rr.Report(ts))
 }
 
 func TestRtcpReceiverSequenceOverflow(t *testing.T) {
@@ -64,7 +69,8 @@ func TestRtcpReceiverSequenceOverflow(t *testing.T) {
 		OctetCount:  859127,
 	}
 	byts, _ := srPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtcp, byts)
+	ts := time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtcp, byts)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -78,7 +84,8 @@ func TestRtcpReceiverSequenceOverflow(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	byts, _ = rtpPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtp, byts)
+	ts = time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtp, byts)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -92,7 +99,8 @@ func TestRtcpReceiverSequenceOverflow(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	byts, _ = rtpPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtp, byts)
+	ts = time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtp, byts)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -101,11 +109,13 @@ func TestRtcpReceiverSequenceOverflow(t *testing.T) {
 				SSRC:               0xba9da416,
 				LastSequenceNumber: 1<<16 | 0x0000,
 				LastSenderReport:   0x887a17ce,
+				Delay:              1 * 65536,
 			},
 		},
 	}
 	expected, _ := expectedPkt.Marshal()
-	require.Equal(t, expected, rr.Report())
+	ts = time.Date(2008, 05, 20, 22, 15, 21, 0, time.UTC)
+	require.Equal(t, expected, rr.Report(ts))
 }
 
 func TestRtcpReceiverPacketLost(t *testing.T) {
@@ -120,7 +130,8 @@ func TestRtcpReceiverPacketLost(t *testing.T) {
 		OctetCount:  859127,
 	}
 	byts, _ := srPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtcp, byts)
+	ts := time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtcp, byts)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -134,7 +145,8 @@ func TestRtcpReceiverPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	byts, _ = rtpPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtp, byts)
+	ts = time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtp, byts)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -148,7 +160,8 @@ func TestRtcpReceiverPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	byts, _ = rtpPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtp, byts)
+	ts = time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtp, byts)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -162,11 +175,13 @@ func TestRtcpReceiverPacketLost(t *testing.T) {
 					return uint8(v * 256)
 				}(),
 				TotalLost: 1,
+				Delay:     1 * 65536,
 			},
 		},
 	}
 	expected, _ := expectedPkt.Marshal()
-	require.Equal(t, expected, rr.Report())
+	ts = time.Date(2008, 05, 20, 22, 15, 21, 0, time.UTC)
+	require.Equal(t, expected, rr.Report(ts))
 }
 
 func TestRtcpReceiverSequenceOverflowPacketLost(t *testing.T) {
@@ -181,7 +196,8 @@ func TestRtcpReceiverSequenceOverflowPacketLost(t *testing.T) {
 		OctetCount:  859127,
 	}
 	byts, _ := srPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtcp, byts)
+	ts := time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtcp, byts)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -195,7 +211,8 @@ func TestRtcpReceiverSequenceOverflowPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	byts, _ = rtpPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtp, byts)
+	ts = time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtp, byts)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -209,7 +226,8 @@ func TestRtcpReceiverSequenceOverflowPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	byts, _ = rtpPkt.Marshal()
-	rr.OnFrame(base.StreamTypeRtp, byts)
+	ts = time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	rr.OnFrame(ts, base.StreamTypeRtp, byts)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -223,9 +241,11 @@ func TestRtcpReceiverSequenceOverflowPacketLost(t *testing.T) {
 					return uint8(v * 256)
 				}(),
 				TotalLost: 2,
+				Delay:     1 * 65536,
 			},
 		},
 	}
 	expected, _ := expectedPkt.Marshal()
-	require.Equal(t, expected, rr.Report())
+	ts = time.Date(2008, 05, 20, 22, 15, 21, 0, time.UTC)
+	require.Equal(t, expected, rr.Report(ts))
 }
