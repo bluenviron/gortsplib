@@ -139,29 +139,11 @@ func (d Dialer) DialRead(address string) (*ConnClient, error) {
 		return nil, err
 	}
 
-	proto := func() StreamProtocol {
-		if d.StreamProtocol != nil {
-			return *d.StreamProtocol
-		}
-		return StreamProtocolUDP
-	}()
-
-	for i, track := range tracks {
-		res, err := conn.Setup(u, headers.TransportModePlay, proto, track, 0, 0)
+	for _, track := range tracks {
+		_, err := conn.Setup(u, headers.TransportModePlay, track, 0, 0)
 		if err != nil {
-			// switch protocol automatically
-			if i == 0 && d.StreamProtocol == nil && res != nil &&
-				res.StatusCode == base.StatusUnsupportedTransport {
-				proto = StreamProtocolTCP
-				_, err := conn.Setup(u, headers.TransportModePlay, proto, track, 0, 0)
-				if err != nil {
-					conn.Close()
-					return nil, err
-				}
-			} else {
-				conn.Close()
-				return nil, err
-			}
+			conn.Close()
+			return nil, err
 		}
 	}
 
@@ -202,29 +184,11 @@ func (d Dialer) DialPublish(address string, tracks Tracks) (*ConnClient, error) 
 		return nil, err
 	}
 
-	proto := func() StreamProtocol {
-		if d.StreamProtocol != nil {
-			return *d.StreamProtocol
-		}
-		return StreamProtocolUDP
-	}()
-
-	for i, track := range tracks {
-		res, err := conn.Setup(u, headers.TransportModeRecord, proto, track, 0, 0)
+	for _, track := range tracks {
+		_, err := conn.Setup(u, headers.TransportModeRecord, track, 0, 0)
 		if err != nil {
-			// switch protocol automatically
-			if i == 0 && d.StreamProtocol == nil && res != nil &&
-				res.StatusCode == base.StatusUnsupportedTransport {
-				proto = StreamProtocolTCP
-				_, err := conn.Setup(u, headers.TransportModePlay, proto, track, 0, 0)
-				if err != nil {
-					conn.Close()
-					return nil, err
-				}
-			} else {
-				conn.Close()
-				return nil, err
-			}
+			conn.Close()
+			return nil, err
 		}
 	}
 

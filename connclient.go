@@ -356,7 +356,7 @@ func (c *ConnClient) urlForTrack(baseUrl *base.URL, mode headers.TransportMode, 
 // Setup writes a SETUP request and reads a Response.
 // rtpPort and rtcpPort are used only if protocol is UDP.
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
-func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.StreamProtocol,
+func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode,
 	track *Track, rtpPort int, rtcpPort int) (*base.Response, error) {
 	err := c.checkState(map[connClientState]struct{}{
 		connClientStateInitial:   {},
@@ -380,12 +380,23 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 		return nil, fmt.Errorf("setup has already begun with another url")
 	}
 
-	if c.streamProtocol != nil && *c.streamProtocol != proto {
-		return nil, fmt.Errorf("cannot setup tracks with different protocols")
-	}
-
 	var rtpListener *connClientUDPListener
 	var rtcpListener *connClientUDPListener
+
+	proto := func() StreamProtocol {
+		// protocol set by previous Setup()
+		if c.streamProtocol != nil {
+			return *c.streamProtocol
+		}
+
+		// protocol set by dialer
+		if c.d.StreamProtocol != nil {
+			return *c.d.StreamProtocol
+		}
+
+		// try udp
+		return StreamProtocolUDP
+	}()
 
 	transport := &headers.Transport{
 		Protocol: proto,
@@ -474,6 +485,18 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode, proto base.S
 			rtpListener.close()
 			rtcpListener.close()
 		}
+
+		// switch protocol automatically
+		if res.StatusCode == base.StatusUnsupportedTransport &&
+			c.streamProtocol == nil &&
+			c.d.StreamProtocol == nil {
+
+			v := StreamProtocolTCP
+			c.streamProtocol = &v
+
+			return c.Setup(u, headers.TransportModePlay, track, 0, 0)
+		}
+
 		return res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 

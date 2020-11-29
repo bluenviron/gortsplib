@@ -51,10 +51,6 @@ func main() {
 		ReadTimeout: 10 * time.Second,
 		// timeout of write operations
 		WriteTimeout: 10 * time.Second,
-		// read buffer count.
-		// If greater than 1, allows to pass buffers to routines different than the one
-		// that is reading frames
-		ReadBufferCount: 1,
 	}
 
 	// connect to the server and start publishing the track
