@@ -9,7 +9,7 @@ import (
 
 const (
 	rtpVersion        = 0x02
-	rtpPayloadMaxSize = 1460 // 1500 - ip header - udp header - rtp header
+	rtpPayloadMaxSize = 1460 // 1500 (mtu) - 20 (ip header) - 8 (udp header) - 12 (rtp header)
 )
 
 // Encoder is a RTP/H264 encoder.
