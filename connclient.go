@@ -315,7 +315,7 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 // build an URL by merging baseUrl with the control attribute from track.Media.
 func (c *ConnClient) urlForTrack(baseUrl *base.URL, mode headers.TransportMode, track *Track) *base.URL {
 	control := func() string {
-		// if we're reading, get control from track ID
+		// if we're publishing, get control from track ID
 		if mode == headers.TransportModeRecord {
 			return "trackID=" + strconv.FormatInt(int64(track.Id), 10)
 		}
@@ -347,7 +347,7 @@ func (c *ConnClient) urlForTrack(baseUrl *base.URL, mode headers.TransportMode, 
 		return newUrl
 	}
 
-	// control attribute contains a control attribute
+	// control attribute contains a relative control attribute
 	newUrl := baseUrl.Clone()
 	newUrl.AddControlAttribute(control)
 	return newUrl
