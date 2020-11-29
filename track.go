@@ -109,18 +109,44 @@ func NewTrackAAC(id int, config []byte) (*Track, error) {
 
 // ClockRate returns the clock rate of the track.
 func (t *Track) ClockRate() (int, error) {
+	if len(t.Media.MediaName.Formats) != 1 {
+		return 0, fmt.Errorf("invalid format (%v)", t.Media.MediaName.Formats)
+	}
+
+	// get clock rate from payload type
+	switch t.Media.MediaName.Formats[0] {
+	case "0", "1", "2", "3", "4", "5", "7", "8", "9", "12", "13", "15", "18":
+		return 8000, nil
+
+	case "6":
+		return 16000, nil
+
+	case "10", "11":
+		return 44100, nil
+
+	case "14", "25", "26", "28", "31", "32", "33", "34":
+		return 90000, nil
+
+	case "16":
+		return 11025, nil
+
+	case "17":
+		return 22050, nil
+	}
+
+	// get clock rate from rtpmap
 	// https://tools.ietf.org/html/rfc4566
 	// a=rtpmap:<payload type> <encoding name>/<clock rate> [/<encoding parameters>]
 	for _, a := range t.Media.Attributes {
 		if a.Key == "rtpmap" {
 			tmp := strings.Split(a.Value, " ")
-			if len(tmp) != 2 {
-				return 0, fmt.Errorf("invalid format (%s)", a.Value)
+			if len(tmp) < 2 {
+				return 0, fmt.Errorf("invalid rtpmap (%v)", a.Value)
 			}
 
 			tmp = strings.Split(tmp[1], "/")
 			if len(tmp) != 2 && len(tmp) != 3 {
-				return 0, fmt.Errorf("invalid format (%s)", a.Value)
+				return 0, fmt.Errorf("invalid rtpmap (%v)", a.Value)
 			}
 
 			v, err := strconv.ParseInt(tmp[1], 10, 64)
