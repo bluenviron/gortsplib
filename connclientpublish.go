@@ -16,6 +16,12 @@ func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 		return nil, err
 	}
 
+	// fill id and base url
+	for i, t := range tracks {
+		t.Id = i
+		t.BaseUrl = u
+	}
+
 	res, err := c.Do(&base.Request{
 		Method: base.ANNOUNCE,
 		URL:    u,

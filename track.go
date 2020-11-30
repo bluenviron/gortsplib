@@ -10,28 +10,32 @@ import (
 	"github.com/notedit/rtmp/codec/aac"
 	psdp "github.com/pion/sdp/v3"
 
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/sdp"
 )
 
 // Track is a track available in a certain URL.
 type Track struct {
-	// track id
+	// base url
+	BaseUrl *base.URL
+
+	// id
 	Id int
 
-	// track codec and info in SDP format
+	// codec and info in SDP format
 	Media *psdp.MediaDescription
 }
 
 // NewTrackH264 initializes an H264 track.
-func NewTrackH264(id int, sps []byte, pps []byte) (*Track, error) {
+func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*Track, error) {
 	spropParameterSets := base64.StdEncoding.EncodeToString(sps) +
 		"," + base64.StdEncoding.EncodeToString(pps)
 	profileLevelId := strings.ToUpper(hex.EncodeToString(sps[1:4]))
 
-	typ := strconv.FormatInt(int64(96+id), 10)
+	typ := strconv.FormatInt(int64(payloadType), 10)
 
 	return &Track{
-		Id: id,
 		Media: &psdp.MediaDescription{
 			MediaName: psdp.MediaName{
 				Media:   "video",
@@ -55,7 +59,7 @@ func NewTrackH264(id int, sps []byte, pps []byte) (*Track, error) {
 }
 
 // NewTrackAAC initializes an AAC track.
-func NewTrackAAC(id int, config []byte) (*Track, error) {
+func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 	codec, err := aac.FromMPEG4AudioConfigBytes(config)
 	if err != nil {
 		return nil, err
@@ -77,10 +81,9 @@ func NewTrackAAC(id int, config []byte) (*Track, error) {
 		return nil, err
 	}
 
-	typ := strconv.FormatInt(int64(96+id), 10)
+	typ := strconv.FormatInt(int64(payloadType), 10)
 
 	return &Track{
-		Id: id,
 		Media: &psdp.MediaDescription{
 			MediaName: psdp.MediaName{
 				Media:   "audio",
@@ -157,6 +160,51 @@ func (t *Track) ClockRate() (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("attribute 'rtpmap' not found")
+}
+
+// Url returns the track url.
+func (t *Track) Url(mode headers.TransportMode) (*base.URL, error) {
+	if t.BaseUrl == nil {
+		return nil, fmt.Errorf("empty base url")
+	}
+
+	control := func() string {
+		// if we're publishing, get control from track ID
+		if mode == headers.TransportModeRecord {
+			return "trackID=" + strconv.FormatInt(int64(t.Id), 10)
+		}
+
+		// otherwise, get from media attributes
+		for _, attr := range t.Media.Attributes {
+			if attr.Key == "control" {
+				return attr.Value
+			}
+		}
+		return ""
+	}()
+
+	// no control attribute, use base URL
+	if control == "" {
+		return t.BaseUrl, nil
+	}
+
+	// control attribute contains an absolute path
+	if strings.HasPrefix(control, "rtsp://") {
+		ur, err := base.ParseURL(control)
+		if err != nil {
+			return nil, err
+		}
+
+		// copy host and credentials
+		ur.Host = t.BaseUrl.Host
+		ur.User = t.BaseUrl.User
+		return ur, nil
+	}
+
+	// control attribute contains a relative control attribute
+	ur := t.BaseUrl.Clone()
+	ur.AddControlAttribute(control)
+	return ur, nil
 }
 
 // Tracks is a list of tracks.

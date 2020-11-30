@@ -301,7 +301,7 @@ func TestDialPublishSerial(t *testing.T) {
 			sps, pps, err := decoder.ReadSPSPPS()
 			require.NoError(t, err)
 
-			track, err := NewTrackH264(0, sps, pps)
+			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
 			dialer := Dialer{
@@ -381,7 +381,7 @@ func TestDialPublishParallel(t *testing.T) {
 			sps, pps, err := decoder.ReadSPSPPS()
 			require.NoError(t, err)
 
-			track, err := NewTrackH264(0, sps, pps)
+			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
 			writerDone := make(chan struct{})
@@ -475,7 +475,7 @@ func TestDialPublishPauseSerial(t *testing.T) {
 			sps, pps, err := decoder.ReadSPSPPS()
 			require.NoError(t, err)
 
-			track, err := NewTrackH264(0, sps, pps)
+			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
 			dialer := Dialer{
@@ -547,7 +547,7 @@ func TestDialPublishPauseParallel(t *testing.T) {
 			sps, pps, err := decoder.ReadSPSPPS()
 			require.NoError(t, err)
 
-			track, err := NewTrackH264(0, sps, pps)
+			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
 			dialer := Dialer{

@@ -292,6 +292,37 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
+		// redirect
+		if !c.d.RedirectDisable &&
+			res.StatusCode >= base.StatusMovedPermanently &&
+			res.StatusCode <= base.StatusUseProxy &&
+			len(res.Header["Location"]) == 1 {
+
+			c.Close()
+
+			u, err := base.ParseURL(res.Header["Location"][0])
+			if err != nil {
+				return nil, nil, err
+			}
+
+			nc, err := c.d.Dial(u.Host)
+			if err != nil {
+				return nil, nil, err
+			}
+			*c = *nc
+
+			res, err := c.Options(u)
+			if err != nil {
+				// since this method is not implemented by every RTSP server,
+				// return only if status code is not 404
+				if res == nil || res.StatusCode != base.StatusNotFound {
+					return nil, nil, err
+				}
+			}
+
+			return c.Describe(u)
+		}
+
 		return nil, res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
@@ -309,55 +340,18 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 		return nil, nil, err
 	}
 
+	for _, t := range tracks {
+		t.BaseUrl = u
+	}
+
 	return tracks, res, nil
-}
-
-// build an URL by merging baseUrl with the control attribute from track.Media.
-func (c *ConnClient) urlForTrack(baseUrl *base.URL, mode headers.TransportMode, track *Track) *base.URL {
-	control := func() string {
-		// if we're publishing, get control from track ID
-		if mode == headers.TransportModeRecord {
-			return "trackID=" + strconv.FormatInt(int64(track.Id), 10)
-		}
-
-		// otherwise, get from media attributes
-		for _, attr := range track.Media.Attributes {
-			if attr.Key == "control" {
-				return attr.Value
-			}
-		}
-		return ""
-	}()
-
-	// no control attribute, use base URL
-	if control == "" {
-		return baseUrl
-	}
-
-	// control attribute contains an absolute path
-	if strings.HasPrefix(control, "rtsp://") {
-		newUrl, err := base.ParseURL(control)
-		if err != nil {
-			return baseUrl
-		}
-
-		// copy host and credentials
-		newUrl.Host = baseUrl.Host
-		newUrl.User = baseUrl.User
-		return newUrl
-	}
-
-	// control attribute contains a relative control attribute
-	newUrl := baseUrl.Clone()
-	newUrl.AddControlAttribute(control)
-	return newUrl
 }
 
 // Setup writes a SETUP request and reads a Response.
 // rtpPort and rtcpPort are used only if protocol is UDP.
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
-func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode,
-	track *Track, rtpPort int, rtcpPort int) (*base.Response, error) {
+func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
+	rtpPort int, rtcpPort int) (*base.Response, error) {
 	err := c.checkState(map[connClientState]struct{}{
 		connClientStateInitial:   {},
 		connClientStatePrePlay:   {},
@@ -376,8 +370,8 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode,
 		return nil, fmt.Errorf("cannot read and publish at the same time")
 	}
 
-	if c.streamUrl != nil && *u != *c.streamUrl {
-		return nil, fmt.Errorf("setup has already begun with another url")
+	if c.streamUrl != nil && *track.BaseUrl != *c.streamUrl {
+		return nil, fmt.Errorf("cannot setup tracks with different base urls")
 	}
 
 	var rtpListener *connClientUDPListener
@@ -465,9 +459,18 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode,
 		transport.InterleavedIds = &[2]int{(track.Id * 2), (track.Id * 2) + 1}
 	}
 
+	trackUrl, err := track.Url(mode)
+	if err != nil {
+		if proto == StreamProtocolUDP {
+			rtpListener.close()
+			rtcpListener.close()
+		}
+		return nil, err
+	}
+
 	res, err := c.Do(&base.Request{
 		Method: base.SETUP,
-		URL:    c.urlForTrack(u, mode, track),
+		URL:    trackUrl,
 		Header: base.Header{
 			"Transport": transport.Write(),
 		},
@@ -494,7 +497,7 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode,
 			v := StreamProtocolTCP
 			c.streamProtocol = &v
 
-			return c.Setup(u, headers.TransportModePlay, track, 0, 0)
+			return c.Setup(headers.TransportModePlay, track, 0, 0)
 		}
 
 		return res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
@@ -545,7 +548,7 @@ func (c *ConnClient) Setup(u *base.URL, mode headers.TransportMode,
 		c.rtcpSenders[track.Id] = rtcpsender.New(clockRate)
 	}
 
-	c.streamUrl = u
+	c.streamUrl = track.BaseUrl
 	c.streamProtocol = &proto
 	c.tracks = append(c.tracks, track)
 

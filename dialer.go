@@ -33,31 +33,37 @@ func DialPublish(address string, tracks Tracks) (*ConnClient, error) {
 }
 
 // Dialer allows to initialize a ConnClient.
+// All fields are optional.
 type Dialer struct {
-	// (optional) the stream protocol (UDP or TCP).
+	// the stream protocol (UDP or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
+	// It defaults to nil.
 	StreamProtocol *StreamProtocol
 
-	// (optional) timeout of read operations.
-	// It defaults to 10 seconds
+	// timeout of read operations.
+	// It defaults to 10 seconds.
 	ReadTimeout time.Duration
 
-	// (optional) timeout of write operations.
-	// It defaults to 10 seconds
+	// timeout of write operations.
+	// It defaults to 10 seconds.
 	WriteTimeout time.Duration
 
-	// (optional) read buffer count.
+	// disable being redirected to other servers, that can happen during Describe().
+	// It defaults to false.
+	RedirectDisable bool
+
+	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
-	// It defaults to 1
+	// It defaults to 1.
 	ReadBufferCount int
 
-	// (optional) function used to initialize the TCP client.
-	// It defaults to net.DialTimeout
+	// function used to initialize the TCP client.
+	// It defaults to net.DialTimeout.
 	DialTimeout func(network, address string, timeout time.Duration) (net.Conn, error)
 
-	// (optional) function used to initialize UDP listeners.
-	// It defaults to net.ListenPacket
+	// function used to initialize UDP listeners.
+	// It defaults to net.ListenPacket.
 	ListenPacket func(network, address string) (net.PacketConn, error)
 }
 
@@ -127,20 +133,12 @@ func (d Dialer) DialRead(address string) (*ConnClient, error) {
 
 	tracks, res, err := conn.Describe(u)
 	if err != nil {
-		// redirect
-		if res != nil && res.StatusCode >= base.StatusMovedPermanently &&
-			res.StatusCode <= base.StatusUseProxy &&
-			len(res.Header["Location"]) == 1 {
-			conn.Close()
-			return d.DialRead(res.Header["Location"][0])
-		}
-
 		conn.Close()
 		return nil, err
 	}
 
 	for _, track := range tracks {
-		_, err := conn.Setup(u, headers.TransportModePlay, track, 0, 0)
+		_, err := conn.Setup(headers.TransportModePlay, track, 0, 0)
 		if err != nil {
 			conn.Close()
 			return nil, err
@@ -185,7 +183,7 @@ func (d Dialer) DialPublish(address string, tracks Tracks) (*ConnClient, error) 
 	}
 
 	for _, track := range tracks {
-		_, err := conn.Setup(u, headers.TransportModeRecord, track, 0, 0)
+		_, err := conn.Setup(headers.TransportModeRecord, track, 0, 0)
 		if err != nil {
 			conn.Close()
 			return nil, err
