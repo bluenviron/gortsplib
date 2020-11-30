@@ -12,10 +12,10 @@ import (
 )
 
 // This example shows how to
-// * set additional client options
-// * generate RTP/H264 frames from a file with Gstreamer
-// * connect to a RTSP server, announce a H264 track
-// * write the frames of the track
+// 1. set additional client options
+// 2. generate RTP/H264 frames from a file with Gstreamer
+// 3. connect to a RTSP server, announce a H264 track
+// 4. write the frames of the track
 
 func main() {
 	// open a listener to receive RTP/H264 frames
@@ -66,14 +66,13 @@ func main() {
 		// read frames from the source
 		n, _, err := pc.ReadFrom(buf)
 		if err != nil {
-			break
+			panic(err)
 		}
 
 		// write track frames
 		err = conn.WriteFrame(track.Id, gortsplib.StreamTypeRtp, buf[:n])
 		if err != nil {
-			fmt.Printf("connection is closed (%s)\n", err)
-			break
+			panic(err)
 		}
 	}
 }

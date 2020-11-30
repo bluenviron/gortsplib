@@ -9,8 +9,8 @@ import (
 )
 
 // This example shows how to
-// * connect to a RTSP server
-// * read all tracks on a path
+// 1. connect to a RTSP server
+// 2. read all tracks on a path
 
 func main() {
 	// connect to the server and start reading all tracks
@@ -25,5 +25,7 @@ func main() {
 		fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 	})
 
-	<-readerDone
+	// catch any error
+	err = <-readerDone
+	panic(err)
 }

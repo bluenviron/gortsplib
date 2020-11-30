@@ -10,9 +10,9 @@ import (
 )
 
 // This example shows how to
-// * set additional client options
-// * connect to a RTSP server
-// * read all tracks on a path
+// 1. set additional client options
+// 2. connect to a RTSP server
+// 3. read all tracks on a path
 
 func main() {
 	// Dialer allows to set additional client options
@@ -37,5 +37,7 @@ func main() {
 		fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 	})
 
-	<-readerDone
+	// catch any error
+	err = <-readerDone
+	panic(err)
 }

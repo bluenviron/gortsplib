@@ -10,10 +10,10 @@ import (
 )
 
 // This example shows how to
-// * connect to a RTSP server
-// * read all tracks for 5 seconds
-// * pause for 5 seconds
-// * repeat
+// 1. connect to a RTSP server
+// 2. read all tracks for 5 seconds
+// 3. pause for 5 seconds
+// 4. repeat
 
 func main() {
 	// connect to the server and start reading all tracks

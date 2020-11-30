@@ -10,8 +10,8 @@ import (
 )
 
 // This example shows how to
-// * connect to a RTSP server
-// * query and print informations about tracks published on a path.
+// 1. connect to a RTSP server
+// 2. get and print informations about tracks published on a path.
 
 func main() {
 	u, err := base.ParseURL("rtsp://myserver/mypath")
@@ -30,13 +30,9 @@ func main() {
 		panic(err)
 	}
 
-	tracks, res, err := conn.Describe(u)
+	tracks, _, err := conn.Describe(u)
 	if err != nil {
 		panic(err)
-	}
-
-	if res.StatusCode != base.StatusOK {
-		panic(fmt.Errorf("server returned status %d", res.StatusCode))
 	}
 
 	fmt.Println("available tracks: %v\n", tracks)

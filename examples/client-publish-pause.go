@@ -12,11 +12,11 @@ import (
 )
 
 // This example shows how to
-// * generate RTP/H264 frames from a file with Gstreamer
-// * connect to a RTSP server, announce a H264 track
-// * write the frames of the track for 5 seconds
-// * pause for 5 seconds
-// * repeat
+// 1. generate RTP/H264 frames from a file with Gstreamer
+// 2. connect to a RTSP server, announce a H264 track
+// 3. write the frames of the track for 5 seconds
+// 4. pause for 5 seconds
+// 5. repeat
 
 func main() {
 	// open a listener to receive RTP/H264 frames
