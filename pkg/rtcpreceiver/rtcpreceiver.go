@@ -47,8 +47,8 @@ func New(receiverSSRC *uint32, clockRate int) *RtcpReceiver {
 	}
 }
 
-// OnFrame extracts the needed data from RTP or RTCP frames.
-func (rr *RtcpReceiver) OnFrame(ts time.Time, streamType base.StreamType, buf []byte) {
+// ProcessFrame extracts the needed data from RTP or RTCP frames.
+func (rr *RtcpReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, buf []byte) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 

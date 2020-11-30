@@ -182,7 +182,7 @@ func (c *ConnClient) WriteFrame(trackId int, streamType StreamType, content []by
 
 	now := time.Now()
 
-	c.rtcpSenders[trackId].OnFrame(now, streamType, content)
+	c.rtcpSenders[trackId].ProcessFrame(now, streamType, content)
 
 	if *c.streamProtocol == StreamProtocolUDP {
 		if streamType == StreamTypeRtp {

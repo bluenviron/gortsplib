@@ -162,7 +162,7 @@ func (c *ConnClient) backgroundPlayTCP(onFrameDone chan error) {
 				return
 			}
 
-			c.rtcpReceivers[frame.TrackId].OnFrame(time.Now(), frame.StreamType, frame.Content)
+			c.rtcpReceivers[frame.TrackId].ProcessFrame(time.Now(), frame.StreamType, frame.Content)
 
 			c.readCB(frame.TrackId, frame.StreamType, frame.Content)
 		}

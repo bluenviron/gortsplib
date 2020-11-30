@@ -32,8 +32,8 @@ func New(clockRate int) *RtcpSender {
 	}
 }
 
-// OnFrame extracts the needed data from RTP or RTCP frames.
-func (rs *RtcpSender) OnFrame(ts time.Time, streamType base.StreamType, buf []byte) {
+// ProcessFrame extracts the needed data from RTP or RTCP frames.
+func (rs *RtcpSender) ProcessFrame(ts time.Time, streamType base.StreamType, buf []byte) {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
@@ -57,7 +57,7 @@ func (rs *RtcpSender) OnFrame(ts time.Time, streamType base.StreamType, buf []by
 }
 
 // Report generates a RTCP sender report.
-// It returns nil if no packets has been passed to OnFrame yet.
+// It returns nil if no packets has been passed to ProcessFrame yet.
 func (rs *RtcpSender) Report(ts time.Time) []byte {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
