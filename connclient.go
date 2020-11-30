@@ -460,7 +460,7 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 		transport.InterleavedIds = &[2]int{(track.Id * 2), (track.Id * 2) + 1}
 	}
 
-	trackUrl, err := track.Url(mode)
+	trackUrl, err := track.Url()
 	if err != nil {
 		if proto == StreamProtocolUDP {
 			rtpListener.close()

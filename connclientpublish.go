@@ -2,7 +2,10 @@ package gortsplib
 
 import (
 	"fmt"
+	"strconv"
 	"time"
+
+	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/pkg/base"
 )
@@ -16,10 +19,15 @@ func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 		return nil, err
 	}
 
-	// fill id and base url
+	// set id, base url and control attribute on tracks
 	for i, t := range tracks {
 		t.Id = i
 		t.BaseUrl = u
+
+		t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
+			Key:   "control",
+			Value: "trackID=" + strconv.FormatInt(int64(i), 10),
+		})
 	}
 
 	res, err := c.Do(&base.Request{

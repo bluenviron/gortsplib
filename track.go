@@ -11,7 +11,6 @@ import (
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/sdp"
 )
 
@@ -163,18 +162,12 @@ func (t *Track) ClockRate() (int, error) {
 }
 
 // Url returns the track url.
-func (t *Track) Url(mode headers.TransportMode) (*base.URL, error) {
+func (t *Track) Url() (*base.URL, error) {
 	if t.BaseUrl == nil {
 		return nil, fmt.Errorf("empty base url")
 	}
 
 	control := func() string {
-		// if we're publishing, get control from track ID
-		if mode == headers.TransportModeRecord {
-			return "trackID=" + strconv.FormatInt(int64(t.Id), 10)
-		}
-
-		// otherwise, get from media attributes
 		for _, attr := range t.Media.Attributes {
 			if attr.Key == "control" {
 				return attr.Value
