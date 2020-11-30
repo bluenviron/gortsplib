@@ -249,6 +249,11 @@ func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
+		// since this method is not implemented by every RTSP server,
+		// return only if status code is not 404
+		if res.StatusCode == base.StatusNotFound {
+			return res, nil
+		}
 		return res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
@@ -311,13 +316,9 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 			}
 			*c = *nc
 
-			res, err := c.Options(u)
+			_, err = c.Options(u)
 			if err != nil {
-				// since this method is not implemented by every RTSP server,
-				// return only if status code is not 404
-				if res == nil || res.StatusCode != base.StatusNotFound {
-					return nil, nil, err
-				}
+				return nil, nil, err
 			}
 
 			return c.Describe(u)

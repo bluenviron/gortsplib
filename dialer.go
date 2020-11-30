@@ -121,17 +121,13 @@ func (d Dialer) DialRead(address string) (*ConnClient, error) {
 		return nil, err
 	}
 
-	res, err := conn.Options(u)
+	_, err = conn.Options(u)
 	if err != nil {
-		// since this method is not implemented by every RTSP server,
-		// return only if status code is not 404
-		if res == nil || res.StatusCode != base.StatusNotFound {
-			conn.Close()
-			return nil, err
-		}
+		conn.Close()
+		return nil, err
 	}
 
-	tracks, res, err := conn.Describe(u)
+	tracks, _, err := conn.Describe(u)
 	if err != nil {
 		conn.Close()
 		return nil, err
@@ -166,14 +162,10 @@ func (d Dialer) DialPublish(address string, tracks Tracks) (*ConnClient, error) 
 		return nil, err
 	}
 
-	res, err := conn.Options(u)
+	_, err = conn.Options(u)
 	if err != nil {
-		// since this method is not implemented by every RTSP server,
-		// return only if status code is not 404
-		if res == nil || res.StatusCode != base.StatusNotFound {
-			conn.Close()
-			return nil, err
-		}
+		conn.Close()
+		return nil, err
 	}
 
 	_, err = conn.Announce(u, tracks)
