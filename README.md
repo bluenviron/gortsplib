@@ -1,7 +1,7 @@
 
 # gortsplib
 
-[![Build Status](https://travis-ci.com/aler9/gortsplib.svg?branch=master)](https://travis-ci.com/aler9/gortsplib)
+[![Test](https://github.com/aler9/gortsplib/workflows/test/badge.svg)](https://github.com/aler9/gortsplib/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/aler9/gortsplib)](https://goreportcard.com/report/github.com/aler9/gortsplib)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/aler9/gortsplib)](https://pkg.go.dev/github.com/aler9/gortsplib)
 
