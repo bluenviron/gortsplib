@@ -14,8 +14,8 @@ const (
 	serverWriteBufferSize = 4096
 )
 
-// ConnServerConf allows to configure a ConnServer.
-type ConnServerConf struct {
+// ServerConnConf allows to configure a ServerConn.
+type ServerConnConf struct {
 	// pre-existing TCP connection to wrap
 	Conn net.Conn
 
@@ -34,9 +34,9 @@ type ConnServerConf struct {
 	ReadBufferCount int
 }
 
-// ConnServer is a server-side RTSP connection.
-type ConnServer struct {
-	conf           ConnServerConf
+// ServerConn is a server-side RTSP connection.
+type ServerConn struct {
+	conf           ServerConnConf
 	br             *bufio.Reader
 	bw             *bufio.Writer
 	request        *base.Request
@@ -44,8 +44,8 @@ type ConnServer struct {
 	tcpFrameBuffer *multibuffer.MultiBuffer
 }
 
-// NewConnServer allocates a ConnServer.
-func NewConnServer(conf ConnServerConf) *ConnServer {
+// NewServerConn allocates a ServerConn.
+func NewServerConn(conf ServerConnConf) *ServerConn {
 	if conf.ReadTimeout == 0 {
 		conf.ReadTimeout = 10 * time.Second
 	}
@@ -56,7 +56,7 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 		conf.ReadBufferCount = 1
 	}
 
-	return &ConnServer{
+	return &ServerConn{
 		conf:           conf,
 		br:             bufio.NewReaderSize(conf.Conn, serverReadBufferSize),
 		bw:             bufio.NewWriterSize(conf.Conn, serverWriteBufferSize),
@@ -66,18 +66,18 @@ func NewConnServer(conf ConnServerConf) *ConnServer {
 	}
 }
 
-// Close closes all the ConnServer resources.
-func (s *ConnServer) Close() error {
+// Close closes all the ServerConn resources.
+func (s *ServerConn) Close() error {
 	return s.conf.Conn.Close()
 }
 
 // NetConn returns the underlying net.Conn.
-func (s *ConnServer) NetConn() net.Conn {
+func (s *ServerConn) NetConn() net.Conn {
 	return s.conf.Conn
 }
 
 // ReadRequest reads a Request.
-func (s *ConnServer) ReadRequest() (*base.Request, error) {
+func (s *ServerConn) ReadRequest() (*base.Request, error) {
 	s.conf.Conn.SetReadDeadline(time.Time{}) // disable deadline
 	err := s.request.Read(s.br)
 	if err != nil {
@@ -88,7 +88,7 @@ func (s *ConnServer) ReadRequest() (*base.Request, error) {
 }
 
 // ReadFrameTCPOrRequest reads an InterleavedFrame or a Request.
-func (s *ConnServer) ReadFrameTCPOrRequest(timeout bool) (interface{}, error) {
+func (s *ServerConn) ReadFrameTCPOrRequest(timeout bool) (interface{}, error) {
 	s.frame.Content = s.tcpFrameBuffer.Next()
 
 	if timeout {
@@ -99,13 +99,13 @@ func (s *ConnServer) ReadFrameTCPOrRequest(timeout bool) (interface{}, error) {
 }
 
 // WriteResponse writes a Response.
-func (s *ConnServer) WriteResponse(res *base.Response) error {
+func (s *ServerConn) WriteResponse(res *base.Response) error {
 	s.conf.Conn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
 	return res.Write(s.bw)
 }
 
 // WriteFrameTCP writes an InterleavedFrame.
-func (s *ConnServer) WriteFrameTCP(trackID int, streamType StreamType, content []byte) error {
+func (s *ServerConn) WriteFrameTCP(trackID int, streamType StreamType, content []byte) error {
 	frame := base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
