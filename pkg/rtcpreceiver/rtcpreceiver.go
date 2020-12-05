@@ -74,7 +74,7 @@ func (rr *RtcpReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, b
 				if diff > 0 || diff < -0x0FFF {
 					// overflow
 					if diff < -0x0FFF {
-						rr.sequenceNumberCycles += 1
+						rr.sequenceNumberCycles++
 					}
 
 					// detect lost frames

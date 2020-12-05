@@ -19,18 +19,18 @@ type Method string
 
 // standard methods
 const (
-	ANNOUNCE      Method = "ANNOUNCE"
-	DESCRIBE      Method = "DESCRIBE"
-	GET_PARAMETER Method = "GET_PARAMETER"
-	OPTIONS       Method = "OPTIONS"
-	PAUSE         Method = "PAUSE"
-	PLAY          Method = "PLAY"
-	PLAY_NOTIFY   Method = "PLAY_NOTIFY"
-	RECORD        Method = "RECORD"
-	REDIRECT      Method = "REDIRECT"
-	SETUP         Method = "SETUP"
-	SET_PARAMETER Method = "SET_PARAMETER"
-	TEARDOWN      Method = "TEARDOWN"
+	Announce     Method = "ANNOUNCE"
+	Describe     Method = "DESCRIBE"
+	GetParameter Method = "GET_PARAMETER"
+	Options      Method = "OPTIONS"
+	Pause        Method = "PAUSE"
+	Play         Method = "PLAY"
+	PlayNotify   Method = "PLAY_NOTIFY"
+	Record       Method = "RECORD"
+	Redirect     Method = "REDIRECT"
+	Setup        Method = "SETUP"
+	SetParameter Method = "SET_PARAMETER"
+	Teardown     Method = "TEARDOWN"
 )
 
 // Request is a RTSP request.
@@ -68,15 +68,15 @@ func (req *Request) Read(rb *bufio.Reader) error {
 	if err != nil {
 		return err
 	}
-	rawUrl := string(byts[:len(byts)-1])
+	rawURL := string(byts[:len(byts)-1])
 
-	if rawUrl == "" {
+	if rawURL == "" {
 		return fmt.Errorf("empty url")
 	}
 
-	ur, err := ParseURL(rawUrl)
+	ur, err := ParseURL(rawURL)
 	if err != nil {
-		return fmt.Errorf("unable to parse url (%v)", rawUrl)
+		return fmt.Errorf("unable to parse url (%v)", rawURL)
 	}
 	req.URL = ur
 

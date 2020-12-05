@@ -25,7 +25,7 @@ func New(count int, size int) *MultiBuffer {
 // Next gets the current buffer and sets the next buffer as the current one.
 func (mb *MultiBuffer) Next() []byte {
 	ret := mb.buffers[mb.cur]
-	mb.cur += 1
+	mb.cur++
 	if mb.cur >= mb.count {
 		mb.cur = 0
 	}

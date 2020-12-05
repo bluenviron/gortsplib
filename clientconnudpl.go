@@ -19,11 +19,11 @@ const (
 type connClientUDPListener struct {
 	c              *ConnClient
 	pc             net.PacketConn
-	remoteIp       net.IP
+	remoteIP       net.IP
 	remoteZone     string
 	remotePort     int
 	udpFrameBuffer *multibuffer.MultiBuffer
-	trackId        int
+	trackID        int
 	streamType     StreamType
 	running        bool
 
@@ -79,22 +79,22 @@ func (l *connClientUDPListener) run() {
 
 		uaddr := addr.(*net.UDPAddr)
 
-		if !l.remoteIp.Equal(uaddr.IP) || l.remotePort != uaddr.Port {
+		if !l.remoteIP.Equal(uaddr.IP) || l.remotePort != uaddr.Port {
 			continue
 		}
 
 		now := time.Now()
-		atomic.StoreInt64(l.c.udpLastFrameTimes[l.trackId], now.Unix())
-		l.c.rtcpReceivers[l.trackId].ProcessFrame(now, l.streamType, buf[:n])
+		atomic.StoreInt64(l.c.udpLastFrameTimes[l.trackID], now.Unix())
+		l.c.rtcpReceivers[l.trackID].ProcessFrame(now, l.streamType, buf[:n])
 
-		l.c.readCB(l.trackId, l.streamType, buf[:n])
+		l.c.readCB(l.trackID, l.streamType, buf[:n])
 	}
 }
 
 func (l *connClientUDPListener) write(buf []byte) error {
 	l.pc.SetWriteDeadline(time.Now().Add(l.c.d.WriteTimeout))
 	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
-		IP:   l.remoteIp,
+		IP:   l.remoteIP,
 		Zone: l.remoteZone,
 		Port: l.remotePort,
 	})

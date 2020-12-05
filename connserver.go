@@ -105,9 +105,9 @@ func (s *ConnServer) WriteResponse(res *base.Response) error {
 }
 
 // WriteFrameTCP writes an InterleavedFrame.
-func (s *ConnServer) WriteFrameTCP(trackId int, streamType StreamType, content []byte) error {
+func (s *ConnServer) WriteFrameTCP(trackID int, streamType StreamType, content []byte) error {
 	frame := base.InterleavedFrame{
-		TrackId:    trackId,
+		TrackID:    trackID,
 		StreamType: streamType,
 		Content:    content,
 	}

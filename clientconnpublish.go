@@ -21,8 +21,8 @@ func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 
 	// set id, base url and control attribute on tracks
 	for i, t := range tracks {
-		t.Id = i
-		t.BaseUrl = u
+		t.ID = i
+		t.BaseURL = u
 
 		t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
 			Key:   "control",
@@ -31,7 +31,7 @@ func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 	}
 
 	res, err := c.Do(&base.Request{
-		Method: base.ANNOUNCE,
+		Method: base.Announce,
 		URL:    u,
 		Header: base.Header{
 			"Content-Type": base.HeaderValue{"application/sdp"},
@@ -46,7 +46,7 @@ func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	c.streamUrl = u
+	c.streamURL = u
 	c.state = connClientStatePreRecord
 
 	return res, nil
@@ -63,8 +63,8 @@ func (c *ConnClient) Record() (*base.Response, error) {
 	}
 
 	res, err := c.Do(&base.Request{
-		Method: base.RECORD,
-		URL:    c.streamUrl,
+		Method: base.Record,
+		URL:    c.streamURL,
 	})
 	if err != nil {
 		return nil, err
@@ -126,10 +126,10 @@ func (c *ConnClient) backgroundRecordUDP() {
 		case <-reportTicker.C:
 			c.publishWriteMutex.Lock()
 			now := time.Now()
-			for trackId := range c.rtcpSenders {
-				r := c.rtcpSenders[trackId].Report(now)
+			for trackID := range c.rtcpSenders {
+				r := c.rtcpSenders[trackID].Report(now)
 				if r != nil {
-					c.udpRtcpListeners[trackId].write(r)
+					c.udpRtcpListeners[trackID].write(r)
 				}
 			}
 			c.publishWriteMutex.Unlock()
@@ -161,12 +161,12 @@ func (c *ConnClient) backgroundRecordTCP() {
 		case <-reportTicker.C:
 			c.publishWriteMutex.Lock()
 			now := time.Now()
-			for trackId := range c.rtcpSenders {
-				r := c.rtcpSenders[trackId].Report(now)
+			for trackID := range c.rtcpSenders {
+				r := c.rtcpSenders[trackID].Report(now)
 				if r != nil {
 					c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
 					frame := base.InterleavedFrame{
-						TrackId:    trackId,
+						TrackID:    trackID,
 						StreamType: StreamTypeRtcp,
 						Content:    r,
 					}
@@ -180,7 +180,7 @@ func (c *ConnClient) backgroundRecordTCP() {
 
 // WriteFrame writes a frame.
 // This can be called only after Record().
-func (c *ConnClient) WriteFrame(trackId int, streamType StreamType, content []byte) error {
+func (c *ConnClient) WriteFrame(trackID int, streamType StreamType, content []byte) error {
 	c.publishWriteMutex.RLock()
 	defer c.publishWriteMutex.RUnlock()
 
@@ -190,18 +190,18 @@ func (c *ConnClient) WriteFrame(trackId int, streamType StreamType, content []by
 
 	now := time.Now()
 
-	c.rtcpSenders[trackId].ProcessFrame(now, streamType, content)
+	c.rtcpSenders[trackID].ProcessFrame(now, streamType, content)
 
 	if *c.streamProtocol == StreamProtocolUDP {
 		if streamType == StreamTypeRtp {
-			return c.udpRtpListeners[trackId].write(content)
+			return c.udpRtpListeners[trackID].write(content)
 		}
-		return c.udpRtcpListeners[trackId].write(content)
+		return c.udpRtcpListeners[trackID].write(content)
 	}
 
 	c.nconn.SetWriteDeadline(now.Add(c.d.WriteTimeout))
 	frame := base.InterleavedFrame{
-		TrackId:    trackId,
+		TrackID:    trackID,
 		StreamType: streamType,
 		Content:    content,
 	}

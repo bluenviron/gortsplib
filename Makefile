@@ -10,7 +10,8 @@ help:
 	@echo ""
 	@echo "  mod-tidy       run go mod tidy"
 	@echo "  format         format source files"
-	@echo "  test           run available tests"
+	@echo "  test           run tests"
+	@echo "  lint           run linter"
 	@echo ""
 
 blank :=
@@ -51,3 +52,12 @@ test-nodocker:
 	docker build -q testimages/$(IMG) -t gortsplib-test-$(IMG)$(NL))
 	go test -race -v ./...
 	$(foreach f,$(shell ls examples/*),go build -o /dev/null $(f)$(NL))
+
+lint:
+	docker run --rm -v $(PWD):/app -w /app \
+	golangci/golangci-lint:v1.33.0 \
+	golangci-lint run -v \
+	--disable=errcheck \
+	--enable=gofmt \
+	--enable=golint \
+	--enable=misspell

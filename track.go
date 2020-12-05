@@ -17,10 +17,10 @@ import (
 // Track is a track available in a certain URL.
 type Track struct {
 	// base url
-	BaseUrl *base.URL
+	BaseURL *base.URL
 
 	// id
-	Id int
+	ID int
 
 	// codec and info in SDP format
 	Media *psdp.MediaDescription
@@ -30,7 +30,7 @@ type Track struct {
 func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*Track, error) {
 	spropParameterSets := base64.StdEncoding.EncodeToString(sps) +
 		"," + base64.StdEncoding.EncodeToString(pps)
-	profileLevelId := strings.ToUpper(hex.EncodeToString(sps[1:4]))
+	profileLevelID := strings.ToUpper(hex.EncodeToString(sps[1:4]))
 
 	typ := strconv.FormatInt(int64(payloadType), 10)
 
@@ -50,7 +50,7 @@ func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*Track, error) {
 					Key: "fmtp",
 					Value: typ + " packetization-mode=1; " +
 						"sprop-parameter-sets=" + spropParameterSets + "; " +
-						"profile-level-id=" + profileLevelId,
+						"profile-level-id=" + profileLevelID,
 				},
 			},
 		},
@@ -162,8 +162,8 @@ func (t *Track) ClockRate() (int, error) {
 }
 
 // Url returns the track url.
-func (t *Track) Url() (*base.URL, error) {
-	if t.BaseUrl == nil {
+func (t *Track) URL() (*base.URL, error) {
+	if t.BaseURL == nil {
 		return nil, fmt.Errorf("empty base url")
 	}
 
@@ -178,7 +178,7 @@ func (t *Track) Url() (*base.URL, error) {
 
 	// no control attribute, use base URL
 	if control == "" {
-		return t.BaseUrl, nil
+		return t.BaseURL, nil
 	}
 
 	// control attribute contains an absolute path
@@ -189,13 +189,13 @@ func (t *Track) Url() (*base.URL, error) {
 		}
 
 		// copy host and credentials
-		ur.Host = t.BaseUrl.Host
-		ur.User = t.BaseUrl.User
+		ur.Host = t.BaseURL.Host
+		ur.User = t.BaseURL.User
 		return ur, nil
 	}
 
 	// control attribute contains a relative control attribute
-	ur := t.BaseUrl.Clone()
+	ur := t.BaseURL.Clone()
 	ur.AddControlAttribute(control)
 	return ur, nil
 }
@@ -214,7 +214,7 @@ func ReadTracks(byts []byte) (Tracks, error) {
 	ts := make(Tracks, len(desc.MediaDescriptions))
 	for i, media := range desc.MediaDescriptions {
 		ts[i] = &Track{
-			Id:    i,
+			ID:    i,
 			Media: media,
 		}
 	}
@@ -239,7 +239,7 @@ func (ts Tracks) Write() []byte {
 			Address:     &psdp.Address{Address: "0.0.0.0"},
 		},
 		TimeDescriptions: []psdp.TimeDescription{
-			{Timing: psdp.Timing{0, 0}},
+			{Timing: psdp.Timing{0, 0}}, //nolint:govet
 		},
 	}
 

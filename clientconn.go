@@ -71,7 +71,7 @@ type ConnClient struct {
 	cseq                  int
 	auth                  *auth.Client
 	state                 connClientState
-	streamUrl             *base.URL
+	streamURL             *base.URL
 	streamProtocol        *StreamProtocol
 	tracks                Tracks
 	udpRtpListeners       map[int]*connClientUDPListener
@@ -104,8 +104,8 @@ func (c *ConnClient) Close() error {
 		<-c.backgroundDone
 
 		c.Do(&base.Request{
-			Method:       base.TEARDOWN,
-			URL:          c.streamUrl,
+			Method:       base.Teardown,
+			URL:          c.streamURL,
 			SkipResponse: true,
 		})
 	}
@@ -172,7 +172,7 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 	}
 
 	// insert cseq
-	c.cseq += 1
+	c.cseq++
 	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
 
 	c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
@@ -241,7 +241,7 @@ func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
 	}
 
 	res, err := c.Do(&base.Request{
-		Method: base.OPTIONS,
+		Method: base.Options,
 		URL:    u,
 	})
 	if err != nil {
@@ -264,7 +264,7 @@ func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
 		}
 
 		for _, m := range strings.Split(pub[0], ",") {
-			if base.Method(m) == base.GET_PARAMETER {
+			if base.Method(m) == base.GetParameter {
 				return true
 			}
 		}
@@ -286,7 +286,7 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 	}
 
 	res, err := c.Do(&base.Request{
-		Method: base.DESCRIBE,
+		Method: base.Describe,
 		URL:    u,
 		Header: base.Header{
 			"Accept": base.HeaderValue{"application/sdp"},
@@ -314,7 +314,7 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 			if err != nil {
 				return nil, nil, err
 			}
-			*c = *nc
+			*c = *nc //nolint:govet
 
 			_, err = c.Options(u)
 			if err != nil {
@@ -342,7 +342,7 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 	}
 
 	for _, t := range tracks {
-		t.BaseUrl = u
+		t.BaseURL = u
 	}
 
 	return tracks, res, nil
@@ -371,7 +371,7 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 		return nil, fmt.Errorf("cannot read and publish at the same time")
 	}
 
-	if c.streamUrl != nil && *track.BaseUrl != *c.streamUrl {
+	if c.streamURL != nil && *track.BaseURL != *c.streamURL {
 		return nil, fmt.Errorf("cannot setup tracks with different base urls")
 	}
 
@@ -457,10 +457,10 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 		transport.ClientPorts = &[2]int{rtpPort, rtcpPort}
 
 	} else {
-		transport.InterleavedIds = &[2]int{(track.Id * 2), (track.Id * 2) + 1}
+		transport.InterleavedIds = &[2]int{(track.ID * 2), (track.ID * 2) + 1}
 	}
 
-	trackUrl, err := track.Url()
+	trackURL, err := track.URL()
 	if err != nil {
 		if proto == StreamProtocolUDP {
 			rtpListener.close()
@@ -470,8 +470,8 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 	}
 
 	res, err := c.Do(&base.Request{
-		Method: base.SETUP,
-		URL:    trackUrl,
+		Method: base.Setup,
+		URL:    trackURL,
 		Header: base.Header{
 			"Transport": transport.Write(),
 		},
@@ -539,34 +539,34 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 	}
 
 	if mode == headers.TransportModePlay {
-		c.rtcpReceivers[track.Id] = rtcpreceiver.New(nil, clockRate)
+		c.rtcpReceivers[track.ID] = rtcpreceiver.New(nil, clockRate)
 
 		if proto == StreamProtocolUDP {
 			v := time.Now().Unix()
-			c.udpLastFrameTimes[track.Id] = &v
+			c.udpLastFrameTimes[track.ID] = &v
 		}
 	} else {
-		c.rtcpSenders[track.Id] = rtcpsender.New(clockRate)
+		c.rtcpSenders[track.ID] = rtcpsender.New(clockRate)
 	}
 
-	c.streamUrl = track.BaseUrl
+	c.streamURL = track.BaseURL
 	c.streamProtocol = &proto
 	c.tracks = append(c.tracks, track)
 
 	if proto == StreamProtocolUDP {
-		rtpListener.remoteIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		rtpListener.remotePort = (*th.ServerPorts)[0]
-		rtpListener.trackId = track.Id
+		rtpListener.trackID = track.ID
 		rtpListener.streamType = StreamTypeRtp
-		c.udpRtpListeners[track.Id] = rtpListener
+		c.udpRtpListeners[track.ID] = rtpListener
 
-		rtcpListener.remoteIp = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		rtcpListener.remotePort = (*th.ServerPorts)[1]
-		rtcpListener.trackId = track.Id
+		rtcpListener.trackID = track.ID
 		rtcpListener.streamType = StreamTypeRtcp
-		c.udpRtcpListeners[track.Id] = rtcpListener
+		c.udpRtcpListeners[track.ID] = rtcpListener
 	}
 
 	if mode == headers.TransportModePlay {
@@ -593,8 +593,8 @@ func (c *ConnClient) Pause() (*base.Response, error) {
 	<-c.backgroundDone
 
 	res, err := c.Do(&base.Request{
-		Method: base.PAUSE,
-		URL:    c.streamUrl,
+		Method: base.Pause,
+		URL:    c.streamURL,
 	})
 	if err != nil {
 		return nil, err

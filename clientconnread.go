@@ -19,8 +19,8 @@ func (c *ConnClient) Play() (*base.Response, error) {
 	}
 
 	res, err := c.Do(&base.Request{
-		Method: base.PLAY,
-		URL:    c.streamUrl,
+		Method: base.Play,
+		URL:    c.streamURL,
 	})
 	if err != nil {
 		return nil, err
@@ -39,26 +39,26 @@ func (c *ConnClient) backgroundPlayUDP(onFrameDone chan error) {
 	var returnError error
 
 	defer func() {
-		for trackId := range c.udpRtpListeners {
-			c.udpRtpListeners[trackId].stop()
-			c.udpRtcpListeners[trackId].stop()
+		for trackID := range c.udpRtpListeners {
+			c.udpRtpListeners[trackID].stop()
+			c.udpRtcpListeners[trackID].stop()
 		}
 
 		onFrameDone <- returnError
 	}()
 
 	// open the firewall by sending packets to the counterpart
-	for trackId := range c.udpRtpListeners {
-		c.udpRtpListeners[trackId].write(
+	for trackID := range c.udpRtpListeners {
+		c.udpRtpListeners[trackID].write(
 			[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
-		c.udpRtcpListeners[trackId].write(
+		c.udpRtcpListeners[trackID].write(
 			[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 	}
 
-	for trackId := range c.udpRtpListeners {
-		c.udpRtpListeners[trackId].start()
-		c.udpRtcpListeners[trackId].start()
+	for trackID := range c.udpRtpListeners {
+		c.udpRtpListeners[trackID].start()
+		c.udpRtcpListeners[trackID].start()
 	}
 
 	// disable deadline
@@ -95,9 +95,9 @@ func (c *ConnClient) backgroundPlayUDP(onFrameDone chan error) {
 
 		case <-reportTicker.C:
 			now := time.Now()
-			for trackId := range c.rtcpReceivers {
-				r := c.rtcpReceivers[trackId].Report(now)
-				c.udpRtcpListeners[trackId].write(r)
+			for trackID := range c.rtcpReceivers {
+				r := c.rtcpReceivers[trackID].Report(now)
+				c.udpRtcpListeners[trackID].write(r)
 			}
 
 		case <-keepaliveTicker.C:
@@ -105,12 +105,12 @@ func (c *ConnClient) backgroundPlayUDP(onFrameDone chan error) {
 				Method: func() base.Method {
 					// the vlc integrated rtsp server requires GET_PARAMETER
 					if c.getParameterSupported {
-						return base.GET_PARAMETER
+						return base.GetParameter
 					}
-					return base.OPTIONS
+					return base.Options
 				}(),
 				// use the stream path, otherwise some cameras do not reply
-				URL:          c.streamUrl,
+				URL:          c.streamURL,
 				SkipResponse: true,
 			})
 			if err != nil {
@@ -162,9 +162,9 @@ func (c *ConnClient) backgroundPlayTCP(onFrameDone chan error) {
 				return
 			}
 
-			c.rtcpReceivers[frame.TrackId].ProcessFrame(time.Now(), frame.StreamType, frame.Content)
+			c.rtcpReceivers[frame.TrackID].ProcessFrame(time.Now(), frame.StreamType, frame.Content)
 
-			c.readCB(frame.TrackId, frame.StreamType, frame.Content)
+			c.readCB(frame.TrackID, frame.StreamType, frame.Content)
 		}
 	}()
 
@@ -190,11 +190,11 @@ func (c *ConnClient) backgroundPlayTCP(onFrameDone chan error) {
 
 		case <-reportTicker.C:
 			now := time.Now()
-			for trackId := range c.rtcpReceivers {
-				r := c.rtcpReceivers[trackId].Report(now)
+			for trackID := range c.rtcpReceivers {
+				r := c.rtcpReceivers[trackID].Report(now)
 				c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
 				frame := base.InterleavedFrame{
-					TrackId:    trackId,
+					TrackID:    trackID,
 					StreamType: StreamTypeRtcp,
 					Content:    r,
 				}

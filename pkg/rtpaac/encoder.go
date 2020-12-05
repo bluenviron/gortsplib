@@ -51,7 +51,7 @@ func (e *Encoder) Write(ts time.Duration, data []byte) ([][]byte, error) {
 	// 13 bits payload size
 	// 3 bits AU-Index(-delta)
 	header := make([]byte, 2)
-	binary.BigEndian.PutUint16(header, (uint16(len(data))<<3)|0)
+	binary.BigEndian.PutUint16(header, uint16(len(data))<<3)
 
 	payload := append([]byte{0x00, 0x10}, header...)
 	payload = append(payload, data...)

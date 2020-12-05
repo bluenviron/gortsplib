@@ -61,7 +61,7 @@ func ReadInterleavedFrameOrResponse(frame *InterleavedFrame, res *Response, br *
 // within RTSP/TCP connections. It is used to send and receive RTP and RTCP packets with TCP.
 type InterleavedFrame struct {
 	// track id
-	TrackId int
+	TrackID int
 
 	// stream type
 	StreamType StreamType
@@ -88,9 +88,9 @@ func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 			framelen, len(f.Content))
 	}
 
-	// convert channel into TrackId and StreamType
+	// convert channel into TrackID and StreamType
 	channel := header[1]
-	f.TrackId, f.StreamType = func() (int, StreamType) {
+	f.TrackID, f.StreamType = func() (int, StreamType) {
 		if (channel % 2) == 0 {
 			return int(channel / 2), StreamTypeRtp
 		}
@@ -108,12 +108,12 @@ func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 
 // Write writes an InterleavedFrame into a buffered writer.
 func (f InterleavedFrame) Write(bw *bufio.Writer) error {
-	// convert TrackId and StreamType into channel
+	// convert TrackID and StreamType into channel
 	channel := func() uint8 {
 		if f.StreamType == StreamTypeRtp {
-			return uint8(f.TrackId * 2)
+			return uint8(f.TrackID * 2)
 		}
-		return uint8((f.TrackId * 2) + 1)
+		return uint8((f.TrackID * 2) + 1)
 	}()
 
 	_, err := bw.Write([]byte{0x24, channel})
