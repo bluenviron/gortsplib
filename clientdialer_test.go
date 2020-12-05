@@ -85,7 +85,7 @@ func TestDialRead(t *testing.T) {
 
 			time.Sleep(1 * time.Second)
 
-			dialer := Dialer{
+			dialer := ClientDialer{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -142,7 +142,7 @@ func TestDialReadAutomaticProtocol(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	dialer := Dialer{StreamProtocol: nil}
+	dialer := ClientDialer{StreamProtocol: nil}
 
 	conn, err := dialer.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
@@ -229,7 +229,7 @@ func TestDialReadPause(t *testing.T) {
 
 			time.Sleep(1 * time.Second)
 
-			dialer := Dialer{
+			dialer := ClientDialer{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -304,7 +304,7 @@ func TestDialPublishSerial(t *testing.T) {
 			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
-			dialer := Dialer{
+			dialer := ClientDialer{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -387,10 +387,10 @@ func TestDialPublishParallel(t *testing.T) {
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
 
-			var conn *ConnClient
+			var conn *ClientConn
 			defer func() { conn.Close() }()
 
-			dialer := Dialer{
+			dialer := ClientDialer{
 				StreamProtocol: func() *StreamProtocol {
 					if ca.proto == "udp" {
 						v := StreamProtocolUDP
@@ -478,7 +478,7 @@ func TestDialPublishPauseSerial(t *testing.T) {
 			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
-			dialer := Dialer{
+			dialer := ClientDialer{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -550,7 +550,7 @@ func TestDialPublishPauseParallel(t *testing.T) {
 			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
-			dialer := Dialer{
+			dialer := ClientDialer{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP

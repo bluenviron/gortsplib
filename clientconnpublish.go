@@ -11,9 +11,9 @@ import (
 )
 
 // Announce writes an ANNOUNCE request and reads a Response.
-func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
-	err := c.checkState(map[connClientState]struct{}{
-		connClientStateInitial: {},
+func (c *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
+	err := c.checkState(map[clientConnState]struct{}{
+		clientConnStateInitial: {},
 	})
 	if err != nil {
 		return nil, err
@@ -47,16 +47,16 @@ func (c *ConnClient) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 	}
 
 	c.streamURL = u
-	c.state = connClientStatePreRecord
+	c.state = clientConnStatePreRecord
 
 	return res, nil
 }
 
 // Record writes a RECORD request and reads a Response.
 // This can be called only after Announce() and Setup().
-func (c *ConnClient) Record() (*base.Response, error) {
-	err := c.checkState(map[connClientState]struct{}{
-		connClientStatePreRecord: {},
+func (c *ClientConn) Record() (*base.Response, error) {
+	err := c.checkState(map[clientConnState]struct{}{
+		clientConnStatePreRecord: {},
 	})
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (c *ConnClient) Record() (*base.Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	c.state = connClientStateRecord
+	c.state = clientConnStateRecord
 	c.publishOpen = true
 	c.backgroundTerminate = make(chan struct{})
 	c.backgroundDone = make(chan struct{})
@@ -88,7 +88,7 @@ func (c *ConnClient) Record() (*base.Response, error) {
 	return nil, nil
 }
 
-func (c *ConnClient) backgroundRecordUDP() {
+func (c *ClientConn) backgroundRecordUDP() {
 	defer close(c.backgroundDone)
 
 	defer func() {
@@ -141,7 +141,7 @@ func (c *ConnClient) backgroundRecordUDP() {
 	}
 }
 
-func (c *ConnClient) backgroundRecordTCP() {
+func (c *ClientConn) backgroundRecordTCP() {
 	defer close(c.backgroundDone)
 
 	defer func() {
@@ -180,7 +180,7 @@ func (c *ConnClient) backgroundRecordTCP() {
 
 // WriteFrame writes a frame.
 // This can be called only after Record().
-func (c *ConnClient) WriteFrame(trackID int, streamType StreamType, content []byte) error {
+func (c *ClientConn) WriteFrame(trackID int, streamType StreamType, content []byte) error {
 	c.publishWriteMutex.RLock()
 	defer c.publishWriteMutex.RUnlock()
 

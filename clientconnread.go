@@ -10,9 +10,9 @@ import (
 
 // Play writes a PLAY request and reads a Response.
 // This can be called only after Setup().
-func (c *ConnClient) Play() (*base.Response, error) {
-	err := c.checkState(map[connClientState]struct{}{
-		connClientStatePrePlay: {},
+func (c *ClientConn) Play() (*base.Response, error) {
+	err := c.checkState(map[clientConnState]struct{}{
+		clientConnStatePrePlay: {},
 	})
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func (c *ConnClient) Play() (*base.Response, error) {
 	return res, nil
 }
 
-func (c *ConnClient) backgroundPlayUDP(onFrameDone chan error) {
+func (c *ClientConn) backgroundPlayUDP(onFrameDone chan error) {
 	defer close(c.backgroundDone)
 
 	var returnError error
@@ -141,7 +141,7 @@ func (c *ConnClient) backgroundPlayUDP(onFrameDone chan error) {
 	}
 }
 
-func (c *ConnClient) backgroundPlayTCP(onFrameDone chan error) {
+func (c *ClientConn) backgroundPlayTCP(onFrameDone chan error) {
 	defer close(c.backgroundDone)
 
 	var returnError error
@@ -211,19 +211,19 @@ func (c *ConnClient) backgroundPlayTCP(onFrameDone chan error) {
 // OnFrame sets a callback that is called when a frame is received.
 // it returns a channel that is called when the reading stops.
 // This can be called only after Play().
-func (c *ConnClient) OnFrame(cb func(int, StreamType, []byte)) chan error {
+func (c *ClientConn) OnFrame(cb func(int, StreamType, []byte)) chan error {
 	// channel is buffered, since listening to it is not mandatory
 	onFrameDone := make(chan error, 1)
 
-	err := c.checkState(map[connClientState]struct{}{
-		connClientStatePrePlay: {},
+	err := c.checkState(map[clientConnState]struct{}{
+		clientConnStatePrePlay: {},
 	})
 	if err != nil {
 		onFrameDone <- err
 		return onFrameDone
 	}
 
-	c.state = connClientStatePlay
+	c.state = clientConnStatePlay
 	c.readCB = cb
 	c.backgroundTerminate = make(chan struct{})
 	c.backgroundDone = make(chan struct{})

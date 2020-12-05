@@ -15,8 +15,8 @@ import (
 // 3. read all tracks on a path
 
 func main() {
-	// Dialer allows to set additional client options
-	dialer := gortsplib.Dialer{
+	// ClientDialer allows to set additional client options
+	dialer := gortsplib.ClientDialer{
 		// the stream protocol (UDP or TCP). If nil, it is chosen automatically
 		StreamProtocol: nil,
 		// timeout of read operations

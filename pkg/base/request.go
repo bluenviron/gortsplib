@@ -48,7 +48,7 @@ type Request struct {
 	Content []byte
 
 	// whether to wait for a response or not
-	// used only by ConnClient.Do()
+	// used only by ClientConn.Do()
 	SkipResponse bool
 }
 

@@ -11,13 +11,13 @@ import (
 
 const (
 	// use the same buffer size as gstreamer's rtspsrc
-	connClientUDPKernelReadBufferSize = 0x80000
+	clientConnUDPKernelReadBufferSize = 0x80000
 
-	connClientUDPReadBufferSize = 2048
+	clientConnUDPReadBufferSize = 2048
 )
 
-type connClientUDPListener struct {
-	c              *ConnClient
+type clientConnUDPListener struct {
+	c              *ClientConn
 	pc             net.PacketConn
 	remoteIP       net.IP
 	remoteZone     string
@@ -30,44 +30,44 @@ type connClientUDPListener struct {
 	done chan struct{}
 }
 
-func newConnClientUDPListener(c *ConnClient, port int) (*connClientUDPListener, error) {
+func newClientConnUDPListener(c *ClientConn, port int) (*clientConnUDPListener, error) {
 	pc, err := c.d.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
 	if err != nil {
 		return nil, err
 	}
 
-	err = pc.(*net.UDPConn).SetReadBuffer(connClientUDPKernelReadBufferSize)
+	err = pc.(*net.UDPConn).SetReadBuffer(clientConnUDPKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}
 
-	return &connClientUDPListener{
+	return &clientConnUDPListener{
 		c:              c,
 		pc:             pc,
-		udpFrameBuffer: multibuffer.New(c.d.ReadBufferCount, connClientUDPReadBufferSize),
+		udpFrameBuffer: multibuffer.New(c.d.ReadBufferCount, clientConnUDPReadBufferSize),
 	}, nil
 }
 
-func (l *connClientUDPListener) close() {
+func (l *clientConnUDPListener) close() {
 	if l.running {
 		l.stop()
 	}
 	l.pc.Close()
 }
 
-func (l *connClientUDPListener) start() {
+func (l *clientConnUDPListener) start() {
 	l.running = true
 	l.pc.SetReadDeadline(time.Time{})
 	l.done = make(chan struct{})
 	go l.run()
 }
 
-func (l *connClientUDPListener) stop() {
+func (l *clientConnUDPListener) stop() {
 	l.pc.SetReadDeadline(time.Now())
 	<-l.done
 }
 
-func (l *connClientUDPListener) run() {
+func (l *clientConnUDPListener) run() {
 	defer close(l.done)
 
 	for {
@@ -91,7 +91,7 @@ func (l *connClientUDPListener) run() {
 	}
 }
 
-func (l *connClientUDPListener) write(buf []byte) error {
+func (l *clientConnUDPListener) write(buf []byte) error {
 	l.pc.SetWriteDeadline(time.Now().Add(l.c.d.WriteTimeout))
 	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
 		IP:   l.remoteIP,

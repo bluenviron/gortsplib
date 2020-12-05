@@ -14,27 +14,27 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
-// DefaultDialer is the default dialer, used by Dial, DialRead and DialPublish.
-var DefaultDialer = Dialer{}
+// DefaultClientDialer is the default dialer, used by Dial, DialRead and DialPublish.
+var DefaultClientDialer = ClientDialer{}
 
 // Dial connects to a server.
-func Dial(host string) (*ConnClient, error) {
-	return DefaultDialer.Dial(host)
+func Dial(host string) (*ClientConn, error) {
+	return DefaultClientDialer.Dial(host)
 }
 
 // DialRead connects to a server and starts reading all tracks.
-func DialRead(address string) (*ConnClient, error) {
-	return DefaultDialer.DialRead(address)
+func DialRead(address string) (*ClientConn, error) {
+	return DefaultClientDialer.DialRead(address)
 }
 
 // DialPublish connects to a server and starts publishing the tracks.
-func DialPublish(address string, tracks Tracks) (*ConnClient, error) {
-	return DefaultDialer.DialPublish(address, tracks)
+func DialPublish(address string, tracks Tracks) (*ClientConn, error) {
+	return DefaultClientDialer.DialPublish(address, tracks)
 }
 
-// Dialer allows to initialize a ConnClient.
+// ClientDialer allows to initialize a ClientConn.
 // All fields are optional.
-type Dialer struct {
+type ClientDialer struct {
 	// the stream protocol (UDP or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
@@ -68,7 +68,7 @@ type Dialer struct {
 }
 
 // Dial connects to a server.
-func (d Dialer) Dial(host string) (*ConnClient, error) {
+func (d ClientDialer) Dial(host string) (*ClientConn, error) {
 	if d.ReadTimeout == 0 {
 		d.ReadTimeout = 10 * time.Second
 	}
@@ -94,13 +94,13 @@ func (d Dialer) Dial(host string) (*ConnClient, error) {
 		return nil, err
 	}
 
-	return &ConnClient{
+	return &ClientConn{
 		d:                 d,
 		nconn:             nconn,
 		br:                bufio.NewReaderSize(nconn, clientReadBufferSize),
 		bw:                bufio.NewWriterSize(nconn, clientWriteBufferSize),
-		udpRtpListeners:   make(map[int]*connClientUDPListener),
-		udpRtcpListeners:  make(map[int]*connClientUDPListener),
+		udpRtpListeners:   make(map[int]*clientConnUDPListener),
+		udpRtcpListeners:  make(map[int]*clientConnUDPListener),
 		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
 		udpLastFrameTimes: make(map[int]*int64),
 		tcpFrameBuffer:    multibuffer.New(d.ReadBufferCount, clientTCPFrameReadBufferSize),
@@ -110,7 +110,7 @@ func (d Dialer) Dial(host string) (*ConnClient, error) {
 }
 
 // DialRead connects to the address and starts reading all tracks.
-func (d Dialer) DialRead(address string) (*ConnClient, error) {
+func (d ClientDialer) DialRead(address string) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func (d Dialer) DialRead(address string) (*ConnClient, error) {
 }
 
 // DialPublish connects to the address and starts publishing the tracks.
-func (d Dialer) DialPublish(address string, tracks Tracks) (*ConnClient, error) {
+func (d ClientDialer) DialPublish(address string, tracks Tracks) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err

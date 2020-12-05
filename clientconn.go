@@ -35,47 +35,47 @@ const (
 	clientTCPFrameReadBufferSize = 128 * 1024
 )
 
-type connClientState int
+type clientConnState int
 
 const (
-	connClientStateInitial connClientState = iota
-	connClientStatePrePlay
-	connClientStatePlay
-	connClientStatePreRecord
-	connClientStateRecord
+	clientConnStateInitial clientConnState = iota
+	clientConnStatePrePlay
+	clientConnStatePlay
+	clientConnStatePreRecord
+	clientConnStateRecord
 )
 
-func (s connClientState) String() string {
+func (s clientConnState) String() string {
 	switch s {
-	case connClientStateInitial:
+	case clientConnStateInitial:
 		return "initial"
-	case connClientStatePrePlay:
+	case clientConnStatePrePlay:
 		return "prePlay"
-	case connClientStatePlay:
+	case clientConnStatePlay:
 		return "play"
-	case connClientStatePreRecord:
+	case clientConnStatePreRecord:
 		return "preRecord"
-	case connClientStateRecord:
+	case clientConnStateRecord:
 		return "record"
 	}
 	return "uknown"
 }
 
-// ConnClient is a client-side RTSP connection.
-type ConnClient struct {
-	d                     Dialer
+// ClientConn is a client-side RTSP connection.
+type ClientConn struct {
+	d                     ClientDialer
 	nconn                 net.Conn
 	br                    *bufio.Reader
 	bw                    *bufio.Writer
 	session               string
 	cseq                  int
 	auth                  *auth.Client
-	state                 connClientState
+	state                 clientConnState
 	streamURL             *base.URL
 	streamProtocol        *StreamProtocol
 	tracks                Tracks
-	udpRtpListeners       map[int]*connClientUDPListener
-	udpRtcpListeners      map[int]*connClientUDPListener
+	udpRtpListeners       map[int]*clientConnUDPListener
+	udpRtcpListeners      map[int]*clientConnUDPListener
 	getParameterSupported bool
 
 	// read only
@@ -97,9 +97,9 @@ type ConnClient struct {
 	backgroundDone chan struct{}
 }
 
-// Close closes all the ConnClient resources.
-func (c *ConnClient) Close() error {
-	if c.state == connClientStatePlay || c.state == connClientStateRecord {
+// Close closes all the ClientConn resources.
+func (c *ClientConn) Close() error {
+	if c.state == clientConnStatePlay || c.state == clientConnStateRecord {
 		close(c.backgroundTerminate)
 		<-c.backgroundDone
 
@@ -122,12 +122,12 @@ func (c *ConnClient) Close() error {
 	return err
 }
 
-func (c *ConnClient) checkState(allowed map[connClientState]struct{}) error {
+func (c *ClientConn) checkState(allowed map[clientConnState]struct{}) error {
 	if _, ok := allowed[c.state]; ok {
 		return nil
 	}
 
-	var allowedList []connClientState
+	var allowedList []clientConnState
 	for a := range allowed {
 		allowedList = append(allowedList, a)
 	}
@@ -136,16 +136,16 @@ func (c *ConnClient) checkState(allowed map[connClientState]struct{}) error {
 }
 
 // NetConn returns the underlying net.Conn.
-func (c *ConnClient) NetConn() net.Conn {
+func (c *ClientConn) NetConn() net.Conn {
 	return c.nconn
 }
 
 // Tracks returns all the tracks that the connection is reading or publishing.
-func (c *ConnClient) Tracks() Tracks {
+func (c *ClientConn) Tracks() Tracks {
 	return c.tracks
 }
 
-func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
+func (c *ClientConn) readFrameTCPOrResponse() (interface{}, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
 	f := base.InterleavedFrame{
 		Content: c.tcpFrameBuffer.Next(),
@@ -156,7 +156,7 @@ func (c *ConnClient) readFrameTCPOrResponse() (interface{}, error) {
 
 // Do writes a Request and reads a Response.
 // Interleaved frames received before the response are ignored.
-func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
+func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	if req.Header == nil {
 		req.Header = make(base.Header)
 	}
@@ -230,11 +230,11 @@ func (c *ConnClient) Do(req *base.Request) (*base.Response, error) {
 }
 
 // Options writes an OPTIONS request and reads a response.
-func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
-	err := c.checkState(map[connClientState]struct{}{
-		connClientStateInitial:   {},
-		connClientStatePrePlay:   {},
-		connClientStatePreRecord: {},
+func (c *ClientConn) Options(u *base.URL) (*base.Response, error) {
+	err := c.checkState(map[clientConnState]struct{}{
+		clientConnStateInitial:   {},
+		clientConnStatePrePlay:   {},
+		clientConnStatePreRecord: {},
 	})
 	if err != nil {
 		return nil, err
@@ -275,11 +275,11 @@ func (c *ConnClient) Options(u *base.URL) (*base.Response, error) {
 }
 
 // Describe writes a DESCRIBE request and reads a Response.
-func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
-	err := c.checkState(map[connClientState]struct{}{
-		connClientStateInitial:   {},
-		connClientStatePrePlay:   {},
-		connClientStatePreRecord: {},
+func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
+	err := c.checkState(map[clientConnState]struct{}{
+		clientConnStateInitial:   {},
+		clientConnStatePrePlay:   {},
+		clientConnStatePreRecord: {},
 	})
 	if err != nil {
 		return nil, nil, err
@@ -351,23 +351,23 @@ func (c *ConnClient) Describe(u *base.URL) (Tracks, *base.Response, error) {
 // Setup writes a SETUP request and reads a Response.
 // rtpPort and rtcpPort are used only if protocol is UDP.
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
-func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
+func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	rtpPort int, rtcpPort int) (*base.Response, error) {
-	err := c.checkState(map[connClientState]struct{}{
-		connClientStateInitial:   {},
-		connClientStatePrePlay:   {},
-		connClientStatePreRecord: {},
+	err := c.checkState(map[clientConnState]struct{}{
+		clientConnStateInitial:   {},
+		clientConnStatePrePlay:   {},
+		clientConnStatePreRecord: {},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if mode == headers.TransportModeRecord && c.state != connClientStatePreRecord {
+	if mode == headers.TransportModeRecord && c.state != clientConnStatePreRecord {
 		return nil, fmt.Errorf("cannot read and publish at the same time")
 	}
 
-	if mode == headers.TransportModePlay && c.state != connClientStatePrePlay &&
-		c.state != connClientStateInitial {
+	if mode == headers.TransportModePlay && c.state != clientConnStatePrePlay &&
+		c.state != clientConnStateInitial {
 		return nil, fmt.Errorf("cannot read and publish at the same time")
 	}
 
@@ -375,8 +375,8 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 		return nil, fmt.Errorf("cannot setup tracks with different base urls")
 	}
 
-	var rtpListener *connClientUDPListener
-	var rtcpListener *connClientUDPListener
+	var rtpListener *clientConnUDPListener
+	var rtcpListener *clientConnUDPListener
 
 	proto := func() StreamProtocol {
 		// protocol set by previous Setup()
@@ -413,14 +413,14 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 		}
 
 		var err error
-		rtpListener, rtcpListener, err = func() (*connClientUDPListener, *connClientUDPListener, error) {
+		rtpListener, rtcpListener, err = func() (*clientConnUDPListener, *clientConnUDPListener, error) {
 			if rtpPort != 0 {
-				rtpListener, err := newConnClientUDPListener(c, rtpPort)
+				rtpListener, err := newClientConnUDPListener(c, rtpPort)
 				if err != nil {
 					return nil, nil, err
 				}
 
-				rtcpListener, err := newConnClientUDPListener(c, rtcpPort)
+				rtcpListener, err := newClientConnUDPListener(c, rtcpPort)
 				if err != nil {
 					rtpListener.close()
 					return nil, nil, err
@@ -436,12 +436,12 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 				rtpPort = (rand.Intn((65535-10000)/2) * 2) + 10000
 				rtcpPort = rtpPort + 1
 
-				rtpListener, err := newConnClientUDPListener(c, rtpPort)
+				rtpListener, err := newClientConnUDPListener(c, rtpPort)
 				if err != nil {
 					continue
 				}
 
-				rtcpListener, err := newConnClientUDPListener(c, rtcpPort)
+				rtcpListener, err := newClientConnUDPListener(c, rtcpPort)
 				if err != nil {
 					rtpListener.close()
 					continue
@@ -570,9 +570,9 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 	}
 
 	if mode == headers.TransportModePlay {
-		c.state = connClientStatePrePlay
+		c.state = clientConnStatePrePlay
 	} else {
-		c.state = connClientStatePreRecord
+		c.state = clientConnStatePreRecord
 	}
 
 	return res, nil
@@ -580,10 +580,10 @@ func (c *ConnClient) Setup(mode headers.TransportMode, track *Track,
 
 // Pause writes a PAUSE request and reads a Response.
 // This can be called only after Play() or Record().
-func (c *ConnClient) Pause() (*base.Response, error) {
-	err := c.checkState(map[connClientState]struct{}{
-		connClientStatePlay:   {},
-		connClientStateRecord: {},
+func (c *ClientConn) Pause() (*base.Response, error) {
+	err := c.checkState(map[clientConnState]struct{}{
+		clientConnStatePlay:   {},
+		clientConnStateRecord: {},
 	})
 	if err != nil {
 		return nil, err
@@ -605,10 +605,10 @@ func (c *ConnClient) Pause() (*base.Response, error) {
 	}
 
 	switch c.state {
-	case connClientStatePlay:
-		c.state = connClientStatePrePlay
-	case connClientStateRecord:
-		c.state = connClientStatePreRecord
+	case clientConnStatePlay:
+		c.state = clientConnStatePrePlay
+	case clientConnStateRecord:
+		c.state = clientConnStatePreRecord
 	}
 
 	return res, nil
