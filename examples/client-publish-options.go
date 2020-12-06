@@ -43,8 +43,8 @@ func main() {
 		panic(err)
 	}
 
-	// ClientDialer allows to set additional client options
-	dialer := gortsplib.ClientDialer{
+	// ClientConf allows to set additional client options
+	conf := gortsplib.ClientConf{
 		// the stream protocol (UDP or TCP). If nil, it is chosen automatically
 		StreamProtocol: nil,
 		// timeout of read operations
@@ -54,7 +54,7 @@ func main() {
 	}
 
 	// connect to the server and start publishing the track
-	conn, err := dialer.DialPublish("rtsp://localhost:8554/mystream",
+	conn, err := conf.DialPublish("rtsp://localhost:8554/mystream",
 		gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)

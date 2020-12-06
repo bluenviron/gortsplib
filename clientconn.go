@@ -63,7 +63,7 @@ func (s clientConnState) String() string {
 
 // ClientConn is a client-side RTSP connection.
 type ClientConn struct {
-	d                     ClientDialer
+	d                     ClientConf
 	nconn                 net.Conn
 	br                    *bufio.Reader
 	bw                    *bufio.Writer
@@ -384,7 +384,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			return *c.streamProtocol
 		}
 
-		// protocol set by dialer
+		// protocol set by conf
 		if c.d.StreamProtocol != nil {
 			return *c.d.StreamProtocol
 		}

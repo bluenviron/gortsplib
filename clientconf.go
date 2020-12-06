@@ -14,27 +14,27 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
-// DefaultClientDialer is the default dialer, used by Dial, DialRead and DialPublish.
-var DefaultClientDialer = ClientDialer{}
+// DefaultClientConf is the default ClientConf.
+var DefaultClientConf = ClientConf{}
 
 // Dial connects to a server.
 func Dial(host string) (*ClientConn, error) {
-	return DefaultClientDialer.Dial(host)
+	return DefaultClientConf.Dial(host)
 }
 
 // DialRead connects to a server and starts reading all tracks.
 func DialRead(address string) (*ClientConn, error) {
-	return DefaultClientDialer.DialRead(address)
+	return DefaultClientConf.DialRead(address)
 }
 
 // DialPublish connects to a server and starts publishing the tracks.
 func DialPublish(address string, tracks Tracks) (*ClientConn, error) {
-	return DefaultClientDialer.DialPublish(address, tracks)
+	return DefaultClientConf.DialPublish(address, tracks)
 }
 
-// ClientDialer allows to initialize a ClientConn.
+// ClientConf allows to initialize a ClientConn.
 // All fields are optional.
-type ClientDialer struct {
+type ClientConf struct {
 	// the stream protocol (UDP or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
@@ -68,7 +68,7 @@ type ClientDialer struct {
 }
 
 // Dial connects to a server.
-func (d ClientDialer) Dial(host string) (*ClientConn, error) {
+func (d ClientConf) Dial(host string) (*ClientConn, error) {
 	if d.ReadTimeout == 0 {
 		d.ReadTimeout = 10 * time.Second
 	}
@@ -110,7 +110,7 @@ func (d ClientDialer) Dial(host string) (*ClientConn, error) {
 }
 
 // DialRead connects to the address and starts reading all tracks.
-func (d ClientDialer) DialRead(address string) (*ClientConn, error) {
+func (d ClientConf) DialRead(address string) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func (d ClientDialer) DialRead(address string) (*ClientConn, error) {
 }
 
 // DialPublish connects to the address and starts publishing the tracks.
-func (d ClientDialer) DialPublish(address string, tracks Tracks) (*ClientConn, error) {
+func (d ClientConf) DialPublish(address string, tracks Tracks) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err

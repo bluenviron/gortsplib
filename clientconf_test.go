@@ -85,7 +85,7 @@ func TestDialRead(t *testing.T) {
 
 			time.Sleep(1 * time.Second)
 
-			dialer := ClientDialer{
+			conf := ClientConf{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -96,7 +96,7 @@ func TestDialRead(t *testing.T) {
 				}(),
 			}
 
-			conn, err := dialer.DialRead("rtsp://localhost:8554/teststream")
+			conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
 			var firstFrame int32
@@ -142,9 +142,9 @@ func TestDialReadAutomaticProtocol(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	dialer := ClientDialer{StreamProtocol: nil}
+	conf := ClientConf{StreamProtocol: nil}
 
-	conn, err := dialer.DialRead("rtsp://localhost:8554/teststream")
+	conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
 	var firstFrame int32
@@ -229,7 +229,7 @@ func TestDialReadPause(t *testing.T) {
 
 			time.Sleep(1 * time.Second)
 
-			dialer := ClientDialer{
+			conf := ClientConf{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -240,7 +240,7 @@ func TestDialReadPause(t *testing.T) {
 				}(),
 			}
 
-			conn, err := dialer.DialRead("rtsp://localhost:8554/teststream")
+			conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
 			firstFrame := int32(0)
@@ -304,7 +304,7 @@ func TestDialPublishSerial(t *testing.T) {
 			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
-			dialer := ClientDialer{
+			conf := ClientConf{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -315,7 +315,7 @@ func TestDialPublishSerial(t *testing.T) {
 				}(),
 			}
 
-			conn, err := dialer.DialPublish("rtsp://localhost:8554/teststream",
+			conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 
@@ -390,7 +390,7 @@ func TestDialPublishParallel(t *testing.T) {
 			var conn *ClientConn
 			defer func() { conn.Close() }()
 
-			dialer := ClientDialer{
+			conf := ClientConf{
 				StreamProtocol: func() *StreamProtocol {
 					if ca.proto == "udp" {
 						v := StreamProtocolUDP
@@ -409,7 +409,7 @@ func TestDialPublishParallel(t *testing.T) {
 					port = "8555"
 				}
 				var err error
-				conn, err = dialer.DialPublish("rtsp://localhost:"+port+"/teststream",
+				conn, err = conf.DialPublish("rtsp://localhost:"+port+"/teststream",
 					Tracks{track})
 				require.NoError(t, err)
 
@@ -478,7 +478,7 @@ func TestDialPublishPauseSerial(t *testing.T) {
 			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
-			dialer := ClientDialer{
+			conf := ClientConf{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -489,7 +489,7 @@ func TestDialPublishPauseSerial(t *testing.T) {
 				}(),
 			}
 
-			conn, err := dialer.DialPublish("rtsp://localhost:8554/teststream",
+			conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 			defer conn.Close()
@@ -550,7 +550,7 @@ func TestDialPublishPauseParallel(t *testing.T) {
 			track, err := NewTrackH264(96, sps, pps)
 			require.NoError(t, err)
 
-			dialer := ClientDialer{
+			conf := ClientConf{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -561,7 +561,7 @@ func TestDialPublishPauseParallel(t *testing.T) {
 				}(),
 			}
 
-			conn, err := dialer.DialPublish("rtsp://localhost:8554/teststream",
+			conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 
