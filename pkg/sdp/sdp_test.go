@@ -1052,6 +1052,26 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"spaces in origin",
+		[]byte("v=0\r\n" +
+			"o=RTSP Session 1 2 IN IP4 0.0.0.0\r\n" +
+			"s=Sony RTSP Server\r\n"),
+		[]byte("v=0\r\n" +
+			"o=RTSP Session 1 2 IN IP4 0.0.0.0\r\n" +
+			"s=Sony RTSP Server\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "RTSP Session",
+				SessionID:      1,
+				SessionVersion: 2,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "0.0.0.0",
+			},
+			SessionName: psdp.SessionName("Sony RTSP Server"),
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {

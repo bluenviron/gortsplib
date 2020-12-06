@@ -71,7 +71,28 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 		value += "127.0.0.1"
 	}
 
-	fields := strings.Fields(value)
+	// find spaces from end to beginning, to support multiple spaces
+	// in the first field
+	fields := func() []string {
+		var ret []string
+		for len(value) > 0 {
+			i := len(value) - 1
+			for {
+				if i < 0 || len(ret) == 5 {
+					ret = append([]string{value}, ret...)
+					return ret
+				}
+				if value[i] == ' ' {
+					ret = append([]string{value[i+1:]}, ret...)
+					value = value[:i]
+					break
+				}
+				i--
+			}
+		}
+		return ret
+	}()
+
 	if len(fields) != 6 {
 		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, fields)
 	}
