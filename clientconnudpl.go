@@ -31,7 +31,7 @@ type clientConnUDPListener struct {
 }
 
 func newClientConnUDPListener(c *ClientConn, port int) (*clientConnUDPListener, error) {
-	pc, err := c.d.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
+	pc, err := c.c.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func newClientConnUDPListener(c *ClientConn, port int) (*clientConnUDPListener, 
 	return &clientConnUDPListener{
 		c:              c,
 		pc:             pc,
-		udpFrameBuffer: multibuffer.New(c.d.ReadBufferCount, clientConnUDPReadBufferSize),
+		udpFrameBuffer: multibuffer.New(c.c.ReadBufferCount, clientConnUDPReadBufferSize),
 	}, nil
 }
 
@@ -92,7 +92,7 @@ func (l *clientConnUDPListener) run() {
 }
 
 func (l *clientConnUDPListener) write(buf []byte) error {
-	l.pc.SetWriteDeadline(time.Now().Add(l.c.d.WriteTimeout))
+	l.pc.SetWriteDeadline(time.Now().Add(l.c.c.WriteTimeout))
 	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
 		IP:   l.remoteIP,
 		Zone: l.remoteZone,

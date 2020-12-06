@@ -68,34 +68,34 @@ type ClientConf struct {
 }
 
 // Dial connects to a server.
-func (d ClientConf) Dial(host string) (*ClientConn, error) {
-	if d.ReadTimeout == 0 {
-		d.ReadTimeout = 10 * time.Second
+func (c ClientConf) Dial(host string) (*ClientConn, error) {
+	if c.ReadTimeout == 0 {
+		c.ReadTimeout = 10 * time.Second
 	}
-	if d.WriteTimeout == 0 {
-		d.WriteTimeout = 10 * time.Second
+	if c.WriteTimeout == 0 {
+		c.WriteTimeout = 10 * time.Second
 	}
-	if d.ReadBufferCount == 0 {
-		d.ReadBufferCount = 1
+	if c.ReadBufferCount == 0 {
+		c.ReadBufferCount = 1
 	}
-	if d.DialTimeout == nil {
-		d.DialTimeout = net.DialTimeout
+	if c.DialTimeout == nil {
+		c.DialTimeout = net.DialTimeout
 	}
-	if d.ListenPacket == nil {
-		d.ListenPacket = net.ListenPacket
+	if c.ListenPacket == nil {
+		c.ListenPacket = net.ListenPacket
 	}
 
 	if !strings.Contains(host, ":") {
 		host += ":554"
 	}
 
-	nconn, err := d.DialTimeout("tcp", host, d.ReadTimeout)
+	nconn, err := c.DialTimeout("tcp", host, c.ReadTimeout)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ClientConn{
-		d:                 d,
+		c:                 c,
 		nconn:             nconn,
 		br:                bufio.NewReaderSize(nconn, clientReadBufferSize),
 		bw:                bufio.NewWriterSize(nconn, clientWriteBufferSize),
@@ -103,20 +103,20 @@ func (d ClientConf) Dial(host string) (*ClientConn, error) {
 		udpRtcpListeners:  make(map[int]*clientConnUDPListener),
 		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
 		udpLastFrameTimes: make(map[int]*int64),
-		tcpFrameBuffer:    multibuffer.New(d.ReadBufferCount, clientTCPFrameReadBufferSize),
+		tcpFrameBuffer:    multibuffer.New(c.ReadBufferCount, clientTCPFrameReadBufferSize),
 		rtcpSenders:       make(map[int]*rtcpsender.RtcpSender),
 		publishError:      fmt.Errorf("not running"),
 	}, nil
 }
 
 // DialRead connects to the address and starts reading all tracks.
-func (d ClientConf) DialRead(address string) (*ClientConn, error) {
+func (c ClientConf) DialRead(address string) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := d.Dial(u.Host)
+	conn, err := c.Dial(u.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -151,13 +151,13 @@ func (d ClientConf) DialRead(address string) (*ClientConn, error) {
 }
 
 // DialPublish connects to the address and starts publishing the tracks.
-func (d ClientConf) DialPublish(address string, tracks Tracks) (*ClientConn, error) {
+func (c ClientConf) DialPublish(address string, tracks Tracks) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := d.Dial(u.Host)
+	conn, err := c.Dial(u.Host)
 	if err != nil {
 		return nil, err
 	}

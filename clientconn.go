@@ -63,7 +63,7 @@ func (s clientConnState) String() string {
 
 // ClientConn is a client-side RTSP connection.
 type ClientConn struct {
-	d                     ClientConf
+	c                     ClientConf
 	nconn                 net.Conn
 	br                    *bufio.Reader
 	bw                    *bufio.Writer
@@ -146,7 +146,7 @@ func (c *ClientConn) Tracks() Tracks {
 }
 
 func (c *ClientConn) readFrameTCPOrResponse() (interface{}, error) {
-	c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
+	c.nconn.SetReadDeadline(time.Now().Add(c.c.ReadTimeout))
 	f := base.InterleavedFrame{
 		Content: c.tcpFrameBuffer.Next(),
 	}
@@ -175,7 +175,7 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	c.cseq++
 	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
 
-	c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
+	c.nconn.SetWriteDeadline(time.Now().Add(c.c.WriteTimeout))
 	err := req.Write(c.bw)
 	if err != nil {
 		return nil, err
@@ -298,7 +298,7 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 
 	if res.StatusCode != base.StatusOK {
 		// redirect
-		if !c.d.RedirectDisable &&
+		if !c.c.RedirectDisable &&
 			res.StatusCode >= base.StatusMovedPermanently &&
 			res.StatusCode <= base.StatusUseProxy &&
 			len(res.Header["Location"]) == 1 {
@@ -310,7 +310,7 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 				return nil, nil, err
 			}
 
-			nc, err := c.d.Dial(u.Host)
+			nc, err := c.c.Dial(u.Host)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -385,8 +385,8 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		}
 
 		// protocol set by conf
-		if c.d.StreamProtocol != nil {
-			return *c.d.StreamProtocol
+		if c.c.StreamProtocol != nil {
+			return *c.c.StreamProtocol
 		}
 
 		// try udp
@@ -493,7 +493,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		// switch protocol automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
 			c.streamProtocol == nil &&
-			c.d.StreamProtocol == nil {
+			c.c.StreamProtocol == nil {
 
 			v := StreamProtocolTCP
 			c.streamProtocol = &v

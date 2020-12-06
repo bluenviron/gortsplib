@@ -37,6 +37,19 @@ type ServerConf struct {
 
 // Serve starts a server on the given address.
 func (c ServerConf) Serve(address string, handler ServerHandler) (*Server, error) {
+	if c.ReadTimeout == 0 {
+		c.ReadTimeout = 10 * time.Second
+	}
+	if c.WriteTimeout == 0 {
+		c.WriteTimeout = 10 * time.Second
+	}
+	if c.ReadBufferCount == 0 {
+		c.ReadBufferCount = 1
+	}
+	if c.ListenTCP == nil {
+		c.ListenTCP = net.ListenTCP
+	}
+
 	addr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		return nil, err

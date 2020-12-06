@@ -164,7 +164,7 @@ func (c *ClientConn) backgroundRecordTCP() {
 			for trackID := range c.rtcpSenders {
 				r := c.rtcpSenders[trackID].Report(now)
 				if r != nil {
-					c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
+					c.nconn.SetWriteDeadline(time.Now().Add(c.c.WriteTimeout))
 					frame := base.InterleavedFrame{
 						TrackID:    trackID,
 						StreamType: StreamTypeRtcp,
@@ -199,7 +199,7 @@ func (c *ClientConn) WriteFrame(trackID int, streamType StreamType, content []by
 		return c.udpRtcpListeners[trackID].write(content)
 	}
 
-	c.nconn.SetWriteDeadline(now.Add(c.d.WriteTimeout))
+	c.nconn.SetWriteDeadline(now.Add(c.c.WriteTimeout))
 	frame := base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,

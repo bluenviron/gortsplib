@@ -126,7 +126,7 @@ func (c *ClientConn) backgroundPlayUDP(onFrameDone chan error) {
 			for _, lastUnix := range c.udpLastFrameTimes {
 				last := time.Unix(atomic.LoadInt64(lastUnix), 0)
 
-				if now.Sub(last) >= c.d.ReadTimeout {
+				if now.Sub(last) >= c.c.ReadTimeout {
 					c.nconn.SetReadDeadline(time.Now())
 					<-readerDone
 					returnError = fmt.Errorf("no packets received recently (maybe there's a firewall/NAT in between)")
@@ -180,7 +180,7 @@ func (c *ClientConn) backgroundPlayTCP(onFrameDone chan error) {
 	for {
 		select {
 		case <-deadlineTicker.C:
-			c.nconn.SetReadDeadline(time.Now().Add(c.d.ReadTimeout))
+			c.nconn.SetReadDeadline(time.Now().Add(c.c.ReadTimeout))
 
 		case <-c.backgroundTerminate:
 			c.nconn.SetReadDeadline(time.Now())
@@ -192,7 +192,7 @@ func (c *ClientConn) backgroundPlayTCP(onFrameDone chan error) {
 			now := time.Now()
 			for trackID := range c.rtcpReceivers {
 				r := c.rtcpReceivers[trackID].Report(now)
-				c.nconn.SetWriteDeadline(time.Now().Add(c.d.WriteTimeout))
+				c.nconn.SetWriteDeadline(time.Now().Add(c.c.WriteTimeout))
 				frame := base.InterleavedFrame{
 					TrackID:    trackID,
 					StreamType: StreamTypeRtcp,
