@@ -76,6 +76,24 @@ var casesTransport = []struct {
 		},
 	},
 	{
+		"udp unicast play response with a single port",
+		base.HeaderValue{`RTP/AVP/UDP;unicast;server_port=8052;client_port=14186;ssrc=39140788;mode=PLAY`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;mode=play`},
+		&Transport{
+			Protocol: base.StreamProtocolUDP,
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
+				return &v
+			}(),
+			Mode: func() *TransportMode {
+				v := TransportModePlay
+				return &v
+			}(),
+			ClientPorts: &[2]int{14186, 14187},
+			ServerPorts: &[2]int{8052, 8053},
+		},
+	},
+	{
 		"udp record response with receive",
 		base.HeaderValue{`RTP/AVP/UDP;unicast;mode=receive;source=localhost;client_port=14186-14187;server_port=5000-5001`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=5000-5001;mode=record`},

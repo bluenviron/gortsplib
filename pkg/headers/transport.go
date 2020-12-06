@@ -63,21 +63,30 @@ type Transport struct {
 
 func parsePorts(val string) (*[2]int, error) {
 	ports := strings.Split(val, "-")
-	if len(ports) != 2 {
-		return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+	if len(ports) == 2 {
+		port1, err := strconv.ParseInt(ports[0], 10, 64)
+		if err != nil {
+			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+		}
+
+		port2, err := strconv.ParseInt(ports[1], 10, 64)
+		if err != nil {
+			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+		}
+
+		return &[2]int{int(port1), int(port2)}, nil
 	}
 
-	port1, err := strconv.ParseInt(ports[0], 10, 64)
-	if err != nil {
-		return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+	if len(ports) == 1 {
+		port1, err := strconv.ParseInt(ports[0], 10, 64)
+		if err != nil {
+			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+		}
+
+		return &[2]int{int(port1), int(port1 + 1)}, nil
 	}
 
-	port2, err := strconv.ParseInt(ports[1], 10, 64)
-	if err != nil {
-		return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
-	}
-
-	return &[2]int{int(port1), int(port2)}, nil
+	return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 }
 
 // ReadTransport parses a Transport header.
