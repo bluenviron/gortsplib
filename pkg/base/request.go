@@ -3,6 +3,7 @@ package base
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"strconv"
 )
@@ -132,4 +133,11 @@ func (req Request) Write(bw *bufio.Writer) error {
 	}
 
 	return bw.Flush()
+}
+
+// String implements fmt.Stringer.
+func (req Request) String() string {
+	buf := bytes.NewBuffer(nil)
+	req.Write(bufio.NewWriter(buf))
+	return buf.String()
 }
