@@ -130,7 +130,7 @@ outer:
 	done <- errRet
 }
 
-// Read starts reading requests and frames from the connection.
+// Read starts reading requests and frames.
 // it returns a channel that is written when the reading stops.
 func (sc *ServerConn) Read(
 	onRequest func(req *base.Request) (*base.Response, error),

@@ -53,11 +53,11 @@ func main() {
 	}
 
 	// read track frames
-	readerDone := conn.OnFrame(func(id int, typ gortsplib.StreamType, buf []byte) {
+	done := conn.ReadFrames(func(id int, typ gortsplib.StreamType, buf []byte) {
 		fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 	})
 
 	// catch any error
-	err = <-readerDone
+	err = <-done
 	panic(err)
 }

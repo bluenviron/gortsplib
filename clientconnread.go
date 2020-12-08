@@ -208,10 +208,10 @@ func (c *ClientConn) backgroundPlayTCP(done chan error) {
 	}
 }
 
-// OnFrame sets a callback that is called when a frame is received.
+// ReadFrames starts reading frames.
 // it returns a channel that is written when the reading stops.
 // This can be called only after Play().
-func (c *ClientConn) OnFrame(onFrame func(int, StreamType, []byte)) chan error {
+func (c *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan error {
 	// channel is buffered, since listening to it is not mandatory
 	done := make(chan error, 1)
 

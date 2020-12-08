@@ -101,7 +101,7 @@ func TestDialRead(t *testing.T) {
 
 			var firstFrame int32
 			frameRecv := make(chan struct{})
-			done := conn.OnFrame(func(id int, typ StreamType, content []byte) {
+			done := conn.ReadFrames(func(id int, typ StreamType, content []byte) {
 				if atomic.SwapInt32(&firstFrame, 1) == 0 {
 					close(frameRecv)
 				}
@@ -111,7 +111,7 @@ func TestDialRead(t *testing.T) {
 			conn.Close()
 			<-done
 
-			done = conn.OnFrame(func(id int, typ StreamType, content []byte) {
+			done = conn.ReadFrames(func(id int, typ StreamType, content []byte) {
 				t.Error("should not happen")
 			})
 			<-done
@@ -149,7 +149,7 @@ func TestDialReadAutomaticProtocol(t *testing.T) {
 
 	var firstFrame int32
 	frameRecv := make(chan struct{})
-	done := conn.OnFrame(func(id int, typ StreamType, content []byte) {
+	done := conn.ReadFrames(func(id int, typ StreamType, content []byte) {
 		if atomic.SwapInt32(&firstFrame, 1) == 0 {
 			close(frameRecv)
 		}
@@ -192,7 +192,7 @@ func TestDialReadRedirect(t *testing.T) {
 
 	var firstFrame int32
 	frameRecv := make(chan struct{})
-	done := conn.OnFrame(func(id int, typ StreamType, content []byte) {
+	done := conn.ReadFrames(func(id int, typ StreamType, content []byte) {
 		if atomic.SwapInt32(&firstFrame, 1) == 0 {
 			close(frameRecv)
 		}
@@ -245,7 +245,7 @@ func TestDialReadPause(t *testing.T) {
 
 			firstFrame := int32(0)
 			frameRecv := make(chan struct{})
-			done := conn.OnFrame(func(id int, typ StreamType, content []byte) {
+			done := conn.ReadFrames(func(id int, typ StreamType, content []byte) {
 				if atomic.SwapInt32(&firstFrame, 1) == 0 {
 					close(frameRecv)
 				}
@@ -261,7 +261,7 @@ func TestDialReadPause(t *testing.T) {
 
 			firstFrame = int32(0)
 			frameRecv = make(chan struct{})
-			done = conn.OnFrame(func(id int, typ StreamType, content []byte) {
+			done = conn.ReadFrames(func(id int, typ StreamType, content []byte) {
 				if atomic.SwapInt32(&firstFrame, 1) == 0 {
 					close(frameRecv)
 				}
