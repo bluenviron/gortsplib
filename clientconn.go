@@ -63,7 +63,7 @@ func (s clientConnState) String() string {
 
 // ClientConn is a client-side RTSP connection.
 type ClientConn struct {
-	c                     ClientConf
+	conf                  ClientConf
 	nconn                 net.Conn
 	br                    *bufio.Reader
 	bw                    *bufio.Writer
@@ -146,7 +146,7 @@ func (c *ClientConn) Tracks() Tracks {
 }
 
 func (c *ClientConn) readFrameTCPOrResponse() (interface{}, error) {
-	c.nconn.SetReadDeadline(time.Now().Add(c.c.ReadTimeout))
+	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	f := base.InterleavedFrame{
 		Content: c.tcpFrameBuffer.Next(),
 	}
@@ -175,7 +175,11 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	c.cseq++
 	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
 
-	c.nconn.SetWriteDeadline(time.Now().Add(c.c.WriteTimeout))
+	if c.conf.OnRequest != nil {
+		c.conf.OnRequest(req)
+	}
+
+	c.nconn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
 	err := req.Write(c.bw)
 	if err != nil {
 		return nil, err
@@ -203,6 +207,10 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	}()
 	if err != nil {
 		return nil, err
+	}
+
+	if c.conf.OnResponse != nil {
+		c.conf.OnResponse(res)
 	}
 
 	// get session from response
@@ -298,7 +306,7 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 
 	if res.StatusCode != base.StatusOK {
 		// redirect
-		if !c.c.RedirectDisable &&
+		if !c.conf.RedirectDisable &&
 			res.StatusCode >= base.StatusMovedPermanently &&
 			res.StatusCode <= base.StatusUseProxy &&
 			len(res.Header["Location"]) == 1 {
@@ -310,7 +318,7 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 				return nil, nil, err
 			}
 
-			nc, err := c.c.Dial(u.Host)
+			nc, err := c.conf.Dial(u.Host)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -385,8 +393,8 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		}
 
 		// protocol set by conf
-		if c.c.StreamProtocol != nil {
-			return *c.c.StreamProtocol
+		if c.conf.StreamProtocol != nil {
+			return *c.conf.StreamProtocol
 		}
 
 		// try udp
@@ -493,7 +501,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		// switch protocol automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
 			c.streamProtocol == nil &&
-			c.c.StreamProtocol == nil {
+			c.conf.StreamProtocol == nil {
 
 			v := StreamProtocolTCP
 			c.streamProtocol = &v

@@ -16,7 +16,7 @@ const (
 
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
-	c              ServerConf
+	conf           ServerConf
 	nconn          net.Conn
 	br             *bufio.Reader
 	bw             *bufio.Writer
@@ -51,7 +51,7 @@ func (s *ServerConn) ReadFrameTCPOrRequest(timeout bool) (interface{}, error) {
 	s.frame.Content = s.tcpFrameBuffer.Next()
 
 	if timeout {
-		s.nconn.SetReadDeadline(time.Now().Add(s.c.ReadTimeout))
+		s.nconn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
 	}
 
 	return base.ReadInterleavedFrameOrRequest(s.frame, s.request, s.br)
@@ -59,7 +59,7 @@ func (s *ServerConn) ReadFrameTCPOrRequest(timeout bool) (interface{}, error) {
 
 // WriteResponse writes a Response.
 func (s *ServerConn) WriteResponse(res *base.Response) error {
-	s.nconn.SetWriteDeadline(time.Now().Add(s.c.WriteTimeout))
+	s.nconn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
 	return res.Write(s.bw)
 }
 
@@ -71,6 +71,6 @@ func (s *ServerConn) WriteFrameTCP(trackID int, streamType StreamType, content [
 		Content:    content,
 	}
 
-	s.nconn.SetWriteDeadline(time.Now().Add(s.c.WriteTimeout))
+	s.nconn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
 	return frame.Write(s.bw)
 }

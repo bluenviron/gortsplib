@@ -61,7 +61,7 @@ func (c ServerConf) Serve(address string, handler ServerHandler) (*Server, error
 	}
 
 	s := &Server{
-		c:        c,
+		conf:     c,
 		listener: listener,
 	}
 

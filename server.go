@@ -13,7 +13,7 @@ type ServerHandler interface {
 }
 
 type Server struct {
-	c        ServerConf
+	conf     ServerConf
 	listener *net.TCPListener
 }
 
@@ -27,24 +27,24 @@ func (s *Server) Accept() (*ServerConn, error) {
 		return nil, err
 	}
 
-	if s.c.ReadTimeout == 0 {
-		s.c.ReadTimeout = 10 * time.Second
+	if s.conf.ReadTimeout == 0 {
+		s.conf.ReadTimeout = 10 * time.Second
 	}
-	if s.c.WriteTimeout == 0 {
-		s.c.WriteTimeout = 10 * time.Second
+	if s.conf.WriteTimeout == 0 {
+		s.conf.WriteTimeout = 10 * time.Second
 	}
-	if s.c.ReadBufferCount == 0 {
-		s.c.ReadBufferCount = 1
+	if s.conf.ReadBufferCount == 0 {
+		s.conf.ReadBufferCount = 1
 	}
 
 	sc := &ServerConn{
-		c:              s.c,
+		conf:           s.conf,
 		nconn:          nconn,
 		br:             bufio.NewReaderSize(nconn, serverReadBufferSize),
 		bw:             bufio.NewWriterSize(nconn, serverWriteBufferSize),
 		request:        &base.Request{},
 		frame:          &base.InterleavedFrame{},
-		tcpFrameBuffer: multibuffer.New(s.c.ReadBufferCount, clientTCPFrameReadBufferSize),
+		tcpFrameBuffer: multibuffer.New(s.conf.ReadBufferCount, clientTCPFrameReadBufferSize),
 	}
 
 	return sc, nil

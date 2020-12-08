@@ -58,6 +58,12 @@ type ClientConf struct {
 	// It defaults to 1.
 	ReadBufferCount int
 
+	// callback called before every request.
+	OnRequest func(req *base.Request)
+
+	// callback called after very response.
+	OnResponse func(res *base.Response)
+
 	// function used to initialize the TCP client.
 	// It defaults to net.DialTimeout.
 	DialTimeout func(network, address string, timeout time.Duration) (net.Conn, error)
@@ -95,7 +101,7 @@ func (c ClientConf) Dial(host string) (*ClientConn, error) {
 	}
 
 	return &ClientConn{
-		c:                 c,
+		conf:              c,
 		nconn:             nconn,
 		br:                bufio.NewReaderSize(nconn, clientReadBufferSize),
 		bw:                bufio.NewWriterSize(nconn, clientWriteBufferSize),
