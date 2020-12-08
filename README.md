@@ -16,7 +16,7 @@ Features:
   * Publish tracks to servers with UDP or TCP
   * Pause reading or publishing without disconnecting from the server
 * Server
-  * Handle server-side connections
+  * Build servers and handle publishers and readers
 
 ## Examples
 
@@ -28,6 +28,7 @@ Features:
 * [client-publish](examples/client-publish.go)
 * [client-publish-options](examples/client-publish-options.go)
 * [client-publish-pause](examples/client-publish-pause.go)
+* [server](examples/server.go)
 
 ## Documentation
 

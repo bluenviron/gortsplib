@@ -9,7 +9,7 @@ import (
 var DefaultServerConf = ServerConf{}
 
 // Serve starts a server on the given address.
-func Serve(address string, handler ServerHandler) (*Server, error) {
+func Serve(address string, handler func(sc *ServerConn) ServerConnHandler) (*Server, error) {
 	return DefaultServerConf.Serve(address, handler)
 }
 
@@ -36,7 +36,7 @@ type ServerConf struct {
 }
 
 // Serve starts a server on the given address.
-func (c ServerConf) Serve(address string, handler ServerHandler) (*Server, error) {
+func (c ServerConf) Serve(address string, handler func(sc *ServerConn) ServerConnHandler) (*Server, error) {
 	if c.ReadTimeout == 0 {
 		c.ReadTimeout = 10 * time.Second
 	}
@@ -63,7 +63,11 @@ func (c ServerConf) Serve(address string, handler ServerHandler) (*Server, error
 	s := &Server{
 		conf:     c,
 		listener: listener,
+		handler:  handler,
 	}
+
+	s.wg.Add(1)
+	go s.run()
 
 	return s, nil
 }

@@ -3,33 +3,27 @@ package gortsplib
 import (
 	"bufio"
 	"net"
+	"sync"
 	"time"
-
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
-
-// ServerHandler is the interface that must be implemented to use a Server.
-type ServerHandler interface {
-}
 
 // Server is a RTSP server.
 type Server struct {
 	conf     ServerConf
 	listener *net.TCPListener
+	handler  func(sc *ServerConn) ServerConnHandler
+	wg       sync.WaitGroup
 }
 
 // Close closes the server.
 func (s *Server) Close() error {
-	return s.listener.Close()
+	s.listener.Close()
+	s.wg.Wait()
+	return nil
 }
 
-// Accept accepts a connection.
-func (s *Server) Accept() (*ServerConn, error) {
-	nconn, err := s.listener.Accept()
-	if err != nil {
-		return nil, err
-	}
+func (s *Server) run() {
+	defer s.wg.Done()
 
 	if s.conf.ReadTimeout == 0 {
 		s.conf.ReadTimeout = 10 * time.Second
@@ -41,15 +35,26 @@ func (s *Server) Accept() (*ServerConn, error) {
 		s.conf.ReadBufferCount = 1
 	}
 
-	sc := &ServerConn{
-		conf:           s.conf,
-		nconn:          nconn,
-		br:             bufio.NewReaderSize(nconn, serverReadBufferSize),
-		bw:             bufio.NewWriterSize(nconn, serverWriteBufferSize),
-		request:        &base.Request{},
-		frame:          &base.InterleavedFrame{},
-		tcpFrameBuffer: multibuffer.New(s.conf.ReadBufferCount, clientTCPFrameReadBufferSize),
-	}
+	for {
+		nconn, err := s.listener.Accept()
+		if err != nil {
+			break
+		}
 
-	return sc, nil
+		sc := &ServerConn{
+			s:     s,
+			nconn: nconn,
+			br:    bufio.NewReaderSize(nconn, serverReadBufferSize),
+			bw:    bufio.NewWriterSize(nconn, serverWriteBufferSize),
+		}
+
+		sc.connHandler = s.handler(sc)
+		if sc.connHandler == nil {
+			nconn.Close()
+			continue
+		}
+
+		s.wg.Add(1)
+		go sc.run()
+	}
 }

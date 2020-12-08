@@ -2,7 +2,9 @@ package gortsplib
 
 import (
 	"bufio"
+	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
@@ -14,63 +16,137 @@ const (
 	serverWriteBufferSize = 4096
 )
 
+// ServerConnHandler is the interface that must be implemented to use a ServerConn.
+type ServerConnHandler interface {
+	OnClose(err error)
+	OnRequest(req *base.Request) (*base.Response, error)
+	OnFrame(rackID int, streamType StreamType, content []byte)
+}
+
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
-	conf           ServerConf
-	nconn          net.Conn
-	br             *bufio.Reader
-	bw             *bufio.Writer
-	request        *base.Request
-	frame          *base.InterleavedFrame
-	tcpFrameBuffer *multibuffer.MultiBuffer
+	s           *Server
+	nconn       net.Conn
+	connHandler ServerConnHandler
+	br          *bufio.Reader
+	bw          *bufio.Writer
+	mutex       sync.Mutex
+	frames      bool
+	readTimeout bool
 }
 
 // Close closes all the ServerConn resources.
-func (s *ServerConn) Close() error {
-	return s.nconn.Close()
+func (sc *ServerConn) Close() error {
+	return sc.nconn.Close()
 }
 
 // NetConn returns the underlying net.Conn.
-func (s *ServerConn) NetConn() net.Conn {
-	return s.nconn
+func (sc *ServerConn) NetConn() net.Conn {
+	return sc.nconn
 }
 
-// ReadRequest reads a Request.
-func (s *ServerConn) ReadRequest() (*base.Request, error) {
-	s.nconn.SetReadDeadline(time.Time{}) // disable deadline
-	err := s.request.Read(s.br)
-	if err != nil {
-		return nil, err
+// EnableFrames allows or denies receiving frames.
+func (sc *ServerConn) EnableFrames(v bool) {
+	sc.frames = v
+}
+
+// EnableReadTimeout sets or removes the timeout on incoming packets.
+func (sc *ServerConn) EnableReadTimeout(v bool) {
+	sc.readTimeout = v
+}
+
+func (sc *ServerConn) run() {
+	defer sc.s.wg.Done()
+
+	var req base.Request
+	var frame base.InterleavedFrame
+	tcpFrameBuffer := multibuffer.New(sc.s.conf.ReadBufferCount, clientTCPFrameReadBufferSize)
+	var errRet error
+
+outer:
+	for {
+		if sc.readTimeout {
+			sc.nconn.SetReadDeadline(time.Now().Add(sc.s.conf.ReadTimeout))
+		} else {
+			sc.nconn.SetReadDeadline(time.Time{})
+		}
+
+		if sc.frames {
+			frame.Content = tcpFrameBuffer.Next()
+			what, err := base.ReadInterleavedFrameOrRequest(&frame, &req, sc.br)
+			if err != nil {
+				errRet = err
+				break outer
+			}
+
+			switch what.(type) {
+			case *base.InterleavedFrame:
+				sc.connHandler.OnFrame(frame.TrackID, frame.StreamType, frame.Content)
+
+			case *base.Request:
+				err := sc.handleRequest(&req)
+				if err != nil {
+					errRet = err
+					break outer
+				}
+			}
+
+		} else {
+			err := req.Read(sc.br)
+			if err != nil {
+				errRet = err
+				break outer
+			}
+
+			err = sc.handleRequest(&req)
+			if err != nil {
+				errRet = err
+				break outer
+			}
+		}
 	}
 
-	return s.request, nil
+	sc.nconn.Close()
+	sc.connHandler.OnClose(errRet)
 }
 
-// ReadFrameTCPOrRequest reads an InterleavedFrame or a Request.
-func (s *ServerConn) ReadFrameTCPOrRequest(timeout bool) (interface{}, error) {
-	s.frame.Content = s.tcpFrameBuffer.Next()
+func (sc *ServerConn) handleRequest(req *base.Request) error {
+	sc.mutex.Lock()
+	defer sc.mutex.Unlock()
 
-	if timeout {
-		s.nconn.SetReadDeadline(time.Now().Add(s.conf.ReadTimeout))
+	// check cseq
+	cseq, ok := req.Header["CSeq"]
+	if !ok || len(cseq) != 1 {
+		sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.conf.WriteTimeout))
+		base.Response{
+			StatusCode: base.StatusBadRequest,
+			Header:     base.Header{},
+		}.Write(sc.bw)
+		return fmt.Errorf("cseq is missing")
 	}
 
-	return base.ReadInterleavedFrameOrRequest(s.frame, s.request, s.br)
+	res, err := sc.connHandler.OnRequest(req)
+
+	// add cseq to response
+	res.Header["CSeq"] = cseq
+
+	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.conf.WriteTimeout))
+	res.Write(sc.bw)
+
+	return err
 }
 
-// WriteResponse writes a Response.
-func (s *ServerConn) WriteResponse(res *base.Response) error {
-	s.nconn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
-	return res.Write(s.bw)
-}
+// WriteFrame writes a frame.
+func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, content []byte) error {
+	sc.mutex.Lock()
+	defer sc.mutex.Unlock()
 
-// WriteFrameTCP writes an InterleavedFrame.
-func (s *ServerConn) WriteFrameTCP(trackID int, streamType StreamType, content []byte) error {
 	frame := base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
 		Content:    content,
 	}
 
-	s.nconn.SetWriteDeadline(time.Now().Add(s.conf.WriteTimeout))
-	return frame.Write(s.bw)
+	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.conf.WriteTimeout))
+	return frame.Write(sc.bw)
 }
