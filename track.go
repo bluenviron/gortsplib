@@ -161,7 +161,7 @@ func (t *Track) ClockRate() (int, error) {
 	return 0, fmt.Errorf("attribute 'rtpmap' not found")
 }
 
-// Url returns the track url.
+// URL returns the track url.
 func (t *Track) URL() (*base.URL, error) {
 	if t.BaseURL == nil {
 		return nil, fmt.Errorf("empty base url")
