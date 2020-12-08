@@ -11,6 +11,8 @@ import (
 )
 
 func handleConn(conn *gortsplib.ServerConn) {
+	defer conn.Close()
+
 	onRequest := func(req *base.Request) (*base.Response, error) {
 		switch req.Method {
 		case base.Options:

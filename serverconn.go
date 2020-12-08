@@ -126,7 +126,6 @@ outer:
 		}
 	}
 
-	sc.nconn.Close()
 	done <- errRet
 }
 
