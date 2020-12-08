@@ -33,7 +33,7 @@ func (c *ClientConn) Play() (*base.Response, error) {
 	return res, nil
 }
 
-func (c *ClientConn) backgroundPlayUDP(onFrameDone chan error) {
+func (c *ClientConn) backgroundPlayUDP(done chan error) {
 	defer close(c.backgroundDone)
 
 	var returnError error
@@ -44,7 +44,7 @@ func (c *ClientConn) backgroundPlayUDP(onFrameDone chan error) {
 			c.udpRtcpListeners[trackID].stop()
 		}
 
-		onFrameDone <- returnError
+		done <- returnError
 	}()
 
 	// open the firewall by sending packets to the counterpart
@@ -141,13 +141,13 @@ func (c *ClientConn) backgroundPlayUDP(onFrameDone chan error) {
 	}
 }
 
-func (c *ClientConn) backgroundPlayTCP(onFrameDone chan error) {
+func (c *ClientConn) backgroundPlayTCP(done chan error) {
 	defer close(c.backgroundDone)
 
 	var returnError error
 
 	defer func() {
-		onFrameDone <- returnError
+		done <- returnError
 	}()
 
 	readerDone := make(chan error)
@@ -209,30 +209,30 @@ func (c *ClientConn) backgroundPlayTCP(onFrameDone chan error) {
 }
 
 // OnFrame sets a callback that is called when a frame is received.
-// it returns a channel that is called when the reading stops.
+// it returns a channel that is written when the reading stops.
 // This can be called only after Play().
-func (c *ClientConn) OnFrame(cb func(int, StreamType, []byte)) chan error {
+func (c *ClientConn) OnFrame(onFrame func(int, StreamType, []byte)) chan error {
 	// channel is buffered, since listening to it is not mandatory
-	onFrameDone := make(chan error, 1)
+	done := make(chan error, 1)
 
 	err := c.checkState(map[clientConnState]struct{}{
 		clientConnStatePrePlay: {},
 	})
 	if err != nil {
-		onFrameDone <- err
-		return onFrameDone
+		done <- err
+		return done
 	}
 
 	c.state = clientConnStatePlay
-	c.readCB = cb
+	c.readCB = onFrame
 	c.backgroundTerminate = make(chan struct{})
 	c.backgroundDone = make(chan struct{})
 
 	if *c.streamProtocol == StreamProtocolUDP {
-		go c.backgroundPlayUDP(onFrameDone)
+		go c.backgroundPlayUDP(done)
 	} else {
-		go c.backgroundPlayTCP(onFrameDone)
+		go c.backgroundPlayTCP(done)
 	}
 
-	return onFrameDone
+	return done
 }
