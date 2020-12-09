@@ -129,7 +129,7 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 				if now.Sub(last) >= c.conf.ReadTimeout {
 					c.nconn.SetReadDeadline(time.Now())
 					<-readerDone
-					returnError = fmt.Errorf("no packets received recently (maybe there's a firewall/NAT in between)")
+					returnError = fmt.Errorf("no UDP packets received recently (maybe there's a firewall/NAT in between)")
 					return
 				}
 			}
