@@ -23,7 +23,7 @@ type ServerConn struct {
 	br          *bufio.Reader
 	bw          *bufio.Writer
 	mutex       sync.Mutex
-	frames      bool
+	readFrames  bool
 	readTimeout bool
 }
 
@@ -37,9 +37,9 @@ func (sc *ServerConn) NetConn() net.Conn {
 	return sc.nconn
 }
 
-// EnableFrames allows or denies receiving frames.
-func (sc *ServerConn) EnableFrames(v bool) {
-	sc.frames = v
+// EnableReadFrames allows or denies receiving frames.
+func (sc *ServerConn) EnableReadFrames(v bool) {
+	sc.readFrames = v
 }
 
 // EnableReadTimeout sets or removes the timeout on incoming packets.
@@ -91,7 +91,7 @@ outer:
 			sc.nconn.SetReadDeadline(time.Time{})
 		}
 
-		if sc.frames {
+		if sc.readFrames {
 			frame.Content = tcpFrameBuffer.Next()
 			what, err := base.ReadInterleavedFrameOrRequest(&frame, &req, sc.br)
 			if err != nil {
