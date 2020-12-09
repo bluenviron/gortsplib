@@ -211,15 +211,25 @@ func ReadTracks(byts []byte) (Tracks, error) {
 		return nil, err
 	}
 
-	ts := make(Tracks, len(desc.MediaDescriptions))
+	tracks := make(Tracks, len(desc.MediaDescriptions))
+
 	for i, media := range desc.MediaDescriptions {
-		ts[i] = &Track{
+		tracks[i] = &Track{
 			ID:    i,
 			Media: media,
 		}
 	}
 
-	return ts, nil
+	// since ReadTracks is used to handle ANNOUNCE and SETUP requests,
+	// all tracks must have a valid clock rate.
+	for i, track := range tracks {
+		_, err := track.ClockRate()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get clock rate of track %i: %s", err)
+		}
+	}
+
+	return tracks, nil
 }
 
 // Write writes tracks in SDP format.

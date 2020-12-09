@@ -537,14 +537,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		}
 	}
 
-	clockRate, err := track.ClockRate()
-	if err != nil {
-		if proto == StreamProtocolUDP {
-			rtpListener.close()
-			rtcpListener.close()
-		}
-		return nil, fmt.Errorf("unable to get the track clock rate: %s", err)
-	}
+	clockRate, _ := track.ClockRate()
 
 	if mode == headers.TransportModePlay {
 		c.rtcpReceivers[track.ID] = rtcpreceiver.New(nil, clockRate)
