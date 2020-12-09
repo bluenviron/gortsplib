@@ -21,11 +21,8 @@ func main() {
 	defer conn.Close()
 
 	// read track frames
-	done := conn.ReadFrames(func(id int, typ gortsplib.StreamType, buf []byte) {
+	err = <-conn.ReadFrames(func(id int, typ gortsplib.StreamType, buf []byte) {
 		fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
 	})
-
-	// catch any error
-	err = <-done
 	panic(err)
 }
