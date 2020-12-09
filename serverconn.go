@@ -70,6 +70,9 @@ func (sc *ServerConn) backgroundRead(
 		res, err := onRequest(req)
 
 		// add cseq to response
+		if res.Header == nil {
+			res.Header = base.Header{}
+		}
 		res.Header["CSeq"] = cseq
 
 		sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.conf.WriteTimeout))
