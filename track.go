@@ -225,7 +225,7 @@ func ReadTracks(byts []byte) (Tracks, error) {
 	for i, track := range tracks {
 		_, err := track.ClockRate()
 		if err != nil {
-			return nil, fmt.Errorf("unable to get clock rate of track %i: %s", err)
+			return nil, fmt.Errorf("unable to get clock rate of track %d: %s", i, err)
 		}
 	}
 
