@@ -53,8 +53,8 @@ func main() {
 	}
 
 	// read track frames
-	err = <-conn.ReadFrames(func(id int, typ gortsplib.StreamType, buf []byte) {
-		fmt.Printf("frame from track %d, type %v: %v\n", id, typ, buf)
+	err = <-conn.ReadFrames(func(trackID int, typ gortsplib.StreamType, buf []byte) {
+		fmt.Printf("frame from track %d, type %v: %v\n", trackID, typ, buf)
 	})
 	panic(err)
 }
