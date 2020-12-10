@@ -203,7 +203,7 @@ func (t *Track) URL() (*base.URL, error) {
 // Tracks is a list of tracks.
 type Tracks []*Track
 
-// ReadTracks reads tracks from an encoded SDP.
+// ReadTracks decodes tracks from SDP.
 func ReadTracks(byts []byte) (Tracks, error) {
 	desc := sdp.SessionDescription{}
 	err := desc.Unmarshal(byts)
@@ -232,7 +232,7 @@ func ReadTracks(byts []byte) (Tracks, error) {
 	return tracks, nil
 }
 
-// Write writes tracks in SDP format.
+// Write encodes tracks into SDP.
 func (ts Tracks) Write() []byte {
 	sout := &sdp.SessionDescription{
 		SessionName: psdp.SessionName("Stream"),
