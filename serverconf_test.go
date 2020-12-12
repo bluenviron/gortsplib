@@ -1,7 +1,10 @@
 package gortsplib
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"net"
 	"strings"
 	"sync"
 	"testing"
@@ -266,4 +269,34 @@ func TestServerPublishReadTCP(t *testing.T) {
 	defer cnt2.close()
 
 	require.Equal(t, 0, cnt2.wait())
+}
+
+func TestServerTeardown(t *testing.T) {
+	ts, err := newTestServ()
+	require.NoError(t, err)
+	defer ts.close()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	req := base.Request{
+		Method: base.Teardown,
+		URL:    base.MustParseURL("rtsp://localhost:8554/"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+		},
+	}
+	err = req.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	buf := make([]byte, 2048)
+	_, err = bconn.Read(buf)
+	require.Equal(t, io.EOF, err)
 }
