@@ -59,7 +59,7 @@ func (c *container) wait() int {
 	return int(code)
 }
 
-func TestDialRead(t *testing.T) {
+func TestClientDialRead(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -119,7 +119,7 @@ func TestDialRead(t *testing.T) {
 	}
 }
 
-func TestDialReadAutomaticProtocol(t *testing.T) {
+func TestClientDialReadAutomaticProtocol(t *testing.T) {
 	cnt1, err := newContainer("rtsp-simple-server", "server", []string{
 		"protocols: [tcp]\n",
 	})
@@ -160,7 +160,7 @@ func TestDialReadAutomaticProtocol(t *testing.T) {
 	<-done
 }
 
-func TestDialReadRedirect(t *testing.T) {
+func TestClientDialReadRedirect(t *testing.T) {
 	cnt1, err := newContainer("rtsp-simple-server", "server", []string{
 		"paths:\n" +
 			"  path1:\n" +
@@ -203,7 +203,7 @@ func TestDialReadRedirect(t *testing.T) {
 	<-done
 }
 
-func TestDialReadPause(t *testing.T) {
+func TestClientDialReadPause(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -274,7 +274,7 @@ func TestDialReadPause(t *testing.T) {
 	}
 }
 
-func TestDialPublishSerial(t *testing.T) {
+func TestClientDialPublishSerial(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -335,7 +335,7 @@ func TestDialPublishSerial(t *testing.T) {
 	}
 }
 
-func TestDialPublishParallel(t *testing.T) {
+func TestClientDialPublishParallel(t *testing.T) {
 	for _, ca := range []struct {
 		proto  string
 		server string
@@ -448,7 +448,7 @@ func TestDialPublishParallel(t *testing.T) {
 	}
 }
 
-func TestDialPublishPauseSerial(t *testing.T) {
+func TestClientDialPublishPauseSerial(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -520,7 +520,7 @@ func TestDialPublishPauseSerial(t *testing.T) {
 	}
 }
 
-func TestDialPublishPauseParallel(t *testing.T) {
+func TestClientDialPublishPauseParallel(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
