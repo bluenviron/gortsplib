@@ -59,7 +59,14 @@ func (sc *ServerConn) EnableReadTimeout(v bool) {
 }
 
 // ServerConnReadHandlers allows to set the handlers required by ServerConn.Read.
+// all fields are optional.
 type ServerConnReadHandlers struct {
+	// called after receiving any request.
+	OnRequest func(req *base.Request)
+
+	// called before sending any response.
+	OnResponse func(res *base.Response)
+
 	// called after receiving a OPTIONS request.
 	// if nil, it is generated automatically.
 	OnOptions func(req *base.Request) (*base.Response, error)
@@ -96,6 +103,10 @@ type ServerConnReadHandlers struct {
 
 func (sc *ServerConn) backgroundRead(handlers ServerConnReadHandlers, done chan error) {
 	handleRequest := func(req *base.Request) (*base.Response, error) {
+		if handlers.OnRequest != nil {
+			handlers.OnRequest(req)
+		}
+
 		switch req.Method {
 		case base.Options:
 			if handlers.OnOptions != nil {
@@ -249,6 +260,10 @@ func (sc *ServerConn) backgroundRead(handlers ServerConnReadHandlers, done chan 
 
 		// add server
 		res.Header["Server"] = base.HeaderValue{"gortsplib"}
+
+		if handlers.OnResponse != nil {
+			handlers.OnResponse(res)
+		}
 
 		sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.conf.WriteTimeout))
 		res.Write(sc.bw)
