@@ -27,8 +27,8 @@ func ParseURL(s string) (*URL, error) {
 		return nil, err
 	}
 
-	if u.Scheme != "rtsp" {
-		return nil, fmt.Errorf("wrong scheme")
+	if u.Scheme != "rtsp" && u.Scheme != "rtsps" {
+		return nil, fmt.Errorf("unsupported scheme '%s'", u.Scheme)
 	}
 
 	return (*URL)(u), nil

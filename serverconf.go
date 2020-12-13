@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"crypto/tls"
 	"net"
 	"time"
 )
@@ -16,6 +17,9 @@ func Serve(address string) (*Server, error) {
 // ServerConf allows to configure a Server.
 // All fields are optional.
 type ServerConf struct {
+	// a TLS configuration to accept TLS (RTSPS) connections.
+	TLSConfig *tls.Config
+
 	// timeout of read operations.
 	// It defaults to 10 seconds
 	ReadTimeout time.Duration

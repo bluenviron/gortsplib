@@ -349,12 +349,11 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, content []b
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
 
+	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.conf.WriteTimeout))
 	frame := base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
 		Content:    content,
 	}
-
-	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.conf.WriteTimeout))
 	return frame.Write(sc.bw)
 }
