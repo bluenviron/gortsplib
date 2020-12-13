@@ -277,8 +277,12 @@ func TestServerPublishReadTCP(t *testing.T) {
 	}{
 		{"ffmpeg", "ffmpeg", false},
 		{"ffmpeg", "ffmpeg", true},
+		{"ffmpeg", "gstreamer", false},
+		{"ffmpeg", "gstreamer", true},
 		{"gstreamer", "ffmpeg", false},
 		{"gstreamer", "ffmpeg", true},
+		{"gstreamer", "gstreamer", false},
+		{"gstreamer", "gstreamer", true},
 	} {
 		encryptedStr := func() string {
 			if ca.encrypted {
@@ -338,6 +342,15 @@ func TestServerPublishReadTCP(t *testing.T) {
 					"-vframes", "1",
 					"-f", "image2",
 					"-y", "/dev/null",
+				})
+				require.NoError(t, err)
+				defer cnt2.close()
+				require.Equal(t, 0, cnt2.wait())
+
+			case "gstreamer":
+				cnt2, err := newContainer("gstreamer", "read", []string{
+					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=tcp tls-validation-flags=0 latency=0 " +
+						"! application/x-rtp,media=video ! decodebin ! exitafterframe ! fakesink",
 				})
 				require.NoError(t, err)
 				defer cnt2.close()
