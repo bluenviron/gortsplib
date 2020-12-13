@@ -18,6 +18,12 @@ Features:
 * Server
   * Build servers and handle publishers and readers
 
+## Table of contents
+
+* [Examples](#examples)
+* [API Documentation](#api-documentation)
+* [Links](#links)
+
 ## Examples
 
 * [client-query](examples/client-query.go)
@@ -30,7 +36,7 @@ Features:
 * [client-publish-pause](examples/client-publish-pause.go)
 * [server](examples/server.go)
 
-## Documentation
+## API Documentation
 
 https://pkg.go.dev/github.com/aler9/gortsplib
 
