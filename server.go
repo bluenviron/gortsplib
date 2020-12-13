@@ -8,7 +8,7 @@ import (
 // Server is a RTSP server.
 type Server struct {
 	conf     ServerConf
-	listener *net.TCPListener
+	listener net.Listener
 }
 
 // Close closes the server.

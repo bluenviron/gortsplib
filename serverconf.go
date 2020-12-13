@@ -31,8 +31,8 @@ type ServerConf struct {
 	ReadBufferCount int
 
 	// function used to initialize the TCP listener.
-	// It defaults to net.ListenTCP.
-	ListenTCP func(network string, address *net.TCPAddr) (*net.TCPListener, error)
+	// It defaults to net.Listen
+	Listen func(network string, address string) (net.Listener, error)
 }
 
 // Serve starts a server on the given address.
@@ -46,16 +46,11 @@ func (c ServerConf) Serve(address string) (*Server, error) {
 	if c.ReadBufferCount == 0 {
 		c.ReadBufferCount = 1
 	}
-	if c.ListenTCP == nil {
-		c.ListenTCP = net.ListenTCP
+	if c.Listen == nil {
+		c.Listen = net.Listen
 	}
 
-	addr, err := net.ResolveTCPAddr("tcp", address)
-	if err != nil {
-		return nil, err
-	}
-
-	listener, err := c.ListenTCP("tcp", addr)
+	listener, err := c.Listen("tcp", address)
 	if err != nil {
 		return nil, err
 	}

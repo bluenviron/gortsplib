@@ -214,7 +214,7 @@ func TestServerPublishReadTCP(t *testing.T) {
 	require.Equal(t, 0, cnt2.wait())
 }
 
-func TestServerTeardown(t *testing.T) {
+func TestServerTeardownResponse(t *testing.T) {
 	ts, err := newTestServ()
 	require.NoError(t, err)
 	defer ts.close()
