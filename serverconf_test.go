@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -65,156 +64,93 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	defer ts.wg.Done()
 	defer conn.Close()
 
-	// this is called when a request arrives
-	onRequest := func(req *base.Request) (*base.Response, error) {
-		switch req.Method {
-		case base.Options:
+	onDescribe := func(req *base.Request) (*base.Response, error) {
+		ts.mutex.Lock()
+		defer ts.mutex.Unlock()
+
+		if ts.publisher == nil {
 			return &base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Public": base.HeaderValue{strings.Join([]string{
-						string(base.Describe),
-						string(base.Announce),
-						string(base.Setup),
-						string(base.Play),
-						string(base.Record),
-						string(base.Teardown),
-					}, ", ")},
-				},
+				StatusCode: base.StatusNotFound,
 			}, nil
-
-		case base.Describe:
-			ts.mutex.Lock()
-			defer ts.mutex.Unlock()
-
-			if ts.publisher == nil {
-				return &base.Response{
-					StatusCode: base.StatusNotFound,
-				}, nil
-			}
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Content-Base": base.HeaderValue{req.URL.String() + "/"},
-					"Content-Type": base.HeaderValue{"application/sdp"},
-				},
-				Content: ts.sdp,
-			}, nil
-
-		case base.Announce:
-			ct, ok := req.Header["Content-Type"]
-			if !ok || len(ct) != 1 {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("Content-Type header missing")
-			}
-
-			if ct[0] != "application/sdp" {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("unsupported Content-Type '%s'", ct)
-			}
-
-			tracks, err := ReadTracks(req.Content)
-			if err != nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid SDP: %s", err)
-			}
-
-			if len(tracks) == 0 {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("no tracks defined")
-			}
-
-			ts.mutex.Lock()
-			defer ts.mutex.Unlock()
-
-			if ts.publisher != nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("someone is already publishing")
-			}
-
-			ts.publisher = conn
-			ts.sdp = tracks.Write()
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Session": base.HeaderValue{"12345678"},
-				},
-			}, nil
-
-		case base.Setup:
-			th, err := headers.ReadTransport(req.Header["Transport"])
-			if err != nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("transport header: %s", err)
-			}
-
-			if th.Protocol == StreamProtocolUDP {
-				return &base.Response{
-					StatusCode: base.StatusUnsupportedTransport,
-				}, nil
-			}
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Transport": req.Header["Transport"],
-					"Session":   base.HeaderValue{"12345678"},
-				},
-			}, nil
-
-		case base.Play:
-			ts.mutex.Lock()
-			defer ts.mutex.Unlock()
-
-			ts.readers[conn] = struct{}{}
-
-			conn.EnableReadFrames(true)
-			conn.EnableReadTimeout(false)
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Session": base.HeaderValue{"12345678"},
-				},
-			}, nil
-
-		case base.Record:
-			ts.mutex.Lock()
-			defer ts.mutex.Unlock()
-
-			if conn != ts.publisher {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("someone is already publishing")
-			}
-
-			conn.EnableReadFrames(true)
-			conn.EnableReadTimeout(true)
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Session": base.HeaderValue{"12345678"},
-				},
-			}, nil
-
-		case base.Teardown:
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, fmt.Errorf("terminated")
 		}
 
 		return &base.Response{
-			StatusCode: base.StatusBadRequest,
-		}, fmt.Errorf("unhandled method: %v", req.Method)
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Base": base.HeaderValue{req.URL.String() + "/"},
+				"Content-Type": base.HeaderValue{"application/sdp"},
+			},
+			Content: ts.sdp,
+		}, nil
+	}
+
+	onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+		ts.mutex.Lock()
+		defer ts.mutex.Unlock()
+
+		if ts.publisher != nil {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("someone is already publishing")
+		}
+
+		ts.publisher = conn
+		ts.sdp = tracks.Write()
+
+		return &base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Session": base.HeaderValue{"12345678"},
+			},
+		}, nil
+	}
+
+	onSetup := func(req *base.Request, th *headers.Transport) (*base.Response, error) {
+		return &base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": req.Header["Transport"],
+				"Session":   base.HeaderValue{"12345678"},
+			},
+		}, nil
+	}
+
+	onPlay := func(req *base.Request) (*base.Response, error) {
+		ts.mutex.Lock()
+		defer ts.mutex.Unlock()
+
+		ts.readers[conn] = struct{}{}
+
+		conn.EnableReadFrames(true)
+		conn.EnableReadTimeout(false)
+
+		return &base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Session": base.HeaderValue{"12345678"},
+			},
+		}, nil
+	}
+
+	onRecord := func(req *base.Request) (*base.Response, error) {
+		ts.mutex.Lock()
+		defer ts.mutex.Unlock()
+
+		if conn != ts.publisher {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("someone is already publishing")
+		}
+
+		conn.EnableReadFrames(true)
+		conn.EnableReadTimeout(true)
+
+		return &base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Session": base.HeaderValue{"12345678"},
+			},
+		}, nil
 	}
 
 	onFrame := func(trackID int, typ StreamType, buf []byte) {
@@ -228,7 +164,14 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}
 	}
 
-	<-conn.Read(onRequest, onFrame)
+	<-conn.Read(ServerConnReadHandlers{
+		OnDescribe: onDescribe,
+		OnAnnounce: onAnnounce,
+		OnSetup:    onSetup,
+		OnPlay:     onPlay,
+		OnRecord:   onRecord,
+		OnFrame:    onFrame,
+	})
 
 	ts.mutex.Lock()
 	defer ts.mutex.Unlock()

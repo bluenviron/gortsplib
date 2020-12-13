@@ -2,18 +2,29 @@ package gortsplib
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
 const (
 	serverReadBufferSize  = 4096
 	serverWriteBufferSize = 4096
+)
+
+// server errors.
+var (
+	ErrServerTeardown           = errors.New("teardown")
+	ErrServerContentTypeMissing = errors.New("Content-Type header is missing")
+	ErrServerNoTracksDefined    = errors.New("no tracks defined")
+	ErrServerMissingCseq        = errors.New("CSeq is missing")
 )
 
 // ServerConn is a server-side RTSP connection.
@@ -47,12 +58,172 @@ func (sc *ServerConn) EnableReadTimeout(v bool) {
 	sc.readTimeout = v
 }
 
-func (sc *ServerConn) backgroundRead(
-	onRequest func(req *base.Request) (*base.Response, error),
-	onFrame func(trackID int, streamType StreamType, content []byte),
-	done chan error,
-) {
-	handleRequest := func(req *base.Request) error {
+// ServerConnReadHandlers allows to set the handlers required by ServerConn.Read.
+type ServerConnReadHandlers struct {
+	// called after receiving a OPTIONS request.
+	// if nil, it is generated automatically.
+	OnOptions func(req *base.Request) (*base.Response, error)
+
+	// called after receiving a DESCRIBE request.
+	OnDescribe func(req *base.Request) (*base.Response, error)
+
+	// called after receiving an ANNOUNCE request.
+	OnAnnounce func(req *base.Request, tracks Tracks) (*base.Response, error)
+
+	// called after receiving a SETUP request.
+	OnSetup func(req *base.Request, th *headers.Transport) (*base.Response, error)
+
+	// called after receiving a PLAY request.
+	OnPlay func(req *base.Request) (*base.Response, error)
+
+	// called after receiving a RECORD request.
+	OnRecord func(req *base.Request) (*base.Response, error)
+
+	// called after receiving a GET_PARAMETER request.
+	// if nil, it is generated automatically.
+	OnGetParameter func(req *base.Request) (*base.Response, error)
+
+	// called after receiving a SET_PARAMETER request.
+	OnSetParameter func(req *base.Request) (*base.Response, error)
+
+	// called after receiving a TEARDOWN request.
+	// if nil, it is generated automatically.
+	OnTeardown func(req *base.Request) (*base.Response, error)
+
+	// called after receiving a Frame.
+	OnFrame func(trackID int, streamType StreamType, content []byte)
+}
+
+func (sc *ServerConn) backgroundRead(handlers ServerConnReadHandlers, done chan error) {
+	handleRequest := func(req *base.Request) (*base.Response, error) {
+		switch req.Method {
+		case base.Options:
+			if handlers.OnOptions != nil {
+				return handlers.OnOptions(req)
+			}
+
+			var methods []string
+			if handlers.OnDescribe != nil {
+				methods = append(methods, string(base.Describe))
+			}
+			if handlers.OnAnnounce != nil {
+				methods = append(methods, string(base.Announce))
+			}
+			if handlers.OnSetup != nil {
+				methods = append(methods, string(base.Setup))
+			}
+			if handlers.OnPlay != nil {
+				methods = append(methods, string(base.Play))
+			}
+			if handlers.OnRecord != nil {
+				methods = append(methods, string(base.Record))
+			}
+			methods = append(methods, string(base.GetParameter))
+			if handlers.OnSetParameter != nil {
+				methods = append(methods, string(base.SetParameter))
+			}
+			methods = append(methods, string(base.Teardown))
+
+			return &base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Public": base.HeaderValue{strings.Join(methods, ", ")},
+				},
+			}, nil
+
+		case base.Describe:
+			if handlers.OnDescribe != nil {
+				return handlers.OnDescribe(req)
+			}
+
+		case base.Announce:
+			if handlers.OnAnnounce != nil {
+				ct, ok := req.Header["Content-Type"]
+				if !ok || len(ct) != 1 {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, ErrServerContentTypeMissing
+				}
+
+				if ct[0] != "application/sdp" {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, fmt.Errorf("unsupported Content-Type '%s'", ct)
+				}
+
+				tracks, err := ReadTracks(req.Content)
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, fmt.Errorf("invalid SDP: %s", err)
+				}
+
+				if len(tracks) == 0 {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, ErrServerNoTracksDefined
+				}
+
+				return handlers.OnAnnounce(req, tracks)
+			}
+
+		case base.Setup:
+			if handlers.OnSetup != nil {
+				th, err := headers.ReadTransport(req.Header["Transport"])
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, fmt.Errorf("transport header: %s", err)
+				}
+
+				return handlers.OnSetup(req, th)
+			}
+
+		case base.Play:
+			if handlers.OnPlay != nil {
+				return handlers.OnPlay(req)
+			}
+
+		case base.Record:
+			if handlers.OnRecord != nil {
+				return handlers.OnRecord(req)
+			}
+
+		case base.GetParameter:
+			if handlers.OnGetParameter != nil {
+				return handlers.OnGetParameter(req)
+			}
+
+			// GET_PARAMETER is used like a ping
+			return &base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Content-Type": base.HeaderValue{"text/parameters"},
+				},
+				Content: []byte("\n"),
+			}, nil
+
+		case base.SetParameter:
+			if handlers.OnSetParameter != nil {
+				return handlers.OnSetParameter(req)
+			}
+
+		case base.Teardown:
+			if handlers.OnTeardown != nil {
+				return handlers.OnTeardown(req)
+			}
+
+			return &base.Response{
+				StatusCode: base.StatusOK,
+			}, ErrServerTeardown
+		}
+
+		return &base.Response{
+			StatusCode: base.StatusBadRequest,
+		}, fmt.Errorf("unhandled method: %v", req.Method)
+	}
+
+	handleRequestOuter := func(req *base.Request) error {
 		sc.mutex.Lock()
 		defer sc.mutex.Unlock()
 
@@ -64,16 +235,20 @@ func (sc *ServerConn) backgroundRead(
 				StatusCode: base.StatusBadRequest,
 				Header:     base.Header{},
 			}.Write(sc.bw)
-			return fmt.Errorf("cseq is missing")
+			return ErrServerMissingCseq
 		}
 
-		res, err := onRequest(req)
+		res, err := handleRequest(req)
 
-		// add cseq to response
 		if res.Header == nil {
 			res.Header = base.Header{}
 		}
+
+		// add cseq
 		res.Header["CSeq"] = cseq
+
+		// add server
+		res.Header["Server"] = base.HeaderValue{"gortsplib"}
 
 		sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.conf.WriteTimeout))
 		res.Write(sc.bw)
@@ -104,10 +279,10 @@ outer:
 
 			switch what.(type) {
 			case *base.InterleavedFrame:
-				onFrame(frame.TrackID, frame.StreamType, frame.Content)
+				handlers.OnFrame(frame.TrackID, frame.StreamType, frame.Content)
 
 			case *base.Request:
-				err := handleRequest(&req)
+				err := handleRequestOuter(&req)
 				if err != nil {
 					errRet = err
 					break outer
@@ -121,7 +296,7 @@ outer:
 				break outer
 			}
 
-			err = handleRequest(&req)
+			err = handleRequestOuter(&req)
 			if err != nil {
 				errRet = err
 				break outer
@@ -134,14 +309,11 @@ outer:
 
 // Read starts reading requests and frames.
 // it returns a channel that is written when the reading stops.
-func (sc *ServerConn) Read(
-	onRequest func(req *base.Request) (*base.Response, error),
-	onFrame func(trackID int, streamType StreamType, content []byte),
-) chan error {
+func (sc *ServerConn) Read(handlers ServerConnReadHandlers) chan error {
 	// channel is buffered, since listening to it is not mandatory
 	done := make(chan error, 1)
 
-	go sc.backgroundRead(onRequest, onFrame, done)
+	go sc.backgroundRead(handlers, done)
 
 	return done
 }
