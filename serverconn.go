@@ -86,6 +86,9 @@ type ServerConnReadHandlers struct {
 	// called after receiving a RECORD request.
 	OnRecord func(req *base.Request) (*base.Response, error)
 
+	// called after receiving a PAUSE request.
+	OnPause func(req *base.Request) (*base.Response, error)
+
 	// called after receiving a GET_PARAMETER request.
 	// if nil, it is generated automatically.
 	OnGetParameter func(req *base.Request) (*base.Response, error)
@@ -128,6 +131,9 @@ func (sc *ServerConn) backgroundRead(handlers ServerConnReadHandlers, done chan 
 			}
 			if handlers.OnRecord != nil {
 				methods = append(methods, string(base.Record))
+			}
+			if handlers.OnPause != nil {
+				methods = append(methods, string(base.Pause))
 			}
 			methods = append(methods, string(base.GetParameter))
 			if handlers.OnSetParameter != nil {
@@ -198,6 +204,11 @@ func (sc *ServerConn) backgroundRead(handlers ServerConnReadHandlers, done chan 
 		case base.Record:
 			if handlers.OnRecord != nil {
 				return handlers.OnRecord(req)
+			}
+
+		case base.Pause:
+			if handlers.OnPause != nil {
+				return handlers.OnPause(req)
 			}
 
 		case base.GetParameter:
