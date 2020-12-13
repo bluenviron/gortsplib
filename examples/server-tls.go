@@ -14,7 +14,7 @@ import (
 )
 
 // This example shows how to
-// 1. create a RTSP server which accept only connections encrypted with TLS (RTSPS)
+// 1. create a RTSP server which accepts only connections encrypted with TLS (RTSPS)
 // 2. allow a single client to publish a stream with TCP
 // 3. allow multiple clients to read that stream with TCP
 

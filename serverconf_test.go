@@ -272,10 +272,13 @@ y++U32uuSFiXDcSLarfIsE992MEJLSAynbF1Rsgsr3gXbGiuToJRyxbIeVy7gwzD
 func TestServerPublishReadTCP(t *testing.T) {
 	for _, ca := range []struct {
 		publisher string
+		reader    string
 		encrypted bool
 	}{
-		{"ffmpeg", false},
-		{"ffmpeg", true},
+		{"ffmpeg", "ffmpeg", false},
+		{"ffmpeg", "ffmpeg", true},
+		{"gstreamer", "ffmpeg", false},
+		{"gstreamer", "ffmpeg", true},
 	} {
 		encryptedStr := func() string {
 			if ca.encrypted {
@@ -284,7 +287,7 @@ func TestServerPublishReadTCP(t *testing.T) {
 			return "plain"
 		}()
 
-		t.Run(ca.publisher+"_"+encryptedStr, func(t *testing.T) {
+		t.Run(ca.publisher+"_"+ca.reader+"_"+encryptedStr, func(t *testing.T) {
 			var proto string
 			var tlsConf *tls.Config
 			if !ca.encrypted {
@@ -302,31 +305,44 @@ func TestServerPublishReadTCP(t *testing.T) {
 			require.NoError(t, err)
 			defer ts.close()
 
-			cnt1, err := newContainer("ffmpeg", "publish", []string{
-				"-re",
-				"-stream_loop", "-1",
-				"-i", "/emptyvideo.ts",
-				"-c", "copy",
-				"-f", "rtsp",
-				"-rtsp_transport", "tcp",
-				proto + "://localhost:8554/teststream",
-			})
-			require.NoError(t, err)
-			defer cnt1.close()
+			switch ca.publisher {
+			case "ffmpeg":
+				cnt1, err := newContainer("ffmpeg", "publish", []string{
+					"-re",
+					"-stream_loop", "-1",
+					"-i", "emptyvideo.ts",
+					"-c", "copy",
+					"-f", "rtsp",
+					"-rtsp_transport", "tcp",
+					proto + "://localhost:8554/teststream",
+				})
+				require.NoError(t, err)
+				defer cnt1.close()
+
+			case "gstreamer":
+				cnt1, err := newContainer("gstreamer", "publish", []string{
+					"filesrc location=emptyvideo.ts ! tsdemux ! queue ! video/x-h264 ! h264parse config-interval=1 ! rtspclientsink " +
+						"location=" + proto + "://127.0.0.1:8554/teststream protocols=tcp tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
+				})
+				require.NoError(t, err)
+				defer cnt1.close()
+			}
 
 			time.Sleep(1 * time.Second)
 
-			cnt2, err := newContainer("ffmpeg", "read", []string{
-				"-rtsp_transport", "tcp",
-				"-i", proto + "://localhost:8554/teststream",
-				"-vframes", "1",
-				"-f", "image2",
-				"-y", "/dev/null",
-			})
-			require.NoError(t, err)
-			defer cnt2.close()
-
-			require.Equal(t, 0, cnt2.wait())
+			switch ca.reader {
+			case "ffmpeg":
+				cnt2, err := newContainer("ffmpeg", "read", []string{
+					"-rtsp_transport", "tcp",
+					"-i", proto + "://localhost:8554/teststream",
+					"-vframes", "1",
+					"-f", "image2",
+					"-y", "/dev/null",
+				})
+				require.NoError(t, err)
+				defer cnt2.close()
+				require.Equal(t, 0, cnt2.wait())
+			}
 		})
 	}
 }

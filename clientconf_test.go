@@ -74,7 +74,7 @@ func TestClientDialRead(t *testing.T) {
 			cnt2, err := newContainer("ffmpeg", "publish", []string{
 				"-re",
 				"-stream_loop", "-1",
-				"-i", "/emptyvideo.ts",
+				"-i", "emptyvideo.ts",
 				"-c", "copy",
 				"-f", "rtsp",
 				"-rtsp_transport", "udp",
@@ -131,7 +131,7 @@ func TestClientDialReadAutomaticProtocol(t *testing.T) {
 	cnt2, err := newContainer("ffmpeg", "publish", []string{
 		"-re",
 		"-stream_loop", "-1",
-		"-i", "/emptyvideo.ts",
+		"-i", "emptyvideo.ts",
 		"-c", "copy",
 		"-f", "rtsp",
 		"-rtsp_transport", "tcp",
@@ -176,7 +176,7 @@ func TestClientDialReadRedirect(t *testing.T) {
 	cnt2, err := newContainer("ffmpeg", "publish", []string{
 		"-re",
 		"-stream_loop", "-1",
-		"-i", "/emptyvideo.ts",
+		"-i", "emptyvideo.ts",
 		"-c", "copy",
 		"-f", "rtsp",
 		"-rtsp_transport", "udp",
@@ -218,7 +218,7 @@ func TestClientDialReadPause(t *testing.T) {
 			cnt2, err := newContainer("ffmpeg", "publish", []string{
 				"-re",
 				"-stream_loop", "-1",
-				"-i", "/emptyvideo.ts",
+				"-i", "emptyvideo.ts",
 				"-c", "copy",
 				"-f", "rtsp",
 				"-rtsp_transport", "udp",
