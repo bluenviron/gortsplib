@@ -217,38 +217,6 @@ func TestServerTeardownResponse(t *testing.T) {
 	require.Equal(t, io.EOF, err)
 }
 
-func TestServerPublishReadTCP(t *testing.T) {
-	ts, err := newTestServ(nil)
-	require.NoError(t, err)
-	defer ts.close()
-
-	cnt1, err := newContainer("ffmpeg", "publish", []string{
-		"-re",
-		"-stream_loop", "-1",
-		"-i", "/emptyvideo.ts",
-		"-c", "copy",
-		"-f", "rtsp",
-		"-rtsp_transport", "tcp",
-		"rtsp://localhost:8554/teststream",
-	})
-	require.NoError(t, err)
-	defer cnt1.close()
-
-	time.Sleep(1 * time.Second)
-
-	cnt2, err := newContainer("ffmpeg", "read", []string{
-		"-rtsp_transport", "tcp",
-		"-i", "rtsp://localhost:8554/teststream",
-		"-vframes", "1",
-		"-f", "image2",
-		"-y", "/dev/null",
-	})
-	require.NoError(t, err)
-	defer cnt2.close()
-
-	require.Equal(t, 0, cnt2.wait())
-}
-
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
 MIIDazCCAlOgAwIBAgIUXw1hEC3LFpTsllv7D3ARJyEq7sIwDQYJKoZIhvcNAQEL
 BQAwRTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoM
@@ -301,38 +269,64 @@ y++U32uuSFiXDcSLarfIsE992MEJLSAynbF1Rsgsr3gXbGiuToJRyxbIeVy7gwzD
 -----END RSA PRIVATE KEY-----
 `)
 
-func TestServerPublishReadTLS(t *testing.T) {
-	cert, err := tls.X509KeyPair(serverCert, serverKey)
-	require.NoError(t, err)
-	tlsConf := &tls.Config{Certificates: []tls.Certificate{cert}}
+func TestServerPublishReadTCP(t *testing.T) {
+	for _, ca := range []struct {
+		publisher string
+		encrypted bool
+	}{
+		{"ffmpeg", false},
+		{"ffmpeg", true},
+	} {
+		encryptedStr := func() string {
+			if ca.encrypted {
+				return "encrypted"
+			}
+			return "plain"
+		}()
 
-	ts, err := newTestServ(tlsConf)
-	require.NoError(t, err)
-	defer ts.close()
+		t.Run(ca.publisher+"_"+encryptedStr, func(t *testing.T) {
+			var proto string
+			var tlsConf *tls.Config
+			if !ca.encrypted {
+				proto = "rtsp"
+				tlsConf = nil
 
-	cnt1, err := newContainer("ffmpeg", "publish", []string{
-		"-re",
-		"-stream_loop", "-1",
-		"-i", "/emptyvideo.ts",
-		"-c", "copy",
-		"-f", "rtsp",
-		"-rtsp_transport", "tcp",
-		"rtsps://localhost:8554/teststream",
-	})
-	require.NoError(t, err)
-	defer cnt1.close()
+			} else {
+				proto = "rtsps"
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+				tlsConf = &tls.Config{Certificates: []tls.Certificate{cert}}
+			}
 
-	time.Sleep(1 * time.Second)
+			ts, err := newTestServ(tlsConf)
+			require.NoError(t, err)
+			defer ts.close()
 
-	cnt2, err := newContainer("ffmpeg", "read", []string{
-		"-rtsp_transport", "tcp",
-		"-i", "rtsps://localhost:8554/teststream",
-		"-vframes", "1",
-		"-f", "image2",
-		"-y", "/dev/null",
-	})
-	require.NoError(t, err)
-	defer cnt2.close()
+			cnt1, err := newContainer("ffmpeg", "publish", []string{
+				"-re",
+				"-stream_loop", "-1",
+				"-i", "/emptyvideo.ts",
+				"-c", "copy",
+				"-f", "rtsp",
+				"-rtsp_transport", "tcp",
+				proto + "://localhost:8554/teststream",
+			})
+			require.NoError(t, err)
+			defer cnt1.close()
 
-	require.Equal(t, 0, cnt2.wait())
+			time.Sleep(1 * time.Second)
+
+			cnt2, err := newContainer("ffmpeg", "read", []string{
+				"-rtsp_transport", "tcp",
+				"-i", proto + "://localhost:8554/teststream",
+				"-vframes", "1",
+				"-f", "image2",
+				"-y", "/dev/null",
+			})
+			require.NoError(t, err)
+			defer cnt2.close()
+
+			require.Equal(t, 0, cnt2.wait())
+		})
+	}
 }
