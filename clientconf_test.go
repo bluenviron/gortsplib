@@ -60,12 +60,38 @@ func (c *container) wait() int {
 }
 
 func TestClientDialRead(t *testing.T) {
-	for _, proto := range []string{
-		"udp",
-		"tcp",
+	for _, ca := range []struct {
+		encrypted bool
+		proto     string
+	}{
+		{false, "udp"},
+		{false, "tcp"},
+		{true, "tcp"},
 	} {
-		t.Run(proto, func(t *testing.T) {
-			cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
+		encryptedStr := func() string {
+			if ca.encrypted {
+				return "encrypted"
+			}
+			return "plain"
+		}()
+
+		t.Run(encryptedStr+"_"+ca.proto, func(t *testing.T) {
+			var scheme string
+			var port string
+			var serverConf string
+			if !ca.encrypted {
+				scheme = "rtsp"
+				port = "8554"
+				serverConf = "{}"
+			} else {
+				scheme = "rtsps"
+				port = "8555"
+				serverConf = "readTimeout: 20s\n" +
+					"protocols: [tcp]\n" +
+					"encryption: yes\n"
+			}
+
+			cnt1, err := newContainer("rtsp-simple-server", "server", []string{serverConf})
 			require.NoError(t, err)
 			defer cnt1.close()
 
@@ -78,7 +104,7 @@ func TestClientDialRead(t *testing.T) {
 				"-c", "copy",
 				"-f", "rtsp",
 				"-rtsp_transport", "udp",
-				"rtsp://localhost:8554/teststream",
+				scheme + "://localhost:" + port + "/teststream",
 			})
 			require.NoError(t, err)
 			defer cnt2.close()
@@ -87,7 +113,7 @@ func TestClientDialRead(t *testing.T) {
 
 			conf := ClientConf{
 				StreamProtocol: func() *StreamProtocol {
-					if proto == "udp" {
+					if ca.proto == "udp" {
 						v := StreamProtocolUDP
 						return &v
 					}
@@ -96,7 +122,7 @@ func TestClientDialRead(t *testing.T) {
 				}(),
 			}
 
-			conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+			conn, err := conf.DialRead(scheme + "://localhost:" + port + "/teststream")
 			require.NoError(t, err)
 
 			var firstFrame int32

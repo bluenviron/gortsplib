@@ -12,6 +12,7 @@ Features:
 * Client
   * Read streams from servers with UDP or TCP
   * Publish streams to servers with UDP or TCP
+  * Encrypt streams with TLS (RTSPS)
   * Query servers about published streams
   * Read only selected tracks of a stream
   * Pause reading or publishing without disconnecting from the server

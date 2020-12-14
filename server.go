@@ -24,10 +24,12 @@ func (s *Server) Accept() (*ServerConn, error) {
 		return nil, err
 	}
 
-	conn := nconn
-	if s.conf.TLSConfig != nil {
-		conn = tls.Server(conn, s.conf.TLSConfig)
-	}
+	conn := func() net.Conn {
+		if s.conf.TLSConfig != nil {
+			return tls.Server(nconn, s.conf.TLSConfig)
+		}
+		return nconn
+	}()
 
 	return &ServerConn{
 		s:     s,

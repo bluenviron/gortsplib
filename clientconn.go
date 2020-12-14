@@ -318,7 +318,7 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 				return nil, nil, err
 			}
 
-			nc, err := c.conf.Dial(u.Host)
+			nc, err := c.conf.Dial(u.Scheme, u.Host)
 			if err != nil {
 				return nil, nil, err
 			}

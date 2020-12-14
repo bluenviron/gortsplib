@@ -271,18 +271,18 @@ y++U32uuSFiXDcSLarfIsE992MEJLSAynbF1Rsgsr3gXbGiuToJRyxbIeVy7gwzD
 
 func TestServerPublishReadTCP(t *testing.T) {
 	for _, ca := range []struct {
+		encrypted bool
 		publisher string
 		reader    string
-		encrypted bool
 	}{
-		{"ffmpeg", "ffmpeg", false},
-		{"ffmpeg", "ffmpeg", true},
-		{"ffmpeg", "gstreamer", false},
-		{"ffmpeg", "gstreamer", true},
-		{"gstreamer", "ffmpeg", false},
-		{"gstreamer", "ffmpeg", true},
-		{"gstreamer", "gstreamer", false},
-		{"gstreamer", "gstreamer", true},
+		{false, "ffmpeg", "ffmpeg"},
+		{false, "ffmpeg", "gstreamer"},
+		{false, "gstreamer", "ffmpeg"},
+		{false, "gstreamer", "gstreamer"},
+		{true, "ffmpeg", "ffmpeg"},
+		{true, "ffmpeg", "gstreamer"},
+		{true, "gstreamer", "ffmpeg"},
+		{true, "gstreamer", "gstreamer"},
 	} {
 		encryptedStr := func() string {
 			if ca.encrypted {
@@ -291,7 +291,7 @@ func TestServerPublishReadTCP(t *testing.T) {
 			return "plain"
 		}()
 
-		t.Run(ca.publisher+"_"+ca.reader+"_"+encryptedStr, func(t *testing.T) {
+		t.Run(encryptedStr+"_"+ca.publisher+"_"+ca.reader, func(t *testing.T) {
 			var proto string
 			var tlsConf *tls.Config
 			if !ca.encrypted {
