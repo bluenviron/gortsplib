@@ -65,6 +65,7 @@ func (s clientConnState) String() string {
 type ClientConn struct {
 	conf                  ClientConf
 	nconn                 net.Conn
+	isTLS                 bool
 	br                    *bufio.Reader
 	bw                    *bufio.Writer
 	session               string
@@ -386,6 +387,12 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	var rtpListener *clientConnUDPListener
 	var rtcpListener *clientConnUDPListener
 
+	// always use TCP if encrypted
+	if c.isTLS {
+		v := StreamProtocolTCP
+		c.streamProtocol = &v
+	}
+
 	proto := func() StreamProtocol {
 		// protocol set by previous Setup()
 		if c.streamProtocol != nil {
@@ -397,7 +404,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			return *c.conf.StreamProtocol
 		}
 
-		// try udp
+		// try UDP
 		return StreamProtocolUDP
 	}()
 

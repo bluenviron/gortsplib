@@ -103,6 +103,11 @@ func (c ClientConf) Dial(scheme string, host string) (*ClientConn, error) {
 		return nil, fmt.Errorf("unsupported scheme '%s'", scheme)
 	}
 
+	v := StreamProtocolUDP
+	if scheme == "rtsps" && c.StreamProtocol == &v {
+		return nil, fmt.Errorf("RTSPS can't be used with UDP")
+	}
+
 	if !strings.Contains(host, ":") {
 		host += ":554"
 	}
@@ -122,6 +127,7 @@ func (c ClientConf) Dial(scheme string, host string) (*ClientConn, error) {
 	return &ClientConn{
 		conf:              c,
 		nconn:             nconn,
+		isTLS:             (scheme == "rtsps"),
 		br:                bufio.NewReaderSize(conn, clientReadBufferSize),
 		bw:                bufio.NewWriterSize(conn, clientWriteBufferSize),
 		udpRtpListeners:   make(map[int]*clientConnUDPListener),
