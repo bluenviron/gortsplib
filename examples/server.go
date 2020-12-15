@@ -97,8 +97,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 
 		readers[conn] = struct{}{}
 
-		conn.EnableReadFrames(true)
-		conn.EnableReadTimeout(false)
+		conn.EnableFrames(true)
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
@@ -119,7 +118,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 			}, fmt.Errorf("someone is already publishing")
 		}
 
-		conn.EnableReadFrames(true)
+		conn.EnableFrames(true)
 		conn.EnableReadTimeout(true)
 
 		return &base.Response{
