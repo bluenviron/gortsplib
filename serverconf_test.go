@@ -186,36 +186,6 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	}
 }
 
-func TestServerTeardownResponse(t *testing.T) {
-	ts, err := newTestServ(nil)
-	require.NoError(t, err)
-	defer ts.close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	req := base.Request{
-		Method: base.Teardown,
-		URL:    base.MustParseURL("rtsp://localhost:8554/"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-		},
-	}
-	err = req.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	var res base.Response
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	buf := make([]byte, 2048)
-	_, err = bconn.Read(buf)
-	require.Equal(t, io.EOF, err)
-}
-
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
 MIIDazCCAlOgAwIBAgIUXw1hEC3LFpTsllv7D3ARJyEq7sIwDQYJKoZIhvcNAQEL
 BQAwRTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoM
@@ -357,4 +327,101 @@ func TestServerPublishReadTCP(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServerTeardownResponse(t *testing.T) {
+	ts, err := newTestServ(nil)
+	require.NoError(t, err)
+	defer ts.close()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	err = base.Request{
+		Method: base.Teardown,
+		URL:    base.MustParseURL("rtsp://localhost:8554/"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	buf := make([]byte, 2048)
+	_, err = bconn.Read(buf)
+	require.Equal(t, io.EOF, err)
+}
+
+func TestServerResponseBeforeFrames(t *testing.T) {
+	ts, err := newTestServ(nil)
+	require.NoError(t, err)
+	defer ts.close()
+
+	cnt1, err := newContainer("ffmpeg", "publish", []string{
+		"-re",
+		"-stream_loop", "-1",
+		"-i", "emptyvideo.ts",
+		"-c", "copy",
+		"-f", "rtsp",
+		"-rtsp_transport", "tcp",
+		"rtsp://localhost:8554/teststream",
+	})
+	require.NoError(t, err)
+	defer cnt1.close()
+
+	time.Sleep(1 * time.Second)
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	err = base.Request{
+		Method: base.Setup,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+			"Transport": headers.Transport{
+				Protocol: StreamProtocolTCP,
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+			}.Write(),
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.Play,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"2"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	var fr base.InterleavedFrame
+	fr.Content = make([]byte, 2048)
+	err = fr.Read(bconn.Reader)
+	require.NoError(t, err)
 }
