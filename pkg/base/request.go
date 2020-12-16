@@ -94,13 +94,12 @@ func (req *Request) Read(rb *bufio.Reader) error {
 		return err
 	}
 
-	req.Header = make(Header)
 	err = req.Header.read(rb)
 	if err != nil {
 		return err
 	}
 
-	req.Content, err = contentRead(rb, req.Header)
+	err = (*content)(&req.Content).read(rb, req.Header)
 	if err != nil {
 		return err
 	}
@@ -125,7 +124,7 @@ func (req Request) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	err = contentWrite(bw, req.Content)
+	err = content(req.Content).write(bw)
 	if err != nil {
 		return err
 	}

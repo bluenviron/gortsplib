@@ -172,13 +172,12 @@ func (res *Response) Read(rb *bufio.Reader) error {
 		return err
 	}
 
-	res.Header = make(Header)
 	err = res.Header.read(rb)
 	if err != nil {
 		return err
 	}
 
-	res.Content, err = contentRead(rb, res.Header)
+	err = (*content)(&res.Content).read(rb, res.Header)
 	if err != nil {
 		return err
 	}
@@ -208,7 +207,7 @@ func (res Response) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	err = contentWrite(bw, res.Content)
+	err = content(res.Content).write(bw)
 	if err != nil {
 		return err
 	}

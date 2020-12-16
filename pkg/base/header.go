@@ -34,7 +34,9 @@ type HeaderValue []string
 // Header is a RTSP reader, present in both Requests and Responses.
 type Header map[string]HeaderValue
 
-func (h Header) read(rb *bufio.Reader) error {
+func (h *Header) read(rb *bufio.Reader) error {
+	*h = make(Header)
+
 	for {
 		byt, err := rb.ReadByte()
 		if err != nil {
@@ -50,7 +52,7 @@ func (h Header) read(rb *bufio.Reader) error {
 			break
 		}
 
-		if len(h) >= headerMaxEntryCount {
+		if len(*h) >= headerMaxEntryCount {
 			return fmt.Errorf("headers count exceeds %d", headerMaxEntryCount)
 		}
 
@@ -91,7 +93,7 @@ func (h Header) read(rb *bufio.Reader) error {
 			return err
 		}
 
-		h[key] = append(h[key], val)
+		(*h)[key] = append((*h)[key], val)
 	}
 
 	return nil

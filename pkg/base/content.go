@@ -7,36 +7,39 @@ import (
 	"strconv"
 )
 
-func contentRead(rb *bufio.Reader, header Header) ([]byte, error) {
+type content []byte
+
+func (c *content) read(rb *bufio.Reader, header Header) error {
 	cls, ok := header["Content-Length"]
 	if !ok || len(cls) != 1 {
-		return nil, nil
+		*c = nil
+		return nil
 	}
 
 	cl, err := strconv.ParseInt(cls[0], 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("invalid Content-Length")
+		return fmt.Errorf("invalid Content-Length")
 	}
 
 	if cl > rtspMaxContentLength {
-		return nil, fmt.Errorf("Content-Length exceeds %d", rtspMaxContentLength)
+		return fmt.Errorf("Content-Length exceeds %d", rtspMaxContentLength)
 	}
 
-	ret := make([]byte, cl)
-	n, err := io.ReadFull(rb, ret)
-	if err != nil && n != len(ret) {
-		return nil, err
+	*c = make([]byte, cl)
+	n, err := io.ReadFull(rb, *c)
+	if err != nil && n != len(*c) {
+		return err
 	}
 
-	return ret, nil
+	return nil
 }
 
-func contentWrite(bw *bufio.Writer, content []byte) error {
-	if len(content) == 0 {
+func (c content) write(bw *bufio.Writer) error {
+	if len(c) == 0 {
 		return nil
 	}
 
-	_, err := bw.Write(content)
+	_, err := bw.Write(c)
 	if err != nil {
 		return err
 	}
