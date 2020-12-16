@@ -1,3 +1,3 @@
 #!/bin/sh -e
 
-exec gst-launch-1.0 $@ 2>&1
+exec gst-launch-1.0 $@ 1>&2
