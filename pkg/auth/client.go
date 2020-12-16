@@ -99,14 +99,14 @@ func (ac *Client) GenerateHeader(method base.Method, ur *base.URL) base.HeaderVa
 		response := md5Hex(md5Hex(ac.user+":"+ac.realm+":"+ac.pass) + ":" +
 			ac.nonce + ":" + md5Hex(string(method)+":"+urStr))
 
-		return (&headers.Auth{
+		return headers.Auth{
 			Method:   headers.AuthDigest,
 			Username: &ac.user,
 			Realm:    &ac.realm,
 			Nonce:    &ac.nonce,
 			URI:      &urStr,
 			Response: &response,
-		}).Write()
+		}.Write()
 	}
 
 	return nil

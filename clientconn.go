@@ -408,11 +408,11 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		return StreamProtocolUDP
 	}()
 
-	transport := &headers.Transport{
+	th := headers.Transport{
 		Protocol: proto,
 		Delivery: func() *base.StreamDelivery {
-			ret := base.StreamDeliveryUnicast
-			return &ret
+			v := base.StreamDeliveryUnicast
+			return &v
 		}(),
 		Mode: &mode,
 	}
@@ -469,10 +469,10 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			return nil, err
 		}
 
-		transport.ClientPorts = &[2]int{rtpPort, rtcpPort}
+		th.ClientPorts = &[2]int{rtpPort, rtcpPort}
 
 	} else {
-		transport.InterleavedIds = &[2]int{(track.ID * 2), (track.ID * 2) + 1}
+		th.InterleavedIds = &[2]int{(track.ID * 2), (track.ID * 2) + 1}
 	}
 
 	trackURL, err := track.URL()
@@ -488,7 +488,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		Method: base.Setup,
 		URL:    trackURL,
 		Header: base.Header{
-			"Transport": transport.Write(),
+			"Transport": th.Write(),
 		},
 	})
 	if err != nil {
@@ -519,7 +519,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		return res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	th, err := headers.ReadTransport(res.Header["Transport"])
+	thRes, err := headers.ReadTransport(res.Header["Transport"])
 	if err != nil {
 		if proto == StreamProtocolUDP {
 			rtpListener.close()
@@ -529,18 +529,18 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	}
 
 	if proto == StreamProtocolUDP {
-		if th.ServerPorts == nil {
+		if thRes.ServerPorts == nil {
 			rtpListener.close()
 			rtcpListener.close()
 			return nil, fmt.Errorf("server ports not provided")
 		}
 
 	} else {
-		if th.InterleavedIds == nil ||
-			(*th.InterleavedIds)[0] != (*transport.InterleavedIds)[0] ||
-			(*th.InterleavedIds)[1] != (*transport.InterleavedIds)[1] {
+		if thRes.InterleavedIds == nil ||
+			(*thRes.InterleavedIds)[0] != (*th.InterleavedIds)[0] ||
+			(*thRes.InterleavedIds)[1] != (*th.InterleavedIds)[1] {
 			return nil, fmt.Errorf("transport header does not have interleaved ids %v (%s)",
-				*transport.InterleavedIds, res.Header["Transport"])
+				*th.InterleavedIds, res.Header["Transport"])
 		}
 	}
 
@@ -564,14 +564,14 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	if proto == StreamProtocolUDP {
 		rtpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
-		rtpListener.remotePort = (*th.ServerPorts)[0]
+		rtpListener.remotePort = (*thRes.ServerPorts)[0]
 		rtpListener.trackID = track.ID
 		rtpListener.streamType = StreamTypeRtp
 		c.udpRtpListeners[track.ID] = rtpListener
 
 		rtcpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
-		rtcpListener.remotePort = (*th.ServerPorts)[1]
+		rtcpListener.remotePort = (*thRes.ServerPorts)[1]
 		rtcpListener.trackID = track.ID
 		rtcpListener.streamType = StreamTypeRtcp
 		c.udpRtcpListeners[track.ID] = rtcpListener

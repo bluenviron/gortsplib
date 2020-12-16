@@ -63,7 +63,7 @@ func ReadSession(v base.HeaderValue) (*Session, error) {
 }
 
 // Write encodes a Session header
-func (hs *Session) Write() base.HeaderValue {
+func (hs Session) Write() base.HeaderValue {
 	val := hs.Session
 
 	if hs.Timeout != nil {

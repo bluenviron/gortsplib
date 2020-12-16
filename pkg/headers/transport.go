@@ -201,7 +201,7 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 }
 
 // Write encodes a Transport header
-func (ht *Transport) Write() base.HeaderValue {
+func (ht Transport) Write() base.HeaderValue {
 	var vals []string
 
 	if ht.Protocol == base.StreamProtocolUDP {

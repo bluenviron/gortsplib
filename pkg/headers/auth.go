@@ -168,7 +168,7 @@ func ReadAuth(v base.HeaderValue) (*Auth, error) {
 }
 
 // Write encodes an Authenticate or a WWW-Authenticate header.
-func (ha *Auth) Write() base.HeaderValue {
+func (ha Auth) Write() base.HeaderValue {
 	ret := ""
 
 	switch ha.Method {

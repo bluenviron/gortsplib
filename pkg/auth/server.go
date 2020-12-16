@@ -53,11 +53,11 @@ func (as *Server) GenerateHeader() base.HeaderValue {
 			}).Write()...)
 
 		case headers.AuthDigest:
-			ret = append(ret, (&headers.Auth{
+			ret = append(ret, headers.Auth{
 				Method: headers.AuthDigest,
 				Realm:  &as.realm,
 				Nonce:  &as.nonce,
-			}).Write()...)
+			}.Write()...)
 		}
 	}
 	return ret
