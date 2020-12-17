@@ -162,19 +162,22 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 		req.Header = make(base.Header)
 	}
 
-	// insert session
+	// add session
 	if c.session != "" {
 		req.Header["Session"] = base.HeaderValue{c.session}
 	}
 
-	// insert auth
+	// add auth
 	if c.auth != nil {
 		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, req.URL)
 	}
 
-	// insert cseq
+	// add cseq
 	c.cseq++
 	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
+
+	// add user agent
+	req.Header["User-Agent"] = base.HeaderValue{"gortsplib"}
 
 	if c.conf.OnRequest != nil {
 		c.conf.OnRequest(req)
