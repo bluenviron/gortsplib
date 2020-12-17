@@ -294,11 +294,13 @@ func TestServerPublishReadTCP(t *testing.T) {
 
 			case "gstreamer":
 				cnt1, err := newContainer("gstreamer", "publish", []string{
-					"filesrc location=emptyvideo.ts ! tsdemux ! queue ! video/x-h264 ! h264parse config-interval=1 ! rtspclientsink " +
+					"filesrc location=emptyvideo.ts ! tsdemux ! video/x-h264 ! rtspclientsink " +
 						"location=" + proto + "://127.0.0.1:8554/teststream protocols=tcp tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
 				})
 				require.NoError(t, err)
 				defer cnt1.close()
+
+				time.Sleep(1 * time.Second)
 			}
 
 			time.Sleep(1 * time.Second)

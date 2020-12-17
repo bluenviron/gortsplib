@@ -195,6 +195,15 @@ func (sc *ServerConn) backgroundRead(handlers ServerConnReadHandlers, done chan 
 					}, fmt.Errorf("transport header: %s", err)
 				}
 
+				// workaround to prevent a bug in rtspclientsink
+				// that makes impossible for the client to receive the response
+				// and send frames.
+				// this was causing problems during unit tests.
+				if ua, ok := req.Header["User-Agent"]; ok && len(ua) == 1 &&
+					strings.HasPrefix(ua[0], "GStreamer") {
+					time.Sleep(1 * time.Second)
+				}
+
 				return handlers.OnSetup(req, th)
 			}
 
