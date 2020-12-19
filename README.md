@@ -42,7 +42,7 @@ Features:
 
 ## API Documentation
 
-https://pkg.go.dev/github.com/aler9/gortsplib
+https://pkg.go.dev/github.com/aler9/gortsplib#pkg-index
 
 ## Links
 
