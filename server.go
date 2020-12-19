@@ -32,9 +32,10 @@ func (s *Server) Accept() (*ServerConn, error) {
 	}()
 
 	return &ServerConn{
-		s:     s,
-		nconn: nconn,
-		br:    bufio.NewReaderSize(conn, serverReadBufferSize),
-		bw:    bufio.NewWriterSize(conn, serverWriteBufferSize),
+		s:         s,
+		nconn:     nconn,
+		br:        bufio.NewReaderSize(conn, serverReadBufferSize),
+		bw:        bufio.NewWriterSize(conn, serverWriteBufferSize),
+		terminate: make(chan struct{}),
 	}, nil
 }

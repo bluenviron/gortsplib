@@ -38,11 +38,16 @@ type ServerConn struct {
 	nextFramesEnabled  bool
 	framesEnabled      bool
 	readTimeoutEnabled bool
+
+	// in
+	terminate chan struct{}
 }
 
 // Close closes all the connection resources.
 func (sc *ServerConn) Close() error {
-	return sc.nconn.Close()
+	err := sc.nconn.Close()
+	close(sc.terminate)
+	return err
 }
 
 // NetConn returns the underlying net.Conn.
@@ -201,7 +206,12 @@ func (sc *ServerConn) backgroundRead(handlers ServerConnReadHandlers, done chan 
 				// this was causing problems during unit tests.
 				if ua, ok := req.Header["User-Agent"]; ok && len(ua) == 1 &&
 					strings.HasPrefix(ua[0], "GStreamer") {
-					time.Sleep(1 * time.Second)
+					t := time.NewTimer(1 * time.Second)
+					defer t.Stop()
+					select {
+					case <-t.C:
+					case <-sc.terminate:
+					}
 				}
 
 				return handlers.OnSetup(req, th)
