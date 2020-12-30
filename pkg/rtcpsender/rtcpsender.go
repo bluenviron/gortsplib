@@ -77,7 +77,7 @@ func (rs *RtcpSender) Report(ts time.Time) []byte {
 			fractionalPart := uint32((s - float64(integerPart)) * 0xFFFFFFFF)
 			return uint64(integerPart)<<32 | uint64(fractionalPart)
 		}(),
-		RTPTime:     rs.lastRtpTimeRtp + uint32((ts.Sub(rs.lastRtpTimeTime)).Seconds()*float64(rs.clockRate)),
+		RTPTime:     rs.lastRtpTimeRtp + uint32((ts.Sub(rs.lastRtpTimeTime)).Seconds()*rs.clockRate),
 		PacketCount: rs.packetCount,
 		OctetCount:  rs.octetCount,
 	}

@@ -1,5 +1,6 @@
 
 BASE_IMAGE = amd64/golang:1.15-alpine3.12
+GO_LINT_IMAGE = golangci/golangci-lint:v1.33.0
 
 .PHONY: $(shell ls)
 
@@ -62,5 +63,5 @@ test-nodocker: test-examples test-pkg test-root
 
 lint:
 	docker run --rm -v $(PWD):/app -w /app \
-	golangci/golangci-lint:v1.33.0 \
+	$(GO_LINT_IMAGE) \
 	golangci-lint run -v
