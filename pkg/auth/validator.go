@@ -11,8 +11,8 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
-// Server allows a server to authenticate a client.
-type Server struct {
+// Validator allows a server to validate some credentials sent by a client.
+type Validator struct {
 	user    string
 	pass    string
 	methods []headers.AuthMethod
@@ -20,9 +20,9 @@ type Server struct {
 	nonce   string
 }
 
-// NewServer allocates a Server.
+// NewValidator allocates a Validator.
 // If methods is nil, the Basic and Digest methods are used.
-func NewServer(user string, pass string, methods []headers.AuthMethod) *Server {
+func NewValidator(user string, pass string, methods []headers.AuthMethod) *Validator {
 	if methods == nil {
 		methods = []headers.AuthMethod{headers.AuthBasic, headers.AuthDigest}
 	}
@@ -31,7 +31,7 @@ func NewServer(user string, pass string, methods []headers.AuthMethod) *Server {
 	rand.Read(nonceByts)
 	nonce := hex.EncodeToString(nonceByts)
 
-	return &Server{
+	return &Validator{
 		user:    user,
 		pass:    pass,
 		methods: methods,
@@ -42,21 +42,21 @@ func NewServer(user string, pass string, methods []headers.AuthMethod) *Server {
 
 // GenerateHeader generates the WWW-Authenticate header needed by a client to
 // authenticate.
-func (as *Server) GenerateHeader() base.HeaderValue {
+func (va *Validator) GenerateHeader() base.HeaderValue {
 	var ret base.HeaderValue
-	for _, m := range as.methods {
+	for _, m := range va.methods {
 		switch m {
 		case headers.AuthBasic:
 			ret = append(ret, (&headers.Auth{
 				Method: headers.AuthBasic,
-				Realm:  &as.realm,
+				Realm:  &va.realm,
 			}).Write()...)
 
 		case headers.AuthDigest:
 			ret = append(ret, headers.Auth{
 				Method: headers.AuthDigest,
-				Realm:  &as.realm,
-				Nonce:  &as.nonce,
+				Realm:  &va.realm,
+				Nonce:  &va.nonce,
 			}.Write()...)
 		}
 	}
@@ -65,7 +65,7 @@ func (as *Server) GenerateHeader() base.HeaderValue {
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header.
-func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *base.URL) error {
+func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *base.URL) error {
 	if len(v) == 0 {
 		return fmt.Errorf("authorization header not provided")
 	}
@@ -78,7 +78,7 @@ func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *bas
 	if strings.HasPrefix(v0, "Basic ") {
 		inResponse := v0[len("Basic "):]
 
-		response := base64.StdEncoding.EncodeToString([]byte(as.user + ":" + as.pass))
+		response := base64.StdEncoding.EncodeToString([]byte(va.user + ":" + va.pass))
 
 		if inResponse != response {
 			return fmt.Errorf("wrong response")
@@ -110,15 +110,15 @@ func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *bas
 			return fmt.Errorf("response not provided")
 		}
 
-		if *auth.Nonce != as.nonce {
+		if *auth.Nonce != va.nonce {
 			return fmt.Errorf("wrong nonce")
 		}
 
-		if *auth.Realm != as.realm {
+		if *auth.Realm != va.realm {
 			return fmt.Errorf("wrong realm")
 		}
 
-		if *auth.Username != as.user {
+		if *auth.Username != va.user {
 			return fmt.Errorf("wrong username")
 		}
 
@@ -135,8 +135,8 @@ func (as *Server) ValidateHeader(v base.HeaderValue, method base.Method, ur *bas
 			}
 		}
 
-		response := md5Hex(md5Hex(as.user+":"+as.realm+":"+as.pass) +
-			":" + as.nonce + ":" + md5Hex(string(method)+":"+uri))
+		response := md5Hex(md5Hex(va.user+":"+va.realm+":"+va.pass) +
+			":" + va.nonce + ":" + md5Hex(string(method)+":"+uri))
 
 		if *auth.Response != response {
 			return fmt.Errorf("wrong response")

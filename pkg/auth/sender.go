@@ -10,8 +10,8 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
-// Client is an object that allows a client to authenticate against a server.
-type Client struct {
+// Sender is an object that allows a client to send credentials to a server.
+type Sender struct {
 	user   string
 	pass   string
 	method headers.AuthMethod
@@ -19,9 +19,9 @@ type Client struct {
 	nonce  string
 }
 
-// NewClient allocates a Client with the WWW-Authenticate header provided by
+// NewSender allocates a Sender with the WWW-Authenticate header provided by
 // the server and a set of credentials.
-func NewClient(v base.HeaderValue, userinfo *url.Userinfo) (*Client, error) {
+func NewSender(v base.HeaderValue, userinfo *url.Userinfo) (*Sender, error) {
 	pass, _ := userinfo.Password()
 	user := userinfo.Username()
 
@@ -47,7 +47,7 @@ func NewClient(v base.HeaderValue, userinfo *url.Userinfo) (*Client, error) {
 			return nil, fmt.Errorf("nonce not provided")
 		}
 
-		return &Client{
+		return &Sender{
 			user:   user,
 			pass:   pass,
 			method: headers.AuthDigest,
@@ -73,7 +73,7 @@ func NewClient(v base.HeaderValue, userinfo *url.Userinfo) (*Client, error) {
 			return nil, fmt.Errorf("realm not provided")
 		}
 
-		return &Client{
+		return &Sender{
 			user:   user,
 			pass:   pass,
 			method: headers.AuthBasic,
@@ -86,24 +86,24 @@ func NewClient(v base.HeaderValue, userinfo *url.Userinfo) (*Client, error) {
 
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
 // the given method and url.
-func (ac *Client) GenerateHeader(method base.Method, ur *base.URL) base.HeaderValue {
+func (se *Sender) GenerateHeader(method base.Method, ur *base.URL) base.HeaderValue {
 	urStr := ur.CloneWithoutCredentials().String()
 
-	switch ac.method {
+	switch se.method {
 	case headers.AuthBasic:
-		response := base64.StdEncoding.EncodeToString([]byte(ac.user + ":" + ac.pass))
+		response := base64.StdEncoding.EncodeToString([]byte(se.user + ":" + se.pass))
 
 		return base.HeaderValue{"Basic " + response}
 
 	case headers.AuthDigest:
-		response := md5Hex(md5Hex(ac.user+":"+ac.realm+":"+ac.pass) + ":" +
-			ac.nonce + ":" + md5Hex(string(method)+":"+urStr))
+		response := md5Hex(md5Hex(se.user+":"+se.realm+":"+se.pass) + ":" +
+			se.nonce + ":" + md5Hex(string(method)+":"+urStr))
 
 		return headers.Auth{
 			Method:   headers.AuthDigest,
-			Username: &ac.user,
-			Realm:    &ac.realm,
-			Nonce:    &ac.nonce,
+			Username: &se.user,
+			Realm:    &se.realm,
+			Nonce:    &se.nonce,
 			URI:      &urStr,
 			Response: &response,
 		}.Write()

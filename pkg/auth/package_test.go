@@ -31,15 +31,15 @@ var casesAuth = []struct {
 func TestAuthMethods(t *testing.T) {
 	for _, c := range casesAuth {
 		t.Run(c.name, func(t *testing.T) {
-			authServer := NewServer("testuser", "testpass", c.methods)
-			wwwAuthenticate := authServer.GenerateHeader()
+			va := NewValidator("testuser", "testpass", c.methods)
+			wwwAuthenticate := va.GenerateHeader()
 
-			ac, err := NewClient(wwwAuthenticate, url.UserPassword("testuser", "testpass"))
+			se, err := NewSender(wwwAuthenticate, url.UserPassword("testuser", "testpass"))
 			require.NoError(t, err)
-			authorization := ac.GenerateHeader(base.Announce,
+			authorization := se.GenerateHeader(base.Announce,
 				base.MustParseURL("rtsp://myhost/mypath"))
 
-			err = authServer.ValidateHeader(authorization, base.Announce,
+			err = va.ValidateHeader(authorization, base.Announce,
 				base.MustParseURL("rtsp://myhost/mypath"))
 			require.NoError(t, err)
 		})
@@ -60,16 +60,16 @@ func TestAuthVLC(t *testing.T) {
 			"rtsp://myhost/mypath/test?testing/trackID=0",
 		},
 	} {
-		authServer := NewServer("testuser", "testpass",
+		se := NewValidator("testuser", "testpass",
 			[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
-		wwwAuthenticate := authServer.GenerateHeader()
+		wwwAuthenticate := se.GenerateHeader()
 
-		ac, err := NewClient(wwwAuthenticate, url.UserPassword("testuser", "testpass"))
+		va, err := NewSender(wwwAuthenticate, url.UserPassword("testuser", "testpass"))
 		require.NoError(t, err)
-		authorization := ac.GenerateHeader(base.Announce,
+		authorization := va.GenerateHeader(base.Announce,
 			base.MustParseURL(ca.clientURL))
 
-		err = authServer.ValidateHeader(authorization, base.Announce,
+		err = se.ValidateHeader(authorization, base.Announce,
 			base.MustParseURL(ca.serverURL))
 		require.NoError(t, err)
 	}

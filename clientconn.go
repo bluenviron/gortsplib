@@ -70,7 +70,7 @@ type ClientConn struct {
 	bw                    *bufio.Writer
 	session               string
 	cseq                  int
-	auth                  *auth.Client
+	sender                *auth.Sender
 	state                 clientConnState
 	streamURL             *base.URL
 	streamProtocol        *StreamProtocol
@@ -168,8 +168,8 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	}
 
 	// add auth
-	if c.auth != nil {
-		req.Header["Authorization"] = c.auth.GenerateHeader(req.Method, req.URL)
+	if c.sender != nil {
+		req.Header["Authorization"] = c.sender.GenerateHeader(req.Method, req.URL)
 	}
 
 	// add cseq
@@ -227,12 +227,12 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	}
 
 	// setup authentication
-	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.auth == nil {
-		auth, err := auth.NewClient(res.Header["WWW-Authenticate"], req.URL.User)
+	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.sender == nil {
+		sender, err := auth.NewSender(res.Header["WWW-Authenticate"], req.URL.User)
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup authentication: %s", err)
 		}
-		c.auth = auth
+		c.sender = sender
 
 		// send request again
 		return c.Do(req)
