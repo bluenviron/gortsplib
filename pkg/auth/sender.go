@@ -3,7 +3,6 @@ package auth
 import (
 	"encoding/base64"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/aler9/gortsplib/pkg/base"
@@ -21,10 +20,7 @@ type Sender struct {
 
 // NewSender allocates a Sender with the WWW-Authenticate header provided by
 // the server and a set of credentials.
-func NewSender(v base.HeaderValue, userinfo *url.Userinfo) (*Sender, error) {
-	pass, _ := userinfo.Password()
-	user := userinfo.Username()
-
+func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 	// prefer digest
 	if headerAuthDigest := func() string {
 		for _, vi := range v {

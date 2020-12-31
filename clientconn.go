@@ -228,7 +228,10 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 
 	// setup authentication
 	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.sender == nil {
-		sender, err := auth.NewSender(res.Header["WWW-Authenticate"], req.URL.User)
+		pass, _ := req.URL.User.Password()
+		user := req.URL.User.Username()
+
+		sender, err := auth.NewSender(res.Header["WWW-Authenticate"], user, pass)
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup authentication: %s", err)
 		}

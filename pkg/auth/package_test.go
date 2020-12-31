@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,7 +33,7 @@ func TestAuthMethods(t *testing.T) {
 			va := NewValidator("testuser", "testpass", c.methods)
 			wwwAuthenticate := va.GenerateHeader()
 
-			se, err := NewSender(wwwAuthenticate, url.UserPassword("testuser", "testpass"))
+			se, err := NewSender(wwwAuthenticate, "testuser", "testpass")
 			require.NoError(t, err)
 			authorization := se.GenerateHeader(base.Announce,
 				base.MustParseURL("rtsp://myhost/mypath"))
@@ -62,9 +61,8 @@ func TestAuthVLC(t *testing.T) {
 	} {
 		se := NewValidator("testuser", "testpass",
 			[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
-		wwwAuthenticate := se.GenerateHeader()
 
-		va, err := NewSender(wwwAuthenticate, url.UserPassword("testuser", "testpass"))
+		va, err := NewSender(se.GenerateHeader(), "testuser", "testpass")
 		require.NoError(t, err)
 		authorization := va.GenerateHeader(base.Announce,
 			base.MustParseURL(ca.clientURL))
