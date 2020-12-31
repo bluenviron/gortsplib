@@ -9,7 +9,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
-// Sender is an object that allows a client to send credentials to a server.
+// Sender allows to generate credentials for a Validator.
 type Sender struct {
 	user   string
 	pass   string
@@ -19,7 +19,7 @@ type Sender struct {
 }
 
 // NewSender allocates a Sender with the WWW-Authenticate header provided by
-// the server and a set of credentials.
+// a Validator and a set of credentials.
 func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 	// prefer digest
 	if headerAuthDigest := func() string {
