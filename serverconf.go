@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 	"time"
 )
@@ -17,24 +18,32 @@ func Serve(address string) (*Server, error) {
 // ServerConf allows to configure a Server.
 // All fields are optional.
 type ServerConf struct {
-	// a TLS configuration to accept TLS (RTSPS) connections.
+	// A TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
 
-	// timeout of read operations.
+	// A ServerUDPListener to send and receive UDP/RTP packets.
+	// If UDPRTPListener and UDPRTCPListener are not null, the server can accept and send UDP streams.
+	UDPRTPListener *ServerUDPListener
+
+	// A ServerUDPListener to send and receive UDP/RTCP packets.
+	// If UDPRTPListener and UDPRTCPListener are not null, the server can accept and send UDP streams.
+	UDPRTCPListener *ServerUDPListener
+
+	// Timeout of read operations.
 	// It defaults to 10 seconds
 	ReadTimeout time.Duration
 
-	// timeout of write operations.
+	// Timeout of write operations.
 	// It defaults to 10 seconds
 	WriteTimeout time.Duration
 
-	// read buffer count.
+	// Read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
 	// It defaults to 1
 	ReadBufferCount int
 
-	// function used to initialize the TCP listener.
+	// Function used to initialize the TCP listener.
 	// It defaults to net.Listen
 	Listen func(network string, address string) (net.Listener, error)
 }
@@ -52,6 +61,15 @@ func (c ServerConf) Serve(address string) (*Server, error) {
 	}
 	if c.Listen == nil {
 		c.Listen = net.Listen
+	}
+
+	if c.TLSConfig != nil && c.UDPRTPListener != nil {
+		return nil, fmt.Errorf("TLS can't be used together with UDP")
+	}
+
+	if (c.UDPRTPListener != nil && c.UDPRTCPListener == nil) ||
+		(c.UDPRTPListener == nil && c.UDPRTCPListener != nil) {
+		return nil, fmt.Errorf("UDPRTPListener and UDPRTPListener must be used together")
 	}
 
 	listener, err := c.Listen("tcp", address)

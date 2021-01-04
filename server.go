@@ -1,8 +1,6 @@
 package gortsplib
 
 import (
-	"bufio"
-	"crypto/tls"
 	"net"
 )
 
@@ -24,18 +22,5 @@ func (s *Server) Accept() (*ServerConn, error) {
 		return nil, err
 	}
 
-	conn := func() net.Conn {
-		if s.conf.TLSConfig != nil {
-			return tls.Server(nconn, s.conf.TLSConfig)
-		}
-		return nconn
-	}()
-
-	return &ServerConn{
-		s:         s,
-		nconn:     nconn,
-		br:        bufio.NewReaderSize(conn, serverReadBufferSize),
-		bw:        bufio.NewWriterSize(conn, serverWriteBufferSize),
-		terminate: make(chan struct{}),
-	}, nil
+	return newServerConn(s, nconn), nil
 }

@@ -17,17 +17,41 @@ import (
 )
 
 type testServ struct {
-	s         *Server
-	wg        sync.WaitGroup
-	mutex     sync.Mutex
-	publisher *ServerConn
-	sdp       []byte
-	readers   map[*ServerConn]struct{}
+	s               *Server
+	udpRTPListener  *ServerUDPListener
+	udpRTCPListener *ServerUDPListener
+	wg              sync.WaitGroup
+	mutex           sync.Mutex
+	publisher       *ServerConn
+	sdp             []byte
+	readers         map[*ServerConn]struct{}
 }
 
 func newTestServ(tlsConf *tls.Config) (*testServ, error) {
-	conf := ServerConf{
-		TLSConfig: tlsConf,
+	var conf ServerConf
+	var udpRTPListener *ServerUDPListener
+	var udpRTCPListener *ServerUDPListener
+	if tlsConf != nil {
+		conf = ServerConf{
+			TLSConfig: tlsConf,
+		}
+
+	} else {
+		var err error
+		udpRTPListener, err = NewServerUDPListener(":8000")
+		if err != nil {
+			return nil, err
+		}
+
+		udpRTCPListener, err = NewServerUDPListener(":8001")
+		if err != nil {
+			return nil, err
+		}
+
+		conf = ServerConf{
+			UDPRTPListener:  udpRTPListener,
+			UDPRTCPListener: udpRTCPListener,
+		}
 	}
 
 	s, err := conf.Serve(":8554")
@@ -36,8 +60,10 @@ func newTestServ(tlsConf *tls.Config) (*testServ, error) {
 	}
 
 	ts := &testServ{
-		s:       s,
-		readers: make(map[*ServerConn]struct{}),
+		s:               s,
+		udpRTPListener:  udpRTPListener,
+		udpRTCPListener: udpRTCPListener,
+		readers:         make(map[*ServerConn]struct{}),
 	}
 
 	ts.wg.Add(1)
@@ -49,6 +75,12 @@ func newTestServ(tlsConf *tls.Config) (*testServ, error) {
 func (ts *testServ) close() {
 	ts.s.Close()
 	ts.wg.Wait()
+	if ts.udpRTPListener != nil {
+		ts.udpRTPListener.Close()
+	}
+	if ts.udpRTCPListener != nil {
+		ts.udpRTCPListener.Close()
+	}
 }
 
 func (ts *testServ) run() {
@@ -114,8 +146,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		return &base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
-				"Transport": req.Header["Transport"],
-				"Session":   base.HeaderValue{"12345678"},
+				"Session": base.HeaderValue{"12345678"},
 			},
 		}, nil
 	}
@@ -125,8 +156,6 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		defer ts.mutex.Unlock()
 
 		ts.readers[conn] = struct{}{}
-
-		conn.EnableFrames(true)
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
@@ -145,9 +174,6 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 				StatusCode: base.StatusBadRequest,
 			}, fmt.Errorf("someone is already publishing")
 		}
-
-		conn.EnableFrames(true)
-		conn.EnableReadTimeout(true)
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
@@ -238,20 +264,31 @@ y++U32uuSFiXDcSLarfIsE992MEJLSAynbF1Rsgsr3gXbGiuToJRyxbIeVy7gwzD
 -----END RSA PRIVATE KEY-----
 `)
 
-func TestServerPublishReadTCP(t *testing.T) {
+func TestServerPublishRead(t *testing.T) {
 	for _, ca := range []struct {
-		encrypted bool
-		publisher string
-		reader    string
+		encrypted      bool
+		publisherSoft  string
+		publisherProto string
+		readerSoft     string
+		readerProto    string
 	}{
-		{false, "ffmpeg", "ffmpeg"},
-		{false, "ffmpeg", "gstreamer"},
-		{false, "gstreamer", "ffmpeg"},
-		{false, "gstreamer", "gstreamer"},
-		{true, "ffmpeg", "ffmpeg"},
-		{true, "ffmpeg", "gstreamer"},
-		{true, "gstreamer", "ffmpeg"},
-		{true, "gstreamer", "gstreamer"},
+		{false, "ffmpeg", "udp", "ffmpeg", "udp"},
+		{false, "ffmpeg", "udp", "gstreamer", "udp"},
+		{false, "gstreamer", "udp", "ffmpeg", "udp"},
+		{false, "gstreamer", "udp", "gstreamer", "udp"},
+
+		{false, "ffmpeg", "tcp", "ffmpeg", "tcp"},
+		{false, "ffmpeg", "tcp", "gstreamer", "tcp"},
+		{false, "gstreamer", "tcp", "ffmpeg", "tcp"},
+		{false, "gstreamer", "tcp", "gstreamer", "tcp"},
+
+		{false, "ffmpeg", "tcp", "ffmpeg", "udp"},
+		{false, "ffmpeg", "udp", "ffmpeg", "tcp"},
+
+		{true, "ffmpeg", "tcp", "ffmpeg", "tcp"},
+		{true, "ffmpeg", "tcp", "gstreamer", "tcp"},
+		{true, "gstreamer", "tcp", "ffmpeg", "tcp"},
+		{true, "gstreamer", "tcp", "gstreamer", "tcp"},
 	} {
 		encryptedStr := func() string {
 			if ca.encrypted {
@@ -260,7 +297,8 @@ func TestServerPublishReadTCP(t *testing.T) {
 			return "plain"
 		}()
 
-		t.Run(encryptedStr+"_"+ca.publisher+"_"+ca.reader, func(t *testing.T) {
+		t.Run(encryptedStr+"_"+ca.publisherSoft+"_"+ca.publisherProto+"_"+
+			ca.readerSoft+"_"+ca.readerProto, func(t *testing.T) {
 			var proto string
 			var tlsConf *tls.Config
 			if !ca.encrypted {
@@ -278,7 +316,7 @@ func TestServerPublishReadTCP(t *testing.T) {
 			require.NoError(t, err)
 			defer ts.close()
 
-			switch ca.publisher {
+			switch ca.publisherSoft {
 			case "ffmpeg":
 				cnt1, err := newContainer("ffmpeg", "publish", []string{
 					"-re",
@@ -286,7 +324,7 @@ func TestServerPublishReadTCP(t *testing.T) {
 					"-i", "emptyvideo.ts",
 					"-c", "copy",
 					"-f", "rtsp",
-					"-rtsp_transport", "tcp",
+					"-rtsp_transport", ca.publisherProto,
 					proto + "://localhost:8554/teststream",
 				})
 				require.NoError(t, err)
@@ -295,7 +333,7 @@ func TestServerPublishReadTCP(t *testing.T) {
 			case "gstreamer":
 				cnt1, err := newContainer("gstreamer", "publish", []string{
 					"filesrc location=emptyvideo.ts ! tsdemux ! video/x-h264 ! rtspclientsink " +
-						"location=" + proto + "://127.0.0.1:8554/teststream protocols=tcp tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
+						"location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ca.publisherProto + " tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
 				})
 				require.NoError(t, err)
 				defer cnt1.close()
@@ -305,10 +343,10 @@ func TestServerPublishReadTCP(t *testing.T) {
 
 			time.Sleep(1 * time.Second)
 
-			switch ca.reader {
+			switch ca.readerSoft {
 			case "ffmpeg":
 				cnt2, err := newContainer("ffmpeg", "read", []string{
-					"-rtsp_transport", "tcp",
+					"-rtsp_transport", ca.readerProto,
 					"-i", proto + "://localhost:8554/teststream",
 					"-vframes", "1",
 					"-f", "image2",
@@ -320,7 +358,7 @@ func TestServerPublishReadTCP(t *testing.T) {
 
 			case "gstreamer":
 				cnt2, err := newContainer("gstreamer", "read", []string{
-					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=tcp tls-validation-flags=0 latency=0 " +
+					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ca.readerProto + " tls-validation-flags=0 latency=0 " +
 						"! application/x-rtp,media=video ! decodebin ! exitafterframe ! fakesink",
 				})
 				require.NoError(t, err)
@@ -399,6 +437,7 @@ func TestServerResponseBeforeFrames(t *testing.T) {
 					v := headers.TransportModePlay
 					return &v
 				}(),
+				InterleavedIds: &[2]int{0, 1},
 			}.Write(),
 		},
 	}.Write(bconn.Writer)

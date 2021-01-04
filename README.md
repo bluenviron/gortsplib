@@ -18,7 +18,8 @@ Features:
   * Pause reading or publishing without disconnecting from the server
 * Server
   * Handle requests from clients
-  * Read and write streams with TCP
+  * Accept streams from clients with UDP or TCP
+  * Send streams to clients with UDP or TCP
   * Encrypt streams with TLS (RTSPS)
 
 ## Table of contents
@@ -38,6 +39,7 @@ Features:
 * [client-publish-options](examples/client-publish-options.go)
 * [client-publish-pause](examples/client-publish-pause.go)
 * [server](examples/server.go)
+* [server-udp](examples/server-udp.go)
 * [server-tls](examples/server-tls.go)
 
 ## API Documentation

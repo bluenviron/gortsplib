@@ -3,7 +3,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"log"
 	"sync"
@@ -14,9 +13,9 @@ import (
 )
 
 // This example shows how to
-// 1. create a RTSP server which accepts only connections encrypted with TLS (RTSPS)
-// 2. allow a single client to publish a stream with TCP
-// 3. allow multiple clients to read that stream with TCP
+// 1. create a RTSP server which accepts plain connections
+// 2. allow a single client to publish a stream with TCP or UDP
+// 3. allow multiple clients to read that stream with TCP or UDP
 
 var mutex sync.Mutex
 var publisher *gortsplib.ServerConn
@@ -150,15 +149,20 @@ func handleConn(conn *gortsplib.ServerConn) {
 }
 
 func main() {
-	// setup certificates - they can be generated with
-	// openssl genrsa -out server.key 2048
-	// openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
-	cert, err := tls.LoadX509KeyPair("server.crt", "server.key")
+	// to publish or read UDP streams, two UDP listeners must be created
+	udpRTPListener, err := gortsplib.NewServerUDPListener(":8000")
 	if err != nil {
 		panic(err)
 	}
+	udpRTCPListener, err := gortsplib.NewServerUDPListener(":8001")
+	if err != nil {
+		panic(err)
+	}
+
+	// create configuration
 	conf := gortsplib.ServerConf{
-		TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
+		UDPRTPListener:  udpRTPListener,
+		UDPRTCPListener: udpRTCPListener,
 	}
 
 	// create server

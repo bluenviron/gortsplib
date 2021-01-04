@@ -13,7 +13,7 @@ import (
 )
 
 // This example shows how to
-// 1. create a RTSP server
+// 1. create a RTSP server which accepts plain connections
 // 2. allow a single client to publish a stream with TCP
 // 3. allow multiple clients to read that stream with TCP
 
@@ -74,18 +74,10 @@ func handleConn(conn *gortsplib.ServerConn) {
 
 	// called after receiving a SETUP request.
 	onSetup := func(req *base.Request, th *headers.Transport) (*base.Response, error) {
-		// support TCP only
-		if th.Protocol == gortsplib.StreamProtocolUDP {
-			return &base.Response{
-				StatusCode: base.StatusUnsupportedTransport,
-			}, nil
-		}
-
 		return &base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
-				"Transport": req.Header["Transport"],
-				"Session":   base.HeaderValue{"12345678"},
+				"Session": base.HeaderValue{"12345678"},
 			},
 		}, nil
 	}
@@ -96,8 +88,6 @@ func handleConn(conn *gortsplib.ServerConn) {
 		defer mutex.Unlock()
 
 		readers[conn] = struct{}{}
-
-		conn.EnableFrames(true)
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
@@ -117,9 +107,6 @@ func handleConn(conn *gortsplib.ServerConn) {
 				StatusCode: base.StatusBadRequest,
 			}, fmt.Errorf("someone is already publishing")
 		}
-
-		conn.EnableFrames(true)
-		conn.EnableReadTimeout(true)
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
