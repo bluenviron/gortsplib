@@ -180,7 +180,7 @@ func (c *ClientConn) backgroundRecordTCP() {
 
 // WriteFrame writes a frame.
 // This can be called only after Record().
-func (c *ClientConn) WriteFrame(trackID int, streamType StreamType, content []byte) error {
+func (c *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []byte) error {
 	c.publishWriteMutex.RLock()
 	defer c.publishWriteMutex.RUnlock()
 
@@ -190,20 +190,20 @@ func (c *ClientConn) WriteFrame(trackID int, streamType StreamType, content []by
 
 	now := time.Now()
 
-	c.rtcpSenders[trackID].ProcessFrame(now, streamType, content)
+	c.rtcpSenders[trackID].ProcessFrame(now, streamType, payload)
 
 	if *c.streamProtocol == StreamProtocolUDP {
 		if streamType == StreamTypeRtp {
-			return c.udpRtpListeners[trackID].write(content)
+			return c.udpRtpListeners[trackID].write(payload)
 		}
-		return c.udpRtcpListeners[trackID].write(content)
+		return c.udpRtcpListeners[trackID].write(payload)
 	}
 
 	c.nconn.SetWriteDeadline(now.Add(c.conf.WriteTimeout))
 	frame := base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
-		Content:    content,
+		Content:    payload,
 	}
 	return frame.Write(c.bw)
 }

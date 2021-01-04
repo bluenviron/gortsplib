@@ -43,7 +43,7 @@ type Request struct {
 	// map of header values
 	Header Header
 
-	// optional content
+	// optional payload
 	Content []byte
 
 	// whether to wait for a response or not
@@ -99,7 +99,7 @@ func (req *Request) Read(rb *bufio.Reader) error {
 		return err
 	}
 
-	err = (*content)(&req.Content).read(rb, req.Header)
+	err = (*payload)(&req.Content).read(rb, req.Header)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (req Request) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	err = content(req.Content).write(bw)
+	err = payload(req.Content).write(bw)
 	if err != nil {
 		return err
 	}

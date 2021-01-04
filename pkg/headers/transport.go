@@ -190,7 +190,7 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 				ht.Mode = &v
 
 			default:
-				return nil, fmt.Errorf("unrecognized transport mode: '%s'", str)
+				return nil, fmt.Errorf("invalid transport mode: '%s'", str)
 			}
 		}
 

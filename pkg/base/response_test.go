@@ -54,7 +54,7 @@ var casesResponse = []struct {
 		},
 	},
 	{
-		"ok with content",
+		"ok with payload",
 		[]byte("RTSP/1.0 200 OK\r\n" +
 			"CSeq: 2\r\n" +
 			"Content-Base: rtsp://example.com/media.mp4\r\n" +

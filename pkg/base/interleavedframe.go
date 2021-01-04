@@ -66,7 +66,7 @@ type InterleavedFrame struct {
 	// stream type
 	StreamType StreamType
 
-	// frame content
+	// frame payload
 	Content []byte
 }
 

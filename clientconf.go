@@ -1,18 +1,12 @@
 package gortsplib
 
 import (
-	"bufio"
 	"crypto/tls"
-	"fmt"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
-	"github.com/aler9/gortsplib/pkg/multibuffer"
-	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
-	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
 // DefaultClientConf is the default ClientConf.
@@ -80,64 +74,7 @@ type ClientConf struct {
 
 // Dial connects to a server.
 func (c ClientConf) Dial(scheme string, host string) (*ClientConn, error) {
-	if c.TLSConfig == nil {
-		c.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	}
-	if c.ReadTimeout == 0 {
-		c.ReadTimeout = 10 * time.Second
-	}
-	if c.WriteTimeout == 0 {
-		c.WriteTimeout = 10 * time.Second
-	}
-	if c.ReadBufferCount == 0 {
-		c.ReadBufferCount = 1
-	}
-	if c.DialTimeout == nil {
-		c.DialTimeout = net.DialTimeout
-	}
-	if c.ListenPacket == nil {
-		c.ListenPacket = net.ListenPacket
-	}
-
-	if scheme != "rtsp" && scheme != "rtsps" {
-		return nil, fmt.Errorf("unsupported scheme '%s'", scheme)
-	}
-
-	v := StreamProtocolUDP
-	if scheme == "rtsps" && c.StreamProtocol == &v {
-		return nil, fmt.Errorf("RTSPS can't be used with UDP")
-	}
-
-	if !strings.Contains(host, ":") {
-		host += ":554"
-	}
-
-	nconn, err := c.DialTimeout("tcp", host, c.ReadTimeout)
-	if err != nil {
-		return nil, err
-	}
-
-	conn := func() net.Conn {
-		if scheme == "rtsps" {
-			return tls.Client(nconn, c.TLSConfig)
-		}
-		return nconn
-	}()
-
-	return &ClientConn{
-		conf:              c,
-		nconn:             nconn,
-		isTLS:             (scheme == "rtsps"),
-		br:                bufio.NewReaderSize(conn, clientReadBufferSize),
-		bw:                bufio.NewWriterSize(conn, clientWriteBufferSize),
-		udpRtpListeners:   make(map[int]*clientConnUDPListener),
-		udpRtcpListeners:  make(map[int]*clientConnUDPListener),
-		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
-		udpLastFrameTimes: make(map[int]*int64),
-		tcpFrameBuffer:    multibuffer.New(c.ReadBufferCount, clientTCPFrameReadBufferSize),
-		rtcpSenders:       make(map[int]*rtcpsender.RtcpSender),
-		publishError:      fmt.Errorf("not running"),
-	}, nil
+	return newClientConn(c, scheme, host)
 }
 
 // DialRead connects to the address and starts reading all tracks.

@@ -127,7 +127,7 @@ func TestClientDialRead(t *testing.T) {
 
 			var firstFrame int32
 			frameRecv := make(chan struct{})
-			done := conn.ReadFrames(func(id int, typ StreamType, content []byte) {
+			done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
 				if atomic.SwapInt32(&firstFrame, 1) == 0 {
 					close(frameRecv)
 				}
@@ -137,7 +137,7 @@ func TestClientDialRead(t *testing.T) {
 			conn.Close()
 			<-done
 
-			done = conn.ReadFrames(func(id int, typ StreamType, content []byte) {
+			done = conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
 				t.Error("should not happen")
 			})
 			<-done
@@ -175,7 +175,7 @@ func TestClientDialReadAutomaticProtocol(t *testing.T) {
 
 	var firstFrame int32
 	frameRecv := make(chan struct{})
-	done := conn.ReadFrames(func(id int, typ StreamType, content []byte) {
+	done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
 		if atomic.SwapInt32(&firstFrame, 1) == 0 {
 			close(frameRecv)
 		}
@@ -218,7 +218,7 @@ func TestClientDialReadRedirect(t *testing.T) {
 
 	var firstFrame int32
 	frameRecv := make(chan struct{})
-	done := conn.ReadFrames(func(id int, typ StreamType, content []byte) {
+	done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
 		if atomic.SwapInt32(&firstFrame, 1) == 0 {
 			close(frameRecv)
 		}
@@ -271,7 +271,7 @@ func TestClientDialReadPause(t *testing.T) {
 
 			firstFrame := int32(0)
 			frameRecv := make(chan struct{})
-			done := conn.ReadFrames(func(id int, typ StreamType, content []byte) {
+			done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
 				if atomic.SwapInt32(&firstFrame, 1) == 0 {
 					close(frameRecv)
 				}
@@ -287,7 +287,7 @@ func TestClientDialReadPause(t *testing.T) {
 
 			firstFrame = int32(0)
 			frameRecv = make(chan struct{})
-			done = conn.ReadFrames(func(id int, typ StreamType, content []byte) {
+			done = conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
 				if atomic.SwapInt32(&firstFrame, 1) == 0 {
 					close(frameRecv)
 				}

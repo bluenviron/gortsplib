@@ -7,9 +7,9 @@ import (
 	"strconv"
 )
 
-type content []byte
+type payload []byte
 
-func (c *content) read(rb *bufio.Reader, header Header) error {
+func (c *payload) read(rb *bufio.Reader, header Header) error {
 	cls, ok := header["Content-Length"]
 	if !ok || len(cls) != 1 {
 		*c = nil
@@ -34,7 +34,7 @@ func (c *content) read(rb *bufio.Reader, header Header) error {
 	return nil
 }
 
-func (c content) write(bw *bufio.Writer) error {
+func (c payload) write(bw *bufio.Writer) error {
 	if len(c) == 0 {
 		return nil
 	}

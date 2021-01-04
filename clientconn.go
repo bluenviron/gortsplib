@@ -9,6 +9,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"math/rand"
 	"net"
@@ -96,6 +97,67 @@ type ClientConn struct {
 
 	// out
 	backgroundDone chan struct{}
+}
+
+func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, error) {
+	if conf.TLSConfig == nil {
+		conf.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	if conf.ReadTimeout == 0 {
+		conf.ReadTimeout = 10 * time.Second
+	}
+	if conf.WriteTimeout == 0 {
+		conf.WriteTimeout = 10 * time.Second
+	}
+	if conf.ReadBufferCount == 0 {
+		conf.ReadBufferCount = 1
+	}
+	if conf.DialTimeout == nil {
+		conf.DialTimeout = net.DialTimeout
+	}
+	if conf.ListenPacket == nil {
+		conf.ListenPacket = net.ListenPacket
+	}
+
+	if scheme != "rtsp" && scheme != "rtsps" {
+		return nil, fmt.Errorf("unsupported scheme '%s'", scheme)
+	}
+
+	v := StreamProtocolUDP
+	if scheme == "rtsps" && conf.StreamProtocol == &v {
+		return nil, fmt.Errorf("RTSPS can't be used with UDP")
+	}
+
+	if !strings.Contains(host, ":") {
+		host += ":554"
+	}
+
+	nconn, err := conf.DialTimeout("tcp", host, conf.ReadTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := func() net.Conn {
+		if scheme == "rtsps" {
+			return tls.Client(nconn, conf.TLSConfig)
+		}
+		return nconn
+	}()
+
+	return &ClientConn{
+		conf:              conf,
+		nconn:             nconn,
+		isTLS:             (scheme == "rtsps"),
+		br:                bufio.NewReaderSize(conn, clientReadBufferSize),
+		bw:                bufio.NewWriterSize(conn, clientWriteBufferSize),
+		udpRtpListeners:   make(map[int]*clientConnUDPListener),
+		udpRtcpListeners:  make(map[int]*clientConnUDPListener),
+		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
+		udpLastFrameTimes: make(map[int]*int64),
+		tcpFrameBuffer:    multibuffer.New(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
+		rtcpSenders:       make(map[int]*rtcpsender.RtcpSender),
+		publishError:      fmt.Errorf("not running"),
+	}, nil
 }
 
 // Close closes all the ClientConn resources.
@@ -342,12 +404,12 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 		return nil, res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	contentType, ok := res.Header["Content-Type"]
-	if !ok || len(contentType) != 1 {
+	payloadType, ok := res.Header["Content-Type"]
+	if !ok || len(payloadType) != 1 {
 		return nil, nil, fmt.Errorf("Content-Type not provided")
 	}
 
-	if contentType[0] != "application/sdp" {
+	if payloadType[0] != "application/sdp" {
 		return nil, nil, fmt.Errorf("wrong Content-Type, expected application/sdp")
 	}
 
