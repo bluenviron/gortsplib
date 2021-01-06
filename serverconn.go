@@ -184,6 +184,12 @@ func (sc *ServerConn) TracksLen() int {
 	return len(sc.tracks)
 }
 
+// HasTrack checks whether a track has been setup.
+func (sc *ServerConn) HasTrack(trackID int) bool {
+	_, ok := sc.tracks[trackID]
+	return ok
+}
+
 func (sc *ServerConn) checkState(allowed map[ServerConnState]struct{}) error {
 	if _, ok := allowed[sc.state]; ok {
 		return nil
