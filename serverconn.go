@@ -860,7 +860,7 @@ func (sc *ServerConn) backgroundRecord() {
 
 				if now.Sub(last) >= sc.conf.ReadTimeout {
 					atomic.StoreInt32(sc.udpTimeout, 1)
-					sc.Close()
+					sc.nconn.Close()
 					return
 				}
 			}
