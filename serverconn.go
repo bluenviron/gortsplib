@@ -55,7 +55,8 @@ func (s ServerConnState) String() string {
 	return "uknown"
 }
 
-type serverConnTrack struct {
+// ServerConnTrack is a track of a ServerConn.
+type ServerConnTrack struct {
 	rtpPort  int
 	rtcpPort int
 }
@@ -131,7 +132,7 @@ type ServerConn struct {
 	br                 *bufio.Reader
 	bw                 *bufio.Writer
 	state              ServerConnState
-	tracks             map[int]serverConnTrack
+	tracks             map[int]ServerConnTrack
 	tracksProtocol     *StreamProtocol
 	writeMutex         sync.Mutex
 	readHandlers       ServerConnReadHandlers
@@ -156,7 +157,7 @@ func newServerConn(conf ServerConf, nconn net.Conn) *ServerConn {
 		nconn:     nconn,
 		br:        bufio.NewReaderSize(conn, serverReadBufferSize),
 		bw:        bufio.NewWriterSize(conn, serverWriteBufferSize),
-		tracks:    make(map[int]serverConnTrack),
+		tracks:    make(map[int]ServerConnTrack),
 		terminate: make(chan struct{}),
 	}
 }
@@ -187,6 +188,11 @@ func (sc *ServerConn) TracksLen() int {
 func (sc *ServerConn) HasTrack(trackID int) bool {
 	_, ok := sc.tracks[trackID]
 	return ok
+}
+
+// Tracks returns the setupped tracks.
+func (sc *ServerConn) Tracks() map[int]ServerConnTrack {
+	return sc.tracks
 }
 
 func (sc *ServerConn) checkState(allowed map[ServerConnState]struct{}) error {
@@ -476,7 +482,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				sc.tracksProtocol = &th.Protocol
 
 				if th.Protocol == StreamProtocolUDP {
-					sc.tracks[trackID] = serverConnTrack{
+					sc.tracks[trackID] = ServerConnTrack{
 						rtpPort:  th.ClientPorts[0],
 						rtcpPort: th.ClientPorts[1],
 					}
@@ -492,7 +498,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					}.Write()
 
 				} else {
-					sc.tracks[trackID] = serverConnTrack{}
+					sc.tracks[trackID] = ServerConnTrack{}
 
 					res.Header["Transport"] = headers.Transport{
 						Protocol:       StreamProtocolTCP,
