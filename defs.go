@@ -19,9 +19,9 @@ const (
 type StreamType = base.StreamType
 
 const (
-	// StreamTypeRtp means that the stream contains RTP packets
-	StreamTypeRtp StreamType = base.StreamTypeRtp
+	// StreamTypeRTP means that the stream contains RTP packets
+	StreamTypeRTP StreamType = base.StreamTypeRTP
 
-	// StreamTypeRtcp means that the stream contains RTCP packets
-	StreamTypeRtcp StreamType = base.StreamTypeRtcp
+	// StreamTypeRTCP means that the stream contains RTCP packets
+	StreamTypeRTCP StreamType = base.StreamTypeRTCP
 )

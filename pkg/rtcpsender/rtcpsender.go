@@ -11,44 +11,44 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-// RtcpSender is a utility to generate RTCP sender reports.
-type RtcpSender struct {
+// RTCPSender is a utility to generate RTCP sender reports.
+type RTCPSender struct {
 	clockRate float64
 	mutex     sync.Mutex
 
 	// data from rtp packets
-	firstRtpReceived bool
+	firstRTPReceived bool
 	senderSSRC       uint32
-	lastRtpTimeRtp   uint32
-	lastRtpTimeTime  time.Time
+	lastRTPTimeRTP   uint32
+	lastRTPTimeTime  time.Time
 	packetCount      uint32
 	octetCount       uint32
 }
 
-// New allocates a RtcpSender.
-func New(clockRate int) *RtcpSender {
-	return &RtcpSender{
+// New allocates a RTCPSender.
+func New(clockRate int) *RTCPSender {
+	return &RTCPSender{
 		clockRate: float64(clockRate),
 	}
 }
 
 // ProcessFrame extracts the needed data from RTP or RTCP frames.
-func (rs *RtcpSender) ProcessFrame(ts time.Time, streamType base.StreamType, buf []byte) {
+func (rs *RTCPSender) ProcessFrame(ts time.Time, streamType base.StreamType, buf []byte) {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
-	if streamType == base.StreamTypeRtp {
+	if streamType == base.StreamTypeRTP {
 		pkt := rtp.Packet{}
 		err := pkt.Unmarshal(buf)
 		if err == nil {
-			if !rs.firstRtpReceived {
-				rs.firstRtpReceived = true
+			if !rs.firstRTPReceived {
+				rs.firstRTPReceived = true
 				rs.senderSSRC = pkt.SSRC
 			}
 
 			// always update time to minimize errors
-			rs.lastRtpTimeRtp = pkt.Timestamp
-			rs.lastRtpTimeTime = ts
+			rs.lastRTPTimeRTP = pkt.Timestamp
+			rs.lastRTPTimeTime = ts
 
 			rs.packetCount++
 			rs.octetCount += uint32(len(pkt.Payload))
@@ -58,11 +58,11 @@ func (rs *RtcpSender) ProcessFrame(ts time.Time, streamType base.StreamType, buf
 
 // Report generates a RTCP sender report.
 // It returns nil if no packets has been passed to ProcessFrame yet.
-func (rs *RtcpSender) Report(ts time.Time) []byte {
+func (rs *RTCPSender) Report(ts time.Time) []byte {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
-	if !rs.firstRtpReceived {
+	if !rs.firstRTPReceived {
 		return nil
 	}
 
@@ -77,7 +77,7 @@ func (rs *RtcpSender) Report(ts time.Time) []byte {
 			fractionalPart := uint32((s - float64(integerPart)) * 0xFFFFFFFF)
 			return uint64(integerPart)<<32 | uint64(fractionalPart)
 		}(),
-		RTPTime:     rs.lastRtpTimeRtp + uint32((ts.Sub(rs.lastRtpTimeTime)).Seconds()*rs.clockRate),
+		RTPTime:     rs.lastRTPTimeRTP + uint32((ts.Sub(rs.lastRTPTimeTime)).Seconds()*rs.clockRate),
 		PacketCount: rs.packetCount,
 		OctetCount:  rs.octetCount,
 	}

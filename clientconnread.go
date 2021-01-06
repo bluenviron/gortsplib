@@ -39,26 +39,26 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 	var returnError error
 
 	defer func() {
-		for trackID := range c.udpRtpListeners {
-			c.udpRtpListeners[trackID].stop()
-			c.udpRtcpListeners[trackID].stop()
+		for trackID := range c.udpRTPListeners {
+			c.udpRTPListeners[trackID].stop()
+			c.udpRTCPListeners[trackID].stop()
 		}
 
 		done <- returnError
 	}()
 
 	// open the firewall by sending packets to the counterpart
-	for trackID := range c.udpRtpListeners {
-		c.udpRtpListeners[trackID].write(
+	for trackID := range c.udpRTPListeners {
+		c.udpRTPListeners[trackID].write(
 			[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
-		c.udpRtcpListeners[trackID].write(
+		c.udpRTCPListeners[trackID].write(
 			[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 	}
 
-	for trackID := range c.udpRtpListeners {
-		c.udpRtpListeners[trackID].start()
-		c.udpRtcpListeners[trackID].start()
+	for trackID := range c.udpRTPListeners {
+		c.udpRTPListeners[trackID].start()
+		c.udpRTCPListeners[trackID].start()
 	}
 
 	// disable deadline
@@ -97,7 +97,7 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 			now := time.Now()
 			for trackID := range c.rtcpReceivers {
 				r := c.rtcpReceivers[trackID].Report(now)
-				c.udpRtcpListeners[trackID].write(r)
+				c.udpRTCPListeners[trackID].write(r)
 			}
 
 		case <-keepaliveTicker.C:
@@ -195,7 +195,7 @@ func (c *ClientConn) backgroundPlayTCP(done chan error) {
 				c.nconn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
 				frame := base.InterleavedFrame{
 					TrackID:    trackID,
-					StreamType: StreamTypeRtcp,
+					StreamType: StreamTypeRTCP,
 					Content:    r,
 				}
 				frame.Write(c.bw)

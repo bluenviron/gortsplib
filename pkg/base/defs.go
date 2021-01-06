@@ -50,20 +50,20 @@ func (sc StreamDelivery) String() string {
 type StreamType int
 
 const (
-	// StreamTypeRtp means that the stream contains RTP packets
-	StreamTypeRtp StreamType = iota
+	// StreamTypeRTP means that the stream contains RTP packets
+	StreamTypeRTP StreamType = iota
 
-	// StreamTypeRtcp means that the stream contains RTCP packets
-	StreamTypeRtcp
+	// StreamTypeRTCP means that the stream contains RTCP packets
+	StreamTypeRTCP
 )
 
 // String implements fmt.Stringer
 func (st StreamType) String() string {
 	switch st {
-	case StreamTypeRtp:
+	case StreamTypeRTP:
 		return "RTP"
 
-	case StreamTypeRtcp:
+	case StreamTypeRTCP:
 		return "RTCP"
 	}
 	return "unknown"

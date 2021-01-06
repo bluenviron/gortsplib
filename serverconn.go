@@ -588,7 +588,7 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 	track := sc.tracks[trackID]
 
 	if track.proto == StreamProtocolUDP {
-		if streamType == StreamTypeRtp {
+		if streamType == StreamTypeRTP {
 			return sc.s.conf.UDPRTPListener.write(sc.s.conf.WriteTimeout, payload, &net.UDPAddr{
 				IP:   sc.ip(),
 				Zone: sc.zone(),

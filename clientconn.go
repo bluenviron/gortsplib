@@ -76,18 +76,18 @@ type ClientConn struct {
 	streamURL             *base.URL
 	streamProtocol        *StreamProtocol
 	tracks                Tracks
-	udpRtpListeners       map[int]*clientConnUDPListener
-	udpRtcpListeners      map[int]*clientConnUDPListener
+	udpRTPListeners       map[int]*clientConnUDPListener
+	udpRTCPListeners      map[int]*clientConnUDPListener
 	getParameterSupported bool
 
 	// read only
-	rtcpReceivers     map[int]*rtcpreceiver.RtcpReceiver
+	rtcpReceivers     map[int]*rtcpreceiver.RTCPReceiver
 	udpLastFrameTimes map[int]*int64
 	tcpFrameBuffer    *multibuffer.MultiBuffer
 	readCB            func(int, StreamType, []byte)
 
 	// publish only
-	rtcpSenders       map[int]*rtcpsender.RtcpSender
+	rtcpSenders       map[int]*rtcpsender.RTCPSender
 	publishError      error
 	publishWriteMutex sync.RWMutex
 	publishOpen       bool
@@ -150,12 +150,12 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 		isTLS:             (scheme == "rtsps"),
 		br:                bufio.NewReaderSize(conn, clientReadBufferSize),
 		bw:                bufio.NewWriterSize(conn, clientWriteBufferSize),
-		udpRtpListeners:   make(map[int]*clientConnUDPListener),
-		udpRtcpListeners:  make(map[int]*clientConnUDPListener),
-		rtcpReceivers:     make(map[int]*rtcpreceiver.RtcpReceiver),
+		udpRTPListeners:   make(map[int]*clientConnUDPListener),
+		udpRTCPListeners:  make(map[int]*clientConnUDPListener),
+		rtcpReceivers:     make(map[int]*rtcpreceiver.RTCPReceiver),
 		udpLastFrameTimes: make(map[int]*int64),
 		tcpFrameBuffer:    multibuffer.New(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
-		rtcpSenders:       make(map[int]*rtcpsender.RtcpSender),
+		rtcpSenders:       make(map[int]*rtcpsender.RTCPSender),
 		publishError:      fmt.Errorf("not running"),
 	}, nil
 }
@@ -173,11 +173,11 @@ func (c *ClientConn) Close() error {
 		})
 	}
 
-	for _, l := range c.udpRtpListeners {
+	for _, l := range c.udpRTPListeners {
 		l.close()
 	}
 
-	for _, l := range c.udpRtcpListeners {
+	for _, l := range c.udpRTCPListeners {
 		l.close()
 	}
 
@@ -634,15 +634,15 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		rtpListener.remotePort = (*thRes.ServerPorts)[0]
 		rtpListener.trackID = track.ID
-		rtpListener.streamType = StreamTypeRtp
-		c.udpRtpListeners[track.ID] = rtpListener
+		rtpListener.streamType = StreamTypeRTP
+		c.udpRTPListeners[track.ID] = rtpListener
 
 		rtcpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		rtcpListener.remotePort = (*thRes.ServerPorts)[1]
 		rtcpListener.trackID = track.ID
-		rtcpListener.streamType = StreamTypeRtcp
-		c.udpRtcpListeners[track.ID] = rtcpListener
+		rtcpListener.streamType = StreamTypeRTCP
+		c.udpRTCPListeners[track.ID] = rtcpListener
 	}
 
 	if mode == headers.TransportModePlay {

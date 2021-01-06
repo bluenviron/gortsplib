@@ -348,14 +348,14 @@ func TestClientDialPublishSerial(t *testing.T) {
 			buf := make([]byte, 2048)
 			n, _, err := pc.ReadFrom(buf)
 			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRtp, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
 			require.NoError(t, err)
 
 			conn.Close()
 
 			n, _, err = pc.ReadFrom(buf)
 			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRtp, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
 			require.Error(t, err)
 		})
 	}
@@ -446,7 +446,7 @@ func TestClientDialPublishParallel(t *testing.T) {
 						break
 					}
 
-					err = conn.WriteFrame(track.ID, StreamTypeRtp, buf[:n])
+					err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
 					if err != nil {
 						break
 					}
@@ -524,7 +524,7 @@ func TestClientDialPublishPauseSerial(t *testing.T) {
 
 			n, _, err := pc.ReadFrom(buf)
 			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRtp, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
 			require.NoError(t, err)
 
 			_, err = conn.Pause()
@@ -532,7 +532,7 @@ func TestClientDialPublishPauseSerial(t *testing.T) {
 
 			n, _, err = pc.ReadFrom(buf)
 			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRtp, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
 			require.Error(t, err)
 
 			_, err = conn.Record()
@@ -540,7 +540,7 @@ func TestClientDialPublishPauseSerial(t *testing.T) {
 
 			n, _, err = pc.ReadFrom(buf)
 			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRtp, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
 			require.NoError(t, err)
 		})
 	}
@@ -600,7 +600,7 @@ func TestClientDialPublishPauseParallel(t *testing.T) {
 					n, _, err := pc.ReadFrom(buf)
 					require.NoError(t, err)
 
-					err = conn.WriteFrame(track.ID, StreamTypeRtp, buf[:n])
+					err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
 					if err != nil {
 						break
 					}

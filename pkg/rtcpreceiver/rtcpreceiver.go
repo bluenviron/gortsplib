@@ -11,18 +11,18 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-// RtcpReceiver is a utility to generate RTCP receiver reports.
-type RtcpReceiver struct {
+// RTCPReceiver is a utility to generate RTCP receiver reports.
+type RTCPReceiver struct {
 	receiverSSRC uint32
 	clockRate    float64
 	mutex        sync.Mutex
 
 	// data from rtp packets
-	firstRtpReceived     bool
+	firstRTPReceived     bool
 	sequenceNumberCycles uint16
 	lastSequenceNumber   uint16
-	lastRtpTimeRtp       uint32
-	lastRtpTimeTime      time.Time
+	lastRTPTimeRTP       uint32
+	lastRTPTimeTime      time.Time
 	totalLost            uint32
 	totalLostSinceReport uint32
 	totalSinceReport     uint32
@@ -34,9 +34,9 @@ type RtcpReceiver struct {
 	lastSenderReportTime time.Time
 }
 
-// New allocates a RtcpReceiver.
-func New(receiverSSRC *uint32, clockRate int) *RtcpReceiver {
-	return &RtcpReceiver{
+// New allocates a RTCPReceiver.
+func New(receiverSSRC *uint32, clockRate int) *RTCPReceiver {
+	return &RTCPReceiver{
 		receiverSSRC: func() uint32 {
 			if receiverSSRC == nil {
 				return rand.Uint32()
@@ -48,23 +48,23 @@ func New(receiverSSRC *uint32, clockRate int) *RtcpReceiver {
 }
 
 // ProcessFrame extracts the needed data from RTP or RTCP frames.
-func (rr *RtcpReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, buf []byte) {
+func (rr *RTCPReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, buf []byte) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
-	if streamType == base.StreamTypeRtp {
+	if streamType == base.StreamTypeRTP {
 		// do not parse the entire packet, extract only the fields we need
 		if len(buf) >= 8 {
 			sequenceNumber := uint16(buf[2])<<8 | uint16(buf[3])
 			rtpTime := uint32(buf[4])<<24 | uint32(buf[5])<<16 | uint32(buf[6])<<8 | uint32(buf[7])
 
 			// first frame
-			if !rr.firstRtpReceived {
-				rr.firstRtpReceived = true
+			if !rr.firstRTPReceived {
+				rr.firstRTPReceived = true
 				rr.totalSinceReport = 1
 				rr.lastSequenceNumber = sequenceNumber
-				rr.lastRtpTimeRtp = rtpTime
-				rr.lastRtpTimeTime = ts
+				rr.lastRTPTimeRTP = rtpTime
+				rr.lastRTPTimeTime = ts
 
 				// subsequent frames
 			} else {
@@ -93,8 +93,8 @@ func (rr *RtcpReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, b
 
 					// compute jitter
 					// https://tools.ietf.org/html/rfc3550#page-39
-					D := ts.Sub(rr.lastRtpTimeTime).Seconds()*rr.clockRate -
-						(float64(rtpTime) - float64(rr.lastRtpTimeRtp))
+					D := ts.Sub(rr.lastRTPTimeTime).Seconds()*rr.clockRate -
+						(float64(rtpTime) - float64(rr.lastRTPTimeRTP))
 					if D < 0 {
 						D = -D
 					}
@@ -102,8 +102,8 @@ func (rr *RtcpReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, b
 
 					rr.totalSinceReport += uint32(uint16(diff))
 					rr.lastSequenceNumber = sequenceNumber
-					rr.lastRtpTimeRtp = rtpTime
-					rr.lastRtpTimeTime = ts
+					rr.lastRTPTimeRTP = rtpTime
+					rr.lastRTPTimeTime = ts
 				}
 				// ignore invalid frames (diff = 0) or reordered frames (diff < 0)
 			}
@@ -126,7 +126,7 @@ func (rr *RtcpReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, b
 }
 
 // Report generates a RTCP receiver report.
-func (rr *RtcpReceiver) Report(ts time.Time) []byte {
+func (rr *RTCPReceiver) Report(ts time.Time) []byte {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 

@@ -92,9 +92,9 @@ func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 	channel := header[1]
 	f.TrackID, f.StreamType = func() (int, StreamType) {
 		if (channel % 2) == 0 {
-			return int(channel / 2), StreamTypeRtp
+			return int(channel / 2), StreamTypeRTP
 		}
-		return int((channel - 1) / 2), StreamTypeRtcp
+		return int((channel - 1) / 2), StreamTypeRTCP
 	}()
 
 	f.Content = f.Content[:framelen]
@@ -110,7 +110,7 @@ func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 func (f InterleavedFrame) Write(bw *bufio.Writer) error {
 	// convert TrackID and StreamType into channel
 	channel := func() uint8 {
-		if f.StreamType == StreamTypeRtp {
+		if f.StreamType == StreamTypeRTP {
 			return uint8(f.TrackID * 2)
 		}
 		return uint8((f.TrackID * 2) + 1)

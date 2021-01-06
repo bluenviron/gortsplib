@@ -11,7 +11,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-func TestRtcpSender(t *testing.T) {
+func TestRTCPSender(t *testing.T) {
 	rs := New(90000)
 
 	rtpPkt := rtp.Packet{
@@ -27,7 +27,7 @@ func TestRtcpSender(t *testing.T) {
 	}
 	byts, _ := rtpPkt.Marshal()
 	ts := time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
-	rs.ProcessFrame(ts, base.StreamTypeRtp, byts)
+	rs.ProcessFrame(ts, base.StreamTypeRTP, byts)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -42,7 +42,7 @@ func TestRtcpSender(t *testing.T) {
 	}
 	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 05, 20, 22, 15, 20, 500000000, time.UTC)
-	rs.ProcessFrame(ts, base.StreamTypeRtp, byts)
+	rs.ProcessFrame(ts, base.StreamTypeRTP, byts)
 
 	expectedPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
