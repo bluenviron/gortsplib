@@ -67,7 +67,7 @@ type InterleavedFrame struct {
 	StreamType StreamType
 
 	// frame payload
-	Content []byte
+	Payload []byte
 }
 
 // Read reads an interleaved frame.
@@ -83,9 +83,9 @@ func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 	}
 
 	framelen := int(binary.BigEndian.Uint16(header[2:]))
-	if framelen > len(f.Content) {
+	if framelen > len(f.Payload) {
 		return fmt.Errorf("frame length greater than maximum allowed (%d vs %d)",
-			framelen, len(f.Content))
+			framelen, len(f.Payload))
 	}
 
 	// convert channel into TrackID and StreamType
@@ -97,9 +97,9 @@ func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 		return int((channel - 1) / 2), StreamTypeRTCP
 	}()
 
-	f.Content = f.Content[:framelen]
+	f.Payload = f.Payload[:framelen]
 
-	_, err = io.ReadFull(br, f.Content)
+	_, err = io.ReadFull(br, f.Payload)
 	if err != nil {
 		return err
 	}
@@ -122,13 +122,13 @@ func (f InterleavedFrame) Write(bw *bufio.Writer) error {
 	}
 
 	buf := make([]byte, 2)
-	binary.BigEndian.PutUint16(buf, uint16(len(f.Content)))
+	binary.BigEndian.PutUint16(buf, uint16(len(f.Payload)))
 	_, err = bw.Write(buf)
 	if err != nil {
 		return err
 	}
 
-	_, err = bw.Write(f.Content)
+	_, err = bw.Write(f.Payload)
 	if err != nil {
 		return err
 	}

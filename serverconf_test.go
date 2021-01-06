@@ -462,7 +462,7 @@ func TestServerResponseBeforeFrames(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	var fr base.InterleavedFrame
-	fr.Content = make([]byte, 2048)
+	fr.Payload = make([]byte, 2048)
 	err = fr.Read(bconn.Reader)
 	require.NoError(t, err)
 }

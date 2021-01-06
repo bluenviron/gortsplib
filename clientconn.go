@@ -211,7 +211,7 @@ func (c *ClientConn) Tracks() Tracks {
 func (c *ClientConn) readFrameTCPOrResponse() (interface{}, error) {
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
 	f := base.InterleavedFrame{
-		Content: c.tcpFrameBuffer.Next(),
+		Payload: c.tcpFrameBuffer.Next(),
 	}
 	r := base.Response{}
 	return base.ReadInterleavedFrameOrResponse(&f, &r, c.br)

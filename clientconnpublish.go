@@ -168,7 +168,7 @@ func (c *ClientConn) backgroundRecordTCP() {
 					frame := base.InterleavedFrame{
 						TrackID:    trackID,
 						StreamType: StreamTypeRTCP,
-						Content:    r,
+						Payload:    r,
 					}
 					frame.Write(c.bw)
 				}
@@ -203,7 +203,7 @@ func (c *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []by
 	frame := base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
-		Content:    payload,
+		Payload:    payload,
 	}
 	return frame.Write(c.bw)
 }

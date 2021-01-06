@@ -664,7 +664,7 @@ outer:
 		}
 
 		if sc.framesEnabled {
-			frame.Content = tcpFrameBuffer.Next()
+			frame.Payload = tcpFrameBuffer.Next()
 			what, err := base.ReadInterleavedFrameOrRequest(&frame, &req, sc.br)
 			if err != nil {
 				errRet = err
@@ -673,7 +673,7 @@ outer:
 
 			switch what.(type) {
 			case *base.InterleavedFrame:
-				sc.readHandlers.OnFrame(frame.TrackID, frame.StreamType, frame.Content)
+				sc.readHandlers.OnFrame(frame.TrackID, frame.StreamType, frame.Payload)
 
 			case *base.Request:
 				err := handleRequestOuter(&req)
@@ -751,7 +751,7 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 	frame := base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
-		Content:    payload,
+		Payload:    payload,
 	}
 	return frame.Write(sc.bw)
 }

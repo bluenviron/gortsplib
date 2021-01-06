@@ -154,7 +154,7 @@ func (c *ClientConn) backgroundPlayTCP(done chan error) {
 	go func() {
 		for {
 			frame := base.InterleavedFrame{
-				Content: c.tcpFrameBuffer.Next(),
+				Payload: c.tcpFrameBuffer.Next(),
 			}
 			err := frame.Read(c.br)
 			if err != nil {
@@ -162,9 +162,8 @@ func (c *ClientConn) backgroundPlayTCP(done chan error) {
 				return
 			}
 
-			c.rtcpReceivers[frame.TrackID].ProcessFrame(time.Now(), frame.StreamType, frame.Content)
-
-			c.readCB(frame.TrackID, frame.StreamType, frame.Content)
+			c.rtcpReceivers[frame.TrackID].ProcessFrame(time.Now(), frame.StreamType, frame.Payload)
+			c.readCB(frame.TrackID, frame.StreamType, frame.Payload)
 		}
 	}()
 
@@ -196,7 +195,7 @@ func (c *ClientConn) backgroundPlayTCP(done chan error) {
 				frame := base.InterleavedFrame{
 					TrackID:    trackID,
 					StreamType: StreamTypeRTCP,
-					Content:    r,
+					Payload:    r,
 				}
 				frame.Write(c.bw)
 			}
