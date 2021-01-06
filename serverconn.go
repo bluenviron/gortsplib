@@ -673,7 +673,10 @@ outer:
 
 			switch what.(type) {
 			case *base.InterleavedFrame:
-				sc.readHandlers.OnFrame(frame.TrackID, frame.StreamType, frame.Payload)
+				// forward frame only if it has been set up
+				if _, ok := sc.tracks[frame.TrackID]; ok {
+					sc.readHandlers.OnFrame(frame.TrackID, frame.StreamType, frame.Payload)
+				}
 
 			case *base.Request:
 				err := handleRequestOuter(&req)
