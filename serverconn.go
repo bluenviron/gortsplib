@@ -221,6 +221,22 @@ func (sc *ServerConn) frameModeEnable() {
 			for trackID, track := range sc.tracks {
 				sc.conf.UDPRTPListener.addPublisher(sc.ip(), track.rtpPort, trackID, sc)
 				sc.conf.UDPRTCPListener.addPublisher(sc.ip(), track.rtcpPort, trackID, sc)
+
+				// open the firewall by sending packets to the counterpart
+				sc.conf.UDPRTPListener.write(sc.conf.WriteTimeout,
+					[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+					&net.UDPAddr{
+						IP:   sc.ip(),
+						Zone: sc.zone(),
+						Port: track.rtpPort,
+					})
+				sc.conf.UDPRTCPListener.write(sc.conf.WriteTimeout,
+					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00},
+					&net.UDPAddr{
+						IP:   sc.ip(),
+						Zone: sc.zone(),
+						Port: track.rtcpPort,
+					})
 			}
 		}
 	}
