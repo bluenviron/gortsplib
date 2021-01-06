@@ -746,8 +746,10 @@ outer:
 			case *base.InterleavedFrame:
 				// forward frame only if it has been set up
 				if _, ok := sc.tracks[frame.TrackID]; ok {
-					sc.rtcpReceivers[frame.TrackID].ProcessFrame(time.Now(),
-						frame.StreamType, frame.Payload)
+					if sc.state == ServerConnStateRecord {
+						sc.rtcpReceivers[frame.TrackID].ProcessFrame(time.Now(),
+							frame.StreamType, frame.Payload)
+					}
 					sc.readHandlers.OnFrame(frame.TrackID, frame.StreamType, frame.Payload)
 				}
 
