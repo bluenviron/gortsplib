@@ -138,8 +138,8 @@ type ServerConn struct {
 	state              ServerConnState
 	tracks             map[int]ServerConnTrack
 	tracksProtocol     *StreamProtocol
-	rtcpReceivers      map[int]*rtcpreceiver.RTCPReceiver
-	udpLastFrameTimes  map[int]*int64
+	rtcpReceivers      []*rtcpreceiver.RTCPReceiver
+	udpLastFrameTimes  []*int64
 	writeMutex         sync.Mutex
 	readHandlers       ServerConnReadHandlers
 	nextFramesEnabled  bool
@@ -383,8 +383,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if res.StatusCode == 200 {
 				sc.state = ServerConnStatePreRecord
 
-				sc.rtcpReceivers = make(map[int]*rtcpreceiver.RTCPReceiver, len(tracks))
-				sc.udpLastFrameTimes = make(map[int]*int64, len(tracks))
+				sc.rtcpReceivers = make([]*rtcpreceiver.RTCPReceiver, len(tracks))
+				sc.udpLastFrameTimes = make([]*int64, len(tracks))
 
 				for trackID, track := range tracks {
 					clockRate, _ := track.ClockRate()
