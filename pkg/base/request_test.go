@@ -90,7 +90,7 @@ var casesRequest = []struct {
 				"Content-Type":   HeaderValue{"application/sdp"},
 				"Content-Length": HeaderValue{"306"},
 			},
-			Content: []byte("v=0\n" +
+			Body: []byte("v=0\n" +
 				"o=mhandley 2890844526 2890845468 IN IP4 126.16.64.4\n" +
 				"s=SDP Seminar\n" +
 				"i=A Seminar on the session description protocol\n" +
@@ -123,7 +123,7 @@ var casesRequest = []struct {
 				"Session":        HeaderValue{"12345678"},
 				"Content-Length": HeaderValue{"24"},
 			},
-			Content: []byte("packets_received\n" +
+			Body: []byte("packets_received\n" +
 				"jitter\n",
 			),
 		},

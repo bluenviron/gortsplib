@@ -47,7 +47,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 				"Content-Base": base.HeaderValue{req.URL.String() + "/"},
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Content: sdp,
+			Body: sdp,
 		}, nil
 	}
 

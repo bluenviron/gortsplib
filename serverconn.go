@@ -325,7 +325,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, fmt.Errorf("unsupported Content-Type '%s'", ct)
 			}
 
-			tracks, err := ReadTracks(req.Content)
+			tracks, err := ReadTracks(req.Body)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -580,7 +580,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"text/parameters"},
 			},
-			Content: []byte("\n"),
+			Body: []byte("\n"),
 		}, nil
 
 	case base.SetParameter:

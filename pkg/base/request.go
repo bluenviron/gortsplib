@@ -43,8 +43,8 @@ type Request struct {
 	// map of header values
 	Header Header
 
-	// optional payload
-	Content []byte
+	// optional body
+	Body []byte
 
 	// whether to wait for a response or not
 	// used only by ClientConn.Do()
@@ -99,7 +99,7 @@ func (req *Request) Read(rb *bufio.Reader) error {
 		return err
 	}
 
-	err = (*payload)(&req.Content).read(rb, req.Header)
+	err = (*payload)(&req.Body).read(rb, req.Header)
 	if err != nil {
 		return err
 	}
@@ -115,8 +115,8 @@ func (req Request) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	if len(req.Content) != 0 {
-		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Content)), 10)}
+	if len(req.Body) != 0 {
+		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}
 	}
 
 	err = req.Header.write(bw)
@@ -124,7 +124,7 @@ func (req Request) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	err = payload(req.Content).write(bw)
+	err = payload(req.Body).write(bw)
 	if err != nil {
 		return err
 	}

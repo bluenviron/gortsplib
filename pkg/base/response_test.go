@@ -87,7 +87,7 @@ var casesResponse = []struct {
 				"Content-Type":   HeaderValue{"application/sdp"},
 				"CSeq":           HeaderValue{"2"},
 			},
-			Content: []byte("m=video 0 RTP/AVP 96\n" +
+			Body: []byte("m=video 0 RTP/AVP 96\n" +
 				"a=control:streamid=0\n" +
 				"a=range:npt=0-7.741000\n" +
 				"a=length:npt=7.741000\n" +

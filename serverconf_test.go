@@ -117,7 +117,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 				"Content-Base": base.HeaderValue{req.URL.String() + "/"},
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Content: ts.sdp,
+			Body: ts.sdp,
 		}, nil
 	}
 

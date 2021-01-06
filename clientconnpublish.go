@@ -36,7 +36,7 @@ func (c *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 		Header: base.Header{
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Content: tracks.Write(),
+		Body: tracks.Write(),
 	})
 	if err != nil {
 		return nil, err

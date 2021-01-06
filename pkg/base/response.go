@@ -129,8 +129,8 @@ type Response struct {
 	// map of header values
 	Header Header
 
-	// optional payload
-	Content []byte
+	// optional body
+	Body []byte
 }
 
 // Read reads a response.
@@ -177,7 +177,7 @@ func (res *Response) Read(rb *bufio.Reader) error {
 		return err
 	}
 
-	err = (*payload)(&res.Content).read(rb, res.Header)
+	err = (*payload)(&res.Body).read(rb, res.Header)
 	if err != nil {
 		return err
 	}
@@ -198,8 +198,8 @@ func (res Response) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	if len(res.Content) != 0 {
-		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Content)), 10)}
+	if len(res.Body) != 0 {
+		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}
 	}
 
 	err = res.Header.write(bw)
@@ -207,7 +207,7 @@ func (res Response) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	err = payload(res.Content).write(bw)
+	err = payload(res.Body).write(bw)
 	if err != nil {
 		return err
 	}
