@@ -183,6 +183,20 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}, nil
 	}
 
+	onPause := func(req *base.Request) (*base.Response, error) {
+		ts.mutex.Lock()
+		defer ts.mutex.Unlock()
+
+		delete(ts.readers, conn)
+
+		return &base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Session": base.HeaderValue{"12345678"},
+			},
+		}, nil
+	}
+
 	onFrame := func(trackID int, typ StreamType, buf []byte) {
 		ts.mutex.Lock()
 		defer ts.mutex.Unlock()
@@ -200,6 +214,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		OnSetup:    onSetup,
 		OnPlay:     onPlay,
 		OnRecord:   onRecord,
+		OnPause:    onPause,
 		OnFrame:    onFrame,
 	})
 
@@ -465,4 +480,174 @@ func TestServerResponseBeforeFrames(t *testing.T) {
 	fr.Payload = make([]byte, 2048)
 	err = fr.Read(bconn.Reader)
 	require.NoError(t, err)
+}
+
+func TestServerPlayMultiple(t *testing.T) {
+	ts, err := newTestServ(nil)
+	require.NoError(t, err)
+	defer ts.close()
+
+	cnt1, err := newContainer("ffmpeg", "publish", []string{
+		"-re",
+		"-stream_loop", "-1",
+		"-i", "emptyvideo.ts",
+		"-c", "copy",
+		"-f", "rtsp",
+		"-rtsp_transport", "tcp",
+		"rtsp://localhost:8554/teststream",
+	})
+	require.NoError(t, err)
+	defer cnt1.close()
+
+	time.Sleep(1 * time.Second)
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	err = base.Request{
+		Method: base.Setup,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+			"Transport": headers.Transport{
+				Protocol: StreamProtocolTCP,
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+				InterleavedIds: &[2]int{0, 1},
+			}.Write(),
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.Play,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"2"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.Play,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"2"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	buf := make([]byte, 2048)
+	err = res.ReadIgnoreFrames(bconn.Reader, buf)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+}
+
+func TestServerPauseMultiple(t *testing.T) {
+	ts, err := newTestServ(nil)
+	require.NoError(t, err)
+	defer ts.close()
+
+	cnt1, err := newContainer("ffmpeg", "publish", []string{
+		"-re",
+		"-stream_loop", "-1",
+		"-i", "emptyvideo.ts",
+		"-c", "copy",
+		"-f", "rtsp",
+		"-rtsp_transport", "tcp",
+		"rtsp://localhost:8554/teststream",
+	})
+	require.NoError(t, err)
+	defer cnt1.close()
+
+	time.Sleep(1 * time.Second)
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	err = base.Request{
+		Method: base.Setup,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+			"Transport": headers.Transport{
+				Protocol: StreamProtocolTCP,
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+				InterleavedIds: &[2]int{0, 1},
+			}.Write(),
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.Play,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"2"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.Pause,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"2"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	buf := make([]byte, 2048)
+	err = res.ReadIgnoreFrames(bconn.Reader, buf)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.Pause,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"2"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	buf = make([]byte, 2048)
+	err = res.ReadIgnoreFrames(bconn.Reader, buf)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
 }

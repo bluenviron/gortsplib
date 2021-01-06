@@ -208,15 +208,6 @@ func (c *ClientConn) Tracks() Tracks {
 	return c.tracks
 }
 
-func (c *ClientConn) readFrameTCPOrResponse() (interface{}, error) {
-	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	f := base.InterleavedFrame{
-		Payload: c.tcpFrameBuffer.Next(),
-	}
-	r := base.Response{}
-	return base.ReadInterleavedFrameOrResponse(&f, &r, c.br)
-}
-
 // Do writes a Request and reads a Response.
 // Interleaved frames received before the response are ignored.
 func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
@@ -259,24 +250,15 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	// interleaved frames are sent in two situations:
 	// * when the server is v4lrtspserver, before the PLAY response
 	// * when the stream is already playing
-	res, err := func() (*base.Response, error) {
-		for {
-			recv, err := c.readFrameTCPOrResponse()
-			if err != nil {
-				return nil, err
-			}
-
-			if res, ok := recv.(*base.Response); ok {
-				return res, nil
-			}
-		}
-	}()
+	var res base.Response
+	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	err = res.ReadIgnoreFrames(c.br, c.tcpFrameBuffer.Next())
 	if err != nil {
 		return nil, err
 	}
 
 	if c.conf.OnResponse != nil {
-		c.conf.OnResponse(res)
+		c.conf.OnResponse(&res)
 	}
 
 	// get session from response
@@ -303,7 +285,7 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 		return c.Do(req)
 	}
 
-	return res, nil
+	return &res, nil
 }
 
 // Options writes an OPTIONS request and reads a response.
