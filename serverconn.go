@@ -56,7 +56,6 @@ func (s ServerConnState) String() string {
 }
 
 type serverConnTrack struct {
-	proto    StreamProtocol
 	rtpPort  int
 	rtcpPort int
 }
@@ -262,8 +261,8 @@ func (sc *ServerConn) frameModeDisable() {
 		sc.nextFramesEnabled = false
 		sc.readTimeoutEnabled = false
 
-		for _, track := range sc.tracks {
-			if track.proto == StreamProtocolUDP {
+		if *sc.tracksProtocol == StreamProtocolUDP {
+			for _, track := range sc.tracks {
 				sc.conf.UDPRTPListener.removePublisher(sc.ip(), track.rtpPort)
 				sc.conf.UDPRTCPListener.removePublisher(sc.ip(), track.rtcpPort)
 			}
@@ -478,7 +477,6 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 				if th.Protocol == StreamProtocolUDP {
 					sc.tracks[trackID] = serverConnTrack{
-						proto:    StreamProtocolUDP,
 						rtpPort:  th.ClientPorts[0],
 						rtcpPort: th.ClientPorts[1],
 					}
@@ -494,9 +492,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					}.Write()
 
 				} else {
-					sc.tracks[trackID] = serverConnTrack{
-						proto: StreamProtocolTCP,
-					}
+					sc.tracks[trackID] = serverConnTrack{}
 
 					res.Header["Transport"] = headers.Transport{
 						Protocol:       StreamProtocolTCP,
@@ -771,9 +767,9 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 	sc.writeMutex.Lock()
 	defer sc.writeMutex.Unlock()
 
-	track := sc.tracks[trackID]
+	if *sc.tracksProtocol == StreamProtocolUDP {
+		track := sc.tracks[trackID]
 
-	if track.proto == StreamProtocolUDP {
 		if streamType == StreamTypeRTP {
 			return sc.conf.UDPRTPListener.write(sc.conf.WriteTimeout, payload, &net.UDPAddr{
 				IP:   sc.ip(),
