@@ -513,6 +513,12 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
+			if len(sc.tracks) == 0 {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, fmt.Errorf("no tracks have been setup")
+			}
+
 			res, err := sc.readHandlers.OnPlay(req)
 
 			if res.StatusCode == 200 && sc.state != ServerConnStatePlay {
@@ -532,6 +538,12 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, err
+			}
+
+			if len(sc.tracks) == 0 {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, fmt.Errorf("no tracks have been setup")
 			}
 
 			res, err := sc.readHandlers.OnRecord(req)
