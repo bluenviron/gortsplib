@@ -76,13 +76,13 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 		}
 	}()
 
-	reportTicker := time.NewTicker(clientReceiverReportPeriod)
+	reportTicker := time.NewTicker(clientConnReceiverReportPeriod)
 	defer reportTicker.Stop()
 
-	keepaliveTicker := time.NewTicker(clientUDPKeepalivePeriod)
+	keepaliveTicker := time.NewTicker(clientConnUDPKeepalivePeriod)
 	defer keepaliveTicker.Stop()
 
-	checkStreamTicker := time.NewTicker(clientUDPCheckStreamPeriod)
+	checkStreamTicker := time.NewTicker(clientConnUDPCheckStreamPeriod)
 	defer checkStreamTicker.Stop()
 
 	for {
@@ -167,7 +167,7 @@ func (c *ClientConn) backgroundPlayTCP(done chan error) {
 		}
 	}()
 
-	reportTicker := time.NewTicker(clientReceiverReportPeriod)
+	reportTicker := time.NewTicker(clientConnReceiverReportPeriod)
 	defer reportTicker.Stop()
 
 	// for some reason, SetReadDeadline() must always be called in the same

@@ -27,13 +27,13 @@ import (
 )
 
 const (
-	clientReadBufferSize         = 4096
-	clientWriteBufferSize        = 4096
-	clientReceiverReportPeriod   = 10 * time.Second
-	clientSenderReportPeriod     = 10 * time.Second
-	clientUDPCheckStreamPeriod   = 5 * time.Second
-	clientUDPKeepalivePeriod     = 30 * time.Second
-	clientTCPFrameReadBufferSize = 128 * 1024
+	clientConnReadBufferSize         = 4096
+	clientConnWriteBufferSize        = 4096
+	clientConnReceiverReportPeriod   = 10 * time.Second
+	clientConnSenderReportPeriod     = 10 * time.Second
+	clientConnUDPCheckStreamPeriod   = 5 * time.Second
+	clientConnUDPKeepalivePeriod     = 30 * time.Second
+	clientConnTCPFrameReadBufferSize = 128 * 1024
 )
 
 type clientConnState int
@@ -148,13 +148,13 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 		conf:              conf,
 		nconn:             nconn,
 		isTLS:             (scheme == "rtsps"),
-		br:                bufio.NewReaderSize(conn, clientReadBufferSize),
-		bw:                bufio.NewWriterSize(conn, clientWriteBufferSize),
+		br:                bufio.NewReaderSize(conn, clientConnReadBufferSize),
+		bw:                bufio.NewWriterSize(conn, clientConnWriteBufferSize),
 		udpRTPListeners:   make(map[int]*clientConnUDPListener),
 		udpRTCPListeners:  make(map[int]*clientConnUDPListener),
 		rtcpReceivers:     make(map[int]*rtcpreceiver.RTCPReceiver),
 		udpLastFrameTimes: make(map[int]*int64),
-		tcpFrameBuffer:    multibuffer.New(conf.ReadBufferCount, clientTCPFrameReadBufferSize),
+		tcpFrameBuffer:    multibuffer.New(conf.ReadBufferCount, clientConnTCPFrameReadBufferSize),
 		rtcpSenders:       make(map[int]*rtcpsender.RTCPSender),
 		publishError:      fmt.Errorf("not running"),
 	}, nil

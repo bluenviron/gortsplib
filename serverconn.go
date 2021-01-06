@@ -9,16 +9,20 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
+	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 )
 
 const (
-	serverReadBufferSize  = 4096
-	serverWriteBufferSize = 4096
+	serverConnReadBufferSize         = 4096
+	serverConnWriteBufferSize        = 4096
+	serverConnCheckStreamInterval    = 5 * time.Second
+	serverConnReceiverReportInterval = 10 * time.Second
 )
 
 // server errors.
@@ -134,14 +138,20 @@ type ServerConn struct {
 	state              ServerConnState
 	tracks             map[int]ServerConnTrack
 	tracksProtocol     *StreamProtocol
+	rtcpReceivers      map[int]*rtcpreceiver.RTCPReceiver
+	udpLastFrameTimes  map[int]*int64
 	writeMutex         sync.Mutex
 	readHandlers       ServerConnReadHandlers
 	nextFramesEnabled  bool
 	framesEnabled      bool
 	readTimeoutEnabled bool
+	udpTimeout         *int32
 
 	// in
 	terminate chan struct{}
+
+	backgroundRecordTerminate chan struct{}
+	backgroundRecordDone      chan struct{}
 }
 
 func newServerConn(conf ServerConf, nconn net.Conn) *ServerConn {
@@ -153,12 +163,13 @@ func newServerConn(conf ServerConf, nconn net.Conn) *ServerConn {
 	}()
 
 	return &ServerConn{
-		conf:      conf,
-		nconn:     nconn,
-		br:        bufio.NewReaderSize(conn, serverReadBufferSize),
-		bw:        bufio.NewWriterSize(conn, serverWriteBufferSize),
-		tracks:    make(map[int]ServerConnTrack),
-		terminate: make(chan struct{}),
+		conf:       conf,
+		nconn:      nconn,
+		br:         bufio.NewReaderSize(conn, serverConnReadBufferSize),
+		bw:         bufio.NewWriterSize(conn, serverConnWriteBufferSize),
+		tracks:     make(map[int]ServerConnTrack),
+		udpTimeout: new(int32),
+		terminate:  make(chan struct{}),
 	}
 }
 
@@ -239,22 +250,16 @@ func (sc *ServerConn) frameModeEnable() {
 				sc.conf.UDPRTCPListener.addPublisher(sc.ip(), track.rtcpPort, trackID, sc)
 
 				// open the firewall by sending packets to the counterpart
-				sc.conf.UDPRTPListener.write(sc.conf.WriteTimeout,
-					[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-					&net.UDPAddr{
-						IP:   sc.ip(),
-						Zone: sc.zone(),
-						Port: track.rtpPort,
-					})
-				sc.conf.UDPRTCPListener.write(sc.conf.WriteTimeout,
-					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00},
-					&net.UDPAddr{
-						IP:   sc.ip(),
-						Zone: sc.zone(),
-						Port: track.rtcpPort,
-					})
+				sc.WriteFrame(trackID, StreamTypeRTP,
+					[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+				sc.WriteFrame(trackID, StreamTypeRTCP,
+					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 			}
 		}
+
+		sc.backgroundRecordTerminate = make(chan struct{})
+		sc.backgroundRecordDone = make(chan struct{})
+		go sc.backgroundRecord()
 	}
 }
 
@@ -264,6 +269,9 @@ func (sc *ServerConn) frameModeDisable() {
 		sc.nextFramesEnabled = false
 
 	case ServerConnStateRecord:
+		close(sc.backgroundRecordTerminate)
+		<-sc.backgroundRecordDone
+
 		sc.nextFramesEnabled = false
 		sc.readTimeoutEnabled = false
 
@@ -374,6 +382,16 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			if res.StatusCode == 200 {
 				sc.state = ServerConnStatePreRecord
+
+				sc.rtcpReceivers = make(map[int]*rtcpreceiver.RTCPReceiver, len(tracks))
+				sc.udpLastFrameTimes = make(map[int]*int64, len(tracks))
+
+				for trackID, track := range tracks {
+					clockRate, _ := track.ClockRate()
+					sc.rtcpReceivers[trackID] = rtcpreceiver.New(nil, clockRate)
+					v := time.Now().Unix()
+					sc.udpLastFrameTimes[trackID] = &v
+				}
 			}
 
 			return res, err
@@ -575,6 +593,12 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, fmt.Errorf("no tracks have been setup")
 			}
 
+			if len(sc.tracks) != len(sc.rtcpReceivers) {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, fmt.Errorf("not all tracks have been setup")
+			}
+
 			res, err := sc.readHandlers.OnRecord(req)
 
 			if res.StatusCode == 200 {
@@ -699,7 +723,7 @@ func (sc *ServerConn) backgroundRead() error {
 
 	var req base.Request
 	var frame base.InterleavedFrame
-	tcpFrameBuffer := multibuffer.New(sc.conf.ReadBufferCount, clientTCPFrameReadBufferSize)
+	tcpFrameBuffer := multibuffer.New(sc.conf.ReadBufferCount, clientConnTCPFrameReadBufferSize)
 	var errRet error
 
 outer:
@@ -722,6 +746,8 @@ outer:
 			case *base.InterleavedFrame:
 				// forward frame only if it has been set up
 				if _, ok := sc.tracks[frame.TrackID]; ok {
+					sc.rtcpReceivers[frame.TrackID].ProcessFrame(time.Now(),
+						frame.StreamType, frame.Payload)
 					sc.readHandlers.OnFrame(frame.TrackID, frame.StreamType, frame.Payload)
 				}
 
@@ -736,7 +762,11 @@ outer:
 		} else {
 			err := req.Read(sc.br)
 			if err != nil {
-				errRet = err
+				if atomic.LoadInt32(sc.udpTimeout) == 1 {
+					errRet = fmt.Errorf("no UDP packets received recently (maybe there's a firewall/NAT in between)")
+				} else {
+					errRet = err
+				}
 				break outer
 			}
 
@@ -804,4 +834,44 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		Payload:    payload,
 	}
 	return frame.Write(sc.bw)
+}
+
+func (sc *ServerConn) backgroundRecord() {
+	defer close(sc.backgroundRecordDone)
+
+	checkStreamTicker := time.NewTicker(serverConnCheckStreamInterval)
+	defer checkStreamTicker.Stop()
+
+	receiverReportTicker := time.NewTicker(serverConnReceiverReportInterval)
+	defer receiverReportTicker.Stop()
+
+	for {
+		select {
+		case <-checkStreamTicker.C:
+			if *sc.tracksProtocol != StreamProtocolUDP {
+				continue
+			}
+
+			now := time.Now()
+			for _, lastUnix := range sc.udpLastFrameTimes {
+				last := time.Unix(atomic.LoadInt64(lastUnix), 0)
+
+				if now.Sub(last) >= sc.conf.ReadTimeout {
+					atomic.StoreInt32(sc.udpTimeout, 1)
+					sc.Close()
+					return
+				}
+			}
+
+		case <-receiverReportTicker.C:
+			now := time.Now()
+			for trackID := range sc.tracks {
+				r := sc.rtcpReceivers[trackID].Report(now)
+				sc.WriteFrame(trackID, StreamTypeRTP, r)
+			}
+
+		case <-sc.backgroundRecordTerminate:
+			return
+		}
+	}
 }
