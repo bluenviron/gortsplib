@@ -179,6 +179,11 @@ func (sc *ServerConn) TracksProtocol() *StreamProtocol {
 	return sc.tracksProtocol
 }
 
+// TracksLen returns the number of setupped tracks.
+func (sc *ServerConn) TracksLen() int {
+	return len(sc.tracks)
+}
+
 func (sc *ServerConn) checkState(allowed map[ServerConnState]struct{}) error {
 	if _, ok := allowed[sc.state]; ok {
 		return nil
