@@ -22,5 +22,5 @@ func (s *Server) Accept() (*ServerConn, error) {
 		return nil, err
 	}
 
-	return newServerConn(s, nconn), nil
+	return newServerConn(s.conf, nconn), nil
 }

@@ -194,7 +194,7 @@ func (c *ClientConn) checkState(allowed map[clientConnState]struct{}) error {
 	for a := range allowed {
 		allowedList = append(allowedList, a)
 	}
-	return fmt.Errorf("client must be in state %v, while is in state %v",
+	return fmt.Errorf("must be in state %v, while is in state %v",
 		allowedList, c.state)
 }
 
