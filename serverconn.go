@@ -422,6 +422,22 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 			}
 
+			switch sc.state {
+			case ServerConnStateInitial, ServerConnStatePrePlay: // play
+				if th.Mode != nil && *th.Mode != headers.TransportModePlay {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, fmt.Errorf("transport header must contain mode=play or not contain a mode")
+				}
+
+			default: // record
+				if th.Mode == nil || *th.Mode != headers.TransportModeRecord {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, fmt.Errorf("transport header does not contain mode=record")
+				}
+			}
+
 			res, err := sc.readHandlers.OnSetup(req, th)
 
 			if res.StatusCode == 200 {
