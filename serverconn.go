@@ -374,6 +374,12 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, fmt.Errorf("transport header: %s", err)
 			}
 
+			if th.Delivery != nil && *th.Delivery == base.StreamDeliveryMulticast {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, fmt.Errorf("multicast is not supported")
+			}
+
 			trackID, err := extractTrackID(controlPath, th.Mode, len(sc.tracks))
 			if err != nil {
 				return &base.Response{
