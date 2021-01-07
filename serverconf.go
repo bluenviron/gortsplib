@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net"
 	"time"
 )
@@ -50,37 +49,5 @@ type ServerConf struct {
 
 // Serve starts a server on the given address.
 func (c ServerConf) Serve(address string) (*Server, error) {
-	if c.ReadTimeout == 0 {
-		c.ReadTimeout = 10 * time.Second
-	}
-	if c.WriteTimeout == 0 {
-		c.WriteTimeout = 10 * time.Second
-	}
-	if c.ReadBufferCount == 0 {
-		c.ReadBufferCount = 1
-	}
-	if c.Listen == nil {
-		c.Listen = net.Listen
-	}
-
-	if c.TLSConfig != nil && c.UDPRTPListener != nil {
-		return nil, fmt.Errorf("TLS can't be used together with UDP")
-	}
-
-	if (c.UDPRTPListener != nil && c.UDPRTCPListener == nil) ||
-		(c.UDPRTPListener == nil && c.UDPRTCPListener != nil) {
-		return nil, fmt.Errorf("UDPRTPListener and UDPRTPListener must be used together")
-	}
-
-	listener, err := c.Listen("tcp", address)
-	if err != nil {
-		return nil, err
-	}
-
-	s := &Server{
-		conf:     c,
-		listener: listener,
-	}
-
-	return s, nil
+	return newServer(c, address)
 }
