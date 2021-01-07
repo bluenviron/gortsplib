@@ -809,14 +809,14 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		track := sc.tracks[trackID]
 
 		if streamType == StreamTypeRTP {
-			return sc.conf.UDPRTPListener.write(sc.conf.WriteTimeout, payload, &net.UDPAddr{
+			return sc.conf.UDPRTPListener.write(payload, &net.UDPAddr{
 				IP:   sc.ip(),
 				Zone: sc.zone(),
 				Port: track.rtpPort,
 			})
 		}
 
-		return sc.conf.UDPRTCPListener.write(sc.conf.WriteTimeout, payload, &net.UDPAddr{
+		return sc.conf.UDPRTCPListener.write(payload, &net.UDPAddr{
 			IP:   sc.ip(),
 			Zone: sc.zone(),
 			Port: track.rtcpPort,

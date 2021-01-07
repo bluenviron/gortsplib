@@ -37,7 +37,10 @@ func newServer(conf ServerConf, address string) (*Server, error) {
 
 	if conf.UDPRTPListener != nil {
 		conf.UDPRTPListener.streamType = StreamTypeRTP
+		conf.UDPRTPListener.writeTimeout = conf.WriteTimeout
+
 		conf.UDPRTCPListener.streamType = StreamTypeRTCP
+		conf.UDPRTCPListener.writeTimeout = conf.WriteTimeout
 	}
 
 	listener, err := conf.Listen("tcp", address)

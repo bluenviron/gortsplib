@@ -39,7 +39,8 @@ func (p *publisherAddr) fill(ip net.IP, port int) {
 
 // ServerUDPListener is a UDP server that can be used to send and receive RTP and RTCP packets.
 type ServerUDPListener struct {
-	streamType StreamType
+	streamType   StreamType
+	writeTimeout time.Duration
 
 	pc              *net.UDPConn
 	readBuf         *multibuffer.MultiBuffer
@@ -116,11 +117,11 @@ func (s *ServerUDPListener) port() int {
 	return s.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
-func (s *ServerUDPListener) write(writeTimeout time.Duration, buf []byte, addr *net.UDPAddr) error {
+func (s *ServerUDPListener) write(buf []byte, addr *net.UDPAddr) error {
 	s.writeMutex.Lock()
 	defer s.writeMutex.Unlock()
 
-	s.pc.SetWriteDeadline(time.Now().Add(writeTimeout))
+	s.pc.SetWriteDeadline(time.Now().Add(s.writeTimeout))
 	_, err := s.pc.WriteTo(buf, addr)
 	return err
 }
