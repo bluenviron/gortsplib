@@ -7,14 +7,18 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/multibuffer"
+	"github.com/aler9/gortsplib/pkg/ringbuffer"
 )
 
 const (
-	// use the same buffer size as gstreamer's rtspsrc
-	kernelReadBufferSize = 0x80000
-
-	readBufferSize = 2048
+	serverConnUDPListenerKernelReadBufferSize = 0x80000 // same as gstreamer's rtspsrc
+	serverConnUDPListenerReadBufferSize       = 2048
 )
+
+type bufAddrPair struct {
+	buf  []byte
+	addr *net.UDPAddr
+}
 
 type publisherData struct {
 	publisher *ServerConn
@@ -39,14 +43,14 @@ func (p *publisherAddr) fill(ip net.IP, port int) {
 
 // ServerUDPListener is a UDP server that can be used to send and receive RTP and RTCP packets.
 type ServerUDPListener struct {
-	streamType   StreamType
-	writeTimeout time.Duration
-
 	pc              *net.UDPConn
+	initialized     bool
+	streamType      StreamType
+	writeTimeout    time.Duration
 	readBuf         *multibuffer.MultiBuffer
 	publishersMutex sync.RWMutex
 	publishers      map[publisherAddr]*publisherData
-	writeMutex      sync.Mutex
+	ringBuffer      *ringbuffer.RingBuffer
 
 	// out
 	done chan struct{}
@@ -60,70 +64,102 @@ func NewServerUDPListener(address string) (*ServerUDPListener, error) {
 	}
 	pc := tmp.(*net.UDPConn)
 
-	err = pc.SetReadBuffer(kernelReadBufferSize)
+	err = pc.SetReadBuffer(serverConnUDPListenerKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}
 
-	s := &ServerUDPListener{
+	return &ServerUDPListener{
 		pc:         pc,
-		readBuf:    multibuffer.New(1, readBufferSize),
 		publishers: make(map[publisherAddr]*publisherData),
 		done:       make(chan struct{}),
-	}
-
-	go s.run()
-
-	return s, nil
+	}, nil
 }
 
 // Close closes the listener.
 func (s *ServerUDPListener) Close() {
 	s.pc.Close()
-	<-s.done
+
+	if s.initialized {
+		s.ringBuffer.Close()
+		<-s.done
+	}
+}
+
+func (s *ServerUDPListener) initialize(conf ServerConf, streamType StreamType) {
+	if s.initialized {
+		return
+	}
+
+	s.initialized = true
+	s.streamType = streamType
+	s.writeTimeout = conf.WriteTimeout
+	s.readBuf = multibuffer.New(conf.ReadBufferCount, serverConnUDPListenerReadBufferSize)
+	s.ringBuffer = ringbuffer.New(conf.ReadBufferCount)
+	go s.run()
 }
 
 func (s *ServerUDPListener) run() {
 	defer close(s.done)
 
-	for {
-		buf := s.readBuf.Next()
-		n, addr, err := s.pc.ReadFromUDP(buf)
-		if err != nil {
-			break
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for {
+			buf := s.readBuf.Next()
+			n, addr, err := s.pc.ReadFromUDP(buf)
+			if err != nil {
+				break
+			}
+
+			func() {
+				s.publishersMutex.RLock()
+				defer s.publishersMutex.RUnlock()
+
+				// find publisher data
+				var pubAddr publisherAddr
+				pubAddr.fill(addr.IP, addr.Port)
+				pubData, ok := s.publishers[pubAddr]
+				if !ok {
+					return
+				}
+
+				now := time.Now()
+				atomic.StoreInt64(pubData.publisher.udpLastFrameTimes[pubData.trackID], now.Unix())
+				pubData.publisher.rtcpReceivers[pubData.trackID].ProcessFrame(now, s.streamType, buf[:n])
+				pubData.publisher.readHandlers.OnFrame(pubData.trackID, s.streamType, buf[:n])
+			}()
 		}
+	}()
 
-		func() {
-			s.publishersMutex.RLock()
-			defer s.publishersMutex.RUnlock()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-			// find publisher data
-			var pubAddr publisherAddr
-			pubAddr.fill(addr.IP, addr.Port)
-			pubData, ok := s.publishers[pubAddr]
+		for {
+			tmp, ok := s.ringBuffer.Pull()
 			if !ok {
 				return
 			}
+			pair := tmp.(bufAddrPair)
 
-			now := time.Now()
-			atomic.StoreInt64(pubData.publisher.udpLastFrameTimes[pubData.trackID], now.Unix())
-			pubData.publisher.rtcpReceivers[pubData.trackID].ProcessFrame(now, s.streamType, buf[:n])
-			pubData.publisher.readHandlers.OnFrame(pubData.trackID, s.streamType, buf[:n])
-		}()
-	}
+			s.pc.SetWriteDeadline(time.Now().Add(s.writeTimeout))
+			s.pc.WriteTo(pair.buf, pair.addr)
+		}
+	}()
+
+	wg.Wait()
 }
 
 func (s *ServerUDPListener) port() int {
 	return s.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
-func (s *ServerUDPListener) write(buf []byte, addr *net.UDPAddr) error {
-	s.writeMutex.Lock()
-	defer s.writeMutex.Unlock()
-
-	s.pc.SetWriteDeadline(time.Now().Add(s.writeTimeout))
-	_, err := s.pc.WriteTo(buf, addr)
-	return err
+func (s *ServerUDPListener) write(buf []byte, addr *net.UDPAddr) {
+	s.ringBuffer.Push(bufAddrPair{buf, addr})
 }
 
 func (s *ServerUDPListener) addPublisher(ip net.IP, port int, trackID int, sc *ServerConn) {

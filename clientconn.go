@@ -33,7 +33,7 @@ const (
 	clientConnSenderReportPeriod     = 10 * time.Second
 	clientConnUDPCheckStreamPeriod   = 5 * time.Second
 	clientConnUDPKeepalivePeriod     = 30 * time.Second
-	clientConnTCPFrameReadBufferSize = 128 * 1024
+	clientConnTCPFrameReadBufferSize = 2048
 )
 
 type clientConnState int

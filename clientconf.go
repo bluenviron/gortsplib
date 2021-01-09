@@ -55,7 +55,7 @@ type ClientConf struct {
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
 	// It defaults to 1.
-	ReadBufferCount int
+	ReadBufferCount uint64
 
 	// callback called before every request.
 	OnRequest func(req *base.Request)

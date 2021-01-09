@@ -20,7 +20,7 @@ func newServer(conf ServerConf, address string) (*Server, error) {
 		conf.WriteTimeout = 10 * time.Second
 	}
 	if conf.ReadBufferCount == 0 {
-		conf.ReadBufferCount = 1
+		conf.ReadBufferCount = 1024
 	}
 	if conf.Listen == nil {
 		conf.Listen = net.Listen
@@ -36,11 +36,8 @@ func newServer(conf ServerConf, address string) (*Server, error) {
 	}
 
 	if conf.UDPRTPListener != nil {
-		conf.UDPRTPListener.streamType = StreamTypeRTP
-		conf.UDPRTPListener.writeTimeout = conf.WriteTimeout
-
-		conf.UDPRTCPListener.streamType = StreamTypeRTCP
-		conf.UDPRTCPListener.writeTimeout = conf.WriteTimeout
+		conf.UDPRTPListener.initialize(conf, StreamTypeRTP)
+		conf.UDPRTCPListener.initialize(conf, StreamTypeRTCP)
 	}
 
 	listener, err := conf.Listen("tcp", address)

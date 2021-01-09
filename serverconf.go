@@ -39,8 +39,10 @@ type ServerConf struct {
 	// Read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
-	// It defaults to 1
-	ReadBufferCount int
+	// It also allows to buffer routed frames and mitigate network fluctuations
+	// that are particularly high when using UDP.
+	// It defaults to 1024
+	ReadBufferCount uint64
 
 	// Function used to initialize the TCP listener.
 	// It defaults to net.Listen

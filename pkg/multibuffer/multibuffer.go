@@ -2,17 +2,17 @@
 package multibuffer
 
 // MultiBuffer implements software multi buffering, that allows to reuse
-// existing buffers without creating new ones, increasing performance.
+// existing buffers without creating new ones, improving performance.
 type MultiBuffer struct {
-	count   int
+	count   uint64
 	buffers [][]byte
-	cur     int
+	cur     uint64
 }
 
 // New allocates a MultiBuffer.
-func New(count int, size int) *MultiBuffer {
+func New(count uint64, size uint64) *MultiBuffer {
 	buffers := make([][]byte, count)
-	for i := 0; i < count; i++ {
+	for i := uint64(0); i < count; i++ {
 		buffers[i] = make([]byte, size)
 	}
 
@@ -24,10 +24,7 @@ func New(count int, size int) *MultiBuffer {
 
 // Next gets the current buffer and sets the next buffer as the current one.
 func (mb *MultiBuffer) Next() []byte {
-	ret := mb.buffers[mb.cur]
+	ret := mb.buffers[mb.cur%mb.count]
 	mb.cur++
-	if mb.cur >= mb.count {
-		mb.cur = 0
-	}
 	return ret
 }
