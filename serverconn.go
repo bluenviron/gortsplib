@@ -752,9 +752,10 @@ func (sc *ServerConn) backgroundRead() error {
 				tcpFrameBuffer = multibuffer.New(sc.conf.ReadBufferCount, serverConnTCPFrameReadBufferSize)
 			} else {
 				// when playing, tcpFrameBuffer is only used to receive RTCP receiver reports,
-				// that are much smaller than RTP frames.
-				// decrease RAM usage by allocating less buffers.
-				tcpFrameBuffer = multibuffer.New(sc.conf.ReadBufferCount/8, serverConnTCPFrameReadBufferSize)
+				// that are much smaller than RTP frames and are sent at a fixed interval
+				// (about 2 frames every 10 secs).
+				// decrease RAM consumption by allocating less buffers.
+				tcpFrameBuffer = multibuffer.New(8, serverConnTCPFrameReadBufferSize)
 			}
 
 			// write response before frames

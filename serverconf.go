@@ -41,7 +41,7 @@ type ServerConf struct {
 	// that is reading frames.
 	// It also allows to buffer routed frames and mitigate network fluctuations
 	// that are particularly high when using UDP.
-	// It defaults to 1024
+	// It defaults to 512
 	ReadBufferCount uint64
 
 	// Function used to initialize the TCP listener.

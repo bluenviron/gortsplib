@@ -20,7 +20,7 @@ func newServer(conf ServerConf, address string) (*Server, error) {
 		conf.WriteTimeout = 10 * time.Second
 	}
 	if conf.ReadBufferCount == 0 {
-		conf.ReadBufferCount = 1024
+		conf.ReadBufferCount = 512
 	}
 	if conf.Listen == nil {
 		conf.Listen = net.Listen
