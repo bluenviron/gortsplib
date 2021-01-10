@@ -722,6 +722,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 }
 
 func (sc *ServerConn) backgroundRead() error {
+	var tcpFrameBuffer *multibuffer.MultiBuffer
+
 	handleRequestOuter := func(req *base.Request) error {
 		res, err := sc.handleRequest(req)
 
@@ -745,6 +747,15 @@ func (sc *ServerConn) backgroundRead() error {
 		if sc.doEnableFrames {
 			sc.doEnableFrames = false
 			sc.framesEnabled = true
+
+			if sc.state == ServerConnStateRecord {
+				tcpFrameBuffer = multibuffer.New(sc.conf.ReadBufferCount, serverConnTCPFrameReadBufferSize)
+			} else {
+				// when playing, tcpFrameBuffer is only used to receive RTCP receiver reports,
+				// that are much smaller than RTP frames.
+				// decrease RAM usage by allocating less buffers.
+				tcpFrameBuffer = multibuffer.New(sc.conf.ReadBufferCount/8, serverConnTCPFrameReadBufferSize)
+			}
 
 			// write response before frames
 			sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
@@ -770,7 +781,6 @@ func (sc *ServerConn) backgroundRead() error {
 
 	var req base.Request
 	var frame base.InterleavedFrame
-	tcpFrameBuffer := multibuffer.New(sc.conf.ReadBufferCount, serverConnTCPFrameReadBufferSize)
 	var errRet error
 
 outer:
