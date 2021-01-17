@@ -51,6 +51,11 @@ type ClientConf struct {
 	// It defaults to false.
 	RedirectDisable bool
 
+	// disable sender checks to prevent received packets from being dropped if source IP:PORT doesn't
+	// match with RTSP setup (server_port from 'Transport' header)
+	// It defaults to false.
+	SenderCheckDisable bool
+
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.

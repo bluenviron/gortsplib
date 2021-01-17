@@ -77,10 +77,12 @@ func (l *clientConnUDPListener) run() {
 			return
 		}
 
-		uaddr := addr.(*net.UDPAddr)
+		if !l.c.conf.SenderCheckDisable {
+			uaddr := addr.(*net.UDPAddr)
 
-		if !l.remoteIP.Equal(uaddr.IP) || l.remotePort != uaddr.Port {
-			continue
+			if !l.remoteIP.Equal(uaddr.IP) || l.remotePort != uaddr.Port {
+				continue
+			}
 		}
 
 		now := time.Now()
