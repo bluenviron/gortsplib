@@ -90,7 +90,8 @@ func (va *Validator) GenerateHeader() base.HeaderValue {
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header.
-func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *base.URL) error {
+func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *base.URL,
+	altUrl *base.URL) error {
 	if len(v) == 0 {
 		return fmt.Errorf("authorization header not provided")
 	}
@@ -171,21 +172,21 @@ func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *
 			return fmt.Errorf("wrong username")
 		}
 
-		uri := ur.String()
+		urlString := ur.String()
 
-		if *auth.URI != uri {
-			// VLC strips the control attribute; do another try without the control attribute
-			ur = ur.Clone()
-			ur.RemoveControlAttribute()
-			uri = ur.String()
+		if *auth.URI != urlString {
+			// do another try with the alternative URL
+			if altUrl != nil {
+				urlString = altUrl.String()
+			}
 
-			if *auth.URI != uri {
+			if *auth.URI != urlString {
 				return fmt.Errorf("wrong url")
 			}
 		}
 
 		response := md5Hex(md5Hex(va.user+":"+va.realm+":"+va.pass) +
-			":" + va.nonce + ":" + md5Hex(string(method)+":"+uri))
+			":" + va.nonce + ":" + md5Hex(string(method)+":"+urlString))
 
 		if *auth.Response != response {
 			return fmt.Errorf("wrong response")

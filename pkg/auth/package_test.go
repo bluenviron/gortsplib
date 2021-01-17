@@ -64,7 +64,7 @@ func TestAuth(t *testing.T) {
 					}()))
 
 				err = va.ValidateHeader(authorization, base.Announce,
-					base.MustParseURL("rtsp://myhost/mypath"))
+					base.MustParseURL("rtsp://myhost/mypath"), nil)
 
 				if conf != "nofail" {
 					require.Error(t, err)
@@ -99,7 +99,7 @@ func TestAuthVLC(t *testing.T) {
 			base.MustParseURL(ca.clientURL))
 
 		err = va.ValidateHeader(authorization, base.Announce,
-			base.MustParseURL(ca.serverURL))
+			base.MustParseURL(ca.serverURL), base.MustParseURL(ca.clientURL))
 		require.NoError(t, err)
 	}
 }
@@ -133,7 +133,7 @@ func TestAuthHashed(t *testing.T) {
 				base.MustParseURL("rtsp://myhost/mypath"))
 
 			err = se.ValidateHeader(authorization, base.Announce,
-				base.MustParseURL("rtsp://myhost/mypath"))
+				base.MustParseURL("rtsp://myhost/mypath"), nil)
 
 			if conf != "nofail" {
 				require.Error(t, err)

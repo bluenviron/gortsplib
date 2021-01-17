@@ -461,7 +461,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("unable to find control attribute (%s)", req.URL)
+				}, fmt.Errorf("invalid path (%s)", req.URL)
 			}
 
 			th, err := headers.ReadTransport(req.Header["Transport"])
