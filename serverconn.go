@@ -105,7 +105,7 @@ type ServerConnReadHandlers struct {
 	OnAnnounce func(req *base.Request, tracks Tracks) (*base.Response, error)
 
 	// called after receiving a SETUP request.
-	OnSetup func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error)
+	OnSetup func(req *base.Request, th *headers.Transport, basePath string, trackID int) (*base.Response, error)
 
 	// called after receiving a PLAY request.
 	OnPlay func(req *base.Request) (*base.Response, error)
@@ -457,7 +457,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
-			_, controlPath, ok := req.URL.BasePathControlAttr()
+			basePath, controlPath, ok := req.URL.BasePathControlAttr()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -541,7 +541,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 			}
 
-			res, err := sc.readHandlers.OnSetup(req, th, trackID)
+			res, err := sc.readHandlers.OnSetup(req, th, basePath, trackID)
 
 			if res.StatusCode == 200 {
 				sc.tracksProtocol = &th.Protocol
