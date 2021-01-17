@@ -142,7 +142,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}, nil
 	}
 
-	onSetup := func(req *base.Request, th *headers.Transport, basePath string, trackID int) (*base.Response, error) {
+	onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
 		return &base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{

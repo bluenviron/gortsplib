@@ -73,7 +73,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 	}
 
 	// called after receiving a SETUP request.
-	onSetup := func(req *base.Request, th *headers.Transport, basePath string, trackID int) (*base.Response, error) {
+	onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
 		return &base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{

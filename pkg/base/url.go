@@ -3,7 +3,6 @@ package base
 import (
 	"fmt"
 	"net/url"
-	"strings"
 )
 
 func stringsReverseIndexByte(s string, c byte) int {
@@ -16,7 +15,7 @@ func stringsReverseIndexByte(s string, c byte) int {
 }
 
 // URL is a RTSP URL.
-// This is basically an HTTP url with some additional functions to handle
+// This is basically an HTTP URL with some additional functions to handle
 // control attributes.
 type URL url.URL
 
@@ -75,9 +74,8 @@ func (u *URL) CloneWithoutCredentials() *URL {
 	})
 }
 
-// BasePath returns the base path of a RTSP URL.
-// We assume that the URL doesn't contain a control attribute.
-func (u *URL) BasePath() (string, bool) {
+// RTSPPath returns the path of a RTSP URL.
+func (u *URL) RTSPPath() (string, bool) {
 	var path string
 	if u.RawPath != "" {
 		path = u.RawPath
@@ -94,10 +92,8 @@ func (u *URL) BasePath() (string, bool) {
 	return path, true
 }
 
-// BasePathControlAttr returns the base path and the control attribute of a RTSP URL.
-// We assume that the URL contains a control attribute.
-// We assume that the base path and control attribute are divided with a slash.
-func (u *URL) BasePathControlAttr() (string, string, bool) {
+// RTSPPathAndQuery returns the path and the query of a RTSP URL.
+func (u *URL) RTSPPathAndQuery() (string, bool) {
 	var pathAndQuery string
 	if u.RawPath != "" {
 		pathAndQuery = u.RawPath
@@ -110,33 +106,11 @@ func (u *URL) BasePathControlAttr() (string, string, bool) {
 
 	// remove leading slash
 	if len(pathAndQuery) == 0 || pathAndQuery[0] != '/' {
-		return "", "", false
+		return "", false
 	}
 	pathAndQuery = pathAndQuery[1:]
 
-	pos := stringsReverseIndexByte(pathAndQuery, '/')
-	if pos < 0 {
-		return "", "", false
-	}
-
-	basePath := pathAndQuery[:pos]
-
-	// remove query from basePath
-	i := strings.IndexByte(basePath, '?')
-	if i >= 0 {
-		basePath = basePath[:i]
-	}
-
-	if len(basePath) == 0 {
-		return "", "", false
-	}
-
-	controlPath := pathAndQuery[pos+1:]
-	if len(controlPath) == 0 {
-		return "", "", false
-	}
-
-	return basePath, controlPath, true
+	return pathAndQuery, true
 }
 
 // AddControlAttribute adds a control attribute to a RTSP url.

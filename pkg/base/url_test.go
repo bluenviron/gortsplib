@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestURLBasePath(t *testing.T) {
+func TestURLRTSPPath(t *testing.T) {
 	for _, ca := range []struct {
 		u *URL
 		b string
@@ -32,48 +32,41 @@ func TestURLBasePath(t *testing.T) {
 			"user=tmp&password=BagRep1!&channel=1&stream=0.sdp",
 		},
 	} {
-		b, ok := ca.u.BasePath()
+		b, ok := ca.u.RTSPPath()
 		require.Equal(t, true, ok)
 		require.Equal(t, ca.b, b)
 	}
 }
 
-func TestURLBasePathControlAttr(t *testing.T) {
+func TestURLRTSPPathAndQuery(t *testing.T) {
 	for _, ca := range []struct {
 		u *URL
 		b string
-		c string
 	}{
 		{
 			MustParseURL("rtsp://localhost:8554/teststream/trackID=1"),
-			"teststream",
-			"trackID=1",
+			"teststream/trackID=1",
 		},
 		{
 			MustParseURL("rtsp://localhost:8554/test/stream/trackID=1"),
-			"test/stream",
-			"trackID=1",
+			"test/stream/trackID=1",
 		},
 		{
 			MustParseURL("rtsp://192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1"),
-			"test",
-			"trackID=1",
+			"test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1",
 		},
 		{
 			MustParseURL("rtsp://192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
-			"te!st",
-			"trackID=1",
+			"te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
 		},
 		{
 			MustParseURL("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
-			"user=tmp&password=BagRep1!&channel=1&stream=0.sdp",
-			"trackID=1",
+			"user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
 		},
 	} {
-		b, c, ok := ca.u.BasePathControlAttr()
+		b, ok := ca.u.RTSPPathAndQuery()
 		require.Equal(t, true, ok)
 		require.Equal(t, ca.b, b)
-		require.Equal(t, ca.c, c)
 	}
 }
 

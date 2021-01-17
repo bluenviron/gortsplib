@@ -91,7 +91,7 @@ func (va *Validator) GenerateHeader() base.HeaderValue {
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header.
 func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *base.URL,
-	altUrl *base.URL) error {
+	altURL *base.URL) error {
 	if len(v) == 0 {
 		return fmt.Errorf("authorization header not provided")
 	}
@@ -176,8 +176,8 @@ func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *
 
 		if *auth.URI != urlString {
 			// do another try with the alternative URL
-			if altUrl != nil {
-				urlString = altUrl.String()
+			if altURL != nil {
+				urlString = altURL.String()
 			}
 
 			if *auth.URI != urlString {

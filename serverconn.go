@@ -67,15 +67,16 @@ type ServerConnTrack struct {
 	rtcpPort int
 }
 
-func extractTrackID(controlPath string, mode *headers.TransportMode, trackLen int) (int, error) {
+func extractTrackID(pathAndQuery string, mode *headers.TransportMode, trackLen int) (int, error) {
 	if mode == nil || *mode == headers.TransportModePlay {
-		if !strings.HasPrefix(controlPath, "trackID=") {
-			return 0, fmt.Errorf("invalid control attribute (%s)", controlPath)
+		i := strings.Index(pathAndQuery, "/trackID=")
+		if i < 0 {
+			return 0, fmt.Errorf("unable to find control attribute (%s)", pathAndQuery)
 		}
 
-		tmp, err := strconv.ParseInt(controlPath[len("trackID="):], 10, 64)
+		tmp, err := strconv.ParseInt(pathAndQuery[i+len("/trackID="):], 10, 64)
 		if err != nil || tmp < 0 {
-			return 0, fmt.Errorf("invalid track id (%s)", controlPath)
+			return 0, fmt.Errorf("invalid track id (%s)", pathAndQuery)
 		}
 		trackID := int(tmp)
 
@@ -105,7 +106,7 @@ type ServerConnReadHandlers struct {
 	OnAnnounce func(req *base.Request, tracks Tracks) (*base.Response, error)
 
 	// called after receiving a SETUP request.
-	OnSetup func(req *base.Request, th *headers.Transport, basePath string, trackID int) (*base.Response, error)
+	OnSetup func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error)
 
 	// called after receiving a PLAY request.
 	OnPlay func(req *base.Request) (*base.Response, error)
@@ -457,7 +458,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
-			basePath, controlPath, ok := req.URL.BasePathControlAttr()
+			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -477,7 +478,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, fmt.Errorf("multicast is not supported")
 			}
 
-			trackID, err := extractTrackID(controlPath, th.Mode, len(sc.tracks))
+			trackID, err := extractTrackID(pathAndQuery, th.Mode, len(sc.tracks))
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -541,7 +542,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 			}
 
-			res, err := sc.readHandlers.OnSetup(req, th, basePath, trackID)
+			res, err := sc.readHandlers.OnSetup(req, th, trackID)
 
 			if res.StatusCode == 200 {
 				sc.tracksProtocol = &th.Protocol
