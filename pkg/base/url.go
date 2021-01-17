@@ -5,15 +5,6 @@ import (
 	"net/url"
 )
 
-func stringsReverseIndexByte(s string, c byte) int {
-	for i := len(s) - 1; i >= 0; i-- {
-		if s[i] == c {
-			return i
-		}
-	}
-	return -1
-}
-
 // URL is a RTSP URL.
 // This is basically an HTTP URL with some additional functions to handle
 // control attributes.
