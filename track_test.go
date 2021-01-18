@@ -72,7 +72,7 @@ func TestTrackClockRate(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			tracks, err := ReadTracks(ca.sdp)
+			tracks, err := ReadTracks(ca.sdp, nil)
 			require.NoError(t, err)
 
 			clockRate, err := tracks[0].ClockRate()

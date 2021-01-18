@@ -128,8 +128,8 @@ func (s *ServerUDPListener) run() {
 				}
 
 				now := time.Now()
-				atomic.StoreInt64(pubData.publisher.udpLastFrameTimes[pubData.trackID], now.Unix())
-				pubData.publisher.rtcpReceivers[pubData.trackID].ProcessFrame(now, s.streamType, buf[:n])
+				atomic.StoreInt64(pubData.publisher.announcedTracks[pubData.trackID].udpLastFrameTime, now.Unix())
+				pubData.publisher.announcedTracks[pubData.trackID].rtcpReceiver.ProcessFrame(now, s.streamType, buf[:n])
 				pubData.publisher.readHandlers.OnFrame(pubData.trackID, s.streamType, buf[:n])
 			}()
 		}

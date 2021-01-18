@@ -59,7 +59,7 @@ func (s clientConnState) String() string {
 	case clientConnStateRecord:
 		return "record"
 	}
-	return "uknown"
+	return "unknown"
 }
 
 // ClientConn is a client-side RTSP connection.
@@ -395,13 +395,9 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 		return nil, nil, fmt.Errorf("wrong Content-Type, expected application/sdp")
 	}
 
-	tracks, err := ReadTracks(res.Body)
+	tracks, err := ReadTracks(res.Body, u)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	for _, t := range tracks {
-		t.BaseURL = u
 	}
 
 	return tracks, res, nil

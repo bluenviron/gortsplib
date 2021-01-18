@@ -16,7 +16,7 @@ import (
 
 // Track is a track available in a certain URL.
 type Track struct {
-	// base url
+	// base URL
 	BaseURL *base.URL
 
 	// id
@@ -204,7 +204,7 @@ func (t *Track) URL() (*base.URL, error) {
 type Tracks []*Track
 
 // ReadTracks decodes tracks from SDP.
-func ReadTracks(byts []byte) (Tracks, error) {
+func ReadTracks(byts []byte, baseURL *base.URL) (Tracks, error) {
 	desc := sdp.SessionDescription{}
 	err := desc.Unmarshal(byts)
 	if err != nil {
@@ -215,8 +215,9 @@ func ReadTracks(byts []byte) (Tracks, error) {
 
 	for i, media := range desc.MediaDescriptions {
 		tracks[i] = &Track{
-			ID:    i,
-			Media: media,
+			BaseURL: baseURL,
+			ID:      i,
+			Media:   media,
 		}
 	}
 
