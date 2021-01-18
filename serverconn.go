@@ -70,8 +70,10 @@ type ServerConnTrack struct {
 func extractTrackID(pathAndQuery string, mode *headers.TransportMode, trackLen int) (int, error) {
 	if mode == nil || *mode == headers.TransportModePlay {
 		i := strings.Index(pathAndQuery, "/trackID=")
+
+		// URL doesn't contain trackID - we assume it's track 0
 		if i < 0 {
-			return 0, fmt.Errorf("unable to find control attribute (%s)", pathAndQuery)
+			return 0, nil
 		}
 
 		tmp, err := strconv.ParseInt(pathAndQuery[i+len("/trackID="):], 10, 64)
@@ -128,7 +130,7 @@ type ServerConnReadHandlers struct {
 	// if nil, it is generated automatically.
 	OnTeardown func(req *base.Request) (*base.Response, error)
 
-	// called after receiving a Frame.
+	// called after receiving a frame.
 	OnFrame func(trackID int, streamType StreamType, payload []byte)
 }
 

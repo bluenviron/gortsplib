@@ -19,8 +19,8 @@ import (
 
 var mutex sync.Mutex
 var publisher *gortsplib.ServerConn
-var sdp []byte
 var readers = make(map[*gortsplib.ServerConn]struct{})
+var sdp []byte
 
 // this is called for each incoming connection
 func handleConn(conn *gortsplib.ServerConn) {
@@ -116,7 +116,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 		}, nil
 	}
 
-	// called after receiving a Frame.
+	// called after receiving a frame.
 	onFrame := func(trackID int, typ gortsplib.StreamType, buf []byte) {
 		mutex.Lock()
 		defer mutex.Unlock()
