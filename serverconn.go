@@ -514,12 +514,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					trackID := int(tmp)
 
 					// remove track ID from path
-					nu := &base.URL{
-						Scheme: req.URL.Scheme,
-						Host:   req.URL.Host,
-						User:   req.URL.User,
-					}
-					nu, _ = base.ParseURL(nu.String() + pathAndQuery[:i])
+					nu := req.URL.Clone()
+					nu.SetRTSPPathAndQuery(pathAndQuery[:i])
 					req.URL = nu
 
 					return trackID, nil

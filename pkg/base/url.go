@@ -83,7 +83,7 @@ func (u *URL) RTSPPath() (string, bool) {
 	return path, true
 }
 
-// RTSPPathAndQuery returns the path and the query of a RTSP URL.
+// RTSPPathAndQuery returns the path and query of a RTSP URL.
 func (u *URL) RTSPPathAndQuery() (string, bool) {
 	var pathAndQuery string
 	if u.RawPath != "" {
@@ -102,6 +102,19 @@ func (u *URL) RTSPPathAndQuery() (string, bool) {
 	pathAndQuery = pathAndQuery[1:]
 
 	return pathAndQuery, true
+}
+
+// SetRTSPPathAndQuery sets the path and query of a RTSP URL.
+func (u *URL) SetRTSPPathAndQuery(pathAndQuery string) {
+	nu1 := &URL{
+		Scheme: u.Scheme,
+		Opaque: u.Opaque,
+		User:   u.User,
+		Host:   u.Host,
+		Path:   "/",
+	}
+	nu2, _ := ParseURL(nu1.String() + pathAndQuery)
+	*u = *nu2
 }
 
 // AddControlAttribute adds a control attribute to a RTSP url.

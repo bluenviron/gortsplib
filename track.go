@@ -167,7 +167,7 @@ func (t *Track) URL() (*base.URL, error) {
 		return nil, fmt.Errorf("empty base url")
 	}
 
-	control := func() string {
+	controlAttr := func() string {
 		for _, attr := range t.Media.Attributes {
 			if attr.Key == "control" {
 				return attr.Value
@@ -177,13 +177,13 @@ func (t *Track) URL() (*base.URL, error) {
 	}()
 
 	// no control attribute, use base URL
-	if control == "" {
+	if controlAttr == "" {
 		return t.BaseURL, nil
 	}
 
 	// control attribute contains an absolute path
-	if strings.HasPrefix(control, "rtsp://") {
-		ur, err := base.ParseURL(control)
+	if strings.HasPrefix(controlAttr, "rtsp://") {
+		ur, err := base.ParseURL(controlAttr)
 		if err != nil {
 			return nil, err
 		}
@@ -196,7 +196,7 @@ func (t *Track) URL() (*base.URL, error) {
 
 	// control attribute contains a relative control attribute
 	ur := t.BaseURL.Clone()
-	ur.AddControlAttribute(control)
+	ur.AddControlAttribute(controlAttr)
 	return ur, nil
 }
 

@@ -170,6 +170,22 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	}
 
 	onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
+		reqPath, ok := req.URL.RTSPPath()
+		if !ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("invalid path (%s)", req.URL)
+		}
+
+		switch conn.State() {
+		case ServerConnStateInitial, ServerConnStatePrePlay:
+			if reqPath != "teststream" {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, fmt.Errorf("invalid path (%s)", req.URL)
+			}
+		}
+
 		return &base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
