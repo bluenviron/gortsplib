@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -102,6 +103,19 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	defer conn.Close()
 
 	onDescribe := func(req *base.Request) (*base.Response, error) {
+		reqPath, ok := req.URL.RTSPPath()
+		if !ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("invalid path (%s)", req.URL)
+		}
+
+		if reqPath != "teststream" {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("invalid path (%s)", req.URL)
+		}
+
 		ts.mutex.Lock()
 		defer ts.mutex.Unlock()
 
@@ -122,6 +136,19 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	}
 
 	onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+		reqPath, ok := req.URL.RTSPPath()
+		if !ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("invalid path (%s)", req.URL)
+		}
+
+		if reqPath != "teststream" {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("invalid path (%s)", req.URL)
+		}
+
 		ts.mutex.Lock()
 		defer ts.mutex.Unlock()
 
@@ -152,6 +179,22 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	}
 
 	onPlay := func(req *base.Request) (*base.Response, error) {
+		reqPath, ok := req.URL.RTSPPath()
+		if !ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("invalid path (%s)", req.URL)
+		}
+
+		// path can end with a slash, remove it
+		reqPath = strings.TrimSuffix(reqPath, "/")
+
+		if reqPath != "teststream" {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("invalid path (%s)", req.URL)
+		}
+
 		ts.mutex.Lock()
 		defer ts.mutex.Unlock()
 
@@ -166,6 +209,22 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	}
 
 	onRecord := func(req *base.Request) (*base.Response, error) {
+		reqPath, ok := req.URL.RTSPPath()
+		if !ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("invalid path (%s)", req.URL)
+		}
+
+		// path can end with a slash, remove it
+		reqPath = strings.TrimSuffix(reqPath, "/")
+
+		if reqPath != "teststream" {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("invalid path (%s)", req.URL)
+		}
+
 		ts.mutex.Lock()
 		defer ts.mutex.Unlock()
 
@@ -208,7 +267,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}
 	}
 
-	<-conn.Read(ServerConnReadHandlers{
+	err := <-conn.Read(ServerConnReadHandlers{
 		OnDescribe: onDescribe,
 		OnAnnounce: onAnnounce,
 		OnSetup:    onSetup,
@@ -217,6 +276,9 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		OnPause:    onPause,
 		OnFrame:    onFrame,
 	})
+	if err != io.EOF && err != ErrServerTeardown {
+		fmt.Println("ERR", err)
+	}
 
 	ts.mutex.Lock()
 	defer ts.mutex.Unlock()
