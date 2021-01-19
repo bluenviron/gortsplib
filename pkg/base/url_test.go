@@ -31,6 +31,10 @@ func TestURLRTSPPath(t *testing.T) {
 			MustParseURL("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
 			"user=tmp&password=BagRep1!&channel=1&stream=0.sdp",
 		},
+		{
+			MustParseURL("rtsp://localhost:8554/teststream?query1?query2"),
+			"teststream",
+		},
 	} {
 		b, ok := ca.u.RTSPPath()
 		require.Equal(t, true, ok)

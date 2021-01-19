@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 func stringsReverseIndex(s, substr string) int {
@@ -35,7 +36,7 @@ func PathSplitControlAttribute(pathAndQuery string) (int, string, bool) {
 
 // PathSplitQuery splits a path from a query.
 func PathSplitQuery(pathAndQuery string) (string, string) {
-	i := stringsReverseIndex(pathAndQuery, "?")
+	i := strings.Index(pathAndQuery, "?")
 	if i >= 0 {
 		return pathAndQuery[:i], pathAndQuery[i:]
 	}
