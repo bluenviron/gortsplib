@@ -3,7 +3,45 @@ package base
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 )
+
+func stringsReverseIndex(s, substr string) int {
+	for i := len(s) - 1 - len(substr); i >= 0; i-- {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
+}
+
+// PathSplitControlAttribute splits a path and query from a control attribute.
+func PathSplitControlAttribute(pathAndQuery string) (int, string, bool) {
+	i := stringsReverseIndex(pathAndQuery, "/trackID=")
+
+	// URL doesn't contain trackID - we assume it's track 0
+	if i < 0 {
+		return 0, pathAndQuery, true
+	}
+
+	tmp, err := strconv.ParseInt(pathAndQuery[i+len("/trackID="):], 10, 64)
+	if err != nil || tmp < 0 {
+		return 0, "", false
+	}
+	trackID := int(tmp)
+
+	return trackID, pathAndQuery[:i], true
+}
+
+// PathSplitQuery splits a path from a query.
+func PathSplitQuery(pathAndQuery string) (string, string) {
+	i := stringsReverseIndex(pathAndQuery, "?")
+	if i >= 0 {
+		return pathAndQuery[:i], pathAndQuery[i:]
+	}
+
+	return pathAndQuery, ""
+}
 
 // URL is a RTSP URL.
 // This is basically an HTTP URL with some additional functions to handle
@@ -67,19 +105,12 @@ func (u *URL) CloneWithoutCredentials() *URL {
 
 // RTSPPath returns the path of a RTSP URL.
 func (u *URL) RTSPPath() (string, bool) {
-	var path string
-	if u.RawPath != "" {
-		path = u.RawPath
-	} else {
-		path = u.Path
-	}
-
-	// remove leading slash
-	if len(path) == 0 || path[0] != '/' {
+	pathAndQuery, ok := u.RTSPPathAndQuery()
+	if !ok {
 		return "", false
 	}
-	path = path[1:]
 
+	path, _ := PathSplitQuery(pathAndQuery)
 	return path, true
 }
 
@@ -102,19 +133,6 @@ func (u *URL) RTSPPathAndQuery() (string, bool) {
 	pathAndQuery = pathAndQuery[1:]
 
 	return pathAndQuery, true
-}
-
-// SetRTSPPathAndQuery sets the path and query of a RTSP URL.
-func (u *URL) SetRTSPPathAndQuery(pathAndQuery string) {
-	nu1 := &URL{
-		Scheme: u.Scheme,
-		Opaque: u.Opaque,
-		User:   u.User,
-		Host:   u.Host,
-		Path:   "/",
-	}
-	nu2, _ := ParseURL(nu1.String() + pathAndQuery)
-	*u = *nu2
 }
 
 // AddControlAttribute adds a control attribute to a RTSP url.

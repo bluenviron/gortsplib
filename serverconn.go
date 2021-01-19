@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -500,23 +499,10 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			trackID, err := func() (int, error) {
 				if th.Mode == nil || *th.Mode == headers.TransportModePlay {
-					i := strings.Index(pathAndQuery, "/trackID=")
-
-					// URL doesn't contain trackID - we assume it's track 0
-					if i < 0 {
-						return 0, nil
-					}
-
-					tmp, err := strconv.ParseInt(pathAndQuery[i+len("/trackID="):], 10, 64)
-					if err != nil || tmp < 0 {
+					trackID, _, ok := base.PathSplitControlAttribute(pathAndQuery)
+					if !ok {
 						return 0, fmt.Errorf("invalid track (%s)", pathAndQuery)
 					}
-					trackID := int(tmp)
-
-					// remove track ID from path
-					nu := req.URL.Clone()
-					nu.SetRTSPPathAndQuery(pathAndQuery[:i])
-					req.URL = nu
 
 					return trackID, nil
 				}
