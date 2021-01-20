@@ -578,7 +578,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		if thRes.ServerPorts == nil {
 			rtpListener.close()
 			rtcpListener.close()
-			return nil, fmt.Errorf("server ports not provided")
+			return nil, fmt.Errorf("server ports have not been provided. Use AnyPortEnable to communicate with this server")
 		}
 
 		if (thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] != 0) ||
@@ -588,8 +588,10 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			return nil, fmt.Errorf("server ports must be both zero or both not zero")
 		}
 
-		if thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] == 0 {
-			return nil, fmt.Errorf("server ports are zero")
+		if !c.conf.AnyPortEnable {
+			if thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] == 0 {
+				return nil, fmt.Errorf("server ports have not been provided. Use AnyPortEnable to communicate with this server")
+			}
 		}
 
 	} else {

@@ -220,10 +220,43 @@ func TestClientDialReadZeroServerPorts(t *testing.T) {
 			},
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		time.Sleep(1 * time.Second)
+
+		l1, err := net.ListenPacket("udp", "localhost:0")
+		require.NoError(t, err)
+		defer l1.Close()
+
+		l1.WriteTo([]byte("\x00\x00\x00\x00"), &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: th.ClientPorts[0],
+		})
 	}()
 
-	_, err = DialRead("rtsp://localhost:8554/teststream")
-	require.Equal(t, "server ports are zero", err.Error())
+	conf := ClientConf{
+		AnyPortEnable: true,
+	}
+
+	conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	frameRecv := make(chan struct{})
+	done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+		close(frameRecv)
+	})
+
+	<-frameRecv
+	conn.Close()
+	<-done
 }
 
 func TestClientDialReadAutomaticProtocol(t *testing.T) {

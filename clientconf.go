@@ -39,6 +39,15 @@ type ClientConf struct {
 	// It defaults to &tls.Config{InsecureSkipVerify:true}
 	TLSConfig *tls.Config
 
+	// disable being redirected to other servers, that can happen during Describe().
+	// It defaults to false.
+	RedirectDisable bool
+
+	// enable communication with servers which don't provide server ports.
+	// this can be a security issue.
+	// It defaults to false.
+	AnyPortEnable bool
+
 	// timeout of read operations.
 	// It defaults to 10 seconds.
 	ReadTimeout time.Duration
@@ -46,10 +55,6 @@ type ClientConf struct {
 	// timeout of write operations.
 	// It defaults to 10 seconds.
 	WriteTimeout time.Duration
-
-	// disable being redirected to other servers, that can happen during Describe().
-	// It defaults to false.
-	RedirectDisable bool
 
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
