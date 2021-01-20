@@ -581,6 +581,17 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			return nil, fmt.Errorf("server ports not provided")
 		}
 
+		if (thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] != 0) ||
+			(thRes.ServerPorts[0] != 0 && thRes.ServerPorts[1] == 0) {
+			rtpListener.close()
+			rtcpListener.close()
+			return nil, fmt.Errorf("server ports must be both zero or both not zero")
+		}
+
+		if thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] == 0 {
+			return nil, fmt.Errorf("server ports are zero")
+		}
+
 	} else {
 		if thRes.InterleavedIds == nil ||
 			(*thRes.InterleavedIds)[0] != (*th.InterleavedIds)[0] ||

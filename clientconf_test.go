@@ -1,16 +1,20 @@
 package gortsplib
 
 import (
+	"bufio"
 	"net"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
@@ -143,6 +147,83 @@ func TestClientDialRead(t *testing.T) {
 			<-done
 		})
 	}
+}
+
+func TestClientDialReadZeroServerPorts(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		var req base.Request
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+
+		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+		require.NoError(t, err)
+		sdp := Tracks{track}.Write()
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+			},
+			Body: sdp,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+
+		th, err := headers.ReadTransport(req.Header["Transport"])
+		require.NoError(t, err)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": headers.Transport{
+					Protocol: StreamProtocolUDP,
+					Delivery: func() *base.StreamDelivery {
+						v := base.StreamDeliveryUnicast
+						return &v
+					}(),
+					ClientPorts: th.ClientPorts,
+					ServerPorts: &[2]int{0, 0},
+				}.Write(),
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+	}()
+
+	_, err = DialRead("rtsp://localhost:8554/teststream")
+	require.Equal(t, "server ports are zero", err.Error())
 }
 
 func TestClientDialReadAutomaticProtocol(t *testing.T) {
