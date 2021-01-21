@@ -575,21 +575,25 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	}
 
 	if proto == StreamProtocolUDP {
-		if thRes.ServerPorts == nil {
-			rtpListener.close()
-			rtcpListener.close()
-			return nil, fmt.Errorf("server ports have not been provided. Use AnyPortEnable to communicate with this server")
-		}
-
-		if (thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] != 0) ||
-			(thRes.ServerPorts[0] != 0 && thRes.ServerPorts[1] == 0) {
-			rtpListener.close()
-			rtcpListener.close()
-			return nil, fmt.Errorf("server ports must be both zero or both not zero")
+		if thRes.ServerPorts != nil {
+			if (thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] != 0) ||
+				(thRes.ServerPorts[0] != 0 && thRes.ServerPorts[1] == 0) {
+				rtpListener.close()
+				rtcpListener.close()
+				return nil, fmt.Errorf("server ports must be both zero or both not zero")
+			}
 		}
 
 		if !c.conf.AnyPortEnable {
+			if thRes.ServerPorts == nil {
+				rtpListener.close()
+				rtcpListener.close()
+				return nil, fmt.Errorf("server ports have not been provided. Use AnyPortEnable to communicate with this server")
+			}
+
 			if thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] == 0 {
+				rtpListener.close()
+				rtcpListener.close()
 				return nil, fmt.Errorf("server ports have not been provided. Use AnyPortEnable to communicate with this server")
 			}
 		}
@@ -623,14 +627,18 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	if proto == StreamProtocolUDP {
 		rtpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
-		rtpListener.remotePort = (*thRes.ServerPorts)[0]
+		if thRes.ServerPorts != nil {
+			rtpListener.remotePort = (*thRes.ServerPorts)[0]
+		}
 		rtpListener.trackID = track.ID
 		rtpListener.streamType = StreamTypeRTP
 		c.udpRTPListeners[track.ID] = rtpListener
 
 		rtcpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
-		rtcpListener.remotePort = (*thRes.ServerPorts)[1]
+		if thRes.ServerPorts != nil {
+			rtcpListener.remotePort = (*thRes.ServerPorts)[1]
+		}
 		rtcpListener.trackID = track.ID
 		rtcpListener.streamType = StreamTypeRTCP
 		c.udpRTCPListeners[track.ID] = rtcpListener
