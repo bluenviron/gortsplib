@@ -35,7 +35,7 @@ type ClientConf struct {
 	// It defaults to nil.
 	StreamProtocol *StreamProtocol
 
-	// A TLS configuration to connect to TLS (RTSPS) servers.
+	// a TLS configuration to connect to TLS (RTSPS) servers.
 	// It defaults to &tls.Config{InsecureSkipVerify:true}
 	TLSConfig *tls.Config
 

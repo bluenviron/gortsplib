@@ -17,26 +17,26 @@ func Serve(address string) (*Server, error) {
 // ServerConf allows to configure a Server.
 // All fields are optional.
 type ServerConf struct {
-	// A TLS configuration to accept TLS (RTSPS) connections.
+	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
 
-	// A ServerUDPListener to send and receive UDP/RTP packets.
+	// a ServerUDPListener to send and receive UDP/RTP packets.
 	// If UDPRTPListener and UDPRTCPListener are not null, the server can accept and send UDP streams.
 	UDPRTPListener *ServerUDPListener
 
-	// A ServerUDPListener to send and receive UDP/RTCP packets.
+	// a ServerUDPListener to send and receive UDP/RTCP packets.
 	// If UDPRTPListener and UDPRTCPListener are not null, the server can accept and send UDP streams.
 	UDPRTCPListener *ServerUDPListener
 
-	// Timeout of read operations.
+	// timeout of read operations.
 	// It defaults to 10 seconds
 	ReadTimeout time.Duration
 
-	// Timeout of write operations.
+	// timeout of write operations.
 	// It defaults to 10 seconds
 	WriteTimeout time.Duration
 
-	// Read buffer count.
+	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
 	// It also allows to buffer routed frames and mitigate network fluctuations
@@ -44,7 +44,7 @@ type ServerConf struct {
 	// It defaults to 512
 	ReadBufferCount uint64
 
-	// Function used to initialize the TCP listener.
+	// function used to initialize the TCP listener.
 	// It defaults to net.Listen
 	Listen func(network string, address string) (net.Listener, error)
 }
