@@ -10,9 +10,9 @@ import (
 
 const (
 	rtspProtocol10           = "RTSP/1.0"
-	requestMaxLethodLength   = 128
-	requestMaxPathLength     = 1024
-	requestMaxProtocolLength = 128
+	requestMaxMethodLength   = 64
+	requestMaxPathLength     = 2048
+	requestMaxProtocolLength = 64
 )
 
 // Method is the method of a RTSP request.
@@ -53,7 +53,7 @@ type Request struct {
 
 // Read reads a request.
 func (req *Request) Read(rb *bufio.Reader) error {
-	byts, err := readBytesLimited(rb, ' ', requestMaxLethodLength)
+	byts, err := readBytesLimited(rb, ' ', requestMaxMethodLength)
 	if err != nil {
 		return err
 	}
