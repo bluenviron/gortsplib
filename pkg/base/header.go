@@ -53,7 +53,8 @@ func (h *Header) read(rb *bufio.Reader) error {
 		}
 
 		if len(*h) >= headerMaxEntryCount {
-			return fmt.Errorf("headers count exceeds %d", headerMaxEntryCount)
+			return fmt.Errorf("headers count exceeds %d (it's %d)",
+				headerMaxEntryCount, len(*h))
 		}
 
 		key := string([]byte{byt})

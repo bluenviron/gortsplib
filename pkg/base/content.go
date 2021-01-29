@@ -22,7 +22,8 @@ func (c *payload) read(rb *bufio.Reader, header Header) error {
 	}
 
 	if cl > rtspMaxContentLength {
-		return fmt.Errorf("Content-Length exceeds %d", rtspMaxContentLength)
+		return fmt.Errorf("Content-Length exceeds %d (it's %d)",
+			rtspMaxContentLength, cl)
 	}
 
 	*c = make([]byte, cl)
