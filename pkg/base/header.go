@@ -10,8 +10,8 @@ import (
 
 const (
 	headerMaxEntryCount  = 255
-	headerMaxKeyLength   = 1024
-	headerMaxValueLength = 1024
+	headerMaxKeyLength   = 512
+	headerMaxValueLength = 2048
 )
 
 func headerKeyNormalize(in string) string {
