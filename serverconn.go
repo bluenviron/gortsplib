@@ -493,8 +493,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			if th.Delivery != nil && *th.Delivery == base.StreamDeliveryMulticast {
 				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("multicast is not supported")
+					StatusCode: base.StatusUnsupportedTransport,
+				}, nil
 			}
 
 			trackID, err := func() (int, error) {
