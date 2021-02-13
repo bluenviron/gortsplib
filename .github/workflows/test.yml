@@ -23,3 +23,6 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - run: make test-nodocker
+
+    - if: matrix.go == '1.15'
+      run: bash <(curl -s https://codecov.io/bash)

@@ -52,12 +52,12 @@ test-examples:
 	go build -o /dev/null ./examples/...
 
 test-pkg:
-	go test -race -v ./pkg/...
+	go test -v -race -coverprofile=coverage-pkg.txt ./pkg/...
 
 test-root:
 	$(foreach IMG,$(shell echo testimages/*/ | xargs -n1 basename), \
 	docker build -q testimages/$(IMG) -t gortsplib-test-$(IMG)$(NL))
-	go test -race -v .
+	go test -v -race -coverprofile=coverage-root.txt .
 
 test-nodocker: test-examples test-pkg test-root
 
