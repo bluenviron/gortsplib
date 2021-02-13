@@ -30,17 +30,17 @@ Features:
 
 ## Examples
 
-* [client-query](examples/client-query.go)
-* [client-read](examples/client-read.go)
-* [client-read-partial](examples/client-read-partial.go)
-* [client-read-options](examples/client-read-options.go)
-* [client-read-pause](examples/client-read-pause.go)
-* [client-publish](examples/client-publish.go)
-* [client-publish-options](examples/client-publish-options.go)
-* [client-publish-pause](examples/client-publish-pause.go)
-* [server](examples/server.go)
-* [server-udp](examples/server-udp.go)
-* [server-tls](examples/server-tls.go)
+* [client-query](examples/client-query/main.go)
+* [client-read](examples/client-read/main.go)
+* [client-read-partial](examples/client-read-partial/main.go)
+* [client-read-options](examples/client-read-options/main.go)
+* [client-read-pause](examples/client-read-pause/main.go)
+* [client-publish](examples/client-publish/main.go)
+* [client-publish-options](examples/client-publish-options/main.go)
+* [client-publish-pause](examples/client-publish-pause/main.go)
+* [server](examples/server/main.go)
+* [server-udp](examples/server-udp/main.go)
+* [server-tls](examples/server-tls/main.go)
 
 ## API Documentation
 

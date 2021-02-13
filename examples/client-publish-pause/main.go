@@ -1,5 +1,3 @@
-// +build ignore
-
 package main
 
 import (
@@ -12,10 +10,11 @@ import (
 )
 
 // This example shows how to
-// 1. set additional client options
-// 2. generate RTP/H264 frames from a file with Gstreamer
-// 3. connect to a RTSP server, announce a H264 track
-// 4. write the frames to the server
+// 1. generate RTP/H264 frames from a file with Gstreamer
+// 2. connect to a RTSP server, announce a H264 track
+// 3. write the frames to the server for 5 seconds
+// 4. pause for 5 seconds
+// 5. repeat
 
 func main() {
 	// open a listener to receive RTP/H264 frames
@@ -43,34 +42,52 @@ func main() {
 		panic(err)
 	}
 
-	// ClientConf allows to set additional client options
-	conf := gortsplib.ClientConf{
-		// the stream protocol (UDP or TCP). If nil, it is chosen automatically
-		StreamProtocol: nil,
-		// timeout of read operations
-		ReadTimeout: 10 * time.Second,
-		// timeout of write operations
-		WriteTimeout: 10 * time.Second,
-	}
-
 	// connect to the server and start publishing the track
-	conn, err := conf.DialPublish("rtsp://localhost:8554/mystream",
+	conn, err := gortsplib.DialPublish("rtsp://localhost:8554/mystream",
 		gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
-	buf := make([]byte, 2048)
 	for {
-		// read frames from the source
-		n, _, err := pc.ReadFrom(buf)
+		writerDone := make(chan struct{})
+		go func() {
+			defer close(writerDone)
+
+			buf := make([]byte, 2048)
+			for {
+				// read frames from the source
+				n, _, err := pc.ReadFrom(buf)
+				if err != nil {
+					break
+				}
+
+				// write track frames
+				err = conn.WriteFrame(track.ID, gortsplib.StreamTypeRTP, buf[:n])
+				if err != nil {
+					break
+				}
+			}
+		}()
+
+		// wait
+		time.Sleep(5 * time.Second)
+
+		// pause
+		_, err := conn.Pause()
 		if err != nil {
 			panic(err)
 		}
 
-		// write track frames
-		err = conn.WriteFrame(track.ID, gortsplib.StreamTypeRTP, buf[:n])
+		// join writer
+		<-writerDone
+
+		// wait
+		time.Sleep(5 * time.Second)
+
+		// record again
+		_, err = conn.Record()
 		if err != nil {
 			panic(err)
 		}

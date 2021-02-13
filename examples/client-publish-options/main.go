@@ -1,19 +1,19 @@
-// +build ignore
-
 package main
 
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
 // This example shows how to
-// 1. generate RTP/H264 frames from a file with Gstreamer
-// 2. connect to a RTSP server, announce a H264 track
-// 3. write the frames to the server
+// 1. set additional client options
+// 2. generate RTP/H264 frames from a file with Gstreamer
+// 3. connect to a RTSP server, announce a H264 track
+// 4. write the frames to the server
 
 func main() {
 	// open a listener to receive RTP/H264 frames
@@ -41,8 +41,18 @@ func main() {
 		panic(err)
 	}
 
+	// ClientConf allows to set additional client options
+	conf := gortsplib.ClientConf{
+		// the stream protocol (UDP or TCP). If nil, it is chosen automatically
+		StreamProtocol: nil,
+		// timeout of read operations
+		ReadTimeout: 10 * time.Second,
+		// timeout of write operations
+		WriteTimeout: 10 * time.Second,
+	}
+
 	// connect to the server and start publishing the track
-	conn, err := gortsplib.DialPublish("rtsp://localhost:8554/mystream",
+	conn, err := conf.DialPublish("rtsp://localhost:8554/mystream",
 		gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)
