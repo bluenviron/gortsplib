@@ -491,6 +491,22 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, fmt.Errorf("transport header: %s", err)
 			}
 
+			switch sc.state {
+			case ServerConnStateInitial, ServerConnStatePrePlay: // play
+				if th.Mode != nil && *th.Mode != headers.TransportModePlay {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, fmt.Errorf("transport header must contain mode=play or not contain a mode")
+				}
+
+			default: // record
+				if th.Mode == nil || *th.Mode != headers.TransportModeRecord {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, fmt.Errorf("transport header does not contain mode=record")
+				}
+			}
+
 			if th.Delivery != nil && *th.Delivery == base.StreamDeliveryMulticast {
 				return &base.Response{
 					StatusCode: base.StatusUnsupportedTransport,
@@ -560,28 +576,6 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 							StatusCode: base.StatusBadRequest,
 						}, fmt.Errorf("wrong interleaved ids, expected [%v %v], got %v",
 							(trackID * 2), (1 + trackID*2), *th.InterleavedIds)
-				}
-			}
-
-			switch sc.state {
-			case ServerConnStateInitial, ServerConnStatePrePlay: // play
-				if th.Mode != nil && *th.Mode != headers.TransportModePlay {
-					return &base.Response{
-						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("transport header must contain mode=play or not contain a mode")
-				}
-
-			default: // record
-				if th.Mode == nil || *th.Mode != headers.TransportModeRecord {
-					return &base.Response{
-						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("transport header does not contain mode=record")
-				}
-
-				if trackID >= len(sc.announcedTracks) {
-					return &base.Response{
-						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("unable to setup track %d", trackID)
 				}
 			}
 
