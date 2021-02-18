@@ -22,7 +22,6 @@ const (
 	serverConnWriteBufferSize        = 4096
 	serverConnCheckStreamInterval    = 5 * time.Second
 	serverConnReceiverReportInterval = 10 * time.Second
-	serverConnTCPFrameReadBufferSize = 2048
 )
 
 // server errors.
@@ -161,7 +160,7 @@ func newServerConn(conf ServerConf, nconn net.Conn) *ServerConn {
 		nconn:               nconn,
 		br:                  bufio.NewReaderSize(conn, serverConnReadBufferSize),
 		bw:                  bufio.NewWriterSize(conn, serverConnWriteBufferSize),
-		frameRingBuffer:     ringbuffer.New(conf.ReadBufferCount),
+		frameRingBuffer:     ringbuffer.New(uint64(conf.ReadBufferCount)),
 		backgroundWriteDone: make(chan struct{}),
 		terminate:           make(chan struct{}),
 	}
@@ -791,13 +790,13 @@ func (sc *ServerConn) backgroundRead() error {
 			sc.framesEnabled = true
 
 			if sc.state == ServerConnStateRecord {
-				tcpFrameBuffer = multibuffer.New(sc.conf.ReadBufferCount, serverConnTCPFrameReadBufferSize)
+				tcpFrameBuffer = multibuffer.New(uint64(sc.conf.ReadBufferCount), uint64(sc.conf.ReadBufferSize))
 			} else {
 				// when playing, tcpFrameBuffer is only used to receive RTCP receiver reports,
 				// that are much smaller than RTP frames and are sent at a fixed interval
 				// (about 2 frames every 10 secs).
 				// decrease RAM consumption by allocating less buffers.
-				tcpFrameBuffer = multibuffer.New(8, serverConnTCPFrameReadBufferSize)
+				tcpFrameBuffer = multibuffer.New(8, uint64(sc.conf.ReadBufferSize))
 			}
 
 			// write response before frames

@@ -12,7 +12,6 @@ import (
 
 const (
 	serverConnUDPListenerKernelReadBufferSize = 0x80000 // same as gstreamer's rtspsrc
-	serverConnUDPListenerReadBufferSize       = 2048
 )
 
 type bufAddrPair struct {
@@ -94,8 +93,8 @@ func (s *ServerUDPListener) initialize(conf ServerConf, streamType StreamType) {
 	s.initialized = true
 	s.streamType = streamType
 	s.writeTimeout = conf.WriteTimeout
-	s.readBuf = multibuffer.New(conf.ReadBufferCount, serverConnUDPListenerReadBufferSize)
-	s.ringBuffer = ringbuffer.New(conf.ReadBufferCount)
+	s.readBuf = multibuffer.New(uint64(conf.ReadBufferCount), uint64(conf.ReadBufferSize))
+	s.ringBuffer = ringbuffer.New(uint64(conf.ReadBufferCount))
 	go s.run()
 }
 

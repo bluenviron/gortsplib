@@ -42,7 +42,12 @@ type ServerConf struct {
 	// It also allows to buffer routed frames and mitigate network fluctuations
 	// that are particularly high when using UDP.
 	// It defaults to 512
-	ReadBufferCount uint64
+	ReadBufferCount int
+
+	// read buffer size.
+	// This must be touched only when the server reports problems about buffer sizes.
+	// It defaults to 2048.
+	ReadBufferSize int
 
 	// function used to initialize the TCP listener.
 	// It defaults to net.Listen

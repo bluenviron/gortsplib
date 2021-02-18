@@ -12,8 +12,6 @@ import (
 const (
 	// use the same buffer size as gstreamer's rtspsrc
 	clientConnUDPKernelReadBufferSize = 0x80000
-
-	clientConnUDPReadBufferSize = 2048
 )
 
 type clientConnUDPListener struct {
@@ -44,7 +42,7 @@ func newClientConnUDPListener(c *ClientConn, port int) (*clientConnUDPListener, 
 	return &clientConnUDPListener{
 		c:              c,
 		pc:             pc,
-		udpFrameBuffer: multibuffer.New(c.conf.ReadBufferCount, clientConnUDPReadBufferSize),
+		udpFrameBuffer: multibuffer.New(uint64(c.conf.ReadBufferCount), uint64(c.conf.ReadBufferSize)),
 	}, nil
 }
 

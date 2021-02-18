@@ -22,6 +22,9 @@ func newServer(conf ServerConf, address string) (*Server, error) {
 	if conf.ReadBufferCount == 0 {
 		conf.ReadBufferCount = 512
 	}
+	if conf.ReadBufferSize == 0 {
+		conf.ReadBufferSize = 2048
+	}
 	if conf.Listen == nil {
 		conf.Listen = net.Listen
 	}
