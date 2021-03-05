@@ -1072,6 +1072,114 @@ var cases = []struct {
 			SessionName: psdp.SessionName("Sony RTSP Server"),
 		},
 	},
+	{
+		"some hikvision cameras",
+		[]byte("v=0\r\n" +
+			"o=- 1109162014219182 0 IN IP4 0.0.0.0\r\n" +
+			"s=HIK Media Server V3.1.3\r\n" +
+			"i=HIK Media Server Session Description : standard\r\n" +
+			"e=NONE\r\n" +
+			"c=IN c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"a=range:npt=now-\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"i=Video Media\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 profile-level-id=4D0014;packetization-mode=0;sprop-parameter-sets=Z01AHppmBYHv81BgYGQAAA+gAAF3ABA=,aO48gA==\r\n" +
+			"a=control:trackID=video\r\n" +
+			"a=Media_header:MEDIAINFO=494D4B48010100000400000100000000000000000000000000000000000000000000000000000000;\r\n" +
+			"a=appversion:1.0\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 1109162014219182 0 IN IP4 0.0.0.0\r\n" +
+			"s=HIK Media Server V3.1.3\r\n" +
+			"i=HIK Media Server Session Description : standard\r\n" +
+			"e=NONE\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"a=range:npt=now-\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"i=Video Media\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 profile-level-id=4D0014;packetization-mode=0;sprop-parameter-sets=Z01AHppmBYHv81BgYGQAAA+gAAF3ABA=,aO48gA==\r\n" +
+			"a=control:trackID=video\r\n" +
+			"a=Media_header:MEDIAINFO=494D4B48010100000400000100000000000000000000000000000000000000000000000000000000;\r\n" +
+			"a=appversion:1.0\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      1109162014219182,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "0.0.0.0",
+			},
+			SessionName: psdp.SessionName("HIK Media Server V3.1.3"),
+			SessionInformation: func() *psdp.Information {
+				v := psdp.Information("HIK Media Server Session Description : standard")
+				return &v
+			}(),
+			EmailAddress: func() *psdp.EmailAddress {
+				v := psdp.EmailAddress("NONE")
+				return &v
+			}(),
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "0.0.0.0",
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{
+				{},
+			},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "control",
+					Value: "*",
+				},
+				{
+					Key:   "range",
+					Value: "npt=now-",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					MediaTitle: func() *psdp.Information {
+						v := psdp.Information("Video Media")
+						return &v
+					}(),
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=4D0014;packetization-mode=0;sprop-parameter-sets=Z01AHppmBYHv81BgYGQAAA+gAAF3ABA=,aO48gA==",
+						},
+						{
+							Key:   "control",
+							Value: "trackID=video",
+						},
+						{
+							Key:   "Media_header",
+							Value: "MEDIAINFO=494D4B48010100000400000100000000000000000000000000000000000000000000000000000000;",
+						},
+						{
+							Key:   "appversion",
+							Value: "1.0",
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {

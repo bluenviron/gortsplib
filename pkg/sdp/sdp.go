@@ -160,6 +160,11 @@ func (s *SessionDescription) unmarshalPhone(value string) error {
 }
 
 func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, error) {
+	// special case for some hikvision cameras
+	if strings.HasPrefix(value, "IN c=IN") {
+		value = value[len("IN c="):]
+	}
+
 	fields := strings.Fields(value)
 	if len(fields) < 2 {
 		return nil, fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, fields)
