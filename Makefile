@@ -13,6 +13,7 @@ help:
 	@echo "  format         format source files"
 	@echo "  test           run tests"
 	@echo "  lint           run linter"
+	@echo "  bench          run benchmarks"
 	@echo ""
 
 blank :=
@@ -65,3 +66,14 @@ lint:
 	docker run --rm -v $(PWD):/app -w /app \
 	$(LINT_IMAGE) \
 	golangci-lint run -v
+
+bench:
+	echo "$$DOCKERFILE_TEST" | docker build -q . -f - -t temp
+	docker run --rm -it \
+	--network=host \
+	--name temp \
+	temp \
+	make bench-nodocker
+
+bench-nodocker:
+	go test -bench=. -v ./pkg/ringbuffer
