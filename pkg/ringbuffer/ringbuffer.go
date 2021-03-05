@@ -2,7 +2,6 @@ package ringbuffer
 
 import (
 	"sync/atomic"
-	"time"
 	"unsafe"
 )
 
@@ -13,6 +12,7 @@ type RingBuffer struct {
 	writeIndex uint64
 	closed     int64
 	buffer     []unsafe.Pointer
+	event      *event
 }
 
 // New allocates a RingBuffer.
@@ -22,12 +22,14 @@ func New(size uint64) *RingBuffer {
 		readIndex:  1,
 		writeIndex: 0,
 		buffer:     make([]unsafe.Pointer, size),
+		event:      newEvent(),
 	}
 }
 
 // Close makes Pull() return false.
 func (r *RingBuffer) Close() {
 	atomic.StoreInt64(&r.closed, 1)
+	r.event.signal()
 }
 
 // Reset restores Pull().
@@ -45,6 +47,7 @@ func (r *RingBuffer) Push(data interface{}) {
 	writeIndex := atomic.AddUint64(&r.writeIndex, 1)
 	i := writeIndex % r.bufferSize
 	atomic.SwapPointer(&r.buffer[i], unsafe.Pointer(&data))
+	r.event.signal()
 }
 
 // Pull pulls some data from the beginning of the buffer.
@@ -57,7 +60,7 @@ func (r *RingBuffer) Pull() (interface{}, bool) {
 		i := r.readIndex % r.bufferSize
 		res := (*interface{})(atomic.SwapPointer(&r.buffer[i], nil))
 		if res == nil {
-			time.Sleep(10 * time.Millisecond)
+			r.event.wait()
 			continue
 		}
 

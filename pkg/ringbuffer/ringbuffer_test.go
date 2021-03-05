@@ -42,6 +42,22 @@ func TestPullBeforePush(t *testing.T) {
 	<-done
 }
 
+func TestClose(t *testing.T) {
+	r := New(1024)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, ok := r.Pull()
+		require.Equal(t, false, ok)
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	r.Close()
+	<-done
+}
+
 func BenchmarkPushPullContinuous(b *testing.B) {
 	r := New(1024 * 8)
 	defer r.Close()
