@@ -122,6 +122,8 @@ type ServerConnReadHandlers struct {
 type ServerConn struct {
 	conf                   ServerConf
 	nconn                  net.Conn
+	udpRTPListener         *serverUDPListener
+	udpRTCPListener        *serverUDPListener
 	br                     *bufio.Reader
 	bw                     *bufio.Writer
 	state                  ServerConnState
@@ -147,7 +149,10 @@ type ServerConn struct {
 	terminate chan struct{}
 }
 
-func newServerConn(conf ServerConf, nconn net.Conn) *ServerConn {
+func newServerConn(conf ServerConf,
+	udpRTPListener *serverUDPListener,
+	udpRTCPListener *serverUDPListener,
+	nconn net.Conn) *ServerConn {
 	conn := func() net.Conn {
 		if conf.TLSConfig != nil {
 			return tls.Server(nconn, conf.TLSConfig)
@@ -157,6 +162,8 @@ func newServerConn(conf ServerConf, nconn net.Conn) *ServerConn {
 
 	return &ServerConn{
 		conf:                conf,
+		udpRTPListener:      udpRTPListener,
+		udpRTCPListener:     udpRTCPListener,
 		nconn:               nconn,
 		br:                  bufio.NewReaderSize(conn, serverConnReadBufferSize),
 		bw:                  bufio.NewWriterSize(conn, serverConnWriteBufferSize),
@@ -263,8 +270,8 @@ func (sc *ServerConn) frameModeEnable() {
 
 		} else {
 			for trackID, track := range sc.setuppedTracks {
-				sc.conf.UDPRTPListener.addPublisher(sc.ip(), track.rtpPort, trackID, sc)
-				sc.conf.UDPRTCPListener.addPublisher(sc.ip(), track.rtcpPort, trackID, sc)
+				sc.udpRTPListener.addPublisher(sc.ip(), track.rtpPort, trackID, sc)
+				sc.udpRTCPListener.addPublisher(sc.ip(), track.rtcpPort, trackID, sc)
 
 				// open the firewall by sending packets to the counterpart
 				sc.WriteFrame(trackID, StreamTypeRTP,
@@ -303,8 +310,8 @@ func (sc *ServerConn) frameModeDisable() {
 
 		} else {
 			for _, track := range sc.setuppedTracks {
-				sc.conf.UDPRTPListener.removePublisher(sc.ip(), track.rtpPort)
-				sc.conf.UDPRTCPListener.removePublisher(sc.ip(), track.rtcpPort)
+				sc.udpRTPListener.removePublisher(sc.ip(), track.rtpPort)
+				sc.udpRTCPListener.removePublisher(sc.ip(), track.rtcpPort)
 			}
 		}
 	}
@@ -550,7 +557,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			}
 
 			if th.Protocol == StreamProtocolUDP {
-				if sc.conf.UDPRTPListener == nil {
+				if sc.udpRTPListener == nil {
 					return &base.Response{
 						StatusCode: base.StatusUnsupportedTransport,
 					}, nil
@@ -600,7 +607,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 							return &v
 						}(),
 						ClientPorts: th.ClientPorts,
-						ServerPorts: &[2]int{sc.conf.UDPRTPListener.port(), sc.conf.UDPRTCPListener.port()},
+						ServerPorts: &[2]int{sc.udpRTPListener.port(), sc.udpRTCPListener.port()},
 					}.Write()
 
 				} else {
@@ -903,7 +910,7 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		track := sc.setuppedTracks[trackID]
 
 		if streamType == StreamTypeRTP {
-			sc.conf.UDPRTPListener.write(payload, &net.UDPAddr{
+			sc.udpRTPListener.write(payload, &net.UDPAddr{
 				IP:   sc.ip(),
 				Zone: sc.zone(),
 				Port: track.rtpPort,
@@ -911,7 +918,7 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 			return
 		}
 
-		sc.conf.UDPRTCPListener.write(payload, &net.UDPAddr{
+		sc.udpRTCPListener.write(payload, &net.UDPAddr{
 			IP:   sc.ip(),
 			Zone: sc.zone(),
 			Port: track.rtcpPort,

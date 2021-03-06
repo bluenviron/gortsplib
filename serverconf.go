@@ -20,13 +20,13 @@ type ServerConf struct {
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
 
-	// a ServerUDPListener to send and receive UDP/RTP packets.
-	// If UDPRTPListener and UDPRTCPListener are not null, the server can accept and send UDP streams.
-	UDPRTPListener *ServerUDPListener
+	// a port to send and receive UDP/RTP packets.
+	// If UDPRTPAddress and UDPRTCPAddress are != "", the server can accept and send UDP streams.
+	UDPRTPAddress string
 
-	// a ServerUDPListener to send and receive UDP/RTCP packets.
-	// If UDPRTPListener and UDPRTCPListener are not null, the server can accept and send UDP streams.
-	UDPRTCPListener *ServerUDPListener
+	// a port to send and receive UDP/RTCP packets.
+	// If UDPRTPAddress and UDPRTCPAddress are != "", the server can accept and send UDP streams.
+	UDPRTCPAddress string
 
 	// timeout of read operations.
 	// It defaults to 10 seconds

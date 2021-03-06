@@ -18,40 +18,24 @@ import (
 )
 
 type testServ struct {
-	s               *Server
-	udpRTPListener  *ServerUDPListener
-	udpRTCPListener *ServerUDPListener
-	wg              sync.WaitGroup
-	mutex           sync.Mutex
-	publisher       *ServerConn
-	sdp             []byte
-	readers         map[*ServerConn]struct{}
+	s         *Server
+	wg        sync.WaitGroup
+	mutex     sync.Mutex
+	publisher *ServerConn
+	sdp       []byte
+	readers   map[*ServerConn]struct{}
 }
 
 func newTestServ(tlsConf *tls.Config) (*testServ, error) {
 	var conf ServerConf
-	var udpRTPListener *ServerUDPListener
-	var udpRTCPListener *ServerUDPListener
 	if tlsConf != nil {
 		conf = ServerConf{
 			TLSConfig: tlsConf,
 		}
-
 	} else {
-		var err error
-		udpRTPListener, err = NewServerUDPListener(":8000")
-		if err != nil {
-			return nil, err
-		}
-
-		udpRTCPListener, err = NewServerUDPListener(":8001")
-		if err != nil {
-			return nil, err
-		}
-
 		conf = ServerConf{
-			UDPRTPListener:  udpRTPListener,
-			UDPRTCPListener: udpRTCPListener,
+			UDPRTPAddress:  ":8000",
+			UDPRTCPAddress: ":8001",
 		}
 	}
 
@@ -61,10 +45,8 @@ func newTestServ(tlsConf *tls.Config) (*testServ, error) {
 	}
 
 	ts := &testServ{
-		s:               s,
-		udpRTPListener:  udpRTPListener,
-		udpRTCPListener: udpRTCPListener,
-		readers:         make(map[*ServerConn]struct{}),
+		s:       s,
+		readers: make(map[*ServerConn]struct{}),
 	}
 
 	ts.wg.Add(1)
@@ -76,12 +58,6 @@ func newTestServ(tlsConf *tls.Config) (*testServ, error) {
 func (ts *testServ) close() {
 	ts.s.Close()
 	ts.wg.Wait()
-	if ts.udpRTPListener != nil {
-		ts.udpRTPListener.Close()
-	}
-	if ts.udpRTCPListener != nil {
-		ts.udpRTCPListener.Close()
-	}
 }
 
 func (ts *testServ) run() {

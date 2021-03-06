@@ -8,8 +8,10 @@ import (
 
 // Server is a RTSP server.
 type Server struct {
-	conf     ServerConf
-	listener net.Listener
+	conf            ServerConf
+	tcpListener     net.Listener
+	udpRTPListener  *serverUDPListener
+	udpRTCPListener *serverUDPListener
 }
 
 func newServer(conf ServerConf, address string) (*Server, error) {
@@ -29,28 +31,36 @@ func newServer(conf ServerConf, address string) (*Server, error) {
 		conf.Listen = net.Listen
 	}
 
-	if conf.TLSConfig != nil && conf.UDPRTPListener != nil {
+	if conf.TLSConfig != nil && conf.UDPRTPAddress != "" {
 		return nil, fmt.Errorf("TLS can't be used together with UDP")
 	}
 
-	if (conf.UDPRTPListener != nil && conf.UDPRTCPListener == nil) ||
-		(conf.UDPRTPListener == nil && conf.UDPRTCPListener != nil) {
-		return nil, fmt.Errorf("UDPRTPListener and UDPRTPListener must be used together")
-	}
-
-	if conf.UDPRTPListener != nil {
-		conf.UDPRTPListener.initialize(conf, StreamTypeRTP)
-		conf.UDPRTCPListener.initialize(conf, StreamTypeRTCP)
-	}
-
-	listener, err := conf.Listen("tcp", address)
-	if err != nil {
-		return nil, err
+	if (conf.UDPRTPAddress != "" && conf.UDPRTCPAddress == "") ||
+		(conf.UDPRTPAddress == "" && conf.UDPRTCPAddress != "") {
+		return nil, fmt.Errorf("UDPRTPAddress and UDPRTCPAddress must be used together")
 	}
 
 	s := &Server{
-		conf:     conf,
-		listener: listener,
+		conf: conf,
+	}
+
+	if conf.UDPRTPAddress != "" {
+		var err error
+		s.udpRTPListener, err = newServerUDPListener(conf, conf.UDPRTPAddress, StreamTypeRTP)
+		if err != nil {
+			return nil, err
+		}
+
+		s.udpRTCPListener, err = newServerUDPListener(conf, conf.UDPRTCPAddress, StreamTypeRTCP)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var err error
+	s.tcpListener, err = conf.Listen("tcp", address)
+	if err != nil {
+		return nil, err
 	}
 
 	return s, nil
@@ -58,15 +68,25 @@ func newServer(conf ServerConf, address string) (*Server, error) {
 
 // Close closes the server.
 func (s *Server) Close() error {
-	return s.listener.Close()
+	s.tcpListener.Close()
+
+	if s.udpRTPListener != nil {
+		s.udpRTPListener.close()
+	}
+
+	if s.udpRTCPListener != nil {
+		s.udpRTCPListener.close()
+	}
+
+	return nil
 }
 
 // Accept accepts a connection.
 func (s *Server) Accept() (*ServerConn, error) {
-	nconn, err := s.listener.Accept()
+	nconn, err := s.tcpListener.Accept()
 	if err != nil {
 		return nil, err
 	}
 
-	return newServerConn(s.conf, nconn), nil
+	return newServerConn(s.conf, s.udpRTPListener, s.udpRTCPListener, nconn), nil
 }

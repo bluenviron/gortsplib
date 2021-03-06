@@ -147,20 +147,10 @@ func handleConn(conn *gortsplib.ServerConn) {
 }
 
 func main() {
-	// to publish or read UDP streams, two UDP listeners must be created
-	udpRTPListener, err := gortsplib.NewServerUDPListener(":8000")
-	if err != nil {
-		panic(err)
-	}
-	udpRTCPListener, err := gortsplib.NewServerUDPListener(":8001")
-	if err != nil {
-		panic(err)
-	}
-
 	// create configuration
 	conf := gortsplib.ServerConf{
-		UDPRTPListener:  udpRTPListener,
-		UDPRTCPListener: udpRTCPListener,
+		UDPRTPAddress:  ":8000",
+		UDPRTCPAddress: ":8001",
 	}
 
 	// create server

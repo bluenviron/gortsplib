@@ -40,10 +40,8 @@ func (p *publisherAddr) fill(ip net.IP, port int) {
 	}
 }
 
-// ServerUDPListener is a UDP server that can be used to send and receive RTP and RTCP packets.
-type ServerUDPListener struct {
+type serverUDPListener struct {
 	pc              *net.UDPConn
-	initialized     bool
 	streamType      StreamType
 	writeTimeout    time.Duration
 	readBuf         *multibuffer.MultiBuffer
@@ -55,8 +53,11 @@ type ServerUDPListener struct {
 	done chan struct{}
 }
 
-// NewServerUDPListener allocates a ServerUDPListener.
-func NewServerUDPListener(address string) (*ServerUDPListener, error) {
+func newServerUDPListener(
+	conf ServerConf,
+	address string,
+	streamType StreamType) (*serverUDPListener, error) {
+
 	tmp, err := net.ListenPacket("udp", address)
 	if err != nil {
 		return nil, err
@@ -68,37 +69,29 @@ func NewServerUDPListener(address string) (*ServerUDPListener, error) {
 		return nil, err
 	}
 
-	return &ServerUDPListener{
+	s := &serverUDPListener{
 		pc:         pc,
 		publishers: make(map[publisherAddr]*publisherData),
 		done:       make(chan struct{}),
-	}, nil
-}
-
-// Close closes the listener.
-func (s *ServerUDPListener) Close() {
-	s.pc.Close()
-
-	if s.initialized {
-		s.ringBuffer.Close()
-		<-s.done
-	}
-}
-
-func (s *ServerUDPListener) initialize(conf ServerConf, streamType StreamType) {
-	if s.initialized {
-		return
 	}
 
-	s.initialized = true
 	s.streamType = streamType
 	s.writeTimeout = conf.WriteTimeout
 	s.readBuf = multibuffer.New(uint64(conf.ReadBufferCount), uint64(conf.ReadBufferSize))
 	s.ringBuffer = ringbuffer.New(uint64(conf.ReadBufferCount))
+
 	go s.run()
+
+	return s, nil
 }
 
-func (s *ServerUDPListener) run() {
+func (s *serverUDPListener) close() {
+	s.pc.Close()
+	s.ringBuffer.Close()
+	<-s.done
+}
+
+func (s *serverUDPListener) run() {
 	defer close(s.done)
 
 	var wg sync.WaitGroup
@@ -153,15 +146,15 @@ func (s *ServerUDPListener) run() {
 	wg.Wait()
 }
 
-func (s *ServerUDPListener) port() int {
+func (s *serverUDPListener) port() int {
 	return s.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
-func (s *ServerUDPListener) write(buf []byte, addr *net.UDPAddr) {
+func (s *serverUDPListener) write(buf []byte, addr *net.UDPAddr) {
 	s.ringBuffer.Push(bufAddrPair{buf, addr})
 }
 
-func (s *ServerUDPListener) addPublisher(ip net.IP, port int, trackID int, sc *ServerConn) {
+func (s *serverUDPListener) addPublisher(ip net.IP, port int, trackID int, sc *ServerConn) {
 	s.publishersMutex.Lock()
 	defer s.publishersMutex.Unlock()
 
@@ -174,7 +167,7 @@ func (s *ServerUDPListener) addPublisher(ip net.IP, port int, trackID int, sc *S
 	}
 }
 
-func (s *ServerUDPListener) removePublisher(ip net.IP, port int) {
+func (s *serverUDPListener) removePublisher(ip net.IP, port int) {
 	s.publishersMutex.Lock()
 	defer s.publishersMutex.Unlock()
 
