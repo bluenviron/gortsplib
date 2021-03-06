@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"testing"
 
+	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -81,4 +82,75 @@ func TestTrackClockRate(t *testing.T) {
 			require.Equal(t, clockRate, ca.clockRate)
 		})
 	}
+}
+
+var testH264SPS = []byte("\x67\x64\x00\x0c\xac\x3b\x50\xb0\x4b\x42\x00\x00\x03\x00\x02\x00\x00\x03\x00\x3d\x08")
+
+var testH264PPS = []byte("\x68\xee\x3c\x80")
+
+var testH264Track = &Track{
+	Media: &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "video",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{"96"},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key:   "rtpmap",
+				Value: "96 H264/90000",
+			},
+			{
+				Key:   "fmtp",
+				Value: "96 packetization-mode=1; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+			},
+		},
+	},
+}
+
+func TestTrackH264New(t *testing.T) {
+	tr, err := NewTrackH264(96, testH264SPS, testH264PPS)
+	require.NoError(t, err)
+	require.Equal(t, testH264Track, tr)
+}
+
+func TestTrackH264Extract(t *testing.T) {
+	sps, pps, err := testH264Track.ExtractDataH264()
+	require.NoError(t, err)
+	require.Equal(t, testH264SPS, sps)
+	require.Equal(t, testH264PPS, pps)
+}
+
+var testAACConfig = []byte{17, 144}
+
+var testAACTrack = &Track{
+	Media: &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "audio",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{"96"},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key:   "rtpmap",
+				Value: "96 MPEG4-GENERIC/48000/2",
+			},
+			{
+				Key:   "fmtp",
+				Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+			},
+		},
+	},
+}
+
+func TestTrackAACNew(t *testing.T) {
+	tr, err := NewTrackAAC(96, testAACConfig)
+	require.NoError(t, err)
+	require.Equal(t, testAACTrack, tr)
+}
+
+func TestTrackAACExtract(t *testing.T) {
+	config, err := testAACTrack.ExtractDataAAC()
+	require.NoError(t, err)
+	require.Equal(t, testAACConfig, config)
 }

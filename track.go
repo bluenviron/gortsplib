@@ -26,7 +26,7 @@ type Track struct {
 	Media *psdp.MediaDescription
 }
 
-// NewTrackH264 initializes an H264 track.
+// NewTrackH264 initializes an H264 track from a SPS and PPS.
 func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*Track, error) {
 	spropParameterSets := base64.StdEncoding.EncodeToString(sps) +
 		"," + base64.StdEncoding.EncodeToString(pps)
@@ -57,7 +57,71 @@ func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*Track, error) {
 	}, nil
 }
 
-// NewTrackAAC initializes an AAC track.
+// IsH264 checks whether the track is a H264 track.
+func (t *Track) IsH264() bool {
+	v, ok := t.Media.Attribute("rtpmap")
+	if !ok {
+		return false
+	}
+
+	vals := strings.Split(v, " ")
+	if len(vals) != 2 {
+		return false
+	}
+
+	return vals[1] == "H264/90000"
+}
+
+// ExtractDataH264 extracts the SPS and PPS from an H264 track.
+func (t *Track) ExtractDataH264() ([]byte, []byte, error) {
+	v, ok := t.Media.Attribute("fmtp")
+	if !ok {
+		return nil, nil, fmt.Errorf("unable to find fmtp")
+	}
+
+	tmp := strings.SplitN(v, " ", 2)
+	if len(tmp) != 2 {
+		return nil, nil, fmt.Errorf("unable to parse fmtp (%v)", v)
+	}
+
+	var sps []byte
+	var pps []byte
+
+	for _, kv := range strings.Split(tmp[1], ";") {
+		kv = strings.Trim(kv, " ")
+
+		tmp := strings.SplitN(kv, "=", 2)
+		if len(tmp) != 2 {
+			return nil, nil, fmt.Errorf("unable to parse fmtp (%v)", v)
+		}
+
+		if tmp[0] == "sprop-parameter-sets" {
+			tmp := strings.SplitN(tmp[1], ",", 2)
+			if len(tmp) != 2 {
+				return nil, nil, fmt.Errorf("unable to parse sprop-parameter-sets (%v)", v)
+			}
+
+			var err error
+			sps, err = base64.StdEncoding.DecodeString(tmp[0])
+			if err != nil {
+				return nil, nil, fmt.Errorf("unable to parse sprop-parameter-sets (%v)", v)
+			}
+
+			pps, err = base64.StdEncoding.DecodeString(tmp[1])
+			if err != nil {
+				return nil, nil, fmt.Errorf("unable to parse sprop-parameter-sets (%v)", v)
+			}
+		}
+	}
+
+	if sps == nil || pps == nil {
+		return nil, nil, fmt.Errorf("unable to find SPS or PPS (%v)", v)
+	}
+
+	return sps, pps, nil
+}
+
+// NewTrackAAC initializes an AAC track from a configuration.
 func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 	codec, err := aac.FromMPEG4AudioConfigBytes(config)
 	if err != nil {
@@ -107,6 +171,60 @@ func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 			},
 		},
 	}, nil
+}
+
+// IsAAC checks whether the track is a AAC track.
+func (t *Track) IsAAC() bool {
+	v, ok := t.Media.Attribute("rtpmap")
+	if !ok {
+		return false
+	}
+
+	vals := strings.Split(v, " ")
+	if len(vals) != 2 {
+		return false
+	}
+
+	return vals[1] == "MPEG4-GENERIC/48000/2"
+}
+
+// ExtractDataAAC extracts the config from an AAC track.
+func (t *Track) ExtractDataAAC() ([]byte, error) {
+	v, ok := t.Media.Attribute("fmtp")
+	if !ok {
+		return nil, fmt.Errorf("unable to find fmtp")
+	}
+
+	tmp := strings.SplitN(v, " ", 2)
+	if len(tmp) != 2 {
+		return nil, fmt.Errorf("unable to parse fmtp (%v)", v)
+	}
+
+	var config []byte
+
+	for _, kv := range strings.Split(tmp[1], ";") {
+		kv = strings.Trim(kv, " ")
+
+		tmp := strings.SplitN(kv, "=", 2)
+		if len(tmp) != 2 {
+			return nil, fmt.Errorf("unable to parse fmtp (%v)", v)
+		}
+
+		if tmp[0] == "config" {
+			var err error
+			config, err = hex.DecodeString(tmp[1])
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse config (%v)", v)
+			}
+			break
+		}
+	}
+
+	if config == nil {
+		return nil, fmt.Errorf("unable to find config (%v)", v)
+	}
+
+	return config, nil
 }
 
 // ClockRate returns the clock rate of the track.
