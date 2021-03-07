@@ -8,8 +8,8 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server
-// 2. read all tracks for 5 seconds
+// 1. connect to a RTSP server and read all tracks on a path
+// 2. wait for 5 seconds
 // 3. pause for 5 seconds
 // 4. repeat
 
@@ -24,7 +24,7 @@ func main() {
 	for {
 		// read track frames
 		done := conn.ReadFrames(func(trackID int, typ gortsplib.StreamType, buf []byte) {
-			fmt.Printf("frame from track %d, type %v: %v\n", trackID, typ, buf)
+			fmt.Printf("frame from track %d, type %v, size %d\n", trackID, typ, len(buf))
 		})
 
 		// wait

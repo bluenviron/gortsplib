@@ -38,6 +38,7 @@ Features:
 * [client-read-partial](examples/client-read-partial/main.go)
 * [client-read-options](examples/client-read-options/main.go)
 * [client-read-pause](examples/client-read-pause/main.go)
+* [client-read-h264](examples/client-read-h264/main.go)
 * [client-publish](examples/client-publish/main.go)
 * [client-publish-options](examples/client-publish-options/main.go)
 * [client-publish-pause](examples/client-publish-pause/main.go)
