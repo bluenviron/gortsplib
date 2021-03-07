@@ -1,4 +1,4 @@
-// Package rtcpsender implements a utility to generate RTCP sender reports.
+// Package rtcpsender contains a utility to generate RTCP sender reports.
 package rtcpsender
 
 import (

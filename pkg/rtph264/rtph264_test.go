@@ -2,6 +2,7 @@ package rtph264
 
 import (
 	"bytes"
+	"io"
 	"testing"
 	"time"
 
@@ -104,30 +105,31 @@ func TestDecode(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			i := 0
 			r := readerFunc(func(p []byte) (int, error) {
-				if i == 0 {
-					// send an initial packet downstream
-					// in order to correctly compute the timestamp
-					n := copy(p, []byte{
-						0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x66, 0x55,
-						0x9d, 0xbb, 0x78, 0x12, 0x06, 0x00,
-					})
-					i++
-					return n, nil
+				if i == len(ca.enc) {
+					return 0, io.EOF
 				}
 
-				n := copy(p, ca.enc[i-1])
+				n := copy(p, ca.enc[i])
 				i++
 				return n, nil
 			})
 
 			d := NewDecoder()
 
-			_, err := d.Read(r)
+			// send an initial packet downstream
+			// in order to correctly compute the timestamp
+			_, err := d.Decode([]byte{
+				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x66, 0x55,
+				0x9d, 0xbb, 0x78, 0x12, 0x06, 0x00,
+			})
 			require.NoError(t, err)
 
 			dec, err := d.Read(r)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
+
+			_, err = d.Read(r)
+			require.Equal(t, io.EOF, err)
 		})
 	}
 }

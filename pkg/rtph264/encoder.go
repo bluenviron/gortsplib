@@ -21,8 +21,10 @@ type Encoder struct {
 }
 
 // NewEncoder allocates an Encoder.
-func NewEncoder(payloadType uint8, sequenceNumber *uint16,
-	ssrc *uint32, initialTs *uint32) *Encoder {
+func NewEncoder(payloadType uint8,
+	sequenceNumber *uint16,
+	ssrc *uint32,
+	initialTs *uint32) *Encoder {
 	return &Encoder{
 		payloadType: payloadType,
 		sequenceNumber: func() uint16 {

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// NALUAndTimestamp is a NALU and an associated timestamp.
+// NALUAndTimestamp is a Network Abstraction Layer Unit and its timestamp.
 type NALUAndTimestamp struct {
 	Timestamp time.Duration
 	NALU      []byte

@@ -1,3 +1,4 @@
+// Package ringbuffer contains a ring buffer.
 package ringbuffer
 
 import (

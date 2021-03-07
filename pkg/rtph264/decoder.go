@@ -33,13 +33,13 @@ const (
 
 // Decoder is a RTP/H264 decoder.
 type Decoder struct {
-	state         decoderState
 	initialTs     uint32
 	initialTsSet  bool
+	state         decoderState
 	fragmentedBuf []byte
 }
 
-// NewDecoder creates a decoder around a Reader.
+// NewDecoder allocates a Decoder.
 func NewDecoder() *Decoder {
 	return &Decoder{}
 }

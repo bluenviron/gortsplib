@@ -1,4 +1,4 @@
-// Package rtcpreceiver implements a utility to generate RTCP receiver reports.
+// Package rtcpreceiver contains a utility to generate RTCP receiver reports.
 package rtcpreceiver
 
 import (
