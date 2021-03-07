@@ -40,12 +40,14 @@ func main() {
 	// get H264 NALUs of that track
 	err = <-conn.ReadFrames(func(trackID int, typ gortsplib.StreamType, buf []byte) {
 		if trackID == h264Track {
-			nt, err := dec.Decode(buf)
+			nts, err := dec.Decode(buf)
 			if err != nil {
 				return
 			}
 
-			fmt.Printf("received H264 NALU of size %d\n", len(nt.NALU))
+			for _, nt := range nts {
+				fmt.Printf("received H264 NALU of size %d\n", len(nt.NALU))
+			}
 		}
 	})
 	panic(err)

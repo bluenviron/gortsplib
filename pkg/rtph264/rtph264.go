@@ -46,3 +46,68 @@ const (
 	NALUTypeFuA                           NALUType = 28
 	NALUTypeFuB                           NALUType = 29
 )
+
+// String implements fmt.Stringer.
+func (nt NALUType) String() string {
+	switch nt {
+	case NALUTypeNonIDR:
+		return "NonIDR"
+	case NALUTypeDataPartitionA:
+		return "DataPartitionA"
+	case NALUTypeDataPartitionB:
+		return "DataPartitionB"
+	case NALUTypeDataPartitionC:
+		return "DataPartitionC"
+	case NALUTypeIDR:
+		return "IDR"
+	case NALUTypeSei:
+		return "Sei"
+	case NALUTypeSPS:
+		return "SPS"
+	case NALUTypePPS:
+		return "PPS"
+	case NALUTypeAccessUnitDelimiter:
+		return "AccessUnitDelimiter"
+	case NALUTypeEndOfSequence:
+		return "EndOfSequence"
+	case NALUTypeEndOfStream:
+		return "EndOfStream"
+	case NALUTypeFillerData:
+		return "FillerData"
+	case NALUTypeSPSExtension:
+		return "SPSExtension"
+	case NALUTypePrefix:
+		return "Prefix"
+	case NALUTypeSubsetSPS:
+		return "SubsetSPS"
+	case NALUTypeReserved16:
+		return "Reserved16"
+	case NALUTypeReserved17:
+		return "Reserved17"
+	case NALUTypeReserved18:
+		return "Reserved18"
+	case NALUTypeSliceLayerWithoutPartitioning:
+		return "SliceLayerWithoutPartitioning"
+	case NALUTypeSliceExtension:
+		return "SliceExtension"
+	case NALUTypeSliceExtensionDepth:
+		return "SliceExtensionDepth"
+	case NALUTypeReserved22:
+		return "Reserved22"
+	case NALUTypeReserved23:
+		return "Reserved23"
+	case NALUTypeStapA:
+		return "StapA"
+	case NALUTypeStapB:
+		return "StapB"
+	case NALUTypeMtap16:
+		return "Mtap16"
+	case NALUTypeMtap24:
+		return "Mtap24"
+	case NALUTypeFuA:
+		return "FuA"
+	case NALUTypeFuB:
+		return "FuB"
+	}
+	return "unknown"
+}
