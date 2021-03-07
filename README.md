@@ -19,9 +19,11 @@ Features:
   * Pause reading or publishing without disconnecting from the server
 * Server
   * Handle requests from clients
-  * Accept streams from clients with UDP or TCP
+  * Read streams from clients with UDP or TCP
   * Send streams to clients with UDP or TCP
   * Encrypt streams with TLS (RTSPS)
+* General
+  * Encode and decode RTSP primitives, RTP/H264, RTP/AAC, SDP
 
 ## Table of contents
 
