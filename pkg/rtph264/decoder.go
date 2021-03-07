@@ -141,15 +141,18 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 		pkt := rtp.Packet{}
 		err := pkt.Unmarshal(byts)
 		if err != nil {
+			d.state = decoderStateInitial
 			return nil, err
 		}
 
 		if len(pkt.Payload) < 2 {
+			d.state = decoderStateInitial
 			return nil, fmt.Errorf("Invalid FU-A packet")
 		}
 
 		typ := NALUType(pkt.Payload[0] & 0x1F)
 		if typ != NALUTypeFuA {
+			d.state = decoderStateInitial
 			return nil, fmt.Errorf("non-starting NALU is not FU-A")
 		}
 		end := (pkt.Payload[1] >> 6) & 0x01
