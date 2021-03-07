@@ -1,4 +1,15 @@
+// Package rtph264 contains a RTP/H264 decoder and encoder.
 package rtph264
+
+import (
+	"time"
+)
+
+// NALUAndTimestamp is a NALU and an associated timestamp.
+type NALUAndTimestamp struct {
+	Timestamp time.Duration
+	NALU      []byte
+}
 
 // NALUType is the type of a NALU.
 type NALUType uint8

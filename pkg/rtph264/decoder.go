@@ -1,146 +1,170 @@
-// Package rtph264 contains a RTP/H264 decoder and encoder.
 package rtph264
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"time"
 
 	"github.com/pion/rtp"
 )
 
-type packetConnReader struct {
-	inner net.PacketConn
+// ErrMorePacketsNeeded is returned by Decoder.Read when more packets are needed.
+var ErrMorePacketsNeeded = errors.New("need more packets")
+
+// PacketConnReader creates a io.Reader around a net.PacketConn.
+type PacketConnReader struct {
+	net.PacketConn
 }
 
-func (r packetConnReader) Read(p []byte) (int, error) {
-	n, _, err := r.inner.ReadFrom(p)
+// Read implements io.Reader.
+func (r PacketConnReader) Read(p []byte) (int, error) {
+	n, _, err := r.PacketConn.ReadFrom(p)
 	return n, err
 }
 
+type decoderState int
+
+const (
+	decoderStateInitial decoderState = iota
+	decoderStateReadingFragmented
+)
+
 // Decoder is a RTP/H264 decoder.
 type Decoder struct {
-	r   io.Reader
-	buf []byte
+	state         decoderState
+	initialTs     uint32
+	initialTsSet  bool
+	fragmentedBuf []byte
 }
 
 // NewDecoder creates a decoder around a Reader.
-func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{
-		r:   r,
-		buf: make([]byte, 2048),
-	}
+func NewDecoder() *Decoder {
+	return &Decoder{}
 }
 
-// NewDecoderFromPacketConn creates a decoder around a net.PacketConn.
-func NewDecoderFromPacketConn(pc net.PacketConn) *Decoder {
-	return NewDecoder(packetConnReader{pc})
-}
-
-// Read decodes NALUs from RTP/H264 packets.
-func (d *Decoder) Read() ([][]byte, error) {
-	n, err := d.r.Read(d.buf)
-	if err != nil {
-		return nil, err
-	}
-
-	pkt := rtp.Packet{}
-	err = pkt.Unmarshal(d.buf[:n])
-	if err != nil {
-		return nil, err
-	}
-	payload := pkt.Payload
-
-	typ := NALUType(payload[0] & 0x1F)
-
-	switch typ {
-	case NALUTypeNonIDR, NALUTypeDataPartitionA, NALUTypeDataPartitionB,
-		NALUTypeDataPartitionC, NALUTypeIDR, NALUTypeSei, NALUTypeSPS,
-		NALUTypePPS, NALUTypeAccessUnitDelimiter, NALUTypeEndOfSequence,
-		NALUTypeEndOfStream, NALUTypeFillerData, NALUTypeSPSExtension,
-		NALUTypePrefix, NALUTypeSubsetSPS, NALUTypeReserved16, NALUTypeReserved17,
-		NALUTypeReserved18, NALUTypeSliceLayerWithoutPartitioning,
-		NALUTypeSliceExtension, NALUTypeSliceExtensionDepth, NALUTypeReserved22,
-		NALUTypeReserved23:
-		return [][]byte{payload}, nil
-
-	case NALUTypeFuA:
-		return d.readFragmented(payload)
-
-	case NALUTypeStapA, NALUTypeStapB, NALUTypeMtap16, NALUTypeMtap24, NALUTypeFuB:
-		return nil, fmt.Errorf("NALU type not supported (%d)", typ)
-	}
-
-	return nil, fmt.Errorf("invalid NALU type (%d)", typ)
-}
-
-func (d *Decoder) readFragmented(payload []byte) ([][]byte, error) {
-	// A NALU can have any size; we can't preallocate it
-	var ret []byte
-
-	// process first nalu
-	nri := (payload[0] >> 5) & 0x03
-	start := payload[1] >> 7
-	if start != 1 {
-		return nil, fmt.Errorf("first NALU does not contain the start bit")
-	}
-	typ := payload[1] & 0x1F
-	ret = append([]byte{(nri << 5) | typ}, payload[2:]...)
-
-	// process other nalus
-	for {
-		n, err := d.r.Read(d.buf)
-		if err != nil {
-			return nil, err
-		}
-
+// Decode decodes a NALU from RTP/H264 packets.
+// Since a NALU can require multiple RTP/H264 packets, it returns
+// one packet, or no packets with ErrMorePacketsNeeded.
+func (d *Decoder) Decode(byts []byte) (*NALUAndTimestamp, error) {
+	switch d.state {
+	case decoderStateInitial:
 		pkt := rtp.Packet{}
-		err = pkt.Unmarshal(d.buf[:n])
+		err := pkt.Unmarshal(byts)
 		if err != nil {
 			return nil, err
 		}
-		payload := pkt.Payload
 
-		typ := NALUType(payload[0] & 0x1F)
+		if !d.initialTsSet {
+			d.initialTsSet = true
+			d.initialTs = pkt.Timestamp
+		}
+
+		typ := NALUType(pkt.Payload[0] & 0x1F)
+
+		switch typ {
+		case NALUTypeNonIDR, NALUTypeDataPartitionA, NALUTypeDataPartitionB,
+			NALUTypeDataPartitionC, NALUTypeIDR, NALUTypeSei, NALUTypeSPS,
+			NALUTypePPS, NALUTypeAccessUnitDelimiter, NALUTypeEndOfSequence,
+			NALUTypeEndOfStream, NALUTypeFillerData, NALUTypeSPSExtension,
+			NALUTypePrefix, NALUTypeSubsetSPS, NALUTypeReserved16, NALUTypeReserved17,
+			NALUTypeReserved18, NALUTypeSliceLayerWithoutPartitioning,
+			NALUTypeSliceExtension, NALUTypeSliceExtensionDepth, NALUTypeReserved22,
+			NALUTypeReserved23:
+			return &NALUAndTimestamp{
+				NALU:      pkt.Payload,
+				Timestamp: time.Duration(pkt.Timestamp-d.initialTs) * time.Second / rtpClockRate,
+			}, nil
+
+		case NALUTypeFuA: // first packet of a fragmented NALU
+			nri := (pkt.Payload[0] >> 5) & 0x03
+			start := pkt.Payload[1] >> 7
+			if start != 1 {
+				return nil, fmt.Errorf("first NALU does not contain the start bit")
+			}
+			typ := pkt.Payload[1] & 0x1F
+			d.fragmentedBuf = append([]byte{(nri << 5) | typ}, pkt.Payload[2:]...)
+
+			d.state = decoderStateReadingFragmented
+			return nil, ErrMorePacketsNeeded
+
+		case NALUTypeStapA, NALUTypeStapB, NALUTypeMtap16, NALUTypeMtap24, NALUTypeFuB:
+			return nil, fmt.Errorf("NALU type not supported (%d)", typ)
+		}
+
+		return nil, fmt.Errorf("invalid NALU type (%d)", typ)
+
+	default: // decoderStateReadingFragmented
+		pkt := rtp.Packet{}
+		err := pkt.Unmarshal(byts)
+		if err != nil {
+			return nil, err
+		}
+
+		typ := NALUType(pkt.Payload[0] & 0x1F)
 		if typ != NALUTypeFuA {
 			return nil, fmt.Errorf("non-starting NALU is not FU-A")
 		}
-		end := (payload[1] >> 6) & 0x01
+		end := (pkt.Payload[1] >> 6) & 0x01
 
-		ret = append(ret, payload[2:]...)
+		d.fragmentedBuf = append(d.fragmentedBuf, pkt.Payload[2:]...)
 
-		if end == 1 {
-			break
+		if end != 1 {
+			return nil, ErrMorePacketsNeeded
 		}
-	}
 
-	return [][]byte{ret}, nil
+		d.state = decoderStateInitial
+		return &NALUAndTimestamp{
+			NALU:      d.fragmentedBuf,
+			Timestamp: time.Duration(pkt.Timestamp-d.initialTs) * time.Second / rtpClockRate,
+		}, nil
+	}
 }
 
-// ReadSPSPPS decodes NALUs until SPS and PPS are found.
-func (d *Decoder) ReadSPSPPS() ([]byte, []byte, error) {
+// Read reads RTP/H264 packets from a reader until a NALU is decoded.
+func (d *Decoder) Read(r io.Reader) (*NALUAndTimestamp, error) {
+	buf := make([]byte, 2048)
+	for {
+		n, err := r.Read(buf)
+		if err != nil {
+			return nil, err
+		}
+
+		nalu, err := d.Decode(buf[:n])
+		if err != nil {
+			if err == ErrMorePacketsNeeded {
+				continue
+			}
+			return nil, err
+		}
+		return nalu, nil
+	}
+}
+
+// ReadSPSPPS reads RTP/H264 packets from a reader until SPS and PPS are
+// found, and returns them.
+func (d *Decoder) ReadSPSPPS(r io.Reader) ([]byte, []byte, error) {
 	var sps []byte
 	var pps []byte
 
 	for {
-		nalus, err := d.Read()
+		nt, err := d.Read(r)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		for _, nalu := range nalus {
-			switch NALUType(nalu[0] & 0x1F) {
-			case NALUTypeSPS:
-				sps = append([]byte(nil), nalu...)
-				if sps != nil && pps != nil {
-					return sps, pps, nil
-				}
+		switch NALUType(nt.NALU[0] & 0x1F) {
+		case NALUTypeSPS:
+			sps = append([]byte(nil), nt.NALU...)
+			if sps != nil && pps != nil {
+				return sps, pps, nil
+			}
 
-			case NALUTypePPS:
-				pps = append([]byte(nil), nalu...)
-				if sps != nil && pps != nil {
-					return sps, pps, nil
-				}
+		case NALUTypePPS:
+			pps = append([]byte(nil), nt.NALU...)
+			if sps != nil && pps != nil {
+				return sps, pps, nil
 			}
 		}
 	}

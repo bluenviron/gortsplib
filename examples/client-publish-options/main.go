@@ -27,9 +27,9 @@ func main() {
 		"gst-launch-1.0 filesrc location=video.mp4 ! qtdemux ! video/x-h264" +
 		" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
 
-	// wait for RTP/H264 frames
-	decoder := rtph264.NewDecoderFromPacketConn(pc)
-	sps, pps, err := decoder.ReadSPSPPS()
+	// get SPS and PPS
+	decoder := rtph264.NewDecoder()
+	sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc})
 	if err != nil {
 		panic(err)
 	}

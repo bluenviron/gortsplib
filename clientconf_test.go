@@ -449,8 +449,8 @@ func TestClientDialPublishSerial(t *testing.T) {
 			require.NoError(t, err)
 			defer cnt2.close()
 
-			decoder := rtph264.NewDecoderFromPacketConn(pc)
-			sps, pps, err := decoder.ReadSPSPPS()
+			decoder := rtph264.NewDecoder()
+			sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc}) //nolint:govet
 			require.NoError(t, err)
 
 			track, err := NewTrackH264(96, sps, pps)
@@ -529,8 +529,8 @@ func TestClientDialPublishParallel(t *testing.T) {
 			require.NoError(t, err)
 			defer cnt2.close()
 
-			decoder := rtph264.NewDecoderFromPacketConn(pc)
-			sps, pps, err := decoder.ReadSPSPPS()
+			decoder := rtph264.NewDecoder()
+			sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc}) //nolint:govet
 			require.NoError(t, err)
 
 			track, err := NewTrackH264(96, sps, pps)
@@ -623,8 +623,8 @@ func TestClientDialPublishPauseSerial(t *testing.T) {
 			require.NoError(t, err)
 			defer cnt2.close()
 
-			decoder := rtph264.NewDecoderFromPacketConn(pc)
-			sps, pps, err := decoder.ReadSPSPPS()
+			decoder := rtph264.NewDecoder()
+			sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc}) //nolint:govet
 			require.NoError(t, err)
 
 			track, err := NewTrackH264(96, sps, pps)
@@ -695,8 +695,8 @@ func TestClientDialPublishPauseParallel(t *testing.T) {
 			require.NoError(t, err)
 			defer cnt2.close()
 
-			decoder := rtph264.NewDecoderFromPacketConn(pc)
-			sps, pps, err := decoder.ReadSPSPPS()
+			decoder := rtph264.NewDecoder()
+			sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc}) //nolint:govet
 			require.NoError(t, err)
 
 			track, err := NewTrackH264(96, sps, pps)

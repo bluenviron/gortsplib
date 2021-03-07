@@ -2,14 +2,14 @@ package rtph264
 
 import (
 	"math/rand"
-	"time"
 
 	"github.com/pion/rtp"
 )
 
 const (
 	rtpVersion        = 0x02
-	rtpPayloadMaxSize = 1460 // 1500 (mtu) - 20 (ip header) - 8 (udp header) - 12 (rtp header)
+	rtpPayloadMaxSize = 1460  // 1500 (mtu) - 20 (ip header) - 8 (udp header) - 12 (rtp header)
+	rtpClockRate      = 90000 // h264 always uses 90khz
 )
 
 // Encoder is a RTP/H264 encoder.
@@ -18,52 +18,49 @@ type Encoder struct {
 	sequenceNumber uint16
 	ssrc           uint32
 	initialTs      uint32
-	started        time.Duration
 }
 
 // NewEncoder allocates an Encoder.
-func NewEncoder(payloadType uint8) (*Encoder, error) {
+func NewEncoder(payloadType uint8, sequenceNumber *uint16,
+	ssrc *uint32, initialTs *uint32) *Encoder {
 	return &Encoder{
-		payloadType:    payloadType,
-		sequenceNumber: uint16(rand.Uint32()),
-		ssrc:           rand.Uint32(),
-		initialTs:      rand.Uint32(),
-	}, nil
+		payloadType: payloadType,
+		sequenceNumber: func() uint16 {
+			if sequenceNumber != nil {
+				return *sequenceNumber
+			}
+			return uint16(rand.Uint32())
+		}(),
+		ssrc: func() uint32 {
+			if ssrc != nil {
+				return *ssrc
+			}
+			return rand.Uint32()
+		}(),
+		initialTs: func() uint32 {
+			if initialTs != nil {
+				return *initialTs
+			}
+			return rand.Uint32()
+		}(),
+	}
 }
 
-// Write encodes NALUs into RTP/H264 packets.
-func (e *Encoder) Write(ts time.Duration, nalus [][]byte) ([][]byte, error) {
-	if e.started == 0 {
-		e.started = ts
-	}
+// Encode encodes a NALU into RTP/H264 packets.
+// It always returns at least one RTP/H264 packet.
+func (e *Encoder) Encode(nt *NALUAndTimestamp) ([][]byte, error) {
+	rtpTime := e.initialTs + uint32((nt.Timestamp).Seconds()*rtpClockRate)
 
-	// rtp/h264 uses a 90khz clock
-	rtpTime := e.initialTs + uint32((ts-e.started).Seconds()*90000)
-
-	var frames [][]byte
-
-	for i, nalu := range nalus {
-		naluFrames, err := e.writeNALU(rtpTime, nalu, (i == len(nalus)-1))
-		if err != nil {
-			return nil, err
-		}
-		frames = append(frames, naluFrames...)
-	}
-
-	return frames, nil
-}
-
-func (e *Encoder) writeNALU(rtpTime uint32, nalu []byte, isFinal bool) ([][]byte, error) {
-	// if the NALU fits into a single RTP packet, use a single NALU payload
-	if len(nalu) < rtpPayloadMaxSize {
-		return e.writeSingle(rtpTime, nalu, isFinal)
+	// if the NALU fits into a single RTP packet, use a single payload
+	if len(nt.NALU) < rtpPayloadMaxSize {
+		return e.writeSingle(rtpTime, nt.NALU)
 	}
 
 	// otherwise, split the NALU into multiple fragmentation payloads
-	return e.writeFragmented(rtpTime, nalu, isFinal)
+	return e.writeFragmented(rtpTime, nt.NALU)
 }
 
-func (e *Encoder) writeSingle(rtpTime uint32, nalu []byte, isFinal bool) ([][]byte, error) {
+func (e *Encoder) writeSingle(rtpTime uint32, nalu []byte) ([][]byte, error) {
 	rpkt := rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
@@ -76,9 +73,7 @@ func (e *Encoder) writeSingle(rtpTime uint32, nalu []byte, isFinal bool) ([][]by
 	}
 	e.sequenceNumber++
 
-	if isFinal {
-		rpkt.Header.Marker = true
-	}
+	rpkt.Header.Marker = true
 
 	frame, err := rpkt.Marshal()
 	if err != nil {
@@ -88,7 +83,7 @@ func (e *Encoder) writeSingle(rtpTime uint32, nalu []byte, isFinal bool) ([][]by
 	return [][]byte{frame}, nil
 }
 
-func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte, isFinal bool) ([][]byte, error) {
+func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte) ([][]byte, error) {
 	// use only FU-A, not FU-B, since we always use non-interleaved mode
 	// (packetization-mode=1)
 	frameCount := (len(nalu) - 1) / (rtpPayloadMaxSize - 2)
@@ -96,7 +91,7 @@ func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte, isFinal bool) ([]
 	if lastFrameSize > 0 {
 		frameCount++
 	}
-	frames := make([][]byte, frameCount)
+	ret := make([][]byte, frameCount)
 
 	nri := (nalu[0] >> 5) & 0x03
 	typ := nalu[0] & 0x1F
@@ -111,7 +106,7 @@ func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte, isFinal bool) ([]
 		}
 		end := uint8(0)
 		le := rtpPayloadMaxSize - 2
-		if i == (len(frames) - 1) {
+		if i == (frameCount - 1) {
 			end = 1
 			le = lastFrameSize
 		}
@@ -132,7 +127,7 @@ func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte, isFinal bool) ([]
 		}
 		e.sequenceNumber++
 
-		if isFinal && i == (len(frames)-1) {
+		if i == (frameCount - 1) {
 			rpkt.Header.Marker = true
 		}
 
@@ -141,8 +136,8 @@ func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte, isFinal bool) ([]
 			return nil, err
 		}
 
-		frames[i] = frame
+		ret[i] = frame
 	}
 
-	return frames, nil
+	return ret, nil
 }
