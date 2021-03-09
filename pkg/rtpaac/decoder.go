@@ -1,7 +1,6 @@
 package rtpaac
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pion/rtp"
@@ -36,10 +35,6 @@ func (d *Decoder) Decode(byts []byte) (*AUAndTimestamp, error) {
 	if !d.initialTsSet {
 		d.initialTsSet = true
 		d.initialTs = pkt.Timestamp
-	}
-
-	if pkt.Payload[0] != 0x00 || pkt.Payload[1] != 0x10 {
-		return nil, fmt.Errorf("invalid payload")
 	}
 
 	return &AUAndTimestamp{
