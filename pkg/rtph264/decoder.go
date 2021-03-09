@@ -50,6 +50,10 @@ func NewDecoder() *Decoder {
 	return &Decoder{}
 }
 
+func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
+	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / rtpClockRate
+}
+
 // Decode decodes NALUs from RTP/H264 packets.
 // It can return:
 // * no NALUs and ErrMorePacketsNeeded
@@ -82,7 +86,7 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			NALUTypeReserved23:
 			return []*NALUAndTimestamp{{
 				NALU:      pkt.Payload,
-				Timestamp: time.Duration(pkt.Timestamp-d.initialTs) * time.Second / rtpClockRate,
+				Timestamp: d.decodeTimestamp(pkt.Timestamp),
 			}}, nil
 
 		case NALUTypeStapA:
@@ -108,7 +112,7 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 
 				ret = append(ret, &NALUAndTimestamp{
 					NALU:      pkt.Payload[:size],
-					Timestamp: time.Duration(pkt.Timestamp-d.initialTs) * time.Second / rtpClockRate,
+					Timestamp: d.decodeTimestamp(pkt.Timestamp),
 				})
 				pkt.Payload = pkt.Payload[size:]
 			}
@@ -166,7 +170,7 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 		d.state = decoderStateInitial
 		return []*NALUAndTimestamp{{
 			NALU:      d.fragmentedBuf,
-			Timestamp: time.Duration(pkt.Timestamp-d.initialTs) * time.Second / rtpClockRate,
+			Timestamp: d.decodeTimestamp(pkt.Timestamp),
 		}}, nil
 	}
 }

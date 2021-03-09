@@ -21,6 +21,10 @@ func NewDecoder(clockRate int) *Decoder {
 	}
 }
 
+func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
+	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / d.clockRate
+}
+
 // Decode decodes an AU from an RTP/AAC packet.
 func (d *Decoder) Decode(byts []byte) (*AUAndTimestamp, error) {
 	pkt := rtp.Packet{}
@@ -40,6 +44,6 @@ func (d *Decoder) Decode(byts []byte) (*AUAndTimestamp, error) {
 
 	return &AUAndTimestamp{
 		AU:        pkt.Payload[4:],
-		Timestamp: time.Duration(pkt.Timestamp-d.initialTs) * time.Second / d.clockRate,
+		Timestamp: d.decodeTimestamp(pkt.Timestamp),
 	}, nil
 }
