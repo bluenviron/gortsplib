@@ -1,4 +1,3 @@
-// Package rtpaac contains a RTP/AAC decoder and encoder.
 package rtpaac
 
 import (
@@ -61,10 +60,10 @@ func (e *Encoder) Encode(at *AUAndTimestamp) ([]byte, error) {
 
 	rtpTs := e.initialTs + uint32((at.Timestamp).Seconds()*e.clockRate)
 
+	// AU-headers-length
 	payload := []byte{0x00, 0x10}
 
-	// 13 bits payload size
-	// 3 bits AU-Index(-delta)
+	// AU-header
 	header := make([]byte, 2)
 	binary.BigEndian.PutUint16(header, uint16(len(at.AU))<<3)
 	payload = append(payload, header...)
