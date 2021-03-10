@@ -67,18 +67,15 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 	var rets []*AUAndTimestamp
 	ts := d.decodeTimestamp(pkt.Timestamp)
 
-	for _, ds := range dataSizes {
+	for i, ds := range dataSizes {
 		if len(pkt.Payload) < int(ds) {
 			return nil, fmt.Errorf("payload is too short")
 		}
 
 		rets = append(rets, &AUAndTimestamp{
 			AU:        pkt.Payload[:ds],
-			Timestamp: ts,
+			Timestamp: ts + time.Duration(i)*1000*time.Second/d.clockRate,
 		})
-
-		// properly space samples in time
-		ts += 1000 * time.Second / d.clockRate
 
 		pkt.Payload = pkt.Payload[ds:]
 	}

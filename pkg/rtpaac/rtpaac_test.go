@@ -437,7 +437,7 @@ func TestDecodeAggregated(t *testing.T) {
 			},
 		},
 		{
-			Timestamp: 25675558187500 + (3000 * time.Second / 48000) - 1,
+			Timestamp: 25675558187500 + (3000 * time.Second / 48000),
 			AU: []byte{
 				0x21, 0x1a, 0xd5, 0x05,
 				0xa5, 0x93, 0x06, 0x42, 0x09, 0x00, 0xa4, 0x10,

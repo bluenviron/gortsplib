@@ -124,11 +124,12 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			return ret, nil
 
 		case NALUTypeFuA: // first packet of a fragmented NALU
-			nri := (pkt.Payload[0] >> 5) & 0x03
 			start := pkt.Payload[1] >> 7
 			if start != 1 {
 				return nil, fmt.Errorf("first NALU does not contain the start bit")
 			}
+
+			nri := (pkt.Payload[0] >> 5) & 0x03
 			typ := pkt.Payload[1] & 0x1F
 			d.fragmentedBuf = append([]byte{(nri << 5) | typ}, pkt.Payload[2:]...)
 
@@ -159,6 +160,7 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			d.state = decoderStateInitial
 			return nil, fmt.Errorf("non-starting NALU is not FU-A")
 		}
+
 		end := (pkt.Payload[1] >> 6) & 0x01
 
 		d.fragmentedBuf = append(d.fragmentedBuf, pkt.Payload[2:]...)
