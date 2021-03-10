@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/pion/rtp"
 )
@@ -52,13 +53,15 @@ func NewEncoder(payloadType uint8,
 	}
 }
 
+func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
+	return e.initialTs + uint32(ts.Seconds()*e.clockRate)
+}
+
 // Encode encodes an AU into an RTP/AAC packet.
 func (e *Encoder) Encode(at *AUAndTimestamp) ([]byte, error) {
 	if len(at.AU) > rtpPayloadMaxSize {
 		return nil, fmt.Errorf("data is too big")
 	}
-
-	rtpTs := e.initialTs + uint32((at.Timestamp).Seconds()*e.clockRate)
 
 	// AU-headers-length
 	payload := []byte{0x00, 0x10}
@@ -75,7 +78,7 @@ func (e *Encoder) Encode(at *AUAndTimestamp) ([]byte, error) {
 			Version:        rtpVersion,
 			PayloadType:    e.payloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      rtpTs,
+			Timestamp:      e.encodeTimestamp(at.Timestamp),
 			SSRC:           e.ssrc,
 		},
 		Payload: payload,

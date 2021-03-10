@@ -2,6 +2,7 @@ package rtph264
 
 import (
 	"math/rand"
+	"time"
 
 	"github.com/pion/rtp"
 )
@@ -48,30 +49,32 @@ func NewEncoder(payloadType uint8,
 	}
 }
 
+func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
+	return e.initialTs + uint32(ts.Seconds()*rtpClockRate)
+}
+
 // Encode encodes a NALU into RTP/H264 packets.
 // It always returns at least one RTP/H264 packet.
 func (e *Encoder) Encode(nt *NALUAndTimestamp) ([][]byte, error) {
-	rtpTime := e.initialTs + uint32((nt.Timestamp).Seconds()*rtpClockRate)
-
 	// if the NALU fits into a single RTP packet, use a single payload
 	if len(nt.NALU) < rtpPayloadMaxSize {
-		return e.writeSingle(rtpTime, nt.NALU)
+		return e.writeSingle(nt)
 	}
 
 	// otherwise, split the NALU into multiple fragmentation payloads
-	return e.writeFragmented(rtpTime, nt.NALU)
+	return e.writeFragmented(nt)
 }
 
-func (e *Encoder) writeSingle(rtpTime uint32, nalu []byte) ([][]byte, error) {
+func (e *Encoder) writeSingle(nt *NALUAndTimestamp) ([][]byte, error) {
 	rpkt := rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
 			PayloadType:    e.payloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      rtpTime,
+			Timestamp:      e.encodeTimestamp(nt.Timestamp),
 			SSRC:           e.ssrc,
 		},
-		Payload: nalu,
+		Payload: nt.NALU,
 	}
 	e.sequenceNumber++
 
@@ -85,7 +88,9 @@ func (e *Encoder) writeSingle(rtpTime uint32, nalu []byte) ([][]byte, error) {
 	return [][]byte{frame}, nil
 }
 
-func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte) ([][]byte, error) {
+func (e *Encoder) writeFragmented(nt *NALUAndTimestamp) ([][]byte, error) {
+	nalu := nt.NALU
+
 	// use only FU-A, not FU-B, since we always use non-interleaved mode
 	// (packetization-mode=1)
 	frameCount := (len(nalu) - 1) / (rtpPayloadMaxSize - 2)
@@ -98,6 +103,8 @@ func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte) ([][]byte, error)
 	nri := (nalu[0] >> 5) & 0x03
 	typ := nalu[0] & 0x1F
 	nalu = nalu[1:] // remove header
+
+	ts := e.encodeTimestamp(nt.Timestamp)
 
 	for i := 0; i < frameCount; i++ {
 		indicator := (nri << 5) | uint8(NALUTypeFuA)
@@ -122,7 +129,7 @@ func (e *Encoder) writeFragmented(rtpTime uint32, nalu []byte) ([][]byte, error)
 				Version:        rtpVersion,
 				PayloadType:    e.payloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      rtpTime,
+				Timestamp:      ts,
 				SSRC:           e.ssrc,
 			},
 			Payload: data,
