@@ -148,7 +148,7 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func TestDecodeMultiple(t *testing.T) {
+func TestDecodeAggregated(t *testing.T) {
 	enc := []byte{
 		0x80, 0xe1, 0x0e, 0xaf, 0xd1, 0xec, 0xbd, 0x7e,
 		0x2d, 0x47, 0x97, 0x58, 0x00, 0x40, 0x09, 0x38,
@@ -355,7 +355,7 @@ func TestDecodeMultiple(t *testing.T) {
 			},
 		},
 		{
-			Timestamp: 25675558187500,
+			Timestamp: 25675558187500 + (1000 * time.Second / 48000),
 			AU: []byte{
 				0x21, 0x1a, 0xd5, 0x05,
 				0x9d, 0x93, 0x01, 0x63, 0xa0, 0xc4, 0xc0,
@@ -395,7 +395,7 @@ func TestDecodeMultiple(t *testing.T) {
 			},
 		},
 		{
-			Timestamp: 25675558187500,
+			Timestamp: 25675558187500 + (2000 * time.Second / 48000),
 			AU: []byte{
 				0x21, 0x1a, 0xd4, 0xf5, 0x9d, 0x93,
 				0x45, 0x61, 0xa0, 0xc8, 0xa2, 0x40, 0x38, 0x00,
@@ -437,7 +437,7 @@ func TestDecodeMultiple(t *testing.T) {
 			},
 		},
 		{
-			Timestamp: 25675558187500,
+			Timestamp: 25675558187500 + (3000 * time.Second / 48000) - 1,
 			AU: []byte{
 				0x21, 0x1a, 0xd5, 0x05,
 				0xa5, 0x93, 0x06, 0x42, 0x09, 0x00, 0xa4, 0x10,

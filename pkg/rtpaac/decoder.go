@@ -65,6 +65,7 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 	pkt.Payload = pkt.Payload[headerCount*2:]
 
 	var rets []*AUAndTimestamp
+	ts := d.decodeTimestamp(pkt.Timestamp)
 
 	for _, ds := range dataSizes {
 		if len(pkt.Payload) < int(ds) {
@@ -73,8 +74,12 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 
 		rets = append(rets, &AUAndTimestamp{
 			AU:        pkt.Payload[:ds],
-			Timestamp: d.decodeTimestamp(pkt.Timestamp),
+			Timestamp: ts,
 		})
+
+		// properly space samples in time
+		ts += 1000 * time.Second / d.clockRate
+
 		pkt.Payload = pkt.Payload[ds:]
 	}
 

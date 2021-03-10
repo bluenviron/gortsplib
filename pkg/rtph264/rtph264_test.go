@@ -152,7 +152,7 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func TestDecodeStapA(t *testing.T) {
+func TestDecodeAggregated(t *testing.T) {
 	sent := false
 	r := readerFunc(func(p []byte) (int, error) {
 		if sent {
