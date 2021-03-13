@@ -261,6 +261,11 @@ func (sc *ServerConn) frameModeEnable() {
 	case ServerConnStatePlay:
 		if *sc.setuppedTracksProtocol == StreamProtocolTCP {
 			sc.doEnableFrames = true
+		} else {
+			// readers can send RTCP frames, they cannot sent RTP frames
+			for trackID, track := range sc.setuppedTracks {
+				sc.udpRTCPListener.addClient(sc.ip(), track.rtcpPort, sc, trackID, false)
+			}
 		}
 
 	case ServerConnStateRecord:
@@ -270,8 +275,8 @@ func (sc *ServerConn) frameModeEnable() {
 
 		} else {
 			for trackID, track := range sc.setuppedTracks {
-				sc.udpRTPListener.addPublisher(sc.ip(), track.rtpPort, trackID, sc)
-				sc.udpRTCPListener.addPublisher(sc.ip(), track.rtcpPort, trackID, sc)
+				sc.udpRTPListener.addClient(sc.ip(), track.rtpPort, sc, trackID, true)
+				sc.udpRTCPListener.addClient(sc.ip(), track.rtcpPort, sc, trackID, true)
 
 				// open the firewall by sending packets to the counterpart
 				sc.WriteFrame(trackID, StreamTypeRTP,
@@ -294,6 +299,11 @@ func (sc *ServerConn) frameModeDisable() {
 			sc.framesEnabled = false
 			sc.frameRingBuffer.Close()
 			<-sc.backgroundWriteDone
+
+		} else {
+			for _, track := range sc.setuppedTracks {
+				sc.udpRTCPListener.removeClient(sc.ip(), track.rtcpPort)
+			}
 		}
 
 	case ServerConnStateRecord:
@@ -310,8 +320,8 @@ func (sc *ServerConn) frameModeDisable() {
 
 		} else {
 			for _, track := range sc.setuppedTracks {
-				sc.udpRTPListener.removePublisher(sc.ip(), track.rtpPort)
-				sc.udpRTCPListener.removePublisher(sc.ip(), track.rtcpPort)
+				sc.udpRTPListener.removeClient(sc.ip(), track.rtpPort)
+				sc.udpRTCPListener.removeClient(sc.ip(), track.rtcpPort)
 			}
 		}
 	}
@@ -600,6 +610,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 						rtcpPort: th.ClientPorts[1],
 					}
 
+					if res.Header == nil {
+						res.Header = make(base.Header)
+					}
 					res.Header["Transport"] = headers.Transport{
 						Protocol: StreamProtocolUDP,
 						Delivery: func() *base.StreamDelivery {
@@ -613,6 +626,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				} else {
 					sc.setuppedTracks[trackID] = ServerConnSetuppedTrack{}
 
+					if res.Header == nil {
+						res.Header = make(base.Header)
+					}
 					res.Header["Transport"] = headers.Transport{
 						Protocol:       StreamProtocolTCP,
 						InterleavedIds: th.InterleavedIds,
