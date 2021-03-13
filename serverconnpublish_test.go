@@ -25,11 +25,11 @@ func TestServerConnPublishReceivePackets(t *testing.T) {
 			packetsReceived := make(chan struct{})
 
 			conf := ServerConf{
-				UDPRTPAddress:  ":8000",
-				UDPRTCPAddress: ":8001",
+				UDPRTPAddress:  "127.0.0.1:8000",
+				UDPRTCPAddress: "127.0.0.1:8001",
 			}
 
-			s, err := conf.Serve(":8554")
+			s, err := conf.Serve("127.0.0.1:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -168,7 +168,7 @@ func TestServerConnPublishReceivePackets(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			if proto == "udp" {
-				time.Sleep(500 * time.Millisecond)
+				time.Sleep(1 * time.Second)
 
 				l1, err := net.ListenPacket("udp", "localhost:35466")
 				require.NoError(t, err)

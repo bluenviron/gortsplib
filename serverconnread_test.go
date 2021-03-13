@@ -22,11 +22,11 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 			packetsReceived := make(chan struct{})
 
 			conf := ServerConf{
-				UDPRTPAddress:  ":8000",
-				UDPRTCPAddress: ":8001",
+				UDPRTPAddress:  "127.0.0.1:8000",
+				UDPRTCPAddress: "127.0.0.1:8001",
 			}
 
-			s, err := conf.Serve(":8554")
+			s, err := conf.Serve("127.0.0.1:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -122,7 +122,7 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			if proto == "udp" {
-				time.Sleep(500 * time.Millisecond)
+				time.Sleep(1 * time.Second)
 
 				l1, err := net.ListenPacket("udp", "localhost:35467")
 				require.NoError(t, err)
@@ -147,7 +147,7 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 }
 
 func TestServerConnReadWithoutSetupTrackID(t *testing.T) {
-	s, err := Serve(":8554")
+	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -235,7 +235,7 @@ func TestServerConnReadWithoutSetupTrackID(t *testing.T) {
 }
 
 func TestServerConnReadTCPResponseBeforeFrames(t *testing.T) {
-	s, err := Serve(":8554")
+	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -343,7 +343,7 @@ func TestServerConnReadTCPResponseBeforeFrames(t *testing.T) {
 }
 
 func TestServerConnReadPlayMultiple(t *testing.T) {
-	s, err := Serve(":8554")
+	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -458,7 +458,7 @@ func TestServerConnReadPlayMultiple(t *testing.T) {
 }
 
 func TestServerConnReadPauseMultiple(t *testing.T) {
-	s, err := Serve(":8554")
+	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 

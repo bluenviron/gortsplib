@@ -151,6 +151,8 @@ func TestClientConnRead(t *testing.T) {
 				require.NoError(t, err)
 
 				if ca.proto == "udp" {
+					time.Sleep(1 * time.Second)
+
 					l1, err := net.ListenPacket("udp", "localhost:34556")
 					require.NoError(t, err)
 					defer l1.Close()
@@ -291,6 +293,8 @@ func TestClientConnReadNoServerPorts(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
+
+				time.Sleep(1 * time.Second)
 
 				l1, err := net.ListenPacket("udp", "localhost:0")
 				require.NoError(t, err)
@@ -544,6 +548,8 @@ func TestClientConnReadRedirect(t *testing.T) {
 			StatusCode: base.StatusOK,
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
+
+		time.Sleep(1 * time.Second)
 
 		l1, err := net.ListenPacket("udp", "localhost:34556")
 		require.NoError(t, err)

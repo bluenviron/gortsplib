@@ -34,12 +34,12 @@ func newTestServ(tlsConf *tls.Config) (*testServ, error) {
 		}
 	} else {
 		conf = ServerConf{
-			UDPRTPAddress:  ":8000",
-			UDPRTCPAddress: ":8001",
+			UDPRTPAddress:  "127.0.0.1:8000",
+			UDPRTCPAddress: "127.0.0.1:8001",
 		}
 	}
 
-	s, err := conf.Serve(":8554")
+	s, err := conf.Serve("127.0.0.1:8554")
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +435,7 @@ func TestServerConnPublishReadHighLevel(t *testing.T) {
 }
 
 func TestServerConnTeardownResponse(t *testing.T) {
-	s, err := Serve(":8554")
+	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
