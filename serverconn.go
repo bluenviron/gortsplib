@@ -59,8 +59,8 @@ func (s ServerConnState) String() string {
 	return "unknown"
 }
 
-// ServerConnSetuppedTrack is a setupped track of a ServerConn.
-type ServerConnSetuppedTrack struct {
+// ServerConnTrack is a setupped track of a ServerConn.
+type ServerConnTrack struct {
 	rtpPort  int
 	rtcpPort int
 }
@@ -120,17 +120,17 @@ type ServerConnReadHandlers struct {
 
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
-	conf                   ServerConf
-	nconn                  net.Conn
-	udpRTPListener         *serverUDPListener
-	udpRTCPListener        *serverUDPListener
-	br                     *bufio.Reader
-	bw                     *bufio.Writer
-	state                  ServerConnState
-	readHandlers           ServerConnReadHandlers
-	setuppedTracks         map[int]ServerConnSetuppedTrack
-	setuppedTracksProtocol *StreamProtocol
-	announcedTracks        []ServerConnAnnouncedTrack
+	conf            ServerConf
+	nconn           net.Conn
+	udpRTPListener  *serverUDPListener
+	udpRTCPListener *serverUDPListener
+	br              *bufio.Reader
+	bw              *bufio.Writer
+	state           ServerConnState
+	readHandlers    ServerConnReadHandlers
+	tracks          map[int]ServerConnTrack
+	streamProtocol  *StreamProtocol
+	announcedTracks []ServerConnAnnouncedTrack
 
 	doEnableFrames     bool
 	framesEnabled      bool
@@ -185,20 +185,20 @@ func (sc *ServerConn) State() ServerConnState {
 	return sc.state
 }
 
-// SetuppedTracksProtocol returns the setupped tracks protocol.
-func (sc *ServerConn) SetuppedTracksProtocol() *StreamProtocol {
-	return sc.setuppedTracksProtocol
+// StreamProtocol returns the setupped tracks protocol.
+func (sc *ServerConn) StreamProtocol() *StreamProtocol {
+	return sc.streamProtocol
 }
 
-// HasSetuppedTrack checks whether a track has been setup.
-func (sc *ServerConn) HasSetuppedTrack(trackID int) bool {
-	_, ok := sc.setuppedTracks[trackID]
+// HasTrack checks whether a track has been setup.
+func (sc *ServerConn) HasTrack(trackID int) bool {
+	_, ok := sc.tracks[trackID]
 	return ok
 }
 
-// SetuppedTracks returns the setupped tracks.
-func (sc *ServerConn) SetuppedTracks() map[int]ServerConnSetuppedTrack {
-	return sc.setuppedTracks
+// Tracks returns the setupped tracks.
+func (sc *ServerConn) Tracks() map[int]ServerConnTrack {
+	return sc.tracks
 }
 
 func (sc *ServerConn) backgroundWrite() {
@@ -254,22 +254,22 @@ func (sc *ServerConn) zone() string {
 func (sc *ServerConn) frameModeEnable() {
 	switch sc.state {
 	case ServerConnStatePlay:
-		if *sc.setuppedTracksProtocol == StreamProtocolTCP {
+		if *sc.streamProtocol == StreamProtocolTCP {
 			sc.doEnableFrames = true
 		} else {
 			// readers can send RTCP frames, they cannot sent RTP frames
-			for trackID, track := range sc.setuppedTracks {
+			for trackID, track := range sc.tracks {
 				sc.udpRTCPListener.addClient(sc.ip(), track.rtcpPort, sc, trackID, false)
 			}
 		}
 
 	case ServerConnStateRecord:
-		if *sc.setuppedTracksProtocol == StreamProtocolTCP {
+		if *sc.streamProtocol == StreamProtocolTCP {
 			sc.doEnableFrames = true
 			sc.readTimeoutEnabled = true
 
 		} else {
-			for trackID, track := range sc.setuppedTracks {
+			for trackID, track := range sc.tracks {
 				sc.udpRTPListener.addClient(sc.ip(), track.rtpPort, sc, trackID, true)
 				sc.udpRTCPListener.addClient(sc.ip(), track.rtcpPort, sc, trackID, true)
 
@@ -290,13 +290,13 @@ func (sc *ServerConn) frameModeEnable() {
 func (sc *ServerConn) frameModeDisable() {
 	switch sc.state {
 	case ServerConnStatePlay:
-		if *sc.setuppedTracksProtocol == StreamProtocolTCP {
+		if *sc.streamProtocol == StreamProtocolTCP {
 			sc.framesEnabled = false
 			sc.frameRingBuffer.Close()
 			<-sc.backgroundWriteDone
 
 		} else {
-			for _, track := range sc.setuppedTracks {
+			for _, track := range sc.tracks {
 				sc.udpRTCPListener.removeClient(sc.ip(), track.rtcpPort)
 			}
 		}
@@ -305,7 +305,7 @@ func (sc *ServerConn) frameModeDisable() {
 		close(sc.backgroundRecordTerminate)
 		<-sc.backgroundRecordDone
 
-		if *sc.setuppedTracksProtocol == StreamProtocolTCP {
+		if *sc.streamProtocol == StreamProtocolTCP {
 			sc.readTimeoutEnabled = false
 			sc.nconn.SetReadDeadline(time.Time{})
 
@@ -314,7 +314,7 @@ func (sc *ServerConn) frameModeDisable() {
 			<-sc.backgroundWriteDone
 
 		} else {
-			for _, track := range sc.setuppedTracks {
+			for _, track := range sc.tracks {
 				sc.udpRTPListener.removeClient(sc.ip(), track.rtpPort)
 				sc.udpRTCPListener.removeClient(sc.ip(), track.rtcpPort)
 			}
@@ -549,13 +549,13 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
-			if _, ok := sc.setuppedTracks[trackID]; ok {
+			if _, ok := sc.tracks[trackID]; ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, fmt.Errorf("track %d has already been setup", trackID)
 			}
 
-			if sc.setuppedTracksProtocol != nil && *sc.setuppedTracksProtocol != th.Protocol {
+			if sc.streamProtocol != nil && *sc.streamProtocol != th.Protocol {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, fmt.Errorf("can't setup tracks with different protocols")
@@ -593,14 +593,14 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			res, err := sc.readHandlers.OnSetup(req, th, trackID)
 
 			if res.StatusCode == 200 {
-				sc.setuppedTracksProtocol = &th.Protocol
+				sc.streamProtocol = &th.Protocol
 
-				if sc.setuppedTracks == nil {
-					sc.setuppedTracks = make(map[int]ServerConnSetuppedTrack)
+				if sc.tracks == nil {
+					sc.tracks = make(map[int]ServerConnTrack)
 				}
 
 				if th.Protocol == StreamProtocolUDP {
-					sc.setuppedTracks[trackID] = ServerConnSetuppedTrack{
+					sc.tracks[trackID] = ServerConnTrack{
 						rtpPort:  th.ClientPorts[0],
 						rtcpPort: th.ClientPorts[1],
 					}
@@ -619,7 +619,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					}.Write()
 
 				} else {
-					sc.setuppedTracks[trackID] = ServerConnSetuppedTrack{}
+					sc.tracks[trackID] = ServerConnTrack{}
 
 					if res.Header == nil {
 						res.Header = make(base.Header)
@@ -666,7 +666,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
-			if len(sc.setuppedTracks) == 0 {
+			if len(sc.tracks) == 0 {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, fmt.Errorf("no tracks have been setup")
@@ -693,13 +693,13 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
-			if len(sc.setuppedTracks) == 0 {
+			if len(sc.tracks) == 0 {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, fmt.Errorf("no tracks have been setup")
 			}
 
-			if len(sc.setuppedTracks) != len(sc.announcedTracks) {
+			if len(sc.tracks) != len(sc.announcedTracks) {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, fmt.Errorf("not all tracks have been setup")
@@ -860,7 +860,7 @@ outer:
 			switch what.(type) {
 			case *base.InterleavedFrame:
 				// forward frame only if it has been set up
-				if _, ok := sc.setuppedTracks[frame.TrackID]; ok {
+				if _, ok := sc.tracks[frame.TrackID]; ok {
 					if sc.state == ServerConnStateRecord {
 						sc.announcedTracks[frame.TrackID].rtcpReceiver.ProcessFrame(time.Now(),
 							frame.StreamType, frame.Payload)
@@ -917,8 +917,8 @@ func (sc *ServerConn) Read(readHandlers ServerConnReadHandlers) chan error {
 
 // WriteFrame writes a frame.
 func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []byte) {
-	if *sc.setuppedTracksProtocol == StreamProtocolUDP {
-		track := sc.setuppedTracks[trackID]
+	if *sc.streamProtocol == StreamProtocolUDP {
+		track := sc.tracks[trackID]
 
 		if streamType == StreamTypeRTP {
 			sc.udpRTPListener.write(payload, &net.UDPAddr{
@@ -958,7 +958,7 @@ func (sc *ServerConn) backgroundRecord() {
 	for {
 		select {
 		case <-checkStreamTicker.C:
-			if *sc.setuppedTracksProtocol != StreamProtocolUDP {
+			if *sc.streamProtocol != StreamProtocolUDP {
 				continue
 			}
 
