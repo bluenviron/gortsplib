@@ -144,6 +144,8 @@ func handleConn(conn *gortsplib.ServerConn) {
 	if conn == publisher {
 		publisher = nil
 		sdp = nil
+	} else {
+		delete(readers, conn)
 	}
 }
 

@@ -287,6 +287,8 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	if conn == ts.publisher {
 		ts.publisher = nil
 		ts.sdp = nil
+	} else {
+		delete(ts.readers, conn)
 	}
 }
 
