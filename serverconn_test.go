@@ -243,20 +243,6 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}, nil
 	}
 
-	onPause := func(req *base.Request) (*base.Response, error) {
-		ts.mutex.Lock()
-		defer ts.mutex.Unlock()
-
-		delete(ts.readers, conn)
-
-		return &base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Session": base.HeaderValue{"12345678"},
-			},
-		}, nil
-	}
-
 	onFrame := func(trackID int, typ StreamType, buf []byte) {
 		ts.mutex.Lock()
 		defer ts.mutex.Unlock()
@@ -274,7 +260,6 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		OnSetup:    onSetup,
 		OnPlay:     onPlay,
 		OnRecord:   onRecord,
-		OnPause:    onPause,
 		OnFrame:    onFrame,
 	})
 	if err != io.EOF && err != ErrServerTeardown {
@@ -344,36 +329,7 @@ y++U32uuSFiXDcSLarfIsE992MEJLSAynbF1Rsgsr3gXbGiuToJRyxbIeVy7gwzD
 -----END RSA PRIVATE KEY-----
 `)
 
-func TestServerTeardownResponse(t *testing.T) {
-	ts, err := newTestServ(nil)
-	require.NoError(t, err)
-	defer ts.close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	err = base.Request{
-		Method: base.Teardown,
-		URL:    base.MustParseURL("rtsp://localhost:8554/"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	var res base.Response
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	buf := make([]byte, 2048)
-	_, err = bconn.Read(buf)
-	require.Equal(t, io.EOF, err)
-}
-
-func TestServerPublishRead(t *testing.T) {
+func TestServerConnPublishReadHighLevel(t *testing.T) {
 	for _, ca := range []struct {
 		encrypted      bool
 		publisherSoft  string
@@ -478,24 +434,23 @@ func TestServerPublishRead(t *testing.T) {
 	}
 }
 
-func TestServerReadWithoutSetupTrackID(t *testing.T) {
-	ts, err := newTestServ(nil)
+func TestServerConnTeardownResponse(t *testing.T) {
+	s, err := Serve(":8554")
 	require.NoError(t, err)
-	defer ts.close()
+	defer s.Close()
 
-	cnt1, err := newContainer("ffmpeg", "publish", []string{
-		"-re",
-		"-stream_loop", "-1",
-		"-i", "emptyvideo.ts",
-		"-c", "copy",
-		"-f", "rtsp",
-		"-rtsp_transport", "tcp",
-		"rtsp://localhost:8554/teststream",
-	})
-	require.NoError(t, err)
-	defer cnt1.close()
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
 
-	time.Sleep(1 * time.Second)
+		conn, err := s.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		err = <-conn.Read(ServerConnReadHandlers{})
+		require.Equal(t, ErrServerTeardown, err)
+	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -503,22 +458,10 @@ func TestServerReadWithoutSetupTrackID(t *testing.T) {
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 	err = base.Request{
-		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Method: base.Teardown,
+		URL:    base.MustParseURL("rtsp://localhost:8554/"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIds: &[2]int{0, 1},
-			}.Write(),
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -527,261 +470,8 @@ func TestServerReadWithoutSetupTrackID(t *testing.T) {
 	err = res.Read(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	err = base.Request{
-		Method: base.Play,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	var fr base.InterleavedFrame
-	fr.Payload = make([]byte, 2048)
-	err = fr.Read(bconn.Reader)
-	require.NoError(t, err)
-}
-
-func TestServerReadResponseBeforeFrames(t *testing.T) {
-	ts, err := newTestServ(nil)
-	require.NoError(t, err)
-	defer ts.close()
-
-	cnt1, err := newContainer("ffmpeg", "publish", []string{
-		"-re",
-		"-stream_loop", "-1",
-		"-i", "emptyvideo.ts",
-		"-c", "copy",
-		"-f", "rtsp",
-		"-rtsp_transport", "tcp",
-		"rtsp://localhost:8554/teststream",
-	})
-	require.NoError(t, err)
-	defer cnt1.close()
-
-	time.Sleep(1 * time.Second)
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	err = base.Request{
-		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIds: &[2]int{0, 1},
-			}.Write(),
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	var res base.Response
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	err = base.Request{
-		Method: base.Play,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	var fr base.InterleavedFrame
-	fr.Payload = make([]byte, 2048)
-	err = fr.Read(bconn.Reader)
-	require.NoError(t, err)
-}
-
-func TestServerReadPlayMultiple(t *testing.T) {
-	ts, err := newTestServ(nil)
-	require.NoError(t, err)
-	defer ts.close()
-
-	cnt1, err := newContainer("ffmpeg", "publish", []string{
-		"-re",
-		"-stream_loop", "-1",
-		"-i", "emptyvideo.ts",
-		"-c", "copy",
-		"-f", "rtsp",
-		"-rtsp_transport", "tcp",
-		"rtsp://localhost:8554/teststream",
-	})
-	require.NoError(t, err)
-	defer cnt1.close()
-
-	time.Sleep(1 * time.Second)
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	err = base.Request{
-		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIds: &[2]int{0, 1},
-			}.Write(),
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	var res base.Response
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	err = base.Request{
-		Method: base.Play,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	err = base.Request{
-		Method: base.Play,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
 
 	buf := make([]byte, 2048)
-	err = res.ReadIgnoreFrames(bconn.Reader, buf)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-}
-
-func TestServerReadPauseMultiple(t *testing.T) {
-	ts, err := newTestServ(nil)
-	require.NoError(t, err)
-	defer ts.close()
-
-	cnt1, err := newContainer("ffmpeg", "publish", []string{
-		"-re",
-		"-stream_loop", "-1",
-		"-i", "emptyvideo.ts",
-		"-c", "copy",
-		"-f", "rtsp",
-		"-rtsp_transport", "tcp",
-		"rtsp://localhost:8554/teststream",
-	})
-	require.NoError(t, err)
-	defer cnt1.close()
-
-	time.Sleep(1 * time.Second)
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	err = base.Request{
-		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIds: &[2]int{0, 1},
-			}.Write(),
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	var res base.Response
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	err = base.Request{
-		Method: base.Play,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	err = base.Request{
-		Method: base.Pause,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	buf := make([]byte, 2048)
-	err = res.ReadIgnoreFrames(bconn.Reader, buf)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	err = base.Request{
-		Method: base.Pause,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	buf = make([]byte, 2048)
-	err = res.ReadIgnoreFrames(bconn.Reader, buf)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	_, err = bconn.Read(buf)
+	require.Equal(t, io.EOF, err)
 }
