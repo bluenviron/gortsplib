@@ -23,6 +23,7 @@ Features:
   * Send streams to clients with UDP or TCP
   * Encrypt streams with TLS (RTSPS)
 * General
+  * RTCP reports are generated automatically
   * Encode and decode RTSP primitives, RTP/H264, RTP/AAC, SDP
 
 ## Table of contents
