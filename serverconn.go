@@ -190,11 +190,6 @@ func (sc *ServerConn) SetuppedTracksProtocol() *StreamProtocol {
 	return sc.setuppedTracksProtocol
 }
 
-// SetuppedTracksLen returns the number of setupped tracks.
-func (sc *ServerConn) SetuppedTracksLen() int {
-	return len(sc.setuppedTracks)
-}
-
 // HasSetuppedTrack checks whether a track has been setup.
 func (sc *ServerConn) HasSetuppedTrack(trackID int) bool {
 	_, ok := sc.setuppedTracks[trackID]
