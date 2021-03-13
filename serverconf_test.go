@@ -342,6 +342,35 @@ y++U32uuSFiXDcSLarfIsE992MEJLSAynbF1Rsgsr3gXbGiuToJRyxbIeVy7gwzD
 -----END RSA PRIVATE KEY-----
 `)
 
+func TestServerTeardownResponse(t *testing.T) {
+	ts, err := newTestServ(nil)
+	require.NoError(t, err)
+	defer ts.close()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	err = base.Request{
+		Method: base.Teardown,
+		URL:    base.MustParseURL("rtsp://localhost:8554/"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	buf := make([]byte, 2048)
+	_, err = bconn.Read(buf)
+	require.Equal(t, io.EOF, err)
+}
+
 func TestServerPublishRead(t *testing.T) {
 	for _, ca := range []struct {
 		encrypted      bool
@@ -447,36 +476,7 @@ func TestServerPublishRead(t *testing.T) {
 	}
 }
 
-func TestServerTeardownResponse(t *testing.T) {
-	ts, err := newTestServ(nil)
-	require.NoError(t, err)
-	defer ts.close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	err = base.Request{
-		Method: base.Teardown,
-		URL:    base.MustParseURL("rtsp://localhost:8554/"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	var res base.Response
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	buf := make([]byte, 2048)
-	_, err = bconn.Read(buf)
-	require.Equal(t, io.EOF, err)
-}
-
-func TestServerSetupWithoutTrackID(t *testing.T) {
+func TestServerReadWithoutSetupTrackID(t *testing.T) {
 	ts, err := newTestServ(nil)
 	require.NoError(t, err)
 	defer ts.close()
@@ -545,7 +545,7 @@ func TestServerSetupWithoutTrackID(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestServerResponseBeforeFrames(t *testing.T) {
+func TestServerReadResponseBeforeFrames(t *testing.T) {
 	ts, err := newTestServ(nil)
 	require.NoError(t, err)
 	defer ts.close()
@@ -614,7 +614,7 @@ func TestServerResponseBeforeFrames(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestServerPlayMultiple(t *testing.T) {
+func TestServerReadPlayMultiple(t *testing.T) {
 	ts, err := newTestServ(nil)
 	require.NoError(t, err)
 	defer ts.close()
@@ -692,7 +692,7 @@ func TestServerPlayMultiple(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
 
-func TestServerPauseMultiple(t *testing.T) {
+func TestServerReadPauseMultiple(t *testing.T) {
 	ts, err := newTestServ(nil)
 	require.NoError(t, err)
 	defer ts.close()
