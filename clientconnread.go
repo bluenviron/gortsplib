@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
 )
 
 // Play writes a PLAY request and reads a Response.
@@ -30,7 +31,20 @@ func (c *ClientConn) Play() (*base.Response, error) {
 		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
+	if v, ok := res.Header["RTP-Info"]; ok {
+		var err error
+		c.rtpInfo, err = headers.ReadRTPInfo(v)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse RTP-Info: %v", err)
+		}
+	}
+
 	return res, nil
+}
+
+// RTPInfo returns the RTP-Info header sent by the server in the PLAY response.
+func (c *ClientConn) RTPInfo() *headers.RTPInfo {
+	return c.rtpInfo
 }
 
 func (c *ClientConn) backgroundPlayUDP(done chan error) {

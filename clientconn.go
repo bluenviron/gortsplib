@@ -80,6 +80,7 @@ type ClientConn struct {
 	getParameterSupported bool
 
 	// read only
+	rtpInfo           *headers.RTPInfo
 	rtcpReceivers     map[int]*rtcpreceiver.RTCPReceiver
 	udpLastFrameTimes map[int]*int64
 	tcpFrameBuffer    *multibuffer.MultiBuffer
