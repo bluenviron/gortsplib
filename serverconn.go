@@ -642,10 +642,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			// this was causing problems during unit tests.
 			if ua, ok := req.Header["User-Agent"]; ok && len(ua) == 1 &&
 				strings.HasPrefix(ua[0], "GStreamer") {
-				t := time.NewTimer(1 * time.Second)
-				defer t.Stop()
 				select {
-				case <-t.C:
+				case <-time.After(1 * time.Second):
 				case <-sc.terminate:
 				}
 			}
