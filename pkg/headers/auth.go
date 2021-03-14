@@ -79,7 +79,7 @@ func findValue(v0 string) (string, string, error) {
 	}
 }
 
-// ReadAuth parses an Authenticate or a WWW-Authenticate header.
+// ReadAuth decodes an Authenticate or a WWW-Authenticate header.
 func ReadAuth(v base.HeaderValue) (*Auth, error) {
 	if len(v) == 0 {
 		return nil, fmt.Errorf("value not provided")
@@ -89,7 +89,7 @@ func ReadAuth(v base.HeaderValue) (*Auth, error) {
 		return nil, fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	ha := &Auth{}
+	h := &Auth{}
 
 	v0 := v[0]
 
@@ -100,10 +100,10 @@ func ReadAuth(v base.HeaderValue) (*Auth, error) {
 
 	switch v0[:i] {
 	case "Basic":
-		ha.Method = AuthBasic
+		h.Method = AuthBasic
 
 	case "Digest":
-		ha.Method = AuthDigest
+		h.Method = AuthDigest
 
 	default:
 		return nil, fmt.Errorf("invalid method (%s)", v0[:i])
@@ -127,28 +127,28 @@ func ReadAuth(v base.HeaderValue) (*Auth, error) {
 
 		switch key {
 		case "username":
-			ha.Username = &val
+			h.Username = &val
 
 		case "realm":
-			ha.Realm = &val
+			h.Realm = &val
 
 		case "nonce":
-			ha.Nonce = &val
+			h.Nonce = &val
 
 		case "uri":
-			ha.URI = &val
+			h.URI = &val
 
 		case "response":
-			ha.Response = &val
+			h.Response = &val
 
 		case "opaque":
-			ha.Opaque = &val
+			h.Opaque = &val
 
 		case "stale":
-			ha.Stale = &val
+			h.Stale = &val
 
 		case "algorithm":
-			ha.Algorithm = &val
+			h.Algorithm = &val
 
 			// ignore non-standard keys
 		}
@@ -164,14 +164,14 @@ func ReadAuth(v base.HeaderValue) (*Auth, error) {
 		}
 	}
 
-	return ha, nil
+	return h, nil
 }
 
 // Write encodes an Authenticate or a WWW-Authenticate header.
-func (ha Auth) Write() base.HeaderValue {
+func (h Auth) Write() base.HeaderValue {
 	ret := ""
 
-	switch ha.Method {
+	switch h.Method {
 	case AuthBasic:
 		ret += "Basic"
 
@@ -181,41 +181,41 @@ func (ha Auth) Write() base.HeaderValue {
 
 	ret += " "
 
-	var vals []string
+	var rets []string
 
-	if ha.Username != nil {
-		vals = append(vals, "username=\""+*ha.Username+"\"")
+	if h.Username != nil {
+		rets = append(rets, "username=\""+*h.Username+"\"")
 	}
 
-	if ha.Realm != nil {
-		vals = append(vals, "realm=\""+*ha.Realm+"\"")
+	if h.Realm != nil {
+		rets = append(rets, "realm=\""+*h.Realm+"\"")
 	}
 
-	if ha.Nonce != nil {
-		vals = append(vals, "nonce=\""+*ha.Nonce+"\"")
+	if h.Nonce != nil {
+		rets = append(rets, "nonce=\""+*h.Nonce+"\"")
 	}
 
-	if ha.URI != nil {
-		vals = append(vals, "uri=\""+*ha.URI+"\"")
+	if h.URI != nil {
+		rets = append(rets, "uri=\""+*h.URI+"\"")
 	}
 
-	if ha.Response != nil {
-		vals = append(vals, "response=\""+*ha.Response+"\"")
+	if h.Response != nil {
+		rets = append(rets, "response=\""+*h.Response+"\"")
 	}
 
-	if ha.Opaque != nil {
-		vals = append(vals, "opaque=\""+*ha.Opaque+"\"")
+	if h.Opaque != nil {
+		rets = append(rets, "opaque=\""+*h.Opaque+"\"")
 	}
 
-	if ha.Stale != nil {
-		vals = append(vals, "stale=\""+*ha.Stale+"\"")
+	if h.Stale != nil {
+		rets = append(rets, "stale=\""+*h.Stale+"\"")
 	}
 
-	if ha.Algorithm != nil {
-		vals = append(vals, "algorithm=\""+*ha.Algorithm+"\"")
+	if h.Algorithm != nil {
+		rets = append(rets, "algorithm=\""+*h.Algorithm+"\"")
 	}
 
-	ret += strings.Join(vals, ", ")
+	ret += strings.Join(rets, ", ")
 
 	return base.HeaderValue{ret}
 }

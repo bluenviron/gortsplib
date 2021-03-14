@@ -20,8 +20,8 @@ const (
 )
 
 // String implements fmt.Stringer.
-func (sm TransportMode) String() string {
-	switch sm {
+func (tm TransportMode) String() string {
+	switch tm {
 	case TransportModePlay:
 		return "play"
 
@@ -89,7 +89,7 @@ func parsePorts(val string) (*[2]int, error) {
 	return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 }
 
-// ReadTransport parses a Transport header.
+// ReadTransport decodes a Transport header.
 func ReadTransport(v base.HeaderValue) (*Transport, error) {
 	if len(v) == 0 {
 		return nil, fmt.Errorf("value not provided")
@@ -99,7 +99,7 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 		return nil, fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	ht := &Transport{}
+	h := &Transport{}
 
 	parts := strings.Split(v[0], ";")
 	if len(parts) == 0 {
@@ -108,10 +108,10 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 
 	switch parts[0] {
 	case "RTP/AVP", "RTP/AVP/UDP":
-		ht.Protocol = base.StreamProtocolUDP
+		h.Protocol = base.StreamProtocolUDP
 
 	case "RTP/AVP/TCP":
-		ht.Protocol = base.StreamProtocolTCP
+		h.Protocol = base.StreamProtocolTCP
 
 	default:
 		return nil, fmt.Errorf("invalid protocol (%v)", v)
@@ -121,12 +121,12 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 	switch parts[0] {
 	case "unicast":
 		v := base.StreamDeliveryUnicast
-		ht.Delivery = &v
+		h.Delivery = &v
 		parts = parts[1:]
 
 	case "multicast":
 		v := base.StreamDeliveryMulticast
-		ht.Delivery = &v
+		h.Delivery = &v
 		parts = parts[1:]
 
 		// cast is optional, do not return any error
@@ -135,7 +135,7 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 	for _, t := range parts {
 		if strings.HasPrefix(t, "destination=") {
 			v := t[len("destination="):]
-			ht.Destination = &v
+			h.Destination = &v
 
 		} else if strings.HasPrefix(t, "ttl=") {
 			v, err := strconv.ParseUint(t[len("ttl="):], 10, 64)
@@ -143,35 +143,35 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 				return nil, err
 			}
 			vu := uint(v)
-			ht.TTL = &vu
+			h.TTL = &vu
 
 		} else if strings.HasPrefix(t, "port=") {
 			ports, err := parsePorts(t[len("port="):])
 			if err != nil {
 				return nil, err
 			}
-			ht.Ports = ports
+			h.Ports = ports
 
 		} else if strings.HasPrefix(t, "client_port=") {
 			ports, err := parsePorts(t[len("client_port="):])
 			if err != nil {
 				return nil, err
 			}
-			ht.ClientPorts = ports
+			h.ClientPorts = ports
 
 		} else if strings.HasPrefix(t, "server_port=") {
 			ports, err := parsePorts(t[len("server_port="):])
 			if err != nil {
 				return nil, err
 			}
-			ht.ServerPorts = ports
+			h.ServerPorts = ports
 
 		} else if strings.HasPrefix(t, "interleaved=") {
 			ports, err := parsePorts(t[len("interleaved="):])
 			if err != nil {
 				return nil, err
 			}
-			ht.InterleavedIds = ports
+			h.InterleavedIds = ports
 
 		} else if strings.HasPrefix(t, "mode=") {
 			str := strings.ToLower(t[len("mode="):])
@@ -181,13 +181,13 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 			switch str {
 			case "play":
 				v := TransportModePlay
-				ht.Mode = &v
+				h.Mode = &v
 
 				// receive is an old alias for record, used by ffmpeg with the
 				// -listen flag, and by Darwin Streaming Server
 			case "record", "receive":
 				v := TransportModeRecord
-				ht.Mode = &v
+				h.Mode = &v
 
 			default:
 				return nil, fmt.Errorf("invalid transport mode: '%s'", str)
@@ -197,49 +197,49 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 		// ignore non-standard keys
 	}
 
-	return ht, nil
+	return h, nil
 }
 
 // Write encodes a Transport header
-func (ht Transport) Write() base.HeaderValue {
-	var vals []string
+func (h Transport) Write() base.HeaderValue {
+	var rets []string
 
-	if ht.Protocol == base.StreamProtocolUDP {
-		vals = append(vals, "RTP/AVP")
+	if h.Protocol == base.StreamProtocolUDP {
+		rets = append(rets, "RTP/AVP")
 	} else {
-		vals = append(vals, "RTP/AVP/TCP")
+		rets = append(rets, "RTP/AVP/TCP")
 	}
 
-	if ht.Delivery != nil {
-		if *ht.Delivery == base.StreamDeliveryUnicast {
-			vals = append(vals, "unicast")
+	if h.Delivery != nil {
+		if *h.Delivery == base.StreamDeliveryUnicast {
+			rets = append(rets, "unicast")
 		} else {
-			vals = append(vals, "multicast")
+			rets = append(rets, "multicast")
 		}
 	}
 
-	if ht.ClientPorts != nil {
-		ports := *ht.ClientPorts
-		vals = append(vals, "client_port="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
+	if h.ClientPorts != nil {
+		ports := *h.ClientPorts
+		rets = append(rets, "client_port="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
 	}
 
-	if ht.ServerPorts != nil {
-		ports := *ht.ServerPorts
-		vals = append(vals, "server_port="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
+	if h.ServerPorts != nil {
+		ports := *h.ServerPorts
+		rets = append(rets, "server_port="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
 	}
 
-	if ht.InterleavedIds != nil {
-		ports := *ht.InterleavedIds
-		vals = append(vals, "interleaved="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
+	if h.InterleavedIds != nil {
+		ports := *h.InterleavedIds
+		rets = append(rets, "interleaved="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
 	}
 
-	if ht.Mode != nil {
-		if *ht.Mode == TransportModePlay {
-			vals = append(vals, "mode=play")
+	if h.Mode != nil {
+		if *h.Mode == TransportModePlay {
+			rets = append(rets, "mode=play")
 		} else {
-			vals = append(vals, "mode=record")
+			rets = append(rets, "mode=record")
 		}
 	}
 
-	return base.HeaderValue{strings.Join(vals, ";")}
+	return base.HeaderValue{strings.Join(rets, ";")}
 }

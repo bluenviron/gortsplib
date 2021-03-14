@@ -17,7 +17,7 @@ type Session struct {
 	Timeout *uint
 }
 
-// ReadSession parses a Session header.
+// ReadSession decodes a Session header.
 func ReadSession(v base.HeaderValue) (*Session, error) {
 	if len(v) == 0 {
 		return nil, fmt.Errorf("value not provided")
@@ -32,20 +32,20 @@ func ReadSession(v base.HeaderValue) (*Session, error) {
 		return nil, fmt.Errorf("invalid value (%v)", v)
 	}
 
-	hs := &Session{}
+	h := &Session{}
 
-	hs.Session = parts[0]
+	h.Session = parts[0]
 
 	for _, part := range parts[1:] {
 		// remove leading spaces
 		part = strings.TrimLeft(part, " ")
 
-		keyval := strings.Split(part, "=")
-		if len(keyval) != 2 {
+		kv := strings.Split(part, "=")
+		if len(kv) != 2 {
 			return nil, fmt.Errorf("invalid value")
 		}
 
-		key, strValue := keyval[0], keyval[1]
+		key, strValue := kv[0], kv[1]
 		if key != "timeout" {
 			return nil, fmt.Errorf("invalid key '%s'", key)
 		}
@@ -56,19 +56,19 @@ func ReadSession(v base.HeaderValue) (*Session, error) {
 		}
 		uiv := uint(iv)
 
-		hs.Timeout = &uiv
+		h.Timeout = &uiv
 	}
 
-	return hs, nil
+	return h, nil
 }
 
-// Write encodes a Session header
-func (hs Session) Write() base.HeaderValue {
-	val := hs.Session
+// Write encodes a Session header.
+func (h Session) Write() base.HeaderValue {
+	ret := h.Session
 
-	if hs.Timeout != nil {
-		val += ";timeout=" + strconv.FormatUint(uint64(*hs.Timeout), 10)
+	if h.Timeout != nil {
+		ret += ";timeout=" + strconv.FormatUint(uint64(*h.Timeout), 10)
 	}
 
-	return base.HeaderValue{val}
+	return base.HeaderValue{ret}
 }
