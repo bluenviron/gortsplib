@@ -435,20 +435,20 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				if err != nil {
 					return &base.Response{
 						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("invalid track URL")
+					}, fmt.Errorf("unable to generate track URL")
 				}
 
 				trackPath, ok := trackURL.RTSPPath()
 				if !ok {
 					return &base.Response{
 						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("invalid track URL")
+					}, fmt.Errorf("invalid track URL (%v)", trackURL)
 				}
 
 				if !strings.HasPrefix(trackPath, reqPath) {
 					return &base.Response{
 							StatusCode: base.StatusBadRequest,
-						}, fmt.Errorf("invalid track URL: must begin with '%s', but is '%s'",
+						}, fmt.Errorf("invalid track path: must begin with '%s', but is '%s'",
 							reqPath, trackPath)
 				}
 			}
@@ -528,7 +528,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				if th.Mode == nil || *th.Mode == headers.TransportModePlay {
 					trackID, _, ok := base.PathSplitControlAttribute(pathAndQuery)
 					if !ok {
-						return 0, fmt.Errorf("invalid track (%s)", pathAndQuery)
+						return 0, fmt.Errorf("invalid track path (%s)", pathAndQuery)
 					}
 
 					return trackID, nil
@@ -541,7 +541,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					}
 				}
 
-				return 0, fmt.Errorf("invalid track (%s)", pathAndQuery)
+				return 0, fmt.Errorf("invalid track path (%s)", pathAndQuery)
 			}()
 			if err != nil {
 				return &base.Response{

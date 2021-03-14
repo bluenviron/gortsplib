@@ -16,6 +16,153 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
+func TestServerConnPublishSetupPath(t *testing.T) {
+	for _, ca := range []struct {
+		name    string
+		control string
+		url     string
+		trackID int
+	}{
+		{
+			"normal",
+			"trackID=0",
+			"rtsp://localhost:8554/teststream/trackID=0",
+			0,
+		},
+		{
+			"unordered id",
+			"trackID=2",
+			"rtsp://localhost:8554/teststream/trackID=2",
+			0,
+		},
+		{
+			"custom param name",
+			"testing=0",
+			"rtsp://localhost:8554/teststream/testing=0",
+			0,
+		},
+		{
+			"query",
+			"?testing=0",
+			"rtsp://localhost:8554/teststream?testing=0",
+			0,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			setupDone := make(chan int)
+
+			s, err := Serve("127.0.0.1:8554")
+			require.NoError(t, err)
+			defer s.Close()
+
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
+
+				conn, err := s.Accept()
+				require.NoError(t, err)
+				defer conn.Close()
+
+				onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+					return &base.Response{
+						StatusCode: base.StatusOK,
+					}, nil
+				}
+
+				onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
+					setupDone <- trackID
+					return &base.Response{
+						StatusCode: base.StatusOK,
+					}, nil
+				}
+
+				err = <-conn.Read(ServerConnReadHandlers{
+					OnAnnounce: onAnnounce,
+					OnSetup:    onSetup,
+				})
+				require.Equal(t, io.EOF, err)
+			}()
+
+			conn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer conn.Close()
+			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			require.NoError(t, err)
+			track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
+				Key:   "control",
+				Value: ca.control,
+			})
+
+			sout := &psdp.SessionDescription{
+				SessionName: psdp.SessionName("Stream"),
+				Origin: psdp.Origin{
+					Username:       "-",
+					NetworkType:    "IN",
+					AddressType:    "IP4",
+					UnicastAddress: "127.0.0.1",
+				},
+				TimeDescriptions: []psdp.TimeDescription{
+					{Timing: psdp.Timing{0, 0}}, //nolint:govet
+				},
+				MediaDescriptions: []*psdp.MediaDescription{
+					track.Media,
+				},
+			}
+
+			byts, _ := sout.Marshal()
+
+			err = base.Request{
+				Method: base.Announce,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: byts,
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			var res base.Response
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			th := &headers.Transport{
+				Protocol: StreamProtocolTCP,
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModeRecord
+					return &v
+				}(),
+				InterleavedIds: &[2]int{0, 1},
+			}
+
+			err = base.Request{
+				Method: base.Setup,
+				URL:    base.MustParseURL(ca.url),
+				Header: base.Header{
+					"CSeq":      base.HeaderValue{"2"},
+					"Transport": th.Write(),
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			trackID := <-setupDone
+			require.Equal(t, ca.trackID, trackID)
+
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+		})
+	}
+}
+
 func TestServerConnPublishReceivePackets(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
@@ -24,9 +171,11 @@ func TestServerConnPublishReceivePackets(t *testing.T) {
 		t.Run(proto, func(t *testing.T) {
 			packetsReceived := make(chan struct{})
 
-			conf := ServerConf{
-				UDPRTPAddress:  "127.0.0.1:8000",
-				UDPRTCPAddress: "127.0.0.1:8001",
+			conf := ServerConf{}
+
+			if proto == "udp" {
+				conf.UDPRTPAddress = "127.0.0.1:8000"
+				conf.UDPRTCPAddress = "127.0.0.1:8001"
 			}
 
 			s, err := conf.Serve("127.0.0.1:8554")
