@@ -3,36 +3,8 @@ package base
 import (
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
 )
-
-func stringsReverseIndex(s, substr string) int {
-	for i := len(s) - 1 - len(substr); i >= 0; i-- {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
-}
-
-// PathSplitControlAttribute splits a path and query from a control attribute.
-func PathSplitControlAttribute(pathAndQuery string) (int, string, bool) {
-	i := stringsReverseIndex(pathAndQuery, "/trackID=")
-
-	// URL doesn't contain trackID - we assume it's track 0
-	if i < 0 {
-		return 0, pathAndQuery, true
-	}
-
-	tmp, err := strconv.ParseInt(pathAndQuery[i+len("/trackID="):], 10, 64)
-	if err != nil || tmp < 0 {
-		return 0, "", false
-	}
-	trackID := int(tmp)
-
-	return trackID, pathAndQuery[:i], true
-}
 
 // PathSplitQuery splits a path from a query.
 func PathSplitQuery(pathAndQuery string) (string, string) {

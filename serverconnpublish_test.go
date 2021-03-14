@@ -21,35 +21,58 @@ func TestServerConnPublishSetupPath(t *testing.T) {
 		name    string
 		control string
 		url     string
+		path    string
 		trackID int
 	}{
 		{
 			"normal",
 			"trackID=0",
 			"rtsp://localhost:8554/teststream/trackID=0",
+			"teststream",
 			0,
 		},
 		{
 			"unordered id",
 			"trackID=2",
 			"rtsp://localhost:8554/teststream/trackID=2",
+			"teststream",
 			0,
 		},
 		{
 			"custom param name",
 			"testing=0",
 			"rtsp://localhost:8554/teststream/testing=0",
+			"teststream",
 			0,
 		},
 		{
 			"query",
 			"?testing=0",
 			"rtsp://localhost:8554/teststream?testing=0",
+			"teststream",
+			0,
+		},
+		{
+			"subpath",
+			"trackID=0",
+			"rtsp://localhost:8554/test/stream/trackID=0",
+			"test/stream",
+			0,
+		},
+		{
+			"subpath and query",
+			"?testing=0",
+			"rtsp://localhost:8554/test/stream?testing=0",
+			"test/stream",
 			0,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			setupDone := make(chan int)
+			type pathTrackIDPair struct {
+				path    string
+				trackID int
+			}
+			setupDone := make(chan pathTrackIDPair)
 
 			s, err := Serve("127.0.0.1:8554")
 			require.NoError(t, err)
@@ -70,8 +93,8 @@ func TestServerConnPublishSetupPath(t *testing.T) {
 					}, nil
 				}
 
-				onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
-					setupDone <- trackID
+				onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+					setupDone <- pathTrackIDPair{path, trackID}
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
@@ -116,7 +139,7 @@ func TestServerConnPublishSetupPath(t *testing.T) {
 
 			err = base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    base.MustParseURL("rtsp://localhost:8554/" + ca.path),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -153,8 +176,9 @@ func TestServerConnPublishSetupPath(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			trackID := <-setupDone
-			require.Equal(t, ca.trackID, trackID)
+			pair := <-setupDone
+			require.Equal(t, ca.path, pair.path)
+			require.Equal(t, ca.trackID, pair.trackID)
 
 			err = res.Read(bconn.Reader)
 			require.NoError(t, err)
@@ -197,7 +221,7 @@ func TestServerConnPublishReceivePackets(t *testing.T) {
 					}, nil
 				}
 
-				onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
+				onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil

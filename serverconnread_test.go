@@ -17,21 +17,47 @@ func TestServerConnReadSetupPath(t *testing.T) {
 	for _, ca := range []struct {
 		name    string
 		url     string
+		path    string
 		trackID int
 	}{
 		{
 			"normal",
 			"rtsp://localhost:8554/teststream/trackID=0",
+			"teststream",
 			0,
 		},
 		{
 			"unordered id",
 			"rtsp://localhost:8554/teststream/trackID=2",
+			"teststream",
 			2,
+		},
+		{
+			// this is needed to support reading mpegts with ffmpeg
+			"without track id",
+			"rtsp://localhost:8554/teststream/",
+			"teststream",
+			0,
+		},
+		{
+			"subpath",
+			"rtsp://localhost:8554/test/stream/trackID=0",
+			"test/stream",
+			0,
+		},
+		{
+			"subpath without track id",
+			"rtsp://localhost:8554/test/stream/",
+			"test/stream",
+			0,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			setupDone := make(chan int)
+			type pathTrackIDPair struct {
+				path    string
+				trackID int
+			}
+			setupDone := make(chan pathTrackIDPair)
 
 			s, err := Serve("127.0.0.1:8554")
 			require.NoError(t, err)
@@ -46,8 +72,8 @@ func TestServerConnReadSetupPath(t *testing.T) {
 				require.NoError(t, err)
 				defer conn.Close()
 
-				onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
-					setupDone <- trackID
+				onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+					setupDone <- pathTrackIDPair{path, trackID}
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
@@ -87,8 +113,9 @@ func TestServerConnReadSetupPath(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			trackID := <-setupDone
-			require.Equal(t, ca.trackID, trackID)
+			pair := <-setupDone
+			require.Equal(t, ca.path, pair.path)
+			require.Equal(t, ca.trackID, pair.trackID)
 
 			var res base.Response
 			err = res.Read(bconn.Reader)
@@ -124,7 +151,7 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 				require.NoError(t, err)
 				defer conn.Close()
 
-				onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
+				onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
@@ -231,94 +258,6 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 	}
 }
 
-func TestServerConnReadWithoutSetupTrackID(t *testing.T) {
-	s, err := Serve("127.0.0.1:8554")
-	require.NoError(t, err)
-	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		onPlay := func(req *base.Request) (*base.Response, error) {
-			go func() {
-				time.Sleep(100 * time.Millisecond)
-				conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
-			}()
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		err = <-conn.Read(ServerConnReadHandlers{
-			OnSetup: onSetup,
-			OnPlay:  onPlay,
-		})
-		require.Equal(t, io.EOF, err)
-	}()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	err = base.Request{
-		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIds: &[2]int{0, 1},
-			}.Write(),
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	var res base.Response
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	err = base.Request{
-		Method: base.Play,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	var fr base.InterleavedFrame
-	fr.Payload = make([]byte, 2048)
-	err = fr.Read(bconn.Reader)
-	require.NoError(t, err)
-}
-
 func TestServerConnReadTCPResponseBeforeFrames(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
@@ -338,7 +277,7 @@ func TestServerConnReadTCPResponseBeforeFrames(t *testing.T) {
 		writerTerminate := make(chan struct{})
 		defer close(writerTerminate)
 
-		onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
+		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
@@ -446,7 +385,7 @@ func TestServerConnReadPlayMultiple(t *testing.T) {
 		writerTerminate := make(chan struct{})
 		defer close(writerTerminate)
 
-		onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
+		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
@@ -561,7 +500,7 @@ func TestServerConnReadPauseMultiple(t *testing.T) {
 		writerTerminate := make(chan struct{})
 		defer close(writerTerminate)
 
-		onSetup := func(req *base.Request, th *headers.Transport, trackID int) (*base.Response, error) {
+		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
