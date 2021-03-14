@@ -22,15 +22,15 @@ func TestServerConnReadSetupPath(t *testing.T) {
 	}{
 		{
 			"normal",
-			"rtsp://localhost:8554/teststream/trackID=0",
-			"teststream",
-			0,
-		},
-		{
-			"unordered id",
 			"rtsp://localhost:8554/teststream/trackID=2",
 			"teststream",
 			2,
+		},
+		{
+			"with query",
+			"rtsp://localhost:8554/teststream?testing=123/trackID=4",
+			"teststream",
+			4,
 		},
 		{
 			// this is needed to support reading mpegts with ffmpeg
@@ -50,6 +50,12 @@ func TestServerConnReadSetupPath(t *testing.T) {
 			"rtsp://localhost:8554/test/stream/",
 			"test/stream",
 			0,
+		},
+		{
+			"subpath with query",
+			"rtsp://localhost:8554/test/stream?testing=123/trackID=4",
+			"test/stream",
+			4,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
