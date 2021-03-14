@@ -16,7 +16,7 @@ type RTPInfoEntry struct {
 }
 
 // RTPInfo is a RTP-Info header.
-type RTPInfo []RTPInfoEntry
+type RTPInfo []*RTPInfoEntry
 
 // ReadRTPInfo decodes a RTP-Info header.
 func ReadRTPInfo(v base.HeaderValue) (*RTPInfo, error) {
@@ -31,7 +31,7 @@ func ReadRTPInfo(v base.HeaderValue) (*RTPInfo, error) {
 	h := &RTPInfo{}
 
 	for _, tmp := range strings.Split(v[0], ",") {
-		e := RTPInfoEntry{}
+		e := &RTPInfoEntry{}
 
 		for _, kv := range strings.Split(tmp, ";") {
 			tmp := strings.SplitN(kv, "=", 2)
@@ -71,6 +71,19 @@ func ReadRTPInfo(v base.HeaderValue) (*RTPInfo, error) {
 	}
 
 	return h, nil
+}
+
+// Clone clones a RTPInfo.
+func (h RTPInfo) Clone() *RTPInfo {
+	nh := &RTPInfo{}
+	for _, e := range h {
+		*nh = append(*nh, &RTPInfoEntry{
+			URL:            e.URL,
+			SequenceNumber: e.SequenceNumber,
+			RTPTime:        e.RTPTime,
+		})
+	}
+	return nh
 }
 
 // Write encodes a RTP-Info header.
