@@ -43,7 +43,7 @@ func stringsReverseIndex(s, substr string) int {
 func extractTrackIDAndPath(url *base.URL,
 	thMode *headers.TransportMode,
 	publishTracks []ServerConnAnnouncedTrack,
-	publishPath string) (int, string, error) {
+	setupPath *string) (int, string, error) {
 
 	pathAndQuery, ok := url.RTSPPathAndQuery()
 	if !ok {
@@ -73,13 +73,17 @@ func extractTrackIDAndPath(url *base.URL,
 
 		path, _ := base.PathSplitQuery(pathAndQuery)
 
+		if setupPath != nil && path != *setupPath {
+			return 0, "", fmt.Errorf("can't setup tracks with different paths")
+		}
+
 		return trackID, path, nil
 	}
 
 	for trackID, track := range publishTracks {
 		u, _ := track.track.URL()
 		if u.String() == url.String() {
-			return trackID, publishPath, nil
+			return trackID, *setupPath, nil
 		}
 	}
 
@@ -184,7 +188,8 @@ type ServerConn struct {
 	bw              *bufio.Writer
 	state           ServerConnState
 	tracks          map[int]ServerConnTrack
-	streamProtocol  *StreamProtocol
+	setupProtocol   *StreamProtocol
+	setupPath       *string
 
 	// frame mode only
 	doEnableFrames      bool
@@ -197,7 +202,6 @@ type ServerConn struct {
 	readHandlers ServerConnReadHandlers
 
 	// publish only
-	publishPath               string
 	publishTracks             []ServerConnAnnouncedTrack
 	backgroundRecordTerminate chan struct{}
 	backgroundRecordDone      chan struct{}
@@ -245,7 +249,7 @@ func (sc *ServerConn) State() ServerConnState {
 
 // StreamProtocol returns the setupped tracks protocol.
 func (sc *ServerConn) StreamProtocol() *StreamProtocol {
-	return sc.streamProtocol
+	return sc.setupProtocol
 }
 
 // HasTrack checks whether a track has been setup.
@@ -312,7 +316,7 @@ func (sc *ServerConn) zone() string {
 func (sc *ServerConn) frameModeEnable() {
 	switch sc.state {
 	case ServerConnStatePlay:
-		if *sc.streamProtocol == StreamProtocolTCP {
+		if *sc.setupProtocol == StreamProtocolTCP {
 			sc.doEnableFrames = true
 		} else {
 			// readers can send RTCP frames, they cannot sent RTP frames
@@ -322,7 +326,7 @@ func (sc *ServerConn) frameModeEnable() {
 		}
 
 	case ServerConnStateRecord:
-		if *sc.streamProtocol == StreamProtocolTCP {
+		if *sc.setupProtocol == StreamProtocolTCP {
 			sc.doEnableFrames = true
 			sc.readTimeoutEnabled = true
 
@@ -348,7 +352,7 @@ func (sc *ServerConn) frameModeEnable() {
 func (sc *ServerConn) frameModeDisable() {
 	switch sc.state {
 	case ServerConnStatePlay:
-		if *sc.streamProtocol == StreamProtocolTCP {
+		if *sc.setupProtocol == StreamProtocolTCP {
 			sc.framesEnabled = false
 			sc.frameRingBuffer.Close()
 			<-sc.backgroundWriteDone
@@ -363,7 +367,7 @@ func (sc *ServerConn) frameModeDisable() {
 		close(sc.backgroundRecordTerminate)
 		<-sc.backgroundRecordDone
 
-		if *sc.streamProtocol == StreamProtocolTCP {
+		if *sc.setupProtocol == StreamProtocolTCP {
 			sc.readTimeoutEnabled = false
 			sc.nconn.SetReadDeadline(time.Time{})
 
@@ -515,7 +519,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			if res.StatusCode == 200 {
 				sc.state = ServerConnStatePreRecord
-				sc.publishPath = reqPath
+				sc.setupPath = &reqPath
 
 				sc.publishTracks = make([]ServerConnAnnouncedTrack, len(tracks))
 				for trackID, track := range tracks {
@@ -553,6 +557,26 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, fmt.Errorf("transport header: %s", err)
 			}
 
+			if th.Delivery != nil && *th.Delivery == base.StreamDeliveryMulticast {
+				return &base.Response{
+					StatusCode: base.StatusUnsupportedTransport,
+				}, nil
+			}
+
+			trackID, path, err := extractTrackIDAndPath(req.URL, th.Mode,
+				sc.publishTracks, sc.setupPath)
+			if err != nil {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, err
+			}
+
+			if _, ok := sc.tracks[trackID]; ok {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, fmt.Errorf("track %d has already been setup", trackID)
+			}
+
 			switch sc.state {
 			case ServerConnStateInitial, ServerConnStatePrePlay: // play
 				if th.Mode != nil && *th.Mode != headers.TransportModePlay {
@@ -567,32 +591,6 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 						StatusCode: base.StatusBadRequest,
 					}, fmt.Errorf("transport header does not contain mode=record")
 				}
-			}
-
-			if th.Delivery != nil && *th.Delivery == base.StreamDeliveryMulticast {
-				return &base.Response{
-					StatusCode: base.StatusUnsupportedTransport,
-				}, nil
-			}
-
-			trackID, path, err := extractTrackIDAndPath(req.URL, th.Mode,
-				sc.publishTracks, sc.publishPath)
-			if err != nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, err
-			}
-
-			if _, ok := sc.tracks[trackID]; ok {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("track %d has already been setup", trackID)
-			}
-
-			if sc.streamProtocol != nil && *sc.streamProtocol != th.Protocol {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("can't setup tracks with different protocols")
 			}
 
 			if th.Protocol == StreamProtocolUDP {
@@ -624,10 +622,16 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 			}
 
+			if sc.setupProtocol != nil && *sc.setupProtocol != th.Protocol {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, fmt.Errorf("can't setup tracks with different protocols")
+			}
+
 			res, err := sc.readHandlers.OnSetup(req, th, path, trackID)
 
 			if res.StatusCode == 200 {
-				sc.streamProtocol = &th.Protocol
+				sc.setupProtocol = &th.Protocol
 
 				if sc.tracks == nil {
 					sc.tracks = make(map[int]ServerConnTrack)
@@ -668,6 +672,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			switch sc.state {
 			case ServerConnStateInitial:
 				sc.state = ServerConnStatePrePlay
+				sc.setupPath = &path
 			}
 
 			// workaround to prevent a bug in rtspclientsink
@@ -949,7 +954,7 @@ func (sc *ServerConn) Read(readHandlers ServerConnReadHandlers) chan error {
 
 // WriteFrame writes a frame.
 func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []byte) {
-	if *sc.streamProtocol == StreamProtocolUDP {
+	if *sc.setupProtocol == StreamProtocolUDP {
 		track := sc.tracks[trackID]
 
 		if streamType == StreamTypeRTP {
@@ -990,7 +995,7 @@ func (sc *ServerConn) backgroundRecord() {
 	for {
 		select {
 		case <-checkStreamTicker.C:
-			if *sc.streamProtocol != StreamProtocolUDP {
+			if *sc.setupProtocol != StreamProtocolUDP {
 				continue
 			}
 
