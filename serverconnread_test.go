@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"bufio"
-	"io"
 	"net"
 	"testing"
 	"time"
@@ -85,10 +84,9 @@ func TestServerConnReadSetupPath(t *testing.T) {
 					}, nil
 				}
 
-				err = <-conn.Read(ServerConnReadHandlers{
+				<-conn.Read(ServerConnReadHandlers{
 					OnSetup: onSetup,
 				})
-				require.Equal(t, io.EOF, err)
 			}()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
@@ -251,12 +249,11 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 					close(packetsReceived)
 				}
 
-				err = <-conn.Read(ServerConnReadHandlers{
+				<-conn.Read(ServerConnReadHandlers{
 					OnSetup: onSetup,
 					OnPlay:  onPlay,
 					OnFrame: onFrame,
 				})
-				require.Equal(t, io.EOF, err)
 			}()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
@@ -390,11 +387,10 @@ func TestServerConnReadTCPResponseBeforeFrames(t *testing.T) {
 			}, nil
 		}
 
-		err = <-conn.Read(ServerConnReadHandlers{
+		<-conn.Read(ServerConnReadHandlers{
 			OnSetup: onSetup,
 			OnPlay:  onPlay,
 		})
-		require.Equal(t, io.EOF, err)
 	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -496,11 +492,10 @@ func TestServerConnReadPlayMultiple(t *testing.T) {
 			}, nil
 		}
 
-		err = <-conn.Read(ServerConnReadHandlers{
+		<-conn.Read(ServerConnReadHandlers{
 			OnSetup: onSetup,
 			OnPlay:  onPlay,
 		})
-		require.Equal(t, io.EOF, err)
 	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -615,12 +610,11 @@ func TestServerConnReadPauseMultiple(t *testing.T) {
 			}, nil
 		}
 
-		err = <-conn.Read(ServerConnReadHandlers{
+		<-conn.Read(ServerConnReadHandlers{
 			OnSetup: onSetup,
 			OnPlay:  onPlay,
 			OnPause: onPause,
 		})
-		require.Equal(t, io.EOF, err)
 	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")

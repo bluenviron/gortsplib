@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"bufio"
-	"io"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -100,11 +99,10 @@ func TestServerConnPublishSetupPath(t *testing.T) {
 					}, nil
 				}
 
-				err = <-conn.Read(ServerConnReadHandlers{
+				<-conn.Read(ServerConnReadHandlers{
 					OnAnnounce: onAnnounce,
 					OnSetup:    onSetup,
 				})
-				require.Equal(t, io.EOF, err)
 			}()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
@@ -466,13 +464,12 @@ func TestServerConnPublishReceivePackets(t *testing.T) {
 					}
 				}
 
-				err = <-conn.Read(ServerConnReadHandlers{
+				<-conn.Read(ServerConnReadHandlers{
 					OnAnnounce: onAnnounce,
 					OnSetup:    onSetup,
 					OnRecord:   onRecord,
 					OnFrame:    onFrame,
 				})
-				require.Equal(t, io.EOF, err)
 			}()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
