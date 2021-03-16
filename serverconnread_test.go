@@ -77,8 +77,8 @@ func TestServerConnReadSetupPath(t *testing.T) {
 				require.NoError(t, err)
 				defer conn.Close()
 
-				onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
-					setupDone <- pathTrackIDPair{path, trackID}
+				onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
+					setupDone <- pathTrackIDPair{ctx.Path, ctx.TrackID}
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
@@ -145,7 +145,7 @@ func TestServerConnReadSetupDifferentPaths(t *testing.T) {
 		require.NoError(t, err)
 		defer conn.Close()
 
-		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
@@ -226,7 +226,7 @@ func TestServerConnReadSetupDouble(t *testing.T) {
 		require.NoError(t, err)
 		defer conn.Close()
 
-		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
@@ -317,13 +317,13 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 				require.NoError(t, err)
 				defer conn.Close()
 
-				onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+				onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
 				}
 
-				onPlay := func(req *base.Request) (*base.Response, error) {
+				onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
@@ -442,13 +442,13 @@ func TestServerConnReadTCPResponseBeforeFrames(t *testing.T) {
 		writerTerminate := make(chan struct{})
 		defer close(writerTerminate)
 
-		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
 		}
 
-		onPlay := func(req *base.Request) (*base.Response, error) {
+		onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
 			go func() {
 				defer close(writerDone)
 
@@ -549,13 +549,13 @@ func TestServerConnReadPlayMultiple(t *testing.T) {
 		writerTerminate := make(chan struct{})
 		defer close(writerTerminate)
 
-		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
 		}
 
-		onPlay := func(req *base.Request) (*base.Response, error) {
+		onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
 			if conn.State() != ServerConnStatePlay {
 				go func() {
 					defer close(writerDone)
@@ -663,13 +663,13 @@ func TestServerConnReadPauseMultiple(t *testing.T) {
 		writerTerminate := make(chan struct{})
 		defer close(writerTerminate)
 
-		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
 		}
 
-		onPlay := func(req *base.Request) (*base.Response, error) {
+		onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
 			go func() {
 				defer close(writerDone)
 
@@ -691,7 +691,7 @@ func TestServerConnReadPauseMultiple(t *testing.T) {
 			}, nil
 		}
 
-		onPause := func(req *base.Request) (*base.Response, error) {
+		onPause := func(ctx *ServerConnPauseCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil

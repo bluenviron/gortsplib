@@ -8,7 +8,6 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/headers"
 )
 
 // This example shows how to
@@ -28,7 +27,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 	log.Printf("client connected")
 
 	// called after receiving a DESCRIBE request.
-	onDescribe := func(req *base.Request) (*base.Response, []byte, error) {
+	onDescribe := func(ctx *gortsplib.ServerConnDescribeCtx) (*base.Response, []byte, error) {
 		mutex.Lock()
 		defer mutex.Unlock()
 
@@ -45,7 +44,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 	}
 
 	// called after receiving an ANNOUNCE request.
-	onAnnounce := func(req *base.Request, tracks gortsplib.Tracks) (*base.Response, error) {
+	onAnnounce := func(ctx *gortsplib.ServerConnAnnounceCtx) (*base.Response, error) {
 		mutex.Lock()
 		defer mutex.Unlock()
 
@@ -56,7 +55,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 		}
 
 		publisher = conn
-		sdp = tracks.Write()
+		sdp = ctx.Tracks.Write()
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
@@ -67,7 +66,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 	}
 
 	// called after receiving a SETUP request.
-	onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+	onSetup := func(ctx *gortsplib.ServerConnSetupCtx) (*base.Response, error) {
 		return &base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -77,7 +76,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 	}
 
 	// called after receiving a PLAY request.
-	onPlay := func(req *base.Request) (*base.Response, error) {
+	onPlay := func(ctx *gortsplib.ServerConnPlayCtx) (*base.Response, error) {
 		mutex.Lock()
 		defer mutex.Unlock()
 
@@ -92,7 +91,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 	}
 
 	// called after receiving a RECORD request.
-	onRecord := func(req *base.Request) (*base.Response, error) {
+	onRecord := func(ctx *gortsplib.ServerConnRecordCtx) (*base.Response, error) {
 		mutex.Lock()
 		defer mutex.Unlock()
 

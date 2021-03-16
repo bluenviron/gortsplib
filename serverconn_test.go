@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/headers"
 )
 
 type testServ struct {
@@ -78,18 +77,18 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	defer ts.wg.Done()
 	defer conn.Close()
 
-	onDescribe := func(req *base.Request) (*base.Response, []byte, error) {
-		reqPath, ok := req.URL.RTSPPath()
+	onDescribe := func(ctx *ServerConnDescribeCtx) (*base.Response, []byte, error) {
+		reqPath, ok := ctx.Req.URL.RTSPPath()
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, nil, fmt.Errorf("invalid path (%s)", req.URL)
+			}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 		}
 
 		if reqPath != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, nil, fmt.Errorf("invalid path (%s)", req.URL)
+			}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 		}
 
 		ts.mutex.Lock()
@@ -106,18 +105,18 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}, ts.sdp, nil
 	}
 
-	onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
-		reqPath, ok := req.URL.RTSPPath()
+	onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
+		reqPath, ok := ctx.Req.URL.RTSPPath()
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", req.URL)
+			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 		}
 
 		if reqPath != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", req.URL)
+			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 		}
 
 		ts.mutex.Lock()
@@ -130,7 +129,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}
 
 		ts.publisher = conn
-		ts.sdp = tracks.Write()
+		ts.sdp = ctx.Tracks.Write()
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
@@ -140,11 +139,11 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}, nil
 	}
 
-	onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
-		if path != "teststream" {
+	onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
+		if ctx.Path != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", req.URL)
+			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 		}
 
 		return &base.Response{
@@ -155,12 +154,12 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}, nil
 	}
 
-	onPlay := func(req *base.Request) (*base.Response, error) {
-		reqPath, ok := req.URL.RTSPPath()
+	onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
+		reqPath, ok := ctx.Req.URL.RTSPPath()
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", req.URL)
+			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 		}
 
 		// path can end with a slash, remove it
@@ -169,7 +168,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		if reqPath != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", req.URL)
+			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 		}
 
 		ts.mutex.Lock()
@@ -185,12 +184,12 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}, nil
 	}
 
-	onRecord := func(req *base.Request) (*base.Response, error) {
-		reqPath, ok := req.URL.RTSPPath()
+	onRecord := func(ctx *ServerConnRecordCtx) (*base.Response, error) {
+		reqPath, ok := ctx.Req.URL.RTSPPath()
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", req.URL)
+			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 		}
 
 		// path can end with a slash, remove it
@@ -199,7 +198,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		if reqPath != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", req.URL)
+			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 		}
 
 		ts.mutex.Lock()

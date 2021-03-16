@@ -86,14 +86,14 @@ func TestServerConnPublishSetupPath(t *testing.T) {
 				require.NoError(t, err)
 				defer conn.Close()
 
-				onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+				onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
 				}
 
-				onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
-					setupDone <- pathTrackIDPair{path, trackID}
+				onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
+					setupDone <- pathTrackIDPair{ctx.Path, ctx.TrackID}
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
@@ -201,13 +201,13 @@ func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
 		require.NoError(t, err)
 		defer conn.Close()
 
-		onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+		onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
 		}
 
-		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
@@ -299,13 +299,13 @@ func TestServerConnPublishSetupDouble(t *testing.T) {
 		require.NoError(t, err)
 		defer conn.Close()
 
-		onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+		onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
 		}
 
-		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
@@ -411,19 +411,19 @@ func TestServerConnPublishRecordPartialTracks(t *testing.T) {
 		require.NoError(t, err)
 		defer conn.Close()
 
-		onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+		onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
 		}
 
-		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
 		}
 
-		onRecord := func(req *base.Request) (*base.Response, error) {
+		onRecord := func(ctx *ServerConnRecordCtx) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
@@ -544,19 +544,19 @@ func TestServerConnPublishReceivePackets(t *testing.T) {
 				require.NoError(t, err)
 				defer conn.Close()
 
-				onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+				onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
 				}
 
-				onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+				onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
 				}
 
-				onRecord := func(req *base.Request) (*base.Response, error) {
+				onRecord := func(ctx *ServerConnRecordCtx) (*base.Response, error) {
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil

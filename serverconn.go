@@ -132,6 +132,60 @@ type ServerConnAnnouncedTrack struct {
 	udpLastFrameTime *int64
 }
 
+// ServerConnOptionsCtx is the context of a OPTIONS request.
+type ServerConnOptionsCtx struct {
+	Req *base.Request
+}
+
+// ServerConnDescribeCtx is the context of a DESCRIBE request.
+type ServerConnDescribeCtx struct {
+	Req *base.Request
+}
+
+// ServerConnAnnounceCtx is the context of a ANNOUNCE request.
+type ServerConnAnnounceCtx struct {
+	Req    *base.Request
+	Tracks Tracks
+}
+
+// ServerConnSetupCtx is the context of a OPTIONS request.
+type ServerConnSetupCtx struct {
+	Req       *base.Request
+	Transport *headers.Transport
+	Path      string
+	TrackID   int
+}
+
+// ServerConnPlayCtx is the context of a PLAY request.
+type ServerConnPlayCtx struct {
+	Req *base.Request
+}
+
+// ServerConnRecordCtx is the context of a RECORD request.
+type ServerConnRecordCtx struct {
+	Req *base.Request
+}
+
+// ServerConnPauseCtx is the context of a PAUSE request.
+type ServerConnPauseCtx struct {
+	Req *base.Request
+}
+
+// ServerConnGetParameterCtx is the context of a GET_PARAMETER request.
+type ServerConnGetParameterCtx struct {
+	Req *base.Request
+}
+
+// ServerConnSetParameterCtx is the context of a SET_PARAMETER request.
+type ServerConnSetParameterCtx struct {
+	Req *base.Request
+}
+
+// ServerConnTeardownCtx is the context of a TEARDOWN request.
+type ServerConnTeardownCtx struct {
+	Req *base.Request
+}
+
 // ServerConnReadHandlers allows to set the handlers required by ServerConn.Read.
 // all fields are optional.
 type ServerConnReadHandlers struct {
@@ -143,37 +197,37 @@ type ServerConnReadHandlers struct {
 
 	// called after receiving a OPTIONS request.
 	// if nil, it is generated automatically.
-	OnOptions func(req *base.Request) (*base.Response, error)
+	OnOptions func(ctx *ServerConnOptionsCtx) (*base.Response, error)
 
 	// called after receiving a DESCRIBE request.
 	// the 2nd return value is a SDP, that is inserted into the response.
-	OnDescribe func(req *base.Request) (*base.Response, []byte, error)
+	OnDescribe func(ctx *ServerConnDescribeCtx) (*base.Response, []byte, error)
 
 	// called after receiving an ANNOUNCE request.
-	OnAnnounce func(req *base.Request, tracks Tracks) (*base.Response, error)
+	OnAnnounce func(ctx *ServerConnAnnounceCtx) (*base.Response, error)
 
 	// called after receiving a SETUP request.
-	OnSetup func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error)
+	OnSetup func(ctx *ServerConnSetupCtx) (*base.Response, error)
 
 	// called after receiving a PLAY request.
-	OnPlay func(req *base.Request) (*base.Response, error)
+	OnPlay func(ctx *ServerConnPlayCtx) (*base.Response, error)
 
 	// called after receiving a RECORD request.
-	OnRecord func(req *base.Request) (*base.Response, error)
+	OnRecord func(ctx *ServerConnRecordCtx) (*base.Response, error)
 
 	// called after receiving a PAUSE request.
-	OnPause func(req *base.Request) (*base.Response, error)
+	OnPause func(ctx *ServerConnPauseCtx) (*base.Response, error)
 
 	// called after receiving a GET_PARAMETER request.
 	// if nil, it is generated automatically.
-	OnGetParameter func(req *base.Request) (*base.Response, error)
+	OnGetParameter func(ctx *ServerConnGetParameterCtx) (*base.Response, error)
 
 	// called after receiving a SET_PARAMETER request.
-	OnSetParameter func(req *base.Request) (*base.Response, error)
+	OnSetParameter func(ctx *ServerConnSetParameterCtx) (*base.Response, error)
 
 	// called after receiving a TEARDOWN request.
 	// if nil, it is generated automatically.
-	OnTeardown func(req *base.Request) (*base.Response, error)
+	OnTeardown func(ctx *ServerConnTeardownCtx) (*base.Response, error)
 
 	// called after receiving a frame.
 	OnFrame func(trackID int, streamType StreamType, payload []byte)
@@ -399,7 +453,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	switch req.Method {
 	case base.Options:
 		if sc.readHandlers.OnOptions != nil {
-			return sc.readHandlers.OnOptions(req)
+			return sc.readHandlers.OnOptions(&ServerConnOptionsCtx{
+				Req: req,
+			})
 		}
 
 		var methods []string
@@ -445,7 +501,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
-			res, sdp, err := sc.readHandlers.OnDescribe(req)
+			res, sdp, err := sc.readHandlers.OnDescribe(&ServerConnDescribeCtx{
+				Req: req,
+			})
 
 			if res.StatusCode == base.StatusOK && sdp != nil {
 				if res.Header == nil {
@@ -527,7 +585,10 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 			}
 
-			res, err := sc.readHandlers.OnAnnounce(req, tracks)
+			res, err := sc.readHandlers.OnAnnounce(&ServerConnAnnounceCtx{
+				Req:    req,
+				Tracks: tracks,
+			})
 
 			if res.StatusCode == base.StatusOK {
 				sc.state = ServerConnStatePreRecord
@@ -640,7 +701,12 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, fmt.Errorf("can't setup tracks with different protocols")
 			}
 
-			res, err := sc.readHandlers.OnSetup(req, th, path, trackID)
+			res, err := sc.readHandlers.OnSetup(&ServerConnSetupCtx{
+				Req:       req,
+				Transport: th,
+				Path:      path,
+				TrackID:   trackID,
+			})
 
 			if res.StatusCode == base.StatusOK {
 				sc.setupProtocol = &th.Protocol
@@ -721,7 +787,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, fmt.Errorf("no tracks have been setup")
 			}
 
-			res, err := sc.readHandlers.OnPlay(req)
+			res, err := sc.readHandlers.OnPlay(&ServerConnPlayCtx{
+				Req: req,
+			})
 
 			if res.StatusCode == base.StatusOK && sc.state != ServerConnStatePlay {
 				sc.state = ServerConnStatePlay
@@ -754,7 +822,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, fmt.Errorf("not all announced tracks have been setup")
 			}
 
-			res, err := sc.readHandlers.OnRecord(req)
+			res, err := sc.readHandlers.OnRecord(&ServerConnRecordCtx{
+				Req: req,
+			})
 
 			if res.StatusCode == base.StatusOK {
 				sc.state = ServerConnStateRecord
@@ -778,7 +848,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
-			res, err := sc.readHandlers.OnPause(req)
+			res, err := sc.readHandlers.OnPause(&ServerConnPauseCtx{
+				Req: req,
+			})
 
 			if res.StatusCode == base.StatusOK {
 				switch sc.state {
@@ -797,7 +869,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.GetParameter:
 		if sc.readHandlers.OnGetParameter != nil {
-			return sc.readHandlers.OnGetParameter(req)
+			return sc.readHandlers.OnGetParameter(&ServerConnGetParameterCtx{
+				Req: req,
+			})
 		}
 
 		// GET_PARAMETER is used like a ping
@@ -811,12 +885,16 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.SetParameter:
 		if sc.readHandlers.OnSetParameter != nil {
-			return sc.readHandlers.OnSetParameter(req)
+			return sc.readHandlers.OnSetParameter(&ServerConnSetParameterCtx{
+				Req: req,
+			})
 		}
 
 	case base.Teardown:
 		if sc.readHandlers.OnTeardown != nil {
-			return sc.readHandlers.OnTeardown(req)
+			return sc.readHandlers.OnTeardown(&ServerConnTeardownCtx{
+				Req: req,
+			})
 		}
 
 		return &base.Response{
