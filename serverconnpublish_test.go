@@ -401,7 +401,7 @@ func TestServerConnPublishRecordPartialTracks(t *testing.T) {
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
 	err = <-serverErr
-	require.Equal(t, "not all tracks have been setup", err.Error())
+	require.Equal(t, "not all announced tracks have been setup", err.Error())
 }
 
 func TestServerConnPublishReceivePackets(t *testing.T) {
