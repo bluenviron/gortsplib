@@ -88,14 +88,13 @@ func TestClientConnRead(t *testing.T) {
 
 				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 				require.NoError(t, err)
-				sdp := Tracks{track}.Write()
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 					},
-					Body: sdp,
+					Body: Tracks{track}.Write(),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -246,14 +245,13 @@ func TestClientConnReadNoServerPorts(t *testing.T) {
 
 				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 				require.NoError(t, err)
-				sdp := Tracks{track}.Write()
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 					},
-					Body: sdp,
+					Body: Tracks{track}.Write(),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -363,14 +361,13 @@ func TestClientConnReadAutomaticProtocol(t *testing.T) {
 
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
-		sdp := Tracks{track}.Write()
 
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: sdp,
+			Body: Tracks{track}.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -506,14 +503,13 @@ func TestClientConnReadRedirect(t *testing.T) {
 
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
-		sdp := Tracks{track}.Write()
 
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: sdp,
+			Body: Tracks{track}.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -575,30 +571,175 @@ func TestClientConnReadRedirect(t *testing.T) {
 }
 
 func TestClientConnReadPause(t *testing.T) {
+	writeFrames := func(inTH *headers.Transport, bconn *bufio.ReadWriter) (chan struct{}, chan struct{}) {
+		writerTerminate := make(chan struct{})
+		writerDone := make(chan struct{})
+
+		go func() {
+			defer close(writerDone)
+
+			var l1 net.PacketConn
+			if inTH.Protocol == StreamProtocolUDP {
+				var err error
+				l1, err = net.ListenPacket("udp", "localhost:34556")
+				require.NoError(t, err)
+				defer l1.Close()
+			}
+
+			t := time.NewTicker(50 * time.Millisecond)
+			defer t.Stop()
+
+			for {
+				select {
+				case <-t.C:
+					if inTH.Protocol == StreamProtocolUDP {
+						l1.WriteTo([]byte("\x00\x00\x00\x00"), &net.UDPAddr{
+							IP:   net.ParseIP("127.0.0.1"),
+							Port: inTH.ClientPorts[0],
+						})
+					} else {
+						base.InterleavedFrame{
+							TrackID:    0,
+							StreamType: StreamTypeRTP,
+							Payload:    []byte("\x00\x00\x00\x00"),
+						}.Write(bconn.Writer)
+					}
+
+				case <-writerTerminate:
+					return
+				}
+			}
+		}()
+
+		return writerTerminate, writerDone
+	}
+
 	for _, proto := range []string{
 		"udp",
 		"tcp",
 	} {
 		t.Run(proto, func(t *testing.T) {
-			cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
+			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer cnt1.close()
+			defer l.Close()
 
-			time.Sleep(1 * time.Second)
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
 
-			cnt2, err := newContainer("ffmpeg", "publish", []string{
-				"-re",
-				"-stream_loop", "-1",
-				"-i", "emptyvideo.ts",
-				"-c", "copy",
-				"-f", "rtsp",
-				"-rtsp_transport", "udp",
-				"rtsp://localhost:8554/teststream",
-			})
-			require.NoError(t, err)
-			defer cnt2.close()
+				conn, err := l.Accept()
+				require.NoError(t, err)
+				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-			time.Sleep(1 * time.Second)
+				var req base.Request
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+							string(base.Setup),
+							string(base.Play),
+						}, ", ")},
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Describe, req.Method)
+
+				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+				require.NoError(t, err)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Content-Type": base.HeaderValue{"application/sdp"},
+					},
+					Body: Tracks{track}.Write(),
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+
+				inTH, err := headers.ReadTransport(req.Header["Transport"])
+				require.NoError(t, err)
+
+				th := headers.Transport{
+					Delivery: func() *base.StreamDelivery {
+						v := base.StreamDeliveryUnicast
+						return &v
+					}(),
+				}
+
+				if proto == "udp" {
+					th.Protocol = StreamProtocolUDP
+					th.ServerPorts = &[2]int{34556, 34557}
+					th.ClientPorts = inTH.ClientPorts
+
+				} else {
+					th.Protocol = StreamProtocolTCP
+					th.InterleavedIds = inTH.InterleavedIds
+				}
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Write(),
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Play, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				writerTerminate, writerDone := writeFrames(inTH, bconn)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Pause, req.Method)
+
+				close(writerTerminate)
+				<-writerDone
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Play, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				writerTerminate, writerDone = writeFrames(inTH, bconn)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+
+				close(writerTerminate)
+				<-writerDone
+
+				conn.Close()
+			}()
 
 			conf := ClientConf{
 				StreamProtocol: func() *StreamProtocol {
