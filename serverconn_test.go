@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -78,14 +77,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	defer conn.Close()
 
 	onDescribe := func(ctx *ServerConnDescribeCtx) (*base.Response, []byte, error) {
-		reqPath, ok := ctx.Req.URL.RTSPPath()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
-		}
-
-		if reqPath != "teststream" {
+		if ctx.Path != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
@@ -106,14 +98,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	}
 
 	onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
-		reqPath, ok := ctx.Req.URL.RTSPPath()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
-		}
-
-		if reqPath != "teststream" {
+		if ctx.Path != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
@@ -155,17 +140,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	}
 
 	onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
-		reqPath, ok := ctx.Req.URL.RTSPPath()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
-		}
-
-		// path can end with a slash, remove it
-		reqPath = strings.TrimSuffix(reqPath, "/")
-
-		if reqPath != "teststream" {
+		if ctx.Path != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
@@ -185,17 +160,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	}
 
 	onRecord := func(ctx *ServerConnRecordCtx) (*base.Response, error) {
-		reqPath, ok := ctx.Req.URL.RTSPPath()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
-		}
-
-		// path can end with a slash, remove it
-		reqPath = strings.TrimSuffix(reqPath, "/")
-
-		if reqPath != "teststream" {
+		if ctx.Path != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
