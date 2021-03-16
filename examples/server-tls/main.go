@@ -28,7 +28,7 @@ func handleConn(conn *gortsplib.ServerConn) {
 	log.Printf("client connected")
 
 	// called after receiving a DESCRIBE request.
-	onDescribe := func(req *base.Request) (*base.Response, error) {
+	onDescribe := func(req *base.Request) (*base.Response, []byte, error) {
 		mutex.Lock()
 		defer mutex.Unlock()
 
@@ -36,17 +36,12 @@ func handleConn(conn *gortsplib.ServerConn) {
 		if publisher == nil {
 			return &base.Response{
 				StatusCode: base.StatusNotFound,
-			}, nil
+			}, nil, nil
 		}
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Content-Base": base.HeaderValue{req.URL.String() + "/"},
-				"Content-Type": base.HeaderValue{"application/sdp"},
-			},
-			Body: sdp,
-		}, nil
+		}, sdp, nil
 	}
 
 	// called after receiving an ANNOUNCE request.

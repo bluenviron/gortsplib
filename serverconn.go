@@ -146,7 +146,8 @@ type ServerConnReadHandlers struct {
 	OnOptions func(req *base.Request) (*base.Response, error)
 
 	// called after receiving a DESCRIBE request.
-	OnDescribe func(req *base.Request) (*base.Response, error)
+	// the 2nd return value is a SDP, that is inserted into the response.
+	OnDescribe func(req *base.Request) (*base.Response, []byte, error)
 
 	// called after receiving an ANNOUNCE request.
 	OnAnnounce func(req *base.Request, tracks Tracks) (*base.Response, error)
@@ -444,7 +445,19 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
-			return sc.readHandlers.OnDescribe(req)
+			res, sdp, err := sc.readHandlers.OnDescribe(req)
+
+			if res.StatusCode == base.StatusOK && sdp != nil {
+				if res.Header == nil {
+					res.Header = make(base.Header)
+				}
+
+				res.Header["Content-Base"] = base.HeaderValue{req.URL.String() + "/"}
+				res.Header["Content-Type"] = base.HeaderValue{"application/sdp"}
+				res.Body = sdp
+			}
+
+			return res, err
 		}
 
 	case base.Announce:
@@ -516,7 +529,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			res, err := sc.readHandlers.OnAnnounce(req, tracks)
 
-			if res.StatusCode == 200 {
+			if res.StatusCode == base.StatusOK {
 				sc.state = ServerConnStatePreRecord
 				sc.setupPath = &reqPath
 
@@ -629,7 +642,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			res, err := sc.readHandlers.OnSetup(req, th, path, trackID)
 
-			if res.StatusCode == 200 {
+			if res.StatusCode == base.StatusOK {
 				sc.setupProtocol = &th.Protocol
 
 				if sc.setuppedTracks == nil {
@@ -710,7 +723,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			res, err := sc.readHandlers.OnPlay(req)
 
-			if res.StatusCode == 200 && sc.state != ServerConnStatePlay {
+			if res.StatusCode == base.StatusOK && sc.state != ServerConnStatePlay {
 				sc.state = ServerConnStatePlay
 				sc.frameModeEnable()
 			}
@@ -743,7 +756,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			res, err := sc.readHandlers.OnRecord(req)
 
-			if res.StatusCode == 200 {
+			if res.StatusCode == base.StatusOK {
 				sc.state = ServerConnStateRecord
 				sc.frameModeEnable()
 			}
@@ -767,7 +780,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			res, err := sc.readHandlers.OnPause(req)
 
-			if res.StatusCode == 200 {
+			if res.StatusCode == base.StatusOK {
 				switch sc.state {
 				case ServerConnStatePlay:
 					sc.frameModeDisable()

@@ -78,18 +78,18 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 	defer ts.wg.Done()
 	defer conn.Close()
 
-	onDescribe := func(req *base.Request) (*base.Response, error) {
+	onDescribe := func(req *base.Request) (*base.Response, []byte, error) {
 		reqPath, ok := req.URL.RTSPPath()
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", req.URL)
+			}, nil, fmt.Errorf("invalid path (%s)", req.URL)
 		}
 
 		if reqPath != "teststream" {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", req.URL)
+			}, nil, fmt.Errorf("invalid path (%s)", req.URL)
 		}
 
 		ts.mutex.Lock()
@@ -98,17 +98,12 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		if ts.publisher == nil {
 			return &base.Response{
 				StatusCode: base.StatusNotFound,
-			}, nil
+			}, nil, nil
 		}
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Content-Base": base.HeaderValue{req.URL.String() + "/"},
-				"Content-Type": base.HeaderValue{"application/sdp"},
-			},
-			Body: ts.sdp,
-		}, nil
+		}, ts.sdp, nil
 	}
 
 	onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
