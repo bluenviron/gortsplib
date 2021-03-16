@@ -188,6 +188,8 @@ func TestServerConnPublishSetupPath(t *testing.T) {
 }
 
 func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
+	serverErr := make(chan error)
+
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
@@ -201,15 +203,23 @@ func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
 		require.NoError(t, err)
 		defer conn.Close()
 
+		onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+			return &base.Response{
+				StatusCode: base.StatusOK,
+			}, nil
+		}
+
 		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
 			return &base.Response{
 				StatusCode: base.StatusOK,
 			}, nil
 		}
 
-		<-conn.Read(ServerConnReadHandlers{
-			OnSetup: onSetup,
+		err = <-conn.Read(ServerConnReadHandlers{
+			OnAnnounce: onAnnounce,
+			OnSetup:    onSetup,
 		})
+		serverErr <- err
 	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -219,28 +229,14 @@ func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
 
 	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 	require.NoError(t, err)
-	track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
-		Key:   "control",
-		Value: "trackID=0",
-	})
 
-	sout := &psdp.SessionDescription{
-		SessionName: psdp.SessionName("Stream"),
-		Origin: psdp.Origin{
-			Username:       "-",
-			NetworkType:    "IN",
-			AddressType:    "IP4",
-			UnicastAddress: "127.0.0.1",
-		},
-		TimeDescriptions: []psdp.TimeDescription{
-			{Timing: psdp.Timing{0, 0}}, //nolint:govet
-		},
-		MediaDescriptions: []*psdp.MediaDescription{
-			track.Media,
-		},
+	tracks := Tracks{track}
+	for i, t := range tracks {
+		t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
+			Key:   "control",
+			Value: "trackID=" + strconv.FormatInt(int64(i), 10),
+		})
 	}
-
-	byts, _ := sout.Marshal()
 
 	err = base.Request{
 		Method: base.Announce,
@@ -249,9 +245,14 @@ func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: byts,
+		Body: tracks.Write(),
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	th := &headers.Transport{
 		Protocol: StreamProtocolTCP,
@@ -260,7 +261,7 @@ func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
 			return &v
 		}(),
 		Mode: func() *headers.TransportMode {
-			v := headers.TransportModePlay
+			v := headers.TransportModeRecord
 			return &v
 		}(),
 		InterleavedIds: &[2]int{0, 1},
@@ -276,10 +277,133 @@ func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
 	err = res.Read(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
+	err = <-serverErr
+	require.Equal(t, "invalid track path (test2stream/trackID=0)", err.Error())
+}
+
+func TestServerConnPublishRecordPartialTracks(t *testing.T) {
+	serverErr := make(chan error)
+
+	s, err := Serve("127.0.0.1:8554")
+	require.NoError(t, err)
+	defer s.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := s.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		onAnnounce := func(req *base.Request, tracks Tracks) (*base.Response, error) {
+			return &base.Response{
+				StatusCode: base.StatusOK,
+			}, nil
+		}
+
+		onSetup := func(req *base.Request, th *headers.Transport, path string, trackID int) (*base.Response, error) {
+			return &base.Response{
+				StatusCode: base.StatusOK,
+			}, nil
+		}
+
+		onRecord := func(req *base.Request) (*base.Response, error) {
+			return &base.Response{
+				StatusCode: base.StatusOK,
+			}, nil
+		}
+
+		err = <-conn.Read(ServerConnReadHandlers{
+			OnAnnounce: onAnnounce,
+			OnSetup:    onSetup,
+			OnRecord:   onRecord,
+		})
+		serverErr <- err
+	}()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	track1, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	track2, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	tracks := Tracks{track1, track2}
+	for i, t := range tracks {
+		t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
+			Key:   "control",
+			Value: "trackID=" + strconv.FormatInt(int64(i), 10),
+		})
+	}
+
+	err = base.Request{
+		Method: base.Announce,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":         base.HeaderValue{"1"},
+			"Content-Type": base.HeaderValue{"application/sdp"},
+		},
+		Body: tracks.Write(),
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	th := &headers.Transport{
+		Protocol: StreamProtocolTCP,
+		Delivery: func() *base.StreamDelivery {
+			v := base.StreamDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModeRecord
+			return &v
+		}(),
+		InterleavedIds: &[2]int{0, 1},
+	}
+
+	err = base.Request{
+		Method: base.Setup,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq":      base.HeaderValue{"2"},
+			"Transport": th.Write(),
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.Record,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"3"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
+	err = <-serverErr
+	require.Equal(t, "not all tracks have been setup", err.Error())
 }
 
 func TestServerConnPublishReceivePackets(t *testing.T) {
@@ -360,10 +484,7 @@ func TestServerConnPublishReceivePackets(t *testing.T) {
 			require.NoError(t, err)
 
 			tracks := Tracks{track}
-
 			for i, t := range tracks {
-				t.ID = i
-				t.BaseURL = base.MustParseURL("rtsp://localhost:8554/teststream")
 				t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
 					Key:   "control",
 					Value: "trackID=" + strconv.FormatInt(int64(i), 10),
