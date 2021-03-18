@@ -22,7 +22,7 @@ var casesRTPInfo = []struct {
 			{
 				URL:            base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
 				SequenceNumber: 35243,
-				RTPTime:        717574556,
+				Timestamp:      717574556,
 			},
 		},
 	},
@@ -34,12 +34,12 @@ var casesRTPInfo = []struct {
 			{
 				URL:            base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
 				SequenceNumber: 35243,
-				RTPTime:        717574556,
+				Timestamp:      717574556,
 			},
 			{
 				URL:            base.MustParseURL("rtsp://127.0.0.1/test.mkv/track2"),
 				SequenceNumber: 13655,
-				RTPTime:        2848846950,
+				Timestamp:      2848846950,
 			},
 		},
 	},

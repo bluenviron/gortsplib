@@ -12,7 +12,7 @@ import (
 type RTPInfoEntry struct {
 	URL            *base.URL
 	SequenceNumber uint16
-	RTPTime        uint32
+	Timestamp      uint32
 }
 
 // RTPInfo is a RTP-Info header.
@@ -60,7 +60,7 @@ func ReadRTPInfo(v base.HeaderValue) (*RTPInfo, error) {
 				if err != nil {
 					return nil, err
 				}
-				e.RTPTime = uint32(vi)
+				e.Timestamp = uint32(vi)
 
 			default:
 				return nil, fmt.Errorf("invalid key: %v", k)
@@ -80,7 +80,7 @@ func (h RTPInfo) Clone() *RTPInfo {
 		*nh = append(*nh, &RTPInfoEntry{
 			URL:            e.URL,
 			SequenceNumber: e.SequenceNumber,
-			RTPTime:        e.RTPTime,
+			Timestamp:      e.Timestamp,
 		})
 	}
 	return nh
@@ -93,7 +93,7 @@ func (h RTPInfo) Write() base.HeaderValue {
 	for _, e := range h {
 		rets = append(rets, "url="+e.URL.String()+
 			";seq="+strconv.FormatUint(uint64(e.SequenceNumber), 10)+
-			";rtptime="+strconv.FormatUint(uint64(e.RTPTime), 10))
+			";rtptime="+strconv.FormatUint(uint64(e.Timestamp), 10))
 	}
 
 	return base.HeaderValue{strings.Join(rets, ",")}
