@@ -64,8 +64,8 @@ var casesHeader = []struct {
 	},
 	{
 		"normalized keys, standard",
-		[]byte("Content-type: testing\r\n" +
-			"Content-length: value\r\n" +
+		[]byte("content-type: testing\r\n" +
+			"content-length: value\r\n" +
 			"\r\n"),
 		[]byte("Content-Length: value\r\n" +
 			"Content-Type: testing\r\n" +
@@ -77,14 +77,17 @@ var casesHeader = []struct {
 	},
 	{
 		"normalized keys, non-standard",
-		[]byte("Www-Authenticate: value\r\n" +
-			"Cseq: value\r\n" +
+		[]byte("www-authenticate: value\r\n" +
+			"cseq: value\r\n" +
+			"rtp-info: value\r\n" +
 			"\r\n"),
 		[]byte("CSeq: value\r\n" +
+			"RTP-Info: value\r\n" +
 			"WWW-Authenticate: value\r\n" +
 			"\r\n"),
 		Header{
 			"CSeq":             HeaderValue{"value"},
+			"RTP-Info":         HeaderValue{"value"},
 			"WWW-Authenticate": HeaderValue{"value"},
 		},
 	},

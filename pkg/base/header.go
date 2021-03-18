@@ -17,7 +17,7 @@ const (
 func headerKeyNormalize(in string) string {
 	switch strings.ToLower(in) {
 	case "rtp-info":
-		return "RTP-INFO"
+		return "RTP-Info"
 
 	case "www-authenticate":
 		return "WWW-Authenticate"
