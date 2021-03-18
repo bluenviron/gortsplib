@@ -6,6 +6,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestURLInvalid(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		enc  string
+	}{
+		{
+			"with opaque data",
+			"rtsp:opaque?query",
+		},
+		{
+			"with fragment",
+			"rtsp://localhost:8554/teststream#fragment",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			_, err := ParseURL(ca.enc)
+			require.Error(t, err)
+		})
+	}
+}
+
 func TestURLRTSPPath(t *testing.T) {
 	for _, ca := range []struct {
 		u *URL

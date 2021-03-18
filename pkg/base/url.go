@@ -32,6 +32,14 @@ func ParseURL(s string) (*URL, error) {
 		return nil, fmt.Errorf("unsupported scheme '%s'", u.Scheme)
 	}
 
+	if u.Opaque != "" {
+		return nil, fmt.Errorf("URLs with opaque data are not supported")
+	}
+
+	if u.Fragment != "" {
+		return nil, fmt.Errorf("URLs with fragments are not supported")
+	}
+
 	return (*URL)(u), nil
 }
 
@@ -53,7 +61,6 @@ func (u *URL) String() string {
 func (u *URL) Clone() *URL {
 	return (*URL)(&url.URL{
 		Scheme:     u.Scheme,
-		Opaque:     u.Opaque,
 		User:       u.User,
 		Host:       u.Host,
 		Path:       u.Path,
@@ -67,7 +74,6 @@ func (u *URL) Clone() *URL {
 func (u *URL) CloneWithoutCredentials() *URL {
 	return (*URL)(&url.URL{
 		Scheme:     u.Scheme,
-		Opaque:     u.Opaque,
 		Host:       u.Host,
 		Path:       u.Path,
 		RawPath:    u.RawPath,
