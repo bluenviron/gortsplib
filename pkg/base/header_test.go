@@ -94,25 +94,25 @@ var casesHeader = []struct {
 }
 
 func TestHeaderRead(t *testing.T) {
-	for _, c := range casesHeader {
-		t.Run(c.name, func(t *testing.T) {
+	for _, ca := range casesHeader {
+		t.Run(ca.name, func(t *testing.T) {
 			h := make(Header)
-			err := h.read(bufio.NewReader(bytes.NewBuffer(c.dec)))
+			err := h.read(bufio.NewReader(bytes.NewBuffer(ca.dec)))
 			require.NoError(t, err)
-			require.Equal(t, c.header, h)
+			require.Equal(t, ca.header, h)
 		})
 	}
 }
 
 func TestHeaderWrite(t *testing.T) {
-	for _, c := range casesHeader {
-		t.Run(c.name, func(t *testing.T) {
+	for _, ca := range casesHeader {
+		t.Run(ca.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			bw := bufio.NewWriter(&buf)
-			err := c.header.write(bw)
+			err := ca.header.write(bw)
 			require.NoError(t, err)
 			bw.Flush()
-			require.Equal(t, c.enc, buf.Bytes())
+			require.Equal(t, ca.enc, buf.Bytes())
 		})
 	}
 }
