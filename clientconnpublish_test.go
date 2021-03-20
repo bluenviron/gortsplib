@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bufio"
 	"net"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
-	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
 func TestClientConnPublishSerial(t *testing.T) {
@@ -21,28 +19,101 @@ func TestClientConnPublishSerial(t *testing.T) {
 		"tcp",
 	} {
 		t.Run(proto, func(t *testing.T) {
-			cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
+			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer cnt1.close()
+			defer l.Close()
 
-			time.Sleep(1 * time.Second)
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
 
-			pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
-			require.NoError(t, err)
-			defer pc.Close()
+				conn, err := l.Accept()
+				require.NoError(t, err)
+				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-			cnt2, err := newContainer("gstreamer", "source", []string{
-				"filesrc location=emptyvideo.ts ! tsdemux ! video/x-h264" +
-					" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=" + strconv.FormatInt(int64(pc.LocalAddr().(*net.UDPAddr).Port), 10),
-			})
-			require.NoError(t, err)
-			defer cnt2.close()
+				var req base.Request
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
 
-			decoder := rtph264.NewDecoder()
-			sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc}) //nolint:govet
-			require.NoError(t, err)
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Announce),
+							string(base.Setup),
+							string(base.Record),
+						}, ", ")},
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
 
-			track, err := NewTrackH264(96, sps, pps)
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Announce, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+
+				var inTH headers.Transport
+				err = inTH.Read(req.Header["Transport"])
+				require.NoError(t, err)
+
+				th := headers.Transport{
+					Delivery: func() *base.StreamDelivery {
+						v := base.StreamDeliveryUnicast
+						return &v
+					}(),
+				}
+
+				if proto == "udp" {
+					th.Protocol = StreamProtocolUDP
+					th.ServerPorts = &[2]int{34556, 34557}
+					th.ClientPorts = inTH.ClientPorts
+
+				} else {
+					th.Protocol = StreamProtocolTCP
+					th.InterleavedIds = inTH.InterleavedIds
+				}
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Write(),
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Record, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				buf := make([]byte, 2048)
+				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				conn.Close()
+			}()
+
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
 			conf := ClientConf{
@@ -60,80 +131,128 @@ func TestClientConnPublishSerial(t *testing.T) {
 				Tracks{track})
 			require.NoError(t, err)
 
-			buf := make([]byte, 2048)
-			n, _, err := pc.ReadFrom(buf)
-			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 
 			conn.Close()
 
-			n, _, err = pc.ReadFrom(buf)
-			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.Error(t, err)
 		})
 	}
 }
 
 func TestClientConnPublishParallel(t *testing.T) {
-	for _, ca := range []struct {
-		proto  string
-		server string
-	}{
-		{"udp", "rtsp-simple-server"},
-		{"udp", "ffmpeg"},
-		{"tcp", "rtsp-simple-server"},
-		{"tcp", "ffmpeg"},
+	for _, proto := range []string{
+		"udp",
+		"tcp",
 	} {
-		t.Run(ca.proto+"_"+ca.server, func(t *testing.T) {
-			switch ca.server {
-			case "rtsp-simple-server":
-				cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
-				require.NoError(t, err)
-				defer cnt1.close()
-
-			default:
-				cnt0, err := newContainer("rtsp-simple-server", "server0", []string{"{}"})
-				require.NoError(t, err)
-				defer cnt0.close()
-
-				cnt1, err := newContainer("ffmpeg", "server", []string{
-					"-fflags nobuffer -re -rtsp_flags listen -i rtsp://localhost:8555/teststream -c copy -f rtsp rtsp://localhost:8554/teststream",
-				})
-				require.NoError(t, err)
-				defer cnt1.close()
-			}
-
-			time.Sleep(1 * time.Second)
-
-			pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
+		t.Run(proto, func(t *testing.T) {
+			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer pc.Close()
+			defer l.Close()
 
-			cnt2, err := newContainer("gstreamer", "source", []string{
-				"filesrc location=emptyvideo.ts ! tsdemux ! video/x-h264" +
-					" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=" + strconv.FormatInt(int64(pc.LocalAddr().(*net.UDPAddr).Port), 10),
-			})
-			require.NoError(t, err)
-			defer cnt2.close()
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
 
-			decoder := rtph264.NewDecoder()
-			sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc}) //nolint:govet
-			require.NoError(t, err)
+				conn, err := l.Accept()
+				require.NoError(t, err)
+				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-			track, err := NewTrackH264(96, sps, pps)
+				var req base.Request
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Announce),
+							string(base.Setup),
+							string(base.Record),
+						}, ", ")},
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Announce, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+
+				var inTH headers.Transport
+				err = inTH.Read(req.Header["Transport"])
+				require.NoError(t, err)
+
+				th := headers.Transport{
+					Delivery: func() *base.StreamDelivery {
+						v := base.StreamDeliveryUnicast
+						return &v
+					}(),
+				}
+
+				if proto == "udp" {
+					th.Protocol = StreamProtocolUDP
+					th.ServerPorts = &[2]int{34556, 34557}
+					th.ClientPorts = inTH.ClientPorts
+
+				} else {
+					th.Protocol = StreamProtocolTCP
+					th.InterleavedIds = inTH.InterleavedIds
+				}
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Write(),
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Record, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				buf := make([]byte, 2048)
+				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				conn.Close()
+			}()
+
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
 
-			var conn *ClientConn
-			defer func() { conn.Close() }()
-
 			conf := ClientConf{
 				StreamProtocol: func() *StreamProtocol {
-					if ca.proto == "udp" {
+					if proto == "udp" {
 						v := StreamProtocolUDP
 						return &v
 					}
@@ -142,49 +261,27 @@ func TestClientConnPublishParallel(t *testing.T) {
 				}(),
 			}
 
+			conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
+				Tracks{track})
+			require.NoError(t, err)
+			defer conn.Close()
+
 			go func() {
 				defer close(writerDone)
 
-				port := "8554"
-				if ca.server == "ffmpeg" {
-					port = "8555"
-				}
-				var err error
-				conn, err = conf.DialPublish("rtsp://localhost:"+port+"/teststream",
-					Tracks{track})
-				require.NoError(t, err)
+				t := time.NewTicker(50 * time.Millisecond)
+				defer t.Stop()
 
-				buf := make([]byte, 2048)
-				for {
-					n, _, err := pc.ReadFrom(buf)
+				for range t.C {
+					err := conn.WriteFrame(track.ID, StreamTypeRTP,
+						[]byte{0x01, 0x02, 0x03, 0x04})
 					if err != nil {
-						break
-					}
-
-					err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
-					if err != nil {
-						break
+						return
 					}
 				}
 			}()
 
-			if ca.server == "ffmpeg" {
-				time.Sleep(5 * time.Second)
-			}
 			time.Sleep(1 * time.Second)
-
-			cnt3, err := newContainer("ffmpeg", "read", []string{
-				"-rtsp_transport", "udp",
-				"-i", "rtsp://localhost:8554/teststream",
-				"-vframes", "1",
-				"-f", "image2",
-				"-y", "/dev/null",
-			})
-			require.NoError(t, err)
-			defer cnt3.close()
-
-			code := cnt3.wait()
-			require.Equal(t, 0, code)
 		})
 	}
 }
@@ -309,22 +406,7 @@ func TestClientConnPublishPauseSerial(t *testing.T) {
 				conn.Close()
 			}()
 
-			pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
-			require.NoError(t, err)
-			defer pc.Close()
-
-			cnt2, err := newContainer("gstreamer", "source", []string{
-				"filesrc location=emptyvideo.ts ! tsdemux ! video/x-h264" +
-					" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=" + strconv.FormatInt(int64(pc.LocalAddr().(*net.UDPAddr).Port), 10),
-			})
-			require.NoError(t, err)
-			defer cnt2.close()
-
-			decoder := rtph264.NewDecoder()
-			sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc}) //nolint:govet
-			require.NoError(t, err)
-
-			track, err := NewTrackH264(96, sps, pps)
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
 			conf := ClientConf{
@@ -343,27 +425,22 @@ func TestClientConnPublishPauseSerial(t *testing.T) {
 			require.NoError(t, err)
 			defer conn.Close()
 
-			buf := make([]byte, 2048)
-
-			n, _, err := pc.ReadFrom(buf)
-			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 
 			_, err = conn.Pause()
 			require.NoError(t, err)
 
-			n, _, err = pc.ReadFrom(buf)
-			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.Error(t, err)
 
 			_, err = conn.Record()
 			require.NoError(t, err)
 
-			n, _, err = pc.ReadFrom(buf)
-			require.NoError(t, err)
-			err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
+			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 		})
 	}
@@ -470,22 +547,7 @@ func TestClientConnPublishPauseParallel(t *testing.T) {
 				conn.Close()
 			}()
 
-			pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
-			require.NoError(t, err)
-			defer pc.Close()
-
-			cnt2, err := newContainer("gstreamer", "source", []string{
-				"filesrc location=emptyvideo.ts ! tsdemux ! video/x-h264" +
-					" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=" + strconv.FormatInt(int64(pc.LocalAddr().(*net.UDPAddr).Port), 10),
-			})
-			require.NoError(t, err)
-			defer cnt2.close()
-
-			decoder := rtph264.NewDecoder()
-			sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc}) //nolint:govet
-			require.NoError(t, err)
-
-			track, err := NewTrackH264(96, sps, pps)
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
 			conf := ClientConf{
@@ -507,14 +569,14 @@ func TestClientConnPublishPauseParallel(t *testing.T) {
 			go func() {
 				defer close(writerDone)
 
-				buf := make([]byte, 2048)
-				for {
-					n, _, err := pc.ReadFrom(buf)
-					require.NoError(t, err)
+				t := time.NewTicker(50 * time.Millisecond)
+				defer t.Stop()
 
-					err = conn.WriteFrame(track.ID, StreamTypeRTP, buf[:n])
+				for range t.C {
+					err := conn.WriteFrame(track.ID, StreamTypeRTP,
+						[]byte{0x01, 0x02, 0x03, 0x04})
 					if err != nil {
-						break
+						return
 					}
 				}
 			}()
