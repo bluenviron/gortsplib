@@ -672,7 +672,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, err
 			}
 
-			th, err := headers.ReadTransport(req.Header["Transport"])
+			var th headers.Transport
+			err = th.Read(req.Header["Transport"])
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -755,7 +756,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				Path:      path,
 				Query:     query,
 				TrackID:   trackID,
-				Transport: th,
+				Transport: &th,
 			})
 
 			if res.StatusCode == base.StatusOK {

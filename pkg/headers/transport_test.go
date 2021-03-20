@@ -12,13 +12,13 @@ var casesTransport = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    *Transport
+	h    Transport
 }{
 	{
 		"udp unicast play request",
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode="PLAY"`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
-		&Transport{
+		Transport{
 			Protocol: base.StreamProtocolUDP,
 			Delivery: func() *base.StreamDelivery {
 				v := base.StreamDeliveryUnicast
@@ -35,7 +35,7 @@ var casesTransport = []struct {
 		"udp unicast play response",
 		base.HeaderValue{`RTP/AVP/UDP;unicast;client_port=3056-3057;server_port=5000-5001`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3056-3057;server_port=5000-5001`},
-		&Transport{
+		Transport{
 			Protocol: base.StreamProtocolUDP,
 			Delivery: func() *base.StreamDelivery {
 				v := base.StreamDeliveryUnicast
@@ -49,7 +49,7 @@ var casesTransport = []struct {
 		"udp multicast play request / response",
 		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
 		base.HeaderValue{`RTP/AVP;multicast`},
-		&Transport{
+		Transport{
 			Protocol: base.StreamProtocolUDP,
 			Delivery: func() *base.StreamDelivery {
 				v := base.StreamDeliveryMulticast
@@ -70,7 +70,7 @@ var casesTransport = []struct {
 		"tcp play request / response",
 		base.HeaderValue{`RTP/AVP/TCP;interleaved=0-1`},
 		base.HeaderValue{`RTP/AVP/TCP;interleaved=0-1`},
-		&Transport{
+		Transport{
 			Protocol:       base.StreamProtocolTCP,
 			InterleavedIds: &[2]int{0, 1},
 		},
@@ -79,7 +79,7 @@ var casesTransport = []struct {
 		"udp unicast play response with a single port",
 		base.HeaderValue{`RTP/AVP/UDP;unicast;server_port=8052;client_port=14186;ssrc=39140788;mode=PLAY`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;mode=play`},
-		&Transport{
+		Transport{
 			Protocol: base.StreamProtocolUDP,
 			Delivery: func() *base.StreamDelivery {
 				v := base.StreamDeliveryUnicast
@@ -97,7 +97,7 @@ var casesTransport = []struct {
 		"udp record response with receive",
 		base.HeaderValue{`RTP/AVP/UDP;unicast;mode=receive;source=localhost;client_port=14186-14187;server_port=5000-5001`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=5000-5001;mode=record`},
-		&Transport{
+		Transport{
 			Protocol: base.StreamProtocolUDP,
 			Delivery: func() *base.StreamDelivery {
 				v := base.StreamDeliveryUnicast
@@ -116,9 +116,10 @@ var casesTransport = []struct {
 func TestTransportRead(t *testing.T) {
 	for _, c := range casesTransport {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadTransport(c.vin)
+			var h Transport
+			err := h.Read(c.vin)
 			require.NoError(t, err)
-			require.Equal(t, c.h, req)
+			require.Equal(t, c.h, h)
 		})
 	}
 }

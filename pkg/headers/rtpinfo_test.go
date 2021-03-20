@@ -12,13 +12,13 @@ var casesRTPInfo = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    *RTPInfo
+	h    RTPInfo
 }{
 	{
 		"single value",
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556`},
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556`},
-		&RTPInfo{
+		RTPInfo{
 			{
 				URL:            base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
 				SequenceNumber: 35243,
@@ -30,7 +30,7 @@ var casesRTPInfo = []struct {
 		"multiple value",
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556,url=rtsp://127.0.0.1/test.mkv/track2;seq=13655;rtptime=2848846950`},
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556,url=rtsp://127.0.0.1/test.mkv/track2;seq=13655;rtptime=2848846950`},
-		&RTPInfo{
+		RTPInfo{
 			{
 				URL:            base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
 				SequenceNumber: 35243,
@@ -48,9 +48,10 @@ var casesRTPInfo = []struct {
 func TestRTPInfoRead(t *testing.T) {
 	for _, c := range casesRTPInfo {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := ReadRTPInfo(c.vin)
+			var h RTPInfo
+			err := h.Read(c.vin)
 			require.NoError(t, err)
-			require.Equal(t, c.h, req)
+			require.Equal(t, c.h, h)
 		})
 	}
 }

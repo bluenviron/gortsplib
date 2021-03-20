@@ -102,7 +102,8 @@ func TestClientConnRead(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
-				th, err := headers.ReadTransport(req.Header["Transport"])
+				var th headers.Transport
+				err = th.Read(req.Header["Transport"])
 				require.NoError(t, err)
 
 				if ca.proto == "udp" {
@@ -259,7 +260,8 @@ func TestClientConnReadNoServerPorts(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
-				th, err := headers.ReadTransport(req.Header["Transport"])
+				var th headers.Transport
+				err = th.Read(req.Header["Transport"])
 				require.NoError(t, err)
 
 				err = base.Response{
@@ -517,7 +519,8 @@ func TestClientConnReadRedirect(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
-		th, err := headers.ReadTransport(req.Header["Transport"])
+		var th headers.Transport
+		err = th.Read(req.Header["Transport"])
 		require.NoError(t, err)
 
 		err = base.Response{
@@ -669,7 +672,8 @@ func TestClientConnReadPause(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
-				inTH, err := headers.ReadTransport(req.Header["Transport"])
+				var inTH headers.Transport
+				err = inTH.Read(req.Header["Transport"])
 				require.NoError(t, err)
 
 				th := headers.Transport{
@@ -706,7 +710,7 @@ func TestClientConnReadPause(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				writerTerminate, writerDone := writeFrames(inTH, bconn)
+				writerTerminate, writerDone := writeFrames(&inTH, bconn)
 
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
@@ -729,7 +733,7 @@ func TestClientConnReadPause(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				writerTerminate, writerDone = writeFrames(inTH, bconn)
+				writerTerminate, writerDone = writeFrames(&inTH, bconn)
 
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)

@@ -266,7 +266,8 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 
 	// get session from response
 	if v, ok := res.Header["Session"]; ok {
-		sx, err := headers.ReadSession(v)
+		var sx headers.Session
+		err := sx.Read(v)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse session header: %s", err)
 		}
@@ -568,7 +569,8 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		return res, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
 	}
 
-	thRes, err := headers.ReadTransport(res.Header["Transport"])
+	var thRes headers.Transport
+	err = thRes.Read(res.Header["Transport"])
 	if err != nil {
 		if proto == StreamProtocolUDP {
 			rtpListener.close()

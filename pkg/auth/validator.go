@@ -135,7 +135,8 @@ func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *
 		}
 
 	} else if strings.HasPrefix(v0, "Digest ") {
-		auth, err := headers.ReadAuth(base.HeaderValue{v0})
+		var auth headers.Auth
+		err := auth.Read(base.HeaderValue{v0})
 		if err != nil {
 			return err
 		}

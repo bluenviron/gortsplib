@@ -79,23 +79,21 @@ func findValue(v0 string) (string, string, error) {
 	}
 }
 
-// ReadAuth decodes an Authenticate or a WWW-Authenticate header.
-func ReadAuth(v base.HeaderValue) (*Auth, error) {
+// Read decodes an Authenticate or a WWW-Authenticate header.
+func (h *Auth) Read(v base.HeaderValue) error {
 	if len(v) == 0 {
-		return nil, fmt.Errorf("value not provided")
+		return fmt.Errorf("value not provided")
 	}
 
 	if len(v) > 1 {
-		return nil, fmt.Errorf("value provided multiple times (%v)", v)
+		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
-
-	h := &Auth{}
 
 	v0 := v[0]
 
 	i := strings.IndexByte(v0, ' ')
 	if i < 0 {
-		return nil, fmt.Errorf("unable to find method (%s)", v0)
+		return fmt.Errorf("unable to find method (%s)", v0)
 	}
 
 	switch v0[:i] {
@@ -106,14 +104,14 @@ func ReadAuth(v base.HeaderValue) (*Auth, error) {
 		h.Method = AuthDigest
 
 	default:
-		return nil, fmt.Errorf("invalid method (%s)", v0[:i])
+		return fmt.Errorf("invalid method (%s)", v0[:i])
 	}
 	v0 = v0[i+1:]
 
 	for len(v0) > 0 {
 		i := strings.IndexByte(v0, '=')
 		if i < 0 {
-			return nil, fmt.Errorf("unable to find key (%s)", v0)
+			return fmt.Errorf("unable to find key (%s)", v0)
 		}
 		var key string
 		key, v0 = v0[:i], v0[i+1:]
@@ -122,7 +120,7 @@ func ReadAuth(v base.HeaderValue) (*Auth, error) {
 		var err error
 		val, v0, err = findValue(v0)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		switch key {
@@ -164,7 +162,7 @@ func ReadAuth(v base.HeaderValue) (*Auth, error) {
 		}
 	}
 
-	return h, nil
+	return nil
 }
 
 // Write encodes an Authenticate or a WWW-Authenticate header.

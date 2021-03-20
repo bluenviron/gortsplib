@@ -89,21 +89,19 @@ func parsePorts(val string) (*[2]int, error) {
 	return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 }
 
-// ReadTransport decodes a Transport header.
-func ReadTransport(v base.HeaderValue) (*Transport, error) {
+// Read decodes a Transport header.
+func (h *Transport) Read(v base.HeaderValue) error {
 	if len(v) == 0 {
-		return nil, fmt.Errorf("value not provided")
+		return fmt.Errorf("value not provided")
 	}
 
 	if len(v) > 1 {
-		return nil, fmt.Errorf("value provided multiple times (%v)", v)
+		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
-
-	h := &Transport{}
 
 	parts := strings.Split(v[0], ";")
 	if len(parts) == 0 {
-		return nil, fmt.Errorf("invalid value (%v)", v)
+		return fmt.Errorf("invalid value (%v)", v)
 	}
 
 	switch parts[0] {
@@ -114,7 +112,7 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 		h.Protocol = base.StreamProtocolTCP
 
 	default:
-		return nil, fmt.Errorf("invalid protocol (%v)", v)
+		return fmt.Errorf("invalid protocol (%v)", v)
 	}
 	parts = parts[1:]
 
@@ -140,7 +138,7 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 		} else if strings.HasPrefix(t, "ttl=") {
 			v, err := strconv.ParseUint(t[len("ttl="):], 10, 64)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			vu := uint(v)
 			h.TTL = &vu
@@ -148,28 +146,28 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 		} else if strings.HasPrefix(t, "port=") {
 			ports, err := parsePorts(t[len("port="):])
 			if err != nil {
-				return nil, err
+				return err
 			}
 			h.Ports = ports
 
 		} else if strings.HasPrefix(t, "client_port=") {
 			ports, err := parsePorts(t[len("client_port="):])
 			if err != nil {
-				return nil, err
+				return err
 			}
 			h.ClientPorts = ports
 
 		} else if strings.HasPrefix(t, "server_port=") {
 			ports, err := parsePorts(t[len("server_port="):])
 			if err != nil {
-				return nil, err
+				return err
 			}
 			h.ServerPorts = ports
 
 		} else if strings.HasPrefix(t, "interleaved=") {
 			ports, err := parsePorts(t[len("interleaved="):])
 			if err != nil {
-				return nil, err
+				return err
 			}
 			h.InterleavedIds = ports
 
@@ -190,14 +188,14 @@ func ReadTransport(v base.HeaderValue) (*Transport, error) {
 				h.Mode = &v
 
 			default:
-				return nil, fmt.Errorf("invalid transport mode: '%s'", str)
+				return fmt.Errorf("invalid transport mode: '%s'", str)
 			}
 		}
 
 		// ignore non-standard keys
 	}
 
-	return h, nil
+	return nil
 }
 
 // Write encodes a Transport header

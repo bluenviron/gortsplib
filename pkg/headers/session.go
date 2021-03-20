@@ -17,22 +17,20 @@ type Session struct {
 	Timeout *uint
 }
 
-// ReadSession decodes a Session header.
-func ReadSession(v base.HeaderValue) (*Session, error) {
+// Read decodes a Session header.
+func (h *Session) Read(v base.HeaderValue) error {
 	if len(v) == 0 {
-		return nil, fmt.Errorf("value not provided")
+		return fmt.Errorf("value not provided")
 	}
 
 	if len(v) > 1 {
-		return nil, fmt.Errorf("value provided multiple times (%v)", v)
+		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
 	parts := strings.Split(v[0], ";")
 	if len(parts) == 0 {
-		return nil, fmt.Errorf("invalid value (%v)", v)
+		return fmt.Errorf("invalid value (%v)", v)
 	}
-
-	h := &Session{}
 
 	h.Session = parts[0]
 
@@ -42,24 +40,24 @@ func ReadSession(v base.HeaderValue) (*Session, error) {
 
 		kv := strings.Split(part, "=")
 		if len(kv) != 2 {
-			return nil, fmt.Errorf("invalid value")
+			return fmt.Errorf("invalid value")
 		}
 
 		key, strValue := kv[0], kv[1]
 		if key != "timeout" {
-			return nil, fmt.Errorf("invalid key '%s'", key)
+			return fmt.Errorf("invalid key '%s'", key)
 		}
 
 		iv, err := strconv.ParseUint(strValue, 10, 64)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		uiv := uint(iv)
 
 		h.Timeout = &uiv
 	}
 
-	return h, nil
+	return nil
 }
 
 // Write encodes a Session header.

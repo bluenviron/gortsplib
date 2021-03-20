@@ -348,7 +348,7 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 			defer conn.Close()
 			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-			th := &headers.Transport{
+			inTH := &headers.Transport{
 				Delivery: func() *base.StreamDelivery {
 					v := base.StreamDeliveryUnicast
 					return &v
@@ -360,11 +360,11 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 			}
 
 			if proto == "udp" {
-				th.Protocol = StreamProtocolUDP
-				th.ClientPorts = &[2]int{35466, 35467}
+				inTH.Protocol = StreamProtocolUDP
+				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
-				th.Protocol = StreamProtocolTCP
-				th.InterleavedIds = &[2]int{0, 1}
+				inTH.Protocol = StreamProtocolTCP
+				inTH.InterleavedIds = &[2]int{0, 1}
 			}
 
 			err = base.Request{
@@ -372,7 +372,7 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
-					"Transport": th.Write(),
+					"Transport": inTH.Write(),
 				},
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
@@ -382,7 +382,8 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			th, err = headers.ReadTransport(res.Header["Transport"])
+			var th headers.Transport
+			err = th.Read(res.Header["Transport"])
 			require.NoError(t, err)
 
 			err = base.Request{

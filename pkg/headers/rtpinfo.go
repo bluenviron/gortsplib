@@ -18,17 +18,15 @@ type RTPInfoEntry struct {
 // RTPInfo is a RTP-Info header.
 type RTPInfo []*RTPInfoEntry
 
-// ReadRTPInfo decodes a RTP-Info header.
-func ReadRTPInfo(v base.HeaderValue) (*RTPInfo, error) {
+// Read decodes a RTP-Info header.
+func (h *RTPInfo) Read(v base.HeaderValue) error {
 	if len(v) == 0 {
-		return nil, fmt.Errorf("value not provided")
+		return fmt.Errorf("value not provided")
 	}
 
 	if len(v) > 1 {
-		return nil, fmt.Errorf("value provided multiple times (%v)", v)
+		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
-
-	h := &RTPInfo{}
 
 	for _, tmp := range strings.Split(v[0], ",") {
 		e := &RTPInfoEntry{}
@@ -36,7 +34,7 @@ func ReadRTPInfo(v base.HeaderValue) (*RTPInfo, error) {
 		for _, kv := range strings.Split(tmp, ";") {
 			tmp := strings.SplitN(kv, "=", 2)
 			if len(tmp) != 2 {
-				return nil, fmt.Errorf("unable to parse key-value (%v)", kv)
+				return fmt.Errorf("unable to parse key-value (%v)", kv)
 			}
 
 			k, v := tmp[0], tmp[1]
@@ -44,33 +42,33 @@ func ReadRTPInfo(v base.HeaderValue) (*RTPInfo, error) {
 			case "url":
 				vu, err := base.ParseURL(v)
 				if err != nil {
-					return nil, err
+					return err
 				}
 				e.URL = vu
 
 			case "seq":
 				vi, err := strconv.ParseUint(v, 10, 16)
 				if err != nil {
-					return nil, err
+					return err
 				}
 				e.SequenceNumber = uint16(vi)
 
 			case "rtptime":
 				vi, err := strconv.ParseUint(v, 10, 32)
 				if err != nil {
-					return nil, err
+					return err
 				}
 				e.Timestamp = uint32(vi)
 
 			default:
-				return nil, fmt.Errorf("invalid key: %v", k)
+				return fmt.Errorf("invalid key: %v", k)
 			}
 		}
 
 		*h = append(*h, e)
 	}
 
-	return h, nil
+	return nil
 }
 
 // Clone clones a RTPInfo.

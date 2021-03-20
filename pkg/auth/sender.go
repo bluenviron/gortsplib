@@ -30,7 +30,8 @@ func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 		}
 		return ""
 	}(); headerAuthDigest != "" {
-		auth, err := headers.ReadAuth(base.HeaderValue{headerAuthDigest})
+		var auth headers.Auth
+		err := auth.Read(base.HeaderValue{headerAuthDigest})
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +61,8 @@ func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 		}
 		return ""
 	}(); headerAuthBasic != "" {
-		auth, err := headers.ReadAuth(base.HeaderValue{headerAuthBasic})
+		var auth headers.Auth
+		err := auth.Read(base.HeaderValue{headerAuthBasic})
 		if err != nil {
 			return nil, err
 		}
