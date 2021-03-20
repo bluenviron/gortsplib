@@ -86,12 +86,12 @@ func (h RTPInfo) Clone() *RTPInfo {
 
 // Write encodes a RTP-Info header.
 func (h RTPInfo) Write() base.HeaderValue {
-	var rets []string
+	rets := make([]string, len(h))
 
-	for _, e := range h {
-		rets = append(rets, "url="+e.URL.String()+
-			";seq="+strconv.FormatUint(uint64(e.SequenceNumber), 10)+
-			";rtptime="+strconv.FormatUint(uint64(e.Timestamp), 10))
+	for i, e := range h {
+		rets[i] = "url=" + e.URL.String() +
+			";seq=" + strconv.FormatUint(uint64(e.SequenceNumber), 10) +
+			";rtptime=" + strconv.FormatUint(uint64(e.Timestamp), 10)
 	}
 
 	return base.HeaderValue{strings.Join(rets, ",")}

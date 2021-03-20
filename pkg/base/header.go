@@ -103,7 +103,7 @@ func (h *Header) read(rb *bufio.Reader) error {
 func (h Header) write(wb *bufio.Writer) error {
 	// sort headers by key
 	// in order to obtain deterministic results
-	var keys []string
+	keys := make([]string, len(h))
 	for key := range h {
 		keys = append(keys, key)
 	}

@@ -368,9 +368,11 @@ func (sc *ServerConn) checkState(allowed map[ServerConnState]struct{}) error {
 		return nil
 	}
 
-	var allowedList []ServerConnState
+	allowedList := make([]ServerConnState, len(allowed))
+	i := 0
 	for a := range allowed {
-		allowedList = append(allowedList, a)
+		allowedList[i] = a
+		i++
 	}
 	return fmt.Errorf("must be in state %v, while is in state %v",
 		allowedList, sc.state)
