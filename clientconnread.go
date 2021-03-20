@@ -32,10 +32,12 @@ func (c *ClientConn) Play() (*base.Response, error) {
 	}
 
 	if v, ok := res.Header["RTP-Info"]; ok {
-		err := c.rtpInfo.Read(v)
+		var ri headers.RTPInfo
+		err := ri.Read(v)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse RTP-Info: %v", err)
 		}
+		c.rtpInfo = &ri
 	}
 
 	return res, nil
