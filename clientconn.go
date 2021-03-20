@@ -603,13 +603,11 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			}
 		}
 
-	} else {
-		if thRes.InterleavedIds == nil ||
-			(*thRes.InterleavedIds)[0] != (*th.InterleavedIds)[0] ||
-			(*thRes.InterleavedIds)[1] != (*th.InterleavedIds)[1] {
-			return nil, fmt.Errorf("transport header does not have interleaved ids %v (%s)",
-				*th.InterleavedIds, res.Header["Transport"])
-		}
+	} else if thRes.InterleavedIds == nil ||
+		thRes.InterleavedIds[0] != th.InterleavedIds[0] ||
+		thRes.InterleavedIds[1] != th.InterleavedIds[1] {
+		return nil, fmt.Errorf("transport header does not have interleaved ids %v (%s)",
+			*th.InterleavedIds, res.Header["Transport"])
 	}
 
 	clockRate, _ := track.ClockRate()
@@ -633,7 +631,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		rtpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
-			rtpListener.remotePort = (*thRes.ServerPorts)[0]
+			rtpListener.remotePort = thRes.ServerPorts[0]
 		}
 		rtpListener.trackID = track.ID
 		rtpListener.streamType = StreamTypeRTP
@@ -642,7 +640,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		rtcpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
-			rtcpListener.remotePort = (*thRes.ServerPorts)[1]
+			rtcpListener.remotePort = thRes.ServerPorts[1]
 		}
 		rtcpListener.trackID = track.ID
 		rtcpListener.streamType = StreamTypeRTCP

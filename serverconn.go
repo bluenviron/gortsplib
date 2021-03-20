@@ -736,8 +736,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					}, fmt.Errorf("transport header does not contain the interleaved field")
 				}
 
-				if (*th.InterleavedIds)[0] != (trackID*2) ||
-					(*th.InterleavedIds)[1] != (1+trackID*2) {
+				if th.InterleavedIds[0] != (trackID*2) ||
+					th.InterleavedIds[1] != (1+trackID*2) {
 					return &base.Response{
 							StatusCode: base.StatusBadRequest,
 						}, fmt.Errorf("wrong interleaved ids, expected [%v %v], got %v",
@@ -798,8 +798,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 			}
 
-			switch sc.state {
-			case ServerConnStateInitial:
+			if sc.state == ServerConnStateInitial {
 				sc.state = ServerConnStatePrePlay
 				sc.setupPath = &path
 				sc.setupQuery = &query
@@ -1057,7 +1056,8 @@ func (sc *ServerConn) backgroundRead() error {
 		}
 
 		// start background write
-		if sc.doEnableFrames {
+		switch {
+		case sc.doEnableFrames:
 			sc.doEnableFrames = false
 			sc.framesEnabled = true
 
@@ -1081,11 +1081,11 @@ func (sc *ServerConn) backgroundRead() error {
 			go sc.backgroundWrite()
 
 			// write to background write
-		} else if sc.framesEnabled {
+		case sc.framesEnabled:
 			sc.frameRingBuffer.Push(res)
 
 			// write directly
-		} else {
+		default:
 			sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
 			res.Write(sc.bw)
 		}

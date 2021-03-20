@@ -131,11 +131,12 @@ func (h *Transport) Read(v base.HeaderValue) error {
 	}
 
 	for _, t := range parts {
-		if strings.HasPrefix(t, "destination=") {
+		switch {
+		case strings.HasPrefix(t, "destination="):
 			v := t[len("destination="):]
 			h.Destination = &v
 
-		} else if strings.HasPrefix(t, "ttl=") {
+		case strings.HasPrefix(t, "ttl="):
 			v, err := strconv.ParseUint(t[len("ttl="):], 10, 64)
 			if err != nil {
 				return err
@@ -143,35 +144,35 @@ func (h *Transport) Read(v base.HeaderValue) error {
 			vu := uint(v)
 			h.TTL = &vu
 
-		} else if strings.HasPrefix(t, "port=") {
+		case strings.HasPrefix(t, "port="):
 			ports, err := parsePorts(t[len("port="):])
 			if err != nil {
 				return err
 			}
 			h.Ports = ports
 
-		} else if strings.HasPrefix(t, "client_port=") {
+		case strings.HasPrefix(t, "client_port="):
 			ports, err := parsePorts(t[len("client_port="):])
 			if err != nil {
 				return err
 			}
 			h.ClientPorts = ports
 
-		} else if strings.HasPrefix(t, "server_port=") {
+		case strings.HasPrefix(t, "server_port="):
 			ports, err := parsePorts(t[len("server_port="):])
 			if err != nil {
 				return err
 			}
 			h.ServerPorts = ports
 
-		} else if strings.HasPrefix(t, "interleaved=") {
+		case strings.HasPrefix(t, "interleaved="):
 			ports, err := parsePorts(t[len("interleaved="):])
 			if err != nil {
 				return err
 			}
 			h.InterleavedIds = ports
 
-		} else if strings.HasPrefix(t, "mode=") {
+		case strings.HasPrefix(t, "mode="):
 			str := strings.ToLower(t[len("mode="):])
 			str = strings.TrimPrefix(str, "\"")
 			str = strings.TrimSuffix(str, "\"")

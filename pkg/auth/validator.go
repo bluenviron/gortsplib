@@ -101,7 +101,8 @@ func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *
 
 	v0 := v[0]
 
-	if strings.HasPrefix(v0, "Basic ") {
+	switch {
+	case strings.HasPrefix(v0, "Basic "):
 		inResponse := v0[len("Basic "):]
 
 		tmp, err := base64.StdEncoding.DecodeString(inResponse)
@@ -134,7 +135,7 @@ func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *
 			}
 		}
 
-	} else if strings.HasPrefix(v0, "Digest ") {
+	case strings.HasPrefix(v0, "Digest "):
 		var auth headers.Auth
 		err := auth.Read(base.HeaderValue{v0})
 		if err != nil {
@@ -193,7 +194,7 @@ func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *
 			return fmt.Errorf("wrong response")
 		}
 
-	} else {
+	default:
 		return fmt.Errorf("unsupported authorization header")
 	}
 
