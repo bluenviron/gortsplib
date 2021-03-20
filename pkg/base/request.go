@@ -107,6 +107,27 @@ func (req *Request) Read(rb *bufio.Reader) error {
 	return nil
 }
 
+// ReadIgnoreFrames reads a request and ignores any interleaved frame sent
+// before the request.
+func (req *Request) ReadIgnoreFrames(rb *bufio.Reader, buf []byte) error {
+	buflen := len(buf)
+	f := InterleavedFrame{
+		Payload: buf,
+	}
+
+	for {
+		f.Payload = f.Payload[:buflen]
+		recv, err := ReadInterleavedFrameOrRequest(&f, req, rb)
+		if err != nil {
+			return err
+		}
+
+		if _, ok := recv.(*Request); ok {
+			return nil
+		}
+	}
+}
+
 // Write writes a request.
 func (req Request) Write(bw *bufio.Writer) error {
 	urStr := req.URL.CloneWithoutCredentials().String()

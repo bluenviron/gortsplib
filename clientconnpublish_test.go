@@ -1,13 +1,17 @@
 package gortsplib
 
 import (
+	"bufio"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
@@ -191,11 +195,119 @@ func TestClientConnPublishPauseSerial(t *testing.T) {
 		"tcp",
 	} {
 		t.Run(proto, func(t *testing.T) {
-			cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
+			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer cnt1.close()
+			defer l.Close()
 
-			time.Sleep(1 * time.Second)
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
+
+				conn, err := l.Accept()
+				require.NoError(t, err)
+				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+				var req base.Request
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Announce),
+							string(base.Setup),
+							string(base.Record),
+							string(base.Pause),
+						}, ", ")},
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Announce, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+
+				var inTH headers.Transport
+				err = inTH.Read(req.Header["Transport"])
+				require.NoError(t, err)
+
+				th := headers.Transport{
+					Delivery: func() *base.StreamDelivery {
+						v := base.StreamDeliveryUnicast
+						return &v
+					}(),
+				}
+
+				if proto == "udp" {
+					th.Protocol = StreamProtocolUDP
+					th.ServerPorts = &[2]int{34556, 34557}
+					th.ClientPorts = inTH.ClientPorts
+
+				} else {
+					th.Protocol = StreamProtocolTCP
+					th.InterleavedIds = inTH.InterleavedIds
+				}
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Write(),
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Record, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				buf := make([]byte, 2048)
+				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				require.NoError(t, err)
+				require.Equal(t, base.Pause, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Record, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				buf = make([]byte, 2048)
+				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				conn.Close()
+			}()
 
 			pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
 			require.NoError(t, err)
@@ -263,11 +375,100 @@ func TestClientConnPublishPauseParallel(t *testing.T) {
 		"tcp",
 	} {
 		t.Run(proto, func(t *testing.T) {
-			cnt1, err := newContainer("rtsp-simple-server", "server", []string{"{}"})
+			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer cnt1.close()
+			defer l.Close()
 
-			time.Sleep(1 * time.Second)
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
+
+				conn, err := l.Accept()
+				require.NoError(t, err)
+				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+				var req base.Request
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Announce),
+							string(base.Setup),
+							string(base.Record),
+							string(base.Pause),
+						}, ", ")},
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Announce, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+
+				var inTH headers.Transport
+				err = inTH.Read(req.Header["Transport"])
+				require.NoError(t, err)
+
+				th := headers.Transport{
+					Delivery: func() *base.StreamDelivery {
+						v := base.StreamDeliveryUnicast
+						return &v
+					}(),
+				}
+
+				if proto == "udp" {
+					th.Protocol = StreamProtocolUDP
+					th.ServerPorts = &[2]int{34556, 34557}
+					th.ClientPorts = inTH.ClientPorts
+
+				} else {
+					th.Protocol = StreamProtocolTCP
+					th.InterleavedIds = inTH.InterleavedIds
+				}
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Write(),
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Record, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				buf := make([]byte, 2048)
+				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				require.NoError(t, err)
+				require.Equal(t, base.Pause, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				conn.Close()
+			}()
 
 			pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
 			require.NoError(t, err)

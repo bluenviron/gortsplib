@@ -634,7 +634,7 @@ func TestServerConnReadPlayMultiple(t *testing.T) {
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
+			"CSeq": base.HeaderValue{"3"},
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
