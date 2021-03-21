@@ -61,7 +61,6 @@ Related projects
 * https://github.com/pion/sdp (SDP library used internally)
 * https://github.com/pion/rtcp (RTCP library used internally)
 * https://github.com/pion/rtp (RTP library used internally)
-* https://github.com/notedit/rtmp (RTMP library used internally)
 
 IETF Standards
 

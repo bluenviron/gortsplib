@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/notedit/rtmp/codec/aac"
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/rtpaac"
 	"github.com/aler9/gortsplib/pkg/sdp"
 )
 
@@ -123,23 +123,8 @@ func (t *Track) ExtractDataH264() ([]byte, []byte, error) {
 
 // NewTrackAAC initializes an AAC track from a configuration.
 func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
-	codec, err := aac.FromMPEG4AudioConfigBytes(config)
-	if err != nil {
-		return nil, err
-	}
-
-	// https://github.com/notedit/rtmp/blob/6e314ac5b29611431f8fb5468596b05815743c10/codec/aac/aac.go#L106
-	channelCount, err := func() (int, error) {
-		if codec.Config.ChannelConfig >= 1 && codec.Config.ChannelConfig <= 6 {
-			return int(codec.Config.ChannelConfig), nil
-		}
-
-		if codec.Config.ChannelConfig == 8 {
-			return 7, nil
-		}
-
-		return 0, fmt.Errorf("unsupported channel config: %v", codec.Config.ChannelConfig)
-	}()
+	var conf rtpaac.MPEG4AudioConfig
+	err := conf.Decode(config)
 	if err != nil {
 		return nil, err
 	}
@@ -156,8 +141,8 @@ func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 			Attributes: []psdp.Attribute{
 				{
 					Key: "rtpmap",
-					Value: typ + " MPEG4-GENERIC/" + strconv.FormatInt(int64(codec.Config.SampleRate), 10) +
-						"/" + strconv.FormatInt(int64(channelCount), 10),
+					Value: typ + " MPEG4-GENERIC/" + strconv.FormatInt(int64(conf.SampleRate), 10) +
+						"/" + strconv.FormatInt(int64(conf.ChannelCount), 10),
 				},
 				{
 					Key: "fmtp",

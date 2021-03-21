@@ -7,6 +7,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var configCases = []struct {
+	name string
+	enc  []byte
+	dec  MPEG4AudioConfig
+}{
+	{
+		name: "test 1",
+		enc:  []byte{17, 144},
+		dec: MPEG4AudioConfig{
+			ObjectType:   2,
+			SampleRate:   48000,
+			ChannelCount: 2,
+		},
+	},
+}
+
+func TestConfigDecode(t *testing.T) {
+	for _, ca := range configCases {
+		t.Run(ca.name, func(t *testing.T) {
+			var dec MPEG4AudioConfig
+			err := dec.Decode(ca.enc)
+			require.NoError(t, err)
+			require.Equal(t, ca.dec, dec)
+		})
+	}
+}
+
 var cases = []struct {
 	name string
 	dec  *AUAndTimestamp
