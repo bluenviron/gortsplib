@@ -374,6 +374,81 @@ func TestServerConnPublishReadHighLevel(t *testing.T) {
 	}
 }
 
+func TestServerConnCSeq(t *testing.T) {
+	s, err := Serve("127.0.0.1:8554")
+	require.NoError(t, err)
+	defer s.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := s.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		<-conn.Read(ServerConnReadHandlers{})
+	}()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	err = base.Request{
+		Method: base.Options,
+		URL:    base.MustParseURL("rtsp://localhost:8554/"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"5"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	require.Equal(t, base.HeaderValue{"5"}, res.Header["CSeq"])
+}
+
+func TestServerConnCSeqNo(t *testing.T) {
+	s, err := Serve("127.0.0.1:8554")
+	require.NoError(t, err)
+	defer s.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := s.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		err = <-conn.Read(ServerConnReadHandlers{})
+		require.Equal(t, "CSeq is missing", err.Error())
+	}()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	err = base.Request{
+		Method: base.Options,
+		URL:    base.MustParseURL("rtsp://localhost:8554/"),
+		Header: base.Header{},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusBadRequest, res.StatusCode)
+}
+
 func TestServerConnTeardownResponse(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
