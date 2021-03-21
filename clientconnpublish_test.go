@@ -13,7 +13,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
-func TestClientConnPublishSerial(t *testing.T) {
+func TestClientPublishSerial(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -144,7 +144,7 @@ func TestClientConnPublishSerial(t *testing.T) {
 	}
 }
 
-func TestClientConnPublishParallel(t *testing.T) {
+func TestClientPublishParallel(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -286,7 +286,7 @@ func TestClientConnPublishParallel(t *testing.T) {
 	}
 }
 
-func TestClientConnPublishPauseSerial(t *testing.T) {
+func TestClientPublishPauseSerial(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -446,7 +446,7 @@ func TestClientConnPublishPauseSerial(t *testing.T) {
 	}
 }
 
-func TestClientConnPublishPauseParallel(t *testing.T) {
+func TestClientPublishPauseParallel(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",

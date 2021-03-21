@@ -12,7 +12,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
-func TestServerConnReadSetupPath(t *testing.T) {
+func TestServerReadSetupPath(t *testing.T) {
 	for _, ca := range []struct {
 		name    string
 		url     string
@@ -129,7 +129,7 @@ func TestServerConnReadSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerConnReadSetupDifferentPaths(t *testing.T) {
+func TestServerReadSetupDifferentPaths(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -210,7 +210,7 @@ func TestServerConnReadSetupDifferentPaths(t *testing.T) {
 	require.Equal(t, "can't setup tracks with different paths", err.Error())
 }
 
-func TestServerConnReadSetupDouble(t *testing.T) {
+func TestServerReadSetupDouble(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -291,7 +291,7 @@ func TestServerConnReadSetupDouble(t *testing.T) {
 	require.Equal(t, "track 0 has already been setup", err.Error())
 }
 
-func TestServerConnReadReceivePackets(t *testing.T) {
+func TestServerReadReceivePackets(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -424,7 +424,7 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 	}
 }
 
-func TestServerConnReadTCPResponseBeforeFrames(t *testing.T) {
+func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
@@ -531,7 +531,7 @@ func TestServerConnReadTCPResponseBeforeFrames(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestServerConnReadPlayMultiple(t *testing.T) {
+func TestServerReadPlayMultiple(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
@@ -645,7 +645,7 @@ func TestServerConnReadPlayMultiple(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
 
-func TestServerConnReadPauseMultiple(t *testing.T) {
+func TestServerReadPauseMultiple(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()

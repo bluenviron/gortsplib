@@ -15,7 +15,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
-func TestClientConnRead(t *testing.T) {
+func TestClientRead(t *testing.T) {
 	for _, ca := range []struct {
 		encrypted bool
 		proto     string
@@ -203,7 +203,7 @@ func TestClientConnRead(t *testing.T) {
 	}
 }
 
-func TestClientConnReadNoServerPorts(t *testing.T) {
+func TestClientReadAnyPort(t *testing.T) {
 	for _, ca := range []string{
 		"zero",
 		"no",
@@ -325,7 +325,7 @@ func TestClientConnReadNoServerPorts(t *testing.T) {
 	}
 }
 
-func TestClientConnReadAutomaticProtocol(t *testing.T) {
+func TestClientReadAutomaticProtocol(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -433,7 +433,7 @@ func TestClientConnReadAutomaticProtocol(t *testing.T) {
 	<-done
 }
 
-func TestClientConnReadRedirect(t *testing.T) {
+func TestClientReadRedirect(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -573,7 +573,7 @@ func TestClientConnReadRedirect(t *testing.T) {
 	<-done
 }
 
-func TestClientConnReadPause(t *testing.T) {
+func TestClientReadPause(t *testing.T) {
 	writeFrames := func(inTH *headers.Transport, bconn *bufio.ReadWriter) (chan struct{}, chan struct{}) {
 		writerTerminate := make(chan struct{})
 		writerDone := make(chan struct{})

@@ -272,7 +272,7 @@ y++U32uuSFiXDcSLarfIsE992MEJLSAynbF1Rsgsr3gXbGiuToJRyxbIeVy7gwzD
 -----END RSA PRIVATE KEY-----
 `)
 
-func TestServerConnPublishReadHighLevel(t *testing.T) {
+func TestServerPublishReadHighLevel(t *testing.T) {
 	for _, ca := range []struct {
 		encrypted      bool
 		publisherSoft  string
@@ -377,7 +377,7 @@ func TestServerConnPublishReadHighLevel(t *testing.T) {
 	}
 }
 
-func TestServerConnCSeq(t *testing.T) {
+func TestServerCSeq(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
@@ -416,7 +416,7 @@ func TestServerConnCSeq(t *testing.T) {
 	require.Equal(t, base.HeaderValue{"5"}, res.Header["CSeq"])
 }
 
-func TestServerConnCSeqNo(t *testing.T) {
+func TestServerCSeqNo(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
@@ -452,7 +452,7 @@ func TestServerConnCSeqNo(t *testing.T) {
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 }
 
-func TestServerConnTeardownResponse(t *testing.T) {
+func TestServerTeardownResponse(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()

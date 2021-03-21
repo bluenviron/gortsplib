@@ -12,7 +12,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-func TestClientConnSession(t *testing.T) {
+func TestClientSession(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -77,7 +77,7 @@ func TestClientConnSession(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestClientConnAuth(t *testing.T) {
+func TestClientAuth(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()

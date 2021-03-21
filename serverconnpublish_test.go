@@ -15,7 +15,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
-func TestServerConnPublishSetupPath(t *testing.T) {
+func TestServerPublishSetupPath(t *testing.T) {
 	for _, ca := range []struct {
 		name    string
 		control string
@@ -185,7 +185,7 @@ func TestServerConnPublishSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
+func TestServerPublishSetupDifferentPaths(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -283,7 +283,7 @@ func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
 	require.Equal(t, "invalid track path (test2stream/trackID=0)", err.Error())
 }
 
-func TestServerConnPublishSetupDouble(t *testing.T) {
+func TestServerPublishSetupDouble(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -395,7 +395,7 @@ func TestServerConnPublishSetupDouble(t *testing.T) {
 	require.Equal(t, "track 0 has already been setup", err.Error())
 }
 
-func TestServerConnPublishRecordPartialTracks(t *testing.T) {
+func TestServerPublishRecordPartialTracks(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -516,7 +516,7 @@ func TestServerConnPublishRecordPartialTracks(t *testing.T) {
 	require.Equal(t, "not all announced tracks have been setup", err.Error())
 }
 
-func TestServerConnPublishReceivePackets(t *testing.T) {
+func TestServerPublishReceivePackets(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
