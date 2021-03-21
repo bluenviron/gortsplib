@@ -43,7 +43,7 @@ func (c *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return nil, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
 	}
 
 	c.streamURL = u
@@ -71,7 +71,7 @@ func (c *ClientConn) Record() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return nil, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
 	}
 
 	c.state = clientConnStateRecord

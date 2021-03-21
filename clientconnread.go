@@ -28,14 +28,14 @@ func (c *ClientConn) Play() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, fmt.Errorf("bad status code: %d (%s)", res.StatusCode, res.StatusMessage)
+		return nil, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
 	}
 
 	if v, ok := res.Header["RTP-Info"]; ok {
 		var ri headers.RTPInfo
 		err := ri.Read(v)
 		if err != nil {
-			return nil, fmt.Errorf("unable to parse RTP-Info: %v", err)
+			return nil, ErrClientRTPInfoInvalid{err}
 		}
 		c.rtpInfo = &ri
 	}
@@ -144,7 +144,7 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 				if now.Sub(last) >= c.conf.ReadTimeout {
 					c.nconn.SetReadDeadline(time.Now())
 					<-readerDone
-					returnError = fmt.Errorf("no UDP packets received recently (maybe there's a firewall/NAT in between)")
+					returnError = ErrClientNoUDPPacketsRecently{}
 					return
 				}
 			}

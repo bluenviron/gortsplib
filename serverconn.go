@@ -75,7 +75,7 @@ type ErrServerContentTypeUnsupported struct {
 
 // Error implements the error interface.
 func (e ErrServerContentTypeUnsupported) Error() string {
-	return fmt.Sprintf("unsupported Content-Type header '%s'", e.ct)
+	return fmt.Sprintf("unsupported Content-Type header '%v'", e.ct)
 }
 
 // ErrServerSDPInvalid is returned in case the SDP is invalid.
@@ -139,7 +139,7 @@ type ErrServerTransportHeaderNoInterleavedIDs struct{}
 
 // Error implements the error interface.
 func (e ErrServerTransportHeaderNoInterleavedIDs) Error() string {
-	return "transport header does not contain interleaved ids"
+	return "transport header does not contain interleaved IDs"
 }
 
 // ErrServerTransportHeaderWrongInterleavedIDs is returned in case the transport header contains wrong interleaved IDs.
@@ -150,7 +150,7 @@ type ErrServerTransportHeaderWrongInterleavedIDs struct {
 
 // Error implements the error interface.
 func (e ErrServerTransportHeaderWrongInterleavedIDs) Error() string {
-	return fmt.Sprintf("wrong interleaved ids, expected %v, got %v", e.expected, e.value)
+	return fmt.Sprintf("wrong interleaved IDs, expected %v, got %v", e.expected, e.value)
 }
 
 // ErrServerTracksDifferentProtocols is returned in case the client is trying to setup tracks with different protocols.
