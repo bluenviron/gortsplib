@@ -7,6 +7,7 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/liberrors"
 )
 
 // Play writes a PLAY request and reads a Response.
@@ -28,14 +29,15 @@ func (c *ClientConn) Play() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
+		return nil, liberrors.ErrClientWrongStatusCode{
+			Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	if v, ok := res.Header["RTP-Info"]; ok {
 		var ri headers.RTPInfo
 		err := ri.Read(v)
 		if err != nil {
-			return nil, ErrClientRTPInfoInvalid{err}
+			return nil, liberrors.ErrClientRTPInfoInvalid{Err: err}
 		}
 		c.rtpInfo = &ri
 	}
@@ -144,7 +146,7 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 				if now.Sub(last) >= c.conf.ReadTimeout {
 					c.nconn.SetReadDeadline(time.Now())
 					<-readerDone
-					returnError = ErrClientNoUDPPacketsRecently{}
+					returnError = liberrors.ErrClientNoUDPPacketsRecently{}
 					return
 				}
 			}

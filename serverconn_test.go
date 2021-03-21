@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/liberrors"
 )
 
 type testServ struct {
@@ -203,7 +204,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		OnFrame:    onFrame,
 	})
 	if err != io.EOF {
-		if _, ok := err.(ErrServerTeardown); !ok {
+		if _, ok := err.(liberrors.ErrServerTeardown); !ok {
 			fmt.Println("ERR", err)
 		}
 	}
@@ -466,7 +467,7 @@ func TestServerConnTeardownResponse(t *testing.T) {
 		defer conn.Close()
 
 		err = <-conn.Read(ServerConnReadHandlers{})
-		_, ok := err.(ErrServerTeardown)
+		_, ok := err.(liberrors.ErrServerTeardown)
 		require.Equal(t, true, ok)
 	}()
 

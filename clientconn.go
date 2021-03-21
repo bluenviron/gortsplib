@@ -21,6 +21,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
@@ -34,142 +35,6 @@ const (
 	clientConnUDPCheckStreamPeriod = 5 * time.Second
 	clientConnUDPKeepalivePeriod   = 30 * time.Second
 )
-
-// ErrClientWrongState is returned in case of a wrong client state.
-type ErrClientWrongState struct {
-	allowedList []clientConnState
-	state       clientConnState
-}
-
-// Error implements the error interface.
-func (e ErrClientWrongState) Error() string {
-	return fmt.Sprintf("must be in state %v, while is in state %v",
-		e.allowedList, e.state)
-}
-
-// ErrClientSessionHeaderInvalid is returned in case of an invalid session header.
-type ErrClientSessionHeaderInvalid struct {
-	err error
-}
-
-// Error implements the error interface.
-func (e ErrClientSessionHeaderInvalid) Error() string {
-	return fmt.Sprintf("invalid session header: %v", e.err)
-}
-
-// ErrClientWrongStatusCode is returned in case of a wrong status code.
-type ErrClientWrongStatusCode struct {
-	code    base.StatusCode
-	message string
-}
-
-// Error implements the error interface.
-func (e ErrClientWrongStatusCode) Error() string {
-	return fmt.Sprintf("wrong status code: %d (%s)", e.code, e.message)
-}
-
-// ErrClientContentTypeMissing is returned in case the Content-Type header is missing.
-type ErrClientContentTypeMissing struct{}
-
-// Error implements the error interface.
-func (e ErrClientContentTypeMissing) Error() string {
-	return "Content-Type header is missing"
-}
-
-// ErrClientContentTypeUnsupported is returned in case the Content-Type header is unsupported.
-type ErrClientContentTypeUnsupported struct {
-	ct base.HeaderValue
-}
-
-// Error implements the error interface.
-func (e ErrClientContentTypeUnsupported) Error() string {
-	return fmt.Sprintf("unsupported Content-Type header '%v'", e.ct)
-}
-
-// ErrClientCannotReadPublishAtSameTime is returned when the client is trying to read and publish at the same time.
-type ErrClientCannotReadPublishAtSameTime struct{}
-
-// Error implements the error interface.
-func (e ErrClientCannotReadPublishAtSameTime) Error() string {
-	return "cannot read and publish at the same time"
-}
-
-// ErrClientCannotSetupTracksDifferentURLs is returned when the client is trying to setup tracks with different base URLs.
-type ErrClientCannotSetupTracksDifferentURLs struct{}
-
-// Error implements the error interface.
-func (e ErrClientCannotSetupTracksDifferentURLs) Error() string {
-	return "cannot setup tracks with different base URLs"
-}
-
-// ErrClientUDPPortsZero is returned when one of the UDP ports is zero.
-type ErrClientUDPPortsZero struct{}
-
-// Error implements the error interface.
-func (e ErrClientUDPPortsZero) Error() string {
-	return "rtpPort and rtcpPort must be both zero or non-zero"
-}
-
-// ErrClientUDPPortsNotConsecutive is returned when the two UDP ports are not consecutive.
-type ErrClientUDPPortsNotConsecutive struct{}
-
-// Error implements the error interface.
-func (e ErrClientUDPPortsNotConsecutive) Error() string {
-	return "rtcpPort must be rtpPort + 1"
-}
-
-// ErrClientServerPortsZero is returned when one of the server ports is zero.
-type ErrClientServerPortsZero struct{}
-
-// Error implements the error interface.
-func (e ErrClientServerPortsZero) Error() string {
-	return "server ports must be both zero or both not zero"
-}
-
-// ErrClientServerPortsNotProvided is returned in case the server ports have not been provided.
-type ErrClientServerPortsNotProvided struct{}
-
-// Error implements the error interface.
-func (e ErrClientServerPortsNotProvided) Error() string {
-	return "server ports have not been provided. Use AnyPortEnable to communicate with this server"
-}
-
-// ErrClientTransportHeaderNoInterleavedIDs is returned in case the transport header doesn't contain interleaved IDs.
-type ErrClientTransportHeaderNoInterleavedIDs struct{}
-
-// Error implements the error interface.
-func (e ErrClientTransportHeaderNoInterleavedIDs) Error() string {
-	return "transport header does not contain interleaved IDs"
-}
-
-// ErrClientTransportHeaderWrongInterleavedIDs is returned in case the transport header contains wrong interleaved IDs.
-type ErrClientTransportHeaderWrongInterleavedIDs struct {
-	expected [2]int
-	value    [2]int
-}
-
-// Error implements the error interface.
-func (e ErrClientTransportHeaderWrongInterleavedIDs) Error() string {
-	return fmt.Sprintf("wrong interleaved IDs, expected %v, got %v", e.expected, e.value)
-}
-
-// ErrClientNoUDPPacketsRecently is returned when no UDP packets have been received recently.
-type ErrClientNoUDPPacketsRecently struct{}
-
-// Error implements the error interface.
-func (e ErrClientNoUDPPacketsRecently) Error() string {
-	return "no UDP packets received recently (maybe there's a firewall/NAT in between)"
-}
-
-// ErrClientRTPInfoInvalid is returned in case of an invalid RTP-Info.
-type ErrClientRTPInfoInvalid struct {
-	err error
-}
-
-// Error implements the error interface.
-func (e ErrClientRTPInfoInvalid) Error() string {
-	return fmt.Sprintf("unable to parse RTP-Info: %v", e.err)
-}
 
 type clientConnState int
 
@@ -329,13 +194,13 @@ func (c *ClientConn) checkState(allowed map[clientConnState]struct{}) error {
 		return nil
 	}
 
-	allowedList := make([]clientConnState, len(allowed))
+	allowedList := make([]fmt.Stringer, len(allowed))
 	i := 0
 	for a := range allowed {
 		allowedList[i] = a
 		i++
 	}
-	return ErrClientWrongState{allowedList, c.state}
+	return liberrors.ErrClientWrongState{AllowedList: allowedList, State: c.state}
 }
 
 // NetConn returns the underlying net.Conn.
@@ -406,7 +271,7 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 		var sx headers.Session
 		err := sx.Read(v)
 		if err != nil {
-			return nil, ErrClientSessionHeaderInvalid{err}
+			return nil, liberrors.ErrClientSessionHeaderInvalid{Err: err}
 		}
 		c.session = sx.Session
 	}
@@ -454,7 +319,7 @@ func (c *ClientConn) Options(u *base.URL) (*base.Response, error) {
 		if res.StatusCode == base.StatusNotFound {
 			return res, nil
 		}
-		return res, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
+		return res, liberrors.ErrClientWrongStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	c.getParameterSupported = func() bool {
@@ -524,16 +389,16 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 			return c.Describe(u)
 		}
 
-		return nil, res, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
+		return nil, res, liberrors.ErrClientWrongStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	ct, ok := res.Header["Content-Type"]
 	if !ok || len(ct) != 1 {
-		return nil, nil, ErrClientContentTypeMissing{}
+		return nil, nil, liberrors.ErrClientContentTypeMissing{}
 	}
 
 	if ct[0] != "application/sdp" {
-		return nil, nil, ErrClientContentTypeUnsupported{ct}
+		return nil, nil, liberrors.ErrClientContentTypeUnsupported{CT: ct}
 	}
 
 	tracks, err := ReadTracks(res.Body, u)
@@ -561,11 +426,11 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	if (mode == headers.TransportModeRecord && c.state != clientConnStatePreRecord) ||
 		(mode == headers.TransportModePlay && c.state != clientConnStatePrePlay &&
 			c.state != clientConnStateInitial) {
-		return nil, ErrClientCannotReadPublishAtSameTime{}
+		return nil, liberrors.ErrClientCannotReadPublishAtSameTime{}
 	}
 
 	if c.streamURL != nil && *track.BaseURL != *c.streamURL {
-		return nil, ErrClientCannotSetupTracksDifferentURLs{}
+		return nil, liberrors.ErrClientCannotSetupTracksDifferentURLs{}
 	}
 
 	var rtpListener *clientConnUDPListener
@@ -604,11 +469,11 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	if proto == base.StreamProtocolUDP {
 		if (rtpPort == 0 && rtcpPort != 0) ||
 			(rtpPort != 0 && rtcpPort == 0) {
-			return nil, ErrClientUDPPortsZero{}
+			return nil, liberrors.ErrClientUDPPortsZero{}
 		}
 
 		if rtpPort != 0 && rtcpPort != (rtpPort+1) {
-			return nil, ErrClientUDPPortsNotConsecutive{}
+			return nil, liberrors.ErrClientUDPPortsNotConsecutive{}
 		}
 
 		var err error
@@ -700,7 +565,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			return c.Setup(headers.TransportModePlay, track, 0, 0)
 		}
 
-		return res, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
+		return res, liberrors.ErrClientWrongStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	var thRes headers.Transport
@@ -710,7 +575,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			rtpListener.close()
 			rtcpListener.close()
 		}
-		return nil, fmt.Errorf("transport header: %s", err)
+		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
 	}
 
 	if proto == StreamProtocolUDP {
@@ -719,7 +584,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 				(thRes.ServerPorts[0] != 0 && thRes.ServerPorts[1] == 0) {
 				rtpListener.close()
 				rtcpListener.close()
-				return nil, ErrClientServerPortsZero{}
+				return nil, liberrors.ErrClientServerPortsZero{}
 			}
 		}
 
@@ -727,18 +592,19 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			if thRes.ServerPorts == nil || (thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] == 0) {
 				rtpListener.close()
 				rtcpListener.close()
-				return nil, ErrClientServerPortsNotProvided{}
+				return nil, liberrors.ErrClientServerPortsNotProvided{}
 			}
 		}
 
 	} else {
 		if thRes.InterleavedIDs == nil {
-			return nil, ErrClientTransportHeaderNoInterleavedIDs{}
+			return nil, liberrors.ErrClientTransportHeaderNoInterleavedIDs{}
 		}
 
 		if thRes.InterleavedIDs[0] != th.InterleavedIDs[0] ||
 			thRes.InterleavedIDs[1] != th.InterleavedIDs[1] {
-			return nil, ErrClientTransportHeaderWrongInterleavedIDs{*th.InterleavedIDs, *thRes.InterleavedIDs}
+			return nil, liberrors.ErrClientTransportHeaderWrongInterleavedIDs{
+				Expected: *th.InterleavedIDs, Value: *thRes.InterleavedIDs}
 		}
 	}
 
@@ -811,7 +677,8 @@ func (c *ClientConn) Pause() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return res, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
+		return res, liberrors.ErrClientWrongStatusCode{
+			Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	switch c.state {

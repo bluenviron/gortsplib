@@ -8,6 +8,7 @@ import (
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/liberrors"
 )
 
 // Announce writes an ANNOUNCE request and reads a Response.
@@ -43,7 +44,8 @@ func (c *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
+		return nil, liberrors.ErrClientWrongStatusCode{
+			Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	c.streamURL = u
@@ -71,7 +73,8 @@ func (c *ClientConn) Record() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, ErrClientWrongStatusCode{res.StatusCode, res.StatusMessage}
+		return nil, liberrors.ErrClientWrongStatusCode{
+			Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	c.state = clientConnStateRecord
