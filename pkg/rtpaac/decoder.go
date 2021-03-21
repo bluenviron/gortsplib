@@ -8,7 +8,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// Decoder is a RTP/AAC-HBR decoder.
+// Decoder is a RTP/AAC decoder.
 type Decoder struct {
 	clockRate    time.Duration
 	initialTs    uint32
@@ -26,7 +26,7 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / d.clockRate
 }
 
-// Decode decodes one or multiple AUs from an RTP/AAC-HBR packet.
+// Decode decodes one or multiple AUs from an RTP/AAC packet.
 func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 	pkt := rtp.Packet{}
 	err := pkt.Unmarshal(byts)
@@ -47,7 +47,7 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 	pkt.Payload = pkt.Payload[2:]
 
 	// AU-headers
-	// AAC-HBR headers are 16 bits, where
+	// AAC headers are 16 bits, where
 	// * 13 bits are data size
 	// * 3 bits are AU index
 	headerCount := headersLen / 16

@@ -59,6 +59,10 @@ func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*Track, error) {
 
 // IsH264 checks whether the track is a H264 track.
 func (t *Track) IsH264() bool {
+	if t.Media.MediaName.Media != "video" {
+		return false
+	}
+
 	v, ok := t.Media.Attribute("rtpmap")
 	if !ok {
 		return false
@@ -121,7 +125,7 @@ func (t *Track) ExtractDataH264() ([]byte, []byte, error) {
 	return sps, pps, nil
 }
 
-// NewTrackAAC initializes an AAC-HBR track from a configuration.
+// NewTrackAAC initializes an AAC track from a configuration.
 func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 	var conf rtpaac.MPEG4AudioConfig
 	err := conf.Decode(config)
@@ -158,8 +162,12 @@ func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 	}, nil
 }
 
-// IsAAC checks whether the track is a AAC-HBR track.
+// IsAAC checks whether the track is a AAC track.
 func (t *Track) IsAAC() bool {
+	if t.Media.MediaName.Media != "audio" {
+		return false
+	}
+
 	v, ok := t.Media.Attribute("rtpmap")
 	if !ok {
 		return false

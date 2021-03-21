@@ -1,4 +1,4 @@
-// Package rtpaac contains a RTP/AAC-HBR decoder and encoder.
+// Package rtpaac contains a RTP/AAC decoder and encoder.
 package rtpaac
 
 import (
