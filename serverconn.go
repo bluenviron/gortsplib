@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bufio"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -25,11 +24,166 @@ const (
 	serverConnReceiverReportInterval = 10 * time.Second
 )
 
-// server errors.
-var (
-	ErrServerTeardown    = errors.New("teardown")
-	errServerCSeqMissing = errors.New("CSeq is missing")
-)
+// ErrServerTeardown is returned in case of a teardown request.
+type ErrServerTeardown struct{}
+
+// Error implements the error interface.
+func (e ErrServerTeardown) Error() string {
+	return "teardown"
+}
+
+// ErrServerCSeqMissing is returned in case the CSeq is missing.
+type ErrServerCSeqMissing struct{}
+
+// Error implements the error interface.
+func (e ErrServerCSeqMissing) Error() string {
+	return "CSeq is missing"
+}
+
+// ErrServerWrongState is returned in case of a wrong client state.
+type ErrServerWrongState struct {
+	allowedList []ServerConnState
+	state       ServerConnState
+}
+
+// Error implements the error interface.
+func (e ErrServerWrongState) Error() string {
+	return fmt.Sprintf("must be in state %v, while is in state %v",
+		e.allowedList, e.state)
+}
+
+// ErrServerNoPath is returned in case the path can't be retrieved.
+type ErrServerNoPath struct{}
+
+// Error implements the error interface.
+func (e ErrServerNoPath) Error() string {
+	return "RTSP path can't be retrieved"
+}
+
+// ErrServerContentTypeMissing is returned in case the Content-Type header is missing.
+type ErrServerContentTypeMissing struct{}
+
+// Error implements the error interface.
+func (e ErrServerContentTypeMissing) Error() string {
+	return "Content-Type header is missing"
+}
+
+// ErrServerContentTypeUnsupported is returned in case the Content-Type header is unsupported.
+type ErrServerContentTypeUnsupported struct {
+	ct base.HeaderValue
+}
+
+// Error implements the error interface.
+func (e ErrServerContentTypeUnsupported) Error() string {
+	return fmt.Sprintf("unsupported Content-Type header '%s'", e.ct)
+}
+
+// ErrServerSDPInvalid is returned in case the SDP is invalid.
+type ErrServerSDPInvalid struct {
+	err error
+}
+
+// Error implements the error interface.
+func (e ErrServerSDPInvalid) Error() string {
+	return fmt.Sprintf("invalid SDP: %v", e.err)
+}
+
+// ErrServerSDPNoTracksDefined is returned in case the SDP has no tracks defined.
+type ErrServerSDPNoTracksDefined struct{}
+
+// Error implements the error interface.
+func (e ErrServerSDPNoTracksDefined) Error() string {
+	return "no tracks defined in the SDP"
+}
+
+// ErrServerTransportHeaderInvalid is returned in case the transport header is invalid.
+type ErrServerTransportHeaderInvalid struct {
+	err error
+}
+
+// Error implements the error interface.
+func (e ErrServerTransportHeaderInvalid) Error() string {
+	return fmt.Sprintf("invalid transport header: %v", e.err)
+}
+
+// ErrServerTrackAlreadySetup is returned in case a track has already been setup.
+type ErrServerTrackAlreadySetup struct {
+	trackID int
+}
+
+// Error implements the error interface.
+func (e ErrServerTrackAlreadySetup) Error() string {
+	return fmt.Sprintf("track %d has already been setup", e.trackID)
+}
+
+// ErrServerTransportHeaderWrongMode is returned in case the transport header contains a wrong mode.
+type ErrServerTransportHeaderWrongMode struct {
+	mode *headers.TransportMode
+}
+
+// Error implements the error interface.
+func (e ErrServerTransportHeaderWrongMode) Error() string {
+	return fmt.Sprintf("transport header contains a wrong mode (%v)", e.mode)
+}
+
+// ErrServerTransportHeaderNoClientPorts is returned in case the transport header doesn't contain client ports.
+type ErrServerTransportHeaderNoClientPorts struct{}
+
+// Error implements the error interface.
+func (e ErrServerTransportHeaderNoClientPorts) Error() string {
+	return "transport header does not contain client ports"
+}
+
+// ErrServerTransportHeaderNoInterleavedIDs is returned in case the transport header doesn't contain interleaved IDs.
+type ErrServerTransportHeaderNoInterleavedIDs struct{}
+
+// Error implements the error interface.
+func (e ErrServerTransportHeaderNoInterleavedIDs) Error() string {
+	return "transport header does not contain interleaved ids"
+}
+
+// ErrServerTransportHeaderWrongInterleavedIDs is returned in case the transport header contains wrong interleaved IDs.
+type ErrServerTransportHeaderWrongInterleavedIDs struct {
+	expected [2]int
+	value    [2]int
+}
+
+// Error implements the error interface.
+func (e ErrServerTransportHeaderWrongInterleavedIDs) Error() string {
+	return fmt.Sprintf("wrong interleaved ids, expected %v, got %v", e.expected, e.value)
+}
+
+// ErrServerTracksDifferentProtocols is returned in case the client is trying to setup tracks with different protocols.
+type ErrServerTracksDifferentProtocols struct{}
+
+// Error implements the error interface.
+func (e ErrServerTracksDifferentProtocols) Error() string {
+	return "can't setup tracks with different protocols"
+}
+
+// ErrServerNoTracksSetup is returned in case no tracks have been setup.
+type ErrServerNoTracksSetup struct{}
+
+// Error implements the error interface.
+func (e ErrServerNoTracksSetup) Error() string {
+	return "no tracks have been setup"
+}
+
+// ErrServerNotAllAnnouncedTracksSetup is returned in case not all announced tracks have been setup.
+type ErrServerNotAllAnnouncedTracksSetup struct{}
+
+// Error implements the error interface.
+func (e ErrServerNotAllAnnouncedTracksSetup) Error() string {
+	return "not all announced tracks have been setup"
+}
+
+// ErrServerNoUDPPacketsRecently is returned when no UDP packets have been received recently.
+type ErrServerNoUDPPacketsRecently struct{}
+
+// Error implements the error interface.
+func (e ErrServerNoUDPPacketsRecently) Error() string {
+	return "no UDP packets received recently (maybe there's a firewall/NAT in between)"
+}
 
 func stringsReverseIndex(s, substr string) int {
 	for i := len(s) - 1 - len(substr); i >= 0; i-- {
@@ -47,7 +201,7 @@ func setupGetTrackIDPathQuery(url *base.URL,
 
 	pathAndQuery, ok := url.RTSPPathAndQuery()
 	if !ok {
-		return 0, "", "", fmt.Errorf("invalid URL (%s)", url)
+		return 0, "", "", ErrServerNoPath{}
 	}
 
 	if thMode == nil || *thMode == headers.TransportModePlay {
@@ -356,9 +510,6 @@ func (sc *ServerConn) backgroundWrite() {
 		case *base.Response:
 			sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
 			w.Write(sc.bw)
-
-		default:
-			panic(fmt.Errorf("unsupported type: %T", what))
 		}
 	}
 }
@@ -374,8 +525,7 @@ func (sc *ServerConn) checkState(allowed map[ServerConnState]struct{}) error {
 		allowedList[i] = a
 		i++
 	}
-	return fmt.Errorf("must be in state %v, while is in state %v",
-		allowedList, sc.state)
+	return ErrServerWrongState{allowedList, sc.state}
 }
 
 // NetConn returns the underlying net.Conn.
@@ -467,7 +617,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
 			Header:     base.Header{},
-		}, errServerCSeqMissing
+		}, ErrServerCSeqMissing{}
 	}
 
 	if sc.readHandlers.OnRequest != nil {
@@ -481,7 +631,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid URL (%s)", req.URL)
+				}, ErrServerNoPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)
@@ -540,7 +690,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid URL (%s)", req.URL)
+				}, ErrServerNoPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)
@@ -579,33 +729,33 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok || len(ct) != 1 {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, errors.New("Content-Type header is missing")
+				}, ErrServerContentTypeMissing{}
 			}
 
 			if ct[0] != "application/sdp" {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("unsupported Content-Type '%s'", ct)
+				}, ErrServerContentTypeUnsupported{ct}
 			}
 
 			tracks, err := ReadTracks(req.Body, req.URL)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid SDP: %s", err)
+				}, ErrServerSDPInvalid{err}
 			}
 
 			if len(tracks) == 0 {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, errors.New("no tracks defined")
+				}, ErrServerSDPNoTracksDefined{}
 			}
 
 			pathAndQuery, ok := req.URL.RTSPPath()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid URL (%s)", req.URL)
+				}, ErrServerNoPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)
@@ -679,7 +829,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("transport header: %s", err)
+				}, ErrServerTransportHeaderInvalid{err}
 			}
 
 			if th.Delivery != nil && *th.Delivery == base.StreamDeliveryMulticast {
@@ -699,7 +849,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if _, ok := sc.setuppedTracks[trackID]; ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("track %d has already been setup", trackID)
+				}, ErrServerTrackAlreadySetup{trackID}
 			}
 
 			switch sc.state {
@@ -707,14 +857,14 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				if th.Mode != nil && *th.Mode != headers.TransportModePlay {
 					return &base.Response{
 						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("transport header must contain mode=play or not contain a mode")
+					}, ErrServerTransportHeaderWrongMode{th.Mode}
 				}
 
 			default: // record
 				if th.Mode == nil || *th.Mode != headers.TransportModeRecord {
 					return &base.Response{
 						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("transport header does not contain mode=record")
+					}, ErrServerTransportHeaderWrongMode{th.Mode}
 				}
 			}
 
@@ -728,29 +878,29 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				if th.ClientPorts == nil {
 					return &base.Response{
 						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("transport header does not have valid client ports (%v)", req.Header["Transport"])
+					}, ErrServerTransportHeaderNoClientPorts{}
 				}
 
 			} else {
-				if th.InterleavedIds == nil {
+				if th.InterleavedIDs == nil {
 					return &base.Response{
 						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("transport header does not contain the interleaved field")
+					}, ErrServerTransportHeaderNoInterleavedIDs{}
 				}
 
-				if th.InterleavedIds[0] != (trackID*2) ||
-					th.InterleavedIds[1] != (1+trackID*2) {
+				if th.InterleavedIDs[0] != (trackID*2) ||
+					th.InterleavedIDs[1] != (1+trackID*2) {
 					return &base.Response{
 							StatusCode: base.StatusBadRequest,
-						}, fmt.Errorf("wrong interleaved ids, expected [%v %v], got %v",
-							(trackID * 2), (1 + trackID*2), *th.InterleavedIds)
+						}, ErrServerTransportHeaderWrongInterleavedIDs{
+							[2]int{(trackID * 2), (1 + trackID*2)}, *th.InterleavedIDs}
 				}
 			}
 
 			if sc.setupProtocol != nil && *sc.setupProtocol != th.Protocol {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("can't setup tracks with different protocols")
+				}, ErrServerTracksDifferentProtocols{}
 			}
 
 			res, err := sc.readHandlers.OnSetup(&ServerConnSetupCtx{
@@ -795,7 +945,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					}
 					res.Header["Transport"] = headers.Transport{
 						Protocol:       StreamProtocolTCP,
-						InterleavedIds: th.InterleavedIds,
+						InterleavedIDs: th.InterleavedIDs,
 					}.Write()
 				}
 			}
@@ -837,14 +987,14 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if len(sc.setuppedTracks) == 0 {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("no tracks have been setup")
+				}, ErrServerNoTracksSetup{}
 			}
 
 			pathAndQuery, ok := req.URL.RTSPPath()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid URL (%s)", req.URL)
+				}, ErrServerNoPath{}
 			}
 
 			// path can end with a slash due to Content-Base, remove it
@@ -880,20 +1030,20 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if len(sc.setuppedTracks) == 0 {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("no tracks have been setup")
+				}, ErrServerNoTracksSetup{}
 			}
 
 			if len(sc.setuppedTracks) != len(sc.announcedTracks) {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("not all announced tracks have been setup")
+				}, ErrServerNotAllAnnouncedTracksSetup{}
 			}
 
 			pathAndQuery, ok := req.URL.RTSPPath()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid URL (%s)", req.URL)
+				}, ErrServerNoPath{}
 			}
 
 			// path can end with a slash due to Content-Base, remove it
@@ -933,7 +1083,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid URL (%s)", req.URL)
+				}, ErrServerNoPath{}
 			}
 
 			// path can end with a slash due to Content-Base, remove it
@@ -968,7 +1118,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid URL (%s)", req.URL)
+				}, ErrServerNoPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)
@@ -995,7 +1145,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid URL (%s)", req.URL)
+				}, ErrServerNoPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)
@@ -1013,7 +1163,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid URL (%s)", req.URL)
+				}, ErrServerNoPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)
@@ -1027,7 +1177,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
-		}, ErrServerTeardown
+		}, ErrServerTeardown{}
 	}
 
 	return &base.Response{
@@ -1046,7 +1196,7 @@ func (sc *ServerConn) backgroundRead() error {
 		}
 
 		// add cseq
-		if err != errServerCSeqMissing {
+		if _, ok := err.(ErrServerCSeqMissing); !ok {
 			res.Header["CSeq"] = req.Header["CSeq"]
 		}
 
@@ -1136,7 +1286,7 @@ outer:
 			err := req.Read(sc.br)
 			if err != nil {
 				if atomic.LoadInt32(&sc.udpTimeout) == 1 {
-					errRet = fmt.Errorf("no UDP packets received recently (maybe there's a firewall/NAT in between)")
+					errRet = ErrServerNoUDPPacketsRecently{}
 				} else {
 					errRet = err
 				}

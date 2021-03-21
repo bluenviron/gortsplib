@@ -161,7 +161,7 @@ func TestServerConnPublishSetupPath(t *testing.T) {
 					v := headers.TransportModeRecord
 					return &v
 				}(),
-				InterleavedIds: &[2]int{0, 1},
+				InterleavedIDs: &[2]int{0, 1},
 			}
 
 			err = base.Request{
@@ -262,7 +262,7 @@ func TestServerConnPublishSetupDifferentPaths(t *testing.T) {
 			v := headers.TransportModeRecord
 			return &v
 		}(),
-		InterleavedIds: &[2]int{0, 1},
+		InterleavedIDs: &[2]int{0, 1},
 	}
 
 	err = base.Request{
@@ -360,7 +360,7 @@ func TestServerConnPublishSetupDouble(t *testing.T) {
 			v := headers.TransportModeRecord
 			return &v
 		}(),
-		InterleavedIds: &[2]int{0, 1},
+		InterleavedIDs: &[2]int{0, 1},
 	}
 
 	err = base.Request{
@@ -482,7 +482,7 @@ func TestServerConnPublishRecordPartialTracks(t *testing.T) {
 			v := headers.TransportModeRecord
 			return &v
 		}(),
-		InterleavedIds: &[2]int{0, 1},
+		InterleavedIDs: &[2]int{0, 1},
 	}
 
 	err = base.Request{
@@ -632,7 +632,7 @@ func TestServerConnPublishReceivePackets(t *testing.T) {
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
 				inTH.Protocol = StreamProtocolTCP
-				inTH.InterleavedIds = &[2]int{0, 1}
+				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
 			err = base.Request{

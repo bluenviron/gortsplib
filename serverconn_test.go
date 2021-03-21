@@ -202,8 +202,10 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		OnRecord:   onRecord,
 		OnFrame:    onFrame,
 	})
-	if err != io.EOF && err != ErrServerTeardown {
-		fmt.Println("ERR", err)
+	if err != io.EOF {
+		if _, ok := err.(ErrServerTeardown); !ok {
+			fmt.Println("ERR", err)
+		}
 	}
 
 	ts.mutex.Lock()
@@ -464,7 +466,8 @@ func TestServerConnTeardownResponse(t *testing.T) {
 		defer conn.Close()
 
 		err = <-conn.Read(ServerConnReadHandlers{})
-		require.Equal(t, ErrServerTeardown, err)
+		_, ok := err.(ErrServerTeardown)
+		require.Equal(t, true, ok)
 	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")

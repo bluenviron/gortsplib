@@ -524,7 +524,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		th.ClientPorts = &[2]int{rtpPort, rtcpPort}
 
 	} else {
-		th.InterleavedIds = &[2]int{(track.ID * 2), (track.ID * 2) + 1}
+		th.InterleavedIDs = &[2]int{(track.ID * 2), (track.ID * 2) + 1}
 	}
 
 	trackURL, err := track.URL()
@@ -605,11 +605,11 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			}
 		}
 
-	} else if thRes.InterleavedIds == nil ||
-		thRes.InterleavedIds[0] != th.InterleavedIds[0] ||
-		thRes.InterleavedIds[1] != th.InterleavedIds[1] {
+	} else if thRes.InterleavedIDs == nil ||
+		thRes.InterleavedIDs[0] != th.InterleavedIDs[0] ||
+		thRes.InterleavedIDs[1] != th.InterleavedIDs[1] {
 		return nil, fmt.Errorf("transport header does not have interleaved ids %v (%s)",
-			*th.InterleavedIds, res.Header["Transport"])
+			*th.InterleavedIDs, res.Header["Transport"])
 	}
 
 	clockRate, _ := track.ClockRate()

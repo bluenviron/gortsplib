@@ -80,7 +80,7 @@ func TestClientConnPublishSerial(t *testing.T) {
 
 				} else {
 					th.Protocol = StreamProtocolTCP
-					th.InterleavedIds = inTH.InterleavedIds
+					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
 				err = base.Response{
@@ -211,7 +211,7 @@ func TestClientConnPublishParallel(t *testing.T) {
 
 				} else {
 					th.Protocol = StreamProtocolTCP
-					th.InterleavedIds = inTH.InterleavedIds
+					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
 				err = base.Response{
@@ -354,7 +354,7 @@ func TestClientConnPublishPauseSerial(t *testing.T) {
 
 				} else {
 					th.Protocol = StreamProtocolTCP
-					th.InterleavedIds = inTH.InterleavedIds
+					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
 				err = base.Response{
@@ -514,7 +514,7 @@ func TestClientConnPublishPauseParallel(t *testing.T) {
 
 				} else {
 					th.Protocol = StreamProtocolTCP
-					th.InterleavedIds = inTH.InterleavedIds
+					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
 				err = base.Response{

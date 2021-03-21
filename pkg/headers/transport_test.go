@@ -72,7 +72,7 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP/TCP;interleaved=0-1`},
 		Transport{
 			Protocol:       base.StreamProtocolTCP,
-			InterleavedIds: &[2]int{0, 1},
+			InterleavedIDs: &[2]int{0, 1},
 		},
 	},
 	{

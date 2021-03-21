@@ -104,7 +104,7 @@ func TestServerConnReadSetupPath(t *testing.T) {
 					v := headers.TransportModePlay
 					return &v
 				}(),
-				InterleavedIds: &[2]int{ca.trackID * 2, (ca.trackID * 2) + 1},
+				InterleavedIDs: &[2]int{ca.trackID * 2, (ca.trackID * 2) + 1},
 			}
 
 			err = base.Request{
@@ -172,7 +172,7 @@ func TestServerConnReadSetupDifferentPaths(t *testing.T) {
 			v := headers.TransportModePlay
 			return &v
 		}(),
-		InterleavedIds: &[2]int{0, 1},
+		InterleavedIDs: &[2]int{0, 1},
 	}
 
 	err = base.Request{
@@ -190,7 +190,7 @@ func TestServerConnReadSetupDifferentPaths(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	th.InterleavedIds = &[2]int{2, 3}
+	th.InterleavedIDs = &[2]int{2, 3}
 
 	err = base.Request{
 		Method: base.Setup,
@@ -253,7 +253,7 @@ func TestServerConnReadSetupDouble(t *testing.T) {
 			v := headers.TransportModePlay
 			return &v
 		}(),
-		InterleavedIds: &[2]int{0, 1},
+		InterleavedIDs: &[2]int{0, 1},
 	}
 
 	err = base.Request{
@@ -271,7 +271,7 @@ func TestServerConnReadSetupDouble(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	th.InterleavedIds = &[2]int{2, 3}
+	th.InterleavedIDs = &[2]int{2, 3}
 
 	err = base.Request{
 		Method: base.Setup,
@@ -364,7 +364,7 @@ func TestServerConnReadReceivePackets(t *testing.T) {
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
 				inTH.Protocol = StreamProtocolTCP
-				inTH.InterleavedIds = &[2]int{0, 1}
+				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
 			err = base.Request{
@@ -501,7 +501,7 @@ func TestServerConnReadTCPResponseBeforeFrames(t *testing.T) {
 					v := headers.TransportModePlay
 					return &v
 				}(),
-				InterleavedIds: &[2]int{0, 1},
+				InterleavedIDs: &[2]int{0, 1},
 			}.Write(),
 		},
 	}.Write(bconn.Writer)
@@ -606,7 +606,7 @@ func TestServerConnReadPlayMultiple(t *testing.T) {
 					v := headers.TransportModePlay
 					return &v
 				}(),
-				InterleavedIds: &[2]int{0, 1},
+				InterleavedIDs: &[2]int{0, 1},
 			}.Write(),
 		},
 	}.Write(bconn.Writer)
@@ -725,7 +725,7 @@ func TestServerConnReadPauseMultiple(t *testing.T) {
 					v := headers.TransportModePlay
 					return &v
 				}(),
-				InterleavedIds: &[2]int{0, 1},
+				InterleavedIDs: &[2]int{0, 1},
 			}.Write(),
 		},
 	}.Write(bconn.Writer)

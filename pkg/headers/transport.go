@@ -55,7 +55,7 @@ type Transport struct {
 	ServerPorts *[2]int
 
 	// (optional) interleaved frame ids
-	InterleavedIds *[2]int
+	InterleavedIDs *[2]int
 
 	// (optional) mode
 	Mode *TransportMode
@@ -170,7 +170,7 @@ func (h *Transport) Read(v base.HeaderValue) error {
 			if err != nil {
 				return err
 			}
-			h.InterleavedIds = ports
+			h.InterleavedIDs = ports
 
 		case strings.HasPrefix(t, "mode="):
 			str := strings.ToLower(t[len("mode="):])
@@ -227,8 +227,8 @@ func (h Transport) Write() base.HeaderValue {
 		rets = append(rets, "server_port="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
 	}
 
-	if h.InterleavedIds != nil {
-		ports := *h.InterleavedIds
+	if h.InterleavedIDs != nil {
+		ports := *h.InterleavedIDs
 		rets = append(rets, "interleaved="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
 	}
 

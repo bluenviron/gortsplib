@@ -134,7 +134,7 @@ func TestClientConnRead(t *testing.T) {
 									return &v
 								}(),
 								ClientPorts:    th.ClientPorts,
-								InterleavedIds: &[2]int{0, 1},
+								InterleavedIDs: &[2]int{0, 1},
 							}.Write(),
 						},
 					}.Write(bconn.Writer)
@@ -395,7 +395,7 @@ func TestClientConnReadAutomaticProtocol(t *testing.T) {
 						v := base.StreamDeliveryUnicast
 						return &v
 					}(),
-					InterleavedIds: &[2]int{0, 1},
+					InterleavedIDs: &[2]int{0, 1},
 				}.Write(),
 			},
 		}.Write(bconn.Writer)
@@ -690,7 +690,7 @@ func TestClientConnReadPause(t *testing.T) {
 
 				} else {
 					th.Protocol = StreamProtocolTCP
-					th.InterleavedIds = inTH.InterleavedIds
+					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
 				err = base.Response{
