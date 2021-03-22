@@ -1,4 +1,4 @@
-package rtpaac
+package codecaac
 
 import (
 	"testing"

@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/pkg/codech264"
 )
 
 const (
@@ -107,7 +109,7 @@ func (e *Encoder) writeFragmented(nt *NALUAndTimestamp) ([][]byte, error) {
 	ts := e.encodeTimestamp(nt.Timestamp)
 
 	for i := 0; i < frameCount; i++ {
-		indicator := (nri << 5) | uint8(NALUTypeFuA)
+		indicator := (nri << 5) | uint8(codech264.NALUTypeFuA)
 
 		start := uint8(0)
 		if i == 0 {

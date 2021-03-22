@@ -1,4 +1,5 @@
-package rtpaac
+// Package codecaac contains utilities to deal with the AAC codec.
+package codecaac
 
 import (
 	"bytes"

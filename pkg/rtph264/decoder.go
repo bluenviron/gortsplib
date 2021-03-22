@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/pkg/codech264"
 )
 
 // ErrMorePacketsNeeded is returned by Decoder.Read when more packets are needed.
@@ -73,23 +75,23 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			d.initialTs = pkt.Timestamp
 		}
 
-		typ := NALUType(pkt.Payload[0] & 0x1F)
+		typ := codech264.NALUType(pkt.Payload[0] & 0x1F)
 
 		switch typ {
-		case NALUTypeNonIDR, NALUTypeDataPartitionA, NALUTypeDataPartitionB,
-			NALUTypeDataPartitionC, NALUTypeIDR, NALUTypeSei, NALUTypeSPS,
-			NALUTypePPS, NALUTypeAccessUnitDelimiter, NALUTypeEndOfSequence,
-			NALUTypeEndOfStream, NALUTypeFillerData, NALUTypeSPSExtension,
-			NALUTypePrefix, NALUTypeSubsetSPS, NALUTypeReserved16, NALUTypeReserved17,
-			NALUTypeReserved18, NALUTypeSliceLayerWithoutPartitioning,
-			NALUTypeSliceExtension, NALUTypeSliceExtensionDepth, NALUTypeReserved22,
-			NALUTypeReserved23:
+		case codech264.NALUTypeNonIDR, codech264.NALUTypeDataPartitionA, codech264.NALUTypeDataPartitionB,
+			codech264.NALUTypeDataPartitionC, codech264.NALUTypeIDR, codech264.NALUTypeSei, codech264.NALUTypeSPS,
+			codech264.NALUTypePPS, codech264.NALUTypeAccessUnitDelimiter, codech264.NALUTypeEndOfSequence,
+			codech264.NALUTypeEndOfStream, codech264.NALUTypeFillerData, codech264.NALUTypeSPSExtension,
+			codech264.NALUTypePrefix, codech264.NALUTypeSubsetSPS, codech264.NALUTypeReserved16, codech264.NALUTypeReserved17,
+			codech264.NALUTypeReserved18, codech264.NALUTypeSliceLayerWithoutPartitioning,
+			codech264.NALUTypeSliceExtension, codech264.NALUTypeSliceExtensionDepth, codech264.NALUTypeReserved22,
+			codech264.NALUTypeReserved23:
 			return []*NALUAndTimestamp{{
 				NALU:      pkt.Payload,
 				Timestamp: d.decodeTimestamp(pkt.Timestamp),
 			}}, nil
 
-		case NALUTypeStapA:
+		case codech264.NALUTypeStapA:
 			var ret []*NALUAndTimestamp
 			pkt.Payload = pkt.Payload[1:]
 
@@ -123,7 +125,7 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 
 			return ret, nil
 
-		case NALUTypeFuA: // first packet of a fragmented NALU
+		case codech264.NALUTypeFuA: // first packet of a fragmented NALU
 			start := pkt.Payload[1] >> 7
 			if start != 1 {
 				return nil, fmt.Errorf("first NALU does not contain the start bit")
@@ -136,7 +138,7 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			d.state = decoderStateReadingFragmented
 			return nil, ErrMorePacketsNeeded
 
-		case NALUTypeStapB, NALUTypeMtap16, NALUTypeMtap24, NALUTypeFuB:
+		case codech264.NALUTypeStapB, codech264.NALUTypeMtap16, codech264.NALUTypeMtap24, codech264.NALUTypeFuB:
 			return nil, fmt.Errorf("NALU type not supported (%v)", typ)
 		}
 
@@ -155,8 +157,8 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			return nil, fmt.Errorf("Invalid FU-A packet")
 		}
 
-		typ := NALUType(pkt.Payload[0] & 0x1F)
-		if typ != NALUTypeFuA {
+		typ := codech264.NALUType(pkt.Payload[0] & 0x1F)
+		if typ != codech264.NALUTypeFuA {
 			d.state = decoderStateInitial
 			return nil, fmt.Errorf("non-starting NALU is not FU-A")
 		}
@@ -219,14 +221,14 @@ func (d *Decoder) ReadSPSPPS(r io.Reader) ([]byte, []byte, error) {
 			return nil, nil, err
 		}
 
-		switch NALUType(nt.NALU[0] & 0x1F) {
-		case NALUTypeSPS:
+		switch codech264.NALUType(nt.NALU[0] & 0x1F) {
+		case codech264.NALUTypeSPS:
 			sps = append([]byte(nil), nt.NALU...)
 			if sps != nil && pps != nil {
 				return sps, pps, nil
 			}
 
-		case NALUTypePPS:
+		case codech264.NALUTypePPS:
 			pps = append([]byte(nil), nt.NALU...)
 			if sps != nil && pps != nil {
 				return sps, pps, nil
