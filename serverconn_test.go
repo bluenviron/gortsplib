@@ -329,7 +329,7 @@ func TestServerPublishReadHighLevel(t *testing.T) {
 				cnt1, err := newContainer("ffmpeg", "publish", []string{
 					"-re",
 					"-stream_loop", "-1",
-					"-i", "emptyvideo.ts",
+					"-i", "emptyvideo.mkv",
 					"-c", "copy",
 					"-f", "rtsp",
 					"-rtsp_transport", ca.publisherProto,
@@ -340,7 +340,7 @@ func TestServerPublishReadHighLevel(t *testing.T) {
 
 			case "gstreamer":
 				cnt1, err := newContainer("gstreamer", "publish", []string{
-					"filesrc location=emptyvideo.ts ! tsdemux ! video/x-h264 ! rtspclientsink " +
+					"filesrc location=emptyvideo.mkv ! matroskademux ! video/x-h264 ! rtspclientsink " +
 						"location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ca.publisherProto + " tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
 				})
 				require.NoError(t, err)
