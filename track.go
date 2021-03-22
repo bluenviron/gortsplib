@@ -130,7 +130,7 @@ func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 	var conf rtpaac.MPEG4AudioConfig
 	err := conf.Decode(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid MPEG-4 Audio config: %v", err)
 	}
 
 	typ := strconv.FormatInt(int64(payloadType), 10)
