@@ -20,9 +20,15 @@ var casesRTPInfo = []struct {
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556`},
 		RTPInfo{
 			{
-				URL:            base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
-				SequenceNumber: 35243,
-				Timestamp:      717574556,
+				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
+				SequenceNumber: func() *uint16 {
+					v := uint16(35243)
+					return &v
+				}(),
+				Timestamp: func() *uint32 {
+					v := uint32(717574556)
+					return &v
+				}(),
 			},
 		},
 	},
@@ -32,14 +38,54 @@ var casesRTPInfo = []struct {
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556,url=rtsp://127.0.0.1/test.mkv/track2;seq=13655;rtptime=2848846950`},
 		RTPInfo{
 			{
-				URL:            base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
-				SequenceNumber: 35243,
-				Timestamp:      717574556,
+				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
+				SequenceNumber: func() *uint16 {
+					v := uint16(35243)
+					return &v
+				}(),
+				Timestamp: func() *uint32 {
+					v := uint32(717574556)
+					return &v
+				}(),
 			},
 			{
-				URL:            base.MustParseURL("rtsp://127.0.0.1/test.mkv/track2"),
-				SequenceNumber: 13655,
-				Timestamp:      2848846950,
+				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track2"),
+				SequenceNumber: func() *uint16 {
+					v := uint16(13655)
+					return &v
+				}(),
+				Timestamp: func() *uint32 {
+					v := uint32(2848846950)
+					return &v
+				}(),
+			},
+		},
+	},
+	{
+		"missing timestamp",
+		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243`},
+		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243`},
+		RTPInfo{
+			{
+				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
+				SequenceNumber: func() *uint16 {
+					v := uint16(35243)
+					return &v
+				}(),
+			},
+		},
+	},
+	{
+		"missing sequence number",
+		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;rtptime=717574556`},
+		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;rtptime=717574556`},
+		RTPInfo{
+			{
+				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
+				Timestamp: func() *uint32 {
+					v := uint32(717574556)
+					return &v
+				}(),
 			},
 		},
 	},

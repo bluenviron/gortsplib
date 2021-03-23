@@ -11,8 +11,8 @@ import (
 // RTPInfoEntry is an entry of an RTP-Info header.
 type RTPInfoEntry struct {
 	URL            *base.URL
-	SequenceNumber uint16
-	Timestamp      uint32
+	SequenceNumber *uint16
+	Timestamp      *uint32
 }
 
 // RTPInfo is a RTP-Info header.
@@ -51,14 +51,16 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 				if err != nil {
 					return err
 				}
-				e.SequenceNumber = uint16(vi)
+				vi2 := uint16(vi)
+				e.SequenceNumber = &vi2
 
 			case "rtptime":
 				vi, err := strconv.ParseUint(v, 10, 32)
 				if err != nil {
 					return err
 				}
-				e.Timestamp = uint32(vi)
+				vi2 := uint32(vi)
+				e.Timestamp = &vi2
 
 			default:
 				return fmt.Errorf("invalid key: %v", k)
@@ -71,27 +73,23 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 	return nil
 }
 
-// Clone clones a RTPInfo.
-func (h RTPInfo) Clone() *RTPInfo {
-	nh := &RTPInfo{}
-	for _, e := range h {
-		*nh = append(*nh, &RTPInfoEntry{
-			URL:            e.URL,
-			SequenceNumber: e.SequenceNumber,
-			Timestamp:      e.Timestamp,
-		})
-	}
-	return nh
-}
-
 // Write encodes a RTP-Info header.
 func (h RTPInfo) Write() base.HeaderValue {
 	rets := make([]string, len(h))
 
 	for i, e := range h {
-		rets[i] = "url=" + e.URL.String() +
-			";seq=" + strconv.FormatUint(uint64(e.SequenceNumber), 10) +
-			";rtptime=" + strconv.FormatUint(uint64(e.Timestamp), 10)
+		var tmp []string
+		tmp = append(tmp, "url="+e.URL.String())
+
+		if e.SequenceNumber != nil {
+			tmp = append(tmp, "seq="+strconv.FormatUint(uint64(*e.SequenceNumber), 10))
+		}
+
+		if e.Timestamp != nil {
+			tmp = append(tmp, "rtptime="+strconv.FormatUint(uint64(*e.Timestamp), 10))
+		}
+
+		rets[i] = strings.Join(tmp, ";")
 	}
 
 	return base.HeaderValue{strings.Join(rets, ",")}
