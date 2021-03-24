@@ -13,7 +13,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/codech264"
 )
 
-// ErrMorePacketsNeeded is returned by Decoder.Read when more packets are needed.
+// ErrMorePacketsNeeded is returned when more packets are needed.
 var ErrMorePacketsNeeded = errors.New("need more packets")
 
 // PacketConnReader creates a io.Reader around a net.PacketConn.
@@ -39,12 +39,12 @@ type Decoder struct {
 	initialTs    uint32
 	initialTsSet bool
 
-	// for Decode() and FU-A
+	// for Decode()
 	state         decoderState
 	fragmentedBuf []byte
 
 	// for Read()
-	nalusQueue []*NALUAndTimestamp
+	readQueue []*NALUAndTimestamp
 }
 
 // NewDecoder allocates a Decoder.
@@ -181,9 +181,9 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 
 // Read reads RTP/H264 packets from a reader until a NALU is decoded.
 func (d *Decoder) Read(r io.Reader) (*NALUAndTimestamp, error) {
-	if len(d.nalusQueue) > 0 {
-		nalu := d.nalusQueue[0]
-		d.nalusQueue = d.nalusQueue[1:]
+	if len(d.readQueue) > 0 {
+		nalu := d.readQueue[0]
+		d.readQueue = d.readQueue[1:]
 		return nalu, nil
 	}
 
@@ -203,7 +203,7 @@ func (d *Decoder) Read(r io.Reader) (*NALUAndTimestamp, error) {
 		}
 
 		nalu := nalus[0]
-		d.nalusQueue = nalus[1:]
+		d.readQueue = nalus[1:]
 
 		return nalu, nil
 	}

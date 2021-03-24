@@ -66,15 +66,14 @@ func (e *Encoder) Encode(nts []*NALUAndTimestamp) ([][]byte, error) {
 	var rets [][]byte
 	var batch []*NALUAndTimestamp
 
-	// split packets into batches
+	// split NALUs into batches
 	for _, nt := range nts {
 		if len(batch) > 0 && batch[0].Timestamp != nt.Timestamp {
 			return nil, fmt.Errorf("encoding NALUs with different timestamps is unimplemented")
 		}
 
-		// packets can be contained into a single aggregation packet
 		if e.lenAggregated(batch, nt) <= rtpPayloadMaxSize {
-			// add packet to batch
+			// add to existing batch
 			batch = append(batch, nt)
 
 		} else {
@@ -104,12 +103,12 @@ func (e *Encoder) Encode(nts []*NALUAndTimestamp) ([][]byte, error) {
 
 func (e *Encoder) writeBatch(nts []*NALUAndTimestamp) ([][]byte, error) {
 	if len(nts) == 1 {
-		// the NALU fits into a single RTP packet, use a single payload
+		// the NALU fits into a single RTP packet
 		if len(nts[0].NALU) < rtpPayloadMaxSize {
 			return e.writeSingle(nts[0])
 		}
 
-		// split the NALU into multiple fragmentation payloads
+		// split the NALU into multiple fragmentation packet
 		return e.writeFragmented(nts[0])
 	}
 
@@ -143,20 +142,20 @@ func (e *Encoder) writeFragmented(nt *NALUAndTimestamp) ([][]byte, error) {
 
 	// use only FU-A, not FU-B, since we always use non-interleaved mode
 	// (packetization-mode=1)
-	frameCount := (len(nalu) - 1) / (rtpPayloadMaxSize - 2)
-	lastFrameSize := (len(nalu) - 1) % (rtpPayloadMaxSize - 2)
-	if lastFrameSize > 0 {
-		frameCount++
+	packetCount := (len(nalu) - 1) / (rtpPayloadMaxSize - 2)
+	lastPacketSize := (len(nalu) - 1) % (rtpPayloadMaxSize - 2)
+	if lastPacketSize > 0 {
+		packetCount++
 	}
-	ret := make([][]byte, frameCount)
+
+	ret := make([][]byte, packetCount)
+	ts := e.encodeTimestamp(nt.Timestamp)
 
 	nri := (nalu[0] >> 5) & 0x03
 	typ := nalu[0] & 0x1F
 	nalu = nalu[1:] // remove header
 
-	ts := e.encodeTimestamp(nt.Timestamp)
-
-	for i := 0; i < frameCount; i++ {
+	for i := range ret {
 		indicator := (nri << 5) | uint8(codech264.NALUTypeFuA)
 
 		start := uint8(0)
@@ -165,13 +164,16 @@ func (e *Encoder) writeFragmented(nt *NALUAndTimestamp) ([][]byte, error) {
 		}
 		end := uint8(0)
 		le := rtpPayloadMaxSize - 2
-		if i == (frameCount - 1) {
+		if i == (packetCount - 1) {
 			end = 1
-			le = lastFrameSize
+			le = lastPacketSize
 		}
 		header := (start << 7) | (end << 6) | typ
 
-		data := append([]byte{indicator, header}, nalu[:le]...)
+		data := make([]byte, 2+le)
+		data[0] = indicator
+		data[1] = header
+		copy(data[2:], nalu[:le])
 		nalu = nalu[le:]
 
 		rpkt := rtp.Packet{
@@ -181,14 +183,11 @@ func (e *Encoder) writeFragmented(nt *NALUAndTimestamp) ([][]byte, error) {
 				SequenceNumber: e.sequenceNumber,
 				Timestamp:      ts,
 				SSRC:           e.ssrc,
+				Marker:         (i == (packetCount - 1)),
 			},
 			Payload: data,
 		}
 		e.sequenceNumber++
-
-		if i == (frameCount - 1) {
-			rpkt.Header.Marker = true
-		}
 
 		frame, err := rpkt.Marshal()
 		if err != nil {
@@ -201,10 +200,10 @@ func (e *Encoder) writeFragmented(nt *NALUAndTimestamp) ([][]byte, error) {
 	return ret, nil
 }
 
-func (e *Encoder) lenAggregated(batch []*NALUAndTimestamp, additionalEl *NALUAndTimestamp) int {
+func (e *Encoder) lenAggregated(nts []*NALUAndTimestamp, additionalEl *NALUAndTimestamp) int {
 	ret := 1 // header
 
-	for _, bnt := range batch {
+	for _, bnt := range nts {
 		ret += 2             // size
 		ret += len(bnt.NALU) // nalu
 	}
