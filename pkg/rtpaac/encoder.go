@@ -63,15 +63,17 @@ func (e *Encoder) Encode(at *AUAndTimestamp) ([]byte, error) {
 		return nil, fmt.Errorf("data is too big")
 	}
 
+	payload := make([]byte, 4+len(at.AU))
+
 	// AU-headers-length
-	payload := []byte{0x00, 0x10}
+	payload[0] = 0x00
+	payload[1] = 0x10
 
 	// AU-header
-	header := make([]byte, 2)
-	binary.BigEndian.PutUint16(header, uint16(len(at.AU))<<3)
-	payload = append(payload, header...)
+	binary.BigEndian.PutUint16(payload[2:], uint16(len(at.AU))<<3)
 
-	payload = append(payload, at.AU...)
+	// AU
+	copy(payload[4:], at.AU)
 
 	rpkt := rtp.Packet{
 		Header: rtp.Header{
@@ -80,11 +82,11 @@ func (e *Encoder) Encode(at *AUAndTimestamp) ([]byte, error) {
 			SequenceNumber: e.sequenceNumber,
 			Timestamp:      e.encodeTimestamp(at.Timestamp),
 			SSRC:           e.ssrc,
+			Marker:         true,
 		},
 		Payload: payload,
 	}
 	e.sequenceNumber++
-	rpkt.Header.Marker = true
 
 	frame, err := rpkt.Marshal()
 	if err != nil {
