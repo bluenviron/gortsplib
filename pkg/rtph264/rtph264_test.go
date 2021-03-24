@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/aler9/gortsplib/pkg/codech264"
 )
 
 func mergeBytes(vals ...[]byte) []byte {
@@ -281,6 +283,70 @@ func TestDecode(t *testing.T) {
 
 			_, err = d.Read(r)
 			require.Equal(t, io.EOF, err)
+		})
+	}
+}
+
+func TestDecodeErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		byts []byte
+		err  string
+	}{
+		{
+			"missing payload",
+			[]byte{
+				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
+				0x9d, 0xbb, 0x78, 0x12,
+			},
+			"payload is too short",
+		},
+		{
+			"STAP-A without NALUs",
+			[]byte{
+				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
+				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeStapA),
+			},
+			"STAP-A packet doesn't contain any NALU",
+		},
+		{
+			"STAP-A without size",
+			[]byte{
+				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
+				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeStapA), 0x01,
+			},
+			"Invalid STAP-A packet",
+		},
+		{
+			"STAP-A with invalid size",
+			[]byte{
+				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
+				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeStapA), 0x00, 0x15,
+			},
+			"Invalid STAP-A packet",
+		},
+		{
+			"FU-A without payload",
+			[]byte{
+				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
+				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeFuA),
+			},
+			"Invalid FU-A packet",
+		},
+		{
+			"FU-A without start bit",
+			[]byte{
+				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
+				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeFuA), 0x00,
+			},
+			"first NALU does not contain the start bit",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			d := NewDecoder()
+			_, err := d.Decode(ca.byts)
+			require.NotEqual(t, ErrMorePacketsNeeded, err)
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }

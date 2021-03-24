@@ -75,22 +75,13 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			d.initialTs = pkt.Timestamp
 		}
 
+		if len(pkt.Payload) < 1 {
+			return nil, fmt.Errorf("payload is too short")
+		}
+
 		typ := codech264.NALUType(pkt.Payload[0] & 0x1F)
 
 		switch typ {
-		case codech264.NALUTypeNonIDR, codech264.NALUTypeDataPartitionA, codech264.NALUTypeDataPartitionB,
-			codech264.NALUTypeDataPartitionC, codech264.NALUTypeIDR, codech264.NALUTypeSei, codech264.NALUTypeSPS,
-			codech264.NALUTypePPS, codech264.NALUTypeAccessUnitDelimiter, codech264.NALUTypeEndOfSequence,
-			codech264.NALUTypeEndOfStream, codech264.NALUTypeFillerData, codech264.NALUTypeSPSExtension,
-			codech264.NALUTypePrefix, codech264.NALUTypeSubsetSPS, codech264.NALUTypeReserved16, codech264.NALUTypeReserved17,
-			codech264.NALUTypeReserved18, codech264.NALUTypeSliceLayerWithoutPartitioning,
-			codech264.NALUTypeSliceExtension, codech264.NALUTypeSliceExtensionDepth, codech264.NALUTypeReserved22,
-			codech264.NALUTypeReserved23:
-			return []*NALUAndTimestamp{{
-				NALU:      pkt.Payload,
-				Timestamp: d.decodeTimestamp(pkt.Timestamp),
-			}}, nil
-
 		case codech264.NALUTypeStapA:
 			var ret []*NALUAndTimestamp
 			pkt.Payload = pkt.Payload[1:]
@@ -126,6 +117,10 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			return ret, nil
 
 		case codech264.NALUTypeFuA: // first packet of a fragmented NALU
+			if len(pkt.Payload) < 2 {
+				return nil, fmt.Errorf("Invalid FU-A packet")
+			}
+
 			start := pkt.Payload[1] >> 7
 			if start != 1 {
 				return nil, fmt.Errorf("first NALU does not contain the start bit")
@@ -138,11 +133,15 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			d.state = decoderStateReadingFragmented
 			return nil, ErrMorePacketsNeeded
 
-		case codech264.NALUTypeStapB, codech264.NALUTypeMtap16, codech264.NALUTypeMtap24, codech264.NALUTypeFuB:
-			return nil, fmt.Errorf("NALU type not supported (%v)", typ)
+		case codech264.NALUTypeStapB, codech264.NALUTypeMtap16,
+			codech264.NALUTypeMtap24, codech264.NALUTypeFuB:
+			return nil, fmt.Errorf("NALU type not yet supported (%v)", typ)
 		}
 
-		return nil, fmt.Errorf("invalid NALU type (%v)", typ)
+		return []*NALUAndTimestamp{{
+			NALU:      pkt.Payload,
+			Timestamp: d.decodeTimestamp(pkt.Timestamp),
+		}}, nil
 
 	default: // decoderStateReadingFragmented
 		pkt := rtp.Packet{}

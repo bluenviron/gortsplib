@@ -61,6 +61,10 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 		}
 
 		if pkt.Header.Marker {
+			if len(pkt.Payload) < 2 {
+				return nil, fmt.Errorf("payload is too short")
+			}
+
 			// AU-headers-length
 			headersLen := binary.BigEndian.Uint16(pkt.Payload)
 			if (headersLen % 16) != 0 {
@@ -75,11 +79,15 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 			headerCount := headersLen / 16
 			var dataLens []uint16
 			for i := 0; i < int(headerCount); i++ {
+				if len(pkt.Payload[i*2:]) < 2 {
+					return nil, fmt.Errorf("payload is too short")
+				}
+
 				header := binary.BigEndian.Uint16(pkt.Payload[i*2:])
 				dataLen := header >> 3
 				auIndex := header & 0x03
 				if auIndex != 0 {
-					return nil, fmt.Errorf("AU-index field must be zero")
+					return nil, fmt.Errorf("AU-index field is not zero")
 				}
 
 				dataLens = append(dataLens, dataLen)
@@ -117,7 +125,7 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 		dataLen := header >> 3
 		auIndex := header & 0x03
 		if auIndex != 0 {
-			return nil, fmt.Errorf("AU-index field must be zero")
+			return nil, fmt.Errorf("AU-index field is not zero")
 		}
 
 		if len(pkt.Payload) < int(dataLen) {
@@ -148,7 +156,7 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 		dataLen := header >> 3
 		auIndex := header & 0x03
 		if auIndex != 0 {
-			return nil, fmt.Errorf("AU-index field must be zero")
+			return nil, fmt.Errorf("AU-index field is not zero")
 		}
 
 		if len(pkt.Payload) < int(dataLen) {
@@ -169,7 +177,7 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 	}
 }
 
-// Read reads RTP/AAC packets from a reader until am AU is decoded.
+// Read reads RTP/AAC packets from a reader until an AU is decoded.
 func (d *Decoder) Read(r io.Reader) (*AUAndTimestamp, error) {
 	if len(d.readQueue) > 0 {
 		au := d.readQueue[0]
