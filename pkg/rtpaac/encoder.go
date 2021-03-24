@@ -14,7 +14,7 @@ const (
 	rtpPayloadMaxSize = 1460 // 1500 (mtu) - 20 (ip header) - 8 (udp header) - 12 (rtp header)
 )
 
-// Encoder is a RPT/AAC encoder.
+// Encoder is a RTP/AAC encoder.
 type Encoder struct {
 	payloadType    uint8
 	clockRate      float64
@@ -57,30 +57,42 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 	return e.initialTs + uint32(ts.Seconds()*e.clockRate)
 }
 
-// Encode encodes an AU into an RTP/AAC packet.
-func (e *Encoder) Encode(at *AUAndTimestamp) ([]byte, error) {
-	if len(at.AU) > rtpPayloadMaxSize {
-		return nil, fmt.Errorf("data is too big")
+// Encode encodes AUs into a RTP/AAC packet.
+func (e *Encoder) Encode(ats []*AUAndTimestamp) ([]byte, error) {
+	le := 2 // AU-headers-length
+	for _, at := range ats {
+		le += 2          // AU-header
+		le += len(at.AU) // AU
 	}
 
-	payload := make([]byte, 4+len(at.AU))
+	if le > rtpPayloadMaxSize {
+		return nil, fmt.Errorf("data is too big for a single packet")
+	}
+
+	payload := make([]byte, le)
 
 	// AU-headers-length
-	payload[0] = 0x00
-	payload[1] = 0x10
+	binary.BigEndian.PutUint16(payload, uint16(len(ats)*16))
+	pos := 2
 
-	// AU-header
-	binary.BigEndian.PutUint16(payload[2:], uint16(len(at.AU))<<3)
+	// AU-headers
+	for _, at := range ats {
+		binary.BigEndian.PutUint16(payload[pos:], uint16(len(at.AU))<<3)
+		pos += 2
+	}
 
-	// AU
-	copy(payload[4:], at.AU)
+	// AUs
+	for _, at := range ats {
+		auLen := copy(payload[pos:], at.AU)
+		pos += auLen
+	}
 
 	rpkt := rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
 			PayloadType:    e.payloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      e.encodeTimestamp(at.Timestamp),
+			Timestamp:      e.encodeTimestamp(ats[0].Timestamp),
 			SSRC:           e.ssrc,
 			Marker:         true,
 		},

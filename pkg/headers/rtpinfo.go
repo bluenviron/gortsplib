@@ -8,7 +8,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-// RTPInfoEntry is an entry of an RTP-Info header.
+// RTPInfoEntry is an entry of a RTP-Info header.
 type RTPInfoEntry struct {
 	URL            *base.URL
 	SequenceNumber *uint16

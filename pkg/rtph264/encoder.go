@@ -2,6 +2,7 @@ package rtph264
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -57,19 +58,22 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 }
 
 // Encode encodes NALUs into RTP/H264 packets.
-// It always returns at least one RTP/H264 packet.
-// RTP/H264 packets can be:
-// * single
-// * fragmented (FU-A)
-// * aggregated (STAP-A)
+// It can return:
+// * a single packets
+// * multiple fragmented packets (FU-A)
+// * an aggregated packet (STAP-A)
 func (e *Encoder) Encode(nts []*NALUAndTimestamp) ([][]byte, error) {
 	var rets [][]byte
 	var batch []*NALUAndTimestamp
 
 	// split packets into batches
 	for _, nt := range nts {
-		// packets can be contained into a single aggregation unit
-		if e.lenAggregated(batch, nt) < rtpPayloadMaxSize {
+		if len(batch) > 0 && batch[0].Timestamp != nt.Timestamp {
+			return nil, fmt.Errorf("encoding NALUs with different timestamps is unimplemented")
+		}
+
+		// packets can be contained into a single aggregation packet
+		if e.lenAggregated(batch, nt) <= rtpPayloadMaxSize {
 			// add packet to batch
 			batch = append(batch, nt)
 
@@ -202,12 +206,12 @@ func (e *Encoder) lenAggregated(batch []*NALUAndTimestamp, additionalEl *NALUAnd
 
 	for _, bnt := range batch {
 		ret += 2             // size
-		ret += len(bnt.NALU) // unit
+		ret += len(bnt.NALU) // nalu
 	}
 
 	if additionalEl != nil {
 		ret += 2                      // size
-		ret += len(additionalEl.NALU) // unit
+		ret += len(additionalEl.NALU) // nalu
 	}
 
 	return ret
@@ -215,14 +219,18 @@ func (e *Encoder) lenAggregated(batch []*NALUAndTimestamp, additionalEl *NALUAnd
 
 func (e *Encoder) writeAggregated(nts []*NALUAndTimestamp) ([][]byte, error) {
 	payload := make([]byte, e.lenAggregated(nts, nil))
-	payload[0] = uint8(codech264.NALUTypeStapA) // header
+
+	// header
+	payload[0] = uint8(codech264.NALUTypeStapA)
 	pos := 1
 
 	for _, nt := range nts {
+		// size
 		naluLen := len(nt.NALU)
 		binary.BigEndian.PutUint16(payload[pos:], uint16(naluLen))
 		pos += 2
 
+		// nalu
 		copy(payload[pos:], nt.NALU)
 		pos += naluLen
 	}

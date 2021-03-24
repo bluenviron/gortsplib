@@ -56,7 +56,7 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / rtpClockRate
 }
 
-// Decode decodes NALUs from RTP/H264 packets.
+// Decode decodes NALUs from a RTP/H264 packet.
 // It can return:
 // * no NALUs and ErrMorePacketsNeeded
 // * one NALU (in case of FU-A)

@@ -26,7 +26,7 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / d.clockRate
 }
 
-// Decode decodes one or multiple AUs from an RTP/AAC packet.
+// Decode decodes AUs from a RTP/AAC packet.
 func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 	pkt := rtp.Packet{}
 	err := pkt.Unmarshal(byts)
@@ -67,6 +67,7 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 	ts := d.decodeTimestamp(pkt.Timestamp)
 	rets := make([]*AUAndTimestamp, len(dataSizes))
 
+	// AUs
 	for i, ds := range dataSizes {
 		if len(pkt.Payload) < int(ds) {
 			return nil, fmt.Errorf("payload is too short")
