@@ -50,20 +50,7 @@ func (c *ClientConn) RTPInfo() *headers.RTPInfo {
 	return c.rtpInfo
 }
 
-func (c *ClientConn) backgroundPlayUDP(done chan error) {
-	defer close(c.backgroundDone)
-
-	var returnError error
-
-	defer func() {
-		for trackID := range c.udpRTPListeners {
-			c.udpRTPListeners[trackID].stop()
-			c.udpRTCPListeners[trackID].stop()
-		}
-
-		done <- returnError
-	}()
-
+func (c *ClientConn) backgroundPlayUDP() error {
 	// open the firewall by sending packets to the counterpart
 	for trackID := range c.udpRTPListeners {
 		c.udpRTPListeners[trackID].write(
@@ -77,6 +64,13 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 		c.udpRTPListeners[trackID].start()
 		c.udpRTCPListeners[trackID].start()
 	}
+
+	defer func() {
+		for trackID := range c.udpRTPListeners {
+			c.udpRTPListeners[trackID].stop()
+			c.udpRTCPListeners[trackID].stop()
+		}
+	}()
 
 	// disable deadline
 	c.nconn.SetReadDeadline(time.Time{})
@@ -107,8 +101,7 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 		case <-c.backgroundTerminate:
 			c.nconn.SetReadDeadline(time.Now())
 			<-readerDone
-			returnError = fmt.Errorf("terminated")
-			return
+			return fmt.Errorf("terminated")
 
 		case <-reportTicker.C:
 			now := time.Now()
@@ -133,8 +126,7 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 			if err != nil {
 				c.nconn.SetReadDeadline(time.Now())
 				<-readerDone
-				returnError = err
-				return
+				return err
 			}
 
 		case <-checkStreamTicker.C:
@@ -146,27 +138,17 @@ func (c *ClientConn) backgroundPlayUDP(done chan error) {
 				if now.Sub(last) >= c.conf.ReadTimeout {
 					c.nconn.SetReadDeadline(time.Now())
 					<-readerDone
-					returnError = liberrors.ErrClientNoUDPPacketsRecently{}
-					return
+					return liberrors.ErrClientNoUDPPacketsRecently{}
 				}
 			}
 
 		case err := <-readerDone:
-			returnError = err
-			return
+			return err
 		}
 	}
 }
 
-func (c *ClientConn) backgroundPlayTCP(done chan error) {
-	defer close(c.backgroundDone)
-
-	var returnError error
-
-	defer func() {
-		done <- returnError
-	}()
-
+func (c *ClientConn) backgroundPlayTCP() error {
 	readerDone := make(chan error)
 	go func() {
 		for {
@@ -201,8 +183,7 @@ func (c *ClientConn) backgroundPlayTCP(done chan error) {
 		case <-c.backgroundTerminate:
 			c.nconn.SetReadDeadline(time.Now())
 			<-readerDone
-			returnError = fmt.Errorf("terminated")
-			return
+			return fmt.Errorf("terminated")
 
 		case <-reportTicker.C:
 			now := time.Now()
@@ -218,8 +199,7 @@ func (c *ClientConn) backgroundPlayTCP(done chan error) {
 			}
 
 		case err := <-readerDone:
-			returnError = err
-			return
+			return err
 		}
 	}
 }
@@ -244,11 +224,15 @@ func (c *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan erro
 	c.backgroundTerminate = make(chan struct{})
 	c.backgroundDone = make(chan struct{})
 
-	if *c.streamProtocol == StreamProtocolUDP {
-		go c.backgroundPlayUDP(done)
-	} else {
-		go c.backgroundPlayTCP(done)
-	}
+	go func() {
+		defer close(c.backgroundDone)
+
+		if *c.streamProtocol == StreamProtocolUDP {
+			done <- c.backgroundPlayUDP()
+		} else {
+			done <- c.backgroundPlayTCP()
+		}
+	}()
 
 	return done
 }

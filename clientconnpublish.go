@@ -54,46 +54,7 @@ func (c *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 	return res, nil
 }
 
-// Record writes a RECORD request and reads a Response.
-// This can be called only after Announce() and Setup().
-func (c *ClientConn) Record() (*base.Response, error) {
-	err := c.checkState(map[clientConnState]struct{}{
-		clientConnStatePreRecord: {},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := c.Do(&base.Request{
-		Method: base.Record,
-		URL:    c.streamURL,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if res.StatusCode != base.StatusOK {
-		return nil, liberrors.ErrClientWrongStatusCode{
-			Code: res.StatusCode, Message: res.StatusMessage}
-	}
-
-	c.state = clientConnStateRecord
-	c.publishOpen = true
-	c.backgroundTerminate = make(chan struct{})
-	c.backgroundDone = make(chan struct{})
-
-	if *c.streamProtocol == StreamProtocolUDP {
-		go c.backgroundRecordUDP()
-	} else {
-		go c.backgroundRecordTCP()
-	}
-
-	return nil, nil
-}
-
 func (c *ClientConn) backgroundRecordUDP() {
-	defer close(c.backgroundDone)
-
 	defer func() {
 		c.publishWriteMutex.Lock()
 		defer c.publishWriteMutex.Unlock()
@@ -145,8 +106,6 @@ func (c *ClientConn) backgroundRecordUDP() {
 }
 
 func (c *ClientConn) backgroundRecordTCP() {
-	defer close(c.backgroundDone)
-
 	defer func() {
 		c.publishWriteMutex.Lock()
 		defer c.publishWriteMutex.Unlock()
@@ -179,6 +138,47 @@ func (c *ClientConn) backgroundRecordTCP() {
 			c.publishWriteMutex.Unlock()
 		}
 	}
+}
+
+// Record writes a RECORD request and reads a Response.
+// This can be called only after Announce() and Setup().
+func (c *ClientConn) Record() (*base.Response, error) {
+	err := c.checkState(map[clientConnState]struct{}{
+		clientConnStatePreRecord: {},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.Do(&base.Request{
+		Method: base.Record,
+		URL:    c.streamURL,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != base.StatusOK {
+		return nil, liberrors.ErrClientWrongStatusCode{
+			Code: res.StatusCode, Message: res.StatusMessage}
+	}
+
+	c.state = clientConnStateRecord
+	c.publishOpen = true
+	c.backgroundTerminate = make(chan struct{})
+	c.backgroundDone = make(chan struct{})
+
+	go func() {
+		defer close(c.backgroundDone)
+
+		if *c.streamProtocol == StreamProtocolUDP {
+			c.backgroundRecordUDP()
+		} else {
+			c.backgroundRecordTCP()
+		}
+	}()
+
+	return nil, nil
 }
 
 // WriteFrame writes a frame.
