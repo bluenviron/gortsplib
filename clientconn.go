@@ -122,44 +122,22 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 		conf.ListenPacket = net.ListenPacket
 	}
 
-	if scheme != "rtsp" && scheme != "rtsps" {
-		return nil, fmt.Errorf("unsupported scheme '%s'", scheme)
-	}
-
-	v := StreamProtocolUDP
-	if scheme == "rtsps" && conf.StreamProtocol == &v {
-		return nil, fmt.Errorf("RTSPS can't be used with UDP")
-	}
-
-	if !strings.Contains(host, ":") {
-		host += ":554"
-	}
-
-	nconn, err := conf.DialTimeout("tcp", host, conf.ReadTimeout)
-	if err != nil {
-		return nil, err
-	}
-
-	conn := func() net.Conn {
-		if scheme == "rtsps" {
-			return tls.Client(nconn, conf.TLSConfig)
-		}
-		return nconn
-	}()
-
-	return &ClientConn{
+	c := &ClientConn{
 		conf:             conf,
-		nconn:            nconn,
-		isTLS:            (scheme == "rtsps"),
-		br:               bufio.NewReaderSize(conn, clientConnReadBufferSize),
-		bw:               bufio.NewWriterSize(conn, clientConnWriteBufferSize),
 		udpRTPListeners:  make(map[int]*clientConnUDPListener),
 		udpRTCPListeners: make(map[int]*clientConnUDPListener),
 		rtcpReceivers:    make(map[int]*rtcpreceiver.RTCPReceiver),
 		tcpFrameBuffer:   multibuffer.New(uint64(conf.ReadBufferCount), uint64(conf.ReadBufferSize)),
 		rtcpSenders:      make(map[int]*rtcpsender.RTCPSender),
 		publishError:     fmt.Errorf("not running"),
-	}, nil
+	}
+
+	err := c.connOpen(scheme, host)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
 // Close closes all the ClientConn resources.
@@ -183,7 +161,49 @@ func (c *ClientConn) Close() error {
 		l.close()
 	}
 
+	return c.connClose()
+}
+
+func (c *ClientConn) connOpen(scheme string, host string) error {
+	if scheme != "rtsp" && scheme != "rtsps" {
+		return fmt.Errorf("unsupported scheme '%s'", scheme)
+	}
+
+	v := StreamProtocolUDP
+	if scheme == "rtsps" && c.conf.StreamProtocol == &v {
+		return fmt.Errorf("RTSPS can't be used with UDP")
+	}
+
+	if !strings.Contains(host, ":") {
+		host += ":554"
+	}
+
+	nconn, err := c.conf.DialTimeout("tcp", host, c.conf.ReadTimeout)
+	if err != nil {
+		return err
+	}
+
+	conn := func() net.Conn {
+		if scheme == "rtsps" {
+			return tls.Client(nconn, c.conf.TLSConfig)
+		}
+		return nconn
+	}()
+
+	c.nconn = nconn
+	c.isTLS = (scheme == "rtsps")
+	c.br = bufio.NewReaderSize(conn, clientConnReadBufferSize)
+	c.bw = bufio.NewWriterSize(conn, clientConnWriteBufferSize)
+	return nil
+}
+
+func (c *ClientConn) connClose() error {
+	if c.nconn == nil {
+		return nil
+	}
+
 	err := c.nconn.Close()
+	c.nconn = nil
 	return err
 }
 
@@ -366,18 +386,17 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 			res.StatusCode <= base.StatusUseProxy &&
 			len(res.Header["Location"]) == 1 {
 
-			c.Close()
+			c.connClose()
 
 			u, err := base.ParseURL(res.Header["Location"][0])
 			if err != nil {
 				return nil, nil, err
 			}
 
-			nc, err := c.conf.Dial(u.Scheme, u.Host)
+			err = c.connOpen(u.Scheme, u.Host)
 			if err != nil {
 				return nil, nil, err
 			}
-			*c = *nc //nolint:govet
 
 			_, err = c.Options(u)
 			if err != nil {
