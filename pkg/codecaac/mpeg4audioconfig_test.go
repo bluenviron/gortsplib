@@ -12,6 +12,15 @@ var configCases = []struct {
 	dec  MPEG4AudioConfig
 }{
 	{
+		name: "aac-lc 44.1khz mono",
+		enc:  []byte{0x12, 0x08, 0x56, 0xe5, 0x00},
+		dec: MPEG4AudioConfig{
+			Type:         MPEG4AudioTypeAACLC,
+			SampleRate:   44100,
+			ChannelCount: 1,
+		},
+	},
+	{
 		name: "aac-lc 48khz stereo",
 		enc:  []byte{17, 144},
 		dec: MPEG4AudioConfig{
