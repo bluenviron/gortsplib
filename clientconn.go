@@ -81,11 +81,10 @@ type ClientConn struct {
 	getParameterSupported bool
 
 	// read only
-	rtpInfo           *headers.RTPInfo
-	rtcpReceivers     map[int]*rtcpreceiver.RTCPReceiver
-	udpLastFrameTimes map[int]*int64
-	tcpFrameBuffer    *multibuffer.MultiBuffer
-	readCB            func(int, StreamType, []byte)
+	rtpInfo        *headers.RTPInfo
+	rtcpReceivers  map[int]*rtcpreceiver.RTCPReceiver
+	tcpFrameBuffer *multibuffer.MultiBuffer
+	readCB         func(int, StreamType, []byte)
 
 	// publish only
 	rtcpSenders       map[int]*rtcpsender.RTCPSender
@@ -149,18 +148,17 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 	}()
 
 	return &ClientConn{
-		conf:              conf,
-		nconn:             nconn,
-		isTLS:             (scheme == "rtsps"),
-		br:                bufio.NewReaderSize(conn, clientConnReadBufferSize),
-		bw:                bufio.NewWriterSize(conn, clientConnWriteBufferSize),
-		udpRTPListeners:   make(map[int]*clientConnUDPListener),
-		udpRTCPListeners:  make(map[int]*clientConnUDPListener),
-		rtcpReceivers:     make(map[int]*rtcpreceiver.RTCPReceiver),
-		udpLastFrameTimes: make(map[int]*int64),
-		tcpFrameBuffer:    multibuffer.New(uint64(conf.ReadBufferCount), uint64(conf.ReadBufferSize)),
-		rtcpSenders:       make(map[int]*rtcpsender.RTCPSender),
-		publishError:      fmt.Errorf("not running"),
+		conf:             conf,
+		nconn:            nconn,
+		isTLS:            (scheme == "rtsps"),
+		br:               bufio.NewReaderSize(conn, clientConnReadBufferSize),
+		bw:               bufio.NewWriterSize(conn, clientConnWriteBufferSize),
+		udpRTPListeners:  make(map[int]*clientConnUDPListener),
+		udpRTCPListeners: make(map[int]*clientConnUDPListener),
+		rtcpReceivers:    make(map[int]*rtcpreceiver.RTCPReceiver),
+		tcpFrameBuffer:   multibuffer.New(uint64(conf.ReadBufferCount), uint64(conf.ReadBufferSize)),
+		rtcpSenders:      make(map[int]*rtcpsender.RTCPSender),
+		publishError:     fmt.Errorf("not running"),
 	}, nil
 }
 
@@ -612,11 +610,6 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 
 	if mode == headers.TransportModePlay {
 		c.rtcpReceivers[track.ID] = rtcpreceiver.New(nil, clockRate)
-
-		if proto == StreamProtocolUDP {
-			v := time.Now().Unix()
-			c.udpLastFrameTimes[track.ID] = &v
-		}
 	} else {
 		c.rtcpSenders[track.ID] = rtcpsender.New(clockRate)
 	}

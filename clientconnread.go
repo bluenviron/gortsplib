@@ -130,16 +130,25 @@ func (c *ClientConn) backgroundPlayUDP() error {
 			}
 
 		case <-checkStreamTicker.C:
-			now := time.Now()
+			inTimeout := func() bool {
+				now := time.Now()
+				for trackID := range c.udpRTPListeners {
+					last := time.Unix(atomic.LoadInt64(c.udpRTPListeners[trackID].lastFrameTime), 0)
+					if now.Sub(last) < c.conf.ReadTimeout {
+						return false
+					}
 
-			for _, lastUnix := range c.udpLastFrameTimes {
-				last := time.Unix(atomic.LoadInt64(lastUnix), 0)
-
-				if now.Sub(last) >= c.conf.ReadTimeout {
-					c.nconn.SetReadDeadline(time.Now())
-					<-readerDone
-					return liberrors.ErrClientNoUDPPacketsRecently{}
+					last = time.Unix(atomic.LoadInt64(c.udpRTCPListeners[trackID].lastFrameTime), 0)
+					if now.Sub(last) < c.conf.ReadTimeout {
+						return false
+					}
 				}
+				return true
+			}()
+			if inTimeout {
+				c.nconn.SetReadDeadline(time.Now())
+				<-readerDone
+				return liberrors.ErrClientNoUDPPacketsRecently{}
 			}
 
 		case err := <-readerDone:

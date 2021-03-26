@@ -15,15 +15,16 @@ const (
 )
 
 type clientConnUDPListener struct {
-	c              *ClientConn
-	pc             net.PacketConn
-	remoteIP       net.IP
-	remoteZone     string
-	remotePort     int
-	udpFrameBuffer *multibuffer.MultiBuffer
-	trackID        int
-	streamType     StreamType
-	running        bool
+	c             *ClientConn
+	pc            net.PacketConn
+	remoteIP      net.IP
+	remoteZone    string
+	remotePort    int
+	trackID       int
+	streamType    StreamType
+	running       bool
+	frameBuffer   *multibuffer.MultiBuffer
+	lastFrameTime *int64
 
 	done chan struct{}
 }
@@ -40,9 +41,13 @@ func newClientConnUDPListener(c *ClientConn, port int) (*clientConnUDPListener, 
 	}
 
 	return &clientConnUDPListener{
-		c:              c,
-		pc:             pc,
-		udpFrameBuffer: multibuffer.New(uint64(c.conf.ReadBufferCount), uint64(c.conf.ReadBufferSize)),
+		c:           c,
+		pc:          pc,
+		frameBuffer: multibuffer.New(uint64(c.conf.ReadBufferCount), uint64(c.conf.ReadBufferSize)),
+		lastFrameTime: func() *int64 {
+			v := time.Now().Unix()
+			return &v
+		}(),
 	}, nil
 }
 
@@ -69,7 +74,7 @@ func (l *clientConnUDPListener) run() {
 	defer close(l.done)
 
 	for {
-		buf := l.udpFrameBuffer.Next()
+		buf := l.frameBuffer.Next()
 		n, addr, err := l.pc.ReadFrom(buf)
 		if err != nil {
 			return
@@ -82,9 +87,8 @@ func (l *clientConnUDPListener) run() {
 		}
 
 		now := time.Now()
-		atomic.StoreInt64(l.c.udpLastFrameTimes[l.trackID], now.Unix())
+		atomic.StoreInt64(l.lastFrameTime, now.Unix())
 		l.c.rtcpReceivers[l.trackID].ProcessFrame(now, l.streamType, buf[:n])
-
 		l.c.readCB(l.trackID, l.streamType, buf[:n])
 	}
 }
