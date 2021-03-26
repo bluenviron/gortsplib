@@ -45,7 +45,7 @@ func newClientConnUDPListener(c *ClientConn, port int) (*clientConnUDPListener, 
 		pc:          pc,
 		frameBuffer: multibuffer.New(uint64(c.conf.ReadBufferCount), uint64(c.conf.ReadBufferSize)),
 		lastFrameTime: func() *int64 {
-			v := time.Now().Unix()
+			v := int64(0)
 			return &v
 		}(),
 	}, nil

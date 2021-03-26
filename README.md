@@ -13,19 +13,26 @@ Go &ge; 1.14 is required.
 Features:
 
 * Client
-  * Read streams from servers with UDP or TCP
-  * Publish streams to servers with UDP or TCP
-  * Encrypt streams with TLS (RTSPS)
-  * Query servers about published streams
-  * Read only selected tracks of a stream
-  * Pause reading or publishing without disconnecting from the server
+  * General
+    * Query servers about published streams
+    * Encrypt connection with TLS (RTSPS)
+  * Reading
+    * Read streams from servers with UDP or TCP
+    * Select protocol automatically
+    * Read only selected tracks of a stream
+    * Pause reading without disconnecting from the server
+    * Generate RTCP receiver reports automatically
+  * Publishing
+    * Publish streams to servers with UDP or TCP
+    * Pause publishing without disconnecting from the server
+    * Generate RTCP sender reports automatically
 * Server
   * Handle requests from clients
   * Read streams from clients with UDP or TCP
-  * Send streams to clients with UDP or TCP
+  * Write streams to clients with UDP or TCP
   * Encrypt streams with TLS (RTSPS)
+  * Generate RTCP sender and receiver reports automatically
 * General
-  * RTCP reports are generated automatically
   * Encode and decode RTSP primitives, RTP/H264, RTP/AAC, SDP
 
 ## Table of contents

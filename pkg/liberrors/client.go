@@ -139,7 +139,16 @@ type ErrClientNoUDPPacketsRecently struct{}
 
 // Error implements the error interface.
 func (e ErrClientNoUDPPacketsRecently) Error() string {
-	return "no UDP packets received recently (maybe there's a firewall/NAT in between)"
+	return "no UDP packets received (maybe there's a firewall/NAT in between)"
+}
+
+// ErrClientUDPTimeout is returned when UDP packets have been received previously
+// but now nothing is being received.
+type ErrClientUDPTimeout struct{}
+
+// Error implements the error interface.
+func (e ErrClientUDPTimeout) Error() string {
+	return "UDP timeout"
 }
 
 // ErrClientRTPInfoInvalid is returned in case of an invalid RTP-Info.

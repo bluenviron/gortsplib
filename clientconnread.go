@@ -93,8 +93,11 @@ func (c *ClientConn) backgroundPlayUDP() error {
 	keepaliveTicker := time.NewTicker(clientConnUDPKeepalivePeriod)
 	defer keepaliveTicker.Stop()
 
-	checkStreamTicker := time.NewTicker(clientConnUDPCheckStreamPeriod)
-	defer checkStreamTicker.Stop()
+	checkStreamInitial := true
+	checkStreamTicker := time.NewTicker(c.conf.InitialUDPReadTimeout)
+	defer func() {
+		checkStreamTicker.Stop()
+	}()
 
 	for {
 		select {
@@ -130,25 +133,55 @@ func (c *ClientConn) backgroundPlayUDP() error {
 			}
 
 		case <-checkStreamTicker.C:
-			inTimeout := func() bool {
-				now := time.Now()
-				for trackID := range c.udpRTPListeners {
-					last := time.Unix(atomic.LoadInt64(c.udpRTPListeners[trackID].lastFrameTime), 0)
-					if now.Sub(last) < c.conf.ReadTimeout {
-						return false
-					}
+			if checkStreamInitial {
+				// check that at least one packet has been received
+				inTimeout := func() bool {
+					for trackID := range c.udpRTPListeners {
+						lft := atomic.LoadInt64(c.udpRTPListeners[trackID].lastFrameTime)
+						if lft != 0 {
+							fmt.Println("LFT", lft)
+							return false
+						}
 
-					last = time.Unix(atomic.LoadInt64(c.udpRTCPListeners[trackID].lastFrameTime), 0)
-					if now.Sub(last) < c.conf.ReadTimeout {
-						return false
+						lft = atomic.LoadInt64(c.udpRTCPListeners[trackID].lastFrameTime)
+						if lft != 0 {
+							fmt.Println("LFT", lft)
+							return false
+						}
 					}
+					return true
+				}()
+				if inTimeout {
+					c.nconn.SetReadDeadline(time.Now())
+					<-readerDone
+					return liberrors.ErrClientNoUDPPacketsRecently{}
 				}
-				return true
-			}()
-			if inTimeout {
-				c.nconn.SetReadDeadline(time.Now())
-				<-readerDone
-				return liberrors.ErrClientNoUDPPacketsRecently{}
+
+				checkStreamInitial = false
+				checkStreamTicker.Stop()
+				checkStreamTicker = time.NewTicker(clientConnUDPCheckStreamPeriod)
+
+			} else {
+				inTimeout := func() bool {
+					now := time.Now()
+					for trackID := range c.udpRTPListeners {
+						lft := atomic.LoadInt64(c.udpRTPListeners[trackID].lastFrameTime)
+						if now.Sub(time.Unix(lft, 0)) < c.conf.ReadTimeout {
+							return false
+						}
+
+						lft = atomic.LoadInt64(c.udpRTCPListeners[trackID].lastFrameTime)
+						if now.Sub(time.Unix(lft, 0)) < c.conf.ReadTimeout {
+							return false
+						}
+					}
+					return true
+				}()
+				if inTimeout {
+					c.nconn.SetReadDeadline(time.Now())
+					<-readerDone
+					return liberrors.ErrClientUDPTimeout{}
+				}
 			}
 
 		case err := <-readerDone:
@@ -181,7 +214,7 @@ func (c *ClientConn) backgroundPlayTCP() error {
 	// for some reason, SetReadDeadline() must always be called in the same
 	// goroutine, otherwise Read() freezes.
 	// therefore, we call it with a ticker.
-	deadlineTicker := time.NewTicker(1 * time.Second)
+	deadlineTicker := time.NewTicker(clientConnTCPSetDeadlinePeriod)
 	defer deadlineTicker.Stop()
 
 	for {
@@ -234,11 +267,55 @@ func (c *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan erro
 	c.backgroundDone = make(chan struct{})
 
 	go func() {
-		defer close(c.backgroundDone)
-
 		if *c.streamProtocol == StreamProtocolUDP {
-			done <- c.backgroundPlayUDP()
+			err := c.backgroundPlayUDP()
+			close(c.backgroundDone)
+
+			// automatically change protocol in case of timeout
+			if _, ok := err.(liberrors.ErrClientNoUDPPacketsRecently); ok {
+				if c.conf.StreamProtocol == nil {
+					err := func() error {
+						u := c.streamURL
+						tracks := c.tracks
+						c.reset()
+						v := StreamProtocolTCP
+						c.streamProtocol = &v
+
+						err := c.connOpen(u.Scheme, u.Host)
+						if err != nil {
+							return err
+						}
+
+						_, err = c.Options(u)
+						if err != nil {
+							c.Close()
+							return err
+						}
+
+						for _, track := range tracks {
+							_, err := c.Setup(headers.TransportModePlay, track, 0, 0)
+							if err != nil {
+								c.Close()
+								return err
+							}
+						}
+
+						_, err = c.Play()
+						if err != nil {
+							c.Close()
+							return err
+						}
+
+						return <-c.ReadFrames(onFrame)
+					}()
+					done <- err
+				}
+			}
+
+			done <- err
+
 		} else {
+			defer close(c.backgroundDone)
 			done <- c.backgroundPlayTCP()
 		}
 	}()

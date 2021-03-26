@@ -32,8 +32,9 @@ const (
 	clientConnWriteBufferSize      = 4096
 	clientConnReceiverReportPeriod = 10 * time.Second
 	clientConnSenderReportPeriod   = 10 * time.Second
-	clientConnUDPCheckStreamPeriod = 5 * time.Second
+	clientConnUDPCheckStreamPeriod = 1 * time.Second
 	clientConnUDPKeepalivePeriod   = 30 * time.Second
+	clientConnTCPSetDeadlinePeriod = 1 * time.Second
 )
 
 type clientConnState int
@@ -106,12 +107,16 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 	if conf.ReadTimeout == 0 {
 		conf.ReadTimeout = 10 * time.Second
 	}
+	if conf.InitialUDPReadTimeout == 0 {
+		conf.InitialUDPReadTimeout = 3 * time.Second
+	}
 	if conf.WriteTimeout == 0 {
 		conf.WriteTimeout = 10 * time.Second
 	}
 	if conf.ReadBufferCount == 0 {
 		conf.ReadBufferCount = 1
 	}
+
 	if conf.ReadBufferSize == 0 {
 		conf.ReadBufferSize = 2048
 	}
@@ -126,9 +131,6 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 		conf:             conf,
 		udpRTPListeners:  make(map[int]*clientConnUDPListener),
 		udpRTCPListeners: make(map[int]*clientConnUDPListener),
-		rtcpReceivers:    make(map[int]*rtcpreceiver.RTCPReceiver),
-		tcpFrameBuffer:   multibuffer.New(uint64(conf.ReadBufferCount), uint64(conf.ReadBufferSize)),
-		rtcpSenders:      make(map[int]*rtcpsender.RTCPSender),
 		publishError:     fmt.Errorf("not running"),
 	}
 
@@ -161,7 +163,30 @@ func (c *ClientConn) Close() error {
 		l.close()
 	}
 
-	return c.connClose()
+	if c.nconn != nil {
+		c.nconn.Close()
+	}
+
+	return nil
+}
+
+func (c *ClientConn) reset() {
+	c.Close()
+
+	c.state = clientConnStateInitial
+	c.nconn = nil
+	c.streamURL = nil
+	c.streamProtocol = nil
+	c.tracks = nil
+	c.udpRTPListeners = make(map[int]*clientConnUDPListener)
+	c.udpRTCPListeners = make(map[int]*clientConnUDPListener)
+	c.getParameterSupported = false
+
+	// read only
+	c.rtpInfo = nil
+	c.rtcpReceivers = nil
+	c.tcpFrameBuffer = nil
+	c.readCB = nil
 }
 
 func (c *ClientConn) connOpen(scheme string, host string) error {
@@ -195,16 +220,6 @@ func (c *ClientConn) connOpen(scheme string, host string) error {
 	c.br = bufio.NewReaderSize(conn, clientConnReadBufferSize)
 	c.bw = bufio.NewWriterSize(conn, clientConnWriteBufferSize)
 	return nil
-}
-
-func (c *ClientConn) connClose() error {
-	if c.nconn == nil {
-		return nil
-	}
-
-	err := c.nconn.Close()
-	c.nconn = nil
-	return err
 }
 
 func (c *ClientConn) checkState(allowed map[clientConnState]struct{}) error {
@@ -269,15 +284,23 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 		return nil, nil
 	}
 
-	// read the response and ignore interleaved frames in between;
-	// interleaved frames are sent in two situations:
-	// * when the server is v4lrtspserver, before the PLAY response
-	// * when the stream is already playing
 	var res base.Response
 	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
-	err = res.ReadIgnoreFrames(c.br, c.tcpFrameBuffer.Next())
-	if err != nil {
-		return nil, err
+
+	if c.tcpFrameBuffer != nil {
+		// read the response and ignore interleaved frames in between;
+		// interleaved frames are sent in two scenarios:
+		// * when the server is v4lrtspserver, before the PLAY response
+		// * when the stream is already playing
+		err = res.ReadIgnoreFrames(c.br, c.tcpFrameBuffer.Next())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = res.Read(c.br)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if c.conf.OnResponse != nil {
@@ -386,7 +409,7 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 			res.StatusCode <= base.StatusUseProxy &&
 			len(res.Header["Location"]) == 1 {
 
-			c.connClose()
+			c.reset()
 
 			u, err := base.ParseURL(res.Header["Location"][0])
 			if err != nil {
@@ -460,7 +483,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	}
 
 	proto := func() StreamProtocol {
-		// protocol set by previous Setup()
+		// protocol set by previous Setup() or ReadFrames()
 		if c.streamProtocol != nil {
 			return *c.streamProtocol
 		}
@@ -628,8 +651,14 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	clockRate, _ := track.ClockRate()
 
 	if mode == headers.TransportModePlay {
+		if c.rtcpReceivers == nil {
+			c.rtcpReceivers = make(map[int]*rtcpreceiver.RTCPReceiver)
+		}
 		c.rtcpReceivers[track.ID] = rtcpreceiver.New(nil, clockRate)
 	} else {
+		if c.rtcpSenders == nil {
+			c.rtcpSenders = make(map[int]*rtcpsender.RTCPSender)
+		}
 		c.rtcpSenders[track.ID] = rtcpsender.New(clockRate)
 	}
 
@@ -659,6 +688,11 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 
 	if mode == headers.TransportModePlay {
 		c.state = clientConnStatePrePlay
+
+		if *c.streamProtocol == StreamProtocolTCP && c.tcpFrameBuffer == nil {
+			c.tcpFrameBuffer = multibuffer.New(uint64(c.conf.ReadBufferCount), uint64(c.conf.ReadBufferSize))
+		}
+
 	} else {
 		c.state = clientConnStatePreRecord
 	}

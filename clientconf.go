@@ -52,6 +52,11 @@ type ClientConf struct {
 	// It defaults to 10 seconds.
 	ReadTimeout time.Duration
 
+	// If the client is reading with UDP, it must receive
+	// at least a packet within this timeout.
+	// It defaults to 3 seconds.
+	InitialUDPReadTimeout time.Duration
+
 	// timeout of write operations.
 	// It defaults to 10 seconds.
 	WriteTimeout time.Duration
