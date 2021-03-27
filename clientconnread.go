@@ -139,13 +139,11 @@ func (c *ClientConn) backgroundPlayUDP() error {
 					for trackID := range c.udpRTPListeners {
 						lft := atomic.LoadInt64(c.udpRTPListeners[trackID].lastFrameTime)
 						if lft != 0 {
-							fmt.Println("LFT", lft)
 							return false
 						}
 
 						lft = atomic.LoadInt64(c.udpRTCPListeners[trackID].lastFrameTime)
 						if lft != 0 {
-							fmt.Println("LFT", lft)
 							return false
 						}
 					}
