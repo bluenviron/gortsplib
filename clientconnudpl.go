@@ -88,7 +88,7 @@ func (l *clientConnUDPListener) run() {
 
 		now := time.Now()
 		atomic.StoreInt64(l.lastFrameTime, now.Unix())
-		l.cc.rtcpReceivers[l.trackID].ProcessFrame(now, l.streamType, buf[:n])
+		l.cc.tracks[l.trackID].rtcpReceiver.ProcessFrame(now, l.streamType, buf[:n])
 		l.cc.readCB(l.trackID, l.streamType, buf[:n])
 	}
 }

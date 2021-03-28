@@ -116,8 +116,8 @@ func (s ServerConnState) String() string {
 
 // ServerConnSetuppedTrack is a setupped track of a ServerConn.
 type ServerConnSetuppedTrack struct {
-	rtpPort  int
-	rtcpPort int
+	udpRTPPort  int
+	udpRTCPPort int
 }
 
 // ServerConnAnnouncedTrack is an announced track of a ServerConn.
@@ -390,7 +390,7 @@ func (sc *ServerConn) frameModeEnable() {
 		} else {
 			// readers can send RTCP frames, they cannot sent RTP frames
 			for trackID, track := range sc.setuppedTracks {
-				sc.udpRTCPListener.addClient(sc.ip(), track.rtcpPort, sc, trackID, false)
+				sc.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, false)
 			}
 		}
 
@@ -401,8 +401,8 @@ func (sc *ServerConn) frameModeEnable() {
 
 		} else {
 			for trackID, track := range sc.setuppedTracks {
-				sc.udpRTPListener.addClient(sc.ip(), track.rtpPort, sc, trackID, true)
-				sc.udpRTCPListener.addClient(sc.ip(), track.rtcpPort, sc, trackID, true)
+				sc.udpRTPListener.addClient(sc.ip(), track.udpRTPPort, sc, trackID, true)
+				sc.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, true)
 
 				// open the firewall by sending packets to the counterpart
 				sc.WriteFrame(trackID, StreamTypeRTP,
@@ -428,7 +428,7 @@ func (sc *ServerConn) frameModeDisable() {
 
 		} else {
 			for _, track := range sc.setuppedTracks {
-				sc.udpRTCPListener.removeClient(sc.ip(), track.rtcpPort)
+				sc.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
 			}
 		}
 
@@ -446,8 +446,8 @@ func (sc *ServerConn) frameModeDisable() {
 
 		} else {
 			for _, track := range sc.setuppedTracks {
-				sc.udpRTPListener.removeClient(sc.ip(), track.rtpPort)
-				sc.udpRTCPListener.removeClient(sc.ip(), track.rtcpPort)
+				sc.udpRTPListener.removeClient(sc.ip(), track.udpRTPPort)
+				sc.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
 			}
 		}
 	}
@@ -761,8 +761,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 				if th.Protocol == StreamProtocolUDP {
 					sc.setuppedTracks[trackID] = ServerConnSetuppedTrack{
-						rtpPort:  th.ClientPorts[0],
-						rtcpPort: th.ClientPorts[1],
+						udpRTPPort:  th.ClientPorts[0],
+						udpRTCPPort: th.ClientPorts[1],
 					}
 
 					if res.Header == nil {
@@ -1157,7 +1157,7 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 			sc.udpRTPListener.write(payload, &net.UDPAddr{
 				IP:   sc.ip(),
 				Zone: sc.zone(),
-				Port: track.rtpPort,
+				Port: track.udpRTPPort,
 			})
 			return
 		}
@@ -1165,7 +1165,7 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		sc.udpRTCPListener.write(payload, &net.UDPAddr{
 			IP:   sc.ip(),
 			Zone: sc.zone(),
-			Port: track.rtcpPort,
+			Port: track.udpRTCPPort,
 		})
 		return
 	}

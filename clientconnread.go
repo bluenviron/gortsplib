@@ -52,23 +52,23 @@ func (cc *ClientConn) RTPInfo() *headers.RTPInfo {
 
 func (cc *ClientConn) backgroundPlayUDP() error {
 	// open the firewall by sending packets to the counterpart
-	for trackID := range cc.udpRTPListeners {
-		cc.udpRTPListeners[trackID].write(
+	for _, cct := range cc.tracks {
+		cct.udpRTPListener.write(
 			[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
-		cc.udpRTCPListeners[trackID].write(
+		cct.udpRTCPListener.write(
 			[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 	}
 
-	for trackID := range cc.udpRTPListeners {
-		cc.udpRTPListeners[trackID].start()
-		cc.udpRTCPListeners[trackID].start()
+	for _, cct := range cc.tracks {
+		cct.udpRTPListener.start()
+		cct.udpRTCPListener.start()
 	}
 
 	defer func() {
-		for trackID := range cc.udpRTPListeners {
-			cc.udpRTPListeners[trackID].stop()
-			cc.udpRTCPListeners[trackID].stop()
+		for _, cct := range cc.tracks {
+			cct.udpRTPListener.stop()
+			cct.udpRTCPListener.stop()
 		}
 	}()
 
@@ -108,9 +108,9 @@ func (cc *ClientConn) backgroundPlayUDP() error {
 
 		case <-reportTicker.C:
 			now := time.Now()
-			for trackID := range cc.rtcpReceivers {
-				r := cc.rtcpReceivers[trackID].Report(now)
-				cc.udpRTCPListeners[trackID].write(r)
+			for _, cct := range cc.tracks {
+				rr := cct.rtcpReceiver.Report(now)
+				cct.udpRTCPListener.write(rr)
 			}
 
 		case <-keepaliveTicker.C:
@@ -136,13 +136,13 @@ func (cc *ClientConn) backgroundPlayUDP() error {
 			if checkStreamInitial {
 				// check that at least one packet has been received
 				inTimeout := func() bool {
-					for trackID := range cc.udpRTPListeners {
-						lft := atomic.LoadInt64(cc.udpRTPListeners[trackID].lastFrameTime)
+					for _, cct := range cc.tracks {
+						lft := atomic.LoadInt64(cct.udpRTPListener.lastFrameTime)
 						if lft != 0 {
 							return false
 						}
 
-						lft = atomic.LoadInt64(cc.udpRTCPListeners[trackID].lastFrameTime)
+						lft = atomic.LoadInt64(cct.udpRTCPListener.lastFrameTime)
 						if lft != 0 {
 							return false
 						}
@@ -162,13 +162,13 @@ func (cc *ClientConn) backgroundPlayUDP() error {
 			} else {
 				inTimeout := func() bool {
 					now := time.Now()
-					for trackID := range cc.udpRTPListeners {
-						lft := atomic.LoadInt64(cc.udpRTPListeners[trackID].lastFrameTime)
+					for _, cct := range cc.tracks {
+						lft := atomic.LoadInt64(cct.udpRTPListener.lastFrameTime)
 						if now.Sub(time.Unix(lft, 0)) < cc.conf.ReadTimeout {
 							return false
 						}
 
-						lft = atomic.LoadInt64(cc.udpRTCPListeners[trackID].lastFrameTime)
+						lft = atomic.LoadInt64(cct.udpRTCPListener.lastFrameTime)
 						if now.Sub(time.Unix(lft, 0)) < cc.conf.ReadTimeout {
 							return false
 						}
@@ -201,7 +201,7 @@ func (cc *ClientConn) backgroundPlayTCP() error {
 				return
 			}
 
-			cc.rtcpReceivers[frame.TrackID].ProcessFrame(time.Now(), frame.StreamType, frame.Payload)
+			cc.tracks[frame.TrackID].rtcpReceiver.ProcessFrame(time.Now(), frame.StreamType, frame.Payload)
 			cc.readCB(frame.TrackID, frame.StreamType, frame.Payload)
 		}
 	}()
@@ -227,8 +227,8 @@ func (cc *ClientConn) backgroundPlayTCP() error {
 
 		case <-reportTicker.C:
 			now := time.Now()
-			for trackID := range cc.rtcpReceivers {
-				r := cc.rtcpReceivers[trackID].Report(now)
+			for trackID, cct := range cc.tracks {
+				r := cct.rtcpReceiver.Report(now)
 				cc.nconn.SetWriteDeadline(time.Now().Add(cc.conf.WriteTimeout))
 				frame := base.InterleavedFrame{
 					TrackID:    trackID,
@@ -273,25 +273,25 @@ func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan err
 			if _, ok := err.(liberrors.ErrClientNoUDPPacketsRecently); ok {
 				if cc.conf.StreamProtocol == nil {
 					err := func() error {
-						u := cc.streamURL
-						tracks := cc.tracks
+						prevURL := cc.streamURL
+						prevTracks := cc.tracks
 						cc.reset()
 						v := StreamProtocolTCP
 						cc.streamProtocol = &v
 
-						err := cc.connOpen(u.Scheme, u.Host)
+						err := cc.connOpen(prevURL.Scheme, prevURL.Host)
 						if err != nil {
 							return err
 						}
 
-						_, err = cc.Options(u)
+						_, err = cc.Options(prevURL)
 						if err != nil {
 							cc.Close()
 							return err
 						}
 
-						for _, track := range tracks {
-							_, err := cc.Setup(headers.TransportModePlay, track, 0, 0)
+						for _, track := range prevTracks {
+							_, err := cc.Setup(headers.TransportModePlay, track.track, 0, 0)
 							if err != nil {
 								cc.Close()
 								return err

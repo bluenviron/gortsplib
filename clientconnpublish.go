@@ -90,10 +90,10 @@ func (cc *ClientConn) backgroundRecordUDP() {
 		case <-reportTicker.C:
 			cc.publishWriteMutex.Lock()
 			now := time.Now()
-			for trackID := range cc.rtcpSenders {
-				r := cc.rtcpSenders[trackID].Report(now)
+			for _, cct := range cc.tracks {
+				r := cct.rtcpSender.Report(now)
 				if r != nil {
-					cc.udpRTCPListeners[trackID].write(r)
+					cct.udpRTCPListener.write(r)
 				}
 			}
 			cc.publishWriteMutex.Unlock()
@@ -123,8 +123,8 @@ func (cc *ClientConn) backgroundRecordTCP() {
 		case <-reportTicker.C:
 			cc.publishWriteMutex.Lock()
 			now := time.Now()
-			for trackID := range cc.rtcpSenders {
-				r := cc.rtcpSenders[trackID].Report(now)
+			for trackID, cct := range cc.tracks {
+				r := cct.rtcpSender.Report(now)
 				if r != nil {
 					cc.nconn.SetWriteDeadline(time.Now().Add(cc.conf.WriteTimeout))
 					frame := base.InterleavedFrame{
@@ -193,13 +193,13 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 
 	now := time.Now()
 
-	cc.rtcpSenders[trackID].ProcessFrame(now, streamType, payload)
+	cc.tracks[trackID].rtcpSender.ProcessFrame(now, streamType, payload)
 
 	if *cc.streamProtocol == StreamProtocolUDP {
 		if streamType == StreamTypeRTP {
-			return cc.udpRTPListeners[trackID].write(payload)
+			return cc.tracks[trackID].udpRTPListener.write(payload)
 		}
-		return cc.udpRTCPListeners[trackID].write(payload)
+		return cc.tracks[trackID].udpRTCPListener.write(payload)
 	}
 
 	cc.nconn.SetWriteDeadline(now.Add(cc.conf.WriteTimeout))

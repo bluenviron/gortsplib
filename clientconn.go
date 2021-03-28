@@ -45,6 +45,14 @@ const (
 	clientConnStateRecord
 )
 
+type clientConnTrack struct {
+	track           *Track
+	udpRTPListener  *clientConnUDPListener
+	udpRTCPListener *clientConnUDPListener
+	rtcpReceiver    *rtcpreceiver.RTCPReceiver
+	rtcpSender      *rtcpsender.RTCPSender
+}
+
 func (s clientConnState) String() string {
 	switch s {
 	case clientConnStateInitial:
@@ -74,19 +82,15 @@ type ClientConn struct {
 	state                 clientConnState
 	streamURL             *base.URL
 	streamProtocol        *StreamProtocol
-	tracks                Tracks
-	udpRTPListeners       map[int]*clientConnUDPListener
-	udpRTCPListeners      map[int]*clientConnUDPListener
+	tracks                map[int]clientConnTrack
 	getParameterSupported bool
 
 	// read
 	rtpInfo        *headers.RTPInfo
-	rtcpReceivers  map[int]*rtcpreceiver.RTCPReceiver
 	tcpFrameBuffer *multibuffer.MultiBuffer
 	readCB         func(int, StreamType, []byte)
 
 	// publish
-	rtcpSenders       map[int]*rtcpsender.RTCPSender
 	publishError      error
 	publishWriteMutex sync.RWMutex
 	publishOpen       bool
@@ -133,10 +137,9 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 	}
 
 	cc := &ClientConn{
-		conf:             conf,
-		udpRTPListeners:  make(map[int]*clientConnUDPListener),
-		udpRTCPListeners: make(map[int]*clientConnUDPListener),
-		publishError:     fmt.Errorf("not running"),
+		conf:         conf,
+		tracks:       make(map[int]clientConnTrack),
+		publishError: fmt.Errorf("not running"),
 	}
 
 	err := cc.connOpen(scheme, host)
@@ -160,12 +163,11 @@ func (cc *ClientConn) Close() error {
 		})
 	}
 
-	for _, l := range cc.udpRTPListeners {
-		l.close()
-	}
-
-	for _, l := range cc.udpRTCPListeners {
-		l.close()
+	for _, track := range cc.tracks {
+		if track.udpRTPListener != nil {
+			track.udpRTPListener.close()
+			track.udpRTCPListener.close()
+		}
 	}
 
 	if cc.nconn != nil {
@@ -182,14 +184,11 @@ func (cc *ClientConn) reset() {
 	cc.nconn = nil
 	cc.streamURL = nil
 	cc.streamProtocol = nil
-	cc.tracks = nil
-	cc.udpRTPListeners = make(map[int]*clientConnUDPListener)
-	cc.udpRTCPListeners = make(map[int]*clientConnUDPListener)
+	cc.tracks = make(map[int]clientConnTrack)
 	cc.getParameterSupported = false
 
 	// read
 	cc.rtpInfo = nil
-	cc.rtcpReceivers = nil
 	cc.tcpFrameBuffer = nil
 	cc.readCB = nil
 }
@@ -248,7 +247,11 @@ func (cc *ClientConn) NetConn() net.Conn {
 
 // Tracks returns all the tracks that the connection is reading or publishing.
 func (cc *ClientConn) Tracks() Tracks {
-	return cc.tracks
+	var ret Tracks
+	for _, track := range cc.tracks {
+		ret = append(ret, track.track)
+	}
+	return ret
 }
 
 // Do writes a Request and reads a Response.
@@ -653,22 +656,18 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	}
 
 	clockRate, _ := track.ClockRate()
+	cct := clientConnTrack{
+		track: track,
+	}
 
 	if mode == headers.TransportModePlay {
-		if cc.rtcpReceivers == nil {
-			cc.rtcpReceivers = make(map[int]*rtcpreceiver.RTCPReceiver)
-		}
-		cc.rtcpReceivers[track.ID] = rtcpreceiver.New(nil, clockRate)
+		cct.rtcpReceiver = rtcpreceiver.New(nil, clockRate)
 	} else {
-		if cc.rtcpSenders == nil {
-			cc.rtcpSenders = make(map[int]*rtcpsender.RTCPSender)
-		}
-		cc.rtcpSenders[track.ID] = rtcpsender.New(clockRate)
+		cct.rtcpSender = rtcpsender.New(clockRate)
 	}
 
 	cc.streamURL = track.BaseURL
 	cc.streamProtocol = &proto
-	cc.tracks = append(cc.tracks, track)
 
 	if proto == StreamProtocolUDP {
 		rtpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
@@ -678,7 +677,7 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		}
 		rtpListener.trackID = track.ID
 		rtpListener.streamType = StreamTypeRTP
-		cc.udpRTPListeners[track.ID] = rtpListener
+		cct.udpRTPListener = rtpListener
 
 		rtcpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = cc.nconn.RemoteAddr().(*net.TCPAddr).Zone
@@ -687,8 +686,10 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		}
 		rtcpListener.trackID = track.ID
 		rtcpListener.streamType = StreamTypeRTCP
-		cc.udpRTCPListeners[track.ID] = rtcpListener
+		cct.udpRTCPListener = rtcpListener
 	}
+
+	cc.tracks[track.ID] = cct
 
 	if mode == headers.TransportModePlay {
 		cc.state = clientConnStatePrePlay
