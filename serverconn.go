@@ -261,18 +261,18 @@ type ServerConn struct {
 	setupPath       *string
 	setupQuery      *string
 
-	// frame mode only
-	doEnableFrames      bool
-	framesEnabled       bool
-	readTimeoutEnabled  bool
-	tcpFrameBuffer      *multibuffer.MultiBuffer
-	frameRingBuffer     *ringbuffer.RingBuffer
-	backgroundWriteDone chan struct{}
+	// TCP stream protocol
+	doEnableTCPFrame       bool
+	tcpFrameEnabled        bool
+	tcpFrameTimeout        bool
+	tcpFrameBuffer         *multibuffer.MultiBuffer
+	tcpFrameWriteBuffer    *ringbuffer.RingBuffer
+	tcpBackgroundWriteDone chan struct{}
 
-	// read only
+	// read
 	readHandlers ServerConnReadHandlers
 
-	// publish only
+	// publish
 	announcedTracks           []ServerConnAnnouncedTrack
 	backgroundRecordTerminate chan struct{}
 	backgroundRecordDone      chan struct{}
@@ -294,15 +294,16 @@ func newServerConn(conf ServerConf,
 	}()
 
 	return &ServerConn{
-		conf:                conf,
-		udpRTPListener:      udpRTPListener,
-		udpRTCPListener:     udpRTCPListener,
-		nconn:               nconn,
-		br:                  bufio.NewReaderSize(conn, serverConnReadBufferSize),
-		bw:                  bufio.NewWriterSize(conn, serverConnWriteBufferSize),
-		frameRingBuffer:     ringbuffer.New(uint64(conf.ReadBufferCount)),
-		backgroundWriteDone: make(chan struct{}),
-		terminate:           make(chan struct{}),
+		conf:            conf,
+		udpRTPListener:  udpRTPListener,
+		udpRTCPListener: udpRTCPListener,
+		nconn:           nconn,
+		br:              bufio.NewReaderSize(conn, serverConnReadBufferSize),
+		bw:              bufio.NewWriterSize(conn, serverConnWriteBufferSize),
+		// always instantiate to allow writing to it before Play()
+		tcpFrameWriteBuffer:    ringbuffer.New(uint64(conf.ReadBufferCount)),
+		tcpBackgroundWriteDone: make(chan struct{}),
+		terminate:              make(chan struct{}),
 	}
 }
 
@@ -333,11 +334,11 @@ func (sc *ServerConn) AnnouncedTracks() []ServerConnAnnouncedTrack {
 	return sc.announcedTracks
 }
 
-func (sc *ServerConn) backgroundWrite() {
-	defer close(sc.backgroundWriteDone)
+func (sc *ServerConn) tcpBackgroundWrite() {
+	defer close(sc.tcpBackgroundWriteDone)
 
 	for {
-		what, ok := sc.frameRingBuffer.Pull()
+		what, ok := sc.tcpFrameWriteBuffer.Pull()
 		if !ok {
 			return
 		}
@@ -385,7 +386,7 @@ func (sc *ServerConn) frameModeEnable() {
 	switch sc.state {
 	case ServerConnStatePlay:
 		if *sc.setupProtocol == StreamProtocolTCP {
-			sc.doEnableFrames = true
+			sc.doEnableTCPFrame = true
 		} else {
 			// readers can send RTCP frames, they cannot sent RTP frames
 			for trackID, track := range sc.setuppedTracks {
@@ -395,8 +396,8 @@ func (sc *ServerConn) frameModeEnable() {
 
 	case ServerConnStateRecord:
 		if *sc.setupProtocol == StreamProtocolTCP {
-			sc.doEnableFrames = true
-			sc.readTimeoutEnabled = true
+			sc.doEnableTCPFrame = true
+			sc.tcpFrameTimeout = true
 
 		} else {
 			for trackID, track := range sc.setuppedTracks {
@@ -421,9 +422,9 @@ func (sc *ServerConn) frameModeDisable() {
 	switch sc.state {
 	case ServerConnStatePlay:
 		if *sc.setupProtocol == StreamProtocolTCP {
-			sc.framesEnabled = false
-			sc.frameRingBuffer.Close()
-			<-sc.backgroundWriteDone
+			sc.tcpFrameEnabled = false
+			sc.tcpFrameWriteBuffer.Close()
+			<-sc.tcpBackgroundWriteDone
 
 		} else {
 			for _, track := range sc.setuppedTracks {
@@ -436,12 +437,12 @@ func (sc *ServerConn) frameModeDisable() {
 		<-sc.backgroundRecordDone
 
 		if *sc.setupProtocol == StreamProtocolTCP {
-			sc.readTimeoutEnabled = false
+			sc.tcpFrameTimeout = false
 			sc.nconn.SetReadDeadline(time.Time{})
 
-			sc.framesEnabled = false
-			sc.frameRingBuffer.Close()
-			<-sc.backgroundWriteDone
+			sc.tcpFrameEnabled = false
+			sc.tcpFrameWriteBuffer.Close()
+			<-sc.tcpBackgroundWriteDone
 
 		} else {
 			for _, track := range sc.setuppedTracks {
@@ -1045,9 +1046,9 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	}
 
 	switch {
-	case sc.doEnableFrames: // start background write
-		sc.doEnableFrames = false
-		sc.framesEnabled = true
+	case sc.doEnableTCPFrame: // start background write
+		sc.doEnableTCPFrame = false
+		sc.tcpFrameEnabled = true
 
 		if sc.state == ServerConnStateRecord {
 			sc.tcpFrameBuffer = multibuffer.New(uint64(sc.conf.ReadBufferCount), uint64(sc.conf.ReadBufferSize))
@@ -1064,12 +1065,12 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		res.Write(sc.bw)
 
 		// start background write
-		sc.frameRingBuffer.Reset()
-		sc.backgroundWriteDone = make(chan struct{})
-		go sc.backgroundWrite()
+		sc.tcpFrameWriteBuffer.Reset()
+		sc.tcpBackgroundWriteDone = make(chan struct{})
+		go sc.tcpBackgroundWrite()
 
-	case sc.framesEnabled: // write to background write
-		sc.frameRingBuffer.Push(res)
+	case sc.tcpFrameEnabled: // write to background write
+		sc.tcpFrameWriteBuffer.Push(res)
 
 	default: // write directly
 		sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
@@ -1086,11 +1087,11 @@ func (sc *ServerConn) backgroundRead() error {
 	var frame base.InterleavedFrame
 
 	for {
-		if sc.readTimeoutEnabled {
-			sc.nconn.SetReadDeadline(time.Now().Add(sc.conf.ReadTimeout))
-		}
+		if sc.tcpFrameEnabled {
+			if sc.tcpFrameTimeout {
+				sc.nconn.SetReadDeadline(time.Now().Add(sc.conf.ReadTimeout))
+			}
 
-		if sc.framesEnabled {
 			frame.Payload = sc.tcpFrameBuffer.Next()
 			what, err := base.ReadInterleavedFrameOrRequest(&frame, &req, sc.br)
 			if err != nil {
@@ -1169,7 +1170,7 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		return
 	}
 
-	sc.frameRingBuffer.Push(&base.InterleavedFrame{
+	sc.tcpFrameWriteBuffer.Push(&base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
 		Payload:    payload,

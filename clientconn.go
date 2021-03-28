@@ -79,13 +79,13 @@ type ClientConn struct {
 	udpRTCPListeners      map[int]*clientConnUDPListener
 	getParameterSupported bool
 
-	// read only
+	// read
 	rtpInfo        *headers.RTPInfo
 	rtcpReceivers  map[int]*rtcpreceiver.RTCPReceiver
 	tcpFrameBuffer *multibuffer.MultiBuffer
 	readCB         func(int, StreamType, []byte)
 
-	// publish only
+	// publish
 	rtcpSenders       map[int]*rtcpsender.RTCPSender
 	publishError      error
 	publishWriteMutex sync.RWMutex
@@ -187,7 +187,7 @@ func (cc *ClientConn) reset() {
 	cc.udpRTCPListeners = make(map[int]*clientConnUDPListener)
 	cc.getParameterSupported = false
 
-	// read only
+	// read
 	cc.rtpInfo = nil
 	cc.rtcpReceivers = nil
 	cc.tcpFrameBuffer = nil
