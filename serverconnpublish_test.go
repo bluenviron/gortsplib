@@ -283,7 +283,7 @@ func TestServerPublishSetupDifferentPaths(t *testing.T) {
 	require.Equal(t, "invalid track path (test2stream/trackID=0)", err.Error())
 }
 
-func TestServerPublishSetupDouble(t *testing.T) {
+func TestServerPublishSetupTrackTwice(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -516,7 +516,7 @@ func TestServerPublishRecordPartialTracks(t *testing.T) {
 	require.Equal(t, "not all announced tracks have been setup", err.Error())
 }
 
-func TestServerPublishReceivePackets(t *testing.T) {
+func TestServerPublishFrames(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -707,4 +707,137 @@ func TestServerPublishReceivePackets(t *testing.T) {
 			<-packetsReceived
 		})
 	}
+}
+
+func TestServerPublishFramesWrongProtocol(t *testing.T) {
+	conf := ServerConf{
+		UDPRTPAddress:  "127.0.0.1:8000",
+		UDPRTCPAddress: "127.0.0.1:8001",
+	}
+
+	s, err := conf.Serve("127.0.0.1:8554")
+	require.NoError(t, err)
+	defer s.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := s.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
+			return &base.Response{
+				StatusCode: base.StatusOK,
+			}, nil
+		}
+
+		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
+			return &base.Response{
+				StatusCode: base.StatusOK,
+			}, nil
+		}
+
+		onRecord := func(ctx *ServerConnRecordCtx) (*base.Response, error) {
+			return &base.Response{
+				StatusCode: base.StatusOK,
+			}, nil
+		}
+
+		onFrame := func(trackID int, typ StreamType, buf []byte) {
+			t.Error("should not happen")
+		}
+
+		<-conn.Read(ServerConnReadHandlers{
+			OnAnnounce: onAnnounce,
+			OnSetup:    onSetup,
+			OnRecord:   onRecord,
+			OnFrame:    onFrame,
+		})
+	}()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	tracks := Tracks{track}
+	for i, t := range tracks {
+		t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
+			Key:   "control",
+			Value: "trackID=" + strconv.FormatInt(int64(i), 10),
+		})
+	}
+
+	err = base.Request{
+		Method: base.Announce,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":         base.HeaderValue{"1"},
+			"Content-Type": base.HeaderValue{"application/sdp"},
+		},
+		Body: tracks.Write(),
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	inTH := &headers.Transport{
+		Delivery: func() *base.StreamDelivery {
+			v := base.StreamDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModeRecord
+			return &v
+		}(),
+		Protocol:    StreamProtocolUDP,
+		ClientPorts: &[2]int{35466, 35467},
+	}
+
+	err = base.Request{
+		Method: base.Setup,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq":      base.HeaderValue{"2"},
+			"Transport": inTH.Write(),
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	var th headers.Transport
+	err = th.Read(res.Header["Transport"])
+	require.NoError(t, err)
+
+	err = base.Request{
+		Method: base.Record,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"3"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.InterleavedFrame{
+		TrackID:    0,
+		StreamType: StreamTypeRTP,
+		Payload:    []byte("\x01\x02\x03\x04"),
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
 }

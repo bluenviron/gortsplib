@@ -210,7 +210,7 @@ func TestServerReadSetupDifferentPaths(t *testing.T) {
 	require.Equal(t, "can't setup tracks with different paths", err.Error())
 }
 
-func TestServerReadSetupDouble(t *testing.T) {
+func TestServerReadSetupTrackTwice(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -291,7 +291,7 @@ func TestServerReadSetupDouble(t *testing.T) {
 	require.Equal(t, "track 0 has already been setup", err.Error())
 }
 
-func TestServerReadReceivePackets(t *testing.T) {
+func TestServerReadFrames(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",

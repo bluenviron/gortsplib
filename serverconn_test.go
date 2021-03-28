@@ -416,7 +416,7 @@ func TestServerCSeq(t *testing.T) {
 	require.Equal(t, base.HeaderValue{"5"}, res.Header["CSeq"])
 }
 
-func TestServerCSeqNo(t *testing.T) {
+func TestServerCSeqMissing(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
