@@ -54,70 +54,6 @@ func (cc *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, erro
 	return res, nil
 }
 
-func (cc *ClientConn) backgroundRecordUDP() {
-	// disable deadline
-	cc.nconn.SetReadDeadline(time.Time{})
-
-	readerDone := make(chan error)
-	go func() {
-		for {
-			var res base.Response
-			err := res.Read(cc.br)
-			if err != nil {
-				readerDone <- err
-				return
-			}
-		}
-	}()
-
-	reportTicker := time.NewTicker(cc.conf.senderReportPeriod)
-	defer reportTicker.Stop()
-
-	for {
-		select {
-		case <-cc.backgroundTerminate:
-			cc.nconn.SetReadDeadline(time.Now())
-			<-readerDone
-			cc.writeError = fmt.Errorf("terminated")
-			return
-
-		case <-reportTicker.C:
-			now := time.Now()
-			for trackID, cct := range cc.tracks {
-				sr := cct.rtcpSender.Report(now)
-				if sr != nil {
-					cc.WriteFrame(trackID, StreamTypeRTCP, sr)
-				}
-			}
-
-		case err := <-readerDone:
-			cc.writeError = err
-			return
-		}
-	}
-}
-
-func (cc *ClientConn) backgroundRecordTCP() {
-	reportTicker := time.NewTicker(cc.conf.senderReportPeriod)
-	defer reportTicker.Stop()
-
-	for {
-		select {
-		case <-cc.backgroundTerminate:
-			return
-
-		case <-reportTicker.C:
-			now := time.Now()
-			for trackID, cct := range cc.tracks {
-				sr := cct.rtcpSender.Report(now)
-				if sr != nil {
-					cc.WriteFrame(trackID, StreamTypeRTCP, sr)
-				}
-			}
-		}
-	}
-}
-
 // Record writes a RECORD request and reads a Response.
 // This can be called only after Announce() and Setup().
 func (cc *ClientConn) Record() (*base.Response, error) {
@@ -142,27 +78,107 @@ func (cc *ClientConn) Record() (*base.Response, error) {
 	}
 
 	cc.state = clientConnStateRecord
-	cc.writeFrameAllowed = true
 
-	cc.backgroundRunning = true
-	cc.backgroundTerminate = make(chan struct{})
-	cc.backgroundDone = make(chan struct{})
+	cc.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
+	})
 
-	go func() {
-		defer close(cc.backgroundDone)
+	return nil, nil
+}
 
-		defer func() {
-			cc.writeMutex.Lock()
-			defer cc.writeMutex.Unlock()
-			cc.writeFrameAllowed = false
-		}()
+func (cc *ClientConn) backgroundRecordUDP() error {
+	for _, cct := range cc.tracks {
+		cct.udpRTPListener.start()
+		cct.udpRTCPListener.start()
+	}
 
-		if *cc.streamProtocol == StreamProtocolUDP {
-			cc.backgroundRecordUDP()
-		} else {
-			cc.backgroundRecordTCP()
+	defer func() {
+		for _, cct := range cc.tracks {
+			cct.udpRTPListener.stop()
+			cct.udpRTCPListener.stop()
 		}
 	}()
 
-	return nil, nil
+	// disable deadline
+	cc.nconn.SetReadDeadline(time.Time{})
+
+	readerDone := make(chan error)
+	go func() {
+		for {
+			var res base.Response
+			err := res.Read(cc.br)
+			if err != nil {
+				readerDone <- err
+				return
+			}
+		}
+	}()
+
+	reportTicker := time.NewTicker(cc.conf.senderReportPeriod)
+	defer reportTicker.Stop()
+
+	for {
+		select {
+		case <-cc.backgroundTerminate:
+			cc.nconn.SetReadDeadline(time.Now())
+			<-readerDone
+			return fmt.Errorf("terminated")
+
+		case <-reportTicker.C:
+			now := time.Now()
+			for trackID, cct := range cc.tracks {
+				sr := cct.rtcpSender.Report(now)
+				if sr != nil {
+					cc.WriteFrame(trackID, StreamTypeRTCP, sr)
+				}
+			}
+
+		case err := <-readerDone:
+			return err
+		}
+	}
+}
+
+func (cc *ClientConn) backgroundRecordTCP() error {
+	// disable deadline
+	cc.nconn.SetReadDeadline(time.Time{})
+
+	readerDone := make(chan error)
+	go func() {
+		for {
+			frame := base.InterleavedFrame{
+				Payload: cc.tcpFrameBuffer.Next(),
+			}
+			err := frame.Read(cc.br)
+			if err != nil {
+				readerDone <- err
+				return
+			}
+
+			cc.readCB(frame.TrackID, frame.StreamType, frame.Payload)
+		}
+	}()
+
+	reportTicker := time.NewTicker(cc.conf.senderReportPeriod)
+	defer reportTicker.Stop()
+
+	for {
+		select {
+		case <-cc.backgroundTerminate:
+			cc.nconn.SetReadDeadline(time.Now())
+			<-readerDone
+			return fmt.Errorf("terminated")
+
+		case <-reportTicker.C:
+			now := time.Now()
+			for trackID, cct := range cc.tracks {
+				sr := cct.rtcpSender.Report(now)
+				if sr != nil {
+					cc.WriteFrame(trackID, StreamTypeRTCP, sr)
+				}
+			}
+
+		case err := <-readerDone:
+			return err
+		}
+	}
 }

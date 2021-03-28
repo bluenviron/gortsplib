@@ -73,23 +73,43 @@ func (l *clientConnUDPListener) stop() {
 func (l *clientConnUDPListener) run() {
 	defer close(l.done)
 
-	for {
-		buf := l.frameBuffer.Next()
-		n, addr, err := l.pc.ReadFrom(buf)
-		if err != nil {
-			return
+	if l.cc.state == clientConnStatePlay {
+		for {
+			buf := l.frameBuffer.Next()
+			n, addr, err := l.pc.ReadFrom(buf)
+			if err != nil {
+				return
+			}
+
+			uaddr := addr.(*net.UDPAddr)
+
+			if !l.remoteIP.Equal(uaddr.IP) || (l.remotePort != 0 && l.remotePort != uaddr.Port) {
+				continue
+			}
+
+			now := time.Now()
+			atomic.StoreInt64(l.lastFrameTime, now.Unix())
+			l.cc.tracks[l.trackID].rtcpReceiver.ProcessFrame(now, l.streamType, buf[:n])
+			l.cc.readCB(l.trackID, l.streamType, buf[:n])
 		}
+	} else {
+		for {
+			buf := l.frameBuffer.Next()
+			n, addr, err := l.pc.ReadFrom(buf)
+			if err != nil {
+				return
+			}
 
-		uaddr := addr.(*net.UDPAddr)
+			uaddr := addr.(*net.UDPAddr)
 
-		if !l.remoteIP.Equal(uaddr.IP) || (l.remotePort != 0 && l.remotePort != uaddr.Port) {
-			continue
+			if !l.remoteIP.Equal(uaddr.IP) || (l.remotePort != 0 && l.remotePort != uaddr.Port) {
+				continue
+			}
+
+			now := time.Now()
+			atomic.StoreInt64(l.lastFrameTime, now.Unix())
+			l.cc.readCB(l.trackID, l.streamType, buf[:n])
 		}
-
-		now := time.Now()
-		atomic.StoreInt64(l.lastFrameTime, now.Unix())
-		l.cc.tracks[l.trackID].rtcpReceiver.ProcessFrame(now, l.streamType, buf[:n])
-		l.cc.readCB(l.trackID, l.streamType, buf[:n])
 	}
 }
 

@@ -43,7 +43,6 @@ func (cc *ClientConn) Play() (*base.Response, error) {
 	}
 
 	cc.state = clientConnStatePlay
-	cc.writeFrameAllowed = true
 
 	return res, nil
 }
@@ -245,82 +244,4 @@ func (cc *ClientConn) backgroundPlayTCP() error {
 			return err
 		}
 	}
-}
-
-// ReadFrames starts reading frames.
-// it returns a channel that is written when the reading stops.
-// This can be called only after Play().
-func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan error {
-	// channel is buffered, since listening to it is not mandatory
-	done := make(chan error, 1)
-
-	err := cc.checkState(map[clientConnState]struct{}{
-		clientConnStatePlay: {},
-	})
-	if err != nil {
-		done <- err
-		return done
-	}
-
-	cc.backgroundRunning = true
-	cc.backgroundTerminate = make(chan struct{})
-	cc.backgroundDone = make(chan struct{})
-	cc.readCB = onFrame
-
-	go func() {
-		if *cc.streamProtocol == StreamProtocolUDP {
-			err := cc.backgroundPlayUDP()
-			close(cc.backgroundDone)
-
-			// automatically change protocol in case of timeout
-			if _, ok := err.(liberrors.ErrClientNoUDPPacketsRecently); ok {
-				if cc.conf.StreamProtocol == nil {
-					err := func() error {
-						prevURL := cc.streamURL
-						prevTracks := cc.tracks
-						cc.reset()
-						v := StreamProtocolTCP
-						cc.streamProtocol = &v
-
-						err := cc.connOpen(prevURL.Scheme, prevURL.Host)
-						if err != nil {
-							return err
-						}
-
-						_, err = cc.Options(prevURL)
-						if err != nil {
-							cc.Close()
-							return err
-						}
-
-						for _, track := range prevTracks {
-							_, err := cc.Setup(headers.TransportModePlay, track.track, 0, 0)
-							if err != nil {
-								cc.Close()
-								return err
-							}
-						}
-
-						_, err = cc.Play()
-						if err != nil {
-							cc.Close()
-							return err
-						}
-
-						return <-cc.ReadFrames(onFrame)
-					}()
-					done <- err
-					return
-				}
-			}
-
-			done <- err
-
-		} else {
-			defer close(cc.backgroundDone)
-			done <- cc.backgroundPlayTCP()
-		}
-	}()
-
-	return done
 }

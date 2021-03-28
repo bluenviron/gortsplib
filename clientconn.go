@@ -88,11 +88,13 @@ type ClientConn struct {
 	writeFrameAllowed     bool
 	writeError            error
 	backgroundRunning     bool
+	readCB                func(int, StreamType, []byte)
+
+	// TCP stream protocol
+	tcpFrameBuffer *multibuffer.MultiBuffer
 
 	// read
-	rtpInfo        *headers.RTPInfo
-	tcpFrameBuffer *multibuffer.MultiBuffer
-	readCB         func(int, StreamType, []byte)
+	rtpInfo *headers.RTPInfo
 
 	// in
 	backgroundTerminate chan struct{}
@@ -695,13 +697,13 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 
 	if mode == headers.TransportModePlay {
 		cc.state = clientConnStatePrePlay
-
-		if *cc.streamProtocol == StreamProtocolTCP && cc.tcpFrameBuffer == nil {
-			cc.tcpFrameBuffer = multibuffer.New(uint64(cc.conf.ReadBufferCount), uint64(cc.conf.ReadBufferSize))
-		}
-
 	} else {
 		cc.state = clientConnStatePreRecord
+	}
+
+	if *cc.streamProtocol == StreamProtocolTCP &&
+		cc.tcpFrameBuffer == nil {
+		cc.tcpFrameBuffer = multibuffer.New(uint64(cc.conf.ReadBufferCount), uint64(cc.conf.ReadBufferSize))
 	}
 
 	return res, nil
@@ -774,4 +776,106 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		Payload:    payload,
 	}
 	return frame.Write(cc.bw)
+}
+
+// ReadFrames starts reading frames.
+// it returns a channel that is written when the reading stops.
+func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan error {
+	// channel is buffered, since listening to it is not mandatory
+	done := make(chan error, 1)
+
+	err := cc.checkState(map[clientConnState]struct{}{
+		clientConnStatePlay:   {},
+		clientConnStateRecord: {},
+	})
+	if err != nil {
+		done <- err
+		return done
+	}
+
+	// close previous ReadFrames()
+	if cc.backgroundRunning {
+		close(cc.backgroundTerminate)
+		<-cc.backgroundDone
+	}
+
+	cc.backgroundRunning = true
+	cc.backgroundTerminate = make(chan struct{})
+	cc.backgroundDone = make(chan struct{})
+	cc.readCB = onFrame
+	cc.writeFrameAllowed = true
+
+	go func() {
+		done <- func() error {
+			safeState := cc.state
+			err := func() error {
+				if *cc.streamProtocol == StreamProtocolUDP {
+					if cc.state == clientConnStatePlay {
+						return cc.backgroundPlayUDP()
+					}
+					return cc.backgroundRecordUDP()
+				}
+
+				if cc.state == clientConnStatePlay {
+					return cc.backgroundPlayTCP()
+				}
+				return cc.backgroundRecordTCP()
+			}()
+
+			cc.writeError = err
+
+			func() {
+				cc.writeMutex.Lock()
+				defer cc.writeMutex.Unlock()
+				cc.writeFrameAllowed = false
+			}()
+
+			close(cc.backgroundDone)
+
+			// automatically change protocol in case of timeout
+			if *cc.streamProtocol == StreamProtocolUDP &&
+				safeState == clientConnStatePlay {
+				if _, ok := err.(liberrors.ErrClientNoUDPPacketsRecently); ok {
+					if cc.conf.StreamProtocol == nil {
+						prevURL := cc.streamURL
+						prevTracks := cc.tracks
+						cc.reset()
+						v := StreamProtocolTCP
+						cc.streamProtocol = &v
+
+						err := cc.connOpen(prevURL.Scheme, prevURL.Host)
+						if err != nil {
+							return err
+						}
+
+						_, err = cc.Options(prevURL)
+						if err != nil {
+							cc.Close()
+							return err
+						}
+
+						for _, track := range prevTracks {
+							_, err := cc.Setup(headers.TransportModePlay, track.track, 0, 0)
+							if err != nil {
+								cc.Close()
+								return err
+							}
+						}
+
+						_, err = cc.Play()
+						if err != nil {
+							cc.Close()
+							return err
+						}
+
+						return <-cc.ReadFrames(onFrame)
+					}
+				}
+			}
+
+			return err
+		}()
+	}()
+
+	return done
 }
