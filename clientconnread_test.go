@@ -9,10 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
 func TestClientRead(t *testing.T) {
@@ -975,4 +978,170 @@ func TestClientReadPause(t *testing.T) {
 			<-done
 		})
 	}
+}
+
+func TestClientReadRTCP(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		var req base.Request
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+
+		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+		require.NoError(t, err)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+			},
+			Body: Tracks{track}.Write(),
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+
+		var th headers.Transport
+		err = th.Read(req.Header["Transport"])
+		require.NoError(t, err)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": headers.Transport{
+					Protocol: StreamProtocolTCP,
+					Delivery: func() *base.StreamDelivery {
+						v := base.StreamDeliveryUnicast
+						return &v
+					}(),
+					ClientPorts:    th.ClientPorts,
+					InterleavedIDs: &[2]int{0, 1},
+				}.Write(),
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		rs := rtcpsender.New(90000)
+
+		byts, _ := (&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         true,
+				PayloadType:    96,
+				SequenceNumber: 946,
+				Timestamp:      54352,
+				SSRC:           753621,
+			},
+			Payload: []byte("\x01\x02\x03\x04"),
+		}).Marshal()
+		err = base.InterleavedFrame{
+			TrackID:    0,
+			StreamType: StreamTypeRTP,
+			Payload:    byts,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+		rs.ProcessFrame(time.Now(), StreamTypeRTP, byts)
+
+		err = base.InterleavedFrame{
+			TrackID:    0,
+			StreamType: StreamTypeRTCP,
+			Payload:    rs.Report(time.Now()),
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		var f base.InterleavedFrame
+		f.Payload = make([]byte, 2048)
+		err = f.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, StreamTypeRTCP, f.StreamType)
+		pkt, err := rtcp.Unmarshal(f.Payload)
+		require.NoError(t, err)
+		rr, ok := pkt[0].(*rtcp.ReceiverReport)
+		require.True(t, ok)
+		require.Equal(t, &rtcp.ReceiverReport{
+			SSRC: rr.SSRC,
+			Reports: []rtcp.ReceptionReport{
+				{
+					SSRC:               rr.Reports[0].SSRC,
+					LastSequenceNumber: 946,
+					LastSenderReport:   rr.Reports[0].LastSenderReport,
+					Delay:              rr.Reports[0].Delay,
+				},
+			},
+			ProfileExtensions: []uint8{},
+		}, rr)
+
+		err = base.InterleavedFrame{
+			TrackID:    0,
+			StreamType: StreamTypeRTP,
+			Payload:    byts,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+	}()
+
+	conf := ClientConf{
+		StreamProtocol: func() *StreamProtocol {
+			v := StreamProtocolTCP
+			return &v
+		}(),
+		receiverReportPeriod: 1 * time.Second,
+	}
+
+	conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	recv := 0
+	recvDone := make(chan struct{})
+	done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+		recv++
+		if recv >= 3 {
+			close(recvDone)
+		}
+	})
+
+	time.Sleep(1300 * time.Millisecond)
+
+	<-recvDone
+	conn.Close()
+	<-done
 }

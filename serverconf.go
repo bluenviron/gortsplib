@@ -52,6 +52,8 @@ type ServerConf struct {
 	// function used to initialize the TCP listener.
 	// It defaults to net.Listen
 	Listen func(network string, address string) (net.Listener, error)
+
+	receiverReportPeriod time.Duration
 }
 
 // Serve starts a server on the given address.

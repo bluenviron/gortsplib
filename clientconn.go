@@ -30,8 +30,6 @@ import (
 const (
 	clientConnReadBufferSize       = 4096
 	clientConnWriteBufferSize      = 4096
-	clientConnReceiverReportPeriod = 10 * time.Second
-	clientConnSenderReportPeriod   = 10 * time.Second
 	clientConnUDPCheckStreamPeriod = 1 * time.Second
 	clientConnUDPKeepalivePeriod   = 30 * time.Second
 	clientConnTCPSetDeadlinePeriod = 1 * time.Second
@@ -125,6 +123,13 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 	}
 	if conf.ListenPacket == nil {
 		conf.ListenPacket = net.ListenPacket
+	}
+
+	if conf.senderReportPeriod == 0 {
+		conf.senderReportPeriod = 10 * time.Second
+	}
+	if conf.receiverReportPeriod == 0 {
+		conf.receiverReportPeriod = 10 * time.Second
 	}
 
 	cc := &ClientConn{

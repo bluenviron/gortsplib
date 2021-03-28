@@ -27,8 +27,13 @@ func newServer(conf ServerConf, address string) (*Server, error) {
 	if conf.ReadBufferSize == 0 {
 		conf.ReadBufferSize = 2048
 	}
+
 	if conf.Listen == nil {
 		conf.Listen = net.Listen
+	}
+
+	if conf.receiverReportPeriod == 0 {
+		conf.receiverReportPeriod = 10 * time.Second
 	}
 
 	if conf.TLSConfig != nil && conf.UDPRTPAddress != "" {

@@ -19,10 +19,9 @@ import (
 )
 
 const (
-	serverConnReadBufferSize         = 4096
-	serverConnWriteBufferSize        = 4096
-	serverConnCheckStreamInterval    = 5 * time.Second
-	serverConnReceiverReportInterval = 10 * time.Second
+	serverConnReadBufferSize    = 4096
+	serverConnWriteBufferSize   = 4096
+	serverConnCheckStreamPeriod = 5 * time.Second
 )
 
 func stringsReverseIndex(s, substr string) int {
@@ -1180,10 +1179,10 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 func (sc *ServerConn) backgroundRecord() {
 	defer close(sc.backgroundRecordDone)
 
-	checkStreamTicker := time.NewTicker(serverConnCheckStreamInterval)
+	checkStreamTicker := time.NewTicker(serverConnCheckStreamPeriod)
 	defer checkStreamTicker.Stop()
 
-	receiverReportTicker := time.NewTicker(serverConnReceiverReportInterval)
+	receiverReportTicker := time.NewTicker(sc.conf.receiverReportPeriod)
 	defer receiverReportTicker.Stop()
 
 	for {

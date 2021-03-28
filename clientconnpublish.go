@@ -76,7 +76,7 @@ func (cc *ClientConn) backgroundRecordUDP() {
 		}
 	}()
 
-	reportTicker := time.NewTicker(clientConnSenderReportPeriod)
+	reportTicker := time.NewTicker(cc.conf.senderReportPeriod)
 	defer reportTicker.Stop()
 
 	for {
@@ -112,7 +112,7 @@ func (cc *ClientConn) backgroundRecordTCP() {
 		cc.publishOpen = false
 	}()
 
-	reportTicker := time.NewTicker(clientConnSenderReportPeriod)
+	reportTicker := time.NewTicker(cc.conf.senderReportPeriod)
 	defer reportTicker.Stop()
 
 	for {

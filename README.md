@@ -17,13 +17,13 @@ Features:
   * Encrypt connection with TLS (RTSPS)
   * Reading
     * Read streams from servers with UDP or TCP
-    * Select protocol automatically
+    * Switch protocol automatically (switch to TCP in case of code 451 or UDP timeout)
     * Read only selected tracks of a stream
     * Pause reading without disconnecting from the server
     * Generate RTCP receiver reports automatically
   * Publishing
     * Publish streams to servers with UDP or TCP
-    * Select protocol automatically
+    * Switch protocol automatically (switch to TCP in case of code 451)
     * Pause publishing without disconnecting from the server
     * Generate RTCP sender reports automatically
 * Server

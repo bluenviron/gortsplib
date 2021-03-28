@@ -85,6 +85,9 @@ type ClientConf struct {
 	// function used to initialize UDP listeners.
 	// It defaults to net.ListenPacket.
 	ListenPacket func(network, address string) (net.PacketConn, error)
+
+	senderReportPeriod   time.Duration
+	receiverReportPeriod time.Duration
 }
 
 // Dial connects to a server.
