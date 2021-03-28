@@ -15,7 +15,7 @@ const (
 )
 
 type clientConnUDPListener struct {
-	c             *ClientConn
+	cc            *ClientConn
 	pc            net.PacketConn
 	remoteIP      net.IP
 	remoteZone    string
@@ -29,8 +29,8 @@ type clientConnUDPListener struct {
 	done chan struct{}
 }
 
-func newClientConnUDPListener(c *ClientConn, port int) (*clientConnUDPListener, error) {
-	pc, err := c.conf.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
+func newClientConnUDPListener(cc *ClientConn, port int) (*clientConnUDPListener, error) {
+	pc, err := cc.conf.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
 	if err != nil {
 		return nil, err
 	}
@@ -41,9 +41,9 @@ func newClientConnUDPListener(c *ClientConn, port int) (*clientConnUDPListener, 
 	}
 
 	return &clientConnUDPListener{
-		c:           c,
+		cc:          cc,
 		pc:          pc,
-		frameBuffer: multibuffer.New(uint64(c.conf.ReadBufferCount), uint64(c.conf.ReadBufferSize)),
+		frameBuffer: multibuffer.New(uint64(cc.conf.ReadBufferCount), uint64(cc.conf.ReadBufferSize)),
 		lastFrameTime: func() *int64 {
 			v := int64(0)
 			return &v
@@ -88,13 +88,13 @@ func (l *clientConnUDPListener) run() {
 
 		now := time.Now()
 		atomic.StoreInt64(l.lastFrameTime, now.Unix())
-		l.c.rtcpReceivers[l.trackID].ProcessFrame(now, l.streamType, buf[:n])
-		l.c.readCB(l.trackID, l.streamType, buf[:n])
+		l.cc.rtcpReceivers[l.trackID].ProcessFrame(now, l.streamType, buf[:n])
+		l.cc.readCB(l.trackID, l.streamType, buf[:n])
 	}
 }
 
 func (l *clientConnUDPListener) write(buf []byte) error {
-	l.pc.SetWriteDeadline(time.Now().Add(l.c.conf.WriteTimeout))
+	l.pc.SetWriteDeadline(time.Now().Add(l.cc.conf.WriteTimeout))
 	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
 		IP:   l.remoteIP,
 		Zone: l.remoteZone,

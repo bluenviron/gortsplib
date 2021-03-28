@@ -12,8 +12,8 @@ import (
 )
 
 // Announce writes an ANNOUNCE request and reads a Response.
-func (c *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
-	err := c.checkState(map[clientConnState]struct{}{
+func (cc *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
+	err := cc.checkState(map[clientConnState]struct{}{
 		clientConnStateInitial: {},
 	})
 	if err != nil {
@@ -31,7 +31,7 @@ func (c *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 		})
 	}
 
-	res, err := c.Do(&base.Request{
+	res, err := cc.Do(&base.Request{
 		Method: base.Announce,
 		URL:    u,
 		Header: base.Header{
@@ -48,27 +48,27 @@ func (c *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, error
 			Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
-	c.streamURL = u
-	c.state = clientConnStatePreRecord
+	cc.streamURL = u
+	cc.state = clientConnStatePreRecord
 
 	return res, nil
 }
 
-func (c *ClientConn) backgroundRecordUDP() {
+func (cc *ClientConn) backgroundRecordUDP() {
 	defer func() {
-		c.publishWriteMutex.Lock()
-		defer c.publishWriteMutex.Unlock()
-		c.publishOpen = false
+		cc.publishWriteMutex.Lock()
+		defer cc.publishWriteMutex.Unlock()
+		cc.publishOpen = false
 	}()
 
 	// disable deadline
-	c.nconn.SetReadDeadline(time.Time{})
+	cc.nconn.SetReadDeadline(time.Time{})
 
 	readerDone := make(chan error)
 	go func() {
 		for {
 			var res base.Response
-			err := res.Read(c.br)
+			err := res.Read(cc.br)
 			if err != nil {
 				readerDone <- err
 				return
@@ -81,35 +81,35 @@ func (c *ClientConn) backgroundRecordUDP() {
 
 	for {
 		select {
-		case <-c.backgroundTerminate:
-			c.nconn.SetReadDeadline(time.Now())
+		case <-cc.backgroundTerminate:
+			cc.nconn.SetReadDeadline(time.Now())
 			<-readerDone
-			c.publishError = fmt.Errorf("terminated")
+			cc.publishError = fmt.Errorf("terminated")
 			return
 
 		case <-reportTicker.C:
-			c.publishWriteMutex.Lock()
+			cc.publishWriteMutex.Lock()
 			now := time.Now()
-			for trackID := range c.rtcpSenders {
-				r := c.rtcpSenders[trackID].Report(now)
+			for trackID := range cc.rtcpSenders {
+				r := cc.rtcpSenders[trackID].Report(now)
 				if r != nil {
-					c.udpRTCPListeners[trackID].write(r)
+					cc.udpRTCPListeners[trackID].write(r)
 				}
 			}
-			c.publishWriteMutex.Unlock()
+			cc.publishWriteMutex.Unlock()
 
 		case err := <-readerDone:
-			c.publishError = err
+			cc.publishError = err
 			return
 		}
 	}
 }
 
-func (c *ClientConn) backgroundRecordTCP() {
+func (cc *ClientConn) backgroundRecordTCP() {
 	defer func() {
-		c.publishWriteMutex.Lock()
-		defer c.publishWriteMutex.Unlock()
-		c.publishOpen = false
+		cc.publishWriteMutex.Lock()
+		defer cc.publishWriteMutex.Unlock()
+		cc.publishOpen = false
 	}()
 
 	reportTicker := time.NewTicker(clientConnSenderReportPeriod)
@@ -117,42 +117,42 @@ func (c *ClientConn) backgroundRecordTCP() {
 
 	for {
 		select {
-		case <-c.backgroundTerminate:
+		case <-cc.backgroundTerminate:
 			return
 
 		case <-reportTicker.C:
-			c.publishWriteMutex.Lock()
+			cc.publishWriteMutex.Lock()
 			now := time.Now()
-			for trackID := range c.rtcpSenders {
-				r := c.rtcpSenders[trackID].Report(now)
+			for trackID := range cc.rtcpSenders {
+				r := cc.rtcpSenders[trackID].Report(now)
 				if r != nil {
-					c.nconn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
+					cc.nconn.SetWriteDeadline(time.Now().Add(cc.conf.WriteTimeout))
 					frame := base.InterleavedFrame{
 						TrackID:    trackID,
 						StreamType: StreamTypeRTCP,
 						Payload:    r,
 					}
-					frame.Write(c.bw)
+					frame.Write(cc.bw)
 				}
 			}
-			c.publishWriteMutex.Unlock()
+			cc.publishWriteMutex.Unlock()
 		}
 	}
 }
 
 // Record writes a RECORD request and reads a Response.
 // This can be called only after Announce() and Setup().
-func (c *ClientConn) Record() (*base.Response, error) {
-	err := c.checkState(map[clientConnState]struct{}{
+func (cc *ClientConn) Record() (*base.Response, error) {
+	err := cc.checkState(map[clientConnState]struct{}{
 		clientConnStatePreRecord: {},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := c.Do(&base.Request{
+	res, err := cc.Do(&base.Request{
 		Method: base.Record,
-		URL:    c.streamURL,
+		URL:    cc.streamURL,
 	})
 	if err != nil {
 		return nil, err
@@ -163,18 +163,18 @@ func (c *ClientConn) Record() (*base.Response, error) {
 			Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
-	c.state = clientConnStateRecord
-	c.publishOpen = true
-	c.backgroundTerminate = make(chan struct{})
-	c.backgroundDone = make(chan struct{})
+	cc.state = clientConnStateRecord
+	cc.publishOpen = true
+	cc.backgroundTerminate = make(chan struct{})
+	cc.backgroundDone = make(chan struct{})
 
 	go func() {
-		defer close(c.backgroundDone)
+		defer close(cc.backgroundDone)
 
-		if *c.streamProtocol == StreamProtocolUDP {
-			c.backgroundRecordUDP()
+		if *cc.streamProtocol == StreamProtocolUDP {
+			cc.backgroundRecordUDP()
 		} else {
-			c.backgroundRecordTCP()
+			cc.backgroundRecordTCP()
 		}
 	}()
 
@@ -183,30 +183,30 @@ func (c *ClientConn) Record() (*base.Response, error) {
 
 // WriteFrame writes a frame.
 // This can be called only after Record().
-func (c *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []byte) error {
-	c.publishWriteMutex.RLock()
-	defer c.publishWriteMutex.RUnlock()
+func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []byte) error {
+	cc.publishWriteMutex.RLock()
+	defer cc.publishWriteMutex.RUnlock()
 
-	if !c.publishOpen {
-		return c.publishError
+	if !cc.publishOpen {
+		return cc.publishError
 	}
 
 	now := time.Now()
 
-	c.rtcpSenders[trackID].ProcessFrame(now, streamType, payload)
+	cc.rtcpSenders[trackID].ProcessFrame(now, streamType, payload)
 
-	if *c.streamProtocol == StreamProtocolUDP {
+	if *cc.streamProtocol == StreamProtocolUDP {
 		if streamType == StreamTypeRTP {
-			return c.udpRTPListeners[trackID].write(payload)
+			return cc.udpRTPListeners[trackID].write(payload)
 		}
-		return c.udpRTCPListeners[trackID].write(payload)
+		return cc.udpRTCPListeners[trackID].write(payload)
 	}
 
-	c.nconn.SetWriteDeadline(now.Add(c.conf.WriteTimeout))
+	cc.nconn.SetWriteDeadline(now.Add(cc.conf.WriteTimeout))
 	frame := base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
 		Payload:    payload,
 	}
-	return frame.Write(c.bw)
+	return frame.Write(cc.bw)
 }

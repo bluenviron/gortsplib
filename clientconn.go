@@ -127,75 +127,75 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 		conf.ListenPacket = net.ListenPacket
 	}
 
-	c := &ClientConn{
+	cc := &ClientConn{
 		conf:             conf,
 		udpRTPListeners:  make(map[int]*clientConnUDPListener),
 		udpRTCPListeners: make(map[int]*clientConnUDPListener),
 		publishError:     fmt.Errorf("not running"),
 	}
 
-	err := c.connOpen(scheme, host)
+	err := cc.connOpen(scheme, host)
 	if err != nil {
 		return nil, err
 	}
 
-	return c, nil
+	return cc, nil
 }
 
 // Close closes all the ClientConn resources.
-func (c *ClientConn) Close() error {
-	if c.state == clientConnStatePlay || c.state == clientConnStateRecord {
-		close(c.backgroundTerminate)
-		<-c.backgroundDone
+func (cc *ClientConn) Close() error {
+	if cc.state == clientConnStatePlay || cc.state == clientConnStateRecord {
+		close(cc.backgroundTerminate)
+		<-cc.backgroundDone
 
-		c.Do(&base.Request{
+		cc.Do(&base.Request{
 			Method:       base.Teardown,
-			URL:          c.streamURL,
+			URL:          cc.streamURL,
 			SkipResponse: true,
 		})
 	}
 
-	for _, l := range c.udpRTPListeners {
+	for _, l := range cc.udpRTPListeners {
 		l.close()
 	}
 
-	for _, l := range c.udpRTCPListeners {
+	for _, l := range cc.udpRTCPListeners {
 		l.close()
 	}
 
-	if c.nconn != nil {
-		c.nconn.Close()
+	if cc.nconn != nil {
+		cc.nconn.Close()
 	}
 
 	return nil
 }
 
-func (c *ClientConn) reset() {
-	c.Close()
+func (cc *ClientConn) reset() {
+	cc.Close()
 
-	c.state = clientConnStateInitial
-	c.nconn = nil
-	c.streamURL = nil
-	c.streamProtocol = nil
-	c.tracks = nil
-	c.udpRTPListeners = make(map[int]*clientConnUDPListener)
-	c.udpRTCPListeners = make(map[int]*clientConnUDPListener)
-	c.getParameterSupported = false
+	cc.state = clientConnStateInitial
+	cc.nconn = nil
+	cc.streamURL = nil
+	cc.streamProtocol = nil
+	cc.tracks = nil
+	cc.udpRTPListeners = make(map[int]*clientConnUDPListener)
+	cc.udpRTCPListeners = make(map[int]*clientConnUDPListener)
+	cc.getParameterSupported = false
 
 	// read only
-	c.rtpInfo = nil
-	c.rtcpReceivers = nil
-	c.tcpFrameBuffer = nil
-	c.readCB = nil
+	cc.rtpInfo = nil
+	cc.rtcpReceivers = nil
+	cc.tcpFrameBuffer = nil
+	cc.readCB = nil
 }
 
-func (c *ClientConn) connOpen(scheme string, host string) error {
+func (cc *ClientConn) connOpen(scheme string, host string) error {
 	if scheme != "rtsp" && scheme != "rtsps" {
 		return fmt.Errorf("unsupported scheme '%s'", scheme)
 	}
 
 	v := StreamProtocolUDP
-	if scheme == "rtsps" && c.conf.StreamProtocol == &v {
+	if scheme == "rtsps" && cc.conf.StreamProtocol == &v {
 		return fmt.Errorf("RTSPS can't be used with UDP")
 	}
 
@@ -203,27 +203,27 @@ func (c *ClientConn) connOpen(scheme string, host string) error {
 		host += ":554"
 	}
 
-	nconn, err := c.conf.DialTimeout("tcp", host, c.conf.ReadTimeout)
+	nconn, err := cc.conf.DialTimeout("tcp", host, cc.conf.ReadTimeout)
 	if err != nil {
 		return err
 	}
 
 	conn := func() net.Conn {
 		if scheme == "rtsps" {
-			return tls.Client(nconn, c.conf.TLSConfig)
+			return tls.Client(nconn, cc.conf.TLSConfig)
 		}
 		return nconn
 	}()
 
-	c.nconn = nconn
-	c.isTLS = (scheme == "rtsps")
-	c.br = bufio.NewReaderSize(conn, clientConnReadBufferSize)
-	c.bw = bufio.NewWriterSize(conn, clientConnWriteBufferSize)
+	cc.nconn = nconn
+	cc.isTLS = (scheme == "rtsps")
+	cc.br = bufio.NewReaderSize(conn, clientConnReadBufferSize)
+	cc.bw = bufio.NewWriterSize(conn, clientConnWriteBufferSize)
 	return nil
 }
 
-func (c *ClientConn) checkState(allowed map[clientConnState]struct{}) error {
-	if _, ok := allowed[c.state]; ok {
+func (cc *ClientConn) checkState(allowed map[clientConnState]struct{}) error {
+	if _, ok := allowed[cc.state]; ok {
 		return nil
 	}
 
@@ -233,49 +233,49 @@ func (c *ClientConn) checkState(allowed map[clientConnState]struct{}) error {
 		allowedList[i] = a
 		i++
 	}
-	return liberrors.ErrClientWrongState{AllowedList: allowedList, State: c.state}
+	return liberrors.ErrClientWrongState{AllowedList: allowedList, State: cc.state}
 }
 
 // NetConn returns the underlying net.Conn.
-func (c *ClientConn) NetConn() net.Conn {
-	return c.nconn
+func (cc *ClientConn) NetConn() net.Conn {
+	return cc.nconn
 }
 
 // Tracks returns all the tracks that the connection is reading or publishing.
-func (c *ClientConn) Tracks() Tracks {
-	return c.tracks
+func (cc *ClientConn) Tracks() Tracks {
+	return cc.tracks
 }
 
 // Do writes a Request and reads a Response.
 // Interleaved frames received before the response are ignored.
-func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
+func (cc *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	if req.Header == nil {
 		req.Header = make(base.Header)
 	}
 
 	// add session
-	if c.session != "" {
-		req.Header["Session"] = base.HeaderValue{c.session}
+	if cc.session != "" {
+		req.Header["Session"] = base.HeaderValue{cc.session}
 	}
 
 	// add auth
-	if c.sender != nil {
-		req.Header["Authorization"] = c.sender.GenerateHeader(req.Method, req.URL)
+	if cc.sender != nil {
+		req.Header["Authorization"] = cc.sender.GenerateHeader(req.Method, req.URL)
 	}
 
 	// add cseq
-	c.cseq++
-	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
+	cc.cseq++
+	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(cc.cseq), 10)}
 
 	// add user agent
 	req.Header["User-Agent"] = base.HeaderValue{"gortsplib"}
 
-	if c.conf.OnRequest != nil {
-		c.conf.OnRequest(req)
+	if cc.conf.OnRequest != nil {
+		cc.conf.OnRequest(req)
 	}
 
-	c.nconn.SetWriteDeadline(time.Now().Add(c.conf.WriteTimeout))
-	err := req.Write(c.bw)
+	cc.nconn.SetWriteDeadline(time.Now().Add(cc.conf.WriteTimeout))
+	err := req.Write(cc.bw)
 	if err != nil {
 		return nil, err
 	}
@@ -285,26 +285,26 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	}
 
 	var res base.Response
-	c.nconn.SetReadDeadline(time.Now().Add(c.conf.ReadTimeout))
+	cc.nconn.SetReadDeadline(time.Now().Add(cc.conf.ReadTimeout))
 
-	if c.tcpFrameBuffer != nil {
+	if cc.tcpFrameBuffer != nil {
 		// read the response and ignore interleaved frames in between;
 		// interleaved frames are sent in two scenarios:
 		// * when the server is v4lrtspserver, before the PLAY response
 		// * when the stream is already playing
-		err = res.ReadIgnoreFrames(c.br, c.tcpFrameBuffer.Next())
+		err = res.ReadIgnoreFrames(cc.br, cc.tcpFrameBuffer.Next())
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		err = res.Read(c.br)
+		err = res.Read(cc.br)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if c.conf.OnResponse != nil {
-		c.conf.OnResponse(&res)
+	if cc.conf.OnResponse != nil {
+		cc.conf.OnResponse(&res)
 	}
 
 	// get session from response
@@ -314,11 +314,11 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 		if err != nil {
 			return nil, liberrors.ErrClientSessionHeaderInvalid{Err: err}
 		}
-		c.session = sx.Session
+		cc.session = sx.Session
 	}
 
 	// setup authentication
-	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.sender == nil {
+	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && cc.sender == nil {
 		pass, _ := req.URL.User.Password()
 		user := req.URL.User.Username()
 
@@ -326,18 +326,18 @@ func (c *ClientConn) Do(req *base.Request) (*base.Response, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup authentication: %s", err)
 		}
-		c.sender = sender
+		cc.sender = sender
 
 		// send request again
-		return c.Do(req)
+		return cc.Do(req)
 	}
 
 	return &res, nil
 }
 
 // Options writes an OPTIONS request and reads a response.
-func (c *ClientConn) Options(u *base.URL) (*base.Response, error) {
-	err := c.checkState(map[clientConnState]struct{}{
+func (cc *ClientConn) Options(u *base.URL) (*base.Response, error) {
+	err := cc.checkState(map[clientConnState]struct{}{
 		clientConnStateInitial:   {},
 		clientConnStatePrePlay:   {},
 		clientConnStatePreRecord: {},
@@ -346,7 +346,7 @@ func (c *ClientConn) Options(u *base.URL) (*base.Response, error) {
 		return nil, err
 	}
 
-	res, err := c.Do(&base.Request{
+	res, err := cc.Do(&base.Request{
 		Method: base.Options,
 		URL:    u,
 	})
@@ -363,7 +363,7 @@ func (c *ClientConn) Options(u *base.URL) (*base.Response, error) {
 		return res, liberrors.ErrClientWrongStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
-	c.getParameterSupported = func() bool {
+	cc.getParameterSupported = func() bool {
 		pub, ok := res.Header["Public"]
 		if !ok || len(pub) != 1 {
 			return false
@@ -381,8 +381,8 @@ func (c *ClientConn) Options(u *base.URL) (*base.Response, error) {
 }
 
 // Describe writes a DESCRIBE request and reads a Response.
-func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
-	err := c.checkState(map[clientConnState]struct{}{
+func (cc *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
+	err := cc.checkState(map[clientConnState]struct{}{
 		clientConnStateInitial:   {},
 		clientConnStatePrePlay:   {},
 		clientConnStatePreRecord: {},
@@ -391,7 +391,7 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 		return nil, nil, err
 	}
 
-	res, err := c.Do(&base.Request{
+	res, err := cc.Do(&base.Request{
 		Method: base.Describe,
 		URL:    u,
 		Header: base.Header{
@@ -404,29 +404,29 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 
 	if res.StatusCode != base.StatusOK {
 		// redirect
-		if !c.conf.RedirectDisable &&
+		if !cc.conf.RedirectDisable &&
 			res.StatusCode >= base.StatusMovedPermanently &&
 			res.StatusCode <= base.StatusUseProxy &&
 			len(res.Header["Location"]) == 1 {
 
-			c.reset()
+			cc.reset()
 
 			u, err := base.ParseURL(res.Header["Location"][0])
 			if err != nil {
 				return nil, nil, err
 			}
 
-			err = c.connOpen(u.Scheme, u.Host)
+			err = cc.connOpen(u.Scheme, u.Host)
 			if err != nil {
 				return nil, nil, err
 			}
 
-			_, err = c.Options(u)
+			_, err = cc.Options(u)
 			if err != nil {
 				return nil, nil, err
 			}
 
-			return c.Describe(u)
+			return cc.Describe(u)
 		}
 
 		return nil, res, liberrors.ErrClientWrongStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
@@ -452,9 +452,9 @@ func (c *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 // Setup writes a SETUP request and reads a Response.
 // rtpPort and rtcpPort are used only if protocol is UDP.
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
-func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
+func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	rtpPort int, rtcpPort int) (*base.Response, error) {
-	err := c.checkState(map[clientConnState]struct{}{
+	err := cc.checkState(map[clientConnState]struct{}{
 		clientConnStateInitial:   {},
 		clientConnStatePrePlay:   {},
 		clientConnStatePreRecord: {},
@@ -463,13 +463,13 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		return nil, err
 	}
 
-	if (mode == headers.TransportModeRecord && c.state != clientConnStatePreRecord) ||
-		(mode == headers.TransportModePlay && c.state != clientConnStatePrePlay &&
-			c.state != clientConnStateInitial) {
+	if (mode == headers.TransportModeRecord && cc.state != clientConnStatePreRecord) ||
+		(mode == headers.TransportModePlay && cc.state != clientConnStatePrePlay &&
+			cc.state != clientConnStateInitial) {
 		return nil, liberrors.ErrClientCannotReadPublishAtSameTime{}
 	}
 
-	if c.streamURL != nil && *track.BaseURL != *c.streamURL {
+	if cc.streamURL != nil && *track.BaseURL != *cc.streamURL {
 		return nil, liberrors.ErrClientCannotSetupTracksDifferentURLs{}
 	}
 
@@ -477,20 +477,20 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	var rtcpListener *clientConnUDPListener
 
 	// always use TCP if encrypted
-	if c.isTLS {
+	if cc.isTLS {
 		v := StreamProtocolTCP
-		c.streamProtocol = &v
+		cc.streamProtocol = &v
 	}
 
 	proto := func() StreamProtocol {
 		// protocol set by previous Setup() or ReadFrames()
-		if c.streamProtocol != nil {
-			return *c.streamProtocol
+		if cc.streamProtocol != nil {
+			return *cc.streamProtocol
 		}
 
 		// protocol set by conf
-		if c.conf.StreamProtocol != nil {
-			return *c.conf.StreamProtocol
+		if cc.conf.StreamProtocol != nil {
+			return *cc.conf.StreamProtocol
 		}
 
 		// try UDP
@@ -519,19 +519,18 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		var err error
 		rtpListener, rtcpListener, err = func() (*clientConnUDPListener, *clientConnUDPListener, error) {
 			if rtpPort != 0 {
-				rtpListener, err := newClientConnUDPListener(c, rtpPort)
+				rtpListener, err := newClientConnUDPListener(cc, rtpPort)
 				if err != nil {
 					return nil, nil, err
 				}
 
-				rtcpListener, err := newClientConnUDPListener(c, rtcpPort)
+				rtcpListener, err := newClientConnUDPListener(cc, rtcpPort)
 				if err != nil {
 					rtpListener.close()
 					return nil, nil, err
 				}
 
 				return rtpListener, rtcpListener, nil
-
 			}
 
 			// choose two consecutive ports in range 65535-10000
@@ -540,12 +539,12 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 				rtpPort = (rand.Intn((65535-10000)/2) * 2) + 10000
 				rtcpPort = rtpPort + 1
 
-				rtpListener, err := newClientConnUDPListener(c, rtpPort)
+				rtpListener, err := newClientConnUDPListener(cc, rtpPort)
 				if err != nil {
 					continue
 				}
 
-				rtcpListener, err := newClientConnUDPListener(c, rtcpPort)
+				rtcpListener, err := newClientConnUDPListener(cc, rtcpPort)
 				if err != nil {
 					rtpListener.close()
 					continue
@@ -573,7 +572,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		return nil, err
 	}
 
-	res, err := c.Do(&base.Request{
+	res, err := cc.Do(&base.Request{
 		Method: base.Setup,
 		URL:    trackURL,
 		Header: base.Header{
@@ -596,13 +595,13 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 
 		// switch protocol automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
-			c.streamProtocol == nil &&
-			c.conf.StreamProtocol == nil {
+			cc.streamProtocol == nil &&
+			cc.conf.StreamProtocol == nil {
 
 			v := StreamProtocolTCP
-			c.streamProtocol = &v
+			cc.streamProtocol = &v
 
-			return c.Setup(headers.TransportModePlay, track, 0, 0)
+			return cc.Setup(headers.TransportModePlay, track, 0, 0)
 		}
 
 		return res, liberrors.ErrClientWrongStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
@@ -628,7 +627,7 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			}
 		}
 
-		if !c.conf.AnyPortEnable {
+		if !cc.conf.AnyPortEnable {
 			if thRes.ServerPorts == nil || (thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] == 0) {
 				rtpListener.close()
 				rtcpListener.close()
@@ -651,50 +650,50 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 	clockRate, _ := track.ClockRate()
 
 	if mode == headers.TransportModePlay {
-		if c.rtcpReceivers == nil {
-			c.rtcpReceivers = make(map[int]*rtcpreceiver.RTCPReceiver)
+		if cc.rtcpReceivers == nil {
+			cc.rtcpReceivers = make(map[int]*rtcpreceiver.RTCPReceiver)
 		}
-		c.rtcpReceivers[track.ID] = rtcpreceiver.New(nil, clockRate)
+		cc.rtcpReceivers[track.ID] = rtcpreceiver.New(nil, clockRate)
 	} else {
-		if c.rtcpSenders == nil {
-			c.rtcpSenders = make(map[int]*rtcpsender.RTCPSender)
+		if cc.rtcpSenders == nil {
+			cc.rtcpSenders = make(map[int]*rtcpsender.RTCPSender)
 		}
-		c.rtcpSenders[track.ID] = rtcpsender.New(clockRate)
+		cc.rtcpSenders[track.ID] = rtcpsender.New(clockRate)
 	}
 
-	c.streamURL = track.BaseURL
-	c.streamProtocol = &proto
-	c.tracks = append(c.tracks, track)
+	cc.streamURL = track.BaseURL
+	cc.streamProtocol = &proto
+	cc.tracks = append(cc.tracks, track)
 
 	if proto == StreamProtocolUDP {
-		rtpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
+		rtpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteZone = cc.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtpListener.remotePort = thRes.ServerPorts[0]
 		}
 		rtpListener.trackID = track.ID
 		rtpListener.streamType = StreamTypeRTP
-		c.udpRTPListeners[track.ID] = rtpListener
+		cc.udpRTPListeners[track.ID] = rtpListener
 
-		rtcpListener.remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
+		rtcpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteZone = cc.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtcpListener.remotePort = thRes.ServerPorts[1]
 		}
 		rtcpListener.trackID = track.ID
 		rtcpListener.streamType = StreamTypeRTCP
-		c.udpRTCPListeners[track.ID] = rtcpListener
+		cc.udpRTCPListeners[track.ID] = rtcpListener
 	}
 
 	if mode == headers.TransportModePlay {
-		c.state = clientConnStatePrePlay
+		cc.state = clientConnStatePrePlay
 
-		if *c.streamProtocol == StreamProtocolTCP && c.tcpFrameBuffer == nil {
-			c.tcpFrameBuffer = multibuffer.New(uint64(c.conf.ReadBufferCount), uint64(c.conf.ReadBufferSize))
+		if *cc.streamProtocol == StreamProtocolTCP && cc.tcpFrameBuffer == nil {
+			cc.tcpFrameBuffer = multibuffer.New(uint64(cc.conf.ReadBufferCount), uint64(cc.conf.ReadBufferSize))
 		}
 
 	} else {
-		c.state = clientConnStatePreRecord
+		cc.state = clientConnStatePreRecord
 	}
 
 	return res, nil
@@ -702,8 +701,8 @@ func (c *ClientConn) Setup(mode headers.TransportMode, track *Track,
 
 // Pause writes a PAUSE request and reads a Response.
 // This can be called only after Play() or Record().
-func (c *ClientConn) Pause() (*base.Response, error) {
-	err := c.checkState(map[clientConnState]struct{}{
+func (cc *ClientConn) Pause() (*base.Response, error) {
+	err := cc.checkState(map[clientConnState]struct{}{
 		clientConnStatePlay:   {},
 		clientConnStateRecord: {},
 	})
@@ -711,12 +710,12 @@ func (c *ClientConn) Pause() (*base.Response, error) {
 		return nil, err
 	}
 
-	close(c.backgroundTerminate)
-	<-c.backgroundDone
+	close(cc.backgroundTerminate)
+	<-cc.backgroundDone
 
-	res, err := c.Do(&base.Request{
+	res, err := cc.Do(&base.Request{
 		Method: base.Pause,
-		URL:    c.streamURL,
+		URL:    cc.streamURL,
 	})
 	if err != nil {
 		return nil, err
@@ -727,11 +726,11 @@ func (c *ClientConn) Pause() (*base.Response, error) {
 			Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
-	switch c.state {
+	switch cc.state {
 	case clientConnStatePlay:
-		c.state = clientConnStatePrePlay
+		cc.state = clientConnStatePrePlay
 	case clientConnStateRecord:
-		c.state = clientConnStatePreRecord
+		cc.state = clientConnStatePreRecord
 	}
 
 	return res, nil
