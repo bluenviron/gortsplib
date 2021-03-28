@@ -129,7 +129,7 @@ func TestServerReadSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerReadSetupDifferentPaths(t *testing.T) {
+func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -210,7 +210,7 @@ func TestServerReadSetupDifferentPaths(t *testing.T) {
 	require.Equal(t, "can't setup tracks with different paths", err.Error())
 }
 
-func TestServerReadSetupTrackTwice(t *testing.T) {
+func TestServerReadSetupErrorTrackTwice(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -297,7 +297,7 @@ func TestServerReadFrames(t *testing.T) {
 		"tcp",
 	} {
 		t.Run(proto, func(t *testing.T) {
-			packetsReceived := make(chan struct{})
+			framesReceived := make(chan struct{})
 
 			conf := ServerConf{
 				UDPRTPAddress:  "127.0.0.1:8000",
@@ -333,7 +333,7 @@ func TestServerReadFrames(t *testing.T) {
 					require.Equal(t, 0, trackID)
 					require.Equal(t, StreamTypeRTCP, typ)
 					require.Equal(t, []byte("\x01\x02\x03\x04"), buf)
-					close(packetsReceived)
+					close(framesReceived)
 				}
 
 				<-conn.Read(ServerConnReadHandlers{
@@ -419,7 +419,7 @@ func TestServerReadFrames(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			<-packetsReceived
+			<-framesReceived
 		})
 	}
 }

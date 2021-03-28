@@ -187,7 +187,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerPublishSetupDifferentPaths(t *testing.T) {
+func TestServerPublishSetupErrorDifferentPaths(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -285,7 +285,7 @@ func TestServerPublishSetupDifferentPaths(t *testing.T) {
 	require.Equal(t, "invalid track path (test2stream/trackID=0)", err.Error())
 }
 
-func TestServerPublishSetupTrackTwice(t *testing.T) {
+func TestServerPublishSetupErrorTrackTwice(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -397,7 +397,7 @@ func TestServerPublishSetupTrackTwice(t *testing.T) {
 	require.Equal(t, "track 0 has already been setup", err.Error())
 }
 
-func TestServerPublishRecordPartialTracks(t *testing.T) {
+func TestServerPublishRecordErrorPartialTracks(t *testing.T) {
 	serverErr := make(chan error)
 
 	s, err := Serve("127.0.0.1:8554")
@@ -524,7 +524,7 @@ func TestServerPublishFrames(t *testing.T) {
 		"tcp",
 	} {
 		t.Run(proto, func(t *testing.T) {
-			packetsReceived := make(chan struct{})
+			framesReceived := make(chan struct{})
 
 			conf := ServerConf{}
 
@@ -574,7 +574,7 @@ func TestServerPublishFrames(t *testing.T) {
 						require.Equal(t, 0, trackID)
 						require.Equal(t, StreamTypeRTCP, typ)
 						require.Equal(t, []byte("\x05\x06\x07\x08"), buf)
-						close(packetsReceived)
+						close(framesReceived)
 					}
 				}
 
@@ -706,12 +706,12 @@ func TestServerPublishFrames(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			<-packetsReceived
+			<-framesReceived
 		})
 	}
 }
 
-func TestServerPublishFramesWrongProtocol(t *testing.T) {
+func TestServerPublishFramesErrorWrongProtocol(t *testing.T) {
 	conf := ServerConf{
 		UDPRTPAddress:  "127.0.0.1:8000",
 		UDPRTCPAddress: "127.0.0.1:8001",
