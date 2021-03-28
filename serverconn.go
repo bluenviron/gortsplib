@@ -266,6 +266,7 @@ type ServerConn struct {
 	doEnableFrames      bool
 	framesEnabled       bool
 	readTimeoutEnabled  bool
+	tcpFrameBuffer      *multibuffer.MultiBuffer
 	frameRingBuffer     *ringbuffer.RingBuffer
 	backgroundWriteDone chan struct{}
 
@@ -1025,82 +1026,76 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	}, fmt.Errorf("unhandled method: %v", req.Method)
 }
 
-func (sc *ServerConn) backgroundRead() error {
-	var tcpFrameBuffer *multibuffer.MultiBuffer
+func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
+	res, err := sc.handleRequest(req)
 
-	handleRequestOuter := func(req *base.Request) error {
-		res, err := sc.handleRequest(req)
+	if res.Header == nil {
+		res.Header = base.Header{}
+	}
 
-		if res.Header == nil {
-			res.Header = base.Header{}
+	// add cseq
+	if _, ok := err.(liberrors.ErrServerCSeqMissing); !ok {
+		res.Header["CSeq"] = req.Header["CSeq"]
+	}
+
+	// add server
+	res.Header["Server"] = base.HeaderValue{"gortsplib"}
+
+	if sc.readHandlers.OnResponse != nil {
+		sc.readHandlers.OnResponse(res)
+	}
+
+	switch {
+	case sc.doEnableFrames: // start background write
+		sc.doEnableFrames = false
+		sc.framesEnabled = true
+
+		if sc.state == ServerConnStateRecord {
+			sc.tcpFrameBuffer = multibuffer.New(uint64(sc.conf.ReadBufferCount), uint64(sc.conf.ReadBufferSize))
+		} else {
+			// when playing, tcpFrameBuffer is only used to receive RTCP receiver reports,
+			// that are much smaller than RTP frames and are sent at a fixed interval
+			// (about 2 frames every 10 secs).
+			// decrease RAM consumption by allocating less buffers.
+			sc.tcpFrameBuffer = multibuffer.New(8, uint64(sc.conf.ReadBufferSize))
 		}
 
-		// add cseq
-		if _, ok := err.(liberrors.ErrServerCSeqMissing); !ok {
-			res.Header["CSeq"] = req.Header["CSeq"]
-		}
-
-		// add server
-		res.Header["Server"] = base.HeaderValue{"gortsplib"}
-
-		if sc.readHandlers.OnResponse != nil {
-			sc.readHandlers.OnResponse(res)
-		}
+		// write response before frames
+		sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
+		res.Write(sc.bw)
 
 		// start background write
-		switch {
-		case sc.doEnableFrames:
-			sc.doEnableFrames = false
-			sc.framesEnabled = true
+		sc.frameRingBuffer.Reset()
+		sc.backgroundWriteDone = make(chan struct{})
+		go sc.backgroundWrite()
 
-			if sc.state == ServerConnStateRecord {
-				tcpFrameBuffer = multibuffer.New(uint64(sc.conf.ReadBufferCount), uint64(sc.conf.ReadBufferSize))
-			} else {
-				// when playing, tcpFrameBuffer is only used to receive RTCP receiver reports,
-				// that are much smaller than RTP frames and are sent at a fixed interval
-				// (about 2 frames every 10 secs).
-				// decrease RAM consumption by allocating less buffers.
-				tcpFrameBuffer = multibuffer.New(8, uint64(sc.conf.ReadBufferSize))
-			}
+	case sc.framesEnabled: // write to background write
+		sc.frameRingBuffer.Push(res)
 
-			// write response before frames
-			sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
-			res.Write(sc.bw)
-
-			// start background write
-			sc.frameRingBuffer.Reset()
-			sc.backgroundWriteDone = make(chan struct{})
-			go sc.backgroundWrite()
-
-			// write to background write
-		case sc.framesEnabled:
-			sc.frameRingBuffer.Push(res)
-
-			// write directly
-		default:
-			sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
-			res.Write(sc.bw)
-		}
-
-		return err
+	default: // write directly
+		sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
+		res.Write(sc.bw)
 	}
+
+	return err
+}
+
+func (sc *ServerConn) backgroundRead() error {
+	defer sc.frameModeDisable()
 
 	var req base.Request
 	var frame base.InterleavedFrame
-	var errRet error
 
-outer:
 	for {
 		if sc.readTimeoutEnabled {
 			sc.nconn.SetReadDeadline(time.Now().Add(sc.conf.ReadTimeout))
 		}
 
 		if sc.framesEnabled {
-			frame.Payload = tcpFrameBuffer.Next()
+			frame.Payload = sc.tcpFrameBuffer.Next()
 			what, err := base.ReadInterleavedFrameOrRequest(&frame, &req, sc.br)
 			if err != nil {
-				errRet = err
-				break outer
+				return err
 			}
 
 			switch what.(type) {
@@ -1115,10 +1110,9 @@ outer:
 				}
 
 			case *base.Request:
-				err := handleRequestOuter(&req)
+				err := sc.handleRequestOuter(&req)
 				if err != nil {
-					errRet = err
-					break outer
+					return err
 				}
 			}
 
@@ -1126,24 +1120,17 @@ outer:
 			err := req.Read(sc.br)
 			if err != nil {
 				if atomic.LoadInt32(&sc.udpTimeout) == 1 {
-					errRet = liberrors.ErrServerNoUDPPacketsRecently{}
-				} else {
-					errRet = err
+					return liberrors.ErrServerNoUDPPacketsRecently{}
 				}
-				break outer
+				return err
 			}
 
-			err = handleRequestOuter(&req)
+			err = sc.handleRequestOuter(&req)
 			if err != nil {
-				errRet = err
-				break outer
+				return err
 			}
 		}
 	}
-
-	sc.frameModeDisable()
-
-	return errRet
 }
 
 // Read starts reading requests and frames.
@@ -1183,8 +1170,6 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		return
 	}
 
-	// StreamProtocolTCP
-
 	sc.frameRingBuffer.Push(&base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
@@ -1208,15 +1193,20 @@ func (sc *ServerConn) backgroundRecord() {
 				continue
 			}
 
-			now := time.Now()
-			for _, track := range sc.announcedTracks {
-				last := time.Unix(atomic.LoadInt64(track.udpLastFrameTime), 0)
-
-				if now.Sub(last) >= sc.conf.ReadTimeout {
-					atomic.StoreInt32(&sc.udpTimeout, 1)
-					sc.nconn.Close()
-					return
+			inTimeout := func() bool {
+				now := time.Now()
+				for _, track := range sc.announcedTracks {
+					lft := atomic.LoadInt64(track.udpLastFrameTime)
+					if now.Sub(time.Unix(lft, 0)) < sc.conf.ReadTimeout {
+						return false
+					}
 				}
+				return true
+			}()
+			if inTimeout {
+				atomic.StoreInt32(&sc.udpTimeout, 1)
+				sc.nconn.Close()
+				return
 			}
 
 		case <-receiverReportTicker.C:
