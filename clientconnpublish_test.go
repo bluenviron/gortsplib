@@ -743,7 +743,7 @@ func TestClientPublishRTCP(t *testing.T) {
 			Timestamp:      54352,
 			SSRC:           753621,
 		},
-		Payload: []byte("\x01\x02\x03\x04"),
+		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}).Marshal()
 	err = conn.WriteFrame(track.ID, StreamTypeRTP, byts)
 	require.NoError(t, err)

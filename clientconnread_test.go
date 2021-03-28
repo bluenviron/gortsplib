@@ -1072,7 +1072,7 @@ func TestClientReadRTCP(t *testing.T) {
 				Timestamp:      54352,
 				SSRC:           753621,
 			},
-			Payload: []byte("\x01\x02\x03\x04"),
+			Payload: []byte{0x01, 0x02, 0x03, 0x04},
 		}).Marshal()
 		err = base.InterleavedFrame{
 			TrackID:    0,
@@ -1144,4 +1144,108 @@ func TestClientReadRTCP(t *testing.T) {
 	<-recvDone
 	conn.Close()
 	<-done
+}
+
+func TestClientReadWriteManualRTCP(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		var req base.Request
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+
+		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+		require.NoError(t, err)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+			},
+			Body: Tracks{track}.Write(),
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+
+		var th headers.Transport
+		err = th.Read(req.Header["Transport"])
+		require.NoError(t, err)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": headers.Transport{
+					Protocol: StreamProtocolTCP,
+					Delivery: func() *base.StreamDelivery {
+						v := base.StreamDeliveryUnicast
+						return &v
+					}(),
+					ClientPorts:    th.ClientPorts,
+					InterleavedIDs: &[2]int{0, 1},
+				}.Write(),
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		var f base.InterleavedFrame
+		f.Payload = make([]byte, 2048)
+		err = f.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, StreamTypeRTCP, f.StreamType)
+		require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, f.Payload)
+	}()
+
+	conf := ClientConf{
+		StreamProtocol: func() *StreamProtocol {
+			v := StreamProtocolTCP
+			return &v
+		}(),
+	}
+
+	conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+	defer conn.Close()
+
+	err = conn.WriteFrame(0, StreamTypeRTCP, []byte{0x01, 0x02, 0x03, 0x04})
+	require.NoError(t, err)
 }

@@ -84,16 +84,15 @@ type ClientConn struct {
 	streamProtocol        *StreamProtocol
 	tracks                map[int]clientConnTrack
 	getParameterSupported bool
+	writeMutex            sync.Mutex
+	writeFrameAllowed     bool
+	writeError            error
+	backgroundRunning     bool
 
 	// read
 	rtpInfo        *headers.RTPInfo
 	tcpFrameBuffer *multibuffer.MultiBuffer
 	readCB         func(int, StreamType, []byte)
-
-	// publish
-	publishError      error
-	publishWriteMutex sync.RWMutex
-	publishOpen       bool
 
 	// in
 	backgroundTerminate chan struct{}
@@ -137,9 +136,9 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 	}
 
 	cc := &ClientConn{
-		conf:         conf,
-		tracks:       make(map[int]clientConnTrack),
-		publishError: fmt.Errorf("not running"),
+		conf:       conf,
+		tracks:     make(map[int]clientConnTrack),
+		writeError: fmt.Errorf("not running"),
 	}
 
 	err := cc.connOpen(scheme, host)
@@ -152,10 +151,12 @@ func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, er
 
 // Close closes all the ClientConn resources.
 func (cc *ClientConn) Close() error {
-	if cc.state == clientConnStatePlay || cc.state == clientConnStateRecord {
+	if cc.backgroundRunning {
 		close(cc.backgroundTerminate)
 		<-cc.backgroundDone
+	}
 
+	if cc.state == clientConnStatePlay || cc.state == clientConnStateRecord {
 		cc.Do(&base.Request{
 			Method:       base.Teardown,
 			URL:          cc.streamURL,
@@ -186,6 +187,7 @@ func (cc *ClientConn) reset() {
 	cc.streamProtocol = nil
 	cc.tracks = make(map[int]clientConnTrack)
 	cc.getParameterSupported = false
+	cc.backgroundRunning = false
 
 	// read
 	cc.rtpInfo = nil
@@ -718,6 +720,7 @@ func (cc *ClientConn) Pause() (*base.Response, error) {
 
 	close(cc.backgroundTerminate)
 	<-cc.backgroundDone
+	cc.backgroundRunning = false
 
 	res, err := cc.Do(&base.Request{
 		Method: base.Pause,
@@ -740,4 +743,35 @@ func (cc *ClientConn) Pause() (*base.Response, error) {
 	}
 
 	return res, nil
+}
+
+// WriteFrame writes a frame.
+func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []byte) error {
+	now := time.Now()
+
+	cc.writeMutex.Lock()
+	defer cc.writeMutex.Unlock()
+
+	if !cc.writeFrameAllowed {
+		return cc.writeError
+	}
+
+	if cc.tracks[trackID].rtcpSender != nil {
+		cc.tracks[trackID].rtcpSender.ProcessFrame(now, streamType, payload)
+	}
+
+	if *cc.streamProtocol == StreamProtocolUDP {
+		if streamType == StreamTypeRTP {
+			return cc.tracks[trackID].udpRTPListener.write(payload)
+		}
+		return cc.tracks[trackID].udpRTCPListener.write(payload)
+	}
+
+	cc.nconn.SetWriteDeadline(now.Add(cc.conf.WriteTimeout))
+	frame := base.InterleavedFrame{
+		TrackID:    trackID,
+		StreamType: streamType,
+		Payload:    payload,
+	}
+	return frame.Write(cc.bw)
 }

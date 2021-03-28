@@ -569,7 +569,7 @@ func TestServerPublishFrames(t *testing.T) {
 					if atomic.SwapUint64(&rtpReceived, 1) == 0 {
 						require.Equal(t, 0, trackID)
 						require.Equal(t, StreamTypeRTP, typ)
-						require.Equal(t, []byte("\x01\x02\x03\x04"), buf)
+						require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, buf)
 					} else {
 						require.Equal(t, 0, trackID)
 						require.Equal(t, StreamTypeRTCP, typ)
@@ -675,7 +675,7 @@ func TestServerPublishFrames(t *testing.T) {
 				require.NoError(t, err)
 				defer l1.Close()
 
-				l1.WriteTo([]byte("\x01\x02\x03\x04"), &net.UDPAddr{
+				l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[0],
 				})
@@ -694,7 +694,7 @@ func TestServerPublishFrames(t *testing.T) {
 				err = base.InterleavedFrame{
 					TrackID:    0,
 					StreamType: StreamTypeRTP,
-					Payload:    []byte("\x01\x02\x03\x04"),
+					Payload:    []byte{0x01, 0x02, 0x03, 0x04},
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -839,7 +839,7 @@ func TestServerPublishFramesErrorWrongProtocol(t *testing.T) {
 	err = base.InterleavedFrame{
 		TrackID:    0,
 		StreamType: StreamTypeRTP,
-		Payload:    []byte("\x01\x02\x03\x04"),
+		Payload:    []byte{0x01, 0x02, 0x03, 0x04},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 }
@@ -976,7 +976,7 @@ func TestServerPublishRTCP(t *testing.T) {
 			Timestamp:      54352,
 			SSRC:           753621,
 		},
-		Payload: []byte("\x01\x02\x03\x04"),
+		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}).Marshal()
 	err = base.InterleavedFrame{
 		TrackID:    0,

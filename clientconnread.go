@@ -42,6 +42,9 @@ func (cc *ClientConn) Play() (*base.Response, error) {
 		cc.rtpInfo = &ri
 	}
 
+	cc.state = clientConnStatePlay
+	cc.writeFrameAllowed = true
+
 	return res, nil
 }
 
@@ -252,17 +255,17 @@ func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan err
 	done := make(chan error, 1)
 
 	err := cc.checkState(map[clientConnState]struct{}{
-		clientConnStatePrePlay: {},
+		clientConnStatePlay: {},
 	})
 	if err != nil {
 		done <- err
 		return done
 	}
 
-	cc.state = clientConnStatePlay
-	cc.readCB = onFrame
+	cc.backgroundRunning = true
 	cc.backgroundTerminate = make(chan struct{})
 	cc.backgroundDone = make(chan struct{})
+	cc.readCB = onFrame
 
 	go func() {
 		if *cc.streamProtocol == StreamProtocolUDP {
