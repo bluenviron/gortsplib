@@ -1212,7 +1212,7 @@ func (sc *ServerConn) backgroundRecord() {
 			now := time.Now()
 			for trackID, track := range sc.announcedTracks {
 				r := track.rtcpReceiver.Report(now)
-				sc.WriteFrame(trackID, StreamTypeRTP, r)
+				sc.WriteFrame(trackID, StreamTypeRTCP, r)
 			}
 
 		case <-sc.backgroundRecordTerminate:
