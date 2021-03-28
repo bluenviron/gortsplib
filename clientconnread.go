@@ -310,6 +310,7 @@ func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan err
 						return <-cc.ReadFrames(onFrame)
 					}()
 					done <- err
+					return
 				}
 			}
 
