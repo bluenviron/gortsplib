@@ -20,7 +20,7 @@ var casesRTPInfo = []struct {
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556`},
 		RTPInfo{
 			{
-				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
+				URL: "rtsp://127.0.0.1/test.mkv/track1",
 				SequenceNumber: func() *uint16 {
 					v := uint16(35243)
 					return &v
@@ -38,7 +38,7 @@ var casesRTPInfo = []struct {
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=717574556,url=rtsp://127.0.0.1/test.mkv/track2;seq=13655;rtptime=2848846950`},
 		RTPInfo{
 			{
-				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
+				URL: "rtsp://127.0.0.1/test.mkv/track1",
 				SequenceNumber: func() *uint16 {
 					v := uint16(35243)
 					return &v
@@ -49,7 +49,7 @@ var casesRTPInfo = []struct {
 				}(),
 			},
 			{
-				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track2"),
+				URL: "rtsp://127.0.0.1/test.mkv/track2",
 				SequenceNumber: func() *uint16 {
 					v := uint16(13655)
 					return &v
@@ -67,7 +67,7 @@ var casesRTPInfo = []struct {
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243`},
 		RTPInfo{
 			{
-				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
+				URL: "rtsp://127.0.0.1/test.mkv/track1",
 				SequenceNumber: func() *uint16 {
 					v := uint16(35243)
 					return &v
@@ -81,9 +81,27 @@ var casesRTPInfo = []struct {
 		base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;rtptime=717574556`},
 		RTPInfo{
 			{
-				URL: base.MustParseURL("rtsp://127.0.0.1/test.mkv/track1"),
+				URL: "rtsp://127.0.0.1/test.mkv/track1",
 				Timestamp: func() *uint32 {
 					v := uint32(717574556)
+					return &v
+				}(),
+			},
+		},
+	},
+	{
+		"path instead of url",
+		base.HeaderValue{`url=trackID=0;seq=12447;rtptime=12447`},
+		base.HeaderValue{`url=trackID=0;seq=12447;rtptime=12447`},
+		RTPInfo{
+			{
+				URL: "trackID=0",
+				SequenceNumber: func() *uint16 {
+					v := uint16(12447)
+					return &v
+				}(),
+				Timestamp: func() *uint32 {
+					v := uint32(12447)
 					return &v
 				}(),
 			},

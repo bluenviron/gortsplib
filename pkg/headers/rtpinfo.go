@@ -10,7 +10,7 @@ import (
 
 // RTPInfoEntry is an entry of a RTP-Info header.
 type RTPInfoEntry struct {
-	URL            *base.URL
+	URL            string
 	SequenceNumber *uint16
 	Timestamp      *uint32
 }
@@ -40,11 +40,7 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 			k, v := tmp[0], tmp[1]
 			switch k {
 			case "url":
-				vu, err := base.ParseURL(v)
-				if err != nil {
-					return err
-				}
-				e.URL = vu
+				e.URL = v
 
 			case "seq":
 				vi, err := strconv.ParseUint(v, 10, 16)
@@ -67,6 +63,10 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 			}
 		}
 
+		if e.URL == "" {
+			return fmt.Errorf("URL is missing")
+		}
+
 		*h = append(*h, e)
 	}
 
@@ -79,7 +79,7 @@ func (h RTPInfo) Write() base.HeaderValue {
 
 	for i, e := range h {
 		var tmp []string
-		tmp = append(tmp, "url="+e.URL.String())
+		tmp = append(tmp, "url="+e.URL)
 
 		if e.SequenceNumber != nil {
 			tmp = append(tmp, "seq="+strconv.FormatUint(uint64(*e.SequenceNumber), 10))
