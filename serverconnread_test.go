@@ -291,7 +291,7 @@ func TestServerReadSetupErrorTrackTwice(t *testing.T) {
 	require.Equal(t, "track 0 has already been setup", err.Error())
 }
 
-func TestServerReadFrames(t *testing.T) {
+func TestServerRead(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -324,6 +324,9 @@ func TestServerReadFrames(t *testing.T) {
 				}
 
 				onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
+					conn.WriteFrame(0, StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
+					conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+
 					return &base.Response{
 						StatusCode: base.StatusOK,
 					}, nil
@@ -386,6 +389,14 @@ func TestServerReadFrames(t *testing.T) {
 			err = th.Read(res.Header["Transport"])
 			require.NoError(t, err)
 
+			l1, err := net.ListenPacket("udp", "localhost:35466")
+			require.NoError(t, err)
+			defer l1.Close()
+
+			l2, err := net.ListenPacket("udp", "localhost:35467")
+			require.NoError(t, err)
+			defer l2.Close()
+
 			err = base.Request{
 				Method: base.Play,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
@@ -399,14 +410,36 @@ func TestServerReadFrames(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
+			// server -> client
 			if proto == "udp" {
-				time.Sleep(1 * time.Second)
-
-				l1, err := net.ListenPacket("udp", "localhost:35467")
+				buf := make([]byte, 2048)
+				n, _, err := l1.ReadFrom(buf)
 				require.NoError(t, err)
-				defer l1.Close()
+				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, buf[:n])
 
-				l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
+				buf = make([]byte, 2048)
+				n, _, err = l2.ReadFrom(buf)
+				require.NoError(t, err)
+				require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, buf[:n])
+
+			} else {
+				var f base.InterleavedFrame
+				f.Payload = make([]byte, 2048)
+				err := f.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, StreamTypeRTP, f.StreamType)
+				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, f.Payload)
+
+				f.Payload = make([]byte, 2048)
+				err = f.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, StreamTypeRTCP, f.StreamType)
+				require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
+			}
+
+			// client -> server (RTCP)
+			if proto == "udp" {
+				l2.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[1],
 				})

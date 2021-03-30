@@ -518,7 +518,7 @@ func TestServerPublishRecordErrorPartialTracks(t *testing.T) {
 	require.Equal(t, "not all announced tracks have been setup", err.Error())
 }
 
-func TestServerPublishFrames(t *testing.T) {
+func TestServerPublish(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
@@ -711,7 +711,7 @@ func TestServerPublishFrames(t *testing.T) {
 	}
 }
 
-func TestServerPublishFramesErrorWrongProtocol(t *testing.T) {
+func TestServerPublishErrorWrongProtocol(t *testing.T) {
 	conf := ServerConf{
 		UDPRTPAddress:  "127.0.0.1:8000",
 		UDPRTCPAddress: "127.0.0.1:8001",

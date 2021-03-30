@@ -272,7 +272,7 @@ y++U32uuSFiXDcSLarfIsE992MEJLSAynbF1Rsgsr3gXbGiuToJRyxbIeVy7gwzD
 -----END RSA PRIVATE KEY-----
 `)
 
-func TestServerPublishReadHighLevel(t *testing.T) {
+func TestServerHighLevelPublishRead(t *testing.T) {
 	for _, ca := range []struct {
 		encrypted      bool
 		publisherSoft  string

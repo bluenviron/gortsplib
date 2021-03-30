@@ -425,6 +425,7 @@ func (sc *ServerConn) frameModeDisable() {
 			sc.tcpFrameEnabled = false
 			sc.tcpFrameWriteBuffer.Close()
 			<-sc.tcpBackgroundWriteDone
+			sc.tcpFrameWriteBuffer.Reset()
 
 		} else {
 			for _, track := range sc.setuppedTracks {
@@ -443,6 +444,7 @@ func (sc *ServerConn) frameModeDisable() {
 			sc.tcpFrameEnabled = false
 			sc.tcpFrameWriteBuffer.Close()
 			<-sc.tcpBackgroundWriteDone
+			sc.tcpFrameWriteBuffer.Reset()
 
 		} else {
 			for _, track := range sc.setuppedTracks {
@@ -1065,7 +1067,6 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		res.Write(sc.bw)
 
 		// start background write
-		sc.tcpFrameWriteBuffer.Reset()
 		sc.tcpBackgroundWriteDone = make(chan struct{})
 		go sc.tcpBackgroundWrite()
 
