@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"net"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -688,6 +689,8 @@ func TestServerPublish(t *testing.T) {
 					Port: th.ServerPorts[0],
 				})
 
+				time.Sleep(500 * time.Millisecond)
+
 				l2.WriteTo([]byte{0x05, 0x06, 0x07, 0x08}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[1],
@@ -1035,4 +1038,158 @@ func TestServerPublishRTCPReport(t *testing.T) {
 		Payload:    byts,
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
+}
+
+func TestServerPublishErrorTimeout(t *testing.T) {
+	for _, proto := range []string{
+		"udp",
+		"tcp",
+	} {
+		t.Run(proto, func(t *testing.T) {
+			errDone := make(chan struct{})
+
+			conf := ServerConf{
+				ReadTimeout: 1 * time.Second,
+			}
+
+			if proto == "udp" {
+				conf.UDPRTPAddress = "127.0.0.1:8000"
+				conf.UDPRTCPAddress = "127.0.0.1:8001"
+			}
+
+			s, err := conf.Serve("127.0.0.1:8554")
+			require.NoError(t, err)
+			defer s.Close()
+
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
+
+				conn, err := s.Accept()
+				require.NoError(t, err)
+				defer conn.Close()
+
+				onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
+					return &base.Response{
+						StatusCode: base.StatusOK,
+					}, nil
+				}
+
+				onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
+					return &base.Response{
+						StatusCode: base.StatusOK,
+					}, nil
+				}
+
+				onRecord := func(ctx *ServerConnRecordCtx) (*base.Response, error) {
+					return &base.Response{
+						StatusCode: base.StatusOK,
+					}, nil
+				}
+
+				onFrame := func(trackID int, typ StreamType, buf []byte) {
+				}
+
+				err = <-conn.Read(ServerConnReadHandlers{
+					OnAnnounce: onAnnounce,
+					OnSetup:    onSetup,
+					OnRecord:   onRecord,
+					OnFrame:    onFrame,
+				})
+
+				if proto == "udp" {
+					require.Equal(t, "no UDP packets received (maybe there's a firewall/NAT in between)", err.Error())
+				} else {
+					require.True(t, strings.HasSuffix(err.Error(), "i/o timeout"))
+				}
+
+				close(errDone)
+			}()
+
+			conn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer conn.Close()
+			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			require.NoError(t, err)
+
+			tracks := Tracks{track}
+			for i, t := range tracks {
+				t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
+					Key:   "control",
+					Value: "trackID=" + strconv.FormatInt(int64(i), 10),
+				})
+			}
+
+			err = base.Request{
+				Method: base.Announce,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: tracks.Write(),
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			var res base.Response
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			inTH := &headers.Transport{
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModeRecord
+					return &v
+				}(),
+			}
+
+			if proto == "udp" {
+				inTH.Protocol = StreamProtocolUDP
+				inTH.ClientPorts = &[2]int{35466, 35467}
+			} else {
+				inTH.Protocol = StreamProtocolTCP
+				inTH.InterleavedIDs = &[2]int{0, 1}
+			}
+
+			err = base.Request{
+				Method: base.Setup,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				Header: base.Header{
+					"CSeq":      base.HeaderValue{"2"},
+					"Transport": inTH.Write(),
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			var th headers.Transport
+			err = th.Read(res.Header["Transport"])
+			require.NoError(t, err)
+
+			err = base.Request{
+				Method: base.Record,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq": base.HeaderValue{"3"},
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			<-errDone
+		})
+	}
 }

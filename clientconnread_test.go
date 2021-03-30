@@ -1164,3 +1164,164 @@ func TestClientReadRTCPReport(t *testing.T) {
 	conn.Close()
 	<-done
 }
+
+func TestClientReadErrorTimeout(t *testing.T) {
+	for _, proto := range []string{
+		"udp",
+		"tcp",
+		"auto",
+	} {
+		t.Run(proto, func(t *testing.T) {
+			l, err := net.Listen("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer l.Close()
+
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
+
+				conn, err := l.Accept()
+				require.NoError(t, err)
+				defer conn.Close()
+				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+				var req base.Request
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+							string(base.Setup),
+							string(base.Play),
+						}, ", ")},
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Describe, req.Method)
+
+				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+				require.NoError(t, err)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Content-Type": base.HeaderValue{"application/sdp"},
+					},
+					Body: Tracks{track}.Write(),
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+
+				var inTH headers.Transport
+				err = inTH.Read(req.Header["Transport"])
+				require.NoError(t, err)
+
+				th := headers.Transport{
+					Delivery: func() *base.StreamDelivery {
+						v := base.StreamDeliveryUnicast
+						return &v
+					}(),
+				}
+
+				var l1 net.PacketConn
+				if proto == "udp" || proto == "auto" {
+					var err error
+					l1, err = net.ListenPacket("udp", "localhost:34557")
+					require.NoError(t, err)
+					defer l1.Close()
+
+					th.Protocol = StreamProtocolUDP
+					th.ServerPorts = &[2]int{34556, 34557}
+					th.ClientPorts = inTH.ClientPorts
+
+				} else {
+					th.Protocol = StreamProtocolTCP
+					th.InterleavedIDs = inTH.InterleavedIDs
+				}
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Write(),
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Play, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				if proto == "udp" || proto == "auto" {
+					time.Sleep(500 * time.Millisecond)
+
+					l1, err := net.ListenPacket("udp", "localhost:34556")
+					require.NoError(t, err)
+					defer l1.Close()
+
+					// write a packet to skip the protocol autodetection feature
+					l1.WriteTo([]byte("\x01\x02\x03\x04"), &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: th.ClientPorts[0],
+					})
+				}
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+			}()
+
+			conf := ClientConf{
+				StreamProtocol: func() *StreamProtocol {
+					switch proto {
+					case "udp":
+						v := StreamProtocolUDP
+						return &v
+
+					case "tcp":
+						v := StreamProtocolTCP
+						return &v
+					}
+					return nil
+				}(),
+				InitialUDPReadTimeout: 1 * time.Second,
+				ReadTimeout:           1 * time.Second,
+			}
+
+			conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+			require.NoError(t, err)
+			defer conn.Close()
+
+			err = <-conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
+			})
+
+			switch proto {
+			case "udp", "auto":
+				require.Equal(t, "UDP timeout", err.Error())
+
+			case "tcp":
+				require.True(t, strings.HasSuffix(err.Error(), "i/o timeout"))
+			}
+		})
+	}
+}
