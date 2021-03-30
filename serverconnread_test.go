@@ -431,12 +431,14 @@ func TestServerRead(t *testing.T) {
 				f.Payload = make([]byte, 2048)
 				err := f.Read(bconn.Reader)
 				require.NoError(t, err)
+				require.Equal(t, 0, f.TrackID)
 				require.Equal(t, StreamTypeRTP, f.StreamType)
 				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, f.Payload)
 
 				f.Payload = make([]byte, 2048)
 				err = f.Read(bconn.Reader)
 				require.NoError(t, err)
+				require.Equal(t, 0, f.TrackID)
 				require.Equal(t, StreamTypeRTCP, f.StreamType)
 				require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
 			}

@@ -33,6 +33,7 @@ func TestClientPublishSerial(t *testing.T) {
 
 				conn, err := l.Accept()
 				require.NoError(t, err)
+				defer conn.Close()
 				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 				var req base.Request
@@ -94,6 +95,18 @@ func TestClientPublishSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
+				var l1 net.PacketConn
+				var l2 net.PacketConn
+				if proto == "udp" {
+					l1, err = net.ListenPacket("udp", "localhost:34556")
+					require.NoError(t, err)
+					defer l1.Close()
+
+					l2, err = net.ListenPacket("udp", "localhost:34557")
+					require.NoError(t, err)
+					defer l2.Close()
+				}
+
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
@@ -103,8 +116,39 @@ func TestClientPublishSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				buf := make([]byte, 2048)
-				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				// client -> server
+				if proto == "udp" {
+					buf := make([]byte, 2048)
+					n, _, err := l1.ReadFrom(buf)
+					require.NoError(t, err)
+					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, buf[:n])
+
+				} else {
+					var f base.InterleavedFrame
+					f.Payload = make([]byte, 2048)
+					err = f.Read(bconn.Reader)
+					require.NoError(t, err)
+					require.Equal(t, StreamTypeRTP, f.StreamType)
+					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, f.Payload)
+				}
+
+				// server -> client (RTCP)
+				if proto == "udp" {
+					l2.WriteTo([]byte{0x05, 0x06, 0x07, 0x08}, &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: th.ClientPorts[1],
+					})
+
+				} else {
+					err = base.InterleavedFrame{
+						TrackID:    0,
+						StreamType: StreamTypeRTCP,
+						Payload:    []byte{0x05, 0x06, 0x07, 0x08},
+					}.Write(bconn.Writer)
+					require.NoError(t, err)
+				}
+
+				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -112,8 +156,6 @@ func TestClientPublishSerial(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
-
-				conn.Close()
 			}()
 
 			conf := ClientConf{
@@ -134,11 +176,21 @@ func TestClientPublishSerial(t *testing.T) {
 				Tracks{track})
 			require.NoError(t, err)
 
+			recvDone := make(chan struct{})
+			done := conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
+				require.Equal(t, 0, trackID)
+				require.Equal(t, StreamTypeRTCP, streamType)
+				require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, payload)
+				close(recvDone)
+			})
+
 			err = conn.WriteFrame(track.ID, StreamTypeRTP,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 
+			<-recvDone
 			conn.Close()
+			<-done
 
 			err = conn.WriteFrame(track.ID, StreamTypeRTP,
 				[]byte{0x01, 0x02, 0x03, 0x04})
@@ -164,6 +216,7 @@ func TestClientPublishParallel(t *testing.T) {
 
 				conn, err := l.Accept()
 				require.NoError(t, err)
+				defer conn.Close()
 				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 				var req base.Request
@@ -243,8 +296,6 @@ func TestClientPublishParallel(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
-
-				conn.Close()
 			}()
 
 			conf := ClientConf{
@@ -306,6 +357,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 
 				conn, err := l.Accept()
 				require.NoError(t, err)
+				defer conn.Close()
 				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 				var req base.Request
@@ -405,8 +457,6 @@ func TestClientPublishPauseSerial(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
-
-				conn.Close()
 			}()
 
 			conf := ClientConf{
@@ -466,6 +516,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 
 				conn, err := l.Accept()
 				require.NoError(t, err)
+				defer conn.Close()
 				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 				var req base.Request
@@ -546,8 +597,6 @@ func TestClientPublishPauseParallel(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
-
-				conn.Close()
 			}()
 
 			conf := ClientConf{
@@ -595,7 +644,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 	}
 }
 
-func TestClientPublishRTCP(t *testing.T) {
+func TestClientPublishRTCPReport(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -607,6 +656,7 @@ func TestClientPublishRTCP(t *testing.T) {
 
 		conn, err := l.Accept()
 		require.NoError(t, err)
+		defer conn.Close()
 		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 		var req base.Request
@@ -714,8 +764,6 @@ func TestClientPublishRTCP(t *testing.T) {
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(bconn.Writer)
-
-		conn.Close()
 	}()
 
 	conf := ClientConf{
@@ -752,175 +800,4 @@ func TestClientPublishRTCP(t *testing.T) {
 
 	err = conn.WriteFrame(track.ID, StreamTypeRTP, byts)
 	require.NoError(t, err)
-}
-
-func TestClientPublishReadManualRTCP(t *testing.T) {
-	for _, proto := range []string{
-		"udp",
-		"tcp",
-	} {
-		t.Run(proto, func(t *testing.T) {
-			l, err := net.Listen("tcp", "localhost:8554")
-			require.NoError(t, err)
-			defer l.Close()
-
-			serverDone := make(chan struct{})
-			defer func() { <-serverDone }()
-			go func() {
-				defer close(serverDone)
-
-				conn, err := l.Accept()
-				require.NoError(t, err)
-				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-				var req base.Request
-				err = req.Read(bconn.Reader)
-				require.NoError(t, err)
-				require.Equal(t, base.Options, req.Method)
-
-				err = base.Response{
-					StatusCode: base.StatusOK,
-					Header: base.Header{
-						"Public": base.HeaderValue{strings.Join([]string{
-							string(base.Announce),
-							string(base.Setup),
-							string(base.Record),
-						}, ", ")},
-					},
-				}.Write(bconn.Writer)
-				require.NoError(t, err)
-
-				err = req.Read(bconn.Reader)
-				require.NoError(t, err)
-				require.Equal(t, base.Announce, req.Method)
-
-				err = base.Response{
-					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
-				require.NoError(t, err)
-
-				err = req.Read(bconn.Reader)
-				require.NoError(t, err)
-				require.Equal(t, base.Setup, req.Method)
-
-				var inTH headers.Transport
-				err = inTH.Read(req.Header["Transport"])
-				require.NoError(t, err)
-
-				th := headers.Transport{
-					Delivery: func() *base.StreamDelivery {
-						v := base.StreamDeliveryUnicast
-						return &v
-					}(),
-				}
-
-				var l1 net.PacketConn
-				if proto == "udp" {
-					var err error
-					l1, err = net.ListenPacket("udp", "localhost:34557")
-					require.NoError(t, err)
-					defer l1.Close()
-
-					th.Protocol = StreamProtocolUDP
-					th.ServerPorts = &[2]int{34556, 34557}
-					th.ClientPorts = inTH.ClientPorts
-
-				} else {
-					th.Protocol = StreamProtocolTCP
-					th.InterleavedIDs = inTH.InterleavedIDs
-				}
-
-				err = base.Response{
-					StatusCode: base.StatusOK,
-					Header: base.Header{
-						"Transport": th.Write(),
-					},
-				}.Write(bconn.Writer)
-				require.NoError(t, err)
-
-				err = req.Read(bconn.Reader)
-				require.NoError(t, err)
-				require.Equal(t, base.Record, req.Method)
-
-				err = base.Response{
-					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
-				require.NoError(t, err)
-
-				if proto == "udp" {
-					buf := make([]byte, 2048)
-					n, _, err := l1.ReadFrom(buf)
-					require.NoError(t, err)
-					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, buf[:n])
-
-				} else {
-					var f base.InterleavedFrame
-					f.Payload = make([]byte, 2048)
-					err = f.Read(bconn.Reader)
-					require.NoError(t, err)
-					require.Equal(t, StreamTypeRTCP, f.StreamType)
-					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
-				}
-
-				if proto == "udp" {
-					l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
-						IP:   net.ParseIP("127.0.0.1"),
-						Port: th.ClientPorts[1],
-					})
-
-				} else {
-					err = base.InterleavedFrame{
-						TrackID:    0,
-						StreamType: StreamTypeRTCP,
-						Payload:    []byte{0x01, 0x02, 0x03, 0x04},
-					}.Write(bconn.Writer)
-					require.NoError(t, err)
-				}
-
-				err = req.Read(bconn.Reader)
-				require.NoError(t, err)
-				require.Equal(t, base.Teardown, req.Method)
-
-				base.Response{
-					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
-
-				conn.Close()
-			}()
-
-			conf := ClientConf{
-				StreamProtocol: func() *StreamProtocol {
-					if proto == "udp" {
-						v := StreamProtocolUDP
-						return &v
-					}
-					v := StreamProtocolTCP
-					return &v
-				}(),
-			}
-
-			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
-			require.NoError(t, err)
-
-			conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
-				Tracks{track})
-			require.NoError(t, err)
-
-			recvDone := make(chan struct{})
-			done := conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
-				require.Equal(t, 0, trackID)
-				require.Equal(t, StreamTypeRTCP, streamType)
-				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
-				close(recvDone)
-			})
-
-			err = conn.WriteFrame(track.ID, StreamTypeRTCP,
-				[]byte{0x05, 0x06, 0x07, 0x08})
-			require.NoError(t, err)
-
-			<-recvDone
-			conn.Close()
-			<-done
-		})
-	}
 }
