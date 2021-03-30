@@ -389,13 +389,17 @@ func TestServerRead(t *testing.T) {
 			err = th.Read(res.Header["Transport"])
 			require.NoError(t, err)
 
-			l1, err := net.ListenPacket("udp", "localhost:35466")
-			require.NoError(t, err)
-			defer l1.Close()
+			var l1 net.PacketConn
+			var l2 net.PacketConn
+			if proto == "udp" {
+				l1, err = net.ListenPacket("udp", "localhost:35466")
+				require.NoError(t, err)
+				defer l1.Close()
 
-			l2, err := net.ListenPacket("udp", "localhost:35467")
-			require.NoError(t, err)
-			defer l2.Close()
+				l2, err = net.ListenPacket("udp", "localhost:35467")
+				require.NoError(t, err)
+				defer l2.Close()
+			}
 
 			err = base.Request{
 				Method: base.Play,

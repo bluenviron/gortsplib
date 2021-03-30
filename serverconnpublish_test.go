@@ -524,8 +524,6 @@ func TestServerPublish(t *testing.T) {
 		"tcp",
 	} {
 		t.Run(proto, func(t *testing.T) {
-			framesReceived := make(chan struct{})
-
 			conf := ServerConf{}
 
 			if proto == "udp" {
@@ -573,8 +571,9 @@ func TestServerPublish(t *testing.T) {
 					} else {
 						require.Equal(t, 0, trackID)
 						require.Equal(t, StreamTypeRTCP, typ)
-						require.Equal(t, []byte("\x05\x06\x07\x08"), buf)
-						close(framesReceived)
+						require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, buf)
+
+						conn.WriteFrame(0, StreamTypeRTCP, []byte{0x09, 0x0A, 0x0B, 0x0C})
 					}
 				}
 
@@ -655,6 +654,18 @@ func TestServerPublish(t *testing.T) {
 			err = th.Read(res.Header["Transport"])
 			require.NoError(t, err)
 
+			var l1 net.PacketConn
+			var l2 net.PacketConn
+			if proto == "udp" {
+				l1, err = net.ListenPacket("udp", "localhost:35466")
+				require.NoError(t, err)
+				defer l1.Close()
+
+				l2, err = net.ListenPacket("udp", "localhost:35467")
+				require.NoError(t, err)
+				defer l2.Close()
+			}
+
 			err = base.Request{
 				Method: base.Record,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
@@ -668,28 +679,20 @@ func TestServerPublish(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
+			// client -> server
 			if proto == "udp" {
 				time.Sleep(1 * time.Second)
-
-				l1, err := net.ListenPacket("udp", "localhost:35466")
-				require.NoError(t, err)
-				defer l1.Close()
 
 				l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[0],
 				})
 
-				time.Sleep(100 * time.Millisecond)
-
-				l1, err = net.ListenPacket("udp", "localhost:35467")
-				require.NoError(t, err)
-				defer l1.Close()
-
-				l1.WriteTo([]byte("\x05\x06\x07\x08"), &net.UDPAddr{
+				l2.WriteTo([]byte{0x05, 0x06, 0x07, 0x08}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[1],
 				})
+
 			} else {
 				err = base.InterleavedFrame{
 					TrackID:    0,
@@ -701,12 +704,31 @@ func TestServerPublish(t *testing.T) {
 				err = base.InterleavedFrame{
 					TrackID:    0,
 					StreamType: StreamTypeRTCP,
-					Payload:    []byte("\x05\x06\x07\x08"),
+					Payload:    []byte{0x05, 0x06, 0x07, 0x08},
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 			}
 
-			<-framesReceived
+			// server -> client (RTCP)
+			if proto == "udp" {
+				// skip firewall opening
+				buf := make([]byte, 2048)
+				_, _, err := l2.ReadFrom(buf)
+				require.NoError(t, err)
+
+				buf = make([]byte, 2048)
+				n, _, err := l2.ReadFrom(buf)
+				require.NoError(t, err)
+				require.Equal(t, []byte{0x09, 0x0A, 0x0B, 0x0C}, buf[:n])
+
+			} else {
+				var f base.InterleavedFrame
+				f.Payload = make([]byte, 2048)
+				err := f.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, StreamTypeRTCP, f.StreamType)
+				require.Equal(t, []byte{0x09, 0x0A, 0x0B, 0x0C}, f.Payload)
+			}
 		})
 	}
 }
@@ -844,7 +866,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestServerPublishRTCP(t *testing.T) {
+func TestServerPublishRTCPReport(t *testing.T) {
 	conf := ServerConf{
 		receiverReportPeriod: 1 * time.Second,
 	}
