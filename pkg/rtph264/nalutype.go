@@ -1,5 +1,4 @@
-// Package codech264 contains utilities to deal with the H264 codec.
-package codech264
+package rtph264
 
 // NALUType is the type of a NALU.
 type NALUType uint8

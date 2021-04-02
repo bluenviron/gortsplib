@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/aler9/gortsplib/pkg/codech264"
 )
 
 func mergeBytes(vals ...[]byte) []byte {
@@ -305,7 +303,7 @@ func TestDecodeErrors(t *testing.T) {
 			"STAP-A without NALUs",
 			[]byte{
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeStapA),
+				0x9d, 0xbb, 0x78, 0x12, byte(NALUTypeStapA),
 			},
 			"STAP-A packet doesn't contain any NALU",
 		},
@@ -313,7 +311,7 @@ func TestDecodeErrors(t *testing.T) {
 			"STAP-A without size",
 			[]byte{
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeStapA), 0x01,
+				0x9d, 0xbb, 0x78, 0x12, byte(NALUTypeStapA), 0x01,
 			},
 			"Invalid STAP-A packet",
 		},
@@ -321,7 +319,7 @@ func TestDecodeErrors(t *testing.T) {
 			"STAP-A with invalid size",
 			[]byte{
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeStapA), 0x00, 0x15,
+				0x9d, 0xbb, 0x78, 0x12, byte(NALUTypeStapA), 0x00, 0x15,
 			},
 			"Invalid STAP-A packet",
 		},
@@ -329,7 +327,7 @@ func TestDecodeErrors(t *testing.T) {
 			"FU-A without payload",
 			[]byte{
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeFuA),
+				0x9d, 0xbb, 0x78, 0x12, byte(NALUTypeFuA),
 			},
 			"Invalid FU-A packet",
 		},
@@ -337,7 +335,7 @@ func TestDecodeErrors(t *testing.T) {
 			"FU-A without start bit",
 			[]byte{
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(codech264.NALUTypeFuA), 0x00,
+				0x9d, 0xbb, 0x78, 0x12, byte(NALUTypeFuA), 0x00,
 			},
 			"first NALU does not contain the start bit",
 		},

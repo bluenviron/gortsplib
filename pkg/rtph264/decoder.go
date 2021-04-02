@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
-
-	"github.com/aler9/gortsplib/pkg/codech264"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -79,10 +77,10 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			return nil, fmt.Errorf("payload is too short")
 		}
 
-		typ := codech264.NALUType(pkt.Payload[0] & 0x1F)
+		typ := NALUType(pkt.Payload[0] & 0x1F)
 
 		switch typ {
-		case codech264.NALUTypeStapA:
+		case NALUTypeStapA:
 			var ret []*NALUAndTimestamp
 			pkt.Payload = pkt.Payload[1:]
 
@@ -116,7 +114,7 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 
 			return ret, nil
 
-		case codech264.NALUTypeFuA: // first packet of a fragmented NALU
+		case NALUTypeFuA: // first packet of a fragmented NALU
 			if len(pkt.Payload) < 2 {
 				return nil, fmt.Errorf("Invalid FU-A packet")
 			}
@@ -133,8 +131,8 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			d.state = decoderStateReadingFragmented
 			return nil, ErrMorePacketsNeeded
 
-		case codech264.NALUTypeStapB, codech264.NALUTypeMtap16,
-			codech264.NALUTypeMtap24, codech264.NALUTypeFuB:
+		case NALUTypeStapB, NALUTypeMtap16,
+			NALUTypeMtap24, NALUTypeFuB:
 			return nil, fmt.Errorf("NALU type not yet supported (%v)", typ)
 		}
 
@@ -156,8 +154,8 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			return nil, fmt.Errorf("Invalid FU-A packet")
 		}
 
-		typ := codech264.NALUType(pkt.Payload[0] & 0x1F)
-		if typ != codech264.NALUTypeFuA {
+		typ := NALUType(pkt.Payload[0] & 0x1F)
+		if typ != NALUTypeFuA {
 			d.state = decoderStateInitial
 			return nil, fmt.Errorf("non-starting NALU is not FU-A")
 		}
@@ -220,14 +218,14 @@ func (d *Decoder) ReadSPSPPS(r io.Reader) ([]byte, []byte, error) {
 			return nil, nil, err
 		}
 
-		switch codech264.NALUType(nt.NALU[0] & 0x1F) {
-		case codech264.NALUTypeSPS:
+		switch NALUType(nt.NALU[0] & 0x1F) {
+		case NALUTypeSPS:
 			sps = append([]byte(nil), nt.NALU...)
 			if sps != nil && pps != nil {
 				return sps, pps, nil
 			}
 
-		case codech264.NALUTypePPS:
+		case NALUTypePPS:
 			pps = append([]byte(nil), nt.NALU...)
 			if sps != nil && pps != nil {
 				return sps, pps, nil
