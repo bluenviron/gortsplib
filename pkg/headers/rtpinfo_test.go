@@ -107,6 +107,35 @@ var casesRTPInfo = []struct {
 			},
 		},
 	},
+	{
+		"with space",
+		base.HeaderValue{`url=rtsp://10.13.146.53/axis-media/media.amp/trackID=1;seq=58477;rtptime=1020884293, url=rtsp://10.13.146.53/axis-media/media.amp/trackID=2;seq=15727;rtptime=1171661503`},
+		base.HeaderValue{`url=rtsp://10.13.146.53/axis-media/media.amp/trackID=1;seq=58477;rtptime=1020884293,url=rtsp://10.13.146.53/axis-media/media.amp/trackID=2;seq=15727;rtptime=1171661503`},
+		RTPInfo{
+			{
+				URL: "rtsp://10.13.146.53/axis-media/media.amp/trackID=1",
+				SequenceNumber: func() *uint16 {
+					v := uint16(58477)
+					return &v
+				}(),
+				Timestamp: func() *uint32 {
+					v := uint32(1020884293)
+					return &v
+				}(),
+			},
+			{
+				URL: "rtsp://10.13.146.53/axis-media/media.amp/trackID=2",
+				SequenceNumber: func() *uint16 {
+					v := uint16(15727)
+					return &v
+				}(),
+				Timestamp: func() *uint32 {
+					v := uint32(1171661503)
+					return &v
+				}(),
+			},
+		},
+	},
 }
 
 func TestRTPInfoRead(t *testing.T) {

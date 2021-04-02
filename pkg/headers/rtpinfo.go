@@ -28,10 +28,13 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	for _, tmp := range strings.Split(v[0], ",") {
+	for _, part := range strings.Split(v[0], ",") {
 		e := &RTPInfoEntry{}
 
-		for _, kv := range strings.Split(tmp, ";") {
+		// remove leading spaces
+		part = strings.TrimLeft(part, " ")
+
+		for _, kv := range strings.Split(part, ";") {
 			tmp := strings.SplitN(kv, "=", 2)
 			if len(tmp) != 2 {
 				return fmt.Errorf("unable to parse key-value (%v)", kv)
