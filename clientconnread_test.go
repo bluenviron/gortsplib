@@ -529,6 +529,11 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 
+			var inTH headers.Transport
+			err = inTH.Read(req.Header["Transport"])
+			require.NoError(t, err)
+			require.Equal(t, StreamProtocolTCP, inTH.Protocol)
+
 			err = base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{

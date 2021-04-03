@@ -649,6 +649,124 @@ func TestClientPublishPauseParallel(t *testing.T) {
 	}
 }
 
+func TestClientPublishAutomaticProtocol(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		var req base.Request
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Announce),
+					string(base.Setup),
+					string(base.Record),
+				}, ", ")},
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Announce, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusUnsupportedTransport,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+
+		var inTH headers.Transport
+		err = inTH.Read(req.Header["Transport"])
+		require.NoError(t, err)
+		require.Equal(t, StreamProtocolTCP, inTH.Protocol)
+
+		th := headers.Transport{
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
+				return &v
+			}(),
+			Protocol:       StreamProtocolTCP,
+			InterleavedIDs: &[2]int{0, 1},
+		}
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Write(),
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Record, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		var f base.InterleavedFrame
+		f.Payload = make([]byte, 2048)
+		err = f.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, StreamTypeRTP, f.StreamType)
+		require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, f.Payload)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+	}()
+
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	conn, err := DialPublish("rtsp://localhost:8554/teststream",
+		Tracks{track})
+	require.NoError(t, err)
+	defer conn.Close()
+
+	err = conn.WriteFrame(track.ID, StreamTypeRTP,
+		[]byte{0x01, 0x02, 0x03, 0x04})
+	require.NoError(t, err)
+}
+
 func TestClientPublishRTCPReport(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)

@@ -635,7 +635,7 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			v := StreamProtocolTCP
 			cc.streamProtocol = &v
 
-			return cc.Setup(headers.TransportModePlay, track, 0, 0)
+			return cc.Setup(mode, track, 0, 0)
 		}
 
 		return res, liberrors.ErrClientWrongStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
