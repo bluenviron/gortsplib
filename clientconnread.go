@@ -22,7 +22,7 @@ func (cc *ClientConn) Play() (*base.Response, error) {
 
 	res, err := cc.Do(&base.Request{
 		Method: base.Play,
-		URL:    cc.streamURL,
+		URL:    cc.streamBaseURL,
 	})
 	if err != nil {
 		return nil, err
@@ -119,13 +119,13 @@ func (cc *ClientConn) backgroundPlayUDP() error {
 			_, err := cc.Do(&base.Request{
 				Method: func() base.Method {
 					// the vlc integrated rtsp server requires GET_PARAMETER
-					if cc.getParameterSupported {
+					if cc.useGetParameter {
 						return base.GetParameter
 					}
 					return base.Options
 				}(),
-				// use the stream path, otherwise some cameras do not reply
-				URL:          cc.streamURL,
+				// use the stream base URL, otherwise some cameras do not reply
+				URL:          cc.streamBaseURL,
 				SkipResponse: true,
 			})
 			if err != nil {

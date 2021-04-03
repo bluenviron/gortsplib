@@ -306,8 +306,14 @@ func (t *Track) URL() (*base.URL, error) {
 	}
 
 	// control attribute contains a relative control attribute
-	ur := t.BaseURL.Clone()
-	ur.AddControlAttribute(controlAttr)
+	// insert the control attribute at the end of the url
+	// if there's a query, insert it after the query
+	// otherwise insert it after the path
+	strURL := t.BaseURL.String()
+	if controlAttr[0] != '?' && !strings.HasSuffix(strURL, "/") {
+		strURL += "/"
+	}
+	ur, _ := base.ParseURL(strURL + controlAttr)
 	return ur, nil
 }
 

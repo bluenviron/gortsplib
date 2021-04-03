@@ -71,24 +71,24 @@ func (s clientConnState) String() string {
 
 // ClientConn is a client-side RTSP connection.
 type ClientConn struct {
-	conf                  ClientConf
-	nconn                 net.Conn
-	isTLS                 bool
-	br                    *bufio.Reader
-	bw                    *bufio.Writer
-	session               string
-	cseq                  int
-	sender                *auth.Sender
-	state                 clientConnState
-	streamURL             *base.URL
-	streamProtocol        *StreamProtocol
-	tracks                map[int]clientConnTrack
-	getParameterSupported bool
-	writeMutex            sync.Mutex
-	writeFrameAllowed     bool
-	writeError            error
-	backgroundRunning     bool
-	readCB                func(int, StreamType, []byte)
+	conf              ClientConf
+	nconn             net.Conn
+	isTLS             bool
+	br                *bufio.Reader
+	bw                *bufio.Writer
+	session           string
+	cseq              int
+	sender            *auth.Sender
+	state             clientConnState
+	streamBaseURL     *base.URL
+	streamProtocol    *StreamProtocol
+	tracks            map[int]clientConnTrack
+	useGetParameter   bool
+	writeMutex        sync.Mutex
+	writeFrameAllowed bool
+	writeError        error
+	backgroundRunning bool
+	readCB            func(int, StreamType, []byte)
 
 	// TCP stream protocol
 	tcpFrameBuffer *multibuffer.MultiBuffer
@@ -161,7 +161,7 @@ func (cc *ClientConn) Close() error {
 	if cc.state == clientConnStatePlay || cc.state == clientConnStateRecord {
 		cc.Do(&base.Request{
 			Method:       base.Teardown,
-			URL:          cc.streamURL,
+			URL:          cc.streamBaseURL,
 			SkipResponse: true,
 		})
 	}
@@ -185,10 +185,10 @@ func (cc *ClientConn) reset() {
 
 	cc.state = clientConnStateInitial
 	cc.nconn = nil
-	cc.streamURL = nil
+	cc.streamBaseURL = nil
 	cc.streamProtocol = nil
 	cc.tracks = make(map[int]clientConnTrack)
-	cc.getParameterSupported = false
+	cc.useGetParameter = false
 	cc.backgroundRunning = false
 
 	// read
@@ -375,7 +375,7 @@ func (cc *ClientConn) Options(u *base.URL) (*base.Response, error) {
 		return res, liberrors.ErrClientWrongStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
-	cc.getParameterSupported = func() bool {
+	cc.useGetParameter = func() bool {
 		pub, ok := res.Header["Public"]
 		if !ok || len(pub) != 1 {
 			return false
@@ -453,7 +453,29 @@ func (cc *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 		return nil, nil, liberrors.ErrClientContentTypeUnsupported{CT: ct}
 	}
 
-	tracks, err := ReadTracks(res.Body, u)
+	baseURL, err := func() (*base.URL, error) {
+		// prefer Content-Base (optional)
+		if cb, ok := res.Header["Content-Base"]; ok {
+			if len(cb) != 1 {
+				return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
+			}
+
+			ret, err := base.ParseURL(cb[0])
+			if err != nil {
+				return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
+			}
+
+			return ret, nil
+		}
+
+		// if not provided, use DESCRIBE URL
+		return u, nil
+	}()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tracks, err := ReadTracks(res.Body, baseURL)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -481,7 +503,7 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		return nil, liberrors.ErrClientCannotReadPublishAtSameTime{}
 	}
 
-	if cc.streamURL != nil && *track.BaseURL != *cc.streamURL {
+	if cc.streamBaseURL != nil && *track.BaseURL != *cc.streamBaseURL {
 		return nil, liberrors.ErrClientCannotSetupTracksDifferentURLs{}
 	}
 
@@ -670,7 +692,7 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		cct.rtcpSender = rtcpsender.New(clockRate)
 	}
 
-	cc.streamURL = track.BaseURL
+	cc.streamBaseURL = track.BaseURL
 	cc.streamProtocol = &proto
 
 	if proto == StreamProtocolUDP {
@@ -726,7 +748,7 @@ func (cc *ClientConn) Pause() (*base.Response, error) {
 
 	res, err := cc.Do(&base.Request{
 		Method: base.Pause,
-		URL:    cc.streamURL,
+		URL:    cc.streamBaseURL,
 	})
 	if err != nil {
 		return nil, err
@@ -837,20 +859,16 @@ func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan err
 				safeState == clientConnStatePlay {
 				if _, ok := err.(liberrors.ErrClientNoUDPPacketsRecently); ok {
 					if cc.conf.StreamProtocol == nil {
-						prevURL := cc.streamURL
+						prevBaseURL := cc.streamBaseURL
+						oldUseGetParameter := cc.useGetParameter
 						prevTracks := cc.tracks
 						cc.reset()
 						v := StreamProtocolTCP
 						cc.streamProtocol = &v
+						cc.useGetParameter = oldUseGetParameter
 
-						err := cc.connOpen(prevURL.Scheme, prevURL.Host)
+						err := cc.connOpen(prevBaseURL.Scheme, prevBaseURL.Host)
 						if err != nil {
-							return err
-						}
-
-						_, err = cc.Options(prevURL)
-						if err != nil {
-							cc.Close()
 							return err
 						}
 

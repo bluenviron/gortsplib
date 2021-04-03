@@ -113,16 +113,3 @@ func (u *URL) RTSPPathAndQuery() (string, bool) {
 
 	return pathAndQuery, true
 }
-
-// AddControlAttribute adds a control attribute to a RTSP url.
-func (u *URL) AddControlAttribute(controlPath string) {
-	if controlPath[0] != '?' {
-		controlPath = "/" + controlPath
-	}
-
-	// insert the control attribute at the end of the url
-	// if there's a query, insert it after the query
-	// otherwise insert it after the path
-	nu, _ := ParseURL(u.String() + controlPath)
-	*u = *nu
-}

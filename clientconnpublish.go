@@ -20,11 +20,14 @@ func (cc *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, erro
 		return nil, err
 	}
 
+	// in case of ANNOUNCE, the base URL doesn't have a trailing slash.
+	// (tested with ffmpeg and gstreamer)
+	baseURL := u.Clone()
+
 	// set id, base url and control attribute on tracks
 	for i, t := range tracks {
 		t.ID = i
-		t.BaseURL = u
-
+		t.BaseURL = baseURL
 		t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
 			Key:   "control",
 			Value: "trackID=" + strconv.FormatInt(int64(i), 10),
@@ -48,7 +51,7 @@ func (cc *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, erro
 			Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
-	cc.streamURL = u
+	cc.streamBaseURL = baseURL
 	cc.state = clientConnStatePreRecord
 
 	return res, nil
@@ -66,7 +69,7 @@ func (cc *ClientConn) Record() (*base.Response, error) {
 
 	res, err := cc.Do(&base.Request{
 		Method: base.Record,
-		URL:    cc.streamURL,
+		URL:    cc.streamBaseURL,
 	})
 	if err != nil {
 		return nil, err

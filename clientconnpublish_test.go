@@ -40,6 +40,7 @@ func TestClientPublishSerial(t *testing.T) {
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
+				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -56,6 +57,7 @@ func TestClientPublishSerial(t *testing.T) {
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
+				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -65,6 +67,7 @@ func TestClientPublishSerial(t *testing.T) {
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
+				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Read(req.Header["Transport"])
@@ -110,6 +113,7 @@ func TestClientPublishSerial(t *testing.T) {
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
+				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -151,6 +155,7 @@ func TestClientPublishSerial(t *testing.T) {
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
+				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,

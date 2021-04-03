@@ -74,6 +74,7 @@ func TestClientRead(t *testing.T) {
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
+				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -90,6 +91,7 @@ func TestClientRead(t *testing.T) {
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
+				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
 				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 				require.NoError(t, err)
@@ -98,6 +100,7 @@ func TestClientRead(t *testing.T) {
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{scheme + "://localhost:8554/teststream/"},
 					},
 					Body: Tracks{track}.Write(),
 				}.Write(bconn.Writer)
@@ -106,6 +109,7 @@ func TestClientRead(t *testing.T) {
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
+				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream/trackID=0"), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Read(req.Header["Transport"])
@@ -150,6 +154,7 @@ func TestClientRead(t *testing.T) {
 				err = req.Read(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
+				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream/"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -194,6 +199,16 @@ func TestClientRead(t *testing.T) {
 				}
 
 				close(frameRecv)
+
+				err = req.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream/"), req.URL)
+
+				err = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
 			}()
 
 			conf := ClientConf{
@@ -224,6 +239,108 @@ func TestClientRead(t *testing.T) {
 			<-done
 		})
 	}
+}
+
+func TestClientReadNoContentBase(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		var req base.Request
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+		require.NoError(t, err)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+			},
+			Body: Tracks{track}.Write(),
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
+
+		var inTH headers.Transport
+		err = inTH.Read(req.Header["Transport"])
+		require.NoError(t, err)
+
+		th := headers.Transport{
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
+				return &v
+			}(),
+			Protocol:    StreamProtocolUDP,
+			ClientPorts: inTH.ClientPorts,
+			ServerPorts: &[2]int{34556, 34557},
+		}
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Write(),
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+	}()
+
+	conn, err := DialRead("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+	conn.Close()
 }
 
 func TestClientReadAnyPort(t *testing.T) {
@@ -274,6 +391,7 @@ func TestClientReadAnyPort(t *testing.T) {
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
 					Body: Tracks{track}.Write(),
 				}.Write(bconn.Writer)
@@ -392,6 +510,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Content-Type": base.HeaderValue{"application/sdp"},
+					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
 				Body: Tracks{track}.Write(),
 			}.Write(bconn.Writer)
@@ -497,6 +616,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Content-Type": base.HeaderValue{"application/sdp"},
+					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
 				Body: Tracks{track}.Write(),
 			}.Write(bconn.Writer)
@@ -505,6 +625,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			err = req.Read(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
+			require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 			var inTH headers.Transport
 			err = inTH.Read(req.Header["Transport"])
@@ -554,23 +675,8 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			err = req.Read(bconn.Reader)
 			require.NoError(t, err)
-			require.Equal(t, base.Options, req.Method)
-
-			err = base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Public": base.HeaderValue{strings.Join([]string{
-						string(base.Describe),
-						string(base.Setup),
-						string(base.Play),
-					}, ", ")},
-				},
-			}.Write(bconn.Writer)
-			require.NoError(t, err)
-
-			err = req.Read(bconn.Reader)
-			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
+			require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 			inTH = headers.Transport{}
 			err = inTH.Read(req.Header["Transport"])
@@ -715,6 +821,7 @@ func TestClientReadRedirect(t *testing.T) {
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: Tracks{track}.Write(),
 		}.Write(bconn.Writer)
@@ -869,6 +976,7 @@ func TestClientReadPause(t *testing.T) {
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
 					Body: Tracks{track}.Write(),
 				}.Write(bconn.Writer)
@@ -1042,6 +1150,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: Tracks{track}.Write(),
 		}.Write(bconn.Writer)
@@ -1214,6 +1323,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
 					Body: Tracks{track}.Write(),
 				}.Write(bconn.Writer)
