@@ -29,7 +29,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	// read track frames
+	// read RTP frames
 	err = <-conn.ReadFrames(func(trackID int, typ gortsplib.StreamType, buf []byte) {
 		fmt.Printf("frame from track %d, type %v, size %d\n", trackID, typ, len(buf))
 	})

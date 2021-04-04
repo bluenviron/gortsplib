@@ -57,13 +57,13 @@ func main() {
 
 			buf := make([]byte, 2048)
 			for {
-				// read frames from the source
+				// read RTP frames from the source
 				n, _, err := pc.ReadFrom(buf)
 				if err != nil {
 					break
 				}
 
-				// write track frames
+				// write RTP frames
 				err = conn.WriteFrame(track.ID, gortsplib.StreamTypeRTP, buf[:n])
 				if err != nil {
 					break

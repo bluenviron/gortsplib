@@ -35,8 +35,8 @@ func main() {
 		panic(err)
 	}
 
+	// start reading only video tracks, skipping audio or application tracks
 	for _, t := range tracks {
-		// start reading only video tracks, skipping audio or application tracks
 		if t.Media.MediaName.Media == "video" {
 			_, err := conn.Setup(headers.TransportModePlay, t, 0, 0)
 			if err != nil {
@@ -45,12 +45,13 @@ func main() {
 		}
 	}
 
+	// play setupped tracks
 	_, err = conn.Play()
 	if err != nil {
 		panic(err)
 	}
 
-	// read track frames
+	// read RTP frames
 	err = <-conn.ReadFrames(func(trackID int, typ gortsplib.StreamType, buf []byte) {
 		fmt.Printf("frame from track %d, type %v, size %d\n", trackID, typ, len(buf))
 	})
