@@ -114,21 +114,43 @@ var casesTransport = []struct {
 }
 
 func TestTransportRead(t *testing.T) {
-	for _, c := range casesTransport {
-		t.Run(c.name, func(t *testing.T) {
+	for _, ca := range casesTransport {
+		t.Run(ca.name, func(t *testing.T) {
 			var h Transport
-			err := h.Read(c.vin)
+			err := h.Read(ca.vin)
 			require.NoError(t, err)
-			require.Equal(t, c.h, h)
+			require.Equal(t, ca.h, h)
+		})
+	}
+}
+
+func TestTransportReadError(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		hv   base.HeaderValue
+	}{
+		{
+			"empty",
+			base.HeaderValue{},
+		},
+		{
+			"2 values",
+			base.HeaderValue{"a", "b"},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var h Transport
+			err := h.Read(ca.hv)
+			require.Error(t, err)
 		})
 	}
 }
 
 func TestTransportWrite(t *testing.T) {
-	for _, c := range casesTransport {
-		t.Run(c.name, func(t *testing.T) {
-			req := c.h.Write()
-			require.Equal(t, c.vout, req)
+	for _, ca := range casesTransport {
+		t.Run(ca.name, func(t *testing.T) {
+			req := ca.h.Write()
+			require.Equal(t, ca.vout, req)
 		})
 	}
 }

@@ -27,23 +27,25 @@ func (h *Session) Read(v base.HeaderValue) error {
 		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	parts := strings.Split(v[0], ";")
-	if len(parts) == 0 {
-		return fmt.Errorf("invalid value (%v)", v)
+	v0 := v[0]
+
+	i := strings.IndexByte(v0, ';')
+	if i < 0 {
+		h.Session = v0
+		return nil
 	}
 
-	h.Session = parts[0]
+	h.Session = v0[:i]
+	v0 = v0[i+1:]
 
-	for _, kv := range parts[1:] {
-		// remove leading spaces
-		kv = strings.TrimLeft(kv, " ")
+	v0 = strings.TrimLeft(v0, " ")
 
-		tmp := strings.SplitN(kv, "=", 2)
-		if len(tmp) != 2 {
-			return fmt.Errorf("unable to parse key-value (%v)", kv)
-		}
-		k, v := tmp[0], tmp[1]
+	kvs, err := keyValParse(v0, ';')
+	if err != nil {
+		return err
+	}
 
+	for k, v := range kvs {
 		switch k {
 		case "timeout":
 			iv, err := strconv.ParseUint(v, 10, 64)

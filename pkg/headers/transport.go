@@ -99,12 +99,17 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	parts := strings.Split(v[0], ";")
-	if len(parts) == 0 {
-		return fmt.Errorf("invalid value (%v)", v)
+	v0 := v[0]
+
+	var part string
+	i := strings.IndexByte(v0, ';')
+	if i >= 0 {
+		part, v0 = v0[:i], v0[i+1:]
+	} else {
+		part, v0 = v0, ""
 	}
 
-	switch parts[0] {
+	switch part {
 	case "RTP/AVP", "RTP/AVP/UDP":
 		h.Protocol = base.StreamProtocolUDP
 
@@ -114,28 +119,35 @@ func (h *Transport) Read(v base.HeaderValue) error {
 	default:
 		return fmt.Errorf("invalid protocol (%v)", v)
 	}
-	parts = parts[1:]
 
-	switch parts[0] {
+	i = strings.IndexByte(v0, ';')
+	if i >= 0 {
+		part, v0 = v0[:i], v0[i+1:]
+	} else {
+		part, v0 = v0, ""
+	}
+
+	switch part {
 	case "unicast":
 		v := base.StreamDeliveryUnicast
 		h.Delivery = &v
-		parts = parts[1:]
 
 	case "multicast":
 		v := base.StreamDeliveryMulticast
 		h.Delivery = &v
-		parts = parts[1:]
 
-		// cast is optional, do not return any error
+	default:
+		// cast is optional, go back
+		v0 = part + ";" + v0
 	}
 
-	for _, kv := range parts {
-		tmp := strings.SplitN(kv, "=", 2)
-		if len(tmp) != 2 {
-			return fmt.Errorf("unable to parse key-value (%v)", kv)
-		}
-		k, v := tmp[0], tmp[1]
+	kvs, err := keyValParse(v0, ';')
+	if err != nil {
+		return err
+	}
+
+	for k, rv := range kvs {
+		v := rv
 
 		switch k {
 		case "destination":

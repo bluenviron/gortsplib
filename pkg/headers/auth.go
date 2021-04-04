@@ -49,36 +49,6 @@ type Auth struct {
 	Algorithm *string
 }
 
-func findValue(v0 string) (string, string, error) {
-	if v0 == "" {
-		return "", "", nil
-	}
-
-	if v0[0] == '"' {
-		i := 1
-		for {
-			if i >= len(v0) {
-				return "", "", fmt.Errorf("apices not closed (%v)", v0)
-			}
-
-			if v0[i] == '"' {
-				return v0[1:i], v0[i+1:], nil
-			}
-
-			i++
-		}
-	}
-
-	i := 0
-	for {
-		if i >= len(v0) || v0[i] == ',' {
-			return v0[:i], v0[i:], nil
-		}
-
-		i++
-	}
-}
-
 // Read decodes an Authenticate or a WWW-Authenticate header.
 func (h *Auth) Read(v base.HeaderValue) error {
 	if len(v) == 0 {
@@ -93,10 +63,11 @@ func (h *Auth) Read(v base.HeaderValue) error {
 
 	i := strings.IndexByte(v0, ' ')
 	if i < 0 {
-		return fmt.Errorf("unable to find method (%s)", v0)
+		return fmt.Errorf("unable to split between method and keys (%v)", v)
 	}
+	method, v0 := v0[:i], v0[i+1:]
 
-	switch v0[:i] {
+	switch method {
 	case "Basic":
 		h.Method = AuthBasic
 
@@ -104,61 +75,44 @@ func (h *Auth) Read(v base.HeaderValue) error {
 		h.Method = AuthDigest
 
 	default:
-		return fmt.Errorf("invalid method (%s)", v0[:i])
+		return fmt.Errorf("invalid method (%s)", method)
 	}
-	v0 = v0[i+1:]
 
-	for len(v0) > 0 {
-		i := strings.IndexByte(v0, '=')
-		if i < 0 {
-			return fmt.Errorf("unable to find key (%s)", v0)
-		}
-		var key string
-		key, v0 = v0[:i], v0[i+1:]
+	kvs, err := keyValParse(v0, ',')
+	if err != nil {
+		return err
+	}
 
-		var val string
-		var err error
-		val, v0, err = findValue(v0)
-		if err != nil {
-			return err
-		}
+	for k, rv := range kvs {
+		v := rv
 
-		switch key {
+		switch k {
 		case "username":
-			h.Username = &val
+			h.Username = &v
 
 		case "realm":
-			h.Realm = &val
+			h.Realm = &v
 
 		case "nonce":
-			h.Nonce = &val
+			h.Nonce = &v
 
 		case "uri":
-			h.URI = &val
+			h.URI = &v
 
 		case "response":
-			h.Response = &val
+			h.Response = &v
 
 		case "opaque":
-			h.Opaque = &val
+			h.Opaque = &v
 
 		case "stale":
-			h.Stale = &val
+			h.Stale = &v
 
 		case "algorithm":
-			h.Algorithm = &val
+			h.Algorithm = &v
 
+		default:
 			// ignore non-standard keys
-		}
-
-		// skip comma
-		if len(v0) > 0 && v0[0] == ',' {
-			v0 = v0[1:]
-		}
-
-		// skip spaces
-		for len(v0) > 0 && v0[0] == ' ' {
-			v0 = v0[1:]
 		}
 	}
 

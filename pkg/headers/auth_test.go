@@ -173,21 +173,51 @@ var casesAuth = []struct {
 }
 
 func TestAuthRead(t *testing.T) {
-	for _, c := range casesAuth {
-		t.Run(c.name, func(t *testing.T) {
+	for _, ca := range casesAuth {
+		t.Run(ca.name, func(t *testing.T) {
 			var h Auth
-			err := h.Read(c.vin)
+			err := h.Read(ca.vin)
 			require.NoError(t, err)
-			require.Equal(t, c.h, h)
+			require.Equal(t, ca.h, h)
+		})
+	}
+}
+
+func TestAuthReadError(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		hv   base.HeaderValue
+	}{
+		{
+			"empty",
+			base.HeaderValue{},
+		},
+		{
+			"2 values",
+			base.HeaderValue{"a", "b"},
+		},
+		{
+			"no keys",
+			base.HeaderValue{"Basic"},
+		},
+		{
+			"invalid method",
+			base.HeaderValue{"Testing key1=val1"},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var h Auth
+			err := h.Read(ca.hv)
+			require.Error(t, err)
 		})
 	}
 }
 
 func TestAuthWrite(t *testing.T) {
-	for _, c := range casesAuth {
-		t.Run(c.name, func(t *testing.T) {
-			vout := c.h.Write()
-			require.Equal(t, c.vout, vout)
+	for _, ca := range casesAuth {
+		t.Run(ca.name, func(t *testing.T) {
+			vout := ca.h.Write()
+			require.Equal(t, ca.vout, vout)
 		})
 	}
 }
