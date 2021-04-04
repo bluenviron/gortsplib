@@ -25,9 +25,11 @@ var casesInterleavedFrame = []struct {
 }
 
 func TestInterleavedFrameRead(t *testing.T) {
+	// keep f global to make sure that all its fields are overridden.
+	var f InterleavedFrame
+
 	for _, ca := range casesInterleavedFrame {
 		t.Run(ca.name, func(t *testing.T) {
-			var f InterleavedFrame
 			f.Payload = make([]byte, 1024)
 			err := f.Read(bufio.NewReader(bytes.NewBuffer(ca.enc)))
 			require.NoError(t, err)
@@ -45,6 +47,37 @@ func TestInterleavedFrameWrite(t *testing.T) {
 			require.NoError(t, err)
 			bw.Flush()
 			require.Equal(t, ca.enc, buf.Bytes())
+		})
+	}
+}
+
+func TestInterleavedFrameReadErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		byts []byte
+	}{
+		{
+			"empty",
+			[]byte{},
+		},
+		{
+			"invalid magic byte",
+			[]byte{0x55, 0x00, 0x00, 0x00},
+		},
+		{
+			"length too big",
+			[]byte{0x24, 0x00, 0x00, 0x08},
+		},
+		{
+			"invalid payload",
+			[]byte{0x24, 0x00, 0x00, 0x08, 0x01, 0x02},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var f InterleavedFrame
+			f.Payload = make([]byte, 5)
+			err := f.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
+			require.Error(t, err)
 		})
 	}
 }

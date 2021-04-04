@@ -183,6 +183,15 @@ func TestAuthRead(t *testing.T) {
 	}
 }
 
+func TestAuthWrite(t *testing.T) {
+	for _, ca := range casesAuth {
+		t.Run(ca.name, func(t *testing.T) {
+			vout := ca.h.Write()
+			require.Equal(t, ca.vout, vout)
+		})
+	}
+}
+
 func TestAuthReadError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -209,15 +218,6 @@ func TestAuthReadError(t *testing.T) {
 			var h Auth
 			err := h.Read(ca.hv)
 			require.Error(t, err)
-		})
-	}
-}
-
-func TestAuthWrite(t *testing.T) {
-	for _, ca := range casesAuth {
-		t.Run(ca.name, func(t *testing.T) {
-			vout := ca.h.Write()
-			require.Equal(t, ca.vout, vout)
 		})
 	}
 }

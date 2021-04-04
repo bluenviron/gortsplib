@@ -109,7 +109,9 @@ var casesResponse = []struct {
 }
 
 func TestResponseRead(t *testing.T) {
+	// keep res global to make sure that all its fields are overridden.
 	var res Response
+
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
 			err := res.Read(bufio.NewReader(bytes.NewBuffer(c.byts)))
@@ -132,7 +134,45 @@ func TestResponseWrite(t *testing.T) {
 	}
 }
 
-func TestResponseWriteStatusAutofill(t *testing.T) {
+func TestResponseReadErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		byts []byte
+	}{
+		{
+			"empty",
+			[]byte{},
+		},
+		{
+			"missing code, message, eol",
+			[]byte("RTSP/1.0"),
+		},
+		{
+			"missing message, eol",
+			[]byte("RTSP/1.0 200"),
+		},
+		{
+			"missing eol",
+			[]byte("RTSP/1.0 200 OK"),
+		},
+		{
+			"invalid protocol",
+			[]byte("RTSP/2.0 200 OK\r\n"),
+		},
+		{
+			"invalid code",
+			[]byte("RTSP/2.0 string OK\r\n"),
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var res Response
+			err := res.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestResponseWriteAutoFillStatus(t *testing.T) {
 	res := &Response{
 		StatusCode: StatusMethodNotAllowed,
 		Header: Header{

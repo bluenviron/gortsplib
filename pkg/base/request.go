@@ -11,7 +11,7 @@ import (
 const (
 	rtspProtocol10           = "RTSP/1.0"
 	requestMaxMethodLength   = 64
-	requestMaxPathLength     = 2048
+	requestMaxURLLength      = 2048
 	requestMaxProtocolLength = 64
 )
 
@@ -63,7 +63,7 @@ func (req *Request) Read(rb *bufio.Reader) error {
 		return fmt.Errorf("empty method")
 	}
 
-	byts, err = readBytesLimited(rb, ' ', requestMaxPathLength)
+	byts, err = readBytesLimited(rb, ' ', requestMaxURLLength)
 	if err != nil {
 		return err
 	}

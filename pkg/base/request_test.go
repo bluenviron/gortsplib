@@ -131,25 +131,65 @@ var casesRequest = []struct {
 }
 
 func TestRequestRead(t *testing.T) {
+	// keep req global to make sure that all its fields are overridden.
 	var req Request
-	for _, c := range casesRequest {
-		t.Run(c.name, func(t *testing.T) {
-			err := req.Read(bufio.NewReader(bytes.NewBuffer(c.byts)))
+
+	for _, ca := range casesRequest {
+		t.Run(ca.name, func(t *testing.T) {
+			err := req.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
 			require.NoError(t, err)
-			require.Equal(t, c.req, req)
+			require.Equal(t, ca.req, req)
 		})
 	}
 }
 
 func TestRequestWrite(t *testing.T) {
-	for _, c := range casesRequest {
-		t.Run(c.name, func(t *testing.T) {
+	for _, ca := range casesRequest {
+		t.Run(ca.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			bw := bufio.NewWriter(&buf)
-			err := c.req.Write(bw)
+			err := ca.req.Write(bw)
 			require.NoError(t, err)
 			// do NOT call flush(), write() must have already done it
-			require.Equal(t, c.byts, buf.Bytes())
+			require.Equal(t, ca.byts, buf.Bytes())
+		})
+	}
+}
+
+func TestRequestReadErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		byts []byte
+	}{
+		{
+			"empty",
+			[]byte{},
+		},
+		{
+			"missing url, protocol, eol",
+			[]byte("GET"),
+		},
+		{
+			"missing protocol, eol",
+			[]byte("GET rtsp://testing123/test"),
+		},
+		{
+			"missing eol",
+			[]byte("GET rtsp://testing123/test RTSP/1.0"),
+		},
+		{
+			"invalid URL",
+			[]byte("GET http://testing123 RTSP/1.0\r\n"),
+		},
+		{
+			"invalid protocol",
+			[]byte("GET rtsp://testing123 RTSP/2.0\r\n"),
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var req Request
+			err := req.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
+			require.Error(t, err)
 		})
 	}
 }

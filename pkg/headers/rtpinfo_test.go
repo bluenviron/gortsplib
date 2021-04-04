@@ -178,6 +178,15 @@ func TestRTPInfoRead(t *testing.T) {
 	}
 }
 
+func TestRTPInfoWrite(t *testing.T) {
+	for _, ca := range casesRTPInfo {
+		t.Run(ca.name, func(t *testing.T) {
+			req := ca.h.Write()
+			require.Equal(t, ca.vout, req)
+		})
+	}
+}
+
 func TestRTPInfoReadError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -196,15 +205,6 @@ func TestRTPInfoReadError(t *testing.T) {
 			var h RTPInfo
 			err := h.Read(ca.hv)
 			require.Error(t, err)
-		})
-	}
-}
-
-func TestRTPInfoWrite(t *testing.T) {
-	for _, ca := range casesRTPInfo {
-		t.Run(ca.name, func(t *testing.T) {
-			req := ca.h.Write()
-			require.Equal(t, ca.vout, req)
 		})
 	}
 }
