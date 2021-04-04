@@ -34,27 +34,28 @@ func (h *Session) Read(v base.HeaderValue) error {
 
 	h.Session = parts[0]
 
-	for _, part := range parts[1:] {
+	for _, kv := range parts[1:] {
 		// remove leading spaces
-		part = strings.TrimLeft(part, " ")
+		kv = strings.TrimLeft(kv, " ")
 
-		kv := strings.Split(part, "=")
-		if len(kv) != 2 {
-			return fmt.Errorf("invalid value")
+		tmp := strings.SplitN(kv, "=", 2)
+		if len(tmp) != 2 {
+			return fmt.Errorf("unable to parse key-value (%v)", kv)
 		}
+		k, v := tmp[0], tmp[1]
 
-		key, strValue := kv[0], kv[1]
-		if key != "timeout" {
-			return fmt.Errorf("invalid key '%s'", key)
+		switch k {
+		case "timeout":
+			iv, err := strconv.ParseUint(v, 10, 64)
+			if err != nil {
+				return err
+			}
+			uiv := uint(iv)
+			h.Timeout = &uiv
+
+		default:
+			// ignore non-standard keys
 		}
-
-		iv, err := strconv.ParseUint(strValue, 10, 64)
-		if err != nil {
-			return err
-		}
-		uiv := uint(iv)
-
-		h.Timeout = &uiv
 	}
 
 	return nil

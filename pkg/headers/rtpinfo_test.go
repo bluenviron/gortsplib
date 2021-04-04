@@ -136,6 +136,35 @@ var casesRTPInfo = []struct {
 			},
 		},
 	},
+	{
+		"with session",
+		base.HeaderValue{`url=trackID=1;seq=55664;rtptime=254718369;ssrc=56597976,url=trackID=2;seq=43807;rtptime=1702259566;ssrc=ee839a80`},
+		base.HeaderValue{`url=trackID=1;seq=55664;rtptime=254718369,url=trackID=2;seq=43807;rtptime=1702259566`},
+		RTPInfo{
+			{
+				URL: "trackID=1",
+				SequenceNumber: func() *uint16 {
+					v := uint16(55664)
+					return &v
+				}(),
+				Timestamp: func() *uint32 {
+					v := uint32(254718369)
+					return &v
+				}(),
+			},
+			{
+				URL: "trackID=2",
+				SequenceNumber: func() *uint16 {
+					v := uint16(43807)
+					return &v
+				}(),
+				Timestamp: func() *uint32 {
+					v := uint32(1702259566)
+					return &v
+				}(),
+			},
+		},
+	},
 }
 
 func TestRTPInfoRead(t *testing.T) {

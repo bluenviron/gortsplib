@@ -130,50 +130,55 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		// cast is optional, do not return any error
 	}
 
-	for _, t := range parts {
-		switch {
-		case strings.HasPrefix(t, "destination="):
-			v := t[len("destination="):]
+	for _, kv := range parts {
+		tmp := strings.SplitN(kv, "=", 2)
+		if len(tmp) != 2 {
+			return fmt.Errorf("unable to parse key-value (%v)", kv)
+		}
+		k, v := tmp[0], tmp[1]
+
+		switch k {
+		case "destination":
 			h.Destination = &v
 
-		case strings.HasPrefix(t, "ttl="):
-			v, err := strconv.ParseUint(t[len("ttl="):], 10, 64)
+		case "ttl":
+			tmp, err := strconv.ParseUint(v, 10, 64)
 			if err != nil {
 				return err
 			}
-			vu := uint(v)
+			vu := uint(tmp)
 			h.TTL = &vu
 
-		case strings.HasPrefix(t, "port="):
-			ports, err := parsePorts(t[len("port="):])
+		case "port":
+			ports, err := parsePorts(v)
 			if err != nil {
 				return err
 			}
 			h.Ports = ports
 
-		case strings.HasPrefix(t, "client_port="):
-			ports, err := parsePorts(t[len("client_port="):])
+		case "client_port":
+			ports, err := parsePorts(v)
 			if err != nil {
 				return err
 			}
 			h.ClientPorts = ports
 
-		case strings.HasPrefix(t, "server_port="):
-			ports, err := parsePorts(t[len("server_port="):])
+		case "server_port":
+			ports, err := parsePorts(v)
 			if err != nil {
 				return err
 			}
 			h.ServerPorts = ports
 
-		case strings.HasPrefix(t, "interleaved="):
-			ports, err := parsePorts(t[len("interleaved="):])
+		case "interleaved":
+			ports, err := parsePorts(v)
 			if err != nil {
 				return err
 			}
 			h.InterleavedIDs = ports
 
-		case strings.HasPrefix(t, "mode="):
-			str := strings.ToLower(t[len("mode="):])
+		case "mode":
+			str := strings.ToLower(v)
 			str = strings.TrimPrefix(str, "\"")
 			str = strings.TrimSuffix(str, "\"")
 
@@ -191,9 +196,10 @@ func (h *Transport) Read(v base.HeaderValue) error {
 			default:
 				return fmt.Errorf("invalid transport mode: '%s'", str)
 			}
-		}
 
-		// ignore non-standard keys
+		default:
+			// ignore non-standard keys
+		}
 	}
 
 	return nil
