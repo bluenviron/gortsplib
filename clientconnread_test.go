@@ -1435,7 +1435,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				require.Equal(t, "UDP timeout", err.Error())
 
 			case "tcp":
-				require.True(t, strings.HasSuffix(err.Error(), "i/o timeout"))
+				require.Equal(t, "TCP timeout", err.Error())
 			}
 		})
 	}

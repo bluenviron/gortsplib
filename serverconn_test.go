@@ -195,7 +195,7 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		}
 	}
 
-	err := <-conn.Read(ServerConnReadHandlers{
+	<-conn.Read(ServerConnReadHandlers{
 		OnDescribe: onDescribe,
 		OnAnnounce: onAnnounce,
 		OnSetup:    onSetup,
@@ -203,11 +203,6 @@ func (ts *testServ) handleConn(conn *ServerConn) {
 		OnRecord:   onRecord,
 		OnFrame:    onFrame,
 	})
-	if err != io.EOF {
-		if _, ok := err.(liberrors.ErrServerTeardown); !ok {
-			fmt.Println("ERR", err)
-		}
-	}
 
 	ts.mutex.Lock()
 	defer ts.mutex.Unlock()

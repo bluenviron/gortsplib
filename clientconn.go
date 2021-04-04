@@ -28,11 +28,10 @@ import (
 )
 
 const (
-	clientConnReadBufferSize       = 4096
-	clientConnWriteBufferSize      = 4096
-	clientConnUDPCheckStreamPeriod = 1 * time.Second
-	clientConnUDPKeepalivePeriod   = 30 * time.Second
-	clientConnTCPSetDeadlinePeriod = 1 * time.Second
+	clientConnReadBufferSize     = 4096
+	clientConnWriteBufferSize    = 4096
+	clientConnCheckStreamPeriod  = 1 * time.Second
+	clientConnUDPKeepalivePeriod = 30 * time.Second
 )
 
 type clientConnState int
