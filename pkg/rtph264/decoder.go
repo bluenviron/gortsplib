@@ -40,9 +40,6 @@ type Decoder struct {
 	// for Decode()
 	state         decoderState
 	fragmentedBuf []byte
-
-	// for Read()
-	readQueue []*NALUAndTimestamp
 }
 
 // NewDecoder allocates a Decoder.
@@ -59,13 +56,13 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 // * no NALUs and ErrMorePacketsNeeded
 // * one NALU (in case of FU-A)
 // * multiple NALUs (in case of STAP-A)
-func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
+func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 	switch d.state {
 	case decoderStateInitial:
 		pkt := rtp.Packet{}
 		err := pkt.Unmarshal(byts)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		if !d.initialTsSet {
@@ -74,19 +71,19 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 		}
 
 		if len(pkt.Payload) < 1 {
-			return nil, fmt.Errorf("payload is too short")
+			return nil, 0, fmt.Errorf("payload is too short")
 		}
 
 		typ := NALUType(pkt.Payload[0] & 0x1F)
 
 		switch typ {
-		case NALUTypeStapA:
-			var ret []*NALUAndTimestamp
+		case NALUTypeSTAPA:
+			var nalus [][]byte
 			pkt.Payload = pkt.Payload[1:]
 
 			for len(pkt.Payload) > 0 {
 				if len(pkt.Payload) < 2 {
-					return nil, fmt.Errorf("Invalid STAP-A packet")
+					return nil, 0, fmt.Errorf("Invalid STAP-A packet")
 				}
 
 				size := binary.BigEndian.Uint16(pkt.Payload)
@@ -98,30 +95,27 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 				}
 
 				if int(size) > len(pkt.Payload) {
-					return nil, fmt.Errorf("Invalid STAP-A packet")
+					return nil, 0, fmt.Errorf("Invalid STAP-A packet")
 				}
 
-				ret = append(ret, &NALUAndTimestamp{
-					NALU:      pkt.Payload[:size],
-					Timestamp: d.decodeTimestamp(pkt.Timestamp),
-				})
+				nalus = append(nalus, pkt.Payload[:size])
 				pkt.Payload = pkt.Payload[size:]
 			}
 
-			if len(ret) == 0 {
-				return nil, fmt.Errorf("STAP-A packet doesn't contain any NALU")
+			if len(nalus) == 0 {
+				return nil, 0, fmt.Errorf("STAP-A packet doesn't contain any NALU")
 			}
 
-			return ret, nil
+			return nalus, d.decodeTimestamp(pkt.Timestamp), nil
 
-		case NALUTypeFuA: // first packet of a fragmented NALU
+		case NALUTypeFUA: // first packet of a fragmented NALU
 			if len(pkt.Payload) < 2 {
-				return nil, fmt.Errorf("Invalid FU-A packet")
+				return nil, 0, fmt.Errorf("Invalid FU-A packet")
 			}
 
 			start := pkt.Payload[1] >> 7
 			if start != 1 {
-				return nil, fmt.Errorf("first NALU does not contain the start bit")
+				return nil, 0, fmt.Errorf("first NALU does not contain the start bit")
 			}
 
 			nri := (pkt.Payload[0] >> 5) & 0x03
@@ -129,35 +123,32 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 			d.fragmentedBuf = append([]byte{(nri << 5) | typ}, pkt.Payload[2:]...)
 
 			d.state = decoderStateReadingFragmented
-			return nil, ErrMorePacketsNeeded
+			return nil, 0, ErrMorePacketsNeeded
 
-		case NALUTypeStapB, NALUTypeMtap16,
-			NALUTypeMtap24, NALUTypeFuB:
-			return nil, fmt.Errorf("NALU type not yet supported (%v)", typ)
+		case NALUTypeSTAPB, NALUTypeMTAP16,
+			NALUTypeMTAP24, NALUTypeFUB:
+			return nil, 0, fmt.Errorf("NALU type not supported (%v)", typ)
 		}
 
-		return []*NALUAndTimestamp{{
-			NALU:      pkt.Payload,
-			Timestamp: d.decodeTimestamp(pkt.Timestamp),
-		}}, nil
+		return [][]byte{pkt.Payload}, d.decodeTimestamp(pkt.Timestamp), nil
 
 	default: // decoderStateReadingFragmented
 		pkt := rtp.Packet{}
 		err := pkt.Unmarshal(byts)
 		if err != nil {
 			d.state = decoderStateInitial
-			return nil, err
+			return nil, 0, err
 		}
 
 		if len(pkt.Payload) < 2 {
 			d.state = decoderStateInitial
-			return nil, fmt.Errorf("Invalid FU-A packet")
+			return nil, 0, fmt.Errorf("Invalid FU-A packet")
 		}
 
 		typ := NALUType(pkt.Payload[0] & 0x1F)
-		if typ != NALUTypeFuA {
+		if typ != NALUTypeFUA {
 			d.state = decoderStateInitial
-			return nil, fmt.Errorf("non-starting NALU is not FU-A")
+			return nil, 0, fmt.Errorf("non-starting NALU is not FU-A")
 		}
 
 		end := (pkt.Payload[1] >> 6) & 0x01
@@ -165,44 +156,11 @@ func (d *Decoder) Decode(byts []byte) ([]*NALUAndTimestamp, error) {
 		d.fragmentedBuf = append(d.fragmentedBuf, pkt.Payload[2:]...)
 
 		if end != 1 {
-			return nil, ErrMorePacketsNeeded
+			return nil, 0, ErrMorePacketsNeeded
 		}
 
 		d.state = decoderStateInitial
-		return []*NALUAndTimestamp{{
-			NALU:      d.fragmentedBuf,
-			Timestamp: d.decodeTimestamp(pkt.Timestamp),
-		}}, nil
-	}
-}
-
-// Read reads RTP/H264 packets from a reader until a NALU is decoded.
-func (d *Decoder) Read(r io.Reader) (*NALUAndTimestamp, error) {
-	if len(d.readQueue) > 0 {
-		nalu := d.readQueue[0]
-		d.readQueue = d.readQueue[1:]
-		return nalu, nil
-	}
-
-	buf := make([]byte, 2048)
-	for {
-		n, err := r.Read(buf)
-		if err != nil {
-			return nil, err
-		}
-
-		nalus, err := d.Decode(buf[:n])
-		if err != nil {
-			if err == ErrMorePacketsNeeded {
-				continue
-			}
-			return nil, err
-		}
-
-		nalu := nalus[0]
-		d.readQueue = nalus[1:]
-
-		return nalu, nil
+		return [][]byte{d.fragmentedBuf}, d.decodeTimestamp(pkt.Timestamp), nil
 	}
 }
 
@@ -212,23 +170,34 @@ func (d *Decoder) ReadSPSPPS(r io.Reader) ([]byte, []byte, error) {
 	var sps []byte
 	var pps []byte
 
+	buf := make([]byte, 2048)
 	for {
-		nt, err := d.Read(r)
+		n, err := r.Read(buf)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		switch NALUType(nt.NALU[0] & 0x1F) {
-		case NALUTypeSPS:
-			sps = append([]byte(nil), nt.NALU...)
-			if sps != nil && pps != nil {
-				return sps, pps, nil
+		nalus, _, err := d.Decode(buf[:n])
+		if err != nil {
+			if err == ErrMorePacketsNeeded {
+				continue
 			}
+			return nil, nil, err
+		}
 
-		case NALUTypePPS:
-			pps = append([]byte(nil), nt.NALU...)
-			if sps != nil && pps != nil {
-				return sps, pps, nil
+		for _, nalu := range nalus {
+			switch NALUType(nalu[0] & 0x1F) {
+			case NALUTypeSPS:
+				sps = append([]byte(nil), nalu...)
+				if sps != nil && pps != nil {
+					return sps, pps, nil
+				}
+
+			case NALUTypePPS:
+				pps = append([]byte(nil), nalu...)
+				if sps != nil && pps != nil {
+					return sps, pps, nil
+				}
 			}
 		}
 	}

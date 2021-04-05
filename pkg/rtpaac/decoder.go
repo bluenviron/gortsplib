@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/pion/rtp"
@@ -29,9 +28,6 @@ type Decoder struct {
 	// for Decode()
 	state         decoderState
 	fragmentedBuf []byte
-
-	// for Read()
-	readQueue []*AUAndTimestamp
 }
 
 // NewDecoder allocates a Decoder.
@@ -174,35 +170,5 @@ func (d *Decoder) Decode(byts []byte) ([]*AUAndTimestamp, error) {
 			AU:        d.fragmentedBuf,
 			Timestamp: d.decodeTimestamp(pkt.Timestamp),
 		}}, nil
-	}
-}
-
-// Read reads RTP/AAC packets from a reader until an AU is decoded.
-func (d *Decoder) Read(r io.Reader) (*AUAndTimestamp, error) {
-	if len(d.readQueue) > 0 {
-		au := d.readQueue[0]
-		d.readQueue = d.readQueue[1:]
-		return au, nil
-	}
-
-	buf := make([]byte, 2048)
-	for {
-		n, err := r.Read(buf)
-		if err != nil {
-			return nil, err
-		}
-
-		aus, err := d.Decode(buf[:n])
-		if err != nil {
-			if err == ErrMorePacketsNeeded {
-				continue
-			}
-			return nil, err
-		}
-
-		au := aus[0]
-		d.readQueue = aus[1:]
-
-		return au, nil
 	}
 }

@@ -28,12 +28,12 @@ const (
 	NALUTypeSliceExtensionDepth           NALUType = 21
 	NALUTypeReserved22                    NALUType = 22
 	NALUTypeReserved23                    NALUType = 23
-	NALUTypeStapA                         NALUType = 24
-	NALUTypeStapB                         NALUType = 25
-	NALUTypeMtap16                        NALUType = 26
-	NALUTypeMtap24                        NALUType = 27
-	NALUTypeFuA                           NALUType = 28
-	NALUTypeFuB                           NALUType = 29
+	NALUTypeSTAPA                         NALUType = 24
+	NALUTypeSTAPB                         NALUType = 25
+	NALUTypeMTAP16                        NALUType = 26
+	NALUTypeMTAP24                        NALUType = 27
+	NALUTypeFUA                           NALUType = 28
+	NALUTypeFUB                           NALUType = 29
 )
 
 // String implements fmt.Stringer.
@@ -85,18 +85,18 @@ func (nt NALUType) String() string {
 		return "Reserved22"
 	case NALUTypeReserved23:
 		return "Reserved23"
-	case NALUTypeStapA:
-		return "StapA"
-	case NALUTypeStapB:
-		return "StapB"
-	case NALUTypeMtap16:
-		return "Mtap16"
-	case NALUTypeMtap24:
-		return "Mtap24"
-	case NALUTypeFuA:
-		return "FuA"
-	case NALUTypeFuB:
-		return "FuB"
+	case NALUTypeSTAPA:
+		return "STAPA"
+	case NALUTypeSTAPB:
+		return "STAPB"
+	case NALUTypeMTAP16:
+		return "MTAP16"
+	case NALUTypeMTAP24:
+		return "MTAP24"
+	case NALUTypeFUA:
+		return "FUA"
+	case NALUTypeFUB:
+		return "FUB"
 	}
 	return "unknown"
 }

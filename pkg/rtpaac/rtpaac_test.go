@@ -2,7 +2,6 @@ package rtpaac
 
 import (
 	"bytes"
-	"io"
 	"testing"
 	"time"
 
@@ -23,12 +22,6 @@ func mergeBytes(vals ...[]byte) []byte {
 	}
 
 	return res
-}
-
-type readerFunc func(p []byte) (int, error)
-
-func (f readerFunc) Read(p []byte) (int, error) {
-	return f(p)
 }
 
 var cases = []struct {
@@ -207,16 +200,6 @@ func TestEncode(t *testing.T) {
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			i := 0
-			r := readerFunc(func(p []byte) (int, error) {
-				if i == len(ca.enc) {
-					return 0, io.EOF
-				}
-
-				i++
-				return copy(p, ca.enc[i-1]), nil
-			})
-
 			d := NewDecoder(48000)
 
 			// send an initial packet downstream
@@ -228,14 +211,19 @@ func TestDecode(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			for _, dec0 := range ca.dec {
-				dec, err := d.Read(r)
+			var ats []*AUAndTimestamp
+
+			for _, pkt := range ca.enc {
+				addATs, err := d.Decode(pkt)
+				if err == ErrMorePacketsNeeded {
+					continue
+				}
+
 				require.NoError(t, err)
-				require.Equal(t, dec0, dec)
+				ats = append(ats, addATs...)
 			}
 
-			_, err = d.Read(r)
-			require.Equal(t, io.EOF, err)
+			require.Equal(t, ca.dec, ats)
 		})
 	}
 }
