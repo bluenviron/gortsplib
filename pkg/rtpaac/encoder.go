@@ -57,33 +57,36 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 }
 
 // Encode encodes AUs into RTP/AAC packets.
-func (e *Encoder) Encode(ats []*AUAndTimestamp) ([][]byte, error) {
+func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([][]byte, error) {
 	var rets [][]byte
-	var batch []*AUAndTimestamp
+	var batch [][]byte
+
+	pts := firstPTS
 
 	// split AUs into batches
-	for _, at := range ats {
-		if e.lenAggregated(batch, at) <= rtpPayloadMaxSize {
+	for _, au := range aus {
+		if e.lenAggregated(batch, au) <= rtpPayloadMaxSize {
 			// add to existing batch
-			batch = append(batch, at)
+			batch = append(batch, au)
 
 		} else {
 			// write last batch
 			if batch != nil {
-				pkts, err := e.writeBatch(batch)
+				pkts, err := e.writeBatch(batch, pts)
 				if err != nil {
 					return nil, err
 				}
 				rets = append(rets, pkts...)
+				pts += time.Duration(len(batch)) * 1000 * time.Second / time.Duration(e.clockRate)
 			}
 
 			// initialize new batch
-			batch = []*AUAndTimestamp{at}
+			batch = [][]byte{au}
 		}
 	}
 
 	// write last batch
-	pkts, err := e.writeBatch(batch)
+	pkts, err := e.writeBatch(batch, pts)
 	if err != nil {
 		return nil, err
 	}
@@ -92,23 +95,21 @@ func (e *Encoder) Encode(ats []*AUAndTimestamp) ([][]byte, error) {
 	return rets, nil
 }
 
-func (e *Encoder) writeBatch(ats []*AUAndTimestamp) ([][]byte, error) {
-	if len(ats) == 1 {
+func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([][]byte, error) {
+	if len(aus) == 1 {
 		// the AU fits into a single RTP packet
-		if len(ats[0].AU) < rtpPayloadMaxSize {
-			return e.writeAggregated(ats)
+		if len(aus[0]) < rtpPayloadMaxSize {
+			return e.writeAggregated(aus, firstPTS)
 		}
 
 		// split the AU into multiple fragmentation packet
-		return e.writeFragmented(ats[0])
+		return e.writeFragmented(aus[0], firstPTS)
 	}
 
-	return e.writeAggregated(ats)
+	return e.writeAggregated(aus, firstPTS)
 }
 
-func (e *Encoder) writeFragmented(at *AUAndTimestamp) ([][]byte, error) {
-	au := at.AU
-
+func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([][]byte, error) {
 	packetCount := len(au) / (rtpPayloadMaxSize - 4)
 	lastPacketSize := len(au) % (rtpPayloadMaxSize - 4)
 	if lastPacketSize > 0 {
@@ -116,7 +117,7 @@ func (e *Encoder) writeFragmented(at *AUAndTimestamp) ([][]byte, error) {
 	}
 
 	ret := make([][]byte, packetCount)
-	ts := e.encodeTimestamp(at.Timestamp)
+	encPTS := e.encodeTimestamp(pts)
 
 	for i := range ret {
 		le := rtpPayloadMaxSize - 4
@@ -135,7 +136,7 @@ func (e *Encoder) writeFragmented(at *AUAndTimestamp) ([][]byte, error) {
 				Version:        rtpVersion,
 				PayloadType:    e.payloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      ts,
+				Timestamp:      encPTS,
 				SSRC:           e.ssrc,
 				Marker:         (i == (packetCount - 1)),
 			},
@@ -154,38 +155,38 @@ func (e *Encoder) writeFragmented(at *AUAndTimestamp) ([][]byte, error) {
 	return ret, nil
 }
 
-func (e *Encoder) lenAggregated(ats []*AUAndTimestamp, additionalEl *AUAndTimestamp) int {
+func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 	ret := 2 // AU-headers-length
 
-	for _, at := range ats {
-		ret += 2          // AU-header
-		ret += len(at.AU) // AU
+	for _, au := range aus {
+		ret += 2       // AU-header
+		ret += len(au) // AU
 	}
 
-	if additionalEl != nil {
-		ret += 2                    // AU-header
-		ret += len(additionalEl.AU) // AU
+	if addAU != nil {
+		ret += 2          // AU-header
+		ret += len(addAU) // AU
 	}
 
 	return ret
 }
 
-func (e *Encoder) writeAggregated(ats []*AUAndTimestamp) ([][]byte, error) {
-	payload := make([]byte, e.lenAggregated(ats, nil))
+func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([][]byte, error) {
+	payload := make([]byte, e.lenAggregated(aus, nil))
 
 	// AU-headers-length
-	binary.BigEndian.PutUint16(payload, uint16(len(ats)*16))
+	binary.BigEndian.PutUint16(payload, uint16(len(aus)*16))
 	pos := 2
 
 	// AU-headers
-	for _, at := range ats {
-		binary.BigEndian.PutUint16(payload[pos:], uint16(len(at.AU))<<3)
+	for _, au := range aus {
+		binary.BigEndian.PutUint16(payload[pos:], uint16(len(au))<<3)
 		pos += 2
 	}
 
 	// AUs
-	for _, at := range ats {
-		auLen := copy(payload[pos:], at.AU)
+	for _, au := range aus {
+		auLen := copy(payload[pos:], au)
 		pos += auLen
 	}
 
@@ -194,7 +195,7 @@ func (e *Encoder) writeAggregated(ats []*AUAndTimestamp) ([][]byte, error) {
 			Version:        rtpVersion,
 			PayloadType:    e.payloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      e.encodeTimestamp(ats[0].Timestamp),
+			Timestamp:      e.encodeTimestamp(firstPTS),
 			SSRC:           e.ssrc,
 			Marker:         true,
 		},
