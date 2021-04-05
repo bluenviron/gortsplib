@@ -10,7 +10,7 @@ const (
 	NALUTypeDataPartitionB                NALUType = 3
 	NALUTypeDataPartitionC                NALUType = 4
 	NALUTypeIDR                           NALUType = 5
-	NALUTypeSei                           NALUType = 6
+	NALUTypeSEI                           NALUType = 6
 	NALUTypeSPS                           NALUType = 7
 	NALUTypePPS                           NALUType = 8
 	NALUTypeAccessUnitDelimiter           NALUType = 9
@@ -49,7 +49,7 @@ func (nt NALUType) String() string {
 		return "DataPartitionC"
 	case NALUTypeIDR:
 		return "IDR"
-	case NALUTypeSei:
+	case NALUTypeSEI:
 		return "Sei"
 	case NALUTypeSPS:
 		return "SPS"

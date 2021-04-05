@@ -67,7 +67,7 @@ func (e *Encoder) Encode(nts []*NALUAndTimestamp) ([][]byte, error) {
 	// split NALUs into batches
 	for _, nt := range nts {
 		if len(batch) > 0 && batch[0].Timestamp != nt.Timestamp {
-			return nil, fmt.Errorf("encoding NALUs with different timestamps is unimplemented")
+			return nil, fmt.Errorf("encoding NALUs with different timestamps is not supported")
 		}
 
 		if e.lenAggregated(batch, nt) <= rtpPayloadMaxSize {
@@ -75,9 +75,9 @@ func (e *Encoder) Encode(nts []*NALUAndTimestamp) ([][]byte, error) {
 			batch = append(batch, nt)
 
 		} else {
-			// write last batch
+			// write batch
 			if batch != nil {
-				pkts, err := e.writeBatch(batch)
+				pkts, err := e.writeBatch(batch, false)
 				if err != nil {
 					return nil, err
 				}
@@ -89,8 +89,9 @@ func (e *Encoder) Encode(nts []*NALUAndTimestamp) ([][]byte, error) {
 		}
 	}
 
-	// write last batch
-	pkts, err := e.writeBatch(batch)
+	// write final batch
+	// marker is used to indicate when all NALUs with same PTS have been sent
+	pkts, err := e.writeBatch(batch, true)
 	if err != nil {
 		return nil, err
 	}
@@ -99,21 +100,21 @@ func (e *Encoder) Encode(nts []*NALUAndTimestamp) ([][]byte, error) {
 	return rets, nil
 }
 
-func (e *Encoder) writeBatch(nts []*NALUAndTimestamp) ([][]byte, error) {
+func (e *Encoder) writeBatch(nts []*NALUAndTimestamp, marker bool) ([][]byte, error) {
 	if len(nts) == 1 {
 		// the NALU fits into a single RTP packet
 		if len(nts[0].NALU) < rtpPayloadMaxSize {
-			return e.writeSingle(nts[0])
+			return e.writeSingle(nts[0], marker)
 		}
 
 		// split the NALU into multiple fragmentation packet
-		return e.writeFragmented(nts[0])
+		return e.writeFragmented(nts[0], marker)
 	}
 
-	return e.writeAggregated(nts)
+	return e.writeAggregated(nts, marker)
 }
 
-func (e *Encoder) writeSingle(nt *NALUAndTimestamp) ([][]byte, error) {
+func (e *Encoder) writeSingle(nt *NALUAndTimestamp, marker bool) ([][]byte, error) {
 	rpkt := rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
@@ -121,7 +122,7 @@ func (e *Encoder) writeSingle(nt *NALUAndTimestamp) ([][]byte, error) {
 			SequenceNumber: e.sequenceNumber,
 			Timestamp:      e.encodeTimestamp(nt.Timestamp),
 			SSRC:           e.ssrc,
-			Marker:         true,
+			Marker:         marker,
 		},
 		Payload: nt.NALU,
 	}
@@ -135,7 +136,7 @@ func (e *Encoder) writeSingle(nt *NALUAndTimestamp) ([][]byte, error) {
 	return [][]byte{frame}, nil
 }
 
-func (e *Encoder) writeFragmented(nt *NALUAndTimestamp) ([][]byte, error) {
+func (e *Encoder) writeFragmented(nt *NALUAndTimestamp, marker bool) ([][]byte, error) {
 	nalu := nt.NALU
 
 	// use only FU-A, not FU-B, since we always use non-interleaved mode
@@ -181,7 +182,7 @@ func (e *Encoder) writeFragmented(nt *NALUAndTimestamp) ([][]byte, error) {
 				SequenceNumber: e.sequenceNumber,
 				Timestamp:      ts,
 				SSRC:           e.ssrc,
-				Marker:         (i == (packetCount - 1)),
+				Marker:         (i == (packetCount-1) && marker),
 			},
 			Payload: data,
 		}
@@ -214,7 +215,7 @@ func (e *Encoder) lenAggregated(nts []*NALUAndTimestamp, additionalEl *NALUAndTi
 	return ret
 }
 
-func (e *Encoder) writeAggregated(nts []*NALUAndTimestamp) ([][]byte, error) {
+func (e *Encoder) writeAggregated(nts []*NALUAndTimestamp, marker bool) ([][]byte, error) {
 	payload := make([]byte, e.lenAggregated(nts, nil))
 
 	// header
@@ -239,7 +240,7 @@ func (e *Encoder) writeAggregated(nts []*NALUAndTimestamp) ([][]byte, error) {
 			SequenceNumber: e.sequenceNumber,
 			Timestamp:      e.encodeTimestamp(nts[0].Timestamp),
 			SSRC:           e.ssrc,
-			Marker:         true,
+			Marker:         marker,
 		},
 		Payload: payload,
 	}
