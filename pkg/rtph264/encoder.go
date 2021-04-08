@@ -55,10 +55,7 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 }
 
 // Encode encodes NALUs into RTP/H264 packets.
-// It can return:
-// * a single packets
-// * multiple fragmented packets (FU-A)
-// * an aggregated packet (STAP-A)
+// It returns the encoded packets.
 func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([][]byte, error) {
 	var rets [][]byte
 	var batch [][]byte
@@ -148,7 +145,7 @@ func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) (
 	nalu = nalu[1:] // remove header
 
 	for i := range ret {
-		indicator := (nri << 5) | uint8(NALUTypeFUA)
+		indicator := (nri << 5) | uint8(naluTypeFUA)
 
 		start := uint8(0)
 		if i == 0 {
@@ -212,7 +209,7 @@ func (e *Encoder) writeAggregated(nalus [][]byte, pts time.Duration, marker bool
 	payload := make([]byte, e.lenAggregated(nalus, nil))
 
 	// header
-	payload[0] = uint8(NALUTypeSTAPA)
+	payload[0] = uint8(naluTypeSTAPA)
 	pos := 1
 
 	for _, nalu := range nalus {

@@ -57,6 +57,7 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 }
 
 // Encode encodes AUs into RTP/AAC packets.
+// It returns the encoded packets.
 func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([][]byte, error) {
 	var rets [][]byte
 	var batch [][]byte

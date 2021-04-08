@@ -52,10 +52,8 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 }
 
 // Decode decodes NALUs from a RTP/H264 packet.
-// It can return:
-// * no NALUs and ErrMorePacketsNeeded
-// * one NALU (in case of FU-A)
-// * multiple NALUs (in case of STAP-A)
+// It returns the decoded NALUs and their PTS.
+// In case more packets are needed, ErrMorePacketsNeeded is returned.
 func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 	switch d.state {
 	case decoderStateInitial:
@@ -74,10 +72,10 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 			return nil, 0, fmt.Errorf("payload is too short")
 		}
 
-		typ := NALUType(pkt.Payload[0] & 0x1F)
+		typ := naluType(pkt.Payload[0] & 0x1F)
 
 		switch typ {
-		case NALUTypeSTAPA:
+		case naluTypeSTAPA:
 			var nalus [][]byte
 			pkt.Payload = pkt.Payload[1:]
 
@@ -108,7 +106,7 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 
 			return nalus, d.decodeTimestamp(pkt.Timestamp), nil
 
-		case NALUTypeFUA: // first packet of a fragmented NALU
+		case naluTypeFUA: // first packet of a fragmented NALU
 			if len(pkt.Payload) < 2 {
 				return nil, 0, fmt.Errorf("Invalid FU-A packet")
 			}
@@ -125,8 +123,8 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 			d.state = decoderStateReadingFragmented
 			return nil, 0, ErrMorePacketsNeeded
 
-		case NALUTypeSTAPB, NALUTypeMTAP16,
-			NALUTypeMTAP24, NALUTypeFUB:
+		case naluTypeSTAPB, naluTypeMTAP16,
+			naluTypeMTAP24, naluTypeFUB:
 			return nil, 0, fmt.Errorf("NALU type not supported (%v)", typ)
 		}
 
@@ -142,13 +140,13 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 
 		if len(pkt.Payload) < 2 {
 			d.state = decoderStateInitial
-			return nil, 0, fmt.Errorf("Invalid FU-A packet")
+			return nil, 0, fmt.Errorf("Invalid non-starting FU-A packet")
 		}
 
-		typ := NALUType(pkt.Payload[0] & 0x1F)
-		if typ != NALUTypeFUA {
+		typ := naluType(pkt.Payload[0] & 0x1F)
+		if typ != naluTypeFUA {
 			d.state = decoderStateInitial
-			return nil, 0, fmt.Errorf("non-starting NALU is not FU-A")
+			return nil, 0, fmt.Errorf("Packet is not FU-A")
 		}
 
 		end := (pkt.Payload[1] >> 6) & 0x01
@@ -186,14 +184,14 @@ func (d *Decoder) ReadSPSPPS(r io.Reader) ([]byte, []byte, error) {
 		}
 
 		for _, nalu := range nalus {
-			switch NALUType(nalu[0] & 0x1F) {
-			case NALUTypeSPS:
+			switch naluType(nalu[0] & 0x1F) {
+			case naluTypeSPS:
 				sps = append([]byte(nil), nalu...)
 				if sps != nil && pps != nil {
 					return sps, pps, nil
 				}
 
-			case NALUTypePPS:
+			case naluTypePPS:
 				pps = append([]byte(nil), nalu...)
 				if sps != nil && pps != nil {
 					return sps, pps, nil

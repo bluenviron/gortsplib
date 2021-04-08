@@ -1,101 +1,101 @@
 package rtph264
 
-// NALUType is the type of a NALU.
-type NALUType uint8
+// naluType is the type of a NALU.
+type naluType uint8
 
-// standard NALU types.
+// NALU types, augmented for RTP.
 const (
-	NALUTypeNonIDR                        NALUType = 1
-	NALUTypeDataPartitionA                NALUType = 2
-	NALUTypeDataPartitionB                NALUType = 3
-	NALUTypeDataPartitionC                NALUType = 4
-	NALUTypeIDR                           NALUType = 5
-	NALUTypeSEI                           NALUType = 6
-	NALUTypeSPS                           NALUType = 7
-	NALUTypePPS                           NALUType = 8
-	NALUTypeAccessUnitDelimiter           NALUType = 9
-	NALUTypeEndOfSequence                 NALUType = 10
-	NALUTypeEndOfStream                   NALUType = 11
-	NALUTypeFillerData                    NALUType = 12
-	NALUTypeSPSExtension                  NALUType = 13
-	NALUTypePrefix                        NALUType = 14
-	NALUTypeSubsetSPS                     NALUType = 15
-	NALUTypeReserved16                    NALUType = 16
-	NALUTypeReserved17                    NALUType = 17
-	NALUTypeReserved18                    NALUType = 18
-	NALUTypeSliceLayerWithoutPartitioning NALUType = 19
-	NALUTypeSliceExtension                NALUType = 20
-	NALUTypeSliceExtensionDepth           NALUType = 21
-	NALUTypeReserved22                    NALUType = 22
-	NALUTypeReserved23                    NALUType = 23
-	NALUTypeSTAPA                         NALUType = 24
-	NALUTypeSTAPB                         NALUType = 25
-	NALUTypeMTAP16                        NALUType = 26
-	NALUTypeMTAP24                        NALUType = 27
-	NALUTypeFUA                           NALUType = 28
-	NALUTypeFUB                           NALUType = 29
+	naluTypeNonIDR                        naluType = 1
+	naluTypeDataPartitionA                naluType = 2
+	naluTypeDataPartitionB                naluType = 3
+	naluTypeDataPartitionC                naluType = 4
+	naluTypeIDR                           naluType = 5
+	naluTypeSEI                           naluType = 6
+	naluTypeSPS                           naluType = 7
+	naluTypePPS                           naluType = 8
+	naluTypeAccessUnitDelimiter           naluType = 9
+	naluTypeEndOfSequence                 naluType = 10
+	naluTypeEndOfStream                   naluType = 11
+	naluTypeFillerData                    naluType = 12
+	naluTypeSPSExtension                  naluType = 13
+	naluTypePrefix                        naluType = 14
+	naluTypeSubsetSPS                     naluType = 15
+	naluTypeReserved16                    naluType = 16
+	naluTypeReserved17                    naluType = 17
+	naluTypeReserved18                    naluType = 18
+	naluTypeSliceLayerWithoutPartitioning naluType = 19
+	naluTypeSliceExtension                naluType = 20
+	naluTypeSliceExtensionDepth           naluType = 21
+	naluTypeReserved22                    naluType = 22
+	naluTypeReserved23                    naluType = 23
+	naluTypeSTAPA                         naluType = 24
+	naluTypeSTAPB                         naluType = 25
+	naluTypeMTAP16                        naluType = 26
+	naluTypeMTAP24                        naluType = 27
+	naluTypeFUA                           naluType = 28
+	naluTypeFUB                           naluType = 29
 )
 
 // String implements fmt.Stringer.
-func (nt NALUType) String() string {
+func (nt naluType) String() string {
 	switch nt {
-	case NALUTypeNonIDR:
+	case naluTypeNonIDR:
 		return "NonIDR"
-	case NALUTypeDataPartitionA:
+	case naluTypeDataPartitionA:
 		return "DataPartitionA"
-	case NALUTypeDataPartitionB:
+	case naluTypeDataPartitionB:
 		return "DataPartitionB"
-	case NALUTypeDataPartitionC:
+	case naluTypeDataPartitionC:
 		return "DataPartitionC"
-	case NALUTypeIDR:
+	case naluTypeIDR:
 		return "IDR"
-	case NALUTypeSEI:
-		return "Sei"
-	case NALUTypeSPS:
+	case naluTypeSEI:
+		return "SEI"
+	case naluTypeSPS:
 		return "SPS"
-	case NALUTypePPS:
+	case naluTypePPS:
 		return "PPS"
-	case NALUTypeAccessUnitDelimiter:
+	case naluTypeAccessUnitDelimiter:
 		return "AccessUnitDelimiter"
-	case NALUTypeEndOfSequence:
+	case naluTypeEndOfSequence:
 		return "EndOfSequence"
-	case NALUTypeEndOfStream:
+	case naluTypeEndOfStream:
 		return "EndOfStream"
-	case NALUTypeFillerData:
+	case naluTypeFillerData:
 		return "FillerData"
-	case NALUTypeSPSExtension:
+	case naluTypeSPSExtension:
 		return "SPSExtension"
-	case NALUTypePrefix:
+	case naluTypePrefix:
 		return "Prefix"
-	case NALUTypeSubsetSPS:
+	case naluTypeSubsetSPS:
 		return "SubsetSPS"
-	case NALUTypeReserved16:
+	case naluTypeReserved16:
 		return "Reserved16"
-	case NALUTypeReserved17:
+	case naluTypeReserved17:
 		return "Reserved17"
-	case NALUTypeReserved18:
+	case naluTypeReserved18:
 		return "Reserved18"
-	case NALUTypeSliceLayerWithoutPartitioning:
+	case naluTypeSliceLayerWithoutPartitioning:
 		return "SliceLayerWithoutPartitioning"
-	case NALUTypeSliceExtension:
+	case naluTypeSliceExtension:
 		return "SliceExtension"
-	case NALUTypeSliceExtensionDepth:
+	case naluTypeSliceExtensionDepth:
 		return "SliceExtensionDepth"
-	case NALUTypeReserved22:
+	case naluTypeReserved22:
 		return "Reserved22"
-	case NALUTypeReserved23:
+	case naluTypeReserved23:
 		return "Reserved23"
-	case NALUTypeSTAPA:
+	case naluTypeSTAPA:
 		return "STAPA"
-	case NALUTypeSTAPB:
+	case naluTypeSTAPB:
 		return "STAPB"
-	case NALUTypeMTAP16:
+	case naluTypeMTAP16:
 		return "MTAP16"
-	case NALUTypeMTAP24:
+	case naluTypeMTAP24:
 		return "MTAP24"
-	case NALUTypeFUA:
+	case naluTypeFUA:
 		return "FUA"
-	case NALUTypeFUB:
+	case naluTypeFUB:
 		return "FUB"
 	}
 	return "unknown"

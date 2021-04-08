@@ -43,7 +43,7 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 
 // Decode decodes AUs from a RTP/AAC packet.
 // It returns the AUs and the PTS of the first AU.
-// The PTS of following AUs can be calculated by adding time.Second*1000/clockRate.
+// The PTS of subsequent AUs can be calculated by adding time.Second*1000/clockRate.
 func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 	switch d.state {
 	case decoderStateInitial:

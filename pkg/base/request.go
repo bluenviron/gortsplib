@@ -69,10 +69,6 @@ func (req *Request) Read(rb *bufio.Reader) error {
 	}
 	rawURL := string(byts[:len(byts)-1])
 
-	if rawURL == "" {
-		return fmt.Errorf("empty url")
-	}
-
 	ur, err := ParseURL(rawURL)
 	if err != nil {
 		return fmt.Errorf("unable to parse url (%v)", rawURL)
