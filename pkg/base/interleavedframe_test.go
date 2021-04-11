@@ -14,12 +14,21 @@ var casesInterleavedFrame = []struct {
 	dec  InterleavedFrame
 }{
 	{
-		name: "generic",
+		name: "rtp",
 		enc:  []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4},
 		dec: InterleavedFrame{
 			TrackID:    3,
 			StreamType: StreamTypeRTP,
 			Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+		},
+	},
+	{
+		name: "rtcp",
+		enc:  []byte{0x24, 0xd, 0x0, 0x4, 0x5, 0x6, 0x7, 0x8},
+		dec: InterleavedFrame{
+			TrackID:    6,
+			StreamType: StreamTypeRTCP,
+			Payload:    []byte{0x05, 0x06, 0x07, 0x08},
 		},
 	},
 }
@@ -55,29 +64,76 @@ func TestInterleavedFrameReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte
+		err  string
 	}{
 		{
 			"empty",
 			[]byte{},
+			"EOF",
 		},
 		{
 			"invalid magic byte",
 			[]byte{0x55, 0x00, 0x00, 0x00},
+			"invalid magic byte (0x55)",
 		},
 		{
-			"length too big",
+			"payload size too big",
 			[]byte{0x24, 0x00, 0x00, 0x08},
+			"payload size greater than maximum allowed (8 vs 5)",
 		},
 		{
-			"invalid payload",
-			[]byte{0x24, 0x00, 0x00, 0x08, 0x01, 0x02},
+			"payload invalid",
+			[]byte{0x24, 0x00, 0x00, 0x05, 0x01, 0x02},
+			"unexpected EOF",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var f InterleavedFrame
 			f.Payload = make([]byte, 5)
 			err := f.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.Error(t, err)
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
+}
+
+func TestReadInterleavedFrameOrRequest(t *testing.T) {
+	byts := []byte("DESCRIBE rtsp://example.com/media.mp4 RTSP/1.0\r\n" +
+		"Accept: application/sdp\r\n" +
+		"CSeq: 2\r\n" +
+		"\r\n")
+	byts = append(byts, []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}...)
+
+	var f InterleavedFrame
+	f.Payload = make([]byte, 10)
+	var req Request
+	br := bufio.NewReader(bytes.NewBuffer(byts))
+
+	out, err := ReadInterleavedFrameOrRequest(&f, &req, br)
+	require.NoError(t, err)
+	require.Equal(t, &req, out)
+
+	out, err = ReadInterleavedFrameOrRequest(&f, &req, br)
+	require.NoError(t, err)
+	require.Equal(t, &f, out)
+}
+
+func TestReadInterleavedFrameOrResponse(t *testing.T) {
+	byts := []byte("RTSP/1.0 200 OK\r\n" +
+		"CSeq: 1\r\n" +
+		"Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n" +
+		"\r\n")
+	byts = append(byts, []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}...)
+
+	var f InterleavedFrame
+	f.Payload = make([]byte, 10)
+	var res Response
+	br := bufio.NewReader(bytes.NewBuffer(byts))
+
+	out, err := ReadInterleavedFrameOrResponse(&f, &res, br)
+	require.NoError(t, err)
+	require.Equal(t, &res, out)
+
+	out, err = ReadInterleavedFrameOrResponse(&f, &res, br)
+	require.NoError(t, err)
+	require.Equal(t, &f, out)
 }

@@ -79,12 +79,12 @@ func (f *InterleavedFrame) Read(br *bufio.Reader) error {
 	}
 
 	if header[0] != interleavedFrameMagicByte {
-		return fmt.Errorf("wrong magic byte (0x%.2x)", header[0])
+		return fmt.Errorf("invalid magic byte (0x%.2x)", header[0])
 	}
 
 	framelen := int(binary.BigEndian.Uint16(header[2:]))
 	if framelen > len(f.Payload) {
-		return fmt.Errorf("frame length greater than maximum allowed (%d vs %d)",
+		return fmt.Errorf("payload size greater than maximum allowed (%d vs %d)",
 			framelen, len(f.Payload))
 	}
 
