@@ -14,23 +14,7 @@ var casesResponse = []struct {
 	res  Response
 }{
 	{
-		"ok with single header",
-		[]byte("RTSP/1.0 200 OK\r\n" +
-			"CSeq: 1\r\n" +
-			"Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n" +
-			"\r\n",
-		),
-		Response{
-			StatusCode:    StatusOK,
-			StatusMessage: "OK",
-			Header: Header{
-				"CSeq":   HeaderValue{"1"},
-				"Public": HeaderValue{"DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE"},
-			},
-		},
-	},
-	{
-		"ok with multiple headers",
+		"ok",
 		[]byte("RTSP/1.0 200 OK\r\n" +
 			"CSeq: 2\r\n" +
 			"Date: Sat, Aug 16 2014 02:22:28 GMT\r\n" +
@@ -156,12 +140,20 @@ func TestResponseReadErrors(t *testing.T) {
 			[]byte("RTSP/1.0 200 OK"),
 		},
 		{
+			"missing eol 2",
+			[]byte("RTSP/1.0 200 OK\r"),
+		},
+		{
 			"invalid protocol",
 			[]byte("RTSP/2.0 200 OK\r\n"),
 		},
 		{
 			"invalid code",
 			[]byte("RTSP/2.0 string OK\r\n"),
+		},
+		{
+			"empty message",
+			[]byte("RTSP/2.0 string \r\n"),
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -199,4 +191,18 @@ func TestResponseWriteAutoFillStatus(t *testing.T) {
 	err := res.Write(bw)
 	require.NoError(t, err)
 	require.Equal(t, byts, buf.Bytes())
+}
+
+func TestReadIgnoreFrames(t *testing.T) {
+	byts := []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}
+	byts = append(byts, []byte("RTSP/1.0 200 OK\r\n"+
+		"CSeq: 1\r\n"+
+		"Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n"+
+		"\r\n")...)
+
+	rb := bufio.NewReader(bytes.NewBuffer(byts))
+	buf := make([]byte, 10)
+	var res Response
+	err := res.ReadIgnoreFrames(rb, buf)
+	require.NoError(t, err)
 }

@@ -178,8 +178,16 @@ func TestRequestReadErrors(t *testing.T) {
 			[]byte("GET rtsp://testing123/test RTSP/1.0"),
 		},
 		{
+			"empty method",
+			[]byte(" rtsp://testing123 RTSP/1.0\r\n"),
+		},
+		{
 			"empty URL",
-			[]byte("GET http://testing123 RTSP/1.0\r\n"),
+			[]byte("GET  RTSP/1.0\r\n"),
+		},
+		{
+			"empty protocol",
+			[]byte("GET http://testing123 \r\n"),
 		},
 		{
 			"invalid URL",
