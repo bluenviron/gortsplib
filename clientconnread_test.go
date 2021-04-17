@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"bufio"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -11,12 +12,157 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
+
+func TestClientReadTracks(t *testing.T) {
+	track1, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	track2, err := NewTrackAAC(96, []byte{17, 144})
+	require.NoError(t, err)
+
+	track3, err := NewTrackAAC(96, []byte{0x12, 0x30})
+	require.NoError(t, err)
+
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		var req base.Request
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+			},
+			Body: Tracks{track1, track2, track3}.Write(),
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		for i := 0; i < 3; i++ {
+			err = req.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.Setup, req.Method)
+			require.Equal(t, base.MustParseURL(fmt.Sprintf("rtsp://localhost:8554/teststream/trackID=%d", i)), req.URL)
+
+			var inTH headers.Transport
+			err = inTH.Read(req.Header["Transport"])
+			require.NoError(t, err)
+
+			th := headers.Transport{
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Protocol:    StreamProtocolUDP,
+				ClientPorts: inTH.ClientPorts,
+				ServerPorts: &[2]int{34556 + i*2, 34557 + i*2},
+			}
+
+			err = base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Transport": th.Write(),
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+		}
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = req.Read(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+	}()
+
+	conn, err := DialRead("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+	defer conn.Close()
+
+	track1.Media.Attributes = append(track1.Media.Attributes, psdp.Attribute{
+		Key:   "control",
+		Value: "trackID=0",
+	})
+
+	track2.Media.Attributes = append(track2.Media.Attributes, psdp.Attribute{
+		Key:   "control",
+		Value: "trackID=1",
+	})
+
+	track3.Media.Attributes = append(track3.Media.Attributes, psdp.Attribute{
+		Key:   "control",
+		Value: "trackID=2",
+	})
+
+	require.Equal(t, Tracks{
+		{
+			ID:      0,
+			BaseURL: base.MustParseURL("rtsp://localhost:8554/teststream/"),
+			Media:   track1.Media,
+		},
+		{
+			ID:      1,
+			BaseURL: base.MustParseURL("rtsp://localhost:8554/teststream/"),
+			Media:   track2.Media,
+		},
+		{
+			ID:      2,
+			BaseURL: base.MustParseURL("rtsp://localhost:8554/teststream/"),
+			Media:   track3.Media,
+		},
+	}, conn.Tracks())
+}
 
 func TestClientRead(t *testing.T) {
 	for _, ca := range []struct {

@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -251,9 +252,16 @@ func (cc *ClientConn) NetConn() net.Conn {
 // Tracks returns all the tracks that the connection is reading or publishing.
 func (cc *ClientConn) Tracks() Tracks {
 	var ret Tracks
+
 	for _, track := range cc.tracks {
 		ret = append(ret, track.track)
 	}
+
+	// sort by ID to generate correct SDPs
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].ID < ret[j].ID
+	})
+
 	return ret
 }
 
