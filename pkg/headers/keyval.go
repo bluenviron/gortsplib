@@ -6,15 +6,11 @@ import (
 )
 
 func findValue(str string, separator byte) (string, string, error) {
-	if str == "" {
-		return "", "", nil
-	}
-
-	if str[0] == '"' {
+	if len(str) > 0 && str[0] == '"' {
 		i := 1
 		for {
 			if i >= len(str) {
-				return "", "", fmt.Errorf("apices not closed (%v)", str)
+				return "", "", fmt.Errorf("apexes not closed (%v)", str)
 			}
 
 			if str[i] == '"' {
@@ -41,7 +37,7 @@ func keyValParse(str string, separator byte) (map[string]string, error) {
 	for len(str) > 0 {
 		i := strings.IndexByte(str, '=')
 		if i < 0 {
-			return nil, fmt.Errorf("unable to find key '%v'", str)
+			return nil, fmt.Errorf("unable to find key (%v)", str)
 		}
 		var k string
 		k, str = str[:i], str[i+1:]
