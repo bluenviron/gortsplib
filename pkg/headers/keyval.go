@@ -41,7 +41,7 @@ func keyValParse(str string, separator byte) (map[string]string, error) {
 	for len(str) > 0 {
 		i := strings.IndexByte(str, '=')
 		if i < 0 {
-			return nil, fmt.Errorf("unable to find key")
+			return nil, fmt.Errorf("unable to find key '%v'", str)
 		}
 		var k string
 		k, str = str[:i], str[i+1:]
