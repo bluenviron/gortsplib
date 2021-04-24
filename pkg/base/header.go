@@ -36,6 +36,7 @@ type Header map[string]HeaderValue
 
 func (h *Header) read(rb *bufio.Reader) error {
 	*h = make(Header)
+	count := 0
 
 	for {
 		byt, err := rb.ReadByte()
@@ -52,15 +53,14 @@ func (h *Header) read(rb *bufio.Reader) error {
 			break
 		}
 
-		if len(*h) >= headerMaxEntryCount {
-			return fmt.Errorf("headers count exceeds %d (it's %d)",
-				headerMaxEntryCount, len(*h))
+		if count >= headerMaxEntryCount {
+			return fmt.Errorf("headers count exceeds %d", headerMaxEntryCount)
 		}
 
 		key := string([]byte{byt})
 		byts, err := readBytesLimited(rb, ':', headerMaxKeyLength-1)
 		if err != nil {
-			return err
+			return fmt.Errorf("value is missing")
 		}
 		key += string(byts[:len(byts)-1])
 		key = headerKeyNormalize(key)
@@ -85,16 +85,13 @@ func (h *Header) read(rb *bufio.Reader) error {
 		}
 		val := string(byts[:len(byts)-1])
 
-		if len(val) == 0 {
-			return fmt.Errorf("empty header value")
-		}
-
 		err = readByteEqual(rb, '\n')
 		if err != nil {
 			return err
 		}
 
 		(*h)[key] = append((*h)[key], val)
+		count++
 	}
 
 	return nil

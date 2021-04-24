@@ -164,7 +164,7 @@ func (res *Response) Read(rb *bufio.Reader) error {
 	res.StatusMessage = string(byts[:len(byts)-1])
 
 	if len(res.StatusMessage) == 0 {
-		return fmt.Errorf("empty status")
+		return fmt.Errorf("empty status message")
 	}
 
 	err = readByteEqual(rb, '\n')

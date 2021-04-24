@@ -122,44 +122,58 @@ func TestResponseReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte
+		err  string
 	}{
 		{
 			"empty",
 			[]byte{},
+			"EOF",
 		},
 		{
 			"missing code, message, eol",
 			[]byte("RTSP/1.0"),
+			"EOF",
 		},
 		{
 			"missing message, eol",
 			[]byte("RTSP/1.0 200"),
+			"EOF",
 		},
 		{
 			"missing eol",
 			[]byte("RTSP/1.0 200 OK"),
+			"EOF",
 		},
 		{
 			"missing eol 2",
 			[]byte("RTSP/1.0 200 OK\r"),
+			"EOF",
 		},
 		{
 			"invalid protocol",
 			[]byte("RTSP/2.0 200 OK\r\n"),
+			"expected 'RTSP/1.0', got 'RTSP/2.0'",
+		},
+		{
+			"code too long",
+			[]byte("RTSP/1.0 1234 OK\r\n"),
+			"buffer length exceeds 4",
 		},
 		{
 			"invalid code",
-			[]byte("RTSP/2.0 string OK\r\n"),
+			[]byte("RTSP/1.0 str OK\r\n"),
+			"unable to parse status code",
 		},
 		{
 			"empty message",
-			[]byte("RTSP/2.0 string \r\n"),
+			[]byte("RTSP/1.0 200 \r\n"),
+			"empty status message",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var res Response
 			err := res.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.Error(t, err)
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }
@@ -193,7 +207,7 @@ func TestResponseWriteAutoFillStatus(t *testing.T) {
 	require.Equal(t, byts, buf.Bytes())
 }
 
-func TestReadIgnoreFrames(t *testing.T) {
+func TestResponseReadIgnoreFrames(t *testing.T) {
 	byts := []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}
 	byts = append(byts, []byte("RTSP/1.0 200 OK\r\n"+
 		"CSeq: 1\r\n"+

@@ -71,7 +71,7 @@ func (req *Request) Read(rb *bufio.Reader) error {
 
 	ur, err := ParseURL(rawURL)
 	if err != nil {
-		return fmt.Errorf("unable to parse url (%v)", rawURL)
+		return fmt.Errorf("invalid URL (%v)", rawURL)
 	}
 	req.URL = ur
 

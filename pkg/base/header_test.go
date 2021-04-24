@@ -43,6 +43,16 @@ var casesHeader = []struct {
 		},
 	},
 	{
+		"empty",
+		[]byte("Testing:\r\n" +
+			"\r\n"),
+		[]byte("Testing: \r\n" +
+			"\r\n"),
+		Header{
+			"Testing": HeaderValue{""},
+		},
+	},
+	{
 		"without space",
 		[]byte("CSeq:2\r\n" +
 			"\r\n"),
@@ -113,6 +123,53 @@ func TestHeaderWrite(t *testing.T) {
 			require.NoError(t, err)
 			bw.Flush()
 			require.Equal(t, ca.enc, buf.Bytes())
+		})
+	}
+}
+
+func TestHeaderReadErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		dec  []byte
+		err  string
+	}{
+		{
+			"empty",
+			[]byte{},
+			"EOF",
+		},
+		{
+			"r without n",
+			[]byte("Testing: val\rTesting: val\r\n"),
+			"expected '\n', got 'T'",
+		},
+		{
+			"final r without n",
+			[]byte("Testing: val\r\nTesting: val\r\n\r"),
+			"EOF",
+		},
+		{
+			"missing value",
+			[]byte("Testing\r\n"),
+			"value is missing",
+		},
+		{
+			"too many entries",
+			func() []byte {
+				var ret []byte
+				for i := 0; i < headerMaxEntryCount+2; i++ {
+					ret = append(ret, []byte("Testing: val\r\n")...)
+				}
+				ret = append(ret, []byte("\r\n")...)
+				return ret
+			}(),
+			"headers count exceeds 255",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			h := make(Header)
+			err := h.read(bufio.NewReader(bytes.NewBuffer(ca.dec)))
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }

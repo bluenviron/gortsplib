@@ -160,48 +160,73 @@ func TestRequestReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte
+		err  string
 	}{
 		{
 			"empty",
 			[]byte{},
+			"EOF",
 		},
 		{
 			"missing url, protocol, eol",
 			[]byte("GET"),
+			"EOF",
 		},
 		{
 			"missing protocol, eol",
 			[]byte("GET rtsp://testing123/test"),
+			"EOF",
 		},
 		{
 			"missing eol",
 			[]byte("GET rtsp://testing123/test RTSP/1.0"),
+			"EOF",
 		},
 		{
 			"empty method",
 			[]byte(" rtsp://testing123 RTSP/1.0\r\n"),
+			"empty method",
 		},
 		{
 			"empty URL",
 			[]byte("GET  RTSP/1.0\r\n"),
+			"invalid URL ()",
 		},
 		{
 			"empty protocol",
-			[]byte("GET http://testing123 \r\n"),
+			[]byte("GET rtsp://testing123 \r\n"),
+			"expected 'RTSP/1.0', got ''",
 		},
 		{
 			"invalid URL",
 			[]byte("GET http://testing123 RTSP/1.0\r\n"),
+			"invalid URL (http://testing123)",
 		},
 		{
 			"invalid protocol",
 			[]byte("GET rtsp://testing123 RTSP/2.0\r\n"),
+			"expected 'RTSP/1.0', got 'RTSP/2.0'",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var req Request
 			err := req.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.Error(t, err)
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
+}
+
+func TestRequestReadIgnoreFrames(t *testing.T) {
+	byts := []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}
+	byts = append(byts, []byte("OPTIONS rtsp://example.com/media.mp4 RTSP/1.0\r\n"+
+		"CSeq: 1\r\n"+
+		"Proxy-Require: gzipped-messages\r\n"+
+		"Require: implicit-play\r\n"+
+		"\r\n")...)
+
+	rb := bufio.NewReader(bytes.NewBuffer(byts))
+	buf := make([]byte, 10)
+	var req Request
+	err := req.ReadIgnoreFrames(rb, buf)
+	require.NoError(t, err)
 }
