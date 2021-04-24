@@ -3,8 +3,23 @@ package gortsplib
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 )
+
+func extractPort(address string) (int, error) {
+	_, tmp, err := net.SplitHostPort(address)
+	if err != nil {
+		return 0, err
+	}
+
+	tmp2, err := strconv.ParseInt(tmp, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return int(tmp2), nil
+}
 
 // Server is a RTSP server.
 type Server struct {
@@ -50,7 +65,24 @@ func newServer(conf ServerConf, address string) (*Server, error) {
 	}
 
 	if conf.UDPRTPAddress != "" {
-		var err error
+		rtpPort, err := extractPort(conf.UDPRTPAddress)
+		if err != nil {
+			return nil, err
+		}
+
+		rtcpPort, err := extractPort(conf.UDPRTCPAddress)
+		if err != nil {
+			return nil, err
+		}
+
+		if (rtpPort % 2) != 0 {
+			return nil, fmt.Errorf("RTP port must be even")
+		}
+
+		if rtcpPort != (rtpPort + 1) {
+			return nil, fmt.Errorf("RTCP and RTP ports must be consecutive")
+		}
+
 		s.udpRTPListener, err = newServerUDPListener(conf, conf.UDPRTPAddress, StreamTypeRTP)
 		if err != nil {
 			return nil, err
