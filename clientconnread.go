@@ -210,9 +210,14 @@ func (cc *ClientConn) backgroundPlayTCP() error {
 				return
 			}
 
+			track, ok := cc.tracks[frame.TrackID]
+			if !ok {
+				continue
+			}
+
 			now := time.Now()
 			atomic.StoreInt64(&lastFrameTime, now.Unix())
-			cc.tracks[frame.TrackID].rtcpReceiver.ProcessFrame(now, frame.StreamType, frame.Payload)
+			track.rtcpReceiver.ProcessFrame(now, frame.StreamType, frame.Payload)
 			cc.readCB(frame.TrackID, frame.StreamType, frame.Payload)
 		}
 	}()
