@@ -372,6 +372,26 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 	}
 }
 
+func TestServerErrorWrongUDPPorts(t *testing.T) {
+	t.Run("non consecutive", func(t *testing.T) {
+		conf := ServerConf{
+			UDPRTPAddress:  "127.0.0.1:8006",
+			UDPRTCPAddress: "127.0.0.1:8009",
+		}
+		_, err := conf.Serve("127.0.0.1:8554")
+		require.Error(t, err)
+	})
+
+	t.Run("non even", func(t *testing.T) {
+		conf := ServerConf{
+			UDPRTPAddress:  "127.0.0.1:8003",
+			UDPRTCPAddress: "127.0.0.1:8004",
+		}
+		_, err := conf.Serve("127.0.0.1:8554")
+		require.Error(t, err)
+	})
+}
+
 func TestServerCSeq(t *testing.T) {
 	s, err := Serve("127.0.0.1:8554")
 	require.NoError(t, err)
