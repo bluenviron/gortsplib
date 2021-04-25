@@ -144,10 +144,12 @@ func handleConn(conn *gortsplib.ServerConn) {
 
 func main() {
 	// create server
-	s, err := gortsplib.Serve(":8554")
+	s := &gortsplib.Server{}
+	err := s.Serve(":8554")
 	if err != nil {
 		panic(err)
 	}
+
 	log.Printf("server is ready")
 
 	// accept connections

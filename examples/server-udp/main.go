@@ -143,17 +143,16 @@ func handleConn(conn *gortsplib.ServerConn) {
 }
 
 func main() {
-	// create configuration
-	conf := gortsplib.ServerConf{
+	// create server
+	s := &gortsplib.Server{
 		UDPRTPAddress:  ":8000",
 		UDPRTCPAddress: ":8001",
 	}
-
-	// create server
-	s, err := conf.Serve(":8554")
+	err := s.Serve(":8554")
 	if err != nil {
 		panic(err)
 	}
+
 	log.Printf("server is ready")
 
 	// accept connections
