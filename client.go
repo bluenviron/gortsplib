@@ -9,27 +9,26 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
-// DefaultClientConf is the default ClientConf.
-var DefaultClientConf = ClientConf{}
+// DefaultClient is the default Client.
+var DefaultClient = &Client{}
 
 // Dial connects to a server.
 func Dial(scheme string, host string) (*ClientConn, error) {
-	return DefaultClientConf.Dial(scheme, host)
+	return DefaultClient.Dial(scheme, host)
 }
 
 // DialRead connects to a server and starts reading all tracks.
 func DialRead(address string) (*ClientConn, error) {
-	return DefaultClientConf.DialRead(address)
+	return DefaultClient.DialRead(address)
 }
 
 // DialPublish connects to a server and starts publishing the tracks.
 func DialPublish(address string, tracks Tracks) (*ClientConn, error) {
-	return DefaultClientConf.DialPublish(address, tracks)
+	return DefaultClient.DialPublish(address, tracks)
 }
 
-// ClientConf allows to initialize a ClientConn.
-// All fields are optional.
-type ClientConf struct {
+// Client is a RTSP client.
+type Client struct {
 	// the stream protocol (UDP or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
@@ -91,12 +90,12 @@ type ClientConf struct {
 }
 
 // Dial connects to a server.
-func (c ClientConf) Dial(scheme string, host string) (*ClientConn, error) {
+func (c *Client) Dial(scheme string, host string) (*ClientConn, error) {
 	return newClientConn(c, scheme, host)
 }
 
 // DialRead connects to the address and starts reading all tracks.
-func (c ClientConf) DialRead(address string) (*ClientConn, error) {
+func (c *Client) DialRead(address string) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
@@ -137,7 +136,7 @@ func (c ClientConf) DialRead(address string) (*ClientConn, error) {
 }
 
 // DialPublish connects to the address and starts publishing the tracks.
-func (c ClientConf) DialPublish(address string, tracks Tracks) (*ClientConn, error) {
+func (c *Client) DialPublish(address string, tracks Tracks) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err

@@ -163,7 +163,7 @@ func TestClientPublishSerial(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			conf := ClientConf{
+			c := &Client{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -177,7 +177,7 @@ func TestClientPublishSerial(t *testing.T) {
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
-			conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
+			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 
@@ -303,7 +303,7 @@ func TestClientPublishParallel(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			conf := ClientConf{
+			c := &Client{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -320,7 +320,7 @@ func TestClientPublishParallel(t *testing.T) {
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
 
-			conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
+			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 			defer conn.Close()
@@ -464,7 +464,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			conf := ClientConf{
+			c := &Client{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -478,7 +478,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
-			conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
+			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 			defer conn.Close()
@@ -604,7 +604,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			conf := ClientConf{
+			c := &Client{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -618,7 +618,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
-			conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
+			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 
@@ -889,7 +889,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		}.Write(bconn.Writer)
 	}()
 
-	conf := ClientConf{
+	c := &Client{
 		StreamProtocol: func() *StreamProtocol {
 			v := StreamProtocolTCP
 			return &v
@@ -900,7 +900,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 	require.NoError(t, err)
 
-	conn, err := conf.DialPublish("rtsp://localhost:8554/teststream",
+	conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
 		Tracks{track})
 	require.NoError(t, err)
 	defer conn.Close()

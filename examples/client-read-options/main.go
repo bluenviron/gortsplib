@@ -12,8 +12,8 @@ import (
 // 2. connect to a RTSP server and read all tracks on a path
 
 func main() {
-	// ClientConf allows to set additional client options
-	conf := gortsplib.ClientConf{
+	// Client allows to set additional client options
+	c := &gortsplib.Client{
 		// the stream protocol (UDP or TCP). If nil, it is chosen automatically
 		StreamProtocol: nil,
 		// timeout of read operations
@@ -23,7 +23,7 @@ func main() {
 	}
 
 	// connect to the server and start reading all tracks
-	conn, err := conf.DialRead("rtsp://localhost:8554/mystream")
+	conn, err := c.DialRead("rtsp://localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}

@@ -357,7 +357,7 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			conf := ClientConf{
+			c := &Client{
 				StreamProtocol: func() *StreamProtocol {
 					if ca.proto == "udp" {
 						v := StreamProtocolUDP
@@ -368,7 +368,7 @@ func TestClientRead(t *testing.T) {
 				}(),
 			}
 
-			conn, err := conf.DialRead(scheme + "://localhost:8554/teststream")
+			conn, err := c.DialRead(scheme + "://localhost:8554/teststream")
 			require.NoError(t, err)
 
 			done := conn.ReadFrames(func(id int, streamType StreamType, payload []byte) {
@@ -593,11 +593,11 @@ func TestClientReadAnyPort(t *testing.T) {
 				})
 			}()
 
-			conf := ClientConf{
+			c := &Client{
 				AnyPortEnable: true,
 			}
 
-			conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+			conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
 			frameRecv := make(chan struct{})
@@ -877,11 +877,11 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			conn.Close()
 		}()
 
-		conf := ClientConf{
+		c := &Client{
 			ReadTimeout: 1 * time.Second,
 		}
 
-		conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+		conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 		require.NoError(t, err)
 
 		frameRecv := make(chan struct{})
@@ -1213,7 +1213,7 @@ func TestClientReadPause(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			conf := ClientConf{
+			c := &Client{
 				StreamProtocol: func() *StreamProtocol {
 					if proto == "udp" {
 						v := StreamProtocolUDP
@@ -1224,7 +1224,7 @@ func TestClientReadPause(t *testing.T) {
 				}(),
 			}
 
-			conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+			conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
 			firstFrame := int32(0)
@@ -1398,7 +1398,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	conf := ClientConf{
+	c := &Client{
 		StreamProtocol: func() *StreamProtocol {
 			v := StreamProtocolTCP
 			return &v
@@ -1406,7 +1406,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		receiverReportPeriod: 1 * time.Second,
 	}
 
-	conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+	conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
 	recv := 0
@@ -1552,7 +1552,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			conf := ClientConf{
+			c := &Client{
 				StreamProtocol: func() *StreamProtocol {
 					switch proto {
 					case "udp":
@@ -1569,7 +1569,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				ReadTimeout:           1 * time.Second,
 			}
 
-			conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+			conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 			defer conn.Close()
 
@@ -1694,14 +1694,14 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	conf := ClientConf{
+	c := &Client{
 		StreamProtocol: func() *StreamProtocol {
 			v := StreamProtocolTCP
 			return &v
 		}(),
 	}
 
-	conn, err := conf.DialRead("rtsp://localhost:8554/teststream")
+	conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	defer conn.Close()
 
