@@ -89,14 +89,14 @@ func (cc *ClientConn) backgroundPlayUDP() error {
 		}
 	}()
 
-	reportTicker := time.NewTicker(cc.conf.receiverReportPeriod)
+	reportTicker := time.NewTicker(cc.c.receiverReportPeriod)
 	defer reportTicker.Stop()
 
 	keepaliveTicker := time.NewTicker(clientConnUDPKeepalivePeriod)
 	defer keepaliveTicker.Stop()
 
 	checkStreamInitial := true
-	checkStreamTicker := time.NewTicker(cc.conf.InitialUDPReadTimeout)
+	checkStreamTicker := time.NewTicker(cc.c.InitialUDPReadTimeout)
 	defer func() {
 		checkStreamTicker.Stop()
 	}()
@@ -166,12 +166,12 @@ func (cc *ClientConn) backgroundPlayUDP() error {
 					now := time.Now()
 					for _, cct := range cc.tracks {
 						lft := time.Unix(atomic.LoadInt64(cct.udpRTPListener.lastFrameTime), 0)
-						if now.Sub(lft) < cc.conf.ReadTimeout {
+						if now.Sub(lft) < cc.c.ReadTimeout {
 							return false
 						}
 
 						lft = time.Unix(atomic.LoadInt64(cct.udpRTCPListener.lastFrameTime), 0)
-						if now.Sub(lft) < cc.conf.ReadTimeout {
+						if now.Sub(lft) < cc.c.ReadTimeout {
 							return false
 						}
 					}
@@ -222,7 +222,7 @@ func (cc *ClientConn) backgroundPlayTCP() error {
 		}
 	}()
 
-	reportTicker := time.NewTicker(cc.conf.receiverReportPeriod)
+	reportTicker := time.NewTicker(cc.c.receiverReportPeriod)
 	defer reportTicker.Stop()
 
 	checkStreamTicker := time.NewTicker(clientConnCheckStreamPeriod)
@@ -239,7 +239,7 @@ func (cc *ClientConn) backgroundPlayTCP() error {
 			now := time.Now()
 			for trackID, cct := range cc.tracks {
 				r := cct.rtcpReceiver.Report(now)
-				cc.nconn.SetWriteDeadline(time.Now().Add(cc.conf.WriteTimeout))
+				cc.nconn.SetWriteDeadline(time.Now().Add(cc.c.WriteTimeout))
 				frame := base.InterleavedFrame{
 					TrackID:    trackID,
 					StreamType: StreamTypeRTCP,
@@ -252,7 +252,7 @@ func (cc *ClientConn) backgroundPlayTCP() error {
 			inTimeout := func() bool {
 				now := time.Now()
 				lft := time.Unix(atomic.LoadInt64(&lastFrameTime), 0)
-				return now.Sub(lft) >= cc.conf.ReadTimeout
+				return now.Sub(lft) >= cc.c.ReadTimeout
 			}()
 			if inTimeout {
 				cc.nconn.SetReadDeadline(time.Now())

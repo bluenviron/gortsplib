@@ -116,7 +116,7 @@ func (cc *ClientConn) backgroundRecordUDP() error {
 		}
 	}()
 
-	reportTicker := time.NewTicker(cc.conf.senderReportPeriod)
+	reportTicker := time.NewTicker(cc.c.senderReportPeriod)
 	defer reportTicker.Stop()
 
 	for {
@@ -161,7 +161,7 @@ func (cc *ClientConn) backgroundRecordTCP() error {
 		}
 	}()
 
-	reportTicker := time.NewTicker(cc.conf.senderReportPeriod)
+	reportTicker := time.NewTicker(cc.c.senderReportPeriod)
 	defer reportTicker.Stop()
 
 	for {

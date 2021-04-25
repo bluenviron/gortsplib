@@ -71,7 +71,7 @@ func (s clientConnState) String() string {
 
 // ClientConn is a client-side RTSP connection.
 type ClientConn struct {
-	conf              ClientConf
+	c                 *Client
 	nconn             net.Conn
 	isTLS             bool
 	br                *bufio.Reader
@@ -103,42 +103,42 @@ type ClientConn struct {
 	backgroundDone chan struct{}
 }
 
-func newClientConn(conf ClientConf, scheme string, host string) (*ClientConn, error) {
-	if conf.TLSConfig == nil {
-		conf.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+func newClientConn(c *Client, scheme string, host string) (*ClientConn, error) {
+	if c.TLSConfig == nil {
+		c.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	}
-	if conf.ReadTimeout == 0 {
-		conf.ReadTimeout = 10 * time.Second
+	if c.ReadTimeout == 0 {
+		c.ReadTimeout = 10 * time.Second
 	}
-	if conf.InitialUDPReadTimeout == 0 {
-		conf.InitialUDPReadTimeout = 3 * time.Second
+	if c.InitialUDPReadTimeout == 0 {
+		c.InitialUDPReadTimeout = 3 * time.Second
 	}
-	if conf.WriteTimeout == 0 {
-		conf.WriteTimeout = 10 * time.Second
+	if c.WriteTimeout == 0 {
+		c.WriteTimeout = 10 * time.Second
 	}
-	if conf.ReadBufferCount == 0 {
-		conf.ReadBufferCount = 1
-	}
-
-	if conf.ReadBufferSize == 0 {
-		conf.ReadBufferSize = 2048
-	}
-	if conf.DialTimeout == nil {
-		conf.DialTimeout = net.DialTimeout
-	}
-	if conf.ListenPacket == nil {
-		conf.ListenPacket = net.ListenPacket
+	if c.ReadBufferCount == 0 {
+		c.ReadBufferCount = 1
 	}
 
-	if conf.senderReportPeriod == 0 {
-		conf.senderReportPeriod = 10 * time.Second
+	if c.ReadBufferSize == 0 {
+		c.ReadBufferSize = 2048
 	}
-	if conf.receiverReportPeriod == 0 {
-		conf.receiverReportPeriod = 10 * time.Second
+	if c.DialTimeout == nil {
+		c.DialTimeout = net.DialTimeout
+	}
+	if c.ListenPacket == nil {
+		c.ListenPacket = net.ListenPacket
+	}
+
+	if c.senderReportPeriod == 0 {
+		c.senderReportPeriod = 10 * time.Second
+	}
+	if c.receiverReportPeriod == 0 {
+		c.receiverReportPeriod = 10 * time.Second
 	}
 
 	cc := &ClientConn{
-		conf:       conf,
+		c:          c,
 		tracks:     make(map[int]clientConnTrack),
 		writeError: fmt.Errorf("not running"),
 	}
@@ -203,7 +203,7 @@ func (cc *ClientConn) connOpen(scheme string, host string) error {
 	}
 
 	v := StreamProtocolUDP
-	if scheme == "rtsps" && cc.conf.StreamProtocol == &v {
+	if scheme == "rtsps" && cc.c.StreamProtocol == &v {
 		return fmt.Errorf("RTSPS can't be used with UDP")
 	}
 
@@ -211,14 +211,14 @@ func (cc *ClientConn) connOpen(scheme string, host string) error {
 		host += ":554"
 	}
 
-	nconn, err := cc.conf.DialTimeout("tcp", host, cc.conf.ReadTimeout)
+	nconn, err := cc.c.DialTimeout("tcp", host, cc.c.ReadTimeout)
 	if err != nil {
 		return err
 	}
 
 	conn := func() net.Conn {
 		if scheme == "rtsps" {
-			return tls.Client(nconn, cc.conf.TLSConfig)
+			return tls.Client(nconn, cc.c.TLSConfig)
 		}
 		return nconn
 	}()
@@ -289,11 +289,11 @@ func (cc *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	// add user agent
 	req.Header["User-Agent"] = base.HeaderValue{"gortsplib"}
 
-	if cc.conf.OnRequest != nil {
-		cc.conf.OnRequest(req)
+	if cc.c.OnRequest != nil {
+		cc.c.OnRequest(req)
 	}
 
-	cc.nconn.SetWriteDeadline(time.Now().Add(cc.conf.WriteTimeout))
+	cc.nconn.SetWriteDeadline(time.Now().Add(cc.c.WriteTimeout))
 	err := req.Write(cc.bw)
 	if err != nil {
 		return nil, err
@@ -304,7 +304,7 @@ func (cc *ClientConn) Do(req *base.Request) (*base.Response, error) {
 	}
 
 	var res base.Response
-	cc.nconn.SetReadDeadline(time.Now().Add(cc.conf.ReadTimeout))
+	cc.nconn.SetReadDeadline(time.Now().Add(cc.c.ReadTimeout))
 
 	if cc.tcpFrameBuffer != nil {
 		// read the response and ignore interleaved frames in between;
@@ -322,8 +322,8 @@ func (cc *ClientConn) Do(req *base.Request) (*base.Response, error) {
 		}
 	}
 
-	if cc.conf.OnResponse != nil {
-		cc.conf.OnResponse(&res)
+	if cc.c.OnResponse != nil {
+		cc.c.OnResponse(&res)
 	}
 
 	// get session from response
@@ -423,7 +423,7 @@ func (cc *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
 
 	if res.StatusCode != base.StatusOK {
 		// redirect
-		if !cc.conf.RedirectDisable &&
+		if !cc.c.RedirectDisable &&
 			res.StatusCode >= base.StatusMovedPermanently &&
 			res.StatusCode <= base.StatusUseProxy &&
 			len(res.Header["Location"]) == 1 {
@@ -530,8 +530,8 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		}
 
 		// protocol set by conf
-		if cc.conf.StreamProtocol != nil {
-			return *cc.conf.StreamProtocol
+		if cc.c.StreamProtocol != nil {
+			return *cc.c.StreamProtocol
 		}
 
 		// try UDP
@@ -637,7 +637,7 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 		// switch protocol automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
 			cc.streamProtocol == nil &&
-			cc.conf.StreamProtocol == nil {
+			cc.c.StreamProtocol == nil {
 
 			v := StreamProtocolTCP
 			cc.streamProtocol = &v
@@ -668,7 +668,7 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 			}
 		}
 
-		if !cc.conf.AnyPortEnable {
+		if !cc.c.AnyPortEnable {
 			if thRes.ServerPorts == nil || (thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] == 0) {
 				rtpListener.close()
 				rtcpListener.close()
@@ -732,7 +732,7 @@ func (cc *ClientConn) Setup(mode headers.TransportMode, track *Track,
 
 	if *cc.streamProtocol == StreamProtocolTCP &&
 		cc.tcpFrameBuffer == nil {
-		cc.tcpFrameBuffer = multibuffer.New(uint64(cc.conf.ReadBufferCount), uint64(cc.conf.ReadBufferSize))
+		cc.tcpFrameBuffer = multibuffer.New(uint64(cc.c.ReadBufferCount), uint64(cc.c.ReadBufferSize))
 	}
 
 	return res, nil
@@ -798,7 +798,7 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		return cc.tracks[trackID].udpRTCPListener.write(payload)
 	}
 
-	cc.nconn.SetWriteDeadline(now.Add(cc.conf.WriteTimeout))
+	cc.nconn.SetWriteDeadline(now.Add(cc.c.WriteTimeout))
 	frame := base.InterleavedFrame{
 		TrackID:    trackID,
 		StreamType: streamType,
@@ -865,7 +865,7 @@ func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan err
 			if *cc.streamProtocol == StreamProtocolUDP &&
 				safeState == clientConnStatePlay {
 				if _, ok := err.(liberrors.ErrClientNoUDPPacketsRecently); ok {
-					if cc.conf.StreamProtocol == nil {
+					if cc.c.StreamProtocol == nil {
 						prevBaseURL := cc.streamBaseURL
 						oldUseGetParameter := cc.useGetParameter
 						prevTracks := cc.tracks
