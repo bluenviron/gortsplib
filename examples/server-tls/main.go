@@ -151,15 +151,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	conf := gortsplib.ServerConf{
-		TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
-	}
 
 	// create server
-	s, err := conf.Serve(":8554")
+	s := &gortsplib.Server{
+		TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
+	}
+	err = s.Serve(":8554")
 	if err != nil {
 		panic(err)
 	}
+
 	log.Printf("server is ready")
 
 	// accept connections

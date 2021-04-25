@@ -64,7 +64,8 @@ func TestServerReadSetupPath(t *testing.T) {
 			}
 			setupDone := make(chan pathTrackIDPair)
 
-			s, err := Serve("127.0.0.1:8554")
+			s := &Server{}
+			err := s.Serve("127.0.0.1:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -132,7 +133,8 @@ func TestServerReadSetupPath(t *testing.T) {
 func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
 	serverErr := make(chan error)
 
-	s, err := Serve("127.0.0.1:8554")
+	s := &Server{}
+	err := s.Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -213,7 +215,8 @@ func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
 func TestServerReadSetupErrorTrackTwice(t *testing.T) {
 	serverErr := make(chan error)
 
-	s, err := Serve("127.0.0.1:8554")
+	s := &Server{}
+	err := s.Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -299,12 +302,12 @@ func TestServerRead(t *testing.T) {
 		t.Run(proto, func(t *testing.T) {
 			framesReceived := make(chan struct{})
 
-			conf := ServerConf{
+			s := &Server{
 				UDPRTPAddress:  "127.0.0.1:8000",
 				UDPRTCPAddress: "127.0.0.1:8001",
 			}
 
-			s, err := conf.Serve("127.0.0.1:8554")
+			err := s.Serve("127.0.0.1:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -464,7 +467,8 @@ func TestServerRead(t *testing.T) {
 }
 
 func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
-	s, err := Serve("127.0.0.1:8554")
+	s := &Server{}
+	err := s.Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -571,7 +575,8 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 }
 
 func TestServerReadPlayPlay(t *testing.T) {
-	s, err := Serve("127.0.0.1:8554")
+	s := &Server{}
+	err := s.Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -685,7 +690,8 @@ func TestServerReadPlayPlay(t *testing.T) {
 }
 
 func TestServerReadPlayPausePlay(t *testing.T) {
-	s, err := Serve("127.0.0.1:8554")
+	s := &Server{}
+	err := s.Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -826,7 +832,8 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 }
 
 func TestServerReadPlayPausePause(t *testing.T) {
-	s, err := Serve("127.0.0.1:8554")
+	s := &Server{}
+	err := s.Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 

@@ -26,19 +26,15 @@ type testServ struct {
 }
 
 func newTestServ(tlsConf *tls.Config) (*testServ, error) {
-	var conf ServerConf
+	s := &Server{}
 	if tlsConf != nil {
-		conf = ServerConf{
-			TLSConfig: tlsConf,
-		}
+		s.TLSConfig = tlsConf
 	} else {
-		conf = ServerConf{
-			UDPRTPAddress:  "127.0.0.1:8000",
-			UDPRTCPAddress: "127.0.0.1:8001",
-		}
+		s.UDPRTPAddress = "127.0.0.1:8000"
+		s.UDPRTCPAddress = "127.0.0.1:8001"
 	}
 
-	s, err := conf.Serve("127.0.0.1:8554")
+	err := s.Serve("127.0.0.1:8554")
 	if err != nil {
 		return nil, err
 	}
@@ -374,26 +370,27 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 func TestServerErrorWrongUDPPorts(t *testing.T) {
 	t.Run("non consecutive", func(t *testing.T) {
-		conf := ServerConf{
+		s := &Server{
 			UDPRTPAddress:  "127.0.0.1:8006",
 			UDPRTCPAddress: "127.0.0.1:8009",
 		}
-		_, err := conf.Serve("127.0.0.1:8554")
+		err := s.Serve("127.0.0.1:8554")
 		require.Error(t, err)
 	})
 
 	t.Run("non even", func(t *testing.T) {
-		conf := ServerConf{
+		s := &Server{
 			UDPRTPAddress:  "127.0.0.1:8003",
 			UDPRTCPAddress: "127.0.0.1:8004",
 		}
-		_, err := conf.Serve("127.0.0.1:8554")
+		err := s.Serve("127.0.0.1:8554")
 		require.Error(t, err)
 	})
 }
 
 func TestServerCSeq(t *testing.T) {
-	s, err := Serve("127.0.0.1:8554")
+	s := &Server{}
+	err := s.Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -432,7 +429,8 @@ func TestServerCSeq(t *testing.T) {
 }
 
 func TestServerErrorCSeqMissing(t *testing.T) {
-	s, err := Serve("127.0.0.1:8554")
+	s := &Server{}
+	err := s.Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -468,7 +466,8 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 }
 
 func TestServerTeardownResponse(t *testing.T) {
-	s, err := Serve("127.0.0.1:8554")
+	s := &Server{}
+	err := s.Serve("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
 

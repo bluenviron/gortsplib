@@ -249,17 +249,15 @@ type ServerConnReadHandlers struct {
 
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
-	conf            ServerConf
-	nconn           net.Conn
-	udpRTPListener  *serverUDPListener
-	udpRTCPListener *serverUDPListener
-	br              *bufio.Reader
-	bw              *bufio.Writer
-	state           ServerConnState
-	setuppedTracks  map[int]ServerConnSetuppedTrack
-	setupProtocol   *StreamProtocol
-	setupPath       *string
-	setupQuery      *string
+	s              *Server
+	nconn          net.Conn
+	br             *bufio.Reader
+	bw             *bufio.Writer
+	state          ServerConnState
+	setuppedTracks map[int]ServerConnSetuppedTrack
+	setupProtocol  *StreamProtocol
+	setupPath      *string
+	setupQuery     *string
 
 	// TCP stream protocol
 	doEnableTCPFrame       bool
@@ -282,26 +280,23 @@ type ServerConn struct {
 	terminate chan struct{}
 }
 
-func newServerConn(conf ServerConf,
-	udpRTPListener *serverUDPListener,
-	udpRTCPListener *serverUDPListener,
+func newServerConn(
+	s *Server,
 	nconn net.Conn) *ServerConn {
 	conn := func() net.Conn {
-		if conf.TLSConfig != nil {
-			return tls.Server(nconn, conf.TLSConfig)
+		if s.TLSConfig != nil {
+			return tls.Server(nconn, s.TLSConfig)
 		}
 		return nconn
 	}()
 
 	return &ServerConn{
-		conf:            conf,
-		udpRTPListener:  udpRTPListener,
-		udpRTCPListener: udpRTCPListener,
-		nconn:           nconn,
-		br:              bufio.NewReaderSize(conn, serverConnReadBufferSize),
-		bw:              bufio.NewWriterSize(conn, serverConnWriteBufferSize),
+		s:     s,
+		nconn: nconn,
+		br:    bufio.NewReaderSize(conn, serverConnReadBufferSize),
+		bw:    bufio.NewWriterSize(conn, serverConnWriteBufferSize),
 		// always instantiate to allow writing to it before Play()
-		tcpFrameWriteBuffer:    ringbuffer.New(uint64(conf.ReadBufferCount)),
+		tcpFrameWriteBuffer:    ringbuffer.New(uint64(s.ReadBufferCount)),
 		tcpBackgroundWriteDone: make(chan struct{}),
 		terminate:              make(chan struct{}),
 	}
@@ -345,11 +340,11 @@ func (sc *ServerConn) tcpBackgroundWrite() {
 
 		switch w := what.(type) {
 		case *base.InterleavedFrame:
-			sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
+			sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
 			w.Write(sc.bw)
 
 		case *base.Response:
-			sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
+			sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
 			w.Write(sc.bw)
 		}
 	}
@@ -390,7 +385,7 @@ func (sc *ServerConn) frameModeEnable() {
 		} else {
 			// readers can send RTCP frames, they cannot sent RTP frames
 			for trackID, track := range sc.setuppedTracks {
-				sc.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, false)
+				sc.s.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, false)
 			}
 		}
 
@@ -401,8 +396,8 @@ func (sc *ServerConn) frameModeEnable() {
 
 		} else {
 			for trackID, track := range sc.setuppedTracks {
-				sc.udpRTPListener.addClient(sc.ip(), track.udpRTPPort, sc, trackID, true)
-				sc.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, true)
+				sc.s.udpRTPListener.addClient(sc.ip(), track.udpRTPPort, sc, trackID, true)
+				sc.s.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, true)
 
 				// open the firewall by sending packets to the counterpart
 				sc.WriteFrame(trackID, StreamTypeRTP,
@@ -429,7 +424,7 @@ func (sc *ServerConn) frameModeDisable() {
 
 		} else {
 			for _, track := range sc.setuppedTracks {
-				sc.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
+				sc.s.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
 			}
 		}
 
@@ -448,8 +443,8 @@ func (sc *ServerConn) frameModeDisable() {
 
 		} else {
 			for _, track := range sc.setuppedTracks {
-				sc.udpRTPListener.removeClient(sc.ip(), track.udpRTPPort)
-				sc.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
+				sc.s.udpRTPListener.removeClient(sc.ip(), track.udpRTPPort)
+				sc.s.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
 			}
 		}
 	}
@@ -712,7 +707,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			}
 
 			if th.Protocol == StreamProtocolUDP {
-				if sc.udpRTPListener == nil {
+				if sc.s.udpRTPListener == nil {
 					return &base.Response{
 						StatusCode: base.StatusUnsupportedTransport,
 					}, nil
@@ -777,7 +772,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 							return &v
 						}(),
 						ClientPorts: th.ClientPorts,
-						ServerPorts: &[2]int{sc.udpRTPListener.port(), sc.udpRTCPListener.port()},
+						ServerPorts: &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()},
 					}.Write()
 
 				} else {
@@ -1053,17 +1048,17 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		sc.tcpFrameEnabled = true
 
 		if sc.state == ServerConnStateRecord {
-			sc.tcpFrameBuffer = multibuffer.New(uint64(sc.conf.ReadBufferCount), uint64(sc.conf.ReadBufferSize))
+			sc.tcpFrameBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
 		} else {
 			// when playing, tcpFrameBuffer is only used to receive RTCP receiver reports,
 			// that are much smaller than RTP frames and are sent at a fixed interval
 			// (about 2 frames every 10 secs).
 			// decrease RAM consumption by allocating less buffers.
-			sc.tcpFrameBuffer = multibuffer.New(8, uint64(sc.conf.ReadBufferSize))
+			sc.tcpFrameBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
 		}
 
 		// write response before frames
-		sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
+		sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
 		res.Write(sc.bw)
 
 		// start background write
@@ -1074,7 +1069,7 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		sc.tcpFrameWriteBuffer.Push(res)
 
 	default: // write directly
-		sc.nconn.SetWriteDeadline(time.Now().Add(sc.conf.WriteTimeout))
+		sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
 		res.Write(sc.bw)
 	}
 
@@ -1090,7 +1085,7 @@ func (sc *ServerConn) backgroundRead() error {
 	for {
 		if sc.tcpFrameEnabled {
 			if sc.tcpFrameTimeout {
-				sc.nconn.SetReadDeadline(time.Now().Add(sc.conf.ReadTimeout))
+				sc.nconn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
 			}
 
 			frame.Payload = sc.tcpFrameBuffer.Next()
@@ -1155,7 +1150,7 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		track := sc.setuppedTracks[trackID]
 
 		if streamType == StreamTypeRTP {
-			sc.udpRTPListener.write(payload, &net.UDPAddr{
+			sc.s.udpRTPListener.write(payload, &net.UDPAddr{
 				IP:   sc.ip(),
 				Zone: sc.zone(),
 				Port: track.udpRTPPort,
@@ -1163,7 +1158,7 @@ func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []b
 			return
 		}
 
-		sc.udpRTCPListener.write(payload, &net.UDPAddr{
+		sc.s.udpRTCPListener.write(payload, &net.UDPAddr{
 			IP:   sc.ip(),
 			Zone: sc.zone(),
 			Port: track.udpRTCPPort,
@@ -1184,7 +1179,7 @@ func (sc *ServerConn) backgroundRecord() {
 	checkStreamTicker := time.NewTicker(serverConnCheckStreamPeriod)
 	defer checkStreamTicker.Stop()
 
-	receiverReportTicker := time.NewTicker(sc.conf.receiverReportPeriod)
+	receiverReportTicker := time.NewTicker(sc.s.receiverReportPeriod)
 	defer receiverReportTicker.Stop()
 
 	for {
@@ -1198,7 +1193,7 @@ func (sc *ServerConn) backgroundRecord() {
 				now := time.Now()
 				for _, track := range sc.announcedTracks {
 					lft := atomic.LoadInt64(track.udpLastFrameTime)
-					if now.Sub(time.Unix(lft, 0)) < sc.conf.ReadTimeout {
+					if now.Sub(time.Unix(lft, 0)) < sc.s.ReadTimeout {
 						return false
 					}
 				}
