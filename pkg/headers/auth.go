@@ -63,7 +63,7 @@ func (h *Auth) Read(v base.HeaderValue) error {
 
 	i := strings.IndexByte(v0, ' ')
 	if i < 0 {
-		return fmt.Errorf("unable to split between method and keys (%v)", v)
+		return fmt.Errorf("unable to split between method and keys (%v)", v0)
 	}
 	method, v0 := v0[:i], v0[i+1:]
 

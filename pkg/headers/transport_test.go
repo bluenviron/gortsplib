@@ -137,20 +137,73 @@ func TestTransportReadError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
+		err  string
 	}{
 		{
 			"empty",
 			base.HeaderValue{},
+			"value not provided",
 		},
 		{
 			"2 values",
 			base.HeaderValue{"a", "b"},
+			"value provided multiple times ([a b])",
+		},
+		{
+			"missing delivery",
+			base.HeaderValue{`RTP/AVP`},
+			"unable to find key (;)",
+		},
+		{
+			"invalid protocol",
+			base.HeaderValue{`invalid;unicast;client_port=14186-14187`},
+			"invalid protocol (unicast;client_port=14186-14187)",
+		},
+		{
+			"invalid client port 1",
+			base.HeaderValue{`RTP/AVP;unicast;client_port=aa-14187`},
+			"invalid ports (aa-14187)",
+		},
+		{
+			"invalid client port 2",
+			base.HeaderValue{`RTP/AVP;unicast;client_port=14186-aa`},
+			"invalid ports (14186-aa)",
+		},
+		{
+			"invalid server port 1",
+			base.HeaderValue{`RTP/AVP;unicast;server_port=aa-14187`},
+			"invalid ports (aa-14187)",
+		},
+		{
+			"invalid server port 2",
+			base.HeaderValue{`RTP/AVP;unicast;server_port=14186-aa`},
+			"invalid ports (14186-aa)",
+		},
+		{
+			"invalid interleaved port 1",
+			base.HeaderValue{`RTP/AVP;unicast;interleaved=aa-14187`},
+			"invalid ports (aa-14187)",
+		},
+		{
+			"invalid interleaved port 2",
+			base.HeaderValue{`RTP/AVP;unicast;interleaved=14186-aa`},
+			"invalid ports (14186-aa)",
+		},
+		{
+			"invalid ttl",
+			base.HeaderValue{`RTP/AVP;unicast;ttl=aa`},
+			"strconv.ParseUint: parsing \"aa\": invalid syntax",
+		},
+		{
+			"invalid mode",
+			base.HeaderValue{`RTP/AVP;unicast;mode=aa`},
+			"invalid transport mode: 'aa'",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Transport
 			err := h.Read(ca.hv)
-			require.Error(t, err)
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }

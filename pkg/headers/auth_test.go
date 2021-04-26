@@ -196,28 +196,33 @@ func TestAuthReadError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
+		err  string
 	}{
 		{
 			"empty",
 			base.HeaderValue{},
+			"value not provided",
 		},
 		{
 			"2 values",
 			base.HeaderValue{"a", "b"},
+			"value provided multiple times ([a b])",
 		},
 		{
 			"no keys",
 			base.HeaderValue{"Basic"},
+			"unable to split between method and keys (Basic)",
 		},
 		{
 			"invalid method",
 			base.HeaderValue{"Testing key1=val1"},
+			"invalid method (Testing)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Auth
 			err := h.Read(ca.hv)
-			require.Error(t, err)
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }

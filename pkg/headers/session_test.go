@@ -72,20 +72,23 @@ func TestSessionReadError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
+		err  string
 	}{
 		{
 			"empty",
 			base.HeaderValue{},
+			"value not provided",
 		},
 		{
 			"2 values",
 			base.HeaderValue{"a", "b"},
+			"value provided multiple times ([a b])",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Session
 			err := h.Read(ca.hv)
-			require.Error(t, err)
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }

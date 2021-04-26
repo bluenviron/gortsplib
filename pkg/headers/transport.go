@@ -117,7 +117,7 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		h.Protocol = base.StreamProtocolTCP
 
 	default:
-		return fmt.Errorf("invalid protocol (%v)", v)
+		return fmt.Errorf("invalid protocol (%v)", v0)
 	}
 
 	i = strings.IndexByte(v0, ';')
@@ -137,7 +137,7 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		h.Delivery = &v
 
 	default:
-		// cast is optional, go back
+		// delivery is optional, go back
 		v0 = part + ";" + v0
 	}
 
