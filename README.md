@@ -53,7 +53,6 @@ Features:
 * [client-publish-options](examples/client-publish-options/main.go)
 * [client-publish-pause](examples/client-publish-pause/main.go)
 * [server](examples/server/main.go)
-* [server-udp](examples/server-udp/main.go)
 * [server-tls](examples/server-tls/main.go)
 
 ## API Documentation

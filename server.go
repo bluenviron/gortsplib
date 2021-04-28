@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,9 @@ func extractPort(address string) (int, error) {
 
 // Server is a RTSP server.
 type Server struct {
+	// an handler to handle requests.
+	Handler ServerHandler
+
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
 
@@ -65,10 +69,19 @@ type Server struct {
 	tcpListener     net.Listener
 	udpRTPListener  *serverUDPListener
 	udpRTCPListener *serverUDPListener
+	conns           map[*ServerConn]struct{}
+	exitError       error
+
+	// in
+	connClose chan *ServerConn
+	terminate chan struct{}
+
+	// out
+	done chan struct{}
 }
 
-// Serve starts listening on the given address.
-func (s *Server) Serve(address string) error {
+// Start starts listening on the given address.
+func (s *Server) Start(address string) error {
 	if s.ReadTimeout == 0 {
 		s.ReadTimeout = 10 * time.Second
 	}
@@ -125,6 +138,7 @@ func (s *Server) Serve(address string) error {
 
 		s.udpRTCPListener, err = newServerUDPListener(s, s.UDPRTCPAddress, StreamTypeRTCP)
 		if err != nil {
+			s.udpRTPListener.close()
 			return err
 		}
 	}
@@ -132,33 +146,132 @@ func (s *Server) Serve(address string) error {
 	var err error
 	s.tcpListener, err = s.Listen("tcp", address)
 	if err != nil {
+		s.udpRTPListener.close()
+		s.udpRTPListener.close()
 		return err
 	}
+
+	s.terminate = make(chan struct{})
+	s.done = make(chan struct{})
+
+	go s.run()
 
 	return nil
 }
 
-// Accept accepts a connection.
-func (s *Server) Accept() (*ServerConn, error) {
-	nconn, err := s.tcpListener.Accept()
-	if err != nil {
-		return nil, err
+func (s *Server) run() {
+	s.conns = make(map[*ServerConn]struct{})
+	s.connClose = make(chan *ServerConn)
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	connNew := make(chan net.Conn)
+	acceptErr := make(chan error)
+	go func() {
+		defer wg.Done()
+		acceptErr <- func() error {
+			for {
+				nconn, err := s.tcpListener.Accept()
+				if err != nil {
+					return err
+				}
+
+				connNew <- nconn
+			}
+		}()
+	}()
+
+outer:
+	for {
+		select {
+		case err := <-acceptErr:
+			s.exitError = err
+			break outer
+
+		case nconn := <-connNew:
+			sc := newServerConn(s, &wg, nconn)
+			s.conns[sc] = struct{}{}
+
+		case sc := <-s.connClose:
+			if _, ok := s.conns[sc]; !ok {
+				continue
+			}
+			s.doConnClose(sc)
+
+		case <-s.terminate:
+			break outer
+		}
 	}
 
-	return newServerConn(s, nconn), nil
-}
+	go func() {
+		for {
+			select {
+			case _, ok := <-acceptErr:
+				if !ok {
+					return
+				}
 
-// Close closes all the server resources.
-func (s *Server) Close() error {
-	s.tcpListener.Close()
+			case nconn, ok := <-connNew:
+				if !ok {
+					return
+				}
+				nconn.Close()
 
-	if s.udpRTPListener != nil {
-		s.udpRTPListener.close()
-	}
+			case _, ok := <-s.connClose:
+				if !ok {
+					return
+				}
+			}
+		}
+	}()
 
 	if s.udpRTCPListener != nil {
 		s.udpRTCPListener.close()
 	}
 
+	if s.udpRTPListener != nil {
+		s.udpRTPListener.close()
+	}
+
+	s.tcpListener.Close()
+
+	for sc := range s.conns {
+		s.doConnClose(sc)
+	}
+
+	wg.Wait()
+
+	close(acceptErr)
+	close(connNew)
+	close(s.connClose)
+	close(s.done)
+}
+
+// Close closes all the server resources and waits for the server to exit.
+func (s *Server) Close() error {
+	close(s.terminate)
+	<-s.done
 	return nil
+}
+
+// Wait waits until a fatal error.
+func (s *Server) Wait() error {
+	<-s.done
+	return s.exitError
+}
+
+// StartAndWait starts the server and waits until a fatal error.
+func (s *Server) StartAndWait(address string) error {
+	err := s.Start(address)
+	if err != nil {
+		return err
+	}
+
+	return s.Wait()
+}
+
+func (s *Server) doConnClose(sc *ServerConn) {
+	delete(s.conns, sc)
+	close(sc.terminate)
 }

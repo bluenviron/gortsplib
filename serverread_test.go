@@ -58,37 +58,24 @@ func TestServerReadSetupPath(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			type pathTrackIDPair struct {
-				path    string
-				trackID int
-			}
-			setupDone := make(chan pathTrackIDPair)
+			setupDone := make(chan struct{})
 
-			s := &Server{}
-			err := s.Serve("127.0.0.1:8554")
+			s := &Server{
+				Handler: &testServerHandler{
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+						require.Equal(t, ca.path, ctx.Path)
+						require.Equal(t, ca.trackID, ctx.TrackID)
+						close(setupDone)
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+				},
+			}
+
+			err := s.Start("127.0.0.1:8554")
 			require.NoError(t, err)
 			defer s.Close()
-
-			serverDone := make(chan struct{})
-			defer func() { <-serverDone }()
-			go func() {
-				defer close(serverDone)
-
-				conn, err := s.Accept()
-				require.NoError(t, err)
-				defer conn.Close()
-
-				onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
-					setupDone <- pathTrackIDPair{ctx.Path, ctx.TrackID}
-					return &base.Response{
-						StatusCode: base.StatusOK,
-					}, nil
-				}
-
-				<-conn.Read(ServerConnReadHandlers{
-					OnSetup: onSetup,
-				})
-			}()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
@@ -118,9 +105,7 @@ func TestServerReadSetupPath(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			pair := <-setupDone
-			require.Equal(t, ca.path, pair.path)
-			require.Equal(t, ca.trackID, pair.trackID)
+			<-setupDone
 
 			var res base.Response
 			err = res.Read(bconn.Reader)
@@ -133,31 +118,22 @@ func TestServerReadSetupPath(t *testing.T) {
 func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
 	serverErr := make(chan error)
 
-	s := &Server{}
-	err := s.Serve("127.0.0.1:8554")
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(sc *ServerConn, err error) {
+				serverErr <- err
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		err = <-conn.Read(ServerConnReadHandlers{
-			OnSetup: onSetup,
-		})
-		serverErr <- err
-	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -215,31 +191,22 @@ func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
 func TestServerReadSetupErrorTrackTwice(t *testing.T) {
 	serverErr := make(chan error)
 
-	s := &Server{}
-	err := s.Serve("127.0.0.1:8554")
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(sc *ServerConn, err error) {
+				serverErr <- err
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		err = <-conn.Read(ServerConnReadHandlers{
-			OnSetup: onSetup,
-		})
-		serverErr <- err
-	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -303,51 +270,34 @@ func TestServerRead(t *testing.T) {
 			framesReceived := make(chan struct{})
 
 			s := &Server{
+				Handler: &testServerHandler{
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
+						ctx.Conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onFrame: func(ctx *ServerHandlerOnFrameCtx) {
+						require.Equal(t, 0, ctx.TrackID)
+						require.Equal(t, StreamTypeRTCP, ctx.StreamType)
+						require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, ctx.Payload)
+						close(framesReceived)
+					},
+				},
 				UDPRTPAddress:  "127.0.0.1:8000",
 				UDPRTCPAddress: "127.0.0.1:8001",
 			}
 
-			err := s.Serve("127.0.0.1:8554")
+			err := s.Start("127.0.0.1:8554")
 			require.NoError(t, err)
 			defer s.Close()
-
-			serverDone := make(chan struct{})
-			defer func() { <-serverDone }()
-			go func() {
-				defer close(serverDone)
-
-				conn, err := s.Accept()
-				require.NoError(t, err)
-				defer conn.Close()
-
-				onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
-					return &base.Response{
-						StatusCode: base.StatusOK,
-					}, nil
-				}
-
-				onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
-					conn.WriteFrame(0, StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
-					conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
-
-					return &base.Response{
-						StatusCode: base.StatusOK,
-					}, nil
-				}
-
-				onFrame := func(trackID int, typ StreamType, buf []byte) {
-					require.Equal(t, 0, trackID)
-					require.Equal(t, StreamTypeRTCP, typ)
-					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, buf)
-					close(framesReceived)
-				}
-
-				<-conn.Read(ServerConnReadHandlers{
-					OnSetup: onSetup,
-					OnPlay:  onPlay,
-					OnFrame: onFrame,
-				})
-			}()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
@@ -467,62 +417,51 @@ func TestServerRead(t *testing.T) {
 }
 
 func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
-	s := &Server{}
-	err := s.Serve("127.0.0.1:8554")
+	writerDone := make(chan struct{})
+	writerTerminate := make(chan struct{})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(sc *ServerConn, err error) {
+				close(writerTerminate)
+				<-writerDone
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				go func() {
+					defer close(writerDone)
+
+					ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+
+					t := time.NewTicker(50 * time.Millisecond)
+					defer t.Stop()
+
+					for {
+						select {
+						case <-t.C:
+							ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+						case <-writerTerminate:
+							return
+						}
+					}
+				}()
+
+				time.Sleep(50 * time.Millisecond)
+
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		writerDone := make(chan struct{})
-		defer func() { <-writerDone }()
-		writerTerminate := make(chan struct{})
-		defer close(writerTerminate)
-
-		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
-			go func() {
-				defer close(writerDone)
-
-				conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
-
-				t := time.NewTicker(50 * time.Millisecond)
-				defer t.Stop()
-
-				for {
-					select {
-					case <-t.C:
-						conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
-					case <-writerTerminate:
-						return
-					}
-				}
-			}()
-
-			time.Sleep(50 * time.Millisecond)
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		<-conn.Read(ServerConnReadHandlers{
-			OnSetup: onSetup,
-			OnPlay:  onPlay,
-		})
-	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -575,60 +514,49 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 }
 
 func TestServerReadPlayPlay(t *testing.T) {
-	s := &Server{}
-	err := s.Serve("127.0.0.1:8554")
+	writerTerminate := make(chan struct{})
+	writerDone := make(chan struct{})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(sc *ServerConn, err error) {
+				close(writerTerminate)
+				<-writerDone
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				if ctx.Conn.State() != ServerConnStatePlay {
+					go func() {
+						defer close(writerDone)
+
+						t := time.NewTicker(50 * time.Millisecond)
+						defer t.Stop()
+
+						for {
+							select {
+							case <-t.C:
+								ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+							case <-writerTerminate:
+								return
+							}
+						}
+					}()
+				}
+
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		writerDone := make(chan struct{})
-		defer func() { <-writerDone }()
-		writerTerminate := make(chan struct{})
-		defer close(writerTerminate)
-
-		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
-			if conn.State() != ServerConnStatePlay {
-				go func() {
-					defer close(writerDone)
-
-					t := time.NewTicker(50 * time.Millisecond)
-					defer t.Stop()
-
-					for {
-						select {
-						case <-t.C:
-							conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
-						case <-writerTerminate:
-							return
-						}
-					}
-				}()
-			}
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		<-conn.Read(ServerConnReadHandlers{
-			OnSetup: onSetup,
-			OnPlay:  onPlay,
-		})
-	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -690,69 +618,56 @@ func TestServerReadPlayPlay(t *testing.T) {
 }
 
 func TestServerReadPlayPausePlay(t *testing.T) {
-	s := &Server{}
-	err := s.Serve("127.0.0.1:8554")
+	writerStarted := false
+	writerDone := make(chan struct{})
+	writerTerminate := make(chan struct{})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(sc *ServerConn, err error) {
+				close(writerTerminate)
+				<-writerDone
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				if !writerStarted {
+					writerStarted = true
+					go func() {
+						defer close(writerDone)
+
+						t := time.NewTicker(50 * time.Millisecond)
+						defer t.Stop()
+
+						for {
+							select {
+							case <-t.C:
+								ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+							case <-writerTerminate:
+								return
+							}
+						}
+					}()
+				}
+
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		writerStarted := false
-		writerDone := make(chan struct{})
-		defer func() { <-writerDone }()
-		writerTerminate := make(chan struct{})
-		defer close(writerTerminate)
-
-		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
-			if !writerStarted {
-				writerStarted = true
-				go func() {
-					defer close(writerDone)
-
-					t := time.NewTicker(50 * time.Millisecond)
-					defer t.Stop()
-
-					for {
-						select {
-						case <-t.C:
-							conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
-						case <-writerTerminate:
-							return
-						}
-					}
-				}()
-			}
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		onPause := func(ctx *ServerConnPauseCtx) (*base.Response, error) {
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		<-conn.Read(ServerConnReadHandlers{
-			OnSetup: onSetup,
-			OnPlay:  onPlay,
-			OnPause: onPause,
-		})
-	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -832,65 +747,52 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 }
 
 func TestServerReadPlayPausePause(t *testing.T) {
-	s := &Server{}
-	err := s.Serve("127.0.0.1:8554")
+	writerDone := make(chan struct{})
+	writerTerminate := make(chan struct{})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(sc *ServerConn, err error) {
+				close(writerTerminate)
+				<-writerDone
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				go func() {
+					defer close(writerDone)
+
+					t := time.NewTicker(50 * time.Millisecond)
+					defer t.Stop()
+
+					for {
+						select {
+						case <-t.C:
+							ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+						case <-writerTerminate:
+							return
+						}
+					}
+				}()
+
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		writerDone := make(chan struct{})
-		defer func() { <-writerDone }()
-		writerTerminate := make(chan struct{})
-		defer close(writerTerminate)
-
-		onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
-			go func() {
-				defer close(writerDone)
-
-				t := time.NewTicker(50 * time.Millisecond)
-				defer t.Stop()
-
-				for {
-					select {
-					case <-t.C:
-						conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
-					case <-writerTerminate:
-						return
-					}
-				}
-			}()
-
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		onPause := func(ctx *ServerConnPauseCtx) (*base.Response, error) {
-			return &base.Response{
-				StatusCode: base.StatusOK,
-			}, nil
-		}
-
-		<-conn.Read(ServerConnReadHandlers{
-			OnSetup: onSetup,
-			OnPlay:  onPlay,
-			OnPause: onPause,
-		})
-	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
