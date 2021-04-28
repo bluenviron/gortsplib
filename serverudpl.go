@@ -42,6 +42,7 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 }
 
 type serverUDPListener struct {
+	s            *Server
 	pc           *net.UDPConn
 	streamType   StreamType
 	writeTimeout time.Duration
@@ -71,6 +72,7 @@ func newServerUDPListener(
 	}
 
 	u := &serverUDPListener{
+		s:       s,
 		pc:      pc,
 		clients: make(map[clientAddr]*clientData),
 		done:    make(chan struct{}),
@@ -125,7 +127,14 @@ func (u *serverUDPListener) run() {
 					clientData.sc.announcedTracks[clientData.trackID].rtcpReceiver.ProcessFrame(now, u.streamType, buf[:n])
 				}
 
-				clientData.sc.readHandlers.OnFrame(clientData.trackID, u.streamType, buf[:n])
+				if h, ok := u.s.Handler.(ServerHandlerOnFrame); ok {
+					h.OnFrame(&ServerHandlerOnFrameCtx{
+						Conn:       clientData.sc,
+						TrackID:    clientData.trackID,
+						StreamType: u.streamType,
+						Payload:    buf[:n],
+					})
+				}
 			}()
 		}
 	}()

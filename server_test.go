@@ -13,201 +13,70 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/liberrors"
 )
 
-type testServ struct {
-	s         *Server
-	wg        sync.WaitGroup
-	mutex     sync.Mutex
-	publisher *ServerConn
-	sdp       []byte
-	readers   map[*ServerConn]struct{}
+type testServerHandler struct {
+	onConnClose func(*ServerConn, error)
+	onDescribe  func(*ServerHandlerOnDescribeCtx) (*base.Response, []byte, error)
+	onAnnounce  func(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
+	onSetup     func(*ServerHandlerOnSetupCtx) (*base.Response, error)
+	onPlay      func(*ServerHandlerOnPlayCtx) (*base.Response, error)
+	onRecord    func(*ServerHandlerOnRecordCtx) (*base.Response, error)
+	onPause     func(*ServerHandlerOnPauseCtx) (*base.Response, error)
+	onFrame     func(*ServerHandlerOnFrameCtx)
 }
 
-func newTestServ(tlsConf *tls.Config) (*testServ, error) {
-	s := &Server{}
-	if tlsConf != nil {
-		s.TLSConfig = tlsConf
-	} else {
-		s.UDPRTPAddress = "127.0.0.1:8000"
-		s.UDPRTCPAddress = "127.0.0.1:8001"
-	}
-
-	err := s.Serve("127.0.0.1:8554")
-	if err != nil {
-		return nil, err
-	}
-
-	ts := &testServ{
-		s:       s,
-		readers: make(map[*ServerConn]struct{}),
-	}
-
-	ts.wg.Add(1)
-	go ts.run()
-
-	return ts, nil
-}
-
-func (ts *testServ) close() {
-	ts.s.Close()
-	ts.wg.Wait()
-}
-
-func (ts *testServ) run() {
-	defer ts.wg.Done()
-
-	for {
-		conn, err := ts.s.Accept()
-		if err != nil {
-			return
-		}
-
-		ts.wg.Add(1)
-		go ts.handleConn(conn)
+func (sh *testServerHandler) OnConnClose(sc *ServerConn, err error) {
+	if sh.onConnClose != nil {
+		sh.onConnClose(sc, err)
 	}
 }
 
-func (ts *testServ) handleConn(conn *ServerConn) {
-	defer ts.wg.Done()
-	defer conn.Close()
-
-	onDescribe := func(ctx *ServerConnDescribeCtx) (*base.Response, []byte, error) {
-		if ctx.Path != "teststream" {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
-		}
-
-		ts.mutex.Lock()
-		defer ts.mutex.Unlock()
-
-		if ts.publisher == nil {
-			return &base.Response{
-				StatusCode: base.StatusNotFound,
-			}, nil, nil
-		}
-
-		return &base.Response{
-			StatusCode: base.StatusOK,
-		}, ts.sdp, nil
+func (sh *testServerHandler) OnDescribe(ctx *ServerHandlerOnDescribeCtx) (*base.Response, []byte, error) {
+	if sh.onDescribe != nil {
+		return sh.onDescribe(ctx)
 	}
+	return nil, nil, fmt.Errorf("unimplemented")
+}
 
-	onAnnounce := func(ctx *ServerConnAnnounceCtx) (*base.Response, error) {
-		if ctx.Path != "teststream" {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
-		}
-
-		ts.mutex.Lock()
-		defer ts.mutex.Unlock()
-
-		if ts.publisher != nil {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("someone is already publishing")
-		}
-
-		ts.publisher = conn
-		ts.sdp = ctx.Tracks.Write()
-
-		return &base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Session": base.HeaderValue{"12345678"},
-			},
-		}, nil
+func (sh *testServerHandler) OnAnnounce(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+	if sh.onAnnounce != nil {
+		return sh.onAnnounce(ctx)
 	}
+	return nil, fmt.Errorf("unimplemented")
+}
 
-	onSetup := func(ctx *ServerConnSetupCtx) (*base.Response, error) {
-		if ctx.Path != "teststream" {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
-		}
-
-		return &base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Session": base.HeaderValue{"12345678"},
-			},
-		}, nil
+func (sh *testServerHandler) OnSetup(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+	if sh.onSetup != nil {
+		return sh.onSetup(ctx)
 	}
+	return nil, fmt.Errorf("unimplemented")
+}
 
-	onPlay := func(ctx *ServerConnPlayCtx) (*base.Response, error) {
-		if ctx.Path != "teststream" {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
-		}
-
-		ts.mutex.Lock()
-		defer ts.mutex.Unlock()
-
-		ts.readers[conn] = struct{}{}
-
-		return &base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Session": base.HeaderValue{"12345678"},
-			},
-		}, nil
+func (sh *testServerHandler) OnPlay(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+	if sh.onPlay != nil {
+		return sh.onPlay(ctx)
 	}
+	return nil, fmt.Errorf("unimplemented")
+}
 
-	onRecord := func(ctx *ServerConnRecordCtx) (*base.Response, error) {
-		if ctx.Path != "teststream" {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
-		}
-
-		ts.mutex.Lock()
-		defer ts.mutex.Unlock()
-
-		if conn != ts.publisher {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("someone is already publishing")
-		}
-
-		return &base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Session": base.HeaderValue{"12345678"},
-			},
-		}, nil
+func (sh *testServerHandler) OnRecord(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+	if sh.onRecord != nil {
+		return sh.onRecord(ctx)
 	}
+	return nil, fmt.Errorf("unimplemented")
+}
 
-	onFrame := func(trackID int, typ StreamType, buf []byte) {
-		ts.mutex.Lock()
-		defer ts.mutex.Unlock()
-
-		if conn == ts.publisher {
-			for r := range ts.readers {
-				r.WriteFrame(trackID, typ, buf)
-			}
-		}
+func (sh *testServerHandler) OnPause(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+	if sh.onPause != nil {
+		return sh.onPause(ctx)
 	}
+	return nil, fmt.Errorf("unimplemented")
+}
 
-	<-conn.Read(ServerConnReadHandlers{
-		OnDescribe: onDescribe,
-		OnAnnounce: onAnnounce,
-		OnSetup:    onSetup,
-		OnPlay:     onPlay,
-		OnRecord:   onRecord,
-		OnFrame:    onFrame,
-	})
-
-	ts.mutex.Lock()
-	defer ts.mutex.Unlock()
-
-	if conn == ts.publisher {
-		ts.publisher = nil
-		ts.sdp = nil
-	} else {
-		delete(ts.readers, conn)
+func (sh *testServerHandler) OnFrame(ctx *ServerHandlerOnFrameCtx) {
+	if sh.onFrame != nil {
+		sh.onFrame(ctx)
 	}
 }
 
@@ -298,22 +167,156 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 		t.Run(encryptedStr+"_"+ca.publisherSoft+"_"+ca.publisherProto+"_"+
 			ca.readerSoft+"_"+ca.readerProto, func(t *testing.T) {
+
+			var mutex sync.Mutex
+			var publisher *ServerConn
+			var sdp []byte
+			readers := make(map[*ServerConn]struct{})
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onConnClose: func(sc *ServerConn, err error) {
+						mutex.Lock()
+						defer mutex.Unlock()
+
+						if sc == publisher {
+							publisher = nil
+							sdp = nil
+						} else {
+							delete(readers, sc)
+						}
+					},
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, []byte, error) {
+						if ctx.Path != "teststream" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+
+						mutex.Lock()
+						defer mutex.Unlock()
+
+						if publisher == nil {
+							return &base.Response{
+								StatusCode: base.StatusNotFound,
+							}, nil, nil
+						}
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, sdp, nil
+					},
+					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+						if ctx.Path != "teststream" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+
+						mutex.Lock()
+						defer mutex.Unlock()
+
+						if publisher != nil {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, fmt.Errorf("someone is already publishing")
+						}
+
+						publisher = ctx.Conn
+						sdp = ctx.Tracks.Write()
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+							Header: base.Header{
+								"Session": base.HeaderValue{"12345678"},
+							},
+						}, nil
+					},
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+						if ctx.Path != "teststream" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+							Header: base.Header{
+								"Session": base.HeaderValue{"12345678"},
+							},
+						}, nil
+					},
+					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						if ctx.Path != "teststream" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+
+						mutex.Lock()
+						defer mutex.Unlock()
+
+						readers[ctx.Conn] = struct{}{}
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+							Header: base.Header{
+								"Session": base.HeaderValue{"12345678"},
+							},
+						}, nil
+					},
+					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						if ctx.Path != "teststream" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+
+						mutex.Lock()
+						defer mutex.Unlock()
+
+						if ctx.Conn != publisher {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, fmt.Errorf("someone is already publishing")
+						}
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+							Header: base.Header{
+								"Session": base.HeaderValue{"12345678"},
+							},
+						}, nil
+					},
+					onFrame: func(ctx *ServerHandlerOnFrameCtx) {
+						mutex.Lock()
+						defer mutex.Unlock()
+
+						if ctx.Conn == publisher {
+							for r := range readers {
+								r.WriteFrame(ctx.TrackID, ctx.StreamType, ctx.Payload)
+							}
+						}
+					},
+				},
+			}
+
 			var proto string
-			var tlsConf *tls.Config
 			if !ca.encrypted {
 				proto = "rtsp"
-				tlsConf = nil
+				s.UDPRTPAddress = "127.0.0.1:8000"
+				s.UDPRTCPAddress = "127.0.0.1:8001"
 
 			} else {
 				proto = "rtsps"
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
-				tlsConf = &tls.Config{Certificates: []tls.Certificate{cert}}
+				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
-			ts, err := newTestServ(tlsConf)
+			err := s.Start("127.0.0.1:8554")
 			require.NoError(t, err)
-			defer ts.close()
+			defer s.Close()
 
 			switch ca.publisherSoft {
 			case "ffmpeg":
@@ -374,7 +377,7 @@ func TestServerErrorWrongUDPPorts(t *testing.T) {
 			UDPRTPAddress:  "127.0.0.1:8006",
 			UDPRTCPAddress: "127.0.0.1:8009",
 		}
-		err := s.Serve("127.0.0.1:8554")
+		err := s.Start("127.0.0.1:8554")
 		require.Error(t, err)
 	})
 
@@ -383,28 +386,16 @@ func TestServerErrorWrongUDPPorts(t *testing.T) {
 			UDPRTPAddress:  "127.0.0.1:8003",
 			UDPRTCPAddress: "127.0.0.1:8004",
 		}
-		err := s.Serve("127.0.0.1:8554")
+		err := s.Start("127.0.0.1:8554")
 		require.Error(t, err)
 	})
 }
 
 func TestServerCSeq(t *testing.T) {
 	s := &Server{}
-	err := s.Serve("127.0.0.1:8554")
+	err := s.Start("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		<-conn.Read(ServerConnReadHandlers{})
-	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -429,23 +420,16 @@ func TestServerCSeq(t *testing.T) {
 }
 
 func TestServerErrorCSeqMissing(t *testing.T) {
-	s := &Server{}
-	err := s.Serve("127.0.0.1:8554")
+	h := &testServerHandler{
+		onConnClose: func(sc *ServerConn, err error) {
+			require.Equal(t, "CSeq is missing", err.Error())
+		},
+	}
+
+	s := &Server{Handler: h}
+	err := s.Start("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		err = <-conn.Read(ServerConnReadHandlers{})
-		require.Equal(t, "CSeq is missing", err.Error())
-	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -467,23 +451,9 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 
 func TestServerTeardownResponse(t *testing.T) {
 	s := &Server{}
-	err := s.Serve("127.0.0.1:8554")
+	err := s.Start("127.0.0.1:8554")
 	require.NoError(t, err)
 	defer s.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		conn, err := s.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		err = <-conn.Read(ServerConnReadHandlers{})
-		_, ok := err.(liberrors.ErrServerTeardown)
-		require.Equal(t, true, ok)
-	}()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)

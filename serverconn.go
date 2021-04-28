@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -85,7 +86,20 @@ func setupGetTrackIDPathQuery(url *base.URL,
 	return 0, "", "", fmt.Errorf("invalid track path (%s)", pathAndQuery)
 }
 
-// ServerConnState is the state of the connection.
+// ServerConnSetuppedTrack is a setupped track of a ServerConn.
+type ServerConnSetuppedTrack struct {
+	udpRTPPort  int
+	udpRTCPPort int
+}
+
+// ServerConnAnnouncedTrack is an announced track of a ServerConn.
+type ServerConnAnnouncedTrack struct {
+	track            *Track
+	rtcpReceiver     *rtcpreceiver.RTCPReceiver
+	udpLastFrameTime *int64
+}
+
+// ServerConnState is a state of a ServerConn.
 type ServerConnState int
 
 // standard states.
@@ -114,142 +128,10 @@ func (s ServerConnState) String() string {
 	return "unknown"
 }
 
-// ServerConnSetuppedTrack is a setupped track of a ServerConn.
-type ServerConnSetuppedTrack struct {
-	udpRTPPort  int
-	udpRTCPPort int
-}
-
-// ServerConnAnnouncedTrack is an announced track of a ServerConn.
-type ServerConnAnnouncedTrack struct {
-	track            *Track
-	rtcpReceiver     *rtcpreceiver.RTCPReceiver
-	udpLastFrameTime *int64
-}
-
-// ServerConnOptionsCtx is the context of a OPTIONS request.
-type ServerConnOptionsCtx struct {
-	Req   *base.Request
-	Path  string
-	Query string
-}
-
-// ServerConnDescribeCtx is the context of a DESCRIBE request.
-type ServerConnDescribeCtx struct {
-	Req   *base.Request
-	Path  string
-	Query string
-}
-
-// ServerConnAnnounceCtx is the context of a ANNOUNCE request.
-type ServerConnAnnounceCtx struct {
-	Req    *base.Request
-	Path   string
-	Query  string
-	Tracks Tracks
-}
-
-// ServerConnSetupCtx is the context of a OPTIONS request.
-type ServerConnSetupCtx struct {
-	Req       *base.Request
-	Path      string
-	Query     string
-	TrackID   int
-	Transport *headers.Transport
-}
-
-// ServerConnPlayCtx is the context of a PLAY request.
-type ServerConnPlayCtx struct {
-	Req   *base.Request
-	Path  string
-	Query string
-}
-
-// ServerConnRecordCtx is the context of a RECORD request.
-type ServerConnRecordCtx struct {
-	Req   *base.Request
-	Path  string
-	Query string
-}
-
-// ServerConnPauseCtx is the context of a PAUSE request.
-type ServerConnPauseCtx struct {
-	Req   *base.Request
-	Path  string
-	Query string
-}
-
-// ServerConnGetParameterCtx is the context of a GET_PARAMETER request.
-type ServerConnGetParameterCtx struct {
-	Req   *base.Request
-	Path  string
-	Query string
-}
-
-// ServerConnSetParameterCtx is the context of a SET_PARAMETER request.
-type ServerConnSetParameterCtx struct {
-	Req   *base.Request
-	Path  string
-	Query string
-}
-
-// ServerConnTeardownCtx is the context of a TEARDOWN request.
-type ServerConnTeardownCtx struct {
-	Req   *base.Request
-	Path  string
-	Query string
-}
-
-// ServerConnReadHandlers allows to set the handlers required by ServerConn.Read.
-// all fields are optional.
-type ServerConnReadHandlers struct {
-	// called after receiving any request.
-	OnRequest func(req *base.Request)
-
-	// called before sending any response.
-	OnResponse func(res *base.Response)
-
-	// called after receiving a OPTIONS request.
-	// if nil, it is generated automatically.
-	OnOptions func(ctx *ServerConnOptionsCtx) (*base.Response, error)
-
-	// called after receiving a DESCRIBE request.
-	// the 2nd return value is a SDP, that is inserted into the response.
-	OnDescribe func(ctx *ServerConnDescribeCtx) (*base.Response, []byte, error)
-
-	// called after receiving an ANNOUNCE request.
-	OnAnnounce func(ctx *ServerConnAnnounceCtx) (*base.Response, error)
-
-	// called after receiving a SETUP request.
-	OnSetup func(ctx *ServerConnSetupCtx) (*base.Response, error)
-
-	// called after receiving a PLAY request.
-	OnPlay func(ctx *ServerConnPlayCtx) (*base.Response, error)
-
-	// called after receiving a RECORD request.
-	OnRecord func(ctx *ServerConnRecordCtx) (*base.Response, error)
-
-	// called after receiving a PAUSE request.
-	OnPause func(ctx *ServerConnPauseCtx) (*base.Response, error)
-
-	// called after receiving a GET_PARAMETER request.
-	// if nil, it is generated automatically.
-	OnGetParameter func(ctx *ServerConnGetParameterCtx) (*base.Response, error)
-
-	// called after receiving a SET_PARAMETER request.
-	OnSetParameter func(ctx *ServerConnSetParameterCtx) (*base.Response, error)
-
-	// called after receiving a TEARDOWN request.
-	// if nil, it is generated automatically.
-	OnTeardown func(ctx *ServerConnTeardownCtx) (*base.Response, error)
-
-	// called after receiving a frame.
-	OnFrame func(trackID int, streamType StreamType, payload []byte)
-}
-
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
 	s              *Server
+	wg             *sync.WaitGroup
 	nconn          net.Conn
 	br             *bufio.Reader
 	bw             *bufio.Writer
@@ -267,9 +149,6 @@ type ServerConn struct {
 	tcpFrameWriteBuffer    *ringbuffer.RingBuffer
 	tcpBackgroundWriteDone chan struct{}
 
-	// read
-	readHandlers ServerConnReadHandlers
-
 	// publish
 	announcedTracks           []ServerConnAnnouncedTrack
 	backgroundRecordTerminate chan struct{}
@@ -282,31 +161,20 @@ type ServerConn struct {
 
 func newServerConn(
 	s *Server,
+	wg *sync.WaitGroup,
 	nconn net.Conn) *ServerConn {
-	conn := func() net.Conn {
-		if s.TLSConfig != nil {
-			return tls.Server(nconn, s.TLSConfig)
-		}
-		return nconn
-	}()
 
-	return &ServerConn{
-		s:     s,
-		nconn: nconn,
-		br:    bufio.NewReaderSize(conn, serverConnReadBufferSize),
-		bw:    bufio.NewWriterSize(conn, serverConnWriteBufferSize),
-		// always instantiate to allow writing to it before Play()
-		tcpFrameWriteBuffer:    ringbuffer.New(uint64(s.ReadBufferCount)),
-		tcpBackgroundWriteDone: make(chan struct{}),
-		terminate:              make(chan struct{}),
+	sc := &ServerConn{
+		s:         s,
+		wg:        wg,
+		nconn:     nconn,
+		terminate: make(chan struct{}),
 	}
-}
 
-// Close closes all the connection resources.
-func (sc *ServerConn) Close() error {
-	err := sc.nconn.Close()
-	close(sc.terminate)
-	return err
+	wg.Add(1)
+	go sc.run()
+
+	return sc
 }
 
 // State returns the state.
@@ -329,25 +197,17 @@ func (sc *ServerConn) AnnouncedTracks() []ServerConnAnnouncedTrack {
 	return sc.announcedTracks
 }
 
-func (sc *ServerConn) tcpBackgroundWrite() {
-	defer close(sc.tcpBackgroundWriteDone)
+// NetConn returns the underlying net.Conn.
+func (sc *ServerConn) NetConn() net.Conn {
+	return sc.nconn
+}
 
-	for {
-		what, ok := sc.tcpFrameWriteBuffer.Pull()
-		if !ok {
-			return
-		}
+func (sc *ServerConn) ip() net.IP {
+	return sc.nconn.RemoteAddr().(*net.TCPAddr).IP
+}
 
-		switch w := what.(type) {
-		case *base.InterleavedFrame:
-			sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-			w.Write(sc.bw)
-
-		case *base.Response:
-			sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-			w.Write(sc.bw)
-		}
-	}
+func (sc *ServerConn) zone() string {
+	return sc.nconn.RemoteAddr().(*net.TCPAddr).Zone
 }
 
 func (sc *ServerConn) checkState(allowed map[ServerConnState]struct{}) error {
@@ -364,89 +224,46 @@ func (sc *ServerConn) checkState(allowed map[ServerConnState]struct{}) error {
 	return liberrors.ErrServerWrongState{AllowedList: allowedList, State: sc.state}
 }
 
-// NetConn returns the underlying net.Conn.
-func (sc *ServerConn) NetConn() net.Conn {
-	return sc.nconn
-}
+func (sc *ServerConn) run() {
+	defer sc.wg.Done()
 
-func (sc *ServerConn) ip() net.IP {
-	return sc.nconn.RemoteAddr().(*net.TCPAddr).IP
-}
-
-func (sc *ServerConn) zone() string {
-	return sc.nconn.RemoteAddr().(*net.TCPAddr).Zone
-}
-
-func (sc *ServerConn) frameModeEnable() {
-	switch sc.state {
-	case ServerConnStatePlay:
-		if *sc.setupProtocol == StreamProtocolTCP {
-			sc.doEnableTCPFrame = true
-		} else {
-			// readers can send RTCP frames, they cannot sent RTP frames
-			for trackID, track := range sc.setuppedTracks {
-				sc.s.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, false)
-			}
-		}
-
-	case ServerConnStateRecord:
-		if *sc.setupProtocol == StreamProtocolTCP {
-			sc.doEnableTCPFrame = true
-			sc.tcpFrameTimeout = true
-
-		} else {
-			for trackID, track := range sc.setuppedTracks {
-				sc.s.udpRTPListener.addClient(sc.ip(), track.udpRTPPort, sc, trackID, true)
-				sc.s.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, true)
-
-				// open the firewall by sending packets to the counterpart
-				sc.WriteFrame(trackID, StreamTypeRTP,
-					[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-				sc.WriteFrame(trackID, StreamTypeRTCP,
-					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
-			}
-		}
-
-		sc.backgroundRecordTerminate = make(chan struct{})
-		sc.backgroundRecordDone = make(chan struct{})
-		go sc.backgroundRecord()
+	if h, ok := sc.s.Handler.(ServerHandlerOnConnOpen); ok {
+		h.OnConnOpen(sc)
 	}
-}
 
-func (sc *ServerConn) frameModeDisable() {
-	switch sc.state {
-	case ServerConnStatePlay:
-		if *sc.setupProtocol == StreamProtocolTCP {
-			sc.tcpFrameEnabled = false
-			sc.tcpFrameWriteBuffer.Close()
-			<-sc.tcpBackgroundWriteDone
-			sc.tcpFrameWriteBuffer.Reset()
-
-		} else {
-			for _, track := range sc.setuppedTracks {
-				sc.s.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
-			}
+	conn := func() net.Conn {
+		if sc.s.TLSConfig != nil {
+			return tls.Server(sc.nconn, sc.s.TLSConfig)
 		}
+		return sc.nconn
+	}()
 
-	case ServerConnStateRecord:
-		close(sc.backgroundRecordTerminate)
-		<-sc.backgroundRecordDone
+	sc.br = bufio.NewReaderSize(conn, serverConnReadBufferSize)
+	sc.bw = bufio.NewWriterSize(conn, serverConnWriteBufferSize)
 
-		if *sc.setupProtocol == StreamProtocolTCP {
-			sc.tcpFrameTimeout = false
-			sc.nconn.SetReadDeadline(time.Time{})
+	// instantiate always to allow writing to this conn before Play()
+	sc.tcpFrameWriteBuffer = ringbuffer.New(uint64(sc.s.ReadBufferCount))
+	sc.tcpBackgroundWriteDone = make(chan struct{})
 
-			sc.tcpFrameEnabled = false
-			sc.tcpFrameWriteBuffer.Close()
-			<-sc.tcpBackgroundWriteDone
-			sc.tcpFrameWriteBuffer.Reset()
+	readDone := make(chan error)
+	go func() {
+		readDone <- sc.backgroundRead()
+	}()
 
-		} else {
-			for _, track := range sc.setuppedTracks {
-				sc.s.udpRTPListener.removeClient(sc.ip(), track.udpRTPPort)
-				sc.s.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
-			}
-		}
+	var err error
+	select {
+	case err = <-readDone:
+		sc.nconn.Close()
+		sc.s.connClose <- sc
+		<-sc.terminate
+
+	case <-sc.terminate:
+		sc.nconn.Close()
+		err = <-readDone
+	}
+
+	if h, ok := sc.s.Handler.(ServerHandlerOnConnClose); ok {
+		h.OnConnClose(sc, err)
 	}
 }
 
@@ -458,13 +275,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}, liberrors.ErrServerCSeqMissing{}
 	}
 
-	if sc.readHandlers.OnRequest != nil {
-		sc.readHandlers.OnRequest(req)
-	}
-
 	switch req.Method {
 	case base.Options:
-		if sc.readHandlers.OnOptions != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnOptions); ok {
 			pathAndQuery, ok := req.URL.RTSPPath()
 			if !ok {
 				return &base.Response{
@@ -474,7 +287,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			path, query := base.PathSplitQuery(pathAndQuery)
 
-			return sc.readHandlers.OnOptions(&ServerConnOptionsCtx{
+			return h.OnOptions(&ServerHandlerOnOptionsCtx{
+				Conn:  sc,
 				Req:   req,
 				Path:  path,
 				Query: query,
@@ -482,26 +296,26 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 		var methods []string
-		if sc.readHandlers.OnDescribe != nil {
+		if _, ok := sc.s.Handler.(ServerHandlerOnDescribe); ok {
 			methods = append(methods, string(base.Describe))
 		}
-		if sc.readHandlers.OnAnnounce != nil {
+		if _, ok := sc.s.Handler.(ServerHandlerOnAnnounce); ok {
 			methods = append(methods, string(base.Announce))
 		}
-		if sc.readHandlers.OnSetup != nil {
+		if _, ok := sc.s.Handler.(ServerHandlerOnSetup); ok {
 			methods = append(methods, string(base.Setup))
 		}
-		if sc.readHandlers.OnPlay != nil {
+		if _, ok := sc.s.Handler.(ServerHandlerOnPlay); ok {
 			methods = append(methods, string(base.Play))
 		}
-		if sc.readHandlers.OnRecord != nil {
+		if _, ok := sc.s.Handler.(ServerHandlerOnRecord); ok {
 			methods = append(methods, string(base.Record))
 		}
-		if sc.readHandlers.OnPause != nil {
+		if _, ok := sc.s.Handler.(ServerHandlerOnPause); ok {
 			methods = append(methods, string(base.Pause))
 		}
 		methods = append(methods, string(base.GetParameter))
-		if sc.readHandlers.OnSetParameter != nil {
+		if _, ok := sc.s.Handler.(ServerHandlerOnSetParameter); ok {
 			methods = append(methods, string(base.SetParameter))
 		}
 		methods = append(methods, string(base.Teardown))
@@ -514,7 +328,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}, nil
 
 	case base.Describe:
-		if sc.readHandlers.OnDescribe != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnDescribe); ok {
 			err := sc.checkState(map[ServerConnState]struct{}{
 				ServerConnStateInitial: {},
 			})
@@ -533,7 +347,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			path, query := base.PathSplitQuery(pathAndQuery)
 
-			res, sdp, err := sc.readHandlers.OnDescribe(&ServerConnDescribeCtx{
+			res, sdp, err := h.OnDescribe(&ServerHandlerOnDescribeCtx{
+				Conn:  sc,
 				Req:   req,
 				Path:  path,
 				Query: query,
@@ -553,7 +368,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.Announce:
-		if sc.readHandlers.OnAnnounce != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnAnnounce); ok {
 			err := sc.checkState(map[ServerConnState]struct{}{
 				ServerConnStateInitial: {},
 			})
@@ -621,7 +436,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 			}
 
-			res, err := sc.readHandlers.OnAnnounce(&ServerConnAnnounceCtx{
+			res, err := h.OnAnnounce(&ServerHandlerOnAnnounceCtx{
+				Conn:   sc,
 				Req:    req,
 				Path:   path,
 				Query:  query,
@@ -650,7 +466,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.Setup:
-		if sc.readHandlers.OnSetup != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnSetup); ok {
 			err := sc.checkState(map[ServerConnState]struct{}{
 				ServerConnStateInitial:   {},
 				ServerConnStatePrePlay:   {},
@@ -741,7 +557,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, liberrors.ErrServerTracksDifferentProtocols{}
 			}
 
-			res, err := sc.readHandlers.OnSetup(&ServerConnSetupCtx{
+			res, err := h.OnSetup(&ServerHandlerOnSetupCtx{
+				Conn:      sc,
 				Req:       req,
 				Path:      path,
 				Query:     query,
@@ -810,7 +627,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.Play:
-		if sc.readHandlers.OnPlay != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnPlay); ok {
 			// play can be sent twice, allow calling it even if we're already playing
 			err := sc.checkState(map[ServerConnState]struct{}{
 				ServerConnStatePrePlay: {},
@@ -840,7 +657,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			path, query := base.PathSplitQuery(pathAndQuery)
 
-			res, err := sc.readHandlers.OnPlay(&ServerConnPlayCtx{
+			res, err := h.OnPlay(&ServerHandlerOnPlayCtx{
+				Conn:  sc,
 				Req:   req,
 				Path:  path,
 				Query: query,
@@ -855,7 +673,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.Record:
-		if sc.readHandlers.OnRecord != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnRecord); ok {
 			err := sc.checkState(map[ServerConnState]struct{}{
 				ServerConnStatePreRecord: {},
 			})
@@ -889,7 +707,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			path, query := base.PathSplitQuery(pathAndQuery)
 
-			res, err := sc.readHandlers.OnRecord(&ServerConnRecordCtx{
+			res, err := h.OnRecord(&ServerHandlerOnRecordCtx{
+				Conn:  sc,
 				Req:   req,
 				Path:  path,
 				Query: query,
@@ -904,7 +723,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.Pause:
-		if sc.readHandlers.OnPause != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnPause); ok {
 			err := sc.checkState(map[ServerConnState]struct{}{
 				ServerConnStatePrePlay:   {},
 				ServerConnStatePlay:      {},
@@ -929,7 +748,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			path, query := base.PathSplitQuery(pathAndQuery)
 
-			res, err := sc.readHandlers.OnPause(&ServerConnPauseCtx{
+			res, err := h.OnPause(&ServerHandlerOnPauseCtx{
+				Conn:  sc,
 				Req:   req,
 				Path:  path,
 				Query: query,
@@ -951,7 +771,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.GetParameter:
-		if sc.readHandlers.OnGetParameter != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
 			pathAndQuery, ok := req.URL.RTSPPath()
 			if !ok {
 				return &base.Response{
@@ -961,7 +781,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			path, query := base.PathSplitQuery(pathAndQuery)
 
-			return sc.readHandlers.OnGetParameter(&ServerConnGetParameterCtx{
+			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
+				Conn:  sc,
 				Req:   req,
 				Path:  path,
 				Query: query,
@@ -978,7 +799,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}, nil
 
 	case base.SetParameter:
-		if sc.readHandlers.OnSetParameter != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnSetParameter); ok {
 			pathAndQuery, ok := req.URL.RTSPPath()
 			if !ok {
 				return &base.Response{
@@ -988,7 +809,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			path, query := base.PathSplitQuery(pathAndQuery)
 
-			return sc.readHandlers.OnSetParameter(&ServerConnSetParameterCtx{
+			return h.OnSetParameter(&ServerHandlerOnSetParameterCtx{
+				Conn:  sc,
 				Req:   req,
 				Path:  path,
 				Query: query,
@@ -996,7 +818,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.Teardown:
-		if sc.readHandlers.OnTeardown != nil {
+		if h, ok := sc.s.Handler.(ServerHandlerOnTeardown); ok {
 			pathAndQuery, ok := req.URL.RTSPPath()
 			if !ok {
 				return &base.Response{
@@ -1006,7 +828,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			path, query := base.PathSplitQuery(pathAndQuery)
 
-			return sc.readHandlers.OnTeardown(&ServerConnTeardownCtx{
+			return h.OnTeardown(&ServerHandlerOnTeardownCtx{
+				Conn:  sc,
 				Req:   req,
 				Path:  path,
 				Query: query,
@@ -1024,6 +847,10 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 }
 
 func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
+	if h, ok := sc.s.Handler.(ServerHandlerOnRequest); ok {
+		h.OnRequest(req)
+	}
+
 	res, err := sc.handleRequest(req)
 
 	if res.Header == nil {
@@ -1038,8 +865,8 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	// add server
 	res.Header["Server"] = base.HeaderValue{"gortsplib"}
 
-	if sc.readHandlers.OnResponse != nil {
-		sc.readHandlers.OnResponse(res)
+	if h, ok := sc.s.Handler.(ServerHandlerOnResponse); ok {
+		h.OnResponse(res)
 	}
 
 	switch {
@@ -1102,7 +929,15 @@ func (sc *ServerConn) backgroundRead() error {
 						sc.announcedTracks[frame.TrackID].rtcpReceiver.ProcessFrame(time.Now(),
 							frame.StreamType, frame.Payload)
 					}
-					sc.readHandlers.OnFrame(frame.TrackID, frame.StreamType, frame.Payload)
+
+					if h, ok := sc.s.Handler.(ServerHandlerOnFrame); ok {
+						h.OnFrame(&ServerHandlerOnFrameCtx{
+							Conn:       sc,
+							TrackID:    frame.TrackID,
+							StreamType: frame.StreamType,
+							Payload:    frame.Payload,
+						})
+					}
 				}
 
 			case *base.Request:
@@ -1127,50 +962,6 @@ func (sc *ServerConn) backgroundRead() error {
 			}
 		}
 	}
-}
-
-// Read starts reading requests and frames.
-// it returns a channel that is written when the reading stops.
-func (sc *ServerConn) Read(readHandlers ServerConnReadHandlers) chan error {
-	// channel is buffered, since listening to it is not mandatory
-	done := make(chan error, 1)
-
-	sc.readHandlers = readHandlers
-
-	go func() {
-		done <- sc.backgroundRead()
-	}()
-
-	return done
-}
-
-// WriteFrame writes a frame.
-func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []byte) {
-	if *sc.setupProtocol == StreamProtocolUDP {
-		track := sc.setuppedTracks[trackID]
-
-		if streamType == StreamTypeRTP {
-			sc.s.udpRTPListener.write(payload, &net.UDPAddr{
-				IP:   sc.ip(),
-				Zone: sc.zone(),
-				Port: track.udpRTPPort,
-			})
-			return
-		}
-
-		sc.s.udpRTCPListener.write(payload, &net.UDPAddr{
-			IP:   sc.ip(),
-			Zone: sc.zone(),
-			Port: track.udpRTCPPort,
-		})
-		return
-	}
-
-	sc.tcpFrameWriteBuffer.Push(&base.InterleavedFrame{
-		TrackID:    trackID,
-		StreamType: streamType,
-		Payload:    payload,
-	})
 }
 
 func (sc *ServerConn) backgroundRecord() {
@@ -1216,4 +1007,127 @@ func (sc *ServerConn) backgroundRecord() {
 			return
 		}
 	}
+}
+
+func (sc *ServerConn) tcpBackgroundWrite() {
+	defer close(sc.tcpBackgroundWriteDone)
+
+	for {
+		what, ok := sc.tcpFrameWriteBuffer.Pull()
+		if !ok {
+			return
+		}
+
+		switch w := what.(type) {
+		case *base.InterleavedFrame:
+			sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
+			w.Write(sc.bw)
+
+		case *base.Response:
+			sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
+			w.Write(sc.bw)
+		}
+	}
+}
+
+func (sc *ServerConn) frameModeEnable() {
+	switch sc.state {
+	case ServerConnStatePlay:
+		if *sc.setupProtocol == StreamProtocolTCP {
+			sc.doEnableTCPFrame = true
+		} else {
+			// readers can send RTCP frames, they cannot sent RTP frames
+			for trackID, track := range sc.setuppedTracks {
+				sc.s.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, false)
+			}
+		}
+
+	case ServerConnStateRecord:
+		if *sc.setupProtocol == StreamProtocolTCP {
+			sc.doEnableTCPFrame = true
+			sc.tcpFrameTimeout = true
+
+		} else {
+			for trackID, track := range sc.setuppedTracks {
+				sc.s.udpRTPListener.addClient(sc.ip(), track.udpRTPPort, sc, trackID, true)
+				sc.s.udpRTCPListener.addClient(sc.ip(), track.udpRTCPPort, sc, trackID, true)
+
+				// open the firewall by sending packets to the counterpart
+				sc.WriteFrame(trackID, StreamTypeRTP,
+					[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+				sc.WriteFrame(trackID, StreamTypeRTCP,
+					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+			}
+		}
+
+		sc.backgroundRecordTerminate = make(chan struct{})
+		sc.backgroundRecordDone = make(chan struct{})
+		go sc.backgroundRecord()
+	}
+}
+
+func (sc *ServerConn) frameModeDisable() {
+	switch sc.state {
+	case ServerConnStatePlay:
+		if *sc.setupProtocol == StreamProtocolTCP {
+			sc.tcpFrameEnabled = false
+			sc.tcpFrameWriteBuffer.Close()
+			<-sc.tcpBackgroundWriteDone
+			sc.tcpFrameWriteBuffer.Reset()
+
+		} else {
+			for _, track := range sc.setuppedTracks {
+				sc.s.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
+			}
+		}
+
+	case ServerConnStateRecord:
+		close(sc.backgroundRecordTerminate)
+		<-sc.backgroundRecordDone
+
+		if *sc.setupProtocol == StreamProtocolTCP {
+			sc.tcpFrameTimeout = false
+			sc.nconn.SetReadDeadline(time.Time{})
+
+			sc.tcpFrameEnabled = false
+			sc.tcpFrameWriteBuffer.Close()
+			<-sc.tcpBackgroundWriteDone
+			sc.tcpFrameWriteBuffer.Reset()
+
+		} else {
+			for _, track := range sc.setuppedTracks {
+				sc.s.udpRTPListener.removeClient(sc.ip(), track.udpRTPPort)
+				sc.s.udpRTCPListener.removeClient(sc.ip(), track.udpRTCPPort)
+			}
+		}
+	}
+}
+
+// WriteFrame writes a frame.
+func (sc *ServerConn) WriteFrame(trackID int, streamType StreamType, payload []byte) {
+	if *sc.setupProtocol == StreamProtocolUDP {
+		track := sc.setuppedTracks[trackID]
+
+		if streamType == StreamTypeRTP {
+			sc.s.udpRTPListener.write(payload, &net.UDPAddr{
+				IP:   sc.ip(),
+				Zone: sc.zone(),
+				Port: track.udpRTPPort,
+			})
+			return
+		}
+
+		sc.s.udpRTCPListener.write(payload, &net.UDPAddr{
+			IP:   sc.ip(),
+			Zone: sc.zone(),
+			Port: track.udpRTCPPort,
+		})
+		return
+	}
+
+	sc.tcpFrameWriteBuffer.Push(&base.InterleavedFrame{
+		TrackID:    trackID,
+		StreamType: streamType,
+		Payload:    payload,
+	})
 }
