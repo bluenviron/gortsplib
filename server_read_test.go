@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"crypto/tls"
 	"net"
 	"testing"
 	"time"
@@ -267,6 +268,7 @@ func TestServerRead(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
+		"tls",
 	} {
 		t.Run(proto, func(t *testing.T) {
 			connOpened := make(chan struct{})
@@ -309,16 +311,32 @@ func TestServerRead(t *testing.T) {
 						close(framesReceived)
 					},
 				},
-				UDPRTPAddress:  "127.0.0.1:8000",
-				UDPRTCPAddress: "127.0.0.1:8001",
+			}
+
+			switch proto {
+			case "udp":
+				s.UDPRTPAddress = "127.0.0.1:8000"
+				s.UDPRTCPAddress = "127.0.0.1:8001"
+
+			case "tls":
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
 			err := s.Start("127.0.0.1:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
-			conn, err := net.Dial("tcp", "localhost:8554")
+			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
+
+			conn := func() net.Conn {
+				if proto == "tls" {
+					return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
+				}
+				return nconn
+			}()
 			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 			<-connOpened
@@ -451,7 +469,7 @@ func TestServerRead(t *testing.T) {
 
 			<-sessionClosed
 
-			conn.Close()
+			nconn.Close()
 			<-connClosed
 		})
 	}
