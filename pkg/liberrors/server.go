@@ -199,3 +199,11 @@ type ErrServerSessionLinkedToOtherConn struct{}
 func (e ErrServerSessionLinkedToOtherConn) Error() string {
 	return "session is linked to another connection"
 }
+
+// ErrServerInvalidSession is an error that can be returned by a server.
+type ErrServerInvalidSession struct{}
+
+// Error implements the error interface.
+func (e ErrServerInvalidSession) Error() string {
+	return "invalid session"
+}
