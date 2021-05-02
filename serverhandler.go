@@ -39,19 +39,6 @@ type ServerHandlerOnResponse interface {
 	OnResponse(*base.Response)
 }
 
-// ServerHandlerOnOptionsCtx is the context of an OPTIONS request.
-type ServerHandlerOnOptionsCtx struct {
-	Conn  *ServerConn
-	Req   *base.Request
-	Path  string
-	Query string
-}
-
-// ServerHandlerOnOptions can be implemented by a ServerHandler.
-type ServerHandlerOnOptions interface {
-	OnOptions(*ServerHandlerOnOptionsCtx) (*base.Response, error)
-}
-
 // ServerHandlerOnDescribeCtx is the context of a DESCRIBE request.
 type ServerHandlerOnDescribeCtx struct {
 	Conn  *ServerConn

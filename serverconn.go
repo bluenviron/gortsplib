@@ -223,24 +223,6 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	switch req.Method {
 	case base.Options:
-		if h, ok := sc.s.Handler.(ServerHandlerOnOptions); ok {
-			pathAndQuery, ok := req.URL.RTSPPath()
-			if !ok {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerNoPath{}
-			}
-
-			path, query := base.PathSplitQuery(pathAndQuery)
-
-			return h.OnOptions(&ServerHandlerOnOptionsCtx{
-				Conn:  sc,
-				Req:   req,
-				Path:  path,
-				Query: query,
-			})
-		}
-
 		var methods []string
 		if _, ok := sc.s.Handler.(ServerHandlerOnDescribe); ok {
 			methods = append(methods, string(base.Describe))
