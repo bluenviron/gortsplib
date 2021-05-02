@@ -173,7 +173,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerPublishSetupErrorDifferentPaths(t *testing.T) {
+func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 	serverErr := make(chan error)
 
 	s := &Server{
@@ -262,7 +262,7 @@ func TestServerPublishSetupErrorDifferentPaths(t *testing.T) {
 	require.Equal(t, "invalid track path (test2stream/trackID=0)", err.Error())
 }
 
-func TestServerPublishSetupErrorTrackTwice(t *testing.T) {
+func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	serverErr := make(chan error)
 
 	s := &Server{
@@ -366,7 +366,7 @@ func TestServerPublishSetupErrorTrackTwice(t *testing.T) {
 	require.Equal(t, "track 0 has already been setup", err.Error())
 }
 
-func TestServerPublishRecordErrorPartialTracks(t *testing.T) {
+func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 	serverErr := make(chan error)
 
 	s := &Server{
