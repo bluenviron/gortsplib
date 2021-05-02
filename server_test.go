@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"net"
 	"sync"
 	"testing"
@@ -16,19 +15,26 @@ import (
 )
 
 type testServerHandler struct {
-	onConnClose func(*ServerConn, error)
-	onDescribe  func(*ServerHandlerOnDescribeCtx) (*base.Response, []byte, error)
-	onAnnounce  func(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
-	onSetup     func(*ServerHandlerOnSetupCtx) (*base.Response, error)
-	onPlay      func(*ServerHandlerOnPlayCtx) (*base.Response, error)
-	onRecord    func(*ServerHandlerOnRecordCtx) (*base.Response, error)
-	onPause     func(*ServerHandlerOnPauseCtx) (*base.Response, error)
-	onFrame     func(*ServerHandlerOnFrameCtx)
+	onConnClose    func(*ServerConn, error)
+	onSessionClose func(*ServerSession)
+	onDescribe     func(*ServerHandlerOnDescribeCtx) (*base.Response, []byte, error)
+	onAnnounce     func(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
+	onSetup        func(*ServerHandlerOnSetupCtx) (*base.Response, error)
+	onPlay         func(*ServerHandlerOnPlayCtx) (*base.Response, error)
+	onRecord       func(*ServerHandlerOnRecordCtx) (*base.Response, error)
+	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
+	onFrame        func(*ServerHandlerOnFrameCtx)
 }
 
 func (sh *testServerHandler) OnConnClose(sc *ServerConn, err error) {
 	if sh.onConnClose != nil {
 		sh.onConnClose(sc, err)
+	}
+}
+
+func (sh *testServerHandler) OnSessionClose(ss *ServerSession) {
+	if sh.onSessionClose != nil {
+		sh.onSessionClose(ss)
 	}
 }
 
@@ -167,23 +173,22 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 		t.Run(encryptedStr+"_"+ca.publisherSoft+"_"+ca.publisherProto+"_"+
 			ca.readerSoft+"_"+ca.readerProto, func(t *testing.T) {
-
 			var mutex sync.Mutex
-			var publisher *ServerConn
+			var publisher *ServerSession
 			var sdp []byte
-			readers := make(map[*ServerConn]struct{})
+			readers := make(map[*ServerSession]struct{})
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(sc *ServerConn, err error) {
+					onSessionClose: func(ss *ServerSession) {
 						mutex.Lock()
 						defer mutex.Unlock()
 
-						if sc == publisher {
+						if ss == publisher {
 							publisher = nil
 							sdp = nil
 						} else {
-							delete(readers, sc)
+							delete(readers, ss)
 						}
 					},
 					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, []byte, error) {
@@ -222,7 +227,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 							}, fmt.Errorf("someone is already publishing")
 						}
 
-						publisher = ctx.Conn
+						publisher = ctx.Session
 						sdp = ctx.Tracks.Write()
 
 						return &base.Response{
@@ -256,7 +261,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						mutex.Lock()
 						defer mutex.Unlock()
 
-						readers[ctx.Conn] = struct{}{}
+						readers[ctx.Session] = struct{}{}
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -275,7 +280,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						mutex.Lock()
 						defer mutex.Unlock()
 
-						if ctx.Conn != publisher {
+						if ctx.Session != publisher {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, fmt.Errorf("someone is already publishing")
@@ -292,7 +297,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						mutex.Lock()
 						defer mutex.Unlock()
 
-						if ctx.Conn == publisher {
+						if ctx.Session == publisher {
 							for r := range readers {
 								r.WriteFrame(ctx.TrackID, ctx.StreamType, ctx.Payload)
 							}
@@ -447,34 +452,4 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	err = res.Read(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
-}
-
-func TestServerTeardownResponse(t *testing.T) {
-	s := &Server{}
-	err := s.Start("127.0.0.1:8554")
-	require.NoError(t, err)
-	defer s.Close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	err = base.Request{
-		Method: base.Teardown,
-		URL:    base.MustParseURL("rtsp://localhost:8554/"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	var res base.Response
-	err = res.Read(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	buf := make([]byte, 2048)
-	_, err = bconn.Read(buf)
-	require.Equal(t, io.EOF, err)
 }

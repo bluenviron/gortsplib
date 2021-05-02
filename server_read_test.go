@@ -176,6 +176,7 @@ func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Write(),
+			"Session":   res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -249,6 +250,7 @@ func TestServerReadSetupErrorTrackTwice(t *testing.T) {
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Write(),
+			"Session":   res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -277,8 +279,8 @@ func TestServerRead(t *testing.T) {
 						}, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
-						ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
-						ctx.Conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+						ctx.Session.WriteFrame(0, StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
+						ctx.Session.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -358,7 +360,8 @@ func TestServerRead(t *testing.T) {
 				Method: base.Play,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq": base.HeaderValue{"2"},
+					"CSeq":    base.HeaderValue{"2"},
+					"Session": res.Header["Session"],
 				},
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
@@ -435,7 +438,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 				go func() {
 					defer close(writerDone)
 
-					ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+					ctx.Session.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
 
 					t := time.NewTicker(50 * time.Millisecond)
 					defer t.Stop()
@@ -443,7 +446,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 					for {
 						select {
 						case <-t.C:
-							ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+							ctx.Session.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
 						case <-writerTerminate:
 							return
 						}
@@ -498,7 +501,8 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -514,44 +518,21 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 }
 
 func TestServerReadPlayPlay(t *testing.T) {
-	writerTerminate := make(chan struct{})
-	writerDone := make(chan struct{})
-
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
-				close(writerTerminate)
-				<-writerDone
-			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
-				if ctx.Conn.State() != ServerConnStatePlay {
-					go func() {
-						defer close(writerDone)
-
-						t := time.NewTicker(50 * time.Millisecond)
-						defer t.Stop()
-
-						for {
-							select {
-							case <-t.C:
-								ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
-							case <-writerTerminate:
-								return
-							}
-						}
-					}()
-				}
-
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
 		},
+		UDPRTPAddress:  "127.0.0.1:8000",
+		UDPRTCPAddress: "127.0.0.1:8001",
 	}
 
 	err := s.Start("127.0.0.1:8554")
@@ -569,7 +550,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: StreamProtocolTCP,
+				Protocol: StreamProtocolUDP,
 				Delivery: func() *base.StreamDelivery {
 					v := base.StreamDeliveryUnicast
 					return &v
@@ -578,7 +559,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 					v := headers.TransportModePlay
 					return &v
 				}(),
-				InterleavedIDs: &[2]int{0, 1},
+				ClientPorts: &[2]int{30450, 30451},
 			}.Write(),
 		},
 	}.Write(bconn.Writer)
@@ -593,7 +574,8 @@ func TestServerReadPlayPlay(t *testing.T) {
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -606,13 +588,13 @@ func TestServerReadPlayPlay(t *testing.T) {
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"3"},
+			"CSeq":    base.HeaderValue{"3"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	buf := make([]byte, 2048)
-	err = res.ReadIgnoreFrames(bconn.Reader, buf)
+	err = res.Read(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
@@ -645,7 +627,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 						for {
 							select {
 							case <-t.C:
-								ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+								ctx.Session.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
 							case <-writerTerminate:
 								return
 							}
@@ -704,7 +686,8 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -717,21 +700,8 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 		Method: base.Pause,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
-		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	buf := make([]byte, 2048)
-	err = res.ReadIgnoreFrames(bconn.Reader, buf)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	err = base.Request{
-		Method: base.Play,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -740,10 +710,19 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	var fr base.InterleavedFrame
-	fr.Payload = make([]byte, 2048)
-	err = fr.Read(bconn.Reader)
+	err = base.Request{
+		Method: base.Play,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
+		},
+	}.Write(bconn.Writer)
 	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
 }
 
 func TestServerReadPlayPausePause(t *testing.T) {
@@ -771,7 +750,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 					for {
 						select {
 						case <-t.C:
-							ctx.Conn.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+							ctx.Session.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
 						case <-writerTerminate:
 							return
 						}
@@ -829,7 +808,8 @@ func TestServerReadPlayPausePause(t *testing.T) {
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -842,7 +822,8 @@ func TestServerReadPlayPausePause(t *testing.T) {
 		Method: base.Pause,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -856,7 +837,8 @@ func TestServerReadPlayPausePause(t *testing.T) {
 		Method: base.Pause,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
