@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"net"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -159,6 +158,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": th.Write(),
+					"Session":   res.Header["Session"],
 				},
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
@@ -248,6 +248,7 @@ func TestServerPublishSetupErrorDifferentPaths(t *testing.T) {
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Write(),
+			"Session":   res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -336,6 +337,7 @@ func TestServerPublishSetupErrorTrackTwice(t *testing.T) {
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Write(),
+			"Session":   res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -350,6 +352,7 @@ func TestServerPublishSetupErrorTrackTwice(t *testing.T) {
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"3"},
 			"Transport": th.Write(),
+			"Session":   res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -446,6 +449,7 @@ func TestServerPublishRecordErrorPartialTracks(t *testing.T) {
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Write(),
+			"Session":   res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -458,7 +462,8 @@ func TestServerPublishRecordErrorPartialTracks(t *testing.T) {
 		Method: base.Record,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"3"},
+			"CSeq":    base.HeaderValue{"3"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -506,7 +511,7 @@ func TestServerPublish(t *testing.T) {
 							require.Equal(t, StreamTypeRTCP, ctx.StreamType)
 							require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, ctx.Payload)
 
-							ctx.Conn.WriteFrame(0, StreamTypeRTCP, []byte{0x09, 0x0A, 0x0B, 0x0C})
+							ctx.Session.WriteFrame(0, StreamTypeRTCP, []byte{0x09, 0x0A, 0x0B, 0x0C})
 						}
 					},
 				},
@@ -578,6 +583,7 @@ func TestServerPublish(t *testing.T) {
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Write(),
+					"Session":   res.Header["Session"],
 				},
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
@@ -606,7 +612,8 @@ func TestServerPublish(t *testing.T) {
 				Method: base.Record,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq": base.HeaderValue{"3"},
+					"CSeq":    base.HeaderValue{"3"},
+					"Session": res.Header["Session"],
 				},
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
@@ -752,6 +759,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": inTH.Write(),
+			"Session":   res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -768,7 +776,8 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 		Method: base.Record,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"3"},
+			"CSeq":    base.HeaderValue{"3"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -862,6 +871,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": inTH.Write(),
+			"Session":   res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -878,7 +888,8 @@ func TestServerPublishRTCPReport(t *testing.T) {
 		Method: base.Record,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"3"},
+			"CSeq":    base.HeaderValue{"3"},
+			"Session": res.Header["Session"],
 		},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
@@ -945,12 +956,12 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(sc *ServerConn, err error) {
-						if proto == "udp" {
+					onSessionClose: func(ss *ServerSession) {
+						/*if proto == "udp" {
 							require.Equal(t, "no UDP packets received (maybe there's a firewall/NAT in between)", err.Error())
 						} else {
 							require.True(t, strings.HasSuffix(err.Error(), "i/o timeout"))
-						}
+						}*/
 						close(errDone)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -1038,6 +1049,7 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Write(),
+					"Session":   res.Header["Session"],
 				},
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
@@ -1054,7 +1066,8 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 				Method: base.Record,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq": base.HeaderValue{"3"},
+					"CSeq":    base.HeaderValue{"3"},
+					"Session": res.Header["Session"],
 				},
 			}.Write(bconn.Writer)
 			require.NoError(t, err)

@@ -1,7 +1,9 @@
 package gortsplib
 
 import (
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"strconv"
@@ -21,6 +23,27 @@ func extractPort(address string) (int, error) {
 	}
 
 	return int(tmp2), nil
+}
+
+func newSessionID(sessions map[string]*ServerSession) (string, error) {
+	for {
+		b := make([]byte, 4)
+		_, err := rand.Read(b)
+		if err != nil {
+			return "", err
+		}
+
+		id := strconv.FormatUint(uint64(binary.LittleEndian.Uint32(b)), 10)
+
+		if _, ok := sessions[id]; !ok {
+			return id, nil
+		}
+	}
+}
+
+type sessionGetReq struct {
+	id  string
+	res chan *ServerSession
 }
 
 // Server is a RTSP server.
@@ -69,12 +92,15 @@ type Server struct {
 	tcpListener     net.Listener
 	udpRTPListener  *serverUDPListener
 	udpRTCPListener *serverUDPListener
+	sessions        map[string]*ServerSession
 	conns           map[*ServerConn]struct{}
 	exitError       error
 
 	// in
-	connClose chan *ServerConn
-	terminate chan struct{}
+	connClose    chan *ServerConn
+	sessionGet   chan sessionGetReq
+	sessionClose chan *ServerSession
+	terminate    chan struct{}
 
 	// out
 	done chan struct{}
@@ -160,8 +186,11 @@ func (s *Server) Start(address string) error {
 }
 
 func (s *Server) run() {
+	s.sessions = make(map[string]*ServerSession)
 	s.conns = make(map[*ServerConn]struct{})
 	s.connClose = make(chan *ServerConn)
+	s.sessionGet = make(chan sessionGetReq)
+	s.sessionClose = make(chan *ServerSession)
 
 	var wg sync.WaitGroup
 
@@ -199,6 +228,28 @@ outer:
 			}
 			s.doConnClose(sc)
 
+		case req := <-s.sessionGet:
+			if ss, ok := s.sessions[req.id]; ok {
+				req.res <- ss
+
+			} else {
+				id, err := newSessionID(s.sessions)
+				if err != nil {
+					req.res <- nil
+					continue
+				}
+
+				ss := newServerSession(s, id, &wg)
+				s.sessions[id] = ss
+				req.res <- ss
+			}
+
+		case ss := <-s.sessionClose:
+			if _, ok := s.sessions[ss.id]; !ok {
+				continue
+			}
+			s.doSessionClose(ss)
+
 		case <-s.terminate:
 			break outer
 		}
@@ -222,6 +273,17 @@ outer:
 				if !ok {
 					return
 				}
+
+			case req, ok := <-s.sessionGet:
+				if !ok {
+					return
+				}
+				req.res <- nil
+
+			case _, ok := <-s.sessionClose:
+				if !ok {
+					return
+				}
 			}
 		}
 	}()
@@ -240,11 +302,17 @@ outer:
 		s.doConnClose(sc)
 	}
 
+	for _, ss := range s.sessions {
+		s.doSessionClose(ss)
+	}
+
 	wg.Wait()
 
 	close(acceptErr)
 	close(connNew)
 	close(s.connClose)
+	close(s.sessionGet)
+	close(s.sessionClose)
 	close(s.done)
 }
 
@@ -274,4 +342,9 @@ func (s *Server) StartAndWait(address string) error {
 func (s *Server) doConnClose(sc *ServerConn) {
 	delete(s.conns, sc)
 	close(sc.terminate)
+}
+
+func (s *Server) doSessionClose(ss *ServerSession) {
+	delete(s.sessions, ss.id)
+	close(ss.terminate)
 }

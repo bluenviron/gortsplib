@@ -19,6 +19,16 @@ type ServerHandlerOnConnClose interface {
 	OnConnClose(*ServerConn, error)
 }
 
+// ServerHandlerOnSessionOpen can be implemented by a ServerHandler.
+type ServerHandlerOnSessionOpen interface {
+	OnSessionOpen(*ServerSession)
+}
+
+// ServerHandlerOnSessionClose can be implemented by a ServerHandler.
+type ServerHandlerOnSessionClose interface {
+	OnSessionClose(*ServerSession)
+}
+
 // ServerHandlerOnRequest can be implemented by a ServerHandler.
 type ServerHandlerOnRequest interface {
 	OnRequest(*base.Request)
@@ -57,12 +67,12 @@ type ServerHandlerOnDescribe interface {
 
 // ServerHandlerOnAnnounceCtx is the context of an ANNOUNCE request.
 type ServerHandlerOnAnnounceCtx struct {
-	Conn *ServerConn
-	// Session *ServerSession
-	Req    *base.Request
-	Path   string
-	Query  string
-	Tracks Tracks
+	Session *ServerSession
+	Conn    *ServerConn
+	Req     *base.Request
+	Path    string
+	Query   string
+	Tracks  Tracks
 }
 
 // ServerHandlerOnAnnounce can be implemented by a ServerHandler.
@@ -72,8 +82,8 @@ type ServerHandlerOnAnnounce interface {
 
 // ServerHandlerOnSetupCtx is the context of a OPTIONS request.
 type ServerHandlerOnSetupCtx struct {
-	Conn      *ServerConn
 	Session   *ServerSession
+	Conn      *ServerConn
 	Req       *base.Request
 	Path      string
 	Query     string
@@ -88,11 +98,11 @@ type ServerHandlerOnSetup interface {
 
 // ServerHandlerOnPlayCtx is the context of a PLAY request.
 type ServerHandlerOnPlayCtx struct {
-	Conn *ServerConn
-	// Session *ServerSession
-	Req   *base.Request
-	Path  string
-	Query string
+	Session *ServerSession
+	Conn    *ServerConn
+	Req     *base.Request
+	Path    string
+	Query   string
 }
 
 // ServerHandlerOnPlay can be implemented by a ServerHandler.
@@ -102,11 +112,11 @@ type ServerHandlerOnPlay interface {
 
 // ServerHandlerOnRecordCtx is the context of a RECORD request.
 type ServerHandlerOnRecordCtx struct {
-	Conn *ServerConn
-	// Session *ServerSession
-	Req   *base.Request
-	Path  string
-	Query string
+	Session *ServerSession
+	Conn    *ServerConn
+	Req     *base.Request
+	Path    string
+	Query   string
 }
 
 // ServerHandlerOnRecord can be implemented by a ServerHandler.
@@ -116,11 +126,11 @@ type ServerHandlerOnRecord interface {
 
 // ServerHandlerOnPauseCtx is the context of a PAUSE request.
 type ServerHandlerOnPauseCtx struct {
-	Conn *ServerConn
-	// Session *ServerSession
-	Req   *base.Request
-	Path  string
-	Query string
+	Session *ServerSession
+	Conn    *ServerConn
+	Req     *base.Request
+	Path    string
+	Query   string
 }
 
 // ServerHandlerOnPause can be implemented by a ServerHandler.
@@ -156,11 +166,11 @@ type ServerHandlerOnSetParameter interface {
 
 // ServerHandlerOnTeardownCtx is the context of a TEARDOWN request.
 type ServerHandlerOnTeardownCtx struct {
-	Conn *ServerConn
-	// Session *ServerSession
-	Req   *base.Request
-	Path  string
-	Query string
+	Session *ServerSession
+	Conn    *ServerConn
+	Req     *base.Request
+	Path    string
+	Query   string
 }
 
 // ServerHandlerOnTeardown can be implemented by a ServerHandler.
@@ -170,8 +180,7 @@ type ServerHandlerOnTeardown interface {
 
 // ServerHandlerOnFrameCtx is the context of a frame request.
 type ServerHandlerOnFrameCtx struct {
-	Conn *ServerConn
-	// Session *ServerSession
+	Session    *ServerSession
 	TrackID    int
 	StreamType StreamType
 	Payload    []byte

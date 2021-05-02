@@ -20,7 +20,7 @@ type bufAddrPair struct {
 }
 
 type clientData struct {
-	sc           *ServerConn
+	ss           *ServerSession
 	trackID      int
 	isPublishing bool
 }
@@ -123,13 +123,13 @@ func (u *serverUDPListener) run() {
 
 				if clientData.isPublishing {
 					now := time.Now()
-					atomic.StoreInt64(clientData.sc.announcedTracks[clientData.trackID].udpLastFrameTime, now.Unix())
-					clientData.sc.announcedTracks[clientData.trackID].rtcpReceiver.ProcessFrame(now, u.streamType, buf[:n])
+					atomic.StoreInt64(clientData.ss.announcedTracks[clientData.trackID].udpLastFrameTime, now.Unix())
+					clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessFrame(now, u.streamType, buf[:n])
 				}
 
 				if h, ok := u.s.Handler.(ServerHandlerOnFrame); ok {
 					h.OnFrame(&ServerHandlerOnFrameCtx{
-						Conn:       clientData.sc,
+						Session:    clientData.ss,
 						TrackID:    clientData.trackID,
 						StreamType: u.streamType,
 						Payload:    buf[:n],
@@ -166,7 +166,7 @@ func (u *serverUDPListener) write(buf []byte, addr *net.UDPAddr) {
 	u.ringBuffer.Push(bufAddrPair{buf, addr})
 }
 
-func (u *serverUDPListener) addClient(ip net.IP, port int, sc *ServerConn, trackID int, isPublishing bool) {
+func (u *serverUDPListener) addClient(ip net.IP, port int, ss *ServerSession, trackID int, isPublishing bool) {
 	u.clientsMutex.Lock()
 	defer u.clientsMutex.Unlock()
 
@@ -174,18 +174,19 @@ func (u *serverUDPListener) addClient(ip net.IP, port int, sc *ServerConn, track
 	addr.fill(ip, port)
 
 	u.clients[addr] = &clientData{
-		sc:           sc,
+		ss:           ss,
 		trackID:      trackID,
 		isPublishing: isPublishing,
 	}
 }
 
-func (u *serverUDPListener) removeClient(ip net.IP, port int) {
+func (u *serverUDPListener) removeClient(ss *ServerSession) {
 	u.clientsMutex.Lock()
 	defer u.clientsMutex.Unlock()
 
-	var addr clientAddr
-	addr.fill(ip, port)
-
-	delete(u.clients, addr)
+	for addr, data := range u.clients {
+		if data.ss == ss {
+			delete(u.clients, addr)
+		}
+	}
 }
