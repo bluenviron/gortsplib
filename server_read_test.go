@@ -116,12 +116,13 @@ func TestServerReadSetupPath(t *testing.T) {
 }
 
 func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
-	serverErr := make(chan error)
+	connClosed := make(chan struct{})
 
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(sc *ServerConn, err error) {
-				serverErr <- err
+				require.Equal(t, "can't setup tracks with different paths", err.Error())
+				close(connClosed)
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
 				return &base.Response{
@@ -185,17 +186,17 @@ func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
-	err = <-serverErr
-	require.Equal(t, "can't setup tracks with different paths", err.Error())
+	<-connClosed
 }
 
 func TestServerReadSetupErrorTrackTwice(t *testing.T) {
-	serverErr := make(chan error)
+	connClosed := make(chan struct{})
 
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(sc *ServerConn, err error) {
-				serverErr <- err
+				require.Equal(t, "track 0 has already been setup", err.Error())
+				close(connClosed)
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
 				return &base.Response{
@@ -259,8 +260,7 @@ func TestServerReadSetupErrorTrackTwice(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
-	err = <-serverErr
-	require.Equal(t, "track 0 has already been setup", err.Error())
+	<-connClosed
 }
 
 func TestServerRead(t *testing.T) {
@@ -269,10 +269,26 @@ func TestServerRead(t *testing.T) {
 		"tcp",
 	} {
 		t.Run(proto, func(t *testing.T) {
+			connOpened := make(chan struct{})
+			connClosed := make(chan struct{})
+			sessionOpened := make(chan struct{})
+			sessionClosed := make(chan struct{})
 			framesReceived := make(chan struct{})
 
 			s := &Server{
 				Handler: &testServerHandler{
+					onConnOpen: func(sc *ServerConn) {
+						close(connOpened)
+					},
+					onConnClose: func(sc *ServerConn, err error) {
+						close(connClosed)
+					},
+					onSessionOpen: func(ss *ServerSession) {
+						close(sessionOpened)
+					},
+					onSessionClose: func(ss *ServerSession) {
+						close(sessionClosed)
+					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -303,8 +319,9 @@ func TestServerRead(t *testing.T) {
 
 			conn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer conn.Close()
 			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+			<-connOpened
 
 			inTH := &headers.Transport{
 				Delivery: func() *base.StreamDelivery {
@@ -343,6 +360,8 @@ func TestServerRead(t *testing.T) {
 			var th headers.Transport
 			err = th.Read(res.Header["Transport"])
 			require.NoError(t, err)
+
+			<-sessionOpened
 
 			var l1 net.PacketConn
 			var l2 net.PacketConn
@@ -415,6 +434,25 @@ func TestServerRead(t *testing.T) {
 			}
 
 			<-framesReceived
+
+			err = base.Request{
+				Method: base.Teardown,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":    base.HeaderValue{"3"},
+					"Session": res.Header["Session"],
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			<-sessionClosed
+
+			conn.Close()
+			<-connClosed
 		})
 	}
 }

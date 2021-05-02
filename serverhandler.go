@@ -164,20 +164,6 @@ type ServerHandlerOnSetParameter interface {
 	OnSetParameter(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 }
 
-// ServerHandlerOnTeardownCtx is the context of a TEARDOWN request.
-type ServerHandlerOnTeardownCtx struct {
-	Session *ServerSession
-	Conn    *ServerConn
-	Req     *base.Request
-	Path    string
-	Query   string
-}
-
-// ServerHandlerOnTeardown can be implemented by a ServerHandler.
-type ServerHandlerOnTeardown interface {
-	OnTeardown(*ServerHandlerOnTeardownCtx) (*base.Response, error)
-}
-
 // ServerHandlerOnFrameCtx is the context of a frame request.
 type ServerHandlerOnFrameCtx struct {
 	Session    *ServerSession

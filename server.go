@@ -42,8 +42,9 @@ func newSessionID(sessions map[string]*ServerSession) (string, error) {
 }
 
 type sessionGetReq struct {
-	id  string
-	res chan *ServerSession
+	id     string
+	create bool
+	res    chan *ServerSession
 }
 
 // Server is a RTSP server.
@@ -233,6 +234,11 @@ outer:
 				req.res <- ss
 
 			} else {
+				if !req.create {
+					req.res <- nil
+					continue
+				}
+
 				id, err := newSessionID(s.sessions)
 				if err != nil {
 					req.res <- nil

@@ -482,10 +482,26 @@ func TestServerPublish(t *testing.T) {
 		"tcp",
 	} {
 		t.Run(proto, func(t *testing.T) {
+			connOpened := make(chan struct{})
+			connClosed := make(chan struct{})
+			sessionOpened := make(chan struct{})
+			sessionClosed := make(chan struct{})
 			rtpReceived := uint64(0)
 
 			s := &Server{
 				Handler: &testServerHandler{
+					onConnOpen: func(sc *ServerConn) {
+						close(connOpened)
+					},
+					onConnClose: func(sc *ServerConn, err error) {
+						close(connClosed)
+					},
+					onSessionOpen: func(ss *ServerSession) {
+						close(sessionOpened)
+					},
+					onSessionClose: func(ss *ServerSession) {
+						close(sessionClosed)
+					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -531,6 +547,8 @@ func TestServerPublish(t *testing.T) {
 			defer conn.Close()
 			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
+			<-connOpened
+
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
@@ -557,6 +575,8 @@ func TestServerPublish(t *testing.T) {
 			err = res.Read(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			<-sessionOpened
 
 			inTH := &headers.Transport{
 				Delivery: func() *base.StreamDelivery {
@@ -674,6 +694,25 @@ func TestServerPublish(t *testing.T) {
 				require.Equal(t, StreamTypeRTCP, f.StreamType)
 				require.Equal(t, []byte{0x09, 0x0A, 0x0B, 0x0C}, f.Payload)
 			}
+
+			err = base.Request{
+				Method: base.Teardown,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":    base.HeaderValue{"3"},
+					"Session": res.Header["Session"],
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			<-sessionClosed
+
+			conn.Close()
+			<-connClosed
 		})
 	}
 }

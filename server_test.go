@@ -15,7 +15,9 @@ import (
 )
 
 type testServerHandler struct {
+	onConnOpen     func(*ServerConn)
 	onConnClose    func(*ServerConn, error)
+	onSessionOpen  func(*ServerSession)
 	onSessionClose func(*ServerSession)
 	onDescribe     func(*ServerHandlerOnDescribeCtx) (*base.Response, []byte, error)
 	onAnnounce     func(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
@@ -26,9 +28,21 @@ type testServerHandler struct {
 	onFrame        func(*ServerHandlerOnFrameCtx)
 }
 
+func (sh *testServerHandler) OnConnOpen(sc *ServerConn) {
+	if sh.onConnOpen != nil {
+		sh.onConnOpen(sc)
+	}
+}
+
 func (sh *testServerHandler) OnConnClose(sc *ServerConn, err error) {
 	if sh.onConnClose != nil {
 		sh.onConnClose(sc, err)
+	}
+}
+
+func (sh *testServerHandler) OnSessionOpen(ss *ServerSession) {
+	if sh.onSessionOpen != nil {
+		sh.onSessionOpen(ss)
 	}
 }
 

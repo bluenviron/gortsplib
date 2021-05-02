@@ -307,7 +307,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	case base.Announce:
 		if _, ok := sc.s.Handler.(ServerHandlerOnAnnounce); ok {
 			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, res: sres}
+			sc.s.sessionGet <- sessionGetReq{id: sxID, create: true, res: sres}
 			ss := <-sres
 
 			if ss == nil {
@@ -326,7 +326,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	case base.Setup:
 		if _, ok := sc.s.Handler.(ServerHandlerOnSetup); ok {
 			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, res: sres}
+			sc.s.sessionGet <- sessionGetReq{id: sxID, create: true, res: sres}
 			ss := <-sres
 
 			if ss == nil {
@@ -345,7 +345,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	case base.Play:
 		if _, ok := sc.s.Handler.(ServerHandlerOnPlay); ok {
 			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, res: sres}
+			sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
 			ss := <-sres
 
 			if ss == nil {
@@ -371,7 +371,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	case base.Record:
 		if _, ok := sc.s.Handler.(ServerHandlerOnRecord); ok {
 			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, res: sres}
+			sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
 			ss := <-sres
 
 			if ss == nil {
@@ -397,7 +397,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	case base.Pause:
 		if _, ok := sc.s.Handler.(ServerHandlerOnPause); ok {
 			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, res: sres}
+			sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
 			ss := <-sres
 
 			if ss == nil {
@@ -419,23 +419,21 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.Teardown:
-		if _, ok := sc.s.Handler.(ServerHandlerOnTeardown); ok {
-			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, res: sres}
-			ss := <-sres
+		sres := make(chan *ServerSession)
+		sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
+		ss := <-sres
 
-			if ss == nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("terminated")
-			}
-
-			rres := make(chan requestRes)
-			ss.request <- requestReq{sc: sc, req: req, res: rres}
-			res := <-rres
-
-			return res.res, res.err
+		if ss == nil {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("terminated")
 		}
+
+		rres := make(chan requestRes)
+		ss.request <- requestReq{sc: sc, req: req, res: rres}
+		res := <-rres
+
+		return res.res, res.err
 
 	case base.GetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
