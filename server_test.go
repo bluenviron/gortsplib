@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
 )
 
 type testServerHandler struct {
@@ -464,6 +465,110 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 
 	var res base.Response
 	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusBadRequest, res.StatusCode)
+}
+
+func TestServerErrorTCPSameSession(t *testing.T) {
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(sc *ServerConn, err error) {
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("127.0.0.1:8554")
+	require.NoError(t, err)
+	defer s.Close()
+
+	conn1, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn1.Close()
+	bconn1 := bufio.NewReadWriter(bufio.NewReader(conn1), bufio.NewWriter(conn1))
+
+	err = base.Request{
+		Method: base.Setup,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+			"Transport": headers.Transport{
+				Protocol: StreamProtocolTCP,
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+				InterleavedIDs: &[2]int{0, 1},
+			}.Write(),
+		},
+	}.Write(bconn1.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn1.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.Play,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
+		},
+	}.Write(bconn1.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn1.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	conn2, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn2.Close()
+	bconn2 := bufio.NewReadWriter(bufio.NewReader(conn2), bufio.NewWriter(conn2))
+
+	err = base.Request{
+		Method: base.Setup,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+			"Transport": headers.Transport{
+				Protocol: StreamProtocolTCP,
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+				InterleavedIDs: &[2]int{0, 1},
+			}.Write(),
+			"Session": res.Header["Session"],
+		},
+	}.Write(bconn2.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn2.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 }
