@@ -116,7 +116,7 @@ func TestServerReadSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
+func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 	connClosed := make(chan struct{})
 
 	s := &Server{
@@ -190,7 +190,7 @@ func TestServerReadSetupErrorDifferentPaths(t *testing.T) {
 	<-connClosed
 }
 
-func TestServerReadSetupErrorTrackTwice(t *testing.T) {
+func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 	connClosed := make(chan struct{})
 
 	s := &Server{
