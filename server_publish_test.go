@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"crypto/tls"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -989,6 +990,7 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
+		"tls",
 	} {
 		t.Run(proto, func(t *testing.T) {
 			errDone := make(chan struct{})
@@ -1022,18 +1024,31 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 				ReadTimeout: 1 * time.Second,
 			}
 
-			if proto == "udp" {
+			switch proto {
+			case "udp":
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
+
+			case "tls":
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
 			err := s.Start("127.0.0.1:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
-			conn, err := net.Dial("tcp", "localhost:8554")
+			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer conn.Close()
+			defer nconn.Close()
+
+			conn := func() net.Conn {
+				if proto == "tls" {
+					return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
+				}
+				return nconn
+			}()
 			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
