@@ -218,6 +218,12 @@ outer:
 		select {
 		case req := <-ss.request:
 			res, err := ss.handleRequest(req.sc, req.req)
+
+			if _, ok := err.(liberrors.ErrServerTeardown); ok {
+				req.res <- requestRes{res, nil}
+				break outer
+			}
+
 			req.res <- requestRes{res, err}
 
 		case <-checkStreamTicker.C:
@@ -289,6 +295,10 @@ outer:
 }
 
 func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base.Response, error) {
+	if ss.linkedConn != nil && sc != ss.linkedConn {
+		return nil, liberrors.ErrServerSessionLinkedToOtherConn{}
+	}
+
 	switch req.Method {
 	case base.Announce:
 		err := ss.checkState(map[ServerSessionState]struct{}{
@@ -772,22 +782,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		return res, err
 
 	case base.Teardown:
-		pathAndQuery, ok := req.URL.RTSPPath()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerNoPath{}
-		}
+		ss.linkedConn = nil
 
-		path, query := base.PathSplitQuery(pathAndQuery)
-
-		return ss.s.Handler.(ServerHandlerOnTeardown).OnTeardown(&ServerHandlerOnTeardownCtx{
-			Session: ss,
-			Conn:    sc,
-			Req:     req,
-			Path:    path,
-			Query:   query,
-		})
+		return &base.Response{
+			StatusCode: base.StatusOK,
+		}, liberrors.ErrServerTeardown{}
 	}
 
 	return nil, fmt.Errorf("unimplemented")

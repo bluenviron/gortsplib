@@ -12,7 +12,7 @@ type ErrServerTCPFramesEnable struct{}
 
 // Error implements the error interface.
 func (e ErrServerTCPFramesEnable) Error() string {
-	return ""
+	return "tcp frame enable"
 }
 
 // ErrServerTCPFramesDisable is an error that can be returned by a server.
@@ -20,7 +20,7 @@ type ErrServerTCPFramesDisable struct{}
 
 // Error implements the error interface.
 func (e ErrServerTCPFramesDisable) Error() string {
-	return ""
+	return "tcp frame disable"
 }
 
 // ErrServerCSeqMissing is an error that can be returned by a server.
@@ -182,4 +182,20 @@ type ErrServerLinkedToOtherSession struct{}
 // Error implements the error interface.
 func (e ErrServerLinkedToOtherSession) Error() string {
 	return "connection is linked to another session"
+}
+
+// ErrServerTeardown is an error that can be returned by a server.
+type ErrServerTeardown struct{}
+
+// Error implements the error interface.
+func (e ErrServerTeardown) Error() string {
+	return "teardown"
+}
+
+// ErrServerSessionLinkedToOtherConn is an error that can be returned by a server.
+type ErrServerSessionLinkedToOtherConn struct{}
+
+// Error implements the error interface.
+func (e ErrServerSessionLinkedToOtherConn) Error() string {
+	return "session is linked to another connection"
 }
