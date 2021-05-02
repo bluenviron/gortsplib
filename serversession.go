@@ -296,7 +296,9 @@ outer:
 
 func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base.Response, error) {
 	if ss.linkedConn != nil && sc != ss.linkedConn {
-		return nil, liberrors.ErrServerSessionLinkedToOtherConn{}
+		return &base.Response{
+			StatusCode: base.StatusBadRequest,
+		}, liberrors.ErrServerSessionLinkedToOtherConn{}
 	}
 
 	switch req.Method {
