@@ -27,6 +27,8 @@ type testServerHandler struct {
 	onRecord       func(*ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
 	onFrame        func(*ServerHandlerOnFrameCtx)
+	onSetParameter func(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
+	onGetParameter func(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
 }
 
 func (sh *testServerHandler) OnConnOpen(sc *ServerConn) {
@@ -99,6 +101,20 @@ func (sh *testServerHandler) OnFrame(ctx *ServerHandlerOnFrameCtx) {
 	if sh.onFrame != nil {
 		sh.onFrame(ctx)
 	}
+}
+
+func (sh *testServerHandler) OnSetParameter(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
+	if sh.onSetParameter != nil {
+		return sh.onSetParameter(ctx)
+	}
+	return nil, fmt.Errorf("unimplemented")
+}
+
+func (sh *testServerHandler) OnGetParameter(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
+	if sh.onGetParameter != nil {
+		return sh.onGetParameter(ctx)
+	}
+	return nil, fmt.Errorf("unimplemented")
 }
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -472,8 +488,6 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 func TestServerErrorTCPSameSession(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
-			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -571,4 +585,77 @@ func TestServerErrorTCPSameSession(t *testing.T) {
 	err = res.Read(bconn2.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
+}
+
+func TestServerGetSetParameter(t *testing.T) {
+	var params []byte
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onSetParameter: func(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
+				params = ctx.Req.Body
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+					Body:       params,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("127.0.0.1:8554")
+	require.NoError(t, err)
+	defer s.Close()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	err = base.Request{
+		Method: base.Options,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	var res base.Response
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.SetParameter,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"12"},
+		},
+		Body: []byte("param1: 123456\r\n"),
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.Request{
+		Method: base.GetParameter,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"3"},
+		},
+		Body: []byte("param1\r\n"),
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	err = res.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+	require.Equal(t, []byte("param1: 123456\r\n"), res.Body)
 }
