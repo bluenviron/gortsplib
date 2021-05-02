@@ -659,3 +659,57 @@ func TestServerGetSetParameter(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 	require.Equal(t, []byte("param1: 123456\r\n"), res.Body)
 }
+
+func TestServerErrorInvalidSession(t *testing.T) {
+	for _, method := range []base.Method{
+		base.Play,
+		base.Record,
+		base.Pause,
+		base.Teardown,
+	} {
+		t.Run(string(method), func(t *testing.T) {
+			s := &Server{
+				Handler: &testServerHandler{
+					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+				},
+			}
+
+			err := s.Start("127.0.0.1:8554")
+			require.NoError(t, err)
+			defer s.Close()
+
+			conn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer conn.Close()
+			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+			err = base.Request{
+				Method: method,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq": base.HeaderValue{"1"},
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			var res base.Response
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusBadRequest, res.StatusCode)
+		})
+	}
+}

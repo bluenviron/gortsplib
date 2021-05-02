@@ -333,7 +333,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if ss == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("terminated")
+				}, liberrors.ErrServerInvalidSession{}
 			}
 
 			rres := make(chan requestRes)
@@ -359,7 +359,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if ss == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("terminated")
+				}, liberrors.ErrServerInvalidSession{}
 			}
 
 			rres := make(chan requestRes)
@@ -385,7 +385,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if ss == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("terminated")
+				}, liberrors.ErrServerInvalidSession{}
 			}
 
 			rres := make(chan requestRes)
@@ -408,7 +408,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		if ss == nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("terminated")
+			}, liberrors.ErrServerInvalidSession{}
 		}
 
 		rres := make(chan requestRes)
