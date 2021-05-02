@@ -583,14 +583,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerNoTracksSetup{}
 		}
 
-		// with TCP, PLAY can't be called twice
-		// with UDP, it can
-		if ss.state == ServerSessionStatePlay && *ss.setupProtocol == StreamProtocolTCP {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, err
-		}
-
 		pathAndQuery, ok := req.URL.RTSPPath()
 		if !ok {
 			return &base.Response{
@@ -652,12 +644,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, err
-		}
-
-		if len(ss.setuppedTracks) == 0 {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerNoTracksSetup{}
 		}
 
 		if len(ss.setuppedTracks) != len(ss.announcedTracks) {
