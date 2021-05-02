@@ -1,7 +1,7 @@
 package ringbuffer
 
 import (
-	"math/rand"
+	"bytes"
 	"testing"
 	"time"
 
@@ -12,8 +12,7 @@ func TestPushBeforePull(t *testing.T) {
 	r := New(1024)
 	defer r.Close()
 
-	data := make([]byte, 1024)
-	rand.Read(data)
+	data := bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 1024/4)
 
 	r.Push(data)
 	ret, ok := r.Pull()
@@ -25,8 +24,7 @@ func TestPullBeforePush(t *testing.T) {
 	r := New(1024)
 	defer r.Close()
 
-	data := make([]byte, 1024)
-	rand.Read(data)
+	data := bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 1024/4)
 
 	done := make(chan struct{})
 	go func() {
