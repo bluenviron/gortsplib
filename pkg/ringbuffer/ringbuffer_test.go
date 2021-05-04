@@ -46,11 +46,15 @@ func TestClose(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
+
 		_, ok := r.Pull()
+		require.Equal(t, true, ok)
+
+		_, ok = r.Pull()
 		require.Equal(t, false, ok)
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	r.Push([]byte{0x01, 0x02, 0x03, 0x04})
 
 	r.Close()
 	<-done

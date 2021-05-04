@@ -54,13 +54,12 @@ func (r *RingBuffer) Push(data interface{}) {
 // Pull pulls some data from the beginning of the buffer.
 func (r *RingBuffer) Pull() (interface{}, bool) {
 	for {
-		if atomic.SwapInt64(&r.closed, 0) == 1 {
-			return nil, false
-		}
-
 		i := r.readIndex % r.bufferSize
 		res := (*interface{})(atomic.SwapPointer(&r.buffer[i], nil))
 		if res == nil {
+			if atomic.SwapInt64(&r.closed, 0) == 1 {
+				return nil, false
+			}
 			r.event.wait()
 			continue
 		}
