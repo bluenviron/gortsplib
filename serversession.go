@@ -210,64 +210,65 @@ func (ss *ServerSession) run() {
 	receiverReportTicker := time.NewTicker(ss.s.receiverReportPeriod)
 	defer receiverReportTicker.Stop()
 
-outer:
-	for {
-		select {
-		case req := <-ss.request:
-			res, err := ss.handleRequest(req.sc, req.req)
+	err := func() error {
+		for {
+			select {
+			case req := <-ss.request:
+				res, err := ss.handleRequest(req.sc, req.req)
 
-			ss.lastRequestTime = time.Now()
+				ss.lastRequestTime = time.Now()
 
-			if res.StatusCode == base.StatusOK {
-				if res.Header == nil {
-					res.Header = make(base.Header)
+				if res.StatusCode == base.StatusOK {
+					if res.Header == nil {
+						res.Header = make(base.Header)
+					}
+					res.Header["Session"] = base.HeaderValue{ss.id}
 				}
-				res.Header["Session"] = base.HeaderValue{ss.id}
-			}
 
-			if _, ok := err.(liberrors.ErrServerTeardown); ok {
-				req.res <- requestRes{res, nil}
-				break outer
-			}
+				if _, ok := err.(liberrors.ErrServerSessionTeardown); ok {
+					req.res <- requestRes{res, nil}
+					return liberrors.ErrServerSessionTeardown{}
+				}
 
-			req.res <- requestRes{res, err}
+				req.res <- requestRes{res, err}
 
-		case <-checkTimeoutTicker.C:
-			switch {
-			// in case of record and UDP, timeout happens when no frames are being received
-			case ss.state == ServerSessionStateRecord && *ss.setupProtocol == StreamProtocolUDP:
+			case <-checkTimeoutTicker.C:
+				switch {
+				// in case of record and UDP, timeout happens when no frames are being received
+				case ss.state == ServerSessionStateRecord && *ss.setupProtocol == StreamProtocolUDP:
+					now := time.Now()
+					lft := atomic.LoadInt64(ss.udpLastFrameTime)
+					if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
+						return liberrors.ErrServerSessionTimedOut{}
+					}
+
+				// in case there's a linked TCP connection, timeout is handled in the connection
+				case ss.linkedConn != nil:
+
+				// otherwise, timeout happens when no requests arrives
+				default:
+					now := time.Now()
+					if now.Sub(ss.lastRequestTime) >= serverSessionCloseAfterNoRequestsFor {
+						return liberrors.ErrServerSessionTimedOut{}
+					}
+				}
+
+			case <-receiverReportTicker.C:
+				if ss.state != ServerSessionStateRecord {
+					continue
+				}
+
 				now := time.Now()
-				lft := atomic.LoadInt64(ss.udpLastFrameTime)
-				if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
-					break outer
+				for trackID, track := range ss.announcedTracks {
+					r := track.rtcpReceiver.Report(now)
+					ss.WriteFrame(trackID, StreamTypeRTCP, r)
 				}
 
-			// in case there's a linked TCP connection, timeout is handled in the connection
-			case ss.linkedConn != nil:
-
-			// otherwise, timeout happens when no requests arrives
-			default:
-				now := time.Now()
-				if now.Sub(ss.lastRequestTime) >= serverSessionCloseAfterNoRequestsFor {
-					break outer
-				}
+			case <-ss.terminate:
+				return liberrors.ErrServerTerminated{}
 			}
-
-		case <-receiverReportTicker.C:
-			if ss.state != ServerSessionStateRecord {
-				continue
-			}
-
-			now := time.Now()
-			for trackID, track := range ss.announcedTracks {
-				r := track.rtcpReceiver.Report(now)
-				ss.WriteFrame(trackID, StreamTypeRTCP, r)
-			}
-
-		case <-ss.terminate:
-			break outer
 		}
-	}
+	}()
 
 	go func() {
 		for req := range ss.request {
@@ -298,7 +299,7 @@ outer:
 	close(ss.request)
 
 	if h, ok := ss.s.Handler.(ServerHandlerOnSessionClose); ok {
-		h.OnSessionClose(ss)
+		h.OnSessionClose(ss, err)
 	}
 }
 
@@ -758,7 +759,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		return &base.Response{
 			StatusCode: base.StatusOK,
-		}, liberrors.ErrServerTeardown{}
+		}, liberrors.ErrServerSessionTeardown{}
 
 	case base.GetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {

@@ -168,25 +168,28 @@ func (sc *ServerConn) run() {
 		}()
 	}()
 
-	var err error
-	select {
-	case err = <-readDone:
-		if sc.tcpFrameEnabled {
-			sc.tcpFrameWriteBuffer.Close()
-			<-sc.tcpFrameBackgroundWriteDone
-		}
-		sc.nconn.Close()
-		sc.s.connClose <- sc
-		<-sc.terminate
+	err := func() error {
+		select {
+		case err := <-readDone:
+			if sc.tcpFrameEnabled {
+				sc.tcpFrameWriteBuffer.Close()
+				<-sc.tcpFrameBackgroundWriteDone
+			}
+			sc.nconn.Close()
+			sc.s.connClose <- sc
+			<-sc.terminate
+			return err
 
-	case <-sc.terminate:
-		if sc.tcpFrameEnabled {
-			sc.tcpFrameWriteBuffer.Close()
-			<-sc.tcpFrameBackgroundWriteDone
+		case <-sc.terminate:
+			if sc.tcpFrameEnabled {
+				sc.tcpFrameWriteBuffer.Close()
+				<-sc.tcpFrameBackgroundWriteDone
+			}
+			sc.nconn.Close()
+			<-readDone
+			return liberrors.ErrServerTerminated{}
 		}
-		sc.nconn.Close()
-		err = <-readDone
-	}
+	}()
 
 	if sc.tcpFrameEnabled {
 		sc.s.sessionClose <- sc.tcpFrameLinkedSession
