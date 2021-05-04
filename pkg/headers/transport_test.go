@@ -152,7 +152,7 @@ func TestTransportReadError(t *testing.T) {
 		{
 			"missing delivery",
 			base.HeaderValue{`RTP/AVP`},
-			"unable to find key (;)",
+			"unable to read key (;)",
 		},
 		{
 			"invalid protocol",

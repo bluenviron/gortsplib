@@ -70,12 +70,17 @@ func TestKeyValParseError(t *testing.T) {
 		{
 			"apexes not closed",
 			`key1="v,1`,
-			"apexes not closed (\"v,1)",
+			"apexes not closed (key1=\"v,1)",
 		},
 		{
-			"no key",
-			`value`,
-			"unable to find key (value)",
+			"no key 1",
+			`key=val,missing`,
+			"unable to read key (key=val,missing)",
+		},
+		{
+			"no key 2",
+			`missing,key=val`,
+			"unable to read key (missing,key=val)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
