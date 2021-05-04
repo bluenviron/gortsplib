@@ -993,10 +993,14 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 		"tls",
 	} {
 		t.Run(proto, func(t *testing.T) {
+			connClosed := make(chan struct{})
 			sessionClosed := make(chan struct{})
 
 			s := &Server{
 				Handler: &testServerHandler{
+					onConnClose: func(sc *ServerConn, err error) {
+						close(connClosed)
+					},
 					onSessionClose: func(ss *ServerSession, err error) {
 						close(sessionClosed)
 					},
@@ -1126,6 +1130,10 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			<-sessionClosed
+
+			if proto == "tcp" {
+				<-connClosed
+			}
 		})
 	}
 }
