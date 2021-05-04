@@ -481,6 +481,7 @@ func TestServerPublish(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
+		"tls",
 	} {
 		t.Run(proto, func(t *testing.T) {
 			connOpened := make(chan struct{})
@@ -534,18 +535,31 @@ func TestServerPublish(t *testing.T) {
 				},
 			}
 
-			if proto == "udp" {
+			switch proto {
+			case "udp":
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
+
+			case "tls":
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
 			err := s.Start("127.0.0.1:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
-			conn, err := net.Dial("tcp", "localhost:8554")
+			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer conn.Close()
+			defer nconn.Close()
+
+			conn := func() net.Conn {
+				if proto == "tls" {
+					return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
+				}
+				return nconn
+			}()
 			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 			<-connOpened
@@ -990,7 +1004,6 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
 		"tcp",
-		"tls",
 	} {
 		t.Run(proto, func(t *testing.T) {
 			connClosed := make(chan struct{})
@@ -1023,15 +1036,9 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 				ReadTimeout: 1 * time.Second,
 			}
 
-			switch proto {
-			case "udp":
+			if proto == "udp" {
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
-
-			case "tls":
-				cert, err := tls.X509KeyPair(serverCert, serverKey)
-				require.NoError(t, err)
-				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
 			err := s.Start("127.0.0.1:8554")
@@ -1041,14 +1048,7 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-
-			conn := func() net.Conn {
-				if proto == "tls" {
-					return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
-				}
-				return nconn
-			}()
-			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+			bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
 
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
