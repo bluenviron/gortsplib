@@ -28,11 +28,18 @@ func (sh *serverHandler) OnConnOpen(sc *gortsplib.ServerConn) {
 
 // called when a connection is closed.
 func (sh *serverHandler) OnConnClose(sc *gortsplib.ServerConn, err error) {
-	log.Println("conn closed (%v)", err)
+	log.Printf("conn closed (%v)", err)
+}
+
+// called when a session is opened.
+func (sh *serverHandler) OnSessionOpen(ss *gortsplib.ServerSession) {
+	log.Printf("session opened")
 }
 
 // called when a session is closed.
 func (sh *serverHandler) OnSessionClose(ss *gortsplib.ServerSession) {
+	log.Printf("session closed")
+
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
@@ -46,6 +53,8 @@ func (sh *serverHandler) OnSessionClose(ss *gortsplib.ServerSession) {
 
 // called after receiving a DESCRIBE request.
 func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, []byte, error) {
+	log.Printf("describe request")
+
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
@@ -63,6 +72,8 @@ func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (
 
 // called after receiving an ANNOUNCE request.
 func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+	log.Printf("announce request")
+
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
@@ -82,6 +93,8 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 // called after receiving a SETUP request.
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, error) {
+	log.Printf("setup request")
+
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, nil
@@ -89,6 +102,8 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 
 // called after receiving a PLAY request.
 func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
+	log.Printf("play request")
+
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
@@ -101,6 +116,8 @@ func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Re
 
 // called after receiving a RECORD request.
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
+	log.Printf("record request")
+
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
@@ -137,5 +154,6 @@ func main() {
 	}
 
 	// start server and wait until a fatal error
+	log.Printf("server is ready")
 	panic(s.StartAndWait(":8554"))
 }
