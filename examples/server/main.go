@@ -148,7 +148,7 @@ func (sh *serverHandler) OnFrame(ctx *gortsplib.ServerHandlerOnFrameCtx) {
 func main() {
 	// configure server
 	s := &gortsplib.Server{
-		Handler:        &serverHandler{},
+		Handler:        &serverHandler{readers: make(map[*gortsplib.ServerSession]struct{})},
 		UDPRTPAddress:  ":8000",
 		UDPRTCPAddress: ":8001",
 	}

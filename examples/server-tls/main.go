@@ -157,7 +157,7 @@ func main() {
 
 	// configure server
 	s := &gortsplib.Server{
-		Handler:   &serverHandler{},
+		Handler:   &serverHandler{readers: make(map[*gortsplib.ServerSession]struct{})},
 		TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
 	}
 
