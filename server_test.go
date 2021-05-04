@@ -19,7 +19,7 @@ type testServerHandler struct {
 	onConnOpen     func(*ServerConn)
 	onConnClose    func(*ServerConn, error)
 	onSessionOpen  func(*ServerSession)
-	onSessionClose func(*ServerSession)
+	onSessionClose func(*ServerSession, error)
 	onDescribe     func(*ServerHandlerOnDescribeCtx) (*base.Response, []byte, error)
 	onAnnounce     func(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
 	onSetup        func(*ServerHandlerOnSetupCtx) (*base.Response, error)
@@ -49,9 +49,9 @@ func (sh *testServerHandler) OnSessionOpen(ss *ServerSession) {
 	}
 }
 
-func (sh *testServerHandler) OnSessionClose(ss *ServerSession) {
+func (sh *testServerHandler) OnSessionClose(ss *ServerSession, err error) {
 	if sh.onSessionClose != nil {
-		sh.onSessionClose(ss)
+		sh.onSessionClose(ss, err)
 	}
 }
 
@@ -211,7 +211,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onSessionClose: func(ss *ServerSession) {
+					onSessionClose: func(ss *ServerSession, err error) {
 						mutex.Lock()
 						defer mutex.Unlock()
 

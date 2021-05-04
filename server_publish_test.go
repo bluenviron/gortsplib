@@ -500,7 +500,7 @@ func TestServerPublish(t *testing.T) {
 					onSessionOpen: func(ss *ServerSession) {
 						close(sessionOpened)
 					},
-					onSessionClose: func(ss *ServerSession) {
+					onSessionClose: func(ss *ServerSession, err error) {
 						close(sessionClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -997,7 +997,7 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onSessionClose: func(ss *ServerSession) {
+					onSessionClose: func(ss *ServerSession, err error) {
 						close(sessionClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {

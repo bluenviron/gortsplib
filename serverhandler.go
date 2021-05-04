@@ -26,7 +26,7 @@ type ServerHandlerOnSessionOpen interface {
 
 // ServerHandlerOnSessionClose can be implemented by a ServerHandler.
 type ServerHandlerOnSessionClose interface {
-	OnSessionClose(*ServerSession)
+	OnSessionClose(*ServerSession, error)
 }
 
 // ServerHandlerOnRequest can be implemented by a ServerHandler.

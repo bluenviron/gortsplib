@@ -288,7 +288,7 @@ func TestServerRead(t *testing.T) {
 					onSessionOpen: func(ss *ServerSession) {
 						close(sessionOpened)
 					},
-					onSessionClose: func(ss *ServerSession) {
+					onSessionClose: func(ss *ServerSession, err error) {
 						close(sessionClosed)
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {

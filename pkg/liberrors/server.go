@@ -7,6 +7,22 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
+// ErrServerTerminated is an error that can be returned by a server.
+type ErrServerTerminated struct{}
+
+// Error implements the error interface.
+func (e ErrServerTerminated) Error() string {
+	return "terminated"
+}
+
+// ErrServerSessionTimedOut is an error that can be returned by a server.
+type ErrServerSessionTimedOut struct{}
+
+// Error implements the error interface.
+func (e ErrServerSessionTimedOut) Error() string {
+	return "timed out"
+}
+
 // ErrServerTCPFramesEnable is an error that can be returned by a server.
 type ErrServerTCPFramesEnable struct{}
 
@@ -192,11 +208,11 @@ func (e ErrServerLinkedToOtherSession) Error() string {
 	return "connection is linked to another session"
 }
 
-// ErrServerTeardown is an error that can be returned by a server.
-type ErrServerTeardown struct{}
+// ErrServerSessionTeardown is an error that can be returned by a server.
+type ErrServerSessionTeardown struct{}
 
 // Error implements the error interface.
-func (e ErrServerTeardown) Error() string {
+func (e ErrServerSessionTeardown) Error() string {
 	return "teardown"
 }
 

@@ -38,7 +38,7 @@ func (sh *serverHandler) OnSessionOpen(ss *gortsplib.ServerSession) {
 }
 
 // called when a session is closed.
-func (sh *serverHandler) OnSessionClose(ss *gortsplib.ServerSession) {
+func (sh *serverHandler) OnSessionClose(ss *gortsplib.ServerSession, err error) {
 	log.Printf("session closed")
 
 	sh.mutex.Lock()
