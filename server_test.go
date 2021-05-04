@@ -488,7 +488,7 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 func TestServerErrorInvalidMethod(t *testing.T) {
 	h := &testServerHandler{
 		onConnClose: func(sc *ServerConn, err error) {
-			require.Equal(t, "invalid method", err.Error())
+			require.Equal(t, "unhandled request", err.Error())
 		},
 	}
 

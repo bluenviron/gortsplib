@@ -296,7 +296,6 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			rres := make(chan requestRes)
 			ss.request <- requestReq{sc: sc, req: req, res: rres}
 			res := <-rres
-
 			return res.res, res.err
 		}
 
@@ -315,7 +314,6 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			rres := make(chan requestRes)
 			ss.request <- requestReq{sc: sc, req: req, res: rres}
 			res := <-rres
-
 			return res.res, res.err
 		}
 
@@ -409,10 +407,22 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		rres := make(chan requestRes)
 		ss.request <- requestReq{sc: sc, req: req, res: rres}
 		res := <-rres
-
 		return res.res, res.err
 
 	case base.GetParameter:
+		sres := make(chan *ServerSession)
+		sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
+		ss := <-sres
+
+		// send request to session
+		if ss != nil {
+			rres := make(chan requestRes)
+			ss.request <- requestReq{sc: sc, req: req, res: rres}
+			res := <-rres
+			return res.res, res.err
+		}
+
+		// handle request here
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
 			pathAndQuery, ok := req.URL.RTSPPath()
 			if !ok {
@@ -430,15 +440,6 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				Query: query,
 			})
 		}
-
-		// GET_PARAMETER is used like a ping
-		return &base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Content-Type": base.HeaderValue{"text/parameters"},
-			},
-			Body: []byte("\n"),
-		}, nil
 
 	case base.SetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnSetParameter); ok {
@@ -462,7 +463,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	return &base.Response{
 		StatusCode: base.StatusBadRequest,
-	}, liberrors.ErrServerInvalidMethod{}
+	}, liberrors.ErrServerUnhandledRequest{}
 }
 
 func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
@@ -473,7 +474,7 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	res, err := sc.handleRequest(req)
 
 	if res.Header == nil {
-		res.Header = base.Header{}
+		res.Header = make(base.Header)
 	}
 
 	// add cseq

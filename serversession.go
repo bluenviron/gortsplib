@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	serverSessionCheckStreamPeriod = 1 * time.Second
+	serverSessionCheckStreamPeriod       = 1 * time.Second
+	serverSessionCloseAfterNoRequestsFor = 1 * 60 * time.Second
 )
 
 func setupGetTrackIDPathQuery(url *base.URL,
@@ -108,9 +109,8 @@ type ServerSessionSetuppedTrack struct {
 
 // ServerSessionAnnouncedTrack is an announced track of a ServerSession.
 type ServerSessionAnnouncedTrack struct {
-	track            *Track
-	rtcpReceiver     *rtcpreceiver.RTCPReceiver
-	udpLastFrameTime *int64
+	track        *Track
+	rtcpReceiver *rtcpreceiver.RTCPReceiver
 }
 
 type requestRes struct {
@@ -130,21 +130,17 @@ type ServerSession struct {
 	id string
 	wg *sync.WaitGroup
 
-	state          ServerSessionState
-	setuppedTracks map[int]ServerSessionSetuppedTrack
-	setupProtocol  *StreamProtocol
-	setupPath      *string
-	setupQuery     *string
-
-	// TCP stream protocol
-	linkedConn *ServerConn
-
-	// UDP stream protocol
-	udpIP   net.IP
-	udpZone string
-
-	// publish
-	announcedTracks []ServerSessionAnnouncedTrack
+	state            ServerSessionState
+	setuppedTracks   map[int]ServerSessionSetuppedTrack
+	setupProtocol    *StreamProtocol
+	setupPath        *string
+	setupQuery       *string
+	lastRequestTime  time.Time
+	linkedConn       *ServerConn                   // tcp
+	udpIP            net.IP                        // udp
+	udpZone          string                        // udp
+	announcedTracks  []ServerSessionAnnouncedTrack // publish
+	udpLastFrameTime *int64                        // publish, udp
 
 	// in
 	request   chan requestReq
@@ -153,11 +149,12 @@ type ServerSession struct {
 
 func newServerSession(s *Server, id string, wg *sync.WaitGroup) *ServerSession {
 	ss := &ServerSession{
-		s:         s,
-		id:        id,
-		wg:        wg,
-		request:   make(chan requestReq),
-		terminate: make(chan struct{}),
+		s:               s,
+		id:              id,
+		wg:              wg,
+		lastRequestTime: time.Now(),
+		request:         make(chan requestReq),
+		terminate:       make(chan struct{}),
 	}
 
 	wg.Add(1)
@@ -207,8 +204,8 @@ func (ss *ServerSession) run() {
 		h.OnSessionOpen(ss)
 	}
 
-	checkStreamTicker := time.NewTicker(serverSessionCheckStreamPeriod)
-	defer checkStreamTicker.Stop()
+	checkTimeoutTicker := time.NewTicker(serverSessionCheckStreamPeriod)
+	defer checkTimeoutTicker.Stop()
 
 	receiverReportTicker := time.NewTicker(ss.s.receiverReportPeriod)
 	defer receiverReportTicker.Stop()
@@ -219,6 +216,15 @@ outer:
 		case req := <-ss.request:
 			res, err := ss.handleRequest(req.sc, req.req)
 
+			ss.lastRequestTime = time.Now()
+
+			if res.StatusCode == base.StatusOK {
+				if res.Header == nil {
+					res.Header = make(base.Header)
+				}
+				res.Header["Session"] = base.HeaderValue{ss.id}
+			}
+
 			if _, ok := err.(liberrors.ErrServerTeardown); ok {
 				req.res <- requestRes{res, nil}
 				break outer
@@ -226,23 +232,25 @@ outer:
 
 			req.res <- requestRes{res, err}
 
-		case <-checkStreamTicker.C:
-			if ss.state != ServerSessionStateRecord || *ss.setupProtocol != StreamProtocolUDP {
-				continue
-			}
-
-			inTimeout := func() bool {
+		case <-checkTimeoutTicker.C:
+			switch {
+			// in case of record and UDP, timeout happens when no frames are being received
+			case ss.state == ServerSessionStateRecord && *ss.setupProtocol == StreamProtocolUDP:
 				now := time.Now()
-				for _, track := range ss.announcedTracks {
-					lft := atomic.LoadInt64(track.udpLastFrameTime)
-					if now.Sub(time.Unix(lft, 0)) < ss.s.ReadTimeout {
-						return false
-					}
+				lft := atomic.LoadInt64(ss.udpLastFrameTime)
+				if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
+					break outer
 				}
-				return true
-			}()
-			if inTimeout {
-				break outer
+
+			// in case there's a linked TCP connection, timeout is handled in the connection
+			case ss.linkedConn != nil:
+
+			// otherwise, timeout happens when no requests arrives
+			default:
+				now := time.Now()
+				if now.Sub(ss.lastRequestTime) >= serverSessionCloseAfterNoRequestsFor {
+					break outer
+				}
 			}
 
 		case <-receiverReportTicker.C:
@@ -387,20 +395,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.announcedTracks = make([]ServerSessionAnnouncedTrack, len(tracks))
 			for trackID, track := range tracks {
 				clockRate, _ := track.ClockRate()
-				v := time.Now().Unix()
-
 				ss.announcedTracks[trackID] = ServerSessionAnnouncedTrack{
-					track:            track,
-					rtcpReceiver:     rtcpreceiver.New(nil, clockRate),
-					udpLastFrameTime: &v,
+					track:        track,
+					rtcpReceiver: rtcpreceiver.New(nil, clockRate),
 				}
 			}
 
-			if res.Header == nil {
-				res.Header = make(base.Header)
-			}
-
-			res.Header["Session"] = base.HeaderValue{ss.id}
+			v := time.Now().Unix()
+			ss.udpLastFrameTime = &v
 		}
 
 		return res, err
@@ -517,8 +519,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				res.Header = make(base.Header)
 			}
 
-			res.Header["Session"] = base.HeaderValue{ss.id}
-
 			if th.Protocol == StreamProtocolUDP {
 				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{
 					udpRTPPort:  th.ClientPorts[0],
@@ -595,7 +595,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		path, query := base.PathSplitQuery(pathAndQuery)
 
-		if ss.state != ServerSessionStatePlay {
+		if ss.state != ServerSessionStatePlay && *ss.setupProtocol == StreamProtocolTCP {
 			ss.linkedConn = sc
 		}
 
@@ -611,12 +611,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if ss.state != ServerSessionStatePlay {
 				ss.state = ServerSessionStatePlay
 
-				if res.Header == nil {
-					res.Header = make(base.Header)
-				}
-
-				res.Header["Session"] = base.HeaderValue{ss.id}
-
 				if *ss.setupProtocol == StreamProtocolUDP {
 					ss.udpIP = sc.ip()
 					ss.udpZone = sc.zone()
@@ -625,6 +619,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 					for trackID, track := range ss.setuppedTracks {
 						sc.s.udpRTCPListener.addClient(ss.udpIP, track.udpRTCPPort, ss, trackID, false)
 					}
+
 					return res, err
 				}
 
@@ -675,12 +670,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		if res.StatusCode == base.StatusOK {
 			ss.state = ServerSessionStateRecord
 
-			if res.Header == nil {
-				res.Header = make(base.Header)
-			}
-
-			res.Header["Session"] = base.HeaderValue{ss.id}
-
 			if *ss.setupProtocol == StreamProtocolUDP {
 				ss.udpIP = sc.ip()
 				ss.udpZone = sc.zone()
@@ -695,6 +684,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 					ss.WriteFrame(trackID, StreamTypeRTCP,
 						[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 				}
+
 				return res, err
 			}
 
@@ -738,12 +728,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode == base.StatusOK {
-			if res.Header == nil {
-				res.Header = make(base.Header)
-			}
-
-			res.Header["Session"] = base.HeaderValue{ss.id}
-
 			switch ss.state {
 			case ServerSessionStatePlay:
 				ss.state = ServerSessionStatePrePlay
@@ -775,6 +759,36 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		return &base.Response{
 			StatusCode: base.StatusOK,
 		}, liberrors.ErrServerTeardown{}
+
+	case base.GetParameter:
+		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
+			pathAndQuery, ok := req.URL.RTSPPath()
+			if !ok {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerNoPath{}
+			}
+
+			path, query := base.PathSplitQuery(pathAndQuery)
+
+			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
+				Session: ss,
+				Conn:    sc,
+				Req:     req,
+				Path:    path,
+				Query:   query,
+			})
+		}
+
+		// GET_PARAMETER is used like a ping when reading, and sometimes
+		// also when publishing; reply with 200
+		return &base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"text/parameters"},
+			},
+			Body: []byte("\n"),
+		}, nil
 	}
 
 	return nil, fmt.Errorf("unimplemented")

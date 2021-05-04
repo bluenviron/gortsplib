@@ -993,17 +993,12 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 		"tls",
 	} {
 		t.Run(proto, func(t *testing.T) {
-			errDone := make(chan struct{})
+			sessionClosed := make(chan struct{})
 
 			s := &Server{
 				Handler: &testServerHandler{
 					onSessionClose: func(ss *ServerSession) {
-						/*if proto == "udp" {
-							require.Equal(t, "no UDP packets received (maybe there's a firewall/NAT in between)", err.Error())
-						} else {
-							require.True(t, strings.HasSuffix(err.Error(), "i/o timeout"))
-						}*/
-						close(errDone)
+						close(sessionClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{
@@ -1130,7 +1125,7 @@ func TestServerPublishErrorTimeout(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			<-errDone
+			<-sessionClosed
 		})
 	}
 }

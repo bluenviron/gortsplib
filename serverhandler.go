@@ -127,10 +127,11 @@ type ServerHandlerOnPause interface {
 
 // ServerHandlerOnGetParameterCtx is the context of a GET_PARAMETER request.
 type ServerHandlerOnGetParameterCtx struct {
-	Conn  *ServerConn
-	Req   *base.Request
-	Path  string
-	Query string
+	Session *ServerSession
+	Conn    *ServerConn
+	Req     *base.Request
+	Path    string
+	Query   string
 }
 
 // ServerHandlerOnGetParameter can be implemented by a ServerHandler.
