@@ -88,7 +88,8 @@ type Server struct {
 	// It defaults to net.Listen
 	Listen func(network string, address string) (net.Listener, error)
 
-	receiverReportPeriod time.Duration
+	receiverReportPeriod           time.Duration
+	closeSessionAfterNoRequestsFor time.Duration
 
 	tcpListener     net.Listener
 	udpRTPListener  *serverUDPListener
@@ -128,6 +129,9 @@ func (s *Server) Start(address string) error {
 
 	if s.receiverReportPeriod == 0 {
 		s.receiverReportPeriod = 10 * time.Second
+	}
+	if s.closeSessionAfterNoRequestsFor == 0 {
+		s.closeSessionAfterNoRequestsFor = 1 * 60 * time.Second
 	}
 
 	if s.TLSConfig != nil && s.UDPRTPAddress != "" {

@@ -904,3 +904,101 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
+
+func TestServerReadErrorTimeout(t *testing.T) {
+	for _, proto := range []string{
+		"udp",
+		// checking TCP is useless, since there's no timeout when reading with TCP
+	} {
+		t.Run(proto, func(t *testing.T) {
+			sessionClosed := make(chan struct{})
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onSessionClose: func(ss *ServerSession, err error) {
+						close(sessionClosed)
+					},
+					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+				},
+				ReadTimeout:                    1 * time.Second,
+				closeSessionAfterNoRequestsFor: 1 * time.Second,
+			}
+
+			s.UDPRTPAddress = "127.0.0.1:8000"
+			s.UDPRTCPAddress = "127.0.0.1:8001"
+
+			err := s.Start("127.0.0.1:8554")
+			require.NoError(t, err)
+			defer s.Close()
+
+			nconn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn.Close()
+			bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
+
+			inTH := &headers.Transport{
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+			}
+
+			if proto == "udp" {
+				inTH.Protocol = StreamProtocolUDP
+				inTH.ClientPorts = &[2]int{35466, 35467}
+			} else {
+				inTH.Protocol = StreamProtocolTCP
+				inTH.InterleavedIDs = &[2]int{0, 1}
+			}
+
+			err = base.Request{
+				Method: base.Setup,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				Header: base.Header{
+					"CSeq":      base.HeaderValue{"1"},
+					"Transport": inTH.Write(),
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			var res base.Response
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			err = base.Request{
+				Method: base.Play,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":    base.HeaderValue{"2"},
+					"Session": res.Header["Session"],
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			err = res.Read(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			<-sessionClosed
+		})
+	}
+}

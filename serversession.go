@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	serverSessionCheckStreamPeriod       = 1 * time.Second
-	serverSessionCloseAfterNoRequestsFor = 1 * 60 * time.Second
+	serverSessionCheckStreamPeriod = 1 * time.Second
 )
 
 func setupGetTrackIDPathQuery(url *base.URL,
@@ -248,7 +247,7 @@ func (ss *ServerSession) run() {
 				// otherwise, timeout happens when no requests arrives
 				default:
 					now := time.Now()
-					if now.Sub(ss.lastRequestTime) >= serverSessionCloseAfterNoRequestsFor {
+					if now.Sub(ss.lastRequestTime) >= ss.s.closeSessionAfterNoRequestsFor {
 						return liberrors.ErrServerSessionTimedOut{}
 					}
 				}
