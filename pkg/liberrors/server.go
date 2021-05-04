@@ -31,6 +31,14 @@ func (e ErrServerCSeqMissing) Error() string {
 	return "CSeq is missing"
 }
 
+// ErrServerInvalidMethod is an error that can be returned by a server.
+type ErrServerInvalidMethod struct{}
+
+// Error implements the error interface.
+func (e ErrServerInvalidMethod) Error() string {
+	return "invalid method"
+}
+
 // ErrServerWrongState is an error that can be returned by a server.
 type ErrServerWrongState struct {
 	AllowedList []fmt.Stringer

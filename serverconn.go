@@ -156,9 +156,6 @@ func (sc *ServerConn) run() {
 				} else {
 					err := req.Read(sc.br)
 					if err != nil {
-						/*if atomic.LoadInt32(&sc.udpTimeout) == 1 {
-							return liberrors.ErrServerNoUDPPacketsRecently{}
-						}*/
 						return err
 					}
 
@@ -174,26 +171,24 @@ func (sc *ServerConn) run() {
 	var err error
 	select {
 	case err = <-readDone:
+		if sc.tcpFrameEnabled {
+			sc.tcpFrameWriteBuffer.Close()
+			<-sc.tcpFrameBackgroundWriteDone
+		}
 		sc.nconn.Close()
 		sc.s.connClose <- sc
 		<-sc.terminate
 
 	case <-sc.terminate:
+		if sc.tcpFrameEnabled {
+			sc.tcpFrameWriteBuffer.Close()
+			<-sc.tcpFrameBackgroundWriteDone
+		}
 		sc.nconn.Close()
 		err = <-readDone
 	}
 
 	if sc.tcpFrameEnabled {
-		if sc.tcpFrameIsRecording {
-			sc.tcpFrameTimeout = false
-			sc.nconn.SetReadDeadline(time.Time{})
-		}
-
-		sc.tcpFrameEnabled = false
-		sc.tcpFrameWriteBuffer.Close()
-		<-sc.tcpFrameBackgroundWriteDone
-		sc.tcpFrameWriteBuffer.Reset()
-
 		sc.s.sessionClose <- sc.tcpFrameLinkedSession
 	}
 
@@ -467,7 +462,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	return &base.Response{
 		StatusCode: base.StatusBadRequest,
-	}, fmt.Errorf("unhandled method: %v", req.Method)
+	}, liberrors.ErrServerInvalidMethod{}
 }
 
 func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
