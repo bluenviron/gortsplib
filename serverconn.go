@@ -175,18 +175,23 @@ func (sc *ServerConn) run() {
 				sc.tcpFrameWriteBuffer.Close()
 				<-sc.tcpFrameBackgroundWriteDone
 			}
+
 			sc.nconn.Close()
 			sc.s.connClose <- sc
+
 			<-sc.terminate
+
 			return err
 
 		case <-sc.terminate:
+			sc.nconn.Close()
+			<-readDone
+
 			if sc.tcpFrameEnabled {
 				sc.tcpFrameWriteBuffer.Close()
 				<-sc.tcpFrameBackgroundWriteDone
 			}
-			sc.nconn.Close()
-			<-readDone
+
 			return liberrors.ErrServerTerminated{}
 		}
 	}()
