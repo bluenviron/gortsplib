@@ -39,8 +39,6 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 			return err
 		}
 
-		fmt.Println("kvs", kvs)
-
 		for k, v := range kvs {
 			switch k {
 			case "url":
