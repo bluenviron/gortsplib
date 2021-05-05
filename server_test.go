@@ -456,9 +456,12 @@ func TestServerCSeq(t *testing.T) {
 }
 
 func TestServerErrorCSeqMissing(t *testing.T) {
+	connClosed := make(chan struct{})
+
 	h := &testServerHandler{
 		onConnClose: func(sc *ServerConn, err error) {
 			require.Equal(t, "CSeq is missing", err.Error())
+			close(connClosed)
 		},
 	}
 
@@ -483,6 +486,8 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	err = res.Read(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
+	<-connClosed
 }
 
 func TestServerErrorInvalidMethod(t *testing.T) {
