@@ -476,7 +476,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	if h, ok := sc.s.Handler.(ServerHandlerOnRequest); ok {
-		h.OnRequest(req)
+		h.OnRequest(sc, req)
 	}
 
 	res, err := sc.handleRequest(req)
@@ -494,7 +494,7 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	res.Header["Server"] = base.HeaderValue{"gortsplib"}
 
 	if h, ok := sc.s.Handler.(ServerHandlerOnResponse); ok {
-		h.OnResponse(res)
+		h.OnResponse(sc, res)
 	}
 
 	switch {

@@ -31,12 +31,12 @@ type ServerHandlerOnSessionClose interface {
 
 // ServerHandlerOnRequest can be implemented by a ServerHandler.
 type ServerHandlerOnRequest interface {
-	OnRequest(*base.Request)
+	OnRequest(*ServerConn, *base.Request)
 }
 
 // ServerHandlerOnResponse can be implemented by a ServerHandler.
 type ServerHandlerOnResponse interface {
-	OnResponse(*base.Response)
+	OnResponse(*ServerConn, *base.Response)
 }
 
 // ServerHandlerOnDescribeCtx is the context of a DESCRIBE request.
