@@ -94,6 +94,10 @@ func (t *Track) ExtractDataH264() ([]byte, []byte, error) {
 	for _, kv := range strings.Split(tmp[1], ";") {
 		kv = strings.Trim(kv, " ")
 
+		if len(kv) == 0 {
+			continue
+		}
+
 		tmp := strings.SplitN(kv, "=", 2)
 		if len(tmp) != 2 {
 			return nil, nil, fmt.Errorf("unable to parse fmtp (%v)", v)
@@ -197,6 +201,10 @@ func (t *Track) ExtractDataAAC() ([]byte, error) {
 
 	for _, kv := range strings.Split(tmp[1], ";") {
 		kv = strings.Trim(kv, " ")
+
+		if len(kv) == 0 {
+			continue
+		}
 
 		tmp := strings.SplitN(kv, "=", 2)
 		if len(tmp) != 2 {
