@@ -29,14 +29,25 @@ func DialPublish(address string, tracks Tracks) (*ClientConn, error) {
 
 // Client is a RTSP client.
 type Client struct {
-	// the stream protocol (UDP or TCP).
-	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
-	// It defaults to nil.
-	StreamProtocol *StreamProtocol
+	//
+	// connection
+	//
+
+	// timeout of read operations.
+	// It defaults to 10 seconds.
+	ReadTimeout time.Duration
+
+	// timeout of write operations.
+	// It defaults to 10 seconds.
+	WriteTimeout time.Duration
 
 	// a TLS configuration to connect to TLS (RTSPS) servers.
 	// It defaults to &tls.Config{InsecureSkipVerify:true}
 	TLSConfig *tls.Config
+
+	//
+	// initialization
+	//
 
 	// disable being redirected to other servers, that can happen during Describe().
 	// It defaults to false.
@@ -47,18 +58,19 @@ type Client struct {
 	// It defaults to false.
 	AnyPortEnable bool
 
-	// timeout of read operations.
-	// It defaults to 10 seconds.
-	ReadTimeout time.Duration
+	//
+	// reading / writing
+	//
+
+	// the stream protocol (UDP or TCP).
+	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
+	// It defaults to nil.
+	StreamProtocol *StreamProtocol
 
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout.
 	// It defaults to 3 seconds.
 	InitialUDPReadTimeout time.Duration
-
-	// timeout of write operations.
-	// It defaults to 10 seconds.
-	WriteTimeout time.Duration
 
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
@@ -71,11 +83,19 @@ type Client struct {
 	// It defaults to 2048.
 	ReadBufferSize int
 
+	//
+	// callbacks
+	//
+
 	// callback called before every request.
 	OnRequest func(req *base.Request)
 
 	// callback called after every response.
 	OnResponse func(res *base.Response)
+
+	//
+	// system functions
+	//
 
 	// function used to initialize the TCP client.
 	// It defaults to net.DialTimeout.
@@ -84,6 +104,10 @@ type Client struct {
 	// function used to initialize UDP listeners.
 	// It defaults to net.ListenPacket.
 	ListenPacket func(network, address string) (net.PacketConn, error)
+
+	//
+	// private
+	//
 
 	senderReportPeriod   time.Duration
 	receiverReportPeriod time.Duration

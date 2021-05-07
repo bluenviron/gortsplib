@@ -60,8 +60,24 @@ type sessionReq struct {
 
 // Server is a RTSP server.
 type Server struct {
+	//
+	// handler
+	//
+
 	// an handler to handle requests.
 	Handler ServerHandler
+
+	//
+	// connection
+	//
+
+	// timeout of read operations.
+	// It defaults to 10 seconds
+	ReadTimeout time.Duration
+
+	// timeout of write operations.
+	// It defaults to 10 seconds
+	WriteTimeout time.Duration
 
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
@@ -74,13 +90,9 @@ type Server struct {
 	// If UDPRTPAddress and UDPRTCPAddress are != "", the server can accept and send UDP streams.
 	UDPRTCPAddress string
 
-	// timeout of read operations.
-	// It defaults to 10 seconds
-	ReadTimeout time.Duration
-
-	// timeout of write operations.
-	// It defaults to 10 seconds
-	WriteTimeout time.Duration
+	//
+	// reading / writing
+	//
 
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
@@ -95,9 +107,17 @@ type Server struct {
 	// It defaults to 2048.
 	ReadBufferSize int
 
+	//
+	// system functions
+	//
+
 	// function used to initialize the TCP listener.
 	// It defaults to net.Listen
 	Listen func(network string, address string) (net.Listener, error)
+
+	//
+	// private
+	//
 
 	receiverReportPeriod           time.Duration
 	closeSessionAfterNoRequestsFor time.Duration

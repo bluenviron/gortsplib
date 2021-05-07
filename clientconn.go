@@ -104,25 +104,30 @@ type ClientConn struct {
 }
 
 func newClientConn(c *Client, scheme string, host string) (*ClientConn, error) {
-	if c.TLSConfig == nil {
-		c.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	}
+	// connection
 	if c.ReadTimeout == 0 {
 		c.ReadTimeout = 10 * time.Second
-	}
-	if c.InitialUDPReadTimeout == 0 {
-		c.InitialUDPReadTimeout = 3 * time.Second
 	}
 	if c.WriteTimeout == 0 {
 		c.WriteTimeout = 10 * time.Second
 	}
+	if c.TLSConfig == nil {
+		c.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
+	// reading / writing
+	if c.InitialUDPReadTimeout == 0 {
+		c.InitialUDPReadTimeout = 3 * time.Second
+	}
+
 	if c.ReadBufferCount == 0 {
 		c.ReadBufferCount = 1
 	}
-
 	if c.ReadBufferSize == 0 {
 		c.ReadBufferSize = 2048
 	}
+
+	// system functions
 	if c.DialTimeout == nil {
 		c.DialTimeout = net.DialTimeout
 	}
@@ -130,6 +135,7 @@ func newClientConn(c *Client, scheme string, host string) (*ClientConn, error) {
 		c.ListenPacket = net.ListenPacket
 	}
 
+	// private
 	if c.senderReportPeriod == 0 {
 		c.senderReportPeriod = 10 * time.Second
 	}
