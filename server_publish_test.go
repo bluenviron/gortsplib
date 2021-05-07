@@ -18,6 +18,233 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
+func TestServerPublishErrorAnnounce(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		req  base.Request
+		err  string
+	}{
+		{
+			"missing content-type",
+			base.Request{
+				Method: base.Announce,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq": base.HeaderValue{"1"},
+				},
+			},
+			"Content-Type header is missing",
+		},
+		{
+			"invalid content-type",
+			base.Request{
+				Method: base.Announce,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"aa"},
+				},
+			},
+			"unsupported Content-Type header '[aa]'",
+		},
+		{
+			"invalid tracks",
+			base.Request{
+				Method: base.Announce,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: []byte{0x01, 0x02, 0x03, 0x04},
+			},
+			"invalid SDP: invalid line: (\x01\x02\x03\x04)",
+		},
+		{
+			"no tracks",
+			base.Request{
+				Method: base.Announce,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: func() []byte {
+					sout := &psdp.SessionDescription{
+						SessionName: psdp.SessionName("Stream"),
+						Origin: psdp.Origin{
+							Username:       "-",
+							NetworkType:    "IN",
+							AddressType:    "IP4",
+							UnicastAddress: "127.0.0.1",
+						},
+						TimeDescriptions: []psdp.TimeDescription{
+							{Timing: psdp.Timing{0, 0}}, //nolint:govet
+						},
+						MediaDescriptions: []*psdp.MediaDescription{},
+					}
+
+					byts, _ := sout.Marshal()
+					return byts
+				}(),
+			},
+			"no tracks defined in the SDP",
+		},
+		{
+			"invalid URL 1",
+			base.Request{
+				Method: base.Announce,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: func() []byte {
+					track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+					require.NoError(t, err)
+					track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
+						Key:   "control",
+						Value: "rtsp://  aaaaa",
+					})
+
+					sout := &psdp.SessionDescription{
+						SessionName: psdp.SessionName("Stream"),
+						Origin: psdp.Origin{
+							Username:       "-",
+							NetworkType:    "IN",
+							AddressType:    "IP4",
+							UnicastAddress: "127.0.0.1",
+						},
+						TimeDescriptions: []psdp.TimeDescription{
+							{Timing: psdp.Timing{0, 0}}, //nolint:govet
+						},
+						MediaDescriptions: []*psdp.MediaDescription{
+							track.Media,
+						},
+					}
+
+					byts, _ := sout.Marshal()
+					return byts
+				}(),
+			},
+			"unable to generate track URL",
+		},
+		{
+			"invalid URL 2",
+			base.Request{
+				Method: base.Announce,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: func() []byte {
+					track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+					require.NoError(t, err)
+					track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
+						Key:   "control",
+						Value: "rtsp://host",
+					})
+
+					sout := &psdp.SessionDescription{
+						SessionName: psdp.SessionName("Stream"),
+						Origin: psdp.Origin{
+							Username:       "-",
+							NetworkType:    "IN",
+							AddressType:    "IP4",
+							UnicastAddress: "127.0.0.1",
+						},
+						TimeDescriptions: []psdp.TimeDescription{
+							{Timing: psdp.Timing{0, 0}}, //nolint:govet
+						},
+						MediaDescriptions: []*psdp.MediaDescription{
+							track.Media,
+						},
+					}
+
+					byts, _ := sout.Marshal()
+					return byts
+				}(),
+			},
+			"invalid track URL (rtsp://localhost:8554)",
+		},
+		{
+			"invalid URL 3",
+			base.Request{
+				Method: base.Announce,
+				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: func() []byte {
+					track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+					require.NoError(t, err)
+					track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
+						Key:   "control",
+						Value: "rtsp://host/otherpath",
+					})
+
+					sout := &psdp.SessionDescription{
+						SessionName: psdp.SessionName("Stream"),
+						Origin: psdp.Origin{
+							Username:       "-",
+							NetworkType:    "IN",
+							AddressType:    "IP4",
+							UnicastAddress: "127.0.0.1",
+						},
+						TimeDescriptions: []psdp.TimeDescription{
+							{Timing: psdp.Timing{0, 0}}, //nolint:govet
+						},
+						MediaDescriptions: []*psdp.MediaDescription{
+							track.Media,
+						},
+					}
+
+					byts, _ := sout.Marshal()
+					return byts
+				}(),
+			},
+			"invalid track path: must begin with 'teststream', but is 'otherpath'",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			connClosed := make(chan struct{})
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onConnClose: func(sc *ServerConn, err error) {
+						require.Equal(t, ca.err, err.Error())
+						close(connClosed)
+					},
+					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+				},
+			}
+
+			err := s.Start("127.0.0.1:8554")
+			require.NoError(t, err)
+			defer s.Close()
+
+			conn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer conn.Close()
+			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+			err = ca.req.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			_, err = readResponse(bconn.Reader)
+			require.NoError(t, err)
+
+			<-connClosed
+		})
+	}
+}
+
 func TestServerPublishSetupPath(t *testing.T) {
 	for _, ca := range []struct {
 		name    string
