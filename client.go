@@ -74,7 +74,7 @@ type Client struct {
 	// callback called before every request.
 	OnRequest func(req *base.Request)
 
-	// callback called after very response.
+	// callback called after every response.
 	OnResponse func(res *base.Response)
 
 	// function used to initialize the TCP client.

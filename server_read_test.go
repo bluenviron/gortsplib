@@ -310,6 +310,11 @@ func TestServerRead(t *testing.T) {
 						require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, ctx.Payload)
 						close(framesReceived)
 					},
+					onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
 				},
 			}
 
@@ -453,11 +458,43 @@ func TestServerRead(t *testing.T) {
 
 			<-framesReceived
 
+			if proto == "udp" {
+				// ping with OPTIONS
+				err = base.Request{
+					Method: base.Options,
+					URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+					Header: base.Header{
+						"CSeq":    base.HeaderValue{"4"},
+						"Session": res.Header["Session"],
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = res.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.StatusOK, res.StatusCode)
+
+				// ping with GET_PARAMETER
+				err = base.Request{
+					Method: base.GetParameter,
+					URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+					Header: base.Header{
+						"CSeq":    base.HeaderValue{"5"},
+						"Session": res.Header["Session"],
+					},
+				}.Write(bconn.Writer)
+				require.NoError(t, err)
+
+				err = res.Read(bconn.Reader)
+				require.NoError(t, err)
+				require.Equal(t, base.StatusOK, res.StatusCode)
+			}
+
 			err = base.Request{
 				Method: base.Teardown,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq":    base.HeaderValue{"3"},
+					"CSeq":    base.HeaderValue{"6"},
 					"Session": res.Header["Session"],
 				},
 			}.Write(bconn.Writer)

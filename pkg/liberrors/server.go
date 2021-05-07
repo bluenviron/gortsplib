@@ -15,6 +15,14 @@ func (e ErrServerTerminated) Error() string {
 	return "terminated"
 }
 
+// ErrServerSessionNotFound is an error that can be returned by a server.
+type ErrServerSessionNotFound struct{}
+
+// Error implements the error interface.
+func (e ErrServerSessionNotFound) Error() string {
+	return "session not found"
+}
+
 // ErrServerSessionTimedOut is an error that can be returned by a server.
 type ErrServerSessionTimedOut struct{}
 
@@ -48,11 +56,13 @@ func (e ErrServerCSeqMissing) Error() string {
 }
 
 // ErrServerUnhandledRequest is an error that can be returned by a server.
-type ErrServerUnhandledRequest struct{}
+type ErrServerUnhandledRequest struct {
+	Req *base.Request
+}
 
 // Error implements the error interface.
 func (e ErrServerUnhandledRequest) Error() string {
-	return "unhandled request"
+	return fmt.Sprintf("unhandled request (%v %v)", e.Req.Method, e.Req.URL)
 }
 
 // ErrServerWrongState is an error that can be returned by a server.

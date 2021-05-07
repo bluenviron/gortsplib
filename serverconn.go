@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bufio"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -55,7 +54,8 @@ type ServerConn struct {
 	tcpFrameBackgroundWriteDone chan struct{}
 
 	// in
-	terminate chan struct{}
+	innerTerminate chan struct{}
+	terminate      chan struct{}
 }
 
 func newServerConn(
@@ -64,16 +64,26 @@ func newServerConn(
 	nconn net.Conn) *ServerConn {
 
 	sc := &ServerConn{
-		s:         s,
-		wg:        wg,
-		nconn:     nconn,
-		terminate: make(chan struct{}),
+		s:              s,
+		wg:             wg,
+		nconn:          nconn,
+		innerTerminate: make(chan struct{}, 1),
+		terminate:      make(chan struct{}),
 	}
 
 	wg.Add(1)
 	go sc.run()
 
 	return sc
+}
+
+// Close closes the ServerConn.
+func (sc *ServerConn) Close() error {
+	select {
+	case sc.innerTerminate <- struct{}{}:
+	default:
+	}
+	return nil
 }
 
 // NetConn returns the underlying net.Conn.
@@ -177,11 +187,25 @@ func (sc *ServerConn) run() {
 			}
 
 			sc.nconn.Close()
-			sc.s.connClose <- sc
 
+			sc.s.connClose <- sc
 			<-sc.terminate
 
 			return err
+
+		case <-sc.innerTerminate:
+			sc.nconn.Close()
+			<-readDone
+
+			if sc.tcpFrameEnabled {
+				sc.tcpFrameWriteBuffer.Close()
+				<-sc.tcpFrameBackgroundWriteDone
+			}
+
+			sc.s.connClose <- sc
+			<-sc.terminate
+
+			return liberrors.ErrServerTerminated{}
 
 		case <-sc.terminate:
 			sc.nconn.Close()
@@ -226,6 +250,21 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	switch req.Method {
 	case base.Options:
+		// handle request in session
+		if sxID != "" {
+			cres := make(chan sessionReqRes)
+			sc.s.sessionReq <- sessionReq{
+				sc:     sc,
+				req:    req,
+				id:     sxID,
+				create: false,
+				res:    cres,
+			}
+			res := <-cres
+			return res.res, res.err
+		}
+
+		// handle request here
 		var methods []string
 		if _, ok := sc.s.Handler.(ServerHandlerOnDescribe); ok {
 			methods = append(methods, string(base.Describe))
@@ -291,58 +330,46 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.Announce:
 		if _, ok := sc.s.Handler.(ServerHandlerOnAnnounce); ok {
-			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, create: true, res: sres}
-			ss := <-sres
-
-			if ss == nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("terminated")
+			cres := make(chan sessionReqRes)
+			sc.s.sessionReq <- sessionReq{
+				sc:     sc,
+				req:    req,
+				id:     sxID,
+				create: true,
+				res:    cres,
 			}
-
-			rres := make(chan requestRes)
-			ss.request <- requestReq{sc: sc, req: req, res: rres}
-			res := <-rres
+			res := <-cres
 			return res.res, res.err
 		}
 
 	case base.Setup:
 		if _, ok := sc.s.Handler.(ServerHandlerOnSetup); ok {
-			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, create: true, res: sres}
-			ss := <-sres
-
-			if ss == nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("terminated")
+			cres := make(chan sessionReqRes)
+			sc.s.sessionReq <- sessionReq{
+				sc:     sc,
+				req:    req,
+				id:     sxID,
+				create: true,
+				res:    cres,
 			}
-
-			rres := make(chan requestRes)
-			ss.request <- requestReq{sc: sc, req: req, res: rres}
-			res := <-rres
+			res := <-cres
 			return res.res, res.err
 		}
 
 	case base.Play:
 		if _, ok := sc.s.Handler.(ServerHandlerOnPlay); ok {
-			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
-			ss := <-sres
-
-			if ss == nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerInvalidSession{}
+			cres := make(chan sessionReqRes)
+			sc.s.sessionReq <- sessionReq{
+				sc:     sc,
+				req:    req,
+				id:     sxID,
+				create: false,
+				res:    cres,
 			}
-
-			rres := make(chan requestRes)
-			ss.request <- requestReq{sc: sc, req: req, res: rres}
-			res := <-rres
+			res := <-cres
 
 			if _, ok := res.err.(liberrors.ErrServerTCPFramesEnable); ok {
-				sc.tcpFrameLinkedSession = ss
+				sc.tcpFrameLinkedSession = res.ss
 				sc.tcpFrameIsRecording = false
 				sc.tcpFrameSetEnabled = true
 				return res.res, nil
@@ -353,22 +380,18 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.Record:
 		if _, ok := sc.s.Handler.(ServerHandlerOnRecord); ok {
-			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
-			ss := <-sres
-
-			if ss == nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerInvalidSession{}
+			cres := make(chan sessionReqRes)
+			sc.s.sessionReq <- sessionReq{
+				sc:     sc,
+				req:    req,
+				id:     sxID,
+				create: false,
+				res:    cres,
 			}
-
-			rres := make(chan requestRes)
-			ss.request <- requestReq{sc: sc, req: req, res: rres}
-			res := <-rres
+			res := <-cres
 
 			if _, ok := res.err.(liberrors.ErrServerTCPFramesEnable); ok {
-				sc.tcpFrameLinkedSession = ss
+				sc.tcpFrameLinkedSession = res.ss
 				sc.tcpFrameIsRecording = true
 				sc.tcpFrameSetEnabled = true
 				return res.res, nil
@@ -379,19 +402,15 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.Pause:
 		if _, ok := sc.s.Handler.(ServerHandlerOnPause); ok {
-			sres := make(chan *ServerSession)
-			sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
-			ss := <-sres
-
-			if ss == nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerInvalidSession{}
+			cres := make(chan sessionReqRes)
+			sc.s.sessionReq <- sessionReq{
+				sc:     sc,
+				req:    req,
+				id:     sxID,
+				create: false,
+				res:    cres,
 			}
-
-			rres := make(chan requestRes)
-			ss.request <- requestReq{sc: sc, req: req, res: rres}
-			res := <-rres
+			res := <-cres
 
 			if _, ok := res.err.(liberrors.ErrServerTCPFramesDisable); ok {
 				sc.tcpFrameSetEnabled = false
@@ -402,31 +421,29 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.Teardown:
-		sres := make(chan *ServerSession)
-		sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
-		ss := <-sres
-
-		if ss == nil {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerInvalidSession{}
+		cres := make(chan sessionReqRes)
+		sc.s.sessionReq <- sessionReq{
+			sc:     sc,
+			req:    req,
+			id:     sxID,
+			create: false,
+			res:    cres,
 		}
-
-		rres := make(chan requestRes)
-		ss.request <- requestReq{sc: sc, req: req, res: rres}
-		res := <-rres
+		res := <-cres
 		return res.res, res.err
 
 	case base.GetParameter:
-		sres := make(chan *ServerSession)
-		sc.s.sessionGet <- sessionGetReq{id: sxID, create: false, res: sres}
-		ss := <-sres
-
-		// send request to session
-		if ss != nil {
-			rres := make(chan requestRes)
-			ss.request <- requestReq{sc: sc, req: req, res: rres}
-			res := <-rres
+		// handle request in session
+		if sxID != "" {
+			cres := make(chan sessionReqRes)
+			sc.s.sessionReq <- sessionReq{
+				sc:     sc,
+				req:    req,
+				id:     sxID,
+				create: false,
+				res:    cres,
+			}
+			res := <-cres
 			return res.res, res.err
 		}
 
@@ -471,7 +488,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	return &base.Response{
 		StatusCode: base.StatusBadRequest,
-	}, liberrors.ErrServerUnhandledRequest{}
+	}, liberrors.ErrServerUnhandledRequest{Req: req}
 }
 
 func (sc *ServerConn) handleRequestOuter(req *base.Request) error {

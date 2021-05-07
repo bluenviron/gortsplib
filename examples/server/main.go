@@ -21,22 +21,22 @@ type serverHandler struct {
 	sdp       []byte
 }
 
-// called when a connection is opened.
+// called after a connection is opened.
 func (sh *serverHandler) OnConnOpen(sc *gortsplib.ServerConn) {
 	log.Printf("conn opened")
 }
 
-// called when a connection is closed.
+// called after a connection is closed.
 func (sh *serverHandler) OnConnClose(sc *gortsplib.ServerConn, err error) {
 	log.Printf("conn closed (%v)", err)
 }
 
-// called when a session is opened.
+// called after a session is opened.
 func (sh *serverHandler) OnSessionOpen(ss *gortsplib.ServerSession) {
 	log.Printf("session opened")
 }
 
-// called when a session is closed.
+// called after a session is closed.
 func (sh *serverHandler) OnSessionClose(ss *gortsplib.ServerSession, err error) {
 	log.Printf("session closed")
 

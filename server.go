@@ -9,6 +9,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/liberrors"
 )
 
 func extractPort(address string) (int, error) {
@@ -41,10 +44,18 @@ func newSessionID(sessions map[string]*ServerSession) (string, error) {
 	}
 }
 
-type sessionGetReq struct {
+type sessionReqRes struct {
+	res *base.Response
+	err error
+	ss  *ServerSession
+}
+
+type sessionReq struct {
+	sc     *ServerConn
+	req    *base.Request
 	id     string
 	create bool
-	res    chan *ServerSession
+	res    chan sessionReqRes
 }
 
 // Server is a RTSP server.
@@ -100,7 +111,7 @@ type Server struct {
 
 	// in
 	connClose    chan *ServerConn
-	sessionGet   chan sessionGetReq
+	sessionReq   chan sessionReq
 	sessionClose chan *ServerSession
 	terminate    chan struct{}
 
@@ -194,7 +205,7 @@ func (s *Server) run() {
 	s.sessions = make(map[string]*ServerSession)
 	s.conns = make(map[*ServerConn]struct{})
 	s.connClose = make(chan *ServerConn)
-	s.sessionGet = make(chan sessionGetReq)
+	s.sessionReq = make(chan sessionReq)
 	s.sessionClose = make(chan *ServerSession)
 
 	var wg sync.WaitGroup
@@ -233,25 +244,35 @@ outer:
 			}
 			s.doConnClose(sc)
 
-		case req := <-s.sessionGet:
+		case req := <-s.sessionReq:
 			if ss, ok := s.sessions[req.id]; ok {
-				req.res <- ss
+				ss.request <- req
 
 			} else {
 				if !req.create {
-					req.res <- nil
+					req.res <- sessionReqRes{
+						res: &base.Response{
+							StatusCode: base.StatusBadRequest,
+						},
+						err: liberrors.ErrServerSessionNotFound{},
+					}
 					continue
 				}
 
 				id, err := newSessionID(s.sessions)
 				if err != nil {
-					req.res <- nil
+					req.res <- sessionReqRes{
+						res: &base.Response{
+							StatusCode: base.StatusBadRequest,
+						},
+						err: fmt.Errorf("internal error"),
+					}
 					continue
 				}
 
 				ss := newServerSession(s, id, &wg)
 				s.sessions[id] = ss
-				req.res <- ss
+				ss.request <- req
 			}
 
 		case ss := <-s.sessionClose:
@@ -284,11 +305,16 @@ outer:
 					return
 				}
 
-			case req, ok := <-s.sessionGet:
+			case req, ok := <-s.sessionReq:
 				if !ok {
 					return
 				}
-				req.res <- nil
+				req.res <- sessionReqRes{
+					res: &base.Response{
+						StatusCode: base.StatusBadRequest,
+					},
+					err: liberrors.ErrServerTerminated{},
+				}
 
 			case _, ok := <-s.sessionClose:
 				if !ok {
@@ -321,7 +347,7 @@ outer:
 	close(acceptErr)
 	close(connNew)
 	close(s.connClose)
-	close(s.sessionGet)
+	close(s.sessionReq)
 	close(s.sessionClose)
 	close(s.done)
 }
