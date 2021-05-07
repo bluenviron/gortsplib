@@ -80,12 +80,12 @@ func (t *Track) IsH264() bool {
 func (t *Track) ExtractDataH264() ([]byte, []byte, error) {
 	v, ok := t.Media.Attribute("fmtp")
 	if !ok {
-		return nil, nil, fmt.Errorf("unable to find fmtp")
+		return nil, nil, fmt.Errorf("fmtp attribute is missing")
 	}
 
 	tmp := strings.SplitN(v, " ", 2)
 	if len(tmp) != 2 {
-		return nil, nil, fmt.Errorf("unable to parse fmtp (%v)", v)
+		return nil, nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
 	}
 
 	var sps []byte
@@ -100,30 +100,30 @@ func (t *Track) ExtractDataH264() ([]byte, []byte, error) {
 
 		tmp := strings.SplitN(kv, "=", 2)
 		if len(tmp) != 2 {
-			return nil, nil, fmt.Errorf("unable to parse fmtp (%v)", v)
+			return nil, nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
 		}
 
 		if tmp[0] == "sprop-parameter-sets" {
 			tmp := strings.SplitN(tmp[1], ",", 2)
 			if len(tmp) != 2 {
-				return nil, nil, fmt.Errorf("unable to parse sprop-parameter-sets (%v)", v)
+				return nil, nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
 			var err error
 			sps, err = base64.StdEncoding.DecodeString(tmp[0])
 			if err != nil {
-				return nil, nil, fmt.Errorf("unable to parse sprop-parameter-sets (%v)", v)
+				return nil, nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
 			pps, err = base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
-				return nil, nil, fmt.Errorf("unable to parse sprop-parameter-sets (%v)", v)
+				return nil, nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 		}
 	}
 
 	if sps == nil || pps == nil {
-		return nil, nil, fmt.Errorf("unable to find SPS or PPS (%v)", v)
+		return nil, nil, fmt.Errorf("sprop-parameter-sets is missing (%v)", v)
 	}
 
 	return sps, pps, nil
@@ -189,12 +189,12 @@ func (t *Track) IsAAC() bool {
 func (t *Track) ExtractDataAAC() ([]byte, error) {
 	v, ok := t.Media.Attribute("fmtp")
 	if !ok {
-		return nil, fmt.Errorf("unable to find fmtp")
+		return nil, fmt.Errorf("fmtp attribute is missing")
 	}
 
 	tmp := strings.SplitN(v, " ", 2)
 	if len(tmp) != 2 {
-		return nil, fmt.Errorf("unable to parse fmtp (%v)", v)
+		return nil, fmt.Errorf("invalid fmtp (%v)", v)
 	}
 
 	var config []byte
@@ -208,21 +208,21 @@ func (t *Track) ExtractDataAAC() ([]byte, error) {
 
 		tmp := strings.SplitN(kv, "=", 2)
 		if len(tmp) != 2 {
-			return nil, fmt.Errorf("unable to parse fmtp (%v)", v)
+			return nil, fmt.Errorf("invalid fmtp (%v)", v)
 		}
 
 		if tmp[0] == "config" {
 			var err error
 			config, err = hex.DecodeString(tmp[1])
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse config (%v)", v)
+				return nil, fmt.Errorf("invalid config (%v)", v)
 			}
 			break
 		}
 	}
 
 	if config == nil {
-		return nil, fmt.Errorf("unable to find config (%v)", v)
+		return nil, fmt.Errorf("config is missing (%v)", v)
 	}
 
 	return config, nil

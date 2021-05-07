@@ -281,7 +281,7 @@ func TestTrackH264Extract(t *testing.T) {
 						},
 						{
 							Key:   "fmtp",
-							Value: "96 96 packetization-mode=1;profile-level-id=64001f;sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,aOvjyyLA;",
+							Value: "96 packetization-mode=1;profile-level-id=64001f;sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,aOvjyyLA;",
 						},
 					},
 				},
@@ -302,6 +302,177 @@ func TestTrackH264Extract(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, ca.sps, sps)
 			require.Equal(t, ca.pps, pps)
+		})
+	}
+}
+
+func TestTrackH264ExtractError(t *testing.T) {
+	for _, ca := range []struct {
+		name  string
+		track *Track
+		err   string
+	}{
+		{
+			"missing fmtp",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+					},
+				},
+			},
+			"fmtp attribute is missing",
+		},
+		{
+			"invalid fmtp",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96",
+						},
+					},
+				},
+			},
+			"invalid fmtp attribute (96)",
+		},
+		{
+			"fmtp without key",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 packetization-mode",
+						},
+					},
+				},
+			},
+			"invalid fmtp attribute (96 packetization-mode)",
+		},
+		{
+			"missing sprop-parameter-set",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 packetization-mode=1",
+						},
+					},
+				},
+			},
+			"sprop-parameter-sets is missing (96 packetization-mode=1)",
+		},
+		{
+			"invalid sprop-parameter-set 1",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 sprop-parameter-sets=aaaaaa",
+						},
+					},
+				},
+			},
+			"invalid sprop-parameter-sets (96 sprop-parameter-sets=aaaaaa)",
+		},
+		{
+			"invalid sprop-parameter-set 2",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 sprop-parameter-sets=aaaaaa,bbb",
+						},
+					},
+				},
+			},
+			"invalid sprop-parameter-sets (96 sprop-parameter-sets=aaaaaa,bbb)",
+		},
+		{
+			"invalid sprop-parameter-set 3",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,bbb",
+						},
+					},
+				},
+			},
+			"invalid sprop-parameter-sets (96 sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,bbb)",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			_, _, err := ca.track.ExtractDataH264()
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }
@@ -387,6 +558,131 @@ func TestTrackAACExtract(t *testing.T) {
 			config, err := ca.track.ExtractDataAAC()
 			require.NoError(t, err)
 			require.Equal(t, ca.config, config)
+		})
+	}
+}
+
+func TestTrackAACExtractError(t *testing.T) {
+	for _, ca := range []struct {
+		name  string
+		track *Track
+		err   string
+	}{
+		{
+			"missing fmtp",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 MPEG4-GENERIC/48000/2",
+						},
+					},
+				},
+			},
+			"fmtp attribute is missing",
+		},
+		{
+			"invalid fmtp",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 MPEG4-GENERIC/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96",
+						},
+					},
+				},
+			},
+			"invalid fmtp (96)",
+		},
+		{
+			"fmtp without key",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 MPEG4-GENERIC/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id",
+						},
+					},
+				},
+			},
+			"invalid fmtp (96 profile-level-id)",
+		},
+		{
+			"missing config",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 MPEG4-GENERIC/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=1",
+						},
+					},
+				},
+			},
+			"config is missing (96 profile-level-id=1)",
+		},
+		{
+			"invalid config",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 MPEG4-GENERIC/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=1; config=zz",
+						},
+					},
+				},
+			},
+			"invalid config (96 profile-level-id=1; config=zz)",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			_, err := ca.track.ExtractDataAAC()
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }
