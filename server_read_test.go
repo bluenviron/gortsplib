@@ -108,8 +108,7 @@ func TestServerReadSetupPath(t *testing.T) {
 
 			<-setupDone
 
-			var res base.Response
-			err = res.Read(bconn.Reader)
+			res, err := readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 		})
@@ -165,8 +164,7 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -183,7 +181,7 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
@@ -239,8 +237,7 @@ func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -257,7 +254,7 @@ func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
@@ -375,8 +372,7 @@ func TestServerRead(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			var res base.Response
-			err = res.Read(bconn.Reader)
+			res, err := readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -408,7 +404,7 @@ func TestServerRead(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -470,7 +466,7 @@ func TestServerRead(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = res.Read(bconn.Reader)
+				res, err = readResponse(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -485,7 +481,7 @@ func TestServerRead(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = res.Read(bconn.Reader)
+				res, err = readResponse(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
 			}
@@ -500,7 +496,7 @@ func TestServerRead(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -585,8 +581,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -600,7 +595,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -658,8 +653,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -673,7 +667,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -687,7 +681,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
@@ -770,8 +764,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -785,7 +778,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -799,7 +792,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -813,7 +806,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
@@ -892,8 +885,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -907,7 +899,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -921,8 +913,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	buf := make([]byte, 2048)
-	err = res.ReadIgnoreFrames(bconn.Reader, buf)
+	res, err = readResponseIgnoreFrames(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -936,8 +927,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	buf = make([]byte, 2048)
-	err = res.ReadIgnoreFrames(bconn.Reader, buf)
+	res, err = readResponseIgnoreFrames(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
@@ -1011,8 +1001,7 @@ func TestServerReadTimeout(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			var res base.Response
-			err = res.Read(bconn.Reader)
+			res, err := readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1026,7 +1015,7 @@ func TestServerReadTimeout(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1115,8 +1104,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			var res base.Response
-			err = res.Read(bconn.Reader)
+			res, err := readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1130,7 +1118,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 

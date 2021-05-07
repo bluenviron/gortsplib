@@ -15,6 +15,19 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
+func readResponse(br *bufio.Reader) (*base.Response, error) {
+	var res base.Response
+	err := res.Read(br)
+	return &res, err
+}
+
+func readResponseIgnoreFrames(br *bufio.Reader) (*base.Response, error) {
+	buf := make([]byte, 2048)
+	var res base.Response
+	err := res.ReadIgnoreFrames(br, buf)
+	return &res, err
+}
+
 type testServerHandler struct {
 	onConnOpen     func(*ServerConn)
 	onConnClose    func(*ServerConn, error)
@@ -472,8 +485,7 @@ func TestServerCSeq(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -507,8 +519,7 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
@@ -541,8 +552,7 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 }
@@ -598,8 +608,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	}.Write(bconn1.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn1.Reader)
+	res, err := readResponse(bconn1.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -613,7 +622,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	}.Write(bconn1.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn1.Reader)
+	res, err = readResponse(bconn1.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -644,7 +653,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	}.Write(bconn2.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn2.Reader)
+	res, err = readResponse(bconn2.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 }
@@ -700,8 +709,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -715,7 +723,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -740,7 +748,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 }
@@ -783,8 +791,7 @@ func TestServerGetSetParameter(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -798,7 +805,7 @@ func TestServerGetSetParameter(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -812,7 +819,7 @@ func TestServerGetSetParameter(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 	require.Equal(t, []byte("param1: 123456\r\n"), res.Body)
@@ -864,8 +871,7 @@ func TestServerErrorInvalidSession(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			var res base.Response
-			err = res.Read(bconn.Reader)
+			res, err := readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusBadRequest, res.StatusCode)
 		})

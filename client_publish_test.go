@@ -36,8 +36,7 @@ func TestClientPublishSerial(t *testing.T) {
 				defer conn.Close()
 				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-				var req base.Request
-				err = req.Read(bconn.Reader)
+				req, err := readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -54,7 +53,7 @@ func TestClientPublishSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -64,7 +63,7 @@ func TestClientPublishSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -110,7 +109,7 @@ func TestClientPublishSerial(t *testing.T) {
 					defer l2.Close()
 				}
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -152,7 +151,7 @@ func TestClientPublishSerial(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -224,8 +223,7 @@ func TestClientPublishParallel(t *testing.T) {
 				defer conn.Close()
 				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-				var req base.Request
-				err = req.Read(bconn.Reader)
+				req, err := readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -241,7 +239,7 @@ func TestClientPublishParallel(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 
@@ -250,7 +248,7 @@ func TestClientPublishParallel(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -283,7 +281,7 @@ func TestClientPublishParallel(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
@@ -292,8 +290,7 @@ func TestClientPublishParallel(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				buf := make([]byte, 2048)
-				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				req, err = readRequestIgnoreFrames(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -365,8 +362,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				defer conn.Close()
 				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-				var req base.Request
-				err = req.Read(bconn.Reader)
+				req, err := readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -383,7 +379,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 
@@ -392,7 +388,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -425,7 +421,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
@@ -434,8 +430,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				buf := make([]byte, 2048)
-				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				req, err = readRequestIgnoreFrames(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
@@ -444,7 +439,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
@@ -453,8 +448,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				buf = make([]byte, 2048)
-				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				req, err = readRequestIgnoreFrames(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -524,8 +518,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				defer conn.Close()
 				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-				var req base.Request
-				err = req.Read(bconn.Reader)
+				req, err := readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -542,7 +535,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 
@@ -551,7 +544,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -584,7 +577,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				err = req.Read(bconn.Reader)
+				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
@@ -593,8 +586,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				buf := make([]byte, 2048)
-				err = req.ReadIgnoreFrames(bconn.Reader, buf)
+				req, err = readRequestIgnoreFrames(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
@@ -664,8 +656,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		defer conn.Close()
 		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-		var req base.Request
-		err = req.Read(bconn.Reader)
+		req, err := readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -682,7 +673,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Announce, req.Method)
 		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -692,7 +683,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -701,7 +692,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -727,7 +718,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Record, req.Method)
 		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -744,7 +735,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.Equal(t, StreamTypeRTP, f.StreamType)
 		require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, f.Payload)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
@@ -782,8 +773,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		defer conn.Close()
 		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-		var req base.Request
-		err = req.Read(bconn.Reader)
+		req, err := readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -799,7 +789,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Announce, req.Method)
 
@@ -808,7 +798,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -833,7 +823,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Record, req.Method)
 
@@ -880,7 +870,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, StreamTypeRTP, f.StreamType)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 

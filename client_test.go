@@ -12,6 +12,19 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
+func readRequest(br *bufio.Reader) (*base.Request, error) {
+	var req base.Request
+	err := req.Read(br)
+	return &req, err
+}
+
+func readRequestIgnoreFrames(br *bufio.Reader) (*base.Request, error) {
+	buf := make([]byte, 2048)
+	var req base.Request
+	err := req.ReadIgnoreFrames(br, buf)
+	return &req, err
+}
+
 func TestClientSession(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -27,8 +40,7 @@ func TestClientSession(t *testing.T) {
 		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 		defer conn.Close()
 
-		var req base.Request
-		err = req.Read(bconn.Reader)
+		req, err := readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -43,7 +55,7 @@ func TestClientSession(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -92,8 +104,7 @@ func TestClientAuth(t *testing.T) {
 		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 		defer conn.Close()
 
-		var req base.Request
-		err = req.Read(bconn.Reader)
+		req, err := readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -107,7 +118,7 @@ func TestClientAuth(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -121,7 +132,7 @@ func TestClientAuth(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		err = req.Read(bconn.Reader)
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 

@@ -135,8 +135,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			var res base.Response
-			err = res.Read(bconn.Reader)
+			res, err := readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -166,7 +165,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 
 			<-setupDone
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 		})
@@ -225,8 +224,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -254,7 +252,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
@@ -314,8 +312,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -343,7 +340,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -358,7 +355,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
@@ -426,8 +423,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -455,7 +451,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -469,7 +465,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
@@ -586,8 +582,7 @@ func TestServerPublish(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			var res base.Response
-			err = res.Read(bconn.Reader)
+			res, err := readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -623,7 +618,7 @@ func TestServerPublish(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -653,7 +648,7 @@ func TestServerPublish(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -720,7 +715,7 @@ func TestServerPublish(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -789,8 +784,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -818,7 +812,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -836,7 +830,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -901,8 +895,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	var res base.Response
-	err = res.Read(bconn.Reader)
+	res, err := readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -930,7 +923,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -948,7 +941,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	err = res.Read(bconn.Reader)
+	res, err = readResponse(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1072,8 +1065,7 @@ func TestServerPublishTimeout(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			var res base.Response
-			err = res.Read(bconn.Reader)
+			res, err := readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1107,7 +1099,7 @@ func TestServerPublishTimeout(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1125,7 +1117,7 @@ func TestServerPublishTimeout(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1209,8 +1201,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			var res base.Response
-			err = res.Read(bconn.Reader)
+			res, err := readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1244,7 +1235,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1262,7 +1253,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
-			err = res.Read(bconn.Reader)
+			res, err = readResponse(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
