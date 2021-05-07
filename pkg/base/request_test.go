@@ -168,18 +168,23 @@ func TestRequestReadErrors(t *testing.T) {
 			"EOF",
 		},
 		{
-			"missing url, protocol, eol",
+			"missing url, protocol, r, n",
 			[]byte("GET"),
 			"EOF",
 		},
 		{
-			"missing protocol, eol",
+			"missing protocol, r, n",
 			[]byte("GET rtsp://testing123/test"),
 			"EOF",
 		},
 		{
-			"missing eol",
+			"missing r, n",
 			[]byte("GET rtsp://testing123/test RTSP/1.0"),
+			"EOF",
+		},
+		{
+			"missing n",
+			[]byte("GET rtsp://testing123/test RTSP/1.0\r"),
 			"EOF",
 		},
 		{
@@ -206,6 +211,16 @@ func TestRequestReadErrors(t *testing.T) {
 			"invalid protocol",
 			[]byte("GET rtsp://testing123 RTSP/2.0\r\n"),
 			"expected 'RTSP/1.0', got 'RTSP/2.0'",
+		},
+		{
+			"invalid header",
+			[]byte("GET rtsp://testing123 RTSP/1.0\r\nTesting: val\r"),
+			"EOF",
+		},
+		{
+			"invalid body",
+			[]byte("GET rtsp://testing123 RTSP/1.0\r\nContent-Length: 17\r\n\r\n123"),
+			"unexpected EOF",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

@@ -169,6 +169,16 @@ func TestResponseReadErrors(t *testing.T) {
 			[]byte("RTSP/1.0 200 \r\n"),
 			"empty status message",
 		},
+		{
+			"invalid header",
+			[]byte("RTSP/1.0 200 OK\r\nTesting: val\r"),
+			"EOF",
+		},
+		{
+			"invalid body",
+			[]byte("RTSP/1.0 200 OK\r\nContent-Length: 17\r\n\r\n123"),
+			"unexpected EOF",
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var res Response

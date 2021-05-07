@@ -217,7 +217,6 @@ func (t *Track) ExtractDataAAC() ([]byte, error) {
 			if err != nil {
 				return nil, fmt.Errorf("invalid config (%v)", v)
 			}
-			break
 		}
 	}
 
