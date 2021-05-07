@@ -32,7 +32,7 @@ Features:
   * Read streams from clients with UDP or TCP
   * Write streams to clients with UDP or TCP
   * Encrypt streams with TLS (RTSPS)
-  * Generate RTCP sender and receiver reports automatically
+  * Generate RTCP receiver reports automatically
 * Utilities
   * Encode and decode RTSP primitives, RTP/H264, RTP/AAC, SDP
 
