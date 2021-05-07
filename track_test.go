@@ -194,73 +194,199 @@ func TestTrackURL(t *testing.T) {
 	}
 }
 
-var testH264SPS = []byte("\x67\x64\x00\x0c\xac\x3b\x50\xb0\x4b\x42\x00\x00\x03\x00\x02\x00\x00\x03\x00\x3d\x08")
-
-var testH264PPS = []byte("\x68\xee\x3c\x80")
-
-var testH264Track = &Track{
-	Media: &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "video",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"96"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: "96 H264/90000",
-			},
-			{
-				Key:   "fmtp",
-				Value: "96 packetization-mode=1; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
-			},
-		},
-	},
-}
-
 func TestTrackH264New(t *testing.T) {
-	tr, err := NewTrackH264(96, testH264SPS, testH264PPS)
+	sps := []byte{
+		0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
+		0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
+		0x00, 0x03, 0x00, 0x3d, 0x08,
+	}
+
+	pps := []byte{
+		0x68, 0xee, 0x3c, 0x80,
+	}
+
+	tr, err := NewTrackH264(96, sps, pps)
 	require.NoError(t, err)
-	require.Equal(t, testH264Track, tr)
+	require.Equal(t, &Track{
+		Media: &psdp.MediaDescription{
+			MediaName: psdp.MediaName{
+				Media:   "video",
+				Protos:  []string{"RTP", "AVP"},
+				Formats: []string{"96"},
+			},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "rtpmap",
+					Value: "96 H264/90000",
+				},
+				{
+					Key:   "fmtp",
+					Value: "96 packetization-mode=1; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+				},
+			},
+		},
+	}, tr)
 }
 
 func TestTrackH264Extract(t *testing.T) {
-	sps, pps, err := testH264Track.ExtractDataH264()
-	require.NoError(t, err)
-	require.Equal(t, testH264SPS, sps)
-	require.Equal(t, testH264PPS, pps)
-}
-
-var testAACConfig = []byte{17, 144}
-
-var testAACTrack = &Track{
-	Media: &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "audio",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"96"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: "96 MPEG4-GENERIC/48000/2",
+	for _, ca := range []struct {
+		name  string
+		track *Track
+		sps   []byte
+		pps   []byte
+	}{
+		{
+			"generic",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 packetization-mode=1; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+						},
+					},
+				},
 			},
-			{
-				Key:   "fmtp",
-				Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+			[]byte{
+				0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
+				0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
+				0x00, 0x03, 0x00, 0x3d, 0x08,
+			},
+			[]byte{
+				0x68, 0xee, 0x3c, 0x80,
 			},
 		},
-	},
+		{
+			"vlc rtsp server",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 96 packetization-mode=1;profile-level-id=64001f;sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,aOvjyyLA;",
+						},
+					},
+				},
+			},
+			[]byte{
+				0x67, 0x64, 0x00, 0x1f, 0xac, 0xd9, 0x40, 0x50,
+				0x05, 0xbb, 0x01, 0x6c, 0x80, 0x00, 0x00, 0x03,
+				0x00, 0x80, 0x00, 0x00, 0x1e, 0x07, 0x8c, 0x18,
+				0xcb,
+			},
+			[]byte{
+				0x68, 0xeb, 0xe3, 0xcb, 0x22, 0xc0,
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			sps, pps, err := ca.track.ExtractDataH264()
+			require.NoError(t, err)
+			require.Equal(t, ca.sps, sps)
+			require.Equal(t, ca.pps, pps)
+		})
+	}
 }
 
 func TestTrackAACNew(t *testing.T) {
-	tr, err := NewTrackAAC(96, testAACConfig)
+	tr, err := NewTrackAAC(96, []byte{17, 144})
 	require.NoError(t, err)
-	require.Equal(t, testAACTrack, tr)
+	require.Equal(t, &Track{
+		Media: &psdp.MediaDescription{
+			MediaName: psdp.MediaName{
+				Media:   "audio",
+				Protos:  []string{"RTP", "AVP"},
+				Formats: []string{"96"},
+			},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "rtpmap",
+					Value: "96 MPEG4-GENERIC/48000/2",
+				},
+				{
+					Key:   "fmtp",
+					Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+				},
+			},
+		},
+	}, tr)
 }
 
 func TestTrackAACExtract(t *testing.T) {
-	config, err := testAACTrack.ExtractDataAAC()
-	require.NoError(t, err)
-	require.Equal(t, testAACConfig, config)
+	for _, ca := range []struct {
+		name   string
+		track  *Track
+		config []byte
+	}{
+		{
+			"generic",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 MPEG4-GENERIC/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+						},
+					},
+				},
+			},
+			[]byte{17, 144},
+		},
+		{
+			"vlc rtsp server",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 MPEG4-GENERIC/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190;",
+						},
+					},
+				},
+			},
+			[]byte{17, 144},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			config, err := ca.track.ExtractDataAAC()
+			require.NoError(t, err)
+			require.Equal(t, ca.config, config)
+		})
+	}
 }
