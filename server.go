@@ -64,7 +64,7 @@ type Server struct {
 	// handler
 	//
 
-	// an handler to handle requests.
+	// an handler interface to handle requests.
 	Handler ServerHandler
 
 	//
@@ -112,8 +112,12 @@ type Server struct {
 	//
 
 	// function used to initialize the TCP listener.
-	// It defaults to net.Listen
+	// It defaults to net.Listen.
 	Listen func(network string, address string) (net.Listener, error)
+
+	// function used to initialize UDP listeners.
+	// It defaults to net.ListenPacket.
+	ListenPacket func(network, address string) (net.PacketConn, error)
 
 	//
 	// private
@@ -141,12 +145,15 @@ type Server struct {
 
 // Start starts listening on the given address.
 func (s *Server) Start(address string) error {
+	// connection
 	if s.ReadTimeout == 0 {
 		s.ReadTimeout = 10 * time.Second
 	}
 	if s.WriteTimeout == 0 {
 		s.WriteTimeout = 10 * time.Second
 	}
+
+	// reading / writing
 	if s.ReadBufferCount == 0 {
 		s.ReadBufferCount = 512
 	}
@@ -154,10 +161,15 @@ func (s *Server) Start(address string) error {
 		s.ReadBufferSize = 2048
 	}
 
+	// system functions
 	if s.Listen == nil {
 		s.Listen = net.Listen
 	}
+	if s.ListenPacket == nil {
+		s.ListenPacket = net.ListenPacket
+	}
 
+	// private
 	if s.receiverReportPeriod == 0 {
 		s.receiverReportPeriod = 10 * time.Second
 	}
