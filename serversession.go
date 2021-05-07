@@ -162,6 +162,11 @@ func (ss *ServerSession) Close() error {
 	return nil
 }
 
+// ID returns the ID of the session.
+func (ss *ServerSession) ID() string {
+	return ss.id
+}
+
 // State returns the state of the session.
 func (ss *ServerSession) State() ServerSessionState {
 	return ss.state
