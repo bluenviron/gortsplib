@@ -245,13 +245,13 @@ func (sc *ServerConn) run() {
 		}
 	}()
 
-	sc.nconn.Close()
-	<-readDone
-
 	if sc.tcpFrameEnabled {
 		sc.tcpFrameWriteBuffer.Close()
 		<-sc.tcpFrameBackgroundWriteDone
 	}
+
+	sc.nconn.Close()
+	<-readDone
 
 	for _, ss := range sc.sessions {
 		ss.connRemove <- sc
@@ -336,7 +336,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerNoPath{}
+				}, liberrors.ErrServerInvalidPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)
@@ -430,7 +430,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerNoPath{}
+				}, liberrors.ErrServerInvalidPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)
@@ -449,7 +449,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerNoPath{}
+				}, liberrors.ErrServerInvalidPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)

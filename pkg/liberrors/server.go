@@ -77,12 +77,12 @@ func (e ErrServerWrongState) Error() string {
 		e.AllowedList, e.State)
 }
 
-// ErrServerNoPath is an error that can be returned by a server.
-type ErrServerNoPath struct{}
+// ErrServerInvalidPath is an error that can be returned by a server.
+type ErrServerInvalidPath struct{}
 
 // Error implements the error interface.
-func (e ErrServerNoPath) Error() string {
-	return "RTSP path can't be retrieved"
+func (e ErrServerInvalidPath) Error() string {
+	return "invalid path"
 }
 
 // ErrServerContentTypeMissing is an error that can be returned by a server.

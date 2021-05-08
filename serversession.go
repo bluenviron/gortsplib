@@ -26,7 +26,7 @@ func setupGetTrackIDPathQuery(url *base.URL,
 
 	pathAndQuery, ok := url.RTSPPathAndQuery()
 	if !ok {
-		return 0, "", "", liberrors.ErrServerNoPath{}
+		return 0, "", "", liberrors.ErrServerInvalidPath{}
 	}
 
 	if thMode == nil || *thMode == headers.TransportModePlay {
@@ -417,6 +417,15 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, err
 		}
 
+		pathAndQuery, ok := req.URL.RTSPPath()
+		if !ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, liberrors.ErrServerInvalidPath{}
+		}
+
+		path, query := base.PathSplitQuery(pathAndQuery)
+
 		ct, ok := req.Header["Content-Type"]
 		if !ok || len(ct) != 1 {
 			return &base.Response{
@@ -442,15 +451,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerSDPNoTracksDefined{}
 		}
-
-		pathAndQuery, ok := req.URL.RTSPPath()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerNoPath{}
-		}
-
-		path, query := base.PathSplitQuery(pathAndQuery)
 
 		for _, track := range tracks {
 			trackURL, err := track.URL()
@@ -681,7 +681,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerNoPath{}
+			}, liberrors.ErrServerInvalidPath{}
 		}
 
 		// path can end with a slash due to Content-Base, remove it
@@ -750,7 +750,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerNoPath{}
+			}, liberrors.ErrServerInvalidPath{}
 		}
 
 		// path can end with a slash due to Content-Base, remove it
@@ -818,7 +818,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerNoPath{}
+			}, liberrors.ErrServerInvalidPath{}
 		}
 
 		// path can end with a slash due to Content-Base, remove it
@@ -875,7 +875,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerNoPath{}
+				}, liberrors.ErrServerInvalidPath{}
 			}
 
 			path, query := base.PathSplitQuery(pathAndQuery)
