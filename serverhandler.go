@@ -164,3 +164,16 @@ type ServerHandlerOnFrameCtx struct {
 type ServerHandlerOnFrame interface {
 	OnFrame(*ServerHandlerOnFrameCtx)
 }
+
+// ServerHandlerOnUnknownClientCtx is the context of an UDP frame coming from an unknown source.
+type ServerHandlerOnUnknownClientCtx struct {
+	StreamType StreamType
+	Payload    []byte
+	Clients    map[clientAddr]*clientData
+	ClientAddr clientAddr
+}
+
+// ServerHandlerOnUnknownClient can be implemented by a ServerHandler.
+type ServerHandlerOnUnknownClient interface {
+	OnUnknownClient(*ServerHandlerOnUnknownClientCtx) error
+}

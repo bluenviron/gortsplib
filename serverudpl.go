@@ -118,7 +118,20 @@ func (u *serverUDPListener) run() {
 				clientAddr.fill(addr.IP, addr.Port)
 				clientData, ok := u.clients[clientAddr]
 				if !ok {
-					return
+					//Call handler to allow user to handle frame from unknown source (NAT hole punch)
+					if h, ok := u.s.Handler.(ServerHandlerOnUnknownClient); ok {
+						err = h.OnUnknownClient(&ServerHandlerOnUnknownClientCtx{
+							StreamType: u.streamType,
+							Payload:    buf[:n],
+							Clients:    u.clients,
+							ClientAddr: clientAddr,
+						})
+						//Check if clientData exists in possibly modified clients list
+						clientData, ok = u.clients[clientAddr]
+						if !ok {
+							return
+						}
+					}
 				}
 
 				if clientData.isPublishing {
