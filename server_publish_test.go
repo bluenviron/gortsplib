@@ -213,8 +213,8 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(sc *ServerConn, err error) {
-						require.Equal(t, ca.err, err.Error())
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+						require.Equal(t, ca.err, ctx.Error.Error())
 						close(connClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -404,8 +404,8 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
-				serverErr <- err
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				serverErr <- ctx.Error
 			},
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
@@ -492,8 +492,8 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
-				serverErr <- err
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				serverErr <- ctx.Error
 			},
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
@@ -595,8 +595,8 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
-				serverErr <- err
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				serverErr <- ctx.Error
 			},
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
@@ -715,16 +715,16 @@ func TestServerPublish(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnOpen: func(sc *ServerConn) {
+					onConnOpen: func(ctx *ServerHandlerOnConnOpenCtx) {
 						close(connOpened)
 					},
-					onConnClose: func(sc *ServerConn, err error) {
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						close(connClosed)
 					},
-					onSessionOpen: func(ss *ServerSession) {
+					onSessionOpen: func(ctx *ServerHandlerOnSessionOpenCtx) {
 						close(sessionOpened)
 					},
-					onSessionClose: func(ss *ServerSession, err error) {
+					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -1231,10 +1231,10 @@ func TestServerPublishTimeout(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(sc *ServerConn, err error) {
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						close(connClosed)
 					},
-					onSessionClose: func(ss *ServerSession, err error) {
+					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -1368,10 +1368,10 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(sc *ServerConn, err error) {
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						close(connClosed)
 					},
-					onSessionClose: func(ss *ServerSession, err error) {
+					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {

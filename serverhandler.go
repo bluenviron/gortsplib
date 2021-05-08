@@ -9,24 +9,47 @@ import (
 type ServerHandler interface {
 }
 
+// ServerHandlerOnConnOpenCtx is the context of a connection opening.
+type ServerHandlerOnConnOpenCtx struct {
+	Conn *ServerConn
+}
+
 // ServerHandlerOnConnOpen can be implemented by a ServerHandler.
 type ServerHandlerOnConnOpen interface {
-	OnConnOpen(*ServerConn)
+	OnConnOpen(*ServerHandlerOnConnOpenCtx)
+}
+
+// ServerHandlerOnConnCloseCtx is the context of a connection closure.
+type ServerHandlerOnConnCloseCtx struct {
+	Conn  *ServerConn
+	Error error
 }
 
 // ServerHandlerOnConnClose can be implemented by a ServerHandler.
 type ServerHandlerOnConnClose interface {
-	OnConnClose(*ServerConn, error)
+	OnConnClose(*ServerHandlerOnConnCloseCtx)
+}
+
+// ServerHandlerOnSessionOpenCtx is the context of a session opening.
+type ServerHandlerOnSessionOpenCtx struct {
+	Session *ServerSession
+	Conn    *ServerConn
 }
 
 // ServerHandlerOnSessionOpen can be implemented by a ServerHandler.
 type ServerHandlerOnSessionOpen interface {
-	OnSessionOpen(*ServerSession)
+	OnSessionOpen(*ServerHandlerOnSessionOpenCtx)
+}
+
+// ServerHandlerOnSessionCloseCtx is the context of a session closure.
+type ServerHandlerOnSessionCloseCtx struct {
+	Session *ServerSession
+	Error   error
 }
 
 // ServerHandlerOnSessionClose can be implemented by a ServerHandler.
 type ServerHandlerOnSessionClose interface {
-	OnSessionClose(*ServerSession, error)
+	OnSessionClose(*ServerHandlerOnSessionCloseCtx)
 }
 
 // ServerHandlerOnRequest can be implemented by a ServerHandler.
@@ -152,7 +175,7 @@ type ServerHandlerOnSetParameter interface {
 	OnSetParameter(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 }
 
-// ServerHandlerOnFrameCtx is the context of a frame request.
+// ServerHandlerOnFrameCtx is the context of a frame.
 type ServerHandlerOnFrameCtx struct {
 	Session    *ServerSession
 	TrackID    int

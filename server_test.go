@@ -31,10 +31,10 @@ func readResponseIgnoreFrames(br *bufio.Reader) (*base.Response, error) {
 }
 
 type testServerHandler struct {
-	onConnOpen     func(*ServerConn)
-	onConnClose    func(*ServerConn, error)
-	onSessionOpen  func(*ServerSession)
-	onSessionClose func(*ServerSession, error)
+	onConnOpen     func(*ServerHandlerOnConnOpenCtx)
+	onConnClose    func(*ServerHandlerOnConnCloseCtx)
+	onSessionOpen  func(*ServerHandlerOnSessionOpenCtx)
+	onSessionClose func(*ServerHandlerOnSessionCloseCtx)
 	onDescribe     func(*ServerHandlerOnDescribeCtx) (*base.Response, []byte, error)
 	onAnnounce     func(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
 	onSetup        func(*ServerHandlerOnSetupCtx) (*base.Response, error)
@@ -46,27 +46,27 @@ type testServerHandler struct {
 	onGetParameter func(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
 }
 
-func (sh *testServerHandler) OnConnOpen(sc *ServerConn) {
+func (sh *testServerHandler) OnConnOpen(ctx *ServerHandlerOnConnOpenCtx) {
 	if sh.onConnOpen != nil {
-		sh.onConnOpen(sc)
+		sh.onConnOpen(ctx)
 	}
 }
 
-func (sh *testServerHandler) OnConnClose(sc *ServerConn, err error) {
+func (sh *testServerHandler) OnConnClose(ctx *ServerHandlerOnConnCloseCtx) {
 	if sh.onConnClose != nil {
-		sh.onConnClose(sc, err)
+		sh.onConnClose(ctx)
 	}
 }
 
-func (sh *testServerHandler) OnSessionOpen(ss *ServerSession) {
+func (sh *testServerHandler) OnSessionOpen(ctx *ServerHandlerOnSessionOpenCtx) {
 	if sh.onSessionOpen != nil {
-		sh.onSessionOpen(ss)
+		sh.onSessionOpen(ctx)
 	}
 }
 
-func (sh *testServerHandler) OnSessionClose(ss *ServerSession, err error) {
+func (sh *testServerHandler) OnSessionClose(ctx *ServerHandlerOnSessionCloseCtx) {
 	if sh.onSessionClose != nil {
-		sh.onSessionClose(ss, err)
+		sh.onSessionClose(ctx)
 	}
 }
 
@@ -226,15 +226,15 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onSessionClose: func(ss *ServerSession, err error) {
+					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						mutex.Lock()
 						defer mutex.Unlock()
 
-						if ss == publisher {
+						if ctx.Session == publisher {
 							publisher = nil
 							sdp = nil
 						} else {
-							delete(readers, ss)
+							delete(readers, ctx.Session)
 						}
 					},
 					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, []byte, error) {
@@ -447,10 +447,10 @@ func TestServerConnClose(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnOpen: func(sc *ServerConn) {
-				sc.Close()
+			onConnOpen: func(ctx *ServerHandlerOnConnOpenCtx) {
+				ctx.Conn.Close()
 			},
-			onConnClose: func(sc *ServerConn, err error) {
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(connClosed)
 			},
 		},
@@ -498,8 +498,8 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	connClosed := make(chan struct{})
 
 	h := &testServerHandler{
-		onConnClose: func(sc *ServerConn, err error) {
-			require.Equal(t, "CSeq is missing", err.Error())
+		onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+			require.Equal(t, "CSeq is missing", ctx.Error.Error())
 			close(connClosed)
 		},
 	}
@@ -530,8 +530,8 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 
 func TestServerErrorInvalidMethod(t *testing.T) {
 	h := &testServerHandler{
-		onConnClose: func(sc *ServerConn, err error) {
-			require.Equal(t, "unhandled request (INVALID rtsp://localhost:8554/)", err.Error())
+		onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+			require.Equal(t, "unhandled request (INVALID rtsp://localhost:8554/)", ctx.Error.Error())
 		},
 	}
 
@@ -885,10 +885,10 @@ func TestServerSessionClose(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onSessionOpen: func(ss *ServerSession) {
-				ss.Close()
+			onSessionOpen: func(ctx *ServerHandlerOnSessionOpenCtx) {
+				ctx.Session.Close()
 			},
-			onSessionClose: func(ss *ServerSession, err error) {
+			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 				close(sessionClosed)
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
@@ -937,7 +937,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onSessionClose: func(ss *ServerSession, err error) {
+			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 				close(sessionClosed)
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
@@ -999,8 +999,8 @@ func TestServerErrorInvalidPath(t *testing.T) {
 		t.Run(string(method), func(t *testing.T) {
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(sc *ServerConn, err error) {
-						require.Equal(t, "invalid path", err.Error())
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+						require.Equal(t, "invalid path", ctx.Error.Error())
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{

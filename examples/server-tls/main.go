@@ -23,32 +23,32 @@ type serverHandler struct {
 }
 
 // called after a connection is opened.
-func (sh *serverHandler) OnConnOpen(sc *gortsplib.ServerConn) {
+func (sh *serverHandler) OnConnOpen(ctx *gortsplib.ServerHandlerOnConnOpenCtx) {
 	log.Printf("conn opened")
 }
 
 // called after a connection is closed.
-func (sh *serverHandler) OnConnClose(sc *gortsplib.ServerConn, err error) {
-	log.Printf("conn closed (%v)", err)
+func (sh *serverHandler) OnConnClose(ctx *gortsplib.ServerHandlerOnConnCloseCtx) {
+	log.Printf("conn closed (%v)", ctx.Error)
 }
 
 // called after a session is opened.
-func (sh *serverHandler) OnSessionOpen(ss *gortsplib.ServerSession) {
+func (sh *serverHandler) OnSessionOpen(ctx *gortsplib.ServerHandlerOnSessionOpenCtx) {
 	log.Printf("session opened")
 }
 
 // called after a session is closed.
-func (sh *serverHandler) OnSessionClose(ss *gortsplib.ServerSession, err error) {
+func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
 	log.Printf("session closed")
 
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	if ss == sh.publisher {
+	if ctx.Session == sh.publisher {
 		sh.publisher = nil
 		sh.sdp = nil
 	} else {
-		delete(sh.readers, ss)
+		delete(sh.readers, ctx.Session)
 	}
 }
 

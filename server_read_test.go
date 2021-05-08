@@ -120,8 +120,8 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
-				require.Equal(t, "can't setup tracks with different paths", err.Error())
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				require.Equal(t, "can't setup tracks with different paths", ctx.Error.Error())
 				close(connClosed)
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
@@ -193,8 +193,8 @@ func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
-				require.Equal(t, "track 0 has already been setup", err.Error())
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				require.Equal(t, "track 0 has already been setup", ctx.Error.Error())
 				close(connClosed)
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
@@ -276,16 +276,16 @@ func TestServerRead(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnOpen: func(sc *ServerConn) {
+					onConnOpen: func(ctx *ServerHandlerOnConnOpenCtx) {
 						close(connOpened)
 					},
-					onConnClose: func(sc *ServerConn, err error) {
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						close(connClosed)
 					},
-					onSessionOpen: func(ss *ServerSession) {
+					onSessionOpen: func(ctx *ServerHandlerOnSessionOpenCtx) {
 						close(sessionOpened)
 					},
-					onSessionClose: func(ss *ServerSession, err error) {
+					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
@@ -514,7 +514,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
 			},
@@ -693,7 +693,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
 			},
@@ -817,7 +817,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(sc *ServerConn, err error) {
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
 			},
@@ -942,7 +942,7 @@ func TestServerReadTimeout(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onSessionClose: func(ss *ServerSession, err error) {
+					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -1035,10 +1035,10 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(sc *ServerConn, err error) {
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						close(connClosed)
 					},
-					onSessionClose: func(ss *ServerSession, err error) {
+					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {

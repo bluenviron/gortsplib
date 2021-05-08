@@ -113,7 +113,9 @@ func (sc *ServerConn) run() {
 	defer sc.wg.Done()
 
 	if h, ok := sc.s.Handler.(ServerHandlerOnConnOpen); ok {
-		h.OnConnOpen(sc)
+		h.OnConnOpen(&ServerHandlerOnConnOpenCtx{
+			Conn: sc,
+		})
 	}
 
 	conn := func() net.Conn {
@@ -266,7 +268,10 @@ func (sc *ServerConn) run() {
 	close(sc.sessionRemove)
 
 	if h, ok := sc.s.Handler.(ServerHandlerOnConnClose); ok {
-		h.OnConnClose(sc, err)
+		h.OnConnClose(&ServerHandlerOnConnCloseCtx{
+			Conn:  sc,
+			Error: err,
+		})
 	}
 }
 

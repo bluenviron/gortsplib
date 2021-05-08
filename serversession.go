@@ -114,9 +114,10 @@ type ServerSessionAnnouncedTrack struct {
 
 // ServerSession is a server-side RTSP session.
 type ServerSession struct {
-	s  *Server
-	id string
-	wg *sync.WaitGroup
+	s      *Server
+	id     string
+	wg     *sync.WaitGroup
+	author *ServerConn
 
 	conns            map[*ServerConn]struct{}
 	connsWG          sync.WaitGroup
@@ -139,15 +140,18 @@ type ServerSession struct {
 	parentTerminate chan struct{}
 }
 
-func newServerSession(s *Server,
+func newServerSession(
+	s *Server,
 	id string,
 	wg *sync.WaitGroup,
+	author *ServerConn,
 ) *ServerSession {
 
 	ss := &ServerSession{
 		s:               s,
 		id:              id,
 		wg:              wg,
+		author:          author,
 		conns:           make(map[*ServerConn]struct{}),
 		lastRequestTime: time.Now(),
 		request:         make(chan request),
@@ -214,7 +218,11 @@ func (ss *ServerSession) run() {
 	defer ss.wg.Done()
 
 	if h, ok := ss.s.Handler.(ServerHandlerOnSessionOpen); ok {
-		h.OnSessionOpen(ss)
+		h.OnSessionOpen(&ServerHandlerOnSessionOpenCtx{
+			Session: ss,
+			Conn:    ss.author,
+		})
+		ss.author = nil
 	}
 
 	err := func() error {
@@ -365,7 +373,10 @@ func (ss *ServerSession) run() {
 	close(ss.connRemove)
 
 	if h, ok := ss.s.Handler.(ServerHandlerOnSessionClose); ok {
-		h.OnSessionClose(ss, err)
+		h.OnSessionClose(&ServerHandlerOnSessionCloseCtx{
+			Session: ss,
+			Error:   err,
+		})
 	}
 }
 

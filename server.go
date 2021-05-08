@@ -302,7 +302,7 @@ outer:
 					continue
 				}
 
-				ss := newServerSession(s, id, &wg)
+				ss := newServerSession(s, id, &wg, req.sc)
 				s.sessions[id] = ss
 				ss.request <- req
 			}
