@@ -929,10 +929,6 @@ func TestServerSessionClose(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	res, err := readResponse(bconn.Reader)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
 	<-sessionClosed
 }
 
@@ -997,8 +993,8 @@ func TestServerErrorInvalidPath(t *testing.T) {
 		base.Play,
 		base.Record,
 		base.Pause,
-		//base.GetParameter,
-		//base.SetParameter,
+		// base.GetParameter,
+		// base.SetParameter,
 	} {
 		t.Run(string(method), func(t *testing.T) {
 			s := &Server{
