@@ -15,10 +15,10 @@ const (
 func (sp StreamProtocol) String() string {
 	switch sp {
 	case StreamProtocolUDP:
-		return "udp"
+		return "UDP"
 
 	case StreamProtocolTCP:
-		return "tcp"
+		return "TCP"
 	}
 	return "unknown"
 }
