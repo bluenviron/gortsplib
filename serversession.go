@@ -351,6 +351,9 @@ func (ss *ServerSession) run() {
 	}
 
 	for sc := range ss.conns {
+		if sc == ss.tcpConn {
+			sc.Close()
+		}
 		sc.sessionRemove <- ss
 	}
 	ss.connsWG.Wait()
