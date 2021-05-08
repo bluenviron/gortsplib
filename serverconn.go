@@ -35,6 +35,11 @@ func getSessionID(header base.Header) string {
 	return ""
 }
 
+type readReq struct {
+	req *base.Request
+	res chan error
+}
+
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
 	s     *Server
@@ -43,19 +48,23 @@ type ServerConn struct {
 	br    *bufio.Reader
 	bw    *bufio.Writer
 
+	sessions   map[string]*ServerSession
+	sessionsWG sync.WaitGroup
+
 	// TCP stream protocol
-	tcpFrameLinkedSession       *ServerSession
-	tcpFrameIsRecording         bool
 	tcpFrameSetEnabled          bool
 	tcpFrameEnabled             bool
+	tcpSession                  *ServerSession
+	tcpFrameIsRecording         bool
 	tcpFrameTimeout             bool
 	tcpFrameBuffer              *multibuffer.MultiBuffer
 	tcpFrameWriteBuffer         *ringbuffer.RingBuffer
 	tcpFrameBackgroundWriteDone chan struct{}
 
 	// in
-	innerTerminate chan struct{}
-	terminate      chan struct{}
+	sessionRemove   chan *ServerSession
+	innerTerminate  chan struct{}
+	parentTerminate chan struct{}
 }
 
 func newServerConn(
@@ -64,11 +73,12 @@ func newServerConn(
 	nconn net.Conn) *ServerConn {
 
 	sc := &ServerConn{
-		s:              s,
-		wg:             wg,
-		nconn:          nconn,
-		innerTerminate: make(chan struct{}, 1),
-		terminate:      make(chan struct{}),
+		s:               s,
+		wg:              wg,
+		nconn:           nconn,
+		sessionRemove:   make(chan *ServerSession),
+		innerTerminate:  make(chan struct{}, 1),
+		parentTerminate: make(chan struct{}),
 	}
 
 	wg.Add(1)
@@ -115,13 +125,17 @@ func (sc *ServerConn) run() {
 
 	sc.br = bufio.NewReaderSize(conn, serverConnReadBufferSize)
 	sc.bw = bufio.NewWriterSize(conn, serverConnWriteBufferSize)
+	sc.sessions = make(map[string]*ServerSession)
 
 	// instantiate always to allow writing to this conn before Play()
 	sc.tcpFrameWriteBuffer = ringbuffer.New(uint64(sc.s.ReadBufferCount))
 
-	readDone := make(chan error)
+	readRequest := make(chan readReq)
+	readErr := make(chan error)
+	readDone := make(chan struct{})
 	go func() {
-		readDone <- func() error {
+		defer close(readDone)
+		readErr <- func() error {
 			var req base.Request
 			var frame base.InterleavedFrame
 
@@ -140,15 +154,15 @@ func (sc *ServerConn) run() {
 					switch what.(type) {
 					case *base.InterleavedFrame:
 						// forward frame only if it has been set up
-						if _, ok := sc.tcpFrameLinkedSession.setuppedTracks[frame.TrackID]; ok {
+						if _, ok := sc.tcpSession.setuppedTracks[frame.TrackID]; ok {
 							if sc.tcpFrameIsRecording {
-								sc.tcpFrameLinkedSession.announcedTracks[frame.TrackID].rtcpReceiver.ProcessFrame(time.Now(),
+								sc.tcpSession.announcedTracks[frame.TrackID].rtcpReceiver.ProcessFrame(time.Now(),
 									frame.StreamType, frame.Payload)
 							}
 
 							if h, ok := sc.s.Handler.(ServerHandlerOnFrame); ok {
 								h.OnFrame(&ServerHandlerOnFrameCtx{
-									Session:    sc.tcpFrameLinkedSession,
+									Session:    sc.tcpSession,
 									TrackID:    frame.TrackID,
 									StreamType: frame.StreamType,
 									Payload:    frame.Payload,
@@ -157,7 +171,9 @@ func (sc *ServerConn) run() {
 						}
 
 					case *base.Request:
-						err := sc.handleRequestOuter(&req)
+						cres := make(chan error)
+						readRequest <- readReq{req: &req, res: cres}
+						err := <-cres
 						if err != nil {
 							return err
 						}
@@ -169,7 +185,9 @@ func (sc *ServerConn) run() {
 						return err
 					}
 
-					err = sc.handleRequestOuter(&req)
+					cres := make(chan error)
+					readRequest <- readReq{req: &req, res: cres}
+					err = <-cres
 					if err != nil {
 						return err
 					}
@@ -179,50 +197,73 @@ func (sc *ServerConn) run() {
 	}()
 
 	err := func() error {
-		select {
-		case err := <-readDone:
-			if sc.tcpFrameEnabled {
-				sc.tcpFrameWriteBuffer.Close()
-				<-sc.tcpFrameBackgroundWriteDone
+		for {
+			select {
+			case req := <-readRequest:
+				req.res <- sc.handleRequestOuter(req.req)
+
+			case err := <-readErr:
+				return err
+
+			case ss := <-sc.sessionRemove:
+				if _, ok := sc.sessions[ss.ID()]; ok {
+					delete(sc.sessions, ss.ID())
+					ss.connRemove <- sc
+					sc.sessionsWG.Done()
+				}
+
+			case <-sc.innerTerminate:
+				return liberrors.ErrServerTerminated{}
 			}
-
-			sc.nconn.Close()
-
-			sc.s.connClose <- sc
-			<-sc.terminate
-
-			return err
-
-		case <-sc.innerTerminate:
-			sc.nconn.Close()
-			<-readDone
-
-			if sc.tcpFrameEnabled {
-				sc.tcpFrameWriteBuffer.Close()
-				<-sc.tcpFrameBackgroundWriteDone
-			}
-
-			sc.s.connClose <- sc
-			<-sc.terminate
-
-			return liberrors.ErrServerTerminated{}
-
-		case <-sc.terminate:
-			sc.nconn.Close()
-			<-readDone
-
-			if sc.tcpFrameEnabled {
-				sc.tcpFrameWriteBuffer.Close()
-				<-sc.tcpFrameBackgroundWriteDone
-			}
-
-			return liberrors.ErrServerTerminated{}
 		}
 	}()
 
+	go func() {
+		for {
+			select {
+			case req, ok := <-readRequest:
+				if !ok {
+					return
+				}
+
+				req.res <- liberrors.ErrServerTerminated{}
+
+			case _, ok := <-readErr:
+				if !ok {
+					return
+				}
+
+			case ss, ok := <-sc.sessionRemove:
+				if !ok {
+					return
+				}
+
+				if _, ok := sc.sessions[ss.ID()]; ok {
+					sc.sessionsWG.Done()
+				}
+			}
+		}
+	}()
+
+	sc.nconn.Close()
+	<-readDone
+
 	if sc.tcpFrameEnabled {
-		sc.s.sessionClose <- sc.tcpFrameLinkedSession
+		sc.tcpFrameWriteBuffer.Close()
+		<-sc.tcpFrameBackgroundWriteDone
 	}
+
+	for _, ss := range sc.sessions {
+		ss.connRemove <- sc
+	}
+	sc.sessionsWG.Wait()
+
+	sc.s.connClose <- sc
+	<-sc.parentTerminate
+
+	close(readRequest)
+	close(readErr)
+	close(sc.sessionRemove)
 
 	if h, ok := sc.s.Handler.(ServerHandlerOnConnClose); ok {
 		h.OnConnClose(sc, err)
@@ -241,8 +282,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	// the connection can't communicate with another session
 	// if it's receiving or sending TCP frames.
-	if sc.tcpFrameLinkedSession != nil &&
-		sxID != sc.tcpFrameLinkedSession.id {
+	if sc.tcpSession != nil &&
+		sxID != sc.tcpSession.id {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
 		}, liberrors.ErrServerLinkedToOtherSession{}
@@ -252,16 +293,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	case base.Options:
 		// handle request in session
 		if sxID != "" {
-			cres := make(chan sessionReqRes)
-			sc.s.sessionReq <- sessionReq{
-				sc:     sc,
-				req:    req,
-				id:     sxID,
-				create: false,
-				res:    cres,
-			}
-			res := <-cres
-			return res.res, res.err
+			_, res, err := sc.handleRequestInSession(sxID, req, false)
+			return res, err
 		}
 
 		// handle request here
@@ -330,121 +363,65 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.Announce:
 		if _, ok := sc.s.Handler.(ServerHandlerOnAnnounce); ok {
-			cres := make(chan sessionReqRes)
-			sc.s.sessionReq <- sessionReq{
-				sc:     sc,
-				req:    req,
-				id:     sxID,
-				create: true,
-				res:    cres,
-			}
-			res := <-cres
-			return res.res, res.err
+			_, res, err := sc.handleRequestInSession(sxID, req, true)
+			return res, err
 		}
 
 	case base.Setup:
 		if _, ok := sc.s.Handler.(ServerHandlerOnSetup); ok {
-			cres := make(chan sessionReqRes)
-			sc.s.sessionReq <- sessionReq{
-				sc:     sc,
-				req:    req,
-				id:     sxID,
-				create: true,
-				res:    cres,
-			}
-			res := <-cres
-			return res.res, res.err
+			_, res, err := sc.handleRequestInSession(sxID, req, true)
+			return res, err
 		}
 
 	case base.Play:
 		if _, ok := sc.s.Handler.(ServerHandlerOnPlay); ok {
-			cres := make(chan sessionReqRes)
-			sc.s.sessionReq <- sessionReq{
-				sc:     sc,
-				req:    req,
-				id:     sxID,
-				create: false,
-				res:    cres,
-			}
-			res := <-cres
+			ss, res, err := sc.handleRequestInSession(sxID, req, false)
 
-			if _, ok := res.err.(liberrors.ErrServerTCPFramesEnable); ok {
-				sc.tcpFrameLinkedSession = res.ss
+			if _, ok := err.(liberrors.ErrServerTCPFramesEnable); ok {
+				sc.tcpSession = ss
 				sc.tcpFrameIsRecording = false
 				sc.tcpFrameSetEnabled = true
-				return res.res, nil
+				return res, nil
 			}
 
-			return res.res, res.err
+			return res, err
 		}
 
 	case base.Record:
 		if _, ok := sc.s.Handler.(ServerHandlerOnRecord); ok {
-			cres := make(chan sessionReqRes)
-			sc.s.sessionReq <- sessionReq{
-				sc:     sc,
-				req:    req,
-				id:     sxID,
-				create: false,
-				res:    cres,
-			}
-			res := <-cres
+			ss, res, err := sc.handleRequestInSession(sxID, req, false)
 
-			if _, ok := res.err.(liberrors.ErrServerTCPFramesEnable); ok {
-				sc.tcpFrameLinkedSession = res.ss
+			if _, ok := err.(liberrors.ErrServerTCPFramesEnable); ok {
+				sc.tcpSession = ss
 				sc.tcpFrameIsRecording = true
 				sc.tcpFrameSetEnabled = true
-				return res.res, nil
+				return res, nil
 			}
 
-			return res.res, res.err
+			return res, err
 		}
 
 	case base.Pause:
 		if _, ok := sc.s.Handler.(ServerHandlerOnPause); ok {
-			cres := make(chan sessionReqRes)
-			sc.s.sessionReq <- sessionReq{
-				sc:     sc,
-				req:    req,
-				id:     sxID,
-				create: false,
-				res:    cres,
-			}
-			res := <-cres
+			_, res, err := sc.handleRequestInSession(sxID, req, false)
 
-			if _, ok := res.err.(liberrors.ErrServerTCPFramesDisable); ok {
+			if _, ok := err.(liberrors.ErrServerTCPFramesDisable); ok {
 				sc.tcpFrameSetEnabled = false
-				return res.res, nil
+				return res, nil
 			}
 
-			return res.res, res.err
+			return res, err
 		}
 
 	case base.Teardown:
-		cres := make(chan sessionReqRes)
-		sc.s.sessionReq <- sessionReq{
-			sc:     sc,
-			req:    req,
-			id:     sxID,
-			create: false,
-			res:    cres,
-		}
-		res := <-cres
-		return res.res, res.err
+		_, res, err := sc.handleRequestInSession(sxID, req, false)
+		return res, err
 
 	case base.GetParameter:
 		// handle request in session
 		if sxID != "" {
-			cres := make(chan sessionReqRes)
-			sc.s.sessionReq <- sessionReq{
-				sc:     sc,
-				req:    req,
-				id:     sxID,
-				create: false,
-				res:    cres,
-			}
-			res := <-cres
-			return res.res, res.err
+			_, res, err := sc.handleRequestInSession(sxID, req, false)
+			return res, err
 		}
 
 		// handle request here
@@ -561,6 +538,45 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	}
 
 	return err
+}
+
+func (sc *ServerConn) handleRequestInSession(sxID string, req *base.Request, create bool,
+) (*ServerSession, *base.Response, error) {
+
+	// if the session is already linked to this conn, communicate directly with it
+	if sxID != "" {
+		if ss, ok := sc.sessions[sxID]; ok {
+			cres := make(chan requestRes)
+			ss.request <- request{
+				sc:     sc,
+				req:    req,
+				id:     sxID,
+				create: create,
+				res:    cres,
+			}
+			res := <-cres
+
+			return ss, res.res, res.err
+		}
+	}
+
+	// otherwise, pass through Server
+	cres := make(chan requestRes)
+	sc.s.sessionRequest <- request{
+		sc:     sc,
+		req:    req,
+		id:     sxID,
+		create: create,
+		res:    cres,
+	}
+	res := <-cres
+
+	if res.ss != nil {
+		sc.sessions[res.ss.ID()] = res.ss
+		sc.sessionsWG.Add(1)
+	}
+
+	return res.ss, res.res, res.err
 }
 
 func (sc *ServerConn) tcpFrameBackgroundWrite() {

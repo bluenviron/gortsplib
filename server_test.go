@@ -929,3 +929,53 @@ func TestServerSessionClose(t *testing.T) {
 
 	<-sessionClosed
 }
+
+func TestServerSessionAutoClose(t *testing.T) {
+	sessionClosed := make(chan struct{})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onSessionClose: func(ss *ServerSession, err error) {
+				close(sessionClosed)
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("127.0.0.1:8554")
+	require.NoError(t, err)
+	defer s.Close()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	err = base.Request{
+		Method: base.Setup,
+		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+			"Transport": headers.Transport{
+				Protocol: StreamProtocolTCP,
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+				InterleavedIDs: &[2]int{0, 1},
+			}.Write(),
+		},
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	conn.Close()
+
+	<-sessionClosed
+}

@@ -935,7 +935,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 func TestServerReadTimeout(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
-		// checking TCP is useless, since there's no timeout when reading with TCP
+		// there's no timeout when reading with TCP
 	} {
 		t.Run(proto, func(t *testing.T) {
 			sessionClosed := make(chan struct{})

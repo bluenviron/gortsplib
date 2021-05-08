@@ -44,18 +44,18 @@ func newSessionID(sessions map[string]*ServerSession) (string, error) {
 	}
 }
 
-type sessionReqRes struct {
+type requestRes struct {
+	ss  *ServerSession
 	res *base.Response
 	err error
-	ss  *ServerSession
 }
 
-type sessionReq struct {
+type request struct {
 	sc     *ServerConn
 	req    *base.Request
 	id     string
 	create bool
-	res    chan sessionReqRes
+	res    chan requestRes
 }
 
 // Server is a RTSP server.
@@ -134,10 +134,10 @@ type Server struct {
 	exitError       error
 
 	// in
-	connClose    chan *ServerConn
-	sessionReq   chan sessionReq
-	sessionClose chan *ServerSession
-	terminate    chan struct{}
+	connClose      chan *ServerConn
+	sessionRequest chan request
+	sessionClose   chan *ServerSession
+	terminate      chan struct{}
 
 	// out
 	done chan struct{}
@@ -237,7 +237,7 @@ func (s *Server) run() {
 	s.sessions = make(map[string]*ServerSession)
 	s.conns = make(map[*ServerConn]struct{})
 	s.connClose = make(chan *ServerConn)
-	s.sessionReq = make(chan sessionReq)
+	s.sessionRequest = make(chan request)
 	s.sessionClose = make(chan *ServerSession)
 
 	var wg sync.WaitGroup
@@ -276,13 +276,13 @@ outer:
 			}
 			s.doConnClose(sc)
 
-		case req := <-s.sessionReq:
+		case req := <-s.sessionRequest:
 			if ss, ok := s.sessions[req.id]; ok {
 				ss.request <- req
 
 			} else {
 				if !req.create {
-					req.res <- sessionReqRes{
+					req.res <- requestRes{
 						res: &base.Response{
 							StatusCode: base.StatusBadRequest,
 						},
@@ -293,7 +293,7 @@ outer:
 
 				id, err := newSessionID(s.sessions)
 				if err != nil {
-					req.res <- sessionReqRes{
+					req.res <- requestRes{
 						res: &base.Response{
 							StatusCode: base.StatusBadRequest,
 						},
@@ -330,6 +330,7 @@ outer:
 				if !ok {
 					return
 				}
+
 				nconn.Close()
 
 			case _, ok := <-s.connClose:
@@ -337,11 +338,12 @@ outer:
 					return
 				}
 
-			case req, ok := <-s.sessionReq:
+			case req, ok := <-s.sessionRequest:
 				if !ok {
 					return
 				}
-				req.res <- sessionReqRes{
+
+				req.res <- requestRes{
 					res: &base.Response{
 						StatusCode: base.StatusBadRequest,
 					},
@@ -379,7 +381,7 @@ outer:
 	close(acceptErr)
 	close(connNew)
 	close(s.connClose)
-	close(s.sessionReq)
+	close(s.sessionRequest)
 	close(s.sessionClose)
 	close(s.done)
 }
@@ -409,10 +411,12 @@ func (s *Server) StartAndWait(address string) error {
 
 func (s *Server) doConnClose(sc *ServerConn) {
 	delete(s.conns, sc)
-	close(sc.terminate)
+	close(sc.parentTerminate)
+	sc.Close()
 }
 
 func (s *Server) doSessionClose(ss *ServerSession) {
 	delete(s.sessions, ss.id)
-	close(ss.terminate)
+	close(ss.parentTerminate)
+	ss.Close()
 }
