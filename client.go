@@ -32,15 +32,12 @@ type Client struct {
 	//
 	// connection
 	//
-
 	// timeout of read operations.
 	// It defaults to 10 seconds.
 	ReadTimeout time.Duration
-
 	// timeout of write operations.
 	// It defaults to 10 seconds.
 	WriteTimeout time.Duration
-
 	// a TLS configuration to connect to TLS (RTSPS) servers.
 	// It defaults to &tls.Config{InsecureSkipVerify:true}
 	TLSConfig *tls.Config
@@ -48,11 +45,9 @@ type Client struct {
 	//
 	// initialization
 	//
-
 	// disable being redirected to other servers, that can happen during Describe().
 	// It defaults to false.
 	RedirectDisable bool
-
 	// enable communication with servers which don't provide server ports.
 	// this can be a security issue.
 	// It defaults to false.
@@ -61,23 +56,19 @@ type Client struct {
 	//
 	// reading / writing
 	//
-
 	// the stream protocol (UDP or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
 	StreamProtocol *StreamProtocol
-
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout.
 	// It defaults to 3 seconds.
 	InitialUDPReadTimeout time.Duration
-
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
 	// It defaults to 1.
 	ReadBufferCount int
-
 	// read buffer size.
 	// This must be touched only when the server reports problems about buffer sizes.
 	// It defaults to 2048.
@@ -86,21 +77,17 @@ type Client struct {
 	//
 	// callbacks
 	//
-
 	// callback called before every request.
 	OnRequest func(req *base.Request)
-
 	// callback called after every response.
 	OnResponse func(res *base.Response)
 
 	//
 	// system functions
 	//
-
 	// function used to initialize the TCP client.
 	// It defaults to net.DialTimeout.
 	DialTimeout func(network, address string, timeout time.Duration) (net.Conn, error)
-
 	// function used to initialize UDP listeners.
 	// It defaults to net.ListenPacket.
 	ListenPacket func(network, address string) (net.PacketConn, error)

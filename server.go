@@ -63,29 +63,23 @@ type Server struct {
 	//
 	// handler
 	//
-
 	// an handler interface to handle requests.
 	Handler ServerHandler
 
 	//
 	// connection
 	//
-
 	// timeout of read operations.
 	// It defaults to 10 seconds
 	ReadTimeout time.Duration
-
 	// timeout of write operations.
 	// It defaults to 10 seconds
 	WriteTimeout time.Duration
-
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
-
 	// a port to send and receive UDP/RTP packets.
 	// If UDPRTPAddress and UDPRTCPAddress are != "", the server can accept and send UDP streams.
 	UDPRTPAddress string
-
 	// a port to send and receive UDP/RTCP packets.
 	// If UDPRTPAddress and UDPRTCPAddress are != "", the server can accept and send UDP streams.
 	UDPRTCPAddress string
@@ -93,7 +87,6 @@ type Server struct {
 	//
 	// reading / writing
 	//
-
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
@@ -101,7 +94,6 @@ type Server struct {
 	// that are particularly high when using UDP.
 	// It defaults to 512
 	ReadBufferCount int
-
 	// read buffer size.
 	// This must be touched only when the server reports problems about buffer sizes.
 	// It defaults to 2048.
@@ -110,11 +102,9 @@ type Server struct {
 	//
 	// system functions
 	//
-
 	// function used to initialize the TCP listener.
 	// It defaults to net.Listen.
 	Listen func(network string, address string) (net.Listener, error)
-
 	// function used to initialize UDP listeners.
 	// It defaults to net.ListenPacket.
 	ListenPacket func(network, address string) (net.PacketConn, error)
