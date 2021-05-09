@@ -225,12 +225,28 @@ func (s *Server) Start(address string) error {
 		return err
 	}
 
-	s.terminate = make(chan struct{})
+	s.terminate = make(chan struct{}, 1)
 	s.done = make(chan struct{})
 
 	go s.run()
 
 	return nil
+}
+
+// Close closes all the server resources and waits for the server to exit.
+func (s *Server) Close() error {
+	select {
+	case s.terminate <- struct{}{}:
+	default:
+	}
+	<-s.done
+	return nil
+}
+
+// Wait waits until a fatal error.
+func (s *Server) Wait() error {
+	<-s.done
+	return s.exitError
 }
 
 func (s *Server) run() {
@@ -384,19 +400,6 @@ outer:
 	close(s.sessionRequest)
 	close(s.sessionClose)
 	close(s.done)
-}
-
-// Close closes all the server resources and waits for the server to exit.
-func (s *Server) Close() error {
-	close(s.terminate)
-	<-s.done
-	return nil
-}
-
-// Wait waits until a fatal error.
-func (s *Server) Wait() error {
-	<-s.done
-	return s.exitError
 }
 
 // StartAndWait starts the server and waits until a fatal error.

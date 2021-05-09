@@ -63,7 +63,7 @@ type ServerConn struct {
 
 	// in
 	sessionRemove   chan *ServerSession
-	innerTerminate  chan struct{}
+	terminate       chan struct{}
 	parentTerminate chan struct{}
 }
 
@@ -77,7 +77,7 @@ func newServerConn(
 		wg:              wg,
 		nconn:           nconn,
 		sessionRemove:   make(chan *ServerSession),
-		innerTerminate:  make(chan struct{}, 1),
+		terminate:       make(chan struct{}, 1),
 		parentTerminate: make(chan struct{}),
 	}
 
@@ -90,7 +90,7 @@ func newServerConn(
 // Close closes the ServerConn.
 func (sc *ServerConn) Close() error {
 	select {
-	case sc.innerTerminate <- struct{}{}:
+	case sc.terminate <- struct{}{}:
 	default:
 	}
 	return nil
@@ -214,7 +214,7 @@ func (sc *ServerConn) run() {
 					sc.sessionsWG.Done()
 				}
 
-			case <-sc.innerTerminate:
+			case <-sc.terminate:
 				return liberrors.ErrServerTerminated{}
 			}
 		}

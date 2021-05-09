@@ -136,7 +136,7 @@ type ServerSession struct {
 	// in
 	request         chan request
 	connRemove      chan *ServerConn
-	innerTerminate  chan struct{}
+	terminate       chan struct{}
 	parentTerminate chan struct{}
 }
 
@@ -156,7 +156,7 @@ func newServerSession(
 		lastRequestTime: time.Now(),
 		request:         make(chan request),
 		connRemove:      make(chan *ServerConn),
-		innerTerminate:  make(chan struct{}, 1),
+		terminate:       make(chan struct{}, 1),
 		parentTerminate: make(chan struct{}),
 	}
 
@@ -169,7 +169,7 @@ func newServerSession(
 // Close closes the ServerSession.
 func (ss *ServerSession) Close() error {
 	select {
-	case ss.innerTerminate <- struct{}{}:
+	case ss.terminate <- struct{}{}:
 	default:
 	}
 	return nil
@@ -311,7 +311,7 @@ func (ss *ServerSession) run() {
 					ss.WriteFrame(trackID, StreamTypeRTCP, r)
 				}
 
-			case <-ss.innerTerminate:
+			case <-ss.terminate:
 				return liberrors.ErrServerTerminated{}
 			}
 		}

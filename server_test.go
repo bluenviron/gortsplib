@@ -422,6 +422,17 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 	}
 }
 
+func TestServerClose(t *testing.T) {
+	s := &Server{
+		Handler: &testServerHandler{},
+	}
+
+	err := s.Start("127.0.0.1:8554")
+	require.NoError(t, err)
+	s.Close()
+	s.Close()
+}
+
 func TestServerErrorWrongUDPPorts(t *testing.T) {
 	t.Run("non consecutive", func(t *testing.T) {
 		s := &Server{
@@ -448,6 +459,7 @@ func TestServerConnClose(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnOpen: func(ctx *ServerHandlerOnConnOpenCtx) {
+				ctx.Conn.Close()
 				ctx.Conn.Close()
 			},
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
@@ -886,6 +898,7 @@ func TestServerSessionClose(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onSessionOpen: func(ctx *ServerHandlerOnSessionOpenCtx) {
+				ctx.Session.Close()
 				ctx.Session.Close()
 			},
 			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
