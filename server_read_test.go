@@ -59,14 +59,11 @@ func TestServerReadSetupPath(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			setupDone := make(chan struct{})
-
 			s := &Server{
 				Handler: &testServerHandler{
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
 						require.Equal(t, ca.path, ctx.Path)
 						require.Equal(t, ca.trackID, ctx.TrackID)
-						close(setupDone)
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -96,19 +93,14 @@ func TestServerReadSetupPath(t *testing.T) {
 				InterleavedIDs: &[2]int{ca.trackID * 2, (ca.trackID * 2) + 1},
 			}
 
-			err = base.Request{
+			res, err := writeReqReadRes(bconn, base.Request{
 				Method: base.Setup,
 				URL:    base.MustParseURL(ca.url),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": th.Write(),
 				},
-			}.Write(bconn.Writer)
-			require.NoError(t, err)
-
-			<-setupDone
-
-			res, err := readResponse(bconn.Reader)
+			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 		})
@@ -154,23 +146,20 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	err = base.Request{
+	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"1"},
 			"Transport": th.Write(),
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err := readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	th.InterleavedIDs = &[2]int{2, 3}
 
-	err = base.Request{
+	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
 		URL:    base.MustParseURL("rtsp://localhost:8554/test12stream/trackID=1"),
 		Header: base.Header{
@@ -178,10 +167,7 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 			"Transport": th.Write(),
 			"Session":   res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err = readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
@@ -227,23 +213,20 @@ func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	err = base.Request{
+	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"1"},
 			"Transport": th.Write(),
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err := readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	th.InterleavedIDs = &[2]int{2, 3}
 
-	err = base.Request{
+	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -251,10 +234,7 @@ func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 			"Transport": th.Write(),
 			"Session":   res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err = readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
@@ -362,17 +342,14 @@ func TestServerRead(t *testing.T) {
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
-			err = base.Request{
+			res, err := writeReqReadRes(bconn, base.Request{
 				Method: base.Setup,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Write(),
 				},
-			}.Write(bconn.Writer)
-			require.NoError(t, err)
-
-			res, err := readResponse(bconn.Reader)
+			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -394,17 +371,14 @@ func TestServerRead(t *testing.T) {
 				defer l2.Close()
 			}
 
-			err = base.Request{
+			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Play,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"2"},
 					"Session": res.Header["Session"],
 				},
-			}.Write(bconn.Writer)
-			require.NoError(t, err)
-
-			res, err = readResponse(bconn.Reader)
+			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -456,47 +430,38 @@ func TestServerRead(t *testing.T) {
 
 			if proto == "udp" {
 				// ping with OPTIONS
-				err = base.Request{
+				res, err = writeReqReadRes(bconn, base.Request{
 					Method: base.Options,
 					URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 					Header: base.Header{
 						"CSeq":    base.HeaderValue{"4"},
 						"Session": res.Header["Session"],
 					},
-				}.Write(bconn.Writer)
-				require.NoError(t, err)
-
-				res, err = readResponse(bconn.Reader)
+				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
 
 				// ping with GET_PARAMETER
-				err = base.Request{
+				res, err = writeReqReadRes(bconn, base.Request{
 					Method: base.GetParameter,
 					URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 					Header: base.Header{
 						"CSeq":    base.HeaderValue{"5"},
 						"Session": res.Header["Session"],
 					},
-				}.Write(bconn.Writer)
-				require.NoError(t, err)
-
-				res, err = readResponse(bconn.Reader)
+				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
 			}
 
-			err = base.Request{
+			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Teardown,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"6"},
 					"Session": res.Header["Session"],
 				},
-			}.Write(bconn.Writer)
-			require.NoError(t, err)
-
-			res, err = readResponse(bconn.Reader)
+			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -560,7 +525,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	defer conn.Close()
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-	err = base.Request{
+	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -578,24 +543,18 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 				InterleavedIDs: &[2]int{0, 1},
 			}.Write(),
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err := readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	err = base.Request{
+	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err = readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -632,7 +591,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 	defer conn.Close()
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-	err = base.Request{
+	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -650,38 +609,29 @@ func TestServerReadPlayPlay(t *testing.T) {
 				ClientPorts: &[2]int{30450, 30451},
 			}.Write(),
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err := readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	err = base.Request{
+	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err = readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	err = base.Request{
+	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"3"},
 			"Session": res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err = readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
@@ -743,7 +693,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	defer conn.Close()
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-	err = base.Request{
+	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -761,52 +711,40 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 				InterleavedIDs: &[2]int{0, 1},
 			}.Write(),
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err := readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	err = base.Request{
+	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err = readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	err = base.Request{
+	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Pause,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err = readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	err = base.Request{
+	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err = readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
@@ -864,7 +802,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	defer conn.Close()
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-	err = base.Request{
+	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -882,24 +820,18 @@ func TestServerReadPlayPausePause(t *testing.T) {
 				InterleavedIDs: &[2]int{0, 1},
 			}.Write(),
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err := readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	err = base.Request{
+	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Play,
 		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
-	require.NoError(t, err)
-
-	res, err = readResponse(bconn.Reader)
+	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -913,7 +845,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	res, err = readResponseIgnoreFrames(bconn.Reader)
+	res, err = readResIgnoreFrames(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -927,7 +859,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
-	res, err = readResponseIgnoreFrames(bconn.Reader)
+	res, err = readResIgnoreFrames(bconn.Reader)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
@@ -991,31 +923,25 @@ func TestServerReadTimeout(t *testing.T) {
 			inTH.Protocol = StreamProtocolUDP
 			inTH.ClientPorts = &[2]int{35466, 35467}
 
-			err = base.Request{
+			res, err := writeReqReadRes(bconn, base.Request{
 				Method: base.Setup,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Write(),
 				},
-			}.Write(bconn.Writer)
-			require.NoError(t, err)
-
-			res, err := readResponse(bconn.Reader)
+			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			err = base.Request{
+			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Play,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"2"},
 					"Session": res.Header["Session"],
 				},
-			}.Write(bconn.Writer)
-			require.NoError(t, err)
-
-			res, err = readResponse(bconn.Reader)
+			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1094,31 +1020,25 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
-			err = base.Request{
+			res, err := writeReqReadRes(bconn, base.Request{
 				Method: base.Setup,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Write(),
 				},
-			}.Write(bconn.Writer)
-			require.NoError(t, err)
-
-			res, err := readResponse(bconn.Reader)
+			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			err = base.Request{
+			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Play,
 				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"2"},
 					"Session": res.Header["Session"],
 				},
-			}.Write(bconn.Writer)
-			require.NoError(t, err)
-
-			res, err = readResponse(bconn.Reader)
+			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1180,31 +1100,25 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
-		err = base.Request{
+		res, err := writeReqReadRes(bconn, base.Request{
 			Method: base.Setup,
 			URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"1"},
 				"Transport": inTH.Write(),
 			},
-		}.Write(bconn.Writer)
-		require.NoError(t, err)
-
-		res, err := readResponse(bconn.Reader)
+		})
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
 
-		err = base.Request{
+		res, err = writeReqReadRes(bconn, base.Request{
 			Method: base.Play,
 			URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
 				"CSeq":    base.HeaderValue{"2"},
 				"Session": res.Header["Session"],
 			},
-		}.Write(bconn.Writer)
-		require.NoError(t, err)
-
-		res, err = readResponse(bconn.Reader)
+		})
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
 		sxID = res.Header["Session"][0]
@@ -1216,17 +1130,14 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		defer conn.Close()
 		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-		err = base.Request{
+		res, err := writeReqReadRes(bconn, base.Request{
 			Method: base.GetParameter,
 			URL:    base.MustParseURL("rtsp://localhost:8554/teststream/"),
 			Header: base.Header{
 				"CSeq":    base.HeaderValue{"1"},
 				"Session": base.HeaderValue{sxID},
 			},
-		}.Write(bconn.Writer)
-		require.NoError(t, err)
-
-		res, err := readResponse(bconn.Reader)
+		})
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
 	}()
