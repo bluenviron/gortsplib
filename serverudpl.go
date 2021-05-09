@@ -128,7 +128,7 @@ func (u *serverUDPListener) run() {
 						})
 						//Check if clientData exists in possibly modified clients list
 						clientData, ok = u.clients[clientAddr]
-						if err != nil {
+						if  err != nil || !ok {
 							return
 						}
 					} else {
