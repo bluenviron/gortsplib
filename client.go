@@ -115,6 +115,11 @@ func (c *Client) Dial(scheme string, host string) (*ClientConn, error) {
 
 // DialRead connects to the address and starts reading all tracks.
 func (c *Client) DialRead(address string) (*ClientConn, error) {
+	return c.DialReadContext(context.Background(), address)
+}
+
+// DialReadContext connects to the address with the given context and starts reading all tracks.
+func (c *Client) DialReadContext(ctx context.Context, address string) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
@@ -124,6 +129,21 @@ func (c *Client) DialRead(address string) (*ClientConn, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	ctxHandlerDone := make(chan struct{})
+	defer func() { <-ctxHandlerDone }()
+
+	ctxHandlerTerminate := make(chan struct{})
+	defer close(ctxHandlerTerminate)
+
+	go func() {
+		defer close(ctxHandlerDone)
+		select {
+		case <-ctx.Done():
+			conn.Close()
+		case <-ctxHandlerTerminate:
+		}
+	}()
 
 	_, err = conn.Options(u)
 	if err != nil {
@@ -156,6 +176,11 @@ func (c *Client) DialRead(address string) (*ClientConn, error) {
 
 // DialPublish connects to the address and starts publishing the tracks.
 func (c *Client) DialPublish(address string, tracks Tracks) (*ClientConn, error) {
+	return c.DialPublishContext(context.Background(), address, tracks)
+}
+
+// DialPublishContext connects to the address with the given context and starts publishing the tracks.
+func (c *Client) DialPublishContext(ctx context.Context, address string, tracks Tracks) (*ClientConn, error) {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return nil, err
@@ -165,6 +190,21 @@ func (c *Client) DialPublish(address string, tracks Tracks) (*ClientConn, error)
 	if err != nil {
 		return nil, err
 	}
+
+	ctxHandlerDone := make(chan struct{})
+	defer func() { <-ctxHandlerDone }()
+
+	ctxHandlerTerminate := make(chan struct{})
+	defer close(ctxHandlerTerminate)
+
+	go func() {
+		defer close(ctxHandlerDone)
+		select {
+		case <-ctx.Done():
+			conn.Close()
+		case <-ctxHandlerTerminate:
+		}
+	}()
 
 	_, err = conn.Options(u)
 	if err != nil {

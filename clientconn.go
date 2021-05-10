@@ -832,6 +832,8 @@ func (cc *ClientConn) do(req *base.Request, skipResponse bool) (*base.Response, 
 		//   it's better not to stop the request, but wait until teardown
 		if !skipResponse {
 			ctxHandlerDone := make(chan struct{})
+			defer func() { <-ctxHandlerDone }()
+
 			ctxHandlerTerminate := make(chan struct{})
 			defer close(ctxHandlerTerminate)
 
