@@ -6,6 +6,14 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
+// ErrClientTerminated is an error that can be returned by a client.
+type ErrClientTerminated struct{}
+
+// Error implements the error interface.
+func (e ErrClientTerminated) Error() string {
+	return "terminated"
+}
+
 // ErrClientWrongState is an error that can be returned by a client.
 type ErrClientWrongState struct {
 	AllowedList []fmt.Stringer

@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"net"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -25,6 +26,7 @@ type clientConnUDPListener struct {
 	running       bool
 	frameBuffer   *multibuffer.MultiBuffer
 	lastFrameTime *int64
+	writeMutex    sync.Mutex
 
 	done chan struct{}
 }
@@ -90,7 +92,7 @@ func (l *clientConnUDPListener) run() {
 			now := time.Now()
 			atomic.StoreInt64(l.lastFrameTime, now.Unix())
 			l.cc.tracks[l.trackID].rtcpReceiver.ProcessFrame(now, l.streamType, buf[:n])
-			l.cc.readCB(l.trackID, l.streamType, buf[:n])
+			l.cc.pullReadCB()(l.trackID, l.streamType, buf[:n])
 		}
 	} else {
 		for {
@@ -108,12 +110,15 @@ func (l *clientConnUDPListener) run() {
 
 			now := time.Now()
 			atomic.StoreInt64(l.lastFrameTime, now.Unix())
-			l.cc.readCB(l.trackID, l.streamType, buf[:n])
+			l.cc.pullReadCB()(l.trackID, l.streamType, buf[:n])
 		}
 	}
 }
 
 func (l *clientConnUDPListener) write(buf []byte) error {
+	l.writeMutex.Lock()
+	defer l.writeMutex.Unlock()
+
 	l.pc.SetWriteDeadline(time.Now().Add(l.cc.c.WriteTimeout))
 	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
 		IP:   l.remoteIP,

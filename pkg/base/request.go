@@ -45,10 +45,6 @@ type Request struct {
 
 	// optional body
 	Body []byte
-
-	// whether to wait for a response or not
-	// used only by ClientConn.Do()
-	SkipResponse bool
 }
 
 // Read reads a request.

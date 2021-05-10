@@ -381,6 +381,9 @@ func TestClientRead(t *testing.T) {
 			<-frameRecv
 			conn.Close()
 			<-done
+
+			<-conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+			})
 		})
 	}
 }
@@ -1231,6 +1234,9 @@ func TestClientReadPause(t *testing.T) {
 			_, err = conn.Pause()
 			require.NoError(t, err)
 			<-done
+
+			<-conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+			})
 
 			_, err = conn.Play()
 			require.NoError(t, err)
