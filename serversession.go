@@ -318,6 +318,8 @@ func (ss *ServerSession) run() {
 		}
 	}()
 
+	ss.ctxCancel()
+
 	switch ss.state {
 	case ServerSessionStatePlay:
 		if *ss.setupProtocol == StreamProtocolUDP {

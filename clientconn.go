@@ -301,6 +301,8 @@ outer:
 		}
 	}
 
+	cc.ctxCancel()
+
 	cc.doClose(false)
 }
 

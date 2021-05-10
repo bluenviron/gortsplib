@@ -336,6 +336,8 @@ outer:
 		}
 	}
 
+	s.ctxCancel()
+
 	if s.udpRTCPListener != nil {
 		s.udpRTCPListener.close()
 	}

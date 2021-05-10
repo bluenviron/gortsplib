@@ -235,6 +235,8 @@ func (sc *ServerConn) run() {
 		}
 	}()
 
+	sc.ctxCancel()
+
 	if sc.tcpFrameEnabled {
 		sc.tcpFrameWriteBuffer.Close()
 		<-sc.tcpFrameBackgroundWriteDone
