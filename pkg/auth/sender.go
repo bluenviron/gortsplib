@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -87,25 +86,28 @@ func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 func (se *Sender) GenerateHeader(method base.Method, ur *base.URL) base.HeaderValue {
 	urStr := ur.CloneWithoutCredentials().String()
 
+	h := headers.Authorization{
+		Method: se.method,
+	}
+
 	switch se.method {
 	case headers.AuthBasic:
-		response := base64.StdEncoding.EncodeToString([]byte(se.user + ":" + se.pass))
+		h.BasicUser = se.user
+		h.BasicPass = se.pass
 
-		return base.HeaderValue{"Basic " + response}
-
-	case headers.AuthDigest:
+	default: // headers.AuthDigest
 		response := md5Hex(md5Hex(se.user+":"+se.realm+":"+se.pass) + ":" +
 			se.nonce + ":" + md5Hex(string(method)+":"+urStr))
 
-		return headers.Auth{
+		h.DigestValues = headers.Auth{
 			Method:   headers.AuthDigest,
 			Username: &se.user,
 			Realm:    &se.realm,
 			Nonce:    &se.nonce,
 			URI:      &urStr,
 			Response: &response,
-		}.Write()
+		}
 	}
 
-	return nil
+	return h.Write()
 }

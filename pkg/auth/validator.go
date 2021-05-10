@@ -2,7 +2,6 @@ package auth
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -90,99 +89,82 @@ func (va *Validator) GenerateHeader() base.HeaderValue {
 
 // ValidateHeader validates the Authorization header sent by a client after receiving the
 // WWW-Authenticate header.
-func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *base.URL,
+func (va *Validator) ValidateHeader(
+	v base.HeaderValue,
+	method base.Method,
+	ur *base.URL,
 	altURL *base.URL) error {
-	if len(v) == 0 {
-		return fmt.Errorf("authorization header not provided")
+
+	var auth headers.Authorization
+	err := auth.Read(v)
+	if err != nil {
+		return err
 	}
-	if len(v) > 1 {
-		return fmt.Errorf("authorization header provided multiple times")
-	}
 
-	v0 := v[0]
-
-	switch {
-	case strings.HasPrefix(v0, "Basic "):
-		inResponse := v0[len("Basic "):]
-
-		tmp, err := base64.StdEncoding.DecodeString(inResponse)
-		if err != nil {
-			return fmt.Errorf("wrong response")
-		}
-		tmp2 := strings.Split(string(tmp), ":")
-		if len(tmp2) != 2 {
-			return fmt.Errorf("wrong response")
-		}
-		user, pass := tmp2[0], tmp2[1]
-
+	switch auth.Method {
+	case headers.AuthBasic:
 		if !va.userHashed {
-			if user != va.user {
+			if auth.BasicUser != va.user {
 				return fmt.Errorf("wrong response")
 			}
 		} else {
-			if sha256Base64(user) != va.user {
+			if sha256Base64(auth.BasicUser) != va.user {
 				return fmt.Errorf("wrong response")
 			}
 		}
 
 		if !va.passHashed {
-			if pass != va.pass {
+			if auth.BasicPass != va.pass {
 				return fmt.Errorf("wrong response")
 			}
 		} else {
-			if sha256Base64(pass) != va.pass {
+			if sha256Base64(auth.BasicPass) != va.pass {
 				return fmt.Errorf("wrong response")
 			}
 		}
 
-	case strings.HasPrefix(v0, "Digest "):
-		var auth headers.Auth
-		err := auth.Read(base.HeaderValue{v0})
-		if err != nil {
-			return err
-		}
-
-		if auth.Realm == nil {
+	default: // headers.AuthDigest
+		if auth.DigestValues.Realm == nil {
 			return fmt.Errorf("realm not provided")
 		}
 
-		if auth.Nonce == nil {
+		if auth.DigestValues.Nonce == nil {
 			return fmt.Errorf("nonce not provided")
 		}
 
-		if auth.Username == nil {
+		if auth.DigestValues.Username == nil {
 			return fmt.Errorf("username not provided")
 		}
 
-		if auth.URI == nil {
+		if auth.DigestValues.URI == nil {
 			return fmt.Errorf("uri not provided")
 		}
 
-		if auth.Response == nil {
+		if auth.DigestValues.Response == nil {
 			return fmt.Errorf("response not provided")
 		}
 
-		if *auth.Nonce != va.nonce {
+		if *auth.DigestValues.Nonce != va.nonce {
 			return fmt.Errorf("wrong nonce")
 		}
 
-		if *auth.Realm != va.realm {
+		if *auth.DigestValues.Realm != va.realm {
 			return fmt.Errorf("wrong realm")
 		}
 
-		if *auth.Username != va.user {
+		if *auth.DigestValues.Username != va.user {
 			return fmt.Errorf("wrong username")
 		}
 
 		urlString := ur.String()
 
-		if *auth.URI != urlString {
+		if *auth.DigestValues.URI != urlString {
 			// do another try with the alternative URL
 			if altURL != nil {
 				urlString = altURL.String()
 			}
 
-			if *auth.URI != urlString {
+			if *auth.DigestValues.URI != urlString {
 				return fmt.Errorf("wrong url")
 			}
 		}
@@ -190,12 +172,9 @@ func (va *Validator) ValidateHeader(v base.HeaderValue, method base.Method, ur *
 		response := md5Hex(md5Hex(va.user+":"+va.realm+":"+va.pass) +
 			":" + va.nonce + ":" + md5Hex(string(method)+":"+urlString))
 
-		if *auth.Response != response {
+		if *auth.DigestValues.Response != response {
 			return fmt.Errorf("wrong response")
 		}
-
-	default:
-		return fmt.Errorf("unsupported authorization header")
 	}
 
 	return nil

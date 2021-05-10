@@ -21,7 +21,7 @@ Features:
     * Pause reading without disconnecting from the server
     * Generate RTCP receiver reports automatically
   * Publish
-    * Publish streams to servers with UDP, TCP or TLS
+    * Publish streams to servers with UDP, TCP or TLS (RTSPS)
     * Switch protocol automatically (switch to TCP in case of server error)
     * Pause publishing without disconnecting from the server
     * Generate RTCP sender reports automatically
