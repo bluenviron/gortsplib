@@ -222,7 +222,7 @@ func newClientConn(c *Client, scheme string, host string) (*ClientConn, error) {
 	return cc, nil
 }
 
-// Close closes the connection.
+// Close closes the connection and waits for all its resources to exit.
 func (cc *ClientConn) Close() error {
 	cc.ctxCancel()
 	<-cc.done

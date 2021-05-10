@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -119,8 +120,9 @@ type ServerSession struct {
 	wg     *sync.WaitGroup
 	author *ServerConn
 
+	ctx              context.Context
+	ctxCancel        func()
 	conns            map[*ServerConn]struct{}
-	connsWG          sync.WaitGroup
 	state            ServerSessionState
 	setuppedTracks   map[int]ServerSessionSetuppedTrack
 	setupProtocol    *StreamProtocol
@@ -134,10 +136,8 @@ type ServerSession struct {
 	udpLastFrameTime *int64                        // publish, udp
 
 	// in
-	request         chan request
-	connRemove      chan *ServerConn
-	terminate       chan struct{}
-	parentTerminate chan struct{}
+	request    chan request
+	connRemove chan *ServerConn
 }
 
 func newServerSession(
@@ -147,17 +147,19 @@ func newServerSession(
 	author *ServerConn,
 ) *ServerSession {
 
+	ctx, ctxCancel := context.WithCancel(s.ctx)
+
 	ss := &ServerSession{
 		s:               s,
 		id:              id,
 		wg:              wg,
 		author:          author,
+		ctx:             ctx,
+		ctxCancel:       ctxCancel,
 		conns:           make(map[*ServerConn]struct{}),
 		lastRequestTime: time.Now(),
 		request:         make(chan request),
 		connRemove:      make(chan *ServerConn),
-		terminate:       make(chan struct{}, 1),
-		parentTerminate: make(chan struct{}),
 	}
 
 	wg.Add(1)
@@ -168,10 +170,7 @@ func newServerSession(
 
 // Close closes the ServerSession.
 func (ss *ServerSession) Close() error {
-	select {
-	case ss.terminate <- struct{}{}:
-	default:
-	}
+	ss.ctxCancel()
 	return nil
 }
 
@@ -239,7 +238,6 @@ func (ss *ServerSession) run() {
 
 				if _, ok := ss.conns[req.sc]; !ok {
 					ss.conns[req.sc] = struct{}{}
-					ss.connsWG.Add(1)
 				}
 
 				res, err := ss.handleRequest(req.sc, req.req)
@@ -265,8 +263,11 @@ func (ss *ServerSession) run() {
 			case sc := <-ss.connRemove:
 				if _, ok := ss.conns[sc]; ok {
 					delete(ss.conns, sc)
-					sc.sessionRemove <- ss
-					ss.connsWG.Done()
+
+					select {
+					case sc.sessionRemove <- ss:
+					case <-sc.ctx.Done():
+					}
 				}
 
 				// if session is not in state RECORD or PLAY, or protocol is TCP
@@ -311,36 +312,8 @@ func (ss *ServerSession) run() {
 					ss.WriteFrame(trackID, StreamTypeRTCP, r)
 				}
 
-			case <-ss.terminate:
+			case <-ss.ctx.Done():
 				return liberrors.ErrServerTerminated{}
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case req, ok := <-ss.request:
-				if !ok {
-					return
-				}
-
-				req.res <- requestRes{
-					ss: nil,
-					res: &base.Response{
-						StatusCode: base.StatusBadRequest,
-					},
-					err: liberrors.ErrServerTerminated{},
-				}
-
-			case sc, ok := <-ss.connRemove:
-				if !ok {
-					return
-				}
-
-				if _, ok := ss.conns[sc]; ok {
-					ss.connsWG.Done()
-				}
 			}
 		}
 	}()
@@ -362,15 +335,17 @@ func (ss *ServerSession) run() {
 		if sc == ss.tcpConn {
 			sc.Close()
 		}
-		sc.sessionRemove <- ss
+
+		select {
+		case sc.sessionRemove <- ss:
+		case <-sc.ctx.Done():
+		}
 	}
-	ss.connsWG.Wait()
 
-	ss.s.sessionClose <- ss
-	<-ss.parentTerminate
-
-	close(ss.request)
-	close(ss.connRemove)
+	select {
+	case ss.s.sessionClose <- ss:
+	case <-ss.s.ctx.Done():
+	}
 
 	if h, ok := ss.s.Handler.(ServerHandlerOnSessionClose); ok {
 		h.OnSessionClose(&ServerHandlerOnSessionCloseCtx{

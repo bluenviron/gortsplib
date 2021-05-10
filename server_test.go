@@ -238,38 +238,30 @@ y++U32uuSFiXDcSLarfIsE992MEJLSAynbF1Rsgsr3gXbGiuToJRyxbIeVy7gwzD
 
 func TestServerHighLevelPublishRead(t *testing.T) {
 	for _, ca := range []struct {
-		encrypted      bool
 		publisherSoft  string
 		publisherProto string
 		readerSoft     string
 		readerProto    string
 	}{
-		{false, "ffmpeg", "udp", "ffmpeg", "udp"},
-		{false, "ffmpeg", "udp", "gstreamer", "udp"},
-		{false, "gstreamer", "udp", "ffmpeg", "udp"},
-		{false, "gstreamer", "udp", "gstreamer", "udp"},
+		{"ffmpeg", "udp", "ffmpeg", "udp"},
+		{"ffmpeg", "udp", "gstreamer", "udp"},
+		{"gstreamer", "udp", "ffmpeg", "udp"},
+		{"gstreamer", "udp", "gstreamer", "udp"},
 
-		{false, "ffmpeg", "tcp", "ffmpeg", "tcp"},
-		{false, "ffmpeg", "tcp", "gstreamer", "tcp"},
-		{false, "gstreamer", "tcp", "ffmpeg", "tcp"},
-		{false, "gstreamer", "tcp", "gstreamer", "tcp"},
+		{"ffmpeg", "tcp", "ffmpeg", "tcp"},
+		{"ffmpeg", "tcp", "gstreamer", "tcp"},
+		{"gstreamer", "tcp", "ffmpeg", "tcp"},
+		{"gstreamer", "tcp", "gstreamer", "tcp"},
 
-		{false, "ffmpeg", "tcp", "ffmpeg", "udp"},
-		{false, "ffmpeg", "udp", "ffmpeg", "tcp"},
+		{"ffmpeg", "tcp", "ffmpeg", "udp"},
+		{"ffmpeg", "udp", "ffmpeg", "tcp"},
 
-		{true, "ffmpeg", "tcp", "ffmpeg", "tcp"},
-		{true, "ffmpeg", "tcp", "gstreamer", "tcp"},
-		{true, "gstreamer", "tcp", "ffmpeg", "tcp"},
-		{true, "gstreamer", "tcp", "gstreamer", "tcp"},
+		{"ffmpeg", "tls", "ffmpeg", "tls"},
+		{"ffmpeg", "tls", "gstreamer", "tls"},
+		{"gstreamer", "tls", "ffmpeg", "tls"},
+		{"gstreamer", "tls", "gstreamer", "tls"},
 	} {
-		encryptedStr := func() string {
-			if ca.encrypted {
-				return "encrypted"
-			}
-			return "plain"
-		}()
-
-		t.Run(encryptedStr+"_"+ca.publisherSoft+"_"+ca.publisherProto+"_"+
+		t.Run(ca.publisherSoft+"_"+ca.publisherProto+"_"+
 			ca.readerSoft+"_"+ca.readerProto, func(t *testing.T) {
 			var mutex sync.Mutex
 			var publisher *ServerSession
@@ -405,16 +397,22 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 			}
 
 			var proto string
-			if !ca.encrypted {
-				proto = "rtsp"
-				s.UDPRTPAddress = "127.0.0.1:8000"
-				s.UDPRTCPAddress = "127.0.0.1:8001"
-
-			} else {
+			var publisherSubProto string
+			var readerSubProto string
+			if ca.publisherProto == "tls" {
 				proto = "rtsps"
+				publisherSubProto = "tcp"
+				readerSubProto = "tcp"
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
+
+			} else {
+				proto = "rtsp"
+				publisherSubProto = ca.publisherProto
+				readerSubProto = ca.readerProto
+				s.UDPRTPAddress = "127.0.0.1:8000"
+				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
 
 			err := s.Start("127.0.0.1:8554")
@@ -429,7 +427,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 					"-i", "emptyvideo.mkv",
 					"-c", "copy",
 					"-f", "rtsp",
-					"-rtsp_transport", ca.publisherProto,
+					"-rtsp_transport", publisherSubProto,
 					proto + "://localhost:8554/teststream",
 				})
 				require.NoError(t, err)
@@ -438,7 +436,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 			case "gstreamer":
 				cnt1, err := newContainer("gstreamer", "publish", []string{
 					"filesrc location=emptyvideo.mkv ! matroskademux ! video/x-h264 ! rtspclientsink " +
-						"location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ca.publisherProto + " tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
+						"location=" + proto + "://127.0.0.1:8554/teststream protocols=" + publisherSubProto + " tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
 				})
 				require.NoError(t, err)
 				defer cnt1.close()
@@ -451,7 +449,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 			switch ca.readerSoft {
 			case "ffmpeg":
 				cnt2, err := newContainer("ffmpeg", "read", []string{
-					"-rtsp_transport", ca.readerProto,
+					"-rtsp_transport", readerSubProto,
 					"-i", proto + "://localhost:8554/teststream",
 					"-vframes", "1",
 					"-f", "image2",
@@ -463,7 +461,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 			case "gstreamer":
 				cnt2, err := newContainer("gstreamer", "read", []string{
-					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ca.readerProto + " tls-validation-flags=0 latency=0 " +
+					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=" + readerSubProto + " tls-validation-flags=0 latency=0 " +
 						"! application/x-rtp,media=video ! decodebin ! exitafterframe ! fakesink",
 				})
 				require.NoError(t, err)

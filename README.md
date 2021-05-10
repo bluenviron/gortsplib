@@ -14,24 +14,22 @@ Features:
 
 * Client
   * Query servers about available streams
-  * Encrypt connections with TLS (RTSPS)
   * Read
-    * Read streams from servers with UDP or TCP
+    * Read streams from servers with UDP, TCP or TLS (RTSPS)
     * Switch protocol automatically (switch to TCP in case of server error or UDP timeout)
     * Read only selected tracks of a stream
     * Pause reading without disconnecting from the server
     * Generate RTCP receiver reports automatically
   * Publish
-    * Publish streams to servers with UDP or TCP
+    * Publish streams to servers with UDP, TCP or TLS
     * Switch protocol automatically (switch to TCP in case of server error)
     * Pause publishing without disconnecting from the server
     * Generate RTCP sender reports automatically
 * Server
   * Handle requests from clients
-  * Sessions and connections are independent; clients can control multiple sessions
-  * Encrypt connections with TLS (RTSPS)
-  * Read streams from clients with UDP or TCP
-  * Write streams to clients with UDP or TCP
+  * Sessions and connections are independent
+  * Read streams from clients with UDP, TCP or TLS (RTSPS)
+  * Write streams to clients with UDP, TCP or TLS (RTSPS)
   * Generate RTCP receiver reports automatically
 * Utilities
   * Encode and decode RTSP primitives, RTP/H264, RTP/AAC, SDP

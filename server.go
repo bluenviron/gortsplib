@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/binary"
@@ -119,6 +120,9 @@ type Server struct {
 	tcpListener     net.Listener
 	udpRTPListener  *serverUDPListener
 	udpRTCPListener *serverUDPListener
+	wg              sync.WaitGroup
+	ctx             context.Context
+	ctxCancel       func()
 	sessions        map[string]*ServerSession
 	conns           map[*ServerConn]struct{}
 	exitError       error
@@ -127,10 +131,6 @@ type Server struct {
 	connClose      chan *ServerConn
 	sessionRequest chan request
 	sessionClose   chan *ServerSession
-	terminate      chan struct{}
-
-	// out
-	done chan struct{}
 }
 
 // Start starts listening on the given address.
@@ -215,31 +215,30 @@ func (s *Server) Start(address string) error {
 		return err
 	}
 
-	s.terminate = make(chan struct{}, 1)
-	s.done = make(chan struct{})
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 
+	s.wg.Add(1)
 	go s.run()
 
 	return nil
 }
 
-// Close closes all the server resources and waits for the server to exit.
+// Close closes the server and waits for all its resources to exit.
 func (s *Server) Close() error {
-	select {
-	case s.terminate <- struct{}{}:
-	default:
-	}
-	<-s.done
+	s.ctxCancel()
+	s.wg.Wait()
 	return nil
 }
 
 // Wait waits until a fatal error.
 func (s *Server) Wait() error {
-	<-s.done
+	s.wg.Wait()
 	return s.exitError
 }
 
 func (s *Server) run() {
+	defer s.wg.Done()
+
 	s.sessions = make(map[string]*ServerSession)
 	s.conns = make(map[*ServerConn]struct{})
 	s.connClose = make(chan *ServerConn)
@@ -253,16 +252,25 @@ func (s *Server) run() {
 	acceptErr := make(chan error)
 	go func() {
 		defer wg.Done()
-		acceptErr <- func() error {
+		err := func() error {
 			for {
 				nconn, err := s.tcpListener.Accept()
 				if err != nil {
 					return err
 				}
 
-				connNew <- nconn
+				select {
+				case connNew <- nconn:
+				case <-s.ctx.Done():
+					nconn.Close()
+				}
 			}
 		}()
+
+		select {
+		case acceptErr <- err:
+		case <-s.ctx.Done():
+		}
 	}()
 
 outer:
@@ -277,9 +285,6 @@ outer:
 			s.conns[sc] = struct{}{}
 
 		case sc := <-s.connClose:
-			if _, ok := s.conns[sc]; !ok {
-				continue
-			}
 			s.doConnClose(sc)
 
 		case req := <-s.sessionRequest:
@@ -310,59 +315,26 @@ outer:
 
 				ss := newServerSession(s, id, &wg, req.sc)
 				s.sessions[id] = ss
-				ss.request <- req
+
+				select {
+				case ss.request <- req:
+				case <-ss.ctx.Done():
+					req.res <- requestRes{
+						res: &base.Response{
+							StatusCode: base.StatusBadRequest,
+						},
+						err: liberrors.ErrServerTerminated{},
+					}
+				}
 			}
 
 		case ss := <-s.sessionClose:
-			if _, ok := s.sessions[ss.id]; !ok {
-				continue
-			}
 			s.doSessionClose(ss)
 
-		case <-s.terminate:
+		case <-s.ctx.Done():
 			break outer
 		}
 	}
-
-	go func() {
-		for {
-			select {
-			case _, ok := <-acceptErr:
-				if !ok {
-					return
-				}
-
-			case nconn, ok := <-connNew:
-				if !ok {
-					return
-				}
-
-				nconn.Close()
-
-			case _, ok := <-s.connClose:
-				if !ok {
-					return
-				}
-
-			case req, ok := <-s.sessionRequest:
-				if !ok {
-					return
-				}
-
-				req.res <- requestRes{
-					res: &base.Response{
-						StatusCode: base.StatusBadRequest,
-					},
-					err: liberrors.ErrServerTerminated{},
-				}
-
-			case _, ok := <-s.sessionClose:
-				if !ok {
-					return
-				}
-			}
-		}
-	}()
 
 	if s.udpRTCPListener != nil {
 		s.udpRTCPListener.close()
@@ -381,15 +353,6 @@ outer:
 	for _, ss := range s.sessions {
 		s.doSessionClose(ss)
 	}
-
-	wg.Wait()
-
-	close(acceptErr)
-	close(connNew)
-	close(s.connClose)
-	close(s.sessionRequest)
-	close(s.sessionClose)
-	close(s.done)
 }
 
 // StartAndWait starts the server and waits until a fatal error.
@@ -404,12 +367,10 @@ func (s *Server) StartAndWait(address string) error {
 
 func (s *Server) doConnClose(sc *ServerConn) {
 	delete(s.conns, sc)
-	close(sc.parentTerminate)
 	sc.Close()
 }
 
 func (s *Server) doSessionClose(ss *ServerSession) {
 	delete(s.sessions, ss.id)
-	close(ss.parentTerminate)
 	ss.Close()
 }

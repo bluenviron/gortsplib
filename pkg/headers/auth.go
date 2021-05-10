@@ -19,7 +19,7 @@ const (
 	AuthDigest
 )
 
-// Auth is an Authenticate or a WWWW-Authenticate header.
+// Auth is an Authenticate or a WWW-Authenticate header.
 type Auth struct {
 	// authentication method
 	Method AuthMethod

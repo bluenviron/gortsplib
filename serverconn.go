@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"net"
 	"strings"
@@ -42,29 +43,26 @@ type readReq struct {
 
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
-	s     *Server
-	wg    *sync.WaitGroup
-	nconn net.Conn
-	br    *bufio.Reader
-	bw    *bufio.Writer
+	s         *Server
+	wg        *sync.WaitGroup
+	nconn     net.Conn
+	ctx       context.Context
+	ctxCancel func()
+	br        *bufio.Reader
+	bw        *bufio.Writer
 
-	sessions   map[string]*ServerSession
-	sessionsWG sync.WaitGroup
-
-	// TCP stream protocol
-	tcpFrameSetEnabled          bool
-	tcpFrameEnabled             bool
-	tcpSession                  *ServerSession
-	tcpFrameIsRecording         bool
-	tcpFrameTimeout             bool
-	tcpFrameBuffer              *multibuffer.MultiBuffer
-	tcpFrameWriteBuffer         *ringbuffer.RingBuffer
-	tcpFrameBackgroundWriteDone chan struct{}
+	sessions                    map[string]*ServerSession
+	tcpFrameSetEnabled          bool                     // tcp
+	tcpFrameEnabled             bool                     // tcp
+	tcpSession                  *ServerSession           // tcp
+	tcpFrameIsRecording         bool                     // tcp
+	tcpFrameTimeout             bool                     // tcp
+	tcpFrameBuffer              *multibuffer.MultiBuffer // tcp
+	tcpFrameWriteBuffer         *ringbuffer.RingBuffer   // tcp
+	tcpFrameBackgroundWriteDone chan struct{}            // tcp
 
 	// in
-	sessionRemove   chan *ServerSession
-	terminate       chan struct{}
-	parentTerminate chan struct{}
+	sessionRemove chan *ServerSession
 }
 
 func newServerConn(
@@ -72,13 +70,15 @@ func newServerConn(
 	wg *sync.WaitGroup,
 	nconn net.Conn) *ServerConn {
 
+	ctx, ctxCancel := context.WithCancel(s.ctx)
+
 	sc := &ServerConn{
-		s:               s,
-		wg:              wg,
-		nconn:           nconn,
-		sessionRemove:   make(chan *ServerSession),
-		terminate:       make(chan struct{}, 1),
-		parentTerminate: make(chan struct{}),
+		s:             s,
+		wg:            wg,
+		nconn:         nconn,
+		ctx:           ctx,
+		ctxCancel:     ctxCancel,
+		sessionRemove: make(chan *ServerSession),
 	}
 
 	wg.Add(1)
@@ -89,10 +89,7 @@ func newServerConn(
 
 // Close closes the ServerConn.
 func (sc *ServerConn) Close() error {
-	select {
-	case sc.terminate <- struct{}{}:
-	default:
-	}
+	sc.ctxCancel()
 	return nil
 }
 
@@ -137,7 +134,7 @@ func (sc *ServerConn) run() {
 	readDone := make(chan struct{})
 	go func() {
 		defer close(readDone)
-		readErr <- func() error {
+		err := func() error {
 			var req base.Request
 			var frame base.InterleavedFrame
 
@@ -174,10 +171,15 @@ func (sc *ServerConn) run() {
 
 					case *base.Request:
 						cres := make(chan error)
-						readRequest <- readReq{req: &req, res: cres}
-						err := <-cres
-						if err != nil {
-							return err
+						select {
+						case readRequest <- readReq{req: &req, res: cres}:
+							err := <-cres
+							if err != nil {
+								return err
+							}
+
+						case <-sc.ctx.Done():
+							return liberrors.ErrServerTerminated{}
 						}
 					}
 
@@ -188,14 +190,24 @@ func (sc *ServerConn) run() {
 					}
 
 					cres := make(chan error)
-					readRequest <- readReq{req: &req, res: cres}
-					err = <-cres
-					if err != nil {
-						return err
+					select {
+					case readRequest <- readReq{req: &req, res: cres}:
+						err = <-cres
+						if err != nil {
+							return err
+						}
+
+					case <-sc.ctx.Done():
+						return liberrors.ErrServerTerminated{}
 					}
 				}
 			}
 		}()
+
+		select {
+		case readErr <- err:
+		case <-sc.ctx.Done():
+		}
 	}()
 
 	err := func() error {
@@ -210,39 +222,15 @@ func (sc *ServerConn) run() {
 			case ss := <-sc.sessionRemove:
 				if _, ok := sc.sessions[ss.ID()]; ok {
 					delete(sc.sessions, ss.ID())
-					ss.connRemove <- sc
-					sc.sessionsWG.Done()
+
+					select {
+					case ss.connRemove <- sc:
+					case <-ss.ctx.Done():
+					}
 				}
 
-			case <-sc.terminate:
+			case <-sc.ctx.Done():
 				return liberrors.ErrServerTerminated{}
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case req, ok := <-readRequest:
-				if !ok {
-					return
-				}
-
-				req.res <- liberrors.ErrServerTerminated{}
-
-			case _, ok := <-readErr:
-				if !ok {
-					return
-				}
-
-			case ss, ok := <-sc.sessionRemove:
-				if !ok {
-					return
-				}
-
-				if _, ok := sc.sessions[ss.ID()]; ok {
-					sc.sessionsWG.Done()
-				}
 			}
 		}
 	}()
@@ -256,16 +244,16 @@ func (sc *ServerConn) run() {
 	<-readDone
 
 	for _, ss := range sc.sessions {
-		ss.connRemove <- sc
+		select {
+		case ss.connRemove <- sc:
+		case <-ss.ctx.Done():
+		}
 	}
-	sc.sessionsWG.Wait()
 
-	sc.s.connClose <- sc
-	<-sc.parentTerminate
-
-	close(readRequest)
-	close(readErr)
-	close(sc.sessionRemove)
+	select {
+	case sc.s.connClose <- sc:
+	case <-sc.s.ctx.Done():
+	}
 
 	if h, ok := sc.s.Handler.(ServerHandlerOnConnClose); ok {
 		h.OnConnClose(&ServerHandlerOnConnCloseCtx{
@@ -552,36 +540,51 @@ func (sc *ServerConn) handleRequestInSession(sxID string, req *base.Request, cre
 	if sxID != "" {
 		if ss, ok := sc.sessions[sxID]; ok {
 			cres := make(chan requestRes)
-			ss.request <- request{
+			sreq := request{
 				sc:     sc,
 				req:    req,
 				id:     sxID,
 				create: create,
 				res:    cres,
 			}
-			res := <-cres
 
-			return ss, res.res, res.err
+			select {
+			case ss.request <- sreq:
+				res := <-cres
+				return ss, res.res, res.err
+
+			case <-ss.ctx.Done():
+				return nil, &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerTerminated{}
+			}
 		}
 	}
 
 	// otherwise, pass through Server
 	cres := make(chan requestRes)
-	sc.s.sessionRequest <- request{
+	sreq := request{
 		sc:     sc,
 		req:    req,
 		id:     sxID,
 		create: create,
 		res:    cres,
 	}
-	res := <-cres
 
-	if res.ss != nil {
-		sc.sessions[res.ss.ID()] = res.ss
-		sc.sessionsWG.Add(1)
+	select {
+	case sc.s.sessionRequest <- sreq:
+		res := <-cres
+		if res.ss != nil {
+			sc.sessions[res.ss.ID()] = res.ss
+		}
+
+		return res.ss, res.res, res.err
+
+	case <-sc.s.ctx.Done():
+		return nil, &base.Response{
+			StatusCode: base.StatusBadRequest,
+		}, liberrors.ErrServerTerminated{}
 	}
-
-	return res.ss, res.res, res.err
 }
 
 func (sc *ServerConn) tcpFrameBackgroundWrite() {
