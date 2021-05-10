@@ -245,13 +245,11 @@ func (s *Server) run() {
 	s.sessionRequest = make(chan request)
 	s.sessionClose = make(chan *ServerSession)
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
+	s.wg.Add(1)
 	connNew := make(chan net.Conn)
 	acceptErr := make(chan error)
 	go func() {
-		defer wg.Done()
+		defer s.wg.Done()
 		err := func() error {
 			for {
 				nconn, err := s.tcpListener.Accept()
@@ -281,7 +279,7 @@ outer:
 			break outer
 
 		case nconn := <-connNew:
-			sc := newServerConn(s, &wg, nconn)
+			sc := newServerConn(s, nconn)
 			s.conns[sc] = struct{}{}
 
 		case sc := <-s.connClose:
@@ -313,7 +311,7 @@ outer:
 					continue
 				}
 
-				ss := newServerSession(s, id, &wg, req.sc)
+				ss := newServerSession(s, id, req.sc)
 				s.sessions[id] = ss
 
 				select {

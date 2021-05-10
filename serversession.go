@@ -6,7 +6,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -117,7 +116,6 @@ type ServerSessionAnnouncedTrack struct {
 type ServerSession struct {
 	s      *Server
 	id     string
-	wg     *sync.WaitGroup
 	author *ServerConn
 
 	ctx              context.Context
@@ -143,7 +141,6 @@ type ServerSession struct {
 func newServerSession(
 	s *Server,
 	id string,
-	wg *sync.WaitGroup,
 	author *ServerConn,
 ) *ServerSession {
 
@@ -152,7 +149,6 @@ func newServerSession(
 	ss := &ServerSession{
 		s:               s,
 		id:              id,
-		wg:              wg,
 		author:          author,
 		ctx:             ctx,
 		ctxCancel:       ctxCancel,
@@ -162,7 +158,7 @@ func newServerSession(
 		connRemove:      make(chan *ServerConn),
 	}
 
-	wg.Add(1)
+	s.wg.Add(1)
 	go ss.run()
 
 	return ss
@@ -214,7 +210,7 @@ func (ss *ServerSession) checkState(allowed map[ServerSessionState]struct{}) err
 }
 
 func (ss *ServerSession) run() {
-	defer ss.wg.Done()
+	defer ss.s.wg.Done()
 
 	if h, ok := ss.s.Handler.(ServerHandlerOnSessionOpen); ok {
 		h.OnSessionOpen(&ServerHandlerOnSessionOpenCtx{

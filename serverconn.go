@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"net"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
@@ -44,7 +43,6 @@ type readReq struct {
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
 	s         *Server
-	wg        *sync.WaitGroup
 	nconn     net.Conn
 	ctx       context.Context
 	ctxCancel func()
@@ -67,21 +65,19 @@ type ServerConn struct {
 
 func newServerConn(
 	s *Server,
-	wg *sync.WaitGroup,
 	nconn net.Conn) *ServerConn {
 
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
 	sc := &ServerConn{
 		s:             s,
-		wg:            wg,
 		nconn:         nconn,
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
 		sessionRemove: make(chan *ServerSession),
 	}
 
-	wg.Add(1)
+	s.wg.Add(1)
 	go sc.run()
 
 	return sc
@@ -107,7 +103,7 @@ func (sc *ServerConn) zone() string {
 }
 
 func (sc *ServerConn) run() {
-	defer sc.wg.Done()
+	defer sc.s.wg.Done()
 
 	if h, ok := sc.s.Handler.(ServerHandlerOnConnOpen); ok {
 		h.OnConnOpen(&ServerHandlerOnConnOpenCtx{
