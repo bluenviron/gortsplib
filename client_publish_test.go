@@ -181,12 +181,16 @@ func TestClientPublishSerial(t *testing.T) {
 			require.NoError(t, err)
 
 			recvDone := make(chan struct{})
-			done := conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
-				require.Equal(t, 0, trackID)
-				require.Equal(t, StreamTypeRTCP, streamType)
-				require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, payload)
-				close(recvDone)
-			})
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
+					require.Equal(t, 0, trackID)
+					require.Equal(t, StreamTypeRTCP, streamType)
+					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, payload)
+					close(recvDone)
+				})
+			}()
 
 			err = conn.WriteFrame(track.ID, StreamTypeRTP,
 				[]byte{0x01, 0x02, 0x03, 0x04})

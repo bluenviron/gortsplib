@@ -38,7 +38,7 @@ func main() {
 	dec := rtph264.NewDecoder()
 
 	// read RTP frames
-	err = <-conn.ReadFrames(func(trackID int, typ gortsplib.StreamType, buf []byte) {
+	err = conn.ReadFrames(func(trackID int, typ gortsplib.StreamType, buf []byte) {
 		if trackID == h264Track {
 			// convert RTP frames into H264 NALUs
 			nalus, _, err := dec.Decode(buf)

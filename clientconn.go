@@ -1164,7 +1164,7 @@ func (cc *ClientConn) doSetup(
 	}
 
 	proto := func() StreamProtocol {
-		// protocol set by previous Setup() or ReadFrames()
+		// protocol set by previous Setup() or switchProtocolIfTimeout()
 		if cc.streamProtocol != nil {
 			return *cc.streamProtocol
 		}
@@ -1566,8 +1566,7 @@ func (cc *ClientConn) Pause() (*base.Response, error) {
 }
 
 // ReadFrames starts reading frames.
-// it returns a channel that is written when the reading stops.
-func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan error {
+func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) error {
 	cc.readCBMutex.Lock()
 	cc.readCB = onFrame
 	cc.readCBMutex.Unlock()
@@ -1578,12 +1577,8 @@ func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) chan err
 		cc.readCBSet = nil
 	}
 
-	ch := make(chan error, 1)
-	go func() {
-		<-cc.backgroundDone
-		ch <- cc.backgroundErr
-	}()
-	return ch
+	<-cc.backgroundDone
+	return cc.backgroundErr
 }
 
 // WriteFrame writes a frame.

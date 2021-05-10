@@ -359,20 +359,24 @@ func TestClientRead(t *testing.T) {
 			conn, err := c.DialRead(scheme + "://localhost:8554/teststream")
 			require.NoError(t, err)
 
-			done := conn.ReadFrames(func(id int, streamType StreamType, payload []byte) {
-				require.Equal(t, 0, id)
-				require.Equal(t, StreamTypeRTP, streamType)
-				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				conn.ReadFrames(func(id int, streamType StreamType, payload []byte) {
+					require.Equal(t, 0, id)
+					require.Equal(t, StreamTypeRTP, streamType)
+					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
 
-				err = conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
-				require.NoError(t, err)
-			})
+					err = conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+					require.NoError(t, err)
+				})
+			}()
 
 			<-frameRecv
 			conn.Close()
 			<-done
 
-			<-conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+			conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
 			})
 		})
 	}
@@ -590,9 +594,13 @@ func TestClientReadAnyPort(t *testing.T) {
 			require.NoError(t, err)
 
 			frameRecv := make(chan struct{})
-			done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
-				close(frameRecv)
-			})
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+					close(frameRecv)
+				})
+			}()
 
 			<-frameRecv
 			conn.Close()
@@ -704,9 +712,13 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 
 		frameRecv := make(chan struct{})
-		done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
-			close(frameRecv)
-		})
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+				close(frameRecv)
+			})
+		}()
 
 		<-frameRecv
 		conn.Close()
@@ -872,9 +884,13 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 
 		frameRecv := make(chan struct{})
-		done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
-			close(frameRecv)
-		})
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+				close(frameRecv)
+			})
+		}()
 
 		<-frameRecv
 		conn.Close()
@@ -1013,9 +1029,13 @@ func TestClientReadRedirect(t *testing.T) {
 	require.NoError(t, err)
 
 	frameRecv := make(chan struct{})
-	done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
-		close(frameRecv)
-	})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+			close(frameRecv)
+		})
+	}()
 
 	<-frameRecv
 	conn.Close()
@@ -1214,18 +1234,22 @@ func TestClientReadPause(t *testing.T) {
 
 			firstFrame := int32(0)
 			frameRecv := make(chan struct{})
-			done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
-				if atomic.SwapInt32(&firstFrame, 1) == 0 {
-					close(frameRecv)
-				}
-			})
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+					if atomic.SwapInt32(&firstFrame, 1) == 0 {
+						close(frameRecv)
+					}
+				})
+			}()
 
 			<-frameRecv
 			_, err = conn.Pause()
 			require.NoError(t, err)
 			<-done
 
-			<-conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+			conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
 			})
 
 			_, err = conn.Play()
@@ -1233,11 +1257,15 @@ func TestClientReadPause(t *testing.T) {
 
 			firstFrame = int32(0)
 			frameRecv = make(chan struct{})
-			done = conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
-				if atomic.SwapInt32(&firstFrame, 1) == 0 {
-					close(frameRecv)
-				}
-			})
+			done = make(chan struct{})
+			go func() {
+				defer close(done)
+				conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+					if atomic.SwapInt32(&firstFrame, 1) == 0 {
+						close(frameRecv)
+					}
+				})
+			}()
 
 			<-frameRecv
 			conn.Close()
@@ -1398,12 +1426,16 @@ func TestClientReadRTCPReport(t *testing.T) {
 
 	recv := 0
 	recvDone := make(chan struct{})
-	done := conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
-		recv++
-		if recv >= 3 {
-			close(recvDone)
-		}
-	})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+			recv++
+			if recv >= 3 {
+				close(recvDone)
+			}
+		})
+	}()
 
 	time.Sleep(1300 * time.Millisecond)
 
@@ -1559,7 +1591,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 			require.NoError(t, err)
 			defer conn.Close()
 
-			err = <-conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
+			err = conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
 			})
 
 			switch proto {
@@ -1688,13 +1720,17 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 
 	conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
-	defer conn.Close()
 
 	recv := make(chan struct{})
-	conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
-		close(recv)
-	})
-	require.NoError(t, err)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
+			close(recv)
+		})
+	}()
 
 	<-recv
+	conn.Close()
+	<-done
 }
