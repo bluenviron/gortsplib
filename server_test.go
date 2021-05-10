@@ -1018,10 +1018,13 @@ func TestServerErrorInvalidPath(t *testing.T) {
 		// base.SetParameter,
 	} {
 		t.Run(string(method), func(t *testing.T) {
+			connClosed := make(chan struct{})
+
 			s := &Server{
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						require.Equal(t, "invalid path", ctx.Error.Error())
+						close(connClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{
@@ -1131,6 +1134,8 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
+			<-connClosed
 		})
 	}
 }
