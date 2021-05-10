@@ -245,6 +245,11 @@ func (cc *ClientConn) Tracks() Tracks {
 	return ret
 }
 
+// RTPInfo returns the RTP-Info header sent by the server in the PLAY response.
+func (cc *ClientConn) RTPInfo() *headers.RTPInfo {
+	return cc.rtpInfo
+}
+
 func (cc *ClientConn) run() {
 	defer close(cc.done)
 
