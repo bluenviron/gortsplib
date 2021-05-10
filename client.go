@@ -8,6 +8,7 @@ Examples are available at https://github.com/aler9/gortsplib/tree/master/example
 package gortsplib
 
 import (
+	"context"
 	"crypto/tls"
 	"net"
 	"time"
@@ -93,8 +94,8 @@ type Client struct {
 	// system functions
 	//
 	// function used to initialize the TCP client.
-	// It defaults to net.DialTimeout.
-	DialTimeout func(network, address string, timeout time.Duration) (net.Conn, error)
+	// It defaults to (&net.Dialer{}).DialContext.
+	DialContext func(ctx context.Context, network, address string) (net.Conn, error)
 	// function used to initialize UDP listeners.
 	// It defaults to net.ListenPacket.
 	ListenPacket func(network, address string) (net.PacketConn, error)

@@ -183,8 +183,8 @@ func newClientConn(c *Client, scheme string, host string) (*ClientConn, error) {
 	}
 
 	// system functions
-	if c.DialTimeout == nil {
-		c.DialTimeout = net.DialTimeout
+	if c.DialContext == nil {
+		c.DialContext = (&net.Dialer{}).DialContext
 	}
 	if c.ListenPacket == nil {
 		c.ListenPacket = net.ListenPacket
@@ -769,7 +769,10 @@ func (cc *ClientConn) connOpen() error {
 		cc.host += ":554"
 	}
 
-	nconn, err := cc.c.DialTimeout("tcp", cc.host, cc.c.ReadTimeout)
+	ctx, cancel := context.WithTimeout(cc.ctx, cc.c.ReadTimeout)
+	defer cancel()
+
+	nconn, err := cc.c.DialContext(ctx, "tcp", cc.host)
 	if err != nil {
 		return err
 	}
