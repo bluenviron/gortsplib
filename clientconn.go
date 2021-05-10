@@ -826,16 +826,18 @@ func (cc *ClientConn) do(req *base.Request, skipResponse bool) (*base.Response, 
 		// the only two do() with skipResponses are
 		// - TEARDOWN -> ctx is already canceled, so this can't be used
 		// - keepalives -> if ctx is canceled during a keepalive,
-		//   it's better not to close the request, but wait until teardown
+		//   it's better not to stop the request, but wait until teardown
 		if !skipResponse {
-			readWriteDone := make(chan struct{})
-			defer close(readWriteDone)
+			ctxHandlerDone := make(chan struct{})
+			ctxHandlerTerminate := make(chan struct{})
+			defer close(ctxHandlerTerminate)
 
 			go func() {
+				defer close(ctxHandlerDone)
 				select {
 				case <-cc.ctx.Done():
 					cc.nconn.Close()
-				case <-readWriteDone:
+				case <-ctxHandlerTerminate:
 				}
 			}()
 		}

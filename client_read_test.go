@@ -164,27 +164,17 @@ func TestClientReadTracks(t *testing.T) {
 }
 
 func TestClientRead(t *testing.T) {
-	for _, ca := range []struct {
-		encrypted bool
-		proto     string
-	}{
-		{false, "udp"},
-		{false, "tcp"},
-		{true, "tcp"},
+	for _, proto := range []string{
+		"udp",
+		"tcp",
+		"tls",
 	} {
-		encryptedStr := func() string {
-			if ca.encrypted {
-				return "encrypted"
-			}
-			return "plain"
-		}()
-
-		t.Run(encryptedStr+"_"+ca.proto, func(t *testing.T) {
+		t.Run(proto, func(t *testing.T) {
 			frameRecv := make(chan struct{})
 
 			var scheme string
 			var l net.Listener
-			if ca.encrypted {
+			if proto == "tls" {
 				scheme = "rtsps"
 
 				li, err := net.Listen("tcp", "localhost:8554")
@@ -266,7 +256,7 @@ func TestClientRead(t *testing.T) {
 					}(),
 				}
 
-				if ca.proto == "udp" {
+				if proto == "udp" {
 					th.Protocol = StreamProtocolUDP
 					th.ClientPorts = inTH.ClientPorts
 					th.ServerPorts = &[2]int{34556, 34557}
@@ -285,7 +275,7 @@ func TestClientRead(t *testing.T) {
 
 				var l1 net.PacketConn
 				var l2 net.PacketConn
-				if ca.proto == "udp" {
+				if proto == "udp" {
 					l1, err = net.ListenPacket("udp", "localhost:34556")
 					require.NoError(t, err)
 					defer l1.Close()
@@ -306,7 +296,7 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 
 				// server -> client
-				if ca.proto == "udp" {
+				if proto == "udp" {
 					time.Sleep(1 * time.Second)
 					l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
@@ -322,7 +312,7 @@ func TestClientRead(t *testing.T) {
 				}
 
 				// client -> server (RTCP)
-				if ca.proto == "udp" {
+				if proto == "udp" {
 					// skip firewall opening
 					buf := make([]byte, 2048)
 					_, _, err := l2.ReadFrom(buf)
@@ -357,7 +347,7 @@ func TestClientRead(t *testing.T) {
 
 			c := &Client{
 				StreamProtocol: func() *StreamProtocol {
-					if ca.proto == "udp" {
+					if proto == "udp" {
 						v := StreamProtocolUDP
 						return &v
 					}
