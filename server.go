@@ -327,6 +327,9 @@ outer:
 			}
 
 		case ss := <-s.sessionClose:
+			if sss, ok := s.sessions[ss.id]; !ok || sss != ss {
+				continue
+			}
 			s.doSessionClose(ss)
 
 		case <-s.ctx.Done():
