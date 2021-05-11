@@ -21,26 +21,26 @@ type Sender struct {
 // a Validator and a set of credentials.
 func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 	// prefer digest
-	if headerAuthDigest := func() string {
+	if v0 := func() string {
 		for _, vi := range v {
-			if strings.HasPrefix(vi, "Digest ") {
+			if strings.HasPrefix(vi, "Digest") {
 				return vi
 			}
 		}
 		return ""
-	}(); headerAuthDigest != "" {
-		var auth headers.Auth
-		err := auth.Read(base.HeaderValue{headerAuthDigest})
+	}(); v0 != "" {
+		var auth headers.Authenticate
+		err := auth.Read(base.HeaderValue{v0})
 		if err != nil {
 			return nil, err
 		}
 
 		if auth.Realm == nil {
-			return nil, fmt.Errorf("realm not provided")
+			return nil, fmt.Errorf("realm is missing")
 		}
 
 		if auth.Nonce == nil {
-			return nil, fmt.Errorf("nonce not provided")
+			return nil, fmt.Errorf("nonce is missing")
 		}
 
 		return &Sender{
@@ -52,22 +52,22 @@ func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 		}, nil
 	}
 
-	if headerAuthBasic := func() string {
+	if v0 := func() string {
 		for _, vi := range v {
-			if strings.HasPrefix(vi, "Basic ") {
+			if strings.HasPrefix(vi, "Basic") {
 				return vi
 			}
 		}
 		return ""
-	}(); headerAuthBasic != "" {
-		var auth headers.Auth
-		err := auth.Read(base.HeaderValue{headerAuthBasic})
+	}(); v0 != "" {
+		var auth headers.Authenticate
+		err := auth.Read(base.HeaderValue{v0})
 		if err != nil {
 			return nil, err
 		}
 
 		if auth.Realm == nil {
-			return nil, fmt.Errorf("realm not provided")
+			return nil, fmt.Errorf("realm is missing")
 		}
 
 		return &Sender{
@@ -78,7 +78,7 @@ func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 		}, nil
 	}
 
-	return nil, fmt.Errorf("there are no authentication methods available")
+	return nil, fmt.Errorf("no authentication methods available")
 }
 
 // GenerateHeader generates an Authorization Header that allows to authenticate a request with
@@ -99,7 +99,7 @@ func (se *Sender) GenerateHeader(method base.Method, ur *base.URL) base.HeaderVa
 		response := md5Hex(md5Hex(se.user+":"+se.realm+":"+se.pass) + ":" +
 			se.nonce + ":" + md5Hex(string(method)+":"+urStr))
 
-		h.DigestValues = headers.Auth{
+		h.DigestValues = headers.Authenticate{
 			Method:   headers.AuthDigest,
 			Username: &se.user,
 			Realm:    &se.realm,

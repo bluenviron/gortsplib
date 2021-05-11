@@ -19,8 +19,8 @@ const (
 	AuthDigest
 )
 
-// Auth is an Authenticate or a WWW-Authenticate header.
-type Auth struct {
+// Authenticate is an Authenticate or a WWW-Authenticate header.
+type Authenticate struct {
 	// authentication method
 	Method AuthMethod
 
@@ -50,7 +50,7 @@ type Auth struct {
 }
 
 // Read decodes an Authenticate or a WWW-Authenticate header.
-func (h *Auth) Read(v base.HeaderValue) error {
+func (h *Authenticate) Read(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -120,7 +120,7 @@ func (h *Auth) Read(v base.HeaderValue) error {
 }
 
 // Write encodes an Authenticate or a WWW-Authenticate header.
-func (h Auth) Write() base.HeaderValue {
+func (h Authenticate) Write() base.HeaderValue {
 	ret := ""
 
 	switch h.Method {

@@ -29,17 +29,13 @@ func NewValidator(user string, pass string, methods []headers.AuthMethod) *Valid
 	}
 
 	userHashed := false
-	if strings.HasPrefix(user, "plain:") {
-		user = strings.TrimPrefix(user, "plain:")
-	} else if strings.HasPrefix(user, "sha256:") {
+	if strings.HasPrefix(user, "sha256:") {
 		user = strings.TrimPrefix(user, "sha256:")
 		userHashed = true
 	}
 
 	passHashed := false
-	if strings.HasPrefix(pass, "plain:") {
-		pass = strings.TrimPrefix(pass, "plain:")
-	} else if strings.HasPrefix(pass, "sha256:") {
+	if strings.HasPrefix(pass, "sha256:") {
 		pass = strings.TrimPrefix(pass, "sha256:")
 		passHashed = true
 	}
@@ -71,13 +67,13 @@ func (va *Validator) GenerateHeader() base.HeaderValue {
 	for _, m := range va.methods {
 		switch m {
 		case headers.AuthBasic:
-			ret = append(ret, (&headers.Auth{
+			ret = append(ret, (&headers.Authenticate{
 				Method: headers.AuthBasic,
 				Realm:  &va.realm,
 			}).Write()...)
 
 		case headers.AuthDigest:
-			ret = append(ret, headers.Auth{
+			ret = append(ret, headers.Authenticate{
 				Method: headers.AuthDigest,
 				Realm:  &va.realm,
 				Nonce:  &va.nonce,
@@ -125,23 +121,23 @@ func (va *Validator) ValidateHeader(
 
 	default: // headers.AuthDigest
 		if auth.DigestValues.Realm == nil {
-			return fmt.Errorf("realm not provided")
+			return fmt.Errorf("realm is missing")
 		}
 
 		if auth.DigestValues.Nonce == nil {
-			return fmt.Errorf("nonce not provided")
+			return fmt.Errorf("nonce is missing")
 		}
 
 		if auth.DigestValues.Username == nil {
-			return fmt.Errorf("username not provided")
+			return fmt.Errorf("username is missing")
 		}
 
 		if auth.DigestValues.URI == nil {
-			return fmt.Errorf("uri not provided")
+			return fmt.Errorf("uri is missing")
 		}
 
 		if auth.DigestValues.Response == nil {
-			return fmt.Errorf("response not provided")
+			return fmt.Errorf("response is missing")
 		}
 
 		if *auth.DigestValues.Nonce != va.nonce {

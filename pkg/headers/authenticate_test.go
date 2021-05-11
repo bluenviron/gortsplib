@@ -8,17 +8,17 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-var casesAuth = []struct {
+var casesAuthenticate = []struct {
 	name string
 	vin  base.HeaderValue
 	vout base.HeaderValue
-	h    Auth
+	h    Authenticate
 }{
 	{
 		"basic",
 		base.HeaderValue{`Basic realm="4419b63f5e51"`},
 		base.HeaderValue{`Basic realm="4419b63f5e51"`},
-		Auth{
+		Authenticate{
 			Method: AuthBasic,
 			Realm: func() *string {
 				v := "4419b63f5e51"
@@ -30,7 +30,7 @@ var casesAuth = []struct {
 		"digest request 1",
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
-		Auth{
+		Authenticate{
 			Method: AuthDigest,
 			Realm: func() *string {
 				v := "4419b63f5e51"
@@ -50,7 +50,7 @@ var casesAuth = []struct {
 		"digest request 2",
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale=FALSE`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
-		Auth{
+		Authenticate{
 			Method: AuthDigest,
 			Realm: func() *string {
 				v := "4419b63f5e51"
@@ -70,7 +70,7 @@ var casesAuth = []struct {
 		"digest request 3",
 		base.HeaderValue{`Digest realm="4419b63f5e51",nonce="133767111917411116111311118211673010032",  stale="FALSE"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="133767111917411116111311118211673010032", stale="FALSE"`},
-		Auth{
+		Authenticate{
 			Method: AuthDigest,
 			Realm: func() *string {
 				v := "4419b63f5e51"
@@ -90,7 +90,7 @@ var casesAuth = []struct {
 		"digest response generic",
 		base.HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
 		base.HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
-		Auth{
+		Authenticate{
 			Method: AuthDigest,
 			Username: func() *string {
 				v := "aa"
@@ -118,7 +118,7 @@ var casesAuth = []struct {
 		"digest response with empty field",
 		base.HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
 		base.HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
-		Auth{
+		Authenticate{
 			Method: AuthDigest,
 			Username: func() *string {
 				v := ""
@@ -146,7 +146,7 @@ var casesAuth = []struct {
 		"digest response with no spaces and additional fields",
 		base.HeaderValue{`Digest realm="Please log in with a valid username",nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE,algorithm=MD5`},
 		base.HeaderValue{`Digest realm="Please log in with a valid username", nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE", algorithm="MD5"`},
-		Auth{
+		Authenticate{
 			Method: AuthDigest,
 			Realm: func() *string {
 				v := "Please log in with a valid username"
@@ -172,10 +172,10 @@ var casesAuth = []struct {
 	},
 }
 
-func TestAuthRead(t *testing.T) {
-	for _, ca := range casesAuth {
+func TestAuthenticateRead(t *testing.T) {
+	for _, ca := range casesAuthenticate {
 		t.Run(ca.name, func(t *testing.T) {
-			var h Auth
+			var h Authenticate
 			err := h.Read(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
@@ -183,8 +183,8 @@ func TestAuthRead(t *testing.T) {
 	}
 }
 
-func TestAuthWrite(t *testing.T) {
-	for _, ca := range casesAuth {
+func TestAuthenticateWrite(t *testing.T) {
+	for _, ca := range casesAuthenticate {
 		t.Run(ca.name, func(t *testing.T) {
 			vout := ca.h.Write()
 			require.Equal(t, ca.vout, vout)
@@ -192,7 +192,7 @@ func TestAuthWrite(t *testing.T) {
 	}
 }
 
-func TestAuthReadError(t *testing.T) {
+func TestAutenticatehReadError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
@@ -220,7 +220,7 @@ func TestAuthReadError(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			var h Auth
+			var h Authenticate
 			err := h.Read(ca.hv)
 			require.Equal(t, ca.err, err.Error())
 		})

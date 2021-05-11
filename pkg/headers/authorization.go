@@ -20,7 +20,7 @@ type Authorization struct {
 	BasicPass string
 
 	// digest values
-	DigestValues Auth
+	DigestValues Authenticate
 }
 
 // Read decodes an Authorization header.
@@ -56,7 +56,7 @@ func (h *Authorization) Read(v base.HeaderValue) error {
 	case strings.HasPrefix(v0, "Digest "):
 		h.Method = AuthDigest
 
-		var vals Auth
+		var vals Authenticate
 		err := vals.Read(base.HeaderValue{v0})
 		if err != nil {
 			return err

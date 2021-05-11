@@ -24,7 +24,7 @@ func TestAuth(t *testing.T) {
 		},
 		{
 			"both",
-			[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest},
+			nil,
 		},
 	} {
 		for _, conf := range []string{
