@@ -283,7 +283,11 @@ outer:
 			s.conns[sc] = struct{}{}
 
 		case sc := <-s.connClose:
-			s.doConnClose(sc)
+			if _, ok := s.conns[sc]; !ok {
+				continue
+			}
+			delete(s.conns, sc)
+			sc.Close()
 
 		case req := <-s.sessionRequest:
 			if ss, ok := s.sessions[req.id]; ok {
@@ -330,7 +334,8 @@ outer:
 			if sss, ok := s.sessions[ss.id]; !ok || sss != ss {
 				continue
 			}
-			s.doSessionClose(ss)
+			delete(s.sessions, ss.id)
+			ss.Close()
 
 		case <-s.ctx.Done():
 			break outer
@@ -348,14 +353,6 @@ outer:
 	}
 
 	s.tcpListener.Close()
-
-	for sc := range s.conns {
-		s.doConnClose(sc)
-	}
-
-	for _, ss := range s.sessions {
-		s.doSessionClose(ss)
-	}
 }
 
 // StartAndWait starts the server and waits until a fatal error.
@@ -366,14 +363,4 @@ func (s *Server) StartAndWait(address string) error {
 	}
 
 	return s.Wait()
-}
-
-func (s *Server) doConnClose(sc *ServerConn) {
-	delete(s.conns, sc)
-	sc.Close()
-}
-
-func (s *Server) doSessionClose(ss *ServerSession) {
-	delete(s.sessions, ss.id)
-	ss.Close()
 }

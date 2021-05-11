@@ -585,9 +585,12 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 }
 
 func TestServerErrorInvalidMethod(t *testing.T) {
+	connClosed := make(chan struct{})
+
 	h := &testServerHandler{
 		onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 			require.Equal(t, "unhandled request (INVALID rtsp://localhost:8554/)", ctx.Error.Error())
+			close(connClosed)
 		},
 	}
 
@@ -610,6 +613,8 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
+	<-connClosed
 }
 
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {

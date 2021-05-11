@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"context"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -42,7 +43,11 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 }
 
 type serverUDPListener struct {
-	s            *Server
+	s *Server
+
+	ctx          context.Context
+	ctxCancel    func()
+	wg           sync.WaitGroup
 	pc           *net.UDPConn
 	streamType   StreamType
 	writeTimeout time.Duration
@@ -50,9 +55,6 @@ type serverUDPListener struct {
 	clientsMutex sync.RWMutex
 	clients      map[clientAddr]*clientData
 	ringBuffer   *ringbuffer.RingBuffer
-
-	// out
-	done chan struct{}
 }
 
 func newServerUDPListener(
@@ -71,11 +73,14 @@ func newServerUDPListener(
 		return nil, err
 	}
 
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
 	u := &serverUDPListener{
-		s:       s,
-		pc:      pc,
-		clients: make(map[clientAddr]*clientData),
-		done:    make(chan struct{}),
+		s:         s,
+		ctx:       ctx,
+		ctxCancel: ctxCancel,
+		pc:        pc,
+		clients:   make(map[clientAddr]*clientData),
 	}
 
 	u.streamType = streamType
@@ -83,25 +88,23 @@ func newServerUDPListener(
 	u.readBuf = multibuffer.New(uint64(s.ReadBufferCount), uint64(s.ReadBufferSize))
 	u.ringBuffer = ringbuffer.New(uint64(s.ReadBufferCount))
 
+	u.wg.Add(1)
 	go u.run()
 
 	return u, nil
 }
 
 func (u *serverUDPListener) close() {
-	u.pc.Close()
-	u.ringBuffer.Close()
-	<-u.done
+	u.ctxCancel()
+	u.wg.Wait()
 }
 
 func (u *serverUDPListener) run() {
-	defer close(u.done)
+	defer u.wg.Done()
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
+	u.wg.Add(1)
 	go func() {
-		defer wg.Done()
+		defer u.wg.Done()
 
 		for {
 			buf := u.readBuf.Next()
@@ -139,9 +142,9 @@ func (u *serverUDPListener) run() {
 		}
 	}()
 
-	wg.Add(1)
+	u.wg.Add(1)
 	go func() {
-		defer wg.Done()
+		defer u.wg.Done()
 
 		for {
 			tmp, ok := u.ringBuffer.Pull()
@@ -155,7 +158,10 @@ func (u *serverUDPListener) run() {
 		}
 	}()
 
-	wg.Wait()
+	<-u.ctx.Done()
+
+	u.pc.Close()
+	u.ringBuffer.Close()
 }
 
 func (u *serverUDPListener) port() int {
