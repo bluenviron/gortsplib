@@ -6,11 +6,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestURLInvalid(t *testing.T) {
+func TestURLError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		enc  string
 	}{
+		{
+			"invalid",
+			"testing",
+		},
 		{
 			"with opaque data",
 			"rtsp:opaque?query",
@@ -61,6 +65,30 @@ func TestURLRTSPPath(t *testing.T) {
 		require.Equal(t, true, ok)
 		require.Equal(t, ca.b, b)
 	}
+}
+
+func TestURLClone(t *testing.T) {
+	u := MustParseURL("rtsp://localhost:8554/test/stream")
+	u2 := u.Clone()
+	u.Host = "otherhost"
+
+	require.Equal(t, &URL{
+		Scheme: "rtsp",
+		Host:   "otherhost",
+		Path:   "/test/stream",
+	}, u)
+
+	require.Equal(t, &URL{
+		Scheme: "rtsp",
+		Host:   "localhost:8554",
+		Path:   "/test/stream",
+	}, u2)
+}
+
+func TestURLErrorRTSPPath(t *testing.T) {
+	u := MustParseURL("rtsp://localhost:8554")
+	_, ok := u.RTSPPath()
+	require.Equal(t, false, ok)
 }
 
 func TestURLRTSPPathAndQuery(t *testing.T) {
