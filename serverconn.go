@@ -42,13 +42,13 @@ type readReq struct {
 
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
-	s         *Server
-	nconn     net.Conn
-	ctx       context.Context
-	ctxCancel func()
-	br        *bufio.Reader
-	bw        *bufio.Writer
+	s     *Server
+	nconn net.Conn
 
+	ctx                         context.Context
+	ctxCancel                   func()
+	br                          *bufio.Reader
+	bw                          *bufio.Writer
 	sessions                    map[string]*ServerSession
 	tcpFrameSetEnabled          bool                     // tcp
 	tcpFrameEnabled             bool                     // tcp

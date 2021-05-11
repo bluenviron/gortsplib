@@ -117,12 +117,12 @@ type Server struct {
 	receiverReportPeriod           time.Duration
 	closeSessionAfterNoRequestsFor time.Duration
 
+	ctx             context.Context
+	ctxCancel       func()
+	wg              sync.WaitGroup
 	tcpListener     net.Listener
 	udpRTPListener  *serverUDPListener
 	udpRTCPListener *serverUDPListener
-	wg              sync.WaitGroup
-	ctx             context.Context
-	ctxCancel       func()
 	sessions        map[string]*ServerSession
 	conns           map[*ServerConn]struct{}
 	exitError       error
