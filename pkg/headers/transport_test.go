@@ -160,34 +160,39 @@ func TestTransportReadError(t *testing.T) {
 			"invalid protocol (unicast;client_port=14186-14187)",
 		},
 		{
-			"invalid client port 1",
+			"invalid ports 1",
+			base.HeaderValue{`RTP/AVP;unicast;client_port=aa`},
+			"invalid ports (aa)",
+		},
+		{
+			"invalid ports 2",
+			base.HeaderValue{`RTP/AVP;unicast;client_port=aa-bb-cc`},
+			"invalid ports (aa-bb-cc)",
+		},
+		{
+			"invalid ports 3",
 			base.HeaderValue{`RTP/AVP;unicast;client_port=aa-14187`},
 			"invalid ports (aa-14187)",
 		},
 		{
-			"invalid client port 2",
+			"invalid ports 4",
 			base.HeaderValue{`RTP/AVP;unicast;client_port=14186-aa`},
 			"invalid ports (14186-aa)",
 		},
 		{
-			"invalid server port 1",
+			"invalid client port",
+			base.HeaderValue{`RTP/AVP;unicast;client_port=aa-14187`},
+			"invalid ports (aa-14187)",
+		},
+		{
+			"invalid server port",
 			base.HeaderValue{`RTP/AVP;unicast;server_port=aa-14187`},
 			"invalid ports (aa-14187)",
 		},
 		{
-			"invalid server port 2",
-			base.HeaderValue{`RTP/AVP;unicast;server_port=14186-aa`},
-			"invalid ports (14186-aa)",
-		},
-		{
-			"invalid interleaved port 1",
+			"invalid interleaved port",
 			base.HeaderValue{`RTP/AVP;unicast;interleaved=aa-14187`},
 			"invalid ports (aa-14187)",
-		},
-		{
-			"invalid interleaved port 2",
-			base.HeaderValue{`RTP/AVP;unicast;interleaved=14186-aa`},
-			"invalid ports (14186-aa)",
 		},
 		{
 			"invalid ttl",

@@ -139,6 +139,16 @@ func TestHeaderReadErrors(t *testing.T) {
 			"EOF",
 		},
 		{
+			"missing value",
+			[]byte("Testing:"),
+			"EOF",
+		},
+		{
+			"missing eol",
+			[]byte("Testing: val"),
+			"EOF",
+		},
+		{
 			"r without n",
 			[]byte("Testing: val\rTesting: val\r\n"),
 			"expected '\n', got 'T'",

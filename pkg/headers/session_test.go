@@ -84,6 +84,16 @@ func TestSessionReadError(t *testing.T) {
 			base.HeaderValue{"a", "b"},
 			"value provided multiple times ([a b])",
 		},
+		{
+			"no keys",
+			base.HeaderValue{`A3eqwsafq3rFASqew;aaaa`},
+			"unable to read key (aaaa)",
+		},
+		{
+			"invalid timeout",
+			base.HeaderValue{`A3eqwsafq3rFASqew;timeout=aaa`},
+			"strconv.ParseUint: parsing \"aaa\": invalid syntax",
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Session

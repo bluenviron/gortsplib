@@ -46,17 +46,13 @@ func (h *Session) Read(v base.HeaderValue) error {
 	}
 
 	for k, v := range kvs {
-		switch k {
-		case "timeout":
+		if k == "timeout" {
 			iv, err := strconv.ParseUint(v, 10, 64)
 			if err != nil {
 				return err
 			}
 			uiv := uint(iv)
 			h.Timeout = &uiv
-
-		default:
-			// ignore non-standard keys
 		}
 	}
 

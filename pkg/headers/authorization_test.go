@@ -85,6 +85,26 @@ func TestAuthorizationReadError(t *testing.T) {
 			base.HeaderValue{"a", "b"},
 			"value provided multiple times ([a b])",
 		},
+		{
+			"invalid",
+			base.HeaderValue{`Invalid`},
+			"invalid authorization header",
+		},
+		{
+			"basic invalid 1",
+			base.HeaderValue{`Basic aaa`},
+			"invalid value",
+		},
+		{
+			"basic invalid 2",
+			base.HeaderValue{`Basic aW52YWxpZA==`},
+			"invalid value",
+		},
+		{
+			"digest invalid",
+			base.HeaderValue{`Basic`},
+			"invalid authorization header",
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Authorization
