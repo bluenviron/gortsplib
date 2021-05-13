@@ -76,9 +76,9 @@ var casesTransport = []struct {
 		},
 	},
 	{
-		"udp unicast play response with a single port",
-		base.HeaderValue{`RTP/AVP/UDP;unicast;server_port=8052;client_port=14186;ssrc=39140788;mode=PLAY`},
-		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;mode=play`},
+		"udp unicast play response with a single port and ssrc",
+		base.HeaderValue{`RTP/AVP/UDP;unicast;server_port=8052;client_port=14186;ssrc=0B6020AD;mode=PLAY`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0B6020AD;mode=play`},
 		Transport{
 			Protocol: base.StreamProtocolUDP,
 			Delivery: func() *base.StreamDelivery {
@@ -91,6 +91,10 @@ var casesTransport = []struct {
 			}(),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
+			SSRC: func() *uint32 {
+				v := uint32(0x0B6020AD)
+				return &v
+			}(),
 		},
 	},
 	{
@@ -160,23 +164,33 @@ func TestTransportReadError(t *testing.T) {
 			"invalid protocol (unicast;client_port=14186-14187)",
 		},
 		{
+			"invalid interleaved port",
+			base.HeaderValue{`RTP/AVP;unicast;interleaved=aa-14187`},
+			"invalid ports (aa-14187)",
+		},
+		{
+			"invalid ttl",
+			base.HeaderValue{`RTP/AVP;unicast;ttl=aa`},
+			"strconv.ParseUint: parsing \"aa\": invalid syntax",
+		},
+		{
 			"invalid ports 1",
-			base.HeaderValue{`RTP/AVP;unicast;client_port=aa`},
+			base.HeaderValue{`RTP/AVP;unicast;port=aa`},
 			"invalid ports (aa)",
 		},
 		{
 			"invalid ports 2",
-			base.HeaderValue{`RTP/AVP;unicast;client_port=aa-bb-cc`},
+			base.HeaderValue{`RTP/AVP;unicast;port=aa-bb-cc`},
 			"invalid ports (aa-bb-cc)",
 		},
 		{
 			"invalid ports 3",
-			base.HeaderValue{`RTP/AVP;unicast;client_port=aa-14187`},
+			base.HeaderValue{`RTP/AVP;unicast;port=aa-14187`},
 			"invalid ports (aa-14187)",
 		},
 		{
 			"invalid ports 4",
-			base.HeaderValue{`RTP/AVP;unicast;client_port=14186-aa`},
+			base.HeaderValue{`RTP/AVP;unicast;port=14186-aa`},
 			"invalid ports (14186-aa)",
 		},
 		{
@@ -190,14 +204,14 @@ func TestTransportReadError(t *testing.T) {
 			"invalid ports (aa-14187)",
 		},
 		{
-			"invalid interleaved port",
-			base.HeaderValue{`RTP/AVP;unicast;interleaved=aa-14187`},
-			"invalid ports (aa-14187)",
+			"invalid ssrc 1",
+			base.HeaderValue{`RTP/AVP;unicast;ssrc=zzz`},
+			"encoding/hex: invalid byte: U+007A 'z'",
 		},
 		{
-			"invalid ttl",
-			base.HeaderValue{`RTP/AVP;unicast;ttl=aa`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
+			"invalid ssrc 2",
+			base.HeaderValue{`RTP/AVP;unicast;ssrc=030A0B0C0D0E0F`},
+			"invalid SSRC",
 		},
 		{
 			"invalid mode",

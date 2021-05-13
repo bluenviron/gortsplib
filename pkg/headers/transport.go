@@ -1,6 +1,8 @@
 package headers
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -42,6 +44,9 @@ type Transport struct {
 	// (optional) destination
 	Destination *string
 
+	// (optional) interleaved frame ids
+	InterleavedIDs *[2]int
+
 	// (optional) TTL
 	TTL *uint
 
@@ -54,8 +59,8 @@ type Transport struct {
 	// (optional) server ports
 	ServerPorts *[2]int
 
-	// (optional) interleaved frame ids
-	InterleavedIDs *[2]int
+	// (optional) SSRC of the packets of the stream
+	SSRC *uint32
 
 	// (optional) mode
 	Mode *TransportMode
@@ -153,6 +158,13 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		case "destination":
 			h.Destination = &v
 
+		case "interleaved":
+			ports, err := parsePorts(v)
+			if err != nil {
+				return err
+			}
+			h.InterleavedIDs = ports
+
 		case "ttl":
 			tmp, err := strconv.ParseUint(v, 10, 64)
 			if err != nil {
@@ -182,12 +194,18 @@ func (h *Transport) Read(v base.HeaderValue) error {
 			}
 			h.ServerPorts = ports
 
-		case "interleaved":
-			ports, err := parsePorts(v)
+		case "ssrc":
+			tmp, err := hex.DecodeString(v)
 			if err != nil {
 				return err
 			}
-			h.InterleavedIDs = ports
+
+			if len(tmp) != 4 {
+				return fmt.Errorf("invalid SSRC")
+			}
+
+			v := binary.BigEndian.Uint32(tmp)
+			h.SSRC = &v
 
 		case "mode":
 			str := strings.ToLower(v)
@@ -235,6 +253,11 @@ func (h Transport) Write() base.HeaderValue {
 		}
 	}
 
+	if h.InterleavedIDs != nil {
+		ports := *h.InterleavedIDs
+		rets = append(rets, "interleaved="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
+	}
+
 	if h.ClientPorts != nil {
 		ports := *h.ClientPorts
 		rets = append(rets, "client_port="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
@@ -245,9 +268,10 @@ func (h Transport) Write() base.HeaderValue {
 		rets = append(rets, "server_port="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
 	}
 
-	if h.InterleavedIDs != nil {
-		ports := *h.InterleavedIDs
-		rets = append(rets, "interleaved="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
+	if h.SSRC != nil {
+		tmp := make([]byte, 4)
+		binary.BigEndian.PutUint32(tmp, *h.SSRC)
+		rets = append(rets, "ssrc="+strings.ToUpper(hex.EncodeToString(tmp)))
 	}
 
 	if h.Mode != nil {
