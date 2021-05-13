@@ -228,6 +228,40 @@ func TestTrackH264New(t *testing.T) {
 	}, tr)
 }
 
+func TestTrackIsH264(t *testing.T) {
+	for _, ca := range []struct {
+		name  string
+		track *Track
+	}{
+		{
+			"standard",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 packetization-mode=1; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			require.Equal(t, true, ca.track.IsH264())
+		})
+	}
+}
+
 func TestTrackH264Extract(t *testing.T) {
 	for _, ca := range []struct {
 		name  string
@@ -490,7 +524,7 @@ func TestTrackAACNew(t *testing.T) {
 			Attributes: []psdp.Attribute{
 				{
 					Key:   "rtpmap",
-					Value: "96 MPEG4-GENERIC/48000/2",
+					Value: "96 mpeg4-generic/48000/2",
 				},
 				{
 					Key:   "fmtp",
@@ -499,6 +533,62 @@ func TestTrackAACNew(t *testing.T) {
 			},
 		},
 	}, tr)
+}
+
+func TestTrackIsAAC(t *testing.T) {
+	for _, ca := range []struct {
+		name  string
+		track *Track
+	}{
+		{
+			"standard",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 mpeg4-generic/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+						},
+					},
+				},
+			},
+		},
+		{
+			"uppercase",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 MPEG4-GENERIC/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			require.Equal(t, true, ca.track.IsAAC())
+		})
+	}
 }
 
 func TestTrackAACExtract(t *testing.T) {
@@ -519,7 +609,7 @@ func TestTrackAACExtract(t *testing.T) {
 					Attributes: []psdp.Attribute{
 						{
 							Key:   "rtpmap",
-							Value: "96 MPEG4-GENERIC/48000/2",
+							Value: "96 mpeg4-generic/48000/2",
 						},
 						{
 							Key:   "fmtp",
@@ -542,7 +632,7 @@ func TestTrackAACExtract(t *testing.T) {
 					Attributes: []psdp.Attribute{
 						{
 							Key:   "rtpmap",
-							Value: "96 MPEG4-GENERIC/48000/2",
+							Value: "96 mpeg4-generic/48000/2",
 						},
 						{
 							Key:   "fmtp",
@@ -580,7 +670,7 @@ func TestTrackAACExtractError(t *testing.T) {
 					Attributes: []psdp.Attribute{
 						{
 							Key:   "rtpmap",
-							Value: "96 MPEG4-GENERIC/48000/2",
+							Value: "96 mpeg4-generic/48000/2",
 						},
 					},
 				},
@@ -599,7 +689,7 @@ func TestTrackAACExtractError(t *testing.T) {
 					Attributes: []psdp.Attribute{
 						{
 							Key:   "rtpmap",
-							Value: "96 MPEG4-GENERIC/48000/2",
+							Value: "96 mpeg4-generic/48000/2",
 						},
 						{
 							Key:   "fmtp",
@@ -622,7 +712,7 @@ func TestTrackAACExtractError(t *testing.T) {
 					Attributes: []psdp.Attribute{
 						{
 							Key:   "rtpmap",
-							Value: "96 MPEG4-GENERIC/48000/2",
+							Value: "96 mpeg4-generic/48000/2",
 						},
 						{
 							Key:   "fmtp",
@@ -645,7 +735,7 @@ func TestTrackAACExtractError(t *testing.T) {
 					Attributes: []psdp.Attribute{
 						{
 							Key:   "rtpmap",
-							Value: "96 MPEG4-GENERIC/48000/2",
+							Value: "96 mpeg4-generic/48000/2",
 						},
 						{
 							Key:   "fmtp",
@@ -668,7 +758,7 @@ func TestTrackAACExtractError(t *testing.T) {
 					Attributes: []psdp.Attribute{
 						{
 							Key:   "rtpmap",
-							Value: "96 MPEG4-GENERIC/48000/2",
+							Value: "96 mpeg4-generic/48000/2",
 						},
 						{
 							Key:   "fmtp",

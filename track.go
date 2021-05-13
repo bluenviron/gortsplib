@@ -149,7 +149,7 @@ func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 			Attributes: []psdp.Attribute{
 				{
 					Key: "rtpmap",
-					Value: typ + " MPEG4-GENERIC/" + strconv.FormatInt(int64(conf.SampleRate), 10) +
+					Value: typ + " mpeg4-generic/" + strconv.FormatInt(int64(conf.SampleRate), 10) +
 						"/" + strconv.FormatInt(int64(conf.ChannelCount), 10),
 				},
 				{
@@ -166,7 +166,7 @@ func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 	}, nil
 }
 
-// IsAAC checks whether the track is a AAC track.
+// IsAAC checks whether the track is an AAC track.
 func (t *Track) IsAAC() bool {
 	if t.Media.MediaName.Media != "audio" {
 		return false
@@ -182,7 +182,7 @@ func (t *Track) IsAAC() bool {
 		return false
 	}
 
-	return strings.HasPrefix(vals[1], "MPEG4-GENERIC/")
+	return strings.HasPrefix(strings.ToLower(vals[1]), "mpeg4-generic/")
 }
 
 // ExtractDataAAC extracts the config from an AAC track.
