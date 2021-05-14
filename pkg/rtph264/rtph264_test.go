@@ -73,7 +73,7 @@ var cases = []struct {
 		[][]byte{
 			mergeBytes(
 				[]byte{0x05},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 256),
+				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 512),
 			),
 		},
 		55 * time.Millisecond,
@@ -88,11 +88,20 @@ var cases = []struct {
 			),
 			mergeBytes(
 				[]byte{
-					0x80, 0xe0, 0x44, 0xee, 0x88, 0x77, 0x79, 0xab,
-					0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x45,
+					0x80, 0x60, 0x44, 0xee, 0x88, 0x77, 0x79, 0xab,
+					0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x05,
 				},
 				[]byte{0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 73),
+				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 181),
+				[]byte{0x00, 0x01, 0x02, 0x03},
+			),
+			mergeBytes(
+				[]byte{
+					0x80, 0xe0, 0x44, 0xef, 0x88, 0x77, 0x79, 0xab,
+					0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x45,
+				},
+				[]byte{0x04, 0x05, 0x06, 0x07},
+				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
 			),
 		},
 	},
@@ -383,6 +392,45 @@ func TestDecodeErrors(t *testing.T) {
 			}
 			require.NotEqual(t, ErrMorePacketsNeeded, err)
 			require.Equal(t, ca.err, err.Error())
+		})
+	}
+}
+
+type funcReader func(p []byte) (int, error)
+
+func (f funcReader) Read(p []byte) (int, error) {
+	return f(p)
+}
+
+func TestReadSPSPPS(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		byts [][]byte
+		sps  []byte
+		pps  []byte
+	}{
+		{
+			"standard",
+			[][]byte{
+				{128, 96, 61, 205, 54, 67, 90, 125, 40, 249, 97, 176, 7, 1, 2},
+				{128, 96, 61, 206, 54, 67, 90, 125, 40, 249, 97, 176, 8, 3, 4},
+			},
+			[]byte{0x07, 0x01, 0x02},
+			[]byte{0x08, 0x03, 0x04},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			i := 0
+			f := funcReader(func(p []byte) (int, error) {
+				n := copy(p, ca.byts[i])
+				i++
+				return n, nil
+			})
+
+			sps, pps, err := NewDecoder().ReadSPSPPS(f)
+			require.NoError(t, err)
+			require.Equal(t, ca.sps, sps)
+			require.Equal(t, ca.pps, pps)
 		})
 	}
 }
