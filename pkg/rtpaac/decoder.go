@@ -45,14 +45,20 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 // It returns the AUs and the PTS of the first AU.
 // The PTS of subsequent AUs can be calculated by adding time.Second*1000/clockRate.
 func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
+	pkt := rtp.Packet{}
+	err := pkt.Unmarshal(byts)
+	if err != nil {
+		d.state = decoderStateInitial
+		return nil, 0, err
+	}
+
+	return d.DecodeRTP(&pkt)
+}
+
+// DecodeRTP decodes AUs from a rtp.Packet.
+func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	switch d.state {
 	case decoderStateInitial:
-		pkt := rtp.Packet{}
-		err := pkt.Unmarshal(byts)
-		if err != nil {
-			return nil, 0, err
-		}
-
 		if !d.initialTsSet {
 			d.initialTsSet = true
 			d.initialTs = pkt.Timestamp
@@ -130,13 +136,6 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 		return nil, 0, ErrMorePacketsNeeded
 
 	default: // decoderStateReadingFragmented
-		pkt := rtp.Packet{}
-		err := pkt.Unmarshal(byts)
-		if err != nil {
-			d.state = decoderStateInitial
-			return nil, 0, err
-		}
-
 		// AU-headers-length
 		headersLen := binary.BigEndian.Uint16(pkt.Payload)
 		if headersLen != 16 {

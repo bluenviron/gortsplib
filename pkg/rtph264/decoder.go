@@ -55,14 +55,20 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 // It returns the decoded NALUs and their PTS.
 // In case more packets are needed, ErrMorePacketsNeeded is returned.
 func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
+	pkt := rtp.Packet{}
+	err := pkt.Unmarshal(byts)
+	if err != nil {
+		d.state = decoderStateInitial
+		return nil, 0, err
+	}
+
+	return d.DecodeRTP(&pkt)
+}
+
+// DecodeRTP decodes NALUs from a rtp.Packet.
+func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	switch d.state {
 	case decoderStateInitial:
-		pkt := rtp.Packet{}
-		err := pkt.Unmarshal(byts)
-		if err != nil {
-			return nil, 0, err
-		}
-
 		if !d.initialTsSet {
 			d.initialTsSet = true
 			d.initialTs = pkt.Timestamp
@@ -131,13 +137,6 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 		return [][]byte{pkt.Payload}, d.decodeTimestamp(pkt.Timestamp), nil
 
 	default: // decoderStateReadingFragmented
-		pkt := rtp.Packet{}
-		err := pkt.Unmarshal(byts)
-		if err != nil {
-			d.state = decoderStateInitial
-			return nil, 0, err
-		}
-
 		if len(pkt.Payload) < 2 {
 			d.state = decoderStateInitial
 			return nil, 0, fmt.Errorf("Invalid non-starting FU-A packet")
