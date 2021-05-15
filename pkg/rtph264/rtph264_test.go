@@ -390,7 +390,6 @@ func TestDecodeErrors(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				_, _, err = d.Decode(pkt)
 			}
-			require.NotEqual(t, ErrMorePacketsNeeded, err)
 			require.Equal(t, ca.err, err.Error())
 		})
 	}
