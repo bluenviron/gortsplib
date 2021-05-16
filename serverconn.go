@@ -61,6 +61,9 @@ type ServerConn struct {
 
 	// in
 	sessionRemove chan *ServerSession
+
+	// out
+	done chan struct{}
 }
 
 func newServerConn(
@@ -75,6 +78,7 @@ func newServerConn(
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
 		sessionRemove: make(chan *ServerSession),
+		done:          make(chan struct{}),
 	}
 
 	s.wg.Add(1)
@@ -104,6 +108,7 @@ func (sc *ServerConn) zone() string {
 
 func (sc *ServerConn) run() {
 	defer sc.s.wg.Done()
+	defer close(sc.done)
 
 	if h, ok := sc.s.Handler.(ServerHandlerOnConnOpen); ok {
 		h.OnConnOpen(&ServerHandlerOnConnOpenCtx{

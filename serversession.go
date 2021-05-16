@@ -332,6 +332,9 @@ func (ss *ServerSession) run() {
 	for sc := range ss.conns {
 		if sc == ss.tcpConn {
 			sc.Close()
+
+			// make sure that OnFrame() is never called after OnSessionClose()
+			<-sc.done
 		}
 
 		select {
