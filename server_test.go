@@ -44,7 +44,7 @@ type testServerHandler struct {
 	onSessionClose func(*ServerHandlerOnSessionCloseCtx)
 	onDescribe     func(*ServerHandlerOnDescribeCtx) (*base.Response, []byte, error)
 	onAnnounce     func(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
-	onSetup        func(*ServerHandlerOnSetupCtx) (*base.Response, error)
+	onSetup        func(*ServerHandlerOnSetupCtx) (*base.Response, *uint32, error)
 	onPlay         func(*ServerHandlerOnPlayCtx) (*base.Response, error)
 	onRecord       func(*ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
@@ -91,11 +91,11 @@ func (sh *testServerHandler) OnAnnounce(ctx *ServerHandlerOnAnnounceCtx) (*base.
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (sh *testServerHandler) OnSetup(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+func (sh *testServerHandler) OnSetup(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 	if sh.onSetup != nil {
 		return sh.onSetup(ctx)
 	}
-	return nil, fmt.Errorf("unimplemented")
+	return nil, nil, fmt.Errorf("unimplemented")
 }
 
 func (sh *testServerHandler) OnPlay(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
@@ -327,11 +327,11 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 							},
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 						if ctx.Path != "teststream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 						}
 
 						return &base.Response{
@@ -339,7 +339,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 							Header: base.Header{
 								"Session": base.HeaderValue{"12345678"},
 							},
-						}, nil
+						}, nil, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						if ctx.Path != "teststream" {
@@ -620,10 +620,10 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
@@ -712,10 +712,10 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
@@ -920,10 +920,10 @@ func TestServerSessionClose(t *testing.T) {
 			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 				close(sessionClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 		},
 	}
@@ -969,10 +969,10 @@ func TestServerSessionAutoClose(t *testing.T) {
 			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 				close(sessionClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 		},
 	}
@@ -1036,10 +1036,10 @@ func TestServerErrorInvalidPath(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil
+						}, nil, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{

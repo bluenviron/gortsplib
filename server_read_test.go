@@ -61,12 +61,12 @@ func TestServerReadSetupPath(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			s := &Server{
 				Handler: &testServerHandler{
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 						require.Equal(t, ca.path, ctx.Path)
 						require.Equal(t, ca.trackID, ctx.TrackID)
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil
+						}, nil, nil
 					},
 				},
 			}
@@ -116,10 +116,10 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 				require.Equal(t, "can't setup tracks with different paths", ctx.Error.Error())
 				close(connClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 		},
 	}
@@ -183,10 +183,10 @@ func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 				require.Equal(t, "track 0 has already been setup", ctx.Error.Error())
 				close(connClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 		},
 	}
@@ -268,10 +268,11 @@ func TestServerRead(t *testing.T) {
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+						v := uint32(123456)
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil
+						}, &v, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						ctx.Session.WriteFrame(0, StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
@@ -356,6 +357,7 @@ func TestServerRead(t *testing.T) {
 			var th headers.Transport
 			err = th.Read(res.Header["Transport"])
 			require.NoError(t, err)
+			require.Equal(t, uint32(123456), *th.SSRC)
 
 			<-sessionOpened
 
@@ -483,10 +485,10 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 				close(writerTerminate)
 				<-writerDone
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
@@ -567,10 +569,10 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 func TestServerReadPlayPlay(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
@@ -647,10 +649,10 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 				close(writerTerminate)
 				<-writerDone
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				if !writerStarted {
@@ -759,10 +761,10 @@ func TestServerReadPlayPausePause(t *testing.T) {
 				close(writerTerminate)
 				<-writerDone
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
@@ -882,10 +884,10 @@ func TestServerReadTimeout(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil
+						}, nil, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
@@ -972,10 +974,10 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil
+						}, nil, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
@@ -1053,10 +1055,10 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 func TestServerReadUDPChangeConn(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
+				}, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{

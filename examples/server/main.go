@@ -92,12 +92,12 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 }
 
 // called after receiving a SETUP request.
-func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, error) {
+func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
 	log.Printf("setup request")
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
-	}, nil
+	}, nil, nil
 }
 
 // called after receiving a PLAY request.

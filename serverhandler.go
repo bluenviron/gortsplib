@@ -103,7 +103,9 @@ type ServerHandlerOnSetupCtx struct {
 
 // ServerHandlerOnSetup can be implemented by a ServerHandler.
 type ServerHandlerOnSetup interface {
-	OnSetup(*ServerHandlerOnSetupCtx) (*base.Response, error)
+	// returns a Response and an optional SSRC that is
+	// inserted into the Transport header.
+	OnSetup(*ServerHandlerOnSetupCtx) (*base.Response, *uint32, error)
 }
 
 // ServerHandlerOnPlayCtx is the context of a PLAY request.

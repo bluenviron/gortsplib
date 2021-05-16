@@ -503,21 +503,21 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, err
 		}
 
-		var th headers.Transport
-		err = th.Read(req.Header["Transport"])
+		var inTH headers.Transport
+		err = inTH.Read(req.Header["Transport"])
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerTransportHeaderInvalid{Err: err}
 		}
 
-		if th.Delivery != nil && *th.Delivery == base.StreamDeliveryMulticast {
+		if inTH.Delivery != nil && *inTH.Delivery == base.StreamDeliveryMulticast {
 			return &base.Response{
 				StatusCode: base.StatusUnsupportedTransport,
 			}, nil
 		}
 
-		trackID, path, query, err := setupGetTrackIDPathQuery(req.URL, th.Mode,
+		trackID, path, query, err := setupGetTrackIDPathQuery(req.URL, inTH.Mode,
 			ss.announcedTracks, ss.setupPath, ss.setupQuery)
 		if err != nil {
 			return &base.Response{
@@ -533,67 +533,67 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
-			if th.Mode != nil && *th.Mode != headers.TransportModePlay {
+			if inTH.Mode != nil && *inTH.Mode != headers.TransportModePlay {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderWrongMode{Mode: th.Mode}
+				}, liberrors.ErrServerTransportHeaderWrongMode{Mode: inTH.Mode}
 			}
 
 		default: // record
-			if th.Mode == nil || *th.Mode != headers.TransportModeRecord {
+			if inTH.Mode == nil || *inTH.Mode != headers.TransportModeRecord {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderWrongMode{Mode: th.Mode}
+				}, liberrors.ErrServerTransportHeaderWrongMode{Mode: inTH.Mode}
 			}
 		}
 
-		if th.Protocol == StreamProtocolUDP {
+		if inTH.Protocol == StreamProtocolUDP {
 			if ss.s.udpRTPListener == nil {
 				return &base.Response{
 					StatusCode: base.StatusUnsupportedTransport,
 				}, nil
 			}
 
-			if th.ClientPorts == nil {
+			if inTH.ClientPorts == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerTransportHeaderNoClientPorts{}
 			}
 
 		} else {
-			if th.InterleavedIDs == nil {
+			if inTH.InterleavedIDs == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerTransportHeaderNoInterleavedIDs{}
 			}
 
-			if th.InterleavedIDs[0] != (trackID*2) ||
-				th.InterleavedIDs[1] != (1+trackID*2) {
+			if inTH.InterleavedIDs[0] != (trackID*2) ||
+				inTH.InterleavedIDs[1] != (1+trackID*2) {
 				return &base.Response{
 						StatusCode: base.StatusBadRequest,
 					}, liberrors.ErrServerTransportHeaderWrongInterleavedIDs{
-						Expected: [2]int{(trackID * 2), (1 + trackID*2)}, Value: *th.InterleavedIDs}
+						Expected: [2]int{(trackID * 2), (1 + trackID*2)}, Value: *inTH.InterleavedIDs}
 			}
 		}
 
-		if ss.setupProtocol != nil && *ss.setupProtocol != th.Protocol {
+		if ss.setupProtocol != nil && *ss.setupProtocol != inTH.Protocol {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerTracksDifferentProtocols{}
 		}
 
-		res, err := ss.s.Handler.(ServerHandlerOnSetup).OnSetup(&ServerHandlerOnSetupCtx{
+		res, ssrc, err := ss.s.Handler.(ServerHandlerOnSetup).OnSetup(&ServerHandlerOnSetupCtx{
 			Session:   ss,
 			Conn:      sc,
 			Req:       req,
 			Path:      path,
 			Query:     query,
 			TrackID:   trackID,
-			Transport: &th,
+			Transport: &inTH,
 		})
 
 		if res.StatusCode == base.StatusOK {
-			ss.setupProtocol = &th.Protocol
+			ss.setupProtocol = &inTH.Protocol
 
 			if ss.setuppedTracks == nil {
 				ss.setuppedTracks = make(map[int]ServerSessionSetuppedTrack)
@@ -603,30 +603,35 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				res.Header = make(base.Header)
 			}
 
-			if th.Protocol == StreamProtocolUDP {
+			th := headers.Transport{
+				Delivery: func() *base.StreamDelivery {
+					v := base.StreamDeliveryUnicast
+					return &v
+				}(),
+			}
+
+			if inTH.Protocol == StreamProtocolUDP {
 				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{
-					udpRTPPort:  th.ClientPorts[0],
-					udpRTCPPort: th.ClientPorts[1],
+					udpRTPPort:  inTH.ClientPorts[0],
+					udpRTCPPort: inTH.ClientPorts[1],
 				}
 
-				res.Header["Transport"] = headers.Transport{
-					Protocol: StreamProtocolUDP,
-					Delivery: func() *base.StreamDelivery {
-						v := base.StreamDeliveryUnicast
-						return &v
-					}(),
-					ClientPorts: th.ClientPorts,
-					ServerPorts: &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()},
-				}.Write()
+				th.Protocol = StreamProtocolUDP
+				th.ClientPorts = inTH.ClientPorts
+				th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
 
 			} else {
 				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{}
 
-				res.Header["Transport"] = headers.Transport{
-					Protocol:       StreamProtocolTCP,
-					InterleavedIDs: th.InterleavedIDs,
-				}.Write()
+				th.Protocol = StreamProtocolTCP
+				th.InterleavedIDs = inTH.InterleavedIDs
 			}
+
+			if ssrc != nil {
+				th.SSRC = ssrc
+			}
+
+			res.Header["Transport"] = th.Write()
 		}
 
 		if ss.state == ServerSessionStateInitial {
