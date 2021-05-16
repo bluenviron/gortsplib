@@ -133,7 +133,6 @@ type ClientConn struct {
 	tracks            map[int]clientConnTrack
 	backgroundRunning bool
 	backgroundErr     error
-	rtpInfo           *headers.RTPInfo              // read
 	tcpFrameBuffer    *multibuffer.MultiBuffer      // tcp
 	tcpWriteMutex     sync.Mutex                    // tcp
 	readCBMutex       sync.RWMutex                  // read
@@ -245,11 +244,6 @@ func (cc *ClientConn) Tracks() Tracks {
 	return ret
 }
 
-// RTPInfo returns the RTP-Info header sent by the server in the PLAY response.
-func (cc *ClientConn) RTPInfo() *headers.RTPInfo {
-	return cc.rtpInfo
-}
-
 func (cc *ClientConn) run() {
 	defer close(cc.done)
 
@@ -343,7 +337,6 @@ func (cc *ClientConn) reset(isSwitchingProtocol bool) {
 	cc.streamProtocol = nil
 	cc.tracks = make(map[int]clientConnTrack)
 	cc.tcpFrameBuffer = nil
-	cc.rtpInfo = nil
 
 	if !isSwitchingProtocol {
 		cc.readCB = nil
@@ -1435,15 +1428,6 @@ func (cc *ClientConn) doPlay(isSwitchingProtocol bool) (*base.Response, error) {
 	if res.StatusCode != base.StatusOK {
 		return nil, liberrors.ErrClientWrongStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage}
-	}
-
-	if v, ok := res.Header["RTP-Info"]; ok {
-		var ri headers.RTPInfo
-		err := ri.Read(v)
-		if err != nil {
-			return nil, liberrors.ErrClientRTPInfoInvalid{Err: err}
-		}
-		cc.rtpInfo = &ri
 	}
 
 	cc.state = clientConnStatePlay
