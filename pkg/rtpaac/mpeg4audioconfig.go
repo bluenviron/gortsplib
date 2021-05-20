@@ -22,6 +22,32 @@ type MPEG4AudioConfig struct {
 	ChannelCount int
 }
 
+var sampleRates = map[uint64]int{
+	0:  96000,
+	1:  88200,
+	2:  64000,
+	3:  48000,
+	4:  44100,
+	5:  32000,
+	6:  24000,
+	7:  22050,
+	8:  16000,
+	9:  12000,
+	10: 11025,
+	11: 8000,
+	12: 7350,
+}
+
+var channelCounts = map[uint64]int{
+	1: 1,
+	2: 2,
+	3: 3,
+	4: 4,
+	5: 5,
+	6: 6,
+	7: 8,
+}
+
 // Decode decodes an MPEG-4 Audio configuration.
 func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 	// ref: https://wiki.multimedia.cx/index.php/MPEG-4_Audio
@@ -53,35 +79,11 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 		return err
 	}
 
-	switch sampleRateIndex {
-	case 0:
-		c.SampleRate = 96000
-	case 1:
-		c.SampleRate = 88200
-	case 2:
-		c.SampleRate = 64000
-	case 3:
-		c.SampleRate = 48000
-	case 4:
-		c.SampleRate = 44100
-	case 5:
-		c.SampleRate = 32000
-	case 6:
-		c.SampleRate = 24000
-	case 7:
-		c.SampleRate = 22050
-	case 8:
-		c.SampleRate = 16000
-	case 9:
-		c.SampleRate = 12000
-	case 10:
-		c.SampleRate = 11025
-	case 11:
-		c.SampleRate = 8000
-	case 12:
-		c.SampleRate = 7350
+	switch {
+	case sampleRateIndex <= 12:
+		c.SampleRate = sampleRates[sampleRateIndex]
 
-	case 15:
+	case sampleRateIndex == 15:
 		sampleRateIndex, err := r.ReadBits(24)
 		if err != nil {
 			return err
@@ -89,7 +91,7 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 		c.SampleRate = int(sampleRateIndex)
 
 	default:
-		return fmt.Errorf("invalid sample rate index: %d", sampleRateIndex)
+		return fmt.Errorf("invalid sample rate index (%d)", sampleRateIndex)
 	}
 
 	channelConfig, err := r.ReadBits(4)
@@ -97,24 +99,12 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 		return err
 	}
 
-	switch channelConfig {
-	case 0:
+	switch {
+	case channelConfig == 0:
 		return fmt.Errorf("not yet supported")
 
-	case 1:
-		c.ChannelCount = 1
-	case 2:
-		c.ChannelCount = 2
-	case 3:
-		c.ChannelCount = 3
-	case 4:
-		c.ChannelCount = 4
-	case 5:
-		c.ChannelCount = 5
-	case 6:
-		c.ChannelCount = 6
-	case 7:
-		c.ChannelCount = 8
+	case channelConfig >= 1 && channelConfig <= 7:
+		c.ChannelCount = channelCounts[channelConfig]
 
 	default:
 		return fmt.Errorf("invalid channel configuration: %d", channelConfig)
