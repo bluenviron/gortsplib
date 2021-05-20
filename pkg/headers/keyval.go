@@ -4,19 +4,16 @@ import (
 	"fmt"
 )
 
-func readKey(origstr string, str string, separator byte) (string, string, error) {
+func readKey(origstr string, str string, separator byte) (string, string) {
 	i := 0
 	for {
-		if i >= len(str) || str[i] == separator {
-			return "", "", fmt.Errorf("unable to read key (%v)", origstr)
-		}
-		if str[i] == '=' {
+		if i >= len(str) || str[i] == '=' || str[i] == separator {
 			break
 		}
 
 		i++
 	}
-	return str[:i], str[i+1:], nil
+	return str[:i], str[i:]
 }
 
 func readValue(origstr string, str string, separator byte) (string, string, error) {
@@ -50,19 +47,23 @@ func keyValParse(str string, separator byte) (map[string]string, error) {
 
 	for len(str) > 0 {
 		var k string
-		var err error
-		k, str, err = readKey(origstr, str, separator)
-		if err != nil {
-			return nil, err
-		}
+		k, str = readKey(origstr, str, separator)
 
-		var v string
-		v, str, err = readValue(origstr, str, separator)
-		if err != nil {
-			return nil, err
-		}
+		if len(k) > 0 {
+			if len(str) > 0 && str[0] == '=' {
+				var v string
+				var err error
+				v, str, err = readValue(origstr, str[1:], separator)
+				if err != nil {
+					return nil, err
+				}
 
-		ret[k] = v
+				ret[k] = v
+			} else {
+				ret[k] = ""
+
+			}
+		}
 
 		// skip separator
 		if len(str) > 0 && str[0] == separator {

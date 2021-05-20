@@ -52,6 +52,30 @@ func TestKeyValParse(t *testing.T) {
 				"key2": "v2",
 			},
 		},
+		{
+			"no val key1",
+			`key1, key2="v2"`,
+			map[string]string{
+				"key1": "",
+				"key2": "v2",
+			},
+		},
+		{
+			"no val key2",
+			`key1="v=1", key2`,
+			map[string]string{
+				"key1": "v=1",
+				"key2": "",
+			},
+		},
+		{
+			"no val key1 nor key2",
+			`key1, key2`,
+			map[string]string{
+				"key1": "",
+				"key2": "",
+			},
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			kvs, err := keyValParse(ca.s, ',')
@@ -71,16 +95,6 @@ func TestKeyValParseError(t *testing.T) {
 			"apexes not closed",
 			`key1="v,1`,
 			"apexes not closed (key1=\"v,1)",
-		},
-		{
-			"no key 1",
-			`key=val,missing`,
-			"unable to read key (key=val,missing)",
-		},
-		{
-			"no key 2",
-			`missing,key=val`,
-			"unable to read key (missing,key=val)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
