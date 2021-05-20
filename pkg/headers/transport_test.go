@@ -115,6 +115,23 @@ var casesTransport = []struct {
 			ServerPorts: &[2]int{5000, 5001},
 		},
 	},
+	{
+		"unsorted udp unicast play request headers",
+		base.HeaderValue{`client_port=3456-3457;RTP/AVP;mode="PLAY";unicast`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
+		Transport{
+			Protocol: base.StreamProtocolUDP,
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
+				return &v
+			}(),
+			ClientPorts: &[2]int{3456, 3457},
+			Mode: func() *TransportMode {
+				v := TransportModePlay
+				return &v
+			}(),
+		},
+	},
 }
 
 func TestTransportRead(t *testing.T) {
@@ -154,14 +171,9 @@ func TestTransportReadError(t *testing.T) {
 			"value provided multiple times ([a b])",
 		},
 		{
-			"missing delivery",
-			base.HeaderValue{`RTP/AVP`},
-			"unable to read key (;)",
-		},
-		{
 			"invalid protocol",
 			base.HeaderValue{`invalid;unicast;client_port=14186-14187`},
-			"invalid protocol (unicast;client_port=14186-14187)",
+			"invalid protocol (invalid;unicast;client_port=14186-14187)",
 		},
 		{
 			"invalid interleaved port",

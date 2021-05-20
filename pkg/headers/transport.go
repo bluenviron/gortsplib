@@ -104,49 +104,13 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	v0 := v[0]
-
-	var part string
-	i := strings.IndexByte(v0, ';')
-	if i >= 0 {
-		part, v0 = v0[:i], v0[i+1:]
-	} else {
-		part, v0 = v0, ""
+	if !strings.Contains(v[0], "RTP/AVP") &&
+		!strings.Contains(v[0], "RTP/AVP/UDP") &&
+		!strings.Contains(v[0], "RTP/AVP/TCP") {
+		return fmt.Errorf("invalid protocol (%v)", v[0])
 	}
 
-	switch part {
-	case "RTP/AVP", "RTP/AVP/UDP":
-		h.Protocol = base.StreamProtocolUDP
-
-	case "RTP/AVP/TCP":
-		h.Protocol = base.StreamProtocolTCP
-
-	default:
-		return fmt.Errorf("invalid protocol (%v)", v0)
-	}
-
-	i = strings.IndexByte(v0, ';')
-	if i >= 0 {
-		part, v0 = v0[:i], v0[i+1:]
-	} else {
-		part, v0 = v0, ""
-	}
-
-	switch part {
-	case "unicast":
-		v := base.StreamDeliveryUnicast
-		h.Delivery = &v
-
-	case "multicast":
-		v := base.StreamDeliveryMulticast
-		h.Delivery = &v
-
-	default:
-		// delivery is optional, go back
-		v0 = part + ";" + v0
-	}
-
-	kvs, err := keyValParse(v0, ';')
+	kvs, err := keyValParse(v[0], ';')
 	if err != nil {
 		return err
 	}
@@ -155,6 +119,20 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		v := rv
 
 		switch k {
+		case "RTP/AVP", "RTP/AVP/UDP":
+			h.Protocol = base.StreamProtocolUDP
+
+		case "RTP/AVP/TCP":
+			h.Protocol = base.StreamProtocolTCP
+
+		case "unicast":
+			v := base.StreamDeliveryUnicast
+			h.Delivery = &v
+
+		case "multicast":
+			v := base.StreamDeliveryMulticast
+			h.Delivery = &v
+
 		case "destination":
 			h.Destination = &v
 
