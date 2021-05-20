@@ -85,6 +85,11 @@ func TestSessionReadError(t *testing.T) {
 			"value provided multiple times ([a b])",
 		},
 		{
+			"invalid key-value",
+			base.HeaderValue{"A3eqwsafq3rFASqew;test=\"a"},
+			"apexes not closed (test=\"a)",
+		},
+		{
 			"invalid timeout",
 			base.HeaderValue{`A3eqwsafq3rFASqew;timeout=aaa`},
 			"strconv.ParseUint: parsing \"aaa\": invalid syntax",

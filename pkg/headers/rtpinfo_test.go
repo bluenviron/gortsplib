@@ -204,6 +204,11 @@ func TestRTPInfoReadError(t *testing.T) {
 			"value provided multiple times ([a b])",
 		},
 		{
+			"invalid key-value",
+			base.HeaderValue{"test=\"a"},
+			"apexes not closed (test=\"a)",
+		},
+		{
 			"invalid sequence",
 			base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=aa;rtptime=717574556`},
 			"strconv.ParseUint: parsing \"aa\": invalid syntax",
