@@ -104,16 +104,14 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	if !strings.Contains(v[0], "RTP/AVP") &&
-		!strings.Contains(v[0], "RTP/AVP/UDP") &&
-		!strings.Contains(v[0], "RTP/AVP/TCP") {
-		return fmt.Errorf("invalid protocol (%v)", v[0])
-	}
+	v0 := v[0]
 
-	kvs, err := keyValParse(v[0], ';')
+	kvs, err := keyValParse(v0, ';')
 	if err != nil {
 		return err
 	}
+
+	protocolFound := false
 
 	for k, rv := range kvs {
 		v := rv
@@ -121,9 +119,11 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		switch k {
 		case "RTP/AVP", "RTP/AVP/UDP":
 			h.Protocol = base.StreamProtocolUDP
+			protocolFound = true
 
 		case "RTP/AVP/TCP":
 			h.Protocol = base.StreamProtocolTCP
+			protocolFound = true
 
 		case "unicast":
 			v := base.StreamDeliveryUnicast
@@ -208,6 +208,10 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		default:
 			// ignore non-standard keys
 		}
+	}
+
+	if !protocolFound {
+		return fmt.Errorf("protocol not found (%v)", v[0])
 	}
 
 	return nil
