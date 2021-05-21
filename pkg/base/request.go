@@ -91,7 +91,7 @@ func (req *Request) Read(rb *bufio.Reader) error {
 		return err
 	}
 
-	err = (*payload)(&req.Body).read(rb, req.Header)
+	err = (*body)(&req.Body).read(req.Header, rb)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (req Request) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	err = payload(req.Body).write(bw)
+	err = body(req.Body).write(bw)
 	if err != nil {
 		return err
 	}

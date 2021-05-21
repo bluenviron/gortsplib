@@ -177,7 +177,7 @@ func (res *Response) Read(rb *bufio.Reader) error {
 		return err
 	}
 
-	err = (*payload)(&res.Body).read(rb, res.Header)
+	err = (*body)(&res.Body).read(res.Header, rb)
 	if err != nil {
 		return err
 	}
@@ -228,7 +228,7 @@ func (res Response) Write(bw *bufio.Writer) error {
 		return err
 	}
 
-	err = payload(res.Body).write(bw)
+	err = body(res.Body).write(bw)
 	if err != nil {
 		return err
 	}

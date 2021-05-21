@@ -7,12 +7,12 @@ import (
 	"strconv"
 )
 
-type payload []byte
+type body []byte
 
-func (c *payload) read(rb *bufio.Reader, header Header) error {
+func (b *body) read(header Header, rb *bufio.Reader) error {
 	cls, ok := header["Content-Length"]
 	if !ok || len(cls) != 1 {
-		*c = nil
+		*b = nil
 		return nil
 	}
 
@@ -26,21 +26,21 @@ func (c *payload) read(rb *bufio.Reader, header Header) error {
 			rtspMaxContentLength, cl)
 	}
 
-	*c = make([]byte, cl)
-	n, err := io.ReadFull(rb, *c)
-	if err != nil && n != len(*c) {
+	*b = make([]byte, cl)
+	n, err := io.ReadFull(rb, *b)
+	if err != nil && n != len(*b) {
 		return err
 	}
 
 	return nil
 }
 
-func (c payload) write(bw *bufio.Writer) error {
-	if len(c) == 0 {
+func (b body) write(bw *bufio.Writer) error {
+	if len(b) == 0 {
 		return nil
 	}
 
-	_, err := bw.Write(c)
+	_, err := bw.Write(b)
 	if err != nil {
 		return err
 	}

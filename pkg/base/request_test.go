@@ -222,16 +222,6 @@ func TestRequestReadErrors(t *testing.T) {
 			[]byte("GET rtsp://testing123 RTSP/1.0\r\nContent-Length: 17\r\n\r\n123"),
 			"unexpected EOF",
 		},
-		{
-			"invalid content-length",
-			[]byte("GET rtsp://testing123 RTSP/1.0\r\nContent-Length: aaa\r\n\r\n123"),
-			"invalid Content-Length",
-		},
-		{
-			"too big content-length",
-			[]byte("GET rtsp://testing123 RTSP/1.0\r\nContent-Length: 1000000\r\n\r\n123"),
-			"Content-Length exceeds 131072 (it's 1000000)",
-		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var req Request
