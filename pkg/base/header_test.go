@@ -183,3 +183,27 @@ func TestHeaderReadErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestHeaderWriteErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		cap  int
+	}{
+		{
+			"values",
+			3,
+		},
+		{
+			"final newline",
+			12,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			bw := bufio.NewWriterSize(&limitedBuffer{cap: ca.cap}, 1)
+			err := Header{
+				"Value": HeaderValue{"key"},
+			}.write(bw)
+			require.Equal(t, "capacity reached", err.Error())
+		})
+	}
+}

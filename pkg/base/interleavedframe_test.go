@@ -96,6 +96,32 @@ func TestInterleavedFrameReadErrors(t *testing.T) {
 	}
 }
 
+func TestInterleavedFrameWriteErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		cap  int
+	}{
+		{
+			"header",
+			3,
+		},
+		{
+			"content",
+			6,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			bw := bufio.NewWriterSize(&limitedBuffer{cap: ca.cap}, 1)
+			err := InterleavedFrame{
+				TrackID:    3,
+				StreamType: StreamTypeRTP,
+				Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+			}.Write(bw)
+			require.Equal(t, "capacity reached", err.Error())
+		})
+	}
+}
+
 func TestReadInterleavedFrameOrRequest(t *testing.T) {
 	byts := []byte("DESCRIBE rtsp://example.com/media.mp4 RTSP/1.0\r\n" +
 		"Accept: application/sdp\r\n" +

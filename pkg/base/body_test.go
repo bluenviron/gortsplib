@@ -3,10 +3,24 @@ package base
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+type limitedBuffer struct {
+	cap int
+	n   int
+}
+
+func (b *limitedBuffer) Write(p []byte) (int, error) {
+	b.n += len(p)
+	if b.n > b.cap {
+		return 0, fmt.Errorf("capacity reached")
+	}
+	return len(p), nil
+}
 
 var casesBody = []struct {
 	name string
@@ -89,4 +103,10 @@ func TestBodyReadErrors(t *testing.T) {
 			require.Equal(t, ca.err, err.Error())
 		})
 	}
+}
+
+func TestBodyWriteErrors(t *testing.T) {
+	bw := bufio.NewWriterSize(&limitedBuffer{cap: 3}, 1)
+	err := body([]byte("1234")).write(bw)
+	require.Equal(t, "capacity reached", err.Error())
 }

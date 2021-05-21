@@ -231,6 +231,39 @@ func TestRequestReadErrors(t *testing.T) {
 	}
 }
 
+func TestRequestWriteErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		cap  int
+	}{
+		{
+			"first line",
+			3,
+		},
+		{
+			"header",
+			20,
+		},
+		{
+			"body",
+			40,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			bw := bufio.NewWriterSize(&limitedBuffer{cap: ca.cap}, 1)
+			err := Request{
+				Method: "ANNOUNCE",
+				URL:    MustParseURL("rtsp://example.com/media.mp4"),
+				Header: Header{
+					"CSeq": HeaderValue{"7"},
+				},
+				Body: []byte("abc"),
+			}.Write(bw)
+			require.Equal(t, "capacity reached", err.Error())
+		})
+	}
+}
+
 func TestRequestReadIgnoreFrames(t *testing.T) {
 	byts := []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}
 	byts = append(byts, []byte("OPTIONS rtsp://example.com/media.mp4 RTSP/1.0\r\n"+

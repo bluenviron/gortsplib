@@ -188,6 +188,39 @@ func TestResponseReadErrors(t *testing.T) {
 	}
 }
 
+func TestResponseWriteErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		cap  int
+	}{
+		{
+			"first line",
+			3,
+		},
+		{
+			"header",
+			20,
+		},
+		{
+			"body",
+			40,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			bw := bufio.NewWriterSize(&limitedBuffer{cap: ca.cap}, 1)
+			err := Response{
+				StatusCode:    200,
+				StatusMessage: "OK",
+				Header: Header{
+					"CSeq": HeaderValue{"2"},
+				},
+				Body: []byte("abc"),
+			}.Write(bw)
+			require.Equal(t, "capacity reached", err.Error())
+		})
+	}
+}
+
 func TestResponseWriteAutoFillStatus(t *testing.T) {
 	res := &Response{
 		StatusCode: StatusMethodNotAllowed,

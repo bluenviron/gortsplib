@@ -116,14 +116,10 @@ func (f InterleavedFrame) Write(bw *bufio.Writer) error {
 		return uint8((f.TrackID * 2) + 1)
 	}()
 
-	_, err := bw.Write([]byte{0x24, channel})
-	if err != nil {
-		return err
-	}
+	buf := []byte{0x24, channel, 0x00, 0x00}
+	binary.BigEndian.PutUint16(buf[2:], uint16(len(f.Payload)))
 
-	buf := make([]byte, 2)
-	binary.BigEndian.PutUint16(buf, uint16(len(f.Payload)))
-	_, err = bw.Write(buf)
+	_, err := bw.Write(buf)
 	if err != nil {
 		return err
 	}
