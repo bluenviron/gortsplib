@@ -242,11 +242,11 @@ func TestRequestWriteErrors(t *testing.T) {
 		},
 		{
 			"header",
-			20,
+			53,
 		},
 		{
 			"body",
-			40,
+			62,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

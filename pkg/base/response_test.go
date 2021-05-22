@@ -195,15 +195,15 @@ func TestResponseWriteErrors(t *testing.T) {
 	}{
 		{
 			"first line",
-			3,
+			14,
 		},
 		{
 			"header",
-			20,
+			21,
 		},
 		{
 			"body",
-			40,
+			30,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
