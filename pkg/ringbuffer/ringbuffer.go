@@ -33,7 +33,7 @@ func (r *RingBuffer) Close() {
 	r.event.signal()
 }
 
-// Reset restores Pull().
+// Reset restores Pull() after a Close().
 func (r *RingBuffer) Reset() {
 	for i := uint64(0); i < r.bufferSize; i++ {
 		atomic.SwapPointer(&r.buffer[i], nil)

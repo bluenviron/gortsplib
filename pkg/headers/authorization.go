@@ -79,9 +79,7 @@ func (h Authorization) Write() base.HeaderValue {
 
 		return base.HeaderValue{"Basic " + response}
 
-	case AuthDigest:
+	default: // AuthDigest
 		return h.DigestValues.Write()
 	}
-
-	return nil
 }

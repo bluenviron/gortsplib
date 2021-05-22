@@ -214,6 +214,11 @@ func TestAutenticatehReadError(t *testing.T) {
 			"unable to split between method and keys (Basic)",
 		},
 		{
+			"invalid keys",
+			base.HeaderValue{`Basic key1="k`},
+			"apexes not closed (key1=\"k)",
+		},
+		{
 			"invalid method",
 			base.HeaderValue{"Testing key1=val1"},
 			"invalid method (Testing)",

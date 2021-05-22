@@ -102,8 +102,8 @@ func TestAuthorizationReadError(t *testing.T) {
 		},
 		{
 			"digest invalid",
-			base.HeaderValue{`Basic`},
-			"invalid authorization header",
+			base.HeaderValue{`Digest test="v`},
+			"apexes not closed (test=\"v)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

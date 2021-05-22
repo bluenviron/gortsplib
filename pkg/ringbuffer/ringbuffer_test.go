@@ -58,6 +58,13 @@ func TestClose(t *testing.T) {
 
 	r.Close()
 	<-done
+
+	r.Reset()
+
+	r.Push([]byte{0x05, 0x06, 0x07, 0x08})
+
+	_, ok := r.Pull()
+	require.Equal(t, true, ok)
 }
 
 func BenchmarkPushPullContinuous(b *testing.B) {

@@ -246,7 +246,7 @@ func TestRequestWriteErrors(t *testing.T) {
 		},
 		{
 			"body",
-			62,
+			80,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

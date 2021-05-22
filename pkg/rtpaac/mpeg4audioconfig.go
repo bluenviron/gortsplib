@@ -84,11 +84,11 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 		c.SampleRate = sampleRates[sampleRateIndex]
 
 	case sampleRateIndex == 15:
-		sampleRateIndex, err := r.ReadBits(24)
+		tmp, err := r.ReadBits(24)
 		if err != nil {
 			return err
 		}
-		c.SampleRate = int(sampleRateIndex)
+		c.SampleRate = int(tmp)
 
 	default:
 		return fmt.Errorf("invalid sample rate index (%d)", sampleRateIndex)

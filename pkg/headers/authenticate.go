@@ -110,9 +110,6 @@ func (h *Authenticate) Read(v base.HeaderValue) error {
 
 		case "algorithm":
 			h.Algorithm = &v
-
-		default:
-			// ignore non-standard keys
 		}
 	}
 

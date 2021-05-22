@@ -171,6 +171,11 @@ func TestTransportReadError(t *testing.T) {
 			"value provided multiple times ([a b])",
 		},
 		{
+			"invalid keys",
+			base.HeaderValue{`key1="k`},
+			"apexes not closed (key1=\"k)",
+		},
+		{
 			"protocol not found",
 			base.HeaderValue{`invalid;unicast;client_port=14186-14187`},
 			"protocol not found (invalid;unicast;client_port=14186-14187)",

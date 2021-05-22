@@ -203,7 +203,7 @@ func TestResponseWriteErrors(t *testing.T) {
 		},
 		{
 			"body",
-			30,
+			49,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
