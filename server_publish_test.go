@@ -28,7 +28,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 			"missing content-type",
 			base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq": base.HeaderValue{"1"},
 				},
@@ -39,7 +39,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 			"invalid content-type",
 			base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"aa"},
@@ -51,7 +51,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 			"invalid tracks",
 			base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -64,7 +64,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 			"no tracks",
 			base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -94,7 +94,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 			"invalid URL 1",
 			base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -133,7 +133,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 			"invalid URL 2",
 			base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -172,7 +172,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 			"invalid URL 3",
 			base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -347,7 +347,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 
 			res, err := writeReqReadRes(bconn, base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/" + ca.path),
+				URL:    mustParseURL("rtsp://localhost:8554/" + ca.path),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -372,7 +372,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 
 			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Setup,
-				URL:    base.MustParseURL(ca.url),
+				URL:    mustParseURL(ca.url),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": th.Write(),
@@ -428,7 +428,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Announce,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
@@ -453,7 +453,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/test2stream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/test2stream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Write(),
@@ -510,7 +510,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Announce,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
@@ -535,7 +535,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Write(),
@@ -547,7 +547,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"3"},
 			"Transport": th.Write(),
@@ -612,7 +612,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Announce,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
@@ -637,7 +637,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Write(),
@@ -649,7 +649,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Record,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"3"},
 			"Session": res.Header["Session"],
@@ -762,7 +762,7 @@ func TestServerPublish(t *testing.T) {
 
 			res, err := writeReqReadRes(bconn, base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -795,7 +795,7 @@ func TestServerPublish(t *testing.T) {
 
 			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Setup,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Write(),
@@ -823,7 +823,7 @@ func TestServerPublish(t *testing.T) {
 
 			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Record,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"3"},
 					"Session": res.Header["Session"],
@@ -887,7 +887,7 @@ func TestServerPublish(t *testing.T) {
 
 			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Teardown,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"3"},
 					"Session": res.Header["Session"],
@@ -952,7 +952,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Announce,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
@@ -977,7 +977,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": inTH.Write(),
@@ -993,7 +993,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Record,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"3"},
 			"Session": res.Header["Session"],
@@ -1054,7 +1054,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Announce,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1079,7 +1079,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": inTH.Write(),
@@ -1095,7 +1095,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Record,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"3"},
 			"Session": res.Header["Session"],
@@ -1215,7 +1215,7 @@ func TestServerPublishTimeout(t *testing.T) {
 
 			res, err := writeReqReadRes(bconn, base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1246,7 +1246,7 @@ func TestServerPublishTimeout(t *testing.T) {
 
 			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Setup,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Write(),
@@ -1262,7 +1262,7 @@ func TestServerPublishTimeout(t *testing.T) {
 
 			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Record,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"3"},
 					"Session": res.Header["Session"],
@@ -1342,7 +1342,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 
 			res, err := writeReqReadRes(bconn, base.Request{
 				Method: base.Announce,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1373,7 +1373,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 
 			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Setup,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Write(),
@@ -1389,7 +1389,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 
 			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Record,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"3"},
 					"Session": res.Header["Session"],
@@ -1461,7 +1461,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 
 		res, err := writeReqReadRes(bconn, base.Request{
 			Method: base.Announce,
-			URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
 				"CSeq":         base.HeaderValue{"1"},
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1486,7 +1486,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 
 		res, err = writeReqReadRes(bconn, base.Request{
 			Method: base.Setup,
-			URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Write(),
@@ -1498,7 +1498,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 
 		res, err = writeReqReadRes(bconn, base.Request{
 			Method: base.Record,
-			URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
 				"CSeq":    base.HeaderValue{"3"},
 				"Session": res.Header["Session"],
@@ -1517,7 +1517,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 
 		res, err := writeReqReadRes(bconn, base.Request{
 			Method: base.GetParameter,
-			URL:    base.MustParseURL("rtsp://localhost:8554/teststream/"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
 			Header: base.Header{
 				"CSeq":    base.HeaderValue{"1"},
 				"Session": base.HeaderValue{sxID},

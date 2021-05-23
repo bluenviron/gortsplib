@@ -9,6 +9,14 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
+func mustParseURL(s string) *base.URL {
+	u, err := base.ParseURL(s)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
 func TestAuth(t *testing.T) {
 	for _, c1 := range []struct {
 		name    string
@@ -56,7 +64,7 @@ func TestAuth(t *testing.T) {
 					}())
 				require.NoError(t, err)
 				authorization := se.GenerateHeader(base.Announce,
-					base.MustParseURL(func() string {
+					mustParseURL(func() string {
 						if conf == "wrongurl" {
 							return "rtsp://myhost/my1path"
 						}
@@ -64,7 +72,7 @@ func TestAuth(t *testing.T) {
 					}()))
 
 				err = va.ValidateHeader(authorization, base.Announce,
-					base.MustParseURL("rtsp://myhost/mypath"), nil)
+					mustParseURL("rtsp://myhost/mypath"), nil)
 
 				if conf != "nofail" {
 					require.Error(t, err)
@@ -96,10 +104,10 @@ func TestAuthVLC(t *testing.T) {
 		se, err := NewSender(va.GenerateHeader(), "testuser", "testpass")
 		require.NoError(t, err)
 		authorization := se.GenerateHeader(base.Announce,
-			base.MustParseURL(ca.clientURL))
+			mustParseURL(ca.clientURL))
 
 		err = va.ValidateHeader(authorization, base.Announce,
-			base.MustParseURL(ca.serverURL), base.MustParseURL(ca.clientURL))
+			mustParseURL(ca.serverURL), mustParseURL(ca.clientURL))
 		require.NoError(t, err)
 	}
 }
@@ -130,10 +138,10 @@ func TestAuthHashed(t *testing.T) {
 				}())
 			require.NoError(t, err)
 			authorization := va.GenerateHeader(base.Announce,
-				base.MustParseURL("rtsp://myhost/mypath"))
+				mustParseURL("rtsp://myhost/mypath"))
 
 			err = se.ValidateHeader(authorization, base.Announce,
-				base.MustParseURL("rtsp://myhost/mypath"), nil)
+				mustParseURL("rtsp://myhost/mypath"), nil)
 
 			if conf != "nofail" {
 				require.Error(t, err)

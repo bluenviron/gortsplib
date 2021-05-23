@@ -43,15 +43,6 @@ func ParseURL(s string) (*URL, error) {
 	return (*URL)(u), nil
 }
 
-// MustParseURL is like ParseURL but panics in case of errors.
-func MustParseURL(s string) *URL {
-	u, err := ParseURL(s)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
-
 // String implements fmt.Stringer.
 func (u *URL) String() string {
 	return (*url.URL)(u).String()

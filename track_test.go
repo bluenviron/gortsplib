@@ -98,8 +98,8 @@ func TestTrackURL(t *testing.T) {
 			[]byte("v=0\r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
 		},
 		{
 			"absolute control",
@@ -107,8 +107,8 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:rtsp://localhost/path/trackID=7"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/trackID=7"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/trackID=7"),
 		},
 		{
 			"relative control",
@@ -116,8 +116,8 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/trackID=5"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/trackID=5"),
 		},
 		{
 			"relative control, subpath",
@@ -125,8 +125,8 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/trackID=5"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/trackID=5"),
 		},
 		{
 			"relative control, url without slash",
@@ -134,8 +134,8 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/trackID=5"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/trackID=5"),
 		},
 		{
 			"relative control, url with query",
@@ -143,8 +143,8 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=5"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=5"),
 		},
 		{
 			"relative control, url with special chars and query",
@@ -152,8 +152,8 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
 		},
 		{
 			"relative control, url with query without question mark",
@@ -161,8 +161,8 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			base.MustParseURL("rtsp://myuser:mypass@192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
 		},
 		{
 			"relative control, control is query",
@@ -170,8 +170,8 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:?ctype=video"),
-			base.MustParseURL("rtsp://192.168.1.99:554/test"),
-			base.MustParseURL("rtsp://192.168.1.99:554/test?ctype=video"),
+			mustParseURL("rtsp://192.168.1.99:554/test"),
+			mustParseURL("rtsp://192.168.1.99:554/test?ctype=video"),
 		},
 		{
 			"relative control, control is query and no path",
@@ -179,8 +179,8 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:?ctype=video"),
-			base.MustParseURL("rtsp://192.168.1.99:554/"),
-			base.MustParseURL("rtsp://192.168.1.99:554/?ctype=video"),
+			mustParseURL("rtsp://192.168.1.99:554/"),
+			mustParseURL("rtsp://192.168.1.99:554/?ctype=video"),
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

@@ -63,7 +63,7 @@ func TestClientReadTracks(t *testing.T) {
 		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
-		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		err = base.Response{
 			StatusCode: base.StatusOK,
@@ -79,7 +79,7 @@ func TestClientReadTracks(t *testing.T) {
 			req, err := readRequest(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
-			require.Equal(t, base.MustParseURL(fmt.Sprintf("rtsp://localhost:8554/teststream/trackID=%d", i)), req.URL)
+			require.Equal(t, mustParseURL(fmt.Sprintf("rtsp://localhost:8554/teststream/trackID=%d", i)), req.URL)
 
 			var inTH headers.Transport
 			err = inTH.Read(req.Header["Transport"])
@@ -107,7 +107,7 @@ func TestClientReadTracks(t *testing.T) {
 		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
-		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
 		err = base.Response{
 			StatusCode: base.StatusOK,
@@ -117,7 +117,7 @@ func TestClientReadTracks(t *testing.T) {
 		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
-		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
 		err = base.Response{
 			StatusCode: base.StatusOK,
@@ -147,17 +147,17 @@ func TestClientReadTracks(t *testing.T) {
 	require.Equal(t, Tracks{
 		{
 			ID:      0,
-			BaseURL: base.MustParseURL("rtsp://localhost:8554/teststream/"),
+			BaseURL: mustParseURL("rtsp://localhost:8554/teststream/"),
 			Media:   track1.Media,
 		},
 		{
 			ID:      1,
-			BaseURL: base.MustParseURL("rtsp://localhost:8554/teststream/"),
+			BaseURL: mustParseURL("rtsp://localhost:8554/teststream/"),
 			Media:   track2.Media,
 		},
 		{
 			ID:      2,
-			BaseURL: base.MustParseURL("rtsp://localhost:8554/teststream/"),
+			BaseURL: mustParseURL("rtsp://localhost:8554/teststream/"),
 			Media:   track3.Media,
 		},
 	}, conn.Tracks())
@@ -208,7 +208,7 @@ func TestClientRead(t *testing.T) {
 				req, err := readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
-				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -225,7 +225,7 @@ func TestClientRead(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
-				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
 				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 				require.NoError(t, err)
@@ -243,7 +243,7 @@ func TestClientRead(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream/trackID=0"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/trackID=0"), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Read(req.Header["Transport"])
@@ -288,7 +288,7 @@ func TestClientRead(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
-				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream/"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -337,7 +337,7 @@ func TestClientRead(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
-				require.Equal(t, base.MustParseURL(scheme+"://localhost:8554/teststream/"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -416,7 +416,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
-		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
@@ -433,7 +433,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Read(req.Header["Transport"])
@@ -460,7 +460,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
-		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		err = base.Response{
 			StatusCode: base.StatusOK,
@@ -470,7 +470,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
-		require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		err = base.Response{
 			StatusCode: base.StatusOK,
@@ -775,7 +775,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			req, err = readRequest(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
-			require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
+			require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 			var inTH headers.Transport
 			err = inTH.Read(req.Header["Transport"])
@@ -826,7 +826,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			req, err = readRequest(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
-			require.Equal(t, base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
+			require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 			inTH = headers.Transport{}
 			err = inTH.Read(req.Header["Transport"])

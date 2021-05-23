@@ -542,7 +542,7 @@ func TestServerCSeq(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Options,
-		URL:    base.MustParseURL("rtsp://localhost:8554/"),
+		URL:    mustParseURL("rtsp://localhost:8554/"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"5"},
 		},
@@ -575,7 +575,7 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Options,
-		URL:    base.MustParseURL("rtsp://localhost:8554/"),
+		URL:    mustParseURL("rtsp://localhost:8554/"),
 		Header: base.Header{},
 	})
 	require.NoError(t, err)
@@ -606,7 +606,7 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: "INVALID",
-		URL:    base.MustParseURL("rtsp://localhost:8554/"),
+		URL:    mustParseURL("rtsp://localhost:8554/"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 		},
@@ -649,7 +649,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn1, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -671,7 +671,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn1, base.Request{
 		Method: base.Play,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
@@ -687,7 +687,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn2, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -741,7 +741,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -763,7 +763,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Play,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
@@ -774,7 +774,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 			"Transport": headers.Transport{
@@ -826,7 +826,7 @@ func TestServerGetSetParameter(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Options,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 		},
@@ -836,7 +836,7 @@ func TestServerGetSetParameter(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.SetParameter,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"12"},
 		},
@@ -847,7 +847,7 @@ func TestServerGetSetParameter(t *testing.T) {
 
 	res, err = writeReqReadRes(bconn, base.Request{
 		Method: base.GetParameter,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 		},
@@ -897,7 +897,7 @@ func TestServerErrorInvalidSession(t *testing.T) {
 
 			res, err := writeReqReadRes(bconn, base.Request{
 				Method: method,
-				URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq": base.HeaderValue{"1"},
 				},
@@ -939,7 +939,7 @@ func TestServerSessionClose(t *testing.T) {
 
 	err = base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -987,7 +987,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 
 	res, err := writeReqReadRes(bconn, base.Request{
 		Method: base.Setup,
-		URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1074,7 +1074,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 
 				res, err := writeReqReadRes(bconn, base.Request{
 					Method: base.Announce,
-					URL:    base.MustParseURL("rtsp://localhost:8554/teststream"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 					Header: base.Header{
 						"CSeq":         base.HeaderValue{"1"},
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1089,7 +1089,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			if method == base.Play || method == base.Record || method == base.Pause {
 				res, err := writeReqReadRes(bconn, base.Request{
 					Method: base.Setup,
-					URL:    base.MustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
 						"CSeq":    base.HeaderValue{"2"},
 						"Session": base.HeaderValue{sxID},
@@ -1119,7 +1119,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			if method == base.Pause {
 				res, err := writeReqReadRes(bconn, base.Request{
 					Method: base.Play,
-					URL:    base.MustParseURL("rtsp://localhost:8554/teststream/"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
 					Header: base.Header{
 						"CSeq":    base.HeaderValue{"2"},
 						"Session": base.HeaderValue{sxID},
@@ -1131,7 +1131,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 
 			res, err := writeReqReadRes(bconn, base.Request{
 				Method: method,
-				URL:    base.MustParseURL("rtsp://localhost:8554"),
+				URL:    mustParseURL("rtsp://localhost:8554"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"3"},
 					"Session": base.HeaderValue{sxID},

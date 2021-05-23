@@ -12,6 +12,14 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
+func mustParseURL(s string) *base.URL {
+	u, err := base.ParseURL(s)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
 func readRequest(br *bufio.Reader) (*base.Request, error) {
 	var req base.Request
 	err := req.Read(br)
