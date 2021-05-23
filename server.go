@@ -292,7 +292,6 @@ outer:
 		case req := <-s.sessionRequest:
 			if ss, ok := s.sessions[req.id]; ok {
 				ss.request <- req
-
 			} else {
 				if !req.create {
 					req.res <- requestRes{

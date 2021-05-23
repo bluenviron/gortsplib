@@ -61,7 +61,6 @@ func newServerUDPListener(
 	s *Server,
 	address string,
 	streamType StreamType) (*serverUDPListener, error) {
-
 	tmp, err := s.ListenPacket("udp", address)
 	if err != nil {
 		return nil, err

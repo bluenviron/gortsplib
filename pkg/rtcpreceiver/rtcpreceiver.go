@@ -108,7 +108,6 @@ func (rr *RTCPReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, b
 				// ignore invalid frames (diff = 0) or reordered frames (diff < 0)
 			}
 		}
-
 	} else {
 		// we can afford to unmarshal all RTCP frames
 		// since they are sent with a frequency much lower than the one of RTP frames

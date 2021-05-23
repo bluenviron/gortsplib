@@ -141,7 +141,6 @@ func TestClientPublishSerial(t *testing.T) {
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
 					})
-
 				} else {
 					err = base.InterleavedFrame{
 						TrackID:    0,

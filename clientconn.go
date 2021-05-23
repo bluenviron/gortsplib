@@ -1112,7 +1112,8 @@ func (cc *ClientConn) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, er
 
 	if res.StatusCode != base.StatusOK {
 		return nil, liberrors.ErrClientWrongStatusCode{
-			Code: res.StatusCode, Message: res.StatusMessage}
+			Code: res.StatusCode, Message: res.StatusMessage,
+		}
 	}
 
 	cc.streamBaseURL = baseURL
@@ -1139,7 +1140,6 @@ func (cc *ClientConn) doSetup(
 	track *Track,
 	rtpPort int,
 	rtcpPort int) (*base.Response, error) {
-
 	err := cc.checkState(map[clientConnState]struct{}{
 		clientConnStateInitial:   {},
 		clientConnStatePrePlay:   {},
@@ -1329,7 +1329,8 @@ func (cc *ClientConn) doSetup(
 		if thRes.InterleavedIDs[0] != th.InterleavedIDs[0] ||
 			thRes.InterleavedIDs[1] != th.InterleavedIDs[1] {
 			return nil, liberrors.ErrClientTransportHeaderWrongInterleavedIDs{
-				Expected: *th.InterleavedIDs, Value: *thRes.InterleavedIDs}
+				Expected: *th.InterleavedIDs, Value: *thRes.InterleavedIDs,
+			}
 		}
 	}
 
@@ -1391,7 +1392,6 @@ func (cc *ClientConn) Setup(
 	track *Track,
 	rtpPort int,
 	rtcpPort int) (*base.Response, error) {
-
 	cres := make(chan clientRes)
 	select {
 	case cc.setup <- setupReq{
@@ -1427,7 +1427,8 @@ func (cc *ClientConn) doPlay(isSwitchingProtocol bool) (*base.Response, error) {
 
 	if res.StatusCode != base.StatusOK {
 		return nil, liberrors.ErrClientWrongStatusCode{
-			Code: res.StatusCode, Message: res.StatusMessage}
+			Code: res.StatusCode, Message: res.StatusMessage,
+		}
 	}
 
 	cc.state = clientConnStatePlay
@@ -1484,7 +1485,8 @@ func (cc *ClientConn) doRecord() (*base.Response, error) {
 
 	if res.StatusCode != base.StatusOK {
 		return nil, liberrors.ErrClientWrongStatusCode{
-			Code: res.StatusCode, Message: res.StatusMessage}
+			Code: res.StatusCode, Message: res.StatusMessage,
+		}
 	}
 
 	cc.state = clientConnStateRecord
@@ -1534,7 +1536,8 @@ func (cc *ClientConn) doPause() (*base.Response, error) {
 
 	if res.StatusCode != base.StatusOK {
 		return res, liberrors.ErrClientWrongStatusCode{
-			Code: res.StatusCode, Message: res.StatusMessage}
+			Code: res.StatusCode, Message: res.StatusMessage,
+		}
 	}
 
 	switch cc.state {

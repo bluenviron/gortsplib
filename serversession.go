@@ -19,11 +19,11 @@ const (
 	serverSessionCheckStreamPeriod = 1 * time.Second
 )
 
-func setupGetTrackIDPathQuery(url *base.URL,
+func setupGetTrackIDPathQuery(
+	url *base.URL,
 	thMode *headers.TransportMode,
 	announcedTracks []ServerSessionAnnouncedTrack,
 	setupPath *string, setupQuery *string) (int, string, string, error) {
-
 	pathAndQuery, ok := url.RTSPPathAndQuery()
 	if !ok {
 		return 0, "", "", liberrors.ErrServerInvalidPath{}
@@ -143,7 +143,6 @@ func newServerSession(
 	id string,
 	author *ServerConn,
 ) *ServerSession {
-
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
 	ss := &ServerSession{
@@ -575,7 +574,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				return &base.Response{
 						StatusCode: base.StatusBadRequest,
 					}, liberrors.ErrServerTransportHeaderWrongInterleavedIDs{
-						Expected: [2]int{(trackID * 2), (1 + trackID*2)}, Value: *inTH.InterleavedIDs}
+						Expected: [2]int{(trackID * 2), (1 + trackID*2)}, Value: *inTH.InterleavedIDs,
+					}
 			}
 		}
 
@@ -911,7 +911,6 @@ func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload 
 				Zone: ss.udpZone,
 				Port: track.udpRTPPort,
 			})
-
 		} else {
 			ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
 				IP:   ss.udpIP,

@@ -69,7 +69,6 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([][]byte, error)
 		if e.lenAggregated(batch, au) <= rtpPayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, au)
-
 		} else {
 			// write last batch
 			if batch != nil {

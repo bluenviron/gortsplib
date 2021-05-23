@@ -26,7 +26,7 @@ func TestRTCPSender(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	byts, _ := rtpPkt.Marshal()
-	ts := time.Date(2008, 05, 20, 22, 15, 20, 0, time.UTC)
+	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
 	rs.ProcessFrame(ts, base.StreamTypeRTP, byts)
 
 	rtpPkt = rtp.Packet{
@@ -41,7 +41,7 @@ func TestRTCPSender(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	byts, _ = rtpPkt.Marshal()
-	ts = time.Date(2008, 05, 20, 22, 15, 20, 500000000, time.UTC)
+	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 500000000, time.UTC)
 	rs.ProcessFrame(ts, base.StreamTypeRTP, byts)
 
 	expectedPkt := rtcp.SenderReport{
@@ -52,6 +52,6 @@ func TestRTCPSender(t *testing.T) {
 		OctetCount:  4,
 	}
 	expected, _ := expectedPkt.Marshal()
-	ts = time.Date(2008, 05, 20, 22, 16, 20, 600000000, time.UTC)
+	ts = time.Date(2008, 0o5, 20, 22, 16, 20, 600000000, time.UTC)
 	require.Equal(t, expected, rs.Report(ts))
 }

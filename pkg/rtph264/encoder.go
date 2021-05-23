@@ -65,7 +65,6 @@ func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([][]byte, error) {
 		if e.lenAggregated(batch, nalu) <= rtpPayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, nalu)
-
 		} else {
 			// write batch
 			if batch != nil {

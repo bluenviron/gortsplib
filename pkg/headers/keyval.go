@@ -61,7 +61,6 @@ func keyValParse(str string, separator byte) (map[string]string, error) {
 				ret[k] = v
 			} else {
 				ret[k] = ""
-
 			}
 		}
 

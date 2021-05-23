@@ -69,7 +69,6 @@ type ServerConn struct {
 func newServerConn(
 	s *Server,
 	nconn net.Conn) *ServerConn {
-
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
 	sc := &ServerConn{
@@ -536,9 +535,11 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	return err
 }
 
-func (sc *ServerConn) handleRequestInSession(sxID string, req *base.Request, create bool,
+func (sc *ServerConn) handleRequestInSession(
+	sxID string,
+	req *base.Request,
+	create bool,
 ) (*ServerSession, *base.Response, error) {
-
 	// if the session is already linked to this conn, communicate directly with it
 	if sxID != "" {
 		if ss, ok := sc.sessions[sxID]; ok {

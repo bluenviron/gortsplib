@@ -90,7 +90,6 @@ func (va *Validator) ValidateHeader(
 	method base.Method,
 	ur *base.URL,
 	altURL *base.URL) error {
-
 	var auth headers.Authorization
 	err := auth.Read(v)
 	if err != nil {

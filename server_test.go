@@ -151,10 +151,12 @@ func newContainer(image string, name string, args []string) (*container, error) 
 	exec.Command("docker", "kill", "gortsplib-test-"+name).Run()
 	exec.Command("docker", "wait", "gortsplib-test-"+name).Run()
 
-	cmd := []string{"docker", "run",
+	cmd := []string{
+		"docker", "run",
 		"--network=host",
 		"--name=gortsplib-test-" + name,
-		"gortsplib-test-" + image}
+		"gortsplib-test-" + image,
+	}
 	cmd = append(cmd, args...)
 	ecmd := exec.Command(cmd[0], cmd[1:]...)
 	ecmd.Stdout = nil
