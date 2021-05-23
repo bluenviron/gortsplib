@@ -273,3 +273,16 @@ func TestResponseReadIgnoreFramesError(t *testing.T) {
 	err := res.ReadIgnoreFrames(rb, buf)
 	require.Equal(t, "EOF", err.Error())
 }
+
+func TestResponseString(t *testing.T) {
+	byts := []byte("RTSP/1.0 200 OK\r\n" +
+		"CSeq: 3\r\n" +
+		"Content-Length: 7\r\n" +
+		"\r\n" +
+		"testing")
+
+	var res Response
+	err := res.Read(bufio.NewReader(bytes.NewBuffer(byts)))
+	require.NoError(t, err)
+	require.Equal(t, string(byts), res.String())
+}

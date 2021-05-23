@@ -10,23 +10,32 @@ func TestURLError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		enc  string
+		err  string
 	}{
 		{
 			"invalid",
-			"testing",
+			":testing",
+			"parse \":testing\": missing protocol scheme",
+		},
+		{
+			"unsupported scheme",
+			"http://testing",
+			"unsupported scheme 'http'",
 		},
 		{
 			"with opaque data",
 			"rtsp:opaque?query",
+			"URLs with opaque data are not supported",
 		},
 		{
 			"with fragment",
 			"rtsp://localhost:8554/teststream#fragment",
+			"URLs with fragments are not supported",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			_, err := ParseURL(ca.enc)
-			require.Error(t, err)
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }
