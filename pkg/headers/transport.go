@@ -21,18 +21,6 @@ const (
 	TransportModeRecord
 )
 
-// String implements fmt.Stringer.
-func (tm TransportMode) String() string {
-	switch tm {
-	case TransportModePlay:
-		return "play"
-
-	case TransportModeRecord:
-		return "record"
-	}
-	return "unknown"
-}
-
 // Transport is a Transport header.
 type Transport struct {
 	// protocol of the stream
