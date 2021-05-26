@@ -154,7 +154,7 @@ func TestTransportWrite(t *testing.T) {
 	}
 }
 
-func TestTransportReadError(t *testing.T) {
+func TestTransportReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue

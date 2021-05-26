@@ -68,7 +68,7 @@ func TestSessionWrite(t *testing.T) {
 	}
 }
 
-func TestSessionReadError(t *testing.T) {
+func TestSessionReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue

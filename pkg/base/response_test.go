@@ -264,7 +264,7 @@ func TestResponseReadIgnoreFrames(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestResponseReadIgnoreFramesError(t *testing.T) {
+func TestResponseReadIgnoreFramesErrors(t *testing.T) {
 	byts := []byte{0x25}
 
 	rb := bufio.NewReader(bytes.NewBuffer(byts))

@@ -187,7 +187,7 @@ func TestRTPInfoWrite(t *testing.T) {
 	}
 }
 
-func TestRTPInfoReadError(t *testing.T) {
+func TestRTPInfoReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue

@@ -143,7 +143,7 @@ func TestReadInterleavedFrameOrRequest(t *testing.T) {
 	require.Equal(t, &f, out)
 }
 
-func TestReadInterleavedFrameOrRequestError(t *testing.T) {
+func TestReadInterleavedFrameOrRequestErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte
@@ -198,7 +198,7 @@ func TestReadInterleavedFrameOrResponse(t *testing.T) {
 	require.Equal(t, &f, out)
 }
 
-func TestReadInterleavedFrameOrResponseError(t *testing.T) {
+func TestReadInterleavedFrameOrResponseErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte

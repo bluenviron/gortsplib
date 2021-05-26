@@ -69,7 +69,7 @@ func TestAuthorizationWrite(t *testing.T) {
 	}
 }
 
-func TestAuthorizationReadError(t *testing.T) {
+func TestAuthorizationReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue

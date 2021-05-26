@@ -14,7 +14,7 @@ func mustParseURL(s string) *URL {
 	return u
 }
 
-func TestURLError(t *testing.T) {
+func TestURLErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		enc  string

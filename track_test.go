@@ -340,7 +340,7 @@ func TestTrackH264Extract(t *testing.T) {
 	}
 }
 
-func TestTrackH264ExtractError(t *testing.T) {
+func TestTrackH264ExtractErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name  string
 		track *Track
@@ -652,7 +652,7 @@ func TestTrackAACExtract(t *testing.T) {
 	}
 }
 
-func TestTrackAACExtractError(t *testing.T) {
+func TestTrackAACExtractErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name  string
 		track *Track

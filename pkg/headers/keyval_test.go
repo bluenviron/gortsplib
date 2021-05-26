@@ -85,7 +85,7 @@ func TestKeyValParse(t *testing.T) {
 	}
 }
 
-func TestKeyValParseError(t *testing.T) {
+func TestKeyValParseErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		s    string

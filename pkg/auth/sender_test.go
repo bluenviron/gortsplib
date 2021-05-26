@@ -8,7 +8,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-func TestSenderError(t *testing.T) {
+func TestSenderErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
