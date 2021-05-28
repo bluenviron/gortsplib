@@ -96,6 +96,7 @@ type setupReq struct {
 }
 
 type playReq struct {
+	ra  *headers.Range
 	res chan clientRes
 }
 
@@ -131,6 +132,7 @@ type ClientConn struct {
 	streamBaseURL     *base.URL
 	streamProtocol    *StreamProtocol
 	tracks            map[int]clientConnTrack
+	lastRange         *headers.Range
 	backgroundRunning bool
 	backgroundErr     error
 	tcpFrameBuffer    *multibuffer.MultiBuffer      // tcp
@@ -267,7 +269,7 @@ outer:
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-cc.play:
-			res, err := cc.doPlay(false)
+			res, err := cc.doPlay(req.ra, false)
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-cc.record:
@@ -389,7 +391,7 @@ func (cc *ClientConn) switchProtocolIfTimeout(err error) error {
 		}
 	}
 
-	_, err = cc.doPlay(true)
+	_, err = cc.doPlay(cc.lastRange, true)
 	if err != nil {
 		return err
 	}
@@ -1409,7 +1411,7 @@ func (cc *ClientConn) Setup(
 	}
 }
 
-func (cc *ClientConn) doPlay(isSwitchingProtocol bool) (*base.Response, error) {
+func (cc *ClientConn) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Response, error) {
 	err := cc.checkState(map[clientConnState]struct{}{
 		clientConnStatePrePlay: {},
 	})
@@ -1417,9 +1419,16 @@ func (cc *ClientConn) doPlay(isSwitchingProtocol bool) (*base.Response, error) {
 		return nil, err
 	}
 
+	header := make(base.Header)
+
+	if ra != nil {
+		header["Range"] = ra.Write()
+	}
+
 	res, err := cc.do(&base.Request{
 		Method: base.Play,
 		URL:    cc.streamBaseURL,
+		Header: header,
 	}, false)
 	if err != nil {
 		return nil, err
@@ -1432,6 +1441,7 @@ func (cc *ClientConn) doPlay(isSwitchingProtocol bool) (*base.Response, error) {
 	}
 
 	cc.state = clientConnStatePlay
+	cc.lastRange = ra
 
 	if !isSwitchingProtocol {
 		// use a temporary callback that is replaces as soon as
@@ -1455,10 +1465,10 @@ func (cc *ClientConn) doPlay(isSwitchingProtocol bool) (*base.Response, error) {
 
 // Play writes a PLAY request and reads a Response.
 // This can be called only after Setup().
-func (cc *ClientConn) Play() (*base.Response, error) {
+func (cc *ClientConn) Play(ra *headers.Range) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
-	case cc.play <- playReq{res: cres}:
+	case cc.play <- playReq{ra: ra, res: cres}:
 		res := <-cres
 		return res.res, res.err
 

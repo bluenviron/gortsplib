@@ -165,7 +165,7 @@ func (c *Client) DialReadContext(ctx context.Context, address string) (*ClientCo
 		}
 	}
 
-	_, err = conn.Play()
+	_, err = conn.Play(nil)
 	if err != nil {
 		conn.Close()
 		return nil, err
