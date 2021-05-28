@@ -46,7 +46,7 @@ func main() {
 	}
 
 	// play setupped tracks
-	_, err = conn.Play()
+	_, err = conn.Play(nil)
 	if err != nil {
 		panic(err)
 	}

@@ -47,7 +47,7 @@ func main() {
 		time.Sleep(5 * time.Second)
 
 		// play again
-		_, err = conn.Play()
+		_, err = conn.Play(nil)
 		if err != nil {
 			panic(err)
 		}
