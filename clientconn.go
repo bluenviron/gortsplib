@@ -1574,6 +1574,16 @@ func (cc *ClientConn) Pause() (*base.Response, error) {
 	}
 }
 
+// Seek asks the server to re-start the stream from a specific timestamp.
+func (cc *ClientConn) Seek(ra *headers.Range) (*base.Response, error) {
+	_, err := cc.Pause()
+	if err != nil {
+		return nil, err
+	}
+
+	return cc.Play(ra)
+}
+
 // ReadFrames starts reading frames.
 func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) error {
 	cc.readCBMutex.Lock()
