@@ -1828,6 +1828,32 @@ func TestClientReadSeek(t *testing.T) {
 
 		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
+		require.Equal(t, base.Pause, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+
+		err = ra.Read(req.Header["Range"])
+		require.NoError(t, err)
+		require.Equal(t, headers.Range{
+			Value: &headers.RangeNPT{
+				Start: headers.RangeNPTTime(6400 * time.Millisecond),
+			},
+		}, ra)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
 		err = base.Response{
@@ -1868,5 +1894,10 @@ func TestClientReadSeek(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// asdasdasd
+	_, err = conn.Seek(&headers.Range{
+		Value: &headers.RangeNPT{
+			Start: headers.RangeNPTTime(6400 * time.Millisecond),
+		},
+	})
+	require.NoError(t, err)
 }

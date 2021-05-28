@@ -19,12 +19,12 @@ Features:
     * Read streams from servers with UDP, TCP or TLS (RTSPS)
     * Switch protocol automatically (switch to TCP in case of server error or UDP timeout)
     * Read only selected tracks of a stream
-    * Pause reading without disconnecting from the server
+    * Pause or seek without disconnecting from the server
     * Generate RTCP receiver reports automatically
   * Publish
     * Publish streams to servers with UDP, TCP or TLS (RTSPS)
     * Switch protocol automatically (switch to TCP in case of server error)
-    * Pause publishing without disconnecting from the server
+    * Pause without disconnecting from the server
     * Generate RTCP sender reports automatically
 * Server
   * Handle requests from clients
