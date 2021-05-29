@@ -595,7 +595,7 @@ func (cc *ClientConn) runBackgroundPlayTCP() error {
 	// therefore, we disable the deadline and perform check with a ticker.
 	cc.nconn.SetReadDeadline(time.Time{})
 
-	var lastFrameTime int64
+	lastFrameTime := time.Now().Unix()
 
 	readerDone := make(chan error)
 	go func() {
