@@ -11,14 +11,15 @@ const (
 	StreamProtocolTCP
 )
 
+var streamProtocolLabels = map[StreamProtocol]string{
+	StreamProtocolUDP: "UDP",
+	StreamProtocolTCP: "TCP",
+}
+
 // String implements fmt.Stringer.
 func (sp StreamProtocol) String() string {
-	switch sp {
-	case StreamProtocolUDP:
-		return "UDP"
-
-	case StreamProtocolTCP:
-		return "TCP"
+	if l, ok := streamProtocolLabels[sp]; ok {
+		return l
 	}
 	return "unknown"
 }
@@ -34,14 +35,15 @@ const (
 	StreamDeliveryMulticast
 )
 
+var streamDeliveryLabels = map[StreamDelivery]string{
+	StreamDeliveryUnicast:   "unicast",
+	StreamDeliveryMulticast: "multicast",
+}
+
 // String implements fmt.Stringer.
 func (sc StreamDelivery) String() string {
-	switch sc {
-	case StreamDeliveryUnicast:
-		return "unicast"
-
-	case StreamDeliveryMulticast:
-		return "multicast"
+	if l, ok := streamDeliveryLabels[sc]; ok {
+		return l
 	}
 	return "unknown"
 }
@@ -57,14 +59,15 @@ const (
 	StreamTypeRTCP
 )
 
+var streamTypeLabels = map[StreamType]string{
+	StreamTypeRTP:  "RTP",
+	StreamTypeRTCP: "RTCP",
+}
+
 // String implements fmt.Stringer
 func (st StreamType) String() string {
-	switch st {
-	case StreamTypeRTP:
-		return "RTP"
-
-	case StreamTypeRTCP:
-		return "RTCP"
+	if l, ok := streamTypeLabels[st]; ok {
+		return l
 	}
 	return "unknown"
 }
