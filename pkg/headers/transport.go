@@ -161,6 +161,9 @@ func (h *Transport) Read(v base.HeaderValue) error {
 			h.ServerPorts = ports
 
 		case "ssrc":
+			if (len(v) % 2) != 0 {
+				v = "0" + v
+			}
 			tmp, err := hex.DecodeString(v)
 			if err != nil {
 				return err
