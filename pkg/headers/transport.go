@@ -164,16 +164,20 @@ func (h *Transport) Read(v base.HeaderValue) error {
 			if (len(v) % 2) != 0 {
 				v = "0" + v
 			}
+
 			tmp, err := hex.DecodeString(v)
 			if err != nil {
 				return err
 			}
 
-			if len(tmp) != 4 {
+			if len(tmp) > 4 {
 				return fmt.Errorf("invalid SSRC")
 			}
 
-			v := binary.BigEndian.Uint32(tmp)
+			var ssrc [4]byte
+			copy(ssrc[4-len(tmp):], tmp)
+
+			v := binary.BigEndian.Uint32(ssrc[:])
 			h.SSRC = &v
 
 		case "mode":

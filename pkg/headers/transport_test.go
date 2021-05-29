@@ -134,8 +134,8 @@ var casesTransport = []struct {
 	},
 	{
 		"ssrc odd",
-		base.HeaderValue{`RTP/AVP/UDP;unicast;server_port=8052;client_port=14186;ssrc=B6020AD;mode=PLAY`},
-		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0B6020AD;mode=play`},
+		base.HeaderValue{`RTP/AVP/UDP;unicast;client_port=14186;server_port=8052;ssrc=4317f;mode=play`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0004317F;mode=play`},
 		Transport{
 			Protocol: base.StreamProtocolUDP,
 			Delivery: func() *base.StreamDelivery {
@@ -149,7 +149,7 @@ var casesTransport = []struct {
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
 			SSRC: func() *uint32 {
-				v := uint32(0x0B6020AD)
+				v := uint32(0x04317f)
 				return &v
 			}(),
 		},
