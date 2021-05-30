@@ -60,9 +60,9 @@ func NewValidator(user string, pass string, methods []headers.AuthMethod) *Valid
 	}
 }
 
-// GenerateHeader generates the WWW-Authenticate header needed by a client to
+// Header generates the WWW-Authenticate header needed by a client to
 // authenticate.
-func (va *Validator) GenerateHeader() base.HeaderValue {
+func (va *Validator) Header() base.HeaderValue {
 	var ret base.HeaderValue
 	for _, m := range va.methods {
 		switch m {
@@ -83,15 +83,11 @@ func (va *Validator) GenerateHeader() base.HeaderValue {
 	return ret
 }
 
-// ValidateHeader validates the Authorization header sent by a client after receiving the
-// WWW-Authenticate header.
-func (va *Validator) ValidateHeader(
-	v base.HeaderValue,
-	method base.Method,
-	ur *base.URL,
+// ValidateRequest validates a request sent by a client.
+func (va *Validator) ValidateRequest(req *base.Request,
 	altURL *base.URL) error {
 	var auth headers.Authorization
-	err := auth.Read(v)
+	err := auth.Read(req.Header["Authorization"])
 	if err != nil {
 		return err
 	}
@@ -151,7 +147,7 @@ func (va *Validator) ValidateHeader(
 			return fmt.Errorf("wrong username")
 		}
 
-		urlString := ur.String()
+		urlString := req.URL.String()
 
 		if *auth.DigestValues.URI != urlString {
 			// do another try with the alternative URL
@@ -165,7 +161,7 @@ func (va *Validator) ValidateHeader(
 		}
 
 		response := md5Hex(md5Hex(va.user+":"+va.realm+":"+va.pass) +
-			":" + va.nonce + ":" + md5Hex(string(method)+":"+urlString))
+			":" + va.nonce + ":" + md5Hex(string(req.Method)+":"+urlString))
 
 		if *auth.DigestValues.Response != response {
 			return fmt.Errorf("wrong response")

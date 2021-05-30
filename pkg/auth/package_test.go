@@ -47,7 +47,7 @@ func TestAuth(t *testing.T) {
 
 			t.Run(c1.name+"_"+conf, func(t *testing.T) {
 				va := NewValidator("testuser", "testpass", c1.methods)
-				wwwAuthenticate := va.GenerateHeader()
+				wwwAuthenticate := va.Header()
 
 				se, err := NewSender(wwwAuthenticate,
 					func() string {
@@ -63,16 +63,21 @@ func TestAuth(t *testing.T) {
 						return "testpass"
 					}())
 				require.NoError(t, err)
-				authorization := se.GenerateHeader(base.Announce,
-					mustParseURL(func() string {
+
+				req := &base.Request{
+					Method: base.Announce,
+					URL: mustParseURL(func() string {
 						if conf == "wrongurl" {
 							return "rtsp://myhost/my1path"
 						}
 						return "rtsp://myhost/mypath"
-					}()))
+					}()),
+				}
+				se.AddAuthorization(req)
 
-				err = va.ValidateHeader(authorization, base.Announce,
-					mustParseURL("rtsp://myhost/mypath"), nil)
+				req.URL = mustParseURL("rtsp://myhost/mypath")
+
+				err = va.ValidateRequest(req, nil)
 
 				if conf != "nofail" {
 					require.Error(t, err)
@@ -101,13 +106,18 @@ func TestAuthVLC(t *testing.T) {
 		va := NewValidator("testuser", "testpass",
 			[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
 
-		se, err := NewSender(va.GenerateHeader(), "testuser", "testpass")
+		se, err := NewSender(va.Header(), "testuser", "testpass")
 		require.NoError(t, err)
-		authorization := se.GenerateHeader(base.Announce,
-			mustParseURL(ca.clientURL))
 
-		err = va.ValidateHeader(authorization, base.Announce,
-			mustParseURL(ca.serverURL), mustParseURL(ca.clientURL))
+		req := &base.Request{
+			Method: base.Announce,
+			URL:    mustParseURL(ca.clientURL),
+		}
+		se.AddAuthorization(req)
+
+		req.URL = mustParseURL(ca.serverURL)
+
+		err = va.ValidateRequest(req, mustParseURL(ca.clientURL))
 		require.NoError(t, err)
 	}
 }
@@ -123,7 +133,7 @@ func TestAuthHashed(t *testing.T) {
 				"sha256:E9JJ8stBJ7QM+nV4ZoUCeHk/gU3tPFh/5YieiJp6n2w=",
 				[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
 
-			va, err := NewSender(se.GenerateHeader(),
+			va, err := NewSender(se.Header(),
 				func() string {
 					if conf == "wronguser" {
 						return "test1user"
@@ -137,11 +147,14 @@ func TestAuthHashed(t *testing.T) {
 					return "testpass"
 				}())
 			require.NoError(t, err)
-			authorization := va.GenerateHeader(base.Announce,
-				mustParseURL("rtsp://myhost/mypath"))
 
-			err = se.ValidateHeader(authorization, base.Announce,
-				mustParseURL("rtsp://myhost/mypath"), nil)
+			req := &base.Request{
+				Method: base.Announce,
+				URL:    mustParseURL("rtsp://myhost/mypath"),
+			}
+			va.AddAuthorization(req)
+
+			err = se.ValidateRequest(req, nil)
 
 			if conf != "nofail" {
 				require.Error(t, err)

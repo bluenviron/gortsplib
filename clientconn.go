@@ -804,21 +804,17 @@ func (cc *ClientConn) do(req *base.Request, skipResponse bool) (*base.Response, 
 		req.Header = make(base.Header)
 	}
 
-	// add session
 	if cc.session != "" {
 		req.Header["Session"] = base.HeaderValue{cc.session}
 	}
 
-	// add auth
 	if cc.sender != nil {
-		req.Header["Authorization"] = cc.sender.GenerateHeader(req.Method, req.URL)
+		cc.sender.AddAuthorization(req)
 	}
 
-	// add cseq
 	cc.cseq++
 	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(cc.cseq), 10)}
 
-	// add user agent
 	req.Header["User-Agent"] = base.HeaderValue{"gortsplib"}
 
 	if cc.c.OnRequest != nil {

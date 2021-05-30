@@ -58,7 +58,13 @@ func TestValidatorErrors(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			va := NewValidator("myuser", "mypass", nil)
 			va.nonce = "abcde"
-			err := va.ValidateHeader(ca.hv, base.Describe, nil, nil)
+			err := va.ValidateRequest(&base.Request{
+				Method: base.Describe,
+				URL:    nil,
+				Header: base.Header{
+					"Authorization": ca.hv,
+				},
+			}, nil)
 			require.Equal(t, ca.err, err.Error())
 		})
 	}

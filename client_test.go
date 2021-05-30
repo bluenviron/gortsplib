@@ -135,7 +135,7 @@ func TestClientAuth(t *testing.T) {
 		err = base.Response{
 			StatusCode: base.StatusUnauthorized,
 			Header: base.Header{
-				"WWW-Authenticate": v.GenerateHeader(),
+				"WWW-Authenticate": v.Header(),
 			},
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
@@ -144,7 +144,7 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		err = v.ValidateHeader(req.Header["Authorization"], base.Describe, req.URL, nil)
+		err = v.ValidateRequest(req, nil)
 		require.NoError(t, err)
 
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))

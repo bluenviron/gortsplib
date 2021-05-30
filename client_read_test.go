@@ -765,7 +765,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			err = base.Response{
 				StatusCode: base.StatusUnauthorized,
 				Header: base.Header{
-					"WWW-Authenticate": v.GenerateHeader(),
+					"WWW-Authenticate": v.Header(),
 				},
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
@@ -774,10 +774,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
-			err = v.ValidateHeader(req.Header["Authorization"],
-				base.Describe,
-				mustParseURL("rtsp://localhost:8554/teststream"),
-				nil)
+			err = v.ValidateRequest(req, nil)
 			require.NoError(t, err)
 
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
@@ -853,7 +850,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			err = base.Response{
 				StatusCode: base.StatusUnauthorized,
 				Header: base.Header{
-					"WWW-Authenticate": v.GenerateHeader(),
+					"WWW-Authenticate": v.Header(),
 				},
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
@@ -863,10 +860,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.Equal(t, base.Setup, req.Method)
 			require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
-			err = v.ValidateHeader(req.Header["Authorization"],
-				base.Setup,
-				mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-				nil)
+			err = v.ValidateRequest(req, nil)
 			require.NoError(t, err)
 
 			inTH = headers.Transport{}

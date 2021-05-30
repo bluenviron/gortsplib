@@ -81,10 +81,9 @@ func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 	return nil, fmt.Errorf("no authentication methods available")
 }
 
-// GenerateHeader generates an Authorization Header that allows to authenticate a request with
-// the given method and url.
-func (se *Sender) GenerateHeader(method base.Method, ur *base.URL) base.HeaderValue {
-	urStr := ur.CloneWithoutCredentials().String()
+// AddAuthorization adds the Authorization header to a Request.
+func (se *Sender) AddAuthorization(req *base.Request) {
+	urStr := req.URL.CloneWithoutCredentials().String()
 
 	h := headers.Authorization{
 		Method: se.method,
@@ -97,7 +96,7 @@ func (se *Sender) GenerateHeader(method base.Method, ur *base.URL) base.HeaderVa
 
 	default: // headers.AuthDigest
 		response := md5Hex(md5Hex(se.user+":"+se.realm+":"+se.pass) + ":" +
-			se.nonce + ":" + md5Hex(string(method)+":"+urStr))
+			se.nonce + ":" + md5Hex(string(req.Method)+":"+urStr))
 
 		h.DigestValues = headers.Authenticate{
 			Method:   headers.AuthDigest,
@@ -109,5 +108,9 @@ func (se *Sender) GenerateHeader(method base.Method, ur *base.URL) base.HeaderVa
 		}
 	}
 
-	return h.Write()
+	if req.Header == nil {
+		req.Header = make(base.Header)
+	}
+
+	req.Header["Authorization"] = h.Write()
 }
