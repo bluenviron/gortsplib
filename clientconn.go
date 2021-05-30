@@ -897,7 +897,7 @@ func (cc *ClientConn) do(req *base.Request, skipResponse bool) (*base.Response, 
 		cc.session = sx.Session
 	}
 
-	// setup authentication
+	// if required, send request again with authentication
 	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && cc.sender == nil {
 		pass, _ := req.URL.User.Password()
 		user := req.URL.User.Username()
@@ -908,7 +908,6 @@ func (cc *ClientConn) do(req *base.Request, skipResponse bool) (*base.Response, 
 		}
 		cc.sender = sender
 
-		// send request again
 		return cc.do(req, false)
 	}
 
@@ -1036,7 +1035,7 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.Response, error) {
 	}
 
 	baseURL, err := func() (*base.URL, error) {
-		// prefer Content-Base (optional)
+		// use Content-Base
 		if cb, ok := res.Header["Content-Base"]; ok {
 			if len(cb) != 1 {
 				return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
@@ -1047,10 +1046,13 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.Response, error) {
 				return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
 			}
 
+			// add credentials from URL of request
+			ret.User = u.User
+
 			return ret, nil
 		}
 
-		// if not provided, use DESCRIBE URL
+		// if not provided, use URL of request
 		return u, nil
 	}()
 	if err != nil {

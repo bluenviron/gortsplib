@@ -15,6 +15,7 @@ import (
 	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
+	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
@@ -759,6 +760,26 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
+			v := auth.NewValidator("myuser", "mypass", nil)
+
+			err = base.Response{
+				StatusCode: base.StatusUnauthorized,
+				Header: base.Header{
+					"WWW-Authenticate": v.GenerateHeader(),
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			req, err = readRequest(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.Describe, req.Method)
+
+			err = v.ValidateHeader(req.Header["Authorization"],
+				base.Describe,
+				mustParseURL("rtsp://localhost:8554/teststream"),
+				nil)
+			require.NoError(t, err)
+
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
@@ -826,7 +847,27 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			req, err = readRequest(bconn.Reader)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
+
+			v = auth.NewValidator("myuser", "mypass", nil)
+
+			err = base.Response{
+				StatusCode: base.StatusUnauthorized,
+				Header: base.Header{
+					"WWW-Authenticate": v.GenerateHeader(),
+				},
+			}.Write(bconn.Writer)
+			require.NoError(t, err)
+
+			req, err = readRequest(bconn.Reader)
+			require.NoError(t, err)
+			require.Equal(t, base.Setup, req.Method)
 			require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
+
+			err = v.ValidateHeader(req.Header["Authorization"],
+				base.Setup,
+				mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				nil)
+			require.NoError(t, err)
 
 			inTH = headers.Transport{}
 			err = inTH.Read(req.Header["Transport"])
@@ -880,7 +921,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			ReadTimeout: 1 * time.Second,
 		}
 
-		conn, err := c.DialRead("rtsp://localhost:8554/teststream")
+		conn, err := c.DialRead("rtsp://myuser:mypass@localhost:8554/teststream")
 		require.NoError(t, err)
 
 		frameRecv := make(chan struct{})
