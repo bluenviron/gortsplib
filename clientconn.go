@@ -37,6 +37,10 @@ func isErrNOUDPPacketsReceivedRecently(err error) bool {
 	return ok
 }
 
+func isAnyPort(p int) bool {
+	return p == 0 || p == 1
+}
+
 type clientConnState int
 
 const (
@@ -1304,23 +1308,13 @@ func (cc *ClientConn) doSetup(
 	}
 
 	if proto == StreamProtocolUDP {
-		if thRes.ServerPorts != nil {
-			if (thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] != 0) ||
-				(thRes.ServerPorts[0] != 0 && thRes.ServerPorts[1] == 0) {
-				rtpListener.close()
-				rtcpListener.close()
-				return nil, liberrors.ErrClientServerPortsZero{}
-			}
-		}
-
 		if !cc.c.AnyPortEnable {
-			if thRes.ServerPorts == nil || (thRes.ServerPorts[0] == 0 && thRes.ServerPorts[1] == 0) {
+			if thRes.ServerPorts == nil || isAnyPort(thRes.ServerPorts[0]) || isAnyPort(thRes.ServerPorts[1]) {
 				rtpListener.close()
 				rtcpListener.close()
 				return nil, liberrors.ErrClientServerPortsNotProvided{}
 			}
 		}
-
 	} else {
 		if thRes.InterleavedIDs == nil {
 			return nil, liberrors.ErrClientTransportHeaderNoInterleavedIDs{}

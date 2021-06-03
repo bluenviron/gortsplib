@@ -97,14 +97,6 @@ func (e ErrClientUDPPortsNotConsecutive) Error() string {
 	return "rtcpPort must be rtpPort + 1"
 }
 
-// ErrClientServerPortsZero is an error that can be returned by a client.
-type ErrClientServerPortsZero struct{}
-
-// Error implements the error interface.
-func (e ErrClientServerPortsZero) Error() string {
-	return "server ports must be both zero or both not zero"
-}
-
 // ErrClientServerPortsNotProvided is an error that can be returned by a client.
 type ErrClientServerPortsNotProvided struct{}
 

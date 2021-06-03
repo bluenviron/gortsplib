@@ -487,6 +487,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 func TestClientReadAnyPort(t *testing.T) {
 	for _, ca := range []string{
 		"zero",
+		"zero_one",
 		"no",
 	} {
 		t.Run(ca, func(t *testing.T) {
@@ -556,8 +557,12 @@ func TestClientReadAnyPort(t *testing.T) {
 							}(),
 							ClientPorts: th.ClientPorts,
 							ServerPorts: func() *[2]int {
-								if ca == "zero" {
+								switch ca {
+								case "zero":
 									return &[2]int{0, 0}
+
+								case "zero_one":
+									return &[2]int{0, 1}
 								}
 								return nil
 							}(),
