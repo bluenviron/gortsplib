@@ -358,7 +358,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			th := &headers.Transport{
-				Protocol: StreamProtocolTCP,
+				Protocol: base.StreamProtocolTCP,
 				Delivery: func() *base.StreamDelivery {
 					v := base.StreamDeliveryUnicast
 					return &v
@@ -439,7 +439,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	th := &headers.Transport{
-		Protocol: StreamProtocolTCP,
+		Protocol: base.StreamProtocolTCP,
 		Delivery: func() *base.StreamDelivery {
 			v := base.StreamDeliveryUnicast
 			return &v
@@ -521,7 +521,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	th := &headers.Transport{
-		Protocol: StreamProtocolTCP,
+		Protocol: base.StreamProtocolTCP,
 		Delivery: func() *base.StreamDelivery {
 			v := base.StreamDeliveryUnicast
 			return &v
@@ -623,7 +623,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	th := &headers.Transport{
-		Protocol: StreamProtocolTCP,
+		Protocol: base.StreamProtocolTCP,
 		Delivery: func() *base.StreamDelivery {
 			v := base.StreamDeliveryUnicast
 			return &v
@@ -786,10 +786,10 @@ func TestServerPublish(t *testing.T) {
 			}
 
 			if proto == "udp" {
-				inTH.Protocol = StreamProtocolUDP
+				inTH.Protocol = base.StreamProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
-				inTH.Protocol = StreamProtocolTCP
+				inTH.Protocol = base.StreamProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
@@ -971,7 +971,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 			v := headers.TransportModeRecord
 			return &v
 		}(),
-		Protocol:    StreamProtocolUDP,
+		Protocol:    base.StreamProtocolUDP,
 		ClientPorts: &[2]int{35466, 35467},
 	}
 
@@ -1073,7 +1073,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 			v := headers.TransportModeRecord
 			return &v
 		}(),
-		Protocol:       StreamProtocolTCP,
+		Protocol:       base.StreamProtocolTCP,
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
@@ -1237,10 +1237,10 @@ func TestServerPublishTimeout(t *testing.T) {
 			}
 
 			if proto == "udp" {
-				inTH.Protocol = StreamProtocolUDP
+				inTH.Protocol = base.StreamProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
-				inTH.Protocol = StreamProtocolTCP
+				inTH.Protocol = base.StreamProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
@@ -1364,10 +1364,10 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 			}
 
 			if proto == "udp" {
-				inTH.Protocol = StreamProtocolUDP
+				inTH.Protocol = base.StreamProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
-				inTH.Protocol = StreamProtocolTCP
+				inTH.Protocol = base.StreamProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
@@ -1480,7 +1480,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 				v := headers.TransportModeRecord
 				return &v
 			}(),
-			Protocol:    StreamProtocolUDP,
+			Protocol:    base.StreamProtocolUDP,
 			ClientPorts: &[2]int{35466, 35467},
 		}
 

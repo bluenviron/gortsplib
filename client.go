@@ -67,7 +67,7 @@ type Client struct {
 	// the stream protocol (UDP or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
-	StreamProtocol *StreamProtocol
+	StreamProtocol *base.StreamProtocol
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout.
 	// It defaults to 3 seconds.

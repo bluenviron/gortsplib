@@ -91,7 +91,7 @@ func TestClientReadTracks(t *testing.T) {
 					v := base.StreamDeliveryUnicast
 					return &v
 				}(),
-				Protocol:    StreamProtocolUDP,
+				Protocol:    base.StreamProtocolUDP,
 				ClientPorts: inTH.ClientPorts,
 				ServerPorts: &[2]int{34556 + i*2, 34557 + i*2},
 			}
@@ -258,11 +258,11 @@ func TestClientRead(t *testing.T) {
 				}
 
 				if proto == "udp" {
-					th.Protocol = StreamProtocolUDP
+					th.Protocol = base.StreamProtocolUDP
 					th.ClientPorts = inTH.ClientPorts
 					th.ServerPorts = &[2]int{34556, 34557}
 				} else {
-					th.Protocol = StreamProtocolTCP
+					th.Protocol = base.StreamProtocolTCP
 					th.InterleavedIDs = &[2]int{0, 1}
 				}
 
@@ -347,12 +347,12 @@ func TestClientRead(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *StreamProtocol {
+				StreamProtocol: func() *base.StreamProtocol {
 					if proto == "udp" {
-						v := StreamProtocolUDP
+						v := base.StreamProtocolUDP
 						return &v
 					}
-					v := StreamProtocolTCP
+					v := base.StreamProtocolTCP
 					return &v
 				}(),
 			}
@@ -445,7 +445,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 				v := base.StreamDeliveryUnicast
 				return &v
 			}(),
-			Protocol:    StreamProtocolUDP,
+			Protocol:    base.StreamProtocolUDP,
 			ClientPorts: inTH.ClientPorts,
 			ServerPorts: &[2]int{34556, 34557},
 		}
@@ -550,7 +550,7 @@ func TestClientReadAnyPort(t *testing.T) {
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": headers.Transport{
-							Protocol: StreamProtocolUDP,
+							Protocol: base.StreamProtocolUDP,
 							Delivery: func() *base.StreamDelivery {
 								v := base.StreamDeliveryUnicast
 								return &v
@@ -680,13 +680,13 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			var inTH headers.Transport
 			err = inTH.Read(req.Header["Transport"])
 			require.NoError(t, err)
-			require.Equal(t, StreamProtocolTCP, inTH.Protocol)
+			require.Equal(t, base.StreamProtocolTCP, inTH.Protocol)
 
 			err = base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Transport": headers.Transport{
-						Protocol: StreamProtocolTCP,
+						Protocol: base.StreamProtocolTCP,
 						Delivery: func() *base.StreamDelivery {
 							v := base.StreamDeliveryUnicast
 							return &v
@@ -809,7 +809,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 					v := base.StreamDeliveryUnicast
 					return &v
 				}(),
-				Protocol:    StreamProtocolUDP,
+				Protocol:    base.StreamProtocolUDP,
 				ServerPorts: &[2]int{34556, 34557},
 				ClientPorts: inTH.ClientPorts,
 			}
@@ -877,7 +877,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 					v := base.StreamDeliveryUnicast
 					return &v
 				}(),
-				Protocol:       StreamProtocolTCP,
+				Protocol:       base.StreamProtocolTCP,
 				InterleavedIDs: inTH.InterleavedIDs,
 			}
 
@@ -1032,7 +1032,7 @@ func TestClientReadRedirect(t *testing.T) {
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": headers.Transport{
-					Protocol: StreamProtocolUDP,
+					Protocol: base.StreamProtocolUDP,
 					Delivery: func() *base.StreamDelivery {
 						v := base.StreamDeliveryUnicast
 						return &v
@@ -1091,7 +1091,7 @@ func TestClientReadPause(t *testing.T) {
 			defer close(writerDone)
 
 			var l1 net.PacketConn
-			if inTH.Protocol == StreamProtocolUDP {
+			if inTH.Protocol == base.StreamProtocolUDP {
 				var err error
 				l1, err = net.ListenPacket("udp", "localhost:34556")
 				require.NoError(t, err)
@@ -1104,7 +1104,7 @@ func TestClientReadPause(t *testing.T) {
 			for {
 				select {
 				case <-t.C:
-					if inTH.Protocol == StreamProtocolUDP {
+					if inTH.Protocol == base.StreamProtocolUDP {
 						l1.WriteTo([]byte("\x00\x00\x00\x00"), &net.UDPAddr{
 							IP:   net.ParseIP("127.0.0.1"),
 							Port: inTH.ClientPorts[0],
@@ -1194,12 +1194,12 @@ func TestClientReadPause(t *testing.T) {
 				}
 
 				if proto == "udp" {
-					th.Protocol = StreamProtocolUDP
+					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = StreamProtocolTCP
+					th.Protocol = base.StreamProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -1259,12 +1259,12 @@ func TestClientReadPause(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *StreamProtocol {
+				StreamProtocol: func() *base.StreamProtocol {
 					if proto == "udp" {
-						v := StreamProtocolUDP
+						v := base.StreamProtocolUDP
 						return &v
 					}
-					v := StreamProtocolTCP
+					v := base.StreamProtocolTCP
 					return &v
 				}(),
 			}
@@ -1374,7 +1374,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": headers.Transport{
-					Protocol: StreamProtocolTCP,
+					Protocol: base.StreamProtocolTCP,
 					Delivery: func() *base.StreamDelivery {
 						v := base.StreamDeliveryUnicast
 						return &v
@@ -1454,8 +1454,8 @@ func TestClientReadRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		StreamProtocol: func() *StreamProtocol {
-			v := StreamProtocolTCP
+		StreamProtocol: func() *base.StreamProtocol {
+			v := base.StreamProtocolTCP
 			return &v
 		}(),
 		receiverReportPeriod: 1 * time.Second,
@@ -1560,12 +1560,12 @@ func TestClientReadErrorTimeout(t *testing.T) {
 					require.NoError(t, err)
 					defer l1.Close()
 
-					th.Protocol = StreamProtocolUDP
+					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = StreamProtocolTCP
+					th.Protocol = base.StreamProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -1611,14 +1611,14 @@ func TestClientReadErrorTimeout(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *StreamProtocol {
+				StreamProtocol: func() *base.StreamProtocol {
 					switch proto {
 					case "udp":
-						v := StreamProtocolUDP
+						v := base.StreamProtocolUDP
 						return &v
 
 					case "tcp":
-						v := StreamProtocolTCP
+						v := base.StreamProtocolTCP
 						return &v
 					}
 					return nil
@@ -1707,7 +1707,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 				return &v
 			}(),
 		}
-		th.Protocol = StreamProtocolTCP
+		th.Protocol = base.StreamProtocolTCP
 		th.InterleavedIDs = inTH.InterleavedIDs
 
 		err = base.Response{
@@ -1752,8 +1752,8 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 	}()
 
 	c := &Client{
-		StreamProtocol: func() *StreamProtocol {
-			v := StreamProtocolTCP
+		StreamProtocol: func() *base.StreamProtocol {
+			v := base.StreamProtocolTCP
 			return &v
 		}(),
 	}
@@ -1836,7 +1836,7 @@ func TestClientReadSeek(t *testing.T) {
 				v := base.StreamDeliveryUnicast
 				return &v
 			}(),
-			Protocol:       StreamProtocolTCP,
+			Protocol:       base.StreamProtocolTCP,
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
@@ -1903,8 +1903,8 @@ func TestClientReadSeek(t *testing.T) {
 	}()
 
 	c := &Client{
-		StreamProtocol: func() *StreamProtocol {
-			v := StreamProtocolTCP
+		StreamProtocol: func() *base.StreamProtocol {
+			v := base.StreamProtocolTCP
 			return &v
 		}(),
 	}

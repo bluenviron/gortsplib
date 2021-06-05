@@ -134,7 +134,7 @@ type ClientConn struct {
 	cseq              int
 	useGetParameter   bool
 	streamBaseURL     *base.URL
-	streamProtocol    *StreamProtocol
+	streamProtocol    *base.StreamProtocol
 	tracks            map[int]clientConnTrack
 	lastRange         *headers.Range
 	backgroundRunning bool
@@ -364,7 +364,7 @@ func (cc *ClientConn) checkState(allowed map[clientConnState]struct{}) error {
 }
 
 func (cc *ClientConn) switchProtocolIfTimeout(err error) error {
-	if *cc.streamProtocol != StreamProtocolUDP ||
+	if *cc.streamProtocol != base.StreamProtocolUDP ||
 		cc.state != clientConnStatePlay ||
 		!isErrNOUDPPacketsReceivedRecently(err) ||
 		cc.c.StreamProtocol != nil {
@@ -377,7 +377,7 @@ func (cc *ClientConn) switchProtocolIfTimeout(err error) error {
 
 	cc.reset(true)
 
-	v := StreamProtocolTCP
+	v := base.StreamProtocolTCP
 	cc.streamProtocol = &v
 	cc.useGetParameter = oldUseGetParameter
 	cc.scheme = prevBaseURL.Scheme
@@ -443,13 +443,13 @@ func (cc *ClientConn) backgroundClose(isSwitchingProtocol bool) {
 func (cc *ClientConn) runBackground() {
 	cc.backgroundInnerDone <- func() error {
 		if cc.state == clientConnStatePlay {
-			if *cc.streamProtocol == StreamProtocolUDP {
+			if *cc.streamProtocol == base.StreamProtocolUDP {
 				return cc.runBackgroundPlayUDP()
 			}
 			return cc.runBackgroundPlayTCP()
 		}
 
-		if *cc.streamProtocol == StreamProtocolUDP {
+		if *cc.streamProtocol == base.StreamProtocolUDP {
 			return cc.runBackgroundRecordUDP()
 		}
 		return cc.runBackgroundRecordTCP()
@@ -766,7 +766,7 @@ func (cc *ClientConn) connOpen() error {
 		return fmt.Errorf("unsupported scheme '%s'", cc.scheme)
 	}
 
-	v := StreamProtocolUDP
+	v := base.StreamProtocolUDP
 	if cc.scheme == "rtsps" && cc.c.StreamProtocol == &v {
 		return fmt.Errorf("RTSPS can't be used with UDP")
 	}
@@ -1168,11 +1168,11 @@ func (cc *ClientConn) doSetup(
 
 	// always use TCP if encrypted
 	if cc.scheme == "rtsps" {
-		v := StreamProtocolTCP
+		v := base.StreamProtocolTCP
 		cc.streamProtocol = &v
 	}
 
-	proto := func() StreamProtocol {
+	proto := func() base.StreamProtocol {
 		// protocol set by previous Setup() or switchProtocolIfTimeout()
 		if cc.streamProtocol != nil {
 			return *cc.streamProtocol
@@ -1184,7 +1184,7 @@ func (cc *ClientConn) doSetup(
 		}
 
 		// try UDP
-		return StreamProtocolUDP
+		return base.StreamProtocolUDP
 	}()
 
 	th := headers.Transport{
@@ -1255,7 +1255,7 @@ func (cc *ClientConn) doSetup(
 
 	trackURL, err := track.URL()
 	if err != nil {
-		if proto == StreamProtocolUDP {
+		if proto == base.StreamProtocolUDP {
 			rtpListener.close()
 			rtcpListener.close()
 		}
@@ -1270,7 +1270,7 @@ func (cc *ClientConn) doSetup(
 		},
 	}, false)
 	if err != nil {
-		if proto == StreamProtocolUDP {
+		if proto == base.StreamProtocolUDP {
 			rtpListener.close()
 			rtcpListener.close()
 		}
@@ -1278,7 +1278,7 @@ func (cc *ClientConn) doSetup(
 	}
 
 	if res.StatusCode != base.StatusOK {
-		if proto == StreamProtocolUDP {
+		if proto == base.StreamProtocolUDP {
 			rtpListener.close()
 			rtcpListener.close()
 		}
@@ -1288,7 +1288,7 @@ func (cc *ClientConn) doSetup(
 			cc.streamProtocol == nil &&
 			cc.c.StreamProtocol == nil {
 
-			v := StreamProtocolTCP
+			v := base.StreamProtocolTCP
 			cc.streamProtocol = &v
 
 			return cc.doSetup(mode, track, 0, 0)
@@ -1300,14 +1300,14 @@ func (cc *ClientConn) doSetup(
 	var thRes headers.Transport
 	err = thRes.Read(res.Header["Transport"])
 	if err != nil {
-		if proto == StreamProtocolUDP {
+		if proto == base.StreamProtocolUDP {
 			rtpListener.close()
 			rtcpListener.close()
 		}
 		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
 	}
 
-	if proto == StreamProtocolUDP {
+	if proto == base.StreamProtocolUDP {
 		if !cc.c.AnyPortEnable {
 			if thRes.ServerPorts == nil || isAnyPort(thRes.ServerPorts[0]) || isAnyPort(thRes.ServerPorts[1]) {
 				rtpListener.close()
@@ -1342,7 +1342,7 @@ func (cc *ClientConn) doSetup(
 	cc.streamBaseURL = track.BaseURL
 	cc.streamProtocol = &proto
 
-	if proto == StreamProtocolUDP {
+	if proto == base.StreamProtocolUDP {
 		rtpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = cc.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
@@ -1370,7 +1370,7 @@ func (cc *ClientConn) doSetup(
 		cc.state = clientConnStatePreRecord
 	}
 
-	if *cc.streamProtocol == StreamProtocolTCP &&
+	if *cc.streamProtocol == base.StreamProtocolTCP &&
 		cc.tcpFrameBuffer == nil {
 		cc.tcpFrameBuffer = multibuffer.New(uint64(cc.c.ReadBufferCount), uint64(cc.c.ReadBufferSize))
 	}
@@ -1607,7 +1607,7 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		cc.tracks[trackID].rtcpSender.ProcessFrame(now, streamType, payload)
 	}
 
-	if *cc.streamProtocol == StreamProtocolUDP {
+	if *cc.streamProtocol == base.StreamProtocolUDP {
 		if streamType == StreamTypeRTP {
 			return cc.tracks[trackID].udpRTPListener.write(payload)
 		}

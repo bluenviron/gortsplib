@@ -80,12 +80,12 @@ func TestClientPublishSerial(t *testing.T) {
 				}
 
 				if proto == "udp" {
-					th.Protocol = StreamProtocolUDP
+					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = StreamProtocolTCP
+					th.Protocol = base.StreamProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -162,12 +162,12 @@ func TestClientPublishSerial(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *StreamProtocol {
+				StreamProtocol: func() *base.StreamProtocol {
 					if proto == "udp" {
-						v := StreamProtocolUDP
+						v := base.StreamProtocolUDP
 						return &v
 					}
-					v := StreamProtocolTCP
+					v := base.StreamProtocolTCP
 					return &v
 				}(),
 			}
@@ -267,12 +267,12 @@ func TestClientPublishParallel(t *testing.T) {
 				}
 
 				if proto == "udp" {
-					th.Protocol = StreamProtocolUDP
+					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = StreamProtocolTCP
+					th.Protocol = base.StreamProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -304,12 +304,12 @@ func TestClientPublishParallel(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *StreamProtocol {
+				StreamProtocol: func() *base.StreamProtocol {
 					if proto == "udp" {
-						v := StreamProtocolUDP
+						v := base.StreamProtocolUDP
 						return &v
 					}
-					v := StreamProtocolTCP
+					v := base.StreamProtocolTCP
 					return &v
 				}(),
 			}
@@ -407,12 +407,12 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}
 
 				if proto == "udp" {
-					th.Protocol = StreamProtocolUDP
+					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = StreamProtocolTCP
+					th.Protocol = base.StreamProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -462,12 +462,12 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *StreamProtocol {
+				StreamProtocol: func() *base.StreamProtocol {
 					if proto == "udp" {
-						v := StreamProtocolUDP
+						v := base.StreamProtocolUDP
 						return &v
 					}
-					v := StreamProtocolTCP
+					v := base.StreamProtocolTCP
 					return &v
 				}(),
 			}
@@ -563,12 +563,12 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}
 
 				if proto == "udp" {
-					th.Protocol = StreamProtocolUDP
+					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = StreamProtocolTCP
+					th.Protocol = base.StreamProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -600,12 +600,12 @@ func TestClientPublishPauseParallel(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *StreamProtocol {
+				StreamProtocol: func() *base.StreamProtocol {
 					if proto == "udp" {
-						v := StreamProtocolUDP
+						v := base.StreamProtocolUDP
 						return &v
 					}
-					v := StreamProtocolTCP
+					v := base.StreamProtocolTCP
 					return &v
 				}(),
 			}
@@ -702,14 +702,14 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		var inTH headers.Transport
 		err = inTH.Read(req.Header["Transport"])
 		require.NoError(t, err)
-		require.Equal(t, StreamProtocolTCP, inTH.Protocol)
+		require.Equal(t, base.StreamProtocolTCP, inTH.Protocol)
 
 		th := headers.Transport{
 			Delivery: func() *base.StreamDelivery {
 				v := base.StreamDeliveryUnicast
 				return &v
 			}(),
-			Protocol:       StreamProtocolTCP,
+			Protocol:       base.StreamProtocolTCP,
 			InterleavedIDs: &[2]int{0, 1},
 		}
 
@@ -814,7 +814,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 				v := base.StreamDeliveryUnicast
 				return &v
 			}(),
-			Protocol:       StreamProtocolTCP,
+			Protocol:       base.StreamProtocolTCP,
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
@@ -883,8 +883,8 @@ func TestClientPublishRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		StreamProtocol: func() *StreamProtocol {
-			v := StreamProtocolTCP
+		StreamProtocol: func() *base.StreamProtocol {
+			v := base.StreamProtocolTCP
 			return &v
 		}(),
 		senderReportPeriod: 1 * time.Second,
