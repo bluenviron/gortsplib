@@ -225,7 +225,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 				},
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -311,7 +311,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 				},
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -406,7 +406,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -488,7 +488,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -587,7 +587,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -731,7 +731,7 @@ func TestServerPublish(t *testing.T) {
 				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -930,7 +930,7 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 		UDPRTCPAddress: "127.0.0.1:8001",
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1032,7 +1032,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 		receiverReportPeriod: 1 * time.Second,
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1193,7 +1193,7 @@ func TestServerPublishTimeout(t *testing.T) {
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -1321,7 +1321,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -1436,7 +1436,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 		UDPRTCPAddress: "127.0.0.1:8001",
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 

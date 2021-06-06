@@ -417,7 +417,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -479,7 +479,7 @@ func TestServerClose(t *testing.T) {
 		Handler: &testServerHandler{},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	s.Close()
 	s.Close()
@@ -491,7 +491,7 @@ func TestServerErrorWrongUDPPorts(t *testing.T) {
 			UDPRTPAddress:  "127.0.0.1:8006",
 			UDPRTCPAddress: "127.0.0.1:8009",
 		}
-		err := s.Start("127.0.0.1:8554")
+		err := s.Start("localhost:8554")
 		require.Error(t, err)
 	})
 
@@ -500,7 +500,7 @@ func TestServerErrorWrongUDPPorts(t *testing.T) {
 			UDPRTPAddress:  "127.0.0.1:8003",
 			UDPRTCPAddress: "127.0.0.1:8004",
 		}
-		err := s.Start("127.0.0.1:8554")
+		err := s.Start("localhost:8554")
 		require.Error(t, err)
 	})
 }
@@ -520,7 +520,7 @@ func TestServerConnClose(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -533,7 +533,7 @@ func TestServerConnClose(t *testing.T) {
 
 func TestServerCSeq(t *testing.T) {
 	s := &Server{}
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -566,7 +566,7 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	}
 
 	s := &Server{Handler: h}
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -597,7 +597,7 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 	}
 
 	s := &Server{Handler: h}
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -640,7 +640,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -732,7 +732,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -817,7 +817,7 @@ func TestServerGetSetParameter(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -888,7 +888,7 @@ func TestServerErrorInvalidSession(t *testing.T) {
 				},
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -930,7 +930,7 @@ func TestServerSessionClose(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -979,7 +979,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1051,7 +1051,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 				},
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 

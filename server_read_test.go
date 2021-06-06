@@ -71,7 +71,7 @@ func TestServerReadSetupPath(t *testing.T) {
 				},
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -124,7 +124,7 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -191,7 +191,7 @@ func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -307,7 +307,7 @@ func TestServerRead(t *testing.T) {
 				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -518,7 +518,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -584,7 +584,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 		UDPRTCPAddress: "127.0.0.1:8001",
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -686,7 +686,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -795,7 +795,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 		},
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -902,7 +902,7 @@ func TestServerReadTimeout(t *testing.T) {
 			s.UDPRTPAddress = "127.0.0.1:8000"
 			s.UDPRTCPAddress = "127.0.0.1:8001"
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -994,7 +994,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
 
-			err := s.Start("127.0.0.1:8554")
+			err := s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -1077,7 +1077,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		UDPRTCPAddress: "127.0.0.1:8001",
 	}
 
-	err := s.Start("127.0.0.1:8554")
+	err := s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
