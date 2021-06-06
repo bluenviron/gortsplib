@@ -107,7 +107,7 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 		c.ChannelCount = channelCounts[channelConfig]
 
 	default:
-		return fmt.Errorf("invalid channel configuration: %d", channelConfig)
+		return fmt.Errorf("invalid channel configuration (%d)", channelConfig)
 	}
 
 	return nil

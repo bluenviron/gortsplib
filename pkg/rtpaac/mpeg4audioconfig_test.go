@@ -47,6 +47,15 @@ var configCases = []struct {
 			ChannelCount: 6,
 		},
 	},
+	{
+		"aac-lc 53khz stereo",
+		[]byte{0x17, 0x80, 0x67, 0x84, 0x10},
+		MPEG4AudioConfig{
+			Type:         MPEG4AudioTypeAACLC,
+			SampleRate:   53000,
+			ChannelCount: 2,
+		},
+	},
 }
 
 func TestConfigDecode(t *testing.T) {
@@ -88,8 +97,23 @@ func TestConfigDecodeErrors(t *testing.T) {
 		},
 		{
 			"sample rate invalid",
-			[]byte{0x12 | 13>>5, 13 << 3},
-			"invalid channel configuration: 13",
+			[]byte{0x17, 0},
+			"invalid sample rate index (14)",
+		},
+		{
+			"explicit sample rate missing",
+			[]byte{0x17, 0x80, 0x67},
+			"EOF",
+		},
+		{
+			"channel configuration invalid",
+			[]byte{0x11, 0xF0},
+			"invalid channel configuration (14)",
+		},
+		{
+			"channel configuration zero",
+			[]byte{0x11, 0x80},
+			"not yet supported",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
