@@ -15,7 +15,7 @@ import (
 
 func main() {
 	// open a listener to receive RTP/H264 frames
-	pc, err := net.ListenPacket("udp4", "127.0.0.1:9000")
+	pc, err := net.ListenPacket("udp", "localhost:9000")
 	if err != nil {
 		panic(err)
 	}
