@@ -360,15 +360,6 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 						}
 
-						mutex.Lock()
-						defer mutex.Unlock()
-
-						if ctx.Session != publisher {
-							return &base.Response{
-								StatusCode: base.StatusBadRequest,
-							}, fmt.Errorf("someone is already publishing")
-						}
-
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil

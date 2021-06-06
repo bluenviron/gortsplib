@@ -118,15 +118,6 @@ func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Re
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
 	log.Printf("record request")
 
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
-
-	if ctx.Session != sh.publisher {
-		return &base.Response{
-			StatusCode: base.StatusBadRequest,
-		}, fmt.Errorf("someone is already publishing")
-	}
-
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, nil
