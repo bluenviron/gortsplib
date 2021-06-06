@@ -324,9 +324,6 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
-							Header: base.Header{
-								"Session": base.HeaderValue{"12345678"},
-							},
 						}, nil
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
@@ -338,9 +335,6 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
-							Header: base.Header{
-								"Session": base.HeaderValue{"12345678"},
-							},
 						}, nil, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
@@ -357,9 +351,6 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
-							Header: base.Header{
-								"Session": base.HeaderValue{"12345678"},
-							},
 						}, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
@@ -380,9 +371,6 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
-							Header: base.Header{
-								"Session": base.HeaderValue{"12345678"},
-							},
 						}, nil
 					},
 					onFrame: func(ctx *ServerHandlerOnFrameCtx) {
