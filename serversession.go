@@ -710,6 +710,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 					// readers can send RTCP frames, they cannot sent RTP frames
 					for trackID, track := range ss.setuppedTracks {
 						sc.s.udpRTCPListener.addClient(ss.udpIP, track.udpRTCPPort, ss, trackID, false)
+
+						// open the firewall by sending packets to the counterpart
+						ss.WriteFrame(trackID, StreamTypeRTCP,
+							[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 					}
 
 					return res, err
