@@ -42,9 +42,9 @@ type testServerHandler struct {
 	onConnClose    func(*ServerHandlerOnConnCloseCtx)
 	onSessionOpen  func(*ServerHandlerOnSessionOpenCtx)
 	onSessionClose func(*ServerHandlerOnSessionCloseCtx)
-	onDescribe     func(*ServerHandlerOnDescribeCtx) (*base.Response, []byte, error)
+	onDescribe     func(*ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error)
 	onAnnounce     func(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
-	onSetup        func(*ServerHandlerOnSetupCtx) (*base.Response, *uint32, error)
+	onSetup        func(*ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error)
 	onPlay         func(*ServerHandlerOnPlayCtx) (*base.Response, error)
 	onRecord       func(*ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
@@ -77,7 +77,7 @@ func (sh *testServerHandler) OnSessionClose(ctx *ServerHandlerOnSessionCloseCtx)
 	}
 }
 
-func (sh *testServerHandler) OnDescribe(ctx *ServerHandlerOnDescribeCtx) (*base.Response, []byte, error) {
+func (sh *testServerHandler) OnDescribe(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 	if sh.onDescribe != nil {
 		return sh.onDescribe(ctx)
 	}
@@ -91,11 +91,11 @@ func (sh *testServerHandler) OnAnnounce(ctx *ServerHandlerOnAnnounceCtx) (*base.
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (sh *testServerHandler) OnSetup(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+func (sh *testServerHandler) OnSetup(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 	if sh.onSetup != nil {
 		return sh.onSetup(ctx)
 	}
-	return nil, nil, fmt.Errorf("unimplemented")
+	return nil, nil, nil, fmt.Errorf("unimplemented")
 }
 
 func (sh *testServerHandler) OnPlay(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
@@ -262,13 +262,15 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 		{"ffmpeg", "tls", "gstreamer", "tls"},
 		{"gstreamer", "tls", "ffmpeg", "tls"},
 		{"gstreamer", "tls", "gstreamer", "tls"},
+
+		{"ffmpeg", "udp", "ffmpeg", "multicast"},
+		{"ffmpeg", "udp", "gstreamer", "multicast"},
 	} {
 		t.Run(ca.publisherSoft+"_"+ca.publisherProto+"_"+
 			ca.readerSoft+"_"+ca.readerProto, func(t *testing.T) {
 			var mutex sync.Mutex
+			var stream *ServerStream
 			var publisher *ServerSession
-			var sdp []byte
-			readers := make(map[*ServerSession]struct{})
 
 			s := &Server{
 				Handler: &testServerHandler{
@@ -276,14 +278,14 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						mutex.Lock()
 						defer mutex.Unlock()
 
-						if ctx.Session == publisher {
-							publisher = nil
-							sdp = nil
-						} else {
-							delete(readers, ctx.Session)
+						if stream != nil {
+							if ctx.Session == publisher {
+								stream.Close()
+								stream = nil
+							}
 						}
 					},
-					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, []byte, error) {
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						if ctx.Path != "teststream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
@@ -293,7 +295,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						mutex.Lock()
 						defer mutex.Unlock()
 
-						if publisher == nil {
+						if stream == nil {
 							return &base.Response{
 								StatusCode: base.StatusNotFound,
 							}, nil, nil
@@ -301,7 +303,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, sdp, nil
+						}, stream, nil
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						if ctx.Path != "teststream" {
@@ -313,29 +315,35 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						mutex.Lock()
 						defer mutex.Unlock()
 
-						if publisher != nil {
+						if stream != nil {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, fmt.Errorf("someone is already publishing")
 						}
 
+						stream = NewServerStream(ctx.Tracks)
 						publisher = ctx.Session
-						sdp = ctx.Tracks.Write()
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 						if ctx.Path != "teststream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, nil, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+
+						if stream == nil {
+							return &base.Response{
+								StatusCode: base.StatusNotFound,
+							}, nil, nil, nil
 						}
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil, nil
+						}, stream, nil, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						if ctx.Path != "teststream" {
@@ -343,11 +351,6 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 								StatusCode: base.StatusBadRequest,
 							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 						}
-
-						mutex.Lock()
-						defer mutex.Unlock()
-
-						readers[ctx.Session] = struct{}{}
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -369,29 +372,21 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						defer mutex.Unlock()
 
 						if ctx.Session == publisher {
-							for r := range readers {
-								r.WriteFrame(ctx.TrackID, ctx.StreamType, ctx.Payload)
-							}
+							stream.WriteFrame(ctx.TrackID, ctx.StreamType, ctx.Payload)
 						}
 					},
 				},
 			}
 
 			var proto string
-			var publisherSubProto string
-			var readerSubProto string
 			if ca.publisherProto == "tls" {
 				proto = "rtsps"
-				publisherSubProto = "tcp"
-				readerSubProto = "tcp"
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 
 			} else {
 				proto = "rtsp"
-				publisherSubProto = ca.publisherProto
-				readerSubProto = ca.readerProto
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
@@ -402,22 +397,38 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 			switch ca.publisherSoft {
 			case "ffmpeg":
+				ts := func() string {
+					switch ca.publisherProto {
+					case "udp", "tcp":
+						return ca.publisherProto
+					}
+					return "tcp"
+				}()
+
 				cnt1, err := newContainer("ffmpeg", "publish", []string{
 					"-re",
 					"-stream_loop", "-1",
 					"-i", "emptyvideo.mkv",
 					"-c", "copy",
 					"-f", "rtsp",
-					"-rtsp_transport", publisherSubProto,
+					"-rtsp_transport", ts,
 					proto + "://localhost:8554/teststream",
 				})
 				require.NoError(t, err)
 				defer cnt1.close()
 
 			case "gstreamer":
+				ts := func() string {
+					switch ca.publisherProto {
+					case "udp", "tcp":
+						return ca.publisherProto
+					}
+					return "tcp"
+				}()
+
 				cnt1, err := newContainer("gstreamer", "publish", []string{
 					"filesrc location=emptyvideo.mkv ! matroskademux ! video/x-h264 ! rtspclientsink " +
-						"location=" + proto + "://127.0.0.1:8554/teststream protocols=" + publisherSubProto + " tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
+						"location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ts + " tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
 				})
 				require.NoError(t, err)
 				defer cnt1.close()
@@ -429,8 +440,18 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 			switch ca.readerSoft {
 			case "ffmpeg":
+				ts := func() string {
+					switch ca.readerProto {
+					case "udp", "tcp":
+						return ca.readerProto
+					case "multicast":
+						return "udp_multicast"
+					}
+					return "tcp"
+				}()
+
 				cnt2, err := newContainer("ffmpeg", "read", []string{
-					"-rtsp_transport", readerSubProto,
+					"-rtsp_transport", ts,
 					"-i", proto + "://localhost:8554/teststream",
 					"-vframes", "1",
 					"-f", "image2",
@@ -441,8 +462,18 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 				require.Equal(t, 0, cnt2.wait())
 
 			case "gstreamer":
+				ts := func() string {
+					switch ca.readerProto {
+					case "udp", "tcp":
+						return ca.readerProto
+					case "multicast":
+						return "udp-mcast"
+					}
+					return "tcp"
+				}()
+
 				cnt2, err := newContainer("gstreamer", "read", []string{
-					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=" + readerSubProto + " tls-validation-flags=0 latency=0 " +
+					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ts + " tls-validation-flags=0 latency=0 " +
 						"! application/x-rtp,media=video ! decodebin ! exitafterframe ! fakesink",
 				})
 				require.NoError(t, err)
@@ -599,12 +630,17 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 }
 
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
@@ -619,7 +655,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -691,12 +727,17 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 }
 
 func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
@@ -711,7 +752,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -901,10 +942,10 @@ func TestServerSessionClose(t *testing.T) {
 			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 				close(sessionClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, nil, nil, nil
 			},
 		},
 	}
@@ -945,20 +986,25 @@ func TestServerSessionClose(t *testing.T) {
 func TestServerSessionAutoClose(t *testing.T) {
 	sessionClosed := make(chan struct{})
 
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
 			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 				close(sessionClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1006,6 +1052,11 @@ func TestServerErrorInvalidPath(t *testing.T) {
 		t.Run(string(method), func(t *testing.T) {
 			connClosed := make(chan struct{})
 
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			require.NoError(t, err)
+
+			stream := NewServerStream(Tracks{track})
+
 			s := &Server{
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
@@ -1017,10 +1068,10 @@ func TestServerErrorInvalidPath(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil, nil
+						}, stream, nil, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
@@ -1030,7 +1081,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 				},
 			}
 
-			err := s.Start("localhost:8554")
+			err = s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 

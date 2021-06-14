@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"crypto/tls"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/ipv4"
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
@@ -59,19 +61,24 @@ func TestServerReadSetupPath(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			require.NoError(t, err)
+
+			stream := NewServerStream(Tracks{track})
+
 			s := &Server{
 				Handler: &testServerHandler{
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 						require.Equal(t, ca.path, ctx.Path)
 						require.Equal(t, ca.trackID, ctx.TrackID)
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil, nil
+						}, stream, nil, nil
 					},
 				},
 			}
 
-			err := s.Start("localhost:8554")
+			err = s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -110,21 +117,26 @@ func TestServerReadSetupPath(t *testing.T) {
 func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 	connClosed := make(chan struct{})
 
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				require.Equal(t, "can't setup tracks with different paths", ctx.Error.Error())
 				close(connClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -177,21 +189,26 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 	connClosed := make(chan struct{})
 
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				require.Equal(t, "track 0 has already been setup", ctx.Error.Error())
 				close(connClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -246,6 +263,7 @@ func TestServerRead(t *testing.T) {
 		"udp",
 		"tcp",
 		"tls",
+		"multicast",
 	} {
 		t.Run(proto, func(t *testing.T) {
 			connOpened := make(chan struct{})
@@ -253,6 +271,11 @@ func TestServerRead(t *testing.T) {
 			sessionOpened := make(chan struct{})
 			sessionClosed := make(chan struct{})
 			framesReceived := make(chan struct{})
+
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			require.NoError(t, err)
+
+			stream := NewServerStream(Tracks{track})
 
 			s := &Server{
 				Handler: &testServerHandler{
@@ -268,15 +291,19 @@ func TestServerRead(t *testing.T) {
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 						v := uint32(123456)
+
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, &v, nil
+						}, stream, &v, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
-						ctx.Session.WriteFrame(0, StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
-						ctx.Session.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+						go func() {
+							time.Sleep(1 * time.Second)
+							stream.WriteFrame(0, StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
+							stream.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+						}()
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -297,7 +324,7 @@ func TestServerRead(t *testing.T) {
 			}
 
 			switch proto {
-			case "udp":
+			case "udp", "multicast":
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 
@@ -307,7 +334,7 @@ func TestServerRead(t *testing.T) {
 				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
-			err := s.Start("localhost:8554")
+			err = s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -325,20 +352,27 @@ func TestServerRead(t *testing.T) {
 			<-connOpened
 
 			inTH := &headers.Transport{
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
-					return &v
-				}(),
 				Mode: func() *headers.TransportMode {
 					v := headers.TransportModePlay
 					return &v
 				}(),
 			}
 
-			if proto == "udp" {
+			switch proto {
+			case "udp":
+				v := base.StreamDeliveryUnicast
+				inTH.Delivery = &v
 				inTH.Protocol = base.StreamProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
-			} else {
+
+			case "multicast":
+				v := base.StreamDeliveryMulticast
+				inTH.Delivery = &v
+				inTH.Protocol = base.StreamProtocolUDP
+
+			default:
+				v := base.StreamDeliveryUnicast
+				inTH.Delivery = &v
 				inTH.Protocol = base.StreamProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
@@ -363,7 +397,8 @@ func TestServerRead(t *testing.T) {
 
 			var l1 net.PacketConn
 			var l2 net.PacketConn
-			if proto == "udp" {
+			switch proto {
+			case "udp":
 				l1, err = net.ListenPacket("udp", "localhost:35466")
 				require.NoError(t, err)
 				defer l1.Close()
@@ -371,6 +406,35 @@ func TestServerRead(t *testing.T) {
 				l2, err = net.ListenPacket("udp", "localhost:35467")
 				require.NoError(t, err)
 				defer l2.Close()
+
+			case "multicast":
+				l1, err = net.ListenPacket("udp4", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
+				require.NoError(t, err)
+				defer l1.Close()
+
+				p := ipv4.NewPacketConn(l1)
+
+				intfs, err := net.Interfaces()
+				require.NoError(t, err)
+
+				for _, intf := range intfs {
+					err := p.JoinGroup(&intf, &net.UDPAddr{IP: multicastIP})
+					require.NoError(t, err)
+				}
+
+				l2, err = net.ListenPacket("udp4", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[1]), 10))
+				require.NoError(t, err)
+				defer l2.Close()
+
+				p = ipv4.NewPacketConn(l2)
+
+				intfs, err = net.Interfaces()
+				require.NoError(t, err)
+
+				for _, intf := range intfs {
+					err := p.JoinGroup(&intf, &net.UDPAddr{IP: multicastIP})
+					require.NoError(t, err)
+				}
 			}
 
 			res, err = writeReqReadRes(bconn, base.Request{
@@ -385,17 +449,23 @@ func TestServerRead(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			// server -> client
-			if proto == "udp" {
+			if proto == "udp" || proto == "multicast" {
 				buf := make([]byte, 2048)
 				n, _, err := l1.ReadFrom(buf)
 				require.NoError(t, err)
 				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, buf[:n])
 
 				buf = make([]byte, 2048)
+
+				// skip firewall opening
+				if proto == "udp" {
+					_, _, err = l2.ReadFrom(buf)
+					require.NoError(t, err)
+				}
+
 				n, _, err = l2.ReadFrom(buf)
 				require.NoError(t, err)
 				require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, buf[:n])
-
 			} else {
 				var f base.InterleavedFrame
 				f.Payload = make([]byte, 2048)
@@ -414,23 +484,29 @@ func TestServerRead(t *testing.T) {
 			}
 
 			// client -> server (RTCP)
-			if proto == "udp" {
+			switch proto {
+			case "udp":
 				l2.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[1],
 				})
-			} else {
+				<-framesReceived
+
+			case "multicast":
+				// sending RTCP with multicast is currently not supported
+				// since the source IP cannot be verified correctly
+
+			default:
 				err = base.InterleavedFrame{
 					TrackID:    0,
 					StreamType: StreamTypeRTCP,
 					Payload:    []byte{0x01, 0x02, 0x03, 0x04},
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
+				<-framesReceived
 			}
 
-			<-framesReceived
-
-			if proto == "udp" {
+			if proto == "udp" || proto == "multicast" {
 				// ping with OPTIONS
 				res, err = writeReqReadRes(bconn, base.Request{
 					Method: base.Options,
@@ -479,22 +555,27 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
 					defer close(writerDone)
 
-					ctx.Session.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+					stream.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
 
 					t := time.NewTicker(50 * time.Millisecond)
 					defer t.Stop()
@@ -502,7 +583,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 					for {
 						select {
 						case <-t.C:
-							ctx.Session.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+							stream.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
 						case <-writerTerminate:
 							return
 						}
@@ -518,7 +599,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -567,12 +648,17 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 }
 
 func TestServerReadPlayPlay(t *testing.T) {
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
@@ -584,7 +670,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 		UDPRTCPAddress: "127.0.0.1:8001",
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -643,16 +729,21 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				if !writerStarted {
@@ -666,7 +757,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 						for {
 							select {
 							case <-t.C:
-								ctx.Session.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+								stream.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
 							case <-writerTerminate:
 								return
 							}
@@ -686,7 +777,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -755,16 +846,21 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
@@ -776,7 +872,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 					for {
 						select {
 						case <-t.C:
-							ctx.Session.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+							stream.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
 						case <-writerTerminate:
 							return
 						}
@@ -795,7 +891,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -874,6 +970,11 @@ func TestServerReadTimeout(t *testing.T) {
 		t.Run(proto, func(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			require.NoError(t, err)
+
+			stream := NewServerStream(Tracks{track})
+
 			s := &Server{
 				Handler: &testServerHandler{
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
@@ -884,10 +985,10 @@ func TestServerReadTimeout(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil, nil
+						}, stream, nil, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
@@ -902,7 +1003,7 @@ func TestServerReadTimeout(t *testing.T) {
 			s.UDPRTPAddress = "127.0.0.1:8000"
 			s.UDPRTCPAddress = "127.0.0.1:8001"
 
-			err := s.Start("localhost:8554")
+			err = s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -961,6 +1062,11 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			connClosed := make(chan struct{})
 			sessionClosed := make(chan struct{})
 
+			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			require.NoError(t, err)
+
+			stream := NewServerStream(Tracks{track})
+
 			s := &Server{
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
@@ -974,10 +1080,10 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil, nil
+						}, stream, nil, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
@@ -994,7 +1100,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
 
-			err := s.Start("localhost:8554")
+			err = s.Start("localhost:8554")
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -1053,12 +1159,17 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 }
 
 func TestServerReadUDPChangeConn(t *testing.T) {
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
@@ -1077,7 +1188,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		UDPRTCPAddress: "127.0.0.1:8001",
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1146,19 +1257,25 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 }
 
 func TestServerReadNonSetuppedPath(t *testing.T) {
+	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
 					time.Sleep(1 * time.Second)
-					ctx.Session.WriteFrame(1, base.StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
-					ctx.Session.WriteFrame(0, base.StreamTypeRTP, []byte{0x05, 0x06, 0x07, 0x08})
+					stream.WriteFrame(1, base.StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
+					stream.WriteFrame(0, base.StreamTypeRTP, []byte{0x05, 0x06, 0x07, 0x08})
 				}()
+
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -1166,7 +1283,7 @@ func TestServerReadNonSetuppedPath(t *testing.T) {
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err = s.Start("localhost:8554")
 	require.NoError(t, err)
 	defer s.Close()
 

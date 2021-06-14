@@ -336,21 +336,21 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 			path, query := base.PathSplitQuery(pathAndQuery)
 
-			res, sdp, err := h.OnDescribe(&ServerHandlerOnDescribeCtx{
+			res, stream, err := h.OnDescribe(&ServerHandlerOnDescribeCtx{
 				Conn:  sc,
 				Req:   req,
 				Path:  path,
 				Query: query,
 			})
 
-			if res.StatusCode == base.StatusOK && sdp != nil {
+			if res.StatusCode == base.StatusOK {
 				if res.Header == nil {
 					res.Header = make(base.Header)
 				}
 
 				res.Header["Content-Base"] = base.HeaderValue{req.URL.String() + "/"}
 				res.Header["Content-Type"] = base.HeaderValue{"application/sdp"}
-				res.Body = sdp
+				res.Body = stream.Tracks().Write()
 			}
 
 			return res, err

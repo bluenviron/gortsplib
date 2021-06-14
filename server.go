@@ -126,11 +126,14 @@ type Server struct {
 	sessions        map[string]*ServerSession
 	conns           map[*ServerConn]struct{}
 	exitError       error
+	streams         map[*ServerStream]struct{}
 
 	// in
 	connClose      chan *ServerConn
 	sessionRequest chan request
 	sessionClose   chan *ServerSession
+	streamAdd      chan *ServerStream
+	streamRemove   chan *ServerStream
 }
 
 // Start starts listening on the given address.
@@ -195,12 +198,12 @@ func (s *Server) Start(address string) error {
 			return fmt.Errorf("RTCP and RTP ports must be consecutive")
 		}
 
-		s.udpRTPListener, err = newServerUDPListener(s, s.UDPRTPAddress, StreamTypeRTP)
+		s.udpRTPListener, err = newServerUDPListener(s, false, s.UDPRTPAddress, StreamTypeRTP)
 		if err != nil {
 			return err
 		}
 
-		s.udpRTCPListener, err = newServerUDPListener(s, s.UDPRTCPAddress, StreamTypeRTCP)
+		s.udpRTCPListener, err = newServerUDPListener(s, false, s.UDPRTCPAddress, StreamTypeRTCP)
 		if err != nil {
 			s.udpRTPListener.close()
 			return err
@@ -241,9 +244,12 @@ func (s *Server) run() {
 
 	s.sessions = make(map[string]*ServerSession)
 	s.conns = make(map[*ServerConn]struct{})
+	s.streams = make(map[*ServerStream]struct{})
 	s.connClose = make(chan *ServerConn)
 	s.sessionRequest = make(chan request)
 	s.sessionClose = make(chan *ServerSession)
+	s.streamAdd = make(chan *ServerStream)
+	s.streamRemove = make(chan *ServerStream)
 
 	s.wg.Add(1)
 	connNew := make(chan net.Conn)
@@ -336,6 +342,12 @@ outer:
 			delete(s.sessions, ss.id)
 			ss.Close()
 
+		case st := <-s.streamAdd:
+			s.streams[st] = struct{}{}
+
+		case st := <-s.streamRemove:
+			delete(s.streams, st)
+
 		case <-s.ctx.Done():
 			break outer
 		}
@@ -352,6 +364,10 @@ outer:
 	}
 
 	s.tcpListener.Close()
+
+	for st := range s.streams {
+		st.Close()
+	}
 }
 
 // StartAndWait starts the server and waits until a fatal error.

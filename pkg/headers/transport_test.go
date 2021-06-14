@@ -48,7 +48,7 @@ var casesTransport = []struct {
 	{
 		"udp multicast play request / response",
 		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
-		base.HeaderValue{`RTP/AVP;multicast`},
+		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
 		Transport{
 			Protocol: base.StreamProtocolUDP,
 			Delivery: func() *base.StreamDelivery {

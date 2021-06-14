@@ -71,11 +71,12 @@ type ServerHandlerOnDescribeCtx struct {
 
 // ServerHandlerOnDescribe can be implemented by a ServerHandler.
 type ServerHandlerOnDescribe interface {
-	OnDescribe(*ServerHandlerOnDescribeCtx) (*base.Response, []byte, error)
+	OnDescribe(*ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error)
 }
 
 // ServerHandlerOnAnnounceCtx is the context of an ANNOUNCE request.
 type ServerHandlerOnAnnounceCtx struct {
+	Server  *Server
 	Session *ServerSession
 	Conn    *ServerConn
 	Req     *base.Request
@@ -91,6 +92,7 @@ type ServerHandlerOnAnnounce interface {
 
 // ServerHandlerOnSetupCtx is the context of a OPTIONS request.
 type ServerHandlerOnSetupCtx struct {
+	Server    *Server
 	Session   *ServerSession
 	Conn      *ServerConn
 	Req       *base.Request
@@ -104,7 +106,7 @@ type ServerHandlerOnSetupCtx struct {
 type ServerHandlerOnSetup interface {
 	// returns a Response and an optional SSRC that is
 	// inserted into the Transport header.
-	OnSetup(*ServerHandlerOnSetupCtx) (*base.Response, *uint32, error)
+	OnSetup(*ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error)
 }
 
 // ServerHandlerOnPlayCtx is the context of a PLAY request.
