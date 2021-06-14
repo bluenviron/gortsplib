@@ -2,10 +2,14 @@ package gortsplib
 
 import (
 	"context"
+	"math/rand"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/net/ipv4"
 
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
@@ -14,6 +18,8 @@ import (
 const (
 	serverConnUDPListenerKernelReadBufferSize = 0x80000 // same as gstreamer's rtspsrc
 )
+
+var multicastIP = net.ParseIP("239.0.0.0")
 
 type bufAddrPair struct {
 	buf  []byte
@@ -57,17 +63,76 @@ type serverUDPListener struct {
 	ringBuffer   *ringbuffer.RingBuffer
 }
 
+func newServerUDPListenerMulticastPair(s *Server) (*serverUDPListener, *serverUDPListener) {
+	// choose two consecutive ports in range 65535-10000
+	// rtp must be even and rtcp odd
+	for {
+		rtpPort := (rand.Intn((65535-10000)/2) * 2) + 10000
+		rtpListener, err := newServerUDPListener(s, true, multicastIP.String()+":"+strconv.FormatInt(int64(rtpPort), 10), StreamTypeRTP)
+		if err != nil {
+			continue
+		}
+
+		rtcpPort := rtpPort + 1
+		rtcpListener, err := newServerUDPListener(s, true, multicastIP.String()+":"+strconv.FormatInt(int64(rtcpPort), 10), StreamTypeRTCP)
+		if err != nil {
+			rtpListener.close()
+			continue
+		}
+
+		return rtpListener, rtcpListener
+	}
+}
+
 func newServerUDPListener(
 	s *Server,
+	multicast bool,
 	address string,
 	streamType StreamType) (*serverUDPListener, error) {
-	tmp, err := s.ListenPacket("udp", address)
-	if err != nil {
-		return nil, err
-	}
-	pc := tmp.(*net.UDPConn)
+	var pc *net.UDPConn
+	if multicast {
+		addr, err := net.ResolveUDPAddr("udp4", address)
+		if err != nil {
+			return nil, err
+		}
 
-	err = pc.SetReadBuffer(serverConnUDPListenerKernelReadBufferSize)
+		tmp, err := net.ListenPacket("udp4", (&net.UDPAddr{
+			IP:   net.ParseIP("224.0.0.0"),
+			Port: addr.Port,
+		}).String())
+		if err != nil {
+			return nil, err
+		}
+
+		p := ipv4.NewPacketConn(tmp)
+
+		err = p.SetTTL(127)
+		if err != nil {
+			return nil, err
+		}
+
+		intfs, err := net.Interfaces()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, intf := range intfs {
+			err := p.JoinGroup(&intf, &net.UDPAddr{IP: addr.IP})
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		pc = tmp.(*net.UDPConn)
+	} else {
+		tmp, err := s.ListenPacket("udp", address)
+		if err != nil {
+			return nil, err
+		}
+		pc = tmp.(*net.UDPConn)
+	}
+
+	err := pc.SetReadBuffer(serverConnUDPListenerKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}

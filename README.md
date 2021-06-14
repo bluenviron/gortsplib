@@ -30,7 +30,7 @@ Features:
   * Handle requests from clients
   * Sessions and connections are independent
   * Read streams from clients with UDP, TCP or TLS/RTSPS
-  * Write streams to clients with UDP, TCP or TLS/RTSPS
+  * Write streams to clients with UDP, UDP-multicast, TCP or TLS/RTSPS
   * Generate RTCP receiver reports automatically
 * Utilities
   * Encode and decode RTSP primitives, RTP/H264, RTP/AAC, SDP

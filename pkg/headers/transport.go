@@ -230,19 +230,31 @@ func (h Transport) Write() base.HeaderValue {
 		}
 	}
 
+	if h.Destination != nil {
+		rets = append(rets, "destination="+*h.Destination)
+	}
+
 	if h.InterleavedIDs != nil {
-		ports := *h.InterleavedIDs
-		rets = append(rets, "interleaved="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
+		rets = append(rets, "interleaved="+strconv.FormatInt(int64(h.InterleavedIDs[0]), 10)+"-"+strconv.FormatInt(int64(h.InterleavedIDs[1]), 10))
+	}
+
+	if h.Ports != nil {
+		rets = append(rets, "port="+strconv.FormatInt(int64(h.Ports[0]), 10)+
+			"-"+strconv.FormatInt(int64(h.Ports[1]), 10))
+	}
+
+	if h.TTL != nil {
+		rets = append(rets, "ttl="+strconv.FormatUint(uint64(*h.TTL), 10))
 	}
 
 	if h.ClientPorts != nil {
-		ports := *h.ClientPorts
-		rets = append(rets, "client_port="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
+		rets = append(rets, "client_port="+strconv.FormatInt(int64(h.ClientPorts[0]), 10)+
+			"-"+strconv.FormatInt(int64(h.ClientPorts[1]), 10))
 	}
 
 	if h.ServerPorts != nil {
-		ports := *h.ServerPorts
-		rets = append(rets, "server_port="+strconv.FormatInt(int64(ports[0]), 10)+"-"+strconv.FormatInt(int64(ports[1]), 10))
+		rets = append(rets, "server_port="+strconv.FormatInt(int64(h.ServerPorts[0]), 10)+
+			"-"+strconv.FormatInt(int64(h.ServerPorts[1]), 10))
 	}
 
 	if h.SSRC != nil {

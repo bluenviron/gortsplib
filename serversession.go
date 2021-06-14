@@ -23,7 +23,7 @@ func setupGetTrackIDPathQuery(
 	url *base.URL,
 	thMode *headers.TransportMode,
 	announcedTracks []ServerSessionAnnouncedTrack,
-	setupPath *string, setupQuery *string) (int, string, string, error) {
+	setuppedPath *string, setuppedQuery *string) (int, string, string, error) {
 	pathAndQuery, ok := url.RTSPPathAndQuery()
 	if !ok {
 		return 0, "", "", liberrors.ErrServerInvalidPath{}
@@ -54,7 +54,7 @@ func setupGetTrackIDPathQuery(
 
 		path, query := base.PathSplitQuery(pathAndQuery)
 
-		if setupPath != nil && (path != *setupPath || query != *setupQuery) {
+		if setuppedPath != nil && (path != *setuppedPath || query != *setuppedQuery) {
 			return 0, "", "", fmt.Errorf("can't setup tracks with different paths")
 		}
 
@@ -64,7 +64,7 @@ func setupGetTrackIDPathQuery(
 	for trackID, track := range announcedTracks {
 		u, _ := track.track.URL()
 		if u.String() == url.String() {
-			return trackID, *setupPath, *setupQuery, nil
+			return trackID, *setuppedPath, *setuppedQuery, nil
 		}
 	}
 
@@ -123,9 +123,11 @@ type ServerSession struct {
 	conns            map[*ServerConn]struct{}
 	state            ServerSessionState
 	setuppedTracks   map[int]ServerSessionSetuppedTrack
-	setupProtocol    *base.StreamProtocol
-	setupPath        *string
-	setupQuery       *string
+	setuppedProtocol *base.StreamProtocol
+	setuppedDelivery *base.StreamDelivery
+	setuppedStream   *ServerStream // read
+	setuppedPath     *string
+	setuppedQuery    *string
 	lastRequestTime  time.Time
 	tcpConn          *ServerConn                   // tcp
 	udpIP            net.IP                        // udp
@@ -179,14 +181,19 @@ func (ss *ServerSession) State() ServerSessionState {
 	return ss.state
 }
 
-// StreamProtocol returns the stream protocol of the setupped tracks.
-func (ss *ServerSession) StreamProtocol() *base.StreamProtocol {
-	return ss.setupProtocol
-}
-
 // SetuppedTracks returns the setupped tracks.
 func (ss *ServerSession) SetuppedTracks() map[int]ServerSessionSetuppedTrack {
 	return ss.setuppedTracks
+}
+
+// SetuppedProtocol returns the stream protocol of the setupped tracks.
+func (ss *ServerSession) SetuppedProtocol() *base.StreamProtocol {
+	return ss.setuppedProtocol
+}
+
+// SetuppedDelivery returns the delivery method of the setupped tracks.
+func (ss *ServerSession) SetuppedDelivery() *base.StreamDelivery {
+	return ss.setuppedDelivery
 }
 
 // AnnouncedTracks returns the announced tracks.
@@ -268,7 +275,7 @@ func (ss *ServerSession) run() {
 				// if session is not in state RECORD or PLAY, or protocol is TCP
 				if (ss.state != ServerSessionStateRecord &&
 					ss.state != ServerSessionStatePlay) ||
-					*ss.setupProtocol == base.StreamProtocolTCP {
+					*ss.setuppedProtocol == base.StreamProtocolTCP {
 
 					// close if there are no active connections
 					if len(ss.conns) == 0 {
@@ -279,7 +286,7 @@ func (ss *ServerSession) run() {
 			case <-checkTimeoutTicker.C:
 				switch {
 				// in case of RECORD and UDP, timeout happens when no frames are being received
-				case ss.state == ServerSessionStateRecord && *ss.setupProtocol == base.StreamProtocolUDP:
+				case ss.state == ServerSessionStateRecord && *ss.setuppedProtocol == base.StreamProtocolUDP:
 					now := time.Now()
 					lft := atomic.LoadInt64(ss.udpLastFrameTime)
 					if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
@@ -287,7 +294,7 @@ func (ss *ServerSession) run() {
 					}
 
 					// in case of PLAY and UDP, timeout happens when no request arrives
-				case ss.state == ServerSessionStatePlay && *ss.setupProtocol == base.StreamProtocolUDP:
+				case ss.state == ServerSessionStatePlay && *ss.setuppedProtocol == base.StreamProtocolUDP:
 					now := time.Now()
 					if now.Sub(ss.lastRequestTime) >= ss.s.closeSessionAfterNoRequestsFor {
 						return liberrors.ErrServerSessionTimedOut{}
@@ -317,15 +324,21 @@ func (ss *ServerSession) run() {
 
 	switch ss.state {
 	case ServerSessionStatePlay:
-		if *ss.setupProtocol == base.StreamProtocolUDP {
+		ss.setuppedStream.readerSetInactive(ss)
+
+		if *ss.setuppedProtocol == base.StreamProtocolUDP {
 			ss.s.udpRTCPListener.removeClient(ss)
 		}
 
 	case ServerSessionStateRecord:
-		if *ss.setupProtocol == base.StreamProtocolUDP {
+		if *ss.setuppedProtocol == base.StreamProtocolUDP {
 			ss.s.udpRTPListener.removeClient(ss)
 			ss.s.udpRTCPListener.removeClient(ss)
 		}
+	}
+
+	if ss.setuppedStream != nil {
+		ss.setuppedStream.readerRemove(ss)
 	}
 
 	for sc := range ss.conns {
@@ -465,6 +478,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		res, err := ss.s.Handler.(ServerHandlerOnAnnounce).OnAnnounce(&ServerHandlerOnAnnounceCtx{
+			Server:  ss.s,
 			Session: ss,
 			Conn:    sc,
 			Req:     req,
@@ -475,8 +489,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		if res.StatusCode == base.StatusOK {
 			ss.state = ServerSessionStatePreRecord
-			ss.setupPath = &path
-			ss.setupQuery = &query
+			ss.setuppedPath = &path
+			ss.setuppedQuery = &query
 
 			ss.announcedTracks = make([]ServerSessionAnnouncedTrack, len(tracks))
 			for trackID, track := range tracks {
@@ -513,14 +527,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerTransportHeaderInvalid{Err: err}
 		}
 
-		if inTH.Delivery != nil && *inTH.Delivery == base.StreamDeliveryMulticast {
-			return &base.Response{
-				StatusCode: base.StatusUnsupportedTransport,
-			}, nil
-		}
-
 		trackID, path, query, err := setupGetTrackIDPathQuery(req.URL, inTH.Mode,
-			ss.announcedTracks, ss.setupPath, ss.setupQuery)
+			ss.announcedTracks, ss.setuppedPath, ss.setuppedQuery)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -533,6 +541,13 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerTrackAlreadySetup{TrackID: trackID}
 		}
 
+		delivery := func() base.StreamDelivery {
+			if inTH.Delivery != nil {
+				return *inTH.Delivery
+			}
+			return base.StreamDeliveryUnicast
+		}()
+
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
 			if inTH.Mode != nil && *inTH.Mode != headers.TransportModePlay {
@@ -542,6 +557,12 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}
 
 		default: // record
+			if delivery == base.StreamDeliveryMulticast {
+				return &base.Response{
+					StatusCode: base.StatusUnsupportedTransport,
+				}, nil
+			}
+
 			if inTH.Mode == nil || *inTH.Mode != headers.TransportModeRecord {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -556,13 +577,19 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}, nil
 			}
 
-			if inTH.ClientPorts == nil {
+			if delivery == base.StreamDeliveryUnicast && inTH.ClientPorts == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerTransportHeaderNoClientPorts{}
 			}
 
 		} else {
+			if delivery == base.StreamDeliveryMulticast {
+				return &base.Response{
+					StatusCode: base.StatusUnsupportedTransport,
+				}, nil
+			}
+
 			if inTH.InterleavedIDs == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -579,13 +606,15 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}
 		}
 
-		if ss.setupProtocol != nil && *ss.setupProtocol != inTH.Protocol {
+		if ss.setuppedProtocol != nil &&
+			(*ss.setuppedProtocol != inTH.Protocol || *ss.setuppedDelivery != delivery) {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerTracksDifferentProtocols{}
 		}
 
-		res, ssrc, err := ss.s.Handler.(ServerHandlerOnSetup).OnSetup(&ServerHandlerOnSetupCtx{
+		res, stream, ssrc, err := ss.s.Handler.(ServerHandlerOnSetup).OnSetup(&ServerHandlerOnSetupCtx{
+			Server:    ss.s,
 			Session:   ss,
 			Conn:      sc,
 			Req:       req,
@@ -596,7 +625,16 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode == base.StatusOK {
-			ss.setupProtocol = &inTH.Protocol
+			if ss.state == ServerSessionStateInitial {
+				ss.state = ServerSessionStatePrePlay
+				ss.setuppedPath = &path
+				ss.setuppedQuery = &query
+				ss.setuppedStream = stream
+				stream.readerAdd(ss, delivery == base.StreamDeliveryMulticast)
+			}
+
+			ss.setuppedProtocol = &inTH.Protocol
+			ss.setuppedDelivery = &delivery
 
 			if ss.setuppedTracks == nil {
 				ss.setuppedTracks = make(map[int]ServerSessionSetuppedTrack)
@@ -606,27 +644,42 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				res.Header = make(base.Header)
 			}
 
-			th := headers.Transport{
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
-					return &v
-				}(),
-			}
+			th := headers.Transport{}
 
-			if inTH.Protocol == base.StreamProtocolUDP {
+			switch {
+			case delivery == base.StreamDeliveryMulticast:
+				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{}
+
+				th.Protocol = base.StreamProtocolUDP
+				de := base.StreamDeliveryMulticast
+				th.Delivery = &de
+				v := uint(127)
+				th.TTL = &v
+				d := multicastIP.String()
+				th.Destination = &d
+				th.Ports = &[2]int{
+					stream.multicastListeners[trackID].rtpListener.port(),
+					stream.multicastListeners[trackID].rtcpListener.port(),
+				}
+
+			case inTH.Protocol == base.StreamProtocolUDP:
 				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{
 					udpRTPPort:  inTH.ClientPorts[0],
 					udpRTCPPort: inTH.ClientPorts[1],
 				}
 
 				th.Protocol = base.StreamProtocolUDP
+				de := base.StreamDeliveryUnicast
+				th.Delivery = &de
 				th.ClientPorts = inTH.ClientPorts
 				th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
 
-			} else {
+			default: // TCP
 				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{}
 
 				th.Protocol = base.StreamProtocolTCP
+				de := base.StreamDeliveryUnicast
+				th.Delivery = &de
 				th.InterleavedIDs = inTH.InterleavedIDs
 			}
 
@@ -635,12 +688,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}
 
 			res.Header["Transport"] = th.Write()
-		}
-
-		if ss.state == ServerSessionStateInitial {
-			ss.state = ServerSessionStatePrePlay
-			ss.setupPath = &path
-			ss.setupQuery = &query
 		}
 
 		// workaround to prevent a bug in rtspclientsink
@@ -684,16 +731,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		path, query := base.PathSplitQuery(pathAndQuery)
 
-		// allow to use WriteFrame() before response
-		if ss.state != ServerSessionStatePlay {
-			if *ss.setupProtocol == base.StreamProtocolUDP {
-				ss.udpIP = sc.ip()
-				ss.udpZone = sc.zone()
-			} else {
-				ss.tcpConn = sc
-			}
-		}
-
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{
 			Session: ss,
 			Conn:    sc,
@@ -706,7 +743,17 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if res.StatusCode == base.StatusOK {
 				ss.state = ServerSessionStatePlay
 
-				if *ss.setupProtocol == base.StreamProtocolUDP {
+				if *ss.setuppedProtocol == base.StreamProtocolUDP {
+					ss.udpIP = sc.ip()
+					ss.udpZone = sc.zone()
+				} else {
+					ss.tcpConn = sc
+				}
+
+				ss.setuppedStream.readerSetActive(ss)
+
+				if *ss.setuppedProtocol == base.StreamProtocolUDP &&
+					*ss.setuppedDelivery == base.StreamDeliveryUnicast {
 					// readers can send RTCP frames, they cannot sent RTP frames
 					for trackID, track := range ss.setuppedTracks {
 						sc.s.udpRTCPListener.addClient(ss.udpIP, track.udpRTCPPort, ss, trackID, false)
@@ -721,10 +768,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 				return res, liberrors.ErrServerTCPFramesEnable{}
 			}
-
-			ss.udpIP = nil
-			ss.udpZone = ""
-			ss.tcpConn = nil
 		}
 
 		return res, err
@@ -758,7 +801,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		path, query := base.PathSplitQuery(pathAndQuery)
 
 		// allow to use WriteFrame() before response
-		if *ss.setupProtocol == base.StreamProtocolUDP {
+		if *ss.setuppedProtocol == base.StreamProtocolUDP {
 			ss.udpIP = sc.ip()
 			ss.udpZone = sc.zone()
 		} else {
@@ -776,7 +819,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		if res.StatusCode == base.StatusOK {
 			ss.state = ServerSessionStateRecord
 
-			if *ss.setupProtocol == base.StreamProtocolUDP {
+			if *ss.setuppedProtocol == base.StreamProtocolUDP {
 				for trackID, track := range ss.setuppedTracks {
 					ss.s.udpRTPListener.addClient(ss.udpIP, track.udpRTPPort, ss, trackID, true)
 					ss.s.udpRTCPListener.addClient(ss.udpIP, track.udpRTCPPort, ss, trackID, true)
@@ -836,12 +879,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		if res.StatusCode == base.StatusOK {
 			switch ss.state {
 			case ServerSessionStatePlay:
+				ss.setuppedStream.readerSetInactive(ss)
+
 				ss.state = ServerSessionStatePrePlay
 				ss.udpIP = nil
 				ss.udpZone = ""
 				ss.tcpConn = nil
 
-				if *ss.setupProtocol == base.StreamProtocolUDP {
+				if *ss.setuppedProtocol == base.StreamProtocolUDP {
 					ss.s.udpRTCPListener.removeClient(ss)
 				} else {
 					return res, liberrors.ErrServerTCPFramesDisable{}
@@ -853,7 +898,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.udpZone = ""
 				ss.tcpConn = nil
 
-				if *ss.setupProtocol == base.StreamProtocolUDP {
+				if *ss.setuppedProtocol == base.StreamProtocolUDP {
 					ss.s.udpRTPListener.removeClient(ss)
 				} else {
 					return res, liberrors.ErrServerTCPFramesDisable{}
@@ -904,27 +949,29 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 	}, liberrors.ErrServerUnhandledRequest{Req: req}
 }
 
-// WriteFrame writes a frame.
+// WriteFrame writes a frame to the session.
 func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload []byte) {
 	if _, ok := ss.SetuppedTracks()[trackID]; !ok {
 		return
 	}
 
-	if *ss.setupProtocol == base.StreamProtocolUDP {
-		track := ss.setuppedTracks[trackID]
+	if *ss.setuppedProtocol == base.StreamProtocolUDP {
+		if *ss.setuppedDelivery == base.StreamDeliveryUnicast {
+			track := ss.setuppedTracks[trackID]
 
-		if streamType == StreamTypeRTP {
-			ss.s.udpRTPListener.write(payload, &net.UDPAddr{
-				IP:   ss.udpIP,
-				Zone: ss.udpZone,
-				Port: track.udpRTPPort,
-			})
-		} else {
-			ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
-				IP:   ss.udpIP,
-				Zone: ss.udpZone,
-				Port: track.udpRTCPPort,
-			})
+			if streamType == StreamTypeRTP {
+				ss.s.udpRTPListener.write(payload, &net.UDPAddr{
+					IP:   ss.udpIP,
+					Zone: ss.udpZone,
+					Port: track.udpRTPPort,
+				})
+			} else {
+				ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
+					IP:   ss.udpIP,
+					Zone: ss.udpZone,
+					Port: track.udpRTCPPort,
+				})
+			}
 		}
 	} else {
 		ss.tcpConn.tcpFrameWriteBuffer.Push(&base.InterleavedFrame{
