@@ -1144,3 +1144,77 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		require.Equal(t, base.StatusOK, res.StatusCode)
 	}()
 }
+
+func TestServerReadNonSetuppedPath(t *testing.T) {
+	s := &Server{
+		Handler: &testServerHandler{
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *uint32, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				go func() {
+					time.Sleep(1 * time.Second)
+					ctx.Session.WriteFrame(1, base.StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
+					ctx.Session.WriteFrame(0, base.StreamTypeRTP, []byte{0x05, 0x06, 0x07, 0x08})
+				}()
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start("localhost:8554")
+	require.NoError(t, err)
+	defer s.Close()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	inTH := &headers.Transport{
+		Delivery: func() *base.StreamDelivery {
+			v := base.StreamDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModePlay
+			return &v
+		}(),
+		Protocol:       base.StreamProtocolTCP,
+		InterleavedIDs: &[2]int{0, 1},
+	}
+
+	res, err := writeReqReadRes(bconn, base.Request{
+		Method: base.Setup,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq":      base.HeaderValue{"1"},
+			"Transport": inTH.Write(),
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	res, err = writeReqReadRes(bconn, base.Request{
+		Method: base.Play,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	var f base.InterleavedFrame
+	f.Payload = make([]byte, 2048)
+	err = f.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, 0, f.TrackID)
+	require.Equal(t, StreamTypeRTP, f.StreamType)
+	require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
+}

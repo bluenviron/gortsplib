@@ -906,6 +906,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 // WriteFrame writes a frame.
 func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload []byte) {
+	if _, ok := ss.SetuppedTracks()[trackID]; !ok {
+		return
+	}
+
 	if *ss.setupProtocol == base.StreamProtocolUDP {
 		track := ss.setuppedTracks[trackID]
 
