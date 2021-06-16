@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"math/rand"
 	"net"
 	"sort"
 	"strconv"
@@ -1207,47 +1206,25 @@ func (cc *ClientConn) doSetup(
 		}
 
 		var err error
-		rtpListener, rtcpListener, err = func() (*clientConnUDPListener, *clientConnUDPListener, error) {
-			if rtpPort != 0 {
-				rtpListener, err := newClientConnUDPListener(cc, rtpPort)
-				if err != nil {
-					return nil, nil, err
-				}
-
-				rtcpListener, err := newClientConnUDPListener(cc, rtcpPort)
-				if err != nil {
-					rtpListener.close()
-					return nil, nil, err
-				}
-
-				return rtpListener, rtcpListener, nil
+		if rtpPort != 0 {
+			rtpListener, err = newClientConnUDPListener(cc, ":"+strconv.FormatInt(int64(rtpPort), 10))
+			if err != nil {
+				return nil, err
 			}
 
-			// choose two consecutive ports in range 65535-10000
-			// rtp must be even and rtcp odd
-			for {
-				rtpPort = (rand.Intn((65535-10000)/2) * 2) + 10000
-				rtcpPort = rtpPort + 1
-
-				rtpListener, err := newClientConnUDPListener(cc, rtpPort)
-				if err != nil {
-					continue
-				}
-
-				rtcpListener, err := newClientConnUDPListener(cc, rtcpPort)
-				if err != nil {
-					rtpListener.close()
-					continue
-				}
-
-				return rtpListener, rtcpListener, nil
+			rtcpListener, err = newClientConnUDPListener(cc, ":"+strconv.FormatInt(int64(rtcpPort), 10))
+			if err != nil {
+				rtpListener.close()
+				return nil, err
 			}
-		}()
-		if err != nil {
-			return nil, err
+		} else {
+			rtpListener, rtcpListener = newClientConnUDPListenerPair(cc)
 		}
 
-		th.ClientPorts = &[2]int{rtpPort, rtcpPort}
+		th.ClientPorts = &[2]int{
+			rtpListener.port(),
+			rtcpListener.port(),
+		}
 
 	} else {
 		th.InterleavedIDs = &[2]int{(track.ID * 2), (track.ID * 2) + 1}

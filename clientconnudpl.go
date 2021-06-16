@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"math/rand"
 	"net"
 	"strconv"
 	"sync"
@@ -31,8 +32,29 @@ type clientConnUDPListener struct {
 	done chan struct{}
 }
 
-func newClientConnUDPListener(cc *ClientConn, port int) (*clientConnUDPListener, error) {
-	pc, err := cc.c.ListenPacket("udp", ":"+strconv.FormatInt(int64(port), 10))
+func newClientConnUDPListenerPair(cc *ClientConn) (*clientConnUDPListener, *clientConnUDPListener) {
+	// choose two consecutive ports in range 65535-10000
+	// rtp must be even and rtcp odd
+	for {
+		rtpPort := (rand.Intn((65535-10000)/2) * 2) + 10000
+		rtpListener, err := newClientConnUDPListener(cc, ":"+strconv.FormatInt(int64(rtpPort), 10))
+		if err != nil {
+			continue
+		}
+
+		rtcpPort := rtpPort + 1
+		rtcpListener, err := newClientConnUDPListener(cc, ":"+strconv.FormatInt(int64(rtcpPort), 10))
+		if err != nil {
+			rtpListener.close()
+			continue
+		}
+
+		return rtpListener, rtcpListener
+	}
+}
+
+func newClientConnUDPListener(cc *ClientConn, address string) (*clientConnUDPListener, error) {
+	pc, err := cc.c.ListenPacket("udp", address)
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +80,10 @@ func (l *clientConnUDPListener) close() {
 		l.stop()
 	}
 	l.pc.Close()
+}
+
+func (l *clientConnUDPListener) port() int {
+	return l.pc.(*net.UDPConn).LocalAddr().(*net.UDPAddr).Port
 }
 
 func (l *clientConnUDPListener) start() {
