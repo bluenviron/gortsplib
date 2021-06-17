@@ -904,7 +904,7 @@ func TestServerPublish(t *testing.T) {
 	}
 }
 
-func TestServerPublishErrorWrongProtocol(t *testing.T) {
+func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {

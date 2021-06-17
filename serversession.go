@@ -212,7 +212,7 @@ func (ss *ServerSession) checkState(allowed map[ServerSessionState]struct{}) err
 		allowedList[i] = a
 		i++
 	}
-	return liberrors.ErrServerWrongState{AllowedList: allowedList, State: ss.state}
+	return liberrors.ErrServerInvalidState{AllowedList: allowedList, State: ss.state}
 }
 
 func (ss *ServerSession) run() {
@@ -553,7 +553,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if inTH.Mode != nil && *inTH.Mode != headers.TransportModePlay {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderWrongMode{Mode: inTH.Mode}
+				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: inTH.Mode}
 			}
 
 		default: // record
@@ -566,7 +566,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if inTH.Mode == nil || *inTH.Mode != headers.TransportModeRecord {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderWrongMode{Mode: inTH.Mode}
+				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: inTH.Mode}
 			}
 		}
 
@@ -600,7 +600,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				inTH.InterleavedIDs[1] != (1+trackID*2) {
 				return &base.Response{
 						StatusCode: base.StatusBadRequest,
-					}, liberrors.ErrServerTransportHeaderWrongInterleavedIDs{
+					}, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{
 						Expected: [2]int{(trackID * 2), (1 + trackID*2)}, Value: *inTH.InterleavedIDs,
 					}
 			}

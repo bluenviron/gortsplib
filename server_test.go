@@ -495,7 +495,7 @@ func TestServerClose(t *testing.T) {
 	s.Close()
 }
 
-func TestServerErrorWrongUDPPorts(t *testing.T) {
+func TestServerErrorInvalidUDPPorts(t *testing.T) {
 	t.Run("non consecutive", func(t *testing.T) {
 		s := &Server{
 			UDPRTPAddress:  "127.0.0.1:8006",

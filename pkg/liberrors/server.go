@@ -65,14 +65,14 @@ func (e ErrServerUnhandledRequest) Error() string {
 	return fmt.Sprintf("unhandled request (%v %v)", e.Req.Method, e.Req.URL)
 }
 
-// ErrServerWrongState is an error that can be returned by a server.
-type ErrServerWrongState struct {
+// ErrServerInvalidState is an error that can be returned by a server.
+type ErrServerInvalidState struct {
 	AllowedList []fmt.Stringer
 	State       fmt.Stringer
 }
 
 // Error implements the error interface.
-func (e ErrServerWrongState) Error() string {
+func (e ErrServerInvalidState) Error() string {
 	return fmt.Sprintf("must be in state %v, while is in state %v",
 		e.AllowedList, e.State)
 }
@@ -141,14 +141,14 @@ func (e ErrServerTrackAlreadySetup) Error() string {
 	return fmt.Sprintf("track %d has already been setup", e.TrackID)
 }
 
-// ErrServerTransportHeaderWrongMode is an error that can be returned by a server.
-type ErrServerTransportHeaderWrongMode struct {
+// ErrServerTransportHeaderInvalidMode is an error that can be returned by a server.
+type ErrServerTransportHeaderInvalidMode struct {
 	Mode *headers.TransportMode
 }
 
 // Error implements the error interface.
-func (e ErrServerTransportHeaderWrongMode) Error() string {
-	return fmt.Sprintf("transport header contains a wrong mode (%v)", e.Mode)
+func (e ErrServerTransportHeaderInvalidMode) Error() string {
+	return fmt.Sprintf("transport header contains a invalid mode (%v)", e.Mode)
 }
 
 // ErrServerTransportHeaderNoClientPorts is an error that can be returned by a server.
@@ -167,15 +167,15 @@ func (e ErrServerTransportHeaderNoInterleavedIDs) Error() string {
 	return "transport header does not contain interleaved IDs"
 }
 
-// ErrServerTransportHeaderWrongInterleavedIDs is an error that can be returned by a server.
-type ErrServerTransportHeaderWrongInterleavedIDs struct {
+// ErrServerTransportHeaderInvalidInterleavedIDs is an error that can be returned by a server.
+type ErrServerTransportHeaderInvalidInterleavedIDs struct {
 	Expected [2]int
 	Value    [2]int
 }
 
 // Error implements the error interface.
-func (e ErrServerTransportHeaderWrongInterleavedIDs) Error() string {
-	return fmt.Sprintf("wrong interleaved IDs, expected %v, got %v", e.Expected, e.Value)
+func (e ErrServerTransportHeaderInvalidInterleavedIDs) Error() string {
+	return fmt.Sprintf("invalid interleaved IDs, expected %v, got %v", e.Expected, e.Value)
 }
 
 // ErrServerTracksDifferentProtocols is an error that can be returned by a server.
