@@ -91,19 +91,19 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 }
 
 // called after receiving a SETUP request.
-func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, *uint32, error) {
+func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
 	// no one is publishing yet
 	if sh.stream == nil {
 		return &base.Response{
 			StatusCode: base.StatusNotFound,
-		}, nil, nil, nil
+		}, nil, nil
 	}
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
-	}, sh.stream, nil, nil
+	}, sh.stream, nil
 }
 
 // called after receiving a PLAY request.

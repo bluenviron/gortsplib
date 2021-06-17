@@ -301,12 +301,12 @@ func TestServerPublishSetupPath(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						require.Equal(t, ca.path, ctx.Path)
 						require.Equal(t, ca.trackID, ctx.TrackID)
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil, nil, nil
+						}, nil, nil
 					},
 				},
 			}
@@ -398,10 +398,10 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil, nil
+				}, nil, nil
 			},
 		},
 	}
@@ -480,10 +480,10 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil, nil
+				}, nil, nil
 			},
 		},
 	}
@@ -574,10 +574,10 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil, nil
+				}, nil, nil
 			},
 			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 				return &base.Response{
@@ -694,10 +694,10 @@ func TestServerPublish(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil, nil, nil
+						}, nil, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						return &base.Response{
@@ -912,10 +912,10 @@ func TestServerPublishErrorWrongProtocol(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil, nil
+				}, nil, nil
 			},
 			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 				return &base.Response{
@@ -1018,10 +1018,10 @@ func TestServerPublishRTCPReport(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil, nil
+				}, nil, nil
 			},
 			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 				return &base.Response{
@@ -1174,10 +1174,10 @@ func TestServerPublishTimeout(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil, nil, nil
+						}, nil, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						return &base.Response{
@@ -1302,10 +1302,10 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil, nil, nil
+						}, nil, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						return &base.Response{
@@ -1414,10 +1414,10 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil, nil
+				}, nil, nil
 			},
 			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 				return &base.Response{
