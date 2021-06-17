@@ -104,9 +104,11 @@ type ServerHandlerOnSetupCtx struct {
 
 // ServerHandlerOnSetup can be implemented by a ServerHandler.
 type ServerHandlerOnSetup interface {
-	// returns a Response and an optional SSRC that is
-	// inserted into the Transport header.
-	OnSetup(*ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error)
+	// must return a Response and a stream.
+	// the stream is needed to
+	// - add the session the the stream's readers
+	// - send the stream SSRC to the session
+	OnSetup(*ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error)
 }
 
 // ServerHandlerOnPlayCtx is the context of a PLAY request.

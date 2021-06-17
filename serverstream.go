@@ -1,8 +1,11 @@
 package gortsplib
 
 import (
+	"encoding/binary"
 	"net"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
 )
@@ -12,7 +15,18 @@ type listenerPair struct {
 	rtcpListener *serverUDPListener
 }
 
-// ServerStream is an entity that allows to send frames to multiple readers.
+type trackInfo struct {
+	lastSequenceNumber uint32
+	lastTimeRTP        uint32
+	lastTimeNTP        int64
+	lastSSRC           uint32
+}
+
+// ServerStream represents a single stream.
+// This is in charge of
+// - distributing the stream to each reader
+// - allocating multicast listeners
+// - gathering infos about the stream to generate SSRC and RTP-Info
 type ServerStream struct {
 	s      *Server
 	tracks Tracks
@@ -21,15 +35,23 @@ type ServerStream struct {
 	readersUnicast     map[*ServerSession]struct{}
 	readers            map[*ServerSession]struct{}
 	multicastListeners []*listenerPair
+	trackInfos         []*trackInfo
 }
 
 // NewServerStream allocates a ServerStream.
 func NewServerStream(tracks Tracks) *ServerStream {
-	return &ServerStream{
+	st := &ServerStream{
 		tracks:         tracks,
 		readersUnicast: make(map[*ServerSession]struct{}),
 		readers:        make(map[*ServerSession]struct{}),
 	}
+
+	st.trackInfos = make([]*trackInfo, len(tracks))
+	for i := range st.trackInfos {
+		st.trackInfos[i] = &trackInfo{}
+	}
+
+	return st
 }
 
 // Close closes a ServerStream.
@@ -65,15 +87,32 @@ func (st *ServerStream) Tracks() Tracks {
 	return st.tracks
 }
 
+func (st *ServerStream) ssrc(trackID int) uint32 {
+	return atomic.LoadUint32(&st.trackInfos[trackID].lastSSRC)
+}
+
+func (st *ServerStream) timestamp(trackID int) uint32 {
+	lastTimeRTP := atomic.LoadUint32(&st.trackInfos[trackID].lastTimeRTP)
+	lastTimeNTP := atomic.LoadInt64(&st.trackInfos[trackID].lastTimeNTP)
+	clockRate, _ := st.tracks[trackID].ClockRate()
+
+	if lastTimeRTP == 0 || lastTimeNTP == 0 {
+		return 0
+	}
+
+	return uint32(uint64(lastTimeRTP) +
+		uint64(time.Since(time.Unix(lastTimeNTP, 0)).Seconds()*float64(clockRate)))
+}
+
+func (st *ServerStream) lastSequenceNumber(trackID int) uint16 {
+	return uint16(atomic.LoadUint32(&st.trackInfos[trackID].lastSequenceNumber))
+}
+
 func (st *ServerStream) readerAdd(ss *ServerSession, isMulticast bool) {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
 	st.readers[ss] = struct{}{}
-
-	if !isMulticast {
-		return
-	}
 
 	if st.s == nil {
 		st.s = ss.s
@@ -83,7 +122,7 @@ func (st *ServerStream) readerAdd(ss *ServerSession, isMulticast bool) {
 		}
 	}
 
-	if st.multicastListeners != nil {
+	if !isMulticast || st.multicastListeners != nil {
 		return
 	}
 
@@ -132,6 +171,20 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 
 // WriteFrame writes a frame to all the readers of the stream.
 func (st *ServerStream) WriteFrame(trackID int, streamType StreamType, payload []byte) {
+	if streamType == StreamTypeRTP && len(payload) >= 8 {
+		track := st.trackInfos[trackID]
+
+		sequenceNumber := binary.BigEndian.Uint16(payload[2:4])
+		atomic.StoreUint32(&track.lastSequenceNumber, uint32(sequenceNumber))
+
+		timestamp := binary.BigEndian.Uint32(payload[4:8])
+		atomic.StoreUint32(&track.lastTimeRTP, timestamp)
+		atomic.StoreInt64(&track.lastTimeNTP, time.Now().Unix())
+
+		ssrc := binary.BigEndian.Uint32(payload[8:12])
+		atomic.StoreUint32(&track.lastSSRC, ssrc)
+	}
+
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 

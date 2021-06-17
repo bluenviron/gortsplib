@@ -44,7 +44,7 @@ type testServerHandler struct {
 	onSessionClose func(*ServerHandlerOnSessionCloseCtx)
 	onDescribe     func(*ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error)
 	onAnnounce     func(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
-	onSetup        func(*ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error)
+	onSetup        func(*ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error)
 	onPlay         func(*ServerHandlerOnPlayCtx) (*base.Response, error)
 	onRecord       func(*ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
@@ -91,11 +91,11 @@ func (sh *testServerHandler) OnAnnounce(ctx *ServerHandlerOnAnnounceCtx) (*base.
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (sh *testServerHandler) OnSetup(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+func (sh *testServerHandler) OnSetup(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 	if sh.onSetup != nil {
 		return sh.onSetup(ctx)
 	}
-	return nil, nil, nil, fmt.Errorf("unimplemented")
+	return nil, nil, fmt.Errorf("unimplemented")
 }
 
 func (sh *testServerHandler) OnPlay(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
@@ -328,22 +328,22 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						if ctx.Path != "teststream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, nil, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
 						}
 
 						if stream == nil {
 							return &base.Response{
 								StatusCode: base.StatusNotFound,
-							}, nil, nil, nil
+							}, nil, nil
 						}
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, stream, nil, nil
+						}, stream, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						if ctx.Path != "teststream" {
@@ -637,10 +637,10 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, stream, nil, nil
+				}, stream, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
@@ -734,10 +734,10 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, stream, nil, nil
+				}, stream, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
@@ -942,10 +942,10 @@ func TestServerSessionClose(t *testing.T) {
 			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 				close(sessionClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil, nil
+				}, nil, nil
 			},
 		},
 	}
@@ -996,10 +996,10 @@ func TestServerSessionAutoClose(t *testing.T) {
 			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 				close(sessionClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, stream, nil, nil
+				}, stream, nil
 			},
 		},
 	}
@@ -1068,10 +1068,10 @@ func TestServerErrorInvalidPath(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, *uint32, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, stream, nil, nil
+						}, stream, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{

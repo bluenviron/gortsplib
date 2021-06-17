@@ -613,7 +613,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerTracksDifferentProtocols{}
 		}
 
-		res, stream, ssrc, err := ss.s.Handler.(ServerHandlerOnSetup).OnSetup(&ServerHandlerOnSetupCtx{
+		res, stream, err := ss.s.Handler.(ServerHandlerOnSetup).OnSetup(&ServerHandlerOnSetupCtx{
 			Server:    ss.s,
 			Session:   ss,
 			Conn:      sc,
@@ -625,12 +625,21 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode == base.StatusOK {
+			th := headers.Transport{}
+
 			if ss.state == ServerSessionStateInitial {
 				ss.state = ServerSessionStatePrePlay
 				ss.setuppedPath = &path
 				ss.setuppedQuery = &query
 				ss.setuppedStream = stream
 				stream.readerAdd(ss, delivery == base.StreamDeliveryMulticast)
+			}
+
+			if ss.state == ServerSessionStatePrePlay {
+				ssrc := stream.ssrc(trackID)
+				if ssrc != 0 {
+					th.SSRC = &ssrc
+				}
 			}
 
 			ss.setuppedProtocol = &inTH.Protocol
@@ -643,8 +652,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if res.Header == nil {
 				res.Header = make(base.Header)
 			}
-
-			th := headers.Transport{}
 
 			switch {
 			case delivery == base.StreamDeliveryMulticast:
@@ -683,10 +690,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				th.InterleavedIDs = inTH.InterleavedIDs
 			}
 
-			if ssrc != nil {
-				th.SSRC = ssrc
-			}
-
 			res.Header["Transport"] = th.Write()
 		}
 
@@ -696,7 +699,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// this was causing problems during unit tests.
 		if ua, ok := req.Header["User-Agent"]; ok && len(ua) == 1 &&
 			strings.HasPrefix(ua[0], "GStreamer") {
-			<-time.After(1 * time.Second)
+			select {
+			case <-time.After(1 * time.Second):
+			case <-ss.ctx.Done():
+			}
 		}
 
 		return res, err
@@ -748,6 +754,36 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 					ss.udpZone = sc.zone()
 				} else {
 					ss.tcpConn = sc
+				}
+
+				// add RTP-Info
+				var ri headers.RTPInfo
+				for trackID := range ss.setuppedTracks {
+					ts := ss.setuppedStream.timestamp(trackID)
+					if ts == 0 {
+						continue
+					}
+
+					u := &base.URL{
+						Scheme: req.URL.Scheme,
+						User:   req.URL.User,
+						Host:   req.URL.Host,
+						Path:   "/" + *ss.setuppedPath + "/trackID=" + strconv.FormatInt(int64(trackID), 10),
+					}
+
+					lsn := ss.setuppedStream.lastSequenceNumber(trackID)
+
+					ri = append(ri, &headers.RTPInfoEntry{
+						URL:            u.String(),
+						SequenceNumber: &lsn,
+						Timestamp:      &ts,
+					})
+				}
+				if len(ri) > 0 {
+					if res.Header == nil {
+						res.Header = make(base.Header)
+					}
+					res.Header["RTP-Info"] = ri.Write()
 				}
 
 				ss.setuppedStream.readerSetActive(ss)
