@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -757,8 +758,15 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}
 
 				// add RTP-Info
-				var ri headers.RTPInfo
+				var trackIDs []int
 				for trackID := range ss.setuppedTracks {
+					trackIDs = append(trackIDs, trackID)
+				}
+				sort.Slice(trackIDs, func(a, b int) bool {
+					return trackIDs[a] < trackIDs[b]
+				})
+				var ri headers.RTPInfo
+				for _, trackID := range trackIDs {
 					ts := ss.setuppedStream.timestamp(trackID)
 					if ts == 0 {
 						continue
