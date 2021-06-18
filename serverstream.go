@@ -157,6 +157,11 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 
 	if *ss.setuppedDelivery == base.StreamDeliveryUnicast {
 		st.readersUnicast[ss] = struct{}{}
+	} else {
+		for trackID := range ss.setuppedTracks {
+			st.multicastListeners[trackID].rtcpListener.addClient(
+				ss.udpIP, st.multicastListeners[trackID].rtcpListener.port(), ss, trackID, false)
+		}
 	}
 }
 
@@ -166,6 +171,10 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 
 	if *ss.setuppedDelivery == base.StreamDeliveryUnicast {
 		delete(st.readersUnicast, ss)
+	} else {
+		for trackID := range ss.setuppedTracks {
+			st.multicastListeners[trackID].rtcpListener.removeClient(ss)
+		}
 	}
 }
 
