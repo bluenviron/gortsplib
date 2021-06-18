@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/net/ipv4"
+
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
@@ -18,7 +20,7 @@ const (
 
 type clientConnUDPListener struct {
 	cc            *ClientConn
-	pc            net.PacketConn
+	pc            *net.UDPConn
 	remoteIP      net.IP
 	remoteZone    string
 	remotePort    int
@@ -37,13 +39,13 @@ func newClientConnUDPListenerPair(cc *ClientConn) (*clientConnUDPListener, *clie
 	// rtp must be even and rtcp odd
 	for {
 		rtpPort := (rand.Intn((65535-10000)/2) * 2) + 10000
-		rtpListener, err := newClientConnUDPListener(cc, ":"+strconv.FormatInt(int64(rtpPort), 10))
+		rtpListener, err := newClientConnUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
 		if err != nil {
 			continue
 		}
 
 		rtcpPort := rtpPort + 1
-		rtcpListener, err := newClientConnUDPListener(cc, ":"+strconv.FormatInt(int64(rtcpPort), 10))
+		rtcpListener, err := newClientConnUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtcpPort), 10))
 		if err != nil {
 			rtpListener.close()
 			continue
@@ -53,13 +55,51 @@ func newClientConnUDPListenerPair(cc *ClientConn) (*clientConnUDPListener, *clie
 	}
 }
 
-func newClientConnUDPListener(cc *ClientConn, address string) (*clientConnUDPListener, error) {
-	pc, err := cc.c.ListenPacket("udp", address)
-	if err != nil {
-		return nil, err
+func newClientConnUDPListener(cc *ClientConn, multicast bool, address string) (*clientConnUDPListener, error) {
+	var pc *net.UDPConn
+	if multicast {
+		addr, err := net.ResolveUDPAddr("udp4", address)
+		if err != nil {
+			return nil, err
+		}
+
+		tmp, err := cc.c.ListenPacket("udp4", (&net.UDPAddr{
+			IP:   net.ParseIP("224.0.0.0"),
+			Port: addr.Port,
+		}).String())
+		if err != nil {
+			return nil, err
+		}
+
+		p := ipv4.NewPacketConn(tmp)
+
+		err = p.SetTTL(127)
+		if err != nil {
+			return nil, err
+		}
+
+		intfs, err := net.Interfaces()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, intf := range intfs {
+			err := p.JoinGroup(&intf, &net.UDPAddr{IP: addr.IP})
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		pc = tmp.(*net.UDPConn)
+	} else {
+		tmp, err := cc.c.ListenPacket("udp", address)
+		if err != nil {
+			return nil, err
+		}
+		pc = tmp.(*net.UDPConn)
 	}
 
-	err = pc.(*net.UDPConn).SetReadBuffer(clientConnUDPKernelReadBufferSize)
+	err := pc.SetReadBuffer(clientConnUDPKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +123,7 @@ func (l *clientConnUDPListener) close() {
 }
 
 func (l *clientConnUDPListener) port() int {
-	return l.pc.(*net.UDPConn).LocalAddr().(*net.UDPAddr).Port
+	return l.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
 func (l *clientConnUDPListener) start() {
@@ -120,7 +160,7 @@ func (l *clientConnUDPListener) run() {
 			l.cc.tracks[l.trackID].rtcpReceiver.ProcessFrame(now, l.streamType, buf[:n])
 			l.cc.pullReadCB()(l.trackID, l.streamType, buf[:n])
 		}
-	} else {
+	} else { // record
 		for {
 			buf := l.frameBuffer.Next()
 			n, addr, err := l.pc.ReadFrom(buf)

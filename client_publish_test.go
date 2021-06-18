@@ -162,12 +162,12 @@ func TestClientPublishSerial(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *base.StreamProtocol {
+				Protocol: func() *ClientProtocol {
 					if proto == "udp" {
-						v := base.StreamProtocolUDP
+						v := ClientProtocolUDP
 						return &v
 					}
-					v := base.StreamProtocolTCP
+					v := ClientProtocolTCP
 					return &v
 				}(),
 			}
@@ -304,12 +304,12 @@ func TestClientPublishParallel(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *base.StreamProtocol {
+				Protocol: func() *ClientProtocol {
 					if proto == "udp" {
-						v := base.StreamProtocolUDP
+						v := ClientProtocolUDP
 						return &v
 					}
-					v := base.StreamProtocolTCP
+					v := ClientProtocolTCP
 					return &v
 				}(),
 			}
@@ -462,12 +462,12 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *base.StreamProtocol {
+				Protocol: func() *ClientProtocol {
 					if proto == "udp" {
-						v := base.StreamProtocolUDP
+						v := ClientProtocolUDP
 						return &v
 					}
-					v := base.StreamProtocolTCP
+					v := ClientProtocolTCP
 					return &v
 				}(),
 			}
@@ -600,12 +600,12 @@ func TestClientPublishPauseParallel(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *base.StreamProtocol {
+				Protocol: func() *ClientProtocol {
 					if proto == "udp" {
-						v := base.StreamProtocolUDP
+						v := ClientProtocolUDP
 						return &v
 					}
-					v := base.StreamProtocolTCP
+					v := ClientProtocolTCP
 					return &v
 				}(),
 			}
@@ -883,8 +883,8 @@ func TestClientPublishRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		StreamProtocol: func() *base.StreamProtocol {
-			v := base.StreamProtocolTCP
+		Protocol: func() *ClientProtocol {
+			v := ClientProtocolTCP
 			return &v
 		}(),
 		senderReportPeriod: 1 * time.Second,

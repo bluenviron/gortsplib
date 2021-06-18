@@ -14,14 +14,14 @@ func (e ErrClientTerminated) Error() string {
 	return "terminated"
 }
 
-// ErrClientWrongState is an error that can be returned by a client.
-type ErrClientWrongState struct {
+// ErrClientInvalidState is an error that can be returned by a client.
+type ErrClientInvalidState struct {
 	AllowedList []fmt.Stringer
 	State       fmt.Stringer
 }
 
 // Error implements the error interface.
-func (e ErrClientWrongState) Error() string {
+func (e ErrClientInvalidState) Error() string {
 	return fmt.Sprintf("must be in state %v, while is in state %v",
 		e.AllowedList, e.State)
 }
@@ -36,15 +36,15 @@ func (e ErrClientSessionHeaderInvalid) Error() string {
 	return fmt.Sprintf("invalid session header: %v", e.Err)
 }
 
-// ErrClientWrongStatusCode is an error that can be returned by a client.
-type ErrClientWrongStatusCode struct {
+// ErrClientInvalidStatusCode is an error that can be returned by a client.
+type ErrClientInvalidStatusCode struct {
 	Code    base.StatusCode
 	Message string
 }
 
 // Error implements the error interface.
-func (e ErrClientWrongStatusCode) Error() string {
-	return fmt.Sprintf("wrong status code: %d (%s)", e.Code, e.Message)
+func (e ErrClientInvalidStatusCode) Error() string {
+	return fmt.Sprintf("invalid status code: %d (%s)", e.Code, e.Message)
 }
 
 // ErrClientContentTypeMissing is an error that can be returned by a client.
@@ -115,6 +115,30 @@ func (e ErrClientTransportHeaderInvalid) Error() string {
 	return fmt.Sprintf("invalid transport header: %v", e.Err)
 }
 
+// ErrClientTransportHeaderInvalidDelivery is an error that can be returned by a client.
+type ErrClientTransportHeaderInvalidDelivery struct{}
+
+// Error implements the error interface.
+func (e ErrClientTransportHeaderInvalidDelivery) Error() string {
+	return "transport header contains an invalid delivery value"
+}
+
+// ErrClientTransportHeaderNoPorts is an error that can be returned by a client.
+type ErrClientTransportHeaderNoPorts struct{}
+
+// Error implements the error interface.
+func (e ErrClientTransportHeaderNoPorts) Error() string {
+	return "transport header does not contain ports"
+}
+
+// ErrClientTransportHeaderNoDestination is an error that can be returned by a client.
+type ErrClientTransportHeaderNoDestination struct{}
+
+// Error implements the error interface.
+func (e ErrClientTransportHeaderNoDestination) Error() string {
+	return "transport header does not contain a destination"
+}
+
 // ErrClientTransportHeaderNoInterleavedIDs is an error that can be returned by a client.
 type ErrClientTransportHeaderNoInterleavedIDs struct{}
 
@@ -123,15 +147,15 @@ func (e ErrClientTransportHeaderNoInterleavedIDs) Error() string {
 	return "transport header does not contain interleaved IDs"
 }
 
-// ErrClientTransportHeaderWrongInterleavedIDs is an error that can be returned by a client.
-type ErrClientTransportHeaderWrongInterleavedIDs struct {
+// ErrClientTransportHeaderInvalidInterleavedIDs is an error that can be returned by a client.
+type ErrClientTransportHeaderInvalidInterleavedIDs struct {
 	Expected [2]int
 	Value    [2]int
 }
 
 // Error implements the error interface.
-func (e ErrClientTransportHeaderWrongInterleavedIDs) Error() string {
-	return fmt.Sprintf("wrong interleaved IDs, expected %v, got %v", e.Expected, e.Value)
+func (e ErrClientTransportHeaderInvalidInterleavedIDs) Error() string {
+	return fmt.Sprintf("invalid interleaved IDs, expected %v, got %v", e.Expected, e.Value)
 }
 
 // ErrClientNoUDPPacketsRecently is an error that can be returned by a client.

@@ -35,6 +35,16 @@ func DialPublish(address string, tracks Tracks) (*ClientConn, error) {
 	return DefaultClient.DialPublish(address, tracks)
 }
 
+// ClientProtocol is a RTSP stream protocol used by the client.
+type ClientProtocol int
+
+// standard RTSP stream protocols.
+const (
+	ClientProtocolUDP ClientProtocol = iota
+	ClientProtocolMulticast
+	ClientProtocolTCP
+)
+
 // Client is a RTSP client.
 type Client struct {
 	//
@@ -64,10 +74,10 @@ type Client struct {
 	//
 	// reading / writing
 	//
-	// the stream protocol (UDP or TCP).
+	// the stream protocol (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
-	StreamProtocol *base.StreamProtocol
+	Protocol *ClientProtocol
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout.
 	// It defaults to 3 seconds.

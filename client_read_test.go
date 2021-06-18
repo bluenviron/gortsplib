@@ -14,6 +14,7 @@ import (
 	"github.com/pion/rtp"
 	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/ipv4"
 
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
@@ -167,33 +168,29 @@ func TestClientReadTracks(t *testing.T) {
 func TestClientRead(t *testing.T) {
 	for _, proto := range []string{
 		"udp",
+		"multicast",
 		"tcp",
 		"tls",
 	} {
 		t.Run(proto, func(t *testing.T) {
 			frameRecv := make(chan struct{})
 
+			listenIP := multicastCapableIP(t)
+			l, err := net.Listen("tcp", listenIP+":8554")
+			require.NoError(t, err)
+			defer l.Close()
+
 			var scheme string
-			var l net.Listener
 			if proto == "tls" {
 				scheme = "rtsps"
-
-				li, err := net.Listen("tcp", "localhost:8554")
-				require.NoError(t, err)
-				defer li.Close()
 
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 
-				l = tls.NewListener(li, &tls.Config{Certificates: []tls.Certificate{cert}})
+				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
 
 			} else {
 				scheme = "rtsp"
-
-				var err error
-				l, err = net.Listen("tcp", "localhost:8554")
-				require.NoError(t, err)
-				defer l.Close()
 			}
 
 			serverDone := make(chan struct{})
@@ -209,7 +206,7 @@ func TestClientRead(t *testing.T) {
 				req, err := readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -226,7 +223,7 @@ func TestClientRead(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream"), req.URL)
 
 				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 				require.NoError(t, err)
@@ -235,7 +232,7 @@ func TestClientRead(t *testing.T) {
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
-						"Content-Base": base.HeaderValue{scheme + "://localhost:8554/teststream/"},
+						"Content-Base": base.HeaderValue{scheme + "://" + listenIP + ":8554/teststream/"},
 					},
 					Body: Tracks{track}.Write(),
 				}.Write(bconn.Writer)
@@ -244,24 +241,72 @@ func TestClientRead(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/trackID=0"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream/trackID=0"), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Read(req.Header["Transport"])
 				require.NoError(t, err)
 
-				th := headers.Transport{
-					Delivery: func() *base.StreamDelivery {
-						v := base.StreamDeliveryUnicast
-						return &v
-					}(),
-				}
+				th := headers.Transport{}
 
-				if proto == "udp" {
+				var l1 net.PacketConn
+				var l2 net.PacketConn
+
+				switch proto {
+				case "udp":
+					v := base.StreamDeliveryUnicast
+					th.Delivery = &v
 					th.Protocol = base.StreamProtocolUDP
 					th.ClientPorts = inTH.ClientPorts
 					th.ServerPorts = &[2]int{34556, 34557}
-				} else {
+
+					l1, err = net.ListenPacket("udp", listenIP+":34556")
+					require.NoError(t, err)
+					defer l1.Close()
+
+					l2, err = net.ListenPacket("udp", listenIP+":34557")
+					require.NoError(t, err)
+					defer l2.Close()
+
+				case "multicast":
+					v := base.StreamDeliveryMulticast
+					th.Delivery = &v
+					th.Protocol = base.StreamProtocolUDP
+					v2 := multicastIP.String()
+					th.Destination = &v2
+					th.Ports = &[2]int{25000, 25001}
+
+					l1, err = net.ListenPacket("udp4", "224.0.0.0:25000")
+					require.NoError(t, err)
+					defer l1.Close()
+
+					p := ipv4.NewPacketConn(l1)
+
+					intfs, err := net.Interfaces()
+					require.NoError(t, err)
+
+					for _, intf := range intfs {
+						err := p.JoinGroup(&intf, &net.UDPAddr{IP: multicastIP})
+						require.NoError(t, err)
+					}
+
+					l2, err = net.ListenPacket("udp4", "224.0.0.0:25001")
+					require.NoError(t, err)
+					defer l2.Close()
+
+					p = ipv4.NewPacketConn(l2)
+
+					intfs, err = net.Interfaces()
+					require.NoError(t, err)
+
+					for _, intf := range intfs {
+						err := p.JoinGroup(&intf, &net.UDPAddr{IP: multicastIP})
+						require.NoError(t, err)
+					}
+
+				case "tcp", "tls":
+					v := base.StreamDeliveryUnicast
+					th.Delivery = &v
 					th.Protocol = base.StreamProtocolTCP
 					th.InterleavedIDs = &[2]int{0, 1}
 				}
@@ -274,22 +319,10 @@ func TestClientRead(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				var l1 net.PacketConn
-				var l2 net.PacketConn
-				if proto == "udp" {
-					l1, err = net.ListenPacket("udp", "localhost:34556")
-					require.NoError(t, err)
-					defer l1.Close()
-
-					l2, err = net.ListenPacket("udp", "localhost:34557")
-					require.NoError(t, err)
-					defer l2.Close()
-				}
-
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream/"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -297,13 +330,22 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 
 				// server -> client
-				if proto == "udp" {
+				switch proto {
+				case "udp":
 					time.Sleep(1 * time.Second)
 					l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[0],
 					})
-				} else {
+
+				case "multicast":
+					time.Sleep(1 * time.Second)
+					l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
+						IP:   multicastIP,
+						Port: 25000,
+					})
+
+				case "tcp", "tls":
 					err = base.InterleavedFrame{
 						TrackID:    0,
 						StreamType: StreamTypeRTP,
@@ -313,7 +355,8 @@ func TestClientRead(t *testing.T) {
 				}
 
 				// client -> server (RTCP)
-				if proto == "udp" {
+				switch proto {
+				case "udp":
 					// skip firewall opening
 					buf := make([]byte, 2048)
 					_, _, err := l2.ReadFrom(buf)
@@ -323,7 +366,9 @@ func TestClientRead(t *testing.T) {
 					n, _, err := l2.ReadFrom(buf)
 					require.NoError(t, err)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, buf[:n])
-				} else {
+					close(frameRecv)
+
+				case "tcp", "tls":
 					var f base.InterleavedFrame
 					f.Payload = make([]byte, 2048)
 					err := f.Read(bconn.Reader)
@@ -331,14 +376,13 @@ func TestClientRead(t *testing.T) {
 					require.Equal(t, 0, f.TrackID)
 					require.Equal(t, StreamTypeRTCP, f.StreamType)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
+					close(frameRecv)
 				}
-
-				close(frameRecv)
 
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream/"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -347,29 +391,46 @@ func TestClientRead(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *base.StreamProtocol {
-					if proto == "udp" {
-						v := base.StreamProtocolUDP
+				Protocol: func() *ClientProtocol {
+					switch proto {
+					case "udp":
+						v := ClientProtocolUDP
+						return &v
+
+					case "multicast":
+						v := ClientProtocolMulticast
+						return &v
+
+					default: // tcp, tls
+						v := ClientProtocolTCP
 						return &v
 					}
-					v := base.StreamProtocolTCP
-					return &v
 				}(),
 			}
 
-			conn, err := c.DialRead(scheme + "://localhost:8554/teststream")
+			conn, err := c.DialRead(scheme + "://" + listenIP + ":8554/teststream")
 			require.NoError(t, err)
 
 			done := make(chan struct{})
+			counter := uint64(0)
 			go func() {
 				defer close(done)
 				conn.ReadFrames(func(id int, streamType StreamType, payload []byte) {
+					// skip multicast loopback
+					if proto == "multicast" && atomic.AddUint64(&counter, 1) <= 2 {
+						return
+					}
+
 					require.Equal(t, 0, id)
 					require.Equal(t, StreamTypeRTP, streamType)
 					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
 
-					err = conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
-					require.NoError(t, err)
+					if proto != "multicast" {
+						err = conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+						require.NoError(t, err)
+					} else {
+						close(frameRecv)
+					}
 				})
 			}()
 
@@ -1259,12 +1320,12 @@ func TestClientReadPause(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *base.StreamProtocol {
+				Protocol: func() *ClientProtocol {
 					if proto == "udp" {
-						v := base.StreamProtocolUDP
+						v := ClientProtocolUDP
 						return &v
 					}
-					v := base.StreamProtocolTCP
+					v := ClientProtocolTCP
 					return &v
 				}(),
 			}
@@ -1454,8 +1515,8 @@ func TestClientReadRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		StreamProtocol: func() *base.StreamProtocol {
-			v := base.StreamProtocolTCP
+		Protocol: func() *ClientProtocol {
+			v := ClientProtocolTCP
 			return &v
 		}(),
 		receiverReportPeriod: 1 * time.Second,
@@ -1611,14 +1672,14 @@ func TestClientReadErrorTimeout(t *testing.T) {
 			}()
 
 			c := &Client{
-				StreamProtocol: func() *base.StreamProtocol {
+				Protocol: func() *ClientProtocol {
 					switch proto {
 					case "udp":
-						v := base.StreamProtocolUDP
+						v := ClientProtocolUDP
 						return &v
 
 					case "tcp":
-						v := base.StreamProtocolTCP
+						v := ClientProtocolTCP
 						return &v
 					}
 					return nil
@@ -1752,8 +1813,8 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 	}()
 
 	c := &Client{
-		StreamProtocol: func() *base.StreamProtocol {
-			v := base.StreamProtocolTCP
+		Protocol: func() *ClientProtocol {
+			v := ClientProtocolTCP
 			return &v
 		}(),
 	}
@@ -1903,8 +1964,8 @@ func TestClientReadSeek(t *testing.T) {
 	}()
 
 	c := &Client{
-		StreamProtocol: func() *base.StreamProtocol {
-			v := base.StreamProtocolTCP
+		Protocol: func() *ClientProtocol {
+			v := ClientProtocolTCP
 			return &v
 		}(),
 	}

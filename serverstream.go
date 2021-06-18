@@ -171,7 +171,7 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 
 	if *ss.setuppedDelivery == base.StreamDeliveryUnicast {
 		delete(st.readersUnicast, ss)
-	} else {
+	} else if st.multicastListeners != nil {
 		for trackID := range ss.setuppedTracks {
 			st.multicastListeners[trackID].rtcpListener.removeClient(ss)
 		}
