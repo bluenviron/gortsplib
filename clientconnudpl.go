@@ -58,15 +58,12 @@ func newClientConnUDPListenerPair(cc *ClientConn) (*clientConnUDPListener, *clie
 func newClientConnUDPListener(cc *ClientConn, multicast bool, address string) (*clientConnUDPListener, error) {
 	var pc *net.UDPConn
 	if multicast {
-		addr, err := net.ResolveUDPAddr("udp4", address)
+		host, port, err := net.SplitHostPort(address)
 		if err != nil {
 			return nil, err
 		}
 
-		tmp, err := cc.c.ListenPacket("udp4", (&net.UDPAddr{
-			IP:   net.ParseIP("224.0.0.0"),
-			Port: addr.Port,
-		}).String())
+		tmp, err := cc.c.ListenPacket("udp4", "224.0.0.0:"+port)
 		if err != nil {
 			return nil, err
 		}
@@ -84,7 +81,7 @@ func newClientConnUDPListener(cc *ClientConn, multicast bool, address string) (*
 		}
 
 		for _, intf := range intfs {
-			err := p.JoinGroup(&intf, &net.UDPAddr{IP: addr.IP})
+			err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(host)})
 			if err != nil {
 				return nil, err
 			}
