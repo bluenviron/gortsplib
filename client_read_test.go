@@ -272,7 +272,7 @@ func TestClientRead(t *testing.T) {
 					v := base.StreamDeliveryMulticast
 					th.Delivery = &v
 					th.Protocol = base.StreamProtocolUDP
-					v2 := multicastIP.String()
+					v2 := "224.1.0.1"
 					th.Destination = &v2
 					th.Ports = &[2]int{25000, 25001}
 
@@ -286,7 +286,7 @@ func TestClientRead(t *testing.T) {
 					require.NoError(t, err)
 
 					for _, intf := range intfs {
-						err := p.JoinGroup(&intf, &net.UDPAddr{IP: multicastIP})
+						err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
 						require.NoError(t, err)
 					}
 
@@ -300,7 +300,7 @@ func TestClientRead(t *testing.T) {
 					require.NoError(t, err)
 
 					for _, intf := range intfs {
-						err := p.JoinGroup(&intf, &net.UDPAddr{IP: multicastIP})
+						err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
 						require.NoError(t, err)
 					}
 
@@ -341,7 +341,7 @@ func TestClientRead(t *testing.T) {
 				case "multicast":
 					time.Sleep(1 * time.Second)
 					l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
-						IP:   multicastIP,
+						IP:   net.ParseIP("224.1.0.1"),
 						Port: 25000,
 					})
 

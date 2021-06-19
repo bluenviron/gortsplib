@@ -137,9 +137,12 @@ func (sh *serverHandler) OnFrame(ctx *gortsplib.ServerHandlerOnFrameCtx) {
 func main() {
 	// configure server
 	s := &gortsplib.Server{
-		Handler:        &serverHandler{},
-		UDPRTPAddress:  ":8000",
-		UDPRTCPAddress: ":8001",
+		Handler:           &serverHandler{},
+		UDPRTPAddress:     ":8000",
+		UDPRTCPAddress:    ":8001",
+		MulticastIPRange:  "244.1.0.0/16",
+		MulticastRTPPort:  8002,
+		MulticastRTCPPort: 8003,
 	}
 
 	// start server and wait until a fatal error

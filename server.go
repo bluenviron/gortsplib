@@ -45,18 +45,22 @@ func newSessionID(sessions map[string]*ServerSession) (string, error) {
 	}
 }
 
-type requestRes struct {
+type sessionRequestRes struct {
 	ss  *ServerSession
 	res *base.Response
 	err error
 }
 
-type request struct {
+type sessionRequestReq struct {
 	sc     *ServerConn
 	req    *base.Request
 	id     string
 	create bool
-	res    chan requestRes
+	res    chan sessionRequestRes
+}
+
+type streamMulticastIPReq struct {
+	res chan net.IP
 }
 
 // Server is a RTSP server.
@@ -68,7 +72,7 @@ type Server struct {
 	Handler ServerHandler
 
 	//
-	// connection
+	// RTSP parameters
 	//
 	// timeout of read operations.
 	// It defaults to 10 seconds
@@ -78,16 +82,21 @@ type Server struct {
 	WriteTimeout time.Duration
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
-	// a port to send and receive UDP/RTP packets.
-	// If UDPRTPAddress and UDPRTCPAddress are != "", the server can accept and send UDP streams.
+	// a port to send and receive RTP packets with UDP.
+	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can read and write UDP streams.
 	UDPRTPAddress string
-	// a port to send and receive UDP/RTCP packets.
-	// If UDPRTPAddress and UDPRTCPAddress are != "", the server can accept and send UDP streams.
+	// a port to send and receive RTCP packets with UDP.
+	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can read and write UDP streams.
 	UDPRTCPAddress string
-
-	//
-	// reading / writing
-	//
+	// a range of multicast IPs to use.
+	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server can read and write UDP-multicast streams.
+	MulticastIPRange string
+	// a port to send RTP packets with UDP-multicast.
+	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server can read and write UDP-multicast streams.
+	MulticastRTPPort uint
+	// a port to send RTCP packets with UDP-multicast.
+	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server can read and write UDP-multicast streams.
+	MulticastRTCPPort uint
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
@@ -120,6 +129,8 @@ type Server struct {
 	ctx             context.Context
 	ctxCancel       func()
 	wg              sync.WaitGroup
+	multicastNet    *net.IPNet
+	multicastNextIP net.IP
 	tcpListener     net.Listener
 	udpRTPListener  *serverUDPListener
 	udpRTCPListener *serverUDPListener
@@ -129,24 +140,23 @@ type Server struct {
 	streams         map[*ServerStream]struct{}
 
 	// in
-	connClose      chan *ServerConn
-	sessionRequest chan request
-	sessionClose   chan *ServerSession
-	streamAdd      chan *ServerStream
-	streamRemove   chan *ServerStream
+	connClose         chan *ServerConn
+	sessionRequest    chan sessionRequestReq
+	sessionClose      chan *ServerSession
+	streamAdd         chan *ServerStream
+	streamRemove      chan *ServerStream
+	streamMulticastIP chan streamMulticastIPReq
 }
 
 // Start starts listening on the given address.
 func (s *Server) Start(address string) error {
-	// connection
+	// RTSP parameters
 	if s.ReadTimeout == 0 {
 		s.ReadTimeout = 10 * time.Second
 	}
 	if s.WriteTimeout == 0 {
 		s.WriteTimeout = 10 * time.Second
 	}
-
-	// reading / writing
 	if s.ReadBufferCount == 0 {
 		s.ReadBufferCount = 512
 	}
@@ -210,11 +220,63 @@ func (s *Server) Start(address string) error {
 		}
 	}
 
+	if s.MulticastIPRange != "" && (s.MulticastRTPPort == 0 || s.MulticastRTCPPort == 0) ||
+		(s.MulticastRTPPort != 0 && (s.MulticastRTCPPort == 0 || s.MulticastIPRange == "")) ||
+		s.MulticastRTCPPort != 0 && (s.MulticastRTPPort == 0 || s.MulticastIPRange == "") {
+		if s.udpRTPListener != nil {
+			s.udpRTPListener.close()
+		}
+		if s.udpRTCPListener != nil {
+			s.udpRTCPListener.close()
+		}
+		return fmt.Errorf("MulticastIPRange, MulticastRTPPort and MulticastRTCPPort must be used together")
+	}
+
+	if s.MulticastIPRange != "" {
+		if (s.MulticastRTPPort % 2) != 0 {
+			if s.udpRTPListener != nil {
+				s.udpRTPListener.close()
+			}
+			if s.udpRTCPListener != nil {
+				s.udpRTCPListener.close()
+			}
+			return fmt.Errorf("RTP port must be even")
+		}
+
+		if s.MulticastRTCPPort != (s.MulticastRTPPort + 1) {
+			if s.udpRTPListener != nil {
+				s.udpRTPListener.close()
+			}
+			if s.udpRTCPListener != nil {
+				s.udpRTCPListener.close()
+			}
+			return fmt.Errorf("RTCP and RTP ports must be consecutive")
+		}
+
+		var err error
+		_, s.multicastNet, err = net.ParseCIDR(s.MulticastIPRange)
+		if err != nil {
+			if s.udpRTPListener != nil {
+				s.udpRTPListener.close()
+			}
+			if s.udpRTCPListener != nil {
+				s.udpRTCPListener.close()
+			}
+			return err
+		}
+
+		s.multicastNextIP = s.multicastNet.IP
+	}
+
 	var err error
 	s.tcpListener, err = s.Listen("tcp", address)
 	if err != nil {
-		s.udpRTPListener.close()
-		s.udpRTPListener.close()
+		if s.udpRTPListener != nil {
+			s.udpRTPListener.close()
+		}
+		if s.udpRTCPListener != nil {
+			s.udpRTCPListener.close()
+		}
 		return err
 	}
 
@@ -246,10 +308,11 @@ func (s *Server) run() {
 	s.conns = make(map[*ServerConn]struct{})
 	s.streams = make(map[*ServerStream]struct{})
 	s.connClose = make(chan *ServerConn)
-	s.sessionRequest = make(chan request)
+	s.sessionRequest = make(chan sessionRequestReq)
 	s.sessionClose = make(chan *ServerSession)
 	s.streamAdd = make(chan *ServerStream)
 	s.streamRemove = make(chan *ServerStream)
+	s.streamMulticastIP = make(chan streamMulticastIPReq)
 
 	s.wg.Add(1)
 	connNew := make(chan net.Conn)
@@ -300,7 +363,7 @@ outer:
 				ss.request <- req
 			} else {
 				if !req.create {
-					req.res <- requestRes{
+					req.res <- sessionRequestRes{
 						res: &base.Response{
 							StatusCode: base.StatusBadRequest,
 						},
@@ -311,7 +374,7 @@ outer:
 
 				id, err := newSessionID(s.sessions)
 				if err != nil {
-					req.res <- requestRes{
+					req.res <- sessionRequestRes{
 						res: &base.Response{
 							StatusCode: base.StatusBadRequest,
 						},
@@ -326,7 +389,7 @@ outer:
 				select {
 				case ss.request <- req:
 				case <-ss.ctx.Done():
-					req.res <- requestRes{
+					req.res <- sessionRequestRes{
 						res: &base.Response{
 							StatusCode: base.StatusBadRequest,
 						},
@@ -347,6 +410,15 @@ outer:
 
 		case st := <-s.streamRemove:
 			delete(s.streams, st)
+
+		case req := <-s.streamMulticastIP:
+			ip32 := binary.BigEndian.Uint32(s.multicastNextIP)
+			mask := binary.BigEndian.Uint32(s.multicastNet.Mask)
+			ip32 = (ip32 & mask) | ((ip32 + 1) & ^mask)
+			ip := make(net.IP, 4)
+			binary.BigEndian.PutUint32(ip, ip32)
+			s.multicastNextIP = ip
+			req.res <- ip
 
 		case <-s.ctx.Done():
 			break outer

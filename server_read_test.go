@@ -357,9 +357,14 @@ func TestServerRead(t *testing.T) {
 			}
 
 			switch proto {
-			case "udp", "multicast":
+			case "udp":
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
+
+			case "multicast":
+				s.MulticastIPRange = "224.1.0.0/16"
+				s.MulticastRTPPort = 8000
+				s.MulticastRTCPPort = 8001
 
 			case "tls":
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
@@ -451,7 +456,7 @@ func TestServerRead(t *testing.T) {
 				require.NoError(t, err)
 
 				for _, intf := range intfs {
-					err := p.JoinGroup(&intf, &net.UDPAddr{IP: multicastIP})
+					err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination)})
 					require.NoError(t, err)
 				}
 
@@ -465,7 +470,7 @@ func TestServerRead(t *testing.T) {
 				require.NoError(t, err)
 
 				for _, intf := range intfs {
-					err := p.JoinGroup(&intf, &net.UDPAddr{IP: multicastIP})
+					err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination)})
 					require.NoError(t, err)
 				}
 			}
@@ -527,7 +532,7 @@ func TestServerRead(t *testing.T) {
 
 			case "multicast":
 				l2.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
-					IP:   multicastIP,
+					IP:   net.ParseIP(*th.Destination),
 					Port: th.Ports[1],
 				})
 				<-framesReceived

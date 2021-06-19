@@ -543,8 +543,8 @@ func (sc *ServerConn) handleRequestInSession(
 	// if the session is already linked to this conn, communicate directly with it
 	if sxID != "" {
 		if ss, ok := sc.sessions[sxID]; ok {
-			cres := make(chan requestRes)
-			sreq := request{
+			cres := make(chan sessionRequestRes)
+			sreq := sessionRequestReq{
 				sc:     sc,
 				req:    req,
 				id:     sxID,
@@ -566,8 +566,8 @@ func (sc *ServerConn) handleRequestInSession(
 	}
 
 	// otherwise, pass through Server
-	cres := make(chan requestRes)
-	sreq := request{
+	cres := make(chan sessionRequestRes)
+	sreq := sessionRequestReq{
 		sc:     sc,
 		req:    req,
 		id:     sxID,

@@ -389,6 +389,9 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 				proto = "rtsp"
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
+				s.MulticastIPRange = "224.1.0.0/16"
+				s.MulticastRTPPort = 8002
+				s.MulticastRTCPPort = 8003
 			}
 
 			err := s.Start("localhost:8554")

@@ -137,7 +137,7 @@ type ServerSession struct {
 	udpLastFrameTime *int64                        // publish, udp
 
 	// in
-	request    chan request
+	request    chan sessionRequestReq
 	connRemove chan *ServerConn
 }
 
@@ -156,7 +156,7 @@ func newServerSession(
 		ctxCancel:       ctxCancel,
 		conns:           make(map[*ServerConn]struct{}),
 		lastRequestTime: time.Now(),
-		request:         make(chan request),
+		request:         make(chan sessionRequestReq),
 		connRemove:      make(chan *ServerConn),
 	}
 
@@ -253,11 +253,11 @@ func (ss *ServerSession) run() {
 				}
 
 				if _, ok := err.(liberrors.ErrServerSessionTeardown); ok {
-					req.res <- requestRes{res: res, err: nil}
+					req.res <- sessionRequestRes{res: res, err: nil}
 					return liberrors.ErrServerSessionTeardown{}
 				}
 
-				req.res <- requestRes{
+				req.res <- sessionRequestRes{
 					res: res,
 					err: err,
 					ss:  ss,
@@ -327,7 +327,8 @@ func (ss *ServerSession) run() {
 	case ServerSessionStatePlay:
 		ss.setuppedStream.readerSetInactive(ss)
 
-		if *ss.setuppedProtocol == base.StreamProtocolUDP {
+		if *ss.setuppedProtocol == base.StreamProtocolUDP &&
+			*ss.setuppedDelivery == base.StreamDeliveryUnicast {
 			ss.s.udpRTCPListener.removeClient(ss)
 		}
 
@@ -572,18 +573,23 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		if inTH.Protocol == base.StreamProtocolUDP {
-			if ss.s.udpRTPListener == nil {
+			if delivery == base.StreamDeliveryUnicast {
+				if ss.s.udpRTPListener == nil {
+					return &base.Response{
+						StatusCode: base.StatusUnsupportedTransport,
+					}, nil
+				}
+
+				if inTH.ClientPorts == nil {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, liberrors.ErrServerTransportHeaderNoClientPorts{}
+				}
+			} else if ss.s.MulticastIPRange == "" {
 				return &base.Response{
 					StatusCode: base.StatusUnsupportedTransport,
 				}, nil
 			}
-
-			if delivery == base.StreamDeliveryUnicast && inTH.ClientPorts == nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderNoClientPorts{}
-			}
-
 		} else {
 			if delivery == base.StreamDeliveryMulticast {
 				return &base.Response{
@@ -626,15 +632,21 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode == base.StatusOK {
-			th := headers.Transport{}
-
 			if ss.state == ServerSessionStateInitial {
+				err := stream.readerAdd(ss, delivery == base.StreamDeliveryMulticast)
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, err
+				}
+
 				ss.state = ServerSessionStatePrePlay
 				ss.setuppedPath = &path
 				ss.setuppedQuery = &query
 				ss.setuppedStream = stream
-				stream.readerAdd(ss, delivery == base.StreamDeliveryMulticast)
 			}
+
+			th := headers.Transport{}
 
 			if ss.state == ServerSessionStatePrePlay {
 				ssrc := stream.ssrc(trackID)
@@ -663,7 +675,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				th.Delivery = &de
 				v := uint(127)
 				th.TTL = &v
-				d := multicastIP.String()
+				d := stream.multicastListeners[trackID].rtpListener.ip().String()
 				th.Destination = &d
 				th.Ports = &[2]int{
 					stream.multicastListeners[trackID].rtpListener.port(),

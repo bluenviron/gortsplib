@@ -108,7 +108,7 @@ func (st *ServerStream) lastSequenceNumber(trackID int) uint16 {
 	return uint16(atomic.LoadUint32(&st.trackInfos[trackID].lastSequenceNumber))
 }
 
-func (st *ServerStream) readerAdd(ss *ServerSession, isMulticast bool) {
+func (st *ServerStream) readerAdd(ss *ServerSession, isMulticast bool) error {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
@@ -123,18 +123,31 @@ func (st *ServerStream) readerAdd(ss *ServerSession, isMulticast bool) {
 	}
 
 	if !isMulticast || st.multicastListeners != nil {
-		return
+		return nil
 	}
 
 	st.multicastListeners = make([]*listenerPair, len(st.tracks))
 
 	for i := range st.tracks {
-		rtpListener, rtcpListener := newServerUDPListenerMulticastPair(st.s)
+		rtpListener, rtcpListener, err := newServerUDPListenerMulticastPair(st.s)
+		if err != nil {
+			for _, l := range st.multicastListeners {
+				if l != nil {
+					l.rtpListener.close()
+					l.rtcpListener.close()
+				}
+			}
+			st.multicastListeners = nil
+			return err
+		}
+
 		st.multicastListeners[i] = &listenerPair{
 			rtpListener:  rtpListener,
 			rtcpListener: rtcpListener,
 		}
 	}
+
+	return nil
 }
 
 func (st *ServerStream) readerRemove(ss *ServerSession) {
@@ -207,13 +220,13 @@ func (st *ServerStream) WriteFrame(trackID int, streamType StreamType, payload [
 	if st.multicastListeners != nil {
 		if streamType == StreamTypeRTP {
 			st.multicastListeners[trackID].rtpListener.write(payload, &net.UDPAddr{
-				IP:   multicastIP,
+				IP:   st.multicastListeners[trackID].rtpListener.ip(),
 				Zone: "",
 				Port: st.multicastListeners[trackID].rtpListener.port(),
 			})
 		} else {
 			st.multicastListeners[trackID].rtcpListener.write(payload, &net.UDPAddr{
-				IP:   multicastIP,
+				IP:   st.multicastListeners[trackID].rtpListener.ip(),
 				Zone: "",
 				Port: st.multicastListeners[trackID].rtcpListener.port(),
 			})

@@ -2,7 +2,7 @@ package gortsplib
 
 import (
 	"context"
-	"math/rand"
+	"fmt"
 	"net"
 	"strconv"
 	"sync"
@@ -18,8 +18,6 @@ import (
 const (
 	serverConnUDPListenerKernelReadBufferSize = 0x80000 // same as gstreamer's rtspsrc
 )
-
-var multicastIP = net.ParseIP("239.0.0.0")
 
 type bufAddrPair struct {
 	buf  []byte
@@ -55,6 +53,7 @@ type serverUDPListener struct {
 	ctxCancel    func()
 	wg           sync.WaitGroup
 	pc           *net.UDPConn
+	listenIP     net.IP
 	streamType   StreamType
 	writeTimeout time.Duration
 	readBuf      *multibuffer.MultiBuffer
@@ -63,25 +62,29 @@ type serverUDPListener struct {
 	ringBuffer   *ringbuffer.RingBuffer
 }
 
-func newServerUDPListenerMulticastPair(s *Server) (*serverUDPListener, *serverUDPListener) {
-	// choose two consecutive ports in range 65535-10000
-	// rtp must be even and rtcp odd
-	for {
-		rtpPort := (rand.Intn((65535-10000)/2) * 2) + 10000
-		rtpListener, err := newServerUDPListener(s, true, multicastIP.String()+":"+strconv.FormatInt(int64(rtpPort), 10), StreamTypeRTP)
-		if err != nil {
-			continue
-		}
-
-		rtcpPort := rtpPort + 1
-		rtcpListener, err := newServerUDPListener(s, true, multicastIP.String()+":"+strconv.FormatInt(int64(rtcpPort), 10), StreamTypeRTCP)
-		if err != nil {
-			rtpListener.close()
-			continue
-		}
-
-		return rtpListener, rtcpListener
+func newServerUDPListenerMulticastPair(s *Server) (*serverUDPListener, *serverUDPListener, error) {
+	res := make(chan net.IP)
+	select {
+	case s.streamMulticastIP <- streamMulticastIPReq{res: res}:
+	case <-s.ctx.Done():
+		return nil, nil, fmt.Errorf("terminated")
 	}
+	ip := <-res
+
+	rtpListener, err := newServerUDPListener(s, true,
+		ip.String()+":"+strconv.FormatInt(int64(s.MulticastRTPPort), 10), StreamTypeRTP)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rtcpListener, err := newServerUDPListener(s, true,
+		ip.String()+":"+strconv.FormatInt(int64(s.MulticastRTCPPort), 10), StreamTypeRTCP)
+	if err != nil {
+		rtpListener.close()
+		return nil, nil, err
+	}
+
+	return rtpListener, rtcpListener, nil
 }
 
 func newServerUDPListener(
@@ -90,6 +93,7 @@ func newServerUDPListener(
 	address string,
 	streamType StreamType) (*serverUDPListener, error) {
 	var pc *net.UDPConn
+	var listenIP net.IP
 	if multicast {
 		host, port, err := net.SplitHostPort(address)
 		if err != nil {
@@ -113,8 +117,10 @@ func newServerUDPListener(
 			return nil, err
 		}
 
+		listenIP = net.ParseIP(host)
+
 		for _, intf := range intfs {
-			err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(host)})
+			err := p.JoinGroup(&intf, &net.UDPAddr{IP: listenIP})
 			if err != nil {
 				return nil, err
 			}
@@ -126,7 +132,9 @@ func newServerUDPListener(
 		if err != nil {
 			return nil, err
 		}
+
 		pc = tmp.(*net.UDPConn)
+		listenIP = tmp.LocalAddr().(*net.UDPAddr).IP
 	}
 
 	err := pc.SetReadBuffer(serverConnUDPListenerKernelReadBufferSize)
@@ -141,6 +149,7 @@ func newServerUDPListener(
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
 		pc:        pc,
+		listenIP:  listenIP,
 		clients:   make(map[clientAddr]*clientData),
 	}
 
@@ -158,6 +167,14 @@ func newServerUDPListener(
 func (u *serverUDPListener) close() {
 	u.ctxCancel()
 	u.wg.Wait()
+}
+
+func (u *serverUDPListener) ip() net.IP {
+	return u.listenIP
+}
+
+func (u *serverUDPListener) port() int {
+	return u.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
 func (u *serverUDPListener) run() {
@@ -223,10 +240,6 @@ func (u *serverUDPListener) run() {
 
 	u.pc.Close()
 	u.ringBuffer.Close()
-}
-
-func (u *serverUDPListener) port() int {
-	return u.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
 func (u *serverUDPListener) write(buf []byte, addr *net.UDPAddr) {
