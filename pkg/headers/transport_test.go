@@ -1,6 +1,7 @@
 package headers
 
 import (
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -55,8 +56,8 @@ var casesTransport = []struct {
 				v := base.StreamDeliveryMulticast
 				return &v
 			}(),
-			Destination: func() *string {
-				v := "225.219.201.15"
+			Destination: func() *net.IP {
+				v := net.ParseIP("225.219.201.15")
 				return &v
 			}(),
 			TTL: func() *uint {
@@ -211,6 +212,11 @@ func TestTransportReadErrors(t *testing.T) {
 			"invalid ttl",
 			base.HeaderValue{`RTP/AVP;unicast;ttl=aa`},
 			"strconv.ParseUint: parsing \"aa\": invalid syntax",
+		},
+		{
+			"invalid destination",
+			base.HeaderValue{`RTP/AVP;unicast;destination=aa`},
+			"invalid destination (aa)",
 		},
 		{
 			"invalid ports 1",

@@ -1317,12 +1317,12 @@ func (cc *ClientConn) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderNoDestination{}
 		}
 
-		rtpListener, err = newClientConnUDPListener(cc, true, *thRes.Destination+":"+strconv.FormatInt(int64(thRes.Ports[0]), 10))
+		rtpListener, err = newClientConnUDPListener(cc, true, thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[0]), 10))
 		if err != nil {
 			return nil, err
 		}
 
-		rtcpListener, err = newClientConnUDPListener(cc, true, *thRes.Destination+":"+strconv.FormatInt(int64(thRes.Ports[1]), 10))
+		rtcpListener, err = newClientConnUDPListener(cc, true, thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[1]), 10))
 		if err != nil {
 			rtpListener.close()
 			return nil, err

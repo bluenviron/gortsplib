@@ -272,7 +272,7 @@ func TestClientRead(t *testing.T) {
 					v := base.StreamDeliveryMulticast
 					th.Delivery = &v
 					th.Protocol = base.StreamProtocolUDP
-					v2 := "224.1.0.1"
+					v2 := net.ParseIP("224.1.0.1")
 					th.Destination = &v2
 					th.Ports = &[2]int{25000, 25001}
 

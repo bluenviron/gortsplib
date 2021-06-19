@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -29,8 +30,8 @@ type Transport struct {
 	// (optional) delivery method of the stream
 	Delivery *base.StreamDelivery
 
-	// (optional) destination
-	Destination *string
+	// (optional) destination IP
+	Destination *net.IP
 
 	// (optional) interleaved frame ids
 	InterleavedIDs *[2]int
@@ -122,7 +123,11 @@ func (h *Transport) Read(v base.HeaderValue) error {
 			h.Delivery = &v
 
 		case "destination":
-			h.Destination = &v
+			ip := net.ParseIP(v)
+			if ip == nil {
+				return fmt.Errorf("invalid destination (%v)", v)
+			}
+			h.Destination = &ip
 
 		case "interleaved":
 			ports, err := parsePorts(v)
@@ -231,7 +236,7 @@ func (h Transport) Write() base.HeaderValue {
 	}
 
 	if h.Destination != nil {
-		rets = append(rets, "destination="+*h.Destination)
+		rets = append(rets, "destination="+h.Destination.String())
 	}
 
 	if h.InterleavedIDs != nil {

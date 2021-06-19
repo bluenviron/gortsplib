@@ -675,7 +675,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				th.Delivery = &de
 				v := uint(127)
 				th.TTL = &v
-				d := stream.multicastListeners[trackID].rtpListener.ip().String()
+				d := stream.multicastListeners[trackID].rtpListener.ip()
 				th.Destination = &d
 				th.Ports = &[2]int{
 					stream.multicastListeners[trackID].rtpListener.port(),

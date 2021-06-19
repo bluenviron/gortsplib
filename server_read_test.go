@@ -456,7 +456,7 @@ func TestServerRead(t *testing.T) {
 				require.NoError(t, err)
 
 				for _, intf := range intfs {
-					err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination)})
+					err := p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
 					require.NoError(t, err)
 				}
 
@@ -470,7 +470,7 @@ func TestServerRead(t *testing.T) {
 				require.NoError(t, err)
 
 				for _, intf := range intfs {
-					err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination)})
+					err := p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
 					require.NoError(t, err)
 				}
 			}
@@ -532,7 +532,7 @@ func TestServerRead(t *testing.T) {
 
 			case "multicast":
 				l2.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
-					IP:   net.ParseIP(*th.Destination),
+					IP:   *th.Destination,
 					Port: th.Ports[1],
 				})
 				<-framesReceived
