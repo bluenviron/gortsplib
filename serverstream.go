@@ -148,6 +148,7 @@ func (st *ServerStream) readerRemove(ss *ServerSession) {
 			l.rtpListener.close()
 			l.rtcpListener.close()
 		}
+		st.multicastListeners = nil
 	}
 }
 
