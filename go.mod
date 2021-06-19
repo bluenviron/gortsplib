@@ -1,6 +1,6 @@
 module github.com/aler9/gortsplib
 
-go 1.13
+go 1.14
 
 require (
 	github.com/icza/bitio v1.0.0
