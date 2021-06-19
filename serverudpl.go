@@ -96,7 +96,7 @@ func newServerUDPListener(
 			return nil, err
 		}
 
-		tmp, err := s.ListenPacket("udp4", "224.0.0.0:"+port)
+		tmp, err := s.ListenPacket("udp", "224.0.0.0:"+port)
 		if err != nil {
 			return nil, err
 		}

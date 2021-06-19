@@ -276,7 +276,7 @@ func TestClientRead(t *testing.T) {
 					th.Destination = &v2
 					th.Ports = &[2]int{25000, 25001}
 
-					l1, err = net.ListenPacket("udp4", "224.0.0.0:25000")
+					l1, err = net.ListenPacket("udp", "224.0.0.0:25000")
 					require.NoError(t, err)
 					defer l1.Close()
 
@@ -290,7 +290,7 @@ func TestClientRead(t *testing.T) {
 						require.NoError(t, err)
 					}
 
-					l2, err = net.ListenPacket("udp4", "224.0.0.0:25001")
+					l2, err = net.ListenPacket("udp", "224.0.0.0:25001")
 					require.NoError(t, err)
 					defer l2.Close()
 

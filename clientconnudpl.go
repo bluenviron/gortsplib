@@ -63,7 +63,7 @@ func newClientConnUDPListener(cc *ClientConn, multicast bool, address string) (*
 			return nil, err
 		}
 
-		tmp, err := cc.c.ListenPacket("udp4", "224.0.0.0:"+port)
+		tmp, err := cc.c.ListenPacket("udp", "224.0.0.0:"+port)
 		if err != nil {
 			return nil, err
 		}

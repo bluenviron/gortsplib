@@ -441,7 +441,7 @@ func TestServerRead(t *testing.T) {
 				defer l2.Close()
 
 			case "multicast":
-				l1, err = net.ListenPacket("udp4", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
+				l1, err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
 				require.NoError(t, err)
 				defer l1.Close()
 
@@ -455,7 +455,7 @@ func TestServerRead(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				l2, err = net.ListenPacket("udp4", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[1]), 10))
+				l2, err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[1]), 10))
 				require.NoError(t, err)
 				defer l2.Close()
 
