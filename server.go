@@ -93,10 +93,10 @@ type Server struct {
 	MulticastIPRange string
 	// a port to send RTP packets with UDP-multicast.
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server can read and write UDP-multicast streams.
-	MulticastRTPPort uint
+	MulticastRTPPort int
 	// a port to send RTCP packets with UDP-multicast.
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server can read and write UDP-multicast streams.
-	MulticastRTCPPort uint
+	MulticastRTCPPort int
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
