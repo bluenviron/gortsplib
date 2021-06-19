@@ -205,7 +205,7 @@ func (s *Server) Start(address string) error {
 		}
 
 		if rtcpPort != (rtpPort + 1) {
-			return fmt.Errorf("RTCP and RTP ports must be consecutive")
+			return fmt.Errorf("RTP and RTCP ports must be consecutive")
 		}
 
 		s.udpRTPListener, err = newServerUDPListener(s, false, s.UDPRTPAddress, StreamTypeRTP)
@@ -250,7 +250,7 @@ func (s *Server) Start(address string) error {
 			if s.udpRTCPListener != nil {
 				s.udpRTCPListener.close()
 			}
-			return fmt.Errorf("RTCP and RTP ports must be consecutive")
+			return fmt.Errorf("RTP and RTCP ports must be consecutive")
 		}
 
 		var err error
