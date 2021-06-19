@@ -448,7 +448,7 @@ func (cc *ClientConn) runBackground() {
 			return cc.runBackgroundPlayTCP()
 		}
 
-		if *cc.protocol == ClientProtocolUDP || *cc.protocol == ClientProtocolMulticast {
+		if *cc.protocol == ClientProtocolUDP {
 			return cc.runBackgroundRecordUDP()
 		}
 		return cc.runBackgroundRecordTCP()
@@ -1636,20 +1636,22 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		cc.tracks[trackID].rtcpSender.ProcessFrame(now, streamType, payload)
 	}
 
-	if *cc.protocol == ClientProtocolUDP {
+	switch *cc.protocol {
+	case ClientProtocolUDP, ClientProtocolMulticast:
 		if streamType == StreamTypeRTP {
 			return cc.tracks[trackID].udpRTPListener.write(payload)
 		}
 		return cc.tracks[trackID].udpRTCPListener.write(payload)
+
+	default: // TCP
+		cc.tcpWriteMutex.Lock()
+		defer cc.tcpWriteMutex.Unlock()
+
+		cc.nconn.SetWriteDeadline(now.Add(cc.c.WriteTimeout))
+		return base.InterleavedFrame{
+			TrackID:    trackID,
+			StreamType: streamType,
+			Payload:    payload,
+		}.Write(cc.bw)
 	}
-
-	cc.tcpWriteMutex.Lock()
-	defer cc.tcpWriteMutex.Unlock()
-
-	cc.nconn.SetWriteDeadline(now.Add(cc.c.WriteTimeout))
-	return base.InterleavedFrame{
-		TrackID:    trackID,
-		StreamType: streamType,
-		Payload:    payload,
-	}.Write(cc.bw)
 }
