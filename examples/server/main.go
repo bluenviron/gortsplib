@@ -140,7 +140,7 @@ func main() {
 		Handler:           &serverHandler{},
 		UDPRTPAddress:     ":8000",
 		UDPRTCPAddress:    ":8001",
-		MulticastIPRange:  "244.1.0.0/16",
+		MulticastIPRange:  "224.1.0.0/16",
 		MulticastRTPPort:  8002,
 		MulticastRTCPPort: 8003,
 	}
