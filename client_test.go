@@ -177,3 +177,65 @@ func TestClientAuth(t *testing.T) {
 	_, _, _, err = conn.Describe(u)
 	require.NoError(t, err)
 }
+
+func TestClientDescribeCharset(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		req, err := readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+				}, ", ")},
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		track1, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+		require.NoError(t, err)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+			},
+			Body: Tracks{track1}.Write(),
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+	}()
+
+	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	conn, err := Dial(u.Scheme, u.Host)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	_, err = conn.Options(u)
+	require.NoError(t, err)
+
+	_, _, _, err = conn.Describe(u)
+	require.NoError(t, err)
+}

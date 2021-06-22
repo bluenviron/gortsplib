@@ -1033,6 +1033,9 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response
 		return nil, nil, nil, liberrors.ErrClientContentTypeMissing{}
 	}
 
+	// strip encoding information from Content-Type header
+	ct = base.HeaderValue{strings.Split(ct[0], ";")[0]}
+
 	if ct[0] != "application/sdp" {
 		return nil, nil, nil, liberrors.ErrClientContentTypeUnsupported{CT: ct}
 	}
