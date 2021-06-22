@@ -323,6 +323,7 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream/"), req.URL)
+				require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
 
 				err = base.Response{
 					StatusCode: base.StatusOK,

@@ -1442,9 +1442,15 @@ func (cc *ClientConn) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base
 
 	header := make(base.Header)
 
-	if ra != nil {
-		header["Range"] = ra.Write()
+	// Range is mandatory in Parrot Streaming Server
+	if ra == nil {
+		ra = &headers.Range{
+			Value: &headers.RangeNPT{
+				Start: headers.RangeNPTTime(0),
+			},
+		}
 	}
+	header["Range"] = ra.Write()
 
 	res, err := cc.do(&base.Request{
 		Method: base.Play,
