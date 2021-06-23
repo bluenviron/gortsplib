@@ -161,14 +161,14 @@ func (c *Client) DialReadContext(ctx context.Context, address string) (*ClientCo
 		return nil, err
 	}
 
-	tracks, _, err := conn.Describe(u)
+	tracks, baseURL, _, err := conn.Describe(u)
 	if err != nil {
 		conn.Close()
 		return nil, err
 	}
 
 	for _, track := range tracks {
-		_, err := conn.Setup(headers.TransportModePlay, track, 0, 0)
+		_, err := conn.Setup(headers.TransportModePlay, baseURL, track, 0, 0)
 		if err != nil {
 			conn.Close()
 			return nil, err
@@ -229,7 +229,7 @@ func (c *Client) DialPublishContext(ctx context.Context, address string, tracks 
 	}
 
 	for _, track := range tracks {
-		_, err := conn.Setup(headers.TransportModeRecord, track, 0, 0)
+		_, err := conn.Setup(headers.TransportModeRecord, u, track, 0, 0)
 		if err != nil {
 			conn.Close()
 			return nil, err

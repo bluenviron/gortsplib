@@ -107,10 +107,9 @@ func TestTrackURL(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			tracks, err := ReadTracks(ca.sdp, nil)
+			tracks, err := ReadTracks(ca.sdp)
 			require.NoError(t, err)
-			tracks[0].BaseURL = ca.baseURL
-			ur, err := tracks[0].URL()
+			ur, err := tracks[0].URL(ca.baseURL)
 			require.NoError(t, err)
 			require.Equal(t, ca.ur, ur)
 		})
@@ -183,7 +182,7 @@ func TestTrackClockRate(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			tracks, err := ReadTracks(ca.sdp, nil)
+			tracks, err := ReadTracks(ca.sdp)
 			require.NoError(t, err)
 
 			clockRate, err := tracks[0].ClockRate()

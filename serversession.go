@@ -24,7 +24,10 @@ func setupGetTrackIDPathQuery(
 	url *base.URL,
 	thMode *headers.TransportMode,
 	announcedTracks []ServerSessionAnnouncedTrack,
-	setuppedPath *string, setuppedQuery *string) (int, string, string, error) {
+	setuppedPath *string,
+	setuppedQuery *string,
+	setuppedBaseURL *base.URL,
+) (int, string, string, error) {
 	pathAndQuery, ok := url.RTSPPathAndQuery()
 	if !ok {
 		return 0, "", "", liberrors.ErrServerInvalidPath{}
@@ -63,7 +66,7 @@ func setupGetTrackIDPathQuery(
 	}
 
 	for trackID, track := range announcedTracks {
-		u, _ := track.track.URL()
+		u, _ := track.track.URL(setuppedBaseURL)
 		if u.String() == url.String() {
 			return trackID, *setuppedPath, *setuppedQuery, nil
 		}
@@ -126,6 +129,7 @@ type ServerSession struct {
 	setuppedTracks   map[int]ServerSessionSetuppedTrack
 	setuppedProtocol *base.StreamProtocol
 	setuppedDelivery *base.StreamDelivery
+	setuppedBaseURL  *base.URL     // publish
 	setuppedStream   *ServerStream // read
 	setuppedPath     *string
 	setuppedQuery    *string
@@ -443,7 +447,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerContentTypeUnsupported{CT: ct}
 		}
 
-		tracks, err := ReadTracks(req.Body, req.URL)
+		tracks, err := ReadTracks(req.Body)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -457,7 +461,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		for _, track := range tracks {
-			trackURL, err := track.URL()
+			trackURL, err := track.URL(req.URL)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -493,6 +497,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.state = ServerSessionStatePreRecord
 			ss.setuppedPath = &path
 			ss.setuppedQuery = &query
+			ss.setuppedBaseURL = req.URL
 
 			ss.announcedTracks = make([]ServerSessionAnnouncedTrack, len(tracks))
 			for trackID, track := range tracks {
@@ -530,7 +535,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		trackID, path, query, err := setupGetTrackIDPathQuery(req.URL, inTH.Mode,
-			ss.announcedTracks, ss.setuppedPath, ss.setuppedQuery)
+			ss.announcedTracks, ss.setuppedPath, ss.setuppedQuery, ss.setuppedBaseURL)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,

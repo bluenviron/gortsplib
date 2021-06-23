@@ -22,9 +22,9 @@ func main() {
 
 	// check whether there's a H264 track
 	h264Track := func() int {
-		for _, track := range conn.Tracks() {
+		for i, track := range conn.Tracks() {
 			if track.IsH264() {
-				return track.ID
+				return i
 			}
 		}
 		return -1

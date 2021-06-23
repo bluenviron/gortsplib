@@ -30,7 +30,7 @@ func main() {
 		panic(err)
 	}
 
-	tracks, _, err := conn.Describe(u)
+	tracks, baseURL, _, err := conn.Describe(u)
 	if err != nil {
 		panic(err)
 	}
@@ -38,7 +38,7 @@ func main() {
 	// start reading only video tracks, skipping audio or application tracks
 	for _, t := range tracks {
 		if t.Media.MediaName.Media == "video" {
-			_, err := conn.Setup(headers.TransportModePlay, t, 0, 0)
+			_, err := conn.Setup(headers.TransportModePlay, baseURL, t, 0, 0)
 			if err != nil {
 				panic(err)
 			}

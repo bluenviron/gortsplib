@@ -191,7 +191,7 @@ func TestClientPublishSerial(t *testing.T) {
 				})
 			}()
 
-			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+			err = conn.WriteFrame(0, StreamTypeRTP,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 
@@ -199,7 +199,7 @@ func TestClientPublishSerial(t *testing.T) {
 			conn.Close()
 			<-done
 
-			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+			err = conn.WriteFrame(0, StreamTypeRTP,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.Error(t, err)
 		})
@@ -332,7 +332,7 @@ func TestClientPublishParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := conn.WriteFrame(track.ID, StreamTypeRTP,
+					err := conn.WriteFrame(0, StreamTypeRTP,
 						[]byte{0x01, 0x02, 0x03, 0x04})
 					if err != nil {
 						return
@@ -480,21 +480,21 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			require.NoError(t, err)
 			defer conn.Close()
 
-			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+			err = conn.WriteFrame(0, StreamTypeRTP,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 
 			_, err = conn.Pause()
 			require.NoError(t, err)
 
-			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+			err = conn.WriteFrame(0, StreamTypeRTP,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.Error(t, err)
 
 			_, err = conn.Record()
 			require.NoError(t, err)
 
-			err = conn.WriteFrame(track.ID, StreamTypeRTP,
+			err = conn.WriteFrame(0, StreamTypeRTP,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 		})
@@ -625,7 +625,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := conn.WriteFrame(track.ID, StreamTypeRTP,
+					err := conn.WriteFrame(0, StreamTypeRTP,
 						[]byte{0x01, 0x02, 0x03, 0x04})
 					if err != nil {
 						return
@@ -756,7 +756,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	err = conn.WriteFrame(track.ID, StreamTypeRTP,
+	err = conn.WriteFrame(0, StreamTypeRTP,
 		[]byte{0x01, 0x02, 0x03, 0x04})
 	require.NoError(t, err)
 }
@@ -909,11 +909,11 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		},
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}).Marshal()
-	err = conn.WriteFrame(track.ID, StreamTypeRTP, byts)
+	err = conn.WriteFrame(0, StreamTypeRTP, byts)
 	require.NoError(t, err)
 
 	time.Sleep(1300 * time.Millisecond)
 
-	err = conn.WriteFrame(track.ID, StreamTypeRTP, byts)
+	err = conn.WriteFrame(0, StreamTypeRTP, byts)
 	require.NoError(t, err)
 }

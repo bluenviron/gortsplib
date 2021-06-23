@@ -92,6 +92,7 @@ type announceReq struct {
 
 type setupReq struct {
 	mode     headers.TransportMode
+	baseURL  *base.URL
 	track    *Track
 	rtpPort  int
 	rtcpPort int
@@ -112,9 +113,10 @@ type pauseReq struct {
 }
 
 type clientRes struct {
-	tracks Tracks
-	res    *base.Response
-	err    error
+	tracks  Tracks
+	baseURL *base.URL
+	res     *base.Response
+	err     error
 }
 
 // ClientConn is a client-side RTSP connection.
@@ -235,17 +237,20 @@ func (cc *ClientConn) Close() error {
 
 // Tracks returns all the tracks that the connection is reading or publishing.
 func (cc *ClientConn) Tracks() Tracks {
-	var ret Tracks
-
-	for _, track := range cc.tracks {
-		ret = append(ret, track.track)
+	ids := make([]int, len(cc.tracks))
+	pos := 0
+	for id := range cc.tracks {
+		ids[pos] = id
+		pos++
 	}
-
-	// sort by ID to generate correct SDPs
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].ID < ret[j].ID
+	sort.Slice(ids, func(a, b int) bool {
+		return ids[a] < ids[b]
 	})
 
+	var ret Tracks
+	for _, id := range ids {
+		ret = append(ret, cc.tracks[id].track)
+	}
 	return ret
 }
 
@@ -260,15 +265,15 @@ outer:
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-cc.describe:
-			tracks, res, err := cc.doDescribe(req.url)
-			req.res <- clientRes{tracks: tracks, res: res, err: err}
+			tracks, baseURL, res, err := cc.doDescribe(req.url)
+			req.res <- clientRes{tracks: tracks, baseURL: baseURL, res: res, err: err}
 
 		case req := <-cc.announce:
 			res, err := cc.doAnnounce(req.url, req.tracks)
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-cc.setup:
-			res, err := cc.doSetup(req.mode, req.track, req.rtpPort, req.rtcpPort)
+			res, err := cc.doSetup(req.mode, req.baseURL, req.track, req.rtpPort, req.rtcpPort)
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-cc.play:
@@ -388,7 +393,7 @@ func (cc *ClientConn) switchProtocolIfTimeout(err error) error {
 	}
 
 	for _, track := range prevTracks {
-		_, err := cc.doSetup(headers.TransportModePlay, track.track, 0, 0)
+		_, err := cc.doSetup(headers.TransportModePlay, prevBaseURL, track.track, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -969,14 +974,14 @@ func (cc *ClientConn) Options(u *base.URL) (*base.Response, error) {
 	}
 }
 
-func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.Response, error) {
+func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, error) {
 	err := cc.checkState(map[clientConnState]struct{}{
 		clientConnStateInitial:   {},
 		clientConnStatePrePlay:   {},
 		clientConnStatePreRecord: {},
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	res, err := cc.do(&base.Request{
@@ -987,7 +992,7 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.Response, error) {
 		},
 	}, false)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
@@ -1001,7 +1006,7 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.Response, error) {
 
 			u, err := base.ParseURL(res.Header["Location"][0])
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			cc.scheme = u.Scheme
@@ -1009,27 +1014,27 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.Response, error) {
 
 			err = cc.connOpen()
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			_, err = cc.doOptions(u)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			return cc.doDescribe(u)
 		}
 
-		return nil, res, liberrors.ErrClientInvalidStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
+		return nil, nil, res, liberrors.ErrClientInvalidStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	ct, ok := res.Header["Content-Type"]
 	if !ok || len(ct) != 1 {
-		return nil, nil, liberrors.ErrClientContentTypeMissing{}
+		return nil, nil, nil, liberrors.ErrClientContentTypeMissing{}
 	}
 
 	if ct[0] != "application/sdp" {
-		return nil, nil, liberrors.ErrClientContentTypeUnsupported{CT: ct}
+		return nil, nil, nil, liberrors.ErrClientContentTypeUnsupported{CT: ct}
 	}
 
 	baseURL, err := func() (*base.URL, error) {
@@ -1054,27 +1059,27 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.Response, error) {
 		return u, nil
 	}()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	tracks, err := ReadTracks(res.Body, baseURL)
+	tracks, err := ReadTracks(res.Body)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return tracks, res, nil
+	return tracks, baseURL, res, nil
 }
 
 // Describe writes a DESCRIBE request and reads a Response.
-func (cc *ClientConn) Describe(u *base.URL) (Tracks, *base.Response, error) {
+func (cc *ClientConn) Describe(u *base.URL) (Tracks, *base.URL, *base.Response, error) {
 	cres := make(chan clientRes)
 	select {
 	case cc.describe <- describeReq{url: u, res: cres}:
 		res := <-cres
-		return res.tracks, res.res, res.err
+		return res.tracks, res.baseURL, res.res, res.err
 
 	case <-cc.ctx.Done():
-		return nil, nil, liberrors.ErrClientTerminated{}
+		return nil, nil, nil, liberrors.ErrClientTerminated{}
 	}
 }
 
@@ -1090,11 +1095,7 @@ func (cc *ClientConn) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, er
 	// (tested with ffmpeg and gstreamer)
 	baseURL := u.Clone()
 
-	// set ID, base URL, control attribute of tracks
 	for i, t := range tracks {
-		t.ID = i
-		t.BaseURL = baseURL
-
 		if !t.hasControlAttribute() {
 			t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
 				Key:   "control",
@@ -1142,6 +1143,7 @@ func (cc *ClientConn) Announce(u *base.URL, tracks Tracks) (*base.Response, erro
 
 func (cc *ClientConn) doSetup(
 	mode headers.TransportMode,
+	baseURL *base.URL,
 	track *Track,
 	rtpPort int,
 	rtcpPort int) (*base.Response, error) {
@@ -1160,7 +1162,7 @@ func (cc *ClientConn) doSetup(
 		return nil, liberrors.ErrClientCannotReadPublishAtSameTime{}
 	}
 
-	if cc.streamBaseURL != nil && *track.BaseURL != *cc.streamBaseURL {
+	if cc.streamBaseURL != nil && *baseURL != *cc.streamBaseURL {
 		return nil, liberrors.ErrClientCannotSetupTracksDifferentURLs{}
 	}
 
@@ -1191,6 +1193,8 @@ func (cc *ClientConn) doSetup(
 	th := headers.Transport{
 		Mode: &mode,
 	}
+
+	trackID := len(cc.tracks)
 
 	switch proto {
 	case ClientProtocolUDP:
@@ -1236,10 +1240,10 @@ func (cc *ClientConn) doSetup(
 		v1 := base.StreamDeliveryUnicast
 		th.Delivery = &v1
 		th.Protocol = base.StreamProtocolTCP
-		th.InterleavedIDs = &[2]int{(track.ID * 2), (track.ID * 2) + 1}
+		th.InterleavedIDs = &[2]int{(trackID * 2), (trackID * 2) + 1}
 	}
 
-	trackURL, err := track.URL()
+	trackURL, err := track.URL(baseURL)
 	if err != nil {
 		if proto == ClientProtocolUDP {
 			rtpListener.close()
@@ -1277,7 +1281,7 @@ func (cc *ClientConn) doSetup(
 			v := ClientProtocolTCP
 			cc.protocol = &v
 
-			return cc.doSetup(mode, track, 0, 0)
+			return cc.doSetup(mode, baseURL, track, 0, 0)
 		}
 
 		return res, liberrors.ErrClientInvalidStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
@@ -1360,7 +1364,7 @@ func (cc *ClientConn) doSetup(
 		if thRes.ServerPorts != nil {
 			rtpListener.remotePort = thRes.ServerPorts[0]
 		}
-		rtpListener.trackID = track.ID
+		rtpListener.trackID = trackID
 		rtpListener.streamType = StreamTypeRTP
 		cct.udpRTPListener = rtpListener
 
@@ -1369,7 +1373,7 @@ func (cc *ClientConn) doSetup(
 		if thRes.ServerPorts != nil {
 			rtcpListener.remotePort = thRes.ServerPorts[1]
 		}
-		rtcpListener.trackID = track.ID
+		rtcpListener.trackID = trackID
 		rtcpListener.streamType = StreamTypeRTCP
 		cct.udpRTCPListener = rtcpListener
 
@@ -1377,14 +1381,14 @@ func (cc *ClientConn) doSetup(
 		rtpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = ""
 		rtpListener.remotePort = thRes.Ports[0]
-		rtpListener.trackID = track.ID
+		rtpListener.trackID = trackID
 		rtpListener.streamType = StreamTypeRTP
 		cct.udpRTPListener = rtpListener
 
 		rtcpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = ""
 		rtcpListener.remotePort = thRes.Ports[1]
-		rtcpListener.trackID = track.ID
+		rtcpListener.trackID = trackID
 		rtcpListener.streamType = StreamTypeRTCP
 		cct.udpRTCPListener = rtcpListener
 
@@ -1402,10 +1406,10 @@ func (cc *ClientConn) doSetup(
 		cct.rtcpSender = rtcpsender.New(clockRate)
 	}
 
-	cc.streamBaseURL = track.BaseURL
+	cc.streamBaseURL = baseURL
 	cc.protocol = &proto
 
-	cc.tracks[track.ID] = cct
+	cc.tracks[trackID] = cct
 
 	return res, nil
 }
@@ -1415,6 +1419,7 @@ func (cc *ClientConn) doSetup(
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
 func (cc *ClientConn) Setup(
 	mode headers.TransportMode,
+	baseURL *base.URL,
 	track *Track,
 	rtpPort int,
 	rtcpPort int) (*base.Response, error) {
@@ -1422,6 +1427,7 @@ func (cc *ClientConn) Setup(
 	select {
 	case cc.setup <- setupReq{
 		mode:     mode,
+		baseURL:  baseURL,
 		track:    track,
 		rtpPort:  rtpPort,
 		rtcpPort: rtcpPort,

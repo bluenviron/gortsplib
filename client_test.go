@@ -95,7 +95,7 @@ func TestClientSession(t *testing.T) {
 	_, err = conn.Options(u)
 	require.NoError(t, err)
 
-	_, _, err = conn.Describe(u)
+	_, _, _, err = conn.Describe(u)
 	require.NoError(t, err)
 }
 
@@ -174,6 +174,6 @@ func TestClientAuth(t *testing.T) {
 	_, err = conn.Options(u)
 	require.NoError(t, err)
 
-	_, _, err = conn.Describe(u)
+	_, _, _, err = conn.Describe(u)
 	require.NoError(t, err)
 }

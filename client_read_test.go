@@ -150,19 +150,13 @@ func TestClientReadTracks(t *testing.T) {
 
 	require.Equal(t, Tracks{
 		{
-			ID:      0,
-			BaseURL: mustParseURL("rtsp://localhost:8554/teststream/"),
-			Media:   track1.Media,
+			Media: track1.Media,
 		},
 		{
-			ID:      1,
-			BaseURL: mustParseURL("rtsp://localhost:8554/teststream/"),
-			Media:   track2.Media,
+			Media: track2.Media,
 		},
 		{
-			ID:      2,
-			BaseURL: mustParseURL("rtsp://localhost:8554/teststream/"),
-			Media:   track3.Media,
+			Media: track3.Media,
 		},
 	}, conn.Tracks())
 }
@@ -447,6 +441,140 @@ func TestClientRead(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestClientReadPartial(t *testing.T) {
+	listenIP := multicastCapableIP(t)
+	l, err := net.Listen("tcp", listenIP+":8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		req, err := readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream"), req.URL)
+
+		track1, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+		require.NoError(t, err)
+
+		track2, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+		require.NoError(t, err)
+
+		tracks := cloneAndClearTracks(Tracks{track1, track2})
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://" + listenIP + ":8554/teststream/"},
+			},
+			Body: tracks.Write(),
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/trackID=1"), req.URL)
+
+		var inTH headers.Transport
+		err = inTH.Read(req.Header["Transport"])
+		require.NoError(t, err)
+		require.Equal(t, &[2]int{0, 1}, inTH.InterleavedIDs)
+
+		th := headers.Transport{
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
+				return &v
+			}(),
+			Protocol:       base.StreamProtocolTCP,
+			InterleavedIDs: inTH.InterleavedIDs,
+		}
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Write(),
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = base.InterleavedFrame{
+			TrackID:    0,
+			StreamType: StreamTypeRTP,
+			Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+	}()
+
+	c := &Client{
+		Protocol: func() *ClientProtocol {
+			v := ClientProtocolTCP
+			return &v
+		}(),
+	}
+
+	u, err := base.ParseURL("rtsp://" + listenIP + ":8554/teststream")
+	require.NoError(t, err)
+
+	conn, err := c.Dial(u.Scheme, u.Host)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	tracks, baseURL, _, err := conn.Describe(u)
+	require.NoError(t, err)
+
+	_, err = conn.Setup(headers.TransportModePlay, baseURL, tracks[1], 0, 0)
+	require.NoError(t, err)
+
+	_, err = conn.Play(nil)
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	frameRecv := make(chan struct{})
+	go func() {
+		defer close(done)
+		conn.ReadFrames(func(id int, streamType StreamType, payload []byte) {
+			require.Equal(t, 0, id)
+			require.Equal(t, StreamTypeRTP, streamType)
+			require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
+			close(frameRecv)
+		})
+	}()
+
+	<-frameRecv
+	conn.Close()
+	<-done
 }
 
 func TestClientReadNoContentBase(t *testing.T) {
@@ -2005,11 +2133,11 @@ func TestClientReadSeek(t *testing.T) {
 	_, err = conn.Options(u)
 	require.NoError(t, err)
 
-	tracks, _, err := conn.Describe(u)
+	tracks, baseURL, _, err := conn.Describe(u)
 	require.NoError(t, err)
 
 	for _, track := range tracks {
-		_, err := conn.Setup(headers.TransportModePlay, track, 0, 0)
+		_, err := conn.Setup(headers.TransportModePlay, baseURL, track, 0, 0)
 		require.NoError(t, err)
 	}
 

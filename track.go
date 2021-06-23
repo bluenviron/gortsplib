@@ -14,15 +14,9 @@ import (
 	"github.com/aler9/gortsplib/pkg/sdp"
 )
 
-// Track is a track available in a certain URL.
+// Track is a RTSP track.
 type Track struct {
-	// base URL
-	BaseURL *base.URL
-
-	// id
-	ID int
-
-	// codec and info in SDP format
+	// attributes in SDP format
 	Media *psdp.MediaDescription
 }
 
@@ -36,8 +30,8 @@ func (t *Track) hasControlAttribute() bool {
 }
 
 // URL returns the track url.
-func (t *Track) URL() (*base.URL, error) {
-	if t.BaseURL == nil {
+func (t *Track) URL(baseURL *base.URL) (*base.URL, error) {
+	if baseURL == nil {
 		return nil, fmt.Errorf("empty base url")
 	}
 
@@ -52,7 +46,7 @@ func (t *Track) URL() (*base.URL, error) {
 
 	// no control attribute, use base URL
 	if controlAttr == "" {
-		return t.BaseURL, nil
+		return baseURL, nil
 	}
 
 	// control attribute contains an absolute path
@@ -63,8 +57,8 @@ func (t *Track) URL() (*base.URL, error) {
 		}
 
 		// copy host and credentials
-		ur.Host = t.BaseURL.Host
-		ur.User = t.BaseURL.User
+		ur.Host = baseURL.Host
+		ur.User = baseURL.User
 		return ur, nil
 	}
 
@@ -72,7 +66,7 @@ func (t *Track) URL() (*base.URL, error) {
 	// insert the control attribute at the end of the url
 	// if there's a query, insert it after the query
 	// otherwise insert it after the path
-	strURL := t.BaseURL.String()
+	strURL := baseURL.String()
 	if controlAttr[0] != '?' && !strings.HasSuffix(strURL, "/") {
 		strURL += "/"
 	}
@@ -337,7 +331,7 @@ func (t *Track) ExtractDataAAC() ([]byte, error) {
 type Tracks []*Track
 
 // ReadTracks decodes tracks from SDP.
-func ReadTracks(byts []byte, baseURL *base.URL) (Tracks, error) {
+func ReadTracks(byts []byte) (Tracks, error) {
 	desc := sdp.SessionDescription{}
 	err := desc.Unmarshal(byts)
 	if err != nil {
@@ -348,9 +342,7 @@ func ReadTracks(byts []byte, baseURL *base.URL) (Tracks, error) {
 
 	for i, media := range desc.MediaDescriptions {
 		tracks[i] = &Track{
-			BaseURL: baseURL,
-			ID:      i,
-			Media:   media,
+			Media: media,
 		}
 	}
 

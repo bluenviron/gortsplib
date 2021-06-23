@@ -28,7 +28,7 @@ func main() {
 		panic(err)
 	}
 
-	tracks, _, err := conn.Describe(u)
+	tracks, _, _, err := conn.Describe(u)
 	if err != nil {
 		panic(err)
 	}

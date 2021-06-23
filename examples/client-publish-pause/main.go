@@ -64,7 +64,7 @@ func main() {
 				}
 
 				// write RTP frames
-				err = conn.WriteFrame(track.ID, gortsplib.StreamTypeRTP, buf[:n])
+				err = conn.WriteFrame(0, gortsplib.StreamTypeRTP, buf[:n])
 				if err != nil {
 					break
 				}
