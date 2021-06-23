@@ -72,13 +72,15 @@ func TestClientSession(t *testing.T) {
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
 
+		tracks := cloneAndClearTracks(Tracks{track})
+
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Session":      base.HeaderValue{"123456"},
 			},
-			Body: Tracks{track}.Write(),
+			Body: tracks.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 	}()
@@ -150,12 +152,14 @@ func TestClientAuth(t *testing.T) {
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
 
+		tracks := cloneAndClearTracks(Tracks{track})
+
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: Tracks{track}.Write(),
+			Body: tracks.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 	}()

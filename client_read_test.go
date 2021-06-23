@@ -67,13 +67,15 @@ func TestClientReadTracks(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
+		tracks := cloneAndClearTracks(Tracks{track1, track2, track3})
+
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: Tracks{track1, track2, track3}.Write(),
+			Body: tracks.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -228,13 +230,15 @@ func TestClientRead(t *testing.T) {
 				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 				require.NoError(t, err)
 
+				tracks := cloneAndClearTracks(Tracks{track})
+
 				err = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{scheme + "://" + listenIP + ":8554/teststream/"},
 					},
-					Body: Tracks{track}.Write(),
+					Body: tracks.Write(),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -484,12 +488,14 @@ func TestClientReadNoContentBase(t *testing.T) {
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
 
+		tracks := cloneAndClearTracks(Tracks{track})
+
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: Tracks{track}.Write(),
+			Body: tracks.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -590,13 +596,15 @@ func TestClientReadAnyPort(t *testing.T) {
 				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 				require.NoError(t, err)
 
+				tracks := cloneAndClearTracks(Tracks{track})
+
 				err = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: Tracks{track}.Write(),
+					Body: tracks.Write(),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -716,13 +724,15 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
+			tracks := cloneAndClearTracks(Tracks{track})
+
 			err = base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Content-Type": base.HeaderValue{"application/sdp"},
 					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
-				Body: Tracks{track}.Write(),
+				Body: tracks.Write(),
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
@@ -847,13 +857,15 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 			require.NoError(t, err)
 
+			tracks := cloneAndClearTracks(Tracks{track})
+
 			err = base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Content-Type": base.HeaderValue{"application/sdp"},
 					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
-				Body: Tracks{track}.Write(),
+				Body: tracks.Write(),
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
@@ -1072,13 +1084,15 @@ func TestClientReadRedirect(t *testing.T) {
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
 
+		tracks := cloneAndClearTracks(Tracks{track})
+
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: Tracks{track}.Write(),
+			Body: tracks.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -1230,13 +1244,15 @@ func TestClientReadPause(t *testing.T) {
 				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 				require.NoError(t, err)
 
+				tracks := cloneAndClearTracks(Tracks{track})
+
 				err = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: Tracks{track}.Write(),
+					Body: tracks.Write(),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -1414,13 +1430,15 @@ func TestClientReadRTCPReport(t *testing.T) {
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
 
+		tracks := cloneAndClearTracks(Tracks{track})
+
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: Tracks{track}.Write(),
+			Body: tracks.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -1590,13 +1608,15 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 				require.NoError(t, err)
 
+				tracks := cloneAndClearTracks(Tracks{track})
+
 				err = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: Tracks{track}.Write(),
+					Body: tracks.Write(),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -1745,13 +1765,15 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
 
+		tracks := cloneAndClearTracks(Tracks{track})
+
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: Tracks{track}.Write(),
+			Body: tracks.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -1875,13 +1897,15 @@ func TestClientReadSeek(t *testing.T) {
 		track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
 		require.NoError(t, err)
 
+		tracks := cloneAndClearTracks(Tracks{track})
+
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: Tracks{track}.Write(),
+			Body: tracks.Write(),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 

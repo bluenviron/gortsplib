@@ -41,10 +41,11 @@ type ServerStream struct {
 // NewServerStream allocates a ServerStream.
 func NewServerStream(tracks Tracks) *ServerStream {
 	st := &ServerStream{
-		tracks:         tracks,
 		readersUnicast: make(map[*ServerSession]struct{}),
 		readers:        make(map[*ServerSession]struct{}),
 	}
+
+	st.tracks = cloneAndClearTracks(tracks)
 
 	st.trackInfos = make([]*trackInfo, len(tracks))
 	for i := range st.trackInfos {

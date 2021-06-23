@@ -26,6 +26,112 @@ type Track struct {
 	Media *psdp.MediaDescription
 }
 
+func (t *Track) hasControlAttribute() bool {
+	for _, attr := range t.Media.Attributes {
+		if attr.Key == "control" {
+			return true
+		}
+	}
+	return false
+}
+
+// URL returns the track url.
+func (t *Track) URL() (*base.URL, error) {
+	if t.BaseURL == nil {
+		return nil, fmt.Errorf("empty base url")
+	}
+
+	controlAttr := func() string {
+		for _, attr := range t.Media.Attributes {
+			if attr.Key == "control" {
+				return attr.Value
+			}
+		}
+		return ""
+	}()
+
+	// no control attribute, use base URL
+	if controlAttr == "" {
+		return t.BaseURL, nil
+	}
+
+	// control attribute contains an absolute path
+	if strings.HasPrefix(controlAttr, "rtsp://") {
+		ur, err := base.ParseURL(controlAttr)
+		if err != nil {
+			return nil, err
+		}
+
+		// copy host and credentials
+		ur.Host = t.BaseURL.Host
+		ur.User = t.BaseURL.User
+		return ur, nil
+	}
+
+	// control attribute contains a relative control attribute
+	// insert the control attribute at the end of the url
+	// if there's a query, insert it after the query
+	// otherwise insert it after the path
+	strURL := t.BaseURL.String()
+	if controlAttr[0] != '?' && !strings.HasSuffix(strURL, "/") {
+		strURL += "/"
+	}
+	ur, _ := base.ParseURL(strURL + controlAttr)
+	return ur, nil
+}
+
+// ClockRate returns the clock rate of the track.
+func (t *Track) ClockRate() (int, error) {
+	if len(t.Media.MediaName.Formats) != 1 {
+		return 0, fmt.Errorf("invalid format (%v)", t.Media.MediaName.Formats)
+	}
+
+	// get clock rate from payload type
+	switch t.Media.MediaName.Formats[0] {
+	case "0", "1", "2", "3", "4", "5", "7", "8", "9", "12", "13", "15", "18":
+		return 8000, nil
+
+	case "6":
+		return 16000, nil
+
+	case "10", "11":
+		return 44100, nil
+
+	case "14", "25", "26", "28", "31", "32", "33", "34":
+		return 90000, nil
+
+	case "16":
+		return 11025, nil
+
+	case "17":
+		return 22050, nil
+	}
+
+	// get clock rate from rtpmap
+	// https://tools.ietf.org/html/rfc4566
+	// a=rtpmap:<payload type> <encoding name>/<clock rate> [/<encoding parameters>]
+	for _, a := range t.Media.Attributes {
+		if a.Key == "rtpmap" {
+			tmp := strings.Split(a.Value, " ")
+			if len(tmp) < 2 {
+				return 0, fmt.Errorf("invalid rtpmap (%v)", a.Value)
+			}
+
+			tmp = strings.Split(tmp[1], "/")
+			if len(tmp) != 2 && len(tmp) != 3 {
+				return 0, fmt.Errorf("invalid rtpmap (%v)", a.Value)
+			}
+
+			v, err := strconv.ParseInt(tmp[1], 10, 64)
+			if err != nil {
+				return 0, err
+			}
+			return int(v), nil
+		}
+	}
+	return 0, fmt.Errorf("attribute 'rtpmap' not found")
+}
+
 // NewTrackH264 initializes an H264 track from a SPS and PPS.
 func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*Track, error) {
 	spropParameterSets := base64.StdEncoding.EncodeToString(sps) +
@@ -227,103 +333,6 @@ func (t *Track) ExtractDataAAC() ([]byte, error) {
 	return config, nil
 }
 
-// ClockRate returns the clock rate of the track.
-func (t *Track) ClockRate() (int, error) {
-	if len(t.Media.MediaName.Formats) != 1 {
-		return 0, fmt.Errorf("invalid format (%v)", t.Media.MediaName.Formats)
-	}
-
-	// get clock rate from payload type
-	switch t.Media.MediaName.Formats[0] {
-	case "0", "1", "2", "3", "4", "5", "7", "8", "9", "12", "13", "15", "18":
-		return 8000, nil
-
-	case "6":
-		return 16000, nil
-
-	case "10", "11":
-		return 44100, nil
-
-	case "14", "25", "26", "28", "31", "32", "33", "34":
-		return 90000, nil
-
-	case "16":
-		return 11025, nil
-
-	case "17":
-		return 22050, nil
-	}
-
-	// get clock rate from rtpmap
-	// https://tools.ietf.org/html/rfc4566
-	// a=rtpmap:<payload type> <encoding name>/<clock rate> [/<encoding parameters>]
-	for _, a := range t.Media.Attributes {
-		if a.Key == "rtpmap" {
-			tmp := strings.Split(a.Value, " ")
-			if len(tmp) < 2 {
-				return 0, fmt.Errorf("invalid rtpmap (%v)", a.Value)
-			}
-
-			tmp = strings.Split(tmp[1], "/")
-			if len(tmp) != 2 && len(tmp) != 3 {
-				return 0, fmt.Errorf("invalid rtpmap (%v)", a.Value)
-			}
-
-			v, err := strconv.ParseInt(tmp[1], 10, 64)
-			if err != nil {
-				return 0, err
-			}
-			return int(v), nil
-		}
-	}
-	return 0, fmt.Errorf("attribute 'rtpmap' not found")
-}
-
-// URL returns the track url.
-func (t *Track) URL() (*base.URL, error) {
-	if t.BaseURL == nil {
-		return nil, fmt.Errorf("empty base url")
-	}
-
-	controlAttr := func() string {
-		for _, attr := range t.Media.Attributes {
-			if attr.Key == "control" {
-				return attr.Value
-			}
-		}
-		return ""
-	}()
-
-	// no control attribute, use base URL
-	if controlAttr == "" {
-		return t.BaseURL, nil
-	}
-
-	// control attribute contains an absolute path
-	if strings.HasPrefix(controlAttr, "rtsp://") {
-		ur, err := base.ParseURL(controlAttr)
-		if err != nil {
-			return nil, err
-		}
-
-		// copy host and credentials
-		ur.Host = t.BaseURL.Host
-		ur.User = t.BaseURL.User
-		return ur, nil
-	}
-
-	// control attribute contains a relative control attribute
-	// insert the control attribute at the end of the url
-	// if there's a query, insert it after the query
-	// otherwise insert it after the path
-	strURL := t.BaseURL.String()
-	if controlAttr[0] != '?' && !strings.HasSuffix(strURL, "/") {
-		strURL += "/"
-	}
-	ur, _ := base.ParseURL(strURL + controlAttr)
-	return ur, nil
-}
-
 // Tracks is a list of tracks.
 type Tracks []*Track
 
@@ -357,6 +366,43 @@ func ReadTracks(byts []byte, baseURL *base.URL) (Tracks, error) {
 	return tracks, nil
 }
 
+func cloneAndClearTracks(ts Tracks) Tracks {
+	ret := make(Tracks, len(ts))
+
+	for i, track := range ts {
+		md := &psdp.MediaDescription{
+			MediaName: psdp.MediaName{
+				Media:   track.Media.MediaName.Media,
+				Protos:  []string{"RTP", "AVP"}, // override protocol
+				Formats: track.Media.MediaName.Formats,
+			},
+			Bandwidth: track.Media.Bandwidth,
+			Attributes: func() []psdp.Attribute {
+				var ret []psdp.Attribute
+
+				for _, attr := range track.Media.Attributes {
+					if attr.Key == "rtpmap" || attr.Key == "fmtp" {
+						ret = append(ret, attr)
+					}
+				}
+
+				ret = append(ret, psdp.Attribute{
+					Key:   "control",
+					Value: "trackID=" + strconv.FormatInt(int64(i), 10),
+				})
+
+				return ret
+			}(),
+		}
+
+		ret[i] = &Track{
+			Media: md,
+		}
+	}
+
+	return ret
+}
+
 // Write encodes tracks into SDP.
 func (ts Tracks) Write() []byte {
 	sout := &sdp.SessionDescription{
@@ -378,7 +424,7 @@ func (ts Tracks) Write() []byte {
 		},
 	}
 
-	for i, track := range ts {
+	for _, track := range ts {
 		mout := &psdp.MediaDescription{
 			MediaName: psdp.MediaName{
 				Media:   track.Media.MediaName.Media,
@@ -390,17 +436,10 @@ func (ts Tracks) Write() []byte {
 				var ret []psdp.Attribute
 
 				for _, attr := range track.Media.Attributes {
-					if attr.Key == "rtpmap" || attr.Key == "fmtp" {
+					if attr.Key == "rtpmap" || attr.Key == "fmtp" || attr.Key == "control" {
 						ret = append(ret, attr)
 					}
 				}
-
-				// control attribute is the path that is appended
-				// to the stream path in SETUP
-				ret = append(ret, psdp.Attribute{
-					Key:   "control",
-					Value: "trackID=" + strconv.FormatInt(int64(i), 10),
-				})
 
 				return ret
 			}(),

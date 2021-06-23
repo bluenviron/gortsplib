@@ -1090,14 +1090,17 @@ func (cc *ClientConn) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, er
 	// (tested with ffmpeg and gstreamer)
 	baseURL := u.Clone()
 
-	// set id, base url and control attribute on tracks
+	// set ID, base URL, control attribute of tracks
 	for i, t := range tracks {
 		t.ID = i
 		t.BaseURL = baseURL
-		t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
-			Key:   "control",
-			Value: "trackID=" + strconv.FormatInt(int64(i), 10),
-		})
+
+		if !t.hasControlAttribute() {
+			t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
+				Key:   "control",
+				Value: "trackID=" + strconv.FormatInt(int64(i), 10),
+			})
+		}
 	}
 
 	res, err := cc.do(&base.Request{
