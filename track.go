@@ -417,26 +417,7 @@ func (ts Tracks) Write() []byte {
 	}
 
 	for _, track := range ts {
-		mout := &psdp.MediaDescription{
-			MediaName: psdp.MediaName{
-				Media:   track.Media.MediaName.Media,
-				Protos:  []string{"RTP", "AVP"}, // override protocol
-				Formats: track.Media.MediaName.Formats,
-			},
-			Bandwidth: track.Media.Bandwidth,
-			Attributes: func() []psdp.Attribute {
-				var ret []psdp.Attribute
-
-				for _, attr := range track.Media.Attributes {
-					if attr.Key == "rtpmap" || attr.Key == "fmtp" || attr.Key == "control" {
-						ret = append(ret, attr)
-					}
-				}
-
-				return ret
-			}(),
-		}
-		sout.MediaDescriptions = append(sout.MediaDescriptions, mout)
+		sout.MediaDescriptions = append(sout.MediaDescriptions, track.Media)
 	}
 
 	byts, _ := sout.Marshal()
