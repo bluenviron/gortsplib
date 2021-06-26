@@ -354,13 +354,15 @@ func TestClientRead(t *testing.T) {
 
 				// client -> server (RTCP)
 				switch proto {
-				case "udp":
-					// skip firewall opening
-					buf := make([]byte, 2048)
-					_, _, err := l2.ReadFrom(buf)
-					require.NoError(t, err)
+				case "udp", "multicast":
+					if proto == "udp" {
+						// skip firewall opening
+						buf := make([]byte, 2048)
+						_, _, err := l2.ReadFrom(buf)
+						require.NoError(t, err)
+					}
 
-					buf = make([]byte, 2048)
+					buf := make([]byte, 2048)
 					n, _, err := l2.ReadFrom(buf)
 					require.NoError(t, err)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, buf[:n])
@@ -414,20 +416,19 @@ func TestClientRead(t *testing.T) {
 				defer close(done)
 				conn.ReadFrames(func(id int, streamType StreamType, payload []byte) {
 					// skip multicast loopback
-					if proto == "multicast" && atomic.AddUint64(&counter, 1) <= 2 {
-						return
+					if proto == "multicast" {
+						add := atomic.AddUint64(&counter, 1)
+						if add >= 2 {
+							return
+						}
 					}
 
 					require.Equal(t, 0, id)
 					require.Equal(t, StreamTypeRTP, streamType)
 					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
 
-					if proto != "multicast" {
-						err = conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
-						require.NoError(t, err)
-					} else {
-						close(frameRecv)
-					}
+					err = conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+					require.NoError(t, err)
 				})
 			}()
 

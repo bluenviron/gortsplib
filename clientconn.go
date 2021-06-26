@@ -475,13 +475,15 @@ func (cc *ClientConn) runBackground() {
 }
 
 func (cc *ClientConn) runBackgroundPlayUDP() error {
-	// open the firewall by sending packets to the counterpart
-	for _, cct := range cc.tracks {
-		cct.udpRTPListener.write(
-			[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+	if *cc.protocol == ClientProtocolUDP {
+		// open the firewall by sending packets to the counterpart
+		for _, cct := range cc.tracks {
+			cct.udpRTPListener.write(
+				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
-		cct.udpRTCPListener.write(
-			[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+			cct.udpRTCPListener.write(
+				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+		}
 	}
 
 	for _, cct := range cc.tracks {
@@ -1379,7 +1381,8 @@ func (cc *ClientConn) doSetup(
 
 	switch proto {
 	case ClientProtocolUDP:
-		rtpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteReadIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteWriteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = cc.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtpListener.remotePort = thRes.ServerPorts[0]
@@ -1388,7 +1391,8 @@ func (cc *ClientConn) doSetup(
 		rtpListener.streamType = StreamTypeRTP
 		cct.udpRTPListener = rtpListener
 
-		rtcpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteReadIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteWriteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = cc.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtcpListener.remotePort = thRes.ServerPorts[1]
@@ -1398,14 +1402,16 @@ func (cc *ClientConn) doSetup(
 		cct.udpRTCPListener = rtcpListener
 
 	case ClientProtocolMulticast:
-		rtpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteReadIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteWriteIP = *thRes.Destination
 		rtpListener.remoteZone = ""
 		rtpListener.remotePort = thRes.Ports[0]
 		rtpListener.trackID = trackID
 		rtpListener.streamType = StreamTypeRTP
 		cct.udpRTPListener = rtpListener
 
-		rtcpListener.remoteIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteReadIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteWriteIP = *thRes.Destination
 		rtcpListener.remoteZone = ""
 		rtcpListener.remotePort = thRes.Ports[1]
 		rtcpListener.trackID = trackID

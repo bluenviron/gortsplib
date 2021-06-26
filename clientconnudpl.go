@@ -21,7 +21,8 @@ const (
 type clientConnUDPListener struct {
 	cc            *ClientConn
 	pc            *net.UDPConn
-	remoteIP      net.IP
+	remoteReadIP  net.IP
+	remoteWriteIP net.IP
 	remoteZone    string
 	remotePort    int
 	trackID       int
@@ -31,6 +32,7 @@ type clientConnUDPListener struct {
 	lastFrameTime *int64
 	writeMutex    sync.Mutex
 
+	// out
 	done chan struct{}
 }
 
@@ -148,7 +150,7 @@ func (l *clientConnUDPListener) run() {
 
 			uaddr := addr.(*net.UDPAddr)
 
-			if !l.remoteIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
+			if !l.remoteReadIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
 				continue
 			}
 
@@ -167,7 +169,7 @@ func (l *clientConnUDPListener) run() {
 
 			uaddr := addr.(*net.UDPAddr)
 
-			if !l.remoteIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
+			if !l.remoteReadIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
 				continue
 			}
 
@@ -184,7 +186,7 @@ func (l *clientConnUDPListener) write(buf []byte) error {
 
 	l.pc.SetWriteDeadline(time.Now().Add(l.cc.c.WriteTimeout))
 	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
-		IP:   l.remoteIP,
+		IP:   l.remoteWriteIP,
 		Zone: l.remoteZone,
 		Port: l.remotePort,
 	})
