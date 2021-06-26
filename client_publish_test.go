@@ -131,7 +131,7 @@ func TestClientPublishSerial(t *testing.T) {
 					f.Payload = make([]byte, 2048)
 					err = f.Read(bconn.Reader)
 					require.NoError(t, err)
-					require.Equal(t, StreamTypeRTP, f.StreamType)
+					require.Equal(t, 0, f.Channel)
 					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, f.Payload)
 				}
 
@@ -143,9 +143,8 @@ func TestClientPublishSerial(t *testing.T) {
 					})
 				} else {
 					err = base.InterleavedFrame{
-						TrackID:    0,
-						StreamType: StreamTypeRTCP,
-						Payload:    []byte{0x05, 0x06, 0x07, 0x08},
+						Channel: 1,
+						Payload: []byte{0x05, 0x06, 0x07, 0x08},
 					}.Write(bconn.Writer)
 					require.NoError(t, err)
 				}
@@ -735,7 +734,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		f.Payload = make([]byte, 2048)
 		err = f.Read(bconn.Reader)
 		require.NoError(t, err)
-		require.Equal(t, StreamTypeRTP, f.StreamType)
+		require.Equal(t, 0, f.Channel)
 		require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, f.Payload)
 
 		req, err = readRequest(bconn.Reader)
@@ -841,13 +840,13 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		f.Payload = make([]byte, 2048)
 		err = f.Read(bconn.Reader)
 		require.NoError(t, err)
-		require.Equal(t, StreamTypeRTP, f.StreamType)
+		require.Equal(t, 0, f.Channel)
 		rr.ProcessFrame(time.Now(), StreamTypeRTP, f.Payload)
 
 		f.Payload = make([]byte, 2048)
 		err = f.Read(bconn.Reader)
 		require.NoError(t, err)
-		require.Equal(t, StreamTypeRTCP, f.StreamType)
+		require.Equal(t, 1, f.Channel)
 		pkt, err := rtcp.Unmarshal(f.Payload)
 		require.NoError(t, err)
 		sr, ok := pkt[0].(*rtcp.SenderReport)
@@ -862,16 +861,15 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		rr.ProcessFrame(time.Now(), StreamTypeRTCP, f.Payload)
 
 		err = base.InterleavedFrame{
-			TrackID:    0,
-			StreamType: StreamTypeRTCP,
-			Payload:    rr.Report(time.Now()),
+			Channel: 1,
+			Payload: rr.Report(time.Now()),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
 		f.Payload = make([]byte, 2048)
 		err = f.Read(bconn.Reader)
 		require.NoError(t, err)
-		require.Equal(t, StreamTypeRTP, f.StreamType)
+		require.Equal(t, 0, f.Channel)
 
 		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)

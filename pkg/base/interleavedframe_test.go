@@ -17,18 +17,16 @@ var casesInterleavedFrame = []struct {
 		name: "rtp",
 		enc:  []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4},
 		dec: InterleavedFrame{
-			TrackID:    3,
-			StreamType: StreamTypeRTP,
-			Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+			Channel: 6,
+			Payload: []byte{0x01, 0x02, 0x03, 0x04},
 		},
 	},
 	{
 		name: "rtcp",
 		enc:  []byte{0x24, 0xd, 0x0, 0x4, 0x5, 0x6, 0x7, 0x8},
 		dec: InterleavedFrame{
-			TrackID:    6,
-			StreamType: StreamTypeRTCP,
-			Payload:    []byte{0x05, 0x06, 0x07, 0x08},
+			Channel: 13,
+			Payload: []byte{0x05, 0x06, 0x07, 0x08},
 		},
 	},
 }
@@ -113,9 +111,8 @@ func TestInterleavedFrameWriteErrors(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			bw := bufio.NewWriterSize(&limitedBuffer{cap: ca.cap}, 1)
 			err := InterleavedFrame{
-				TrackID:    3,
-				StreamType: StreamTypeRTP,
-				Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+				Channel: 3,
+				Payload: []byte{0x01, 0x02, 0x03, 0x04},
 			}.Write(bw)
 			require.Equal(t, "capacity reached", err.Error())
 		})

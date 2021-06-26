@@ -106,6 +106,7 @@ func (s ServerSessionState) String() string {
 
 // ServerSessionSetuppedTrack is a setupped track of a ServerSession.
 type ServerSessionSetuppedTrack struct {
+	tcpChannel  int
 	udpRTPPort  int
 	udpRTCPPort int
 }
@@ -122,23 +123,24 @@ type ServerSession struct {
 	id     string
 	author *ServerConn
 
-	ctx              context.Context
-	ctxCancel        func()
-	conns            map[*ServerConn]struct{}
-	state            ServerSessionState
-	setuppedTracks   map[int]ServerSessionSetuppedTrack
-	setuppedProtocol *base.StreamProtocol
-	setuppedDelivery *base.StreamDelivery
-	setuppedBaseURL  *base.URL     // publish
-	setuppedStream   *ServerStream // read
-	setuppedPath     *string
-	setuppedQuery    *string
-	lastRequestTime  time.Time
-	tcpConn          *ServerConn                   // tcp
-	udpIP            net.IP                        // udp
-	udpZone          string                        // udp
-	announcedTracks  []ServerSessionAnnouncedTrack // publish
-	udpLastFrameTime *int64                        // publish, udp
+	ctx                     context.Context
+	ctxCancel               func()
+	conns                   map[*ServerConn]struct{}
+	state                   ServerSessionState
+	setuppedTracks          map[int]ServerSessionSetuppedTrack
+	setuppedTracksByChannel map[int]int // tcp
+	setuppedProtocol        *base.StreamProtocol
+	setuppedDelivery        *base.StreamDelivery
+	setuppedBaseURL         *base.URL     // publish
+	setuppedStream          *ServerStream // read
+	setuppedPath            *string
+	setuppedQuery           *string
+	lastRequestTime         time.Time
+	tcpConn                 *ServerConn                   // tcp
+	udpIP                   net.IP                        // udp
+	udpZone                 string                        // udp
+	announcedTracks         []ServerSessionAnnouncedTrack // publish
+	udpLastFrameTime        *int64                        // publish, udp
 
 	// in
 	request    chan sessionRequestReq
@@ -608,13 +610,17 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}, liberrors.ErrServerTransportHeaderNoInterleavedIDs{}
 			}
 
-			if inTH.InterleavedIDs[0] != (trackID*2) ||
-				inTH.InterleavedIDs[1] != (1+trackID*2) {
+			if (inTH.InterleavedIDs[0]+1) != inTH.InterleavedIDs[1] ||
+				(inTH.InterleavedIDs[0]%2) != 0 {
 				return &base.Response{
-						StatusCode: base.StatusBadRequest,
-					}, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{
-						Expected: [2]int{(trackID * 2), (1 + trackID*2)}, Value: *inTH.InterleavedIDs,
-					}
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{}
+			}
+
+			if _, ok := ss.setuppedTracksByChannel[inTH.InterleavedIDs[0]]; ok {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{}
 			}
 		}
 
@@ -700,7 +706,15 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
 
 			default: // TCP
-				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{}
+				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{
+					tcpChannel: inTH.InterleavedIDs[0],
+				}
+
+				if ss.setuppedTracksByChannel == nil {
+					ss.setuppedTracksByChannel = make(map[int]int)
+				}
+
+				ss.setuppedTracksByChannel[inTH.InterleavedIDs[0]] = trackID
 
 				th.Protocol = base.StreamProtocolTCP
 				de := base.StreamDeliveryUnicast
@@ -1013,7 +1027,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 // WriteFrame writes a frame to the session.
 func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload []byte) {
-	if _, ok := ss.SetuppedTracks()[trackID]; !ok {
+	if _, ok := ss.setuppedTracks[trackID]; !ok {
 		return
 	}
 
@@ -1036,10 +1050,14 @@ func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload 
 			}
 		}
 	} else {
+		channel := ss.setuppedTracks[trackID].tcpChannel
+		if streamType == base.StreamTypeRTCP {
+			channel++
+		}
+
 		ss.tcpConn.tcpFrameWriteBuffer.Push(&base.InterleavedFrame{
-			TrackID:    trackID,
-			StreamType: streamType,
-			Payload:    payload,
+			Channel: channel,
+			Payload: payload,
 		})
 	}
 }

@@ -346,9 +346,8 @@ func TestClientRead(t *testing.T) {
 
 				case "tcp", "tls":
 					err = base.InterleavedFrame{
-						TrackID:    0,
-						StreamType: StreamTypeRTP,
-						Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+						Channel: 0,
+						Payload: []byte{0x01, 0x02, 0x03, 0x04},
 					}.Write(bconn.Writer)
 					require.NoError(t, err)
 				}
@@ -372,8 +371,7 @@ func TestClientRead(t *testing.T) {
 					f.Payload = make([]byte, 2048)
 					err := f.Read(bconn.Reader)
 					require.NoError(t, err)
-					require.Equal(t, 0, f.TrackID)
-					require.Equal(t, StreamTypeRTCP, f.StreamType)
+					require.Equal(t, 1, f.Channel)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
 					close(frameRecv)
 				}
@@ -520,9 +518,8 @@ func TestClientReadPartial(t *testing.T) {
 		require.NoError(t, err)
 
 		err = base.InterleavedFrame{
-			TrackID:    0,
-			StreamType: StreamTypeRTP,
-			Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+			Channel: 0,
+			Payload: []byte{0x01, 0x02, 0x03, 0x04},
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -907,9 +904,8 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 
 			err = base.InterleavedFrame{
-				TrackID:    0,
-				StreamType: StreamTypeRTP,
-				Payload:    []byte("\x00\x00\x00\x00"),
+				Channel: 0,
+				Payload: []byte("\x00\x00\x00\x00"),
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 		}()
@@ -1101,9 +1097,8 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 
 			base.InterleavedFrame{
-				TrackID:    0,
-				StreamType: StreamTypeRTP,
-				Payload:    []byte("\x00\x00\x00\x00"),
+				Channel: 0,
+				Payload: []byte("\x00\x00\x00\x00"),
 			}.Write(bconn.Writer)
 
 			req, err = readRequest(bconn.Reader)
@@ -1315,9 +1310,8 @@ func TestClientReadPause(t *testing.T) {
 						})
 					} else {
 						base.InterleavedFrame{
-							TrackID:    0,
-							StreamType: StreamTypeRTP,
-							Payload:    []byte("\x00\x00\x00\x00"),
+							Channel: 0,
+							Payload: []byte("\x00\x00\x00\x00"),
 						}.Write(bconn.Writer)
 					}
 
@@ -1617,17 +1611,15 @@ func TestClientReadRTCPReport(t *testing.T) {
 			Payload: []byte{0x01, 0x02, 0x03, 0x04},
 		}).Marshal()
 		err = base.InterleavedFrame{
-			TrackID:    0,
-			StreamType: StreamTypeRTP,
-			Payload:    byts,
+			Channel: 0,
+			Payload: byts,
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 		rs.ProcessFrame(time.Now(), StreamTypeRTP, byts)
 
 		err = base.InterleavedFrame{
-			TrackID:    0,
-			StreamType: StreamTypeRTCP,
-			Payload:    rs.Report(time.Now()),
+			Channel: 1,
+			Payload: rs.Report(time.Now()),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -1635,7 +1627,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		f.Payload = make([]byte, 2048)
 		err = f.Read(bconn.Reader)
 		require.NoError(t, err)
-		require.Equal(t, StreamTypeRTCP, f.StreamType)
+		require.Equal(t, 1, f.Channel)
 		pkt, err := rtcp.Unmarshal(f.Payload)
 		require.NoError(t, err)
 		rr, ok := pkt[0].(*rtcp.ReceiverReport)
@@ -1654,9 +1646,8 @@ func TestClientReadRTCPReport(t *testing.T) {
 		}, rr)
 
 		err = base.InterleavedFrame{
-			TrackID:    0,
-			StreamType: StreamTypeRTP,
-			Payload:    byts,
+			Channel: 0,
+			Payload: byts,
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 	}()
@@ -1940,16 +1931,14 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		require.NoError(t, err)
 
 		err = base.InterleavedFrame{
-			TrackID:    3,
-			StreamType: StreamTypeRTP,
-			Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+			Channel: 6,
+			Payload: []byte{0x01, 0x02, 0x03, 0x04},
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
 		err = base.InterleavedFrame{
-			TrackID:    0,
-			StreamType: StreamTypeRTP,
-			Payload:    []byte{0x05, 0x06, 0x07, 0x08},
+			Channel: 0,
+			Payload: []byte{0x05, 0x06, 0x07, 0x08},
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 

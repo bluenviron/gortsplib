@@ -168,14 +168,11 @@ func (e ErrServerTransportHeaderNoInterleavedIDs) Error() string {
 }
 
 // ErrServerTransportHeaderInvalidInterleavedIDs is an error that can be returned by a server.
-type ErrServerTransportHeaderInvalidInterleavedIDs struct {
-	Expected [2]int
-	Value    [2]int
-}
+type ErrServerTransportHeaderInvalidInterleavedIDs struct{}
 
 // Error implements the error interface.
 func (e ErrServerTransportHeaderInvalidInterleavedIDs) Error() string {
-	return fmt.Sprintf("invalid interleaved IDs, expected %v, got %v", e.Expected, e.Value)
+	return "invalid interleaved IDs"
 }
 
 // ErrServerTracksDifferentProtocols is an error that can be returned by a server.

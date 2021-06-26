@@ -152,18 +152,25 @@ func (sc *ServerConn) run() {
 
 					switch what.(type) {
 					case *base.InterleavedFrame:
+						channel := frame.Channel
+						streamType := base.StreamTypeRTP
+						if (channel % 2) != 0 {
+							channel--
+							streamType = base.StreamTypeRTCP
+						}
+
 						// forward frame only if it has been set up
-						if _, ok := sc.tcpSession.setuppedTracks[frame.TrackID]; ok {
+						if trackID, ok := sc.tcpSession.setuppedTracksByChannel[channel]; ok {
 							if sc.tcpFrameIsRecording {
-								sc.tcpSession.announcedTracks[frame.TrackID].rtcpReceiver.ProcessFrame(time.Now(),
-									frame.StreamType, frame.Payload)
+								sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessFrame(
+									time.Now(), streamType, frame.Payload)
 							}
 
 							if h, ok := sc.s.Handler.(ServerHandlerOnFrame); ok {
 								h.OnFrame(&ServerHandlerOnFrameCtx{
 									Session:    sc.tcpSession,
-									TrackID:    frame.TrackID,
-									StreamType: frame.StreamType,
+									TrackID:    trackID,
+									StreamType: streamType,
 									Payload:    frame.Payload,
 								})
 							}

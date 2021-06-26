@@ -850,16 +850,14 @@ func TestServerPublish(t *testing.T) {
 
 			} else {
 				err = base.InterleavedFrame{
-					TrackID:    0,
-					StreamType: StreamTypeRTP,
-					Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+					Channel: 0,
+					Payload: []byte{0x01, 0x02, 0x03, 0x04},
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
 				err = base.InterleavedFrame{
-					TrackID:    0,
-					StreamType: StreamTypeRTCP,
-					Payload:    []byte{0x05, 0x06, 0x07, 0x08},
+					Channel: 1,
+					Payload: []byte{0x05, 0x06, 0x07, 0x08},
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 			}
@@ -881,7 +879,7 @@ func TestServerPublish(t *testing.T) {
 				f.Payload = make([]byte, 2048)
 				err := f.Read(bconn.Reader)
 				require.NoError(t, err)
-				require.Equal(t, StreamTypeRTCP, f.StreamType)
+				require.Equal(t, 1, f.Channel)
 				require.Equal(t, []byte{0x09, 0x0A, 0x0B, 0x0C}, f.Payload)
 			}
 
@@ -1003,9 +1001,8 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	err = base.InterleavedFrame{
-		TrackID:    0,
-		StreamType: StreamTypeRTP,
-		Payload:    []byte{0x01, 0x02, 0x03, 0x04},
+		Channel: 0,
+		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 }
@@ -1116,9 +1113,8 @@ func TestServerPublishRTCPReport(t *testing.T) {
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}).Marshal()
 	err = base.InterleavedFrame{
-		TrackID:    0,
-		StreamType: StreamTypeRTP,
-		Payload:    byts,
+		Channel: 0,
+		Payload: byts,
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 
@@ -1126,7 +1122,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	f.Payload = make([]byte, 2048)
 	f.Read(bconn.Reader)
 	require.NoError(t, err)
-	require.Equal(t, StreamTypeRTCP, f.StreamType)
+	require.Equal(t, 1, f.Channel)
 	pkt, err := rtcp.Unmarshal(f.Payload)
 	require.NoError(t, err)
 	rr, ok := pkt[0].(*rtcp.ReceiverReport)
@@ -1145,9 +1141,8 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	}, rr)
 
 	err = base.InterleavedFrame{
-		TrackID:    0,
-		StreamType: StreamTypeRTP,
-		Payload:    byts,
+		Channel: 0,
+		Payload: byts,
 	}.Write(bconn.Writer)
 	require.NoError(t, err)
 }

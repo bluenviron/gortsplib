@@ -31,6 +31,20 @@ const (
 	clientConnUDPKeepalivePeriod = 30 * time.Second
 )
 
+func clientChannelToTrackID(channel int) (int, StreamType) {
+	if (channel % 2) == 0 {
+		return channel / 2, StreamTypeRTP
+	}
+	return (channel - 1) / 2, StreamTypeRTCP
+}
+
+func clientTrackIDToChannel(trackID int, streamType StreamType) int {
+	if streamType == StreamTypeRTP {
+		return trackID * 2
+	}
+	return (trackID * 2) + 1
+}
+
 func isErrNOUDPPacketsReceivedRecently(err error) bool {
 	_, ok := err.(liberrors.ErrClientNoUDPPacketsRecently)
 	return ok
@@ -617,15 +631,17 @@ func (cc *ClientConn) runBackgroundPlayTCP() error {
 				return
 			}
 
-			track, ok := cc.tracks[frame.TrackID]
+			trackID, streamType := clientChannelToTrackID(frame.Channel)
+
+			track, ok := cc.tracks[trackID]
 			if !ok {
 				continue
 			}
 
 			now := time.Now()
 			atomic.StoreInt64(&lastFrameTime, now.Unix())
-			track.rtcpReceiver.ProcessFrame(now, frame.StreamType, frame.Payload)
-			cc.pullReadCB()(frame.TrackID, frame.StreamType, frame.Payload)
+			track.rtcpReceiver.ProcessFrame(now, streamType, frame.Payload)
+			cc.pullReadCB()(trackID, streamType, frame.Payload)
 		}
 	}()
 
@@ -736,7 +752,9 @@ func (cc *ClientConn) runBackgroundRecordTCP() error {
 				return
 			}
 
-			cc.pullReadCB()(frame.TrackID, frame.StreamType, frame.Payload)
+			trackID, streamType := clientChannelToTrackID(frame.Channel)
+
+			cc.pullReadCB()(trackID, streamType, frame.Payload)
 		}
 	}()
 
@@ -1347,8 +1365,7 @@ func (cc *ClientConn) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderNoInterleavedIDs{}
 		}
 
-		if thRes.InterleavedIDs[0] != th.InterleavedIDs[0] ||
-			thRes.InterleavedIDs[1] != th.InterleavedIDs[1] {
+		if *thRes.InterleavedIDs != *th.InterleavedIDs {
 			return nil, liberrors.ErrClientTransportHeaderInvalidInterleavedIDs{
 				Expected: *th.InterleavedIDs, Value: *thRes.InterleavedIDs,
 			}
@@ -1665,11 +1682,12 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		cc.tcpWriteMutex.Lock()
 		defer cc.tcpWriteMutex.Unlock()
 
+		channel := clientTrackIDToChannel(trackID, streamType)
+
 		cc.nconn.SetWriteDeadline(now.Add(cc.c.WriteTimeout))
 		return base.InterleavedFrame{
-			TrackID:    trackID,
-			StreamType: streamType,
-			Payload:    payload,
+			Channel: channel,
+			Payload: payload,
 		}.Write(cc.bw)
 	}
 }
