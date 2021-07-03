@@ -20,7 +20,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	// check whether there's a H264 track
+	// find the H264 track
 	h264Track := func() int {
 		for i, track := range conn.Tracks() {
 			if track.IsH264() {
@@ -34,14 +34,14 @@ func main() {
 	}
 	fmt.Printf("H264 track is number %d\n", h264Track+1)
 
-	// instantiate a decoder
+	// instantiate a RTP/H264 decoder
 	dec := rtph264.NewDecoder()
 
 	// read RTP frames
-	err = conn.ReadFrames(func(trackID int, typ gortsplib.StreamType, buf []byte) {
+	err = conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
 		if trackID == h264Track {
 			// convert RTP frames into H264 NALUs
-			nalus, _, err := dec.Decode(buf)
+			nalus, _, err := dec.Decode(payload)
 			if err != nil {
 				return
 			}

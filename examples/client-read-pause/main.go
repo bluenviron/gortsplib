@@ -26,8 +26,8 @@ func main() {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			conn.ReadFrames(func(trackID int, typ gortsplib.StreamType, buf []byte) {
-				fmt.Printf("frame from track %d, type %v, size %d\n", trackID, typ, len(buf))
+			conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
+				fmt.Printf("frame from track %d, type %v, size %d\n", trackID, streamType, len(payload))
 			})
 		}()
 

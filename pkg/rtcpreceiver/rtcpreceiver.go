@@ -48,15 +48,15 @@ func New(receiverSSRC *uint32, clockRate int) *RTCPReceiver {
 }
 
 // ProcessFrame extracts the needed data from RTP or RTCP frames.
-func (rr *RTCPReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, buf []byte) {
+func (rr *RTCPReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, payload []byte) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
 	if streamType == base.StreamTypeRTP {
 		// do not parse the entire packet, extract only the fields we need
-		if len(buf) >= 8 {
-			sequenceNumber := uint16(buf[2])<<8 | uint16(buf[3])
-			rtpTime := uint32(buf[4])<<24 | uint32(buf[5])<<16 | uint32(buf[6])<<8 | uint32(buf[7])
+		if len(payload) >= 8 {
+			sequenceNumber := uint16(payload[2])<<8 | uint16(payload[3])
+			rtpTime := uint32(payload[4])<<24 | uint32(payload[5])<<16 | uint32(payload[6])<<8 | uint32(payload[7])
 
 			// first frame
 			if !rr.firstRTPReceived {
@@ -111,7 +111,7 @@ func (rr *RTCPReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, b
 	} else {
 		// we can afford to unmarshal all RTCP frames
 		// since they are sent with a frequency much lower than the one of RTP frames
-		frames, err := rtcp.Unmarshal(buf)
+		frames, err := rtcp.Unmarshal(payload)
 		if err == nil {
 			for _, frame := range frames {
 				if sr, ok := (frame).(*rtcp.SenderReport); ok {

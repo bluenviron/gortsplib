@@ -33,13 +33,13 @@ func New(clockRate int) *RTCPSender {
 }
 
 // ProcessFrame extracts the needed data from RTP or RTCP frames.
-func (rs *RTCPSender) ProcessFrame(ts time.Time, streamType base.StreamType, buf []byte) {
+func (rs *RTCPSender) ProcessFrame(ts time.Time, streamType base.StreamType, payload []byte) {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
 	if streamType == base.StreamTypeRTP {
 		pkt := rtp.Packet{}
-		err := pkt.Unmarshal(buf)
+		err := pkt.Unmarshal(payload)
 		if err == nil {
 			if !rs.firstRTPReceived {
 				rs.firstRTPReceived = true
