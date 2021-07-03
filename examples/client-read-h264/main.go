@@ -39,7 +39,7 @@ func main() {
 
 	// read RTP frames
 	err = conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
-		if trackID == h264Track {
+		if streamType == gortsplib.StreamTypeRTP && trackID == h264Track {
 			// convert RTP frames into H264 NALUs
 			nalus, _, err := dec.Decode(payload)
 			if err != nil {
