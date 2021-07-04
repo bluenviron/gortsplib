@@ -288,6 +288,15 @@ func TestDecodeErrors(t *testing.T) {
 		err  string
 	}{
 		{
+			"invalid rtp",
+			[][]byte{
+				{
+					0xaa,
+				},
+			},
+			"RTP header size insufficient: 1 < 4",
+		},
+		{
 			"missing payload",
 			[][]byte{{
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
@@ -409,10 +418,19 @@ func TestReadSPSPPS(t *testing.T) {
 		pps  []byte
 	}{
 		{
-			"standard",
+			"sps then pps",
 			[][]byte{
 				{128, 96, 61, 205, 54, 67, 90, 125, 40, 249, 97, 176, 7, 1, 2},
 				{128, 96, 61, 206, 54, 67, 90, 125, 40, 249, 97, 176, 8, 3, 4},
+			},
+			[]byte{0x07, 0x01, 0x02},
+			[]byte{0x08, 0x03, 0x04},
+		},
+		{
+			"pps then sps",
+			[][]byte{
+				{128, 96, 61, 206, 54, 67, 90, 125, 40, 249, 97, 176, 8, 3, 4},
+				{128, 96, 61, 205, 54, 67, 90, 125, 40, 249, 97, 176, 7, 1, 2},
 			},
 			[]byte{0x07, 0x01, 0x02},
 			[]byte{0x08, 0x03, 0x04},

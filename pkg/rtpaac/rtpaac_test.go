@@ -268,6 +268,15 @@ func TestDecodeErrors(t *testing.T) {
 		err  string
 	}{
 		{
+			"invalid rtp",
+			[][]byte{
+				{
+					0xaa,
+				},
+			},
+			"RTP header size insufficient: 1 < 4",
+		},
+		{
 			"missing payload",
 			[][]byte{
 				{
