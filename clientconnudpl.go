@@ -160,7 +160,7 @@ func (l *clientConnUDPListener) run() {
 
 			uaddr := addr.(*net.UDPAddr)
 
-			if !l.remoteReadIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
+			if (!l.cc.c.AnyHostEnable && !l.remoteReadIP.Equal(uaddr.IP)) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
 				continue
 			}
 
@@ -179,7 +179,7 @@ func (l *clientConnUDPListener) run() {
 
 			uaddr := addr.(*net.UDPAddr)
 
-			if !l.remoteReadIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
+			if (!l.cc.c.AnyHostEnable && !l.remoteReadIP.Equal(uaddr.IP)) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
 				continue
 			}
 

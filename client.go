@@ -81,6 +81,13 @@ type Client struct {
 	// This must be touched only when the server reports errors about buffer sizes.
 	// It defaults to 2048.
 	ReadBufferSize int
+	// Allow RTP packets to come from a different host than the address used for RTSP signaling.
+	// This can be useful if a client wants to listen to a stream from a server which is listening on
+	// different IPs/subnets, as the source of the RTP packets might be determined by the server's
+	// routing table / network stack.
+	// this can be a security issue.
+	// It defaults to false.
+	AnyHostEnable bool
 
 	//
 	// callbacks
