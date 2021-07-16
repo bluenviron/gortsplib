@@ -357,7 +357,10 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 				res.Header["Content-Base"] = base.HeaderValue{req.URL.String() + "/"}
 				res.Header["Content-Type"] = base.HeaderValue{"application/sdp"}
-				res.Body = stream.Tracks().Write()
+
+				if stream != nil {
+					res.Body = stream.Tracks().Write()
+				}
 			}
 
 			return res, err
