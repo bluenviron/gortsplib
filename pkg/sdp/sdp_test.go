@@ -1180,6 +1180,37 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"hex session id",
+		[]byte("v=0\r\n" +
+			"o=jdoe 0xAC4EC96E 2890842807 IN IP4 10.47.16.5\r\n" +
+			"s=SDP Seminar\r\n" +
+			"i=A Seminar on the session description protocol\r\n" +
+			"t=3034423619 3042462419\r\n"),
+		[]byte("v=0\r\n" +
+			"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
+			"s=SDP Seminar\r\n" +
+			"i=A Seminar on the session description protocol\r\n" +
+			"t=3034423619 3042462419\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "jdoe",
+				SessionID:      2890844526,
+				SessionVersion: 2890842807,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "10.47.16.5",
+			},
+			SessionName: "SDP Seminar",
+			SessionInformation: func() *psdp.Information {
+				v := psdp.Information("A Seminar on the session description protocol")
+				return &v
+			}(),
+			TimeDescriptions: []psdp.TimeDescription{
+				{psdp.Timing{3034423619, 3042462419}, nil},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
