@@ -49,7 +49,7 @@ func setupGetTrackIDPathQuery(
 			return 0, path, query, nil
 		}
 
-		tmp, err := strconv.ParseInt(pathAndQuery[i+len("/trackID="):], 10, 64)
+		tmp, err := strconv.ParseInt(pathAndQuery[i+len("/trackID="):i+len("/trackID=")+1], 10, 64)
 		if err != nil || tmp < 0 {
 			return 0, "", "", fmt.Errorf("unable to parse track ID (%v)", pathAndQuery)
 		}
