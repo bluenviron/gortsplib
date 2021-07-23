@@ -605,9 +605,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}
 
 			if inTH.InterleavedIDs == nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderNoInterleavedIDs{}
+				// Defaulting to inteleaved id 0,1
+				inTH.InterleavedIDs = &[2]int{0,1}
 			}
 
 			if (inTH.InterleavedIDs[0]+1) != inTH.InterleavedIDs[1] ||
