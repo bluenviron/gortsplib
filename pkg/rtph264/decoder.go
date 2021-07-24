@@ -14,6 +14,10 @@ import (
 // ErrMorePacketsNeeded is returned when more packets are needed.
 var ErrMorePacketsNeeded = errors.New("need more packets")
 
+// ErrNonStartingPacketAndNoPrevious is returned when we decoded a non-starting
+// fragmented packet and we didn't received anything before.
+var ErrNonStartingPacketAndNoPrevious = errors.New("decoded a non-starting fragmented packet without any previous starting packets")
+
 // PacketConnReader creates a io.Reader around a net.PacketConn.
 type PacketConnReader struct {
 	net.PacketConn
@@ -38,8 +42,9 @@ type Decoder struct {
 	initialTsSet bool
 
 	// for Decode()
-	state         decoderState
-	fragmentedBuf []byte
+	startingPacketReceived bool
+	state                  decoderState
+	fragmentedBuf          []byte
 }
 
 // NewDecoder allocates a Decoder.
@@ -87,7 +92,7 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 			for len(pkt.Payload) > 0 {
 				if len(pkt.Payload) < 2 {
-					return nil, 0, fmt.Errorf("Invalid STAP-A packet")
+					return nil, 0, fmt.Errorf("invalid STAP-A packet (invalid size)")
 				}
 
 				size := binary.BigEndian.Uint16(pkt.Payload)
@@ -99,7 +104,7 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 				}
 
 				if int(size) > len(pkt.Payload) {
-					return nil, 0, fmt.Errorf("Invalid STAP-A packet")
+					return nil, 0, fmt.Errorf("invalid STAP-A packet (invalid size)")
 				}
 
 				nalus = append(nalus, pkt.Payload[:size])
@@ -110,16 +115,20 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 				return nil, 0, fmt.Errorf("STAP-A packet doesn't contain any NALU")
 			}
 
+			d.startingPacketReceived = true
 			return nalus, d.decodeTimestamp(pkt.Timestamp), nil
 
 		case naluTypeFUA: // first packet of a fragmented NALU
 			if len(pkt.Payload) < 2 {
-				return nil, 0, fmt.Errorf("Invalid FU-A packet")
+				return nil, 0, fmt.Errorf("invalid FU-A packet (invalid size)")
 			}
 
 			start := pkt.Payload[1] >> 7
 			if start != 1 {
-				return nil, 0, fmt.Errorf("first NALU does not contain the start bit")
+				if !d.startingPacketReceived {
+					return nil, 0, ErrNonStartingPacketAndNoPrevious
+				}
+				return nil, 0, fmt.Errorf("invalid FU-A packet (non-starting)")
 			}
 
 			nri := (pkt.Payload[0] >> 5) & 0x03
@@ -127,25 +136,27 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			d.fragmentedBuf = append([]byte{(nri << 5) | typ}, pkt.Payload[2:]...)
 
 			d.state = decoderStateReadingFragmented
+			d.startingPacketReceived = true
 			return nil, 0, ErrMorePacketsNeeded
 
 		case naluTypeSTAPB, naluTypeMTAP16,
 			naluTypeMTAP24, naluTypeFUB:
-			return nil, 0, fmt.Errorf("NALU type not supported (%v)", typ)
+			return nil, 0, fmt.Errorf("packet type not supported (%v)", typ)
 		}
 
+		d.startingPacketReceived = true
 		return [][]byte{pkt.Payload}, d.decodeTimestamp(pkt.Timestamp), nil
 
 	default: // decoderStateReadingFragmented
 		if len(pkt.Payload) < 2 {
 			d.state = decoderStateInitial
-			return nil, 0, fmt.Errorf("Invalid non-starting FU-A packet")
+			return nil, 0, fmt.Errorf("invalid FU-A packet (invalid size)")
 		}
 
 		typ := naluType(pkt.Payload[0] & 0x1F)
 		if typ != naluTypeFUA {
 			d.state = decoderStateInitial
-			return nil, 0, fmt.Errorf("Packet is not FU-A")
+			return nil, 0, fmt.Errorf("expected FU-A packet, got another type")
 		}
 
 		end := (pkt.Payload[1] >> 6) & 0x01
@@ -157,6 +168,7 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		}
 
 		d.state = decoderStateInitial
+		d.startingPacketReceived = true
 		return [][]byte{d.fragmentedBuf}, d.decodeTimestamp(pkt.Timestamp), nil
 	}
 }

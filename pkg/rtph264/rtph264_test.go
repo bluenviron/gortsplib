@@ -265,6 +265,29 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
+	d := NewDecoder()
+
+	_, _, err := d.Decode(mergeBytes(
+		[]byte{
+			0x80, 0xe0, 0x44, 0xef, 0x88, 0x77, 0x79, 0xab,
+			0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x45,
+		},
+		[]byte{0x04, 0x05, 0x06, 0x07},
+		bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
+	))
+	require.Equal(t, ErrNonStartingPacketAndNoPrevious, err)
+
+	_, _, err = d.Decode(mergeBytes(
+		[]byte{
+			0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6f, 0x1f,
+			0x9d, 0xbb, 0x78, 0x12, 0x05,
+		},
+		bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
+	))
+	require.NoError(t, err)
+}
+
 func TestDecodeSTAPAWithPadding(t *testing.T) {
 	d := NewDecoder()
 	nalus, _, err := d.Decode([]byte{
@@ -318,7 +341,7 @@ func TestDecodeErrors(t *testing.T) {
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
 				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeSTAPA), 0x01,
 			}},
-			"Invalid STAP-A packet",
+			"invalid STAP-A packet (invalid size)",
 		},
 		{
 			"STAP-A with invalid size",
@@ -326,7 +349,7 @@ func TestDecodeErrors(t *testing.T) {
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
 				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeSTAPA), 0x00, 0x15,
 			}},
-			"Invalid STAP-A packet",
+			"invalid STAP-A packet (invalid size)",
 		},
 		{
 			"FU-A without payload",
@@ -334,15 +357,24 @@ func TestDecodeErrors(t *testing.T) {
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
 				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeFUA),
 			}},
-			"Invalid FU-A packet",
+			"invalid FU-A packet (invalid size)",
 		},
 		{
 			"FU-A without start bit",
-			[][]byte{{
-				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeFUA), 0x00,
-			}},
-			"first NALU does not contain the start bit",
+			[][]byte{
+				mergeBytes(
+					[]byte{
+						0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6f, 0x1f,
+						0x9d, 0xbb, 0x78, 0x12, 0x05,
+					},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
+				),
+				{
+					0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
+					0x9d, 0xbb, 0x78, 0x12, byte(naluTypeFUA), 0x00,
+				},
+			},
+			"invalid FU-A packet (non-starting)",
 		},
 		{
 			"FU-A with 2nd packet empty",
@@ -362,7 +394,7 @@ func TestDecodeErrors(t *testing.T) {
 					},
 				),
 			},
-			"Invalid non-starting FU-A packet",
+			"invalid FU-A packet (invalid size)",
 		},
 		{
 			"FU-A with 2nd packet invalid",
@@ -382,7 +414,7 @@ func TestDecodeErrors(t *testing.T) {
 					},
 				),
 			},
-			"Packet is not FU-A",
+			"expected FU-A packet, got another type",
 		},
 		{
 			"MTAP",
@@ -390,7 +422,7 @@ func TestDecodeErrors(t *testing.T) {
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
 				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeMTAP16),
 			}},
-			"NALU type not supported (MTAP16)",
+			"packet type not supported (MTAP16)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
