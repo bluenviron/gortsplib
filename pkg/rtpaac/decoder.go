@@ -12,13 +12,6 @@ import (
 // ErrMorePacketsNeeded is returned when more packets are needed.
 var ErrMorePacketsNeeded = errors.New("need more packets")
 
-type decoderState int
-
-const (
-	decoderStateInitial decoderState = iota
-	decoderStateReadingFragmented
-)
-
 // Decoder is a RTP/AAC decoder.
 type Decoder struct {
 	clockRate    time.Duration
@@ -26,8 +19,8 @@ type Decoder struct {
 	initialTsSet bool
 
 	// for Decode()
-	state         decoderState
-	fragmentedBuf []byte
+	isDecodingFragmented bool
+	fragmentedBuf        []byte
 }
 
 // NewDecoder allocates a Decoder.
@@ -48,7 +41,7 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 	pkt := rtp.Packet{}
 	err := pkt.Unmarshal(byts)
 	if err != nil {
-		d.state = decoderStateInitial
+		d.isDecodingFragmented = false
 		return nil, 0, err
 	}
 
@@ -58,20 +51,19 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 // DecodeRTP decodes AUs from a rtp.Packet.
 func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if len(pkt.Payload) < 2 {
-		d.state = decoderStateInitial
+		d.isDecodingFragmented = false
 		return nil, 0, fmt.Errorf("payload is too short")
 	}
 
 	// AU-headers-length
 	headersLen := binary.BigEndian.Uint16(pkt.Payload)
 	if (headersLen % 16) != 0 {
-		d.state = decoderStateInitial
+		d.isDecodingFragmented = false
 		return nil, 0, fmt.Errorf("invalid AU-headers-length (%d)", headersLen)
 	}
 	pkt.Payload = pkt.Payload[2:]
 
-	switch d.state {
-	case decoderStateInitial:
+	if !d.isDecodingFragmented {
 		if !d.initialTsSet {
 			d.initialTsSet = true
 			d.initialTs = pkt.Timestamp
@@ -133,34 +125,35 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 		d.fragmentedBuf = append(d.fragmentedBuf, pkt.Payload...)
 
-		d.state = decoderStateReadingFragmented
+		d.isDecodingFragmented = true
 		return nil, 0, ErrMorePacketsNeeded
-
-	default: // decoderStateReadingFragmented
-		if headersLen != 16 {
-			return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
-		}
-
-		// AU-header
-		header := binary.BigEndian.Uint16(pkt.Payload)
-		dataLen := header >> 3
-		auIndex := header & 0x03
-		if auIndex != 0 {
-			return nil, 0, fmt.Errorf("AU-index field is not zero")
-		}
-		pkt.Payload = pkt.Payload[2:]
-
-		if len(pkt.Payload) < int(dataLen) {
-			return nil, 0, fmt.Errorf("payload is too short")
-		}
-
-		d.fragmentedBuf = append(d.fragmentedBuf, pkt.Payload...)
-
-		if !pkt.Header.Marker {
-			return nil, 0, ErrMorePacketsNeeded
-		}
-
-		d.state = decoderStateInitial
-		return [][]byte{d.fragmentedBuf}, d.decodeTimestamp(pkt.Timestamp), nil
 	}
+
+	// we are decoding a fragmented AU
+
+	if headersLen != 16 {
+		return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
+	}
+
+	// AU-header
+	header := binary.BigEndian.Uint16(pkt.Payload)
+	dataLen := header >> 3
+	auIndex := header & 0x03
+	if auIndex != 0 {
+		return nil, 0, fmt.Errorf("AU-index field is not zero")
+	}
+	pkt.Payload = pkt.Payload[2:]
+
+	if len(pkt.Payload) < int(dataLen) {
+		return nil, 0, fmt.Errorf("payload is too short")
+	}
+
+	d.fragmentedBuf = append(d.fragmentedBuf, pkt.Payload...)
+
+	if !pkt.Header.Marker {
+		return nil, 0, ErrMorePacketsNeeded
+	}
+
+	d.isDecodingFragmented = false
+	return [][]byte{d.fragmentedBuf}, d.decodeTimestamp(pkt.Timestamp), nil
 }

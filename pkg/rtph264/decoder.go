@@ -38,7 +38,7 @@ type Decoder struct {
 
 	// for Decode()
 	startingPacketReceived bool
-	isReadingFragmented    bool
+	isDecodingFragmented   bool
 	fragmentedBuf          []byte
 }
 
@@ -53,12 +53,11 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 
 // Decode decodes NALUs from a RTP/H264 packet.
 // It returns the decoded NALUs and their PTS.
-// In case more packets are needed, ErrMorePacketsNeeded is returned.
 func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 	pkt := rtp.Packet{}
 	err := pkt.Unmarshal(byts)
 	if err != nil {
-		d.isReadingFragmented = false
+		d.isDecodingFragmented = false
 		return nil, 0, err
 	}
 
@@ -67,7 +66,7 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 
 // DecodeRTP decodes NALUs from a rtp.Packet.
 func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
-	if !d.isReadingFragmented {
+	if !d.isDecodingFragmented {
 		if !d.initialTsSet {
 			d.initialTsSet = true
 			d.initialTs = pkt.Timestamp
@@ -129,7 +128,7 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			typ := pkt.Payload[1] & 0x1F
 			d.fragmentedBuf = append([]byte{(nri << 5) | typ}, pkt.Payload[2:]...)
 
-			d.isReadingFragmented = true
+			d.isDecodingFragmented = true
 			d.startingPacketReceived = true
 			return nil, 0, ErrMorePacketsNeeded
 
@@ -142,16 +141,16 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		return [][]byte{pkt.Payload}, d.decodeTimestamp(pkt.Timestamp), nil
 	}
 
-	// we are decoding a fragmented packet
+	// we are decoding a fragmented NALU
 
 	if len(pkt.Payload) < 2 {
-		d.isReadingFragmented = false
+		d.isDecodingFragmented = false
 		return nil, 0, fmt.Errorf("invalid FU-A packet (invalid size)")
 	}
 
 	typ := naluType(pkt.Payload[0] & 0x1F)
 	if typ != naluTypeFUA {
-		d.isReadingFragmented = false
+		d.isDecodingFragmented = false
 		return nil, 0, fmt.Errorf("expected FU-A packet, got another type")
 	}
 
@@ -159,7 +158,7 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	end := (pkt.Payload[1] >> 6) & 0x01
 
 	if start == 1 {
-		d.isReadingFragmented = false
+		d.isDecodingFragmented = false
 		return nil, 0, fmt.Errorf("invalid FU-A packet (decoded two starting packets in a row)")
 	}
 
@@ -169,7 +168,7 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		return nil, 0, ErrMorePacketsNeeded
 	}
 
-	d.isReadingFragmented = false
+	d.isDecodingFragmented = false
 	d.startingPacketReceived = true
 	return [][]byte{d.fragmentedBuf}, d.decodeTimestamp(pkt.Timestamp), nil
 }
