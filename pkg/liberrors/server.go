@@ -238,3 +238,14 @@ type ErrServerInvalidSession struct{}
 func (e ErrServerInvalidSession) Error() string {
 	return "invalid session"
 }
+
+// ErrServerPathHasChanged is an error that can be returned by a server.
+type ErrServerPathHasChanged struct {
+	Prev string
+	Cur  string
+}
+
+// Error implements the error interface.
+func (e ErrServerPathHasChanged) Error() string {
+	return fmt.Sprintf("path has changed, was '%s', now is '%s'", e.Prev, e.Cur)
+}

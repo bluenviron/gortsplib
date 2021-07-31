@@ -769,6 +769,13 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		path, query := base.PathSplitQuery(pathAndQuery)
 
+		if ss.State() == ServerSessionStatePrePlay &&
+			path != *ss.setuppedPath {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, liberrors.ErrServerPathHasChanged{Prev: *ss.setuppedPath, Cur: path}
+		}
+
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{
 			Session: ss,
 			Conn:    sc,
@@ -882,6 +889,12 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.udpZone = sc.zone()
 		} else {
 			ss.tcpConn = sc
+		}
+
+		if path != *ss.setuppedPath {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, liberrors.ErrServerPathHasChanged{Prev: *ss.setuppedPath, Cur: path}
 		}
 
 		res, err := ss.s.Handler.(ServerHandlerOnRecord).OnRecord(&ServerHandlerOnRecordCtx{
