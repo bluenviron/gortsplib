@@ -227,8 +227,8 @@ func (sc *ServerConn) run() {
 				return err
 
 			case ss := <-sc.sessionRemove:
-				if _, ok := sc.sessions[ss.ID()]; ok {
-					delete(sc.sessions, ss.ID())
+				if _, ok := sc.sessions[ss.id]; ok {
+					delete(sc.sessions, ss.id)
 
 					select {
 					case ss.connRemove <- sc:
@@ -589,7 +589,7 @@ func (sc *ServerConn) handleRequestInSession(
 	case sc.s.sessionRequest <- sreq:
 		res := <-cres
 		if res.ss != nil {
-			sc.sessions[res.ss.ID()] = res.ss
+			sc.sessions[res.ss.id] = res.ss
 		}
 
 		return res.ss, res.res, res.err

@@ -120,7 +120,7 @@ type ServerSessionAnnouncedTrack struct {
 // ServerSession is a server-side RTSP session.
 type ServerSession struct {
 	s      *Server
-	id     string
+	id     string // do not export, allows to take ownership of the session
 	author *ServerConn
 
 	ctx                     context.Context
@@ -176,11 +176,6 @@ func newServerSession(
 func (ss *ServerSession) Close() error {
 	ss.ctxCancel()
 	return nil
-}
-
-// ID returns the ID of the session.
-func (ss *ServerSession) ID() string {
-	return ss.id
 }
 
 // State returns the state of the session.
