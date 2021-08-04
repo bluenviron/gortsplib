@@ -29,7 +29,7 @@ func extractPort(address string) (int, error) {
 	return int(tmp2), nil
 }
 
-func newSessionID(sessions map[string]*ServerSession) (string, error) {
+func newSessionSecretID(sessions map[string]*ServerSession) (string, error) {
 	for {
 		b := make([]byte, 4)
 		_, err := rand.Read(b)
@@ -372,7 +372,7 @@ outer:
 					continue
 				}
 
-				id, err := newSessionID(s.sessions)
+				secretID, err := newSessionSecretID(s.sessions)
 				if err != nil {
 					req.res <- sessionRequestRes{
 						res: &base.Response{
@@ -383,8 +383,8 @@ outer:
 					continue
 				}
 
-				ss := newServerSession(s, id, req.sc)
-				s.sessions[id] = ss
+				ss := newServerSession(s, secretID, req.sc)
+				s.sessions[secretID] = ss
 
 				select {
 				case ss.request <- req:
@@ -399,10 +399,10 @@ outer:
 			}
 
 		case ss := <-s.sessionClose:
-			if sss, ok := s.sessions[ss.id]; !ok || sss != ss {
+			if sss, ok := s.sessions[ss.secretID]; !ok || sss != ss {
 				continue
 			}
-			delete(s.sessions, ss.id)
+			delete(s.sessions, ss.secretID)
 			ss.Close()
 
 		case st := <-s.streamAdd:

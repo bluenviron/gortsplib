@@ -227,8 +227,8 @@ func (sc *ServerConn) run() {
 				return err
 
 			case ss := <-sc.sessionRemove:
-				if _, ok := sc.sessions[ss.id]; ok {
-					delete(sc.sessions, ss.id)
+				if _, ok := sc.sessions[ss.secretID]; ok {
+					delete(sc.sessions, ss.secretID)
 
 					select {
 					case ss.connRemove <- sc:
@@ -285,7 +285,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	// the connection can't communicate with another session
 	// if it's receiving or sending TCP frames.
 	if sc.tcpSession != nil &&
-		sxID != sc.tcpSession.id {
+		sxID != sc.tcpSession.secretID {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
 		}, liberrors.ErrServerLinkedToOtherSession{}
@@ -589,7 +589,7 @@ func (sc *ServerConn) handleRequestInSession(
 	case sc.s.sessionRequest <- sreq:
 		res := <-cres
 		if res.ss != nil {
-			sc.sessions[res.ss.id] = res.ss
+			sc.sessions[res.ss.secretID] = res.ss
 		}
 
 		return res.ss, res.res, res.err

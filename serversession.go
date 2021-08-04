@@ -119,9 +119,9 @@ type ServerSessionAnnouncedTrack struct {
 
 // ServerSession is a server-side RTSP session.
 type ServerSession struct {
-	s      *Server
-	id     string // do not export, allows to take ownership of the session
-	author *ServerConn
+	s        *Server
+	secretID string // must not be shared, allows to take ownership of the session
+	author   *ServerConn
 
 	ctx                     context.Context
 	ctxCancel               func()
@@ -149,14 +149,14 @@ type ServerSession struct {
 
 func newServerSession(
 	s *Server,
-	id string,
+	secretID string,
 	author *ServerConn,
 ) *ServerSession {
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
 	ss := &ServerSession{
 		s:               s,
-		id:              id,
+		secretID:        secretID,
 		author:          author,
 		ctx:             ctx,
 		ctxCancel:       ctxCancel,
@@ -250,7 +250,7 @@ func (ss *ServerSession) run() {
 					if res.Header == nil {
 						res.Header = make(base.Header)
 					}
-					res.Header["Session"] = base.HeaderValue{ss.id}
+					res.Header["Session"] = base.HeaderValue{ss.secretID}
 				}
 
 				if _, ok := err.(liberrors.ErrServerSessionTeardown); ok {
