@@ -60,15 +60,6 @@ func TestAuthorizationRead(t *testing.T) {
 	}
 }
 
-func TestAuthorizationWrite(t *testing.T) {
-	for _, ca := range casesAuthorization {
-		t.Run(ca.name, func(t *testing.T) {
-			vout := ca.h.Write()
-			require.Equal(t, ca.vout, vout)
-		})
-	}
-}
-
 func TestAuthorizationReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -110,6 +101,15 @@ func TestAuthorizationReadErrors(t *testing.T) {
 			var h Authorization
 			err := h.Read(ca.hv)
 			require.Equal(t, ca.err, err.Error())
+		})
+	}
+}
+
+func TestAuthorizationWrite(t *testing.T) {
+	for _, ca := range casesAuthorization {
+		t.Run(ca.name, func(t *testing.T) {
+			vout := ca.h.Write()
+			require.Equal(t, ca.vout, vout)
 		})
 	}
 }

@@ -106,7 +106,7 @@ func (e *Encoder) writeBatch(nalus [][]byte, pts time.Duration, marker bool) ([]
 }
 
 func (e *Encoder) writeSingle(nalu []byte, pts time.Duration, marker bool) ([][]byte, error) {
-	rpkt := rtp.Packet{
+	frame, err := (&rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
 			PayloadType:    e.payloadType,
@@ -116,13 +116,12 @@ func (e *Encoder) writeSingle(nalu []byte, pts time.Duration, marker bool) ([][]
 			Marker:         marker,
 		},
 		Payload: nalu,
-	}
-	e.sequenceNumber++
-
-	frame, err := rpkt.Marshal()
+	}).Marshal()
 	if err != nil {
 		return nil, err
 	}
+
+	e.sequenceNumber++
 
 	return [][]byte{frame}, nil
 }
@@ -164,7 +163,7 @@ func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) (
 		copy(data[2:], nalu[:le])
 		nalu = nalu[le:]
 
-		rpkt := rtp.Packet{
+		frame, err := (&rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
 				PayloadType:    e.payloadType,
@@ -174,13 +173,12 @@ func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) (
 				Marker:         (i == (packetCount-1) && marker),
 			},
 			Payload: data,
-		}
-		e.sequenceNumber++
-
-		frame, err := rpkt.Marshal()
+		}).Marshal()
 		if err != nil {
 			return nil, err
 		}
+
+		e.sequenceNumber++
 
 		ret[i] = frame
 	}
@@ -222,7 +220,7 @@ func (e *Encoder) writeAggregated(nalus [][]byte, pts time.Duration, marker bool
 		pos += naluLen
 	}
 
-	rpkt := rtp.Packet{
+	frame, err := (&rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
 			PayloadType:    e.payloadType,
@@ -232,13 +230,12 @@ func (e *Encoder) writeAggregated(nalus [][]byte, pts time.Duration, marker bool
 			Marker:         marker,
 		},
 		Payload: payload,
-	}
-	e.sequenceNumber++
-
-	frame, err := rpkt.Marshal()
+	}).Marshal()
 	if err != nil {
 		return nil, err
 	}
+
+	e.sequenceNumber++
 
 	return [][]byte{frame}, nil
 }

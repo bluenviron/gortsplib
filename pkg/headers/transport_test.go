@@ -168,15 +168,6 @@ func TestTransportRead(t *testing.T) {
 	}
 }
 
-func TestTransportWrite(t *testing.T) {
-	for _, ca := range casesTransport {
-		t.Run(ca.name, func(t *testing.T) {
-			req := ca.h.Write()
-			require.Equal(t, ca.vout, req)
-		})
-	}
-}
-
 func TestTransportReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -268,6 +259,15 @@ func TestTransportReadErrors(t *testing.T) {
 			var h Transport
 			err := h.Read(ca.hv)
 			require.Equal(t, ca.err, err.Error())
+		})
+	}
+}
+
+func TestTransportWrite(t *testing.T) {
+	for _, ca := range casesTransport {
+		t.Run(ca.name, func(t *testing.T) {
+			req := ca.h.Write()
+			require.Equal(t, ca.vout, req)
 		})
 	}
 }

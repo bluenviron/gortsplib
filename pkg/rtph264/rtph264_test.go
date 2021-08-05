@@ -2,6 +2,7 @@ package rtph264
 
 import (
 	"bytes"
+	"io"
 	"testing"
 	"time"
 
@@ -217,20 +218,6 @@ var cases = []struct {
 			},
 		},
 	},
-}
-
-func TestEncode(t *testing.T) {
-	for _, ca := range cases {
-		t.Run(ca.name, func(t *testing.T) {
-			sequenceNumber := uint16(0x44ed)
-			ssrc := uint32(0x9dbb7812)
-			initialTs := uint32(0x88776655)
-			e := NewEncoder(96, &sequenceNumber, &ssrc, &initialTs)
-			enc, err := e.Encode(ca.nalus, ca.pts)
-			require.NoError(t, err)
-			require.Equal(t, ca.enc, enc)
-		})
-	}
 }
 
 func TestDecode(t *testing.T) {
@@ -458,10 +445,36 @@ func TestDecodeErrors(t *testing.T) {
 	}
 }
 
-type funcReader func(p []byte) (int, error)
+func TestEncode(t *testing.T) {
+	for _, ca := range cases {
+		t.Run(ca.name, func(t *testing.T) {
+			sequenceNumber := uint16(0x44ed)
+			ssrc := uint32(0x9dbb7812)
+			initialTs := uint32(0x88776655)
+			e := NewEncoder(96, &sequenceNumber, &ssrc, &initialTs)
+			enc, err := e.Encode(ca.nalus, ca.pts)
+			require.NoError(t, err)
+			require.Equal(t, ca.enc, enc)
+		})
+	}
+}
 
-func (f funcReader) Read(p []byte) (int, error) {
-	return f(p)
+func TestEncodeRandomInitialState(t *testing.T) {
+	NewEncoder(96, nil, nil, nil)
+}
+
+type dummyReader struct {
+	byts [][]byte
+	i    int
+}
+
+func (f *dummyReader) Read(p []byte) (int, error) {
+	if f.i >= len(f.byts) {
+		return 0, io.EOF
+	}
+	n := copy(p, f.byts[f.i])
+	f.i++
+	return n, nil
 }
 
 func TestReadSPSPPS(t *testing.T) {
@@ -491,17 +504,43 @@ func TestReadSPSPPS(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			i := 0
-			f := funcReader(func(p []byte) (int, error) {
-				n := copy(p, ca.byts[i])
-				i++
-				return n, nil
-			})
-
-			sps, pps, err := NewDecoder().ReadSPSPPS(f)
+			sps, pps, err := NewDecoder().ReadSPSPPS(&dummyReader{byts: ca.byts})
 			require.NoError(t, err)
 			require.Equal(t, ca.sps, sps)
 			require.Equal(t, ca.pps, pps)
+		})
+	}
+}
+
+func TestReadSPSPPSErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		byts [][]byte
+		err  string
+	}{
+		{
+			"empty",
+			[][]byte{},
+			"EOF",
+		},
+		{
+			"more packets needed, then empty",
+			[][]byte{
+				mergeBytes(
+					[]byte{
+						0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x79, 0xab,
+						0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x85,
+					},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+					[]byte{0x00, 0x01},
+				),
+			},
+			"EOF",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			_, _, err := NewDecoder().ReadSPSPPS(&dummyReader{byts: ca.byts})
+			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }

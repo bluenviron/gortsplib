@@ -131,7 +131,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([][]byte, error
 		copy(data[4:], au[:le])
 		au = au[le:]
 
-		rpkt := rtp.Packet{
+		frame, err := (&rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
 				PayloadType:    e.payloadType,
@@ -141,13 +141,12 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([][]byte, error
 				Marker:         (i == (packetCount - 1)),
 			},
 			Payload: data,
-		}
-		e.sequenceNumber++
-
-		frame, err := rpkt.Marshal()
+		}).Marshal()
 		if err != nil {
 			return nil, err
 		}
+
+		e.sequenceNumber++
 
 		ret[i] = frame
 	}
@@ -190,7 +189,7 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([][]byt
 		pos += auLen
 	}
 
-	rpkt := rtp.Packet{
+	frame, err := (&rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
 			PayloadType:    e.payloadType,
@@ -200,13 +199,12 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([][]byt
 			Marker:         true,
 		},
 		Payload: payload,
-	}
-	e.sequenceNumber++
-
-	frame, err := rpkt.Marshal()
+	}).Marshal()
 	if err != nil {
 		return nil, err
 	}
+
+	e.sequenceNumber++
 
 	return [][]byte{frame}, nil
 }

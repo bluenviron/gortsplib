@@ -59,15 +59,6 @@ func TestSessionRead(t *testing.T) {
 	}
 }
 
-func TestSessionWrite(t *testing.T) {
-	for _, ca := range casesSession {
-		t.Run(ca.name, func(t *testing.T) {
-			req := ca.h.Write()
-			require.Equal(t, ca.vout, req)
-		})
-	}
-}
-
 func TestSessionReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -99,6 +90,15 @@ func TestSessionReadErrors(t *testing.T) {
 			var h Session
 			err := h.Read(ca.hv)
 			require.Equal(t, ca.err, err.Error())
+		})
+	}
+}
+
+func TestSessionWrite(t *testing.T) {
+	for _, ca := range casesSession {
+		t.Run(ca.name, func(t *testing.T) {
+			req := ca.h.Write()
+			require.Equal(t, ca.vout, req)
 		})
 	}
 }

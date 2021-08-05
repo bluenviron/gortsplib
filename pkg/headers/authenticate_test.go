@@ -183,15 +183,6 @@ func TestAuthenticateRead(t *testing.T) {
 	}
 }
 
-func TestAuthenticateWrite(t *testing.T) {
-	for _, ca := range casesAuthenticate {
-		t.Run(ca.name, func(t *testing.T) {
-			vout := ca.h.Write()
-			require.Equal(t, ca.vout, vout)
-		})
-	}
-}
-
 func TestAutenticatehReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -228,6 +219,15 @@ func TestAutenticatehReadErrors(t *testing.T) {
 			var h Authenticate
 			err := h.Read(ca.hv)
 			require.Equal(t, ca.err, err.Error())
+		})
+	}
+}
+
+func TestAuthenticateWrite(t *testing.T) {
+	for _, ca := range casesAuthenticate {
+		t.Run(ca.name, func(t *testing.T) {
+			vout := ca.h.Write()
+			require.Equal(t, ca.vout, vout)
 		})
 	}
 }

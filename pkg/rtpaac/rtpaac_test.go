@@ -213,20 +213,6 @@ var cases = []struct {
 	},
 }
 
-func TestEncode(t *testing.T) {
-	for _, ca := range cases {
-		t.Run(ca.name, func(t *testing.T) {
-			sequenceNumber := uint16(0x44ed)
-			ssrc := uint32(0x9dbb7812)
-			initialTs := uint32(0x88776655)
-			e := NewEncoder(96, 48000, &sequenceNumber, &ssrc, &initialTs)
-			enc, err := e.Encode(ca.aus, ca.pts)
-			require.NoError(t, err)
-			require.Equal(t, ca.enc, enc)
-		})
-	}
-}
-
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
@@ -423,4 +409,22 @@ func TestDecodeErrors(t *testing.T) {
 			require.Equal(t, ca.err, err.Error())
 		})
 	}
+}
+
+func TestEncode(t *testing.T) {
+	for _, ca := range cases {
+		t.Run(ca.name, func(t *testing.T) {
+			sequenceNumber := uint16(0x44ed)
+			ssrc := uint32(0x9dbb7812)
+			initialTs := uint32(0x88776655)
+			e := NewEncoder(96, 48000, &sequenceNumber, &ssrc, &initialTs)
+			enc, err := e.Encode(ca.aus, ca.pts)
+			require.NoError(t, err)
+			require.Equal(t, ca.enc, enc)
+		})
+	}
+}
+
+func TestEncodeRandomInitialState(t *testing.T) {
+	NewEncoder(96, 48000, nil, nil, nil)
 }

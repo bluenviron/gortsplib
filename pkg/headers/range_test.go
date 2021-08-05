@@ -132,15 +132,6 @@ func TestRangeRead(t *testing.T) {
 	}
 }
 
-func TestRangeWrite(t *testing.T) {
-	for _, ca := range casesRange {
-		t.Run(ca.name, func(t *testing.T) {
-			req := ca.h.Write()
-			require.Equal(t, ca.vout, req)
-		})
-	}
-}
-
 func TestRangeReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -267,6 +258,15 @@ func TestRangeReadErrors(t *testing.T) {
 			var h Range
 			err := h.Read(ca.hv)
 			require.Equal(t, ca.err, err.Error())
+		})
+	}
+}
+
+func TestRangeWrite(t *testing.T) {
+	for _, ca := range casesRange {
+		t.Run(ca.name, func(t *testing.T) {
+			req := ca.h.Write()
+			require.Equal(t, ca.vout, req)
 		})
 	}
 }
