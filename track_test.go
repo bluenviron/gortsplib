@@ -180,6 +180,27 @@ func TestTrackClockRate(t *testing.T) {
 				"a=sendrecv\r\n"),
 			8000,
 		},
+		{
+			"multiple formats",
+			[]byte("v=0\r\n" +
+				"o=RTSP 1853326073 627916868 IN IP4 0.0.0.0\r\n" +
+				"s=RTSP server\r\n" +
+				"c=IN IP4 0.0.0.0\r\n" +
+				"t=0 0\r\n" +
+				"a=control:*\r\n" +
+				"a=etag:1234567890\r\n" +
+				"a=range:npt=0-\r\n" +
+				"a=control:*\r\n" +
+				"m=video 0 RTP/AVP 98 96\r\n" +
+				"a=control:trackID=1\r\n" +
+				"b=AS:0\r\n" +
+				"a=rtpmap:98 H265/90000\r\n" +
+				"a=fmtp:98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=\r\n" +
+				"m=application 0 RTP/AVP 107\r\n" +
+				"a=control:trackID=3\r\n" +
+				"a=rtpmap:107 vnd.onvif.metadata/90000"),
+			90000,
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			tracks, err := ReadTracks(ca.sdp)

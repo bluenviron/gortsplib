@@ -76,8 +76,8 @@ func (t *Track) URL(baseURL *base.URL) (*base.URL, error) {
 
 // ClockRate returns the clock rate of the track.
 func (t *Track) ClockRate() (int, error) {
-	if len(t.Media.MediaName.Formats) != 1 {
-		return 0, fmt.Errorf("invalid format (%v)", t.Media.MediaName.Formats)
+	if len(t.Media.MediaName.Formats) < 1 {
+		return 0, fmt.Errorf("no formats provided")
 	}
 
 	// get clock rate from payload type
