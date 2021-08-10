@@ -67,6 +67,10 @@ func (st *ServerStream) Close() error {
 		}
 	}
 
+	for ss := range st.readers {
+		ss.Close()
+	}
+
 	if st.multicastListeners != nil {
 		for _, l := range st.multicastListeners {
 			l.rtpListener.close()
@@ -75,10 +79,8 @@ func (st *ServerStream) Close() error {
 		st.multicastListeners = nil
 	}
 
-	for ss := range st.readers {
-		ss.Close()
-	}
 	st.readers = nil
+	st.readersUnicast = nil
 
 	return nil
 }
@@ -123,28 +125,26 @@ func (st *ServerStream) readerAdd(ss *ServerSession, isMulticast bool) error {
 		}
 	}
 
-	if !isMulticast || st.multicastListeners != nil {
-		return nil
-	}
+	if isMulticast && st.multicastListeners == nil {
+		st.multicastListeners = make([]*listenerPair, len(st.tracks))
 
-	st.multicastListeners = make([]*listenerPair, len(st.tracks))
-
-	for i := range st.tracks {
-		rtpListener, rtcpListener, err := newServerUDPListenerMulticastPair(st.s)
-		if err != nil {
-			for _, l := range st.multicastListeners {
-				if l != nil {
-					l.rtpListener.close()
-					l.rtcpListener.close()
+		for i := range st.tracks {
+			rtpListener, rtcpListener, err := newServerUDPListenerMulticastPair(st.s)
+			if err != nil {
+				for _, l := range st.multicastListeners {
+					if l != nil {
+						l.rtpListener.close()
+						l.rtcpListener.close()
+					}
 				}
+				st.multicastListeners = nil
+				return err
 			}
-			st.multicastListeners = nil
-			return err
-		}
 
-		st.multicastListeners[i] = &listenerPair{
-			rtpListener:  rtpListener,
-			rtcpListener: rtcpListener,
+			st.multicastListeners[i] = &listenerPair{
+				rtpListener:  rtpListener,
+				rtcpListener: rtcpListener,
+			}
 		}
 	}
 
