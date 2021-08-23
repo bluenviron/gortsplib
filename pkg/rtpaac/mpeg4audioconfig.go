@@ -15,37 +15,37 @@ const (
 	MPEG4AudioTypeAACLC MPEG4AudioType = 2
 )
 
+var sampleRates = []int{
+	96000,
+	88200,
+	64000,
+	48000,
+	44100,
+	32000,
+	24000,
+	22050,
+	16000,
+	12000,
+	11025,
+	8000,
+	7350,
+}
+
+var channelCounts = []int{
+	1,
+	2,
+	3,
+	4,
+	5,
+	6,
+	8,
+}
+
 // MPEG4AudioConfig is a MPEG-4 Audio configuration.
 type MPEG4AudioConfig struct {
 	Type         MPEG4AudioType
 	SampleRate   int
 	ChannelCount int
-}
-
-var sampleRates = map[uint64]int{
-	0:  96000,
-	1:  88200,
-	2:  64000,
-	3:  48000,
-	4:  44100,
-	5:  32000,
-	6:  24000,
-	7:  22050,
-	8:  16000,
-	9:  12000,
-	10: 11025,
-	11: 8000,
-	12: 7350,
-}
-
-var channelCounts = map[uint64]int{
-	1: 1,
-	2: 2,
-	3: 3,
-	4: 4,
-	5: 5,
-	6: 6,
-	7: 8,
 }
 
 // Decode decodes an MPEG-4 Audio configuration.
@@ -104,7 +104,7 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 		return fmt.Errorf("not yet supported")
 
 	case channelConfig >= 1 && channelConfig <= 7:
-		c.ChannelCount = channelCounts[channelConfig]
+		c.ChannelCount = channelCounts[channelConfig-1]
 
 	default:
 		return fmt.Errorf("invalid channel configuration (%d)", channelConfig)
