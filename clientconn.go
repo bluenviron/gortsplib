@@ -31,20 +31,6 @@ const (
 	clientConnUDPKeepalivePeriod = 30 * time.Second
 )
 
-func clientChannelToTrackID(channel int) (int, StreamType) {
-	if (channel % 2) == 0 {
-		return channel / 2, StreamTypeRTP
-	}
-	return (channel - 1) / 2, StreamTypeRTCP
-}
-
-func clientTrackIDToChannel(trackID int, streamType StreamType) int {
-	if streamType == StreamTypeRTP {
-		return trackID * 2
-	}
-	return (trackID * 2) + 1
-}
-
 func isErrNOUDPPacketsReceivedRecently(err error) bool {
 	_, ok := err.(liberrors.ErrClientNoUDPPacketsRecently)
 	return ok
@@ -68,6 +54,7 @@ type clientConnTrack struct {
 	track           *Track
 	udpRTPListener  *clientConnUDPListener
 	udpRTCPListener *clientConnUDPListener
+	tcpChannel      int
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver
 	rtcpSender      *rtcpsender.RTCPSender
 }
@@ -151,6 +138,7 @@ type ClientConn struct {
 	streamBaseURL     *base.URL
 	protocol          *ClientProtocol
 	tracks            map[int]clientConnTrack
+	tracksByChannel   map[int]int
 	lastRange         *headers.Range
 	backgroundRunning bool
 	backgroundErr     error
@@ -226,7 +214,6 @@ func newClientConn(c *Client, scheme string, host string) (*ClientConn, error) {
 		host:      host,
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
-		tracks:    make(map[int]clientConnTrack),
 		options:   make(chan optionsReq),
 		describe:  make(chan describeReq),
 		announce:  make(chan announceReq),
@@ -633,16 +620,21 @@ func (cc *ClientConn) runBackgroundPlayTCP() error {
 				return
 			}
 
-			trackID, streamType := clientChannelToTrackID(frame.Channel)
+			channel := frame.Channel
+			streamType := base.StreamTypeRTP
+			if (channel % 2) != 0 {
+				channel--
+				streamType = base.StreamTypeRTCP
+			}
 
-			track, ok := cc.tracks[trackID]
+			trackID, ok := cc.tracksByChannel[channel]
 			if !ok {
 				continue
 			}
 
 			now := time.Now()
 			atomic.StoreInt64(&lastFrameTime, now.Unix())
-			track.rtcpReceiver.ProcessFrame(now, streamType, frame.Payload)
+			cc.tracks[trackID].rtcpReceiver.ProcessFrame(now, streamType, frame.Payload)
 			cc.pullReadCB()(trackID, streamType, frame.Payload)
 		}
 	}()
@@ -754,7 +746,17 @@ func (cc *ClientConn) runBackgroundRecordTCP() error {
 				return
 			}
 
-			trackID, streamType := clientChannelToTrackID(frame.Channel)
+			channel := frame.Channel
+			streamType := base.StreamTypeRTP
+			if (channel % 2) != 0 {
+				channel--
+				streamType = base.StreamTypeRTCP
+			}
+
+			trackID, ok := cc.tracksByChannel[channel]
+			if !ok {
+				continue
+			}
 
 			cc.pullReadCB()(trackID, streamType, frame.Payload)
 		}
@@ -1367,10 +1369,15 @@ func (cc *ClientConn) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderNoInterleavedIDs{}
 		}
 
-		if *thRes.InterleavedIDs != *th.InterleavedIDs {
-			return nil, liberrors.ErrClientTransportHeaderInvalidInterleavedIDs{
-				Expected: *th.InterleavedIDs, Value: *thRes.InterleavedIDs,
-			}
+		if (thRes.InterleavedIDs[0]%2) != 0 ||
+			(thRes.InterleavedIDs[0]+1) != thRes.InterleavedIDs[1] {
+			return nil, liberrors.ErrClientTransportHeaderInvalidInterleavedIDs{}
+		}
+
+		if _, ok := cc.tracksByChannel[thRes.InterleavedIDs[0]]; ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, liberrors.ErrClientTransportHeaderInterleavedIDsAlreadyUsed{}
 		}
 	}
 
@@ -1378,6 +1385,17 @@ func (cc *ClientConn) doSetup(
 	cct := clientConnTrack{
 		track: track,
 	}
+
+	if mode == headers.TransportModePlay {
+		cc.state = clientConnStatePrePlay
+		cct.rtcpReceiver = rtcpreceiver.New(nil, clockRate)
+	} else {
+		cc.state = clientConnStatePreRecord
+		cct.rtcpSender = rtcpsender.New(clockRate)
+	}
+
+	cc.streamBaseURL = baseURL
+	cc.protocol = &proto
 
 	switch proto {
 	case ClientProtocolUDP:
@@ -1422,18 +1440,19 @@ func (cc *ClientConn) doSetup(
 		if cc.tcpFrameBuffer == nil {
 			cc.tcpFrameBuffer = multibuffer.New(uint64(cc.c.ReadBufferCount), uint64(cc.c.ReadBufferSize))
 		}
+
+		if cc.tracksByChannel == nil {
+			cc.tracksByChannel = make(map[int]int)
+		}
+
+		cc.tracksByChannel[thRes.InterleavedIDs[0]] = trackID
+
+		cct.tcpChannel = thRes.InterleavedIDs[0]
 	}
 
-	if mode == headers.TransportModePlay {
-		cc.state = clientConnStatePrePlay
-		cct.rtcpReceiver = rtcpreceiver.New(nil, clockRate)
-	} else {
-		cc.state = clientConnStatePreRecord
-		cct.rtcpSender = rtcpsender.New(clockRate)
+	if cc.tracks == nil {
+		cc.tracks = make(map[int]clientConnTrack)
 	}
-
-	cc.streamBaseURL = baseURL
-	cc.protocol = &proto
 
 	cc.tracks[trackID] = cct
 
@@ -1685,10 +1704,13 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 		return cc.tracks[trackID].udpRTCPListener.write(payload)
 
 	default: // TCP
+		channel := cc.tracks[trackID].tcpChannel
+		if streamType == base.StreamTypeRTCP {
+			channel++
+		}
+
 		cc.tcpWriteMutex.Lock()
 		defer cc.tcpWriteMutex.Unlock()
-
-		channel := clientTrackIDToChannel(trackID, streamType)
 
 		cc.nconn.SetWriteDeadline(now.Add(cc.c.WriteTimeout))
 		return base.InterleavedFrame{

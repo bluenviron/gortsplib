@@ -148,14 +148,19 @@ func (e ErrClientTransportHeaderNoInterleavedIDs) Error() string {
 }
 
 // ErrClientTransportHeaderInvalidInterleavedIDs is an error that can be returned by a client.
-type ErrClientTransportHeaderInvalidInterleavedIDs struct {
-	Expected [2]int
-	Value    [2]int
-}
+type ErrClientTransportHeaderInvalidInterleavedIDs struct{}
 
 // Error implements the error interface.
 func (e ErrClientTransportHeaderInvalidInterleavedIDs) Error() string {
-	return fmt.Sprintf("invalid interleaved IDs, expected %v, got %v", e.Expected, e.Value)
+	return "invalid interleaved IDs"
+}
+
+// ErrClientTransportHeaderInterleavedIDsAlreadyUsed is an error that can be returned by a client.
+type ErrClientTransportHeaderInterleavedIDsAlreadyUsed struct{}
+
+// Error implements the error interface.
+func (e ErrClientTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
+	return "interleaved IDs already used"
 }
 
 // ErrClientNoUDPPacketsRecently is an error that can be returned by a client.

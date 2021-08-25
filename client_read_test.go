@@ -1136,6 +1136,135 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 	})
 }
 
+func TestClientReadDifferentInterleavedIDs(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		req, err := readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		track1, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+		require.NoError(t, err)
+
+		tracks := cloneAndClearTracks(Tracks{track1})
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+			},
+			Body: tracks.Write(),
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
+
+		var inTH headers.Transport
+		err = inTH.Read(req.Header["Transport"])
+		require.NoError(t, err)
+
+		th := headers.Transport{
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
+				return &v
+			}(),
+			Protocol:       base.StreamProtocolTCP,
+			InterleavedIDs: &[2]int{2, 3},
+		}
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Write(),
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = base.InterleavedFrame{
+			Channel: 2,
+			Payload: []byte{0x01, 0x02, 0x03, 0x04},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+	}()
+
+	c := &Client{
+		Protocol: func() *ClientProtocol {
+			v := ClientProtocolTCP
+			return &v
+		}(),
+	}
+
+	conn, err := c.DialRead("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	frameRecv := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		conn.ReadFrames(func(id int, typ StreamType, payload []byte) {
+			require.Equal(t, 0, id)
+			close(frameRecv)
+		})
+	}()
+
+	<-frameRecv
+	conn.Close()
+	<-done
+}
+
 func TestClientReadRedirect(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
