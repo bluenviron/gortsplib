@@ -9,7 +9,7 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
-// 2. check whether there's a H264 track
+// 2. check whether there's an H264 track
 // 3. get H264 NALUs of that track
 
 func main() {

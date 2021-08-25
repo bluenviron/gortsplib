@@ -140,7 +140,7 @@ func (t *Track) ClockRate() (int, error) {
 	return 0, fmt.Errorf("attribute 'rtpmap' not found")
 }
 
-// NewTrackH264 initializes an H264 track from a SPS and PPS.
+// NewTrackH264 initializes an H264 track.
 func NewTrackH264(payloadType uint8, conf *TrackConfigH264) (*Track, error) {
 	spropParameterSets := base64.StdEncoding.EncodeToString(conf.SPS) +
 		"," + base64.StdEncoding.EncodeToString(conf.PPS)
@@ -171,7 +171,7 @@ func NewTrackH264(payloadType uint8, conf *TrackConfigH264) (*Track, error) {
 	}, nil
 }
 
-// IsH264 checks whether the track is a H264 track.
+// IsH264 checks whether the track is an H264 track.
 func (t *Track) IsH264() bool {
 	if t.Media.MediaName.Media != "video" {
 		return false
@@ -190,7 +190,7 @@ func (t *Track) IsH264() bool {
 	return vals[1] == "H264/90000"
 }
 
-// ExtractConfigH264 extracts the configuration from an H264 track.
+// ExtractConfigH264 extracts the configuration of an H264 track.
 func (t *Track) ExtractConfigH264() (*TrackConfigH264, error) {
 	v, ok := t.Media.Attribute("fmtp")
 	if !ok {
@@ -302,7 +302,7 @@ func (t *Track) IsAAC() bool {
 	return strings.HasPrefix(strings.ToLower(vals[1]), "mpeg4-generic/")
 }
 
-// ExtractConfigAAC extracts the configuration from an AAC track.
+// ExtractConfigAAC extracts the configuration of an AAC track.
 func (t *Track) ExtractConfigAAC() (*TrackConfigAAC, error) {
 	v, ok := t.Media.Attribute("fmtp")
 	if !ok {
