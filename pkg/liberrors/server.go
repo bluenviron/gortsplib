@@ -175,6 +175,14 @@ func (e ErrServerTransportHeaderInvalidInterleavedIDs) Error() string {
 	return "invalid interleaved IDs"
 }
 
+// ErrServerTransportHeaderInterleavedIDsAlreadyUsed is an error that can be returned by a server.
+type ErrServerTransportHeaderInterleavedIDsAlreadyUsed struct{}
+
+// Error implements the error interface.
+func (e ErrServerTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
+	return "interleaved IDs already used"
+}
+
 // ErrServerTracksDifferentProtocols is an error that can be returned by a server.
 type ErrServerTracksDifferentProtocols struct{}
 

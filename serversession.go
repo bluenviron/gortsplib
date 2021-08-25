@@ -605,8 +605,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}, liberrors.ErrServerTransportHeaderNoInterleavedIDs{}
 			}
 
-			if (inTH.InterleavedIDs[0]+1) != inTH.InterleavedIDs[1] ||
-				(inTH.InterleavedIDs[0]%2) != 0 {
+			if (inTH.InterleavedIDs[0]%2) != 0 ||
+				(inTH.InterleavedIDs[0]+1) != inTH.InterleavedIDs[1] {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{}
@@ -615,7 +615,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if _, ok := ss.setuppedTracksByChannel[inTH.InterleavedIDs[0]]; ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{}
+				}, liberrors.ErrServerTransportHeaderInterleavedIDsAlreadyUsed{}
 			}
 		}
 
