@@ -664,18 +664,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.setuppedProtocol = &inTH.Protocol
 			ss.setuppedDelivery = &delivery
 
-			if ss.setuppedTracks == nil {
-				ss.setuppedTracks = make(map[int]ServerSessionSetuppedTrack)
-			}
-
 			if res.Header == nil {
 				res.Header = make(base.Header)
 			}
 
+			sst := ServerSessionSetuppedTrack{}
+
 			switch {
 			case delivery == base.StreamDeliveryMulticast:
-				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{}
-
 				th.Protocol = base.StreamProtocolUDP
 				de := base.StreamDeliveryMulticast
 				th.Delivery = &de
@@ -689,10 +685,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}
 
 			case inTH.Protocol == base.StreamProtocolUDP:
-				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{
-					udpRTPPort:  inTH.ClientPorts[0],
-					udpRTCPPort: inTH.ClientPorts[1],
-				}
+				sst.udpRTPPort = inTH.ClientPorts[0]
+				sst.udpRTCPPort = inTH.ClientPorts[1]
 
 				th.Protocol = base.StreamProtocolUDP
 				de := base.StreamDeliveryUnicast
@@ -701,9 +695,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
 
 			default: // TCP
-				ss.setuppedTracks[trackID] = ServerSessionSetuppedTrack{
-					tcpChannel: inTH.InterleavedIDs[0],
-				}
+				sst.tcpChannel = inTH.InterleavedIDs[0]
 
 				if ss.setuppedTracksByChannel == nil {
 					ss.setuppedTracksByChannel = make(map[int]int)
@@ -716,6 +708,12 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				th.Delivery = &de
 				th.InterleavedIDs = inTH.InterleavedIDs
 			}
+
+			if ss.setuppedTracks == nil {
+				ss.setuppedTracks = make(map[int]ServerSessionSetuppedTrack)
+			}
+
+			ss.setuppedTracks[trackID] = sst
 
 			res.Header["Transport"] = th.Write()
 		}
