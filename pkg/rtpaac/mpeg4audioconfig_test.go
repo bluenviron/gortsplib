@@ -15,9 +15,10 @@ var configCases = []struct {
 		"aac-lc 44.1khz mono",
 		[]byte{0x12, 0x08, 0x56, 0xe5, 0x00},
 		MPEG4AudioConfig{
-			Type:         MPEG4AudioTypeAACLC,
-			SampleRate:   44100,
-			ChannelCount: 1,
+			Type:              MPEG4AudioTypeAACLC,
+			SampleRate:        44100,
+			ChannelCount:      1,
+			AOTSpecificConfig: []byte{0x0A, 0xDC, 0xA0},
 		},
 	},
 	{
@@ -33,9 +34,10 @@ var configCases = []struct {
 		"aac-lc 96khz stereo",
 		[]byte{0x10, 0x10, 0x56, 0xE5, 0x00},
 		MPEG4AudioConfig{
-			Type:         MPEG4AudioTypeAACLC,
-			SampleRate:   96000,
-			ChannelCount: 2,
+			Type:              MPEG4AudioTypeAACLC,
+			SampleRate:        96000,
+			ChannelCount:      2,
+			AOTSpecificConfig: []byte{0x0A, 0xDC, 0xA0},
 		},
 	},
 	{
@@ -81,14 +83,9 @@ func TestConfigDecodeErrors(t *testing.T) {
 			"EOF",
 		},
 		{
-			"extended type missing",
-			[]byte{31 << 3},
-			"EOF",
-		},
-		{
-			"extended type invalid",
-			[]byte{31 << 3, 20},
-			"unsupported type: 32",
+			"unsupported type",
+			[]byte{18 << 3},
+			"unsupported type: 18",
 		},
 		{
 			"sample rate missing",
@@ -119,6 +116,39 @@ func TestConfigDecodeErrors(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			var dec MPEG4AudioConfig
 			err := dec.Decode(ca.byts)
+			require.Equal(t, ca.err, err.Error())
+		})
+	}
+}
+
+func TestConfigEncode(t *testing.T) {
+	for _, ca := range configCases {
+		t.Run(ca.name, func(t *testing.T) {
+			enc, err := ca.dec.Encode()
+			require.NoError(t, err)
+			require.Equal(t, ca.enc, enc)
+		})
+	}
+}
+
+func TestConfigEncodeErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		conf MPEG4AudioConfig
+		err  string
+	}{
+		{
+			"invalid channel config",
+			MPEG4AudioConfig{
+				Type:         2,
+				SampleRate:   44100,
+				ChannelCount: 0,
+			},
+			"invalid channel count (0)",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			_, err := ca.conf.Encode()
 			require.Equal(t, ca.err, err.Error())
 		})
 	}

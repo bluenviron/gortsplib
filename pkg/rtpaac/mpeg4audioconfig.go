@@ -3,6 +3,7 @@ package rtpaac
 import (
 	"bytes"
 	"fmt"
+	"io"
 
 	"github.com/icza/bitio"
 )
@@ -43,12 +44,13 @@ var channelCounts = []int{
 
 // MPEG4AudioConfig is a MPEG-4 Audio configuration.
 type MPEG4AudioConfig struct {
-	Type         MPEG4AudioType
-	SampleRate   int
-	ChannelCount int
+	Type              MPEG4AudioType
+	SampleRate        int
+	ChannelCount      int
+	AOTSpecificConfig []byte
 }
 
-// Decode decodes an MPEG-4 Audio configuration.
+// Decode decodes an MPEG4AudioConfig.
 func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 	// ref: https://wiki.multimedia.cx/index.php/MPEG-4_Audio
 
@@ -59,14 +61,6 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 		return err
 	}
 	c.Type = MPEG4AudioType(tmp)
-
-	if tmp == 31 {
-		tmp, err = r.ReadBits(6)
-		if err != nil {
-			return err
-		}
-		c.Type = MPEG4AudioType(tmp + 32)
-	}
 
 	switch c.Type {
 	case MPEG4AudioTypeAACLC:
@@ -110,5 +104,64 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 		return fmt.Errorf("invalid channel configuration (%d)", channelConfig)
 	}
 
+	for {
+		byt, err := r.ReadBits(8)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		c.AOTSpecificConfig = append(c.AOTSpecificConfig, uint8(byt))
+	}
+
 	return nil
+}
+
+// Encode encodes an MPEG4AudioConfig.
+func (c MPEG4AudioConfig) Encode() ([]byte, error) {
+	var buf bytes.Buffer
+	w := bitio.NewWriter(&buf)
+
+	w.WriteBits(uint64(c.Type), 5)
+
+	sampleRateIndex := func() int {
+		for i, s := range sampleRates {
+			if s == c.SampleRate {
+				return i
+			}
+		}
+		return -1
+	}()
+
+	if sampleRateIndex != -1 {
+		w.WriteBits(uint64(sampleRateIndex), 4)
+	} else {
+		w.WriteBits(uint64(15), 4)
+		w.WriteBits(uint64(c.SampleRate), 24)
+	}
+
+	channelConfig := func() int {
+		for i, co := range channelCounts {
+			if co == c.ChannelCount {
+				return i + 1
+			}
+		}
+		return -1
+	}()
+
+	if channelConfig == -1 {
+		return nil, fmt.Errorf("invalid channel count (%d)", c.ChannelCount)
+	}
+
+	w.WriteBits(uint64(channelConfig), 4)
+
+	for _, b := range c.AOTSpecificConfig {
+		w.WriteBits(uint64(b), 8)
+	}
+
+	w.Close()
+
+	return buf.Bytes(), nil
 }

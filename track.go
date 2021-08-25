@@ -20,6 +20,20 @@ type Track struct {
 	Media *psdp.MediaDescription
 }
 
+// TrackConfigH264 is the configuration of an H264 track.
+type TrackConfigH264 struct {
+	SPS []byte
+	PPS []byte
+}
+
+// TrackConfigAAC is the configuration of an AAC track.
+type TrackConfigAAC struct {
+	Type              int
+	SampleRate        int
+	ChannelCount      int
+	AOTSpecificConfig []byte
+}
+
 func (t *Track) hasControlAttribute() bool {
 	for _, attr := range t.Media.Attributes {
 		if attr.Key == "control" {
@@ -127,10 +141,10 @@ func (t *Track) ClockRate() (int, error) {
 }
 
 // NewTrackH264 initializes an H264 track from a SPS and PPS.
-func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*Track, error) {
-	spropParameterSets := base64.StdEncoding.EncodeToString(sps) +
-		"," + base64.StdEncoding.EncodeToString(pps)
-	profileLevelID := strings.ToUpper(hex.EncodeToString(sps[1:4]))
+func NewTrackH264(payloadType uint8, conf *TrackConfigH264) (*Track, error) {
+	spropParameterSets := base64.StdEncoding.EncodeToString(conf.SPS) +
+		"," + base64.StdEncoding.EncodeToString(conf.PPS)
+	profileLevelID := strings.ToUpper(hex.EncodeToString(conf.SPS[1:4]))
 
 	typ := strconv.FormatInt(int64(payloadType), 10)
 
@@ -176,20 +190,17 @@ func (t *Track) IsH264() bool {
 	return vals[1] == "H264/90000"
 }
 
-// ExtractDataH264 extracts the SPS and PPS from an H264 track.
-func (t *Track) ExtractDataH264() ([]byte, []byte, error) {
+// ExtractConfigH264 extracts the configuration from an H264 track.
+func (t *Track) ExtractConfigH264() (*TrackConfigH264, error) {
 	v, ok := t.Media.Attribute("fmtp")
 	if !ok {
-		return nil, nil, fmt.Errorf("fmtp attribute is missing")
+		return nil, fmt.Errorf("fmtp attribute is missing")
 	}
 
 	tmp := strings.SplitN(v, " ", 2)
 	if len(tmp) != 2 {
-		return nil, nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
+		return nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
 	}
-
-	var sps []byte
-	var pps []byte
 
 	for _, kv := range strings.Split(tmp[1], ";") {
 		kv = strings.Trim(kv, " ")
@@ -200,41 +211,47 @@ func (t *Track) ExtractDataH264() ([]byte, []byte, error) {
 
 		tmp := strings.SplitN(kv, "=", 2)
 		if len(tmp) != 2 {
-			return nil, nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
+			return nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
 		}
 
 		if tmp[0] == "sprop-parameter-sets" {
 			tmp := strings.SplitN(tmp[1], ",", 2)
 			if len(tmp) != 2 {
-				return nil, nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
+				return nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
-			var err error
-			sps, err = base64.StdEncoding.DecodeString(tmp[0])
+			sps, err := base64.StdEncoding.DecodeString(tmp[0])
 			if err != nil {
-				return nil, nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
+				return nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
-			pps, err = base64.StdEncoding.DecodeString(tmp[1])
+			pps, err := base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
-				return nil, nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
+				return nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
+
+			conf := &TrackConfigH264{
+				SPS: sps,
+				PPS: pps,
+			}
+
+			return conf, nil
 		}
 	}
 
-	if sps == nil || pps == nil {
-		return nil, nil, fmt.Errorf("sprop-parameter-sets is missing (%v)", v)
-	}
-
-	return sps, pps, nil
+	return nil, fmt.Errorf("sprop-parameter-sets is missing (%v)", v)
 }
 
-// NewTrackAAC initializes an AAC track from a configuration.
-func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
-	var conf rtpaac.MPEG4AudioConfig
-	err := conf.Decode(config)
+// NewTrackAAC initializes an AAC track.
+func NewTrackAAC(payloadType uint8, conf *TrackConfigAAC) (*Track, error) {
+	mpegConf, err := rtpaac.MPEG4AudioConfig{
+		Type:              rtpaac.MPEG4AudioType(conf.Type),
+		SampleRate:        conf.SampleRate,
+		ChannelCount:      conf.ChannelCount,
+		AOTSpecificConfig: conf.AOTSpecificConfig,
+	}.Encode()
 	if err != nil {
-		return nil, fmt.Errorf("invalid MPEG-4 Audio config: %v", err)
+		return nil, err
 	}
 
 	typ := strconv.FormatInt(int64(payloadType), 10)
@@ -259,7 +276,7 @@ func NewTrackAAC(payloadType uint8, config []byte) (*Track, error) {
 						"sizelength=13; " +
 						"indexlength=3; " +
 						"indexdeltalength=3; " +
-						"config=" + hex.EncodeToString(config),
+						"config=" + hex.EncodeToString(mpegConf),
 				},
 			},
 		},
@@ -285,8 +302,8 @@ func (t *Track) IsAAC() bool {
 	return strings.HasPrefix(strings.ToLower(vals[1]), "mpeg4-generic/")
 }
 
-// ExtractDataAAC extracts the config from an AAC track.
-func (t *Track) ExtractDataAAC() ([]byte, error) {
+// ExtractConfigAAC extracts the configuration from an AAC track.
+func (t *Track) ExtractConfigAAC() (*TrackConfigAAC, error) {
 	v, ok := t.Media.Attribute("fmtp")
 	if !ok {
 		return nil, fmt.Errorf("fmtp attribute is missing")
@@ -296,8 +313,6 @@ func (t *Track) ExtractDataAAC() ([]byte, error) {
 	if len(tmp) != 2 {
 		return nil, fmt.Errorf("invalid fmtp (%v)", v)
 	}
-
-	var config []byte
 
 	for _, kv := range strings.Split(tmp[1], ";") {
 		kv = strings.Trim(kv, " ")
@@ -312,19 +327,29 @@ func (t *Track) ExtractDataAAC() ([]byte, error) {
 		}
 
 		if tmp[0] == "config" {
-			var err error
-			config, err = hex.DecodeString(tmp[1])
+			enc, err := hex.DecodeString(tmp[1])
 			if err != nil {
-				return nil, fmt.Errorf("invalid config (%v)", v)
+				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
 			}
+
+			var mpegConf rtpaac.MPEG4AudioConfig
+			err = mpegConf.Decode(enc)
+			if err != nil {
+				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
+			}
+
+			conf := &TrackConfigAAC{
+				Type:              int(mpegConf.Type),
+				SampleRate:        mpegConf.SampleRate,
+				ChannelCount:      mpegConf.ChannelCount,
+				AOTSpecificConfig: mpegConf.AOTSpecificConfig,
+			}
+
+			return conf, nil
 		}
 	}
 
-	if config == nil {
-		return nil, fmt.Errorf("config is missing (%v)", v)
-	}
-
-	return config, nil
+	return nil, fmt.Errorf("config is missing (%v)", v)
 }
 
 // Tracks is a list of tracks.

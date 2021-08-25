@@ -171,7 +171,7 @@ func TestClientPublishSerial(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
 			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
@@ -313,7 +313,7 @@ func TestClientPublishParallel(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
 			writerDone := make(chan struct{})
@@ -471,7 +471,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
 			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
@@ -609,7 +609,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
 			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
@@ -747,7 +747,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	conn, err := DialPublish("rtsp://localhost:8554/teststream",
@@ -888,7 +888,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		senderReportPeriod: 1 * time.Second,
 	}
 
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	conn, err := c.DialPublish("rtsp://localhost:8554/teststream",

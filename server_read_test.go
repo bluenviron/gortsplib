@@ -89,7 +89,7 @@ func TestServerReadSetupPath(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track, track, track, track, track})
@@ -145,7 +145,7 @@ func TestServerReadSetupPath(t *testing.T) {
 func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 	connClosed := make(chan struct{})
 
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -217,7 +217,7 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 	connClosed := make(chan struct{})
 
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -300,7 +300,7 @@ func TestServerRead(t *testing.T) {
 			sessionClosed := make(chan struct{})
 			framesReceived := make(chan struct{})
 
-			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
@@ -593,7 +593,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -686,7 +686,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 }
 
 func TestServerReadPlayPlay(t *testing.T) {
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -767,7 +767,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -884,7 +884,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -1008,7 +1008,7 @@ func TestServerReadTimeout(t *testing.T) {
 		t.Run(proto, func(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
-			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
@@ -1100,7 +1100,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			connClosed := make(chan struct{})
 			sessionClosed := make(chan struct{})
 
-			track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
@@ -1197,7 +1197,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 }
 
 func TestServerReadUDPChangeConn(t *testing.T) {
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -1295,7 +1295,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 }
 
 func TestServerReadNonSetuppedPath(t *testing.T) {
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -1459,7 +1459,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		return &ri, ssrcs
 	}
 
-	track, err := NewTrackH264(96, []byte("123456"), []byte("123456"))
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track, track})

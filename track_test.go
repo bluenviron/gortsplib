@@ -225,7 +225,7 @@ func TestTrackH264New(t *testing.T) {
 		0x68, 0xee, 0x3c, 0x80,
 	}
 
-	tr, err := NewTrackH264(96, sps, pps)
+	tr, err := NewTrackH264(96, &TrackConfigH264{sps, pps})
 	require.NoError(t, err)
 	require.Equal(t, &Track{
 		Media: &psdp.MediaDescription{
@@ -282,12 +282,11 @@ func TestTrackIsH264(t *testing.T) {
 	}
 }
 
-func TestTrackH264Extract(t *testing.T) {
+func TestTrackExtractConfigH264(t *testing.T) {
 	for _, ca := range []struct {
 		name  string
 		track *Track
-		sps   []byte
-		pps   []byte
+		conf  *TrackConfigH264
 	}{
 		{
 			"generic",
@@ -310,13 +309,15 @@ func TestTrackH264Extract(t *testing.T) {
 					},
 				},
 			},
-			[]byte{
-				0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
-				0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
-				0x00, 0x03, 0x00, 0x3d, 0x08,
-			},
-			[]byte{
-				0x68, 0xee, 0x3c, 0x80,
+			&TrackConfigH264{
+				SPS: []byte{
+					0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
+					0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
+					0x00, 0x03, 0x00, 0x3d, 0x08,
+				},
+				PPS: []byte{
+					0x68, 0xee, 0x3c, 0x80,
+				},
 			},
 		},
 		{
@@ -340,27 +341,28 @@ func TestTrackH264Extract(t *testing.T) {
 					},
 				},
 			},
-			[]byte{
-				0x67, 0x64, 0x00, 0x1f, 0xac, 0xd9, 0x40, 0x50,
-				0x05, 0xbb, 0x01, 0x6c, 0x80, 0x00, 0x00, 0x03,
-				0x00, 0x80, 0x00, 0x00, 0x1e, 0x07, 0x8c, 0x18,
-				0xcb,
-			},
-			[]byte{
-				0x68, 0xeb, 0xe3, 0xcb, 0x22, 0xc0,
+			&TrackConfigH264{
+				SPS: []byte{
+					0x67, 0x64, 0x00, 0x1f, 0xac, 0xd9, 0x40, 0x50,
+					0x05, 0xbb, 0x01, 0x6c, 0x80, 0x00, 0x00, 0x03,
+					0x00, 0x80, 0x00, 0x00, 0x1e, 0x07, 0x8c, 0x18,
+					0xcb,
+				},
+				PPS: []byte{
+					0x68, 0xeb, 0xe3, 0xcb, 0x22, 0xc0,
+				},
 			},
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			sps, pps, err := ca.track.ExtractDataH264()
+			conf, err := ca.track.ExtractConfigH264()
 			require.NoError(t, err)
-			require.Equal(t, ca.sps, sps)
-			require.Equal(t, ca.pps, pps)
+			require.Equal(t, ca.conf, conf)
 		})
 	}
 }
 
-func TestTrackH264ExtractErrors(t *testing.T) {
+func TestTrackConfigH264Errors(t *testing.T) {
 	for _, ca := range []struct {
 		name  string
 		track *Track
@@ -525,14 +527,14 @@ func TestTrackH264ExtractErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, _, err := ca.track.ExtractDataH264()
+			_, err := ca.track.ExtractConfigH264()
 			require.Equal(t, ca.err, err.Error())
 		})
 	}
 }
 
 func TestTrackAACNew(t *testing.T) {
-	tr, err := NewTrackAAC(96, []byte{17, 144})
+	track, err := NewTrackAAC(96, &TrackConfigAAC{Type: 2, SampleRate: 48000, ChannelCount: 2})
 	require.NoError(t, err)
 	require.Equal(t, &Track{
 		Media: &psdp.MediaDescription{
@@ -552,7 +554,7 @@ func TestTrackAACNew(t *testing.T) {
 				},
 			},
 		},
-	}, tr)
+	}, track)
 }
 
 func TestTrackIsAAC(t *testing.T) {
@@ -611,11 +613,11 @@ func TestTrackIsAAC(t *testing.T) {
 	}
 }
 
-func TestTrackAACExtract(t *testing.T) {
+func TestTrackExtractConfigAAC(t *testing.T) {
 	for _, ca := range []struct {
-		name   string
-		track  *Track
-		config []byte
+		name  string
+		track *Track
+		conf  *TrackConfigAAC
 	}{
 		{
 			"generic",
@@ -638,7 +640,11 @@ func TestTrackAACExtract(t *testing.T) {
 					},
 				},
 			},
-			[]byte{17, 144},
+			&TrackConfigAAC{
+				Type:         2,
+				SampleRate:   48000,
+				ChannelCount: 2,
+			},
 		},
 		{
 			"vlc rtsp server",
@@ -661,18 +667,22 @@ func TestTrackAACExtract(t *testing.T) {
 					},
 				},
 			},
-			[]byte{17, 144},
+			&TrackConfigAAC{
+				Type:         2,
+				SampleRate:   48000,
+				ChannelCount: 2,
+			},
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			config, err := ca.track.ExtractDataAAC()
+			conf, err := ca.track.ExtractConfigAAC()
 			require.NoError(t, err)
-			require.Equal(t, ca.config, config)
+			require.Equal(t, ca.conf, conf)
 		})
 	}
 }
 
-func TestTrackAACExtractErrors(t *testing.T) {
+func TestTrackConfigAACErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name  string
 		track *Track
@@ -787,11 +797,11 @@ func TestTrackAACExtractErrors(t *testing.T) {
 					},
 				},
 			},
-			"invalid config (96 profile-level-id=1; config=zz)",
+			"invalid AAC config (zz)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := ca.track.ExtractDataAAC()
+			_, err := ca.track.ExtractConfigAAC()
 			require.Equal(t, ca.err, err.Error())
 		})
 	}
