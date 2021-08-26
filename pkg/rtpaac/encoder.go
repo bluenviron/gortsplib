@@ -16,7 +16,7 @@ const (
 // Encoder is a RTP/AAC encoder.
 type Encoder struct {
 	payloadType    uint8
-	clockRate      float64
+	sampleRate     float64
 	sequenceNumber uint16
 	ssrc           uint32
 	initialTs      uint32
@@ -24,13 +24,13 @@ type Encoder struct {
 
 // NewEncoder allocates an Encoder.
 func NewEncoder(payloadType uint8,
-	clockRate int,
+	sampleRate int,
 	sequenceNumber *uint16,
 	ssrc *uint32,
 	initialTs *uint32) *Encoder {
 	return &Encoder{
 		payloadType: payloadType,
-		clockRate:   float64(clockRate),
+		sampleRate:  float64(sampleRate),
 		sequenceNumber: func() uint16 {
 			if sequenceNumber != nil {
 				return *sequenceNumber
@@ -53,7 +53,7 @@ func NewEncoder(payloadType uint8,
 }
 
 func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
-	return e.initialTs + uint32(ts.Seconds()*e.clockRate)
+	return e.initialTs + uint32(ts.Seconds()*e.sampleRate)
 }
 
 // Encode encodes AUs into RTP/AAC packets.
@@ -77,7 +77,7 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([][]byte, error)
 					return nil, err
 				}
 				rets = append(rets, pkts...)
-				pts += time.Duration(len(batch)) * 1000 * time.Second / time.Duration(e.clockRate)
+				pts += time.Duration(len(batch)) * 1000 * time.Second / time.Duration(e.sampleRate)
 			}
 
 			// initialize new batch
