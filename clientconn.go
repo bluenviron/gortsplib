@@ -346,7 +346,8 @@ func (cc *ClientConn) reset(isSwitchingProtocol bool) {
 	cc.useGetParameter = false
 	cc.streamBaseURL = nil
 	cc.protocol = nil
-	cc.tracks = make(map[int]clientConnTrack)
+	cc.tracks = nil
+	cc.tracksByChannel = nil
 	cc.tcpFrameBuffer = nil
 
 	if !isSwitchingProtocol {
