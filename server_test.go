@@ -431,7 +431,8 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 				cnt1, err := newContainer("gstreamer", "publish", []string{
 					"filesrc location=emptyvideo.mkv ! matroskademux ! video/x-h264 ! rtspclientsink " +
-						"location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ts + " tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
+						"location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ts +
+						" tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
 				})
 				require.NoError(t, err)
 				defer cnt1.close()
@@ -476,7 +477,8 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 				}()
 
 				cnt2, err := newContainer("gstreamer", "read", []string{
-					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ts + " tls-validation-flags=0 latency=0 " +
+					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ts +
+						" tls-validation-flags=0 latency=0 " +
 						"! application/x-rtp,media=video ! decodebin ! exitafterframe ! fakesink",
 				})
 				require.NoError(t, err)

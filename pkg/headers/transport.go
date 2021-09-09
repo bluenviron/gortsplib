@@ -240,7 +240,8 @@ func (h Transport) Write() base.HeaderValue {
 	}
 
 	if h.InterleavedIDs != nil {
-		rets = append(rets, "interleaved="+strconv.FormatInt(int64(h.InterleavedIDs[0]), 10)+"-"+strconv.FormatInt(int64(h.InterleavedIDs[1]), 10))
+		rets = append(rets, "interleaved="+strconv.FormatInt(int64(h.InterleavedIDs[0]), 10)+
+			"-"+strconv.FormatInt(int64(h.InterleavedIDs[1]), 10))
 	}
 
 	if h.Ports != nil {

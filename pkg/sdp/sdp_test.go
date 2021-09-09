@@ -367,7 +367,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"m=video 0 RTP/AVP/TCP 96\r\n" +
 			"a=rtpmap:96 H265/90000\r\n" +
-			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
+			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
+			"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
 			"a=control:streamid=0\r\n" +
 			"m=audio 0 RTP/AVP/TCP 97\r\n" +
 			"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
@@ -378,7 +379,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"m=video 0 RTP/AVP/TCP 96\r\n" +
 			"a=rtpmap:96 H265/90000\r\n" +
-			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
+			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
+			"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
 			"a=control:streamid=0\r\n" +
 			"m=audio 0 RTP/AVP/TCP 97\r\n" +
 			"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
@@ -404,7 +406,8 @@ var cases = []struct {
 					},
 					Attributes: []psdp.Attribute{
 						{"rtpmap", "96 H265/90000"},
-						{"fmtp", "96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;"},
+						{"fmtp", "96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
+							"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;"},
 						{"control", "streamid=0"},
 					},
 				},
@@ -430,7 +433,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"m=video 0 RTP/AVP/TCP 96\r\n" +
 			"a=rtpmap:96 H265/90000\r\n" +
-			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
+			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
+			"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
 			"a=control:streamid=0\r\n" +
 			"m=audio 0 RTP/AVP/TCP 97\r\n" +
 			"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
@@ -441,7 +445,8 @@ var cases = []struct {
 			"s=SDP Seminar\r\n" +
 			"m=video 0 RTP/AVP/TCP 96\r\n" +
 			"a=rtpmap:96 H265/90000\r\n" +
-			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
+			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
+			"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
 			"a=control:streamid=0\r\n" +
 			"m=audio 0 RTP/AVP/TCP 97\r\n" +
 			"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
@@ -459,7 +464,8 @@ var cases = []struct {
 					},
 					Attributes: []psdp.Attribute{
 						{"rtpmap", "96 H265/90000"},
-						{"fmtp", "96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;"},
+						{"fmtp", "96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
+							"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;"},
 						{"control", "streamid=0"},
 					},
 				},
@@ -587,7 +593,8 @@ var cases = []struct {
 			"a=control:trackID=1\r\n" +
 			"a=recvonly\r\n" +
 			"a=framerate:25.0\r\n" +
-			"a=fmtp:105 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA==\r\n"),
+			"a=fmtp:105 packetization-mode=1; profile-level-id=640028; " +
+			"sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA==\r\n"),
 		[]byte("v=0\r\n" +
 			"o=- 12345 1 IN IP4 10.21.61.139\r\n" +
 			"s=Sony RTSP Server\r\n" +
@@ -599,7 +606,8 @@ var cases = []struct {
 			"a=control:trackID=1\r\n" +
 			"a=recvonly\r\n" +
 			"a=framerate:25.0\r\n" +
-			"a=fmtp:105 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA==\r\n"),
+			"a=fmtp:105 packetization-mode=1; profile-level-id=640028; " +
+			"sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA==\r\n"),
 		SessionDescription{
 			Origin: psdp.Origin{
 				Username:       "-",
@@ -632,7 +640,8 @@ var cases = []struct {
 						{"control", "trackID=1"},
 						{"recvonly", ""},
 						{"framerate", "25.0"},
-						{"fmtp", "105 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA=="},
+						{"fmtp", "105 packetization-mode=1; profile-level-id=640028; " +
+							"sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA=="},
 					},
 				},
 			},
@@ -653,7 +662,8 @@ var cases = []struct {
 			"m=audio 0 RTP/AVP 96\r\n" +
 			"b=RR:0\r\n" +
 			"a=rtpmap:96 mpeg4-generic/22050\r\n" +
-			"a=fmtp:96 streamtype=5; profile-level-id=15; mode=AAC-hbr; config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;\r\n" +
+			"a=fmtp:96 streamtype=5; profile-level-id=15; mode=AAC-hbr; " +
+			"config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;\r\n" +
 			"m=video 0 RTP/AVP 96\r\n" +
 			"b=RR:0\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
@@ -671,7 +681,8 @@ var cases = []struct {
 			"m=audio 0 RTP/AVP 96\r\n" +
 			"b=RR:0\r\n" +
 			"a=rtpmap:96 mpeg4-generic/22050\r\n" +
-			"a=fmtp:96 streamtype=5; profile-level-id=15; mode=AAC-hbr; config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;\r\n" +
+			"a=fmtp:96 streamtype=5; profile-level-id=15; mode=AAC-hbr; " +
+			"config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;\r\n" +
 			"m=video 0 RTP/AVP 96\r\n" +
 			"b=RR:0\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
@@ -717,7 +728,8 @@ var cases = []struct {
 					},
 					Attributes: []psdp.Attribute{
 						{"rtpmap", "96 mpeg4-generic/22050"},
-						{"fmtp", "96 streamtype=5; profile-level-id=15; mode=AAC-hbr; config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;"},
+						{"fmtp", "96 streamtype=5; profile-level-id=15; " +
+							"mode=AAC-hbr; config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;"},
 					},
 				},
 				{
@@ -1086,7 +1098,8 @@ var cases = []struct {
 			"m=video 0 RTP/AVP 96\r\n" +
 			"i=Video Media\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
-			"a=fmtp:96 profile-level-id=4D0014;packetization-mode=0;sprop-parameter-sets=Z01AHppmBYHv81BgYGQAAA+gAAF3ABA=,aO48gA==\r\n" +
+			"a=fmtp:96 profile-level-id=4D0014;packetization-mode=0;" +
+			"sprop-parameter-sets=Z01AHppmBYHv81BgYGQAAA+gAAF3ABA=,aO48gA==\r\n" +
 			"a=control:trackID=video\r\n" +
 			"a=Media_header:MEDIAINFO=494D4B48010100000400000100000000000000000000000000000000000000000000000000000000;\r\n" +
 			"a=appversion:1.0\r\n"),
@@ -1102,7 +1115,8 @@ var cases = []struct {
 			"m=video 0 RTP/AVP 96\r\n" +
 			"i=Video Media\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
-			"a=fmtp:96 profile-level-id=4D0014;packetization-mode=0;sprop-parameter-sets=Z01AHppmBYHv81BgYGQAAA+gAAF3ABA=,aO48gA==\r\n" +
+			"a=fmtp:96 profile-level-id=4D0014;packetization-mode=0;" +
+			"sprop-parameter-sets=Z01AHppmBYHv81BgYGQAAA+gAAF3ABA=,aO48gA==\r\n" +
 			"a=control:trackID=video\r\n" +
 			"a=Media_header:MEDIAINFO=494D4B48010100000400000100000000000000000000000000000000000000000000000000000000;\r\n" +
 			"a=appversion:1.0\r\n"),
@@ -1160,16 +1174,18 @@ var cases = []struct {
 							Value: "96 H264/90000",
 						},
 						{
-							Key:   "fmtp",
-							Value: "96 profile-level-id=4D0014;packetization-mode=0;sprop-parameter-sets=Z01AHppmBYHv81BgYGQAAA+gAAF3ABA=,aO48gA==",
+							Key: "fmtp",
+							Value: "96 profile-level-id=4D0014;packetization-mode=0;" +
+								"sprop-parameter-sets=Z01AHppmBYHv81BgYGQAAA+gAAF3ABA=,aO48gA==",
 						},
 						{
 							Key:   "control",
 							Value: "trackID=video",
 						},
 						{
-							Key:   "Media_header",
-							Value: "MEDIAINFO=494D4B48010100000400000100000000000000000000000000000000000000000000000000000000;",
+							Key: "Media_header",
+							Value: "MEDIAINFO=494D4B480101000004000001000000000000000000000000" +
+								"00000000000000000000000000000000;",
 						},
 						{
 							Key:   "appversion",

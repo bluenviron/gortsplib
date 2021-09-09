@@ -18,7 +18,8 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 // packet of a fragmented NALU and we didn't received anything before.
 // It's normal to receive this when we are decoding a stream that has been already
 // running for some time.
-var ErrNonStartingPacketAndNoPrevious = errors.New("decoded a non-starting fragmented packet without any previous starting packet")
+var ErrNonStartingPacketAndNoPrevious = errors.New(
+	"decoded a non-starting fragmented packet without any previous starting packet")
 
 // PacketConnReader creates a io.Reader around a net.PacketConn.
 type PacketConnReader struct {

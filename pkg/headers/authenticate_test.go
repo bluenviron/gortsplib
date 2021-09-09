@@ -116,8 +116,12 @@ var casesAuthenticate = []struct {
 	},
 	{
 		"digest response with empty field",
-		base.HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
-		base.HeaderValue{`Digest username="", realm="IPCAM", nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
+		base.HeaderValue{`Digest username="", realm="IPCAM", ` +
+			`nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", ` +
+			`response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
+		base.HeaderValue{`Digest username="", realm="IPCAM", ` +
+			`nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", ` +
+			`response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
 		Authenticate{
 			Method: AuthDigest,
 			Username: func() *string {
@@ -144,8 +148,10 @@ var casesAuthenticate = []struct {
 	},
 	{
 		"digest response with no spaces and additional fields",
-		base.HeaderValue{`Digest realm="Please log in with a valid username",nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE,algorithm=MD5`},
-		base.HeaderValue{`Digest realm="Please log in with a valid username", nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE", algorithm="MD5"`},
+		base.HeaderValue{`Digest realm="Please log in with a valid username",` +
+			`nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE,algorithm=MD5`},
+		base.HeaderValue{`Digest realm="Please log in with a valid username", ` +
+			`nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE", algorithm="MD5"`},
 		Authenticate{
 			Method: AuthDigest,
 			Realm: func() *string {

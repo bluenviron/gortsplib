@@ -29,10 +29,12 @@ var casesHeader = []struct {
 	},
 	{
 		"multiple",
-		[]byte("WWW-Authenticate: Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"\r\n" +
+		[]byte("WWW-Authenticate: Digest realm=\"4419b63f5e51\", " +
+			"nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"\r\n" +
 			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
 			"\r\n"),
-		[]byte("WWW-Authenticate: Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"\r\n" +
+		[]byte("WWW-Authenticate: Digest realm=\"4419b63f5e51\", " +
+			"nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"\r\n" +
 			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
 			"\r\n"),
 		Header{

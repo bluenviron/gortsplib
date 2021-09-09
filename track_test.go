@@ -66,8 +66,10 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=5"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
+				"test?user=tmp&password=BagRep1&channel=1&stream=0.sdp"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
+				"test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=5"),
 		},
 		{
 			"relative control, url with special chars and query",
@@ -75,8 +77,10 @@ func TestTrackURL(t *testing.T) {
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
+				"te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
+				"te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
 		},
 		{
 			"relative control, url with query without question mark",
@@ -135,7 +139,8 @@ func TestTrackClockRate(t *testing.T) {
 				"a=rtpmap:96 H264/90000 \r\n" +
 				"a=range:npt=0-\r\n" +
 				"a=framerate:0S\r\n" +
-				"a=fmtp:96 profile-level-id=64000c; packetization-mode=1; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==\r\n" +
+				"a=fmtp:96 profile-level-id=64000c; packetization-mode=1; " +
+				"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==\r\n" +
 				"a=framerate:25\r\n" +
 				"a=control:trackID=3\r\n"),
 			90000,
@@ -195,7 +200,8 @@ func TestTrackClockRate(t *testing.T) {
 				"a=control:trackID=1\r\n" +
 				"b=AS:0\r\n" +
 				"a=rtpmap:98 H265/90000\r\n" +
-				"a=fmtp:98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=\r\n" +
+				"a=fmtp:98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+				"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=\r\n" +
 				"m=application 0 RTP/AVP 107\r\n" +
 				"a=control:trackID=3\r\n" +
 				"a=rtpmap:107 vnd.onvif.metadata/90000"),
@@ -240,8 +246,9 @@ func TestTrackH264New(t *testing.T) {
 					Value: "96 H264/90000",
 				},
 				{
-					Key:   "fmtp",
-					Value: "96 packetization-mode=1; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+					Key: "fmtp",
+					Value: "96 packetization-mode=1; " +
+						"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
 				},
 			},
 		},
@@ -268,8 +275,9 @@ func TestTrackIsH264(t *testing.T) {
 							Value: "96 H264/90000",
 						},
 						{
-							Key:   "fmtp",
-							Value: "96 packetization-mode=1; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+							Key: "fmtp",
+							Value: "96 packetization-mode=1; " +
+								"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
 						},
 					},
 				},
@@ -303,8 +311,9 @@ func TestTrackExtractConfigH264(t *testing.T) {
 							Value: "96 H264/90000",
 						},
 						{
-							Key:   "fmtp",
-							Value: "96 packetization-mode=1; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+							Key: "fmtp",
+							Value: "96 packetization-mode=1; " +
+								"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
 						},
 					},
 				},
@@ -335,8 +344,9 @@ func TestTrackExtractConfigH264(t *testing.T) {
 							Value: "96 H264/90000",
 						},
 						{
-							Key:   "fmtp",
-							Value: "96 packetization-mode=1;profile-level-id=64001f;sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,aOvjyyLA;",
+							Key: "fmtp",
+							Value: "96 packetization-mode=1;profile-level-id=64001f;" +
+								"sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,aOvjyyLA;",
 						},
 					},
 				},

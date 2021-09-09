@@ -214,7 +214,9 @@ func (res Response) Write(bw *bufio.Writer) error {
 		}
 	}
 
-	_, err := bw.Write([]byte(rtspProtocol10 + " " + strconv.FormatInt(int64(res.StatusCode), 10) + " " + res.StatusMessage + "\r\n"))
+	_, err := bw.Write([]byte(rtspProtocol10 + " " +
+		strconv.FormatInt(int64(res.StatusCode), 10) + " " +
+		res.StatusMessage + "\r\n"))
 	if err != nil {
 		return err
 	}
