@@ -257,3 +257,11 @@ type ErrServerPathHasChanged struct {
 func (e ErrServerPathHasChanged) Error() string {
 	return fmt.Sprintf("path has changed, was '%s', now is '%s'", e.Prev, e.Cur)
 }
+
+// ErrServerCannotSetupFromDifferentIPs is an error that can be returned by a server.
+type ErrServerCannotSetupFromDifferentIPs struct{}
+
+// Error implements the error interface.
+func (e ErrServerCannotSetupFromDifferentIPs) Error() string {
+	return "cannot setup tracks from different IPs"
+}
