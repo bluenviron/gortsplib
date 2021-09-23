@@ -32,7 +32,7 @@ func extractPort(address string) (int, error) {
 func newSessionSecretID(sessions map[string]*ServerSession) (string, error) {
 	for {
 		b := make([]byte, 4)
-		_, err := rand.Read(b[:])
+		_, err := rand.Read(b)
 		if err != nil {
 			return "", err
 		}
@@ -363,6 +363,17 @@ outer:
 
 		case req := <-s.sessionRequest:
 			if ss, ok := s.sessions[req.id]; ok {
+				if !req.sc.ip().Equal(ss.ip()) ||
+					req.sc.zone() != ss.zone() {
+					req.res <- sessionRequestRes{
+						res: &base.Response{
+							StatusCode: base.StatusBadRequest,
+						},
+						err: liberrors.ErrServerCannotUseSessionCreatedByOtherIP{},
+					}
+					continue
+				}
+
 				ss.request <- req
 			} else {
 				if !req.create {

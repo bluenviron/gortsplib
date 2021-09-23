@@ -137,8 +137,6 @@ type ServerSession struct {
 	setuppedQuery           *string
 	lastRequestTime         time.Time
 	tcpConn                 *ServerConn                   // tcp
-	udpIP                   net.IP                        // udp
-	udpZone                 string                        // udp
 	announcedTracks         []ServerSessionAnnouncedTrack // publish
 	udpLastFrameTime        *int64                        // publish, udp
 
@@ -203,6 +201,14 @@ func (ss *ServerSession) AnnouncedTracks() []ServerSessionAnnouncedTrack {
 	return ss.announcedTracks
 }
 
+func (ss *ServerSession) ip() net.IP {
+	return ss.author.ip()
+}
+
+func (ss *ServerSession) zone() string {
+	return ss.author.zone()
+}
+
 func (ss *ServerSession) checkState(allowed map[ServerSessionState]struct{}) error {
 	if _, ok := allowed[ss.state]; ok {
 		return nil
@@ -225,7 +231,6 @@ func (ss *ServerSession) run() {
 			Session: ss,
 			Conn:    ss.author,
 		})
-		ss.author = nil
 	}
 
 	err := func() error {
@@ -587,13 +592,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 						StatusCode: base.StatusBadRequest,
 					}, liberrors.ErrServerTransportHeaderNoClientPorts{}
 				}
-
-				if ss.setuppedTracks != nil &&
-					(!ss.udpIP.Equal(sc.ip()) || ss.udpZone != sc.zone()) {
-					return &base.Response{
-						StatusCode: base.StatusBadRequest,
-					}, liberrors.ErrServerCannotSetupFromDifferentIPs{}
-				}
 			} else if ss.s.MulticastIPRange == "" {
 				return &base.Response{
 					StatusCode: base.StatusUnsupportedTransport,
@@ -649,8 +647,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				err := stream.readerAdd(ss,
 					inTH.Protocol,
 					delivery,
-					sc.ip(),
-					sc.zone(),
 					inTH.ClientPorts,
 				)
 				if err != nil {
@@ -685,9 +681,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 			switch {
 			case delivery == base.StreamDeliveryMulticast:
-				ss.udpIP = sc.ip()
-				ss.udpZone = sc.zone()
-
 				th.Protocol = base.StreamProtocolUDP
 				de := base.StreamDeliveryMulticast
 				th.Delivery = &de
@@ -701,9 +694,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}
 
 			case inTH.Protocol == base.StreamProtocolUDP:
-				ss.udpIP = sc.ip()
-				ss.udpZone = sc.zone()
-
 				sst.udpRTPPort = inTH.ClientPorts[0]
 				sst.udpRTCPPort = inTH.ClientPorts[1]
 
@@ -847,7 +837,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 					if *ss.setuppedDelivery == base.StreamDeliveryUnicast {
 						for trackID, track := range ss.setuppedTracks {
 							// readers can send RTCP frames
-							sc.s.udpRTCPListener.addClient(ss.udpIP, track.udpRTCPPort, ss, trackID, false)
+							sc.s.udpRTCPListener.addClient(ss.ip(), track.udpRTCPPort, ss, trackID, false)
 
 							// open the firewall by sending packets to the counterpart
 							ss.WriteFrame(trackID, StreamTypeRTCP,
@@ -916,8 +906,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 			if *ss.setuppedProtocol == base.StreamProtocolUDP {
 				for trackID, track := range ss.setuppedTracks {
-					ss.s.udpRTPListener.addClient(ss.udpIP, track.udpRTPPort, ss, trackID, true)
-					ss.s.udpRTCPListener.addClient(ss.udpIP, track.udpRTCPPort, ss, trackID, true)
+					ss.s.udpRTPListener.addClient(ss.ip(), track.udpRTPPort, ss, trackID, true)
+					ss.s.udpRTCPListener.addClient(ss.ip(), track.udpRTCPPort, ss, trackID, true)
 
 					// open the firewall by sending packets to the counterpart
 					ss.WriteFrame(trackID, StreamTypeRTP,
@@ -1050,14 +1040,14 @@ func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload 
 
 			if streamType == StreamTypeRTP {
 				ss.s.udpRTPListener.write(payload, &net.UDPAddr{
-					IP:   ss.udpIP,
-					Zone: ss.udpZone,
+					IP:   ss.ip(),
+					Zone: ss.zone(),
 					Port: track.udpRTPPort,
 				})
 			} else {
 				ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
-					IP:   ss.udpIP,
-					Zone: ss.udpZone,
+					IP:   ss.ip(),
+					Zone: ss.zone(),
 					Port: track.udpRTCPPort,
 				})
 			}

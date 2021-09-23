@@ -47,6 +47,7 @@ type ServerConn struct {
 
 	ctx                         context.Context
 	ctxCancel                   func()
+	remoteAddr                  *net.TCPAddr // to improve speed
 	br                          *bufio.Reader
 	bw                          *bufio.Writer
 	sessions                    map[string]*ServerSession
@@ -76,6 +77,7 @@ func newServerConn(
 		nconn:         nconn,
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
+		remoteAddr:    nconn.RemoteAddr().(*net.TCPAddr),
 		sessionRemove: make(chan *ServerSession),
 		done:          make(chan struct{}),
 	}
@@ -98,11 +100,11 @@ func (sc *ServerConn) NetConn() net.Conn {
 }
 
 func (sc *ServerConn) ip() net.IP {
-	return sc.nconn.RemoteAddr().(*net.TCPAddr).IP
+	return sc.remoteAddr.IP
 }
 
 func (sc *ServerConn) zone() string {
-	return sc.nconn.RemoteAddr().(*net.TCPAddr).Zone
+	return sc.remoteAddr.Zone
 }
 
 func (sc *ServerConn) run() {

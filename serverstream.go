@@ -116,8 +116,6 @@ func (st *ServerStream) readerAdd(
 	ss *ServerSession,
 	protocol base.StreamProtocol,
 	delivery base.StreamDelivery,
-	ip net.IP,
-	zone string,
 	clientPorts *[2]int,
 ) error {
 	st.mutex.Lock()
@@ -137,8 +135,8 @@ func (st *ServerStream) readerAdd(
 		for r := range st.readersUnicast {
 			if *r.setuppedProtocol == base.StreamProtocolUDP &&
 				*r.setuppedDelivery == base.StreamDeliveryUnicast &&
-				r.udpIP.Equal(ip) &&
-				r.udpZone == zone {
+				r.ip().Equal(ss.ip()) &&
+				r.zone() == ss.zone() {
 				for _, rt := range r.setuppedTracks {
 					if rt.udpRTPPort == clientPorts[0] {
 						return liberrors.ErrServerUDPPortsAlreadyInUse{Port: rt.udpRTPPort}
@@ -203,7 +201,7 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 	} else {
 		for trackID := range ss.setuppedTracks {
 			st.multicastListeners[trackID].rtcpListener.addClient(
-				ss.udpIP, st.multicastListeners[trackID].rtcpListener.port(), ss, trackID, false)
+				ss.ip(), st.multicastListeners[trackID].rtcpListener.port(), ss, trackID, false)
 		}
 	}
 }

@@ -17,7 +17,7 @@ const (
 func randUint32() uint32 {
 	var b [4]byte
 	rand.Read(b[:])
-	return uint32(b[0]<<24) | uint32(b[1]<<16) | uint32(b[2]<<8) | uint32(b[3])
+	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
 }
 
 // Encoder is a RTP/H264 encoder.
