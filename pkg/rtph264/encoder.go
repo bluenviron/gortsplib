@@ -1,8 +1,8 @@
 package rtph264
 
 import (
+	"crypto/rand"
 	"encoding/binary"
-	"math/rand"
 	"time"
 
 	"github.com/pion/rtp"
@@ -13,6 +13,12 @@ const (
 	rtpPayloadMaxSize = 1460  // 1500 (mtu) - 20 (ip header) - 8 (udp header) - 12 (rtp header)
 	rtpClockRate      = 90000 // h264 always uses 90khz
 )
+
+func randUint32() uint32 {
+	var b [4]byte
+	rand.Read(b[:])
+	return uint32(b[0]<<24) | uint32(b[1]<<16) | uint32(b[2]<<8) | uint32(b[3])
+}
 
 // Encoder is a RTP/H264 encoder.
 type Encoder struct {
@@ -33,19 +39,19 @@ func NewEncoder(payloadType uint8,
 			if sequenceNumber != nil {
 				return *sequenceNumber
 			}
-			return uint16(rand.Uint32())
+			return uint16(randUint32())
 		}(),
 		ssrc: func() uint32 {
 			if ssrc != nil {
 				return *ssrc
 			}
-			return rand.Uint32()
+			return randUint32()
 		}(),
 		initialTs: func() uint32 {
 			if initialTs != nil {
 				return *initialTs
 			}
-			return rand.Uint32()
+			return randUint32()
 		}(),
 	}
 }

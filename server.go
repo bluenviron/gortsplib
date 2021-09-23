@@ -32,7 +32,7 @@ func extractPort(address string) (int, error) {
 func newSessionSecretID(sessions map[string]*ServerSession) (string, error) {
 	for {
 		b := make([]byte, 4)
-		_, err := rand.Read(b)
+		_, err := rand.Read(b[:])
 		if err != nil {
 			return "", err
 		}

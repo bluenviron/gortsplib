@@ -1,7 +1,7 @@
 package gortsplib
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"net"
 	"strconv"
 	"sync"
@@ -17,6 +17,16 @@ const (
 	// use the same buffer size as gstreamer's rtspsrc
 	clientConnUDPKernelReadBufferSize = 0x80000
 )
+
+func randUint32() uint32 {
+	var b [4]byte
+	rand.Read(b[:])
+	return uint32(b[0]<<24) | uint32(b[1]<<16) | uint32(b[2]<<8) | uint32(b[3])
+}
+
+func randIntn(n int) int {
+	return int(randUint32() & (uint32(n) - 1))
+}
 
 type clientConnUDPListener struct {
 	cc            *ClientConn
@@ -40,7 +50,7 @@ func newClientConnUDPListenerPair(cc *ClientConn) (*clientConnUDPListener, *clie
 	// choose two consecutive ports in range 65535-10000
 	// rtp must be even and rtcp odd
 	for {
-		rtpPort := (rand.Intn((65535-10000)/2) * 2) + 10000
+		rtpPort := (randIntn((65535-10000)/2) * 2) + 10000
 		rtpListener, err := newClientConnUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
 		if err != nil {
 			continue

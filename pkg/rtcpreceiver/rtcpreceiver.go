@@ -2,7 +2,7 @@
 package rtcpreceiver
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"sync"
 	"time"
 
@@ -10,6 +10,12 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/base"
 )
+
+func randUint32() uint32 {
+	var b [4]byte
+	rand.Read(b[:])
+	return uint32(b[0]<<24) | uint32(b[1]<<16) | uint32(b[2]<<8) | uint32(b[3])
+}
 
 // RTCPReceiver is a utility to generate RTCP receiver reports.
 type RTCPReceiver struct {
@@ -39,7 +45,7 @@ func New(receiverSSRC *uint32, clockRate int) *RTCPReceiver {
 	return &RTCPReceiver{
 		receiverSSRC: func() uint32 {
 			if receiverSSRC == nil {
-				return rand.Uint32()
+				return randUint32()
 			}
 			return *receiverSSRC
 		}(),
