@@ -431,7 +431,7 @@ func TestDecodeErrors(t *testing.T) {
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
 				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeMTAP16),
 			}},
-			"packet type not supported (MTAP16)",
+			"packet type not supported (MTAP-16)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

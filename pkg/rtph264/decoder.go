@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/pkg/h264"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -55,7 +57,7 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 // Decode decodes NALUs from a RTP/H264 packet.
 // It returns the decoded NALUs and their PTS.
 func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
-	pkt := rtp.Packet{}
+	var pkt rtp.Packet
 	err := pkt.Unmarshal(byts)
 	if err != nil {
 		d.isDecodingFragmented = false
@@ -197,13 +199,13 @@ func (d *Decoder) ReadSPSPPS(r io.Reader) ([]byte, []byte, error) {
 
 		for _, nalu := range nalus {
 			switch naluType(nalu[0] & 0x1F) {
-			case naluTypeSPS:
+			case naluType(h264.NALUTypeSPS):
 				sps = append([]byte(nil), nalu...)
 				if sps != nil && pps != nil {
 					return sps, pps, nil
 				}
 
-			case naluTypePPS:
+			case naluType(h264.NALUTypePPS):
 				pps = append([]byte(nil), nalu...)
 				if sps != nil && pps != nil {
 					return sps, pps, nil

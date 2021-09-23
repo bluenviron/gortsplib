@@ -38,7 +38,7 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 // It returns the AUs and the PTS of the first AU.
 // The PTS of subsequent AUs can be calculated by adding time.Second*1000/clockRate.
 func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
-	pkt := rtp.Packet{}
+	var pkt rtp.Packet
 	err := pkt.Unmarshal(byts)
 	if err != nil {
 		d.isDecodingFragmented = false
