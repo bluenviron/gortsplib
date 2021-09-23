@@ -512,7 +512,7 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 				sc.tcpFrameBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
 			} else {
 				// when playing, tcpFrameBuffer is only used to receive RTCP receiver reports,
-				// that are much smaller than RTP frames and are sent at a fixed interval
+				// that are much smaller than RTP packets and are sent at a fixed interval
 				// (about 2 frames every 10 secs).
 				// decrease RAM consumption by allocating less buffers.
 				sc.tcpFrameBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))

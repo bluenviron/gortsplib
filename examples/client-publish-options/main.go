@@ -61,13 +61,13 @@ func main() {
 
 	buf := make([]byte, 2048)
 	for {
-		// read RTP frames from the source
+		// read RTP packets from the source
 		n, _, err := pc.ReadFrom(buf)
 		if err != nil {
 			panic(err)
 		}
 
-		// write RTP frames
+		// write RTP packets
 		err = conn.WriteFrame(0, gortsplib.StreamTypeRTP, buf[:n])
 		if err != nil {
 			panic(err)

@@ -22,7 +22,7 @@ func main() {
 	defer conn.Close()
 
 	for {
-		// read RTP frames
+		// read RTP packets
 		done := make(chan struct{})
 		go func() {
 			defer close(done)

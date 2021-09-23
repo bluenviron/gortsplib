@@ -32,7 +32,7 @@ func New(clockRate int) *RTCPSender {
 	}
 }
 
-// ProcessFrame extracts the needed data from RTP or RTCP frames.
+// ProcessFrame extracts the needed data from RTP or RTCP packets.
 func (rs *RTCPSender) ProcessFrame(ts time.Time, streamType base.StreamType, payload []byte) {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()

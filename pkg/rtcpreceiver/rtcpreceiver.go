@@ -53,7 +53,7 @@ func New(receiverSSRC *uint32, clockRate int) *RTCPReceiver {
 	}
 }
 
-// ProcessFrame extracts the needed data from RTP or RTCP frames.
+// ProcessFrame extracts the needed data from RTP or RTCP packets.
 func (rr *RTCPReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, payload []byte) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
@@ -115,8 +115,8 @@ func (rr *RTCPReceiver) ProcessFrame(ts time.Time, streamType base.StreamType, p
 			}
 		}
 	} else {
-		// we can afford to unmarshal all RTCP frames
-		// since they are sent with a frequency much lower than the one of RTP frames
+		// we can afford to unmarshal all RTCP packets
+		// since they are sent with a frequency much lower than the one of RTP packets
 		frames, err := rtcp.Unmarshal(payload)
 		if err == nil {
 			for _, frame := range frames {

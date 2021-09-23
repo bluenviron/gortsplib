@@ -836,7 +836,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				if *ss.setuppedProtocol == base.StreamProtocolUDP {
 					if *ss.setuppedDelivery == base.StreamDeliveryUnicast {
 						for trackID, track := range ss.setuppedTracks {
-							// readers can send RTCP frames
+							// readers can send RTCP packets
 							sc.s.udpRTCPListener.addClient(ss.ip(), track.udpRTCPPort, ss, trackID, false)
 
 							// open the firewall by sending packets to the counterpart
