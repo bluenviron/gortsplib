@@ -1,4 +1,4 @@
-package rtpaac
+package aac
 
 import (
 	"testing"

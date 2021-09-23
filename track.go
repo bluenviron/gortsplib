@@ -9,8 +9,8 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
+	"github.com/aler9/gortsplib/pkg/aac"
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/rtpaac"
 	"github.com/aler9/gortsplib/pkg/sdp"
 )
 
@@ -244,8 +244,8 @@ func (t *Track) ExtractConfigH264() (*TrackConfigH264, error) {
 
 // NewTrackAAC initializes an AAC track.
 func NewTrackAAC(payloadType uint8, conf *TrackConfigAAC) (*Track, error) {
-	mpegConf, err := rtpaac.MPEG4AudioConfig{
-		Type:              rtpaac.MPEG4AudioType(conf.Type),
+	mpegConf, err := aac.MPEG4AudioConfig{
+		Type:              aac.MPEG4AudioType(conf.Type),
 		SampleRate:        conf.SampleRate,
 		ChannelCount:      conf.ChannelCount,
 		AOTSpecificConfig: conf.AOTSpecificConfig,
@@ -332,7 +332,7 @@ func (t *Track) ExtractConfigAAC() (*TrackConfigAAC, error) {
 				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
 			}
 
-			var mpegConf rtpaac.MPEG4AudioConfig
+			var mpegConf aac.MPEG4AudioConfig
 			err = mpegConf.Decode(enc)
 			if err != nil {
 				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
