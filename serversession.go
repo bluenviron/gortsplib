@@ -594,7 +594,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 						StatusCode: base.StatusBadRequest,
 					}, liberrors.ErrServerCannotSetupFromDifferentIPs{}
 				}
-
 			} else if ss.s.MulticastIPRange == "" {
 				return &base.Response{
 					StatusCode: base.StatusUnsupportedTransport,
@@ -647,7 +646,13 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		if res.StatusCode == base.StatusOK {
 			if ss.state == ServerSessionStateInitial {
-				err := stream.readerAdd(ss, delivery == base.StreamDeliveryMulticast)
+				err := stream.readerAdd(ss,
+					inTH.Protocol,
+					delivery,
+					sc.ip(),
+					sc.zone(),
+					inTH.ClientPorts,
+				)
 				if err != nil {
 					return &base.Response{
 						StatusCode: base.StatusBadRequest,

@@ -265,3 +265,14 @@ type ErrServerCannotSetupFromDifferentIPs struct{}
 func (e ErrServerCannotSetupFromDifferentIPs) Error() string {
 	return "cannot setup tracks from different IPs"
 }
+
+// ErrServerUDPPortsAlreadyInUse is an error that can be returned by a server.
+type ErrServerUDPPortsAlreadyInUse struct {
+	Port int
+}
+
+// Error implements the error interface.
+func (e ErrServerUDPPortsAlreadyInUse) Error() string {
+	return fmt.Sprintf("UDP ports %d and %d are already in use by another reader",
+		e.Port, e.Port+1)
+}

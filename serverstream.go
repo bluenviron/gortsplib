@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/liberrors"
 )
 
 type listenerPair struct {
@@ -111,11 +112,16 @@ func (st *ServerStream) lastSequenceNumber(trackID int) uint16 {
 	return uint16(atomic.LoadUint32(&st.trackInfos[trackID].lastSequenceNumber))
 }
 
-func (st *ServerStream) readerAdd(ss *ServerSession, isMulticast bool) error {
+func (st *ServerStream) readerAdd(
+	ss *ServerSession,
+	protocol base.StreamProtocol,
+	delivery base.StreamDelivery,
+	ip net.IP,
+	zone string,
+	clientPorts *[2]int,
+) error {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
-
-	st.readers[ss] = struct{}{}
 
 	if st.s == nil {
 		st.s = ss.s
@@ -125,7 +131,27 @@ func (st *ServerStream) readerAdd(ss *ServerSession, isMulticast bool) error {
 		}
 	}
 
-	if isMulticast && st.multicastListeners == nil {
+	// if new reader is a UDP-unicast reader, check that its port are not already
+	// in use by another reader.
+	if protocol == base.StreamProtocolUDP && delivery == base.StreamDeliveryUnicast {
+		for r := range st.readersUnicast {
+			if *r.setuppedProtocol == base.StreamProtocolUDP &&
+				*r.setuppedDelivery == base.StreamDeliveryUnicast &&
+				r.udpIP.Equal(ip) &&
+				r.udpZone == zone {
+				for _, rt := range r.setuppedTracks {
+					if rt.udpRTPPort == clientPorts[0] {
+						return liberrors.ErrServerUDPPortsAlreadyInUse{Port: rt.udpRTPPort}
+					}
+				}
+			}
+		}
+	}
+
+	// allocate multicast listeners
+	if protocol == base.StreamProtocolUDP &&
+		delivery == base.StreamDeliveryMulticast &&
+		st.multicastListeners == nil {
 		st.multicastListeners = make([]*listenerPair, len(st.tracks))
 
 		for i := range st.tracks {
@@ -147,6 +173,8 @@ func (st *ServerStream) readerAdd(ss *ServerSession, isMulticast bool) error {
 			}
 		}
 	}
+
+	st.readers[ss] = struct{}{}
 
 	return nil
 }

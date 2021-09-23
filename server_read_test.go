@@ -1294,6 +1294,109 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 	}()
 }
 
+func TestServerReadErrorUDPSamePorts(t *testing.T) {
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onFrame: func(ctx *ServerHandlerOnFrameCtx) {
+			},
+		},
+		UDPRTPAddress:  "127.0.0.1:8000",
+		UDPRTCPAddress: "127.0.0.1:8001",
+	}
+
+	err = s.Start("localhost:8554")
+	require.NoError(t, err)
+	defer s.Close()
+
+	func() {
+		conn, err := net.Dial("tcp", "localhost:8554")
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		inTH := &headers.Transport{
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
+				return &v
+			}(),
+			Mode: func() *headers.TransportMode {
+				v := headers.TransportModePlay
+				return &v
+			}(),
+			Protocol:    base.StreamProtocolUDP,
+			ClientPorts: &[2]int{35466, 35467},
+		}
+
+		res, err := writeReqReadRes(bconn, base.Request{
+			Method: base.Setup,
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+			Header: base.Header{
+				"CSeq":      base.HeaderValue{"1"},
+				"Transport": inTH.Write(),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, base.StatusOK, res.StatusCode)
+
+		res, err = writeReqReadRes(bconn, base.Request{
+			Method: base.Play,
+			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+			Header: base.Header{
+				"CSeq":    base.HeaderValue{"2"},
+				"Session": res.Header["Session"],
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, base.StatusOK, res.StatusCode)
+	}()
+
+	func() {
+		conn, err := net.Dial("tcp", "localhost:8554")
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		inTH := &headers.Transport{
+			Delivery: func() *base.StreamDelivery {
+				v := base.StreamDeliveryUnicast
+				return &v
+			}(),
+			Mode: func() *headers.TransportMode {
+				v := headers.TransportModePlay
+				return &v
+			}(),
+			Protocol:    base.StreamProtocolUDP,
+			ClientPorts: &[2]int{35466, 35467},
+		}
+
+		res, err := writeReqReadRes(bconn, base.Request{
+			Method: base.Setup,
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+			Header: base.Header{
+				"CSeq":      base.HeaderValue{"1"},
+				"Transport": inTH.Write(),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, base.StatusBadRequest, res.StatusCode)
+	}()
+}
+
 func TestServerReadNonSetuppedPath(t *testing.T) {
 	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
