@@ -3,18 +3,7 @@ package base
 import (
 	"fmt"
 	"net/url"
-	"strings"
 )
-
-// PathSplitQuery splits a path from a query.
-func PathSplitQuery(pathAndQuery string) (string, string) {
-	i := strings.Index(pathAndQuery, "?")
-	if i >= 0 {
-		return pathAndQuery[:i], pathAndQuery[i:]
-	}
-
-	return pathAndQuery, ""
-}
 
 // URL is a RTSP URL.
 // This is basically an HTTP URL with some additional functions to handle
@@ -71,17 +60,6 @@ func (u *URL) CloneWithoutCredentials() *URL {
 		ForceQuery: u.ForceQuery,
 		RawQuery:   u.RawQuery,
 	})
-}
-
-// RTSPPath returns the path of a RTSP URL.
-func (u *URL) RTSPPath() (string, bool) {
-	pathAndQuery, ok := u.RTSPPathAndQuery()
-	if !ok {
-		return "", false
-	}
-
-	path, _ := PathSplitQuery(pathAndQuery)
-	return path, true
 }
 
 // RTSPPathAndQuery returns the path and query of a RTSP URL.

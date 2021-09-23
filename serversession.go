@@ -422,7 +422,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, err
 		}
 
-		pathAndQuery, ok := req.URL.RTSPPath()
+		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -465,7 +465,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}, fmt.Errorf("unable to generate track URL")
 			}
 
-			trackPath, ok := trackURL.RTSPPath()
+			trackPath, ok := trackURL.RTSPPathAndQuery()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -750,7 +750,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerNoTracksSetup{}
 		}
 
-		pathAndQuery, ok := req.URL.RTSPPath()
+		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -864,7 +864,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerNotAllAnnouncedTracksSetup{}
 		}
 
-		pathAndQuery, ok := req.URL.RTSPPath()
+		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -938,7 +938,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, err
 		}
 
-		pathAndQuery, ok := req.URL.RTSPPath()
+		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 		if !ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -997,7 +997,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 	case base.GetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
-			pathAndQuery, ok := req.URL.RTSPPath()
+			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,

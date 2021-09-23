@@ -286,10 +286,15 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						}
 					},
 					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
-						if ctx.Path != "teststream" {
+						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+						if ctx.Query != "key=val" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, nil, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
 						mutex.Lock()
@@ -306,10 +311,15 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						}, stream, nil
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-						if ctx.Path != "teststream" {
+						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+						if ctx.Query != "key=val" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
 						mutex.Lock()
@@ -329,10 +339,15 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						}, nil
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-						if ctx.Path != "teststream" {
+						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+						if ctx.Query != "key=val" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, nil, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
 						if stream == nil {
@@ -346,10 +361,15 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						}, stream, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
-						if ctx.Path != "teststream" {
+						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+						if ctx.Query != "key=val" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
 						return &base.Response{
@@ -357,10 +377,15 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						}, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
-						if ctx.Path != "teststream" {
+						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+						}
+						if ctx.Query != "key=val" {
+							return &base.Response{
+								StatusCode: base.StatusBadRequest,
+							}, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
 						return &base.Response{
@@ -415,7 +440,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 					"-c", "copy",
 					"-f", "rtsp",
 					"-rtsp_transport", ts,
-					proto + "://localhost:8554/teststream",
+					proto + "://localhost:8554/test/stream?key=val",
 				})
 				require.NoError(t, err)
 				defer cnt1.close()
@@ -431,7 +456,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 				cnt1, err := newContainer("gstreamer", "publish", []string{
 					"filesrc location=emptyvideo.mkv ! matroskademux ! video/x-h264 ! rtspclientsink " +
-						"location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ts +
+						"location=" + proto + "://127.0.0.1:8554/test/stream?key=val protocols=" + ts +
 						" tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
 				})
 				require.NoError(t, err)
@@ -456,7 +481,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 				cnt2, err := newContainer("ffmpeg", "read", []string{
 					"-rtsp_transport", ts,
-					"-i", proto + "://localhost:8554/teststream",
+					"-i", proto + "://localhost:8554/test/stream?key=val",
 					"-vframes", "1",
 					"-f", "image2",
 					"-y", "/dev/null",
@@ -477,7 +502,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 				}()
 
 				cnt2, err := newContainer("gstreamer", "read", []string{
-					"rtspsrc location=" + proto + "://127.0.0.1:8554/teststream protocols=" + ts +
+					"rtspsrc location=" + proto + "://127.0.0.1:8554/test/stream?key=val protocols=" + ts +
 						" tls-validation-flags=0 latency=0 " +
 						"! application/x-rtp,media=video ! decodebin ! exitafterframe ! fakesink",
 				})

@@ -334,7 +334,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.Describe:
 		if h, ok := sc.s.Handler.(ServerHandlerOnDescribe); ok {
-			pathAndQuery, ok := req.URL.RTSPPath()
+			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -431,7 +431,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 		// handle request here
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
-			pathAndQuery, ok := req.URL.RTSPPath()
+			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -450,7 +450,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.SetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnSetParameter); ok {
-			pathAndQuery, ok := req.URL.RTSPPath()
+			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,

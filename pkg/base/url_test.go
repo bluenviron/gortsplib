@@ -14,7 +14,7 @@ func mustParseURL(s string) *URL {
 	return u
 }
 
-func TestURLErrors(t *testing.T) {
+func TestURLParseErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		enc  string
@@ -48,42 +48,6 @@ func TestURLErrors(t *testing.T) {
 	}
 }
 
-func TestURLRTSPPath(t *testing.T) {
-	for _, ca := range []struct {
-		u *URL
-		b string
-	}{
-		{
-			mustParseURL("rtsp://localhost:8554/teststream"),
-			"teststream",
-		},
-		{
-			mustParseURL("rtsp://localhost:8554/test/stream"),
-			"test/stream",
-		},
-		{
-			mustParseURL("rtsp://192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp"),
-			"test",
-		},
-		{
-			mustParseURL("rtsp://192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			"te!st",
-		},
-		{
-			mustParseURL("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			"user=tmp&password=BagRep1!&channel=1&stream=0.sdp",
-		},
-		{
-			mustParseURL("rtsp://localhost:8554/teststream?query1?query2"),
-			"teststream",
-		},
-	} {
-		b, ok := ca.u.RTSPPath()
-		require.Equal(t, true, ok)
-		require.Equal(t, ca.b, b)
-	}
-}
-
 func TestURLClone(t *testing.T) {
 	u := mustParseURL("rtsp://localhost:8554/test/stream")
 	u2 := u.Clone()
@@ -100,12 +64,6 @@ func TestURLClone(t *testing.T) {
 		Host:   "localhost:8554",
 		Path:   "/test/stream",
 	}, u2)
-}
-
-func TestURLErrorRTSPPath(t *testing.T) {
-	u := mustParseURL("rtsp://localhost:8554")
-	_, ok := u.RTSPPath()
-	require.Equal(t, false, ok)
 }
 
 func TestURLRTSPPathAndQuery(t *testing.T) {
