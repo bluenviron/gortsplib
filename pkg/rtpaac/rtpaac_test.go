@@ -420,9 +420,18 @@ func TestEncode(t *testing.T) {
 			ssrc := uint32(0x9dbb7812)
 			initialTs := uint32(0x88776655)
 			e := NewEncoder(96, 48000, &sequenceNumber, &ssrc, &initialTs)
+
 			enc, err := e.Encode(ca.aus, ca.pts)
 			require.NoError(t, err)
-			require.Equal(t, ca.enc, enc)
+
+			var bytss [][]byte
+			for _, pkt := range enc {
+				byts, err := pkt.Marshal()
+				require.NoError(t, err)
+				bytss = append(bytss, byts)
+			}
+
+			require.Equal(t, ca.enc, bytss)
 		})
 	}
 }

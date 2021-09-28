@@ -63,9 +63,8 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 }
 
 // Encode encodes AUs into RTP/AAC packets.
-// It returns the encoded packets.
-func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([][]byte, error) {
-	var rets [][]byte
+func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, error) {
+	var rets []*rtp.Packet
 	var batch [][]byte
 
 	pts := firstPTS
@@ -101,7 +100,7 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([][]byte, error)
 	return rets, nil
 }
 
-func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([][]byte, error) {
+func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, error) {
 	if len(aus) == 1 {
 		// the AU fits into a single RTP packet
 		if len(aus[0]) < rtpPayloadMaxSize {
@@ -115,14 +114,14 @@ func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([][]byte, er
 	return e.writeAggregated(aus, firstPTS)
 }
 
-func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([][]byte, error) {
+func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
 	packetCount := len(au) / (rtpPayloadMaxSize - 4)
 	lastPacketSize := len(au) % (rtpPayloadMaxSize - 4)
 	if lastPacketSize > 0 {
 		packetCount++
 	}
 
-	ret := make([][]byte, packetCount)
+	ret := make([]*rtp.Packet, packetCount)
 	encPTS := e.encodeTimestamp(pts)
 
 	for i := range ret {
@@ -137,7 +136,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([][]byte, error
 		copy(data[4:], au[:le])
 		au = au[le:]
 
-		frame, err := (&rtp.Packet{
+		ret[i] = &rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
 				PayloadType:    e.payloadType,
@@ -147,14 +146,9 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([][]byte, error
 				Marker:         (i == (packetCount - 1)),
 			},
 			Payload: data,
-		}).Marshal()
-		if err != nil {
-			return nil, err
 		}
 
 		e.sequenceNumber++
-
-		ret[i] = frame
 	}
 
 	return ret, nil
@@ -176,7 +170,7 @@ func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 	return ret
 }
 
-func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([][]byte, error) {
+func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, error) {
 	payload := make([]byte, e.lenAggregated(aus, nil))
 
 	// AU-headers-length
@@ -195,7 +189,7 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([][]byt
 		pos += auLen
 	}
 
-	frame, err := (&rtp.Packet{
+	pkt := &rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
 			PayloadType:    e.payloadType,
@@ -205,12 +199,9 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([][]byt
 			Marker:         true,
 		},
 		Payload: payload,
-	}).Marshal()
-	if err != nil {
-		return nil, err
 	}
 
 	e.sequenceNumber++
 
-	return [][]byte{frame}, nil
+	return []*rtp.Packet{pkt}, nil
 }
