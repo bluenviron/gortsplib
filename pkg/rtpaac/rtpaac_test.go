@@ -228,7 +228,7 @@ func TestDecode(t *testing.T) {
 				0x9d, 0xbb, 0x78, 0x12, 0x00, 0x10, 0x00, 0x08, 0x0,
 			})
 			require.NoError(t, err)
-			_, _, err = d.DecodeRTP(&pkt)
+			_, _, err = d.Decode(&pkt)
 			require.NoError(t, err)
 
 			var aus [][]byte
@@ -239,7 +239,7 @@ func TestDecode(t *testing.T) {
 				err := pkt.Unmarshal(byts)
 				require.NoError(t, err)
 
-				addAUs, pts, err := d.DecodeRTP(&pkt)
+				addAUs, pts, err := d.Decode(&pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
@@ -406,7 +406,7 @@ func TestDecodeErrors(t *testing.T) {
 				var pkt rtp.Packet
 				err := pkt.Unmarshal(byts)
 				require.NoError(t, err)
-				_, _, lastErr = d.DecodeRTP(&pkt)
+				_, _, lastErr = d.Decode(&pkt)
 			}
 			require.Equal(t, ca.err, lastErr.Error())
 		})

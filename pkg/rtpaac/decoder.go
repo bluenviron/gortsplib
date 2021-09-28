@@ -34,10 +34,10 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / d.clockRate
 }
 
-// DecodeRTP decodes AUs from a RTP/AAC packet.
+// Decode decodes AUs from a RTP/AAC packet.
 // It returns the AUs and the PTS of the first AU.
 // The PTS of subsequent AUs can be calculated by adding time.Second*1000/clockRate.
-func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if len(pkt.Payload) < 2 {
 		d.isDecodingFragmented = false
 		return nil, 0, fmt.Errorf("payload is too short")

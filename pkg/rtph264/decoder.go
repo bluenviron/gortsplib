@@ -57,8 +57,8 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / rtpClockRate
 }
 
-// DecodeRTP decodes NALUs from a RTP/H264 packet.
-func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+// Decode decodes NALUs from a RTP/H264 packet.
+func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if !d.isDecodingFragmented {
 		if !d.initialTsSet {
 			d.initialTsSet = true
@@ -166,11 +166,11 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	return [][]byte{d.fragmentedBuffer}, d.decodeTimestamp(pkt.Timestamp), nil
 }
 
-// DecodeRTPUntilMarker decodes NALUs from a RTP/H264 packet and puts them in a buffer.
+// DecodeUntilMarker decodes NALUs from a RTP/H264 packet and puts them in a buffer.
 // When a packet has the marker flag (meaning that all the NALUs with the same PTS have
 // been received), the buffer is returned.
-func (d *Decoder) DecodeRTPUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
-	nalus, pts, err := d.DecodeRTP(pkt)
+func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+	nalus, pts, err := d.Decode(pkt)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -206,7 +206,7 @@ func (d *Decoder) ReadSPSPPS(r io.Reader) ([]byte, []byte, error) {
 			return nil, nil, err
 		}
 
-		nalus, _, err := d.DecodeRTP(&pkt)
+		nalus, _, err := d.Decode(&pkt)
 		if err != nil {
 			if err == ErrMorePacketsNeeded {
 				continue

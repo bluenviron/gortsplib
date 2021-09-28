@@ -56,7 +56,7 @@ func main() {
 		}
 
 		// decode H264 NALUs from RTP packets
-		nalus, _, err := dec.DecodeRTP(&pkt)
+		nalus, _, err := dec.Decode(&pkt)
 		if err != nil {
 			return
 		}

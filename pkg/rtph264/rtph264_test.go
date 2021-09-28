@@ -235,7 +235,7 @@ func TestDecode(t *testing.T) {
 				0x9d, 0xbb, 0x78, 0x12, 0x06, 0x00,
 			})
 			require.NoError(t, err)
-			_, _, err = d.DecodeRTP(&pkt)
+			_, _, err = d.Decode(&pkt)
 			require.NoError(t, err)
 
 			var nalus [][]byte
@@ -244,7 +244,7 @@ func TestDecode(t *testing.T) {
 				err := pkt.Unmarshal(byts)
 				require.NoError(t, err)
 
-				addNALUs, pts, err := d.DecodeRTP(&pkt)
+				addNALUs, pts, err := d.Decode(&pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
@@ -272,7 +272,7 @@ func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
 		bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
 	))
 	require.NoError(t, err)
-	_, _, err = d.DecodeRTP(&pkt)
+	_, _, err = d.Decode(&pkt)
 	require.Equal(t, ErrNonStartingPacketAndNoPrevious, err)
 
 	err = pkt.Unmarshal(mergeBytes(
@@ -283,7 +283,7 @@ func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
 		bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
 	))
 	require.NoError(t, err)
-	_, _, err = d.DecodeRTP(&pkt)
+	_, _, err = d.Decode(&pkt)
 	require.NoError(t, err)
 }
 
@@ -300,7 +300,7 @@ func TestDecodeSTAPAWithPadding(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	nalus, _, err := d.DecodeRTP(&pkt)
+	nalus, _, err := d.Decode(&pkt)
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{
 		{0xaa, 0xbb},
@@ -449,7 +449,7 @@ func TestDecodeErrors(t *testing.T) {
 				var pkt rtp.Packet
 				err := pkt.Unmarshal(byts)
 				require.NoError(t, err)
-				_, _, lastErr = d.DecodeRTP(&pkt)
+				_, _, lastErr = d.Decode(&pkt)
 			}
 			require.Equal(t, ca.err, lastErr.Error())
 		})
