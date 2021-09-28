@@ -57,19 +57,6 @@ func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
 	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / rtpClockRate
 }
 
-// Decode decodes NALUs from a RTP/H264 packet.
-// It returns the decoded NALUs and their PTS.
-func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
-	var pkt rtp.Packet
-	err := pkt.Unmarshal(byts)
-	if err != nil {
-		d.isDecodingFragmented = false
-		return nil, 0, err
-	}
-
-	return d.DecodeRTP(&pkt)
-}
-
 // DecodeRTP decodes NALUs from a RTP/H264 packet.
 func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if !d.isDecodingFragmented {
@@ -213,7 +200,13 @@ func (d *Decoder) ReadSPSPPS(r io.Reader) ([]byte, []byte, error) {
 			return nil, nil, err
 		}
 
-		nalus, _, err := d.Decode(buf[:n])
+		var pkt rtp.Packet
+		err = pkt.Unmarshal(buf[:n])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		nalus, _, err := d.DecodeRTP(&pkt)
 		if err != nil {
 			if err == ErrMorePacketsNeeded {
 				continue

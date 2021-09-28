@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -226,18 +227,24 @@ func TestDecode(t *testing.T) {
 			d := NewDecoder()
 
 			// send an initial packet downstream
-			// in order to compute the timestamp,
-			// which is relative to the initial packet
-			_, _, err := d.Decode([]byte{
+			// in order to compute the right timestamp,
+			// that is relative to the initial packet
+			var pkt rtp.Packet
+			err := pkt.Unmarshal([]byte{
 				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x66, 0x55,
 				0x9d, 0xbb, 0x78, 0x12, 0x06, 0x00,
 			})
 			require.NoError(t, err)
+			_, _, err = d.DecodeRTP(&pkt)
+			require.NoError(t, err)
 
 			var nalus [][]byte
 
-			for _, pkt := range ca.enc {
-				addNALUs, pts, err := d.Decode(pkt)
+			for _, byts := range ca.enc {
+				err := pkt.Unmarshal(byts)
+				require.NoError(t, err)
+
+				addNALUs, pts, err := d.DecodeRTP(&pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
@@ -255,7 +262,8 @@ func TestDecode(t *testing.T) {
 func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
 	d := NewDecoder()
 
-	_, _, err := d.Decode(mergeBytes(
+	var pkt rtp.Packet
+	err := pkt.Unmarshal(mergeBytes(
 		[]byte{
 			0x80, 0xe0, 0x44, 0xef, 0x88, 0x77, 0x79, 0xab,
 			0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x45,
@@ -263,9 +271,11 @@ func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
 		[]byte{0x04, 0x05, 0x06, 0x07},
 		bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
 	))
+	require.NoError(t, err)
+	_, _, err = d.DecodeRTP(&pkt)
 	require.Equal(t, ErrNonStartingPacketAndNoPrevious, err)
 
-	_, _, err = d.Decode(mergeBytes(
+	err = pkt.Unmarshal(mergeBytes(
 		[]byte{
 			0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6f, 0x1f,
 			0x9d, 0xbb, 0x78, 0x12, 0x05,
@@ -273,17 +283,24 @@ func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
 		bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
 	))
 	require.NoError(t, err)
+	_, _, err = d.DecodeRTP(&pkt)
+	require.NoError(t, err)
 }
 
 func TestDecodeSTAPAWithPadding(t *testing.T) {
 	d := NewDecoder()
-	nalus, _, err := d.Decode([]byte{
+
+	var pkt rtp.Packet
+	err := pkt.Unmarshal([]byte{
 		0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x66, 0x55,
 		0x9d, 0xbb, 0x78, 0x12, 0x18, 0x00, 0x02, 0xaa,
 		0xbb, 0x00, 0x02, 0xcc, 0xdd, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	})
+	require.NoError(t, err)
+
+	nalus, _, err := d.DecodeRTP(&pkt)
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{
 		{0xaa, 0xbb},
@@ -297,15 +314,6 @@ func TestDecodeErrors(t *testing.T) {
 		pkts [][]byte
 		err  string
 	}{
-		{
-			"invalid rtp",
-			[][]byte{
-				{
-					0xaa,
-				},
-			},
-			"RTP header size insufficient: 1 < 4",
-		},
 		{
 			"missing payload",
 			[][]byte{{
@@ -436,11 +444,14 @@ func TestDecodeErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			d := NewDecoder()
-			var err error
-			for _, pkt := range ca.pkts {
-				_, _, err = d.Decode(pkt)
+			var lastErr error
+			for _, byts := range ca.pkts {
+				var pkt rtp.Packet
+				err := pkt.Unmarshal(byts)
+				require.NoError(t, err)
+				_, _, lastErr = d.DecodeRTP(&pkt)
 			}
-			require.Equal(t, ca.err, err.Error())
+			require.Equal(t, ca.err, lastErr.Error())
 		})
 	}
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -47,8 +48,15 @@ func main() {
 			return
 		}
 
-		// convert RTP packets into H264 NALUs
-		nalus, _, err := dec.Decode(payload)
+		// parse RTP packets
+		var pkt rtp.Packet
+		err := pkt.Unmarshal(payload)
+		if err != nil {
+			return
+		}
+
+		// decode H264 NALUs from RTP packets
+		nalus, _, err := dec.DecodeRTP(&pkt)
 		if err != nil {
 			return
 		}
