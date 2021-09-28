@@ -142,6 +142,10 @@ func (t *Track) ClockRate() (int, error) {
 
 // NewTrackH264 initializes an H264 track.
 func NewTrackH264(payloadType uint8, conf *TrackConfigH264) (*Track, error) {
+	if len(conf.SPS) < 4 {
+		return nil, fmt.Errorf("invalid SPS")
+	}
+
 	spropParameterSets := base64.StdEncoding.EncodeToString(conf.SPS) +
 		"," + base64.StdEncoding.EncodeToString(conf.PPS)
 	profileLevelID := strings.ToUpper(hex.EncodeToString(conf.SPS[1:4]))
