@@ -67,7 +67,6 @@ func main() {
 	dec := rtph264.NewDecoder()
 	dtsEst := h264.NewDTSEstimator()
 	firstPacketWritten := false
-	var naluBuffer [][]byte
 	var startPTS time.Duration
 
 	// add an H264 track to the MPEG-TS muxer
@@ -94,91 +93,83 @@ func main() {
 			return
 		}
 
-		// convert RTP packets into H264 NALUs
-		nalus, pts, err := dec.DecodeRTP(&pkt)
+		// decode H264 NALUs from RTP packets
+		nalus, pts, err := dec.DecodeRTPUntilMarker(&pkt)
 		if err != nil {
 			return
 		}
 
-		// store NALUs in a buffer until a packet with the Marker flag is received
-		naluBuffer = append(naluBuffer, nalus...)
-
-		// RTP marker means that all the NALUs with the same PTS have been received.
-		if pkt.Marker {
-			if !firstPacketWritten {
-				firstPacketWritten = true
-				startPTS = pts
-			}
-
-			// check whether there's an IDR
-			idrPresent := func() bool {
-				for _, nalu := range naluBuffer {
-					typ := h264.NALUType(nalu[0] & 0x1F)
-					if typ == h264.NALUTypeIDR {
-						return true
-					}
-				}
-				return false
-			}()
-
-			// prepend an AUD. This is required by some players
-			filteredNALUs := [][]byte{
-				{byte(h264.NALUTypeAccessUnitDelimiter), 240},
-			}
-
-			for _, nalu := range naluBuffer {
-				// remove existing SPS, PPS, AUD
-				typ := h264.NALUType(nalu[0] & 0x1F)
-				switch typ {
-				case h264.NALUTypeSPS, h264.NALUTypePPS, h264.NALUTypeAccessUnitDelimiter:
-					continue
-				}
-
-				// add SPS and PPS before every IDR
-				if typ == h264.NALUTypeIDR {
-					filteredNALUs = append(filteredNALUs, h264Conf.SPS)
-					filteredNALUs = append(filteredNALUs, h264Conf.PPS)
-				}
-
-				filteredNALUs = append(filteredNALUs, nalu)
-			}
-
-			naluBuffer = nil
-
-			// encode into Annex-B
-			enc, err := h264.EncodeAnnexB(filteredNALUs)
-			if err != nil {
-				panic(err)
-			}
-
-			dts := dtsEst.Feed(pts - startPTS)
-			pts = pts - startPTS
-
-			// write TS packet
-			_, err = mux.WriteData(&astits.MuxerData{
-				PID: 256,
-				AdaptationField: &astits.PacketAdaptationField{
-					RandomAccessIndicator: idrPresent,
-				},
-				PES: &astits.PESData{
-					Header: &astits.PESHeader{
-						OptionalHeader: &astits.PESOptionalHeader{
-							MarkerBits:      2,
-							PTSDTSIndicator: astits.PTSDTSIndicatorBothPresent,
-							DTS:             &astits.ClockReference{Base: int64(dts.Seconds() * 90000)},
-							PTS:             &astits.ClockReference{Base: int64(pts.Seconds() * 90000)},
-						},
-						StreamID: 224, // = video
-					},
-					Data: enc,
-				},
-			})
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Println("wrote ts packet")
+		if !firstPacketWritten {
+			firstPacketWritten = true
+			startPTS = pts
 		}
+
+		// check whether there's an IDR
+		idrPresent := func() bool {
+			for _, nalu := range nalus {
+				typ := h264.NALUType(nalu[0] & 0x1F)
+				if typ == h264.NALUTypeIDR {
+					return true
+				}
+			}
+			return false
+		}()
+
+		// prepend an AUD. This is required by some players
+		filteredNALUs := [][]byte{
+			{byte(h264.NALUTypeAccessUnitDelimiter), 240},
+		}
+
+		for _, nalu := range nalus {
+			// remove existing SPS, PPS, AUD
+			typ := h264.NALUType(nalu[0] & 0x1F)
+			switch typ {
+			case h264.NALUTypeSPS, h264.NALUTypePPS, h264.NALUTypeAccessUnitDelimiter:
+				continue
+			}
+
+			// add SPS and PPS before every IDR
+			if typ == h264.NALUTypeIDR {
+				filteredNALUs = append(filteredNALUs, h264Conf.SPS)
+				filteredNALUs = append(filteredNALUs, h264Conf.PPS)
+			}
+
+			filteredNALUs = append(filteredNALUs, nalu)
+		}
+
+		// encode into Annex-B
+		enc, err := h264.EncodeAnnexB(filteredNALUs)
+		if err != nil {
+			panic(err)
+		}
+
+		dts := dtsEst.Feed(pts - startPTS)
+		pts = pts - startPTS
+
+		// write TS packet
+		_, err = mux.WriteData(&astits.MuxerData{
+			PID: 256,
+			AdaptationField: &astits.PacketAdaptationField{
+				RandomAccessIndicator: idrPresent,
+			},
+			PES: &astits.PESData{
+				Header: &astits.PESHeader{
+					OptionalHeader: &astits.PESOptionalHeader{
+						MarkerBits:      2,
+						PTSDTSIndicator: astits.PTSDTSIndicatorBothPresent,
+						DTS:             &astits.ClockReference{Base: int64(dts.Seconds() * 90000)},
+						PTS:             &astits.ClockReference{Base: int64(pts.Seconds() * 90000)},
+					},
+					StreamID: 224, // = video
+				},
+				Data: enc,
+			},
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("wrote ts packet")
 	})
 	panic(err)
 }

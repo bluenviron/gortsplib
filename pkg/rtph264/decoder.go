@@ -42,7 +42,10 @@ type Decoder struct {
 	// for Decode()
 	startingPacketReceived bool
 	isDecodingFragmented   bool
-	fragmentedBuf          []byte
+	fragmentedBuffer       []byte
+
+	// for DecodeUntilMarker()
+	naluBuffer [][]byte
 }
 
 // NewDecoder allocates a Decoder.
@@ -67,7 +70,7 @@ func (d *Decoder) Decode(byts []byte) ([][]byte, time.Duration, error) {
 	return d.DecodeRTP(&pkt)
 }
 
-// DecodeRTP decodes NALUs from a rtp.Packet.
+// DecodeRTP decodes NALUs from a RTP/H264 packet.
 func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if !d.isDecodingFragmented {
 		if !d.initialTsSet {
@@ -129,7 +132,7 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 			nri := (pkt.Payload[0] >> 5) & 0x03
 			typ := pkt.Payload[1] & 0x1F
-			d.fragmentedBuf = append([]byte{(nri << 5) | typ}, pkt.Payload[2:]...)
+			d.fragmentedBuffer = append([]byte{(nri << 5) | typ}, pkt.Payload[2:]...)
 
 			d.isDecodingFragmented = true
 			d.startingPacketReceived = true
@@ -165,7 +168,7 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		return nil, 0, fmt.Errorf("invalid FU-A packet (decoded two starting packets in a row)")
 	}
 
-	d.fragmentedBuf = append(d.fragmentedBuf, pkt.Payload[2:]...)
+	d.fragmentedBuffer = append(d.fragmentedBuffer, pkt.Payload[2:]...)
 
 	if end != 1 {
 		return nil, 0, ErrMorePacketsNeeded
@@ -173,7 +176,28 @@ func (d *Decoder) DecodeRTP(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	d.isDecodingFragmented = false
 	d.startingPacketReceived = true
-	return [][]byte{d.fragmentedBuf}, d.decodeTimestamp(pkt.Timestamp), nil
+	return [][]byte{d.fragmentedBuffer}, d.decodeTimestamp(pkt.Timestamp), nil
+}
+
+// DecodeRTPUntilMarker decodes NALUs from a RTP/H264 packet and puts them in a buffer.
+// When a packet has the marker flag (meaning that all the NALUs with the same PTS have
+// been received), the buffer is returned.
+func (d *Decoder) DecodeRTPUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+	nalus, pts, err := d.DecodeRTP(pkt)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	d.naluBuffer = append(d.naluBuffer, nalus...)
+
+	if !pkt.Marker {
+		return nil, 0, ErrMorePacketsNeeded
+	}
+
+	ret := d.naluBuffer
+	d.naluBuffer = d.naluBuffer[:0]
+
+	return ret, pts, nil
 }
 
 // ReadSPSPPS reads RTP/H264 packets from a reader until SPS and PPS are
