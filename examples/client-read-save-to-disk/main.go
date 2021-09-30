@@ -160,7 +160,7 @@ func main() {
 						DTS:             &astits.ClockReference{Base: int64(dts.Seconds() * 90000)},
 						PTS:             &astits.ClockReference{Base: int64(pts.Seconds() * 90000)},
 					},
-					StreamID: 224, // = video
+					StreamID: 224, // video
 				},
 				Data: enc,
 			},
