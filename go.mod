@@ -3,7 +3,7 @@ module github.com/aler9/gortsplib
 go 1.15
 
 require (
-	github.com/asticode/go-astits v1.9.0
+	github.com/asticode/go-astits v1.10.0
 	github.com/icza/bitio v1.0.0
 	github.com/pion/rtcp v1.2.4
 	github.com/pion/rtp v1.6.1
