@@ -16,14 +16,14 @@ Features:
 * Client
   * Query servers about available streams
   * Read
-    * Read streams from servers with the UDP, UDP-multicast or TCP transports
+    * Read streams from servers with the UDP, UDP-multicast or TCP transport protocols
     * Read streams encrypted with TLS
     * Switch protocol automatically (switch to TCP in case of server error or UDP timeout)
     * Read only selected tracks of a stream
     * Pause or seek without disconnecting from the server
     * Generate RTCP receiver reports automatically
   * Publish
-    * Publish streams to servers with the UDP or TCP transports
+    * Publish streams to servers with the UDP or TCP transport protocols
     * Publish streams encrypted with TLS
     * Switch protocol automatically (switch to TCP in case of server error)
     * Pause without disconnecting from the server
@@ -31,9 +31,9 @@ Features:
 * Server
   * Handle requests from clients
   * Sessions and connections are independent
-  * Write streams to clients with the UDP, UDP-multicast or TCP transports
+  * Write streams to clients with the UDP, UDP-multicast or TCP transport protocols
   * Write streams to clients encrypted with TLS
-  * Read streams from clients with the UDP or TCP transports
+  * Read streams from clients with the UDP or TCP transport protocols
   * Write streams to clients encrypted with TLS
   * Provide SSRC, RTP-Info to clients automatically
   * Generate RTCP receiver reports automatically
