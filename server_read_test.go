@@ -287,13 +287,13 @@ func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 }
 
 func TestServerRead(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 		"tls",
 		"multicast",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			connOpened := make(chan struct{})
 			connClosed := make(chan struct{})
 			sessionOpened := make(chan struct{})
@@ -339,7 +339,7 @@ func TestServerRead(t *testing.T) {
 					},
 					onFrame: func(ctx *ServerHandlerOnFrameCtx) {
 						// skip multicast loopback
-						if proto == "multicast" && atomic.AddUint64(&counter, 1) <= 1 {
+						if transport == "multicast" && atomic.AddUint64(&counter, 1) <= 1 {
 							return
 						}
 
@@ -356,7 +356,7 @@ func TestServerRead(t *testing.T) {
 				},
 			}
 
-			switch proto {
+			switch transport {
 			case "udp":
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
@@ -381,7 +381,7 @@ func TestServerRead(t *testing.T) {
 			require.NoError(t, err)
 
 			conn := func() net.Conn {
-				if proto == "tls" {
+				if transport == "tls" {
 					return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
 				}
 				return nconn
@@ -397,7 +397,7 @@ func TestServerRead(t *testing.T) {
 				}(),
 			}
 
-			switch proto {
+			switch transport {
 			case "udp":
 				v := base.StreamDeliveryUnicast
 				inTH.Delivery = &v
@@ -431,11 +431,25 @@ func TestServerRead(t *testing.T) {
 			err = th.Read(res.Header["Transport"])
 			require.NoError(t, err)
 
+			switch transport {
+			case "udp":
+				require.Equal(t, base.StreamProtocolUDP, th.Protocol)
+				require.Equal(t, base.StreamDeliveryUnicast, *th.Delivery)
+
+			case "multicast":
+				require.Equal(t, base.StreamProtocolUDP, th.Protocol)
+				require.Equal(t, base.StreamDeliveryMulticast, *th.Delivery)
+
+			default:
+				require.Equal(t, base.StreamProtocolTCP, th.Protocol)
+				require.Equal(t, base.StreamDeliveryUnicast, *th.Delivery)
+			}
+
 			<-sessionOpened
 
 			var l1 net.PacketConn
 			var l2 net.PacketConn
-			switch proto {
+			switch transport {
 			case "udp":
 				l1, err = net.ListenPacket("udp", listenIP+":35466")
 				require.NoError(t, err)
@@ -487,14 +501,14 @@ func TestServerRead(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			// server -> client
-			if proto == "udp" || proto == "multicast" {
+			if transport == "udp" || transport == "multicast" {
 				buf := make([]byte, 2048)
 				n, _, err := l1.ReadFrom(buf)
 				require.NoError(t, err)
 				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, buf[:n])
 
 				// skip firewall opening
-				if proto == "udp" {
+				if transport == "udp" {
 					buf := make([]byte, 2048)
 					_, _, err := l2.ReadFrom(buf)
 					require.NoError(t, err)
@@ -520,7 +534,7 @@ func TestServerRead(t *testing.T) {
 			}
 
 			// client -> server (RTCP)
-			switch proto {
+			switch transport {
 			case "udp":
 				l2.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
@@ -544,7 +558,7 @@ func TestServerRead(t *testing.T) {
 				<-framesReceived
 			}
 
-			if proto == "udp" || proto == "multicast" {
+			if transport == "udp" || transport == "multicast" {
 				// ping with OPTIONS
 				res, err = writeReqReadRes(bconn, base.Request{
 					Method: base.Options,
@@ -1001,11 +1015,11 @@ func TestServerReadPlayPausePause(t *testing.T) {
 }
 
 func TestServerReadTimeout(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		// there's no timeout when reading with TCP
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
 			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
@@ -1092,11 +1106,11 @@ func TestServerReadTimeout(t *testing.T) {
 }
 
 func TestServerReadWithoutTeardown(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			connClosed := make(chan struct{})
 			sessionClosed := make(chan struct{})
 
@@ -1133,7 +1147,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 				closeSessionAfterNoRequestsFor: 1 * time.Second,
 			}
 
-			if proto == "udp" {
+			if transport == "udp" {
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
@@ -1158,7 +1172,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 				}(),
 			}
 
-			if proto == "udp" {
+			if transport == "udp" {
 				inTH.Protocol = base.StreamProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {

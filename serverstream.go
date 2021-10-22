@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 )
 
@@ -114,8 +113,7 @@ func (st *ServerStream) lastSequenceNumber(trackID int) uint16 {
 
 func (st *ServerStream) readerAdd(
 	ss *ServerSession,
-	protocol base.StreamProtocol,
-	delivery base.StreamDelivery,
+	transport ClientTransport,
 	clientPorts *[2]int,
 ) error {
 	st.mutex.Lock()
@@ -129,12 +127,11 @@ func (st *ServerStream) readerAdd(
 		}
 	}
 
-	// if new reader is a UDP-unicast reader, check that its port are not already
-	// in use by another reader.
-	if protocol == base.StreamProtocolUDP && delivery == base.StreamDeliveryUnicast {
+	switch transport {
+	case ClientTransportUDP:
+		// check whether client ports are already in use by another reader.
 		for r := range st.readersUnicast {
-			if *r.setuppedProtocol == base.StreamProtocolUDP &&
-				*r.setuppedDelivery == base.StreamDeliveryUnicast &&
+			if *r.setuppedTransport == ClientTransportUDP &&
 				r.ip().Equal(ss.ip()) &&
 				r.zone() == ss.zone() {
 				for _, rt := range r.setuppedTracks {
@@ -144,30 +141,29 @@ func (st *ServerStream) readerAdd(
 				}
 			}
 		}
-	}
 
-	// allocate multicast listeners
-	if protocol == base.StreamProtocolUDP &&
-		delivery == base.StreamDeliveryMulticast &&
-		st.multicastListeners == nil {
-		st.multicastListeners = make([]*listenerPair, len(st.tracks))
+	case ClientTransportUDPMulticast:
+		// allocate multicast listeners
+		if st.multicastListeners == nil {
+			st.multicastListeners = make([]*listenerPair, len(st.tracks))
 
-		for i := range st.tracks {
-			rtpListener, rtcpListener, err := newServerUDPListenerMulticastPair(st.s)
-			if err != nil {
-				for _, l := range st.multicastListeners {
-					if l != nil {
-						l.rtpListener.close()
-						l.rtcpListener.close()
+			for i := range st.tracks {
+				rtpListener, rtcpListener, err := newServerUDPListenerMulticastPair(st.s)
+				if err != nil {
+					for _, l := range st.multicastListeners {
+						if l != nil {
+							l.rtpListener.close()
+							l.rtcpListener.close()
+						}
 					}
+					st.multicastListeners = nil
+					return err
 				}
-				st.multicastListeners = nil
-				return err
-			}
 
-			st.multicastListeners[i] = &listenerPair{
-				rtpListener:  rtpListener,
-				rtcpListener: rtcpListener,
+				st.multicastListeners[i] = &listenerPair{
+					rtpListener:  rtpListener,
+					rtcpListener: rtcpListener,
+				}
 			}
 		}
 	}
@@ -196,9 +192,11 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
-	if *ss.setuppedDelivery == base.StreamDeliveryUnicast {
+	switch *ss.setuppedTransport {
+	case ClientTransportUDP, ClientTransportTCP:
 		st.readersUnicast[ss] = struct{}{}
-	} else {
+
+	default: // UDPMulticast
 		for trackID := range ss.setuppedTracks {
 			st.multicastListeners[trackID].rtcpListener.addClient(
 				ss.ip(), st.multicastListeners[trackID].rtcpListener.port(), ss, trackID, false)
@@ -210,11 +208,15 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
-	if *ss.setuppedDelivery == base.StreamDeliveryUnicast {
+	switch *ss.setuppedTransport {
+	case ClientTransportUDP, ClientTransportTCP:
 		delete(st.readersUnicast, ss)
-	} else if st.multicastListeners != nil {
-		for trackID := range ss.setuppedTracks {
-			st.multicastListeners[trackID].rtcpListener.removeClient(ss)
+
+	default: // UDPMulticast
+		if st.multicastListeners != nil {
+			for trackID := range ss.setuppedTracks {
+				st.multicastListeners[trackID].rtcpListener.removeClient(ss)
+			}
 		}
 	}
 }
@@ -248,13 +250,11 @@ func (st *ServerStream) WriteFrame(trackID int, streamType StreamType, payload [
 		if streamType == StreamTypeRTP {
 			st.multicastListeners[trackID].rtpListener.write(payload, &net.UDPAddr{
 				IP:   st.multicastListeners[trackID].rtpListener.ip(),
-				Zone: "",
 				Port: st.multicastListeners[trackID].rtpListener.port(),
 			})
 		} else {
 			st.multicastListeners[trackID].rtcpListener.write(payload, &net.UDPAddr{
 				IP:   st.multicastListeners[trackID].rtpListener.ip(),
-				Zone: "",
 				Port: st.multicastListeners[trackID].rtcpListener.port(),
 			})
 		}

@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/headers"
 )
 
 // ServerHandler is the interface implemented by all the server handlers.
@@ -99,7 +98,7 @@ type ServerHandlerOnSetupCtx struct {
 	Path      string
 	Query     string
 	TrackID   int
-	Transport *headers.Transport
+	Transport ClientTransport
 }
 
 // ServerHandlerOnSetup can be implemented by a ServerHandler.

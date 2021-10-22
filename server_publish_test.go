@@ -663,12 +663,12 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 }
 
 func TestServerPublish(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 		"tls",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			connOpened := make(chan struct{})
 			connClosed := make(chan struct{})
 			sessionOpened := make(chan struct{})
@@ -720,7 +720,7 @@ func TestServerPublish(t *testing.T) {
 				},
 			}
 
-			switch proto {
+			switch transport {
 			case "udp":
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
@@ -740,7 +740,7 @@ func TestServerPublish(t *testing.T) {
 			defer nconn.Close()
 
 			conn := func() net.Conn {
-				if proto == "tls" {
+				if transport == "tls" {
 					return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
 				}
 				return nconn
@@ -785,7 +785,7 @@ func TestServerPublish(t *testing.T) {
 				}(),
 			}
 
-			if proto == "udp" {
+			if transport == "udp" {
 				inTH.Protocol = base.StreamProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
@@ -811,7 +811,7 @@ func TestServerPublish(t *testing.T) {
 
 			var l1 net.PacketConn
 			var l2 net.PacketConn
-			if proto == "udp" {
+			if transport == "udp" {
 				l1, err = net.ListenPacket("udp", "localhost:35466")
 				require.NoError(t, err)
 				defer l1.Close()
@@ -833,7 +833,7 @@ func TestServerPublish(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			// client -> server
-			if proto == "udp" {
+			if transport == "udp" {
 				time.Sleep(1 * time.Second)
 
 				l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
@@ -863,7 +863,7 @@ func TestServerPublish(t *testing.T) {
 			}
 
 			// server -> client (RTCP)
-			if proto == "udp" {
+			if transport == "udp" {
 				// skip firewall opening
 				buf := make([]byte, 2048)
 				_, _, err := l2.ReadFrom(buf)
@@ -1148,11 +1148,11 @@ func TestServerPublishRTCPReport(t *testing.T) {
 }
 
 func TestServerPublishTimeout(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			connClosed := make(chan struct{})
 			sessionClosed := make(chan struct{})
 
@@ -1183,7 +1183,7 @@ func TestServerPublishTimeout(t *testing.T) {
 				ReadTimeout: 1 * time.Second,
 			}
 
-			if proto == "udp" {
+			if transport == "udp" {
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
@@ -1231,7 +1231,7 @@ func TestServerPublishTimeout(t *testing.T) {
 				}(),
 			}
 
-			if proto == "udp" {
+			if transport == "udp" {
 				inTH.Protocol = base.StreamProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
@@ -1268,7 +1268,7 @@ func TestServerPublishTimeout(t *testing.T) {
 
 			<-sessionClosed
 
-			if proto == "tcp" {
+			if transport == "tcp" {
 				<-connClosed
 			}
 		})
@@ -1276,11 +1276,11 @@ func TestServerPublishTimeout(t *testing.T) {
 }
 
 func TestServerPublishWithoutTeardown(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			connClosed := make(chan struct{})
 			sessionClosed := make(chan struct{})
 
@@ -1311,7 +1311,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 				ReadTimeout: 1 * time.Second,
 			}
 
-			if proto == "udp" {
+			if transport == "udp" {
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
@@ -1358,7 +1358,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 				}(),
 			}
 
-			if proto == "udp" {
+			if transport == "udp" {
 				inTH.Protocol = base.StreamProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
