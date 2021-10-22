@@ -397,7 +397,7 @@ func TestClientRead(t *testing.T) {
 						return &v
 
 					case "multicast":
-						v := ClientTransportMulticast
+						v := ClientTransportUDPMulticast
 						return &v
 
 					default: // tcp, tls

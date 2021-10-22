@@ -41,7 +41,7 @@ type ClientTransport int
 // standard client transports.
 const (
 	ClientTransportUDP ClientTransport = iota
-	ClientTransportMulticast
+	ClientTransportUDPMulticast
 	ClientTransportTCP
 )
 

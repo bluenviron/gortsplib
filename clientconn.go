@@ -449,7 +449,7 @@ func (cc *ClientConn) backgroundClose(isSwitchingProtocol bool) {
 func (cc *ClientConn) runBackground() {
 	cc.backgroundInnerDone <- func() error {
 		if cc.state == clientConnStatePlay {
-			if *cc.protocol == ClientTransportUDP || *cc.protocol == ClientTransportMulticast {
+			if *cc.protocol == ClientTransportUDP || *cc.protocol == ClientTransportUDPMulticast {
 				return cc.runBackgroundPlayUDP()
 			}
 			return cc.runBackgroundPlayTCP()
@@ -1257,7 +1257,7 @@ func (cc *ClientConn) doSetup(
 			rtcpListener.port(),
 		}
 
-	case ClientTransportMulticast:
+	case ClientTransportUDPMulticast:
 		v1 := base.StreamDeliveryMulticast
 		th.Delivery = &v1
 		th.Protocol = base.StreamProtocolUDP
@@ -1337,7 +1337,7 @@ func (cc *ClientConn) doSetup(
 			}
 		}
 
-	case ClientTransportMulticast:
+	case ClientTransportUDPMulticast:
 		if thRes.Delivery == nil || *thRes.Delivery != base.StreamDeliveryMulticast {
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
 		}
@@ -1422,7 +1422,7 @@ func (cc *ClientConn) doSetup(
 		rtcpListener.streamType = StreamTypeRTCP
 		cct.udpRTCPListener = rtcpListener
 
-	case ClientTransportMulticast:
+	case ClientTransportUDPMulticast:
 		rtpListener.remoteReadIP = cc.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteWriteIP = *thRes.Destination
 		rtpListener.remoteZone = ""
@@ -1700,7 +1700,7 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 	}
 
 	switch *cc.protocol {
-	case ClientTransportUDP, ClientTransportMulticast:
+	case ClientTransportUDP, ClientTransportUDPMulticast:
 		if streamType == StreamTypeRTP {
 			return cc.tracks[trackID].udpRTPListener.write(payload)
 		}
