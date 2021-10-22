@@ -162,13 +162,13 @@ func TestClientReadTracks(t *testing.T) {
 }
 
 func TestClientRead(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"multicast",
 		"tcp",
 		"tls",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			frameRecv := make(chan struct{})
 
 			listenIP := multicastCapableIP(t)
@@ -177,7 +177,7 @@ func TestClientRead(t *testing.T) {
 			defer l.Close()
 
 			var scheme string
-			if proto == "tls" {
+			if transport == "tls" {
 				scheme = "rtsps"
 
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
@@ -250,7 +250,7 @@ func TestClientRead(t *testing.T) {
 				var l1 net.PacketConn
 				var l2 net.PacketConn
 
-				switch proto {
+				switch transport {
 				case "udp":
 					v := base.StreamDeliveryUnicast
 					th.Delivery = &v
@@ -329,7 +329,7 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 
 				// server -> client
-				switch proto {
+				switch transport {
 				case "udp":
 					time.Sleep(1 * time.Second)
 					l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
@@ -353,9 +353,9 @@ func TestClientRead(t *testing.T) {
 				}
 
 				// client -> server (RTCP)
-				switch proto {
+				switch transport {
 				case "udp", "multicast":
-					if proto == "udp" {
+					if transport == "udp" {
 						// skip firewall opening
 						buf := make([]byte, 2048)
 						_, _, err := l2.ReadFrom(buf)
@@ -390,18 +390,18 @@ func TestClientRead(t *testing.T) {
 			}()
 
 			c := &Client{
-				Protocol: func() *ClientProtocol {
-					switch proto {
+				Transport: func() *ClientTransport {
+					switch transport {
 					case "udp":
-						v := ClientProtocolUDP
+						v := ClientTransportUDP
 						return &v
 
 					case "multicast":
-						v := ClientProtocolMulticast
+						v := ClientTransportMulticast
 						return &v
 
 					default: // tcp, tls
-						v := ClientProtocolTCP
+						v := ClientTransportTCP
 						return &v
 					}
 				}(),
@@ -416,7 +416,7 @@ func TestClientRead(t *testing.T) {
 				defer close(done)
 				conn.ReadFrames(func(id int, streamType StreamType, payload []byte) {
 					// skip multicast loopback
-					if proto == "multicast" {
+					if transport == "multicast" {
 						add := atomic.AddUint64(&counter, 1)
 						if add >= 2 {
 							return
@@ -536,8 +536,8 @@ func TestClientReadPartial(t *testing.T) {
 	}()
 
 	c := &Client{
-		Protocol: func() *ClientProtocol {
-			v := ClientProtocolTCP
+		Transport: func() *ClientTransport {
+			v := ClientTransportTCP
 			return &v
 		}(),
 	}
@@ -1241,8 +1241,8 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 	}()
 
 	c := &Client{
-		Protocol: func() *ClientProtocol {
-			v := ClientProtocolTCP
+		Transport: func() *ClientTransport {
+			v := ClientTransportTCP
 			return &v
 		}(),
 	}
@@ -1454,11 +1454,11 @@ func TestClientReadPause(t *testing.T) {
 		return writerTerminate, writerDone
 	}
 
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer l.Close()
@@ -1523,7 +1523,7 @@ func TestClientReadPause(t *testing.T) {
 					}(),
 				}
 
-				if proto == "udp" {
+				if transport == "udp" {
 					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
@@ -1589,12 +1589,12 @@ func TestClientReadPause(t *testing.T) {
 			}()
 
 			c := &Client{
-				Protocol: func() *ClientProtocol {
-					if proto == "udp" {
-						v := ClientProtocolUDP
+				Transport: func() *ClientTransport {
+					if transport == "udp" {
+						v := ClientTransportUDP
 						return &v
 					}
-					v := ClientProtocolTCP
+					v := ClientTransportTCP
 					return &v
 				}(),
 			}
@@ -1783,8 +1783,8 @@ func TestClientReadRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		Protocol: func() *ClientProtocol {
-			v := ClientProtocolTCP
+		Transport: func() *ClientTransport {
+			v := ClientTransportTCP
 			return &v
 		}(),
 		receiverReportPeriod: 1 * time.Second,
@@ -1814,12 +1814,12 @@ func TestClientReadRTCPReport(t *testing.T) {
 }
 
 func TestClientReadErrorTimeout(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 		"auto",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer l.Close()
@@ -1885,7 +1885,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				}
 
 				var l1 net.PacketConn
-				if proto == "udp" || proto == "auto" {
+				if transport == "udp" || transport == "auto" {
 					var err error
 					l1, err = net.ListenPacket("udp", "localhost:34557")
 					require.NoError(t, err)
@@ -1917,7 +1917,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				if proto == "udp" || proto == "auto" {
+				if transport == "udp" || transport == "auto" {
 					time.Sleep(500 * time.Millisecond)
 
 					l1, err := net.ListenPacket("udp", "localhost:34556")
@@ -1942,14 +1942,14 @@ func TestClientReadErrorTimeout(t *testing.T) {
 			}()
 
 			c := &Client{
-				Protocol: func() *ClientProtocol {
-					switch proto {
+				Transport: func() *ClientTransport {
+					switch transport {
 					case "udp":
-						v := ClientProtocolUDP
+						v := ClientTransportUDP
 						return &v
 
 					case "tcp":
-						v := ClientProtocolTCP
+						v := ClientTransportTCP
 						return &v
 					}
 					return nil
@@ -1965,7 +1965,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 			err = conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
 			})
 
-			switch proto {
+			switch transport {
 			case "udp", "auto":
 				require.Equal(t, "UDP timeout", err.Error())
 
@@ -2083,8 +2083,8 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 	}()
 
 	c := &Client{
-		Protocol: func() *ClientProtocol {
-			v := ClientProtocolTCP
+		Transport: func() *ClientTransport {
+			v := ClientTransportTCP
 			return &v
 		}(),
 	}
@@ -2236,8 +2236,8 @@ func TestClientReadSeek(t *testing.T) {
 	}()
 
 	c := &Client{
-		Protocol: func() *ClientProtocol {
-			v := ClientProtocolTCP
+		Transport: func() *ClientTransport {
+			v := ClientTransportTCP
 			return &v
 		}(),
 	}

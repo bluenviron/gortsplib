@@ -25,9 +25,9 @@ const (
 )
 
 func main() {
-	p := gortsplib.ClientProtocolUDP
+	p := gortsplib.ClientTransportUDP
 	c := gortsplib.Client{
-		Protocol: &p,
+		Transport: &p,
 	}
 
 	// connect to the server and start reading all tracks

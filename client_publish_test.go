@@ -17,11 +17,11 @@ import (
 )
 
 func TestClientPublishSerial(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer l.Close()
@@ -79,7 +79,7 @@ func TestClientPublishSerial(t *testing.T) {
 					}(),
 				}
 
-				if proto == "udp" {
+				if transport == "udp" {
 					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
@@ -99,7 +99,7 @@ func TestClientPublishSerial(t *testing.T) {
 
 				var l1 net.PacketConn
 				var l2 net.PacketConn
-				if proto == "udp" {
+				if transport == "udp" {
 					l1, err = net.ListenPacket("udp", "localhost:34556")
 					require.NoError(t, err)
 					defer l1.Close()
@@ -120,7 +120,7 @@ func TestClientPublishSerial(t *testing.T) {
 				require.NoError(t, err)
 
 				// client -> server
-				if proto == "udp" {
+				if transport == "udp" {
 					buf := make([]byte, 2048)
 					n, _, err := l1.ReadFrom(buf)
 					require.NoError(t, err)
@@ -136,7 +136,7 @@ func TestClientPublishSerial(t *testing.T) {
 				}
 
 				// server -> client (RTCP)
-				if proto == "udp" {
+				if transport == "udp" {
 					l2.WriteTo([]byte{0x05, 0x06, 0x07, 0x08}, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
@@ -161,12 +161,12 @@ func TestClientPublishSerial(t *testing.T) {
 			}()
 
 			c := &Client{
-				Protocol: func() *ClientProtocol {
-					if proto == "udp" {
-						v := ClientProtocolUDP
+				Transport: func() *ClientTransport {
+					if transport == "udp" {
+						v := ClientTransportUDP
 						return &v
 					}
-					v := ClientProtocolTCP
+					v := ClientTransportTCP
 					return &v
 				}(),
 			}
@@ -206,11 +206,11 @@ func TestClientPublishSerial(t *testing.T) {
 }
 
 func TestClientPublishParallel(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer l.Close()
@@ -265,7 +265,7 @@ func TestClientPublishParallel(t *testing.T) {
 					}(),
 				}
 
-				if proto == "udp" {
+				if transport == "udp" {
 					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
@@ -303,12 +303,12 @@ func TestClientPublishParallel(t *testing.T) {
 			}()
 
 			c := &Client{
-				Protocol: func() *ClientProtocol {
-					if proto == "udp" {
-						v := ClientProtocolUDP
+				Transport: func() *ClientTransport {
+					if transport == "udp" {
+						v := ClientTransportUDP
 						return &v
 					}
-					v := ClientProtocolTCP
+					v := ClientTransportTCP
 					return &v
 				}(),
 			}
@@ -345,11 +345,11 @@ func TestClientPublishParallel(t *testing.T) {
 }
 
 func TestClientPublishPauseSerial(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer l.Close()
@@ -405,7 +405,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 					}(),
 				}
 
-				if proto == "udp" {
+				if transport == "udp" {
 					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
@@ -461,12 +461,12 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			}()
 
 			c := &Client{
-				Protocol: func() *ClientProtocol {
-					if proto == "udp" {
-						v := ClientProtocolUDP
+				Transport: func() *ClientTransport {
+					if transport == "udp" {
+						v := ClientTransportUDP
 						return &v
 					}
-					v := ClientProtocolTCP
+					v := ClientTransportTCP
 					return &v
 				}(),
 			}
@@ -501,11 +501,11 @@ func TestClientPublishPauseSerial(t *testing.T) {
 }
 
 func TestClientPublishPauseParallel(t *testing.T) {
-	for _, proto := range []string{
+	for _, transport := range []string{
 		"udp",
 		"tcp",
 	} {
-		t.Run(proto, func(t *testing.T) {
+		t.Run(transport, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer l.Close()
@@ -561,7 +561,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 					}(),
 				}
 
-				if proto == "udp" {
+				if transport == "udp" {
 					th.Protocol = base.StreamProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
@@ -599,12 +599,12 @@ func TestClientPublishPauseParallel(t *testing.T) {
 			}()
 
 			c := &Client{
-				Protocol: func() *ClientProtocol {
-					if proto == "udp" {
-						v := ClientProtocolUDP
+				Transport: func() *ClientTransport {
+					if transport == "udp" {
+						v := ClientTransportUDP
 						return &v
 					}
-					v := ClientProtocolTCP
+					v := ClientTransportTCP
 					return &v
 				}(),
 			}
@@ -881,8 +881,8 @@ func TestClientPublishRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		Protocol: func() *ClientProtocol {
-			v := ClientProtocolTCP
+		Transport: func() *ClientTransport {
+			v := ClientTransportTCP
 			return &v
 		}(),
 		senderReportPeriod: 1 * time.Second,

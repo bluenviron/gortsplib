@@ -43,8 +43,8 @@ func main() {
 
 	// Client allows to set additional client options
 	c := &gortsplib.Client{
-		// the stream protocol (UDP or TCP). If nil, it is chosen automatically
-		Protocol: nil,
+		// the stream transport (UDP, Multicast or TCP). If nil, it is chosen automatically
+		Transport: nil,
 		// timeout of read operations
 		ReadTimeout: 10 * time.Second,
 		// timeout of write operations
