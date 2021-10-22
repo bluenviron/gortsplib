@@ -75,7 +75,7 @@ func setupGetTrackIDPathQuery(
 	return 0, "", "", fmt.Errorf("invalid track path (%s)", pathAndQuery)
 }
 
-func setupGetTransport(th headers.Transport) (ClientTransport, bool) {
+func setupGetTransport(th headers.Transport) (Transport, bool) {
 	delivery := func() base.StreamDelivery {
 		if th.Delivery != nil {
 			return *th.Delivery
@@ -86,15 +86,15 @@ func setupGetTransport(th headers.Transport) (ClientTransport, bool) {
 	switch th.Protocol {
 	case base.StreamProtocolUDP:
 		if delivery == base.StreamDeliveryUnicast {
-			return ClientTransportUDP, true
+			return TransportUDP, true
 		}
-		return ClientTransportUDPMulticast, true
+		return TransportUDPMulticast, true
 
 	default: // TCP
 		if delivery != base.StreamDeliveryUnicast {
 			return 0, false
 		}
-		return ClientTransportTCP, true
+		return TransportTCP, true
 	}
 }
 
@@ -152,7 +152,7 @@ type ServerSession struct {
 	state                   ServerSessionState
 	setuppedTracks          map[int]ServerSessionSetuppedTrack
 	setuppedTracksByChannel map[int]int // tcp
-	setuppedTransport       *ClientTransport
+	setuppedTransport       *Transport
 	setuppedBaseURL         *base.URL     // publish
 	setuppedStream          *ServerStream // read
 	setuppedPath            *string
@@ -209,7 +209,7 @@ func (ss *ServerSession) SetuppedTracks() map[int]ServerSessionSetuppedTrack {
 }
 
 // SetuppedTransport returns the transport of the setupped tracks.
-func (ss *ServerSession) SetuppedTransport() *ClientTransport {
+func (ss *ServerSession) SetuppedTransport() *Transport {
 	return ss.setuppedTransport
 }
 
@@ -299,7 +299,7 @@ func (ss *ServerSession) run() {
 				// if session is not in state RECORD or PLAY, or transport is TCP
 				if (ss.state != ServerSessionStatePublish &&
 					ss.state != ServerSessionStateRead) ||
-					*ss.setuppedTransport == ClientTransportTCP {
+					*ss.setuppedTransport == TransportTCP {
 
 					// close if there are no active connections
 					if len(ss.conns) == 0 {
@@ -310,8 +310,8 @@ func (ss *ServerSession) run() {
 			case <-checkTimeoutTicker.C:
 				switch {
 				// in case of RECORD and UDP, timeout happens when no frames are being received
-				case ss.state == ServerSessionStatePublish && (*ss.setuppedTransport == ClientTransportUDP ||
-					*ss.setuppedTransport == ClientTransportUDPMulticast):
+				case ss.state == ServerSessionStatePublish && (*ss.setuppedTransport == TransportUDP ||
+					*ss.setuppedTransport == TransportUDPMulticast):
 					now := time.Now()
 					lft := atomic.LoadInt64(ss.udpLastFrameTime)
 					if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
@@ -319,8 +319,8 @@ func (ss *ServerSession) run() {
 					}
 
 					// in case of PLAY and UDP, timeout happens when no request arrives
-				case ss.state == ServerSessionStateRead && (*ss.setuppedTransport == ClientTransportUDP ||
-					*ss.setuppedTransport == ClientTransportUDPMulticast):
+				case ss.state == ServerSessionStateRead && (*ss.setuppedTransport == TransportUDP ||
+					*ss.setuppedTransport == TransportUDPMulticast):
 					now := time.Now()
 					if now.Sub(ss.lastRequestTime) >= ss.s.closeSessionAfterNoRequestsFor {
 						return liberrors.ErrServerSessionTimedOut{}
@@ -352,12 +352,12 @@ func (ss *ServerSession) run() {
 	case ServerSessionStateRead:
 		ss.setuppedStream.readerSetInactive(ss)
 
-		if *ss.setuppedTransport == ClientTransportUDP {
+		if *ss.setuppedTransport == TransportUDP {
 			ss.s.udpRTCPListener.removeClient(ss)
 		}
 
 	case ServerSessionStatePublish:
-		if *ss.setuppedTransport == ClientTransportUDP {
+		if *ss.setuppedTransport == TransportUDP {
 			ss.s.udpRTPListener.removeClient(ss)
 			ss.s.udpRTCPListener.removeClient(ss)
 		}
@@ -576,7 +576,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		switch transport {
-		case ClientTransportUDP:
+		case TransportUDP:
 			if inTH.ClientPorts == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -589,7 +589,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}, nil
 			}
 
-		case ClientTransportUDPMulticast:
+		case TransportUDPMulticast:
 			if ss.s.MulticastIPRange == "" {
 				return &base.Response{
 					StatusCode: base.StatusUnsupportedTransport,
@@ -632,7 +632,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}
 
 		default: // record
-			if transport == ClientTransportUDPMulticast {
+			if transport == TransportUDPMulticast {
 				return &base.Response{
 					StatusCode: base.StatusUnsupportedTransport,
 				}, nil
@@ -692,7 +692,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			sst := ServerSessionSetuppedTrack{}
 
 			switch transport {
-			case ClientTransportUDP:
+			case TransportUDP:
 				sst.udpRTPPort = inTH.ClientPorts[0]
 				sst.udpRTCPPort = inTH.ClientPorts[1]
 
@@ -702,7 +702,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				th.ClientPorts = inTH.ClientPorts
 				th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
 
-			case ClientTransportUDPMulticast:
+			case TransportUDPMulticast:
 				th.Protocol = base.StreamProtocolUDP
 				de := base.StreamDeliveryMulticast
 				th.Delivery = &de
@@ -802,7 +802,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if res.StatusCode == base.StatusOK {
 				ss.state = ServerSessionStateRead
 
-				if *ss.setuppedTransport == ClientTransportTCP {
+				if *ss.setuppedTransport == TransportTCP {
 					ss.tcpConn = sc
 				}
 
@@ -846,7 +846,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.setuppedStream.readerSetActive(ss)
 
 				switch *ss.setuppedTransport {
-				case ClientTransportUDP:
+				case TransportUDP:
 					for trackID, track := range ss.setuppedTracks {
 						// readers can send RTCP packets
 						sc.s.udpRTCPListener.addClient(ss.ip(), track.udpRTCPPort, ss, trackID, false)
@@ -858,7 +858,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 					return res, err
 
-				case ClientTransportUDPMulticast:
+				case TransportUDPMulticast:
 
 				default: // TCP
 					err = liberrors.ErrServerTCPFramesEnable{}
@@ -899,7 +899,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		path, query := base.PathSplitQuery(pathAndQuery)
 
 		// allow to use WriteFrame() before response
-		if *ss.setuppedTransport == ClientTransportTCP {
+		if *ss.setuppedTransport == TransportTCP {
 			ss.tcpConn = sc
 		}
 
@@ -921,7 +921,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.state = ServerSessionStatePublish
 
 			switch *ss.setuppedTransport {
-			case ClientTransportUDP:
+			case TransportUDP:
 				for trackID, track := range ss.setuppedTracks {
 					ss.s.udpRTPListener.addClient(ss.ip(), track.udpRTPPort, ss, trackID, true)
 					ss.s.udpRTCPListener.addClient(ss.ip(), track.udpRTCPPort, ss, trackID, true)
@@ -933,7 +933,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 						[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 				}
 
-			case ClientTransportUDPMulticast:
+			case TransportUDPMulticast:
 
 			default: // TCP
 				err = liberrors.ErrServerTCPFramesEnable{}
@@ -988,10 +988,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.tcpConn = nil
 
 				switch *ss.setuppedTransport {
-				case ClientTransportUDP:
+				case TransportUDP:
 					ss.s.udpRTCPListener.removeClient(ss)
 
-				case ClientTransportUDPMulticast:
+				case TransportUDPMulticast:
 
 				default: // TCP
 					err = liberrors.ErrServerTCPFramesDisable{}
@@ -1002,11 +1002,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.tcpConn = nil
 
 				switch *ss.setuppedTransport {
-				case ClientTransportUDP:
+				case TransportUDP:
 					ss.s.udpRTPListener.removeClient(ss)
 					ss.s.udpRTCPListener.removeClient(ss)
 
-				case ClientTransportUDPMulticast:
+				case TransportUDPMulticast:
 
 				default: // TCP
 					err = liberrors.ErrServerTCPFramesDisable{}
@@ -1064,7 +1064,7 @@ func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload 
 	}
 
 	switch *ss.setuppedTransport {
-	case ClientTransportUDP:
+	case TransportUDP:
 		track := ss.setuppedTracks[trackID]
 
 		if streamType == StreamTypeRTP {
@@ -1081,7 +1081,7 @@ func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload 
 			})
 		}
 
-	case ClientTransportTCP:
+	case TransportTCP:
 		channel := ss.setuppedTracks[trackID].tcpChannel
 		if streamType == base.StreamTypeRTCP {
 			channel++

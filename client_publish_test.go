@@ -161,12 +161,12 @@ func TestClientPublishSerial(t *testing.T) {
 			}()
 
 			c := &Client{
-				Transport: func() *ClientTransport {
+				Transport: func() *Transport {
 					if transport == "udp" {
-						v := ClientTransportUDP
+						v := TransportUDP
 						return &v
 					}
-					v := ClientTransportTCP
+					v := TransportTCP
 					return &v
 				}(),
 			}
@@ -303,12 +303,12 @@ func TestClientPublishParallel(t *testing.T) {
 			}()
 
 			c := &Client{
-				Transport: func() *ClientTransport {
+				Transport: func() *Transport {
 					if transport == "udp" {
-						v := ClientTransportUDP
+						v := TransportUDP
 						return &v
 					}
-					v := ClientTransportTCP
+					v := TransportTCP
 					return &v
 				}(),
 			}
@@ -461,12 +461,12 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			}()
 
 			c := &Client{
-				Transport: func() *ClientTransport {
+				Transport: func() *Transport {
 					if transport == "udp" {
-						v := ClientTransportUDP
+						v := TransportUDP
 						return &v
 					}
-					v := ClientTransportTCP
+					v := TransportTCP
 					return &v
 				}(),
 			}
@@ -599,12 +599,12 @@ func TestClientPublishPauseParallel(t *testing.T) {
 			}()
 
 			c := &Client{
-				Transport: func() *ClientTransport {
+				Transport: func() *Transport {
 					if transport == "udp" {
-						v := ClientTransportUDP
+						v := TransportUDP
 						return &v
 					}
-					v := ClientTransportTCP
+					v := TransportTCP
 					return &v
 				}(),
 			}
@@ -881,8 +881,8 @@ func TestClientPublishRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		Transport: func() *ClientTransport {
-			v := ClientTransportTCP
+		Transport: func() *Transport {
+			v := TransportTCP
 			return &v
 		}(),
 		senderReportPeriod: 1 * time.Second,

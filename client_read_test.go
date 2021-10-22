@@ -390,18 +390,18 @@ func TestClientRead(t *testing.T) {
 			}()
 
 			c := &Client{
-				Transport: func() *ClientTransport {
+				Transport: func() *Transport {
 					switch transport {
 					case "udp":
-						v := ClientTransportUDP
+						v := TransportUDP
 						return &v
 
 					case "multicast":
-						v := ClientTransportUDPMulticast
+						v := TransportUDPMulticast
 						return &v
 
 					default: // tcp, tls
-						v := ClientTransportTCP
+						v := TransportTCP
 						return &v
 					}
 				}(),
@@ -536,8 +536,8 @@ func TestClientReadPartial(t *testing.T) {
 	}()
 
 	c := &Client{
-		Transport: func() *ClientTransport {
-			v := ClientTransportTCP
+		Transport: func() *Transport {
+			v := TransportTCP
 			return &v
 		}(),
 	}
@@ -1241,8 +1241,8 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 	}()
 
 	c := &Client{
-		Transport: func() *ClientTransport {
-			v := ClientTransportTCP
+		Transport: func() *Transport {
+			v := TransportTCP
 			return &v
 		}(),
 	}
@@ -1589,12 +1589,12 @@ func TestClientReadPause(t *testing.T) {
 			}()
 
 			c := &Client{
-				Transport: func() *ClientTransport {
+				Transport: func() *Transport {
 					if transport == "udp" {
-						v := ClientTransportUDP
+						v := TransportUDP
 						return &v
 					}
-					v := ClientTransportTCP
+					v := TransportTCP
 					return &v
 				}(),
 			}
@@ -1783,8 +1783,8 @@ func TestClientReadRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		Transport: func() *ClientTransport {
-			v := ClientTransportTCP
+		Transport: func() *Transport {
+			v := TransportTCP
 			return &v
 		}(),
 		receiverReportPeriod: 1 * time.Second,
@@ -1942,14 +1942,14 @@ func TestClientReadErrorTimeout(t *testing.T) {
 			}()
 
 			c := &Client{
-				Transport: func() *ClientTransport {
+				Transport: func() *Transport {
 					switch transport {
 					case "udp":
-						v := ClientTransportUDP
+						v := TransportUDP
 						return &v
 
 					case "tcp":
-						v := ClientTransportTCP
+						v := TransportTCP
 						return &v
 					}
 					return nil
@@ -2083,8 +2083,8 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 	}()
 
 	c := &Client{
-		Transport: func() *ClientTransport {
-			v := ClientTransportTCP
+		Transport: func() *Transport {
+			v := TransportTCP
 			return &v
 		}(),
 	}
@@ -2236,8 +2236,8 @@ func TestClientReadSeek(t *testing.T) {
 	}()
 
 	c := &Client{
-		Transport: func() *ClientTransport {
-			v := ClientTransportTCP
+		Transport: func() *Transport {
+			v := TransportTCP
 			return &v
 		}(),
 	}

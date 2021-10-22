@@ -35,16 +35,6 @@ func DialPublish(address string, tracks Tracks) (*ClientConn, error) {
 	return DefaultClient.DialPublish(address, tracks)
 }
 
-// ClientTransport is a stream transport used by the client.
-type ClientTransport int
-
-// standard client transports.
-const (
-	ClientTransportUDP ClientTransport = iota
-	ClientTransportUDPMulticast
-	ClientTransportTCP
-)
-
 // Client is a RTSP client.
 type Client struct {
 	//
@@ -77,7 +67,7 @@ type Client struct {
 	// the stream transport (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
-	Transport *ClientTransport
+	Transport *Transport
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout.
 	// It defaults to 3 seconds.

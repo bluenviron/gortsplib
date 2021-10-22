@@ -113,7 +113,7 @@ func (st *ServerStream) lastSequenceNumber(trackID int) uint16 {
 
 func (st *ServerStream) readerAdd(
 	ss *ServerSession,
-	transport ClientTransport,
+	transport Transport,
 	clientPorts *[2]int,
 ) error {
 	st.mutex.Lock()
@@ -128,10 +128,10 @@ func (st *ServerStream) readerAdd(
 	}
 
 	switch transport {
-	case ClientTransportUDP:
+	case TransportUDP:
 		// check whether client ports are already in use by another reader.
 		for r := range st.readersUnicast {
-			if *r.setuppedTransport == ClientTransportUDP &&
+			if *r.setuppedTransport == TransportUDP &&
 				r.ip().Equal(ss.ip()) &&
 				r.zone() == ss.zone() {
 				for _, rt := range r.setuppedTracks {
@@ -142,7 +142,7 @@ func (st *ServerStream) readerAdd(
 			}
 		}
 
-	case ClientTransportUDPMulticast:
+	case TransportUDPMulticast:
 		// allocate multicast listeners
 		if st.multicastListeners == nil {
 			st.multicastListeners = make([]*listenerPair, len(st.tracks))
@@ -193,7 +193,7 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 	defer st.mutex.Unlock()
 
 	switch *ss.setuppedTransport {
-	case ClientTransportUDP, ClientTransportTCP:
+	case TransportUDP, TransportTCP:
 		st.readersUnicast[ss] = struct{}{}
 
 	default: // UDPMulticast
@@ -209,7 +209,7 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 	defer st.mutex.Unlock()
 
 	switch *ss.setuppedTransport {
-	case ClientTransportUDP, ClientTransportTCP:
+	case TransportUDP, TransportTCP:
 		delete(st.readersUnicast, ss)
 
 	default: // UDPMulticast

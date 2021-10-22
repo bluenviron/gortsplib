@@ -82,21 +82,21 @@ type Server struct {
 	WriteTimeout time.Duration
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
-	// a port to send and receive RTP packets with UDP.
+	// a port to send and receive RTP packets with the UDP transport.
 	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can read and write UDP streams.
 	UDPRTPAddress string
-	// a port to send and receive RTCP packets with UDP.
+	// a port to send and receive RTCP packets with the UDP transport.
 	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can read and write UDP streams.
 	UDPRTCPAddress string
-	// a range of multicast IPs to use.
+	// a range of multicast IPs to use with the UDP-multicast transport.
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server
 	// can read and write UDP-multicast streams.
 	MulticastIPRange string
-	// a port to send RTP packets with UDP-multicast.
+	// a port to send RTP packets with the UDP-multicast transport.
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server
 	// can read and write UDP-multicast streams.
 	MulticastRTPPort int
-	// a port to send RTCP packets with UDP-multicast.
+	// a port to send RTCP packets with the UDP-multicast transport.
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server
 	// can read and write UDP-multicast streams.
 	MulticastRTCPPort int

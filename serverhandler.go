@@ -98,7 +98,7 @@ type ServerHandlerOnSetupCtx struct {
 	Path      string
 	Query     string
 	TrackID   int
-	Transport ClientTransport
+	Transport Transport
 }
 
 // ServerHandlerOnSetup can be implemented by a ServerHandler.
