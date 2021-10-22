@@ -700,9 +700,9 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -738,9 +738,9 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -797,9 +797,9 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -830,9 +830,9 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -995,9 +995,9 @@ func TestServerSessionClose(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -1048,9 +1048,9 @@ func TestServerSessionAutoClose(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -1156,9 +1156,9 @@ func TestServerErrorInvalidPath(t *testing.T) {
 						"CSeq":    base.HeaderValue{"2"},
 						"Session": base.HeaderValue{sxID},
 						"Transport": headers.Transport{
-							Protocol: base.StreamProtocolTCP,
-							Delivery: func() *base.StreamDelivery {
-								v := base.StreamDeliveryUnicast
+							Protocol: headers.TransportProtocolTCP,
+							Delivery: func() *headers.TransportDelivery {
+								v := headers.TransportDeliveryUnicast
 								return &v
 							}(),
 							Mode: func() *headers.TransportMode {

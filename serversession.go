@@ -76,22 +76,22 @@ func setupGetTrackIDPathQuery(
 }
 
 func setupGetTransport(th headers.Transport) (Transport, bool) {
-	delivery := func() base.StreamDelivery {
+	delivery := func() headers.TransportDelivery {
 		if th.Delivery != nil {
 			return *th.Delivery
 		}
-		return base.StreamDeliveryUnicast
+		return headers.TransportDeliveryUnicast
 	}()
 
 	switch th.Protocol {
-	case base.StreamProtocolUDP:
-		if delivery == base.StreamDeliveryUnicast {
+	case headers.TransportProtocolUDP:
+		if delivery == headers.TransportDeliveryUnicast {
 			return TransportUDP, true
 		}
 		return TransportUDPMulticast, true
 
 	default: // TCP
-		if delivery != base.StreamDeliveryUnicast {
+		if delivery != headers.TransportDeliveryUnicast {
 			return 0, false
 		}
 		return TransportTCP, true
@@ -696,15 +696,15 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				sst.udpRTPPort = inTH.ClientPorts[0]
 				sst.udpRTCPPort = inTH.ClientPorts[1]
 
-				th.Protocol = base.StreamProtocolUDP
-				de := base.StreamDeliveryUnicast
+				th.Protocol = headers.TransportProtocolUDP
+				de := headers.TransportDeliveryUnicast
 				th.Delivery = &de
 				th.ClientPorts = inTH.ClientPorts
 				th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
 
 			case TransportUDPMulticast:
-				th.Protocol = base.StreamProtocolUDP
-				de := base.StreamDeliveryMulticast
+				th.Protocol = headers.TransportProtocolUDP
+				de := headers.TransportDeliveryMulticast
 				th.Delivery = &de
 				v := uint(127)
 				th.TTL = &v
@@ -724,8 +724,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 				ss.setuppedTracksByChannel[inTH.InterleavedIDs[0]] = trackID
 
-				th.Protocol = base.StreamProtocolTCP
-				de := base.StreamDeliveryUnicast
+				th.Protocol = headers.TransportProtocolTCP
+				de := headers.TransportDeliveryUnicast
 				th.Delivery = &de
 				th.InterleavedIDs = inTH.InterleavedIDs
 			}

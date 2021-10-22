@@ -116,9 +116,9 @@ func TestServerReadSetupPath(t *testing.T) {
 			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 			th := &headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -174,9 +174,9 @@ func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 	th := &headers.Transport{
-		Protocol: base.StreamProtocolTCP,
-		Delivery: func() *base.StreamDelivery {
-			v := base.StreamDeliveryUnicast
+		Protocol: headers.TransportProtocolTCP,
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
 			return &v
 		}(),
 		Mode: func() *headers.TransportMode {
@@ -246,9 +246,9 @@ func TestServerReadErrorSetupTrackTwice(t *testing.T) {
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 	th := &headers.Transport{
-		Protocol: base.StreamProtocolTCP,
-		Delivery: func() *base.StreamDelivery {
-			v := base.StreamDeliveryUnicast
+		Protocol: headers.TransportProtocolTCP,
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
 			return &v
 		}(),
 		Mode: func() *headers.TransportMode {
@@ -399,20 +399,20 @@ func TestServerRead(t *testing.T) {
 
 			switch transport {
 			case "udp":
-				v := base.StreamDeliveryUnicast
+				v := headers.TransportDeliveryUnicast
 				inTH.Delivery = &v
-				inTH.Protocol = base.StreamProtocolUDP
+				inTH.Protocol = headers.TransportProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 
 			case "multicast":
-				v := base.StreamDeliveryMulticast
+				v := headers.TransportDeliveryMulticast
 				inTH.Delivery = &v
-				inTH.Protocol = base.StreamProtocolUDP
+				inTH.Protocol = headers.TransportProtocolUDP
 
 			default:
-				v := base.StreamDeliveryUnicast
+				v := headers.TransportDeliveryUnicast
 				inTH.Delivery = &v
-				inTH.Protocol = base.StreamProtocolTCP
+				inTH.Protocol = headers.TransportProtocolTCP
 				inTH.InterleavedIDs = &[2]int{4, 5}
 			}
 
@@ -433,16 +433,16 @@ func TestServerRead(t *testing.T) {
 
 			switch transport {
 			case "udp":
-				require.Equal(t, base.StreamProtocolUDP, th.Protocol)
-				require.Equal(t, base.StreamDeliveryUnicast, *th.Delivery)
+				require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
+				require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
 
 			case "multicast":
-				require.Equal(t, base.StreamProtocolUDP, th.Protocol)
-				require.Equal(t, base.StreamDeliveryMulticast, *th.Delivery)
+				require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
+				require.Equal(t, headers.TransportDeliveryMulticast, *th.Delivery)
 
 			default:
-				require.Equal(t, base.StreamProtocolTCP, th.Protocol)
-				require.Equal(t, base.StreamDeliveryUnicast, *th.Delivery)
+				require.Equal(t, headers.TransportProtocolTCP, th.Protocol)
+				require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
 			}
 
 			<-sessionOpened
@@ -666,9 +666,9 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -737,9 +737,9 @@ func TestServerReadPlayPlay(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolUDP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolUDP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -844,9 +844,9 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -958,9 +958,9 @@ func TestServerReadPlayPausePause(t *testing.T) {
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -1065,8 +1065,8 @@ func TestServerReadTimeout(t *testing.T) {
 			bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
 
 			inTH := &headers.Transport{
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -1075,7 +1075,7 @@ func TestServerReadTimeout(t *testing.T) {
 				}(),
 			}
 
-			inTH.Protocol = base.StreamProtocolUDP
+			inTH.Protocol = headers.TransportProtocolUDP
 			inTH.ClientPorts = &[2]int{35466, 35467}
 
 			res, err := writeReqReadRes(bconn, base.Request{
@@ -1162,8 +1162,8 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
 
 			inTH := &headers.Transport{
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -1173,10 +1173,10 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			}
 
 			if transport == "udp" {
-				inTH.Protocol = base.StreamProtocolUDP
+				inTH.Protocol = headers.TransportProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
-				inTH.Protocol = base.StreamProtocolTCP
+				inTH.Protocol = headers.TransportProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
@@ -1253,15 +1253,15 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 		inTH := &headers.Transport{
-			Delivery: func() *base.StreamDelivery {
-				v := base.StreamDeliveryUnicast
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
 				return &v
 			}(),
 			Mode: func() *headers.TransportMode {
 				v := headers.TransportModePlay
 				return &v
 			}(),
-			Protocol:    base.StreamProtocolUDP,
+			Protocol:    headers.TransportProtocolUDP,
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
@@ -1344,15 +1344,15 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 		inTH := &headers.Transport{
-			Delivery: func() *base.StreamDelivery {
-				v := base.StreamDeliveryUnicast
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
 				return &v
 			}(),
 			Mode: func() *headers.TransportMode {
 				v := headers.TransportModePlay
 				return &v
 			}(),
-			Protocol:    base.StreamProtocolUDP,
+			Protocol:    headers.TransportProtocolUDP,
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
@@ -1386,15 +1386,15 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 		inTH := &headers.Transport{
-			Delivery: func() *base.StreamDelivery {
-				v := base.StreamDeliveryUnicast
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
 				return &v
 			}(),
 			Mode: func() *headers.TransportMode {
 				v := headers.TransportModePlay
 				return &v
 			}(),
-			Protocol:    base.StreamProtocolUDP,
+			Protocol:    headers.TransportProtocolUDP,
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
@@ -1448,15 +1448,15 @@ func TestServerReadNonSetuppedPath(t *testing.T) {
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
 	inTH := &headers.Transport{
-		Delivery: func() *base.StreamDelivery {
-			v := base.StreamDeliveryUnicast
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
 			return &v
 		}(),
 		Mode: func() *headers.TransportMode {
 			v := headers.TransportModePlay
 			return &v
 		}(),
-		Protocol:       base.StreamProtocolTCP,
+		Protocol:       headers.TransportProtocolTCP,
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
@@ -1500,15 +1500,15 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		ssrcs := make([]*uint32, 2)
 
 		inTH := &headers.Transport{
-			Delivery: func() *base.StreamDelivery {
-				v := base.StreamDeliveryUnicast
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
 				return &v
 			}(),
 			Mode: func() *headers.TransportMode {
 				v := headers.TransportModePlay
 				return &v
 			}(),
-			Protocol:       base.StreamProtocolTCP,
+			Protocol:       headers.TransportProtocolTCP,
 			InterleavedIDs: &[2]int{0, 1},
 		}
 
@@ -1529,15 +1529,15 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		ssrcs[0] = th.SSRC
 
 		inTH = &headers.Transport{
-			Delivery: func() *base.StreamDelivery {
-				v := base.StreamDeliveryUnicast
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
 				return &v
 			}(),
 			Mode: func() *headers.TransportMode {
 				v := headers.TransportModePlay
 				return &v
 			}(),
-			Protocol:       base.StreamProtocolTCP,
+			Protocol:       headers.TransportProtocolTCP,
 			InterleavedIDs: &[2]int{2, 3},
 		}
 

@@ -11,6 +11,24 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
+// TransportProtocol is a transport protocol.
+type TransportProtocol int
+
+// standard transport protocols.
+const (
+	TransportProtocolUDP TransportProtocol = iota
+	TransportProtocolTCP
+)
+
+// TransportDelivery is a delivery method.
+type TransportDelivery int
+
+// standard transport delivery methods.
+const (
+	TransportDeliveryUnicast TransportDelivery = iota
+	TransportDeliveryMulticast
+)
+
 // TransportMode is a transport mode.
 type TransportMode int
 
@@ -25,10 +43,10 @@ const (
 // Transport is a Transport header.
 type Transport struct {
 	// protocol of the stream
-	Protocol base.StreamProtocol
+	Protocol TransportProtocol
 
 	// (optional) delivery method of the stream
-	Delivery *base.StreamDelivery
+	Delivery *TransportDelivery
 
 	// (optional) destination IP
 	Destination *net.IP
@@ -107,19 +125,19 @@ func (h *Transport) Read(v base.HeaderValue) error {
 
 		switch k {
 		case "RTP/AVP", "RTP/AVP/UDP":
-			h.Protocol = base.StreamProtocolUDP
+			h.Protocol = TransportProtocolUDP
 			protocolFound = true
 
 		case "RTP/AVP/TCP":
-			h.Protocol = base.StreamProtocolTCP
+			h.Protocol = TransportProtocolTCP
 			protocolFound = true
 
 		case "unicast":
-			v := base.StreamDeliveryUnicast
+			v := TransportDeliveryUnicast
 			h.Delivery = &v
 
 		case "multicast":
-			v := base.StreamDeliveryMulticast
+			v := TransportDeliveryMulticast
 			h.Delivery = &v
 
 		case "destination":
@@ -221,14 +239,14 @@ func (h *Transport) Read(v base.HeaderValue) error {
 func (h Transport) Write() base.HeaderValue {
 	var rets []string
 
-	if h.Protocol == base.StreamProtocolUDP {
+	if h.Protocol == TransportProtocolUDP {
 		rets = append(rets, "RTP/AVP")
 	} else {
 		rets = append(rets, "RTP/AVP/TCP")
 	}
 
 	if h.Delivery != nil {
-		if *h.Delivery == base.StreamDeliveryUnicast {
+		if *h.Delivery == TransportDeliveryUnicast {
 			rets = append(rets, "unicast")
 		} else {
 			rets = append(rets, "multicast")

@@ -73,19 +73,19 @@ func TestClientPublishSerial(t *testing.T) {
 				require.NoError(t, err)
 
 				th := headers.Transport{
-					Delivery: func() *base.StreamDelivery {
-						v := base.StreamDeliveryUnicast
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
 						return &v
 					}(),
 				}
 
 				if transport == "udp" {
-					th.Protocol = base.StreamProtocolUDP
+					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = base.StreamProtocolTCP
+					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -259,19 +259,19 @@ func TestClientPublishParallel(t *testing.T) {
 				require.NoError(t, err)
 
 				th := headers.Transport{
-					Delivery: func() *base.StreamDelivery {
-						v := base.StreamDeliveryUnicast
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
 						return &v
 					}(),
 				}
 
 				if transport == "udp" {
-					th.Protocol = base.StreamProtocolUDP
+					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = base.StreamProtocolTCP
+					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -399,19 +399,19 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.NoError(t, err)
 
 				th := headers.Transport{
-					Delivery: func() *base.StreamDelivery {
-						v := base.StreamDeliveryUnicast
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
 						return &v
 					}(),
 				}
 
 				if transport == "udp" {
-					th.Protocol = base.StreamProtocolUDP
+					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = base.StreamProtocolTCP
+					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -555,19 +555,19 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				require.NoError(t, err)
 
 				th := headers.Transport{
-					Delivery: func() *base.StreamDelivery {
-						v := base.StreamDeliveryUnicast
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
 						return &v
 					}(),
 				}
 
 				if transport == "udp" {
-					th.Protocol = base.StreamProtocolUDP
+					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
 
 				} else {
-					th.Protocol = base.StreamProtocolTCP
+					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
@@ -701,14 +701,14 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		var inTH headers.Transport
 		err = inTH.Read(req.Header["Transport"])
 		require.NoError(t, err)
-		require.Equal(t, base.StreamProtocolTCP, inTH.Protocol)
+		require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
 
 		th := headers.Transport{
-			Delivery: func() *base.StreamDelivery {
-				v := base.StreamDeliveryUnicast
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
 				return &v
 			}(),
-			Protocol:       base.StreamProtocolTCP,
+			Protocol:       headers.TransportProtocolTCP,
 			InterleavedIDs: &[2]int{0, 1},
 		}
 
@@ -809,11 +809,11 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 
 		th := headers.Transport{
-			Delivery: func() *base.StreamDelivery {
-				v := base.StreamDeliveryUnicast
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
 				return &v
 			}(),
-			Protocol:       base.StreamProtocolTCP,
+			Protocol:       headers.TransportProtocolTCP,
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 

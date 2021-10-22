@@ -358,9 +358,9 @@ func TestServerPublishSetupPath(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			th := &headers.Transport{
-				Protocol: base.StreamProtocolTCP,
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -439,9 +439,9 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	th := &headers.Transport{
-		Protocol: base.StreamProtocolTCP,
-		Delivery: func() *base.StreamDelivery {
-			v := base.StreamDeliveryUnicast
+		Protocol: headers.TransportProtocolTCP,
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
 			return &v
 		}(),
 		Mode: func() *headers.TransportMode {
@@ -521,9 +521,9 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	th := &headers.Transport{
-		Protocol: base.StreamProtocolTCP,
-		Delivery: func() *base.StreamDelivery {
-			v := base.StreamDeliveryUnicast
+		Protocol: headers.TransportProtocolTCP,
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
 			return &v
 		}(),
 		Mode: func() *headers.TransportMode {
@@ -623,9 +623,9 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	th := &headers.Transport{
-		Protocol: base.StreamProtocolTCP,
-		Delivery: func() *base.StreamDelivery {
-			v := base.StreamDeliveryUnicast
+		Protocol: headers.TransportProtocolTCP,
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
 			return &v
 		}(),
 		Mode: func() *headers.TransportMode {
@@ -775,8 +775,8 @@ func TestServerPublish(t *testing.T) {
 			<-sessionOpened
 
 			inTH := &headers.Transport{
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -786,10 +786,10 @@ func TestServerPublish(t *testing.T) {
 			}
 
 			if transport == "udp" {
-				inTH.Protocol = base.StreamProtocolUDP
+				inTH.Protocol = headers.TransportProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
-				inTH.Protocol = base.StreamProtocolTCP
+				inTH.Protocol = headers.TransportProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
@@ -961,15 +961,15 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	inTH := &headers.Transport{
-		Delivery: func() *base.StreamDelivery {
-			v := base.StreamDeliveryUnicast
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
 			return &v
 		}(),
 		Mode: func() *headers.TransportMode {
 			v := headers.TransportModeRecord
 			return &v
 		}(),
-		Protocol:    base.StreamProtocolUDP,
+		Protocol:    headers.TransportProtocolUDP,
 		ClientPorts: &[2]int{35466, 35467},
 	}
 
@@ -1062,15 +1062,15 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	inTH := &headers.Transport{
-		Delivery: func() *base.StreamDelivery {
-			v := base.StreamDeliveryUnicast
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
 			return &v
 		}(),
 		Mode: func() *headers.TransportMode {
 			v := headers.TransportModeRecord
 			return &v
 		}(),
-		Protocol:       base.StreamProtocolTCP,
+		Protocol:       headers.TransportProtocolTCP,
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
@@ -1221,8 +1221,8 @@ func TestServerPublishTimeout(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			inTH := &headers.Transport{
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -1232,10 +1232,10 @@ func TestServerPublishTimeout(t *testing.T) {
 			}
 
 			if transport == "udp" {
-				inTH.Protocol = base.StreamProtocolUDP
+				inTH.Protocol = headers.TransportProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
-				inTH.Protocol = base.StreamProtocolTCP
+				inTH.Protocol = headers.TransportProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
@@ -1348,8 +1348,8 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			inTH := &headers.Transport{
-				Delivery: func() *base.StreamDelivery {
-					v := base.StreamDeliveryUnicast
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
 					return &v
 				}(),
 				Mode: func() *headers.TransportMode {
@@ -1359,10 +1359,10 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 			}
 
 			if transport == "udp" {
-				inTH.Protocol = base.StreamProtocolUDP
+				inTH.Protocol = headers.TransportProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 			} else {
-				inTH.Protocol = base.StreamProtocolTCP
+				inTH.Protocol = headers.TransportProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
@@ -1467,15 +1467,15 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 		require.Equal(t, base.StatusOK, res.StatusCode)
 
 		inTH := &headers.Transport{
-			Delivery: func() *base.StreamDelivery {
-				v := base.StreamDeliveryUnicast
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
 				return &v
 			}(),
 			Mode: func() *headers.TransportMode {
 				v := headers.TransportModeRecord
 				return &v
 			}(),
-			Protocol:    base.StreamProtocolUDP,
+			Protocol:    headers.TransportProtocolUDP,
 			ClientPorts: &[2]int{35466, 35467},
 		}
 

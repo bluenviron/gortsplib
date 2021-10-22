@@ -1249,23 +1249,23 @@ func (cc *ClientConn) doSetup(
 			rtpListener, rtcpListener = newClientConnUDPListenerPair(cc)
 		}
 
-		v1 := base.StreamDeliveryUnicast
+		v1 := headers.TransportDeliveryUnicast
 		th.Delivery = &v1
-		th.Protocol = base.StreamProtocolUDP
+		th.Protocol = headers.TransportProtocolUDP
 		th.ClientPorts = &[2]int{
 			rtpListener.port(),
 			rtcpListener.port(),
 		}
 
 	case TransportUDPMulticast:
-		v1 := base.StreamDeliveryMulticast
+		v1 := headers.TransportDeliveryMulticast
 		th.Delivery = &v1
-		th.Protocol = base.StreamProtocolUDP
+		th.Protocol = headers.TransportProtocolUDP
 
 	case TransportTCP:
-		v1 := base.StreamDeliveryUnicast
+		v1 := headers.TransportDeliveryUnicast
 		th.Delivery = &v1
-		th.Protocol = base.StreamProtocolTCP
+		th.Protocol = headers.TransportProtocolTCP
 		th.InterleavedIDs = &[2]int{(trackID * 2), (trackID * 2) + 1}
 	}
 
@@ -1325,7 +1325,7 @@ func (cc *ClientConn) doSetup(
 
 	switch proto {
 	case TransportUDP:
-		if thRes.Delivery != nil && *thRes.Delivery != base.StreamDeliveryUnicast {
+		if thRes.Delivery != nil && *thRes.Delivery != headers.TransportDeliveryUnicast {
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
 		}
 
@@ -1338,7 +1338,7 @@ func (cc *ClientConn) doSetup(
 		}
 
 	case TransportUDPMulticast:
-		if thRes.Delivery == nil || *thRes.Delivery != base.StreamDeliveryMulticast {
+		if thRes.Delivery == nil || *thRes.Delivery != headers.TransportDeliveryMulticast {
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
 		}
 
@@ -1364,7 +1364,7 @@ func (cc *ClientConn) doSetup(
 		}
 
 	case TransportTCP:
-		if thRes.Delivery != nil && *thRes.Delivery != base.StreamDeliveryUnicast {
+		if thRes.Delivery != nil && *thRes.Delivery != headers.TransportDeliveryUnicast {
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
 		}
 
