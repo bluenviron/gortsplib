@@ -968,7 +968,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.tcpConn = nil
 
 				if *ss.setuppedProtocol == base.StreamProtocolUDP {
-					ss.s.udpRTCPListener.removeClient(ss)
+					if *ss.setuppedDelivery == base.StreamDeliveryUnicast {
+						ss.s.udpRTCPListener.removeClient(ss)
+					}
 				} else {
 					return res, liberrors.ErrServerTCPFramesDisable{}
 				}
@@ -979,6 +981,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 				if *ss.setuppedProtocol == base.StreamProtocolUDP {
 					ss.s.udpRTPListener.removeClient(ss)
+					ss.s.udpRTCPListener.removeClient(ss)
 				} else {
 					return res, liberrors.ErrServerTCPFramesDisable{}
 				}
