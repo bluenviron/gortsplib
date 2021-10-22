@@ -25,13 +25,8 @@ const (
 )
 
 func main() {
-	p := gortsplib.ClientTransportUDP
-	c := gortsplib.Client{
-		Transport: &p,
-	}
-
 	// connect to the server and start reading all tracks
-	conn, err := c.DialRead(inputStream)
+	conn, err := gortsplib.DialRead(inputStream)
 	if err != nil {
 		panic(err)
 	}
