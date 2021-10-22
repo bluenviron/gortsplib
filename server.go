@@ -83,22 +83,22 @@ type Server struct {
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
 	// a port to send and receive RTP packets with the UDP transport.
-	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can read and write UDP streams.
+	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can support the UDP transport.
 	UDPRTPAddress string
 	// a port to send and receive RTCP packets with the UDP transport.
-	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can read and write UDP streams.
+	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can support the UDP transport.
 	UDPRTCPAddress string
 	// a range of multicast IPs to use with the UDP-multicast transport.
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server
-	// can read and write UDP-multicast streams.
+	// can support the UDP-multicast transport.
 	MulticastIPRange string
 	// a port to send RTP packets with the UDP-multicast transport.
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server
-	// can read and write UDP-multicast streams.
+	// can support the UDP-multicast transport.
 	MulticastRTPPort int
 	// a port to send RTCP packets with the UDP-multicast transport.
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server
-	// can read and write UDP-multicast streams.
+	// can support the UDP-multicast transport.
 	MulticastRTCPPort int
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
