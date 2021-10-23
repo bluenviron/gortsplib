@@ -309,7 +309,7 @@ func (ss *ServerSession) run() {
 
 			case <-checkTimeoutTicker.C:
 				switch {
-				// in case of RECORD and UDP, timeout happens when no frames are being received
+				// in case of RECORD and UDP, timeout happens when no RTCP packets are being received
 				case ss.state == ServerSessionStatePublish && (*ss.setuppedTransport == TransportUDP ||
 					*ss.setuppedTransport == TransportUDPMulticast):
 					now := time.Now()
@@ -318,7 +318,7 @@ func (ss *ServerSession) run() {
 						return liberrors.ErrServerSessionTimedOut{}
 					}
 
-					// in case of PLAY and UDP, timeout happens when no request arrives
+					// in case of PLAY and UDP, timeout happens when no RTSP request arrives
 				case ss.state == ServerSessionStateRead && (*ss.setuppedTransport == TransportUDP ||
 					*ss.setuppedTransport == TransportUDPMulticast):
 					now := time.Now()
@@ -326,7 +326,7 @@ func (ss *ServerSession) run() {
 						return liberrors.ErrServerSessionTimedOut{}
 					}
 
-					// otherwise, there's no timeout until all associated connections are closed
+					// in case of TCP, there's no timeout until all associated connections are closed
 				}
 
 			case <-receiverReportTicker.C:
