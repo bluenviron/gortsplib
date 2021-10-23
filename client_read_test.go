@@ -26,10 +26,10 @@ func TestClientReadTracks(t *testing.T) {
 	track1, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
-	track2, err := NewTrackAAC(96, &TrackConfigAAC{Type: 1, SampleRate: 44100, ChannelCount: 2})
+	track2, err := NewTrackAAC(96, &TrackConfigAAC{Type: 2, SampleRate: 44100, ChannelCount: 2})
 	require.NoError(t, err)
 
-	track3, err := NewTrackAAC(96, &TrackConfigAAC{Type: 1, SampleRate: 96000, ChannelCount: 2})
+	track3, err := NewTrackAAC(96, &TrackConfigAAC{Type: 2, SampleRate: 96000, ChannelCount: 2})
 	require.NoError(t, err)
 
 	l, err := net.Listen("tcp", "localhost:8554")
