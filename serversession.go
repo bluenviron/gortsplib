@@ -309,7 +309,7 @@ func (ss *ServerSession) run() {
 
 			case <-checkTimeoutTicker.C:
 				switch {
-				// in case of RECORD and UDP, timeout happens when no RTCP packets are being received
+				// in case of RECORD and UDP, timeout happens when no RTP or RTCP packets are being received
 				case ss.state == ServerSessionStatePublish && (*ss.setuppedTransport == TransportUDP ||
 					*ss.setuppedTransport == TransportUDPMulticast):
 					now := time.Now()
