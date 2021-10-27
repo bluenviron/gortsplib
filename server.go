@@ -363,8 +363,8 @@ outer:
 
 		case req := <-s.sessionRequest:
 			if ss, ok := s.sessions[req.id]; ok {
-				if !req.sc.ip().Equal(ss.ip()) ||
-					req.sc.zone() != ss.zone() {
+				if !req.sc.ip().Equal(ss.author.ip()) ||
+					req.sc.zone() != ss.author.zone() {
 					req.res <- sessionRequestRes{
 						res: &base.Response{
 							StatusCode: base.StatusBadRequest,

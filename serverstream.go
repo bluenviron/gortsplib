@@ -132,8 +132,8 @@ func (st *ServerStream) readerAdd(
 		// check whether client ports are already in use by another reader.
 		for r := range st.readersUnicast {
 			if *r.setuppedTransport == TransportUDP &&
-				r.ip().Equal(ss.ip()) &&
-				r.zone() == ss.zone() {
+				r.author.ip().Equal(ss.author.ip()) &&
+				r.author.zone() == ss.author.zone() {
 				for _, rt := range r.setuppedTracks {
 					if rt.udpRTPPort == clientPorts[0] {
 						return liberrors.ErrServerUDPPortsAlreadyInUse{Port: rt.udpRTPPort}
@@ -199,7 +199,7 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 	default: // UDPMulticast
 		for trackID := range ss.setuppedTracks {
 			st.multicastListeners[trackID].rtcpListener.addClient(
-				ss.ip(), st.multicastListeners[trackID].rtcpListener.port(), ss, trackID, false)
+				ss.author.ip(), st.multicastListeners[trackID].rtcpListener.port(), ss, trackID, false)
 		}
 	}
 }

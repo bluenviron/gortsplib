@@ -218,14 +218,6 @@ func (ss *ServerSession) AnnouncedTracks() []ServerSessionAnnouncedTrack {
 	return ss.announcedTracks
 }
 
-func (ss *ServerSession) ip() net.IP {
-	return ss.author.ip()
-}
-
-func (ss *ServerSession) zone() string {
-	return ss.author.zone()
-}
-
 func (ss *ServerSession) checkState(allowed map[ServerSessionState]struct{}) error {
 	if _, ok := allowed[ss.state]; ok {
 		return nil
@@ -849,7 +841,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				case TransportUDP:
 					for trackID, track := range ss.setuppedTracks {
 						// readers can send RTCP packets
-						sc.s.udpRTCPListener.addClient(ss.ip(), track.udpRTCPPort, ss, trackID, false)
+						sc.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, false)
 
 						// open the firewall by sending packets to the counterpart
 						ss.WriteFrame(trackID, StreamTypeRTCP,
@@ -923,8 +915,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			switch *ss.setuppedTransport {
 			case TransportUDP:
 				for trackID, track := range ss.setuppedTracks {
-					ss.s.udpRTPListener.addClient(ss.ip(), track.udpRTPPort, ss, trackID, true)
-					ss.s.udpRTCPListener.addClient(ss.ip(), track.udpRTCPPort, ss, trackID, true)
+					ss.s.udpRTPListener.addClient(ss.author.ip(), track.udpRTPPort, ss, trackID, true)
+					ss.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, true)
 
 					// open the firewall by sending packets to the counterpart
 					ss.WriteFrame(trackID, StreamTypeRTP,
@@ -1069,14 +1061,14 @@ func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload 
 
 		if streamType == StreamTypeRTP {
 			ss.s.udpRTPListener.write(payload, &net.UDPAddr{
-				IP:   ss.ip(),
-				Zone: ss.zone(),
+				IP:   ss.author.ip(),
+				Zone: ss.author.zone(),
 				Port: track.udpRTPPort,
 			})
 		} else {
 			ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
-				IP:   ss.ip(),
-				Zone: ss.zone(),
+				IP:   ss.author.ip(),
+				Zone: ss.author.zone(),
 				Port: track.udpRTCPPort,
 			})
 		}
