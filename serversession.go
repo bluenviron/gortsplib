@@ -295,7 +295,7 @@ func (ss *ServerSession) run() {
 
 					// close if there are no active connections
 					if len(ss.conns) == 0 {
-						return liberrors.ErrServerSessionTeardown{}
+						return liberrors.ErrServerSessionNoAssociatedConns{}
 					}
 				}
 

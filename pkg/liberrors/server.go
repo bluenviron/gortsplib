@@ -279,3 +279,11 @@ func (e ErrServerUDPPortsAlreadyInUse) Error() string {
 	return fmt.Sprintf("UDP ports %d and %d are already in use by another reader",
 		e.Port, e.Port+1)
 }
+
+// ErrServerSessionNoAssociatedConns is an error that can be returned by a server.
+type ErrServerSessionNoAssociatedConns struct{}
+
+// Error implements the error interface.
+func (e ErrServerSessionNoAssociatedConns) Error() string {
+	return "there are no associated connections anymore"
+}
