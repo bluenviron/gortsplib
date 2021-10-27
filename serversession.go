@@ -293,7 +293,7 @@ func (ss *ServerSession) run() {
 					ss.state != ServerSessionStateRead) ||
 					*ss.setuppedTransport == TransportTCP {
 
-					// close if there are no active connections
+					// close if there are no associated connections
 					if len(ss.conns) == 0 {
 						return liberrors.ErrServerSessionNoAssociatedConns{}
 					}
