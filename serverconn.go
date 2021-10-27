@@ -413,6 +413,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			_, res, err := sc.handleRequestInSession(sxID, req, false)
 
 			if _, ok := err.(liberrors.ErrServerTCPFramesDisable); ok {
+				sc.tcpSession = nil
 				sc.tcpFrameSetEnabled = false
 				return res, nil
 			}
