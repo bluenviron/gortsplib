@@ -23,12 +23,20 @@ func (e ErrServerSessionNotFound) Error() string {
 	return "session not found"
 }
 
-// ErrServerSessionTimedOut is an error that can be returned by a server.
-type ErrServerSessionTimedOut struct{}
+// ErrServerNoUDPPacketsInAWhile is an error that can be returned by a server.
+type ErrServerNoUDPPacketsInAWhile struct{}
 
 // Error implements the error interface.
-func (e ErrServerSessionTimedOut) Error() string {
-	return "timed out"
+func (e ErrServerNoUDPPacketsInAWhile) Error() string {
+	return "no UDP packets received in a while"
+}
+
+// ErrServerNoRTSPRequestsInAWhile is an error that can be returned by a server.
+type ErrServerNoRTSPRequestsInAWhile struct{}
+
+// Error implements the error interface.
+func (e ErrServerNoRTSPRequestsInAWhile) Error() string {
+	return "no RTSP requests received in a while"
 }
 
 // ErrServerTCPFramesEnable is an error that can be returned by a server.
@@ -207,14 +215,6 @@ func (e ErrServerNotAllAnnouncedTracksSetup) Error() string {
 	return "not all announced tracks have been setup"
 }
 
-// ErrServerNoUDPPacketsRecently is an error that can be returned by a server.
-type ErrServerNoUDPPacketsRecently struct{}
-
-// Error implements the error interface.
-func (e ErrServerNoUDPPacketsRecently) Error() string {
-	return "no UDP packets received (maybe there's a firewall/NAT in between)"
-}
-
 // ErrServerLinkedToOtherSession is an error that can be returned by a server.
 type ErrServerLinkedToOtherSession struct{}
 
@@ -228,7 +228,7 @@ type ErrServerSessionTeardown struct{}
 
 // Error implements the error interface.
 func (e ErrServerSessionTeardown) Error() string {
-	return "destroyed by a connection"
+	return "teared down by a request"
 }
 
 // ErrServerSessionLinkedToOtherConn is an error that can be returned by a server.

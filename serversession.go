@@ -315,7 +315,7 @@ func (ss *ServerSession) run() {
 					now := time.Now()
 					lft := atomic.LoadInt64(ss.udpLastFrameTime)
 					if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
-						return liberrors.ErrServerSessionTimedOut{}
+						return liberrors.ErrServerNoUDPPacketsInAWhile{}
 					}
 
 					// in case of PLAY and UDP, timeout happens when no RTSP request arrives
@@ -323,7 +323,7 @@ func (ss *ServerSession) run() {
 					*ss.setuppedTransport == TransportUDPMulticast):
 					now := time.Now()
 					if now.Sub(ss.lastRequestTime) >= ss.s.closeSessionAfterNoRequestsFor {
-						return liberrors.ErrServerSessionTimedOut{}
+						return liberrors.ErrServerNoRTSPRequestsInAWhile{}
 					}
 
 					// in case of TCP, there's no timeout until all associated connections are closed
