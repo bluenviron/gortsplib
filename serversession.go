@@ -1019,7 +1019,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 	case base.Teardown:
 		return &base.Response{
 			StatusCode: base.StatusOK,
-		}, liberrors.ErrServerSessionTeardown{}
+		}, liberrors.ErrServerSessionTeardown{Author: sc.NetConn().RemoteAddr()}
 
 	case base.GetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {

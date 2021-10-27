@@ -2,6 +2,7 @@ package liberrors
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
@@ -224,11 +225,13 @@ func (e ErrServerLinkedToOtherSession) Error() string {
 }
 
 // ErrServerSessionTeardown is an error that can be returned by a server.
-type ErrServerSessionTeardown struct{}
+type ErrServerSessionTeardown struct {
+	Author net.Addr
+}
 
 // Error implements the error interface.
 func (e ErrServerSessionTeardown) Error() string {
-	return "teared down by a request"
+	return fmt.Sprintf("teared down by %v", e.Author)
 }
 
 // ErrServerSessionLinkedToOtherConn is an error that can be returned by a server.
