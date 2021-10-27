@@ -277,7 +277,7 @@ func (ss *ServerSession) run() {
 
 				if _, ok := err.(liberrors.ErrServerSessionTeardown); ok {
 					req.res <- sessionRequestRes{res: res, err: nil}
-					return liberrors.ErrServerSessionTeardown{}
+					return err
 				}
 
 				req.res <- sessionRequestRes{

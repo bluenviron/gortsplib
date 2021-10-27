@@ -228,7 +228,7 @@ type ErrServerSessionTeardown struct{}
 
 // Error implements the error interface.
 func (e ErrServerSessionTeardown) Error() string {
-	return "teardown"
+	return "destroyed by a connection"
 }
 
 // ErrServerSessionLinkedToOtherConn is an error that can be returned by a server.
