@@ -39,7 +39,9 @@ func setupGetTrackIDPathQuery(
 		// URL doesn't contain trackID - it's track zero
 		if i < 0 {
 			if !strings.HasSuffix(pathAndQuery, "/") {
-				return 0, "", "", fmt.Errorf("path of a SETUP request must end with a slash (%v)", pathAndQuery)
+				return 0, "", "", fmt.Errorf("path of a SETUP request must end with a slash. " +
+					"This typically happens when VLC fails a request, and then switches to an " +
+					"unsupported RTSP dialect")
 			}
 			pathAndQuery = pathAndQuery[:len(pathAndQuery)-1]
 
