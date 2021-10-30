@@ -83,7 +83,6 @@ func TestClientPublishSerial(t *testing.T) {
 					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
-
 				} else {
 					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
@@ -125,7 +124,6 @@ func TestClientPublishSerial(t *testing.T) {
 					n, _, err := l1.ReadFrom(buf)
 					require.NoError(t, err)
 					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, buf[:n])
-
 				} else {
 					var f base.InterleavedFrame
 					f.Payload = make([]byte, 2048)
@@ -269,7 +267,6 @@ func TestClientPublishParallel(t *testing.T) {
 					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
-
 				} else {
 					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
@@ -409,7 +406,6 @@ func TestClientPublishPauseSerial(t *testing.T) {
 					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
-
 				} else {
 					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
@@ -565,7 +561,6 @@ func TestClientPublishPauseParallel(t *testing.T) {
 					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
-
 				} else {
 					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs

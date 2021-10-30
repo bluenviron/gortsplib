@@ -409,7 +409,6 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
-
 			} else {
 				proto = "rtsp"
 				s.UDPRTPAddress = "127.0.0.1:8000"

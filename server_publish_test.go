@@ -18,6 +18,44 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
+func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
+	return base.Request{
+		Method: base.Announce,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":         base.HeaderValue{"1"},
+			"Content-Type": base.HeaderValue{"application/sdp"},
+		},
+		Body: func() []byte {
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+			require.NoError(t, err)
+			track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
+				Key:   "control",
+				Value: control,
+			})
+
+			sout := &psdp.SessionDescription{
+				SessionName: psdp.SessionName("Stream"),
+				Origin: psdp.Origin{
+					Username:       "-",
+					NetworkType:    "IN",
+					AddressType:    "IP4",
+					UnicastAddress: "127.0.0.1",
+				},
+				TimeDescriptions: []psdp.TimeDescription{
+					{Timing: psdp.Timing{0, 0}}, //nolint:govet
+				},
+				MediaDescriptions: []*psdp.MediaDescription{
+					track.Media,
+				},
+			}
+
+			byts, _ := sout.Marshal()
+			return byts
+		}(),
+	}
+}
+
 func TestServerPublishErrorAnnounce(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -92,119 +130,17 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 		},
 		{
 			"invalid URL 1",
-			base.Request{
-				Method: base.Announce,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-				Header: base.Header{
-					"CSeq":         base.HeaderValue{"1"},
-					"Content-Type": base.HeaderValue{"application/sdp"},
-				},
-				Body: func() []byte {
-					track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
-					require.NoError(t, err)
-					track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
-						Key:   "control",
-						Value: "rtsp://  aaaaa",
-					})
-
-					sout := &psdp.SessionDescription{
-						SessionName: psdp.SessionName("Stream"),
-						Origin: psdp.Origin{
-							Username:       "-",
-							NetworkType:    "IN",
-							AddressType:    "IP4",
-							UnicastAddress: "127.0.0.1",
-						},
-						TimeDescriptions: []psdp.TimeDescription{
-							{Timing: psdp.Timing{0, 0}}, //nolint:govet
-						},
-						MediaDescriptions: []*psdp.MediaDescription{
-							track.Media,
-						},
-					}
-
-					byts, _ := sout.Marshal()
-					return byts
-				}(),
-			},
+			invalidURLAnnounceReq(t, "rtsp://  aaaaa"),
 			"unable to generate track URL",
 		},
 		{
 			"invalid URL 2",
-			base.Request{
-				Method: base.Announce,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-				Header: base.Header{
-					"CSeq":         base.HeaderValue{"1"},
-					"Content-Type": base.HeaderValue{"application/sdp"},
-				},
-				Body: func() []byte {
-					track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
-					require.NoError(t, err)
-					track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
-						Key:   "control",
-						Value: "rtsp://host",
-					})
-
-					sout := &psdp.SessionDescription{
-						SessionName: psdp.SessionName("Stream"),
-						Origin: psdp.Origin{
-							Username:       "-",
-							NetworkType:    "IN",
-							AddressType:    "IP4",
-							UnicastAddress: "127.0.0.1",
-						},
-						TimeDescriptions: []psdp.TimeDescription{
-							{Timing: psdp.Timing{0, 0}}, //nolint:govet
-						},
-						MediaDescriptions: []*psdp.MediaDescription{
-							track.Media,
-						},
-					}
-
-					byts, _ := sout.Marshal()
-					return byts
-				}(),
-			},
+			invalidURLAnnounceReq(t, "rtsp://host"),
 			"invalid track URL (rtsp://localhost:8554)",
 		},
 		{
 			"invalid URL 3",
-			base.Request{
-				Method: base.Announce,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-				Header: base.Header{
-					"CSeq":         base.HeaderValue{"1"},
-					"Content-Type": base.HeaderValue{"application/sdp"},
-				},
-				Body: func() []byte {
-					track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
-					require.NoError(t, err)
-					track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
-						Key:   "control",
-						Value: "rtsp://host/otherpath",
-					})
-
-					sout := &psdp.SessionDescription{
-						SessionName: psdp.SessionName("Stream"),
-						Origin: psdp.Origin{
-							Username:       "-",
-							NetworkType:    "IN",
-							AddressType:    "IP4",
-							UnicastAddress: "127.0.0.1",
-						},
-						TimeDescriptions: []psdp.TimeDescription{
-							{Timing: psdp.Timing{0, 0}}, //nolint:govet
-						},
-						MediaDescriptions: []*psdp.MediaDescription{
-							track.Media,
-						},
-					}
-
-					byts, _ := sout.Marshal()
-					return byts
-				}(),
-			},
+			invalidURLAnnounceReq(t, "rtsp://host/otherpath"),
 			"invalid track path: must begin with 'teststream', but is 'otherpath'",
 		},
 	} {
@@ -847,7 +783,6 @@ func TestServerPublish(t *testing.T) {
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[1],
 				})
-
 			} else {
 				err = base.InterleavedFrame{
 					Channel: 0,
@@ -873,7 +808,6 @@ func TestServerPublish(t *testing.T) {
 				n, _, err := l2.ReadFrom(buf)
 				require.NoError(t, err)
 				require.Equal(t, []byte{0x09, 0x0A, 0x0B, 0x0C}, buf[:n])
-
 			} else {
 				var f base.InterleavedFrame
 				f.Payload = make([]byte, 2048)

@@ -184,7 +184,6 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 
 				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
-
 			} else {
 				scheme = "rtsp"
 			}
@@ -1527,7 +1526,6 @@ func TestClientReadPause(t *testing.T) {
 					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
-
 				} else {
 					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs
@@ -1894,7 +1892,6 @@ func TestClientReadErrorTimeout(t *testing.T) {
 					th.Protocol = headers.TransportProtocolUDP
 					th.ServerPorts = &[2]int{34556, 34557}
 					th.ClientPorts = inTH.ClientPorts
-
 				} else {
 					th.Protocol = headers.TransportProtocolTCP
 					th.InterleavedIDs = inTH.InterleavedIDs

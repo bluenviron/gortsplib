@@ -571,7 +571,6 @@ func (cc *ClientConn) runBackgroundPlayUDP() error {
 				checkStreamInitial = false
 				checkStreamTicker.Stop()
 				checkStreamTicker = time.NewTicker(clientConnCheckStreamPeriod)
-
 			} else {
 				inTimeout := func() bool {
 					now := time.Now()
@@ -1024,7 +1023,6 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response
 			res.StatusCode >= base.StatusMovedPermanently &&
 			res.StatusCode <= base.StatusUseProxy &&
 			len(res.Header["Location"]) == 1 {
-
 			cc.reset(false)
 
 			u, err := base.ParseURL(res.Header["Location"][0])
@@ -1303,7 +1301,6 @@ func (cc *ClientConn) doSetup(
 		if res.StatusCode == base.StatusUnsupportedTransport &&
 			cc.protocol == nil &&
 			cc.c.Transport == nil {
-
 			v := TransportTCP
 			cc.protocol = &v
 

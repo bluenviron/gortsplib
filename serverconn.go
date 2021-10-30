@@ -191,7 +191,6 @@ func (sc *ServerConn) run() {
 							return liberrors.ErrServerTerminated{}
 						}
 					}
-
 				} else {
 					err := req.Read(sc.br)
 					if err != nil {
@@ -522,7 +521,6 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 			// start background write
 			sc.tcpFrameBackgroundWriteDone = make(chan struct{})
 			go sc.tcpFrameBackgroundWrite()
-
 		} else {
 			if sc.tcpFrameIsRecording {
 				sc.tcpFrameTimeout = false

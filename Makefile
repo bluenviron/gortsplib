@@ -1,6 +1,6 @@
 
 BASE_IMAGE = amd64/golang:1.17-alpine3.13
-LINT_IMAGE = golangci/golangci-lint:v1.38.0
+LINT_IMAGE = golangci/golangci-lint:v1.40
 
 .PHONY: $(shell ls)
 
@@ -36,7 +36,7 @@ export DOCKERFILE_FORMAT
 format:
 	echo "$$DOCKERFILE_FORMAT" | docker build -q . -f - -t temp
 	docker run --rm -it -v $(PWD):/s -w /s temp \
-	sh -c "find . -type f -name '*.go' | xargs gofumpt -l -w"
+	sh -c "gofumpt -l -w ."
 
 define DOCKERFILE_TEST
 FROM $(BASE_IMAGE)

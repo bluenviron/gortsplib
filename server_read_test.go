@@ -142,148 +142,111 @@ func TestServerReadSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerReadErrorSetupDifferentPaths(t *testing.T) {
-	connClosed := make(chan struct{})
+func TestServerReadSetupErrors(t *testing.T) {
+	for _, ca := range []string{"different paths", "double setup"} {
+		t.Run(ca, func(t *testing.T) {
+			connClosed := make(chan struct{})
 
-	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
-	require.NoError(t, err)
+			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+			require.NoError(t, err)
 
-	stream := NewServerStream(Tracks{track})
+			stream := NewServerStream(Tracks{track})
 
-	s := &Server{
-		Handler: &testServerHandler{
-			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-				require.Equal(t, "can't setup tracks with different paths", ctx.Error.Error())
-				close(connClosed)
-			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-				return &base.Response{
-					StatusCode: base.StatusOK,
-				}, stream, nil
-			},
-		},
+			s := &Server{
+				Handler: &testServerHandler{
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+						if ca == "different paths" {
+							require.Equal(t, "can't setup tracks with different paths", ctx.Error.Error())
+						} else {
+							require.Equal(t, "track 0 has already been setup", ctx.Error.Error())
+						}
+						close(connClosed)
+					},
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+				},
+			}
+
+			err = s.Start("localhost:8554")
+			require.NoError(t, err)
+			defer s.Close()
+
+			conn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer conn.Close()
+			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+			th := &headers.Transport{
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+				InterleavedIDs: &[2]int{0, 1},
+			}
+
+			if ca == "different paths" {
+				res, err := writeReqReadRes(bconn, base.Request{
+					Method: base.Setup,
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+					Header: base.Header{
+						"CSeq":      base.HeaderValue{"1"},
+						"Transport": th.Write(),
+					},
+				})
+				require.NoError(t, err)
+				require.Equal(t, base.StatusOK, res.StatusCode)
+
+				th.InterleavedIDs = &[2]int{2, 3}
+
+				res, err = writeReqReadRes(bconn, base.Request{
+					Method: base.Setup,
+					URL:    mustParseURL("rtsp://localhost:8554/test12stream/trackID=1"),
+					Header: base.Header{
+						"CSeq":      base.HeaderValue{"2"},
+						"Transport": th.Write(),
+						"Session":   res.Header["Session"],
+					},
+				})
+				require.NoError(t, err)
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
+			} else {
+				res, err := writeReqReadRes(bconn, base.Request{
+					Method: base.Setup,
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+					Header: base.Header{
+						"CSeq":      base.HeaderValue{"1"},
+						"Transport": th.Write(),
+					},
+				})
+				require.NoError(t, err)
+				require.Equal(t, base.StatusOK, res.StatusCode)
+
+				th.InterleavedIDs = &[2]int{2, 3}
+
+				res, err = writeReqReadRes(bconn, base.Request{
+					Method: base.Setup,
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+					Header: base.Header{
+						"CSeq":      base.HeaderValue{"2"},
+						"Transport": th.Write(),
+						"Session":   res.Header["Session"],
+					},
+				})
+				require.NoError(t, err)
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
+			}
+
+			<-connClosed
+		})
 	}
-
-	err = s.Start("localhost:8554")
-	require.NoError(t, err)
-	defer s.Close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	th := &headers.Transport{
-		Protocol: headers.TransportProtocolTCP,
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModePlay
-			return &v
-		}(),
-		InterleavedIDs: &[2]int{0, 1},
-	}
-
-	res, err := writeReqReadRes(bconn, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq":      base.HeaderValue{"1"},
-			"Transport": th.Write(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	th.InterleavedIDs = &[2]int{2, 3}
-
-	res, err = writeReqReadRes(bconn, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/test12stream/trackID=1"),
-		Header: base.Header{
-			"CSeq":      base.HeaderValue{"2"},
-			"Transport": th.Write(),
-			"Session":   res.Header["Session"],
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusBadRequest, res.StatusCode)
-
-	<-connClosed
-}
-
-func TestServerReadErrorSetupTrackTwice(t *testing.T) {
-	connClosed := make(chan struct{})
-
-	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
-	require.NoError(t, err)
-
-	stream := NewServerStream(Tracks{track})
-
-	s := &Server{
-		Handler: &testServerHandler{
-			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-				require.Equal(t, "track 0 has already been setup", ctx.Error.Error())
-				close(connClosed)
-			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-				return &base.Response{
-					StatusCode: base.StatusOK,
-				}, stream, nil
-			},
-		},
-	}
-
-	err = s.Start("localhost:8554")
-	require.NoError(t, err)
-	defer s.Close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	th := &headers.Transport{
-		Protocol: headers.TransportProtocolTCP,
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModePlay
-			return &v
-		}(),
-		InterleavedIDs: &[2]int{0, 1},
-	}
-
-	res, err := writeReqReadRes(bconn, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq":      base.HeaderValue{"1"},
-			"Transport": th.Write(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	th.InterleavedIDs = &[2]int{2, 3}
-
-	res, err = writeReqReadRes(bconn, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq":      base.HeaderValue{"2"},
-			"Transport": th.Write(),
-			"Session":   res.Header["Session"],
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusBadRequest, res.StatusCode)
-
-	<-connClosed
 }
 
 func TestServerRead(t *testing.T) {

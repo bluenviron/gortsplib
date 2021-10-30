@@ -65,7 +65,6 @@ func (t *RangeSMPTETime) read(s string) error {
 				return err
 			}
 			t.Subframe = uint(tmp)
-
 		} else {
 			tmp, err := strconv.ParseUint(parts[0], 10, 64)
 			if err != nil {
