@@ -416,6 +416,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						}
 					},
 				},
+				RTSPAddress: "localhost:8554",
 			}
 
 			var proto string
@@ -433,7 +434,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 				s.MulticastRTCPPort = 8003
 			}
 
-			err := s.Start("localhost:8554")
+			err := s.Start()
 			require.NoError(t, err)
 			defer s.Wait()
 			defer s.Close()
@@ -531,10 +532,11 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 func TestServerClose(t *testing.T) {
 	s := &Server{
-		Handler: &testServerHandler{},
+		Handler:     &testServerHandler{},
+		RTSPAddress: "localhost:8554",
 	}
 
-	err := s.Start("localhost:8554")
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	s.Close()
@@ -546,8 +548,9 @@ func TestServerErrorInvalidUDPPorts(t *testing.T) {
 		s := &Server{
 			UDPRTPAddress:  "127.0.0.1:8006",
 			UDPRTCPAddress: "127.0.0.1:8009",
+			RTSPAddress:    "localhost:8554",
 		}
-		err := s.Start("localhost:8554")
+		err := s.Start()
 		require.Error(t, err)
 	})
 
@@ -555,8 +558,9 @@ func TestServerErrorInvalidUDPPorts(t *testing.T) {
 		s := &Server{
 			UDPRTPAddress:  "127.0.0.1:8003",
 			UDPRTCPAddress: "127.0.0.1:8004",
+			RTSPAddress:    "localhost:8554",
 		}
-		err := s.Start("localhost:8554")
+		err := s.Start()
 		require.Error(t, err)
 	})
 }
@@ -574,9 +578,10 @@ func TestServerConnClose(t *testing.T) {
 				close(connClosed)
 			},
 		},
+		RTSPAddress: "localhost:8554",
 	}
 
-	err := s.Start("localhost:8554")
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
@@ -589,8 +594,10 @@ func TestServerConnClose(t *testing.T) {
 }
 
 func TestServerCSeq(t *testing.T) {
-	s := &Server{}
-	err := s.Start("localhost:8554")
+	s := &Server{
+		RTSPAddress: "localhost:8554",
+	}
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
@@ -616,15 +623,16 @@ func TestServerCSeq(t *testing.T) {
 func TestServerErrorCSeqMissing(t *testing.T) {
 	connClosed := make(chan struct{})
 
-	h := &testServerHandler{
-		onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-			require.EqualError(t, ctx.Error, "CSeq is missing")
-			close(connClosed)
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				require.EqualError(t, ctx.Error, "CSeq is missing")
+				close(connClosed)
+			},
 		},
+		RTSPAddress: "localhost:8554",
 	}
-
-	s := &Server{Handler: h}
-	err := s.Start("localhost:8554")
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
@@ -648,15 +656,16 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 func TestServerErrorInvalidMethod(t *testing.T) {
 	connClosed := make(chan struct{})
 
-	h := &testServerHandler{
-		onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-			require.EqualError(t, ctx.Error, "unhandled request (INVALID rtsp://localhost:8554/)")
-			close(connClosed)
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				require.EqualError(t, ctx.Error, "unhandled request (INVALID rtsp://localhost:8554/)")
+				close(connClosed)
+			},
 		},
+		RTSPAddress: "localhost:8554",
 	}
-
-	s := &Server{Handler: h}
-	err := s.Start("localhost:8554")
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
@@ -703,9 +712,10 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 				}, nil
 			},
 		},
+		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start("localhost:8554")
+	err = s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
@@ -801,9 +811,10 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 				}, nil
 			},
 		},
+		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start("localhost:8554")
+	err = s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
@@ -887,9 +898,10 @@ func TestServerGetSetParameter(t *testing.T) {
 				}, nil
 			},
 		},
+		RTSPAddress: "localhost:8554",
 	}
 
-	err := s.Start("localhost:8554")
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
@@ -959,9 +971,10 @@ func TestServerErrorInvalidSession(t *testing.T) {
 						}, nil
 					},
 				},
+				RTSPAddress: "localhost:8554",
 			}
 
-			err := s.Start("localhost:8554")
+			err := s.Start()
 			require.NoError(t, err)
 			defer s.Wait()
 			defer s.Close()
@@ -1002,9 +1015,10 @@ func TestServerSessionClose(t *testing.T) {
 				}, nil, nil
 			},
 		},
+		RTSPAddress: "localhost:8554",
 	}
 
-	err := s.Start("localhost:8554")
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
@@ -1057,9 +1071,10 @@ func TestServerSessionAutoClose(t *testing.T) {
 				}, stream, nil
 			},
 		},
+		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start("localhost:8554")
+	err = s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
@@ -1135,9 +1150,10 @@ func TestServerErrorInvalidPath(t *testing.T) {
 						}, nil
 					},
 				},
+				RTSPAddress: "localhost:8554",
 			}
 
-			err = s.Start("localhost:8554")
+			err = s.Start()
 			require.NoError(t, err)
 			defer s.Wait()
 			defer s.Close()

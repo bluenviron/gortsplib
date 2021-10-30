@@ -80,6 +80,9 @@ type Server struct {
 	// timeout of write operations.
 	// It defaults to 10 seconds
 	WriteTimeout time.Duration
+	// the RTSP address of the server, to accept connections and send and receive
+	// packets with the TCP transport.
+	RTSPAddress string
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
 	// a port to send and receive RTP packets with the UDP transport.
@@ -151,8 +154,8 @@ type Server struct {
 	streamMulticastIP chan streamMulticastIPReq
 }
 
-// Start starts listening on the given address.
-func (s *Server) Start(address string) error {
+// Start starts the server.
+func (s *Server) Start() error {
 	// RTSP parameters
 	if s.ReadTimeout == 0 {
 		s.ReadTimeout = 10 * time.Second
@@ -189,6 +192,10 @@ func (s *Server) Start(address string) error {
 
 	if s.TLSConfig != nil && s.MulticastIPRange != "" {
 		return fmt.Errorf("TLS can't be used with UDP-multicast")
+	}
+
+	if s.RTSPAddress == "" {
+		return fmt.Errorf("RTSPAddress not provided")
 	}
 
 	if (s.UDPRTPAddress != "" && s.UDPRTCPAddress == "") ||
@@ -276,7 +283,7 @@ func (s *Server) Start(address string) error {
 	}
 
 	var err error
-	s.tcpListener, err = s.Listen("tcp", address)
+	s.tcpListener, err = s.Listen("tcp", s.RTSPAddress)
 	if err != nil {
 		if s.udpRTPListener != nil {
 			s.udpRTPListener.close()
@@ -462,8 +469,8 @@ func (s *Server) run() {
 }
 
 // StartAndWait starts the server and waits until a fatal error.
-func (s *Server) StartAndWait(address string) error {
-	err := s.Start(address)
+func (s *Server) StartAndWait() error {
+	err := s.Start()
 	if err != nil {
 		return err
 	}

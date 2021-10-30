@@ -149,6 +149,7 @@ func main() {
 	// configure server
 	s := &gortsplib.Server{
 		Handler:           &serverHandler{},
+		RTSPAddress:       ":8554",
 		UDPRTPAddress:     ":8000",
 		UDPRTCPAddress:    ":8001",
 		MulticastIPRange:  "224.1.0.0/16",
@@ -158,5 +159,5 @@ func main() {
 
 	// start server and wait until a fatal error
 	log.Printf("server is ready")
-	panic(s.StartAndWait(":8554"))
+	panic(s.StartAndWait())
 }

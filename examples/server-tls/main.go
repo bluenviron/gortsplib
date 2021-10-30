@@ -157,11 +157,12 @@ func main() {
 
 	// configure server
 	s := &gortsplib.Server{
-		Handler:   &serverHandler{},
-		TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
+		Handler:     &serverHandler{},
+		TLSConfig:   &tls.Config{Certificates: []tls.Certificate{cert}},
+		RTSPAddress: ":8554",
 	}
 
 	// start server and wait until a fatal error
 	log.Printf("server is ready")
-	panic(s.StartAndWait(":8554"))
+	panic(s.StartAndWait())
 }
