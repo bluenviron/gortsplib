@@ -430,7 +430,7 @@ func TestClientRead(t *testing.T) {
 					require.Equal(t, StreamTypeRTP, streamType)
 					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
 
-					err = conn.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+					err = conn.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
 					require.NoError(t, err)
 				})
 			}()

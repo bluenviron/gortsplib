@@ -509,7 +509,7 @@ func (cc *ClientConn) runBackgroundPlayUDP() error {
 			now := time.Now()
 			for trackID, cct := range cc.tracks {
 				rr := cct.rtcpReceiver.Report(now)
-				cc.WriteFrame(trackID, StreamTypeRTCP, rr)
+				cc.WritePacketRTCP(trackID, rr)
 			}
 
 		case <-keepaliveTicker.C:
@@ -645,7 +645,7 @@ func (cc *ClientConn) runBackgroundPlayTCP() error {
 			now := time.Now()
 			for trackID, cct := range cc.tracks {
 				rr := cct.rtcpReceiver.Report(now)
-				cc.WriteFrame(trackID, StreamTypeRTCP, rr)
+				cc.WritePacketRTCP(trackID, rr)
 			}
 
 		case <-checkStreamTicker.C:
@@ -709,7 +709,7 @@ func (cc *ClientConn) runBackgroundRecordUDP() error {
 			for trackID, cct := range cc.tracks {
 				sr := cct.rtcpSender.Report(now)
 				if sr != nil {
-					cc.WriteFrame(trackID, StreamTypeRTCP, sr)
+					cc.WritePacketRTCP(trackID, sr)
 				}
 			}
 
@@ -766,7 +766,7 @@ func (cc *ClientConn) runBackgroundRecordTCP() error {
 			for trackID, cct := range cc.tracks {
 				sr := cct.rtcpSender.Report(now)
 				if sr != nil {
-					cc.WriteFrame(trackID, StreamTypeRTCP, sr)
+					cc.WritePacketRTCP(trackID, sr)
 				}
 			}
 
@@ -1677,8 +1677,8 @@ func (cc *ClientConn) ReadFrames(onFrame func(int, StreamType, []byte)) error {
 	return cc.backgroundErr
 }
 
-// WriteFrame writes a frame.
-func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []byte) error {
+// WritePacketRTP writes a RTP packet.
+func (cc *ClientConn) WritePacketRTP(trackID int, payload []byte) error {
 	now := time.Now()
 
 	cc.writeMutex.RLock()
@@ -1689,25 +1689,49 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 	}
 
 	if cc.tracks[trackID].rtcpSender != nil {
-		if streamType == StreamTypeRTP {
-			cc.tracks[trackID].rtcpSender.ProcessPacketRTP(now, payload)
-		} else {
-			cc.tracks[trackID].rtcpSender.ProcessPacketRTCP(now, payload)
-		}
+		cc.tracks[trackID].rtcpSender.ProcessPacketRTP(now, payload)
 	}
 
 	switch *cc.protocol {
 	case TransportUDP, TransportUDPMulticast:
-		if streamType == StreamTypeRTP {
-			return cc.tracks[trackID].udpRTPListener.write(payload)
-		}
+		return cc.tracks[trackID].udpRTPListener.write(payload)
+
+	default: // TCP
+		channel := cc.tracks[trackID].tcpChannel
+
+		cc.tcpWriteMutex.Lock()
+		defer cc.tcpWriteMutex.Unlock()
+
+		cc.nconn.SetWriteDeadline(now.Add(cc.c.WriteTimeout))
+		return base.InterleavedFrame{
+			Channel: channel,
+			Payload: payload,
+		}.Write(cc.bw)
+	}
+}
+
+// WritePacketRTCP writes a RTCP packet.
+func (cc *ClientConn) WritePacketRTCP(trackID int, payload []byte) error {
+	now := time.Now()
+
+	cc.writeMutex.RLock()
+	defer cc.writeMutex.RUnlock()
+
+	if !cc.writeFrameAllowed {
+		return cc.backgroundErr
+	}
+
+	if cc.tracks[trackID].rtcpSender != nil {
+		cc.tracks[trackID].rtcpSender.ProcessPacketRTCP(now, payload)
+	}
+
+	switch *cc.protocol {
+	case TransportUDP, TransportUDPMulticast:
 		return cc.tracks[trackID].udpRTCPListener.write(payload)
 
 	default: // TCP
 		channel := cc.tracks[trackID].tcpChannel
-		if streamType == StreamTypeRTCP {
-			channel++
-		}
+		channel++
 
 		cc.tcpWriteMutex.Lock()
 		defer cc.tcpWriteMutex.Unlock()

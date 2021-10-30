@@ -188,7 +188,7 @@ func TestClientPublishSerial(t *testing.T) {
 				})
 			}()
 
-			err = conn.WriteFrame(0, StreamTypeRTP,
+			err = conn.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 
@@ -196,7 +196,7 @@ func TestClientPublishSerial(t *testing.T) {
 			conn.Close()
 			<-done
 
-			err = conn.WriteFrame(0, StreamTypeRTP,
+			err = conn.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.Error(t, err)
 		})
@@ -328,7 +328,7 @@ func TestClientPublishParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := conn.WriteFrame(0, StreamTypeRTP,
+					err := conn.WritePacketRTP(0,
 						[]byte{0x01, 0x02, 0x03, 0x04})
 					if err != nil {
 						return
@@ -475,21 +475,21 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			require.NoError(t, err)
 			defer conn.Close()
 
-			err = conn.WriteFrame(0, StreamTypeRTP,
+			err = conn.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 
 			_, err = conn.Pause()
 			require.NoError(t, err)
 
-			err = conn.WriteFrame(0, StreamTypeRTP,
+			err = conn.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.Error(t, err)
 
 			_, err = conn.Record()
 			require.NoError(t, err)
 
-			err = conn.WriteFrame(0, StreamTypeRTP,
+			err = conn.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 		})
@@ -619,7 +619,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := conn.WriteFrame(0, StreamTypeRTP,
+					err := conn.WritePacketRTP(0,
 						[]byte{0x01, 0x02, 0x03, 0x04})
 					if err != nil {
 						return
@@ -750,7 +750,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	err = conn.WriteFrame(0, StreamTypeRTP,
+	err = conn.WritePacketRTP(0,
 		[]byte{0x01, 0x02, 0x03, 0x04})
 	require.NoError(t, err)
 }
@@ -902,11 +902,11 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		},
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}).Marshal()
-	err = conn.WriteFrame(0, StreamTypeRTP, byts)
+	err = conn.WritePacketRTP(0, byts)
 	require.NoError(t, err)
 
 	time.Sleep(1300 * time.Millisecond)
 
-	err = conn.WriteFrame(0, StreamTypeRTP, byts)
+	err = conn.WritePacketRTP(0, byts)
 	require.NoError(t, err)
 }
