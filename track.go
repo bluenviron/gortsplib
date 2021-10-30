@@ -186,6 +186,7 @@ func (t *Track) IsH264() bool {
 		return false
 	}
 
+	v = strings.TrimSpace(v)
 	vals := strings.Split(v, " ")
 	if len(vals) != 2 {
 		return false

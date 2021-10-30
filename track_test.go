@@ -283,6 +283,24 @@ func TestTrackIsH264(t *testing.T) {
 				},
 			},
 		},
+		{
+			"standard with a space at the end rtpmap",
+			&Track{
+				Media: &psdp.MediaDescription{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000 ",
+						},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			require.Equal(t, true, ca.track.IsH264())
