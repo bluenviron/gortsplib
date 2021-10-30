@@ -205,7 +205,12 @@ func (u *serverUDPListener) run() {
 				if clientData.isPublishing {
 					now := time.Now()
 					atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
-					clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessFrame(now, u.streamType, buf[:n])
+
+					if u.streamType == StreamTypeRTP {
+						clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
+					} else {
+						clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTCP(now, buf[:n])
+					}
 				}
 
 				if u.streamType == StreamTypeRTP {

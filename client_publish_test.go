@@ -836,7 +836,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		err = f.Read(bconn.Reader)
 		require.NoError(t, err)
 		require.Equal(t, 0, f.Channel)
-		rr.ProcessFrame(time.Now(), StreamTypeRTP, f.Payload)
+		rr.ProcessPacketRTP(time.Now(), f.Payload)
 
 		f.Payload = make([]byte, 2048)
 		err = f.Read(bconn.Reader)
@@ -853,7 +853,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 			PacketCount: 1,
 			OctetCount:  4,
 		}, sr)
-		rr.ProcessFrame(time.Now(), StreamTypeRTCP, f.Payload)
+		rr.ProcessPacketRTCP(time.Now(), f.Payload)
 
 		err = base.InterleavedFrame{
 			Channel: 1,

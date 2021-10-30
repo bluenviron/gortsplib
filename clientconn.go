@@ -617,7 +617,13 @@ func (cc *ClientConn) runBackgroundPlayTCP() error {
 
 			now := time.Now()
 			atomic.StoreInt64(&lastFrameTime, now.Unix())
-			cc.tracks[trackID].rtcpReceiver.ProcessFrame(now, streamType, frame.Payload)
+
+			if streamType == StreamTypeRTP {
+				cc.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, frame.Payload)
+			} else {
+				cc.tracks[trackID].rtcpReceiver.ProcessPacketRTCP(now, frame.Payload)
+			}
+
 			cc.pullReadCB()(trackID, streamType, frame.Payload)
 		}
 	}()
@@ -1683,7 +1689,11 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 	}
 
 	if cc.tracks[trackID].rtcpSender != nil {
-		cc.tracks[trackID].rtcpSender.ProcessFrame(now, streamType, payload)
+		if streamType == StreamTypeRTP {
+			cc.tracks[trackID].rtcpSender.ProcessPacketRTP(now, payload)
+		} else {
+			cc.tracks[trackID].rtcpSender.ProcessPacketRTCP(now, payload)
+		}
 	}
 
 	switch *cc.protocol {
