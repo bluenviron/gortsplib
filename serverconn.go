@@ -159,13 +159,22 @@ func (sc *ServerConn) run() {
 									time.Now(), streamType, frame.Payload)
 							}
 
-							if h, ok := sc.s.Handler.(ServerHandlerOnFrame); ok {
-								h.OnFrame(&ServerHandlerOnFrameCtx{
-									Session:    sc.tcpSession,
-									TrackID:    trackID,
-									StreamType: streamType,
-									Payload:    frame.Payload,
-								})
+							if streamType == StreamTypeRTP {
+								if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
+									h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+										Session:    sc.tcpSession,
+										TrackID:    trackID,
+										Payload:    frame.Payload,
+									})
+								}
+							} else {
+								if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
+									h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
+										Session:    sc.tcpSession,
+										TrackID:    trackID,
+										Payload:    frame.Payload,
+									})
+								}
 							}
 						}
 
