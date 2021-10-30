@@ -108,6 +108,7 @@ func TestServerReadSetupPath(t *testing.T) {
 
 			err = s.Start("localhost:8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
@@ -172,6 +173,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 
 			err = s.Start("localhost:8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
@@ -338,6 +340,7 @@ func TestServerRead(t *testing.T) {
 			listenIP := multicastCapableIP(t)
 			err = s.Start(listenIP + ":8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			nconn, err := net.Dial("tcp", listenIP+":8554")
@@ -616,6 +619,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 
 	err = s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -687,6 +691,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 
 	err = s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -794,6 +799,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 
 	err = s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -908,6 +914,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 
 	err = s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -1020,6 +1027,7 @@ func TestServerReadTimeout(t *testing.T) {
 
 			err = s.Start("localhost:8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1117,6 +1125,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 
 			err = s.Start("localhost:8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1205,6 +1214,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 
 	err = s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	sxID := ""
@@ -1298,6 +1308,7 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 
 	err = s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	func() {
@@ -1403,6 +1414,7 @@ func TestServerReadNonSetuppedPath(t *testing.T) {
 
 	err = s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -1567,6 +1579,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 
 	err = s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	buf, err := (&rtp.Packet{

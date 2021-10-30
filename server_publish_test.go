@@ -163,6 +163,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 
 			err := s.Start("localhost:8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
@@ -249,6 +250,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 
 			err := s.Start("localhost:8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
@@ -344,6 +346,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 
 	err := s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -426,6 +429,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 
 	err := s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -525,6 +529,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 
 	err := s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -669,6 +674,7 @@ func TestServerPublish(t *testing.T) {
 
 			err := s.Start("localhost:8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -864,6 +870,7 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 
 	err := s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -965,6 +972,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 
 	err := s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -1124,6 +1132,7 @@ func TestServerPublishTimeout(t *testing.T) {
 
 			err := s.Start("localhost:8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1252,6 +1261,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 
 			err := s.Start("localhost:8554")
 			require.NoError(t, err)
+			defer s.Wait()
 			defer s.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1367,6 +1377,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 
 	err := s.Start("localhost:8554")
 	require.NoError(t, err)
+	defer s.Wait()
 	defer s.Close()
 
 	sxID := ""
