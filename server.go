@@ -291,14 +291,15 @@ func (s *Server) Start(address string) error {
 	return nil
 }
 
-// Close closes the server and waits for all its resources to exit.
+// Close closes all the server resources.
+// It doesn't wait for the server resources to shut down (use Wait for that).
 func (s *Server) Close() error {
 	s.ctxCancel()
-	s.wg.Wait()
 	return nil
 }
 
-// Wait waits until a fatal error.
+// Wait waits until all server resources are shut down.
+// This can happen in case of a fatal error or when Close() is called.
 func (s *Server) Wait() error {
 	s.wg.Wait()
 	return s.exitError
