@@ -7,8 +7,6 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
-
-	"github.com/aler9/gortsplib/pkg/base"
 )
 
 func TestRTCPSender(t *testing.T) {
@@ -27,7 +25,7 @@ func TestRTCPSender(t *testing.T) {
 	}
 	byts, _ := rtpPkt.Marshal()
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rs.ProcessFrame(ts, base.StreamTypeRTP, byts)
+	rs.ProcessPacketRTP(ts, byts)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -42,7 +40,7 @@ func TestRTCPSender(t *testing.T) {
 	}
 	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 500000000, time.UTC)
-	rs.ProcessFrame(ts, base.StreamTypeRTP, byts)
+	rs.ProcessPacketRTP(ts, byts)
 
 	expectedPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,

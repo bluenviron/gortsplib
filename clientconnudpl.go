@@ -166,7 +166,13 @@ func (l *clientConnUDPListener) run() {
 
 			now := time.Now()
 			atomic.StoreInt64(l.lastFrameTime, now.Unix())
-			l.cc.tracks[l.trackID].rtcpReceiver.ProcessFrame(now, l.streamType, buf[:n])
+
+			if l.streamType == StreamTypeRTP {
+				l.cc.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
+			} else {
+				l.cc.tracks[l.trackID].rtcpReceiver.ProcessPacketRTCP(now, buf[:n])
+			}
+
 			l.cc.pullReadCB()(l.trackID, l.streamType, buf[:n])
 		}
 	} else { // record

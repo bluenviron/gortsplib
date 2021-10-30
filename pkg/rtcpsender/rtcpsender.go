@@ -7,8 +7,6 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
-
-	"github.com/aler9/gortsplib/pkg/base"
 )
 
 // RTCPSender is a utility to generate RTCP sender reports.
@@ -32,32 +30,8 @@ func New(clockRate int) *RTCPSender {
 	}
 }
 
-// ProcessFrame extracts the needed data from RTP or RTCP packets.
-func (rs *RTCPSender) ProcessFrame(ts time.Time, streamType base.StreamType, payload []byte) {
-	rs.mutex.Lock()
-	defer rs.mutex.Unlock()
-
-	if streamType == base.StreamTypeRTP {
-		pkt := rtp.Packet{}
-		err := pkt.Unmarshal(payload)
-		if err == nil {
-			if !rs.firstRTPReceived {
-				rs.firstRTPReceived = true
-				rs.senderSSRC = pkt.SSRC
-			}
-
-			// always update time to minimize errors
-			rs.lastRTPTimeRTP = pkt.Timestamp
-			rs.lastRTPTimeTime = ts
-
-			rs.packetCount++
-			rs.octetCount += uint32(len(pkt.Payload))
-		}
-	}
-}
-
 // Report generates a RTCP sender report.
-// It returns nil if no packets has been passed to ProcessFrame yet.
+// It returns nil if no packets has been passed to ProcessPacketRTP yet.
 func (rs *RTCPSender) Report(ts time.Time) []byte {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
@@ -88,4 +62,30 @@ func (rs *RTCPSender) Report(ts time.Time) []byte {
 	}
 
 	return byts
+}
+
+// ProcessPacketRTP extracts the needed data from RTP packets.
+func (rs *RTCPSender) ProcessPacketRTP(ts time.Time, payload []byte) {
+	rs.mutex.Lock()
+	defer rs.mutex.Unlock()
+
+	pkt := rtp.Packet{}
+	err := pkt.Unmarshal(payload)
+	if err == nil {
+		if !rs.firstRTPReceived {
+			rs.firstRTPReceived = true
+			rs.senderSSRC = pkt.SSRC
+		}
+
+		// always update time to minimize errors
+		rs.lastRTPTimeRTP = pkt.Timestamp
+		rs.lastRTPTimeTime = ts
+
+		rs.packetCount++
+		rs.octetCount += uint32(len(pkt.Payload))
+	}
+}
+
+// ProcessPacketRTCP extracts the needed data from RTCP packets.
+func (rs *RTCPSender) ProcessPacketRTCP(ts time.Time, payload []byte) {
 }
