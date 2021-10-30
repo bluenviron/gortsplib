@@ -146,10 +146,10 @@ func (sc *ServerConn) run() {
 					switch what.(type) {
 					case *base.InterleavedFrame:
 						channel := frame.Channel
-						streamType := base.StreamTypeRTP
+						streamType := StreamTypeRTP
 						if (channel % 2) != 0 {
 							channel--
-							streamType = base.StreamTypeRTCP
+							streamType = StreamTypeRTCP
 						}
 
 						// forward frame only if it has been set up

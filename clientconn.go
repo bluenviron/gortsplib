@@ -604,10 +604,10 @@ func (cc *ClientConn) runBackgroundPlayTCP() error {
 			}
 
 			channel := frame.Channel
-			streamType := base.StreamTypeRTP
+			streamType := StreamTypeRTP
 			if (channel % 2) != 0 {
 				channel--
-				streamType = base.StreamTypeRTCP
+				streamType = StreamTypeRTCP
 			}
 
 			trackID, ok := cc.tracksByChannel[channel]
@@ -736,10 +736,10 @@ func (cc *ClientConn) runBackgroundRecordTCP() error {
 			}
 
 			channel := frame.Channel
-			streamType := base.StreamTypeRTP
+			streamType := StreamTypeRTP
 			if (channel % 2) != 0 {
 				channel--
-				streamType = base.StreamTypeRTCP
+				streamType = StreamTypeRTCP
 			}
 
 			trackID, ok := cc.tracksByChannel[channel]
@@ -1525,7 +1525,7 @@ func (cc *ClientConn) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base
 		// the user calls ReadFrames()
 		cc.readCBSet = make(chan struct{})
 		copy := cc.readCBSet
-		cc.readCB = func(trackID int, streamType base.StreamType, payload []byte) {
+		cc.readCB = func(trackID int, streamType StreamType, payload []byte) {
 			select {
 			case <-copy:
 			case <-cc.ctx.Done():
@@ -1580,7 +1580,7 @@ func (cc *ClientConn) doRecord() (*base.Response, error) {
 
 	// when publishing, calling ReadFrames() is not mandatory
 	// use an empty callback
-	cc.readCB = func(trackID int, streamType base.StreamType, payload []byte) {
+	cc.readCB = func(trackID int, streamType StreamType, payload []byte) {
 	}
 
 	cc.backgroundStart(false)
@@ -1705,7 +1705,7 @@ func (cc *ClientConn) WriteFrame(trackID int, streamType StreamType, payload []b
 
 	default: // TCP
 		channel := cc.tracks[trackID].tcpChannel
-		if streamType == base.StreamTypeRTCP {
+		if streamType == StreamTypeRTCP {
 			channel++
 		}
 
