@@ -68,7 +68,7 @@ type Server struct {
 	//
 	// handler
 	//
-	// an handler interface to handle requests.
+	// an handler to handle server events.
 	Handler ServerHandler
 
 	//
@@ -184,7 +184,11 @@ func (s *Server) Start(address string) error {
 	}
 
 	if s.TLSConfig != nil && s.UDPRTPAddress != "" {
-		return fmt.Errorf("TLS can't be used together with UDP")
+		return fmt.Errorf("TLS can't be used with UDP")
+	}
+
+	if s.TLSConfig != nil && s.MulticastIPRange != "" {
+		return fmt.Errorf("TLS can't be used with UDP-multicast")
 	}
 
 	if (s.UDPRTPAddress != "" && s.UDPRTCPAddress == "") ||
@@ -292,14 +296,14 @@ func (s *Server) Start(address string) error {
 }
 
 // Close closes all the server resources.
-// It doesn't wait for the server resources to shut down (use Wait for that).
+// It doesn't wait for the server resources to close (use Wait for that).
 func (s *Server) Close() error {
 	s.ctxCancel()
 	return nil
 }
 
-// Wait waits until all server resources are shut down.
-// This can happen in case of a fatal error or when Close() is called.
+// Wait waits until all server resources are closed.
+// This can happen when a fatal error occurs or when Close() is called.
 func (s *Server) Wait() error {
 	s.wg.Wait()
 	return s.exitError
