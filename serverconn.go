@@ -19,15 +19,6 @@ const (
 	serverConnWriteBufferSize = 4096
 )
 
-func stringsReverseIndex(s, substr string) int {
-	for i := len(s) - 1 - len(substr); i >= 0; i-- {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
-}
-
 func getSessionID(header base.Header) string {
 	if h, ok := header["Session"]; ok && len(h) == 1 {
 		return h[0]

@@ -146,7 +146,7 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		err = v.ValidateRequest(req, nil)
+		err = v.ValidateRequest(req)
 		require.NoError(t, err)
 
 		track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})

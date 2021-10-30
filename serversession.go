@@ -20,6 +20,15 @@ const (
 	serverSessionCheckStreamPeriod = 1 * time.Second
 )
 
+func stringsReverseIndex(s, substr string) int {
+	for i := len(s) - 1 - len(substr); i >= 0; i-- {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
+}
+
 func setupGetTrackIDPathQuery(
 	url *base.URL,
 	thMode *headers.TransportMode,

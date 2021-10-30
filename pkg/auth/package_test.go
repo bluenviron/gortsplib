@@ -77,7 +77,7 @@ func TestAuth(t *testing.T) {
 
 				req.URL = mustParseURL("rtsp://myhost/mypath")
 
-				err = va.ValidateRequest(req, nil)
+				err = va.ValidateRequest(req)
 
 				if conf != "nofail" {
 					require.Error(t, err)
@@ -110,14 +110,14 @@ func TestAuthVLC(t *testing.T) {
 		require.NoError(t, err)
 
 		req := &base.Request{
-			Method: base.Announce,
+			Method: base.Setup,
 			URL:    mustParseURL(ca.clientURL),
 		}
 		se.AddAuthorization(req)
 
 		req.URL = mustParseURL(ca.serverURL)
 
-		err = va.ValidateRequest(req, mustParseURL(ca.clientURL))
+		err = va.ValidateRequest(req)
 		require.NoError(t, err)
 	}
 }
@@ -154,7 +154,7 @@ func TestAuthHashed(t *testing.T) {
 			}
 			va.AddAuthorization(req)
 
-			err = se.ValidateRequest(req, nil)
+			err = se.ValidateRequest(req)
 
 			if conf != "nofail" {
 				require.Error(t, err)
