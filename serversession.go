@@ -339,7 +339,7 @@ func (ss *ServerSession) run() {
 				now := time.Now()
 				for trackID, track := range ss.announcedTracks {
 					r := track.rtcpReceiver.Report(now)
-					ss.WriteFrame(trackID, StreamTypeRTCP, r)
+					ss.WritePacketRTCP(trackID, r)
 				}
 
 			case <-ss.ctx.Done():
@@ -863,7 +863,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				sc.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, false)
 
 				// open the firewall by sending packets to the counterpart
-				ss.WriteFrame(trackID, StreamTypeRTCP,
+				ss.WritePacketRTCP(trackID,
 					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 			}
 
@@ -905,7 +905,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		path, query := base.PathSplitQuery(pathAndQuery)
 
-		// allow to use WriteFrame() before response
+		// allow to use WritePacket*() before response
 		if *ss.setuppedTransport == TransportTCP {
 			ss.tcpConn = sc
 		}
@@ -938,9 +938,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, true)
 
 				// open the firewall by sending packets to the counterpart
-				ss.WriteFrame(trackID, StreamTypeRTP,
+				ss.WritePacketRTP(trackID,
 					[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-				ss.WriteFrame(trackID, StreamTypeRTCP,
+				ss.WritePacketRTCP(trackID,
 					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 			}
 
@@ -1065,8 +1065,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 	}, liberrors.ErrServerUnhandledRequest{Req: req}
 }
 
-// WriteFrame writes a frame to the session.
-func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload []byte) {
+// WritePacketRTP writes a RTP packet to the session.
+func (ss *ServerSession) WritePacketRTP(trackID int, payload []byte) {
 	if _, ok := ss.setuppedTracks[trackID]; !ok {
 		return
 	}
@@ -1075,25 +1075,41 @@ func (ss *ServerSession) WriteFrame(trackID int, streamType StreamType, payload 
 	case TransportUDP:
 		track := ss.setuppedTracks[trackID]
 
-		if streamType == StreamTypeRTP {
-			ss.s.udpRTPListener.write(payload, &net.UDPAddr{
-				IP:   ss.author.ip(),
-				Zone: ss.author.zone(),
-				Port: track.udpRTPPort,
-			})
-		} else {
-			ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
-				IP:   ss.author.ip(),
-				Zone: ss.author.zone(),
-				Port: track.udpRTCPPort,
-			})
-		}
+		ss.s.udpRTPListener.write(payload, &net.UDPAddr{
+			IP:   ss.author.ip(),
+			Zone: ss.author.zone(),
+			Port: track.udpRTPPort,
+		})
 
 	case TransportTCP:
 		channel := ss.setuppedTracks[trackID].tcpChannel
-		if streamType == base.StreamTypeRTCP {
-			channel++
-		}
+
+		ss.tcpConn.tcpFrameWriteBuffer.Push(&base.InterleavedFrame{
+			Channel: channel,
+			Payload: payload,
+		})
+	}
+}
+
+// WritePacketRTCP writes a RTCP packet to the session.
+func (ss *ServerSession) WritePacketRTCP(trackID int, payload []byte) {
+	if _, ok := ss.setuppedTracks[trackID]; !ok {
+		return
+	}
+
+	switch *ss.setuppedTransport {
+	case TransportUDP:
+		track := ss.setuppedTracks[trackID]
+
+		ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
+			IP:   ss.author.ip(),
+			Zone: ss.author.zone(),
+			Port: track.udpRTCPPort,
+		})
+
+	case TransportTCP:
+		channel := ss.setuppedTracks[trackID].tcpChannel
+		channel++
 
 		ss.tcpConn.tcpFrameWriteBuffer.Push(&base.InterleavedFrame{
 			Channel: channel,
