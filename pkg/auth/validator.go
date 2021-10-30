@@ -147,21 +147,23 @@ func (va *Validator) ValidateRequest(req *base.Request,
 			return fmt.Errorf("wrong username")
 		}
 
-		urlString := req.URL.String()
+		ur := req.URL
 
-		if *auth.DigestValues.URI != urlString {
+		if *auth.DigestValues.URI != ur.String() {
 			// do another try with the alternative URL
 			if altURL != nil {
-				urlString = altURL.String()
-			}
+				ur = altURL
 
-			if *auth.DigestValues.URI != urlString {
-				return fmt.Errorf("wrong url")
+				if *auth.DigestValues.URI != ur.String() {
+					return fmt.Errorf("wrong URL")
+				}
+			} else {
+				return fmt.Errorf("wrong URL")
 			}
 		}
 
 		response := md5Hex(md5Hex(va.user+":"+va.realm+":"+va.pass) +
-			":" + va.nonce + ":" + md5Hex(string(req.Method)+":"+urlString))
+			":" + va.nonce + ":" + md5Hex(string(req.Method)+":"+ur.String()))
 
 		if *auth.DigestValues.Response != response {
 			return fmt.Errorf("wrong response")

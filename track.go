@@ -43,10 +43,10 @@ func (t *Track) hasControlAttribute() bool {
 	return false
 }
 
-// URL returns the track url.
+// URL returns the track URL.
 func (t *Track) URL(baseURL *base.URL) (*base.URL, error) {
 	if baseURL == nil {
-		return nil, fmt.Errorf("empty base url")
+		return nil, fmt.Errorf("empty base URL")
 	}
 
 	controlAttr := func() string {
@@ -77,7 +77,7 @@ func (t *Track) URL(baseURL *base.URL) (*base.URL, error) {
 	}
 
 	// control attribute contains a relative control attribute
-	// insert the control attribute at the end of the url
+	// insert the control attribute at the end of the URL
 	// if there's a query, insert it after the query
 	// otherwise insert it after the path
 	strURL := baseURL.String()
