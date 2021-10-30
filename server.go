@@ -343,101 +343,101 @@ func (s *Server) run() {
 		}
 	}()
 
-outer:
-	for {
-		select {
-		case err := <-acceptErr:
-			s.exitError = err
-			break outer
+	s.exitError = func() error {
+		for {
+			select {
+			case err := <-acceptErr:
+				return err
 
-		case nconn := <-connNew:
-			sc := newServerConn(s, nconn)
-			s.conns[sc] = struct{}{}
+			case nconn := <-connNew:
+				sc := newServerConn(s, nconn)
+				s.conns[sc] = struct{}{}
 
-		case sc := <-s.connClose:
-			if _, ok := s.conns[sc]; !ok {
-				continue
-			}
-			delete(s.conns, sc)
-			sc.Close()
-
-		case req := <-s.sessionRequest:
-			if ss, ok := s.sessions[req.id]; ok {
-				if !req.sc.ip().Equal(ss.author.ip()) ||
-					req.sc.zone() != ss.author.zone() {
-					req.res <- sessionRequestRes{
-						res: &base.Response{
-							StatusCode: base.StatusBadRequest,
-						},
-						err: liberrors.ErrServerCannotUseSessionCreatedByOtherIP{},
-					}
+			case sc := <-s.connClose:
+				if _, ok := s.conns[sc]; !ok {
 					continue
 				}
+				delete(s.conns, sc)
+				sc.Close()
 
-				ss.request <- req
-			} else {
-				if !req.create {
-					req.res <- sessionRequestRes{
-						res: &base.Response{
-							StatusCode: base.StatusBadRequest,
-						},
-						err: liberrors.ErrServerSessionNotFound{},
+			case req := <-s.sessionRequest:
+				if ss, ok := s.sessions[req.id]; ok {
+					if !req.sc.ip().Equal(ss.author.ip()) ||
+						req.sc.zone() != ss.author.zone() {
+						req.res <- sessionRequestRes{
+							res: &base.Response{
+								StatusCode: base.StatusBadRequest,
+							},
+							err: liberrors.ErrServerCannotUseSessionCreatedByOtherIP{},
+						}
+						continue
 					}
+
+					ss.request <- req
+				} else {
+					if !req.create {
+						req.res <- sessionRequestRes{
+							res: &base.Response{
+								StatusCode: base.StatusBadRequest,
+							},
+							err: liberrors.ErrServerSessionNotFound{},
+						}
+						continue
+					}
+
+					secretID, err := newSessionSecretID(s.sessions)
+					if err != nil {
+						req.res <- sessionRequestRes{
+							res: &base.Response{
+								StatusCode: base.StatusBadRequest,
+							},
+							err: fmt.Errorf("internal error"),
+						}
+						continue
+					}
+
+					ss := newServerSession(s, secretID, req.sc)
+					s.sessions[secretID] = ss
+
+					select {
+					case ss.request <- req:
+					case <-ss.ctx.Done():
+						req.res <- sessionRequestRes{
+							res: &base.Response{
+								StatusCode: base.StatusBadRequest,
+							},
+							err: liberrors.ErrServerTerminated{},
+						}
+					}
+				}
+
+			case ss := <-s.sessionClose:
+				if sss, ok := s.sessions[ss.secretID]; !ok || sss != ss {
 					continue
 				}
+				delete(s.sessions, ss.secretID)
+				ss.Close()
 
-				secretID, err := newSessionSecretID(s.sessions)
-				if err != nil {
-					req.res <- sessionRequestRes{
-						res: &base.Response{
-							StatusCode: base.StatusBadRequest,
-						},
-						err: fmt.Errorf("internal error"),
-					}
-					continue
-				}
+			case st := <-s.streamAdd:
+				s.streams[st] = struct{}{}
 
-				ss := newServerSession(s, secretID, req.sc)
-				s.sessions[secretID] = ss
+			case st := <-s.streamRemove:
+				delete(s.streams, st)
 
-				select {
-				case ss.request <- req:
-				case <-ss.ctx.Done():
-					req.res <- sessionRequestRes{
-						res: &base.Response{
-							StatusCode: base.StatusBadRequest,
-						},
-						err: liberrors.ErrServerTerminated{},
-					}
-				}
+			case req := <-s.streamMulticastIP:
+				ip32 := binary.BigEndian.Uint32(s.multicastNextIP)
+				mask := binary.BigEndian.Uint32(s.multicastNet.Mask)
+				ip32 = (ip32 & mask) | ((ip32 + 1) & ^mask)
+				ip := make(net.IP, 4)
+				binary.BigEndian.PutUint32(ip, ip32)
+				s.multicastNextIP = ip
+				req.res <- ip
+
+			case <-s.ctx.Done():
+				return liberrors.ErrServerTerminated{}
 			}
-
-		case ss := <-s.sessionClose:
-			if sss, ok := s.sessions[ss.secretID]; !ok || sss != ss {
-				continue
-			}
-			delete(s.sessions, ss.secretID)
-			ss.Close()
-
-		case st := <-s.streamAdd:
-			s.streams[st] = struct{}{}
-
-		case st := <-s.streamRemove:
-			delete(s.streams, st)
-
-		case req := <-s.streamMulticastIP:
-			ip32 := binary.BigEndian.Uint32(s.multicastNextIP)
-			mask := binary.BigEndian.Uint32(s.multicastNet.Mask)
-			ip32 = (ip32 & mask) | ((ip32 + 1) & ^mask)
-			ip := make(net.IP, 4)
-			binary.BigEndian.PutUint32(ip, ip32)
-			s.multicastNextIP = ip
-			req.res <- ip
-
-		case <-s.ctx.Done():
-			break outer
 		}
-	}
+	}()
 
 	s.ctxCancel()
 
