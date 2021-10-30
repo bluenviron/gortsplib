@@ -48,7 +48,8 @@ type testServerHandler struct {
 	onPlay         func(*ServerHandlerOnPlayCtx) (*base.Response, error)
 	onRecord       func(*ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
-	onFrame        func(*ServerHandlerOnFrameCtx)
+	onPacketRTP        func(*ServerHandlerOnPacketRTPCtx)
+	onPacketRTCP        func(*ServerHandlerOnPacketRTCPCtx)
 	onSetParameter func(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 	onGetParameter func(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
 }
@@ -119,9 +120,15 @@ func (sh *testServerHandler) OnPause(ctx *ServerHandlerOnPauseCtx) (*base.Respon
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (sh *testServerHandler) OnFrame(ctx *ServerHandlerOnFrameCtx) {
-	if sh.onFrame != nil {
-		sh.onFrame(ctx)
+func (sh *testServerHandler) OnPacketRTP(ctx *ServerHandlerOnPacketRTPCtx) {
+	if sh.onPacketRTP != nil {
+		sh.onPacketRTP(ctx)
+	}
+}
+
+func (sh *testServerHandler) OnPacketRTCP(ctx *ServerHandlerOnPacketRTCPCtx) {
+	if sh.onPacketRTCP != nil {
+		sh.onPacketRTCP(ctx)
 	}
 }
 
@@ -392,12 +399,20 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onFrame: func(ctx *ServerHandlerOnFrameCtx) {
+					onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
 						mutex.Lock()
 						defer mutex.Unlock()
 
 						if ctx.Session == publisher {
-							stream.WriteFrame(ctx.TrackID, ctx.StreamType, ctx.Payload)
+							stream.WriteFrame(ctx.TrackID, StreamTypeRTP, ctx.Payload)
+						}
+					},
+					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
+						mutex.Lock()
+						defer mutex.Unlock()
+
+						if ctx.Session == publisher {
+							stream.WriteFrame(ctx.TrackID, StreamTypeRTCP, ctx.Payload)
 						}
 					},
 				},

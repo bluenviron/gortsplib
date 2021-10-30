@@ -123,14 +123,25 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 	}, nil
 }
 
-// called after receiving a frame.
-func (sh *serverHandler) OnFrame(ctx *gortsplib.ServerHandlerOnFrameCtx) {
+// called after receiving a RTP packet.
+func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	// if we are the publisher, route frames to readers
+	// if we are the publisher, route packet to readers
 	if ctx.Session == sh.publisher {
-		sh.stream.WriteFrame(ctx.TrackID, ctx.StreamType, ctx.Payload)
+		sh.stream.WriteFrame(ctx.TrackID, gortsplib.StreamTypeRTP, ctx.Payload)
+	}
+}
+
+// called after receiving a RTCP packet.
+func (sh *serverHandler) OnPacketRTCP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
+	sh.mutex.Lock()
+	defer sh.mutex.Unlock()
+
+	// if we are the publisher, route packet to readers
+	if ctx.Session == sh.publisher {
+		sh.stream.WriteFrame(ctx.TrackID, gortsplib.StreamTypeRTCP, ctx.Payload)
 	}
 }
 

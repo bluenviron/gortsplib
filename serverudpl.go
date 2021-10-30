@@ -208,13 +208,22 @@ func (u *serverUDPListener) run() {
 					clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessFrame(now, u.streamType, buf[:n])
 				}
 
-				if h, ok := u.s.Handler.(ServerHandlerOnFrame); ok {
-					h.OnFrame(&ServerHandlerOnFrameCtx{
-						Session:    clientData.ss,
-						TrackID:    clientData.trackID,
-						StreamType: u.streamType,
-						Payload:    buf[:n],
-					})
+				if u.streamType == StreamTypeRTP {
+					if h, ok := u.s.Handler.(ServerHandlerOnPacketRTP); ok {
+						h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+							Session:    clientData.ss,
+							TrackID:    clientData.trackID,
+							Payload:    buf[:n],
+						})
+					}
+				} else {
+					if h, ok := u.s.Handler.(ServerHandlerOnPacketRTCP); ok {
+						h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
+							Session:    clientData.ss,
+							TrackID:    clientData.trackID,
+							Payload:    buf[:n],
+						})
+					}
 				}
 			}()
 		}

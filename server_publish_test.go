@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"net"
 	"strconv"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -615,7 +614,6 @@ func TestServerPublish(t *testing.T) {
 			connClosed := make(chan struct{})
 			sessionOpened := make(chan struct{})
 			sessionClosed := make(chan struct{})
-			rtpReceived := uint64(0)
 
 			s := &Server{
 				Handler: &testServerHandler{
@@ -646,18 +644,14 @@ func TestServerPublish(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onFrame: func(ctx *ServerHandlerOnFrameCtx) {
-						if atomic.SwapUint64(&rtpReceived, 1) == 0 {
-							require.Equal(t, 0, ctx.TrackID)
-							require.Equal(t, StreamTypeRTP, ctx.StreamType)
-							require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, ctx.Payload)
-						} else {
-							require.Equal(t, 0, ctx.TrackID)
-							require.Equal(t, StreamTypeRTCP, ctx.StreamType)
-							require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, ctx.Payload)
-
-							ctx.Session.WriteFrame(0, StreamTypeRTCP, []byte{0x09, 0x0A, 0x0B, 0x0C})
-						}
+					onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
+						require.Equal(t, 0, ctx.TrackID)
+						require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, ctx.Payload)
+					},
+					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
+						require.Equal(t, 0, ctx.TrackID)
+						require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, ctx.Payload)
+						ctx.Session.WriteFrame(0, StreamTypeRTCP, []byte{0x09, 0x0A, 0x0B, 0x0C})
 					},
 				},
 			}
@@ -967,7 +961,7 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onFrame: func(ctx *ServerHandlerOnFrameCtx) {
+			onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
 				t.Error("should not happen")
 			},
 		},
@@ -1475,7 +1469,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onFrame: func(ctx *ServerHandlerOnFrameCtx) {
+			onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
 			},
 		},
 		UDPRTPAddress:  "127.0.0.1:8000",

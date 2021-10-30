@@ -179,15 +179,26 @@ type ServerHandlerOnSetParameter interface {
 	OnSetParameter(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 }
 
-// ServerHandlerOnFrameCtx is the context of a frame.
-type ServerHandlerOnFrameCtx struct {
+// ServerHandlerOnPacketRTPCtx is the context of a RTP packet.
+type ServerHandlerOnPacketRTPCtx struct {
 	Session    *ServerSession
 	TrackID    int
-	StreamType StreamType
 	Payload    []byte
 }
 
-// ServerHandlerOnFrame can be implemented by a ServerHandler.
-type ServerHandlerOnFrame interface {
-	OnFrame(*ServerHandlerOnFrameCtx)
+// ServerHandlerOnPacketRTP can be implemented by a ServerHandler.
+type ServerHandlerOnPacketRTP interface {
+	OnPacketRTP(*ServerHandlerOnPacketRTPCtx)
+}
+
+// ServerHandlerOnPacketRTCPCtx is the context of a RTCP packet.
+type ServerHandlerOnPacketRTCPCtx struct {
+	Session    *ServerSession
+	TrackID    int
+	Payload    []byte
+}
+
+// ServerHandlerOnPacketRTCP can be implemented by a ServerHandler.
+type ServerHandlerOnPacketRTCP interface {
+	OnPacketRTCP(*ServerHandlerOnPacketRTCPCtx)
 }
