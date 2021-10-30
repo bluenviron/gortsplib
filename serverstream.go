@@ -221,9 +221,9 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 	}
 }
 
-// WriteFrame writes a frame to all the readers of the stream.
-func (st *ServerStream) WriteFrame(trackID int, streamType StreamType, payload []byte) {
-	if streamType == StreamTypeRTP && len(payload) >= 8 {
+// WritePacketRTP writes a RTP packet to all the readers of the stream.
+func (st *ServerStream) WritePacketRTP(trackID int, payload []byte) {
+	if len(payload) >= 8 {
 		track := st.trackInfos[trackID]
 
 		sequenceNumber := binary.BigEndian.Uint16(payload[2:4])
@@ -242,21 +242,33 @@ func (st *ServerStream) WriteFrame(trackID int, streamType StreamType, payload [
 
 	// send unicast
 	for r := range st.readersUnicast {
-		r.WriteFrame(trackID, streamType, payload)
+		r.WritePacketRTP(trackID, payload)
 	}
 
 	// send multicast
 	if st.multicastListeners != nil {
-		if streamType == StreamTypeRTP {
-			st.multicastListeners[trackID].rtpListener.write(payload, &net.UDPAddr{
-				IP:   st.multicastListeners[trackID].rtpListener.ip(),
-				Port: st.multicastListeners[trackID].rtpListener.port(),
-			})
-		} else {
-			st.multicastListeners[trackID].rtcpListener.write(payload, &net.UDPAddr{
-				IP:   st.multicastListeners[trackID].rtpListener.ip(),
-				Port: st.multicastListeners[trackID].rtcpListener.port(),
-			})
-		}
+		st.multicastListeners[trackID].rtpListener.write(payload, &net.UDPAddr{
+			IP:   st.multicastListeners[trackID].rtpListener.ip(),
+			Port: st.multicastListeners[trackID].rtpListener.port(),
+		})
+	}
+}
+
+// WritePacketRTCP writes a RTCP packet to all the readers of the stream.
+func (st *ServerStream) WritePacketRTCP(trackID int, payload []byte) {
+	st.mutex.RLock()
+	defer st.mutex.RUnlock()
+
+	// send unicast
+	for r := range st.readersUnicast {
+		r.WritePacketRTCP(trackID, payload)
+	}
+
+	// send multicast
+	if st.multicastListeners != nil {
+		st.multicastListeners[trackID].rtcpListener.write(payload, &net.UDPAddr{
+			IP:   st.multicastListeners[trackID].rtcpListener.ip(),
+			Port: st.multicastListeners[trackID].rtcpListener.port(),
+		})
 	}
 }

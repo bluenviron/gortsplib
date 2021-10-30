@@ -651,7 +651,7 @@ func TestServerPublish(t *testing.T) {
 					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
 						require.Equal(t, 0, ctx.TrackID)
 						require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, ctx.Payload)
-						ctx.Session.WriteFrame(0, StreamTypeRTCP, []byte{0x09, 0x0A, 0x0B, 0x0C})
+						ctx.Session.WritePacketRTCP(0, []byte{0x09, 0x0A, 0x0B, 0x0C})
 					},
 				},
 			}

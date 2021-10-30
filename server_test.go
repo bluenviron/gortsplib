@@ -48,8 +48,8 @@ type testServerHandler struct {
 	onPlay         func(*ServerHandlerOnPlayCtx) (*base.Response, error)
 	onRecord       func(*ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
-	onPacketRTP        func(*ServerHandlerOnPacketRTPCtx)
-	onPacketRTCP        func(*ServerHandlerOnPacketRTCPCtx)
+	onPacketRTP    func(*ServerHandlerOnPacketRTPCtx)
+	onPacketRTCP   func(*ServerHandlerOnPacketRTCPCtx)
 	onSetParameter func(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 	onGetParameter func(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
 }
@@ -404,7 +404,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						defer mutex.Unlock()
 
 						if ctx.Session == publisher {
-							stream.WriteFrame(ctx.TrackID, StreamTypeRTP, ctx.Payload)
+							stream.WritePacketRTP(ctx.TrackID, ctx.Payload)
 						}
 					},
 					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
@@ -412,7 +412,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						defer mutex.Unlock()
 
 						if ctx.Session == publisher {
-							stream.WriteFrame(ctx.TrackID, StreamTypeRTCP, ctx.Payload)
+							stream.WritePacketRTCP(ctx.TrackID, ctx.Payload)
 						}
 					},
 				},

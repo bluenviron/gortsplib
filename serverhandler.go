@@ -181,9 +181,9 @@ type ServerHandlerOnSetParameter interface {
 
 // ServerHandlerOnPacketRTPCtx is the context of a RTP packet.
 type ServerHandlerOnPacketRTPCtx struct {
-	Session    *ServerSession
-	TrackID    int
-	Payload    []byte
+	Session *ServerSession
+	TrackID int
+	Payload []byte
 }
 
 // ServerHandlerOnPacketRTP can be implemented by a ServerHandler.
@@ -193,9 +193,9 @@ type ServerHandlerOnPacketRTP interface {
 
 // ServerHandlerOnPacketRTCPCtx is the context of a RTCP packet.
 type ServerHandlerOnPacketRTCPCtx struct {
-	Session    *ServerSession
-	TrackID    int
-	Payload    []byte
+	Session *ServerSession
+	TrackID int
+	Payload []byte
 }
 
 // ServerHandlerOnPacketRTCP can be implemented by a ServerHandler.

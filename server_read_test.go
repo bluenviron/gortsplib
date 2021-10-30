@@ -295,8 +295,8 @@ func TestServerRead(t *testing.T) {
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						go func() {
 							time.Sleep(1 * time.Second)
-							stream.WriteFrame(0, StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
-							stream.WriteFrame(0, StreamTypeRTCP, []byte{0x05, 0x06, 0x07, 0x08})
+							stream.WritePacketRTP(0, []byte{0x01, 0x02, 0x03, 0x04})
+							stream.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
 						}()
 
 						return &base.Response{
@@ -673,7 +673,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 				go func() {
 					defer close(writerDone)
 
-					stream.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+					stream.WritePacketRTP(0, []byte("\x00\x00\x00\x00"))
 
 					t := time.NewTicker(50 * time.Millisecond)
 					defer t.Stop()
@@ -681,7 +681,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 					for {
 						select {
 						case <-t.C:
-							stream.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+							stream.WritePacketRTP(0, []byte("\x00\x00\x00\x00"))
 						case <-writerTerminate:
 							return
 						}
@@ -857,7 +857,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 						for {
 							select {
 							case <-t.C:
-								stream.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+								stream.WritePacketRTP(0, []byte("\x00\x00\x00\x00"))
 							case <-writerTerminate:
 								return
 							}
@@ -973,7 +973,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 					for {
 						select {
 						case <-t.C:
-							stream.WriteFrame(0, StreamTypeRTP, []byte("\x00\x00\x00\x00"))
+							stream.WritePacketRTP(0, []byte("\x00\x00\x00\x00"))
 						case <-writerTerminate:
 							return
 						}
@@ -1477,8 +1477,8 @@ func TestServerReadNonSetuppedPath(t *testing.T) {
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
 					time.Sleep(1 * time.Second)
-					stream.WriteFrame(1, base.StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
-					stream.WriteFrame(0, base.StreamTypeRTP, []byte{0x05, 0x06, 0x07, 0x08})
+					stream.WritePacketRTP(1, []byte{0x01, 0x02, 0x03, 0x04})
+					stream.WritePacketRTP(0, []byte{0x05, 0x06, 0x07, 0x08})
 				}()
 
 				return &base.Response{
@@ -1642,8 +1642,8 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
 					time.Sleep(1 * time.Second)
-					stream.WriteFrame(1, base.StreamTypeRTP, []byte{0x01, 0x02, 0x03, 0x04})
-					stream.WriteFrame(0, base.StreamTypeRTP, []byte{0x05, 0x06, 0x07, 0x08})
+					stream.WritePacketRTP(1, []byte{0x01, 0x02, 0x03, 0x04})
+					stream.WritePacketRTP(0, []byte{0x05, 0x06, 0x07, 0x08})
 				}()
 
 				return &base.Response{
@@ -1669,7 +1669,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}).Marshal()
 	require.NoError(t, err)
-	stream.WriteFrame(0, StreamTypeRTP, buf)
+	stream.WritePacketRTP(0, buf)
 
 	rtpInfo, ssrcs := getInfos()
 	require.Equal(t, &headers.RTPInfo{
@@ -1705,7 +1705,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}).Marshal()
 	require.NoError(t, err)
-	stream.WriteFrame(1, StreamTypeRTP, buf)
+	stream.WritePacketRTP(1, buf)
 
 	rtpInfo, ssrcs = getInfos()
 	require.Equal(t, &headers.RTPInfo{
