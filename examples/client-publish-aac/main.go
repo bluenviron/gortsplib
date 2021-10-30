@@ -55,7 +55,7 @@ func main() {
 			panic(err)
 		}
 
-		// write RTP packets
+		// route RTP packets to the server
 		err = conn.WriteFrame(0, gortsplib.StreamTypeRTP, buf[:n])
 		if err != nil {
 			panic(err)

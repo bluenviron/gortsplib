@@ -57,6 +57,7 @@ Features:
 * [client-read-save-to-disk](examples/client-read-save-to-disk/main.go)
 * [client-publish-h264](examples/client-publish-h264/main.go)
 * [client-publish-aac](examples/client-publish-aac/main.go)
+* [client-publish-opus](examples/client-publish-opus/main.go)
 * [client-publish-options](examples/client-publish-options/main.go)
 * [client-publish-pause](examples/client-publish-pause/main.go)
 * [server](examples/server/main.go)

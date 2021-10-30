@@ -63,7 +63,7 @@ func main() {
 					break
 				}
 
-				// write RTP packets
+				// route RTP packets to the server
 				err = conn.WriteFrame(0, gortsplib.StreamTypeRTP, buf[:n])
 				if err != nil {
 					break
