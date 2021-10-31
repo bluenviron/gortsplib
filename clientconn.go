@@ -366,6 +366,7 @@ func (cc *ClientConn) checkState(allowed map[clientConnState]struct{}) error {
 		allowedList[i] = a
 		i++
 	}
+
 	return liberrors.ErrClientInvalidState{AllowedList: allowedList, State: cc.state}
 }
 
@@ -388,11 +389,6 @@ func (cc *ClientConn) switchProtocolIfTimeout(err error) error {
 	cc.useGetParameter = oldUseGetParameter
 	cc.scheme = prevBaseURL.Scheme
 	cc.host = prevBaseURL.Host
-
-	err = cc.connOpen()
-	if err != nil {
-		return err
-	}
 
 	for _, track := range prevTracks {
 		_, err := cc.doSetup(headers.TransportModePlay, prevBaseURL, track.track, 0, 0)
@@ -1032,11 +1028,6 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response
 
 			cc.scheme = u.Scheme
 			cc.host = u.Host
-
-			err = cc.connOpen()
-			if err != nil {
-				return nil, nil, nil, err
-			}
 
 			_, err = cc.doOptions(u)
 			if err != nil {
