@@ -90,14 +90,14 @@ func TestClientSession(t *testing.T) {
 
 	c := Client{}
 
-	conn, err := c.Dial(u.Scheme, u.Host)
+	err = c.Dial(u.Scheme, u.Host)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer c.Close()
 
-	_, err = conn.Options(u)
+	_, err = c.Options(u)
 	require.NoError(t, err)
 
-	_, _, _, err = conn.Describe(u)
+	_, _, _, err = c.Describe(u)
 	require.NoError(t, err)
 }
 
@@ -171,14 +171,14 @@ func TestClientAuth(t *testing.T) {
 
 	c := Client{}
 
-	conn, err := c.Dial(u.Scheme, u.Host)
+	err = c.Dial(u.Scheme, u.Host)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer c.Close()
 
-	_, err = conn.Options(u)
+	_, err = c.Options(u)
 	require.NoError(t, err)
 
-	_, _, _, err = conn.Describe(u)
+	_, _, _, err = c.Describe(u)
 	require.NoError(t, err)
 }
 
@@ -235,13 +235,13 @@ func TestClientDescribeCharset(t *testing.T) {
 
 	c := Client{}
 
-	conn, err := c.Dial(u.Scheme, u.Host)
+	err = c.Dial(u.Scheme, u.Host)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer c.Close()
 
-	_, err = conn.Options(u)
+	_, err = c.Options(u)
 	require.NoError(t, err)
 
-	_, _, _, err = conn.Describe(u)
+	_, _, _, err = c.Describe(u)
 	require.NoError(t, err)
 }

@@ -13,14 +13,14 @@ func main() {
 	c := gortsplib.Client{}
 
 	// connect to the server and start reading all tracks
-	conn, err := c.DialRead("rtsp://localhost:8554/mystream")
+	err := c.DialRead("rtsp://localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer c.Close()
 
 	// read packets
-	err = conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
+	err = c.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
 		fmt.Printf("packet from track %d, type %v, size %d\n", trackID, streamType, len(payload))
 	})
 	panic(err)

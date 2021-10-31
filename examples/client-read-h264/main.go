@@ -17,15 +17,15 @@ func main() {
 	c := gortsplib.Client{}
 
 	// connect to the server and start reading all tracks
-	conn, err := c.DialRead("rtsp://localhost:8554/mystream")
+	err := c.DialRead("rtsp://localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer c.Close()
 
 	// find the H264 track
 	h264Track := func() int {
-		for i, track := range conn.Tracks() {
+		for i, track := range c.Tracks() {
 			if track.IsH264() {
 				return i
 			}
@@ -41,7 +41,7 @@ func main() {
 	dec := rtph264.NewDecoder()
 
 	// read packets
-	err = conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
+	err = c.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
 		if streamType != gortsplib.StreamTypeRTP {
 			return
 		}

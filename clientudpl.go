@@ -15,7 +15,7 @@ import (
 
 const (
 	// use the same buffer size as gstreamer's rtspsrc
-	clientConnUDPKernelReadBufferSize = 0x80000
+	clientUDPKernelReadBufferSize = 0x80000
 )
 
 func randUint32() uint32 {
@@ -29,7 +29,7 @@ func randIntn(n int) int {
 }
 
 type clientUDPListener struct {
-	cc            *ClientConn
+	c             *Client
 	pc            *net.UDPConn
 	remoteReadIP  net.IP
 	remoteWriteIP net.IP
@@ -46,18 +46,18 @@ type clientUDPListener struct {
 	done chan struct{}
 }
 
-func newClientUDPListenerPair(cc *ClientConn) (*clientUDPListener, *clientUDPListener) {
+func newClientUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener) {
 	// choose two consecutive ports in range 65535-10000
 	// rtp must be even and rtcp odd
 	for {
 		rtpPort := (randIntn((65535-10000)/2) * 2) + 10000
-		rtpListener, err := newClientUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
+		rtpListener, err := newClientUDPListener(c, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
 		if err != nil {
 			continue
 		}
 
 		rtcpPort := rtpPort + 1
-		rtcpListener, err := newClientUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtcpPort), 10))
+		rtcpListener, err := newClientUDPListener(c, false, ":"+strconv.FormatInt(int64(rtcpPort), 10))
 		if err != nil {
 			rtpListener.close()
 			continue
@@ -67,7 +67,7 @@ func newClientUDPListenerPair(cc *ClientConn) (*clientUDPListener, *clientUDPLis
 	}
 }
 
-func newClientUDPListener(cc *ClientConn, multicast bool, address string) (*clientUDPListener, error) {
+func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDPListener, error) {
 	var pc *net.UDPConn
 	if multicast {
 		host, port, err := net.SplitHostPort(address)
@@ -75,7 +75,7 @@ func newClientUDPListener(cc *ClientConn, multicast bool, address string) (*clie
 			return nil, err
 		}
 
-		tmp, err := cc.c.ListenPacket("udp", "224.0.0.0:"+port)
+		tmp, err := c.ListenPacket("udp", "224.0.0.0:"+port)
 		if err != nil {
 			return nil, err
 		}
@@ -101,22 +101,22 @@ func newClientUDPListener(cc *ClientConn, multicast bool, address string) (*clie
 
 		pc = tmp.(*net.UDPConn)
 	} else {
-		tmp, err := cc.c.ListenPacket("udp", address)
+		tmp, err := c.ListenPacket("udp", address)
 		if err != nil {
 			return nil, err
 		}
 		pc = tmp.(*net.UDPConn)
 	}
 
-	err := pc.SetReadBuffer(clientConnUDPKernelReadBufferSize)
+	err := pc.SetReadBuffer(clientUDPKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}
 
 	return &clientUDPListener{
-		cc:          cc,
+		c:           c,
 		pc:          pc,
-		frameBuffer: multibuffer.New(uint64(cc.c.ReadBufferCount), uint64(cc.c.ReadBufferSize)),
+		frameBuffer: multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize)),
 		lastFrameTime: func() *int64 {
 			v := int64(0)
 			return &v
@@ -150,7 +150,7 @@ func (l *clientUDPListener) stop() {
 func (l *clientUDPListener) run() {
 	defer close(l.done)
 
-	if l.cc.state == clientConnStatePlay {
+	if l.c.state == clientStatePlay {
 		for {
 			buf := l.frameBuffer.Next()
 			n, addr, err := l.pc.ReadFrom(buf)
@@ -168,12 +168,12 @@ func (l *clientUDPListener) run() {
 			atomic.StoreInt64(l.lastFrameTime, now.Unix())
 
 			if l.streamType == StreamTypeRTP {
-				l.cc.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
+				l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
 			} else {
-				l.cc.tracks[l.trackID].rtcpReceiver.ProcessPacketRTCP(now, buf[:n])
+				l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTCP(now, buf[:n])
 			}
 
-			l.cc.pullReadCB()(l.trackID, l.streamType, buf[:n])
+			l.c.pullReadCB()(l.trackID, l.streamType, buf[:n])
 		}
 	} else { // record
 		for {
@@ -191,7 +191,7 @@ func (l *clientUDPListener) run() {
 
 			now := time.Now()
 			atomic.StoreInt64(l.lastFrameTime, now.Unix())
-			l.cc.pullReadCB()(l.trackID, l.streamType, buf[:n])
+			l.c.pullReadCB()(l.trackID, l.streamType, buf[:n])
 		}
 	}
 }
@@ -200,7 +200,7 @@ func (l *clientUDPListener) write(buf []byte) error {
 	l.writeMutex.Lock()
 	defer l.writeMutex.Unlock()
 
-	l.pc.SetWriteDeadline(time.Now().Add(l.cc.c.WriteTimeout))
+	l.pc.SetWriteDeadline(time.Now().Add(l.c.WriteTimeout))
 	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
 		IP:   l.remoteWriteIP,
 		Zone: l.remoteZone,

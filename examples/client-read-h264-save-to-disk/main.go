@@ -28,16 +28,16 @@ func main() {
 	c := gortsplib.Client{}
 
 	// connect to the server and start reading all tracks
-	conn, err := c.DialRead(inputStream)
+	err := c.DialRead(inputStream)
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer c.Close()
 
 	// find the H264 track
 	var h264TrackID int = -1
 	var h264Conf *gortsplib.TrackConfigH264
-	for i, track := range conn.Tracks() {
+	for i, track := range c.Tracks() {
 		if track.IsH264() {
 			h264TrackID = i
 			h264Conf, err = track.ExtractConfigH264()
@@ -74,7 +74,7 @@ func main() {
 	mux.SetPCRPID(256)
 
 	// read packets
-	err = conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
+	err = c.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
 		if trackID != h264TrackID {
 			return
 		}

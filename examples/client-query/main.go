@@ -19,18 +19,18 @@ func main() {
 
 	c := gortsplib.Client{}
 
-	conn, err := c.Dial(u.Scheme, u.Host)
+	err = c.Dial(u.Scheme, u.Host)
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer c.Close()
 
-	_, err = conn.Options(u)
+	_, err = c.Options(u)
 	if err != nil {
 		panic(err)
 	}
 
-	tracks, _, _, err := conn.Describe(u)
+	tracks, _, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
