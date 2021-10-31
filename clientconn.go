@@ -52,8 +52,8 @@ const (
 
 type clientConnTrack struct {
 	track           *Track
-	udpRTPListener  *clientConnUDPListener
-	udpRTCPListener *clientConnUDPListener
+	udpRTPListener  *clientUDPListener
+	udpRTCPListener *clientUDPListener
 	tcpChannel      int
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver
 	rtcpSender      *rtcpsender.RTCPSender
@@ -1171,8 +1171,8 @@ func (cc *ClientConn) doSetup(
 		return nil, liberrors.ErrClientCannotSetupTracksDifferentURLs{}
 	}
 
-	var rtpListener *clientConnUDPListener
-	var rtcpListener *clientConnUDPListener
+	var rtpListener *clientUDPListener
+	var rtcpListener *clientUDPListener
 
 	// always use TCP if encrypted
 	if cc.scheme == "rtsps" {
@@ -1214,18 +1214,18 @@ func (cc *ClientConn) doSetup(
 
 		var err error
 		if rtpPort != 0 {
-			rtpListener, err = newClientConnUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
+			rtpListener, err = newClientUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
 			if err != nil {
 				return nil, err
 			}
 
-			rtcpListener, err = newClientConnUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtcpPort), 10))
+			rtcpListener, err = newClientUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtcpPort), 10))
 			if err != nil {
 				rtpListener.close()
 				return nil, err
 			}
 		} else {
-			rtpListener, rtcpListener = newClientConnUDPListenerPair(cc)
+			rtpListener, rtcpListener = newClientUDPListenerPair(cc)
 		}
 
 		v1 := headers.TransportDeliveryUnicast
@@ -1328,13 +1328,13 @@ func (cc *ClientConn) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderNoDestination{}
 		}
 
-		rtpListener, err = newClientConnUDPListener(cc, true,
+		rtpListener, err = newClientUDPListener(cc, true,
 			thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[0]), 10))
 		if err != nil {
 			return nil, err
 		}
 
-		rtcpListener, err = newClientConnUDPListener(cc, true,
+		rtcpListener, err = newClientUDPListener(cc, true,
 			thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[1]), 10))
 		if err != nil {
 			rtpListener.close()

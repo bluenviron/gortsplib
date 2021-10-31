@@ -28,7 +28,7 @@ func randIntn(n int) int {
 	return int(randUint32() & (uint32(n) - 1))
 }
 
-type clientConnUDPListener struct {
+type clientUDPListener struct {
 	cc            *ClientConn
 	pc            *net.UDPConn
 	remoteReadIP  net.IP
@@ -46,18 +46,18 @@ type clientConnUDPListener struct {
 	done chan struct{}
 }
 
-func newClientConnUDPListenerPair(cc *ClientConn) (*clientConnUDPListener, *clientConnUDPListener) {
+func newClientUDPListenerPair(cc *ClientConn) (*clientUDPListener, *clientUDPListener) {
 	// choose two consecutive ports in range 65535-10000
 	// rtp must be even and rtcp odd
 	for {
 		rtpPort := (randIntn((65535-10000)/2) * 2) + 10000
-		rtpListener, err := newClientConnUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
+		rtpListener, err := newClientUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
 		if err != nil {
 			continue
 		}
 
 		rtcpPort := rtpPort + 1
-		rtcpListener, err := newClientConnUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtcpPort), 10))
+		rtcpListener, err := newClientUDPListener(cc, false, ":"+strconv.FormatInt(int64(rtcpPort), 10))
 		if err != nil {
 			rtpListener.close()
 			continue
@@ -67,7 +67,7 @@ func newClientConnUDPListenerPair(cc *ClientConn) (*clientConnUDPListener, *clie
 	}
 }
 
-func newClientConnUDPListener(cc *ClientConn, multicast bool, address string) (*clientConnUDPListener, error) {
+func newClientUDPListener(cc *ClientConn, multicast bool, address string) (*clientUDPListener, error) {
 	var pc *net.UDPConn
 	if multicast {
 		host, port, err := net.SplitHostPort(address)
@@ -113,7 +113,7 @@ func newClientConnUDPListener(cc *ClientConn, multicast bool, address string) (*
 		return nil, err
 	}
 
-	return &clientConnUDPListener{
+	return &clientUDPListener{
 		cc:          cc,
 		pc:          pc,
 		frameBuffer: multibuffer.New(uint64(cc.c.ReadBufferCount), uint64(cc.c.ReadBufferSize)),
@@ -124,30 +124,30 @@ func newClientConnUDPListener(cc *ClientConn, multicast bool, address string) (*
 	}, nil
 }
 
-func (l *clientConnUDPListener) close() {
+func (l *clientUDPListener) close() {
 	if l.running {
 		l.stop()
 	}
 	l.pc.Close()
 }
 
-func (l *clientConnUDPListener) port() int {
+func (l *clientUDPListener) port() int {
 	return l.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
-func (l *clientConnUDPListener) start() {
+func (l *clientUDPListener) start() {
 	l.running = true
 	l.pc.SetReadDeadline(time.Time{})
 	l.done = make(chan struct{})
 	go l.run()
 }
 
-func (l *clientConnUDPListener) stop() {
+func (l *clientUDPListener) stop() {
 	l.pc.SetReadDeadline(time.Now())
 	<-l.done
 }
 
-func (l *clientConnUDPListener) run() {
+func (l *clientUDPListener) run() {
 	defer close(l.done)
 
 	if l.cc.state == clientConnStatePlay {
@@ -196,7 +196,7 @@ func (l *clientConnUDPListener) run() {
 	}
 }
 
-func (l *clientConnUDPListener) write(buf []byte) error {
+func (l *clientUDPListener) write(buf []byte) error {
 	l.writeMutex.Lock()
 	defer l.writeMutex.Unlock()
 
