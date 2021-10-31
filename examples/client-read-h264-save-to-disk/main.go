@@ -25,8 +25,10 @@ const (
 )
 
 func main() {
+	c := gortsplib.Client{}
+
 	// connect to the server and start reading all tracks
-	conn, err := gortsplib.DialRead(inputStream)
+	conn, err := c.DialRead(inputStream)
 	if err != nil {
 		panic(err)
 	}

@@ -88,7 +88,9 @@ func TestClientSession(t *testing.T) {
 	u, err := base.ParseURL("rtsp://localhost:8554/stream")
 	require.NoError(t, err)
 
-	conn, err := Dial(u.Scheme, u.Host)
+	c := Client{}
+
+	conn, err := c.Dial(u.Scheme, u.Host)
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -167,7 +169,9 @@ func TestClientAuth(t *testing.T) {
 	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/stream")
 	require.NoError(t, err)
 
-	conn, err := Dial(u.Scheme, u.Host)
+	c := Client{}
+
+	conn, err := c.Dial(u.Scheme, u.Host)
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -229,7 +233,9 @@ func TestClientDescribeCharset(t *testing.T) {
 	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	conn, err := Dial(u.Scheme, u.Host)
+	c := Client{}
+
+	conn, err := c.Dial(u.Scheme, u.Host)
 	require.NoError(t, err)
 	defer conn.Close()
 

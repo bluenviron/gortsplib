@@ -17,24 +17,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
-// DefaultClient is the default Client.
-var DefaultClient = &Client{}
-
-// Dial connects to a server.
-func Dial(scheme string, host string) (*ClientConn, error) {
-	return DefaultClient.Dial(scheme, host)
-}
-
-// DialRead connects to a server and starts reading all tracks.
-func DialRead(address string) (*ClientConn, error) {
-	return DefaultClient.DialRead(address)
-}
-
-// DialPublish connects to a server and starts publishing the tracks.
-func DialPublish(address string, tracks Tracks) (*ClientConn, error) {
-	return DefaultClient.DialPublish(address, tracks)
-}
-
 // Client is a RTSP client.
 type Client struct {
 	//

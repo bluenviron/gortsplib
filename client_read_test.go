@@ -130,7 +130,9 @@ func TestClientReadTracks(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	conn, err := DialRead("rtsp://localhost:8554/teststream")
+	c := Client{}
+
+	conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -801,7 +803,9 @@ func TestClientReadNoContentBase(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	conn, err := DialRead("rtsp://localhost:8554/teststream")
+	c := Client{}
+
+	conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	conn.Close()
 }
@@ -1039,7 +1043,9 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		conn, err := DialRead("rtsp://localhost:8554/teststream")
+		c := Client{}
+
+		conn, err := c.DialRead("rtsp://localhost:8554/teststream")
 		require.NoError(t, err)
 
 		frameRecv := make(chan struct{})
@@ -1522,7 +1528,9 @@ func TestClientReadRedirect(t *testing.T) {
 		})
 	}()
 
-	conn, err := DialRead("rtsp://localhost:8554/path1")
+	c := Client{}
+
+	conn, err := c.DialRead("rtsp://localhost:8554/path1")
 	require.NoError(t, err)
 
 	frameRecv := make(chan struct{})

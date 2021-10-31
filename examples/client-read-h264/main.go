@@ -14,8 +14,10 @@ import (
 // 3. get H264 NALUs of that track
 
 func main() {
+	c := gortsplib.Client{}
+
 	// connect to the server and start reading all tracks
-	conn, err := gortsplib.DialRead("rtsp://localhost:8554/mystream")
+	conn, err := c.DialRead("rtsp://localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
