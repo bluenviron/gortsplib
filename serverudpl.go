@@ -54,7 +54,7 @@ type serverUDPListener struct {
 	wg           sync.WaitGroup
 	pc           *net.UDPConn
 	listenIP     net.IP
-	streamType   StreamType
+	isRTP        bool
 	writeTimeout time.Duration
 	readBuf      *multibuffer.MultiBuffer
 	clientsMutex sync.RWMutex
@@ -72,13 +72,13 @@ func newServerUDPListenerMulticastPair(s *Server) (*serverUDPListener, *serverUD
 	ip := <-res
 
 	rtpListener, err := newServerUDPListener(s, true,
-		ip.String()+":"+strconv.FormatInt(int64(s.MulticastRTPPort), 10), StreamTypeRTP)
+		ip.String()+":"+strconv.FormatInt(int64(s.MulticastRTPPort), 10), true)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	rtcpListener, err := newServerUDPListener(s, true,
-		ip.String()+":"+strconv.FormatInt(int64(s.MulticastRTCPPort), 10), StreamTypeRTCP)
+		ip.String()+":"+strconv.FormatInt(int64(s.MulticastRTCPPort), 10), false)
 	if err != nil {
 		rtpListener.close()
 		return nil, nil, err
@@ -91,7 +91,7 @@ func newServerUDPListener(
 	s *Server,
 	multicast bool,
 	address string,
-	streamType StreamType) (*serverUDPListener, error) {
+	isRTP bool) (*serverUDPListener, error) {
 	var pc *net.UDPConn
 	var listenIP net.IP
 	if multicast {
@@ -145,18 +145,17 @@ func newServerUDPListener(
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	u := &serverUDPListener{
-		s:         s,
-		ctx:       ctx,
-		ctxCancel: ctxCancel,
-		pc:        pc,
-		listenIP:  listenIP,
-		clients:   make(map[clientAddr]*clientData),
+		s:            s,
+		ctx:          ctx,
+		ctxCancel:    ctxCancel,
+		pc:           pc,
+		listenIP:     listenIP,
+		clients:      make(map[clientAddr]*clientData),
+		isRTP:        isRTP,
+		writeTimeout: s.WriteTimeout,
+		readBuf:      multibuffer.New(uint64(s.ReadBufferCount), uint64(s.ReadBufferSize)),
+		ringBuffer:   ringbuffer.New(uint64(s.ReadBufferCount)),
 	}
-
-	u.streamType = streamType
-	u.writeTimeout = s.WriteTimeout
-	u.readBuf = multibuffer.New(uint64(s.ReadBufferCount), uint64(s.ReadBufferSize))
-	u.ringBuffer = ringbuffer.New(uint64(s.ReadBufferCount))
 
 	u.wg.Add(1)
 	go u.run()
@@ -202,18 +201,14 @@ func (u *serverUDPListener) run() {
 					return
 				}
 
+				now := time.Now()
 				if clientData.isPublishing {
-					now := time.Now()
 					atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
-
-					if u.streamType == StreamTypeRTP {
-						clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
-					} else {
-						clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTCP(now, buf[:n])
-					}
 				}
 
-				if u.streamType == StreamTypeRTP {
+				if u.isRTP {
+					clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
+
 					if h, ok := u.s.Handler.(ServerHandlerOnPacketRTP); ok {
 						h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
 							Session: clientData.ss,
@@ -222,6 +217,10 @@ func (u *serverUDPListener) run() {
 						})
 					}
 				} else {
+					if clientData.isPublishing {
+						clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTCP(now, buf[:n])
+					}
+
 					if h, ok := u.s.Handler.(ServerHandlerOnPacketRTCP); ok {
 						h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
 							Session: clientData.ss,
