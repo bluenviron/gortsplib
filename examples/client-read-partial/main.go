@@ -19,7 +19,9 @@ func main() {
 		panic(err)
 	}
 
-	conn, err := gortsplib.Dial(u.Scheme, u.Host)
+	c := gortsplib.Client{}
+
+	conn, err := c.Dial(u.Scheme, u.Host)
 	if err != nil {
 		panic(err)
 	}

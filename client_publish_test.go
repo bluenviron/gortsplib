@@ -745,7 +745,9 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
-	conn, err := DialPublish("rtsp://localhost:8554/teststream",
+	c := Client{}
+
+	conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
 		Tracks{track})
 	require.NoError(t, err)
 	defer conn.Close()

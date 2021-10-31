@@ -10,8 +10,10 @@ import (
 // 1. connect to a RTSP server and read all tracks on a path
 
 func main() {
+	c := gortsplib.Client{}
+
 	// connect to the server and start reading all tracks
-	conn, err := gortsplib.DialRead("rtsp://localhost:8554/mystream")
+	conn, err := c.DialRead("rtsp://localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
