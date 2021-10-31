@@ -167,7 +167,7 @@ type ClientConn struct {
 }
 
 func newClientConn(c *Client, scheme string, host string) (*ClientConn, error) {
-	// connection
+	// RTSP parameters
 	if c.ReadTimeout == 0 {
 		c.ReadTimeout = 10 * time.Second
 	}
@@ -177,12 +177,9 @@ func newClientConn(c *Client, scheme string, host string) (*ClientConn, error) {
 	if c.TLSConfig == nil {
 		c.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	}
-
-	// reading / writing
 	if c.InitialUDPReadTimeout == 0 {
 		c.InitialUDPReadTimeout = 3 * time.Second
 	}
-
 	if c.ReadBufferCount == 0 {
 		c.ReadBufferCount = 1
 	}
