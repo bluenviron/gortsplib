@@ -42,12 +42,12 @@ func main() {
 	c := gortsplib.Client{}
 
 	// connect to the server and start publishing the track
-	conn, err := c.DialPublish("rtsp://localhost:8554/mystream",
+	err = c.DialPublish("rtsp://localhost:8554/mystream",
 		gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer c.Close()
 
 	buf = make([]byte, 2048)
 	for {
@@ -58,7 +58,7 @@ func main() {
 		}
 
 		// route RTP packets to the server
-		err = conn.WritePacketRTP(0, buf[:n])
+		err = c.WritePacketRTP(0, buf[:n])
 		if err != nil {
 			panic(err)
 		}

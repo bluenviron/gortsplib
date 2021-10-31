@@ -21,18 +21,18 @@ func main() {
 
 	c := gortsplib.Client{}
 
-	conn, err := c.Dial(u.Scheme, u.Host)
+	err = c.Dial(u.Scheme, u.Host)
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer c.Close()
 
-	_, err = conn.Options(u)
+	_, err = c.Options(u)
 	if err != nil {
 		panic(err)
 	}
 
-	tracks, baseURL, _, err := conn.Describe(u)
+	tracks, baseURL, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +40,7 @@ func main() {
 	// start reading only video tracks, skipping audio or application tracks
 	for _, t := range tracks {
 		if t.Media.MediaName.Media == "video" {
-			_, err := conn.Setup(headers.TransportModePlay, baseURL, t, 0, 0)
+			_, err := c.Setup(headers.TransportModePlay, baseURL, t, 0, 0)
 			if err != nil {
 				panic(err)
 			}
@@ -48,13 +48,13 @@ func main() {
 	}
 
 	// play setupped tracks
-	_, err = conn.Play(nil)
+	_, err = c.Play(nil)
 	if err != nil {
 		panic(err)
 	}
 
 	// read packets
-	err = conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
+	err = c.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
 		fmt.Printf("packet from track %d, type %v, size %d\n", trackID, streamType, len(payload))
 	})
 	panic(err)

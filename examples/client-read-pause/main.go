@@ -17,18 +17,18 @@ func main() {
 	c := gortsplib.Client{}
 
 	// connect to the server and start reading all tracks
-	conn, err := c.DialRead("rtsp://localhost:8554/mystream")
+	err := c.DialRead("rtsp://localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer c.Close()
 
 	for {
 		// read packets
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
+			c.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
 				fmt.Printf("packet from track %d, type %v, size %d\n", trackID, streamType, len(payload))
 			})
 		}()
@@ -37,7 +37,7 @@ func main() {
 		time.Sleep(5 * time.Second)
 
 		// pause
-		_, err := conn.Pause()
+		_, err := c.Pause()
 		if err != nil {
 			panic(err)
 		}
@@ -49,7 +49,7 @@ func main() {
 		time.Sleep(5 * time.Second)
 
 		// play again
-		_, err = conn.Play(nil)
+		_, err = c.Play(nil)
 		if err != nil {
 			panic(err)
 		}

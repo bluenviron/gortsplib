@@ -172,7 +172,7 @@ func TestClientPublishSerial(t *testing.T) {
 			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
-			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
+			err = c.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 
@@ -180,7 +180,7 @@ func TestClientPublishSerial(t *testing.T) {
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				conn.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
+				c.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
 					require.Equal(t, 0, trackID)
 					require.Equal(t, StreamTypeRTCP, streamType)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, payload)
@@ -188,15 +188,15 @@ func TestClientPublishSerial(t *testing.T) {
 				})
 			}()
 
-			err = conn.WritePacketRTP(0,
+			err = c.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 
 			<-recvDone
-			conn.Close()
+			c.Close()
 			<-done
 
-			err = conn.WritePacketRTP(0,
+			err = c.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.Error(t, err)
 		})
@@ -316,10 +316,10 @@ func TestClientPublishParallel(t *testing.T) {
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
 
-			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
+			err = c.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
-			defer conn.Close()
+			defer c.Close()
 
 			go func() {
 				defer close(writerDone)
@@ -328,7 +328,7 @@ func TestClientPublishParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := conn.WritePacketRTP(0,
+					err := c.WritePacketRTP(0,
 						[]byte{0x01, 0x02, 0x03, 0x04})
 					if err != nil {
 						return
@@ -470,26 +470,26 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
-			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
+			err = c.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
-			defer conn.Close()
+			defer c.Close()
 
-			err = conn.WritePacketRTP(0,
+			err = c.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 
-			_, err = conn.Pause()
+			_, err = c.Pause()
 			require.NoError(t, err)
 
-			err = conn.WritePacketRTP(0,
+			err = c.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.Error(t, err)
 
-			_, err = conn.Record()
+			_, err = c.Record()
 			require.NoError(t, err)
 
-			err = conn.WritePacketRTP(0,
+			err = c.WritePacketRTP(0,
 				[]byte{0x01, 0x02, 0x03, 0x04})
 			require.NoError(t, err)
 		})
@@ -607,7 +607,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 			require.NoError(t, err)
 
-			conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
+			err = c.DialPublish("rtsp://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 
@@ -619,7 +619,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := conn.WritePacketRTP(0,
+					err := c.WritePacketRTP(0,
 						[]byte{0x01, 0x02, 0x03, 0x04})
 					if err != nil {
 						return
@@ -629,11 +629,11 @@ func TestClientPublishPauseParallel(t *testing.T) {
 
 			time.Sleep(1 * time.Second)
 
-			_, err = conn.Pause()
+			_, err = c.Pause()
 			require.NoError(t, err)
 			<-writerDone
 
-			conn.Close()
+			c.Close()
 		})
 	}
 }
@@ -747,12 +747,12 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 
 	c := Client{}
 
-	conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
+	err = c.DialPublish("rtsp://localhost:8554/teststream",
 		Tracks{track})
 	require.NoError(t, err)
-	defer conn.Close()
+	defer c.Close()
 
-	err = conn.WritePacketRTP(0,
+	err = c.WritePacketRTP(0,
 		[]byte{0x01, 0x02, 0x03, 0x04})
 	require.NoError(t, err)
 }
@@ -888,10 +888,10 @@ func TestClientPublishRTCPReport(t *testing.T) {
 	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 	require.NoError(t, err)
 
-	conn, err := c.DialPublish("rtsp://localhost:8554/teststream",
+	err = c.DialPublish("rtsp://localhost:8554/teststream",
 		Tracks{track})
 	require.NoError(t, err)
-	defer conn.Close()
+	defer c.Close()
 
 	byts, _ := (&rtp.Packet{
 		Header: rtp.Header{
@@ -904,11 +904,11 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		},
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}).Marshal()
-	err = conn.WritePacketRTP(0, byts)
+	err = c.WritePacketRTP(0, byts)
 	require.NoError(t, err)
 
 	time.Sleep(1300 * time.Millisecond)
 
-	err = conn.WritePacketRTP(0, byts)
+	err = c.WritePacketRTP(0, byts)
 	require.NoError(t, err)
 }
