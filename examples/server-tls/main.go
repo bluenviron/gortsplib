@@ -21,22 +21,22 @@ type serverHandler struct {
 	publisher *gortsplib.ServerSession
 }
 
-// called after a connection is opened.
+// called when a connection is opened.
 func (sh *serverHandler) OnConnOpen(ctx *gortsplib.ServerHandlerOnConnOpenCtx) {
 	log.Printf("conn opened")
 }
 
-// called after a connection is closed.
+// called when a connection is closed.
 func (sh *serverHandler) OnConnClose(ctx *gortsplib.ServerHandlerOnConnCloseCtx) {
 	log.Printf("conn closed (%v)", ctx.Error)
 }
 
-// called after a session is opened.
+// called when a session is opened.
 func (sh *serverHandler) OnSessionOpen(ctx *gortsplib.ServerHandlerOnSessionOpenCtx) {
 	log.Printf("session opened")
 }
 
-// called after a session is closed.
+// called when a session is closed.
 func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
 	log.Printf("session closed")
 
