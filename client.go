@@ -38,7 +38,15 @@ func DialPublish(address string, tracks Tracks) (*ClientConn, error) {
 // Client is a RTSP client.
 type Client struct {
 	//
-	// connection
+	// callbacks
+	//
+	// callback called before every request.
+	OnRequest func(*base.Request)
+	// callback called after every response.
+	OnResponse func(*base.Response)
+
+	//
+	// RTSP parameters
 	//
 	// timeout of read operations.
 	// It defaults to 10 seconds.
@@ -49,10 +57,6 @@ type Client struct {
 	// a TLS configuration to connect to TLS (RTSPS) servers.
 	// It defaults to &tls.Config{InsecureSkipVerify:true}
 	TLSConfig *tls.Config
-
-	//
-	// initialization
-	//
 	// disable being redirected to other servers, that can happen during Describe().
 	// It defaults to false.
 	RedirectDisable bool
@@ -60,10 +64,6 @@ type Client struct {
 	// this can be a security issue.
 	// It defaults to false.
 	AnyPortEnable bool
-
-	//
-	// reading / writing
-	//
 	// the stream transport (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
@@ -81,14 +81,6 @@ type Client struct {
 	// This must be touched only when the server reports errors about buffer sizes.
 	// It defaults to 2048.
 	ReadBufferSize int
-
-	//
-	// callbacks
-	//
-	// callback called before every request.
-	OnRequest func(req *base.Request)
-	// callback called after every response.
-	OnResponse func(res *base.Response)
 
 	//
 	// system functions
