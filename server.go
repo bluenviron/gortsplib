@@ -222,12 +222,12 @@ func (s *Server) Start() error {
 			return fmt.Errorf("RTP and RTCP ports must be consecutive")
 		}
 
-		s.udpRTPListener, err = newServerUDPListener(s, false, s.UDPRTPAddress, StreamTypeRTP)
+		s.udpRTPListener, err = newServerUDPListener(s, false, s.UDPRTPAddress, true)
 		if err != nil {
 			return err
 		}
 
-		s.udpRTCPListener, err = newServerUDPListener(s, false, s.UDPRTCPAddress, StreamTypeRTCP)
+		s.udpRTCPListener, err = newServerUDPListener(s, false, s.UDPRTCPAddress, false)
 		if err != nil {
 			s.udpRTPListener.close()
 			return err

@@ -146,34 +146,34 @@ func (sc *ServerConn) run() {
 					switch what.(type) {
 					case *base.InterleavedFrame:
 						channel := frame.Channel
-						streamType := StreamTypeRTP
+						isRTP := true
 						if (channel % 2) != 0 {
 							channel--
-							streamType = StreamTypeRTCP
+							isRTP = false
 						}
 
 						// forward frame only if it has been set up
 						if trackID, ok := sc.tcpSession.setuppedTracksByChannel[channel]; ok {
-							if sc.tcpFrameIsRecording {
-								if streamType == StreamTypeRTP {
+							if isRTP {
+								if sc.tcpFrameIsRecording {
 									sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessPacketRTP(
 										time.Now(), frame.Payload)
-								} else {
-									sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessPacketRTCP(
-										time.Now(), frame.Payload)
-								}
-							}
 
-							if streamType == StreamTypeRTP {
-								if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
-									h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-										Session: sc.tcpSession,
-										TrackID: trackID,
-										Payload: frame.Payload,
-									})
+									if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
+										h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+											Session: sc.tcpSession,
+											TrackID: trackID,
+											Payload: frame.Payload,
+										})
+									}
 								}
 							} else {
 								if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
+									if sc.tcpFrameIsRecording {
+										sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessPacketRTCP(
+											time.Now(), frame.Payload)
+									}
+
 									h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
 										Session: sc.tcpSession,
 										TrackID: trackID,
