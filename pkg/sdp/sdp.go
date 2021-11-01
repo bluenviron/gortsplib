@@ -295,6 +295,10 @@ func (s *SessionDescription) unmarshalSessionAttribute(value string) error {
 }
 
 func (s *SessionDescription) unmarshalTiming(value string) error {
+	if value == "now-" {
+		// special case for some FLIR cameras with invalid timing element
+		value = "0 0"
+	}
 	fields := strings.Fields(value)
 	if len(fields) < 2 {
 		return fmt.Errorf("%w `t=%v`", errSDPInvalidSyntax, fields)
