@@ -1227,6 +1227,161 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"FLIR with bad timing",
+		[]byte("v=0\r\n" +
+			"o=- 0 0 IN IP4 172.16.2.20\r\n" +
+			"s=IR stream\r\n" +
+			"i=Live infrared\r\n" +
+			"c=IN IP4 172.16.2.20\r\n" +
+			"t=now-\r\n" +
+			"m=video 0 RTP/AVP 96 97 111 112 99\r\n" +
+			"a=control:rtsp://172.16.2.20/sid=96&overlay=on\r\n" +
+			"a=framerate:30\r\n" +
+			"a=rtpmap:96 MP4V-ES/90000\r\n" +
+			"a=framesize:96 640-480\r\n" +
+			"a=fmtp:96 profile-level-id=1;config=000001B002000001B59113000001000000012000C888800F514043C14103\r\n" +
+			"a=rtpmap:97 MP4V-ES/90000\r\n" +
+			"a=framesize:97 320-240\r\n" +
+			"a=fmtp:97 profile-level-id=1;config=000001B002000001B59113000001000000012000C888800F50A041E14103\r\n" +
+			"a=rtpmap:111 H264/90000\r\n" +
+			"a=framesize:111 640-480\r\n" +
+			"a=fmtp:111 profile-level-id=42001E;packetization-mode=1;sprop-parameter-sets=Z0IAHqtAUB7I,aM4xEg==\r\n" +
+			"a=rtpmap:112 H264/90000\r\n" +
+			"a=framesize:112 320-240\r\n" +
+			"a=fmtp:112 profile-level-id=42001E;packetization-mode=1;sprop-parameter-sets=Z0IAHqtAoPyA,aM4xEg==\r\n" +
+			"a=rtpmap:99 FCAM/90000\r\n" +
+			"a=framesize:99 320-240\r\n" +
+			"a=fmtp:99 sampling=mono; width=320; height=240; depth=16\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 0 0 IN IP4 172.16.2.20\r\n" +
+			"s=IR stream\r\n" +
+			"i=Live infrared\r\n" +
+			"c=IN IP4 172.16.2.20\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96 97 111 112 99\r\n" +
+			"a=control:rtsp://172.16.2.20/sid=96&overlay=on\r\n" +
+			"a=framerate:30\r\n" +
+			"a=rtpmap:96 MP4V-ES/90000\r\n" +
+			"a=framesize:96 640-480\r\n" +
+			"a=fmtp:96 profile-level-id=1;config=000001B002000001B59113000001000000012000C888800F514043C14103\r\n" +
+			"a=rtpmap:97 MP4V-ES/90000\r\n" +
+			"a=framesize:97 320-240\r\n" +
+			"a=fmtp:97 profile-level-id=1;config=000001B002000001B59113000001000000012000C888800F50A041E14103\r\n" +
+			"a=rtpmap:111 H264/90000\r\n" +
+			"a=framesize:111 640-480\r\n" +
+			"a=fmtp:111 profile-level-id=42001E;packetization-mode=1;sprop-parameter-sets=Z0IAHqtAUB7I,aM4xEg==\r\n" +
+			"a=rtpmap:112 H264/90000\r\n" +
+			"a=framesize:112 320-240\r\n" +
+			"a=fmtp:112 profile-level-id=42001E;packetization-mode=1;sprop-parameter-sets=Z0IAHqtAoPyA,aM4xEg==\r\n" +
+			"a=rtpmap:99 FCAM/90000\r\n" +
+			"a=framesize:99 320-240\r\n" +
+			"a=fmtp:99 sampling=mono; width=320; height=240; depth=16\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      0,
+				SessionVersion: 0,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "172.16.2.20",
+			},
+			SessionName: "IR stream",
+			SessionInformation: func() *psdp.Information {
+				v := psdp.Information("Live infrared")
+				return &v
+			}(),
+			TimeDescriptions: []psdp.TimeDescription{
+				{psdp.Timing{0, 0}, nil},
+			},
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "172.16.2.20",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96", "97", "111", "112", "99"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://172.16.2.20/sid=96&overlay=on",
+						},
+						{
+							Key:   "framerate",
+							Value: "30",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 MP4V-ES/90000",
+						},
+						{
+							Key:   "framesize",
+							Value: "96 640-480",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=1;config=000001B002000001B59113000001000000012000C888800F514043C14103",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "97 MP4V-ES/90000",
+						},
+						{
+							Key:   "framesize",
+							Value: "97 320-240",
+						},
+						{
+							Key:   "fmtp",
+							Value: "97 profile-level-id=1;config=000001B002000001B59113000001000000012000C888800F50A041E14103",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "111 H264/90000",
+						},
+						{
+							Key:   "framesize",
+							Value: "111 640-480",
+						},
+						{
+							Key:   "fmtp",
+							Value: "111 profile-level-id=42001E;packetization-mode=1;sprop-parameter-sets=Z0IAHqtAUB7I,aM4xEg==",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "112 H264/90000",
+						},
+						{
+							Key:   "framesize",
+							Value: "112 320-240",
+						},
+						{
+							Key:   "fmtp",
+							Value: "112 profile-level-id=42001E;packetization-mode=1;sprop-parameter-sets=Z0IAHqtAoPyA,aM4xEg==",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "99 FCAM/90000",
+						},
+						{
+							Key:   "framesize",
+							Value: "99 320-240",
+						},
+						{
+							Key:   "fmtp",
+							Value: "99 sampling=mono; width=320; height=240; depth=16",
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
