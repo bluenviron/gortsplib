@@ -51,9 +51,9 @@ func main() {
 		panic(err)
 	}
 
-	// read RTP packets
+	// read packets
 	err = conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
-		fmt.Printf("frame from track %d, type %v, size %d\n", trackID, streamType, len(payload))
+		fmt.Printf("packet from track %d, type %v, size %d\n", trackID, streamType, len(payload))
 	})
 	panic(err)
 }

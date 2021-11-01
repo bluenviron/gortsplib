@@ -38,7 +38,7 @@ func main() {
 	// instantiate a RTP/H264 decoder
 	dec := rtph264.NewDecoder()
 
-	// read RTP packets
+	// read packets
 	err = conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
 		if streamType != gortsplib.StreamTypeRTP {
 			return

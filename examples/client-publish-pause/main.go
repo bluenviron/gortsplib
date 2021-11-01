@@ -57,7 +57,7 @@ func main() {
 
 			buf := make([]byte, 2048)
 			for {
-				// read RTP packets from the source
+				// read packets from the source
 				n, _, err := pc.ReadFrom(buf)
 				if err != nil {
 					break

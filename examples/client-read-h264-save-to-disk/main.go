@@ -71,7 +71,7 @@ func main() {
 	})
 	mux.SetPCRPID(256)
 
-	// read RTP packets
+	// read packets
 	err = conn.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
 		if trackID != h264TrackID {
 			return
