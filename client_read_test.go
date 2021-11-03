@@ -201,7 +201,7 @@ func TestClientRead(t *testing.T) {
 				req, err := readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -218,27 +218,30 @@ func TestClientRead(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
 				track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
 				require.NoError(t, err)
 
-				tracks := cloneAndClearTracks(Tracks{track})
+				track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
+					Key:   "control",
+					Value: "trackID=0",
+				})
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
-						"Content-Base": base.HeaderValue{scheme + "://" + listenIP + ":8554/teststream/"},
+						"Content-Base": base.HeaderValue{scheme + "://" + listenIP + ":8554/test/stream?param=value/"},
 					},
-					Body: tracks.Write(),
+					Body: Tracks{track}.Write(),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream/trackID=0"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/trackID=0"), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Read(req.Header["Transport"])
@@ -319,7 +322,7 @@ func TestClientRead(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream/"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
 				require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
 
 				err = base.Response{
@@ -380,7 +383,7 @@ func TestClientRead(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/teststream/"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -406,7 +409,7 @@ func TestClientRead(t *testing.T) {
 				}(),
 			}
 
-			conn, err := c.DialRead(scheme + "://" + listenIP + ":8554/teststream")
+			conn, err := c.DialRead(scheme + "://" + listenIP + ":8554/test/stream?param=value")
 			require.NoError(t, err)
 
 			done := make(chan struct{})

@@ -27,9 +27,9 @@ func (t *Track) hasControlAttribute() bool {
 }
 
 // URL returns the track URL.
-func (t *Track) URL(baseURL *base.URL) (*base.URL, error) {
-	if baseURL == nil {
-		return nil, fmt.Errorf("empty base URL")
+func (t *Track) URL(contentBase *base.URL) (*base.URL, error) {
+	if contentBase == nil {
+		return nil, fmt.Errorf("no Content-Base header provided")
 	}
 
 	controlAttr := func() string {
@@ -43,7 +43,7 @@ func (t *Track) URL(baseURL *base.URL) (*base.URL, error) {
 
 	// no control attribute, use base URL
 	if controlAttr == "" {
-		return baseURL, nil
+		return contentBase, nil
 	}
 
 	// control attribute contains an absolute path
@@ -54,8 +54,8 @@ func (t *Track) URL(baseURL *base.URL) (*base.URL, error) {
 		}
 
 		// copy host and credentials
-		ur.Host = baseURL.Host
-		ur.User = baseURL.User
+		ur.Host = contentBase.Host
+		ur.User = contentBase.User
 		return ur, nil
 	}
 
@@ -63,7 +63,7 @@ func (t *Track) URL(baseURL *base.URL) (*base.URL, error) {
 	// insert the control attribute at the end of the URL
 	// if there's a query, insert it after the query
 	// otherwise insert it after the path
-	strURL := baseURL.String()
+	strURL := contentBase.String()
 	if controlAttr[0] != '?' && !strings.HasSuffix(strURL, "/") {
 		strURL += "/"
 	}
