@@ -36,15 +36,15 @@ func (e ErrClientSessionHeaderInvalid) Error() string {
 	return fmt.Sprintf("invalid session header: %v", e.Err)
 }
 
-// ErrClientInvalidStatusCode is an error that can be returned by a client.
-type ErrClientInvalidStatusCode struct {
+// ErrClientBadStatusCode is an error that can be returned by a client.
+type ErrClientBadStatusCode struct {
 	Code    base.StatusCode
 	Message string
 }
 
 // Error implements the error interface.
-func (e ErrClientInvalidStatusCode) Error() string {
-	return fmt.Sprintf("invalid status code: %d (%s)", e.Code, e.Message)
+func (e ErrClientBadStatusCode) Error() string {
+	return fmt.Sprintf("bad status code: %d (%s)", e.Code, e.Message)
 }
 
 // ErrClientContentTypeMissing is an error that can be returned by a client.

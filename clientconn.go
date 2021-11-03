@@ -959,7 +959,7 @@ func (cc *ClientConn) doOptions(u *base.URL) (*base.Response, error) {
 		if res.StatusCode == base.StatusNotFound {
 			return res, nil
 		}
-		return res, liberrors.ErrClientInvalidStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
+		return res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	cc.useGetParameter = func() bool {
@@ -1037,7 +1037,7 @@ func (cc *ClientConn) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response
 			return cc.doDescribe(u)
 		}
 
-		return nil, nil, res, liberrors.ErrClientInvalidStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
+		return nil, nil, res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	ct, ok := res.Header["Content-Type"]
@@ -1132,7 +1132,7 @@ func (cc *ClientConn) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, er
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, liberrors.ErrClientInvalidStatusCode{
+		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
@@ -1298,7 +1298,7 @@ func (cc *ClientConn) doSetup(
 			return cc.doSetup(mode, baseURL, track, 0, 0)
 		}
 
-		return res, liberrors.ErrClientInvalidStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
+		return res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	var thRes headers.Transport
@@ -1507,7 +1507,7 @@ func (cc *ClientConn) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, liberrors.ErrClientInvalidStatusCode{
+		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
@@ -1566,7 +1566,7 @@ func (cc *ClientConn) doRecord() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return nil, liberrors.ErrClientInvalidStatusCode{
+		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
@@ -1617,7 +1617,7 @@ func (cc *ClientConn) doPause() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return res, liberrors.ErrClientInvalidStatusCode{
+		return res, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
