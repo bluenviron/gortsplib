@@ -89,7 +89,7 @@ func TestInterleavedFrameReadErrors(t *testing.T) {
 			var f InterleavedFrame
 			f.Payload = make([]byte, 5)
 			err := f.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }
@@ -114,7 +114,7 @@ func TestInterleavedFrameWriteErrors(t *testing.T) {
 				Channel: 3,
 				Payload: []byte{0x01, 0x02, 0x03, 0x04},
 			}.Write(bw)
-			require.Equal(t, "capacity reached", err.Error())
+			require.EqualError(t, err, "capacity reached")
 		})
 	}
 }
@@ -169,7 +169,7 @@ func TestReadInterleavedFrameOrRequestErrors(t *testing.T) {
 			br := bufio.NewReader(bytes.NewBuffer(ca.byts))
 
 			_, err := ReadInterleavedFrameOrRequest(&f, &req, br)
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }
@@ -224,7 +224,7 @@ func TestReadInterleavedFrameOrResponseErrors(t *testing.T) {
 			br := bufio.NewReader(bytes.NewBuffer(ca.byts))
 
 			_, err := ReadInterleavedFrameOrResponse(&f, &res, br)
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

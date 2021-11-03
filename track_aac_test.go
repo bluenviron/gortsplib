@@ -280,7 +280,7 @@ func TestTrackConfigAACErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			_, err := ca.track.ExtractConfigAAC()
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

@@ -451,7 +451,7 @@ func TestDecodeErrors(t *testing.T) {
 				require.NoError(t, err)
 				_, _, lastErr = d.Decode(&pkt)
 			}
-			require.Equal(t, ca.err, lastErr.Error())
+			require.EqualError(t, lastErr, ca.err)
 		})
 	}
 }
@@ -560,7 +560,7 @@ func TestReadSPSPPSErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			_, _, err := NewDecoder().ReadSPSPPS(&dummyReader{byts: ca.byts})
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

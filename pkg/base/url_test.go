@@ -43,7 +43,7 @@ func TestURLParseErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			_, err := ParseURL(ca.enc)
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

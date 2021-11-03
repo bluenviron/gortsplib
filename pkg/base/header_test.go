@@ -181,7 +181,7 @@ func TestHeaderReadErrors(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			h := make(Header)
 			err := h.read(bufio.NewReader(bytes.NewBuffer(ca.dec)))
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }
@@ -205,7 +205,7 @@ func TestHeaderWriteErrors(t *testing.T) {
 			err := Header{
 				"Value": HeaderValue{"key"},
 			}.write(bw)
-			require.Equal(t, "capacity reached", err.Error())
+			require.EqualError(t, err, "capacity reached")
 		})
 	}
 }

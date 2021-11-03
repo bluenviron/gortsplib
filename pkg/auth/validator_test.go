@@ -65,7 +65,7 @@ func TestValidatorErrors(t *testing.T) {
 					"Authorization": ca.hv,
 				},
 			})
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

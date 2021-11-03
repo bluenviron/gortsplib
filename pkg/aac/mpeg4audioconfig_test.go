@@ -116,7 +116,7 @@ func TestConfigDecodeErrors(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			var dec MPEG4AudioConfig
 			err := dec.Decode(ca.byts)
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }
@@ -149,7 +149,7 @@ func TestConfigEncodeErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			_, err := ca.conf.Encode()
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

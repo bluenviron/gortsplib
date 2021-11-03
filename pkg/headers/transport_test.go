@@ -258,7 +258,7 @@ func TestTransportReadErrors(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Transport
 			err := h.Read(ca.hv)
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

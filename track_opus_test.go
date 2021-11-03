@@ -151,7 +151,7 @@ func TestTrackConfigOpusErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			_, err := ca.track.ExtractConfigOpus()
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

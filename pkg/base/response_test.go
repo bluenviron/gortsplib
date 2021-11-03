@@ -183,7 +183,7 @@ func TestResponseReadErrors(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			var res Response
 			err := res.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }
@@ -216,7 +216,7 @@ func TestResponseWriteErrors(t *testing.T) {
 				},
 				Body: []byte("abc"),
 			}.Write(bw)
-			require.Equal(t, "capacity reached", err.Error())
+			require.EqualError(t, err, "capacity reached")
 		})
 	}
 }
@@ -271,7 +271,7 @@ func TestResponseReadIgnoreFramesErrors(t *testing.T) {
 	buf := make([]byte, 10)
 	var res Response
 	err := res.ReadIgnoreFrames(rb, buf)
-	require.Equal(t, "EOF", err.Error())
+	require.EqualError(t, err, "EOF")
 }
 
 func TestResponseString(t *testing.T) {

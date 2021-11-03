@@ -100,7 +100,7 @@ func TestBodyReadErrors(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			var p body
 			err := p.read(ca.h, bufio.NewReader(bytes.NewReader(ca.byts)))
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }
@@ -108,5 +108,5 @@ func TestBodyReadErrors(t *testing.T) {
 func TestBodyWriteErrors(t *testing.T) {
 	bw := bufio.NewWriterSize(&limitedBuffer{cap: 3}, 1)
 	err := body([]byte("1234")).write(bw)
-	require.Equal(t, "capacity reached", err.Error())
+	require.EqualError(t, err, "capacity reached")
 }

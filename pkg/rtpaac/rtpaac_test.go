@@ -408,7 +408,7 @@ func TestDecodeErrors(t *testing.T) {
 				require.NoError(t, err)
 				_, _, lastErr = d.Decode(&pkt)
 			}
-			require.Equal(t, ca.err, lastErr.Error())
+			require.EqualError(t, lastErr, ca.err)
 		})
 	}
 }

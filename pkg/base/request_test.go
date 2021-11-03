@@ -226,7 +226,7 @@ func TestRequestReadErrors(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			var req Request
 			err := req.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }
@@ -259,7 +259,7 @@ func TestRequestWriteErrors(t *testing.T) {
 				},
 				Body: []byte("abc"),
 			}.Write(bw)
-			require.Equal(t, "capacity reached", err.Error())
+			require.EqualError(t, err, "capacity reached")
 		})
 	}
 }
@@ -286,7 +286,7 @@ func TestRequestReadIgnoreFramesErrors(t *testing.T) {
 	buf := make([]byte, 10)
 	var req Request
 	err := req.ReadIgnoreFrames(rb, buf)
-	require.Equal(t, "EOF", err.Error())
+	require.EqualError(t, err, "EOF")
 }
 
 func TestRequestString(t *testing.T) {

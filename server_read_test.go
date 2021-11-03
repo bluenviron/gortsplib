@@ -157,9 +157,9 @@ func TestServerReadSetupErrors(t *testing.T) {
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						if ca == "different paths" {
-							require.Equal(t, "can't setup tracks with different paths", ctx.Error.Error())
+							require.EqualError(t, ctx.Error, "can't setup tracks with different paths")
 						} else {
-							require.Equal(t, "track 0 has already been setup", ctx.Error.Error())
+							require.EqualError(t, ctx.Error, "track 0 has already been setup")
 						}
 						close(connClosed)
 					},

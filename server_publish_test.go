@@ -150,7 +150,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 			s := &Server{
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-						require.Equal(t, ca.err, ctx.Error.Error())
+						require.EqualError(t, ctx.Error, ca.err)
 						close(connClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -403,7 +403,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
 	err = <-serverErr
-	require.Equal(t, "invalid track path (test2stream/trackID=0)", err.Error())
+	require.EqualError(t, err, "invalid track path (test2stream/trackID=0)")
 }
 
 func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
@@ -498,7 +498,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
 	err = <-serverErr
-	require.Equal(t, "track 0 has already been setup", err.Error())
+	require.EqualError(t, err, "track 0 has already been setup")
 }
 
 func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
@@ -600,7 +600,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
 	err = <-serverErr
-	require.Equal(t, "not all announced tracks have been setup", err.Error())
+	require.EqualError(t, err, "not all announced tracks have been setup")
 }
 
 func TestServerPublish(t *testing.T) {

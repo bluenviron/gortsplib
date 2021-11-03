@@ -47,7 +47,7 @@ func TestSenderErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			_, err := NewSender(ca.hv, "myuser", "mypass")
-			require.Equal(t, ca.err, err.Error())
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

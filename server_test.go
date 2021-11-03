@@ -603,7 +603,7 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 
 	h := &testServerHandler{
 		onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-			require.Equal(t, "CSeq is missing", ctx.Error.Error())
+			require.EqualError(t, ctx.Error, "CSeq is missing")
 			close(connClosed)
 		},
 	}
@@ -635,7 +635,7 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 
 	h := &testServerHandler{
 		onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-			require.Equal(t, "unhandled request (INVALID rtsp://localhost:8554/)", ctx.Error.Error())
+			require.EqualError(t, ctx.Error, "unhandled request (INVALID rtsp://localhost:8554/)")
 			close(connClosed)
 		},
 	}
@@ -1101,7 +1101,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			s := &Server{
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-						require.Equal(t, "invalid path", ctx.Error.Error())
+						require.EqualError(t, ctx.Error, "invalid path")
 						close(connClosed)
 					},
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {

@@ -1964,10 +1964,10 @@ func TestClientReadErrorTimeout(t *testing.T) {
 
 			switch transport {
 			case "udp", "auto":
-				require.Equal(t, "UDP timeout", err.Error())
+				require.EqualError(t, err, "UDP timeout")
 
 			case "tcp":
-				require.Equal(t, "TCP timeout", err.Error())
+				require.EqualError(t, err, "TCP timeout")
 			}
 		})
 	}
