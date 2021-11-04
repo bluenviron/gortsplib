@@ -169,11 +169,11 @@ func (l *clientUDPListener) run() {
 
 			if l.streamType == StreamTypeRTP {
 				l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
+				l.c.OnPacketRTP(l.c, l.trackID, buf[:n])
 			} else {
 				l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTCP(now, buf[:n])
+				l.c.OnPacketRTCP(l.c, l.trackID, buf[:n])
 			}
-
-			l.c.pullReadCB()(l.trackID, l.streamType, buf[:n])
 		}
 	} else { // record
 		for {
@@ -191,7 +191,7 @@ func (l *clientUDPListener) run() {
 
 			now := time.Now()
 			atomic.StoreInt64(l.lastFrameTime, now.Unix())
-			l.c.pullReadCB()(l.trackID, l.streamType, buf[:n])
+			l.c.OnPacketRTCP(l.c, l.trackID, buf[:n])
 		}
 	}
 }

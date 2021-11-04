@@ -158,6 +158,8 @@ func TestClientPublishSerial(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
+			recvDone := make(chan struct{})
+
 			c := &Client{
 				Transport: func() *Transport {
 					if transport == "udp" {
@@ -167,6 +169,11 @@ func TestClientPublishSerial(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
+				OnPacketRTCP: func(c *Client, trackID int, payload []byte) {
+					require.Equal(t, 0, trackID)
+					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, payload)
+					close(recvDone)
+				},
 			}
 
 			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
@@ -176,16 +183,10 @@ func TestClientPublishSerial(t *testing.T) {
 				Tracks{track})
 			require.NoError(t, err)
 
-			recvDone := make(chan struct{})
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				c.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
-					require.Equal(t, 0, trackID)
-					require.Equal(t, StreamTypeRTCP, streamType)
-					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, payload)
-					close(recvDone)
-				})
+				c.ReadFrames()
 			}()
 
 			err = c.WritePacketRTP(0,

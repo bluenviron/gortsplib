@@ -394,6 +394,8 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
+			counter := uint64(0)
+
 			c := &Client{
 				Transport: func() *Transport {
 					switch transport {
@@ -410,17 +412,8 @@ func TestClientRead(t *testing.T) {
 						return &v
 					}
 				}(),
-			}
-
-			err = c.DialRead(scheme + "://" + listenIP + ":8554/test/stream?param=value")
-			require.NoError(t, err)
-
-			done := make(chan struct{})
-			counter := uint64(0)
-			go func() {
-				defer close(done)
-				c.ReadFrames(func(id int, streamType StreamType, payload []byte) {
-					// skip multicast loopback
+				OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+					// ignore multicast loopback
 					if transport == "multicast" {
 						add := atomic.AddUint64(&counter, 1)
 						if add >= 2 {
@@ -428,21 +421,29 @@ func TestClientRead(t *testing.T) {
 						}
 					}
 
-					require.Equal(t, 0, id)
-					require.Equal(t, StreamTypeRTP, streamType)
+					require.Equal(t, 0, trackID)
 					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
 
 					err = c.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
 					require.NoError(t, err)
-				})
+				},
+			}
+
+			err = c.DialRead(scheme + "://" + listenIP + ":8554/test/stream?param=value")
+			require.NoError(t, err)
+
+			done := make(chan struct{})
+
+			go func() {
+				defer close(done)
+				c.ReadFrames()
 			}()
 
 			<-frameRecv
 			c.Close()
 			<-done
 
-			c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-			})
+			c.ReadFrames()
 		})
 	}
 }
@@ -665,11 +666,18 @@ func TestClientReadPartial(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	frameRecv := make(chan struct{})
+
 	c := &Client{
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
 		}(),
+		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+			require.Equal(t, 0, trackID)
+			require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
+			close(frameRecv)
+		},
 	}
 
 	u, err := base.ParseURL("rtsp://" + listenIP + ":8554/teststream")
@@ -689,15 +697,9 @@ func TestClientReadPartial(t *testing.T) {
 	require.NoError(t, err)
 
 	done := make(chan struct{})
-	frameRecv := make(chan struct{})
 	go func() {
 		defer close(done)
-		c.ReadFrames(func(id int, streamType StreamType, payload []byte) {
-			require.Equal(t, 0, id)
-			require.Equal(t, StreamTypeRTP, streamType)
-			require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
-			close(frameRecv)
-		})
+		c.ReadFrames()
 	}()
 
 	<-frameRecv
@@ -920,20 +922,22 @@ func TestClientReadAnyPort(t *testing.T) {
 				})
 			}()
 
+			frameRecv := make(chan struct{})
+
 			c := &Client{
 				AnyPortEnable: true,
+				OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+					close(frameRecv)
+				},
 			}
 
 			err = c.DialRead("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
-			frameRecv := make(chan struct{})
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-					close(frameRecv)
-				})
+				c.ReadFrames()
 			}()
 
 			<-frameRecv
@@ -1043,18 +1047,21 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		c := Client{}
+		frameRecv := make(chan struct{})
+
+		c := Client{
+			OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+				close(frameRecv)
+			},
+		}
 
 		err = c.DialRead("rtsp://localhost:8554/teststream")
 		require.NoError(t, err)
 
-		frameRecv := make(chan struct{})
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-				close(frameRecv)
-			})
+			c.ReadFrames()
 		}()
 
 		<-frameRecv
@@ -1248,20 +1255,22 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			conn.Close()
 		}()
 
+		frameRecv := make(chan struct{})
+
 		c := &Client{
 			ReadTimeout: 1 * time.Second,
+			OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+				close(frameRecv)
+			},
 		}
 
 		err = c.DialRead("rtsp://myuser:mypass@localhost:8554/teststream")
 		require.NoError(t, err)
 
-		frameRecv := make(chan struct{})
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-				close(frameRecv)
-			})
+			c.ReadFrames()
 		}()
 
 		<-frameRecv
@@ -1374,24 +1383,26 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	frameRecv := make(chan struct{})
+
 	c := &Client{
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
 		}(),
+		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+			require.Equal(t, 0, trackID)
+			close(frameRecv)
+		},
 	}
 
 	err = c.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	frameRecv := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-			require.Equal(t, 0, id)
-			close(frameRecv)
-		})
+		c.ReadFrames()
 	}()
 
 	<-frameRecv
@@ -1528,18 +1539,21 @@ func TestClientReadRedirect(t *testing.T) {
 		})
 	}()
 
-	c := Client{}
+	frameRecv := make(chan struct{})
+
+	c := Client{
+		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+			close(frameRecv)
+		},
+	}
 
 	err = c.DialRead("rtsp://localhost:8554/path1")
 	require.NoError(t, err)
 
-	frameRecv := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-			close(frameRecv)
-		})
+		c.ReadFrames()
 	}()
 
 	<-frameRecv
@@ -1723,6 +1737,9 @@ func TestClientReadPause(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
+			firstFrame := int32(0)
+			frameRecv := make(chan struct{})
+
 			c := &Client{
 				Transport: func() *Transport {
 					if transport == "udp" {
@@ -1732,21 +1749,20 @@ func TestClientReadPause(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
+				OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+					if atomic.SwapInt32(&firstFrame, 1) == 0 {
+						close(frameRecv)
+					}
+				},
 			}
 
 			err = c.DialRead("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
-			firstFrame := int32(0)
-			frameRecv := make(chan struct{})
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-					if atomic.SwapInt32(&firstFrame, 1) == 0 {
-						close(frameRecv)
-					}
-				})
+				c.ReadFrames()
 			}()
 
 			<-frameRecv
@@ -1754,22 +1770,18 @@ func TestClientReadPause(t *testing.T) {
 			require.NoError(t, err)
 			<-done
 
-			c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-			})
+			c.ReadFrames()
+
+			firstFrame = int32(0)
+			frameRecv = make(chan struct{})
 
 			_, err = c.Play(nil)
 			require.NoError(t, err)
 
-			firstFrame = int32(0)
-			frameRecv = make(chan struct{})
 			done = make(chan struct{})
 			go func() {
 				defer close(done)
-				c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-					if atomic.SwapInt32(&firstFrame, 1) == 0 {
-						close(frameRecv)
-					}
-				})
+				c.ReadFrames()
 			}()
 
 			<-frameRecv
@@ -1917,28 +1929,36 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	recv := 0
+	recvDone := make(chan struct{})
+
 	c := &Client{
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
 		}(),
+		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+			recv++
+			if recv >= 3 {
+				close(recvDone)
+			}
+		},
+		OnPacketRTCP: func(c *Client, trackID int, payload []byte) {
+			recv++
+			if recv >= 3 {
+				close(recvDone)
+			}
+		},
 		receiverReportPeriod: 1 * time.Second,
 	}
 
 	err = c.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	recv := 0
-	recvDone := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		c.ReadFrames(func(id int, typ StreamType, payload []byte) {
-			recv++
-			if recv >= 3 {
-				close(recvDone)
-			}
-		})
+		c.ReadFrames()
 	}()
 
 	time.Sleep(1300 * time.Millisecond)
@@ -2096,8 +2116,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			err = c.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
-			})
+			err = c.ReadFrames()
 
 			switch transport {
 			case "udp", "auto":
@@ -2216,23 +2235,25 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	recv := make(chan struct{})
+
 	c := &Client{
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
 		}(),
+		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+			close(recv)
+		},
 	}
 
 	err = c.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	recv := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		c.ReadFrames(func(trackID int, streamType StreamType, payload []byte) {
-			close(recv)
-		})
+		c.ReadFrames()
 	}()
 
 	<-recv
