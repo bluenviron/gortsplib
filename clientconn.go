@@ -459,17 +459,6 @@ func (cc *ClientConn) runBackground() {
 }
 
 func (cc *ClientConn) runBackgroundPlayUDP() error {
-	if *cc.protocol == TransportUDP {
-		// open the firewall by sending packets to the counterpart
-		for _, cct := range cc.tracks {
-			cct.udpRTPListener.write(
-				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-
-			cct.udpRTCPListener.write(
-				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
-		}
-	}
-
 	for _, cct := range cc.tracks {
 		cct.udpRTPListener.start()
 		cct.udpRTCPListener.start()
@@ -1483,6 +1472,18 @@ func (cc *ClientConn) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// open the firewall by sending packets to the counterpart.
+	// do this before sending the PLAY request.
+	if *cc.protocol == TransportUDP {
+		for _, cct := range cc.tracks {
+			cct.udpRTPListener.write(
+				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+
+			cct.udpRTCPListener.write(
+				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+		}
 	}
 
 	header := make(base.Header)
