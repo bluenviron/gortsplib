@@ -20,6 +20,14 @@ func main() {
 		ReadTimeout: 10 * time.Second,
 		// timeout of write operations
 		WriteTimeout: 10 * time.Second,
+		// called when a RTP packet arrives
+		OnPacketRTP: func(c *gortsplib.Client, trackID int, payload []byte) {
+			fmt.Printf("RTP packet from track %d, size %d\n", trackID, len(payload))
+		},
+		// called when a RTCP packet arrives
+		OnPacketRTCP: func(c *gortsplib.Client, trackID int, payload []byte) {
+			fmt.Printf("RTCP packet from track %d, size %d\n", trackID, len(payload))
+		},
 	}
 
 	// connect to the server and start reading all tracks
@@ -30,8 +38,6 @@ func main() {
 	defer c.Close()
 
 	// read packets
-	err = c.ReadFrames(func(trackID int, streamType gortsplib.StreamType, payload []byte) {
-		fmt.Printf("packet from track %d, type %v, size %d\n", trackID, streamType, len(payload))
-	})
+	err = c.ReadFrames()
 	panic(err)
 }

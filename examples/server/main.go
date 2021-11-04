@@ -128,7 +128,7 @@ func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx)
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	// if we are the publisher, route packet to readers
+	// if we are the publisher, route the RTP packet to readers
 	if ctx.Session == sh.publisher {
 		sh.stream.WritePacketRTP(ctx.TrackID, ctx.Payload)
 	}
@@ -139,7 +139,7 @@ func (sh *serverHandler) OnPacketRTCP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	// if we are the publisher, route packet to readers
+	// if we are the publisher, route the RTCP packet to readers
 	if ctx.Session == sh.publisher {
 		sh.stream.WritePacketRTCP(ctx.TrackID, ctx.Payload)
 	}

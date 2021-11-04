@@ -132,10 +132,16 @@ type Client struct {
 	//
 	// callbacks
 	//
-	// callback called before every request.
+	// called before every request.
 	OnRequest func(*base.Request)
-	// callback called after every response.
+	// called after every response.
 	OnResponse func(*base.Response)
+	// called before sending a PLAY request.
+	OnPlay func(*Client)
+	// called when a RTP packet arrives.
+	OnPacketRTP func(*Client, int, []byte)
+	// called when a RTCP packet arrives.
+	OnPacketRTCP func(*Client, int, []byte)
 
 	//
 	// RTSP parameters
@@ -210,12 +216,10 @@ type Client struct {
 	lastRange         *headers.Range
 	backgroundRunning bool
 	backgroundErr     error
-	tcpFrameBuffer    *multibuffer.MultiBuffer      // tcp
-	tcpWriteMutex     sync.Mutex                    // tcp
-	readCBMutex       sync.RWMutex                  // read
-	readCB            func(int, StreamType, []byte) // read
-	writeMutex        sync.RWMutex                  // write
-	writeFrameAllowed bool                          // write
+	tcpFrameBuffer    *multibuffer.MultiBuffer // tcp
+	tcpWriteMutex     sync.Mutex               // tcp
+	writeMutex        sync.RWMutex             // write
+	writeFrameAllowed bool                     // write
 
 	// in
 	options             chan optionsReq
@@ -230,12 +234,21 @@ type Client struct {
 	// out
 	backgroundInnerDone chan error
 	backgroundDone      chan struct{}
-	readCBSet           chan struct{}
 	done                chan struct{}
 }
 
 // Dial connects to a server.
 func (c *Client) Dial(scheme string, host string) error {
+	// callbacks
+	if c.OnPacketRTP == nil {
+		c.OnPacketRTP = func(c *Client, trackID int, payload []byte) {
+		}
+	}
+	if c.OnPacketRTCP == nil {
+		c.OnPacketRTCP = func(c *Client, trackID int, payload []byte) {
+		}
+	}
+
 	// RTSP parameters
 	if c.ReadTimeout == 0 {
 		c.ReadTimeout = 10 * time.Second
@@ -414,14 +427,14 @@ func (c *Client) DialPublishContext(ctx context.Context, address string, tracks 
 	return nil
 }
 
-// Close closes the connection and waits for all its resources to exit.
+// Close closes all the client resources and waits for them to exit.
 func (c *Client) Close() error {
 	c.ctxCancel()
 	<-c.done
 	return nil
 }
 
-// Tracks returns all the tracks that the connection is reading or publishing.
+// Tracks returns all the tracks that the client is reading or publishing.
 func (c *Client) Tracks() Tracks {
 	ids := make([]int, len(c.tracks))
 	pos := 0
@@ -534,10 +547,6 @@ func (c *Client) reset(isSwitchingProtocol bool) {
 	c.tracks = nil
 	c.tracksByChannel = nil
 	c.tcpFrameBuffer = nil
-
-	if !isSwitchingProtocol {
-		c.readCB = nil
-	}
 }
 
 func (c *Client) checkState(allowed map[clientState]struct{}) error {
@@ -588,12 +597,6 @@ func (c *Client) switchProtocolIfTimeout(err error) error {
 	}
 
 	return nil
-}
-
-func (c *Client) pullReadCB() func(int, StreamType, []byte) {
-	c.readCBMutex.RLock()
-	defer c.readCBMutex.RUnlock()
-	return c.readCB
 }
 
 func (c *Client) backgroundStart(isSwitchingProtocol bool) {
@@ -791,10 +794,10 @@ func (c *Client) runBackgroundPlayTCP() error {
 			}
 
 			channel := frame.Channel
-			streamType := StreamTypeRTP
+			isRTP := true
 			if (channel % 2) != 0 {
 				channel--
-				streamType = StreamTypeRTCP
+				isRTP = false
 			}
 
 			trackID, ok := c.tracksByChannel[channel]
@@ -805,13 +808,13 @@ func (c *Client) runBackgroundPlayTCP() error {
 			now := time.Now()
 			atomic.StoreInt64(&lastFrameTime, now.Unix())
 
-			if streamType == StreamTypeRTP {
+			if isRTP {
 				c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, frame.Payload)
+				c.OnPacketRTP(c, trackID, frame.Payload)
 			} else {
 				c.tracks[trackID].rtcpReceiver.ProcessPacketRTCP(now, frame.Payload)
+				c.OnPacketRTCP(c, trackID, frame.Payload)
 			}
-
-			c.pullReadCB()(trackID, streamType, frame.Payload)
 		}
 	}()
 
@@ -923,10 +926,10 @@ func (c *Client) runBackgroundRecordTCP() error {
 			}
 
 			channel := frame.Channel
-			streamType := StreamTypeRTP
+			isRTP := true
 			if (channel % 2) != 0 {
 				channel--
-				streamType = StreamTypeRTCP
+				isRTP = false
 			}
 
 			trackID, ok := c.tracksByChannel[channel]
@@ -934,7 +937,9 @@ func (c *Client) runBackgroundRecordTCP() error {
 				continue
 			}
 
-			c.pullReadCB()(trackID, streamType, frame.Payload)
+			if !isRTP {
+				c.OnPacketRTCP(c, trackID, frame.Payload)
+			}
 		}
 	}()
 
@@ -1677,6 +1682,10 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		}
 	}
 
+	if c.OnPlay != nil {
+		c.OnPlay(c)
+	}
+
 	header := make(base.Header)
 
 	// Range is mandatory in Parrot Streaming Server
@@ -1706,21 +1715,6 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 
 	c.state = clientStatePlay
 	c.lastRange = ra
-
-	if !isSwitchingProtocol {
-		// use a temporary callback that is replaces as soon as
-		// the user calls ReadFrames()
-		c.readCBSet = make(chan struct{})
-		copy := c.readCBSet
-		c.readCB = func(trackID int, streamType StreamType, payload []byte) {
-			select {
-			case <-copy:
-			case <-c.ctx.Done():
-				return
-			}
-			c.pullReadCB()(trackID, streamType, payload)
-		}
-	}
 
 	c.backgroundStart(isSwitchingProtocol)
 
@@ -1764,11 +1758,6 @@ func (c *Client) doRecord() (*base.Response, error) {
 	}
 
 	c.state = clientStateRecord
-
-	// when publishing, calling ReadFrames() is not mandatory
-	// use an empty callback
-	c.readCB = func(trackID int, streamType StreamType, payload []byte) {
-	}
 
 	c.backgroundStart(false)
 
@@ -1849,17 +1838,7 @@ func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
 }
 
 // ReadFrames starts reading frames.
-func (c *Client) ReadFrames(onFrame func(int, StreamType, []byte)) error {
-	c.readCBMutex.Lock()
-	c.readCB = onFrame
-	c.readCBMutex.Unlock()
-
-	// replace temporary callback with final callback
-	if c.readCBSet != nil {
-		close(c.readCBSet)
-		c.readCBSet = nil
-	}
-
+func (c *Client) ReadFrames() error {
 	<-c.backgroundDone
 	return c.backgroundErr
 }
