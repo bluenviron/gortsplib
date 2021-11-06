@@ -280,10 +280,10 @@ func (e ErrServerUDPPortsAlreadyInUse) Error() string {
 		e.Port, e.Port+1)
 }
 
-// ErrServerSessionNoAssociatedConns is an error that can be returned by a server.
-type ErrServerSessionNoAssociatedConns struct{}
+// ErrServerSessionNotInUse is an error that can be returned by a server.
+type ErrServerSessionNotInUse struct{}
 
 // Error implements the error interface.
-func (e ErrServerSessionNoAssociatedConns) Error() string {
-	return "there are no associated connections anymore"
+func (e ErrServerSessionNotInUse) Error() string {
+	return "not in use"
 }
