@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"net"
 	"strconv"
@@ -567,6 +568,86 @@ func TestServerRead(t *testing.T) {
 			<-connClosed
 		})
 	}
+}
+
+func TestServerReadNonStandardFrameSize(t *testing.T) {
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
+	payload := bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5)
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				go func() {
+					time.Sleep(1 * time.Second)
+					stream.WriteFrame(0, StreamTypeRTP, payload)
+				}()
+
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err = s.Start("localhost:8554")
+	require.NoError(t, err)
+	defer s.Wait()
+	defer s.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
+
+	inTH := &headers.Transport{
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModePlay
+			return &v
+		}(),
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Protocol:       headers.TransportProtocolTCP,
+		InterleavedIDs: &[2]int{0, 1},
+	}
+
+	res, err := writeReqReadRes(bconn, base.Request{
+		Method: base.Setup,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq":      base.HeaderValue{"1"},
+			"Transport": inTH.Write(),
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	res, err = writeReqReadRes(bconn, base.Request{
+		Method: base.Play,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": res.Header["Session"],
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	var f base.InterleavedFrame
+	f.Payload = make([]byte, 4500)
+	err = f.Read(bconn.Reader)
+	require.NoError(t, err)
+	require.Equal(t, 0, f.Channel)
+	require.Equal(t, payload, f.Payload)
 }
 
 func TestServerReadTCPResponseBeforeFrames(t *testing.T) {

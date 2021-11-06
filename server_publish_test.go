@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"net"
 	"strconv"
@@ -840,6 +841,112 @@ func TestServerPublish(t *testing.T) {
 			<-connClosed
 		})
 	}
+}
+
+func TestServerPublishNonStandardFrameSize(t *testing.T) {
+	payload := bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5)
+	frameReceived := make(chan struct{})
+
+	s := &Server{
+		ReadBufferSize: 4500,
+		Handler: &testServerHandler{
+			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil, nil
+			},
+			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onFrame: func(ctx *ServerHandlerOnFrameCtx) {
+				require.Equal(t, 0, ctx.TrackID)
+				require.Equal(t, StreamTypeRTP, ctx.StreamType)
+				require.Equal(t, payload, ctx.Payload)
+				close(frameReceived)
+			},
+		},
+	}
+
+	err := s.Start("localhost:8554")
+	require.NoError(t, err)
+	defer s.Wait()
+	defer s.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
+
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	require.NoError(t, err)
+
+	track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
+		Key:   "control",
+		Value: "trackID=0",
+	})
+
+	res, err := writeReqReadRes(bconn, base.Request{
+		Method: base.Announce,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":         base.HeaderValue{"1"},
+			"Content-Type": base.HeaderValue{"application/sdp"},
+		},
+		Body: Tracks{track}.Write(),
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	inTH := &headers.Transport{
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModeRecord
+			return &v
+		}(),
+		Protocol:       headers.TransportProtocolTCP,
+		InterleavedIDs: &[2]int{0, 1},
+	}
+
+	res, err = writeReqReadRes(bconn, base.Request{
+		Method: base.Setup,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq":      base.HeaderValue{"2"},
+			"Transport": inTH.Write(),
+			"Session":   res.Header["Session"],
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	res, err = writeReqReadRes(bconn, base.Request{
+		Method: base.Record,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":    base.HeaderValue{"3"},
+			"Session": res.Header["Session"],
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = base.InterleavedFrame{
+		Channel: 0,
+		Payload: payload,
+	}.Write(bconn.Writer)
+	require.NoError(t, err)
+
+	<-frameReceived
 }
 
 func TestServerPublishErrorInvalidProtocol(t *testing.T) {

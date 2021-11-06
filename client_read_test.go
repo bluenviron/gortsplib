@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -442,6 +443,131 @@ func TestClientRead(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestClientReadNonStandardFrameSize(t *testing.T) {
+	refPayload := bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5)
+
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		req, err := readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		require.NoError(t, err)
+
+		track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
+			Key:   "control",
+			Value: "trackID=0",
+		})
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+			},
+			Body: Tracks{track}.Write(),
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
+
+		th := headers.Transport{
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
+				return &v
+			}(),
+			Protocol:       headers.TransportProtocolTCP,
+			InterleavedIDs: &[2]int{0, 1},
+		}
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Write(),
+			},
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		req, err = readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
+		require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
+
+		err = base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		err = base.InterleavedFrame{
+			Channel: 0,
+			Payload: refPayload,
+		}.Write(bconn.Writer)
+		require.NoError(t, err)
+	}()
+
+	c := &Client{
+		ReadBufferSize: 4500,
+		Transport: func() *Transport {
+			v := TransportTCP
+			return &v
+		}(),
+	}
+
+	conn, err := c.DialRead("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	frameRecv := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		conn.ReadFrames(func(id int, streamType StreamType, payload []byte) {
+			require.Equal(t, 0, id)
+			require.Equal(t, StreamTypeRTP, streamType)
+			require.Equal(t, refPayload, payload)
+			close(frameRecv)
+		})
+	}()
+
+	<-frameRecv
+	conn.Close()
+	<-done
 }
 
 func TestClientReadPartial(t *testing.T) {
