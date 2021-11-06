@@ -545,27 +545,28 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	frameRecv := make(chan struct{})
+
 	c := &Client{
 		ReadBufferSize: 4500,
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
 		}(),
+		OnPacketRTP: func(c *Client, id int, payload []byte) {
+			require.Equal(t, 0, id)
+			require.Equal(t, refPayload, payload)
+			close(frameRecv)
+		},
 	}
 
-	conn, err := c.DialRead("rtsp://localhost:8554/teststream")
+	err = c.DialRead("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	frameRecv := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		conn.ReadFrames(func(id int, streamType StreamType, payload []byte) {
-			require.Equal(t, 0, id)
-			require.Equal(t, StreamTypeRTP, streamType)
-			require.Equal(t, refPayload, payload)
-			close(frameRecv)
-		})
+		c.ReadFrames()
 	}()
 
 	<-frameRecv
@@ -685,7 +686,6 @@ func TestClientReadPartial(t *testing.T) {
 
 	err = c.Dial(u.Scheme, u.Host)
 	require.NoError(t, err)
-	defer c.Close()
 
 	tracks, baseURL, _, err := c.Describe(u)
 	require.NoError(t, err)
@@ -703,7 +703,7 @@ func TestClientReadPartial(t *testing.T) {
 	}()
 
 	<-frameRecv
-	conn.Close()
+	c.Close()
 	<-done
 }
 

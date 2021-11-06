@@ -1672,8 +1672,8 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 
 	// open the firewall by sending packets to the counterpart.
 	// do this before sending the PLAY request.
-	if *cc.protocol == TransportUDP {
-		for _, cct := range cc.tracks {
+	if *c.protocol == TransportUDP {
+		for _, cct := range c.tracks {
 			cct.udpRTPListener.write(
 				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
