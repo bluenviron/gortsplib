@@ -515,13 +515,11 @@ func (cc *ClientConn) runBackgroundPlayUDP() error {
 		case <-keepaliveTicker.C:
 			_, err := cc.do(&base.Request{
 				Method: func() base.Method {
-					// the vlc integrated rtsp server requires GET_PARAMETER
 					if cc.useGetParameter {
 						return base.GetParameter
 					}
 					return base.Options
 				}(),
-				// use the stream base URL, otherwise some cameras do not reply
 				URL: cc.streamBaseURL,
 			}, true)
 			if err != nil {
