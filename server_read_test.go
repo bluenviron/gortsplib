@@ -591,7 +591,7 @@ func TestServerReadNonStandardFrameSize(t *testing.T) {
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
 					time.Sleep(1 * time.Second)
-					stream.WriteFrame(0, StreamTypeRTP, payload)
+					stream.WritePacketRTP(0, payload)
 				}()
 
 				return &base.Response{
@@ -664,6 +664,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	stream := NewServerStream(Tracks{track})
 
 	s := &Server{
+		RTSPAddress: "localhost:8554",
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
@@ -702,7 +703,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 		},
 	}
 
-	err = s.Start("localhost:8554")
+	err = s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()

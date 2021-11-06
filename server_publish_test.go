@@ -848,6 +848,7 @@ func TestServerPublishNonStandardFrameSize(t *testing.T) {
 	frameReceived := make(chan struct{})
 
 	s := &Server{
+		RTSPAddress:    "localhost:8554",
 		ReadBufferSize: 4500,
 		Handler: &testServerHandler{
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -865,16 +866,15 @@ func TestServerPublishNonStandardFrameSize(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onFrame: func(ctx *ServerHandlerOnFrameCtx) {
+			onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
 				require.Equal(t, 0, ctx.TrackID)
-				require.Equal(t, StreamTypeRTP, ctx.StreamType)
 				require.Equal(t, payload, ctx.Payload)
 				close(frameReceived)
 			},
 		},
 	}
 
-	err := s.Start("localhost:8554")
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Wait()
 	defer s.Close()
