@@ -956,7 +956,7 @@ func (cc *ClientConn) doOptions(u *base.URL) (*base.Response, error) {
 		}
 
 		for _, m := range strings.Split(pub[0], ",") {
-			if base.Method(m) == base.GetParameter {
+			if base.Method(strings.Trim(m, " ")) == base.GetParameter {
 				return true
 			}
 		}
