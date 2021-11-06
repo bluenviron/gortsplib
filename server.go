@@ -108,7 +108,7 @@ type Server struct {
 	// It defaults to 512
 	ReadBufferCount int
 	// read buffer size.
-	// This must be touched only when the server reports problems about buffer sizes.
+	// This must be touched only when the server reports errors about buffer sizes.
 	// It defaults to 2048.
 	ReadBufferSize int
 
