@@ -736,65 +736,51 @@ func (c *Client) runReader() error {
 			}
 		}
 	} else {
+		var processFunc func(int, bool, []byte)
+
 		if c.state == clientStatePlay {
-			for {
-				frame := base.InterleavedFrame{
-					Payload: c.tcpFrameBuffer.Next(),
-				}
-				err := frame.Read(c.br)
-				if err != nil {
-					return err
-				}
-
-				channel := frame.Channel
-				isRTP := true
-				if (channel % 2) != 0 {
-					channel--
-					isRTP = false
-				}
-
-				trackID, ok := c.tracksByChannel[channel]
-				if !ok {
-					continue
-				}
-
+			processFunc = func(trackID int, isRTP bool, payload []byte) {
 				now := time.Now()
 				atomic.StoreInt64(&c.tcpLastFrameTime, now.Unix())
 
 				if isRTP {
-					c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, frame.Payload)
-					c.OnPacketRTP(trackID, frame.Payload)
+					c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, payload)
+					c.OnPacketRTP(trackID, payload)
 				} else {
-					c.tracks[trackID].rtcpReceiver.ProcessPacketRTCP(now, frame.Payload)
-					c.OnPacketRTCP(trackID, frame.Payload)
+					c.tracks[trackID].rtcpReceiver.ProcessPacketRTCP(now, payload)
+					c.OnPacketRTCP(trackID, payload)
 				}
 			}
-		} else { // Record
-			for {
-				frame := base.InterleavedFrame{
-					Payload: c.tcpFrameBuffer.Next(),
-				}
-				err := frame.Read(c.br)
-				if err != nil {
-					return err
-				}
-
-				channel := frame.Channel
-				isRTP := true
-				if (channel % 2) != 0 {
-					channel--
-					isRTP = false
-				}
-
-				trackID, ok := c.tracksByChannel[channel]
-				if !ok {
-					continue
-				}
-
+		} else {
+			processFunc = func(trackID int, isRTP bool, payload []byte) {
 				if !isRTP {
-					c.OnPacketRTCP(trackID, frame.Payload)
+					c.OnPacketRTCP(trackID, payload)
 				}
 			}
+		}
+
+		for {
+			frame := base.InterleavedFrame{
+				Payload: c.tcpFrameBuffer.Next(),
+			}
+			err := frame.Read(c.br)
+			if err != nil {
+				return err
+			}
+
+			channel := frame.Channel
+			isRTP := true
+			if (channel % 2) != 0 {
+				channel--
+				isRTP = false
+			}
+
+			trackID, ok := c.tracksByChannel[channel]
+			if !ok {
+				continue
+			}
+
+			processFunc(trackID, isRTP, frame.Payload)
 		}
 	}
 }

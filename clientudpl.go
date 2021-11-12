@@ -41,6 +41,7 @@ type clientUDPListener struct {
 	frameBuffer   *multibuffer.MultiBuffer
 	lastFrameTime *int64
 	writeMutex    sync.Mutex
+	processFunc   func(time.Time, []byte)
 
 	// out
 	done chan struct{}
@@ -136,6 +137,16 @@ func (l *clientUDPListener) port() int {
 }
 
 func (l *clientUDPListener) start() {
+	if l.c.state == clientStatePlay {
+		if l.isRTP {
+			l.processFunc = l.processPlayRTP
+		} else {
+			l.processFunc = l.processPlayRTCP
+		}
+	} else {
+		l.processFunc = l.processRecord
+	}
+
 	l.running = true
 	l.pc.SetReadDeadline(time.Time{})
 	l.done = make(chan struct{})
@@ -150,50 +161,38 @@ func (l *clientUDPListener) stop() {
 func (l *clientUDPListener) run() {
 	defer close(l.done)
 
-	if l.c.state == clientStatePlay {
-		for {
-			buf := l.frameBuffer.Next()
-			n, addr, err := l.pc.ReadFrom(buf)
-			if err != nil {
-				return
-			}
-
-			uaddr := addr.(*net.UDPAddr)
-
-			if !l.remoteReadIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
-				continue
-			}
-
-			now := time.Now()
-			atomic.StoreInt64(l.lastFrameTime, now.Unix())
-
-			if l.isRTP {
-				l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
-				l.c.OnPacketRTP(l.trackID, buf[:n])
-			} else {
-				l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTCP(now, buf[:n])
-				l.c.OnPacketRTCP(l.trackID, buf[:n])
-			}
+	for {
+		buf := l.frameBuffer.Next()
+		n, addr, err := l.pc.ReadFrom(buf)
+		if err != nil {
+			return
 		}
-	} else { // record
-		for {
-			buf := l.frameBuffer.Next()
-			n, addr, err := l.pc.ReadFrom(buf)
-			if err != nil {
-				return
-			}
 
-			uaddr := addr.(*net.UDPAddr)
+		uaddr := addr.(*net.UDPAddr)
 
-			if !l.remoteReadIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
-				continue
-			}
-
-			now := time.Now()
-			atomic.StoreInt64(l.lastFrameTime, now.Unix())
-			l.c.OnPacketRTCP(l.trackID, buf[:n])
+		if !l.remoteReadIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
+			continue
 		}
+
+		now := time.Now()
+		atomic.StoreInt64(l.lastFrameTime, now.Unix())
+
+		l.processFunc(now, buf[:n])
 	}
+}
+
+func (l *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
+	l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, payload)
+	l.c.OnPacketRTP(l.trackID, payload)
+}
+
+func (l *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
+	l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTCP(now, payload)
+	l.c.OnPacketRTCP(l.trackID, payload)
+}
+
+func (l *clientUDPListener) processRecord(now time.Time, payload []byte) {
+	l.c.OnPacketRTCP(l.trackID, payload)
 }
 
 func (l *clientUDPListener) write(buf []byte) error {

@@ -60,6 +60,7 @@ type serverUDPListener struct {
 	clientsMutex sync.RWMutex
 	clients      map[clientAddr]*clientData
 	ringBuffer   *ringbuffer.RingBuffer
+	processFunc  func(time.Time, *clientData, []byte)
 }
 
 func newServerUDPListenerMulticastPair(s *Server) (*serverUDPListener, *serverUDPListener, error) {
@@ -157,6 +158,12 @@ func newServerUDPListener(
 		ringBuffer:   ringbuffer.New(uint64(s.ReadBufferCount)),
 	}
 
+	if isRTP {
+		u.processFunc = u.processRTP
+	} else {
+		u.processFunc = u.processRTCP
+	}
+
 	u.wg.Add(1)
 	go u.run()
 
@@ -206,29 +213,7 @@ func (u *serverUDPListener) run() {
 					atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
 				}
 
-				if u.isRTP {
-					clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
-
-					if h, ok := u.s.Handler.(ServerHandlerOnPacketRTP); ok {
-						h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-							Session: clientData.ss,
-							TrackID: clientData.trackID,
-							Payload: buf[:n],
-						})
-					}
-				} else {
-					if clientData.isPublishing {
-						clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTCP(now, buf[:n])
-					}
-
-					if h, ok := u.s.Handler.(ServerHandlerOnPacketRTCP); ok {
-						h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
-							Session: clientData.ss,
-							TrackID: clientData.trackID,
-							Payload: buf[:n],
-						})
-					}
-				}
+				u.processFunc(now, clientData, buf[:n])
 			}()
 		}
 	}()
@@ -253,6 +238,32 @@ func (u *serverUDPListener) run() {
 
 	u.pc.Close()
 	u.ringBuffer.Close()
+}
+
+func (u *serverUDPListener) processRTP(now time.Time, clientData *clientData, payload []byte) {
+	clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTP(now, payload)
+
+	if h, ok := u.s.Handler.(ServerHandlerOnPacketRTP); ok {
+		h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+			Session: clientData.ss,
+			TrackID: clientData.trackID,
+			Payload: payload,
+		})
+	}
+}
+
+func (u *serverUDPListener) processRTCP(now time.Time, clientData *clientData, payload []byte) {
+	if clientData.isPublishing {
+		clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTCP(now, payload)
+	}
+
+	if h, ok := u.s.Handler.(ServerHandlerOnPacketRTCP); ok {
+		h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
+			Session: clientData.ss,
+			TrackID: clientData.trackID,
+			Payload: payload,
+		})
+	}
 }
 
 func (u *serverUDPListener) write(buf []byte, addr *net.UDPAddr) {
