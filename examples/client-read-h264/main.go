@@ -26,7 +26,7 @@ func main() {
 				return
 			}
 
-			// parse RTP packets
+			// parse RTP packet
 			var pkt rtp.Packet
 			err := pkt.Unmarshal(payload)
 			if err != nil {
@@ -80,9 +80,8 @@ func main() {
 		return -1
 	}()
 	if h264Track < 0 {
-		panic(fmt.Errorf("H264 track not found"))
+		panic("H264 track not found")
 	}
-	fmt.Printf("H264 track is number %d\n", h264Track+1)
 
 	// setup all tracks
 	for _, t := range tracks {
