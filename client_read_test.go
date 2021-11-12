@@ -360,14 +360,12 @@ func TestClientRead(t *testing.T) {
 				// client -> server (RTCP)
 				switch transport {
 				case "udp", "multicast":
-					if transport == "udp" {
-						// skip firewall opening
-						buf := make([]byte, 2048)
-						_, _, err := l2.ReadFrom(buf)
-						require.NoError(t, err)
-					}
-
+					// skip firewall opening
 					buf := make([]byte, 2048)
+					_, _, err := l2.ReadFrom(buf)
+					require.NoError(t, err)
+
+					buf = make([]byte, 2048)
 					n, _, err := l2.ReadFrom(buf)
 					require.NoError(t, err)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, buf[:n])
@@ -416,7 +414,7 @@ func TestClientRead(t *testing.T) {
 					// ignore multicast loopback
 					if transport == "multicast" {
 						counter++
-						if counter >= 2 {
+						if counter <= 1 || counter >= 3 {
 							return
 						}
 					}
