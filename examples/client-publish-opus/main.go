@@ -42,7 +42,7 @@ func main() {
 	c := gortsplib.Client{}
 
 	// connect to the server and start publishing the track
-	err = c.DialPublish("rtsp://localhost:8554/mystream",
+	err = c.StartPublishing("rtsp://localhost:8554/mystream",
 		gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)

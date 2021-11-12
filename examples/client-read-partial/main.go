@@ -30,7 +30,7 @@ func main() {
 		},
 	}
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,6 @@ func main() {
 		panic(err)
 	}
 
-	// read packets
-	err = c.ReadFrames()
-	panic(err)
+	// wait until a fatal error
+	panic(c.Wait())
 }

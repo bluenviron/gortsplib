@@ -132,7 +132,7 @@ func TestClientReadTracks(t *testing.T) {
 
 	c := Client{}
 
-	err = c.DialRead("rtsp://localhost:8554/teststream")
+	err = c.StartReading("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -429,19 +429,11 @@ func TestClientRead(t *testing.T) {
 				},
 			}
 
-			err = c.DialRead(scheme + "://" + listenIP + ":8554/test/stream?param=value")
+			err = c.StartReading(scheme + "://" + listenIP + ":8554/test/stream?param=value")
 			require.NoError(t, err)
-
-			done := make(chan struct{})
-
-			go func() {
-				defer close(done)
-				c.ReadFrames()
-			}()
+			defer c.Close()
 
 			<-frameRecv
-			c.Close()
-			<-done
 		})
 	}
 }
@@ -558,18 +550,11 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 		},
 	}
 
-	err = c.DialRead("rtsp://localhost:8554/teststream")
+	err = c.StartReading("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		c.ReadFrames()
-	}()
+	defer c.Close()
 
 	<-frameRecv
-	c.Close()
-	<-done
 }
 
 func TestClientReadPartial(t *testing.T) {
@@ -682,8 +667,9 @@ func TestClientReadPartial(t *testing.T) {
 	u, err := base.ParseURL("rtsp://" + listenIP + ":8554/teststream")
 	require.NoError(t, err)
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	require.NoError(t, err)
+	defer c.Close()
 
 	tracks, baseURL, _, err := c.Describe(u)
 	require.NoError(t, err)
@@ -694,15 +680,7 @@ func TestClientReadPartial(t *testing.T) {
 	_, err = c.Play(nil)
 	require.NoError(t, err)
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		c.ReadFrames()
-	}()
-
 	<-frameRecv
-	c.Close()
-	<-done
 }
 
 func TestClientReadNoContentBase(t *testing.T) {
@@ -805,7 +783,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 
 	c := Client{}
 
-	err = c.DialRead("rtsp://localhost:8554/teststream")
+	err = c.StartReading("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	c.Close()
 }
@@ -929,18 +907,11 @@ func TestClientReadAnyPort(t *testing.T) {
 				},
 			}
 
-			err = c.DialRead("rtsp://localhost:8554/teststream")
+			err = c.StartReading("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
-
-			done := make(chan struct{})
-			go func() {
-				defer close(done)
-				c.ReadFrames()
-			}()
+			defer c.Close()
 
 			<-frameRecv
-			c.Close()
-			<-done
 		})
 	}
 }
@@ -1053,18 +1024,11 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			},
 		}
 
-		err = c.DialRead("rtsp://localhost:8554/teststream")
+		err = c.StartReading("rtsp://localhost:8554/teststream")
 		require.NoError(t, err)
-
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			c.ReadFrames()
-		}()
+		defer c.Close()
 
 		<-frameRecv
-		c.Close()
-		<-done
 	})
 
 	t.Run("switch after timeout", func(t *testing.T) {
@@ -1262,18 +1226,11 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			},
 		}
 
-		err = c.DialRead("rtsp://myuser:mypass@localhost:8554/teststream")
+		err = c.StartReading("rtsp://myuser:mypass@localhost:8554/teststream")
 		require.NoError(t, err)
-
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			c.ReadFrames()
-		}()
+		defer c.Close()
 
 		<-frameRecv
-		c.Close()
-		<-done
 	})
 }
 
@@ -1394,18 +1351,11 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		},
 	}
 
-	err = c.DialRead("rtsp://localhost:8554/teststream")
+	err = c.StartReading("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		c.ReadFrames()
-	}()
+	defer c.Close()
 
 	<-frameRecv
-	c.Close()
-	<-done
 }
 
 func TestClientReadRedirect(t *testing.T) {
@@ -1545,18 +1495,11 @@ func TestClientReadRedirect(t *testing.T) {
 		},
 	}
 
-	err = c.DialRead("rtsp://localhost:8554/path1")
+	err = c.StartReading("rtsp://localhost:8554/path1")
 	require.NoError(t, err)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		c.ReadFrames()
-	}()
+	defer c.Close()
 
 	<-frameRecv
-	c.Close()
-	<-done
 }
 
 func TestClientReadPause(t *testing.T) {
@@ -1754,16 +1697,12 @@ func TestClientReadPause(t *testing.T) {
 				},
 			}
 
-			err = c.DialRead("rtsp://localhost:8554/teststream")
+			err = c.StartReading("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
-
-			done := make(chan struct{})
-			go func() {
-				defer close(done)
-				c.ReadFrames()
-			}()
+			defer c.Close()
 
 			<-frameRecv
+
 			_, err = c.Pause()
 			require.NoError(t, err)
 
@@ -1774,8 +1713,6 @@ func TestClientReadPause(t *testing.T) {
 			require.NoError(t, err)
 
 			<-frameRecv
-			c.Close()
-			<-done
 		})
 	}
 }
@@ -1941,20 +1878,11 @@ func TestClientReadRTCPReport(t *testing.T) {
 		receiverReportPeriod: 1 * time.Second,
 	}
 
-	err = c.DialRead("rtsp://localhost:8554/teststream")
+	err = c.StartReading("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		c.ReadFrames()
-	}()
-
-	time.Sleep(1300 * time.Millisecond)
+	defer c.Close()
 
 	<-recvDone
-	c.Close()
-	<-done
 }
 
 func TestClientReadErrorTimeout(t *testing.T) {
@@ -2101,11 +2029,10 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				ReadTimeout:           1 * time.Second,
 			}
 
-			err = c.DialRead("rtsp://localhost:8554/teststream")
+			err = c.StartReading("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
-			defer c.Close()
 
-			err = c.ReadFrames()
+			err = c.Wait()
 
 			switch transport {
 			case "udp", "auto":
@@ -2236,18 +2163,11 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		},
 	}
 
-	err = c.DialRead("rtsp://localhost:8554/teststream")
+	err = c.StartReading("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		c.ReadFrames()
-	}()
+	defer c.Close()
 
 	<-recv
-	c.Close()
-	<-done
 }
 
 func TestClientReadSeek(t *testing.T) {
@@ -2389,7 +2309,7 @@ func TestClientReadSeek(t *testing.T) {
 	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	require.NoError(t, err)
 	defer c.Close()
 

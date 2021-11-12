@@ -45,7 +45,7 @@ func main() {
 	c := gortsplib.Client{}
 
 	// connect to the server and start publishing the track
-	err = c.DialPublish("rtsp://localhost:8554/mystream",
+	err = c.StartPublishing("rtsp://localhost:8554/mystream",
 		gortsplib.Tracks{track})
 	if err != nil {
 		panic(err)
@@ -53,10 +53,7 @@ func main() {
 	defer c.Close()
 
 	for {
-		writerDone := make(chan struct{})
 		go func() {
-			defer close(writerDone)
-
 			buf := make([]byte, 2048)
 			for {
 				// read packets from the source
@@ -81,9 +78,6 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
-		// join writer
-		<-writerDone
 
 		// wait
 		time.Sleep(5 * time.Second)

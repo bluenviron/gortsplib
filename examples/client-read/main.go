@@ -22,13 +22,5 @@ func main() {
 	}
 
 	// connect to the server and start reading all tracks
-	err := c.DialRead("rtsp://localhost:8554/mystream")
-	if err != nil {
-		panic(err)
-	}
-	defer c.Close()
-
-	// read packets
-	err = c.ReadFrames()
-	panic(err)
+	panic(c.StartReadingAndWait("rtsp://localhost:8554/mystream"))
 }

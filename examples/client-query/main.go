@@ -19,7 +19,7 @@ func main() {
 
 	c := gortsplib.Client{}
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	if err != nil {
 		panic(err)
 	}
