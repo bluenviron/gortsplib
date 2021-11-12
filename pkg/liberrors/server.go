@@ -71,7 +71,7 @@ type ErrServerUnhandledRequest struct {
 
 // Error implements the error interface.
 func (e ErrServerUnhandledRequest) Error() string {
-	return fmt.Sprintf("unhandled request (%v %v)", e.Req.Method, e.Req.URL)
+	return fmt.Sprintf("unhandled request: %v %v", e.Req.Method, e.Req.URL)
 }
 
 // ErrServerInvalidState is an error that can be returned by a server.

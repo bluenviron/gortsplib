@@ -659,7 +659,7 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-				require.EqualError(t, ctx.Error, "unhandled request (INVALID rtsp://localhost:8554/)")
+				require.EqualError(t, ctx.Error, "unhandled request: INVALID rtsp://localhost:8554/")
 				close(connClosed)
 			},
 		},
