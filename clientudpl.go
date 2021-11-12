@@ -36,7 +36,7 @@ type clientUDPListener struct {
 	remoteZone    string
 	remotePort    int
 	trackID       int
-	streamType    StreamType
+	isRTP         bool
 	running       bool
 	frameBuffer   *multibuffer.MultiBuffer
 	lastFrameTime *int64
@@ -167,7 +167,7 @@ func (l *clientUDPListener) run() {
 			now := time.Now()
 			atomic.StoreInt64(l.lastFrameTime, now.Unix())
 
-			if l.streamType == StreamTypeRTP {
+			if l.isRTP {
 				l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, buf[:n])
 				l.c.OnPacketRTP(l.c, l.trackID, buf[:n])
 			} else {
