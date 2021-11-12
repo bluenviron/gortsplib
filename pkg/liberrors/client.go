@@ -163,14 +163,6 @@ func (e ErrClientTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
 	return "interleaved IDs already used"
 }
 
-// ErrClientNoUDPPacketsRecently is an error that can be returned by a client.
-type ErrClientNoUDPPacketsRecently struct{}
-
-// Error implements the error interface.
-func (e ErrClientNoUDPPacketsRecently) Error() string {
-	return "no UDP packets received (maybe there's a firewall/NAT in between)"
-}
-
 // ErrClientUDPTimeout is an error that can be returned by a client.
 type ErrClientUDPTimeout struct{}
 
@@ -195,4 +187,12 @@ type ErrClientRTPInfoInvalid struct {
 // Error implements the error interface.
 func (e ErrClientRTPInfoInvalid) Error() string {
 	return fmt.Sprintf("invalid RTP-Info: %v", e.Err)
+}
+
+// ErrClientWriteNotAllowed is an error that can be returned by a client.
+type ErrClientWriteNotAllowed struct{}
+
+// Error implements the error interface.
+func (e ErrClientWriteNotAllowed) Error() string {
+	return "writing is not allowed at the moment"
 }

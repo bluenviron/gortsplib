@@ -1768,21 +1768,12 @@ func TestClientReadPause(t *testing.T) {
 			<-frameRecv
 			_, err = c.Pause()
 			require.NoError(t, err)
-			<-done
-
-			c.ReadFrames()
 
 			firstFrame = int32(0)
 			frameRecv = make(chan struct{})
 
 			_, err = c.Play(nil)
 			require.NoError(t, err)
-
-			done = make(chan struct{})
-			go func() {
-				defer close(done)
-				c.ReadFrames()
-			}()
 
 			<-frameRecv
 			c.Close()
