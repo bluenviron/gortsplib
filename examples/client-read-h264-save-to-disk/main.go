@@ -13,37 +13,7 @@ import (
 // 3. save the content of the H264 track to a file in MPEG-TS format
 
 func main() {
-	dec := rtph264.NewDecoder()
-	var h264Track int
-	var enc *mpegtsEncoder
-
-	c := gortsplib.Client{
-		// called when a RTP packet arrives
-		OnPacketRTP: func(trackID int, payload []byte) {
-			if trackID != h264Track {
-				return
-			}
-
-			// parse RTP packet
-			var pkt rtp.Packet
-			err := pkt.Unmarshal(payload)
-			if err != nil {
-				return
-			}
-
-			// decode H264 NALUs from RTP packets
-			nalus, pts, err := dec.DecodeUntilMarker(&pkt)
-			if err != nil {
-				return
-			}
-
-			// encode H264 NALUs into MPEG-TS
-			err = enc.encode(nalus, pts)
-			if err != nil {
-				return
-			}
-		},
-	}
+	c := gortsplib.Client{}
 
 	// parse URL
 	u, err := base.ParseURL("rtsp://localhost:8554/mystream")
@@ -70,7 +40,7 @@ func main() {
 	}
 
 	// find the H264 track
-	h264Track = func() int {
+	h264Track := func() int {
 		for i, track := range tracks {
 			if track.IsH264() {
 				return i
@@ -88,10 +58,39 @@ func main() {
 		panic(err)
 	}
 
-	// setup the encoder
-	enc, err = newMPEGTSEncoder(h264Conf)
+	// setup decoder
+	dec := rtph264.NewDecoder()
+
+	// setup encoder
+	enc, err := newMPEGTSEncoder(h264Conf)
 	if err != nil {
 		panic(err)
+	}
+
+	// called when a RTP packet arrives
+	c.OnPacketRTP = func(trackID int, payload []byte) {
+		if trackID != h264Track {
+			return
+		}
+
+		// parse RTP packet
+		var pkt rtp.Packet
+		err := pkt.Unmarshal(payload)
+		if err != nil {
+			return
+		}
+
+		// decode H264 NALUs from RTP packets
+		nalus, pts, err := dec.DecodeUntilMarker(&pkt)
+		if err != nil {
+			return
+		}
+
+		// encode H264 NALUs into MPEG-TS
+		err = enc.encode(nalus, pts)
+		if err != nil {
+			return
+		}
 	}
 
 	// setup all tracks
