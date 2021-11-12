@@ -1705,17 +1705,16 @@ func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
 
 // WritePacketRTP writes a RTP packet.
 func (c *Client) WritePacketRTP(trackID int, payload []byte) error {
-	select {
-	case <-c.done:
-		return c.finalErr
-	default:
-	}
-
 	c.writeMutex.RLock()
 	defer c.writeMutex.RUnlock()
 
 	if !c.writeFrameAllowed {
-		return liberrors.ErrClientWriteNotAllowed{}
+		select {
+		case <-c.done:
+			return c.finalErr
+		default:
+			return nil
+		}
 	}
 
 	now := time.Now()
@@ -1744,17 +1743,16 @@ func (c *Client) WritePacketRTP(trackID int, payload []byte) error {
 
 // WritePacketRTCP writes a RTCP packet.
 func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
-	select {
-	case <-c.done:
-		return c.finalErr
-	default:
-	}
-
 	c.writeMutex.RLock()
 	defer c.writeMutex.RUnlock()
 
 	if !c.writeFrameAllowed {
-		return liberrors.ErrClientWriteNotAllowed{}
+		select {
+		case <-c.done:
+			return c.finalErr
+		default:
+			return nil
+		}
 	}
 
 	now := time.Now()
