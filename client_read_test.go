@@ -394,7 +394,7 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			counter := uint64(0)
+			counter := 0
 
 			c := &Client{
 				Transport: func() *Transport {
@@ -415,8 +415,8 @@ func TestClientRead(t *testing.T) {
 				OnPacketRTP: func(c *Client, trackID int, payload []byte) {
 					// ignore multicast loopback
 					if transport == "multicast" {
-						add := atomic.AddUint64(&counter, 1)
-						if add >= 2 {
+						counter++
+						if counter >= 2 {
 							return
 						}
 					}
@@ -424,7 +424,7 @@ func TestClientRead(t *testing.T) {
 					require.Equal(t, 0, trackID)
 					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
 
-					err = c.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
+					err := c.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
 					require.NoError(t, err)
 				},
 			}
@@ -442,8 +442,6 @@ func TestClientRead(t *testing.T) {
 			<-frameRecv
 			c.Close()
 			<-done
-
-			c.ReadFrames()
 		})
 	}
 }
