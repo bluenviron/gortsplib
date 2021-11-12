@@ -169,7 +169,7 @@ func TestClientPublishSerial(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnPacketRTCP: func(c *Client, trackID int, payload []byte) {
+				OnPacketRTCP: func(trackID int, payload []byte) {
 					require.Equal(t, 0, trackID)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, payload)
 					close(recvDone)
@@ -1012,10 +1012,10 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, payload []byte) {
 			t.Errorf("should not happen")
 		},
-		OnPacketRTCP: func(c *Client, trackID int, payload []byte) {
+		OnPacketRTCP: func(trackID int, payload []byte) {
 			close(rtcpReceived)
 		},
 	}

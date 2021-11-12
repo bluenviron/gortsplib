@@ -21,11 +21,11 @@ func main() {
 		// timeout of write operations
 		WriteTimeout: 10 * time.Second,
 		// called when a RTP packet arrives
-		OnPacketRTP: func(c *gortsplib.Client, trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, payload []byte) {
 			fmt.Printf("RTP packet from track %d, size %d\n", trackID, len(payload))
 		},
 		// called when a RTCP packet arrives
-		OnPacketRTCP: func(c *gortsplib.Client, trackID int, payload []byte) {
+		OnPacketRTCP: func(trackID int, payload []byte) {
 			fmt.Printf("RTCP packet from track %d, size %d\n", trackID, len(payload))
 		},
 	}
