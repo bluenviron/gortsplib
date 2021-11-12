@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/rtph264"
 	"github.com/pion/rtp"
 )
@@ -15,28 +17,9 @@ import (
 
 func main() {
 	var h264Track int
-	var dec *rtph264.Decoder
+	dec := rtph264.NewDecoder()
 
 	c := gortsplib.Client{
-		// called before sending a PLAY request
-		OnPlay: func(c *gortsplib.Client) {
-			// find the H264 track
-			h264Track = func() int {
-				for i, track := range c.Tracks() {
-					if track.IsH264() {
-						return i
-					}
-				}
-				return -1
-			}()
-			if h264Track < 0 {
-				panic(fmt.Errorf("H264 track not found"))
-			}
-			fmt.Printf("H264 track is number %d\n", h264Track+1)
-
-			// instantiate a RTP/H264 decoder
-			dec = rtph264.NewDecoder()
-		},
 		// called when a RTP packet arrives
 		OnPacketRTP: func(c *gortsplib.Client, trackID int, payload []byte) {
 			if trackID != h264Track {
@@ -63,6 +46,58 @@ func main() {
 		},
 	}
 
-	// connect to the server and start reading all tracks
-	panic(c.StartReadingAndWait("rtsp://localhost:8554/mystream"))
+	// parse URL
+	u, err := base.ParseURL("rtsp://localhost:8554/mystream")
+	if err != nil {
+		panic(err)
+	}
+
+	// connect to the server
+	err = c.Start(u.Scheme, u.Host)
+	if err != nil {
+		panic(err)
+	}
+
+	// get available methods
+	_, err = c.Options(u)
+	if err != nil {
+		panic(err)
+	}
+
+	// find published tracks
+	tracks, baseURL, _, err := c.Describe(u)
+	if err != nil {
+		panic(err)
+	}
+
+	// find the H264 track
+	h264Track = func() int {
+		for i, track := range tracks {
+			if track.IsH264() {
+				return i
+			}
+		}
+		return -1
+	}()
+	if h264Track < 0 {
+		panic(fmt.Errorf("H264 track not found"))
+	}
+	fmt.Printf("H264 track is number %d\n", h264Track+1)
+
+	// setup all tracks
+	for _, t := range tracks {
+		_, err := c.Setup(headers.TransportModePlay, baseURL, t, 0, 0)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// start reading tracks
+	_, err = c.Play(nil)
+	if err != nil {
+		panic(err)
+	}
+
+	// wait until a fatal error
+	panic(c.Wait())
 }

@@ -14,11 +14,6 @@ import (
 // 3. read only selected tracks
 
 func main() {
-	u, err := base.ParseURL("rtsp://myserver/mypath")
-	if err != nil {
-		panic(err)
-	}
-
 	c := gortsplib.Client{
 		// called when a RTP packet arrives
 		OnPacketRTP: func(c *gortsplib.Client, trackID int, payload []byte) {
@@ -30,11 +25,15 @@ func main() {
 		},
 	}
 
+	u, err := base.ParseURL("rtsp://myserver/mypath")
+	if err != nil {
+		panic(err)
+	}
+
 	err = c.Start(u.Scheme, u.Host)
 	if err != nil {
 		panic(err)
 	}
-	defer c.Close()
 
 	_, err = c.Options(u)
 	if err != nil {
@@ -46,7 +45,7 @@ func main() {
 		panic(err)
 	}
 
-	// start reading only video tracks, skipping audio or application tracks
+	// setup only video tracks, skipping audio or application tracks
 	for _, t := range tracks {
 		if t.Media.MediaName.Media == "video" {
 			_, err := c.Setup(headers.TransportModePlay, baseURL, t, 0, 0)
@@ -56,7 +55,7 @@ func main() {
 		}
 	}
 
-	// play setupped tracks
+	// start reading tracks
 	_, err = c.Play(nil)
 	if err != nil {
 		panic(err)
