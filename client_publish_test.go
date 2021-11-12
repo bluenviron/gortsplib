@@ -483,10 +483,6 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			_, err = c.Pause()
 			require.NoError(t, err)
 
-			err = c.WritePacketRTP(0,
-				[]byte{0x01, 0x02, 0x03, 0x04})
-			require.Error(t, err)
-
 			_, err = c.Record()
 			require.NoError(t, err)
 
@@ -632,9 +628,9 @@ func TestClientPublishPauseParallel(t *testing.T) {
 
 			_, err = c.Pause()
 			require.NoError(t, err)
-			<-writerDone
 
 			c.Close()
+			<-writerDone
 		})
 	}
 }

@@ -188,11 +188,3 @@ type ErrClientRTPInfoInvalid struct {
 func (e ErrClientRTPInfoInvalid) Error() string {
 	return fmt.Sprintf("invalid RTP-Info: %v", e.Err)
 }
-
-// ErrClientWriteNotAllowed is an error that can be returned by a client.
-type ErrClientWriteNotAllowed struct{}
-
-// Error implements the error interface.
-func (e ErrClientWriteNotAllowed) Error() string {
-	return "writing is not allowed at the moment"
-}
