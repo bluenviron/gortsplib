@@ -436,7 +436,6 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 
 			err := s.Start()
 			require.NoError(t, err)
-			defer s.Wait()
 			defer s.Close()
 
 			switch ca.publisherSoft {
@@ -538,7 +537,6 @@ func TestServerClose(t *testing.T) {
 
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	s.Close()
 	s.Close()
 }
@@ -583,7 +581,6 @@ func TestServerConnClose(t *testing.T) {
 
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -599,7 +596,6 @@ func TestServerCSeq(t *testing.T) {
 	}
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -634,7 +630,6 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	}
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -667,7 +662,6 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 	}
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -717,7 +711,6 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	err = s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	defer s.Close()
 
 	conn1, err := net.Dial("tcp", "localhost:8554")
@@ -816,7 +809,6 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	err = s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -903,7 +895,6 @@ func TestServerGetSetParameter(t *testing.T) {
 
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -976,7 +967,6 @@ func TestServerErrorInvalidSession(t *testing.T) {
 
 			err := s.Start()
 			require.NoError(t, err)
-			defer s.Wait()
 			defer s.Close()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
@@ -1020,7 +1010,6 @@ func TestServerSessionClose(t *testing.T) {
 
 	err := s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -1076,7 +1065,6 @@ func TestServerSessionAutoClose(t *testing.T) {
 
 	err = s.Start()
 	require.NoError(t, err)
-	defer s.Wait()
 	defer s.Close()
 
 	conn, err := net.Dial("tcp", "localhost:8554")
@@ -1155,7 +1143,6 @@ func TestServerErrorInvalidPath(t *testing.T) {
 
 			err = s.Start()
 			require.NoError(t, err)
-			defer s.Wait()
 			defer s.Close()
 
 			conn, err := net.Dial("tcp", "localhost:8554")
