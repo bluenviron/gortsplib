@@ -307,11 +307,6 @@ func (c *Client) Dial(scheme string, host string) error {
 
 // DialRead connects to the address and starts reading all tracks.
 func (c *Client) DialRead(address string) error {
-	return c.DialReadContext(context.Background(), address)
-}
-
-// DialReadContext connects to the address with the given context and starts reading all tracks.
-func (c *Client) DialReadContext(ctx context.Context, address string) error {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return err
@@ -321,21 +316,6 @@ func (c *Client) DialReadContext(ctx context.Context, address string) error {
 	if err != nil {
 		return err
 	}
-
-	ctxHandlerDone := make(chan struct{})
-	defer func() { <-ctxHandlerDone }()
-
-	ctxHandlerTerminate := make(chan struct{})
-	defer close(ctxHandlerTerminate)
-
-	go func() {
-		defer close(ctxHandlerDone)
-		select {
-		case <-ctx.Done():
-			c.Close()
-		case <-ctxHandlerTerminate:
-		}
-	}()
 
 	_, err = c.Options(u)
 	if err != nil {
@@ -368,11 +348,6 @@ func (c *Client) DialReadContext(ctx context.Context, address string) error {
 
 // DialPublish connects to the address and starts publishing the tracks.
 func (c *Client) DialPublish(address string, tracks Tracks) error {
-	return c.DialPublishContext(context.Background(), address, tracks)
-}
-
-// DialPublishContext connects to the address with the given context and starts publishing the tracks.
-func (c *Client) DialPublishContext(ctx context.Context, address string, tracks Tracks) error {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return err
@@ -382,21 +357,6 @@ func (c *Client) DialPublishContext(ctx context.Context, address string, tracks 
 	if err != nil {
 		return err
 	}
-
-	ctxHandlerDone := make(chan struct{})
-	defer func() { <-ctxHandlerDone }()
-
-	ctxHandlerTerminate := make(chan struct{})
-	defer close(ctxHandlerTerminate)
-
-	go func() {
-		defer close(ctxHandlerDone)
-		select {
-		case <-ctx.Done():
-			c.Close()
-		case <-ctxHandlerTerminate:
-		}
-	}()
 
 	_, err = c.Options(u)
 	if err != nil {
