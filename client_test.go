@@ -90,7 +90,7 @@ func TestClientSession(t *testing.T) {
 
 	c := Client{}
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -171,7 +171,7 @@ func TestClientAuth(t *testing.T) {
 
 	c := Client{}
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -235,7 +235,7 @@ func TestClientDescribeCharset(t *testing.T) {
 
 	c := Client{}
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -277,7 +277,7 @@ func TestClientCloseDuringRequest(t *testing.T) {
 
 	c := Client{}
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	require.NoError(t, err)
 
 	optionsDone := make(chan struct{})

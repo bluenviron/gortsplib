@@ -246,8 +246,8 @@ type Client struct {
 	done chan struct{}
 }
 
-// Dial connects to a server.
-func (c *Client) Dial(scheme string, host string) error {
+// Start initializes the connection to a server.
+func (c *Client) Start(scheme string, host string) error {
 	// callbacks
 	if c.OnPacketRTP == nil {
 		c.OnPacketRTP = func(c *Client, trackID int, payload []byte) {
@@ -317,14 +317,14 @@ func (c *Client) Dial(scheme string, host string) error {
 	return nil
 }
 
-// DialRead connects to the address and starts reading all tracks.
-func (c *Client) DialRead(address string) error {
+// StartReading connects to the address and starts reading all tracks.
+func (c *Client) StartReading(address string) error {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return err
 	}
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	if err != nil {
 		return err
 	}
@@ -358,14 +358,25 @@ func (c *Client) DialRead(address string) error {
 	return nil
 }
 
-// DialPublish connects to the address and starts publishing the tracks.
-func (c *Client) DialPublish(address string, tracks Tracks) error {
+// StartReadingAndWait connects to the address, starts reading all tracks and waits
+// until a read error.
+func (c *Client) StartReadingAndWait(address string) error {
+	err := c.StartReading(address)
+	if err != nil {
+		return err
+	}
+
+	return c.Wait()
+}
+
+// StartPublishing connects to the address and starts publishing the tracks.
+func (c *Client) StartPublishing(address string, tracks Tracks) error {
 	u, err := base.ParseURL(address)
 	if err != nil {
 		return err
 	}
 
-	err = c.Dial(u.Scheme, u.Host)
+	err = c.Start(u.Scheme, u.Host)
 	if err != nil {
 		return err
 	}
@@ -399,11 +410,18 @@ func (c *Client) DialPublish(address string, tracks Tracks) error {
 	return nil
 }
 
-// Close closes all the client resources and waits for them to exit.
+// Close closes all client resources and waits for them to close.
 func (c *Client) Close() error {
 	c.ctxCancel()
 	<-c.done
-	return nil
+	return c.finalErr
+}
+
+// Wait waits until all client resources are closed.
+// This can happen when a read error occurs or when Close() is called.
+func (c *Client) Wait() error {
+	<-c.done
+	return c.finalErr
 }
 
 // Tracks returns all the tracks that the client is reading or publishing.
@@ -1683,12 +1701,6 @@ func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
 	}
 
 	return c.Play(ra)
-}
-
-// ReadFrames starts reading frames.
-func (c *Client) ReadFrames() error {
-	<-c.done
-	return c.finalErr
 }
 
 // WritePacketRTP writes a RTP packet.
