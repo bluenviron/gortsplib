@@ -410,21 +410,22 @@ func TestClientRead(t *testing.T) {
 						return &v
 					}
 				}(),
-				OnPacketRTP: func(c *Client, trackID int, payload []byte) {
-					// ignore multicast loopback
-					if transport == "multicast" {
-						counter++
-						if counter <= 1 || counter >= 3 {
-							return
-						}
+			}
+
+			c.OnPacketRTP = func(trackID int, payload []byte) {
+				// ignore multicast loopback
+				if transport == "multicast" {
+					counter++
+					if counter <= 1 || counter >= 3 {
+						return
 					}
+				}
 
-					require.Equal(t, 0, trackID)
-					require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
+				require.Equal(t, 0, trackID)
+				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
 
-					err := c.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
-					require.NoError(t, err)
-				},
+				err := c.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
+				require.NoError(t, err)
 			}
 
 			err = c.StartReading(scheme + "://" + listenIP + ":8554/test/stream?param=value")
@@ -541,8 +542,8 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(c *Client, id int, payload []byte) {
-			require.Equal(t, 0, id)
+		OnPacketRTP: func(trackID int, payload []byte) {
+			require.Equal(t, 0, trackID)
 			require.Equal(t, refPayload, payload)
 			close(frameRecv)
 		},
@@ -655,7 +656,7 @@ func TestClientReadPartial(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, payload []byte) {
 			require.Equal(t, 0, trackID)
 			require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
 			close(frameRecv)
@@ -900,7 +901,7 @@ func TestClientReadAnyPort(t *testing.T) {
 
 			c := &Client{
 				AnyPortEnable: true,
-				OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+				OnPacketRTP: func(trackID int, payload []byte) {
 					close(frameRecv)
 				},
 			}
@@ -1017,7 +1018,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 		frameRecv := make(chan struct{})
 
 		c := Client{
-			OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+			OnPacketRTP: func(trackID int, payload []byte) {
 				close(frameRecv)
 			},
 		}
@@ -1219,7 +1220,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 		c := &Client{
 			ReadTimeout: 1 * time.Second,
-			OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+			OnPacketRTP: func(trackID int, payload []byte) {
 				close(frameRecv)
 			},
 		}
@@ -1343,7 +1344,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, payload []byte) {
 			require.Equal(t, 0, trackID)
 			close(frameRecv)
 		},
@@ -1488,7 +1489,7 @@ func TestClientReadRedirect(t *testing.T) {
 	frameRecv := make(chan struct{})
 
 	c := Client{
-		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, payload []byte) {
 			close(frameRecv)
 		},
 	}
@@ -1688,7 +1689,7 @@ func TestClientReadPause(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+				OnPacketRTP: func(trackID int, payload []byte) {
 					if atomic.SwapInt32(&firstFrame, 1) == 0 {
 						close(frameRecv)
 					}
@@ -1861,13 +1862,13 @@ func TestClientReadRTCPReport(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, payload []byte) {
 			recv++
 			if recv >= 3 {
 				close(recvDone)
 			}
 		},
-		OnPacketRTCP: func(c *Client, trackID int, payload []byte) {
+		OnPacketRTCP: func(trackID int, payload []byte) {
 			recv++
 			if recv >= 3 {
 				close(recvDone)
@@ -2156,7 +2157,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(c *Client, trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, payload []byte) {
 			close(recv)
 		},
 	}

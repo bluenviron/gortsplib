@@ -19,7 +19,7 @@ func main() {
 
 	c := gortsplib.Client{
 		// called when a RTP packet arrives
-		OnPacketRTP: func(c *gortsplib.Client, trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, payload []byte) {
 			if trackID != h264Track {
 				return
 			}
