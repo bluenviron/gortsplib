@@ -142,7 +142,7 @@ type Server struct {
 	udpRTCPListener *serverUDPListener
 	sessions        map[string]*ServerSession
 	conns           map[*ServerConn]struct{}
-	exitError       error
+	closeError      error
 	streams         map[*ServerStream]struct{}
 
 	// in
@@ -302,18 +302,18 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Close closes all the server resources.
-// It doesn't wait for the server resources to close (use Wait for that).
+// Close closes all the server resources and waits for the to close.
 func (s *Server) Close() error {
 	s.ctxCancel()
-	return nil
+	s.wg.Wait()
+	return s.closeError
 }
 
 // Wait waits until all server resources are closed.
 // This can happen when a fatal error occurs or when Close() is called.
 func (s *Server) Wait() error {
 	s.wg.Wait()
-	return s.exitError
+	return s.closeError
 }
 
 func (s *Server) run() {
@@ -355,7 +355,7 @@ func (s *Server) run() {
 		}
 	}()
 
-	s.exitError = func() error {
+	s.closeError = func() error {
 		for {
 			select {
 			case err := <-acceptErr:

@@ -222,7 +222,7 @@ type Client struct {
 	checkStreamInitial bool
 	tcpLastFrameTime   int64
 	keepaliveTimer     *time.Timer
-	finalErr           error
+	closeError         error
 
 	// connCloser channels
 	connCloserTerminate chan struct{}
@@ -412,14 +412,14 @@ func (c *Client) StartPublishing(address string, tracks Tracks) error {
 func (c *Client) Close() error {
 	c.ctxCancel()
 	<-c.done
-	return c.finalErr
+	return c.closeError
 }
 
 // Wait waits until all client resources are closed.
 // This can happen when a read error occurs or when Close() is called.
 func (c *Client) Wait() error {
 	<-c.done
-	return c.finalErr
+	return c.closeError
 }
 
 // Tracks returns all the tracks that the client is reading or publishing.
@@ -444,7 +444,7 @@ func (c *Client) Tracks() Tracks {
 func (c *Client) run() {
 	defer close(c.done)
 
-	c.finalErr = func() error {
+	c.closeError = func() error {
 		for {
 			select {
 			case req := <-c.options:
@@ -1746,7 +1746,7 @@ func (c *Client) WritePacketRTP(trackID int, payload []byte) error {
 	if !c.writeFrameAllowed {
 		select {
 		case <-c.done:
-			return c.finalErr
+			return c.closeError
 		default:
 			return nil
 		}
@@ -1784,7 +1784,7 @@ func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
 	if !c.writeFrameAllowed {
 		select {
 		case <-c.done:
-			return c.finalErr
+			return c.closeError
 		default:
 			return nil
 		}
