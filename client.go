@@ -1438,7 +1438,7 @@ func (c *Client) doSetup(
 			rtpListener.remotePort = thRes.ServerPorts[0]
 		}
 		rtpListener.trackID = trackID
-		rtpListener.streamType = StreamTypeRTP
+		rtpListener.isRTP = true
 		cct.udpRTPListener = rtpListener
 
 		rtcpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
@@ -1448,7 +1448,7 @@ func (c *Client) doSetup(
 			rtcpListener.remotePort = thRes.ServerPorts[1]
 		}
 		rtcpListener.trackID = trackID
-		rtcpListener.streamType = StreamTypeRTCP
+		rtcpListener.isRTP = false
 		cct.udpRTCPListener = rtcpListener
 
 	case TransportUDPMulticast:
@@ -1457,7 +1457,7 @@ func (c *Client) doSetup(
 		rtpListener.remoteZone = ""
 		rtpListener.remotePort = thRes.Ports[0]
 		rtpListener.trackID = trackID
-		rtpListener.streamType = StreamTypeRTP
+		rtpListener.isRTP = true
 		cct.udpRTPListener = rtpListener
 
 		rtcpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
@@ -1465,7 +1465,7 @@ func (c *Client) doSetup(
 		rtcpListener.remoteZone = ""
 		rtcpListener.remotePort = thRes.Ports[1]
 		rtcpListener.trackID = trackID
-		rtcpListener.streamType = StreamTypeRTCP
+		rtcpListener.isRTP = false
 		cct.udpRTCPListener = rtcpListener
 
 	case TransportTCP:
