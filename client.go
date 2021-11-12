@@ -137,8 +137,6 @@ type Client struct {
 	OnRequest func(*base.Request)
 	// called after every response.
 	OnResponse func(*base.Response)
-	// called before sending a PLAY request.
-	OnPlay func(*Client)
 	// called when a RTP packet arrives.
 	OnPacketRTP func(*Client, int, []byte)
 	// called when a RTCP packet arrives.
@@ -1526,10 +1524,6 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if c.OnPlay != nil {
-		c.OnPlay(c)
 	}
 
 	c.state = clientStatePlay
