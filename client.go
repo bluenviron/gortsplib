@@ -100,7 +100,7 @@ type announceReq struct {
 }
 
 type setupReq struct {
-	mode     headers.TransportMode
+	forPlay  bool
 	baseURL  *base.URL
 	track    *Track
 	rtpPort  int
@@ -340,7 +340,7 @@ func (c *Client) StartReading(address string) error {
 	}
 
 	for _, track := range tracks {
-		_, err := c.Setup(headers.TransportModePlay, baseURL, track, 0, 0)
+		_, err := c.Setup(true, baseURL, track, 0, 0)
 		if err != nil {
 			c.Close()
 			return err
@@ -392,7 +392,7 @@ func (c *Client) StartPublishing(address string, tracks Tracks) error {
 	}
 
 	for _, track := range tracks {
-		_, err := c.Setup(headers.TransportModeRecord, u, track, 0, 0)
+		_, err := c.Setup(false, u, track, 0, 0)
 		if err != nil {
 			c.Close()
 			return err
@@ -460,7 +460,7 @@ func (c *Client) run() {
 				req.res <- clientRes{res: res, err: err}
 
 			case req := <-c.setup:
-				res, err := c.doSetup(req.mode, req.baseURL, req.track, req.rtpPort, req.rtcpPort)
+				res, err := c.doSetup(req.forPlay, req.baseURL, req.track, req.rtpPort, req.rtcpPort)
 				req.res <- clientRes{res: res, err: err}
 
 			case req := <-c.play:
@@ -669,7 +669,7 @@ func (c *Client) trySwitchingProtocol() error {
 	c.host = prevBaseURL.Host
 
 	for _, track := range prevTracks {
-		_, err := c.doSetup(headers.TransportModePlay, prevBaseURL, track.track, 0, 0)
+		_, err := c.doSetup(true, prevBaseURL, track.track, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -1198,7 +1198,7 @@ func (c *Client) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
 }
 
 func (c *Client) doSetup(
-	mode headers.TransportMode,
+	forPlay bool,
 	baseURL *base.URL,
 	track *Track,
 	rtpPort int,
@@ -1212,8 +1212,8 @@ func (c *Client) doSetup(
 		return nil, err
 	}
 
-	if (mode == headers.TransportModeRecord && c.state != clientStatePreRecord) ||
-		(mode == headers.TransportModePlay && c.state != clientStatePrePlay &&
+	if (!forPlay && c.state != clientStatePreRecord) ||
+		(forPlay && c.state != clientStatePrePlay &&
 			c.state != clientStateInitial) {
 		return nil, liberrors.ErrClientCannotReadPublishAtSameTime{}
 	}
@@ -1245,6 +1245,11 @@ func (c *Client) doSetup(
 		// try UDP
 		return TransportUDP
 	}()
+
+	mode := headers.TransportModePlay
+	if !forPlay {
+		mode = headers.TransportModeRecord
+	}
 
 	th := headers.Transport{
 		Mode: &mode,
@@ -1336,7 +1341,7 @@ func (c *Client) doSetup(
 			v := TransportTCP
 			c.protocol = &v
 
-			return c.doSetup(mode, baseURL, track, 0, 0)
+			return c.doSetup(forPlay, baseURL, track, 0, 0)
 		}
 
 		return res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
@@ -1495,7 +1500,7 @@ func (c *Client) doSetup(
 // rtpPort and rtcpPort are used only if protocol is UDP.
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
 func (c *Client) Setup(
-	mode headers.TransportMode,
+	forPlay bool,
 	baseURL *base.URL,
 	track *Track,
 	rtpPort int,
@@ -1503,7 +1508,7 @@ func (c *Client) Setup(
 	cres := make(chan clientRes)
 	select {
 	case c.setup <- setupReq{
-		mode:     mode,
+		forPlay:  forPlay,
 		baseURL:  baseURL,
 		track:    track,
 		rtpPort:  rtpPort,
