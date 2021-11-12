@@ -125,6 +125,6 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		return err
 	}
 
-	fmt.Println("wrote ts packet")
+	fmt.Println("wrote TS packet")
 	return nil
 }
