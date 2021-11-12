@@ -672,7 +672,6 @@ func (c *Client) playRecordStart() {
 			c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
 			c.tcpLastFrameTime = time.Now().Unix()
 		}
-
 	} else {
 		c.reportTimer = time.NewTimer(c.senderReportPeriod)
 	}
@@ -807,7 +806,7 @@ func (c *Client) connOpen() error {
 		return fmt.Errorf("unsupported scheme '%s'", c.scheme)
 	}
 
-	if c.scheme == "rtsps" && c.Transport != nil && *c.Transport != TransportTCP {
+	if c.scheme == "rtsps" && (c.Transport == nil || *c.Transport != TransportTCP) {
 		return fmt.Errorf("RTSPS can be used only with TCP")
 	}
 
