@@ -12,12 +12,12 @@ import (
 // 2. get and print informations about tracks published on a path.
 
 func main() {
-	u, err := base.ParseURL("rtsp://myserver/mypath")
+	c := gortsplib.Client{}
+
+	u, err := base.ParseURL("rtsp://localhost:8554/mypath")
 	if err != nil {
 		panic(err)
 	}
-
-	c := gortsplib.Client{}
 
 	err = c.Start(u.Scheme, u.Host)
 	if err != nil {
