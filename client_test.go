@@ -245,3 +245,50 @@ func TestClientDescribeCharset(t *testing.T) {
 	_, _, _, err = c.Describe(u)
 	require.NoError(t, err)
 }
+
+func TestClientCloseDuringRequest(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	requestReceived := make(chan struct{})
+	releaseConn := make(chan struct{})
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+		req, err := readRequest(bconn.Reader)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		close(requestReceived)
+		<-releaseConn
+	}()
+
+	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	c := Client{}
+
+	err = c.Dial(u.Scheme, u.Host)
+	require.NoError(t, err)
+
+	optionsDone := make(chan struct{})
+	go func() {
+		defer close(optionsDone)
+		_, err := c.Options(u)
+		require.Error(t, err)
+	}()
+
+	<-requestReceived
+	c.Close()
+	<-optionsDone
+	close(releaseConn)
+}
