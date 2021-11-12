@@ -1,5 +1,5 @@
 
-BASE_IMAGE = amd64/golang:1.17-alpine3.13
+BASE_IMAGE = golang:1.17-alpine3.13
 LINT_IMAGE = golangci/golangci-lint:v1.40
 
 .PHONY: $(shell ls)
@@ -29,7 +29,7 @@ mod-tidy:
 define DOCKERFILE_FORMAT
 FROM $(BASE_IMAGE)
 RUN apk add --no-cache git
-RUN GO111MODULE=on go get mvdan.cc/gofumpt
+RUN GO111MODULE=on go get mvdan.cc/gofumpt@v0.2.0
 endef
 export DOCKERFILE_FORMAT
 
