@@ -654,6 +654,19 @@ func (c *Client) trySwitchingProtocol() error {
 }
 
 func (c *Client) playRecordStart() {
+	// allow writing
+	c.writeMutex.Lock()
+	c.writeFrameAllowed = true
+	c.writeMutex.Unlock()
+
+	// start UDP listeners
+	if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
+		for _, cct := range c.tracks {
+			cct.udpRTPListener.start()
+			cct.udpRTCPListener.start()
+		}
+	}
+
 	// start timers
 	if c.state == clientStatePlay {
 		c.reportTimer = time.NewTimer(c.receiverReportPeriod)
@@ -674,19 +687,6 @@ func (c *Client) playRecordStart() {
 		}
 	} else {
 		c.reportTimer = time.NewTimer(c.senderReportPeriod)
-	}
-
-	// allow writing
-	c.writeMutex.Lock()
-	c.writeFrameAllowed = true
-	c.writeMutex.Unlock()
-
-	// start UDP listeners
-	if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.start()
-			cct.udpRTCPListener.start()
-		}
 	}
 
 	// for some reason, SetReadDeadline() must always be called in the same
@@ -782,6 +782,11 @@ func (c *Client) playRecordClose() {
 		<-c.readerErr
 	}
 
+	// stop timers
+	c.reportTimer = emptyTimer()
+	c.checkStreamTimer = emptyTimer()
+	c.keepaliveTimer = emptyTimer()
+
 	// stop UDP listeners
 	if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
 		for _, cct := range c.tracks {
@@ -794,11 +799,6 @@ func (c *Client) playRecordClose() {
 	c.writeMutex.Lock()
 	c.writeFrameAllowed = false
 	c.writeMutex.Unlock()
-
-	// stop timers
-	c.reportTimer = emptyTimer()
-	c.checkStreamTimer = emptyTimer()
-	c.keepaliveTimer = emptyTimer()
 }
 
 func (c *Client) connOpen() error {
