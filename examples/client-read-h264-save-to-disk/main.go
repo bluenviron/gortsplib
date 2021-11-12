@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/rtph264"
 	"github.com/pion/rtp"
 )
@@ -97,7 +96,7 @@ func main() {
 
 	// setup all tracks
 	for _, t := range tracks {
-		_, err := c.Setup(headers.TransportModePlay, baseURL, t, 0, 0)
+		_, err := c.Setup(true, baseURL, t, 0, 0)
 		if err != nil {
 			panic(err)
 		}
