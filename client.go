@@ -32,10 +32,10 @@ import (
 )
 
 const (
-	clientReadBufferSize     = 4096
-	clientWriteBufferSize    = 4096
-	clientCheckStreamPeriod  = 1 * time.Second
-	clientUDPKeepalivePeriod = 30 * time.Second
+	clientReadBufferSize    = 4096
+	clientWriteBufferSize   = 4096
+	clientCheckStreamPeriod = 1 * time.Second
+	clientKeepalivePeriod   = 30 * time.Second
 )
 
 func isAnyPort(p int) bool {
@@ -566,7 +566,7 @@ func (c *Client) run() {
 					return err
 				}
 
-				c.keepaliveTimer = time.NewTimer(clientUDPKeepalivePeriod)
+				c.keepaliveTimer = time.NewTimer(clientKeepalivePeriod)
 
 			case err := <-c.readerErr:
 				c.readerErr = nil
@@ -685,16 +685,15 @@ func (c *Client) playRecordStart() {
 	// start timers
 	if c.state == clientStatePlay {
 		c.reportTimer = time.NewTimer(c.receiverReportPeriod)
+		c.keepaliveTimer = time.NewTimer(clientKeepalivePeriod)
 
 		switch *c.protocol {
 		case TransportUDP:
 			c.checkStreamTimer = time.NewTimer(c.InitialUDPReadTimeout)
 			c.checkStreamInitial = true
-			c.keepaliveTimer = time.NewTimer(clientUDPKeepalivePeriod)
 
 		case TransportUDPMulticast:
 			c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
-			c.keepaliveTimer = time.NewTimer(clientUDPKeepalivePeriod)
 
 		default: // TCP
 			c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
@@ -749,28 +748,31 @@ func (c *Client) runReader() error {
 			}
 		}
 
+		frame := base.InterleavedFrame{}
+		res := base.Response{}
+
 		for {
-			frame := base.InterleavedFrame{
-				Payload: c.tcpFrameBuffer.Next(),
-			}
-			err := frame.Read(c.br)
+			frame.Payload = c.tcpFrameBuffer.Next()
+			what, err := base.ReadInterleavedFrameOrResponse(&frame, &res, c.br)
 			if err != nil {
 				return err
 			}
 
-			channel := frame.Channel
-			isRTP := true
-			if (channel % 2) != 0 {
-				channel--
-				isRTP = false
-			}
+			if _, ok := what.(*base.InterleavedFrame); ok {
+				channel := frame.Channel
+				isRTP := true
+				if (channel % 2) != 0 {
+					channel--
+					isRTP = false
+				}
 
-			trackID, ok := c.tracksByChannel[channel]
-			if !ok {
-				continue
-			}
+				trackID, ok := c.tracksByChannel[channel]
+				if !ok {
+					continue
+				}
 
-			processFunc(trackID, isRTP, frame.Payload)
+				processFunc(trackID, isRTP, frame.Payload)
+			}
 		}
 	}
 }
