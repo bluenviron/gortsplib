@@ -50,6 +50,7 @@ type ServerConn struct {
 	tcpFrameBuffer              *multibuffer.MultiBuffer // tcp
 	tcpFrameWriteBuffer         *ringbuffer.RingBuffer   // tcp
 	tcpFrameBackgroundWriteDone chan struct{}            // tcp
+	tcpProcessFunc              func(int, bool, []byte)
 
 	// in
 	sessionRemove chan *ServerSession
@@ -154,33 +155,7 @@ func (sc *ServerConn) run() {
 
 						// forward frame only if it has been set up
 						if trackID, ok := sc.tcpSession.setuppedTracksByChannel[channel]; ok {
-							if isRTP {
-								if sc.tcpFrameIsRecording {
-									sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessPacketRTP(
-										time.Now(), frame.Payload)
-
-									if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
-										h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-											Session: sc.tcpSession,
-											TrackID: trackID,
-											Payload: frame.Payload,
-										})
-									}
-								}
-							} else {
-								if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
-									if sc.tcpFrameIsRecording {
-										sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessPacketRTCP(
-											time.Now(), frame.Payload)
-									}
-
-									h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
-										Session: sc.tcpSession,
-										TrackID: trackID,
-										Payload: frame.Payload,
-									})
-								}
-							}
+							sc.tcpProcessFunc(trackID, isRTP, frame.Payload)
 						}
 
 					case *base.Request:
@@ -275,6 +250,44 @@ func (sc *ServerConn) run() {
 			Conn:  sc,
 			Error: err,
 		})
+	}
+}
+
+func (sc *ServerConn) tcpProcessPlay(trackID int, isRTP bool, payload []byte) {
+	if !isRTP {
+		if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
+			h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
+				Session: sc.tcpSession,
+				TrackID: trackID,
+				Payload: payload,
+			})
+		}
+	}
+}
+
+func (sc *ServerConn) tcpProcessRecord(trackID int, isRTP bool, payload []byte) {
+	if isRTP {
+		sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessPacketRTP(
+			time.Now(), payload)
+
+		if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
+			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+				Session: sc.tcpSession,
+				TrackID: trackID,
+				Payload: payload,
+			})
+		}
+	} else {
+		sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessPacketRTCP(
+			time.Now(), payload)
+
+		if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
+			h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
+				Session: sc.tcpSession,
+				TrackID: trackID,
+				Payload: payload,
+			})
+		}
 	}
 }
 
@@ -515,12 +528,14 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 			if sc.tcpFrameIsRecording {
 				sc.tcpFrameTimeout = true
 				sc.tcpFrameBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
+				sc.tcpProcessFunc = sc.tcpProcessRecord
 			} else {
 				// when playing, tcpFrameBuffer is only used to receive RTCP receiver reports,
 				// that are much smaller than RTP packets and are sent at a fixed interval
 				// (about 2 frames every 10 secs).
 				// decrease RAM consumption by allocating less buffers.
 				sc.tcpFrameBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
+				sc.tcpProcessFunc = sc.tcpProcessPlay
 			}
 
 			// start background write
