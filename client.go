@@ -523,8 +523,6 @@ func (c *Client) run() {
 								return err
 							}
 						}
-
-						c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
 					} else {
 						inTimeout := func() bool {
 							now := time.Now()
@@ -544,8 +542,6 @@ func (c *Client) run() {
 						if inTimeout {
 							return liberrors.ErrClientUDPTimeout{}
 						}
-
-						c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
 					}
 				} else { // TCP
 					inTimeout := func() bool {
@@ -556,9 +552,9 @@ func (c *Client) run() {
 					if inTimeout {
 						return liberrors.ErrClientTCPTimeout{}
 					}
-
-					c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
 				}
+
+				c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
 
 			case <-c.keepaliveTimer.C:
 				_, err := c.do(&base.Request{
