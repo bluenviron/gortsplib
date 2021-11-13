@@ -187,8 +187,8 @@ type Client struct {
 	// private
 	//
 
-	senderReportPeriod   time.Duration
-	receiverReportPeriod time.Duration
+	udpSenderReportPeriod   time.Duration
+	udpReceiverReportPeriod time.Duration
 
 	scheme             string
 	host               string
@@ -211,7 +211,7 @@ type Client struct {
 	tcpWriteMutex      sync.Mutex               // tcp
 	writeMutex         sync.RWMutex             // write
 	writeFrameAllowed  bool                     // write
-	reportTimer        *time.Timer
+	udpReportTimer     *time.Timer
 	checkStreamTimer   *time.Timer
 	checkStreamInitial bool
 	tcpLastFrameTime   int64
@@ -279,11 +279,11 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 
 	// private
-	if c.senderReportPeriod == 0 {
-		c.senderReportPeriod = 10 * time.Second
+	if c.udpSenderReportPeriod == 0 {
+		c.udpSenderReportPeriod = 10 * time.Second
 	}
-	if c.receiverReportPeriod == 0 {
-		c.receiverReportPeriod = 10 * time.Second
+	if c.udpReceiverReportPeriod == 0 {
+		c.udpReceiverReportPeriod = 10 * time.Second
 	}
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
@@ -292,7 +292,7 @@ func (c *Client) Start(scheme string, host string) error {
 	c.host = host
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
-	c.reportTimer = emptyTimer()
+	c.udpReportTimer = emptyTimer()
 	c.checkStreamTimer = emptyTimer()
 	c.keepaliveTimer = emptyTimer()
 	c.options = make(chan optionsReq)
@@ -469,7 +469,7 @@ func (c *Client) run() {
 				res, err := c.doPause()
 				req.res <- clientRes{res: res, err: err}
 
-			case <-c.reportTimer.C:
+			case <-c.udpReportTimer.C:
 				if c.state == clientStatePlay {
 					now := time.Now()
 					for trackID, cct := range c.tracks {
@@ -477,7 +477,7 @@ func (c *Client) run() {
 						c.WritePacketRTCP(trackID, rr)
 					}
 
-					c.reportTimer = time.NewTimer(c.receiverReportPeriod)
+					c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
 				} else { // Record
 					now := time.Now()
 					for trackID, cct := range c.tracks {
@@ -487,7 +487,7 @@ func (c *Client) run() {
 						}
 					}
 
-					c.reportTimer = time.NewTimer(c.senderReportPeriod)
+					c.udpReportTimer = time.NewTimer(c.udpSenderReportPeriod)
 				}
 
 			case <-c.checkStreamTimer.C:
@@ -684,15 +684,16 @@ func (c *Client) playRecordStart() {
 
 	// start timers
 	if c.state == clientStatePlay {
-		c.reportTimer = time.NewTimer(c.receiverReportPeriod)
 		c.keepaliveTimer = time.NewTimer(clientKeepalivePeriod)
 
 		switch *c.protocol {
 		case TransportUDP:
+			c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
 			c.checkStreamTimer = time.NewTimer(c.InitialUDPReadTimeout)
 			c.checkStreamInitial = true
 
 		case TransportUDPMulticast:
+			c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
 			c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
 
 		default: // TCP
@@ -700,7 +701,13 @@ func (c *Client) playRecordStart() {
 			c.tcpLastFrameTime = time.Now().Unix()
 		}
 	} else {
-		c.reportTimer = time.NewTimer(c.senderReportPeriod)
+		switch *c.protocol {
+		case TransportUDP:
+			c.udpReportTimer = time.NewTimer(c.udpSenderReportPeriod)
+
+		case TransportUDPMulticast:
+			c.udpReportTimer = time.NewTimer(c.udpSenderReportPeriod)
+		}
 	}
 
 	// for some reason, SetReadDeadline() must always be called in the same
@@ -785,7 +792,7 @@ func (c *Client) playRecordStop(isClosing bool) {
 	}
 
 	// stop timers
-	c.reportTimer = emptyTimer()
+	c.udpReportTimer = emptyTimer()
 	c.checkStreamTimer = emptyTimer()
 	c.keepaliveTimer = emptyTimer()
 
