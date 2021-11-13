@@ -268,9 +268,6 @@ func (sc *ServerConn) tcpProcessPlay(trackID int, isRTP bool, payload []byte) {
 
 func (sc *ServerConn) tcpProcessRecord(trackID int, isRTP bool, payload []byte) {
 	if isRTP {
-		sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessPacketRTP(
-			time.Now(), payload)
-
 		if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
 			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
 				Session: sc.tcpSession,
@@ -279,9 +276,6 @@ func (sc *ServerConn) tcpProcessRecord(trackID int, isRTP bool, payload []byte) 
 			})
 		}
 	} else {
-		sc.tcpSession.announcedTracks[trackID].rtcpReceiver.ProcessPacketRTCP(
-			time.Now(), payload)
-
 		if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
 			h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
 				Session: sc.tcpSession,

@@ -173,7 +173,7 @@ type ServerSession struct {
 	announcedTracks         []ServerSessionAnnouncedTrack // publish
 	udpLastFrameTime        *int64                        // publish, udp
 	checkStreamTimer        *time.Timer
-	receiverReportTimer     *time.Timer
+	udpReceiverReportTimer  *time.Timer
 
 	// in
 	request    chan sessionRequestReq
@@ -188,17 +188,17 @@ func newServerSession(
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
 	ss := &ServerSession{
-		s:                   s,
-		secretID:            secretID,
-		author:              author,
-		ctx:                 ctx,
-		ctxCancel:           ctxCancel,
-		conns:               make(map[*ServerConn]struct{}),
-		lastRequestTime:     time.Now(),
-		checkStreamTimer:    emptyTimer(),
-		receiverReportTimer: emptyTimer(),
-		request:             make(chan sessionRequestReq),
-		connRemove:          make(chan *ServerConn),
+		s:                      s,
+		secretID:               secretID,
+		author:                 author,
+		ctx:                    ctx,
+		ctxCancel:              ctxCancel,
+		conns:                  make(map[*ServerConn]struct{}),
+		lastRequestTime:        time.Now(),
+		checkStreamTimer:       emptyTimer(),
+		udpReceiverReportTimer: emptyTimer(),
+		request:                make(chan sessionRequestReq),
+		connRemove:             make(chan *ServerConn),
 	}
 
 	s.wg.Add(1)
@@ -331,14 +331,14 @@ func (ss *ServerSession) run() {
 
 				ss.checkStreamTimer = time.NewTimer(serverSessionCheckStreamPeriod)
 
-			case <-ss.receiverReportTimer.C:
+			case <-ss.udpReceiverReportTimer.C:
 				now := time.Now()
 				for trackID, track := range ss.announcedTracks {
 					r := track.rtcpReceiver.Report(now)
 					ss.WritePacketRTCP(trackID, r)
 				}
 
-				ss.receiverReportTimer = time.NewTimer(ss.s.receiverReportPeriod)
+				ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
 
 			case <-ss.ctx.Done():
 				return liberrors.ErrServerTerminated{}
@@ -524,10 +524,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.announcedTracks = make([]ServerSessionAnnouncedTrack, len(tracks))
 		for trackID, track := range tracks {
-			clockRate, _ := track.ClockRate()
 			ss.announcedTracks[trackID] = ServerSessionAnnouncedTrack{
-				track:        track,
-				rtcpReceiver: rtcpreceiver.New(nil, clockRate),
+				track: track,
 			}
 		}
 
@@ -752,6 +750,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.setuppedTracks[trackID] = sst
 
+		if ss.state == ServerSessionStatePrePublish && *ss.setuppedTransport != TransportTCP {
+			clockRate, _ := ss.announcedTracks[trackID].track.ClockRate()
+			ss.announcedTracks[trackID].rtcpReceiver = rtcpreceiver.New(nil, clockRate)
+		}
+
 		res.Header["Transport"] = th.Write()
 
 		return res, err
@@ -930,10 +933,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.state = ServerSessionStatePublish
 		ss.checkStreamTimer = time.NewTimer(serverSessionCheckStreamPeriod)
-		ss.receiverReportTimer = time.NewTimer(ss.s.receiverReportPeriod)
 
 		switch *ss.setuppedTransport {
 		case TransportUDP:
+			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
+
 			for trackID, track := range ss.setuppedTracks {
 				ss.s.udpRTPListener.addClient(ss.author.ip(), track.udpRTPPort, ss, trackID, true)
 				ss.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, true)
@@ -946,6 +950,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}
 
 		case TransportUDPMulticast:
+			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
 
 		default: // TCP
 			err = liberrors.ErrServerTCPFramesEnable{}
@@ -1011,7 +1016,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		case ServerSessionStatePublish:
 			ss.state = ServerSessionStatePrePublish
 			ss.checkStreamTimer = emptyTimer()
-			ss.receiverReportTimer = emptyTimer()
+			ss.udpReceiverReportTimer = emptyTimer()
 			ss.tcpConn = nil
 
 			switch *ss.setuppedTransport {

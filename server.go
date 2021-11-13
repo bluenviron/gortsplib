@@ -129,7 +129,7 @@ type Server struct {
 	// private
 	//
 
-	receiverReportPeriod           time.Duration
+	udpReceiverReportPeriod        time.Duration
 	closeSessionAfterNoRequestsFor time.Duration
 
 	ctx             context.Context
@@ -179,8 +179,8 @@ func (s *Server) Start() error {
 	}
 
 	// private
-	if s.receiverReportPeriod == 0 {
-		s.receiverReportPeriod = 10 * time.Second
+	if s.udpReceiverReportPeriod == 0 {
+		s.udpReceiverReportPeriod = 10 * time.Second
 	}
 	if s.closeSessionAfterNoRequestsFor == 0 {
 		s.closeSessionAfterNoRequestsFor = 1 * 60 * time.Second
