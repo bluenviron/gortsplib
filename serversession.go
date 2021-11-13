@@ -1056,7 +1056,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"text/parameters"},
 			},
-			Body: []byte("\n"),
+			Body: []byte{},
 		}, nil
 	}
 
