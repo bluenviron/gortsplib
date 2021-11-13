@@ -792,6 +792,7 @@ func TestClientReadAnyPort(t *testing.T) {
 		"zero",
 		"zero_one",
 		"no",
+		"random",
 	} {
 		t.Run(ca, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
@@ -868,8 +869,13 @@ func TestClientReadAnyPort(t *testing.T) {
 
 								case "zero_one":
 									return &[2]int{0, 1}
+
+								case "no":
+									return nil
+
+								default: // random
+									return &[2]int{23040, 23041}
 								}
-								return nil
 							}(),
 						}.Write(),
 					},
@@ -887,7 +893,7 @@ func TestClientReadAnyPort(t *testing.T) {
 
 				time.Sleep(1 * time.Second)
 
-				l1, err := net.ListenPacket("udp", "localhost:0")
+				l1, err := net.ListenPacket("udp", "localhost:13344")
 				require.NoError(t, err)
 				defer l1.Close()
 

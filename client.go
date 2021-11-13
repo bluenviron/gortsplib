@@ -1425,7 +1425,7 @@ func (c *Client) doSetup(
 		rtpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteWriteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
-		if thRes.ServerPorts != nil {
+		if !c.AnyPortEnable {
 			rtpListener.remotePort = thRes.ServerPorts[0]
 		}
 		rtpListener.trackID = trackID
@@ -1435,7 +1435,7 @@ func (c *Client) doSetup(
 		rtcpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteWriteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
-		if thRes.ServerPorts != nil {
+		if !c.AnyPortEnable {
 			rtcpListener.remotePort = thRes.ServerPorts[1]
 		}
 		rtcpListener.trackID = trackID

@@ -170,7 +170,7 @@ func (l *clientUDPListener) run() {
 
 		uaddr := addr.(*net.UDPAddr)
 
-		if !l.remoteReadIP.Equal(uaddr.IP) || (!isAnyPort(l.remotePort) && l.remotePort != uaddr.Port) {
+		if !l.remoteReadIP.Equal(uaddr.IP) || (l.remotePort != 0 && l.remotePort != uaddr.Port) {
 			continue
 		}
 
