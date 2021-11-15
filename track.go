@@ -128,7 +128,7 @@ type Tracks []*Track
 
 // ReadTracks decodes tracks from SDP.
 func ReadTracks(byts []byte) (Tracks, error) {
-	desc := sdp.SessionDescription{}
+	var desc sdp.SessionDescription
 	err := desc.Unmarshal(byts)
 	if err != nil {
 		return nil, err
@@ -192,7 +192,12 @@ func cloneAndClearTracks(ts Tracks) Tracks {
 }
 
 // Write encodes tracks into SDP.
-func (ts Tracks) Write() []byte {
+func (ts Tracks) Write(multicast bool) []byte {
+	address := "0.0.0.0"
+	if multicast {
+		address = "224.1.0.0"
+	}
+
 	sout := &sdp.SessionDescription{
 		SessionName: psdp.SessionName("Stream"),
 		Origin: psdp.Origin{
@@ -205,7 +210,7 @@ func (ts Tracks) Write() []byte {
 		ConnectionInformation: &psdp.ConnectionInformation{
 			NetworkType: "IN",
 			AddressType: "IP4",
-			Address:     &psdp.Address{Address: "0.0.0.0"},
+			Address:     &psdp.Address{Address: address},
 		},
 		TimeDescriptions: []psdp.TimeDescription{
 			{Timing: psdp.Timing{0, 0}}, //nolint:govet

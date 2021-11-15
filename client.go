@@ -1142,7 +1142,7 @@ func (c *Client) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, error) 
 		Header: base.Header{
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(),
+		Body: tracks.Write(false),
 	}, false)
 	if err != nil {
 		return nil, err

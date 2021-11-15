@@ -372,7 +372,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(),
+		Body: tracks.Write(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -455,7 +455,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(),
+		Body: tracks.Write(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -558,7 +558,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(),
+		Body: tracks.Write(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -704,7 +704,7 @@ func TestServerPublish(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: tracks.Write(),
+				Body: tracks.Write(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -892,7 +892,7 @@ func TestServerPublishNonStandardFrameSize(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: Tracks{track}.Write(),
+		Body: Tracks{track}.Write(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -996,7 +996,7 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(),
+		Body: tracks.Write(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1098,7 +1098,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(),
+		Body: tracks.Write(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1258,7 +1258,7 @@ func TestServerPublishTimeout(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: tracks.Write(),
+				Body: tracks.Write(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1386,7 +1386,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: tracks.Write(),
+				Body: tracks.Write(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1506,7 +1506,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 				"CSeq":         base.HeaderValue{"1"},
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: tracks.Write(),
+			Body: tracks.Write(false),
 		})
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)

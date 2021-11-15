@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"net"
+	"net/url"
 	"strings"
 	"time"
 
@@ -377,8 +378,20 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				res.Header["Content-Base"] = base.HeaderValue{req.URL.String() + "/"}
 				res.Header["Content-Type"] = base.HeaderValue{"application/sdp"}
 
+				// VLC uses multicast if the SDP contains a multicast address.
+				// therefore, we introduce a special query (vlcmulticast) that allows
+				// to return a SDP that contains a multicast address.
+				multicast := false
+				if sc.s.MulticastIPRange != "" {
+					if q, err := url.ParseQuery(query); err == nil {
+						if _, ok := q["vlcmulticast"]; ok {
+							multicast = true
+						}
+					}
+				}
+
 				if stream != nil {
-					res.Body = stream.Tracks().Write()
+					res.Body = stream.Tracks().Write(multicast)
 				}
 			}
 

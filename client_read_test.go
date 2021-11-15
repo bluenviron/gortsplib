@@ -76,7 +76,7 @@ func TestClientReadTracks(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: tracks.Write(),
+			Body: tracks.Write(false),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -237,7 +237,7 @@ func TestClientRead(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{scheme + "://" + listenIP + ":8554/test/stream?param=value/"},
 					},
-					Body: Tracks{track}.Write(),
+					Body: Tracks{track}.Write(false),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -490,7 +490,7 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: Tracks{track}.Write(),
+			Body: Tracks{track}.Write(false),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -591,7 +591,7 @@ func TestClientReadPartial(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://" + listenIP + ":8554/teststream/"},
 			},
-			Body: tracks.Write(),
+			Body: tracks.Write(false),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -728,7 +728,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: tracks.Write(),
+			Body: tracks.Write(false),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -840,7 +840,7 @@ func TestClientReadAnyPort(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: tracks.Write(),
+					Body: tracks.Write(false),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -968,7 +968,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 					"Content-Type": base.HeaderValue{"application/sdp"},
 					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
-				Body: tracks.Write(),
+				Body: tracks.Write(false),
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
@@ -1098,7 +1098,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 					"Content-Type": base.HeaderValue{"application/sdp"},
 					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
-				Body: tracks.Write(),
+				Body: tracks.Write(false),
 			}.Write(bconn.Writer)
 			require.NoError(t, err)
 
@@ -1286,7 +1286,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: tracks.Write(),
+			Body: tracks.Write(false),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -1443,7 +1443,7 @@ func TestClientReadRedirect(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: tracks.Write(),
+			Body: tracks.Write(false),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -1600,7 +1600,7 @@ func TestClientReadPause(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: tracks.Write(),
+					Body: tracks.Write(false),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -1768,7 +1768,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: tracks.Write(),
+			Body: tracks.Write(false),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -1942,7 +1942,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: tracks.Write(),
+					Body: tracks.Write(false),
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
@@ -2096,7 +2096,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: tracks.Write(),
+			Body: tracks.Write(false),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
@@ -2221,7 +2221,7 @@ func TestClientReadSeek(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: tracks.Write(),
+			Body: tracks.Write(false),
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 

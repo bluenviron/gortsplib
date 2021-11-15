@@ -1171,7 +1171,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 						"CSeq":         base.HeaderValue{"1"},
 						"Content-Type": base.HeaderValue{"application/sdp"},
 					},
-					Body: tracks.Write(),
+					Body: tracks.Write(false),
 				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
+	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/ipv4"
 
@@ -568,6 +569,54 @@ func TestServerRead(t *testing.T) {
 			<-connClosed
 		})
 	}
+}
+
+func TestServerReadVLCMulticast(t *testing.T) {
+	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+
+	listenIP := multicastCapableIP(t)
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+		},
+		RTSPAddress:       listenIP + ":8554",
+		MulticastIPRange:  "224.1.0.0/16",
+		MulticastRTPPort:  8000,
+		MulticastRTCPPort: 8001,
+	}
+
+	err = s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	nconn, err := net.Dial("tcp", listenIP+":8554")
+	require.NoError(t, err)
+	bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
+	defer nconn.Close()
+
+	res, err := writeReqReadRes(bconn, base.Request{
+		Method: base.Describe,
+		URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream?vlcmulticast"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	var desc psdp.SessionDescription
+	err = desc.Unmarshal(res.Body)
+	require.NoError(t, err)
+
+	require.Equal(t, "224.1.0.0", desc.ConnectionInformation.Address.Address)
 }
 
 func TestServerReadNonStandardFrameSize(t *testing.T) {
