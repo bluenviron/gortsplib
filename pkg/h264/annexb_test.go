@@ -89,27 +89,37 @@ func TestAnnexBDecodeError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		enc  []byte
+		err  string
 	}{
 		{
 			"empty",
 			[]byte{},
+			"initial delimiter not found",
 		},
 		{
-			"missing initial delimiter",
+			"invalid initial delimiter 1",
 			[]byte{0xaa, 0xbb},
+			"unexpected byte: 170",
 		},
 		{
-			"empty initial",
-			[]byte{0x00, 0x00, 0x01},
+			"invalid initial delimiter 2",
+			[]byte{0x00, 0x00, 0x00, 0x00, 0x01},
+			"initial delimiter not found",
 		},
 		{
-			"empty 2nd",
+			"empty NALU 1",
+			[]byte{0x00, 0x00, 0x01, 0x00, 0x00, 0x01},
+			"empty NALU",
+		},
+		{
+			"empty NALU 2",
 			[]byte{0x00, 0x00, 0x01, 0xaa, 0x00, 0x00, 0x01},
+			"empty NALU",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			_, err := DecodeAnnexB(ca.enc)
-			require.Error(t, err)
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

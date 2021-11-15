@@ -18,7 +18,17 @@ func DecodeADTS(byts []byte) ([]*ADTSPacket, error) {
 
 	var ret []*ADTSPacket
 
-	for len(byts) > 0 {
+	for {
+		bl := len(byts)
+
+		if bl == 0 {
+			break
+		}
+
+		if bl < 8 {
+			return nil, fmt.Errorf("invalid length")
+		}
+
 		syncWord := (uint16(byts[0]) << 4) | (uint16(byts[1]) >> 4)
 		if syncWord != 0xfff {
 			return nil, fmt.Errorf("invalid syncword")
@@ -35,9 +45,8 @@ func DecodeADTS(byts []byte) ([]*ADTSPacket, error) {
 
 		switch MPEG4AudioType(pkt.Type) {
 		case MPEG4AudioTypeAACLC:
-
 		default:
-			return nil, fmt.Errorf("unsupported object type: %d", pkt.Type)
+			return nil, fmt.Errorf("unsupported audio type: %d", pkt.Type)
 		}
 
 		sampleRateIndex := (byts[2] >> 2) & 0x0F

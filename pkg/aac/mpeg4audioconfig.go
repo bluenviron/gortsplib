@@ -8,40 +8,6 @@ import (
 	"github.com/icza/bitio"
 )
 
-// MPEG4AudioType is the type of a MPEG-4 Audio stream.
-type MPEG4AudioType int
-
-// standard MPEG-4 Audio types.
-const (
-	MPEG4AudioTypeAACLC MPEG4AudioType = 2
-)
-
-var sampleRates = []int{
-	96000,
-	88200,
-	64000,
-	48000,
-	44100,
-	32000,
-	24000,
-	22050,
-	16000,
-	12000,
-	11025,
-	8000,
-	7350,
-}
-
-var channelCounts = []int{
-	1,
-	2,
-	3,
-	4,
-	5,
-	6,
-	8,
-}
-
 // MPEG4AudioConfig is a MPEG-4 Audio configuration.
 type MPEG4AudioConfig struct {
 	Type              MPEG4AudioType

@@ -7,53 +7,52 @@ import (
 // DecodeAnnexB decodes NALUs from the Annex-B stream format.
 func DecodeAnnexB(byts []byte) ([][]byte, error) {
 	bl := len(byts)
+	zeroCount := 0
 
-	// check initial delimiter
-	n := func() int {
-		if bl < 3 || byts[0] != 0x00 || byts[1] != 0x00 {
-			return -1
+outer:
+	for i := 0; i < bl; i++ {
+		switch byts[i] {
+		case 0:
+			zeroCount++
+
+		case 1:
+			break outer
+
+		default:
+			return nil, fmt.Errorf("unexpected byte: %d", byts[i])
 		}
-
-		if byts[2] == 0x01 {
-			return 3
-		}
-
-		if bl < 4 || byts[2] != 0x00 || byts[3] != 0x01 {
-			return -1
-		}
-
-		return 4
-	}()
-	if n < 0 {
-		return nil, fmt.Errorf("input doesn't start with a delimiter")
+	}
+	if zeroCount != 2 && zeroCount != 3 {
+		return nil, fmt.Errorf("initial delimiter not found")
 	}
 
 	var ret [][]byte
-	zeros := 0
-	start := n
+	start := zeroCount + 1
+	zeroCount = 0
 	delimStart := 0
 
-	for i := n; i < bl; i++ {
+	for i := start; i < bl; i++ {
 		switch byts[i] {
 		case 0:
-			if zeros == 0 {
+			if zeroCount == 0 {
 				delimStart = i
 			}
-			zeros++
+			zeroCount++
 
 		case 1:
-			if zeros == 2 || zeros == 3 {
+			if zeroCount == 2 || zeroCount == 3 {
 				nalu := byts[start:delimStart]
 				if len(nalu) == 0 {
 					return nil, fmt.Errorf("empty NALU")
 				}
+
 				ret = append(ret, nalu)
 				start = i + 1
 			}
-			zeros = 0
+			zeroCount = 0
 
 		default:
-			zeros = 0
+			zeroCount = 0
 		}
 	}
 

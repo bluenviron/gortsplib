@@ -66,3 +66,57 @@ func TestEncodeADTS(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeADTSErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		byts []byte
+		err  string
+	}{
+		{
+			"invalid length",
+			[]byte{0x01},
+			"invalid length",
+		},
+		{
+			"invalid syncword",
+			[]byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+			"invalid syncword",
+		},
+		{
+			"crc",
+			[]byte{0xff, 0xF0, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+			"CRC is not supported",
+		},
+		{
+			"invalid audio type",
+			[]byte{0xff, 0xf1, 0x8c, 0x80, 0x1, 0x3f, 0xfc, 0xaa},
+			"unsupported audio type: 3",
+		},
+		{
+			"invalid sample rate index",
+			[]byte{0xff, 0xf1, 0x74, 0x80, 0x1, 0x3f, 0xfc, 0xaa},
+			"invalid sample rate index: 13",
+		},
+		{
+			"invalid channel configuration",
+			[]byte{0xff, 0xf1, 0x4c, 0x00, 0x1, 0x3f, 0xfc, 0xaa},
+			"invalid channel configuration: 0",
+		},
+		{
+			"multiple frame count",
+			[]byte{0xff, 0xf1, 0x4c, 0x80, 0x1, 0x3f, 0xfd, 0xaa},
+			"multiple frame count not supported",
+		},
+		{
+			"invalid frame length",
+			[]byte{0xff, 0xf1, 0x4c, 0x80, 0x1, 0x3f, 0xfc, 0xaa},
+			"invalid frame length",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			_, err := DecodeADTS(ca.byts)
+			require.EqualError(t, err, ca.err)
+		})
+	}
+}
