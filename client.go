@@ -38,12 +38,6 @@ const (
 	clientUDPKeepalivePeriod = 30 * time.Second
 )
 
-func emptyTimer() *time.Timer {
-	t := time.NewTimer(0)
-	<-t.C
-	return t
-}
-
 func isAnyPort(p int) bool {
 	return p == 0 || p == 1
 }
