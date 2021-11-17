@@ -32,10 +32,9 @@ import (
 )
 
 const (
-	clientReadBufferSize    = 4096
-	clientWriteBufferSize   = 4096
-	clientCheckStreamPeriod = 1 * time.Second
-	clientKeepalivePeriod   = 30 * time.Second
+	clientReadBufferSize          = 4096
+	clientWriteBufferSize         = 4096
+	clientUDPKernelReadBufferSize = 0x80000 // same size as gstreamer's rtspsrc
 )
 
 func isAnyPort(p int) bool {
@@ -189,6 +188,8 @@ type Client struct {
 
 	udpSenderReportPeriod   time.Duration
 	udpReceiverReportPeriod time.Duration
+	checkStreamPeriod       time.Duration
+	keepalivePeriod         time.Duration
 
 	scheme             string
 	host               string
@@ -284,6 +285,12 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.udpReceiverReportPeriod == 0 {
 		c.udpReceiverReportPeriod = 10 * time.Second
+	}
+	if c.checkStreamPeriod == 0 {
+		c.checkStreamPeriod = 1 * time.Second
+	}
+	if c.keepalivePeriod == 0 {
+		c.keepalivePeriod = 30 * time.Second
 	}
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
@@ -548,7 +555,7 @@ func (c *Client) run() {
 					}
 				}
 
-				c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
+				c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
 
 			case <-c.keepaliveTimer.C:
 				_, err := c.do(&base.Request{
@@ -566,7 +573,7 @@ func (c *Client) run() {
 					return err
 				}
 
-				c.keepaliveTimer = time.NewTimer(clientKeepalivePeriod)
+				c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
 			case err := <-c.readerErr:
 				c.readerErr = nil
@@ -684,7 +691,7 @@ func (c *Client) playRecordStart() {
 
 	// start timers
 	if c.state == clientStatePlay {
-		c.keepaliveTimer = time.NewTimer(clientKeepalivePeriod)
+		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
 		switch *c.protocol {
 		case TransportUDP:
@@ -694,10 +701,10 @@ func (c *Client) playRecordStart() {
 
 		case TransportUDPMulticast:
 			c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
-			c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
+			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
 
 		default: // TCP
-			c.checkStreamTimer = time.NewTimer(clientCheckStreamPeriod)
+			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
 			c.tcpLastFrameTime = time.Now().Unix()
 		}
 	} else {

@@ -15,11 +15,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 )
 
-const (
-	serverConnReadBufferSize  = 4096
-	serverConnWriteBufferSize = 4096
-)
-
 func getSessionID(header base.Header) string {
 	if h, ok := header["Session"]; ok && len(h) == 1 {
 		return h[0]
@@ -117,8 +112,8 @@ func (sc *ServerConn) run() {
 		return sc.nconn
 	}()
 
-	sc.br = bufio.NewReaderSize(conn, serverConnReadBufferSize)
-	sc.bw = bufio.NewWriterSize(conn, serverConnWriteBufferSize)
+	sc.br = bufio.NewReaderSize(conn, serverReadBufferSize)
+	sc.bw = bufio.NewWriterSize(conn, serverWriteBufferSize)
 	sc.sessions = make(map[string]*ServerSession)
 
 	// instantiate always to allow writing to this conn before Play()
