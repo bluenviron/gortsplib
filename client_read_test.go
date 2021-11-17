@@ -1878,7 +1878,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		receiverReportPeriod: 1 * time.Second,
+		udpReceiverReportPeriod: 1 * time.Second,
 	}
 
 	err = c.StartReading("rtsp://localhost:8554/teststream")

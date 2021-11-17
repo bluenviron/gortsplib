@@ -13,11 +13,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
-const (
-	// use the same buffer size as gstreamer's rtspsrc
-	clientUDPKernelReadBufferSize = 0x80000
-)
-
 func randUint32() uint32 {
 	var b [4]byte
 	rand.Read(b[:])

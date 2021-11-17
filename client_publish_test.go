@@ -872,7 +872,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 	}()
 
 	c := &Client{
-		senderReportPeriod: 1 * time.Second,
+		udpSenderReportPeriod: 1 * time.Second,
 	}
 
 	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})

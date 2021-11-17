@@ -15,10 +15,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 )
 
-const (
-	serverConnUDPListenerKernelReadBufferSize = 0x80000 // same as gstreamer's rtspsrc
-)
-
 type bufAddrPair struct {
 	buf  []byte
 	addr *net.UDPAddr
@@ -138,7 +134,7 @@ func newServerUDPListener(
 		listenIP = tmp.LocalAddr().(*net.UDPAddr).IP
 	}
 
-	err := pc.SetReadBuffer(serverConnUDPListenerKernelReadBufferSize)
+	err := pc.SetReadBuffer(serverUDPKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}

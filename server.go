@@ -15,6 +15,12 @@ import (
 	"github.com/aler9/gortsplib/pkg/liberrors"
 )
 
+const (
+	serverReadBufferSize          = 4096
+	serverWriteBufferSize         = 4096
+	serverUDPKernelReadBufferSize = 0x80000 // same as gstreamer's rtspsrc
+)
+
 func extractPort(address string) (int, error) {
 	_, tmp, err := net.SplitHostPort(address)
 	if err != nil {
@@ -131,6 +137,7 @@ type Server struct {
 
 	udpReceiverReportPeriod        time.Duration
 	closeSessionAfterNoRequestsFor time.Duration
+	checkStreamPeriod              time.Duration
 
 	ctx             context.Context
 	ctxCancel       func()
@@ -184,6 +191,9 @@ func (s *Server) Start() error {
 	}
 	if s.closeSessionAfterNoRequestsFor == 0 {
 		s.closeSessionAfterNoRequestsFor = 1 * 60 * time.Second
+	}
+	if s.checkStreamPeriod == 0 {
+		s.checkStreamPeriod = 1 * time.Second
 	}
 
 	if s.TLSConfig != nil && s.UDPRTPAddress != "" {

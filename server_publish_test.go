@@ -1066,10 +1066,10 @@ func TestServerPublishRTCPReport(t *testing.T) {
 				}, nil
 			},
 		},
-		receiverReportPeriod: 1 * time.Second,
-		UDPRTPAddress:        "127.0.0.1:8000",
-		UDPRTCPAddress:       "127.0.0.1:8001",
-		RTSPAddress:          "localhost:8554",
+		udpReceiverReportPeriod: 1 * time.Second,
+		UDPRTPAddress:           "127.0.0.1:8000",
+		UDPRTCPAddress:          "127.0.0.1:8001",
+		RTSPAddress:             "localhost:8554",
 	}
 
 	err := s.Start()

@@ -16,10 +16,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 )
 
-const (
-	serverSessionCheckStreamPeriod = 1 * time.Second
-)
-
 func stringsReverseIndex(s, substr string) int {
 	for i := len(s) - 1 - len(substr); i >= 0; i-- {
 		if s[i:i+len(substr)] == substr {
@@ -329,7 +325,7 @@ func (ss *ServerSession) run() {
 					// in case of TCP, there's no timeout until all associated connections are closed
 				}
 
-				ss.checkStreamTimer = time.NewTimer(serverSessionCheckStreamPeriod)
+				ss.checkStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 
 			case <-ss.udpReceiverReportTimer.C:
 				now := time.Now()
@@ -813,7 +809,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		ss.state = ServerSessionStateRead
-		ss.checkStreamTimer = time.NewTimer(serverSessionCheckStreamPeriod)
+		ss.checkStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 
 		if *ss.setuppedTransport == TransportTCP {
 			ss.tcpConn = sc
@@ -932,7 +928,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		ss.state = ServerSessionStatePublish
-		ss.checkStreamTimer = time.NewTimer(serverSessionCheckStreamPeriod)
+		ss.checkStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 
 		switch *ss.setuppedTransport {
 		case TransportUDP:
