@@ -399,26 +399,14 @@ func TestServerRead(t *testing.T) {
 			err = th.Read(res.Header["Transport"])
 			require.NoError(t, err)
 
-			switch transport {
-			case "udp":
-				require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
-				require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
-
-			case "multicast":
-				require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
-				require.Equal(t, headers.TransportDeliveryMulticast, *th.Delivery)
-
-			default:
-				require.Equal(t, headers.TransportProtocolTCP, th.Protocol)
-				require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
-			}
-
-			<-sessionOpened
-
 			var l1 net.PacketConn
 			var l2 net.PacketConn
+
 			switch transport {
 			case "udp":
+				require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
+				require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
+
 				l1, err = net.ListenPacket("udp", listenIP+":35466")
 				require.NoError(t, err)
 				defer l1.Close()
@@ -428,6 +416,9 @@ func TestServerRead(t *testing.T) {
 				defer l2.Close()
 
 			case "multicast":
+				require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
+				require.Equal(t, headers.TransportDeliveryMulticast, *th.Delivery)
+
 				l1, err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
 				require.NoError(t, err)
 				defer l1.Close()
@@ -455,7 +446,13 @@ func TestServerRead(t *testing.T) {
 					err := p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
 					require.NoError(t, err)
 				}
+
+			default:
+				require.Equal(t, headers.TransportProtocolTCP, th.Protocol)
+				require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
 			}
+
+			<-sessionOpened
 
 			res, err = writeReqReadRes(bconn, base.Request{
 				Method: base.Play,
