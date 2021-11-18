@@ -891,7 +891,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				}.Write(bconn.Writer)
 				require.NoError(t, err)
 
-				time.Sleep(1 * time.Second)
+				time.Sleep(500 * time.Millisecond)
 
 				l1, err := net.ListenPacket("udp", "localhost:13344")
 				require.NoError(t, err)
@@ -1480,7 +1480,7 @@ func TestClientReadRedirect(t *testing.T) {
 		}.Write(bconn.Writer)
 		require.NoError(t, err)
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 
 		l1, err := net.ListenPacket("udp", "localhost:34556")
 		require.NoError(t, err)
@@ -1723,6 +1723,8 @@ func TestClientReadPause(t *testing.T) {
 }
 
 func TestClientReadRTCPReport(t *testing.T) {
+	reportReceived := make(chan struct{})
+
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -1776,21 +1778,29 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
-		var th headers.Transport
-		err = th.Read(req.Header["Transport"])
+		var inTH headers.Transport
+		err = inTH.Read(req.Header["Transport"])
 		require.NoError(t, err)
+
+		l1, err := net.ListenPacket("udp", "localhost:27556")
+		require.NoError(t, err)
+		defer l1.Close()
+
+		l2, err := net.ListenPacket("udp", "localhost:27557")
+		require.NoError(t, err)
+		defer l2.Close()
 
 		err = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": headers.Transport{
-					Protocol: headers.TransportProtocolTCP,
+					Protocol: headers.TransportProtocolUDP,
 					Delivery: func() *headers.TransportDelivery {
 						v := headers.TransportDeliveryUnicast
 						return &v
 					}(),
-					ClientPorts:    th.ClientPorts,
-					InterleavedIDs: &[2]int{0, 1},
+					ServerPorts: &[2]int{27556, 27557},
+					ClientPorts: inTH.ClientPorts,
 				}.Write(),
 			},
 		}.Write(bconn.Writer)
@@ -1803,6 +1813,11 @@ func TestClientReadRTCPReport(t *testing.T) {
 		err = base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(bconn.Writer)
+		require.NoError(t, err)
+
+		// skip firewall opening
+		buf := make([]byte, 2048)
+		_, _, err = l2.ReadFrom(buf)
 		require.NoError(t, err)
 
 		rs := rtcpsender.New(90000)
@@ -1818,25 +1833,23 @@ func TestClientReadRTCPReport(t *testing.T) {
 			},
 			Payload: []byte{0x01, 0x02, 0x03, 0x04},
 		}).Marshal()
-		err = base.InterleavedFrame{
-			Channel: 0,
-			Payload: byts,
-		}.Write(bconn.Writer)
+		_, err = l1.WriteTo(byts, &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: inTH.ClientPorts[0],
+		})
 		require.NoError(t, err)
 		rs.ProcessPacketRTP(time.Now(), byts)
 
-		err = base.InterleavedFrame{
-			Channel: 1,
-			Payload: rs.Report(time.Now()),
-		}.Write(bconn.Writer)
+		_, err = l2.WriteTo(rs.Report(time.Now()), &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: inTH.ClientPorts[1],
+		})
 		require.NoError(t, err)
 
-		var f base.InterleavedFrame
-		f.Payload = make([]byte, 2048)
-		err = f.Read(bconn.Reader)
+		buf = make([]byte, 2048)
+		n, _, err := l2.ReadFrom(buf)
 		require.NoError(t, err)
-		require.Equal(t, 1, f.Channel)
-		pkt, err := rtcp.Unmarshal(f.Payload)
+		pkt, err := rtcp.Unmarshal(buf[:n])
 		require.NoError(t, err)
 		rr, ok := pkt[0].(*rtcp.ReceiverReport)
 		require.True(t, ok)
@@ -1853,33 +1866,18 @@ func TestClientReadRTCPReport(t *testing.T) {
 			ProfileExtensions: []uint8{},
 		}, rr)
 
-		err = base.InterleavedFrame{
-			Channel: 0,
-			Payload: byts,
-		}.Write(bconn.Writer)
+		close(reportReceived)
+
+		req, err = readRequest(bconn.Reader)
 		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+
+		base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(bconn.Writer)
 	}()
 
-	recv := 0
-	recvDone := make(chan struct{})
-
 	c := &Client{
-		Transport: func() *Transport {
-			v := TransportTCP
-			return &v
-		}(),
-		OnPacketRTP: func(trackID int, payload []byte) {
-			recv++
-			if recv >= 3 {
-				close(recvDone)
-			}
-		},
-		OnPacketRTCP: func(trackID int, payload []byte) {
-			recv++
-			if recv >= 3 {
-				close(recvDone)
-			}
-		},
 		receiverReportPeriod: 1 * time.Second,
 	}
 
@@ -1887,7 +1885,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	<-recvDone
+	<-reportReceived
 }
 
 func TestClientReadErrorTimeout(t *testing.T) {
@@ -1964,7 +1962,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				var l1 net.PacketConn
 				if transport == "udp" || transport == "auto" {
 					var err error
-					l1, err = net.ListenPacket("udp", "localhost:34557")
+					l1, err = net.ListenPacket("udp", "localhost:34556")
 					require.NoError(t, err)
 					defer l1.Close()
 
@@ -1994,12 +1992,6 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				require.NoError(t, err)
 
 				if transport == "udp" || transport == "auto" {
-					time.Sleep(500 * time.Millisecond)
-
-					l1, err := net.ListenPacket("udp", "localhost:34556")
-					require.NoError(t, err)
-					defer l1.Close()
-
 					// write a packet to skip the protocol autodetection feature
 					l1.WriteTo([]byte("\x01\x02\x03\x04"), &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
