@@ -246,6 +246,39 @@ func TestClientDescribeCharset(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestClientClose(t *testing.T) {
+	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	c := Client{}
+
+	err = c.Start(u.Scheme, u.Host)
+	require.NoError(t, err)
+
+	c.Close()
+
+	_, err = c.Options(u)
+	require.EqualError(t, err, "terminated")
+
+	_, _, _, err = c.Describe(u)
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Announce(u, nil)
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Setup(true, nil, nil, 0, 0)
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Play(nil)
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Record()
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Pause()
+	require.EqualError(t, err, "terminated")
+}
+
 func TestClientCloseDuringRequest(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
