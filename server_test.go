@@ -982,7 +982,7 @@ func TestServerErrorInvalidSession(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			require.Equal(t, base.StatusBadRequest, res.StatusCode)
+			require.Equal(t, base.StatusSessionNotFound, res.StatusCode)
 		})
 	}
 }
