@@ -400,7 +400,7 @@ func (s *Server) run() {
 					if !req.create {
 						req.res <- sessionRequestRes{
 							res: &base.Response{
-								StatusCode: base.StatusBadRequest,
+								StatusCode: base.StatusSessionNotFound,
 							},
 							err: liberrors.ErrServerSessionNotFound{},
 						}
