@@ -93,16 +93,8 @@ func main() {
 		}
 	}
 
-	// setup all tracks
-	for _, t := range tracks {
-		_, err := c.Setup(true, baseURL, t, 0, 0)
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	// start reading tracks
-	_, err = c.Play(nil)
+	err = c.SetupAndPlay(tracks, baseURL)
 	if err != nil {
 		panic(err)
 	}

@@ -1602,6 +1602,19 @@ func (c *Client) Play(ra *headers.Range) (*base.Response, error) {
 	}
 }
 
+// SetupAndPlay setups and play the given tracks.
+func (c *Client) SetupAndPlay(tracks Tracks, baseURL *base.URL) error {
+	for _, t := range tracks {
+		_, err := c.Setup(true, baseURL, t, 0, 0)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err := c.Play(nil)
+	return err
+}
+
 func (c *Client) doRecord() (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStatePreRecord: {},
