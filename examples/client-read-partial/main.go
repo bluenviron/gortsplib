@@ -47,7 +47,7 @@ func main() {
 	// setup only video tracks, skipping audio or application tracks
 	for _, t := range tracks {
 		if t.Media.MediaName.Media == "video" {
-			_, err := c.Setup(true, baseURL, t, 0, 0)
+			_, err := c.Setup(true, t, baseURL, 0, 0)
 			if err != nil {
 				panic(err)
 			}

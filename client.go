@@ -94,8 +94,8 @@ type announceReq struct {
 
 type setupReq struct {
 	forPlay  bool
-	baseURL  *base.URL
 	track    *Track
+	baseURL  *base.URL
 	rtpPort  int
 	rtcpPort int
 	res      chan clientRes
@@ -342,7 +342,7 @@ func (c *Client) StartReading(address string) error {
 	}
 
 	for _, track := range tracks {
-		_, err := c.Setup(true, baseURL, track, 0, 0)
+		_, err := c.Setup(true, track, baseURL, 0, 0)
 		if err != nil {
 			c.Close()
 			return err
@@ -394,7 +394,7 @@ func (c *Client) StartPublishing(address string, tracks Tracks) error {
 	}
 
 	for _, track := range tracks {
-		_, err := c.Setup(false, u, track, 0, 0)
+		_, err := c.Setup(false, track, u, 0, 0)
 		if err != nil {
 			c.Close()
 			return err
@@ -462,7 +462,7 @@ func (c *Client) run() {
 				req.res <- clientRes{res: res, err: err}
 
 			case req := <-c.setup:
-				res, err := c.doSetup(req.forPlay, req.baseURL, req.track, req.rtpPort, req.rtcpPort)
+				res, err := c.doSetup(req.forPlay, req.track, req.baseURL, req.rtpPort, req.rtcpPort)
 				req.res <- clientRes{res: res, err: err}
 
 			case req := <-c.play:
@@ -667,7 +667,7 @@ func (c *Client) trySwitchingProtocol() error {
 	c.host = prevBaseURL.Host
 
 	for _, track := range prevTracks {
-		_, err := c.doSetup(true, prevBaseURL, track.track, 0, 0)
+		_, err := c.doSetup(true, track.track, prevBaseURL, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -1192,8 +1192,8 @@ func (c *Client) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
 
 func (c *Client) doSetup(
 	forPlay bool,
-	baseURL *base.URL,
 	track *Track,
+	baseURL *base.URL,
 	rtpPort int,
 	rtcpPort int) (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
@@ -1334,7 +1334,7 @@ func (c *Client) doSetup(
 			v := TransportTCP
 			c.protocol = &v
 
-			return c.doSetup(forPlay, baseURL, track, 0, 0)
+			return c.doSetup(forPlay, track, baseURL, 0, 0)
 		}
 
 		return res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
@@ -1494,16 +1494,16 @@ func (c *Client) doSetup(
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
 func (c *Client) Setup(
 	forPlay bool,
-	baseURL *base.URL,
 	track *Track,
+	baseURL *base.URL,
 	rtpPort int,
 	rtcpPort int) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
 	case c.setup <- setupReq{
 		forPlay:  forPlay,
-		baseURL:  baseURL,
 		track:    track,
+		baseURL:  baseURL,
 		rtpPort:  rtpPort,
 		rtcpPort: rtcpPort,
 		res:      cres,
@@ -1605,7 +1605,7 @@ func (c *Client) Play(ra *headers.Range) (*base.Response, error) {
 // SetupAndPlay setups and play the given tracks.
 func (c *Client) SetupAndPlay(tracks Tracks, baseURL *base.URL) error {
 	for _, t := range tracks {
-		_, err := c.Setup(true, baseURL, t, 0, 0)
+		_, err := c.Setup(true, t, baseURL, 0, 0)
 		if err != nil {
 			return err
 		}

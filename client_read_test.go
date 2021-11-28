@@ -673,7 +673,7 @@ func TestClientReadPartial(t *testing.T) {
 	tracks, baseURL, _, err := c.Describe(u)
 	require.NoError(t, err)
 
-	_, err = c.Setup(true, baseURL, tracks[1], 0, 0)
+	_, err = c.Setup(true, tracks[1], baseURL, 0, 0)
 	require.NoError(t, err)
 
 	_, err = c.Play(nil)
@@ -2317,7 +2317,7 @@ func TestClientReadSeek(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, track := range tracks {
-		_, err := c.Setup(true, baseURL, track, 0, 0)
+		_, err := c.Setup(true, track, baseURL, 0, 0)
 		require.NoError(t, err)
 	}
 
