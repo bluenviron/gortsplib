@@ -312,7 +312,7 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Close closes all the server resources and waits for the to close.
+// Close closes all the server resources and waits for them to close.
 func (s *Server) Close() error {
 	s.ctxCancel()
 	s.wg.Wait()

@@ -150,8 +150,9 @@ type Client struct {
 	// disable being redirected to other servers, that can happen during Describe().
 	// It defaults to false.
 	RedirectDisable bool
-	// enable communication with servers which don't provide server ports.
-	// this can be a security issue.
+	// enable communication with servers which don't provide server ports or use
+	// different server ports than the ones announced.
+	// This can be a security issue.
 	// It defaults to false.
 	AnyPortEnable bool
 	// the stream transport (UDP, Multicast or TCP).
@@ -417,7 +418,7 @@ func (c *Client) Close() error {
 }
 
 // Wait waits until all client resources are closed.
-// This can happen when a read error occurs or when Close() is called.
+// This can happen when a fatal error occurs or when Close() is called.
 func (c *Client) Wait() error {
 	<-c.done
 	return c.closeError
