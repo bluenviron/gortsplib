@@ -341,21 +341,7 @@ func (c *Client) StartReading(address string) error {
 		return err
 	}
 
-	for _, track := range tracks {
-		_, err := c.Setup(true, track, baseURL, 0, 0)
-		if err != nil {
-			c.Close()
-			return err
-		}
-	}
-
-	_, err = c.Play(nil)
-	if err != nil {
-		c.Close()
-		return err
-	}
-
-	return nil
+	return c.SetupAndPlay(tracks, baseURL)
 }
 
 // StartReadingAndWait connects to the address, starts reading all tracks and waits
