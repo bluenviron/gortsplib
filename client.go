@@ -1342,7 +1342,7 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
 		}
 
-		if !c.AnyPortEnable {
+		if !forPlay || !c.AnyPortEnable {
 			if thRes.ServerPorts == nil || isAnyPort(thRes.ServerPorts[0]) || isAnyPort(thRes.ServerPorts[1]) {
 				rtpListener.close()
 				rtcpListener.close()
