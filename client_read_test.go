@@ -799,6 +799,8 @@ func TestClientReadAnyPort(t *testing.T) {
 			require.NoError(t, err)
 			defer l.Close()
 
+			serverRecv := make(chan struct{})
+
 			serverDone := make(chan struct{})
 			defer func() { <-serverDone }()
 			go func() {
@@ -852,6 +854,14 @@ func TestClientReadAnyPort(t *testing.T) {
 				err = th.Read(req.Header["Transport"])
 				require.NoError(t, err)
 
+				l1a, err := net.ListenPacket("udp", "localhost:13344")
+				require.NoError(t, err)
+				defer l1a.Close()
+
+				l1b, err := net.ListenPacket("udp", "localhost:23041")
+				require.NoError(t, err)
+				defer l1b.Close()
+
 				err = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -893,14 +903,23 @@ func TestClientReadAnyPort(t *testing.T) {
 
 				time.Sleep(500 * time.Millisecond)
 
-				l1, err := net.ListenPacket("udp", "localhost:13344")
-				require.NoError(t, err)
-				defer l1.Close()
-
-				l1.WriteTo([]byte("\x00\x00\x00\x00"), &net.UDPAddr{
+				l1a.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ClientPorts[0],
 				})
+
+				if ca == "random" {
+					// skip firewall opening
+					buf := make([]byte, 2048)
+					_, _, err := l1b.ReadFrom(buf)
+					require.NoError(t, err)
+
+					buf = make([]byte, 2048)
+					n, _, err := l1b.ReadFrom(buf)
+					require.NoError(t, err)
+					require.Equal(t, buf[:n], []byte{0x05, 0x06, 0x07, 0x08})
+					close(serverRecv)
+				}
 			}()
 
 			frameRecv := make(chan struct{})
@@ -908,6 +927,7 @@ func TestClientReadAnyPort(t *testing.T) {
 			c := &Client{
 				AnyPortEnable: true,
 				OnPacketRTP: func(trackID int, payload []byte) {
+					require.Equal(t, payload, []byte{0x01, 0x02, 0x03, 0x04})
 					close(frameRecv)
 				},
 			}
@@ -917,6 +937,11 @@ func TestClientReadAnyPort(t *testing.T) {
 			defer c.Close()
 
 			<-frameRecv
+
+			if ca == "random" {
+				c.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
+				<-serverRecv
+			}
 		})
 	}
 }
