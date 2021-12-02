@@ -86,8 +86,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 
 		// add SPS and PPS before every IDR
 		if typ == h264.NALUTypeIDR {
-			filteredNALUs = append(filteredNALUs, e.h264Conf.SPS)
-			filteredNALUs = append(filteredNALUs, e.h264Conf.PPS)
+			filteredNALUs = append(filteredNALUs, e.h264Conf.SPS, e.h264Conf.PPS)
 		}
 
 		filteredNALUs = append(filteredNALUs, nalu)
@@ -99,8 +98,8 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		return err
 	}
 
-	dts := e.dtsEst.Feed(pts - e.startPTS)
-	pts = pts - e.startPTS
+	pts -= e.startPTS
+	dts := e.dtsEst.Feed(pts)
 
 	// write TS packet
 	_, err = e.mux.WriteData(&astits.MuxerData{
