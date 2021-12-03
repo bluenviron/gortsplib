@@ -73,9 +73,10 @@ func TestClientTLSSetServerName(t *testing.T) {
 
 	err = c.Start(u.Scheme, u.Host)
 	require.NoError(t, err)
+	defer c.Close()
 
 	_, err = c.Options(u)
-	require.EqualError(t, err, "x509: certificate relies on legacy Common Name field, use SANs instead")
+	require.Error(t, err)
 
 	<-serverDone
 }

@@ -395,6 +395,9 @@ func TestClientRead(t *testing.T) {
 			counter := 0
 
 			c := &Client{
+				TLSConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
 				Transport: func() *Transport {
 					switch transport {
 					case "udp":

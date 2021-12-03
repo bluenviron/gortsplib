@@ -145,7 +145,7 @@ type Client struct {
 	// It defaults to 10 seconds.
 	WriteTimeout time.Duration
 	// a TLS configuration to connect to TLS (RTSPS) servers.
-	// It defaults to &tls.Config{InsecureSkipVerify:true}
+	// It defaults to nil.
 	TLSConfig *tls.Config
 	// disable being redirected to other servers, that can happen during Describe().
 	// It defaults to false.
@@ -258,9 +258,6 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.WriteTimeout == 0 {
 		c.WriteTimeout = 10 * time.Second
-	}
-	if c.TLSConfig == nil {
-		c.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	if c.InitialUDPReadTimeout == 0 {
 		c.InitialUDPReadTimeout = 3 * time.Second
@@ -824,9 +821,16 @@ func (c *Client) connOpen() error {
 
 	conn := func() net.Conn {
 		if c.scheme == "rtsps" {
+			tlsConfig := c.TLSConfig
+
+			if tlsConfig == nil {
+				tlsConfig = &tls.Config{}
+			}
+
 			host, _, _ := net.SplitHostPort(c.host)
-			c.TLSConfig.ServerName = host
-			return tls.Client(nconn, c.TLSConfig)
+			tlsConfig.ServerName = host
+
+			return tls.Client(nconn, tlsConfig)
 		}
 		return nconn
 	}()
