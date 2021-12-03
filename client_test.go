@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"crypto/tls"
 	"net"
 	"strings"
 	"testing"
@@ -31,6 +32,52 @@ func readRequestIgnoreFrames(br *bufio.Reader) (*base.Request, error) {
 	var req base.Request
 	err := req.ReadIgnoreFrames(br, buf)
 	return &req, err
+}
+
+func TestClientTLSSetServerName(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		cert, err := tls.X509KeyPair(serverCert, serverKey)
+		require.NoError(t, err)
+
+		tconn := tls.Server(conn, &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+			VerifyConnection: func(cs tls.ConnectionState) error {
+				require.Equal(t, "localhost", cs.ServerName)
+				return nil
+			},
+		})
+
+		err = tconn.Handshake()
+		require.EqualError(t, err, "remote error: tls: bad certificate")
+	}()
+
+	u, err := base.ParseURL("rtsps://localhost:8554/stream")
+	require.NoError(t, err)
+
+	c := Client{
+		TLSConfig: &tls.Config{},
+	}
+
+	err = c.Start(u.Scheme, u.Host)
+	require.NoError(t, err)
+
+	_, err = c.Options(u)
+	require.EqualError(t, err, "x509: certificate relies on legacy Common Name field, use SANs instead")
+
+	<-serverDone
 }
 
 func TestClientSession(t *testing.T) {

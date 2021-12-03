@@ -824,6 +824,8 @@ func (c *Client) connOpen() error {
 
 	conn := func() net.Conn {
 		if c.scheme == "rtsps" {
+			host, _, _ := net.SplitHostPort(c.host)
+			c.TLSConfig.ServerName = host
 			return tls.Client(nconn, c.TLSConfig)
 		}
 		return nconn
