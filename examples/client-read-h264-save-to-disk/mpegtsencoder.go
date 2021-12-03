@@ -14,13 +14,14 @@ import (
 
 // mpegtsEncoder allows to encode H264 NALUs into MPEG-TS.
 type mpegtsEncoder struct {
+	h264Conf *gortsplib.TrackConfigH264
+
 	f                  *os.File
 	b                  *bufio.Writer
 	mux                *astits.Muxer
 	dtsEst             *h264.DTSEstimator
 	firstPacketWritten bool
 	startPTS           time.Duration
-	h264Conf           *gortsplib.TrackConfigH264
 }
 
 // newMPEGTSEncoder allocates a mpegtsEncoder.
@@ -39,11 +40,11 @@ func newMPEGTSEncoder(h264Conf *gortsplib.TrackConfigH264) (*mpegtsEncoder, erro
 	mux.SetPCRPID(256)
 
 	return &mpegtsEncoder{
+		h264Conf: h264Conf,
 		f:        f,
 		b:        b,
 		mux:      mux,
 		dtsEst:   h264.NewDTSEstimator(),
-		h264Conf: h264Conf,
 	}, nil
 }
 
