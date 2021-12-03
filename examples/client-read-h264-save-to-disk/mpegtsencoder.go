@@ -102,6 +102,19 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 	pts -= e.startPTS
 	dts := e.dtsEst.Feed(pts)
 
+	oh := &astits.PESOptionalHeader{
+		MarkerBits: 2,
+	}
+
+	if dts == pts {
+		oh.PTSDTSIndicator = astits.PTSDTSIndicatorOnlyPTS
+		oh.PTS = &astits.ClockReference{Base: int64(pts.Seconds() * 90000)}
+	} else {
+		oh.PTSDTSIndicator = astits.PTSDTSIndicatorBothPresent
+		oh.DTS = &astits.ClockReference{Base: int64(dts.Seconds() * 90000)}
+		oh.PTS = &astits.ClockReference{Base: int64(pts.Seconds() * 90000)}
+	}
+
 	// write TS packet
 	_, err = e.mux.WriteData(&astits.MuxerData{
 		PID: 256,
@@ -110,13 +123,8 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		},
 		PES: &astits.PESData{
 			Header: &astits.PESHeader{
-				OptionalHeader: &astits.PESOptionalHeader{
-					MarkerBits:      2,
-					PTSDTSIndicator: astits.PTSDTSIndicatorBothPresent,
-					DTS:             &astits.ClockReference{Base: int64(dts.Seconds() * 90000)},
-					PTS:             &astits.ClockReference{Base: int64(pts.Seconds() * 90000)},
-				},
-				StreamID: 224, // video
+				OptionalHeader: oh,
+				StreamID:       224, // video
 			},
 			Data: enc,
 		},
