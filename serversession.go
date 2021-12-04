@@ -939,7 +939,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, true)
 
 				// open the firewall by sending packets to the counterpart
-				ss.WritePacketRTP(trackID,
+				ss.writePacketRTP(trackID,
 					[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 				ss.WritePacketRTCP(trackID,
 					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
@@ -1070,8 +1070,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 	}, liberrors.ErrServerUnhandledRequest{Req: req}
 }
 
-// WritePacketRTP writes a RTP packet to the session.
-func (ss *ServerSession) WritePacketRTP(trackID int, payload []byte) {
+func (ss *ServerSession) writePacketRTP(trackID int, payload []byte) {
 	if _, ok := ss.setuppedTracks[trackID]; !ok {
 		return
 	}

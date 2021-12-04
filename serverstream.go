@@ -242,7 +242,7 @@ func (st *ServerStream) WritePacketRTP(trackID int, payload []byte) {
 
 	// send unicast
 	for r := range st.readersUnicast {
-		r.WritePacketRTP(trackID, payload)
+		r.writePacketRTP(trackID, payload)
 	}
 
 	// send multicast
