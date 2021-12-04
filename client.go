@@ -1765,6 +1765,7 @@ func (c *Client) WritePacketRTP(trackID int, payload []byte) error {
 	default: // TCP
 		channel := c.tracks[trackID].tcpChannel
 
+		// a mutex is needed here since bufio.Writer is not thread safe.
 		c.tcpWriteMutex.Lock()
 		defer c.tcpWriteMutex.Unlock()
 
@@ -1800,6 +1801,7 @@ func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
 		channel := c.tracks[trackID].tcpChannel
 		channel++
 
+		// a mutex is needed here since bufio.Writer is not thread safe.
 		c.tcpWriteMutex.Lock()
 		defer c.tcpWriteMutex.Unlock()
 

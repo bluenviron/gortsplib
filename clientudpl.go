@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"net"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,7 +34,6 @@ type clientUDPListener struct {
 	running       bool
 	readBuffer    *multibuffer.MultiBuffer
 	lastFrameTime *int64
-	writeMutex    sync.Mutex
 	processFunc   func(time.Time, []byte)
 
 	readerDone chan struct{}
@@ -190,8 +188,8 @@ func (l *clientUDPListener) processRecord(now time.Time, payload []byte) {
 }
 
 func (l *clientUDPListener) write(buf []byte) error {
-	l.writeMutex.Lock()
-	defer l.writeMutex.Unlock()
+	// no mutex is needed here since Write() has an internal lock.
+	// https://github.com/golang/go/issues/27203#issuecomment-534386117
 
 	l.pc.SetWriteDeadline(time.Now().Add(l.c.WriteTimeout))
 	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
