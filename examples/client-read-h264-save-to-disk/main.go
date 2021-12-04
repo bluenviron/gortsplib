@@ -67,20 +67,13 @@ func main() {
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP = func(trackID int, payload []byte) {
+	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
 		if trackID != h264Track {
 			return
 		}
 
-		// parse RTP packet
-		var pkt rtp.Packet
-		err := pkt.Unmarshal(payload)
-		if err != nil {
-			return
-		}
-
 		// decode H264 NALUs from the RTP packet
-		nalus, pts, err := dec.DecodeUntilMarker(&pkt)
+		nalus, pts, err := dec.DecodeUntilMarker(pkt)
 		if err != nil {
 			return
 		}

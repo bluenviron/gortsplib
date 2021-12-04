@@ -12,7 +12,7 @@ import (
 func TestRTCPSender(t *testing.T) {
 	rs := New(90000)
 
-	require.Equal(t, []byte(nil), rs.Report(time.Now()))
+	require.Equal(t, nil, rs.Report(time.Now()))
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -25,9 +25,8 @@ func TestRTCPSender(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ := rtpPkt.Marshal()
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rs.ProcessPacketRTP(ts, byts)
+	rs.ProcessPacketRTP(ts, &rtpPkt)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -40,9 +39,8 @@ func TestRTCPSender(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 500000000, time.UTC)
-	rs.ProcessPacketRTP(ts, byts)
+	rs.ProcessPacketRTP(ts, &rtpPkt)
 
 	expectedPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
@@ -51,7 +49,6 @@ func TestRTCPSender(t *testing.T) {
 		PacketCount: 2,
 		OctetCount:  4,
 	}
-	expected, _ := expectedPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 16, 20, 600000000, time.UTC)
-	require.Equal(t, expected, rs.Report(ts))
+	require.Equal(t, &expectedPkt, rs.Report(ts))
 }

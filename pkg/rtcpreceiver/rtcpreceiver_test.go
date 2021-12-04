@@ -13,7 +13,7 @@ func TestRTCPReceiverBase(t *testing.T) {
 	v := uint32(0x65f83afb)
 	rr := New(&v, 90000)
 
-	require.Equal(t, []byte(nil), rr.Report(time.Now()))
+	require.Equal(t, nil, rr.Report(time.Now()))
 
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
@@ -22,9 +22,8 @@ func TestRTCPReceiverBase(t *testing.T) {
 		PacketCount: 714,
 		OctetCount:  859127,
 	}
-	byts, _ := srPkt.Marshal()
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTCP(ts, byts)
+	rr.ProcessPacketRTCP(ts, &srPkt)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -37,9 +36,8 @@ func TestRTCPReceiverBase(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -52,9 +50,8 @@ func TestRTCPReceiverBase(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -67,9 +64,8 @@ func TestRTCPReceiverBase(t *testing.T) {
 			},
 		},
 	}
-	expected, _ := expectedPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
-	require.Equal(t, expected, rr.Report(ts))
+	require.Equal(t, &expectedPkt, rr.Report(ts))
 }
 
 func TestRTCPReceiverOverflow(t *testing.T) {
@@ -83,9 +79,8 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 		PacketCount: 714,
 		OctetCount:  859127,
 	}
-	byts, _ := srPkt.Marshal()
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTCP(ts, byts)
+	rr.ProcessPacketRTCP(ts, &srPkt)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -98,9 +93,8 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -113,9 +107,8 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -128,9 +121,8 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 			},
 		},
 	}
-	expected, _ := expectedPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	require.Equal(t, expected, rr.Report(ts))
+	require.Equal(t, &expectedPkt, rr.Report(ts))
 }
 
 func TestRTCPReceiverPacketLost(t *testing.T) {
@@ -144,9 +136,8 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 		PacketCount: 714,
 		OctetCount:  859127,
 	}
-	byts, _ := srPkt.Marshal()
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTCP(ts, byts)
+	rr.ProcessPacketRTCP(ts, &srPkt)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -159,9 +150,8 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -174,9 +164,8 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -194,9 +183,8 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 			},
 		},
 	}
-	expected, _ := expectedPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	require.Equal(t, expected, rr.Report(ts))
+	require.Equal(t, &expectedPkt, rr.Report(ts))
 }
 
 func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
@@ -210,9 +198,8 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 		PacketCount: 714,
 		OctetCount:  859127,
 	}
-	byts, _ := srPkt.Marshal()
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTCP(ts, byts)
+	rr.ProcessPacketRTCP(ts, &srPkt)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -225,9 +212,8 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -240,9 +226,8 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -260,9 +245,8 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 			},
 		},
 	}
-	expected, _ := expectedPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	require.Equal(t, expected, rr.Report(ts))
+	require.Equal(t, &expectedPkt, rr.Report(ts))
 }
 
 func TestRTCPReceiverReorderedPackets(t *testing.T) {
@@ -276,9 +260,8 @@ func TestRTCPReceiverReorderedPackets(t *testing.T) {
 		PacketCount: 714,
 		OctetCount:  859127,
 	}
-	byts, _ := srPkt.Marshal()
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTCP(ts, byts)
+	rr.ProcessPacketRTCP(ts, &srPkt)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -291,9 +274,8 @@ func TestRTCPReceiverReorderedPackets(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -306,9 +288,8 @@ func TestRTCPReceiverReorderedPackets(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -321,9 +302,8 @@ func TestRTCPReceiverReorderedPackets(t *testing.T) {
 			},
 		},
 	}
-	expected, _ := expectedPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	require.Equal(t, expected, rr.Report(ts))
+	require.Equal(t, &expectedPkt, rr.Report(ts))
 }
 
 func TestRTCPReceiverJitter(t *testing.T) {
@@ -337,9 +317,8 @@ func TestRTCPReceiverJitter(t *testing.T) {
 		PacketCount: 714,
 		OctetCount:  859127,
 	}
-	byts, _ := srPkt.Marshal()
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTCP(ts, byts)
+	rr.ProcessPacketRTCP(ts, &srPkt)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -352,9 +331,8 @@ func TestRTCPReceiverJitter(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -367,9 +345,8 @@ func TestRTCPReceiverJitter(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, byts)
+	rr.ProcessPacketRTP(ts, &rtpPkt)
 
 	expectedPkt := rtcp.ReceiverReport{
 		SSRC: 0x65f83afb,
@@ -383,7 +360,6 @@ func TestRTCPReceiverJitter(t *testing.T) {
 			},
 		},
 	}
-	expected, _ := expectedPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
-	require.Equal(t, expected, rr.Report(ts))
+	require.Equal(t, &expectedPkt, rr.Report(ts))
 }
