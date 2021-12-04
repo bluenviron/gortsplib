@@ -1790,10 +1790,6 @@ func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
 
 	now := time.Now()
 
-	if c.tracks[trackID].rtcpSender != nil {
-		c.tracks[trackID].rtcpSender.ProcessPacketRTCP(now, payload)
-	}
-
 	switch *c.protocol {
 	case TransportUDP, TransportUDPMulticast:
 		return c.tracks[trackID].udpRTCPListener.write(payload)

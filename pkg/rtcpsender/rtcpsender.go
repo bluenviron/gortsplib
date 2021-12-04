@@ -85,7 +85,3 @@ func (rs *RTCPSender) ProcessPacketRTP(ts time.Time, payload []byte) {
 		rs.octetCount += uint32(len(pkt.Payload))
 	}
 }
-
-// ProcessPacketRTCP extracts the needed data from RTCP packets.
-func (rs *RTCPSender) ProcessPacketRTCP(ts time.Time, payload []byte) {
-}
