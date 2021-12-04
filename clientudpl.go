@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 	"golang.org/x/net/ipv4"
 
 	"github.com/aler9/gortsplib/pkg/multibuffer"
@@ -35,6 +37,7 @@ type clientUDPListener struct {
 	readBuffer      *multibuffer.MultiBuffer
 	lastPacketTime  *int64
 	processFunc     func(time.Time, []byte)
+	rtpPkt          rtp.Packet
 
 	readerDone chan struct{}
 }
@@ -136,7 +139,7 @@ func (l *clientUDPListener) start(forPlay bool) {
 			l.processFunc = l.processPlayRTCP
 		}
 	} else {
-		l.processFunc = l.processRecord
+		l.processFunc = l.processRecordRTCP
 	}
 
 	l.running = true
@@ -174,24 +177,43 @@ func (l *clientUDPListener) runReader() {
 }
 
 func (l *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
-	l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, payload)
-	l.c.OnPacketRTP(l.trackID, payload)
+	err := l.rtpPkt.Unmarshal(payload)
+	if err != nil {
+		return
+	}
+
+	l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, &l.rtpPkt)
+	l.c.OnPacketRTP(l.trackID, &l.rtpPkt)
 }
 
 func (l *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
-	l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTCP(now, payload)
-	l.c.OnPacketRTCP(l.trackID, payload)
+	packets, err := rtcp.Unmarshal(payload)
+	if err != nil {
+		return
+	}
+
+	for _, pkt := range packets {
+		l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
+		l.c.OnPacketRTCP(l.trackID, pkt)
+	}
 }
 
-func (l *clientUDPListener) processRecord(now time.Time, payload []byte) {
-	l.c.OnPacketRTCP(l.trackID, payload)
+func (l *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
+	packets, err := rtcp.Unmarshal(payload)
+	if err != nil {
+		return
+	}
+
+	for _, pkt := range packets {
+		l.c.OnPacketRTCP(l.trackID, pkt)
+	}
 }
 
-func (l *clientUDPListener) write(buf []byte) error {
+func (l *clientUDPListener) write(payload []byte) error {
 	// no mutex is needed here since Write() has an internal lock.
 	// https://github.com/golang/go/issues/27203#issuecomment-534386117
 
 	l.pc.SetWriteDeadline(time.Now().Add(l.c.WriteTimeout))
-	_, err := l.pc.WriteTo(buf, l.remoteWriteAddr)
+	_, err := l.pc.WriteTo(payload, l.remoteWriteAddr)
 	return err
 }

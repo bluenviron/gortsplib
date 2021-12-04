@@ -7,6 +7,7 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -60,6 +61,7 @@ func main() {
 	defer c.Close()
 
 	buf := make([]byte, 2048)
+	var pkt rtp.Packet
 	for {
 		// read packets from the source
 		n, _, err := pc.ReadFrom(buf)
@@ -67,8 +69,14 @@ func main() {
 			panic(err)
 		}
 
+		// marshal RTP packets
+		err = pkt.Unmarshal(buf[:n])
+		if err != nil {
+			panic(err)
+		}
+
 		// route RTP packets to the server
-		err = c.WritePacketRTP(0, buf[:n])
+		err = c.WritePacketRTP(0, &pkt)
 		if err != nil {
 			panic(err)
 		}

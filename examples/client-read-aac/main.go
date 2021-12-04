@@ -61,20 +61,13 @@ func main() {
 	dec := rtpaac.NewDecoder(clockRate)
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP = func(trackID int, payload []byte) {
+	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
 		if trackID != aacTrack {
 			return
 		}
 
-		// parse RTP packet
-		var pkt rtp.Packet
-		err := pkt.Unmarshal(payload)
-		if err != nil {
-			return
-		}
-
 		// decode AAC AUs from the RTP packet
-		aus, _, err := dec.Decode(&pkt)
+		aus, _, err := dec.Decode(pkt)
 		if err != nil {
 			return
 		}

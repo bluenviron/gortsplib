@@ -32,7 +32,7 @@ func New(clockRate int) *RTCPSender {
 
 // Report generates a RTCP sender report.
 // It returns nil if no packets has been passed to ProcessPacketRTP yet.
-func (rs *RTCPSender) Report(ts time.Time) []byte {
+func (rs *RTCPSender) Report(ts time.Time) rtcp.Packet {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
@@ -40,7 +40,7 @@ func (rs *RTCPSender) Report(ts time.Time) []byte {
 		return nil
 	}
 
-	report := &rtcp.SenderReport{
+	return &rtcp.SenderReport{
 		SSRC: rs.senderSSRC,
 		NTPTime: func() uint64 {
 			// seconds since 1st January 1900
@@ -55,33 +55,22 @@ func (rs *RTCPSender) Report(ts time.Time) []byte {
 		PacketCount: rs.packetCount,
 		OctetCount:  rs.octetCount,
 	}
-
-	byts, err := report.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	return byts
 }
 
 // ProcessPacketRTP extracts the needed data from RTP packets.
-func (rs *RTCPSender) ProcessPacketRTP(ts time.Time, payload []byte) {
+func (rs *RTCPSender) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet) {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
-	pkt := rtp.Packet{}
-	err := pkt.Unmarshal(payload)
-	if err == nil {
-		if !rs.firstRTPReceived {
-			rs.firstRTPReceived = true
-			rs.senderSSRC = pkt.SSRC
-		}
-
-		// always update time to minimize errors
-		rs.lastRTPTimeRTP = pkt.Timestamp
-		rs.lastRTPTimeTime = ts
-
-		rs.packetCount++
-		rs.octetCount += uint32(len(pkt.Payload))
+	if !rs.firstRTPReceived {
+		rs.firstRTPReceived = true
+		rs.senderSSRC = pkt.SSRC
 	}
+
+	// always update time to minimize errors
+	rs.lastRTPTimeRTP = pkt.Timestamp
+	rs.lastRTPTimeTime = ts
+
+	rs.packetCount++
+	rs.octetCount += uint32(len(pkt.Payload))
 }

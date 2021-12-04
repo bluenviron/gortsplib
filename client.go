@@ -21,6 +21,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
@@ -132,9 +135,9 @@ type Client struct {
 	// called after every response.
 	OnResponse func(*base.Response)
 	// called when a RTP packet arrives.
-	OnPacketRTP func(int, []byte)
+	OnPacketRTP func(int, *rtp.Packet)
 	// called when a RTCP packet arrives.
-	OnPacketRTCP func(int, []byte)
+	OnPacketRTCP func(int, rtcp.Packet)
 
 	//
 	// RTSP parameters
@@ -249,11 +252,11 @@ type Client struct {
 func (c *Client) Start(scheme string, host string) error {
 	// callbacks
 	if c.OnPacketRTP == nil {
-		c.OnPacketRTP = func(trackID int, payload []byte) {
+		c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
 		}
 	}
 	if c.OnPacketRTCP == nil {
-		c.OnPacketRTCP = func(trackID int, payload []byte) {
+		c.OnPacketRTCP = func(trackID int, pkt rtcp.Packet) {
 		}
 	}
 
@@ -757,17 +760,37 @@ func (c *Client) runReader() {
 					atomic.StoreInt64(c.tcpLastFrameTime, now.Unix())
 
 					if isRTP {
-						c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, payload)
-						c.OnPacketRTP(trackID, payload)
+						var pkt rtp.Packet
+						err := pkt.Unmarshal(payload)
+						if err != nil {
+							return
+						}
+
+						c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, &pkt)
+						c.OnPacketRTP(trackID, &pkt)
 					} else {
-						c.tracks[trackID].rtcpReceiver.ProcessPacketRTCP(now, payload)
-						c.OnPacketRTCP(trackID, payload)
+						packets, err := rtcp.Unmarshal(payload)
+						if err != nil {
+							return
+						}
+
+						for _, pkt := range packets {
+							c.tracks[trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
+							c.OnPacketRTCP(trackID, pkt)
+						}
 					}
 				}
 			} else {
 				processFunc = func(trackID int, isRTP bool, payload []byte) {
 					if !isRTP {
-						c.OnPacketRTCP(trackID, payload)
+						packets, err := rtcp.Unmarshal(payload)
+						if err != nil {
+							return
+						}
+
+						for _, pkt := range packets {
+							c.OnPacketRTCP(trackID, pkt)
+						}
 					}
 				}
 			}
@@ -1585,11 +1608,13 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 
 		// open the firewall by sending packets to the counterpart.
 		for _, cct := range c.tracks {
-			cct.udpRTPListener.write(
-				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+			byts, _ := (&rtp.Packet{
+				Header: rtp.Header{Version: 2},
+			}).Marshal()
+			cct.udpRTPListener.write(byts)
 
-			cct.udpRTCPListener.write(
-				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+			byts, _ = (&rtcp.ReceiverReport{}).Marshal()
+			cct.udpRTCPListener.write(byts)
 		}
 	}
 
@@ -1806,10 +1831,6 @@ func (c *Client) runWriter() {
 	case TransportUDP, TransportUDPMulticast:
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
-				if c.tracks[trackID].rtcpSender != nil {
-					c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), payload)
-				}
-
 				c.tracks[trackID].udpRTPListener.write(payload)
 			} else {
 				c.tracks[trackID].udpRTCPListener.write(payload)
@@ -1821,10 +1842,6 @@ func (c *Client) runWriter() {
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
-				if c.tracks[trackID].rtcpSender != nil {
-					c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), payload)
-				}
-
 				f := c.tracks[trackID].tcpRTPFrame
 				f.Payload = payload
 				f.Write(&buf)
@@ -1854,7 +1871,7 @@ func (c *Client) runWriter() {
 }
 
 // WritePacketRTP writes a RTP packet.
-func (c *Client) WritePacketRTP(trackID int, payload []byte) error {
+func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet) error {
 	c.writeMutex.RLock()
 	defer c.writeMutex.RUnlock()
 
@@ -1865,18 +1882,27 @@ func (c *Client) WritePacketRTP(trackID int, payload []byte) error {
 		default:
 			return nil
 		}
+	}
+
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return err
+	}
+
+	if c.tracks[trackID].rtcpSender != nil {
+		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt)
 	}
 
 	c.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,
 		isRTP:   true,
-		payload: payload,
+		payload: byts,
 	})
 	return nil
 }
 
 // WritePacketRTCP writes a RTCP packet.
-func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
+func (c *Client) WritePacketRTCP(trackID int, pkt rtcp.Packet) error {
 	c.writeMutex.RLock()
 	defer c.writeMutex.RUnlock()
 
@@ -1889,10 +1915,15 @@ func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
 		}
 	}
 
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return err
+	}
+
 	c.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,
 		isRTP:   false,
-		payload: payload,
+		payload: byts,
 	})
 	return nil
 }
