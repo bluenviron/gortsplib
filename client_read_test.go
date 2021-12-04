@@ -172,7 +172,7 @@ func TestClientRead(t *testing.T) {
 		"tls",
 	} {
 		t.Run(transport, func(t *testing.T) {
-			frameRecv := make(chan struct{})
+			packetRecv := make(chan struct{})
 
 			listenIP := multicastCapableIP(t)
 			l, err := net.Listen("tcp", listenIP+":8554")
@@ -369,7 +369,7 @@ func TestClientRead(t *testing.T) {
 					n, _, err := l2.ReadFrom(buf)
 					require.NoError(t, err)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, buf[:n])
-					close(frameRecv)
+					close(packetRecv)
 
 				case "tcp", "tls":
 					var f base.InterleavedFrame
@@ -378,7 +378,7 @@ func TestClientRead(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, 1, f.Channel)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
-					close(frameRecv)
+					close(packetRecv)
 				}
 
 				req, err = readRequest(bconn.Reader)
@@ -435,7 +435,7 @@ func TestClientRead(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			<-frameRecv
+			<-packetRecv
 		})
 	}
 }
@@ -537,7 +537,7 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	frameRecv := make(chan struct{})
+	packetRecv := make(chan struct{})
 
 	c := &Client{
 		ReadBufferSize: 4500,
@@ -548,7 +548,7 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 		OnPacketRTP: func(trackID int, payload []byte) {
 			require.Equal(t, 0, trackID)
 			require.Equal(t, refPayload, payload)
-			close(frameRecv)
+			close(packetRecv)
 		},
 	}
 
@@ -556,7 +556,7 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	<-frameRecv
+	<-packetRecv
 }
 
 func TestClientReadPartial(t *testing.T) {
@@ -652,7 +652,7 @@ func TestClientReadPartial(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	frameRecv := make(chan struct{})
+	packetRecv := make(chan struct{})
 
 	c := &Client{
 		Transport: func() *Transport {
@@ -662,7 +662,7 @@ func TestClientReadPartial(t *testing.T) {
 		OnPacketRTP: func(trackID int, payload []byte) {
 			require.Equal(t, 0, trackID)
 			require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
-			close(frameRecv)
+			close(packetRecv)
 		},
 	}
 
@@ -682,7 +682,7 @@ func TestClientReadPartial(t *testing.T) {
 	_, err = c.Play(nil)
 	require.NoError(t, err)
 
-	<-frameRecv
+	<-packetRecv
 }
 
 func TestClientReadNoContentBase(t *testing.T) {
@@ -925,13 +925,13 @@ func TestClientReadAnyPort(t *testing.T) {
 				}
 			}()
 
-			frameRecv := make(chan struct{})
+			packetRecv := make(chan struct{})
 
 			c := &Client{
 				AnyPortEnable: true,
 				OnPacketRTP: func(trackID int, payload []byte) {
 					require.Equal(t, payload, []byte{0x01, 0x02, 0x03, 0x04})
-					close(frameRecv)
+					close(packetRecv)
 				},
 			}
 
@@ -939,7 +939,7 @@ func TestClientReadAnyPort(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			<-frameRecv
+			<-packetRecv
 
 			if ca == "random" {
 				c.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
@@ -1049,11 +1049,11 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		frameRecv := make(chan struct{})
+		packetRecv := make(chan struct{})
 
 		c := Client{
 			OnPacketRTP: func(trackID int, payload []byte) {
-				close(frameRecv)
+				close(packetRecv)
 			},
 		}
 
@@ -1061,7 +1061,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 		defer c.Close()
 
-		<-frameRecv
+		<-packetRecv
 	})
 
 	t.Run("switch after timeout", func(t *testing.T) {
@@ -1250,12 +1250,12 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			conn.Close()
 		}()
 
-		frameRecv := make(chan struct{})
+		packetRecv := make(chan struct{})
 
 		c := &Client{
 			ReadTimeout: 1 * time.Second,
 			OnPacketRTP: func(trackID int, payload []byte) {
-				close(frameRecv)
+				close(packetRecv)
 			},
 		}
 
@@ -1263,7 +1263,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 		defer c.Close()
 
-		<-frameRecv
+		<-packetRecv
 	})
 }
 
@@ -1371,7 +1371,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	frameRecv := make(chan struct{})
+	packetRecv := make(chan struct{})
 
 	c := &Client{
 		Transport: func() *Transport {
@@ -1380,7 +1380,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		}(),
 		OnPacketRTP: func(trackID int, payload []byte) {
 			require.Equal(t, 0, trackID)
-			close(frameRecv)
+			close(packetRecv)
 		},
 	}
 
@@ -1388,7 +1388,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	<-frameRecv
+	<-packetRecv
 }
 
 func TestClientReadRedirect(t *testing.T) {
@@ -1520,11 +1520,11 @@ func TestClientReadRedirect(t *testing.T) {
 		})
 	}()
 
-	frameRecv := make(chan struct{})
+	packetRecv := make(chan struct{})
 
 	c := Client{
 		OnPacketRTP: func(trackID int, payload []byte) {
-			close(frameRecv)
+			close(packetRecv)
 		},
 	}
 
@@ -1532,7 +1532,7 @@ func TestClientReadRedirect(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	<-frameRecv
+	<-packetRecv
 }
 
 func TestClientReadPause(t *testing.T) {
@@ -1712,7 +1712,7 @@ func TestClientReadPause(t *testing.T) {
 			}()
 
 			firstFrame := int32(0)
-			frameRecv := make(chan struct{})
+			packetRecv := make(chan struct{})
 
 			c := &Client{
 				Transport: func() *Transport {
@@ -1725,7 +1725,7 @@ func TestClientReadPause(t *testing.T) {
 				}(),
 				OnPacketRTP: func(trackID int, payload []byte) {
 					if atomic.SwapInt32(&firstFrame, 1) == 0 {
-						close(frameRecv)
+						close(packetRecv)
 					}
 				},
 			}
@@ -1734,18 +1734,18 @@ func TestClientReadPause(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			<-frameRecv
+			<-packetRecv
 
 			_, err = c.Pause()
 			require.NoError(t, err)
 
 			firstFrame = int32(0)
-			frameRecv = make(chan struct{})
+			packetRecv = make(chan struct{})
 
 			_, err = c.Play(nil)
 			require.NoError(t, err)
 
-			<-frameRecv
+			<-packetRecv
 		})
 	}
 }
