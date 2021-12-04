@@ -209,7 +209,7 @@ type Client struct {
 	tracks             map[int]clientTrack
 	tracksByChannel    map[int]int
 	lastRange          *headers.Range
-	tcpFrameBuffer     *multibuffer.MultiBuffer // tcp
+	tcpReadBuffer      *multibuffer.MultiBuffer // tcp
 	tcpWriteMutex      sync.Mutex               // tcp
 	writeMutex         sync.RWMutex             // write
 	writeFrameAllowed  bool                     // write
@@ -618,7 +618,7 @@ func (c *Client) reset() {
 	c.protocol = nil
 	c.tracks = nil
 	c.tracksByChannel = nil
-	c.tcpFrameBuffer = nil
+	c.tcpReadBuffer = nil
 }
 
 func (c *Client) checkState(allowed map[clientState]struct{}) error {
@@ -750,7 +750,7 @@ func (c *Client) runReader() error {
 		res := base.Response{}
 
 		for {
-			frame.Payload = c.tcpFrameBuffer.Next()
+			frame.Payload = c.tcpReadBuffer.Next()
 			what, err := base.ReadInterleavedFrameOrResponse(&frame, &res, c.br)
 			if err != nil {
 				return err
@@ -908,12 +908,12 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 
 		c.nconn.SetReadDeadline(time.Now().Add(c.ReadTimeout))
 
-		if c.tcpFrameBuffer != nil {
+		if c.tcpReadBuffer != nil {
 			// read the response and ignore interleaved frames in between;
 			// interleaved frames are sent in two scenarios:
 			// * when the server is v4lrtspserver, before the PLAY response
 			// * when the stream is already playing
-			err = res.ReadIgnoreFrames(c.br, c.tcpFrameBuffer.Next())
+			err = res.ReadIgnoreFrames(c.br, c.tcpReadBuffer.Next())
 			if err != nil {
 				return err
 			}
@@ -1459,8 +1459,8 @@ func (c *Client) doSetup(
 		cct.udpRTCPListener = rtcpListener
 
 	case TransportTCP:
-		if c.tcpFrameBuffer == nil {
-			c.tcpFrameBuffer = multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize))
+		if c.tcpReadBuffer == nil {
+			c.tcpReadBuffer = multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize))
 		}
 
 		if c.tracksByChannel == nil {

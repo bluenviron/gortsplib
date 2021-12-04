@@ -43,7 +43,7 @@ type ServerConn struct {
 	tcpSession                  *ServerSession           // tcp
 	tcpFrameIsRecording         bool                     // tcp
 	tcpFrameTimeout             bool                     // tcp
-	tcpFrameBuffer              *multibuffer.MultiBuffer // tcp
+	tcpReadBuffer               *multibuffer.MultiBuffer // tcp
 	tcpFrameWriteBuffer         *ringbuffer.RingBuffer   // tcp
 	tcpFrameBackgroundWriteDone chan struct{}            // tcp
 	tcpProcessFunc              func(int, bool, []byte)
@@ -134,7 +134,7 @@ func (sc *ServerConn) run() {
 						sc.nconn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
 					}
 
-					frame.Payload = sc.tcpFrameBuffer.Next()
+					frame.Payload = sc.tcpReadBuffer.Next()
 					what, err := base.ReadInterleavedFrameOrRequest(&frame, &req, sc.br)
 					if err != nil {
 						return err
@@ -529,14 +529,14 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		if sc.tcpFrameEnabled {
 			if sc.tcpFrameIsRecording {
 				sc.tcpFrameTimeout = true
-				sc.tcpFrameBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
+				sc.tcpReadBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
 				sc.tcpProcessFunc = sc.tcpProcessRecord
 			} else {
-				// when playing, tcpFrameBuffer is only used to receive RTCP receiver reports,
+				// when playing, tcpReadBuffer is only used to receive RTCP receiver reports,
 				// that are much smaller than RTP packets and are sent at a fixed interval
 				// (about 2 frames every 10 secs).
 				// decrease RAM consumption by allocating less buffers.
-				sc.tcpFrameBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
+				sc.tcpReadBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
 				sc.tcpProcessFunc = sc.tcpProcessPlay
 			}
 
@@ -554,7 +554,7 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 			<-sc.tcpFrameBackgroundWriteDone
 			sc.tcpFrameWriteBuffer.Reset()
 
-			sc.tcpFrameBuffer = nil
+			sc.tcpReadBuffer = nil
 		}
 
 	case sc.tcpFrameEnabled: // write to background write
