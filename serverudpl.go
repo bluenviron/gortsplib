@@ -52,7 +52,7 @@ type serverUDPListener struct {
 	listenIP     net.IP
 	isRTP        bool
 	writeTimeout time.Duration
-	readBuf      *multibuffer.MultiBuffer
+	readBuffer   *multibuffer.MultiBuffer
 	clientsMutex sync.RWMutex
 	clients      map[clientAddr]*clientData
 	ringBuffer   *ringbuffer.RingBuffer
@@ -150,7 +150,7 @@ func newServerUDPListener(
 		clients:      make(map[clientAddr]*clientData),
 		isRTP:        isRTP,
 		writeTimeout: s.WriteTimeout,
-		readBuf:      multibuffer.New(uint64(s.ReadBufferCount), uint64(s.ReadBufferSize)),
+		readBuffer:   multibuffer.New(uint64(s.ReadBufferCount), uint64(s.ReadBufferSize)),
 		ringBuffer:   ringbuffer.New(uint64(s.ReadBufferCount)),
 	}
 
@@ -187,7 +187,7 @@ func (u *serverUDPListener) run() {
 		defer u.wg.Done()
 
 		for {
-			buf := u.readBuf.Next()
+			buf := u.readBuffer.Next()
 			n, addr, err := u.pc.ReadFromUDP(buf)
 			if err != nil {
 				break
