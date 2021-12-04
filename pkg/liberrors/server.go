@@ -40,22 +40,6 @@ func (e ErrServerNoRTSPRequestsInAWhile) Error() string {
 	return "no RTSP requests received in a while"
 }
 
-// ErrServerTCPFramesEnable is an error that can be returned by a server.
-type ErrServerTCPFramesEnable struct{}
-
-// Error implements the error interface.
-func (e ErrServerTCPFramesEnable) Error() string {
-	return "tcp frame enable"
-}
-
-// ErrServerTCPFramesDisable is an error that can be returned by a server.
-type ErrServerTCPFramesDisable struct{}
-
-// Error implements the error interface.
-func (e ErrServerTCPFramesDisable) Error() string {
-	return "tcp frame disable"
-}
-
 // ErrServerCSeqMissing is an error that can be returned by a server.
 type ErrServerCSeqMissing struct{}
 

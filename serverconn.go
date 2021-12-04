@@ -7,12 +7,12 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
-	"github.com/aler9/gortsplib/pkg/ringbuffer"
 )
 
 func getSessionID(header base.Header) string {
@@ -32,21 +32,20 @@ type ServerConn struct {
 	s     *Server
 	nconn net.Conn
 
-	ctx                         context.Context
-	ctxCancel                   func()
-	remoteAddr                  *net.TCPAddr // to improve speed
-	br                          *bufio.Reader
-	bw                          *bufio.Writer
-	sessions                    map[string]*ServerSession
-	tcpFrameSetEnabled          bool
-	tcpFrameEnabled             bool
-	tcpSession                  *ServerSession
-	tcpFrameIsRecording         bool
-	tcpFrameTimeout             bool
-	tcpReadBuffer               *multibuffer.MultiBuffer
-	tcpFrameWriteBuffer         *ringbuffer.RingBuffer
-	tcpFrameBackgroundWriteDone chan struct{}
-	tcpProcessFunc              func(int, bool, []byte)
+	ctx                 context.Context
+	ctxCancel           func()
+	remoteAddr          *net.TCPAddr // to improve speed
+	br                  *bufio.Reader
+	bw                  *bufio.Writer
+	sessions            map[string]*ServerSession
+	tcpFrameSetEnabled  bool
+	tcpFrameEnabled     bool
+	tcpSession          *ServerSession
+	tcpFrameIsRecording bool
+	tcpFrameTimeout     bool
+	tcpReadBuffer       *multibuffer.MultiBuffer
+	tcpProcessFunc      func(int, bool, []byte)
+	tcpWriteMutex       sync.Mutex
 
 	// in
 	sessionRemove chan *ServerSession
@@ -115,9 +114,6 @@ func (sc *ServerConn) run() {
 	sc.br = bufio.NewReaderSize(conn, serverReadBufferSize)
 	sc.bw = bufio.NewWriterSize(conn, serverWriteBufferSize)
 	sc.sessions = make(map[string]*ServerSession)
-
-	// instantiate always to allow writing to this conn before Play()
-	sc.tcpFrameWriteBuffer = ringbuffer.New(uint64(sc.s.ReadBufferCount))
 
 	readRequest := make(chan readReq)
 	readErr := make(chan error)
@@ -221,11 +217,6 @@ func (sc *ServerConn) run() {
 
 	sc.ctxCancel()
 
-	if sc.tcpFrameEnabled {
-		sc.tcpFrameWriteBuffer.Close()
-		<-sc.tcpFrameBackgroundWriteDone
-	}
-
 	sc.nconn.Close()
 	<-readDone
 
@@ -304,8 +295,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	case base.Options:
 		// handle request in session
 		if sxID != "" {
-			_, res, err := sc.handleRequestInSession(sxID, req, false)
-			return res, err
+			return sc.handleRequestInSession(sxID, req, false)
 		}
 
 		// handle request here
@@ -389,66 +379,36 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.Announce:
 		if _, ok := sc.s.Handler.(ServerHandlerOnAnnounce); ok {
-			_, res, err := sc.handleRequestInSession(sxID, req, true)
-			return res, err
+			return sc.handleRequestInSession(sxID, req, true)
 		}
 
 	case base.Setup:
 		if _, ok := sc.s.Handler.(ServerHandlerOnSetup); ok {
-			_, res, err := sc.handleRequestInSession(sxID, req, true)
-			return res, err
+			return sc.handleRequestInSession(sxID, req, true)
 		}
 
 	case base.Play:
 		if _, ok := sc.s.Handler.(ServerHandlerOnPlay); ok {
-			ss, res, err := sc.handleRequestInSession(sxID, req, false)
-
-			if _, ok := err.(liberrors.ErrServerTCPFramesEnable); ok {
-				sc.tcpSession = ss
-				sc.tcpFrameIsRecording = false
-				sc.tcpFrameSetEnabled = true
-				return res, nil
-			}
-
-			return res, err
+			return sc.handleRequestInSession(sxID, req, false)
 		}
 
 	case base.Record:
 		if _, ok := sc.s.Handler.(ServerHandlerOnRecord); ok {
-			ss, res, err := sc.handleRequestInSession(sxID, req, false)
-
-			if _, ok := err.(liberrors.ErrServerTCPFramesEnable); ok {
-				sc.tcpSession = ss
-				sc.tcpFrameIsRecording = true
-				sc.tcpFrameSetEnabled = true
-				return res, nil
-			}
-
-			return res, err
+			return sc.handleRequestInSession(sxID, req, false)
 		}
 
 	case base.Pause:
 		if _, ok := sc.s.Handler.(ServerHandlerOnPause); ok {
-			_, res, err := sc.handleRequestInSession(sxID, req, false)
-
-			if _, ok := err.(liberrors.ErrServerTCPFramesDisable); ok {
-				sc.tcpSession = nil
-				sc.tcpFrameSetEnabled = false
-				return res, nil
-			}
-
-			return res, err
+			return sc.handleRequestInSession(sxID, req, false)
 		}
 
 	case base.Teardown:
-		_, res, err := sc.handleRequestInSession(sxID, req, false)
-		return res, err
+		return sc.handleRequestInSession(sxID, req, false)
 
 	case base.GetParameter:
 		// handle request in session
 		if sxID != "" {
-			_, res, err := sc.handleRequestInSession(sxID, req, false)
-			return res, err
+			return sc.handleRequestInSession(sxID, req, false)
 		}
 
 		// handle request here
@@ -500,6 +460,8 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		h.OnRequest(sc, req)
 	}
 
+	sc.tcpWriteMutex.Lock()
+
 	res, err := sc.handleRequest(req)
 
 	if res.Header == nil {
@@ -518,13 +480,13 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		h.OnResponse(sc, res)
 	}
 
-	switch {
-	case sc.tcpFrameSetEnabled != sc.tcpFrameEnabled:
-		sc.tcpFrameEnabled = sc.tcpFrameSetEnabled
+	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
+	res.Write(sc.bw)
 
-		// write response before frames
-		sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-		res.Write(sc.bw)
+	sc.tcpWriteMutex.Unlock()
+
+	if sc.tcpFrameSetEnabled != sc.tcpFrameEnabled {
+		sc.tcpFrameEnabled = sc.tcpFrameSetEnabled
 
 		if sc.tcpFrameEnabled {
 			if sc.tcpFrameIsRecording {
@@ -533,35 +495,19 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 				sc.tcpProcessFunc = sc.tcpProcessRecord
 			} else {
 				// when playing, tcpReadBuffer is only used to receive RTCP receiver reports,
-				// that are much smaller than RTP packets and are sent at a fixed interval
-				// (about 2 frames every 10 secs).
+				// that are much smaller than RTP packets and are sent at a fixed interval.
 				// decrease RAM consumption by allocating less buffers.
 				sc.tcpReadBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
 				sc.tcpProcessFunc = sc.tcpProcessPlay
 			}
-
-			// start background write
-			sc.tcpFrameBackgroundWriteDone = make(chan struct{})
-			go sc.tcpFrameBackgroundWrite()
 		} else {
 			if sc.tcpFrameIsRecording {
 				sc.tcpFrameTimeout = false
 				sc.nconn.SetReadDeadline(time.Time{})
 			}
 
-			sc.tcpFrameWriteBuffer.Close()
-			<-sc.tcpFrameBackgroundWriteDone
-			sc.tcpFrameWriteBuffer.Reset()
-
 			sc.tcpReadBuffer = nil
 		}
-
-	case sc.tcpFrameEnabled: // write to background write
-		sc.tcpFrameWriteBuffer.Push(res)
-
-	default: // write directly
-		sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-		res.Write(sc.bw)
 	}
 
 	return err
@@ -571,7 +517,7 @@ func (sc *ServerConn) handleRequestInSession(
 	sxID string,
 	req *base.Request,
 	create bool,
-) (*ServerSession, *base.Response, error) {
+) (*base.Response, error) {
 	// if the session is already linked to this conn, communicate directly with it
 	if sxID != "" {
 		if ss, ok := sc.sessions[sxID]; ok {
@@ -587,10 +533,10 @@ func (sc *ServerConn) handleRequestInSession(
 			select {
 			case ss.request <- sreq:
 				res := <-cres
-				return ss, res.res, res.err
+				return res.res, res.err
 
 			case <-ss.ctx.Done():
-				return nil, &base.Response{
+				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerTerminated{}
 			}
@@ -614,32 +560,11 @@ func (sc *ServerConn) handleRequestInSession(
 			sc.sessions[res.ss.secretID] = res.ss
 		}
 
-		return res.ss, res.res, res.err
+		return res.res, res.err
 
 	case <-sc.s.ctx.Done():
-		return nil, &base.Response{
+		return &base.Response{
 			StatusCode: base.StatusBadRequest,
 		}, liberrors.ErrServerTerminated{}
-	}
-}
-
-func (sc *ServerConn) tcpFrameBackgroundWrite() {
-	defer close(sc.tcpFrameBackgroundWriteDone)
-
-	for {
-		what, ok := sc.tcpFrameWriteBuffer.Pull()
-		if !ok {
-			return
-		}
-
-		switch w := what.(type) {
-		case *base.InterleavedFrame:
-			sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-			w.Write(sc.bw)
-
-		case *base.Response:
-			sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-			w.Write(sc.bw)
-		}
 	}
 }

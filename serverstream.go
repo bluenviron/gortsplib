@@ -8,11 +8,88 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/liberrors"
+	"github.com/aler9/gortsplib/pkg/ringbuffer"
 )
 
-type listenerPair struct {
-	rtpListener  *serverUDPListener
-	rtcpListener *serverUDPListener
+type trackTypePayload struct {
+	trackID int
+	isRTP   bool
+	payload []byte
+}
+
+type multicastHandler struct {
+	rtpl        *serverUDPListener
+	rtcpl       *serverUDPListener
+	writeBuffer *ringbuffer.RingBuffer
+
+	writerDone chan struct{}
+}
+
+func newMulticastHandler(s *Server) (*multicastHandler, error) {
+	rtpl, rtcpl, err := newServerUDPListenerMulticastPair(s)
+	if err != nil {
+		return nil, err
+	}
+
+	h := &multicastHandler{
+		rtpl:        rtpl,
+		rtcpl:       rtcpl,
+		writeBuffer: ringbuffer.New(uint64(s.ReadBufferCount)),
+		writerDone:  make(chan struct{}),
+	}
+
+	go h.runWriter()
+
+	return h, nil
+}
+
+func (h *multicastHandler) close() {
+	h.rtpl.close()
+	h.rtcpl.close()
+	h.writeBuffer.Close()
+	<-h.writerDone
+}
+
+func (h *multicastHandler) ip() net.IP {
+	return h.rtpl.ip()
+}
+
+func (h *multicastHandler) runWriter() {
+	defer close(h.writerDone)
+
+	for {
+		tmp, ok := h.writeBuffer.Pull()
+		if !ok {
+			return
+		}
+		data := tmp.(trackTypePayload)
+
+		if data.isRTP {
+			h.rtpl.write(data.payload, &net.UDPAddr{
+				IP:   h.rtpl.ip(),
+				Port: h.rtpl.port(),
+			})
+		} else {
+			h.rtcpl.write(data.payload, &net.UDPAddr{
+				IP:   h.rtcpl.ip(),
+				Port: h.rtcpl.port(),
+			})
+		}
+	}
+}
+
+func (h *multicastHandler) writeRTP(payload []byte) {
+	h.writeBuffer.Push(trackTypePayload{
+		isRTP:   true,
+		payload: payload,
+	})
+}
+
+func (h *multicastHandler) writeRTCP(payload []byte) {
+	h.writeBuffer.Push(trackTypePayload{
+		isRTP:   false,
+		payload: payload,
+	})
 }
 
 type trackInfo struct {
@@ -31,11 +108,11 @@ type ServerStream struct {
 	s      *Server
 	tracks Tracks
 
-	mutex              sync.RWMutex
-	readersUnicast     map[*ServerSession]struct{}
-	readers            map[*ServerSession]struct{}
-	multicastListeners []*listenerPair
-	trackInfos         []*trackInfo
+	mutex             sync.RWMutex
+	readersUnicast    map[*ServerSession]struct{}
+	readers           map[*ServerSession]struct{}
+	multicastHandlers []*multicastHandler
+	trackInfos        []*trackInfo
 }
 
 // NewServerStream allocates a ServerStream.
@@ -71,12 +148,11 @@ func (st *ServerStream) Close() error {
 		ss.Close()
 	}
 
-	if st.multicastListeners != nil {
-		for _, l := range st.multicastListeners {
-			l.rtpListener.close()
-			l.rtcpListener.close()
+	if st.multicastHandlers != nil {
+		for _, h := range st.multicastHandlers {
+			h.close()
 		}
-		st.multicastListeners = nil
+		st.multicastHandlers = nil
 	}
 
 	st.readers = nil
@@ -144,26 +220,22 @@ func (st *ServerStream) readerAdd(
 
 	case TransportUDPMulticast:
 		// allocate multicast listeners
-		if st.multicastListeners == nil {
-			st.multicastListeners = make([]*listenerPair, len(st.tracks))
+		if st.multicastHandlers == nil {
+			st.multicastHandlers = make([]*multicastHandler, len(st.tracks))
 
 			for i := range st.tracks {
-				rtpListener, rtcpListener, err := newServerUDPListenerMulticastPair(st.s)
+				h, err := newMulticastHandler(st.s)
 				if err != nil {
-					for _, l := range st.multicastListeners {
-						if l != nil {
-							l.rtpListener.close()
-							l.rtcpListener.close()
+					for _, h := range st.multicastHandlers {
+						if h != nil {
+							h.close()
 						}
 					}
-					st.multicastListeners = nil
+					st.multicastHandlers = nil
 					return err
 				}
 
-				st.multicastListeners[i] = &listenerPair{
-					rtpListener:  rtpListener,
-					rtcpListener: rtcpListener,
-				}
+				st.multicastHandlers[i] = h
 			}
 		}
 	}
@@ -179,12 +251,12 @@ func (st *ServerStream) readerRemove(ss *ServerSession) {
 
 	delete(st.readers, ss)
 
-	if len(st.readers) == 0 && st.multicastListeners != nil {
-		for _, l := range st.multicastListeners {
-			l.rtpListener.close()
-			l.rtcpListener.close()
+	if len(st.readers) == 0 && st.multicastHandlers != nil {
+		for _, l := range st.multicastHandlers {
+			l.rtpl.close()
+			l.rtcpl.close()
 		}
-		st.multicastListeners = nil
+		st.multicastHandlers = nil
 	}
 }
 
@@ -198,8 +270,8 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 
 	default: // UDPMulticast
 		for trackID := range ss.setuppedTracks {
-			st.multicastListeners[trackID].rtcpListener.addClient(
-				ss.author.ip(), st.multicastListeners[trackID].rtcpListener.port(), ss, trackID, false)
+			st.multicastHandlers[trackID].rtcpl.addClient(
+				ss.author.ip(), st.multicastHandlers[trackID].rtcpl.port(), ss, trackID, false)
 		}
 	}
 }
@@ -213,9 +285,9 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 		delete(st.readersUnicast, ss)
 
 	default: // UDPMulticast
-		if st.multicastListeners != nil {
+		if st.multicastHandlers != nil {
 			for trackID := range ss.setuppedTracks {
-				st.multicastListeners[trackID].rtcpListener.removeClient(ss)
+				st.multicastHandlers[trackID].rtcpl.removeClient(ss)
 			}
 		}
 	}
@@ -246,11 +318,8 @@ func (st *ServerStream) WritePacketRTP(trackID int, payload []byte) {
 	}
 
 	// send multicast
-	if st.multicastListeners != nil {
-		st.multicastListeners[trackID].rtpListener.write(payload, &net.UDPAddr{
-			IP:   st.multicastListeners[trackID].rtpListener.ip(),
-			Port: st.multicastListeners[trackID].rtpListener.port(),
-		})
+	if st.multicastHandlers != nil {
+		st.multicastHandlers[trackID].writeRTP(payload)
 	}
 }
 
@@ -265,10 +334,7 @@ func (st *ServerStream) WritePacketRTCP(trackID int, payload []byte) {
 	}
 
 	// send multicast
-	if st.multicastListeners != nil {
-		st.multicastListeners[trackID].rtcpListener.write(payload, &net.UDPAddr{
-			IP:   st.multicastListeners[trackID].rtcpListener.ip(),
-			Port: st.multicastListeners[trackID].rtcpListener.port(),
-		})
+	if st.multicastHandlers != nil {
+		st.multicastHandlers[trackID].writeRTCP(payload)
 	}
 }

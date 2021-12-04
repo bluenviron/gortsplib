@@ -13,6 +13,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
+	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 )
 
@@ -170,10 +171,15 @@ type ServerSession struct {
 	udpLastFrameTime       *int64                        // publish
 	udpCheckStreamTimer    *time.Timer
 	udpReceiverReportTimer *time.Timer
+	writerRunning          bool
+	writeBuffer            *ringbuffer.RingBuffer
 
 	// in
 	request    chan sessionRequestReq
 	connRemove chan *ServerConn
+
+	// out
+	writerDone chan struct{}
 }
 
 func newServerSession(
@@ -357,6 +363,12 @@ func (ss *ServerSession) run() {
 
 	if ss.setuppedStream != nil {
 		ss.setuppedStream.readerRemove(ss)
+	}
+
+	if ss.writerRunning {
+		ss.writeBuffer.Close()
+		<-ss.writerDone
+		ss.writerRunning = false
 	}
 
 	for sc := range ss.conns {
@@ -714,12 +726,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			th.Delivery = &de
 			v := uint(127)
 			th.TTL = &v
-			d := stream.multicastListeners[trackID].rtpListener.ip()
+			d := stream.multicastHandlers[trackID].ip()
 			th.Destination = &d
-			th.Ports = &[2]int{
-				stream.multicastListeners[trackID].rtpListener.port(),
-				stream.multicastListeners[trackID].rtcpListener.port(),
-			}
+			th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 
 		default: // TCP
 			sst.tcpChannel = inTH.InterleavedIDs[0]
@@ -797,6 +806,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode != base.StatusOK {
+			if ss.State() == ServerSessionStatePreRead {
+				ss.writeBuffer = nil
+			}
 			return res, err
 		}
 
@@ -806,8 +818,37 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.state = ServerSessionStateRead
 
-		if *ss.setuppedTransport == TransportTCP {
+		ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
+
+		switch *ss.setuppedTransport {
+		case TransportUDP:
+			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
+
+			for trackID, track := range ss.setuppedTracks {
+				// readers can send RTCP packets
+				sc.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, false)
+
+				// open the firewall by sending packets to the counterpart
+				ss.WritePacketRTCP(trackID,
+					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+			}
+
+			ss.writerRunning = true
+			ss.writerDone = make(chan struct{})
+			go ss.runWriter()
+
+		case TransportUDPMulticast:
+			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
+
+		default: // TCP
 			ss.tcpConn = sc
+			ss.tcpConn.tcpSession = ss
+			ss.tcpConn.tcpFrameIsRecording = false
+			ss.tcpConn.tcpFrameSetEnabled = true
+
+			ss.writerRunning = true
+			ss.writerDone = make(chan struct{})
+			go ss.runWriter()
 		}
 
 		// add RTP-Info
@@ -849,28 +890,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.setuppedStream.readerSetActive(ss)
 
-		switch *ss.setuppedTransport {
-		case TransportUDP:
-			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-
-			for trackID, track := range ss.setuppedTracks {
-				// readers can send RTCP packets
-				sc.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, false)
-
-				// open the firewall by sending packets to the counterpart
-				ss.WritePacketRTCP(trackID,
-					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
-			}
-
-			return res, err
-
-		case TransportUDPMulticast:
-			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-
-		default: // TCP
-			err = liberrors.ErrServerTCPFramesEnable{}
-		}
-
 		return res, err
 
 	case base.Record:
@@ -901,11 +920,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		path, query := base.PathSplitQuery(pathAndQuery)
 
-		// allow to use WritePacket*() before response
-		if *ss.setuppedTransport == TransportTCP {
-			ss.tcpConn = sc
-		}
-
 		if path != *ss.setuppedPath {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -921,11 +935,15 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode != base.StatusOK {
-			ss.tcpConn = nil
 			return res, err
 		}
 
 		ss.state = ServerSessionStatePublish
+
+		// when recording, writeBuffer is only used to send RTCP receiver reports,
+		// that are much smaller than RTP packets and are sent at a fixed interval.
+		// decrease RAM consumption by allocating less buffers.
+		ss.writeBuffer = ringbuffer.New(uint64(8))
 
 		switch *ss.setuppedTransport {
 		case TransportUDP:
@@ -943,12 +961,23 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 			}
 
+			ss.writerRunning = true
+			ss.writerDone = make(chan struct{})
+			go ss.runWriter()
+
 		case TransportUDPMulticast:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
 
 		default: // TCP
-			err = liberrors.ErrServerTCPFramesEnable{}
+			ss.tcpConn = sc
+			ss.tcpConn.tcpSession = ss
+			ss.tcpConn.tcpFrameIsRecording = true
+			ss.tcpConn.tcpFrameSetEnabled = true
+
+			ss.writerRunning = true
+			ss.writerDone = make(chan struct{})
+			go ss.runWriter()
 		}
 
 		return res, err
@@ -990,13 +1019,18 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			return res, err
 		}
 
+		if ss.writerRunning {
+			ss.writeBuffer.Close()
+			<-ss.writerDone
+			ss.writerRunning = false
+		}
+
 		switch ss.state {
 		case ServerSessionStateRead:
 			ss.setuppedStream.readerSetInactive(ss)
 
 			ss.state = ServerSessionStatePreRead
 			ss.udpCheckStreamTimer = emptyTimer()
-			ss.tcpConn = nil
 
 			switch *ss.setuppedTransport {
 			case TransportUDP:
@@ -1005,14 +1039,15 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			case TransportUDPMulticast:
 
 			default: // TCP
-				err = liberrors.ErrServerTCPFramesDisable{}
+				ss.tcpConn.tcpSession = nil
+				ss.tcpConn.tcpFrameSetEnabled = false
+				ss.tcpConn = nil
 			}
 
 		case ServerSessionStatePublish:
 			ss.state = ServerSessionStatePrePublish
 			ss.udpCheckStreamTimer = emptyTimer()
 			ss.udpReceiverReportTimer = emptyTimer()
-			ss.tcpConn = nil
 
 			switch *ss.setuppedTransport {
 			case TransportUDP:
@@ -1022,7 +1057,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			case TransportUDPMulticast:
 
 			default: // TCP
-				err = liberrors.ErrServerTCPFramesDisable{}
+				ss.tcpConn.tcpSession = nil
+				ss.tcpConn.tcpFrameSetEnabled = false
+				ss.tcpConn = nil
 			}
 		}
 
@@ -1069,29 +1106,70 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 	}, liberrors.ErrServerUnhandledRequest{Req: req}
 }
 
+func (ss *ServerSession) runWriter() {
+	defer close(ss.writerDone)
+
+	var writeFunc func(int, bool, []byte)
+
+	if *ss.setuppedTransport == TransportUDP {
+		writeFunc = func(trackID int, isRTP bool, payload []byte) {
+			if isRTP {
+				ss.s.udpRTPListener.write(payload, &net.UDPAddr{
+					IP:   ss.author.ip(),
+					Zone: ss.author.zone(),
+					Port: ss.setuppedTracks[trackID].udpRTPPort,
+				})
+			} else {
+				ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
+					IP:   ss.author.ip(),
+					Zone: ss.author.zone(),
+					Port: ss.setuppedTracks[trackID].udpRTCPPort,
+				})
+			}
+		}
+	} else {
+		writeFunc = func(trackID int, isRTP bool, payload []byte) {
+			if isRTP {
+				ss.tcpConn.tcpWriteMutex.Lock()
+				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
+				(&base.InterleavedFrame{
+					Channel: ss.setuppedTracks[trackID].tcpChannel,
+					Payload: payload,
+				}).Write(ss.tcpConn.bw)
+				ss.tcpConn.tcpWriteMutex.Unlock()
+			} else {
+				ss.tcpConn.tcpWriteMutex.Lock()
+				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
+				(&base.InterleavedFrame{
+					Channel: ss.setuppedTracks[trackID].tcpChannel + 1,
+					Payload: payload,
+				}).Write(ss.tcpConn.bw)
+				ss.tcpConn.tcpWriteMutex.Unlock()
+			}
+		}
+	}
+
+	for {
+		tmp, ok := ss.writeBuffer.Pull()
+		if !ok {
+			return
+		}
+		data := tmp.(trackTypePayload)
+
+		writeFunc(data.trackID, data.isRTP, data.payload)
+	}
+}
+
 func (ss *ServerSession) writePacketRTP(trackID int, payload []byte) {
 	if _, ok := ss.setuppedTracks[trackID]; !ok {
 		return
 	}
 
-	switch *ss.setuppedTransport {
-	case TransportUDP:
-		track := ss.setuppedTracks[trackID]
-
-		ss.s.udpRTPListener.write(payload, &net.UDPAddr{
-			IP:   ss.author.ip(),
-			Zone: ss.author.zone(),
-			Port: track.udpRTPPort,
-		})
-
-	case TransportTCP:
-		channel := ss.setuppedTracks[trackID].tcpChannel
-
-		ss.tcpConn.tcpFrameWriteBuffer.Push(&base.InterleavedFrame{
-			Channel: channel,
-			Payload: payload,
-		})
-	}
+	ss.writeBuffer.Push(trackTypePayload{
+		trackID: trackID,
+		isRTP:   true,
+		payload: payload,
+	})
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.
@@ -1100,23 +1178,9 @@ func (ss *ServerSession) WritePacketRTCP(trackID int, payload []byte) {
 		return
 	}
 
-	switch *ss.setuppedTransport {
-	case TransportUDP:
-		track := ss.setuppedTracks[trackID]
-
-		ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
-			IP:   ss.author.ip(),
-			Zone: ss.author.zone(),
-			Port: track.udpRTCPPort,
-		})
-
-	case TransportTCP:
-		channel := ss.setuppedTracks[trackID].tcpChannel
-		channel++
-
-		ss.tcpConn.tcpFrameWriteBuffer.Push(&base.InterleavedFrame{
-			Channel: channel,
-			Payload: payload,
-		})
-	}
+	ss.writeBuffer.Push(trackTypePayload{
+		trackID: trackID,
+		isRTP:   false,
+		payload: payload,
+	})
 }
