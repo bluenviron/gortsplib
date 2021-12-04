@@ -97,7 +97,7 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, payload []byte) {
 		sequenceNumber := uint16(payload[2])<<8 | uint16(payload[3])
 		rtpTime := uint32(payload[4])<<24 | uint32(payload[5])<<16 | uint32(payload[6])<<8 | uint32(payload[7])
 
-		// first frame
+		// first packet
 		if !rr.firstRTPReceived {
 			rr.firstRTPReceived = true
 			rr.totalSinceReport = 1
@@ -105,18 +105,18 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, payload []byte) {
 			rr.lastRTPTimeRTP = rtpTime
 			rr.lastRTPTimeTime = ts
 
-			// subsequent frames
+			// subsequent packets
 		} else {
 			diff := int32(sequenceNumber) - int32(rr.lastSequenceNumber)
 
-			// following frame or following frame after an overflow
+			// following packet or following packet after an overflow
 			if diff > 0 || diff < -0x0FFF {
 				// overflow
 				if diff < -0x0FFF {
 					rr.sequenceNumberCycles++
 				}
 
-				// detect lost frames
+				// detect lost packets
 				if sequenceNumber != (rr.lastSequenceNumber + 1) {
 					rr.totalLost += uint32(uint16(diff) - 1)
 					rr.totalLostSinceReport += uint32(uint16(diff) - 1)
@@ -144,7 +144,7 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, payload []byte) {
 				rr.lastRTPTimeRTP = rtpTime
 				rr.lastRTPTimeTime = ts
 			}
-			// ignore invalid frames (diff = 0) or reordered frames (diff < 0)
+			// ignore invalid packets (diff = 0) or reordered packets (diff < 0)
 		}
 	}
 }
@@ -156,10 +156,10 @@ func (rr *RTCPReceiver) ProcessPacketRTCP(ts time.Time, payload []byte) {
 
 	// we can afford to unmarshal all RTCP packets
 	// since they are sent with a frequency much lower than the one of RTP packets
-	frames, err := rtcp.Unmarshal(payload)
+	packets, err := rtcp.Unmarshal(payload)
 	if err == nil {
-		for _, frame := range frames {
-			if sr, ok := (frame).(*rtcp.SenderReport); ok {
+		for _, packet := range packets {
+			if sr, ok := (packet).(*rtcp.SenderReport); ok {
 				rr.senderSSRC = sr.SSRC
 				rr.lastSenderReport = uint32(sr.NTPTime >> 16)
 				rr.lastSenderReportTime = ts
