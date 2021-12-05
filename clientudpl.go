@@ -33,7 +33,7 @@ type clientUDPListener struct {
 	trackID       int
 	isRTP         bool
 	running       bool
-	frameBuffer   *multibuffer.MultiBuffer
+	readBuffer    *multibuffer.MultiBuffer
 	lastFrameTime *int64
 	writeMutex    sync.Mutex
 	processFunc   func(time.Time, []byte)
@@ -109,9 +109,9 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 	}
 
 	return &clientUDPListener{
-		c:           c,
-		pc:          pc,
-		frameBuffer: multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize)),
+		c:          c,
+		pc:         pc,
+		readBuffer: multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize)),
 		lastFrameTime: func() *int64 {
 			v := int64(0)
 			return &v
@@ -156,7 +156,7 @@ func (l *clientUDPListener) runReader() {
 	defer close(l.readerDone)
 
 	for {
-		buf := l.frameBuffer.Next()
+		buf := l.readBuffer.Next()
 		n, addr, err := l.pc.ReadFrom(buf)
 		if err != nil {
 			return
