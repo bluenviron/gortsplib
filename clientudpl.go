@@ -38,8 +38,7 @@ type clientUDPListener struct {
 	writeMutex    sync.Mutex
 	processFunc   func(time.Time, []byte)
 
-	// out
-	done chan struct{}
+	readerDone chan struct{}
 }
 
 func newClientUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener) {
@@ -144,17 +143,17 @@ func (l *clientUDPListener) start() {
 
 	l.running = true
 	l.pc.SetReadDeadline(time.Time{})
-	l.done = make(chan struct{})
-	go l.run()
+	l.readerDone = make(chan struct{})
+	go l.runReader()
 }
 
 func (l *clientUDPListener) stop() {
 	l.pc.SetReadDeadline(time.Now())
-	<-l.done
+	<-l.readerDone
 }
 
-func (l *clientUDPListener) run() {
-	defer close(l.done)
+func (l *clientUDPListener) runReader() {
+	defer close(l.readerDone)
 
 	for {
 		buf := l.frameBuffer.Next()
