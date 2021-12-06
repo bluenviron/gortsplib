@@ -153,23 +153,23 @@ type ServerSession struct {
 	secretID string // must not be shared, allows to take ownership of the session
 	author   *ServerConn
 
-	ctx                     context.Context
-	ctxCancel               func()
-	conns                   map[*ServerConn]struct{}
-	state                   ServerSessionState
-	setuppedTracks          map[int]ServerSessionSetuppedTrack
-	setuppedTracksByChannel map[int]int // tcp
-	setuppedTransport       *Transport
-	setuppedBaseURL         *base.URL     // publish
-	setuppedStream          *ServerStream // read
-	setuppedPath            *string
-	setuppedQuery           *string
-	lastRequestTime         time.Time
-	tcpConn                 *ServerConn                   // tcp
-	announcedTracks         []ServerSessionAnnouncedTrack // publish
-	udpLastFrameTime        *int64                        // publish, udp
-	udpCheckStreamTimer     *time.Timer                   // udp
-	udpReceiverReportTimer  *time.Timer                   // udp
+	ctx                    context.Context
+	ctxCancel              func()
+	conns                  map[*ServerConn]struct{}
+	state                  ServerSessionState
+	setuppedTracks         map[int]ServerSessionSetuppedTrack
+	tcpTracksByChannel     map[int]int
+	setuppedTransport      *Transport
+	setuppedBaseURL        *base.URL     // publish
+	setuppedStream         *ServerStream // read
+	setuppedPath           *string
+	setuppedQuery          *string
+	lastRequestTime        time.Time
+	tcpConn                *ServerConn
+	announcedTracks        []ServerSessionAnnouncedTrack // publish
+	udpLastFrameTime       *int64                        // publish
+	udpCheckStreamTimer    *time.Timer
+	udpReceiverReportTimer *time.Timer
 
 	// in
 	request    chan sessionRequestReq
@@ -599,7 +599,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{}
 			}
 
-			if _, ok := ss.setuppedTracksByChannel[inTH.InterleavedIDs[0]]; ok {
+			if _, ok := ss.tcpTracksByChannel[inTH.InterleavedIDs[0]]; ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerTransportHeaderInterleavedIDsAlreadyUsed{}
@@ -722,11 +722,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		default: // TCP
 			sst.tcpChannel = inTH.InterleavedIDs[0]
 
-			if ss.setuppedTracksByChannel == nil {
-				ss.setuppedTracksByChannel = make(map[int]int)
+			if ss.tcpTracksByChannel == nil {
+				ss.tcpTracksByChannel = make(map[int]int)
 			}
 
-			ss.setuppedTracksByChannel[inTH.InterleavedIDs[0]] = trackID
+			ss.tcpTracksByChannel[inTH.InterleavedIDs[0]] = trackID
 
 			th.Protocol = headers.TransportProtocolTCP
 			de := headers.TransportDeliveryUnicast

@@ -209,10 +209,10 @@ type Client struct {
 	tracks             map[int]clientTrack
 	tracksByChannel    map[int]int
 	lastRange          *headers.Range
-	tcpReadBuffer      *multibuffer.MultiBuffer // tcp
-	tcpWriteMutex      sync.Mutex               // tcp
-	writeMutex         sync.RWMutex             // write
-	writeFrameAllowed  bool                     // write
+	tcpReadBuffer      *multibuffer.MultiBuffer
+	tcpWriteMutex      sync.Mutex
+	writeMutex         sync.RWMutex // publish
+	writeFrameAllowed  bool         // publilsh
 	udpReportTimer     *time.Timer
 	checkStreamTimer   *time.Timer
 	checkStreamInitial bool

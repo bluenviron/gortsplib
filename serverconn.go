@@ -38,14 +38,14 @@ type ServerConn struct {
 	br                          *bufio.Reader
 	bw                          *bufio.Writer
 	sessions                    map[string]*ServerSession
-	tcpFrameSetEnabled          bool                     // tcp
-	tcpFrameEnabled             bool                     // tcp
-	tcpSession                  *ServerSession           // tcp
-	tcpFrameIsRecording         bool                     // tcp
-	tcpFrameTimeout             bool                     // tcp
-	tcpReadBuffer               *multibuffer.MultiBuffer // tcp
-	tcpFrameWriteBuffer         *ringbuffer.RingBuffer   // tcp
-	tcpFrameBackgroundWriteDone chan struct{}            // tcp
+	tcpFrameSetEnabled          bool
+	tcpFrameEnabled             bool
+	tcpSession                  *ServerSession
+	tcpFrameIsRecording         bool
+	tcpFrameTimeout             bool
+	tcpReadBuffer               *multibuffer.MultiBuffer
+	tcpFrameWriteBuffer         *ringbuffer.RingBuffer
+	tcpFrameBackgroundWriteDone chan struct{}
 	tcpProcessFunc              func(int, bool, []byte)
 
 	// in
@@ -150,7 +150,7 @@ func (sc *ServerConn) run() {
 						}
 
 						// forward frame only if it has been set up
-						if trackID, ok := sc.tcpSession.setuppedTracksByChannel[channel]; ok {
+						if trackID, ok := sc.tcpSession.tcpTracksByChannel[channel]; ok {
 							sc.tcpProcessFunc(trackID, isRTP, frame.Payload)
 						}
 
