@@ -212,7 +212,7 @@ type Client struct {
 	tcpReadBuffer      *multibuffer.MultiBuffer
 	tcpWriteMutex      sync.Mutex
 	writeMutex         sync.RWMutex // publish
-	writeFrameAllowed  bool         // publilsh
+	writeFrameAllowed  bool         // publish
 	udpReportTimer     *time.Timer
 	checkStreamTimer   *time.Timer
 	checkStreamInitial bool
@@ -544,7 +544,7 @@ func (c *Client) run() {
 			case <-c.keepaliveTimer.C:
 				_, err := c.do(&base.Request{
 					Method: func() base.Method {
-						// the vlc integrated rtsp server requires GET_PARAMETER
+						// the VLC integrated rtsp server requires GET_PARAMETER
 						if c.useGetParameter {
 							return base.GetParameter
 						}
