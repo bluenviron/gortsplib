@@ -13,6 +13,8 @@ func TestRTCPReceiverBase(t *testing.T) {
 	v := uint32(0x65f83afb)
 	rr := New(&v, 90000)
 
+	require.Equal(t, []byte(nil), rr.Report(time.Now()))
+
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
 		NTPTime:     0xe363887a17ced916,

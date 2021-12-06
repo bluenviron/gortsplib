@@ -52,9 +52,15 @@ func New(receiverSSRC *uint32, clockRate int) *RTCPReceiver {
 }
 
 // Report generates a RTCP receiver report.
+// It returns nil if no RTCP sender reports have been passed to ProcessPacketRTCP yet.
 func (rr *RTCPReceiver) Report(ts time.Time) []byte {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
+
+	var zero time.Time
+	if rr.lastSenderReportTime == zero {
+		return nil
+	}
 
 	report := &rtcp.ReceiverReport{
 		SSRC: rr.receiverSSRC,

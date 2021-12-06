@@ -1167,6 +1167,19 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	byts, _ = (&rtcp.SenderReport{
+		SSRC:        753621,
+		NTPTime:     0xcbddcc34999997ff,
+		RTPTime:     54352,
+		PacketCount: 1,
+		OctetCount:  4,
+	}).Marshal()
+	_, err = l2.WriteTo(byts, &net.UDPAddr{
+		IP:   net.ParseIP("127.0.0.1"),
+		Port: th.ServerPorts[1],
+	})
+	require.NoError(t, err)
+
 	// skip firewall opening
 	buf := make([]byte, 2048)
 	_, _, err = l2.ReadFrom(buf)

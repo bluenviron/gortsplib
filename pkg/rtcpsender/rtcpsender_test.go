@@ -12,6 +12,8 @@ import (
 func TestRTCPSender(t *testing.T) {
 	rs := New(90000)
 
+	require.Equal(t, []byte(nil), rs.Report(time.Now()))
+
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,

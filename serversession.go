@@ -324,8 +324,10 @@ func (ss *ServerSession) run() {
 				now := time.Now()
 
 				for trackID, track := range ss.announcedTracks {
-					r := track.rtcpReceiver.Report(now)
-					ss.WritePacketRTCP(trackID, r)
+					rr := track.rtcpReceiver.Report(now)
+					if rr != nil {
+						ss.WritePacketRTCP(trackID, rr)
+					}
 				}
 
 				ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)

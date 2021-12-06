@@ -465,7 +465,9 @@ func (c *Client) run() {
 					now := time.Now()
 					for trackID, cct := range c.tracks {
 						rr := cct.rtcpReceiver.Report(now)
-						c.WritePacketRTCP(trackID, rr)
+						if rr != nil {
+							c.WritePacketRTCP(trackID, rr)
+						}
 					}
 
 					c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
