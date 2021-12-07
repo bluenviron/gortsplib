@@ -23,18 +23,18 @@ func randIntn(n int) int {
 }
 
 type clientUDPListener struct {
-	c             *Client
-	pc            *net.UDPConn
-	remoteReadIP  net.IP
-	remoteWriteIP net.IP
-	remoteZone    string
-	remotePort    int
-	trackID       int
-	isRTP         bool
-	running       bool
-	readBuffer    *multibuffer.MultiBuffer
-	lastFrameTime *int64
-	processFunc   func(time.Time, []byte)
+	c              *Client
+	pc             *net.UDPConn
+	remoteReadIP   net.IP
+	remoteWriteIP  net.IP
+	remoteZone     string
+	remotePort     int
+	trackID        int
+	isRTP          bool
+	running        bool
+	readBuffer     *multibuffer.MultiBuffer
+	lastPacketTime *int64
+	processFunc    func(time.Time, []byte)
 
 	readerDone chan struct{}
 }
@@ -110,7 +110,7 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 		c:          c,
 		pc:         pc,
 		readBuffer: multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize)),
-		lastFrameTime: func() *int64 {
+		lastPacketTime: func() *int64 {
 			v := int64(0)
 			return &v
 		}(),
@@ -167,7 +167,7 @@ func (l *clientUDPListener) runReader() {
 		}
 
 		now := time.Now()
-		atomic.StoreInt64(l.lastFrameTime, now.Unix())
+		atomic.StoreInt64(l.lastPacketTime, now.Unix())
 
 		l.processFunc(now, buf[:n])
 	}

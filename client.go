@@ -492,12 +492,12 @@ func (c *Client) run() {
 						// check that at least one packet has been received
 						inTimeout := func() bool {
 							for _, cct := range c.tracks {
-								lft := atomic.LoadInt64(cct.udpRTPListener.lastFrameTime)
+								lft := atomic.LoadInt64(cct.udpRTPListener.lastPacketTime)
 								if lft != 0 {
 									return false
 								}
 
-								lft = atomic.LoadInt64(cct.udpRTCPListener.lastFrameTime)
+								lft = atomic.LoadInt64(cct.udpRTCPListener.lastPacketTime)
 								if lft != 0 {
 									return false
 								}
@@ -514,12 +514,12 @@ func (c *Client) run() {
 						inTimeout := func() bool {
 							now := time.Now()
 							for _, cct := range c.tracks {
-								lft := time.Unix(atomic.LoadInt64(cct.udpRTPListener.lastFrameTime), 0)
+								lft := time.Unix(atomic.LoadInt64(cct.udpRTPListener.lastPacketTime), 0)
 								if now.Sub(lft) < c.ReadTimeout {
 									return false
 								}
 
-								lft = time.Unix(atomic.LoadInt64(cct.udpRTCPListener.lastFrameTime), 0)
+								lft = time.Unix(atomic.LoadInt64(cct.udpRTCPListener.lastPacketTime), 0)
 								if now.Sub(lft) < c.ReadTimeout {
 									return false
 								}
