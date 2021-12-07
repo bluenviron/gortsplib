@@ -32,20 +32,18 @@ type ServerConn struct {
 	s     *Server
 	nconn net.Conn
 
-	ctx                 context.Context
-	ctxCancel           func()
-	remoteAddr          *net.TCPAddr // to improve speed
-	br                  *bufio.Reader
-	bw                  *bufio.Writer
-	sessions            map[string]*ServerSession
-	tcpFrameSetEnabled  bool
-	tcpFrameEnabled     bool
-	tcpSession          *ServerSession
-	tcpFrameIsRecording bool
-	tcpFrameTimeout     bool
-	tcpReadBuffer       *multibuffer.MultiBuffer
-	tcpProcessFunc      func(int, bool, []byte)
-	tcpWriteMutex       sync.Mutex
+	ctx             context.Context
+	ctxCancel       func()
+	remoteAddr      *net.TCPAddr // to improve speed
+	br              *bufio.Reader
+	bw              *bufio.Writer
+	sessions        map[string]*ServerSession
+	tcpFrameEnabled bool
+	tcpSession      *ServerSession
+	tcpFrameTimeout bool
+	tcpReadBuffer   *multibuffer.MultiBuffer
+	tcpProcessFunc  func(int, bool, []byte)
+	tcpWriteMutex   sync.Mutex
 
 	// in
 	sessionRemove chan *ServerSession
@@ -484,31 +482,6 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	res.Write(sc.bw)
 
 	sc.tcpWriteMutex.Unlock()
-
-	if sc.tcpFrameSetEnabled != sc.tcpFrameEnabled {
-		sc.tcpFrameEnabled = sc.tcpFrameSetEnabled
-
-		if sc.tcpFrameEnabled {
-			if sc.tcpFrameIsRecording {
-				sc.tcpFrameTimeout = true
-				sc.tcpReadBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
-				sc.tcpProcessFunc = sc.tcpProcessRecord
-			} else {
-				// when playing, tcpReadBuffer is only used to receive RTCP receiver reports,
-				// that are much smaller than RTP packets and are sent at a fixed interval.
-				// decrease RAM consumption by allocating less buffers.
-				sc.tcpReadBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
-				sc.tcpProcessFunc = sc.tcpProcessPlay
-			}
-		} else {
-			if sc.tcpFrameIsRecording {
-				sc.tcpFrameTimeout = false
-				sc.nconn.SetReadDeadline(time.Time{})
-			}
-
-			sc.tcpReadBuffer = nil
-		}
-	}
 
 	return err
 }

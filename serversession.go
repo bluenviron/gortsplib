@@ -13,6 +13,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
+	"github.com/aler9/gortsplib/pkg/multibuffer"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 )
@@ -843,8 +844,13 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		default: // TCP
 			ss.tcpConn = sc
 			ss.tcpConn.tcpSession = ss
-			ss.tcpConn.tcpFrameIsRecording = false
-			ss.tcpConn.tcpFrameSetEnabled = true
+			ss.tcpConn.tcpFrameEnabled = true
+			ss.tcpConn.tcpFrameTimeout = false
+			// when playing, tcpReadBuffer is only used to receive RTCP receiver reports,
+			// that are much smaller than RTP packets and are sent at a fixed interval.
+			// decrease RAM consumption by allocating less buffers.
+			ss.tcpConn.tcpReadBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
+			ss.tcpConn.tcpProcessFunc = sc.tcpProcessPlay
 
 			ss.writerRunning = true
 			ss.writerDone = make(chan struct{})
@@ -972,8 +978,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		default: // TCP
 			ss.tcpConn = sc
 			ss.tcpConn.tcpSession = ss
-			ss.tcpConn.tcpFrameIsRecording = true
-			ss.tcpConn.tcpFrameSetEnabled = true
+			ss.tcpConn.tcpFrameEnabled = true
+			ss.tcpConn.tcpFrameTimeout = true
+			ss.tcpConn.tcpReadBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
+			ss.tcpConn.tcpProcessFunc = sc.tcpProcessRecord
 
 			ss.writerRunning = true
 			ss.writerDone = make(chan struct{})
@@ -1040,7 +1048,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 			default: // TCP
 				ss.tcpConn.tcpSession = nil
-				ss.tcpConn.tcpFrameSetEnabled = false
+				ss.tcpConn.tcpFrameEnabled = false
+				ss.tcpConn.tcpReadBuffer = nil
 				ss.tcpConn = nil
 			}
 
@@ -1058,7 +1067,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 			default: // TCP
 				ss.tcpConn.tcpSession = nil
-				ss.tcpConn.tcpFrameSetEnabled = false
+				ss.tcpConn.tcpFrameEnabled = false
+				ss.tcpConn.tcpReadBuffer = nil
+				ss.tcpConn.nconn.SetReadDeadline(time.Time{})
 				ss.tcpConn = nil
 			}
 		}
