@@ -57,6 +57,16 @@ func (h *multicastHandler) ip() net.IP {
 func (h *multicastHandler) runWriter() {
 	defer close(h.writerDone)
 
+	rtpAddr := &net.UDPAddr{
+		IP:   h.rtpl.ip(),
+		Port: h.rtpl.port(),
+	}
+
+	rtcpAddr := &net.UDPAddr{
+		IP:   h.rtcpl.ip(),
+		Port: h.rtcpl.port(),
+	}
+
 	for {
 		tmp, ok := h.writeBuffer.Pull()
 		if !ok {
@@ -65,15 +75,9 @@ func (h *multicastHandler) runWriter() {
 		data := tmp.(trackTypePayload)
 
 		if data.isRTP {
-			h.rtpl.write(data.payload, &net.UDPAddr{
-				IP:   h.rtpl.ip(),
-				Port: h.rtpl.port(),
-			})
+			h.rtpl.write(data.payload, rtpAddr)
 		} else {
-			h.rtcpl.write(data.payload, &net.UDPAddr{
-				IP:   h.rtcpl.ip(),
-				Port: h.rtcpl.port(),
-			})
+			h.rtcpl.write(data.payload, rtcpAddr)
 		}
 	}
 }

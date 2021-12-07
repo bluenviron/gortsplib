@@ -138,9 +138,13 @@ func (s ServerSessionState) String() string {
 
 // ServerSessionSetuppedTrack is a setupped track of a ServerSession.
 type ServerSessionSetuppedTrack struct {
-	tcpChannel  int
-	udpRTPPort  int
-	udpRTCPPort int
+	tcpChannel   int
+	udpRTPPort   int
+	udpRTCPPort  int
+	udpRTPAddr   *net.UDPAddr
+	udpRTCPAddr  *net.UDPAddr
+	tcpRTPFrame  *base.InterleavedFrame
+	tcpRTCPFrame *base.InterleavedFrame
 }
 
 // ServerSessionAnnouncedTrack is an announced track of a ServerSession.
@@ -715,6 +719,18 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			sst.udpRTPPort = inTH.ClientPorts[0]
 			sst.udpRTCPPort = inTH.ClientPorts[1]
 
+			sst.udpRTPAddr = &net.UDPAddr{
+				IP:   ss.author.ip(),
+				Zone: ss.author.zone(),
+				Port: sst.udpRTPPort,
+			}
+
+			sst.udpRTCPAddr = &net.UDPAddr{
+				IP:   ss.author.ip(),
+				Zone: ss.author.zone(),
+				Port: sst.udpRTCPPort,
+			}
+
 			th.Protocol = headers.TransportProtocolUDP
 			de := headers.TransportDeliveryUnicast
 			th.Delivery = &de
@@ -733,6 +749,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		default: // TCP
 			sst.tcpChannel = inTH.InterleavedIDs[0]
+
+			sst.tcpRTPFrame = &base.InterleavedFrame{
+				Channel: sst.tcpChannel,
+			}
+
+			sst.tcpRTCPFrame = &base.InterleavedFrame{
+				Channel: sst.tcpChannel + 1,
+			}
 
 			if ss.tcpTracksByChannel == nil {
 				ss.tcpTracksByChannel = make(map[int]int)
@@ -1125,36 +1149,28 @@ func (ss *ServerSession) runWriter() {
 	if *ss.setuppedTransport == TransportUDP {
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
-				ss.s.udpRTPListener.write(payload, &net.UDPAddr{
-					IP:   ss.author.ip(),
-					Zone: ss.author.zone(),
-					Port: ss.setuppedTracks[trackID].udpRTPPort,
-				})
+				ss.s.udpRTPListener.write(payload, ss.setuppedTracks[trackID].udpRTPAddr)
 			} else {
-				ss.s.udpRTCPListener.write(payload, &net.UDPAddr{
-					IP:   ss.author.ip(),
-					Zone: ss.author.zone(),
-					Port: ss.setuppedTracks[trackID].udpRTCPPort,
-				})
+				ss.s.udpRTCPListener.write(payload, ss.setuppedTracks[trackID].udpRTCPAddr)
 			}
 		}
 	} else {
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
+				f := ss.setuppedTracks[trackID].tcpRTPFrame
+				f.Payload = payload
+
 				ss.tcpConn.tcpWriteMutex.Lock()
 				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				(&base.InterleavedFrame{
-					Channel: ss.setuppedTracks[trackID].tcpChannel,
-					Payload: payload,
-				}).Write(ss.tcpConn.bw)
+				f.Write(ss.tcpConn.bw)
 				ss.tcpConn.tcpWriteMutex.Unlock()
 			} else {
+				f := ss.setuppedTracks[trackID].tcpRTCPFrame
+				f.Payload = payload
+
 				ss.tcpConn.tcpWriteMutex.Lock()
 				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				(&base.InterleavedFrame{
-					Channel: ss.setuppedTracks[trackID].tcpChannel + 1,
-					Payload: payload,
-				}).Write(ss.tcpConn.bw)
+				f.Write(ss.tcpConn.bw)
 				ss.tcpConn.tcpWriteMutex.Unlock()
 			}
 		}
