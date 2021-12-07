@@ -549,7 +549,6 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 				sc.nconn.SetReadDeadline(time.Time{})
 			}
 
-			sc.tcpFrameEnabled = false
 			sc.tcpFrameWriteBuffer.Close()
 			<-sc.tcpFrameBackgroundWriteDone
 			sc.tcpFrameWriteBuffer.Reset()
