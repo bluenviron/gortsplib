@@ -1798,8 +1798,7 @@ func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
 		return c.tracks[trackID].udpRTCPListener.write(payload)
 
 	default: // TCP
-		channel := c.tracks[trackID].tcpChannel
-		channel++
+		channel := c.tracks[trackID].tcpChannel + 1
 
 		// a mutex is needed here since bufio.Writer is not thread safe.
 		c.tcpWriteMutex.Lock()
