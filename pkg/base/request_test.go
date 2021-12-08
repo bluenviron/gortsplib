@@ -143,19 +143,6 @@ func TestRequestRead(t *testing.T) {
 	}
 }
 
-func TestRequestWrite(t *testing.T) {
-	for _, ca := range casesRequest {
-		t.Run(ca.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			bw := bufio.NewWriter(&buf)
-			err := ca.req.Write(bw)
-			require.NoError(t, err)
-			// do NOT call flush(), write() must have already done it
-			require.Equal(t, ca.byts, buf.Bytes())
-		})
-	}
-}
-
 func TestRequestReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -231,35 +218,12 @@ func TestRequestReadErrors(t *testing.T) {
 	}
 }
 
-func TestRequestWriteErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		cap  int
-	}{
-		{
-			"first line",
-			3,
-		},
-		{
-			"header",
-			53,
-		},
-		{
-			"body",
-			80,
-		},
-	} {
+func TestRequestWrite(t *testing.T) {
+	for _, ca := range casesRequest {
 		t.Run(ca.name, func(t *testing.T) {
-			bw := bufio.NewWriterSize(&limitedBuffer{cap: ca.cap}, 1)
-			err := Request{
-				Method: "ANNOUNCE",
-				URL:    mustParseURL("rtsp://example.com/media.mp4"),
-				Header: Header{
-					"CSeq": HeaderValue{"7"},
-				},
-				Body: []byte("abc"),
-			}.Write(bw)
-			require.EqualError(t, err, "capacity reached")
+			var buf bytes.Buffer
+			ca.req.Write(&buf)
+			require.Equal(t, ca.byts, buf.Bytes())
 		})
 	}
 }

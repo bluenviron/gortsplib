@@ -45,19 +45,6 @@ func TestInterleavedFrameRead(t *testing.T) {
 	}
 }
 
-func TestInterleavedFrameWrite(t *testing.T) {
-	for _, ca := range casesInterleavedFrame {
-		t.Run(ca.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			bw := bufio.NewWriter(&buf)
-			err := ca.dec.Write(bw)
-			require.NoError(t, err)
-			bw.Flush()
-			require.Equal(t, ca.enc, buf.Bytes())
-		})
-	}
-}
-
 func TestInterleavedFrameReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -94,27 +81,12 @@ func TestInterleavedFrameReadErrors(t *testing.T) {
 	}
 }
 
-func TestInterleavedFrameWriteErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		cap  int
-	}{
-		{
-			"header",
-			3,
-		},
-		{
-			"content",
-			6,
-		},
-	} {
+func TestInterleavedFrameWrite(t *testing.T) {
+	for _, ca := range casesInterleavedFrame {
 		t.Run(ca.name, func(t *testing.T) {
-			bw := bufio.NewWriterSize(&limitedBuffer{cap: ca.cap}, 1)
-			err := InterleavedFrame{
-				Channel: 3,
-				Payload: []byte{0x01, 0x02, 0x03, 0x04},
-			}.Write(bw)
-			require.EqualError(t, err, "capacity reached")
+			var buf bytes.Buffer
+			ca.dec.Write(&buf)
+			require.Equal(t, ca.enc, buf.Bytes())
 		})
 	}
 }

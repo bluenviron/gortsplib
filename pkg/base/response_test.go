@@ -105,19 +105,6 @@ func TestResponseRead(t *testing.T) {
 	}
 }
 
-func TestResponseWrite(t *testing.T) {
-	for _, c := range casesResponse {
-		t.Run(c.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			bw := bufio.NewWriter(&buf)
-			err := c.res.Write(bw)
-			require.NoError(t, err)
-			// do NOT call flush(), write() must have already done it
-			require.Equal(t, c.byts, buf.Bytes())
-		})
-	}
-}
-
 func TestResponseReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -188,35 +175,12 @@ func TestResponseReadErrors(t *testing.T) {
 	}
 }
 
-func TestResponseWriteErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		cap  int
-	}{
-		{
-			"first line",
-			14,
-		},
-		{
-			"header",
-			21,
-		},
-		{
-			"body",
-			49,
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			bw := bufio.NewWriterSize(&limitedBuffer{cap: ca.cap}, 1)
-			err := Response{
-				StatusCode:    200,
-				StatusMessage: "OK",
-				Header: Header{
-					"CSeq": HeaderValue{"2"},
-				},
-				Body: []byte("abc"),
-			}.Write(bw)
-			require.EqualError(t, err, "capacity reached")
+func TestResponseWrite(t *testing.T) {
+	for _, c := range casesResponse {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			c.res.Write(&buf)
+			require.Equal(t, c.byts, buf.Bytes())
 		})
 	}
 }
@@ -244,9 +208,7 @@ func TestResponseWriteAutoFillStatus(t *testing.T) {
 	)
 
 	var buf bytes.Buffer
-	bw := bufio.NewWriter(&buf)
-	err := res.Write(bw)
-	require.NoError(t, err)
+	res.Write(&buf)
 	require.Equal(t, byts, buf.Bytes())
 }
 

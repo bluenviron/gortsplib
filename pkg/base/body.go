@@ -2,6 +2,7 @@ package base
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -35,15 +36,10 @@ func (b *body) read(header Header, rb *bufio.Reader) error {
 	return nil
 }
 
-func (b body) write(bw *bufio.Writer) error {
+func (b body) write(bb *bytes.Buffer) {
 	if len(b) == 0 {
-		return nil
+		return
 	}
 
-	_, err := bw.Write(b)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	bb.Write(b)
 }

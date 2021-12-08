@@ -116,19 +116,6 @@ func TestHeaderRead(t *testing.T) {
 	}
 }
 
-func TestHeaderWrite(t *testing.T) {
-	for _, ca := range casesHeader {
-		t.Run(ca.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			bw := bufio.NewWriter(&buf)
-			err := ca.header.write(bw)
-			require.NoError(t, err)
-			bw.Flush()
-			require.Equal(t, ca.enc, buf.Bytes())
-		})
-	}
-}
-
 func TestHeaderReadErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -186,26 +173,12 @@ func TestHeaderReadErrors(t *testing.T) {
 	}
 }
 
-func TestHeaderWriteErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		cap  int
-	}{
-		{
-			"values",
-			3,
-		},
-		{
-			"final newline",
-			12,
-		},
-	} {
+func TestHeaderWrite(t *testing.T) {
+	for _, ca := range casesHeader {
 		t.Run(ca.name, func(t *testing.T) {
-			bw := bufio.NewWriterSize(&limitedBuffer{cap: ca.cap}, 1)
-			err := Header{
-				"Value": HeaderValue{"key"},
-			}.write(bw)
-			require.EqualError(t, err, "capacity reached")
+			var buf bytes.Buffer
+			ca.header.write(&buf)
+			require.Equal(t, ca.enc, buf.Bytes())
 		})
 	}
 }

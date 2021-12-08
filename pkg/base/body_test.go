@@ -3,24 +3,10 @@ package base
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-type limitedBuffer struct {
-	cap int
-	n   int
-}
-
-func (b *limitedBuffer) Write(p []byte) (int, error) {
-	b.n += len(p)
-	if b.n > b.cap {
-		return 0, fmt.Errorf("capacity reached")
-	}
-	return len(p), nil
-}
 
 var casesBody = []struct {
 	name string
@@ -48,19 +34,6 @@ func TestBodyRead(t *testing.T) {
 			err := p.read(ca.h, bufio.NewReader(bytes.NewReader(ca.byts)))
 			require.NoError(t, err)
 			require.Equal(t, ca.byts, []byte(p))
-		})
-	}
-}
-
-func TestBodyWrite(t *testing.T) {
-	for _, ca := range casesBody {
-		t.Run(ca.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			bw := bufio.NewWriter(&buf)
-			err := body(ca.byts).write(bw)
-			require.NoError(t, err)
-			bw.Flush()
-			require.Equal(t, ca.byts, buf.Bytes())
 		})
 	}
 }
@@ -105,8 +78,12 @@ func TestBodyReadErrors(t *testing.T) {
 	}
 }
 
-func TestBodyWriteErrors(t *testing.T) {
-	bw := bufio.NewWriterSize(&limitedBuffer{cap: 3}, 1)
-	err := body([]byte("1234")).write(bw)
-	require.EqualError(t, err, "capacity reached")
+func TestBodyWrite(t *testing.T) {
+	for _, ca := range casesBody {
+		t.Run(ca.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			body(ca.byts).write(&buf)
+			require.Equal(t, ca.byts, buf.Bytes())
+		})
+	}
 }

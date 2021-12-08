@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"net"
 	"strings"
@@ -93,14 +94,15 @@ func TestClientSession(t *testing.T) {
 
 		conn, err := l.Accept()
 		require.NoError(t, err)
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 		defer conn.Close()
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -108,10 +110,11 @@ func TestClientSession(t *testing.T) {
 				}, ", ")},
 				"Session": base.HeaderValue{"123456"},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -124,14 +127,15 @@ func TestClientSession(t *testing.T) {
 
 		tracks := cloneAndClearTracks(Tracks{track})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Session":      base.HeaderValue{"123456"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 
@@ -163,38 +167,41 @@ func TestClientAuth(t *testing.T) {
 
 		conn, err := l.Accept()
 		require.NoError(t, err)
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 		defer conn.Close()
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
 					string(base.Describe),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
 		v := auth.NewValidator("myuser", "mypass", nil)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusUnauthorized,
 			Header: base.Header{
 				"WWW-Authenticate": v.Header(),
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -208,13 +215,14 @@ func TestClientAuth(t *testing.T) {
 
 		tracks := cloneAndClearTracks(Tracks{track})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 
@@ -247,23 +255,25 @@ func TestClientDescribeCharset(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
 					string(base.Describe),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -273,14 +283,15 @@ func TestClientDescribeCharset(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: Tracks{track1}.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 
@@ -349,9 +360,9 @@ func TestClientCloseDuringRequest(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 

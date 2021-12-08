@@ -9,6 +9,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -34,7 +35,6 @@ import (
 
 const (
 	clientReadBufferSize          = 4096
-	clientWriteBufferSize         = 4096
 	clientUDPKernelReadBufferSize = 0x80000 // same size as gstreamer's rtspsrc
 )
 
@@ -200,9 +200,8 @@ type Client struct {
 	ctx                context.Context
 	ctxCancel          func()
 	state              clientState
-	nconn              net.Conn
+	conn               net.Conn
 	br                 *bufio.Reader
-	bw                 *bufio.Writer
 	session            string
 	sender             *auth.Sender
 	cseq               int
@@ -213,7 +212,6 @@ type Client struct {
 	tracksByChannel    map[int]int
 	lastRange          *headers.Range
 	tcpReadBuffer      *multibuffer.MultiBuffer
-	tcpWriteMutex      sync.Mutex
 	writeMutex         sync.RWMutex // publish
 	writeFrameAllowed  bool         // publish
 	udpReportTimer     *time.Timer
@@ -609,10 +607,10 @@ func (c *Client) doClose(isClosing bool) {
 		}
 	}
 
-	if c.nconn != nil {
+	if c.conn != nil {
 		c.connCloserStop()
-		c.nconn.Close()
-		c.nconn = nil
+		c.conn.Close()
+		c.conn = nil
 	}
 }
 
@@ -727,7 +725,7 @@ func (c *Client) playRecordStart() {
 	// for some reason, SetReadDeadline() must always be called in the same
 	// goroutine, otherwise Read() freezes.
 	// therefore, we disable the deadline and perform a check with a ticker.
-	c.nconn.SetReadDeadline(time.Time{})
+	c.conn.SetReadDeadline(time.Time{})
 
 	// start reader
 	c.readerErr = make(chan error)
@@ -768,8 +766,8 @@ func (c *Client) runReader() {
 				}
 			}
 
-			frame := base.InterleavedFrame{}
-			res := base.Response{}
+			var frame base.InterleavedFrame
+			var res base.Response
 
 			for {
 				frame.Payload = c.tcpReadBuffer.Next()
@@ -801,7 +799,7 @@ func (c *Client) runReader() {
 func (c *Client) playRecordStop(isClosing bool) {
 	// stop reader
 	if c.readerErr != nil {
-		c.nconn.SetReadDeadline(time.Now())
+		c.conn.SetReadDeadline(time.Now())
 		<-c.readerErr
 	}
 
@@ -847,7 +845,7 @@ func (c *Client) connOpen() error {
 		return err
 	}
 
-	conn := func() net.Conn {
+	c.conn = func() net.Conn {
 		if c.scheme == "rtsps" {
 			tlsConfig := c.TLSConfig
 
@@ -863,9 +861,7 @@ func (c *Client) connOpen() error {
 		return nconn
 	}()
 
-	c.nconn = nconn
-	c.br = bufio.NewReaderSize(conn, clientReadBufferSize)
-	c.bw = bufio.NewWriterSize(conn, clientWriteBufferSize)
+	c.br = bufio.NewReaderSize(c.conn, clientReadBufferSize)
 	c.connCloserStart()
 	return nil
 }
@@ -877,7 +873,7 @@ func (c *Client) connCloserStart() {
 		defer close(c.connCloserDone)
 		select {
 		case <-c.ctx.Done():
-			c.nconn.Close()
+			c.conn.Close()
 
 		case <-c.connCloserTerminate:
 		}
@@ -893,7 +889,7 @@ func (c *Client) connCloserStop() {
 }
 
 func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error) {
-	if c.nconn == nil {
+	if c.conn == nil {
 		err := c.connOpen()
 		if err != nil {
 			return nil, err
@@ -924,8 +920,11 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 	var res base.Response
 
 	err := func() error {
-		c.nconn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-		err := req.Write(c.bw)
+		var buf bytes.Buffer
+		req.Write(&buf)
+
+		c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
+		_, err := c.conn.Write(buf.Bytes())
 		if err != nil {
 			return err
 		}
@@ -934,7 +933,7 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 			return nil
 		}
 
-		c.nconn.SetReadDeadline(time.Now().Add(c.ReadTimeout))
+		c.conn.SetReadDeadline(time.Now().Add(c.ReadTimeout))
 
 		if c.tcpReadBuffer != nil {
 			// read the response and ignore interleaved frames in between;
@@ -1449,8 +1448,8 @@ func (c *Client) doSetup(
 
 	switch proto {
 	case TransportUDP:
-		rtpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
+		rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteZone = c.conn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtpListener.remotePort = thRes.ServerPorts[0]
 		}
@@ -1459,13 +1458,13 @@ func (c *Client) doSetup(
 		cct.udpRTPListener = rtpListener
 
 		rtpListener.remoteWriteAddr = &net.UDPAddr{
-			IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
+			IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
 			Zone: rtpListener.remoteZone,
 			Port: rtpListener.remotePort,
 		}
 
-		rtcpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
+		rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteZone = c.conn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtcpListener.remotePort = thRes.ServerPorts[1]
 		}
@@ -1474,13 +1473,13 @@ func (c *Client) doSetup(
 		cct.udpRTCPListener = rtcpListener
 
 		rtcpListener.remoteWriteAddr = &net.UDPAddr{
-			IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
+			IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
 			Zone: rtcpListener.remoteZone,
 			Port: rtcpListener.remotePort,
 		}
 
 	case TransportUDPMulticast:
-		rtpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = ""
 		rtpListener.remotePort = thRes.Ports[0]
 		rtpListener.trackID = trackID
@@ -1493,7 +1492,7 @@ func (c *Client) doSetup(
 			Port: rtpListener.remotePort,
 		}
 
-		rtcpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = ""
 		rtcpListener.remotePort = thRes.Ports[1]
 		rtcpListener.trackID = trackID
@@ -1812,6 +1811,8 @@ func (c *Client) runWriter() {
 		}
 
 	default: // TCP
+		var buf bytes.Buffer
+
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
 				if c.tracks[trackID].rtcpSender != nil {
@@ -1820,19 +1821,17 @@ func (c *Client) runWriter() {
 
 				f := c.tracks[trackID].tcpRTPFrame
 				f.Payload = payload
+				f.Write(&buf)
 
-				c.tcpWriteMutex.Lock()
-				c.nconn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-				f.Write(c.bw)
-				c.tcpWriteMutex.Unlock()
+				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
+				c.conn.Write(buf.Bytes())
 			} else {
 				f := c.tracks[trackID].tcpRTCPFrame
 				f.Payload = payload
+				f.Write(&buf)
 
-				c.tcpWriteMutex.Lock()
-				c.nconn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-				f.Write(c.bw)
-				c.tcpWriteMutex.Unlock()
+				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
+				c.conn.Write(buf.Bytes())
 			}
 		}
 	}

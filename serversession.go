@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -183,8 +184,9 @@ type ServerSession struct {
 	writerDone chan struct{}
 
 	// in
-	request    chan sessionRequestReq
-	connRemove chan *ServerConn
+	request     chan sessionRequestReq
+	connRemove  chan *ServerConn
+	startWriter chan struct{}
 }
 
 func newServerSession(
@@ -206,6 +208,7 @@ func newServerSession(
 		udpReceiverReportTimer: emptyTimer(),
 		request:                make(chan sessionRequestReq),
 		connRemove:             make(chan *ServerConn),
+		startWriter:            make(chan struct{}),
 	}
 
 	s.wg.Add(1)
@@ -312,6 +315,15 @@ func (ss *ServerSession) run() {
 					if len(ss.conns) == 0 {
 						return liberrors.ErrServerSessionNotInUse{}
 					}
+				}
+
+			case <-ss.startWriter:
+				if !ss.writerRunning && (ss.state == ServerSessionStatePublish ||
+					ss.state == ServerSessionStateRead) &&
+					*ss.setuppedTransport == TransportTCP {
+					ss.writerRunning = true
+					ss.writerDone = make(chan struct{})
+					go ss.runWriter()
 				}
 
 			case <-ss.udpCheckStreamTimer.C:
@@ -876,9 +888,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.tcpConn.tcpProcessFunc = sc.tcpProcessPlay
 
 			ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
-			ss.writerRunning = true
-			ss.writerDone = make(chan struct{})
-			go ss.runWriter()
+			// run writer after sending the response
+			ss.tcpConn.tcpWriterRunning = false
 		}
 
 		// add RTP-Info
@@ -1010,9 +1021,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			// that are much smaller than RTP packets and are sent at a fixed interval.
 			// decrease RAM consumption by allocating less buffers.
 			ss.writeBuffer = ringbuffer.New(uint64(8))
-			ss.writerRunning = true
-			ss.writerDone = make(chan struct{})
-			go ss.runWriter()
+			// run writer after sending the response
+			ss.tcpConn.tcpWriterRunning = false
 		}
 
 		return res, err
@@ -1096,7 +1106,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.tcpConn.tcpSession = nil
 				ss.tcpConn.tcpFrameEnabled = false
 				ss.tcpConn.tcpReadBuffer = nil
-				ss.tcpConn.nconn.SetReadDeadline(time.Time{})
+				ss.tcpConn.conn.SetReadDeadline(time.Time{})
 				ss.tcpConn = nil
 			}
 		}
@@ -1158,23 +1168,23 @@ func (ss *ServerSession) runWriter() {
 			}
 		}
 	} else {
+		var buf bytes.Buffer
+
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
 				f := ss.setuppedTracks[trackID].tcpRTPFrame
 				f.Payload = payload
+				f.Write(&buf)
 
-				ss.tcpConn.tcpWriteMutex.Lock()
-				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				f.Write(ss.tcpConn.bw)
-				ss.tcpConn.tcpWriteMutex.Unlock()
+				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
+				ss.tcpConn.conn.Write(buf.Bytes())
 			} else {
 				f := ss.setuppedTracks[trackID].tcpRTCPFrame
 				f.Payload = payload
+				f.Write(&buf)
 
-				ss.tcpConn.tcpWriteMutex.Lock()
-				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				f.Write(ss.tcpConn.bw)
-				ss.tcpConn.tcpWriteMutex.Unlock()
+				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
+				ss.tcpConn.conn.Write(buf.Bytes())
 			}
 		}
 	}

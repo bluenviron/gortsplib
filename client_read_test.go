@@ -47,13 +47,14 @@ func TestClientReadTracks(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -62,28 +63,30 @@ func TestClientReadTracks(t *testing.T) {
 					string(base.Play),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		tracks := cloneAndClearTracks(Tracks{track1, track2, track3})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
 		for i := 0; i < 3; i++ {
-			req, err := readRequest(bconn.Reader)
+			req, err := readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 			require.Equal(t, mustParseURL(fmt.Sprintf("rtsp://localhost:8554/teststream/trackID=%d", i)), req.URL)
@@ -102,33 +105,36 @@ func TestClientReadTracks(t *testing.T) {
 				ServerPorts: &[2]int{34556 + i*2, 34557 + i*2},
 			}
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Transport": th.Write(),
 				},
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 		}
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 
@@ -201,14 +207,15 @@ func TestClientRead(t *testing.T) {
 				conn, err := l.Accept()
 				require.NoError(t, err)
 				defer conn.Close()
-				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+				br := bufio.NewReader(conn)
+				var bb bytes.Buffer
 
-				req, err := readRequest(bconn.Reader)
+				req, err := readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -217,10 +224,11 @@ func TestClientRead(t *testing.T) {
 							string(base.Play),
 						}, ", ")},
 					},
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
@@ -235,17 +243,18 @@ func TestClientRead(t *testing.T) {
 					Value: "trackID=0",
 				})
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{scheme + "://" + listenIP + ":8554/test/stream?param=value/"},
 					},
 					Body: Tracks{track}.Write(false),
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/trackID=0"), req.URL)
@@ -318,23 +327,25 @@ func TestClientRead(t *testing.T) {
 					th.InterleavedIDs = &[2]int{0, 1}
 				}
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Write(),
 					},
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
 				require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
 				// server -> client
@@ -354,10 +365,11 @@ func TestClientRead(t *testing.T) {
 					})
 
 				case "tcp", "tls":
-					err = base.InterleavedFrame{
+					base.InterleavedFrame{
 						Channel: 0,
 						Payload: []byte{0x01, 0x02, 0x03, 0x04},
-					}.Write(bconn.Writer)
+					}.Write(&bb)
+					_, err = conn.Write(bb.Bytes())
 					require.NoError(t, err)
 				}
 
@@ -378,21 +390,22 @@ func TestClientRead(t *testing.T) {
 				case "tcp", "tls":
 					var f base.InterleavedFrame
 					f.Payload = make([]byte, 2048)
-					err := f.Read(bconn.Reader)
+					err := f.Read(br)
 					require.NoError(t, err)
 					require.Equal(t, 1, f.Channel)
 					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
 					close(packetRecv)
 				}
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 			}()
 
@@ -459,14 +472,15 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -475,10 +489,11 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 					string(base.Play),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -493,17 +508,18 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 			Value: "trackID=0",
 		})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: Tracks{track}.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -517,29 +533,32 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 			InterleavedIDs: &[2]int{0, 1},
 		}
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Write(),
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 		require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		err = base.InterleavedFrame{
+		base.InterleavedFrame{
 			Channel: 0,
 			Payload: refPayload,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 
@@ -579,9 +598,10 @@ func TestClientReadPartial(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream"), req.URL)
@@ -598,17 +618,18 @@ func TestClientReadPartial(t *testing.T) {
 
 		tracks := cloneAndClearTracks(Tracks{track1, track2})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://" + listenIP + ":8554/teststream/"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/trackID=1"), req.URL)
@@ -627,38 +648,42 @@ func TestClientReadPartial(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Write(),
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		err = base.InterleavedFrame{
+		base.InterleavedFrame{
 			Channel: 0,
 			Payload: []byte{0x01, 0x02, 0x03, 0x04},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 
@@ -708,13 +733,14 @@ func TestClientReadNoContentBase(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -723,10 +749,11 @@ func TestClientReadNoContentBase(t *testing.T) {
 					string(base.Play),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -738,16 +765,17 @@ func TestClientReadNoContentBase(t *testing.T) {
 
 		tracks := cloneAndClearTracks(Tracks{track})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -766,32 +794,35 @@ func TestClientReadNoContentBase(t *testing.T) {
 			ServerPorts: &[2]int{34556, 34557},
 		}
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Write(),
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 
@@ -824,13 +855,14 @@ func TestClientReadAnyPort(t *testing.T) {
 				conn, err := l.Accept()
 				require.NoError(t, err)
 				defer conn.Close()
-				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+				br := bufio.NewReader(conn)
+				var bb bytes.Buffer
 
-				req, err := readRequest(bconn.Reader)
+				req, err := readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -839,10 +871,11 @@ func TestClientReadAnyPort(t *testing.T) {
 							string(base.Play),
 						}, ", ")},
 					},
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
@@ -853,17 +886,18 @@ func TestClientReadAnyPort(t *testing.T) {
 
 				tracks := cloneAndClearTracks(Tracks{track})
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
 					Body: tracks.Write(false),
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -879,7 +913,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				require.NoError(t, err)
 				defer l1b.Close()
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": headers.Transport{
@@ -906,16 +940,18 @@ func TestClientReadAnyPort(t *testing.T) {
 							}(),
 						}.Write(),
 					},
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
 				time.Sleep(500 * time.Millisecond)
@@ -977,13 +1013,14 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			conn, err := l.Accept()
 			require.NoError(t, err)
 			defer conn.Close()
-			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+			br := bufio.NewReader(conn)
+			var bb bytes.Buffer
 
-			req, err := readRequest(bconn.Reader)
+			req, err := readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Options, req.Method)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Public": base.HeaderValue{strings.Join([]string{
@@ -992,10 +1029,11 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 						string(base.Play),
 					}, ", ")},
 				},
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
@@ -1006,26 +1044,28 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			tracks := cloneAndClearTracks(Tracks{track})
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Content-Type": base.HeaderValue{"application/sdp"},
 					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
 				Body: tracks.Write(false),
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusUnsupportedTransport,
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 
@@ -1034,7 +1074,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Transport": headers.Transport{
@@ -1046,22 +1086,25 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 						InterleavedIDs: &[2]int{0, 1},
 					}.Write(),
 				},
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Play, req.Method)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			err = base.InterleavedFrame{
+			base.InterleavedFrame{
 				Channel: 0,
 				Payload: []byte("\x00\x00\x00\x00"),
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 		}()
 
@@ -1092,13 +1135,14 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			conn, err := l.Accept()
 			require.NoError(t, err)
-			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+			br := bufio.NewReader(conn)
+			var bb bytes.Buffer
 
-			req, err := readRequest(bconn.Reader)
+			req, err := readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Options, req.Method)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Public": base.HeaderValue{strings.Join([]string{
@@ -1107,24 +1151,26 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 						string(base.Play),
 					}, ", ")},
 				},
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
 			v := auth.NewValidator("myuser", "mypass", nil)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusUnauthorized,
 				Header: base.Header{
 					"WWW-Authenticate": v.Header(),
 				},
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
@@ -1138,17 +1184,18 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			tracks := cloneAndClearTracks(Tracks{track})
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Content-Type": base.HeaderValue{"application/sdp"},
 					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
 				Body: tracks.Write(false),
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 			require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -1167,53 +1214,57 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				ClientPorts: inTH.ClientPorts,
 			}
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Transport": th.Write(),
 				},
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Play, req.Method)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Teardown, req.Method)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
 			conn.Close()
 
 			conn, err = l.Accept()
 			require.NoError(t, err)
-			bconn = bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+			br = bufio.NewReader(conn)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 
 			v = auth.NewValidator("myuser", "mypass", nil)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusUnauthorized,
 				Header: base.Header{
 					"WWW-Authenticate": v.Header(),
 				},
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 			require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -1234,35 +1285,40 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				InterleavedIDs: inTH.InterleavedIDs,
 			}
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Transport": th.Write(),
 				},
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Play, req.Method)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
 			base.InterleavedFrame{
 				Channel: 0,
 				Payload: []byte("\x00\x00\x00\x00"),
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
+			require.NoError(t, err)
 
-			req, err = readRequest(bconn.Reader)
+			req, err = readRequest(br)
 			require.NoError(t, err)
 			require.Equal(t, base.Teardown, req.Method)
 
-			err = base.Response{
+			base.Response{
 				StatusCode: base.StatusOK,
-			}.Write(bconn.Writer)
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
 			conn.Close()
@@ -1298,13 +1354,14 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -1313,10 +1370,11 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 					string(base.Play),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -1328,17 +1386,18 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 
 		tracks := cloneAndClearTracks(Tracks{track1})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -1356,38 +1415,42 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 			InterleavedIDs: &[2]int{2, 3},
 		}
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Write(),
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		err = base.InterleavedFrame{
+		base.InterleavedFrame{
 			Channel: 2,
 			Payload: []byte{0x01, 0x02, 0x03, 0x04},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 
@@ -1423,13 +1486,14 @@ func TestClientReadRedirect(t *testing.T) {
 
 		conn, err := l.Accept()
 		require.NoError(t, err)
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -1438,19 +1502,21 @@ func TestClientReadRedirect(t *testing.T) {
 					string(base.Play),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusMovedPermanently,
 			Header: base.Header{
 				"Location": base.HeaderValue{"rtsp://localhost:8554/test"},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
 		conn.Close()
@@ -1458,13 +1524,13 @@ func TestClientReadRedirect(t *testing.T) {
 		conn, err = l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn = bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br = bufio.NewReader(conn)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -1473,10 +1539,11 @@ func TestClientReadRedirect(t *testing.T) {
 					string(base.Play),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -1487,17 +1554,18 @@ func TestClientReadRedirect(t *testing.T) {
 
 		tracks := cloneAndClearTracks(Tracks{track})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -1505,7 +1573,7 @@ func TestClientReadRedirect(t *testing.T) {
 		err = th.Read(req.Header["Transport"])
 		require.NoError(t, err)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": headers.Transport{
@@ -1518,16 +1586,18 @@ func TestClientReadRedirect(t *testing.T) {
 					ServerPorts: &[2]int{34556, 34557},
 				}.Write(),
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
 		time.Sleep(500 * time.Millisecond)
@@ -1558,7 +1628,7 @@ func TestClientReadRedirect(t *testing.T) {
 }
 
 func TestClientReadPause(t *testing.T) {
-	writeFrames := func(inTH *headers.Transport, bconn *bufio.ReadWriter) (chan struct{}, chan struct{}) {
+	writeFrames := func(inTH *headers.Transport, conn net.Conn, br *bufio.Reader) (chan struct{}, chan struct{}) {
 		writerTerminate := make(chan struct{})
 		writerDone := make(chan struct{})
 
@@ -1572,6 +1642,7 @@ func TestClientReadPause(t *testing.T) {
 				require.NoError(t, err)
 				defer l1.Close()
 			}
+			var bb bytes.Buffer
 
 			t := time.NewTicker(50 * time.Millisecond)
 			defer t.Stop()
@@ -1588,7 +1659,8 @@ func TestClientReadPause(t *testing.T) {
 						base.InterleavedFrame{
 							Channel: 0,
 							Payload: []byte("\x00\x00\x00\x00"),
-						}.Write(bconn.Writer)
+						}.Write(&bb)
+						conn.Write(bb.Bytes())
 					}
 
 				case <-writerTerminate:
@@ -1617,13 +1689,14 @@ func TestClientReadPause(t *testing.T) {
 				conn, err := l.Accept()
 				require.NoError(t, err)
 				defer conn.Close()
-				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+				br := bufio.NewReader(conn)
+				var bb bytes.Buffer
 
-				req, err := readRequest(bconn.Reader)
+				req, err := readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -1632,10 +1705,11 @@ func TestClientReadPause(t *testing.T) {
 							string(base.Play),
 						}, ", ")},
 					},
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
@@ -1646,17 +1720,18 @@ func TestClientReadPause(t *testing.T) {
 
 				tracks := cloneAndClearTracks(Tracks{track})
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
 					Body: tracks.Write(false),
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -1680,58 +1755,63 @@ func TestClientReadPause(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Write(),
 					},
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				writerTerminate, writerDone := writeFrames(&inTH, bconn)
+				writerTerminate, writerDone := writeFrames(&inTH, conn, br)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
 				close(writerTerminate)
 				<-writerDone
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				writerTerminate, writerDone = writeFrames(&inTH, bconn)
+				writerTerminate, writerDone = writeFrames(&inTH, conn, br)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
 				close(writerTerminate)
 				<-writerDone
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 			}()
 
@@ -1789,13 +1869,14 @@ func TestClientReadRTCPReport(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -1804,10 +1885,11 @@ func TestClientReadRTCPReport(t *testing.T) {
 					string(base.Play),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -1818,17 +1900,18 @@ func TestClientReadRTCPReport(t *testing.T) {
 
 		tracks := cloneAndClearTracks(Tracks{track})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -1844,7 +1927,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		defer l2.Close()
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": headers.Transport{
@@ -1857,16 +1940,18 @@ func TestClientReadRTCPReport(t *testing.T) {
 					ClientPorts: inTH.ClientPorts,
 				}.Write(),
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
 		// skip firewall opening
@@ -1922,13 +2007,15 @@ func TestClientReadRTCPReport(t *testing.T) {
 
 		close(reportReceived)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
 		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
 	}()
 
 	c := &Client{
@@ -1961,13 +2048,14 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				conn, err := l.Accept()
 				require.NoError(t, err)
 				defer conn.Close()
-				bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+				br := bufio.NewReader(conn)
+				var bb bytes.Buffer
 
-				req, err := readRequest(bconn.Reader)
+				req, err := readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -1976,10 +2064,11 @@ func TestClientReadErrorTimeout(t *testing.T) {
 							string(base.Play),
 						}, ", ")},
 					},
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
@@ -1990,17 +2079,18 @@ func TestClientReadErrorTimeout(t *testing.T) {
 
 				tracks := cloneAndClearTracks(Tracks{track})
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
 					Body: tracks.Write(false),
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -2030,21 +2120,23 @@ func TestClientReadErrorTimeout(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Write(),
 					},
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
 				if transport == "udp" || transport == "auto" {
@@ -2055,13 +2147,14 @@ func TestClientReadErrorTimeout(t *testing.T) {
 					})
 				}
 
-				req, err = readRequest(bconn.Reader)
+				req, err = readRequest(br)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = base.Response{
+				base.Response{
 					StatusCode: base.StatusOK,
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 			}()
 
@@ -2111,13 +2204,14 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -2126,10 +2220,11 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 					string(base.Play),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -2140,17 +2235,18 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 
 		tracks := cloneAndClearTracks(Tracks{track})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -2167,42 +2263,47 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		th.Protocol = headers.TransportProtocolTCP
 		th.InterleavedIDs = inTH.InterleavedIDs
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Write(),
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		err = base.InterleavedFrame{
+		base.InterleavedFrame{
 			Channel: 6,
 			Payload: []byte{0x01, 0x02, 0x03, 0x04},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		err = base.InterleavedFrame{
+		base.InterleavedFrame{
 			Channel: 0,
 			Payload: []byte{0x05, 0x06, 0x07, 0x08},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 
@@ -2238,13 +2339,14 @@ func TestClientReadSeek(t *testing.T) {
 		conn, err := l.Accept()
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
 
-		req, err := readRequest(bconn.Reader)
+		req, err := readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -2253,10 +2355,11 @@ func TestClientReadSeek(t *testing.T) {
 					string(base.Play),
 				}, ", ")},
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -2267,17 +2370,18 @@ func TestClientReadSeek(t *testing.T) {
 
 		tracks := cloneAndClearTracks(Tracks{track})
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: tracks.Write(false),
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -2294,15 +2398,16 @@ func TestClientReadSeek(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Write(),
 			},
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
@@ -2315,21 +2420,23 @@ func TestClientReadSeek(t *testing.T) {
 			},
 		}, ra)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Pause, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
@@ -2341,18 +2448,20 @@ func TestClientReadSeek(t *testing.T) {
 			},
 		}, ra)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		req, err = readRequest(bconn.Reader)
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
-		err = base.Response{
+		base.Response{
 			StatusCode: base.StatusOK,
-		}.Write(bconn.Writer)
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 	}()
 

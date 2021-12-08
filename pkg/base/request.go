@@ -121,33 +121,24 @@ func (req *Request) ReadIgnoreFrames(rb *bufio.Reader, buf []byte) error {
 }
 
 // Write writes a request.
-func (req Request) Write(bw *bufio.Writer) error {
+func (req Request) Write(bb *bytes.Buffer) {
+	bb.Reset()
+
 	urStr := req.URL.CloneWithoutCredentials().String()
-	_, err := bw.Write([]byte(string(req.Method) + " " + urStr + " " + rtspProtocol10 + "\r\n"))
-	if err != nil {
-		return err
-	}
+	bb.Write([]byte(string(req.Method) + " " + urStr + " " + rtspProtocol10 + "\r\n"))
 
 	if len(req.Body) != 0 {
 		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}
 	}
 
-	err = req.Header.write(bw)
-	if err != nil {
-		return err
-	}
+	req.Header.write(bb)
 
-	err = body(req.Body).write(bw)
-	if err != nil {
-		return err
-	}
-
-	return bw.Flush()
+	body(req.Body).write(bb)
 }
 
 // String implements fmt.Stringer.
 func (req Request) String() string {
-	buf := bytes.NewBuffer(nil)
-	req.Write(bufio.NewWriter(buf))
+	var buf bytes.Buffer
+	req.Write(&buf)
 	return buf.String()
 }

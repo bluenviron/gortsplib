@@ -17,7 +17,6 @@ import (
 
 const (
 	serverReadBufferSize          = 4096
-	serverWriteBufferSize         = 4096
 	serverUDPKernelReadBufferSize = 0x80000 // same as gstreamer's rtspsrc
 )
 

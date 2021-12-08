@@ -118,7 +118,7 @@ func TestServerReadSetupPath(t *testing.T) {
 			conn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer conn.Close()
-			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+			br := bufio.NewReader(conn)
 
 			th := &headers.Transport{
 				Protocol: headers.TransportProtocolTCP,
@@ -133,7 +133,7 @@ func TestServerReadSetupPath(t *testing.T) {
 				InterleavedIDs: &[2]int{ca.trackID * 2, (ca.trackID * 2) + 1},
 			}
 
-			res, err := writeReqReadRes(bconn, base.Request{
+			res, err := writeReqReadRes(conn, br, base.Request{
 				Method: base.Setup,
 				URL:    mustParseURL(ca.url),
 				Header: base.Header{
@@ -185,7 +185,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 			conn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer conn.Close()
-			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+			br := bufio.NewReader(conn)
 
 			th := &headers.Transport{
 				Protocol: headers.TransportProtocolTCP,
@@ -201,7 +201,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 			}
 
 			if ca == "different paths" {
-				res, err := writeReqReadRes(bconn, base.Request{
+				res, err := writeReqReadRes(conn, br, base.Request{
 					Method: base.Setup,
 					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
@@ -214,7 +214,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 
 				th.InterleavedIDs = &[2]int{2, 3}
 
-				res, err = writeReqReadRes(bconn, base.Request{
+				res, err = writeReqReadRes(conn, br, base.Request{
 					Method: base.Setup,
 					URL:    mustParseURL("rtsp://localhost:8554/test12stream/trackID=1"),
 					Header: base.Header{
@@ -226,7 +226,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.StatusBadRequest, res.StatusCode)
 			} else {
-				res, err := writeReqReadRes(bconn, base.Request{
+				res, err := writeReqReadRes(conn, br, base.Request{
 					Method: base.Setup,
 					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
@@ -239,7 +239,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 
 				th.InterleavedIDs = &[2]int{2, 3}
 
-				res, err = writeReqReadRes(bconn, base.Request{
+				res, err = writeReqReadRes(conn, br, base.Request{
 					Method: base.Setup,
 					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
@@ -351,16 +351,17 @@ func TestServerRead(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			nconn, err := net.Dial("tcp", listenIP+":8554")
+			conn, err := net.Dial("tcp", listenIP+":8554")
 			require.NoError(t, err)
 
-			conn := func() net.Conn {
+			conn = func() net.Conn {
 				if transport == "tls" {
-					return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
+					return tls.Client(conn, &tls.Config{InsecureSkipVerify: true})
 				}
-				return nconn
+				return conn
 			}()
-			bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+			br := bufio.NewReader(conn)
+			var bb bytes.Buffer
 
 			<-connOpened
 
@@ -390,7 +391,7 @@ func TestServerRead(t *testing.T) {
 				inTH.InterleavedIDs = &[2]int{4, 5}
 			}
 
-			res, err := writeReqReadRes(bconn, base.Request{
+			res, err := writeReqReadRes(conn, br, base.Request{
 				Method: base.Setup,
 				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream/trackID=0"),
 				Header: base.Header{
@@ -460,7 +461,7 @@ func TestServerRead(t *testing.T) {
 
 			<-sessionOpened
 
-			res, err = writeReqReadRes(bconn, base.Request{
+			res, err = writeReqReadRes(conn, br, base.Request{
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream"),
 				Header: base.Header{
@@ -492,13 +493,13 @@ func TestServerRead(t *testing.T) {
 			} else {
 				var f base.InterleavedFrame
 				f.Payload = make([]byte, 2048)
-				err := f.Read(bconn.Reader)
+				err := f.Read(br)
 				require.NoError(t, err)
 				require.Equal(t, 4, f.Channel)
 				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, f.Payload)
 
 				f.Payload = make([]byte, 2048)
-				err = f.Read(bconn.Reader)
+				err = f.Read(br)
 				require.NoError(t, err)
 				require.Equal(t, 5, f.Channel)
 				require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
@@ -521,17 +522,18 @@ func TestServerRead(t *testing.T) {
 				<-framesReceived
 
 			default:
-				err = base.InterleavedFrame{
+				base.InterleavedFrame{
 					Channel: 5,
 					Payload: []byte{0x01, 0x02, 0x03, 0x04},
-				}.Write(bconn.Writer)
+				}.Write(&bb)
+				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 				<-framesReceived
 			}
 
 			if transport == "udp" || transport == "multicast" {
 				// ping with OPTIONS
-				res, err = writeReqReadRes(bconn, base.Request{
+				res, err = writeReqReadRes(conn, br, base.Request{
 					Method: base.Options,
 					URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream"),
 					Header: base.Header{
@@ -543,7 +545,7 @@ func TestServerRead(t *testing.T) {
 				require.Equal(t, base.StatusOK, res.StatusCode)
 
 				// ping with GET_PARAMETER
-				res, err = writeReqReadRes(bconn, base.Request{
+				res, err = writeReqReadRes(conn, br, base.Request{
 					Method: base.GetParameter,
 					URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream"),
 					Header: base.Header{
@@ -555,7 +557,7 @@ func TestServerRead(t *testing.T) {
 				require.Equal(t, base.StatusOK, res.StatusCode)
 			}
 
-			res, err = writeReqReadRes(bconn, base.Request{
+			res, err = writeReqReadRes(conn, br, base.Request{
 				Method: base.Teardown,
 				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream"),
 				Header: base.Header{
@@ -568,7 +570,7 @@ func TestServerRead(t *testing.T) {
 
 			<-sessionClosed
 
-			nconn.Close()
+			conn.Close()
 			<-connClosed
 		})
 	}
@@ -602,12 +604,12 @@ func TestServerReadVLCMulticast(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	nconn, err := net.Dial("tcp", listenIP+":8554")
+	conn, err := net.Dial("tcp", listenIP+":8554")
 	require.NoError(t, err)
-	bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
-	defer nconn.Close()
+	br := bufio.NewReader(conn)
+	defer conn.Close()
 
-	res, err := writeReqReadRes(bconn, base.Request{
+	res, err := writeReqReadRes(conn, br, base.Request{
 		Method: base.Describe,
 		URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream?vlcmulticast"),
 		Header: base.Header{
@@ -659,9 +661,9 @@ func TestServerReadNonStandardFrameSize(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	nconn, err := net.Dial("tcp", "localhost:8554")
+	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
-	bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
+	br := bufio.NewReader(conn)
 
 	inTH := &headers.Transport{
 		Mode: func() *headers.TransportMode {
@@ -676,7 +678,7 @@ func TestServerReadNonStandardFrameSize(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, err := writeReqReadRes(bconn, base.Request{
+	res, err := writeReqReadRes(conn, br, base.Request{
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -687,7 +689,7 @@ func TestServerReadNonStandardFrameSize(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	res, err = writeReqReadRes(bconn, base.Request{
+	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
@@ -700,7 +702,7 @@ func TestServerReadNonStandardFrameSize(t *testing.T) {
 
 	var f base.InterleavedFrame
 	f.Payload = make([]byte, 4500)
-	err = f.Read(bconn.Reader)
+	err = f.Read(br)
 	require.NoError(t, err)
 	require.Equal(t, 0, f.Channel)
 	require.Equal(t, payload, f.Payload)
@@ -764,9 +766,9 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	br := bufio.NewReader(conn)
 
-	res, err := writeReqReadRes(bconn, base.Request{
+	res, err := writeReqReadRes(conn, br, base.Request{
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -788,7 +790,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	res, err = writeReqReadRes(bconn, base.Request{
+	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
@@ -801,7 +803,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 
 	var fr base.InterleavedFrame
 	fr.Payload = make([]byte, 2048)
-	err = fr.Read(bconn.Reader)
+	err = fr.Read(br)
 	require.NoError(t, err)
 }
 
@@ -838,9 +840,9 @@ func TestServerReadPlayPlay(t *testing.T) {
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	br := bufio.NewReader(conn)
 
-	res, err := writeReqReadRes(bconn, base.Request{
+	res, err := writeReqReadRes(conn, br, base.Request{
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -862,7 +864,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	res, err = writeReqReadRes(bconn, base.Request{
+	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
@@ -873,7 +875,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	res, err = writeReqReadRes(bconn, base.Request{
+	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
@@ -948,9 +950,9 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	br := bufio.NewReader(conn)
 
-	res, err := writeReqReadRes(bconn, base.Request{
+	res, err := writeReqReadRes(conn, br, base.Request{
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -972,7 +974,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	res, err = writeReqReadRes(bconn, base.Request{
+	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
@@ -983,7 +985,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	res, err = writeReqReadRes(bconn, base.Request{
+	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Pause,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
@@ -994,7 +996,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	res, err = writeReqReadRes(bconn, base.Request{
+	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
@@ -1065,9 +1067,10 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	br := bufio.NewReader(conn)
+	var bb bytes.Buffer
 
-	res, err := writeReqReadRes(bconn, base.Request{
+	res, err := writeReqReadRes(conn, br, base.Request{
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -1089,7 +1092,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	res, err = writeReqReadRes(bconn, base.Request{
+	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
@@ -1100,31 +1103,33 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	err = base.Request{
+	base.Request{
 		Method: base.Pause,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
+	}.Write(&bb)
+	_, err = conn.Write(bb.Bytes())
 	require.NoError(t, err)
 
-	res, err = readResIgnoreFrames(bconn.Reader)
+	res, err = readResIgnoreFrames(br)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	err = base.Request{
+	base.Request{
 		Method: base.Pause,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": res.Header["Session"],
 		},
-	}.Write(bconn.Writer)
+	}.Write(&bb)
+	_, err = conn.Write(bb.Bytes())
 	require.NoError(t, err)
 
-	res, err = readResIgnoreFrames(bconn.Reader)
+	res, err = readResIgnoreFrames(br)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
@@ -1176,10 +1181,10 @@ func TestServerReadTimeout(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			nconn, err := net.Dial("tcp", "localhost:8554")
+			conn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer nconn.Close()
-			bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
+			defer conn.Close()
+			br := bufio.NewReader(conn)
 
 			inTH := &headers.Transport{
 				Delivery: func() *headers.TransportDelivery {
@@ -1195,7 +1200,7 @@ func TestServerReadTimeout(t *testing.T) {
 			inTH.Protocol = headers.TransportProtocolUDP
 			inTH.ClientPorts = &[2]int{35466, 35467}
 
-			res, err := writeReqReadRes(bconn, base.Request{
+			res, err := writeReqReadRes(conn, br, base.Request{
 				Method: base.Setup,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
@@ -1206,7 +1211,7 @@ func TestServerReadTimeout(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			res, err = writeReqReadRes(bconn, base.Request{
+			res, err = writeReqReadRes(conn, br, base.Request{
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
@@ -1276,10 +1281,10 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			nconn, err := net.Dial("tcp", "localhost:8554")
+			conn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer nconn.Close()
-			bconn := bufio.NewReadWriter(bufio.NewReader(nconn), bufio.NewWriter(nconn))
+			defer conn.Close()
+			br := bufio.NewReader(conn)
 
 			inTH := &headers.Transport{
 				Delivery: func() *headers.TransportDelivery {
@@ -1300,7 +1305,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
-			res, err := writeReqReadRes(bconn, base.Request{
+			res, err := writeReqReadRes(conn, br, base.Request{
 				Method: base.Setup,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
@@ -1311,7 +1316,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			res, err = writeReqReadRes(bconn, base.Request{
+			res, err = writeReqReadRes(conn, br, base.Request{
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
@@ -1322,7 +1327,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			nconn.Close()
+			conn.Close()
 
 			<-sessionClosed
 			<-connClosed
@@ -1371,7 +1376,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		conn, err := net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
 
 		inTH := &headers.Transport{
 			Delivery: func() *headers.TransportDelivery {
@@ -1386,7 +1391,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
-		res, err := writeReqReadRes(bconn, base.Request{
+		res, err := writeReqReadRes(conn, br, base.Request{
 			Method: base.Setup,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
@@ -1397,7 +1402,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
 
-		res, err = writeReqReadRes(bconn, base.Request{
+		res, err = writeReqReadRes(conn, br, base.Request{
 			Method: base.Play,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
@@ -1414,9 +1419,9 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		conn, err := net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
 
-		res, err := writeReqReadRes(bconn, base.Request{
+		res, err := writeReqReadRes(conn, br, base.Request{
 			Method: base.GetParameter,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
 			Header: base.Header{
@@ -1471,7 +1476,7 @@ func TestServerReadPartialTracks(t *testing.T) {
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer conn.Close()
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	br := bufio.NewReader(conn)
 
 	inTH := &headers.Transport{
 		Delivery: func() *headers.TransportDelivery {
@@ -1486,7 +1491,7 @@ func TestServerReadPartialTracks(t *testing.T) {
 		InterleavedIDs: &[2]int{4, 5},
 	}
 
-	res, err := writeReqReadRes(bconn, base.Request{
+	res, err := writeReqReadRes(conn, br, base.Request{
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=1"),
 		Header: base.Header{
@@ -1497,7 +1502,7 @@ func TestServerReadPartialTracks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	res, err = writeReqReadRes(bconn, base.Request{
+	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
@@ -1510,7 +1515,7 @@ func TestServerReadPartialTracks(t *testing.T) {
 
 	var f base.InterleavedFrame
 	f.Payload = make([]byte, 2048)
-	err = f.Read(bconn.Reader)
+	err = f.Read(br)
 	require.NoError(t, err)
 	require.Equal(t, 4, f.Channel)
 	require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
@@ -1521,7 +1526,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		conn, err := net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
 
 		ssrcs := make([]*uint32, 2)
 
@@ -1538,7 +1543,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 			InterleavedIDs: &[2]int{0, 1},
 		}
 
-		res, err := writeReqReadRes(bconn, base.Request{
+		res, err := writeReqReadRes(conn, br, base.Request{
 			Method: base.Setup,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
@@ -1567,7 +1572,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 			InterleavedIDs: &[2]int{2, 3},
 		}
 
-		res, err = writeReqReadRes(bconn, base.Request{
+		res, err = writeReqReadRes(conn, br, base.Request{
 			Method: base.Setup,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=1"),
 			Header: base.Header{
@@ -1584,7 +1589,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		require.NoError(t, err)
 		ssrcs[1] = th.SSRC
 
-		res, err = writeReqReadRes(bconn, base.Request{
+		res, err = writeReqReadRes(conn, br, base.Request{
 			Method: base.Play,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
@@ -1757,7 +1762,7 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 		conn, err := net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
 
 		inTH := &headers.Transport{
 			Delivery: func() *headers.TransportDelivery {
@@ -1772,7 +1777,7 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
-		res, err := writeReqReadRes(bconn, base.Request{
+		res, err := writeReqReadRes(conn, br, base.Request{
 			Method: base.Setup,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
@@ -1783,7 +1788,7 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
 
-		res, err = writeReqReadRes(bconn, base.Request{
+		res, err = writeReqReadRes(conn, br, base.Request{
 			Method: base.Play,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
@@ -1799,7 +1804,7 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 		conn, err := net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer conn.Close()
-		bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		br := bufio.NewReader(conn)
 
 		inTH := &headers.Transport{
 			Delivery: func() *headers.TransportDelivery {
@@ -1814,7 +1819,7 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
-		res, err := writeReqReadRes(bconn, base.Request{
+		res, err := writeReqReadRes(conn, br, base.Request{
 			Method: base.Setup,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{

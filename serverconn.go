@@ -2,12 +2,12 @@ package gortsplib
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"net"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/base"
@@ -29,21 +29,20 @@ type readReq struct {
 
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
-	s     *Server
-	nconn net.Conn
+	s    *Server
+	conn net.Conn
 
-	ctx             context.Context
-	ctxCancel       func()
-	remoteAddr      *net.TCPAddr // to improve speed
-	br              *bufio.Reader
-	bw              *bufio.Writer
-	sessions        map[string]*ServerSession
-	tcpFrameEnabled bool
-	tcpSession      *ServerSession
-	tcpFrameTimeout bool
-	tcpReadBuffer   *multibuffer.MultiBuffer
-	tcpProcessFunc  func(int, bool, []byte)
-	tcpWriteMutex   sync.Mutex
+	ctx              context.Context
+	ctxCancel        func()
+	remoteAddr       *net.TCPAddr
+	br               *bufio.Reader
+	sessions         map[string]*ServerSession
+	tcpFrameEnabled  bool
+	tcpSession       *ServerSession
+	tcpFrameTimeout  bool
+	tcpReadBuffer    *multibuffer.MultiBuffer
+	tcpProcessFunc   func(int, bool, []byte)
+	tcpWriterRunning bool
 
 	// in
 	sessionRemove chan *ServerSession
@@ -57,12 +56,19 @@ func newServerConn(
 	nconn net.Conn) *ServerConn {
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
+	conn := func() net.Conn {
+		if s.TLSConfig != nil {
+			return tls.Server(nconn, s.TLSConfig)
+		}
+		return nconn
+	}()
+
 	sc := &ServerConn{
 		s:             s,
-		nconn:         nconn,
+		conn:          conn,
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
-		remoteAddr:    nconn.RemoteAddr().(*net.TCPAddr),
+		remoteAddr:    conn.RemoteAddr().(*net.TCPAddr),
 		sessionRemove: make(chan *ServerSession),
 		done:          make(chan struct{}),
 	}
@@ -81,7 +87,7 @@ func (sc *ServerConn) Close() error {
 
 // NetConn returns the underlying net.Conn.
 func (sc *ServerConn) NetConn() net.Conn {
-	return sc.nconn
+	return sc.conn
 }
 
 func (sc *ServerConn) ip() net.IP {
@@ -102,15 +108,7 @@ func (sc *ServerConn) run() {
 		})
 	}
 
-	conn := func() net.Conn {
-		if sc.s.TLSConfig != nil {
-			return tls.Server(sc.nconn, sc.s.TLSConfig)
-		}
-		return sc.nconn
-	}()
-
-	sc.br = bufio.NewReaderSize(conn, serverReadBufferSize)
-	sc.bw = bufio.NewWriterSize(conn, serverWriteBufferSize)
+	sc.br = bufio.NewReaderSize(sc.conn, serverReadBufferSize)
 	sc.sessions = make(map[string]*ServerSession)
 
 	readRequest := make(chan readReq)
@@ -125,7 +123,7 @@ func (sc *ServerConn) run() {
 			for {
 				if sc.tcpFrameEnabled {
 					if sc.tcpFrameTimeout {
-						sc.nconn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
+						sc.conn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
 					}
 
 					frame.Payload = sc.tcpReadBuffer.Next()
@@ -215,7 +213,7 @@ func (sc *ServerConn) run() {
 
 	sc.ctxCancel()
 
-	sc.nconn.Close()
+	sc.conn.Close()
 	<-readDone
 
 	for _, ss := range sc.sessions {
@@ -458,8 +456,6 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		h.OnRequest(sc, req)
 	}
 
-	sc.tcpWriteMutex.Lock()
-
 	res, err := sc.handleRequest(req)
 
 	if res.Header == nil {
@@ -478,10 +474,20 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		h.OnResponse(sc, res)
 	}
 
-	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-	res.Write(sc.bw)
+	var buf bytes.Buffer
+	res.Write(&buf)
 
-	sc.tcpWriteMutex.Unlock()
+	sc.conn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
+	sc.conn.Write(buf.Bytes())
+
+	// start writer after sending the response
+	if sc.tcpFrameEnabled && !sc.tcpWriterRunning {
+		sc.tcpWriterRunning = true
+		select {
+		case sc.tcpSession.startWriter <- struct{}{}:
+		case <-sc.tcpSession.ctx.Done():
+		}
+	}
 
 	return err
 }
