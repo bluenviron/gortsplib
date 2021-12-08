@@ -56,6 +56,8 @@ type clientTrack struct {
 	udpRTPListener  *clientUDPListener
 	udpRTCPListener *clientUDPListener
 	tcpChannel      int
+	tcpRTPFrame     *base.InterleavedFrame
+	tcpRTCPFrame    *base.InterleavedFrame
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver
 	rtcpSender      *rtcpsender.RTCPSender
 }
@@ -1424,7 +1426,6 @@ func (c *Client) doSetup(
 	switch proto {
 	case TransportUDP:
 		rtpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		rtpListener.remoteWriteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtpListener.remotePort = thRes.ServerPorts[0]
@@ -1433,8 +1434,13 @@ func (c *Client) doSetup(
 		rtpListener.isRTP = true
 		cct.udpRTPListener = rtpListener
 
+		rtpListener.remoteWriteAddr = &net.UDPAddr{
+			IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
+			Zone: rtpListener.remoteZone,
+			Port: rtpListener.remotePort,
+		}
+
 		rtcpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		rtcpListener.remoteWriteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		rtcpListener.remoteZone = c.nconn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtcpListener.remotePort = thRes.ServerPorts[1]
@@ -1443,22 +1449,38 @@ func (c *Client) doSetup(
 		rtcpListener.isRTP = false
 		cct.udpRTCPListener = rtcpListener
 
+		rtcpListener.remoteWriteAddr = &net.UDPAddr{
+			IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
+			Zone: rtcpListener.remoteZone,
+			Port: rtcpListener.remotePort,
+		}
+
 	case TransportUDPMulticast:
 		rtpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		rtpListener.remoteWriteIP = *thRes.Destination
 		rtpListener.remoteZone = ""
 		rtpListener.remotePort = thRes.Ports[0]
 		rtpListener.trackID = trackID
 		rtpListener.isRTP = true
 		cct.udpRTPListener = rtpListener
 
+		rtpListener.remoteWriteAddr = &net.UDPAddr{
+			IP:   *thRes.Destination,
+			Zone: rtpListener.remoteZone,
+			Port: rtpListener.remotePort,
+		}
+
 		rtcpListener.remoteReadIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		rtcpListener.remoteWriteIP = *thRes.Destination
 		rtcpListener.remoteZone = ""
 		rtcpListener.remotePort = thRes.Ports[1]
 		rtcpListener.trackID = trackID
 		rtcpListener.isRTP = false
 		cct.udpRTCPListener = rtcpListener
+
+		rtcpListener.remoteWriteAddr = &net.UDPAddr{
+			IP:   *thRes.Destination,
+			Zone: rtcpListener.remoteZone,
+			Port: rtcpListener.remotePort,
+		}
 
 	case TransportTCP:
 		if c.tcpReadBuffer == nil {
@@ -1472,6 +1494,14 @@ func (c *Client) doSetup(
 		c.tracksByChannel[thRes.InterleavedIDs[0]] = trackID
 
 		cct.tcpChannel = thRes.InterleavedIDs[0]
+
+		cct.tcpRTPFrame = &base.InterleavedFrame{
+			Channel: cct.tcpChannel,
+		}
+
+		cct.tcpRTCPFrame = &base.InterleavedFrame{
+			Channel: cct.tcpChannel + 1,
+		}
 	}
 
 	if c.tracks == nil {
@@ -1763,17 +1793,15 @@ func (c *Client) WritePacketRTP(trackID int, payload []byte) error {
 		return c.tracks[trackID].udpRTPListener.write(payload)
 
 	default: // TCP
-		channel := c.tracks[trackID].tcpChannel
+		f := c.tracks[trackID].tcpRTPFrame
 
 		// a mutex is needed here since bufio.Writer is not thread safe.
 		c.tcpWriteMutex.Lock()
 		defer c.tcpWriteMutex.Unlock()
 
 		c.nconn.SetWriteDeadline(now.Add(c.WriteTimeout))
-		return base.InterleavedFrame{
-			Channel: channel,
-			Payload: payload,
-		}.Write(c.bw)
+		f.Payload = payload
+		return f.Write(c.bw)
 	}
 }
 
@@ -1798,16 +1826,14 @@ func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
 		return c.tracks[trackID].udpRTCPListener.write(payload)
 
 	default: // TCP
-		channel := c.tracks[trackID].tcpChannel + 1
+		f := c.tracks[trackID].tcpRTCPFrame
 
 		// a mutex is needed here since bufio.Writer is not thread safe.
 		c.tcpWriteMutex.Lock()
 		defer c.tcpWriteMutex.Unlock()
 
 		c.nconn.SetWriteDeadline(now.Add(c.WriteTimeout))
-		return base.InterleavedFrame{
-			Channel: channel,
-			Payload: payload,
-		}.Write(c.bw)
+		f.Payload = payload
+		return f.Write(c.bw)
 	}
 }

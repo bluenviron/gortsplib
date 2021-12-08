@@ -23,18 +23,18 @@ func randIntn(n int) int {
 }
 
 type clientUDPListener struct {
-	c              *Client
-	pc             *net.UDPConn
-	remoteReadIP   net.IP
-	remoteWriteIP  net.IP
-	remoteZone     string
-	remotePort     int
-	trackID        int
-	isRTP          bool
-	running        bool
-	readBuffer     *multibuffer.MultiBuffer
-	lastPacketTime *int64
-	processFunc    func(time.Time, []byte)
+	c               *Client
+	pc              *net.UDPConn
+	remoteReadIP    net.IP
+	remoteZone      string
+	remotePort      int
+	remoteWriteAddr *net.UDPAddr
+	trackID         int
+	isRTP           bool
+	running         bool
+	readBuffer      *multibuffer.MultiBuffer
+	lastPacketTime  *int64
+	processFunc     func(time.Time, []byte)
 
 	readerDone chan struct{}
 }
@@ -192,10 +192,6 @@ func (l *clientUDPListener) write(buf []byte) error {
 	// https://github.com/golang/go/issues/27203#issuecomment-534386117
 
 	l.pc.SetWriteDeadline(time.Now().Add(l.c.WriteTimeout))
-	_, err := l.pc.WriteTo(buf, &net.UDPAddr{
-		IP:   l.remoteWriteIP,
-		Zone: l.remoteZone,
-		Port: l.remotePort,
-	})
+	_, err := l.pc.WriteTo(buf, l.remoteWriteAddr)
 	return err
 }
