@@ -179,12 +179,12 @@ type ServerSession struct {
 	writerRunning          bool
 	writeBuffer            *ringbuffer.RingBuffer
 
+	// writer channels
+	writerDone chan struct{}
+
 	// in
 	request    chan sessionRequestReq
 	connRemove chan *ServerConn
-
-	// out
-	writerDone chan struct{}
 }
 
 func newServerSession(
@@ -843,11 +843,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.state = ServerSessionStateRead
 
-		ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
-
 		switch *ss.setuppedTransport {
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
+
+			ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
+			ss.writerRunning = true
+			ss.writerDone = make(chan struct{})
+			go ss.runWriter()
 
 			for trackID, track := range ss.setuppedTracks {
 				// readers can send RTCP packets
@@ -857,10 +860,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.WritePacketRTCP(trackID,
 					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 			}
-
-			ss.writerRunning = true
-			ss.writerDone = make(chan struct{})
-			go ss.runWriter()
 
 		case TransportUDPMulticast:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
@@ -876,6 +875,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.tcpConn.tcpReadBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
 			ss.tcpConn.tcpProcessFunc = sc.tcpProcessPlay
 
+			ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
 			ss.writerRunning = true
 			ss.writerDone = make(chan struct{})
 			go ss.runWriter()
@@ -970,15 +970,18 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.state = ServerSessionStatePublish
 
-		// when recording, writeBuffer is only used to send RTCP receiver reports,
-		// that are much smaller than RTP packets and are sent at a fixed interval.
-		// decrease RAM consumption by allocating less buffers.
-		ss.writeBuffer = ringbuffer.New(uint64(8))
-
 		switch *ss.setuppedTransport {
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
+
+			// when recording, writeBuffer is only used to send RTCP receiver reports,
+			// that are much smaller than RTP packets and are sent at a fixed interval.
+			// decrease RAM consumption by allocating less buffers.
+			ss.writeBuffer = ringbuffer.New(uint64(8))
+			ss.writerRunning = true
+			ss.writerDone = make(chan struct{})
+			go ss.runWriter()
 
 			for trackID, track := range ss.setuppedTracks {
 				ss.s.udpRTPListener.addClient(ss.author.ip(), track.udpRTPPort, ss, trackID, true)
@@ -990,10 +993,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.WritePacketRTCP(trackID,
 					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 			}
-
-			ss.writerRunning = true
-			ss.writerDone = make(chan struct{})
-			go ss.runWriter()
 
 		case TransportUDPMulticast:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
@@ -1007,6 +1006,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.tcpConn.tcpReadBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
 			ss.tcpConn.tcpProcessFunc = sc.tcpProcessRecord
 
+			// when recording, writeBuffer is only used to send RTCP receiver reports,
+			// that are much smaller than RTP packets and are sent at a fixed interval.
+			// decrease RAM consumption by allocating less buffers.
+			ss.writeBuffer = ringbuffer.New(uint64(8))
 			ss.writerRunning = true
 			ss.writerDone = make(chan struct{})
 			go ss.runWriter()
