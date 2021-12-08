@@ -217,7 +217,7 @@ type Client struct {
 	udpReportTimer     *time.Timer
 	checkStreamTimer   *time.Timer
 	checkStreamInitial bool
-	tcpLastFrameTime   int64
+	tcpLastFrameTime   *int64
 	keepaliveTimer     *time.Timer
 	closeError         error
 	writerRunning      bool
@@ -539,7 +539,7 @@ func (c *Client) run() {
 				} else { // TCP
 					inTimeout := func() bool {
 						now := time.Now()
-						lft := time.Unix(atomic.LoadInt64(&c.tcpLastFrameTime), 0)
+						lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
 						return now.Sub(lft) >= c.ReadTimeout
 					}()
 					if inTimeout {
@@ -710,7 +710,8 @@ func (c *Client) playRecordStart() {
 
 		default: // TCP
 			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
-			c.tcpLastFrameTime = time.Now().Unix()
+			v := time.Now().Unix()
+			c.tcpLastFrameTime = &v
 		}
 	} else {
 		switch *c.protocol {
@@ -748,7 +749,7 @@ func (c *Client) runReader() {
 			if c.state == clientStatePlay {
 				processFunc = func(trackID int, isRTP bool, payload []byte) {
 					now := time.Now()
-					atomic.StoreInt64(&c.tcpLastFrameTime, now.Unix())
+					atomic.StoreInt64(c.tcpLastFrameTime, now.Unix())
 
 					if isRTP {
 						c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, payload)
