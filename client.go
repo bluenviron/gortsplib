@@ -1811,7 +1811,7 @@ func (c *Client) runWriter() {
 			}
 		}
 
-	default: //TCP
+	default: // TCP
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
 				if c.tracks[trackID].rtcpSender != nil {

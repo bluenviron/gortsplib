@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bufio"
+	"crypto/tls"
 	"net"
 	"strings"
 	"testing"
@@ -20,11 +21,24 @@ func TestClientPublishSerial(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
+		"tls",
 	} {
 		t.Run(transport, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer l.Close()
+
+			var scheme string
+			if transport == "tls" {
+				scheme = "rtsps"
+
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+
+				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
+			} else {
+				scheme = "rtsp"
+			}
 
 			serverDone := make(chan struct{})
 			defer func() { <-serverDone }()
@@ -39,7 +53,7 @@ func TestClientPublishSerial(t *testing.T) {
 				req, err := readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -56,7 +70,7 @@ func TestClientPublishSerial(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -66,7 +80,7 @@ func TestClientPublishSerial(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/trackID=0"), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Read(req.Header["Transport"])
@@ -111,7 +125,7 @@ func TestClientPublishSerial(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -150,7 +164,7 @@ func TestClientPublishSerial(t *testing.T) {
 				req, err = readRequest(bconn.Reader)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
 				err = base.Response{
 					StatusCode: base.StatusOK,
@@ -161,6 +175,9 @@ func TestClientPublishSerial(t *testing.T) {
 			recvDone := make(chan struct{})
 
 			c := &Client{
+				TLSConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
 				Transport: func() *Transport {
 					if transport == "udp" {
 						v := TransportUDP
@@ -176,10 +193,12 @@ func TestClientPublishSerial(t *testing.T) {
 				},
 			}
 
-			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+			track, err := NewTrackH264(96, &TrackConfigH264{
+				[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+			})
 			require.NoError(t, err)
 
-			err = c.StartPublishing("rtsp://localhost:8554/teststream",
+			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 
@@ -208,11 +227,24 @@ func TestClientPublishParallel(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
+		"tls",
 	} {
 		t.Run(transport, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer l.Close()
+
+			var scheme string
+			if transport == "tls" {
+				scheme = "rtsps"
+
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+
+				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
+			} else {
+				scheme = "rtsp"
+			}
 
 			serverDone := make(chan struct{})
 			defer func() { <-serverDone }()
@@ -301,6 +333,9 @@ func TestClientPublishParallel(t *testing.T) {
 			}()
 
 			c := &Client{
+				TLSConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
 				Transport: func() *Transport {
 					if transport == "udp" {
 						v := TransportUDP
@@ -311,13 +346,15 @@ func TestClientPublishParallel(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+			track, err := NewTrackH264(96, &TrackConfigH264{
+				[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+			})
 			require.NoError(t, err)
 
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
 
-			err = c.StartPublishing("rtsp://localhost:8554/teststream",
+			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
 				Tracks{track})
 			require.NoError(t, err)
 			defer c.Close()
@@ -468,7 +505,9 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+			track, err := NewTrackH264(96, &TrackConfigH264{
+				[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+			})
 			require.NoError(t, err)
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
@@ -601,7 +640,9 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+			track, err := NewTrackH264(96, &TrackConfigH264{
+				[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+			})
 			require.NoError(t, err)
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
@@ -739,7 +780,9 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	track, err := NewTrackH264(96, &TrackConfigH264{
+		[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+	})
 	require.NoError(t, err)
 
 	c := Client{}
@@ -875,7 +918,9 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		udpSenderReportPeriod: 1 * time.Second,
 	}
 
-	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	track, err := NewTrackH264(96, &TrackConfigH264{
+		[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+	})
 	require.NoError(t, err)
 
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",
@@ -1010,7 +1055,9 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		},
 	}
 
-	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	track, err := NewTrackH264(96, &TrackConfigH264{
+		[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+	})
 	require.NoError(t, err)
 
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",

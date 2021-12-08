@@ -24,7 +24,9 @@ import (
 )
 
 func TestClientReadTracks(t *testing.T) {
-	track1, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	track1, err := NewTrackH264(96, &TrackConfigH264{
+		[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+	})
 	require.NoError(t, err)
 
 	track2, err := NewTrackAAC(96, &TrackConfigAAC{Type: 2, SampleRate: 44100, ChannelCount: 2})
@@ -223,7 +225,9 @@ func TestClientRead(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
-				track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+				track, err := NewTrackH264(96, &TrackConfigH264{
+					[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+				})
 				require.NoError(t, err)
 
 				track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
@@ -479,7 +483,9 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		track, err := NewTrackH264(96, &TrackConfigH264{
+			[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+		})
 		require.NoError(t, err)
 
 		track.Media.Attributes = append(track.Media.Attributes, psdp.Attribute{
@@ -580,10 +586,14 @@ func TestClientReadPartial(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream"), req.URL)
 
-		track1, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		track1, err := NewTrackH264(96, &TrackConfigH264{
+			[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+		})
 		require.NoError(t, err)
 
-		track2, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		track2, err := NewTrackH264(96, &TrackConfigH264{
+			[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+		})
 		require.NoError(t, err)
 
 		tracks := cloneAndClearTracks(Tracks{track1, track2})
@@ -721,7 +731,9 @@ func TestClientReadNoContentBase(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		track, err := NewTrackH264(96, &TrackConfigH264{
+			[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+		})
 		require.NoError(t, err)
 
 		tracks := cloneAndClearTracks(Tracks{track})
@@ -834,7 +846,9 @@ func TestClientReadAnyPort(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+				track, err := NewTrackH264(96, &TrackConfigH264{
+					[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+				})
 				require.NoError(t, err)
 
 				tracks := cloneAndClearTracks(Tracks{track})
@@ -985,7 +999,9 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
-			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+			track, err := NewTrackH264(96, &TrackConfigH264{
+				[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+			})
 			require.NoError(t, err)
 
 			tracks := cloneAndClearTracks(Tracks{track})
@@ -1115,7 +1131,9 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			err = v.ValidateRequest(req)
 			require.NoError(t, err)
 
-			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+			track, err := NewTrackH264(96, &TrackConfigH264{
+				[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+			})
 			require.NoError(t, err)
 
 			tracks := cloneAndClearTracks(Tracks{track})
@@ -1303,7 +1321,9 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		track1, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		track1, err := NewTrackH264(96, &TrackConfigH264{
+			[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+		})
 		require.NoError(t, err)
 
 		tracks := cloneAndClearTracks(Tracks{track1})
@@ -1460,7 +1480,9 @@ func TestClientReadRedirect(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		track, err := NewTrackH264(96, &TrackConfigH264{
+			[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+		})
 		require.NoError(t, err)
 
 		tracks := cloneAndClearTracks(Tracks{track})
@@ -1617,7 +1639,9 @@ func TestClientReadPause(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+				track, err := NewTrackH264(96, &TrackConfigH264{
+					[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+				})
 				require.NoError(t, err)
 
 				tracks := cloneAndClearTracks(Tracks{track})
@@ -1787,7 +1811,9 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		track, err := NewTrackH264(96, &TrackConfigH264{
+			[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+		})
 		require.NoError(t, err)
 
 		tracks := cloneAndClearTracks(Tracks{track})
@@ -1957,7 +1983,9 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+				track, err := NewTrackH264(96, &TrackConfigH264{
+					[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+				})
 				require.NoError(t, err)
 
 				tracks := cloneAndClearTracks(Tracks{track})
@@ -2105,7 +2133,9 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		track, err := NewTrackH264(96, &TrackConfigH264{
+			[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+		})
 		require.NoError(t, err)
 
 		tracks := cloneAndClearTracks(Tracks{track})
@@ -2230,7 +2260,9 @@ func TestClientReadSeek(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+		track, err := NewTrackH264(96, &TrackConfigH264{
+			[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+		})
 		require.NoError(t, err)
 
 		tracks := cloneAndClearTracks(Tracks{track})

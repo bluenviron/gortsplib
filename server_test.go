@@ -685,7 +685,9 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 }
 
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
-	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	track, err := NewTrackH264(96, &TrackConfigH264{
+		[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+	})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -783,7 +785,9 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 }
 
 func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
-	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	track, err := NewTrackH264(96, &TrackConfigH264{
+		[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+	})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -1046,7 +1050,9 @@ func TestServerSessionClose(t *testing.T) {
 func TestServerSessionAutoClose(t *testing.T) {
 	sessionClosed := make(chan struct{})
 
-	track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+	track, err := NewTrackH264(96, &TrackConfigH264{
+		[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+	})
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
@@ -1113,7 +1119,9 @@ func TestServerErrorInvalidPath(t *testing.T) {
 		t.Run(string(method), func(t *testing.T) {
 			connClosed := make(chan struct{})
 
-			track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+			track, err := NewTrackH264(96, &TrackConfigH264{
+				[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+			})
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
@@ -1155,7 +1163,9 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			sxID := ""
 
 			if method == base.Record {
-				track, err := NewTrackH264(96, &TrackConfigH264{[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}})
+				track, err := NewTrackH264(96, &TrackConfigH264{
+					[]byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04},
+				})
 				require.NoError(t, err)
 
 				tracks := Tracks{track}
