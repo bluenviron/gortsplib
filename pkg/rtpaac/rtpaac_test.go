@@ -255,6 +255,35 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+func TestDecodeTimestampOverflow(t *testing.T) {
+	d := NewDecoder(90000)
+	var pts time.Duration
+
+	for _, ts := range []uint32{
+		4294877296,
+		90001,
+		3240090001,
+		565122706,
+	} {
+		pkt := rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         true,
+				PayloadType:    96,
+				SequenceNumber: 0x01,
+				Timestamp:      ts,
+				SSRC:           0xba9da416,
+			},
+			Payload: []byte("\x00\x00"),
+		}
+		var err error
+		_, pts, err = d.Decode(&pkt)
+		require.NoError(t, err)
+	}
+
+	require.Equal(t, 15*60*60*time.Second+2*time.Second, pts)
+}
+
 func TestDecodeErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string

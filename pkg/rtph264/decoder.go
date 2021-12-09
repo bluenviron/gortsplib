@@ -36,8 +36,9 @@ func (r PacketConnReader) Read(p []byte) (int, error) {
 
 // Decoder is a RTP/H264 decoder.
 type Decoder struct {
-	initialTs    uint32
-	initialTsSet bool
+	tsAdd     int64
+	tsInitial *int64
+	tsPrev    *int64
 
 	// for Decode()
 	startingPacketReceived bool
@@ -54,17 +55,24 @@ func NewDecoder() *Decoder {
 }
 
 func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
-	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / rtpClockRate
+	ts64 := int64(ts) + d.tsAdd
+
+	if d.tsPrev != nil && (ts64-*d.tsPrev) < -0xFFFF {
+		ts64 += 0xFFFFFFFF
+		d.tsAdd += 0xFFFFFFFF
+	}
+	d.tsPrev = &ts64
+
+	if d.tsInitial == nil {
+		d.tsInitial = &ts64
+	}
+
+	return time.Duration(ts64-*d.tsInitial) * time.Second / rtpClockRate
 }
 
 // Decode decodes NALUs from a RTP/H264 packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if !d.isDecodingFragmented {
-		if !d.initialTsSet {
-			d.initialTsSet = true
-			d.initialTs = pkt.Timestamp
-		}
-
 		if len(pkt.Payload) < 1 {
 			return nil, 0, fmt.Errorf("payload is too short")
 		}

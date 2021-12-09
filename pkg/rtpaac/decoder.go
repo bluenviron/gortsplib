@@ -14,9 +14,11 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 
 // Decoder is a RTP/AAC decoder.
 type Decoder struct {
-	clockRate    time.Duration
-	initialTs    uint32
-	initialTsSet bool
+	clockRate time.Duration
+
+	tsAdd     int64
+	tsInitial *int64
+	tsPrev    *int64
 
 	// for Decode()
 	isDecodingFragmented bool
@@ -31,7 +33,19 @@ func NewDecoder(clockRate int) *Decoder {
 }
 
 func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
-	return (time.Duration(ts) - time.Duration(d.initialTs)) * time.Second / d.clockRate
+	ts64 := int64(ts) + d.tsAdd
+
+	if d.tsPrev != nil && (ts64-*d.tsPrev) < -0xFFFF {
+		ts64 += 0xFFFFFFFF
+		d.tsAdd += 0xFFFFFFFF
+	}
+	d.tsPrev = &ts64
+
+	if d.tsInitial == nil {
+		d.tsInitial = &ts64
+	}
+
+	return time.Duration(ts64-*d.tsInitial) * time.Second / d.clockRate
 }
 
 // Decode decodes AUs from a RTP/AAC packet.
@@ -52,11 +66,6 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	pkt.Payload = pkt.Payload[2:]
 
 	if !d.isDecodingFragmented {
-		if !d.initialTsSet {
-			d.initialTsSet = true
-			d.initialTs = pkt.Timestamp
-		}
-
 		if pkt.Header.Marker {
 			// AU-headers
 			// AAC headers are 16 bits, where
