@@ -14,19 +14,19 @@ func TestDTSEstimator(t *testing.T) {
 	dts := est.Feed(0)
 	require.Equal(t, time.Duration(0), dts)
 
-	// b-frame
+	// B frame
 	dts = est.Feed(1*time.Second - 200*time.Millisecond)
 	require.Equal(t, time.Millisecond, dts)
 
-	// b-frame
+	// B frame
 	dts = est.Feed(1*time.Second - 400*time.Millisecond)
 	require.Equal(t, 2*time.Millisecond, dts)
 
-	// p-frame
+	// P frame
 	dts = est.Feed(1 * time.Second)
 	require.Equal(t, 1*time.Second-400*time.Millisecond, dts)
 
-	// p-frame
+	// P frame
 	dts = est.Feed(1*time.Second + 200*time.Millisecond)
-	require.Equal(t, 1*time.Second-399*time.Millisecond, dts)
+	require.Equal(t, 1*time.Second, dts)
 }

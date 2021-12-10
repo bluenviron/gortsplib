@@ -9,7 +9,6 @@ type DTSEstimator struct {
 	initializing int
 	prevDTS      time.Duration
 	prevPTS      time.Duration
-	prevPrevPTS  time.Duration
 }
 
 // NewDTSEstimator allocates a DTSEstimator.
@@ -34,26 +33,17 @@ func (d *DTSEstimator) Feed(pts time.Duration) time.Duration {
 	}
 
 	dts := func() time.Duration {
-		// P or I frame
+		// PTS is increasing
+		// use previous PTS
 		if pts > d.prevPTS {
-			// previous frame was B
-			// use the DTS of the previous frame
-			if d.prevPTS < d.prevPrevPTS {
-				return d.prevPTS
-			}
-
-			// previous frame was P or I
-			// use two frames ago plus a small quantity
-			// to avoid non-monotonous DTS with B-frames
-			return d.prevPrevPTS + time.Millisecond
+			return d.prevPTS
 		}
 
-		// B Frame
-		// increase by a small quantity
+		// PTS is not increasing
+		// use last DTS value plus a small quantity
 		return d.prevDTS + time.Millisecond
 	}()
 
-	d.prevPrevPTS = d.prevPTS
 	d.prevPTS = pts
 	d.prevDTS = dts
 
