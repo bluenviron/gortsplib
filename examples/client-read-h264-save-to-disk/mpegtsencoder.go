@@ -78,15 +78,15 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 	}
 
 	for _, nalu := range nalus {
-		// remove existing SPS, PPS, AUD
+
 		typ := h264.NALUType(nalu[0] & 0x1F)
 		switch typ {
 		case h264.NALUTypeSPS, h264.NALUTypePPS, h264.NALUTypeAccessUnitDelimiter:
+			// remove existing SPS, PPS, AUD
 			continue
-		}
 
-		// add SPS and PPS before every IDR
-		if typ == h264.NALUTypeIDR {
+		case h264.NALUTypeIDR:
+			// add SPS and PPS before every IDR
 			filteredNALUs = append(filteredNALUs, e.h264Conf.SPS, e.h264Conf.PPS)
 		}
 
