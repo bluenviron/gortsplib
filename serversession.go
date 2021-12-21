@@ -11,6 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
@@ -355,8 +358,7 @@ func (ss *ServerSession) run() {
 				for trackID, track := range ss.announcedTracks {
 					rr := track.rtcpReceiver.Report(now)
 					if rr != nil {
-						byts, _ := rr.Marshal()
-						ss.WritePacketRTCP(trackID, byts)
+						ss.WritePacketRTCP(trackID, rr)
 					}
 				}
 
@@ -762,7 +764,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			th.Delivery = &de
 			v := uint(127)
 			th.TTL = &v
-			d := stream.multicastHandlers[trackID].ip()
+			d := stream.serverMulticastHandlers[trackID].ip()
 			th.Destination = &d
 			th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 
@@ -870,8 +872,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				sc.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, false)
 
 				// open the firewall by sending packets to the counterpart
-				ss.WritePacketRTCP(trackID,
-					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+				byts, _ := (&rtcp.ReceiverReport{}).Marshal()
+				ss.s.udpRTCPListener.write(byts,
+					ss.setuppedTracks[trackID].udpRTCPAddr)
 			}
 
 		case TransportUDPMulticast:
@@ -1000,10 +1003,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, true)
 
 				// open the firewall by sending packets to the counterpart
-				ss.WritePacketRTP(trackID,
-					[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-				ss.WritePacketRTCP(trackID,
-					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+				byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
+				ss.s.udpRTPListener.write(byts, ss.setuppedTracks[trackID].udpRTPAddr)
+				byts, _ = (&rtcp.ReceiverReport{}).Marshal()
+				ss.s.udpRTCPListener.write(byts, ss.setuppedTracks[trackID].udpRTCPAddr)
 			}
 
 		case TransportUDPMulticast:
@@ -1201,8 +1204,7 @@ func (ss *ServerSession) runWriter() {
 	}
 }
 
-// WritePacketRTP writes a RTP packet to the session.
-func (ss *ServerSession) WritePacketRTP(trackID int, payload []byte) {
+func (ss *ServerSession) writePacketRTP(trackID int, byts []byte) {
 	if _, ok := ss.setuppedTracks[trackID]; !ok {
 		return
 	}
@@ -1210,12 +1212,21 @@ func (ss *ServerSession) WritePacketRTP(trackID int, payload []byte) {
 	ss.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,
 		isRTP:   true,
-		payload: payload,
+		payload: byts,
 	})
 }
 
-// WritePacketRTCP writes a RTCP packet to the session.
-func (ss *ServerSession) WritePacketRTCP(trackID int, payload []byte) {
+// WritePacketRTP writes a RTP packet to the session.
+func (ss *ServerSession) WritePacketRTP(trackID int, pkt *rtp.Packet) {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return
+	}
+
+	ss.writePacketRTP(trackID, byts)
+}
+
+func (ss *ServerSession) writePacketRTCP(trackID int, byts []byte) {
 	if _, ok := ss.setuppedTracks[trackID]; !ok {
 		return
 	}
@@ -1223,6 +1234,16 @@ func (ss *ServerSession) WritePacketRTCP(trackID int, payload []byte) {
 	ss.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,
 		isRTP:   false,
-		payload: payload,
+		payload: byts,
 	})
+}
+
+// WritePacketRTCP writes a RTCP packet to the session.
+func (ss *ServerSession) WritePacketRTCP(trackID int, pkt rtcp.Packet) {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return
+	}
+
+	ss.writePacketRTCP(trackID, byts)
 }

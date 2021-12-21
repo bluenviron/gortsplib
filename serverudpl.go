@@ -210,7 +210,7 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 		h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
 			Session: clientData.ss,
 			TrackID: clientData.trackID,
-			Payload: payload,
+			Packet:  &pkt,
 		})
 	}
 }
@@ -224,17 +224,20 @@ func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) 
 	if clientData.isPublishing {
 		now := time.Now()
 		atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
+
 		for _, pkt := range packets {
 			clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
 		}
 	}
 
 	if h, ok := u.s.Handler.(ServerHandlerOnPacketRTCP); ok {
-		h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
-			Session: clientData.ss,
-			TrackID: clientData.trackID,
-			Payload: payload,
-		})
+		for _, pkt := range packets {
+			h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
+				Session: clientData.ss,
+				TrackID: clientData.trackID,
+				Packet:  pkt,
+			})
+		}
 	}
 }
 

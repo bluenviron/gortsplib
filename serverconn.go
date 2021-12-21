@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
@@ -238,32 +241,52 @@ func (sc *ServerConn) run() {
 
 func (sc *ServerConn) tcpProcessPlay(trackID int, isRTP bool, payload []byte) {
 	if !isRTP {
+		packets, err := rtcp.Unmarshal(payload)
+		if err != nil {
+			return
+		}
+
 		if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
-			h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
-				Session: sc.tcpSession,
-				TrackID: trackID,
-				Payload: payload,
-			})
+			for _, pkt := range packets {
+				h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
+					Session: sc.tcpSession,
+					TrackID: trackID,
+					Packet:  pkt,
+				})
+			}
 		}
 	}
 }
 
 func (sc *ServerConn) tcpProcessRecord(trackID int, isRTP bool, payload []byte) {
 	if isRTP {
+		var pkt rtp.Packet
+		err := pkt.Unmarshal(payload)
+		if err != nil {
+			return
+		}
+
 		if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
 			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
 				Session: sc.tcpSession,
 				TrackID: trackID,
-				Payload: payload,
+				Packet:  &pkt,
 			})
 		}
 	} else {
+		packets, err := rtcp.Unmarshal(payload)
+		if err != nil {
+			return
+		}
+
 		if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
-			h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
-				Session: sc.tcpSession,
-				TrackID: trackID,
-				Payload: payload,
-			})
+			for _, pkt := range packets {
+				h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
+					Session: sc.tcpSession,
+					TrackID: trackID,
+					Packet:  pkt,
+				})
+			}
 		}
 	}
 }

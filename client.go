@@ -1608,9 +1608,7 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 
 		// open the firewall by sending packets to the counterpart.
 		for _, cct := range c.tracks {
-			byts, _ := (&rtp.Packet{
-				Header: rtp.Header{Version: 2},
-			}).Marshal()
+			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
 			cct.udpRTPListener.write(byts)
 
 			byts, _ = (&rtcp.ReceiverReport{}).Marshal()

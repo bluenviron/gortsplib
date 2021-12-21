@@ -1,10 +1,12 @@
 package gortsplib
 
 import (
-	"encoding/binary"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/liberrors"
 )
@@ -25,11 +27,11 @@ type ServerStream struct {
 	s      *Server
 	tracks Tracks
 
-	mutex             sync.RWMutex
-	readersUnicast    map[*ServerSession]struct{}
-	readers           map[*ServerSession]struct{}
-	multicastHandlers []*serverMulticastHandler
-	trackInfos        []*trackInfo
+	mutex                   sync.RWMutex
+	readersUnicast          map[*ServerSession]struct{}
+	readers                 map[*ServerSession]struct{}
+	serverMulticastHandlers []*serverMulticastHandler
+	trackInfos              []*trackInfo
 }
 
 // NewServerStream allocates a ServerStream.
@@ -67,11 +69,11 @@ func (st *ServerStream) Close() error {
 		ss.Close()
 	}
 
-	if st.multicastHandlers != nil {
-		for _, h := range st.multicastHandlers {
+	if st.serverMulticastHandlers != nil {
+		for _, h := range st.serverMulticastHandlers {
 			h.close()
 		}
-		st.multicastHandlers = nil
+		st.serverMulticastHandlers = nil
 	}
 
 	st.readers = nil
@@ -138,22 +140,22 @@ func (st *ServerStream) readerAdd(
 
 	case TransportUDPMulticast:
 		// allocate multicast listeners
-		if st.multicastHandlers == nil {
-			st.multicastHandlers = make([]*serverMulticastHandler, len(st.tracks))
+		if st.serverMulticastHandlers == nil {
+			st.serverMulticastHandlers = make([]*serverMulticastHandler, len(st.tracks))
 
 			for i := range st.tracks {
 				h, err := newServerMulticastHandler(st.s)
 				if err != nil {
-					for _, h := range st.multicastHandlers {
+					for _, h := range st.serverMulticastHandlers {
 						if h != nil {
 							h.close()
 						}
 					}
-					st.multicastHandlers = nil
+					st.serverMulticastHandlers = nil
 					return err
 				}
 
-				st.multicastHandlers[i] = h
+				st.serverMulticastHandlers[i] = h
 			}
 		}
 	}
@@ -169,12 +171,12 @@ func (st *ServerStream) readerRemove(ss *ServerSession) {
 
 	delete(st.readers, ss)
 
-	if len(st.readers) == 0 && st.multicastHandlers != nil {
-		for _, l := range st.multicastHandlers {
+	if len(st.readers) == 0 && st.serverMulticastHandlers != nil {
+		for _, l := range st.serverMulticastHandlers {
 			l.rtpl.close()
 			l.rtcpl.close()
 		}
-		st.multicastHandlers = nil
+		st.serverMulticastHandlers = nil
 	}
 }
 
@@ -188,8 +190,8 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 
 	default: // UDPMulticast
 		for trackID := range ss.setuppedTracks {
-			st.multicastHandlers[trackID].rtcpl.addClient(
-				ss.author.ip(), st.multicastHandlers[trackID].rtcpl.port(), ss, trackID, false)
+			st.serverMulticastHandlers[trackID].rtcpl.addClient(
+				ss.author.ip(), st.serverMulticastHandlers[trackID].rtcpl.port(), ss, trackID, false)
 		}
 	}
 }
@@ -203,56 +205,62 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 		delete(st.readersUnicast, ss)
 
 	default: // UDPMulticast
-		if st.multicastHandlers != nil {
+		if st.serverMulticastHandlers != nil {
 			for trackID := range ss.setuppedTracks {
-				st.multicastHandlers[trackID].rtcpl.removeClient(ss)
+				st.serverMulticastHandlers[trackID].rtcpl.removeClient(ss)
 			}
 		}
 	}
 }
 
 // WritePacketRTP writes a RTP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTP(trackID int, payload []byte) {
-	if len(payload) >= 8 {
-		track := st.trackInfos[trackID]
-
-		sequenceNumber := binary.BigEndian.Uint16(payload[2:4])
-		atomic.StoreUint32(&track.lastSequenceNumber, uint32(sequenceNumber))
-
-		timestamp := binary.BigEndian.Uint32(payload[4:8])
-		atomic.StoreUint32(&track.lastTimeRTP, timestamp)
-		atomic.StoreInt64(&track.lastTimeNTP, time.Now().Unix())
-
-		ssrc := binary.BigEndian.Uint32(payload[8:12])
-		atomic.StoreUint32(&track.lastSSRC, ssrc)
+func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet) {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return
 	}
+
+	track := st.trackInfos[trackID]
+
+	atomic.StoreUint32(&track.lastSequenceNumber,
+		uint32(pkt.Header.SequenceNumber))
+
+	atomic.StoreUint32(&track.lastTimeRTP, pkt.Header.Timestamp)
+	atomic.StoreInt64(&track.lastTimeNTP, time.Now().Unix())
+
+	atomic.StoreUint32(&track.lastSSRC, pkt.Header.SSRC)
 
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 
 	// send unicast
 	for r := range st.readersUnicast {
-		r.WritePacketRTP(trackID, payload)
+		r.writePacketRTP(trackID, byts)
 	}
 
 	// send multicast
-	if st.multicastHandlers != nil {
-		st.multicastHandlers[trackID].writeRTP(payload)
+	if st.serverMulticastHandlers != nil {
+		st.serverMulticastHandlers[trackID].writePacketRTP(byts)
 	}
 }
 
 // WritePacketRTCP writes a RTCP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTCP(trackID int, payload []byte) {
+func (st *ServerStream) WritePacketRTCP(trackID int, pkt rtcp.Packet) {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return
+	}
+
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 
 	// send unicast
 	for r := range st.readersUnicast {
-		r.WritePacketRTCP(trackID, payload)
+		r.writePacketRTCP(trackID, byts)
 	}
 
 	// send multicast
-	if st.multicastHandlers != nil {
-		st.multicastHandlers[trackID].writeRTCP(payload)
+	if st.serverMulticastHandlers != nil {
+		st.serverMulticastHandlers[trackID].writePacketRTCP(byts)
 	}
 }

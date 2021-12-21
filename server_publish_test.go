@@ -644,12 +644,12 @@ func TestServerPublish(t *testing.T) {
 					},
 					onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
 						require.Equal(t, 0, ctx.TrackID)
-						require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, ctx.Payload)
+						require.Equal(t, &testRTPPacket, ctx.Packet)
 					},
 					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
 						require.Equal(t, 0, ctx.TrackID)
-						require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, ctx.Payload)
-						ctx.Session.WritePacketRTCP(0, []byte{0x09, 0x0A, 0x0B, 0x0C})
+						require.Equal(t, &testRTCPPacket, ctx.Packet)
+						ctx.Session.WritePacketRTCP(0, &testRTCPPacket)
 					},
 				},
 				RTSPAddress: "localhost:8554",
@@ -770,28 +770,28 @@ func TestServerPublish(t *testing.T) {
 			if transport == "udp" {
 				time.Sleep(1 * time.Second)
 
-				l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
+				l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[0],
 				})
 
 				time.Sleep(500 * time.Millisecond)
 
-				l2.WriteTo([]byte{0x05, 0x06, 0x07, 0x08}, &net.UDPAddr{
+				l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[1],
 				})
 			} else {
 				base.InterleavedFrame{
 					Channel: 0,
-					Payload: []byte{0x01, 0x02, 0x03, 0x04},
+					Payload: testRTPPacketMarshaled,
 				}.Write(&bb)
 				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
 				base.InterleavedFrame{
 					Channel: 1,
-					Payload: []byte{0x05, 0x06, 0x07, 0x08},
+					Payload: testRTCPPacketMarshaled,
 				}.Write(&bb)
 				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
@@ -807,14 +807,14 @@ func TestServerPublish(t *testing.T) {
 				buf = make([]byte, 2048)
 				n, _, err := l2.ReadFrom(buf)
 				require.NoError(t, err)
-				require.Equal(t, []byte{0x09, 0x0A, 0x0B, 0x0C}, buf[:n])
+				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 			} else {
 				var f base.InterleavedFrame
 				f.Payload = make([]byte, 2048)
 				err := f.Read(br)
 				require.NoError(t, err)
 				require.Equal(t, 1, f.Channel)
-				require.Equal(t, []byte{0x09, 0x0A, 0x0B, 0x0C}, f.Payload)
+				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
 			}
 
 			res, err = writeReqReadRes(conn, br, base.Request{
@@ -837,7 +837,15 @@ func TestServerPublish(t *testing.T) {
 }
 
 func TestServerPublishNonStandardFrameSize(t *testing.T) {
-	payload := bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5)
+	packet := rtp.Packet{
+		Header: rtp.Header{
+			Version:     2,
+			PayloadType: 97,
+			CSRC:        []uint32{},
+		},
+		Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5),
+	}
+	packetMarshaled, _ := packet.Marshal()
 	frameReceived := make(chan struct{})
 
 	s := &Server{
@@ -861,7 +869,7 @@ func TestServerPublishNonStandardFrameSize(t *testing.T) {
 			},
 			onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
 				require.Equal(t, 0, ctx.TrackID)
-				require.Equal(t, payload, ctx.Payload)
+				require.Equal(t, &packet, ctx.Packet)
 				close(frameReceived)
 			},
 		},
@@ -937,7 +945,7 @@ func TestServerPublishNonStandardFrameSize(t *testing.T) {
 
 	base.InterleavedFrame{
 		Channel: 0,
-		Payload: payload,
+		Payload: packetMarshaled,
 	}.Write(&bb)
 	_, err = conn.Write(bb.Bytes())
 	require.NoError(t, err)

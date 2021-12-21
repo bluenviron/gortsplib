@@ -410,7 +410,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						defer mutex.Unlock()
 
 						if ctx.Session == publisher {
-							stream.WritePacketRTP(ctx.TrackID, ctx.Payload)
+							stream.WritePacketRTP(ctx.TrackID, ctx.Packet)
 						}
 					},
 					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
@@ -418,7 +418,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						defer mutex.Unlock()
 
 						if ctx.Session == publisher {
-							stream.WritePacketRTCP(ctx.TrackID, ctx.Payload)
+							stream.WritePacketRTCP(ctx.TrackID, ctx.Packet)
 						}
 					},
 				},

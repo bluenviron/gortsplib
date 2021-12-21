@@ -1,6 +1,9 @@
 package gortsplib
 
 import (
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
@@ -183,7 +186,7 @@ type ServerHandlerOnSetParameter interface {
 type ServerHandlerOnPacketRTPCtx struct {
 	Session *ServerSession
 	TrackID int
-	Payload []byte
+	Packet  *rtp.Packet
 }
 
 // ServerHandlerOnPacketRTP can be implemented by a ServerHandler.
@@ -195,7 +198,7 @@ type ServerHandlerOnPacketRTP interface {
 type ServerHandlerOnPacketRTCPCtx struct {
 	Session *ServerSession
 	TrackID int
-	Payload []byte
+	Packet  rtcp.Packet
 }
 
 // ServerHandlerOnPacketRTCP can be implemented by a ServerHandler.
