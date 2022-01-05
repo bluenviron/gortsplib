@@ -184,6 +184,17 @@ func (h *Transport) Read(v base.HeaderValue) error {
 			h.ServerPorts = ports
 
 		case "ssrc":
+			// replace initial spaces
+			var b strings.Builder
+			b.Grow(len(v))
+			i := 0
+			for ; i < len(v) && v[i] == ' '; i++ {
+				b.WriteByte('0')
+			}
+			b.WriteString(v[i:])
+			v = b.String()
+
+			// add initial zeros
 			if (len(v) % 2) != 0 {
 				v = "0" + v
 			}

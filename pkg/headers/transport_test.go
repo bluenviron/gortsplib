@@ -155,6 +155,28 @@ var casesTransport = []struct {
 			}(),
 		},
 	},
+	{
+		"hikvision ssrc with initial spaces",
+		base.HeaderValue{`RTP/AVP/UDP;unicast;client_port=14186;server_port=8052;ssrc= 4317f;mode=play`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0004317F;mode=play`},
+		Transport{
+			Protocol: TransportProtocolUDP,
+			Delivery: func() *TransportDelivery {
+				v := TransportDeliveryUnicast
+				return &v
+			}(),
+			Mode: func() *TransportMode {
+				v := TransportModePlay
+				return &v
+			}(),
+			ClientPorts: &[2]int{14186, 14187},
+			ServerPorts: &[2]int{8052, 8053},
+			SSRC: func() *uint32 {
+				v := uint32(0x04317f)
+				return &v
+			}(),
+		},
+	},
 }
 
 func TestTransportRead(t *testing.T) {
