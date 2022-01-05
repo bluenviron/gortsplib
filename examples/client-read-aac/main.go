@@ -28,6 +28,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer c.Close()
 
 	// get available methods
 	_, err = c.Options(u)

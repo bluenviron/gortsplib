@@ -33,6 +33,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer c.Close()
 
 	_, err = c.Options(u)
 	if err != nil {
