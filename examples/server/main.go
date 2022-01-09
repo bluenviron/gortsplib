@@ -135,7 +135,7 @@ func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx)
 }
 
 // called after receiving a RTCP packet.
-func (sh *serverHandler) OnPacketRTCP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
+func (sh *serverHandler) OnPacketRTCP(ctx *gortsplib.ServerHandlerOnPacketRTCPCtx) {
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
