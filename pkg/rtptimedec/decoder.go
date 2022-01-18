@@ -22,17 +22,24 @@ func New(clockRate int) *Decoder {
 
 // Decode decodes a RTP timestamp.
 func (d *Decoder) Decode(ts uint32) time.Duration {
-	ts64 := int64(ts) + d.tsAdd
+	ts64 := int64(ts)
 
-	if d.tsPrev != nil && (ts64-*d.tsPrev) < -0xFFFF {
-		ts64 += 0xFFFFFFFF
-		d.tsAdd += 0xFFFFFFFF
+	if d.tsPrev != nil {
+		diff := ts64 - *d.tsPrev
+		switch {
+		case diff < -0xFFFFFF: // overflow
+			d.tsAdd += 0xFFFFFFFF
+
+		case diff > 0xFFFFFF: // timestamp overflowed then went back
+			d.tsAdd -= 0xFFFFFFFF
+		}
 	}
+
 	d.tsPrev = &ts64
 
 	if d.tsInitial == nil {
 		d.tsInitial = &ts64
 	}
 
-	return time.Duration(ts64-*d.tsInitial) * time.Second / d.clockRate
+	return time.Duration(ts64+d.tsAdd-*d.tsInitial) * time.Second / d.clockRate
 }
