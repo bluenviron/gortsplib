@@ -1251,6 +1251,21 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			req, err = readRequest(br)
 			require.NoError(t, err)
+			require.Equal(t, base.Describe, req.Method)
+
+			base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Content-Type": base.HeaderValue{"application/sdp"},
+					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+				},
+				Body: tracks.Write(false),
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
+			require.NoError(t, err)
+
+			req, err = readRequest(br)
+			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 
 			v = auth.NewValidator("myuser", "mypass", nil)

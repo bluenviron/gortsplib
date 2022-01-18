@@ -206,6 +206,7 @@ type Client struct {
 	sender             *auth.Sender
 	cseq               int
 	useGetParameter    bool
+	lastDescribeURL    *base.URL
 	streamBaseURL      *base.URL
 	protocol           *Transport
 	tracks             map[int]clientTrack
@@ -657,6 +658,12 @@ func (c *Client) trySwitchingProtocol() error {
 	c.scheme = prevBaseURL.Scheme
 	c.host = prevBaseURL.Host
 
+	// some Hikvision cameras require a describe before a setup
+	_, _, _, err := c.doDescribe(c.lastDescribeURL)
+	if err != nil {
+		return err
+	}
+
 	for _, track := range prevTracks {
 		_, err := c.doSetup(true, track.track, prevBaseURL, 0, 0)
 		if err != nil {
@@ -664,7 +671,7 @@ func (c *Client) trySwitchingProtocol() error {
 		}
 	}
 
-	_, err := c.doPlay(c.lastRange, true)
+	_, err = c.doPlay(c.lastRange, true)
 	if err != nil {
 		return err
 	}
@@ -905,14 +912,14 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		req.Header["Session"] = base.HeaderValue{c.session}
 	}
 
-	if c.sender != nil {
-		c.sender.AddAuthorization(req)
-	}
-
 	c.cseq++
 	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
 
 	req.Header["User-Agent"] = base.HeaderValue{"gortsplib"}
+
+	if c.sender != nil {
+		c.sender.AddAuthorization(req)
+	}
 
 	if c.OnRequest != nil {
 		c.OnRequest(req)
@@ -1135,6 +1142,8 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	c.lastDescribeURL = u
 
 	return tracks, baseURL, res, nil
 }
