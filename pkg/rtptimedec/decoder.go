@@ -28,10 +28,10 @@ func (d *Decoder) Decode(ts uint32) time.Duration {
 		diff := ts64 - *d.tsPrev
 		switch {
 		case diff < -0xFFFFFF: // overflow
-			d.tsAdd += 0xFFFFFFFF
+			d.tsAdd += 0x100000000
 
 		case diff > 0xFFFFFF: // timestamp overflowed then went back
-			d.tsAdd -= 0xFFFFFFFF
+			d.tsAdd -= 0x100000000
 		}
 	}
 
