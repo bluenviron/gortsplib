@@ -11,6 +11,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/h264"
+	"github.com/aler9/gortsplib/pkg/rtptimedec"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -36,11 +37,7 @@ func (r PacketConnReader) Read(p []byte) (int, error) {
 
 // Decoder is a RTP/H264 decoder.
 type Decoder struct {
-	tsAdd     int64
-	tsInitial *int64
-	tsPrev    *int64
-
-	// for Decode()
+	timeDecoder            *rtptimedec.Decoder
 	startingPacketReceived bool
 	isDecodingFragmented   bool
 	fragmentedBuffer       []byte
@@ -51,23 +48,9 @@ type Decoder struct {
 
 // NewDecoder allocates a Decoder.
 func NewDecoder() *Decoder {
-	return &Decoder{}
-}
-
-func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
-	ts64 := int64(ts) + d.tsAdd
-
-	if d.tsPrev != nil && (ts64-*d.tsPrev) < -0xFFFF {
-		ts64 += 0xFFFFFFFF
-		d.tsAdd += 0xFFFFFFFF
+	return &Decoder{
+		timeDecoder: rtptimedec.New(90000),
 	}
-	d.tsPrev = &ts64
-
-	if d.tsInitial == nil {
-		d.tsInitial = &ts64
-	}
-
-	return time.Duration(ts64-*d.tsInitial) * time.Second / rtpClockRate
 }
 
 // Decode decodes NALUs from a RTP/H264 packet.
@@ -110,7 +93,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			}
 
 			d.startingPacketReceived = true
-			return nalus, d.decodeTimestamp(pkt.Timestamp), nil
+			return nalus, d.timeDecoder.Decode(pkt.Timestamp), nil
 
 		case naluTypeFUA: // first packet of a fragmented NALU
 			if len(pkt.Payload) < 2 {
@@ -139,7 +122,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		}
 
 		d.startingPacketReceived = true
-		return [][]byte{pkt.Payload}, d.decodeTimestamp(pkt.Timestamp), nil
+		return [][]byte{pkt.Payload}, d.timeDecoder.Decode(pkt.Timestamp), nil
 	}
 
 	// we are decoding a fragmented NALU
@@ -171,7 +154,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	d.isDecodingFragmented = false
 	d.startingPacketReceived = true
-	return [][]byte{d.fragmentedBuffer}, d.decodeTimestamp(pkt.Timestamp), nil
+	return [][]byte{d.fragmentedBuffer}, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
 // DecodeUntilMarker decodes NALUs from a RTP/H264 packet and puts them in a buffer.

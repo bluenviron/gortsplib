@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/pkg/rtptimedec"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -14,13 +16,7 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 
 // Decoder is a RTP/AAC decoder.
 type Decoder struct {
-	clockRate time.Duration
-
-	tsAdd     int64
-	tsInitial *int64
-	tsPrev    *int64
-
-	// for Decode()
+	timeDecoder          *rtptimedec.Decoder
 	isDecodingFragmented bool
 	fragmentedBuf        []byte
 }
@@ -28,24 +24,8 @@ type Decoder struct {
 // NewDecoder allocates a Decoder.
 func NewDecoder(clockRate int) *Decoder {
 	return &Decoder{
-		clockRate: time.Duration(clockRate),
+		timeDecoder: rtptimedec.New(clockRate),
 	}
-}
-
-func (d *Decoder) decodeTimestamp(ts uint32) time.Duration {
-	ts64 := int64(ts) + d.tsAdd
-
-	if d.tsPrev != nil && (ts64-*d.tsPrev) < -0xFFFF {
-		ts64 += 0xFFFFFFFF
-		d.tsAdd += 0xFFFFFFFF
-	}
-	d.tsPrev = &ts64
-
-	if d.tsInitial == nil {
-		d.tsInitial = &ts64
-	}
-
-	return time.Duration(ts64-*d.tsInitial) * time.Second / d.clockRate
 }
 
 // Decode decodes AUs from a RTP/AAC packet.
@@ -100,7 +80,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 				pkt.Payload = pkt.Payload[dataLen:]
 			}
 
-			return aus, d.decodeTimestamp(pkt.Timestamp), nil
+			return aus, d.timeDecoder.Decode(pkt.Timestamp), nil
 		}
 
 		if headersLen != 16 {
@@ -152,5 +132,5 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	d.isDecodingFragmented = false
-	return [][]byte{d.fragmentedBuf}, d.decodeTimestamp(pkt.Timestamp), nil
+	return [][]byte{d.fragmentedBuf}, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
