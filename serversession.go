@@ -283,7 +283,13 @@ func (ss *ServerSession) run() {
 					if res.Header == nil {
 						res.Header = make(base.Header)
 					}
-					res.Header["Session"] = base.HeaderValue{ss.secretID}
+					res.Header["Session"] = headers.Session{
+						Session: ss.secretID,
+						Timeout: func() *uint {
+							v := uint(ss.s.sessionTimeout / time.Second)
+							return &v
+						}(),
+					}.Write()
 				}
 
 				if _, ok := err.(liberrors.ErrServerSessionTeardown); ok {
@@ -337,7 +343,7 @@ func (ss *ServerSession) run() {
 					}
 
 					// in case of PLAY and UDP, timeout happens when no RTSP request arrives
-				} else if now.Sub(ss.lastRequestTime) >= ss.s.closeSessionAfterNoRequestsFor {
+				} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout {
 					return liberrors.ErrServerNoRTSPRequestsInAWhile{}
 				}
 

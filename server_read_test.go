@@ -200,52 +200,43 @@ func TestServerReadSetupErrors(t *testing.T) {
 				InterleavedIDs: &[2]int{0, 1},
 			}
 
+			res, err := writeReqReadRes(conn, br, base.Request{
+				Method: base.Setup,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				Header: base.Header{
+					"CSeq":      base.HeaderValue{"1"},
+					"Transport": th.Write(),
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			th.InterleavedIDs = &[2]int{2, 3}
+
+			var sx headers.Session
+			err = sx.Read(res.Header["Session"])
+			require.NoError(t, err)
+
 			if ca == "different paths" {
-				res, err := writeReqReadRes(conn, br, base.Request{
-					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-					Header: base.Header{
-						"CSeq":      base.HeaderValue{"1"},
-						"Transport": th.Write(),
-					},
-				})
-				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
-
-				th.InterleavedIDs = &[2]int{2, 3}
-
 				res, err = writeReqReadRes(conn, br, base.Request{
 					Method: base.Setup,
 					URL:    mustParseURL("rtsp://localhost:8554/test12stream/trackID=1"),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"2"},
 						"Transport": th.Write(),
-						"Session":   res.Header["Session"],
+						"Session":   base.HeaderValue{sx.Session},
 					},
 				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusBadRequest, res.StatusCode)
 			} else {
-				res, err := writeReqReadRes(conn, br, base.Request{
-					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-					Header: base.Header{
-						"CSeq":      base.HeaderValue{"1"},
-						"Transport": th.Write(),
-					},
-				})
-				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
-
-				th.InterleavedIDs = &[2]int{2, 3}
-
 				res, err = writeReqReadRes(conn, br, base.Request{
 					Method: base.Setup,
 					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"2"},
 						"Transport": th.Write(),
-						"Session":   res.Header["Session"],
+						"Session":   base.HeaderValue{sx.Session},
 					},
 				})
 				require.NoError(t, err)
@@ -461,12 +452,16 @@ func TestServerRead(t *testing.T) {
 
 			<-sessionOpened
 
+			var sx headers.Session
+			err = sx.Read(res.Header["Session"])
+			require.NoError(t, err)
+
 			res, err = writeReqReadRes(conn, br, base.Request{
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"2"},
-					"Session": res.Header["Session"],
+					"Session": base.HeaderValue{sx.Session},
 				},
 			})
 			require.NoError(t, err)
@@ -538,7 +533,7 @@ func TestServerRead(t *testing.T) {
 					URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream"),
 					Header: base.Header{
 						"CSeq":    base.HeaderValue{"4"},
-						"Session": res.Header["Session"],
+						"Session": base.HeaderValue{sx.Session},
 					},
 				})
 				require.NoError(t, err)
@@ -550,7 +545,7 @@ func TestServerRead(t *testing.T) {
 					URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream"),
 					Header: base.Header{
 						"CSeq":    base.HeaderValue{"5"},
-						"Session": res.Header["Session"],
+						"Session": base.HeaderValue{sx.Session},
 					},
 				})
 				require.NoError(t, err)
@@ -562,7 +557,7 @@ func TestServerRead(t *testing.T) {
 				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"6"},
-					"Session": res.Header["Session"],
+					"Session": base.HeaderValue{sx.Session},
 				},
 			})
 			require.NoError(t, err)
@@ -689,12 +684,16 @@ func TestServerReadNonStandardFrameSize(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	var sx headers.Session
+	err = sx.Read(res.Header["Session"])
+	require.NoError(t, err)
+
 	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -790,12 +789,16 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	var sx headers.Session
+	err = sx.Read(res.Header["Session"])
+	require.NoError(t, err)
+
 	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -864,12 +867,16 @@ func TestServerReadPlayPlay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	var sx headers.Session
+	err = sx.Read(res.Header["Session"])
+	require.NoError(t, err)
+
 	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -880,7 +887,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"3"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -974,12 +981,16 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	var sx headers.Session
+	err = sx.Read(res.Header["Session"])
+	require.NoError(t, err)
+
 	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -990,7 +1001,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -1001,7 +1012,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -1092,12 +1103,16 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	var sx headers.Session
+	err = sx.Read(res.Header["Session"])
+	require.NoError(t, err)
+
 	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -1108,7 +1123,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	}.Write(&bb)
 	_, err = conn.Write(bb.Bytes())
@@ -1123,7 +1138,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	}.Write(&bb)
 	_, err = conn.Write(bb.Bytes())
@@ -1170,11 +1185,11 @@ func TestServerReadTimeout(t *testing.T) {
 						}, nil
 					},
 				},
-				ReadTimeout:                    1 * time.Second,
-				closeSessionAfterNoRequestsFor: 1 * time.Second,
-				UDPRTPAddress:                  "127.0.0.1:8000",
-				UDPRTCPAddress:                 "127.0.0.1:8001",
-				RTSPAddress:                    "localhost:8554",
+				ReadTimeout:    1 * time.Second,
+				sessionTimeout: 1 * time.Second,
+				UDPRTPAddress:  "127.0.0.1:8000",
+				UDPRTCPAddress: "127.0.0.1:8001",
+				RTSPAddress:    "localhost:8554",
 			}
 
 			err = s.Start()
@@ -1211,12 +1226,16 @@ func TestServerReadTimeout(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
+			var sx headers.Session
+			err = sx.Read(res.Header["Session"])
+			require.NoError(t, err)
+
 			res, err = writeReqReadRes(conn, br, base.Request{
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"2"},
-					"Session": res.Header["Session"],
+					"Session": base.HeaderValue{sx.Session},
 				},
 			})
 			require.NoError(t, err)
@@ -1267,9 +1286,9 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 						}, nil
 					},
 				},
-				ReadTimeout:                    1 * time.Second,
-				closeSessionAfterNoRequestsFor: 1 * time.Second,
-				RTSPAddress:                    "localhost:8554",
+				ReadTimeout:    1 * time.Second,
+				sessionTimeout: 1 * time.Second,
+				RTSPAddress:    "localhost:8554",
 			}
 
 			if transport == "udp" {
@@ -1316,12 +1335,16 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
+			var sx headers.Session
+			err = sx.Read(res.Header["Session"])
+			require.NoError(t, err)
+
 			res, err = writeReqReadRes(conn, br, base.Request{
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
 					"CSeq":    base.HeaderValue{"2"},
-					"Session": res.Header["Session"],
+					"Session": base.HeaderValue{sx.Session},
 				},
 			})
 			require.NoError(t, err)
@@ -1402,17 +1425,22 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
 
+		var sx headers.Session
+		err = sx.Read(res.Header["Session"])
+		require.NoError(t, err)
+
 		res, err = writeReqReadRes(conn, br, base.Request{
 			Method: base.Play,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
 				"CSeq":    base.HeaderValue{"2"},
-				"Session": res.Header["Session"],
+				"Session": base.HeaderValue{sx.Session},
 			},
 		})
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
-		sxID = res.Header["Session"][0]
+
+		sxID = sx.Session
 	}()
 
 	func() {
@@ -1502,12 +1530,16 @@ func TestServerReadPartialTracks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	var sx headers.Session
+	err = sx.Read(res.Header["Session"])
+	require.NoError(t, err)
+
 	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -1572,13 +1604,17 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 			InterleavedIDs: &[2]int{2, 3},
 		}
 
+		var sx headers.Session
+		err = sx.Read(res.Header["Session"])
+		require.NoError(t, err)
+
 		res, err = writeReqReadRes(conn, br, base.Request{
 			Method: base.Setup,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=1"),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Write(),
-				"Session":   res.Header["Session"],
+				"Session":   base.HeaderValue{sx.Session},
 			},
 		})
 		require.NoError(t, err)
@@ -1594,7 +1630,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
 				"CSeq":    base.HeaderValue{"3"},
-				"Session": res.Header["Session"],
+				"Session": base.HeaderValue{sx.Session},
 			},
 		})
 		require.NoError(t, err)
@@ -1788,12 +1824,16 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
 
+		var sx headers.Session
+		err = sx.Read(res.Header["Session"])
+		require.NoError(t, err)
+
 		res, err = writeReqReadRes(conn, br, base.Request{
 			Method: base.Play,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
 				"CSeq":    base.HeaderValue{"2"},
-				"Session": res.Header["Session"],
+				"Session": base.HeaderValue{sx.Session},
 			},
 		})
 		require.NoError(t, err)

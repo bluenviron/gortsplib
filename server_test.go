@@ -749,12 +749,16 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	var sx headers.Session
+	err = sx.Read(res.Header["Session"])
+	require.NoError(t, err)
+
 	res, err = writeReqReadRes(conn1, br1, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -782,7 +786,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 				}(),
 				InterleavedIDs: &[2]int{0, 1},
 			}.Write(),
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -849,12 +853,16 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	var sx headers.Session
+	err = sx.Read(res.Header["Session"])
+	require.NoError(t, err)
+
 	res, err = writeReqReadRes(conn, br, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": res.Header["Session"],
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
@@ -1193,7 +1201,12 @@ func TestServerErrorInvalidPath(t *testing.T) {
 				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
-				sxID = res.Header["Session"][0]
+
+				var sx headers.Session
+				err = sx.Read(res.Header["Session"])
+				require.NoError(t, err)
+
+				sxID = sx.Session
 			}
 
 			if method == base.Play || method == base.Record || method == base.Pause {
@@ -1223,7 +1236,12 @@ func TestServerErrorInvalidPath(t *testing.T) {
 				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
-				sxID = res.Header["Session"][0]
+
+				var sx headers.Session
+				err = sx.Read(res.Header["Session"])
+				require.NoError(t, err)
+
+				sxID = sx.Session
 			}
 
 			if method == base.Pause {
