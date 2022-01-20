@@ -980,7 +980,6 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 
 		if sx.Timeout != nil && *sx.Timeout > 0 {
 			c.keepalivePeriod = time.Duration(float64(*sx.Timeout)*0.8) * time.Second
-			c.keepaliveTimer.Reset(c.keepalivePeriod)
 		}
 	}
 
