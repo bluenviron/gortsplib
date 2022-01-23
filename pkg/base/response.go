@@ -139,10 +139,10 @@ func (res *Response) Read(rb *bufio.Reader) error {
 	if err != nil {
 		return err
 	}
-	proto := string(byts[:len(byts)-1])
+	proto := byts[:len(byts)-1]
 
-	if proto != rtspProtocol10 {
-		return fmt.Errorf("expected '%s', got '%s'", rtspProtocol10, proto)
+	if string(proto) != rtspProtocol10 {
+		return fmt.Errorf("expected '%s', got %v", rtspProtocol10, proto)
 	}
 
 	byts, err = readBytesLimited(rb, ' ', 4)

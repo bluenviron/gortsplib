@@ -139,7 +139,7 @@ func TestResponseReadErrors(t *testing.T) {
 		{
 			"invalid protocol",
 			[]byte("RTSP/2.0 200 OK\r\n"),
-			"expected 'RTSP/1.0', got 'RTSP/2.0'",
+			"expected 'RTSP/1.0', got [82 84 83 80 47 50 46 48]",
 		},
 		{
 			"code too long",

@@ -187,7 +187,7 @@ func TestRequestReadErrors(t *testing.T) {
 		{
 			"empty protocol",
 			[]byte("GET rtsp://testing123 \r\n"),
-			"expected 'RTSP/1.0', got ''",
+			"expected 'RTSP/1.0', got []",
 		},
 		{
 			"invalid URL",
@@ -197,7 +197,7 @@ func TestRequestReadErrors(t *testing.T) {
 		{
 			"invalid protocol",
 			[]byte("GET rtsp://testing123 RTSP/2.0\r\n"),
-			"expected 'RTSP/1.0', got 'RTSP/2.0'",
+			"expected 'RTSP/1.0', got [82 84 83 80 47 50 46 48]",
 		},
 		{
 			"invalid header",
