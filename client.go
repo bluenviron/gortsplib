@@ -580,25 +580,31 @@ func (c *Client) run() {
 
 	c.ctxCancel()
 
-	c.doClose(true)
+	c.doClose()
 }
 
-func (c *Client) doClose(isClosing bool) {
+func (c *Client) doClose() {
 	if c.state == clientStatePlay || c.state == clientStateRecord {
 		if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-			// stop UDP listeners
 			for _, cct := range c.tracks {
 				cct.udpRTPListener.stop()
 				cct.udpRTCPListener.stop()
 			}
 		}
 
-		c.playRecordStop(isClosing)
+		c.playRecordStop(true)
 
 		c.do(&base.Request{
 			Method: base.Teardown,
 			URL:    c.streamBaseURL,
 		}, true)
+
+		c.conn.Close()
+		c.conn = nil
+	} else if c.conn != nil {
+		c.connCloserStop()
+		c.conn.Close()
+		c.conn = nil
 	}
 
 	for _, track := range c.tracks {
@@ -607,16 +613,10 @@ func (c *Client) doClose(isClosing bool) {
 			track.udpRTCPListener.close()
 		}
 	}
-
-	if c.conn != nil {
-		c.connCloserStop()
-		c.conn.Close()
-		c.conn = nil
-	}
 }
 
 func (c *Client) reset() {
-	c.doClose(false)
+	c.doClose()
 
 	c.state = clientStateInitial
 	c.session = ""
@@ -877,8 +877,10 @@ func (c *Client) connOpen() error {
 func (c *Client) connCloserStart() {
 	c.connCloserTerminate = make(chan struct{})
 	c.connCloserDone = make(chan struct{})
+
 	go func() {
 		defer close(c.connCloserDone)
+
 		select {
 		case <-c.ctx.Done():
 			c.conn.Close()
@@ -889,11 +891,9 @@ func (c *Client) connCloserStart() {
 }
 
 func (c *Client) connCloserStop() {
-	if c.connCloserDone != nil {
-		close(c.connCloserTerminate)
-		<-c.connCloserDone
-		c.connCloserDone = nil
-	}
+	close(c.connCloserTerminate)
+	<-c.connCloserDone
+	c.connCloserDone = nil
 }
 
 func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error) {
@@ -1628,7 +1628,6 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 
 	if res.StatusCode != base.StatusOK {
 		if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-			// stop UDP listeners
 			for _, cct := range c.tracks {
 				cct.udpRTPListener.stop()
 				cct.udpRTCPListener.stop()
@@ -1704,7 +1703,6 @@ func (c *Client) doRecord() (*base.Response, error) {
 
 	if res.StatusCode != base.StatusOK {
 		if *c.protocol == TransportUDP {
-			// stop UDP listeners
 			for _, cct := range c.tracks {
 				cct.udpRTPListener.stop()
 				cct.udpRTCPListener.stop()
@@ -1749,7 +1747,6 @@ func (c *Client) doPause() (*base.Response, error) {
 	c.playRecordStop(false)
 
 	if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-		// stop UDP listeners
 		for _, cct := range c.tracks {
 			cct.udpRTPListener.stop()
 			cct.udpRTCPListener.stop()
