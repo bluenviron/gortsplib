@@ -815,12 +815,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, err
 		}
 
-		if len(ss.setuppedTracks) == 0 {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerNoTracksSetup{}
-		}
-
 		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 		if !ok {
 			return &base.Response{
