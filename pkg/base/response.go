@@ -142,7 +142,17 @@ func (res *Response) Read(rb *bufio.Reader) error {
 	proto := byts[:len(byts)-1]
 
 	if string(proto) != rtspProtocol10 {
-		return fmt.Errorf("expected '%s', got %v", rtspProtocol10, proto)
+		method := Method(byts[:len(byts)-1])
+		if method == "" {
+			return fmt.Errorf("expected '%s', got %v", rtspProtocol10, proto)
+		}
+
+		var req Request
+		err = req.ReadIgnoreServer(rb)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	byts, err = readBytesLimited(rb, ' ', 4)

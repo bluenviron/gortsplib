@@ -78,6 +78,42 @@ func (req *Request) Read(rb *bufio.Reader) error {
 	proto := byts[:len(byts)-1]
 
 	if string(proto) != rtspProtocol10 {
+
+		return fmt.Errorf("expected '%s', got %v", rtspProtocol10, proto)
+	}
+
+	err = readByteEqual(rb, '\n')
+	if err != nil {
+		return err
+	}
+
+	err = req.Header.read(rb)
+	if err != nil {
+		return err
+	}
+
+	err = (*body)(&req.Body).read(req.Header, rb)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (req *Request) ReadIgnoreServer(rb *bufio.Reader) error {
+	byts, err := readBytesLimited(rb, ' ', requestMaxURLLength)
+	if err != nil {
+		return err
+	}
+	_ = string(byts[:len(byts)-1])
+
+	byts, err = readBytesLimited(rb, '\r', requestMaxProtocolLength)
+	if err != nil {
+		return err
+	}
+	proto := byts[:len(byts)-1]
+
+	if string(proto) != rtspProtocol10 {
 		return fmt.Errorf("expected '%s', got %v", rtspProtocol10, proto)
 	}
 
