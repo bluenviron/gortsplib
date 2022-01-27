@@ -2,99 +2,12 @@ package gortsplib
 
 import (
 	"encoding/binary"
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/aler9/gortsplib/pkg/liberrors"
-	"github.com/aler9/gortsplib/pkg/ringbuffer"
 )
-
-type trackTypePayload struct {
-	trackID int
-	isRTP   bool
-	payload []byte
-}
-
-type multicastHandler struct {
-	rtpl        *serverUDPListener
-	rtcpl       *serverUDPListener
-	writeBuffer *ringbuffer.RingBuffer
-
-	writerDone chan struct{}
-}
-
-func newMulticastHandler(s *Server) (*multicastHandler, error) {
-	rtpl, rtcpl, err := newServerUDPListenerMulticastPair(s)
-	if err != nil {
-		return nil, err
-	}
-
-	h := &multicastHandler{
-		rtpl:        rtpl,
-		rtcpl:       rtcpl,
-		writeBuffer: ringbuffer.New(uint64(s.ReadBufferCount)),
-		writerDone:  make(chan struct{}),
-	}
-
-	go h.runWriter()
-
-	return h, nil
-}
-
-func (h *multicastHandler) close() {
-	h.rtpl.close()
-	h.rtcpl.close()
-	h.writeBuffer.Close()
-	<-h.writerDone
-}
-
-func (h *multicastHandler) ip() net.IP {
-	return h.rtpl.ip()
-}
-
-func (h *multicastHandler) runWriter() {
-	defer close(h.writerDone)
-
-	rtpAddr := &net.UDPAddr{
-		IP:   h.rtpl.ip(),
-		Port: h.rtpl.port(),
-	}
-
-	rtcpAddr := &net.UDPAddr{
-		IP:   h.rtcpl.ip(),
-		Port: h.rtcpl.port(),
-	}
-
-	for {
-		tmp, ok := h.writeBuffer.Pull()
-		if !ok {
-			return
-		}
-		data := tmp.(trackTypePayload)
-
-		if data.isRTP {
-			h.rtpl.write(data.payload, rtpAddr)
-		} else {
-			h.rtcpl.write(data.payload, rtcpAddr)
-		}
-	}
-}
-
-func (h *multicastHandler) writeRTP(payload []byte) {
-	h.writeBuffer.Push(trackTypePayload{
-		isRTP:   true,
-		payload: payload,
-	})
-}
-
-func (h *multicastHandler) writeRTCP(payload []byte) {
-	h.writeBuffer.Push(trackTypePayload{
-		isRTP:   false,
-		payload: payload,
-	})
-}
 
 type trackInfo struct {
 	lastSequenceNumber uint32
@@ -115,7 +28,7 @@ type ServerStream struct {
 	mutex             sync.RWMutex
 	readersUnicast    map[*ServerSession]struct{}
 	readers           map[*ServerSession]struct{}
-	multicastHandlers []*multicastHandler
+	multicastHandlers []*serverMulticastHandler
 	trackInfos        []*trackInfo
 }
 
@@ -225,10 +138,10 @@ func (st *ServerStream) readerAdd(
 	case TransportUDPMulticast:
 		// allocate multicast listeners
 		if st.multicastHandlers == nil {
-			st.multicastHandlers = make([]*multicastHandler, len(st.tracks))
+			st.multicastHandlers = make([]*serverMulticastHandler, len(st.tracks))
 
 			for i := range st.tracks {
-				h, err := newMulticastHandler(st.s)
+				h, err := newServerMulticastHandler(st.s)
 				if err != nil {
 					for _, h := range st.multicastHandlers {
 						if h != nil {
