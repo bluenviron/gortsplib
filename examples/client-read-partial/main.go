@@ -45,9 +45,9 @@ func main() {
 		panic(err)
 	}
 
-	// setup only video tracks, skipping audio or application tracks
+	// setup only H264 tracks, skipping audio or application tracks
 	for _, t := range tracks {
-		if t.Media.MediaName.Media == "video" {
+		if _, ok := t.(*gortsplib.TrackH264); ok {
 			_, err := c.Setup(true, t, baseURL, 0, 0)
 			if err != nil {
 				panic(err)

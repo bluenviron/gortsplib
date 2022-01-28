@@ -3,10 +3,198 @@ package gortsplib
 import (
 	"testing"
 
+	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/base"
 )
+
+func TestTrackNewFromMediaDescription(t *testing.T) {
+	for _, ca := range []struct {
+		name  string
+		md    *psdp.MediaDescription
+		track Track
+	}{
+		{
+			"pcma",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"8"},
+				},
+			},
+			&TrackGeneric{
+				clockRate: 8000,
+				media:     "audio",
+				formats:   []string{"8"},
+			},
+		},
+		{
+			"aac",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+					},
+				},
+			},
+			&TrackAAC{
+				payloadType:  96,
+				sampleRate:   48000,
+				channelCount: 2,
+				mpegConf:     []byte{0x11, 0x90},
+			},
+		},
+		{
+			"aac uppercase",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 MPEG4-GENERIC/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+					},
+				},
+			},
+			&TrackAAC{
+				payloadType:  96,
+				sampleRate:   48000,
+				channelCount: 2,
+				mpegConf:     []byte{0x11, 0x90},
+			},
+		},
+		{
+			"opus",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 opus/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 sprop-stereo=1",
+					},
+				},
+			},
+			&TrackOpus{
+				payloadType:  96,
+				sampleRate:   48000,
+				channelCount: 2,
+			},
+		},
+		{
+			"h264",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key: "fmtp",
+						Value: "96 packetization-mode=1; " +
+							"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+					},
+				},
+			},
+			&TrackH264{
+				payloadType: 96,
+				sps: []byte{
+					0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
+					0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
+					0x00, 0x03, 0x00, 0x3d, 0x08,
+				},
+				pps: []byte{
+					0x68, 0xee, 0x3c, 0x80,
+				},
+			},
+		},
+		{
+			"h264 with a space at the end of rtpmap",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000 ",
+					},
+				},
+			},
+			&TrackH264{
+				payloadType: 96,
+			},
+		},
+		{
+			"h265",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H265/90000",
+					},
+					{
+						Key: "fmtp",
+						Value: "96 96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; " +
+							"sprop-sps=QgEBAWAAAAMAkAAAAwAAAwB4oAPAgBDllmZpJMrgEAAAAwAQAAADAeCA; sprop-pps=RAHBcrRiQA==",
+					},
+				},
+			},
+			&TrackGeneric{
+				clockRate: 90000,
+				media:     "video",
+				formats:   []string{"96"},
+				rtpmap:    "96 H265/90000",
+				fmtp: "96 96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; " +
+					"sprop-sps=QgEBAWAAAAMAkAAAAwAAAwB4oAPAgBDllmZpJMrgEAAAAwAQAAADAeCA; sprop-pps=RAHBcrRiQA==",
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			track, err := newTrackFromMediaDescription(ca.md)
+			require.NoError(t, err)
+			require.Equal(t, ca.track, track)
+		})
+	}
+}
 
 func TestTrackURL(t *testing.T) {
 	for _, ca := range []struct {
@@ -112,109 +300,9 @@ func TestTrackURL(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			tracks, err := ReadTracks(ca.sdp)
 			require.NoError(t, err)
-			ur, err := tracks[0].URL(ca.baseURL)
+			ur, err := tracks[0].url(ca.baseURL)
 			require.NoError(t, err)
 			require.Equal(t, ca.ur, ur)
-		})
-	}
-}
-
-func TestTrackClockRate(t *testing.T) {
-	for _, ca := range []struct {
-		name      string
-		sdp       []byte
-		clockRate int
-	}{
-		{
-			"empty encoding parameters",
-			[]byte("v=0\r\n" +
-				"o=- 38990265062388 38990265062388 IN IP4 192.168.1.142\r\n" +
-				"s=RTSP Session\r\n" +
-				"c=IN IP4 192.168.1.142\r\n" +
-				"t=0 0\r\n" +
-				"a=control:*\r\n" +
-				"a=range:npt=0-\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000 \r\n" +
-				"a=range:npt=0-\r\n" +
-				"a=framerate:0S\r\n" +
-				"a=fmtp:96 profile-level-id=64000c; packetization-mode=1; " +
-				"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==\r\n" +
-				"a=framerate:25\r\n" +
-				"a=control:trackID=3\r\n"),
-			90000,
-		},
-		{
-			"static payload type 1",
-			[]byte("v=0\r\n" +
-				"o=- 38990265062388 38990265062388 IN IP4 192.168.1.142\r\n" +
-				"s=RTSP Session\r\n" +
-				"c=IN IP4 192.168.1.142\r\n" +
-				"t=0 0\r\n" +
-				"a=control:*\r\n" +
-				"a=range:npt=0-\r\n" +
-				"m=audio 0 RTP/AVP 8\r\n" +
-				"a=control:trackID=4"),
-			8000,
-		},
-		{
-			"static payload type 2",
-			[]byte("v=0\r\n" +
-				"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
-				"s=SDP Seminar\r\n" +
-				"i=A Seminar on the session description protocol\r\n" +
-				"u=http://www.example.com/seminars/sdp.pdf\r\n" +
-				"e=j.doe@example.com (Jane Doe)\r\n" +
-				"p=+1 617 555-6011\r\n" +
-				"c=IN IP4 224.2.17.12/127\r\n" +
-				"b=X-YZ:128\r\n" +
-				"b=AS:12345\r\n" +
-				"t=2873397496 2873404696\r\n" +
-				"t=3034423619 3042462419\r\n" +
-				"r=604800 3600 0 90000\r\n" +
-				"z=2882844526 -3600 2898848070 0\r\n" +
-				"k=prompt\r\n" +
-				"a=candidate:0 1 UDP 2113667327 203.0.113.1 54400 typ host\r\n" +
-				"a=recvonly\r\n" +
-				"m=audio 49170 RTP/AVP 0\r\n" +
-				"i=Vivamus a posuere nisl\r\n" +
-				"c=IN IP4 203.0.113.1\r\n" +
-				"b=X-YZ:128\r\n" +
-				"k=prompt\r\n" +
-				"a=sendrecv\r\n"),
-			8000,
-		},
-		{
-			"multiple formats",
-			[]byte("v=0\r\n" +
-				"o=RTSP 1853326073 627916868 IN IP4 0.0.0.0\r\n" +
-				"s=RTSP server\r\n" +
-				"c=IN IP4 0.0.0.0\r\n" +
-				"t=0 0\r\n" +
-				"a=control:*\r\n" +
-				"a=etag:1234567890\r\n" +
-				"a=range:npt=0-\r\n" +
-				"a=control:*\r\n" +
-				"m=video 0 RTP/AVP 98 96\r\n" +
-				"a=control:trackID=1\r\n" +
-				"b=AS:0\r\n" +
-				"a=rtpmap:98 H265/90000\r\n" +
-				"a=fmtp:98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
-				"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=\r\n" +
-				"m=application 0 RTP/AVP 107\r\n" +
-				"a=control:trackID=3\r\n" +
-				"a=rtpmap:107 vnd.onvif.metadata/90000"),
-			90000,
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			tracks, err := ReadTracks(ca.sdp)
-			require.NoError(t, err)
-
-			clockRate, err := tracks[0].ClockRate()
-			require.NoError(t, err)
-
-			require.Equal(t, clockRate, ca.clockRate)
 		})
 	}
 }

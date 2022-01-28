@@ -8,141 +8,80 @@ import (
 )
 
 func TestTrackOpusNew(t *testing.T) {
-	track, err := NewTrackOpus(96, &TrackConfigOpus{
-		SampleRate:   48000,
-		ChannelCount: 2,
-	})
+	_, err := NewTrackOpus(96, 48000, 2)
 	require.NoError(t, err)
-	require.Equal(t, &Track{
-		Media: &psdp.MediaDescription{
-			MediaName: psdp.MediaName{
-				Media:   "audio",
-				Protos:  []string{"RTP", "AVP"},
-				Formats: []string{"96"},
-			},
-			Attributes: []psdp.Attribute{
-				{
-					Key:   "rtpmap",
-					Value: "96 opus/48000/2",
-				},
-				{
-					Key:   "fmtp",
-					Value: "96 sprop-stereo=1",
-				},
-			},
-		},
-	}, track)
 }
 
-func TestTrackIsOpus(t *testing.T) {
+func TestTrackOpusNewFromMediaDescription(t *testing.T) {
 	for _, ca := range []struct {
 		name  string
-		track *Track
-	}{
-		{
-			"standard",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 opus/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96 sprop-stereo=1",
-						},
-					},
-				},
-			},
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			require.Equal(t, true, ca.track.IsOpus())
-		})
-	}
-}
-
-func TestTrackExtractConfigOpus(t *testing.T) {
-	for _, ca := range []struct {
-		name  string
-		track *Track
-		conf  *TrackConfigOpus
+		md    *psdp.MediaDescription
+		track *TrackOpus
 	}{
 		{
 			"generic",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 opus/48000/2",
 					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 opus/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96 sprop-stereo=1",
-						},
+					{
+						Key:   "fmtp",
+						Value: "96 sprop-stereo=1",
 					},
 				},
 			},
-			&TrackConfigOpus{
-				SampleRate:   48000,
-				ChannelCount: 2,
+			&TrackOpus{
+				payloadType:  96,
+				sampleRate:   48000,
+				channelCount: 2,
 			},
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			conf, err := ca.track.ExtractConfigOpus()
+			track, err := newTrackOpusFromMediaDescription(96, ca.md)
 			require.NoError(t, err)
-			require.Equal(t, ca.conf, conf)
+			require.Equal(t, ca.track, track)
 		})
 	}
 }
 
-func TestTrackConfigOpusErrors(t *testing.T) {
+func TestTrackOpusNewFromMediaDescriptionErrors(t *testing.T) {
 	for _, ca := range []struct {
-		name  string
-		track *Track
-		err   string
+		name string
+		md   *psdp.MediaDescription
+		err  string
 	}{
 		{
 			"missing rtpmap",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
-					},
-					Attributes: []psdp.Attribute{},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
 				},
+				Attributes: []psdp.Attribute{},
 			},
 			"rtpmap attribute is missing",
 		},
 		{
 			"invalid rtpmap",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96",
-						},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96",
 					},
 				},
 			},
@@ -150,8 +89,35 @@ func TestTrackConfigOpusErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := ca.track.ExtractConfigOpus()
+			_, err := newTrackOpusFromMediaDescription(96, ca.md)
 			require.EqualError(t, err, ca.err)
 		})
 	}
+}
+
+func TestTrackOpusMediaDescription(t *testing.T) {
+	track, err := NewTrackOpus(96, 48000, 2)
+	require.NoError(t, err)
+
+	require.Equal(t, &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "audio",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{"96"},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key:   "rtpmap",
+				Value: "96 opus/48000/2",
+			},
+			{
+				Key:   "fmtp",
+				Value: "96 sprop-stereo=1",
+			},
+			{
+				Key:   "control",
+				Value: "",
+			},
+		},
+	}, track.mediaDescription())
 }

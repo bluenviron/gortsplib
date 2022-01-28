@@ -9,79 +9,43 @@ import (
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/pkg/aac"
+	"github.com/aler9/gortsplib/pkg/base"
 )
 
-// TrackConfigAAC is the configuration of an AAC track.
-type TrackConfigAAC struct {
-	Type              int
-	SampleRate        int
-	ChannelCount      int
-	AOTSpecificConfig []byte
+// TrackAAC is an AAC track.
+type TrackAAC struct {
+	control      string
+	payloadType  uint8
+	sampleRate   int
+	channelCount int
+	mpegConf     []byte
 }
 
-// NewTrackAAC initializes an AAC track.
-func NewTrackAAC(payloadType uint8, conf *TrackConfigAAC) (*Track, error) {
+// NewTrackAAC allocates a TrackAAC.
+func NewTrackAAC(payloadType uint8, typ int, sampleRate int,
+	channelCount int, aotSpecificConfig []byte) (*TrackAAC, error) {
 	mpegConf, err := aac.MPEG4AudioConfig{
-		Type:              aac.MPEG4AudioType(conf.Type),
-		SampleRate:        conf.SampleRate,
-		ChannelCount:      conf.ChannelCount,
-		AOTSpecificConfig: conf.AOTSpecificConfig,
+		Type:              aac.MPEG4AudioType(typ),
+		SampleRate:        sampleRate,
+		ChannelCount:      channelCount,
+		AOTSpecificConfig: aotSpecificConfig,
 	}.Encode()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid configuration: %s", err)
 	}
 
-	typ := strconv.FormatInt(int64(payloadType), 10)
-
-	return &Track{
-		Media: &psdp.MediaDescription{
-			MediaName: psdp.MediaName{
-				Media:   "audio",
-				Protos:  []string{"RTP", "AVP"},
-				Formats: []string{typ},
-			},
-			Attributes: []psdp.Attribute{
-				{
-					Key: "rtpmap",
-					Value: typ + " mpeg4-generic/" + strconv.FormatInt(int64(conf.SampleRate), 10) +
-						"/" + strconv.FormatInt(int64(conf.ChannelCount), 10),
-				},
-				{
-					Key: "fmtp",
-					Value: typ + " profile-level-id=1; " +
-						"mode=AAC-hbr; " +
-						"sizelength=13; " +
-						"indexlength=3; " +
-						"indexdeltalength=3; " +
-						"config=" + hex.EncodeToString(mpegConf),
-				},
-			},
-		},
+	return &TrackAAC{
+		payloadType:  payloadType,
+		sampleRate:   sampleRate,
+		channelCount: channelCount,
+		mpegConf:     mpegConf,
 	}, nil
 }
 
-// IsAAC checks whether the track is an AAC track.
-func (t *Track) IsAAC() bool {
-	if t.Media.MediaName.Media != "audio" {
-		return false
-	}
+func newTrackAACFromMediaDescription(payloadType uint8, md *psdp.MediaDescription) (*TrackAAC, error) {
+	control := trackFindControl(md)
 
-	v, ok := t.Media.Attribute("rtpmap")
-	if !ok {
-		return false
-	}
-
-	vals := strings.Split(v, " ")
-	if len(vals) != 2 {
-		return false
-	}
-
-	return strings.HasPrefix(strings.ToLower(vals[1]), "mpeg4-generic/")
-}
-
-// ExtractConfigAAC extracts the configuration of an AAC track.
-func (t *Track) ExtractConfigAAC() (*TrackConfigAAC, error) {
-	v, ok := t.Media.Attribute("fmtp")
+	v, ok := md.Attribute("fmtp")
 	if !ok {
 		return nil, fmt.Errorf("fmtp attribute is missing")
 	}
@@ -115,16 +79,80 @@ func (t *Track) ExtractConfigAAC() (*TrackConfigAAC, error) {
 				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
 			}
 
-			conf := &TrackConfigAAC{
-				Type:              int(mpegConf.Type),
-				SampleRate:        mpegConf.SampleRate,
-				ChannelCount:      mpegConf.ChannelCount,
-				AOTSpecificConfig: mpegConf.AOTSpecificConfig,
+			// re-encode the conf to normalize it
+			enc, err = mpegConf.Encode()
+			if err != nil {
+				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
 			}
 
-			return conf, nil
+			return &TrackAAC{
+				control:      control,
+				payloadType:  payloadType,
+				sampleRate:   mpegConf.SampleRate,
+				channelCount: mpegConf.ChannelCount,
+				mpegConf:     enc,
+			}, nil
 		}
 	}
 
 	return nil, fmt.Errorf("config is missing (%v)", v)
+}
+
+// ClockRate returns the track clock rate.
+func (t *TrackAAC) ClockRate() int {
+	return t.sampleRate
+}
+
+func (t *TrackAAC) clone() Track {
+	return &TrackAAC{
+		control:      t.control,
+		payloadType:  t.payloadType,
+		sampleRate:   t.sampleRate,
+		channelCount: t.channelCount,
+		mpegConf:     t.mpegConf,
+	}
+}
+
+func (t *TrackAAC) getControl() string {
+	return t.control
+}
+
+func (t *TrackAAC) setControl(c string) {
+	t.control = c
+}
+
+func (t *TrackAAC) url(contentBase *base.URL) (*base.URL, error) {
+	return trackURL(t, contentBase)
+}
+
+func (t *TrackAAC) mediaDescription() *psdp.MediaDescription {
+	typ := strconv.FormatInt(int64(t.payloadType), 10)
+
+	return &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "audio",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{typ},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key: "rtpmap",
+				Value: typ + " mpeg4-generic/" + strconv.FormatInt(int64(t.sampleRate), 10) +
+					"/" + strconv.FormatInt(int64(t.channelCount), 10),
+			},
+			{
+				Key: "fmtp",
+				Value: typ + " profile-level-id=1; " +
+					"mode=AAC-hbr; " +
+					"sizelength=13; " +
+					"indexlength=3; " +
+					"indexdeltalength=3; " +
+					"config=" + hex.EncodeToString(t.mpegConf),
+			},
+			{
+				Key:   "control",
+				Value: t.control,
+			},
+		},
+	}
 }

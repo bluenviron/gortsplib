@@ -41,9 +41,13 @@ func main() {
 	}
 
 	// find the H264 track
+	var sps []byte
+	var pps []byte
 	h264Track := func() int {
 		for i, track := range tracks {
-			if track.IsH264() {
+			if h264t, ok := track.(*gortsplib.TrackH264); ok {
+				sps = h264t.SPS()
+				pps = h264t.PPS()
 				return i
 			}
 		}
@@ -53,17 +57,11 @@ func main() {
 		panic("H264 track not found")
 	}
 
-	// get track config
-	h264Conf, err := tracks[h264Track].ExtractConfigH264()
-	if err != nil {
-		panic(err)
-	}
-
 	// setup decoder
 	dec := rtph264.NewDecoder()
 
 	// setup encoder
-	enc, err := newMPEGTSEncoder(h264Conf)
+	enc, err := newMPEGTSEncoder(sps, pps)
 	if err != nil {
 		panic(err)
 	}

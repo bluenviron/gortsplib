@@ -34,7 +34,7 @@ func main() {
 	fmt.Println("stream connected")
 
 	// create an AAC track
-	track, err := gortsplib.NewTrackAAC(96, &gortsplib.TrackConfigAAC{Type: 2, SampleRate: 48000, ChannelCount: 2})
+	track, err := gortsplib.NewTrackAAC(96, 2, 48000, 2, nil)
 	if err != nil {
 		panic(err)
 	}
