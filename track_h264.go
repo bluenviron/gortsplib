@@ -96,8 +96,8 @@ func (t *Track) ExtractConfigH264() (*TrackConfigH264, error) {
 		}
 
 		if tmp[0] == "sprop-parameter-sets" {
-			tmp := strings.SplitN(tmp[1], ",", 2)
-			if len(tmp) != 2 {
+			tmp := strings.SplitN(tmp[1], ",", 3)
+			if len(tmp) < 2 {
 				return nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
