@@ -8,79 +8,19 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/base"
 )
 
-// TrackConfigH264 is the configuration of an H264 track.
-type TrackConfigH264 struct {
-	SPS []byte
-	PPS []byte
-}
-
-// NewTrackH264 initializes an H264 track.
-func NewTrackH264(payloadType uint8, conf *TrackConfigH264) (*Track, error) {
-	if len(conf.SPS) < 4 {
-		return nil, fmt.Errorf("invalid SPS")
-	}
-
-	spropParameterSets := base64.StdEncoding.EncodeToString(conf.SPS) +
-		"," + base64.StdEncoding.EncodeToString(conf.PPS)
-	profileLevelID := strings.ToUpper(hex.EncodeToString(conf.SPS[1:4]))
-
-	typ := strconv.FormatInt(int64(payloadType), 10)
-
-	return &Track{
-		Media: &psdp.MediaDescription{
-			MediaName: psdp.MediaName{
-				Media:   "video",
-				Protos:  []string{"RTP", "AVP"},
-				Formats: []string{typ},
-			},
-			Attributes: []psdp.Attribute{
-				{
-					Key:   "rtpmap",
-					Value: typ + " H264/90000",
-				},
-				{
-					Key: "fmtp",
-					Value: typ + " packetization-mode=1; " +
-						"sprop-parameter-sets=" + spropParameterSets + "; " +
-						"profile-level-id=" + profileLevelID,
-				},
-			},
-		},
-	}, nil
-}
-
-// IsH264 checks whether the track is an H264 track.
-func (t *Track) IsH264() bool {
-	if t.Media.MediaName.Media != "video" {
-		return false
-	}
-
-	v, ok := t.Media.Attribute("rtpmap")
+func trackH264GetSPSPPS(md *psdp.MediaDescription) ([]byte, []byte, error) {
+	v, ok := md.Attribute("fmtp")
 	if !ok {
-		return false
-	}
-
-	v = strings.TrimSpace(v)
-	vals := strings.Split(v, " ")
-	if len(vals) != 2 {
-		return false
-	}
-
-	return vals[1] == "H264/90000"
-}
-
-// ExtractConfigH264 extracts the configuration of an H264 track.
-func (t *Track) ExtractConfigH264() (*TrackConfigH264, error) {
-	v, ok := t.Media.Attribute("fmtp")
-	if !ok {
-		return nil, fmt.Errorf("fmtp attribute is missing")
+		return nil, nil, fmt.Errorf("fmtp attribute is missing")
 	}
 
 	tmp := strings.SplitN(v, " ", 2)
 	if len(tmp) != 2 {
-		return nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
+		return nil, nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
 	}
 
 	for _, kv := range strings.Split(tmp[1], ";") {
@@ -92,33 +32,133 @@ func (t *Track) ExtractConfigH264() (*TrackConfigH264, error) {
 
 		tmp := strings.SplitN(kv, "=", 2)
 		if len(tmp) != 2 {
-			return nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
+			return nil, nil, fmt.Errorf("invalid fmtp attribute (%v)", v)
 		}
 
 		if tmp[0] == "sprop-parameter-sets" {
-			tmp := strings.SplitN(tmp[1], ",", 3)
+			tmp := strings.Split(tmp[1], ",")
 			if len(tmp) < 2 {
 				return nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
 			sps, err := base64.StdEncoding.DecodeString(tmp[0])
 			if err != nil {
-				return nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
+				return nil, nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
 			pps, err := base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
-				return nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
+				return nil, nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
-			conf := &TrackConfigH264{
-				SPS: sps,
-				PPS: pps,
-			}
-
-			return conf, nil
+			return sps, pps, nil
 		}
 	}
 
-	return nil, fmt.Errorf("sprop-parameter-sets is missing (%v)", v)
+	return nil, nil, fmt.Errorf("sprop-parameter-sets is missing (%v)", v)
+}
+
+// TrackH264 is a H264 track.
+type TrackH264 struct {
+	control     string
+	payloadType uint8
+	sps         []byte
+	pps         []byte
+}
+
+// NewTrackH264 allocates a TrackH264.
+func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*TrackH264, error) {
+	return &TrackH264{
+		payloadType: payloadType,
+		sps:         sps,
+		pps:         pps,
+	}, nil
+}
+
+func newTrackH264FromMediaDescription(payloadType uint8,
+	md *psdp.MediaDescription) (*TrackH264, error) {
+	control := trackFindControl(md)
+
+	t := &TrackH264{
+		control:     control,
+		payloadType: payloadType,
+	}
+
+	sps, pps, err := trackH264GetSPSPPS(md)
+	if err == nil {
+		t.sps = sps
+		t.pps = pps
+	}
+
+	return t, nil
+}
+
+// ClockRate returns the track clock rate.
+func (t *TrackH264) ClockRate() int {
+	return 90000
+}
+
+func (t *TrackH264) clone() Track {
+	return &TrackH264{
+		control:     t.control,
+		payloadType: t.payloadType,
+		sps:         t.sps,
+		pps:         t.pps,
+	}
+}
+
+func (t *TrackH264) getControl() string {
+	return t.control
+}
+
+func (t *TrackH264) setControl(c string) {
+	t.control = c
+}
+
+func (t *TrackH264) url(contentBase *base.URL) (*base.URL, error) {
+	return trackURL(t, contentBase)
+}
+
+// SPS returns the track SPS.
+func (t *TrackH264) SPS() []byte {
+	return t.sps
+}
+
+// PPS returns the track PPS.
+func (t *TrackH264) PPS() []byte {
+	return t.pps
+}
+
+func (t *TrackH264) mediaDescription() *psdp.MediaDescription {
+	typ := strconv.FormatInt(int64(t.payloadType), 10)
+
+	fmtp := typ + " packetization-mode=1"
+	if len(t.sps) >= 4 {
+		spropParameterSets := base64.StdEncoding.EncodeToString(t.sps) +
+			"," + base64.StdEncoding.EncodeToString(t.pps)
+		profileLevelID := strings.ToUpper(hex.EncodeToString(t.sps[1:4]))
+		fmtp += "; sprop-parameter-sets=" + spropParameterSets + "; profile-level-id=" + profileLevelID
+	}
+
+	return &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "video",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{typ},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key:   "rtpmap",
+				Value: typ + " H264/90000",
+			},
+			{
+				Key:   "fmtp",
+				Value: fmtp,
+			},
+			{
+				Key:   "control",
+				Value: t.control,
+			},
+		},
+	}
 }

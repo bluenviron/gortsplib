@@ -45,7 +45,7 @@ func main() {
 	// find the H264 track
 	h264Track := func() int {
 		for i, track := range tracks {
-			if track.IsH264() {
+			if _, ok := track.(*gortsplib.TrackH264); ok {
 				return i
 			}
 		}

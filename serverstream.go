@@ -34,12 +34,14 @@ type ServerStream struct {
 
 // NewServerStream allocates a ServerStream.
 func NewServerStream(tracks Tracks) *ServerStream {
+	tracks = tracks.clone()
+	tracks.setControls()
+
 	st := &ServerStream{
+		tracks:         tracks,
 		readersUnicast: make(map[*ServerSession]struct{}),
 		readers:        make(map[*ServerSession]struct{}),
 	}
-
-	st.tracks = cloneAndClearTracks(tracks)
 
 	st.trackInfos = make([]*trackInfo, len(tracks))
 	for i := range st.trackInfos {
@@ -90,14 +92,13 @@ func (st *ServerStream) ssrc(trackID int) uint32 {
 func (st *ServerStream) timestamp(trackID int) uint32 {
 	lastTimeRTP := atomic.LoadUint32(&st.trackInfos[trackID].lastTimeRTP)
 	lastTimeNTP := atomic.LoadInt64(&st.trackInfos[trackID].lastTimeNTP)
-	clockRate, _ := st.tracks[trackID].ClockRate()
 
 	if lastTimeRTP == 0 || lastTimeNTP == 0 {
 		return 0
 	}
 
 	return uint32(uint64(lastTimeRTP) +
-		uint64(time.Since(time.Unix(lastTimeNTP, 0)).Seconds()*float64(clockRate)))
+		uint64(time.Since(time.Unix(lastTimeNTP, 0)).Seconds()*float64(st.tracks[trackID].ClockRate())))
 }
 
 func (st *ServerStream) lastSequenceNumber(trackID int) uint16 {

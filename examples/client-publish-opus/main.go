@@ -34,7 +34,7 @@ func main() {
 	fmt.Println("stream connected")
 
 	// create an Opus track
-	track, err := gortsplib.NewTrackOpus(96, &gortsplib.TrackConfigOpus{SampleRate: 48000, ChannelCount: 2})
+	track, err := gortsplib.NewTrackOpus(96, 48000, 2)
 	if err != nil {
 		panic(err)
 	}

@@ -7,14 +7,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/h264"
 	"github.com/asticode/go-astits"
 )
 
 // mpegtsEncoder allows to encode H264 NALUs into MPEG-TS.
 type mpegtsEncoder struct {
-	h264Conf *gortsplib.TrackConfigH264
+	sps []byte
+	pps []byte
 
 	f                  *os.File
 	b                  *bufio.Writer
@@ -25,7 +25,11 @@ type mpegtsEncoder struct {
 }
 
 // newMPEGTSEncoder allocates a mpegtsEncoder.
-func newMPEGTSEncoder(h264Conf *gortsplib.TrackConfigH264) (*mpegtsEncoder, error) {
+func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
+	if sps == nil || pps == nil {
+		return nil, fmt.Errorf("SPS or PPS not provided")
+	}
+
 	f, err := os.Create("mystream.ts")
 	if err != nil {
 		return nil, err
@@ -40,11 +44,12 @@ func newMPEGTSEncoder(h264Conf *gortsplib.TrackConfigH264) (*mpegtsEncoder, erro
 	mux.SetPCRPID(256)
 
 	return &mpegtsEncoder{
-		h264Conf: h264Conf,
-		f:        f,
-		b:        b,
-		mux:      mux,
-		dtsEst:   h264.NewDTSEstimator(),
+		sps:    sps,
+		pps:    pps,
+		f:      f,
+		b:      b,
+		mux:    mux,
+		dtsEst: h264.NewDTSEstimator(),
 	}, nil
 }
 
@@ -87,7 +92,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 
 		case h264.NALUTypeIDR:
 			// add SPS and PPS before every IDR
-			filteredNALUs = append(filteredNALUs, e.h264Conf.SPS, e.h264Conf.PPS)
+			filteredNALUs = append(filteredNALUs, e.sps, e.pps)
 		}
 
 		filteredNALUs = append(filteredNALUs, nalu)
