@@ -38,7 +38,7 @@ func trackH264GetSPSPPS(md *psdp.MediaDescription) ([]byte, []byte, error) {
 		if tmp[0] == "sprop-parameter-sets" {
 			tmp := strings.Split(tmp[1], ",")
 			if len(tmp) < 2 {
-				return nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
+				return nil, nil, fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
 			sps, err := base64.StdEncoding.DecodeString(tmp[0])
