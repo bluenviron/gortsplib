@@ -248,6 +248,39 @@ func TestTrackH264NewFromMediaDescription(t *testing.T) {
 				},
 			},
 		},
+		{
+			"sprop-parameter-sets with extra data",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key: "fmtp",
+						Value: "96 packetization-mode=1; " +
+							"sprop-parameter-sets=Z2QAKawTMUB4BEfeA+oCAgPgAAADACAAAAZSgA==,aPqPLA==,aF6jzAMA; profile-level-id=640029",
+					},
+				},
+			},
+			&TrackH264{
+				payloadType: 96,
+				sps: []byte{
+					0x67, 0x64, 0x00, 0x29, 0xac, 0x13, 0x31, 0x40,
+					0x78, 0x04, 0x47, 0xde, 0x03, 0xea, 0x02, 0x02,
+					0x03, 0xe0, 0x00, 0x00, 0x03, 0x00, 0x20, 0x00,
+					0x00, 0x06, 0x52, 0x80,
+				},
+				pps: []byte{
+					0x68, 0xfa, 0x8f, 0x2c,
+				},
+			},
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			track, err := newTrackH264FromMediaDescription(96, ca.md)
