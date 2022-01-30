@@ -8,8 +8,10 @@ import (
 )
 
 func TestTrackOpusNew(t *testing.T) {
-	_, err := NewTrackOpus(96, 48000, 2)
+	track, err := NewTrackOpus(96, 48000, 2)
 	require.NoError(t, err)
+	require.Equal(t, 48000, track.sampleRate)
+	require.Equal(t, 2, track.channelCount)
 }
 
 func TestTrackOpusNewFromMediaDescription(t *testing.T) {

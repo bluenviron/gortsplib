@@ -51,6 +51,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 			&TrackAAC{
 				payloadType:  96,
+				typ:          2,
 				sampleRate:   48000,
 				channelCount: 2,
 				mpegConf:     []byte{0x11, 0x90},
@@ -77,6 +78,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 			&TrackAAC{
 				payloadType:  96,
+				typ:          2,
 				sampleRate:   48000,
 				channelCount: 2,
 				mpegConf:     []byte{0x11, 0x90},

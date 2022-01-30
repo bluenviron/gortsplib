@@ -37,10 +37,12 @@ func NewTrackAAC(payloadType uint8, typ int, sampleRate int,
 	}
 
 	return &TrackAAC{
-		payloadType:  payloadType,
-		sampleRate:   sampleRate,
-		channelCount: channelCount,
-		mpegConf:     mpegConf,
+		payloadType:       payloadType,
+		typ:               typ,
+		sampleRate:        sampleRate,
+		channelCount:      channelCount,
+		aotSpecificConfig: aotSpecificConfig,
+		mpegConf:          mpegConf,
 	}, nil
 }
 

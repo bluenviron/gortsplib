@@ -8,8 +8,12 @@ import (
 )
 
 func TestTrackAACNew(t *testing.T) {
-	_, err := NewTrackAAC(96, 2, 48000, 2, nil)
+	track, err := NewTrackAAC(96, 2, 48000, 4, []byte{0x01, 0x02})
 	require.NoError(t, err)
+	require.Equal(t, 2, track.typ)
+	require.Equal(t, 48000, track.sampleRate)
+	require.Equal(t, 4, track.channelCount)
+	require.Equal(t, []byte{0x01, 0x02}, track.aotSpecificConfig)
 }
 
 func TestTrackAACNewFromMediaDescription(t *testing.T) {
@@ -39,6 +43,7 @@ func TestTrackAACNewFromMediaDescription(t *testing.T) {
 			},
 			&TrackAAC{
 				payloadType:  96,
+				typ:          2,
 				sampleRate:   48000,
 				channelCount: 2,
 				mpegConf:     []byte{0x11, 0x90},
@@ -65,6 +70,7 @@ func TestTrackAACNewFromMediaDescription(t *testing.T) {
 			},
 			&TrackAAC{
 				payloadType:  96,
+				typ:          2,
 				sampleRate:   48000,
 				channelCount: 2,
 				mpegConf:     []byte{0x11, 0x90},
