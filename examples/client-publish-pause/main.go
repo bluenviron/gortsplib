@@ -37,7 +37,7 @@ func main() {
 	fmt.Println("stream connected")
 
 	// create an H264 track
-	track, err := gortsplib.NewTrackH264(96, sps, pps)
+	track, err := gortsplib.NewTrackH264(96, sps, pps, nil)
 	if err != nil {
 		panic(err)
 	}
