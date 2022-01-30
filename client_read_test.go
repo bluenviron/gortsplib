@@ -2615,15 +2615,6 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 
 		base.Response{
 			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Session": headers.Session{
-					Session: "ABCDE",
-					Timeout: func() *uint {
-						v := uint(1)
-						return &v
-					}(),
-				}.Write(),
-			},
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
