@@ -26,7 +26,7 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
 		Body: func() []byte {
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 			track.setControl(control)
 
@@ -257,7 +257,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 			defer conn.Close()
 			br := bufio.NewReader(conn)
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 
 			track.setControl(ca.control)
@@ -355,7 +355,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 	defer conn.Close()
 	br := bufio.NewReader(conn)
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
 	tracks := Tracks{track}
@@ -437,7 +437,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	defer conn.Close()
 	br := bufio.NewReader(conn)
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
 	tracks := Tracks{track}
@@ -536,10 +536,10 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 	defer conn.Close()
 	br := bufio.NewReader(conn)
 
-	track1, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track1, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
-	track2, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track2, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
 	tracks := Tracks{track1, track2}
@@ -685,7 +685,7 @@ func TestServerPublish(t *testing.T) {
 
 			<-connOpened
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 
 			tracks := Tracks{track}
@@ -877,7 +877,7 @@ func TestServerPublishNonStandardFrameSize(t *testing.T) {
 	br := bufio.NewReader(conn)
 	var bb bytes.Buffer
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
 	tracks := Tracks{track}
@@ -982,7 +982,7 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	br := bufio.NewReader(conn)
 	var bb bytes.Buffer
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
 	tracks := Tracks{track}
@@ -1086,7 +1086,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	defer conn.Close()
 	br := bufio.NewReader(conn)
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
 	tracks := Tracks{track}
@@ -1261,7 +1261,7 @@ func TestServerPublishTimeout(t *testing.T) {
 			defer conn.Close()
 			br := bufio.NewReader(conn)
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 
 			tracks := Tracks{track}
@@ -1388,7 +1388,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 			br := bufio.NewReader(conn)
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 
 			tracks := Tracks{track}
@@ -1507,7 +1507,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 		defer conn.Close()
 		br := bufio.NewReader(conn)
 
-		track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+		track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 		require.NoError(t, err)
 
 		tracks := Tracks{track}

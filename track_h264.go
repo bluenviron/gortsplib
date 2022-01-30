@@ -64,14 +64,16 @@ type TrackH264 struct {
 	payloadType uint8
 	sps         []byte
 	pps         []byte
+	extradata   []byte
 }
 
 // NewTrackH264 allocates a TrackH264.
-func NewTrackH264(payloadType uint8, sps []byte, pps []byte) (*TrackH264, error) {
+func NewTrackH264(payloadType uint8, sps []byte, pps []byte, extradata []byte) (*TrackH264, error) {
 	return &TrackH264{
 		payloadType: payloadType,
 		sps:         sps,
 		pps:         pps,
+		extradata:   extradata,
 	}, nil
 }
 
@@ -133,11 +135,21 @@ func (t *TrackH264) mediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 
 	fmtp := typ + " packetization-mode=1"
+
+	var tmp []string
+	if t.sps != nil {
+		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.sps))
+	}
+	if t.pps != nil {
+		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.pps))
+	}
+	if t.extradata != nil {
+		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.extradata))
+	}
+	fmtp += "; sprop-parameter-sets=" + strings.Join(tmp, ",")
+
 	if len(t.sps) >= 4 {
-		spropParameterSets := base64.StdEncoding.EncodeToString(t.sps) +
-			"," + base64.StdEncoding.EncodeToString(t.pps)
-		profileLevelID := strings.ToUpper(hex.EncodeToString(t.sps[1:4]))
-		fmtp += "; sprop-parameter-sets=" + spropParameterSets + "; profile-level-id=" + profileLevelID
+		fmtp += "; profile-level-id=" + strings.ToUpper(hex.EncodeToString(t.sps[1:4]))
 	}
 
 	return &psdp.MediaDescription{

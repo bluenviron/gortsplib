@@ -201,7 +201,7 @@ func TestClientPublishSerial(t *testing.T) {
 				},
 			}
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 
 			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
@@ -358,7 +358,7 @@ func TestClientPublishParallel(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 
 			writerDone := make(chan struct{})
@@ -523,7 +523,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
@@ -662,7 +662,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
@@ -807,7 +807,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
 	c := Client{}
@@ -950,7 +950,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		udpSenderReportPeriod: 1 * time.Second,
 	}
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",
@@ -1094,7 +1094,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		},
 	}
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04})
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
 
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",

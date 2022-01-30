@@ -173,6 +173,9 @@ func TestTrackH264New(t *testing.T) {
 		},
 		[]byte{
 			0x68, 0xee, 0x3c, 0x80,
+		},
+		[]byte{
+			0x01, 0x02,
 		})
 	require.NoError(t, err)
 }
@@ -299,6 +302,9 @@ func TestTrackH264MediaDescription(t *testing.T) {
 		},
 		[]byte{
 			0x68, 0xee, 0x3c, 0x80,
+		},
+		[]byte{
+			0x01, 0x02,
 		})
 	require.NoError(t, err)
 
@@ -316,7 +322,7 @@ func TestTrackH264MediaDescription(t *testing.T) {
 			{
 				Key: "fmtp",
 				Value: "96 packetization-mode=1; " +
-					"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+					"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==,AQI=; profile-level-id=64000C",
 			},
 			{
 				Key:   "control",
