@@ -131,6 +131,16 @@ func (t *TrackH264) PPS() []byte {
 	return t.pps
 }
 
+// SetSPS sets the track SPS.
+func (t *TrackH264) SetSPS(v []byte) {
+	t.sps = v
+}
+
+// SetPPS sets the track PPS.
+func (t *TrackH264) SetPPS(v []byte) {
+	t.pps = v
+}
+
 func (t *TrackH264) mediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 
