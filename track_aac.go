@@ -14,11 +14,13 @@ import (
 
 // TrackAAC is an AAC track.
 type TrackAAC struct {
-	control      string
-	payloadType  uint8
-	sampleRate   int
-	channelCount int
-	mpegConf     []byte
+	control           string
+	payloadType       uint8
+	typ               int
+	sampleRate        int
+	channelCount      int
+	aotSpecificConfig []byte
+	mpegConf          []byte
 }
 
 // NewTrackAAC allocates a TrackAAC.
@@ -86,11 +88,13 @@ func newTrackAACFromMediaDescription(payloadType uint8, md *psdp.MediaDescriptio
 			}
 
 			return &TrackAAC{
-				control:      control,
-				payloadType:  payloadType,
-				sampleRate:   mpegConf.SampleRate,
-				channelCount: mpegConf.ChannelCount,
-				mpegConf:     enc,
+				control:           control,
+				payloadType:       payloadType,
+				typ:               int(mpegConf.Type),
+				sampleRate:        mpegConf.SampleRate,
+				channelCount:      mpegConf.ChannelCount,
+				aotSpecificConfig: mpegConf.AOTSpecificConfig,
+				mpegConf:          enc,
 			}, nil
 		}
 	}
@@ -101,6 +105,21 @@ func newTrackAACFromMediaDescription(payloadType uint8, md *psdp.MediaDescriptio
 // ClockRate returns the track clock rate.
 func (t *TrackAAC) ClockRate() int {
 	return t.sampleRate
+}
+
+// Type returns the track MPEG4-audio type.
+func (t *TrackAAC) Type() int {
+	return t.typ
+}
+
+// ChannelCount returns the track channel count.
+func (t *TrackAAC) ChannelCount() int {
+	return t.channelCount
+}
+
+// AOTSpecificConfig returns the track AOT specific config.
+func (t *TrackAAC) AOTSpecificConfig() []byte {
+	return t.aotSpecificConfig
 }
 
 func (t *TrackAAC) clone() Track {
