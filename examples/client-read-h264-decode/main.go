@@ -12,7 +12,9 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
 // 2. check whether there's an H264 track
-// 3. get H264 NALUs of that track
+// 3. decode H264 NALUs of that track into raw frames
+// This example requires the ffmpeg libraries, that can be installed in this way:
+// apt install -y libavformat-dev libswscale-dev gcc pkg-config
 
 func main() {
 	c := gortsplib.Client{}
@@ -55,8 +57,15 @@ func main() {
 		panic("H264 track not found")
 	}
 
-	// setup decoder
-	dec := rtph264.NewDecoder()
+	// setup RTP->H264 decoder
+	rtpDec := rtph264.NewDecoder()
+
+	// setup H264->raw frames decoder
+	h264dec, err := newH264Decoder()
+	if err != nil {
+		panic(err)
+	}
+	defer h264dec.close()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(trackID int, payload []byte) {
@@ -72,14 +81,24 @@ func main() {
 		}
 
 		// decode H264 NALUs from the RTP packet
-		nalus, _, err := dec.Decode(&pkt)
+		nalus, _, err := rtpDec.Decode(&pkt)
 		if err != nil {
 			return
 		}
 
-		// print NALUs
 		for _, nalu := range nalus {
-			log.Printf("received H264 NALU of size %d\n", len(nalu))
+			// decode raw frames from H264 NALUs
+			img, err := h264dec.decode(nalu)
+			if err != nil {
+				panic(err)
+			}
+
+			// wait for a frame
+			if img == nil {
+				continue
+			}
+
+			log.Printf("decoded frame with size %v", img.Bounds().Max)
 		}
 	}
 

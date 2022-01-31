@@ -17,7 +17,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
 // 2. check whether there's a H264 track
-// 3. decode the H264 track to raw frames
+// 3. decode H264 NALUs of that track into raw frames
 // 4. encode the frames into JPEG images and save them on disk
 // This example requires the ffmpeg libraries, that can be installed in this way:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config
@@ -81,7 +81,7 @@ func main() {
 	}
 
 	// setup RTP->H264 decoder
-	dec := rtph264.NewDecoder()
+	rtpDec := rtph264.NewDecoder()
 
 	// setup H264->raw frames decoder
 	h264dec, err := newH264Decoder()
@@ -105,7 +105,7 @@ func main() {
 		}
 
 		// decode H264 NALUs from the RTP packet
-		nalus, _, err := dec.Decode(&pkt)
+		nalus, _, err := rtpDec.Decode(&pkt)
 		if err != nil {
 			return
 		}
