@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -138,6 +139,6 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		return err
 	}
 
-	fmt.Println("wrote TS packet")
+	log.Println("wrote TS packet")
 	return nil
 }

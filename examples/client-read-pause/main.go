@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/aler9/gortsplib"
@@ -17,11 +17,11 @@ func main() {
 	c := gortsplib.Client{
 		// called when a RTP packet arrives
 		OnPacketRTP: func(trackID int, payload []byte) {
-			fmt.Printf("RTP packet from track %d, size %d\n", trackID, len(payload))
+			log.Printf("RTP packet from track %d, size %d\n", trackID, len(payload))
 		},
 		// called when a RTCP packet arrives
 		OnPacketRTCP: func(trackID int, payload []byte) {
-			fmt.Printf("RTCP packet from track %d, size %d\n", trackID, len(payload))
+			log.Printf("RTCP packet from track %d, size %d\n", trackID, len(payload))
 		},
 	}
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
@@ -71,7 +71,7 @@ func main() {
 			return
 		}
 
-		// decode H264 NALUs from RTP packets
+		// decode H264 NALUs from the RTP packet
 		nalus, _, err := dec.Decode(&pkt)
 		if err != nil {
 			return
@@ -79,7 +79,7 @@ func main() {
 
 		// print NALUs
 		for _, nalu := range nalus {
-			fmt.Printf("received H264 NALU of size %d\n", len(nalu))
+			log.Printf("received H264 NALU of size %d\n", len(nalu))
 		}
 	}
 

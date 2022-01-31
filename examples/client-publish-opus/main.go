@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net"
 
 	"github.com/aler9/gortsplib"
@@ -20,7 +20,7 @@ func main() {
 	}
 	defer pc.Close()
 
-	fmt.Println("Waiting for a RTP/Opus stream on UDP port 9000 - you can send one with Gstreamer:\n" +
+	log.Println("Waiting for a RTP/Opus stream on UDP port 9000 - you can send one with Gstreamer:\n" +
 		"gst-launch-1.0 audiotestsrc freq=300 ! audioconvert ! audioresample ! audio/x-raw,rate=48000" +
 		" ! opusenc" +
 		" ! rtpopuspay ! udpsink host=127.0.0.1 port=9000")
@@ -31,7 +31,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("stream connected")
+	log.Println("stream connected")
 
 	// create an Opus track
 	track, err := gortsplib.NewTrackOpus(96, 48000, 2)

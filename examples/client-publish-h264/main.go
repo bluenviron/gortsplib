@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net"
 
 	"github.com/aler9/gortsplib"
@@ -21,7 +21,7 @@ func main() {
 	}
 	defer pc.Close()
 
-	fmt.Println("Waiting for a RTP/H264 stream on UDP port 9000 - you can send one with Gstreamer:\n" +
+	log.Println("Waiting for a RTP/H264 stream on UDP port 9000 - you can send one with Gstreamer:\n" +
 		"gst-launch-1.0 videotestsrc ! video/x-raw,width=1920,height=1080" +
 		" ! x264enc speed-preset=veryfast tune=zerolatency bitrate=600000" +
 		" ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("stream connected")
+	log.Println("stream connected")
 
 	// create an H264 track
 	track, err := gortsplib.NewTrackH264(96, sps, pps, nil)

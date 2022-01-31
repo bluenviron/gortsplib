@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
@@ -73,7 +73,7 @@ func main() {
 			return
 		}
 
-		// decode AAC AUs from RTP packets
+		// decode AAC AUs from the RTP packet
 		aus, _, err := dec.Decode(&pkt)
 		if err != nil {
 			return
@@ -81,7 +81,7 @@ func main() {
 
 		// print AUs
 		for _, au := range aus {
-			fmt.Printf("received AAC AU of size %d\n", len(au))
+			log.Printf("received AAC AU of size %d\n", len(au))
 		}
 	}
 
