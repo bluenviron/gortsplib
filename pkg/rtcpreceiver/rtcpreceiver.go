@@ -21,7 +21,7 @@ type RTCPReceiver struct {
 	clockRate    float64
 	mutex        sync.Mutex
 
-	// data from rtp packets
+	// data from RTP packets
 	firstRTPReceived     bool
 	sequenceNumberCycles uint16
 	lastSequenceNumber   uint16

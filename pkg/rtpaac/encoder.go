@@ -10,7 +10,7 @@ import (
 
 const (
 	rtpVersion        = 0x02
-	rtpPayloadMaxSize = 1460 // 1500 (mtu) - 20 (ip header) - 8 (udp header) - 12 (rtp header)
+	rtpPayloadMaxSize = 1460 // 1500 (mtu) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
 )
 
 func randUint32() uint32 {

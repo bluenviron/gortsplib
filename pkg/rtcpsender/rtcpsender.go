@@ -14,7 +14,7 @@ type RTCPSender struct {
 	clockRate float64
 	mutex     sync.Mutex
 
-	// data from rtp packets
+	// data from RTP packets
 	firstRTPReceived bool
 	senderSSRC       uint32
 	lastRTPTimeRTP   uint32
