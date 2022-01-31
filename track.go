@@ -18,7 +18,8 @@ type Track interface {
 	getControl() string
 	setControl(string)
 	url(*base.URL) (*base.URL, error)
-	mediaDescription() *psdp.MediaDescription
+	// MediaDescription returns structured SDP media information
+	MediaDescription() *psdp.MediaDescription
 }
 
 func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {

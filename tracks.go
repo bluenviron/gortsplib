@@ -75,7 +75,7 @@ func (ts Tracks) Write(multicast bool) []byte {
 	}
 
 	for _, track := range ts {
-		sout.MediaDescriptions = append(sout.MediaDescriptions, track.mediaDescription())
+		sout.MediaDescriptions = append(sout.MediaDescriptions, track.MediaDescription())
 	}
 
 	byts, _ := sout.Marshal()

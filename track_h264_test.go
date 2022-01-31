@@ -218,5 +218,5 @@ func TestTrackH264MediaDescription(t *testing.T) {
 				Value: "",
 			},
 		},
-	}, track.mediaDescription())
+	}, track.MediaDescription())
 }
