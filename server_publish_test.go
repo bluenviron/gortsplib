@@ -42,7 +42,7 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 					{Timing: psdp.Timing{0, 0}}, //nolint:govet
 				},
 				MediaDescriptions: []*psdp.MediaDescription{
-					track.mediaDescription(),
+					track.MediaDescription(),
 				},
 			}
 
@@ -274,7 +274,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 					{Timing: psdp.Timing{0, 0}}, //nolint:govet
 				},
 				MediaDescriptions: []*psdp.MediaDescription{
-					track.mediaDescription(),
+					track.MediaDescription(),
 				},
 			}
 

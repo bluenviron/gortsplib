@@ -143,7 +143,8 @@ func (t *TrackH264) SetPPS(v []byte) {
 	t.pps = v
 }
 
-func (t *TrackH264) mediaDescription() *psdp.MediaDescription {
+// MediaDescription returns the structured SDP media information
+func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 
 	fmtp := typ + " packetization-mode=1"

@@ -151,7 +151,8 @@ func (t *TrackGeneric) url(contentBase *base.URL) (*base.URL, error) {
 	return trackURL(t, contentBase)
 }
 
-func (t *TrackGeneric) mediaDescription() *psdp.MediaDescription {
+// MediaDescription returns the structured media information from the SDP
+func (t *TrackGeneric) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:   t.media,

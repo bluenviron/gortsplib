@@ -49,5 +49,5 @@ func TestTrackAACMediaDescription(t *testing.T) {
 				Value: "",
 			},
 		},
-	}, track.mediaDescription())
+	}, track.MediaDescription())
 }

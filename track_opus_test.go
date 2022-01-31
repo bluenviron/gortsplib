@@ -47,5 +47,5 @@ func TestTrackOpusMediaDescription(t *testing.T) {
 				Value: "",
 			},
 		},
-	}, track.mediaDescription())
+	}, track.MediaDescription())
 }

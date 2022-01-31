@@ -81,7 +81,8 @@ func (t *TrackOpus) url(contentBase *base.URL) (*base.URL, error) {
 	return trackURL(t, contentBase)
 }
 
-func (t *TrackOpus) mediaDescription() *psdp.MediaDescription {
+// MediaDescription returns the structured media information from the SDP
+func (t *TrackOpus) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 
 	return &psdp.MediaDescription{
