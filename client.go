@@ -1022,7 +1022,7 @@ func (c *Client) doOptions(u *base.URL) (*base.Response, error) {
 		if res.StatusCode == base.StatusNotFound {
 			return res, nil
 		}
-		return res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
+		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	c.useGetParameter = func() bool {
@@ -1361,7 +1361,7 @@ func (c *Client) doSetup(
 			return c.doSetup(forPlay, track, baseURL, 0, 0)
 		}
 
-		return res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
+		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	var thRes headers.Transport
@@ -1576,14 +1576,11 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		return nil, err
 	}
 
-	c.state = clientStatePlay
-
 	// setup UDP communication before sending the request.
 	if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-		// start UDP listeners
 		for _, cct := range c.tracks {
-			cct.udpRTPListener.start()
-			cct.udpRTCPListener.start()
+			cct.udpRTPListener.start(true)
+			cct.udpRTCPListener.start(true)
 		}
 
 		// open the firewall by sending packets to the counterpart.
@@ -1596,8 +1593,6 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		}
 	}
 
-	header := make(base.Header)
-
 	// Range is mandatory in Parrot Streaming Server
 	if ra == nil {
 		ra = &headers.Range{
@@ -1606,14 +1601,22 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 			},
 		}
 	}
-	header["Range"] = ra.Write()
 
 	res, err := c.do(&base.Request{
 		Method: base.Play,
 		URL:    c.streamBaseURL,
-		Header: header,
+		Header: base.Header{
+			"Range": ra.Write(),
+		},
 	}, false)
 	if err != nil {
+		if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.stop()
+				cct.udpRTCPListener.stop()
+			}
+		}
+
 		return nil, err
 	}
 
@@ -1625,15 +1628,13 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 			}
 		}
 
-		c.state = clientStatePrePlay
-
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
 
 	c.lastRange = ra
-
+	c.state = clientStatePlay
 	c.playRecordStart()
 
 	return res, nil
@@ -1674,13 +1675,10 @@ func (c *Client) doRecord() (*base.Response, error) {
 		return nil, err
 	}
 
-	c.state = clientStateRecord
-
 	if *c.protocol == TransportUDP {
-		// start UDP listeners
 		for _, cct := range c.tracks {
-			cct.udpRTPListener.start()
-			cct.udpRTCPListener.start()
+			cct.udpRTPListener.start(false)
+			cct.udpRTCPListener.start(false)
 		}
 	}
 
@@ -1689,6 +1687,13 @@ func (c *Client) doRecord() (*base.Response, error) {
 		URL:    c.streamBaseURL,
 	}, false)
 	if err != nil {
+		if *c.protocol == TransportUDP {
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.stop()
+				cct.udpRTCPListener.stop()
+			}
+		}
+
 		return nil, err
 	}
 
@@ -1700,13 +1705,12 @@ func (c *Client) doRecord() (*base.Response, error) {
 			}
 		}
 
-		c.state = clientStatePreRecord
-
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
 
+	c.state = clientStateRecord
 	c.playRecordStart()
 
 	return nil, nil
@@ -1761,7 +1765,7 @@ func (c *Client) doPause() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return res, liberrors.ErrClientBadStatusCode{
+		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}

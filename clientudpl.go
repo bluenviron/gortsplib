@@ -128,8 +128,8 @@ func (l *clientUDPListener) port() int {
 	return l.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
-func (l *clientUDPListener) start() {
-	if l.c.state == clientStatePlay {
+func (l *clientUDPListener) start(forPlay bool) {
+	if forPlay {
 		if l.isRTP {
 			l.processFunc = l.processPlayRTP
 		} else {
