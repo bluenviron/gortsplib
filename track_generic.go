@@ -16,6 +16,7 @@ func trackGenericGetClockRate(md *psdp.MediaDescription) (int, error) {
 	}
 
 	// get clock rate from payload type
+	// https://en.wikipedia.org/wiki/RTP_payload_formats
 	switch md.MediaName.Formats[0] {
 	case "0", "1", "2", "3", "4", "5", "7", "8", "9", "12", "13", "15", "18":
 		return 8000, nil
