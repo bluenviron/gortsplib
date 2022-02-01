@@ -111,7 +111,7 @@ func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
 		d.dstFrame.width = d.srcFrame.width
 		d.dstFrame.height = d.srcFrame.height
 		d.dstFrame.color_range = C.AVCOL_RANGE_JPEG
-		res = C.av_frame_get_buffer(d.dstFrame, 32)
+		res = C.av_frame_get_buffer(d.dstFrame, 1)
 		if res < 0 {
 			return nil, fmt.Errorf("av_frame_get_buffer() err")
 		}
