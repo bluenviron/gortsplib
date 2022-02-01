@@ -45,15 +45,15 @@ func main() {
 	}
 
 	// find the H264 track
-	h264Track := func() int {
+	h264tr, h264trID := func() (*gortsplib.TrackH264, int) {
 		for i, track := range tracks {
-			if _, ok := track.(*gortsplib.TrackH264); ok {
-				return i
+			if h264tr, ok := track.(*gortsplib.TrackH264); ok {
+				return h264tr, i
 			}
 		}
-		return -1
+		return nil, -1
 	}()
-	if h264Track < 0 {
+	if h264trID < 0 {
 		panic("H264 track not found")
 	}
 
@@ -67,9 +67,16 @@ func main() {
 	}
 	defer h264dec.close()
 
+	// send SPS and PPS to the decoder
+	if h264tr.SPS() == nil || h264tr.PPS() == nil {
+		panic("SPS or PPS not provided by the SDP")
+	}
+	h264dec.decode(h264tr.SPS())
+	h264dec.decode(h264tr.PPS())
+
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(trackID int, payload []byte) {
-		if trackID != h264Track {
+		if trackID != h264trID {
 			return
 		}
 

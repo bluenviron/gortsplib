@@ -106,12 +106,6 @@ func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
 			C.sws_freeContext(d.swsCtx)
 		}
 
-		d.swsCtx = C.sws_getContext(d.srcFrame.width, d.srcFrame.height, C.AV_PIX_FMT_YUV420P, // d.codecCtx.pix_fmt,
-			d.srcFrame.width, d.srcFrame.height, C.AV_PIX_FMT_RGBA, C.SWS_BILINEAR, nil, nil, nil)
-		if d.swsCtx == nil {
-			return nil, fmt.Errorf("sws_getContext() err")
-		}
-
 		d.dstFrame = C.av_frame_alloc()
 		d.dstFrame.format = C.AV_PIX_FMT_RGBA
 		d.dstFrame.width = d.srcFrame.width
@@ -122,13 +116,19 @@ func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
 			return nil, fmt.Errorf("av_frame_get_buffer() err")
 		}
 
+		d.swsCtx = C.sws_getContext(d.srcFrame.width, d.srcFrame.height, C.AV_PIX_FMT_YUV420P,
+			d.dstFrame.width, d.dstFrame.height, (int32)(d.dstFrame.format), C.SWS_BILINEAR, nil, nil, nil)
+		if d.swsCtx == nil {
+			return nil, fmt.Errorf("sws_getContext() err")
+		}
+
 		dstFrameSize := C.av_image_get_buffer_size((int32)(d.dstFrame.format), d.dstFrame.width, d.dstFrame.height, 1)
 		d.dstFramePtr = (*[1 << 30]uint8)(unsafe.Pointer(d.dstFrame.data[0]))[:dstFrameSize:dstFrameSize]
 	}
 
 	// convert frame from YUV420 to RGB
 	res = C.sws_scale(d.swsCtx, frameData(d.srcFrame), frameLineSize(d.srcFrame),
-		0, d.codecCtx.height, frameData(d.dstFrame), frameLineSize(d.dstFrame))
+		0, d.srcFrame.height, frameData(d.dstFrame), frameLineSize(d.dstFrame))
 	if res < 0 {
 		return nil, fmt.Errorf("sws_scale() err")
 	}
