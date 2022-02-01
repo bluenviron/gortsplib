@@ -106,6 +106,7 @@ func (t *TrackH264) clone() Track {
 		payloadType: t.payloadType,
 		sps:         t.sps,
 		pps:         t.pps,
+		extradata:   t.extradata,
 	}
 }
 

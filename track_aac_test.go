@@ -200,6 +200,15 @@ func TestTrackAACNewFromMediaDescriptionErrors(t *testing.T) {
 	}
 }
 
+func TestTrackAACClone(t *testing.T) {
+	track, err := NewTrackAAC(96, 2, 48000, 2, []byte{0x01, 0x02})
+	require.NoError(t, err)
+
+	copy := track.clone()
+	require.NotSame(t, track, copy)
+	require.Equal(t, track, copy)
+}
+
 func TestTrackAACMediaDescription(t *testing.T) {
 	track, err := NewTrackAAC(96, 2, 48000, 2, nil)
 	require.NoError(t, err)

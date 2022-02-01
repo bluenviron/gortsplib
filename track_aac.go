@@ -126,11 +126,13 @@ func (t *TrackAAC) AOTSpecificConfig() []byte {
 
 func (t *TrackAAC) clone() Track {
 	return &TrackAAC{
-		control:      t.control,
-		payloadType:  t.payloadType,
-		sampleRate:   t.sampleRate,
-		channelCount: t.channelCount,
-		mpegConf:     t.mpegConf,
+		control:           t.control,
+		payloadType:       t.payloadType,
+		typ:               t.typ,
+		sampleRate:        t.sampleRate,
+		channelCount:      t.channelCount,
+		aotSpecificConfig: t.aotSpecificConfig,
+		mpegConf:          t.mpegConf,
 	}
 }
 

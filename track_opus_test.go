@@ -97,6 +97,15 @@ func TestTrackOpusNewFromMediaDescriptionErrors(t *testing.T) {
 	}
 }
 
+func TestTracOpusClone(t *testing.T) {
+	track, err := NewTrackOpus(96, 96000, 4)
+	require.NoError(t, err)
+
+	copy := track.clone()
+	require.NotSame(t, track, copy)
+	require.Equal(t, track, copy)
+}
+
 func TestTrackOpusMediaDescription(t *testing.T) {
 	track, err := NewTrackOpus(96, 48000, 2)
 	require.NoError(t, err)
