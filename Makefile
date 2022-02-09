@@ -39,7 +39,7 @@ format:
 
 define DOCKERFILE_TEST
 FROM $(BASE_IMAGE)
-RUN apk add --no-cache make docker-cli git gcc musl-dev
+RUN apk add --no-cache make docker-cli git gcc musl-dev pkgconfig ffmpeg-dev
 WORKDIR /s
 COPY go.mod go.sum ./
 RUN go mod download

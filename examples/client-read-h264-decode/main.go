@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
@@ -12,7 +12,9 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
 // 2. check whether there's an H264 track
-// 3. get H264 NALUs of that track
+// 3. decode H264 NALUs of that track into raw frames
+// This example requires the ffmpeg libraries, that can be installed in this way:
+// apt install -y libavformat-dev libswscale-dev gcc pkg-config
 
 func main() {
 	c := gortsplib.Client{}
@@ -43,24 +45,38 @@ func main() {
 	}
 
 	// find the H264 track
-	h264Track := func() int {
+	h264tr, h264trID := func() (*gortsplib.TrackH264, int) {
 		for i, track := range tracks {
-			if track.IsH264() {
-				return i
+			if h264tr, ok := track.(*gortsplib.TrackH264); ok {
+				return h264tr, i
 			}
 		}
-		return -1
+		return nil, -1
 	}()
-	if h264Track < 0 {
+	if h264trID < 0 {
 		panic("H264 track not found")
 	}
 
-	// setup decoder
-	dec := rtph264.NewDecoder()
+	// setup RTP->H264 decoder
+	rtpDec := rtph264.NewDecoder()
+
+	// setup H264->raw frames decoder
+	h264dec, err := newH264Decoder()
+	if err != nil {
+		panic(err)
+	}
+	defer h264dec.close()
+
+	// send SPS and PPS to the decoder
+	if h264tr.SPS() == nil || h264tr.PPS() == nil {
+		panic("SPS or PPS not provided by the SDP")
+	}
+	h264dec.decode(h264tr.SPS())
+	h264dec.decode(h264tr.PPS())
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(trackID int, payload []byte) {
-		if trackID != h264Track {
+		if trackID != h264trID {
 			return
 		}
 
@@ -71,15 +87,25 @@ func main() {
 			return
 		}
 
-		// decode H264 NALUs from RTP packets
-		nalus, _, err := dec.Decode(&pkt)
+		// decode H264 NALUs from the RTP packet
+		nalus, _, err := rtpDec.Decode(&pkt)
 		if err != nil {
 			return
 		}
 
-		// print NALUs
 		for _, nalu := range nalus {
-			fmt.Printf("received H264 NALU of size %d\n", len(nalu))
+			// decode raw frames from H264 NALUs
+			img, err := h264dec.decode(nalu)
+			if err != nil {
+				panic(err)
+			}
+
+			// wait for a frame
+			if img == nil {
+				continue
+			}
+
+			log.Printf("decoded frame with size %v", img.Bounds().Max)
 		}
 	}
 

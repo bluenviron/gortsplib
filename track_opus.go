@@ -6,67 +6,32 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/base"
 )
 
-// TrackConfigOpus is the configuration of an Opus track.
-type TrackConfigOpus struct {
-	SampleRate   int
-	ChannelCount int
+// TrackOpus is a Opus track.
+type TrackOpus struct {
+	control      string
+	payloadType  uint8
+	sampleRate   int
+	channelCount int
 }
 
-// NewTrackOpus initializes an Opus track.
-func NewTrackOpus(payloadType uint8, conf *TrackConfigOpus) (*Track, error) {
-	typ := strconv.FormatInt(int64(payloadType), 10)
-
-	return &Track{
-		Media: &psdp.MediaDescription{
-			MediaName: psdp.MediaName{
-				Media:   "audio",
-				Protos:  []string{"RTP", "AVP"},
-				Formats: []string{typ},
-			},
-			Attributes: []psdp.Attribute{
-				{
-					Key: "rtpmap",
-					Value: typ + " opus/" + strconv.FormatInt(int64(conf.SampleRate), 10) +
-						"/" + strconv.FormatInt(int64(conf.ChannelCount), 10),
-				},
-				{
-					Key: "fmtp",
-					Value: typ + " sprop-stereo=" + func() string {
-						if conf.ChannelCount == 2 {
-							return "1"
-						}
-						return "0"
-					}(),
-				},
-			},
-		},
+// NewTrackOpus allocates a TrackOpus.
+func NewTrackOpus(payloadType uint8, sampleRate int, channelCount int) (*TrackOpus, error) {
+	return &TrackOpus{
+		payloadType:  payloadType,
+		sampleRate:   sampleRate,
+		channelCount: channelCount,
 	}, nil
 }
 
-// IsOpus checks whether the track is an Opus track.
-func (t *Track) IsOpus() bool {
-	if t.Media.MediaName.Media != "audio" {
-		return false
-	}
+func newTrackOpusFromMediaDescription(payloadType uint8,
+	md *psdp.MediaDescription) (*TrackOpus, error) {
+	control := trackFindControl(md)
 
-	v, ok := t.Media.Attribute("rtpmap")
-	if !ok {
-		return false
-	}
-
-	vals := strings.Split(v, " ")
-	if len(vals) != 2 {
-		return false
-	}
-
-	return strings.HasPrefix(vals[1], "opus/")
-}
-
-// ExtractConfigOpus extracts the configuration of an Opus track.
-func (t *Track) ExtractConfigOpus() (*TrackConfigOpus, error) {
-	v, ok := t.Media.Attribute("rtpmap")
+	v, ok := md.Attribute("rtpmap")
 	if !ok {
 		return nil, fmt.Errorf("rtpmap attribute is missing")
 	}
@@ -86,8 +51,68 @@ func (t *Track) ExtractConfigOpus() (*TrackConfigOpus, error) {
 		return nil, err
 	}
 
-	return &TrackConfigOpus{
-		SampleRate:   int(sampleRate),
-		ChannelCount: int(channelCount),
+	return &TrackOpus{
+		control:      control,
+		payloadType:  payloadType,
+		sampleRate:   int(sampleRate),
+		channelCount: int(channelCount),
 	}, nil
+}
+
+// ClockRate returns the track clock rate.
+func (t *TrackOpus) ClockRate() int {
+	return t.sampleRate
+}
+
+func (t *TrackOpus) clone() Track {
+	return &TrackOpus{
+		control:      t.control,
+		payloadType:  t.payloadType,
+		sampleRate:   t.sampleRate,
+		channelCount: t.channelCount,
+	}
+}
+
+func (t *TrackOpus) getControl() string {
+	return t.control
+}
+
+func (t *TrackOpus) setControl(c string) {
+	t.control = c
+}
+
+func (t *TrackOpus) url(contentBase *base.URL) (*base.URL, error) {
+	return trackURL(t, contentBase)
+}
+
+func (t *TrackOpus) mediaDescription() *psdp.MediaDescription {
+	typ := strconv.FormatInt(int64(t.payloadType), 10)
+
+	return &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "audio",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{typ},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key: "rtpmap",
+				Value: typ + " opus/" + strconv.FormatInt(int64(t.sampleRate), 10) +
+					"/" + strconv.FormatInt(int64(t.channelCount), 10),
+			},
+			{
+				Key: "fmtp",
+				Value: typ + " sprop-stereo=" + func() string {
+					if t.channelCount == 2 {
+						return "1"
+					}
+					return "0"
+				}(),
+			},
+			{
+				Key:   "control",
+				Value: t.control,
+			},
+		},
+	}
 }

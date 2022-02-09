@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
@@ -43,9 +43,11 @@ func main() {
 	}
 
 	// find the AAC track
+	var clockRate int
 	aacTrack := func() int {
 		for i, track := range tracks {
-			if track.IsAAC() {
+			if _, ok := track.(*gortsplib.TrackAAC); ok {
+				clockRate = track.ClockRate()
 				return i
 			}
 		}
@@ -55,14 +57,8 @@ func main() {
 		panic("AAC track not found")
 	}
 
-	// get track config
-	aacConf, err := tracks[aacTrack].ExtractConfigAAC()
-	if err != nil {
-		panic(err)
-	}
-
 	// setup decoder
-	dec := rtpaac.NewDecoder(aacConf.SampleRate)
+	dec := rtpaac.NewDecoder(clockRate)
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(trackID int, payload []byte) {
@@ -77,7 +73,7 @@ func main() {
 			return
 		}
 
-		// decode AAC AUs from RTP packets
+		// decode AAC AUs from the RTP packet
 		aus, _, err := dec.Decode(&pkt)
 		if err != nil {
 			return
@@ -85,7 +81,7 @@ func main() {
 
 		// print AUs
 		for _, au := range aus {
-			fmt.Printf("received AAC AU of size %d\n", len(au))
+			log.Printf("received AAC AU of size %d\n", len(au))
 		}
 	}
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
@@ -16,11 +16,11 @@ func main() {
 	c := gortsplib.Client{
 		// called when a RTP packet arrives
 		OnPacketRTP: func(trackID int, payload []byte) {
-			fmt.Printf("RTP packet from track %d, size %d\n", trackID, len(payload))
+			log.Printf("RTP packet from track %d, size %d\n", trackID, len(payload))
 		},
 		// called when a RTCP packet arrives
 		OnPacketRTCP: func(trackID int, payload []byte) {
-			fmt.Printf("RTCP packet from track %d, size %d\n", trackID, len(payload))
+			log.Printf("RTCP packet from track %d, size %d\n", trackID, len(payload))
 		},
 	}
 
@@ -45,9 +45,9 @@ func main() {
 		panic(err)
 	}
 
-	// setup only video tracks, skipping audio or application tracks
+	// setup only H264 tracks, skipping audio or application tracks
 	for _, t := range tracks {
-		if t.Media.MediaName.Media == "video" {
+		if _, ok := t.(*gortsplib.TrackH264); ok {
 			_, err := c.Setup(true, t, baseURL, 0, 0)
 			if err != nil {
 				panic(err)

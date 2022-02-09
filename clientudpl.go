@@ -41,7 +41,7 @@ type clientUDPListener struct {
 
 func newClientUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener) {
 	// choose two consecutive ports in range 65535-10000
-	// rtp must be even and rtcp odd
+	// RTP port must be even and RTCP port odd
 	for {
 		rtpPort := (randIntn((65535-10000)/2) * 2) + 10000
 		rtpListener, err := newClientUDPListener(c, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
@@ -128,8 +128,8 @@ func (l *clientUDPListener) port() int {
 	return l.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
-func (l *clientUDPListener) start() {
-	if l.c.state == clientStatePlay {
+func (l *clientUDPListener) start(forPlay bool) {
+	if forPlay {
 		if l.isRTP {
 			l.processFunc = l.processPlayRTP
 		} else {

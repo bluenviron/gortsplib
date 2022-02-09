@@ -21,8 +21,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	psdp "github.com/pion/sdp/v3"
-
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
@@ -53,7 +51,7 @@ const (
 )
 
 type clientTrack struct {
-	track           *Track
+	track           Track
 	udpRTPListener  *clientUDPListener
 	udpRTCPListener *clientUDPListener
 	tcpChannel      int
@@ -97,7 +95,7 @@ type announceReq struct {
 
 type setupReq struct {
 	forPlay  bool
-	track    *Track
+	track    Track
 	baseURL  *base.URL
 	rtpPort  int
 	rtcpPort int
@@ -1024,7 +1022,7 @@ func (c *Client) doOptions(u *base.URL) (*base.Response, error) {
 		if res.StatusCode == base.StatusNotFound {
 			return res, nil
 		}
-		return res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
+		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	c.useGetParameter = func() bool {
@@ -1177,14 +1175,7 @@ func (c *Client) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, error) 
 	// (tested with ffmpeg and gstreamer)
 	baseURL := u.Clone()
 
-	for i, t := range tracks {
-		if !t.hasControlAttribute() {
-			t.Media.Attributes = append(t.Media.Attributes, psdp.Attribute{
-				Key:   "control",
-				Value: "trackID=" + strconv.FormatInt(int64(i), 10),
-			})
-		}
-	}
+	tracks.setControls()
 
 	res, err := c.do(&base.Request{
 		Method: base.Announce,
@@ -1225,7 +1216,7 @@ func (c *Client) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
 
 func (c *Client) doSetup(
 	forPlay bool,
-	track *Track,
+	track Track,
 	baseURL *base.URL,
 	rtpPort int,
 	rtcpPort int) (*base.Response, error) {
@@ -1330,7 +1321,7 @@ func (c *Client) doSetup(
 		th.InterleavedIDs = &[2]int{(trackID * 2), (trackID * 2) + 1}
 	}
 
-	trackURL, err := track.URL(baseURL)
+	trackURL, err := track.url(baseURL)
 	if err != nil {
 		if proto == TransportUDP {
 			rtpListener.close()
@@ -1370,7 +1361,7 @@ func (c *Client) doSetup(
 			return c.doSetup(forPlay, track, baseURL, 0, 0)
 		}
 
-		return res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
+		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
 	var thRes headers.Transport
@@ -1444,11 +1435,11 @@ func (c *Client) doSetup(
 		}
 	}
 
-	clockRate, _ := track.ClockRate()
 	cct := clientTrack{
 		track: track,
 	}
 
+	clockRate := track.ClockRate()
 	if mode == headers.TransportModePlay {
 		c.state = clientStatePrePlay
 		cct.rtcpReceiver = rtcpreceiver.New(nil, clockRate)
@@ -1555,7 +1546,7 @@ func (c *Client) doSetup(
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
 func (c *Client) Setup(
 	forPlay bool,
-	track *Track,
+	track Track,
 	baseURL *base.URL,
 	rtpPort int,
 	rtcpPort int) (*base.Response, error) {
@@ -1585,14 +1576,11 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		return nil, err
 	}
 
-	c.state = clientStatePlay
-
 	// setup UDP communication before sending the request.
 	if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-		// start UDP listeners
 		for _, cct := range c.tracks {
-			cct.udpRTPListener.start()
-			cct.udpRTCPListener.start()
+			cct.udpRTPListener.start(true)
+			cct.udpRTCPListener.start(true)
 		}
 
 		// open the firewall by sending packets to the counterpart.
@@ -1605,8 +1593,6 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		}
 	}
 
-	header := make(base.Header)
-
 	// Range is mandatory in Parrot Streaming Server
 	if ra == nil {
 		ra = &headers.Range{
@@ -1615,14 +1601,22 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 			},
 		}
 	}
-	header["Range"] = ra.Write()
 
 	res, err := c.do(&base.Request{
 		Method: base.Play,
 		URL:    c.streamBaseURL,
-		Header: header,
+		Header: base.Header{
+			"Range": ra.Write(),
+		},
 	}, false)
 	if err != nil {
+		if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.stop()
+				cct.udpRTCPListener.stop()
+			}
+		}
+
 		return nil, err
 	}
 
@@ -1634,15 +1628,13 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 			}
 		}
 
-		c.state = clientStatePrePlay
-
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
 
 	c.lastRange = ra
-
+	c.state = clientStatePlay
 	c.playRecordStart()
 
 	return res, nil
@@ -1683,13 +1675,10 @@ func (c *Client) doRecord() (*base.Response, error) {
 		return nil, err
 	}
 
-	c.state = clientStateRecord
-
 	if *c.protocol == TransportUDP {
-		// start UDP listeners
 		for _, cct := range c.tracks {
-			cct.udpRTPListener.start()
-			cct.udpRTCPListener.start()
+			cct.udpRTPListener.start(false)
+			cct.udpRTCPListener.start(false)
 		}
 	}
 
@@ -1698,6 +1687,13 @@ func (c *Client) doRecord() (*base.Response, error) {
 		URL:    c.streamBaseURL,
 	}, false)
 	if err != nil {
+		if *c.protocol == TransportUDP {
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.stop()
+				cct.udpRTCPListener.stop()
+			}
+		}
+
 		return nil, err
 	}
 
@@ -1709,13 +1705,12 @@ func (c *Client) doRecord() (*base.Response, error) {
 			}
 		}
 
-		c.state = clientStatePreRecord
-
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
 
+	c.state = clientStateRecord
 	c.playRecordStart()
 
 	return nil, nil
@@ -1770,7 +1765,7 @@ func (c *Client) doPause() (*base.Response, error) {
 	}
 
 	if res.StatusCode != base.StatusOK {
-		return res, liberrors.ErrClientBadStatusCode{
+		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}

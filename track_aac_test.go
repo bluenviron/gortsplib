@@ -8,178 +8,101 @@ import (
 )
 
 func TestTrackAACNew(t *testing.T) {
-	track, err := NewTrackAAC(96, &TrackConfigAAC{
-		Type:         2,
-		SampleRate:   48000,
-		ChannelCount: 2,
-	})
+	track, err := NewTrackAAC(96, 2, 48000, 4, []byte{0x01, 0x02})
 	require.NoError(t, err)
-	require.Equal(t, &Track{
-		Media: &psdp.MediaDescription{
-			MediaName: psdp.MediaName{
-				Media:   "audio",
-				Protos:  []string{"RTP", "AVP"},
-				Formats: []string{"96"},
-			},
-			Attributes: []psdp.Attribute{
-				{
-					Key:   "rtpmap",
-					Value: "96 mpeg4-generic/48000/2",
-				},
-				{
-					Key:   "fmtp",
-					Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
-				},
-			},
-		},
-	}, track)
+	require.Equal(t, 2, track.typ)
+	require.Equal(t, 48000, track.sampleRate)
+	require.Equal(t, 4, track.channelCount)
+	require.Equal(t, []byte{0x01, 0x02}, track.aotSpecificConfig)
 }
 
-func TestTrackIsAAC(t *testing.T) {
+func TestTrackAACNewFromMediaDescription(t *testing.T) {
 	for _, ca := range []struct {
 		name  string
-		track *Track
-	}{
-		{
-			"standard",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 mpeg4-generic/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
-						},
-					},
-				},
-			},
-		},
-		{
-			"uppercase",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 MPEG4-GENERIC/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
-						},
-					},
-				},
-			},
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			require.Equal(t, true, ca.track.IsAAC())
-		})
-	}
-}
-
-func TestTrackExtractConfigAAC(t *testing.T) {
-	for _, ca := range []struct {
-		name  string
-		track *Track
-		conf  *TrackConfigAAC
+		md    *psdp.MediaDescription
+		track *TrackAAC
 	}{
 		{
 			"generic",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
 					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 mpeg4-generic/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
-						},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
 					},
 				},
 			},
-			&TrackConfigAAC{
-				Type:         2,
-				SampleRate:   48000,
-				ChannelCount: 2,
+			&TrackAAC{
+				payloadType:  96,
+				typ:          2,
+				sampleRate:   48000,
+				channelCount: 2,
+				mpegConf:     []byte{0x11, 0x90},
 			},
 		},
 		{
 			"vlc rtsp server",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
 					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 mpeg4-generic/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190;",
-						},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190;",
 					},
 				},
 			},
-			&TrackConfigAAC{
-				Type:         2,
-				SampleRate:   48000,
-				ChannelCount: 2,
+			&TrackAAC{
+				payloadType:  96,
+				typ:          2,
+				sampleRate:   48000,
+				channelCount: 2,
+				mpegConf:     []byte{0x11, 0x90},
 			},
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			conf, err := ca.track.ExtractConfigAAC()
+			track, err := newTrackAACFromMediaDescription(96, ca.md)
 			require.NoError(t, err)
-			require.Equal(t, ca.conf, conf)
+			require.Equal(t, ca.track, track)
 		})
 	}
 }
 
-func TestTrackConfigAACErrors(t *testing.T) {
+func TestTrackAACNewFromMediaDescriptionErrors(t *testing.T) {
 	for _, ca := range []struct {
-		name  string
-		track *Track
-		err   string
+		name string
+		md   *psdp.MediaDescription
+		err  string
 	}{
 		{
 			"missing fmtp",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 mpeg4-generic/48000/2",
-						},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
 					},
 				},
 			},
@@ -187,22 +110,20 @@ func TestTrackConfigAACErrors(t *testing.T) {
 		},
 		{
 			"invalid fmtp",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
 					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 mpeg4-generic/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96",
-						},
+					{
+						Key:   "fmtp",
+						Value: "96",
 					},
 				},
 			},
@@ -210,22 +131,20 @@ func TestTrackConfigAACErrors(t *testing.T) {
 		},
 		{
 			"fmtp without key",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
 					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 mpeg4-generic/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96 profile-level-id",
-						},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id",
 					},
 				},
 			},
@@ -233,22 +152,20 @@ func TestTrackConfigAACErrors(t *testing.T) {
 		},
 		{
 			"missing config",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
 					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 mpeg4-generic/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96 profile-level-id=1",
-						},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1",
 					},
 				},
 			},
@@ -256,22 +173,20 @@ func TestTrackConfigAACErrors(t *testing.T) {
 		},
 		{
 			"invalid config",
-			&Track{
-				Media: &psdp.MediaDescription{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"96"},
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
 					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "rtpmap",
-							Value: "96 mpeg4-generic/48000/2",
-						},
-						{
-							Key:   "fmtp",
-							Value: "96 profile-level-id=1; config=zz",
-						},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; config=zz",
 					},
 				},
 			},
@@ -279,8 +194,44 @@ func TestTrackConfigAACErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := ca.track.ExtractConfigAAC()
+			_, err := newTrackAACFromMediaDescription(96, ca.md)
 			require.EqualError(t, err, ca.err)
 		})
 	}
+}
+
+func TestTrackAACClone(t *testing.T) {
+	track, err := NewTrackAAC(96, 2, 48000, 2, []byte{0x01, 0x02})
+	require.NoError(t, err)
+
+	copy := track.clone()
+	require.NotSame(t, track, copy)
+	require.Equal(t, track, copy)
+}
+
+func TestTrackAACMediaDescription(t *testing.T) {
+	track, err := NewTrackAAC(96, 2, 48000, 2, nil)
+	require.NoError(t, err)
+
+	require.Equal(t, &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "audio",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{"96"},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key:   "rtpmap",
+				Value: "96 mpeg4-generic/48000/2",
+			},
+			{
+				Key:   "fmtp",
+				Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+			},
+			{
+				Key:   "control",
+				Value: "",
+			},
+		},
+	}, track.mediaDescription())
 }

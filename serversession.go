@@ -76,7 +76,7 @@ func setupGetTrackIDPathQuery(
 	}
 
 	for trackID, track := range announcedTracks {
-		u, _ := track.track.URL(setuppedBaseURL)
+		u, _ := track.track.url(setuppedBaseURL)
 		if u.String() == url.String() {
 			return trackID, *setuppedPath, *setuppedQuery, nil
 		}
@@ -150,7 +150,7 @@ type ServerSessionSetuppedTrack struct {
 
 // ServerSessionAnnouncedTrack is an announced track of a ServerSession.
 type ServerSessionAnnouncedTrack struct {
-	track        *Track
+	track        Track
 	rtcpReceiver *rtcpreceiver.RTCPReceiver
 }
 
@@ -508,7 +508,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		for _, track := range tracks {
-			trackURL, err := track.URL(req.URL)
+			trackURL, err := track.url(req.URL)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -795,8 +795,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		ss.setuppedTracks[trackID] = sst
 
 		if ss.state == ServerSessionStatePrePublish && *ss.setuppedTransport != TransportTCP {
-			clockRate, _ := ss.announcedTracks[trackID].track.ClockRate()
-			ss.announcedTracks[trackID].rtcpReceiver = rtcpreceiver.New(nil, clockRate)
+			ss.announcedTracks[trackID].rtcpReceiver = rtcpreceiver.New(nil,
+				ss.announcedTracks[trackID].track.ClockRate())
 		}
 
 		res.Header["Transport"] = th.Write()

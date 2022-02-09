@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
@@ -35,5 +35,5 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("available tracks: %v\n", tracks)
+	log.Println("available tracks: %v\n", tracks)
 }

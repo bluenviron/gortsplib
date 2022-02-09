@@ -108,9 +108,11 @@ func newServerUDPListener(
 		listenIP = net.ParseIP(host)
 
 		for _, intf := range intfs {
-			err := p.JoinGroup(&intf, &net.UDPAddr{IP: listenIP})
-			if err != nil {
-				return nil, err
+			if (intf.Flags & net.FlagMulticast) != 0 {
+				err := p.JoinGroup(&intf, &net.UDPAddr{IP: listenIP})
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 
