@@ -69,11 +69,13 @@ func (t *TrackOpus) clone() Track {
 	}
 }
 
-func (t *TrackOpus) getControl() string {
+// GetControl returns the track control.
+func (t *TrackOpus) GetControl() string {
 	return t.control
 }
 
-func (t *TrackOpus) setControl(c string) {
+// SetControl sets the track control.
+func (t *TrackOpus) SetControl(c string) {
 	t.control = c
 }
 

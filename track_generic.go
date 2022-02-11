@@ -139,11 +139,13 @@ func (t *TrackGeneric) clone() Track {
 	}
 }
 
-func (t *TrackGeneric) getControl() string {
+// GetControl returns the track control.
+func (t *TrackGeneric) GetControl() string {
 	return t.control
 }
 
-func (t *TrackGeneric) setControl(c string) {
+// SetControl set the track control.
+func (t *TrackGeneric) SetControl(c string) {
 	t.control = c
 }
 

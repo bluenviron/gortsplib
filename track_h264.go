@@ -111,11 +111,13 @@ func (t *TrackH264) clone() Track {
 	}
 }
 
-func (t *TrackH264) getControl() string {
+// GetControl gets the track control.
+func (t *TrackH264) GetControl() string {
 	return t.control
 }
 
-func (t *TrackH264) setControl(c string) {
+// SetControl sets the track control.
+func (t *TrackH264) SetControl(c string) {
 	t.control = c
 }
 
