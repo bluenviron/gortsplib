@@ -22,7 +22,8 @@ type Track interface {
 }
 
 func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
-	if md.MediaName.Media == "video" {
+	switch md.MediaName.Media {
+	case "video":
 		if rtpmap, ok := md.Attribute("rtpmap"); ok {
 			rtpmap = strings.TrimSpace(rtpmap)
 
@@ -36,9 +37,8 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 				return newTrackH264FromMediaDescription(payloadType, md)
 			}
 		}
-	}
 
-	if md.MediaName.Media == "audio" {
+	case "audio":
 		if rtpmap, ok := md.Attribute("rtpmap"); ok {
 			if vals := strings.Split(rtpmap, " "); len(vals) == 2 {
 				tmp, err := strconv.ParseInt(vals[0], 10, 64)
@@ -52,7 +52,7 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 				}
 
 				if strings.HasPrefix(vals[1], "opus/") {
-					return newTrackOpusFromMediaDescription(payloadType, md)
+					return newTrackOpusFromMediaDescription(payloadType, rtpmap, md)
 				}
 			}
 		}

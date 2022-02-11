@@ -31,6 +31,22 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
+			"pcmu",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Port:    psdp.RangedPort{Value: 49170},
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"0"},
+				},
+			},
+			&TrackGeneric{
+				clockRate: 8000,
+				media:     "audio",
+				formats:   []string{"0"},
+			},
+		},
+		{
 			"aac",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
@@ -73,6 +89,33 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					{
 						Key:   "fmtp",
 						Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+					},
+				},
+			},
+			&TrackAAC{
+				payloadType:  96,
+				typ:          2,
+				sampleRate:   48000,
+				channelCount: 2,
+				mpegConf:     []byte{0x11, 0x90},
+			},
+		},
+		{
+			"aac vlc rtsp server",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190;",
 					},
 				},
 			},
@@ -161,6 +204,72 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
+			"h264 vlc rtsp server",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key: "fmtp",
+						Value: "96 packetization-mode=1;profile-level-id=64001f;" +
+							"sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,aOvjyyLA;",
+					},
+				},
+			},
+			&TrackH264{
+				payloadType: 96,
+				sps: []byte{
+					0x67, 0x64, 0x00, 0x1f, 0xac, 0xd9, 0x40, 0x50,
+					0x05, 0xbb, 0x01, 0x6c, 0x80, 0x00, 0x00, 0x03,
+					0x00, 0x80, 0x00, 0x00, 0x1e, 0x07, 0x8c, 0x18,
+					0xcb,
+				},
+				pps: []byte{
+					0x68, 0xeb, 0xe3, 0xcb, 0x22, 0xc0,
+				},
+			},
+		},
+		{
+			"h264 sprop-parameter-sets with extra data",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key: "fmtp",
+						Value: "96 packetization-mode=1; " +
+							"sprop-parameter-sets=Z2QAKawTMUB4BEfeA+oCAgPgAAADACAAAAZSgA==,aPqPLA==,aF6jzAMA; profile-level-id=640029",
+					},
+				},
+			},
+			&TrackH264{
+				payloadType: 96,
+				sps: []byte{
+					0x67, 0x64, 0x00, 0x29, 0xac, 0x13, 0x31, 0x40,
+					0x78, 0x04, 0x47, 0xde, 0x03, 0xea, 0x02, 0x02,
+					0x03, 0xe0, 0x00, 0x00, 0x03, 0x00, 0x20, 0x00,
+					0x00, 0x06, 0x52, 0x80,
+				},
+				pps: []byte{
+					0x68, 0xfa, 0x8f, 0x2c,
+				},
+			},
+		},
+		{
 			"h265",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
@@ -175,7 +284,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 					{
 						Key: "fmtp",
-						Value: "96 96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; " +
+						Value: "96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; " +
 							"sprop-sps=QgEBAWAAAAMAkAAAAwAAAwB4oAPAgBDllmZpJMrgEAAAAwAQAAADAeCA; sprop-pps=RAHBcrRiQA==",
 					},
 				},
@@ -185,8 +294,38 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				media:     "video",
 				formats:   []string{"96"},
 				rtpmap:    "96 H265/90000",
-				fmtp: "96 96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; " +
+				fmtp: "96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; " +
 					"sprop-sps=QgEBAWAAAAMAkAAAAwAAAwB4oAPAgBDllmZpJMrgEAAAAwAQAAADAeCA; sprop-pps=RAHBcrRiQA==",
+			},
+		},
+		{
+			"multiple formats",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Port:    psdp.RangedPort{Value: 0},
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"98", "96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "98 H265/90000",
+					},
+					{
+						Key: "fmtp",
+						Value: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+							"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
+					},
+				},
+			},
+			&TrackGeneric{
+				clockRate: 90000,
+				media:     "video",
+				formats:   []string{"98", "96"},
+				rtpmap:    "98 H265/90000",
+				fmtp: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+					"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
 			},
 		},
 	} {
@@ -194,6 +333,177 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			track, err := newTrackFromMediaDescription(ca.md)
 			require.NoError(t, err)
 			require.Equal(t, ca.track, track)
+		})
+	}
+}
+
+func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		md   *psdp.MediaDescription
+		err  string
+	}{
+		{
+			"generic no formats",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{},
+				},
+			},
+			"unable to get clock rate: no formats provided",
+		},
+		{
+			"generic no rtpmap",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"90"},
+				},
+			},
+			"unable to get clock rate: attribute 'rtpmap' not found",
+		},
+		{
+			"generic invalid rtpmap 1",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96",
+					},
+				},
+			},
+			"unable to get clock rate: invalid rtpmap (96)",
+		},
+		{
+			"generic invalid rtpmap 2",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic",
+					},
+				},
+			},
+			"unable to get clock rate: invalid rtpmap (96 mpeg4-generic)",
+		},
+		{
+			"aac missing fmtp",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+				},
+			},
+			"fmtp attribute is missing",
+		},
+		{
+			"aac invalid fmtp",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96",
+					},
+				},
+			},
+			"invalid fmtp (96)",
+		},
+		{
+			"aac fmtp without key",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id",
+					},
+				},
+			},
+			"invalid fmtp (96 profile-level-id)",
+		},
+		{
+			"aac missing config",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1",
+					},
+				},
+			},
+			"config is missing (96 profile-level-id=1)",
+		},
+		{
+			"aac invalid config",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; config=zz",
+					},
+				},
+			},
+			"invalid AAC config (zz)",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			_, err := newTrackFromMediaDescription(ca.md)
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

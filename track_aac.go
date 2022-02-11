@@ -46,7 +46,9 @@ func NewTrackAAC(payloadType uint8, typ int, sampleRate int,
 	}, nil
 }
 
-func newTrackAACFromMediaDescription(payloadType uint8, md *psdp.MediaDescription) (*TrackAAC, error) {
+func newTrackAACFromMediaDescription(
+	payloadType uint8,
+	md *psdp.MediaDescription) (*TrackAAC, error) {
 	control := trackFindControl(md)
 
 	v, ok := md.Attribute("fmtp")

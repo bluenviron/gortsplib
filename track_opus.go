@@ -27,18 +27,14 @@ func NewTrackOpus(payloadType uint8, sampleRate int, channelCount int) (*TrackOp
 	}, nil
 }
 
-func newTrackOpusFromMediaDescription(payloadType uint8,
+func newTrackOpusFromMediaDescription(
+	payloadType uint8,
+	rtpmap string,
 	md *psdp.MediaDescription) (*TrackOpus, error) {
 	control := trackFindControl(md)
-
-	v, ok := md.Attribute("rtpmap")
-	if !ok {
-		return nil, fmt.Errorf("rtpmap attribute is missing")
-	}
-
-	tmp := strings.SplitN(v, "/", 3)
+	tmp := strings.SplitN(rtpmap, "/", 3)
 	if len(tmp) != 3 {
-		return nil, fmt.Errorf("invalid rtpmap (%v)", v)
+		return nil, fmt.Errorf("invalid rtpmap (%v)", rtpmap)
 	}
 
 	sampleRate, err := strconv.ParseInt(tmp[1], 10, 64)

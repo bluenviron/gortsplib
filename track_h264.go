@@ -77,7 +77,8 @@ func NewTrackH264(payloadType uint8, sps []byte, pps []byte, extradata []byte) (
 	}, nil
 }
 
-func newTrackH264FromMediaDescription(payloadType uint8,
+func newTrackH264FromMediaDescription(
+	payloadType uint8,
 	md *psdp.MediaDescription) (*TrackH264, error) {
 	control := trackFindControl(md)
 
