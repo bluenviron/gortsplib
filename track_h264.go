@@ -145,7 +145,7 @@ func (t *TrackH264) SetPPS(v []byte) {
 	t.pps = v
 }
 
-// MediaDescription returns the structured SDP media information
+// MediaDescription returns the media description in SDP format.
 func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 
