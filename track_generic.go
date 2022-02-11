@@ -10,14 +10,14 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
-func trackGenericGetClockRate(md *psdp.MediaDescription) (int, error) {
-	if len(md.MediaName.Formats) < 1 {
+func trackGenericGetClockRate(formats []string, rtpmap string) (int, error) {
+	if len(formats) < 1 {
 		return 0, fmt.Errorf("no formats provided")
 	}
 
 	// get clock rate from payload type
 	// https://en.wikipedia.org/wiki/RTP_payload_formats
-	switch md.MediaName.Formats[0] {
+	switch formats[0] {
 	case "0", "1", "2", "3", "4", "5", "7", "8", "9", "12", "13", "15", "18":
 		return 8000, nil
 
@@ -40,27 +40,25 @@ func trackGenericGetClockRate(md *psdp.MediaDescription) (int, error) {
 	// get clock rate from rtpmap
 	// https://tools.ietf.org/html/rfc4566
 	// a=rtpmap:<payload type> <encoding name>/<clock rate> [/<encoding parameters>]
-	for _, a := range md.Attributes {
-		if a.Key == "rtpmap" {
-			tmp := strings.Split(a.Value, " ")
-			if len(tmp) < 2 {
-				return 0, fmt.Errorf("invalid rtpmap (%v)", a.Value)
-			}
-
-			tmp = strings.Split(tmp[1], "/")
-			if len(tmp) != 2 && len(tmp) != 3 {
-				return 0, fmt.Errorf("invalid rtpmap (%v)", a.Value)
-			}
-
-			v, err := strconv.ParseInt(tmp[1], 10, 64)
-			if err != nil {
-				return 0, err
-			}
-			return int(v), nil
-		}
+	if rtpmap == "" {
+		return 0, fmt.Errorf("attribute 'rtpmap' not found")
 	}
 
-	return 0, fmt.Errorf("attribute 'rtpmap' not found")
+	tmp := strings.Split(rtpmap, " ")
+	if len(tmp) < 2 {
+		return 0, fmt.Errorf("invalid rtpmap (%v)", rtpmap)
+	}
+
+	tmp = strings.Split(tmp[1], "/")
+	if len(tmp) != 2 && len(tmp) != 3 {
+		return 0, fmt.Errorf("invalid rtpmap (%v)", rtpmap)
+	}
+
+	v, err := strconv.ParseInt(tmp[1], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return int(v), nil
 }
 
 // TrackGeneric is a generic track.
@@ -73,13 +71,24 @@ type TrackGeneric struct {
 	fmtp      string
 }
 
-func newTrackGenericFromMediaDescription(md *psdp.MediaDescription) (*TrackGeneric, error) {
-	control := trackFindControl(md)
-
-	clockRate, err := trackGenericGetClockRate(md)
+// NewTrackGeneric allocates a generic track.
+func NewTrackGeneric(media string, formats []string, rtpmap string, fmtp string) (*TrackGeneric, error) {
+	clockRate, err := trackGenericGetClockRate(formats, rtpmap)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get clock rate: %s", err)
 	}
+
+	return &TrackGeneric{
+		clockRate: clockRate,
+		media:     media,
+		formats:   formats,
+		rtpmap:    rtpmap,
+		fmtp:      fmtp,
+	}, nil
+}
+
+func newTrackGenericFromMediaDescription(md *psdp.MediaDescription) (*TrackGeneric, error) {
+	control := trackFindControl(md)
 
 	rtpmap := func() string {
 		for _, attr := range md.Attributes {
@@ -89,6 +98,11 @@ func newTrackGenericFromMediaDescription(md *psdp.MediaDescription) (*TrackGener
 		}
 		return ""
 	}()
+
+	clockRate, err := trackGenericGetClockRate(md.MediaName.Formats, rtpmap)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get clock rate: %s", err)
+	}
 
 	fmtp := func() string {
 		for _, attr := range md.Attributes {
