@@ -15,8 +15,10 @@ type Track interface {
 	// ClockRate returns the track clock rate.
 	ClockRate() int
 	clone() Track
-	getControl() string
-	setControl(string)
+	// GetControl returns the track control
+	GetControl() string
+	// SetControl returns the track control
+	SetControl(string)
 	url(*base.URL) (*base.URL, error)
 	// MediaDescription returns structured SDP media information
 	MediaDescription() *psdp.MediaDescription
@@ -76,7 +78,7 @@ func trackURL(t Track, contentBase *base.URL) (*base.URL, error) {
 		return nil, fmt.Errorf("no Content-Base header provided")
 	}
 
-	control := t.getControl()
+	control := t.GetControl()
 
 	// no control attribute, use base URL
 	if control == "" {

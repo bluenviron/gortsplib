@@ -138,11 +138,13 @@ func (t *TrackAAC) clone() Track {
 	}
 }
 
-func (t *TrackAAC) getControl() string {
+// GetControl gets the track control.
+func (t *TrackAAC) GetControl() string {
 	return t.control
 }
 
-func (t *TrackAAC) setControl(c string) {
+// SetControl sets the track control.
+func (t *TrackAAC) SetControl(c string) {
 	t.control = c
 }
 

@@ -28,7 +28,7 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 		Body: func() []byte {
 			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
-			track.setControl(control)
+			track.SetControl(control)
 
 			sout := &psdp.SessionDescription{
 				SessionName: psdp.SessionName("Stream"),
@@ -260,7 +260,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 			require.NoError(t, err)
 
-			track.setControl(ca.control)
+			track.SetControl(ca.control)
 
 			sout := &psdp.SessionDescription{
 				SessionName: psdp.SessionName("Stream"),
