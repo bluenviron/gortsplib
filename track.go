@@ -25,37 +25,28 @@ type Track interface {
 }
 
 func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
-	switch md.MediaName.Media {
-	case "video":
-		if rtpmap, ok := md.Attribute("rtpmap"); ok {
-			rtpmap = strings.TrimSpace(rtpmap)
+	if rtpmap, ok := md.Attribute("rtpmap"); ok {
+		rtpmap = strings.TrimSpace(rtpmap)
 
-			if vals := strings.Split(rtpmap, " "); len(vals) == 2 && vals[1] == "H264/90000" {
-				tmp, err := strconv.ParseInt(vals[0], 10, 64)
-				if err != nil {
-					return nil, fmt.Errorf("invalid payload type '%s'", vals[0])
-				}
+		if rtpmapParts := strings.Split(rtpmap, " "); len(rtpmapParts) == 2 {
+			tmp, err := strconv.ParseInt(rtpmapParts[0], 10, 64)
+			if err == nil {
 				payloadType := uint8(tmp)
 
-				return newTrackH264FromMediaDescription(payloadType, md)
-			}
-		}
+				switch {
+				case md.MediaName.Media == "video":
+					if rtpmapParts[1] == "H264/90000" {
+						return newTrackH264FromMediaDescription(payloadType, md)
+					}
 
-	case "audio":
-		if rtpmap, ok := md.Attribute("rtpmap"); ok {
-			if vals := strings.Split(rtpmap, " "); len(vals) == 2 {
-				tmp, err := strconv.ParseInt(vals[0], 10, 64)
-				if err != nil {
-					return nil, fmt.Errorf("invalid payload type '%s'", vals[0])
-				}
-				payloadType := uint8(tmp)
+				case md.MediaName.Media == "audio":
+					switch {
+					case strings.HasPrefix(strings.ToLower(rtpmapParts[1]), "mpeg4-generic/"):
+						return newTrackAACFromMediaDescription(payloadType, md)
 
-				if strings.HasPrefix(strings.ToLower(vals[1]), "mpeg4-generic/") {
-					return newTrackAACFromMediaDescription(payloadType, md)
-				}
-
-				if strings.HasPrefix(vals[1], "opus/") {
-					return newTrackOpusFromMediaDescription(payloadType, rtpmap, md)
+					case strings.HasPrefix(rtpmapParts[1], "opus/"):
+						return newTrackOpusFromMediaDescription(payloadType, rtpmapParts[1], md)
+					}
 				}
 			}
 		}
@@ -75,7 +66,7 @@ func trackFindControl(md *psdp.MediaDescription) string {
 
 func trackURL(t Track, contentBase *base.URL) (*base.URL, error) {
 	if contentBase == nil {
-		return nil, fmt.Errorf("no Content-Base header provided")
+		return nil, fmt.Errorf("Content-Base header not provided")
 	}
 
 	control := t.GetControl()

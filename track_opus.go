@@ -29,12 +29,12 @@ func NewTrackOpus(payloadType uint8, sampleRate int, channelCount int) (*TrackOp
 
 func newTrackOpusFromMediaDescription(
 	payloadType uint8,
-	rtpmap string,
+	rtpmapPart1 string,
 	md *psdp.MediaDescription) (*TrackOpus, error) {
 	control := trackFindControl(md)
-	tmp := strings.SplitN(rtpmap, "/", 3)
+	tmp := strings.SplitN(rtpmapPart1, "/", 3)
 	if len(tmp) != 3 {
-		return nil, fmt.Errorf("invalid rtpmap (%v)", rtpmap)
+		return nil, fmt.Errorf("invalid rtpmap (%v)", rtpmapPart1)
 	}
 
 	sampleRate, err := strconv.ParseInt(tmp[1], 10, 64)
@@ -81,6 +81,11 @@ func (t *TrackOpus) SetControl(c string) {
 
 func (t *TrackOpus) url(contentBase *base.URL) (*base.URL, error) {
 	return trackURL(t, contentBase)
+}
+
+// ChannelCount returns the channel count.
+func (t *TrackOpus) ChannelCount() int {
+	return t.channelCount
 }
 
 // MediaDescription returns the media description in SDP format.

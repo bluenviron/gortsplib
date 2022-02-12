@@ -10,10 +10,10 @@ import (
 func TestTrackAACNew(t *testing.T) {
 	track, err := NewTrackAAC(96, 2, 48000, 4, []byte{0x01, 0x02})
 	require.NoError(t, err)
-	require.Equal(t, 2, track.typ)
-	require.Equal(t, 48000, track.sampleRate)
-	require.Equal(t, 4, track.channelCount)
-	require.Equal(t, []byte{0x01, 0x02}, track.aotSpecificConfig)
+	require.Equal(t, 2, track.Type())
+	require.Equal(t, 48000, track.ClockRate())
+	require.Equal(t, 4, track.ChannelCount())
+	require.Equal(t, []byte{0x01, 0x02}, track.AOTSpecificConfig())
 }
 
 func TestTrackAACClone(t *testing.T) {

@@ -86,10 +86,7 @@ func newTrackAACFromMediaDescription(
 			}
 
 			// re-encode the conf to normalize it
-			enc, err = mpegConf.Encode()
-			if err != nil {
-				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
-			}
+			enc, _ = mpegConf.Encode()
 
 			return &TrackAAC{
 				control:           control,

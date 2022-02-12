@@ -7,6 +7,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTrackGenericNew(t *testing.T) {
+	track, err := NewTrackGeneric(
+		"video",
+		[]string{"100", "101"},
+		"98 H265/90000",
+		"",
+	)
+	require.NoError(t, err)
+	require.Equal(t, 90000, track.ClockRate())
+}
+
+func TestTrackGenericNewErrors(t *testing.T) {
+	_, err := NewTrackGeneric(
+		"video",
+		[]string{"100", "101"},
+		"98 H265/",
+		"",
+	)
+	require.EqualError(t, err, "unable to get clock rate: strconv.ParseInt: parsing \"\": invalid syntax")
+}
+
 func TestTrackGenericClone(t *testing.T) {
 	track, err := newTrackGenericFromMediaDescription(
 		&psdp.MediaDescription{
@@ -33,4 +54,31 @@ func TestTrackGenericClone(t *testing.T) {
 	copy := track.clone()
 	require.NotSame(t, track, copy)
 	require.Equal(t, track, copy)
+}
+
+func TestTrackGenericMediaDescription(t *testing.T) {
+	track, err := NewTrackGeneric(
+		"video",
+		[]string{"100", "101"},
+		"98 H265/90000",
+		"",
+	)
+	require.NoError(t, err)
+	require.Equal(t, &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "video",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{"100", "101"},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key:   "rtpmap",
+				Value: "98 H265/90000",
+			},
+			{
+				Key:   "control",
+				Value: "",
+			},
+		},
+	}, track.MediaDescription())
 }

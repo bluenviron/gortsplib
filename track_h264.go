@@ -135,6 +135,11 @@ func (t *TrackH264) PPS() []byte {
 	return t.pps
 }
 
+// ExtraData returns the track extra data.
+func (t *TrackH264) ExtraData() []byte {
+	return t.extradata
+}
+
 // SetSPS sets the track SPS.
 func (t *TrackH264) SetSPS(v []byte) {
 	t.sps = v

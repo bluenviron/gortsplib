@@ -366,7 +366,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 			"unable to get clock rate: attribute 'rtpmap' not found",
 		},
 		{
-			"generic invalid rtpmap 1",
+			"generic invalid clockrate 1",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -383,7 +383,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 			"unable to get clock rate: invalid rtpmap (96)",
 		},
 		{
-			"generic invalid rtpmap 2",
+			"generic invalid clockrate 2",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -398,6 +398,23 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 				},
 			},
 			"unable to get clock rate: invalid rtpmap (96 mpeg4-generic)",
+		},
+		{
+			"generic invalid clockrate 3",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/aa",
+					},
+				},
+			},
+			"unable to get clock rate: strconv.ParseInt: parsing \"aa\": invalid syntax",
 		},
 		{
 			"aac missing fmtp",
@@ -480,7 +497,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 			"config is missing (96 profile-level-id=1)",
 		},
 		{
-			"aac invalid config",
+			"aac invalid config 1",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -499,6 +516,78 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 				},
 			},
 			"invalid AAC config (zz)",
+		},
+		{
+			"aac invalid config 2",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; config=aa",
+					},
+				},
+			},
+			"invalid AAC config (aa)",
+		},
+		{
+			"opus invalid 1",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 opus/48000",
+					},
+				},
+			},
+			"invalid rtpmap (opus/48000)",
+		},
+		{
+			"opus invalid 2",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 opus/aa/2",
+					},
+				},
+			},
+			"strconv.ParseInt: parsing \"aa\": invalid syntax",
+		},
+		{
+			"opus invalid 3",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 opus/48000/aa",
+					},
+				},
+			},
+			"strconv.ParseInt: parsing \"aa\": invalid syntax",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -617,4 +706,11 @@ func TestTrackURL(t *testing.T) {
 			require.Equal(t, ca.ur, ur)
 		})
 	}
+}
+
+func TestTrackURLError(t *testing.T) {
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x05, 0x06, 0x07, 0x08}, nil)
+	require.NoError(t, err)
+	_, err = track.url(nil)
+	require.EqualError(t, err, "Content-Base header not provided")
 }
