@@ -25,7 +25,7 @@ func ReadTracks(byts []byte) (Tracks, error) {
 	for i, md := range sd.MediaDescriptions {
 		t, err := newTrackFromMediaDescription(md)
 		if err != nil {
-			return nil, fmt.Errorf("unable to parse track %d: %s", i, err)
+			return nil, fmt.Errorf("unable to parse track %d: %s", i+1, err)
 		}
 
 		tracks[i] = t
