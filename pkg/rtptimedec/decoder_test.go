@@ -11,24 +11,29 @@ func TestOverflow(t *testing.T) {
 	d := New(90000)
 
 	i := uint32(4294877296)
+	secs := time.Duration(0)
 	pts := d.Decode(i)
 	require.Equal(t, time.Duration(0), pts)
 
-	// 1st overflow
-	i += 90000 * 2
-	pts = d.Decode(i)
-	require.Equal(t, 2*time.Second, pts)
+	const stride = 150
+	lim := uint32(uint64(4294967296 - (stride * 90000)))
 
-	// reach 4294890000 slowly
-	for ; i < 4294890000; i += 90000 * 10 {
+	for n := 0; n < 100; n++ {
+		// overflow
+		i += 90000 * stride
+		secs += stride
 		pts = d.Decode(i)
-		require.Equal(t, 2*time.Second+time.Second*time.Duration(i-90000)/90000, pts)
-	}
+		require.Equal(t, secs*time.Second, pts)
 
-	// 2nd overflow
-	i += 90000 * 10
-	pts = d.Decode(i)
-	require.Equal(t, 47732*time.Second, pts)
+		// reach 2^32 slowly
+		secs += stride
+		i += 90000 * stride
+		for ; i < lim; i += 90000 * stride {
+			pts = d.Decode(i)
+			require.Equal(t, secs*time.Second, pts)
+			secs += stride
+		}
+	}
 }
 
 func TestOverflowAndBack(t *testing.T) {
