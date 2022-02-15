@@ -20,7 +20,7 @@ jobs:
       with:
         go-version: ${{ matrix.go }}
 
-    - run: sudo apt install -y libavformat-dev libswscale-dev
+    - run: sudo apt update && sudo apt install -y libavformat-dev libswscale-dev
 
     - run: make test-nodocker
 

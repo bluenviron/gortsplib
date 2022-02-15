@@ -25,7 +25,7 @@ func ReadTracks(byts []byte) (Tracks, error) {
 	for i, md := range sd.MediaDescriptions {
 		t, err := newTrackFromMediaDescription(md)
 		if err != nil {
-			return nil, fmt.Errorf("unable to parse track %d: %s", i, err)
+			return nil, fmt.Errorf("unable to parse track %d: %s", i+1, err)
 		}
 
 		tracks[i] = t
@@ -44,7 +44,7 @@ func (ts Tracks) clone() Tracks {
 
 func (ts Tracks) setControls() {
 	for i, t := range ts {
-		t.setControl("trackID=" + strconv.FormatInt(int64(i), 10))
+		t.SetControl("trackID=" + strconv.FormatInt(int64(i), 10))
 	}
 }
 
@@ -75,7 +75,7 @@ func (ts Tracks) Write(multicast bool) []byte {
 	}
 
 	for _, track := range ts {
-		sout.MediaDescriptions = append(sout.MediaDescriptions, track.mediaDescription())
+		sout.MediaDescriptions = append(sout.MediaDescriptions, track.MediaDescription())
 	}
 
 	byts, _ := sout.Marshal()

@@ -31,7 +31,7 @@ func TestTracksReadErrors(t *testing.T) {
 				"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
 				"a=fmtp:97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=zzz1210\r\n" +
 				"a=control:streamid=1\r\n"),
-			"unable to parse track 1: invalid AAC config (zzz1210)",
+			"unable to parse track 2: invalid AAC config (zzz1210)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

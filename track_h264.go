@@ -77,7 +77,8 @@ func NewTrackH264(payloadType uint8, sps []byte, pps []byte, extradata []byte) (
 	}, nil
 }
 
-func newTrackH264FromMediaDescription(payloadType uint8,
+func newTrackH264FromMediaDescription(
+	payloadType uint8,
 	md *psdp.MediaDescription) (*TrackH264, error) {
 	control := trackFindControl(md)
 
@@ -110,11 +111,13 @@ func (t *TrackH264) clone() Track {
 	}
 }
 
-func (t *TrackH264) getControl() string {
+// GetControl gets the track control.
+func (t *TrackH264) GetControl() string {
 	return t.control
 }
 
-func (t *TrackH264) setControl(c string) {
+// SetControl sets the track control.
+func (t *TrackH264) SetControl(c string) {
 	t.control = c
 }
 
@@ -132,6 +135,11 @@ func (t *TrackH264) PPS() []byte {
 	return t.pps
 }
 
+// ExtraData returns the track extra data.
+func (t *TrackH264) ExtraData() []byte {
+	return t.extradata
+}
+
 // SetSPS sets the track SPS.
 func (t *TrackH264) SetSPS(v []byte) {
 	t.sps = v
@@ -142,7 +150,8 @@ func (t *TrackH264) SetPPS(v []byte) {
 	t.pps = v
 }
 
-func (t *TrackH264) mediaDescription() *psdp.MediaDescription {
+// MediaDescription returns the media description in SDP format.
+func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 
 	fmtp := typ + " packetization-mode=1"

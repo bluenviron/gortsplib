@@ -46,7 +46,9 @@ func NewTrackAAC(payloadType uint8, typ int, sampleRate int,
 	}, nil
 }
 
-func newTrackAACFromMediaDescription(payloadType uint8, md *psdp.MediaDescription) (*TrackAAC, error) {
+func newTrackAACFromMediaDescription(
+	payloadType uint8,
+	md *psdp.MediaDescription) (*TrackAAC, error) {
 	control := trackFindControl(md)
 
 	v, ok := md.Attribute("fmtp")
@@ -84,10 +86,7 @@ func newTrackAACFromMediaDescription(payloadType uint8, md *psdp.MediaDescriptio
 			}
 
 			// re-encode the conf to normalize it
-			enc, err = mpegConf.Encode()
-			if err != nil {
-				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
-			}
+			enc, _ = mpegConf.Encode()
 
 			return &TrackAAC{
 				control:           control,
@@ -136,11 +135,13 @@ func (t *TrackAAC) clone() Track {
 	}
 }
 
-func (t *TrackAAC) getControl() string {
+// GetControl gets the track control.
+func (t *TrackAAC) GetControl() string {
 	return t.control
 }
 
-func (t *TrackAAC) setControl(c string) {
+// SetControl sets the track control.
+func (t *TrackAAC) SetControl(c string) {
 	t.control = c
 }
 
@@ -148,7 +149,8 @@ func (t *TrackAAC) url(contentBase *base.URL) (*base.URL, error) {
 	return trackURL(t, contentBase)
 }
 
-func (t *TrackAAC) mediaDescription() *psdp.MediaDescription {
+// MediaDescription returns the media description in SDP format.
+func (t *TrackAAC) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 
 	return &psdp.MediaDescription{
