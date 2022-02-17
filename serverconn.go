@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/liberrors"
@@ -35,17 +34,18 @@ type ServerConn struct {
 	s    *Server
 	conn net.Conn
 
-	ctx              context.Context
-	ctxCancel        func()
-	remoteAddr       *net.TCPAddr
-	br               *bufio.Reader
-	sessions         map[string]*ServerSession
-	tcpFrameEnabled  bool
-	tcpSession       *ServerSession
-	tcpFrameTimeout  bool
-	tcpReadBuffer    *multibuffer.MultiBuffer
-	tcpProcessFunc   func(int, bool, []byte)
-	tcpWriterRunning bool
+	ctx                context.Context
+	ctxCancel          func()
+	remoteAddr         *net.TCPAddr
+	br                 *bufio.Reader
+	sessions           map[string]*ServerSession
+	tcpFrameEnabled    bool
+	tcpSession         *ServerSession
+	tcpFrameTimeout    bool
+	tcpReadBuffer      *multibuffer.MultiBuffer
+	tcpRTPPacketBuffer *rtpPacketMultiBuffer
+	tcpProcessFunc     func(int, bool, []byte)
+	tcpWriterRunning   bool
 
 	// in
 	sessionRemove chan *ServerSession
@@ -260,7 +260,7 @@ func (sc *ServerConn) tcpProcessPlay(trackID int, isRTP bool, payload []byte) {
 
 func (sc *ServerConn) tcpProcessRecord(trackID int, isRTP bool, payload []byte) {
 	if isRTP {
-		var pkt rtp.Packet
+		pkt := sc.tcpRTPPacketBuffer.next()
 		err := pkt.Unmarshal(payload)
 		if err != nil {
 			return
@@ -270,7 +270,7 @@ func (sc *ServerConn) tcpProcessRecord(trackID int, isRTP bool, payload []byte) 
 			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
 				Session: sc.tcpSession,
 				TrackID: trackID,
-				Packet:  &pkt,
+				Packet:  pkt,
 			})
 		}
 	} else {
