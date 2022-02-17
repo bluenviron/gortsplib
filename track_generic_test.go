@@ -12,9 +12,11 @@ func TestTrackGenericNew(t *testing.T) {
 		"video",
 		[]string{"100", "101"},
 		"98 H265/90000",
-		"",
+		"98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; "+
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
 	)
 	require.NoError(t, err)
+	require.Equal(t, "", track.GetControl())
 	require.Equal(t, 90000, track.ClockRate())
 }
 
@@ -61,7 +63,8 @@ func TestTrackGenericMediaDescription(t *testing.T) {
 		"video",
 		[]string{"100", "101"},
 		"98 H265/90000",
-		"",
+		"98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; "+
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
 	)
 	require.NoError(t, err)
 	require.Equal(t, &psdp.MediaDescription{
@@ -74,6 +77,11 @@ func TestTrackGenericMediaDescription(t *testing.T) {
 			{
 				Key:   "rtpmap",
 				Value: "98 H265/90000",
+			},
+			{
+				Key: "fmtp",
+				Value: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+					"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
 			},
 			{
 				Key:   "control",

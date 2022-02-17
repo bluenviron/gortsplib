@@ -168,6 +168,7 @@ func TestTrackH264New(t *testing.T) {
 	track, err := NewTrackH264(96,
 		[]byte{0x01, 0x02}, []byte{0x03, 0x04}, []byte{0x05, 0x06})
 	require.NoError(t, err)
+	require.Equal(t, "", track.GetControl())
 	require.Equal(t, []byte{0x01, 0x02}, track.SPS())
 	require.Equal(t, []byte{0x03, 0x04}, track.PPS())
 	require.Equal(t, []byte{0x05, 0x06}, track.ExtraData())
