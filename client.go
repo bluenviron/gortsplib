@@ -214,6 +214,7 @@ type Client struct {
 	tracksByChannel    map[int]int
 	lastRange          *headers.Range
 	tcpReadBuffer      *multibuffer.MultiBuffer
+	tcpRTPPacketBuffer *rtpPacketMultiBuffer
 	writeMutex         sync.RWMutex // publish
 	writeFrameAllowed  bool         // publish
 	udpReportTimer     *time.Timer
@@ -760,14 +761,14 @@ func (c *Client) runReader() {
 					atomic.StoreInt64(c.tcpLastFrameTime, now.Unix())
 
 					if isRTP {
-						var pkt rtp.Packet
+						pkt := c.tcpRTPPacketBuffer.next()
 						err := pkt.Unmarshal(payload)
 						if err != nil {
 							return
 						}
 
-						c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, &pkt)
-						c.OnPacketRTP(trackID, &pkt)
+						c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, pkt)
+						c.OnPacketRTP(trackID, pkt)
 					} else {
 						packets, err := rtcp.Unmarshal(payload)
 						if err != nil {
@@ -1536,6 +1537,7 @@ func (c *Client) doSetup(
 	case TransportTCP:
 		if c.tcpReadBuffer == nil {
 			c.tcpReadBuffer = multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize))
+			c.tcpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(c.ReadBufferCount))
 		}
 
 		if c.tracksByChannel == nil {

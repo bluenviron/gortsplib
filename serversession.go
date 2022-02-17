@@ -1019,6 +1019,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.tcpConn.tcpFrameEnabled = true
 			ss.tcpConn.tcpFrameTimeout = true
 			ss.tcpConn.tcpReadBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
+			ss.tcpConn.tcpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(sc.s.ReadBufferCount))
 			ss.tcpConn.tcpProcessFunc = sc.tcpProcessRecord
 
 			// when recording, writeBuffer is only used to send RTCP receiver reports,
