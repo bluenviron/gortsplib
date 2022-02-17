@@ -45,7 +45,7 @@ type serverUDPListener struct {
 	readBuffer   *multibuffer.MultiBuffer
 	clientsMutex sync.RWMutex
 	clients      map[clientAddr]*clientData
-	processFunc  func(time.Time, *clientData, []byte)
+	processFunc  func(*clientData, []byte)
 
 	readerDone chan struct{}
 }
@@ -188,17 +188,14 @@ func (u *serverUDPListener) runReader() {
 				return
 			}
 
-			now := time.Now()
-			if clientData.isPublishing {
-				atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
-			}
-
-			u.processFunc(now, clientData, buf[:n])
+			u.processFunc(clientData, buf[:n])
 		}()
 	}
 }
 
-func (u *serverUDPListener) processRTP(now time.Time, clientData *clientData, payload []byte) {
+func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
+	now := time.Now()
+	atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
 	clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTP(now, payload)
 
 	if h, ok := u.s.Handler.(ServerHandlerOnPacketRTP); ok {
@@ -210,8 +207,10 @@ func (u *serverUDPListener) processRTP(now time.Time, clientData *clientData, pa
 	}
 }
 
-func (u *serverUDPListener) processRTCP(now time.Time, clientData *clientData, payload []byte) {
+func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) {
 	if clientData.isPublishing {
+		now := time.Now()
+		atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
 		clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTCP(now, payload)
 	}
 
