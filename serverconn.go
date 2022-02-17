@@ -426,6 +426,20 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			})
 		}
 
+		// When using GET_PARAMETER for keep-alives, a body
+		// SHOULD NOT be included, dependent on implementation support in
+		// the server. Use the OPTIONS method to determine if there is
+		// method support or simply try.
+		if len(req.Body) == 0 {
+			return &base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Content-Type": base.HeaderValue{"text/parameters"},
+				},
+				Body: []byte{},
+			}, nil
+		}
+
 	case base.SetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnSetParameter); ok {
 			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
@@ -443,6 +457,21 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				Path:  path,
 				Query: query,
 			})
+		}
+
+		// When using SET_PARAMETER for keep-alives, a body
+		// SHOULD NOT be included.  This method is the RECOMMENDED RTSP
+		// method to use for a request intended only to perform keep-
+		// alives. RTSP servers MUST support the SET_PARAMETER method, so
+		// that clients can always use this mechanism.
+		if len(req.Body) == 0 {
+			return &base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Content-Type": base.HeaderValue{"text/parameters"},
+				},
+				Body: []byte{},
+			}, nil
 		}
 	}
 

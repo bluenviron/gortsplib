@@ -1147,27 +1147,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			},
 			Body: []byte{},
 		}, nil
-
-	case base.SetParameter:
-		// When using SET_PARAMETER for keep-alives, a body
-		// SHOULD NOT be included.  This method is the RECOMMENDED RTSP
-		// method to use for a request intended only to perform keep-
-		// alives.  RTSP servers MUST support the SET_PARAMETER method, so
-		// that clients can always use this mechanism.
-		if len(req.Body) != 0 {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerUnhandledRequest{Req: req}
-		}
-
-		// Reply with 200 to the keep-alive.
-		return &base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Content-Type": base.HeaderValue{"text/parameters"},
-			},
-			Body: []byte{},
-		}, nil
 	}
 
 	return &base.Response{
