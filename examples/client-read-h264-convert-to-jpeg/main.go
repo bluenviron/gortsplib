@@ -17,7 +17,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
 // 2. check whether there's a H264 track
-// 3. decode H264 NALUs of that track into raw frames
+// 3. convert H264 NALUs of that track into raw frames
 // 4. encode the frames into JPEG images and save them on disk
 // This example requires the ffmpeg libraries, that can be installed in this way:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config
