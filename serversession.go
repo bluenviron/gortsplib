@@ -116,10 +116,10 @@ type ServerSessionState int
 // standard states.
 const (
 	ServerSessionStateInitial ServerSessionState = iota
-	ServerSessionStatePreRead
-	ServerSessionStateRead
-	ServerSessionStatePrePublish
-	ServerSessionStatePublish
+	ServerSessionStatePrePlay
+	ServerSessionStatePlay
+	ServerSessionStatePreRecord
+	ServerSessionStateRecord
 )
 
 // String implements fmt.Stringer.
@@ -127,13 +127,13 @@ func (s ServerSessionState) String() string {
 	switch s {
 	case ServerSessionStateInitial:
 		return "initial"
-	case ServerSessionStatePreRead:
+	case ServerSessionStatePrePlay:
 		return "prePlay"
-	case ServerSessionStateRead:
+	case ServerSessionStatePlay:
 		return "play"
-	case ServerSessionStatePrePublish:
+	case ServerSessionStatePreRecord:
 		return "preRecord"
-	case ServerSessionStatePublish:
+	case ServerSessionStateRecord:
 		return "record"
 	}
 	return "unknown"
@@ -316,8 +316,8 @@ func (ss *ServerSession) run() {
 				}
 
 				// if session is not in state RECORD or PLAY, or transport is TCP
-				if (ss.state != ServerSessionStatePublish &&
-					ss.state != ServerSessionStateRead) ||
+				if (ss.state != ServerSessionStateRecord &&
+					ss.state != ServerSessionStatePlay) ||
 					*ss.setuppedTransport == TransportTCP {
 					// close if there are no associated connections
 					if len(ss.conns) == 0 {
@@ -326,8 +326,8 @@ func (ss *ServerSession) run() {
 				}
 
 			case <-ss.startWriter:
-				if !ss.writerRunning && (ss.state == ServerSessionStatePublish ||
-					ss.state == ServerSessionStateRead) &&
+				if !ss.writerRunning && (ss.state == ServerSessionStateRecord ||
+					ss.state == ServerSessionStatePlay) &&
 					*ss.setuppedTransport == TransportTCP {
 					ss.writerRunning = true
 					ss.writerDone = make(chan struct{})
@@ -338,7 +338,7 @@ func (ss *ServerSession) run() {
 				now := time.Now()
 
 				// in case of RECORD and UDP, timeout happens when no RTP or RTCP packets are being received
-				if ss.state == ServerSessionStatePublish {
+				if ss.state == ServerSessionStateRecord {
 					lft := atomic.LoadInt64(ss.udpLastFrameTime)
 					if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
 						return liberrors.ErrServerNoUDPPacketsInAWhile{}
@@ -372,14 +372,14 @@ func (ss *ServerSession) run() {
 	ss.ctxCancel()
 
 	switch ss.state {
-	case ServerSessionStateRead:
+	case ServerSessionStatePlay:
 		ss.setuppedStream.readerSetInactive(ss)
 
 		if *ss.setuppedTransport == TransportUDP {
 			ss.s.udpRTCPListener.removeClient(ss)
 		}
 
-	case ServerSessionStatePublish:
+	case ServerSessionStateRecord:
 		if *ss.setuppedTransport == TransportUDP {
 			ss.s.udpRTPListener.removeClient(ss)
 			ss.s.udpRTCPListener.removeClient(ss)
@@ -546,7 +546,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			return res, err
 		}
 
-		ss.state = ServerSessionStatePrePublish
+		ss.state = ServerSessionStatePreRecord
 		ss.setuppedPath = &path
 		ss.setuppedQuery = &query
 		ss.setuppedBaseURL = req.URL
@@ -564,9 +564,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 	case base.Setup:
 		err := ss.checkState(map[ServerSessionState]struct{}{
-			ServerSessionStateInitial:    {},
-			ServerSessionStatePreRead:    {},
-			ServerSessionStatePrePublish: {},
+			ServerSessionStateInitial:   {},
+			ServerSessionStatePrePlay:   {},
+			ServerSessionStatePreRecord: {},
 		})
 		if err != nil {
 			return &base.Response{
@@ -652,7 +652,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		switch ss.state {
-		case ServerSessionStateInitial, ServerSessionStatePreRead: // play
+		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
 			if inTH.Mode != nil && *inTH.Mode != headers.TransportModePlay {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -711,7 +711,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}, err
 			}
 
-			ss.state = ServerSessionStatePreRead
+			ss.state = ServerSessionStatePrePlay
 			ss.setuppedPath = &path
 			ss.setuppedQuery = &query
 			ss.setuppedStream = stream
@@ -719,7 +719,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		th := headers.Transport{}
 
-		if ss.state == ServerSessionStatePreRead {
+		if ss.state == ServerSessionStatePrePlay {
 			ssrc := stream.ssrc(trackID)
 			if ssrc != 0 {
 				th.SSRC = &ssrc
@@ -796,7 +796,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.setuppedTracks[trackID] = sst
 
-		if ss.state == ServerSessionStatePrePublish && *ss.setuppedTransport != TransportTCP {
+		if ss.state == ServerSessionStatePreRecord && *ss.setuppedTransport != TransportTCP {
 			ss.announcedTracks[trackID].rtcpReceiver = rtcpreceiver.New(nil,
 				ss.announcedTracks[trackID].track.ClockRate())
 		}
@@ -808,8 +808,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 	case base.Play:
 		// play can be sent twice, allow calling it even if we're already playing
 		err := ss.checkState(map[ServerSessionState]struct{}{
-			ServerSessionStatePreRead: {},
-			ServerSessionStateRead:    {},
+			ServerSessionStatePrePlay: {},
+			ServerSessionStatePlay:    {},
 		})
 		if err != nil {
 			return &base.Response{
@@ -829,7 +829,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		path, query := base.PathSplitQuery(pathAndQuery)
 
-		if ss.State() == ServerSessionStatePreRead &&
+		if ss.State() == ServerSessionStatePrePlay &&
 			path != *ss.setuppedPath {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -845,17 +845,17 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode != base.StatusOK {
-			if ss.State() == ServerSessionStatePreRead {
+			if ss.State() == ServerSessionStatePrePlay {
 				ss.writeBuffer = nil
 			}
 			return res, err
 		}
 
-		if ss.state == ServerSessionStateRead {
+		if ss.state == ServerSessionStatePlay {
 			return res, err
 		}
 
-		ss.state = ServerSessionStateRead
+		ss.state = ServerSessionStatePlay
 
 		switch *ss.setuppedTransport {
 		case TransportUDP:
@@ -933,7 +933,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 	case base.Record:
 		err := ss.checkState(map[ServerSessionState]struct{}{
-			ServerSessionStatePrePublish: {},
+			ServerSessionStatePreRecord: {},
 		})
 		if err != nil {
 			return &base.Response{
@@ -977,7 +977,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			return res, err
 		}
 
-		ss.state = ServerSessionStatePublish
+		ss.state = ServerSessionStateRecord
 
 		switch *ss.setuppedTransport {
 		case TransportUDP:
@@ -1025,10 +1025,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 	case base.Pause:
 		err := ss.checkState(map[ServerSessionState]struct{}{
-			ServerSessionStatePreRead:    {},
-			ServerSessionStateRead:       {},
-			ServerSessionStatePrePublish: {},
-			ServerSessionStatePublish:    {},
+			ServerSessionStatePrePlay:   {},
+			ServerSessionStatePlay:      {},
+			ServerSessionStatePreRecord: {},
+			ServerSessionStateRecord:    {},
 		})
 		if err != nil {
 			return &base.Response{
@@ -1067,10 +1067,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		switch ss.state {
-		case ServerSessionStateRead:
+		case ServerSessionStatePlay:
 			ss.setuppedStream.readerSetInactive(ss)
 
-			ss.state = ServerSessionStatePreRead
+			ss.state = ServerSessionStatePrePlay
 			ss.udpCheckStreamTimer = emptyTimer()
 
 			switch *ss.setuppedTransport {
@@ -1087,8 +1087,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.tcpConn = nil
 			}
 
-		case ServerSessionStatePublish:
-			ss.state = ServerSessionStatePrePublish
+		case ServerSessionStateRecord:
+			ss.state = ServerSessionStatePreRecord
 			ss.udpCheckStreamTimer = emptyTimer()
 			ss.udpReceiverReportTimer = emptyTimer()
 

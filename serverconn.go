@@ -225,7 +225,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	var tcpReadBuffer *multibuffer.MultiBuffer
 	var processFunc func(int, bool, []byte)
 
-	if sc.tcpSession.state == ServerSessionStateRead {
+	if sc.tcpSession.state == ServerSessionStatePlay {
 		// when playing, tcpReadBuffer is only used to receive RTCP receiver reports,
 		// that are much smaller than RTP packets and are sent at a fixed interval.
 		// decrease RAM consumption by allocating less buffers.
@@ -291,7 +291,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	var frame base.InterleavedFrame
 
 	for {
-		if sc.tcpSession.state == ServerSessionStatePublish {
+		if sc.tcpSession.state == ServerSessionStateRecord {
 			sc.conn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
 		}
 
