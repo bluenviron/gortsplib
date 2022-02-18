@@ -141,13 +141,11 @@ func (s ServerSessionState) String() string {
 
 // ServerSessionSetuppedTrack is a setupped track of a ServerSession.
 type ServerSessionSetuppedTrack struct {
-	tcpChannel   int
-	udpRTPPort   int
-	udpRTCPPort  int
-	udpRTPAddr   *net.UDPAddr
-	udpRTCPAddr  *net.UDPAddr
-	tcpRTPFrame  *base.InterleavedFrame
-	tcpRTCPFrame *base.InterleavedFrame
+	tcpChannel  int
+	udpRTPPort  int
+	udpRTCPPort int
+	udpRTPAddr  *net.UDPAddr
+	udpRTCPAddr *net.UDPAddr
 }
 
 // ServerSessionAnnouncedTrack is an announced track of a ServerSession.
@@ -770,14 +768,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		default: // TCP
 			sst.tcpChannel = inTH.InterleavedIDs[0]
 
-			sst.tcpRTPFrame = &base.InterleavedFrame{
-				Channel: sst.tcpChannel,
-			}
-
-			sst.tcpRTCPFrame = &base.InterleavedFrame{
-				Channel: sst.tcpChannel + 1,
-			}
-
 			if ss.tcpTracksByChannel == nil {
 				ss.tcpTracksByChannel = make(map[int]int)
 			}
@@ -1164,19 +1154,27 @@ func (ss *ServerSession) runWriter() {
 				ss.s.udpRTCPListener.write(payload, ss.setuppedTracks[trackID].udpRTCPAddr)
 			}
 		}
-	} else {
+	} else { // TCP
+		rtpFrames := make(map[int]*base.InterleavedFrame, len(ss.setuppedTracks))
+		rtcpFrames := make(map[int]*base.InterleavedFrame, len(ss.setuppedTracks))
+
+		for trackID, sst := range ss.setuppedTracks {
+			rtpFrames[trackID] = &base.InterleavedFrame{Channel: sst.tcpChannel}
+			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: sst.tcpChannel + 1}
+		}
+
 		var buf bytes.Buffer
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
-				f := ss.setuppedTracks[trackID].tcpRTPFrame
+				f := rtpFrames[trackID]
 				f.Payload = payload
 				f.Write(&buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
 				ss.tcpConn.conn.Write(buf.Bytes())
 			} else {
-				f := ss.setuppedTracks[trackID].tcpRTCPFrame
+				f := rtcpFrames[trackID]
 				f.Payload = payload
 				f.Write(&buf)
 

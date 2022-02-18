@@ -58,8 +58,6 @@ type clientTrack struct {
 	udpRTPListener  *clientUDPListener
 	udpRTCPListener *clientUDPListener
 	tcpChannel      int
-	tcpRTPFrame     *base.InterleavedFrame
-	tcpRTCPFrame    *base.InterleavedFrame
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver
 	rtcpSender      *rtcpsender.RTCPSender
 }
@@ -1543,14 +1541,6 @@ func (c *Client) doSetup(
 		c.tracksByChannel[thRes.InterleavedIDs[0]] = trackID
 
 		cct.tcpChannel = thRes.InterleavedIDs[0]
-
-		cct.tcpRTPFrame = &base.InterleavedFrame{
-			Channel: cct.tcpChannel,
-		}
-
-		cct.tcpRTCPFrame = &base.InterleavedFrame{
-			Channel: cct.tcpChannel + 1,
-		}
 	}
 
 	if c.tracks == nil {
@@ -1834,18 +1824,26 @@ func (c *Client) runWriter() {
 		}
 
 	default: // TCP
+		rtpFrames := make(map[int]*base.InterleavedFrame, len(c.tracks))
+		rtcpFrames := make(map[int]*base.InterleavedFrame, len(c.tracks))
+
+		for trackID, cct := range c.tracks {
+			rtpFrames[trackID] = &base.InterleavedFrame{Channel: cct.tcpChannel}
+			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: cct.tcpChannel + 1}
+		}
+
 		var buf bytes.Buffer
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
-				f := c.tracks[trackID].tcpRTPFrame
+				f := rtpFrames[trackID]
 				f.Payload = payload
 				f.Write(&buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
 				c.conn.Write(buf.Bytes())
 			} else {
-				f := c.tracks[trackID].tcpRTCPFrame
+				f := rtcpFrames[trackID]
 				f.Payload = payload
 				f.Write(&buf)
 
