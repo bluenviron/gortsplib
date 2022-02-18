@@ -826,6 +826,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerPathHasChanged{Prev: *ss.setuppedPath, Cur: path}
 		}
 
+		// allocate writeBuffer before calling OnPlay().
+		// in this way it's possible to call ServerSession.WritePacket*()
+		// inside the callback.
+		if ss.state != ServerSessionStatePlay &&
+			*ss.setuppedTransport != TransportUDPMulticast {
+			ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
+		}
+
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{
 			Session: ss,
 			Conn:    sc,
@@ -835,7 +843,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode != base.StatusOK {
-			if ss.State() == ServerSessionStatePrePlay {
+			if ss.state != ServerSessionStatePlay {
 				ss.writeBuffer = nil
 			}
 			return res, err
@@ -851,13 +859,12 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 
-			ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
 			ss.writerRunning = true
 			ss.writerDone = make(chan struct{})
 			go ss.runWriter()
 
 			for trackID, track := range ss.setuppedTracks {
-				// readers can send RTCP packets
+				// readers can send RTCP packets only
 				sc.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, false)
 
 				// open the firewall by sending packets to the counterpart
@@ -876,9 +883,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
 			err = errSwitchReadFunc
 
-			ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
-			// runWriter() is called by conn after sending the response
+			// runWriter() is called by ServerConn after the response has been sent
 		}
+
+		ss.setuppedStream.readerSetActive(ss)
 
 		// add RTP-Info
 		var trackIDs []int
@@ -917,8 +925,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			res.Header["RTP-Info"] = ri.Write()
 		}
 
-		ss.setuppedStream.readerSetActive(ss)
-
 		return res, err
 
 	case base.Record:
@@ -955,6 +961,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerPathHasChanged{Prev: *ss.setuppedPath, Cur: path}
 		}
 
+		// allocate writeBuffer before calling OnRecord().
+		// in this way it's possible to call ServerSession.WritePacket*()
+		// inside the callback.
+		// when recording, writeBuffer is only used to send RTCP receiver reports,
+		// that are much smaller than RTP packets and are sent at a fixed interval.
+		// decrease RAM consumption by allocating less buffers.
+		ss.writeBuffer = ringbuffer.New(uint64(8))
+
 		res, err := ss.s.Handler.(ServerHandlerOnRecord).OnRecord(&ServerHandlerOnRecordCtx{
 			Session: ss,
 			Conn:    sc,
@@ -964,6 +978,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode != base.StatusOK {
+			ss.writeBuffer = nil
 			return res, err
 		}
 
@@ -974,10 +989,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
 
-			// when recording, writeBuffer is only used to send RTCP receiver reports,
-			// that are much smaller than RTP packets and are sent at a fixed interval.
-			// decrease RAM consumption by allocating less buffers.
-			ss.writeBuffer = ringbuffer.New(uint64(8))
 			ss.writerRunning = true
 			ss.writerDone = make(chan struct{})
 			go ss.runWriter()
@@ -1000,10 +1011,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
 			err = errSwitchReadFunc
 
-			// when recording, writeBuffer is only used to send RTCP receiver reports,
-			// that are much smaller than RTP packets and are sent at a fixed interval.
-			// decrease RAM consumption by allocating less buffers.
-			ss.writeBuffer = ringbuffer.New(uint64(8))
 			// runWriter() is called by conn after sending the response
 		}
 

@@ -287,10 +287,19 @@ func TestServerRead(t *testing.T) {
 						}, stream, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						// send RTCP packets directly to the session.
+						// these are sent after the response, only if onPlay returns StatusOK.
+						if transport != "multicast" {
+							ctx.Session.WritePacketRTCP(0, &testRTCPPacket)
+						}
+
+						// the session is added to the stream only after onPlay returns
+						// with StatusOK; therefore we must wait before calling
+						// ServerStream.WritePacket*()
 						go func() {
 							time.Sleep(1 * time.Second)
-							stream.WritePacketRTP(0, &testRTPPacket)
 							stream.WritePacketRTCP(0, &testRTCPPacket)
+							stream.WritePacketRTP(0, &testRTPPacket)
 						}()
 
 						return &base.Response{
@@ -461,19 +470,46 @@ func TestServerRead(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			// server -> client
+			// skip firewall opening
+			if transport == "udp" {
+				buf := make([]byte, 2048)
+				_, _, err := l2.ReadFrom(buf)
+				require.NoError(t, err)
+			}
+
+			// server -> client (direct)
+			switch transport {
+			case "udp":
+				buf := make([]byte, 2048)
+				n, _, err := l2.ReadFrom(buf)
+				require.NoError(t, err)
+				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
+
+			case "tcp", "tls":
+				var f base.InterleavedFrame
+
+				f.Payload = make([]byte, 2048)
+				err := f.Read(br)
+				require.NoError(t, err)
+
+				switch f.Channel {
+				case 4:
+					require.Equal(t, testRTPPacketMarshaled, f.Payload)
+
+				case 5:
+					require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+
+				default:
+					t.Errorf("should not happen")
+				}
+			}
+
+			// server -> client (through stream)
 			if transport == "udp" || transport == "multicast" {
 				buf := make([]byte, 2048)
 				n, _, err := l1.ReadFrom(buf)
 				require.NoError(t, err)
 				require.Equal(t, testRTPPacketMarshaled, buf[:n])
-
-				// skip firewall opening
-				if transport == "udp" {
-					buf := make([]byte, 2048)
-					_, _, err := l2.ReadFrom(buf)
-					require.NoError(t, err)
-				}
 
 				buf = make([]byte, 2048)
 				n, _, err = l2.ReadFrom(buf)
@@ -481,17 +517,23 @@ func TestServerRead(t *testing.T) {
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 			} else {
 				var f base.InterleavedFrame
-				f.Payload = make([]byte, 2048)
-				err := f.Read(br)
-				require.NoError(t, err)
-				require.Equal(t, 4, f.Channel)
-				require.Equal(t, testRTPPacketMarshaled, f.Payload)
 
-				f.Payload = make([]byte, 2048)
-				err = f.Read(br)
-				require.NoError(t, err)
-				require.Equal(t, 5, f.Channel)
-				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+				for i := 0; i < 2; i++ {
+					f.Payload = make([]byte, 2048)
+					err := f.Read(br)
+					require.NoError(t, err)
+
+					switch f.Channel {
+					case 4:
+						require.Equal(t, testRTPPacketMarshaled, f.Payload)
+
+					case 5:
+						require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+
+					default:
+						t.Errorf("should not happen")
+					}
+				}
 			}
 
 			// client -> server (RTCP)

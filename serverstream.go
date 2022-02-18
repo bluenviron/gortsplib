@@ -224,10 +224,8 @@ func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet) {
 
 	atomic.StoreUint32(&track.lastSequenceNumber,
 		uint32(pkt.Header.SequenceNumber))
-
 	atomic.StoreUint32(&track.lastTimeRTP, pkt.Header.Timestamp)
 	atomic.StoreInt64(&track.lastTimeNTP, time.Now().Unix())
-
 	atomic.StoreUint32(&track.lastSSRC, pkt.Header.SSRC)
 
 	st.mutex.RLock()

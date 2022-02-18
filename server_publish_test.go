@@ -638,6 +638,10 @@ func TestServerPublish(t *testing.T) {
 						}, nil, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						// send RTCP packets directly to the session.
+						// these are sent after the response, only if onRecord returns StatusOK.
+						ctx.Session.WritePacketRTCP(0, &testRTCPPacket)
+
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -766,6 +770,28 @@ func TestServerPublish(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
+			// server -> client (direct)
+			if transport == "udp" {
+				buf := make([]byte, 2048)
+				n, _, err := l2.ReadFrom(buf)
+				require.NoError(t, err)
+				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
+			} else {
+				var f base.InterleavedFrame
+				f.Payload = make([]byte, 2048)
+				err := f.Read(br)
+				require.NoError(t, err)
+				require.Equal(t, 1, f.Channel)
+				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+			}
+
+			// skip firewall opening
+			if transport == "udp" {
+				buf := make([]byte, 2048)
+				_, _, err := l2.ReadFrom(buf)
+				require.NoError(t, err)
+			}
+
 			// client -> server
 			if transport == "udp" {
 				time.Sleep(1 * time.Second)
@@ -799,12 +825,7 @@ func TestServerPublish(t *testing.T) {
 
 			// server -> client (RTCP)
 			if transport == "udp" {
-				// skip firewall opening
 				buf := make([]byte, 2048)
-				_, _, err := l2.ReadFrom(buf)
-				require.NoError(t, err)
-
-				buf = make([]byte, 2048)
 				n, _, err := l2.ReadFrom(buf)
 				require.NoError(t, err)
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
