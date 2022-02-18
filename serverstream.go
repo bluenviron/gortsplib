@@ -125,7 +125,7 @@ func (st *ServerStream) readerAdd(
 
 	switch transport {
 	case TransportUDP:
-		// check whether client ports are already in use by another reader.
+		// check if client ports are already in use by another reader.
 		for r := range st.readersUnicast {
 			if *r.setuppedTransport == TransportUDP &&
 				r.author.ip().Equal(ss.author.ip()) &&

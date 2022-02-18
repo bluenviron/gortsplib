@@ -16,8 +16,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
-// 2. check whether there's a H264 track
-// 3. convert H264 NALUs of that track into raw frames
+// 2. check if there's a H264 track
+// 3. convert H264 into raw frames
 // 4. encode the frames into JPEG images and save them on disk
 // This example requires the ffmpeg libraries, that can be installed in this way:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config
@@ -92,7 +92,7 @@ func main() {
 
 	// send SPS and PPS to the decoder
 	if h264tr.SPS() == nil || h264tr.PPS() == nil {
-		panic("SPS or PPS not provided by the SDP")
+		panic("SPS or PPS not present into the SDP")
 	}
 	h264dec.decode(h264tr.SPS())
 	h264dec.decode(h264tr.PPS())

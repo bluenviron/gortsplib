@@ -67,7 +67,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		e.startPTS = pts
 	}
 
-	// check whether there's an IDR
+	// check if there's an IDR
 	idrPresent := func() bool {
 		for _, nalu := range nalus {
 			typ := h264.NALUType(nalu[0] & 0x1F)

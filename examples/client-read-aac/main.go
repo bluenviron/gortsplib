@@ -11,7 +11,7 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
-// 2. check whether there's an AAC track
+// 2. check if there's an AAC track
 // 3. get AAC AUs of that track
 
 func main() {
