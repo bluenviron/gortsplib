@@ -993,10 +993,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.s.udpRTCPListener.write(byts, ss.setuppedTracks[trackID].udpRTCPAddr)
 			}
 
-		case TransportUDPMulticast:
-			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
-
 		default: // TCP
 			ss.tcpConn = sc
 			ss.tcpConn.tcpSession = ss
