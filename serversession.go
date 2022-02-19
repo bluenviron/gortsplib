@@ -868,9 +868,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				sc.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, false)
 
 				// open the firewall by sending packets to the counterpart
-				byts, _ := (&rtcp.ReceiverReport{}).Marshal()
-				ss.s.udpRTCPListener.write(byts,
-					ss.setuppedTracks[trackID].udpRTCPAddr)
+				ss.WritePacketRTCP(trackID, &rtcp.ReceiverReport{})
 			}
 
 		case TransportUDPMulticast:
@@ -998,10 +996,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, true)
 
 				// open the firewall by sending packets to the counterpart
-				byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
-				ss.s.udpRTPListener.write(byts, ss.setuppedTracks[trackID].udpRTPAddr)
-				byts, _ = (&rtcp.ReceiverReport{}).Marshal()
-				ss.s.udpRTCPListener.write(byts, ss.setuppedTracks[trackID].udpRTCPAddr)
+				ss.WritePacketRTP(trackID, &rtp.Packet{Header: rtp.Header{Version: 2}})
+				ss.WritePacketRTCP(trackID, &rtcp.ReceiverReport{})
 			}
 
 		default: // TCP

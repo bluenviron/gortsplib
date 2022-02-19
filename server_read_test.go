@@ -470,13 +470,6 @@ func TestServerRead(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			// skip firewall opening
-			if transport == "udp" {
-				buf := make([]byte, 2048)
-				_, _, err := l2.ReadFrom(buf)
-				require.NoError(t, err)
-			}
-
 			// server -> client (direct)
 			switch transport {
 			case "udp":
@@ -502,6 +495,13 @@ func TestServerRead(t *testing.T) {
 				default:
 					t.Errorf("should not happen")
 				}
+			}
+
+			// skip firewall opening
+			if transport == "udp" {
+				buf := make([]byte, 2048)
+				_, _, err := l2.ReadFrom(buf)
+				require.NoError(t, err)
 			}
 
 			// server -> client (through stream)
