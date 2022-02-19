@@ -8,8 +8,8 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
-// 1. connect to a RTSP server and read all tracks on a path
+// This example shows how to connect to a RTSP server
+// and read all tracks on a path.
 
 func main() {
 	c := gortsplib.Client{

@@ -19,6 +19,7 @@ import (
 // 2. check if there's a H264 track
 // 3. convert H264 into raw frames
 // 4. encode the frames into JPEG images and save them on disk
+
 // This example requires the ffmpeg libraries, that can be installed in this way:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config
 

@@ -57,6 +57,7 @@ Features:
 * [client-read-h264-convert-to-jpeg](examples/client-read-h264-convert-to-jpeg/main.go)
 * [client-read-h264-save-to-disk](examples/client-read-h264-save-to-disk/main.go)
 * [client-read-aac](examples/client-read-aac/main.go)
+* [client-read-republish](examples/client-read-republish/main.go)
 * [client-publish-h264](examples/client-publish-h264/main.go)
 * [client-publish-aac](examples/client-publish-aac/main.go)
 * [client-publish-opus](examples/client-publish-opus/main.go)
