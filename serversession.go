@@ -538,7 +538,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			Server:  ss.s,
 			Session: ss,
 			Conn:    sc,
-			Req:     req,
+			Request: req,
 			Path:    path,
 			Query:   query,
 			Tracks:  tracks,
@@ -679,7 +679,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			Server:    ss.s,
 			Session:   ss,
 			Conn:      sc,
-			Req:       req,
+			Request:   req,
 			Path:      path,
 			Query:     query,
 			TrackID:   trackID,
@@ -841,7 +841,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{
 			Session: ss,
 			Conn:    sc,
-			Req:     req,
+			Request: req,
 			Path:    path,
 			Query:   query,
 		})
@@ -973,7 +973,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		res, err := ss.s.Handler.(ServerHandlerOnRecord).OnRecord(&ServerHandlerOnRecordCtx{
 			Session: ss,
 			Conn:    sc,
-			Req:     req,
+			Request: req,
 			Path:    path,
 			Query:   query,
 		})
@@ -1042,7 +1042,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		res, err := ss.s.Handler.(ServerHandlerOnPause).OnPause(&ServerHandlerOnPauseCtx{
 			Session: ss,
 			Conn:    sc,
-			Req:     req,
+			Request: req,
 			Path:    path,
 			Query:   query,
 		})
@@ -1125,7 +1125,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
 				Session: ss,
 				Conn:    sc,
-				Req:     req,
+				Request: req,
 				Path:    path,
 				Query:   query,
 			})
@@ -1144,7 +1144,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 	return &base.Response{
 		StatusCode: base.StatusBadRequest,
-	}, liberrors.ErrServerUnhandledRequest{Req: req}
+	}, liberrors.ErrServerUnhandledRequest{Request: req}
 }
 
 func (ss *ServerSession) runWriter() {

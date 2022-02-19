@@ -385,10 +385,10 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			path, query := base.PathSplitQuery(pathAndQuery)
 
 			res, stream, err := h.OnDescribe(&ServerHandlerOnDescribeCtx{
-				Conn:  sc,
-				Req:   req,
-				Path:  path,
-				Query: query,
+				Conn:    sc,
+				Request: req,
+				Path:    path,
+				Query:   query,
 			})
 
 			if res.StatusCode == base.StatusOK {
@@ -472,10 +472,10 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			path, query := base.PathSplitQuery(pathAndQuery)
 
 			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
-				Conn:  sc,
-				Req:   req,
-				Path:  path,
-				Query: query,
+				Conn:    sc,
+				Request: req,
+				Path:    path,
+				Query:   query,
 			})
 		}
 
@@ -491,17 +491,17 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			path, query := base.PathSplitQuery(pathAndQuery)
 
 			return h.OnSetParameter(&ServerHandlerOnSetParameterCtx{
-				Conn:  sc,
-				Req:   req,
-				Path:  path,
-				Query: query,
+				Conn:    sc,
+				Request: req,
+				Path:    path,
+				Query:   query,
 			})
 		}
 	}
 
 	return &base.Response{
 		StatusCode: base.StatusBadRequest,
-	}, liberrors.ErrServerUnhandledRequest{Req: req}
+	}, liberrors.ErrServerUnhandledRequest{Request: req}
 }
 
 func (sc *ServerConn) handleRequestOuter(req *base.Request) error {

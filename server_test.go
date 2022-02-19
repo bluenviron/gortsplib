@@ -303,7 +303,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, nil, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -328,7 +328,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -356,7 +356,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, nil, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -378,7 +378,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -394,7 +394,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -893,7 +893,7 @@ func TestServerGetSetParameter(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onSetParameter: func(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
-				params = ctx.Req.Body
+				params = ctx.Request.Body
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -1259,7 +1259,7 @@ func TestServerAuth(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-				err := authValidator.ValidateRequest(ctx.Req)
+				err := authValidator.ValidateRequest(ctx.Request)
 				if err != nil {
 					return &base.Response{
 						StatusCode: base.StatusUnauthorized,
