@@ -1186,12 +1186,6 @@ func TestServerErrorInvalidPath(t *testing.T) {
 				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
-
-				var sx headers.Session
-				err = sx.Read(res.Header["Session"])
-				require.NoError(t, err)
-
-				sxID = sx.Session
 			}
 
 			if method == base.Play || method == base.Record || method == base.Pause {

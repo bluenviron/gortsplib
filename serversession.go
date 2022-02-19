@@ -281,17 +281,20 @@ func (ss *ServerSession) run() {
 
 				var returnedSession *ServerSession
 				if err == nil || err == errSwitchReadFunc {
-					if res.Header == nil {
-						res.Header = make(base.Header)
-					}
+					// ANNOUNCE responses don't contain the session header.
+					if req.req.Method != base.Announce {
+						if res.Header == nil {
+							res.Header = make(base.Header)
+						}
 
-					res.Header["Session"] = headers.Session{
-						Session: ss.secretID,
-						Timeout: func() *uint {
-							v := uint(ss.s.sessionTimeout / time.Second)
-							return &v
-						}(),
-					}.Write()
+						res.Header["Session"] = headers.Session{
+							Session: ss.secretID,
+							Timeout: func() *uint {
+								v := uint(ss.s.sessionTimeout / time.Second)
+								return &v
+							}(),
+						}.Write()
+					}
 
 					if req.req.Method != base.Teardown {
 						returnedSession = ss

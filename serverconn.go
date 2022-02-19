@@ -543,11 +543,15 @@ func (sc *ServerConn) handleRequestInSession(
 ) (*base.Response, error) {
 	// handle directly in Session
 	if sc.session != nil {
-		// the connection can't communicate with two sessions at once.
-		if sxID != sc.session.secretID {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerLinkedToOtherSession{}
+		// the SETUP request after ANNOUNCE don't have the session ID
+		// since ANNOUNCE didn't provide it.
+		if req.Method != base.Setup || sxID != "" {
+			// the connection can't communicate with two sessions at once.
+			if sxID != sc.session.secretID {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerLinkedToOtherSession{}
+			}
 		}
 
 		cres := make(chan sessionRequestRes)
