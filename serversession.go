@@ -831,7 +831,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// inside the callback.
 		if ss.state != ServerSessionStatePlay &&
 			*ss.setuppedTransport != TransportUDPMulticast {
-			ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
+			ss.writeBuffer = ringbuffer.New(uint64(ss.s.WriteBufferCount))
 		}
 
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{

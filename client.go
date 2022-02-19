@@ -174,6 +174,10 @@ type Client struct {
 	// This must be touched only when the server reports errors about buffer sizes.
 	// It defaults to 2048.
 	ReadBufferSize int
+	// write buffer count.
+	// It allows to queue packets before sending them.
+	// It defaults to 8.
+	WriteBufferCount int
 
 	//
 	// system functions
@@ -268,10 +272,13 @@ func (c *Client) Start(scheme string, host string) error {
 		c.InitialUDPReadTimeout = 3 * time.Second
 	}
 	if c.ReadBufferCount == 0 {
-		c.ReadBufferCount = 1
+		c.ReadBufferCount = 256
 	}
 	if c.ReadBufferSize == 0 {
 		c.ReadBufferSize = 2048
+	}
+	if c.WriteBufferCount == 0 {
+		c.WriteBufferCount = 256
 	}
 
 	// system functions
@@ -687,7 +694,7 @@ func (c *Client) playRecordStart() {
 		// decrease RAM consumption by allocating less buffers.
 		c.writeBuffer = ringbuffer.New(8)
 	} else {
-		c.writeBuffer = ringbuffer.New(uint64(c.ReadBufferCount))
+		c.writeBuffer = ringbuffer.New(uint64(c.WriteBufferCount))
 	}
 	c.writerRunning = true
 	c.writerDone = make(chan struct{})
@@ -748,9 +755,12 @@ func (c *Client) runReader() {
 				}
 			}
 		} else {
+			var tcpReadBuffer *multibuffer.MultiBuffer
 			var processFunc func(int, bool, []byte)
 
 			if c.state == clientStatePlay {
+				tcpReadBuffer = multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize))
+
 				tcpRTPPacketBuffer := newRTPPacketMultiBuffer(uint64(c.ReadBufferCount))
 
 				processFunc = func(trackID int, isRTP bool, payload []byte) {
@@ -779,6 +789,11 @@ func (c *Client) runReader() {
 					}
 				}
 			} else {
+				// when recording, tcpReadBuffer is only used to receive RTCP receiver reports,
+				// that are much smaller than RTP packets and are sent at a fixed interval.
+				// decrease RAM consumption by allocating less buffers.
+				tcpReadBuffer = multibuffer.New(8, uint64(c.ReadBufferSize))
+
 				processFunc = func(trackID int, isRTP bool, payload []byte) {
 					if !isRTP {
 						packets, err := rtcp.Unmarshal(payload)
@@ -793,7 +808,6 @@ func (c *Client) runReader() {
 				}
 			}
 
-			tcpReadBuffer := multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize))
 			var frame base.InterleavedFrame
 			var res base.Response
 
@@ -845,6 +859,7 @@ func (c *Client) playRecordStop(isClosing bool) {
 	c.writeBuffer.Close()
 	<-c.writerDone
 	c.writerRunning = false
+	c.writeBuffer = nil
 
 	// start connCloser
 	if !isClosing {

@@ -112,13 +112,17 @@ type Server struct {
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
 	// It also allows to buffer routed frames and mitigate network fluctuations
-	// that are particularly high when using UDP.
-	// It defaults to 512
+	// that are particularly relevant when using UDP.
+	// It defaults to 256.
 	ReadBufferCount int
 	// read buffer size.
 	// This must be touched only when the server reports errors about buffer sizes.
 	// It defaults to 2048.
 	ReadBufferSize int
+	// write buffer count.
+	// It allows to queue packets before sending them.
+	// It defaults to 256.
+	WriteBufferCount int
 
 	//
 	// system functions
@@ -170,10 +174,13 @@ func (s *Server) Start() error {
 		s.WriteTimeout = 10 * time.Second
 	}
 	if s.ReadBufferCount == 0 {
-		s.ReadBufferCount = 512
+		s.ReadBufferCount = 256
 	}
 	if s.ReadBufferSize == 0 {
 		s.ReadBufferSize = 2048
+	}
+	if s.WriteBufferCount == 0 {
+		s.WriteBufferCount = 256
 	}
 
 	// system functions

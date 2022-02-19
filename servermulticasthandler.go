@@ -29,7 +29,7 @@ func newServerMulticastHandler(s *Server) (*serverMulticastHandler, error) {
 	h := &serverMulticastHandler{
 		rtpl:        rtpl,
 		rtcpl:       rtcpl,
-		writeBuffer: ringbuffer.New(uint64(s.ReadBufferCount)),
+		writeBuffer: ringbuffer.New(uint64(s.WriteBufferCount)),
 		writerDone:  make(chan struct{}),
 	}
 
