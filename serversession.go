@@ -279,10 +279,11 @@ func (ss *ServerSession) run() {
 
 				res, err := ss.handleRequest(req.sc, req.req)
 
-				if res.StatusCode == base.StatusOK {
+				if err == nil || err == errSwitchReadFunc {
 					if res.Header == nil {
 						res.Header = make(base.Header)
 					}
+
 					res.Header["Session"] = headers.Session{
 						Session: ss.secretID,
 						Timeout: func() *uint {
@@ -292,15 +293,16 @@ func (ss *ServerSession) run() {
 					}.Write()
 				}
 
-				if _, ok := err.(liberrors.ErrServerSessionTeardown); ok {
-					req.res <- sessionRequestRes{res: res, err: nil}
-					return err
-				}
+				savedMethod := req.req.Method
 
 				req.res <- sessionRequestRes{
 					res: res,
 					err: err,
 					ss:  ss,
+				}
+
+				if (err == nil || err == errSwitchReadFunc) && savedMethod == base.Teardown {
+					return liberrors.ErrServerSessionTeardown{}
 				}
 
 			case sc := <-ss.connRemove:
@@ -1093,9 +1095,16 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		return res, err
 
 	case base.Teardown:
+		var err error
+		if (ss.state == ServerSessionStatePlay || ss.state == ServerSessionStateRecord) &&
+			*ss.setuppedTransport == TransportTCP {
+			ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
+			err = errSwitchReadFunc
+		}
+
 		return &base.Response{
 			StatusCode: base.StatusOK,
-		}, liberrors.ErrServerSessionTeardown{Author: sc.NetConn().RemoteAddr()}
+		}, err
 
 	case base.GetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
