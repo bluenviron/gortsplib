@@ -28,12 +28,6 @@ func main() {
 	}
 	defer reader.Close()
 
-	// get available methods
-	_, err = reader.Options(sourceURL)
-	if err != nil {
-		panic(err)
-	}
-
 	// find published tracks
 	tracks, baseURL, _, err := reader.Describe(sourceURL)
 	if err != nil {

@@ -30,12 +30,6 @@ func main() {
 	}
 	defer c.Close()
 
-	// get available methods
-	_, err = c.Options(u)
-	if err != nil {
-		panic(err)
-	}
-
 	// find published tracks
 	tracks, baseURL, _, err := c.Describe(u)
 	if err != nil {

@@ -208,6 +208,7 @@ type Client struct {
 	session            string
 	sender             *auth.Sender
 	cseq               int
+	optionsSent        bool
 	useGetParameter    bool
 	lastDescribeURL    *base.URL
 	streamBaseURL      *base.URL
@@ -338,12 +339,6 @@ func (c *Client) StartReading(address string) error {
 		return err
 	}
 
-	_, err = c.Options(u)
-	if err != nil {
-		c.Close()
-		return err
-	}
-
 	tracks, baseURL, _, err := c.Describe(u)
 	if err != nil {
 		c.Close()
@@ -373,12 +368,6 @@ func (c *Client) StartPublishing(address string, tracks Tracks) error {
 
 	err = c.Start(u.Scheme, u.Host)
 	if err != nil {
-		return err
-	}
-
-	_, err = c.Options(u)
-	if err != nil {
-		c.Close()
 		return err
 	}
 
@@ -627,6 +616,7 @@ func (c *Client) reset() {
 	c.session = ""
 	c.sender = nil
 	c.cseq = 0
+	c.optionsSent = false
 	c.useGetParameter = false
 	c.streamBaseURL = nil
 	c.protocol = nil
@@ -939,6 +929,13 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		}
 	}
 
+	if !c.optionsSent && req.Method != base.Options {
+		_, err := c.doOptions(req.URL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if req.Header == nil {
 		req.Header = make(base.Header)
 	}
@@ -1063,6 +1060,8 @@ func (c *Client) doOptions(u *base.URL) (*base.Response, error) {
 		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
 
+	c.optionsSent = true
+
 	c.useGetParameter = func() bool {
 		pub, ok := res.Header["Public"]
 		if !ok || len(pub) != 1 {
@@ -1129,11 +1128,6 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 
 			c.scheme = u.Scheme
 			c.host = u.Host
-
-			_, err = c.doOptions(u)
-			if err != nil {
-				return nil, nil, nil, err
-			}
 
 			return c.doDescribe(u)
 		}

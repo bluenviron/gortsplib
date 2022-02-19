@@ -37,11 +37,6 @@ func main() {
 	}
 	defer c.Close()
 
-	_, err = c.Options(u)
-	if err != nil {
-		panic(err)
-	}
-
 	tracks, baseURL, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)

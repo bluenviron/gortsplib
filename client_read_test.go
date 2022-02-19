@@ -580,6 +580,23 @@ func TestClientReadPartial(t *testing.T) {
 
 		req, err := readRequest(br)
 		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		req, err = readRequest(br)
+		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream"), req.URL)
 
@@ -1221,6 +1238,23 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			conn, err = l.Accept()
 			require.NoError(t, err)
 			br = bufio.NewReader(conn)
+
+			req, err = readRequest(br)
+			require.NoError(t, err)
+			require.Equal(t, base.Options, req.Method)
+
+			base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Public": base.HeaderValue{strings.Join([]string{
+						string(base.Describe),
+						string(base.Setup),
+						string(base.Play),
+					}, ", ")},
+				},
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
+			require.NoError(t, err)
 
 			req, err = readRequest(br)
 			require.NoError(t, err)
@@ -2462,9 +2496,6 @@ func TestClientReadSeek(t *testing.T) {
 	err = c.Start(u.Scheme, u.Host)
 	require.NoError(t, err)
 	defer c.Close()
-
-	_, err = c.Options(u)
-	require.NoError(t, err)
 
 	tracks, baseURL, _, err := c.Describe(u)
 	require.NoError(t, err)
