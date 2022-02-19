@@ -127,14 +127,7 @@ func (sc *ServerConn) run() {
 				return err
 
 			case ss := <-sc.sessionRemove:
-				if _, ok := sc.sessions[ss.secretID]; ok {
-					delete(sc.sessions, ss.secretID)
-
-					select {
-					case ss.connRemove <- sc:
-					case <-ss.ctx.Done():
-					}
-				}
+				delete(sc.sessions, ss.secretID)
 
 			case <-sc.ctx.Done():
 				return liberrors.ErrServerTerminated{}

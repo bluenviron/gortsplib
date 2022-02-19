@@ -304,20 +304,13 @@ func (ss *ServerSession) run() {
 				}
 
 			case sc := <-ss.connRemove:
-				if _, ok := ss.conns[sc]; ok {
-					delete(ss.conns, sc)
-
-					select {
-					case sc.sessionRemove <- ss:
-					case <-sc.ctx.Done():
-					}
-				}
+				delete(ss.conns, sc)
 
 				// if session is not in state RECORD or PLAY, or transport is TCP
 				if (ss.state != ServerSessionStateRecord &&
 					ss.state != ServerSessionStatePlay) ||
 					*ss.setuppedTransport == TransportTCP {
-					// close if there are no associated connections
+					// close session if there are no associated connections
 					if len(ss.conns) == 0 {
 						return liberrors.ErrServerSessionNotInUse{}
 					}
