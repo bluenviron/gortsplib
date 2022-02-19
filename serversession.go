@@ -279,6 +279,7 @@ func (ss *ServerSession) run() {
 
 				res, err := ss.handleRequest(req.sc, req.req)
 
+				var returnedSession *ServerSession
 				if err == nil || err == errSwitchReadFunc {
 					if res.Header == nil {
 						res.Header = make(base.Header)
@@ -291,6 +292,10 @@ func (ss *ServerSession) run() {
 							return &v
 						}(),
 					}.Write()
+
+					if req.req.Method != base.Teardown {
+						returnedSession = ss
+					}
 				}
 
 				savedMethod := req.req.Method
@@ -298,11 +303,11 @@ func (ss *ServerSession) run() {
 				req.res <- sessionRequestRes{
 					res: res,
 					err: err,
-					ss:  ss,
+					ss:  returnedSession,
 				}
 
 				if (err == nil || err == errSwitchReadFunc) && savedMethod == base.Teardown {
-					return liberrors.ErrServerSessionTeardown{}
+					return liberrors.ErrServerSessionTeardown{Author: req.sc.NetConn().RemoteAddr()}
 				}
 
 			case sc := <-ss.connRemove:
@@ -871,7 +876,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		default: // TCP
 			ss.tcpConn = sc
-			ss.tcpConn.tcpSession = ss
 
 			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
 			err = errSwitchReadFunc
@@ -997,7 +1001,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		default: // TCP
 			ss.tcpConn = sc
-			ss.tcpConn.tcpSession = ss
 
 			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
 			err = errSwitchReadFunc
@@ -1067,7 +1070,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
 				err = errSwitchReadFunc
 
-				ss.tcpConn.tcpSession = nil
 				ss.tcpConn = nil
 			}
 
@@ -1087,7 +1089,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
 				err = errSwitchReadFunc
 
-				ss.tcpConn.tcpSession = nil
 				ss.tcpConn = nil
 			}
 		}

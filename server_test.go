@@ -992,7 +992,8 @@ func TestServerErrorInvalidSession(t *testing.T) {
 				Method: method,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq": base.HeaderValue{"1"},
+					"CSeq":    base.HeaderValue{"1"},
+					"Session": base.HeaderValue{"ABC"},
 				},
 			})
 			require.NoError(t, err)
