@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 )
@@ -1250,4 +1251,63 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			<-connClosed
 		})
 	}
+}
+
+func TestServerAuth(t *testing.T) {
+	authValidator := auth.NewValidator("myuser", "mypass", nil)
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+				err := authValidator.ValidateRequest(ctx.Req)
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusUnauthorized,
+						Header: base.Header{
+							"WWW-Authenticate": authValidator.Header(),
+						},
+					}, nil
+				}
+
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	br := bufio.NewReader(conn)
+
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
+	require.NoError(t, err)
+
+	req := base.Request{
+		Method: base.Announce,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":         base.HeaderValue{"1"},
+			"Content-Type": base.HeaderValue{"application/sdp"},
+		},
+		Body: Tracks{track}.Write(false),
+	}
+
+	res, err := writeReqReadRes(conn, br, req)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusUnauthorized, res.StatusCode)
+
+	sender, err := auth.NewSender(res.Header["WWW-Authenticate"], "myuser", "mypass")
+	require.NoError(t, err)
+
+	sender.AddAuthorization(&req)
+	res, err = writeReqReadRes(conn, br, req)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
 }

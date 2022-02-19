@@ -296,6 +296,7 @@ func (ss *ServerSession) run() {
 						}.Write()
 					}
 
+					// after a TEARDOWN, session must be unpaired with the connection.
 					if req.req.Method != base.Teardown {
 						returnedSession = ss
 					}

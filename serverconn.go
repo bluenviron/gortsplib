@@ -543,9 +543,11 @@ func (sc *ServerConn) handleRequestInSession(
 ) (*base.Response, error) {
 	// handle directly in Session
 	if sc.session != nil {
-		// the SETUP request after ANNOUNCE don't have the session ID
-		// since ANNOUNCE didn't provide it.
-		if req.Method != base.Setup || sxID != "" {
+		// session ID is optional in SETUP and ANNOUNCE requests, since
+		// client may not have received the session ID yet due to multiple reasons:
+		// * requests can be retries after code 301
+		// * SETUP requests comes after ANNOUNCE response, that don't contain the session ID
+		if sxID != "" {
 			// the connection can't communicate with two sessions at once.
 			if sxID != sc.session.secretID {
 				return &base.Response{
