@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	psdp "github.com/pion/sdp/v3"
 
@@ -65,6 +66,7 @@ type TrackH264 struct {
 	sps         []byte
 	pps         []byte
 	extradata   []byte
+	mutex       sync.RWMutex
 }
 
 // NewTrackH264 allocates a TrackH264.
@@ -127,11 +129,15 @@ func (t *TrackH264) url(contentBase *base.URL) (*base.URL, error) {
 
 // SPS returns the track SPS.
 func (t *TrackH264) SPS() []byte {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
 	return t.sps
 }
 
 // PPS returns the track PPS.
 func (t *TrackH264) PPS() []byte {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
 	return t.pps
 }
 
@@ -142,16 +148,23 @@ func (t *TrackH264) ExtraData() []byte {
 
 // SetSPS sets the track SPS.
 func (t *TrackH264) SetSPS(v []byte) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	t.sps = v
 }
 
 // SetPPS sets the track PPS.
 func (t *TrackH264) SetPPS(v []byte) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	t.pps = v
 }
 
 // MediaDescription returns the media description in SDP format.
 func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 
 	fmtp := typ + " packetization-mode=1"
