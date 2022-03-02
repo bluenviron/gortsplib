@@ -267,109 +267,7 @@ func (ss *ServerSession) run() {
 		})
 	}
 
-	err := func() error {
-		for {
-			select {
-			case req := <-ss.request:
-				ss.lastRequestTime = time.Now()
-
-				if _, ok := ss.conns[req.sc]; !ok {
-					ss.conns[req.sc] = struct{}{}
-				}
-
-				res, err := ss.handleRequest(req.sc, req.req)
-
-				var returnedSession *ServerSession
-				if err == nil || err == errSwitchReadFunc {
-					// ANNOUNCE responses don't contain the session header.
-					if req.req.Method != base.Announce {
-						if res.Header == nil {
-							res.Header = make(base.Header)
-						}
-
-						res.Header["Session"] = headers.Session{
-							Session: ss.secretID,
-							Timeout: func() *uint {
-								v := uint(ss.s.sessionTimeout / time.Second)
-								return &v
-							}(),
-						}.Write()
-					}
-
-					// after a TEARDOWN, session must be unpaired with the connection.
-					if req.req.Method != base.Teardown {
-						returnedSession = ss
-					}
-				}
-
-				savedMethod := req.req.Method
-
-				req.res <- sessionRequestRes{
-					res: res,
-					err: err,
-					ss:  returnedSession,
-				}
-
-				if (err == nil || err == errSwitchReadFunc) && savedMethod == base.Teardown {
-					return liberrors.ErrServerSessionTeardown{Author: req.sc.NetConn().RemoteAddr()}
-				}
-
-			case sc := <-ss.connRemove:
-				delete(ss.conns, sc)
-
-				// if session is not in state RECORD or PLAY, or transport is TCP
-				if (ss.state != ServerSessionStateRecord &&
-					ss.state != ServerSessionStatePlay) ||
-					*ss.setuppedTransport == TransportTCP {
-					// close session if there are no associated connections
-					if len(ss.conns) == 0 {
-						return liberrors.ErrServerSessionNotInUse{}
-					}
-				}
-
-			case <-ss.startWriter:
-				if !ss.writerRunning && (ss.state == ServerSessionStateRecord ||
-					ss.state == ServerSessionStatePlay) &&
-					*ss.setuppedTransport == TransportTCP {
-					ss.writerRunning = true
-					ss.writerDone = make(chan struct{})
-					go ss.runWriter()
-				}
-
-			case <-ss.udpCheckStreamTimer.C:
-				now := time.Now()
-
-				// in case of RECORD and UDP, timeout happens when no RTP or RTCP packets are being received
-				if ss.state == ServerSessionStateRecord {
-					lft := atomic.LoadInt64(ss.udpLastFrameTime)
-					if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
-						return liberrors.ErrServerNoUDPPacketsInAWhile{}
-					}
-
-					// in case of PLAY and UDP, timeout happens when no RTSP request arrives
-				} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout {
-					return liberrors.ErrServerNoRTSPRequestsInAWhile{}
-				}
-
-				ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-
-			case <-ss.udpReceiverReportTimer.C:
-				now := time.Now()
-
-				for trackID, track := range ss.announcedTracks {
-					rr := track.rtcpReceiver.Report(now)
-					if rr != nil {
-						ss.WritePacketRTCP(trackID, rr)
-					}
-				}
-
-				ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
-
-			case <-ss.ctx.Done():
-				return liberrors.ErrServerTerminated{}
-			}
-		}
-	}()
+	err := ss.runInner()
 
 	ss.ctxCancel()
 
@@ -422,6 +320,110 @@ func (ss *ServerSession) run() {
 			Session: ss,
 			Error:   err,
 		})
+	}
+}
+
+func (ss *ServerSession) runInner() error {
+	for {
+		select {
+		case req := <-ss.request:
+			ss.lastRequestTime = time.Now()
+
+			if _, ok := ss.conns[req.sc]; !ok {
+				ss.conns[req.sc] = struct{}{}
+			}
+
+			res, err := ss.handleRequest(req.sc, req.req)
+
+			var returnedSession *ServerSession
+			if err == nil || err == errSwitchReadFunc {
+				// ANNOUNCE responses don't contain the session header.
+				if req.req.Method != base.Announce {
+					if res.Header == nil {
+						res.Header = make(base.Header)
+					}
+
+					res.Header["Session"] = headers.Session{
+						Session: ss.secretID,
+						Timeout: func() *uint {
+							v := uint(ss.s.sessionTimeout / time.Second)
+							return &v
+						}(),
+					}.Write()
+				}
+
+				// after a TEARDOWN, session must be unpaired with the connection.
+				if req.req.Method != base.Teardown {
+					returnedSession = ss
+				}
+			}
+
+			savedMethod := req.req.Method
+
+			req.res <- sessionRequestRes{
+				res: res,
+				err: err,
+				ss:  returnedSession,
+			}
+
+			if (err == nil || err == errSwitchReadFunc) && savedMethod == base.Teardown {
+				return liberrors.ErrServerSessionTeardown{Author: req.sc.NetConn().RemoteAddr()}
+			}
+
+		case sc := <-ss.connRemove:
+			delete(ss.conns, sc)
+
+			// if session is not in state RECORD or PLAY, or transport is TCP
+			if (ss.state != ServerSessionStateRecord &&
+				ss.state != ServerSessionStatePlay) ||
+				*ss.setuppedTransport == TransportTCP {
+				// close session if there are no associated connections
+				if len(ss.conns) == 0 {
+					return liberrors.ErrServerSessionNotInUse{}
+				}
+			}
+
+		case <-ss.startWriter:
+			if !ss.writerRunning && (ss.state == ServerSessionStateRecord ||
+				ss.state == ServerSessionStatePlay) &&
+				*ss.setuppedTransport == TransportTCP {
+				ss.writerRunning = true
+				ss.writerDone = make(chan struct{})
+				go ss.runWriter()
+			}
+
+		case <-ss.udpCheckStreamTimer.C:
+			now := time.Now()
+
+			// in case of RECORD and UDP, timeout happens when no RTP or RTCP packets are being received
+			if ss.state == ServerSessionStateRecord {
+				lft := atomic.LoadInt64(ss.udpLastFrameTime)
+				if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
+					return liberrors.ErrServerNoUDPPacketsInAWhile{}
+				}
+
+				// in case of PLAY and UDP, timeout happens when no RTSP request arrives
+			} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout {
+				return liberrors.ErrServerNoRTSPRequestsInAWhile{}
+			}
+
+			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
+
+		case <-ss.udpReceiverReportTimer.C:
+			now := time.Now()
+
+			for trackID, track := range ss.announcedTracks {
+				rr := track.rtcpReceiver.Report(now)
+				if rr != nil {
+					ss.WritePacketRTCP(trackID, rr)
+				}
+			}
+
+			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
+
+		case <-ss.ctx.Done():
+			return liberrors.ErrServerTerminated{}
+		}
 	}
 }
 

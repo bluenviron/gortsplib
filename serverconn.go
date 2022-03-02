@@ -115,25 +115,7 @@ func (sc *ServerConn) run() {
 	readDone := make(chan struct{})
 	go sc.runReader(readRequest, readErr, readDone)
 
-	err := func() error {
-		for {
-			select {
-			case req := <-readRequest:
-				req.res <- sc.handleRequestOuter(req.req)
-
-			case err := <-readErr:
-				return err
-
-			case ss := <-sc.sessionRemove:
-				if sc.session == ss {
-					sc.session = nil
-				}
-
-			case <-sc.ctx.Done():
-				return liberrors.ErrServerTerminated{}
-			}
-		}
-	}()
+	err := sc.runInner(readRequest, readErr)
 
 	sc.ctxCancel()
 
@@ -157,6 +139,26 @@ func (sc *ServerConn) run() {
 			Conn:  sc,
 			Error: err,
 		})
+	}
+}
+
+func (sc *ServerConn) runInner(readRequest chan readReq, readErr chan error) error {
+	for {
+		select {
+		case req := <-readRequest:
+			req.res <- sc.handleRequestOuter(req.req)
+
+		case err := <-readErr:
+			return err
+
+		case ss := <-sc.sessionRemove:
+			if sc.session == ss {
+				sc.session = nil
+			}
+
+		case <-sc.ctx.Done():
+			return liberrors.ErrServerTerminated{}
+		}
 	}
 }
 
