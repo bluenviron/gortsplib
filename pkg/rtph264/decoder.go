@@ -65,27 +65,27 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		switch typ {
 		case naluTypeSTAPA:
 			var nalus [][]byte
-			pkt.Payload = pkt.Payload[1:]
+			payload := pkt.Payload[1:]
 
-			for len(pkt.Payload) > 0 {
-				if len(pkt.Payload) < 2 {
+			for len(payload) > 0 {
+				if len(payload) < 2 {
 					return nil, 0, fmt.Errorf("invalid STAP-A packet (invalid size)")
 				}
 
-				size := binary.BigEndian.Uint16(pkt.Payload)
-				pkt.Payload = pkt.Payload[2:]
+				size := binary.BigEndian.Uint16(payload)
+				payload = payload[2:]
 
 				// avoid final padding
 				if size == 0 {
 					break
 				}
 
-				if int(size) > len(pkt.Payload) {
+				if int(size) > len(payload) {
 					return nil, 0, fmt.Errorf("invalid STAP-A packet (invalid size)")
 				}
 
-				nalus = append(nalus, pkt.Payload[:size])
-				pkt.Payload = pkt.Payload[size:]
+				nalus = append(nalus, payload[:size])
+				payload = payload[size:]
 			}
 
 			if len(nalus) == 0 {
