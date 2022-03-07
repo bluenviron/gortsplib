@@ -402,7 +402,7 @@ func (ss *ServerSession) runInner() error {
 					return liberrors.ErrServerNoUDPPacketsInAWhile{}
 				}
 
-				// in case of PLAY and UDP, timeout happens when no RTSP request arrives
+				// in case of PLAY and UDP, timeout happens when no RTSP keepalives are being received
 			} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout {
 				return liberrors.ErrServerNoRTSPRequestsInAWhile{}
 			}
