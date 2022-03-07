@@ -9,31 +9,10 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 	"golang.org/x/net/ipv4"
 
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
-
-type rtpPacketMultiBuffer struct {
-	count   uint64
-	buffers []rtp.Packet
-	cur     uint64
-}
-
-func newRTPPacketMultiBuffer(count uint64) *rtpPacketMultiBuffer {
-	buffers := make([]rtp.Packet, count)
-	return &rtpPacketMultiBuffer{
-		count:   count,
-		buffers: buffers,
-	}
-}
-
-func (mb *rtpPacketMultiBuffer) next() *rtp.Packet {
-	ret := &mb.buffers[mb.cur%mb.count]
-	mb.cur++
-	return ret
-}
 
 type clientData struct {
 	ss           *ServerSession

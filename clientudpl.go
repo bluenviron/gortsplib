@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 	"golang.org/x/net/ipv4"
 
 	"github.com/aler9/gortsplib/pkg/multibuffer"
@@ -35,9 +34,9 @@ type clientUDPListener struct {
 	isRTP           bool
 	running         bool
 	readBuffer      *multibuffer.MultiBuffer
+	rtpPacketBuffer *rtpPacketMultiBuffer
 	lastPacketTime  *int64
 	processFunc     func(time.Time, []byte)
-	rtpPkt          rtp.Packet
 
 	readerDone chan struct{}
 }
@@ -110,9 +109,10 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 	}
 
 	return &clientUDPListener{
-		c:          c,
-		pc:         pc,
-		readBuffer: multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize)),
+		c:               c,
+		pc:              pc,
+		readBuffer:      multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize)),
+		rtpPacketBuffer: newRTPPacketMultiBuffer(uint64(c.ReadBufferCount)),
 		lastPacketTime: func() *int64 {
 			v := int64(0)
 			return &v
@@ -120,100 +120,101 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 	}, nil
 }
 
-func (l *clientUDPListener) close() {
-	if l.running {
-		l.stop()
+func (u *clientUDPListener) close() {
+	if u.running {
+		u.stop()
 	}
-	l.pc.Close()
+	u.pc.Close()
 }
 
-func (l *clientUDPListener) port() int {
-	return l.pc.LocalAddr().(*net.UDPAddr).Port
+func (u *clientUDPListener) port() int {
+	return u.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
-func (l *clientUDPListener) start(forPlay bool) {
+func (u *clientUDPListener) start(forPlay bool) {
 	if forPlay {
-		if l.isRTP {
-			l.processFunc = l.processPlayRTP
+		if u.isRTP {
+			u.processFunc = u.processPlayRTP
 		} else {
-			l.processFunc = l.processPlayRTCP
+			u.processFunc = u.processPlayRTCP
 		}
 	} else {
-		l.processFunc = l.processRecordRTCP
+		u.processFunc = u.processRecordRTCP
 	}
 
-	l.running = true
-	l.pc.SetReadDeadline(time.Time{})
-	l.readerDone = make(chan struct{})
-	go l.runReader()
+	u.running = true
+	u.pc.SetReadDeadline(time.Time{})
+	u.readerDone = make(chan struct{})
+	go u.runReader()
 }
 
-func (l *clientUDPListener) stop() {
-	l.pc.SetReadDeadline(time.Now())
-	<-l.readerDone
+func (u *clientUDPListener) stop() {
+	u.pc.SetReadDeadline(time.Now())
+	<-u.readerDone
 }
 
-func (l *clientUDPListener) runReader() {
-	defer close(l.readerDone)
+func (u *clientUDPListener) runReader() {
+	defer close(u.readerDone)
 
 	for {
-		buf := l.readBuffer.Next()
-		n, addr, err := l.pc.ReadFrom(buf)
+		buf := u.readBuffer.Next()
+		n, addr, err := u.pc.ReadFrom(buf)
 		if err != nil {
 			return
 		}
 
 		uaddr := addr.(*net.UDPAddr)
 
-		if !l.remoteReadIP.Equal(uaddr.IP) || (!l.c.AnyPortEnable && l.remotePort != uaddr.Port) {
+		if !u.remoteReadIP.Equal(uaddr.IP) || (!u.c.AnyPortEnable && u.remotePort != uaddr.Port) {
 			continue
 		}
 
 		now := time.Now()
-		atomic.StoreInt64(l.lastPacketTime, now.Unix())
+		atomic.StoreInt64(u.lastPacketTime, now.Unix())
 
-		l.processFunc(now, buf[:n])
+		u.processFunc(now, buf[:n])
 	}
 }
 
-func (l *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
-	err := l.rtpPkt.Unmarshal(payload)
+func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
+	pkt := u.rtpPacketBuffer.next()
+	err := pkt.Unmarshal(payload)
 	if err != nil {
 		return
 	}
 
-	l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTP(now, &l.rtpPkt)
-	l.c.OnPacketRTP(l.trackID, &l.rtpPkt)
+	u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTP(now, pkt)
+	u.c.OnPacketRTP(u.trackID, pkt)
 }
 
-func (l *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
+func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		return
 	}
 
 	for _, pkt := range packets {
-		l.c.tracks[l.trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
-		l.c.OnPacketRTCP(l.trackID, pkt)
+		u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
+		u.c.OnPacketRTCP(u.trackID, pkt)
 	}
 }
 
-func (l *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
+func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		return
 	}
 
 	for _, pkt := range packets {
-		l.c.OnPacketRTCP(l.trackID, pkt)
+		u.c.OnPacketRTCP(u.trackID, pkt)
 	}
 }
 
-func (l *clientUDPListener) write(payload []byte) error {
+func (u *clientUDPListener) write(payload []byte) error {
 	// no mutex is needed here since Write() has an internal lock.
 	// https://github.com/golang/go/issues/27203#issuecomment-534386117
 
-	l.pc.SetWriteDeadline(time.Now().Add(l.c.WriteTimeout))
-	_, err := l.pc.WriteTo(payload, l.remoteWriteAddr)
+	u.pc.SetWriteDeadline(time.Now().Add(u.c.WriteTimeout))
+	_, err := u.pc.WriteTo(payload, u.remoteWriteAddr)
 	return err
 }

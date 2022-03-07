@@ -752,7 +752,6 @@ func (c *Client) runReader() {
 
 			if c.state == clientStatePlay {
 				tcpReadBuffer = multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize))
-
 				tcpRTPPacketBuffer := newRTPPacketMultiBuffer(uint64(c.ReadBufferCount))
 
 				processFunc = func(trackID int, isRTP bool, payload []byte) {
