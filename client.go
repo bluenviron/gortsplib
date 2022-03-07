@@ -168,7 +168,7 @@ type Client struct {
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
-	// It defaults to 1.
+	// It defaults to 256.
 	ReadBufferCount int
 	// read buffer size.
 	// This must be touched only when the server reports errors about buffer sizes.
