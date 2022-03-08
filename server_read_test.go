@@ -1678,12 +1678,6 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 				}, stream, nil
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
-				go func() {
-					time.Sleep(1 * time.Second)
-					stream.WritePacketRTP(1, &testRTPPacket)
-					stream.WritePacketRTP(0, &testRTPPacket)
-				}()
-
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
