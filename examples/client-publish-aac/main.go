@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 )
 
 // This example shows how to

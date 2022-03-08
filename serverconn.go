@@ -256,6 +256,10 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					return
 				}
 
+				// remove padding
+				pkt.Header.Padding = false
+				pkt.PaddingSize = 0
+
 				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
 					h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
 						Session: sc.session,

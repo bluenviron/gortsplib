@@ -1,7 +1,7 @@
 package gortsplib
 
 import (
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 )
 
 type rtpPacketMultiBuffer struct {

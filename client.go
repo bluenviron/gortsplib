@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
@@ -764,6 +764,10 @@ func (c *Client) runReader() {
 						if err != nil {
 							return
 						}
+
+						// remove padding
+						pkt.Header.Padding = false
+						pkt.PaddingSize = 0
 
 						c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, pkt)
 						c.OnPacketRTP(trackID, pkt)

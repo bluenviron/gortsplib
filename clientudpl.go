@@ -183,6 +183,10 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 		return
 	}
 
+	// remove padding
+	pkt.Header.Padding = false
+	pkt.PaddingSize = 0
+
 	u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTP(now, pkt)
 	u.c.OnPacketRTP(u.trackID, pkt)
 }
