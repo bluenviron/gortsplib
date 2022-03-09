@@ -178,9 +178,9 @@ func TestTrackH264Clone(t *testing.T) {
 	track, err := NewTrackH264(96, []byte{0x01, 0x02}, []byte{0x03, 0x04}, []byte{0x05, 0x06})
 	require.NoError(t, err)
 
-	copy := track.clone()
-	require.NotSame(t, track, copy)
-	require.Equal(t, track, copy)
+	clone := track.clone()
+	require.NotSame(t, track, clone)
+	require.Equal(t, track, clone)
 }
 
 func TestTrackH264MediaDescription(t *testing.T) {

@@ -239,7 +239,7 @@ func TestDecode(t *testing.T) {
 				err := pkt.Unmarshal(byts)
 				require.NoError(t, err)
 
-				copy := pkt.Clone()
+				clone := pkt.Clone()
 
 				addAUs, pts, err := d.Decode(&pkt)
 				if err == ErrMorePacketsNeeded {
@@ -252,7 +252,7 @@ func TestDecode(t *testing.T) {
 				expPTS += time.Duration(len(aus)) * 1000 * time.Second / 48000
 
 				// test packet integrity
-				require.Equal(t, copy, &pkt)
+				require.Equal(t, clone, &pkt)
 			}
 
 			require.Equal(t, ca.aus, aus)

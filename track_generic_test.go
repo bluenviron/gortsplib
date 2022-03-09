@@ -53,9 +53,9 @@ func TestTrackGenericClone(t *testing.T) {
 		})
 	require.NoError(t, err)
 
-	copy := track.clone()
-	require.NotSame(t, track, copy)
-	require.Equal(t, track, copy)
+	clone := track.clone()
+	require.NotSame(t, track, clone)
+	require.Equal(t, track, clone)
 }
 
 func TestTrackGenericMediaDescription(t *testing.T) {

@@ -244,7 +244,7 @@ func TestDecode(t *testing.T) {
 				err := pkt.Unmarshal(byts)
 				require.NoError(t, err)
 
-				copy := pkt.Clone()
+				clone := pkt.Clone()
 
 				addNALUs, pts, err := d.Decode(&pkt)
 				if err == ErrMorePacketsNeeded {
@@ -256,7 +256,7 @@ func TestDecode(t *testing.T) {
 				nalus = append(nalus, addNALUs...)
 
 				// test packet integrity
-				require.Equal(t, copy, &pkt)
+				require.Equal(t, clone, &pkt)
 			}
 
 			require.Equal(t, ca.nalus, nalus)
