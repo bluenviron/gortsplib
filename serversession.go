@@ -338,7 +338,8 @@ func (ss *ServerSession) runInner() error {
 			var returnedSession *ServerSession
 			if err == nil || err == errSwitchReadFunc {
 				// ANNOUNCE responses don't contain the session header.
-				if req.req.Method != base.Announce {
+				if req.req.Method != base.Announce &&
+					req.req.Method != base.Teardown {
 					if res.Header == nil {
 						res.Header = make(base.Header)
 					}
@@ -346,8 +347,17 @@ func (ss *ServerSession) runInner() error {
 					res.Header["Session"] = headers.Session{
 						Session: ss.secretID,
 						Timeout: func() *uint {
-							v := uint(ss.s.sessionTimeout / time.Second)
-							return &v
+							// timeout controls the sending of RTCP keepalives.
+							// these are needed only when the client is playing
+							// and transport is UDP or UDP-multicast.
+							if (ss.state == ServerSessionStatePrePlay ||
+								ss.state == ServerSessionStatePlay) &&
+								(*ss.setuppedTransport == TransportUDP ||
+									*ss.setuppedTransport == TransportUDPMulticast) {
+								v := uint(ss.s.sessionTimeout / time.Second)
+								return &v
+							}
+							return nil
 						}(),
 					}.Write()
 				}
@@ -373,14 +383,14 @@ func (ss *ServerSession) runInner() error {
 		case sc := <-ss.connRemove:
 			delete(ss.conns, sc)
 
-			// if session is not in state RECORD or PLAY, or transport is TCP
-			if (ss.state != ServerSessionStateRecord &&
+			// if session is not in state RECORD or PLAY, or transport is TCP,
+			// and there are no associated connections,
+			// close the session.
+			if ((ss.state != ServerSessionStateRecord &&
 				ss.state != ServerSessionStatePlay) ||
-				*ss.setuppedTransport == TransportTCP {
-				// close session if there are no associated connections
-				if len(ss.conns) == 0 {
-					return liberrors.ErrServerSessionNotInUse{}
-				}
+				*ss.setuppedTransport == TransportTCP) &&
+				len(ss.conns) == 0 {
+				return liberrors.ErrServerSessionNotInUse{}
 			}
 
 		case <-ss.startWriter:
@@ -395,14 +405,14 @@ func (ss *ServerSession) runInner() error {
 		case <-ss.udpCheckStreamTimer.C:
 			now := time.Now()
 
-			// in case of RECORD and UDP, timeout happens when no RTP or RTCP packets are being received
+			// in case of RECORD, timeout happens when no RTP or RTCP packets are being received
 			if ss.state == ServerSessionStateRecord {
 				lft := atomic.LoadInt64(ss.udpLastFrameTime)
 				if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
 					return liberrors.ErrServerNoUDPPacketsInAWhile{}
 				}
 
-				// in case of PLAY and UDP, timeout happens when no RTSP keepalives are being received
+				// in case of PLAY, timeout happens when no RTSP keepalives are being received
 			} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout {
 				return liberrors.ErrServerNoRTSPRequestsInAWhile{}
 			}
