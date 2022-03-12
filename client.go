@@ -769,7 +769,6 @@ func (c *Client) runReader() {
 						pkt.Header.Padding = false
 						pkt.PaddingSize = 0
 
-						c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, pkt)
 						c.OnPacketRTP(trackID, pkt)
 					} else {
 						packets, err := rtcp.Unmarshal(payload)
@@ -778,7 +777,6 @@ func (c *Client) runReader() {
 						}
 
 						for _, pkt := range packets {
-							c.tracks[trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
 							c.OnPacketRTCP(trackID, pkt)
 						}
 					}
