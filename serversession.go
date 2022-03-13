@@ -160,25 +160,24 @@ type ServerSession struct {
 	secretID string // must not be shared, allows to take ownership of the session
 	author   *ServerConn
 
-	ctx                    context.Context
-	ctxCancel              func()
-	conns                  map[*ServerConn]struct{}
-	state                  ServerSessionState
-	setuppedTracks         map[int]*ServerSessionSetuppedTrack
-	tcpTracksByChannel     map[int]int
-	setuppedTransport      *Transport
-	setuppedBaseURL        *base.URL     // publish
-	setuppedStream         *ServerStream // read
-	setuppedPath           *string
-	setuppedQuery          *string
-	lastRequestTime        time.Time
-	tcpConn                *ServerConn
-	announcedTracks        []ServerSessionAnnouncedTrack // publish
-	udpLastFrameTime       *int64                        // publish
-	udpCheckStreamTimer    *time.Timer
-	udpReceiverReportTimer *time.Timer
-	writerRunning          bool
-	writeBuffer            *ringbuffer.RingBuffer
+	ctx                 context.Context
+	ctxCancel           func()
+	conns               map[*ServerConn]struct{}
+	state               ServerSessionState
+	setuppedTracks      map[int]*ServerSessionSetuppedTrack
+	tcpTracksByChannel  map[int]int
+	setuppedTransport   *Transport
+	setuppedBaseURL     *base.URL     // publish
+	setuppedStream      *ServerStream // read
+	setuppedPath        *string
+	setuppedQuery       *string
+	lastRequestTime     time.Time
+	tcpConn             *ServerConn
+	announcedTracks     []ServerSessionAnnouncedTrack // publish
+	udpLastFrameTime    *int64                        // publish
+	udpCheckStreamTimer *time.Timer
+	writerRunning       bool
+	writeBuffer         *ringbuffer.RingBuffer
 
 	// writer channels
 	writerDone chan struct{}
@@ -197,18 +196,17 @@ func newServerSession(
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
 	ss := &ServerSession{
-		s:                      s,
-		secretID:               secretID,
-		author:                 author,
-		ctx:                    ctx,
-		ctxCancel:              ctxCancel,
-		conns:                  make(map[*ServerConn]struct{}),
-		lastRequestTime:        time.Now(),
-		udpCheckStreamTimer:    emptyTimer(),
-		udpReceiverReportTimer: emptyTimer(),
-		request:                make(chan sessionRequestReq),
-		connRemove:             make(chan *ServerConn),
-		startWriter:            make(chan struct{}),
+		s:                   s,
+		secretID:            secretID,
+		author:              author,
+		ctx:                 ctx,
+		ctxCancel:           ctxCancel,
+		conns:               make(map[*ServerConn]struct{}),
+		lastRequestTime:     time.Now(),
+		udpCheckStreamTimer: emptyTimer(),
+		request:             make(chan sessionRequestReq),
+		connRemove:          make(chan *ServerConn),
+		startWriter:         make(chan struct{}),
 	}
 
 	s.wg.Add(1)
@@ -1068,13 +1066,15 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.setuppedStream.readerSetInactive(ss)
 
 			ss.state = ServerSessionStatePrePlay
-			ss.udpCheckStreamTimer = emptyTimer()
 
 			switch *ss.setuppedTransport {
 			case TransportUDP:
+				ss.udpCheckStreamTimer = emptyTimer()
+
 				ss.s.udpRTCPListener.removeClient(ss)
 
 			case TransportUDPMulticast:
+				ss.udpCheckStreamTimer = emptyTimer()
 
 			default: // TCP
 				ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
@@ -1085,11 +1085,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		case ServerSessionStateRecord:
 			ss.state = ServerSessionStatePreRecord
-			ss.udpCheckStreamTimer = emptyTimer()
-			ss.udpReceiverReportTimer = emptyTimer()
 
 			switch *ss.setuppedTransport {
 			case TransportUDP:
+				ss.udpCheckStreamTimer = emptyTimer()
+
 				ss.s.udpRTPListener.removeClient(ss)
 				ss.s.udpRTCPListener.removeClient(ss)
 
@@ -1097,8 +1097,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 					ss.announcedTracks[trackID].rtcpReceiver.Close()
 					ss.announcedTracks[trackID].rtcpReceiver = nil
 				}
-
-			case TransportUDPMulticast:
 
 			default: // TCP
 				ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
