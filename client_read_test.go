@@ -19,7 +19,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
-	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
 func TestClientReadTracks(t *testing.T) {
@@ -1977,8 +1976,6 @@ func TestClientReadRTCPReport(t *testing.T) {
 		_, _, err = l2.ReadFrom(buf)
 		require.NoError(t, err)
 
-		rs := rtcpsender.New(90000)
-
 		pkt := rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
@@ -1996,9 +1993,14 @@ func TestClientReadRTCPReport(t *testing.T) {
 			Port: inTH.ClientPorts[0],
 		})
 		require.NoError(t, err)
-		rs.ProcessPacketRTP(time.Now(), &pkt)
 
-		sr := rs.Report(time.Now())
+		sr := &rtcp.SenderReport{
+			SSRC:        753621,
+			NTPTime:     0,
+			RTPTime:     0,
+			PacketCount: 0,
+			OctetCount:  0,
+		}
 		byts, _ = sr.Marshal()
 		_, err = l2.WriteTo(byts, &net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.1"),

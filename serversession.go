@@ -164,7 +164,7 @@ type ServerSession struct {
 	ctxCancel              func()
 	conns                  map[*ServerConn]struct{}
 	state                  ServerSessionState
-	setuppedTracks         map[int]ServerSessionSetuppedTrack
+	setuppedTracks         map[int]*ServerSessionSetuppedTrack
 	tcpTracksByChannel     map[int]int
 	setuppedTransport      *Transport
 	setuppedBaseURL        *base.URL     // publish
@@ -229,7 +229,7 @@ func (ss *ServerSession) State() ServerSessionState {
 }
 
 // SetuppedTracks returns the setupped tracks.
-func (ss *ServerSession) SetuppedTracks() map[int]ServerSessionSetuppedTrack {
+func (ss *ServerSession) SetuppedTracks() map[int]*ServerSessionSetuppedTrack {
 	return ss.setuppedTracks
 }
 
@@ -283,6 +283,11 @@ func (ss *ServerSession) run() {
 		if *ss.setuppedTransport == TransportUDP {
 			ss.s.udpRTPListener.removeClient(ss)
 			ss.s.udpRTCPListener.removeClient(ss)
+
+			for trackID := range ss.setuppedTracks {
+				ss.announcedTracks[trackID].rtcpReceiver.Close()
+				ss.announcedTracks[trackID].rtcpReceiver = nil
+			}
 		}
 	}
 
@@ -418,18 +423,6 @@ func (ss *ServerSession) runInner() error {
 			}
 
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-
-		case <-ss.udpReceiverReportTimer.C:
-			now := time.Now()
-
-			for trackID, track := range ss.announcedTracks {
-				rr := track.rtcpReceiver.Report(now)
-				if rr != nil {
-					ss.WritePacketRTCP(trackID, rr)
-				}
-			}
-
-			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
 
 		case <-ss.ctx.Done():
 			return liberrors.ErrServerTerminated{}
@@ -746,7 +739,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			res.Header = make(base.Header)
 		}
 
-		sst := ServerSessionSetuppedTrack{}
+		sst := &ServerSessionSetuppedTrack{}
 
 		switch transport {
 		case TransportUDP:
@@ -797,15 +790,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		if ss.setuppedTracks == nil {
-			ss.setuppedTracks = make(map[int]ServerSessionSetuppedTrack)
+			ss.setuppedTracks = make(map[int]*ServerSessionSetuppedTrack)
 		}
 
 		ss.setuppedTracks[trackID] = sst
-
-		if ss.state == ServerSessionStatePreRecord && *ss.setuppedTransport != TransportTCP {
-			ss.announcedTracks[trackID].rtcpReceiver = rtcpreceiver.New(nil,
-				ss.announcedTracks[trackID].track.ClockRate())
-		}
 
 		res.Header["Transport"] = th.Write()
 
@@ -1000,19 +988,23 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		switch *ss.setuppedTransport {
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
 
 			ss.writerRunning = true
 			ss.writerDone = make(chan struct{})
 			go ss.runWriter()
 
 			for trackID, track := range ss.setuppedTracks {
-				ss.s.udpRTPListener.addClient(ss.author.ip(), track.udpRTPPort, ss, trackID, true)
-				ss.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, true)
-
 				// open the firewall by sending packets to the counterpart
 				ss.WritePacketRTP(trackID, &rtp.Packet{Header: rtp.Header{Version: 2}})
 				ss.WritePacketRTCP(trackID, &rtcp.ReceiverReport{})
+
+				ss.announcedTracks[trackID].rtcpReceiver = rtcpreceiver.New(ss.s.udpReceiverReportPeriod,
+					nil, ss.announcedTracks[trackID].track.ClockRate(), func(pkt rtcp.Packet) {
+						ss.WritePacketRTCP(trackID, pkt)
+					})
+
+				ss.s.udpRTPListener.addClient(ss.author.ip(), track.udpRTPPort, ss, trackID, true)
+				ss.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, true)
 			}
 
 		default: // TCP
@@ -1098,6 +1090,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			case TransportUDP:
 				ss.s.udpRTPListener.removeClient(ss)
 				ss.s.udpRTCPListener.removeClient(ss)
+
+				for trackID := range ss.setuppedTracks {
+					ss.announcedTracks[trackID].rtcpReceiver.Close()
+					ss.announcedTracks[trackID].rtcpReceiver = nil
+				}
 
 			case TransportUDPMulticast:
 

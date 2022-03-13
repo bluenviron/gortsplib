@@ -10,10 +10,28 @@ import (
 )
 
 func TestRTCPReceiverBase(t *testing.T) {
+	now = func() time.Time {
+		return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
+	}
+	done := make(chan struct{})
 	v := uint32(0x65f83afb)
-	rr := New(&v, 90000)
 
-	require.Equal(t, nil, rr.Report(time.Now()))
+	rr := New(500*time.Millisecond, &v, 90000,
+		func(pkt rtcp.Packet) {
+			require.Equal(t, &rtcp.ReceiverReport{
+				SSRC: 0x65f83afb,
+				Reports: []rtcp.ReceptionReport{
+					{
+						SSRC:               0xba9da416,
+						LastSequenceNumber: 947,
+						LastSenderReport:   0x887a17ce,
+						Delay:              2 * 65536,
+					},
+				},
+			}, pkt)
+			close(done)
+		})
+	defer rr.Close()
 
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
@@ -53,24 +71,31 @@ func TestRTCPReceiverBase(t *testing.T) {
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
 	rr.ProcessPacketRTP(ts, &rtpPkt)
 
-	expectedPkt := rtcp.ReceiverReport{
-		SSRC: 0x65f83afb,
-		Reports: []rtcp.ReceptionReport{
-			{
-				SSRC:               0xba9da416,
-				LastSequenceNumber: 947,
-				LastSenderReport:   0x887a17ce,
-				Delay:              2 * 65536,
-			},
-		},
-	}
-	ts = time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
-	require.Equal(t, &expectedPkt, rr.Report(ts))
+	<-done
 }
 
 func TestRTCPReceiverOverflow(t *testing.T) {
+	done := make(chan struct{})
+	now = func() time.Time {
+		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
+	}
 	v := uint32(0x65f83afb)
-	rr := New(&v, 90000)
+
+	rr := New(500*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
+		require.Equal(t, &rtcp.ReceiverReport{
+			SSRC: 0x65f83afb,
+			Reports: []rtcp.ReceptionReport{
+				{
+					SSRC:               0xba9da416,
+					LastSequenceNumber: 1<<16 | 0x0000,
+					LastSenderReport:   0x887a17ce,
+					Delay:              1 * 65536,
+				},
+			},
+		}, pkt)
+		close(done)
+	})
+	defer rr.Close()
 
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
@@ -110,24 +135,36 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
 	rr.ProcessPacketRTP(ts, &rtpPkt)
 
-	expectedPkt := rtcp.ReceiverReport{
-		SSRC: 0x65f83afb,
-		Reports: []rtcp.ReceptionReport{
-			{
-				SSRC:               0xba9da416,
-				LastSequenceNumber: 1<<16 | 0x0000,
-				LastSenderReport:   0x887a17ce,
-				Delay:              1 * 65536,
-			},
-		},
-	}
-	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	require.Equal(t, &expectedPkt, rr.Report(ts))
+	<-done
 }
 
 func TestRTCPReceiverPacketLost(t *testing.T) {
+	done := make(chan struct{})
+	now = func() time.Time {
+		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
+	}
 	v := uint32(0x65f83afb)
-	rr := New(&v, 90000)
+
+	rr := New(500*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
+		require.Equal(t, &rtcp.ReceiverReport{
+			SSRC: 0x65f83afb,
+			Reports: []rtcp.ReceptionReport{
+				{
+					SSRC:               0xba9da416,
+					LastSequenceNumber: 0x0122,
+					LastSenderReport:   0x887a17ce,
+					FractionLost: func() uint8 {
+						v := float64(1) / 3
+						return uint8(v * 256)
+					}(),
+					TotalLost: 1,
+					Delay:     1 * 65536,
+				},
+			},
+		}, pkt)
+		close(done)
+	})
+	defer rr.Close()
 
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
@@ -167,29 +204,36 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
 	rr.ProcessPacketRTP(ts, &rtpPkt)
 
-	expectedPkt := rtcp.ReceiverReport{
-		SSRC: 0x65f83afb,
-		Reports: []rtcp.ReceptionReport{
-			{
-				SSRC:               0xba9da416,
-				LastSequenceNumber: 0x0122,
-				LastSenderReport:   0x887a17ce,
-				FractionLost: func() uint8 {
-					v := float64(1) / 3
-					return uint8(v * 256)
-				}(),
-				TotalLost: 1,
-				Delay:     1 * 65536,
-			},
-		},
-	}
-	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	require.Equal(t, &expectedPkt, rr.Report(ts))
+	<-done
 }
 
 func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
+	done := make(chan struct{})
+	now = func() time.Time {
+		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
+	}
 	v := uint32(0x65f83afb)
-	rr := New(&v, 90000)
+
+	rr := New(500*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
+		require.Equal(t, &rtcp.ReceiverReport{
+			SSRC: 0x65f83afb,
+			Reports: []rtcp.ReceptionReport{
+				{
+					SSRC:               0xba9da416,
+					LastSequenceNumber: 1<<16 | 0x0002,
+					LastSenderReport:   0x887a17ce,
+					FractionLost: func() uint8 {
+						v := float64(2) / 4
+						return uint8(v * 256)
+					}(),
+					TotalLost: 2,
+					Delay:     1 * 65536,
+				},
+			},
+		}, pkt)
+		close(done)
+	})
+	defer rr.Close()
 
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
@@ -229,29 +273,31 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
 	rr.ProcessPacketRTP(ts, &rtpPkt)
 
-	expectedPkt := rtcp.ReceiverReport{
-		SSRC: 0x65f83afb,
-		Reports: []rtcp.ReceptionReport{
-			{
-				SSRC:               0xba9da416,
-				LastSequenceNumber: 1<<16 | 0x0002,
-				LastSenderReport:   0x887a17ce,
-				FractionLost: func() uint8 {
-					v := float64(2) / 4
-					return uint8(v * 256)
-				}(),
-				TotalLost: 2,
-				Delay:     1 * 65536,
-			},
-		},
-	}
-	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	require.Equal(t, &expectedPkt, rr.Report(ts))
+	<-done
 }
 
 func TestRTCPReceiverReorderedPackets(t *testing.T) {
+	done := make(chan struct{})
+	now = func() time.Time {
+		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
+	}
 	v := uint32(0x65f83afb)
-	rr := New(&v, 90000)
+
+	rr := New(500*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
+		require.Equal(t, &rtcp.ReceiverReport{
+			SSRC: 0x65f83afb,
+			Reports: []rtcp.ReceptionReport{
+				{
+					SSRC:               0xba9da416,
+					LastSequenceNumber: 0x43a7,
+					LastSenderReport:   0x887a17ce,
+					Delay:              1 * 65536,
+				},
+			},
+		}, pkt)
+		close(done)
+	})
+	defer rr.Close()
 
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
@@ -291,24 +337,32 @@ func TestRTCPReceiverReorderedPackets(t *testing.T) {
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
 	rr.ProcessPacketRTP(ts, &rtpPkt)
 
-	expectedPkt := rtcp.ReceiverReport{
-		SSRC: 0x65f83afb,
-		Reports: []rtcp.ReceptionReport{
-			{
-				SSRC:               0xba9da416,
-				LastSequenceNumber: 0x43a7,
-				LastSenderReport:   0x887a17ce,
-				Delay:              1 * 65536,
-			},
-		},
-	}
-	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	require.Equal(t, &expectedPkt, rr.Report(ts))
+	<-done
 }
 
 func TestRTCPReceiverJitter(t *testing.T) {
+	done := make(chan struct{})
+	now = func() time.Time {
+		return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
+	}
 	v := uint32(0x65f83afb)
-	rr := New(&v, 90000)
+
+	rr := New(500*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
+		require.Equal(t, &rtcp.ReceiverReport{
+			SSRC: 0x65f83afb,
+			Reports: []rtcp.ReceptionReport{
+				{
+					SSRC:               0xba9da416,
+					LastSequenceNumber: 947,
+					LastSenderReport:   0x887a17ce,
+					Delay:              2 * 65536,
+					Jitter:             45000 / 16,
+				},
+			},
+		}, pkt)
+		close(done)
+	})
+	defer rr.Close()
 
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
@@ -348,18 +402,5 @@ func TestRTCPReceiverJitter(t *testing.T) {
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
 	rr.ProcessPacketRTP(ts, &rtpPkt)
 
-	expectedPkt := rtcp.ReceiverReport{
-		SSRC: 0x65f83afb,
-		Reports: []rtcp.ReceptionReport{
-			{
-				SSRC:               0xba9da416,
-				LastSequenceNumber: 947,
-				LastSenderReport:   0x887a17ce,
-				Delay:              2 * 65536,
-				Jitter:             45000 / 16,
-			},
-		},
-	}
-	ts = time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
-	require.Equal(t, &expectedPkt, rr.Report(ts))
+	<-done
 }

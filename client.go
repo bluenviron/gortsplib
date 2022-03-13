@@ -213,12 +213,11 @@ type Client struct {
 	lastDescribeURL    *base.URL
 	streamBaseURL      *base.URL
 	effectiveTransport *Transport
-	tracks             map[int]clientTrack
+	tracks             map[int]*clientTrack
 	tracksByChannel    map[int]int
 	lastRange          *headers.Range
 	writeMutex         sync.RWMutex // publish
 	writeFrameAllowed  bool         // publish
-	udpReportTimer     *time.Timer
 	checkStreamTimer   *time.Timer
 	checkStreamInitial bool
 	tcpLastFrameTime   *int64
@@ -310,7 +309,6 @@ func (c *Client) Start(scheme string, host string) error {
 	c.host = host
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
-	c.udpReportTimer = emptyTimer()
 	c.checkStreamTimer = emptyTimer()
 	c.keepaliveTimer = emptyTimer()
 	c.options = make(chan optionsReq)
@@ -468,29 +466,6 @@ func (c *Client) runInner() error {
 			res, err := c.doPause()
 			req.res <- clientRes{res: res, err: err}
 
-		case <-c.udpReportTimer.C:
-			if c.state == clientStatePlay {
-				now := time.Now()
-				for trackID, cct := range c.tracks {
-					rr := cct.rtcpReceiver.Report(now)
-					if rr != nil {
-						c.WritePacketRTCP(trackID, rr)
-					}
-				}
-
-				c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
-			} else { // Record
-				now := time.Now()
-				for trackID, cct := range c.tracks {
-					sr := cct.rtcpSender.Report(now)
-					if sr != nil {
-						c.WritePacketRTCP(trackID, sr)
-					}
-				}
-
-				c.udpReportTimer = time.NewTimer(c.udpSenderReportPeriod)
-			}
-
 		case <-c.checkStreamTimer.C:
 			if *c.effectiveTransport == TransportUDP ||
 				*c.effectiveTransport == TransportUDPMulticast {
@@ -581,13 +556,6 @@ func (c *Client) runInner() error {
 
 func (c *Client) doClose() {
 	if c.state == clientStatePlay || c.state == clientStateRecord {
-		if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		c.playRecordStop(true)
 
 		c.do(&base.Request{
@@ -697,19 +665,40 @@ func (c *Client) playRecordStart() {
 	c.writeFrameAllowed = true
 	c.writeMutex.Unlock()
 
-	// start timers
 	if c.state == clientStatePlay {
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
 		switch *c.effectiveTransport {
 		case TransportUDP:
-			c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
+			for trackID, cct := range c.tracks {
+				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
+					cct.track.ClockRate(), func(pkt rtcp.Packet) {
+						c.WritePacketRTCP(trackID, pkt)
+					})
+			}
+
 			c.checkStreamTimer = time.NewTimer(c.InitialUDPReadTimeout)
 			c.checkStreamInitial = true
 
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.start(true)
+				cct.udpRTCPListener.start(true)
+			}
+
 		case TransportUDPMulticast:
-			c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
+			for trackID, cct := range c.tracks {
+				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
+					cct.track.ClockRate(), func(pkt rtcp.Packet) {
+						c.WritePacketRTCP(trackID, pkt)
+					})
+			}
+
 			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
+
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.start(true)
+				cct.udpRTCPListener.start(true)
+			}
 
 		default: // TCP
 			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
@@ -719,10 +708,30 @@ func (c *Client) playRecordStart() {
 	} else {
 		switch *c.effectiveTransport {
 		case TransportUDP:
-			c.udpReportTimer = time.NewTimer(c.udpSenderReportPeriod)
+			for trackID, cct := range c.tracks {
+				cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
+					cct.track.ClockRate(), func(pkt rtcp.Packet) {
+						c.WritePacketRTCP(trackID, pkt)
+					})
+			}
+
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.start(true)
+				cct.udpRTCPListener.start(true)
+			}
 
 		case TransportUDPMulticast:
-			c.udpReportTimer = time.NewTimer(c.udpSenderReportPeriod)
+			for trackID, cct := range c.tracks {
+				cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
+					cct.track.ClockRate(), func(pkt rtcp.Packet) {
+						c.WritePacketRTCP(trackID, pkt)
+					})
+			}
+
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.start(true)
+				cct.udpRTCPListener.start(true)
+			}
 		}
 	}
 
@@ -838,15 +847,34 @@ func (c *Client) playRecordStop(isClosing bool) {
 		<-c.readerErr
 	}
 
-	// stop timers
-	c.udpReportTimer = emptyTimer()
-	c.checkStreamTimer = emptyTimer()
-	c.keepaliveTimer = emptyTimer()
-
 	// forbid writing
 	c.writeMutex.Lock()
 	c.writeFrameAllowed = false
 	c.writeMutex.Unlock()
+
+	if *c.effectiveTransport == TransportUDP ||
+		*c.effectiveTransport == TransportUDPMulticast {
+		for _, cct := range c.tracks {
+			cct.udpRTPListener.stop()
+			cct.udpRTCPListener.stop()
+		}
+
+		if c.state == clientStatePlay {
+			for _, cct := range c.tracks {
+				cct.rtcpReceiver.Close()
+				cct.rtcpReceiver = nil
+			}
+		} else {
+			for _, cct := range c.tracks {
+				cct.rtcpSender.Close()
+				cct.rtcpSender = nil
+			}
+		}
+	}
+
+	// stop timers
+	c.checkStreamTimer = emptyTimer()
+	c.keepaliveTimer = emptyTimer()
 
 	// stop writer
 	c.writeBuffer.Close()
@@ -1461,17 +1489,14 @@ func (c *Client) doSetup(
 		}
 	}
 
-	cct := clientTrack{
+	cct := &clientTrack{
 		track: track,
 	}
 
-	clockRate := track.ClockRate()
 	if mode == headers.TransportModePlay {
 		c.state = clientStatePrePlay
-		cct.rtcpReceiver = rtcpreceiver.New(nil, clockRate)
 	} else {
 		c.state = clientStatePreRecord
-		cct.rtcpSender = rtcpsender.New(clockRate)
 	}
 
 	c.streamBaseURL = baseURL
@@ -1547,7 +1572,7 @@ func (c *Client) doSetup(
 	}
 
 	if c.tracks == nil {
-		c.tracks = make(map[int]clientTrack)
+		c.tracks = make(map[int]*clientTrack)
 	}
 
 	c.tracks[trackID] = cct
@@ -1590,14 +1615,9 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		return nil, err
 	}
 
-	// setup UDP communication before sending the request.
+	// open the firewall by sending packets to the counterpart.
+	// do this before sending the request.
 	if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.start(true)
-			cct.udpRTCPListener.start(true)
-		}
-
-		// open the firewall by sending packets to the counterpart.
 		for _, cct := range c.tracks {
 			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
 			cct.udpRTPListener.write(byts)
@@ -1624,24 +1644,10 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		},
 	}, false, *c.effectiveTransport == TransportTCP)
 	if err != nil {
-		if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
-		if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
@@ -1689,36 +1695,15 @@ func (c *Client) doRecord() (*base.Response, error) {
 		return nil, err
 	}
 
-	if *c.effectiveTransport == TransportUDP {
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.start(false)
-			cct.udpRTCPListener.start(false)
-		}
-	}
-
 	res, err := c.do(&base.Request{
 		Method: base.Record,
 		URL:    c.streamBaseURL,
 	}, false, false)
 	if err != nil {
-		if *c.effectiveTransport == TransportUDP {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
-		if *c.effectiveTransport == TransportUDP {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
@@ -1754,13 +1739,6 @@ func (c *Client) doPause() (*base.Response, error) {
 	}
 
 	c.playRecordStop(false)
-
-	if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.stop()
-			cct.udpRTCPListener.stop()
-		}
-	}
 
 	// change state regardless of the response
 	switch c.state {

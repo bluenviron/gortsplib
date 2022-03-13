@@ -9,10 +9,14 @@ import (
 	"github.com/pion/rtp/v2"
 )
 
+var now = time.Now
+
 // RTCPSender is a utility to generate RTCP sender reports.
 type RTCPSender struct {
-	clockRate float64
-	mutex     sync.Mutex
+	period          time.Duration
+	clockRate       float64
+	writePacketRTCP func(rtcp.Packet)
+	mutex           sync.Mutex
 
 	// data from RTP packets
 	firstRTPReceived bool
@@ -21,18 +25,54 @@ type RTCPSender struct {
 	lastRTPTimeTime  time.Time
 	packetCount      uint32
 	octetCount       uint32
+
+	terminate chan struct{}
+	done      chan struct{}
 }
 
 // New allocates a RTCPSender.
-func New(clockRate int) *RTCPSender {
-	return &RTCPSender{
-		clockRate: float64(clockRate),
+func New(period time.Duration, clockRate int,
+	writePacketRTCP func(rtcp.Packet)) *RTCPSender {
+	rs := &RTCPSender{
+		period:          period,
+		clockRate:       float64(clockRate),
+		writePacketRTCP: writePacketRTCP,
+		terminate:       make(chan struct{}),
+		done:            make(chan struct{}),
+	}
+
+	go rs.run()
+
+	return rs
+}
+
+// Close closes the RTCPSender.
+func (rs *RTCPSender) Close() {
+	close(rs.terminate)
+	<-rs.done
+}
+
+func (rs *RTCPSender) run() {
+	defer close(rs.done)
+
+	t := time.NewTicker(rs.period)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-t.C:
+			report := rs.report(now())
+			if report != nil {
+				rs.writePacketRTCP(report)
+			}
+
+		case <-rs.terminate:
+			return
+		}
 	}
 }
 
-// Report generates a RTCP sender report.
-// It returns nil if no packets has been passed to ProcessPacketRTP yet.
-func (rs *RTCPSender) Report(ts time.Time) rtcp.Packet {
+func (rs *RTCPSender) report(ts time.Time) rtcp.Packet {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 

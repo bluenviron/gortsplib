@@ -16,11 +16,15 @@ func randUint32() uint32 {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
 }
 
+var now = time.Now
+
 // RTCPReceiver is a utility to generate RTCP receiver reports.
 type RTCPReceiver struct {
-	receiverSSRC uint32
-	clockRate    float64
-	mutex        sync.Mutex
+	period          time.Duration
+	receiverSSRC    uint32
+	clockRate       float64
+	writePacketRTCP func(rtcp.Packet)
+	mutex           sync.Mutex
 
 	// data from RTP packets
 	firstRTPReceived     bool
@@ -37,24 +41,60 @@ type RTCPReceiver struct {
 	senderSSRC           uint32
 	lastSenderReport     uint32
 	lastSenderReportTime time.Time
+
+	terminate chan struct{}
+	done      chan struct{}
 }
 
 // New allocates a RTCPReceiver.
-func New(receiverSSRC *uint32, clockRate int) *RTCPReceiver {
-	return &RTCPReceiver{
+func New(period time.Duration, receiverSSRC *uint32, clockRate int,
+	writePacketRTCP func(rtcp.Packet)) *RTCPReceiver {
+	rr := &RTCPReceiver{
+		period: period,
 		receiverSSRC: func() uint32 {
 			if receiverSSRC == nil {
 				return randUint32()
 			}
 			return *receiverSSRC
 		}(),
-		clockRate: float64(clockRate),
+		clockRate:       float64(clockRate),
+		writePacketRTCP: writePacketRTCP,
+		terminate:       make(chan struct{}),
+		done:            make(chan struct{}),
+	}
+
+	go rr.run()
+
+	return rr
+}
+
+// Close closes the RTCPReceiver.
+func (rr *RTCPReceiver) Close() {
+	close(rr.terminate)
+	<-rr.done
+}
+
+func (rr *RTCPReceiver) run() {
+	defer close(rr.done)
+
+	t := time.NewTicker(rr.period)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-t.C:
+			report := rr.report(now())
+			if report != nil {
+				rr.writePacketRTCP(report)
+			}
+
+		case <-rr.terminate:
+			return
+		}
 	}
 }
 
-// Report generates a RTCP receiver report.
-// It returns nil if no RTCP sender reports have been passed to ProcessPacketRTCP yet.
-func (rr *RTCPReceiver) Report(ts time.Time) rtcp.Packet {
+func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 

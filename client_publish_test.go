@@ -15,7 +15,6 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
-	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 )
 
 var testRTPPacket = rtp.Packet{
@@ -945,15 +944,12 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		rr := rtcpreceiver.New(nil, 90000)
-
 		buf := make([]byte, 2048)
 		n, _, err := l1.ReadFrom(buf)
 		require.NoError(t, err)
 		var pkt rtp.Packet
 		err = pkt.Unmarshal(buf[:n])
 		require.NoError(t, err)
-		rr.ProcessPacketRTP(time.Now(), &pkt)
 
 		buf = make([]byte, 2048)
 		n, _, err = l2.ReadFrom(buf)
@@ -969,7 +965,6 @@ func TestClientPublishRTCPReport(t *testing.T) {
 			PacketCount: 1,
 			OctetCount:  4,
 		}, sr)
-		rr.ProcessPacketRTCP(time.Now(), packets[0])
 
 		close(reportReceived)
 
