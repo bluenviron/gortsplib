@@ -671,9 +671,11 @@ func (c *Client) playRecordStart() {
 		switch *c.effectiveTransport {
 		case TransportUDP:
 			for trackID, cct := range c.tracks {
+				ctrackID := trackID
+
 				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
 					cct.track.ClockRate(), func(pkt rtcp.Packet) {
-						c.WritePacketRTCP(trackID, pkt)
+						c.WritePacketRTCP(ctrackID, pkt)
 					})
 			}
 
@@ -687,9 +689,11 @@ func (c *Client) playRecordStart() {
 
 		case TransportUDPMulticast:
 			for trackID, cct := range c.tracks {
+				ctrackID := trackID
+
 				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
 					cct.track.ClockRate(), func(pkt rtcp.Packet) {
-						c.WritePacketRTCP(trackID, pkt)
+						c.WritePacketRTCP(ctrackID, pkt)
 					})
 			}
 
@@ -709,9 +713,11 @@ func (c *Client) playRecordStart() {
 		switch *c.effectiveTransport {
 		case TransportUDP:
 			for trackID, cct := range c.tracks {
+				ctrackID := trackID
+
 				cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
 					cct.track.ClockRate(), func(pkt rtcp.Packet) {
-						c.WritePacketRTCP(trackID, pkt)
+						c.WritePacketRTCP(ctrackID, pkt)
 					})
 			}
 
@@ -722,9 +728,11 @@ func (c *Client) playRecordStart() {
 
 		case TransportUDPMulticast:
 			for trackID, cct := range c.tracks {
+				ctrackID := trackID
+
 				cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
 					cct.track.ClockRate(), func(pkt rtcp.Packet) {
-						c.WritePacketRTCP(trackID, pkt)
+						c.WritePacketRTCP(ctrackID, pkt)
 					})
 			}
 

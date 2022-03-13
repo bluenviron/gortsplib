@@ -998,9 +998,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.WritePacketRTP(trackID, &rtp.Packet{Header: rtp.Header{Version: 2}})
 				ss.WritePacketRTCP(trackID, &rtcp.ReceiverReport{})
 
+				ctrackID := trackID
+
 				ss.announcedTracks[trackID].rtcpReceiver = rtcpreceiver.New(ss.s.udpReceiverReportPeriod,
 					nil, ss.announcedTracks[trackID].track.ClockRate(), func(pkt rtcp.Packet) {
-						ss.WritePacketRTCP(trackID, pkt)
+						ss.WritePacketRTCP(ctrackID, pkt)
 					})
 
 				ss.s.udpRTPListener.addClient(ss.author.ip(), track.udpRTPPort, ss, trackID, true)
