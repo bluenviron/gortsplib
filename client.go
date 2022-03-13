@@ -709,37 +709,19 @@ func (c *Client) playRecordStart() {
 			v := time.Now().Unix()
 			c.tcpLastFrameTime = &v
 		}
-	} else {
-		switch *c.effectiveTransport {
-		case TransportUDP:
-			for trackID, cct := range c.tracks {
-				ctrackID := trackID
+	} else if *c.effectiveTransport == TransportUDP {
+		for trackID, cct := range c.tracks {
+			ctrackID := trackID
 
-				cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
-					cct.track.ClockRate(), func(pkt rtcp.Packet) {
-						c.WritePacketRTCP(ctrackID, pkt)
-					})
-			}
+			cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
+				cct.track.ClockRate(), func(pkt rtcp.Packet) {
+					c.WritePacketRTCP(ctrackID, pkt)
+				})
+		}
 
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.start(true)
-				cct.udpRTCPListener.start(true)
-			}
-
-		case TransportUDPMulticast:
-			for trackID, cct := range c.tracks {
-				ctrackID := trackID
-
-				cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
-					cct.track.ClockRate(), func(pkt rtcp.Packet) {
-						c.WritePacketRTCP(ctrackID, pkt)
-					})
-			}
-
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.start(true)
-				cct.udpRTCPListener.start(true)
-			}
+		for _, cct := range c.tracks {
+			cct.udpRTPListener.start(true)
+			cct.udpRTCPListener.start(true)
 		}
 	}
 
