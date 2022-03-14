@@ -48,6 +48,9 @@ type Transport struct {
 	// (optional) delivery method of the stream
 	Delivery *TransportDelivery
 
+	// (optional) Source IP
+	Source *net.IP
+
 	// (optional) destination IP
 	Destination *net.IP
 
@@ -139,6 +142,13 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		case "multicast":
 			v := TransportDeliveryMulticast
 			h.Delivery = &v
+
+		case "source":
+			ip := net.ParseIP(v)
+			if ip == nil {
+				return fmt.Errorf("invalid source (%v)", v)
+			}
+			h.Source = &ip
 
 		case "destination":
 			ip := net.ParseIP(v)
@@ -262,6 +272,10 @@ func (h Transport) Write() base.HeaderValue {
 		} else {
 			rets = append(rets, "multicast")
 		}
+	}
+
+	if h.Source != nil {
+		rets = append(rets, "source="+h.Source.String())
 	}
 
 	if h.Destination != nil {

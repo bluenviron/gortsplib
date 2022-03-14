@@ -1494,7 +1494,11 @@ func (c *Client) doSetup(
 
 	switch transport {
 	case TransportUDP:
-		rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		if thRes.Source != nil {
+			rtpListener.remoteReadIP = *thRes.Source
+		} else {
+			rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		}
 		rtpListener.remoteZone = c.conn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtpListener.remotePort = thRes.ServerPorts[0]
@@ -1509,7 +1513,11 @@ func (c *Client) doSetup(
 			Port: rtpListener.remotePort,
 		}
 
-		rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		if thRes.Source != nil {
+			rtcpListener.remoteReadIP = *thRes.Source
+		} else {
+			rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		}
 		rtcpListener.remoteZone = c.conn.RemoteAddr().(*net.TCPAddr).Zone
 		if thRes.ServerPorts != nil {
 			rtcpListener.remotePort = thRes.ServerPorts[1]
