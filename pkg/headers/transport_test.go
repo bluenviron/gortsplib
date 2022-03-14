@@ -100,8 +100,8 @@ var casesTransport = []struct {
 	},
 	{
 		"udp record response with receive",
-		base.HeaderValue{`RTP/AVP/UDP;unicast;mode=receive;source=localhost;client_port=14186-14187;server_port=5000-5001`},
-		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=5000-5001;mode=record`},
+		base.HeaderValue{`RTP/AVP/UDP;unicast;mode=receive;source=127.0.0.1;client_port=14186-14187;server_port=5000-5001`},
+		base.HeaderValue{`RTP/AVP;unicast;source=127.0.0.1;client_port=14186-14187;server_port=5000-5001;mode=record`},
 		Transport{
 			Protocol: TransportProtocolUDP,
 			Delivery: func() *TransportDelivery {
@@ -114,6 +114,10 @@ var casesTransport = []struct {
 			}(),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{5000, 5001},
+			Source: func() *net.IP {
+				v := net.ParseIP("127.0.0.1")
+				return &v
+			}(),
 		},
 	},
 	{
