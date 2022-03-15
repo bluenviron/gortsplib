@@ -18,13 +18,22 @@ type Track interface {
 	GetControl() string
 	// SetControl sets the track control.
 	SetControl(string)
-	// MediaDescription returns the media description in SDP format.
+	// MediaDescription returns the track media description in SDP format.
 	MediaDescription() *psdp.MediaDescription
 	clone() Track
 	url(*base.URL) (*base.URL, error)
 }
 
 func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
+	control := func() string {
+		for _, attr := range md.Attributes {
+			if attr.Key == "control" {
+				return attr.Value
+			}
+		}
+		return ""
+	}()
+
 	rtpmapPart1, payloadType := func() (string, uint8) {
 		rtpmap, ok := md.Attribute("rtpmap")
 		if !ok {
@@ -49,35 +58,40 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 	switch {
 	case md.MediaName.Media == "video":
 		if rtpmapPart1 == "H264/90000" {
-			return newTrackH264FromMediaDescription(payloadType, md)
+			return newTrackH264FromMediaDescription(control, payloadType, md)
 		}
 
 	case md.MediaName.Media == "audio":
 		switch {
 		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "0":
-			return newTrackPCMUFromMediaDescription(rtpmapPart1, md)
+			return newTrackPCMUFromMediaDescription(control, rtpmapPart1, md)
 
 		case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
-			return newTrackAACFromMediaDescription(payloadType, md)
+			return newTrackAACFromMediaDescription(control, payloadType, md)
 
 		case strings.HasPrefix(rtpmapPart1, "opus/"):
-			return newTrackOpusFromMediaDescription(payloadType, rtpmapPart1, md)
+			return newTrackOpusFromMediaDescription(control, payloadType, rtpmapPart1, md)
 		}
 	}
 
-	return newTrackGenericFromMediaDescription(md)
+	return newTrackGenericFromMediaDescription(control, md)
 }
 
-func trackFindControl(md *psdp.MediaDescription) string {
-	for _, attr := range md.Attributes {
-		if attr.Key == "control" {
-			return attr.Value
-		}
-	}
-	return ""
+type trackBase struct {
+	control string
 }
 
-func trackURL(t Track, contentBase *base.URL) (*base.URL, error) {
+// GetControl gets the track control.
+func (t *trackBase) GetControl() string {
+	return t.control
+}
+
+// SetControl sets the track control.
+func (t *trackBase) SetControl(c string) {
+	t.control = c
+}
+
+func (t *trackBase) url(contentBase *base.URL) (*base.URL, error) {
 	if contentBase == nil {
 		return nil, fmt.Errorf("Content-Base header not provided")
 	}

@@ -9,8 +9,6 @@ import (
 	"sync"
 
 	psdp "github.com/pion/sdp/v3"
-
-	"github.com/aler9/gortsplib/pkg/base"
 )
 
 func trackH264GetSPSPPS(md *psdp.MediaDescription) ([]byte, []byte, error) {
@@ -61,7 +59,7 @@ func trackH264GetSPSPPS(md *psdp.MediaDescription) ([]byte, []byte, error) {
 
 // TrackH264 is a H264 track.
 type TrackH264 struct {
-	control     string
+	trackBase
 	payloadType uint8
 	sps         []byte
 	pps         []byte
@@ -80,12 +78,13 @@ func NewTrackH264(payloadType uint8, sps []byte, pps []byte, extradata []byte) (
 }
 
 func newTrackH264FromMediaDescription(
+	control string,
 	payloadType uint8,
 	md *psdp.MediaDescription) (*TrackH264, error) {
-	control := trackFindControl(md)
-
 	t := &TrackH264{
-		control:     control,
+		trackBase: trackBase{
+			control: control,
+		},
 		payloadType: payloadType,
 	}
 
@@ -105,26 +104,12 @@ func (t *TrackH264) ClockRate() int {
 
 func (t *TrackH264) clone() Track {
 	return &TrackH264{
-		control:     t.control,
+		trackBase:   t.trackBase,
 		payloadType: t.payloadType,
 		sps:         t.sps,
 		pps:         t.pps,
 		extradata:   t.extradata,
 	}
-}
-
-// GetControl gets the track control.
-func (t *TrackH264) GetControl() string {
-	return t.control
-}
-
-// SetControl sets the track control.
-func (t *TrackH264) SetControl(c string) {
-	t.control = c
-}
-
-func (t *TrackH264) url(contentBase *base.URL) (*base.URL, error) {
-	return trackURL(t, contentBase)
 }
 
 // SPS returns the track SPS.
@@ -160,7 +145,7 @@ func (t *TrackH264) SetPPS(v []byte) {
 	t.pps = v
 }
 
-// MediaDescription returns the media description in SDP format.
+// MediaDescription returns the track media description in SDP format.
 func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()

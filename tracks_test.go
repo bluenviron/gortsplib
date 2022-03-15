@@ -71,13 +71,17 @@ func TestTracksReadSkipGenericTracksWithoutClockRate(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, Tracks{
 		&TrackH264{
-			control:     "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
+			trackBase: trackBase{
+				control: "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
+			},
 			payloadType: 97,
 			sps:         []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
 			pps:         []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
 		},
 		&TrackPCMU{
-			control: "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
+			trackBase: trackBase{
+				control: "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
+			},
 		},
 	}, tracks)
 }

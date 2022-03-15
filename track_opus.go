@@ -6,13 +6,11 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
-
-	"github.com/aler9/gortsplib/pkg/base"
 )
 
 // TrackOpus is a Opus track.
 type TrackOpus struct {
-	control      string
+	trackBase
 	payloadType  uint8
 	sampleRate   int
 	channelCount int
@@ -28,11 +26,10 @@ func NewTrackOpus(payloadType uint8, sampleRate int, channelCount int) (*TrackOp
 }
 
 func newTrackOpusFromMediaDescription(
+	control string,
 	payloadType uint8,
 	rtpmapPart1 string,
 	md *psdp.MediaDescription) (*TrackOpus, error) {
-	control := trackFindControl(md)
-
 	tmp := strings.SplitN(rtpmapPart1, "/", 3)
 	if len(tmp) != 3 {
 		return nil, fmt.Errorf("invalid rtpmap (%v)", rtpmapPart1)
@@ -49,7 +46,9 @@ func newTrackOpusFromMediaDescription(
 	}
 
 	return &TrackOpus{
-		control:      control,
+		trackBase: trackBase{
+			control: control,
+		},
 		payloadType:  payloadType,
 		sampleRate:   int(sampleRate),
 		channelCount: int(channelCount),
@@ -63,25 +62,11 @@ func (t *TrackOpus) ClockRate() int {
 
 func (t *TrackOpus) clone() Track {
 	return &TrackOpus{
-		control:      t.control,
+		trackBase:    t.trackBase,
 		payloadType:  t.payloadType,
 		sampleRate:   t.sampleRate,
 		channelCount: t.channelCount,
 	}
-}
-
-// GetControl returns the track control.
-func (t *TrackOpus) GetControl() string {
-	return t.control
-}
-
-// SetControl sets the track control.
-func (t *TrackOpus) SetControl(c string) {
-	t.control = c
-}
-
-func (t *TrackOpus) url(contentBase *base.URL) (*base.URL, error) {
-	return trackURL(t, contentBase)
 }
 
 // ChannelCount returns the channel count.
@@ -89,7 +74,7 @@ func (t *TrackOpus) ChannelCount() int {
 	return t.channelCount
 }
 
-// MediaDescription returns the media description in SDP format.
+// MediaDescription returns the track media description in SDP format.
 func (t *TrackOpus) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 

@@ -5,13 +5,11 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
-
-	"github.com/aler9/gortsplib/pkg/base"
 )
 
 // TrackPCMU is a PCMU track.
 type TrackPCMU struct {
-	control string
+	trackBase
 }
 
 // NewTrackPCMU allocates a TrackPCMU.
@@ -19,18 +17,20 @@ func NewTrackPCMU() *TrackPCMU {
 	return &TrackPCMU{}
 }
 
-func newTrackPCMUFromMediaDescription(rtpmapPart1 string,
+func newTrackPCMUFromMediaDescription(
+	control string,
+	rtpmapPart1 string,
 	md *psdp.MediaDescription) (*TrackPCMU, error,
 ) {
-	control := trackFindControl(md)
-
 	tmp := strings.Split(rtpmapPart1, "/")
 	if len(tmp) >= 3 && tmp[2] != "1" {
 		return nil, fmt.Errorf("PCMU tracks must have only one channel")
 	}
 
 	return &TrackPCMU{
-		control: control,
+		trackBase: trackBase{
+			control: control,
+		},
 	}, nil
 }
 
@@ -40,24 +40,12 @@ func (t *TrackPCMU) ClockRate() int {
 }
 
 func (t *TrackPCMU) clone() Track {
-	return &TrackPCMU{}
+	return &TrackPCMU{
+		trackBase: t.trackBase,
+	}
 }
 
-// GetControl returns the track control.
-func (t *TrackPCMU) GetControl() string {
-	return t.control
-}
-
-// SetControl sets the track control.
-func (t *TrackPCMU) SetControl(c string) {
-	t.control = c
-}
-
-func (t *TrackPCMU) url(contentBase *base.URL) (*base.URL, error) {
-	return trackURL(t, contentBase)
-}
-
-// MediaDescription returns the media description in SDP format.
+// MediaDescription returns the track media description in SDP format.
 func (t *TrackPCMU) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
