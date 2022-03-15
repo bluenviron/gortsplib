@@ -720,8 +720,8 @@ func (c *Client) playRecordStart() {
 		}
 
 		for _, cct := range c.tracks {
-			cct.udpRTPListener.start(true)
-			cct.udpRTCPListener.start(true)
+			cct.udpRTPListener.start(false)
+			cct.udpRTCPListener.start(false)
 		}
 	}
 
