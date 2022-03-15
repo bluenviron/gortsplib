@@ -9,9 +9,9 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/Opus packets with Gstreamer
+// 1. generate RTP/Opus packets with GStreamer
 // 2. connect to a RTSP server, announce an Opus track
-// 3. route the packets from Gstreamer to the server
+// 3. route the packets from GStreamer to the server
 
 func main() {
 	// open a listener to receive RTP/Opus packets
@@ -21,7 +21,7 @@ func main() {
 	}
 	defer pc.Close()
 
-	log.Println("Waiting for a RTP/Opus stream on UDP port 9000 - you can send one with Gstreamer:\n" +
+	log.Println("Waiting for a RTP/Opus stream on UDP port 9000 - you can send one with GStreamer:\n" +
 		"gst-launch-1.0 audiotestsrc freq=300 ! audioconvert ! audioresample ! audio/x-raw,rate=48000" +
 		" ! opusenc" +
 		" ! rtpopuspay ! udpsink host=127.0.0.1 port=9000")

@@ -10,9 +10,9 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/H264 packets with Gstreamer
+// 1. generate RTP/H264 packets with GStreamer
 // 2. connect to a RTSP server, announce an H264 track
-// 3. route the packets from Gstreamer to the server
+// 3. route the packets from GStreamer to the server
 
 func main() {
 	// open a listener to receive RTP/H264 packets
@@ -22,7 +22,7 @@ func main() {
 	}
 	defer pc.Close()
 
-	log.Println("Waiting for a RTP/H264 stream on UDP port 9000 - you can send one with Gstreamer:\n" +
+	log.Println("Waiting for a RTP/H264 stream on UDP port 9000 - you can send one with GStreamer:\n" +
 		"gst-launch-1.0 videotestsrc ! video/x-raw,width=1920,height=1080" +
 		" ! x264enc speed-preset=veryfast tune=zerolatency bitrate=600000" +
 		" ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
