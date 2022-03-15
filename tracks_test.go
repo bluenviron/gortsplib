@@ -76,12 +76,8 @@ func TestTracksReadSkipGenericTracksWithoutClockRate(t *testing.T) {
 			sps:         []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
 			pps:         []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
 		},
-		&TrackGeneric{
-			control:   "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
-			clockRate: 8000,
-			media:     "audio",
-			formats:   []string{"0"},
-			rtpmap:    "0 PCMU/8000",
+		&TrackPCMU{
+			control: "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
 		},
 	}, tracks)
 }

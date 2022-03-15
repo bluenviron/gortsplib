@@ -23,8 +23,7 @@ func main() {
 
 	log.Println("Waiting for a RTP/AAC stream on UDP port 9000 - you can send one with GStreamer:\n" +
 		"gst-launch-1.0 audiotestsrc freq=300 ! audioconvert ! audioresample ! audio/x-raw,rate=48000" +
-		" ! avenc_aac bitrate=128000" +
-		" ! rtpmp4gpay ! udpsink host=127.0.0.1 port=9000")
+		" ! avenc_aac bitrate=128000 ! rtpmp4gpay ! udpsink host=127.0.0.1 port=9000")
 
 	// wait for first packet
 	buf := make([]byte, 2048)

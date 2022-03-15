@@ -25,30 +25,43 @@ type Track interface {
 }
 
 func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
-	if rtpmap, ok := md.Attribute("rtpmap"); ok {
+	rtpmapPart1, payloadType := func() (string, uint8) {
+		rtpmap, ok := md.Attribute("rtpmap")
+		if !ok {
+			return "", 0
+		}
 		rtpmap = strings.TrimSpace(rtpmap)
 
-		if rtpmapParts := strings.Split(rtpmap, " "); len(rtpmapParts) == 2 {
-			tmp, err := strconv.ParseInt(rtpmapParts[0], 10, 64)
-			if err == nil {
-				payloadType := uint8(tmp)
+		rtpmapParts := strings.Split(rtpmap, " ")
+		if len(rtpmapParts) != 2 {
+			return "", 0
+		}
 
-				switch {
-				case md.MediaName.Media == "video":
-					if rtpmapParts[1] == "H264/90000" {
-						return newTrackH264FromMediaDescription(payloadType, md)
-					}
+		tmp, err := strconv.ParseInt(rtpmapParts[0], 10, 64)
+		if err != nil {
+			return "", 0
+		}
+		payloadType := uint8(tmp)
 
-				case md.MediaName.Media == "audio":
-					switch {
-					case strings.HasPrefix(strings.ToLower(rtpmapParts[1]), "mpeg4-generic/"):
-						return newTrackAACFromMediaDescription(payloadType, md)
+		return rtpmapParts[1], payloadType
+	}()
 
-					case strings.HasPrefix(rtpmapParts[1], "opus/"):
-						return newTrackOpusFromMediaDescription(payloadType, rtpmapParts[1], md)
-					}
-				}
-			}
+	switch {
+	case md.MediaName.Media == "video":
+		if rtpmapPart1 == "H264/90000" {
+			return newTrackH264FromMediaDescription(payloadType, md)
+		}
+
+	case md.MediaName.Media == "audio":
+		switch {
+		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "0":
+			return newTrackPCMUFromMediaDescription(rtpmapPart1, md)
+
+		case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
+			return newTrackAACFromMediaDescription(payloadType, md)
+
+		case strings.HasPrefix(rtpmapPart1, "opus/"):
+			return newTrackOpusFromMediaDescription(payloadType, rtpmapPart1, md)
 		}
 	}
 

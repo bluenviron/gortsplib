@@ -32,6 +32,7 @@ func newTrackOpusFromMediaDescription(
 	rtpmapPart1 string,
 	md *psdp.MediaDescription) (*TrackOpus, error) {
 	control := trackFindControl(md)
+
 	tmp := strings.SplitN(rtpmapPart1, "/", 3)
 	if len(tmp) != 3 {
 		return nil, fmt.Errorf("invalid rtpmap (%v)", rtpmapPart1)
