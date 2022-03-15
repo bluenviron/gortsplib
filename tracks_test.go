@@ -35,8 +35,53 @@ func TestTracksReadErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := ReadTracks(ca.sdp)
+			_, err := ReadTracks(ca.sdp, false)
 			require.EqualError(t, err, ca.err)
 		})
 	}
+}
+
+func TestTracksReadSkipGenericTracksWithoutClockRate(t *testing.T) {
+	sdp := []byte("v=0\r\n" +
+		"o=- 0 0 IN IP4 10.0.0.131\r\n" +
+		"s=Media Presentation\r\n" +
+		"i=samsung\r\n" +
+		"c=IN IP4 0.0.0.0\r\n" +
+		"b=AS:2632\r\n" +
+		"t=0 0\r\n" +
+		"a=control:rtsp://10.0.100.50/profile5/media.smp\r\n" +
+		"a=range:npt=now-\r\n" +
+		"m=video 42504 RTP/AVP 97\r\n" +
+		"b=AS:2560\r\n" +
+		"a=rtpmap:97 H264/90000\r\n" +
+		"a=control:rtsp://10.0.100.50/profile5/media.smp/trackID=v\r\n" +
+		"a=cliprect:0,0,1080,1920\r\n" +
+		"a=framesize:97 1920-1080\r\n" +
+		"a=framerate:30.0\r\n" +
+		"a=fmtp:97 packetization-mode=1;profile-level-id=640028;sprop-parameter-sets=Z2QAKKy0A8ARPyo=,aO4Bniw=\r\n" +
+		"m=audio 42506 RTP/AVP 0\r\n" +
+		"b=AS:64\r\n" +
+		"a=rtpmap:0 PCMU/8000\r\n" +
+		"a=control:rtsp://10.0.100.50/profile5/media.smp/trackID=a\r\n" +
+		"a=recvonly\r\n" +
+		"m=application 42508 RTP/AVP 107\r\n" +
+		"b=AS:8\r\n")
+
+	tracks, err := ReadTracks(sdp, true)
+	require.NoError(t, err)
+	require.Equal(t, Tracks{
+		&TrackH264{
+			control:     "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
+			payloadType: 97,
+			sps:         []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
+			pps:         []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
+		},
+		&TrackGeneric{
+			control:   "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
+			clockRate: 8000,
+			media:     "audio",
+			formats:   []string{"0"},
+			rtpmap:    "0 PCMU/8000",
+		},
+	}, tracks)
 }

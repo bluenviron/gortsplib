@@ -106,14 +106,6 @@ func (e ErrServerSDPInvalid) Error() string {
 	return fmt.Sprintf("invalid SDP: %v", e.Err)
 }
 
-// ErrServerSDPNoTracksDefined is an error that can be returned by a server.
-type ErrServerSDPNoTracksDefined struct{}
-
-// Error implements the error interface.
-func (e ErrServerSDPNoTracksDefined) Error() string {
-	return "no tracks defined in the SDP"
-}
-
 // ErrServerTransportHeaderInvalid is an error that can be returned by a server.
 type ErrServerTransportHeaderInvalid struct {
 	Err error

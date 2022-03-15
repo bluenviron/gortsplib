@@ -501,17 +501,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerContentTypeUnsupported{CT: ct}
 		}
 
-		tracks, err := ReadTracks(req.Body)
+		tracks, err := ReadTracks(req.Body, false)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerSDPInvalid{Err: err}
-		}
-
-		if len(tracks) == 0 {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerSDPNoTracksDefined{}
 		}
 
 		for _, track := range tracks {

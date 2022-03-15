@@ -95,36 +95,6 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 			"invalid SDP: invalid line: (\x01\x02\x03\x04)",
 		},
 		{
-			"no tracks",
-			base.Request{
-				Method: base.Announce,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-				Header: base.Header{
-					"CSeq":         base.HeaderValue{"1"},
-					"Content-Type": base.HeaderValue{"application/sdp"},
-				},
-				Body: func() []byte {
-					sout := &psdp.SessionDescription{
-						SessionName: psdp.SessionName("Stream"),
-						Origin: psdp.Origin{
-							Username:       "-",
-							NetworkType:    "IN",
-							AddressType:    "IP4",
-							UnicastAddress: "127.0.0.1",
-						},
-						TimeDescriptions: []psdp.TimeDescription{
-							{Timing: psdp.Timing{0, 0}}, //nolint:govet
-						},
-						MediaDescriptions: []*psdp.MediaDescription{},
-					}
-
-					byts, _ := sout.Marshal()
-					return byts
-				}(),
-			},
-			"no tracks defined in the SDP",
-		},
-		{
 			"invalid URL 1",
 			invalidURLAnnounceReq(t, "rtsp://  aaaaa"),
 			"unable to generate track URL",

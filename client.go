@@ -1184,7 +1184,7 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 		return nil, nil, nil, err
 	}
 
-	tracks, err := ReadTracks(res.Body)
+	tracks, err := ReadTracks(res.Body, true)
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -699,7 +699,7 @@ func TestTrackURL(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			tracks, err := ReadTracks(ca.sdp)
+			tracks, err := ReadTracks(ca.sdp, false)
 			require.NoError(t, err)
 			ur, err := tracks[0].url(ca.baseURL)
 			require.NoError(t, err)
