@@ -146,7 +146,14 @@ func (h *Transport) Read(v base.HeaderValue) error {
 		case "source":
 			ip := net.ParseIP(v)
 			if ip == nil {
-				return fmt.Errorf("invalid source (%v)", v)
+				addrs, err := net.LookupHost(v)
+				if err != nil {
+					return fmt.Errorf("invalid source (%v)", v)
+				}
+				ip = net.ParseIP(addrs[0])
+				if ip == nil {
+					return fmt.Errorf("invalid source (%v)", v)
+				}
 			}
 			h.Source = &ip
 
