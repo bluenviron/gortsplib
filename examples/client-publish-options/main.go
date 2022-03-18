@@ -63,13 +63,13 @@ func main() {
 	buf := make([]byte, 2048)
 	var pkt rtp.Packet
 	for {
-		// read packets from the source
+		// read RTP packets from the source
 		n, _, err := pc.ReadFrom(buf)
 		if err != nil {
 			panic(err)
 		}
 
-		// marshal RTP packets
+		// parse RTP packets
 		err = pkt.Unmarshal(buf[:n])
 		if err != nil {
 			panic(err)
