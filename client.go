@@ -1494,69 +1494,61 @@ func (c *Client) doSetup(
 
 	switch transport {
 	case TransportUDP:
-		if thRes.Source != nil {
-			rtpListener.remoteReadIP = *thRes.Source
-		} else {
-			rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		}
-		rtpListener.remoteZone = c.conn.RemoteAddr().(*net.TCPAddr).Zone
-		if thRes.ServerPorts != nil {
-			rtpListener.remotePort = thRes.ServerPorts[0]
-		}
 		rtpListener.trackID = trackID
 		rtpListener.isRTP = true
 		cct.udpRTPListener = rtpListener
-
-		rtpListener.remoteWriteAddr = &net.UDPAddr{
-			IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
-			Zone: rtpListener.remoteZone,
-			Port: rtpListener.remotePort,
-		}
-
-		if thRes.Source != nil {
-			rtcpListener.remoteReadIP = *thRes.Source
-		} else {
-			rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		}
-		rtcpListener.remoteZone = c.conn.RemoteAddr().(*net.TCPAddr).Zone
+		rtpListener.remoteReadIP = func() net.IP {
+			if thRes.Source != nil {
+				return *thRes.Source
+			}
+			return c.conn.RemoteAddr().(*net.TCPAddr).IP
+		}()
 		if thRes.ServerPorts != nil {
-			rtcpListener.remotePort = thRes.ServerPorts[1]
+			rtpListener.remoteReadPort = thRes.ServerPorts[0]
+			rtpListener.remoteWriteAddr = &net.UDPAddr{
+				IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
+				Zone: c.conn.RemoteAddr().(*net.TCPAddr).Zone,
+				Port: thRes.ServerPorts[0],
+			}
 		}
+
 		rtcpListener.trackID = trackID
 		rtcpListener.isRTP = false
 		cct.udpRTCPListener = rtcpListener
-
-		rtcpListener.remoteWriteAddr = &net.UDPAddr{
-			IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
-			Zone: rtcpListener.remoteZone,
-			Port: rtcpListener.remotePort,
+		rtcpListener.remoteReadIP = func() net.IP {
+			if thRes.Source != nil {
+				return *thRes.Source
+			}
+			return c.conn.RemoteAddr().(*net.TCPAddr).IP
+		}()
+		if thRes.ServerPorts != nil {
+			rtcpListener.remoteReadPort = thRes.ServerPorts[1]
+			rtcpListener.remoteWriteAddr = &net.UDPAddr{
+				IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
+				Zone: c.conn.RemoteAddr().(*net.TCPAddr).Zone,
+				Port: thRes.ServerPorts[1],
+			}
 		}
 
 	case TransportUDPMulticast:
-		rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		rtpListener.remoteZone = ""
-		rtpListener.remotePort = thRes.Ports[0]
 		rtpListener.trackID = trackID
 		rtpListener.isRTP = true
 		cct.udpRTPListener = rtpListener
-
+		rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteReadPort = thRes.Ports[0]
 		rtpListener.remoteWriteAddr = &net.UDPAddr{
 			IP:   *thRes.Destination,
-			Zone: rtpListener.remoteZone,
-			Port: rtpListener.remotePort,
+			Port: thRes.Ports[0],
 		}
 
-		rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		rtcpListener.remoteZone = ""
-		rtcpListener.remotePort = thRes.Ports[1]
 		rtcpListener.trackID = trackID
 		rtcpListener.isRTP = false
 		cct.udpRTCPListener = rtcpListener
-
+		rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteReadPort = thRes.Ports[1]
 		rtcpListener.remoteWriteAddr = &net.UDPAddr{
 			IP:   *thRes.Destination,
-			Zone: rtcpListener.remoteZone,
-			Port: rtcpListener.remotePort,
+			Port: thRes.Ports[1],
 		}
 
 	case TransportTCP:

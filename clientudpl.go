@@ -27,8 +27,7 @@ type clientUDPListener struct {
 	c               *Client
 	pc              *net.UDPConn
 	remoteReadIP    net.IP
-	remoteZone      string
-	remotePort      int
+	remoteReadPort  int
 	remoteWriteAddr *net.UDPAddr
 	trackID         int
 	isRTP           bool
@@ -165,7 +164,7 @@ func (u *clientUDPListener) runReader() {
 
 		uaddr := addr.(*net.UDPAddr)
 
-		if !u.remoteReadIP.Equal(uaddr.IP) || (!u.c.AnyPortEnable && u.remotePort != uaddr.Port) {
+		if !u.remoteReadIP.Equal(uaddr.IP) || (!u.c.AnyPortEnable && u.remoteReadPort != uaddr.Port) {
 			continue
 		}
 
