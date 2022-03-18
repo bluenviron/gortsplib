@@ -2651,3 +2651,155 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 
 	<-keepaliveOk
 }
+
+func TestClientReadDifferentSource(t *testing.T) {
+	packetRecv := make(chan struct{})
+
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
+
+		req, err := readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
+
+		base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		req, err = readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
+
+		track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
+		require.NoError(t, err)
+
+		tracks := Tracks{track}
+		tracks.setControls()
+
+		base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/test/stream?param=value/"},
+			},
+			Body: tracks.Write(false),
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		req, err = readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/trackID=0"), req.URL)
+
+		var inTH headers.Transport
+		err = inTH.Read(req.Header["Transport"])
+		require.NoError(t, err)
+
+		th := headers.Transport{
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
+				return &v
+			}(),
+			Protocol:    headers.TransportProtocolUDP,
+			ClientPorts: inTH.ClientPorts,
+			ServerPorts: &[2]int{34556, 34557},
+			Source: func() *net.IP {
+				i := net.ParseIP("127.0.1.1")
+				return &i
+			}(),
+		}
+
+		l1, err := net.ListenPacket("udp", "127.0.1.1:34556")
+		require.NoError(t, err)
+		defer l1.Close()
+
+		l2, err := net.ListenPacket("udp", "127.0.1.1:34557")
+		require.NoError(t, err)
+		defer l2.Close()
+
+		base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Write(),
+			},
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		req, err = readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
+		require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
+
+		base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		// server -> client (RTP)
+		time.Sleep(1 * time.Second)
+		l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: th.ClientPorts[0],
+		})
+
+		req, err = readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
+
+		base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+	}()
+
+	c := &Client{
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		Transport: func() *Transport {
+			v := TransportUDP
+			return &v
+		}(),
+	}
+
+	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
+		require.Equal(t, 0, trackID)
+		require.Equal(t, &testRTPPacket, pkt)
+		close(packetRecv)
+	}
+
+	err = c.StartReading("rtsp://localhost:8554/test/stream?param=value")
+	require.NoError(t, err)
+	defer c.Close()
+
+	<-packetRecv
+}
