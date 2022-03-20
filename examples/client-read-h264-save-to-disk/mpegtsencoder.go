@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -27,10 +26,6 @@ type mpegtsEncoder struct {
 
 // newMPEGTSEncoder allocates a mpegtsEncoder.
 func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
-	if sps == nil || pps == nil {
-		return nil, fmt.Errorf("SPS or PPS not provided")
-	}
-
 	f, err := os.Create("mystream.ts")
 	if err != nil {
 		return nil, err
@@ -84,19 +79,30 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 	}
 
 	for _, nalu := range nalus {
-
 		typ := h264.NALUType(nalu[0] & 0x1F)
 		switch typ {
-		case h264.NALUTypeSPS, h264.NALUTypePPS, h264.NALUTypeAccessUnitDelimiter:
-			// remove existing SPS, PPS, AUD
+		case h264.NALUTypeSPS:
+			e.sps = append([]byte(nil), nalu...)
+
+		case h264.NALUTypePPS:
+			e.pps = append([]byte(nil), nalu...)
+
+		case h264.NALUTypeAccessUnitDelimiter, h264.NALUTypeSEI:
 			continue
 
 		case h264.NALUTypeIDR:
 			// add SPS and PPS before every IDR
-			filteredNALUs = append(filteredNALUs, e.sps, e.pps)
+			if e.sps != nil && e.pps != nil {
+				filteredNALUs = append(filteredNALUs, e.sps, e.pps)
+			}
 		}
 
 		filteredNALUs = append(filteredNALUs, nalu)
+	}
+
+	// it's useless to go on if SPS or PPS have not been provided yet
+	if e.sps == nil || e.pps == nil {
+		return nil
 	}
 
 	// encode into Annex-B
