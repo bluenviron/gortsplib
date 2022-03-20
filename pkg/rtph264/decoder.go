@@ -4,13 +4,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
-	"net"
 	"time"
 
 	"github.com/pion/rtp/v2"
 
-	"github.com/aler9/gortsplib/pkg/h264"
 	"github.com/aler9/gortsplib/pkg/rtptimedec"
 )
 
@@ -23,17 +20,6 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 // running for some time.
 var ErrNonStartingPacketAndNoPrevious = errors.New(
 	"decoded a non-starting fragmented packet without any previous starting packet")
-
-// PacketConnReader creates a io.Reader around a net.PacketConn.
-type PacketConnReader struct {
-	net.PacketConn
-}
-
-// Read implements io.Reader.
-func (r PacketConnReader) Read(p []byte) (int, error) {
-	n, _, err := r.PacketConn.ReadFrom(p)
-	return n, err
-}
 
 // Decoder is a RTP/H264 decoder.
 type Decoder struct {
@@ -174,49 +160,4 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	d.naluBuffer = d.naluBuffer[:0]
 
 	return ret, pts, nil
-}
-
-// ReadSPSPPS reads RTP/H264 packets from a reader until SPS and PPS are
-// found, and returns them.
-func (d *Decoder) ReadSPSPPS(r io.Reader) ([]byte, []byte, error) {
-	var sps []byte
-	var pps []byte
-
-	buf := make([]byte, 2048)
-	for {
-		n, err := r.Read(buf)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		var pkt rtp.Packet
-		err = pkt.Unmarshal(buf[:n])
-		if err != nil {
-			return nil, nil, err
-		}
-
-		nalus, _, err := d.Decode(&pkt)
-		if err != nil {
-			if err == ErrMorePacketsNeeded {
-				continue
-			}
-			return nil, nil, err
-		}
-
-		for _, nalu := range nalus {
-			switch naluType(nalu[0] & 0x1F) {
-			case naluType(h264.NALUTypeSPS):
-				sps = append([]byte(nil), nalu...)
-				if sps != nil && pps != nil {
-					return sps, pps, nil
-				}
-
-			case naluType(h264.NALUTypePPS):
-				pps = append([]byte(nil), nalu...)
-				if sps != nil && pps != nil {
-					return sps, pps, nil
-				}
-			}
-		}
-	}
 }

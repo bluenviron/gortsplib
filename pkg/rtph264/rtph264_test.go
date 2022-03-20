@@ -2,7 +2,6 @@ package rtph264
 
 import (
 	"bytes"
-	"io"
 	"testing"
 	"time"
 
@@ -707,92 +706,4 @@ func TestEncodeRandomInitialState(t *testing.T) {
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
 	require.NotEqual(t, nil, e.InitialTimestamp)
-}
-
-type dummyReader struct {
-	byts [][]byte
-	i    int
-}
-
-func (f *dummyReader) Read(p []byte) (int, error) {
-	if f.i >= len(f.byts) {
-		return 0, io.EOF
-	}
-	n := copy(p, f.byts[f.i])
-	f.i++
-	return n, nil
-}
-
-func TestReadSPSPPS(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts [][]byte
-		sps  []byte
-		pps  []byte
-	}{
-		{
-			"sps then pps",
-			[][]byte{
-				{128, 96, 61, 205, 54, 67, 90, 125, 40, 249, 97, 176, 7, 1, 2},
-				{128, 96, 61, 206, 54, 67, 90, 125, 40, 249, 97, 176, 8, 3, 4},
-			},
-			[]byte{0x07, 0x01, 0x02},
-			[]byte{0x08, 0x03, 0x04},
-		},
-		{
-			"pps then sps",
-			[][]byte{
-				{128, 96, 61, 206, 54, 67, 90, 125, 40, 249, 97, 176, 8, 3, 4},
-				{128, 96, 61, 205, 54, 67, 90, 125, 40, 249, 97, 176, 7, 1, 2},
-			},
-			[]byte{0x07, 0x01, 0x02},
-			[]byte{0x08, 0x03, 0x04},
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
-			d.Init()
-
-			sps, pps, err := d.ReadSPSPPS(&dummyReader{byts: ca.byts})
-			require.NoError(t, err)
-			require.Equal(t, ca.sps, sps)
-			require.Equal(t, ca.pps, pps)
-		})
-	}
-}
-
-func TestReadSPSPPSErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts [][]byte
-		err  string
-	}{
-		{
-			"empty",
-			[][]byte{},
-			"EOF",
-		},
-		{
-			"more packets needed, then empty",
-			[][]byte{
-				mergeBytes(
-					[]byte{
-						0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x79, 0xab,
-						0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x85,
-					},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					[]byte{0x00, 0x01},
-				),
-			},
-			"EOF",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
-			d.Init()
-
-			_, _, err := d.ReadSPSPPS(&dummyReader{byts: ca.byts})
-			require.EqualError(t, err, ca.err)
-		})
-	}
 }
