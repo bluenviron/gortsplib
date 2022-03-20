@@ -12,7 +12,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
 // 2. check if there's an H264 track
-// 3. convert H264 into raw frames
+// 3. decode H264 into raw frames
 
 // This example requires the ffmpeg libraries, that can be installed in this way:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config

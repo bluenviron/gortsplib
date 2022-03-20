@@ -10,7 +10,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
 // 2. check if there's a H264 track
-// 3. save the content of the H264 track to a file in MPEG-TS format
+// 3. save the content of the H264 track into a file in MPEG-TS format
 
 func main() {
 	c := gortsplib.Client{}

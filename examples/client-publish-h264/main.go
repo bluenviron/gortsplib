@@ -5,7 +5,6 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/rtph264"
 	"github.com/pion/rtp/v2"
 )
 
@@ -27,17 +26,16 @@ func main() {
 		" ! x264enc speed-preset=veryfast tune=zerolatency bitrate=600000" +
 		" ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
 
-	// get SPS and PPS
-	decoder := &rtph264.Decoder{}
-	decoder.Init()
-	sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc})
+	// wait for first packet
+	buf := make([]byte, 2048)
+	n, _, err := pc.ReadFrom(buf)
 	if err != nil {
 		panic(err)
 	}
 	log.Println("stream connected")
 
 	// create an H264 track
-	track, err := gortsplib.NewTrackH264(96, sps, pps, nil)
+	track, err := gortsplib.NewTrackH264(96, nil, nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -51,23 +49,22 @@ func main() {
 	}
 	defer c.Close()
 
-	buf := make([]byte, 2048)
 	var pkt rtp.Packet
 	for {
-		// read RTP packets from the source
-		n, _, err := pc.ReadFrom(buf)
-		if err != nil {
-			panic(err)
-		}
-
-		// parse RTP packets
+		// parse RTP packet
 		err = pkt.Unmarshal(buf[:n])
 		if err != nil {
 			panic(err)
 		}
 
-		// route RTP packets to the server
+		// route RTP packet to the server
 		err = c.WritePacketRTP(0, &pkt)
+		if err != nil {
+			panic(err)
+		}
+
+		// read another RTP packet from source
+		n, _, err = pc.ReadFrom(buf)
 		if err != nil {
 			panic(err)
 		}
