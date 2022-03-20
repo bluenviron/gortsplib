@@ -307,7 +307,8 @@ var cases = []struct {
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := NewDecoder()
+			d := &Decoder{}
+			d.Init()
 
 			// send an initial packet downstream
 			// in order to compute the right timestamp,
@@ -350,7 +351,8 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
-	d := NewDecoder()
+	d := &Decoder{}
+	d.Init()
 
 	pkt := rtp.Packet{
 		Header: rtp.Header{
@@ -389,6 +391,9 @@ func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
 }
 
 func TestDecodeSTAPAWithPadding(t *testing.T) {
+	d := &Decoder{}
+	d.Init()
+
 	pkt := rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
@@ -405,7 +410,8 @@ func TestDecodeSTAPAWithPadding(t *testing.T) {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
 	}
-	nalus, _, err := NewDecoder().Decode(&pkt)
+
+	nalus, _, err := d.Decode(&pkt)
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{
 		{0xaa, 0xbb},
@@ -654,7 +660,9 @@ func TestDecodeErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			d := NewDecoder()
+			d := &Decoder{}
+			d.Init()
+
 			var lastErr error
 			for _, pkt := range ca.pkts {
 				_, _, lastErr = d.Decode(pkt)
@@ -667,10 +675,22 @@ func TestDecodeErrors(t *testing.T) {
 func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			sequenceNumber := uint16(0x44ed)
-			ssrc := uint32(0x9dbb7812)
-			initialTs := uint32(0x88776655)
-			e := NewEncoder(96, &sequenceNumber, &ssrc, &initialTs)
+			e := &Encoder{
+				PayloadType: 96,
+				SSRC: func() *uint32 {
+					v := uint32(0x9dbb7812)
+					return &v
+				}(),
+				InitialSequenceNumber: func() *uint16 {
+					v := uint16(0x44ed)
+					return &v
+				}(),
+				InitialTimestamp: func() *uint32 {
+					v := uint32(0x88776655)
+					return &v
+				}(),
+			}
+			e.Init()
 
 			pkts, err := e.Encode(ca.nalus, ca.pts)
 			require.NoError(t, err)
@@ -680,7 +700,13 @@ func TestEncode(t *testing.T) {
 }
 
 func TestEncodeRandomInitialState(t *testing.T) {
-	NewEncoder(96, nil, nil, nil)
+	e := &Encoder{
+		PayloadType: 96,
+	}
+	e.Init()
+	require.NotEqual(t, nil, e.SSRC)
+	require.NotEqual(t, nil, e.InitialSequenceNumber)
+	require.NotEqual(t, nil, e.InitialTimestamp)
 }
 
 type dummyReader struct {
@@ -724,7 +750,10 @@ func TestReadSPSPPS(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			sps, pps, err := NewDecoder().ReadSPSPPS(&dummyReader{byts: ca.byts})
+			d := &Decoder{}
+			d.Init()
+
+			sps, pps, err := d.ReadSPSPPS(&dummyReader{byts: ca.byts})
 			require.NoError(t, err)
 			require.Equal(t, ca.sps, sps)
 			require.Equal(t, ca.pps, pps)
@@ -759,7 +788,10 @@ func TestReadSPSPPSErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, _, err := NewDecoder().ReadSPSPPS(&dummyReader{byts: ca.byts})
+			d := &Decoder{}
+			d.Init()
+
+			_, _, err := d.ReadSPSPPS(&dummyReader{byts: ca.byts})
 			require.EqualError(t, err, ca.err)
 		})
 	}

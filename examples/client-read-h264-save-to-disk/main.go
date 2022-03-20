@@ -51,10 +51,11 @@ func main() {
 		panic("H264 track not found")
 	}
 
-	// setup decoder
-	dec := rtph264.NewDecoder()
+	// setup RTP->H264 decoder
+	rtpDec := &rtph264.Decoder{}
+	rtpDec.Init()
 
-	// setup encoder
+	// setup H264->MPEGTS encoder
 	enc, err := newMPEGTSEncoder(sps, pps)
 	if err != nil {
 		panic(err)
@@ -67,7 +68,7 @@ func main() {
 		}
 
 		// decode H264 NALUs from the RTP packet
-		nalus, pts, err := dec.DecodeUntilMarker(pkt)
+		nalus, pts, err := rtpDec.DecodeUntilMarker(pkt)
 		if err != nil {
 			return
 		}

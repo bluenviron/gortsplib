@@ -16,16 +16,17 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 
 // Decoder is a RTP/AAC decoder.
 type Decoder struct {
+	// sample rate of input packets.
+	SampleRate int
+
 	timeDecoder          *rtptimedec.Decoder
 	isDecodingFragmented bool
 	fragmentedBuf        []byte
 }
 
-// NewDecoder allocates a Decoder.
-func NewDecoder(clockRate int) *Decoder {
-	return &Decoder{
-		timeDecoder: rtptimedec.New(clockRate),
-	}
+// Init initializes the decoder
+func (d *Decoder) Init() {
+	d.timeDecoder = rtptimedec.New(d.SampleRate)
 }
 
 // Decode decodes AUs from a RTP/AAC packet.

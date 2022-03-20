@@ -46,11 +46,9 @@ type Decoder struct {
 	naluBuffer [][]byte
 }
 
-// NewDecoder allocates a Decoder.
-func NewDecoder() *Decoder {
-	return &Decoder{
-		timeDecoder: rtptimedec.New(90000),
-	}
+// Init initializes the decoder
+func (d *Decoder) Init() {
+	d.timeDecoder = rtptimedec.New(90000)
 }
 
 // Decode decodes NALUs from a RTP/H264 packet.

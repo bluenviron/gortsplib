@@ -53,7 +53,8 @@ func main() {
 	}
 
 	// setup RTP->H264 decoder
-	rtpDec := rtph264.NewDecoder()
+	rtpDec := &rtph264.Decoder{}
+	rtpDec.Init()
 
 	// setup H264->raw frames decoder
 	h264dec, err := newH264Decoder()

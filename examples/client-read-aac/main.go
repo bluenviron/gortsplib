@@ -52,7 +52,10 @@ func main() {
 	}
 
 	// setup decoder
-	dec := rtpaac.NewDecoder(clockRate)
+	dec := &rtpaac.Decoder{
+		SampleRate: clockRate,
+	}
+	dec.Init()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {

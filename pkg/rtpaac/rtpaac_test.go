@@ -279,7 +279,10 @@ var cases = []struct {
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := NewDecoder(48000)
+			d := &Decoder{
+				SampleRate: 48000,
+			}
+			d.Init()
 
 			// send an initial packet downstream
 			// in order to compute the right timestamp,
@@ -562,7 +565,11 @@ func TestDecodeErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			d := NewDecoder(48000)
+			d := &Decoder{
+				SampleRate: 48000,
+			}
+			d.Init()
+
 			var lastErr error
 			for _, pkt := range ca.pkts {
 				_, _, lastErr = d.Decode(pkt)
@@ -575,10 +582,23 @@ func TestDecodeErrors(t *testing.T) {
 func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			sequenceNumber := uint16(0x44ed)
-			ssrc := uint32(0x9dbb7812)
-			initialTs := uint32(0x88776655)
-			e := NewEncoder(96, 48000, &sequenceNumber, &ssrc, &initialTs)
+			e := &Encoder{
+				PayloadType: 96,
+				SampleRate:  48000,
+				SSRC: func() *uint32 {
+					v := uint32(0x9dbb7812)
+					return &v
+				}(),
+				InitialSequenceNumber: func() *uint16 {
+					v := uint16(0x44ed)
+					return &v
+				}(),
+				InitialTimestamp: func() *uint32 {
+					v := uint32(0x88776655)
+					return &v
+				}(),
+			}
+			e.Init()
 
 			pkts, err := e.Encode(ca.aus, ca.pts)
 			require.NoError(t, err)
@@ -588,5 +608,12 @@ func TestEncode(t *testing.T) {
 }
 
 func TestEncodeRandomInitialState(t *testing.T) {
-	NewEncoder(96, 48000, nil, nil, nil)
+	e := &Encoder{
+		PayloadType: 96,
+		SampleRate:  48000,
+	}
+	e.Init()
+	require.NotEqual(t, nil, e.SSRC)
+	require.NotEqual(t, nil, e.InitialSequenceNumber)
+	require.NotEqual(t, nil, e.InitialTimestamp)
 }

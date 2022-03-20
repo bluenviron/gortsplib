@@ -22,42 +22,41 @@ func randUint32() uint32 {
 
 // Encoder is a RTP/H264 encoder.
 type Encoder struct {
-	payloadType    uint8
+	// payload type of packets.
+	PayloadType uint8
+
+	// SSRC of packets (optional).
+	SSRC *uint32
+
+	// initial sequence number of packets (optional).
+	InitialSequenceNumber *uint16
+
+	// initial timestamp of packets (optional).
+	InitialTimestamp *uint32
+
 	sequenceNumber uint16
-	ssrc           uint32
-	initialTs      uint32
 }
 
-// NewEncoder allocates an Encoder.
-func NewEncoder(payloadType uint8,
-	sequenceNumber *uint16,
-	ssrc *uint32,
-	initialTs *uint32) *Encoder {
-	return &Encoder{
-		payloadType: payloadType,
-		sequenceNumber: func() uint16 {
-			if sequenceNumber != nil {
-				return *sequenceNumber
-			}
-			return uint16(randUint32())
-		}(),
-		ssrc: func() uint32 {
-			if ssrc != nil {
-				return *ssrc
-			}
-			return randUint32()
-		}(),
-		initialTs: func() uint32 {
-			if initialTs != nil {
-				return *initialTs
-			}
-			return randUint32()
-		}(),
+// Init initializes the encoder.
+func (e *Encoder) Init() {
+	if e.SSRC == nil {
+		v := randUint32()
+		e.SSRC = &v
 	}
+	if e.InitialSequenceNumber == nil {
+		v := uint16(randUint32())
+		e.InitialSequenceNumber = &v
+	}
+	if e.InitialTimestamp == nil {
+		v := randUint32()
+		e.InitialTimestamp = &v
+	}
+
+	e.sequenceNumber = *e.InitialSequenceNumber
 }
 
 func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
-	return e.initialTs + uint32(ts.Seconds()*rtpClockRate)
+	return *e.InitialTimestamp + uint32(ts.Seconds()*rtpClockRate)
 }
 
 // Encode encodes NALUs into RTP/H264 packets.
@@ -114,10 +113,10 @@ func (e *Encoder) writeSingle(nalu []byte, pts time.Duration, marker bool) ([]*r
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
-			PayloadType:    e.payloadType,
+			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
 			Timestamp:      e.encodeTimestamp(pts),
-			SSRC:           e.ssrc,
+			SSRC:           *e.SSRC,
 			Marker:         marker,
 		},
 		Payload: nalu,
@@ -168,10 +167,10 @@ func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) (
 		ret[i] = &rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
-				PayloadType:    e.payloadType,
+				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
 				Timestamp:      encPTS,
-				SSRC:           e.ssrc,
+				SSRC:           *e.SSRC,
 				Marker:         (i == (packetCount-1) && marker),
 			},
 			Payload: data,
@@ -220,10 +219,10 @@ func (e *Encoder) writeAggregated(nalus [][]byte, pts time.Duration, marker bool
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
-			PayloadType:    e.payloadType,
+			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
 			Timestamp:      e.encodeTimestamp(pts),
-			SSRC:           e.ssrc,
+			SSRC:           *e.SSRC,
 			Marker:         marker,
 		},
 		Payload: payload,

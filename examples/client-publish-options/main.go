@@ -29,7 +29,8 @@ func main() {
 		" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
 
 	// get SPS and PPS
-	decoder := rtph264.NewDecoder()
+	decoder := &rtph264.Decoder{}
+	decoder.Init()
 	sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc})
 	if err != nil {
 		panic(err)
