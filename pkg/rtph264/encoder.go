@@ -9,9 +9,8 @@ import (
 )
 
 const (
-	rtpVersion        = 0x02
-	rtpPayloadMaxSize = 1460  // 1500 (mtu) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
-	rtpClockRate      = 90000 // h264 always uses 90khz
+	rtpVersion   = 0x02
+	rtpClockRate = 90000 // h264 always uses 90khz
 )
 
 func randUint32() uint32 {
@@ -34,6 +33,9 @@ type Encoder struct {
 	// initial timestamp of packets (optional).
 	InitialTimestamp *uint32
 
+	// maximum size of packet payloads (optional).
+	PayloadMaxSize int
+
 	sequenceNumber uint16
 }
 
@@ -51,6 +53,9 @@ func (e *Encoder) Init() {
 		v := randUint32()
 		e.InitialTimestamp = &v
 	}
+	if e.PayloadMaxSize == 0 {
+		e.PayloadMaxSize = 1460 // 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
+	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
 }
@@ -66,7 +71,7 @@ func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([]*rtp.Packet, erro
 
 	// split NALUs into batches
 	for _, nalu := range nalus {
-		if e.lenAggregated(batch, nalu) <= rtpPayloadMaxSize {
+		if e.lenAggregated(batch, nalu) <= e.PayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, nalu)
 		} else {
@@ -98,7 +103,7 @@ func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([]*rtp.Packet, erro
 func (e *Encoder) writeBatch(nalus [][]byte, pts time.Duration, marker bool) ([]*rtp.Packet, error) {
 	if len(nalus) == 1 {
 		// the NALU fits into a single RTP packet
-		if len(nalus[0]) < rtpPayloadMaxSize {
+		if len(nalus[0]) < e.PayloadMaxSize {
 			return e.writeSingle(nalus[0], pts, marker)
 		}
 
@@ -130,8 +135,8 @@ func (e *Encoder) writeSingle(nalu []byte, pts time.Duration, marker bool) ([]*r
 func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) ([]*rtp.Packet, error) {
 	// use only FU-A, not FU-B, since we always use non-interleaved mode
 	// (packetization-mode=1)
-	packetCount := (len(nalu) - 1) / (rtpPayloadMaxSize - 2)
-	lastPacketSize := (len(nalu) - 1) % (rtpPayloadMaxSize - 2)
+	packetCount := (len(nalu) - 1) / (e.PayloadMaxSize - 2)
+	lastPacketSize := (len(nalu) - 1) % (e.PayloadMaxSize - 2)
 	if lastPacketSize > 0 {
 		packetCount++
 	}
@@ -151,7 +156,7 @@ func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) (
 			start = 1
 		}
 		end := uint8(0)
-		le := rtpPayloadMaxSize - 2
+		le := e.PayloadMaxSize - 2
 		if i == (packetCount - 1) {
 			end = 1
 			le = lastPacketSize

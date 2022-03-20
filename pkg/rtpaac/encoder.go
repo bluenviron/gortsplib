@@ -9,8 +9,7 @@ import (
 )
 
 const (
-	rtpVersion        = 0x02
-	rtpPayloadMaxSize = 1460 // 1500 (mtu) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
+	rtpVersion = 0x02
 )
 
 func randUint32() uint32 {
@@ -36,6 +35,9 @@ type Encoder struct {
 	// initial timestamp of packets (optional).
 	InitialTimestamp *uint32
 
+	// maximum size of packet payloads (optional).
+	PayloadMaxSize int
+
 	sequenceNumber uint16
 }
 
@@ -52,6 +54,9 @@ func (e *Encoder) Init() {
 	if e.InitialTimestamp == nil {
 		v := randUint32()
 		e.InitialTimestamp = &v
+	}
+	if e.PayloadMaxSize == 0 {
+		e.PayloadMaxSize = 1460 // 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
@@ -70,7 +75,7 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, e
 
 	// split AUs into batches
 	for _, au := range aus {
-		if e.lenAggregated(batch, au) <= rtpPayloadMaxSize {
+		if e.lenAggregated(batch, au) <= e.PayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, au)
 		} else {
@@ -102,7 +107,7 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, e
 func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, error) {
 	if len(aus) == 1 {
 		// the AU fits into a single RTP packet
-		if len(aus[0]) < rtpPayloadMaxSize {
+		if len(aus[0]) < e.PayloadMaxSize {
 			return e.writeAggregated(aus, firstPTS)
 		}
 
@@ -114,8 +119,8 @@ func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packe
 }
 
 func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
-	packetCount := len(au) / (rtpPayloadMaxSize - 4)
-	lastPacketSize := len(au) % (rtpPayloadMaxSize - 4)
+	packetCount := len(au) / (e.PayloadMaxSize - 4)
+	lastPacketSize := len(au) % (e.PayloadMaxSize - 4)
 	if lastPacketSize > 0 {
 		packetCount++
 	}
@@ -124,7 +129,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 	encPTS := e.encodeTimestamp(pts)
 
 	for i := range ret {
-		le := rtpPayloadMaxSize - 4
+		le := e.PayloadMaxSize - 4
 		if i == (packetCount - 1) {
 			le = lastPacketSize
 		}
