@@ -186,7 +186,7 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 	pkt.Header.Padding = false
 	pkt.PaddingSize = 0
 
-	u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTP(now, pkt)
+	u.c.rtcpReceiver.processPacketRTP(now, u.trackID, pkt)
 	u.c.OnPacketRTP(u.trackID, pkt)
 }
 
@@ -197,7 +197,7 @@ func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 	}
 
 	for _, pkt := range packets {
-		u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
+		u.c.rtcpReceiver.processPacketRTCP(now, u.trackID, pkt)
 		u.c.OnPacketRTCP(u.trackID, pkt)
 	}
 }

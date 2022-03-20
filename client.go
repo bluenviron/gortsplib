@@ -30,8 +30,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
-	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
-	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
 const (
@@ -58,8 +56,6 @@ type clientTrack struct {
 	udpRTPListener  *clientUDPListener
 	udpRTCPListener *clientUDPListener
 	tcpChannel      int
-	rtcpReceiver    *rtcpreceiver.RTCPReceiver
-	rtcpSender      *rtcpsender.RTCPSender
 }
 
 func (s clientState) String() string {
@@ -225,6 +221,8 @@ type Client struct {
 	closeError         error
 	writerRunning      bool
 	writeBuffer        *ringbuffer.RingBuffer
+	rtcpReceiver       *rtcpReceiver
+	rtcpSender         *rtcpSender
 
 	// connCloser channels
 	connCloserTerminate chan struct{}
@@ -670,14 +668,7 @@ func (c *Client) playRecordStart() {
 
 		switch *c.effectiveTransport {
 		case TransportUDP:
-			for trackID, cct := range c.tracks {
-				ctrackID := trackID
-
-				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
-					cct.track.ClockRate(), func(pkt rtcp.Packet) {
-						c.WritePacketRTCP(ctrackID, pkt)
-					})
-			}
+			c.rtcpReceiver = newRTCPReceiver(c.udpReceiverReportPeriod, len(c.tracks))
 
 			c.checkStreamTimer = time.NewTimer(c.InitialUDPReadTimeout)
 			c.checkStreamInitial = true
@@ -688,14 +679,7 @@ func (c *Client) playRecordStart() {
 			}
 
 		case TransportUDPMulticast:
-			for trackID, cct := range c.tracks {
-				ctrackID := trackID
-
-				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
-					cct.track.ClockRate(), func(pkt rtcp.Packet) {
-						c.WritePacketRTCP(ctrackID, pkt)
-					})
-			}
+			c.rtcpReceiver = newRTCPReceiver(c.udpReceiverReportPeriod, len(c.tracks))
 
 			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
 
@@ -710,14 +694,7 @@ func (c *Client) playRecordStart() {
 			c.tcpLastFrameTime = &v
 		}
 	} else if *c.effectiveTransport == TransportUDP {
-		for trackID, cct := range c.tracks {
-			ctrackID := trackID
-
-			cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
-				cct.track.ClockRate(), func(pkt rtcp.Packet) {
-					c.WritePacketRTCP(ctrackID, pkt)
-				})
-		}
+		c.rtcpSender = newRTCPSender(c.udpSenderReportPeriod, len(c.tracks))
 
 		for _, cct := range c.tracks {
 			cct.udpRTPListener.start(false)
@@ -850,15 +827,11 @@ func (c *Client) playRecordStop(isClosing bool) {
 		}
 
 		if c.state == clientStatePlay {
-			for _, cct := range c.tracks {
-				cct.rtcpReceiver.Close()
-				cct.rtcpReceiver = nil
-			}
+			c.rtcpReceiver.close()
+			c.rtcpReceiver = nil
 		} else {
-			for _, cct := range c.tracks {
-				cct.rtcpSender.Close()
-				cct.rtcpSender = nil
-			}
+			c.rtcpSender.close()
+			c.rtcpSender = nil
 		}
 	}
 
@@ -1854,8 +1827,8 @@ func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet) error {
 		return err
 	}
 
-	if c.tracks[trackID].rtcpSender != nil {
-		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt)
+	if c.rtcpSender != nil {
+		c.rtcpSender.processPacketRTP(time.Now(), trackID, pkt)
 	}
 
 	c.writeBuffer.Push(trackTypePayload{
