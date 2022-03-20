@@ -27,7 +27,7 @@ func main() {
 
 	// wait for first packet
 	buf := make([]byte, 2048)
-	_, _, err = pc.ReadFrom(buf)
+	n, _, err := pc.ReadFrom(buf)
 	if err != nil {
 		panic(err)
 	}
@@ -39,9 +39,8 @@ func main() {
 		panic(err)
 	}
 
-	c := gortsplib.Client{}
-
 	// connect to the server and start publishing the track
+	c := gortsplib.Client{}
 	err = c.StartPublishing("rtsp://localhost:8554/mystream",
 		gortsplib.Tracks{track})
 	if err != nil {
@@ -49,23 +48,22 @@ func main() {
 	}
 	defer c.Close()
 
-	buf = make([]byte, 2048)
 	var pkt rtp.Packet
 	for {
-		// read RTP packets from the source
-		n, _, err := pc.ReadFrom(buf)
-		if err != nil {
-			panic(err)
-		}
-
-		// parse RTP packets
+		// parse RTP packet
 		err = pkt.Unmarshal(buf[:n])
 		if err != nil {
 			panic(err)
 		}
 
-		// route RTP packets to the server
+		// route RTP packet to the server
 		err = c.WritePacketRTP(0, &pkt)
+		if err != nil {
+			panic(err)
+		}
+
+		// read another RTP packet from source
+		n, _, err = pc.ReadFrom(buf)
 		if err != nil {
 			panic(err)
 		}
