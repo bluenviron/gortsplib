@@ -22,6 +22,7 @@ var testRTPPacket = rtp.Packet{
 		Version:     2,
 		PayloadType: 97,
 		CSRC:        []uint32{},
+		SSRC:        0x38F27A2F,
 	},
 	Payload: []byte{0x01, 0x02, 0x03, 0x04},
 }

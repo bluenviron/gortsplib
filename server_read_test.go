@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pion/rtcp"
 	"github.com/pion/rtp/v2"
 	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
@@ -500,13 +501,6 @@ func TestServerRead(t *testing.T) {
 				}
 			}
 
-			// skip firewall opening
-			if transport == "udp" {
-				buf := make([]byte, 2048)
-				_, _, err := l2.ReadFrom(buf)
-				require.NoError(t, err)
-			}
-
 			// server -> client (through stream)
 			if transport == "udp" || transport == "multicast" {
 				buf := make([]byte, 2048)
@@ -608,6 +602,116 @@ func TestServerRead(t *testing.T) {
 			<-connClosed
 		})
 	}
+}
+
+func TestServerReadRTCPReport(t *testing.T) {
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
+	require.NoError(t, err)
+
+	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		udpSenderReportPeriod: 1 * time.Second,
+		RTSPAddress:           "localhost:8554",
+		UDPRTPAddress:         "127.0.0.1:8000",
+		UDPRTCPAddress:        "127.0.0.1:8001",
+	}
+
+	err = s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	br := bufio.NewReader(conn)
+
+	inTH := &headers.Transport{
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModePlay
+			return &v
+		}(),
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Protocol:    headers.TransportProtocolUDP,
+		ClientPorts: &[2]int{35466, 35467},
+	}
+
+	res, err := writeReqReadRes(conn, br, base.Request{
+		Method: base.Setup,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq":      base.HeaderValue{"1"},
+			"Transport": inTH.Write(),
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	l1, err := net.ListenPacket("udp", "localhost:35466")
+	require.NoError(t, err)
+	defer l1.Close()
+
+	l2, err := net.ListenPacket("udp", "localhost:35467")
+	require.NoError(t, err)
+	defer l2.Close()
+
+	var sx headers.Session
+	err = sx.Read(res.Header["Session"])
+	require.NoError(t, err)
+
+	res, err = writeReqReadRes(conn, br, base.Request{
+		Method: base.Play,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": base.HeaderValue{sx.Session},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	stream.WritePacketRTP(0, &testRTPPacket)
+	stream.WritePacketRTP(0, &testRTPPacket)
+
+	buf := make([]byte, 2048)
+	n, _, err := l2.ReadFrom(buf)
+	require.NoError(t, err)
+	packets, err := rtcp.Unmarshal(buf[:n])
+	require.NoError(t, err)
+	require.Equal(t, &rtcp.SenderReport{
+		SSRC:        0x38F27A2F,
+		NTPTime:     packets[0].(*rtcp.SenderReport).NTPTime,
+		RTPTime:     packets[0].(*rtcp.SenderReport).RTPTime,
+		PacketCount: 2,
+		OctetCount:  8,
+	}, packets[0])
+
+	res, err = writeReqReadRes(conn, br, base.Request{
+		Method: base.Teardown,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":    base.HeaderValue{"3"},
+			"Session": base.HeaderValue{sx.Session},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
 }
 
 func TestServerReadVLCMulticast(t *testing.T) {

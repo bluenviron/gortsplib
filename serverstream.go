@@ -9,13 +9,15 @@ import (
 	"github.com/pion/rtp/v2"
 
 	"github.com/aler9/gortsplib/pkg/liberrors"
+	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
-type trackInfo struct {
+type serverStreamTrack struct {
 	lastSequenceNumber uint32
 	lastTimeRTP        uint32
 	lastTimeNTP        int64
 	lastSSRC           uint32
+	rtcpSender         *rtcpsender.RTCPSender
 }
 
 // ServerStream represents a single stream.
@@ -24,14 +26,14 @@ type trackInfo struct {
 // - allocating multicast listeners
 // - gathering infos about the stream to generate SSRC and RTP-Info
 type ServerStream struct {
-	s      *Server
 	tracks Tracks
 
 	mutex                   sync.RWMutex
+	s                       *Server
 	readersUnicast          map[*ServerSession]struct{}
 	readers                 map[*ServerSession]struct{}
 	serverMulticastHandlers []*serverMulticastHandler
-	trackInfos              []*trackInfo
+	stTracks                []*serverStreamTrack
 }
 
 // NewServerStream allocates a ServerStream.
@@ -45,9 +47,9 @@ func NewServerStream(tracks Tracks) *ServerStream {
 		readers:        make(map[*ServerSession]struct{}),
 	}
 
-	st.trackInfos = make([]*trackInfo, len(tracks))
-	for i := range st.trackInfos {
-		st.trackInfos[i] = &trackInfo{}
+	st.stTracks = make([]*serverStreamTrack, len(tracks))
+	for i := range st.stTracks {
+		st.stTracks[i] = &serverStreamTrack{}
 	}
 
 	return st
@@ -81,12 +83,12 @@ func (st *ServerStream) Tracks() Tracks {
 }
 
 func (st *ServerStream) ssrc(trackID int) uint32 {
-	return atomic.LoadUint32(&st.trackInfos[trackID].lastSSRC)
+	return atomic.LoadUint32(&st.stTracks[trackID].lastSSRC)
 }
 
 func (st *ServerStream) timestamp(trackID int) uint32 {
-	lastTimeRTP := atomic.LoadUint32(&st.trackInfos[trackID].lastTimeRTP)
-	lastTimeNTP := atomic.LoadInt64(&st.trackInfos[trackID].lastTimeNTP)
+	lastTimeRTP := atomic.LoadUint32(&st.stTracks[trackID].lastTimeRTP)
+	lastTimeNTP := atomic.LoadInt64(&st.stTracks[trackID].lastTimeNTP)
 
 	if lastTimeRTP == 0 || lastTimeNTP == 0 {
 		return 0
@@ -97,7 +99,7 @@ func (st *ServerStream) timestamp(trackID int) uint32 {
 }
 
 func (st *ServerStream) lastSequenceNumber(trackID int) uint16 {
-	return uint16(atomic.LoadUint32(&st.trackInfos[trackID].lastSequenceNumber))
+	return uint16(atomic.LoadUint32(&st.stTracks[trackID].lastSequenceNumber))
 }
 
 func (st *ServerStream) readerAdd(
@@ -110,6 +112,17 @@ func (st *ServerStream) readerAdd(
 
 	if st.s == nil {
 		st.s = ss.s
+
+		for trackID, track := range st.stTracks {
+			cTrackID := trackID
+			track.rtcpSender = rtcpsender.New(
+				st.s.udpSenderReportPeriod,
+				st.tracks[trackID].ClockRate(),
+				func(pkt rtcp.Packet) {
+					st.writePacketRTCPSenderReport(cTrackID, pkt)
+				},
+			)
+		}
 	}
 
 	switch transport {
@@ -209,16 +222,21 @@ func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet) {
 		return
 	}
 
-	track := st.trackInfos[trackID]
+	track := st.stTracks[trackID]
+	now := time.Now()
 
 	atomic.StoreUint32(&track.lastSequenceNumber,
 		uint32(pkt.Header.SequenceNumber))
 	atomic.StoreUint32(&track.lastTimeRTP, pkt.Header.Timestamp)
-	atomic.StoreInt64(&track.lastTimeNTP, time.Now().Unix())
+	atomic.StoreInt64(&track.lastTimeNTP, now.Unix())
 	atomic.StoreUint32(&track.lastSSRC, pkt.Header.SSRC)
 
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
+
+	if track.rtcpSender != nil {
+		track.rtcpSender.ProcessPacketRTP(now, pkt)
+	}
 
 	// send unicast
 	for r := range st.readersUnicast {
@@ -244,6 +262,28 @@ func (st *ServerStream) WritePacketRTCP(trackID int, pkt rtcp.Packet) {
 	// send unicast
 	for r := range st.readersUnicast {
 		r.writePacketRTCP(trackID, byts)
+	}
+
+	// send multicast
+	if st.serverMulticastHandlers != nil {
+		st.serverMulticastHandlers[trackID].writePacketRTCP(byts)
+	}
+}
+
+func (st *ServerStream) writePacketRTCPSenderReport(trackID int, pkt rtcp.Packet) {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return
+	}
+
+	st.mutex.RLock()
+	defer st.mutex.RUnlock()
+
+	// send unicast (UDP only)
+	for r := range st.readersUnicast {
+		if *r.setuppedTransport == TransportUDP {
+			r.writePacketRTCP(trackID, byts)
+		}
 	}
 
 	// send multicast

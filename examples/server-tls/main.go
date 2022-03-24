@@ -135,17 +135,6 @@ func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx)
 	}
 }
 
-// called after receiving a RTCP packet.
-func (sh *serverHandler) OnPacketRTCP(ctx *gortsplib.ServerHandlerOnPacketRTCPCtx) {
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
-
-	// if we are the publisher, route the RTCP packet to readers
-	if ctx.Session == sh.publisher {
-		sh.stream.WritePacketRTCP(ctx.TrackID, ctx.Packet)
-	}
-}
-
 func main() {
 	// setup certificates - they can be generated with
 	// openssl genrsa -out server.key 2048

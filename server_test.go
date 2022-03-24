@@ -414,14 +414,6 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 							stream.WritePacketRTP(ctx.TrackID, ctx.Packet)
 						}
 					},
-					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
-						mutex.Lock()
-						defer mutex.Unlock()
-
-						if ctx.Session == publisher {
-							stream.WritePacketRTCP(ctx.TrackID, ctx.Packet)
-						}
-					},
 				},
 				RTSPAddress: "localhost:8554",
 			}
