@@ -95,6 +95,7 @@ func TestServerReadSetupPath(t *testing.T) {
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track, track, track, track, track})
+			defer stream.Close()
 
 			s := &Server{
 				Handler: &testServerHandler{
@@ -154,6 +155,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
+			defer stream.Close()
 
 			s := &Server{
 				Handler: &testServerHandler{
@@ -262,6 +264,7 @@ func TestServerRead(t *testing.T) {
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
+			defer stream.Close()
 
 			counter := uint64(0)
 
@@ -612,6 +615,7 @@ func TestServerReadVLCMulticast(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	listenIP := multicastCapableIP(t)
 
@@ -670,6 +674,7 @@ func TestServerReadNonStandardFrameSize(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -755,6 +760,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		RTSPAddress: "localhost:8554",
@@ -853,6 +859,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -939,6 +946,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -1061,6 +1069,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -1194,6 +1203,7 @@ func TestServerReadTimeout(t *testing.T) {
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
+			defer stream.Close()
 
 			s := &Server{
 				Handler: &testServerHandler{
@@ -1305,6 +1315,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
+			defer stream.Close()
 
 			s := &Server{
 				Handler: &testServerHandler{
@@ -1407,6 +1418,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -1512,6 +1524,7 @@ func TestServerReadPartialTracks(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track1, track2})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -1685,6 +1698,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track, track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -1795,6 +1809,7 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{

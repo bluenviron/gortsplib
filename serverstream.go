@@ -58,13 +58,6 @@ func (st *ServerStream) Close() error {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
-	if st.s != nil {
-		select {
-		case st.s.streamRemove <- st:
-		case <-st.s.ctx.Done():
-		}
-	}
-
 	for ss := range st.readers {
 		ss.Close()
 	}
@@ -117,10 +110,6 @@ func (st *ServerStream) readerAdd(
 
 	if st.s == nil {
 		st.s = ss.s
-		select {
-		case st.s.streamAdd <- st:
-		case <-st.s.ctx.Done():
-		}
 	}
 
 	switch transport {

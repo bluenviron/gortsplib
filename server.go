@@ -153,14 +153,11 @@ type Server struct {
 	sessions        map[string]*ServerSession
 	conns           map[*ServerConn]struct{}
 	closeError      error
-	streams         map[*ServerStream]struct{}
 
 	// in
 	connClose         chan *ServerConn
 	sessionRequest    chan sessionRequestReq
 	sessionClose      chan *ServerSession
-	streamAdd         chan *ServerStream
-	streamRemove      chan *ServerStream
 	streamMulticastIP chan streamMulticastIPReq
 }
 
@@ -337,12 +334,9 @@ func (s *Server) run() {
 
 	s.sessions = make(map[string]*ServerSession)
 	s.conns = make(map[*ServerConn]struct{})
-	s.streams = make(map[*ServerStream]struct{})
 	s.connClose = make(chan *ServerConn)
 	s.sessionRequest = make(chan sessionRequestReq)
 	s.sessionClose = make(chan *ServerSession)
-	s.streamAdd = make(chan *ServerStream)
-	s.streamRemove = make(chan *ServerStream)
 	s.streamMulticastIP = make(chan streamMulticastIPReq)
 
 	s.wg.Add(1)
@@ -446,12 +440,6 @@ func (s *Server) run() {
 				delete(s.sessions, ss.secretID)
 				ss.Close()
 
-			case st := <-s.streamAdd:
-				s.streams[st] = struct{}{}
-
-			case st := <-s.streamRemove:
-				delete(s.streams, st)
-
 			case req := <-s.streamMulticastIP:
 				ip32 := binary.BigEndian.Uint32(s.multicastNextIP)
 				mask := binary.BigEndian.Uint32(s.multicastNet.Mask)
@@ -478,10 +466,6 @@ func (s *Server) run() {
 	}
 
 	s.tcpListener.Close()
-
-	for st := range s.streams {
-		st.Close()
-	}
 }
 
 // StartAndWait starts the server and waits until a fatal error.

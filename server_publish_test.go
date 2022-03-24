@@ -201,7 +201,8 @@ func TestServerPublishSetupPath(t *testing.T) {
 				Handler: &testServerHandler{
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						// make sure that track URLs are not overridden by NewServerStream()
-						NewServerStream(ctx.Tracks)
+						stream := NewServerStream(ctx.Tracks)
+						defer stream.Close()
 
 						return &base.Response{
 							StatusCode: base.StatusOK,

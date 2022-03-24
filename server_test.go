@@ -694,6 +694,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -796,6 +797,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -1065,6 +1067,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -1132,6 +1135,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
+			defer stream.Close()
 
 			s := &Server{
 				Handler: &testServerHandler{
