@@ -1184,6 +1184,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 func TestServerReadTimeout(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
+		"multicast",
 		// there's no timeout when reading with TCP
 	} {
 		t.Run(transport, func(t *testing.T) {
@@ -1217,9 +1218,18 @@ func TestServerReadTimeout(t *testing.T) {
 				},
 				ReadTimeout:    1 * time.Second,
 				sessionTimeout: 1 * time.Second,
-				UDPRTPAddress:  "127.0.0.1:8000",
-				UDPRTCPAddress: "127.0.0.1:8001",
 				RTSPAddress:    "localhost:8554",
+			}
+
+			switch transport {
+			case "udp":
+				s.UDPRTPAddress = "127.0.0.1:8000"
+				s.UDPRTCPAddress = "127.0.0.1:8001"
+
+			case "multicast":
+				s.MulticastIPRange = "224.1.0.0/16"
+				s.MulticastRTPPort = 8000
+				s.MulticastRTCPPort = 8001
 			}
 
 			err = s.Start()
@@ -1232,18 +1242,24 @@ func TestServerReadTimeout(t *testing.T) {
 			br := bufio.NewReader(conn)
 
 			inTH := &headers.Transport{
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
 				Mode: func() *headers.TransportMode {
 					v := headers.TransportModePlay
 					return &v
 				}(),
 			}
 
-			inTH.Protocol = headers.TransportProtocolUDP
-			inTH.ClientPorts = &[2]int{35466, 35467}
+			switch transport {
+			case "udp":
+				v := headers.TransportDeliveryUnicast
+				inTH.Delivery = &v
+				inTH.Protocol = headers.TransportProtocolUDP
+				inTH.ClientPorts = &[2]int{35466, 35467}
+
+			case "multicast":
+				v := headers.TransportDeliveryMulticast
+				inTH.Delivery = &v
+				inTH.Protocol = headers.TransportProtocolUDP
+			}
 
 			res, err := writeReqReadRes(conn, br, base.Request{
 				Method: base.Setup,
