@@ -55,7 +55,7 @@ func TestRTCPReceiverBase(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -69,7 +69,7 @@ func TestRTCPReceiverBase(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	<-done
 }
@@ -119,7 +119,7 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -133,7 +133,7 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	<-done
 }
@@ -188,7 +188,7 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -202,7 +202,7 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	<-done
 }
@@ -257,7 +257,7 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -271,7 +271,7 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	<-done
 }
@@ -321,7 +321,7 @@ func TestRTCPReceiverReorderedPackets(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -335,7 +335,7 @@ func TestRTCPReceiverReorderedPackets(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	<-done
 }
@@ -353,7 +353,7 @@ func TestRTCPReceiverJitter(t *testing.T) {
 			Reports: []rtcp.ReceptionReport{
 				{
 					SSRC:               0xba9da416,
-					LastSequenceNumber: 947,
+					LastSequenceNumber: 948,
 					LastSenderReport:   0x887a17ce,
 					Delay:              2 * 65536,
 					Jitter:             45000 / 16,
@@ -386,7 +386,7 @@ func TestRTCPReceiverJitter(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -400,7 +400,21 @@ func TestRTCPReceiverJitter(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	rr.ProcessPacketRTP(ts, &rtpPkt)
+	rr.ProcessPacketRTP(ts, &rtpPkt, true)
+
+	rtpPkt = rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 948,
+			Timestamp:      0xafb45733,
+			SSRC:           0xba9da416,
+		},
+		Payload: []byte("\x00\x00"),
+	}
+	ts = time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
+	rr.ProcessPacketRTP(ts, &rtpPkt, false)
 
 	<-done
 }
