@@ -257,31 +257,15 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					return
 				}
 
-				// remove padding
-				pkt.Header.Padding = false
-				pkt.PaddingSize = 0
-
-				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
-					h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-						Session: sc.session,
-						TrackID: trackID,
-						Packet:  pkt,
-					})
-				}
+				sc.session.onPacketRTP(time.Time{}, trackID, pkt)
 			} else {
 				packets, err := rtcp.Unmarshal(payload)
 				if err != nil {
 					return
 				}
 
-				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
-					for _, pkt := range packets {
-						h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
-							Session: sc.session,
-							TrackID: trackID,
-							Packet:  pkt,
-						})
-					}
+				for _, pkt := range packets {
+					sc.session.onPacketRTCP(trackID, pkt)
 				}
 			}
 		}

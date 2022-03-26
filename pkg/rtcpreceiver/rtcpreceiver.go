@@ -131,7 +131,7 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 }
 
 // ProcessPacketRTP extracts the needed data from RTP packets.
-func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet) {
+func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqualsDTS bool) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
@@ -140,8 +140,11 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet) {
 		rr.firstRTPReceived = true
 		rr.totalSinceReport = 1
 		rr.lastSequenceNumber = pkt.Header.SequenceNumber
-		rr.lastRTPTimeRTP = pkt.Header.Timestamp
-		rr.lastRTPTimeTime = ts
+
+		if ptsEqualsDTS {
+			rr.lastRTPTimeRTP = pkt.Header.Timestamp
+			rr.lastRTPTimeTime = ts
+		}
 
 		// subsequent packets
 	} else {
@@ -168,19 +171,25 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet) {
 				}
 			}
 
-			// compute jitter
-			// https://tools.ietf.org/html/rfc3550#page-39
-			D := ts.Sub(rr.lastRTPTimeTime).Seconds()*rr.clockRate -
-				(float64(pkt.Header.Timestamp) - float64(rr.lastRTPTimeRTP))
-			if D < 0 {
-				D = -D
-			}
-			rr.jitter += (D - rr.jitter) / 16
-
 			rr.totalSinceReport += uint32(uint16(diff))
 			rr.lastSequenceNumber = pkt.Header.SequenceNumber
-			rr.lastRTPTimeRTP = pkt.Header.Timestamp
-			rr.lastRTPTimeTime = ts
+
+			if ptsEqualsDTS {
+				var zero time.Time
+				if rr.lastRTPTimeTime != zero {
+					// update jitter
+					// https://tools.ietf.org/html/rfc3550#page-39
+					D := ts.Sub(rr.lastRTPTimeTime).Seconds()*rr.clockRate -
+						(float64(pkt.Header.Timestamp) - float64(rr.lastRTPTimeRTP))
+					if D < 0 {
+						D = -D
+					}
+					rr.jitter += (D - rr.jitter) / 16
+				}
+
+				rr.lastRTPTimeRTP = pkt.Header.Timestamp
+				rr.lastRTPTimeTime = ts
+			}
 		}
 		// ignore invalid packets (diff = 0) or reordered packets (diff < 0)
 	}
