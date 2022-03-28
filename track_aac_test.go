@@ -10,19 +10,25 @@ import (
 func TestTrackAACNew(t *testing.T) {
 	track, err := NewTrackAAC(96, 2, 48000, 4, []byte{0x01, 0x02})
 	require.NoError(t, err)
+	require.Equal(t, "", track.GetControl())
 	require.Equal(t, 2, track.Type())
 	require.Equal(t, 48000, track.ClockRate())
 	require.Equal(t, 4, track.ChannelCount())
 	require.Equal(t, []byte{0x01, 0x02}, track.AOTSpecificConfig())
 }
 
+func TestTrackAACNewErrors(t *testing.T) {
+	_, err := NewTrackAAC(96, 2, 48000, 10, nil)
+	require.EqualError(t, err, "invalid configuration: invalid channel count (10)")
+}
+
 func TestTrackAACClone(t *testing.T) {
 	track, err := NewTrackAAC(96, 2, 48000, 2, []byte{0x01, 0x02})
 	require.NoError(t, err)
 
-	copy := track.clone()
-	require.NotSame(t, track, copy)
-	require.Equal(t, track, copy)
+	clone := track.clone()
+	require.NotSame(t, track, clone)
+	require.Equal(t, track, clone)
 }
 
 func TestTrackAACMediaDescription(t *testing.T) {

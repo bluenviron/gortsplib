@@ -11,10 +11,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp/v2"
+
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
-	"github.com/aler9/gortsplib/pkg/multibuffer"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 )
@@ -114,10 +116,10 @@ type ServerSessionState int
 // standard states.
 const (
 	ServerSessionStateInitial ServerSessionState = iota
-	ServerSessionStatePreRead
-	ServerSessionStateRead
-	ServerSessionStatePrePublish
-	ServerSessionStatePublish
+	ServerSessionStatePrePlay
+	ServerSessionStatePlay
+	ServerSessionStatePreRecord
+	ServerSessionStateRecord
 )
 
 // String implements fmt.Stringer.
@@ -125,13 +127,13 @@ func (s ServerSessionState) String() string {
 	switch s {
 	case ServerSessionStateInitial:
 		return "initial"
-	case ServerSessionStatePreRead:
+	case ServerSessionStatePrePlay:
 		return "prePlay"
-	case ServerSessionStateRead:
+	case ServerSessionStatePlay:
 		return "play"
-	case ServerSessionStatePrePublish:
+	case ServerSessionStatePreRecord:
 		return "preRecord"
-	case ServerSessionStatePublish:
+	case ServerSessionStateRecord:
 		return "record"
 	}
 	return "unknown"
@@ -139,13 +141,11 @@ func (s ServerSessionState) String() string {
 
 // ServerSessionSetuppedTrack is a setupped track of a ServerSession.
 type ServerSessionSetuppedTrack struct {
-	tcpChannel   int
-	udpRTPPort   int
-	udpRTCPPort  int
-	udpRTPAddr   *net.UDPAddr
-	udpRTCPAddr  *net.UDPAddr
-	tcpRTPFrame  *base.InterleavedFrame
-	tcpRTCPFrame *base.InterleavedFrame
+	tcpChannel  int
+	udpRTPPort  int
+	udpRTCPPort int
+	udpRTPAddr  *net.UDPAddr
+	udpRTCPAddr *net.UDPAddr
 }
 
 // ServerSessionAnnouncedTrack is an announced track of a ServerSession.
@@ -160,25 +160,24 @@ type ServerSession struct {
 	secretID string // must not be shared, allows to take ownership of the session
 	author   *ServerConn
 
-	ctx                    context.Context
-	ctxCancel              func()
-	conns                  map[*ServerConn]struct{}
-	state                  ServerSessionState
-	setuppedTracks         map[int]ServerSessionSetuppedTrack
-	tcpTracksByChannel     map[int]int
-	setuppedTransport      *Transport
-	setuppedBaseURL        *base.URL     // publish
-	setuppedStream         *ServerStream // read
-	setuppedPath           *string
-	setuppedQuery          *string
-	lastRequestTime        time.Time
-	tcpConn                *ServerConn
-	announcedTracks        []ServerSessionAnnouncedTrack // publish
-	udpLastFrameTime       *int64                        // publish
-	udpCheckStreamTimer    *time.Timer
-	udpReceiverReportTimer *time.Timer
-	writerRunning          bool
-	writeBuffer            *ringbuffer.RingBuffer
+	ctx                 context.Context
+	ctxCancel           func()
+	conns               map[*ServerConn]struct{}
+	state               ServerSessionState
+	setuppedTracks      map[int]*ServerSessionSetuppedTrack
+	tcpTracksByChannel  map[int]int
+	setuppedTransport   *Transport
+	setuppedBaseURL     *base.URL     // publish
+	setuppedStream      *ServerStream // read
+	setuppedPath        *string
+	setuppedQuery       *string
+	lastRequestTime     time.Time
+	tcpConn             *ServerConn
+	announcedTracks     []ServerSessionAnnouncedTrack // publish
+	udpLastFrameTime    *int64                        // publish
+	udpCheckStreamTimer *time.Timer
+	writerRunning       bool
+	writeBuffer         *ringbuffer.RingBuffer
 
 	// writer channels
 	writerDone chan struct{}
@@ -197,18 +196,17 @@ func newServerSession(
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
 	ss := &ServerSession{
-		s:                      s,
-		secretID:               secretID,
-		author:                 author,
-		ctx:                    ctx,
-		ctxCancel:              ctxCancel,
-		conns:                  make(map[*ServerConn]struct{}),
-		lastRequestTime:        time.Now(),
-		udpCheckStreamTimer:    emptyTimer(),
-		udpReceiverReportTimer: emptyTimer(),
-		request:                make(chan sessionRequestReq),
-		connRemove:             make(chan *ServerConn),
-		startWriter:            make(chan struct{}),
+		s:                   s,
+		secretID:            secretID,
+		author:              author,
+		ctx:                 ctx,
+		ctxCancel:           ctxCancel,
+		conns:               make(map[*ServerConn]struct{}),
+		lastRequestTime:     time.Now(),
+		udpCheckStreamTimer: emptyTimer(),
+		request:             make(chan sessionRequestReq),
+		connRemove:          make(chan *ServerConn),
+		startWriter:         make(chan struct{}),
 	}
 
 	s.wg.Add(1)
@@ -229,7 +227,7 @@ func (ss *ServerSession) State() ServerSessionState {
 }
 
 // SetuppedTracks returns the setupped tracks.
-func (ss *ServerSession) SetuppedTracks() map[int]ServerSessionSetuppedTrack {
+func (ss *ServerSession) SetuppedTracks() map[int]*ServerSessionSetuppedTrack {
 	return ss.setuppedTracks
 }
 
@@ -267,120 +265,27 @@ func (ss *ServerSession) run() {
 		})
 	}
 
-	err := func() error {
-		for {
-			select {
-			case req := <-ss.request:
-				ss.lastRequestTime = time.Now()
-
-				if _, ok := ss.conns[req.sc]; !ok {
-					ss.conns[req.sc] = struct{}{}
-				}
-
-				res, err := ss.handleRequest(req.sc, req.req)
-
-				if res.StatusCode == base.StatusOK {
-					if res.Header == nil {
-						res.Header = make(base.Header)
-					}
-					res.Header["Session"] = headers.Session{
-						Session: ss.secretID,
-						Timeout: func() *uint {
-							v := uint(ss.s.sessionTimeout / time.Second)
-							return &v
-						}(),
-					}.Write()
-				}
-
-				if _, ok := err.(liberrors.ErrServerSessionTeardown); ok {
-					req.res <- sessionRequestRes{res: res, err: nil}
-					return err
-				}
-
-				req.res <- sessionRequestRes{
-					res: res,
-					err: err,
-					ss:  ss,
-				}
-
-			case sc := <-ss.connRemove:
-				if _, ok := ss.conns[sc]; ok {
-					delete(ss.conns, sc)
-
-					select {
-					case sc.sessionRemove <- ss:
-					case <-sc.ctx.Done():
-					}
-				}
-
-				// if session is not in state RECORD or PLAY, or transport is TCP
-				if (ss.state != ServerSessionStatePublish &&
-					ss.state != ServerSessionStateRead) ||
-					*ss.setuppedTransport == TransportTCP {
-					// close if there are no associated connections
-					if len(ss.conns) == 0 {
-						return liberrors.ErrServerSessionNotInUse{}
-					}
-				}
-
-			case <-ss.startWriter:
-				if !ss.writerRunning && (ss.state == ServerSessionStatePublish ||
-					ss.state == ServerSessionStateRead) &&
-					*ss.setuppedTransport == TransportTCP {
-					ss.writerRunning = true
-					ss.writerDone = make(chan struct{})
-					go ss.runWriter()
-				}
-
-			case <-ss.udpCheckStreamTimer.C:
-				now := time.Now()
-
-				// in case of RECORD and UDP, timeout happens when no RTP or RTCP packets are being received
-				if ss.state == ServerSessionStatePublish {
-					lft := atomic.LoadInt64(ss.udpLastFrameTime)
-					if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
-						return liberrors.ErrServerNoUDPPacketsInAWhile{}
-					}
-
-					// in case of PLAY and UDP, timeout happens when no RTSP request arrives
-				} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout {
-					return liberrors.ErrServerNoRTSPRequestsInAWhile{}
-				}
-
-				ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-
-			case <-ss.udpReceiverReportTimer.C:
-				now := time.Now()
-
-				for trackID, track := range ss.announcedTracks {
-					rr := track.rtcpReceiver.Report(now)
-					if rr != nil {
-						ss.WritePacketRTCP(trackID, rr)
-					}
-				}
-
-				ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
-
-			case <-ss.ctx.Done():
-				return liberrors.ErrServerTerminated{}
-			}
-		}
-	}()
+	err := ss.runInner()
 
 	ss.ctxCancel()
 
 	switch ss.state {
-	case ServerSessionStateRead:
+	case ServerSessionStatePlay:
 		ss.setuppedStream.readerSetInactive(ss)
 
 		if *ss.setuppedTransport == TransportUDP {
 			ss.s.udpRTCPListener.removeClient(ss)
 		}
 
-	case ServerSessionStatePublish:
+	case ServerSessionStateRecord:
 		if *ss.setuppedTransport == TransportUDP {
 			ss.s.udpRTPListener.removeClient(ss)
 			ss.s.udpRTCPListener.removeClient(ss)
+
+			for trackID := range ss.setuppedTracks {
+				ss.announcedTracks[trackID].rtcpReceiver.Close()
+				ss.announcedTracks[trackID].rtcpReceiver = nil
+			}
 		}
 	}
 
@@ -418,6 +323,108 @@ func (ss *ServerSession) run() {
 			Session: ss,
 			Error:   err,
 		})
+	}
+}
+
+func (ss *ServerSession) runInner() error {
+	for {
+		select {
+		case req := <-ss.request:
+			ss.lastRequestTime = time.Now()
+
+			if _, ok := ss.conns[req.sc]; !ok {
+				ss.conns[req.sc] = struct{}{}
+			}
+
+			res, err := ss.handleRequest(req.sc, req.req)
+
+			var returnedSession *ServerSession
+			if err == nil || err == errSwitchReadFunc {
+				// ANNOUNCE responses don't contain the session header.
+				if req.req.Method != base.Announce &&
+					req.req.Method != base.Teardown {
+					if res.Header == nil {
+						res.Header = make(base.Header)
+					}
+
+					res.Header["Session"] = headers.Session{
+						Session: ss.secretID,
+						Timeout: func() *uint {
+							// timeout controls the sending of RTCP keepalives.
+							// these are needed only when the client is playing
+							// and transport is UDP or UDP-multicast.
+							if (ss.state == ServerSessionStatePrePlay ||
+								ss.state == ServerSessionStatePlay) &&
+								(*ss.setuppedTransport == TransportUDP ||
+									*ss.setuppedTransport == TransportUDPMulticast) {
+								v := uint(ss.s.sessionTimeout / time.Second)
+								return &v
+							}
+							return nil
+						}(),
+					}.Write()
+				}
+
+				// after a TEARDOWN, session must be unpaired with the connection.
+				if req.req.Method != base.Teardown {
+					returnedSession = ss
+				}
+			}
+
+			savedMethod := req.req.Method
+
+			req.res <- sessionRequestRes{
+				res: res,
+				err: err,
+				ss:  returnedSession,
+			}
+
+			if (err == nil || err == errSwitchReadFunc) && savedMethod == base.Teardown {
+				return liberrors.ErrServerSessionTeardown{Author: req.sc.NetConn().RemoteAddr()}
+			}
+
+		case sc := <-ss.connRemove:
+			delete(ss.conns, sc)
+
+			// if session is not in state RECORD or PLAY, or transport is TCP,
+			// and there are no associated connections,
+			// close the session.
+			if ((ss.state != ServerSessionStateRecord &&
+				ss.state != ServerSessionStatePlay) ||
+				*ss.setuppedTransport == TransportTCP) &&
+				len(ss.conns) == 0 {
+				return liberrors.ErrServerSessionNotInUse{}
+			}
+
+		case <-ss.startWriter:
+			if !ss.writerRunning && (ss.state == ServerSessionStateRecord ||
+				ss.state == ServerSessionStatePlay) &&
+				*ss.setuppedTransport == TransportTCP {
+				ss.writerRunning = true
+				ss.writerDone = make(chan struct{})
+				go ss.runWriter()
+			}
+
+		case <-ss.udpCheckStreamTimer.C:
+			now := time.Now()
+
+			// in case of RECORD, timeout happens when no RTP or RTCP packets are being received
+			if ss.state == ServerSessionStateRecord {
+				lft := atomic.LoadInt64(ss.udpLastFrameTime)
+				if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
+					return liberrors.ErrServerNoUDPPacketsInAWhile{}
+				}
+
+				// in case of PLAY, timeout happens when no RTSP keepalives are being received
+			} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout {
+				return liberrors.ErrServerNoRTSPRequestsInAWhile{}
+			}
+
+			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
+
+		case <-ss.ctx.Done():
+			return liberrors.ErrServerTerminated{}
+		}
 	}
 }
 
@@ -494,17 +501,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerContentTypeUnsupported{CT: ct}
 		}
 
-		tracks, err := ReadTracks(req.Body)
+		tracks, err := ReadTracks(req.Body, false)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerSDPInvalid{Err: err}
-		}
-
-		if len(tracks) == 0 {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerSDPNoTracksDefined{}
 		}
 
 		for _, track := range tracks {
@@ -534,7 +535,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			Server:  ss.s,
 			Session: ss,
 			Conn:    sc,
-			Req:     req,
+			Request: req,
 			Path:    path,
 			Query:   query,
 			Tracks:  tracks,
@@ -544,7 +545,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			return res, err
 		}
 
-		ss.state = ServerSessionStatePrePublish
+		ss.state = ServerSessionStatePreRecord
 		ss.setuppedPath = &path
 		ss.setuppedQuery = &query
 		ss.setuppedBaseURL = req.URL
@@ -562,9 +563,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 	case base.Setup:
 		err := ss.checkState(map[ServerSessionState]struct{}{
-			ServerSessionStateInitial:    {},
-			ServerSessionStatePreRead:    {},
-			ServerSessionStatePrePublish: {},
+			ServerSessionStateInitial:   {},
+			ServerSessionStatePrePlay:   {},
+			ServerSessionStatePreRecord: {},
 		})
 		if err != nil {
 			return &base.Response{
@@ -650,7 +651,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		switch ss.state {
-		case ServerSessionStateInitial, ServerSessionStatePreRead: // play
+		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
 			if inTH.Mode != nil && *inTH.Mode != headers.TransportModePlay {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -675,7 +676,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			Server:    ss.s,
 			Session:   ss,
 			Conn:      sc,
-			Req:       req,
+			Request:   req,
 			Path:      path,
 			Query:     query,
 			TrackID:   trackID,
@@ -709,7 +710,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}, err
 			}
 
-			ss.state = ServerSessionStatePreRead
+			ss.state = ServerSessionStatePrePlay
 			ss.setuppedPath = &path
 			ss.setuppedQuery = &query
 			ss.setuppedStream = stream
@@ -717,7 +718,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		th := headers.Transport{}
 
-		if ss.state == ServerSessionStatePreRead {
+		if ss.state == ServerSessionStatePrePlay {
 			ssrc := stream.ssrc(trackID)
 			if ssrc != 0 {
 				th.SSRC = &ssrc
@@ -730,7 +731,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			res.Header = make(base.Header)
 		}
 
-		sst := ServerSessionSetuppedTrack{}
+		sst := &ServerSessionSetuppedTrack{}
 
 		switch transport {
 		case TransportUDP:
@@ -761,20 +762,12 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			th.Delivery = &de
 			v := uint(127)
 			th.TTL = &v
-			d := stream.multicastHandlers[trackID].ip()
+			d := stream.serverMulticastHandlers[trackID].ip()
 			th.Destination = &d
 			th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 
 		default: // TCP
 			sst.tcpChannel = inTH.InterleavedIDs[0]
-
-			sst.tcpRTPFrame = &base.InterleavedFrame{
-				Channel: sst.tcpChannel,
-			}
-
-			sst.tcpRTCPFrame = &base.InterleavedFrame{
-				Channel: sst.tcpChannel + 1,
-			}
 
 			if ss.tcpTracksByChannel == nil {
 				ss.tcpTracksByChannel = make(map[int]int)
@@ -789,15 +782,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		if ss.setuppedTracks == nil {
-			ss.setuppedTracks = make(map[int]ServerSessionSetuppedTrack)
+			ss.setuppedTracks = make(map[int]*ServerSessionSetuppedTrack)
 		}
 
 		ss.setuppedTracks[trackID] = sst
-
-		if ss.state == ServerSessionStatePrePublish && *ss.setuppedTransport != TransportTCP {
-			ss.announcedTracks[trackID].rtcpReceiver = rtcpreceiver.New(nil,
-				ss.announcedTracks[trackID].track.ClockRate())
-		}
 
 		res.Header["Transport"] = th.Write()
 
@@ -806,8 +794,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 	case base.Play:
 		// play can be sent twice, allow calling it even if we're already playing
 		err := ss.checkState(map[ServerSessionState]struct{}{
-			ServerSessionStatePreRead: {},
-			ServerSessionStateRead:    {},
+			ServerSessionStatePrePlay: {},
+			ServerSessionStatePlay:    {},
 		})
 		if err != nil {
 			return &base.Response{
@@ -827,50 +815,55 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		path, query := base.PathSplitQuery(pathAndQuery)
 
-		if ss.State() == ServerSessionStatePreRead &&
+		if ss.State() == ServerSessionStatePrePlay &&
 			path != *ss.setuppedPath {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerPathHasChanged{Prev: *ss.setuppedPath, Cur: path}
 		}
 
+		// allocate writeBuffer before calling OnPlay().
+		// in this way it's possible to call ServerSession.WritePacket*()
+		// inside the callback.
+		if ss.state != ServerSessionStatePlay &&
+			*ss.setuppedTransport != TransportUDPMulticast {
+			ss.writeBuffer = ringbuffer.New(uint64(ss.s.WriteBufferCount))
+		}
+
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{
 			Session: ss,
 			Conn:    sc,
-			Req:     req,
+			Request: req,
 			Path:    path,
 			Query:   query,
 		})
 
 		if res.StatusCode != base.StatusOK {
-			if ss.State() == ServerSessionStatePreRead {
+			if ss.state != ServerSessionStatePlay {
 				ss.writeBuffer = nil
 			}
 			return res, err
 		}
 
-		if ss.state == ServerSessionStateRead {
+		if ss.state == ServerSessionStatePlay {
 			return res, err
 		}
 
-		ss.state = ServerSessionStateRead
+		ss.state = ServerSessionStatePlay
 
 		switch *ss.setuppedTransport {
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 
-			ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
 			ss.writerRunning = true
 			ss.writerDone = make(chan struct{})
 			go ss.runWriter()
 
 			for trackID, track := range ss.setuppedTracks {
-				// readers can send RTCP packets
+				// readers can send RTCP packets only
 				sc.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, false)
 
-				// open the firewall by sending packets to the counterpart
-				ss.WritePacketRTCP(trackID,
-					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+				// firewall opening is performed by RTCP sender reports generated by ServerStream
 			}
 
 		case TransportUDPMulticast:
@@ -878,19 +871,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		default: // TCP
 			ss.tcpConn = sc
-			ss.tcpConn.tcpSession = ss
-			ss.tcpConn.tcpFrameEnabled = true
-			ss.tcpConn.tcpFrameTimeout = false
-			// when playing, tcpReadBuffer is only used to receive RTCP receiver reports,
-			// that are much smaller than RTP packets and are sent at a fixed interval.
-			// decrease RAM consumption by allocating less buffers.
-			ss.tcpConn.tcpReadBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
-			ss.tcpConn.tcpProcessFunc = sc.tcpProcessPlay
 
-			ss.writeBuffer = ringbuffer.New(uint64(ss.s.ReadBufferCount))
-			// run writer after sending the response
-			ss.tcpConn.tcpWriterRunning = false
+			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
+			err = errSwitchReadFunc
+
+			// runWriter() is called by ServerConn after the response has been sent
 		}
+
+		ss.setuppedStream.readerSetActive(ss)
 
 		// add RTP-Info
 		var trackIDs []int
@@ -929,13 +917,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			res.Header["RTP-Info"] = ri.Write()
 		}
 
-		ss.setuppedStream.readerSetActive(ss)
-
 		return res, err
 
 	case base.Record:
 		err := ss.checkState(map[ServerSessionState]struct{}{
-			ServerSessionStatePrePublish: {},
+			ServerSessionStatePreRecord: {},
 		})
 		if err != nil {
 			return &base.Response{
@@ -967,72 +953,70 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerPathHasChanged{Prev: *ss.setuppedPath, Cur: path}
 		}
 
+		// allocate writeBuffer before calling OnRecord().
+		// in this way it's possible to call ServerSession.WritePacket*()
+		// inside the callback.
+		// when recording, writeBuffer is only used to send RTCP receiver reports,
+		// that are much smaller than RTP packets and are sent at a fixed interval.
+		// decrease RAM consumption by allocating less buffers.
+		ss.writeBuffer = ringbuffer.New(uint64(8))
+
 		res, err := ss.s.Handler.(ServerHandlerOnRecord).OnRecord(&ServerHandlerOnRecordCtx{
 			Session: ss,
 			Conn:    sc,
-			Req:     req,
+			Request: req,
 			Path:    path,
 			Query:   query,
 		})
 
 		if res.StatusCode != base.StatusOK {
+			ss.writeBuffer = nil
 			return res, err
 		}
 
-		ss.state = ServerSessionStatePublish
+		ss.state = ServerSessionStateRecord
 
 		switch *ss.setuppedTransport {
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
 
-			// when recording, writeBuffer is only used to send RTCP receiver reports,
-			// that are much smaller than RTP packets and are sent at a fixed interval.
-			// decrease RAM consumption by allocating less buffers.
-			ss.writeBuffer = ringbuffer.New(uint64(8))
 			ss.writerRunning = true
 			ss.writerDone = make(chan struct{})
 			go ss.runWriter()
 
 			for trackID, track := range ss.setuppedTracks {
+				// open the firewall by sending packets to the counterpart
+				ss.WritePacketRTP(trackID, &rtp.Packet{Header: rtp.Header{Version: 2}})
+				ss.WritePacketRTCP(trackID, &rtcp.ReceiverReport{})
+
+				ctrackID := trackID
+
+				ss.announcedTracks[trackID].rtcpReceiver = rtcpreceiver.New(ss.s.udpReceiverReportPeriod,
+					nil, ss.announcedTracks[trackID].track.ClockRate(), func(pkt rtcp.Packet) {
+						ss.WritePacketRTCP(ctrackID, pkt)
+					})
+
 				ss.s.udpRTPListener.addClient(ss.author.ip(), track.udpRTPPort, ss, trackID, true)
 				ss.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPPort, ss, trackID, true)
-
-				// open the firewall by sending packets to the counterpart
-				ss.WritePacketRTP(trackID,
-					[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-				ss.WritePacketRTCP(trackID,
-					[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
 			}
-
-		case TransportUDPMulticast:
-			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-			ss.udpReceiverReportTimer = time.NewTimer(ss.s.udpReceiverReportPeriod)
 
 		default: // TCP
 			ss.tcpConn = sc
-			ss.tcpConn.tcpSession = ss
-			ss.tcpConn.tcpFrameEnabled = true
-			ss.tcpConn.tcpFrameTimeout = true
-			ss.tcpConn.tcpReadBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
-			ss.tcpConn.tcpProcessFunc = sc.tcpProcessRecord
 
-			// when recording, writeBuffer is only used to send RTCP receiver reports,
-			// that are much smaller than RTP packets and are sent at a fixed interval.
-			// decrease RAM consumption by allocating less buffers.
-			ss.writeBuffer = ringbuffer.New(uint64(8))
-			// run writer after sending the response
-			ss.tcpConn.tcpWriterRunning = false
+			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
+			err = errSwitchReadFunc
+
+			// runWriter() is called by conn after sending the response
 		}
 
 		return res, err
 
 	case base.Pause:
 		err := ss.checkState(map[ServerSessionState]struct{}{
-			ServerSessionStatePreRead:    {},
-			ServerSessionStateRead:       {},
-			ServerSessionStatePrePublish: {},
-			ServerSessionStatePublish:    {},
+			ServerSessionStatePrePlay:   {},
+			ServerSessionStatePlay:      {},
+			ServerSessionStatePreRecord: {},
+			ServerSessionStateRecord:    {},
 		})
 		if err != nil {
 			return &base.Response{
@@ -1055,7 +1039,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		res, err := ss.s.Handler.(ServerHandlerOnPause).OnPause(&ServerHandlerOnPauseCtx{
 			Session: ss,
 			Conn:    sc,
-			Req:     req,
+			Request: req,
 			Path:    path,
 			Query:   query,
 		})
@@ -1071,42 +1055,46 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		switch ss.state {
-		case ServerSessionStateRead:
+		case ServerSessionStatePlay:
 			ss.setuppedStream.readerSetInactive(ss)
 
-			ss.state = ServerSessionStatePreRead
-			ss.udpCheckStreamTimer = emptyTimer()
+			ss.state = ServerSessionStatePrePlay
 
 			switch *ss.setuppedTransport {
 			case TransportUDP:
+				ss.udpCheckStreamTimer = emptyTimer()
+
 				ss.s.udpRTCPListener.removeClient(ss)
 
 			case TransportUDPMulticast:
+				ss.udpCheckStreamTimer = emptyTimer()
 
 			default: // TCP
-				ss.tcpConn.tcpSession = nil
-				ss.tcpConn.tcpFrameEnabled = false
-				ss.tcpConn.tcpReadBuffer = nil
+				ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
+				err = errSwitchReadFunc
+
 				ss.tcpConn = nil
 			}
 
-		case ServerSessionStatePublish:
-			ss.state = ServerSessionStatePrePublish
-			ss.udpCheckStreamTimer = emptyTimer()
-			ss.udpReceiverReportTimer = emptyTimer()
+		case ServerSessionStateRecord:
+			ss.state = ServerSessionStatePreRecord
 
 			switch *ss.setuppedTransport {
 			case TransportUDP:
+				ss.udpCheckStreamTimer = emptyTimer()
+
 				ss.s.udpRTPListener.removeClient(ss)
 				ss.s.udpRTCPListener.removeClient(ss)
 
-			case TransportUDPMulticast:
+				for trackID := range ss.setuppedTracks {
+					ss.announcedTracks[trackID].rtcpReceiver.Close()
+					ss.announcedTracks[trackID].rtcpReceiver = nil
+				}
 
 			default: // TCP
-				ss.tcpConn.tcpSession = nil
-				ss.tcpConn.tcpFrameEnabled = false
-				ss.tcpConn.tcpReadBuffer = nil
-				ss.tcpConn.conn.SetReadDeadline(time.Time{})
+				ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
+				err = errSwitchReadFunc
+
 				ss.tcpConn = nil
 			}
 		}
@@ -1114,9 +1102,16 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		return res, err
 
 	case base.Teardown:
+		var err error
+		if (ss.state == ServerSessionStatePlay || ss.state == ServerSessionStateRecord) &&
+			*ss.setuppedTransport == TransportTCP {
+			ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
+			err = errSwitchReadFunc
+		}
+
 		return &base.Response{
 			StatusCode: base.StatusOK,
-		}, liberrors.ErrServerSessionTeardown{Author: sc.NetConn().RemoteAddr()}
+		}, err
 
 	case base.GetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
@@ -1132,7 +1127,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
 				Session: ss,
 				Conn:    sc,
-				Req:     req,
+				Request: req,
 				Path:    path,
 				Query:   query,
 			})
@@ -1151,7 +1146,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 	return &base.Response{
 		StatusCode: base.StatusBadRequest,
-	}, liberrors.ErrServerUnhandledRequest{Req: req}
+	}, liberrors.ErrServerUnhandledRequest{Request: req}
 }
 
 func (ss *ServerSession) runWriter() {
@@ -1167,19 +1162,27 @@ func (ss *ServerSession) runWriter() {
 				ss.s.udpRTCPListener.write(payload, ss.setuppedTracks[trackID].udpRTCPAddr)
 			}
 		}
-	} else {
+	} else { // TCP
+		rtpFrames := make(map[int]*base.InterleavedFrame, len(ss.setuppedTracks))
+		rtcpFrames := make(map[int]*base.InterleavedFrame, len(ss.setuppedTracks))
+
+		for trackID, sst := range ss.setuppedTracks {
+			rtpFrames[trackID] = &base.InterleavedFrame{Channel: sst.tcpChannel}
+			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: sst.tcpChannel + 1}
+		}
+
 		var buf bytes.Buffer
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
-				f := ss.setuppedTracks[trackID].tcpRTPFrame
+				f := rtpFrames[trackID]
 				f.Payload = payload
 				f.Write(&buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
 				ss.tcpConn.conn.Write(buf.Bytes())
 			} else {
-				f := ss.setuppedTracks[trackID].tcpRTCPFrame
+				f := rtcpFrames[trackID]
 				f.Payload = payload
 				f.Write(&buf)
 
@@ -1200,8 +1203,7 @@ func (ss *ServerSession) runWriter() {
 	}
 }
 
-// WritePacketRTP writes a RTP packet to the session.
-func (ss *ServerSession) WritePacketRTP(trackID int, payload []byte) {
+func (ss *ServerSession) writePacketRTP(trackID int, byts []byte) {
 	if _, ok := ss.setuppedTracks[trackID]; !ok {
 		return
 	}
@@ -1209,12 +1211,21 @@ func (ss *ServerSession) WritePacketRTP(trackID int, payload []byte) {
 	ss.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,
 		isRTP:   true,
-		payload: payload,
+		payload: byts,
 	})
 }
 
-// WritePacketRTCP writes a RTCP packet to the session.
-func (ss *ServerSession) WritePacketRTCP(trackID int, payload []byte) {
+// WritePacketRTP writes a RTP packet to the session.
+func (ss *ServerSession) WritePacketRTP(trackID int, pkt *rtp.Packet) {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return
+	}
+
+	ss.writePacketRTP(trackID, byts)
+}
+
+func (ss *ServerSession) writePacketRTCP(trackID int, byts []byte) {
 	if _, ok := ss.setuppedTracks[trackID]; !ok {
 		return
 	}
@@ -1222,6 +1233,16 @@ func (ss *ServerSession) WritePacketRTCP(trackID int, payload []byte) {
 	ss.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,
 		isRTP:   false,
-		payload: payload,
+		payload: byts,
 	})
+}
+
+// WritePacketRTCP writes a RTCP packet to the session.
+func (ss *ServerSession) WritePacketRTCP(trackID int, pkt rtcp.Packet) {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return
+	}
+
+	ss.writePacketRTCP(trackID, byts)
 }

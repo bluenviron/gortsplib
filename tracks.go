@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	psdp "github.com/pion/sdp/v3"
 
@@ -13,22 +14,30 @@ import (
 type Tracks []Track
 
 // ReadTracks decodes tracks from the SDP format.
-func ReadTracks(byts []byte) (Tracks, error) {
+func ReadTracks(byts []byte, skipGenericTracksWithoutClockRate bool) (Tracks, error) {
 	var sd sdp.SessionDescription
 	err := sd.Unmarshal(byts)
 	if err != nil {
 		return nil, err
 	}
 
-	tracks := make(Tracks, len(sd.MediaDescriptions))
+	var tracks Tracks //nolint:prealloc
 
 	for i, md := range sd.MediaDescriptions {
 		t, err := newTrackFromMediaDescription(md)
 		if err != nil {
+			if skipGenericTracksWithoutClockRate &&
+				strings.HasPrefix(err.Error(), "unable to get clock rate") {
+				continue
+			}
 			return nil, fmt.Errorf("unable to parse track %d: %s", i+1, err)
 		}
 
-		tracks[i] = t
+		tracks = append(tracks, t)
+	}
+
+	if len(tracks) == 0 {
+		return nil, fmt.Errorf("no valid tracks found")
 	}
 
 	return tracks, nil

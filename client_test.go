@@ -147,9 +147,6 @@ func TestClientSession(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	_, err = c.Options(u)
-	require.NoError(t, err)
-
 	_, _, _, err = c.Describe(u)
 	require.NoError(t, err)
 }
@@ -233,9 +230,6 @@ func TestClientAuth(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	_, err = c.Options(u)
-	require.NoError(t, err)
-
 	_, _, _, err = c.Describe(u)
 	require.NoError(t, err)
 }
@@ -299,9 +293,6 @@ func TestClientDescribeCharset(t *testing.T) {
 	err = c.Start(u.Scheme, u.Host)
 	require.NoError(t, err)
 	defer c.Close()
-
-	_, err = c.Options(u)
-	require.NoError(t, err)
 
 	_, _, _, err = c.Describe(u)
 	require.NoError(t, err)

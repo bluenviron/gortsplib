@@ -2,11 +2,10 @@ package rtph264
 
 import (
 	"bytes"
-	"io"
 	"testing"
 	"time"
 
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +29,7 @@ var cases = []struct {
 	name  string
 	nalus [][]byte
 	pts   time.Duration
-	enc   [][]byte
+	pkts  []*rtp.Packet
 }{
 	{
 		"single",
@@ -41,14 +40,21 @@ var cases = []struct {
 			),
 		},
 		25 * time.Millisecond,
-		[][]byte{
-			mergeBytes(
-				[]byte{
-					0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6f, 0x1f,
-					0x9d, 0xbb, 0x78, 0x12, 0x05,
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289528607,
+					SSRC:           0x9dbb7812,
 				},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
-			),
+				Payload: mergeBytes(
+					[]byte{0x05},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
+				),
+			},
 		},
 	},
 	{
@@ -60,14 +66,21 @@ var cases = []struct {
 			),
 		},
 		-20 * time.Millisecond,
-		[][]byte{
-			mergeBytes(
-				[]byte{
-					0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x5f, 0x4d,
-					0x9d, 0xbb, 0x78, 0x12, 0x05,
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289524557,
+					SSRC:           0x9dbb7812,
 				},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
-			),
+				Payload: mergeBytes(
+					[]byte{0x05},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
+				),
+			},
 		},
 	},
 	{
@@ -79,32 +92,53 @@ var cases = []struct {
 			),
 		},
 		55 * time.Millisecond,
-		[][]byte{
-			mergeBytes(
-				[]byte{
-					0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x79, 0xab,
-					0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x85,
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
 				},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-				[]byte{0x00, 0x01},
-			),
-			mergeBytes(
-				[]byte{
-					0x80, 0x60, 0x44, 0xee, 0x88, 0x77, 0x79, 0xab,
-					0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x05,
+				Payload: mergeBytes(
+					[]byte{0x1c, 0x85},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+					[]byte{0x00, 0x01},
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
 				},
-				[]byte{0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 181),
-				[]byte{0x00, 0x01, 0x02, 0x03},
-			),
-			mergeBytes(
-				[]byte{
-					0x80, 0xe0, 0x44, 0xef, 0x88, 0x77, 0x79, 0xab,
-					0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x45,
+				Payload: mergeBytes(
+					[]byte{0x1c, 0x05},
+					[]byte{0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 181),
+					[]byte{0x00, 0x01, 0x02, 0x03},
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17647,
+					Timestamp:      2289531307,
+					SSRC:           0x9dbb7812,
 				},
-				[]byte{0x04, 0x05, 0x06, 0x07},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
-			),
+				Payload: mergeBytes(
+					[]byte{0x1c, 0x45},
+					[]byte{0x04, 0x05, 0x06, 0x07},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
+				),
+			},
 		},
 	},
 	{
@@ -124,19 +158,28 @@ var cases = []struct {
 			},
 		},
 		0,
-		[][]byte{
+		[]*rtp.Packet{
 			{
-				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x66, 0x55,
-				0x9d, 0xbb, 0x78, 0x12, 0x18, 0x00, 0x02, 0x09,
-				0xf0, 0x00, 0x44, 0x41, 0x9a, 0x24, 0x6c, 0x41,
-				0x4f, 0xfe, 0xd6, 0x8c, 0xb0, 0x00, 0x00, 0x03,
-				0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
-				0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00,
-				0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
-				0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
-				0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00,
-				0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
-				0x00, 0x00, 0x03, 0x00, 0x00, 0x6d, 0x40,
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289526357,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{
+					0x18, 0x00, 0x02, 0x09,
+					0xf0, 0x00, 0x44, 0x41, 0x9a, 0x24, 0x6c, 0x41,
+					0x4f, 0xfe, 0xd6, 0x8c, 0xb0, 0x00, 0x00, 0x03,
+					0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
+					0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00,
+					0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
+					0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
+					0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00,
+					0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
+					0x00, 0x00, 0x03, 0x00, 0x00, 0x6d, 0x40,
+				},
 			},
 		},
 	},
@@ -161,27 +204,43 @@ var cases = []struct {
 			),
 		},
 		0,
-		[][]byte{
+		[]*rtp.Packet{
 			{
-				0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x66, 0x55,
-				0x9d, 0xbb, 0x78, 0x12, 0x18, 0x00, 0x02, 0x09,
-				0xf0, 0x00, 0x44, 0x41, 0x9a, 0x24, 0x6c, 0x41,
-				0x4f, 0xfe, 0xd6, 0x8c, 0xb0, 0x00, 0x00, 0x03,
-				0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
-				0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00,
-				0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
-				0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
-				0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00,
-				0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
-				0x00, 0x00, 0x03, 0x00, 0x00, 0x6d, 0x40,
-			},
-			mergeBytes(
-				[]byte{
-					0x80, 0xe0, 0x44, 0xee, 0x88, 0x77, 0x66, 0x55,
-					0x9d, 0xbb, 0x78, 0x12, 0x08,
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289526357,
+					SSRC:           0x9dbb7812,
 				},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 175),
-			),
+				Payload: []byte{
+					0x18, 0x00, 0x02, 0x09,
+					0xf0, 0x00, 0x44, 0x41, 0x9a, 0x24, 0x6c, 0x41,
+					0x4f, 0xfe, 0xd6, 0x8c, 0xb0, 0x00, 0x00, 0x03,
+					0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
+					0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00,
+					0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
+					0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
+					0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00,
+					0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
+					0x00, 0x00, 0x03, 0x00, 0x00, 0x6d, 0x40,
+				},
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289526357,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x08},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 175),
+				),
+			},
 		},
 	},
 	{
@@ -195,27 +254,50 @@ var cases = []struct {
 			{0x09, 0xF0},
 		},
 		0,
-		[][]byte{
-			mergeBytes(
-				[]byte{
-					0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x66, 0x55,
-					0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x85,
-				},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-				[]byte{0x00, 0x01},
-			),
-			mergeBytes(
-				[]byte{
-					0x80, 0x60, 0x44, 0xee, 0x88, 0x77, 0x66, 0x55,
-					0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x45,
-				},
-				[]byte{0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 73),
-			),
+		[]*rtp.Packet{
 			{
-				0x80, 0xe0, 0x44, 0xef, 0x88, 0x77, 0x66, 0x55,
-				0x9d, 0xbb, 0x78, 0x12, 0x18, 0x00, 0x02, 0x09,
-				0xf0, 0x00, 0x02, 0x09, 0xf0,
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289526357,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x1c, 0x85},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+					[]byte{0x00, 0x01},
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289526357,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x1c, 0x45},
+					[]byte{0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 73),
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17647,
+					Timestamp:      2289526357,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{
+					0x18, 0x00, 0x02, 0x09,
+					0xf0, 0x00, 0x02, 0x09, 0xf0,
+				},
 			},
 		},
 	},
@@ -224,27 +306,32 @@ var cases = []struct {
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := NewDecoder()
+			d := &Decoder{}
+			d.Init()
 
 			// send an initial packet downstream
 			// in order to compute the right timestamp,
 			// that is relative to the initial packet
-			var pkt rtp.Packet
-			err := pkt.Unmarshal([]byte{
-				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x66, 0x55,
-				0x9d, 0xbb, 0x78, 0x12, 0x06, 0x00,
-			})
-			require.NoError(t, err)
-			_, _, err = d.Decode(&pkt)
+			pkt := rtp.Packet{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289526357,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{0x06, 0x00},
+			}
+			_, _, err := d.Decode(&pkt)
 			require.NoError(t, err)
 
 			var nalus [][]byte
 
-			for _, byts := range ca.enc {
-				err := pkt.Unmarshal(byts)
-				require.NoError(t, err)
+			for _, pkt := range ca.pkts {
+				clone := pkt.Clone()
 
-				addNALUs, pts, err := d.Decode(&pkt)
+				addNALUs, pts, err := d.Decode(pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
@@ -252,6 +339,9 @@ func TestDecode(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ca.pts, pts)
 				nalus = append(nalus, addNALUs...)
+
+				// test input integrity
+				require.Equal(t, clone, pkt)
 			}
 
 			require.Equal(t, ca.nalus, nalus)
@@ -260,45 +350,65 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
-	d := NewDecoder()
+	d := &Decoder{}
+	d.Init()
 
-	var pkt rtp.Packet
-	err := pkt.Unmarshal(mergeBytes(
-		[]byte{
-			0x80, 0xe0, 0x44, 0xef, 0x88, 0x77, 0x79, 0xab,
-			0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x45,
+	pkt := rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 17647,
+			Timestamp:      2289531307,
+			SSRC:           0x9dbb7812,
 		},
-		[]byte{0x04, 0x05, 0x06, 0x07},
-		bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
-	))
-	require.NoError(t, err)
-	_, _, err = d.Decode(&pkt)
+		Payload: mergeBytes(
+			[]byte{0x1c, 0x45},
+			[]byte{0x04, 0x05, 0x06, 0x07},
+			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
+		),
+	}
+	_, _, err := d.Decode(&pkt)
 	require.Equal(t, ErrNonStartingPacketAndNoPrevious, err)
 
-	err = pkt.Unmarshal(mergeBytes(
-		[]byte{
-			0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6f, 0x1f,
-			0x9d, 0xbb, 0x78, 0x12, 0x05,
+	pkt = rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 17645,
+			Timestamp:      2289528607,
+			SSRC:           0x9dbb7812,
 		},
-		bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
-	))
-	require.NoError(t, err)
+		Payload: mergeBytes(
+			[]byte{0x05},
+			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
+		),
+	}
 	_, _, err = d.Decode(&pkt)
 	require.NoError(t, err)
 }
 
 func TestDecodeSTAPAWithPadding(t *testing.T) {
-	d := NewDecoder()
+	d := &Decoder{}
+	d.Init()
 
-	var pkt rtp.Packet
-	err := pkt.Unmarshal([]byte{
-		0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x66, 0x55,
-		0x9d, 0xbb, 0x78, 0x12, 0x18, 0x00, 0x02, 0xaa,
-		0xbb, 0x00, 0x02, 0xcc, 0xdd, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	})
-	require.NoError(t, err)
+	pkt := rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 17645,
+			Timestamp:      2289526357,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{
+			0x18, 0x00, 0x02, 0xaa,
+			0xbb, 0x00, 0x02, 0xcc, 0xdd, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		},
+	}
 
 	nalus, _, err := d.Decode(&pkt)
 	require.NoError(t, err)
@@ -311,145 +421,250 @@ func TestDecodeSTAPAWithPadding(t *testing.T) {
 func TestDecodeErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
-		pkts [][]byte
+		pkts []*rtp.Packet
 		err  string
 	}{
 		{
 			"missing payload",
-			[][]byte{{
-				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12,
-			}},
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+				},
+			},
 			"payload is too short",
 		},
 		{
 			"STAP-A without NALUs",
-			[][]byte{{
-				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeSTAPA),
-			}},
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x18},
+				},
+			},
 			"STAP-A packet doesn't contain any NALU",
 		},
 		{
 			"STAP-A without size",
-			[][]byte{{
-				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeSTAPA), 0x01,
-			}},
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x18, 0x01},
+				},
+			},
 			"invalid STAP-A packet (invalid size)",
 		},
 		{
 			"STAP-A with invalid size",
-			[][]byte{{
-				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeSTAPA), 0x00, 0x15,
-			}},
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x18, 0x00, 0x15},
+				},
+			},
 			"invalid STAP-A packet (invalid size)",
 		},
 		{
 			"FU-A without payload",
-			[][]byte{{
-				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeFUA),
-			}},
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x1c},
+				},
+			},
 			"invalid FU-A packet (invalid size)",
 		},
 		{
 			"FU-A without start bit",
-			[][]byte{
-				mergeBytes(
-					[]byte{
-						0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6f, 0x1f,
-						0x9d, 0xbb, 0x78, 0x12, 0x05,
-					},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
-				),
+			[]*rtp.Packet{
 				{
-					0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-					0x9d, 0xbb, 0x78, 0x12, byte(naluTypeFUA), 0x00,
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: mergeBytes(
+						[]byte{0x05},
+						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
+					),
+				},
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17646,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x1c, 0x00},
 				},
 			},
 			"invalid FU-A packet (non-starting)",
 		},
 		{
 			"FU-A with 2nd packet empty",
-			[][]byte{
-				mergeBytes(
-					[]byte{
-						0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x79, 0xab,
-						0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x85,
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
 					},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					[]byte{0x00, 0x01},
-				),
-				mergeBytes(
-					[]byte{
-						0x80, 0xe0, 0x44, 0xee, 0x88, 0x77, 0x79, 0xab,
-						0x9d, 0xbb, 0x78, 0x12,
+					Payload: mergeBytes(
+						[]byte{0x1c, 0x85},
+						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+						[]byte{0x00, 0x01},
+					),
+				},
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17646,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
 					},
-				),
+				},
 			},
 			"invalid FU-A packet (invalid size)",
 		},
 		{
 			"FU-A with 2nd packet invalid",
-			[][]byte{
-				mergeBytes(
-					[]byte{
-						0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x79, 0xab,
-						0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x85,
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
 					},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					[]byte{0x00, 0x01},
-				),
-				mergeBytes(
-					[]byte{
-						0x80, 0xe0, 0x44, 0xee, 0x88, 0x77, 0x79, 0xab,
-						0x9d, 0xbb, 0x78, 0x12, 0x01, 0x00,
+					Payload: mergeBytes(
+						[]byte{
+							0x1c, 0x85,
+						},
+						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+						[]byte{0x00, 0x01},
+					),
+				},
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17646,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
 					},
-				),
+					Payload: []byte{0x01, 0x00},
+				},
 			},
 			"expected FU-A packet, got another type",
 		},
 		{
 			"FU-A with two starting packets",
-			[][]byte{
-				mergeBytes(
-					[]byte{
-						0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x79, 0xab,
-						0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x85,
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
 					},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					[]byte{0x00, 0x01},
-				),
-				mergeBytes(
-					[]byte{
-						0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x79, 0xab,
-						0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x85,
+					Payload: mergeBytes(
+						[]byte{0x1c, 0x85},
+						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+						[]byte{0x00, 0x01},
+					),
+				},
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17646,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
 					},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					[]byte{0x00, 0x01},
-				),
+					Payload: mergeBytes(
+						[]byte{0x1c, 0x85},
+						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+						[]byte{0x00, 0x01},
+					),
+				},
 			},
 			"invalid FU-A packet (decoded two starting packets in a row)",
 		},
 		{
 			"MTAP",
-			[][]byte{{
-				0x80, 0xe0, 0x44, 0xed, 0x88, 0x77, 0x6a, 0x15,
-				0x9d, 0xbb, 0x78, 0x12, byte(naluTypeMTAP16),
-			}},
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17645,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x1a},
+				},
+			},
 			"packet type not supported (MTAP-16)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			d := NewDecoder()
+			d := &Decoder{}
+			d.Init()
+
 			var lastErr error
-			for _, byts := range ca.pkts {
-				var pkt rtp.Packet
-				err := pkt.Unmarshal(byts)
-				require.NoError(t, err)
-				_, _, lastErr = d.Decode(&pkt)
+			for _, pkt := range ca.pkts {
+				_, _, lastErr = d.Decode(pkt)
 			}
 			require.EqualError(t, lastErr, ca.err)
 		})
@@ -459,108 +674,36 @@ func TestDecodeErrors(t *testing.T) {
 func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			sequenceNumber := uint16(0x44ed)
-			ssrc := uint32(0x9dbb7812)
-			initialTs := uint32(0x88776655)
-			e := NewEncoder(96, &sequenceNumber, &ssrc, &initialTs)
-
-			enc, err := e.Encode(ca.nalus, ca.pts)
-			require.NoError(t, err)
-
-			var bytss [][]byte
-			for _, pkt := range enc {
-				byts, err := pkt.Marshal()
-				require.NoError(t, err)
-				bytss = append(bytss, byts)
+			e := &Encoder{
+				PayloadType: 96,
+				SSRC: func() *uint32 {
+					v := uint32(0x9dbb7812)
+					return &v
+				}(),
+				InitialSequenceNumber: func() *uint16 {
+					v := uint16(0x44ed)
+					return &v
+				}(),
+				InitialTimestamp: func() *uint32 {
+					v := uint32(0x88776655)
+					return &v
+				}(),
 			}
+			e.Init()
 
-			require.Equal(t, ca.enc, bytss)
+			pkts, err := e.Encode(ca.nalus, ca.pts)
+			require.NoError(t, err)
+			require.Equal(t, ca.pkts, pkts)
 		})
 	}
 }
 
 func TestEncodeRandomInitialState(t *testing.T) {
-	NewEncoder(96, nil, nil, nil)
-}
-
-type dummyReader struct {
-	byts [][]byte
-	i    int
-}
-
-func (f *dummyReader) Read(p []byte) (int, error) {
-	if f.i >= len(f.byts) {
-		return 0, io.EOF
+	e := &Encoder{
+		PayloadType: 96,
 	}
-	n := copy(p, f.byts[f.i])
-	f.i++
-	return n, nil
-}
-
-func TestReadSPSPPS(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts [][]byte
-		sps  []byte
-		pps  []byte
-	}{
-		{
-			"sps then pps",
-			[][]byte{
-				{128, 96, 61, 205, 54, 67, 90, 125, 40, 249, 97, 176, 7, 1, 2},
-				{128, 96, 61, 206, 54, 67, 90, 125, 40, 249, 97, 176, 8, 3, 4},
-			},
-			[]byte{0x07, 0x01, 0x02},
-			[]byte{0x08, 0x03, 0x04},
-		},
-		{
-			"pps then sps",
-			[][]byte{
-				{128, 96, 61, 206, 54, 67, 90, 125, 40, 249, 97, 176, 8, 3, 4},
-				{128, 96, 61, 205, 54, 67, 90, 125, 40, 249, 97, 176, 7, 1, 2},
-			},
-			[]byte{0x07, 0x01, 0x02},
-			[]byte{0x08, 0x03, 0x04},
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			sps, pps, err := NewDecoder().ReadSPSPPS(&dummyReader{byts: ca.byts})
-			require.NoError(t, err)
-			require.Equal(t, ca.sps, sps)
-			require.Equal(t, ca.pps, pps)
-		})
-	}
-}
-
-func TestReadSPSPPSErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts [][]byte
-		err  string
-	}{
-		{
-			"empty",
-			[][]byte{},
-			"EOF",
-		},
-		{
-			"more packets needed, then empty",
-			[][]byte{
-				mergeBytes(
-					[]byte{
-						0x80, 0x60, 0x44, 0xed, 0x88, 0x77, 0x79, 0xab,
-						0x9d, 0xbb, 0x78, 0x12, 0x1c, 0x85,
-					},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					[]byte{0x00, 0x01},
-				),
-			},
-			"EOF",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			_, _, err := NewDecoder().ReadSPSPPS(&dummyReader{byts: ca.byts})
-			require.EqualError(t, err, ca.err)
-		})
-	}
+	e.Init()
+	require.NotEqual(t, nil, e.SSRC)
+	require.NotEqual(t, nil, e.InitialSequenceNumber)
+	require.NotEqual(t, nil, e.InitialTimestamp)
 }

@@ -6,13 +6,14 @@ import (
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/rtph264"
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
-// 2. check whether there's an H264 track
-// 3. decode H264 NALUs of that track into raw frames
+// 2. check if there's an H264 track
+// 3. decode H264 into raw frames
+
 // This example requires the ffmpeg libraries, that can be installed in this way:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config
 
@@ -32,12 +33,6 @@ func main() {
 	}
 	defer c.Close()
 
-	// get available methods
-	_, err = c.Options(u)
-	if err != nil {
-		panic(err)
-	}
-
 	// find published tracks
 	tracks, baseURL, _, err := c.Describe(u)
 	if err != nil {
@@ -45,20 +40,21 @@ func main() {
 	}
 
 	// find the H264 track
-	h264tr, h264trID := func() (*gortsplib.TrackH264, int) {
+	h264TrackID, h264track := func() (int, *gortsplib.TrackH264) {
 		for i, track := range tracks {
-			if h264tr, ok := track.(*gortsplib.TrackH264); ok {
-				return h264tr, i
+			if h264track, ok := track.(*gortsplib.TrackH264); ok {
+				return i, h264track
 			}
 		}
-		return nil, -1
+		return -1, nil
 	}()
-	if h264trID < 0 {
+	if h264TrackID < 0 {
 		panic("H264 track not found")
 	}
 
 	// setup RTP->H264 decoder
-	rtpDec := rtph264.NewDecoder()
+	rtpDec := &rtph264.Decoder{}
+	rtpDec.Init()
 
 	// setup H264->raw frames decoder
 	h264dec, err := newH264Decoder()
@@ -67,28 +63,22 @@ func main() {
 	}
 	defer h264dec.close()
 
-	// send SPS and PPS to the decoder
-	if h264tr.SPS() == nil || h264tr.PPS() == nil {
-		panic("SPS or PPS not provided by the SDP")
+	// if present, send SPS and PPS from the SDP to the decoder
+	if h264track.SPS() != nil {
+		h264dec.decode(h264track.SPS())
 	}
-	h264dec.decode(h264tr.SPS())
-	h264dec.decode(h264tr.PPS())
+	if h264track.PPS() != nil {
+		h264dec.decode(h264track.PPS())
+	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP = func(trackID int, payload []byte) {
-		if trackID != h264trID {
-			return
-		}
-
-		// parse RTP packet
-		var pkt rtp.Packet
-		err := pkt.Unmarshal(payload)
-		if err != nil {
+	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
+		if trackID != h264TrackID {
 			return
 		}
 
 		// decode H264 NALUs from the RTP packet
-		nalus, _, err := rtpDec.Decode(&pkt)
+		nalus, _, err := rtpDec.Decode(pkt)
 		if err != nil {
 			return
 		}

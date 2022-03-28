@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/pion/rtp/v2"
 )
 
 // This example shows how to
-// 1. generate RTP/H264 frames from a file with Gstreamer
+// 1. generate RTP/H264 frames from a file with GStreamer
 // 2. connect to a RTSP server, announce an H264 track
 // 3. write the frames to the server for 5 seconds
 // 4. pause for 5 seconds
@@ -28,23 +28,22 @@ func main() {
 		"gst-launch-1.0 filesrc location=video.mp4 ! qtdemux ! video/x-h264" +
 		" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
 
-	// get SPS and PPS
-	decoder := rtph264.NewDecoder()
-	sps, pps, err := decoder.ReadSPSPPS(rtph264.PacketConnReader{pc})
+	// wait for first packet
+	buf := make([]byte, 2048)
+	n, _, err := pc.ReadFrom(buf)
 	if err != nil {
 		panic(err)
 	}
 	log.Println("stream connected")
 
 	// create an H264 track
-	track, err := gortsplib.NewTrackH264(96, sps, pps, nil)
+	track, err := gortsplib.NewTrackH264(96, nil, nil, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	c := gortsplib.Client{}
-
 	// connect to the server and start publishing the track
+	c := gortsplib.Client{}
 	err = c.StartPublishing("rtsp://localhost:8554/mystream",
 		gortsplib.Tracks{track})
 	if err != nil {
@@ -54,18 +53,21 @@ func main() {
 
 	for {
 		go func() {
-			buf := make([]byte, 2048)
+			var pkt rtp.Packet
 			for {
-				// read packets from the source
-				n, _, err := pc.ReadFrom(buf)
+				// parse RTP packet
+				err = pkt.Unmarshal(buf[:n])
 				if err != nil {
-					break
+					panic(err)
 				}
 
-				// route RTP packets to the server
-				err = c.WritePacketRTP(0, buf[:n])
+				// route RTP packet to the server
+				c.WritePacketRTP(0, &pkt)
+
+				// read another RTP packet from source
+				n, _, err = pc.ReadFrom(buf)
 				if err != nil {
-					break
+					panic(err)
 				}
 			}
 		}()

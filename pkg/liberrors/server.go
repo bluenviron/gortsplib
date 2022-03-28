@@ -50,12 +50,12 @@ func (e ErrServerCSeqMissing) Error() string {
 
 // ErrServerUnhandledRequest is an error that can be returned by a server.
 type ErrServerUnhandledRequest struct {
-	Req *base.Request
+	Request *base.Request
 }
 
 // Error implements the error interface.
 func (e ErrServerUnhandledRequest) Error() string {
-	return fmt.Sprintf("unhandled request: %v %v", e.Req.Method, e.Req.URL)
+	return fmt.Sprintf("unhandled request: %v %v", e.Request.Method, e.Request.URL)
 }
 
 // ErrServerInvalidState is an error that can be returned by a server.
@@ -104,14 +104,6 @@ type ErrServerSDPInvalid struct {
 // Error implements the error interface.
 func (e ErrServerSDPInvalid) Error() string {
 	return fmt.Sprintf("invalid SDP: %v", e.Err)
-}
-
-// ErrServerSDPNoTracksDefined is an error that can be returned by a server.
-type ErrServerSDPNoTracksDefined struct{}
-
-// Error implements the error interface.
-func (e ErrServerSDPNoTracksDefined) Error() string {
-	return "no tracks defined in the SDP"
 }
 
 // ErrServerTransportHeaderInvalid is an error that can be returned by a server.

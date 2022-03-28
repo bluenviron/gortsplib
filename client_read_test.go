@@ -12,14 +12,13 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/ipv4"
 
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
-	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
 func TestClientReadTracks(t *testing.T) {
@@ -317,18 +316,18 @@ func TestClientRead(t *testing.T) {
 				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
-				// server -> client
+				// server -> client (RTP)
 				switch transport {
 				case "udp":
 					time.Sleep(1 * time.Second)
-					l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
+					l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[0],
 					})
 
 				case "multicast":
 					time.Sleep(1 * time.Second)
-					l1.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
+					l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("224.1.0.1"),
 						Port: 25000,
 					})
@@ -336,7 +335,7 @@ func TestClientRead(t *testing.T) {
 				case "tcp", "tls":
 					base.InterleavedFrame{
 						Channel: 0,
-						Payload: []byte{0x01, 0x02, 0x03, 0x04},
+						Payload: testRTPPacketMarshaled,
 					}.Write(&bb)
 					_, err = conn.Write(bb.Bytes())
 					require.NoError(t, err)
@@ -353,7 +352,9 @@ func TestClientRead(t *testing.T) {
 					buf = make([]byte, 2048)
 					n, _, err := l2.ReadFrom(buf)
 					require.NoError(t, err)
-					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, buf[:n])
+					packets, err := rtcp.Unmarshal(buf[:n])
+					require.NoError(t, err)
+					require.Equal(t, &testRTCPPacket, packets[0])
 					close(packetRecv)
 
 				case "tcp", "tls":
@@ -362,7 +363,9 @@ func TestClientRead(t *testing.T) {
 					err := f.Read(br)
 					require.NoError(t, err)
 					require.Equal(t, 1, f.Channel)
-					require.Equal(t, []byte{0x05, 0x06, 0x07, 0x08}, f.Payload)
+					packets, err := rtcp.Unmarshal(f.Payload)
+					require.NoError(t, err)
+					require.Equal(t, &testRTCPPacket, packets[0])
 					close(packetRecv)
 				}
 
@@ -401,7 +404,7 @@ func TestClientRead(t *testing.T) {
 				}(),
 			}
 
-			c.OnPacketRTP = func(trackID int, payload []byte) {
+			c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
 				// ignore multicast loopback
 				if transport == "multicast" {
 					counter++
@@ -411,9 +414,9 @@ func TestClientRead(t *testing.T) {
 				}
 
 				require.Equal(t, 0, trackID)
-				require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
+				require.Equal(t, &testRTPPacket, pkt)
 
-				err := c.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
+				err := c.WritePacketRTCP(0, &testRTCPPacket)
 				require.NoError(t, err)
 			}
 
@@ -427,7 +430,14 @@ func TestClientRead(t *testing.T) {
 }
 
 func TestClientReadNonStandardFrameSize(t *testing.T) {
-	refPayload := bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5)
+	refRTPPacket := rtp.Packet{
+		Header: rtp.Header{
+			Version:     2,
+			PayloadType: 96,
+			CSRC:        []uint32{},
+		},
+		Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5),
+	}
 
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -519,9 +529,10 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
+		byts, _ := refRTPPacket.Marshal()
 		base.InterleavedFrame{
 			Channel: 0,
-			Payload: refPayload,
+			Payload: byts,
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
@@ -530,14 +541,14 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 	packetRecv := make(chan struct{})
 
 	c := &Client{
-		ReadBufferSize: 4500,
+		ReadBufferSize: 4500 + 4,
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
 			require.Equal(t, 0, trackID)
-			require.Equal(t, refPayload, payload)
+			require.Equal(t, &refRTPPacket, pkt)
 			close(packetRecv)
 		},
 	}
@@ -567,6 +578,23 @@ func TestClientReadPartial(t *testing.T) {
 		var bb bytes.Buffer
 
 		req, err := readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		req, err = readRequest(br)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream"), req.URL)
@@ -632,7 +660,7 @@ func TestClientReadPartial(t *testing.T) {
 
 		base.InterleavedFrame{
 			Channel: 0,
-			Payload: []byte{0x01, 0x02, 0x03, 0x04},
+			Payload: testRTPPacketMarshaled,
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
@@ -656,9 +684,9 @@ func TestClientReadPartial(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
 			require.Equal(t, 0, trackID)
-			require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, payload)
+			require.Equal(t, &testRTPPacket, pkt)
 			close(packetRecv)
 		},
 	}
@@ -916,11 +944,12 @@ func TestClientReadAnyPort(t *testing.T) {
 
 				time.Sleep(500 * time.Millisecond)
 
-				l1a.WriteTo([]byte{0x01, 0x02, 0x03, 0x04}, &net.UDPAddr{
+				l1a.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ClientPorts[0],
 				})
 
+				// read RTCP
 				if ca == "random" {
 					// skip firewall opening
 					buf := make([]byte, 2048)
@@ -930,7 +959,9 @@ func TestClientReadAnyPort(t *testing.T) {
 					buf = make([]byte, 2048)
 					n, _, err := l1b.ReadFrom(buf)
 					require.NoError(t, err)
-					require.Equal(t, buf[:n], []byte{0x05, 0x06, 0x07, 0x08})
+					packets, err := rtcp.Unmarshal(buf[:n])
+					require.NoError(t, err)
+					require.Equal(t, &testRTCPPacket, packets[0])
 					close(serverRecv)
 				}
 			}()
@@ -939,8 +970,8 @@ func TestClientReadAnyPort(t *testing.T) {
 
 			c := &Client{
 				AnyPortEnable: true,
-				OnPacketRTP: func(trackID int, payload []byte) {
-					require.Equal(t, payload, []byte{0x01, 0x02, 0x03, 0x04})
+				OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
+					require.Equal(t, &testRTPPacket, pkt)
 					close(packetRecv)
 				},
 			}
@@ -952,7 +983,7 @@ func TestClientReadAnyPort(t *testing.T) {
 			<-packetRecv
 
 			if ca == "random" {
-				c.WritePacketRTCP(0, []byte{0x05, 0x06, 0x07, 0x08})
+				c.WritePacketRTCP(0, &testRTCPPacket)
 				<-serverRecv
 			}
 		})
@@ -1061,7 +1092,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			base.InterleavedFrame{
 				Channel: 0,
-				Payload: []byte("\x00\x00\x00\x00"),
+				Payload: testRTPPacketMarshaled,
 			}.Write(&bb)
 			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
@@ -1070,7 +1101,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			OnPacketRTP: func(trackID int, payload []byte) {
+			OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
 				close(packetRecv)
 			},
 		}
@@ -1209,6 +1240,23 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			req, err = readRequest(br)
 			require.NoError(t, err)
+			require.Equal(t, base.Options, req.Method)
+
+			base.Response{
+				StatusCode: base.StatusOK,
+				Header: base.Header{
+					"Public": base.HeaderValue{strings.Join([]string{
+						string(base.Describe),
+						string(base.Setup),
+						string(base.Play),
+					}, ", ")},
+				},
+			}.Write(&bb)
+			_, err = conn.Write(bb.Bytes())
+			require.NoError(t, err)
+
+			req, err = readRequest(br)
+			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
 			base.Response{
@@ -1279,7 +1327,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			base.InterleavedFrame{
 				Channel: 0,
-				Payload: []byte("\x00\x00\x00\x00"),
+				Payload: testRTPPacketMarshaled,
 			}.Write(&bb)
 			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
@@ -1301,7 +1349,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 		c := &Client{
 			ReadTimeout: 1 * time.Second,
-			OnPacketRTP: func(trackID int, payload []byte) {
+			OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
 				close(packetRecv)
 			},
 		}
@@ -1409,7 +1457,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 
 		base.InterleavedFrame{
 			Channel: 2,
-			Payload: []byte{0x01, 0x02, 0x03, 0x04},
+			Payload: testRTPPacketMarshaled,
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
@@ -1433,7 +1481,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
 			require.Equal(t, 0, trackID)
 			close(packetRecv)
 		},
@@ -1577,7 +1625,7 @@ func TestClientReadRedirect(t *testing.T) {
 		require.NoError(t, err)
 		defer l1.Close()
 
-		l1.WriteTo([]byte("\x00\x00\x00\x00"), &net.UDPAddr{
+		l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: th.ClientPorts[0],
 		})
@@ -1586,7 +1634,7 @@ func TestClientReadRedirect(t *testing.T) {
 	packetRecv := make(chan struct{})
 
 	c := Client{
-		OnPacketRTP: func(trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
 			close(packetRecv)
 		},
 	}
@@ -1622,14 +1670,14 @@ func TestClientReadPause(t *testing.T) {
 				select {
 				case <-t.C:
 					if inTH.Protocol == headers.TransportProtocolUDP {
-						l1.WriteTo([]byte("\x00\x00\x00\x00"), &net.UDPAddr{
+						l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 							IP:   net.ParseIP("127.0.0.1"),
 							Port: inTH.ClientPorts[0],
 						})
 					} else {
 						base.InterleavedFrame{
 							Channel: 0,
-							Payload: []byte("\x00\x00\x00\x00"),
+							Payload: testRTPPacketMarshaled,
 						}.Write(&bb)
 						conn.Write(bb.Bytes())
 					}
@@ -1797,7 +1845,7 @@ func TestClientReadPause(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnPacketRTP: func(trackID int, payload []byte) {
+				OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
 					if atomic.SwapInt32(&firstFrame, 1) == 0 {
 						close(packetRecv)
 					}
@@ -1928,9 +1976,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		_, _, err = l2.ReadFrom(buf)
 		require.NoError(t, err)
 
-		rs := rtcpsender.New(90000)
-
-		byts, _ := (&rtp.Packet{
+		pkt := rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         true,
@@ -1940,15 +1986,23 @@ func TestClientReadRTCPReport(t *testing.T) {
 				SSRC:           753621,
 			},
 			Payload: []byte{0x01, 0x02, 0x03, 0x04},
-		}).Marshal()
+		}
+		byts, _ := pkt.Marshal()
 		_, err = l1.WriteTo(byts, &net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: inTH.ClientPorts[0],
 		})
 		require.NoError(t, err)
-		rs.ProcessPacketRTP(time.Now(), byts)
 
-		_, err = l2.WriteTo(rs.Report(time.Now()), &net.UDPAddr{
+		sr := &rtcp.SenderReport{
+			SSRC:        753621,
+			NTPTime:     0,
+			RTPTime:     0,
+			PacketCount: 0,
+			OctetCount:  0,
+		}
+		byts, _ = sr.Marshal()
+		_, err = l2.WriteTo(byts, &net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: inTH.ClientPorts[1],
 		})
@@ -1957,9 +2011,9 @@ func TestClientReadRTCPReport(t *testing.T) {
 		buf = make([]byte, 2048)
 		n, _, err := l2.ReadFrom(buf)
 		require.NoError(t, err)
-		pkt, err := rtcp.Unmarshal(buf[:n])
+		packets, err := rtcp.Unmarshal(buf[:n])
 		require.NoError(t, err)
-		rr, ok := pkt[0].(*rtcp.ReceiverReport)
+		rr, ok := packets[0].(*rtcp.ReceiverReport)
 		require.True(t, ok)
 		require.Equal(t, &rtcp.ReceiverReport{
 			SSRC: rr.SSRC,
@@ -2109,7 +2163,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 
 				if transport == "udp" || transport == "auto" {
 					// write a packet to skip the protocol autodetection feature
-					l1.WriteTo([]byte("\x01\x02\x03\x04"), &net.UDPAddr{
+					l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[0],
 					})
@@ -2251,14 +2305,14 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 
 		base.InterleavedFrame{
 			Channel: 6,
-			Payload: []byte{0x01, 0x02, 0x03, 0x04},
+			Payload: testRTPPacketMarshaled,
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
 		base.InterleavedFrame{
 			Channel: 0,
-			Payload: []byte{0x05, 0x06, 0x07, 0x08},
+			Payload: testRTPPacketMarshaled,
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
@@ -2281,7 +2335,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(trackID int, payload []byte) {
+		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
 			close(recv)
 		},
 	}
@@ -2445,9 +2499,6 @@ func TestClientReadSeek(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	_, err = c.Options(u)
-	require.NoError(t, err)
-
 	tracks, baseURL, _, err := c.Describe(u)
 	require.NoError(t, err)
 
@@ -2599,4 +2650,156 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 	defer c.Close()
 
 	<-keepaliveOk
+}
+
+func TestClientReadDifferentSource(t *testing.T) {
+	packetRecv := make(chan struct{})
+
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+		br := bufio.NewReader(conn)
+		var bb bytes.Buffer
+
+		req, err := readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
+
+		base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		req, err = readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
+
+		track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
+		require.NoError(t, err)
+
+		tracks := Tracks{track}
+		tracks.setControls()
+
+		base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/test/stream?param=value/"},
+			},
+			Body: tracks.Write(false),
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		req, err = readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/trackID=0"), req.URL)
+
+		var inTH headers.Transport
+		err = inTH.Read(req.Header["Transport"])
+		require.NoError(t, err)
+
+		th := headers.Transport{
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
+				return &v
+			}(),
+			Protocol:    headers.TransportProtocolUDP,
+			ClientPorts: inTH.ClientPorts,
+			ServerPorts: &[2]int{34556, 34557},
+			Source: func() *net.IP {
+				i := net.ParseIP("127.0.1.1")
+				return &i
+			}(),
+		}
+
+		l1, err := net.ListenPacket("udp", "127.0.1.1:34556")
+		require.NoError(t, err)
+		defer l1.Close()
+
+		l2, err := net.ListenPacket("udp", "127.0.1.1:34557")
+		require.NoError(t, err)
+		defer l2.Close()
+
+		base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Write(),
+			},
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		req, err = readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
+		require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
+
+		base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+
+		// server -> client (RTP)
+		time.Sleep(1 * time.Second)
+		l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: th.ClientPorts[0],
+		})
+
+		req, err = readRequest(br)
+		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
+
+		base.Response{
+			StatusCode: base.StatusOK,
+		}.Write(&bb)
+		_, err = conn.Write(bb.Bytes())
+		require.NoError(t, err)
+	}()
+
+	c := &Client{
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		Transport: func() *Transport {
+			v := TransportUDP
+			return &v
+		}(),
+	}
+
+	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
+		require.Equal(t, 0, trackID)
+		require.Equal(t, &testRTPPacket, pkt)
+		close(packetRecv)
+	}
+
+	err = c.StartReading("rtsp://localhost:8554/test/stream?param=value")
+	require.NoError(t, err)
+	defer c.Close()
+
+	<-packetRecv
 }

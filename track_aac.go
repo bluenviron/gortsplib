@@ -9,12 +9,11 @@ import (
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/pkg/aac"
-	"github.com/aler9/gortsplib/pkg/base"
 )
 
 // TrackAAC is an AAC track.
 type TrackAAC struct {
-	control           string
+	trackBase
 	payloadType       uint8
 	typ               int
 	sampleRate        int
@@ -47,10 +46,9 @@ func NewTrackAAC(payloadType uint8, typ int, sampleRate int,
 }
 
 func newTrackAACFromMediaDescription(
+	control string,
 	payloadType uint8,
 	md *psdp.MediaDescription) (*TrackAAC, error) {
-	control := trackFindControl(md)
-
 	v, ok := md.Attribute("fmtp")
 	if !ok {
 		return nil, fmt.Errorf("fmtp attribute is missing")
@@ -89,7 +87,9 @@ func newTrackAACFromMediaDescription(
 			enc, _ = mpegConf.Encode()
 
 			return &TrackAAC{
-				control:           control,
+				trackBase: trackBase{
+					control: control,
+				},
 				payloadType:       payloadType,
 				typ:               int(mpegConf.Type),
 				sampleRate:        mpegConf.SampleRate,
@@ -125,7 +125,7 @@ func (t *TrackAAC) AOTSpecificConfig() []byte {
 
 func (t *TrackAAC) clone() Track {
 	return &TrackAAC{
-		control:           t.control,
+		trackBase:         t.trackBase,
 		payloadType:       t.payloadType,
 		typ:               t.typ,
 		sampleRate:        t.sampleRate,
@@ -135,21 +135,7 @@ func (t *TrackAAC) clone() Track {
 	}
 }
 
-// GetControl gets the track control.
-func (t *TrackAAC) GetControl() string {
-	return t.control
-}
-
-// SetControl sets the track control.
-func (t *TrackAAC) SetControl(c string) {
-	t.control = c
-}
-
-func (t *TrackAAC) url(contentBase *base.URL) (*base.URL, error) {
-	return trackURL(t, contentBase)
-}
-
-// MediaDescription returns the media description in SDP format.
+// MediaDescription returns the track media description in SDP format.
 func (t *TrackAAC) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.payloadType), 10)
 

@@ -4,13 +4,13 @@ import (
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/rtph264"
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
-// 2. check whether there's a H264 track
-// 3. save the content of the H264 track to a file in MPEG-TS format
+// 2. check if there's a H264 track
+// 3. save the content of the H264 track into a file in MPEG-TS format
 
 func main() {
 	c := gortsplib.Client{}
@@ -28,12 +28,6 @@ func main() {
 	}
 	defer c.Close()
 
-	// get available methods
-	_, err = c.Options(u)
-	if err != nil {
-		panic(err)
-	}
-
 	// find published tracks
 	tracks, baseURL, _, err := c.Describe(u)
 	if err != nil {
@@ -41,46 +35,36 @@ func main() {
 	}
 
 	// find the H264 track
-	var sps []byte
-	var pps []byte
-	h264Track := func() int {
+	h264TrackID, h264track := func() (int, *gortsplib.TrackH264) {
 		for i, track := range tracks {
-			if h264t, ok := track.(*gortsplib.TrackH264); ok {
-				sps = h264t.SPS()
-				pps = h264t.PPS()
-				return i
+			if h264track, ok := track.(*gortsplib.TrackH264); ok {
+				return i, h264track
 			}
 		}
-		return -1
+		return -1, nil
 	}()
-	if h264Track < 0 {
+	if h264TrackID < 0 {
 		panic("H264 track not found")
 	}
 
-	// setup decoder
-	dec := rtph264.NewDecoder()
+	// setup RTP->H264 decoder
+	rtpDec := &rtph264.Decoder{}
+	rtpDec.Init()
 
-	// setup encoder
-	enc, err := newMPEGTSEncoder(sps, pps)
+	// setup H264->MPEGTS encoder
+	enc, err := newMPEGTSEncoder(h264track.SPS(), h264track.PPS())
 	if err != nil {
 		panic(err)
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP = func(trackID int, payload []byte) {
-		if trackID != h264Track {
-			return
-		}
-
-		// parse RTP packet
-		var pkt rtp.Packet
-		err := pkt.Unmarshal(payload)
-		if err != nil {
+	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
+		if trackID != h264TrackID {
 			return
 		}
 
 		// decode H264 NALUs from the RTP packet
-		nalus, pts, err := dec.DecodeUntilMarker(&pkt)
+		nalus, pts, err := rtpDec.DecodeUntilMarker(pkt)
 		if err != nil {
 			return
 		}

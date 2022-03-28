@@ -5,6 +5,8 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp/v2"
 )
 
 // This example shows how to
@@ -15,12 +17,12 @@ import (
 func main() {
 	c := gortsplib.Client{
 		// called when a RTP packet arrives
-		OnPacketRTP: func(trackID int, payload []byte) {
-			log.Printf("RTP packet from track %d, size %d\n", trackID, len(payload))
+		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
+			log.Printf("RTP packet from track %d, payload type %d\n", trackID, pkt.Header.PayloadType)
 		},
 		// called when a RTCP packet arrives
-		OnPacketRTCP: func(trackID int, payload []byte) {
-			log.Printf("RTCP packet from track %d, size %d\n", trackID, len(payload))
+		OnPacketRTCP: func(trackID int, pkt rtcp.Packet) {
+			log.Printf("RTCP packet from track %d, type %T\n", trackID, pkt)
 		},
 	}
 
@@ -34,11 +36,6 @@ func main() {
 		panic(err)
 	}
 	defer c.Close()
-
-	_, err = c.Options(u)
-	if err != nil {
-		panic(err)
-	}
 
 	tracks, baseURL, _, err := c.Describe(u)
 	if err != nil {

@@ -1,4 +1,4 @@
-// Package base contains the base elements of the RTSP protocol.
+// Package base contains the primitives of the RTSP protocol.
 package base
 
 import (

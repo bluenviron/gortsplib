@@ -5,14 +5,27 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRTCPSender(t *testing.T) {
-	rs := New(90000)
+	now = func() time.Time {
+		return time.Date(2008, 5, 20, 22, 16, 20, 600000000, time.UTC)
+	}
+	done := make(chan struct{})
 
-	require.Equal(t, []byte(nil), rs.Report(time.Now()))
+	rs := New(500*time.Millisecond, 90000, func(pkt rtcp.Packet) {
+		require.Equal(t, &rtcp.SenderReport{
+			SSRC:        0xba9da416,
+			NTPTime:     0xcbddcc34999997ff,
+			RTPTime:     0x4d185ae8,
+			PacketCount: 2,
+			OctetCount:  4,
+		}, pkt)
+		close(done)
+	})
+	defer rs.Close()
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{
@@ -25,9 +38,8 @@ func TestRTCPSender(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ := rtpPkt.Marshal()
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rs.ProcessPacketRTP(ts, byts)
+	rs.ProcessPacketRTP(ts, &rtpPkt)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -40,18 +52,8 @@ func TestRTCPSender(t *testing.T) {
 		},
 		Payload: []byte("\x00\x00"),
 	}
-	byts, _ = rtpPkt.Marshal()
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 500000000, time.UTC)
-	rs.ProcessPacketRTP(ts, byts)
+	rs.ProcessPacketRTP(ts, &rtpPkt)
 
-	expectedPkt := rtcp.SenderReport{
-		SSRC:        0xba9da416,
-		NTPTime:     0xcbddcc34999997ff,
-		RTPTime:     0x4d185ae8,
-		PacketCount: 2,
-		OctetCount:  4,
-	}
-	expected, _ := expectedPkt.Marshal()
-	ts = time.Date(2008, 0o5, 20, 22, 16, 20, 600000000, time.UTC)
-	require.Equal(t, expected, rs.Report(ts))
+	<-done
 }

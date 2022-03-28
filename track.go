@@ -18,53 +18,80 @@ type Track interface {
 	GetControl() string
 	// SetControl sets the track control.
 	SetControl(string)
-	// MediaDescription returns the media description in SDP format.
+	// MediaDescription returns the track media description in SDP format.
 	MediaDescription() *psdp.MediaDescription
 	clone() Track
 	url(*base.URL) (*base.URL, error)
 }
 
 func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
-	if rtpmap, ok := md.Attribute("rtpmap"); ok {
-		rtpmap = strings.TrimSpace(rtpmap)
-
-		if rtpmapParts := strings.Split(rtpmap, " "); len(rtpmapParts) == 2 {
-			tmp, err := strconv.ParseInt(rtpmapParts[0], 10, 64)
-			if err == nil {
-				payloadType := uint8(tmp)
-
-				switch {
-				case md.MediaName.Media == "video":
-					if rtpmapParts[1] == "H264/90000" {
-						return newTrackH264FromMediaDescription(payloadType, md)
-					}
-
-				case md.MediaName.Media == "audio":
-					switch {
-					case strings.HasPrefix(strings.ToLower(rtpmapParts[1]), "mpeg4-generic/"):
-						return newTrackAACFromMediaDescription(payloadType, md)
-
-					case strings.HasPrefix(rtpmapParts[1], "opus/"):
-						return newTrackOpusFromMediaDescription(payloadType, rtpmapParts[1], md)
-					}
-				}
+	control := func() string {
+		for _, attr := range md.Attributes {
+			if attr.Key == "control" {
+				return attr.Value
 			}
 		}
-	}
+		return ""
+	}()
 
-	return newTrackGenericFromMediaDescription(md)
-}
+	rtpmapPart1, payloadType := func() (string, uint8) {
+		rtpmap, ok := md.Attribute("rtpmap")
+		if !ok {
+			return "", 0
+		}
+		rtpmap = strings.TrimSpace(rtpmap)
 
-func trackFindControl(md *psdp.MediaDescription) string {
-	for _, attr := range md.Attributes {
-		if attr.Key == "control" {
-			return attr.Value
+		rtpmapParts := strings.Split(rtpmap, " ")
+		if len(rtpmapParts) != 2 {
+			return "", 0
+		}
+
+		tmp, err := strconv.ParseInt(rtpmapParts[0], 10, 64)
+		if err != nil {
+			return "", 0
+		}
+		payloadType := uint8(tmp)
+
+		return rtpmapParts[1], payloadType
+	}()
+
+	switch {
+	case md.MediaName.Media == "video":
+		if rtpmapPart1 == "H264/90000" {
+			return newTrackH264FromMediaDescription(control, payloadType, md)
+		}
+
+	case md.MediaName.Media == "audio":
+		switch {
+		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "0":
+			return newTrackPCMUFromMediaDescription(control, rtpmapPart1, md)
+
+		case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
+			return newTrackAACFromMediaDescription(control, payloadType, md)
+
+		case strings.HasPrefix(rtpmapPart1, "opus/"):
+			return newTrackOpusFromMediaDescription(control, payloadType, rtpmapPart1, md)
 		}
 	}
-	return ""
+
+	return newTrackGenericFromMediaDescription(control, md)
 }
 
-func trackURL(t Track, contentBase *base.URL) (*base.URL, error) {
+type trackBase struct {
+	control string
+}
+
+// GetControl gets the track control.
+func (t *trackBase) GetControl() string {
+	return t.control
+}
+
+// SetControl sets the track control.
+func (t *trackBase) SetControl(c string) {
+	t.control = c
+}
+
+func (t *trackBase) url(contentBase *base.URL) (*base.URL, error) {
 	if contentBase == nil {
 		return nil, fmt.Errorf("Content-Base header not provided")
 	}

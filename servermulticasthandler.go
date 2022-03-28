@@ -29,7 +29,7 @@ func newServerMulticastHandler(s *Server) (*serverMulticastHandler, error) {
 	h := &serverMulticastHandler{
 		rtpl:        rtpl,
 		rtcpl:       rtcpl,
-		writeBuffer: ringbuffer.New(uint64(s.ReadBufferCount)),
+		writeBuffer: ringbuffer.New(uint64(s.WriteBufferCount)),
 		writerDone:  make(chan struct{}),
 	}
 
@@ -77,14 +77,14 @@ func (h *serverMulticastHandler) runWriter() {
 	}
 }
 
-func (h *serverMulticastHandler) writeRTP(payload []byte) {
+func (h *serverMulticastHandler) writePacketRTP(payload []byte) {
 	h.writeBuffer.Push(trackTypePayload{
 		isRTP:   true,
 		payload: payload,
 	})
 }
 
-func (h *serverMulticastHandler) writeRTCP(payload []byte) {
+func (h *serverMulticastHandler) writePacketRTCP(payload []byte) {
 	h.writeBuffer.Push(trackTypePayload{
 		isRTP:   false,
 		payload: payload,

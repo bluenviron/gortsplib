@@ -6,12 +6,12 @@ import (
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/rtpaac"
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
-// 2. check whether there's an AAC track
+// 2. check if there's an AAC track
 // 3. get AAC AUs of that track
 
 func main() {
@@ -29,12 +29,6 @@ func main() {
 		panic(err)
 	}
 	defer c.Close()
-
-	// get available methods
-	_, err = c.Options(u)
-	if err != nil {
-		panic(err)
-	}
 
 	// find published tracks
 	tracks, baseURL, _, err := c.Describe(u)
@@ -58,23 +52,19 @@ func main() {
 	}
 
 	// setup decoder
-	dec := rtpaac.NewDecoder(clockRate)
+	dec := &rtpaac.Decoder{
+		SampleRate: clockRate,
+	}
+	dec.Init()
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP = func(trackID int, payload []byte) {
+	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
 		if trackID != aacTrack {
 			return
 		}
 
-		// parse RTP packet
-		var pkt rtp.Packet
-		err := pkt.Unmarshal(payload)
-		if err != nil {
-			return
-		}
-
 		// decode AAC AUs from the RTP packet
-		aus, _, err := dec.Decode(&pkt)
+		aus, _, err := dec.Decode(pkt)
 		if err != nil {
 			return
 		}

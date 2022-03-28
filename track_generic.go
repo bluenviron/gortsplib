@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
-
-	"github.com/aler9/gortsplib/pkg/base"
 )
 
 func trackGenericGetClockRate(formats []string, rtpmap string) (int, error) {
@@ -63,7 +61,7 @@ func trackGenericGetClockRate(formats []string, rtpmap string) (int, error) {
 
 // TrackGeneric is a generic track.
 type TrackGeneric struct {
-	control   string
+	trackBase
 	clockRate int
 	media     string
 	formats   []string
@@ -87,9 +85,9 @@ func NewTrackGeneric(media string, formats []string, rtpmap string, fmtp string)
 	}, nil
 }
 
-func newTrackGenericFromMediaDescription(md *psdp.MediaDescription) (*TrackGeneric, error) {
-	control := trackFindControl(md)
-
+func newTrackGenericFromMediaDescription(
+	control string,
+	md *psdp.MediaDescription) (*TrackGeneric, error) {
 	rtpmap := func() string {
 		for _, attr := range md.Attributes {
 			if attr.Key == "rtpmap" {
@@ -114,7 +112,9 @@ func newTrackGenericFromMediaDescription(md *psdp.MediaDescription) (*TrackGener
 	}()
 
 	return &TrackGeneric{
-		control:   control,
+		trackBase: trackBase{
+			control: control,
+		},
 		clockRate: clockRate,
 		media:     md.MediaName.Media,
 		formats:   md.MediaName.Formats,
@@ -130,7 +130,7 @@ func (t *TrackGeneric) ClockRate() int {
 
 func (t *TrackGeneric) clone() Track {
 	return &TrackGeneric{
-		control:   t.control,
+		trackBase: t.trackBase,
 		clockRate: t.clockRate,
 		media:     t.media,
 		formats:   t.formats,
@@ -139,21 +139,7 @@ func (t *TrackGeneric) clone() Track {
 	}
 }
 
-// GetControl returns the track control.
-func (t *TrackGeneric) GetControl() string {
-	return t.control
-}
-
-// SetControl set the track control.
-func (t *TrackGeneric) SetControl(c string) {
-	t.control = c
-}
-
-func (t *TrackGeneric) url(contentBase *base.URL) (*base.URL, error) {
-	return trackURL(t, contentBase)
-}
-
-// MediaDescription returns the media description in SDP format.
+// MediaDescription returns the track media description in SDP format.
 func (t *TrackGeneric) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{

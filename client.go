@@ -21,6 +21,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp/v2"
+
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
@@ -55,8 +58,6 @@ type clientTrack struct {
 	udpRTPListener  *clientUDPListener
 	udpRTCPListener *clientUDPListener
 	tcpChannel      int
-	tcpRTPFrame     *base.InterleavedFrame
-	tcpRTCPFrame    *base.InterleavedFrame
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver
 	rtcpSender      *rtcpsender.RTCPSender
 }
@@ -132,9 +133,9 @@ type Client struct {
 	// called after every response.
 	OnResponse func(*base.Response)
 	// called when a RTP packet arrives.
-	OnPacketRTP func(int, []byte)
+	OnPacketRTP func(int, *rtp.Packet)
 	// called when a RTCP packet arrives.
-	OnPacketRTCP func(int, []byte)
+	OnPacketRTCP func(int, rtcp.Packet)
 
 	//
 	// RTSP parameters
@@ -167,12 +168,16 @@ type Client struct {
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
-	// It defaults to 1.
+	// It defaults to 256.
 	ReadBufferCount int
 	// read buffer size.
 	// This must be touched only when the server reports errors about buffer sizes.
 	// It defaults to 2048.
 	ReadBufferSize int
+	// write buffer count.
+	// It allows to queue packets before sending them.
+	// It defaults to 8.
+	WriteBufferCount int
 
 	//
 	// system functions
@@ -203,17 +208,16 @@ type Client struct {
 	session            string
 	sender             *auth.Sender
 	cseq               int
+	optionsSent        bool
 	useGetParameter    bool
 	lastDescribeURL    *base.URL
 	streamBaseURL      *base.URL
-	protocol           *Transport
-	tracks             map[int]clientTrack
+	effectiveTransport *Transport
+	tracks             map[int]*clientTrack
 	tracksByChannel    map[int]int
 	lastRange          *headers.Range
-	tcpReadBuffer      *multibuffer.MultiBuffer
 	writeMutex         sync.RWMutex // publish
 	writeFrameAllowed  bool         // publish
-	udpReportTimer     *time.Timer
 	checkStreamTimer   *time.Timer
 	checkStreamInitial bool
 	tcpLastFrameTime   *int64
@@ -249,11 +253,11 @@ type Client struct {
 func (c *Client) Start(scheme string, host string) error {
 	// callbacks
 	if c.OnPacketRTP == nil {
-		c.OnPacketRTP = func(trackID int, payload []byte) {
+		c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
 		}
 	}
 	if c.OnPacketRTCP == nil {
-		c.OnPacketRTCP = func(trackID int, payload []byte) {
+		c.OnPacketRTCP = func(trackID int, pkt rtcp.Packet) {
 		}
 	}
 
@@ -268,10 +272,13 @@ func (c *Client) Start(scheme string, host string) error {
 		c.InitialUDPReadTimeout = 3 * time.Second
 	}
 	if c.ReadBufferCount == 0 {
-		c.ReadBufferCount = 1
+		c.ReadBufferCount = 256
 	}
 	if c.ReadBufferSize == 0 {
 		c.ReadBufferSize = 2048
+	}
+	if c.WriteBufferCount == 0 {
+		c.WriteBufferCount = 256
 	}
 
 	// system functions
@@ -302,7 +309,6 @@ func (c *Client) Start(scheme string, host string) error {
 	c.host = host
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
-	c.udpReportTimer = emptyTimer()
 	c.checkStreamTimer = emptyTimer()
 	c.keepaliveTimer = emptyTimer()
 	c.options = make(chan optionsReq)
@@ -328,12 +334,6 @@ func (c *Client) StartReading(address string) error {
 
 	err = c.Start(u.Scheme, u.Host)
 	if err != nil {
-		return err
-	}
-
-	_, err = c.Options(u)
-	if err != nil {
-		c.Close()
 		return err
 	}
 
@@ -366,12 +366,6 @@ func (c *Client) StartPublishing(address string, tracks Tracks) error {
 
 	err = c.Start(u.Scheme, u.Host)
 	if err != nil {
-		return err
-	}
-
-	_, err = c.Options(u)
-	if err != nil {
-		c.Close()
 		return err
 	}
 
@@ -434,168 +428,140 @@ func (c *Client) Tracks() Tracks {
 func (c *Client) run() {
 	defer close(c.done)
 
-	c.closeError = func() error {
-		for {
-			select {
-			case req := <-c.options:
-				res, err := c.doOptions(req.url)
-				req.res <- clientRes{res: res, err: err}
-
-			case req := <-c.describe:
-				tracks, baseURL, res, err := c.doDescribe(req.url)
-				req.res <- clientRes{tracks: tracks, baseURL: baseURL, res: res, err: err}
-
-			case req := <-c.announce:
-				res, err := c.doAnnounce(req.url, req.tracks)
-				req.res <- clientRes{res: res, err: err}
-
-			case req := <-c.setup:
-				res, err := c.doSetup(req.forPlay, req.track, req.baseURL, req.rtpPort, req.rtcpPort)
-				req.res <- clientRes{res: res, err: err}
-
-			case req := <-c.play:
-				res, err := c.doPlay(req.ra, false)
-				req.res <- clientRes{res: res, err: err}
-
-			case req := <-c.record:
-				res, err := c.doRecord()
-				req.res <- clientRes{res: res, err: err}
-
-			case req := <-c.pause:
-				res, err := c.doPause()
-				req.res <- clientRes{res: res, err: err}
-
-			case <-c.udpReportTimer.C:
-				if c.state == clientStatePlay {
-					now := time.Now()
-					for trackID, cct := range c.tracks {
-						rr := cct.rtcpReceiver.Report(now)
-						if rr != nil {
-							c.WritePacketRTCP(trackID, rr)
-						}
-					}
-
-					c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
-				} else { // Record
-					now := time.Now()
-					for trackID, cct := range c.tracks {
-						sr := cct.rtcpSender.Report(now)
-						if sr != nil {
-							c.WritePacketRTCP(trackID, sr)
-						}
-					}
-
-					c.udpReportTimer = time.NewTimer(c.udpSenderReportPeriod)
-				}
-
-			case <-c.checkStreamTimer.C:
-				if *c.protocol == TransportUDP ||
-					*c.protocol == TransportUDPMulticast {
-					if c.checkStreamInitial {
-						c.checkStreamInitial = false
-
-						// check that at least one packet has been received
-						inTimeout := func() bool {
-							for _, cct := range c.tracks {
-								lft := atomic.LoadInt64(cct.udpRTPListener.lastPacketTime)
-								if lft != 0 {
-									return false
-								}
-
-								lft = atomic.LoadInt64(cct.udpRTCPListener.lastPacketTime)
-								if lft != 0 {
-									return false
-								}
-							}
-							return true
-						}()
-						if inTimeout {
-							err := c.trySwitchingProtocol()
-							if err != nil {
-								return err
-							}
-						}
-					} else {
-						inTimeout := func() bool {
-							now := time.Now()
-							for _, cct := range c.tracks {
-								lft := time.Unix(atomic.LoadInt64(cct.udpRTPListener.lastPacketTime), 0)
-								if now.Sub(lft) < c.ReadTimeout {
-									return false
-								}
-
-								lft = time.Unix(atomic.LoadInt64(cct.udpRTCPListener.lastPacketTime), 0)
-								if now.Sub(lft) < c.ReadTimeout {
-									return false
-								}
-							}
-							return true
-						}()
-						if inTimeout {
-							return liberrors.ErrClientUDPTimeout{}
-						}
-					}
-				} else { // TCP
-					inTimeout := func() bool {
-						now := time.Now()
-						lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
-						return now.Sub(lft) >= c.ReadTimeout
-					}()
-					if inTimeout {
-						return liberrors.ErrClientTCPTimeout{}
-					}
-				}
-
-				c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
-
-			case <-c.keepaliveTimer.C:
-				_, err := c.do(&base.Request{
-					Method: func() base.Method {
-						// the VLC integrated rtsp server requires GET_PARAMETER
-						if c.useGetParameter {
-							return base.GetParameter
-						}
-						return base.Options
-					}(),
-					// use the stream base URL, otherwise some cameras do not reply
-					URL: c.streamBaseURL,
-				}, true)
-				if err != nil {
-					return err
-				}
-
-				c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
-
-			case err := <-c.readerErr:
-				c.readerErr = nil
-				return err
-
-			case <-c.ctx.Done():
-				return liberrors.ErrClientTerminated{}
-			}
-		}
-	}()
+	c.closeError = c.runInner()
 
 	c.ctxCancel()
 
 	c.doClose()
 }
 
+func (c *Client) runInner() error {
+	for {
+		select {
+		case req := <-c.options:
+			res, err := c.doOptions(req.url)
+			req.res <- clientRes{res: res, err: err}
+
+		case req := <-c.describe:
+			tracks, baseURL, res, err := c.doDescribe(req.url)
+			req.res <- clientRes{tracks: tracks, baseURL: baseURL, res: res, err: err}
+
+		case req := <-c.announce:
+			res, err := c.doAnnounce(req.url, req.tracks)
+			req.res <- clientRes{res: res, err: err}
+
+		case req := <-c.setup:
+			res, err := c.doSetup(req.forPlay, req.track, req.baseURL, req.rtpPort, req.rtcpPort)
+			req.res <- clientRes{res: res, err: err}
+
+		case req := <-c.play:
+			res, err := c.doPlay(req.ra, false)
+			req.res <- clientRes{res: res, err: err}
+
+		case req := <-c.record:
+			res, err := c.doRecord()
+			req.res <- clientRes{res: res, err: err}
+
+		case req := <-c.pause:
+			res, err := c.doPause()
+			req.res <- clientRes{res: res, err: err}
+
+		case <-c.checkStreamTimer.C:
+			if *c.effectiveTransport == TransportUDP ||
+				*c.effectiveTransport == TransportUDPMulticast {
+				if c.checkStreamInitial {
+					c.checkStreamInitial = false
+
+					// check that at least one packet has been received
+					inTimeout := func() bool {
+						for _, cct := range c.tracks {
+							lft := atomic.LoadInt64(cct.udpRTPListener.lastPacketTime)
+							if lft != 0 {
+								return false
+							}
+
+							lft = atomic.LoadInt64(cct.udpRTCPListener.lastPacketTime)
+							if lft != 0 {
+								return false
+							}
+						}
+						return true
+					}()
+					if inTimeout {
+						err := c.trySwitchingProtocol()
+						if err != nil {
+							return err
+						}
+					}
+				} else {
+					inTimeout := func() bool {
+						now := time.Now()
+						for _, cct := range c.tracks {
+							lft := time.Unix(atomic.LoadInt64(cct.udpRTPListener.lastPacketTime), 0)
+							if now.Sub(lft) < c.ReadTimeout {
+								return false
+							}
+
+							lft = time.Unix(atomic.LoadInt64(cct.udpRTCPListener.lastPacketTime), 0)
+							if now.Sub(lft) < c.ReadTimeout {
+								return false
+							}
+						}
+						return true
+					}()
+					if inTimeout {
+						return liberrors.ErrClientUDPTimeout{}
+					}
+				}
+			} else { // TCP
+				inTimeout := func() bool {
+					now := time.Now()
+					lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
+					return now.Sub(lft) >= c.ReadTimeout
+				}()
+				if inTimeout {
+					return liberrors.ErrClientTCPTimeout{}
+				}
+			}
+
+			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
+
+		case <-c.keepaliveTimer.C:
+			_, err := c.do(&base.Request{
+				Method: func() base.Method {
+					// the VLC integrated rtsp server requires GET_PARAMETER
+					if c.useGetParameter {
+						return base.GetParameter
+					}
+					return base.Options
+				}(),
+				// use the stream base URL, otherwise some cameras do not reply
+				URL: c.streamBaseURL,
+			}, true, false)
+			if err != nil {
+				return err
+			}
+
+			c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
+
+		case err := <-c.readerErr:
+			c.readerErr = nil
+			return err
+
+		case <-c.ctx.Done():
+			return liberrors.ErrClientTerminated{}
+		}
+	}
+}
+
 func (c *Client) doClose() {
 	if c.state == clientStatePlay || c.state == clientStateRecord {
-		if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		c.playRecordStop(true)
 
 		c.do(&base.Request{
 			Method: base.Teardown,
 			URL:    c.streamBaseURL,
-		}, true)
+		}, true, false)
 
 		c.conn.Close()
 		c.conn = nil
@@ -620,12 +586,12 @@ func (c *Client) reset() {
 	c.session = ""
 	c.sender = nil
 	c.cseq = 0
+	c.optionsSent = false
 	c.useGetParameter = false
 	c.streamBaseURL = nil
-	c.protocol = nil
+	c.effectiveTransport = nil
 	c.tracks = nil
 	c.tracksByChannel = nil
-	c.tcpReadBuffer = nil
 }
 
 func (c *Client) checkState(allowed map[clientState]struct{}) error {
@@ -651,7 +617,7 @@ func (c *Client) trySwitchingProtocol() error {
 	c.reset()
 
 	v := TransportTCP
-	c.protocol = &v
+	c.effectiveTransport = &v
 	c.useGetParameter = oldUseGetParameter
 	c.scheme = prevBaseURL.Scheme
 	c.host = prevBaseURL.Host
@@ -688,7 +654,7 @@ func (c *Client) playRecordStart() {
 		// decrease RAM consumption by allocating less buffers.
 		c.writeBuffer = ringbuffer.New(8)
 	} else {
-		c.writeBuffer = ringbuffer.New(uint64(c.ReadBufferCount))
+		c.writeBuffer = ringbuffer.New(uint64(c.WriteBufferCount))
 	}
 	c.writerRunning = true
 	c.writerDone = make(chan struct{})
@@ -699,32 +665,63 @@ func (c *Client) playRecordStart() {
 	c.writeFrameAllowed = true
 	c.writeMutex.Unlock()
 
-	// start timers
 	if c.state == clientStatePlay {
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
-		switch *c.protocol {
+		switch *c.effectiveTransport {
 		case TransportUDP:
-			c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
+			for trackID, cct := range c.tracks {
+				ctrackID := trackID
+
+				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
+					cct.track.ClockRate(), func(pkt rtcp.Packet) {
+						c.WritePacketRTCP(ctrackID, pkt)
+					})
+			}
+
 			c.checkStreamTimer = time.NewTimer(c.InitialUDPReadTimeout)
 			c.checkStreamInitial = true
 
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.start(true)
+				cct.udpRTCPListener.start(true)
+			}
+
 		case TransportUDPMulticast:
-			c.udpReportTimer = time.NewTimer(c.udpReceiverReportPeriod)
+			for trackID, cct := range c.tracks {
+				ctrackID := trackID
+
+				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
+					cct.track.ClockRate(), func(pkt rtcp.Packet) {
+						c.WritePacketRTCP(ctrackID, pkt)
+					})
+			}
+
 			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
+
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.start(true)
+				cct.udpRTCPListener.start(true)
+			}
 
 		default: // TCP
 			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
 			v := time.Now().Unix()
 			c.tcpLastFrameTime = &v
 		}
-	} else {
-		switch *c.protocol {
-		case TransportUDP:
-			c.udpReportTimer = time.NewTimer(c.udpSenderReportPeriod)
+	} else if *c.effectiveTransport == TransportUDP {
+		for trackID, cct := range c.tracks {
+			ctrackID := trackID
 
-		case TransportUDPMulticast:
-			c.udpReportTimer = time.NewTimer(c.udpSenderReportPeriod)
+			cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
+				cct.track.ClockRate(), func(pkt rtcp.Packet) {
+					c.WritePacketRTCP(ctrackID, pkt)
+				})
+		}
+
+		for _, cct := range c.tracks {
+			cct.udpRTPListener.start(false)
+			cct.udpRTCPListener.start(false)
 		}
 	}
 
@@ -740,7 +737,7 @@ func (c *Client) playRecordStart() {
 
 func (c *Client) runReader() {
 	c.readerErr <- func() error {
-		if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
+		if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
 			for {
 				var res base.Response
 				err := res.Read(c.br)
@@ -749,25 +746,56 @@ func (c *Client) runReader() {
 				}
 			}
 		} else {
+			var tcpReadBuffer *multibuffer.MultiBuffer
 			var processFunc func(int, bool, []byte)
 
 			if c.state == clientStatePlay {
+				tcpReadBuffer = multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize))
+				tcpRTPPacketBuffer := newRTPPacketMultiBuffer(uint64(c.ReadBufferCount))
+
 				processFunc = func(trackID int, isRTP bool, payload []byte) {
 					now := time.Now()
 					atomic.StoreInt64(c.tcpLastFrameTime, now.Unix())
 
 					if isRTP {
-						c.tracks[trackID].rtcpReceiver.ProcessPacketRTP(now, payload)
-						c.OnPacketRTP(trackID, payload)
+						pkt := tcpRTPPacketBuffer.next()
+						err := pkt.Unmarshal(payload)
+						if err != nil {
+							return
+						}
+
+						// remove padding
+						pkt.Header.Padding = false
+						pkt.PaddingSize = 0
+
+						c.OnPacketRTP(trackID, pkt)
 					} else {
-						c.tracks[trackID].rtcpReceiver.ProcessPacketRTCP(now, payload)
-						c.OnPacketRTCP(trackID, payload)
+						packets, err := rtcp.Unmarshal(payload)
+						if err != nil {
+							return
+						}
+
+						for _, pkt := range packets {
+							c.OnPacketRTCP(trackID, pkt)
+						}
 					}
 				}
 			} else {
+				// when recording, tcpReadBuffer is only used to receive RTCP receiver reports,
+				// that are much smaller than RTP packets and are sent at a fixed interval.
+				// decrease RAM consumption by allocating less buffers.
+				tcpReadBuffer = multibuffer.New(8, uint64(c.ReadBufferSize))
+
 				processFunc = func(trackID int, isRTP bool, payload []byte) {
 					if !isRTP {
-						c.OnPacketRTCP(trackID, payload)
+						packets, err := rtcp.Unmarshal(payload)
+						if err != nil {
+							return
+						}
+
+						for _, pkt := range packets {
+							c.OnPacketRTCP(trackID, pkt)
+						}
 					}
 				}
 			}
@@ -776,7 +804,7 @@ func (c *Client) runReader() {
 			var res base.Response
 
 			for {
-				frame.Payload = c.tcpReadBuffer.Next()
+				frame.Payload = tcpReadBuffer.Next()
 				what, err := base.ReadInterleavedFrameOrResponse(&frame, &res, c.br)
 				if err != nil {
 					return err
@@ -809,20 +837,40 @@ func (c *Client) playRecordStop(isClosing bool) {
 		<-c.readerErr
 	}
 
-	// stop timers
-	c.udpReportTimer = emptyTimer()
-	c.checkStreamTimer = emptyTimer()
-	c.keepaliveTimer = emptyTimer()
-
 	// forbid writing
 	c.writeMutex.Lock()
 	c.writeFrameAllowed = false
 	c.writeMutex.Unlock()
 
+	if *c.effectiveTransport == TransportUDP ||
+		*c.effectiveTransport == TransportUDPMulticast {
+		for _, cct := range c.tracks {
+			cct.udpRTPListener.stop()
+			cct.udpRTCPListener.stop()
+		}
+
+		if c.state == clientStatePlay {
+			for _, cct := range c.tracks {
+				cct.rtcpReceiver.Close()
+				cct.rtcpReceiver = nil
+			}
+		} else {
+			for _, cct := range c.tracks {
+				cct.rtcpSender.Close()
+				cct.rtcpSender = nil
+			}
+		}
+	}
+
+	// stop timers
+	c.checkStreamTimer = emptyTimer()
+	c.keepaliveTimer = emptyTimer()
+
 	// stop writer
 	c.writeBuffer.Close()
 	<-c.writerDone
 	c.writerRunning = false
+	c.writeBuffer = nil
 
 	// start connCloser
 	if !isClosing {
@@ -894,9 +942,16 @@ func (c *Client) connCloserStop() {
 	c.connCloserDone = nil
 }
 
-func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error) {
+func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*base.Response, error) {
 	if c.conn == nil {
 		err := c.connOpen()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if !c.optionsSent && req.Method != base.Options {
+		_, err := c.doOptions(req.URL)
 		if err != nil {
 			return nil, err
 		}
@@ -923,76 +978,68 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		c.OnRequest(req)
 	}
 
-	var res base.Response
+	var buf bytes.Buffer
+	req.Write(&buf)
 
-	err := func() error {
-		var buf bytes.Buffer
-		req.Write(&buf)
-
-		c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-		_, err := c.conn.Write(buf.Bytes())
-		if err != nil {
-			return err
-		}
-
-		if skipResponse {
-			return nil
-		}
-
-		c.conn.SetReadDeadline(time.Now().Add(c.ReadTimeout))
-
-		if c.tcpReadBuffer != nil {
-			// read the response and ignore interleaved frames in between;
-			// interleaved frames are sent in two scenarios:
-			// * when the server is v4lrtspserver, before the PLAY response
-			// * when the stream is already playing
-			err = res.ReadIgnoreFrames(c.br, c.tcpReadBuffer.Next())
-			if err != nil {
-				return err
-			}
-		} else {
-			err = res.Read(c.br)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}()
+	c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
+	_, err := c.conn.Write(buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
 
-	if c.OnResponse != nil {
-		c.OnResponse(&res)
-	}
+	var res base.Response
 
-	// get session from response
-	if v, ok := res.Header["Session"]; ok {
-		var sx headers.Session
-		err := sx.Read(v)
-		if err != nil {
-			return nil, liberrors.ErrClientSessionHeaderInvalid{Err: err}
+	if !skipResponse {
+		c.conn.SetReadDeadline(time.Now().Add(c.ReadTimeout))
+
+		if allowFrames {
+			// read the response and ignore interleaved frames in between;
+			// interleaved frames are sent in two scenarios:
+			// * when the server is v4lrtspserver, before the PLAY response
+			// * when the stream is already playing
+			buf := make([]byte, c.ReadBufferSize)
+			err = res.ReadIgnoreFrames(c.br, buf)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			err = res.Read(c.br)
+			if err != nil {
+				return nil, err
+			}
 		}
-		c.session = sx.Session
 
-		if sx.Timeout != nil && *sx.Timeout > 0 {
-			c.keepalivePeriod = time.Duration(float64(*sx.Timeout)*0.8) * time.Second
+		if c.OnResponse != nil {
+			c.OnResponse(&res)
 		}
-	}
 
-	// if required, send request again with authentication
-	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.sender == nil {
-		pass, _ := req.URL.User.Password()
-		user := req.URL.User.Username()
+		// get session from response
+		if v, ok := res.Header["Session"]; ok {
+			var sx headers.Session
+			err := sx.Read(v)
+			if err != nil {
+				return nil, liberrors.ErrClientSessionHeaderInvalid{Err: err}
+			}
+			c.session = sx.Session
 
-		sender, err := auth.NewSender(res.Header["WWW-Authenticate"], user, pass)
-		if err != nil {
-			return nil, fmt.Errorf("unable to setup authentication: %s", err)
+			if sx.Timeout != nil && *sx.Timeout > 0 {
+				c.keepalivePeriod = time.Duration(float64(*sx.Timeout)*0.8) * time.Second
+			}
 		}
-		c.sender = sender
 
-		return c.do(req, false)
+		// if required, send request again with authentication
+		if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.sender == nil {
+			pass, _ := req.URL.User.Password()
+			user := req.URL.User.Username()
+
+			sender, err := auth.NewSender(res.Header["WWW-Authenticate"], user, pass)
+			if err != nil {
+				return nil, fmt.Errorf("unable to setup authentication: %s", err)
+			}
+			c.sender = sender
+
+			return c.do(req, skipResponse, allowFrames)
+		}
 	}
 
 	return &res, nil
@@ -1011,7 +1058,7 @@ func (c *Client) doOptions(u *base.URL) (*base.Response, error) {
 	res, err := c.do(&base.Request{
 		Method: base.Options,
 		URL:    u,
-	}, false)
+	}, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1024,6 +1071,8 @@ func (c *Client) doOptions(u *base.URL) (*base.Response, error) {
 		}
 		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
 	}
+
+	c.optionsSent = true
 
 	c.useGetParameter = func() bool {
 		pub, ok := res.Header["Public"]
@@ -1071,7 +1120,7 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 		Header: base.Header{
 			"Accept": base.HeaderValue{"application/sdp"},
 		},
-	}, false)
+	}, false, false)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1091,11 +1140,6 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 
 			c.scheme = u.Scheme
 			c.host = u.Host
-
-			_, err = c.doOptions(u)
-			if err != nil {
-				return nil, nil, nil, err
-			}
 
 			return c.doDescribe(u)
 		}
@@ -1140,7 +1184,7 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 		return nil, nil, nil, err
 	}
 
-	tracks, err := ReadTracks(res.Body)
+	tracks, err := ReadTracks(res.Body, true)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1184,7 +1228,7 @@ func (c *Client) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, error) 
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
 		Body: tracks.Write(false),
-	}, false)
+	}, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1245,16 +1289,16 @@ func (c *Client) doSetup(
 	// always use TCP if encrypted
 	if c.scheme == "rtsps" {
 		v := TransportTCP
-		c.protocol = &v
+		c.effectiveTransport = &v
 	}
 
-	proto := func() Transport {
-		// protocol set by previous Setup() or trySwitchingProtocol()
-		if c.protocol != nil {
-			return *c.protocol
+	transport := func() Transport {
+		// transport set by previous Setup() or trySwitchingProtocol()
+		if c.effectiveTransport != nil {
+			return *c.effectiveTransport
 		}
 
-		// protocol set by conf
+		// transport set by conf
 		if c.Transport != nil {
 			return *c.Transport
 		}
@@ -1274,7 +1318,7 @@ func (c *Client) doSetup(
 
 	trackID := len(c.tracks)
 
-	switch proto {
+	switch transport {
 	case TransportUDP:
 		if (rtpPort == 0 && rtcpPort != 0) ||
 			(rtpPort != 0 && rtcpPort == 0) {
@@ -1323,7 +1367,7 @@ func (c *Client) doSetup(
 
 	trackURL, err := track.url(baseURL)
 	if err != nil {
-		if proto == TransportUDP {
+		if transport == TransportUDP {
 			rtpListener.close()
 			rtcpListener.close()
 		}
@@ -1336,9 +1380,9 @@ func (c *Client) doSetup(
 		Header: base.Header{
 			"Transport": th.Write(),
 		},
-	}, false)
+	}, false, false)
 	if err != nil {
-		if proto == TransportUDP {
+		if transport == TransportUDP {
 			rtpListener.close()
 			rtcpListener.close()
 		}
@@ -1346,17 +1390,17 @@ func (c *Client) doSetup(
 	}
 
 	if res.StatusCode != base.StatusOK {
-		if proto == TransportUDP {
+		if transport == TransportUDP {
 			rtpListener.close()
 			rtcpListener.close()
 		}
 
-		// switch protocol automatically
+		// switch transport automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
-			c.protocol == nil &&
+			c.effectiveTransport == nil &&
 			c.Transport == nil {
 			v := TransportTCP
-			c.protocol = &v
+			c.effectiveTransport = &v
 
 			return c.doSetup(forPlay, track, baseURL, 0, 0)
 		}
@@ -1367,14 +1411,14 @@ func (c *Client) doSetup(
 	var thRes headers.Transport
 	err = thRes.Read(res.Header["Transport"])
 	if err != nil {
-		if proto == TransportUDP {
+		if transport == TransportUDP {
 			rtpListener.close()
 			rtcpListener.close()
 		}
 		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
 	}
 
-	switch proto {
+	switch transport {
 	case TransportUDP:
 		if thRes.Delivery != nil && *thRes.Delivery != headers.TransportDeliveryUnicast {
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
@@ -1435,86 +1479,79 @@ func (c *Client) doSetup(
 		}
 	}
 
-	cct := clientTrack{
+	cct := &clientTrack{
 		track: track,
 	}
 
-	clockRate := track.ClockRate()
 	if mode == headers.TransportModePlay {
 		c.state = clientStatePrePlay
-		cct.rtcpReceiver = rtcpreceiver.New(nil, clockRate)
 	} else {
 		c.state = clientStatePreRecord
-		cct.rtcpSender = rtcpsender.New(clockRate)
 	}
 
 	c.streamBaseURL = baseURL
-	c.protocol = &proto
+	c.effectiveTransport = &transport
 
-	switch proto {
+	switch transport {
 	case TransportUDP:
-		rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		rtpListener.remoteZone = c.conn.RemoteAddr().(*net.TCPAddr).Zone
-		if thRes.ServerPorts != nil {
-			rtpListener.remotePort = thRes.ServerPorts[0]
-		}
 		rtpListener.trackID = trackID
 		rtpListener.isRTP = true
 		cct.udpRTPListener = rtpListener
-
-		rtpListener.remoteWriteAddr = &net.UDPAddr{
-			IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
-			Zone: rtpListener.remoteZone,
-			Port: rtpListener.remotePort,
-		}
-
-		rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		rtcpListener.remoteZone = c.conn.RemoteAddr().(*net.TCPAddr).Zone
+		rtpListener.remoteReadIP = func() net.IP {
+			if thRes.Source != nil {
+				return *thRes.Source
+			}
+			return c.conn.RemoteAddr().(*net.TCPAddr).IP
+		}()
 		if thRes.ServerPorts != nil {
-			rtcpListener.remotePort = thRes.ServerPorts[1]
+			rtpListener.remoteReadPort = thRes.ServerPorts[0]
+			rtpListener.remoteWriteAddr = &net.UDPAddr{
+				IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
+				Zone: c.conn.RemoteAddr().(*net.TCPAddr).Zone,
+				Port: thRes.ServerPorts[0],
+			}
 		}
+
 		rtcpListener.trackID = trackID
 		rtcpListener.isRTP = false
 		cct.udpRTCPListener = rtcpListener
-
-		rtcpListener.remoteWriteAddr = &net.UDPAddr{
-			IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
-			Zone: rtcpListener.remoteZone,
-			Port: rtcpListener.remotePort,
+		rtcpListener.remoteReadIP = func() net.IP {
+			if thRes.Source != nil {
+				return *thRes.Source
+			}
+			return c.conn.RemoteAddr().(*net.TCPAddr).IP
+		}()
+		if thRes.ServerPorts != nil {
+			rtcpListener.remoteReadPort = thRes.ServerPorts[1]
+			rtcpListener.remoteWriteAddr = &net.UDPAddr{
+				IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
+				Zone: c.conn.RemoteAddr().(*net.TCPAddr).Zone,
+				Port: thRes.ServerPorts[1],
+			}
 		}
 
 	case TransportUDPMulticast:
-		rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		rtpListener.remoteZone = ""
-		rtpListener.remotePort = thRes.Ports[0]
 		rtpListener.trackID = trackID
 		rtpListener.isRTP = true
 		cct.udpRTPListener = rtpListener
-
+		rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		rtpListener.remoteReadPort = thRes.Ports[0]
 		rtpListener.remoteWriteAddr = &net.UDPAddr{
 			IP:   *thRes.Destination,
-			Zone: rtpListener.remoteZone,
-			Port: rtpListener.remotePort,
+			Port: thRes.Ports[0],
 		}
 
-		rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		rtcpListener.remoteZone = ""
-		rtcpListener.remotePort = thRes.Ports[1]
 		rtcpListener.trackID = trackID
 		rtcpListener.isRTP = false
 		cct.udpRTCPListener = rtcpListener
-
+		rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		rtcpListener.remoteReadPort = thRes.Ports[1]
 		rtcpListener.remoteWriteAddr = &net.UDPAddr{
 			IP:   *thRes.Destination,
-			Zone: rtcpListener.remoteZone,
-			Port: rtcpListener.remotePort,
+			Port: thRes.Ports[1],
 		}
 
 	case TransportTCP:
-		if c.tcpReadBuffer == nil {
-			c.tcpReadBuffer = multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize))
-		}
-
 		if c.tracksByChannel == nil {
 			c.tracksByChannel = make(map[int]int)
 		}
@@ -1522,18 +1559,10 @@ func (c *Client) doSetup(
 		c.tracksByChannel[thRes.InterleavedIDs[0]] = trackID
 
 		cct.tcpChannel = thRes.InterleavedIDs[0]
-
-		cct.tcpRTPFrame = &base.InterleavedFrame{
-			Channel: cct.tcpChannel,
-		}
-
-		cct.tcpRTCPFrame = &base.InterleavedFrame{
-			Channel: cct.tcpChannel + 1,
-		}
 	}
 
 	if c.tracks == nil {
-		c.tracks = make(map[int]clientTrack)
+		c.tracks = make(map[int]*clientTrack)
 	}
 
 	c.tracks[trackID] = cct
@@ -1542,7 +1571,7 @@ func (c *Client) doSetup(
 }
 
 // Setup writes a SETUP request and reads a Response.
-// rtpPort and rtcpPort are used only if protocol is UDP.
+// rtpPort and rtcpPort are used only if transport is UDP.
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
 func (c *Client) Setup(
 	forPlay bool,
@@ -1576,20 +1605,15 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		return nil, err
 	}
 
-	// setup UDP communication before sending the request.
-	if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
+	// open the firewall by sending packets to the counterpart.
+	// do this before sending the request.
+	if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
 		for _, cct := range c.tracks {
-			cct.udpRTPListener.start(true)
-			cct.udpRTCPListener.start(true)
-		}
+			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
+			cct.udpRTPListener.write(byts)
 
-		// open the firewall by sending packets to the counterpart.
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.write(
-				[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-
-			cct.udpRTCPListener.write(
-				[]byte{0x80, 0xc9, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00})
+			byts, _ = (&rtcp.ReceiverReport{}).Marshal()
+			cct.udpRTCPListener.write(byts)
 		}
 	}
 
@@ -1608,26 +1632,12 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		Header: base.Header{
 			"Range": ra.Write(),
 		},
-	}, false)
+	}, false, *c.effectiveTransport == TransportTCP)
 	if err != nil {
-		if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
-		if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
@@ -1675,36 +1685,15 @@ func (c *Client) doRecord() (*base.Response, error) {
 		return nil, err
 	}
 
-	if *c.protocol == TransportUDP {
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.start(false)
-			cct.udpRTCPListener.start(false)
-		}
-	}
-
 	res, err := c.do(&base.Request{
 		Method: base.Record,
 		URL:    c.streamBaseURL,
-	}, false)
+	}, false, false)
 	if err != nil {
-		if *c.protocol == TransportUDP {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
-		if *c.protocol == TransportUDP {
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.stop()
-				cct.udpRTCPListener.stop()
-			}
-		}
-
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
@@ -1741,13 +1730,6 @@ func (c *Client) doPause() (*base.Response, error) {
 
 	c.playRecordStop(false)
 
-	if *c.protocol == TransportUDP || *c.protocol == TransportUDPMulticast {
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.stop()
-			cct.udpRTCPListener.stop()
-		}
-	}
-
 	// change state regardless of the response
 	switch c.state {
 	case clientStatePlay:
@@ -1759,7 +1741,7 @@ func (c *Client) doPause() (*base.Response, error) {
 	res, err := c.do(&base.Request{
 		Method: base.Pause,
 		URL:    c.streamBaseURL,
-	}, false)
+	}, false, *c.effectiveTransport == TransportTCP)
 	if err != nil {
 		return nil, err
 	}
@@ -1802,14 +1784,10 @@ func (c *Client) runWriter() {
 
 	var writeFunc func(int, bool, []byte)
 
-	switch *c.protocol {
+	switch *c.effectiveTransport {
 	case TransportUDP, TransportUDPMulticast:
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
-				if c.tracks[trackID].rtcpSender != nil {
-					c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), payload)
-				}
-
 				c.tracks[trackID].udpRTPListener.write(payload)
 			} else {
 				c.tracks[trackID].udpRTCPListener.write(payload)
@@ -1817,22 +1795,26 @@ func (c *Client) runWriter() {
 		}
 
 	default: // TCP
+		rtpFrames := make(map[int]*base.InterleavedFrame, len(c.tracks))
+		rtcpFrames := make(map[int]*base.InterleavedFrame, len(c.tracks))
+
+		for trackID, cct := range c.tracks {
+			rtpFrames[trackID] = &base.InterleavedFrame{Channel: cct.tcpChannel}
+			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: cct.tcpChannel + 1}
+		}
+
 		var buf bytes.Buffer
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
-				if c.tracks[trackID].rtcpSender != nil {
-					c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), payload)
-				}
-
-				f := c.tracks[trackID].tcpRTPFrame
+				f := rtpFrames[trackID]
 				f.Payload = payload
 				f.Write(&buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
 				c.conn.Write(buf.Bytes())
 			} else {
-				f := c.tracks[trackID].tcpRTCPFrame
+				f := rtcpFrames[trackID]
 				f.Payload = payload
 				f.Write(&buf)
 
@@ -1854,7 +1836,7 @@ func (c *Client) runWriter() {
 }
 
 // WritePacketRTP writes a RTP packet.
-func (c *Client) WritePacketRTP(trackID int, payload []byte) error {
+func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet) error {
 	c.writeMutex.RLock()
 	defer c.writeMutex.RUnlock()
 
@@ -1865,18 +1847,27 @@ func (c *Client) WritePacketRTP(trackID int, payload []byte) error {
 		default:
 			return nil
 		}
+	}
+
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return err
+	}
+
+	if c.tracks[trackID].rtcpSender != nil {
+		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt)
 	}
 
 	c.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,
 		isRTP:   true,
-		payload: payload,
+		payload: byts,
 	})
 	return nil
 }
 
 // WritePacketRTCP writes a RTCP packet.
-func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
+func (c *Client) WritePacketRTCP(trackID int, pkt rtcp.Packet) error {
 	c.writeMutex.RLock()
 	defer c.writeMutex.RUnlock()
 
@@ -1889,10 +1880,15 @@ func (c *Client) WritePacketRTCP(trackID int, payload []byte) error {
 		}
 	}
 
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return err
+	}
+
 	c.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,
 		isRTP:   false,
-		payload: payload,
+		payload: byts,
 	})
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 func TestTrackOpusNew(t *testing.T) {
 	track, err := NewTrackOpus(96, 48000, 2)
 	require.NoError(t, err)
+	require.Equal(t, "", track.GetControl())
 	require.Equal(t, 48000, track.ClockRate())
 	require.Equal(t, 2, track.ChannelCount())
 }
@@ -18,9 +19,9 @@ func TestTracOpusClone(t *testing.T) {
 	track, err := NewTrackOpus(96, 96000, 4)
 	require.NoError(t, err)
 
-	copy := track.clone()
-	require.NotSame(t, track, copy)
-	require.Equal(t, track, copy)
+	clone := track.clone()
+	require.NotSame(t, track, clone)
+	require.Equal(t, track, clone)
 }
 
 func TestTrackOpusMediaDescription(t *testing.T) {

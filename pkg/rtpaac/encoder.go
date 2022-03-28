@@ -5,12 +5,11 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/pion/rtp"
+	"github.com/pion/rtp/v2"
 )
 
 const (
-	rtpVersion        = 0x02
-	rtpPayloadMaxSize = 1460 // 1500 (mtu) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
+	rtpVersion = 0x02
 )
 
 func randUint32() uint32 {
@@ -21,45 +20,50 @@ func randUint32() uint32 {
 
 // Encoder is a RTP/AAC encoder.
 type Encoder struct {
-	payloadType    uint8
-	sampleRate     float64
+	// payload type of packets.
+	PayloadType uint8
+
+	// sample rate of packets.
+	SampleRate int
+
+	// SSRC of packets (optional).
+	SSRC *uint32
+
+	// initial sequence number of packets (optional).
+	InitialSequenceNumber *uint16
+
+	// initial timestamp of packets (optional).
+	InitialTimestamp *uint32
+
+	// maximum size of packet payloads (optional).
+	PayloadMaxSize int
+
 	sequenceNumber uint16
-	ssrc           uint32
-	initialTs      uint32
 }
 
-// NewEncoder allocates an Encoder.
-func NewEncoder(payloadType uint8,
-	sampleRate int,
-	sequenceNumber *uint16,
-	ssrc *uint32,
-	initialTs *uint32) *Encoder {
-	return &Encoder{
-		payloadType: payloadType,
-		sampleRate:  float64(sampleRate),
-		sequenceNumber: func() uint16 {
-			if sequenceNumber != nil {
-				return *sequenceNumber
-			}
-			return uint16(randUint32())
-		}(),
-		ssrc: func() uint32 {
-			if ssrc != nil {
-				return *ssrc
-			}
-			return randUint32()
-		}(),
-		initialTs: func() uint32 {
-			if initialTs != nil {
-				return *initialTs
-			}
-			return randUint32()
-		}(),
+// Init initializes the encoder.
+func (e *Encoder) Init() {
+	if e.SSRC == nil {
+		v := randUint32()
+		e.SSRC = &v
 	}
+	if e.InitialSequenceNumber == nil {
+		v := uint16(randUint32())
+		e.InitialSequenceNumber = &v
+	}
+	if e.InitialTimestamp == nil {
+		v := randUint32()
+		e.InitialTimestamp = &v
+	}
+	if e.PayloadMaxSize == 0 {
+		e.PayloadMaxSize = 1460 // 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
+	}
+
+	e.sequenceNumber = *e.InitialSequenceNumber
 }
 
 func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
-	return e.initialTs + uint32(ts.Seconds()*e.sampleRate)
+	return *e.InitialTimestamp + uint32(ts.Seconds()*float64(e.SampleRate))
 }
 
 // Encode encodes AUs into RTP/AAC packets.
@@ -71,7 +75,7 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, e
 
 	// split AUs into batches
 	for _, au := range aus {
-		if e.lenAggregated(batch, au) <= rtpPayloadMaxSize {
+		if e.lenAggregated(batch, au) <= e.PayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, au)
 		} else {
@@ -82,7 +86,7 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, e
 					return nil, err
 				}
 				rets = append(rets, pkts...)
-				pts += time.Duration(len(batch)) * 1000 * time.Second / time.Duration(e.sampleRate)
+				pts += time.Duration(len(batch)) * 1000 * time.Second / time.Duration(e.SampleRate)
 			}
 
 			// initialize new batch
@@ -103,7 +107,7 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, e
 func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, error) {
 	if len(aus) == 1 {
 		// the AU fits into a single RTP packet
-		if len(aus[0]) < rtpPayloadMaxSize {
+		if len(aus[0]) < e.PayloadMaxSize {
 			return e.writeAggregated(aus, firstPTS)
 		}
 
@@ -115,8 +119,8 @@ func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packe
 }
 
 func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
-	packetCount := len(au) / (rtpPayloadMaxSize - 4)
-	lastPacketSize := len(au) % (rtpPayloadMaxSize - 4)
+	packetCount := len(au) / (e.PayloadMaxSize - 4)
+	lastPacketSize := len(au) % (e.PayloadMaxSize - 4)
 	if lastPacketSize > 0 {
 		packetCount++
 	}
@@ -125,7 +129,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 	encPTS := e.encodeTimestamp(pts)
 
 	for i := range ret {
-		le := rtpPayloadMaxSize - 4
+		le := e.PayloadMaxSize - 4
 		if i == (packetCount - 1) {
 			le = lastPacketSize
 		}
@@ -139,10 +143,10 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 		ret[i] = &rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
-				PayloadType:    e.payloadType,
+				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
 				Timestamp:      encPTS,
-				SSRC:           e.ssrc,
+				SSRC:           *e.SSRC,
 				Marker:         (i == (packetCount - 1)),
 			},
 			Payload: data,
@@ -192,10 +196,10 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([]*rtp.
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
-			PayloadType:    e.payloadType,
+			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
 			Timestamp:      e.encodeTimestamp(firstPTS),
-			SSRC:           e.ssrc,
+			SSRC:           *e.SSRC,
 			Marker:         true,
 		},
 		Payload: payload,

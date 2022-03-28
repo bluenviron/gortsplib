@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 )
@@ -302,7 +303,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, nil, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -327,7 +328,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -355,7 +356,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, nil, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, nil, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -377,7 +378,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -393,7 +394,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						if ctx.Path != "test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
-							}, fmt.Errorf("invalid path (%s)", ctx.Req.URL)
+							}, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
 						}
 						if ctx.Query != "key=val" {
 							return &base.Response{
@@ -410,15 +411,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						defer mutex.Unlock()
 
 						if ctx.Session == publisher {
-							stream.WritePacketRTP(ctx.TrackID, ctx.Payload)
-						}
-					},
-					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
-						mutex.Lock()
-						defer mutex.Unlock()
-
-						if ctx.Session == publisher {
-							stream.WritePacketRTCP(ctx.TrackID, ctx.Payload)
+							stream.WritePacketRTP(ctx.TrackID, ctx.Packet)
 						}
 					},
 				},
@@ -693,6 +686,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -795,6 +789,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -892,7 +887,7 @@ func TestServerGetSetParameter(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onSetParameter: func(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
-				params = ctx.Req.Body
+				params = ctx.Request.Body
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -992,7 +987,8 @@ func TestServerErrorInvalidSession(t *testing.T) {
 				Method: method,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq": base.HeaderValue{"1"},
+					"CSeq":    base.HeaderValue{"1"},
+					"Session": base.HeaderValue{"ABC"},
 				},
 			})
 			require.NoError(t, err)
@@ -1063,6 +1059,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 	require.NoError(t, err)
 
 	stream := NewServerStream(Tracks{track})
+	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -1130,6 +1127,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
+			defer stream.Close()
 
 			s := &Server{
 				Handler: &testServerHandler{
@@ -1185,12 +1183,6 @@ func TestServerErrorInvalidPath(t *testing.T) {
 				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
-
-				var sx headers.Session
-				err = sx.Read(res.Header["Session"])
-				require.NoError(t, err)
-
-				sxID = sx.Session
 			}
 
 			if method == base.Play || method == base.Record || method == base.Pause {
@@ -1255,4 +1247,63 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			<-connClosed
 		})
 	}
+}
+
+func TestServerAuth(t *testing.T) {
+	authValidator := auth.NewValidator("myuser", "mypass", nil)
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+				err := authValidator.ValidateRequest(ctx.Request)
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusUnauthorized,
+						Header: base.Header{
+							"WWW-Authenticate": authValidator.Header(),
+						},
+					}, nil
+				}
+
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	conn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer conn.Close()
+	br := bufio.NewReader(conn)
+
+	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
+	require.NoError(t, err)
+
+	req := base.Request{
+		Method: base.Announce,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		Header: base.Header{
+			"CSeq":         base.HeaderValue{"1"},
+			"Content-Type": base.HeaderValue{"application/sdp"},
+		},
+		Body: Tracks{track}.Write(false),
+	}
+
+	res, err := writeReqReadRes(conn, br, req)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusUnauthorized, res.StatusCode)
+
+	sender, err := auth.NewSender(res.Header["WWW-Authenticate"], "myuser", "mypass")
+	require.NoError(t, err)
+
+	sender.AddAuthorization(&req)
+	res, err = writeReqReadRes(conn, br, req)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
 }

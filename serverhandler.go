@@ -1,6 +1,9 @@
 package gortsplib
 
 import (
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp/v2"
+
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
@@ -62,10 +65,10 @@ type ServerHandlerOnResponse interface {
 
 // ServerHandlerOnDescribeCtx is the context of a DESCRIBE request.
 type ServerHandlerOnDescribeCtx struct {
-	Conn  *ServerConn
-	Req   *base.Request
-	Path  string
-	Query string
+	Conn    *ServerConn
+	Request *base.Request
+	Path    string
+	Query   string
 }
 
 // ServerHandlerOnDescribe can be implemented by a ServerHandler.
@@ -78,7 +81,7 @@ type ServerHandlerOnAnnounceCtx struct {
 	Server  *Server
 	Session *ServerSession
 	Conn    *ServerConn
-	Req     *base.Request
+	Request *base.Request
 	Path    string
 	Query   string
 	Tracks  Tracks
@@ -94,7 +97,7 @@ type ServerHandlerOnSetupCtx struct {
 	Server    *Server
 	Session   *ServerSession
 	Conn      *ServerConn
-	Req       *base.Request
+	Request   *base.Request
 	Path      string
 	Query     string
 	TrackID   int
@@ -114,7 +117,7 @@ type ServerHandlerOnSetup interface {
 type ServerHandlerOnPlayCtx struct {
 	Session *ServerSession
 	Conn    *ServerConn
-	Req     *base.Request
+	Request *base.Request
 	Path    string
 	Query   string
 }
@@ -128,7 +131,7 @@ type ServerHandlerOnPlay interface {
 type ServerHandlerOnRecordCtx struct {
 	Session *ServerSession
 	Conn    *ServerConn
-	Req     *base.Request
+	Request *base.Request
 	Path    string
 	Query   string
 }
@@ -142,7 +145,7 @@ type ServerHandlerOnRecord interface {
 type ServerHandlerOnPauseCtx struct {
 	Session *ServerSession
 	Conn    *ServerConn
-	Req     *base.Request
+	Request *base.Request
 	Path    string
 	Query   string
 }
@@ -156,7 +159,7 @@ type ServerHandlerOnPause interface {
 type ServerHandlerOnGetParameterCtx struct {
 	Session *ServerSession
 	Conn    *ServerConn
-	Req     *base.Request
+	Request *base.Request
 	Path    string
 	Query   string
 }
@@ -168,10 +171,10 @@ type ServerHandlerOnGetParameter interface {
 
 // ServerHandlerOnSetParameterCtx is the context of a SET_PARAMETER request.
 type ServerHandlerOnSetParameterCtx struct {
-	Conn  *ServerConn
-	Req   *base.Request
-	Path  string
-	Query string
+	Conn    *ServerConn
+	Request *base.Request
+	Path    string
+	Query   string
 }
 
 // ServerHandlerOnSetParameter can be implemented by a ServerHandler.
@@ -183,7 +186,7 @@ type ServerHandlerOnSetParameter interface {
 type ServerHandlerOnPacketRTPCtx struct {
 	Session *ServerSession
 	TrackID int
-	Payload []byte
+	Packet  *rtp.Packet
 }
 
 // ServerHandlerOnPacketRTP can be implemented by a ServerHandler.
@@ -195,7 +198,7 @@ type ServerHandlerOnPacketRTP interface {
 type ServerHandlerOnPacketRTCPCtx struct {
 	Session *ServerSession
 	TrackID int
-	Payload []byte
+	Packet  rtcp.Packet
 }
 
 // ServerHandlerOnPacketRTCP can be implemented by a ServerHandler.

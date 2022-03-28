@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
+	"github.com/pion/rtp/v2"
 )
 
 func randUint32() uint32 {
@@ -15,11 +16,15 @@ func randUint32() uint32 {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
 }
 
+var now = time.Now
+
 // RTCPReceiver is a utility to generate RTCP receiver reports.
 type RTCPReceiver struct {
-	receiverSSRC uint32
-	clockRate    float64
-	mutex        sync.Mutex
+	period          time.Duration
+	receiverSSRC    uint32
+	clockRate       float64
+	writePacketRTCP func(rtcp.Packet)
+	mutex           sync.Mutex
 
 	// data from RTP packets
 	firstRTPReceived     bool
@@ -36,24 +41,60 @@ type RTCPReceiver struct {
 	senderSSRC           uint32
 	lastSenderReport     uint32
 	lastSenderReportTime time.Time
+
+	terminate chan struct{}
+	done      chan struct{}
 }
 
 // New allocates a RTCPReceiver.
-func New(receiverSSRC *uint32, clockRate int) *RTCPReceiver {
-	return &RTCPReceiver{
+func New(period time.Duration, receiverSSRC *uint32, clockRate int,
+	writePacketRTCP func(rtcp.Packet)) *RTCPReceiver {
+	rr := &RTCPReceiver{
+		period: period,
 		receiverSSRC: func() uint32 {
 			if receiverSSRC == nil {
 				return randUint32()
 			}
 			return *receiverSSRC
 		}(),
-		clockRate: float64(clockRate),
+		clockRate:       float64(clockRate),
+		writePacketRTCP: writePacketRTCP,
+		terminate:       make(chan struct{}),
+		done:            make(chan struct{}),
+	}
+
+	go rr.run()
+
+	return rr
+}
+
+// Close closes the RTCPReceiver.
+func (rr *RTCPReceiver) Close() {
+	close(rr.terminate)
+	<-rr.done
+}
+
+func (rr *RTCPReceiver) run() {
+	defer close(rr.done)
+
+	t := time.NewTicker(rr.period)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-t.C:
+			report := rr.report(now())
+			if report != nil {
+				rr.writePacketRTCP(report)
+			}
+
+		case <-rr.terminate:
+			return
+		}
 	}
 }
 
-// Report generates a RTCP receiver report.
-// It returns nil if no RTCP sender reports have been passed to ProcessPacketRTCP yet.
-func (rr *RTCPReceiver) Report(ts time.Time) []byte {
+func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
@@ -85,91 +126,73 @@ func (rr *RTCPReceiver) Report(ts time.Time) []byte {
 	rr.totalLostSinceReport = 0
 	rr.totalSinceReport = 0
 
-	byts, err := report.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	return byts
+	return report
 }
 
 // ProcessPacketRTP extracts the needed data from RTP packets.
-func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, payload []byte) {
+func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
-	// do not parse the entire packet, extract only the fields we need
-	if len(payload) >= 8 {
-		sequenceNumber := uint16(payload[2])<<8 | uint16(payload[3])
-		rtpTime := uint32(payload[4])<<24 | uint32(payload[5])<<16 | uint32(payload[6])<<8 | uint32(payload[7])
+	// first packet
+	if !rr.firstRTPReceived {
+		rr.firstRTPReceived = true
+		rr.totalSinceReport = 1
+		rr.lastSequenceNumber = pkt.Header.SequenceNumber
+		rr.lastRTPTimeRTP = pkt.Header.Timestamp
+		rr.lastRTPTimeTime = ts
 
-		// first packet
-		if !rr.firstRTPReceived {
-			rr.firstRTPReceived = true
-			rr.totalSinceReport = 1
-			rr.lastSequenceNumber = sequenceNumber
-			rr.lastRTPTimeRTP = rtpTime
-			rr.lastRTPTimeTime = ts
+		// subsequent packets
+	} else {
+		diff := int32(pkt.Header.SequenceNumber) - int32(rr.lastSequenceNumber)
 
-			// subsequent packets
-		} else {
-			diff := int32(sequenceNumber) - int32(rr.lastSequenceNumber)
-
-			// following packet or following packet after an overflow
-			if diff > 0 || diff < -0x0FFF {
-				// overflow
-				if diff < -0x0FFF {
-					rr.sequenceNumberCycles++
-				}
-
-				// detect lost packets
-				if sequenceNumber != (rr.lastSequenceNumber + 1) {
-					rr.totalLost += uint32(uint16(diff) - 1)
-					rr.totalLostSinceReport += uint32(uint16(diff) - 1)
-
-					// allow up to 24 bits
-					if rr.totalLost > 0xFFFFFF {
-						rr.totalLost = 0xFFFFFF
-					}
-					if rr.totalLostSinceReport > 0xFFFFFF {
-						rr.totalLostSinceReport = 0xFFFFFF
-					}
-				}
-
-				// compute jitter
-				// https://tools.ietf.org/html/rfc3550#page-39
-				D := ts.Sub(rr.lastRTPTimeTime).Seconds()*rr.clockRate -
-					(float64(rtpTime) - float64(rr.lastRTPTimeRTP))
-				if D < 0 {
-					D = -D
-				}
-				rr.jitter += (D - rr.jitter) / 16
-
-				rr.totalSinceReport += uint32(uint16(diff))
-				rr.lastSequenceNumber = sequenceNumber
-				rr.lastRTPTimeRTP = rtpTime
-				rr.lastRTPTimeTime = ts
+		// following packet or following packet after an overflow
+		if diff > 0 || diff < -0x0FFF {
+			// overflow
+			if diff < -0x0FFF {
+				rr.sequenceNumberCycles++
 			}
-			// ignore invalid packets (diff = 0) or reordered packets (diff < 0)
+
+			// detect lost packets
+			if pkt.Header.SequenceNumber != (rr.lastSequenceNumber + 1) {
+				rr.totalLost += uint32(uint16(diff) - 1)
+				rr.totalLostSinceReport += uint32(uint16(diff) - 1)
+
+				// allow up to 24 bits
+				if rr.totalLost > 0xFFFFFF {
+					rr.totalLost = 0xFFFFFF
+				}
+				if rr.totalLostSinceReport > 0xFFFFFF {
+					rr.totalLostSinceReport = 0xFFFFFF
+				}
+			}
+
+			// compute jitter
+			// https://tools.ietf.org/html/rfc3550#page-39
+			D := ts.Sub(rr.lastRTPTimeTime).Seconds()*rr.clockRate -
+				(float64(pkt.Header.Timestamp) - float64(rr.lastRTPTimeRTP))
+			if D < 0 {
+				D = -D
+			}
+			rr.jitter += (D - rr.jitter) / 16
+
+			rr.totalSinceReport += uint32(uint16(diff))
+			rr.lastSequenceNumber = pkt.Header.SequenceNumber
+			rr.lastRTPTimeRTP = pkt.Header.Timestamp
+			rr.lastRTPTimeTime = ts
 		}
+		// ignore invalid packets (diff = 0) or reordered packets (diff < 0)
 	}
 }
 
 // ProcessPacketRTCP extracts the needed data from RTCP packets.
-func (rr *RTCPReceiver) ProcessPacketRTCP(ts time.Time, payload []byte) {
-	rr.mutex.Lock()
-	defer rr.mutex.Unlock()
+func (rr *RTCPReceiver) ProcessPacketRTCP(ts time.Time, pkt rtcp.Packet) {
+	if sr, ok := (pkt).(*rtcp.SenderReport); ok {
+		rr.mutex.Lock()
+		defer rr.mutex.Unlock()
 
-	// we can afford to unmarshal all RTCP packets
-	// since they are sent with a frequency much lower than the one of RTP packets
-	packets, err := rtcp.Unmarshal(payload)
-	if err == nil {
-		for _, packet := range packets {
-			if sr, ok := (packet).(*rtcp.SenderReport); ok {
-				rr.senderSSRC = sr.SSRC
-				rr.lastSenderReport = uint32(sr.NTPTime >> 16)
-				rr.lastSenderReportTime = ts
-			}
-		}
+		rr.senderSSRC = sr.SSRC
+		rr.lastSenderReport = uint32(sr.NTPTime >> 16)
+		rr.lastSenderReportTime = ts
 	}
 }

@@ -25,11 +25,6 @@ func main() {
 	}
 	defer c.Close()
 
-	_, err = c.Options(u)
-	if err != nil {
-		panic(err)
-	}
-
 	tracks, _, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
