@@ -99,9 +99,12 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 
 	var sessionID uint64
 	var err error
-	if strings.HasPrefix(fields[1], "0x") {
-		sessionID, err = strconv.ParseUint(fields[1][len("0x"):], 16, 64)
-	} else {
+	switch {
+	case strings.HasPrefix(fields[1], "0x") || strings.HasPrefix(fields[1], "0X"):
+		sessionID, err = strconv.ParseUint(fields[1][2:], 16, 64)
+	case strings.ContainsAny(fields[1], "abcdefABCDEF"):
+		sessionID, err = strconv.ParseUint(fields[1], 16, 64)
+	default:
 		sessionID, err = strconv.ParseUint(fields[1], 10, 64)
 	}
 	if err != nil {
