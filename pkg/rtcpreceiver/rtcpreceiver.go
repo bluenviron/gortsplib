@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp/v2"
+	"github.com/pion/rtp"
 )
 
 func randUint32() uint32 {

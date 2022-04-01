@@ -6,7 +6,7 @@ import (
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/rtph264"
-	"github.com/pion/rtp/v2"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
