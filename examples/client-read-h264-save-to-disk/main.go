@@ -63,7 +63,7 @@ func main() {
 			return
 		}
 
-		// decode H264 NALUs from the RTP packet
+		// convert RTP packet to H264 NALUs
 		nalus, pts, err := rtpDec.DecodeUntilMarker(pkt)
 		if err != nil {
 			return

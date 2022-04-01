@@ -12,7 +12,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
 // 2. check if there's an H264 track
-// 3. decode H264 into raw frames
+// 3. decode H264 into RGBA frames
 
 // This example requires the ffmpeg libraries, that can be installed in this way:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config
@@ -77,14 +77,14 @@ func main() {
 			return
 		}
 
-		// decode H264 NALUs from the RTP packet
+		// convert RTP packet to H264 NALUs
 		nalus, _, err := rtpDec.Decode(pkt)
 		if err != nil {
 			return
 		}
 
 		for _, nalu := range nalus {
-			// decode raw frames from H264 NALUs
+			// convert H264 NALUs to RGBA frames
 			img, err := h264dec.decode(nalu)
 			if err != nil {
 				panic(err)
