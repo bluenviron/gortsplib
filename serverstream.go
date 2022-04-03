@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp/v2"
+	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
