@@ -94,6 +94,39 @@ func TestNewTrackAACFromMediaDescription(t *testing.T) {
 	require.Equal(t, 3, track.IndexDeltaLength())
 }
 
+func TestNewTrackAACFromMediaDescriptionWithoutIndex(t *testing.T) {
+	track, err := newTrackAACFromMediaDescription("", 2, &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "audio",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{"96"},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key:   "rtpmap",
+				Value: "96 mpeg4-generic/48000/2",
+			},
+			{
+				Key:   "fmtp",
+				Value: "96 streamtype=3;profile-level-id=14;mode=AAC-hbr;config=1190;sizeLength=13",
+			},
+			{
+				Key:   "control",
+				Value: "",
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "", track.GetControl())
+	require.Equal(t, 2, track.Type())
+	require.Equal(t, 48000, track.ClockRate())
+	require.Equal(t, 2, track.ChannelCount())
+	require.Equal(t, []uint8([]byte(nil)), track.AOTSpecificConfig())
+	require.Equal(t, 13, track.SizeLength())
+	require.Equal(t, 0, track.IndexLength())
+	require.Equal(t, 0, track.IndexDeltaLength())
+}
+
 func TestNewTrackAACFromMediaDescriptionWithNoIndex(t *testing.T) {
 	track, err := newTrackAACFromMediaDescription("", 2, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
