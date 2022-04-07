@@ -5,7 +5,6 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -46,8 +45,8 @@ func main() {
 	defer publisher.Close()
 
 	// called when a RTP packet arrives
-	reader.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
-		publisher.WritePacketRTP(trackID, pkt, true)
+	reader.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
+		publisher.WritePacketRTP(ctx.TrackID, ctx.Packet, ctx.PTSEqualsDTS)
 	}
 
 	// start reading tracks

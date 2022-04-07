@@ -25,12 +25,14 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/h264"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/multibuffer"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
+	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
 const (
@@ -59,6 +61,7 @@ type clientTrack struct {
 	tcpChannel      int
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver
 	rtcpSender      *rtcpsender.RTCPSender
+	h264Decoder     *rtph264.Decoder
 }
 
 func (s clientState) String() string {
@@ -122,6 +125,21 @@ type clientRes struct {
 	err     error
 }
 
+// ClientOnPacketRTPCtx is the context of a RTP packet.
+type ClientOnPacketRTPCtx struct {
+	TrackID      int
+	Packet       *rtp.Packet
+	PTSEqualsDTS bool
+	H264NALUs    [][]byte
+	H264PTS      time.Duration
+}
+
+// ClientOnPacketRTCPCtx is the context of a RTCP packet.
+type ClientOnPacketRTCPCtx struct {
+	TrackID int
+	Packet  rtcp.Packet
+}
+
 // Client is a RTSP client.
 type Client struct {
 	//
@@ -132,9 +150,9 @@ type Client struct {
 	// called after every response.
 	OnResponse func(*base.Response)
 	// called when a RTP packet arrives.
-	OnPacketRTP func(int, *rtp.Packet)
+	OnPacketRTP func(*ClientOnPacketRTPCtx)
 	// called when a RTCP packet arrives.
-	OnPacketRTCP func(int, rtcp.Packet)
+	OnPacketRTCP func(*ClientOnPacketRTCPCtx)
 
 	//
 	// RTSP parameters
@@ -252,11 +270,11 @@ type Client struct {
 func (c *Client) Start(scheme string, host string) error {
 	// callbacks
 	if c.OnPacketRTP == nil {
-		c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
+		c.OnPacketRTP = func(ctx *ClientOnPacketRTPCtx) {
 		}
 	}
 	if c.OnPacketRTCP == nil {
-		c.OnPacketRTCP = func(trackID int, pkt rtcp.Packet) {
+		c.OnPacketRTCP = func(ctx *ClientOnPacketRTCPCtx) {
 		}
 	}
 
@@ -698,19 +716,28 @@ func (c *Client) playRecordStart() {
 			v := time.Now().Unix()
 			c.tcpLastFrameTime = &v
 		}
-	} else if *c.effectiveTransport == TransportUDP {
-		for trackID, cct := range c.tracks {
-			ctrackID := trackID
-
-			cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
-				cct.track.ClockRate(), func(pkt rtcp.Packet) {
-					c.WritePacketRTCP(ctrackID, pkt)
-				})
+	} else {
+		for _, ct := range c.tracks {
+			if _, ok := ct.track.(*TrackH264); ok {
+				ct.h264Decoder = &rtph264.Decoder{}
+				ct.h264Decoder.Init()
+			}
 		}
 
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.start(false)
-			cct.udpRTCPListener.start(false)
+		if *c.effectiveTransport == TransportUDP {
+			for trackID, cct := range c.tracks {
+				ctrackID := trackID
+
+				cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
+					cct.track.ClockRate(), func(pkt rtcp.Packet) {
+						c.WritePacketRTCP(ctrackID, pkt)
+					})
+			}
+
+			for _, cct := range c.tracks {
+				cct.udpRTPListener.start(false)
+				cct.udpRTCPListener.start(false)
+			}
 		}
 	}
 
@@ -753,11 +780,7 @@ func (c *Client) runReader() {
 							return
 						}
 
-						// remove padding
-						pkt.Header.Padding = false
-						pkt.PaddingSize = 0
-
-						c.OnPacketRTP(trackID, pkt)
+						c.onPacketRTP(trackID, pkt)
 					} else {
 						packets, err := rtcp.Unmarshal(payload)
 						if err != nil {
@@ -765,7 +788,7 @@ func (c *Client) runReader() {
 						}
 
 						for _, pkt := range packets {
-							c.OnPacketRTCP(trackID, pkt)
+							c.onPacketRTCP(trackID, pkt)
 						}
 					}
 				}
@@ -783,7 +806,7 @@ func (c *Client) runReader() {
 						}
 
 						for _, pkt := range packets {
-							c.OnPacketRTCP(trackID, pkt)
+							c.onPacketRTCP(trackID, pkt)
 						}
 					}
 				}
@@ -849,6 +872,10 @@ func (c *Client) playRecordStop(isClosing bool) {
 				cct.rtcpSender = nil
 			}
 		}
+	}
+
+	for _, ct := range c.tracks {
+		ct.h264Decoder = nil
 	}
 
 	// stop timers
@@ -1820,6 +1847,64 @@ func (c *Client) runWriter() {
 
 		writeFunc(data.trackID, data.isRTP, data.payload)
 	}
+}
+
+func (c *Client) onPacketRTP(trackID int, pkt *rtp.Packet) {
+	// remove padding
+	pkt.Header.Padding = false
+	pkt.PaddingSize = 0
+
+	ct := c.tracks[trackID]
+
+	if ct.h264Decoder != nil {
+		nalus, pts, err := ct.h264Decoder.DecodeUntilMarker(pkt)
+		if err == nil {
+			ptsEqualsDTS := h264.IDRPresent(nalus)
+
+			rr := ct.rtcpReceiver
+			if rr != nil {
+				rr.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
+			}
+
+			c.OnPacketRTP(&ClientOnPacketRTPCtx{
+				TrackID:      trackID,
+				Packet:       pkt,
+				PTSEqualsDTS: ptsEqualsDTS,
+				H264NALUs:    append([][]byte(nil), nalus...),
+				H264PTS:      pts,
+			})
+		} else {
+			rr := ct.rtcpReceiver
+			if rr != nil {
+				rr.ProcessPacketRTP(time.Now(), pkt, false)
+			}
+
+			c.OnPacketRTP(&ClientOnPacketRTPCtx{
+				TrackID:      trackID,
+				Packet:       pkt,
+				PTSEqualsDTS: false,
+			})
+		}
+		return
+	}
+
+	rr := ct.rtcpReceiver
+	if rr != nil {
+		rr.ProcessPacketRTP(time.Now(), pkt, true)
+	}
+
+	c.OnPacketRTP(&ClientOnPacketRTPCtx{
+		TrackID:      trackID,
+		Packet:       pkt,
+		PTSEqualsDTS: true,
+	})
+}
+
+func (c *Client) onPacketRTCP(trackID int, pkt rtcp.Packet) {
+	c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
+		TrackID: trackID,
+		Packet:  pkt,
+	})
 }
 
 // WritePacketRTP writes a RTP packet.

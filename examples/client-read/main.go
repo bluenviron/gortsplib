@@ -4,8 +4,6 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 )
 
 // This example shows how to connect to a RTSP server
@@ -14,12 +12,12 @@ import (
 func main() {
 	c := gortsplib.Client{
 		// called when a RTP packet arrives
-		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
-			log.Printf("RTP packet from track %d, payload type %d\n", trackID, pkt.Header.PayloadType)
+		OnPacketRTP: func(ctx *gortsplib.ClientOnPacketRTPCtx) {
+			log.Printf("RTP packet from track %d, payload type %d\n", ctx.TrackID, ctx.Packet.Header.PayloadType)
 		},
 		// called when a RTCP packet arrives
-		OnPacketRTCP: func(trackID int, pkt rtcp.Packet) {
-			log.Printf("RTCP packet from track %d, type %T\n", trackID, pkt)
+		OnPacketRTCP: func(ctx *gortsplib.ClientOnPacketRTCPCtx) {
+			log.Printf("RTCP packet from track %d, type %T\n", ctx.TrackID, ctx.Packet)
 		},
 	}
 
