@@ -62,7 +62,7 @@ func main() {
 				}
 
 				// route RTP packet to the server
-				c.WritePacketRTP(0, &pkt)
+				c.WritePacketRTP(0, &pkt, true)
 
 				// read another RTP packet from source
 				n, _, err = pc.ReadFrom(buf)
