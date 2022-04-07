@@ -131,7 +131,7 @@ func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx)
 
 	// if we are the publisher, route the RTP packet to readers
 	if ctx.Session == sh.publisher {
-		sh.stream.WritePacketRTP(ctx.TrackID, ctx.Packet)
+		sh.stream.WritePacketRTP(ctx.TrackID, ctx.Packet, ctx.PTSEqualsDTS)
 	}
 }
 

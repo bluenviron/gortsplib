@@ -14,9 +14,9 @@ import (
 
 type serverStreamTrack struct {
 	lastSequenceNumber uint32
+	lastSSRC           uint32
 	lastTimeRTP        uint32
 	lastTimeNTP        int64
-	lastSSRC           uint32
 	rtcpSender         *rtcpsender.RTCPSender
 }
 
@@ -216,7 +216,7 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 }
 
 // WritePacketRTP writes a RTP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet) {
+func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool) {
 	byts, err := pkt.Marshal()
 	if err != nil {
 		return
@@ -227,15 +227,18 @@ func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet) {
 
 	atomic.StoreUint32(&track.lastSequenceNumber,
 		uint32(pkt.Header.SequenceNumber))
-	atomic.StoreUint32(&track.lastTimeRTP, pkt.Header.Timestamp)
-	atomic.StoreInt64(&track.lastTimeNTP, now.Unix())
 	atomic.StoreUint32(&track.lastSSRC, pkt.Header.SSRC)
+
+	if ptsEqualsDTS {
+		atomic.StoreUint32(&track.lastTimeRTP, pkt.Header.Timestamp)
+		atomic.StoreInt64(&track.lastTimeNTP, now.Unix())
+	}
 
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 
 	if track.rtcpSender != nil {
-		track.rtcpSender.ProcessPacketRTP(now, pkt)
+		track.rtcpSender.ProcessPacketRTP(now, pkt, ptsEqualsDTS)
 	}
 
 	// send unicast

@@ -1842,7 +1842,7 @@ func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet) error {
 	}
 
 	if c.tracks[trackID].rtcpSender != nil {
-		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt)
+		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt, true)
 	}
 
 	c.writeBuffer.Push(trackTypePayload{
