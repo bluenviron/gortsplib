@@ -22,7 +22,8 @@ import (
 
 func writeReqReadRes(conn net.Conn,
 	br *bufio.Reader,
-	req base.Request) (*base.Response, error) {
+	req base.Request,
+) (*base.Response, error) {
 	var bb bytes.Buffer
 	req.Write(&bb)
 	_, err := conn.Write(bb.Bytes())

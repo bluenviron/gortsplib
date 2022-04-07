@@ -87,7 +87,8 @@ func NewTrackGeneric(media string, formats []string, rtpmap string, fmtp string)
 
 func newTrackGenericFromMediaDescription(
 	control string,
-	md *psdp.MediaDescription) (*TrackGeneric, error) {
+	md *psdp.MediaDescription,
+) (*TrackGeneric, error) {
 	rtpmap := func() string {
 		for _, attr := range md.Attributes {
 			if attr.Key == "rtpmap" {

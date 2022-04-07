@@ -1263,7 +1263,8 @@ func (c *Client) doSetup(
 	track Track,
 	baseURL *base.URL,
 	rtpPort int,
-	rtcpPort int) (*base.Response, error) {
+	rtcpPort int,
+) (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStateInitial:   {},
 		clientStatePrePlay:   {},
@@ -1578,7 +1579,8 @@ func (c *Client) Setup(
 	track Track,
 	baseURL *base.URL,
 	rtpPort int,
-	rtcpPort int) (*base.Response, error) {
+	rtcpPort int,
+) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
 	case c.setup <- setupReq{

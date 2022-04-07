@@ -51,7 +51,8 @@ type ServerConn struct {
 
 func newServerConn(
 	s *Server,
-	nconn net.Conn) *ServerConn {
+	nconn net.Conn,
+) *ServerConn {
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
 	conn := func() net.Conn {

@@ -48,7 +48,8 @@ type RTCPReceiver struct {
 
 // New allocates a RTCPReceiver.
 func New(period time.Duration, receiverSSRC *uint32, clockRate int,
-	writePacketRTCP func(rtcp.Packet)) *RTCPReceiver {
+	writePacketRTCP func(rtcp.Packet),
+) *RTCPReceiver {
 	rr := &RTCPReceiver{
 		period: period,
 		receiverSSRC: func() uint32 {
