@@ -81,7 +81,8 @@ func newServerUDPListener(
 	s *Server,
 	multicast bool,
 	address string,
-	isRTP bool) (*serverUDPListener, error) {
+	isRTP bool,
+) (*serverUDPListener, error) {
 	var pc *net.UDPConn
 	var listenIP net.IP
 	if multicast {

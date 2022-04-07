@@ -32,7 +32,8 @@ type RTCPSender struct {
 
 // New allocates a RTCPSender.
 func New(period time.Duration, clockRate int,
-	writePacketRTCP func(rtcp.Packet)) *RTCPSender {
+	writePacketRTCP func(rtcp.Packet),
+) *RTCPSender {
 	rs := &RTCPSender{
 		period:          period,
 		clockRate:       float64(clockRate),
