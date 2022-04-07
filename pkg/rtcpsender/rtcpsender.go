@@ -99,7 +99,7 @@ func (rs *RTCPSender) report(ts time.Time) rtcp.Packet {
 }
 
 // ProcessPacketRTP extracts the needed data from RTP packets.
-func (rs *RTCPSender) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet) {
+func (rs *RTCPSender) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqualsDTS bool) {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
@@ -108,9 +108,10 @@ func (rs *RTCPSender) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet) {
 		rs.senderSSRC = pkt.SSRC
 	}
 
-	// always update time to minimize errors
-	rs.lastRTPTimeRTP = pkt.Timestamp
-	rs.lastRTPTimeTime = ts
+	if ptsEqualsDTS {
+		rs.lastRTPTimeRTP = pkt.Timestamp
+		rs.lastRTPTimeTime = ts
+	}
 
 	rs.packetCount++
 	rs.octetCount += uint32(len(pkt.Payload))
