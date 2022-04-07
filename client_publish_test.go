@@ -253,14 +253,14 @@ func TestClientPublishSerial(t *testing.T) {
 				c.Wait()
 			}()
 
-			err = c.WritePacketRTP(0, &testRTPPacket)
+			err = c.WritePacketRTP(0, &testRTPPacket, true)
 			require.NoError(t, err)
 
 			<-recvDone
 			c.Close()
 			<-done
 
-			err = c.WritePacketRTP(0, &testRTPPacket)
+			err = c.WritePacketRTP(0, &testRTPPacket, true)
 			require.Error(t, err)
 		})
 	}
@@ -413,7 +413,7 @@ func TestClientPublishParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := c.WritePacketRTP(0, &testRTPPacket)
+					err := c.WritePacketRTP(0, &testRTPPacket, true)
 					if err != nil {
 						return
 					}
@@ -567,7 +567,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			err = c.WritePacketRTP(0, &testRTPPacket)
+			err = c.WritePacketRTP(0, &testRTPPacket, true)
 			require.NoError(t, err)
 
 			_, err = c.Pause()
@@ -576,7 +576,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			_, err = c.Record()
 			require.NoError(t, err)
 
-			err = c.WritePacketRTP(0, &testRTPPacket)
+			err = c.WritePacketRTP(0, &testRTPPacket, true)
 			require.NoError(t, err)
 		})
 	}
@@ -711,7 +711,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := c.WritePacketRTP(0, &testRTPPacket)
+					err := c.WritePacketRTP(0, &testRTPPacket, true)
 					if err != nil {
 						return
 					}
@@ -853,7 +853,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	err = c.WritePacketRTP(0, &testRTPPacket)
+	err = c.WritePacketRTP(0, &testRTPPacket, true)
 	require.NoError(t, err)
 }
 
@@ -1002,7 +1002,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 			SSRC:           753621,
 		},
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
-	})
+	}, true)
 	require.NoError(t, err)
 
 	<-reportReceived

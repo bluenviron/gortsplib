@@ -47,7 +47,7 @@ func main() {
 
 	// called when a RTP packet arrives
 	reader.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
-		publisher.WritePacketRTP(trackID, pkt)
+		publisher.WritePacketRTP(trackID, pkt, true)
 	}
 
 	// start reading tracks

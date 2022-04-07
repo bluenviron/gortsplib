@@ -1823,7 +1823,7 @@ func (c *Client) runWriter() {
 }
 
 // WritePacketRTP writes a RTP packet.
-func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet) error {
+func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool) error {
 	c.writeMutex.RLock()
 	defer c.writeMutex.RUnlock()
 
@@ -1842,7 +1842,7 @@ func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet) error {
 	}
 
 	if c.tracks[trackID].rtcpSender != nil {
-		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt, true)
+		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
 	}
 
 	c.writeBuffer.Push(trackTypePayload{
