@@ -14,7 +14,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -213,7 +212,7 @@ type Client struct {
 	lastDescribeURL    *base.URL
 	streamBaseURL      *base.URL
 	effectiveTransport *Transport
-	tracks             map[int]*clientTrack
+	tracks             []*clientTrack
 	tracksByChannel    map[int]int
 	lastRange          *headers.Range
 	writeMutex         sync.RWMutex // publish
@@ -408,19 +407,9 @@ func (c *Client) Wait() error {
 
 // Tracks returns all the tracks that the client is reading or publishing.
 func (c *Client) Tracks() Tracks {
-	ids := make([]int, len(c.tracks))
-	pos := 0
-	for id := range c.tracks {
-		ids[pos] = id
-		pos++
-	}
-	sort.Slice(ids, func(a, b int) bool {
-		return ids[a] < ids[b]
-	})
-
-	var ret Tracks
-	for _, id := range ids {
-		ret = append(ret, c.tracks[id].track)
+	ret := make(Tracks, len(c.tracks))
+	for i, track := range c.tracks {
+		ret[i] = track.track
 	}
 	return ret
 }
@@ -1562,11 +1551,7 @@ func (c *Client) doSetup(
 		cct.tcpChannel = thRes.InterleavedIDs[0]
 	}
 
-	if c.tracks == nil {
-		c.tracks = make(map[int]*clientTrack)
-	}
-
-	c.tracks[trackID] = cct
+	c.tracks = append(c.tracks, cct)
 
 	return res, nil
 }
