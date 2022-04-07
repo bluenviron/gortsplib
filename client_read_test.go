@@ -404,7 +404,7 @@ func TestClientRead(t *testing.T) {
 				}(),
 			}
 
-			c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
+			c.OnPacketRTP = func(ctx *ClientOnPacketRTPCtx) {
 				// ignore multicast loopback
 				if transport == "multicast" {
 					counter++
@@ -413,8 +413,8 @@ func TestClientRead(t *testing.T) {
 					}
 				}
 
-				require.Equal(t, 0, trackID)
-				require.Equal(t, &testRTPPacket, pkt)
+				require.Equal(t, 0, ctx.TrackID)
+				require.Equal(t, &testRTPPacket, ctx.Packet)
 
 				err := c.WritePacketRTCP(0, &testRTCPPacket)
 				require.NoError(t, err)
@@ -546,9 +546,9 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
-			require.Equal(t, 0, trackID)
-			require.Equal(t, &refRTPPacket, pkt)
+		OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
+			require.Equal(t, 0, ctx.TrackID)
+			require.Equal(t, &refRTPPacket, ctx.Packet)
 			close(packetRecv)
 		},
 	}
@@ -684,9 +684,9 @@ func TestClientReadPartial(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
-			require.Equal(t, 0, trackID)
-			require.Equal(t, &testRTPPacket, pkt)
+		OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
+			require.Equal(t, 0, ctx.TrackID)
+			require.Equal(t, &testRTPPacket, ctx.Packet)
 			close(packetRecv)
 		},
 	}
@@ -970,8 +970,8 @@ func TestClientReadAnyPort(t *testing.T) {
 
 			c := &Client{
 				AnyPortEnable: true,
-				OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
-					require.Equal(t, &testRTPPacket, pkt)
+				OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
+					require.Equal(t, &testRTPPacket, ctx.Packet)
 					close(packetRecv)
 				},
 			}
@@ -1101,7 +1101,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
+			OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
 				close(packetRecv)
 			},
 		}
@@ -1349,7 +1349,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 		c := &Client{
 			ReadTimeout: 1 * time.Second,
-			OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
+			OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
 				close(packetRecv)
 			},
 		}
@@ -1481,8 +1481,8 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
-			require.Equal(t, 0, trackID)
+		OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
+			require.Equal(t, 0, ctx.TrackID)
 			close(packetRecv)
 		},
 	}
@@ -1634,7 +1634,7 @@ func TestClientReadRedirect(t *testing.T) {
 	packetRecv := make(chan struct{})
 
 	c := Client{
-		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
+		OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
 			close(packetRecv)
 		},
 	}
@@ -1845,7 +1845,7 @@ func TestClientReadPause(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
+				OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
 					if atomic.SwapInt32(&firstFrame, 1) == 0 {
 						close(packetRecv)
 					}
@@ -1911,7 +1911,8 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
+		track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04},
+			[]byte{0x01, 0x02, 0x03, 0x04}, nil)
 		require.NoError(t, err)
 
 		tracks := Tracks{track}
@@ -1985,7 +1986,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 				Timestamp:      54352,
 				SSRC:           753621,
 			},
-			Payload: []byte{0x01, 0x02, 0x03, 0x04},
+			Payload: []byte{0x05, 0x02, 0x03, 0x04},
 		}
 		byts, _ := pkt.Marshal()
 		_, err = l1.WriteTo(byts, &net.UDPAddr{
@@ -1998,8 +1999,8 @@ func TestClientReadRTCPReport(t *testing.T) {
 			SSRC:        753621,
 			NTPTime:     0,
 			RTPTime:     0,
-			PacketCount: 0,
-			OctetCount:  0,
+			PacketCount: 1,
+			OctetCount:  4,
 		}
 		byts, _ = sr.Marshal()
 		_, err = l2.WriteTo(byts, &net.UDPAddr{
@@ -2335,7 +2336,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(trackID int, pkt *rtp.Packet) {
+		OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
 			close(recv)
 		},
 	}
@@ -2791,9 +2792,9 @@ func TestClientReadDifferentSource(t *testing.T) {
 		}(),
 	}
 
-	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
-		require.Equal(t, 0, trackID)
-		require.Equal(t, &testRTPPacket, pkt)
+	c.OnPacketRTP = func(ctx *ClientOnPacketRTPCtx) {
+		require.Equal(t, 0, ctx.TrackID)
+		require.Equal(t, &testRTPPacket, ctx.Packet)
 		close(packetRecv)
 	}
 

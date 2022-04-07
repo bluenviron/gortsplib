@@ -5,8 +5,6 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/rtph264"
-	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -52,10 +50,6 @@ func main() {
 		panic("H264 track not found")
 	}
 
-	// setup RTP->H264 decoder
-	rtpDec := &rtph264.Decoder{}
-	rtpDec.Init()
-
 	// setup H264->raw frames decoder
 	h264dec, err := newH264Decoder()
 	if err != nil {
@@ -72,18 +66,16 @@ func main() {
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
-		if trackID != h264TrackID {
+	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
+		if ctx.TrackID != h264TrackID {
 			return
 		}
 
-		// convert RTP packet to H264 NALUs
-		nalus, _, err := rtpDec.Decode(pkt)
-		if err != nil {
+		if ctx.H264NALUs == nil {
 			return
 		}
 
-		for _, nalu := range nalus {
+		for _, nalu := range ctx.H264NALUs {
 			// convert H264 NALUs to RGBA frames
 			img, err := h264dec.decode(nalu)
 			if err != nil {
