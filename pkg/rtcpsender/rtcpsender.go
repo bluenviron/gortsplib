@@ -19,12 +19,11 @@ type RTCPSender struct {
 	mutex           sync.Mutex
 
 	// data from RTP packets
-	firstRTPReceived bool
-	senderSSRC       uint32
-	lastRTPTimeRTP   uint32
-	lastRTPTimeTime  time.Time
-	packetCount      uint32
-	octetCount       uint32
+	senderSSRC      *uint32
+	lastRTPTimeRTP  *uint32
+	lastRTPTimeTime time.Time
+	packetCount     uint32
+	octetCount      uint32
 
 	terminate chan struct{}
 	done      chan struct{}
@@ -77,12 +76,12 @@ func (rs *RTCPSender) report(ts time.Time) rtcp.Packet {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
-	if !rs.firstRTPReceived {
+	if rs.senderSSRC == nil || rs.lastRTPTimeRTP == nil {
 		return nil
 	}
 
 	return &rtcp.SenderReport{
-		SSRC: rs.senderSSRC,
+		SSRC: *rs.senderSSRC,
 		NTPTime: func() uint64 {
 			// seconds since 1st January 1900
 			s := (float64(ts.UnixNano()) / 1000000000) + 2208988800
@@ -92,7 +91,7 @@ func (rs *RTCPSender) report(ts time.Time) rtcp.Packet {
 			fractionalPart := uint32((s - float64(integerPart)) * 0xFFFFFFFF)
 			return uint64(integerPart)<<32 | uint64(fractionalPart)
 		}(),
-		RTPTime:     rs.lastRTPTimeRTP + uint32((ts.Sub(rs.lastRTPTimeTime)).Seconds()*rs.clockRate),
+		RTPTime:     *rs.lastRTPTimeRTP + uint32((ts.Sub(rs.lastRTPTimeTime)).Seconds()*rs.clockRate),
 		PacketCount: rs.packetCount,
 		OctetCount:  rs.octetCount,
 	}
@@ -103,13 +102,14 @@ func (rs *RTCPSender) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqualsD
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
-	if !rs.firstRTPReceived {
-		rs.firstRTPReceived = true
-		rs.senderSSRC = pkt.SSRC
+	if rs.senderSSRC == nil {
+		v := pkt.SSRC
+		rs.senderSSRC = &v
 	}
 
 	if ptsEqualsDTS {
-		rs.lastRTPTimeRTP = pkt.Timestamp
+		v := pkt.Timestamp
+		rs.lastRTPTimeRTP = &v
 		rs.lastRTPTimeTime = ts
 	}
 
