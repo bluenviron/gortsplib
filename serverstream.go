@@ -13,6 +13,7 @@ import (
 )
 
 type serverStreamTrack struct {
+	padding            uint32 //nolint:structcheck,unused
 	lastSequenceNumber uint32
 	lastSSRC           uint32
 	lastTimeRTP        uint32
