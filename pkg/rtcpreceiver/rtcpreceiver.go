@@ -29,8 +29,8 @@ type RTCPReceiver struct {
 	// data from RTP packets
 	firstRTPReceived     bool
 	sequenceNumberCycles uint16
-	lastSequenceNumber   uint16
-	lastRTPTimeRTP       uint32
+	lastSequenceNumber   *uint16
+	lastRTPTimeRTP       *uint32
 	lastRTPTimeTime      time.Time
 	totalLost            uint32
 	totalLostSinceReport uint32
@@ -39,7 +39,7 @@ type RTCPReceiver struct {
 
 	// data from rtcp packets
 	senderSSRC           uint32
-	lastSenderReport     uint32
+	lastSenderReportRTP  *uint32
 	lastSenderReportTime time.Time
 
 	terminate chan struct{}
@@ -99,8 +99,7 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
-	var zero time.Time
-	if rr.lastSenderReportTime == zero {
+	if rr.lastSenderReportRTP == nil || rr.lastSequenceNumber == nil {
 		return nil
 	}
 
@@ -109,8 +108,8 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 		Reports: []rtcp.ReceptionReport{
 			{
 				SSRC:               rr.senderSSRC,
-				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
-				LastSenderReport:   rr.lastSenderReport,
+				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(*rr.lastSequenceNumber),
+				LastSenderReport:   *rr.lastSenderReportRTP,
 				// equivalent to taking the integer part after multiplying the
 				// loss fraction by 256
 				FractionLost: uint8(float64(rr.totalLostSinceReport*256) / float64(rr.totalSinceReport)),
@@ -136,19 +135,21 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqual
 	defer rr.mutex.Unlock()
 
 	// first packet
-	if !rr.firstRTPReceived {
+	if rr.lastSequenceNumber == nil {
 		rr.firstRTPReceived = true
 		rr.totalSinceReport = 1
-		rr.lastSequenceNumber = pkt.Header.SequenceNumber
+		v := pkt.Header.SequenceNumber
+		rr.lastSequenceNumber = &v
 
 		if ptsEqualsDTS {
-			rr.lastRTPTimeRTP = pkt.Header.Timestamp
+			v := pkt.Header.Timestamp
+			rr.lastRTPTimeRTP = &v
 			rr.lastRTPTimeTime = ts
 		}
 
 		// subsequent packets
 	} else {
-		diff := int32(pkt.Header.SequenceNumber) - int32(rr.lastSequenceNumber)
+		diff := int32(pkt.Header.SequenceNumber) - int32(*rr.lastSequenceNumber)
 
 		// following packet or following packet after an overflow
 		if diff > 0 || diff < -0x0FFF {
@@ -158,7 +159,7 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqual
 			}
 
 			// detect lost packets
-			if pkt.Header.SequenceNumber != (rr.lastSequenceNumber + 1) {
+			if pkt.Header.SequenceNumber != (*rr.lastSequenceNumber + 1) {
 				rr.totalLost += uint32(uint16(diff) - 1)
 				rr.totalLostSinceReport += uint32(uint16(diff) - 1)
 
@@ -172,22 +173,23 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqual
 			}
 
 			rr.totalSinceReport += uint32(uint16(diff))
-			rr.lastSequenceNumber = pkt.Header.SequenceNumber
+			v := pkt.Header.SequenceNumber
+			rr.lastSequenceNumber = &v
 
 			if ptsEqualsDTS {
-				var zero time.Time
-				if rr.lastRTPTimeTime != zero {
+				if rr.lastRTPTimeRTP != nil {
 					// update jitter
 					// https://tools.ietf.org/html/rfc3550#page-39
 					D := ts.Sub(rr.lastRTPTimeTime).Seconds()*rr.clockRate -
-						(float64(pkt.Header.Timestamp) - float64(rr.lastRTPTimeRTP))
+						(float64(pkt.Header.Timestamp) - float64(*rr.lastRTPTimeRTP))
 					if D < 0 {
 						D = -D
 					}
 					rr.jitter += (D - rr.jitter) / 16
 				}
 
-				rr.lastRTPTimeRTP = pkt.Header.Timestamp
+				v := pkt.Header.Timestamp
+				rr.lastRTPTimeRTP = &v
 				rr.lastRTPTimeTime = ts
 			}
 		}
@@ -202,7 +204,8 @@ func (rr *RTCPReceiver) ProcessPacketRTCP(ts time.Time, pkt rtcp.Packet) {
 		defer rr.mutex.Unlock()
 
 		rr.senderSSRC = sr.SSRC
-		rr.lastSenderReport = uint32(sr.NTPTime >> 16)
+		v := uint32(sr.NTPTime >> 16)
+		rr.lastSenderReportRTP = &v
 		rr.lastSenderReportTime = ts
 	}
 }
