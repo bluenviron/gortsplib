@@ -673,6 +673,13 @@ func (c *Client) playRecordStart() {
 	c.writeMutex.Unlock()
 
 	if c.state == clientStatePlay {
+		for _, ct := range c.tracks {
+			if _, ok := ct.track.(*TrackH264); ok {
+				ct.h264Decoder = &rtph264.Decoder{}
+				ct.h264Decoder.Init()
+			}
+		}
+
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
 		switch *c.effectiveTransport {
@@ -716,28 +723,19 @@ func (c *Client) playRecordStart() {
 			v := time.Now().Unix()
 			c.tcpLastFrameTime = &v
 		}
-	} else {
-		for _, ct := range c.tracks {
-			if _, ok := ct.track.(*TrackH264); ok {
-				ct.h264Decoder = &rtph264.Decoder{}
-				ct.h264Decoder.Init()
-			}
+	} else if *c.effectiveTransport == TransportUDP {
+		for trackID, cct := range c.tracks {
+			ctrackID := trackID
+
+			cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
+				cct.track.ClockRate(), func(pkt rtcp.Packet) {
+					c.WritePacketRTCP(ctrackID, pkt)
+				})
 		}
 
-		if *c.effectiveTransport == TransportUDP {
-			for trackID, cct := range c.tracks {
-				ctrackID := trackID
-
-				cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
-					cct.track.ClockRate(), func(pkt rtcp.Packet) {
-						c.WritePacketRTCP(ctrackID, pkt)
-					})
-			}
-
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.start(false)
-				cct.udpRTCPListener.start(false)
-			}
+		for _, cct := range c.tracks {
+			cct.udpRTPListener.start(false)
+			cct.udpRTCPListener.start(false)
 		}
 	}
 
