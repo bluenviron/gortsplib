@@ -213,7 +213,7 @@ type Client struct {
 	streamBaseURL      *base.URL
 	effectiveTransport *Transport
 	tracks             []*clientTrack
-	tracksByChannel    map[int]int
+	tcpTracksByChannel map[int]int
 	lastRange          *headers.Range
 	writeMutex         sync.RWMutex // publish
 	writeFrameAllowed  bool         // publish
@@ -580,7 +580,7 @@ func (c *Client) reset() {
 	c.streamBaseURL = nil
 	c.effectiveTransport = nil
 	c.tracks = nil
-	c.tracksByChannel = nil
+	c.tcpTracksByChannel = nil
 }
 
 func (c *Client) checkState(allowed map[clientState]struct{}) error {
@@ -807,7 +807,7 @@ func (c *Client) runReader() {
 						isRTP = false
 					}
 
-					trackID, ok := c.tracksByChannel[channel]
+					trackID, ok := c.tcpTracksByChannel[channel]
 					if !ok {
 						continue
 					}
@@ -1462,7 +1462,7 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderInvalidInterleavedIDs{}
 		}
 
-		if _, ok := c.tracksByChannel[thRes.InterleavedIDs[0]]; ok {
+		if _, ok := c.tcpTracksByChannel[thRes.InterleavedIDs[0]]; ok {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrClientTransportHeaderInterleavedIDsAlreadyUsed{}
@@ -1542,11 +1542,11 @@ func (c *Client) doSetup(
 		}
 
 	case TransportTCP:
-		if c.tracksByChannel == nil {
-			c.tracksByChannel = make(map[int]int)
+		if c.tcpTracksByChannel == nil {
+			c.tcpTracksByChannel = make(map[int]int)
 		}
 
-		c.tracksByChannel[thRes.InterleavedIDs[0]] = trackID
+		c.tcpTracksByChannel[thRes.InterleavedIDs[0]] = trackID
 
 		cct.tcpChannel = thRes.InterleavedIDs[0]
 	}
