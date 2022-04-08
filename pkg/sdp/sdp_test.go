@@ -1383,6 +1383,86 @@ var cases = []struct {
 		},
 	},
 	{
+		"FLIR IOI TRK-101 with trailing space in origin field",
+		[]byte("v=0\r\n" +
+			"o=- 1 1 IN IP4 127.0.0.1 \r\n" +
+			"s=RTP session\r\n" +
+			"e=NONE\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 MP4V-ES/1000\r\n" +
+			"a=fmtp:96 profile-level-id=245; config=000001B0F5000001B509000001000000012000845D4C28582120A31F\r\n" +
+			"a=framerate:25\r\n" +
+			"a=x-dimensions:352,288\r\n" +
+			"a=x-algoTarget:P\r\n" +
+			"a=control:video\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 1 1 IN IP4 127.0.0.1\r\n" +
+			"s=RTP session\r\n" +
+			"e=NONE\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 MP4V-ES/1000\r\n" +
+			"a=fmtp:96 profile-level-id=245; config=000001B0F5000001B509000001000000012000845D4C28582120A31F\r\n" +
+			"a=framerate:25\r\n" +
+			"a=x-dimensions:352,288\r\n" +
+			"a=x-algoTarget:P\r\n" +
+			"a=control:video\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      1,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "127.0.0.1",
+			},
+			SessionName: "RTP session",
+			TimeDescriptions: []psdp.TimeDescription{
+				{psdp.Timing{0, 0}, nil},
+			},
+			EmailAddress: func() *psdp.EmailAddress {
+				e := psdp.EmailAddress("NONE")
+				return &e
+			}(),
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 MP4V-ES/1000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=245; config=000001B0F5000001B509000001000000012000845D4C28582120A31F",
+						},
+						{
+							Key:   "framerate",
+							Value: "25",
+						},
+						{
+							Key:   "x-dimensions",
+							Value: "352,288",
+						},
+						{
+							Key:   "x-algoTarget",
+							Value: "P",
+						},
+						{
+							Key:   "control",
+							Value: "video",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
 		"hex session id for 0XAC4EC96E",
 		[]byte("v=0\r\n" +
 			"o=jdoe 0XAC4EC96E 2890842807 IN IP4 10.47.16.5\r\n" +

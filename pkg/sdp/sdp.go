@@ -66,31 +66,17 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 		value = "- 0 " + value[3:]
 	}
 
-	// special case for sone onvif2 cameras
-	if value[len(value)-1] == ' ' {
-		value += "127.0.0.1"
-	}
-
 	// find spaces from end to beginning, to support multiple spaces
 	// in the first field
 	fields := func() []string {
-		var ret []string
-		for len(value) > 0 {
-			i := len(value) - 1
-			for {
-				if i < 0 || len(ret) == 5 {
-					ret = append([]string{value}, ret...)
-					return ret
-				}
-				if value[i] == ' ' {
-					ret = append([]string{value[i+1:]}, ret...)
-					value = value[:i]
-					break
-				}
-				i--
-			}
+		values := strings.Split(strings.TrimSpace(value), " ")
+
+		// special case for some onvif2 cameras
+		if strings.Compare(values[len(values)-1], "IP4") == 0 {
+			values = append(values, "127.0.0.1")
 		}
-		return ret
+
+		return append([]string{strings.Join(values[0:len(values)-5], " ")}, values[len(values)-5:]...)
 	}()
 
 	if len(fields) != 6 {
