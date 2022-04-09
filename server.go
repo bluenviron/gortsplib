@@ -15,11 +15,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/liberrors"
 )
 
-const (
-	serverReadBufferSize          = 4096
-	serverUDPKernelReadBufferSize = 0x80000 // same as gstreamer's rtspsrc
-)
-
 func extractPort(address string) (int, error) {
 	_, tmp, err := net.SplitHostPort(address)
 	if err != nil {
@@ -115,10 +110,6 @@ type Server struct {
 	// that are particularly relevant when using UDP.
 	// It defaults to 256.
 	ReadBufferCount int
-	// read buffer size.
-	// This must be touched only when the server reports errors about buffer sizes.
-	// It defaults to 2048.
-	ReadBufferSize int
 	// write buffer count.
 	// It allows to queue packets before sending them.
 	// It defaults to 256.
@@ -173,9 +164,6 @@ func (s *Server) Start() error {
 	}
 	if s.ReadBufferCount == 0 {
 		s.ReadBufferCount = 256
-	}
-	if s.ReadBufferSize == 0 {
-		s.ReadBufferSize = 2048
 	}
 	if s.WriteBufferCount == 0 {
 		s.WriteBufferCount = 256

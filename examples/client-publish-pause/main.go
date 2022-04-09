@@ -24,7 +24,7 @@ func main() {
 	}
 	defer pc.Close()
 
-	log.Println("Waiting for a rtp/h264 stream on port 9000 - you can send one with gstreamer:\n" +
+	log.Println("Waiting for a RTP/H264 stream on port 9000 - you can send one with GStreamer:\n" +
 		"gst-launch-1.0 filesrc location=video.mp4 ! qtdemux ! video/x-h264" +
 		" ! h264parse config-interval=1 ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
 

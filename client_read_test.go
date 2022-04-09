@@ -21,6 +21,22 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
+func mergeBytes(vals ...[]byte) []byte {
+	size := 0
+	for _, v := range vals {
+		size += len(v)
+	}
+	res := make([]byte, size)
+
+	pos := 0
+	for _, v := range vals {
+		n := copy(res[pos:], v)
+		pos += n
+	}
+
+	return res
+}
+
 func TestClientReadTracks(t *testing.T) {
 	track1, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
@@ -359,8 +375,7 @@ func TestClientRead(t *testing.T) {
 
 				case "tcp", "tls":
 					var f base.InterleavedFrame
-					f.Payload = make([]byte, 2048)
-					err := f.Read(br)
+					err := f.Read(2048, br)
 					require.NoError(t, err)
 					require.Equal(t, 1, f.Channel)
 					packets, err := rtcp.Unmarshal(f.Payload)
@@ -429,15 +444,59 @@ func TestClientRead(t *testing.T) {
 	}
 }
 
-func TestClientReadNonStandardFrameSize(t *testing.T) {
-	refRTPPacket := rtp.Packet{
+var oversizedPacketRTPIn = rtp.Packet{
+	Header: rtp.Header{
+		Version:        2,
+		PayloadType:    96,
+		Marker:         true,
+		SequenceNumber: 34572,
+	},
+	Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5),
+}
+
+var oversizedPacketsRTPOut = []rtp.Packet{
+	{
 		Header: rtp.Header{
-			Version:     2,
-			PayloadType: 96,
-			CSRC:        []uint32{},
+			Version:        2,
+			PayloadType:    96,
+			Marker:         false,
+			SequenceNumber: 34572,
 		},
-		Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5),
-	}
+		Payload: mergeBytes(
+			[]byte{0x1c, 0x81, 0x02, 0x03, 0x04, 0x05},
+			bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 290),
+			[]byte{0x01, 0x02, 0x03, 0x04},
+		),
+	},
+	{
+		Header: rtp.Header{
+			Version:        2,
+			PayloadType:    96,
+			Marker:         false,
+			SequenceNumber: 34573,
+		},
+		Payload: mergeBytes(
+			[]byte{0x1c, 0x01, 0x05},
+			bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 291),
+			[]byte{0x01, 0x02},
+		),
+	},
+	{
+		Header: rtp.Header{
+			Version:        2,
+			PayloadType:    96,
+			Marker:         true,
+			SequenceNumber: 34574,
+		},
+		Payload: mergeBytes(
+			[]byte{0x1c, 0x41, 0x03, 0x04, 0x05},
+			bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 235),
+		),
+	},
+}
+
+func TestClientReadOversizedPacket(t *testing.T) {
+	oversizedPacketsRTPOut := append([]rtp.Packet(nil), oversizedPacketsRTPOut...)
 
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -529,7 +588,7 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
-		byts, _ := refRTPPacket.Marshal()
+		byts, _ := oversizedPacketRTPIn.Marshal()
 		base.InterleavedFrame{
 			Channel: 0,
 			Payload: byts,
@@ -541,15 +600,18 @@ func TestClientReadNonStandardFrameSize(t *testing.T) {
 	packetRecv := make(chan struct{})
 
 	c := &Client{
-		ReadBufferSize: 4500 + 4,
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
 		}(),
 		OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
 			require.Equal(t, 0, ctx.TrackID)
-			require.Equal(t, &refRTPPacket, ctx.Packet)
-			close(packetRecv)
+			cmp := oversizedPacketsRTPOut[0]
+			oversizedPacketsRTPOut = oversizedPacketsRTPOut[1:]
+			require.Equal(t, &cmp, ctx.Packet)
+			if len(oversizedPacketsRTPOut) == 0 {
+				close(packetRecv)
+			}
 		},
 	}
 

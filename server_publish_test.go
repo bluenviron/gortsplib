@@ -736,8 +736,7 @@ func TestServerPublish(t *testing.T) {
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 			} else {
 				var f base.InterleavedFrame
-				f.Payload = make([]byte, 2048)
-				err := f.Read(br)
+				err := f.Read(2048, br)
 				require.NoError(t, err)
 				require.Equal(t, 1, f.Channel)
 				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
@@ -789,8 +788,7 @@ func TestServerPublish(t *testing.T) {
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 			} else {
 				var f base.InterleavedFrame
-				f.Payload = make([]byte, 2048)
-				err := f.Read(br)
+				err := f.Read(2048, br)
 				require.NoError(t, err)
 				require.Equal(t, 1, f.Channel)
 				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
@@ -815,21 +813,12 @@ func TestServerPublish(t *testing.T) {
 	}
 }
 
-func TestServerPublishNonStandardFrameSize(t *testing.T) {
-	packet := rtp.Packet{
-		Header: rtp.Header{
-			Version:     2,
-			PayloadType: 97,
-			CSRC:        []uint32{},
-		},
-		Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5),
-	}
-	packetMarshaled, _ := packet.Marshal()
-	frameReceived := make(chan struct{})
+func TestServerPublishOversizedPacket(t *testing.T) {
+	oversizedPacketsRTPOut := append([]rtp.Packet(nil), oversizedPacketsRTPOut...)
+	packetRecv := make(chan struct{})
 
 	s := &Server{
-		RTSPAddress:    "localhost:8554",
-		ReadBufferSize: 4500,
+		RTSPAddress: "localhost:8554",
 		Handler: &testServerHandler{
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
@@ -848,8 +837,12 @@ func TestServerPublishNonStandardFrameSize(t *testing.T) {
 			},
 			onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
 				require.Equal(t, 0, ctx.TrackID)
-				require.Equal(t, &packet, ctx.Packet)
-				close(frameReceived)
+				cmp := oversizedPacketsRTPOut[0]
+				oversizedPacketsRTPOut = oversizedPacketsRTPOut[1:]
+				require.Equal(t, &cmp, ctx.Packet)
+				if len(oversizedPacketsRTPOut) == 0 {
+					close(packetRecv)
+				}
 			},
 		},
 	}
@@ -921,14 +914,15 @@ func TestServerPublishNonStandardFrameSize(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	byts, _ := oversizedPacketRTPIn.Marshal()
 	base.InterleavedFrame{
 		Channel: 0,
-		Payload: packetMarshaled,
+		Payload: byts,
 	}.Write(&bb)
 	_, err = conn.Write(bb.Bytes())
 	require.NoError(t, err)
 
-	<-frameReceived
+	<-packetRecv
 }
 
 func TestServerPublishErrorInvalidProtocol(t *testing.T) {

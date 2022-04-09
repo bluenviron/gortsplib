@@ -76,7 +76,7 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 
 		p := ipv4.NewPacketConn(tmp)
 
-		err = p.SetMulticastTTL(16)
+		err = p.SetMulticastTTL(multicastTTL)
 		if err != nil {
 			return nil, err
 		}
@@ -102,7 +102,7 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 		pc = tmp.(*net.UDPConn)
 	}
 
-	err := pc.SetReadBuffer(clientUDPKernelReadBufferSize)
+	err := pc.SetReadBuffer(udpKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 	return &clientUDPListener{
 		c:               c,
 		pc:              pc,
-		readBuffer:      multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize)),
+		readBuffer:      multibuffer.New(uint64(c.ReadBufferCount), uint64(udpReadBufferSize)),
 		rtpPacketBuffer: newRTPPacketMultiBuffer(uint64(c.ReadBufferCount)),
 		lastPacketTime: func() *int64 {
 			v := int64(0)
@@ -182,7 +182,13 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 		return
 	}
 
-	u.c.onPacketRTP(u.trackID, pkt)
+	ctx := ClientOnPacketRTPCtx{
+		TrackID: u.trackID,
+		Packet:  pkt,
+	}
+	u.c.processPacketRTP(&ctx)
+	u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTP(time.Now(), pkt, ctx.PTSEqualsDTS)
+	u.c.OnPacketRTP(&ctx)
 }
 
 func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
@@ -193,7 +199,10 @@ func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 
 	for _, pkt := range packets {
 		u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
-		u.c.onPacketRTCP(u.trackID, pkt)
+		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
+			TrackID: u.trackID,
+			Packet:  pkt,
+		})
 	}
 }
 
@@ -204,7 +213,10 @@ func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
 	}
 
 	for _, pkt := range packets {
-		u.c.onPacketRTCP(u.trackID, pkt)
+		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
+			TrackID: u.trackID,
+			Packet:  pkt,
+		})
 	}
 }
 

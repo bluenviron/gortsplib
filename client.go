@@ -28,16 +28,10 @@ import (
 	"github.com/aler9/gortsplib/pkg/h264"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
-	"github.com/aler9/gortsplib/pkg/multibuffer"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 	"github.com/aler9/gortsplib/pkg/rtph264"
-)
-
-const (
-	clientReadBufferSize          = 4096
-	clientUDPKernelReadBufferSize = 0x80000 // same size as gstreamer's rtspsrc
 )
 
 func isAnyPort(p int) bool {
@@ -62,6 +56,7 @@ type clientTrack struct {
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver
 	rtcpSender      *rtcpsender.RTCPSender
 	h264Decoder     *rtph264.Decoder
+	h264Encoder     *rtph264.Encoder
 }
 
 func (s clientState) String() string {
@@ -187,10 +182,6 @@ type Client struct {
 	// that is reading frames.
 	// It defaults to 256.
 	ReadBufferCount int
-	// read buffer size.
-	// This must be touched only when the server reports errors about buffer sizes.
-	// It defaults to 2048.
-	ReadBufferSize int
 	// write buffer count.
 	// It allows to queue packets before sending them.
 	// It defaults to 8.
@@ -290,9 +281,6 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.ReadBufferCount == 0 {
 		c.ReadBufferCount = 256
-	}
-	if c.ReadBufferSize == 0 {
-		c.ReadBufferSize = 2048
 	}
 	if c.WriteBufferCount == 0 {
 		c.WriteBufferCount = 256
@@ -760,14 +748,12 @@ func (c *Client) runReader() {
 				}
 			}
 		} else {
-			var tcpReadBuffer *multibuffer.MultiBuffer
-			var processFunc func(int, bool, []byte)
+			var processFunc func(int, bool, []byte) error
 
 			if c.state == clientStatePlay {
-				tcpReadBuffer = multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize))
 				tcpRTPPacketBuffer := newRTPPacketMultiBuffer(uint64(c.ReadBufferCount))
 
-				processFunc = func(trackID int, isRTP bool, payload []byte) {
+				processFunc = func(trackID int, isRTP bool, payload []byte) error {
 					now := time.Now()
 					atomic.StoreInt64(c.tcpLastFrameTime, now.Unix())
 
@@ -775,38 +761,105 @@ func (c *Client) runReader() {
 						pkt := tcpRTPPacketBuffer.next()
 						err := pkt.Unmarshal(payload)
 						if err != nil {
-							return
+							return err
 						}
 
-						c.onPacketRTP(trackID, pkt)
+						ctx := ClientOnPacketRTPCtx{
+							TrackID: trackID,
+							Packet:  pkt,
+						}
+						c.processPacketRTP(&ctx)
+
+						ct := c.tracks[trackID]
+
+						if ct.h264Decoder != nil {
+							if ct.h264Encoder == nil && len(payload) > udpReadBufferSize {
+								v1 := pkt.SSRC
+								v2 := pkt.SequenceNumber
+								v3 := pkt.Timestamp
+								ct.h264Encoder = &rtph264.Encoder{
+									PayloadType:           pkt.PayloadType,
+									SSRC:                  &v1,
+									InitialSequenceNumber: &v2,
+									InitialTimestamp:      &v3,
+								}
+								ct.h264Encoder.Init()
+							}
+
+							if ct.h264Encoder != nil {
+								if ctx.H264NALUs != nil {
+									packets, err := ct.h264Encoder.Encode(ctx.H264NALUs, ctx.H264PTS)
+									if err != nil {
+										return err
+									}
+
+									for i, pkt := range packets {
+										if i != len(packets)-1 {
+											c.OnPacketRTP(&ClientOnPacketRTPCtx{
+												TrackID:      trackID,
+												Packet:       pkt,
+												PTSEqualsDTS: false,
+											})
+										} else {
+											ctx.Packet = pkt
+											c.OnPacketRTP(&ctx)
+										}
+									}
+								}
+							} else {
+								c.OnPacketRTP(&ctx)
+							}
+						} else {
+							if len(payload) > udpReadBufferSize {
+								return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+									len(payload), udpReadBufferSize)
+							}
+
+							c.OnPacketRTP(&ctx)
+						}
 					} else {
+						if len(payload) > udpReadBufferSize {
+							return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+								len(payload), udpReadBufferSize)
+						}
+
 						packets, err := rtcp.Unmarshal(payload)
 						if err != nil {
-							return
+							return err
 						}
 
 						for _, pkt := range packets {
-							c.onPacketRTCP(trackID, pkt)
+							c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
+								TrackID: trackID,
+								Packet:  pkt,
+							})
 						}
 					}
+
+					return nil
 				}
 			} else {
-				// when recording, tcpReadBuffer is only used to receive RTCP receiver reports,
-				// that are much smaller than RTP packets and are sent at a fixed interval.
-				// decrease RAM consumption by allocating less buffers.
-				tcpReadBuffer = multibuffer.New(8, uint64(c.ReadBufferSize))
-
-				processFunc = func(trackID int, isRTP bool, payload []byte) {
+				processFunc = func(trackID int, isRTP bool, payload []byte) error {
 					if !isRTP {
+						if len(payload) > udpReadBufferSize {
+							return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+								len(payload), udpReadBufferSize)
+						}
+
 						packets, err := rtcp.Unmarshal(payload)
 						if err != nil {
-							return
+							return err
 						}
 
 						for _, pkt := range packets {
-							c.onPacketRTCP(trackID, pkt)
+							c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
+								TrackID: trackID,
+								Packet:  pkt,
+							})
 						}
 					}
+
+					return nil
 				}
 			}
 
@@ -814,8 +867,7 @@ func (c *Client) runReader() {
 			var res base.Response
 
 			for {
-				frame.Payload = tcpReadBuffer.Next()
-				what, err := base.ReadInterleavedFrameOrResponse(&frame, &res, c.br)
+				what, err := base.ReadInterleavedFrameOrResponse(&frame, tcpMaxFramePayloadSize, &res, c.br)
 				if err != nil {
 					return err
 				}
@@ -833,7 +885,10 @@ func (c *Client) runReader() {
 						continue
 					}
 
-					processFunc(trackID, isRTP, frame.Payload)
+					err := processFunc(trackID, isRTP, frame.Payload)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -874,6 +929,7 @@ func (c *Client) playRecordStop(isClosing bool) {
 
 	for _, ct := range c.tracks {
 		ct.h264Decoder = nil
+		ct.h264Encoder = nil
 	}
 
 	// stop timers
@@ -929,7 +985,7 @@ func (c *Client) connOpen() error {
 		return nconn
 	}()
 
-	c.br = bufio.NewReaderSize(c.conn, clientReadBufferSize)
+	c.br = bufio.NewReaderSize(c.conn, tcpReadBufferSize)
 	c.connCloserStart()
 	return nil
 }
@@ -1008,11 +1064,10 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 
 		if allowFrames {
 			// read the response and ignore interleaved frames in between;
-			// interleaved frames are sent in two scenarios:
+			// interleaved frames are sent in two cases:
 			// * when the server is v4lrtspserver, before the PLAY response
 			// * when the stream is already playing
-			buf := make([]byte, c.ReadBufferSize)
-			err = res.ReadIgnoreFrames(c.br, buf)
+			err = res.ReadIgnoreFrames(tcpMaxFramePayloadSize, c.br)
 			if err != nil {
 				return nil, err
 			}
@@ -1230,7 +1285,7 @@ func (c *Client) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, error) 
 	}
 
 	// in case of ANNOUNCE, the base URL doesn't have a trailing slash.
-	// (tested with ffmpeg and gstreamer)
+	// (tested with ffmpeg and GStreamer)
 	baseURL := u.Clone()
 
 	tracks.setControls()
@@ -1847,62 +1902,25 @@ func (c *Client) runWriter() {
 	}
 }
 
-func (c *Client) onPacketRTP(trackID int, pkt *rtp.Packet) {
+func (c *Client) processPacketRTP(ctx *ClientOnPacketRTPCtx) {
 	// remove padding
-	pkt.Header.Padding = false
-	pkt.PaddingSize = 0
+	ctx.Packet.Header.Padding = false
+	ctx.Packet.PaddingSize = 0
 
-	ct := c.tracks[trackID]
-
+	// decode
+	ct := c.tracks[ctx.TrackID]
 	if ct.h264Decoder != nil {
-		nalus, pts, err := ct.h264Decoder.DecodeUntilMarker(pkt)
+		nalus, pts, err := ct.h264Decoder.DecodeUntilMarker(ctx.Packet)
 		if err == nil {
-			ptsEqualsDTS := h264.IDRPresent(nalus)
-
-			rr := ct.rtcpReceiver
-			if rr != nil {
-				rr.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
-			}
-
-			c.OnPacketRTP(&ClientOnPacketRTPCtx{
-				TrackID:      trackID,
-				Packet:       pkt,
-				PTSEqualsDTS: ptsEqualsDTS,
-				H264NALUs:    append([][]byte(nil), nalus...),
-				H264PTS:      pts,
-			})
+			ctx.PTSEqualsDTS = h264.IDRPresent(nalus)
+			ctx.H264NALUs = append([][]byte(nil), nalus...)
+			ctx.H264PTS = pts
 		} else {
-			rr := ct.rtcpReceiver
-			if rr != nil {
-				rr.ProcessPacketRTP(time.Now(), pkt, false)
-			}
-
-			c.OnPacketRTP(&ClientOnPacketRTPCtx{
-				TrackID:      trackID,
-				Packet:       pkt,
-				PTSEqualsDTS: false,
-			})
+			ctx.PTSEqualsDTS = false
 		}
-		return
+	} else {
+		ctx.PTSEqualsDTS = true
 	}
-
-	rr := ct.rtcpReceiver
-	if rr != nil {
-		rr.ProcessPacketRTP(time.Now(), pkt, true)
-	}
-
-	c.OnPacketRTP(&ClientOnPacketRTPCtx{
-		TrackID:      trackID,
-		Packet:       pkt,
-		PTSEqualsDTS: true,
-	})
-}
-
-func (c *Client) onPacketRTCP(trackID int, pkt rtcp.Packet) {
-	c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-		TrackID: trackID,
-		Packet:  pkt,
-	})
 }
 
 // WritePacketRTP writes a RTP packet.

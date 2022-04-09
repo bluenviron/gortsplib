@@ -187,15 +187,11 @@ func (res *Response) Read(rb *bufio.Reader) error {
 
 // ReadIgnoreFrames reads a response and ignores any interleaved frame sent
 // before the response.
-func (res *Response) ReadIgnoreFrames(rb *bufio.Reader, buf []byte) error {
-	buflen := len(buf)
-	f := InterleavedFrame{
-		Payload: buf,
-	}
+func (res *Response) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) error {
+	var f InterleavedFrame
 
 	for {
-		f.Payload = f.Payload[:buflen]
-		recv, err := ReadInterleavedFrameOrResponse(&f, res, rb)
+		recv, err := ReadInterleavedFrameOrResponse(&f, maxPayloadSize, res, rb)
 		if err != nil {
 			return err
 		}
