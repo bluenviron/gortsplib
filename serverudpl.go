@@ -98,7 +98,7 @@ func newServerUDPListener(
 
 		p := ipv4.NewPacketConn(tmp)
 
-		err = p.SetTTL(127)
+		err = p.SetMulticastTTL(16)
 		if err != nil {
 			return nil, err
 		}
