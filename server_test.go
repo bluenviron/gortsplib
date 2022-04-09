@@ -37,9 +37,8 @@ func writeReqReadRes(conn net.Conn,
 }
 
 func readResIgnoreFrames(br *bufio.Reader) (*base.Response, error) {
-	buf := make([]byte, 2048)
 	var res base.Response
-	err := res.ReadIgnoreFrames(br, buf)
+	err := res.ReadIgnoreFrames(2048, br)
 	return &res, err
 }
 

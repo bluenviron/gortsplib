@@ -98,7 +98,7 @@ func newServerUDPListener(
 
 		p := ipv4.NewPacketConn(tmp)
 
-		err = p.SetMulticastTTL(16)
+		err = p.SetMulticastTTL(multicastTTL)
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +130,7 @@ func newServerUDPListener(
 		listenIP = tmp.LocalAddr().(*net.UDPAddr).IP
 	}
 
-	err := pc.SetReadBuffer(serverUDPKernelReadBufferSize)
+	err := pc.SetReadBuffer(udpKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func newServerUDPListener(
 		clients:         make(map[clientAddr]*clientData),
 		isRTP:           isRTP,
 		writeTimeout:    s.WriteTimeout,
-		readBuffer:      multibuffer.New(uint64(s.ReadBufferCount), uint64(s.ReadBufferSize)),
+		readBuffer:      multibuffer.New(uint64(s.ReadBufferCount), uint64(udpReadBufferSize)),
 		rtpPacketBuffer: newRTPPacketMultiBuffer(uint64(s.ReadBufferCount)),
 		readerDone:      make(chan struct{}),
 	}
@@ -207,7 +207,16 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 	now := time.Now()
 	atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
 
-	clientData.ss.onPacketRTP(now, clientData.trackID, pkt)
+	ctx := ServerHandlerOnPacketRTPCtx{
+		Session: clientData.ss,
+		TrackID: clientData.trackID,
+		Packet:  pkt,
+	}
+	clientData.ss.processPacketRTP(&ctx)
+	clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTP(now, ctx.Packet, ctx.PTSEqualsDTS)
+	if h, ok := clientData.ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
+		h.OnPacketRTP(&ctx)
+	}
 }
 
 func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) {

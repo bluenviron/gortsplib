@@ -484,9 +484,7 @@ func TestServerRead(t *testing.T) {
 
 			case "tcp", "tls":
 				var f base.InterleavedFrame
-
-				f.Payload = make([]byte, 2048)
-				err := f.Read(br)
+				err := f.Read(2048, br)
 				require.NoError(t, err)
 
 				switch f.Channel {
@@ -516,8 +514,7 @@ func TestServerRead(t *testing.T) {
 				var f base.InterleavedFrame
 
 				for i := 0; i < 2; i++ {
-					f.Payload = make([]byte, 2048)
-					err := f.Read(br)
+					err := f.Read(2048, br)
 					require.NoError(t, err)
 
 					switch f.Channel {
@@ -763,99 +760,6 @@ func TestServerReadVLCMulticast(t *testing.T) {
 	require.Equal(t, "224.1.0.0", desc.ConnectionInformation.Address.Address)
 }
 
-func TestServerReadNonStandardFrameSize(t *testing.T) {
-	packet := rtp.Packet{
-		Header: rtp.Header{
-			Version:     2,
-			PayloadType: 97,
-			CSRC:        []uint32{},
-		},
-		Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 4096/5),
-	}
-	packetMarshaled, _ := packet.Marshal()
-
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
-
-	stream := NewServerStream(Tracks{track})
-	defer stream.Close()
-
-	s := &Server{
-		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-				return &base.Response{
-					StatusCode: base.StatusOK,
-				}, stream, nil
-			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
-				go func() {
-					time.Sleep(1 * time.Second)
-					stream.WritePacketRTP(0, &packet, true)
-				}()
-
-				return &base.Response{
-					StatusCode: base.StatusOK,
-				}, nil
-			},
-		},
-		RTSPAddress: "localhost:8554",
-	}
-
-	err = s.Start()
-	require.NoError(t, err)
-	defer s.Close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	br := bufio.NewReader(conn)
-
-	inTH := &headers.Transport{
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModePlay
-			return &v
-		}(),
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Protocol:       headers.TransportProtocolTCP,
-		InterleavedIDs: &[2]int{0, 1},
-	}
-
-	res, err := writeReqReadRes(conn, br, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq":      base.HeaderValue{"1"},
-			"Transport": inTH.Write(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	var sx headers.Session
-	err = sx.Read(res.Header["Session"])
-	require.NoError(t, err)
-
-	res, err = writeReqReadRes(conn, br, base.Request{
-		Method: base.Play,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
-			"Session": base.HeaderValue{sx.Session},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	var f base.InterleavedFrame
-	f.Payload = make([]byte, 4500)
-	err = f.Read(br)
-	require.NoError(t, err)
-	require.Equal(t, 0, f.Channel)
-	require.Equal(t, packetMarshaled, f.Payload)
-}
-
 func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
@@ -953,8 +857,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	var fr base.InterleavedFrame
-	fr.Payload = make([]byte, 2048)
-	err = fr.Read(br)
+	err = fr.Read(2048, br)
 	require.NoError(t, err)
 }
 
@@ -1701,8 +1604,7 @@ func TestServerReadPartialTracks(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	var f base.InterleavedFrame
-	f.Payload = make([]byte, 2048)
-	err = f.Read(br)
+	err = f.Read(2048, br)
 	require.NoError(t, err)
 	require.Equal(t, 4, f.Channel)
 	require.Equal(t, testRTPPacketMarshaled, f.Payload)

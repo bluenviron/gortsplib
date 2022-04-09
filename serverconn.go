@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"strings"
@@ -15,7 +16,7 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/liberrors"
-	"github.com/aler9/gortsplib/pkg/multibuffer"
+	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
 func getSessionID(header base.Header) string {
@@ -109,7 +110,7 @@ func (sc *ServerConn) run() {
 		})
 	}
 
-	sc.br = bufio.NewReaderSize(sc.conn, serverReadBufferSize)
+	sc.br = bufio.NewReaderSize(sc.conn, tcpReadBufferSize)
 
 	readRequest := make(chan readReq)
 	readErr := make(chan error)
@@ -218,20 +219,19 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	case <-sc.session.ctx.Done():
 	}
 
-	var tcpReadBuffer *multibuffer.MultiBuffer
-	var processFunc func(int, bool, []byte)
+	var processFunc func(int, bool, []byte) error
 
 	if sc.session.state == ServerSessionStatePlay {
-		// when playing, tcpReadBuffer is only used to receive RTCP receiver reports,
-		// that are much smaller than RTP packets and are sent at a fixed interval.
-		// decrease RAM consumption by allocating less buffers.
-		tcpReadBuffer = multibuffer.New(8, uint64(sc.s.ReadBufferSize))
-
-		processFunc = func(trackID int, isRTP bool, payload []byte) {
+		processFunc = func(trackID int, isRTP bool, payload []byte) error {
 			if !isRTP {
+				if len(payload) > udpReadBufferSize {
+					return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+						len(payload), udpReadBufferSize)
+				}
+
 				packets, err := rtcp.Unmarshal(payload)
 				if err != nil {
-					return
+					return err
 				}
 
 				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
@@ -244,30 +244,100 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					}
 				}
 			}
+
+			return nil
 		}
 	} else {
-		tcpReadBuffer = multibuffer.New(uint64(sc.s.ReadBufferCount), uint64(sc.s.ReadBufferSize))
 		tcpRTPPacketBuffer := newRTPPacketMultiBuffer(uint64(sc.s.ReadBufferCount))
 
-		processFunc = func(trackID int, isRTP bool, payload []byte) {
+		processFunc = func(trackID int, isRTP bool, payload []byte) error {
 			if isRTP {
 				pkt := tcpRTPPacketBuffer.next()
 				err := pkt.Unmarshal(payload)
 				if err != nil {
-					return
+					return err
 				}
 
-				sc.session.onPacketRTP(time.Time{}, trackID, pkt)
+				ctx := ServerHandlerOnPacketRTPCtx{
+					Session: sc.session,
+					TrackID: trackID,
+					Packet:  pkt,
+				}
+				sc.session.processPacketRTP(&ctx)
+
+				at := sc.session.announcedTracks[trackID]
+
+				if at.h264Decoder != nil {
+					if at.h264Encoder == nil && len(payload) > udpReadBufferSize {
+						v1 := pkt.SSRC
+						v2 := pkt.SequenceNumber
+						v3 := pkt.Timestamp
+						at.h264Encoder = &rtph264.Encoder{
+							PayloadType:           pkt.PayloadType,
+							SSRC:                  &v1,
+							InitialSequenceNumber: &v2,
+							InitialTimestamp:      &v3,
+						}
+						at.h264Encoder.Init()
+					}
+
+					if at.h264Encoder != nil {
+						if ctx.H264NALUs != nil {
+							packets, err := at.h264Encoder.Encode(ctx.H264NALUs, ctx.H264PTS)
+							if err != nil {
+								return err
+							}
+
+							for i, pkt := range packets {
+								if i != len(packets)-1 {
+									if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
+										h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+											Session:      sc.session,
+											TrackID:      trackID,
+											Packet:       pkt,
+											PTSEqualsDTS: false,
+										})
+									}
+								} else {
+									ctx.Packet = pkt
+									if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
+										h.OnPacketRTP(&ctx)
+									}
+								}
+							}
+						}
+					} else {
+						if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
+							h.OnPacketRTP(&ctx)
+						}
+					}
+				} else {
+					if len(payload) > udpReadBufferSize {
+						return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+							len(payload), udpReadBufferSize)
+					}
+
+					if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
+						h.OnPacketRTP(&ctx)
+					}
+				}
 			} else {
+				if len(payload) > udpReadBufferSize {
+					return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+						len(payload), udpReadBufferSize)
+				}
+
 				packets, err := rtcp.Unmarshal(payload)
 				if err != nil {
-					return
+					return err
 				}
 
 				for _, pkt := range packets {
 					sc.session.onPacketRTCP(trackID, pkt)
 				}
 			}
+
+			return nil
 		}
 	}
 
@@ -279,8 +349,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 			sc.conn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
 		}
 
-		frame.Payload = tcpReadBuffer.Next()
-		what, err := base.ReadInterleavedFrameOrRequest(&frame, &req, sc.br)
+		what, err := base.ReadInterleavedFrameOrRequest(&frame, tcpMaxFramePayloadSize, &req, sc.br)
 		if err != nil {
 			return err
 		}
@@ -296,7 +365,10 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 
 			// forward frame only if it has been set up
 			if trackID, ok := sc.session.tcpTracksByChannel[channel]; ok {
-				processFunc(trackID, isRTP, frame.Payload)
+				err := processFunc(trackID, isRTP, frame.Payload)
+				if err != nil {
+					return err
+				}
 			}
 
 		case *base.Request:

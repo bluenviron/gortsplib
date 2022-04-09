@@ -182,8 +182,7 @@ func TestClientPublishSerial(t *testing.T) {
 					require.Equal(t, testRTPPacket, pkt)
 				} else {
 					var f base.InterleavedFrame
-					f.Payload = make([]byte, 2048)
-					err = f.Read(br)
+					err = f.Read(1024, br)
 					require.NoError(t, err)
 					require.Equal(t, 0, f.Channel)
 					var pkt rtp.Packet
@@ -823,8 +822,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 
 		var f base.InterleavedFrame
-		f.Payload = make([]byte, 2048)
-		err = f.Read(br)
+		err = f.Read(2048, br)
 		require.NoError(t, err)
 		require.Equal(t, 0, f.Channel)
 		var pkt rtp.Packet

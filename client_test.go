@@ -29,9 +29,8 @@ func readRequest(br *bufio.Reader) (*base.Request, error) {
 }
 
 func readRequestIgnoreFrames(br *bufio.Reader) (*base.Request, error) {
-	buf := make([]byte, 2048)
 	var req base.Request
-	err := req.ReadIgnoreFrames(br, buf)
+	err := req.ReadIgnoreFrames(2048, br)
 	return &req, err
 }
 

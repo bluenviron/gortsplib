@@ -220,9 +220,8 @@ func TestResponseReadIgnoreFrames(t *testing.T) {
 		"\r\n")...)
 
 	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	buf := make([]byte, 10)
 	var res Response
-	err := res.ReadIgnoreFrames(rb, buf)
+	err := res.ReadIgnoreFrames(10, rb)
 	require.NoError(t, err)
 }
 
@@ -230,9 +229,8 @@ func TestResponseReadIgnoreFramesErrors(t *testing.T) {
 	byts := []byte{0x25}
 
 	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	buf := make([]byte, 10)
 	var res Response
-	err := res.ReadIgnoreFrames(rb, buf)
+	err := res.ReadIgnoreFrames(10, rb)
 	require.EqualError(t, err, "EOF")
 }
 

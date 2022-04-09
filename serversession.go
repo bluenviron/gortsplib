@@ -155,6 +155,7 @@ type ServerSessionAnnouncedTrack struct {
 	track        Track
 	rtcpReceiver *rtcpreceiver.RTCPReceiver
 	h264Decoder  *rtph264.Decoder
+	h264Encoder  *rtph264.Encoder
 }
 
 // ServerSession is a server-side RTSP session.
@@ -1103,6 +1104,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 			for _, at := range ss.announcedTracks {
 				at.h264Decoder = nil
+				at.h264Encoder = nil
 			}
 
 			ss.state = ServerSessionStatePreRecord
@@ -1212,63 +1214,24 @@ func (ss *ServerSession) runWriter() {
 	}
 }
 
-func (ss *ServerSession) onPacketRTP(now time.Time, trackID int, pkt *rtp.Packet) {
+func (ss *ServerSession) processPacketRTP(ctx *ServerHandlerOnPacketRTPCtx) {
 	// remove padding
-	pkt.Header.Padding = false
-	pkt.PaddingSize = 0
+	ctx.Packet.Header.Padding = false
+	ctx.Packet.PaddingSize = 0
 
-	at := ss.announcedTracks[trackID]
-
+	// decode
+	at := ss.announcedTracks[ctx.TrackID]
 	if at.h264Decoder != nil {
-		nalus, pts, err := at.h264Decoder.DecodeUntilMarker(pkt)
+		nalus, pts, err := at.h264Decoder.DecodeUntilMarker(ctx.Packet)
 		if err == nil {
-			ptsEqualsDTS := h264.IDRPresent(nalus)
-
-			rr := at.rtcpReceiver
-			if rr != nil {
-				rr.ProcessPacketRTP(now, pkt, ptsEqualsDTS)
-			}
-
-			if h, ok := ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
-				h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-					Session:      ss,
-					TrackID:      trackID,
-					Packet:       pkt,
-					PTSEqualsDTS: ptsEqualsDTS,
-					H264NALUs:    append([][]byte(nil), nalus...),
-					H264PTS:      pts,
-				})
-			}
+			ctx.PTSEqualsDTS = h264.IDRPresent(nalus)
+			ctx.H264NALUs = append([][]byte(nil), nalus...)
+			ctx.H264PTS = pts
 		} else {
-			rr := at.rtcpReceiver
-			if rr != nil {
-				rr.ProcessPacketRTP(now, pkt, false)
-			}
-
-			if h, ok := ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
-				h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-					Session:      ss,
-					TrackID:      trackID,
-					Packet:       pkt,
-					PTSEqualsDTS: false,
-				})
-			}
+			ctx.PTSEqualsDTS = false
 		}
-		return
-	}
-
-	rr := at.rtcpReceiver
-	if rr != nil {
-		rr.ProcessPacketRTP(now, pkt, true)
-	}
-
-	if h, ok := ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
-		h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-			Session:      ss,
-			TrackID:      trackID,
-			Packet:       pkt,
-			PTSEqualsDTS: true,
-		})
+	} else {
+		ctx.PTSEqualsDTS = false
 	}
 }
 
