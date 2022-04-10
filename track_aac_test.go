@@ -121,7 +121,7 @@ func TestNewTrackAACFromMediaDescriptionWithoutIndex(t *testing.T) {
 	require.Equal(t, 2, track.Type())
 	require.Equal(t, 48000, track.ClockRate())
 	require.Equal(t, 2, track.ChannelCount())
-	require.Equal(t, []uint8([]byte(nil)), track.AOTSpecificConfig())
+	require.Equal(t, []byte(nil), track.AOTSpecificConfig())
 	require.Equal(t, 13, track.SizeLength())
 	require.Equal(t, 0, track.IndexLength())
 	require.Equal(t, 0, track.IndexDeltaLength())
