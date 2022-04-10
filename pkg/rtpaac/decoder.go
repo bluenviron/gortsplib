@@ -133,8 +133,14 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		return nil, 0, fmt.Errorf("payload is too short")
 	}
 
-	d.fragmentedParts = append(d.fragmentedParts, payload)
 	d.fragmentedSize += len(payload)
+	if d.fragmentedSize > maxAUSize {
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
+		return nil, 0, fmt.Errorf("AU size (%d) is too big (maximum is %d)", d.fragmentedSize, maxAUSize)
+	}
+
+	d.fragmentedParts = append(d.fragmentedParts, payload)
 
 	if !pkt.Header.Marker {
 		return nil, 0, ErrMorePacketsNeeded

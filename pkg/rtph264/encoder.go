@@ -8,11 +8,6 @@ import (
 	"github.com/pion/rtp"
 )
 
-const (
-	rtpVersion   = 0x02
-	rtpClockRate = 90000 // h264 always uses 90khz
-)
-
 func randUint32() uint32 {
 	var b [4]byte
 	rand.Read(b[:])

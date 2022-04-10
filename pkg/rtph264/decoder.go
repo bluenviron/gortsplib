@@ -35,7 +35,7 @@ type Decoder struct {
 
 // Init initializes the decoder
 func (d *Decoder) Init() {
-	d.timeDecoder = rtptimedec.New(90000)
+	d.timeDecoder = rtptimedec.New(rtpClockRate)
 }
 
 // Decode decodes NALUs from a RTP/H264 packet.
@@ -99,9 +99,9 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 			nri := (pkt.Payload[0] >> 5) & 0x03
 			typ := pkt.Payload[1] & 0x1F
+			d.fragmentedSize = len(pkt.Payload) - 1
 			d.fragmentedParts = append(d.fragmentedParts, []byte{(nri << 5) | typ})
 			d.fragmentedParts = append(d.fragmentedParts, pkt.Payload[2:])
-			d.fragmentedSize = len(pkt.Payload) - 1
 			d.fragmentedMode = true
 
 			d.firstPacketReceived = true
@@ -138,8 +138,14 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		return nil, 0, fmt.Errorf("invalid FU-A packet (decoded two starting packets in a row)")
 	}
 
-	d.fragmentedParts = append(d.fragmentedParts, pkt.Payload[2:])
 	d.fragmentedSize += len(pkt.Payload[2:])
+	if d.fragmentedSize > maxNALUSize {
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
+		return nil, 0, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", d.fragmentedSize, maxNALUSize)
+	}
+
+	d.fragmentedParts = append(d.fragmentedParts, pkt.Payload[2:])
 
 	end := (pkt.Payload[1] >> 6) & 0x01
 	if end != 1 {
