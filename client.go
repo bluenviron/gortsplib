@@ -772,7 +772,7 @@ func (c *Client) runReader() {
 						c.processPacketRTP(ct, &ctx)
 
 						if ct.h264Decoder != nil {
-							if ct.h264Encoder == nil && len(payload) > udpReadBufferSize {
+							if ct.h264Encoder == nil && len(payload) > maxPacketSize {
 								v1 := pkt.SSRC
 								v2 := pkt.SequenceNumber
 								v3 := pkt.Timestamp
@@ -809,17 +809,17 @@ func (c *Client) runReader() {
 								c.OnPacketRTP(&ctx)
 							}
 						} else {
-							if len(payload) > udpReadBufferSize {
+							if len(payload) > maxPacketSize {
 								return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-									len(payload), udpReadBufferSize)
+									len(payload), maxPacketSize)
 							}
 
 							c.OnPacketRTP(&ctx)
 						}
 					} else {
-						if len(payload) > udpReadBufferSize {
+						if len(payload) > maxPacketSize {
 							return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-								len(payload), udpReadBufferSize)
+								len(payload), maxPacketSize)
 						}
 
 						packets, err := rtcp.Unmarshal(payload)
@@ -840,9 +840,9 @@ func (c *Client) runReader() {
 			} else {
 				processFunc = func(trackID int, isRTP bool, payload []byte) error {
 					if !isRTP {
-						if len(payload) > udpReadBufferSize {
+						if len(payload) > maxPacketSize {
 							return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-								len(payload), udpReadBufferSize)
+								len(payload), maxPacketSize)
 						}
 
 						packets, err := rtcp.Unmarshal(payload)
@@ -1935,10 +1935,12 @@ func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool)
 		}
 	}
 
-	byts, err := pkt.Marshal()
+	byts := make([]byte, maxPacketSize)
+	n, err := pkt.MarshalTo(byts)
 	if err != nil {
 		return err
 	}
+	byts = byts[:n]
 
 	if c.tracks[trackID].rtcpSender != nil {
 		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)

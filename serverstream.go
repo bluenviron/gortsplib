@@ -218,10 +218,12 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 
 // WritePacketRTP writes a RTP packet to all the readers of the stream.
 func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool) {
-	byts, err := pkt.Marshal()
+	byts := make([]byte, maxPacketSize)
+	n, err := pkt.MarshalTo(byts)
 	if err != nil {
 		return
 	}
+	byts = byts[:n]
 
 	track := st.stTracks[trackID]
 	now := time.Now()

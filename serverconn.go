@@ -224,9 +224,9 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	if sc.session.state == ServerSessionStatePlay {
 		processFunc = func(trackID int, isRTP bool, payload []byte) error {
 			if !isRTP {
-				if len(payload) > udpReadBufferSize {
+				if len(payload) > maxPacketSize {
 					return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-						len(payload), udpReadBufferSize)
+						len(payload), maxPacketSize)
 				}
 
 				packets, err := rtcp.Unmarshal(payload)
@@ -267,7 +267,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 				sc.session.processPacketRTP(at, &ctx)
 
 				if at.h264Decoder != nil {
-					if at.h264Encoder == nil && len(payload) > udpReadBufferSize {
+					if at.h264Encoder == nil && len(payload) > maxPacketSize {
 						v1 := pkt.SSRC
 						v2 := pkt.SequenceNumber
 						v3 := pkt.Timestamp
@@ -311,9 +311,9 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 						}
 					}
 				} else {
-					if len(payload) > udpReadBufferSize {
+					if len(payload) > maxPacketSize {
 						return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-							len(payload), udpReadBufferSize)
+							len(payload), maxPacketSize)
 					}
 
 					if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
@@ -321,9 +321,9 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					}
 				}
 			} else {
-				if len(payload) > udpReadBufferSize {
+				if len(payload) > maxPacketSize {
 					return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-						len(payload), udpReadBufferSize)
+						len(payload), maxPacketSize)
 				}
 
 				packets, err := rtcp.Unmarshal(payload)
