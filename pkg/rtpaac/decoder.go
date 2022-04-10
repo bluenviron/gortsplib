@@ -161,14 +161,14 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 }
 
 func (d *Decoder) parseAuData(payload []byte,
-	headersLen_bytes int,
+	headersLenBytes int,
 	headerCount uint16,
 ) (dataLens []uint64, err error) {
-	if len(payload) < headersLen_bytes {
+	if len(payload) < headersLenBytes {
 		return nil, fmt.Errorf("payload is too short")
 	}
 
-	br := bitio.NewReader(bytes.NewBuffer(payload[:headersLen_bytes]))
+	br := bitio.NewReader(bytes.NewBuffer(payload[:headersLenBytes]))
 	for i := 0; i < int(headerCount); i++ {
 		dataLen, err := br.ReadBits(uint8(d.SizeLength))
 		if err != nil {
