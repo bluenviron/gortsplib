@@ -62,7 +62,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("invalid AU-headers-length (%d) with AU-header-size (%d)", headersLen, auHeaderSize)
 	}
-	headersLen_bytes := (int(headersLen) + 7) / 8
+	headersLenBytes := (int(headersLen) + 7) / 8
 	payload := pkt.Payload[2:]
 
 	if !d.fragmentedMode {
@@ -72,11 +72,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			// * 13 bits are data size
 			// * 3 bits are AU index
 			headerCount := headersLen / auHeaderSize
-			dataLens, err := d.parseAuData(payload, headersLen_bytes, headerCount)
+			dataLens, err := d.parseAuData(payload, headersLenBytes, headerCount)
 			if err != nil {
 				return nil, 0, err
 			}
-			payload = payload[headersLen_bytes:]
+			payload = payload[headersLenBytes:]
 
 			// AUs
 			aus := make([][]byte, len(dataLens))
@@ -97,14 +97,14 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		}
 
 		// AU-header
-		dataLens, err := d.parseAuData(payload, headersLen_bytes, 1)
+		dataLens, err := d.parseAuData(payload, headersLenBytes, 1)
 		if err != nil {
 			return nil, 0, err
 		}
 		if len(dataLens) != 1 {
 			return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
 		}
-		payload = payload[headersLen_bytes:]
+		payload = payload[headersLenBytes:]
 
 		if len(payload) < int(dataLens[0]) {
 			return nil, 0, fmt.Errorf("payload is too short")
@@ -125,7 +125,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	// AU-header
-	dataLens, err := d.parseAuData(payload, headersLen_bytes, 1)
+	dataLens, err := d.parseAuData(payload, headersLenBytes, 1)
 	if err != nil {
 		d.fragmentedParts = d.fragmentedParts[:0]
 		d.fragmentedMode = false
@@ -136,7 +136,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
 	}
-	payload = payload[headersLen_bytes:]
+	payload = payload[headersLenBytes:]
 
 	if len(payload) < int(dataLens[0]) {
 		return nil, 0, fmt.Errorf("payload is too short")
