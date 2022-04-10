@@ -10,8 +10,6 @@ import (
 
 	"github.com/pion/rtcp"
 	"golang.org/x/net/ipv4"
-
-	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
 type clientData struct {
@@ -43,7 +41,6 @@ type serverUDPListener struct {
 	listenIP        net.IP
 	isRTP           bool
 	writeTimeout    time.Duration
-	readBuffer      *multibuffer.MultiBuffer
 	rtpPacketBuffer *rtpPacketMultiBuffer
 	clientsMutex    sync.RWMutex
 	clients         map[clientAddr]*clientData
@@ -142,7 +139,6 @@ func newServerUDPListener(
 		clients:         make(map[clientAddr]*clientData),
 		isRTP:           isRTP,
 		writeTimeout:    s.WriteTimeout,
-		readBuffer:      multibuffer.New(uint64(s.ReadBufferCount), uint64(udpReadBufferSize)),
 		rtpPacketBuffer: newRTPPacketMultiBuffer(uint64(s.ReadBufferCount)),
 		readerDone:      make(chan struct{}),
 	}
@@ -175,7 +171,7 @@ func (u *serverUDPListener) runReader() {
 	defer close(u.readerDone)
 
 	for {
-		buf := u.readBuffer.Next()
+		buf := make([]byte, udpReadBufferSize)
 		n, addr, err := u.pc.ReadFromUDP(buf)
 		if err != nil {
 			break

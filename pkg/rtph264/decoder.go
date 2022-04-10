@@ -23,10 +23,11 @@ var ErrNonStartingPacketAndNoPrevious = errors.New(
 
 // Decoder is a RTP/H264 decoder.
 type Decoder struct {
-	timeDecoder            *rtptimedec.Decoder
-	startingPacketReceived bool
-	isDecodingFragmented   bool
-	fragmentedBuffer       []byte
+	timeDecoder         *rtptimedec.Decoder
+	firstPacketReceived bool
+	fragmentedMode      bool
+	fragmentedParts     [][]byte
+	fragmentedSize      int
 
 	// for DecodeUntilMarker()
 	naluBuffer [][]byte
@@ -39,13 +40,12 @@ func (d *Decoder) Init() {
 
 // Decode decodes NALUs from a RTP/H264 packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
-	if !d.isDecodingFragmented {
+	if !d.fragmentedMode {
 		if len(pkt.Payload) < 1 {
 			return nil, 0, fmt.Errorf("payload is too short")
 		}
 
 		typ := naluType(pkt.Payload[0] & 0x1F)
-
 		switch typ {
 		case naluTypeSTAPA:
 			var nalus [][]byte
@@ -76,7 +76,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 				return nil, 0, fmt.Errorf("STAP-A packet doesn't contain any NALU")
 			}
 
-			d.startingPacketReceived = true
+			d.firstPacketReceived = true
 			return nalus, d.timeDecoder.Decode(pkt.Timestamp), nil
 
 		case naluTypeFUA: // first packet of a fragmented NALU
@@ -86,18 +86,25 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 			start := pkt.Payload[1] >> 7
 			if start != 1 {
-				if !d.startingPacketReceived {
+				if !d.firstPacketReceived {
 					return nil, 0, ErrNonStartingPacketAndNoPrevious
 				}
 				return nil, 0, fmt.Errorf("invalid FU-A packet (non-starting)")
 			}
 
+			end := (pkt.Payload[1] >> 6) & 0x01
+			if end != 0 {
+				return nil, 0, fmt.Errorf("invalid FU-A packet (can't contain both a start and end bit)")
+			}
+
 			nri := (pkt.Payload[0] >> 5) & 0x03
 			typ := pkt.Payload[1] & 0x1F
-			d.fragmentedBuffer = append([]byte{(nri << 5) | typ}, pkt.Payload[2:]...)
+			d.fragmentedParts = append(d.fragmentedParts, []byte{(nri << 5) | typ})
+			d.fragmentedParts = append(d.fragmentedParts, pkt.Payload[2:])
+			d.fragmentedSize = len(pkt.Payload) - 1
+			d.fragmentedMode = true
 
-			d.isDecodingFragmented = true
-			d.startingPacketReceived = true
+			d.firstPacketReceived = true
 			return nil, 0, ErrMorePacketsNeeded
 
 		case naluTypeSTAPB, naluTypeMTAP16,
@@ -105,39 +112,50 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, fmt.Errorf("packet type not supported (%v)", typ)
 		}
 
-		d.startingPacketReceived = true
+		d.firstPacketReceived = true
 		return [][]byte{pkt.Payload}, d.timeDecoder.Decode(pkt.Timestamp), nil
 	}
 
 	// we are decoding a fragmented NALU
 
 	if len(pkt.Payload) < 2 {
-		d.isDecodingFragmented = false
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("invalid FU-A packet (invalid size)")
 	}
 
 	typ := naluType(pkt.Payload[0] & 0x1F)
 	if typ != naluTypeFUA {
-		d.isDecodingFragmented = false
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("expected FU-A packet, got another type")
 	}
 
 	start := pkt.Payload[1] >> 7
 	if start == 1 {
-		d.isDecodingFragmented = false
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("invalid FU-A packet (decoded two starting packets in a row)")
 	}
 
-	d.fragmentedBuffer = append(d.fragmentedBuffer, pkt.Payload[2:]...)
+	d.fragmentedParts = append(d.fragmentedParts, pkt.Payload[2:])
+	d.fragmentedSize += len(pkt.Payload[2:])
 
 	end := (pkt.Payload[1] >> 6) & 0x01
 	if end != 1 {
 		return nil, 0, ErrMorePacketsNeeded
 	}
 
-	d.isDecodingFragmented = false
-	d.startingPacketReceived = true
-	return [][]byte{d.fragmentedBuffer}, d.timeDecoder.Decode(pkt.Timestamp), nil
+	ret := make([]byte, d.fragmentedSize)
+	n := 0
+	for _, p := range d.fragmentedParts {
+		n += copy(ret[n:], p)
+	}
+
+	d.fragmentedParts = d.fragmentedParts[:0]
+	d.fragmentedMode = false
+	d.firstPacketReceived = true
+	return [][]byte{ret}, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
 // DecodeUntilMarker decodes NALUs from a RTP/H264 packet and puts them in a buffer.

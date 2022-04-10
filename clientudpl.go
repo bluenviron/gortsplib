@@ -9,8 +9,6 @@ import (
 
 	"github.com/pion/rtcp"
 	"golang.org/x/net/ipv4"
-
-	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
 func randUint32() uint32 {
@@ -32,7 +30,6 @@ type clientUDPListener struct {
 	trackID         int
 	isRTP           bool
 	running         bool
-	readBuffer      *multibuffer.MultiBuffer
 	rtpPacketBuffer *rtpPacketMultiBuffer
 	lastPacketTime  *int64
 	processFunc     func(time.Time, []byte)
@@ -110,7 +107,6 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 	return &clientUDPListener{
 		c:               c,
 		pc:              pc,
-		readBuffer:      multibuffer.New(uint64(c.ReadBufferCount), uint64(udpReadBufferSize)),
 		rtpPacketBuffer: newRTPPacketMultiBuffer(uint64(c.ReadBufferCount)),
 		lastPacketTime: func() *int64 {
 			v := int64(0)
@@ -156,7 +152,7 @@ func (u *clientUDPListener) runReader() {
 	defer close(u.readerDone)
 
 	for {
-		buf := u.readBuffer.Next()
+		buf := make([]byte, udpReadBufferSize)
 		n, addr, err := u.pc.ReadFrom(buf)
 		if err != nil {
 			return
