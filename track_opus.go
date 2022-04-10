@@ -29,7 +29,8 @@ func newTrackOpusFromMediaDescription(
 	control string,
 	payloadType uint8,
 	rtpmapPart1 string,
-	md *psdp.MediaDescription) (*TrackOpus, error) {
+	md *psdp.MediaDescription,
+) (*TrackOpus, error) {
 	tmp := strings.SplitN(rtpmapPart1, "/", 3)
 	if len(tmp) != 3 {
 		return nil, fmt.Errorf("invalid rtpmap (%v)", rtpmapPart1)

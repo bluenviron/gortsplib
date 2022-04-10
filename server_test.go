@@ -22,7 +22,8 @@ import (
 
 func writeReqReadRes(conn net.Conn,
 	br *bufio.Reader,
-	req base.Request) (*base.Response, error) {
+	req base.Request,
+) (*base.Response, error) {
 	var bb bytes.Buffer
 	req.Write(&bb)
 	_, err := conn.Write(bb.Bytes())
@@ -36,9 +37,8 @@ func writeReqReadRes(conn net.Conn,
 }
 
 func readResIgnoreFrames(br *bufio.Reader) (*base.Response, error) {
-	buf := make([]byte, 2048)
 	var res base.Response
-	err := res.ReadIgnoreFrames(br, buf)
+	err := res.ReadIgnoreFrames(2048, br)
 	return &res, err
 }
 
@@ -411,7 +411,7 @@ func TestServerHighLevelPublishRead(t *testing.T) {
 						defer mutex.Unlock()
 
 						if ctx.Session == publisher {
-							stream.WritePacketRTP(ctx.TrackID, ctx.Packet)
+							stream.WritePacketRTP(ctx.TrackID, ctx.Packet, true)
 						}
 					},
 				},

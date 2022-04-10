@@ -62,17 +62,6 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		e.startPTS = pts
 	}
 
-	// check if there's an IDR
-	idrPresent := func() bool {
-		for _, nalu := range nalus {
-			typ := h264.NALUType(nalu[0] & 0x1F)
-			if typ == h264.NALUTypeIDR {
-				return true
-			}
-		}
-		return false
-	}()
-
 	// prepend an AUD. This is required by some players
 	filteredNALUs := [][]byte{
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},
@@ -131,7 +120,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 	_, err = e.mux.WriteData(&astits.MuxerData{
 		PID: 256,
 		AdaptationField: &astits.PacketAdaptationField{
-			RandomAccessIndicator: idrPresent,
+			RandomAccessIndicator: h264.IDRPresent(filteredNALUs),
 		},
 		PES: &astits.PESData{
 			Header: &astits.PESHeader{

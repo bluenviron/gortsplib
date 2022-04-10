@@ -9,8 +9,6 @@ import (
 
 	"github.com/pion/rtcp"
 	"golang.org/x/net/ipv4"
-
-	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
 func randUint32() uint32 {
@@ -32,7 +30,6 @@ type clientUDPListener struct {
 	trackID         int
 	isRTP           bool
 	running         bool
-	readBuffer      *multibuffer.MultiBuffer
 	rtpPacketBuffer *rtpPacketMultiBuffer
 	lastPacketTime  *int64
 	processFunc     func(time.Time, []byte)
@@ -76,7 +73,7 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 
 		p := ipv4.NewPacketConn(tmp)
 
-		err = p.SetTTL(127)
+		err = p.SetMulticastTTL(multicastTTL)
 		if err != nil {
 			return nil, err
 		}
@@ -102,7 +99,7 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 		pc = tmp.(*net.UDPConn)
 	}
 
-	err := pc.SetReadBuffer(clientUDPKernelReadBufferSize)
+	err := pc.SetReadBuffer(udpKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +107,6 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 	return &clientUDPListener{
 		c:               c,
 		pc:              pc,
-		readBuffer:      multibuffer.New(uint64(c.ReadBufferCount), uint64(c.ReadBufferSize)),
 		rtpPacketBuffer: newRTPPacketMultiBuffer(uint64(c.ReadBufferCount)),
 		lastPacketTime: func() *int64 {
 			v := int64(0)
@@ -156,7 +152,7 @@ func (u *clientUDPListener) runReader() {
 	defer close(u.readerDone)
 
 	for {
-		buf := u.readBuffer.Next()
+		buf := make([]byte, udpReadBufferSize)
 		n, addr, err := u.pc.ReadFrom(buf)
 		if err != nil {
 			return
@@ -182,12 +178,14 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 		return
 	}
 
-	// remove padding
-	pkt.Header.Padding = false
-	pkt.PaddingSize = 0
-
-	u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTP(now, pkt)
-	u.c.OnPacketRTP(u.trackID, pkt)
+	ctx := ClientOnPacketRTPCtx{
+		TrackID: u.trackID,
+		Packet:  pkt,
+	}
+	ct := u.c.tracks[u.trackID]
+	u.c.processPacketRTP(ct, &ctx)
+	ct.rtcpReceiver.ProcessPacketRTP(time.Now(), pkt, ctx.PTSEqualsDTS)
+	u.c.OnPacketRTP(&ctx)
 }
 
 func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
@@ -198,7 +196,10 @@ func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 
 	for _, pkt := range packets {
 		u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
-		u.c.OnPacketRTCP(u.trackID, pkt)
+		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
+			TrackID: u.trackID,
+			Packet:  pkt,
+		})
 	}
 }
 
@@ -209,7 +210,10 @@ func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
 	}
 
 	for _, pkt := range packets {
-		u.c.OnPacketRTCP(u.trackID, pkt)
+		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
+			TrackID: u.trackID,
+			Packet:  pkt,
+		})
 	}
 }
 

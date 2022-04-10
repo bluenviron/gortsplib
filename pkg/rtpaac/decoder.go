@@ -19,9 +19,10 @@ type Decoder struct {
 	// sample rate of input packets.
 	SampleRate int
 
-	timeDecoder          *rtptimedec.Decoder
-	isDecodingFragmented bool
-	fragmentedBuf        []byte
+	timeDecoder     *rtptimedec.Decoder
+	fragmentedMode  bool
+	fragmentedParts [][]byte
+	fragmentedSize  int
 }
 
 // Init initializes the decoder
@@ -34,19 +35,21 @@ func (d *Decoder) Init() {
 // The PTS of subsequent AUs can be calculated by adding time.Second*1000/clockRate.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if len(pkt.Payload) < 2 {
-		d.isDecodingFragmented = false
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("payload is too short")
 	}
 
 	// AU-headers-length
 	headersLen := binary.BigEndian.Uint16(pkt.Payload)
 	if (headersLen % 16) != 0 {
-		d.isDecodingFragmented = false
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("invalid AU-headers-length (%d)", headersLen)
 	}
 	payload := pkt.Payload[2:]
 
-	if !d.isDecodingFragmented {
+	if !d.fragmentedMode {
 		if pkt.Header.Marker {
 			// AU-headers
 			// AAC headers are 16 bits, where
@@ -101,15 +104,17 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, fmt.Errorf("payload is too short")
 		}
 
-		d.fragmentedBuf = append(d.fragmentedBuf, payload...)
-
-		d.isDecodingFragmented = true
+		d.fragmentedParts = append(d.fragmentedParts, payload)
+		d.fragmentedSize = len(payload)
+		d.fragmentedMode = true
 		return nil, 0, ErrMorePacketsNeeded
 	}
 
 	// we are decoding a fragmented AU
 
 	if headersLen != 16 {
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
 	}
 
@@ -118,6 +123,8 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	dataLen := header >> 3
 	auIndex := header & 0x03
 	if auIndex != 0 {
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("AU-index field is not zero")
 	}
 	payload = payload[2:]
@@ -126,12 +133,20 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		return nil, 0, fmt.Errorf("payload is too short")
 	}
 
-	d.fragmentedBuf = append(d.fragmentedBuf, payload...)
+	d.fragmentedParts = append(d.fragmentedParts, payload)
+	d.fragmentedSize += len(payload)
 
 	if !pkt.Header.Marker {
 		return nil, 0, ErrMorePacketsNeeded
 	}
 
-	d.isDecodingFragmented = false
-	return [][]byte{d.fragmentedBuf}, d.timeDecoder.Decode(pkt.Timestamp), nil
+	ret := make([]byte, d.fragmentedSize)
+	n := 0
+	for _, p := range d.fragmentedParts {
+		n += copy(ret[n:], p)
+	}
+
+	d.fragmentedParts = d.fragmentedParts[:0]
+	d.fragmentedMode = false
+	return [][]byte{ret}, d.timeDecoder.Decode(pkt.Timestamp), nil
 }

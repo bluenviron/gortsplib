@@ -6,7 +6,6 @@ import (
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/rtpaac"
-	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -58,13 +57,13 @@ func main() {
 	dec.Init()
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP = func(trackID int, pkt *rtp.Packet) {
-		if trackID != aacTrack {
+	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
+		if ctx.TrackID != aacTrack {
 			return
 		}
 
 		// decode AAC AUs from the RTP packet
-		aus, _, err := dec.Decode(pkt)
+		aus, _, err := dec.Decode(ctx.Packet)
 		if err != nil {
 			return
 		}

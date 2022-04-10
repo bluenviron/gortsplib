@@ -80,7 +80,8 @@ func NewTrackH264(payloadType uint8, sps []byte, pps []byte, extradata []byte) (
 func newTrackH264FromMediaDescription(
 	control string,
 	payloadType uint8,
-	md *psdp.MediaDescription) (*TrackH264, error) {
+	md *psdp.MediaDescription,
+) (*TrackH264, error) {
 	t := &TrackH264{
 		trackBase: trackBase{
 			control: control,

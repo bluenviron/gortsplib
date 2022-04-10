@@ -10,8 +10,6 @@ import (
 
 	"github.com/pion/rtcp"
 	"golang.org/x/net/ipv4"
-
-	"github.com/aler9/gortsplib/pkg/multibuffer"
 )
 
 type clientData struct {
@@ -43,7 +41,6 @@ type serverUDPListener struct {
 	listenIP        net.IP
 	isRTP           bool
 	writeTimeout    time.Duration
-	readBuffer      *multibuffer.MultiBuffer
 	rtpPacketBuffer *rtpPacketMultiBuffer
 	clientsMutex    sync.RWMutex
 	clients         map[clientAddr]*clientData
@@ -81,7 +78,8 @@ func newServerUDPListener(
 	s *Server,
 	multicast bool,
 	address string,
-	isRTP bool) (*serverUDPListener, error) {
+	isRTP bool,
+) (*serverUDPListener, error) {
 	var pc *net.UDPConn
 	var listenIP net.IP
 	if multicast {
@@ -97,7 +95,7 @@ func newServerUDPListener(
 
 		p := ipv4.NewPacketConn(tmp)
 
-		err = p.SetTTL(127)
+		err = p.SetMulticastTTL(multicastTTL)
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +127,7 @@ func newServerUDPListener(
 		listenIP = tmp.LocalAddr().(*net.UDPAddr).IP
 	}
 
-	err := pc.SetReadBuffer(serverUDPKernelReadBufferSize)
+	err := pc.SetReadBuffer(udpKernelReadBufferSize)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +139,6 @@ func newServerUDPListener(
 		clients:         make(map[clientAddr]*clientData),
 		isRTP:           isRTP,
 		writeTimeout:    s.WriteTimeout,
-		readBuffer:      multibuffer.New(uint64(s.ReadBufferCount), uint64(s.ReadBufferSize)),
 		rtpPacketBuffer: newRTPPacketMultiBuffer(uint64(s.ReadBufferCount)),
 		readerDone:      make(chan struct{}),
 	}
@@ -174,7 +171,7 @@ func (u *serverUDPListener) runReader() {
 	defer close(u.readerDone)
 
 	for {
-		buf := u.readBuffer.Next()
+		buf := make([]byte, udpReadBufferSize)
 		n, addr, err := u.pc.ReadFromUDP(buf)
 		if err != nil {
 			break
@@ -203,20 +200,20 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 		return
 	}
 
-	// remove padding
-	pkt.Header.Padding = false
-	pkt.PaddingSize = 0
-
 	now := time.Now()
 	atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
-	clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTP(now, pkt)
 
-	if h, ok := u.s.Handler.(ServerHandlerOnPacketRTP); ok {
-		h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-			Session: clientData.ss,
-			TrackID: clientData.trackID,
-			Packet:  pkt,
-		})
+	ctx := ServerHandlerOnPacketRTPCtx{
+		Session: clientData.ss,
+		TrackID: clientData.trackID,
+		Packet:  pkt,
+	}
+	at := clientData.ss.announcedTracks[clientData.trackID]
+	clientData.ss.processPacketRTP(at, &ctx)
+
+	at.rtcpReceiver.ProcessPacketRTP(now, ctx.Packet, ctx.PTSEqualsDTS)
+	if h, ok := clientData.ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
+		h.OnPacketRTP(&ctx)
 	}
 }
 
@@ -235,14 +232,8 @@ func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) 
 		}
 	}
 
-	if h, ok := u.s.Handler.(ServerHandlerOnPacketRTCP); ok {
-		for _, pkt := range packets {
-			h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
-				Session: clientData.ss,
-				TrackID: clientData.trackID,
-				Packet:  pkt,
-			})
-		}
+	for _, pkt := range packets {
+		clientData.ss.onPacketRTCP(clientData.trackID, pkt)
 	}
 }
 

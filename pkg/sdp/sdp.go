@@ -66,31 +66,17 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 		value = "- 0 " + value[3:]
 	}
 
-	// special case for sone onvif2 cameras
-	if value[len(value)-1] == ' ' {
-		value += "127.0.0.1"
-	}
-
 	// find spaces from end to beginning, to support multiple spaces
 	// in the first field
 	fields := func() []string {
-		var ret []string
-		for len(value) > 0 {
-			i := len(value) - 1
-			for {
-				if i < 0 || len(ret) == 5 {
-					ret = append([]string{value}, ret...)
-					return ret
-				}
-				if value[i] == ' ' {
-					ret = append([]string{value[i+1:]}, ret...)
-					value = value[:i]
-					break
-				}
-				i--
-			}
+		values := strings.Split(strings.TrimSpace(value), " ")
+
+		// special case for some onvif2 cameras
+		if strings.Compare(values[len(values)-1], "IP4") == 0 {
+			values = append(values, "127.0.0.1")
 		}
-		return ret
+
+		return append([]string{strings.Join(values[0:len(values)-5], " ")}, values[len(values)-5:]...)
 	}()
 
 	if len(fields) != 6 {
@@ -99,9 +85,12 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 
 	var sessionID uint64
 	var err error
-	if strings.HasPrefix(fields[1], "0x") {
-		sessionID, err = strconv.ParseUint(fields[1][len("0x"):], 16, 64)
-	} else {
+	switch {
+	case strings.HasPrefix(fields[1], "0x") || strings.HasPrefix(fields[1], "0X"):
+		sessionID, err = strconv.ParseUint(fields[1][2:], 16, 64)
+	case strings.ContainsAny(fields[1], "abcdefABCDEF"):
+		sessionID, err = strconv.ParseUint(fields[1], 16, 64)
+	default:
 		sessionID, err = strconv.ParseUint(fields[1], 10, 64)
 	}
 	if err != nil {
