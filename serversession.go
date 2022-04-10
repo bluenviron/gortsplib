@@ -1214,18 +1214,17 @@ func (ss *ServerSession) runWriter() {
 	}
 }
 
-func (ss *ServerSession) processPacketRTP(ctx *ServerHandlerOnPacketRTPCtx) {
+func (ss *ServerSession) processPacketRTP(at *ServerSessionAnnouncedTrack, ctx *ServerHandlerOnPacketRTPCtx) {
 	// remove padding
 	ctx.Packet.Header.Padding = false
 	ctx.Packet.PaddingSize = 0
 
 	// decode
-	at := ss.announcedTracks[ctx.TrackID]
 	if at.h264Decoder != nil {
 		nalus, pts, err := at.h264Decoder.DecodeUntilMarker(ctx.Packet)
 		if err == nil {
 			ctx.PTSEqualsDTS = h264.IDRPresent(nalus)
-			ctx.H264NALUs = append([][]byte(nil), nalus...)
+			ctx.H264NALUs = nalus
 			ctx.H264PTS = pts
 		} else {
 			ctx.PTSEqualsDTS = false

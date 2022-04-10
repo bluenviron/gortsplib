@@ -123,8 +123,6 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	start := pkt.Payload[1] >> 7
-	end := (pkt.Payload[1] >> 6) & 0x01
-
 	if start == 1 {
 		d.isDecodingFragmented = false
 		return nil, 0, fmt.Errorf("invalid FU-A packet (decoded two starting packets in a row)")
@@ -132,6 +130,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	d.fragmentedBuffer = append(d.fragmentedBuffer, pkt.Payload[2:]...)
 
+	end := (pkt.Payload[1] >> 6) & 0x01
 	if end != 1 {
 		return nil, 0, ErrMorePacketsNeeded
 	}

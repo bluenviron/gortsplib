@@ -186,8 +186,9 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 		TrackID: u.trackID,
 		Packet:  pkt,
 	}
-	u.c.processPacketRTP(&ctx)
-	u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTP(time.Now(), pkt, ctx.PTSEqualsDTS)
+	ct := u.c.tracks[u.trackID]
+	u.c.processPacketRTP(ct, &ctx)
+	ct.rtcpReceiver.ProcessPacketRTP(time.Now(), pkt, ctx.PTSEqualsDTS)
 	u.c.OnPacketRTP(&ctx)
 }
 

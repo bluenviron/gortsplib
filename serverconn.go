@@ -263,9 +263,8 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					TrackID: trackID,
 					Packet:  pkt,
 				}
-				sc.session.processPacketRTP(&ctx)
-
 				at := sc.session.announcedTracks[trackID]
+				sc.session.processPacketRTP(at, &ctx)
 
 				if at.h264Decoder != nil {
 					if at.h264Encoder == nil && len(payload) > udpReadBufferSize {

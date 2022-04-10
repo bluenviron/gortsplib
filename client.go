@@ -768,9 +768,8 @@ func (c *Client) runReader() {
 							TrackID: trackID,
 							Packet:  pkt,
 						}
-						c.processPacketRTP(&ctx)
-
 						ct := c.tracks[trackID]
+						c.processPacketRTP(ct, &ctx)
 
 						if ct.h264Decoder != nil {
 							if ct.h264Encoder == nil && len(payload) > udpReadBufferSize {
@@ -1902,18 +1901,17 @@ func (c *Client) runWriter() {
 	}
 }
 
-func (c *Client) processPacketRTP(ctx *ClientOnPacketRTPCtx) {
+func (c *Client) processPacketRTP(ct *clientTrack, ctx *ClientOnPacketRTPCtx) {
 	// remove padding
 	ctx.Packet.Header.Padding = false
 	ctx.Packet.PaddingSize = 0
 
 	// decode
-	ct := c.tracks[ctx.TrackID]
 	if ct.h264Decoder != nil {
 		nalus, pts, err := ct.h264Decoder.DecodeUntilMarker(ctx.Packet)
 		if err == nil {
 			ctx.PTSEqualsDTS = h264.IDRPresent(nalus)
-			ctx.H264NALUs = append([][]byte(nil), nalus...)
+			ctx.H264NALUs = nalus
 			ctx.H264PTS = pts
 		} else {
 			ctx.PTSEqualsDTS = false

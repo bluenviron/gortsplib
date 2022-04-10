@@ -212,8 +212,10 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 		TrackID: clientData.trackID,
 		Packet:  pkt,
 	}
-	clientData.ss.processPacketRTP(&ctx)
-	clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTP(now, ctx.Packet, ctx.PTSEqualsDTS)
+	at := clientData.ss.announcedTracks[clientData.trackID]
+	clientData.ss.processPacketRTP(at, &ctx)
+
+	at.rtcpReceiver.ProcessPacketRTP(now, ctx.Packet, ctx.PTSEqualsDTS)
 	if h, ok := clientData.ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
 		h.OnPacketRTP(&ctx)
 	}
