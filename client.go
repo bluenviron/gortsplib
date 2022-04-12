@@ -184,7 +184,7 @@ type Client struct {
 	ReadBufferCount int
 	// write buffer count.
 	// It allows to queue packets before sending them.
-	// It defaults to 8.
+	// It defaults to 256.
 	WriteBufferCount int
 	// user agent header
 	// It defaults to "gortsplib"
