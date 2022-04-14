@@ -30,6 +30,8 @@ type Decoder struct {
 	SizeLength int
 	// The number of bits on which the AU-Index is encoded in the first AU-header.
 	IndexLength int
+	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
+	IndexDeltaLength int
 }
 
 // Init initializes the decoder
@@ -169,21 +171,36 @@ func (d *Decoder) parseAuData(payload []byte,
 	}
 
 	br := bitio.NewReader(bytes.NewBuffer(payload[:headersLenBytes]))
+	readAUIndex := func(index int) error {
+		auIndex, err := br.ReadBits(uint8(index))
+		if err != nil {
+			return fmt.Errorf("payload is too short")
+		}
+
+		if auIndex != 0 {
+			return fmt.Errorf("AU-index field is not zero")
+		}
+
+		return nil
+	}
 	for i := 0; i < headerCount; i++ {
 		dataLen, err := br.ReadBits(uint8(d.SizeLength))
 		if err != nil {
 			return nil, fmt.Errorf("payload is too short")
 		}
-		if d.IndexLength > 0 {
-			auIndex, err := br.ReadBits(uint8(d.IndexLength))
+		switch {
+		case i == 0 && d.IndexLength > 0:
+			err := readAUIndex(d.IndexLength)
 			if err != nil {
-				return nil, fmt.Errorf("payload is too short")
+				return nil, err
 			}
-
-			if auIndex != 0 {
-				return nil, fmt.Errorf("AU-index field is not zero")
+		case d.IndexDeltaLength > 0:
+			err := readAUIndex(d.IndexDeltaLength)
+			if err != nil {
+				return nil, err
 			}
 		}
+
 		dataLens = append(dataLens, dataLen)
 	}
 	return dataLens, nil

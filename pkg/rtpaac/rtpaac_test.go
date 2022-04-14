@@ -280,9 +280,10 @@ func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
-				SampleRate:  48000,
-				IndexLength: 3,
-				SizeLength:  13,
+				SampleRate:       48000,
+				IndexLength:      3,
+				SizeLength:       13,
+				IndexDeltaLength: 3,
 			}
 			d.Init()
 
