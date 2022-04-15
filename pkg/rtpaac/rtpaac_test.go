@@ -26,13 +26,19 @@ func mergeBytes(vals ...[]byte) []byte {
 }
 
 var cases = []struct {
-	name string
-	aus  [][]byte
-	pts  time.Duration
-	pkts []*rtp.Packet
+	name             string
+	sizeLength       int
+	indexLength      int
+	indexDeltaLength int
+	aus              [][]byte
+	pts              time.Duration
+	pkts             []*rtp.Packet
 }{
 	{
 		"single",
+		13,
+		3,
+		3,
 		[][]byte{
 			{
 				0x21, 0x1a, 0xd4, 0xf5, 0x9e, 0x20, 0xc5, 0x42,
@@ -144,6 +150,9 @@ var cases = []struct {
 	},
 	{
 		"aggregated",
+		13,
+		3,
+		3,
 		[][]byte{
 			{0x00, 0x01, 0x02, 0x03},
 			{0x04, 0x05, 0x06, 0x07},
@@ -170,6 +179,9 @@ var cases = []struct {
 	},
 	{
 		"fragmented",
+		13,
+		3,
+		3,
 		[][]byte{
 			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 512),
 		},
@@ -221,6 +233,9 @@ var cases = []struct {
 	},
 	{
 		"aggregated followed by fragmented",
+		13,
+		3,
+		3,
 		[][]byte{
 			{0x00, 0x01, 0x02, 0x03},
 			{0x04, 0x05, 0x06, 0x07},
@@ -274,6 +289,88 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"custom sized",
+		6,
+		2,
+		2,
+		[][]byte{
+			{0x01, 0x02, 0x03, 0x04},
+		},
+		20 * time.Millisecond,
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289527317,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{
+					0x00, 0x08, 0x10,
+					0x01, 0x02, 0x03, 0x04,
+				},
+			},
+		},
+	},
+	{
+		"fragmented, custom sized",
+		21,
+		3,
+		3,
+		[][]byte{
+			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 512),
+		},
+		20 * time.Millisecond,
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289527317,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x0, 0x18, 0x00, 0x2d, 0x78},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 181),
+					[]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289527317,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x00, 0x18, 0x00, 0x2d, 0x78, 0x07},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 181),
+					[]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05},
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17647,
+					Timestamp:      2289527317,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x00, 0x18, 0x00, 0x25, 0x10, 0x06, 0x07},
+					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 148),
+				),
+			},
+		},
+	},
 }
 
 func TestDecode(t *testing.T) {
@@ -281,9 +378,9 @@ func TestDecode(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
 				SampleRate:       48000,
-				IndexLength:      3,
-				SizeLength:       13,
-				IndexDeltaLength: 3,
+				SizeLength:       &ca.sizeLength,
+				IndexLength:      &ca.indexLength,
+				IndexDeltaLength: &ca.indexDeltaLength,
 			}
 			d.Init()
 
@@ -299,8 +396,19 @@ func TestDecode(t *testing.T) {
 					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: []byte{0x00, 0x10, 0x00, 0x08, 0x0},
 			}
+
+			switch ca.sizeLength {
+			case 13:
+				pkt.Payload = []byte{0x00, 0x10, 0x00, 0x08, 0x0}
+
+			case 6:
+				pkt.Payload = []byte{0x00, 0x08, 0x04, 0x0}
+
+			case 21:
+				pkt.Payload = []byte{0x00, 0x18, 0x00, 0x0, 0x08, 0x00}
+			}
+
 			_, _, err := d.Decode(&pkt)
 			require.NoError(t, err)
 
@@ -554,9 +662,7 @@ func TestDecodeErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
-				SampleRate:  48000,
-				IndexLength: 3,
-				SizeLength:  13,
+				SampleRate: 48000,
 			}
 			d.Init()
 
@@ -587,6 +693,9 @@ func TestEncode(t *testing.T) {
 					v := uint32(0x88776655)
 					return &v
 				}(),
+				SizeLength:       &ca.sizeLength,
+				IndexLength:      &ca.indexLength,
+				IndexDeltaLength: &ca.indexDeltaLength,
 			}
 			e.Init()
 
