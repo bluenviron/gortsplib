@@ -23,15 +23,19 @@ type Encoder struct {
 	SampleRate int
 
 	// SSRC of packets (optional).
+	// It defaults to a random value.
 	SSRC *uint32
 
 	// initial sequence number of packets (optional).
+	// It defaults to a random value.
 	InitialSequenceNumber *uint16
 
 	// initial timestamp of packets (optional).
+	// It defaults to a random value.
 	InitialTimestamp *uint32
 
 	// maximum size of packet payloads (optional).
+	// It defaults to 1460.
 	PayloadMaxSize int
 
 	sequenceNumber uint16
