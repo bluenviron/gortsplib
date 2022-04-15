@@ -20,11 +20,26 @@ type TrackAAC struct {
 	channelCount      int
 	aotSpecificConfig []byte
 	mpegConf          []byte
+
+	// The number of bits on which the AU-size field is encoded in the AU-header.
+	sizeLength int
+	// The number of bits on which the AU-Index is encoded in the first AU-header.
+	// The default value of zero indicates the absence of the AU-Index field in each first AU-header.
+	indexLength int
+	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
+	// The default value of zero indicates the absence of the AU-Index-delta field in each non-first AU-header.
+	indexDeltaLength int
 }
 
 // NewTrackAAC allocates a TrackAAC.
-func NewTrackAAC(payloadType uint8, typ int, sampleRate int,
-	channelCount int, aotSpecificConfig []byte,
+func NewTrackAAC(payloadType uint8,
+	typ int,
+	sampleRate int,
+	channelCount int,
+	aotSpecificConfig []byte,
+	sizeLength int,
+	indexLength int,
+	indexDeltaLength int,
 ) (*TrackAAC, error) {
 	mpegConf, err := aac.MPEG4AudioConfig{
 		Type:              aac.MPEG4AudioType(typ),
@@ -43,6 +58,9 @@ func NewTrackAAC(payloadType uint8, typ int, sampleRate int,
 		channelCount:      channelCount,
 		aotSpecificConfig: aotSpecificConfig,
 		mpegConf:          mpegConf,
+		sizeLength:        sizeLength,
+		indexLength:       indexLength,
+		indexDeltaLength:  indexDeltaLength,
 	}, nil
 }
 
@@ -61,6 +79,13 @@ func newTrackAACFromMediaDescription(
 		return nil, fmt.Errorf("invalid fmtp (%v)", v)
 	}
 
+	track := &TrackAAC{
+		trackBase: trackBase{
+			control: control,
+		},
+		payloadType: payloadType,
+	}
+
 	for _, kv := range strings.Split(tmp[1], ";") {
 		kv = strings.Trim(kv, " ")
 
@@ -73,7 +98,8 @@ func newTrackAACFromMediaDescription(
 			return nil, fmt.Errorf("invalid fmtp (%v)", v)
 		}
 
-		if tmp[0] == "config" {
+		switch strings.ToLower(tmp[0]) {
+		case "config":
 			enc, err := hex.DecodeString(tmp[1])
 			if err != nil {
 				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
@@ -88,21 +114,37 @@ func newTrackAACFromMediaDescription(
 			// re-encode the conf to normalize it
 			enc, _ = mpegConf.Encode()
 
-			return &TrackAAC{
-				trackBase: trackBase{
-					control: control,
-				},
-				payloadType:       payloadType,
-				typ:               int(mpegConf.Type),
-				sampleRate:        mpegConf.SampleRate,
-				channelCount:      mpegConf.ChannelCount,
-				aotSpecificConfig: mpegConf.AOTSpecificConfig,
-				mpegConf:          enc,
-			}, nil
+			track.typ = int(mpegConf.Type)
+			track.sampleRate = mpegConf.SampleRate
+			track.channelCount = mpegConf.ChannelCount
+			track.aotSpecificConfig = mpegConf.AOTSpecificConfig
+			track.mpegConf = enc
+		case "sizelength":
+			val, err := strconv.ParseUint(tmp[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid AAC sizeLength (%v)", tmp[1])
+			}
+			track.sizeLength = int(val)
+		case "indexlength":
+			val, err := strconv.ParseUint(tmp[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid AAC indexLength (%v)", tmp[1])
+			}
+			track.indexLength = int(val)
+		case "indexdeltalength":
+			val, err := strconv.ParseUint(tmp[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid AAC indexDeltaLength (%v)", tmp[1])
+			}
+			track.indexDeltaLength = int(val)
 		}
 	}
 
-	return nil, fmt.Errorf("config is missing (%v)", v)
+	if len(track.mpegConf) == 0 {
+		return nil, fmt.Errorf("config is missing (%v)", v)
+	}
+
+	return track, nil
 }
 
 // ClockRate returns the track clock rate.
@@ -125,6 +167,21 @@ func (t *TrackAAC) AOTSpecificConfig() []byte {
 	return t.aotSpecificConfig
 }
 
+// SizeLength returns the track sizeLength.
+func (t *TrackAAC) SizeLength() int {
+	return t.sizeLength
+}
+
+// IndexLength returns the track indexLength.
+func (t *TrackAAC) IndexLength() int {
+	return t.indexLength
+}
+
+// IndexDeltaLength returns the track indexDeltaLength.
+func (t *TrackAAC) IndexDeltaLength() int {
+	return t.indexDeltaLength
+}
+
 func (t *TrackAAC) clone() Track {
 	return &TrackAAC{
 		trackBase:         t.trackBase,
@@ -134,6 +191,9 @@ func (t *TrackAAC) clone() Track {
 		channelCount:      t.channelCount,
 		aotSpecificConfig: t.aotSpecificConfig,
 		mpegConf:          t.mpegConf,
+		sizeLength:        t.sizeLength,
+		indexLength:       t.indexLength,
+		indexDeltaLength:  t.indexDeltaLength,
 	}
 }
 
@@ -157,9 +217,24 @@ func (t *TrackAAC) MediaDescription() *psdp.MediaDescription {
 				Key: "fmtp",
 				Value: typ + " profile-level-id=1; " +
 					"mode=AAC-hbr; " +
-					"sizelength=13; " +
-					"indexlength=3; " +
-					"indexdeltalength=3; " +
+					func() string {
+						if t.sizeLength > 0 {
+							return fmt.Sprintf("sizelength=%d; ", t.sizeLength)
+						}
+						return ""
+					}() +
+					func() string {
+						if t.indexLength > 0 {
+							return fmt.Sprintf("indexlength=%d; ", t.indexLength)
+						}
+						return ""
+					}() +
+					func() string {
+						if t.indexDeltaLength > 0 {
+							return fmt.Sprintf("indexdeltalength=%d; ", t.indexDeltaLength)
+						}
+						return ""
+					}() +
 					"config=" + hex.EncodeToString(t.mpegConf),
 			},
 			{

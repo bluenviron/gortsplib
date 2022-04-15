@@ -280,7 +280,10 @@ func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
-				SampleRate: 48000,
+				SampleRate:       48000,
+				IndexLength:      3,
+				SizeLength:       13,
+				IndexDeltaLength: 3,
 			}
 			d.Init()
 
@@ -397,7 +400,7 @@ func TestDecodeErrors(t *testing.T) {
 					Payload: []byte{0x00, 0x09},
 				},
 			},
-			"invalid AU-headers-length (9)",
+			"invalid AU-headers-length (9) with AU-header-size (16)",
 		},
 		{
 			"au index not zero",
@@ -566,7 +569,9 @@ func TestDecodeErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
-				SampleRate: 48000,
+				SampleRate:  48000,
+				IndexLength: 3,
+				SizeLength:  13,
 			}
 			d.Init()
 

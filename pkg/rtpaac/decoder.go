@@ -1,11 +1,13 @@
 package rtpaac
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/icza/bitio"
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/rtptimedec"
@@ -23,6 +25,13 @@ type Decoder struct {
 	fragmentedMode  bool
 	fragmentedParts [][]byte
 	fragmentedSize  int
+
+	// The number of bits on which the AU-size field is encoded in the AU-header.
+	SizeLength int
+	// The number of bits on which the AU-Index is encoded in the first AU-header.
+	IndexLength int
+	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
+	IndexDeltaLength int
 }
 
 // Init initializes the decoder
@@ -41,12 +50,21 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	// AU-headers-length
-	headersLen := binary.BigEndian.Uint16(pkt.Payload)
-	if (headersLen % 16) != 0 {
+	headersLen := int(binary.BigEndian.Uint16(pkt.Payload))
+
+	auHeaderSize := d.SizeLength + d.IndexLength
+	if auHeaderSize <= 0 {
 		d.fragmentedParts = d.fragmentedParts[:0]
 		d.fragmentedMode = false
-		return nil, 0, fmt.Errorf("invalid AU-headers-length (%d)", headersLen)
+		return nil, 0, fmt.Errorf("invalid AU-header-size (%d)", auHeaderSize)
 	}
+
+	if (headersLen % auHeaderSize) != 0 {
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
+		return nil, 0, fmt.Errorf("invalid AU-headers-length (%d) with AU-header-size (%d)", headersLen, auHeaderSize)
+	}
+	headersLenBytes := (headersLen + 7) / 8
 	payload := pkt.Payload[2:]
 
 	if !d.fragmentedMode {
@@ -55,23 +73,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			// AAC headers are 16 bits, where
 			// * 13 bits are data size
 			// * 3 bits are AU index
-			headerCount := headersLen / 16
-			var dataLens []uint16
-			for i := 0; i < int(headerCount); i++ {
-				if len(payload[i*2:]) < 2 {
-					return nil, 0, fmt.Errorf("payload is too short")
-				}
-
-				header := binary.BigEndian.Uint16(payload[i*2:])
-				dataLen := header >> 3
-				auIndex := header & 0x03
-				if auIndex != 0 {
-					return nil, 0, fmt.Errorf("AU-index field is not zero")
-				}
-
-				dataLens = append(dataLens, dataLen)
+			headerCount := headersLen / auHeaderSize
+			dataLens, err := d.parseAuData(payload, headersLenBytes, headerCount)
+			if err != nil {
+				return nil, 0, err
 			}
-			payload = payload[headerCount*2:]
+			payload = payload[headersLenBytes:]
 
 			// AUs
 			aus := make([][]byte, len(dataLens))
@@ -87,20 +94,21 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return aus, d.timeDecoder.Decode(pkt.Timestamp), nil
 		}
 
-		if headersLen != 16 {
+		if headersLen != auHeaderSize {
 			return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
 		}
 
 		// AU-header
-		header := binary.BigEndian.Uint16(payload)
-		dataLen := header >> 3
-		auIndex := header & 0x03
-		if auIndex != 0 {
-			return nil, 0, fmt.Errorf("AU-index field is not zero")
+		dataLens, err := d.parseAuData(payload, headersLenBytes, 1)
+		if err != nil {
+			return nil, 0, err
 		}
-		payload = payload[2:]
+		if len(dataLens) != 1 {
+			return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
+		}
+		payload = payload[headersLenBytes:]
 
-		if len(payload) < int(dataLen) {
+		if len(payload) < int(dataLens[0]) {
 			return nil, 0, fmt.Errorf("payload is too short")
 		}
 
@@ -112,24 +120,27 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	// we are decoding a fragmented AU
 
-	if headersLen != 16 {
+	if headersLen != auHeaderSize {
 		d.fragmentedParts = d.fragmentedParts[:0]
 		d.fragmentedMode = false
 		return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
 	}
 
 	// AU-header
-	header := binary.BigEndian.Uint16(payload)
-	dataLen := header >> 3
-	auIndex := header & 0x03
-	if auIndex != 0 {
+	dataLens, err := d.parseAuData(payload, headersLenBytes, 1)
+	if err != nil {
 		d.fragmentedParts = d.fragmentedParts[:0]
 		d.fragmentedMode = false
-		return nil, 0, fmt.Errorf("AU-index field is not zero")
+		return nil, 0, err
 	}
-	payload = payload[2:]
+	if len(dataLens) != 1 {
+		d.fragmentedParts = d.fragmentedParts[:0]
+		d.fragmentedMode = false
+		return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
+	}
+	payload = payload[headersLenBytes:]
 
-	if len(payload) < int(dataLen) {
+	if len(payload) < int(dataLens[0]) {
 		return nil, 0, fmt.Errorf("payload is too short")
 	}
 
@@ -155,4 +166,48 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	d.fragmentedParts = d.fragmentedParts[:0]
 	d.fragmentedMode = false
 	return [][]byte{ret}, d.timeDecoder.Decode(pkt.Timestamp), nil
+}
+
+func (d *Decoder) parseAuData(payload []byte,
+	headersLenBytes int,
+	headerCount int,
+) (dataLens []uint64, err error) {
+	if len(payload) < headersLenBytes {
+		return nil, fmt.Errorf("payload is too short")
+	}
+
+	br := bitio.NewReader(bytes.NewBuffer(payload[:headersLenBytes]))
+	readAUIndex := func(index int) error {
+		auIndex, err := br.ReadBits(uint8(index))
+		if err != nil {
+			return fmt.Errorf("payload is too short")
+		}
+
+		if auIndex != 0 {
+			return fmt.Errorf("AU-index field is not zero")
+		}
+
+		return nil
+	}
+	for i := 0; i < headerCount; i++ {
+		dataLen, err := br.ReadBits(uint8(d.SizeLength))
+		if err != nil {
+			return nil, fmt.Errorf("payload is too short")
+		}
+		switch {
+		case i == 0 && d.IndexLength > 0:
+			err := readAUIndex(d.IndexLength)
+			if err != nil {
+				return nil, err
+			}
+		case d.IndexDeltaLength > 0:
+			err := readAUIndex(d.IndexDeltaLength)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		dataLens = append(dataLens, dataLen)
+	}
+	return dataLens, nil
 }

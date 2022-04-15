@@ -37,10 +37,16 @@ func main() {
 
 	// find the AAC track
 	var clockRate int
+	var sizeLength int
+	var indexLength int
+	var indexDeltaLength int
 	aacTrack := func() int {
 		for i, track := range tracks {
-			if _, ok := track.(*gortsplib.TrackAAC); ok {
+			if tt, ok := track.(*gortsplib.TrackAAC); ok {
 				clockRate = track.ClockRate()
+				sizeLength = tt.SizeLength()
+				indexLength = tt.IndexLength()
+				indexDeltaLength = tt.IndexDeltaLength()
 				return i
 			}
 		}
@@ -52,7 +58,10 @@ func main() {
 
 	// setup decoder
 	dec := &rtpaac.Decoder{
-		SampleRate: clockRate,
+		SampleRate:       clockRate,
+		SizeLength:       sizeLength,
+		IndexLength:      indexLength,
+		IndexDeltaLength: indexDeltaLength,
 	}
 	dec.Init()
 
