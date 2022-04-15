@@ -72,9 +72,11 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		switch typ {
 		case h264.NALUTypeSPS:
 			e.sps = append([]byte(nil), nalu...)
+			continue
 
 		case h264.NALUTypePPS:
 			e.pps = append([]byte(nil), nalu...)
+			continue
 
 		case h264.NALUTypeAccessUnitDelimiter, h264.NALUTypeSEI:
 			continue
