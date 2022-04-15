@@ -145,6 +145,14 @@ func newTrackAACFromMediaDescription(
 		return nil, fmt.Errorf("sizelength is missing (%v)", v)
 	}
 
+	if track.indexLength == 0 && track.sizeLength == 13 {
+		track.indexLength = 3
+	}
+
+	if track.indexDeltaLength == 0 && track.sizeLength == 13 {
+		track.indexDeltaLength = 3
+	}
+
 	return track, nil
 }
 
