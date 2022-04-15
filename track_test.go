@@ -57,19 +57,24 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 					{
 						Key:   "fmtp",
-						Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
+						Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=11900810",
+					},
+					{
+						Key:   "control",
+						Value: "",
 					},
 				},
 			},
 			&TrackAAC{
-				payloadType:      96,
-				typ:              2,
-				sampleRate:       48000,
-				channelCount:     2,
-				mpegConf:         []byte{0x11, 0x90},
-				sizeLength:       13,
-				indexLength:      3,
-				indexDeltaLength: 3,
+				payloadType:       96,
+				typ:               2,
+				sampleRate:        48000,
+				channelCount:      2,
+				aotSpecificConfig: []byte{0x01, 0x02},
+				mpegConf:          []byte{0x11, 0x90, 0x08, 0x10},
+				sizeLength:        13,
+				indexLength:       3,
+				indexDeltaLength:  3,
 			},
 		},
 		{
@@ -127,9 +132,43 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				sampleRate:       48000,
 				channelCount:     2,
 				mpegConf:         []byte{0x11, 0x90},
-				indexLength:      3,
 				sizeLength:       13,
+				indexLength:      3,
 				indexDeltaLength: 3,
+			},
+		},
+		{
+			"aac without indexlength",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 streamtype=3;profile-level-id=14;mode=AAC-hbr;config=1190;sizeLength=13",
+					},
+					{
+						Key:   "control",
+						Value: "",
+					},
+				},
+			},
+			&TrackAAC{
+				payloadType:      96,
+				typ:              2,
+				sampleRate:       48000,
+				channelCount:     2,
+				mpegConf:         []byte{0x11, 0x90},
+				sizeLength:       13,
+				indexLength:      0,
+				indexDeltaLength: 0,
 			},
 		},
 		{

@@ -84,9 +84,6 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if !d.fragmentedMode {
 		if pkt.Header.Marker {
 			// AU-headers
-			// AAC headers are 16 bits, where
-			// * 13 bits are data size
-			// * 3 bits are AU index
 			headerCount := headersLen / auHeaderSize
 			dataLens, err := d.parseAuData(payload, headersLenBytes, headerCount)
 			if err != nil {

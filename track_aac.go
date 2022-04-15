@@ -20,15 +20,9 @@ type TrackAAC struct {
 	channelCount      int
 	aotSpecificConfig []byte
 	mpegConf          []byte
-
-	// The number of bits on which the AU-size field is encoded in the AU-header.
-	sizeLength int
-	// The number of bits on which the AU-Index is encoded in the first AU-header.
-	// The default value of zero indicates the absence of the AU-Index field in each first AU-header.
-	indexLength int
-	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
-	// The default value of zero indicates the absence of the AU-Index-delta field in each non-first AU-header.
-	indexDeltaLength int
+	sizeLength        int
+	indexLength       int
+	indexDeltaLength  int
 }
 
 // NewTrackAAC allocates a TrackAAC.
@@ -119,18 +113,21 @@ func newTrackAACFromMediaDescription(
 			track.channelCount = mpegConf.ChannelCount
 			track.aotSpecificConfig = mpegConf.AOTSpecificConfig
 			track.mpegConf = enc
+
 		case "sizelength":
 			val, err := strconv.ParseUint(tmp[1], 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("invalid AAC sizeLength (%v)", tmp[1])
 			}
 			track.sizeLength = int(val)
+
 		case "indexlength":
 			val, err := strconv.ParseUint(tmp[1], 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("invalid AAC indexLength (%v)", tmp[1])
 			}
 			track.indexLength = int(val)
+
 		case "indexdeltalength":
 			val, err := strconv.ParseUint(tmp[1], 10, 64)
 			if err != nil {
