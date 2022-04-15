@@ -366,7 +366,7 @@ func TestDecodeErrors(t *testing.T) {
 					Payload: []byte{0x00, 0x10},
 				},
 			},
-			"payload is too short",
+			"EOF",
 		},
 		{
 			"missing au",
@@ -386,7 +386,24 @@ func TestDecodeErrors(t *testing.T) {
 			"payload is too short",
 		},
 		{
-			"invalid au headers length",
+			"invalid au headers length 1",
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    0x60,
+						SequenceNumber: 0x44ed,
+						Timestamp:      0x88776a15,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x00, 0x00},
+				},
+			},
+			"invalid AU-headers-length (0)",
+		},
+		{
+			"invalid au headers length 2",
 			[]*rtp.Packet{
 				{
 					Header: rtp.Header{
@@ -400,7 +417,7 @@ func TestDecodeErrors(t *testing.T) {
 					Payload: []byte{0x00, 0x09},
 				},
 			},
-			"invalid AU-headers-length (9) with AU-header-size (16)",
+			"invalid AU-headers-length (9)",
 		},
 		{
 			"au index not zero",
@@ -417,27 +434,10 @@ func TestDecodeErrors(t *testing.T) {
 					Payload: []byte{0x00, 0x10, 0x0a, 0xd9},
 				},
 			},
-			"AU-index field is not zero",
+			"AU-index different than zero is not supported",
 		},
 		{
-			"fragmented with multiple AUs",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    0x60,
-						SequenceNumber: 0xea2,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x20},
-				},
-			},
-			"a fragmented packet can only contain one AU",
-		},
-		{
-			"fragmented with AU index not zero",
+			"au index delta not zero",
 			[]*rtp.Packet{
 				{
 					Header: rtp.Header{
@@ -448,13 +448,30 @@ func TestDecodeErrors(t *testing.T) {
 						Timestamp:      0x88776a15,
 						SSRC:           0x9dbb7812,
 					},
-					Payload: []byte{0x00, 0x10, 0x0a, 0xd9},
+					Payload: []byte{0x00, 0x20, 0x00, 0x08, 0x0a, 0xd9},
 				},
 			},
-			"AU-index field is not zero",
+			"AU-index-delta different than zero is not supported",
 		},
 		{
-			"fragmented with missing au",
+			"fragmented with multiple AUs in 1st packet",
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    0x60,
+						SequenceNumber: 0xea2,
+						Timestamp:      0x88776a15,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x00, 0x20, 0x00, 0x08, 0x00, 0x08},
+				},
+			},
+			"a fragmented packet can only contain one AU",
+		},
+		{
+			"fragmented with no payload in 1st packet",
 			[]*rtp.Packet{
 				{
 					Header: rtp.Header{
@@ -496,47 +513,15 @@ func TestDecodeErrors(t *testing.T) {
 						Timestamp:      0x88776a15,
 						SSRC:           0x9dbb7812,
 					},
-					Payload: []byte{
-						0x80, 0xe0, 0x44, 0xee, 0x88, 0x77, 0x66, 0x55,
-						0x9d, 0xbb, 0x78, 0x12, 0x00, 0x20,
-					},
+					Payload: mergeBytes(
+						[]byte{0x0, 0x20, 0x00, 0x08, 0x00, 0x08},
+					),
 				},
 			},
 			"a fragmented packet can only contain one AU",
 		},
 		{
-			"fragmented with au index not zero in 2nd packet",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: mergeBytes(
-						[]byte{0x0, 0x10, 0x2d, 0x80},
-						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					),
-				},
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ee,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x10, 0x0a, 0xd8 | 0x01},
-				},
-			},
-			"AU-index field is not zero",
-		},
-		{
-			"fragmented without payload in 2nd packet",
+			"fragmented with no payload in 2nd packet",
 			[]*rtp.Packet{
 				{
 					Header: rtp.Header{
