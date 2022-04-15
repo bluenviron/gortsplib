@@ -167,8 +167,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				channelCount:     2,
 				mpegConf:         []byte{0x11, 0x90},
 				sizeLength:       13,
-				indexLength:      3,
-				indexDeltaLength: 3,
+				indexLength:      0,
+				indexDeltaLength: 0,
 			},
 		},
 		{
