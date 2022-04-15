@@ -378,9 +378,9 @@ func TestDecode(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
 				SampleRate:       48000,
-				SizeLength:       &ca.sizeLength,
-				IndexLength:      &ca.indexLength,
-				IndexDeltaLength: &ca.indexDeltaLength,
+				SizeLength:       ca.sizeLength,
+				IndexLength:      ca.indexLength,
+				IndexDeltaLength: ca.indexDeltaLength,
 			}
 			d.Init()
 
@@ -662,7 +662,10 @@ func TestDecodeErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
-				SampleRate: 48000,
+				SampleRate:       48000,
+				SizeLength:       13,
+				IndexLength:      3,
+				IndexDeltaLength: 3,
 			}
 			d.Init()
 
@@ -693,9 +696,9 @@ func TestEncode(t *testing.T) {
 					v := uint32(0x88776655)
 					return &v
 				}(),
-				SizeLength:       &ca.sizeLength,
-				IndexLength:      &ca.indexLength,
-				IndexDeltaLength: &ca.indexDeltaLength,
+				SizeLength:       ca.sizeLength,
+				IndexLength:      ca.indexLength,
+				IndexDeltaLength: ca.indexDeltaLength,
 			}
 			e.Init()
 
@@ -708,8 +711,11 @@ func TestEncode(t *testing.T) {
 
 func TestEncodeRandomInitialState(t *testing.T) {
 	e := &Encoder{
-		PayloadType: 96,
-		SampleRate:  48000,
+		PayloadType:      96,
+		SampleRate:       48000,
+		SizeLength:       13,
+		IndexLength:      3,
+		IndexDeltaLength: 3,
 	}
 	e.Init()
 	require.NotEqual(t, nil, e.SSRC)

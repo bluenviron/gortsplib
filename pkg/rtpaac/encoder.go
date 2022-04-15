@@ -40,17 +40,14 @@ type Encoder struct {
 	// sample rate of packets.
 	SampleRate int
 
-	// The number of bits on which the AU-size field is encoded in the AU-header (optional).
-	// It defaults to 13.
-	SizeLength *int
+	// The number of bits on which the AU-size field is encoded in the AU-header.
+	SizeLength int
 
-	// The number of bits on which the AU-Index is encoded in the first AU-header (optional).
-	// It defaults to 3.
-	IndexLength *int
+	// The number of bits on which the AU-Index is encoded in the first AU-header.
+	IndexLength int
 
-	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header (optional).
-	// It defaults to 3.
-	IndexDeltaLength *int
+	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
+	IndexDeltaLength int
 
 	sequenceNumber uint16
 }
@@ -71,18 +68,6 @@ func (e *Encoder) Init() {
 	}
 	if e.PayloadMaxSize == 0 {
 		e.PayloadMaxSize = 1460 // 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
-	}
-	if e.SizeLength == nil {
-		v := 13
-		e.SizeLength = &v
-	}
-	if e.IndexLength == nil {
-		v := 3
-		e.IndexLength = &v
-	}
-	if e.IndexDeltaLength == nil {
-		v := 3
-		e.IndexDeltaLength = &v
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
@@ -145,7 +130,7 @@ func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packe
 }
 
 func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
-	auHeaderLen := *e.SizeLength + *e.IndexLength
+	auHeaderLen := e.SizeLength + e.IndexLength
 	auMaxSize := e.PayloadMaxSize - 2 - auHeaderLen/8
 	packetCount := len(au) / auMaxSize
 	lastPacketSize := len(au) % auMaxSize
@@ -171,8 +156,8 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 
 		// AU-headers
 		bw := bitio.NewWriter(bytes.NewBuffer(byts[2:2]))
-		bw.WriteBits(uint64(le), uint8(*e.SizeLength))
-		bw.WriteBits(0, uint8(*e.IndexLength))
+		bw.WriteBits(uint64(le), uint8(e.SizeLength))
+		bw.WriteBits(0, uint8(e.IndexLength))
 		bw.Close()
 
 		// AU
@@ -204,9 +189,9 @@ func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 	for _, au := range aus {
 		// AU-header
 		if i == 0 {
-			ret += (*e.SizeLength + *e.IndexLength) / 8
+			ret += (e.SizeLength + e.IndexLength) / 8
 		} else {
-			ret += (*e.SizeLength + *e.IndexDeltaLength) / 8
+			ret += (e.SizeLength + e.IndexDeltaLength) / 8
 		}
 		ret += len(au) // AU
 		i++
@@ -215,9 +200,9 @@ func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 	if addAU != nil {
 		// AU-header
 		if i == 0 {
-			ret += (*e.SizeLength + *e.IndexLength) / 8
+			ret += (e.SizeLength + e.IndexLength) / 8
 		} else {
-			ret += (*e.SizeLength + *e.IndexDeltaLength) / 8
+			ret += (e.SizeLength + e.IndexDeltaLength) / 8
 		}
 		ret += len(addAU) // AU
 	}
@@ -232,14 +217,14 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([]*rtp.
 	written := 0
 	bw := bitio.NewWriter(bytes.NewBuffer(payload[2:2]))
 	for i, au := range aus {
-		bw.WriteBits(uint64(len(au)), uint8(*e.SizeLength))
-		written += *e.SizeLength
+		bw.WriteBits(uint64(len(au)), uint8(e.SizeLength))
+		written += e.SizeLength
 		if i == 0 {
-			bw.WriteBits(0, uint8(*e.IndexLength))
-			written += *e.IndexLength
+			bw.WriteBits(0, uint8(e.IndexLength))
+			written += e.IndexLength
 		} else {
-			bw.WriteBits(0, uint8(*e.IndexDeltaLength))
-			written += *e.IndexDeltaLength
+			bw.WriteBits(0, uint8(e.IndexDeltaLength))
+			written += e.IndexDeltaLength
 		}
 	}
 	bw.Close()

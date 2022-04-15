@@ -49,14 +49,11 @@ func main() {
 	}
 
 	// setup decoder
-	v1 := aacTrack.SizeLength()
-	v2 := aacTrack.IndexLength()
-	v3 := aacTrack.IndexDeltaLength()
 	dec := &rtpaac.Decoder{
 		SampleRate:       aacTrack.ClockRate(),
-		SizeLength:       &v1,
-		IndexLength:      &v2,
-		IndexDeltaLength: &v3,
+		SizeLength:       aacTrack.SizeLength(),
+		IndexLength:      aacTrack.IndexLength(),
+		IndexDeltaLength: aacTrack.IndexDeltaLength(),
 	}
 	dec.Init()
 

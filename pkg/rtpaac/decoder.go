@@ -21,17 +21,14 @@ type Decoder struct {
 	// sample rate of input packets.
 	SampleRate int
 
-	// The number of bits on which the AU-size field is encoded in the AU-header (optional).
-	// It defaults to 13.
-	SizeLength *int
+	// The number of bits on which the AU-size field is encoded in the AU-header.
+	SizeLength int
 
-	// The number of bits on which the AU-Index is encoded in the first AU-header (optional).
-	// It defaults to 3.
-	IndexLength *int
+	// The number of bits on which the AU-Index is encoded in the first AU-header.
+	IndexLength int
 
-	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header (optional).
-	// It defaults to 3.
-	IndexDeltaLength *int
+	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
+	IndexDeltaLength int
 
 	timeDecoder     *rtptimedec.Decoder
 	fragmentedMode  bool
@@ -41,19 +38,6 @@ type Decoder struct {
 
 // Init initializes the decoder
 func (d *Decoder) Init() {
-	if d.SizeLength == nil {
-		v := 13
-		d.SizeLength = &v
-	}
-	if d.IndexLength == nil {
-		v := 3
-		d.IndexLength = &v
-	}
-	if d.IndexDeltaLength == nil {
-		v := 3
-		d.IndexDeltaLength = &v
-	}
-
 	d.timeDecoder = rtptimedec.New(d.SampleRate)
 }
 
@@ -154,11 +138,11 @@ func (d *Decoder) readAUHeaders(payload []byte, headersLen int) ([]uint64, error
 	count := 0
 	for i := 0; i < headersLen; {
 		if i == 0 {
-			i += *d.SizeLength
-			i += *d.IndexLength
+			i += d.SizeLength
+			i += d.IndexLength
 		} else {
-			i += *d.SizeLength
-			i += *d.IndexDeltaLength
+			i += d.SizeLength
+			i += d.IndexDeltaLength
 		}
 		count++
 	}
@@ -167,31 +151,31 @@ func (d *Decoder) readAUHeaders(payload []byte, headersLen int) ([]uint64, error
 
 	i := 0
 	for headersLen > 0 {
-		dataLen, err := br.ReadBits(uint8(*d.SizeLength))
+		dataLen, err := br.ReadBits(uint8(d.SizeLength))
 		if err != nil {
 			return nil, err
 		}
-		headersLen -= *d.SizeLength
+		headersLen -= d.SizeLength
 
 		if !firstRead {
 			firstRead = true
-			if *d.IndexLength > 0 {
-				auIndex, err := br.ReadBits(uint8(*d.IndexLength))
+			if d.IndexLength > 0 {
+				auIndex, err := br.ReadBits(uint8(d.IndexLength))
 				if err != nil {
 					return nil, err
 				}
-				headersLen -= *d.IndexLength
+				headersLen -= d.IndexLength
 
 				if auIndex != 0 {
 					return nil, fmt.Errorf("AU-index different than zero is not supported")
 				}
 			}
-		} else if *d.IndexDeltaLength > 0 {
-			auIndexDelta, err := br.ReadBits(uint8(*d.IndexDeltaLength))
+		} else if d.IndexDeltaLength > 0 {
+			auIndexDelta, err := br.ReadBits(uint8(d.IndexDeltaLength))
 			if err != nil {
 				return nil, err
 			}
-			headersLen -= *d.IndexDeltaLength
+			headersLen -= d.IndexDeltaLength
 
 			if auIndexDelta != 0 {
 				return nil, fmt.Errorf("AU-index-delta different than zero is not supported")
