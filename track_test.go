@@ -388,7 +388,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 		err  string
 	}{
 		{
-			"generic no formats",
+			"no formats",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -399,7 +399,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 			"unable to get clock rate: no formats provided",
 		},
 		{
-			"generic no rtpmap",
+			"no rtpmap",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -410,7 +410,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 			"unable to get clock rate: attribute 'rtpmap' not found",
 		},
 		{
-			"generic invalid clockrate 1",
+			"invalid clockrate 1",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -427,7 +427,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 			"unable to get clock rate: invalid rtpmap (96)",
 		},
 		{
-			"generic invalid clockrate 2",
+			"invalid clockrate 2",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -444,7 +444,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 			"unable to get clock rate: invalid rtpmap (96 mpeg4-generic)",
 		},
 		{
-			"generic invalid clockrate 3",
+			"invalid clockrate 3",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -581,6 +581,27 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 				},
 			},
 			"invalid AAC config (aa)",
+		},
+		{
+			"aac missing sizelength",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; config=1190",
+					},
+				},
+			},
+			"sizelength is missing (96 profile-level-id=1; config=1190)",
 		},
 		{
 			"opus invalid 1",

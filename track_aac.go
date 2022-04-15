@@ -141,6 +141,10 @@ func newTrackAACFromMediaDescription(
 		return nil, fmt.Errorf("config is missing (%v)", v)
 	}
 
+	if track.sizeLength == 0 {
+		return nil, fmt.Errorf("sizelength is missing (%v)", v)
+	}
+
 	return track, nil
 }
 
