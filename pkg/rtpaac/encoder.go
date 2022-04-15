@@ -136,7 +136,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 
 		data := make([]byte, 4+le)
 		binary.BigEndian.PutUint16(data, 16)
-		binary.BigEndian.PutUint16(data[2:], uint16(le))
+		binary.BigEndian.PutUint16(data[2:], uint16(le)<<3)
 		copy(data[4:], au[:le])
 		au = au[le:]
 
