@@ -186,7 +186,7 @@ var cases = []struct {
 			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 512),
 		},
 		0,
-		[]*rtp.Packet{
+		[]*rtp.Packet{ //nolint:dupl
 			{
 				Header: rtp.Header{
 					Version:        2,
@@ -290,7 +290,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"custom sized",
+		"single, custom sized",
 		6,
 		2,
 		2,
@@ -311,6 +311,60 @@ var cases = []struct {
 				Payload: []byte{
 					0x00, 0x08, 0x10,
 					0x01, 0x02, 0x03, 0x04,
+				},
+			},
+		},
+	},
+	{
+		"single, custom sized, padded",
+		13,
+		0,
+		0,
+		[][]byte{
+			{0x01, 0x02, 0x03, 0x04},
+		},
+		20 * time.Millisecond,
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289527317,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{
+					0x00, 0x0d, 0x00, 0x20,
+					0x01, 0x02, 0x03, 0x04,
+				},
+			},
+		},
+	},
+	{
+		"aggregated, custom sized, padded",
+		13,
+		0,
+		0,
+		[][]byte{
+			{0x01, 0x02, 0x03, 0x04},
+			{0x05, 0x06, 0x07, 0x08},
+		},
+		20 * time.Millisecond,
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289527317,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{
+					0x00, 0x1a, 0x00, 0x20, 0x01, 0x00,
+					0x01, 0x02, 0x03, 0x04,
+					0x05, 0x06, 0x07, 0x08,
 				},
 			},
 		},
@@ -371,6 +425,60 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"fragmented, custom sized, padded",
+		13,
+		0,
+		0,
+		[][]byte{
+			bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 512),
+		},
+		20 * time.Millisecond,
+		[]*rtp.Packet{ //nolint:dupl
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					Timestamp:      2289527317,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x0, 0x0d, 0x2d, 0x80},
+					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 182),
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					Timestamp:      2289527317,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x0, 0x0d, 0x2d, 0x80},
+					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 182),
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17647,
+					Timestamp:      2289527317,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x00, 0x0d, 0x25, 0x00},
+					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 148),
+				),
+			},
+		},
+	},
 }
 
 func TestDecode(t *testing.T) {
@@ -398,14 +506,17 @@ func TestDecode(t *testing.T) {
 				},
 			}
 
-			switch ca.sizeLength {
-			case 13:
+			switch {
+			case ca.sizeLength == 13 && ca.indexLength == 3:
 				pkt.Payload = []byte{0x00, 0x10, 0x00, 0x08, 0x0}
 
-			case 6:
+			case ca.sizeLength == 13 && ca.indexLength == 0:
+				pkt.Payload = []byte{0x00, 0x0d, 0x00, 0x08, 0x0}
+
+			case ca.sizeLength == 6:
 				pkt.Payload = []byte{0x00, 0x08, 0x04, 0x0}
 
-			case 21:
+			case ca.sizeLength == 21:
 				pkt.Payload = []byte{0x00, 0x18, 0x00, 0x0, 0x08, 0x00}
 			}
 
@@ -494,7 +605,7 @@ func TestDecodeErrors(t *testing.T) {
 			"payload is too short",
 		},
 		{
-			"invalid au headers length 1",
+			"invalid au headers length",
 			[]*rtp.Packet{
 				{
 					Header: rtp.Header{
@@ -508,24 +619,7 @@ func TestDecodeErrors(t *testing.T) {
 					Payload: []byte{0x00, 0x00},
 				},
 			},
-			"invalid AU-headers-length (0)",
-		},
-		{
-			"invalid au headers length 2",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x09},
-				},
-			},
-			"invalid AU-headers-length (9)",
+			"invalid AU-headers-length",
 		},
 		{
 			"au index not zero",

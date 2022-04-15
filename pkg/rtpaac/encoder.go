@@ -130,8 +130,12 @@ func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packe
 }
 
 func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
-	auHeaderLen := e.SizeLength + e.IndexLength
-	auMaxSize := e.PayloadMaxSize - 2 - auHeaderLen/8
+	auHeadersLen := e.SizeLength + e.IndexLength
+	auHeadersLenBytes := auHeadersLen / 8
+	if (auHeadersLen % 8) != 0 {
+		auHeadersLenBytes++
+	}
+	auMaxSize := e.PayloadMaxSize - 2 - auHeadersLenBytes
 	packetCount := len(au) / auMaxSize
 	lastPacketSize := len(au) % auMaxSize
 	if lastPacketSize > 0 {
@@ -149,10 +153,10 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 			le = lastPacketSize
 		}
 
-		byts := make([]byte, 2+auHeaderLen/8+le)
+		byts := make([]byte, 2+auHeadersLenBytes+le)
 
 		// AU-headers-length
-		binary.BigEndian.PutUint16(byts, uint16(auHeaderLen))
+		binary.BigEndian.PutUint16(byts, uint16(auHeadersLen))
 
 		// AU-headers
 		bw := bitio.NewWriter(bytes.NewBuffer(byts[2:2]))
@@ -161,7 +165,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 		bw.Close()
 
 		// AU
-		copy(byts[2+auHeaderLen/8:], au[:le])
+		copy(byts[2+auHeadersLenBytes:], au[:le])
 		au = au[le:]
 
 		ret[i] = &rtp.Packet{
@@ -185,27 +189,34 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 	ret := 2 // AU-headers-length
 
+	// AU-headers
+	auHeadersLen := 0
 	i := 0
-	for _, au := range aus {
-		// AU-header
+	for range aus {
 		if i == 0 {
-			ret += (e.SizeLength + e.IndexLength) / 8
+			auHeadersLen += e.SizeLength + e.IndexLength
 		} else {
-			ret += (e.SizeLength + e.IndexDeltaLength) / 8
+			auHeadersLen += e.SizeLength + e.IndexDeltaLength
 		}
-		ret += len(au) // AU
 		i++
 	}
-
 	if addAU != nil {
-		// AU-header
 		if i == 0 {
-			ret += (e.SizeLength + e.IndexLength) / 8
+			auHeadersLen += e.SizeLength + e.IndexLength
 		} else {
-			ret += (e.SizeLength + e.IndexDeltaLength) / 8
+			auHeadersLen += e.SizeLength + e.IndexDeltaLength
 		}
-		ret += len(addAU) // AU
 	}
+	ret += auHeadersLen / 8
+	if (auHeadersLen % 8) != 0 {
+		ret++
+	}
+
+	// AU
+	for _, au := range aus {
+		ret += len(au)
+	}
+	ret += len(addAU)
 
 	return ret
 }
@@ -229,6 +240,9 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([]*rtp.
 	}
 	bw.Close()
 	pos := 2 + (written / 8)
+	if (written % 8) != 0 {
+		pos++
+	}
 
 	// AU-headers-length
 	binary.BigEndian.PutUint16(payload, uint16(written))

@@ -53,8 +53,8 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	// AU-headers-length (16 bits)
 	headersLen := int(binary.BigEndian.Uint16(pkt.Payload))
-	if headersLen == 0 || (headersLen%8) != 0 {
-		return nil, 0, fmt.Errorf("invalid AU-headers-length (%d)", headersLen)
+	if headersLen == 0 {
+		return nil, 0, fmt.Errorf("invalid AU-headers-length")
 	}
 	payload := pkt.Payload[2:]
 
@@ -63,7 +63,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	payload = payload[(headersLen / 8):]
+	pos := (headersLen / 8)
+	if (headersLen % 8) != 0 {
+		pos++
+	}
+	payload = payload[pos:]
 
 	if !d.fragmentedMode {
 		if pkt.Header.Marker {
