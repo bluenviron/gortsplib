@@ -21,21 +21,35 @@ type Decoder struct {
 	// sample rate of input packets.
 	SampleRate int
 
+	// The number of bits on which the AU-size field is encoded in the AU-header (optional).
+	// It defaults to 13.
+	SizeLength int
+
+	// The number of bits on which the AU-Index is encoded in the first AU-header (optional).
+	// It defaults to 3.
+	IndexLength int
+
+	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header (optional).
+	// It defaults to 3.
+	IndexDeltaLength int
+
 	timeDecoder     *rtptimedec.Decoder
 	fragmentedMode  bool
 	fragmentedParts [][]byte
 	fragmentedSize  int
-
-	// The number of bits on which the AU-size field is encoded in the AU-header.
-	SizeLength int
-	// The number of bits on which the AU-Index is encoded in the first AU-header.
-	IndexLength int
-	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
-	IndexDeltaLength int
 }
 
 // Init initializes the decoder
 func (d *Decoder) Init() {
+	if d.SizeLength == 0 {
+		d.SizeLength = 13
+	}
+	if d.IndexLength == 0 {
+		d.IndexLength = 3
+	}
+	if d.IndexDeltaLength == 0 {
+		d.IndexDeltaLength = 3
+	}
 	d.timeDecoder = rtptimedec.New(d.SampleRate)
 }
 
