@@ -184,8 +184,11 @@ type Client struct {
 	ReadBufferCount int
 	// write buffer count.
 	// It allows to queue packets before sending them.
-	// It defaults to 8.
+	// It defaults to 256.
 	WriteBufferCount int
+	// user agent header
+	// It defaults to "gortsplib"
+	UserAgent string
 
 	//
 	// system functions
@@ -284,6 +287,9 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.WriteBufferCount == 0 {
 		c.WriteBufferCount = 256
+	}
+	if c.UserAgent == "" {
+		c.UserAgent = "gortsplib"
 	}
 
 	// system functions
@@ -1037,7 +1043,7 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 	c.cseq++
 	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
 
-	req.Header["User-Agent"] = base.HeaderValue{"gortsplib"}
+	req.Header["User-Agent"] = base.HeaderValue{c.UserAgent}
 
 	if c.sender != nil {
 		c.sender.AddAuthorization(req)
