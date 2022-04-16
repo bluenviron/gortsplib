@@ -14,12 +14,12 @@ import (
 // ErrMorePacketsNeeded is returned when more packets are needed.
 var ErrMorePacketsNeeded = errors.New("need more packets")
 
-// ErrNonStartingPacketAndNoPrevious is returned when we decoded a non-starting
+// ErrNonStartingPacketAndNoPrevious is returned when we received a non-starting
 // packet of a fragmented NALU and we didn't received anything before.
 // It's normal to receive this when we are decoding a stream that has been already
 // running for some time.
 var ErrNonStartingPacketAndNoPrevious = errors.New(
-	"decoded a non-starting fragmented packet without any previous starting packet")
+	"received a non-starting FU-A packet without any previous FU-A starting packet")
 
 // Decoder is a RTP/H264 decoder.
 type Decoder struct {
@@ -128,7 +128,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if typ != naluTypeFUA {
 		d.fragmentedParts = d.fragmentedParts[:0]
 		d.fragmentedMode = false
-		return nil, 0, fmt.Errorf("expected FU-A packet, got another type")
+		return nil, 0, fmt.Errorf("expected FU-A packet, got %s packet", typ)
 	}
 
 	start := pkt.Payload[1] >> 7
