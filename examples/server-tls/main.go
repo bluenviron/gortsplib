@@ -148,7 +148,7 @@ func main() {
 	s := &gortsplib.Server{
 		Handler:     &serverHandler{},
 		TLSConfig:   &tls.Config{Certificates: []tls.Certificate{cert}},
-		RTSPAddress: ":8554",
+		RTSPAddress: ":8322",
 	}
 
 	// start server and wait until a fatal error

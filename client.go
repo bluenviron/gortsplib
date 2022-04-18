@@ -184,8 +184,11 @@ type Client struct {
 	ReadBufferCount int
 	// write buffer count.
 	// It allows to queue packets before sending them.
-	// It defaults to 8.
+	// It defaults to 256.
 	WriteBufferCount int
+	// user agent header
+	// It defaults to "gortsplib"
+	UserAgent string
 
 	//
 	// system functions
@@ -284,6 +287,9 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.WriteBufferCount == 0 {
 		c.WriteBufferCount = 256
+	}
+	if c.UserAgent == "" {
+		c.UserAgent = "gortsplib"
 	}
 
 	// system functions
@@ -772,7 +778,7 @@ func (c *Client) runReader() {
 						c.processPacketRTP(ct, &ctx)
 
 						if ct.h264Decoder != nil {
-							if ct.h264Encoder == nil && len(payload) > udpReadBufferSize {
+							if ct.h264Encoder == nil && len(payload) > maxPacketSize {
 								v1 := pkt.SSRC
 								v2 := pkt.SequenceNumber
 								v3 := pkt.Timestamp
@@ -809,17 +815,17 @@ func (c *Client) runReader() {
 								c.OnPacketRTP(&ctx)
 							}
 						} else {
-							if len(payload) > udpReadBufferSize {
+							if len(payload) > maxPacketSize {
 								return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-									len(payload), udpReadBufferSize)
+									len(payload), maxPacketSize)
 							}
 
 							c.OnPacketRTP(&ctx)
 						}
 					} else {
-						if len(payload) > udpReadBufferSize {
+						if len(payload) > maxPacketSize {
 							return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-								len(payload), udpReadBufferSize)
+								len(payload), maxPacketSize)
 						}
 
 						packets, err := rtcp.Unmarshal(payload)
@@ -840,9 +846,9 @@ func (c *Client) runReader() {
 			} else {
 				processFunc = func(trackID int, isRTP bool, payload []byte) error {
 					if !isRTP {
-						if len(payload) > udpReadBufferSize {
+						if len(payload) > maxPacketSize {
 							return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-								len(payload), udpReadBufferSize)
+								len(payload), maxPacketSize)
 						}
 
 						packets, err := rtcp.Unmarshal(payload)
@@ -1037,7 +1043,7 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 	c.cseq++
 	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
 
-	req.Header["User-Agent"] = base.HeaderValue{"gortsplib"}
+	req.Header["User-Agent"] = base.HeaderValue{c.UserAgent}
 
 	if c.sender != nil {
 		c.sender.AddAuthorization(req)
@@ -1935,10 +1941,12 @@ func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool)
 		}
 	}
 
-	byts, err := pkt.Marshal()
+	byts := make([]byte, maxPacketSize)
+	n, err := pkt.MarshalTo(byts)
 	if err != nil {
 		return err
 	}
+	byts = byts[:n]
 
 	if c.tracks[trackID].rtcpSender != nil {
 		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)

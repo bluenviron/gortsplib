@@ -8,11 +8,6 @@ import (
 	"github.com/pion/rtp"
 )
 
-const (
-	rtpVersion   = 0x02
-	rtpClockRate = 90000 // h264 always uses 90khz
-)
-
 func randUint32() uint32 {
 	var b [4]byte
 	rand.Read(b[:])
@@ -25,15 +20,19 @@ type Encoder struct {
 	PayloadType uint8
 
 	// SSRC of packets (optional).
+	// It defaults to a random value.
 	SSRC *uint32
 
 	// initial sequence number of packets (optional).
+	// It defaults to a random value.
 	InitialSequenceNumber *uint16
 
 	// initial timestamp of packets (optional).
+	// It defaults to a random value.
 	InitialTimestamp *uint32
 
 	// maximum size of packet payloads (optional).
+	// It defaults to 1460.
 	PayloadMaxSize int
 
 	sequenceNumber uint16

@@ -602,7 +602,7 @@ func TestDecodeErrors(t *testing.T) {
 					Payload: []byte{0x01, 0x00},
 				},
 			},
-			"expected FU-A packet, got another type",
+			"expected FU-A packet, got NonIDR packet",
 		},
 		{
 			"FU-A with two starting packets",

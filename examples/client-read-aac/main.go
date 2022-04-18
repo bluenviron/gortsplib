@@ -36,29 +36,30 @@ func main() {
 	}
 
 	// find the AAC track
-	var clockRate int
-	aacTrack := func() int {
+	aacTrack, aacTrackID := func() (*gortsplib.TrackAAC, int) {
 		for i, track := range tracks {
-			if _, ok := track.(*gortsplib.TrackAAC); ok {
-				clockRate = track.ClockRate()
-				return i
+			if tt, ok := track.(*gortsplib.TrackAAC); ok {
+				return tt, i
 			}
 		}
-		return -1
+		return nil, -1
 	}()
-	if aacTrack < 0 {
+	if aacTrack == nil {
 		panic("AAC track not found")
 	}
 
 	// setup decoder
 	dec := &rtpaac.Decoder{
-		SampleRate: clockRate,
+		SampleRate:       aacTrack.ClockRate(),
+		SizeLength:       aacTrack.SizeLength(),
+		IndexLength:      aacTrack.IndexLength(),
+		IndexDeltaLength: aacTrack.IndexDeltaLength(),
 	}
 	dec.Init()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		if ctx.TrackID != aacTrack {
+		if ctx.TrackID != aacTrackID {
 			return
 		}
 

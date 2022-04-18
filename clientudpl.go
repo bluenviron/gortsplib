@@ -152,7 +152,7 @@ func (u *clientUDPListener) runReader() {
 	defer close(u.readerDone)
 
 	for {
-		buf := make([]byte, udpReadBufferSize)
+		buf := make([]byte, maxPacketSize)
 		n, addr, err := u.pc.ReadFrom(buf)
 		if err != nil {
 			return

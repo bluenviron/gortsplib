@@ -1,15 +1,13 @@
 package rtpaac
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"time"
 
+	"github.com/icza/bitio"
 	"github.com/pion/rtp"
-)
-
-const (
-	rtpVersion = 0x02
 )
 
 func randUint32() uint32 {
@@ -23,20 +21,33 @@ type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8
 
-	// sample rate of packets.
-	SampleRate int
-
 	// SSRC of packets (optional).
+	// It defaults to a random value.
 	SSRC *uint32
 
 	// initial sequence number of packets (optional).
+	// It defaults to a random value.
 	InitialSequenceNumber *uint16
 
 	// initial timestamp of packets (optional).
+	// It defaults to a random value.
 	InitialTimestamp *uint32
 
 	// maximum size of packet payloads (optional).
+	// It defaults to 1460.
 	PayloadMaxSize int
+
+	// sample rate of packets.
+	SampleRate int
+
+	// The number of bits on which the AU-size field is encoded in the AU-header.
+	SizeLength int
+
+	// The number of bits on which the AU-Index is encoded in the first AU-header.
+	IndexLength int
+
+	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
+	IndexDeltaLength int
 
 	sequenceNumber uint16
 }
@@ -119,8 +130,14 @@ func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packe
 }
 
 func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
-	packetCount := len(au) / (e.PayloadMaxSize - 4)
-	lastPacketSize := len(au) % (e.PayloadMaxSize - 4)
+	auHeadersLen := e.SizeLength + e.IndexLength
+	auHeadersLenBytes := auHeadersLen / 8
+	if (auHeadersLen % 8) != 0 {
+		auHeadersLenBytes++
+	}
+	auMaxSize := e.PayloadMaxSize - 2 - auHeadersLenBytes
+	packetCount := len(au) / auMaxSize
+	lastPacketSize := len(au) % auMaxSize
 	if lastPacketSize > 0 {
 		packetCount++
 	}
@@ -129,15 +146,26 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 	encPTS := e.encodeTimestamp(pts)
 
 	for i := range ret {
-		le := e.PayloadMaxSize - 4
-		if i == (packetCount - 1) {
+		var le int
+		if i != (packetCount - 1) {
+			le = auMaxSize
+		} else {
 			le = lastPacketSize
 		}
 
-		data := make([]byte, 4+le)
-		binary.BigEndian.PutUint16(data, 16)
-		binary.BigEndian.PutUint16(data[2:], uint16(le))
-		copy(data[4:], au[:le])
+		byts := make([]byte, 2+auHeadersLenBytes+le)
+
+		// AU-headers-length
+		binary.BigEndian.PutUint16(byts, uint16(auHeadersLen))
+
+		// AU-headers
+		bw := bitio.NewWriter(bytes.NewBuffer(byts[2:2]))
+		bw.WriteBits(uint64(le), uint8(e.SizeLength))
+		bw.WriteBits(0, uint8(e.IndexLength))
+		bw.Close()
+
+		// AU
+		copy(byts[2+auHeadersLenBytes:], au[:le])
 		au = au[le:]
 
 		ret[i] = &rtp.Packet{
@@ -149,7 +177,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 				SSRC:           *e.SSRC,
 				Marker:         (i == (packetCount - 1)),
 			},
-			Payload: data,
+			Payload: byts,
 		}
 
 		e.sequenceNumber++
@@ -161,15 +189,34 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 	ret := 2 // AU-headers-length
 
-	for _, au := range aus {
-		ret += 2       // AU-header
-		ret += len(au) // AU
+	// AU-headers
+	auHeadersLen := 0
+	i := 0
+	for range aus {
+		if i == 0 {
+			auHeadersLen += e.SizeLength + e.IndexLength
+		} else {
+			auHeadersLen += e.SizeLength + e.IndexDeltaLength
+		}
+		i++
+	}
+	if addAU != nil {
+		if i == 0 {
+			auHeadersLen += e.SizeLength + e.IndexLength
+		} else {
+			auHeadersLen += e.SizeLength + e.IndexDeltaLength
+		}
+	}
+	ret += auHeadersLen / 8
+	if (auHeadersLen % 8) != 0 {
+		ret++
 	}
 
-	if addAU != nil {
-		ret += 2          // AU-header
-		ret += len(addAU) // AU
+	// AU
+	for _, au := range aus {
+		ret += len(au)
 	}
+	ret += len(addAU)
 
 	return ret
 }
@@ -177,15 +224,28 @@ func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, error) {
 	payload := make([]byte, e.lenAggregated(aus, nil))
 
-	// AU-headers-length
-	binary.BigEndian.PutUint16(payload, uint16(len(aus)*16))
-	pos := 2
-
 	// AU-headers
-	for _, au := range aus {
-		binary.BigEndian.PutUint16(payload[pos:], uint16(len(au))<<3)
-		pos += 2
+	written := 0
+	bw := bitio.NewWriter(bytes.NewBuffer(payload[2:2]))
+	for i, au := range aus {
+		bw.WriteBits(uint64(len(au)), uint8(e.SizeLength))
+		written += e.SizeLength
+		if i == 0 {
+			bw.WriteBits(0, uint8(e.IndexLength))
+			written += e.IndexLength
+		} else {
+			bw.WriteBits(0, uint8(e.IndexDeltaLength))
+			written += e.IndexDeltaLength
+		}
 	}
+	bw.Close()
+	pos := 2 + (written / 8)
+	if (written % 8) != 0 {
+		pos++
+	}
+
+	// AU-headers-length
+	binary.BigEndian.PutUint16(payload, uint16(written))
 
 	// AUs
 	for _, au := range aus {
