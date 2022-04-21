@@ -380,6 +380,10 @@ func (c *Client) StartPublishing(address string, tracks Tracks) error {
 		return err
 	}
 
+	// control attribute of tracks is overridden by Announce().
+	// use a copy in order not to mess the client-read-republish example.
+	tracks = tracks.clone()
+
 	_, err = c.Announce(u, tracks)
 	if err != nil {
 		c.Close()
