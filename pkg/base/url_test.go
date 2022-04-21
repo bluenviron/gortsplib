@@ -14,6 +14,30 @@ func mustParseURL(s string) *URL {
 	return u
 }
 
+func TestURLParse(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		enc  string
+		u    *URL
+	}{
+		{
+			"ipv6 stateless",
+			`rtsp://[fe80::a8f4:3219:f33e:a072%wl0]:8554/proxied`,
+			&URL{
+				Scheme: "rtsp",
+				Host:   "[fe80::a8f4:3219:f33e:a072%wl0]:8554",
+				Path:   "/proxied",
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			u, err := ParseURL(ca.enc)
+			require.NoError(t, err)
+			require.Equal(t, ca.u, u)
+		})
+	}
+}
+
 func TestURLParseErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
