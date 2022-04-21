@@ -1293,10 +1293,6 @@ func (c *Client) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, error) 
 		return nil, err
 	}
 
-	// in case of ANNOUNCE, the base URL doesn't have a trailing slash.
-	// (tested with ffmpeg and GStreamer)
-	baseURL := u.Clone()
-
 	tracks.setControls()
 
 	res, err := c.do(&base.Request{
@@ -1317,7 +1313,7 @@ func (c *Client) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, error) 
 		}
 	}
 
-	c.streamBaseURL = baseURL
+	c.streamBaseURL = u.Clone()
 	c.state = clientStatePreRecord
 
 	return res, nil
