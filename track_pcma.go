@@ -7,27 +7,27 @@ import (
 	psdp "github.com/pion/sdp/v3"
 )
 
-// TrackPCMU is a PCMU track.
-type TrackPCMU struct {
+// TrackPCMA is a PCMA track.
+type TrackPCMA struct {
 	trackBase
 }
 
-// NewTrackPCMU allocates a TrackPCMU.
-func NewTrackPCMU() *TrackPCMU {
-	return &TrackPCMU{}
+// NewTrackPCMA allocates a TrackPCMA.
+func NewTrackPCMA() *TrackPCMA {
+	return &TrackPCMA{}
 }
 
-func newTrackPCMUFromMediaDescription(
+func newTrackPCMAFromMediaDescription(
 	control string,
 	rtpmapPart1 string,
-	md *psdp.MediaDescription) (*TrackPCMU, error,
+	md *psdp.MediaDescription) (*TrackPCMA, error,
 ) {
 	tmp := strings.Split(rtpmapPart1, "/")
 	if len(tmp) >= 3 && tmp[2] != "1" {
-		return nil, fmt.Errorf("PCMU tracks must have only one channel")
+		return nil, fmt.Errorf("PCMA tracks must have only one channel")
 	}
 
-	return &TrackPCMU{
+	return &TrackPCMA{
 		trackBase: trackBase{
 			control: control,
 		},
@@ -35,28 +35,28 @@ func newTrackPCMUFromMediaDescription(
 }
 
 // ClockRate returns the track clock rate.
-func (t *TrackPCMU) ClockRate() int {
+func (t *TrackPCMA) ClockRate() int {
 	return 8000
 }
 
-func (t *TrackPCMU) clone() Track {
-	return &TrackPCMU{
+func (t *TrackPCMA) clone() Track {
+	return &TrackPCMA{
 		trackBase: t.trackBase,
 	}
 }
 
 // MediaDescription returns the track media description in SDP format.
-func (t *TrackPCMU) MediaDescription() *psdp.MediaDescription {
+func (t *TrackPCMA) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:   "audio",
 			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"0"},
+			Formats: []string{"8"},
 		},
 		Attributes: []psdp.Attribute{
 			{
 				Key:   "rtpmap",
-				Value: "0 PCMU/8000",
+				Value: "8 PCMA/8000",
 			},
 			{
 				Key:   "control",

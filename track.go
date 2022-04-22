@@ -66,6 +66,9 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "0":
 			return newTrackPCMUFromMediaDescription(control, rtpmapPart1, md)
 
+		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "8":
+			return newTrackPCMAFromMediaDescription(control, rtpmapPart1, md)
+
 		case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
 			return newTrackAACFromMediaDescription(control, payloadType, md)
 

@@ -24,11 +24,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"8"},
 				},
 			},
-			&TrackGeneric{
-				clockRate: 8000,
-				media:     "audio",
-				formats:   []string{"8"},
-			},
+			&TrackPCMA{},
 		},
 		{
 			"pcmu",
