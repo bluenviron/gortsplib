@@ -97,7 +97,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 	}
 
 	// encode into Annex-B
-	enc, err := h264.EncodeAnnexB(filteredNALUs)
+	enc, err := h264.AnnexBEncode(filteredNALUs)
 	if err != nil {
 		return err
 	}

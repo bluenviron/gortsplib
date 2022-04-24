@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// DecodeAVCC decodes NALUs from the AVCC stream format.
-func DecodeAVCC(byts []byte) ([][]byte, error) {
+// AVCCDecode decodes NALUs from the AVCC stream format.
+func AVCCDecode(byts []byte) ([][]byte, error) {
 	var ret [][]byte
 
 	for len(byts) > 0 {
@@ -32,8 +32,8 @@ func DecodeAVCC(byts []byte) ([][]byte, error) {
 	return ret, nil
 }
 
-// EncodeAVCC encodes NALUs into the AVCC stream format.
-func EncodeAVCC(nalus [][]byte) ([]byte, error) {
+// AVCCEncode encodes NALUs into the AVCC stream format.
+func AVCCEncode(nalus [][]byte) ([]byte, error) {
 	le := 0
 	for _, nalu := range nalus {
 		le += 4 + len(nalu)

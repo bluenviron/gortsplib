@@ -42,7 +42,7 @@ var casesAVCC = []struct {
 func TestAVCCDecode(t *testing.T) {
 	for _, ca := range casesAVCC {
 		t.Run(ca.name, func(t *testing.T) {
-			dec, err := DecodeAVCC(ca.enc)
+			dec, err := AVCCDecode(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
 		})
@@ -52,7 +52,7 @@ func TestAVCCDecode(t *testing.T) {
 func TestAVCCEncode(t *testing.T) {
 	for _, ca := range casesAVCC {
 		t.Run(ca.name, func(t *testing.T) {
-			enc, err := EncodeAVCC(ca.dec)
+			enc, err := AVCCEncode(ca.dec)
 			require.NoError(t, err)
 			require.Equal(t, ca.enc, enc)
 		})
@@ -78,7 +78,7 @@ func TestAVCCDecodeError(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := DecodeAVCC(ca.enc)
+			_, err := AVCCDecode(ca.enc)
 			require.Error(t, err)
 		})
 	}
