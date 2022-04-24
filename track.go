@@ -14,12 +14,16 @@ import (
 type Track interface {
 	// ClockRate returns the track clock rate.
 	ClockRate() int
+
 	// GetControl returns the track control.
 	GetControl() string
+
 	// SetControl sets the track control.
 	SetControl(string)
+
 	// MediaDescription returns the track media description in SDP format.
 	MediaDescription() *psdp.MediaDescription
+
 	clone() Track
 	url(*base.URL) (*base.URL, error)
 }

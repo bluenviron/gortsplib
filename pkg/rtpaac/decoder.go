@@ -136,7 +136,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 }
 
 func (d *Decoder) readAUHeaders(payload []byte, headersLen int) ([]uint64, error) {
-	br := bitio.NewReader(bytes.NewBuffer(payload))
+	br := bitio.NewReader(bytes.NewReader(payload))
 	firstRead := false
 
 	count := 0
