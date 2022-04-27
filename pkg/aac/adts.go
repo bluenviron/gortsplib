@@ -62,8 +62,11 @@ func DecodeADTS(byts []byte) ([]*ADTSPacket, error) {
 		channelConfig := ((byts[2] & 0x01) << 2) | ((byts[3] >> 6) & 0x03)
 
 		switch {
-		case channelConfig >= 1 && channelConfig <= 7:
-			pkt.ChannelCount = channelCounts[channelConfig-1]
+		case channelConfig >= 1 && channelConfig <= 6:
+			pkt.ChannelCount = int(channelConfig)
+
+		case channelConfig == 7:
+			pkt.ChannelCount = 8
 
 		default:
 			return nil, fmt.Errorf("invalid channel configuration: %d", channelConfig)
@@ -98,30 +101,21 @@ func EncodeADTS(pkts []*ADTSPacket) ([]byte, error) {
 	var ret []byte
 
 	for _, pkt := range pkts {
-		sampleRateIndex := func() int {
-			for i, s := range sampleRates {
-				if s == pkt.SampleRate {
-					return i
-				}
-			}
-			return -1
-		}()
-
-		if sampleRateIndex == -1 {
+		sampleRateIndex, ok := reverseSampleRates[pkt.SampleRate]
+		if !ok {
 			return nil, fmt.Errorf("invalid sample rate: %d", pkt.SampleRate)
 		}
 
-		channelConfig := func() int {
-			for i, co := range channelCounts {
-				if co == pkt.ChannelCount {
-					return i + 1
-				}
-			}
-			return -1
-		}()
+		var channelConfig int
+		switch {
+		case pkt.ChannelCount >= 1 && pkt.ChannelCount <= 6:
+			channelConfig = pkt.ChannelCount
 
-		if channelConfig == -1 {
-			return nil, fmt.Errorf("invalid channel count: %d", pkt.ChannelCount)
+		case pkt.ChannelCount == 8:
+			channelConfig = 7
+
+		default:
+			return nil, fmt.Errorf("invalid channel count (%d)", pkt.ChannelCount)
 		}
 
 		frameLen := len(pkt.AU) + 7
