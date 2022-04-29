@@ -88,10 +88,26 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 	return nil
 }
 
+func (c MPEG4AudioConfig) encodeSize() int {
+	n := 5 + 4 + len(c.AOTSpecificConfig)*8
+	_, ok := reverseSampleRates[c.SampleRate]
+	if !ok {
+		n += 28
+	} else {
+		n += 4
+	}
+
+	ret := n / 8
+	if n%8 != 0 {
+		ret++
+	}
+	return ret
+}
+
 // Encode encodes an MPEG4AudioConfig.
 func (c MPEG4AudioConfig) Encode() ([]byte, error) {
-	var buf bytes.Buffer
-	w := bitio.NewWriter(&buf)
+	buf := make([]byte, c.encodeSize())
+	w := bitio.NewWriter(bytes.NewBuffer(buf[:0]))
 
 	w.WriteBits(uint64(c.Type), 5)
 
@@ -123,5 +139,5 @@ func (c MPEG4AudioConfig) Encode() ([]byte, error) {
 
 	w.Close()
 
-	return buf.Bytes(), nil
+	return buf, nil
 }
