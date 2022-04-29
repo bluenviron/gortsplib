@@ -10,6 +10,7 @@ import (
 	"github.com/icza/bitio"
 	"github.com/pion/rtp"
 
+	"github.com/aler9/gortsplib/pkg/aac"
 	"github.com/aler9/gortsplib/pkg/rtptimedec"
 )
 
@@ -30,10 +31,12 @@ type Decoder struct {
 	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
 	IndexDeltaLength int
 
-	timeDecoder     *rtptimedec.Decoder
-	fragmentedMode  bool
-	fragmentedParts [][]byte
-	fragmentedSize  int
+	timeDecoder       *rtptimedec.Decoder
+	firstPacketParsed bool
+	adtsMode          bool
+	fragmentedMode    bool
+	fragmentedParts   [][]byte
+	fragmentedSize    int
 }
 
 // Init initializes the decoder
@@ -69,6 +72,29 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 	payload = payload[pos:]
 
+	if d.adtsMode {
+		if len(dataLens) != 1 {
+			return nil, 0, fmt.Errorf("multiple AUs in ADTS mode are not supported")
+		}
+
+		if len(payload) < int(dataLens[0]) {
+			return nil, 0, fmt.Errorf("payload is too short")
+		}
+
+		au := payload[:dataLens[0]]
+
+		pkts, err := aac.DecodeADTS(au)
+		if err != nil {
+			return nil, 0, fmt.Errorf("unable to decode ADTS: %s", err)
+		}
+
+		if len(pkts) != 1 {
+			return nil, 0, fmt.Errorf("multiple ADTS packets are not supported")
+		}
+
+		return [][]byte{pkts[0].AU}, d.timeDecoder.Decode(pkt.Timestamp), nil
+	}
+
 	if !d.fragmentedMode {
 		if pkt.Header.Marker {
 			// AUs
@@ -82,6 +108,20 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 				payload = payload[dataLen:]
 			}
 
+			// some cameras wrap AUs with ADTS.
+			if !d.firstPacketParsed {
+				if len(aus) == 1 && len(aus[0]) >= 2 {
+					if aus[0][0] == 0xFF && (aus[0][1]&0xF0) == 0xF0 {
+						pkts, err := aac.DecodeADTS(aus[0])
+						if err == nil && len(pkts) == 1 {
+							d.adtsMode = true
+							aus[0] = pkts[0].AU
+						}
+					}
+				}
+			}
+
+			d.firstPacketParsed = true
 			return aus, d.timeDecoder.Decode(pkt.Timestamp), nil
 		}
 
@@ -93,6 +133,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, fmt.Errorf("payload is too short")
 		}
 
+		d.firstPacketParsed = true
 		d.fragmentedSize = int(dataLens[0])
 		d.fragmentedParts = append(d.fragmentedParts, payload[:dataLens[0]])
 		d.fragmentedMode = true
@@ -130,6 +171,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		n += copy(ret[n:], p)
 	}
 
+	d.firstPacketParsed = true
 	d.fragmentedParts = d.fragmentedParts[:0]
 	d.fragmentedMode = false
 	return [][]byte{ret}, d.timeDecoder.Decode(pkt.Timestamp), nil
