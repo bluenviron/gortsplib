@@ -65,14 +65,23 @@ outer:
 	return ret, nil
 }
 
+func annexBEncodeSize(nalus [][]byte) int {
+	n := 0
+	for _, nalu := range nalus {
+		n += 4 + len(nalu)
+	}
+	return n
+}
+
 // AnnexBEncode encodes NALUs into the Annex-B stream format.
 func AnnexBEncode(nalus [][]byte) ([]byte, error) {
-	var ret []byte
+	buf := make([]byte, annexBEncodeSize(nalus))
+	pos := 0
 
 	for _, nalu := range nalus {
-		ret = append(ret, []byte{0x00, 0x00, 0x00, 0x01}...)
-		ret = append(ret, nalu...)
+		pos += copy(buf[pos:], []byte{0x00, 0x00, 0x00, 0x01})
+		pos += copy(buf[pos:], nalu)
 	}
 
-	return ret, nil
+	return buf, nil
 }

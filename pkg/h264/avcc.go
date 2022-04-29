@@ -32,24 +32,25 @@ func AVCCDecode(byts []byte) ([][]byte, error) {
 	return ret, nil
 }
 
+func avccEncodeSize(nalus [][]byte) int {
+	n := 0
+	for _, nalu := range nalus {
+		n += 4 + len(nalu)
+	}
+	return n
+}
+
 // AVCCEncode encodes NALUs into the AVCC stream format.
 func AVCCEncode(nalus [][]byte) ([]byte, error) {
-	le := 0
-	for _, nalu := range nalus {
-		le += 4 + len(nalu)
-	}
-
-	ret := make([]byte, le)
+	buf := make([]byte, avccEncodeSize(nalus))
 	pos := 0
 
 	for _, nalu := range nalus {
-		ln := len(nalu)
-		binary.BigEndian.PutUint32(ret[pos:], uint32(ln))
+		binary.BigEndian.PutUint32(buf[pos:], uint32(len(nalu)))
 		pos += 4
 
-		copy(ret[pos:], nalu)
-		pos += ln
+		pos += copy(buf[pos:], nalu)
 	}
 
-	return ret, nil
+	return buf, nil
 }
