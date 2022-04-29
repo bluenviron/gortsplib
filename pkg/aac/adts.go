@@ -4,11 +4,6 @@ import (
 	"fmt"
 )
 
-const (
-	// i've never seen a 5kbit AU, but anyway....
-	maxAUSize = 5 * 1024
-)
-
 // ADTSPacket is an ADTS packet
 type ADTSPacket struct {
 	Type         int

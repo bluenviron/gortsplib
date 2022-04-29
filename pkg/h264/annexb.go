@@ -41,6 +41,10 @@ outer:
 
 		case 1:
 			if zeroCount == 2 || zeroCount == 3 {
+				if (delimStart - start) > maxNALUSize {
+					return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", delimStart-start, maxNALUSize)
+				}
+
 				nalu := byts[start:delimStart]
 				if len(nalu) == 0 {
 					return nil, fmt.Errorf("empty NALU")
@@ -54,6 +58,10 @@ outer:
 		default:
 			zeroCount = 0
 		}
+	}
+
+	if (bl - start) > maxNALUSize {
+		return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", bl-start, maxNALUSize)
 	}
 
 	nalu := byts[start:bl]

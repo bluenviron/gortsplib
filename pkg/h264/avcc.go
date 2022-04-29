@@ -6,27 +6,33 @@ import (
 )
 
 // AVCCDecode decodes NALUs from the AVCC stream format.
-func AVCCDecode(byts []byte) ([][]byte, error) {
+func AVCCDecode(buf []byte) ([][]byte, error) {
+	bl := len(buf)
+	pos := 0
 	var ret [][]byte
 
-	for len(byts) > 0 {
-		if len(byts) < 4 {
+	for {
+		if (bl - pos) < 4 {
 			return nil, fmt.Errorf("invalid length")
 		}
 
-		le := binary.BigEndian.Uint32(byts)
-		byts = byts[4:]
+		le := int(binary.BigEndian.Uint32(buf[pos:]))
+		pos += 4
 
-		if len(byts) < int(le) {
+		if (bl - pos) < le {
 			return nil, fmt.Errorf("invalid length")
 		}
 
-		ret = append(ret, byts[:le])
-		byts = byts[le:]
-	}
+		if (bl - pos) > maxNALUSize {
+			return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", bl-pos, maxNALUSize)
+		}
 
-	if len(ret) == 0 {
-		return nil, fmt.Errorf("no NALUs decoded")
+		ret = append(ret, buf[pos:pos+le])
+		pos += le
+
+		if (bl - pos) == 0 {
+			break
+		}
 	}
 
 	return ret, nil
