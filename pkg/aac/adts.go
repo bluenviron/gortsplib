@@ -4,6 +4,11 @@ import (
 	"fmt"
 )
 
+const (
+	// i've never seen a 5kbit AU, but anyway....
+	maxAUSize = 5 * 1024
+)
+
 // ADTSPacket is an ADTS packet
 type ADTSPacket struct {
 	Type         int
@@ -68,6 +73,9 @@ func DecodeADTS(buf []byte) ([]*ADTSPacket, error) {
 		frameLen := int(((uint16(buf[pos+3])&0x03)<<11)|
 			(uint16(buf[pos+4])<<3)|
 			((uint16(buf[pos+5])>>5)&0x07)) - 7
+		if frameLen > maxAUSize {
+			return nil, fmt.Errorf("AU size (%d) is too big (maximum is %d)", frameLen, maxAUSize)
+		}
 
 		frameCount := buf[pos+6] & 0x03
 		if frameCount != 0 {
