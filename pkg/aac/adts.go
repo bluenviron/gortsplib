@@ -13,44 +13,38 @@ type ADTSPacket struct {
 }
 
 // DecodeADTS decodes an ADTS stream into ADTS packets.
-func DecodeADTS(byts []byte) ([]*ADTSPacket, error) {
+func DecodeADTS(buf []byte) ([]*ADTSPacket, error) {
 	// refs: https://wiki.multimedia.cx/index.php/ADTS
 
 	var ret []*ADTSPacket
+	bl := len(buf)
+	pos := 0
 
 	for {
-		bl := len(byts)
-
-		if bl == 0 {
-			break
-		}
-
-		if bl < 8 {
+		if (bl - pos) < 8 {
 			return nil, fmt.Errorf("invalid length")
 		}
 
-		syncWord := (uint16(byts[0]) << 4) | (uint16(byts[1]) >> 4)
+		syncWord := (uint16(buf[pos]) << 4) | (uint16(buf[pos+1]) >> 4)
 		if syncWord != 0xfff {
 			return nil, fmt.Errorf("invalid syncword")
 		}
 
-		protectionAbsent := byts[1] & 0x01
+		protectionAbsent := buf[pos+1] & 0x01
 		if protectionAbsent != 1 {
 			return nil, fmt.Errorf("CRC is not supported")
 		}
 
 		pkt := &ADTSPacket{}
 
-		pkt.Type = int((byts[2] >> 6) + 1)
-
+		pkt.Type = int((buf[pos+2] >> 6) + 1)
 		switch MPEG4AudioType(pkt.Type) {
 		case MPEG4AudioTypeAACLC:
 		default:
 			return nil, fmt.Errorf("unsupported audio type: %d", pkt.Type)
 		}
 
-		sampleRateIndex := (byts[2] >> 2) & 0x0F
-
+		sampleRateIndex := (buf[pos+2] >> 2) & 0x0F
 		switch {
 		case sampleRateIndex <= 12:
 			pkt.SampleRate = sampleRates[sampleRateIndex]
@@ -59,8 +53,7 @@ func DecodeADTS(byts []byte) ([]*ADTSPacket, error) {
 			return nil, fmt.Errorf("invalid sample rate index: %d", sampleRateIndex)
 		}
 
-		channelConfig := ((byts[2] & 0x01) << 2) | ((byts[3] >> 6) & 0x03)
-
+		channelConfig := ((buf[pos+2] & 0x01) << 2) | ((buf[pos+3] >> 6) & 0x03)
 		switch {
 		case channelConfig >= 1 && channelConfig <= 6:
 			pkt.ChannelCount = int(channelConfig)
@@ -72,33 +65,44 @@ func DecodeADTS(byts []byte) ([]*ADTSPacket, error) {
 			return nil, fmt.Errorf("invalid channel configuration: %d", channelConfig)
 		}
 
-		frameLen := int(((uint16(byts[3])&0x03)<<11)|
-			(uint16(byts[4])<<3)|
-			((uint16(byts[5])>>5)&0x07)) - 7
+		frameLen := int(((uint16(buf[pos+3])&0x03)<<11)|
+			(uint16(buf[pos+4])<<3)|
+			((uint16(buf[pos+5])>>5)&0x07)) - 7
 
-		// fullness := ((uint16(byts[5]) & 0x1F) << 6) | ((uint16(byts[6]) >> 2) & 0x3F)
-
-		frameCount := byts[6] & 0x03
+		frameCount := buf[pos+6] & 0x03
 		if frameCount != 0 {
-			return nil, fmt.Errorf("multiple frame count not supported")
+			return nil, fmt.Errorf("frame count greater than 1 is not supported")
 		}
 
-		if len(byts[7:]) < frameLen {
+		if len(buf[pos+7:]) < frameLen {
 			return nil, fmt.Errorf("invalid frame length")
 		}
 
-		pkt.AU = byts[7 : 7+frameLen]
-		byts = byts[7+frameLen:]
+		pkt.AU = buf[pos+7 : pos+7+frameLen]
+		pos += 7 + frameLen
 
 		ret = append(ret, pkt)
+
+		if (bl - pos) == 0 {
+			break
+		}
 	}
 
 	return ret, nil
 }
 
+func encodeADTSSize(pkts []*ADTSPacket) int {
+	n := 0
+	for _, pkt := range pkts {
+		n += 7 + len(pkt.AU)
+	}
+	return n
+}
+
 // EncodeADTS encodes ADTS packets into an ADTS stream.
 func EncodeADTS(pkts []*ADTSPacket) ([]byte, error) {
-	var ret []byte
+	buf := make([]byte, encodeADTSSize(pkts))
+	pos := 0
 
 	for _, pkt := range pkts {
 		sampleRateIndex, ok := reverseSampleRates[pkt.SampleRate]
@@ -122,18 +126,17 @@ func EncodeADTS(pkts []*ADTSPacket) ([]byte, error) {
 
 		fullness := 0x07FF // like ffmpeg does
 
-		header := make([]byte, 7)
-		header[0] = 0xFF
-		header[1] = 0xF1
-		header[2] = uint8(((pkt.Type - 1) << 6) | (sampleRateIndex << 2) | ((channelConfig >> 2) & 0x01))
-		header[3] = uint8((channelConfig&0x03)<<6 | (frameLen>>11)&0x03)
-		header[4] = uint8((frameLen >> 3) & 0xFF)
-		header[5] = uint8((frameLen&0x07)<<5 | ((fullness >> 6) & 0x1F))
-		header[6] = uint8((fullness & 0x3F) << 2)
-		ret = append(ret, header...)
+		buf[pos+0] = 0xFF
+		buf[pos+1] = 0xF1
+		buf[pos+2] = uint8(((pkt.Type - 1) << 6) | (sampleRateIndex << 2) | ((channelConfig >> 2) & 0x01))
+		buf[pos+3] = uint8((channelConfig&0x03)<<6 | (frameLen>>11)&0x03)
+		buf[pos+4] = uint8((frameLen >> 3) & 0xFF)
+		buf[pos+5] = uint8((frameLen&0x07)<<5 | ((fullness >> 6) & 0x1F))
+		buf[pos+6] = uint8((fullness & 0x3F) << 2)
+		pos += 7
 
-		ret = append(ret, pkt.AU...)
+		pos += copy(buf[pos:], pkt.AU)
 	}
 
-	return ret, nil
+	return buf, nil
 }
