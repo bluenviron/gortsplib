@@ -703,3 +703,16 @@ func (s SPS) Height() int {
 	}
 	return int(((2 - f) * (s.PicHeightInMbsMinus1 + 1) * 16) - (s.FrameCropTopOffset+s.FrameCropBottomOffset)*2)
 }
+
+// FPS returns the frame per second of the video.
+func (s SPS) FPS() float64 {
+	if s.VUI == nil {
+		return 0
+	}
+
+	if !s.VUI.TimingInfoPresentFlag {
+		return 0
+	}
+
+	return float64(s.VUI.TimeScale) / 2 * float64(s.VUI.NumUnitsInTick)
+}

@@ -8,12 +8,15 @@ import (
 
 func TestSPSUnmarshal(t *testing.T) {
 	for _, ca := range []struct {
-		name string
-		byts []byte
-		sps  SPS
+		name   string
+		byts   []byte
+		sps    SPS
+		width  int
+		height int
+		fps    float64
 	}{
 		{
-			"340x280",
+			"352x288",
 			[]byte{
 				0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
 				0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
@@ -38,6 +41,9 @@ func TestSPSUnmarshal(t *testing.T) {
 					FixedFrameRateFlag:    true,
 				},
 			},
+			352,
+			288,
+			15,
 		},
 		{
 			"1280x720",
@@ -74,6 +80,9 @@ func TestSPSUnmarshal(t *testing.T) {
 					MaxDecFrameBuffering:               4,
 				},
 			},
+			1280,
+			720,
+			30,
 		},
 		{
 			"1920x1080 baseline",
@@ -106,6 +115,9 @@ func TestSPSUnmarshal(t *testing.T) {
 					MaxDecFrameBuffering:               3,
 				},
 			},
+			1920,
+			1080,
+			30,
 		},
 		{
 			"1920x1080 nvidia",
@@ -139,6 +151,9 @@ func TestSPSUnmarshal(t *testing.T) {
 					MaxDecFrameBuffering:               4,
 				},
 			},
+			1920,
+			1080,
+			30,
 		},
 		{
 			"1920x1080",
@@ -179,6 +194,9 @@ func TestSPSUnmarshal(t *testing.T) {
 					PicStructPresentFlag:         true,
 				},
 			},
+			1920,
+			1084,
+			25,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -186,6 +204,9 @@ func TestSPSUnmarshal(t *testing.T) {
 			err := sps.Unmarshal(ca.byts)
 			require.NoError(t, err)
 			require.Equal(t, ca.sps, sps)
+			require.Equal(t, ca.width, sps.Width())
+			require.Equal(t, ca.height, sps.Height())
+			require.Equal(t, ca.fps, sps.FPS())
 		})
 	}
 }
