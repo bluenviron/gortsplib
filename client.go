@@ -222,7 +222,7 @@ type Client struct {
 	optionsSent        bool
 	useGetParameter    bool
 	lastDescribeURL    *base.URL
-	streamBaseURL      *base.URL
+	baseURL            *base.URL
 	effectiveTransport *Transport
 	tracks             []*clientTrack
 	tcpTracksByChannel map[int]int
@@ -541,7 +541,7 @@ func (c *Client) runInner() error {
 					return base.Options
 				}(),
 				// use the stream base URL, otherwise some cameras do not reply
-				URL: c.streamBaseURL,
+				URL: c.baseURL,
 			}, true, false)
 			if err != nil {
 				return err
@@ -565,7 +565,7 @@ func (c *Client) doClose() {
 
 		c.do(&base.Request{
 			Method: base.Teardown,
-			URL:    c.streamBaseURL,
+			URL:    c.baseURL,
 		}, true, false)
 
 		c.conn.Close()
@@ -593,7 +593,7 @@ func (c *Client) reset() {
 	c.cseq = 0
 	c.optionsSent = false
 	c.useGetParameter = false
-	c.streamBaseURL = nil
+	c.baseURL = nil
 	c.effectiveTransport = nil
 	c.tracks = nil
 	c.tcpTracksByChannel = nil
@@ -615,7 +615,9 @@ func (c *Client) checkState(allowed map[clientState]struct{}) error {
 }
 
 func (c *Client) trySwitchingProtocol() error {
-	prevBaseURL := c.streamBaseURL
+	prevScheme := c.scheme
+	prevHost := c.host
+	prevBaseURL := c.baseURL
 	oldUseGetParameter := c.useGetParameter
 	prevTracks := c.tracks
 
@@ -624,8 +626,8 @@ func (c *Client) trySwitchingProtocol() error {
 	v := TransportTCP
 	c.effectiveTransport = &v
 	c.useGetParameter = oldUseGetParameter
-	c.scheme = prevBaseURL.Scheme
-	c.host = prevBaseURL.Host
+	c.scheme = prevScheme
+	c.host = prevHost
 
 	// some Hikvision cameras require a describe before a setup
 	_, _, _, err := c.doDescribe(c.lastDescribeURL)
@@ -1313,7 +1315,7 @@ func (c *Client) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, error) 
 		}
 	}
 
-	c.streamBaseURL = u.Clone()
+	c.baseURL = u.Clone()
 	c.state = clientStatePreRecord
 
 	return res, nil
@@ -1354,7 +1356,7 @@ func (c *Client) doSetup(
 		return nil, liberrors.ErrClientCannotReadPublishAtSameTime{}
 	}
 
-	if c.streamBaseURL != nil && *baseURL != *c.streamBaseURL {
+	if c.baseURL != nil && *baseURL != *c.baseURL {
 		return nil, liberrors.ErrClientCannotSetupTracksDifferentURLs{}
 	}
 
@@ -1564,7 +1566,7 @@ func (c *Client) doSetup(
 		c.state = clientStatePreRecord
 	}
 
-	c.streamBaseURL = baseURL
+	c.baseURL = baseURL
 	c.effectiveTransport = &transport
 
 	switch transport {
@@ -1700,7 +1702,7 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 
 	res, err := c.do(&base.Request{
 		Method: base.Play,
-		URL:    c.streamBaseURL,
+		URL:    c.baseURL,
 		Header: base.Header{
 			"Range": ra.Write(),
 		},
@@ -1759,7 +1761,7 @@ func (c *Client) doRecord() (*base.Response, error) {
 
 	res, err := c.do(&base.Request{
 		Method: base.Record,
-		URL:    c.streamBaseURL,
+		URL:    c.baseURL,
 	}, false, false)
 	if err != nil {
 		return nil, err
@@ -1812,7 +1814,7 @@ func (c *Client) doPause() (*base.Response, error) {
 
 	res, err := c.do(&base.Request{
 		Method: base.Pause,
-		URL:    c.streamBaseURL,
+		URL:    c.baseURL,
 	}, false, *c.effectiveTransport == TransportTCP)
 	if err != nil {
 		return nil, err
