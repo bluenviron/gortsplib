@@ -14,12 +14,16 @@ import (
 type Track interface {
 	// ClockRate returns the track clock rate.
 	ClockRate() int
+
 	// GetControl returns the track control.
 	GetControl() string
+
 	// SetControl sets the track control.
 	SetControl(string)
+
 	// MediaDescription returns the track media description in SDP format.
 	MediaDescription() *psdp.MediaDescription
+
 	clone() Track
 	url(*base.URL) (*base.URL, error)
 }
@@ -65,6 +69,9 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 		switch {
 		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "0":
 			return newTrackPCMUFromMediaDescription(control, rtpmapPart1, md)
+
+		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "8":
+			return newTrackPCMAFromMediaDescription(control, rtpmapPart1, md)
 
 		case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
 			return newTrackAACFromMediaDescription(control, payloadType, md)

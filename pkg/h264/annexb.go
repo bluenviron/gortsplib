@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-// DecodeAnnexB decodes NALUs from the Annex-B stream format.
-func DecodeAnnexB(byts []byte) ([][]byte, error) {
+// AnnexBDecode decodes NALUs from the Annex-B stream format.
+func AnnexBDecode(byts []byte) ([][]byte, error) {
 	bl := len(byts)
 	zeroCount := 0
 
@@ -41,6 +41,10 @@ outer:
 
 		case 1:
 			if zeroCount == 2 || zeroCount == 3 {
+				if (delimStart - start) > maxNALUSize {
+					return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", delimStart-start, maxNALUSize)
+				}
+
 				nalu := byts[start:delimStart]
 				if len(nalu) == 0 {
 					return nil, fmt.Errorf("empty NALU")
@@ -56,6 +60,10 @@ outer:
 		}
 	}
 
+	if (bl - start) > maxNALUSize {
+		return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", bl-start, maxNALUSize)
+	}
+
 	nalu := byts[start:bl]
 	if len(nalu) == 0 {
 		return nil, fmt.Errorf("empty NALU")
@@ -65,14 +73,23 @@ outer:
 	return ret, nil
 }
 
-// EncodeAnnexB encodes NALUs into the Annex-B stream format.
-func EncodeAnnexB(nalus [][]byte) ([]byte, error) {
-	var ret []byte
+func annexBEncodeSize(nalus [][]byte) int {
+	n := 0
+	for _, nalu := range nalus {
+		n += 4 + len(nalu)
+	}
+	return n
+}
+
+// AnnexBEncode encodes NALUs into the Annex-B stream format.
+func AnnexBEncode(nalus [][]byte) ([]byte, error) {
+	buf := make([]byte, annexBEncodeSize(nalus))
+	pos := 0
 
 	for _, nalu := range nalus {
-		ret = append(ret, []byte{0x00, 0x00, 0x00, 0x01}...)
-		ret = append(ret, nalu...)
+		pos += copy(buf[pos:], []byte{0x00, 0x00, 0x00, 0x01})
+		pos += copy(buf[pos:], nalu)
 	}
 
-	return ret, nil
+	return buf, nil
 }

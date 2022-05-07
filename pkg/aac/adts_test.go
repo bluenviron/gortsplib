@@ -106,7 +106,7 @@ func TestDecodeADTSErrors(t *testing.T) {
 		{
 			"multiple frame count",
 			[]byte{0xff, 0xf1, 0x4c, 0x80, 0x1, 0x3f, 0xfd, 0xaa},
-			"multiple frame count not supported",
+			"frame count greater than 1 is not supported",
 		},
 		{
 			"invalid frame length",

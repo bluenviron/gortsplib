@@ -3,6 +3,7 @@ package base
 import (
 	"fmt"
 	"net/url"
+	"strings"
 )
 
 // URL is a RTSP URL.
@@ -12,6 +13,9 @@ type URL url.URL
 
 // ParseURL parses a RTSP URL.
 func ParseURL(s string) (*URL, error) {
+	s = strings.ReplaceAll(s, "%25", "%")
+	s = strings.ReplaceAll(s, "%", "%25")
+
 	u, err := url.Parse(s)
 	if err != nil {
 		return nil, err

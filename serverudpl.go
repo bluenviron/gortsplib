@@ -109,10 +109,10 @@ func newServerUDPListener(
 
 		for _, intf := range intfs {
 			if (intf.Flags & net.FlagMulticast) != 0 {
-				err := p.JoinGroup(&intf, &net.UDPAddr{IP: listenIP})
-				if err != nil {
-					return nil, err
-				}
+				// do not check for errors.
+				// on macOS, there are interfaces with the multicast flag but
+				// without support for multicast, that makes this function fail.
+				p.JoinGroup(&intf, &net.UDPAddr{IP: listenIP})
 			}
 		}
 

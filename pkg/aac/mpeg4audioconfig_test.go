@@ -12,31 +12,21 @@ var configCases = []struct {
 	dec  MPEG4AudioConfig
 }{
 	{
+		"aac-lc 16khz mono",
+		[]byte{0x14, 0x08},
+		MPEG4AudioConfig{
+			Type:         MPEG4AudioTypeAACLC,
+			SampleRate:   16000,
+			ChannelCount: 1,
+		},
+	},
+	{
 		"aac-lc 44.1khz mono",
 		[]byte{0x12, 0x08, 0x56, 0xe5, 0x00},
 		MPEG4AudioConfig{
 			Type:              MPEG4AudioTypeAACLC,
 			SampleRate:        44100,
 			ChannelCount:      1,
-			AOTSpecificConfig: []byte{0x0A, 0xDC, 0xA0},
-		},
-	},
-	{
-		"aac-lc 48khz stereo",
-		[]byte{17, 144},
-		MPEG4AudioConfig{
-			Type:         MPEG4AudioTypeAACLC,
-			SampleRate:   48000,
-			ChannelCount: 2,
-		},
-	},
-	{
-		"aac-lc 96khz stereo",
-		[]byte{0x10, 0x10, 0x56, 0xE5, 0x00},
-		MPEG4AudioConfig{
-			Type:              MPEG4AudioTypeAACLC,
-			SampleRate:        96000,
-			ChannelCount:      2,
 			AOTSpecificConfig: []byte{0x0A, 0xDC, 0xA0},
 		},
 	},
@@ -50,12 +40,31 @@ var configCases = []struct {
 		},
 	},
 	{
+		"aac-lc 48khz stereo",
+		[]byte{17, 144},
+		MPEG4AudioConfig{
+			Type:         MPEG4AudioTypeAACLC,
+			SampleRate:   48000,
+			ChannelCount: 2,
+		},
+	},
+	{
 		"aac-lc 53khz stereo",
 		[]byte{0x17, 0x80, 0x67, 0x84, 0x10},
 		MPEG4AudioConfig{
 			Type:         MPEG4AudioTypeAACLC,
 			SampleRate:   53000,
 			ChannelCount: 2,
+		},
+	},
+	{
+		"aac-lc 96khz stereo",
+		[]byte{0x10, 0x10, 0x56, 0xE5, 0x00},
+		MPEG4AudioConfig{
+			Type:              MPEG4AudioTypeAACLC,
+			SampleRate:        96000,
+			ChannelCount:      2,
+			AOTSpecificConfig: []byte{0x0A, 0xDC, 0xA0},
 		},
 	},
 }

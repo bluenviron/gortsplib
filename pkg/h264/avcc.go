@@ -5,51 +5,58 @@ import (
 	"fmt"
 )
 
-// DecodeAVCC decodes NALUs from the AVCC stream format.
-func DecodeAVCC(byts []byte) ([][]byte, error) {
+// AVCCDecode decodes NALUs from the AVCC stream format.
+func AVCCDecode(buf []byte) ([][]byte, error) {
+	bl := len(buf)
+	pos := 0
 	var ret [][]byte
 
-	for len(byts) > 0 {
-		if len(byts) < 4 {
+	for {
+		if (bl - pos) < 4 {
 			return nil, fmt.Errorf("invalid length")
 		}
 
-		le := binary.BigEndian.Uint32(byts)
-		byts = byts[4:]
+		le := int(binary.BigEndian.Uint32(buf[pos:]))
+		pos += 4
 
-		if len(byts) < int(le) {
+		if (bl - pos) < le {
 			return nil, fmt.Errorf("invalid length")
 		}
 
-		ret = append(ret, byts[:le])
-		byts = byts[le:]
-	}
+		if (bl - pos) > maxNALUSize {
+			return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", bl-pos, maxNALUSize)
+		}
 
-	if len(ret) == 0 {
-		return nil, fmt.Errorf("no NALUs decoded")
+		ret = append(ret, buf[pos:pos+le])
+		pos += le
+
+		if (bl - pos) == 0 {
+			break
+		}
 	}
 
 	return ret, nil
 }
 
-// EncodeAVCC encodes NALUs into the AVCC stream format.
-func EncodeAVCC(nalus [][]byte) ([]byte, error) {
-	le := 0
+func avccEncodeSize(nalus [][]byte) int {
+	n := 0
 	for _, nalu := range nalus {
-		le += 4 + len(nalu)
+		n += 4 + len(nalu)
 	}
+	return n
+}
 
-	ret := make([]byte, le)
+// AVCCEncode encodes NALUs into the AVCC stream format.
+func AVCCEncode(nalus [][]byte) ([]byte, error) {
+	buf := make([]byte, avccEncodeSize(nalus))
 	pos := 0
 
 	for _, nalu := range nalus {
-		ln := len(nalu)
-		binary.BigEndian.PutUint32(ret[pos:], uint32(ln))
+		binary.BigEndian.PutUint32(buf[pos:], uint32(len(nalu)))
 		pos += 4
 
-		copy(ret[pos:], nalu)
-		pos += ln
+		pos += copy(buf[pos:], nalu)
 	}
 
-	return ret, nil
+	return buf, nil
 }

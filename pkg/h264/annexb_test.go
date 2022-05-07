@@ -68,7 +68,7 @@ var casesAnnexB = []struct {
 func TestAnnexBDecode(t *testing.T) {
 	for _, ca := range casesAnnexB {
 		t.Run(ca.name, func(t *testing.T) {
-			dec, err := DecodeAnnexB(ca.encin)
+			dec, err := AnnexBDecode(ca.encin)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
 		})
@@ -78,7 +78,7 @@ func TestAnnexBDecode(t *testing.T) {
 func TestAnnexBEncode(t *testing.T) {
 	for _, ca := range casesAnnexB {
 		t.Run(ca.name, func(t *testing.T) {
-			enc, err := EncodeAnnexB(ca.dec)
+			enc, err := AnnexBEncode(ca.dec)
 			require.NoError(t, err)
 			require.Equal(t, ca.encout, enc)
 		})
@@ -118,7 +118,7 @@ func TestAnnexBDecodeError(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := DecodeAnnexB(ca.enc)
+			_, err := AnnexBDecode(ca.enc)
 			require.EqualError(t, err, ca.err)
 		})
 	}
