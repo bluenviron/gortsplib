@@ -547,6 +547,7 @@ func TestServerRead(t *testing.T) {
 				<-framesReceived
 
 			default:
+				bb.Reset()
 				base.InterleavedFrame{
 					Channel: 5,
 					Payload: testRTCPPacketMarshaled,
@@ -1166,6 +1167,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	bb.Reset()
 	base.Request{
 		Method: base.Pause,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
@@ -1181,6 +1183,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	bb.Reset()
 	base.Request{
 		Method: base.Pause,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),

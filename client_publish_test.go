@@ -90,6 +90,7 @@ func TestClientPublishSerial(t *testing.T) {
 				require.Equal(t, base.Options, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -108,6 +109,7 @@ func TestClientPublishSerial(t *testing.T) {
 				require.Equal(t, base.Announce, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -151,6 +153,7 @@ func TestClientPublishSerial(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -165,6 +168,7 @@ func TestClientPublishSerial(t *testing.T) {
 				require.Equal(t, base.Record, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -198,6 +202,7 @@ func TestClientPublishSerial(t *testing.T) {
 						Port: th.ClientPorts[1],
 					})
 				} else {
+					bb.Reset()
 					base.InterleavedFrame{
 						Channel: 1,
 						Payload: testRTCPPacketMarshaled,
@@ -211,6 +216,7 @@ func TestClientPublishSerial(t *testing.T) {
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -303,6 +309,7 @@ func TestClientPublishParallel(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -320,6 +327,7 @@ func TestClientPublishParallel(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -350,6 +358,7 @@ func TestClientPublishParallel(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -363,6 +372,7 @@ func TestClientPublishParallel(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -373,6 +383,7 @@ func TestClientPublishParallel(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -449,6 +460,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -467,6 +479,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -497,6 +510,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -510,6 +524,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -520,6 +535,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -530,6 +546,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -540,6 +557,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -606,6 +624,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -624,6 +643,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -654,6 +674,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -667,6 +688,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -677,6 +699,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -749,6 +772,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.Equal(t, base.Options, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -767,6 +791,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.Equal(t, base.Announce, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -777,6 +802,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusUnsupportedTransport,
 		}.Write(&bb)
@@ -801,6 +827,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 			InterleavedIDs: &[2]int{0, 1},
 		}
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -815,6 +842,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.Equal(t, base.Record, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -834,6 +862,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -877,6 +906,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -894,6 +924,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Announce, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -916,6 +947,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		defer l2.Close()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -937,6 +969,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Record, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -971,6 +1004,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -1026,6 +1060,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1043,6 +1078,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Announce, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -1066,6 +1102,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1079,12 +1116,14 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Record, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
+		bb.Reset()
 		base.InterleavedFrame{
 			Channel: 0,
 			Payload: testRTPPacketMarshaled,
@@ -1092,6 +1131,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
+		bb.Reset()
 		base.InterleavedFrame{
 			Channel: 1,
 			Payload: testRTCPPacketMarshaled,
@@ -1103,6 +1143,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)

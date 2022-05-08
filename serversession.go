@@ -1188,6 +1188,7 @@ func (ss *ServerSession) runWriter() {
 			if isRTP {
 				f := rtpFrames[trackID]
 				f.Payload = payload
+				buf.Reset()
 				f.Write(&buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
@@ -1195,6 +1196,7 @@ func (ss *ServerSession) runWriter() {
 			} else {
 				f := rtcpFrames[trackID]
 				f.Payload = payload
+				buf.Reset()
 				f.Write(&buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))

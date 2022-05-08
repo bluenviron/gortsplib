@@ -1025,8 +1025,8 @@ func TestServerSessionClose(t *testing.T) {
 	conn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer conn.Close()
-	var bb bytes.Buffer
 
+	var bb bytes.Buffer
 	base.Request{
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),

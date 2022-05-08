@@ -101,6 +101,7 @@ func TestClientSession(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -125,6 +126,7 @@ func TestClientSession(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -170,6 +172,7 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -187,6 +190,7 @@ func TestClientAuth(t *testing.T) {
 
 		v := auth.NewValidator("myuser", "mypass", nil)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusUnauthorized,
 			Header: base.Header{
@@ -209,6 +213,7 @@ func TestClientAuth(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -253,6 +258,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -272,6 +278,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		track1, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 		require.NoError(t, err)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{

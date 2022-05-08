@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"strconv"
 )
 
@@ -117,19 +118,17 @@ func (req *Request) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) error
 }
 
 // Write writes a request.
-func (req Request) Write(bb *bytes.Buffer) {
-	bb.Reset()
-
+func (req Request) Write(w io.Writer) {
 	urStr := req.URL.CloneWithoutCredentials().String()
-	bb.Write([]byte(string(req.Method) + " " + urStr + " " + rtspProtocol10 + "\r\n"))
+	w.Write([]byte(string(req.Method) + " " + urStr + " " + rtspProtocol10 + "\r\n"))
 
 	if len(req.Body) != 0 {
 		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}
 	}
 
-	req.Header.write(bb)
+	req.Header.write(w)
 
-	body(req.Body).write(bb)
+	body(req.Body).write(w)
 }
 
 // String implements fmt.Stringer.

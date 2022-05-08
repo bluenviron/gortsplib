@@ -1883,6 +1883,7 @@ func (c *Client) runWriter() {
 			if isRTP {
 				f := rtpFrames[trackID]
 				f.Payload = payload
+				buf.Reset()
 				f.Write(&buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
@@ -1890,6 +1891,7 @@ func (c *Client) runWriter() {
 			} else {
 				f := rtcpFrames[trackID]
 				f.Payload = payload
+				buf.Reset()
 				f.Write(&buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))

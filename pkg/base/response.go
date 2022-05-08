@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"strconv"
 )
 
@@ -203,16 +204,14 @@ func (res *Response) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) erro
 }
 
 // Write writes a Response.
-func (res Response) Write(bb *bytes.Buffer) {
-	bb.Reset()
-
+func (res Response) Write(w io.Writer) {
 	if res.StatusMessage == "" {
 		if status, ok := statusMessages[res.StatusCode]; ok {
 			res.StatusMessage = status
 		}
 	}
 
-	bb.Write([]byte(rtspProtocol10 + " " +
+	w.Write([]byte(rtspProtocol10 + " " +
 		strconv.FormatInt(int64(res.StatusCode), 10) + " " +
 		res.StatusMessage + "\r\n"))
 
@@ -220,9 +219,9 @@ func (res Response) Write(bb *bytes.Buffer) {
 		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}
 	}
 
-	res.Header.write(bb)
+	res.Header.write(w)
 
-	body(res.Body).write(bb)
+	body(res.Body).write(w)
 }
 
 // String implements fmt.Stringer.

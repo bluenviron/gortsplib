@@ -2,8 +2,8 @@ package base
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -98,7 +98,7 @@ func (h *Header) read(rb *bufio.Reader) error {
 	return nil
 }
 
-func (h Header) write(bb *bytes.Buffer) {
+func (h Header) write(w io.Writer) {
 	// sort headers by key
 	// in order to obtain deterministic results
 	keys := make([]string, len(h))
@@ -109,9 +109,9 @@ func (h Header) write(bb *bytes.Buffer) {
 
 	for _, key := range keys {
 		for _, val := range h[key] {
-			bb.Write([]byte(key + ": " + val + "\r\n"))
+			w.Write([]byte(key + ": " + val + "\r\n"))
 		}
 	}
 
-	bb.Write([]byte("\r\n"))
+	w.Write([]byte("\r\n"))
 }

@@ -765,6 +765,7 @@ func TestServerPublish(t *testing.T) {
 					Port: th.ServerPorts[1],
 				})
 			} else {
+				bb.Reset()
 				base.InterleavedFrame{
 					Channel: 0,
 					Payload: testRTPPacketMarshaled,
@@ -772,6 +773,7 @@ func TestServerPublish(t *testing.T) {
 				_, err = conn.Write(bb.Bytes())
 				require.NoError(t, err)
 
+				bb.Reset()
 				base.InterleavedFrame{
 					Channel: 1,
 					Payload: testRTCPPacketMarshaled,
@@ -915,6 +917,7 @@ func TestServerPublishOversizedPacket(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	byts, _ := oversizedPacketRTPIn.Marshal()
+	bb.Reset()
 	base.InterleavedFrame{
 		Channel: 0,
 		Payload: byts,
@@ -1023,6 +1026,7 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
+	bb.Reset()
 	base.InterleavedFrame{
 		Channel: 0,
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},

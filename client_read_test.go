@@ -66,6 +66,7 @@ func TestClientReadTracks(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -87,6 +88,7 @@ func TestClientReadTracks(t *testing.T) {
 		tracks := Tracks{track1, track2, track3}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -118,6 +120,7 @@ func TestClientReadTracks(t *testing.T) {
 				ServerPorts: &[2]int{34556 + i*2, 34557 + i*2},
 			}
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -133,6 +136,7 @@ func TestClientReadTracks(t *testing.T) {
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -144,6 +148,7 @@ func TestClientReadTracks(t *testing.T) {
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -203,6 +208,7 @@ func TestClientRead(t *testing.T) {
 				require.Equal(t, base.Options, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -227,6 +233,7 @@ func TestClientRead(t *testing.T) {
 				tracks := Tracks{track}
 				tracks.setControls()
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -311,6 +318,7 @@ func TestClientRead(t *testing.T) {
 					th.InterleavedIDs = &[2]int{0, 1}
 				}
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -326,6 +334,7 @@ func TestClientRead(t *testing.T) {
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
 				require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -349,6 +358,7 @@ func TestClientRead(t *testing.T) {
 					})
 
 				case "tcp", "tls":
+					bb.Reset()
 					base.InterleavedFrame{
 						Channel: 0,
 						Payload: testRTPPacketMarshaled,
@@ -389,6 +399,7 @@ func TestClientRead(t *testing.T) {
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -518,6 +529,7 @@ func TestClientReadOversizedPacket(t *testing.T) {
 		require.Equal(t, base.Options, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -542,6 +554,7 @@ func TestClientReadOversizedPacket(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -567,6 +580,7 @@ func TestClientReadOversizedPacket(t *testing.T) {
 			InterleavedIDs: &[2]int{0, 1},
 		}
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -582,6 +596,7 @@ func TestClientReadOversizedPacket(t *testing.T) {
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 		require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -589,6 +604,7 @@ func TestClientReadOversizedPacket(t *testing.T) {
 		require.NoError(t, err)
 
 		byts, _ := oversizedPacketRTPIn.Marshal()
+		bb.Reset()
 		base.InterleavedFrame{
 			Channel: 0,
 			Payload: byts,
@@ -643,6 +659,7 @@ func TestClientReadPartial(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -670,6 +687,7 @@ func TestClientReadPartial(t *testing.T) {
 		tracks := Tracks{track1, track2}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -700,6 +718,7 @@ func TestClientReadPartial(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -714,12 +733,14 @@ func TestClientReadPartial(t *testing.T) {
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
+		bb.Reset()
 		base.InterleavedFrame{
 			Channel: 0,
 			Payload: testRTPPacketMarshaled,
@@ -732,6 +753,7 @@ func TestClientReadPartial(t *testing.T) {
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -792,6 +814,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -816,6 +839,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -845,6 +869,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 			ServerPorts: &[2]int{34556, 34557},
 		}
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -859,6 +884,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -870,6 +896,7 @@ func TestClientReadNoContentBase(t *testing.T) {
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -913,6 +940,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -936,6 +964,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				tracks := Tracks{track}
 				tracks.setControls()
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -963,6 +992,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				require.NoError(t, err)
 				defer l1b.Close()
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -998,6 +1028,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -1073,6 +1104,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Options, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -1096,6 +1128,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			tracks := Tracks{track}
 			tracks.setControls()
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -1111,6 +1144,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusUnsupportedTransport,
 			}.Write(&bb)
@@ -1126,6 +1160,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -1146,12 +1181,14 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Play, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 			}.Write(&bb)
 			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
+			bb.Reset()
 			base.InterleavedFrame{
 				Channel: 0,
 				Payload: testRTPPacketMarshaled,
@@ -1194,6 +1231,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Options, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -1213,6 +1251,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			v := auth.NewValidator("myuser", "mypass", nil)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusUnauthorized,
 				Header: base.Header{
@@ -1235,6 +1274,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			tracks := Tracks{track}
 			tracks.setControls()
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -1265,6 +1305,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				ClientPorts: inTH.ClientPorts,
 			}
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -1278,6 +1319,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Play, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 			}.Write(&bb)
@@ -1288,6 +1330,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Teardown, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 			}.Write(&bb)
@@ -1304,6 +1347,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Options, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -1321,6 +1365,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -1338,6 +1383,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 			v = auth.NewValidator("myuser", "mypass", nil)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusUnauthorized,
 				Header: base.Header{
@@ -1368,6 +1414,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				InterleavedIDs: inTH.InterleavedIDs,
 			}
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
@@ -1381,12 +1428,14 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Play, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 			}.Write(&bb)
 			_, err = conn.Write(bb.Bytes())
 			require.NoError(t, err)
 
+			bb.Reset()
 			base.InterleavedFrame{
 				Channel: 0,
 				Payload: testRTPPacketMarshaled,
@@ -1398,6 +1447,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Teardown, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 			}.Write(&bb)
@@ -1444,6 +1494,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1468,6 +1519,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		tracks := Tracks{track1}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1497,6 +1549,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 			InterleavedIDs: &[2]int{2, 3},
 		}
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1511,12 +1564,14 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
+		bb.Reset()
 		base.InterleavedFrame{
 			Channel: 2,
 			Payload: testRTPPacketMarshaled,
@@ -1529,6 +1584,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -1575,6 +1631,7 @@ func TestClientReadRedirect(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1592,6 +1649,7 @@ func TestClientReadRedirect(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusMovedPermanently,
 			Header: base.Header{
@@ -1612,6 +1670,7 @@ func TestClientReadRedirect(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1635,6 +1694,7 @@ func TestClientReadRedirect(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1654,6 +1714,7 @@ func TestClientReadRedirect(t *testing.T) {
 		err = th.Read(req.Header["Transport"])
 		require.NoError(t, err)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1675,6 +1736,7 @@ func TestClientReadRedirect(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -1737,6 +1799,7 @@ func TestClientReadPause(t *testing.T) {
 							Port: inTH.ClientPorts[0],
 						})
 					} else {
+						bb.Reset()
 						base.InterleavedFrame{
 							Channel: 0,
 							Payload: testRTPPacketMarshaled,
@@ -1777,6 +1840,7 @@ func TestClientReadPause(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -1800,6 +1864,7 @@ func TestClientReadPause(t *testing.T) {
 				tracks := Tracks{track}
 				tracks.setControls()
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -1835,6 +1900,7 @@ func TestClientReadPause(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -1848,6 +1914,7 @@ func TestClientReadPause(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -1863,6 +1930,7 @@ func TestClientReadPause(t *testing.T) {
 				close(writerTerminate)
 				<-writerDone
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -1873,6 +1941,7 @@ func TestClientReadPause(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -1888,6 +1957,7 @@ func TestClientReadPause(t *testing.T) {
 				close(writerTerminate)
 				<-writerDone
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -1956,6 +2026,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -1980,6 +2051,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2007,6 +2079,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		defer l2.Close()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2028,6 +2101,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -2097,6 +2171,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -2141,6 +2216,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -2164,6 +2240,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				tracks := Tracks{track}
 				tracks.setControls()
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -2205,6 +2282,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
@@ -2218,6 +2296,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -2236,6 +2315,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
+				bb.Reset()
 				base.Response{
 					StatusCode: base.StatusOK,
 				}.Write(&bb)
@@ -2296,6 +2376,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2319,6 +2400,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2347,6 +2429,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		th.Protocol = headers.TransportProtocolTCP
 		th.InterleavedIDs = inTH.InterleavedIDs
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2360,12 +2443,14 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
+		bb.Reset()
 		base.InterleavedFrame{
 			Channel: 6,
 			Payload: testRTPPacketMarshaled,
@@ -2373,6 +2458,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		_, err = conn.Write(bb.Bytes())
 		require.NoError(t, err)
 
+		bb.Reset()
 		base.InterleavedFrame{
 			Channel: 0,
 			Payload: testRTPPacketMarshaled,
@@ -2384,6 +2470,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -2430,6 +2517,7 @@ func TestClientReadSeek(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2453,6 +2541,7 @@ func TestClientReadSeek(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2481,6 +2570,7 @@ func TestClientReadSeek(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2503,6 +2593,7 @@ func TestClientReadSeek(t *testing.T) {
 			},
 		}, ra)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -2513,6 +2604,7 @@ func TestClientReadSeek(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Pause, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -2531,6 +2623,7 @@ func TestClientReadSeek(t *testing.T) {
 			},
 		}, ra)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -2541,6 +2634,7 @@ func TestClientReadSeek(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -2607,6 +2701,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2630,6 +2725,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2649,6 +2745,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		err = inTH.Read(req.Header["Transport"])
 		require.NoError(t, err)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2677,6 +2774,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -2690,6 +2788,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Options, req.Method)
 
+			bb.Reset()
 			base.Response{
 				StatusCode: base.StatusOK,
 			}.Write(&bb)
@@ -2738,6 +2837,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		require.Equal(t, base.Options, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2762,6 +2862,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2804,6 +2905,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		require.NoError(t, err)
 		defer l2.Close()
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
@@ -2819,6 +2921,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
 		require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
@@ -2837,6 +2940,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
 
+		bb.Reset()
 		base.Response{
 			StatusCode: base.StatusOK,
 		}.Write(&bb)
