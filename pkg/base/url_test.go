@@ -1,6 +1,7 @@
 package base
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,11 +23,12 @@ func TestURLParse(t *testing.T) {
 	}{
 		{
 			"ipv6 stateless",
-			`rtsp://[fe80::a8f4:3219:f33e:a072%wl0]:8554/proxied`,
+			`rtsp://user:pa%23ss@[fe80::a8f4:3219:f33e:a072%wl0]:8554/prox%23ied`,
 			&URL{
 				Scheme: "rtsp",
 				Host:   "[fe80::a8f4:3219:f33e:a072%wl0]:8554",
-				Path:   "/proxied",
+				Path:   "/prox#ied",
+				User:   url.UserPassword("user", "pa#ss"),
 			},
 		},
 	} {
