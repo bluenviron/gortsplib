@@ -3,7 +3,7 @@ package gortsplib
 // Transport is a RTSP transport protocol.
 type Transport int
 
-// standard transport protocols.
+// transport protocols.
 const (
 	TransportUDP Transport = iota
 	TransportUDPMulticast

@@ -19,7 +19,7 @@ const (
 // Method is the method of a RTSP request.
 type Method string
 
-// standard methods
+// methods.
 const (
 	Announce     Method = "ANNOUNCE"
 	Describe     Method = "DESCRIBE"

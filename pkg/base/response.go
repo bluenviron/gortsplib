@@ -11,7 +11,7 @@ import (
 // StatusCode is the status code of a RTSP response.
 type StatusCode int
 
-// standard status codes
+// status codes.
 const (
 	StatusContinue                           StatusCode = 100
 	StatusOK                                 StatusCode = 200

@@ -115,7 +115,7 @@ func setupGetTransport(th headers.Transport) (Transport, bool) {
 // ServerSessionState is a state of a ServerSession.
 type ServerSessionState int
 
-// standard states.
+// states.
 const (
 	ServerSessionStateInitial ServerSessionState = iota
 	ServerSessionStatePrePlay

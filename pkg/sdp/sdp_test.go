@@ -15,7 +15,7 @@ var cases = []struct {
 	enc  []byte
 	desc SessionDescription
 }{
-	// standard-compliant SDPs
+	// compliant SDPs
 	{
 		"base",
 		[]byte("v=0\r\n" +
@@ -269,7 +269,7 @@ var cases = []struct {
 			},
 		},
 	},
-	// non standard-compliant SDPs
+	// non compliant SDPs
 	{
 		"unordered global attributes",
 		[]byte("v=0\r\n" +
