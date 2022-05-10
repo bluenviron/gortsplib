@@ -68,8 +68,8 @@ func DecodeADTS(buf []byte) ([]*ADTSPacket, error) {
 		frameLen := int(((uint16(buf[pos+3])&0x03)<<11)|
 			(uint16(buf[pos+4])<<3)|
 			((uint16(buf[pos+5])>>5)&0x07)) - 7
-		if frameLen > maxAUSize {
-			return nil, fmt.Errorf("AU size (%d) is too big (maximum is %d)", frameLen, maxAUSize)
+		if frameLen > MaxAccessUnitSize {
+			return nil, fmt.Errorf("AU size (%d) is too big (maximum is %d)", frameLen, MaxAccessUnitSize)
 		}
 
 		frameCount := buf[pos+6] & 0x03

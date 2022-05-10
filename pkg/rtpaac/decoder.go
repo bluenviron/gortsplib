@@ -153,10 +153,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	d.fragmentedSize += int(dataLens[0])
-	if d.fragmentedSize > maxAUSize {
+	if d.fragmentedSize > aac.MaxAccessUnitSize {
 		d.fragmentedParts = d.fragmentedParts[:0]
 		d.fragmentedMode = false
-		return nil, 0, fmt.Errorf("AU size (%d) is too big (maximum is %d)", d.fragmentedSize, maxAUSize)
+		return nil, 0, fmt.Errorf("AU size (%d) is too big (maximum is %d)", d.fragmentedSize, aac.MaxAccessUnitSize)
 	}
 
 	d.fragmentedParts = append(d.fragmentedParts, payload[:dataLens[0]])

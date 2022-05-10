@@ -23,8 +23,8 @@ func AVCCDecode(buf []byte) ([][]byte, error) {
 			return nil, fmt.Errorf("invalid length")
 		}
 
-		if (bl - pos) > maxNALUSize {
-			return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", bl-pos, maxNALUSize)
+		if (bl - pos) > MaxNALUSize {
+			return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", bl-pos, MaxNALUSize)
 		}
 
 		ret = append(ret, buf[pos:pos+le])
