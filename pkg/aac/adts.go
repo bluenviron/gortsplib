@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-// ADTSPacket is an ADTS packet
+// ADTSPacket is an ADTS packet.
 type ADTSPacket struct {
 	Type         int
 	SampleRate   int

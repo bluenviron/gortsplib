@@ -8,6 +8,8 @@ import (
 
 	"github.com/icza/bitio"
 	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/pkg/aac"
 )
 
 func randUint32() uint32 {
@@ -97,7 +99,7 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, e
 					return nil, err
 				}
 				rets = append(rets, pkts...)
-				pts += time.Duration(len(batch)) * 1000 * time.Second / time.Duration(e.SampleRate)
+				pts += time.Duration(len(batch)) * aac.SamplesPerAccessUnit * time.Second / time.Duration(e.SampleRate)
 			}
 
 			// initialize new batch

@@ -46,7 +46,7 @@ func (d *Decoder) Init() {
 
 // Decode decodes AUs from a RTP/AAC packet.
 // It returns the AUs and the PTS of the first AU.
-// The PTS of subsequent AUs can be calculated by adding time.Second*1000/clockRate.
+// The PTS of subsequent AUs can be calculated by adding time.Second*aac.SamplesPerAccessUnit/clockRate.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if len(pkt.Payload) < 2 {
 		d.fragmentedParts = d.fragmentedParts[:0]
