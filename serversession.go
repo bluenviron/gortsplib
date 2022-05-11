@@ -503,7 +503,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerContentTypeUnsupported{CT: ct}
 		}
 
-		tracks, err := ReadTracks(req.Body, false)
+		tracks, _, err := ReadTracks(req.Body, false)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,

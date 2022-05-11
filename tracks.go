@@ -14,11 +14,12 @@ import (
 type Tracks []Track
 
 // ReadTracks decodes tracks from the SDP format.
-func ReadTracks(byts []byte, skipGenericTracksWithoutClockRate bool) (Tracks, error) {
+// It returns the tracks and the decoded SDP.
+func ReadTracks(byts []byte, skipGenericTracksWithoutClockRate bool) (Tracks, *sdp.SessionDescription, error) {
 	var sd sdp.SessionDescription
 	err := sd.Unmarshal(byts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var tracks Tracks //nolint:prealloc
@@ -30,17 +31,17 @@ func ReadTracks(byts []byte, skipGenericTracksWithoutClockRate bool) (Tracks, er
 				strings.HasPrefix(err.Error(), "unable to get clock rate") {
 				continue
 			}
-			return nil, fmt.Errorf("unable to parse track %d: %s", i+1, err)
+			return nil, nil, fmt.Errorf("unable to parse track %d: %s", i+1, err)
 		}
 
 		tracks = append(tracks, t)
 	}
 
 	if len(tracks) == 0 {
-		return nil, fmt.Errorf("no valid tracks found")
+		return nil, nil, fmt.Errorf("no valid tracks found")
 	}
 
-	return tracks, nil
+	return tracks, &sd, nil
 }
 
 func (ts Tracks) clone() Tracks {

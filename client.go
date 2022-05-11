@@ -1237,7 +1237,25 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 		return nil, nil, nil, liberrors.ErrClientContentTypeUnsupported{CT: ct}
 	}
 
+	tracks, sd, err := ReadTracks(res.Body, true)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	baseURL, err := func() (*base.URL, error) {
+		// use global control attribute
+		if control, ok := sd.Attribute("control"); ok && control != "*" {
+			ret, err := base.ParseURL(control)
+			if err != nil {
+				return nil, fmt.Errorf("invalid control attribute: '%v'", control)
+			}
+
+			// add credentials
+			ret.User = u.User
+
+			return ret, nil
+		}
+
 		// use Content-Base
 		if cb, ok := res.Header["Content-Base"]; ok {
 			if len(cb) != 1 {
@@ -1249,20 +1267,15 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 				return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
 			}
 
-			// add credentials from URL of request
+			// add credentials
 			ret.User = u.User
 
 			return ret, nil
 		}
 
-		// if not provided, use URL of request
+		// use URL of request
 		return u, nil
 	}()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	tracks, err := ReadTracks(res.Body, true)
 	if err != nil {
 		return nil, nil, nil, err
 	}

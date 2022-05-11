@@ -768,115 +768,140 @@ func TestClientReadPartial(t *testing.T) {
 	<-packetRecv
 }
 
-func TestClientReadNoContentBase(t *testing.T) {
-	l, err := net.Listen("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer l.Close()
+func TestClientReadContentBase(t *testing.T) {
+	for _, ca := range []string{
+		"absent",
+		"inside control attribute",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			l, err := net.Listen("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer l.Close()
 
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
 
-		conn, err := l.Accept()
-		require.NoError(t, err)
-		defer conn.Close()
-		br := bufio.NewReader(conn)
+				conn, err := l.Accept()
+				require.NoError(t, err)
+				defer conn.Close()
+				br := bufio.NewReader(conn)
 
-		req, err := readRequest(br)
-		require.NoError(t, err)
-		require.Equal(t, base.Options, req.Method)
+				req, err := readRequest(br)
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
 
-		byts, _ := base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Public": base.HeaderValue{strings.Join([]string{
-					string(base.Describe),
-					string(base.Setup),
-					string(base.Play),
-				}, ", ")},
-			},
-		}.Write()
-		_, err = conn.Write(byts)
-		require.NoError(t, err)
+				byts, _ := base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+							string(base.Setup),
+							string(base.Play),
+						}, ", ")},
+					},
+				}.Write()
+				_, err = conn.Write(byts)
+				require.NoError(t, err)
 
-		req, err = readRequest(br)
-		require.NoError(t, err)
-		require.Equal(t, base.Describe, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+				req, err = readRequest(br)
+				require.NoError(t, err)
+				require.Equal(t, base.Describe, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-		require.NoError(t, err)
+				track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
+				require.NoError(t, err)
 
-		tracks := Tracks{track}
-		tracks.setControls()
+				tracks := Tracks{track}
+				tracks.setControls()
 
-		byts, _ = base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Content-Type": base.HeaderValue{"application/sdp"},
-			},
-			Body: tracks.Write(false),
-		}.Write()
-		_, err = conn.Write(byts)
-		require.NoError(t, err)
+				switch ca {
+				case "absent":
+					byts, _ = base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Content-Type": base.HeaderValue{"application/sdp"},
+						},
+						Body: tracks.Write(false),
+					}.Write()
+					_, err = conn.Write(byts)
+					require.NoError(t, err)
 
-		req, err = readRequest(br)
-		require.NoError(t, err)
-		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
+				case "inside control attribute":
+					body := string(tracks.Write(false))
+					body = strings.Replace(body, "t=0 0", "t=0 0\r\na=control:rtsp://localhost:8554/teststream", 1)
 
-		var inTH headers.Transport
-		err = inTH.Read(req.Header["Transport"])
-		require.NoError(t, err)
+					byts, _ = base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Content-Type": base.HeaderValue{"application/sdp"},
+							"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream2/"},
+						},
+						Body: []byte(body),
+					}.Write()
+					_, err = conn.Write(byts)
+					require.NoError(t, err)
+				}
 
-		th := headers.Transport{
-			Delivery: func() *headers.TransportDelivery {
-				v := headers.TransportDeliveryUnicast
-				return &v
-			}(),
-			Protocol:    headers.TransportProtocolUDP,
-			ClientPorts: inTH.ClientPorts,
-			ServerPorts: &[2]int{34556, 34557},
-		}
+				req, err = readRequest(br)
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
-		byts, _ = base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Transport": th.Write(),
-			},
-		}.Write()
-		_, err = conn.Write(byts)
-		require.NoError(t, err)
+				var inTH headers.Transport
+				err = inTH.Read(req.Header["Transport"])
+				require.NoError(t, err)
 
-		req, err = readRequest(br)
-		require.NoError(t, err)
-		require.Equal(t, base.Play, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+				th := headers.Transport{
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
+						return &v
+					}(),
+					Protocol:    headers.TransportProtocolUDP,
+					ClientPorts: inTH.ClientPorts,
+					ServerPorts: &[2]int{34556, 34557},
+				}
 
-		byts, _ = base.Response{
-			StatusCode: base.StatusOK,
-		}.Write()
-		_, err = conn.Write(byts)
-		require.NoError(t, err)
+				byts, _ = base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Write(),
+					},
+				}.Write()
+				_, err = conn.Write(byts)
+				require.NoError(t, err)
 
-		req, err = readRequest(br)
-		require.NoError(t, err)
-		require.Equal(t, base.Teardown, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+				req, err = readRequest(br)
+				require.NoError(t, err)
+				require.Equal(t, base.Play, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		byts, _ = base.Response{
-			StatusCode: base.StatusOK,
-		}.Write()
-		_, err = conn.Write(byts)
-		require.NoError(t, err)
-	}()
+				byts, _ = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write()
+				_, err = conn.Write(byts)
+				require.NoError(t, err)
 
-	c := Client{}
+				req, err = readRequest(br)
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-	err = c.StartReading("rtsp://localhost:8554/teststream")
-	require.NoError(t, err)
-	c.Close()
+				byts, _ = base.Response{
+					StatusCode: base.StatusOK,
+				}.Write()
+				_, err = conn.Write(byts)
+				require.NoError(t, err)
+			}()
+
+			c := Client{}
+
+			err = c.StartReading("rtsp://localhost:8554/teststream")
+			require.NoError(t, err)
+			c.Close()
+		})
+	}
 }
 
 func TestClientReadAnyPort(t *testing.T) {
