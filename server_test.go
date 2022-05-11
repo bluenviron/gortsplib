@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -24,9 +23,8 @@ func writeReqReadRes(conn net.Conn,
 	br *bufio.Reader,
 	req base.Request,
 ) (*base.Response, error) {
-	var bb bytes.Buffer
-	req.Write(&bb)
-	_, err := conn.Write(bb.Bytes())
+	byts, _ := req.Write()
+	_, err := conn.Write(byts)
 	if err != nil {
 		return nil, err
 	}
@@ -1026,8 +1024,7 @@ func TestServerSessionClose(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	var bb bytes.Buffer
-	base.Request{
+	byts, _ := base.Request{
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
@@ -1045,8 +1042,8 @@ func TestServerSessionClose(t *testing.T) {
 				InterleavedIDs: &[2]int{0, 1},
 			}.Write(),
 		},
-	}.Write(&bb)
-	_, err = conn.Write(bb.Bytes())
+	}.Write()
+	_, err = conn.Write(byts)
 	require.NoError(t, err)
 
 	<-sessionClosed

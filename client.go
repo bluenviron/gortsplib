@@ -9,7 +9,6 @@ package gortsplib
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -1059,11 +1058,10 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		c.OnRequest(req)
 	}
 
-	var buf bytes.Buffer
-	req.Write(&buf)
+	byts, _ := req.Write()
 
 	c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-	_, err := c.conn.Write(buf.Bytes())
+	_, err := c.conn.Write(byts)
 	if err != nil {
 		return nil, err
 	}
@@ -1877,25 +1875,23 @@ func (c *Client) runWriter() {
 			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: cct.tcpChannel + 1}
 		}
 
-		var buf bytes.Buffer
+		buf := make([]byte, maxPacketSize+4)
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
 				f := rtpFrames[trackID]
 				f.Payload = payload
-				buf.Reset()
-				f.Write(&buf)
+				n, _ := f.WriteTo(buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-				c.conn.Write(buf.Bytes())
+				c.conn.Write(buf[:n])
 			} else {
 				f := rtcpFrames[trackID]
 				f.Payload = payload
-				buf.Reset()
-				f.Write(&buf)
+				n, _ := f.WriteTo(buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-				c.conn.Write(buf.Bytes())
+				c.conn.Write(buf[:n])
 			}
 		}
 	}

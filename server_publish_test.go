@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/tls"
 	"net"
 	"testing"
@@ -644,7 +643,6 @@ func TestServerPublish(t *testing.T) {
 				return conn
 			}()
 			br := bufio.NewReader(conn)
-			var bb bytes.Buffer
 
 			<-connOpened
 
@@ -765,20 +763,18 @@ func TestServerPublish(t *testing.T) {
 					Port: th.ServerPorts[1],
 				})
 			} else {
-				bb.Reset()
-				base.InterleavedFrame{
+				byts, _ := base.InterleavedFrame{
 					Channel: 0,
 					Payload: testRTPPacketMarshaled,
-				}.Write(&bb)
-				_, err = conn.Write(bb.Bytes())
+				}.Write()
+				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
-				bb.Reset()
-				base.InterleavedFrame{
+				byts, _ = base.InterleavedFrame{
 					Channel: 1,
 					Payload: testRTCPPacketMarshaled,
-				}.Write(&bb)
-				_, err = conn.Write(bb.Bytes())
+				}.Write()
+				_, err = conn.Write(byts)
 				require.NoError(t, err)
 			}
 
@@ -857,7 +853,6 @@ func TestServerPublishOversizedPacket(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 	br := bufio.NewReader(conn)
-	var bb bytes.Buffer
 
 	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
@@ -917,12 +912,11 @@ func TestServerPublishOversizedPacket(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	byts, _ := oversizedPacketRTPIn.Marshal()
-	bb.Reset()
-	base.InterleavedFrame{
+	byts, _ = base.InterleavedFrame{
 		Channel: 0,
 		Payload: byts,
-	}.Write(&bb)
-	_, err = conn.Write(bb.Bytes())
+	}.Write()
+	_, err = conn.Write(byts)
 	require.NoError(t, err)
 
 	<-packetRecv
@@ -963,7 +957,6 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 	br := bufio.NewReader(conn)
-	var bb bytes.Buffer
 
 	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
 	require.NoError(t, err)
@@ -1026,12 +1019,11 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	bb.Reset()
-	base.InterleavedFrame{
+	byts, _ := base.InterleavedFrame{
 		Channel: 0,
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
-	}.Write(&bb)
-	_, err = conn.Write(bb.Bytes())
+	}.Write()
+	_, err = conn.Write(byts)
 	require.NoError(t, err)
 }
 

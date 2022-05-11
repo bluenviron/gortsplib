@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -1182,25 +1181,23 @@ func (ss *ServerSession) runWriter() {
 			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: sst.tcpChannel + 1}
 		}
 
-		var buf bytes.Buffer
+		buf := make([]byte, maxPacketSize+4)
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
 				f := rtpFrames[trackID]
 				f.Payload = payload
-				buf.Reset()
-				f.Write(&buf)
+				n, _ := f.WriteTo(buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				ss.tcpConn.conn.Write(buf.Bytes())
+				ss.tcpConn.conn.Write(buf[:n])
 			} else {
 				f := rtcpFrames[trackID]
 				f.Payload = payload
-				buf.Reset()
-				f.Write(&buf)
+				n, _ := f.WriteTo(buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				ss.tcpConn.conn.Write(buf.Bytes())
+				ss.tcpConn.conn.Write(buf[:n])
 			}
 		}
 	}

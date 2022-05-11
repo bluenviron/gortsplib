@@ -3,7 +3,6 @@ package base
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -98,7 +97,7 @@ func (h *Header) read(rb *bufio.Reader) error {
 	return nil
 }
 
-func (h Header) write(w io.Writer) error {
+func (h Header) writeSize() int {
 	// sort headers by key
 	// in order to obtain deterministic results
 	keys := make([]string, len(h))
@@ -107,15 +106,43 @@ func (h Header) write(w io.Writer) error {
 	}
 	sort.Strings(keys)
 
+	n := 0
+
 	for _, key := range keys {
 		for _, val := range h[key] {
-			_, err := w.Write([]byte(key + ": " + val + "\r\n"))
-			if err != nil {
-				return err
-			}
+			n += len([]byte(key + ": " + val + "\r\n"))
 		}
 	}
 
-	_, err := w.Write([]byte("\r\n"))
-	return err
+	n += 2
+
+	return n
+}
+
+func (h Header) writeTo(buf []byte) int {
+	// sort headers by key
+	// in order to obtain deterministic results
+	keys := make([]string, len(h))
+	for key := range h {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	pos := 0
+
+	for _, key := range keys {
+		for _, val := range h[key] {
+			pos += copy(buf[pos:], []byte(key+": "+val+"\r\n"))
+		}
+	}
+
+	pos += copy(buf[pos:], []byte("\r\n"))
+
+	return pos
+}
+
+func (h Header) write() []byte {
+	buf := make([]byte, h.writeSize())
+	h.writeTo(buf)
+	return buf
 }

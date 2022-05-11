@@ -82,9 +82,9 @@ func TestInterleavedFrameReadErrors(t *testing.T) {
 func TestInterleavedFrameWrite(t *testing.T) {
 	for _, ca := range casesInterleavedFrame {
 		t.Run(ca.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			ca.dec.Write(&buf)
-			require.Equal(t, ca.enc, buf.Bytes())
+			buf, err := ca.dec.Write()
+			require.NoError(t, err)
+			require.Equal(t, ca.enc, buf)
 		})
 	}
 }

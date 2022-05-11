@@ -35,11 +35,16 @@ func (b *body) read(header Header, rb *bufio.Reader) error {
 	return nil
 }
 
-func (b body) write(w io.Writer) error {
-	if len(b) == 0 {
-		return nil
-	}
+func (b body) writeSize() int {
+	return len(b)
+}
 
-	_, err := w.Write(b)
-	return err
+func (b body) writeTo(buf []byte) int {
+	return copy(buf, b)
+}
+
+func (b body) write() []byte {
+	buf := make([]byte, b.writeSize())
+	b.writeTo(buf)
+	return buf
 }
