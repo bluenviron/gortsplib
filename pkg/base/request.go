@@ -118,17 +118,23 @@ func (req *Request) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) error
 }
 
 // Write writes a request.
-func (req Request) Write(w io.Writer) {
+func (req Request) Write(w io.Writer) error {
 	urStr := req.URL.CloneWithoutCredentials().String()
-	w.Write([]byte(string(req.Method) + " " + urStr + " " + rtspProtocol10 + "\r\n"))
+	_, err := w.Write([]byte(string(req.Method) + " " + urStr + " " + rtspProtocol10 + "\r\n"))
+	if err != nil {
+		return err
+	}
 
 	if len(req.Body) != 0 {
 		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}
 	}
 
-	req.Header.write(w)
+	err = req.Header.write(w)
+	if err != nil {
+		return err
+	}
 
-	body(req.Body).write(w)
+	return body(req.Body).write(w)
 }
 
 // String implements fmt.Stringer.

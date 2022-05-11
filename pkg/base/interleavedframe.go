@@ -106,11 +106,15 @@ func (f *InterleavedFrame) Read(maxPayloadSize int, br *bufio.Reader) error {
 }
 
 // Write writes an InterleavedFrame into a buffered writer.
-func (f InterleavedFrame) Write(w io.Writer) {
+func (f InterleavedFrame) Write(w io.Writer) error {
 	buf := []byte{0x24, byte(f.Channel), 0x00, 0x00}
 	binary.BigEndian.PutUint16(buf[2:], uint16(len(f.Payload)))
 
-	w.Write(buf)
+	_, err := w.Write(buf)
+	if err != nil {
+		return err
+	}
 
-	w.Write(f.Payload)
+	_, err = w.Write(f.Payload)
+	return err
 }

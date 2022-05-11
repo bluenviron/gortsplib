@@ -204,24 +204,30 @@ func (res *Response) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) erro
 }
 
 // Write writes a Response.
-func (res Response) Write(w io.Writer) {
+func (res Response) Write(w io.Writer) error {
 	if res.StatusMessage == "" {
 		if status, ok := statusMessages[res.StatusCode]; ok {
 			res.StatusMessage = status
 		}
 	}
 
-	w.Write([]byte(rtspProtocol10 + " " +
+	_, err := w.Write([]byte(rtspProtocol10 + " " +
 		strconv.FormatInt(int64(res.StatusCode), 10) + " " +
 		res.StatusMessage + "\r\n"))
+	if err != nil {
+		return err
+	}
 
 	if len(res.Body) != 0 {
 		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}
 	}
 
-	res.Header.write(w)
+	err = res.Header.write(w)
+	if err != nil {
+		return err
+	}
 
-	body(res.Body).write(w)
+	return body(res.Body).write(w)
 }
 
 // String implements fmt.Stringer.

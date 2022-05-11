@@ -98,7 +98,7 @@ func (h *Header) read(rb *bufio.Reader) error {
 	return nil
 }
 
-func (h Header) write(w io.Writer) {
+func (h Header) write(w io.Writer) error {
 	// sort headers by key
 	// in order to obtain deterministic results
 	keys := make([]string, len(h))
@@ -109,9 +109,13 @@ func (h Header) write(w io.Writer) {
 
 	for _, key := range keys {
 		for _, val := range h[key] {
-			w.Write([]byte(key + ": " + val + "\r\n"))
+			_, err := w.Write([]byte(key + ": " + val + "\r\n"))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	w.Write([]byte("\r\n"))
+	_, err := w.Write([]byte("\r\n"))
+	return err
 }

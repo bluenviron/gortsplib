@@ -35,10 +35,11 @@ func (b *body) read(header Header, rb *bufio.Reader) error {
 	return nil
 }
 
-func (b body) write(w io.Writer) {
+func (b body) write(w io.Writer) error {
 	if len(b) == 0 {
-		return
+		return nil
 	}
 
-	w.Write(b)
+	_, err := w.Write(b)
+	return err
 }
