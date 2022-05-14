@@ -1743,7 +1743,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 				Path:   "/teststream/trackID=0",
 			}).String(),
 			SequenceNumber: func() *uint16 {
-				v := uint16(556)
+				v := uint16(557)
 				return &v
 			}(),
 			Timestamp: (*rtpInfo)[0].Timestamp,
@@ -1777,7 +1777,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 				Path:   "/teststream/trackID=0",
 			}).String(),
 			SequenceNumber: func() *uint16 {
-				v := uint16(556)
+				v := uint16(557)
 				return &v
 			}(),
 			Timestamp: (*rtpInfo)[0].Timestamp,
@@ -1789,7 +1789,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 				Path:   "/teststream/trackID=1",
 			}).String(),
 			SequenceNumber: func() *uint16 {
-				v := uint16(87)
+				v := uint16(88)
 				return &v
 			}(),
 			Timestamp: (*rtpInfo)[1].Timestamp,

@@ -881,18 +881,21 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.setuppedStream.readerSetActive(ss)
 
-		// add RTP-Info
 		var trackIDs []int
 		for trackID := range ss.setuppedTracks {
 			trackIDs = append(trackIDs, trackID)
 		}
+
 		sort.Slice(trackIDs, func(a, b int) bool {
 			return trackIDs[a] < trackIDs[b]
 		})
+
 		var ri headers.RTPInfo
+		now := time.Now()
+
 		for _, trackID := range trackIDs {
-			ts := ss.setuppedStream.timestamp(trackID)
-			if ts == 0 {
+			seqNum, ts, ok := ss.setuppedStream.rtpInfo(trackID, now)
+			if !ok {
 				continue
 			}
 
@@ -903,11 +906,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				Path:   "/" + *ss.setuppedPath + "/trackID=" + strconv.FormatInt(int64(trackID), 10),
 			}
 
-			lsn := ss.setuppedStream.lastSequenceNumber(trackID)
-
 			ri = append(ri, &headers.RTPInfoEntry{
 				URL:            u.String(),
-				SequenceNumber: &lsn,
+				SequenceNumber: &seqNum,
 				Timestamp:      &ts,
 			})
 		}
