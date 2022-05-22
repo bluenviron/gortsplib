@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -589,11 +588,10 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		h.OnResponse(sc, res)
 	}
 
-	var buf bytes.Buffer
-	res.Write(&buf)
+	byts, _ := res.Write()
 
 	sc.conn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-	sc.conn.Write(buf.Bytes())
+	sc.conn.Write(byts)
 
 	return err
 }

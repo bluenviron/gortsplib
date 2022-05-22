@@ -8,6 +8,7 @@ import (
 
 	"github.com/pion/rtp"
 
+	"github.com/aler9/gortsplib/pkg/h264"
 	"github.com/aler9/gortsplib/pkg/rtptimedec"
 )
 
@@ -139,10 +140,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	d.fragmentedSize += len(pkt.Payload[2:])
-	if d.fragmentedSize > maxNALUSize {
+	if d.fragmentedSize > h264.MaxNALUSize {
 		d.fragmentedParts = d.fragmentedParts[:0]
 		d.fragmentedMode = false
-		return nil, 0, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", d.fragmentedSize, maxNALUSize)
+		return nil, 0, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", d.fragmentedSize, h264.MaxNALUSize)
 	}
 
 	d.fragmentedParts = append(d.fragmentedParts, pkt.Payload[2:])

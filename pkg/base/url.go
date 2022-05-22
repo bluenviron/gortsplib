@@ -3,6 +3,7 @@ package base
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -11,10 +12,17 @@ import (
 // control attributes.
 type URL url.URL
 
+var escapeRegexp = regexp.MustCompile(`^(.+?)://(.*?)@(.*?)/(.*?)$`)
+
 // ParseURL parses a RTSP URL.
 func ParseURL(s string) (*URL, error) {
-	s = strings.ReplaceAll(s, "%25", "%")
-	s = strings.ReplaceAll(s, "%", "%25")
+	// https://github.com/golang/go/issues/30611
+	m := escapeRegexp.FindStringSubmatch(s)
+	if m != nil {
+		m[3] = strings.ReplaceAll(m[3], "%25", "%")
+		m[3] = strings.ReplaceAll(m[3], "%", "%25")
+		s = m[1] + "://" + m[2] + "@" + m[3] + "/" + m[4]
+	}
 
 	u, err := url.Parse(s)
 	if err != nil {

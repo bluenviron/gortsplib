@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -115,7 +114,7 @@ func setupGetTransport(th headers.Transport) (Transport, bool) {
 // ServerSessionState is a state of a ServerSession.
 type ServerSessionState int
 
-// standard states.
+// states.
 const (
 	ServerSessionStateInitial ServerSessionState = iota
 	ServerSessionStatePrePlay
@@ -504,7 +503,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerContentTypeUnsupported{CT: ct}
 		}
 
-		tracks, err := ReadTracks(req.Body, false)
+		tracks, _, err := ReadTracks(req.Body, false)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -882,18 +881,21 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.setuppedStream.readerSetActive(ss)
 
-		// add RTP-Info
 		var trackIDs []int
 		for trackID := range ss.setuppedTracks {
 			trackIDs = append(trackIDs, trackID)
 		}
+
 		sort.Slice(trackIDs, func(a, b int) bool {
 			return trackIDs[a] < trackIDs[b]
 		})
+
 		var ri headers.RTPInfo
+		now := time.Now()
+
 		for _, trackID := range trackIDs {
-			ts := ss.setuppedStream.timestamp(trackID)
-			if ts == 0 {
+			seqNum, ts, ok := ss.setuppedStream.rtpInfo(trackID, now)
+			if !ok {
 				continue
 			}
 
@@ -904,11 +906,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				Path:   "/" + *ss.setuppedPath + "/trackID=" + strconv.FormatInt(int64(trackID), 10),
 			}
 
-			lsn := ss.setuppedStream.lastSequenceNumber(trackID)
-
 			ri = append(ri, &headers.RTPInfoEntry{
 				URL:            u.String(),
-				SequenceNumber: &lsn,
+				SequenceNumber: &seqNum,
 				Timestamp:      &ts,
 			})
 		}
@@ -1182,23 +1182,23 @@ func (ss *ServerSession) runWriter() {
 			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: sst.tcpChannel + 1}
 		}
 
-		var buf bytes.Buffer
+		buf := make([]byte, maxPacketSize+4)
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
 				f := rtpFrames[trackID]
 				f.Payload = payload
-				f.Write(&buf)
+				n, _ := f.WriteTo(buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				ss.tcpConn.conn.Write(buf.Bytes())
+				ss.tcpConn.conn.Write(buf[:n])
 			} else {
 				f := rtcpFrames[trackID]
 				f.Payload = payload
-				f.Write(&buf)
+				n, _ := f.WriteTo(buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				ss.tcpConn.conn.Write(buf.Bytes())
+				ss.tcpConn.conn.Write(buf[:n])
 			}
 		}
 	}

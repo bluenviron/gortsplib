@@ -20,11 +20,6 @@ var casesBody = []struct {
 		},
 		[]byte{0x01, 0x02, 0x03, 0x04},
 	},
-	{
-		"nil",
-		Header{},
-		[]byte(nil),
-	},
 }
 
 func TestBodyRead(t *testing.T) {
@@ -81,9 +76,8 @@ func TestBodyReadErrors(t *testing.T) {
 func TestBodyWrite(t *testing.T) {
 	for _, ca := range casesBody {
 		t.Run(ca.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			body(ca.byts).write(&buf)
-			require.Equal(t, ca.byts, buf.Bytes())
+			buf := body(ca.byts).write()
+			require.Equal(t, ca.byts, buf)
 		})
 	}
 }

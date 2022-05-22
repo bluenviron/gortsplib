@@ -2,7 +2,6 @@ package base
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -106,14 +105,28 @@ func (f *InterleavedFrame) Read(maxPayloadSize int, br *bufio.Reader) error {
 	return nil
 }
 
-// Write writes an InterleavedFrame into a buffered writer.
-func (f InterleavedFrame) Write(bb *bytes.Buffer) {
-	bb.Reset()
+// WriteSize returns the size of an InterleavedFrame.
+func (f InterleavedFrame) WriteSize() int {
+	return 4 + len(f.Payload)
+}
 
-	buf := []byte{0x24, byte(f.Channel), 0x00, 0x00}
-	binary.BigEndian.PutUint16(buf[2:], uint16(len(f.Payload)))
+// WriteTo writes an InterleavedFrame.
+func (f InterleavedFrame) WriteTo(buf []byte) (int, error) {
+	pos := 0
 
-	bb.Write(buf)
+	pos += copy(buf[pos:], []byte{0x24, byte(f.Channel)})
 
-	bb.Write(f.Payload)
+	binary.BigEndian.PutUint16(buf[pos:], uint16(len(f.Payload)))
+	pos += 2
+
+	pos += copy(buf[pos:], f.Payload)
+
+	return pos, nil
+}
+
+// Write writes an InterleavedFrame.
+func (f InterleavedFrame) Write() ([]byte, error) {
+	buf := make([]byte, f.WriteSize())
+	_, err := f.WriteTo(buf)
+	return buf, err
 }

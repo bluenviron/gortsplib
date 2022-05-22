@@ -7,6 +7,8 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/aler9/gortsplib/pkg/aac"
 )
 
 func mergeBytes(vals ...[]byte) []byte {
@@ -265,7 +267,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289529357,
+					Timestamp:      2289529429,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -279,7 +281,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289529357,
+					Timestamp:      2289529429,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -537,7 +539,7 @@ func TestDecode(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, expPTS, pts)
 				aus = append(aus, addAUs...)
-				expPTS += time.Duration(len(aus)) * 1000 * time.Second / 48000
+				expPTS += time.Duration(len(aus)) * aac.SamplesPerAccessUnit * time.Second / 48000
 
 				// test input integrity
 				require.Equal(t, clone, pkt)

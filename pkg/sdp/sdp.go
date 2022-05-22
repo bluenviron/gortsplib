@@ -14,6 +14,11 @@ import (
 // SessionDescription is a SDP session description.
 type SessionDescription psdp.SessionDescription
 
+// Attribute returns the value of an attribute and if it exists
+func (s *SessionDescription) Attribute(key string) (string, bool) {
+	return (*psdp.SessionDescription)(s).Attribute(key)
+}
+
 // Marshal encodes a SessionDescription.
 func (s *SessionDescription) Marshal() ([]byte, error) {
 	return (*psdp.SessionDescription)(s).Marshal()

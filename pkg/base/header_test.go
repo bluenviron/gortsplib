@@ -176,9 +176,8 @@ func TestHeaderReadErrors(t *testing.T) {
 func TestHeaderWrite(t *testing.T) {
 	for _, ca := range casesHeader {
 		t.Run(ca.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			ca.header.write(&buf)
-			require.Equal(t, ca.enc, buf.Bytes())
+			buf := ca.header.write()
+			require.Equal(t, ca.enc, buf)
 		})
 	}
 }

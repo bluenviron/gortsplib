@@ -2,7 +2,6 @@ package base
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"strconv"
 )
@@ -10,7 +9,7 @@ import (
 // StatusCode is the status code of a RTSP response.
 type StatusCode int
 
-// standard status codes
+// status codes.
 const (
 	StatusContinue                           StatusCode = 100
 	StatusOK                                 StatusCode = 200
@@ -212,9 +211,9 @@ func (res *Response) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) erro
 	}
 }
 
-// Write writes a Response.
-func (res Response) Write(bb *bytes.Buffer) {
-	bb.Reset()
+// WriteSize returns the size of a Response.
+func (res Response) WriteSize() int {
+	n := 0
 
 	if res.StatusMessage == "" {
 		if status, ok := statusMessages[res.StatusCode]; ok {
@@ -222,7 +221,7 @@ func (res Response) Write(bb *bytes.Buffer) {
 		}
 	}
 
-	bb.Write([]byte(rtspProtocol10 + " " +
+	n += len([]byte(rtspProtocol10 + " " +
 		strconv.FormatInt(int64(res.StatusCode), 10) + " " +
 		res.StatusMessage + "\r\n"))
 
@@ -230,14 +229,47 @@ func (res Response) Write(bb *bytes.Buffer) {
 		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}
 	}
 
-	res.Header.write(bb)
+	n += res.Header.writeSize()
 
-	body(res.Body).write(bb)
+	n += body(res.Body).writeSize()
+
+	return n
+}
+
+// WriteTo writes a Response.
+func (res Response) WriteTo(buf []byte) (int, error) {
+	if res.StatusMessage == "" {
+		if status, ok := statusMessages[res.StatusCode]; ok {
+			res.StatusMessage = status
+		}
+	}
+
+	pos := 0
+
+	pos += copy(buf[pos:], []byte(rtspProtocol10+" "+
+		strconv.FormatInt(int64(res.StatusCode), 10)+" "+
+		res.StatusMessage+"\r\n"))
+
+	if len(res.Body) != 0 {
+		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}
+	}
+
+	pos += res.Header.writeTo(buf[pos:])
+
+	pos += body(res.Body).writeTo(buf[pos:])
+
+	return pos, nil
+}
+
+// Write writes a Response.
+func (res Response) Write() ([]byte, error) {
+	buf := make([]byte, res.WriteSize())
+	_, err := res.WriteTo(buf)
+	return buf, err
 }
 
 // String implements fmt.Stringer.
 func (res Response) String() string {
-	var buf bytes.Buffer
-	res.Write(&buf)
-	return buf.String()
+	buf, _ := res.Write()
+	return string(buf)
 }

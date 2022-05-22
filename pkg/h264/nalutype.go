@@ -7,7 +7,7 @@ import (
 // NALUType is the type of a NALU.
 type NALUType uint8
 
-// standard NALU types.
+// NALU types.
 const (
 	NALUTypeNonIDR                        NALUType = 1
 	NALUTypeDataPartitionA                NALUType = 2

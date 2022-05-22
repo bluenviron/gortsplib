@@ -9,7 +9,6 @@ package gortsplib
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -1059,11 +1058,10 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		c.OnRequest(req)
 	}
 
-	var buf bytes.Buffer
-	req.Write(&buf)
+	byts, _ := req.Write()
 
 	c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-	_, err := c.conn.Write(buf.Bytes())
+	_, err := c.conn.Write(byts)
 	if err != nil {
 		return nil, err
 	}
@@ -1239,7 +1237,25 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 		return nil, nil, nil, liberrors.ErrClientContentTypeUnsupported{CT: ct}
 	}
 
+	tracks, sd, err := ReadTracks(res.Body, true)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	baseURL, err := func() (*base.URL, error) {
+		// use global control attribute
+		if control, ok := sd.Attribute("control"); ok && control != "*" {
+			ret, err := base.ParseURL(control)
+			if err != nil {
+				return nil, fmt.Errorf("invalid control attribute: '%v'", control)
+			}
+
+			// add credentials
+			ret.User = u.User
+
+			return ret, nil
+		}
+
 		// use Content-Base
 		if cb, ok := res.Header["Content-Base"]; ok {
 			if len(cb) != 1 {
@@ -1251,20 +1267,15 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 				return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
 			}
 
-			// add credentials from URL of request
+			// add credentials
 			ret.User = u.User
 
 			return ret, nil
 		}
 
-		// if not provided, use URL of request
+		// use URL of request
 		return u, nil
 	}()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	tracks, err := ReadTracks(res.Body, true)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1877,23 +1888,23 @@ func (c *Client) runWriter() {
 			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: cct.tcpChannel + 1}
 		}
 
-		var buf bytes.Buffer
+		buf := make([]byte, maxPacketSize+4)
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
 				f := rtpFrames[trackID]
 				f.Payload = payload
-				f.Write(&buf)
+				n, _ := f.WriteTo(buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-				c.conn.Write(buf.Bytes())
+				c.conn.Write(buf[:n])
 			} else {
 				f := rtcpFrames[trackID]
 				f.Payload = payload
-				f.Write(&buf)
+				n, _ := f.WriteTo(buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
-				c.conn.Write(buf.Bytes())
+				c.conn.Write(buf[:n])
 			}
 		}
 	}

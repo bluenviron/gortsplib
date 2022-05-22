@@ -14,7 +14,7 @@ import (
 // TransportProtocol is a transport protocol.
 type TransportProtocol int
 
-// standard transport protocols.
+// transport protocols.
 const (
 	TransportProtocolUDP TransportProtocol = iota
 	TransportProtocolTCP
@@ -23,7 +23,7 @@ const (
 // TransportDelivery is a delivery method.
 type TransportDelivery int
 
-// standard transport delivery methods.
+// transport delivery methods.
 const (
 	TransportDeliveryUnicast TransportDelivery = iota
 	TransportDeliveryMulticast

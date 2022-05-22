@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/tls"
 	"net"
 	"strconv"
@@ -359,7 +358,6 @@ func TestServerRead(t *testing.T) {
 				return conn
 			}()
 			br := bufio.NewReader(conn)
-			var bb bytes.Buffer
 
 			<-connOpened
 
@@ -547,11 +545,11 @@ func TestServerRead(t *testing.T) {
 				<-framesReceived
 
 			default:
-				base.InterleavedFrame{
+				byts, _ := base.InterleavedFrame{
 					Channel: 5,
 					Payload: testRTCPPacketMarshaled,
-				}.Write(&bb)
-				_, err = conn.Write(bb.Bytes())
+				}.Write()
+				_, err = conn.Write(byts)
 				require.NoError(t, err)
 				<-framesReceived
 			}
@@ -1127,7 +1125,6 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 	br := bufio.NewReader(conn)
-	var bb bytes.Buffer
 
 	res, err := writeReqReadRes(conn, br, base.Request{
 		Method: base.Setup,
@@ -1166,30 +1163,30 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	base.Request{
+	byts, _ := base.Request{
 		Method: base.Pause,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": base.HeaderValue{sx.Session},
 		},
-	}.Write(&bb)
-	_, err = conn.Write(bb.Bytes())
+	}.Write()
+	_, err = conn.Write(byts)
 	require.NoError(t, err)
 
 	res, err = readResIgnoreFrames(br)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	base.Request{
+	byts, _ = base.Request{
 		Method: base.Pause,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
 			"Session": base.HeaderValue{sx.Session},
 		},
-	}.Write(&bb)
-	_, err = conn.Write(bb.Bytes())
+	}.Write()
+	_, err = conn.Write(byts)
 	require.NoError(t, err)
 
 	res, err = readResIgnoreFrames(br)
@@ -1746,7 +1743,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 				Path:   "/teststream/trackID=0",
 			}).String(),
 			SequenceNumber: func() *uint16 {
-				v := uint16(556)
+				v := uint16(557)
 				return &v
 			}(),
 			Timestamp: (*rtpInfo)[0].Timestamp,
@@ -1780,7 +1777,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 				Path:   "/teststream/trackID=0",
 			}).String(),
 			SequenceNumber: func() *uint16 {
-				v := uint16(556)
+				v := uint16(557)
 				return &v
 			}(),
 			Timestamp: (*rtpInfo)[0].Timestamp,
@@ -1792,7 +1789,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 				Path:   "/teststream/trackID=1",
 			}).String(),
 			SequenceNumber: func() *uint16 {
-				v := uint16(87)
+				v := uint16(88)
 				return &v
 			}(),
 			Timestamp: (*rtpInfo)[1].Timestamp,

@@ -221,9 +221,9 @@ func TestRequestReadErrors(t *testing.T) {
 func TestRequestWrite(t *testing.T) {
 	for _, ca := range casesRequest {
 		t.Run(ca.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			ca.req.Write(&buf)
-			require.Equal(t, ca.byts, buf.Bytes())
+			buf, err := ca.req.Write()
+			require.NoError(t, err)
+			require.Equal(t, ca.byts, buf)
 		})
 	}
 }

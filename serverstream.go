@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -13,11 +12,11 @@ import (
 )
 
 type serverStreamTrack struct {
-	padding            uint32 //nolint:structcheck,unused
-	lastSequenceNumber uint32
+	firstPacketSent    bool
+	lastSequenceNumber uint16
 	lastSSRC           uint32
 	lastTimeRTP        uint32
-	lastTimeNTP        int64
+	lastTimeNTP        time.Time
 	rtcpSender         *rtcpsender.RTCPSender
 }
 
@@ -84,23 +83,33 @@ func (st *ServerStream) Tracks() Tracks {
 }
 
 func (st *ServerStream) ssrc(trackID int) uint32 {
-	return atomic.LoadUint32(&st.stTracks[trackID].lastSSRC)
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
+	return st.stTracks[trackID].lastSSRC
 }
 
-func (st *ServerStream) timestamp(trackID int) uint32 {
-	lastTimeRTP := atomic.LoadUint32(&st.stTracks[trackID].lastTimeRTP)
-	lastTimeNTP := atomic.LoadInt64(&st.stTracks[trackID].lastTimeNTP)
+func (st *ServerStream) rtpInfo(trackID int, now time.Time) (uint16, uint32, bool) {
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
 
-	if lastTimeRTP == 0 || lastTimeNTP == 0 {
-		return 0
+	track := st.stTracks[trackID]
+
+	if !track.firstPacketSent {
+		return 0, 0, false
 	}
 
-	return uint32(uint64(lastTimeRTP) +
-		uint64(time.Since(time.Unix(lastTimeNTP, 0)).Seconds()*float64(st.tracks[trackID].ClockRate())))
-}
+	// sequence number of the first packet of the stream
+	seq := track.lastSequenceNumber + 1
 
-func (st *ServerStream) lastSequenceNumber(trackID int) uint16 {
-	return uint16(atomic.LoadUint32(&st.stTracks[trackID].lastSequenceNumber))
+	// RTP timestamp corresponding to the time value in
+	// the Range response header.
+	// remove a small quantity in order to avoid DTS > PTS
+	cr := st.tracks[trackID].ClockRate()
+	ts := uint32(uint64(track.lastTimeRTP) +
+		uint64(now.Sub(track.lastTimeNTP).Seconds()*float64(cr)) -
+		uint64(cr)/10)
+
+	return seq, ts, true
 }
 
 func (st *ServerStream) readerAdd(
@@ -225,20 +234,25 @@ func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDT
 	}
 	byts = byts[:n]
 
+	st.mutex.RLock()
+	defer st.mutex.RUnlock()
+
 	track := st.stTracks[trackID]
 	now := time.Now()
 
-	atomic.StoreUint32(&track.lastSequenceNumber,
-		uint32(pkt.Header.SequenceNumber))
-	atomic.StoreUint32(&track.lastSSRC, pkt.Header.SSRC)
+	if !track.firstPacketSent ||
+		ptsEqualsDTS ||
+		pkt.Header.SequenceNumber > track.lastSequenceNumber ||
+		(track.lastSequenceNumber-pkt.Header.SequenceNumber) > 0xFFF {
+		if !track.firstPacketSent || ptsEqualsDTS {
+			track.lastTimeRTP = pkt.Header.Timestamp
+			track.lastTimeNTP = now
+		}
 
-	if ptsEqualsDTS {
-		atomic.StoreUint32(&track.lastTimeRTP, pkt.Header.Timestamp)
-		atomic.StoreInt64(&track.lastTimeNTP, now.Unix())
+		track.firstPacketSent = true
+		track.lastSequenceNumber = pkt.Header.SequenceNumber
+		track.lastSSRC = pkt.Header.SSRC
 	}
-
-	st.mutex.RLock()
-	defer st.mutex.RUnlock()
 
 	if track.rtcpSender != nil {
 		track.rtcpSender.ProcessPacketRTP(now, pkt, ptsEqualsDTS)

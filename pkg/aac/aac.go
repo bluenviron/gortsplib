@@ -2,6 +2,9 @@
 package aac
 
 const (
-	// i've never seen a 5kbit AU, but anyway....
-	maxAUSize = 5 * 1024
+	// MaxAccessUnitSize is the maximum size of an Access Unit (AU).
+	MaxAccessUnitSize = 5 * 1024
+
+	// SamplesPerAccessUnit is the number of samples contained by a single AAC AU.
+	SamplesPerAccessUnit = 1024
 )

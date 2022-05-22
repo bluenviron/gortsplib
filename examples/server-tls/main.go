@@ -43,7 +43,8 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	// close stream-related listeners and disconnect every reader
+	// if the session is the publisher,
+	// close the stream and disconnect any reader.
 	if sh.stream != nil && ctx.Session == sh.publisher {
 		sh.stream.Close()
 		sh.stream = nil
@@ -64,6 +65,7 @@ func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (
 		}, nil, nil
 	}
 
+	// send the track list that is being published to the client
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, sh.stream, nil
@@ -82,6 +84,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		}, fmt.Errorf("someone is already publishing")
 	}
 
+	// save the track list and the publisher
 	sh.stream = gortsplib.NewServerStream(ctx.Tracks)
 	sh.publisher = ctx.Session
 
@@ -129,7 +132,7 @@ func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx)
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	// if we are the publisher, route the RTP packet to readers
+	// if we are the publisher, route the RTP packet to all readers
 	if ctx.Session == sh.publisher {
 		sh.stream.WritePacketRTP(ctx.TrackID, ctx.Packet, ctx.PTSEqualsDTS)
 	}
