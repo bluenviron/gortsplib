@@ -163,6 +163,9 @@ type Client struct {
 	// disable being redirected to other servers, that can happen during Describe().
 	// It defaults to false.
 	RedirectDisable bool
+	// use the credentials (user/pass) of the source RTSP url to authenticate with the redirect url.
+	// It defaults to false.
+	PersistCredentialsOnRedirect bool
 	// enable communication with servers which don't provide server ports or use
 	// different server ports than the ones announced.
 	// This can be a security issue.
@@ -1211,15 +1214,23 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 			len(res.Header["Location"]) == 1 {
 			c.reset()
 
-			u, err := base.ParseURL(res.Header["Location"][0])
+			ru, err := base.ParseURL(res.Header["Location"][0])
 			if err != nil {
 				return nil, nil, nil, err
 			}
 
-			c.scheme = u.Scheme
-			c.host = u.Host
+			if c.PersistCredentialsOnRedirect && u.User != nil {
+				ru.User = u.User
+				ru, err = base.ParseURL(ru.String())
+				if err != nil {
+					return nil, nil, nil, err
+				}
+			}
 
-			return c.doDescribe(u)
+			c.scheme = ru.Scheme
+			c.host = ru.Host
+
+			return c.doDescribe(ru)
 		}
 
 		return nil, nil, res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
