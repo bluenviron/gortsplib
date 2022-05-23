@@ -1524,6 +1524,120 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"tias",
+		[]byte("v=0\r\n" +
+			"o=- 1681692777 1681692777 IN IP4 127.0.0.1\r\n" +
+			"s=Video Stream\r\n" +
+			"c=IN IP4 127.0.0.1\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=TIAS:10000\r\n" +
+			"a=maxprate:2.0000\r\n" +
+			"a=control:trackid=1\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=mimetype:string;\"video/H264\"\r\n" +
+			"a=framesize:96 384-832\r\n" +
+			"a=Width:integer;384\r\n" +
+			"a=Height:integer;832\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=64001f;sprop-parameter-sets=J2QAH6xWwYBp+kA=,KO48sA==\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 1681692777 1681692777 IN IP4 127.0.0.1\r\n" +
+			"s=Video Stream\r\n" +
+			"c=IN IP4 127.0.0.1\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=TIAS:10000\r\n" +
+			"a=maxprate:2.0000\r\n" +
+			"a=control:trackid=1\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=mimetype:string;\"video/H264\"\r\n" +
+			"a=framesize:96 384-832\r\n" +
+			"a=Width:integer;384\r\n" +
+			"a=Height:integer;832\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=64001f;sprop-parameter-sets=J2QAH6xWwYBp+kA=,KO48sA==\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      1681692777,
+				SessionVersion: 1681692777,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "127.0.0.1",
+			},
+			SessionName: "Video Stream",
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "127.0.0.1",
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{
+				{},
+			},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "control",
+					Value: "*",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media: "video",
+						Port: psdp.RangedPort{
+							Value: 0,
+						},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Bandwidth: []psdp.Bandwidth{
+						{
+							Type:      "TIAS",
+							Bandwidth: 10000,
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "maxprate",
+							Value: "2.0000",
+						},
+						{
+							Key:   "control",
+							Value: "trackid=1",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "mimetype",
+							Value: "string;\"video/H264\"",
+						},
+						{
+							Key:   "framesize",
+							Value: "96 384-832",
+						},
+						{
+							Key:   "Width",
+							Value: "integer;384",
+						},
+						{
+							Key:   "Height",
+							Value: "integer;832",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 packetization-mode=1;profile-level-id=64001f;sprop-parameter-sets=J2QAH6xWwYBp+kA=,KO48sA==",
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
