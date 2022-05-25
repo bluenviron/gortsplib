@@ -714,5 +714,5 @@ func (s SPS) FPS() float64 {
 		return 0
 	}
 
-	return float64(s.VUI.TimeScale) / 2 * float64(s.VUI.NumUnitsInTick)
+	return float64(s.VUI.TimeScale) / (2 * float64(s.VUI.NumUnitsInTick))
 }

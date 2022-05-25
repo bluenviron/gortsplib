@@ -198,6 +198,31 @@ func TestSPSUnmarshal(t *testing.T) {
 			1084,
 			25,
 		},
+		{
+			"hikvision",
+			[]byte{103, 100, 0, 32, 172, 23, 42, 1, 64, 30, 104, 64, 0, 1, 194, 0, 0, 87, 228, 33},
+			SPS{
+				ProfileIdc:                  100,
+				LevelIdc:                    32,
+				ChromeFormatIdc:             1,
+				Log2MaxPicOrderCntLsbMinus4: 4,
+				MaxNumRefFrames:             1,
+				PicWidthInMbsMinus1:         79,
+				PicHeightInMbsMinus1:        59,
+				FrameMbsOnlyFlag:            true,
+				Direct8x8InferenceFlag:      true,
+				Log2MaxFrameNumMinus4:       10,
+				VUI: &VUI{
+					TimingInfoPresentFlag: true,
+					NumUnitsInTick:        1800,
+					TimeScale:             90000,
+					FixedFrameRateFlag:    true,
+				},
+			},
+			1280,
+			960,
+			25,
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var sps SPS
