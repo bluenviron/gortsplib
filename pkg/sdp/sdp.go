@@ -40,6 +40,15 @@ func indexOf(element string, data []string) int {
 	return -1
 }
 
+func anyOf(element string, data ...string) bool {
+	for _, v := range data {
+		if element == v {
+			return true
+		}
+	}
+	return false
+}
+
 func parsePort(value string) (int, error) {
 	port, err := strconv.Atoi(value)
 	if err != nil {
@@ -212,9 +221,11 @@ func unmarshalBandwidth(value string) (*psdp.Bandwidth, error) {
 	experimental := strings.HasPrefix(parts[0], "X-")
 	if experimental {
 		parts[0] = strings.TrimPrefix(parts[0], "X-")
-	} else if i := indexOf(parts[0], []string{"CT", "AS", "RR", "RS"}); i == -1 {
+	} else if !anyOf(parts[0], "CT", "AS", "TIAS", "RS", "RR") {
 		// Set according to currently registered with IANA
 		// https://tools.ietf.org/html/rfc4566#section-5.8
+		// https://tools.ietf.org/html/rfc3890#section-6.2
+		// https://tools.ietf.org/html/rfc3556#section-2
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, parts[0])
 	}
 
