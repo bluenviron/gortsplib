@@ -34,7 +34,7 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicHeightInMbsMinus1:           17,
 				FrameMbsOnlyFlag:               true,
 				Direct8x8InferenceFlag:         true,
-				VUI: &VUI{
+				VUI: &SPS_VUI{
 					TimingInfoPresentFlag: true,
 					NumUnitsInTick:        1,
 					TimeScale:             30,
@@ -63,7 +63,7 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicHeightInMbsMinus1:        44,
 				FrameMbsOnlyFlag:            true,
 				Direct8x8InferenceFlag:      true,
-				VUI: &VUI{
+				VUI: &SPS_VUI{
 					AspectRatioInfoPresentFlag:         true,
 					AspectRatioIdc:                     1,
 					VideoSignalTypePresentFlag:         true,
@@ -102,9 +102,10 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicHeightInMbsMinus1:   67,
 				FrameMbsOnlyFlag:       true,
 				Direct8x8InferenceFlag: true,
-				FrameCroppingFlag:      true,
-				FrameCropBottomOffset:  4,
-				VUI: &VUI{
+				FrameCropping: &SPS_FrameCropping{
+					BottomOffset: 4,
+				},
+				VUI: &SPS_VUI{
 					TimingInfoPresentFlag:              true,
 					NumUnitsInTick:                     1,
 					TimeScale:                          60,
@@ -137,9 +138,11 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicHeightInMbsMinus1:        67,
 				FrameMbsOnlyFlag:            true,
 				Direct8x8InferenceFlag:      true,
-				FrameCroppingFlag:           true,
-				FrameCropBottomOffset:       4,
-				VUI: &VUI{
+				FrameCropping: &SPS_FrameCropping{
+					BottomOffset: 4,
+				},
+
+				VUI: &SPS_VUI{
 					TimingInfoPresentFlag:              true,
 					NumUnitsInTick:                     1,
 					TimeScale:                          60,
@@ -173,9 +176,10 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicWidthInMbsMinus1:         119,
 				PicHeightInMbsMinus1:        33,
 				Direct8x8InferenceFlag:      true,
-				FrameCroppingFlag:           true,
-				FrameCropBottomOffset:       2,
-				VUI: &VUI{
+				FrameCropping: &SPS_FrameCropping{
+					BottomOffset: 2,
+				},
+				VUI: &SPS_VUI{
 					AspectRatioInfoPresentFlag:   true,
 					AspectRatioIdc:               1,
 					OverscanInfoPresentFlag:      true,
@@ -212,7 +216,7 @@ func TestSPSUnmarshal(t *testing.T) {
 				FrameMbsOnlyFlag:            true,
 				Direct8x8InferenceFlag:      true,
 				Log2MaxFrameNumMinus4:       10,
-				VUI: &VUI{
+				VUI: &SPS_VUI{
 					TimingInfoPresentFlag: true,
 					NumUnitsInTick:        1800,
 					TimeScale:             90000,
@@ -271,7 +275,7 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicHeightInMbsMinus1:           89,
 				FrameMbsOnlyFlag:               true,
 				Direct8x8InferenceFlag:         true,
-				VUI: &VUI{
+				VUI: &SPS_VUI{
 					VideoSignalTypePresentFlag:   true,
 					VideoFormat:                  5,
 					VideoFullRangeFlag:           true,

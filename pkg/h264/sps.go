@@ -62,8 +62,37 @@ func readFlag(br *bitio.Reader) (bool, error) {
 	return (tmp == 1), nil
 }
 
-// HRD is a hypotetical reference decoder.
-type HRD struct {
+func readScalingList(br *bitio.Reader, size int) ([]int32, bool, error) {
+	lastScale := int32(8)
+	nextScale := int32(8)
+	scalingList := make([]int32, size)
+	var useDefaultScalingMatrixFlag bool
+
+	for j := 0; j < size; j++ {
+		if nextScale != 0 {
+			deltaScale, err := readGolombSigned(br)
+			if err != nil {
+				return nil, false, err
+			}
+
+			nextScale = (lastScale + deltaScale + 256) % 256
+			useDefaultScalingMatrixFlag = (j == 0 && nextScale == 0)
+		}
+
+		if nextScale == 0 {
+			scalingList[j] = lastScale
+		} else {
+			scalingList[j] = nextScale
+		}
+
+		lastScale = scalingList[j]
+	}
+
+	return scalingList, useDefaultScalingMatrixFlag, nil
+}
+
+// SPS_HRD is a hypotetical reference decoder.
+type SPS_HRD struct { //nolint:revive
 	CpbCntMinus1                       uint32
 	BitRateScale                       uint8
 	CpbSizeScale                       uint8
@@ -76,7 +105,7 @@ type HRD struct {
 	TimeOffsetLength                   uint8
 }
 
-func (h *HRD) unmarshal(br *bitio.Reader) error {
+func (h *SPS_HRD) unmarshal(br *bitio.Reader) error {
 	var err error
 	h.CpbCntMinus1, err = readGolombUnsigned(br)
 	if err != nil {
@@ -142,8 +171,8 @@ func (h *HRD) unmarshal(br *bitio.Reader) error {
 	return nil
 }
 
-// VUI is a video usability information.
-type VUI struct {
+// SPS_VUI is a video usability information.
+type SPS_VUI struct { //nolint:revive
 	AspectRatioInfoPresentFlag bool
 	AspectRatioIdc             uint8
 	SarWidth                   uint16
@@ -176,10 +205,10 @@ type VUI struct {
 	FixedFrameRateFlag bool
 
 	// nalHrdParametersPresentFlag == true
-	NalHRD *HRD
+	NalHRD *SPS_HRD
 
 	// vclHrdParametersPresentFlag == true
-	VclHRD *HRD
+	VclHRD *SPS_HRD
 
 	LowDelayHrdFlag          bool
 	PicStructPresentFlag     bool
@@ -195,7 +224,7 @@ type VUI struct {
 	MaxDecFrameBuffering               uint32
 }
 
-func (v *VUI) unmarshal(br *bitio.Reader) error {
+func (v *SPS_VUI) unmarshal(br *bitio.Reader) error {
 	var err error
 	v.AspectRatioInfoPresentFlag, err = readFlag(br)
 	if err != nil {
@@ -326,7 +355,7 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 	}
 
 	if nalHrdParametersPresentFlag {
-		v.NalHRD = &HRD{}
+		v.NalHRD = &SPS_HRD{}
 		err := v.NalHRD.unmarshal(br)
 		if err != nil {
 			return err
@@ -339,7 +368,7 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 	}
 
 	if vclHrdParametersPresentFlag {
-		v.VclHRD = &HRD{}
+		v.VclHRD = &SPS_HRD{}
 		err := v.VclHRD.unmarshal(br)
 		if err != nil {
 			return err
@@ -403,33 +432,37 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 	return nil
 }
 
-func readScalingList(br *bitio.Reader, size int) ([]int32, bool, error) {
-	lastScale := int32(8)
-	nextScale := int32(8)
-	scalingList := make([]int32, size)
-	var useDefaultScalingMatrixFlag bool
+// SPS_FrameCropping is the frame cropping part of a SPS.
+type SPS_FrameCropping struct { //nolint:revive
+	LeftOffset   uint32
+	RightOffset  uint32
+	TopOffset    uint32
+	BottomOffset uint32
+}
 
-	for j := 0; j < size; j++ {
-		if nextScale != 0 {
-			deltaScale, err := readGolombSigned(br)
-			if err != nil {
-				return nil, false, err
-			}
-
-			nextScale = (lastScale + deltaScale + 256) % 256
-			useDefaultScalingMatrixFlag = (j == 0 && nextScale == 0)
-		}
-
-		if nextScale == 0 {
-			scalingList[j] = lastScale
-		} else {
-			scalingList[j] = nextScale
-		}
-
-		lastScale = scalingList[j]
+func (c *SPS_FrameCropping) unmarshal(br *bitio.Reader) error {
+	var err error
+	c.LeftOffset, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
 	}
 
-	return scalingList, useDefaultScalingMatrixFlag, nil
+	c.RightOffset, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	c.TopOffset, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	c.BottomOffset, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SPS is a H264 sequence parameter set.
@@ -479,16 +512,12 @@ type SPS struct {
 	MbAdaptiveFrameFieldFlag bool
 
 	Direct8x8InferenceFlag bool
-	FrameCroppingFlag      bool
 
-	// FrameCroppingFlag == true
-	FrameCropLeftOffset   uint32
-	FrameCropRightOffset  uint32
-	FrameCropTopOffset    uint32
-	FrameCropBottomOffset uint32
+	// frameCroppingFlag == true
+	FrameCropping *SPS_FrameCropping
 
 	// vuiParameterPresentFlag == true
-	VUI *VUI
+	VUI *SPS_VUI
 }
 
 // Unmarshal decodes a SPS from bytes.
@@ -712,36 +741,19 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		return err
 	}
 
-	s.FrameCroppingFlag, err = readFlag(br)
+	frameCroppingFlag, err := readFlag(br)
 	if err != nil {
 		return err
 	}
 
-	if s.FrameCroppingFlag {
-		s.FrameCropLeftOffset, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		s.FrameCropRightOffset, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		s.FrameCropTopOffset, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		s.FrameCropBottomOffset, err = readGolombUnsigned(br)
+	if frameCroppingFlag {
+		s.FrameCropping = &SPS_FrameCropping{}
+		err := s.FrameCropping.unmarshal(br)
 		if err != nil {
 			return err
 		}
 	} else {
-		s.FrameCropLeftOffset = 0
-		s.FrameCropRightOffset = 0
-		s.FrameCropTopOffset = 0
-		s.FrameCropBottomOffset = 0
+		s.FrameCropping = nil
 	}
 
 	vuiParameterPresentFlag, err := readFlag(br)
@@ -750,7 +762,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	}
 
 	if vuiParameterPresentFlag {
-		s.VUI = &VUI{}
+		s.VUI = &SPS_VUI{}
 		err := s.VUI.unmarshal(br)
 		if err != nil {
 			return err
@@ -764,7 +776,11 @@ func (s *SPS) Unmarshal(buf []byte) error {
 
 // Width returns the video width.
 func (s SPS) Width() int {
-	return int(((s.PicWidthInMbsMinus1 + 1) * 16) - (s.FrameCropLeftOffset+s.FrameCropRightOffset)*2)
+	if s.FrameCropping != nil {
+		return int(((s.PicWidthInMbsMinus1 + 1) * 16) - (s.FrameCropping.LeftOffset+s.FrameCropping.RightOffset)*2)
+	}
+
+	return int((s.PicWidthInMbsMinus1 + 1) * 16)
 }
 
 // Height returns the video height.
@@ -773,7 +789,12 @@ func (s SPS) Height() int {
 	if s.FrameMbsOnlyFlag {
 		f = 1
 	}
-	return int(((2 - f) * (s.PicHeightInMbsMinus1 + 1) * 16) - (s.FrameCropTopOffset+s.FrameCropBottomOffset)*2)
+
+	if s.FrameCropping != nil {
+		return int(((2 - f) * (s.PicHeightInMbsMinus1 + 1) * 16) - (s.FrameCropping.TopOffset+s.FrameCropping.BottomOffset)*2)
+	}
+
+	return int((2 - f) * (s.PicHeightInMbsMinus1 + 1) * 16)
 }
 
 // FPS returns the frame per second of the video.
