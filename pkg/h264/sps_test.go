@@ -223,6 +223,72 @@ func TestSPSUnmarshal(t *testing.T) {
 			960,
 			25,
 		},
+		{
+			"scaling matrix",
+			[]byte{
+				103, 100, 0, 50, 173, 132, 1, 12, 32, 8, 97, 0, 67, 8, 2,
+				24, 64, 16, 194, 0, 132, 59, 80, 20, 0, 90, 211,
+				112, 16, 16, 20, 0, 0, 3, 0, 4, 0, 0, 3, 0, 162, 16,
+			},
+			SPS{
+				ProfileIdc:      100,
+				LevelIdc:        50,
+				ChromeFormatIdc: 1,
+				ScalingList4x4: [][]int32{
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+				},
+				UseDefaultScalingMatrix4x4Flag: []bool{
+					false, false, false, false, false, false,
+				},
+				Log2MaxFrameNumMinus4:          6,
+				PicOrderCntType:                2,
+				MaxNumRefFrames:                1,
+				GapsInFrameNumValueAllowedFlag: true,
+				PicWidthInMbsMinus1:            159,
+				PicHeightInMbsMinus1:           89,
+				FrameMbsOnlyFlag:               true,
+				Direct8x8InferenceFlag:         true,
+				VUI: &VUI{
+					VideoSignalTypePresentFlag:   true,
+					VideoFormat:                  5,
+					VideoFullRangeFlag:           true,
+					ColourDescriptionPresentFlag: true,
+					ColourPrimaries:              1,
+					TransferCharacteristics:      1,
+					MatrixCoefficients:           1,
+					TimingInfoPresentFlag:        true,
+					NumUnitsInTick:               1,
+					TimeScale:                    40,
+					FixedFrameRateFlag:           true,
+				},
+			},
+			2560,
+			1440,
+			20,
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var sps SPS

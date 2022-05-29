@@ -175,8 +175,12 @@ type VUI struct {
 	TimeScale          uint32
 	FixedFrameRateFlag bool
 
-	NalHRD                   *HRD
-	VclHRD                   *HRD
+	// nalHrdParametersPresentFlag == true
+	NalHRD *HRD
+
+	// vclHrdParametersPresentFlag == true
+	VclHRD *HRD
+
 	LowDelayHrdFlag          bool
 	PicStructPresentFlag     bool
 	BitstreamRestrictionFlag bool
@@ -399,6 +403,35 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 	return nil
 }
 
+func readScalingList(br *bitio.Reader, size int) ([]int32, bool, error) {
+	lastScale := int32(8)
+	nextScale := int32(8)
+	scalingList := make([]int32, size)
+	var useDefaultScalingMatrixFlag bool
+
+	for j := 0; j < size; j++ {
+		if nextScale != 0 {
+			deltaScale, err := readGolombSigned(br)
+			if err != nil {
+				return nil, false, err
+			}
+
+			nextScale = (lastScale + deltaScale + 256) % 256
+			useDefaultScalingMatrixFlag = (j == 0 && nextScale == 0)
+		}
+
+		if nextScale == 0 {
+			scalingList[j] = lastScale
+		} else {
+			scalingList[j] = nextScale
+		}
+
+		lastScale = scalingList[j]
+	}
+
+	return scalingList, useDefaultScalingMatrixFlag, nil
+}
+
 // SPS is a H264 sequence parameter set.
 type SPS struct {
 	ProfileIdc         uint8
@@ -417,6 +450,12 @@ type SPS struct {
 	BitDepthLumaMinus8              uint32
 	BitDepthChromaMinus8            uint32
 	QpprimeYZeroTransformBypassFlag bool
+
+	// seqScalingListPresentFlag == true
+	ScalingList4x4                 [][]int32
+	UseDefaultScalingMatrix4x4Flag []bool
+	ScalingList8x8                 [][]int32
+	UseDefaultScalingMatrix8x8Flag []bool
 
 	Log2MaxFrameNumMinus4 uint32
 	PicOrderCntType       uint32
@@ -448,6 +487,7 @@ type SPS struct {
 	FrameCropTopOffset    uint32
 	FrameCropBottomOffset uint32
 
+	// vuiParameterPresentFlag == true
 	VUI *VUI
 }
 
@@ -532,7 +572,39 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		}
 
 		if seqScalingMatrixPresentFlag {
-			return fmt.Errorf("unsupported")
+			var lim int
+			if s.ChromeFormatIdc != 3 {
+				lim = 8
+			} else {
+				lim = 12
+			}
+
+			for i := 0; i < lim; i++ {
+				seqScalingListPresentFlag, err := readFlag(br)
+				if err != nil {
+					return err
+				}
+
+				if seqScalingListPresentFlag {
+					if i < 6 {
+						scalingList, useDefaultScalingMatrixFlag, err := readScalingList(br, 16)
+						if err != nil {
+							return err
+						}
+						s.ScalingList4x4 = append(s.ScalingList4x4, scalingList)
+						s.UseDefaultScalingMatrix4x4Flag = append(s.UseDefaultScalingMatrix4x4Flag,
+							useDefaultScalingMatrixFlag)
+					} else {
+						scalingList, useDefaultScalingMatrixFlag, err := readScalingList(br, 64)
+						if err != nil {
+							return err
+						}
+						s.ScalingList8x8 = append(s.ScalingList8x8, scalingList)
+						s.UseDefaultScalingMatrix8x8Flag = append(s.UseDefaultScalingMatrix8x8Flag,
+							useDefaultScalingMatrixFlag)
+					}
+				}
+			}
 		}
 
 	default:
