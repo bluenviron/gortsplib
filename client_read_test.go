@@ -1573,16 +1573,15 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 }
 
 func TestClientReadRedirect(t *testing.T) {
-	for _, persistCredentialsOnRedirect := range []bool{false, true} {
-		runName := "NoPersistCredentialsOnRedirect"
-		if persistCredentialsOnRedirect {
-			runName = "PersistCredentialsOnRedirect"
+	for _, withCredentials := range []bool{false, true} {
+		runName := "WithoutCredentials"
+		if withCredentials {
+			runName = "WithCredentials"
 		}
 		t.Run(runName, func(t *testing.T) {
 			packetRecv := make(chan struct{})
 
 			c := Client{
-				PersistCredentialsOnRedirect: persistCredentialsOnRedirect,
 				OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
 					close(packetRecv)
 				},
@@ -1660,7 +1659,7 @@ func TestClientReadRedirect(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				if persistCredentialsOnRedirect {
+				if withCredentials {
 					if _, exists := req.Header["Authorization"]; !exists {
 						authRealm := "example@localhost"
 						authNonce := "exampleNonce"
@@ -1758,7 +1757,7 @@ func TestClientReadRedirect(t *testing.T) {
 			}()
 
 			ru := "rtsp://localhost:8554/path1"
-			if persistCredentialsOnRedirect {
+			if withCredentials {
 				ru = "rtsp://testusr:testpwd@localhost:8554/path1"
 			}
 			err = c.StartReading(ru)
