@@ -497,7 +497,7 @@ type SPS struct {
 	Log2MaxPicOrderCntLsbMinus4 uint32
 
 	// PicOrderCntType == 1
-	DeltaPicOrderAlwaysZeroFlag uint32
+	DeltaPicOrderAlwaysZeroFlag bool
 	OffsetForNonRefPic          int32
 	OffsetForTopToBottomField   int32
 	OffsetForRefFrames          []int32
@@ -664,7 +664,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	case 1:
 		s.Log2MaxPicOrderCntLsbMinus4 = 0
 
-		s.DeltaPicOrderAlwaysZeroFlag, err = readGolombUnsigned(br)
+		s.DeltaPicOrderAlwaysZeroFlag, err = readFlag(br)
 		if err != nil {
 			return err
 		}
@@ -696,7 +696,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 
 	default:
 		s.Log2MaxPicOrderCntLsbMinus4 = 0
-		s.DeltaPicOrderAlwaysZeroFlag = 0
+		s.DeltaPicOrderAlwaysZeroFlag = false
 		s.OffsetForNonRefPic = 0
 		s.OffsetForTopToBottomField = 0
 		s.OffsetForRefFrames = nil
