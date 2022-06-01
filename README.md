@@ -80,12 +80,9 @@ Related projects
 * https://github.com/pion/rtcp (RTCP library used internally)
 * https://github.com/pion/rtp (RTP library used internally)
 
-IETF Standards
+Standards
 
 * RTSP 1.0 https://tools.ietf.org/html/rfc2326
 * RTSP 2.0 https://tools.ietf.org/html/rfc7826
 * HTTP 1.1 https://tools.ietf.org/html/rfc2616
-
-Conventions
-
-* https://github.com/golang-standards/project-layout
+* Golang project layout https://github.com/golang-standards/project-layout
