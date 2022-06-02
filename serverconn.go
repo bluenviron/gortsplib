@@ -451,7 +451,9 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				Path:    path,
 				Query:   query,
 			})
-
+			if err != nil {
+				return nil, err
+			}
 			if res.StatusCode == base.StatusOK {
 				if res.Header == nil {
 					res.Header = make(base.Header)
