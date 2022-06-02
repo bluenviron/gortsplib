@@ -44,12 +44,11 @@ func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
 	mux.SetPCRPID(256)
 
 	return &mpegtsEncoder{
-		sps:          sps,
-		pps:          pps,
-		f:            f,
-		b:            b,
-		mux:          mux,
-		dtsExtractor: h264.NewDTSExtractor(),
+		sps: sps,
+		pps: pps,
+		f:   f,
+		b:   b,
+		mux: mux,
 	}, nil
 }
 
@@ -60,7 +59,7 @@ func (e *mpegtsEncoder) close() {
 }
 
 // encode encodes H264 NALUs into MPEG-TS.
-func (e *mpegtsEncoder) encode(nalus [][]byte,pts time.Duration) error {
+func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 	// prepend an AUD. This is required by some players
 	filteredNALUs := [][]byte{
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},
@@ -106,6 +105,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte,pts time.Duration) error {
 
 		e.firstIDRReceived = true
 		e.startPTS = pts
+		e.dtsExtractor = h264.NewDTSExtractor()
 	}
 
 	pts -= e.startPTS
