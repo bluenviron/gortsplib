@@ -1939,8 +1939,6 @@ func (c *Client) processPacketRTP(ct *clientTrack, ctx *ClientOnPacketRTPCtx) {
 			ctx.PTSEqualsDTS = h264.IDRPresent(nalus)
 			ctx.H264NALUs = nalus
 			ctx.H264PTS = pts
-		} else {
-			ctx.PTSEqualsDTS = false
 		}
 	} else {
 		ctx.PTSEqualsDTS = true
