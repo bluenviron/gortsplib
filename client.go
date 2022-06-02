@@ -31,10 +31,46 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/aler9/gortsplib/pkg/sdp"
 )
 
 func isAnyPort(p int) bool {
 	return p == 0 || p == 1
+}
+
+func findBaseURL(sd *sdp.SessionDescription, res *base.Response, u *base.URL) (*base.URL, error) {
+	// use global control attribute
+	if control, ok := sd.Attribute("control"); ok && control != "*" {
+		ret, err := base.ParseURL(control)
+		if err != nil {
+			return nil, fmt.Errorf("invalid control attribute: '%v'", control)
+		}
+
+		// add credentials
+		ret.User = u.User
+
+		return ret, nil
+	}
+
+	// use Content-Base
+	if cb, ok := res.Header["Content-Base"]; ok {
+		if len(cb) != 1 {
+			return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
+		}
+
+		ret, err := base.ParseURL(cb[0])
+		if err != nil {
+			return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
+		}
+
+		// add credentials
+		ret.User = u.User
+
+		return ret, nil
+	}
+
+	// use URL of request
+	return u, nil
 }
 
 type clientState int
@@ -1246,40 +1282,7 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 		return nil, nil, nil, err
 	}
 
-	baseURL, err := func() (*base.URL, error) {
-		// use global control attribute
-		if control, ok := sd.Attribute("control"); ok && control != "*" {
-			ret, err := base.ParseURL(control)
-			if err != nil {
-				return nil, fmt.Errorf("invalid control attribute: '%v'", control)
-			}
-
-			// add credentials
-			ret.User = u.User
-
-			return ret, nil
-		}
-
-		// use Content-Base
-		if cb, ok := res.Header["Content-Base"]; ok {
-			if len(cb) != 1 {
-				return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
-			}
-
-			ret, err := base.ParseURL(cb[0])
-			if err != nil {
-				return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
-			}
-
-			// add credentials
-			ret.User = u.User
-
-			return ret, nil
-		}
-
-		// use URL of request
-		return u, nil
-	}()
+	baseURL, err := findBaseURL(sd, res, u)
 	if err != nil {
 		return nil, nil, nil, err
 	}
