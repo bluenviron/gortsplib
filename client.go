@@ -1218,10 +1218,6 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 
 			if u.User != nil {
 				ru.User = u.User
-				ru, err = base.ParseURL(ru.String())
-				if err != nil {
-					return nil, nil, nil, err
-				}
 			}
 
 			c.scheme = ru.Scheme
