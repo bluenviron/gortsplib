@@ -25,7 +25,6 @@ type mpegtsEncoder struct {
 	mux              *astits.Muxer
 	dtsExtractor     *h264.DTSExtractor
 	firstIDRReceived bool
-	startPTS         time.Duration
 }
 
 // newMPEGTSEncoder allocates a mpegtsEncoder.
@@ -100,11 +99,8 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		}
 
 		e.firstIDRReceived = true
-		e.startPTS = pts
 		e.dtsExtractor = h264.NewDTSExtractor()
 	}
-
-	pts -= e.startPTS
 
 	dts, err := e.dtsExtractor.Extract(filteredNALUs, pts)
 	if err != nil {
