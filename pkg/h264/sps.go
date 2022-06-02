@@ -171,6 +171,34 @@ func (h *SPS_HRD) unmarshal(br *bitio.Reader) error {
 	return nil
 }
 
+// SPS_TimingInfo is a timing info.
+type SPS_TimingInfo struct { //nolint:revive
+	NumUnitsInTick     uint32
+	TimeScale          uint32
+	FixedFrameRateFlag bool
+}
+
+func (t *SPS_TimingInfo) unmarshal(br *bitio.Reader) error {
+	tmp, err := br.ReadBits(32)
+	if err != nil {
+		return err
+	}
+	t.NumUnitsInTick = uint32(tmp)
+
+	tmp, err = br.ReadBits(32)
+	if err != nil {
+		return err
+	}
+	t.TimeScale = uint32(tmp)
+
+	t.FixedFrameRateFlag, err = readFlag(br)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SPS_VUI is a video usability information.
 type SPS_VUI struct { //nolint:revive
 	AspectRatioInfoPresentFlag bool
@@ -197,12 +225,8 @@ type SPS_VUI struct { //nolint:revive
 	ChromaSampleLocTypeTopField    uint32
 	ChromaSampleLocTypeBottomField uint32
 
-	TimingInfoPresentFlag bool
-
-	// TimingInfoPresentFlag == true
-	NumUnitsInTick     uint32
-	TimeScale          uint32
-	FixedFrameRateFlag bool
+	// timingInfoPresentFlag == true
+	TimingInfo *SPS_TimingInfo
 
 	// nalHrdParametersPresentFlag == true
 	NalHRD *SPS_HRD
@@ -325,25 +349,14 @@ func (v *SPS_VUI) unmarshal(br *bitio.Reader) error {
 		}
 	}
 
-	v.TimingInfoPresentFlag, err = readFlag(br)
+	timingInfoPresentFlag, err := readFlag(br)
 	if err != nil {
 		return err
 	}
 
-	if v.TimingInfoPresentFlag {
-		tmp, err := br.ReadBits(32)
-		if err != nil {
-			return err
-		}
-		v.NumUnitsInTick = uint32(tmp)
-
-		tmp, err = br.ReadBits(32)
-		if err != nil {
-			return err
-		}
-		v.TimeScale = uint32(tmp)
-
-		v.FixedFrameRateFlag, err = readFlag(br)
+	if timingInfoPresentFlag {
+		v.TimingInfo = &SPS_TimingInfo{}
+		err := v.TimingInfo.unmarshal(br)
 		if err != nil {
 			return err
 		}
@@ -799,13 +812,9 @@ func (s SPS) Height() int {
 
 // FPS returns the frame per second of the video.
 func (s SPS) FPS() float64 {
-	if s.VUI == nil {
+	if s.VUI == nil || s.VUI.TimingInfo == nil {
 		return 0
 	}
 
-	if !s.VUI.TimingInfoPresentFlag {
-		return 0
-	}
-
-	return float64(s.VUI.TimeScale) / (2 * float64(s.VUI.NumUnitsInTick))
+	return float64(s.VUI.TimingInfo.TimeScale) / (2 * float64(s.VUI.TimingInfo.NumUnitsInTick))
 }
