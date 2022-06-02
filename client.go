@@ -1211,15 +1211,19 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 			len(res.Header["Location"]) == 1 {
 			c.reset()
 
-			u, err := base.ParseURL(res.Header["Location"][0])
+			ru, err := base.ParseURL(res.Header["Location"][0])
 			if err != nil {
 				return nil, nil, nil, err
 			}
 
-			c.scheme = u.Scheme
-			c.host = u.Host
+			if u.User != nil {
+				ru.User = u.User
+			}
 
-			return c.doDescribe(u)
+			c.scheme = ru.Scheme
+			c.host = ru.Host
+
+			return c.doDescribe(ru)
 		}
 
 		return nil, nil, res, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
