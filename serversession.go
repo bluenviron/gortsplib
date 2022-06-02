@@ -1230,7 +1230,7 @@ func (ss *ServerSession) processPacketRTP(at *ServerSessionAnnouncedTrack, ctx *
 			ctx.PTSEqualsDTS = false
 		}
 	} else {
-		ctx.PTSEqualsDTS = false
+		ctx.PTSEqualsDTS = true
 	}
 }
 
