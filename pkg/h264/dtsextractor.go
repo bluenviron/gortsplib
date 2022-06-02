@@ -96,6 +96,8 @@ func getPOCDiff(poc1 uint32, poc2 uint32, sps *SPS) int32 {
 
 // DTSExtractor is a utility that allows to extract NALU DTS from PTS.
 type DTSExtractor struct {
+	sps         []byte
+	spsp        *SPS
 	prevPTS     time.Duration
 	prevDTS     time.Duration
 	prevPOCDiff int32
@@ -109,25 +111,50 @@ func NewDTSExtractor() *DTSExtractor {
 
 func (d *DTSExtractor) extractInner(
 	nalus [][]byte,
-	idrPresent bool,
 	pts time.Duration,
-	sps *SPS,
 ) (time.Duration, int32, error) {
-	if idrPresent || sps.PicOrderCntType == 2 {
+	idrPresent := false
+
+	for _, nalu := range nalus {
+		typ := NALUType(nalu[0] & 0x1F)
+		switch typ {
+		// parse SPS
+		case NALUTypeSPS:
+			if d.sps == nil || !bytes.Equal(d.sps, nalu) {
+				var spsp SPS
+				err := spsp.Unmarshal(nalu)
+				if err != nil {
+					return 0, 0, err
+				}
+				d.sps = append([]byte(nil), nalu...)
+				d.spsp = &spsp
+			}
+
+		// set IDR present flag
+		case NALUTypeIDR:
+			idrPresent = true
+		}
+	}
+
+	if d.spsp == nil {
+		return 0, 0, fmt.Errorf("SPS not received yet")
+	}
+
+	if idrPresent || d.spsp.PicOrderCntType == 2 {
 		d.expectedPOC = 0
 		return pts, 0, nil
 	}
 
 	// compute expectedPOC immediately in order to store it even in case of errors
 	d.expectedPOC += 2
-	d.expectedPOC &= ((1 << (sps.Log2MaxPicOrderCntLsbMinus4 + 4)) - 1)
+	d.expectedPOC &= ((1 << (d.spsp.Log2MaxPicOrderCntLsbMinus4 + 4)) - 1)
 
-	poc, err := getNALUSPOC(nalus, sps)
+	poc, err := getNALUSPOC(nalus, d.spsp)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	pocDiff := getPOCDiff(poc, d.expectedPOC, sps)
+	pocDiff := getPOCDiff(poc, d.expectedPOC, d.spsp)
 
 	if pocDiff == 0 {
 		return pts, pocDiff, nil
@@ -149,11 +176,9 @@ func (d *DTSExtractor) extractInner(
 // Extract extracts the DTS of a NALU group.
 func (d *DTSExtractor) Extract(
 	nalus [][]byte,
-	idrPresent bool,
 	pts time.Duration,
-	sps *SPS,
 ) (time.Duration, error) {
-	dts, pocDiff, err := d.extractInner(nalus, idrPresent, pts, sps)
+	dts, pocDiff, err := d.extractInner(nalus, pts)
 	if err != nil {
 		return 0, err
 	}

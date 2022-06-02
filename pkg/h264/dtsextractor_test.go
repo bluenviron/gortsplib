@@ -135,20 +135,9 @@ func TestDTSExtractor(t *testing.T) {
 	}
 
 	ex := NewDTSExtractor()
-	sps := &SPS{}
 
 	for _, sample := range sequence {
-		idrPresent := IDRPresent(sample.nalus)
-
-		for _, nalu := range sample.nalus {
-			if NALUType(nalu[0]&0x1F) == NALUTypeSPS {
-				err := sps.Unmarshal(nalu)
-				require.NoError(t, err)
-				break
-			}
-		}
-
-		dts, err := ex.Extract(sample.nalus, idrPresent, sample.pts, sps)
+		dts, err := ex.Extract(sample.nalus, sample.pts)
 		require.NoError(t, err)
 		require.Equal(t, sample.dts, dts)
 	}

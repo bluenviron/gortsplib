@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"log"
 	"os"
@@ -27,7 +26,6 @@ type mpegtsEncoder struct {
 	dtsExtractor       *h264.DTSExtractor
 	firstPacketWritten bool
 	startPTS           time.Duration
-	spsp               *h264.SPS
 	firstIDRReceived   bool
 }
 
@@ -46,15 +44,6 @@ func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
 	})
 	mux.SetPCRPID(256)
 
-	var spsp *h264.SPS
-	if sps != nil {
-		spsp = &h264.SPS{}
-		err := spsp.Unmarshal(sps)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return &mpegtsEncoder{
 		sps:          sps,
 		pps:          pps,
@@ -62,7 +51,6 @@ func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
 		b:            b,
 		mux:          mux,
 		dtsExtractor: h264.NewDTSExtractor(),
-		spsp:         spsp,
 	}, nil
 }
 
@@ -84,20 +72,10 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},
 	}
 
-	idrPresent := h264.IDRPresent(nalus)
-
 	for _, nalu := range nalus {
 		typ := h264.NALUType(nalu[0] & 0x1F)
 		switch typ {
 		case h264.NALUTypeSPS:
-			if e.sps == nil || !bytes.Equal(e.sps, nalu) {
-				var spsp h264.SPS
-				err := spsp.Unmarshal(nalu)
-				if err != nil {
-					return err
-				}
-				e.spsp = &spsp
-			}
 			e.sps = append([]byte(nil), nalu...)
 			continue
 
@@ -122,6 +100,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		return nil
 	}
 
+	idrPresent := h264.IDRPresent(nalus)
 	if !e.firstIDRReceived && !idrPresent {
 		return nil
 	}
@@ -135,7 +114,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 
 	pts -= e.startPTS
 
-	dts, err := e.dtsExtractor.Extract(filteredNALUs, idrPresent, pts, e.spsp)
+	dts, err := e.dtsExtractor.Extract(filteredNALUs, pts)
 	if err != nil {
 		return err
 	}
@@ -159,7 +138,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 	_, err = e.mux.WriteData(&astits.MuxerData{
 		PID: 256,
 		AdaptationField: &astits.PacketAdaptationField{
-			RandomAccessIndicator: h264.IDRPresent(filteredNALUs),
+			RandomAccessIndicator: idrPresent,
 		},
 		PES: &astits.PESData{
 			Header: &astits.PESHeader{
