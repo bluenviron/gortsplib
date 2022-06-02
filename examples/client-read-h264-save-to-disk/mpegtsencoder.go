@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"log"
 	"os"
@@ -9,6 +10,10 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/h264"
 	"github.com/asticode/go-astits"
+)
+
+const (
+	ptsDTSOffset = 400 * time.Millisecond
 )
 
 // mpegtsEncoder allows to encode H264 NALUs into MPEG-TS.
@@ -19,9 +24,11 @@ type mpegtsEncoder struct {
 	f                  *os.File
 	b                  *bufio.Writer
 	mux                *astits.Muxer
-	dtsEst             *h264.DTSEstimator
+	dtsExtractor       *h264.DTSExtractor
 	firstPacketWritten bool
 	startPTS           time.Duration
+	spsp               *h264.SPS
+	firstIDRReceived   bool
 }
 
 // newMPEGTSEncoder allocates a mpegtsEncoder.
@@ -39,13 +46,23 @@ func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
 	})
 	mux.SetPCRPID(256)
 
+	var spsp *h264.SPS
+	if sps != nil {
+		spsp = &h264.SPS{}
+		err := spsp.Unmarshal(sps)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &mpegtsEncoder{
-		sps:    sps,
-		pps:    pps,
-		f:      f,
-		b:      b,
-		mux:    mux,
-		dtsEst: h264.NewDTSEstimator(),
+		sps:          sps,
+		pps:          pps,
+		f:            f,
+		b:            b,
+		mux:          mux,
+		dtsExtractor: h264.NewDTSExtractor(),
+		spsp:         spsp,
 	}, nil
 }
 
@@ -67,10 +84,20 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},
 	}
 
+	idrPresent := h264.IDRPresent(nalus)
+
 	for _, nalu := range nalus {
 		typ := h264.NALUType(nalu[0] & 0x1F)
 		switch typ {
 		case h264.NALUTypeSPS:
+			if e.sps == nil || !bytes.Equal(e.sps, nalu) {
+				var spsp h264.SPS
+				err := spsp.Unmarshal(nalu)
+				if err != nil {
+					return err
+				}
+				e.spsp = &spsp
+			}
 			e.sps = append([]byte(nil), nalu...)
 			continue
 
@@ -91,10 +118,14 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		filteredNALUs = append(filteredNALUs, nalu)
 	}
 
-	// it's useless to go on if SPS or PPS have not been provided yet
 	if e.sps == nil || e.pps == nil {
 		return nil
 	}
+
+	if !e.firstIDRReceived && !idrPresent {
+		return nil
+	}
+	e.firstIDRReceived = true
 
 	// encode into Annex-B
 	enc, err := h264.AnnexBEncode(filteredNALUs)
@@ -103,7 +134,13 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 	}
 
 	pts -= e.startPTS
-	dts := e.dtsEst.Feed(pts)
+
+	dts, err := e.dtsExtractor.Extract(filteredNALUs, idrPresent, pts, e.spsp)
+	if err != nil {
+		return err
+	}
+
+	pts += ptsDTSOffset
 
 	oh := &astits.PESOptionalHeader{
 		MarkerBits: 2,
