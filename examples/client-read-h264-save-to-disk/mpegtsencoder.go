@@ -78,7 +78,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 			e.pps = append([]byte(nil), nalu...)
 			continue
 
-		case h264.NALUTypeAccessUnitDelimiter, h264.NALUTypeSEI:
+		case h264.NALUTypeAccessUnitDelimiter:
 			continue
 
 		case h264.NALUTypeIDR:
