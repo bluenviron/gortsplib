@@ -93,10 +93,6 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		filteredNALUs = append(filteredNALUs, nalu)
 	}
 
-	if e.sps == nil || e.pps == nil {
-		return nil
-	}
-
 	if !e.firstIDRReceived {
 		// skip samples silently until we find one with a IDR
 		if !idrPresent {
