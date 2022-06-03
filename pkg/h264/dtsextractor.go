@@ -198,6 +198,10 @@ func (d *DTSExtractor) Extract(
 		return 0, err
 	}
 
+	if dts > pts {
+		return 0, fmt.Errorf("DTS is greater than PTS")
+	}
+
 	d.prevPTS = pts
 	d.prevDTS = dts
 	d.prevPOCDiff = pocDiff
