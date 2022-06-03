@@ -10,7 +10,7 @@ import (
 )
 
 func getPOC(buf []byte, sps *SPS) (uint32, error) {
-	buf = AntiCompetitionRemove(buf[:5])
+	buf = AntiCompetitionRemove(buf[:6])
 
 	isIDR := NALUType(buf[0]&0x1F) == NALUTypeIDR
 
