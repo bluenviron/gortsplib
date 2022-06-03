@@ -11,10 +11,6 @@ import (
 	"github.com/asticode/go-astits"
 )
 
-const (
-	ptsDTSOffset = 400 * time.Millisecond
-)
-
 // mpegtsEncoder allows to encode H264 NALUs into MPEG-TS.
 type mpegtsEncoder struct {
 	sps []byte
@@ -25,6 +21,7 @@ type mpegtsEncoder struct {
 	mux              *astits.Muxer
 	dtsExtractor     *h264.DTSExtractor
 	firstIDRReceived bool
+	startDTS         time.Duration
 }
 
 // newMPEGTSEncoder allocates a mpegtsEncoder.
@@ -92,6 +89,8 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		filteredNALUs = append(filteredNALUs, nalu)
 	}
 
+	var dts time.Duration
+
 	if !e.firstIDRReceived {
 		// skip samples silently until we find one with a IDR
 		if !idrPresent {
@@ -100,14 +99,27 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 
 		e.firstIDRReceived = true
 		e.dtsExtractor = h264.NewDTSExtractor()
-	}
 
-	dts, err := e.dtsExtractor.Extract(filteredNALUs, pts)
-	if err != nil {
-		return err
-	}
+		var err error
+		dts, err = e.dtsExtractor.Extract(filteredNALUs, pts)
+		if err != nil {
+			return err
+		}
 
-	pts += ptsDTSOffset
+		e.startDTS = dts
+		dts = 0
+		pts -= e.startDTS
+
+	} else {
+		var err error
+		dts, err = e.dtsExtractor.Extract(filteredNALUs, pts)
+		if err != nil {
+			return err
+		}
+
+		dts -= e.startDTS
+		pts -= e.startDTS
+	}
 
 	oh := &astits.PESOptionalHeader{
 		MarkerBits: 2,

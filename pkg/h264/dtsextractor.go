@@ -96,12 +96,13 @@ func getPOCDiff(poc1 uint32, poc2 uint32, sps *SPS) int32 {
 
 // DTSExtractor is a utility that allows to extract NALU DTS from PTS.
 type DTSExtractor struct {
-	sps         []byte
-	spsp        *SPS
-	prevPTS     time.Duration
-	prevDTS     time.Duration
-	prevPOCDiff int32
-	expectedPOC uint32
+	sps          []byte
+	spsp         *SPS
+	prevPTS      time.Duration
+	prevDTS      time.Duration
+	prevPOCDiff  int32
+	expectedPOC  uint32
+	ptsDTSOffset time.Duration
 }
 
 // NewDTSExtractor allocates a DTSExtractor.
@@ -128,6 +129,14 @@ func (d *DTSExtractor) extractInner(
 				}
 				d.sps = append([]byte(nil), nalu...)
 				d.spsp = &spsp
+
+				// in case of B-frames, we have to subtract from DTS the maximum number of reordered frames
+				if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil {
+					d.ptsDTSOffset = time.Duration(math.Round(float64(time.Duration(d.spsp.VUI.MaxNumReorderFrames)*time.Second*
+						time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2) / float64(d.spsp.VUI.TimingInfo.TimeScale)))
+				} else {
+					d.ptsDTSOffset = 0
+				}
 			}
 
 		// set IDR present flag
@@ -142,7 +151,7 @@ func (d *DTSExtractor) extractInner(
 
 	if idrPresent || d.spsp.PicOrderCntType == 2 {
 		d.expectedPOC = 0
-		return pts, 0, nil
+		return pts - d.ptsDTSOffset, 0, nil
 	}
 
 	// compute expectedPOC immediately in order to store it even in case of errors
@@ -157,6 +166,11 @@ func (d *DTSExtractor) extractInner(
 	pocDiff := getPOCDiff(poc, d.expectedPOC, d.spsp)
 
 	if pocDiff == 0 {
+		return pts - d.ptsDTSOffset, 0, nil
+	}
+
+	// special case to eliminate errors near 0
+	if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && pocDiff == -int32(d.spsp.VUI.MaxNumReorderFrames)*2 {
 		return pts, pocDiff, nil
 	}
 
@@ -165,12 +179,13 @@ func (d *DTSExtractor) extractInner(
 			return 0, 0, fmt.Errorf("invalid frame POC")
 		}
 
-		return d.prevPTS + time.Duration(math.Round(float64(pts-d.prevPTS)/float64(pocDiff/2+1))), pocDiff, nil
+		return d.prevPTS - d.ptsDTSOffset +
+			time.Duration(math.Round(float64(pts-d.prevPTS)/float64(pocDiff/2+1))), pocDiff, nil
 	}
 
-	// pocDiff : prevPOCDiff = (pts - dts) : (prevPTS - prevDTS)
-	return pts + time.Duration(math.Round(float64(d.prevDTS-d.prevPTS)*float64(pocDiff)/float64(d.prevPOCDiff))),
-		pocDiff, nil
+	// pocDiff : prevPOCDiff = (pts - dts - ptsDTSOffset) : (prevPTS - prevDTS - ptsDTSOffset)
+	return pts - d.ptsDTSOffset + time.Duration(math.Round(float64(d.prevDTS-d.prevPTS+d.ptsDTSOffset)*
+		float64(pocDiff)/float64(d.prevPOCDiff))), pocDiff, nil
 }
 
 // Extract extracts the DTS of a NALU group.

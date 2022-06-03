@@ -80,7 +80,7 @@ func TestDTSExtractor(t *testing.T) {
 				},
 			},
 			0,
-			0,
+			-400 * time.Millisecond,
 		},
 		{
 			[][]byte{
@@ -97,7 +97,7 @@ func TestDTSExtractor(t *testing.T) {
 				},
 			},
 			800 * time.Millisecond,
-			200 * time.Millisecond,
+			-200 * time.Millisecond,
 		},
 		{
 			[][]byte{
@@ -114,7 +114,7 @@ func TestDTSExtractor(t *testing.T) {
 				},
 			},
 			400 * time.Millisecond,
-			400 * time.Millisecond,
+			0,
 		},
 		{
 			[][]byte{
@@ -130,7 +130,7 @@ func TestDTSExtractor(t *testing.T) {
 				},
 			},
 			200 * time.Millisecond,
-			600 * time.Millisecond,
+			200 * time.Millisecond,
 		},
 	}
 
