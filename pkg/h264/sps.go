@@ -567,7 +567,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		return fmt.Errorf("wrong forbidden bit")
 	}
 
-	if nalRefIdc != 3 {
+	if nalRefIdc == 0 {
 		return fmt.Errorf("wrong nal_ref_idc")
 	}
 
