@@ -30,5 +30,5 @@ func main() {
 		panic(err)
 	}
 
-	log.Println("available tracks: %v\n", tracks)
+	log.Printf("available tracks: %v\n", tracks)
 }
