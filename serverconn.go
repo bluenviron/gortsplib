@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
+	gourl "net/url"
 	"strings"
 	"time"
 
@@ -16,6 +16,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func getSessionID(header base.Header) string {
@@ -443,7 +444,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, liberrors.ErrServerInvalidPath{}
 			}
 
-			path, query := base.PathSplitQuery(pathAndQuery)
+			path, query := url.PathSplitQuery(pathAndQuery)
 
 			res, stream, err := h.OnDescribe(&ServerHandlerOnDescribeCtx{
 				Conn:    sc,
@@ -465,7 +466,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				// to return a SDP that contains a multicast address.
 				multicast := false
 				if sc.s.MulticastIPRange != "" {
-					if q, err := url.ParseQuery(query); err == nil {
+					if q, err := gourl.ParseQuery(query); err == nil {
 						if _, ok := q["vlcmulticast"]; ok {
 							multicast = true
 						}
@@ -530,7 +531,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, liberrors.ErrServerInvalidPath{}
 			}
 
-			path, query := base.PathSplitQuery(pathAndQuery)
+			path, query := url.PathSplitQuery(pathAndQuery)
 
 			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
 				Conn:    sc,
@@ -549,7 +550,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, liberrors.ErrServerInvalidPath{}
 			}
 
-			path, query := base.PathSplitQuery(pathAndQuery)
+			path, query := url.PathSplitQuery(pathAndQuery)
 
 			return h.OnSetParameter(&ServerHandlerOnSetParameterCtx{
 				Conn:    sc,

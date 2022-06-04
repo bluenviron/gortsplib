@@ -32,16 +32,17 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 	"github.com/aler9/gortsplib/pkg/rtph264"
 	"github.com/aler9/gortsplib/pkg/sdp"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func isAnyPort(p int) bool {
 	return p == 0 || p == 1
 }
 
-func findBaseURL(sd *sdp.SessionDescription, res *base.Response, u *base.URL) (*base.URL, error) {
+func findBaseURL(sd *sdp.SessionDescription, res *base.Response, u *url.URL) (*url.URL, error) {
 	// use global control attribute
 	if control, ok := sd.Attribute("control"); ok && control != "*" {
-		ret, err := base.ParseURL(control)
+		ret, err := url.Parse(control)
 		if err != nil {
 			return nil, fmt.Errorf("invalid control attribute: '%v'", control)
 		}
@@ -58,7 +59,7 @@ func findBaseURL(sd *sdp.SessionDescription, res *base.Response, u *base.URL) (*
 			return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
 		}
 
-		ret, err := base.ParseURL(cb[0])
+		ret, err := url.Parse(cb[0])
 		if err != nil {
 			return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
 		}
@@ -111,17 +112,17 @@ func (s clientState) String() string {
 }
 
 type optionsReq struct {
-	url *base.URL
+	url *url.URL
 	res chan clientRes
 }
 
 type describeReq struct {
-	url *base.URL
+	url *url.URL
 	res chan clientRes
 }
 
 type announceReq struct {
-	url    *base.URL
+	url    *url.URL
 	tracks Tracks
 	res    chan clientRes
 }
@@ -129,7 +130,7 @@ type announceReq struct {
 type setupReq struct {
 	forPlay  bool
 	track    Track
-	baseURL  *base.URL
+	baseURL  *url.URL
 	rtpPort  int
 	rtcpPort int
 	res      chan clientRes
@@ -150,7 +151,7 @@ type pauseReq struct {
 
 type clientRes struct {
 	tracks  Tracks
-	baseURL *base.URL
+	baseURL *url.URL
 	res     *base.Response
 	err     error
 }
@@ -256,8 +257,8 @@ type Client struct {
 	cseq               int
 	optionsSent        bool
 	useGetParameter    bool
-	lastDescribeURL    *base.URL
-	baseURL            *base.URL
+	lastDescribeURL    *url.URL
+	baseURL            *url.URL
 	effectiveTransport *Transport
 	tracks             []*clientTrack
 	tcpTracksByChannel map[int]int
@@ -373,7 +374,7 @@ func (c *Client) Start(scheme string, host string) error {
 
 // StartReading connects to the address and starts reading all tracks.
 func (c *Client) StartReading(address string) error {
-	u, err := base.ParseURL(address)
+	u, err := url.Parse(address)
 	if err != nil {
 		return err
 	}
@@ -405,7 +406,7 @@ func (c *Client) StartReadingAndWait(address string) error {
 
 // StartPublishing connects to the address and starts publishing the tracks.
 func (c *Client) StartPublishing(address string, tracks Tracks) error {
-	u, err := base.ParseURL(address)
+	u, err := url.Parse(address)
 	if err != nil {
 		return err
 	}
@@ -1159,7 +1160,7 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 	return &res, nil
 }
 
-func (c *Client) doOptions(u *base.URL) (*base.Response, error) {
+func (c *Client) doOptions(u *url.URL) (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStateInitial:   {},
 		clientStatePrePlay:   {},
@@ -1206,7 +1207,7 @@ func (c *Client) doOptions(u *base.URL) (*base.Response, error) {
 }
 
 // Options writes an OPTIONS request and reads a response.
-func (c *Client) Options(u *base.URL) (*base.Response, error) {
+func (c *Client) Options(u *url.URL) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
 	case c.options <- optionsReq{url: u, res: cres}:
@@ -1218,7 +1219,7 @@ func (c *Client) Options(u *base.URL) (*base.Response, error) {
 	}
 }
 
-func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, error) {
+func (c *Client) doDescribe(u *url.URL) (Tracks, *url.URL, *base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStateInitial:   {},
 		clientStatePrePlay:   {},
@@ -1247,7 +1248,7 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 			len(res.Header["Location"]) == 1 {
 			c.reset()
 
-			ru, err := base.ParseURL(res.Header["Location"][0])
+			ru, err := url.Parse(res.Header["Location"][0])
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -1293,7 +1294,7 @@ func (c *Client) doDescribe(u *base.URL) (Tracks, *base.URL, *base.Response, err
 }
 
 // Describe writes a DESCRIBE request and reads a Response.
-func (c *Client) Describe(u *base.URL) (Tracks, *base.URL, *base.Response, error) {
+func (c *Client) Describe(u *url.URL) (Tracks, *url.URL, *base.Response, error) {
 	cres := make(chan clientRes)
 	select {
 	case c.describe <- describeReq{url: u, res: cres}:
@@ -1305,7 +1306,7 @@ func (c *Client) Describe(u *base.URL) (Tracks, *base.URL, *base.Response, error
 	}
 }
 
-func (c *Client) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, error) {
+func (c *Client) doAnnounce(u *url.URL, tracks Tracks) (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStateInitial: {},
 	})
@@ -1340,7 +1341,7 @@ func (c *Client) doAnnounce(u *base.URL, tracks Tracks) (*base.Response, error) 
 }
 
 // Announce writes an ANNOUNCE request and reads a Response.
-func (c *Client) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
+func (c *Client) Announce(u *url.URL, tracks Tracks) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
 	case c.announce <- announceReq{url: u, tracks: tracks, res: cres}:
@@ -1355,7 +1356,7 @@ func (c *Client) Announce(u *base.URL, tracks Tracks) (*base.Response, error) {
 func (c *Client) doSetup(
 	forPlay bool,
 	track Track,
-	baseURL *base.URL,
+	baseURL *url.URL,
 	rtpPort int,
 	rtcpPort int,
 ) (*base.Response, error) {
@@ -1667,7 +1668,7 @@ func (c *Client) doSetup(
 func (c *Client) Setup(
 	forPlay bool,
 	track Track,
-	baseURL *base.URL,
+	baseURL *url.URL,
 	rtpPort int,
 	rtcpPort int,
 ) (*base.Response, error) {
@@ -1757,7 +1758,7 @@ func (c *Client) Play(ra *headers.Range) (*base.Response, error) {
 }
 
 // SetupAndPlay setups and play the given tracks.
-func (c *Client) SetupAndPlay(tracks Tracks, baseURL *base.URL) error {
+func (c *Client) SetupAndPlay(tracks Tracks, baseURL *url.URL) error {
 	for _, t := range tracks {
 		_, err := c.Setup(true, t, baseURL, 0, 0)
 		if err != nil {

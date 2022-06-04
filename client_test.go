@@ -11,10 +11,11 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
-func mustParseURL(s string) *base.URL {
-	u, err := base.ParseURL(s)
+func mustParseURL(s string) *url.URL {
+	u, err := url.Parse(s)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +64,7 @@ func TestClientTLSSetServerName(t *testing.T) {
 		require.EqualError(t, err, "remote error: tls: bad certificate")
 	}()
 
-	u, err := base.ParseURL("rtsps://localhost:8554/stream")
+	u, err := url.Parse("rtsps://localhost:8554/stream")
 	require.NoError(t, err)
 
 	c := Client{
@@ -135,7 +136,7 @@ func TestClientSession(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	u, err := base.ParseURL("rtsp://localhost:8554/stream")
+	u, err := url.Parse("rtsp://localhost:8554/stream")
 	require.NoError(t, err)
 
 	c := Client{}
@@ -217,7 +218,7 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/stream")
+	u, err := url.Parse("rtsp://myuser:mypass@localhost:8554/stream")
 	require.NoError(t, err)
 
 	c := Client{}
@@ -280,7 +281,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	u, err := url.Parse("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
 	c := Client{}
@@ -294,7 +295,7 @@ func TestClientDescribeCharset(t *testing.T) {
 }
 
 func TestClientClose(t *testing.T) {
-	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	u, err := url.Parse("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
 	c := Client{}
@@ -352,7 +353,7 @@ func TestClientCloseDuringRequest(t *testing.T) {
 		<-releaseConn
 	}()
 
-	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	u, err := url.Parse("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
 	c := Client{}

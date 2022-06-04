@@ -6,7 +6,7 @@ import (
 	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func TestTrackNewFromMediaDescription(t *testing.T) {
@@ -662,8 +662,8 @@ func TestTrackURL(t *testing.T) {
 	for _, ca := range []struct {
 		name    string
 		sdp     []byte
-		baseURL *base.URL
-		ur      *base.URL
+		baseURL *url.URL
+		ur      *url.URL
 	}{
 		{
 			"missing control",

@@ -20,6 +20,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func stringsReverseIndex(s, substr string) int {
@@ -32,14 +33,14 @@ func stringsReverseIndex(s, substr string) int {
 }
 
 func setupGetTrackIDPathQuery(
-	url *base.URL,
+	u *url.URL,
 	thMode *headers.TransportMode,
 	announcedTracks []*ServerSessionAnnouncedTrack,
 	setuppedPath *string,
 	setuppedQuery *string,
-	setuppedBaseURL *base.URL,
+	setuppedBaseURL *url.URL,
 ) (int, string, string, error) {
-	pathAndQuery, ok := url.RTSPPathAndQuery()
+	pathAndQuery, ok := u.RTSPPathAndQuery()
 	if !ok {
 		return 0, "", "", liberrors.ErrServerInvalidPath{}
 	}
@@ -56,7 +57,7 @@ func setupGetTrackIDPathQuery(
 			}
 			pathAndQuery = pathAndQuery[:len(pathAndQuery)-1]
 
-			path, query := base.PathSplitQuery(pathAndQuery)
+			path, query := url.PathSplitQuery(pathAndQuery)
 
 			// we assume it's track 0
 			return 0, path, query, nil
@@ -69,7 +70,7 @@ func setupGetTrackIDPathQuery(
 		trackID := int(tmp)
 		pathAndQuery = pathAndQuery[:i]
 
-		path, query := base.PathSplitQuery(pathAndQuery)
+		path, query := url.PathSplitQuery(pathAndQuery)
 
 		if setuppedPath != nil && (path != *setuppedPath || query != *setuppedQuery) {
 			return 0, "", "", fmt.Errorf("can't setup tracks with different paths")
@@ -79,8 +80,8 @@ func setupGetTrackIDPathQuery(
 	}
 
 	for trackID, track := range announcedTracks {
-		u, _ := track.track.url(setuppedBaseURL)
-		if u.String() == url.String() {
+		u2, _ := track.track.url(setuppedBaseURL)
+		if u2.String() == u.String() {
 			return trackID, *setuppedPath, *setuppedQuery, nil
 		}
 	}
@@ -170,7 +171,7 @@ type ServerSession struct {
 	setuppedTracks      map[int]*ServerSessionSetuppedTrack
 	tcpTracksByChannel  map[int]int
 	setuppedTransport   *Transport
-	setuppedBaseURL     *base.URL     // publish
+	setuppedBaseURL     *url.URL      // publish
 	setuppedStream      *ServerStream // read
 	setuppedPath        *string
 	setuppedQuery       *string
@@ -488,7 +489,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerInvalidPath{}
 		}
 
-		path, query := base.PathSplitQuery(pathAndQuery)
+		path, query := url.PathSplitQuery(pathAndQuery)
 
 		ct, ok := req.Header["Content-Type"]
 		if !ok || len(ct) != 1 {
@@ -815,7 +816,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// path can end with a slash due to Content-Base, remove it
 		pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
 
-		path, query := base.PathSplitQuery(pathAndQuery)
+		path, query := url.PathSplitQuery(pathAndQuery)
 
 		if ss.State() == ServerSessionStatePrePlay &&
 			path != *ss.setuppedPath {
@@ -899,7 +900,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				continue
 			}
 
-			u := &base.URL{
+			u := &url.URL{
 				Scheme: req.URL.Scheme,
 				User:   req.URL.User,
 				Host:   req.URL.Host,
@@ -947,7 +948,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// path can end with a slash due to Content-Base, remove it
 		pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
 
-		path, query := base.PathSplitQuery(pathAndQuery)
+		path, query := url.PathSplitQuery(pathAndQuery)
 
 		if path != *ss.setuppedPath {
 			return &base.Response{
@@ -1042,7 +1043,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// path can end with a slash due to Content-Base, remove it
 		pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
 
-		path, query := base.PathSplitQuery(pathAndQuery)
+		path, query := url.PathSplitQuery(pathAndQuery)
 
 		res, err := ss.s.Handler.(ServerHandlerOnPause).OnPause(&ServerHandlerOnPauseCtx{
 			Session: ss,
@@ -1133,7 +1134,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				}, liberrors.ErrServerInvalidPath{}
 			}
 
-			path, query := base.PathSplitQuery(pathAndQuery)
+			path, query := url.PathSplitQuery(pathAndQuery)
 
 			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
 				Session: ss,

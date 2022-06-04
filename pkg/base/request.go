@@ -5,6 +5,8 @@ import (
 	"bufio"
 	"fmt"
 	"strconv"
+
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 const (
@@ -37,7 +39,7 @@ type Request struct {
 	Method Method
 
 	// request url
-	URL *URL
+	URL *url.URL
 
 	// map of header values
 	Header Header
@@ -64,7 +66,7 @@ func (req *Request) Read(rb *bufio.Reader) error {
 	}
 	rawURL := string(byts[:len(byts)-1])
 
-	ur, err := ParseURL(rawURL)
+	ur, err := url.Parse(rawURL)
 	if err != nil {
 		return fmt.Errorf("invalid URL (%v)", rawURL)
 	}

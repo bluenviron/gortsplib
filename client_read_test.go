@@ -19,6 +19,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func mergeBytes(vals ...[]byte) []byte {
@@ -749,7 +750,7 @@ func TestClientReadPartial(t *testing.T) {
 		},
 	}
 
-	u, err := base.ParseURL("rtsp://" + listenIP + ":8554/teststream")
+	u, err := url.Parse("rtsp://" + listenIP + ":8554/teststream")
 	require.NoError(t, err)
 
 	err = c.Start(u.Scheme, u.Host)
@@ -2610,7 +2611,7 @@ func TestClientReadSeek(t *testing.T) {
 		}(),
 	}
 
-	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	u, err := url.Parse("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
 	err = c.Start(u.Scheme, u.Host)

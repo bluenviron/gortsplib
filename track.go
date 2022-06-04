@@ -7,7 +7,7 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 // Track is a RTSP track.
@@ -25,7 +25,7 @@ type Track interface {
 	MediaDescription() *psdp.MediaDescription
 
 	clone() Track
-	url(*base.URL) (*base.URL, error)
+	url(*url.URL) (*url.URL, error)
 }
 
 func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
@@ -98,7 +98,7 @@ func (t *trackBase) SetControl(c string) {
 	t.control = c
 }
 
-func (t *trackBase) url(contentBase *base.URL) (*base.URL, error) {
+func (t *trackBase) url(contentBase *url.URL) (*url.URL, error) {
 	if contentBase == nil {
 		return nil, fmt.Errorf("Content-Base header not provided")
 	}
@@ -112,7 +112,7 @@ func (t *trackBase) url(contentBase *base.URL) (*base.URL, error) {
 
 	// control attribute contains an absolute path
 	if strings.HasPrefix(control, "rtsp://") {
-		ur, err := base.ParseURL(control)
+		ur, err := url.Parse(control)
 		if err != nil {
 			return nil, err
 		}
@@ -132,6 +132,6 @@ func (t *trackBase) url(contentBase *base.URL) (*base.URL, error) {
 		strURL += "/"
 	}
 
-	ur, _ := base.ParseURL(strURL + control)
+	ur, _ := url.Parse(strURL + control)
 	return ur, nil
 }

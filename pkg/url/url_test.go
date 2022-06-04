@@ -1,4 +1,4 @@
-package base
+package url
 
 import (
 	"net/url"
@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mustParseURL(s string) *URL {
-	u, err := ParseURL(s)
+func mustParse(s string) *URL {
+	u, err := Parse(s)
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +33,7 @@ func TestURLParse(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			u, err := ParseURL(ca.enc)
+			u, err := Parse(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.u, u)
 		})
@@ -68,14 +68,14 @@ func TestURLParseErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := ParseURL(ca.enc)
+			_, err := Parse(ca.enc)
 			require.EqualError(t, err, ca.err)
 		})
 	}
 }
 
 func TestURLClone(t *testing.T) {
-	u := mustParseURL("rtsp://localhost:8554/test/stream")
+	u := mustParse("rtsp://localhost:8554/test/stream")
 	u2 := u.Clone()
 	u.Host = "otherhost"
 
@@ -98,23 +98,23 @@ func TestURLRTSPPathAndQuery(t *testing.T) {
 		b string
 	}{
 		{
-			mustParseURL("rtsp://localhost:8554/teststream/trackID=1"),
+			mustParse("rtsp://localhost:8554/teststream/trackID=1"),
 			"teststream/trackID=1",
 		},
 		{
-			mustParseURL("rtsp://localhost:8554/test/stream/trackID=1"),
+			mustParse("rtsp://localhost:8554/test/stream/trackID=1"),
 			"test/stream/trackID=1",
 		},
 		{
-			mustParseURL("rtsp://192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1"),
+			mustParse("rtsp://192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1"),
 			"test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1",
 		},
 		{
-			mustParseURL("rtsp://192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
+			mustParse("rtsp://192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
 			"te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
 		},
 		{
-			mustParseURL("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
+			mustParse("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
 			"user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
 		},
 	} {
