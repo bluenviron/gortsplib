@@ -61,17 +61,21 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 
 	switch {
 	case md.MediaName.Media == "video":
-		if rtpmapPart1 == "H264/90000" {
+		switch {
+		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "26":
+			return newTrackJPEGFromMediaDescription(control)
+
+		case rtpmapPart1 == "H264/90000":
 			return newTrackH264FromMediaDescription(control, payloadType, md)
 		}
 
 	case md.MediaName.Media == "audio":
 		switch {
 		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "0":
-			return newTrackPCMUFromMediaDescription(control, rtpmapPart1, md)
+			return newTrackPCMUFromMediaDescription(control, rtpmapPart1)
 
 		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "8":
-			return newTrackPCMAFromMediaDescription(control, rtpmapPart1, md)
+			return newTrackPCMAFromMediaDescription(control, rtpmapPart1)
 
 		case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
 			return newTrackAACFromMediaDescription(control, payloadType, md)

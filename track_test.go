@@ -31,7 +31,6 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
-					Port:    psdp.RangedPort{Value: 49170},
 					Protos:  []string{"RTP", "AVP"},
 					Formats: []string{"0"},
 				},
@@ -193,6 +192,17 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
+			"jpeg",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"26"},
+				},
+			},
+			&TrackJPEG{},
+		},
+		{
 			"h264",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
@@ -343,7 +353,6 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
-					Port:    psdp.RangedPort{Value: 0},
 					Protos:  []string{"RTP", "AVP"},
 					Formats: []string{"98", "96"},
 				},
