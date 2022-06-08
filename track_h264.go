@@ -165,7 +165,9 @@ func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
 	if t.extradata != nil {
 		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.extradata))
 	}
-	fmtp += "; sprop-parameter-sets=" + strings.Join(tmp, ",")
+	if len(tmp) > 0 {
+		fmtp += "; sprop-parameter-sets=" + strings.Join(tmp, ",")
+	}
 
 	if len(t.sps) >= 4 {
 		fmtp += "; profile-level-id=" + strings.ToUpper(hex.EncodeToString(t.sps[1:4]))
