@@ -257,7 +257,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					return err
 				}
 
-				out, err := sc.session.setuppedTracks[trackID].proc.Process(pkt)
+				out, err := sc.session.setuppedTracks[trackID].cleaner.Clear(pkt)
 				if err != nil {
 					return err
 				}

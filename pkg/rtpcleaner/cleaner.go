@@ -1,4 +1,4 @@
-package rtpproc
+package rtpcleaner
 
 import (
 	"fmt"
@@ -15,19 +15,18 @@ const (
 	maxPacketSize = 1472
 )
 
-// ProcessorOutput is the output of Process().
-type ProcessorOutput struct {
+// Output is the output of Clear().
+type Output struct {
 	Packet       *rtp.Packet
 	PTSEqualsDTS bool
 	H264NALUs    [][]byte
 	H264PTS      time.Duration
 }
 
-// Processor is used to process incoming RTP packets, in order to:
+// Cleaner is used to clean incoming RTP packets, in order to:
 // - remove padding
-// - decode packets encoded with supported codecs
 // - re-encode packets if they are bigger than maximum allowed.
-type Processor struct {
+type Cleaner struct {
 	isH264 bool
 	isTCP  bool
 
@@ -35,9 +34,9 @@ type Processor struct {
 	h264Encoder *rtph264.Encoder
 }
 
-// NewProcessor allocates a Processor.
-func NewProcessor(isH264 bool, isTCP bool) *Processor {
-	p := &Processor{
+// NewCleaner allocates a Cleaner.
+func NewCleaner(isH264 bool, isTCP bool) *Cleaner {
+	p := &Cleaner{
 		isH264: isH264,
 		isTCP:  isTCP,
 	}
@@ -50,7 +49,7 @@ func NewProcessor(isH264 bool, isTCP bool) *Processor {
 	return p
 }
 
-func (p *Processor) processH264(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
+func (p *Cleaner) processH264(pkt *rtp.Packet) ([]*Output, error) {
 	// check if we need to re-encode
 	if p.isTCP && p.h264Encoder == nil && pkt.MarshalSize() > maxPacketSize {
 		v1 := pkt.SSRC
@@ -71,7 +70,7 @@ func (p *Processor) processH264(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
 		if err == rtph264.ErrNonStartingPacketAndNoPrevious ||
 			err == rtph264.ErrMorePacketsNeeded {
 			if p.h264Encoder == nil {
-				return []*ProcessorOutput{{
+				return []*Output{{
 					Packet:       pkt,
 					PTSEqualsDTS: false,
 				}}, nil
@@ -90,16 +89,16 @@ func (p *Processor) processH264(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
 			return nil, err
 		}
 
-		output := make([]*ProcessorOutput, len(packets))
+		output := make([]*Output, len(packets))
 
 		for i, pkt := range packets {
 			if i != len(packets)-1 {
-				output[i] = &ProcessorOutput{
+				output[i] = &Output{
 					Packet:       pkt,
 					PTSEqualsDTS: false,
 				}
 			} else {
-				output[i] = &ProcessorOutput{
+				output[i] = &Output{
 					Packet:       pkt,
 					PTSEqualsDTS: ptsEqualsDTS,
 					H264NALUs:    nalus,
@@ -111,7 +110,7 @@ func (p *Processor) processH264(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
 		return output, nil
 	}
 
-	return []*ProcessorOutput{{
+	return []*Output{{
 		Packet:       pkt,
 		PTSEqualsDTS: ptsEqualsDTS,
 		H264NALUs:    nalus,
@@ -119,8 +118,8 @@ func (p *Processor) processH264(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
 	}}, nil
 }
 
-// Process processes a RTP packet.
-func (p *Processor) Process(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
+// Clear processes a RTP packet.
+func (p *Cleaner) Clear(pkt *rtp.Packet) ([]*Output, error) {
 	// remove padding
 	pkt.Header.Padding = false
 	pkt.PaddingSize = 0
@@ -134,7 +133,7 @@ func (p *Processor) Process(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
 			pkt.MarshalSize(), maxPacketSize)
 	}
 
-	return []*ProcessorOutput{{
+	return []*Output{{
 		Packet:       pkt,
 		PTSEqualsDTS: true,
 	}}, nil

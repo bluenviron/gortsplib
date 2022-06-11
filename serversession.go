@@ -18,7 +18,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
-	"github.com/aler9/gortsplib/pkg/rtpproc"
+	"github.com/aler9/gortsplib/pkg/rtpcleaner"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -151,7 +151,7 @@ type ServerSessionSetuppedTrack struct {
 
 	// publish
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver
-	proc            *rtpproc.Processor
+	cleaner         *rtpcleaner.Cleaner
 }
 
 // ServerSession is a server-side RTSP session.
@@ -973,7 +973,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		for trackID, st := range ss.setuppedTracks {
 			_, isH264 := ss.announcedTracks[trackID].(*TrackH264)
-			st.proc = rtpproc.NewProcessor(isH264, *ss.setuppedTransport == TransportTCP)
+			st.cleaner = rtpcleaner.NewCleaner(isH264, *ss.setuppedTransport == TransportTCP)
 		}
 
 		switch *ss.setuppedTransport {
@@ -1097,7 +1097,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}
 
 			for _, st := range ss.setuppedTracks {
-				st.proc = nil
+				st.cleaner = nil
 			}
 
 			ss.state = ServerSessionStatePreRecord

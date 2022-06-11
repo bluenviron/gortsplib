@@ -1,4 +1,4 @@
-package rtpproc
+package rtpcleaner
 
 import (
 	"bytes"
@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestProcessRemovePadding(t *testing.T) {
-	proc := NewProcessor(false, false)
+func TestRemovePadding(t *testing.T) {
+	cleaner := NewCleaner(false, false)
 
-	out, err := proc.Process(&rtp.Packet{
+	out, err := cleaner.Clear(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,
@@ -23,7 +23,7 @@ func TestProcessRemovePadding(t *testing.T) {
 		PaddingSize: 64,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []*ProcessorOutput{{
+	require.Equal(t, []*Output{{
 		Packet: &rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
@@ -37,10 +37,10 @@ func TestProcessRemovePadding(t *testing.T) {
 	}}, out)
 }
 
-func TestProcessH264Oversized(t *testing.T) {
-	proc := NewProcessor(true, true)
+func TestH264Oversized(t *testing.T) {
+	cleaner := NewCleaner(true, true)
 
-	out, err := proc.Process(&rtp.Packet{
+	out, err := cleaner.Clear(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,
@@ -53,9 +53,9 @@ func TestProcessH264Oversized(t *testing.T) {
 		),
 	})
 	require.NoError(t, err)
-	require.Equal(t, []*ProcessorOutput(nil), out)
+	require.Equal(t, []*Output(nil), out)
 
-	out, err = proc.Process(&rtp.Packet{
+	out, err = cleaner.Clear(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,
@@ -68,7 +68,7 @@ func TestProcessH264Oversized(t *testing.T) {
 		),
 	})
 	require.NoError(t, err)
-	require.Equal(t, []*ProcessorOutput{
+	require.Equal(t, []*Output{
 		{
 			Packet: &rtp.Packet{
 				Header: rtp.Header{

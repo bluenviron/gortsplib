@@ -29,7 +29,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
-	"github.com/aler9/gortsplib/pkg/rtpproc"
+	"github.com/aler9/gortsplib/pkg/rtpcleaner"
 	"github.com/aler9/gortsplib/pkg/sdp"
 	"github.com/aler9/gortsplib/pkg/url"
 )
@@ -93,7 +93,7 @@ type clientTrack struct {
 	// play
 	udpRTPPacketBuffer *rtpPacketMultiBuffer
 	udpRTCPReceiver    *rtcpreceiver.RTCPReceiver
-	proc               *rtpproc.Processor
+	cleaner            *rtpcleaner.Cleaner
 
 	// record
 	udpRTCPSender *rtcpsender.RTCPSender
@@ -715,7 +715,7 @@ func (c *Client) playRecordStart() {
 	if c.state == clientStatePlay {
 		for _, ct := range c.tracks {
 			_, isH264 := ct.track.(*TrackH264)
-			ct.proc = rtpproc.NewProcessor(isH264, *c.effectiveTransport == TransportTCP)
+			ct.cleaner = rtpcleaner.NewCleaner(isH264, *c.effectiveTransport == TransportTCP)
 		}
 
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
@@ -814,7 +814,7 @@ func (c *Client) runReader() {
 							return err
 						}
 
-						out, err := track.proc.Process(pkt)
+						out, err := track.cleaner.Clear(pkt)
 						if err != nil {
 							return err
 						}
@@ -940,7 +940,7 @@ func (c *Client) playRecordStop(isClosing bool) {
 	}
 
 	for _, ct := range c.tracks {
-		ct.proc = nil
+		ct.cleaner = nil
 	}
 
 	// stop timers

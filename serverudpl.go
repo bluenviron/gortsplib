@@ -201,7 +201,7 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 	now := time.Now()
 	atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
 
-	out, err := clientData.track.proc.Process(pkt)
+	out, err := clientData.track.cleaner.Clear(pkt)
 	if err != nil {
 		return
 	}

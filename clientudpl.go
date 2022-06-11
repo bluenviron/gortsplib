@@ -196,7 +196,7 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 		return
 	}
 
-	out, err := u.ct.proc.Process(pkt)
+	out, err := u.ct.cleaner.Clear(pkt)
 	if err != nil {
 		return
 	}
