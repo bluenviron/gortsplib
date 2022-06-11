@@ -14,7 +14,7 @@ import (
 
 type clientData struct {
 	ss           *ServerSession
-	trackID      int
+	track        *ServerSessionSetuppedTrack
 	isPublishing bool
 }
 
@@ -37,14 +37,12 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 type serverUDPListener struct {
 	s *Server
 
-	pc              *net.UDPConn
-	listenIP        net.IP
-	isRTP           bool
-	writeTimeout    time.Duration
-	rtpPacketBuffer *rtpPacketMultiBuffer
-	clientsMutex    sync.RWMutex
-	clients         map[clientAddr]*clientData
-	processFunc     func(*clientData, []byte)
+	pc           *net.UDPConn
+	listenIP     net.IP
+	isRTP        bool
+	writeTimeout time.Duration
+	clientsMutex sync.RWMutex
+	clients      map[clientAddr]*clientData
 
 	readerDone chan struct{}
 }
@@ -133,20 +131,13 @@ func newServerUDPListener(
 	}
 
 	u := &serverUDPListener{
-		s:               s,
-		pc:              pc,
-		listenIP:        listenIP,
-		clients:         make(map[clientAddr]*clientData),
-		isRTP:           isRTP,
-		writeTimeout:    s.WriteTimeout,
-		rtpPacketBuffer: newRTPPacketMultiBuffer(uint64(s.ReadBufferCount)),
-		readerDone:      make(chan struct{}),
-	}
-
-	if isRTP {
-		u.processFunc = u.processRTP
-	} else {
-		u.processFunc = u.processRTCP
+		s:            s,
+		pc:           pc,
+		listenIP:     listenIP,
+		clients:      make(map[clientAddr]*clientData),
+		isRTP:        isRTP,
+		writeTimeout: s.WriteTimeout,
+		readerDone:   make(chan struct{}),
 	}
 
 	go u.runReader()
@@ -170,6 +161,13 @@ func (u *serverUDPListener) port() int {
 func (u *serverUDPListener) runReader() {
 	defer close(u.readerDone)
 
+	var processFunc func(*clientData, []byte)
+	if u.isRTP {
+		processFunc = u.processRTP
+	} else {
+		processFunc = u.processRTCP
+	}
+
 	for {
 		buf := make([]byte, maxPacketSize)
 		n, addr, err := u.pc.ReadFromUDP(buf)
@@ -188,13 +186,13 @@ func (u *serverUDPListener) runReader() {
 				return
 			}
 
-			u.processFunc(clientData, buf[:n])
+			processFunc(clientData, buf[:n])
 		}()
 	}
 }
 
 func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
-	pkt := u.rtpPacketBuffer.next()
+	pkt := u.s.udpRTPPacketBuffer.next()
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		return
@@ -203,20 +201,18 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 	now := time.Now()
 	atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
 
-	at := clientData.ss.announcedTracks[clientData.trackID]
-
-	out, err := at.proc.Process(pkt)
+	out, err := clientData.track.proc.Process(pkt)
 	if err != nil {
 		return
 	}
 	out0 := out[0]
 
-	at.rtcpReceiver.ProcessPacketRTP(now, pkt, out0.PTSEqualsDTS)
+	clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, out0.PTSEqualsDTS)
 
 	if h, ok := clientData.ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
 		h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
 			Session:      clientData.ss,
-			TrackID:      clientData.trackID,
+			TrackID:      clientData.track.id,
 			Packet:       out0.Packet,
 			PTSEqualsDTS: out0.PTSEqualsDTS,
 			H264NALUs:    out0.H264NALUs,
@@ -236,12 +232,12 @@ func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) 
 		atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
 
 		for _, pkt := range packets {
-			clientData.ss.announcedTracks[clientData.trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
+			clientData.track.udpRTCPReceiver.ProcessPacketRTCP(now, pkt)
 		}
 	}
 
 	for _, pkt := range packets {
-		clientData.ss.onPacketRTCP(clientData.trackID, pkt)
+		clientData.ss.onPacketRTCP(clientData.track.id, pkt)
 	}
 }
 
@@ -254,7 +250,9 @@ func (u *serverUDPListener) write(buf []byte, addr *net.UDPAddr) error {
 	return err
 }
 
-func (u *serverUDPListener) addClient(ip net.IP, port int, ss *ServerSession, trackID int, isPublishing bool) {
+func (u *serverUDPListener) addClient(ip net.IP, port int, ss *ServerSession,
+	track *ServerSessionSetuppedTrack, isPublishing bool,
+) {
 	u.clientsMutex.Lock()
 	defer u.clientsMutex.Unlock()
 
@@ -263,7 +261,7 @@ func (u *serverUDPListener) addClient(ip net.IP, port int, ss *ServerSession, tr
 
 	u.clients[addr] = &clientData{
 		ss:           ss,
-		trackID:      trackID,
+		track:        track,
 		isPublishing: isPublishing,
 	}
 }

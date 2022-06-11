@@ -84,13 +84,19 @@ const (
 )
 
 type clientTrack struct {
+	id              int
 	track           Track
+	tcpChannel      int
 	udpRTPListener  *clientUDPListener
 	udpRTCPListener *clientUDPListener
-	tcpChannel      int
-	rtcpReceiver    *rtcpreceiver.RTCPReceiver
-	rtcpSender      *rtcpsender.RTCPSender
-	proc            *rtpproc.Processor
+
+	// play
+	udpRTPPacketBuffer *rtpPacketMultiBuffer
+	udpRTCPReceiver    *rtcpreceiver.RTCPReceiver
+	proc               *rtpproc.Processor
+
+	// record
+	udpRTCPSender *rtcpsender.RTCPSender
 }
 
 func (s clientState) String() string {
@@ -259,7 +265,7 @@ type Client struct {
 	baseURL            *url.URL
 	effectiveTransport *Transport
 	tracks             []*clientTrack
-	tcpTracksByChannel map[int]int
+	tcpTracksByChannel map[int]*clientTrack
 	lastRange          *headers.Range
 	writeMutex         sync.RWMutex // publish
 	writeFrameAllowed  bool         // publish
@@ -513,13 +519,13 @@ func (c *Client) runInner() error {
 
 					// check that at least one packet has been received
 					inTimeout := func() bool {
-						for _, cct := range c.tracks {
-							lft := atomic.LoadInt64(cct.udpRTPListener.lastPacketTime)
+						for _, ct := range c.tracks {
+							lft := atomic.LoadInt64(ct.udpRTPListener.lastPacketTime)
 							if lft != 0 {
 								return false
 							}
 
-							lft = atomic.LoadInt64(cct.udpRTCPListener.lastPacketTime)
+							lft = atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime)
 							if lft != 0 {
 								return false
 							}
@@ -535,13 +541,13 @@ func (c *Client) runInner() error {
 				} else {
 					inTimeout := func() bool {
 						now := time.Now()
-						for _, cct := range c.tracks {
-							lft := time.Unix(atomic.LoadInt64(cct.udpRTPListener.lastPacketTime), 0)
+						for _, ct := range c.tracks {
+							lft := time.Unix(atomic.LoadInt64(ct.udpRTPListener.lastPacketTime), 0)
 							if now.Sub(lft) < c.ReadTimeout {
 								return false
 							}
 
-							lft = time.Unix(atomic.LoadInt64(cct.udpRTCPListener.lastPacketTime), 0)
+							lft = time.Unix(atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime), 0)
 							if now.Sub(lft) < c.ReadTimeout {
 								return false
 							}
@@ -716,11 +722,11 @@ func (c *Client) playRecordStart() {
 
 		switch *c.effectiveTransport {
 		case TransportUDP:
-			for trackID, cct := range c.tracks {
+			for trackID, ct := range c.tracks {
 				ctrackID := trackID
-
-				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
-					cct.track.ClockRate(), func(pkt rtcp.Packet) {
+				ct.udpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(c.ReadBufferCount))
+				ct.udpRTCPReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
+					ct.track.ClockRate(), func(pkt rtcp.Packet) {
 						c.WritePacketRTCP(ctrackID, pkt)
 					})
 			}
@@ -728,26 +734,26 @@ func (c *Client) playRecordStart() {
 			c.checkStreamTimer = time.NewTimer(c.InitialUDPReadTimeout)
 			c.checkStreamInitial = true
 
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.start(true)
-				cct.udpRTCPListener.start(true)
+			for _, ct := range c.tracks {
+				ct.udpRTPListener.start(true)
+				ct.udpRTCPListener.start(true)
 			}
 
 		case TransportUDPMulticast:
-			for trackID, cct := range c.tracks {
+			for trackID, ct := range c.tracks {
 				ctrackID := trackID
-
-				cct.rtcpReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
-					cct.track.ClockRate(), func(pkt rtcp.Packet) {
+				ct.udpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(c.ReadBufferCount))
+				ct.udpRTCPReceiver = rtcpreceiver.New(c.udpReceiverReportPeriod, nil,
+					ct.track.ClockRate(), func(pkt rtcp.Packet) {
 						c.WritePacketRTCP(ctrackID, pkt)
 					})
 			}
 
 			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
 
-			for _, cct := range c.tracks {
-				cct.udpRTPListener.start(true)
-				cct.udpRTCPListener.start(true)
+			for _, ct := range c.tracks {
+				ct.udpRTPListener.start(true)
+				ct.udpRTCPListener.start(true)
 			}
 
 		default: // TCP
@@ -756,18 +762,18 @@ func (c *Client) playRecordStart() {
 			c.tcpLastFrameTime = &v
 		}
 	} else if *c.effectiveTransport == TransportUDP {
-		for trackID, cct := range c.tracks {
+		for trackID, ct := range c.tracks {
 			ctrackID := trackID
 
-			cct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
-				cct.track.ClockRate(), func(pkt rtcp.Packet) {
+			ct.udpRTCPSender = rtcpsender.New(c.udpSenderReportPeriod,
+				ct.track.ClockRate(), func(pkt rtcp.Packet) {
 					c.WritePacketRTCP(ctrackID, pkt)
 				})
 		}
 
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.start(false)
-			cct.udpRTCPListener.start(false)
+		for _, ct := range c.tracks {
+			ct.udpRTPListener.start(false)
+			ct.udpRTCPListener.start(false)
 		}
 	}
 
@@ -792,12 +798,12 @@ func (c *Client) runReader() {
 				}
 			}
 		} else {
-			var processFunc func(int, bool, []byte) error
+			var processFunc func(*clientTrack, bool, []byte) error
 
 			if c.state == clientStatePlay {
 				tcpRTPPacketBuffer := newRTPPacketMultiBuffer(uint64(c.ReadBufferCount))
 
-				processFunc = func(trackID int, isRTP bool, payload []byte) error {
+				processFunc = func(track *clientTrack, isRTP bool, payload []byte) error {
 					now := time.Now()
 					atomic.StoreInt64(c.tcpLastFrameTime, now.Unix())
 
@@ -808,14 +814,14 @@ func (c *Client) runReader() {
 							return err
 						}
 
-						out, err := c.tracks[trackID].proc.Process(pkt)
+						out, err := track.proc.Process(pkt)
 						if err != nil {
 							return err
 						}
 
 						for _, entry := range out {
 							c.OnPacketRTP(&ClientOnPacketRTPCtx{
-								TrackID:      trackID,
+								TrackID:      track.id,
 								Packet:       entry.Packet,
 								PTSEqualsDTS: entry.PTSEqualsDTS,
 								H264NALUs:    entry.H264NALUs,
@@ -835,7 +841,7 @@ func (c *Client) runReader() {
 
 						for _, pkt := range packets {
 							c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-								TrackID: trackID,
+								TrackID: track.id,
 								Packet:  pkt,
 							})
 						}
@@ -844,7 +850,7 @@ func (c *Client) runReader() {
 					return nil
 				}
 			} else {
-				processFunc = func(trackID int, isRTP bool, payload []byte) error {
+				processFunc = func(track *clientTrack, isRTP bool, payload []byte) error {
 					if !isRTP {
 						if len(payload) > maxPacketSize {
 							return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
@@ -858,7 +864,7 @@ func (c *Client) runReader() {
 
 						for _, pkt := range packets {
 							c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-								TrackID: trackID,
+								TrackID: track.id,
 								Packet:  pkt,
 							})
 						}
@@ -885,12 +891,12 @@ func (c *Client) runReader() {
 						isRTP = false
 					}
 
-					trackID, ok := c.tcpTracksByChannel[channel]
+					track, ok := c.tcpTracksByChannel[channel]
 					if !ok {
 						continue
 					}
 
-					err := processFunc(trackID, isRTP, frame.Payload)
+					err := processFunc(track, isRTP, frame.Payload)
 					if err != nil {
 						return err
 					}
@@ -914,20 +920,21 @@ func (c *Client) playRecordStop(isClosing bool) {
 
 	if *c.effectiveTransport == TransportUDP ||
 		*c.effectiveTransport == TransportUDPMulticast {
-		for _, cct := range c.tracks {
-			cct.udpRTPListener.stop()
-			cct.udpRTCPListener.stop()
+		for _, ct := range c.tracks {
+			ct.udpRTPListener.stop()
+			ct.udpRTCPListener.stop()
 		}
 
 		if c.state == clientStatePlay {
-			for _, cct := range c.tracks {
-				cct.rtcpReceiver.Close()
-				cct.rtcpReceiver = nil
+			for _, ct := range c.tracks {
+				ct.udpRTPPacketBuffer = nil
+				ct.udpRTCPReceiver.Close()
+				ct.udpRTCPReceiver = nil
 			}
 		} else {
-			for _, cct := range c.tracks {
-				cct.rtcpSender.Close()
-				cct.rtcpSender = nil
+			for _, ct := range c.tracks {
+				ct.udpRTCPSender.Close()
+				ct.udpRTCPSender = nil
 			}
 		}
 	}
@@ -1336,9 +1343,6 @@ func (c *Client) doSetup(
 		return nil, liberrors.ErrClientCannotSetupTracksDifferentURLs{}
 	}
 
-	var rtpListener *clientUDPListener
-	var rtcpListener *clientUDPListener
-
 	// always use TCP if encrypted
 	if c.scheme == "rtsps" {
 		v := TransportTCP
@@ -1371,6 +1375,10 @@ func (c *Client) doSetup(
 
 	trackID := len(c.tracks)
 
+	ct := &clientTrack{
+		track: track,
+	}
+
 	switch transport {
 	case TransportUDP:
 		if (rtpPort == 0 && rtcpPort != 0) ||
@@ -1382,28 +1390,38 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientUDPPortsNotConsecutive{}
 		}
 
-		var err error
 		if rtpPort != 0 {
-			rtpListener, err = newClientUDPListener(c, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
+			var err error
+			ct.udpRTPListener, err = newClientUDPListener(
+				c,
+				false,
+				":"+strconv.FormatInt(int64(rtpPort), 10),
+				ct,
+				true)
 			if err != nil {
 				return nil, err
 			}
 
-			rtcpListener, err = newClientUDPListener(c, false, ":"+strconv.FormatInt(int64(rtcpPort), 10))
+			ct.udpRTCPListener, err = newClientUDPListener(
+				c,
+				false,
+				":"+strconv.FormatInt(int64(rtcpPort), 10),
+				ct,
+				true)
 			if err != nil {
-				rtpListener.close()
+				ct.udpRTPListener.close()
 				return nil, err
 			}
 		} else {
-			rtpListener, rtcpListener = newClientUDPListenerPair(c)
+			ct.udpRTPListener, ct.udpRTCPListener = newClientUDPListenerPair(c, ct)
 		}
 
 		v1 := headers.TransportDeliveryUnicast
 		th.Delivery = &v1
 		th.Protocol = headers.TransportProtocolUDP
 		th.ClientPorts = &[2]int{
-			rtpListener.port(),
-			rtcpListener.port(),
+			ct.udpRTPListener.port(),
+			ct.udpRTCPListener.port(),
 		}
 
 	case TransportUDPMulticast:
@@ -1421,8 +1439,8 @@ func (c *Client) doSetup(
 	trackURL, err := track.url(baseURL)
 	if err != nil {
 		if transport == TransportUDP {
-			rtpListener.close()
-			rtcpListener.close()
+			ct.udpRTPListener.close()
+			ct.udpRTCPListener.close()
 		}
 		return nil, err
 	}
@@ -1436,16 +1454,16 @@ func (c *Client) doSetup(
 	}, false, false)
 	if err != nil {
 		if transport == TransportUDP {
-			rtpListener.close()
-			rtcpListener.close()
+			ct.udpRTPListener.close()
+			ct.udpRTCPListener.close()
 		}
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
 		if transport == TransportUDP {
-			rtpListener.close()
-			rtcpListener.close()
+			ct.udpRTPListener.close()
+			ct.udpRTCPListener.close()
 		}
 
 		// switch transport automatically
@@ -1465,8 +1483,8 @@ func (c *Client) doSetup(
 	err = thRes.Read(res.Header["Transport"])
 	if err != nil {
 		if transport == TransportUDP {
-			rtpListener.close()
-			rtcpListener.close()
+			ct.udpRTPListener.close()
+			ct.udpRTCPListener.close()
 		}
 		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
 	}
@@ -1479,9 +1497,39 @@ func (c *Client) doSetup(
 
 		if !forPlay || !c.AnyPortEnable {
 			if thRes.ServerPorts == nil || isAnyPort(thRes.ServerPorts[0]) || isAnyPort(thRes.ServerPorts[1]) {
-				rtpListener.close()
-				rtcpListener.close()
+				ct.udpRTPListener.close()
+				ct.udpRTCPListener.close()
 				return nil, liberrors.ErrClientServerPortsNotProvided{}
+			}
+		}
+
+		ct.udpRTPListener.readIP = func() net.IP {
+			if thRes.Source != nil {
+				return *thRes.Source
+			}
+			return c.conn.RemoteAddr().(*net.TCPAddr).IP
+		}()
+		if thRes.ServerPorts != nil {
+			ct.udpRTPListener.readPort = thRes.ServerPorts[0]
+			ct.udpRTPListener.writeAddr = &net.UDPAddr{
+				IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
+				Zone: c.conn.RemoteAddr().(*net.TCPAddr).Zone,
+				Port: thRes.ServerPorts[0],
+			}
+		}
+
+		ct.udpRTCPListener.readIP = func() net.IP {
+			if thRes.Source != nil {
+				return *thRes.Source
+			}
+			return c.conn.RemoteAddr().(*net.TCPAddr).IP
+		}()
+		if thRes.ServerPorts != nil {
+			ct.udpRTCPListener.readPort = thRes.ServerPorts[1]
+			ct.udpRTCPListener.writeAddr = &net.UDPAddr{
+				IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
+				Zone: c.conn.RemoteAddr().(*net.TCPAddr).Zone,
+				Port: thRes.ServerPorts[1],
 			}
 		}
 
@@ -1498,17 +1546,39 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderNoDestination{}
 		}
 
-		rtpListener, err = newClientUDPListener(c, true,
-			thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[0]), 10))
+		ct.udpRTPListener, err = newClientUDPListener(
+			c,
+			true,
+			thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[0]), 10),
+			ct,
+			true)
 		if err != nil {
 			return nil, err
 		}
 
-		rtcpListener, err = newClientUDPListener(c, true,
-			thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[1]), 10))
+		ct.udpRTCPListener, err = newClientUDPListener(
+			c,
+			true,
+			thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[1]), 10),
+			ct,
+			false)
 		if err != nil {
-			rtpListener.close()
+			ct.udpRTPListener.close()
 			return nil, err
+		}
+
+		ct.udpRTPListener.readIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		ct.udpRTPListener.readPort = thRes.Ports[0]
+		ct.udpRTPListener.writeAddr = &net.UDPAddr{
+			IP:   *thRes.Destination,
+			Port: thRes.Ports[0],
+		}
+
+		ct.udpRTCPListener.readIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
+		ct.udpRTCPListener.readPort = thRes.Ports[1]
+		ct.udpRTCPListener.writeAddr = &net.UDPAddr{
+			IP:   *thRes.Destination,
+			Port: thRes.Ports[1],
 		}
 
 	case TransportTCP:
@@ -1530,91 +1600,26 @@ func (c *Client) doSetup(
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrClientTransportHeaderInterleavedIDsAlreadyUsed{}
 		}
+
+		if c.tcpTracksByChannel == nil {
+			c.tcpTracksByChannel = make(map[int]*clientTrack)
+		}
+
+		c.tcpTracksByChannel[thRes.InterleavedIDs[0]] = ct
+		ct.tcpChannel = thRes.InterleavedIDs[0]
 	}
 
-	cct := &clientTrack{
-		track: track,
-	}
+	c.tracks = append(c.tracks, ct)
+	ct.id = trackID
+
+	c.baseURL = baseURL
+	c.effectiveTransport = &transport
 
 	if mode == headers.TransportModePlay {
 		c.state = clientStatePrePlay
 	} else {
 		c.state = clientStatePreRecord
 	}
-
-	c.baseURL = baseURL
-	c.effectiveTransport = &transport
-
-	switch transport {
-	case TransportUDP:
-		rtpListener.trackID = trackID
-		rtpListener.isRTP = true
-		cct.udpRTPListener = rtpListener
-		rtpListener.remoteReadIP = func() net.IP {
-			if thRes.Source != nil {
-				return *thRes.Source
-			}
-			return c.conn.RemoteAddr().(*net.TCPAddr).IP
-		}()
-		if thRes.ServerPorts != nil {
-			rtpListener.remoteReadPort = thRes.ServerPorts[0]
-			rtpListener.remoteWriteAddr = &net.UDPAddr{
-				IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
-				Zone: c.conn.RemoteAddr().(*net.TCPAddr).Zone,
-				Port: thRes.ServerPorts[0],
-			}
-		}
-
-		rtcpListener.trackID = trackID
-		rtcpListener.isRTP = false
-		cct.udpRTCPListener = rtcpListener
-		rtcpListener.remoteReadIP = func() net.IP {
-			if thRes.Source != nil {
-				return *thRes.Source
-			}
-			return c.conn.RemoteAddr().(*net.TCPAddr).IP
-		}()
-		if thRes.ServerPorts != nil {
-			rtcpListener.remoteReadPort = thRes.ServerPorts[1]
-			rtcpListener.remoteWriteAddr = &net.UDPAddr{
-				IP:   c.conn.RemoteAddr().(*net.TCPAddr).IP,
-				Zone: c.conn.RemoteAddr().(*net.TCPAddr).Zone,
-				Port: thRes.ServerPorts[1],
-			}
-		}
-
-	case TransportUDPMulticast:
-		rtpListener.trackID = trackID
-		rtpListener.isRTP = true
-		cct.udpRTPListener = rtpListener
-		rtpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		rtpListener.remoteReadPort = thRes.Ports[0]
-		rtpListener.remoteWriteAddr = &net.UDPAddr{
-			IP:   *thRes.Destination,
-			Port: thRes.Ports[0],
-		}
-
-		rtcpListener.trackID = trackID
-		rtcpListener.isRTP = false
-		cct.udpRTCPListener = rtcpListener
-		rtcpListener.remoteReadIP = c.conn.RemoteAddr().(*net.TCPAddr).IP
-		rtcpListener.remoteReadPort = thRes.Ports[1]
-		rtcpListener.remoteWriteAddr = &net.UDPAddr{
-			IP:   *thRes.Destination,
-			Port: thRes.Ports[1],
-		}
-
-	case TransportTCP:
-		if c.tcpTracksByChannel == nil {
-			c.tcpTracksByChannel = make(map[int]int)
-		}
-
-		c.tcpTracksByChannel[thRes.InterleavedIDs[0]] = trackID
-
-		cct.tcpChannel = thRes.InterleavedIDs[0]
-	}
-
-	c.tracks = append(c.tracks, cct)
 
 	return res, nil
 }
@@ -1658,12 +1663,12 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 	// open the firewall by sending packets to the counterpart.
 	// do this before sending the request.
 	if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
-		for _, cct := range c.tracks {
+		for _, ct := range c.tracks {
 			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
-			cct.udpRTPListener.write(byts)
+			ct.udpRTPListener.write(byts)
 
 			byts, _ = (&rtcp.ReceiverReport{}).Marshal()
-			cct.udpRTCPListener.write(byts)
+			ct.udpRTCPListener.write(byts)
 		}
 	}
 
@@ -1848,9 +1853,9 @@ func (c *Client) runWriter() {
 		rtpFrames := make(map[int]*base.InterleavedFrame, len(c.tracks))
 		rtcpFrames := make(map[int]*base.InterleavedFrame, len(c.tracks))
 
-		for trackID, cct := range c.tracks {
-			rtpFrames[trackID] = &base.InterleavedFrame{Channel: cct.tcpChannel}
-			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: cct.tcpChannel + 1}
+		for trackID, ct := range c.tracks {
+			rtpFrames[trackID] = &base.InterleavedFrame{Channel: ct.tcpChannel}
+			rtcpFrames[trackID] = &base.InterleavedFrame{Channel: ct.tcpChannel + 1}
 		}
 
 		buf := make([]byte, maxPacketSize+4)
@@ -1906,8 +1911,8 @@ func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool)
 	}
 	byts = byts[:n]
 
-	if c.tracks[trackID].rtcpSender != nil {
-		c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
+	if c.tracks[trackID].udpRTCPSender != nil {
+		c.tracks[trackID].udpRTCPSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
 	}
 
 	c.writeBuffer.Push(trackTypePayload{

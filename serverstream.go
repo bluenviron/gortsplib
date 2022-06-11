@@ -17,7 +17,7 @@ type serverStreamTrack struct {
 	lastSSRC           uint32
 	lastTimeRTP        uint32
 	lastTimeNTP        time.Time
-	rtcpSender         *rtcpsender.RTCPSender
+	udpRTCPSender      *rtcpsender.RTCPSender
 }
 
 // ServerStream represents a single stream.
@@ -125,7 +125,7 @@ func (st *ServerStream) readerAdd(
 
 		for trackID, track := range st.stTracks {
 			cTrackID := trackID
-			track.rtcpSender = rtcpsender.New(
+			track.udpRTCPSender = rtcpsender.New(
 				st.s.udpSenderReportPeriod,
 				st.tracks[trackID].ClockRate(),
 				func(pkt rtcp.Packet) {
@@ -143,8 +143,8 @@ func (st *ServerStream) readerAdd(
 				r.author.ip().Equal(ss.author.ip()) &&
 				r.author.zone() == ss.author.zone() {
 				for _, rt := range r.setuppedTracks {
-					if rt.udpRTPPort == clientPorts[0] {
-						return liberrors.ErrServerUDPPortsAlreadyInUse{Port: rt.udpRTPPort}
+					if rt.udpRTPReadPort == clientPorts[0] {
+						return liberrors.ErrServerUDPPortsAlreadyInUse{Port: rt.udpRTPReadPort}
 					}
 				}
 			}
@@ -201,9 +201,9 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 		st.readersUnicast[ss] = struct{}{}
 
 	default: // UDPMulticast
-		for trackID := range ss.setuppedTracks {
+		for trackID, track := range ss.setuppedTracks {
 			st.serverMulticastHandlers[trackID].rtcpl.addClient(
-				ss.author.ip(), st.serverMulticastHandlers[trackID].rtcpl.port(), ss, trackID, false)
+				ss.author.ip(), st.serverMulticastHandlers[trackID].rtcpl.port(), ss, track, false)
 		}
 	}
 }
@@ -254,8 +254,8 @@ func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDT
 		track.lastSSRC = pkt.Header.SSRC
 	}
 
-	if track.rtcpSender != nil {
-		track.rtcpSender.ProcessPacketRTP(now, pkt, ptsEqualsDTS)
+	if track.udpRTCPSender != nil {
+		track.udpRTCPSender.ProcessPacketRTP(now, pkt, ptsEqualsDTS)
 	}
 
 	// send unicast

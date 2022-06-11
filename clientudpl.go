@@ -22,33 +22,43 @@ func randIntn(n int) int {
 }
 
 type clientUDPListener struct {
-	c               *Client
-	pc              *net.UDPConn
-	remoteReadIP    net.IP
-	remoteReadPort  int
-	remoteWriteAddr *net.UDPAddr
-	trackID         int
-	isRTP           bool
-	running         bool
-	rtpPacketBuffer *rtpPacketMultiBuffer
-	lastPacketTime  *int64
-	processFunc     func(time.Time, []byte)
+	c     *Client
+	pc    *net.UDPConn
+	ct    *clientTrack
+	isRTP bool
+
+	readIP    net.IP
+	readPort  int
+	writeAddr *net.UDPAddr
+
+	running        bool
+	lastPacketTime *int64
 
 	readerDone chan struct{}
 }
 
-func newClientUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener) {
+func newClientUDPListenerPair(c *Client, ct *clientTrack) (*clientUDPListener, *clientUDPListener) {
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
 		rtpPort := (randIntn((65535-10000)/2) * 2) + 10000
-		rtpListener, err := newClientUDPListener(c, false, ":"+strconv.FormatInt(int64(rtpPort), 10))
+		rtpListener, err := newClientUDPListener(
+			c,
+			false,
+			":"+strconv.FormatInt(int64(rtpPort), 10),
+			ct,
+			true)
 		if err != nil {
 			continue
 		}
 
 		rtcpPort := rtpPort + 1
-		rtcpListener, err := newClientUDPListener(c, false, ":"+strconv.FormatInt(int64(rtcpPort), 10))
+		rtcpListener, err := newClientUDPListener(
+			c,
+			false,
+			":"+strconv.FormatInt(int64(rtcpPort), 10),
+			ct,
+			false)
 		if err != nil {
 			rtpListener.close()
 			continue
@@ -58,7 +68,13 @@ func newClientUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener
 	}
 }
 
-func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDPListener, error) {
+func newClientUDPListener(
+	c *Client,
+	multicast bool,
+	address string,
+	ct *clientTrack,
+	isRTP bool,
+) (*clientUDPListener, error) {
 	var pc *net.UDPConn
 	if multicast {
 		host, port, err := net.SplitHostPort(address)
@@ -105,9 +121,10 @@ func newClientUDPListener(c *Client, multicast bool, address string) (*clientUDP
 	}
 
 	return &clientUDPListener{
-		c:               c,
-		pc:              pc,
-		rtpPacketBuffer: newRTPPacketMultiBuffer(uint64(c.ReadBufferCount)),
+		c:     c,
+		pc:    pc,
+		ct:    ct,
+		isRTP: isRTP,
 		lastPacketTime: func() *int64 {
 			v := int64(0)
 			return &v
@@ -127,20 +144,10 @@ func (u *clientUDPListener) port() int {
 }
 
 func (u *clientUDPListener) start(forPlay bool) {
-	if forPlay {
-		if u.isRTP {
-			u.processFunc = u.processPlayRTP
-		} else {
-			u.processFunc = u.processPlayRTCP
-		}
-	} else {
-		u.processFunc = u.processRecordRTCP
-	}
-
 	u.running = true
 	u.pc.SetReadDeadline(time.Time{})
 	u.readerDone = make(chan struct{})
-	go u.runReader()
+	go u.runReader(forPlay)
 }
 
 func (u *clientUDPListener) stop() {
@@ -148,8 +155,19 @@ func (u *clientUDPListener) stop() {
 	<-u.readerDone
 }
 
-func (u *clientUDPListener) runReader() {
+func (u *clientUDPListener) runReader(forPlay bool) {
 	defer close(u.readerDone)
+
+	var processFunc func(time.Time, []byte)
+	if forPlay {
+		if u.isRTP {
+			processFunc = u.processPlayRTP
+		} else {
+			processFunc = u.processPlayRTCP
+		}
+	} else {
+		processFunc = u.processRecordRTCP
+	}
 
 	for {
 		buf := make([]byte, maxPacketSize)
@@ -160,36 +178,34 @@ func (u *clientUDPListener) runReader() {
 
 		uaddr := addr.(*net.UDPAddr)
 
-		if !u.remoteReadIP.Equal(uaddr.IP) || (!u.c.AnyPortEnable && u.remoteReadPort != uaddr.Port) {
+		if !u.readIP.Equal(uaddr.IP) || (!u.c.AnyPortEnable && u.readPort != uaddr.Port) {
 			continue
 		}
 
 		now := time.Now()
 		atomic.StoreInt64(u.lastPacketTime, now.Unix())
 
-		u.processFunc(now, buf[:n])
+		processFunc(now, buf[:n])
 	}
 }
 
 func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
-	pkt := u.rtpPacketBuffer.next()
+	pkt := u.ct.udpRTPPacketBuffer.next()
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		return
 	}
 
-	ct := u.c.tracks[u.trackID]
-
-	out, err := ct.proc.Process(pkt)
+	out, err := u.ct.proc.Process(pkt)
 	if err != nil {
 		return
 	}
 	out0 := out[0]
 
-	ct.rtcpReceiver.ProcessPacketRTP(time.Now(), pkt, out0.PTSEqualsDTS)
+	u.ct.udpRTCPReceiver.ProcessPacketRTP(time.Now(), pkt, out0.PTSEqualsDTS)
 
 	u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
-		TrackID:      u.trackID,
+		TrackID:      u.ct.id,
 		Packet:       out0.Packet,
 		PTSEqualsDTS: out0.PTSEqualsDTS,
 		H264NALUs:    out0.H264NALUs,
@@ -204,9 +220,9 @@ func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 	}
 
 	for _, pkt := range packets {
-		u.c.tracks[u.trackID].rtcpReceiver.ProcessPacketRTCP(now, pkt)
+		u.ct.udpRTCPReceiver.ProcessPacketRTCP(now, pkt)
 		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-			TrackID: u.trackID,
+			TrackID: u.ct.id,
 			Packet:  pkt,
 		})
 	}
@@ -220,7 +236,7 @@ func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
 
 	for _, pkt := range packets {
 		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-			TrackID: u.trackID,
+			TrackID: u.ct.id,
 			Packet:  pkt,
 		})
 	}
@@ -231,6 +247,6 @@ func (u *clientUDPListener) write(payload []byte) error {
 	// https://github.com/golang/go/issues/27203#issuecomment-534386117
 
 	u.pc.SetWriteDeadline(time.Now().Add(u.c.WriteTimeout))
-	_, err := u.pc.WriteTo(payload, u.remoteWriteAddr)
+	_, err := u.pc.WriteTo(payload, u.writeAddr)
 	return err
 }
