@@ -14,12 +14,11 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/h264"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
-	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/aler9/gortsplib/pkg/rtpproc"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -154,8 +153,7 @@ type ServerSessionSetuppedTrack struct {
 type ServerSessionAnnouncedTrack struct {
 	track        Track
 	rtcpReceiver *rtcpreceiver.RTCPReceiver
-	h264Decoder  *rtph264.Decoder
-	h264Encoder  *rtph264.Encoder
+	proc         *rtpproc.Processor
 }
 
 // ServerSession is a server-side RTSP session.
@@ -980,10 +978,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		ss.state = ServerSessionStateRecord
 
 		for _, at := range ss.announcedTracks {
-			if _, ok := at.track.(*TrackH264); ok {
-				at.h264Decoder = &rtph264.Decoder{}
-				at.h264Decoder.Init()
-			}
+			_, isH264 := at.track.(*TrackH264)
+			at.proc = rtpproc.NewProcessor(isH264, *ss.setuppedTransport == TransportTCP)
 		}
 
 		switch *ss.setuppedTransport {
@@ -1104,8 +1100,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}
 
 			for _, at := range ss.announcedTracks {
-				at.h264Decoder = nil
-				at.h264Encoder = nil
+				at.proc = nil
 			}
 
 			ss.state = ServerSessionStatePreRecord
@@ -1212,24 +1207,6 @@ func (ss *ServerSession) runWriter() {
 		data := tmp.(trackTypePayload)
 
 		writeFunc(data.trackID, data.isRTP, data.payload)
-	}
-}
-
-func (ss *ServerSession) processPacketRTP(at *ServerSessionAnnouncedTrack, ctx *ServerHandlerOnPacketRTPCtx) {
-	// remove padding
-	ctx.Packet.Header.Padding = false
-	ctx.Packet.PaddingSize = 0
-
-	// decode
-	if at.h264Decoder != nil {
-		nalus, pts, err := at.h264Decoder.DecodeUntilMarker(ctx.Packet)
-		if err == nil {
-			ctx.PTSEqualsDTS = h264.IDRPresent(nalus)
-			ctx.H264NALUs = nalus
-			ctx.H264PTS = pts
-		}
-	} else {
-		ctx.PTSEqualsDTS = true
 	}
 }
 

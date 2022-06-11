@@ -203,17 +203,25 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 	now := time.Now()
 	atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
 
-	ctx := ServerHandlerOnPacketRTPCtx{
-		Session: clientData.ss,
-		TrackID: clientData.trackID,
-		Packet:  pkt,
-	}
 	at := clientData.ss.announcedTracks[clientData.trackID]
-	clientData.ss.processPacketRTP(at, &ctx)
 
-	at.rtcpReceiver.ProcessPacketRTP(now, ctx.Packet, ctx.PTSEqualsDTS)
+	out, err := at.proc.Process(pkt)
+	if err != nil {
+		return
+	}
+	out0 := out[0]
+
+	at.rtcpReceiver.ProcessPacketRTP(now, pkt, out0.PTSEqualsDTS)
+
 	if h, ok := clientData.ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
-		h.OnPacketRTP(&ctx)
+		h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+			Session:      clientData.ss,
+			TrackID:      clientData.trackID,
+			Packet:       out0.Packet,
+			PTSEqualsDTS: out0.PTSEqualsDTS,
+			H264NALUs:    out0.H264NALUs,
+			H264PTS:      out0.H264PTS,
+		})
 	}
 }
 

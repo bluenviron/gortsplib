@@ -220,7 +220,7 @@ func TestClientRead(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
-				track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
+				track, err := NewTrackGeneric("application", []string{"97"}, "97 private/90000", "")
 				require.NoError(t, err)
 
 				tracks := Tracks{track}

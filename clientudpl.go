@@ -178,14 +178,23 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 		return
 	}
 
-	ctx := ClientOnPacketRTPCtx{
-		TrackID: u.trackID,
-		Packet:  pkt,
-	}
 	ct := u.c.tracks[u.trackID]
-	u.c.processPacketRTP(ct, &ctx)
-	ct.rtcpReceiver.ProcessPacketRTP(time.Now(), pkt, ctx.PTSEqualsDTS)
-	u.c.OnPacketRTP(&ctx)
+
+	out, err := ct.proc.Process(pkt)
+	if err != nil {
+		return
+	}
+	out0 := out[0]
+
+	ct.rtcpReceiver.ProcessPacketRTP(time.Now(), pkt, out0.PTSEqualsDTS)
+
+	u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
+		TrackID:      u.trackID,
+		Packet:       out0.Packet,
+		PTSEqualsDTS: out0.PTSEqualsDTS,
+		H264NALUs:    out0.H264NALUs,
+		H264PTS:      out0.H264PTS,
+	})
 }
 
 func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {

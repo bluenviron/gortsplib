@@ -24,13 +24,12 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/h264"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
-	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/aler9/gortsplib/pkg/rtpproc"
 	"github.com/aler9/gortsplib/pkg/sdp"
 	"github.com/aler9/gortsplib/pkg/url"
 )
@@ -91,8 +90,7 @@ type clientTrack struct {
 	tcpChannel      int
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver
 	rtcpSender      *rtcpsender.RTCPSender
-	h264Decoder     *rtph264.Decoder
-	h264Encoder     *rtph264.Encoder
+	proc            *rtpproc.Processor
 }
 
 func (s clientState) String() string {
@@ -710,10 +708,8 @@ func (c *Client) playRecordStart() {
 
 	if c.state == clientStatePlay {
 		for _, ct := range c.tracks {
-			if _, ok := ct.track.(*TrackH264); ok {
-				ct.h264Decoder = &rtph264.Decoder{}
-				ct.h264Decoder.Init()
-			}
+			_, isH264 := ct.track.(*TrackH264)
+			ct.proc = rtpproc.NewProcessor(isH264, *c.effectiveTransport == TransportTCP)
 		}
 
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
@@ -812,57 +808,19 @@ func (c *Client) runReader() {
 							return err
 						}
 
-						ctx := ClientOnPacketRTPCtx{
-							TrackID: trackID,
-							Packet:  pkt,
+						out, err := c.tracks[trackID].proc.Process(pkt)
+						if err != nil {
+							return err
 						}
-						ct := c.tracks[trackID]
-						c.processPacketRTP(ct, &ctx)
 
-						if ct.h264Decoder != nil {
-							if ct.h264Encoder == nil && len(payload) > maxPacketSize {
-								v1 := pkt.SSRC
-								v2 := pkt.SequenceNumber
-								v3 := pkt.Timestamp
-								ct.h264Encoder = &rtph264.Encoder{
-									PayloadType:           pkt.PayloadType,
-									SSRC:                  &v1,
-									InitialSequenceNumber: &v2,
-									InitialTimestamp:      &v3,
-								}
-								ct.h264Encoder.Init()
-							}
-
-							if ct.h264Encoder != nil {
-								if ctx.H264NALUs != nil {
-									packets, err := ct.h264Encoder.Encode(ctx.H264NALUs, ctx.H264PTS)
-									if err != nil {
-										return err
-									}
-
-									for i, pkt := range packets {
-										if i != len(packets)-1 {
-											c.OnPacketRTP(&ClientOnPacketRTPCtx{
-												TrackID:      trackID,
-												Packet:       pkt,
-												PTSEqualsDTS: false,
-											})
-										} else {
-											ctx.Packet = pkt
-											c.OnPacketRTP(&ctx)
-										}
-									}
-								}
-							} else {
-								c.OnPacketRTP(&ctx)
-							}
-						} else {
-							if len(payload) > maxPacketSize {
-								return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-									len(payload), maxPacketSize)
-							}
-
-							c.OnPacketRTP(&ctx)
+						for _, entry := range out {
+							c.OnPacketRTP(&ClientOnPacketRTPCtx{
+								TrackID:      trackID,
+								Packet:       entry.Packet,
+								PTSEqualsDTS: entry.PTSEqualsDTS,
+								H264NALUs:    entry.H264NALUs,
+								H264PTS:      entry.H264PTS,
+							})
 						}
 					} else {
 						if len(payload) > maxPacketSize {
@@ -975,8 +933,7 @@ func (c *Client) playRecordStop(isClosing bool) {
 	}
 
 	for _, ct := range c.tracks {
-		ct.h264Decoder = nil
-		ct.h264Encoder = nil
+		ct.proc = nil
 	}
 
 	// stop timers
@@ -1925,24 +1882,6 @@ func (c *Client) runWriter() {
 		data := tmp.(trackTypePayload)
 
 		writeFunc(data.trackID, data.isRTP, data.payload)
-	}
-}
-
-func (c *Client) processPacketRTP(ct *clientTrack, ctx *ClientOnPacketRTPCtx) {
-	// remove padding
-	ctx.Packet.Header.Padding = false
-	ctx.Packet.PaddingSize = 0
-
-	// decode
-	if ct.h264Decoder != nil {
-		nalus, pts, err := ct.h264Decoder.DecodeUntilMarker(ctx.Packet)
-		if err == nil {
-			ctx.PTSEqualsDTS = h264.IDRPresent(nalus)
-			ctx.H264NALUs = nalus
-			ctx.H264PTS = pts
-		}
-	} else {
-		ctx.PTSEqualsDTS = true
 	}
 }
 
