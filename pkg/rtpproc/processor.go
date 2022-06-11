@@ -97,6 +97,8 @@ func (p *Processor) processH264(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
 				output[i] = &ProcessorOutput{
 					Packet:       pkt,
 					PTSEqualsDTS: ptsEqualsDTS,
+					H264NALUs:    nalus,
+					H264PTS:      pts,
 				}
 			}
 		}
