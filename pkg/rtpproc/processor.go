@@ -51,21 +51,7 @@ func NewProcessor(isH264 bool, isTCP bool) *Processor {
 }
 
 func (p *Processor) processH264(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
-	// decode
-	nalus, pts, err := p.h264Decoder.DecodeUntilMarker(pkt)
-	if err != nil {
-		if err == rtph264.ErrNonStartingPacketAndNoPrevious ||
-			err == rtph264.ErrMorePacketsNeeded {
-			return []*ProcessorOutput{{
-				Packet:       pkt,
-				PTSEqualsDTS: false,
-			}}, nil
-		}
-		return nil, err
-	}
-	ptsEqualsDTS := h264.IDRPresent(nalus)
-
-	// re-encode if packets use non-standard sizes
+	// check if we need to re-encode
 	if p.isTCP && p.h264Encoder == nil && pkt.MarshalSize() > maxPacketSize {
 		v1 := pkt.SSRC
 		v2 := pkt.SequenceNumber
@@ -79,6 +65,25 @@ func (p *Processor) processH264(pkt *rtp.Packet) ([]*ProcessorOutput, error) {
 		p.h264Encoder.Init()
 	}
 
+	// decode
+	nalus, pts, err := p.h264Decoder.DecodeUntilMarker(pkt)
+	if err != nil {
+		if err == rtph264.ErrNonStartingPacketAndNoPrevious ||
+			err == rtph264.ErrMorePacketsNeeded {
+			if p.h264Encoder == nil {
+				return []*ProcessorOutput{{
+					Packet:       pkt,
+					PTSEqualsDTS: false,
+				}}, nil
+			}
+
+			return nil, nil
+		}
+		return nil, err
+	}
+	ptsEqualsDTS := h264.IDRPresent(nalus)
+
+	// re-encode
 	if p.h264Encoder != nil {
 		packets, err := p.h264Encoder.Encode(nalus, pts)
 		if err != nil {
