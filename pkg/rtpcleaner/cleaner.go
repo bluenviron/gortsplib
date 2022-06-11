@@ -1,3 +1,4 @@
+// Package rtpcleaner contains a cleaning utility.
 package rtpcleaner
 
 import (
