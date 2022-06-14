@@ -6,7 +6,7 @@ import (
 	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func TestTrackNewFromMediaDescription(t *testing.T) {
@@ -31,7 +31,6 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
-					Port:    psdp.RangedPort{Value: 49170},
 					Protos:  []string{"RTP", "AVP"},
 					Formats: []string{"0"},
 				},
@@ -193,6 +192,17 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
+			"jpeg",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"26"},
+				},
+			},
+			&TrackJPEG{},
+		},
+		{
 			"h264",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
@@ -343,7 +353,6 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
-					Port:    psdp.RangedPort{Value: 0},
 					Protos:  []string{"RTP", "AVP"},
 					Formats: []string{"98", "96"},
 				},
@@ -662,8 +671,8 @@ func TestTrackURL(t *testing.T) {
 	for _, ca := range []struct {
 		name    string
 		sdp     []byte
-		baseURL *base.URL
-		ur      *base.URL
+		baseURL *url.URL
+		ur      *url.URL
 	}{
 		{
 			"missing control",

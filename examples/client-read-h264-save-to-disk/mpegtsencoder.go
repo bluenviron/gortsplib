@@ -16,12 +16,12 @@ type mpegtsEncoder struct {
 	sps []byte
 	pps []byte
 
-	f                  *os.File
-	b                  *bufio.Writer
-	mux                *astits.Muxer
-	dtsEst             *h264.DTSEstimator
-	firstPacketWritten bool
-	startPTS           time.Duration
+	f                *os.File
+	b                *bufio.Writer
+	mux              *astits.Muxer
+	dtsExtractor     *h264.DTSExtractor
+	firstIDRReceived bool
+	startDTS         time.Duration
 }
 
 // newMPEGTSEncoder allocates a mpegtsEncoder.
@@ -40,12 +40,11 @@ func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
 	mux.SetPCRPID(256)
 
 	return &mpegtsEncoder{
-		sps:    sps,
-		pps:    pps,
-		f:      f,
-		b:      b,
-		mux:    mux,
-		dtsEst: h264.NewDTSEstimator(),
+		sps: sps,
+		pps: pps,
+		f:   f,
+		b:   b,
+		mux: mux,
 	}, nil
 }
 
@@ -57,15 +56,12 @@ func (e *mpegtsEncoder) close() {
 
 // encode encodes H264 NALUs into MPEG-TS.
 func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
-	if !e.firstPacketWritten {
-		e.firstPacketWritten = true
-		e.startPTS = pts
-	}
-
 	// prepend an AUD. This is required by some players
 	filteredNALUs := [][]byte{
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},
 	}
+
+	idrPresent := false
 
 	for _, nalu := range nalus {
 		typ := h264.NALUType(nalu[0] & 0x1F)
@@ -78,10 +74,12 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 			e.pps = append([]byte(nil), nalu...)
 			continue
 
-		case h264.NALUTypeAccessUnitDelimiter, h264.NALUTypeSEI:
+		case h264.NALUTypeAccessUnitDelimiter:
 			continue
 
 		case h264.NALUTypeIDR:
+			idrPresent = true
+
 			// add SPS and PPS before every IDR
 			if e.sps != nil && e.pps != nil {
 				filteredNALUs = append(filteredNALUs, e.sps, e.pps)
@@ -91,19 +89,37 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		filteredNALUs = append(filteredNALUs, nalu)
 	}
 
-	// it's useless to go on if SPS or PPS have not been provided yet
-	if e.sps == nil || e.pps == nil {
-		return nil
-	}
+	var dts time.Duration
 
-	// encode into Annex-B
-	enc, err := h264.AnnexBEncode(filteredNALUs)
-	if err != nil {
-		return err
-	}
+	if !e.firstIDRReceived {
+		// skip samples silently until we find one with a IDR
+		if !idrPresent {
+			return nil
+		}
 
-	pts -= e.startPTS
-	dts := e.dtsEst.Feed(pts)
+		e.firstIDRReceived = true
+		e.dtsExtractor = h264.NewDTSExtractor()
+
+		var err error
+		dts, err = e.dtsExtractor.Extract(filteredNALUs, pts)
+		if err != nil {
+			return err
+		}
+
+		e.startDTS = dts
+		dts = 0
+		pts -= e.startDTS
+
+	} else {
+		var err error
+		dts, err = e.dtsExtractor.Extract(filteredNALUs, pts)
+		if err != nil {
+			return err
+		}
+
+		dts -= e.startDTS
+		pts -= e.startDTS
+	}
 
 	oh := &astits.PESOptionalHeader{
 		MarkerBits: 2,
@@ -118,18 +134,24 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		oh.PTS = &astits.ClockReference{Base: int64(pts.Seconds() * 90000)}
 	}
 
+	// encode into Annex-B
+	annexb, err := h264.AnnexBEncode(filteredNALUs)
+	if err != nil {
+		return err
+	}
+
 	// write TS packet
 	_, err = e.mux.WriteData(&astits.MuxerData{
 		PID: 256,
 		AdaptationField: &astits.PacketAdaptationField{
-			RandomAccessIndicator: h264.IDRPresent(filteredNALUs),
+			RandomAccessIndicator: idrPresent,
 		},
 		PES: &astits.PESData{
 			Header: &astits.PESHeader{
 				OptionalHeader: oh,
 				StreamID:       224, // video
 			},
-			Data: enc,
+			Data: annexb,
 		},
 	})
 	if err != nil {

@@ -1,4 +1,4 @@
-package base
+package url
 
 import (
 	"strings"

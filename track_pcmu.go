@@ -19,8 +19,7 @@ func NewTrackPCMU() *TrackPCMU {
 
 func newTrackPCMUFromMediaDescription(
 	control string,
-	rtpmapPart1 string,
-	md *psdp.MediaDescription) (*TrackPCMU, error,
+	rtpmapPart1 string) (*TrackPCMU, error,
 ) {
 	tmp := strings.Split(rtpmapPart1, "/")
 	if len(tmp) >= 3 && tmp[2] != "1" {

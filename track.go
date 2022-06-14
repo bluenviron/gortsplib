@@ -7,7 +7,7 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 // Track is a RTSP track.
@@ -25,7 +25,7 @@ type Track interface {
 	MediaDescription() *psdp.MediaDescription
 
 	clone() Track
-	url(*base.URL) (*base.URL, error)
+	url(*url.URL) (*url.URL, error)
 }
 
 func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
@@ -61,17 +61,21 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 
 	switch {
 	case md.MediaName.Media == "video":
-		if rtpmapPart1 == "H264/90000" {
+		switch {
+		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "26":
+			return newTrackJPEGFromMediaDescription(control)
+
+		case rtpmapPart1 == "H264/90000":
 			return newTrackH264FromMediaDescription(control, payloadType, md)
 		}
 
 	case md.MediaName.Media == "audio":
 		switch {
 		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "0":
-			return newTrackPCMUFromMediaDescription(control, rtpmapPart1, md)
+			return newTrackPCMUFromMediaDescription(control, rtpmapPart1)
 
 		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "8":
-			return newTrackPCMAFromMediaDescription(control, rtpmapPart1, md)
+			return newTrackPCMAFromMediaDescription(control, rtpmapPart1)
 
 		case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
 			return newTrackAACFromMediaDescription(control, payloadType, md)
@@ -98,7 +102,7 @@ func (t *trackBase) SetControl(c string) {
 	t.control = c
 }
 
-func (t *trackBase) url(contentBase *base.URL) (*base.URL, error) {
+func (t *trackBase) url(contentBase *url.URL) (*url.URL, error) {
 	if contentBase == nil {
 		return nil, fmt.Errorf("Content-Base header not provided")
 	}
@@ -112,7 +116,7 @@ func (t *trackBase) url(contentBase *base.URL) (*base.URL, error) {
 
 	// control attribute contains an absolute path
 	if strings.HasPrefix(control, "rtsp://") {
-		ur, err := base.ParseURL(control)
+		ur, err := url.Parse(control)
 		if err != nil {
 			return nil, err
 		}
@@ -132,6 +136,6 @@ func (t *trackBase) url(contentBase *base.URL) (*base.URL, error) {
 		strURL += "/"
 	}
 
-	ur, _ := base.ParseURL(strURL + control)
+	ur, _ := url.Parse(strURL + control)
 	return ur, nil
 }

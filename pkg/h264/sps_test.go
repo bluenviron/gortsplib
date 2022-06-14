@@ -34,11 +34,12 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicHeightInMbsMinus1:           17,
 				FrameMbsOnlyFlag:               true,
 				Direct8x8InferenceFlag:         true,
-				VUI: &VUI{
-					TimingInfoPresentFlag: true,
-					NumUnitsInTick:        1,
-					TimeScale:             30,
-					FixedFrameRateFlag:    true,
+				VUI: &SPS_VUI{
+					TimingInfo: &SPS_TimingInfo{
+						NumUnitsInTick:     1,
+						TimeScale:          30,
+						FixedFrameRateFlag: true,
+					},
 				},
 			},
 			352,
@@ -63,15 +64,16 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicHeightInMbsMinus1:        44,
 				FrameMbsOnlyFlag:            true,
 				Direct8x8InferenceFlag:      true,
-				VUI: &VUI{
-					AspectRatioInfoPresentFlag:         true,
-					AspectRatioIdc:                     1,
-					VideoSignalTypePresentFlag:         true,
-					VideoFormat:                        5,
-					VideoFullRangeFlag:                 true,
-					TimingInfoPresentFlag:              true,
-					NumUnitsInTick:                     1,
-					TimeScale:                          60,
+				VUI: &SPS_VUI{
+					AspectRatioInfoPresentFlag: true,
+					AspectRatioIdc:             1,
+					VideoSignalTypePresentFlag: true,
+					VideoFormat:                5,
+					VideoFullRangeFlag:         true,
+					TimingInfo: &SPS_TimingInfo{
+						NumUnitsInTick: 1,
+						TimeScale:      60,
+					},
 					BitstreamRestrictionFlag:           true,
 					MotionVectorsOverPicBoundariesFlag: true,
 					Log2MaxMvLengthHorizontal:          11,
@@ -102,12 +104,14 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicHeightInMbsMinus1:   67,
 				FrameMbsOnlyFlag:       true,
 				Direct8x8InferenceFlag: true,
-				FrameCroppingFlag:      true,
-				FrameCropBottomOffset:  4,
-				VUI: &VUI{
-					TimingInfoPresentFlag:              true,
-					NumUnitsInTick:                     1,
-					TimeScale:                          60,
+				FrameCropping: &SPS_FrameCropping{
+					BottomOffset: 4,
+				},
+				VUI: &SPS_VUI{
+					TimingInfo: &SPS_TimingInfo{
+						NumUnitsInTick: 1,
+						TimeScale:      60,
+					},
 					BitstreamRestrictionFlag:           true,
 					MotionVectorsOverPicBoundariesFlag: true,
 					Log2MaxMvLengthHorizontal:          11,
@@ -137,12 +141,14 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicHeightInMbsMinus1:        67,
 				FrameMbsOnlyFlag:            true,
 				Direct8x8InferenceFlag:      true,
-				FrameCroppingFlag:           true,
-				FrameCropBottomOffset:       4,
-				VUI: &VUI{
-					TimingInfoPresentFlag:              true,
-					NumUnitsInTick:                     1,
-					TimeScale:                          60,
+				FrameCropping: &SPS_FrameCropping{
+					BottomOffset: 4,
+				},
+				VUI: &SPS_VUI{
+					TimingInfo: &SPS_TimingInfo{
+						NumUnitsInTick: 1,
+						TimeScale:      60,
+					},
 					BitstreamRestrictionFlag:           true,
 					MotionVectorsOverPicBoundariesFlag: true,
 					Log2MaxMvLengthHorizontal:          11,
@@ -173,9 +179,10 @@ func TestSPSUnmarshal(t *testing.T) {
 				PicWidthInMbsMinus1:         119,
 				PicHeightInMbsMinus1:        33,
 				Direct8x8InferenceFlag:      true,
-				FrameCroppingFlag:           true,
-				FrameCropBottomOffset:       2,
-				VUI: &VUI{
+				FrameCropping: &SPS_FrameCropping{
+					BottomOffset: 2,
+				},
+				VUI: &SPS_VUI{
 					AspectRatioInfoPresentFlag:   true,
 					AspectRatioIdc:               1,
 					OverscanInfoPresentFlag:      true,
@@ -187,16 +194,110 @@ func TestSPSUnmarshal(t *testing.T) {
 					TransferCharacteristics:      1,
 					MatrixCoefficients:           1,
 					ChromaLocInfoPresentFlag:     true,
-					TimingInfoPresentFlag:        true,
-					NumUnitsInTick:               1,
-					TimeScale:                    50,
-					FixedFrameRateFlag:           true,
-					PicStructPresentFlag:         true,
+					TimingInfo: &SPS_TimingInfo{
+						NumUnitsInTick:     1,
+						TimeScale:          50,
+						FixedFrameRateFlag: true,
+					},
+					PicStructPresentFlag: true,
 				},
 			},
 			1920,
 			1084,
 			25,
+		},
+		{
+			"hikvision",
+			[]byte{103, 100, 0, 32, 172, 23, 42, 1, 64, 30, 104, 64, 0, 1, 194, 0, 0, 87, 228, 33},
+			SPS{
+				ProfileIdc:                  100,
+				LevelIdc:                    32,
+				ChromeFormatIdc:             1,
+				Log2MaxPicOrderCntLsbMinus4: 4,
+				MaxNumRefFrames:             1,
+				PicWidthInMbsMinus1:         79,
+				PicHeightInMbsMinus1:        59,
+				FrameMbsOnlyFlag:            true,
+				Direct8x8InferenceFlag:      true,
+				Log2MaxFrameNumMinus4:       10,
+				VUI: &SPS_VUI{
+					TimingInfo: &SPS_TimingInfo{
+						NumUnitsInTick:     1800,
+						TimeScale:          90000,
+						FixedFrameRateFlag: true,
+					},
+				},
+			},
+			1280,
+			960,
+			25,
+		},
+		{
+			"scaling matrix",
+			[]byte{
+				103, 100, 0, 50, 173, 132, 1, 12, 32, 8, 97, 0, 67, 8, 2,
+				24, 64, 16, 194, 0, 132, 59, 80, 20, 0, 90, 211,
+				112, 16, 16, 20, 0, 0, 3, 0, 4, 0, 0, 3, 0, 162, 16,
+			},
+			SPS{
+				ProfileIdc:      100,
+				LevelIdc:        50,
+				ChromeFormatIdc: 1,
+				ScalingList4x4: [][]int32{
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+					{
+						16, 16, 16, 16, 16, 16, 16, 16,
+						16, 16, 16, 16, 16, 16, 16, 16,
+					},
+				},
+				UseDefaultScalingMatrix4x4Flag: []bool{
+					false, false, false, false, false, false,
+				},
+				Log2MaxFrameNumMinus4:          6,
+				PicOrderCntType:                2,
+				MaxNumRefFrames:                1,
+				GapsInFrameNumValueAllowedFlag: true,
+				PicWidthInMbsMinus1:            159,
+				PicHeightInMbsMinus1:           89,
+				FrameMbsOnlyFlag:               true,
+				Direct8x8InferenceFlag:         true,
+				VUI: &SPS_VUI{
+					VideoSignalTypePresentFlag:   true,
+					VideoFormat:                  5,
+					VideoFullRangeFlag:           true,
+					ColourDescriptionPresentFlag: true,
+					ColourPrimaries:              1,
+					TransferCharacteristics:      1,
+					MatrixCoefficients:           1,
+					TimingInfo: &SPS_TimingInfo{
+						NumUnitsInTick:     1,
+						TimeScale:          40,
+						FixedFrameRateFlag: true,
+					},
+				},
+			},
+			2560,
+			1440,
+			20,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

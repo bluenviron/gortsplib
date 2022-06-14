@@ -8,6 +8,7 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func stringsReverseIndex(s, substr string) int {
@@ -19,7 +20,7 @@ func stringsReverseIndex(s, substr string) int {
 	return -1
 }
 
-func generateAltURL(req *base.Request) (*base.URL, bool) {
+func generateAltURL(req *base.Request) (*url.URL, bool) {
 	if req.Method != base.Setup {
 		return nil, false
 	}
@@ -34,7 +35,7 @@ func generateAltURL(req *base.Request) (*base.URL, bool) {
 		return nil, false
 	}
 
-	ur, _ := base.ParseURL(req.URL.Scheme + "://" + req.URL.Host + "/" + pathAndQuery[:i+1])
+	ur, _ := url.Parse(req.URL.Scheme + "://" + req.URL.Host + "/" + pathAndQuery[:i+1])
 	return ur, true
 }
 

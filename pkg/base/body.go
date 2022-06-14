@@ -7,6 +7,10 @@ import (
 	"strconv"
 )
 
+const (
+	rtspMaxContentLength = 128 * 1024
+)
+
 type body []byte
 
 func (b *body) read(header Header, rb *bufio.Reader) error {

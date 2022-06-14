@@ -9,11 +9,12 @@ help:
 	@echo ""
 	@echo "available actions:"
 	@echo ""
-	@echo "  mod-tidy       run go mod tidy"
-	@echo "  format         format source files"
-	@echo "  test           run tests"
-	@echo "  lint           run linter"
-	@echo "  bench          run benchmarks"
+	@echo "  mod-tidy        run go mod tidy"
+	@echo "  format          format source files"
+	@echo "  test            run tests"
+	@echo "  test-highlevel  run high-level tests"
+	@echo "  lint            run linter"
+	@echo "  bench           run benchmarks"
 	@echo ""
 
 blank :=
@@ -39,7 +40,7 @@ format:
 
 define DOCKERFILE_TEST
 FROM $(BASE_IMAGE)
-RUN apk add --no-cache make docker-cli git gcc musl-dev pkgconfig ffmpeg-dev
+RUN apk add --no-cache make git gcc musl-dev pkgconfig ffmpeg-dev
 WORKDIR /s
 COPY go.mod go.sum ./
 RUN go mod download
@@ -50,8 +51,6 @@ export DOCKERFILE_TEST
 test:
 	echo "$$DOCKERFILE_TEST" | docker build -q . -f - -t temp
 	docker run --rm -it \
-	-v /var/run/docker.sock:/var/run/docker.sock:ro \
-	--network=host \
 	--name temp \
 	temp \
 	make test-nodocker
@@ -63,11 +62,31 @@ test-pkg:
 	go test -v -race -coverprofile=coverage-pkg.txt ./pkg/...
 
 test-root:
-	$(foreach IMG,$(shell echo testimages/*/ | xargs -n1 basename), \
-	docker build -q testimages/$(IMG) -t gortsplib-test-$(IMG)$(NL))
 	go test -v -race -coverprofile=coverage-root.txt .
 
 test-nodocker: test-examples test-pkg test-root
+
+define DOCKERFILE_HIGHLEVEL_TEST
+FROM $(BASE_IMAGE)
+RUN apk add --no-cache make docker-cli git gcc musl-dev
+WORKDIR /s
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . ./
+endef
+export DOCKERFILE_HIGHLEVEL_TEST
+
+test-highlevel:
+	echo "$$DOCKERFILE_HIGHLEVEL_TEST" | docker build -q . -f - -t temp
+	docker run --rm -it \
+	-v /var/run/docker.sock:/var/run/docker.sock:ro \
+	--network=host \
+	--name temp \
+	temp \
+	make test-highlevel-nodocker
+
+test-highlevel-nodocker:
+	go test -v -race -tags enable_highlevel_tests ./internal/highleveltests
 
 lint:
 	docker run --rm -v $(PWD):/app -w /app \

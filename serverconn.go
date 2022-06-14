@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
+	gourl "net/url"
 	"strings"
 	"time"
 
@@ -15,7 +15,7 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/liberrors"
-	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func getSessionID(header base.Header) string {
@@ -257,66 +257,21 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					return err
 				}
 
-				ctx := ServerHandlerOnPacketRTPCtx{
-					Session: sc.session,
-					TrackID: trackID,
-					Packet:  pkt,
+				out, err := sc.session.setuppedTracks[trackID].cleaner.Clear(pkt)
+				if err != nil {
+					return err
 				}
-				at := sc.session.announcedTracks[trackID]
-				sc.session.processPacketRTP(at, &ctx)
 
-				if at.h264Decoder != nil {
-					if at.h264Encoder == nil && len(payload) > maxPacketSize {
-						v1 := pkt.SSRC
-						v2 := pkt.SequenceNumber
-						v3 := pkt.Timestamp
-						at.h264Encoder = &rtph264.Encoder{
-							PayloadType:           pkt.PayloadType,
-							SSRC:                  &v1,
-							InitialSequenceNumber: &v2,
-							InitialTimestamp:      &v3,
-						}
-						at.h264Encoder.Init()
-					}
-
-					if at.h264Encoder != nil {
-						if ctx.H264NALUs != nil {
-							packets, err := at.h264Encoder.Encode(ctx.H264NALUs, ctx.H264PTS)
-							if err != nil {
-								return err
-							}
-
-							for i, pkt := range packets {
-								if i != len(packets)-1 {
-									if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
-										h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-											Session:      sc.session,
-											TrackID:      trackID,
-											Packet:       pkt,
-											PTSEqualsDTS: false,
-										})
-									}
-								} else {
-									ctx.Packet = pkt
-									if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
-										h.OnPacketRTP(&ctx)
-									}
-								}
-							}
-						}
-					} else {
-						if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
-							h.OnPacketRTP(&ctx)
-						}
-					}
-				} else {
-					if len(payload) > maxPacketSize {
-						return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
-							len(payload), maxPacketSize)
-					}
-
-					if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
-						h.OnPacketRTP(&ctx)
+				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
+					for _, entry := range out {
+						h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+							Session:      sc.session,
+							TrackID:      trackID,
+							Packet:       entry.Packet,
+							PTSEqualsDTS: entry.PTSEqualsDTS,
+							H264NALUs:    entry.H264NALUs,
+							H264PTS:      entry.H264PTS,
+						})
 					}
 				}
 			} else {
@@ -443,7 +398,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, liberrors.ErrServerInvalidPath{}
 			}
 
-			path, query := base.PathSplitQuery(pathAndQuery)
+			path, query := url.PathSplitQuery(pathAndQuery)
 
 			res, stream, err := h.OnDescribe(&ServerHandlerOnDescribeCtx{
 				Conn:    sc,
@@ -465,7 +420,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				// to return a SDP that contains a multicast address.
 				multicast := false
 				if sc.s.MulticastIPRange != "" {
-					if q, err := url.ParseQuery(query); err == nil {
+					if q, err := gourl.ParseQuery(query); err == nil {
 						if _, ok := q["vlcmulticast"]; ok {
 							multicast = true
 						}
@@ -530,7 +485,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, liberrors.ErrServerInvalidPath{}
 			}
 
-			path, query := base.PathSplitQuery(pathAndQuery)
+			path, query := url.PathSplitQuery(pathAndQuery)
 
 			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
 				Conn:    sc,
@@ -549,7 +504,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}, liberrors.ErrServerInvalidPath{}
 			}
 
-			path, query := base.PathSplitQuery(pathAndQuery)
+			path, query := url.PathSplitQuery(pathAndQuery)
 
 			return h.OnSetParameter(&ServerHandlerOnSetParameterCtx{
 				Conn:    sc,

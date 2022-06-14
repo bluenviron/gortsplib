@@ -17,6 +17,7 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func multicastCapableIP(t *testing.T) string {
@@ -1737,7 +1738,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 	rtpInfo, ssrcs := getInfos()
 	require.Equal(t, &headers.RTPInfo{
 		&headers.RTPInfoEntry{
-			URL: (&base.URL{
+			URL: (&url.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
 				Path:   "/teststream/trackID=0",
@@ -1771,7 +1772,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 	rtpInfo, ssrcs = getInfos()
 	require.Equal(t, &headers.RTPInfo{
 		&headers.RTPInfoEntry{
-			URL: (&base.URL{
+			URL: (&url.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
 				Path:   "/teststream/trackID=0",
@@ -1783,7 +1784,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 			Timestamp: (*rtpInfo)[0].Timestamp,
 		},
 		&headers.RTPInfoEntry{
-			URL: (&base.URL{
+			URL: (&url.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
 				Path:   "/teststream/trackID=1",

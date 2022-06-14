@@ -198,6 +198,24 @@ var casesTransport = []struct {
 			}(),
 		},
 	},
+	{
+		"empty source",
+		base.HeaderValue{`RTP/AVP/UDP;unicast;source=;client_port=32560-32561;server_port=3046-3047;ssrc=45dcb578`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=32560-32561;server_port=3046-3047;ssrc=45DCB578`},
+		Transport{
+			Protocol: TransportProtocolUDP,
+			Delivery: func() *TransportDelivery {
+				v := TransportDeliveryUnicast
+				return &v
+			}(),
+			SSRC: func() *uint32 {
+				v := uint32(0x45dcb578)
+				return &v
+			}(),
+			ClientPorts: &[2]int{32560, 32561},
+			ServerPorts: &[2]int{3046, 3047},
+		},
+	},
 }
 
 func TestTransportRead(t *testing.T) {

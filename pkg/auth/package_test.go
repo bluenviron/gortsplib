@@ -7,10 +7,11 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
-func mustParseURL(s string) *base.URL {
-	u, err := base.ParseURL(s)
+func mustParseURL(s string) *url.URL {
+	u, err := url.Parse(s)
 	if err != nil {
 		panic(err)
 	}

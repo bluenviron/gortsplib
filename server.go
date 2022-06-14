@@ -134,17 +134,18 @@ type Server struct {
 	sessionTimeout          time.Duration
 	checkStreamPeriod       time.Duration
 
-	ctx             context.Context
-	ctxCancel       func()
-	wg              sync.WaitGroup
-	multicastNet    *net.IPNet
-	multicastNextIP net.IP
-	tcpListener     net.Listener
-	udpRTPListener  *serverUDPListener
-	udpRTCPListener *serverUDPListener
-	sessions        map[string]*ServerSession
-	conns           map[*ServerConn]struct{}
-	closeError      error
+	ctx                context.Context
+	ctxCancel          func()
+	wg                 sync.WaitGroup
+	multicastNet       *net.IPNet
+	multicastNextIP    net.IP
+	tcpListener        net.Listener
+	udpRTPListener     *serverUDPListener
+	udpRTCPListener    *serverUDPListener
+	udpRTPPacketBuffer *rtpPacketMultiBuffer
+	sessions           map[string]*ServerSession
+	conns              map[*ServerConn]struct{}
+	closeError         error
 
 	// in
 	connClose         chan *ServerConn
@@ -237,6 +238,8 @@ func (s *Server) Start() error {
 			s.udpRTPListener.close()
 			return err
 		}
+
+		s.udpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(s.ReadBufferCount))
 	}
 
 	if s.MulticastIPRange != "" && (s.MulticastRTPPort == 0 || s.MulticastRTCPPort == 0) ||
@@ -285,6 +288,7 @@ func (s *Server) Start() error {
 		}
 
 		s.multicastNextIP = s.multicastNet.IP
+		s.udpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(s.ReadBufferCount))
 	}
 
 	var err error

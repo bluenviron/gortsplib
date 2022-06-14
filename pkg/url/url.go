@@ -1,4 +1,5 @@
-package base
+// Package url contains the URL structure.
+package url
 
 import (
 	"fmt"
@@ -14,8 +15,8 @@ type URL url.URL
 
 var escapeRegexp = regexp.MustCompile(`^(.+?)://(.*?)@(.*?)/(.*?)$`)
 
-// ParseURL parses a RTSP URL.
-func ParseURL(s string) (*URL, error) {
+// Parse parses a RTSP URL.
+func Parse(s string) (*URL, error) {
 	// https://github.com/golang/go/issues/30611
 	m := escapeRegexp.FindStringSubmatch(s)
 	if m != nil {

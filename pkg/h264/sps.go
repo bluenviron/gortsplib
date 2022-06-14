@@ -58,12 +58,64 @@ func readFlag(br *bitio.Reader) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
 	return (tmp == 1), nil
 }
 
-// HRD is a hypotetical reference decoder.
-type HRD struct {
+func readUint8(br *bitio.Reader) (uint8, error) {
+	tmp, err := br.ReadBits(8)
+	if err != nil {
+		return 0, err
+	}
+	return uint8(tmp), nil
+}
+
+func readUint16(br *bitio.Reader) (uint16, error) {
+	tmp, err := br.ReadBits(16)
+	if err != nil {
+		return 0, err
+	}
+	return uint16(tmp), nil
+}
+
+func readUint32(br *bitio.Reader) (uint32, error) {
+	tmp, err := br.ReadBits(32)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(tmp), nil
+}
+
+func readScalingList(br *bitio.Reader, size int) ([]int32, bool, error) {
+	lastScale := int32(8)
+	nextScale := int32(8)
+	scalingList := make([]int32, size)
+	var useDefaultScalingMatrixFlag bool
+
+	for j := 0; j < size; j++ {
+		if nextScale != 0 {
+			deltaScale, err := readGolombSigned(br)
+			if err != nil {
+				return nil, false, err
+			}
+
+			nextScale = (lastScale + deltaScale + 256) % 256
+			useDefaultScalingMatrixFlag = (j == 0 && nextScale == 0)
+		}
+
+		if nextScale == 0 {
+			scalingList[j] = lastScale
+		} else {
+			scalingList[j] = nextScale
+		}
+
+		lastScale = scalingList[j]
+	}
+
+	return scalingList, useDefaultScalingMatrixFlag, nil
+}
+
+// SPS_HRD is a hypotetical reference decoder.
+type SPS_HRD struct { //nolint:revive
 	CpbCntMinus1                       uint32
 	BitRateScale                       uint8
 	CpbSizeScale                       uint8
@@ -76,7 +128,7 @@ type HRD struct {
 	TimeOffsetLength                   uint8
 }
 
-func (h *HRD) unmarshal(br *bitio.Reader) error {
+func (h *SPS_HRD) unmarshal(br *bitio.Reader) error {
 	var err error
 	h.CpbCntMinus1, err = readGolombUnsigned(br)
 	if err != nil {
@@ -142,8 +194,35 @@ func (h *HRD) unmarshal(br *bitio.Reader) error {
 	return nil
 }
 
-// VUI is a video usability information.
-type VUI struct {
+// SPS_TimingInfo is a timing info.
+type SPS_TimingInfo struct { //nolint:revive
+	NumUnitsInTick     uint32
+	TimeScale          uint32
+	FixedFrameRateFlag bool
+}
+
+func (t *SPS_TimingInfo) unmarshal(br *bitio.Reader) error {
+	var err error
+	t.NumUnitsInTick, err = readUint32(br)
+	if err != nil {
+		return err
+	}
+
+	t.TimeScale, err = readUint32(br)
+	if err != nil {
+		return err
+	}
+
+	t.FixedFrameRateFlag, err = readFlag(br)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SPS_VUI is a video usability information.
+type SPS_VUI struct { //nolint:revive
 	AspectRatioInfoPresentFlag bool
 	AspectRatioIdc             uint8
 	SarWidth                   uint16
@@ -168,15 +247,15 @@ type VUI struct {
 	ChromaSampleLocTypeTopField    uint32
 	ChromaSampleLocTypeBottomField uint32
 
-	TimingInfoPresentFlag bool
+	// timingInfoPresentFlag == true
+	TimingInfo *SPS_TimingInfo
 
-	// TimingInfoPresentFlag == true
-	NumUnitsInTick     uint32
-	TimeScale          uint32
-	FixedFrameRateFlag bool
+	// nalHrdParametersPresentFlag == true
+	NalHRD *SPS_HRD
 
-	NalHRD                   *HRD
-	VclHRD                   *HRD
+	// vclHrdParametersPresentFlag == true
+	VclHRD *SPS_HRD
+
 	LowDelayHrdFlag          bool
 	PicStructPresentFlag     bool
 	BitstreamRestrictionFlag bool
@@ -191,7 +270,7 @@ type VUI struct {
 	MaxDecFrameBuffering               uint32
 }
 
-func (v *VUI) unmarshal(br *bitio.Reader) error {
+func (v *SPS_VUI) unmarshal(br *bitio.Reader) error {
 	var err error
 	v.AspectRatioInfoPresentFlag, err = readFlag(br)
 	if err != nil {
@@ -199,24 +278,21 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 	}
 
 	if v.AspectRatioInfoPresentFlag {
-		tmp, err := br.ReadBits(8)
+		v.AspectRatioIdc, err = readUint8(br)
 		if err != nil {
 			return err
 		}
-		v.AspectRatioIdc = uint8(tmp)
 
 		if v.AspectRatioIdc == 255 { // Extended_SAR
-			tmp, err := br.ReadBits(16)
+			v.SarWidth, err = readUint16(br)
 			if err != nil {
 				return err
 			}
-			v.SarWidth = uint16(tmp)
 
-			tmp, err = br.ReadBits(16)
+			v.SarHeight, err = readUint16(br)
 			if err != nil {
 				return err
 			}
-			v.SarHeight = uint16(tmp)
 		}
 	}
 
@@ -255,23 +331,20 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 		}
 
 		if v.ColourDescriptionPresentFlag {
-			tmp, err := br.ReadBits(8)
+			v.ColourPrimaries, err = readUint8(br)
 			if err != nil {
 				return err
 			}
-			v.ColourPrimaries = uint8(tmp)
 
-			tmp, err = br.ReadBits(8)
+			v.TransferCharacteristics, err = readUint8(br)
 			if err != nil {
 				return err
 			}
-			v.TransferCharacteristics = uint8(tmp)
 
-			tmp, err = br.ReadBits(8)
+			v.MatrixCoefficients, err = readUint8(br)
 			if err != nil {
 				return err
 			}
-			v.MatrixCoefficients = uint8(tmp)
 		}
 	}
 
@@ -292,25 +365,14 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 		}
 	}
 
-	v.TimingInfoPresentFlag, err = readFlag(br)
+	timingInfoPresentFlag, err := readFlag(br)
 	if err != nil {
 		return err
 	}
 
-	if v.TimingInfoPresentFlag {
-		tmp, err := br.ReadBits(32)
-		if err != nil {
-			return err
-		}
-		v.NumUnitsInTick = uint32(tmp)
-
-		tmp, err = br.ReadBits(32)
-		if err != nil {
-			return err
-		}
-		v.TimeScale = uint32(tmp)
-
-		v.FixedFrameRateFlag, err = readFlag(br)
+	if timingInfoPresentFlag {
+		v.TimingInfo = &SPS_TimingInfo{}
+		err := v.TimingInfo.unmarshal(br)
 		if err != nil {
 			return err
 		}
@@ -322,7 +384,7 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 	}
 
 	if nalHrdParametersPresentFlag {
-		v.NalHRD = &HRD{}
+		v.NalHRD = &SPS_HRD{}
 		err := v.NalHRD.unmarshal(br)
 		if err != nil {
 			return err
@@ -335,7 +397,7 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 	}
 
 	if vclHrdParametersPresentFlag {
-		v.VclHRD = &HRD{}
+		v.VclHRD = &SPS_HRD{}
 		err := v.VclHRD.unmarshal(br)
 		if err != nil {
 			return err
@@ -399,6 +461,39 @@ func (v *VUI) unmarshal(br *bitio.Reader) error {
 	return nil
 }
 
+// SPS_FrameCropping is the frame cropping part of a SPS.
+type SPS_FrameCropping struct { //nolint:revive
+	LeftOffset   uint32
+	RightOffset  uint32
+	TopOffset    uint32
+	BottomOffset uint32
+}
+
+func (c *SPS_FrameCropping) unmarshal(br *bitio.Reader) error {
+	var err error
+	c.LeftOffset, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	c.RightOffset, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	c.TopOffset, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	c.BottomOffset, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SPS is a H264 sequence parameter set.
 type SPS struct {
 	ProfileIdc         uint8
@@ -418,6 +513,12 @@ type SPS struct {
 	BitDepthChromaMinus8            uint32
 	QpprimeYZeroTransformBypassFlag bool
 
+	// seqScalingListPresentFlag == true
+	ScalingList4x4                 [][]int32
+	UseDefaultScalingMatrix4x4Flag []bool
+	ScalingList8x8                 [][]int32
+	UseDefaultScalingMatrix8x8Flag []bool
+
 	Log2MaxFrameNumMinus4 uint32
 	PicOrderCntType       uint32
 
@@ -425,7 +526,7 @@ type SPS struct {
 	Log2MaxPicOrderCntLsbMinus4 uint32
 
 	// PicOrderCntType == 1
-	DeltaPicOrderAlwaysZeroFlag uint32
+	DeltaPicOrderAlwaysZeroFlag bool
 	OffsetForNonRefPic          int32
 	OffsetForTopToBottomField   int32
 	OffsetForRefFrames          []int32
@@ -440,15 +541,12 @@ type SPS struct {
 	MbAdaptiveFrameFieldFlag bool
 
 	Direct8x8InferenceFlag bool
-	FrameCroppingFlag      bool
 
-	// FrameCroppingFlag == true
-	FrameCropLeftOffset   uint32
-	FrameCropRightOffset  uint32
-	FrameCropTopOffset    uint32
-	FrameCropBottomOffset uint32
+	// frameCroppingFlag == true
+	FrameCropping *SPS_FrameCropping
 
-	VUI *VUI
+	// vuiParameterPresentFlag == true
+	VUI *SPS_VUI
 }
 
 // Unmarshal decodes a SPS from bytes.
@@ -469,7 +567,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		return fmt.Errorf("wrong forbidden bit")
 	}
 
-	if nalRefIdc != 3 {
+	if nalRefIdc == 0 {
 		return fmt.Errorf("wrong nal_ref_idc")
 	}
 
@@ -532,7 +630,39 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		}
 
 		if seqScalingMatrixPresentFlag {
-			return fmt.Errorf("unsupported")
+			var lim int
+			if s.ChromeFormatIdc != 3 {
+				lim = 8
+			} else {
+				lim = 12
+			}
+
+			for i := 0; i < lim; i++ {
+				seqScalingListPresentFlag, err := readFlag(br)
+				if err != nil {
+					return err
+				}
+
+				if seqScalingListPresentFlag {
+					if i < 6 {
+						scalingList, useDefaultScalingMatrixFlag, err := readScalingList(br, 16)
+						if err != nil {
+							return err
+						}
+						s.ScalingList4x4 = append(s.ScalingList4x4, scalingList)
+						s.UseDefaultScalingMatrix4x4Flag = append(s.UseDefaultScalingMatrix4x4Flag,
+							useDefaultScalingMatrixFlag)
+					} else {
+						scalingList, useDefaultScalingMatrixFlag, err := readScalingList(br, 64)
+						if err != nil {
+							return err
+						}
+						s.ScalingList8x8 = append(s.ScalingList8x8, scalingList)
+						s.UseDefaultScalingMatrix8x8Flag = append(s.UseDefaultScalingMatrix8x8Flag,
+							useDefaultScalingMatrixFlag)
+					}
+				}
+			}
 		}
 
 	default:
@@ -563,7 +693,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	case 1:
 		s.Log2MaxPicOrderCntLsbMinus4 = 0
 
-		s.DeltaPicOrderAlwaysZeroFlag, err = readGolombUnsigned(br)
+		s.DeltaPicOrderAlwaysZeroFlag, err = readFlag(br)
 		if err != nil {
 			return err
 		}
@@ -595,7 +725,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 
 	default:
 		s.Log2MaxPicOrderCntLsbMinus4 = 0
-		s.DeltaPicOrderAlwaysZeroFlag = 0
+		s.DeltaPicOrderAlwaysZeroFlag = false
 		s.OffsetForNonRefPic = 0
 		s.OffsetForTopToBottomField = 0
 		s.OffsetForRefFrames = nil
@@ -640,36 +770,19 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		return err
 	}
 
-	s.FrameCroppingFlag, err = readFlag(br)
+	frameCroppingFlag, err := readFlag(br)
 	if err != nil {
 		return err
 	}
 
-	if s.FrameCroppingFlag {
-		s.FrameCropLeftOffset, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		s.FrameCropRightOffset, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		s.FrameCropTopOffset, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		s.FrameCropBottomOffset, err = readGolombUnsigned(br)
+	if frameCroppingFlag {
+		s.FrameCropping = &SPS_FrameCropping{}
+		err := s.FrameCropping.unmarshal(br)
 		if err != nil {
 			return err
 		}
 	} else {
-		s.FrameCropLeftOffset = 0
-		s.FrameCropRightOffset = 0
-		s.FrameCropTopOffset = 0
-		s.FrameCropBottomOffset = 0
+		s.FrameCropping = nil
 	}
 
 	vuiParameterPresentFlag, err := readFlag(br)
@@ -678,7 +791,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	}
 
 	if vuiParameterPresentFlag {
-		s.VUI = &VUI{}
+		s.VUI = &SPS_VUI{}
 		err := s.VUI.unmarshal(br)
 		if err != nil {
 			return err
@@ -692,7 +805,11 @@ func (s *SPS) Unmarshal(buf []byte) error {
 
 // Width returns the video width.
 func (s SPS) Width() int {
-	return int(((s.PicWidthInMbsMinus1 + 1) * 16) - (s.FrameCropLeftOffset+s.FrameCropRightOffset)*2)
+	if s.FrameCropping != nil {
+		return int(((s.PicWidthInMbsMinus1 + 1) * 16) - (s.FrameCropping.LeftOffset+s.FrameCropping.RightOffset)*2)
+	}
+
+	return int((s.PicWidthInMbsMinus1 + 1) * 16)
 }
 
 // Height returns the video height.
@@ -701,18 +818,19 @@ func (s SPS) Height() int {
 	if s.FrameMbsOnlyFlag {
 		f = 1
 	}
-	return int(((2 - f) * (s.PicHeightInMbsMinus1 + 1) * 16) - (s.FrameCropTopOffset+s.FrameCropBottomOffset)*2)
+
+	if s.FrameCropping != nil {
+		return int(((2 - f) * (s.PicHeightInMbsMinus1 + 1) * 16) - (s.FrameCropping.TopOffset+s.FrameCropping.BottomOffset)*2)
+	}
+
+	return int((2 - f) * (s.PicHeightInMbsMinus1 + 1) * 16)
 }
 
 // FPS returns the frame per second of the video.
 func (s SPS) FPS() float64 {
-	if s.VUI == nil {
+	if s.VUI == nil || s.VUI.TimingInfo == nil {
 		return 0
 	}
 
-	if !s.VUI.TimingInfoPresentFlag {
-		return 0
-	}
-
-	return float64(s.VUI.TimeScale) / 2 * float64(s.VUI.NumUnitsInTick)
+	return float64(s.VUI.TimingInfo.TimeScale) / (2 * float64(s.VUI.TimingInfo.NumUnitsInTick))
 }
