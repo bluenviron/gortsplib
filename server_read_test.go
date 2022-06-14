@@ -148,7 +148,11 @@ func TestServerReadSetupPath(t *testing.T) {
 }
 
 func TestServerReadSetupErrors(t *testing.T) {
-	for _, ca := range []string{"different paths", "double setup"} {
+	for _, ca := range []string{
+		"different paths",
+		"double setup",
+		"closed stream",
+	} {
 		t.Run(ca, func(t *testing.T) {
 			connClosed := make(chan struct{})
 
@@ -156,15 +160,24 @@ func TestServerReadSetupErrors(t *testing.T) {
 			require.NoError(t, err)
 
 			stream := NewServerStream(Tracks{track})
-			defer stream.Close()
+			if ca == "closed stream" {
+				stream.Close()
+			} else {
+				defer stream.Close()
+			}
 
 			s := &Server{
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-						if ca == "different paths" {
+						switch ca {
+						case "different paths":
 							require.EqualError(t, ctx.Error, "can't setup tracks with different paths")
-						} else {
+
+						case "double setup":
 							require.EqualError(t, ctx.Error, "track 0 has already been setup")
+
+						case "closed stream":
+							require.EqualError(t, ctx.Error, "stream is closed")
 						}
 						close(connClosed)
 					},
@@ -207,16 +220,17 @@ func TestServerReadSetupErrors(t *testing.T) {
 					"Transport": th.Write(),
 				},
 			})
-			require.NoError(t, err)
-			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			th.InterleavedIDs = &[2]int{2, 3}
+			switch ca {
+			case "different paths":
+				require.NoError(t, err)
+				require.Equal(t, base.StatusOK, res.StatusCode)
 
-			var sx headers.Session
-			err = sx.Read(res.Header["Session"])
-			require.NoError(t, err)
+				var sx headers.Session
+				err = sx.Read(res.Header["Session"])
+				require.NoError(t, err)
+				th.InterleavedIDs = &[2]int{2, 3}
 
-			if ca == "different paths" {
 				res, err = writeReqReadRes(conn, br, base.Request{
 					Method: base.Setup,
 					URL:    mustParseURL("rtsp://localhost:8554/test12stream/trackID=1"),
@@ -228,7 +242,16 @@ func TestServerReadSetupErrors(t *testing.T) {
 				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusBadRequest, res.StatusCode)
-			} else {
+
+			case "double setup":
+				require.NoError(t, err)
+				require.Equal(t, base.StatusOK, res.StatusCode)
+
+				var sx headers.Session
+				err = sx.Read(res.Header["Session"])
+				require.NoError(t, err)
+				th.InterleavedIDs = &[2]int{2, 3}
+
 				res, err = writeReqReadRes(conn, br, base.Request{
 					Method: base.Setup,
 					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
@@ -238,6 +261,10 @@ func TestServerReadSetupErrors(t *testing.T) {
 						"Session":   base.HeaderValue{sx.Session},
 					},
 				})
+				require.NoError(t, err)
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
+			case "closed stream":
 				require.NoError(t, err)
 				require.Equal(t, base.StatusBadRequest, res.StatusCode)
 			}

@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -119,6 +120,10 @@ func (st *ServerStream) readerAdd(
 ) error {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
+
+	if st.readers == nil {
+		return fmt.Errorf("stream is closed")
+	}
 
 	if st.s == nil {
 		st.s = ss.s
