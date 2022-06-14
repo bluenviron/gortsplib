@@ -37,6 +37,21 @@ func TestRemovePadding(t *testing.T) {
 	}}, out)
 }
 
+func TestGenericOversized(t *testing.T) {
+	cleaner := NewCleaner(false, true)
+
+	_, err := cleaner.Clear(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			PayloadType:    96,
+			Marker:         false,
+			SequenceNumber: 34572,
+		},
+		Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 2050/5),
+	})
+	require.EqualError(t, err, "payload size (2062) greater than maximum allowed (1472)")
+}
+
 func TestH264Oversized(t *testing.T) {
 	cleaner := NewCleaner(true, true)
 

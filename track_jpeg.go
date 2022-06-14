@@ -39,7 +39,7 @@ func (t *TrackJPEG) clone() Track {
 func (t *TrackJPEG) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
-			Media:   "audio",
+			Media:   "video",
 			Protos:  []string{"RTP", "AVP"},
 			Formats: []string{"26"},
 		},

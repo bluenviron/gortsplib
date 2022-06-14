@@ -26,7 +26,7 @@ type Output struct {
 
 // Cleaner is used to clean incoming RTP packets, in order to:
 // - remove padding
-// - re-encode packets if they are bigger than maximum allowed.
+// - re-encode them if they are bigger than maximum allowed
 type Cleaner struct {
 	isH264 bool
 	isTCP  bool

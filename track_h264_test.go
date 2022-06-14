@@ -158,7 +158,8 @@ func TestTrackH264GetSPSPPSErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, _, err := trackH264GetSPSPPS(ca.md)
+			tr := &TrackH264{}
+			err := tr.fillParamsFromMediaDescription(ca.md)
 			require.EqualError(t, err, ca.err)
 		})
 	}
