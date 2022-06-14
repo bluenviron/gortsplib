@@ -59,29 +59,34 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 		return rtpmapParts[1], payloadType
 	}()
 
-	switch {
-	case md.MediaName.Media == "video":
+	if len(md.MediaName.Formats) == 1 {
 		switch {
-		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "26":
-			return newTrackJPEGFromMediaDescription(control)
+		case md.MediaName.Media == "video":
+			switch {
+			case md.MediaName.Formats[0] == "26":
+				return newTrackJPEGFromMediaDescription(control)
 
-		case rtpmapPart1 == "H264/90000":
-			return newTrackH264FromMediaDescription(control, payloadType, md)
-		}
+			case rtpmapPart1 == "H264/90000":
+				return newTrackH264FromMediaDescription(control, payloadType, md)
 
-	case md.MediaName.Media == "audio":
-		switch {
-		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "0":
-			return newTrackPCMUFromMediaDescription(control, rtpmapPart1)
+			case rtpmapPart1 == "H265/90000":
+				return newTrackH265FromMediaDescription(control, payloadType, md)
+			}
 
-		case len(md.MediaName.Formats) == 1 && md.MediaName.Formats[0] == "8":
-			return newTrackPCMAFromMediaDescription(control, rtpmapPart1)
+		case md.MediaName.Media == "audio":
+			switch {
+			case md.MediaName.Formats[0] == "0":
+				return newTrackPCMUFromMediaDescription(control, rtpmapPart1)
 
-		case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
-			return newTrackAACFromMediaDescription(control, payloadType, md)
+			case md.MediaName.Formats[0] == "8":
+				return newTrackPCMAFromMediaDescription(control, rtpmapPart1)
 
-		case strings.HasPrefix(rtpmapPart1, "opus/"):
-			return newTrackOpusFromMediaDescription(control, payloadType, rtpmapPart1, md)
+			case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
+				return newTrackAACFromMediaDescription(control, payloadType, md)
+
+			case strings.HasPrefix(rtpmapPart1, "opus/"):
+				return newTrackOpusFromMediaDescription(control, payloadType, rtpmapPart1, md)
+			}
 		}
 	}
 
