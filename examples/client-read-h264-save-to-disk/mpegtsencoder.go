@@ -61,6 +61,7 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},
 	}
 
+	nonIDRPresent := false
 	idrPresent := false
 
 	for _, nalu := range nalus {
@@ -84,9 +85,16 @@ func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
 			if e.sps != nil && e.pps != nil {
 				filteredNALUs = append(filteredNALUs, e.sps, e.pps)
 			}
+
+		case h264.NALUTypeNonIDR:
+			nonIDRPresent = true
 		}
 
 		filteredNALUs = append(filteredNALUs, nalu)
+	}
+
+	if !nonIDRPresent && !idrPresent {
+		return nil
 	}
 
 	var dts time.Duration
