@@ -38,6 +38,17 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackPCMU{},
 		},
 		{
+			"mpeg audio",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"14"},
+				},
+			},
+			&TrackMpegAudio{},
+		},
+		{
 			"aac",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
@@ -203,7 +214,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackJPEG{},
 		},
 		{
-			"mpv",
+			"mpeg video",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -211,7 +222,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"32"},
 				},
 			},
-			&TrackMPV{},
+			&TrackMpegVideo{},
 		},
 		{
 			"h264",

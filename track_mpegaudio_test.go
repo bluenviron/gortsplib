@@ -7,27 +7,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackMPVNew(t *testing.T) {
-	track := NewTrackMPV()
+func TestTrackMpegAudioNew(t *testing.T) {
+	track := NewTrackMpegAudio()
 	require.Equal(t, "", track.GetControl())
 }
 
-func TestTrackMPVClone(t *testing.T) {
-	track := NewTrackMPV()
+func TestTrackMpegAudioClone(t *testing.T) {
+	track := NewTrackMpegAudio()
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
 	require.Equal(t, track, clone)
 }
 
-func TestTrackMPVMediaDescription(t *testing.T) {
-	track := NewTrackMPV()
+func TestTrackMpegAudioMediaDescription(t *testing.T) {
+	track := NewTrackMpegAudio()
 
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
-			Media:   "video",
+			Media:   "audio",
 			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"32"},
+			Formats: []string{"14"},
 		},
 		Attributes: []psdp.Attribute{
 			{
