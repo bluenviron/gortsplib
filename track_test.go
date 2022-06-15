@@ -203,6 +203,17 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackJPEG{},
 		},
 		{
+			"mpv",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"32"},
+				},
+			},
+			&TrackMPV{},
+		},
+		{
 			"h264",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{

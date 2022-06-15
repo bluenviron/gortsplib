@@ -66,6 +66,9 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 			case md.MediaName.Formats[0] == "26":
 				return newTrackJPEGFromMediaDescription(control)
 
+			case md.MediaName.Formats[0] == "32":
+				return newTrackMPVFromMediaDescription(control)
+
 			case rtpmapPart1 == "H264/90000":
 				return newTrackH264FromMediaDescription(control, payloadType, md)
 

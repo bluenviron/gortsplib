@@ -81,6 +81,7 @@ func (p *Cleaner) processH264(pkt *rtp.Packet) ([]*Output, error) {
 		}
 		return nil, err
 	}
+
 	ptsEqualsDTS := h264.IDRPresent(nalus)
 
 	// re-encode
