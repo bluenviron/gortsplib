@@ -337,7 +337,8 @@ func (ss *ServerSession) runInner() error {
 
 			res, err := ss.handleRequest(req.sc, req.req)
 
-			var returnedSession *ServerSession
+			returnedSession := ss
+
 			if err == nil || err == errSwitchReadFunc {
 				// ANNOUNCE responses don't contain the session header.
 				if req.req.Method != base.Announce &&
@@ -364,9 +365,9 @@ func (ss *ServerSession) runInner() error {
 					}.Write()
 				}
 
-				// after a TEARDOWN, session must be unpaired with the connection.
-				if req.req.Method != base.Teardown {
-					returnedSession = ss
+				// after a TEARDOWN, session must be unpaired with the connection
+				if req.req.Method == base.Teardown {
+					returnedSession = nil
 				}
 			}
 
