@@ -220,12 +220,9 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		return pts - time.Duration(dpbOutputDelay)/2*time.Second*
 			time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2/time.Duration(d.spsp.VUI.TimingInfo.TimeScale), 0, nil
 
-	// DTS is always equal to PTS
-	case d.spsp.PicOrderCntType == 2:
-		return pts, 0, nil
-
 	// DTS is computed by using POC, timing infos and max_num_reorder_frames
-	case d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.BitstreamRestriction != nil:
+	case d.spsp.PicOrderCntType != 2 &&
+		d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.BitstreamRestriction != nil:
 		if idrPresent {
 			d.expectedPOC = 0
 			return pts - d.ptsDTSOffset, 0, nil
@@ -264,8 +261,9 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		return pts - d.ptsDTSOffset + time.Duration(math.Round(float64(d.prevDTS-d.prevPTS+d.ptsDTSOffset)*
 			float64(pocDiff)/float64(d.prevPOCDiff))), pocDiff, nil
 
+	// we assume PTS = DTS
 	default:
-		return 0, 0, fmt.Errorf("unable to compute H264 DTS")
+		return pts, 0, nil
 	}
 }
 
