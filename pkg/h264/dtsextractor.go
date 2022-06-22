@@ -214,7 +214,9 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 	case d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.NalHRD != nil:
 		dpbOutputDelay, ok := findSEIPicTimingDPBOutputDelay(nalus, d.spsp)
 		if !ok {
-			return 0, 0, fmt.Errorf("SEI / pic_timing not found")
+			// some streams declare that they use SEI pic timings, but they don't.
+			// assume PTS = DTS.
+			return pts, 0, nil
 		}
 
 		return pts - time.Duration(dpbOutputDelay)/2*time.Second*
