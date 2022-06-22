@@ -163,7 +163,7 @@ type DTSExtractor struct {
 	sps          []byte
 	spsp         *SPS
 	prevPTS      time.Duration
-	prevDTS      time.Duration
+	prevDTS      *time.Duration
 	prevPOCDiff  int32
 	expectedPOC  uint32
 	ptsDTSOffset time.Duration
@@ -258,7 +258,7 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		}
 
 		// pocDiff : prevPOCDiff = (pts - dts - ptsDTSOffset) : (prevPTS - prevDTS - ptsDTSOffset)
-		return pts - d.ptsDTSOffset + time.Duration(math.Round(float64(d.prevDTS-d.prevPTS+d.ptsDTSOffset)*
+		return pts - d.ptsDTSOffset + time.Duration(math.Round(float64(*d.prevDTS-d.prevPTS+d.ptsDTSOffset)*
 			float64(pocDiff)/float64(d.prevPOCDiff))), pocDiff, nil
 
 	// we assume PTS = DTS
@@ -278,8 +278,12 @@ func (d *DTSExtractor) Extract(nalus [][]byte, pts time.Duration) (time.Duration
 		return 0, fmt.Errorf("DTS is greater than PTS")
 	}
 
+	if d.prevDTS != nil && dts <= *d.prevDTS {
+		return 0, fmt.Errorf("DTS is not monotonically increasing")
+	}
+
 	d.prevPTS = pts
-	d.prevDTS = dts
+	d.prevDTS = &dts
 	d.prevPOCDiff = pocDiff
 	return dts, err
 }
