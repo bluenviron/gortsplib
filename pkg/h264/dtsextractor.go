@@ -131,9 +131,11 @@ func (d *DTSExtractor) extractInner(
 				d.spsp = &spsp
 
 				// in case of B-frames, we have to subtract from DTS the maximum number of reordered frames
-				if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil {
-					d.ptsDTSOffset = time.Duration(math.Round(float64(time.Duration(d.spsp.VUI.MaxNumReorderFrames)*time.Second*
-						time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2) / float64(d.spsp.VUI.TimingInfo.TimeScale)))
+				if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil &&
+					d.spsp.VUI.BitstreamRestriction != nil {
+					d.ptsDTSOffset = time.Duration(math.Round(float64(
+						time.Duration(d.spsp.VUI.BitstreamRestriction.MaxNumReorderFrames)*time.Second*
+							time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2) / float64(d.spsp.VUI.TimingInfo.TimeScale)))
 				} else {
 					d.ptsDTSOffset = 0
 				}
@@ -170,7 +172,8 @@ func (d *DTSExtractor) extractInner(
 	}
 
 	// special case to eliminate errors near 0
-	if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && pocDiff == -int32(d.spsp.VUI.MaxNumReorderFrames)*2 {
+	if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.BitstreamRestriction != nil &&
+		pocDiff == -int32(d.spsp.VUI.BitstreamRestriction.MaxNumReorderFrames)*2 {
 		return pts, pocDiff, nil
 	}
 

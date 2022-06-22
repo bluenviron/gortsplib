@@ -221,6 +221,57 @@ func (t *SPS_TimingInfo) unmarshal(br *bitio.Reader) error {
 	return nil
 }
 
+// SPS_BitstreamRestriction are bitstream restriction infos.
+type SPS_BitstreamRestriction struct { //nolint:revive
+	MotionVectorsOverPicBoundariesFlag bool
+	MaxBytesPerPicDenom                uint32
+	MaxBitsPerMbDenom                  uint32
+	Log2MaxMvLengthHorizontal          uint32
+	Log2MaxMvLengthVertical            uint32
+	MaxNumReorderFrames                uint32
+	MaxDecFrameBuffering               uint32
+}
+
+func (r *SPS_BitstreamRestriction) unmarshal(br *bitio.Reader) error {
+	var err error
+	r.MotionVectorsOverPicBoundariesFlag, err = readFlag(br)
+	if err != nil {
+		return err
+	}
+
+	r.MaxBytesPerPicDenom, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	r.MaxBitsPerMbDenom, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	r.Log2MaxMvLengthHorizontal, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	r.Log2MaxMvLengthVertical, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	r.MaxNumReorderFrames, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	r.MaxDecFrameBuffering, err = readGolombUnsigned(br)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SPS_VUI is a video usability information.
 type SPS_VUI struct { //nolint:revive
 	AspectRatioInfoPresentFlag bool
@@ -256,18 +307,11 @@ type SPS_VUI struct { //nolint:revive
 	// vclHrdParametersPresentFlag == true
 	VclHRD *SPS_HRD
 
-	LowDelayHrdFlag          bool
-	PicStructPresentFlag     bool
-	BitstreamRestrictionFlag bool
+	LowDelayHrdFlag      bool
+	PicStructPresentFlag bool
 
-	// BitstreamRestrictionFlag == true
-	MotionVectorsOverPicBoundariesFlag bool
-	MaxBytesPerPicDenom                uint32
-	MaxBitsPerMbDenom                  uint32
-	Log2MaxMvLengthHorizontal          uint32
-	Log2MaxMvLengthVertical            uint32
-	MaxNumReorderFrames                uint32
-	MaxDecFrameBuffering               uint32
+	// bitstreamRestrictionFlag == true
+	BitstreamRestriction *SPS_BitstreamRestriction
 }
 
 func (v *SPS_VUI) unmarshal(br *bitio.Reader) error {
@@ -416,43 +460,14 @@ func (v *SPS_VUI) unmarshal(br *bitio.Reader) error {
 		return err
 	}
 
-	v.BitstreamRestrictionFlag, err = readFlag(br)
+	bitstreamRestrictionFlag, err := readFlag(br)
 	if err != nil {
 		return err
 	}
 
-	if v.BitstreamRestrictionFlag {
-		v.MotionVectorsOverPicBoundariesFlag, err = readFlag(br)
-		if err != nil {
-			return err
-		}
-
-		v.MaxBytesPerPicDenom, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		v.MaxBitsPerMbDenom, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		v.Log2MaxMvLengthHorizontal, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		v.Log2MaxMvLengthVertical, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		v.MaxNumReorderFrames, err = readGolombUnsigned(br)
-		if err != nil {
-			return err
-		}
-
-		v.MaxDecFrameBuffering, err = readGolombUnsigned(br)
+	if bitstreamRestrictionFlag {
+		v.BitstreamRestriction = &SPS_BitstreamRestriction{}
+		err := v.BitstreamRestriction.unmarshal(br)
 		if err != nil {
 			return err
 		}
