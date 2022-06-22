@@ -68,7 +68,7 @@ func getPOC(buf []byte, sps *SPS) (uint32, error) {
 	return uint32(picOrderCntLsb), nil
 }
 
-func getNALUSPOC(nalus [][]byte, sps *SPS) (uint32, error) {
+func findPOC(nalus [][]byte, sps *SPS) (uint32, error) {
 	for _, nalu := range nalus {
 		typ := NALUType(nalu[0] & 0x1F)
 		if typ == NALUTypeIDR || typ == NALUTypeNonIDR {
@@ -94,6 +94,70 @@ func getPOCDiff(poc1 uint32, poc2 uint32, sps *SPS) int32 {
 	return diff
 }
 
+func getSEIPicTimingDPBOutputDelay(buf []byte, sps *SPS) (uint32, bool) {
+	buf = AntiCompetitionRemove(buf)
+	pos := 1
+
+	for {
+		if pos >= (len(buf) - 1) {
+			return 0, false
+		}
+
+		payloadType := 0
+		for {
+			byt := buf[pos]
+			pos++
+			payloadType += int(byt)
+			if byt != 0xFF {
+				break
+			}
+		}
+
+		payloadSize := 0
+		for {
+			byt := buf[pos]
+			pos++
+			payloadSize += int(byt)
+			if byt != 0xFF {
+				break
+			}
+		}
+
+		if payloadType == 1 { // timing info
+			br := bitio.NewReader(bytes.NewReader(buf[pos : pos+payloadSize]))
+
+			// cpbRemovalDelay
+			_, err := br.ReadBits(sps.VUI.NalHRD.CpbRemovalDelayLengthMinus1 + 1)
+			if err != nil {
+				return 0, false
+			}
+
+			tmp, err := br.ReadBits(sps.VUI.NalHRD.DpbOutputDelayLengthMinus1 + 1)
+			if err != nil {
+				return 0, false
+			}
+			dpbOutputDelay := uint32(tmp)
+
+			return dpbOutputDelay, true
+		}
+
+		pos += payloadSize
+	}
+}
+
+func findSEIPicTimingDPBOutputDelay(nalus [][]byte, sps *SPS) (uint32, bool) {
+	for _, nalu := range nalus {
+		typ := NALUType(nalu[0] & 0x1F)
+		if typ == NALUTypeSEI {
+			ret, ok := getSEIPicTimingDPBOutputDelay(nalu, sps)
+			if ok {
+				return ret, true
+			}
+		}
+	}
+	return 0, false
+}
+
 // DTSExtractor is a utility that allows to extract NALU DTS from PTS.
 type DTSExtractor struct {
 	sps          []byte
@@ -110,27 +174,22 @@ func NewDTSExtractor() *DTSExtractor {
 	return &DTSExtractor{}
 }
 
-func (d *DTSExtractor) extractInner(
-	nalus [][]byte,
-	pts time.Duration,
-) (time.Duration, int32, error) {
+func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Duration, int32, error) {
 	idrPresent := false
 
 	for _, nalu := range nalus {
 		typ := NALUType(nalu[0] & 0x1F)
 		switch typ {
-		// parse SPS
 		case NALUTypeSPS:
 			if d.sps == nil || !bytes.Equal(d.sps, nalu) {
 				var spsp SPS
 				err := spsp.Unmarshal(nalu)
 				if err != nil {
-					return 0, 0, err
+					return 0, 0, fmt.Errorf("invalid SPS: %v", err)
 				}
 				d.sps = append([]byte(nil), nalu...)
 				d.spsp = &spsp
 
-				// in case of B-frames, we have to subtract from DTS the maximum number of reordered frames
 				if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil &&
 					d.spsp.VUI.BitstreamRestriction != nil {
 					d.ptsDTSOffset = time.Duration(math.Round(float64(
@@ -141,7 +200,6 @@ func (d *DTSExtractor) extractInner(
 				}
 			}
 
-		// set IDR present flag
 		case NALUTypeIDR:
 			idrPresent = true
 		}
@@ -151,51 +209,68 @@ func (d *DTSExtractor) extractInner(
 		return 0, 0, fmt.Errorf("SPS not received yet")
 	}
 
-	if idrPresent || d.spsp.PicOrderCntType == 2 {
-		d.expectedPOC = 0
-		return pts - d.ptsDTSOffset, 0, nil
-	}
-
-	// compute expectedPOC immediately in order to store it even in case of errors
-	d.expectedPOC += 2
-	d.expectedPOC &= ((1 << (d.spsp.Log2MaxPicOrderCntLsbMinus4 + 4)) - 1)
-
-	poc, err := getNALUSPOC(nalus, d.spsp)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	pocDiff := getPOCDiff(poc, d.expectedPOC, d.spsp)
-
-	if pocDiff == 0 {
-		return pts - d.ptsDTSOffset, 0, nil
-	}
-
-	// special case to eliminate errors near 0
-	if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.BitstreamRestriction != nil &&
-		pocDiff == -int32(d.spsp.VUI.BitstreamRestriction.MaxNumReorderFrames)*2 {
-		return pts, pocDiff, nil
-	}
-
-	if d.prevPOCDiff == 0 {
-		if pocDiff == -2 {
-			return 0, 0, fmt.Errorf("invalid frame POC")
+	switch {
+	// DTS is computed from SEI
+	case d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.NalHRD != nil:
+		dpbOutputDelay, ok := findSEIPicTimingDPBOutputDelay(nalus, d.spsp)
+		if !ok {
+			return 0, 0, fmt.Errorf("SEI / pic_timing not found")
 		}
 
-		return d.prevPTS - d.ptsDTSOffset +
-			time.Duration(math.Round(float64(pts-d.prevPTS)/float64(pocDiff/2+1))), pocDiff, nil
-	}
+		return pts - time.Duration(dpbOutputDelay)/2*time.Second*
+			time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2/time.Duration(d.spsp.VUI.TimingInfo.TimeScale), 0, nil
 
-	// pocDiff : prevPOCDiff = (pts - dts - ptsDTSOffset) : (prevPTS - prevDTS - ptsDTSOffset)
-	return pts - d.ptsDTSOffset + time.Duration(math.Round(float64(d.prevDTS-d.prevPTS+d.ptsDTSOffset)*
-		float64(pocDiff)/float64(d.prevPOCDiff))), pocDiff, nil
+	// DTS is always equal to PTS
+	case d.spsp.PicOrderCntType == 2:
+		return pts, 0, nil
+
+	// DTS is computed by using POC, timing infos and max_num_reorder_frames
+	case d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.BitstreamRestriction != nil:
+		if idrPresent {
+			d.expectedPOC = 0
+			return pts - d.ptsDTSOffset, 0, nil
+		}
+
+		// compute expectedPOC immediately in order to store it even in case of errors
+		d.expectedPOC += 2
+		d.expectedPOC &= ((1 << (d.spsp.Log2MaxPicOrderCntLsbMinus4 + 4)) - 1)
+
+		poc, err := findPOC(nalus, d.spsp)
+		if err != nil {
+			return 0, 0, err
+		}
+
+		pocDiff := getPOCDiff(poc, d.expectedPOC, d.spsp)
+
+		if pocDiff == 0 {
+			return pts - d.ptsDTSOffset, 0, nil
+		}
+
+		// special case to eliminate errors near 0
+		if pocDiff == -int32(d.spsp.VUI.BitstreamRestriction.MaxNumReorderFrames)*2 {
+			return pts, pocDiff, nil
+		}
+
+		if d.prevPOCDiff == 0 {
+			if pocDiff == -2 {
+				return 0, 0, fmt.Errorf("invalid frame POC")
+			}
+
+			return d.prevPTS - d.ptsDTSOffset +
+				time.Duration(math.Round(float64(pts-d.prevPTS)/float64(pocDiff/2+1))), pocDiff, nil
+		}
+
+		// pocDiff : prevPOCDiff = (pts - dts - ptsDTSOffset) : (prevPTS - prevDTS - ptsDTSOffset)
+		return pts - d.ptsDTSOffset + time.Duration(math.Round(float64(d.prevDTS-d.prevPTS+d.ptsDTSOffset)*
+			float64(pocDiff)/float64(d.prevPOCDiff))), pocDiff, nil
+
+	default:
+		return 0, 0, fmt.Errorf("unable to compute H264 DTS")
+	}
 }
 
-// Extract extracts the DTS of a NALU group.
-func (d *DTSExtractor) Extract(
-	nalus [][]byte,
-	pts time.Duration,
-) (time.Duration, error) {
+// Extract extracts the DTS of a group of NALUs.
+func (d *DTSExtractor) Extract(nalus [][]byte, pts time.Duration) (time.Duration, error) {
 	dts, pocDiff, err := d.extractInner(nalus, pts)
 	if err != nil {
 		return 0, err
