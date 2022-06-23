@@ -339,6 +339,9 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				pps: []byte{
 					0x68, 0xfa, 0x8f, 0x2c,
 				},
+				extradata: []byte{
+					0x68, 0xfa, 0x8f, 0x2c,
+				},
 			},
 		},
 		{

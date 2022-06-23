@@ -87,8 +87,18 @@ func (t *TrackH264) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 				return fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
+			var extradata []byte
+			if len(tmp) > 2 {
+				var err error
+				extradata, err = base64.StdEncoding.DecodeString(tmp[1])
+				if err != nil {
+					return fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
+				}
+			}
+
 			t.sps = sps
 			t.pps = pps
+			t.extradata = extradata
 			return nil
 		}
 	}
