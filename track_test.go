@@ -382,6 +382,25 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
+			"vp9",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 VP9/90000",
+					},
+				},
+			},
+			&TrackVP9{
+				payloadType: 96,
+			},
+		},
+		{
 			"multiple formats",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
