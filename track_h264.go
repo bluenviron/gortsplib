@@ -16,7 +16,6 @@ type TrackH264 struct {
 	PayloadType uint8
 	SPS         []byte
 	PPS         []byte
-	Extradata   []byte
 
 	trackBase
 	mutex sync.RWMutex
@@ -78,18 +77,8 @@ func (t *TrackH264) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 				return fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
 			}
 
-			var extradata []byte
-			if len(tmp) > 2 {
-				var err error
-				extradata, err = base64.StdEncoding.DecodeString(tmp[1])
-				if err != nil {
-					return fmt.Errorf("invalid sprop-parameter-sets (%v)", v)
-				}
-			}
-
 			t.SPS = sps
 			t.PPS = pps
-			t.Extradata = extradata
 			return nil
 		}
 	}
@@ -107,7 +96,6 @@ func (t *TrackH264) clone() Track {
 		PayloadType: t.PayloadType,
 		SPS:         t.SPS,
 		PPS:         t.PPS,
-		Extradata:   t.Extradata,
 		trackBase:   t.trackBase,
 	}
 }
@@ -155,9 +143,6 @@ func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
 	}
 	if t.PPS != nil {
 		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.PPS))
-	}
-	if t.Extradata != nil {
-		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.Extradata))
 	}
 	fmtp += "; sprop-parameter-sets=" + strings.Join(tmp, ",")
 

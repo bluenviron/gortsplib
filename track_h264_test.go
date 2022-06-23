@@ -170,7 +170,6 @@ func TestTrackH264Params(t *testing.T) {
 		PayloadType: 96,
 		SPS:         []byte{0x01, 0x02},
 		PPS:         []byte{0x03, 0x04},
-		Extradata:   []byte{0x05, 0x06},
 	}
 	require.Equal(t, "", track.GetControl())
 	require.Equal(t, []byte{0x01, 0x02}, track.SafeSPS())
@@ -187,7 +186,6 @@ func TestTrackH264Clone(t *testing.T) {
 		PayloadType: 96,
 		SPS:         []byte{0x01, 0x02},
 		PPS:         []byte{0x03, 0x04},
-		Extradata:   []byte{0x05, 0x06},
 	}
 
 	clone := track.clone()
@@ -206,9 +204,6 @@ func TestTrackH264MediaDescription(t *testing.T) {
 		PPS: []byte{
 			0x68, 0xee, 0x3c, 0x80,
 		},
-		Extradata: []byte{
-			0x01, 0x02,
-		},
 	}
 
 	require.Equal(t, &psdp.MediaDescription{
@@ -225,7 +220,7 @@ func TestTrackH264MediaDescription(t *testing.T) {
 			{
 				Key: "fmtp",
 				Value: "96 packetization-mode=1; " +
-					"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==,AQI=; profile-level-id=64000C",
+					"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
 			},
 			{
 				Key:   "control",
