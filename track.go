@@ -15,10 +15,10 @@ type Track interface {
 	// ClockRate returns the track clock rate.
 	ClockRate() int
 
-	// GetControl returns the track control.
+	// GetControl returns the track control attribute.
 	GetControl() string
 
-	// SetControl sets the track control.
+	// SetControl sets the track control attribute.
 	SetControl(string)
 
 	// MediaDescription returns the track media description in SDP format.
@@ -106,12 +106,12 @@ type trackBase struct {
 	control string
 }
 
-// GetControl gets the track control.
+// GetControl gets the track control attribute.
 func (t *trackBase) GetControl() string {
 	return t.control
 }
 
-// SetControl sets the track control.
+// SetControl sets the track control attribute.
 func (t *trackBase) SetControl(c string) {
 	t.control = c
 }
