@@ -17,12 +17,12 @@ type TrackOpus struct {
 }
 
 // NewTrackOpus allocates a TrackOpus.
-func NewTrackOpus(payloadType uint8, sampleRate int, channelCount int) (*TrackOpus, error) {
+func NewTrackOpus(payloadType uint8, sampleRate int, channelCount int) *TrackOpus {
 	return &TrackOpus{
 		payloadType:  payloadType,
 		sampleRate:   sampleRate,
 		channelCount: channelCount,
-	}, nil
+	}
 }
 
 func newTrackOpusFromMediaDescription(

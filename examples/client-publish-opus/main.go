@@ -34,10 +34,7 @@ func main() {
 	log.Println("stream connected")
 
 	// create an Opus track
-	track, err := gortsplib.NewTrackOpus(96, 48000, 2)
-	if err != nil {
-		panic(err)
-	}
+	track := gortsplib.NewTrackOpus(96, 48000, 2)
 
 	c := gortsplib.Client{}
 
