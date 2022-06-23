@@ -46,7 +46,7 @@ func main() {
 	}
 
 	// setup H264->MPEGTS encoder
-	enc, err := newMPEGTSEncoder(h264track.SPS(), h264track.PPS())
+	enc, err := newMPEGTSEncoder(h264track.SafeSPS(), h264track.SafePPS())
 	if err != nil {
 		panic(err)
 	}

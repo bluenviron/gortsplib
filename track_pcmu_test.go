@@ -8,12 +8,12 @@ import (
 )
 
 func TestTrackPCMUNew(t *testing.T) {
-	track := NewTrackPCMU()
+	track := &TrackPCMU{}
 	require.Equal(t, "", track.GetControl())
 }
 
 func TestTrackPCMUClone(t *testing.T) {
-	track := NewTrackPCMU()
+	track := &TrackPCMU{}
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
@@ -21,7 +21,7 @@ func TestTrackPCMUClone(t *testing.T) {
 }
 
 func TestTrackPCMUMediaDescription(t *testing.T) {
-	track := NewTrackPCMU()
+	track := &TrackPCMU{}
 
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{

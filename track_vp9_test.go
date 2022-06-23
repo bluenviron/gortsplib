@@ -7,22 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackVP9New(t *testing.T) {
-	maxFR := 123
-	maxFS := 456
-	profileID := 789
-	track := NewTrackVP9(96, &maxFR, &maxFS, &profileID)
-	require.Equal(t, "", track.GetControl())
-	require.Equal(t, 123, *track.MaxFR())
-	require.Equal(t, 456, *track.MaxFS())
-	require.Equal(t, 789, *track.ProfileID())
-}
-
 func TestTracVP9Clone(t *testing.T) {
 	maxFR := 123
 	maxFS := 456
 	profileID := 789
-	track := NewTrackVP9(96, &maxFR, &maxFS, &profileID)
+	track := &TrackVP9{
+		PayloadType: 96,
+		MaxFR:       &maxFR,
+		MaxFS:       &maxFS,
+		ProfileID:   &profileID,
+	}
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
@@ -33,7 +27,12 @@ func TestTrackVP9MediaDescription(t *testing.T) {
 	maxFR := 123
 	maxFS := 456
 	profileID := 789
-	track := NewTrackVP9(96, &maxFR, &maxFS, &profileID)
+	track := &TrackVP9{
+		PayloadType: 96,
+		MaxFR:       &maxFR,
+		MaxFS:       &maxFS,
+		ProfileID:   &profileID,
+	}
 
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{

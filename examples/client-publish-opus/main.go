@@ -34,7 +34,11 @@ func main() {
 	log.Println("stream connected")
 
 	// create an Opus track
-	track := gortsplib.NewTrackOpus(96, 48000, 2)
+	track := &gortsplib.TrackOpus{
+		PayloadType:  96,
+		SampleRate:   48000,
+		ChannelCount: 2,
+	}
 
 	c := gortsplib.Client{}
 

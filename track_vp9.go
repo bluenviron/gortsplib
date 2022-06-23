@@ -11,20 +11,10 @@ import (
 // TrackVP9 is a VP9 track.
 type TrackVP9 struct {
 	trackBase
-	payloadType uint8
-	maxFR       *int
-	maxFS       *int
-	profileID   *int
-}
-
-// NewTrackVP9 allocates a TrackVP9.
-func NewTrackVP9(payloadType uint8, maxFR *int, maxFS *int, profileID *int) *TrackVP9 {
-	return &TrackVP9{
-		payloadType: payloadType,
-		maxFR:       maxFR,
-		maxFS:       maxFS,
-		profileID:   profileID,
-	}
+	PayloadType uint8
+	MaxFR       *int
+	MaxFS       *int
+	ProfileID   *int
 }
 
 func newTrackVP9FromMediaDescription(
@@ -33,10 +23,10 @@ func newTrackVP9FromMediaDescription(
 	md *psdp.MediaDescription,
 ) (*TrackVP9, error) {
 	t := &TrackVP9{
+		PayloadType: payloadType,
 		trackBase: trackBase{
 			control: control,
 		},
-		payloadType: payloadType,
 	}
 
 	t.fillParamsFromMediaDescription(md)
@@ -74,7 +64,7 @@ func (t *TrackVP9) fillParamsFromMediaDescription(md *psdp.MediaDescription) err
 				return fmt.Errorf("invalid max-fr (%v)", tmp[1])
 			}
 			v2 := int(val)
-			t.maxFR = &v2
+			t.MaxFR = &v2
 
 		case "max-fs":
 			val, err := strconv.ParseUint(tmp[1], 10, 64)
@@ -82,7 +72,7 @@ func (t *TrackVP9) fillParamsFromMediaDescription(md *psdp.MediaDescription) err
 				return fmt.Errorf("invalid max-fs (%v)", tmp[1])
 			}
 			v2 := int(val)
-			t.maxFS = &v2
+			t.MaxFS = &v2
 
 		case "profile-id":
 			val, err := strconv.ParseUint(tmp[1], 10, 64)
@@ -90,7 +80,7 @@ func (t *TrackVP9) fillParamsFromMediaDescription(md *psdp.MediaDescription) err
 				return fmt.Errorf("invalid profile-id (%v)", tmp[1])
 			}
 			v2 := int(val)
-			t.profileID = &v2
+			t.ProfileID = &v2
 		}
 	}
 
@@ -105,43 +95,28 @@ func (t *TrackVP9) ClockRate() int {
 func (t *TrackVP9) clone() Track {
 	return &TrackVP9{
 		trackBase:   t.trackBase,
-		payloadType: t.payloadType,
-		maxFR:       t.maxFR,
-		maxFS:       t.maxFS,
-		profileID:   t.profileID,
+		PayloadType: t.PayloadType,
+		MaxFR:       t.MaxFR,
+		MaxFS:       t.MaxFS,
+		ProfileID:   t.ProfileID,
 	}
-}
-
-// MaxFR returns the track max-fr.
-func (t *TrackVP9) MaxFR() *int {
-	return t.maxFR
-}
-
-// MaxFS returns the track max-fs.
-func (t *TrackVP9) MaxFS() *int {
-	return t.maxFS
-}
-
-// ProfileID returns the track profile-id.
-func (t *TrackVP9) ProfileID() *int {
-	return t.profileID
 }
 
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackVP9) MediaDescription() *psdp.MediaDescription {
-	typ := strconv.FormatInt(int64(t.payloadType), 10)
+	typ := strconv.FormatInt(int64(t.PayloadType), 10)
 
 	fmtp := typ
 
 	var tmp []string
-	if t.maxFR != nil {
-		tmp = append(tmp, "max-fr="+strconv.FormatInt(int64(*t.maxFR), 10))
+	if t.MaxFR != nil {
+		tmp = append(tmp, "max-fr="+strconv.FormatInt(int64(*t.MaxFR), 10))
 	}
-	if t.maxFS != nil {
-		tmp = append(tmp, "max-fs="+strconv.FormatInt(int64(*t.maxFS), 10))
+	if t.MaxFS != nil {
+		tmp = append(tmp, "max-fs="+strconv.FormatInt(int64(*t.MaxFS), 10))
 	}
-	if t.profileID != nil {
-		tmp = append(tmp, "profile-id="+strconv.FormatInt(int64(*t.profileID), 10))
+	if t.ProfileID != nil {
+		tmp = append(tmp, "profile-id="+strconv.FormatInt(int64(*t.ProfileID), 10))
 	}
 	if tmp != nil {
 		fmtp += " " + strings.Join(tmp, ";")

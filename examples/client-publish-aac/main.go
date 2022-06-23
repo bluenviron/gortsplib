@@ -34,9 +34,14 @@ func main() {
 	log.Println("stream connected")
 
 	// create an AAC track
-	track, err := gortsplib.NewTrackAAC(96, 2, 48000, 2, nil, 13, 3, 3)
-	if err != nil {
-		panic(err)
+	track := &gortsplib.TrackAAC{
+		PayloadType:      96,
+		Type:             2,
+		SampleRate:       48000,
+		ChannelCount:     2,
+		SizeLength:       13,
+		IndexLength:      3,
+		IndexDeltaLength: 3,
 	}
 
 	// connect to the server and start publishing the track

@@ -9,11 +9,6 @@ type TrackMpegAudio struct {
 	trackBase
 }
 
-// NewTrackMpegAudio allocates a TrackMpegAudio.
-func NewTrackMpegAudio() *TrackMpegAudio {
-	return &TrackMpegAudio{}
-}
-
 func newTrackMpegAudioFromMediaDescription(
 	control string) (*TrackMpegAudio, error,
 ) {

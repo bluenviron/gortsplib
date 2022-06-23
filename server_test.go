@@ -351,8 +351,11 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 }
 
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -378,7 +381,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -454,8 +457,11 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 }
 
 func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -481,7 +487,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -727,8 +733,11 @@ func TestServerSessionAutoClose(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			stream := NewServerStream(Tracks{track})
 			defer stream.Close()
@@ -753,7 +762,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 				RTSPAddress: "localhost:8554",
 			}
 
-			err = s.Start()
+			err := s.Start()
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -802,8 +811,11 @@ func TestServerErrorInvalidPath(t *testing.T) {
 		t.Run(string(method), func(t *testing.T) {
 			connClosed := make(chan struct{})
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			stream := NewServerStream(Tracks{track})
 			defer stream.Close()
@@ -833,7 +845,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 				RTSPAddress: "localhost:8554",
 			}
 
-			err = s.Start()
+			err := s.Start()
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -845,8 +857,11 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			sxID := ""
 
 			if method == base.Record {
-				track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-				require.NoError(t, err)
+				track := &TrackH264{
+					PayloadType: 96,
+					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				}
 
 				tracks := Tracks{track}
 				tracks.setControls()
@@ -961,8 +976,11 @@ func TestServerAuth(t *testing.T) {
 	defer conn.Close()
 	br := bufio.NewReader(conn)
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	req := base.Request{
 		Method: base.Announce,

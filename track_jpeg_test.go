@@ -7,13 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackJPEGNew(t *testing.T) {
-	track := NewTrackJPEG()
-	require.Equal(t, "", track.GetControl())
-}
-
 func TestTrackJPEGClone(t *testing.T) {
-	track := NewTrackJPEG()
+	track := &TrackJPEG{}
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
@@ -21,7 +16,7 @@ func TestTrackJPEGClone(t *testing.T) {
 }
 
 func TestTrackJPEGMediaDescription(t *testing.T) {
-	track := NewTrackJPEG()
+	track := &TrackJPEG{}
 
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{

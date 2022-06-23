@@ -9,11 +9,6 @@ type TrackJPEG struct {
 	trackBase
 }
 
-// NewTrackJPEG allocates a TrackJPEG.
-func NewTrackJPEG() *TrackJPEG {
-	return &TrackJPEG{}
-}
-
 func newTrackJPEGFromMediaDescription(
 	control string) (*TrackJPEG, error,
 ) {

@@ -12,11 +12,6 @@ type TrackPCMA struct {
 	trackBase
 }
 
-// NewTrackPCMA allocates a TrackPCMA.
-func NewTrackPCMA() *TrackPCMA {
-	return &TrackPCMA{}
-}
-
 func newTrackPCMAFromMediaDescription(
 	control string,
 	rtpmapPart1 string) (*TrackPCMA, error,

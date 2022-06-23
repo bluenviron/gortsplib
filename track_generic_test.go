@@ -7,38 +7,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackGenericNew(t *testing.T) {
-	track, err := NewTrackGeneric(
-		"video",
-		[]string{"100", "101"},
-		"98 H265/90000",
-		"98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; "+
-			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
-	)
-	require.NoError(t, err)
-	require.Equal(t, "", track.GetControl())
-	require.Equal(t, 90000, track.ClockRate())
-}
-
-func TestTrackGenericNewErrors(t *testing.T) {
-	_, err := NewTrackGeneric(
-		"video",
-		[]string{"100", "101"},
-		"98 H265/",
-		"",
-	)
-	require.EqualError(t, err, "unable to get clock rate: strconv.ParseInt: parsing \"\": invalid syntax")
-}
-
 func TestTrackGenericClone(t *testing.T) {
-	track, err := NewTrackGeneric(
-		"video",
-		[]string{"100", "101"},
-		"98 H265/90000",
-		"98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; "+
+	track := &TrackGeneric{
+		Media:   "video",
+		Formats: []string{"100", "101"},
+		RTPMap:  "98 H265/90000",
+		FMTP: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
 			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
-	)
-	require.NoError(t, err)
+	}
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
@@ -46,14 +22,13 @@ func TestTrackGenericClone(t *testing.T) {
 }
 
 func TestTrackGenericMediaDescription(t *testing.T) {
-	track, err := NewTrackGeneric(
-		"video",
-		[]string{"100", "101"},
-		"98 H265/90000",
-		"98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; "+
+	track := &TrackGeneric{
+		Media:   "video",
+		Formats: []string{"100", "101"},
+		RTPMap:  "98 H265/90000",
+		FMTP: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
 			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
-	)
-	require.NoError(t, err)
+	}
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:   "video",

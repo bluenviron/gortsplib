@@ -92,8 +92,11 @@ func TestServerReadSetupPath(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			stream := NewServerStream(Tracks{track, track, track, track, track})
 			defer stream.Close()
@@ -111,7 +114,7 @@ func TestServerReadSetupPath(t *testing.T) {
 				RTSPAddress: "localhost:8554",
 			}
 
-			err = s.Start()
+			err := s.Start()
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -156,8 +159,11 @@ func TestServerReadSetupErrors(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			connClosed := make(chan struct{})
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			stream := NewServerStream(Tracks{track})
 			if ca == "closed stream" {
@@ -190,7 +196,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 				RTSPAddress: "localhost:8554",
 			}
 
-			err = s.Start()
+			err := s.Start()
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -288,8 +294,11 @@ func TestServerRead(t *testing.T) {
 			sessionClosed := make(chan struct{})
 			framesReceived := make(chan struct{})
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			stream := NewServerStream(Tracks{track})
 			defer stream.Close()
@@ -372,7 +381,7 @@ func TestServerRead(t *testing.T) {
 				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
-			err = s.Start()
+			err := s.Start()
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -628,8 +637,11 @@ func TestServerRead(t *testing.T) {
 }
 
 func TestServerReadRTCPReport(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -653,7 +665,7 @@ func TestServerReadRTCPReport(t *testing.T) {
 		UDPRTCPAddress:        "127.0.0.1:8001",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -738,8 +750,11 @@ func TestServerReadRTCPReport(t *testing.T) {
 }
 
 func TestServerReadVLCMulticast(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -760,7 +775,7 @@ func TestServerReadVLCMulticast(t *testing.T) {
 		MulticastRTCPPort: 8001,
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -790,8 +805,11 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -836,7 +854,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 		},
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -888,8 +906,11 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 }
 
 func TestServerReadPlayPlay(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -912,7 +933,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 		RTSPAddress:    "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -975,8 +996,11 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -1025,7 +1049,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1098,8 +1122,11 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -1145,7 +1172,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1231,8 +1258,11 @@ func TestServerReadTimeout(t *testing.T) {
 		t.Run(transport, func(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			stream := NewServerStream(Tracks{track})
 			defer stream.Close()
@@ -1274,7 +1304,7 @@ func TestServerReadTimeout(t *testing.T) {
 				s.MulticastRTCPPort = 8001
 			}
 
-			err = s.Start()
+			err := s.Start()
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -1343,8 +1373,11 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			connClosed := make(chan struct{})
 			sessionClosed := make(chan struct{})
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			stream := NewServerStream(Tracks{track})
 			defer stream.Close()
@@ -1383,7 +1416,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
 
-			err = s.Start()
+			err := s.Start()
 			require.NoError(t, err)
 			defer s.Close()
 
@@ -1446,8 +1479,11 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 }
 
 func TestServerReadUDPChangeConn(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -1475,7 +1511,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 		RTSPAddress:    "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1549,11 +1585,17 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 }
 
 func TestServerReadPartialTracks(t *testing.T) {
-	track1, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track1 := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
-	track2, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track2 := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track1, track2})
 	defer stream.Close()
@@ -1580,7 +1622,7 @@ func TestServerReadPartialTracks(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1725,8 +1767,11 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		return &ri, ssrcs
 	}
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track, track})
 	defer stream.Close()
@@ -1747,7 +1792,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1836,8 +1881,11 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 }
 
 func TestServerReadErrorUDPSamePorts(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
@@ -1860,7 +1908,7 @@ func TestServerReadErrorUDPSamePorts(t *testing.T) {
 		RTSPAddress:    "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 

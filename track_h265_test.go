@@ -7,17 +7,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackH265New(t *testing.T) {
-	track := NewTrackH265(96,
-		[]byte{0x01, 0x02}, []byte{0x03, 0x04}, []byte{0x05, 0x06})
+func TestTrackH265Params(t *testing.T) {
+	track := &TrackH265{
+		PayloadType: 96,
+		VPS:         []byte{0x01, 0x02},
+		SPS:         []byte{0x03, 0x04},
+		PPS:         []byte{0x05, 0x06},
+	}
 	require.Equal(t, "", track.GetControl())
-	require.Equal(t, []byte{0x01, 0x02}, track.VPS())
-	require.Equal(t, []byte{0x03, 0x04}, track.SPS())
-	require.Equal(t, []byte{0x05, 0x06}, track.PPS())
+	require.Equal(t, []byte{0x01, 0x02}, track.SafeVPS())
+	require.Equal(t, []byte{0x03, 0x04}, track.SafeSPS())
+	require.Equal(t, []byte{0x05, 0x06}, track.SafePPS())
+
+	track.SafeSetVPS([]byte{0x07, 0x08})
+	track.SafeSetSPS([]byte{0x09, 0x0A})
+	track.SafeSetPPS([]byte{0x0B, 0x0C})
+	require.Equal(t, []byte{0x07, 0x08}, track.SafeVPS())
+	require.Equal(t, []byte{0x09, 0x0A}, track.SafeSPS())
+	require.Equal(t, []byte{0x0B, 0x0C}, track.SafePPS())
 }
 
 func TestTrackH265Clone(t *testing.T) {
-	track := NewTrackH265(96, []byte{0x01, 0x02}, []byte{0x03, 0x04}, []byte{0x05, 0x06})
+	track := &TrackH265{
+		PayloadType: 96,
+		VPS:         []byte{0x01, 0x02},
+		SPS:         []byte{0x03, 0x04},
+		PPS:         []byte{0x05, 0x06},
+	}
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
@@ -25,7 +41,12 @@ func TestTrackH265Clone(t *testing.T) {
 }
 
 func TestTrackH265MediaDescription(t *testing.T) {
-	track := NewTrackH265(96, []byte{0x01, 0x02}, []byte{0x03, 0x04}, []byte{0x05, 0x06})
+	track := &TrackH265{
+		PayloadType: 96,
+		VPS:         []byte{0x01, 0x02},
+		SPS:         []byte{0x03, 0x04},
+		PPS:         []byte{0x05, 0x06},
+	}
 
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{

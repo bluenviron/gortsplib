@@ -12,11 +12,6 @@ type TrackPCMU struct {
 	trackBase
 }
 
-// NewTrackPCMU allocates a TrackPCMU.
-func NewTrackPCMU() *TrackPCMU {
-	return &TrackPCMU{}
-}
-
 func newTrackPCMUFromMediaDescription(
 	control string,
 	rtpmapPart1 string) (*TrackPCMU, error,

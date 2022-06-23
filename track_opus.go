@@ -10,19 +10,11 @@ import (
 
 // TrackOpus is a Opus track.
 type TrackOpus struct {
-	trackBase
-	payloadType  uint8
-	sampleRate   int
-	channelCount int
-}
+	PayloadType  uint8
+	SampleRate   int
+	ChannelCount int
 
-// NewTrackOpus allocates a TrackOpus.
-func NewTrackOpus(payloadType uint8, sampleRate int, channelCount int) *TrackOpus {
-	return &TrackOpus{
-		payloadType:  payloadType,
-		sampleRate:   sampleRate,
-		channelCount: channelCount,
-	}
+	trackBase
 }
 
 func newTrackOpusFromMediaDescription(
@@ -47,37 +39,32 @@ func newTrackOpusFromMediaDescription(
 	}
 
 	return &TrackOpus{
+		PayloadType:  payloadType,
+		SampleRate:   int(sampleRate),
+		ChannelCount: int(channelCount),
 		trackBase: trackBase{
 			control: control,
 		},
-		payloadType:  payloadType,
-		sampleRate:   int(sampleRate),
-		channelCount: int(channelCount),
 	}, nil
 }
 
 // ClockRate returns the track clock rate.
 func (t *TrackOpus) ClockRate() int {
-	return t.sampleRate
+	return t.SampleRate
 }
 
 func (t *TrackOpus) clone() Track {
 	return &TrackOpus{
+		PayloadType:  t.PayloadType,
+		SampleRate:   t.SampleRate,
+		ChannelCount: t.ChannelCount,
 		trackBase:    t.trackBase,
-		payloadType:  t.payloadType,
-		sampleRate:   t.sampleRate,
-		channelCount: t.channelCount,
 	}
-}
-
-// ChannelCount returns the channel count.
-func (t *TrackOpus) ChannelCount() int {
-	return t.channelCount
 }
 
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackOpus) MediaDescription() *psdp.MediaDescription {
-	typ := strconv.FormatInt(int64(t.payloadType), 10)
+	typ := strconv.FormatInt(int64(t.PayloadType), 10)
 
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
@@ -88,13 +75,13 @@ func (t *TrackOpus) MediaDescription() *psdp.MediaDescription {
 		Attributes: []psdp.Attribute{
 			{
 				Key: "rtpmap",
-				Value: typ + " opus/" + strconv.FormatInt(int64(t.sampleRate), 10) +
-					"/" + strconv.FormatInt(int64(t.channelCount), 10),
+				Value: typ + " opus/" + strconv.FormatInt(int64(t.SampleRate), 10) +
+					"/" + strconv.FormatInt(int64(t.ChannelCount), 10),
 			},
 			{
 				Key: "fmtp",
 				Value: typ + " sprop-stereo=" + func() string {
-					if t.channelCount == 2 {
+					if t.ChannelCount == 2 {
 						return "1"
 					}
 					return "0"

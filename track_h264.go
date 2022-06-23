@@ -13,22 +13,13 @@ import (
 
 // TrackH264 is a H264 track.
 type TrackH264 struct {
-	trackBase
-	payloadType uint8
-	sps         []byte
-	pps         []byte
-	extradata   []byte
-	mutex       sync.RWMutex
-}
+	PayloadType uint8
+	SPS         []byte
+	PPS         []byte
+	Extradata   []byte
 
-// NewTrackH264 allocates a TrackH264.
-func NewTrackH264(payloadType uint8, sps []byte, pps []byte, extradata []byte) (*TrackH264, error) {
-	return &TrackH264{
-		payloadType: payloadType,
-		sps:         sps,
-		pps:         pps,
-		extradata:   extradata,
-	}, nil
+	trackBase
+	mutex sync.RWMutex
 }
 
 func newTrackH264FromMediaDescription(
@@ -37,10 +28,10 @@ func newTrackH264FromMediaDescription(
 	md *psdp.MediaDescription,
 ) (*TrackH264, error) {
 	t := &TrackH264{
+		PayloadType: payloadType,
 		trackBase: trackBase{
 			control: control,
 		},
-		payloadType: payloadType,
 	}
 
 	t.fillParamsFromMediaDescription(md)
@@ -96,9 +87,9 @@ func (t *TrackH264) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 				}
 			}
 
-			t.sps = sps
-			t.pps = pps
-			t.extradata = extradata
+			t.SPS = sps
+			t.PPS = pps
+			t.Extradata = extradata
 			return nil
 		}
 	}
@@ -113,45 +104,40 @@ func (t *TrackH264) ClockRate() int {
 
 func (t *TrackH264) clone() Track {
 	return &TrackH264{
+		PayloadType: t.PayloadType,
+		SPS:         t.SPS,
+		PPS:         t.PPS,
+		Extradata:   t.Extradata,
 		trackBase:   t.trackBase,
-		payloadType: t.payloadType,
-		sps:         t.sps,
-		pps:         t.pps,
-		extradata:   t.extradata,
 	}
 }
 
-// SPS returns the track SPS.
-func (t *TrackH264) SPS() []byte {
+// SafeSPS returns the track SPS.
+func (t *TrackH264) SafeSPS() []byte {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
-	return t.sps
+	return t.SPS
 }
 
-// PPS returns the track PPS.
-func (t *TrackH264) PPS() []byte {
+// SafePPS returns the track PPS.
+func (t *TrackH264) SafePPS() []byte {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
-	return t.pps
+	return t.PPS
 }
 
-// ExtraData returns the track extra data.
-func (t *TrackH264) ExtraData() []byte {
-	return t.extradata
-}
-
-// SetSPS sets the track SPS.
-func (t *TrackH264) SetSPS(v []byte) {
+// SafeSetSPS sets the track SPS.
+func (t *TrackH264) SafeSetSPS(v []byte) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	t.sps = v
+	t.SPS = v
 }
 
-// SetPPS sets the track PPS.
-func (t *TrackH264) SetPPS(v []byte) {
+// SafeSetPPS sets the track PPS.
+func (t *TrackH264) SafeSetPPS(v []byte) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	t.pps = v
+	t.PPS = v
 }
 
 // MediaDescription returns the track media description in SDP format.
@@ -159,24 +145,24 @@ func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
-	typ := strconv.FormatInt(int64(t.payloadType), 10)
+	typ := strconv.FormatInt(int64(t.PayloadType), 10)
 
 	fmtp := typ + " packetization-mode=1"
 
 	var tmp []string
-	if t.sps != nil {
-		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.sps))
+	if t.SPS != nil {
+		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.SPS))
 	}
-	if t.pps != nil {
-		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.pps))
+	if t.PPS != nil {
+		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.PPS))
 	}
-	if t.extradata != nil {
-		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.extradata))
+	if t.Extradata != nil {
+		tmp = append(tmp, base64.StdEncoding.EncodeToString(t.Extradata))
 	}
 	fmtp += "; sprop-parameter-sets=" + strings.Join(tmp, ",")
 
-	if len(t.sps) >= 4 {
-		fmtp += "; profile-level-id=" + strings.ToUpper(hex.EncodeToString(t.sps[1:4]))
+	if len(t.SPS) >= 4 {
+		fmtp += "; profile-level-id=" + strings.ToUpper(hex.EncodeToString(t.SPS[1:4]))
 	}
 
 	return &psdp.MediaDescription{

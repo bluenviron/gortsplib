@@ -9,11 +9,6 @@ type TrackMpegVideo struct {
 	trackBase
 }
 
-// NewTrackMpegVideo allocates a TrackMpegVideo.
-func NewTrackMpegVideo() *TrackMpegVideo {
-	return &TrackMpegVideo{}
-}
-
 func newTrackMpegVideoFromMediaDescription(
 	control string) (*TrackMpegVideo, error,
 ) {

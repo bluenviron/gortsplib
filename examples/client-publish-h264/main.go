@@ -35,9 +35,8 @@ func main() {
 	log.Println("stream connected")
 
 	// create an H264 track
-	track, err := gortsplib.NewTrackH264(96, nil, nil, nil)
-	if err != nil {
-		panic(err)
+	track := &gortsplib.TrackH264{
+		PayloadType: 96,
 	}
 
 	// connect to the server and start publishing the track

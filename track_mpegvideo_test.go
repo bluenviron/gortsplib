@@ -8,12 +8,12 @@ import (
 )
 
 func TestTrackMpegVideoNew(t *testing.T) {
-	track := NewTrackMpegVideo()
+	track := &TrackMpegVideo{}
 	require.Equal(t, "", track.GetControl())
 }
 
 func TestTrackMpegVideoClone(t *testing.T) {
-	track := NewTrackMpegVideo()
+	track := &TrackMpegVideo{}
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
@@ -21,7 +21,7 @@ func TestTrackMpegVideoClone(t *testing.T) {
 }
 
 func TestTrackMpegVideoMediaDescription(t *testing.T) {
-	track := NewTrackMpegVideo()
+	track := &TrackMpegVideo{}
 
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{

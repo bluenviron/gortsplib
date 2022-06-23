@@ -58,11 +58,13 @@ func main() {
 	defer h264dec.close()
 
 	// if present, send SPS and PPS from the SDP to the decoder
-	if h264track.SPS() != nil {
-		h264dec.decode(h264track.SPS())
+	sps := h264track.SafeSPS()
+	if sps != nil {
+		h264dec.decode(sps)
 	}
-	if h264track.PPS() != nil {
-		h264dec.decode(h264track.PPS())
+	pps := h264track.SafePPS()
+	if pps != nil {
+		h264dec.decode(pps)
 	}
 
 	// called when a RTP packet arrives

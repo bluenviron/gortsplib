@@ -34,7 +34,7 @@ func main() {
 	log.Println("stream connected")
 
 	// create a PCMU track
-	track := gortsplib.NewTrackPCMU()
+	track := &gortsplib.TrackPCMU{}
 
 	c := gortsplib.Client{}
 

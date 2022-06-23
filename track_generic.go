@@ -61,28 +61,12 @@ func trackGenericGetClockRate(formats []string, rtpmap string) (int, error) {
 
 // TrackGeneric is a generic track.
 type TrackGeneric struct {
+	Media   string
+	Formats []string
+	RTPMap  string
+	FMTP    string
+
 	trackBase
-	clockRate int
-	media     string
-	formats   []string
-	rtpmap    string
-	fmtp      string
-}
-
-// NewTrackGeneric allocates a generic track.
-func NewTrackGeneric(media string, formats []string, rtpmap string, fmtp string) (*TrackGeneric, error) {
-	clockRate, err := trackGenericGetClockRate(formats, rtpmap)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get clock rate: %s", err)
-	}
-
-	return &TrackGeneric{
-		clockRate: clockRate,
-		media:     media,
-		formats:   formats,
-		rtpmap:    rtpmap,
-		fmtp:      fmtp,
-	}, nil
 }
 
 func newTrackGenericFromMediaDescription(
@@ -98,7 +82,7 @@ func newTrackGenericFromMediaDescription(
 		return ""
 	}()
 
-	clockRate, err := trackGenericGetClockRate(md.MediaName.Formats, rtpmap)
+	_, err := trackGenericGetClockRate(md.MediaName.Formats, rtpmap)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get clock rate: %s", err)
 	}
@@ -113,30 +97,29 @@ func newTrackGenericFromMediaDescription(
 	}()
 
 	return &TrackGeneric{
+		Media:   md.MediaName.Media,
+		Formats: md.MediaName.Formats,
+		RTPMap:  rtpmap,
+		FMTP:    fmtp,
 		trackBase: trackBase{
 			control: control,
 		},
-		clockRate: clockRate,
-		media:     md.MediaName.Media,
-		formats:   md.MediaName.Formats,
-		rtpmap:    rtpmap,
-		fmtp:      fmtp,
 	}, nil
 }
 
 // ClockRate returns the track clock rate.
 func (t *TrackGeneric) ClockRate() int {
-	return t.clockRate
+	clockRate, _ := trackGenericGetClockRate(t.Formats, t.RTPMap)
+	return clockRate
 }
 
 func (t *TrackGeneric) clone() Track {
 	return &TrackGeneric{
+		Media:     t.Media,
+		Formats:   t.Formats,
+		RTPMap:    t.RTPMap,
+		FMTP:      t.FMTP,
 		trackBase: t.trackBase,
-		clockRate: t.clockRate,
-		media:     t.media,
-		formats:   t.formats,
-		rtpmap:    t.rtpmap,
-		fmtp:      t.fmtp,
 	}
 }
 
@@ -144,24 +127,24 @@ func (t *TrackGeneric) clone() Track {
 func (t *TrackGeneric) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
-			Media:   t.media,
+			Media:   t.Media,
 			Protos:  []string{"RTP", "AVP"},
-			Formats: t.formats,
+			Formats: t.Formats,
 		},
 		Attributes: func() []psdp.Attribute {
 			var ret []psdp.Attribute
 
-			if t.rtpmap != "" {
+			if t.RTPMap != "" {
 				ret = append(ret, psdp.Attribute{
 					Key:   "rtpmap",
-					Value: t.rtpmap,
+					Value: t.RTPMap,
 				})
 			}
 
-			if t.fmtp != "" {
+			if t.FMTP != "" {
 				ret = append(ret, psdp.Attribute{
 					Key:   "fmtp",
-					Value: t.fmtp,
+					Value: t.FMTP,
 				})
 			}
 

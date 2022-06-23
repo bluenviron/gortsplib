@@ -7,15 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackOpusNew(t *testing.T) {
-	track := NewTrackOpus(96, 48000, 2)
-	require.Equal(t, "", track.GetControl())
-	require.Equal(t, 48000, track.ClockRate())
-	require.Equal(t, 2, track.ChannelCount())
-}
-
 func TestTracOpusClone(t *testing.T) {
-	track := NewTrackOpus(96, 96000, 4)
+	track := &TrackOpus{
+		PayloadType:  96,
+		SampleRate:   48000,
+		ChannelCount: 2,
+	}
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
@@ -23,7 +20,11 @@ func TestTracOpusClone(t *testing.T) {
 }
 
 func TestTrackOpusMediaDescription(t *testing.T) {
-	track := NewTrackOpus(96, 48000, 2)
+	track := &TrackOpus{
+		PayloadType:  96,
+		SampleRate:   48000,
+		ChannelCount: 2,
+	}
 
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{

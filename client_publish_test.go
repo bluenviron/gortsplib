@@ -237,8 +237,11 @@ func TestClientPublishSerial(t *testing.T) {
 				},
 			}
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
 				Tracks{track})
@@ -391,8 +394,11 @@ func TestClientPublishParallel(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
@@ -554,8 +560,11 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
 				Tracks{track})
@@ -690,8 +699,11 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}(),
 			}
 
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
 				Tracks{track})
@@ -835,8 +847,11 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	c := Client{}
 
@@ -975,8 +990,11 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		udpSenderReportPeriod: 1 * time.Second,
 	}
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",
 		Tracks{track})
@@ -1117,8 +1135,11 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		},
 	}
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}
 
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",
 		Tracks{track})

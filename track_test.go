@@ -72,15 +72,14 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackAAC{
-				payloadType:       96,
-				typ:               2,
-				sampleRate:        48000,
-				channelCount:      2,
-				aotSpecificConfig: []byte{0x01, 0x02},
-				mpegConf:          []byte{0x11, 0x90, 0x08, 0x10},
-				sizeLength:        13,
-				indexLength:       3,
-				indexDeltaLength:  3,
+				PayloadType:       96,
+				Type:              2,
+				SampleRate:        48000,
+				ChannelCount:      2,
+				AOTSpecificConfig: []byte{0x01, 0x02},
+				SizeLength:        13,
+				IndexLength:       3,
+				IndexDeltaLength:  3,
 			},
 		},
 		{
@@ -103,14 +102,13 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackAAC{
-				payloadType:      96,
-				typ:              2,
-				sampleRate:       48000,
-				channelCount:     2,
-				mpegConf:         []byte{0x11, 0x90},
-				sizeLength:       13,
-				indexLength:      3,
-				indexDeltaLength: 3,
+				PayloadType:      96,
+				Type:             2,
+				SampleRate:       48000,
+				ChannelCount:     2,
+				SizeLength:       13,
+				IndexLength:      3,
+				IndexDeltaLength: 3,
 			},
 		},
 		{
@@ -133,14 +131,13 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackAAC{
-				payloadType:      96,
-				typ:              2,
-				sampleRate:       48000,
-				channelCount:     2,
-				mpegConf:         []byte{0x11, 0x90},
-				sizeLength:       13,
-				indexLength:      3,
-				indexDeltaLength: 3,
+				PayloadType:      96,
+				Type:             2,
+				SampleRate:       48000,
+				ChannelCount:     2,
+				SizeLength:       13,
+				IndexLength:      3,
+				IndexDeltaLength: 3,
 			},
 		},
 		{
@@ -167,14 +164,13 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackAAC{
-				payloadType:      96,
-				typ:              2,
-				sampleRate:       48000,
-				channelCount:     2,
-				mpegConf:         []byte{0x11, 0x90},
-				sizeLength:       13,
-				indexLength:      0,
-				indexDeltaLength: 0,
+				PayloadType:      96,
+				Type:             2,
+				SampleRate:       48000,
+				ChannelCount:     2,
+				SizeLength:       13,
+				IndexLength:      0,
+				IndexDeltaLength: 0,
 			},
 		},
 		{
@@ -197,9 +193,9 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackOpus{
-				payloadType:  96,
-				sampleRate:   48000,
-				channelCount: 2,
+				PayloadType:  96,
+				SampleRate:   48000,
+				ChannelCount: 2,
 			},
 		},
 		{
@@ -245,13 +241,13 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackH264{
-				payloadType: 96,
-				sps: []byte{
+				PayloadType: 96,
+				SPS: []byte{
 					0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
 					0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
 					0x00, 0x03, 0x00, 0x3d, 0x08,
 				},
-				pps: []byte{
+				PPS: []byte{
 					0x68, 0xee, 0x3c, 0x80,
 				},
 			},
@@ -272,7 +268,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackH264{
-				payloadType: 96,
+				PayloadType: 96,
 			},
 		},
 		{
@@ -296,14 +292,14 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackH264{
-				payloadType: 96,
-				sps: []byte{
+				PayloadType: 96,
+				SPS: []byte{
 					0x67, 0x64, 0x00, 0x1f, 0xac, 0xd9, 0x40, 0x50,
 					0x05, 0xbb, 0x01, 0x6c, 0x80, 0x00, 0x00, 0x03,
 					0x00, 0x80, 0x00, 0x00, 0x1e, 0x07, 0x8c, 0x18,
 					0xcb,
 				},
-				pps: []byte{
+				PPS: []byte{
 					0x68, 0xeb, 0xe3, 0xcb, 0x22, 0xc0,
 				},
 			},
@@ -329,17 +325,17 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackH264{
-				payloadType: 96,
-				sps: []byte{
+				PayloadType: 96,
+				SPS: []byte{
 					0x67, 0x64, 0x00, 0x29, 0xac, 0x13, 0x31, 0x40,
 					0x78, 0x04, 0x47, 0xde, 0x03, 0xea, 0x02, 0x02,
 					0x03, 0xe0, 0x00, 0x00, 0x03, 0x00, 0x20, 0x00,
 					0x00, 0x06, 0x52, 0x80,
 				},
-				pps: []byte{
+				PPS: []byte{
 					0x68, 0xfa, 0x8f, 0x2c,
 				},
-				extradata: []byte{
+				Extradata: []byte{
 					0x68, 0xfa, 0x8f, 0x2c,
 				},
 			},
@@ -365,13 +361,13 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackH265{
-				payloadType: 96,
-				vps: []byte{
+				PayloadType: 96,
+				VPS: []byte{
 					0x40, 0x1, 0xc, 0x1, 0xff, 0xff, 0x1, 0x60,
 					0x0, 0x0, 0x3, 0x0, 0x90, 0x0, 0x0, 0x3,
 					0x0, 0x0, 0x3, 0x0, 0x78, 0x99, 0x98, 0x9,
 				},
-				sps: []byte{
+				SPS: []byte{
 					0x42, 0x1, 0x1, 0x1, 0x60, 0x0, 0x0, 0x3,
 					0x0, 0x90, 0x0, 0x0, 0x3, 0x0, 0x0, 0x3,
 					0x0, 0x78, 0xa0, 0x3, 0xc0, 0x80, 0x10, 0xe5,
@@ -379,7 +375,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					0x0, 0x3, 0x0, 0x10, 0x0, 0x0, 0x3, 0x1,
 					0xe0, 0x80,
 				},
-				pps: []byte{
+				PPS: []byte{
 					0x44, 0x1, 0xc1, 0x72, 0xb4, 0x62, 0x40,
 				},
 			},
@@ -397,10 +393,26 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 						Key:   "rtpmap",
 						Value: "96 VP9/90000",
 					},
+					{
+						Key:   "fmtp",
+						Value: "96 max-fr=123;max-fs=456;profile-id=789",
+					},
 				},
 			},
 			&TrackVP9{
-				payloadType: 96,
+				PayloadType: 96,
+				MaxFR: func() *int {
+					v := 123
+					return &v
+				}(),
+				MaxFS: func() *int {
+					v := 456
+					return &v
+				}(),
+				ProfileID: func() *int {
+					v := 789
+					return &v
+				}(),
 			},
 		},
 		{
@@ -424,11 +436,10 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&TrackGeneric{
-				clockRate: 90000,
-				media:     "video",
-				formats:   []string{"98", "96"},
-				rtpmap:    "98 H265/90000",
-				fmtp: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+				Media:   "video",
+				Formats: []string{"98", "96"},
+				RTPMap:  "98 H265/90000",
+				FMTP: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
 					"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
 			},
 		},
@@ -834,8 +845,7 @@ func TestTrackURL(t *testing.T) {
 }
 
 func TestTrackURLError(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x05, 0x06, 0x07, 0x08}, nil)
-	require.NoError(t, err)
-	_, err = track.url(nil)
+	track := &TrackH264{}
+	_, err := track.url(nil)
 	require.EqualError(t, err, "Content-Base header not provided")
 }

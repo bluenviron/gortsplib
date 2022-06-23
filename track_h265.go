@@ -12,22 +12,13 @@ import (
 
 // TrackH265 is a H265 track.
 type TrackH265 struct {
-	trackBase
-	payloadType uint8
-	vps         []byte
-	sps         []byte
-	pps         []byte
-	mutex       sync.RWMutex
-}
+	PayloadType uint8
+	VPS         []byte
+	SPS         []byte
+	PPS         []byte
 
-// NewTrackH265 allocates a TrackH265.
-func NewTrackH265(payloadType uint8, vps []byte, sps []byte, pps []byte) *TrackH265 {
-	return &TrackH265{
-		payloadType: payloadType,
-		vps:         vps,
-		sps:         sps,
-		pps:         pps,
-	}
+	trackBase
+	mutex sync.RWMutex
 }
 
 func newTrackH265FromMediaDescription(
@@ -36,10 +27,10 @@ func newTrackH265FromMediaDescription(
 	md *psdp.MediaDescription,
 ) (*TrackH265, error) {
 	t := &TrackH265{
+		PayloadType: payloadType,
 		trackBase: trackBase{
 			control: control,
 		},
-		payloadType: payloadType,
 	}
 
 	t.fillParamsFromMediaDescription(md)
@@ -73,21 +64,21 @@ func (t *TrackH265) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 		switch tmp[0] {
 		case "sprop-vps":
 			var err error
-			t.vps, err = base64.StdEncoding.DecodeString(tmp[1])
+			t.VPS, err = base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
 				return fmt.Errorf("invalid sprop-vps (%v)", v)
 			}
 
 		case "sprop-sps":
 			var err error
-			t.sps, err = base64.StdEncoding.DecodeString(tmp[1])
+			t.SPS, err = base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
 				return fmt.Errorf("invalid sprop-sps (%v)", v)
 			}
 
 		case "sprop-pps":
 			var err error
-			t.pps, err = base64.StdEncoding.DecodeString(tmp[1])
+			t.PPS, err = base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
 				return fmt.Errorf("invalid sprop-pps (%v)", v)
 			}
@@ -104,54 +95,54 @@ func (t *TrackH265) ClockRate() int {
 
 func (t *TrackH265) clone() Track {
 	return &TrackH265{
+		PayloadType: t.PayloadType,
+		VPS:         t.VPS,
+		SPS:         t.SPS,
+		PPS:         t.PPS,
 		trackBase:   t.trackBase,
-		payloadType: t.payloadType,
-		vps:         t.vps,
-		sps:         t.sps,
-		pps:         t.pps,
 	}
 }
 
-// VPS returns the track VPS.
-func (t *TrackH265) VPS() []byte {
+// SafeVPS returns the track VPS.
+func (t *TrackH265) SafeVPS() []byte {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
-	return t.vps
+	return t.VPS
 }
 
-// SPS returns the track SPS.
-func (t *TrackH265) SPS() []byte {
+// SafeSPS returns the track SPS.
+func (t *TrackH265) SafeSPS() []byte {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
-	return t.sps
+	return t.SPS
 }
 
-// PPS returns the track PPS.
-func (t *TrackH265) PPS() []byte {
+// SafePPS returns the track PPS.
+func (t *TrackH265) SafePPS() []byte {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
-	return t.pps
+	return t.PPS
 }
 
-// SetVPS sets the track VPS.
-func (t *TrackH265) SetVPS(v []byte) {
+// SafeSetVPS sets the track VPS.
+func (t *TrackH265) SafeSetVPS(v []byte) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	t.vps = v
+	t.VPS = v
 }
 
-// SetSPS sets the track SPS.
-func (t *TrackH265) SetSPS(v []byte) {
+// SafeSetSPS sets the track SPS.
+func (t *TrackH265) SafeSetSPS(v []byte) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	t.sps = v
+	t.SPS = v
 }
 
-// SetPPS sets the track PPS.
-func (t *TrackH265) SetPPS(v []byte) {
+// SafeSetPPS sets the track PPS.
+func (t *TrackH265) SafeSetPPS(v []byte) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	t.pps = v
+	t.PPS = v
 }
 
 // MediaDescription returns the track media description in SDP format.
@@ -159,19 +150,19 @@ func (t *TrackH265) MediaDescription() *psdp.MediaDescription {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
-	typ := strconv.FormatInt(int64(t.payloadType), 10)
+	typ := strconv.FormatInt(int64(t.PayloadType), 10)
 
 	fmtp := typ
 
 	var tmp []string
-	if t.vps != nil {
-		tmp = append(tmp, "sprop-vps="+base64.StdEncoding.EncodeToString(t.vps))
+	if t.VPS != nil {
+		tmp = append(tmp, "sprop-vps="+base64.StdEncoding.EncodeToString(t.VPS))
 	}
-	if t.sps != nil {
-		tmp = append(tmp, "sprop-sps="+base64.StdEncoding.EncodeToString(t.sps))
+	if t.SPS != nil {
+		tmp = append(tmp, "sprop-sps="+base64.StdEncoding.EncodeToString(t.SPS))
 	}
-	if t.pps != nil {
-		tmp = append(tmp, "sprop-pps="+base64.StdEncoding.EncodeToString(t.pps))
+	if t.PPS != nil {
+		tmp = append(tmp, "sprop-pps="+base64.StdEncoding.EncodeToString(t.PPS))
 	}
 	if tmp != nil {
 		fmtp += " " + strings.Join(tmp, "; ")
