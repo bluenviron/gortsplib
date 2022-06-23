@@ -1638,6 +1638,132 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"tp-link application",
+		[]byte("v=0\r\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.4.226\r\n" +
+			"s=Session streamed by \"TP-LINK RTSP Server\"\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:4096\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:track1\r\n" +
+			"a=rtpmap:96 H265/90000\r\n" +
+			"a=fmtp:96 profile-space=0;profile-id=1;tier-flag=0;level-id=150;interop-constraints=000000000000;" +
+			"sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ;" +
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkkya5ZwCAAADAAIAAAMAHhA=;" +
+			"sprop-pps=RAHgdrAmQA==\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n" +
+			"a=control:track2\r\n" +
+			"m=application/TP-LINK 0 RTP/AVP smart/1/90000\r\n" +
+			"a=rtpmap:95 TP-LINK/90000\r\n" +
+			"a=control:track3\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.4.226\r\n" +
+			"s=Session streamed by \"TP-LINK RTSP Server\"\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:4096\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:track1\r\n" +
+			"a=rtpmap:96 H265/90000\r\n" +
+			"a=fmtp:96 profile-space=0;profile-id=1;tier-flag=0;level-id=150;interop-constraints=000000000000;" +
+			"sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ;" +
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkkya5ZwCAAADAAIAAAMAHhA=;" +
+			"sprop-pps=RAHgdrAmQA==\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n" +
+			"a=control:track2\r\n" +
+			"m=application 0 RTP/AVP smart/1/90000\r\n" +
+			"a=rtpmap:95 TP-LINK/90000\r\n" +
+			"a=control:track3\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "- 14665860",
+				SessionID:      31787219,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.4.226",
+			},
+			SessionName:      "Session streamed by \"TP-LINK RTSP Server\"",
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "0.0.0.0",
+						},
+					},
+					Bandwidth: []psdp.Bandwidth{{Type: "AS", Bandwidth: 4096}},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "range",
+							Value: "npt=0-",
+						},
+						{
+							Key:   "control",
+							Value: "track1",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 H265/90000",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 profile-space=0;profile-id=1;tier-flag=0;level-id=150;" +
+								"interop-constraints=000000000000;sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ;" +
+								"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkkya5ZwCAAADAAIAAAMAHhA=;sprop-pps=RAHgdrAmQA==",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"8"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "8 PCMA/8000",
+						},
+						{
+							Key:   "control",
+							Value: "track2",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "application",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"smart/1/90000"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "95 TP-LINK/90000",
+						},
+						{
+							Key:   "control",
+							Value: "track3",
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {

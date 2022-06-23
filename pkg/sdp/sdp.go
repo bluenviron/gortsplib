@@ -403,6 +403,10 @@ func (s *SessionDescription) unmarshalMediaDescription(value string) error {
 
 	newMediaDesc := &psdp.MediaDescription{}
 
+	if fields[0] == "application/TP-LINK" {
+		fields[0] = "application"
+	}
+
 	// <media>
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
