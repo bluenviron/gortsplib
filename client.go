@@ -178,19 +178,7 @@ type ClientOnPacketRTCPCtx struct {
 // Client is a RTSP client.
 type Client struct {
 	//
-	// callbacks
-	//
-	// called before every request.
-	OnRequest func(*base.Request)
-	// called after every response.
-	OnResponse func(*base.Response)
-	// called when a RTP packet arrives.
-	OnPacketRTP func(*ClientOnPacketRTPCtx)
-	// called when a RTCP packet arrives.
-	OnPacketRTCP func(*ClientOnPacketRTCPCtx)
-
-	//
-	// RTSP parameters
+	// RTSP parameters (all optional)
 	//
 	// timeout of read operations.
 	// It defaults to 10 seconds.
@@ -231,7 +219,7 @@ type Client struct {
 	UserAgent string
 
 	//
-	// system functions
+	// system functions (all optional)
 	//
 	// function used to initialize the TCP client.
 	// It defaults to (&net.Dialer{}).DialContext.
@@ -239,6 +227,18 @@ type Client struct {
 	// function used to initialize UDP listeners.
 	// It defaults to net.ListenPacket.
 	ListenPacket func(network, address string) (net.PacketConn, error)
+
+	//
+	// callbacks (all optional)
+	//
+	// called before every request.
+	OnRequest func(*base.Request)
+	// called after every response.
+	OnResponse func(*base.Response)
+	// called when a RTP packet arrives.
+	OnPacketRTP func(*ClientOnPacketRTPCtx)
+	// called when a RTCP packet arrives.
+	OnPacketRTCP func(*ClientOnPacketRTCPCtx)
 
 	//
 	// private
@@ -302,16 +302,6 @@ type Client struct {
 
 // Start initializes the connection to a server.
 func (c *Client) Start(scheme string, host string) error {
-	// callbacks
-	if c.OnPacketRTP == nil {
-		c.OnPacketRTP = func(ctx *ClientOnPacketRTPCtx) {
-		}
-	}
-	if c.OnPacketRTCP == nil {
-		c.OnPacketRTCP = func(ctx *ClientOnPacketRTCPCtx) {
-		}
-	}
-
 	// RTSP parameters
 	if c.ReadTimeout == 0 {
 		c.ReadTimeout = 10 * time.Second
@@ -338,6 +328,16 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.ListenPacket == nil {
 		c.ListenPacket = net.ListenPacket
+	}
+
+	// callbacks
+	if c.OnPacketRTP == nil {
+		c.OnPacketRTP = func(ctx *ClientOnPacketRTPCtx) {
+		}
+	}
+	if c.OnPacketRTCP == nil {
+		c.OnPacketRTCP = func(ctx *ClientOnPacketRTCPCtx) {
+		}
 	}
 
 	// private

@@ -66,25 +66,11 @@ type streamMulticastIPReq struct {
 // Server is a RTSP server.
 type Server struct {
 	//
-	// handler
+	// RTSP parameters (all optional except RTSPAddress)
 	//
-	// an handler to handle server events.
-	Handler ServerHandler
-
-	//
-	// RTSP parameters
-	//
-	// timeout of read operations.
-	// It defaults to 10 seconds
-	ReadTimeout time.Duration
-	// timeout of write operations.
-	// It defaults to 10 seconds
-	WriteTimeout time.Duration
 	// the RTSP address of the server, to accept connections and send and receive
 	// packets with the TCP transport.
 	RTSPAddress string
-	// a TLS configuration to accept TLS (RTSPS) connections.
-	TLSConfig *tls.Config
 	// a port to send and receive RTP packets with the UDP transport.
 	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can support the UDP transport.
 	UDPRTPAddress string
@@ -103,6 +89,14 @@ type Server struct {
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server
 	// can support the UDP-multicast transport.
 	MulticastRTCPPort int
+	// timeout of read operations.
+	// It defaults to 10 seconds
+	ReadTimeout time.Duration
+	// timeout of write operations.
+	// It defaults to 10 seconds
+	WriteTimeout time.Duration
+	// a TLS configuration to accept TLS (RTSPS) connections.
+	TLSConfig *tls.Config
 	// read buffer count.
 	// If greater than 1, allows to pass buffers to routines different than the one
 	// that is reading frames.
@@ -116,7 +110,13 @@ type Server struct {
 	WriteBufferCount int
 
 	//
-	// system functions
+	// handler (optional)
+	//
+	// an handler to handle server events.
+	Handler ServerHandler
+
+	//
+	// system functions (all optional)
 	//
 	// function used to initialize the TCP listener.
 	// It defaults to net.Listen.
