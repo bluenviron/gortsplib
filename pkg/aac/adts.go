@@ -6,7 +6,7 @@ import (
 
 // ADTSPacket is an ADTS packet.
 type ADTSPacket struct {
-	Type         int
+	Type         MPEG4AudioType
 	SampleRate   int
 	ChannelCount int
 	AU           []byte
@@ -37,8 +37,8 @@ func DecodeADTS(buf []byte) ([]*ADTSPacket, error) {
 
 		pkt := &ADTSPacket{}
 
-		pkt.Type = int((buf[pos+2] >> 6) + 1)
-		switch MPEG4AudioType(pkt.Type) {
+		pkt.Type = MPEG4AudioType((buf[pos+2] >> 6) + 1)
+		switch pkt.Type {
 		case MPEG4AudioTypeAACLC:
 		default:
 			return nil, fmt.Errorf("unsupported audio type: %d", pkt.Type)
@@ -131,7 +131,7 @@ func EncodeADTS(pkts []*ADTSPacket) ([]byte, error) {
 
 		buf[pos+0] = 0xFF
 		buf[pos+1] = 0xF1
-		buf[pos+2] = uint8(((pkt.Type - 1) << 6) | (sampleRateIndex << 2) | ((channelConfig >> 2) & 0x01))
+		buf[pos+2] = uint8((int(pkt.Type-1) << 6) | (sampleRateIndex << 2) | ((channelConfig >> 2) & 0x01))
 		buf[pos+3] = uint8((channelConfig&0x03)<<6 | (frameLen>>11)&0x03)
 		buf[pos+4] = uint8((frameLen >> 3) & 0xFF)
 		buf[pos+5] = uint8((frameLen&0x07)<<5 | ((fullness >> 6) & 0x1F))
