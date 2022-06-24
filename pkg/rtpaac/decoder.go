@@ -1,16 +1,15 @@
 package rtpaac
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/icza/bitio"
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/aac"
+	"github.com/aler9/gortsplib/pkg/bits"
 	"github.com/aler9/gortsplib/pkg/rtptimedec"
 )
 
@@ -177,8 +176,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	return [][]byte{ret}, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
-func (d *Decoder) readAUHeaders(payload []byte, headersLen int) ([]uint64, error) {
-	br := bitio.NewReader(bytes.NewReader(payload))
+func (d *Decoder) readAUHeaders(buf []byte, headersLen int) ([]uint64, error) {
 	firstRead := false
 
 	count := 0
@@ -195,9 +193,11 @@ func (d *Decoder) readAUHeaders(payload []byte, headersLen int) ([]uint64, error
 
 	dataLens := make([]uint64, count)
 
+	pos := 0
 	i := 0
+
 	for headersLen > 0 {
-		dataLen, err := br.ReadBits(uint8(d.SizeLength))
+		dataLen, err := bits.ReadBits(buf, &pos, d.SizeLength)
 		if err != nil {
 			return nil, err
 		}
@@ -206,7 +206,7 @@ func (d *Decoder) readAUHeaders(payload []byte, headersLen int) ([]uint64, error
 		if !firstRead {
 			firstRead = true
 			if d.IndexLength > 0 {
-				auIndex, err := br.ReadBits(uint8(d.IndexLength))
+				auIndex, err := bits.ReadBits(buf, &pos, d.IndexLength)
 				if err != nil {
 					return nil, err
 				}
@@ -217,7 +217,7 @@ func (d *Decoder) readAUHeaders(payload []byte, headersLen int) ([]uint64, error
 				}
 			}
 		} else if d.IndexDeltaLength > 0 {
-			auIndexDelta, err := br.ReadBits(uint8(d.IndexDeltaLength))
+			auIndexDelta, err := bits.ReadBits(buf, &pos, d.IndexDeltaLength)
 			if err != nil {
 				return nil, err
 			}

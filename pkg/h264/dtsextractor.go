@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/icza/bitio"
+	"github.com/aler9/gortsplib/pkg/bits"
 )
 
 func getPOC(buf []byte, sps *SPS) (uint32, error) {
@@ -14,29 +14,29 @@ func getPOC(buf []byte, sps *SPS) (uint32, error) {
 
 	isIDR := NALUType(buf[0]&0x1F) == NALUTypeIDR
 
-	r := bytes.NewReader(buf[1:])
-	br := bitio.NewReader(r)
+	buf = buf[1:]
+	pos := 0
 
 	// first_mb_in_slice
-	_, err := readGolombUnsigned(br)
+	_, err := bits.ReadGolombUnsigned(buf, &pos)
 	if err != nil {
 		return 0, err
 	}
 
 	// slice_type
-	_, err = readGolombUnsigned(br)
+	_, err = bits.ReadGolombUnsigned(buf, &pos)
 	if err != nil {
 		return 0, err
 	}
 
 	// pic_parameter_set_id
-	_, err = readGolombUnsigned(br)
+	_, err = bits.ReadGolombUnsigned(buf, &pos)
 	if err != nil {
 		return 0, err
 	}
 
 	// frame_num
-	_, err = br.ReadBits(uint8(sps.Log2MaxFrameNumMinus4 + 4))
+	_, err = bits.ReadBits(buf, &pos, int(sps.Log2MaxFrameNumMinus4+4))
 	if err != nil {
 		return 0, err
 	}
@@ -47,7 +47,7 @@ func getPOC(buf []byte, sps *SPS) (uint32, error) {
 
 	if isIDR {
 		// idr_pic_id
-		_, err := readGolombUnsigned(br)
+		_, err = bits.ReadGolombUnsigned(buf, &pos)
 		if err != nil {
 			return 0, err
 		}
@@ -56,7 +56,7 @@ func getPOC(buf []byte, sps *SPS) (uint32, error) {
 	var picOrderCntLsb uint64
 	switch {
 	case sps.PicOrderCntType == 0:
-		picOrderCntLsb, err = br.ReadBits(uint8(sps.Log2MaxPicOrderCntLsbMinus4 + 4))
+		picOrderCntLsb, err = bits.ReadBits(buf, &pos, int(sps.Log2MaxPicOrderCntLsbMinus4+4))
 		if err != nil {
 			return 0, err
 		}
@@ -124,15 +124,16 @@ func getSEIPicTimingDPBOutputDelay(buf []byte, sps *SPS) (uint32, bool) {
 		}
 
 		if payloadType == 1 { // timing info
-			br := bitio.NewReader(bytes.NewReader(buf[pos : pos+payloadSize]))
+			buf2 := buf[pos:]
+			pos2 := 0
 
 			// cpbRemovalDelay
-			_, err := br.ReadBits(sps.VUI.NalHRD.CpbRemovalDelayLengthMinus1 + 1)
+			_, err := bits.ReadBits(buf2, &pos2, int(sps.VUI.NalHRD.CpbRemovalDelayLengthMinus1+1))
 			if err != nil {
 				return 0, false
 			}
 
-			tmp, err := br.ReadBits(sps.VUI.NalHRD.DpbOutputDelayLengthMinus1 + 1)
+			tmp, err := bits.ReadBits(buf2, &pos2, int(sps.VUI.NalHRD.DpbOutputDelayLengthMinus1+1))
 			if err != nil {
 				return 0, false
 			}

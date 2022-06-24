@@ -435,3 +435,18 @@ func TestSPSUnmarshal(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkSPSUnmarshal(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var sps SPS
+		sps.Unmarshal([]byte{
+			103, 77, 0, 41, 154, 100, 3, 192,
+			17, 63, 46, 2, 220, 4, 4, 5,
+			0, 0, 3, 3, 232, 0, 0, 195,
+			80, 232, 96, 0, 186, 180, 0, 2,
+			234, 196, 187, 203, 141, 12, 0, 23,
+			86, 128, 0, 93, 88, 151, 121, 112,
+			160,
+		})
+	}
+}

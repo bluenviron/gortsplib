@@ -616,7 +616,7 @@ func TestDecodeErrors(t *testing.T) {
 					Payload: []byte{0x00, 0x10},
 				},
 			},
-			"EOF",
+			"not enough bits",
 		},
 		{
 			"missing au",

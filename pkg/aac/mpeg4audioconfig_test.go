@@ -80,56 +80,6 @@ func TestConfigUnmarshal(t *testing.T) {
 	}
 }
 
-func TestConfigUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"EOF",
-		},
-		{
-			"unsupported type",
-			[]byte{18 << 3},
-			"unsupported type: 18",
-		},
-		{
-			"sample rate missing",
-			[]byte{0x12},
-			"EOF",
-		},
-		{
-			"sample rate invalid",
-			[]byte{0x17, 0},
-			"invalid sample rate index (14)",
-		},
-		{
-			"explicit sample rate missing",
-			[]byte{0x17, 0x80, 0x67},
-			"EOF",
-		},
-		{
-			"channel configuration invalid",
-			[]byte{0x11, 0xF0},
-			"invalid channel configuration (14)",
-		},
-		{
-			"channel configuration zero",
-			[]byte{0x11, 0x80},
-			"not yet supported",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var dec MPEG4AudioConfig
-			err := dec.Unmarshal(ca.byts)
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestConfigMarshal(t *testing.T) {
 	for _, ca := range configCases {
 		t.Run(ca.name, func(t *testing.T) {

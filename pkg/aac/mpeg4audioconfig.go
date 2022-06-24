@@ -1,10 +1,9 @@
 package aac
 
 import (
-	"bytes"
 	"fmt"
 
-	"github.com/icza/bitio"
+	"github.com/aler9/gortsplib/pkg/bits"
 )
 
 // MPEG4AudioConfig is a MPEG-4 Audio configuration.
@@ -20,12 +19,12 @@ type MPEG4AudioConfig struct {
 }
 
 // Unmarshal decodes an MPEG4AudioConfig.
-func (c *MPEG4AudioConfig) Unmarshal(byts []byte) error {
+func (c *MPEG4AudioConfig) Unmarshal(buf []byte) error {
 	// ref: ISO 14496-3
 
-	r := bitio.NewReader(bytes.NewBuffer(byts))
+	pos := 0
 
-	tmp, err := r.ReadBits(5)
+	tmp, err := bits.ReadBits(buf, &pos, 5)
 	if err != nil {
 		return err
 	}
@@ -37,7 +36,7 @@ func (c *MPEG4AudioConfig) Unmarshal(byts []byte) error {
 		return fmt.Errorf("unsupported type: %d", c.Type)
 	}
 
-	sampleRateIndex, err := r.ReadBits(4)
+	sampleRateIndex, err := bits.ReadBits(buf, &pos, 4)
 	if err != nil {
 		return err
 	}
@@ -47,7 +46,7 @@ func (c *MPEG4AudioConfig) Unmarshal(byts []byte) error {
 		c.SampleRate = sampleRates[sampleRateIndex]
 
 	case sampleRateIndex == 15:
-		tmp, err := r.ReadBits(24)
+		tmp, err := bits.ReadBits(buf, &pos, 24)
 		if err != nil {
 			return err
 		}
@@ -57,7 +56,7 @@ func (c *MPEG4AudioConfig) Unmarshal(byts []byte) error {
 		return fmt.Errorf("invalid sample rate index (%d)", sampleRateIndex)
 	}
 
-	channelConfig, err := r.ReadBits(4)
+	channelConfig, err := bits.ReadBits(buf, &pos, 4)
 	if err != nil {
 		return err
 	}
@@ -76,31 +75,28 @@ func (c *MPEG4AudioConfig) Unmarshal(byts []byte) error {
 		return fmt.Errorf("invalid channel configuration (%d)", channelConfig)
 	}
 
-	tmp, err = r.ReadBits(1)
+	c.FrameLengthFlag, err = bits.ReadFlag(buf, &pos)
 	if err != nil {
 		return err
 	}
-	c.FrameLengthFlag = (tmp == 1)
 
-	tmp, err = r.ReadBits(1)
+	c.DependsOnCoreCoder, err = bits.ReadFlag(buf, &pos)
 	if err != nil {
 		return err
 	}
-	c.DependsOnCoreCoder = (tmp == 1)
 
 	if c.DependsOnCoreCoder {
-		tmp, err := r.ReadBits(14)
+		tmp, err := bits.ReadBits(buf, &pos, 14)
 		if err != nil {
 			return err
 		}
 		c.CoreCoderDelay = uint16(tmp)
 	}
 
-	tmp, err = r.ReadBits(1)
+	extensionFlag, err := bits.ReadFlag(buf, &pos)
 	if err != nil {
 		return err
 	}
-	extensionFlag := (tmp == 1)
 
 	if extensionFlag {
 		return fmt.Errorf("unsupported")
@@ -134,16 +130,16 @@ func (c MPEG4AudioConfig) marshalSize() int {
 // Marshal encodes an MPEG4AudioConfig.
 func (c MPEG4AudioConfig) Marshal() ([]byte, error) {
 	buf := make([]byte, c.marshalSize())
-	w := bitio.NewWriter(bytes.NewBuffer(buf[:0]))
+	pos := 0
 
-	w.WriteBits(uint64(c.Type), 5)
+	bits.WriteBits(buf, &pos, uint64(c.Type), 5)
 
 	sampleRateIndex, ok := reverseSampleRates[c.SampleRate]
 	if !ok {
-		w.WriteBits(uint64(15), 4)
-		w.WriteBits(uint64(c.SampleRate), 24)
+		bits.WriteBits(buf, &pos, uint64(15), 4)
+		bits.WriteBits(buf, &pos, uint64(c.SampleRate), 24)
 	} else {
-		w.WriteBits(uint64(sampleRateIndex), 4)
+		bits.WriteBits(buf, &pos, uint64(sampleRateIndex), 4)
 	}
 
 	var channelConfig int
@@ -158,25 +154,23 @@ func (c MPEG4AudioConfig) Marshal() ([]byte, error) {
 		return nil, fmt.Errorf("invalid channel count (%d)", c.ChannelCount)
 	}
 
-	w.WriteBits(uint64(channelConfig), 4)
+	bits.WriteBits(buf, &pos, uint64(channelConfig), 4)
 
 	if c.FrameLengthFlag {
-		w.WriteBits(1, 1)
+		bits.WriteBits(buf, &pos, 1, 1)
 	} else {
-		w.WriteBits(0, 1)
+		bits.WriteBits(buf, &pos, 0, 1)
 	}
 
 	if c.DependsOnCoreCoder {
-		w.WriteBits(1, 1)
+		bits.WriteBits(buf, &pos, 1, 1)
 	} else {
-		w.WriteBits(0, 1)
+		bits.WriteBits(buf, &pos, 0, 1)
 	}
 
 	if c.DependsOnCoreCoder {
-		w.WriteBits(uint64(c.CoreCoderDelay), 14)
+		bits.WriteBits(buf, &pos, uint64(c.CoreCoderDelay), 14)
 	}
-
-	w.Close()
 
 	return buf, nil
 }

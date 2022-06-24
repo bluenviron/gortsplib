@@ -1,15 +1,14 @@
 package rtpaac
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"time"
 
-	"github.com/icza/bitio"
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/aac"
+	"github.com/aler9/gortsplib/pkg/bits"
 )
 
 func randUint32() uint32 {
@@ -161,10 +160,9 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 		binary.BigEndian.PutUint16(byts, uint16(auHeadersLen))
 
 		// AU-headers
-		bw := bitio.NewWriter(bytes.NewBuffer(byts[2:2]))
-		bw.WriteBits(uint64(le), uint8(e.SizeLength))
-		bw.WriteBits(0, uint8(e.IndexLength))
-		bw.Close()
+		pos := 0
+		bits.WriteBits(byts[2:], &pos, uint64(le), e.SizeLength)
+		bits.WriteBits(byts[2:], &pos, 0, e.IndexLength)
 
 		// AU
 		copy(byts[2+auHeadersLenBytes:], au[:le])
@@ -228,20 +226,19 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([]*rtp.
 
 	// AU-headers
 	written := 0
-	bw := bitio.NewWriter(bytes.NewBuffer(payload[2:2]))
+	pos := 0
 	for i, au := range aus {
-		bw.WriteBits(uint64(len(au)), uint8(e.SizeLength))
+		bits.WriteBits(payload[2:], &pos, uint64(len(au)), e.SizeLength)
 		written += e.SizeLength
 		if i == 0 {
-			bw.WriteBits(0, uint8(e.IndexLength))
+			bits.WriteBits(payload[2:], &pos, 0, e.IndexLength)
 			written += e.IndexLength
 		} else {
-			bw.WriteBits(0, uint8(e.IndexDeltaLength))
+			bits.WriteBits(payload[2:], &pos, 0, e.IndexDeltaLength)
 			written += e.IndexDeltaLength
 		}
 	}
-	bw.Close()
-	pos := 2 + (written / 8)
+	pos = 2 + (written / 8)
 	if (written % 8) != 0 {
 		pos++
 	}
