@@ -220,18 +220,6 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 	}
 
 	switch {
-	// DTS is computed from SEI
-	case d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.NalHRD != nil:
-		dpbOutputDelay, ok := findSEIPicTimingDPBOutputDelay(nalus, d.spsp, idrPresent)
-		if !ok {
-			// some streams declare that they use SEI pic timings, but they don't.
-			// assume PTS = DTS.
-			return pts, 0, nil
-		}
-
-		return pts - time.Duration(dpbOutputDelay)/2*time.Second*
-			time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2/time.Duration(d.spsp.VUI.TimingInfo.TimeScale), 0, nil
-
 	// DTS is computed by using POC, timing infos and max_num_reorder_frames
 	case d.spsp.PicOrderCntType != 2 &&
 		d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.BitstreamRestriction != nil:
@@ -272,6 +260,18 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		// pocDiff : prevPOCDiff = (pts - dts - ptsDTSOffset) : (prevPTS - prevDTS - ptsDTSOffset)
 		return pts - d.ptsDTSOffset + time.Duration(math.Round(float64(*d.prevDTS-d.prevPTS+d.ptsDTSOffset)*
 			float64(pocDiff)/float64(d.prevPOCDiff))), pocDiff, nil
+
+	// DTS is computed from SEI
+	case d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.NalHRD != nil:
+		dpbOutputDelay, ok := findSEIPicTimingDPBOutputDelay(nalus, d.spsp, idrPresent)
+		if !ok {
+			// some streams declare that they use SEI pic timings, but they don't.
+			// assume PTS = DTS.
+			return pts, 0, nil
+		}
+
+		return pts - time.Duration(dpbOutputDelay)/2*time.Second*
+			time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2/time.Duration(d.spsp.VUI.TimingInfo.TimeScale), 0, nil
 
 	// we assume PTS = DTS
 	default:
