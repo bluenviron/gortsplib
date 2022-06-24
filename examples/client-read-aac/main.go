@@ -50,7 +50,7 @@ func main() {
 
 	// setup decoder
 	dec := &rtpaac.Decoder{
-		SampleRate:       aacTrack.SampleRate,
+		SampleRate:       aacTrack.Config.SampleRate,
 		SizeLength:       aacTrack.SizeLength,
 		IndexLength:      aacTrack.IndexLength,
 		IndexDeltaLength: aacTrack.IndexDeltaLength,

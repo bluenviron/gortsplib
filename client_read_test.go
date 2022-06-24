@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/ipv4"
 
+	"github.com/aler9/gortsplib/pkg/aac"
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
@@ -29,25 +30,29 @@ func TestClientReadTracks(t *testing.T) {
 	}
 
 	track2 := &TrackAAC{
-		PayloadType:       96,
-		Type:              2,
-		SampleRate:        44100,
-		ChannelCount:      2,
-		AOTSpecificConfig: nil,
-		SizeLength:        13,
-		IndexLength:       3,
-		IndexDeltaLength:  3,
+		PayloadType: 96,
+		Config: &aac.MPEG4AudioConfig{
+			Type:              2,
+			SampleRate:        44100,
+			ChannelCount:      2,
+			AOTSpecificConfig: nil,
+		},
+		SizeLength:       13,
+		IndexLength:      3,
+		IndexDeltaLength: 3,
 	}
 
 	track3 := &TrackAAC{
-		PayloadType:       96,
-		Type:              2,
-		SampleRate:        96000,
-		ChannelCount:      2,
-		AOTSpecificConfig: nil,
-		SizeLength:        13,
-		IndexLength:       3,
-		IndexDeltaLength:  3,
+		PayloadType: 96,
+		Config: &aac.MPEG4AudioConfig{
+			Type:              2,
+			SampleRate:        96000,
+			ChannelCount:      2,
+			AOTSpecificConfig: nil,
+		},
+		SizeLength:       13,
+		IndexLength:      3,
+		IndexDeltaLength: 3,
 	}
 
 	l, err := net.Listen("tcp", "localhost:8554")

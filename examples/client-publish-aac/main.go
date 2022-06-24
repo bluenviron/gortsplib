@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/aac"
 	"github.com/pion/rtp"
 )
 
@@ -35,10 +36,12 @@ func main() {
 
 	// create an AAC track
 	track := &gortsplib.TrackAAC{
-		PayloadType:      96,
-		Type:             2,
-		SampleRate:       48000,
-		ChannelCount:     2,
+		PayloadType: 96,
+		Config: &aac.MPEG4AudioConfig{
+			Type:         2,
+			SampleRate:   48000,
+			ChannelCount: 2,
+		},
 		SizeLength:       13,
 		IndexLength:      3,
 		IndexDeltaLength: 3,
