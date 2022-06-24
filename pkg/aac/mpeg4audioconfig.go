@@ -3,22 +3,25 @@ package aac
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/icza/bitio"
 )
 
 // MPEG4AudioConfig is a MPEG-4 Audio configuration.
 type MPEG4AudioConfig struct {
-	Type              MPEG4AudioType
-	SampleRate        int
-	ChannelCount      int
-	AOTSpecificConfig []byte
+	Type         MPEG4AudioType
+	SampleRate   int
+	ChannelCount int
+
+	// AAC-LC specific
+	FrameLengthFlag    bool
+	DependsOnCoreCoder bool
+	CoreCoderDelay     uint16
 }
 
 // Unmarshal decodes an MPEG4AudioConfig.
 func (c *MPEG4AudioConfig) Unmarshal(byts []byte) error {
-	// ref: https://wiki.multimedia.cx/index.php/MPEG-4_Audio
+	// ref: ISO 14496-3
 
 	r := bitio.NewReader(bytes.NewBuffer(byts))
 
@@ -73,23 +76,42 @@ func (c *MPEG4AudioConfig) Unmarshal(byts []byte) error {
 		return fmt.Errorf("invalid channel configuration (%d)", channelConfig)
 	}
 
-	for {
-		byt, err := r.ReadBits(8)
+	tmp, err = r.ReadBits(1)
+	if err != nil {
+		return err
+	}
+	c.FrameLengthFlag = (tmp == 1)
+
+	tmp, err = r.ReadBits(1)
+	if err != nil {
+		return err
+	}
+	c.DependsOnCoreCoder = (tmp == 1)
+
+	if c.DependsOnCoreCoder {
+		tmp, err := r.ReadBits(14)
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
 			return err
 		}
+		c.CoreCoderDelay = uint16(tmp)
+	}
 
-		c.AOTSpecificConfig = append(c.AOTSpecificConfig, uint8(byt))
+	tmp, err = r.ReadBits(1)
+	if err != nil {
+		return err
+	}
+	extensionFlag := (tmp == 1)
+
+	if extensionFlag {
+		return fmt.Errorf("unsupported")
 	}
 
 	return nil
 }
 
 func (c MPEG4AudioConfig) marshalSize() int {
-	n := 5 + 4 + len(c.AOTSpecificConfig)*8
+	n := 5 + 4 + 3
+
 	_, ok := reverseSampleRates[c.SampleRate]
 	if !ok {
 		n += 28
@@ -97,10 +119,15 @@ func (c MPEG4AudioConfig) marshalSize() int {
 		n += 4
 	}
 
+	if c.DependsOnCoreCoder {
+		n += 14
+	}
+
 	ret := n / 8
-	if n%8 != 0 {
+	if (n % 8) != 0 {
 		ret++
 	}
+
 	return ret
 }
 
@@ -133,8 +160,20 @@ func (c MPEG4AudioConfig) Marshal() ([]byte, error) {
 
 	w.WriteBits(uint64(channelConfig), 4)
 
-	for _, b := range c.AOTSpecificConfig {
-		w.WriteBits(uint64(b), 8)
+	if c.FrameLengthFlag {
+		w.WriteBits(1, 1)
+	} else {
+		w.WriteBits(0, 1)
+	}
+
+	if c.DependsOnCoreCoder {
+		w.WriteBits(1, 1)
+	} else {
+		w.WriteBits(0, 1)
+	}
+
+	if c.DependsOnCoreCoder {
+		w.WriteBits(uint64(c.CoreCoderDelay), 14)
 	}
 
 	w.Close()

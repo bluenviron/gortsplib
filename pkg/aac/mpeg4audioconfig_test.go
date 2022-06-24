@@ -22,12 +22,11 @@ var configCases = []struct {
 	},
 	{
 		"aac-lc 44.1khz mono",
-		[]byte{0x12, 0x08, 0x56, 0xe5, 0x00},
+		[]byte{0x12, 0x08},
 		MPEG4AudioConfig{
-			Type:              MPEG4AudioTypeAACLC,
-			SampleRate:        44100,
-			ChannelCount:      1,
-			AOTSpecificConfig: []byte{0x0A, 0xDC, 0xA0},
+			Type:         MPEG4AudioTypeAACLC,
+			SampleRate:   44100,
+			ChannelCount: 1,
 		},
 	},
 	{
@@ -58,13 +57,14 @@ var configCases = []struct {
 		},
 	},
 	{
-		"aac-lc 96khz stereo",
-		[]byte{0x10, 0x10, 0x56, 0xE5, 0x00},
+		"aac-lc 96khz stereo delay",
+		[]byte{0x10, 0x12, 0x0c, 0x08},
 		MPEG4AudioConfig{
-			Type:              MPEG4AudioTypeAACLC,
-			SampleRate:        96000,
-			ChannelCount:      2,
-			AOTSpecificConfig: []byte{0x0A, 0xDC, 0xA0},
+			Type:               MPEG4AudioTypeAACLC,
+			SampleRate:         96000,
+			ChannelCount:       2,
+			DependsOnCoreCoder: true,
+			CoreCoderDelay:     385,
 		},
 	},
 }

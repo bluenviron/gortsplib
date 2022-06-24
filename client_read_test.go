@@ -32,10 +32,9 @@ func TestClientReadTracks(t *testing.T) {
 	track2 := &TrackAAC{
 		PayloadType: 96,
 		Config: &aac.MPEG4AudioConfig{
-			Type:              2,
-			SampleRate:        44100,
-			ChannelCount:      2,
-			AOTSpecificConfig: nil,
+			Type:         2,
+			SampleRate:   44100,
+			ChannelCount: 2,
 		},
 		SizeLength:       13,
 		IndexLength:      3,
@@ -45,10 +44,9 @@ func TestClientReadTracks(t *testing.T) {
 	track3 := &TrackAAC{
 		PayloadType: 96,
 		Config: &aac.MPEG4AudioConfig{
-			Type:              2,
-			SampleRate:        96000,
-			ChannelCount:      2,
-			AOTSpecificConfig: nil,
+			Type:         2,
+			SampleRate:   96000,
+			ChannelCount: 2,
 		},
 		SizeLength:       13,
 		IndexLength:      3,

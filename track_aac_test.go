@@ -13,10 +13,9 @@ func TestTrackAACClone(t *testing.T) {
 	track := &TrackAAC{
 		PayloadType: 96,
 		Config: &aac.MPEG4AudioConfig{
-			Type:              2,
-			SampleRate:        48000,
-			ChannelCount:      2,
-			AOTSpecificConfig: []byte{0x01, 0x02},
+			Type:         2,
+			SampleRate:   48000,
+			ChannelCount: 2,
 		},
 		SizeLength:       13,
 		IndexLength:      3,
