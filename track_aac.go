@@ -64,7 +64,7 @@ func newTrackAACFromMediaDescription(
 			}
 
 			t.Config = &aac.MPEG4AudioConfig{}
-			err = t.Config.Decode(enc)
+			err = t.Config.Unmarshal(enc)
 			if err != nil {
 				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
 			}
@@ -121,7 +121,7 @@ func (t *TrackAAC) clone() Track {
 
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackAAC) MediaDescription() *psdp.MediaDescription {
-	enc, err := t.Config.Encode()
+	enc, err := t.Config.Marshal()
 	if err != nil {
 		return nil
 	}

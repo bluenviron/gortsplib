@@ -16,8 +16,8 @@ type MPEG4AudioConfig struct {
 	AOTSpecificConfig []byte
 }
 
-// Decode decodes an MPEG4AudioConfig.
-func (c *MPEG4AudioConfig) Decode(byts []byte) error {
+// Unmarshal decodes an MPEG4AudioConfig.
+func (c *MPEG4AudioConfig) Unmarshal(byts []byte) error {
 	// ref: https://wiki.multimedia.cx/index.php/MPEG-4_Audio
 
 	r := bitio.NewReader(bytes.NewBuffer(byts))
@@ -88,7 +88,7 @@ func (c *MPEG4AudioConfig) Decode(byts []byte) error {
 	return nil
 }
 
-func (c MPEG4AudioConfig) encodeSize() int {
+func (c MPEG4AudioConfig) marshalSize() int {
 	n := 5 + 4 + len(c.AOTSpecificConfig)*8
 	_, ok := reverseSampleRates[c.SampleRate]
 	if !ok {
@@ -104,9 +104,9 @@ func (c MPEG4AudioConfig) encodeSize() int {
 	return ret
 }
 
-// Encode encodes an MPEG4AudioConfig.
-func (c MPEG4AudioConfig) Encode() ([]byte, error) {
-	buf := make([]byte, c.encodeSize())
+// Marshal encodes an MPEG4AudioConfig.
+func (c MPEG4AudioConfig) Marshal() ([]byte, error) {
+	buf := make([]byte, c.marshalSize())
 	w := bitio.NewWriter(bytes.NewBuffer(buf[:0]))
 
 	w.WriteBits(uint64(c.Type), 5)

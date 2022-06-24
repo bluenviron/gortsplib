@@ -69,18 +69,18 @@ var configCases = []struct {
 	},
 }
 
-func TestConfigDecode(t *testing.T) {
+func TestConfigUnmarshal(t *testing.T) {
 	for _, ca := range configCases {
 		t.Run(ca.name, func(t *testing.T) {
 			var dec MPEG4AudioConfig
-			err := dec.Decode(ca.enc)
+			err := dec.Unmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
 		})
 	}
 }
 
-func TestConfigDecodeErrors(t *testing.T) {
+func TestConfigUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte
@@ -124,23 +124,23 @@ func TestConfigDecodeErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var dec MPEG4AudioConfig
-			err := dec.Decode(ca.byts)
+			err := dec.Unmarshal(ca.byts)
 			require.EqualError(t, err, ca.err)
 		})
 	}
 }
 
-func TestConfigEncode(t *testing.T) {
+func TestConfigMarshal(t *testing.T) {
 	for _, ca := range configCases {
 		t.Run(ca.name, func(t *testing.T) {
-			enc, err := ca.dec.Encode()
+			enc, err := ca.dec.Marshal()
 			require.NoError(t, err)
 			require.Equal(t, ca.enc, enc)
 		})
 	}
 }
 
-func TestConfigEncodeErrors(t *testing.T) {
+func TestConfigMarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		conf MPEG4AudioConfig
@@ -157,7 +157,7 @@ func TestConfigEncodeErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := ca.conf.Encode()
+			_, err := ca.conf.Marshal()
 			require.EqualError(t, err, ca.err)
 		})
 	}
