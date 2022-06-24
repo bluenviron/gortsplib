@@ -94,7 +94,7 @@ func getPOCDiff(poc1 uint32, poc2 uint32, sps *SPS) int32 {
 	return diff
 }
 
-func getSEIPicTimingDPBOutputDelay(buf []byte, sps *SPS) (uint32, bool) {
+func getSEIPicTimingDPBOutputDelay(buf []byte, sps *SPS, idrPresent bool) (uint32, bool) {
 	buf = AntiCompetitionRemove(buf)
 	pos := 1
 
@@ -139,6 +139,15 @@ func getSEIPicTimingDPBOutputDelay(buf []byte, sps *SPS) (uint32, bool) {
 			}
 			dpbOutputDelay := uint32(tmp)
 
+			// workaround for nvenc
+			// https://forums.developer.nvidia.com/t/nvcodec-h-264-encoder-sei-pic-timing-dpb-output-delay/156050
+			// https://forums.developer.nvidia.com/t/h264-pic-timing-sei-message/71188
+			if idrPresent &&
+				sps.VUI.NalHRD.CpbRemovalDelayLengthMinus1 == 15 &&
+				sps.VUI.NalHRD.DpbOutputDelayLengthMinus1 == 5 {
+				dpbOutputDelay = 2
+			}
+
 			return dpbOutputDelay, true
 		}
 
@@ -146,11 +155,11 @@ func getSEIPicTimingDPBOutputDelay(buf []byte, sps *SPS) (uint32, bool) {
 	}
 }
 
-func findSEIPicTimingDPBOutputDelay(nalus [][]byte, sps *SPS) (uint32, bool) {
+func findSEIPicTimingDPBOutputDelay(nalus [][]byte, sps *SPS, idrPresent bool) (uint32, bool) {
 	for _, nalu := range nalus {
 		typ := NALUType(nalu[0] & 0x1F)
 		if typ == NALUTypeSEI {
-			ret, ok := getSEIPicTimingDPBOutputDelay(nalu, sps)
+			ret, ok := getSEIPicTimingDPBOutputDelay(nalu, sps, idrPresent)
 			if ok {
 				return ret, true
 			}
@@ -213,7 +222,7 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 	switch {
 	// DTS is computed from SEI
 	case d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.NalHRD != nil:
-		dpbOutputDelay, ok := findSEIPicTimingDPBOutputDelay(nalus, d.spsp)
+		dpbOutputDelay, ok := findSEIPicTimingDPBOutputDelay(nalus, d.spsp, idrPresent)
 		if !ok {
 			// some streams declare that they use SEI pic timings, but they don't.
 			// assume PTS = DTS.
