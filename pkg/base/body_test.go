@@ -73,10 +73,10 @@ func TestBodyReadErrors(t *testing.T) {
 	}
 }
 
-func TestBodyWrite(t *testing.T) {
+func TestBodyMarshal(t *testing.T) {
 	for _, ca := range casesBody {
 		t.Run(ca.name, func(t *testing.T) {
-			buf := body(ca.byts).write()
+			buf := body(ca.byts).marshal()
 			require.Equal(t, ca.byts, buf)
 		})
 	}

@@ -285,7 +285,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 				URL:    mustParseURL(ca.url),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
-					"Transport": th.Write(),
+					"Transport": th.Marshal(),
 				},
 			})
 			require.NoError(t, err)
@@ -341,7 +341,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(false),
+		Body: tracks.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -364,7 +364,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/test2stream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
-			"Transport": th.Write(),
+			"Transport": th.Marshal(),
 		},
 	})
 	require.NoError(t, err)
@@ -421,7 +421,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(false),
+		Body: tracks.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -444,14 +444,14 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
-			"Transport": th.Write(),
+			"Transport": th.Marshal(),
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	var sx headers.Session
-	err = sx.Read(res.Header["Session"])
+	err = sx.Unmarshal(res.Header["Session"])
 	require.NoError(t, err)
 
 	res, err = writeReqReadRes(conn, br, base.Request{
@@ -459,7 +459,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"3"},
-			"Transport": th.Write(),
+			"Transport": th.Marshal(),
 			"Session":   base.HeaderValue{sx.Session},
 		},
 	})
@@ -528,7 +528,7 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(false),
+		Body: tracks.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -551,14 +551,14 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
-			"Transport": th.Write(),
+			"Transport": th.Marshal(),
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	var sx headers.Session
-	err = sx.Read(res.Header["Session"])
+	err = sx.Unmarshal(res.Header["Session"])
 	require.NoError(t, err)
 
 	res, err = writeReqReadRes(conn, br, base.Request{
@@ -679,7 +679,7 @@ func TestServerPublish(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: tracks.Write(false),
+				Body: tracks.Marshal(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -721,18 +721,18 @@ func TestServerPublish(t *testing.T) {
 				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
-					"Transport": inTH.Write(),
+					"Transport": inTH.Marshal(),
 				},
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			var sx headers.Session
-			err = sx.Read(res.Header["Session"])
+			err = sx.Unmarshal(res.Header["Session"])
 			require.NoError(t, err)
 
 			var th headers.Transport
-			err = th.Read(res.Header["Transport"])
+			err = th.Unmarshal(res.Header["Transport"])
 			require.NoError(t, err)
 
 			res, err = writeReqReadRes(conn, br, base.Request{
@@ -786,14 +786,14 @@ func TestServerPublish(t *testing.T) {
 				byts, _ := base.InterleavedFrame{
 					Channel: 0,
 					Payload: testRTPPacketMarshaled,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
 				byts, _ = base.InterleavedFrame{
 					Channel: 1,
 					Payload: testRTCPPacketMarshaled,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 			}
@@ -883,7 +883,7 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(false),
+		Body: tracks.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -906,18 +906,18 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
-			"Transport": inTH.Write(),
+			"Transport": inTH.Marshal(),
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	var sx headers.Session
-	err = sx.Read(res.Header["Session"])
+	err = sx.Unmarshal(res.Header["Session"])
 	require.NoError(t, err)
 
 	var th headers.Transport
-	err = th.Read(res.Header["Transport"])
+	err = th.Unmarshal(res.Header["Transport"])
 	require.NoError(t, err)
 
 	res, err = writeReqReadRes(conn, br, base.Request{
@@ -934,7 +934,7 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	byts, _ := base.InterleavedFrame{
 		Channel: 0,
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
-	}.Write()
+	}.Marshal()
 	_, err = conn.Write(byts)
 	require.NoError(t, err)
 }
@@ -989,7 +989,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(false),
+		Body: tracks.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1018,18 +1018,18 @@ func TestServerPublishRTCPReport(t *testing.T) {
 				}(),
 				Protocol:    headers.TransportProtocolUDP,
 				ClientPorts: &[2]int{34556, 34557},
-			}.Write(),
+			}.Marshal(),
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	var sx headers.Session
-	err = sx.Read(res.Header["Session"])
+	err = sx.Unmarshal(res.Header["Session"])
 	require.NoError(t, err)
 
 	var th headers.Transport
-	err = th.Read(res.Header["Transport"])
+	err = th.Unmarshal(res.Header["Transport"])
 	require.NoError(t, err)
 
 	res, err = writeReqReadRes(conn, br, base.Request{
@@ -1166,7 +1166,7 @@ func TestServerPublishTimeout(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: tracks.Write(false),
+				Body: tracks.Marshal(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1195,18 +1195,18 @@ func TestServerPublishTimeout(t *testing.T) {
 				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
-					"Transport": inTH.Write(),
+					"Transport": inTH.Marshal(),
 				},
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			var sx headers.Session
-			err = sx.Read(res.Header["Session"])
+			err = sx.Unmarshal(res.Header["Session"])
 			require.NoError(t, err)
 
 			var th headers.Transport
-			err = th.Read(res.Header["Transport"])
+			err = th.Unmarshal(res.Header["Transport"])
 			require.NoError(t, err)
 
 			res, err = writeReqReadRes(conn, br, base.Request{
@@ -1295,7 +1295,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: tracks.Write(false),
+				Body: tracks.Marshal(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1324,18 +1324,18 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
-					"Transport": inTH.Write(),
+					"Transport": inTH.Marshal(),
 				},
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			var sx headers.Session
-			err = sx.Read(res.Header["Session"])
+			err = sx.Unmarshal(res.Header["Session"])
 			require.NoError(t, err)
 
 			var th headers.Transport
-			err = th.Read(res.Header["Transport"])
+			err = th.Unmarshal(res.Header["Transport"])
 			require.NoError(t, err)
 
 			res, err = writeReqReadRes(conn, br, base.Request{
@@ -1416,7 +1416,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 				"CSeq":         base.HeaderValue{"1"},
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: tracks.Write(false),
+			Body: tracks.Marshal(false),
 		})
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1439,14 +1439,14 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
-				"Transport": inTH.Write(),
+				"Transport": inTH.Marshal(),
 			},
 		})
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
 
 		var sx headers.Session
-		err = sx.Read(res.Header["Session"])
+		err = sx.Unmarshal(res.Header["Session"])
 		require.NoError(t, err)
 
 		res, err = writeReqReadRes(conn, br, base.Request{

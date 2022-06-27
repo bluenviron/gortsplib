@@ -17,8 +17,8 @@ type Session struct {
 	Timeout *uint
 }
 
-// Read decodes a Session header.
-func (h *Session) Read(v base.HeaderValue) error {
+// Unmarshal decodes a Session header.
+func (h *Session) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -59,8 +59,8 @@ func (h *Session) Read(v base.HeaderValue) error {
 	return nil
 }
 
-// Write encodes a Session header.
-func (h Session) Write() base.HeaderValue {
+// Marshal encodes a Session header.
+func (h Session) Marshal() base.HeaderValue {
 	ret := h.Session
 
 	if h.Timeout != nil {

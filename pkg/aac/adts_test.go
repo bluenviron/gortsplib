@@ -9,12 +9,12 @@ import (
 var casesADTS = []struct {
 	name string
 	byts []byte
-	pkts []*ADTSPacket
+	pkts ADTSPackets
 }{
 	{
 		"single",
 		[]byte{0xff, 0xf1, 0x4c, 0x80, 0x1, 0x3f, 0xfc, 0xaa, 0xbb},
-		[]*ADTSPacket{
+		ADTSPackets{
 			{
 				Type:         2,
 				SampleRate:   48000,
@@ -30,7 +30,7 @@ var casesADTS = []struct {
 			0xbb, 0xff, 0xf1, 0x4c, 0x80, 0x1, 0x3f, 0xfc,
 			0xcc, 0xdd,
 		},
-		[]*ADTSPacket{
+		ADTSPackets{
 			{
 				Type:         2,
 				SampleRate:   44100,
@@ -47,27 +47,28 @@ var casesADTS = []struct {
 	},
 }
 
-func TestDecodeADTS(t *testing.T) {
+func TestADTSUnmarshal(t *testing.T) {
 	for _, ca := range casesADTS {
 		t.Run(ca.name, func(t *testing.T) {
-			pkts, err := DecodeADTS(ca.byts)
+			var pkts ADTSPackets
+			err := pkts.Unmarshal(ca.byts)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})
 	}
 }
 
-func TestEncodeADTS(t *testing.T) {
+func TestADTSMarshal(t *testing.T) {
 	for _, ca := range casesADTS {
 		t.Run(ca.name, func(t *testing.T) {
-			byts, err := EncodeADTS(ca.pkts)
+			byts, err := ca.pkts.Marshal()
 			require.NoError(t, err)
 			require.Equal(t, ca.byts, byts)
 		})
 	}
 }
 
-func TestDecodeADTSErrors(t *testing.T) {
+func TestADTSUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte
@@ -115,7 +116,8 @@ func TestDecodeADTSErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := DecodeADTS(ca.byts)
+			var pkts ADTSPackets
+			err := pkts.Unmarshal(ca.byts)
 			require.EqualError(t, err, ca.err)
 		})
 	}

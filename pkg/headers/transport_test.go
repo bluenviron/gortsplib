@@ -218,18 +218,18 @@ var casesTransport = []struct {
 	},
 }
 
-func TestTransportRead(t *testing.T) {
+func TestTransportUnmarshal(t *testing.T) {
 	for _, ca := range casesTransport {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Transport
-			err := h.Read(ca.vin)
+			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
 		})
 	}
 }
 
-func TestTransportReadErrors(t *testing.T) {
+func TestTransportUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
@@ -318,16 +318,16 @@ func TestTransportReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Transport
-			err := h.Read(ca.hv)
+			err := h.Unmarshal(ca.hv)
 			require.EqualError(t, err, ca.err)
 		})
 	}
 }
 
-func TestTransportWrite(t *testing.T) {
+func TestTransportMarshal(t *testing.T) {
 	for _, ca := range casesTransport {
 		t.Run(ca.name, func(t *testing.T) {
-			req := ca.h.Write()
+			req := ca.h.Marshal()
 			require.Equal(t, ca.vout, req)
 		})
 	}

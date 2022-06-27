@@ -428,7 +428,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 
 				if stream != nil {
-					res.Body = stream.Tracks().Write(multicast)
+					res.Body = stream.Tracks().Marshal(multicast)
 				}
 			}
 
@@ -543,7 +543,7 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		h.OnResponse(sc, res)
 	}
 
-	byts, _ := res.Write()
+	byts, _ := res.Marshal()
 
 	sc.conn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
 	sc.conn.Write(byts)

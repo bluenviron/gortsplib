@@ -97,7 +97,7 @@ func (h *Header) read(rb *bufio.Reader) error {
 	return nil
 }
 
-func (h Header) writeSize() int {
+func (h Header) marshalSize() int {
 	// sort headers by key
 	// in order to obtain deterministic results
 	keys := make([]string, len(h))
@@ -119,7 +119,7 @@ func (h Header) writeSize() int {
 	return n
 }
 
-func (h Header) writeTo(buf []byte) int {
+func (h Header) marshalTo(buf []byte) int {
 	// sort headers by key
 	// in order to obtain deterministic results
 	keys := make([]string, len(h))
@@ -141,8 +141,8 @@ func (h Header) writeTo(buf []byte) int {
 	return pos
 }
 
-func (h Header) write() []byte {
-	buf := make([]byte, h.writeSize())
-	h.writeTo(buf)
+func (h Header) marshal() []byte {
+	buf := make([]byte, h.marshalSize())
+	h.marshalTo(buf)
 	return buf
 }

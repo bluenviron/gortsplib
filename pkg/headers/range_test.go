@@ -121,18 +121,18 @@ var casesRange = []struct {
 	},
 }
 
-func TestRangeRead(t *testing.T) {
+func TestRangeUnmarshal(t *testing.T) {
 	for _, ca := range casesRange {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Range
-			err := h.Read(ca.vin)
+			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
 		})
 	}
 }
 
-func TestRangeReadErrors(t *testing.T) {
+func TestRangeUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
@@ -256,16 +256,16 @@ func TestRangeReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Range
-			err := h.Read(ca.hv)
+			err := h.Unmarshal(ca.hv)
 			require.EqualError(t, err, ca.err)
 		})
 	}
 }
 
-func TestRangeWrite(t *testing.T) {
+func TestRangeMarshal(t *testing.T) {
 	for _, ca := range casesRange {
 		t.Run(ca.name, func(t *testing.T) {
-			req := ca.h.Write()
+			req := ca.h.Marshal()
 			require.Equal(t, ca.vout, req)
 		})
 	}

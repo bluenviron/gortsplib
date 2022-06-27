@@ -175,17 +175,17 @@ func TestResponseReadErrors(t *testing.T) {
 	}
 }
 
-func TestResponseWrite(t *testing.T) {
+func TestResponseMarshal(t *testing.T) {
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
-			buf, err := c.res.Write()
+			buf, err := c.res.Marshal()
 			require.NoError(t, err)
 			require.Equal(t, c.byts, buf)
 		})
 	}
 }
 
-func TestResponseWriteAutoFillStatus(t *testing.T) {
+func TestResponseMarshalAutoFillStatus(t *testing.T) {
 	res := &Response{
 		StatusCode: StatusMethodNotAllowed,
 		Header: Header{
@@ -207,7 +207,7 @@ func TestResponseWriteAutoFillStatus(t *testing.T) {
 		"\r\n",
 	)
 
-	buf, err := res.Write()
+	buf, err := res.Marshal()
 	require.NoError(t, err)
 	require.Equal(t, byts, buf)
 }

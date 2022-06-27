@@ -23,8 +23,8 @@ type Authorization struct {
 	DigestValues Authenticate
 }
 
-// Read decodes an Authorization header.
-func (h *Authorization) Read(v base.HeaderValue) error {
+// Unmarshal decodes an Authorization header.
+func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -57,7 +57,7 @@ func (h *Authorization) Read(v base.HeaderValue) error {
 		h.Method = AuthDigest
 
 		var vals Authenticate
-		err := vals.Read(base.HeaderValue{v0})
+		err := vals.Unmarshal(base.HeaderValue{v0})
 		if err != nil {
 			return err
 		}
@@ -71,8 +71,8 @@ func (h *Authorization) Read(v base.HeaderValue) error {
 	return nil
 }
 
-// Write encodes an Authorization header.
-func (h Authorization) Write() base.HeaderValue {
+// Marshal encodes an Authorization header.
+func (h Authorization) Marshal() base.HeaderValue {
 	switch h.Method {
 	case AuthBasic:
 		response := base64.StdEncoding.EncodeToString([]byte(h.BasicUser + ":" + h.BasicPass))
@@ -80,6 +80,6 @@ func (h Authorization) Write() base.HeaderValue {
 		return base.HeaderValue{"Basic " + response}
 
 	default: // AuthDigest
-		return h.DigestValues.Write()
+		return h.DigestValues.Marshal()
 	}
 }

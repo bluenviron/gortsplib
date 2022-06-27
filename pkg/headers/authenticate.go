@@ -49,8 +49,8 @@ type Authenticate struct {
 	Algorithm *string
 }
 
-// Read decodes an Authenticate or a WWW-Authenticate header.
-func (h *Authenticate) Read(v base.HeaderValue) error {
+// Unmarshal decodes an Authenticate or a WWW-Authenticate header.
+func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -116,8 +116,8 @@ func (h *Authenticate) Read(v base.HeaderValue) error {
 	return nil
 }
 
-// Write encodes an Authenticate or a WWW-Authenticate header.
-func (h Authenticate) Write() base.HeaderValue {
+// Marshal encodes an Authenticate or a WWW-Authenticate header.
+func (h Authenticate) Marshal() base.HeaderValue {
 	ret := ""
 
 	switch h.Method {

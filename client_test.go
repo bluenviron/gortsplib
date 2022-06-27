@@ -108,7 +108,7 @@ func TestClientSession(t *testing.T) {
 				}, ", ")},
 				"Session": base.HeaderValue{"123456"},
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -133,8 +133,8 @@ func TestClientSession(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Session":      base.HeaderValue{"123456"},
 			},
-			Body: tracks.Write(false),
-		}.Write()
+			Body: tracks.Marshal(false),
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 	}()
@@ -178,7 +178,7 @@ func TestClientAuth(t *testing.T) {
 					string(base.Describe),
 				}, ", ")},
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -193,7 +193,7 @@ func TestClientAuth(t *testing.T) {
 			Header: base.Header{
 				"WWW-Authenticate": v.Header(),
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -218,8 +218,8 @@ func TestClientAuth(t *testing.T) {
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: tracks.Write(false),
-		}.Write()
+			Body: tracks.Marshal(false),
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 	}()
@@ -263,7 +263,7 @@ func TestClientDescribeCharset(t *testing.T) {
 					string(base.Describe),
 				}, ", ")},
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -284,8 +284,8 @@ func TestClientDescribeCharset(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: Tracks{track1}.Write(false),
-		}.Write()
+			Body: Tracks{track1}.Marshal(false),
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 	}()

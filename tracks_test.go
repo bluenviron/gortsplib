@@ -35,7 +35,8 @@ func TestTracksReadErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, _, err := ReadTracks(ca.sdp, false)
+			var tracks Tracks
+			_, err := tracks.Unmarshal(ca.sdp, false)
 			require.EqualError(t, err, ca.err)
 		})
 	}
@@ -67,7 +68,8 @@ func TestTracksReadSkipGenericTracksWithoutClockRate(t *testing.T) {
 		"m=application 42508 RTP/AVP 107\r\n" +
 		"b=AS:8\r\n")
 
-	tracks, _, err := ReadTracks(sdp, true)
+	var tracks Tracks
+	_, err := tracks.Unmarshal(sdp, true)
 	require.NoError(t, err)
 	require.Equal(t, Tracks{
 		&TrackH264{

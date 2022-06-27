@@ -362,7 +362,7 @@ func (ss *ServerSession) runInner() error {
 							}
 							return nil
 						}(),
-					}.Write()
+					}.Marshal()
 				}
 
 				// after a TEARDOWN, session must be unpaired with the connection
@@ -501,7 +501,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerContentTypeUnsupported{CT: ct}
 		}
 
-		tracks, _, err := ReadTracks(req.Body, false)
+		var tracks Tracks
+		_, err = tracks.Unmarshal(req.Body, false)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -568,7 +569,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		var inTH headers.Transport
-		err = inTH.Read(req.Header["Transport"])
+		err = inTH.Unmarshal(req.Header["Transport"])
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -783,7 +784,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.setuppedTracks[trackID] = sst
 
-		res.Header["Transport"] = th.Write()
+		res.Header["Transport"] = th.Marshal()
 
 		return res, err
 
@@ -910,7 +911,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if res.Header == nil {
 				res.Header = make(base.Header)
 			}
-			res.Header["RTP-Info"] = ri.Write()
+			res.Header["RTP-Info"] = ri.Marshal()
 		}
 
 		return res, err
@@ -1182,14 +1183,14 @@ func (ss *ServerSession) runWriter() {
 			if isRTP {
 				f := rtpFrames[trackID]
 				f.Payload = payload
-				n, _ := f.WriteTo(buf)
+				n, _ := f.MarshalTo(buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
 				ss.tcpConn.conn.Write(buf[:n])
 			} else {
 				f := rtcpFrames[trackID]
 				f.Payload = payload
-				n, _ := f.WriteTo(buf)
+				n, _ := f.MarshalTo(buf)
 
 				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
 				ss.tcpConn.conn.Write(buf[:n])

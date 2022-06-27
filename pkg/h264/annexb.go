@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-// AnnexBDecode decodes NALUs from the Annex-B stream format.
-func AnnexBDecode(byts []byte) ([][]byte, error) {
+// AnnexBUnmarshal decodes NALUs from the Annex-B stream format.
+func AnnexBUnmarshal(byts []byte) ([][]byte, error) {
 	bl := len(byts)
 	zeroCount := 0
 
@@ -73,7 +73,7 @@ outer:
 	return ret, nil
 }
 
-func annexBEncodeSize(nalus [][]byte) int {
+func annexBMarshalSize(nalus [][]byte) int {
 	n := 0
 	for _, nalu := range nalus {
 		n += 4 + len(nalu)
@@ -81,9 +81,9 @@ func annexBEncodeSize(nalus [][]byte) int {
 	return n
 }
 
-// AnnexBEncode encodes NALUs into the Annex-B stream format.
-func AnnexBEncode(nalus [][]byte) ([]byte, error) {
-	buf := make([]byte, annexBEncodeSize(nalus))
+// AnnexBMarshal encodes NALUs into the Annex-B stream format.
+func AnnexBMarshal(nalus [][]byte) ([]byte, error) {
+	buf := make([]byte, annexBMarshalSize(nalus))
 	pos := 0
 
 	for _, nalu := range nalus {

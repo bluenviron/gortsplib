@@ -49,18 +49,18 @@ var casesAuthorization = []struct {
 	},
 }
 
-func TestAuthorizationRead(t *testing.T) {
+func TestAuthorizationUnmarshal(t *testing.T) {
 	for _, ca := range casesAuthorization {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Authorization
-			err := h.Read(ca.vin)
+			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
 		})
 	}
 }
 
-func TestAuthorizationReadErrors(t *testing.T) {
+func TestAuthorizationUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
@@ -99,16 +99,16 @@ func TestAuthorizationReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Authorization
-			err := h.Read(ca.hv)
+			err := h.Unmarshal(ca.hv)
 			require.EqualError(t, err, ca.err)
 		})
 	}
 }
 
-func TestAuthorizationWrite(t *testing.T) {
+func TestAuthorizationMarshal(t *testing.T) {
 	for _, ca := range casesAuthorization {
 		t.Run(ca.name, func(t *testing.T) {
-			vout := ca.h.Write()
+			vout := ca.h.Marshal()
 			require.Equal(t, ca.vout, vout)
 		})
 	}

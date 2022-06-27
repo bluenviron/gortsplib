@@ -18,8 +18,8 @@ type RTPInfoEntry struct {
 // RTPInfo is a RTP-Info header.
 type RTPInfo []*RTPInfoEntry
 
-// Read decodes a RTP-Info header.
-func (h *RTPInfo) Read(v base.HeaderValue) error {
+// Unmarshal decodes a RTP-Info header.
+func (h *RTPInfo) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -75,8 +75,8 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 	return nil
 }
 
-// Write encodes a RTP-Info header.
-func (h RTPInfo) Write() base.HeaderValue {
+// Marshal encodes a RTP-Info header.
+func (h RTPInfo) Marshal() base.HeaderValue {
 	rets := make([]string, len(h))
 
 	for i, e := range h {

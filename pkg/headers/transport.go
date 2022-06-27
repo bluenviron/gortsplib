@@ -104,8 +104,8 @@ func parsePorts(val string) (*[2]int, error) {
 	return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 }
 
-// Read decodes a Transport header.
-func (h *Transport) Read(v base.HeaderValue) error {
+// Unmarshal decodes a Transport header.
+func (h *Transport) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -258,8 +258,8 @@ func (h *Transport) Read(v base.HeaderValue) error {
 	return nil
 }
 
-// Write encodes a Transport header
-func (h Transport) Write() base.HeaderValue {
+// Marshal encodes a Transport header
+func (h Transport) Marshal() base.HeaderValue {
 	var rets []string
 
 	if h.Protocol == TransportProtocolUDP {

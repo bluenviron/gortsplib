@@ -201,8 +201,8 @@ func (res *Response) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) erro
 	}
 }
 
-// WriteSize returns the size of a Response.
-func (res Response) WriteSize() int {
+// MarshalSize returns the size of a Response.
+func (res Response) MarshalSize() int {
 	n := 0
 
 	if res.StatusMessage == "" {
@@ -219,15 +219,15 @@ func (res Response) WriteSize() int {
 		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}
 	}
 
-	n += res.Header.writeSize()
+	n += res.Header.marshalSize()
 
-	n += body(res.Body).writeSize()
+	n += body(res.Body).marshalSize()
 
 	return n
 }
 
-// WriteTo writes a Response.
-func (res Response) WriteTo(buf []byte) (int, error) {
+// MarshalTo writes a Response.
+func (res Response) MarshalTo(buf []byte) (int, error) {
 	if res.StatusMessage == "" {
 		if status, ok := statusMessages[res.StatusCode]; ok {
 			res.StatusMessage = status
@@ -244,22 +244,22 @@ func (res Response) WriteTo(buf []byte) (int, error) {
 		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}
 	}
 
-	pos += res.Header.writeTo(buf[pos:])
+	pos += res.Header.marshalTo(buf[pos:])
 
-	pos += body(res.Body).writeTo(buf[pos:])
+	pos += body(res.Body).marshalTo(buf[pos:])
 
 	return pos, nil
 }
 
-// Write writes a Response.
-func (res Response) Write() ([]byte, error) {
-	buf := make([]byte, res.WriteSize())
-	_, err := res.WriteTo(buf)
+// Marshal writes a Response.
+func (res Response) Marshal() ([]byte, error) {
+	buf := make([]byte, res.MarshalSize())
+	_, err := res.MarshalTo(buf)
 	return buf, err
 }
 
 // String implements fmt.Stringer.
 func (res Response) String() string {
-	buf, _ := res.Write()
+	buf, _ := res.Marshal()
 	return string(buf)
 }

@@ -25,7 +25,7 @@ type RangeSMPTETime struct {
 	Subframe uint
 }
 
-func (t *RangeSMPTETime) read(s string) error {
+func (t *RangeSMPTETime) unmarshal(s string) error {
 	parts := strings.Split(s, ":")
 	if len(parts) != 3 && len(parts) != 4 {
 		return fmt.Errorf("invalid SMPTE time (%v)", s)
@@ -77,7 +77,7 @@ func (t *RangeSMPTETime) read(s string) error {
 	return nil
 }
 
-func (t RangeSMPTETime) write() string {
+func (t RangeSMPTETime) marshal() string {
 	d := uint64(t.Time.Seconds())
 	hours := d / 3600
 	d %= 3600
@@ -103,15 +103,15 @@ type RangeSMPTE struct {
 	End   *RangeSMPTETime
 }
 
-func (r *RangeSMPTE) read(start string, end string) error {
-	err := r.Start.read(start)
+func (r *RangeSMPTE) unmarshal(start string, end string) error {
+	err := r.Start.unmarshal(start)
 	if err != nil {
 		return err
 	}
 
 	if end != "" {
 		var v RangeSMPTETime
-		err := v.read(end)
+		err := v.unmarshal(end)
 		if err != nil {
 			return err
 		}
@@ -121,10 +121,10 @@ func (r *RangeSMPTE) read(start string, end string) error {
 	return nil
 }
 
-func (r RangeSMPTE) write() string {
-	ret := "smpte=" + r.Start.write() + "-"
+func (r RangeSMPTE) marshal() string {
+	ret := "smpte=" + r.Start.marshal() + "-"
 	if r.End != nil {
-		ret += r.End.write()
+		ret += r.End.marshal()
 	}
 	return ret
 }
@@ -132,7 +132,7 @@ func (r RangeSMPTE) write() string {
 // RangeNPTTime is a time expressed in NPT unit.
 type RangeNPTTime time.Duration
 
-func (t *RangeNPTTime) read(s string) error {
+func (t *RangeNPTTime) unmarshal(s string) error {
 	parts := strings.Split(s, ":")
 	if len(parts) > 3 {
 		return fmt.Errorf("invalid NPT time (%v)", s)
@@ -170,7 +170,7 @@ func (t *RangeNPTTime) read(s string) error {
 	return nil
 }
 
-func (t RangeNPTTime) write() string {
+func (t RangeNPTTime) marshal() string {
 	return strconv.FormatFloat(time.Duration(t).Seconds(), 'f', -1, 64)
 }
 
@@ -180,15 +180,15 @@ type RangeNPT struct {
 	End   *RangeNPTTime
 }
 
-func (r *RangeNPT) read(start string, end string) error {
-	err := r.Start.read(start)
+func (r *RangeNPT) unmarshal(start string, end string) error {
+	err := r.Start.unmarshal(start)
 	if err != nil {
 		return err
 	}
 
 	if end != "" {
 		var v RangeNPTTime
-		err := v.read(end)
+		err := v.unmarshal(end)
 		if err != nil {
 			return err
 		}
@@ -198,10 +198,10 @@ func (r *RangeNPT) read(start string, end string) error {
 	return nil
 }
 
-func (r RangeNPT) write() string {
-	ret := "npt=" + r.Start.write() + "-"
+func (r RangeNPT) marshal() string {
+	ret := "npt=" + r.Start.marshal() + "-"
 	if r.End != nil {
-		ret += r.End.write()
+		ret += r.End.marshal()
 	}
 	return ret
 }
@@ -209,7 +209,7 @@ func (r RangeNPT) write() string {
 // RangeUTCTime is a time expressed in UTC unit.
 type RangeUTCTime time.Time
 
-func (t *RangeUTCTime) read(s string) error {
+func (t *RangeUTCTime) unmarshal(s string) error {
 	tmp, err := time.Parse("20060102T150405Z", s)
 	if err != nil {
 		return err
@@ -219,7 +219,7 @@ func (t *RangeUTCTime) read(s string) error {
 	return nil
 }
 
-func (t RangeUTCTime) write() string {
+func (t RangeUTCTime) marshal() string {
 	return time.Time(t).Format("20060102T150405Z")
 }
 
@@ -229,15 +229,15 @@ type RangeUTC struct {
 	End   *RangeUTCTime
 }
 
-func (r *RangeUTC) read(start string, end string) error {
-	err := r.Start.read(start)
+func (r *RangeUTC) unmarshal(start string, end string) error {
+	err := r.Start.unmarshal(start)
 	if err != nil {
 		return err
 	}
 
 	if end != "" {
 		var v RangeUTCTime
-		err := v.read(end)
+		err := v.unmarshal(end)
 		if err != nil {
 			return err
 		}
@@ -247,10 +247,10 @@ func (r *RangeUTC) read(start string, end string) error {
 	return nil
 }
 
-func (r RangeUTC) write() string {
-	ret := "clock=" + r.Start.write() + "-"
+func (r RangeUTC) marshal() string {
+	ret := "clock=" + r.Start.marshal() + "-"
 	if r.End != nil {
-		ret += r.End.write()
+		ret += r.End.marshal()
 	}
 	return ret
 }
@@ -260,17 +260,17 @@ func (r RangeUTC) write() string {
 // - RangeNPT
 // - RangeUTC
 type RangeValue interface {
-	read(string, string) error
-	write() string
+	unmarshal(string, string) error
+	marshal() string
 }
 
-func rangeValueRead(s RangeValue, v string) error {
+func rangeValueUnmarshal(s RangeValue, v string) error {
 	parts := strings.Split(v, "-")
 	if len(parts) != 2 {
 		return fmt.Errorf("invalid value (%v)", v)
 	}
 
-	return s.read(parts[0], parts[1])
+	return s.unmarshal(parts[0], parts[1])
 }
 
 // Range is a Range header.
@@ -282,8 +282,8 @@ type Range struct {
 	Time *RangeUTCTime
 }
 
-// Read decodes a Range header.
-func (h *Range) Read(v base.HeaderValue) error {
+// Unmarshal decodes a Range header.
+func (h *Range) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -305,7 +305,7 @@ func (h *Range) Read(v base.HeaderValue) error {
 		switch k {
 		case "smpte":
 			s := &RangeSMPTE{}
-			err := rangeValueRead(s, v)
+			err := rangeValueUnmarshal(s, v)
 			if err != nil {
 				return err
 			}
@@ -315,7 +315,7 @@ func (h *Range) Read(v base.HeaderValue) error {
 
 		case "npt":
 			s := &RangeNPT{}
-			err := rangeValueRead(s, v)
+			err := rangeValueUnmarshal(s, v)
 			if err != nil {
 				return err
 			}
@@ -325,7 +325,7 @@ func (h *Range) Read(v base.HeaderValue) error {
 
 		case "clock":
 			s := &RangeUTC{}
-			err := rangeValueRead(s, v)
+			err := rangeValueUnmarshal(s, v)
 			if err != nil {
 				return err
 			}
@@ -335,7 +335,7 @@ func (h *Range) Read(v base.HeaderValue) error {
 
 		case "time":
 			t := &RangeUTCTime{}
-			err := t.read(v)
+			err := t.unmarshal(v)
 			if err != nil {
 				return err
 			}
@@ -351,11 +351,11 @@ func (h *Range) Read(v base.HeaderValue) error {
 	return nil
 }
 
-// Write encodes a Range header.
-func (h Range) Write() base.HeaderValue {
-	v := h.Value.write()
+// Marshal encodes a Range header.
+func (h Range) Marshal() base.HeaderValue {
+	v := h.Value.marshal()
 	if h.Time != nil {
-		v += ";time=" + h.Time.write()
+		v += ";time=" + h.Time.marshal()
 	}
 	return base.HeaderValue{v}
 }

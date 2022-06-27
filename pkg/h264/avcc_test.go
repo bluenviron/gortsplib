@@ -39,27 +39,27 @@ var casesAVCC = []struct {
 	},
 }
 
-func TestAVCCDecode(t *testing.T) {
+func TestAVCCUnmarshal(t *testing.T) {
 	for _, ca := range casesAVCC {
 		t.Run(ca.name, func(t *testing.T) {
-			dec, err := AVCCDecode(ca.enc)
+			dec, err := AVCCUnmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
 		})
 	}
 }
 
-func TestAVCCEncode(t *testing.T) {
+func TestAVCCMarshal(t *testing.T) {
 	for _, ca := range casesAVCC {
 		t.Run(ca.name, func(t *testing.T) {
-			enc, err := AVCCEncode(ca.dec)
+			enc, err := AVCCMarshal(ca.dec)
 			require.NoError(t, err)
 			require.Equal(t, ca.enc, enc)
 		})
 	}
 }
 
-func TestAVCCDecodeError(t *testing.T) {
+func TestAVCCUnmarshalError(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		enc  []byte
@@ -78,7 +78,7 @@ func TestAVCCDecodeError(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := AVCCDecode(ca.enc)
+			_, err := AVCCUnmarshal(ca.enc)
 			require.Error(t, err)
 		})
 	}

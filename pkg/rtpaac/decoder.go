@@ -82,7 +82,8 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 		au := payload[:dataLens[0]]
 
-		pkts, err := aac.DecodeADTS(au)
+		var pkts aac.ADTSPackets
+		err := pkts.Unmarshal(au)
 		if err != nil {
 			return nil, 0, fmt.Errorf("unable to decode ADTS: %s", err)
 		}
@@ -111,7 +112,8 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			if !d.firstPacketParsed {
 				if len(aus) == 1 && len(aus[0]) >= 2 {
 					if aus[0][0] == 0xFF && (aus[0][1]&0xF0) == 0xF0 {
-						pkts, err := aac.DecodeADTS(aus[0])
+						var pkts aac.ADTSPackets
+						err := pkts.Unmarshal(aus[0])
 						if err == nil && len(pkts) == 1 {
 							d.adtsMode = true
 							aus[0] = pkts[0].AU

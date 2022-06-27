@@ -48,18 +48,18 @@ var casesSession = []struct {
 	},
 }
 
-func TestSessionRead(t *testing.T) {
+func TestSessionUnmarshal(t *testing.T) {
 	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Session
-			err := h.Read(ca.vin)
+			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
 		})
 	}
 }
 
-func TestSessionReadErrors(t *testing.T) {
+func TestSessionUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
@@ -88,16 +88,16 @@ func TestSessionReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Session
-			err := h.Read(ca.hv)
+			err := h.Unmarshal(ca.hv)
 			require.EqualError(t, err, ca.err)
 		})
 	}
 }
 
-func TestSessionWrite(t *testing.T) {
+func TestSessionMarshal(t *testing.T) {
 	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
-			req := ca.h.Write()
+			req := ca.h.Marshal()
 			require.Equal(t, ca.vout, req)
 		})
 	}

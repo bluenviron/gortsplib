@@ -117,8 +117,8 @@ func (req *Request) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) error
 	}
 }
 
-// WriteSize returns the size of a Request.
-func (req Request) WriteSize() int {
+// MarshalSize returns the size of a Request.
+func (req Request) MarshalSize() int {
 	n := 0
 
 	urStr := req.URL.CloneWithoutCredentials().String()
@@ -128,15 +128,15 @@ func (req Request) WriteSize() int {
 		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}
 	}
 
-	n += req.Header.writeSize()
+	n += req.Header.marshalSize()
 
-	n += body(req.Body).writeSize()
+	n += body(req.Body).marshalSize()
 
 	return n
 }
 
-// WriteTo writes a Request.
-func (req Request) WriteTo(buf []byte) (int, error) {
+// MarshalTo writes a Request.
+func (req Request) MarshalTo(buf []byte) (int, error) {
 	pos := 0
 
 	urStr := req.URL.CloneWithoutCredentials().String()
@@ -146,22 +146,22 @@ func (req Request) WriteTo(buf []byte) (int, error) {
 		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}
 	}
 
-	pos += req.Header.writeTo(buf[pos:])
+	pos += req.Header.marshalTo(buf[pos:])
 
-	pos += body(req.Body).writeTo(buf[pos:])
+	pos += body(req.Body).marshalTo(buf[pos:])
 
 	return pos, nil
 }
 
-// Write writes a Request.
-func (req Request) Write() ([]byte, error) {
-	buf := make([]byte, req.WriteSize())
-	_, err := req.WriteTo(buf)
+// Marshal writes a Request.
+func (req Request) Marshal() ([]byte, error) {
+	buf := make([]byte, req.MarshalSize())
+	_, err := req.MarshalTo(buf)
 	return buf, err
 }
 
 // String implements fmt.Stringer.
 func (req Request) String() string {
-	buf, _ := req.Write()
+	buf, _ := req.Marshal()
 	return string(buf)
 }

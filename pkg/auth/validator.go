@@ -99,14 +99,14 @@ func (va *Validator) Header() base.HeaderValue {
 			ret = append(ret, (&headers.Authenticate{
 				Method: headers.AuthBasic,
 				Realm:  &va.realm,
-			}).Write()...)
+			}).Marshal()...)
 
 		case headers.AuthDigest:
 			ret = append(ret, headers.Authenticate{
 				Method: headers.AuthDigest,
 				Realm:  &va.realm,
 				Nonce:  &va.nonce,
-			}.Write()...)
+			}.Marshal()...)
 		}
 	}
 	return ret
@@ -115,7 +115,7 @@ func (va *Validator) Header() base.HeaderValue {
 // ValidateRequest validates a request sent by a client.
 func (va *Validator) ValidateRequest(req *base.Request) error {
 	var auth headers.Authorization
-	err := auth.Read(req.Header["Authorization"])
+	err := auth.Unmarshal(req.Header["Authorization"])
 	if err != nil {
 		return err
 	}

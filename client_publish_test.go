@@ -97,7 +97,7 @@ func TestClientPublishSerial(t *testing.T) {
 							string(base.Record),
 						}, ", ")},
 					},
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -108,7 +108,7 @@ func TestClientPublishSerial(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -118,7 +118,7 @@ func TestClientPublishSerial(t *testing.T) {
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/trackID=0"), req.URL)
 
 				var inTH headers.Transport
-				err = inTH.Read(req.Header["Transport"])
+				err = inTH.Unmarshal(req.Header["Transport"])
 				require.NoError(t, err)
 
 				var l1 net.PacketConn
@@ -152,9 +152,9 @@ func TestClientPublishSerial(t *testing.T) {
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
-						"Transport": th.Write(),
+						"Transport": th.Marshal(),
 					},
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -165,7 +165,7 @@ func TestClientPublishSerial(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -199,7 +199,7 @@ func TestClientPublishSerial(t *testing.T) {
 					byts, _ := base.InterleavedFrame{
 						Channel: 1,
 						Payload: testRTCPPacketMarshaled,
-					}.Write()
+					}.Marshal()
 					_, err = conn.Write(byts)
 					require.NoError(t, err)
 				}
@@ -211,7 +211,7 @@ func TestClientPublishSerial(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 			}()
@@ -312,7 +312,7 @@ func TestClientPublishParallel(t *testing.T) {
 							string(base.Record),
 						}, ", ")},
 					},
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -322,7 +322,7 @@ func TestClientPublishParallel(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -331,7 +331,7 @@ func TestClientPublishParallel(t *testing.T) {
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Read(req.Header["Transport"])
+				err = inTH.Unmarshal(req.Header["Transport"])
 				require.NoError(t, err)
 
 				th := headers.Transport{
@@ -353,9 +353,9 @@ func TestClientPublishParallel(t *testing.T) {
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
-						"Transport": th.Write(),
+						"Transport": th.Marshal(),
 					},
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -365,7 +365,7 @@ func TestClientPublishParallel(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -375,7 +375,7 @@ func TestClientPublishParallel(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 			}()
@@ -461,7 +461,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 							string(base.Pause),
 						}, ", ")},
 					},
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -471,7 +471,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -480,7 +480,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Read(req.Header["Transport"])
+				err = inTH.Unmarshal(req.Header["Transport"])
 				require.NoError(t, err)
 
 				th := headers.Transport{
@@ -502,9 +502,9 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
-						"Transport": th.Write(),
+						"Transport": th.Marshal(),
 					},
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -514,7 +514,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -524,7 +524,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -534,7 +534,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -544,7 +544,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 			}()
@@ -620,7 +620,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 							string(base.Pause),
 						}, ", ")},
 					},
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -630,7 +630,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -639,7 +639,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Read(req.Header["Transport"])
+				err = inTH.Unmarshal(req.Header["Transport"])
 				require.NoError(t, err)
 
 				th := headers.Transport{
@@ -661,9 +661,9 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
-						"Transport": th.Write(),
+						"Transport": th.Marshal(),
 					},
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -673,7 +673,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 
@@ -683,7 +683,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 
 				byts, _ = base.Response{
 					StatusCode: base.StatusOK,
-				}.Write()
+				}.Marshal()
 				_, err = conn.Write(byts)
 				require.NoError(t, err)
 			}()
@@ -764,7 +764,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 					string(base.Record),
 				}, ", ")},
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -775,7 +775,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -785,7 +785,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusUnsupportedTransport,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -794,7 +794,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.Equal(t, base.Setup, req.Method)
 
 		var inTH headers.Transport
-		err = inTH.Read(req.Header["Transport"])
+		err = inTH.Unmarshal(req.Header["Transport"])
 		require.NoError(t, err)
 		require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
 
@@ -810,9 +810,9 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
-				"Transport": th.Write(),
+				"Transport": th.Marshal(),
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -823,7 +823,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -842,7 +842,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 	}()
@@ -894,7 +894,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 					string(base.Record),
 				}, ", ")},
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -904,7 +904,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -913,7 +913,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		require.Equal(t, base.Setup, req.Method)
 
 		var inTH headers.Transport
-		err = inTH.Read(req.Header["Transport"])
+		err = inTH.Unmarshal(req.Header["Transport"])
 		require.NoError(t, err)
 
 		l1, err := net.ListenPacket("udp", "localhost:34556")
@@ -935,9 +935,9 @@ func TestClientPublishRTCPReport(t *testing.T) {
 					Protocol:    headers.TransportProtocolUDP,
 					ClientPorts: inTH.ClientPorts,
 					ServerPorts: &[2]int{34556, 34557},
-				}.Write(),
+				}.Marshal(),
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -947,7 +947,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -981,7 +981,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 	}()
@@ -1045,7 +1045,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 					string(base.Record),
 				}, ", ")},
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -1055,7 +1055,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -1064,7 +1064,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		require.Equal(t, base.Setup, req.Method)
 
 		var inTH headers.Transport
-		err = inTH.Read(req.Header["Transport"])
+		err = inTH.Unmarshal(req.Header["Transport"])
 		require.NoError(t, err)
 
 		th := headers.Transport{
@@ -1079,9 +1079,9 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
-				"Transport": th.Write(),
+				"Transport": th.Marshal(),
 			},
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -1091,21 +1091,21 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
 		byts, _ = base.InterleavedFrame{
 			Channel: 0,
 			Payload: testRTPPacketMarshaled,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
 		byts, _ = base.InterleavedFrame{
 			Channel: 1,
 			Payload: testRTCPPacketMarshaled,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 
@@ -1115,7 +1115,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 
 		byts, _ = base.Response{
 			StatusCode: base.StatusOK,
-		}.Write()
+		}.Marshal()
 		_, err = conn.Write(byts)
 		require.NoError(t, err)
 	}()

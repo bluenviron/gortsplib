@@ -178,18 +178,18 @@ var casesAuthenticate = []struct {
 	},
 }
 
-func TestAuthenticateRead(t *testing.T) {
+func TestAuthenticateUnmarshal(t *testing.T) {
 	for _, ca := range casesAuthenticate {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Authenticate
-			err := h.Read(ca.vin)
+			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
 		})
 	}
 }
 
-func TestAutenticatehReadErrors(t *testing.T) {
+func TestAutenticatehUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
@@ -223,16 +223,16 @@ func TestAutenticatehReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Authenticate
-			err := h.Read(ca.hv)
+			err := h.Unmarshal(ca.hv)
 			require.EqualError(t, err, ca.err)
 		})
 	}
 }
 
-func TestAuthenticateWrite(t *testing.T) {
+func TestAuthenticateMarshal(t *testing.T) {
 	for _, ca := range casesAuthenticate {
 		t.Run(ca.name, func(t *testing.T) {
-			vout := ca.h.Write()
+			vout := ca.h.Marshal()
 			require.Equal(t, ca.vout, vout)
 		})
 	}

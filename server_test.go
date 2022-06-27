@@ -71,7 +71,7 @@ func writeReqReadRes(conn net.Conn,
 	br *bufio.Reader,
 	req base.Request,
 ) (*base.Response, error) {
-	byts, _ := req.Write()
+	byts, _ := req.Marshal()
 	_, err := conn.Write(byts)
 	if err != nil {
 		return nil, err
@@ -406,14 +406,14 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 					return &v
 				}(),
 				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
+			}.Marshal(),
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	var sx headers.Session
-	err = sx.Read(res.Header["Session"])
+	err = sx.Unmarshal(res.Header["Session"])
 	require.NoError(t, err)
 
 	res, err = writeReqReadRes(conn1, br1, base.Request{
@@ -448,7 +448,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 					return &v
 				}(),
 				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
+			}.Marshal(),
 			"Session": base.HeaderValue{sx.Session},
 		},
 	})
@@ -512,14 +512,14 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 					return &v
 				}(),
 				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
+			}.Marshal(),
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
 	var sx headers.Session
-	err = sx.Read(res.Header["Session"])
+	err = sx.Unmarshal(res.Header["Session"])
 	require.NoError(t, err)
 
 	res, err = writeReqReadRes(conn, br, base.Request{
@@ -549,7 +549,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 					return &v
 				}(),
 				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
+			}.Marshal(),
 		},
 	})
 	require.NoError(t, err)
@@ -717,9 +717,9 @@ func TestServerSessionClose(t *testing.T) {
 					return &v
 				}(),
 				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
+			}.Marshal(),
 		},
-	}.Write()
+	}.Marshal()
 	_, err = conn.Write(byts)
 	require.NoError(t, err)
 
@@ -786,7 +786,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 							return &v
 						}(),
 						InterleavedIDs: &[2]int{0, 1},
-					}.Write(),
+					}.Marshal(),
 				},
 			})
 			require.NoError(t, err)
@@ -873,7 +873,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 						"CSeq":         base.HeaderValue{"1"},
 						"Content-Type": base.HeaderValue{"application/sdp"},
 					},
-					Body: tracks.Write(false),
+					Body: tracks.Marshal(false),
 				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
@@ -901,14 +901,14 @@ func TestServerErrorInvalidPath(t *testing.T) {
 								return &v
 							}(),
 							InterleavedIDs: &[2]int{0, 1},
-						}.Write(),
+						}.Marshal(),
 					},
 				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
 
 				var sx headers.Session
-				err = sx.Read(res.Header["Session"])
+				err = sx.Unmarshal(res.Header["Session"])
 				require.NoError(t, err)
 
 				sxID = sx.Session
@@ -989,7 +989,7 @@ func TestServerAuth(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: Tracks{track}.Write(false),
+		Body: Tracks{track}.Marshal(false),
 	}
 
 	res, err := writeReqReadRes(conn, br, req)

@@ -1059,7 +1059,7 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		c.OnRequest(req)
 	}
 
-	byts, _ := req.Write()
+	byts, _ := req.Marshal()
 
 	c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
 	_, err := c.conn.Write(byts)
@@ -1095,7 +1095,7 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		// get session from response
 		if v, ok := res.Header["Session"]; ok {
 			var sx headers.Session
-			err := sx.Read(v)
+			err := sx.Unmarshal(v)
 			if err != nil {
 				return nil, liberrors.ErrClientSessionHeaderInvalid{Err: err}
 			}
@@ -1242,7 +1242,8 @@ func (c *Client) doDescribe(u *url.URL) (Tracks, *url.URL, *base.Response, error
 		return nil, nil, nil, liberrors.ErrClientContentTypeUnsupported{CT: ct}
 	}
 
-	tracks, sd, err := ReadTracks(res.Body, true)
+	var tracks Tracks
+	sd, err := tracks.Unmarshal(res.Body, true)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1286,7 +1287,7 @@ func (c *Client) doAnnounce(u *url.URL, tracks Tracks) (*base.Response, error) {
 		Header: base.Header{
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: tracks.Write(false),
+		Body: tracks.Marshal(false),
 	}, false, false)
 	if err != nil {
 		return nil, err
@@ -1449,7 +1450,7 @@ func (c *Client) doSetup(
 		Method: base.Setup,
 		URL:    trackURL,
 		Header: base.Header{
-			"Transport": th.Write(),
+			"Transport": th.Marshal(),
 		},
 	}, false, false)
 	if err != nil {
@@ -1480,7 +1481,7 @@ func (c *Client) doSetup(
 	}
 
 	var thRes headers.Transport
-	err = thRes.Read(res.Header["Transport"])
+	err = thRes.Unmarshal(res.Header["Transport"])
 	if err != nil {
 		if transport == TransportUDP {
 			ct.udpRTPListener.close()
@@ -1685,7 +1686,7 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		Method: base.Play,
 		URL:    c.baseURL,
 		Header: base.Header{
-			"Range": ra.Write(),
+			"Range": ra.Marshal(),
 		},
 	}, false, *c.effectiveTransport == TransportTCP)
 	if err != nil {
@@ -1864,14 +1865,14 @@ func (c *Client) runWriter() {
 			if isRTP {
 				f := rtpFrames[trackID]
 				f.Payload = payload
-				n, _ := f.WriteTo(buf)
+				n, _ := f.MarshalTo(buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
 				c.conn.Write(buf[:n])
 			} else {
 				f := rtcpFrames[trackID]
 				f.Payload = payload
-				n, _ := f.WriteTo(buf)
+				n, _ := f.MarshalTo(buf)
 
 				c.conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
 				c.conn.Write(buf[:n])

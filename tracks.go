@@ -13,16 +13,15 @@ import (
 // Tracks is a list of tracks.
 type Tracks []Track
 
-// ReadTracks decodes tracks from the SDP format.
-// It returns the tracks and the decoded SDP.
-func ReadTracks(byts []byte, skipGenericTracksWithoutClockRate bool) (Tracks, *sdp.SessionDescription, error) {
+// Unmarshal decodes tracks from the SDP format. It returns the decoded SDP.
+func (ts *Tracks) Unmarshal(byts []byte, skipGenericTracksWithoutClockRate bool) (*sdp.SessionDescription, error) {
 	var sd sdp.SessionDescription
 	err := sd.Unmarshal(byts)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	var tracks Tracks //nolint:prealloc
+	*ts = nil
 
 	for i, md := range sd.MediaDescriptions {
 		t, err := newTrackFromMediaDescription(md)
@@ -31,17 +30,17 @@ func ReadTracks(byts []byte, skipGenericTracksWithoutClockRate bool) (Tracks, *s
 				strings.HasPrefix(err.Error(), "unable to get clock rate") {
 				continue
 			}
-			return nil, nil, fmt.Errorf("unable to parse track %d: %s", i+1, err)
+			return nil, fmt.Errorf("unable to parse track %d: %s", i+1, err)
 		}
 
-		tracks = append(tracks, t)
+		*ts = append(*ts, t)
 	}
 
-	if len(tracks) == 0 {
-		return nil, nil, fmt.Errorf("no valid tracks found")
+	if *ts == nil {
+		return nil, fmt.Errorf("no valid tracks found")
 	}
 
-	return tracks, &sd, nil
+	return &sd, nil
 }
 
 func (ts Tracks) clone() Tracks {
@@ -58,8 +57,8 @@ func (ts Tracks) setControls() {
 	}
 }
 
-// Write encodes tracks in the SDP format.
-func (ts Tracks) Write(multicast bool) []byte {
+// Marshal encodes tracks in the SDP format.
+func (ts Tracks) Marshal(multicast bool) []byte {
 	address := "0.0.0.0"
 	if multicast {
 		address = "224.1.0.0"
