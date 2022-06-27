@@ -161,7 +161,6 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	d.fragmentedParts = d.fragmentedParts[:0]
 	d.fragmentedMode = false
-	d.firstPacketReceived = true
 	return [][]byte{ret}, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
@@ -172,6 +171,11 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	nalus, pts, err := d.Decode(pkt)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	if (len(d.naluBuffer) + len(nalus)) >= h264.MaxNALUsPerGroup {
+		return nil, 0, fmt.Errorf("number of NALUs contained inside a single group (%d) is too big (maximum is %d)",
+			len(d.naluBuffer)+len(nalus), h264.MaxNALUsPerGroup)
 	}
 
 	d.naluBuffer = append(d.naluBuffer, nalus...)
