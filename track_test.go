@@ -386,6 +386,37 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
+			"vp8",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 VP8/90000",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 max-fr=123;max-fs=456",
+					},
+				},
+			},
+			&TrackVP8{
+				PayloadType: 96,
+				MaxFR: func() *int {
+					v := 123
+					return &v
+				}(),
+				MaxFS: func() *int {
+					v := 456
+					return &v
+				}(),
+			},
+		},
+		{
 			"vp9",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{

@@ -75,6 +75,9 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 			case rtpmapPart1 == "H265/90000":
 				return newTrackH265FromMediaDescription(control, payloadType, md)
 
+			case rtpmapPart1 == "VP8/90000":
+				return newTrackVP8FromMediaDescription(control, payloadType, md)
+
 			case rtpmapPart1 == "VP9/90000":
 				return newTrackVP9FromMediaDescription(control, payloadType, md)
 			}
