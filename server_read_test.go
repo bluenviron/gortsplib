@@ -347,7 +347,7 @@ func TestServerRead(t *testing.T) {
 						}, nil
 					},
 					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
-						// skip multicast loopback
+						// ignore multicast loopback
 						if transport == "multicast" && atomic.AddUint64(&counter, 1) <= 1 {
 							return
 						}

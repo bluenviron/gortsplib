@@ -1664,9 +1664,11 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		return nil, err
 	}
 
-	// open the firewall by sending packets to the counterpart.
+	// open the firewall by sending test packets to the counterpart.
 	// do this before sending the request.
-	if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
+	// don't do this with multicast, otherwise the RTP packet is going to be broadcasted
+	// to all listeners, including us, messing up the stream.
+	if *c.effectiveTransport == TransportUDP {
 		for _, ct := range c.tracks {
 			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
 			ct.udpRTPListener.write(byts)

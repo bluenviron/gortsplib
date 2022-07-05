@@ -987,7 +987,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			go ss.runWriter()
 
 			for trackID, st := range ss.setuppedTracks {
-				// open the firewall by sending packets to the counterpart
+				// open the firewall by sending test packets to the counterpart.
 				ss.WritePacketRTP(trackID, &rtp.Packet{Header: rtp.Header{Version: 2}})
 				ss.WritePacketRTCP(trackID, &rtcp.ReceiverReport{})
 
