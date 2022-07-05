@@ -30,6 +30,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 	"github.com/aler9/gortsplib/pkg/rtpcleaner"
+	"github.com/aler9/gortsplib/pkg/rtpreorderer"
 	"github.com/aler9/gortsplib/pkg/sdp"
 	"github.com/aler9/gortsplib/pkg/url"
 )
@@ -93,6 +94,7 @@ type clientTrack struct {
 	// play
 	udpRTPPacketBuffer *rtpPacketMultiBuffer
 	udpRTCPReceiver    *rtcpreceiver.RTCPReceiver
+	reorderer          *rtpreorderer.Reorderer
 	cleaner            *rtpcleaner.Cleaner
 
 	// record
@@ -717,8 +719,11 @@ func (c *Client) playRecordStart() {
 
 	if c.state == clientStatePlay {
 		for _, ct := range c.tracks {
+			if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
+				ct.reorderer = rtpreorderer.New()
+			}
 			_, isH264 := ct.track.(*TrackH264)
-			ct.cleaner = rtpcleaner.NewCleaner(isH264, *c.effectiveTransport == TransportTCP)
+			ct.cleaner = rtpcleaner.New(isH264, *c.effectiveTransport == TransportTCP)
 		}
 
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
@@ -817,7 +822,7 @@ func (c *Client) runReader() {
 							return err
 						}
 
-						out, err := track.cleaner.Clear(pkt)
+						out, err := track.cleaner.Process(pkt)
 						if err != nil {
 							return err
 						}
@@ -944,6 +949,7 @@ func (c *Client) playRecordStop(isClosing bool) {
 
 	for _, ct := range c.tracks {
 		ct.cleaner = nil
+		ct.reorderer = nil
 	}
 
 	// stop timers

@@ -35,8 +35,8 @@ type Cleaner struct {
 	h264Encoder *rtph264.Encoder
 }
 
-// NewCleaner allocates a Cleaner.
-func NewCleaner(isH264 bool, isTCP bool) *Cleaner {
+// New allocates a Cleaner.
+func New(isH264 bool, isTCP bool) *Cleaner {
 	p := &Cleaner{
 		isH264: isH264,
 		isTCP:  isTCP,
@@ -120,8 +120,8 @@ func (p *Cleaner) processH264(pkt *rtp.Packet) ([]*Output, error) {
 	}}, nil
 }
 
-// Clear processes a RTP packet.
-func (p *Cleaner) Clear(pkt *rtp.Packet) ([]*Output, error) {
+// Process processes a RTP packet.
+func (p *Cleaner) Process(pkt *rtp.Packet) ([]*Output, error) {
 	// remove padding
 	pkt.Header.Padding = false
 	pkt.PaddingSize = 0

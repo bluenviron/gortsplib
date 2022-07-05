@@ -9,9 +9,9 @@ import (
 )
 
 func TestRemovePadding(t *testing.T) {
-	cleaner := NewCleaner(false, false)
+	cleaner := New(false, false)
 
-	out, err := cleaner.Clear(&rtp.Packet{
+	out, err := cleaner.Process(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,
@@ -38,9 +38,9 @@ func TestRemovePadding(t *testing.T) {
 }
 
 func TestGenericOversized(t *testing.T) {
-	cleaner := NewCleaner(false, true)
+	cleaner := New(false, true)
 
-	_, err := cleaner.Clear(&rtp.Packet{
+	_, err := cleaner.Process(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,
@@ -53,9 +53,9 @@ func TestGenericOversized(t *testing.T) {
 }
 
 func TestH264Oversized(t *testing.T) {
-	cleaner := NewCleaner(true, true)
+	cleaner := New(true, true)
 
-	out, err := cleaner.Clear(&rtp.Packet{
+	out, err := cleaner.Process(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,
@@ -70,7 +70,7 @@ func TestH264Oversized(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []*Output(nil), out)
 
-	out, err = cleaner.Clear(&rtp.Packet{
+	out, err = cleaner.Process(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,

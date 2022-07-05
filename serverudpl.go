@@ -198,26 +198,30 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 		return
 	}
 
-	now := time.Now()
-	atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
+	packets := clientData.track.reorderer.Process(pkt)
 
-	out, err := clientData.track.cleaner.Clear(pkt)
-	if err != nil {
-		return
-	}
-	out0 := out[0]
+	for _, pkt := range packets {
+		now := time.Now()
+		atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
 
-	clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, out0.PTSEqualsDTS)
+		out, err := clientData.track.cleaner.Process(pkt)
+		if err != nil {
+			return
+		}
+		out0 := out[0]
 
-	if h, ok := clientData.ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
-		h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-			Session:      clientData.ss,
-			TrackID:      clientData.track.id,
-			Packet:       out0.Packet,
-			PTSEqualsDTS: out0.PTSEqualsDTS,
-			H264NALUs:    out0.H264NALUs,
-			H264PTS:      out0.H264PTS,
-		})
+		clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, out0.PTSEqualsDTS)
+
+		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
+			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+				Session:      clientData.ss,
+				TrackID:      clientData.track.id,
+				Packet:       out0.Packet,
+				PTSEqualsDTS: out0.PTSEqualsDTS,
+				H264NALUs:    out0.H264NALUs,
+				H264PTS:      out0.H264PTS,
+			})
+		}
 	}
 }
 

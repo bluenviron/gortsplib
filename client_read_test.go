@@ -342,14 +342,12 @@ func TestClientRead(t *testing.T) {
 				// server -> client (RTP)
 				switch transport {
 				case "udp":
-					time.Sleep(1 * time.Second)
 					l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[0],
 					})
 
 				case "multicast":
-					time.Sleep(1 * time.Second)
 					l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("224.1.0.1"),
 						Port: 25000,
