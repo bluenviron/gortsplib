@@ -169,6 +169,9 @@ func (s *Server) Start() error {
 	if s.WriteBufferCount == 0 {
 		s.WriteBufferCount = 256
 	}
+	if (s.WriteBufferCount & (s.WriteBufferCount - 1)) != 0 {
+		return fmt.Errorf("WriteBufferCount must be a power of two")
+	}
 
 	// system functions
 	if s.Listen == nil {

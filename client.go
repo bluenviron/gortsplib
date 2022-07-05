@@ -318,6 +318,9 @@ func (c *Client) Start(scheme string, host string) error {
 	if c.WriteBufferCount == 0 {
 		c.WriteBufferCount = 256
 	}
+	if (c.WriteBufferCount & (c.WriteBufferCount - 1)) != 0 {
+		return fmt.Errorf("WriteBufferCount must be a power of two")
+	}
 	if c.UserAgent == "" {
 		c.UserAgent = "gortsplib"
 	}
@@ -699,9 +702,9 @@ func (c *Client) playRecordStart() {
 		// when reading, writeBuffer is only used to send RTCP receiver reports,
 		// that are much smaller than RTP packets and are sent at a fixed interval.
 		// decrease RAM consumption by allocating less buffers.
-		c.writeBuffer = ringbuffer.New(8)
+		c.writeBuffer, _ = ringbuffer.New(8)
 	} else {
-		c.writeBuffer = ringbuffer.New(uint64(c.WriteBufferCount))
+		c.writeBuffer, _ = ringbuffer.New(uint64(c.WriteBufferCount))
 	}
 	c.writerRunning = true
 	c.writerDone = make(chan struct{})

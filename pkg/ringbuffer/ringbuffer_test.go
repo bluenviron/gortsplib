@@ -8,8 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCreateError(t *testing.T) {
+	_, err := New(1000)
+	require.EqualError(t, err, "size must be a power of two")
+}
+
 func TestPushBeforePull(t *testing.T) {
-	r := New(1024)
+	r, err := New(1024)
+	require.NoError(t, err)
 	defer r.Close()
 
 	data := bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 1024/4)
@@ -21,7 +27,8 @@ func TestPushBeforePull(t *testing.T) {
 }
 
 func TestPullBeforePush(t *testing.T) {
-	r := New(1024)
+	r, err := New(1024)
+	require.NoError(t, err)
 	defer r.Close()
 
 	data := bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 1024/4)
@@ -41,7 +48,8 @@ func TestPullBeforePush(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	r := New(1024)
+	r, err := New(1024)
+	require.NoError(t, err)
 
 	done := make(chan struct{})
 	go func() {
@@ -68,7 +76,7 @@ func TestClose(t *testing.T) {
 }
 
 func BenchmarkPushPullContinuous(b *testing.B) {
-	r := New(1024 * 8)
+	r, _ := New(1024 * 8)
 	defer r.Close()
 
 	data := make([]byte, 1024)
@@ -91,7 +99,7 @@ func BenchmarkPushPullContinuous(b *testing.B) {
 }
 
 func BenchmarkPushPullPaused5(b *testing.B) {
-	r := New(128)
+	r, _ := New(128)
 	defer r.Close()
 
 	data := make([]byte, 1024)
@@ -115,7 +123,7 @@ func BenchmarkPushPullPaused5(b *testing.B) {
 }
 
 func BenchmarkPushPullPaused10(b *testing.B) {
-	r := New(1024 * 8)
+	r, _ := New(1024 * 8)
 	defer r.Close()
 
 	data := make([]byte, 1024)
