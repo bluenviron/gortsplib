@@ -19,6 +19,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtpcleaner"
+	"github.com/aler9/gortsplib/pkg/rtpreorderer"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -151,6 +152,7 @@ type ServerSessionSetuppedTrack struct {
 
 	// publish
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver
+	reorderer       *rtpreorderer.Reorderer
 	cleaner         *rtpcleaner.Cleaner
 }
 
@@ -974,8 +976,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		ss.state = ServerSessionStateRecord
 
 		for trackID, st := range ss.setuppedTracks {
+			if *ss.setuppedTransport == TransportUDP {
+				st.reorderer = rtpreorderer.New()
+			}
 			_, isH264 := ss.announcedTracks[trackID].(*TrackH264)
-			st.cleaner = rtpcleaner.NewCleaner(isH264, *ss.setuppedTransport == TransportTCP)
+			st.cleaner = rtpcleaner.New(isH264, *ss.setuppedTransport == TransportTCP)
 		}
 
 		switch *ss.setuppedTransport {
@@ -1100,6 +1105,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 			for _, st := range ss.setuppedTracks {
 				st.cleaner = nil
+				st.reorderer = nil
 			}
 
 			ss.state = ServerSessionStatePreRecord
