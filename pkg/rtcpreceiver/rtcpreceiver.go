@@ -151,49 +151,45 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqual
 	} else {
 		diff := int32(pkt.Header.SequenceNumber) - int32(*rr.lastSequenceNumber)
 
-		// following packet or following packet after an overflow
-		if diff > 0 || diff < -0x0FFF {
-			// overflow
-			if diff < -0x0FFF {
-				rr.sequenceNumberCycles++
+		// overflow
+		if diff < -0x0FFF {
+			rr.sequenceNumberCycles++
+		}
+
+		// detect lost packets
+		if pkt.Header.SequenceNumber != (*rr.lastSequenceNumber + 1) {
+			rr.totalLost += uint32(uint16(diff) - 1)
+			rr.totalLostSinceReport += uint32(uint16(diff) - 1)
+
+			// allow up to 24 bits
+			if rr.totalLost > 0xFFFFFF {
+				rr.totalLost = 0xFFFFFF
 			}
-
-			// detect lost packets
-			if pkt.Header.SequenceNumber != (*rr.lastSequenceNumber + 1) {
-				rr.totalLost += uint32(uint16(diff) - 1)
-				rr.totalLostSinceReport += uint32(uint16(diff) - 1)
-
-				// allow up to 24 bits
-				if rr.totalLost > 0xFFFFFF {
-					rr.totalLost = 0xFFFFFF
-				}
-				if rr.totalLostSinceReport > 0xFFFFFF {
-					rr.totalLostSinceReport = 0xFFFFFF
-				}
-			}
-
-			rr.totalSinceReport += uint32(uint16(diff))
-			v := pkt.Header.SequenceNumber
-			rr.lastSequenceNumber = &v
-
-			if ptsEqualsDTS {
-				if rr.lastRTPTimeRTP != nil {
-					// update jitter
-					// https://tools.ietf.org/html/rfc3550#page-39
-					D := ts.Sub(rr.lastRTPTimeTime).Seconds()*rr.clockRate -
-						(float64(pkt.Header.Timestamp) - float64(*rr.lastRTPTimeRTP))
-					if D < 0 {
-						D = -D
-					}
-					rr.jitter += (D - rr.jitter) / 16
-				}
-
-				v := pkt.Header.Timestamp
-				rr.lastRTPTimeRTP = &v
-				rr.lastRTPTimeTime = ts
+			if rr.totalLostSinceReport > 0xFFFFFF {
+				rr.totalLostSinceReport = 0xFFFFFF
 			}
 		}
-		// ignore invalid packets (diff = 0) or reordered packets (diff < 0)
+
+		rr.totalSinceReport += uint32(uint16(diff))
+		v := pkt.Header.SequenceNumber
+		rr.lastSequenceNumber = &v
+
+		if ptsEqualsDTS {
+			if rr.lastRTPTimeRTP != nil {
+				// update jitter
+				// https://tools.ietf.org/html/rfc3550#page-39
+				D := ts.Sub(rr.lastRTPTimeTime).Seconds()*rr.clockRate -
+					(float64(pkt.Header.Timestamp) - float64(*rr.lastRTPTimeRTP))
+				if D < 0 {
+					D = -D
+				}
+				rr.jitter += (D - rr.jitter) / 16
+			}
+
+			v := pkt.Header.Timestamp
+			rr.lastRTPTimeRTP = &v
+			rr.lastRTPTimeTime = ts
+		}
 	}
 }
 
