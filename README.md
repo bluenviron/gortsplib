@@ -34,7 +34,7 @@ Features:
   * Write streams to clients with the UDP, UDP-multicast or TCP transport protocol
   * Write streams to clients encrypted with TLS
   * Read streams from clients with the UDP or TCP transport protocol
-  * Write streams to clients encrypted with TLS
+  * Read streams from clients encrypted with TLS
   * Provide SSRC, RTP-Info to clients automatically
   * Generate RTCP receiver reports automatically
 * Utilities
