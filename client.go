@@ -951,7 +951,7 @@ func (c *Client) connOpen() error {
 		if c.scheme == "rtsp" {
 			c.host = net.JoinHostPort(c.host, "554")
 		} else { // rtsps
-			c.host = net.JoinHostPort(c.host, "8322")
+			c.host = net.JoinHostPort(c.host, "322")
 		}
 	}
 
