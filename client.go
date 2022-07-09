@@ -977,8 +977,14 @@ func (c *Client) connOpen() error {
 		return fmt.Errorf("RTSPS can be used only with TCP")
 	}
 
-	if !strings.Contains(c.host, ":") {
-		c.host += ":554"
+	// add default port
+	_, _, err := net.SplitHostPort(c.host)
+	if err != nil {
+		if c.scheme == "rtsp" {
+			c.host = net.JoinHostPort(c.host, "554")
+		} else { // rtsps
+			c.host = net.JoinHostPort(c.host, "8322")
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(c.ctx, c.ReadTimeout)
