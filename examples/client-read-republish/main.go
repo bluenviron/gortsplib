@@ -49,7 +49,7 @@ func main() {
 		publisher.WritePacketRTP(ctx.TrackID, ctx.Packet, ctx.PTSEqualsDTS)
 	}
 
-	// start reading tracks
+	// setup and read all tracks
 	err = reader.SetupAndPlay(tracks, baseURL)
 	if err != nil {
 		panic(err)

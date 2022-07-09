@@ -68,7 +68,7 @@ func main() {
 		}
 	}
 
-	// start reading tracks
+	// setup and read all tracks
 	err = c.SetupAndPlay(tracks, baseURL)
 	if err != nil {
 		panic(err)

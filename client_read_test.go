@@ -22,6 +22,32 @@ import (
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
+func startReading(c *Client, ur string) error {
+	u, err := url.Parse(ur)
+	if err != nil {
+		return err
+	}
+
+	err = c.Start(u.Scheme, u.Host)
+	if err != nil {
+		return err
+	}
+
+	tracks, baseURL, _, err := c.Describe(u)
+	if err != nil {
+		c.Close()
+		return err
+	}
+
+	err = c.SetupAndPlay(tracks, baseURL)
+	if err != nil {
+		c.Close()
+		return err
+	}
+
+	return nil
+}
+
 func TestClientReadTracks(t *testing.T) {
 	track1 := &TrackH264{
 		PayloadType: 96,
@@ -158,7 +184,7 @@ func TestClientReadTracks(t *testing.T) {
 
 	c := Client{}
 
-	err = c.StartReading("rtsp://localhost:8554/teststream")
+	err = startReading(&c, "rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -403,7 +429,7 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			c := &Client{
+			c := Client{
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
@@ -432,7 +458,7 @@ func TestClientRead(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err = c.StartReading(scheme + "://" + listenIP + ":8554/test/stream?param=value")
+			err = startReading(&c, scheme+"://"+listenIP+":8554/test/stream?param=value")
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -565,7 +591,7 @@ func TestClientReadPartial(t *testing.T) {
 
 	packetRecv := make(chan struct{})
 
-	c := &Client{
+	c := Client{
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
@@ -728,7 +754,7 @@ func TestClientReadContentBase(t *testing.T) {
 
 			c := Client{}
 
-			err = c.StartReading("rtsp://localhost:8554/teststream")
+			err = startReading(&c, "rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 			c.Close()
 		})
@@ -883,7 +909,7 @@ func TestClientReadAnyPort(t *testing.T) {
 
 			packetRecv := make(chan struct{})
 
-			c := &Client{
+			c := Client{
 				AnyPortEnable: true,
 				OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
 					require.Equal(t, &testRTPPacket, ctx.Packet)
@@ -891,7 +917,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				},
 			}
 
-			err = c.StartReading("rtsp://localhost:8554/teststream")
+			err = startReading(&c, "rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1023,7 +1049,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			},
 		}
 
-		err = c.StartReading("rtsp://localhost:8554/teststream")
+		err = startReading(&c, "rtsp://localhost:8554/teststream")
 		require.NoError(t, err)
 		defer c.Close()
 
@@ -1266,14 +1292,14 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 
 		packetRecv := make(chan struct{})
 
-		c := &Client{
+		c := Client{
 			ReadTimeout: 1 * time.Second,
 			OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
 				close(packetRecv)
 			},
 		}
 
-		err = c.StartReading("rtsp://myuser:mypass@localhost:8554/teststream")
+		err = startReading(&c, "rtsp://myuser:mypass@localhost:8554/teststream")
 		require.NoError(t, err)
 		defer c.Close()
 
@@ -1397,7 +1423,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 
 	packetRecv := make(chan struct{})
 
-	c := &Client{
+	c := Client{
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
@@ -1408,7 +1434,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		},
 	}
 
-	err = c.StartReading("rtsp://localhost:8554/teststream")
+	err = startReading(&c, "rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -1606,7 +1632,7 @@ func TestClientReadRedirect(t *testing.T) {
 			if withCredentials {
 				ru = "rtsp://testusr:testpwd@localhost:8554/path1"
 			}
-			err = c.StartReading(ru)
+			err = startReading(&c, ru)
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1806,7 +1832,7 @@ func TestClientReadPause(t *testing.T) {
 			firstFrame := int32(0)
 			packetRecv := make(chan struct{})
 
-			c := &Client{
+			c := Client{
 				Transport: func() *Transport {
 					if transport == "udp" {
 						v := TransportUDP
@@ -1822,7 +1848,7 @@ func TestClientReadPause(t *testing.T) {
 				},
 			}
 
-			err = c.StartReading("rtsp://localhost:8554/teststream")
+			err = startReading(&c, "rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -2013,11 +2039,11 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	c := &Client{
+	c := Client{
 		udpReceiverReportPeriod: 1 * time.Second,
 	}
 
-	err = c.StartReading("rtsp://localhost:8554/teststream")
+	err = startReading(&c, "rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -2154,7 +2180,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			c := &Client{
+			c := Client{
 				Transport: func() *Transport {
 					switch transport {
 					case "udp":
@@ -2171,7 +2197,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				ReadTimeout:           1 * time.Second,
 			}
 
-			err = c.StartReading("rtsp://localhost:8554/teststream")
+			err = startReading(&c, "rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
 			err = c.Wait()
@@ -2306,7 +2332,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 
 	recv := make(chan struct{})
 
-	c := &Client{
+	c := Client{
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
@@ -2316,7 +2342,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		},
 	}
 
-	err = c.StartReading("rtsp://localhost:8554/teststream")
+	err = startReading(&c, "rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -2463,7 +2489,7 @@ func TestClientReadSeek(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	c := &Client{
+	c := Client{
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
@@ -2623,9 +2649,9 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		close(keepaliveOk)
 	}()
 
-	c := &Client{}
+	c := Client{}
 
-	err = c.StartReading("rtsp://localhost:8554/teststream")
+	err = startReading(&c, "rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -2763,7 +2789,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	c := &Client{
+	c := Client{
 		TLSConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
@@ -2779,7 +2805,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		close(packetRecv)
 	}
 
-	err = c.StartReading("rtsp://localhost:8554/test/stream?param=value")
+	err = startReading(&c, "rtsp://localhost:8554/test/stream?param=value")
 	require.NoError(t, err)
 	defer c.Close()
 

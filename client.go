@@ -381,38 +381,6 @@ func (c *Client) Start(scheme string, host string) error {
 	return nil
 }
 
-// StartReading connects to the address and starts reading all tracks.
-func (c *Client) StartReading(address string) error {
-	u, err := url.Parse(address)
-	if err != nil {
-		return err
-	}
-
-	err = c.Start(u.Scheme, u.Host)
-	if err != nil {
-		return err
-	}
-
-	tracks, baseURL, _, err := c.Describe(u)
-	if err != nil {
-		c.Close()
-		return err
-	}
-
-	return c.SetupAndPlay(tracks, baseURL)
-}
-
-// StartReadingAndWait connects to the address, starts reading all tracks and waits
-// until a read error.
-func (c *Client) StartReadingAndWait(address string) error {
-	err := c.StartReading(address)
-	if err != nil {
-		return err
-	}
-
-	return c.Wait()
-}
-
 // StartPublishing connects to the address and starts publishing the tracks.
 func (c *Client) StartPublishing(address string, tracks Tracks) error {
 	u, err := url.Parse(address)

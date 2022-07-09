@@ -218,7 +218,7 @@ func TestClientPublishSerial(t *testing.T) {
 
 			recvDone := make(chan struct{})
 
-			c := &Client{
+			c := Client{
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
@@ -380,7 +380,7 @@ func TestClientPublishParallel(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			c := &Client{
+			c := Client{
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
@@ -549,7 +549,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			c := &Client{
+			c := Client{
 				Transport: func() *Transport {
 					if transport == "udp" {
 						v := TransportUDP
@@ -688,7 +688,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			c := &Client{
+			c := Client{
 				Transport: func() *Transport {
 					if transport == "udp" {
 						v := TransportUDP
@@ -986,7 +986,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	c := &Client{
+	c := Client{
 		udpSenderReportPeriod: 1 * time.Second,
 	}
 
@@ -1122,7 +1122,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 
 	rtcpReceived := make(chan struct{})
 
-	c := &Client{
+	c := Client{
 		Transport: func() *Transport {
 			v := TransportTCP
 			return &v
