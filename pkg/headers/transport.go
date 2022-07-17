@@ -1,7 +1,6 @@
 package headers
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -223,7 +222,7 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 			var ssrc [4]byte
 			copy(ssrc[4-len(tmp):], tmp)
 
-			v := binary.BigEndian.Uint32(ssrc[:])
+			v := uint32(ssrc[0])<<24 | uint32(ssrc[1])<<16 | uint32(ssrc[2])<<8 | uint32(ssrc[3])
 			h.SSRC = &v
 
 		case "mode":
@@ -310,7 +309,10 @@ func (h Transport) Marshal() base.HeaderValue {
 
 	if h.SSRC != nil {
 		tmp := make([]byte, 4)
-		binary.BigEndian.PutUint32(tmp, *h.SSRC)
+		tmp[0] = byte(*h.SSRC >> 24)
+		tmp[1] = byte(*h.SSRC >> 16)
+		tmp[2] = byte(*h.SSRC >> 8)
+		tmp[3] = byte(*h.SSRC)
 		rets = append(rets, "ssrc="+strings.ToUpper(hex.EncodeToString(tmp)))
 	}
 

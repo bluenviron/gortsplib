@@ -1,7 +1,6 @@
 package h264
 
 import (
-	"encoding/binary"
 	"fmt"
 )
 
@@ -16,7 +15,7 @@ func AVCCUnmarshal(buf []byte) ([][]byte, error) {
 			return nil, fmt.Errorf("invalid length")
 		}
 
-		le := int(binary.BigEndian.Uint32(buf[pos:]))
+		le := int(uint32(buf[pos])<<24 | uint32(buf[pos+1])<<16 | uint32(buf[pos+2])<<8 | uint32(buf[pos+3]))
 		pos += 4
 
 		if (bl - pos) < le {
@@ -52,7 +51,11 @@ func AVCCMarshal(nalus [][]byte) ([]byte, error) {
 	pos := 0
 
 	for _, nalu := range nalus {
-		binary.BigEndian.PutUint32(buf[pos:], uint32(len(nalu)))
+		naluLen := len(nalu)
+		buf[pos] = byte(naluLen >> 24)
+		buf[pos+1] = byte(naluLen >> 16)
+		buf[pos+2] = byte(naluLen >> 8)
+		buf[pos+3] = byte(naluLen)
 		pos += 4
 
 		pos += copy(buf[pos:], nalu)

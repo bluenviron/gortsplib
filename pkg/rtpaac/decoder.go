@@ -1,7 +1,6 @@
 package rtpaac
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
@@ -54,7 +53,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	// AU-headers-length (16 bits)
-	headersLen := int(binary.BigEndian.Uint16(pkt.Payload))
+	headersLen := int(uint16(pkt.Payload[0])<<8 | uint16(pkt.Payload[1]))
 	if headersLen == 0 {
 		return nil, 0, fmt.Errorf("invalid AU-headers-length")
 	}

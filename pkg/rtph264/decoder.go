@@ -1,7 +1,6 @@
 package rtph264
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
@@ -57,7 +56,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 					return nil, 0, fmt.Errorf("invalid STAP-A packet (invalid size)")
 				}
 
-				size := binary.BigEndian.Uint16(payload)
+				size := uint16(payload[0])<<8 | uint16(payload[1])
 				payload = payload[2:]
 
 				// avoid final padding

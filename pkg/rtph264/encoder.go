@@ -2,7 +2,6 @@ package rtph264
 
 import (
 	"crypto/rand"
-	"encoding/binary"
 	"time"
 
 	"github.com/pion/rtp"
@@ -212,7 +211,8 @@ func (e *Encoder) writeAggregated(nalus [][]byte, pts time.Duration, marker bool
 	for _, nalu := range nalus {
 		// size
 		naluLen := len(nalu)
-		binary.BigEndian.PutUint16(payload[pos:], uint16(naluLen))
+		payload[pos] = uint8(naluLen >> 8)
+		payload[pos+1] = uint8(naluLen)
 		pos += 2
 
 		// nalu

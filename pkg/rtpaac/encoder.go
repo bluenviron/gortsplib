@@ -2,7 +2,6 @@ package rtpaac
 
 import (
 	"crypto/rand"
-	"encoding/binary"
 	"time"
 
 	"github.com/pion/rtp"
@@ -157,7 +156,8 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 		byts := make([]byte, 2+auHeadersLenBytes+le)
 
 		// AU-headers-length
-		binary.BigEndian.PutUint16(byts, uint16(auHeadersLen))
+		byts[0] = byte(auHeadersLen >> 8)
+		byts[1] = byte(auHeadersLen)
 
 		// AU-headers
 		pos := 0
@@ -244,7 +244,8 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([]*rtp.
 	}
 
 	// AU-headers-length
-	binary.BigEndian.PutUint16(payload, uint16(written))
+	payload[0] = byte(written >> 8)
+	payload[1] = byte(written)
 
 	// AUs
 	for _, au := range aus {

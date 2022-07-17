@@ -2,7 +2,6 @@ package base
 
 import (
 	"bufio"
-	"encoding/binary"
 	"fmt"
 	"io"
 )
@@ -89,7 +88,7 @@ func (f *InterleavedFrame) Read(maxPayloadSize int, br *bufio.Reader) error {
 		return fmt.Errorf("invalid magic byte (0x%.2x)", header[0])
 	}
 
-	payloadLen := int(binary.BigEndian.Uint16(header[2:]))
+	payloadLen := int(uint16(header[2])<<8 | uint16(header[3]))
 	if payloadLen > maxPayloadSize {
 		return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
 			payloadLen, maxPayloadSize)
@@ -116,7 +115,9 @@ func (f InterleavedFrame) MarshalTo(buf []byte) (int, error) {
 
 	pos += copy(buf[pos:], []byte{0x24, byte(f.Channel)})
 
-	binary.BigEndian.PutUint16(buf[pos:], uint16(len(f.Payload)))
+	payloadLen := len(f.Payload)
+	buf[pos] = byte(payloadLen >> 8)
+	buf[pos+1] = byte(payloadLen)
 	pos += 2
 
 	pos += copy(buf[pos:], f.Payload)
