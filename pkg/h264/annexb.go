@@ -1,6 +1,7 @@
 package h264
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -26,21 +27,31 @@ outer:
 		return nil, fmt.Errorf("initial delimiter not found")
 	}
 
-	var ret [][]byte
 	start := zeroCount + 1
-	zeroCount = 0
+
+	var n int
+	if zeroCount == 2 {
+		n = bytes.Count(byts[start:], []byte{0x00, 0x00, 0x01})
+	} else {
+		n = bytes.Count(byts[start:], []byte{0x00, 0x00, 0x00, 0x01})
+	}
+
+	ret := make([][]byte, n+1)
+	pos := 0
+
+	curZeroCount := 0
 	delimStart := 0
 
 	for i := start; i < bl; i++ {
 		switch byts[i] {
 		case 0:
-			if zeroCount == 0 {
+			if curZeroCount == 0 {
 				delimStart = i
 			}
-			zeroCount++
+			curZeroCount++
 
 		case 1:
-			if zeroCount == 2 || zeroCount == 3 {
+			if curZeroCount == zeroCount {
 				if (delimStart - start) > MaxNALUSize {
 					return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", delimStart-start, MaxNALUSize)
 				}
@@ -50,13 +61,14 @@ outer:
 					return nil, fmt.Errorf("empty NALU")
 				}
 
-				ret = append(ret, nalu)
+				ret[pos] = nalu
+				pos++
 				start = i + 1
 			}
-			zeroCount = 0
+			curZeroCount = 0
 
 		default:
-			zeroCount = 0
+			curZeroCount = 0
 		}
 	}
 
@@ -68,7 +80,7 @@ outer:
 	if len(nalu) == 0 {
 		return nil, fmt.Errorf("empty NALU")
 	}
-	ret = append(ret, nalu)
+	ret[pos] = nalu
 
 	return ret, nil
 }
