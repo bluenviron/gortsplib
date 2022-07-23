@@ -68,17 +68,20 @@ func (p *Cleaner) processH264(pkt *rtp.Packet) ([]*Output, error) {
 	// decode
 	nalus, pts, err := p.h264Decoder.DecodeUntilMarker(pkt)
 	if err != nil {
+		// ignore decode errors, except for the case in which the
+		// encoder is active
+		if p.h264Encoder == nil {
+			return []*Output{{
+				Packet:       pkt,
+				PTSEqualsDTS: false,
+			}}, nil
+		}
+
 		if err == rtph264.ErrNonStartingPacketAndNoPrevious ||
 			err == rtph264.ErrMorePacketsNeeded {
-			if p.h264Encoder == nil {
-				return []*Output{{
-					Packet:       pkt,
-					PTSEqualsDTS: false,
-				}}, nil
-			}
-
 			return nil, nil
 		}
+
 		return nil, err
 	}
 

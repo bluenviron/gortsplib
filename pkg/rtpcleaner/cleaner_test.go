@@ -141,3 +141,29 @@ func TestH264Oversized(t *testing.T) {
 		},
 	}, out)
 }
+
+func TestH264ProcessEvenIfInvalid(t *testing.T) {
+	cleaner := New(true, true)
+
+	out, err := cleaner.Process(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			PayloadType:    96,
+			Marker:         false,
+			SequenceNumber: 34572,
+		},
+		Payload: []byte{25},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []*Output{{
+		Packet: &rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				PayloadType:    96,
+				Marker:         false,
+				SequenceNumber: 34572,
+			},
+			Payload: []byte{25},
+		},
+	}}, out)
+}
