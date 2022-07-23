@@ -155,21 +155,6 @@ func TestReorder(t *testing.T) {
 				},
 			},
 		},
-		{
-			// buffer is full
-			&rtp.Packet{
-				Header: rtp.Header{
-					SequenceNumber: 67,
-				},
-			},
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						SequenceNumber: 67,
-					},
-				},
-			},
-		},
 	}
 
 	r := New()
@@ -179,4 +164,51 @@ func TestReorder(t *testing.T) {
 		out := r.Process(entry.in)
 		require.Equal(t, entry.out, out)
 	}
+}
+
+func TestBufferIsFull(t *testing.T) {
+	r := New()
+	r.absPos = 25
+
+	out := r.Process(&rtp.Packet{
+		Header: rtp.Header{
+			SequenceNumber: 1,
+		},
+	})
+	require.Equal(t, []*rtp.Packet{{
+		Header: rtp.Header{
+			SequenceNumber: 1,
+		},
+	}}, out)
+
+	var expected []*rtp.Packet
+
+	for i := uint16(0); i < 63; i++ {
+		out := r.Process(&rtp.Packet{
+			Header: rtp.Header{
+				SequenceNumber: 3 + i,
+			},
+		})
+		require.Equal(t, []*rtp.Packet(nil), out)
+
+		expected = append(expected, &rtp.Packet{
+			Header: rtp.Header{
+				SequenceNumber: 3 + i,
+			},
+		})
+	}
+
+	out = r.Process(&rtp.Packet{
+		Header: rtp.Header{
+			SequenceNumber: 3 + 64,
+		},
+	})
+
+	expected = append(expected, &rtp.Packet{
+		Header: rtp.Header{
+			SequenceNumber: 3 + 64,
+		},
+	})
+
+	require.Equal(t, expected, out)
 }
