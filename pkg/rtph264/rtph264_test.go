@@ -418,6 +418,35 @@ func TestDecodeSTAPAWithPadding(t *testing.T) {
 	}, nalus)
 }
 
+func TestDecodeAnnexB(t *testing.T) {
+	d := &Decoder{}
+	d.Init()
+
+	for i := 0; i < 2; i++ {
+		nalus, _, err := d.Decode(&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         true,
+				PayloadType:    96,
+				SequenceNumber: 17647,
+				Timestamp:      2289531307,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: mergeBytes(
+				[]byte{0x00, 0x00, 0x00, 0x01},
+				[]byte{0x01, 0x02, 0x03, 0x04},
+				[]byte{0x00, 0x00, 0x00, 0x01},
+				[]byte{0x01, 0x02, 0x03, 0x04},
+			),
+		})
+		require.NoError(t, err)
+		require.Equal(t, [][]byte{
+			{0x01, 0x02, 0x03, 0x04},
+			{0x01, 0x02, 0x03, 0x04},
+		}, nalus)
+	}
+}
+
 func TestDecodeErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string

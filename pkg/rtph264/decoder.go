@@ -1,6 +1,7 @@
 package rtph264
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"time"
@@ -28,6 +29,8 @@ type Decoder struct {
 	fragmentedMode      bool
 	fragmentedParts     [][]byte
 	fragmentedSize      int
+	firstNALUParsed     bool
+	annexBMode          bool
 
 	// for DecodeUntilMarker()
 	naluBuffer [][]byte
@@ -46,6 +49,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		}
 
 		typ := naluType(pkt.Payload[0] & 0x1F)
+
 		switch typ {
 		case naluTypeSTAPA:
 			var nalus [][]byte
@@ -77,6 +81,13 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			}
 
 			d.firstPacketReceived = true
+
+			var err error
+			nalus, err = d.finalize(nalus)
+			if err != nil {
+				return nil, 0, err
+			}
+
 			return nalus, d.timeDecoder.Decode(pkt.Timestamp), nil
 
 		case naluTypeFUA: // first packet of a fragmented NALU
@@ -112,8 +123,17 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, fmt.Errorf("packet type not supported (%v)", typ)
 		}
 
+		nalus := [][]byte{pkt.Payload}
+
 		d.firstPacketReceived = true
-		return [][]byte{pkt.Payload}, d.timeDecoder.Decode(pkt.Timestamp), nil
+
+		var err error
+		nalus, err = d.finalize(nalus)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return nalus, d.timeDecoder.Decode(pkt.Timestamp), nil
 	}
 
 	// we are decoding a fragmented NALU
@@ -157,10 +177,18 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	for _, p := range d.fragmentedParts {
 		n += copy(ret[n:], p)
 	}
+	nalus := [][]byte{ret}
 
 	d.fragmentedParts = d.fragmentedParts[:0]
 	d.fragmentedMode = false
-	return [][]byte{ret}, d.timeDecoder.Decode(pkt.Timestamp), nil
+
+	var err error
+	nalus, err = d.finalize(nalus)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return nalus, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
 // DecodeUntilMarker decodes NALUs from a RTP/H264 packet and puts them in a buffer.
@@ -187,4 +215,40 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	d.naluBuffer = d.naluBuffer[:0]
 
 	return ret, pts, nil
+}
+
+func (d *Decoder) finalize(nalus [][]byte) ([][]byte, error) {
+	// some cameras / servers wrap NALUs into Annex-B
+	if !d.firstNALUParsed {
+		d.firstNALUParsed = true
+
+		if len(nalus) == 1 {
+			nalu := nalus[0]
+
+			i := bytes.Index(nalu, []byte{0x00, 0x00, 0x00, 0x01})
+			if i >= 0 {
+				d.annexBMode = true
+
+				if !bytes.HasPrefix(nalu, []byte{0x00, 0x00, 0x00, 0x01}) {
+					nalu = append([]byte{0x00, 0x00, 0x00, 0x01}, nalu...)
+				}
+
+				return h264.AnnexBUnmarshal(nalu)
+			}
+		}
+	} else if d.annexBMode {
+		if len(nalus) != 1 {
+			return nil, fmt.Errorf("multiple NALUs in Annex-B mode are not supported")
+		}
+
+		nalu := nalus[0]
+
+		if !bytes.HasPrefix(nalu, []byte{0x00, 0x00, 0x00, 0x01}) {
+			nalu = append([]byte{0x00, 0x00, 0x00, 0x01}, nalu...)
+		}
+
+		return h264.AnnexBUnmarshal(nalu)
+	}
+
+	return nalus, nil
 }
