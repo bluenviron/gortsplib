@@ -14,31 +14,40 @@ Go &ge; 1.16 is required.
 Features:
 
 * Client
-  * Query servers about available streams
+  * Query servers about available streams and tracks
   * Read
     * Read streams from servers with the UDP, UDP-multicast or TCP transport protocol
-    * Read streams encrypted with TLS
-    * Switch protocol automatically (switch to TCP in case of server error or UDP timeout)
+    * Read TLS-encrypted streams (TCP only)
+    * Switch transport protocol automatically
     * Read only selected tracks of a stream
     * Pause or seek without disconnecting from the server
-    * Generate RTCP receiver reports automatically
+    * Generate RTCP receiver reports (UDP only)
+    * Reorder incoming RTP packets (UDP only)
+    * Clean up non-compliant streams (remove padding, re-encode RTP packets if they are too big)
   * Publish
     * Publish streams to servers with the UDP or TCP transport protocol
-    * Publish streams encrypted with TLS
-    * Switch protocol automatically (switch to TCP in case of server error)
+    * Publish TLS-encrypted streams (TCP only)
+    * Switch transport protocol automatically
     * Pause without disconnecting from the server
-    * Generate RTCP sender reports automatically
+    * Generate RTCP sender reports (UDP only)
 * Server
   * Handle requests from clients
   * Sessions and connections are independent
-  * Write streams to clients with the UDP, UDP-multicast or TCP transport protocol
-  * Write streams to clients encrypted with TLS
-  * Read streams from clients with the UDP or TCP transport protocol
-  * Read streams from clients encrypted with TLS
-  * Provide SSRC, RTP-Info to clients automatically
-  * Generate RTCP receiver reports automatically
+  * Publish
+    * Read streams from clients with the UDP or TCP transport protocol
+    * Read TLS-encrypted streams (TCP only)
+    * Generate RTCP receiver reports (UDP only)
+    * Reorder incoming RTP packets (UDP only)
+    * Clean up non-compliant streams (remove padding, re-encode RTP packets if they are too big)
+  * Read
+    * Write streams to clients with the UDP, UDP-multicast or TCP transport protocol
+    * Write TLS-encrypted streams
+    * Compute and provide SSRC, RTP-Info to clients
+    * Generate RTCP sender reports (UDP only)
 * Utilities
-  * Encode and decode RTSP primitives, RTP/H264, RTP/AAC, SDP
+  * Parse RTSP elements: requests, responses, SDP
+  * Parse H264 elements and formats: RTP/H264, Annex-B, AVCC, anti-competition, DTS
+  * Parse AAC elements and formats: RTP/AAC, ADTS, MPEG-4 audio configurations
 
 ## Table of contents
 
@@ -75,10 +84,10 @@ https://pkg.go.dev/github.com/aler9/gortsplib#pkg-index
 
 Related projects
 
-* https://github.com/aler9/rtsp-simple-server
-* https://github.com/pion/sdp (SDP library used internally)
-* https://github.com/pion/rtcp (RTCP library used internally)
-* https://github.com/pion/rtp (RTP library used internally)
+* rtsp-simple-server https://github.com/aler9/rtsp-simple-server
+* pion/sdp (SDP library used internally) https://github.com/pion/sdp
+* pion/rtp (RTP library used internally) https://github.com/pion/rtp
+* pion/rtcp (RTCP library used internally) https://github.com/pion/rtcp
 
 Standards
 
