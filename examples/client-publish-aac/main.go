@@ -35,7 +35,7 @@ func main() {
 	log.Println("stream connected")
 
 	// create an AAC track
-	track := &gortsplib.TrackAAC{
+	track := &gortsplib.TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
 			Type:         2,

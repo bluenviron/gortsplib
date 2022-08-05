@@ -148,10 +148,8 @@ func (c Config) marshalSize() int {
 		} else {
 			n += 4
 		}
-	} else {
-		if c.DependsOnCoreCoder {
-			n += 14
-		}
+	} else if c.DependsOnCoreCoder {
+		n += 14
 	}
 
 	ret := n / 8

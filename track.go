@@ -94,7 +94,7 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 				return newTrackMpegAudioFromMediaDescription(control)
 
 			case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
-				return newTrackAACFromMediaDescription(control, payloadType, md)
+				return newTrackMPEG4AudioFromMediaDescription(control, payloadType, md)
 
 			case strings.HasPrefix(rtpmapPart1, "opus/"):
 				return newTrackOpusFromMediaDescription(control, payloadType, rtpmapPart1, md)

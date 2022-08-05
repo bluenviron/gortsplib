@@ -9,8 +9,8 @@ import (
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 )
 
-func TestTrackAACClone(t *testing.T) {
-	track := &TrackAAC{
+func TestTrackMPEG4AudioClone(t *testing.T) {
+	track := &TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
 			Type:         2,
@@ -27,8 +27,8 @@ func TestTrackAACClone(t *testing.T) {
 	require.Equal(t, track, clone)
 }
 
-func TestTrackAACMediaDescription(t *testing.T) {
-	track := &TrackAAC{
+func TestTrackMPEG4AudioMediaDescription(t *testing.T) {
+	track := &TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
 			Type:         2,

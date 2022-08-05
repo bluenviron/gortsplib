@@ -55,7 +55,7 @@ func TestClientReadTracks(t *testing.T) {
 		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
 	}
 
-	track2 := &TrackAAC{
+	track2 := &TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
 			Type:         2,
@@ -67,7 +67,7 @@ func TestClientReadTracks(t *testing.T) {
 		IndexDeltaLength: 3,
 	}
 
-	track3 := &TrackAAC{
+	track3 := &TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
 			Type:         2,

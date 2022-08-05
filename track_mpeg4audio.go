@@ -11,8 +11,8 @@ import (
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 )
 
-// TrackAAC is an AAC track.
-type TrackAAC struct {
+// TrackMPEG4Audio is a MPEG-4 audio track.
+type TrackMPEG4Audio struct {
 	PayloadType      uint8
 	Config           *mpeg4audio.Config
 	SizeLength       int
@@ -22,11 +22,11 @@ type TrackAAC struct {
 	trackBase
 }
 
-func newTrackAACFromMediaDescription(
+func newTrackMPEG4AudioFromMediaDescription(
 	control string,
 	payloadType uint8,
 	md *psdp.MediaDescription,
-) (*TrackAAC, error) {
+) (*TrackMPEG4Audio, error) {
 	v, ok := md.Attribute("fmtp")
 	if !ok {
 		return nil, fmt.Errorf("fmtp attribute is missing")
@@ -37,7 +37,7 @@ func newTrackAACFromMediaDescription(
 		return nil, fmt.Errorf("invalid fmtp (%v)", v)
 	}
 
-	t := &TrackAAC{
+	t := &TrackMPEG4Audio{
 		PayloadType: payloadType,
 		trackBase: trackBase{
 			control: control,
@@ -104,12 +104,12 @@ func newTrackAACFromMediaDescription(
 }
 
 // ClockRate returns the track clock rate.
-func (t *TrackAAC) ClockRate() int {
+func (t *TrackMPEG4Audio) ClockRate() int {
 	return t.Config.SampleRate
 }
 
-func (t *TrackAAC) clone() Track {
-	return &TrackAAC{
+func (t *TrackMPEG4Audio) clone() Track {
+	return &TrackMPEG4Audio{
 		PayloadType:      t.PayloadType,
 		Config:           t.Config,
 		SizeLength:       t.SizeLength,
@@ -120,7 +120,7 @@ func (t *TrackAAC) clone() Track {
 }
 
 // MediaDescription returns the track media description in SDP format.
-func (t *TrackAAC) MediaDescription() *psdp.MediaDescription {
+func (t *TrackMPEG4Audio) MediaDescription() *psdp.MediaDescription {
 	enc, err := t.Config.Marshal()
 	if err != nil {
 		return nil

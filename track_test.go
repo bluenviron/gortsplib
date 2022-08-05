@@ -72,7 +72,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackAAC{
+			&TrackMPEG4Audio{
 				PayloadType: 96,
 				Config: &mpeg4audio.Config{
 					Type:         2,
@@ -103,7 +103,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackAAC{
+			&TrackMPEG4Audio{
 				PayloadType: 96,
 				Config: &mpeg4audio.Config{
 					Type:         2,
@@ -134,7 +134,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackAAC{
+			&TrackMPEG4Audio{
 				PayloadType: 96,
 				Config: &mpeg4audio.Config{
 					Type:         2,
@@ -169,7 +169,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackAAC{
+			&TrackMPEG4Audio{
 				PayloadType: 96,
 				Config: &mpeg4audio.Config{
 					Type:         2,

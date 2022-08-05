@@ -36,9 +36,9 @@ func main() {
 	}
 
 	// find the AAC track
-	aacTrack, aacTrackID := func() (*gortsplib.TrackAAC, int) {
+	aacTrack, aacTrackID := func() (*gortsplib.TrackMPEG4Audio, int) {
 		for i, track := range tracks {
-			if tt, ok := track.(*gortsplib.TrackAAC); ok {
+			if tt, ok := track.(*gortsplib.TrackMPEG4Audio); ok {
 				return tt, i
 			}
 		}
