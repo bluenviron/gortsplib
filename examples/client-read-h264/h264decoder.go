@@ -23,7 +23,6 @@ func frameLineSize(frame *C.AVFrame) *C.int {
 // h264Decoder is a wrapper around ffmpeg's H264 decoder.
 type h264Decoder struct {
 	codecCtx    *C.AVCodecContext
-	avPacket    C.AVPacket
 	srcFrame    *C.AVFrame
 	swsCtx      *C.struct_SwsContext
 	dstFrame    *C.AVFrame
@@ -54,13 +53,9 @@ func newH264Decoder() (*h264Decoder, error) {
 		return nil, fmt.Errorf("av_frame_alloc() failed")
 	}
 
-	avPacket := C.AVPacket{}
-	C.av_init_packet(&avPacket)
-
 	return &h264Decoder{
 		codecCtx: codecCtx,
 		srcFrame: srcFrame,
-		avPacket: avPacket,
 	}, nil
 }
 
@@ -82,10 +77,11 @@ func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
 	nalu = append([]uint8{0x00, 0x00, 0x00, 0x01}, []uint8(nalu)...)
 
 	// send frame to decoder
-	d.avPacket.data = (*C.uint8_t)(C.CBytes(nalu))
-	defer C.free(unsafe.Pointer(d.avPacket.data))
-	d.avPacket.size = C.int(len(nalu))
-	res := C.avcodec_send_packet(d.codecCtx, &d.avPacket)
+	var avPacket C.AVPacket
+	avPacket.data = (*C.uint8_t)(C.CBytes(nalu))
+	defer C.free(unsafe.Pointer(avPacket.data))
+	avPacket.size = C.int(len(nalu))
+	res := C.avcodec_send_packet(d.codecCtx, &avPacket)
 	if res < 0 {
 		return nil, nil
 	}
