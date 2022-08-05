@@ -15,10 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/ipv4"
 
-	"github.com/aler9/gortsplib/pkg/aac"
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -57,7 +57,7 @@ func TestClientReadTracks(t *testing.T) {
 
 	track2 := &TrackAAC{
 		PayloadType: 96,
-		Config: &aac.MPEG4AudioConfig{
+		Config: &mpeg4audio.Config{
 			Type:         2,
 			SampleRate:   44100,
 			ChannelCount: 2,
@@ -69,7 +69,7 @@ func TestClientReadTracks(t *testing.T) {
 
 	track3 := &TrackAAC{
 		PayloadType: 96,
-		Config: &aac.MPEG4AudioConfig{
+		Config: &mpeg4audio.Config{
 			Type:         2,
 			SampleRate:   96000,
 			ChannelCount: 2,

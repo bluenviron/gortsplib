@@ -1,4 +1,4 @@
-package aac
+package mpeg4audio
 
 import (
 	"fmt"
@@ -6,9 +6,9 @@ import (
 	"github.com/aler9/gortsplib/pkg/bits"
 )
 
-// MPEG4AudioConfig is a MPEG-4 Audio configuration.
-type MPEG4AudioConfig struct {
-	Type         MPEG4AudioType
+// Config is a MPEG-4 Audio configuration.
+type Config struct {
+	Type         ObjectType
 	SampleRate   int
 	ChannelCount int
 
@@ -18,8 +18,8 @@ type MPEG4AudioConfig struct {
 	CoreCoderDelay     uint16
 }
 
-// Unmarshal decodes an MPEG4AudioConfig.
-func (c *MPEG4AudioConfig) Unmarshal(buf []byte) error {
+// Unmarshal decodes a Config.
+func (c *Config) Unmarshal(buf []byte) error {
 	// ref: ISO 14496-3
 
 	pos := 0
@@ -28,10 +28,10 @@ func (c *MPEG4AudioConfig) Unmarshal(buf []byte) error {
 	if err != nil {
 		return err
 	}
-	c.Type = MPEG4AudioType(tmp)
+	c.Type = ObjectType(tmp)
 
 	switch c.Type {
-	case MPEG4AudioTypeAACLC:
+	case ObjectTypeAACLC:
 	default:
 		return fmt.Errorf("unsupported type: %d", c.Type)
 	}
@@ -105,7 +105,7 @@ func (c *MPEG4AudioConfig) Unmarshal(buf []byte) error {
 	return nil
 }
 
-func (c MPEG4AudioConfig) marshalSize() int {
+func (c Config) marshalSize() int {
 	n := 5 + 4 + 3
 
 	_, ok := reverseSampleRates[c.SampleRate]
@@ -127,8 +127,8 @@ func (c MPEG4AudioConfig) marshalSize() int {
 	return ret
 }
 
-// Marshal encodes an MPEG4AudioConfig.
-func (c MPEG4AudioConfig) Marshal() ([]byte, error) {
+// Marshal encodes a Config.
+func (c Config) Marshal() ([]byte, error) {
 	buf := make([]byte, c.marshalSize())
 	pos := 0
 

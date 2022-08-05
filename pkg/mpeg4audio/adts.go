@@ -1,4 +1,4 @@
-package aac
+package mpeg4audio
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 
 // ADTSPacket is an ADTS packet.
 type ADTSPacket struct {
-	Type         MPEG4AudioType
+	Type         ObjectType
 	SampleRate   int
 	ChannelCount int
 	AU           []byte
@@ -39,9 +39,9 @@ func (ps *ADTSPackets) Unmarshal(buf []byte) error {
 
 		pkt := &ADTSPacket{}
 
-		pkt.Type = MPEG4AudioType((buf[pos+2] >> 6) + 1)
+		pkt.Type = ObjectType((buf[pos+2] >> 6) + 1)
 		switch pkt.Type {
-		case MPEG4AudioTypeAACLC:
+		case ObjectTypeAACLC:
 		default:
 			return fmt.Errorf("unsupported audio type: %d", pkt.Type)
 		}

@@ -8,7 +8,7 @@ import (
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/aac"
+	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 )
 
 func mergeBytes(vals ...[]byte) []byte {
@@ -539,7 +539,7 @@ func TestDecode(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, expPTS, pts)
 				aus = append(aus, addAUs...)
-				expPTS += time.Duration(len(aus)) * aac.SamplesPerAccessUnit * time.Second / 48000
+				expPTS += time.Duration(len(aus)) * mpeg4audio.SamplesPerAccessUnit * time.Second / 48000
 
 				// test input integrity
 				require.Equal(t, clone, pkt)

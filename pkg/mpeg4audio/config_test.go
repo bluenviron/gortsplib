@@ -1,4 +1,4 @@
-package aac
+package mpeg4audio
 
 import (
 	"testing"
@@ -9,13 +9,13 @@ import (
 var configCases = []struct {
 	name string
 	enc  []byte
-	dec  MPEG4AudioConfig
+	dec  Config
 }{
 	{
 		"aac-lc 16khz mono",
 		[]byte{0x14, 0x08},
-		MPEG4AudioConfig{
-			Type:         MPEG4AudioTypeAACLC,
+		Config{
+			Type:         ObjectTypeAACLC,
 			SampleRate:   16000,
 			ChannelCount: 1,
 		},
@@ -23,8 +23,8 @@ var configCases = []struct {
 	{
 		"aac-lc 44.1khz mono",
 		[]byte{0x12, 0x08},
-		MPEG4AudioConfig{
-			Type:         MPEG4AudioTypeAACLC,
+		Config{
+			Type:         ObjectTypeAACLC,
 			SampleRate:   44100,
 			ChannelCount: 1,
 		},
@@ -32,8 +32,8 @@ var configCases = []struct {
 	{
 		"aac-lc 44.1khz 5.1",
 		[]byte{0x12, 0x30},
-		MPEG4AudioConfig{
-			Type:         MPEG4AudioTypeAACLC,
+		Config{
+			Type:         ObjectTypeAACLC,
 			SampleRate:   44100,
 			ChannelCount: 6,
 		},
@@ -41,8 +41,8 @@ var configCases = []struct {
 	{
 		"aac-lc 48khz stereo",
 		[]byte{17, 144},
-		MPEG4AudioConfig{
-			Type:         MPEG4AudioTypeAACLC,
+		Config{
+			Type:         ObjectTypeAACLC,
 			SampleRate:   48000,
 			ChannelCount: 2,
 		},
@@ -50,8 +50,8 @@ var configCases = []struct {
 	{
 		"aac-lc 53khz stereo",
 		[]byte{0x17, 0x80, 0x67, 0x84, 0x10},
-		MPEG4AudioConfig{
-			Type:         MPEG4AudioTypeAACLC,
+		Config{
+			Type:         ObjectTypeAACLC,
 			SampleRate:   53000,
 			ChannelCount: 2,
 		},
@@ -59,8 +59,8 @@ var configCases = []struct {
 	{
 		"aac-lc 96khz stereo delay",
 		[]byte{0x10, 0x12, 0x0c, 0x08},
-		MPEG4AudioConfig{
-			Type:               MPEG4AudioTypeAACLC,
+		Config{
+			Type:               ObjectTypeAACLC,
 			SampleRate:         96000,
 			ChannelCount:       2,
 			DependsOnCoreCoder: true,
@@ -72,7 +72,7 @@ var configCases = []struct {
 func TestConfigUnmarshal(t *testing.T) {
 	for _, ca := range configCases {
 		t.Run(ca.name, func(t *testing.T) {
-			var dec MPEG4AudioConfig
+			var dec Config
 			err := dec.Unmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
@@ -93,12 +93,12 @@ func TestConfigMarshal(t *testing.T) {
 func TestConfigMarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
-		conf MPEG4AudioConfig
+		conf Config
 		err  string
 	}{
 		{
 			"invalid channel config",
-			MPEG4AudioConfig{
+			Config{
 				Type:         2,
 				SampleRate:   44100,
 				ChannelCount: 0,

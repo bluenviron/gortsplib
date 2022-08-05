@@ -1,4 +1,4 @@
-package aac
+package mpeg4audio
 
 import (
 	"testing"

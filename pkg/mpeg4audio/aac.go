@@ -1,5 +1,5 @@
-// Package aac contains utilities to work with the AAC codec.
-package aac
+// Package mpeg4audio contains utilities to work with MPEG-4 audio codecs.
+package mpeg4audio
 
 const (
 	// MaxAccessUnitSize is the maximum size of an Access Unit (AU).

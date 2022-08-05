@@ -6,7 +6,7 @@ import (
 	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/aac"
+	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -74,7 +74,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 			&TrackAAC{
 				PayloadType: 96,
-				Config: &aac.MPEG4AudioConfig{
+				Config: &mpeg4audio.Config{
 					Type:         2,
 					SampleRate:   48000,
 					ChannelCount: 2,
@@ -105,7 +105,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 			&TrackAAC{
 				PayloadType: 96,
-				Config: &aac.MPEG4AudioConfig{
+				Config: &mpeg4audio.Config{
 					Type:         2,
 					SampleRate:   48000,
 					ChannelCount: 2,
@@ -136,7 +136,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 			&TrackAAC{
 				PayloadType: 96,
-				Config: &aac.MPEG4AudioConfig{
+				Config: &mpeg4audio.Config{
 					Type:         2,
 					SampleRate:   48000,
 					ChannelCount: 2,
@@ -171,7 +171,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 			&TrackAAC{
 				PayloadType: 96,
-				Config: &aac.MPEG4AudioConfig{
+				Config: &mpeg4audio.Config{
 					Type:         2,
 					SampleRate:   48000,
 					ChannelCount: 2,

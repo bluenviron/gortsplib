@@ -7,8 +7,8 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/aac"
 	"github.com/aler9/gortsplib/pkg/bits"
+	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 	"github.com/aler9/gortsplib/pkg/rtptimedec"
 )
 
@@ -44,7 +44,7 @@ func (d *Decoder) Init() {
 
 // Decode decodes AUs from a RTP/AAC packet.
 // It returns the AUs and the PTS of the first AU.
-// The PTS of subsequent AUs can be calculated by adding time.Second*aac.SamplesPerAccessUnit/clockRate.
+// The PTS of subsequent AUs can be calculated by adding time.Second*mpeg4audio.SamplesPerAccessUnit/clockRate.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if len(pkt.Payload) < 2 {
 		d.fragmentedParts = d.fragmentedParts[:0]
@@ -118,10 +118,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	d.fragmentedSize += int(dataLens[0])
-	if d.fragmentedSize > aac.MaxAccessUnitSize {
+	if d.fragmentedSize > mpeg4audio.MaxAccessUnitSize {
 		d.fragmentedParts = d.fragmentedParts[:0]
 		d.fragmentedMode = false
-		return nil, 0, fmt.Errorf("AU size (%d) is too big (maximum is %d)", d.fragmentedSize, aac.MaxAccessUnitSize)
+		return nil, 0, fmt.Errorf("AU size (%d) is too big (maximum is %d)", d.fragmentedSize, mpeg4audio.MaxAccessUnitSize)
 	}
 
 	d.fragmentedParts = append(d.fragmentedParts, payload[:dataLens[0]])
@@ -214,7 +214,7 @@ func (d *Decoder) finalize(aus [][]byte) ([][]byte, error) {
 
 		if len(aus) == 1 && len(aus[0]) >= 2 {
 			if aus[0][0] == 0xFF && (aus[0][1]&0xF0) == 0xF0 {
-				var pkts aac.ADTSPackets
+				var pkts mpeg4audio.ADTSPackets
 				err := pkts.Unmarshal(aus[0])
 				if err == nil && len(pkts) == 1 {
 					d.adtsMode = true
@@ -227,7 +227,7 @@ func (d *Decoder) finalize(aus [][]byte) ([][]byte, error) {
 			return nil, fmt.Errorf("multiple AUs in ADTS mode are not supported")
 		}
 
-		var pkts aac.ADTSPackets
+		var pkts mpeg4audio.ADTSPackets
 		err := pkts.Unmarshal(aus[0])
 		if err != nil {
 			return nil, fmt.Errorf("unable to decode ADTS: %s", err)

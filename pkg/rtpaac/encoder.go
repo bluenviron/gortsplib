@@ -6,8 +6,8 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/aac"
 	"github.com/aler9/gortsplib/pkg/bits"
+	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 )
 
 func randUint32() uint32 {
@@ -97,7 +97,7 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, e
 					return nil, err
 				}
 				rets = append(rets, pkts...)
-				pts += time.Duration(len(batch)) * aac.SamplesPerAccessUnit * time.Second / time.Duration(e.SampleRate)
+				pts += time.Duration(len(batch)) * mpeg4audio.SamplesPerAccessUnit * time.Second / time.Duration(e.SampleRate)
 			}
 
 			// initialize new batch

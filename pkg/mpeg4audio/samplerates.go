@@ -1,4 +1,4 @@
-package aac
+package mpeg4audio
 
 var sampleRates = []int{
 	96000,

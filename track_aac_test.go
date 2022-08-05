@@ -6,13 +6,13 @@ import (
 	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/aac"
+	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 )
 
 func TestTrackAACClone(t *testing.T) {
 	track := &TrackAAC{
 		PayloadType: 96,
-		Config: &aac.MPEG4AudioConfig{
+		Config: &mpeg4audio.Config{
 			Type:         2,
 			SampleRate:   48000,
 			ChannelCount: 2,
@@ -30,7 +30,7 @@ func TestTrackAACClone(t *testing.T) {
 func TestTrackAACMediaDescription(t *testing.T) {
 	track := &TrackAAC{
 		PayloadType: 96,
-		Config: &aac.MPEG4AudioConfig{
+		Config: &mpeg4audio.Config{
 			Type:         2,
 			SampleRate:   48000,
 			ChannelCount: 2,

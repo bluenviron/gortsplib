@@ -8,13 +8,13 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/pkg/aac"
+	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 )
 
 // TrackAAC is an AAC track.
 type TrackAAC struct {
 	PayloadType      uint8
-	Config           *aac.MPEG4AudioConfig
+	Config           *mpeg4audio.Config
 	SizeLength       int
 	IndexLength      int
 	IndexDeltaLength int
@@ -63,7 +63,7 @@ func newTrackAACFromMediaDescription(
 				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
 			}
 
-			t.Config = &aac.MPEG4AudioConfig{}
+			t.Config = &mpeg4audio.Config{}
 			err = t.Config.Unmarshal(enc)
 			if err != nil {
 				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
