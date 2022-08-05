@@ -128,6 +128,11 @@ func (t *TrackAAC) MediaDescription() *psdp.MediaDescription {
 
 	typ := strconv.FormatInt(int64(t.PayloadType), 10)
 
+	sampleRate := t.Config.SampleRate
+	if t.Config.ExtensionSampleRate != 0 {
+		sampleRate = t.Config.ExtensionSampleRate
+	}
+
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:   "audio",
@@ -137,7 +142,7 @@ func (t *TrackAAC) MediaDescription() *psdp.MediaDescription {
 		Attributes: []psdp.Attribute{
 			{
 				Key: "rtpmap",
-				Value: typ + " mpeg4-generic/" + strconv.FormatInt(int64(t.Config.SampleRate), 10) +
+				Value: typ + " mpeg4-generic/" + strconv.FormatInt(int64(sampleRate), 10) +
 					"/" + strconv.FormatInt(int64(t.Config.ChannelCount), 10),
 			},
 			{

@@ -67,6 +67,16 @@ var configCases = []struct {
 			CoreCoderDelay:     385,
 		},
 	},
+	{
+		"sbr (he-aac v1) 44.1khz stereo",
+		[]byte{0x2b, 0x8a, 0x00},
+		Config{
+			Type:                ObjectTypeSBR,
+			SampleRate:          22050,
+			ChannelCount:        1,
+			ExtensionSampleRate: 44100,
+		},
+	},
 }
 
 func TestConfigUnmarshal(t *testing.T) {

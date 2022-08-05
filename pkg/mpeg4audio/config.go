@@ -16,6 +16,9 @@ type Config struct {
 	FrameLengthFlag    bool
 	DependsOnCoreCoder bool
 	CoreCoderDelay     uint16
+
+	// SBR specific
+	ExtensionSampleRate int
 }
 
 // Unmarshal decodes a Config.
@@ -32,8 +35,9 @@ func (c *Config) Unmarshal(buf []byte) error {
 
 	switch c.Type {
 	case ObjectTypeAACLC:
+	case ObjectTypeSBR:
 	default:
-		return fmt.Errorf("unsupported type: %d", c.Type)
+		return fmt.Errorf("unsupported object type: %d", c.Type)
 	}
 
 	sampleRateIndex, err := bits.ReadBits(buf, &pos, 4)
@@ -45,7 +49,7 @@ func (c *Config) Unmarshal(buf []byte) error {
 	case sampleRateIndex <= 12:
 		c.SampleRate = sampleRates[sampleRateIndex]
 
-	case sampleRateIndex == 15:
+	case sampleRateIndex == 0x0F:
 		tmp, err := bits.ReadBits(buf, &pos, 24)
 		if err != nil {
 			return err
@@ -75,31 +79,53 @@ func (c *Config) Unmarshal(buf []byte) error {
 		return fmt.Errorf("invalid channel configuration (%d)", channelConfig)
 	}
 
-	c.FrameLengthFlag, err = bits.ReadFlag(buf, &pos)
-	if err != nil {
-		return err
-	}
-
-	c.DependsOnCoreCoder, err = bits.ReadFlag(buf, &pos)
-	if err != nil {
-		return err
-	}
-
-	if c.DependsOnCoreCoder {
-		tmp, err := bits.ReadBits(buf, &pos, 14)
+	if c.Type == ObjectTypeSBR {
+		extensionSamplingFrequencyIndex, err := bits.ReadBits(buf, &pos, 4)
 		if err != nil {
 			return err
 		}
-		c.CoreCoderDelay = uint16(tmp)
-	}
 
-	extensionFlag, err := bits.ReadFlag(buf, &pos)
-	if err != nil {
-		return err
-	}
+		switch {
+		case extensionSamplingFrequencyIndex <= 12:
+			c.ExtensionSampleRate = sampleRates[extensionSamplingFrequencyIndex]
 
-	if extensionFlag {
-		return fmt.Errorf("unsupported")
+		case extensionSamplingFrequencyIndex == 0x0F:
+			tmp, err := bits.ReadBits(buf, &pos, 24)
+			if err != nil {
+				return err
+			}
+			c.ExtensionSampleRate = int(tmp)
+
+		default:
+			return fmt.Errorf("invalid extension sample rate index (%d)", extensionSamplingFrequencyIndex)
+		}
+	} else {
+		c.FrameLengthFlag, err = bits.ReadFlag(buf, &pos)
+		if err != nil {
+			return err
+		}
+
+		c.DependsOnCoreCoder, err = bits.ReadFlag(buf, &pos)
+		if err != nil {
+			return err
+		}
+
+		if c.DependsOnCoreCoder {
+			tmp, err := bits.ReadBits(buf, &pos, 14)
+			if err != nil {
+				return err
+			}
+			c.CoreCoderDelay = uint16(tmp)
+		}
+
+		extensionFlag, err := bits.ReadFlag(buf, &pos)
+		if err != nil {
+			return err
+		}
+
+		if extensionFlag {
+			return fmt.Errorf("unsupported")
+		}
 	}
 
 	return nil
@@ -115,8 +141,17 @@ func (c Config) marshalSize() int {
 		n += 4
 	}
 
-	if c.DependsOnCoreCoder {
-		n += 14
+	if c.Type == ObjectTypeSBR {
+		_, ok := reverseSampleRates[c.ExtensionSampleRate]
+		if !ok {
+			n += 28
+		} else {
+			n += 4
+		}
+	} else {
+		if c.DependsOnCoreCoder {
+			n += 14
+		}
 	}
 
 	ret := n / 8
@@ -153,23 +188,32 @@ func (c Config) Marshal() ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("invalid channel count (%d)", c.ChannelCount)
 	}
-
 	bits.WriteBits(buf, &pos, uint64(channelConfig), 4)
 
-	if c.FrameLengthFlag {
-		bits.WriteBits(buf, &pos, 1, 1)
+	if c.Type == ObjectTypeSBR {
+		sampleRateIndex, ok := reverseSampleRates[c.ExtensionSampleRate]
+		if !ok {
+			bits.WriteBits(buf, &pos, uint64(0x0F), 4)
+			bits.WriteBits(buf, &pos, uint64(c.ExtensionSampleRate), 24)
+		} else {
+			bits.WriteBits(buf, &pos, uint64(sampleRateIndex), 4)
+		}
 	} else {
-		bits.WriteBits(buf, &pos, 0, 1)
-	}
+		if c.FrameLengthFlag {
+			bits.WriteBits(buf, &pos, 1, 1)
+		} else {
+			bits.WriteBits(buf, &pos, 0, 1)
+		}
 
-	if c.DependsOnCoreCoder {
-		bits.WriteBits(buf, &pos, 1, 1)
-	} else {
-		bits.WriteBits(buf, &pos, 0, 1)
-	}
+		if c.DependsOnCoreCoder {
+			bits.WriteBits(buf, &pos, 1, 1)
+		} else {
+			bits.WriteBits(buf, &pos, 0, 1)
+		}
 
-	if c.DependsOnCoreCoder {
-		bits.WriteBits(buf, &pos, uint64(c.CoreCoderDelay), 14)
+		if c.DependsOnCoreCoder {
+			bits.WriteBits(buf, &pos, uint64(c.CoreCoderDelay), 14)
+		}
 	}
 
 	return buf, nil
