@@ -4,15 +4,15 @@ import (
 	psdp "github.com/pion/sdp/v3"
 )
 
-// TrackMpegVideo is a MPEG-1 or MPEG-2 video track.
-type TrackMpegVideo struct {
+// TrackMPEGVideo is a MPEG-1 or MPEG-2 video track.
+type TrackMPEGVideo struct {
 	trackBase
 }
 
-func newTrackMpegVideoFromMediaDescription(
-	control string) (*TrackMpegVideo, error,
+func newTrackMPEGVideoFromMediaDescription(
+	control string) (*TrackMPEGVideo, error,
 ) {
-	return &TrackMpegVideo{
+	return &TrackMPEGVideo{
 		trackBase: trackBase{
 			control: control,
 		},
@@ -20,18 +20,18 @@ func newTrackMpegVideoFromMediaDescription(
 }
 
 // ClockRate returns the track clock rate.
-func (t *TrackMpegVideo) ClockRate() int {
+func (t *TrackMPEGVideo) ClockRate() int {
 	return 90000
 }
 
-func (t *TrackMpegVideo) clone() Track {
-	return &TrackMpegVideo{
+func (t *TrackMPEGVideo) clone() Track {
+	return &TrackMPEGVideo{
 		trackBase: t.trackBase,
 	}
 }
 
 // MediaDescription returns the track media description in SDP format.
-func (t *TrackMpegVideo) MediaDescription() *psdp.MediaDescription {
+func (t *TrackMPEGVideo) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:   "video",

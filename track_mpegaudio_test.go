@@ -7,21 +7,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackMpegAudioNew(t *testing.T) {
-	track := &TrackMpegAudio{}
+func TestTrackMPEGAudioNew(t *testing.T) {
+	track := &TrackMPEGAudio{}
 	require.Equal(t, "", track.GetControl())
 }
 
-func TestTrackMpegAudioClone(t *testing.T) {
-	track := &TrackMpegAudio{}
+func TestTrackMPEGAudioClone(t *testing.T) {
+	track := &TrackMPEGAudio{}
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
 	require.Equal(t, track, clone)
 }
 
-func TestTrackMpegAudioMediaDescription(t *testing.T) {
-	track := &TrackMpegAudio{}
+func TestTrackMPEGAudioMediaDescription(t *testing.T) {
+	track := &TrackMPEGAudio{}
 
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{

@@ -47,7 +47,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"14"},
 				},
 			},
-			&TrackMpegAudio{},
+			&TrackMPEGAudio{},
 		},
 		{
 			"aac",
@@ -226,7 +226,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"32"},
 				},
 			},
-			&TrackMpegVideo{},
+			&TrackMPEGVideo{},
 		},
 		{
 			"h264",
