@@ -128,7 +128,7 @@ func (e ErrServerTrackAlreadySetup) Error() string {
 
 // ErrServerTransportHeaderInvalidMode is an error that can be returned by a server.
 type ErrServerTransportHeaderInvalidMode struct {
-	Mode *headers.TransportMode
+	Mode headers.TransportMode
 }
 
 // Error implements the error interface.

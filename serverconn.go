@@ -350,13 +350,26 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	sxID := getSessionID(req.Header)
 
+	var path string
+	var query string
+	switch req.Method {
+	case base.Describe, base.GetParameter, base.SetParameter:
+		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
+		if !ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, liberrors.ErrServerInvalidPath{}
+		}
+
+		path, query = url.PathSplitQuery(pathAndQuery)
+	}
+
 	switch req.Method {
 	case base.Options:
 		if sxID != "" {
 			return sc.handleRequestInSession(sxID, req, false)
 		}
 
-		// handle request here
 		var methods []string
 		if _, ok := sc.s.Handler.(ServerHandlerOnDescribe); ok {
 			methods = append(methods, string(base.Describe))
@@ -391,15 +404,6 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 
 	case base.Describe:
 		if h, ok := sc.s.Handler.(ServerHandlerOnDescribe); ok {
-			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-			if !ok {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerInvalidPath{}
-			}
-
-			path, query := url.PathSplitQuery(pathAndQuery)
-
 			res, stream, err := h.OnDescribe(&ServerHandlerOnDescribeCtx{
 				Conn:    sc,
 				Request: req,
@@ -476,17 +480,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 			return sc.handleRequestInSession(sxID, req, false)
 		}
 
-		// handle request here
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
-			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-			if !ok {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerInvalidPath{}
-			}
-
-			path, query := url.PathSplitQuery(pathAndQuery)
-
 			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
 				Conn:    sc,
 				Request: req,
@@ -496,16 +490,11 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 		}
 
 	case base.SetParameter:
+		if sxID != "" {
+			return sc.handleRequestInSession(sxID, req, false)
+		}
+
 		if h, ok := sc.s.Handler.(ServerHandlerOnSetParameter); ok {
-			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-			if !ok {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerInvalidPath{}
-			}
-
-			path, query := url.PathSplitQuery(pathAndQuery)
-
 			return h.OnSetParameter(&ServerHandlerOnSetParameterCtx{
 				Conn:    sc,
 				Request: req,

@@ -437,6 +437,25 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}, liberrors.ErrServerSessionLinkedToOtherConn{}
 	}
 
+	var path string
+	var query string
+	switch req.Method {
+	case base.Announce, base.Play, base.Record, base.Pause, base.GetParameter, base.SetParameter:
+		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
+		if !ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, liberrors.ErrServerInvalidPath{}
+		}
+
+		if req.Method != base.Announce {
+			// path can end with a slash due to Content-Base, remove it
+			pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
+		}
+
+		path, query = url.PathSplitQuery(pathAndQuery)
+	}
+
 	switch req.Method {
 	case base.Options:
 		var methods []string
@@ -480,15 +499,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				StatusCode: base.StatusBadRequest,
 			}, err
 		}
-
-		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerInvalidPath{}
-		}
-
-		path, query := url.PathSplitQuery(pathAndQuery)
 
 		ct, ok := req.Header["Content-Type"]
 		if !ok || len(ct) != 1 {
@@ -652,7 +662,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if inTH.Mode != nil && *inTH.Mode != headers.TransportModePlay {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: inTH.Mode}
+				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: *inTH.Mode}
 			}
 
 		default: // record
@@ -665,7 +675,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			if inTH.Mode == nil || *inTH.Mode != headers.TransportModeRecord {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: inTH.Mode}
+				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: *inTH.Mode}
 			}
 		}
 
@@ -802,18 +812,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, err
 		}
 
-		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerInvalidPath{}
-		}
-
-		// path can end with a slash due to Content-Base, remove it
-		pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
-
-		path, query := url.PathSplitQuery(pathAndQuery)
-
 		if ss.State() == ServerSessionStatePrePlay &&
 			path != *ss.setuppedPath {
 			return &base.Response{
@@ -934,18 +932,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerNotAllAnnouncedTracksSetup{}
 		}
 
-		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerInvalidPath{}
-		}
-
-		// path can end with a slash due to Content-Base, remove it
-		pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
-
-		path, query := url.PathSplitQuery(pathAndQuery)
-
 		if path != *ss.setuppedPath {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -1033,18 +1019,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, err
 		}
 
-		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerInvalidPath{}
-		}
-
-		// path can end with a slash due to Content-Base, remove it
-		pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
-
-		path, query := url.PathSplitQuery(pathAndQuery)
-
 		res, err := ss.s.Handler.(ServerHandlerOnPause).OnPause(&ServerHandlerOnPauseCtx{
 			Session: ss,
 			Conn:    sc,
@@ -1127,15 +1101,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 	case base.GetParameter:
 		if h, ok := sc.s.Handler.(ServerHandlerOnGetParameter); ok {
-			pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-			if !ok {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerInvalidPath{}
-			}
-
-			path, query := url.PathSplitQuery(pathAndQuery)
-
 			return h.OnGetParameter(&ServerHandlerOnGetParameterCtx{
 				Session: ss,
 				Conn:    sc,
@@ -1154,6 +1119,17 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			},
 			Body: []byte{},
 		}, nil
+
+	case base.SetParameter:
+		if h, ok := sc.s.Handler.(ServerHandlerOnSetParameter); ok {
+			return h.OnSetParameter(&ServerHandlerOnSetParameterCtx{
+				Session: ss,
+				Conn:    sc,
+				Request: req,
+				Path:    path,
+				Query:   query,
+			})
+		}
 	}
 
 	return &base.Response{

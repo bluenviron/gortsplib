@@ -173,6 +173,7 @@ type ServerHandlerOnGetParameter interface {
 
 // ServerHandlerOnSetParameterCtx is the context of a SET_PARAMETER request.
 type ServerHandlerOnSetParameterCtx struct {
+	Session *ServerSession
 	Conn    *ServerConn
 	Request *base.Request
 	Path    string

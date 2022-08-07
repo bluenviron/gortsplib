@@ -557,67 +557,120 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 }
 
 func TestServerGetSetParameter(t *testing.T) {
-	var params []byte
+	for _, ca := range []string{"inside session", "outside session"} {
+		t.Run(ca, func(t *testing.T) {
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
 
-	s := &Server{
-		Handler: &testServerHandler{
-			onSetParameter: func(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
-				params = ctx.Request.Body
-				return &base.Response{
-					StatusCode: base.StatusOK,
-				}, nil
-			},
-			onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
-				return &base.Response{
-					StatusCode: base.StatusOK,
-					Body:       params,
-				}, nil
-			},
-		},
-		RTSPAddress: "localhost:8554",
+			stream := NewServerStream(Tracks{track})
+			defer stream.Close()
+
+			var params []byte
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+					onSetParameter: func(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
+						if ca == "inside session" {
+							require.NotNil(t, ctx.Session)
+						}
+						params = ctx.Request.Body
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
+						if ca == "inside session" {
+							require.NotNil(t, ctx.Session)
+						}
+						return &base.Response{
+							StatusCode: base.StatusOK,
+							Body:       params,
+						}, nil
+					},
+				},
+				RTSPAddress: "localhost:8554",
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			conn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer conn.Close()
+			br := bufio.NewReader(conn)
+
+			var sx headers.Session
+
+			if ca == "inside session" {
+				res, err := writeReqReadRes(conn, br, base.Request{
+					Method: base.Setup,
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+					Header: base.Header{
+						"CSeq": base.HeaderValue{"1"},
+						"Transport": headers.Transport{
+							Protocol: headers.TransportProtocolTCP,
+							Delivery: func() *headers.TransportDelivery {
+								v := headers.TransportDeliveryUnicast
+								return &v
+							}(),
+							Mode: func() *headers.TransportMode {
+								v := headers.TransportModePlay
+								return &v
+							}(),
+							InterleavedIDs: &[2]int{0, 1},
+						}.Marshal(),
+					},
+				})
+				require.NoError(t, err)
+				require.Equal(t, base.StatusOK, res.StatusCode)
+
+				err = sx.Unmarshal(res.Header["Session"])
+				require.NoError(t, err)
+			}
+
+			headers := base.Header{
+				"CSeq": base.HeaderValue{"2"},
+			}
+			if ca == "inside session" {
+				headers["Session"] = base.HeaderValue{sx.Session}
+			}
+
+			res, err := writeReqReadRes(conn, br, base.Request{
+				Method: base.SetParameter,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: headers,
+				Body:   []byte("param1: 123456\r\n"),
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			headers = base.Header{
+				"CSeq": base.HeaderValue{"3"},
+			}
+			if ca == "inside session" {
+				headers["Session"] = base.HeaderValue{sx.Session}
+			}
+
+			res, err = writeReqReadRes(conn, br, base.Request{
+				Method: base.GetParameter,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: headers,
+				Body:   []byte("param1\r\n"),
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+			require.Equal(t, []byte("param1: 123456\r\n"), res.Body)
+		})
 	}
-
-	err := s.Start()
-	require.NoError(t, err)
-	defer s.Close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	br := bufio.NewReader(conn)
-
-	res, err := writeReqReadRes(conn, br, base.Request{
-		Method: base.Options,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	res, err = writeReqReadRes(conn, br, base.Request{
-		Method: base.SetParameter,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"12"},
-		},
-		Body: []byte("param1: 123456\r\n"),
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	res, err = writeReqReadRes(conn, br, base.Request{
-		Method: base.GetParameter,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"3"},
-		},
-		Body: []byte("param1\r\n"),
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-	require.Equal(t, []byte("param1: 123456\r\n"), res.Body)
 }
 
 func TestServerErrorInvalidSession(t *testing.T) {
@@ -799,16 +852,8 @@ func TestServerSessionAutoClose(t *testing.T) {
 }
 
 func TestServerErrorInvalidPath(t *testing.T) {
-	for _, method := range []base.Method{
-		base.Describe,
-		base.Announce,
-		base.Play,
-		base.Record,
-		base.Pause,
-		// base.GetParameter,
-		// base.SetParameter,
-	} {
-		t.Run(string(method), func(t *testing.T) {
+	for _, ca := range []string{"inside session", "outside session"} {
+		t.Run(ca, func(t *testing.T) {
 			connClosed := make(chan struct{})
 
 			track := &TrackH264{
@@ -826,20 +871,10 @@ func TestServerErrorInvalidPath(t *testing.T) {
 						require.EqualError(t, ctx.Error, "invalid path")
 						close(connClosed)
 					},
-					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, nil
-					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
-					},
-					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, nil
 					},
 				},
 				RTSPAddress: "localhost:8554",
@@ -854,38 +889,12 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			defer conn.Close()
 			br := bufio.NewReader(conn)
 
-			sxID := ""
-
-			if method == base.Record {
-				track := &TrackH264{
-					PayloadType: 96,
-					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				}
-
-				tracks := Tracks{track}
-				tracks.setControls()
-
-				res, err := writeReqReadRes(conn, br, base.Request{
-					Method: base.Announce,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-					Header: base.Header{
-						"CSeq":         base.HeaderValue{"1"},
-						"Content-Type": base.HeaderValue{"application/sdp"},
-					},
-					Body: tracks.Marshal(false),
-				})
-				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
-			}
-
-			if method == base.Play || method == base.Record || method == base.Pause {
+			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, br, base.Request{
 					Method: base.Setup,
 					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
-						"CSeq":    base.HeaderValue{"2"},
-						"Session": base.HeaderValue{sxID},
+						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{
 							Protocol: headers.TransportProtocolTCP,
 							Delivery: func() *headers.TransportDelivery {
@@ -893,11 +902,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 								return &v
 							}(),
 							Mode: func() *headers.TransportMode {
-								if method == base.Play || method == base.Pause {
-									v := headers.TransportModePlay
-									return &v
-								}
-								v := headers.TransportModeRecord
+								v := headers.TransportModePlay
 								return &v
 							}(),
 							InterleavedIDs: &[2]int{0, 1},
@@ -911,32 +916,27 @@ func TestServerErrorInvalidPath(t *testing.T) {
 				err = sx.Unmarshal(res.Header["Session"])
 				require.NoError(t, err)
 
-				sxID = sx.Session
-			}
-
-			if method == base.Pause {
-				res, err := writeReqReadRes(conn, br, base.Request{
-					Method: base.Play,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
+				res, err = writeReqReadRes(conn, br, base.Request{
+					Method: base.SetParameter,
+					URL:    mustParseURL("rtsp://localhost:8554"),
 					Header: base.Header{
 						"CSeq":    base.HeaderValue{"2"},
-						"Session": base.HeaderValue{sxID},
+						"Session": base.HeaderValue{sx.Session},
 					},
 				})
 				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
+			} else {
+				res, err := writeReqReadRes(conn, br, base.Request{
+					Method: base.SetParameter,
+					URL:    mustParseURL("rtsp://localhost:8554"),
+					Header: base.Header{
+						"CSeq": base.HeaderValue{"1"},
+					},
+				})
+				require.NoError(t, err)
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
 			}
-
-			res, err := writeReqReadRes(conn, br, base.Request{
-				Method: method,
-				URL:    mustParseURL("rtsp://localhost:8554"),
-				Header: base.Header{
-					"CSeq":    base.HeaderValue{"3"},
-					"Session": base.HeaderValue{sxID},
-				},
-			})
-			require.NoError(t, err)
-			require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
 			<-connClosed
 		})
