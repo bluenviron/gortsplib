@@ -1133,8 +1133,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 	}
 
 	return &base.Response{
-		StatusCode: base.StatusBadRequest,
-	}, liberrors.ErrServerUnhandledRequest{Request: req}
+		StatusCode: base.StatusNotImplemented,
+	}, nil
 }
 
 func (ss *ServerSession) runWriter() {

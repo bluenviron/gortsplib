@@ -316,38 +316,103 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	<-connClosed
 }
 
-func TestServerErrorInvalidMethod(t *testing.T) {
-	connClosed := make(chan struct{})
+type testServerErrMethodNotImplemented struct {
+	stream *ServerStream
+}
 
-	s := &Server{
-		Handler: &testServerHandler{
-			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-				require.EqualError(t, ctx.Error, "unhandled request: INVALID rtsp://localhost:8554/")
-				close(connClosed)
-			},
-		},
-		RTSPAddress: "localhost:8554",
+func (s *testServerErrMethodNotImplemented) OnSetup(
+	ctx *ServerHandlerOnSetupCtx,
+) (*base.Response, *ServerStream, error) {
+	return &base.Response{
+		StatusCode: base.StatusOK,
+	}, s.stream, nil
+}
+
+func TestServerErrorMethodNotImplemented(t *testing.T) {
+	for _, ca := range []string{"outside session", "inside session"} {
+		t.Run(ca, func(t *testing.T) {
+			track := &TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}
+
+			stream := NewServerStream(Tracks{track})
+			defer stream.Close()
+
+			s := &Server{
+				Handler:     &testServerErrMethodNotImplemented{stream},
+				RTSPAddress: "localhost:8554",
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			conn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer conn.Close()
+			br := bufio.NewReader(conn)
+
+			var sx headers.Session
+
+			if ca == "inside session" {
+				res, err := writeReqReadRes(conn, br, base.Request{
+					Method: base.Setup,
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+					Header: base.Header{
+						"CSeq": base.HeaderValue{"1"},
+						"Transport": headers.Transport{
+							Protocol: headers.TransportProtocolTCP,
+							Delivery: func() *headers.TransportDelivery {
+								v := headers.TransportDeliveryUnicast
+								return &v
+							}(),
+							Mode: func() *headers.TransportMode {
+								v := headers.TransportModePlay
+								return &v
+							}(),
+							InterleavedIDs: &[2]int{0, 1},
+						}.Marshal(),
+					},
+				})
+				require.NoError(t, err)
+
+				err = sx.Unmarshal(res.Header["Session"])
+				require.NoError(t, err)
+			}
+
+			headers := base.Header{
+				"CSeq": base.HeaderValue{"2"},
+			}
+			if ca == "inside session" {
+				headers["Session"] = base.HeaderValue{sx.Session}
+			}
+
+			res, err := writeReqReadRes(conn, br, base.Request{
+				Method: base.SetParameter,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				Header: headers,
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusNotImplemented, res.StatusCode)
+
+			headers = base.Header{
+				"CSeq": base.HeaderValue{"3"},
+			}
+			if ca == "inside session" {
+				headers["Session"] = base.HeaderValue{sx.Session}
+			}
+
+			res, err = writeReqReadRes(conn, br, base.Request{
+				Method: base.Options,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				Header: headers,
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+		})
 	}
-	err := s.Start()
-	require.NoError(t, err)
-	defer s.Close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	br := bufio.NewReader(conn)
-
-	res, err := writeReqReadRes(conn, br, base.Request{
-		Method: "INVALID",
-		URL:    mustParseURL("rtsp://localhost:8554/"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusBadRequest, res.StatusCode)
-
-	<-connClosed
 }
 
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {

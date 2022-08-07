@@ -505,8 +505,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 	}
 
 	return &base.Response{
-		StatusCode: base.StatusBadRequest,
-	}, liberrors.ErrServerUnhandledRequest{Request: req}
+		StatusCode: base.StatusNotImplemented,
+	}, nil
 }
 
 func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
