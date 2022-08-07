@@ -4,15 +4,15 @@ import (
 	psdp "github.com/pion/sdp/v3"
 )
 
-// TrackMPEGAudio is a MPEG-1 or MPEG-2 audio track.
-type TrackMPEGAudio struct {
+// TrackMPEG2Audio is a MPEG-1 or MPEG-2 audio track.
+type TrackMPEG2Audio struct {
 	trackBase
 }
 
-func newTrackMPEGAudioFromMediaDescription(
-	control string) (*TrackMPEGAudio, error,
+func newTrackMPEG2AudioFromMediaDescription(
+	control string) (*TrackMPEG2Audio, error,
 ) {
-	return &TrackMPEGAudio{
+	return &TrackMPEG2Audio{
 		trackBase: trackBase{
 			control: control,
 		},
@@ -20,18 +20,18 @@ func newTrackMPEGAudioFromMediaDescription(
 }
 
 // ClockRate returns the track clock rate.
-func (t *TrackMPEGAudio) ClockRate() int {
+func (t *TrackMPEG2Audio) ClockRate() int {
 	return 90000
 }
 
-func (t *TrackMPEGAudio) clone() Track {
-	return &TrackMPEGAudio{
+func (t *TrackMPEG2Audio) clone() Track {
+	return &TrackMPEG2Audio{
 		trackBase: t.trackBase,
 	}
 }
 
 // MediaDescription returns the track media description in SDP format.
-func (t *TrackMPEGAudio) MediaDescription() *psdp.MediaDescription {
+func (t *TrackMPEG2Audio) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:   "audio",
