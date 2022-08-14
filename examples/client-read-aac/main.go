@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/rtpaac"
+	"github.com/aler9/gortsplib/pkg/rtpmpeg4audio"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -49,7 +49,7 @@ func main() {
 	}
 
 	// setup decoder
-	dec := &rtpaac.Decoder{
+	dec := &rtpmpeg4audio.Decoder{
 		SampleRate:       aacTrack.Config.SampleRate,
 		SizeLength:       aacTrack.SizeLength,
 		IndexLength:      aacTrack.IndexLength,

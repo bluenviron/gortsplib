@@ -1,4 +1,4 @@
-package rtpaac
+package rtpmpeg4audio
 
 import (
 	"bytes"
