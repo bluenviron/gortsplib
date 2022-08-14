@@ -184,23 +184,6 @@ func (res *Response) Read(rb *bufio.Reader) error {
 	return nil
 }
 
-// ReadIgnoreFrames reads a response and ignores any interleaved frame sent
-// before the response.
-func (res *Response) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) error {
-	var f InterleavedFrame
-
-	for {
-		recv, err := ReadInterleavedFrameOrResponse(&f, maxPayloadSize, res, rb)
-		if err != nil {
-			return err
-		}
-
-		if _, ok := recv.(*Response); ok {
-			return nil
-		}
-	}
-}
-
 // MarshalSize returns the size of a Response.
 func (res Response) MarshalSize() int {
 	n := 0

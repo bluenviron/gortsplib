@@ -212,28 +212,6 @@ func TestResponseMarshalAutoFillStatus(t *testing.T) {
 	require.Equal(t, byts, buf)
 }
 
-func TestResponseReadIgnoreFrames(t *testing.T) {
-	byts := []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}
-	byts = append(byts, []byte("RTSP/1.0 200 OK\r\n"+
-		"CSeq: 1\r\n"+
-		"Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n"+
-		"\r\n")...)
-
-	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	var res Response
-	err := res.ReadIgnoreFrames(10, rb)
-	require.NoError(t, err)
-}
-
-func TestResponseReadIgnoreFramesErrors(t *testing.T) {
-	byts := []byte{0x25}
-
-	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	var res Response
-	err := res.ReadIgnoreFrames(10, rb)
-	require.EqualError(t, err, "EOF")
-}
-
 func TestResponseString(t *testing.T) {
 	byts := []byte("RTSP/1.0 200 OK\r\n" +
 		"CSeq: 3\r\n" +

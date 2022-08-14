@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -14,6 +13,7 @@ import (
 	"github.com/pion/rtcp"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/url"
 )
@@ -32,13 +32,13 @@ type readReq struct {
 
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
-	s    *Server
-	conn net.Conn
+	s     *Server
+	nconn net.Conn
 
 	ctx        context.Context
 	ctxCancel  func()
 	remoteAddr *net.TCPAddr
-	br         *bufio.Reader
+	conn       *conn.Conn
 	session    *ServerSession
 	readFunc   func(readRequest chan readReq) error
 
@@ -55,7 +55,7 @@ func newServerConn(
 ) *ServerConn {
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
-	conn := func() net.Conn {
+	nconn = func() net.Conn {
 		if s.TLSConfig != nil {
 			return tls.Server(nconn, s.TLSConfig)
 		}
@@ -64,10 +64,10 @@ func newServerConn(
 
 	sc := &ServerConn{
 		s:             s,
-		conn:          conn,
+		nconn:         nconn,
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
-		remoteAddr:    conn.RemoteAddr().(*net.TCPAddr),
+		remoteAddr:    nconn.RemoteAddr().(*net.TCPAddr),
 		sessionRemove: make(chan *ServerSession),
 		done:          make(chan struct{}),
 	}
@@ -88,7 +88,7 @@ func (sc *ServerConn) Close() error {
 
 // NetConn returns the underlying net.Conn.
 func (sc *ServerConn) NetConn() net.Conn {
-	return sc.conn
+	return sc.nconn
 }
 
 func (sc *ServerConn) ip() net.IP {
@@ -109,7 +109,7 @@ func (sc *ServerConn) run() {
 		})
 	}
 
-	sc.br = bufio.NewReaderSize(sc.conn, tcpReadBufferSize)
+	sc.conn = conn.NewConn(sc.nconn)
 
 	readRequest := make(chan readReq)
 	readErr := make(chan error)
@@ -120,7 +120,7 @@ func (sc *ServerConn) run() {
 
 	sc.ctxCancel()
 
-	sc.conn.Close()
+	sc.nconn.Close()
 	<-readDone
 
 	if sc.session != nil {
@@ -185,12 +185,12 @@ func (sc *ServerConn) runReader(readRequest chan readReq, readErr chan error, re
 
 func (sc *ServerConn) readFuncStandard(readRequest chan readReq) error {
 	// reset deadline
-	sc.conn.SetReadDeadline(time.Time{})
+	sc.nconn.SetReadDeadline(time.Time{})
 
 	var req base.Request
 
 	for {
-		err := req.Read(sc.br)
+		err := sc.conn.ReadRequest(&req)
 		if err != nil {
 			return err
 		}
@@ -211,7 +211,7 @@ func (sc *ServerConn) readFuncStandard(readRequest chan readReq) error {
 
 func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	// reset deadline
-	sc.conn.SetReadDeadline(time.Time{})
+	sc.nconn.SetReadDeadline(time.Time{})
 
 	select {
 	case sc.session.startWriter <- struct{}{}:
@@ -299,10 +299,10 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 
 	for {
 		if sc.session.state == ServerSessionStateRecord {
-			sc.conn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
+			sc.nconn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
 		}
 
-		what, err := base.ReadInterleavedFrameOrRequest(&frame, tcpMaxFramePayloadSize, &req, sc.br)
+		what, err := sc.conn.ReadInterleavedFrameOrRequest(&frame, &req)
 		if err != nil {
 			return err
 		}
@@ -532,10 +532,8 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		h.OnResponse(sc, res)
 	}
 
-	byts, _ := res.Marshal()
-
-	sc.conn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-	sc.conn.Write(byts)
+	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
+	sc.conn.WriteResponse(res)
 
 	return err
 }

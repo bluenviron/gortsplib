@@ -238,29 +238,6 @@ func TestRequestMarshal(t *testing.T) {
 	}
 }
 
-func TestRequestReadIgnoreFrames(t *testing.T) {
-	byts := []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}
-	byts = append(byts, []byte("OPTIONS rtsp://example.com/media.mp4 RTSP/1.0\r\n"+
-		"CSeq: 1\r\n"+
-		"Proxy-Require: gzipped-messages\r\n"+
-		"Require: implicit-play\r\n"+
-		"\r\n")...)
-
-	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	var req Request
-	err := req.ReadIgnoreFrames(10, rb)
-	require.NoError(t, err)
-}
-
-func TestRequestReadIgnoreFramesErrors(t *testing.T) {
-	byts := []byte{0x25}
-
-	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	var req Request
-	err := req.ReadIgnoreFrames(10, rb)
-	require.EqualError(t, err, "EOF")
-}
-
 func TestRequestString(t *testing.T) {
 	byts := []byte("OPTIONS rtsp://example.com/media.mp4 RTSP/1.0\r\n" +
 		"CSeq: 1\r\n" +

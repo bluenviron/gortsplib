@@ -1163,19 +1163,17 @@ func (ss *ServerSession) runWriter() {
 
 		writeFunc = func(trackID int, isRTP bool, payload []byte) {
 			if isRTP {
-				f := rtpFrames[trackID]
-				f.Payload = payload
-				n, _ := f.MarshalTo(buf)
+				fr := rtpFrames[trackID]
+				fr.Payload = payload
 
-				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				ss.tcpConn.conn.Write(buf[:n])
+				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
+				ss.tcpConn.conn.WriteInterleavedFrame(fr, buf)
 			} else {
-				f := rtcpFrames[trackID]
-				f.Payload = payload
-				n, _ := f.MarshalTo(buf)
+				fr := rtcpFrames[trackID]
+				fr.Payload = payload
 
-				ss.tcpConn.conn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				ss.tcpConn.conn.Write(buf[:n])
+				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
+				ss.tcpConn.conn.WriteInterleavedFrame(fr, buf)
 			}
 		}
 	}

@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"bufio"
 	"crypto/tls"
 	"net"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -22,15 +22,15 @@ func mustParseURL(s string) *url.URL {
 	return u
 }
 
-func readRequest(br *bufio.Reader) (*base.Request, error) {
+func readRequest(conn *conn.Conn) (*base.Request, error) {
 	var req base.Request
-	err := req.Read(br)
+	err := conn.ReadRequest(&req)
 	return &req, err
 }
 
-func readRequestIgnoreFrames(br *bufio.Reader) (*base.Request, error) {
+func readRequestIgnoreFrames(conn *conn.Conn) (*base.Request, error) {
 	var req base.Request
-	err := req.ReadIgnoreFrames(2048, br)
+	err := conn.ReadRequestIgnoreFrames(&req)
 	return &req, err
 }
 
@@ -44,14 +44,14 @@ func TestClientTLSSetServerName(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		conn, err := l.Accept()
+		nconn, err := l.Accept()
 		require.NoError(t, err)
-		defer conn.Close()
+		defer nconn.Close()
 
 		cert, err := tls.X509KeyPair(serverCert, serverKey)
 		require.NoError(t, err)
 
-		tconn := tls.Server(conn, &tls.Config{
+		tnconn := tls.Server(nconn, &tls.Config{
 			Certificates:       []tls.Certificate{cert},
 			InsecureSkipVerify: true,
 			VerifyConnection: func(cs tls.ConnectionState) error {
@@ -60,7 +60,7 @@ func TestClientTLSSetServerName(t *testing.T) {
 			},
 		})
 
-		err = tconn.Handshake()
+		err = tnconn.Handshake()
 		require.EqualError(t, err, "remote error: tls: bad certificate")
 	}()
 
@@ -91,16 +91,16 @@ func TestClientSession(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		conn, err := l.Accept()
+		nconn, err := l.Accept()
 		require.NoError(t, err)
-		br := bufio.NewReader(conn)
-		defer conn.Close()
+		conn := conn.NewConn(nconn)
+		defer nconn.Close()
 
-		req, err := readRequest(br)
+		req, err := readRequest(conn)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		byts, _ := base.Response{
+		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -108,11 +108,10 @@ func TestClientSession(t *testing.T) {
 				}, ", ")},
 				"Session": base.HeaderValue{"123456"},
 			},
-		}.Marshal()
-		_, err = conn.Write(byts)
+		})
 		require.NoError(t, err)
 
-		req, err = readRequest(br)
+		req, err = readRequest(conn)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -127,15 +126,14 @@ func TestClientSession(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
-		byts, _ = base.Response{
+		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Session":      base.HeaderValue{"123456"},
 			},
 			Body: tracks.Marshal(false),
-		}.Marshal()
-		_, err = conn.Write(byts)
+		})
 		require.NoError(t, err)
 	}()
 
@@ -162,42 +160,40 @@ func TestClientAuth(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		conn, err := l.Accept()
+		nconn, err := l.Accept()
 		require.NoError(t, err)
-		br := bufio.NewReader(conn)
-		defer conn.Close()
+		conn := conn.NewConn(nconn)
+		defer nconn.Close()
 
-		req, err := readRequest(br)
+		req, err := readRequest(conn)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		byts, _ := base.Response{
+		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
 					string(base.Describe),
 				}, ", ")},
 			},
-		}.Marshal()
-		_, err = conn.Write(byts)
+		})
 		require.NoError(t, err)
 
-		req, err = readRequest(br)
+		req, err = readRequest(conn)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
 		v := auth.NewValidator("myuser", "mypass", nil)
 
-		byts, _ = base.Response{
+		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusUnauthorized,
 			Header: base.Header{
 				"WWW-Authenticate": v.Header(),
 			},
-		}.Marshal()
-		_, err = conn.Write(byts)
+		})
 		require.NoError(t, err)
 
-		req, err = readRequest(br)
+		req, err = readRequest(conn)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -213,14 +209,13 @@ func TestClientAuth(t *testing.T) {
 		tracks := Tracks{track}
 		tracks.setControls()
 
-		byts, _ = base.Response{
+		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
 			Body: tracks.Marshal(false),
-		}.Marshal()
-		_, err = conn.Write(byts)
+		})
 		require.NoError(t, err)
 	}()
 
@@ -247,27 +242,26 @@ func TestClientDescribeCharset(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		conn, err := l.Accept()
+		nconn, err := l.Accept()
 		require.NoError(t, err)
-		defer conn.Close()
-		br := bufio.NewReader(conn)
+		defer nconn.Close()
+		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(br)
+		req, err := readRequest(conn)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
-		byts, _ := base.Response{
+		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
 					string(base.Describe),
 				}, ", ")},
 			},
-		}.Marshal()
-		_, err = conn.Write(byts)
+		})
 		require.NoError(t, err)
 
-		req, err = readRequest(br)
+		req, err = readRequest(conn)
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -278,15 +272,14 @@ func TestClientDescribeCharset(t *testing.T) {
 			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
 		}
 
-		byts, _ = base.Response{
+		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
 			Body: Tracks{track1}.Marshal(false),
-		}.Marshal()
-		_, err = conn.Write(byts)
+		})
 		require.NoError(t, err)
 	}()
 
@@ -349,12 +342,12 @@ func TestClientCloseDuringRequest(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		conn, err := l.Accept()
+		nconn, err := l.Accept()
 		require.NoError(t, err)
-		defer conn.Close()
-		br := bufio.NewReader(conn)
+		defer nconn.Close()
+		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(br)
+		req, err := readRequest(conn)
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
