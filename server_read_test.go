@@ -518,8 +518,7 @@ func TestServerRead(t *testing.T) {
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 
 			case "tcp", "tls":
-				var f base.InterleavedFrame
-				err := conn.ReadInterleavedFrame(&f)
+				f, err := conn.ReadInterleavedFrame()
 				require.NoError(t, err)
 
 				switch f.Channel {
@@ -546,10 +545,8 @@ func TestServerRead(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 			} else {
-				var f base.InterleavedFrame
-
 				for i := 0; i < 2; i++ {
-					err := conn.ReadInterleavedFrame(&f)
+					f, err := conn.ReadInterleavedFrame()
 					require.NoError(t, err)
 
 					switch f.Channel {
@@ -899,8 +896,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	var f base.InterleavedFrame
-	err = conn.ReadInterleavedFrame(&f)
+	_, err = conn.ReadInterleavedFrame()
 	require.NoError(t, err)
 }
 
@@ -1227,7 +1223,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	res, err = readResIgnoreFrames(conn)
+	res, err = conn.ReadResponseIgnoreFrames()
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
@@ -1241,7 +1237,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	res, err = readResIgnoreFrames(conn)
+	res, err = conn.ReadResponseIgnoreFrames()
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
@@ -1667,8 +1663,7 @@ func TestServerReadPartialTracks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	var f base.InterleavedFrame
-	err = conn.ReadInterleavedFrame(&f)
+	f, err := conn.ReadInterleavedFrame()
 	require.NoError(t, err)
 	require.Equal(t, 4, f.Channel)
 	require.Equal(t, testRTPPacketMarshaled, f.Payload)

@@ -22,18 +22,6 @@ func mustParseURL(s string) *url.URL {
 	return u
 }
 
-func readRequest(conn *conn.Conn) (*base.Request, error) {
-	var req base.Request
-	err := conn.ReadRequest(&req)
-	return &req, err
-}
-
-func readRequestIgnoreFrames(conn *conn.Conn) (*base.Request, error) {
-	var req base.Request
-	err := conn.ReadRequestIgnoreFrames(&req)
-	return &req, err
-}
-
 func TestClientTLSSetServerName(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -96,7 +84,7 @@ func TestClientSession(t *testing.T) {
 		conn := conn.NewConn(nconn)
 		defer nconn.Close()
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -111,7 +99,7 @@ func TestClientSession(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -165,7 +153,7 @@ func TestClientAuth(t *testing.T) {
 		conn := conn.NewConn(nconn)
 		defer nconn.Close()
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -179,7 +167,7 @@ func TestClientAuth(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -193,7 +181,7 @@ func TestClientAuth(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -247,7 +235,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -261,7 +249,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -347,7 +335,7 @@ func TestClientCloseDuringRequest(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 

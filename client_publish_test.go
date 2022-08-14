@@ -83,7 +83,7 @@ func TestClientPublishSerial(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
@@ -100,7 +100,7 @@ func TestClientPublishSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
@@ -110,7 +110,7 @@ func TestClientPublishSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/trackID=0"), req.URL)
@@ -155,7 +155,7 @@ func TestClientPublishSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
@@ -175,8 +175,7 @@ func TestClientPublishSerial(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, testRTPPacket, pkt)
 				} else {
-					var f base.InterleavedFrame
-					err = conn.ReadInterleavedFrame(&f)
+					f, err := conn.ReadInterleavedFrame()
 					require.NoError(t, err)
 					require.Equal(t, 0, f.Channel)
 					var pkt rtp.Packet
@@ -199,7 +198,7 @@ func TestClientPublishSerial(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
@@ -293,7 +292,7 @@ func TestClientPublishParallel(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -309,7 +308,7 @@ func TestClientPublishParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 
@@ -318,7 +317,7 @@ func TestClientPublishParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -350,7 +349,7 @@ func TestClientPublishParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
@@ -359,7 +358,7 @@ func TestClientPublishParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequestIgnoreFrames(conn)
+				req, err = conn.ReadRequestIgnoreFrames()
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -436,7 +435,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -453,7 +452,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 
@@ -462,7 +461,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -494,7 +493,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
@@ -503,7 +502,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequestIgnoreFrames(conn)
+				req, err = conn.ReadRequestIgnoreFrames()
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
@@ -512,7 +511,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
@@ -521,7 +520,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequestIgnoreFrames(conn)
+				req, err = conn.ReadRequestIgnoreFrames()
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -588,7 +587,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -605,7 +604,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Announce, req.Method)
 
@@ -614,7 +613,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -646,7 +645,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Record, req.Method)
 
@@ -655,7 +654,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequestIgnoreFrames(conn)
+				req, err = conn.ReadRequestIgnoreFrames()
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
@@ -727,7 +726,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -744,7 +743,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Announce, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -754,7 +753,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -763,7 +762,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -789,7 +788,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Record, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -799,8 +798,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		var f base.InterleavedFrame
-		err = conn.ReadInterleavedFrame(&f)
+		f, err := conn.ReadInterleavedFrame()
 		require.NoError(t, err)
 		require.Equal(t, 0, f.Channel)
 		var pkt rtp.Packet
@@ -808,7 +806,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, testRTPPacket, pkt)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
@@ -852,7 +850,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -868,7 +866,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Announce, req.Method)
 
@@ -877,7 +875,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -909,7 +907,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Record, req.Method)
 
@@ -942,7 +940,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 
 		close(reportReceived)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
@@ -998,7 +996,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -1014,7 +1012,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Announce, req.Method)
 
@@ -1023,7 +1021,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -1048,7 +1046,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Record, req.Method)
 
@@ -1069,7 +1067,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		}, make([]byte, 1024))
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func TestReadInterleavedFrameOrRequest(t *testing.T) {
@@ -16,17 +17,29 @@ func TestReadInterleavedFrameOrRequest(t *testing.T) {
 		"\r\n")
 	byts = append(byts, []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}...)
 
-	var f base.InterleavedFrame
-	var req base.Request
 	conn := NewConn(bytes.NewBuffer(byts))
 
-	out, err := conn.ReadInterleavedFrameOrRequest(&f, &req)
+	out, err := conn.ReadInterleavedFrameOrRequest()
 	require.NoError(t, err)
-	require.Equal(t, &req, out)
+	require.Equal(t, &base.Request{
+		Method: base.Describe,
+		URL: &url.URL{
+			Scheme: "rtsp",
+			Host:   "example.com",
+			Path:   "/media.mp4",
+		},
+		Header: base.Header{
+			"Accept": base.HeaderValue{"application/sdp"},
+			"CSeq":   base.HeaderValue{"2"},
+		},
+	}, out)
 
-	out, err = conn.ReadInterleavedFrameOrRequest(&f, &req)
+	out, err = conn.ReadInterleavedFrameOrRequest()
 	require.NoError(t, err)
-	require.Equal(t, &f, out)
+	require.Equal(t, &base.InterleavedFrame{
+		Channel: 6,
+		Payload: []byte{0x01, 0x02, 0x03, 0x04},
+	}, out)
 }
 
 func TestReadInterleavedFrameOrRequestErrors(t *testing.T) {
@@ -52,10 +65,8 @@ func TestReadInterleavedFrameOrRequestErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			var f base.InterleavedFrame
-			var req base.Request
 			conn := NewConn(bytes.NewBuffer(ca.byts))
-			_, err := conn.ReadInterleavedFrameOrRequest(&f, &req)
+			_, err := conn.ReadInterleavedFrameOrRequest()
 			require.EqualError(t, err, ca.err)
 		})
 	}
@@ -68,17 +79,25 @@ func TestReadInterleavedFrameOrResponse(t *testing.T) {
 		"\r\n")
 	byts = append(byts, []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}...)
 
-	var f base.InterleavedFrame
-	var res base.Response
 	conn := NewConn(bytes.NewBuffer(byts))
 
-	out, err := conn.ReadInterleavedFrameOrResponse(&f, &res)
+	out, err := conn.ReadInterleavedFrameOrResponse()
 	require.NoError(t, err)
-	require.Equal(t, &res, out)
+	require.Equal(t, &base.Response{
+		StatusCode:    200,
+		StatusMessage: "OK",
+		Header: base.Header{
+			"CSeq":   base.HeaderValue{"1"},
+			"Public": base.HeaderValue{"DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE"},
+		},
+	}, out)
 
-	out, err = conn.ReadInterleavedFrameOrResponse(&f, &res)
+	out, err = conn.ReadInterleavedFrameOrResponse()
 	require.NoError(t, err)
-	require.Equal(t, &f, out)
+	require.Equal(t, &base.InterleavedFrame{
+		Channel: 6,
+		Payload: []byte{0x01, 0x02, 0x03, 0x04},
+	}, out)
 }
 
 func TestReadInterleavedFrameOrResponseErrors(t *testing.T) {
@@ -104,10 +123,8 @@ func TestReadInterleavedFrameOrResponseErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			var f base.InterleavedFrame
-			var res base.Response
 			conn := NewConn(bytes.NewBuffer(ca.byts))
-			_, err := conn.ReadInterleavedFrameOrResponse(&f, &res)
+			_, err := conn.ReadInterleavedFrameOrResponse()
 			require.EqualError(t, err, ca.err)
 		})
 	}
@@ -122,8 +139,7 @@ func TestReadRequestIgnoreFrames(t *testing.T) {
 		"\r\n")...)
 
 	conn := NewConn(bytes.NewBuffer(byts))
-	var req base.Request
-	err := conn.ReadRequestIgnoreFrames(&req)
+	_, err := conn.ReadRequestIgnoreFrames()
 	require.NoError(t, err)
 }
 
@@ -131,8 +147,7 @@ func TestReadRequestIgnoreFramesErrors(t *testing.T) {
 	byts := []byte{0x25}
 
 	conn := NewConn(bytes.NewBuffer(byts))
-	var req base.Request
-	err := conn.ReadRequestIgnoreFrames(&req)
+	_, err := conn.ReadRequestIgnoreFrames()
 	require.EqualError(t, err, "EOF")
 }
 
@@ -144,8 +159,7 @@ func TestReadResponseIgnoreFrames(t *testing.T) {
 		"\r\n")...)
 
 	conn := NewConn(bytes.NewBuffer(byts))
-	var res base.Response
-	err := conn.ReadResponseIgnoreFrames(&res)
+	_, err := conn.ReadResponseIgnoreFrames()
 	require.NoError(t, err)
 }
 
@@ -153,7 +167,6 @@ func TestReadResponseIgnoreFramesErrors(t *testing.T) {
 	byts := []byte{0x25}
 
 	conn := NewConn(bytes.NewBuffer(byts))
-	var res base.Response
-	err := conn.ReadResponseIgnoreFrames(&res)
+	_, err := conn.ReadResponseIgnoreFrames()
 	require.EqualError(t, err, "EOF")
 }

@@ -93,7 +93,7 @@ func TestClientReadTracks(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -109,7 +109,7 @@ func TestClientReadTracks(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -128,7 +128,7 @@ func TestClientReadTracks(t *testing.T) {
 		require.NoError(t, err)
 
 		for i := 0; i < 3; i++ {
-			req, err := readRequest(conn)
+			req, err := conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 			require.Equal(t, mustParseURL(fmt.Sprintf("rtsp://localhost:8554/teststream/trackID=%d", i)), req.URL)
@@ -156,7 +156,7 @@ func TestClientReadTracks(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
@@ -166,7 +166,7 @@ func TestClientReadTracks(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
@@ -223,7 +223,7 @@ func TestClientRead(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
@@ -240,7 +240,7 @@ func TestClientRead(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
@@ -264,7 +264,7 @@ func TestClientRead(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/trackID=0"), req.URL)
@@ -345,7 +345,7 @@ func TestClientRead(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
@@ -397,8 +397,7 @@ func TestClientRead(t *testing.T) {
 					close(packetRecv)
 
 				case "tcp", "tls":
-					var f base.InterleavedFrame
-					err := conn.ReadInterleavedFrame(&f)
+					f, err := conn.ReadInterleavedFrame()
 					require.NoError(t, err)
 					require.Equal(t, 1, f.Channel)
 					packets, err := rtcp.Unmarshal(f.Payload)
@@ -407,7 +406,7 @@ func TestClientRead(t *testing.T) {
 					close(packetRecv)
 				}
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
@@ -472,7 +471,7 @@ func TestClientReadPartial(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -488,7 +487,7 @@ func TestClientReadPartial(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream"), req.URL)
@@ -518,7 +517,7 @@ func TestClientReadPartial(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/trackID=1"), req.URL)
@@ -545,7 +544,7 @@ func TestClientReadPartial(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
@@ -561,7 +560,7 @@ func TestClientReadPartial(t *testing.T) {
 		}, make([]byte, 1024))
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
@@ -625,7 +624,7 @@ func TestClientReadContentBase(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -641,7 +640,7 @@ func TestClientReadContentBase(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -681,7 +680,7 @@ func TestClientReadContentBase(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -708,7 +707,7 @@ func TestClientReadContentBase(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -718,7 +717,7 @@ func TestClientReadContentBase(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -762,7 +761,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -778,7 +777,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
@@ -801,7 +800,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -847,7 +846,7 @@ func TestClientReadAnyPort(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
@@ -920,7 +919,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			req, err := readRequest(conn)
+			req, err := conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Options, req.Method)
 
@@ -936,7 +935,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			req, err = readRequest(conn)
+			req, err = conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
@@ -959,7 +958,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			req, err = readRequest(conn)
+			req, err = conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 
@@ -968,7 +967,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			req, err = readRequest(conn)
+			req, err = conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
 
@@ -992,7 +991,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			req, err = readRequest(conn)
+			req, err = conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Play, req.Method)
 
@@ -1046,7 +1045,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -1062,7 +1061,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
@@ -1076,7 +1075,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
@@ -1093,7 +1092,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -1120,7 +1119,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
@@ -1129,7 +1128,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -1145,7 +1144,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -1161,7 +1160,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
@@ -1175,7 +1174,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -1189,7 +1188,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -1218,7 +1217,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
@@ -1233,7 +1232,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 				}, make([]byte, 1024))
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -1276,7 +1275,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -1292,7 +1291,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
@@ -1316,7 +1315,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
@@ -1342,7 +1341,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
@@ -1358,7 +1357,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		}, make([]byte, 1024))
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
@@ -1419,7 +1418,7 @@ func TestClientReadRedirect(t *testing.T) {
 					defer nconn.Close()
 					conn := conn.NewConn(nconn)
 
-					req, err := readRequest(conn)
+					req, err := conn.ReadRequest()
 					require.NoError(t, err)
 					require.Equal(t, base.Options, req.Method)
 
@@ -1435,7 +1434,7 @@ func TestClientReadRedirect(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					req, err = readRequest(conn)
+					req, err = conn.ReadRequest()
 					require.NoError(t, err)
 					require.Equal(t, base.Describe, req.Method)
 
@@ -1454,7 +1453,7 @@ func TestClientReadRedirect(t *testing.T) {
 					defer nconn.Close()
 					conn := conn.NewConn(nconn)
 
-					req, err := readRequest(conn)
+					req, err := conn.ReadRequest()
 					require.NoError(t, err)
 					require.Equal(t, base.Options, req.Method)
 
@@ -1471,7 +1470,7 @@ func TestClientReadRedirect(t *testing.T) {
 
 					require.NoError(t, err)
 
-					req, err = readRequest(conn)
+					req, err = conn.ReadRequest()
 					require.NoError(t, err)
 					require.Equal(t, base.Describe, req.Method)
 
@@ -1497,7 +1496,7 @@ func TestClientReadRedirect(t *testing.T) {
 							})
 							require.NoError(t, err)
 						}
-						req, err = readRequest(conn)
+						req, err = conn.ReadRequest()
 						require.NoError(t, err)
 						authHeaderVal, exists := req.Header["Authorization"]
 						require.True(t, exists)
@@ -1526,7 +1525,7 @@ func TestClientReadRedirect(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					req, err = readRequest(conn)
+					req, err = conn.ReadRequest()
 					require.NoError(t, err)
 					require.Equal(t, base.Setup, req.Method)
 
@@ -1550,7 +1549,7 @@ func TestClientReadRedirect(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					req, err = readRequest(conn)
+					req, err = conn.ReadRequest()
 					require.NoError(t, err)
 					require.Equal(t, base.Play, req.Method)
 
@@ -1647,7 +1646,7 @@ func TestClientReadPause(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -1663,7 +1662,7 @@ func TestClientReadPause(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
@@ -1686,7 +1685,7 @@ func TestClientReadPause(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -1718,7 +1717,7 @@ func TestClientReadPause(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
@@ -1729,7 +1728,7 @@ func TestClientReadPause(t *testing.T) {
 
 				writerTerminate, writerDone := writeFrames(&inTH, conn)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
@@ -1741,7 +1740,7 @@ func TestClientReadPause(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
@@ -1752,7 +1751,7 @@ func TestClientReadPause(t *testing.T) {
 
 				writerTerminate, writerDone = writeFrames(&inTH, conn)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -1821,7 +1820,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -1837,7 +1836,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -1860,7 +1859,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -1892,7 +1891,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
@@ -1960,7 +1959,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 
 		close(reportReceived)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
@@ -2002,7 +2001,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := readRequest(conn)
+				req, err := conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Options, req.Method)
 
@@ -2018,7 +2017,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
@@ -2041,7 +2040,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
@@ -2079,7 +2078,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
@@ -2096,7 +2095,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 					})
 				}
 
-				req, err = readRequest(conn)
+				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -2154,7 +2153,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -2170,7 +2169,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -2193,7 +2192,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -2218,7 +2217,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
@@ -2239,7 +2238,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		}, make([]byte, 1024))
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
@@ -2283,7 +2282,7 @@ func TestClientReadSeek(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -2299,7 +2298,7 @@ func TestClientReadSeek(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -2322,7 +2321,7 @@ func TestClientReadSeek(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -2347,7 +2346,7 @@ func TestClientReadSeek(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
@@ -2365,7 +2364,7 @@ func TestClientReadSeek(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Pause, req.Method)
 
@@ -2374,7 +2373,7 @@ func TestClientReadSeek(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
@@ -2391,7 +2390,7 @@ func TestClientReadSeek(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 
@@ -2455,7 +2454,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 
@@ -2471,7 +2470,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
@@ -2494,7 +2493,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 
@@ -2525,7 +2524,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 
@@ -2537,7 +2536,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		recv := make(chan struct{})
 		go func() {
 			defer close(recv)
-			req, err = readRequest(conn)
+			req, err = conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Options, req.Method)
 
@@ -2582,7 +2581,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := readRequest(conn)
+		req, err := conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Options, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
@@ -2599,7 +2598,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
@@ -2623,7 +2622,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/trackID=0"), req.URL)
@@ -2662,7 +2661,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
@@ -2680,7 +2679,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 			Port: th.ClientPorts[0],
 		})
 
-		req, err = readRequest(conn)
+		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)

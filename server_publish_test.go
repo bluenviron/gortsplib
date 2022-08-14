@@ -753,8 +753,7 @@ func TestServerPublish(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 			} else {
-				var f base.InterleavedFrame
-				err := conn.ReadInterleavedFrame(&f)
+				f, err := conn.ReadInterleavedFrame()
 				require.NoError(t, err)
 				require.Equal(t, 1, f.Channel)
 				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
@@ -803,8 +802,7 @@ func TestServerPublish(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 			} else {
-				var f base.InterleavedFrame
-				err := conn.ReadInterleavedFrame(&f)
+				f, err := conn.ReadInterleavedFrame()
 				require.NoError(t, err)
 				require.Equal(t, 1, f.Channel)
 				require.Equal(t, testRTCPPacketMarshaled, f.Payload)

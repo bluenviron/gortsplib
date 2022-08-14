@@ -187,17 +187,15 @@ func (sc *ServerConn) readFuncStandard(readRequest chan readReq) error {
 	// reset deadline
 	sc.nconn.SetReadDeadline(time.Time{})
 
-	var req base.Request
-
 	for {
-		err := sc.conn.ReadRequest(&req)
+		req, err := sc.conn.ReadRequest()
 		if err != nil {
 			return err
 		}
 
 		cres := make(chan error)
 		select {
-		case readRequest <- readReq{req: &req, res: cres}:
+		case readRequest <- readReq{req: req, res: cres}:
 			err = <-cres
 			if err != nil {
 				return err
@@ -294,22 +292,19 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 		}
 	}
 
-	var req base.Request
-	var frame base.InterleavedFrame
-
 	for {
 		if sc.session.state == ServerSessionStateRecord {
 			sc.nconn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
 		}
 
-		what, err := sc.conn.ReadInterleavedFrameOrRequest(&frame, &req)
+		what, err := sc.conn.ReadInterleavedFrameOrRequest()
 		if err != nil {
 			return err
 		}
 
-		switch what.(type) {
+		switch twhat := what.(type) {
 		case *base.InterleavedFrame:
-			channel := frame.Channel
+			channel := twhat.Channel
 			isRTP := true
 			if (channel % 2) != 0 {
 				channel--
@@ -318,7 +313,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 
 			// forward frame only if it has been set up
 			if trackID, ok := sc.session.tcpTracksByChannel[channel]; ok {
-				err := processFunc(trackID, isRTP, frame.Payload)
+				err := processFunc(trackID, isRTP, twhat.Payload)
 				if err != nil {
 					return err
 				}
@@ -327,7 +322,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 		case *base.Request:
 			cres := make(chan error)
 			select {
-			case readRequest <- readReq{req: &req, res: cres}:
+			case readRequest <- readReq{req: twhat, res: cres}:
 				err := <-cres
 				if err != nil {
 					return err

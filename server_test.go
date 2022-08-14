@@ -76,15 +76,7 @@ func writeReqReadRes(
 		return nil, err
 	}
 
-	var res base.Response
-	err = conn.ReadResponse(&res)
-	return &res, err
-}
-
-func readResIgnoreFrames(conn *conn.Conn) (*base.Response, error) {
-	var res base.Response
-	err := conn.ReadResponseIgnoreFrames(&res)
-	return &res, err
+	return conn.ReadResponse()
 }
 
 type testServerHandler struct {

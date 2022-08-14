@@ -769,8 +769,7 @@ func (c *Client) runReader() {
 	c.readerErr <- func() error {
 		if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
 			for {
-				var res base.Response
-				err := c.conn.ReadResponse(&res)
+				_, err := c.conn.ReadResponse()
 				if err != nil {
 					return err
 				}
@@ -852,17 +851,14 @@ func (c *Client) runReader() {
 				}
 			}
 
-			var frame base.InterleavedFrame
-			var res base.Response
-
 			for {
-				what, err := c.conn.ReadInterleavedFrameOrResponse(&frame, &res)
+				what, err := c.conn.ReadInterleavedFrameOrResponse()
 				if err != nil {
 					return err
 				}
 
-				if _, ok := what.(*base.InterleavedFrame); ok {
-					channel := frame.Channel
+				if fr, ok := what.(*base.InterleavedFrame); ok {
+					channel := fr.Channel
 					isRTP := true
 					if (channel % 2) != 0 {
 						channel--
@@ -874,7 +870,7 @@ func (c *Client) runReader() {
 						continue
 					}
 
-					err := processFunc(track, isRTP, frame.Payload)
+					err := processFunc(track, isRTP, fr.Payload)
 					if err != nil {
 						return err
 					}
@@ -1051,61 +1047,58 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		return nil, err
 	}
 
-	var res base.Response
+	if skipResponse {
+		return nil, nil
+	}
 
-	if !skipResponse {
-		c.nconn.SetReadDeadline(time.Now().Add(c.ReadTimeout))
+	c.nconn.SetReadDeadline(time.Now().Add(c.ReadTimeout))
+	var res *base.Response
+	if allowFrames {
+		// read the response and ignore interleaved frames in between;
+		// interleaved frames are sent in two cases:
+		// * when the server is v4lrtspserver, before the PLAY response
+		// * when the stream is already playing
+		res, err = c.conn.ReadResponseIgnoreFrames()
+	} else {
+		res, err = c.conn.ReadResponse()
+	}
+	if err != nil {
+		return nil, err
+	}
 
-		if allowFrames {
-			// read the response and ignore interleaved frames in between;
-			// interleaved frames are sent in two cases:
-			// * when the server is v4lrtspserver, before the PLAY response
-			// * when the stream is already playing
-			err = c.conn.ReadResponseIgnoreFrames(&res)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			err = c.conn.ReadResponse(&res)
-			if err != nil {
-				return nil, err
-			}
+	if c.OnResponse != nil {
+		c.OnResponse(res)
+	}
+
+	// get session from response
+	if v, ok := res.Header["Session"]; ok {
+		var sx headers.Session
+		err := sx.Unmarshal(v)
+		if err != nil {
+			return nil, liberrors.ErrClientSessionHeaderInvalid{Err: err}
 		}
+		c.session = sx.Session
 
-		if c.OnResponse != nil {
-			c.OnResponse(&res)
-		}
-
-		// get session from response
-		if v, ok := res.Header["Session"]; ok {
-			var sx headers.Session
-			err := sx.Unmarshal(v)
-			if err != nil {
-				return nil, liberrors.ErrClientSessionHeaderInvalid{Err: err}
-			}
-			c.session = sx.Session
-
-			if sx.Timeout != nil && *sx.Timeout > 0 {
-				c.keepalivePeriod = time.Duration(float64(*sx.Timeout)*0.8) * time.Second
-			}
-		}
-
-		// if required, send request again with authentication
-		if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.sender == nil {
-			pass, _ := req.URL.User.Password()
-			user := req.URL.User.Username()
-
-			sender, err := auth.NewSender(res.Header["WWW-Authenticate"], user, pass)
-			if err != nil {
-				return nil, fmt.Errorf("unable to setup authentication: %s", err)
-			}
-			c.sender = sender
-
-			return c.do(req, skipResponse, allowFrames)
+		if sx.Timeout != nil && *sx.Timeout > 0 {
+			c.keepalivePeriod = time.Duration(float64(*sx.Timeout)*0.8) * time.Second
 		}
 	}
 
-	return &res, nil
+	// if required, send request again with authentication
+	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.sender == nil {
+		pass, _ := req.URL.User.Password()
+		user := req.URL.User.Username()
+
+		sender, err := auth.NewSender(res.Header["WWW-Authenticate"], user, pass)
+		if err != nil {
+			return nil, fmt.Errorf("unable to setup authentication: %s", err)
+		}
+		c.sender = sender
+
+		return c.do(req, skipResponse, allowFrames)
+	}
+
+	return res, nil
 }
 
 func (c *Client) doOptions(u *url.URL) (*base.Response, error) {
