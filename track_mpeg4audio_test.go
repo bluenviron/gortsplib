@@ -9,6 +9,22 @@ import (
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 )
 
+func TestTrackMPEG4AudioAttributes(t *testing.T) {
+	track := &TrackMPEG4Audio{
+		PayloadType: 96,
+		Config: &mpeg4audio.Config{
+			Type:         2,
+			SampleRate:   48000,
+			ChannelCount: 2,
+		},
+		SizeLength:       13,
+		IndexLength:      3,
+		IndexDeltaLength: 3,
+	}
+	require.Equal(t, 48000, track.ClockRate())
+	require.Equal(t, "", track.GetControl())
+}
+
 func TestTrackMPEG4AudioClone(t *testing.T) {
 	track := &TrackMPEG4Audio{
 		PayloadType: 96,

@@ -7,6 +7,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTrackH264Attributes(t *testing.T) {
+	track := &TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02},
+		PPS:         []byte{0x03, 0x04},
+	}
+	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, "", track.GetControl())
+	require.Equal(t, []byte{0x01, 0x02}, track.SafeSPS())
+	require.Equal(t, []byte{0x03, 0x04}, track.SafePPS())
+
+	track.SafeSetSPS([]byte{0x07, 0x08})
+	track.SafeSetPPS([]byte{0x09, 0x0A})
+	require.Equal(t, []byte{0x07, 0x08}, track.SafeSPS())
+	require.Equal(t, []byte{0x09, 0x0A}, track.SafePPS())
+}
+
 func TestTrackH264GetSPSPPSErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -163,22 +180,6 @@ func TestTrackH264GetSPSPPSErrors(t *testing.T) {
 			require.EqualError(t, err, ca.err)
 		})
 	}
-}
-
-func TestTrackH264Params(t *testing.T) {
-	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02},
-		PPS:         []byte{0x03, 0x04},
-	}
-	require.Equal(t, "", track.GetControl())
-	require.Equal(t, []byte{0x01, 0x02}, track.SafeSPS())
-	require.Equal(t, []byte{0x03, 0x04}, track.SafePPS())
-
-	track.SafeSetSPS([]byte{0x07, 0x08})
-	track.SafeSetPPS([]byte{0x09, 0x0A})
-	require.Equal(t, []byte{0x07, 0x08}, track.SafeSPS())
-	require.Equal(t, []byte{0x09, 0x0A}, track.SafePPS())
 }
 
 func TestTrackH264Clone(t *testing.T) {

@@ -7,7 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTracVP9Clone(t *testing.T) {
+func TestTrackVP9ttributes(t *testing.T) {
+	track := &TrackVP9{}
+	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, "", track.GetControl())
+}
+
+func TestTrackVP9Clone(t *testing.T) {
 	maxFR := 123
 	maxFS := 456
 	profileID := 789

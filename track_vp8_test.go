@@ -7,7 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTracVP8Clone(t *testing.T) {
+func TestTrackVP8ttributes(t *testing.T) {
+	track := &TrackVP8{}
+	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, "", track.GetControl())
+}
+
+func TestTrackVP8Clone(t *testing.T) {
 	maxFR := 123
 	maxFS := 456
 	track := &TrackVP8{

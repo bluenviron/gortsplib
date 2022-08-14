@@ -1,4 +1,4 @@
-package gortsplib
+package gortsplib //nolint:dupl
 
 import (
 	"testing"
@@ -7,8 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackPCMUNew(t *testing.T) {
+func TestTrackPCMUAttributes(t *testing.T) {
 	track := &TrackPCMU{}
+	require.Equal(t, 8000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }
 

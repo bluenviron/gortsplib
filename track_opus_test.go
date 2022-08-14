@@ -7,6 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTrackOpusAttributes(t *testing.T) {
+	track := &TrackOpus{
+		PayloadType:  96,
+		SampleRate:   48000,
+		ChannelCount: 2,
+	}
+	require.Equal(t, 48000, track.ClockRate())
+	require.Equal(t, "", track.GetControl())
+}
+
 func TestTracOpusClone(t *testing.T) {
 	track := &TrackOpus{
 		PayloadType:  96,

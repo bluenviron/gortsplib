@@ -7,13 +7,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackH265Params(t *testing.T) {
+func TestTrackH265Attributes(t *testing.T) {
 	track := &TrackH265{
 		PayloadType: 96,
 		VPS:         []byte{0x01, 0x02},
 		SPS:         []byte{0x03, 0x04},
 		PPS:         []byte{0x05, 0x06},
 	}
+	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 	require.Equal(t, []byte{0x01, 0x02}, track.SafeVPS())
 	require.Equal(t, []byte{0x03, 0x04}, track.SafeSPS())

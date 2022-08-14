@@ -1,4 +1,4 @@
-package gortsplib
+package gortsplib //nolint:dupl
 
 import (
 	"testing"
@@ -7,8 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackMPEG2VideoNew(t *testing.T) {
+func TestTrackMPEG2VideoAttributes(t *testing.T) {
 	track := &TrackMPEG2Video{}
+	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }
 

@@ -1,4 +1,4 @@
-package gortsplib
+package gortsplib //nolint:dupl
 
 import (
 	"testing"
@@ -6,6 +6,12 @@ import (
 	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTrackJPEGAttributes(t *testing.T) {
+	track := &TrackJPEG{}
+	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, "", track.GetControl())
+}
 
 func TestTrackJPEGClone(t *testing.T) {
 	track := &TrackJPEG{}
