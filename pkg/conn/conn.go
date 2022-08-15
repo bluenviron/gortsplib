@@ -1,3 +1,4 @@
+// Package conn contains a RTSP TCP connection implementation.
 package conn
 
 import (
