@@ -92,6 +92,25 @@ func TestURLClone(t *testing.T) {
 	}, u2)
 }
 
+func TestURLCloneWithoutCredentials(t *testing.T) {
+	u := mustParse("rtsp://user:pass@localhost:8554/test/stream")
+	u2 := u.CloneWithoutCredentials()
+	u.Host = "otherhost"
+
+	require.Equal(t, &URL{
+		Scheme: "rtsp",
+		Host:   "otherhost",
+		Path:   "/test/stream",
+		User:   url.UserPassword("user", "pass"),
+	}, u)
+
+	require.Equal(t, &URL{
+		Scheme: "rtsp",
+		Host:   "localhost:8554",
+		Path:   "/test/stream",
+	}, u2)
+}
+
 func TestURLRTSPPathAndQuery(t *testing.T) {
 	for _, ca := range []struct {
 		u *URL

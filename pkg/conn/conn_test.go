@@ -10,6 +10,14 @@ import (
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
+func mustParseURL(s string) *url.URL {
+	u, err := url.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
 func TestReadInterleavedFrameOrRequest(t *testing.T) {
 	byts := []byte("DESCRIBE rtsp://example.com/media.mp4 RTSP/1.0\r\n" +
 		"Accept: application/sdp\r\n" +
@@ -169,4 +177,48 @@ func TestReadResponseIgnoreFramesErrors(t *testing.T) {
 	conn := NewConn(bytes.NewBuffer(byts))
 	_, err := conn.ReadResponseIgnoreFrames()
 	require.EqualError(t, err, "EOF")
+}
+
+func TestWriteRequest(t *testing.T) {
+	var buf bytes.Buffer
+	conn := NewConn(&buf)
+	err := conn.WriteRequest(&base.Request{
+		Method: "OPTIONS",
+		URL:    mustParseURL("rtsp://example.com/media.mp4"),
+		Header: base.Header{
+			"CSeq":          base.HeaderValue{"1"},
+			"Require":       base.HeaderValue{"implicit-play"},
+			"Proxy-Require": base.HeaderValue{"gzipped-messages"},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestWriteResponse(t *testing.T) {
+	var buf bytes.Buffer
+	conn := NewConn(&buf)
+	err := conn.WriteResponse(&base.Response{
+		StatusCode:    base.StatusOK,
+		StatusMessage: "OK",
+		Header: base.Header{
+			"CSeq":    base.HeaderValue{"2"},
+			"Session": base.HeaderValue{"645252166"},
+			"WWW-Authenticate": base.HeaderValue{
+				"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"",
+				"Basic realm=\"4419b63f5e51\"",
+			},
+			"Date": base.HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestWriteInterleavedFrame(t *testing.T) {
+	var buf bytes.Buffer
+	conn := NewConn(&buf)
+	err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		Channel: 6,
+		Payload: []byte{0x01, 0x02, 0x03, 0x04},
+	}, make([]byte, 1024))
+	require.NoError(t, err)
 }

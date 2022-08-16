@@ -37,11 +37,40 @@ func TestReadGolombUnsigned(t *testing.T) {
 	require.Equal(t, uint32(6), v)
 }
 
+func TestReadGolombUnsignedErrors(t *testing.T) {
+	buf := []byte{0x00}
+	pos := 0
+	_, err := ReadGolombUnsigned(buf, &pos)
+	require.EqualError(t, err, "not enough bits")
+
+	buf = []byte{0x00, 0x01}
+	pos = 0
+	_, err = ReadGolombUnsigned(buf, &pos)
+	require.EqualError(t, err, "not enough bits")
+
+	buf = []byte{0x00, 0x00, 0x00, 0x00, 0x01}
+	pos = 0
+	_, err = ReadGolombUnsigned(buf, &pos)
+	require.EqualError(t, err, "invalid value")
+}
+
 func TestReadGolombSigned(t *testing.T) {
 	buf := []byte{0x38}
 	pos := 0
 	v, _ := ReadGolombSigned(buf, &pos)
 	require.Equal(t, int32(-3), v)
+
+	buf = []byte{0b00100100}
+	pos = 0
+	v, _ = ReadGolombSigned(buf, &pos)
+	require.Equal(t, int32(2), v)
+}
+
+func TestReadGolombSignedErrors(t *testing.T) {
+	buf := []byte{0x00}
+	pos := 0
+	_, err := ReadGolombSigned(buf, &pos)
+	require.EqualError(t, err, "not enough bits")
 }
 
 func TestReadFlag(t *testing.T) {
