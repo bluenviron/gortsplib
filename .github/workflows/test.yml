@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        go: ["1.16", "1.17", "1.18"]
+        go: ["1.17", "1.18", "1.19"]
 
     steps:
     - uses: actions/checkout@v2
@@ -24,5 +24,5 @@ jobs:
 
     - run: make test-nodocker
 
-    - if: matrix.go == '1.18'
+    - if: matrix.go == '1.19'
       run: bash <(curl -s https://codecov.io/bash)

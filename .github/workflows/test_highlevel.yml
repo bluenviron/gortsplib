@@ -15,6 +15,6 @@ jobs:
 
     - uses: actions/setup-go@v2
       with:
-        go-version: "1.18"
+        go-version: "1.19"
 
     - run: make test-highlevel-nodocker

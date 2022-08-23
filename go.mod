@@ -1,6 +1,6 @@
 module github.com/aler9/gortsplib
 
-go 1.16
+go 1.17
 
 require (
 	github.com/asticode/go-astits v1.10.0
