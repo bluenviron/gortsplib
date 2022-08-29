@@ -216,6 +216,24 @@ var casesTransport = []struct {
 			ServerPorts: &[2]int{3046, 3047},
 		},
 	},
+	{
+		"invalid ssrc",
+		base.HeaderValue{`RTP/AVP;unicast;client_port=14236;source=172.16.8.2;server_port=56002;ssrc=1449463210`},
+		base.HeaderValue{`RTP/AVP;unicast;source=172.16.8.2;client_port=14236-14237;server_port=56002-56003`},
+		Transport{
+			Protocol: TransportProtocolUDP,
+			Delivery: func() *TransportDelivery {
+				v := TransportDeliveryUnicast
+				return &v
+			}(),
+			Source: func() *net.IP {
+				v := net.ParseIP("172.16.8.2")
+				return &v
+			}(),
+			ClientPorts: &[2]int{14236, 14237},
+			ServerPorts: &[2]int{56002, 56003},
+		},
+	},
 }
 
 func TestTransportUnmarshal(t *testing.T) {
@@ -299,16 +317,6 @@ func TestTransportUnmarshalErrors(t *testing.T) {
 			"invalid server port",
 			base.HeaderValue{`RTP/AVP;unicast;server_port=aa-14187`},
 			"invalid ports (aa-14187)",
-		},
-		{
-			"invalid ssrc 1",
-			base.HeaderValue{`RTP/AVP;unicast;ssrc=zzz`},
-			"encoding/hex: invalid byte: U+007A 'z'",
-		},
-		{
-			"invalid ssrc 2",
-			base.HeaderValue{`RTP/AVP;unicast;ssrc=030A0B0C0D0E0F`},
-			"invalid SSRC",
 		},
 		{
 			"invalid mode",

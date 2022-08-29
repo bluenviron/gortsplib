@@ -210,20 +210,12 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 				v = "0" + v
 			}
 
-			tmp, err := hex.DecodeString(v)
-			if err != nil {
-				return err
+			if tmp, err := hex.DecodeString(v); err == nil && len(tmp) <= 4 {
+				var ssrc [4]byte
+				copy(ssrc[4-len(tmp):], tmp)
+				v := uint32(ssrc[0])<<24 | uint32(ssrc[1])<<16 | uint32(ssrc[2])<<8 | uint32(ssrc[3])
+				h.SSRC = &v
 			}
-
-			if len(tmp) > 4 {
-				return fmt.Errorf("invalid SSRC")
-			}
-
-			var ssrc [4]byte
-			copy(ssrc[4-len(tmp):], tmp)
-
-			v := uint32(ssrc[0])<<24 | uint32(ssrc[1])<<16 | uint32(ssrc[2])<<8 | uint32(ssrc[3])
-			h.SSRC = &v
 
 		case "mode":
 			str := strings.ToLower(v)
