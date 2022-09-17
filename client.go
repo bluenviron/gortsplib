@@ -3,7 +3,6 @@ Package gortsplib is a RTSP 1.0 library for the Go programming language,
 written for rtsp-simple-server.
 
 Examples are available at https://github.com/aler9/gortsplib/tree/master/examples
-
 */
 package gortsplib
 

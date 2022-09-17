@@ -1,3 +1,4 @@
+// Package rtpreorderer implements a filter to reorder incoming RTP packets.
 package rtpreorderer
 
 import (

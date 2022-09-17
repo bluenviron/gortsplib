@@ -87,7 +87,7 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 			Reports: []rtcp.ReceptionReport{
 				{
 					SSRC:               0xba9da416,
-					LastSequenceNumber: 1<<16 | 0x0000,
+					LastSequenceNumber: 1 << 16,
 					LastSenderReport:   0x887a17ce,
 					Delay:              1 * 65536,
 				},
