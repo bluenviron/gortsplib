@@ -1566,7 +1566,7 @@ func (c *Client) doSetup(
 		}
 
 		if thRes.InterleavedIDs == nil {
-			return nil, liberrors.ErrClientTransportHeaderNoInterleavedIDs{}
+			thRes.InterleavedIDs = [2]int{0,1}
 		}
 
 		if (thRes.InterleavedIDs[0]%2) != 0 ||
