@@ -1,20 +1,19 @@
 package h264
 
 import (
-	"bytes"
 	"fmt"
 )
 
 // AnnexBUnmarshal decodes NALUs from the Annex-B stream format.
 func AnnexBUnmarshal(byts []byte) ([][]byte, error) {
 	bl := len(byts)
-	zeroCount := 0
+	initZeroCount := 0
 
 outer:
 	for i := 0; i < bl; i++ {
 		switch byts[i] {
 		case 0:
-			zeroCount++
+			initZeroCount++
 
 		case 1:
 			break outer
@@ -23,35 +22,46 @@ outer:
 			return nil, fmt.Errorf("unexpected byte: %d", byts[i])
 		}
 	}
-	if zeroCount != 2 && zeroCount != 3 {
+	if initZeroCount != 2 && initZeroCount != 3 {
 		return nil, fmt.Errorf("initial delimiter not found")
 	}
 
-	start := zeroCount + 1
+	start := initZeroCount + 1
+	zeroCount := 0
+	n := 0
 
-	var n int
-	if zeroCount == 2 {
-		n = bytes.Count(byts[start:], []byte{0x00, 0x00, 0x01})
-	} else {
-		n = bytes.Count(byts[start:], []byte{0x00, 0x00, 0x00, 0x01})
+	for i := start; i < bl; i++ {
+		switch byts[i] {
+		case 0:
+			zeroCount++
+
+		case 1:
+			if zeroCount == 2 || zeroCount == 3 {
+				n++
+			}
+			zeroCount = 0
+
+		default:
+			zeroCount = 0
+		}
 	}
 
 	ret := make([][]byte, n+1)
 	pos := 0
-
-	curZeroCount := 0
+	start = initZeroCount + 1
+	zeroCount = 0
 	delimStart := 0
 
 	for i := start; i < bl; i++ {
 		switch byts[i] {
 		case 0:
-			if curZeroCount == 0 {
+			if zeroCount == 0 {
 				delimStart = i
 			}
-			curZeroCount++
+			zeroCount++
 
 		case 1:
-			if curZeroCount == zeroCount {
+			if zeroCount == 2 || zeroCount == 3 {
 				if (delimStart - start) > MaxNALUSize {
 					return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", delimStart-start, MaxNALUSize)
 				}
@@ -65,10 +75,10 @@ outer:
 				pos++
 				start = i + 1
 			}
-			curZeroCount = 0
+			zeroCount = 0
 
 		default:
-			curZeroCount = 0
+			zeroCount = 0
 		}
 	}
 
