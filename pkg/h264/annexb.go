@@ -46,6 +46,11 @@ outer:
 		}
 	}
 
+	if (n + 1) > MaxNALUsPerGroup {
+		return nil, fmt.Errorf("number of NALUs contained inside a single group (%d) is too big (maximum is %d)",
+			n+1, MaxNALUsPerGroup)
+	}
+
 	ret := make([][]byte, n+1)
 	pos := 0
 	start = initZeroCount + 1

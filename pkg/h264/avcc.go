@@ -26,6 +26,11 @@ func AVCCUnmarshal(buf []byte) ([][]byte, error) {
 			return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", bl-pos, MaxNALUSize)
 		}
 
+		if (len(ret) + 1) > MaxNALUsPerGroup {
+			return nil, fmt.Errorf("number of NALUs contained inside a single group (%d) is too big (maximum is %d)",
+				len(ret)+1, MaxNALUsPerGroup)
+		}
+
 		ret = append(ret, buf[pos:pos+le])
 		pos += le
 
