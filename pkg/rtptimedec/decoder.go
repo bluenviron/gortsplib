@@ -5,11 +5,14 @@ import (
 	"time"
 )
 
+const negativeThreshold = 0xFFFFFFF
+
 // Decoder is a RTP timestamp decoder.
 type Decoder struct {
-	clockRate time.Duration
-	tsAdd     *int64
-	tsPrev    int64
+	clockRate   time.Duration
+	initialized bool
+	tsOverall   time.Duration
+	tsPrev      uint32
 }
 
 // New allocates a Decoder.
@@ -21,31 +24,27 @@ func New(clockRate int) *Decoder {
 
 // Decode decodes a RTP timestamp.
 func (d *Decoder) Decode(ts uint32) time.Duration {
-	ts64 := int64(ts)
-
-	if d.tsAdd == nil {
-		d.tsPrev = ts64
-		ts64 = -ts64
-		d.tsAdd = &ts64
+	if !d.initialized {
+		d.initialized = true
+		d.tsPrev = ts
 		return 0
 	}
 
-	diff := ts64 - d.tsPrev
-	d.tsPrev = ts64
+	diff := ts - d.tsPrev
 
-	switch {
-	case diff < -0xFFFFFF: // overflow
-		*d.tsAdd += 0x100000000
-
-	case diff > 0xFFFFFF: // timestamp overflowed then went back
-		*d.tsAdd -= 0x100000000
+	// negative difference
+	if diff > negativeThreshold {
+		diff = d.tsPrev - ts
+		d.tsPrev = ts
+		d.tsOverall -= time.Duration(diff)
+	} else {
+		d.tsPrev = ts
+		d.tsOverall += time.Duration(diff)
 	}
 
-	tot := time.Duration(ts64 + *d.tsAdd)
-
 	// avoid an int64 overflow and preserve resolution by splitting division into two parts:
-	// first add seconds, then the decimal part.
-	secs := tot / d.clockRate
-	dec := tot % d.clockRate
+	// first add the integer part, then the decimal part.
+	secs := d.tsOverall / d.clockRate
+	dec := d.tsOverall % d.clockRate
 	return secs*time.Second + dec*time.Second/d.clockRate
 }

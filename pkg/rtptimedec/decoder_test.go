@@ -7,6 +7,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNegativeDiff(t *testing.T) {
+	d := New(90000)
+
+	i := uint32(0)
+	pts := d.Decode(i)
+	require.Equal(t, time.Duration(0), pts)
+
+	i += 90000 * 2
+	pts = d.Decode(i)
+	require.Equal(t, 2*time.Second, pts)
+
+	i -= 90000 * 1
+	pts = d.Decode(i)
+	require.Equal(t, 1*time.Second, pts)
+
+	i += 90000 * 2
+	pts = d.Decode(i)
+	require.Equal(t, 3*time.Second, pts)
+}
+
 func TestOverflow(t *testing.T) {
 	d := New(90000)
 
@@ -56,4 +76,21 @@ func TestOverflowAndBack(t *testing.T) {
 
 	pts = d.Decode(90000)
 	require.Equal(t, 2*time.Second, pts)
+}
+
+func BenchmarkDecoder(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		func() {
+			d := New(90000)
+			n := uint32(0)
+			for j := 0; j < 200; j++ {
+				if (j % 2) == 0 {
+					n += 90000
+				} else {
+					n -= 45000
+				}
+				d.Decode(n)
+			}
+		}()
+	}
 }
