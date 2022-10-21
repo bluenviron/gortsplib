@@ -195,38 +195,68 @@ func TestTrackH264Clone(t *testing.T) {
 }
 
 func TestTrackH264MediaDescription(t *testing.T) {
-	track := &TrackH264{
-		PayloadType: 96,
-		SPS: []byte{
-			0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
-			0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
-			0x00, 0x03, 0x00, 0x3d, 0x08,
-		},
-		PPS: []byte{
-			0x68, 0xee, 0x3c, 0x80,
-		},
-	}
+	t.Run("standard", func(t *testing.T) {
+		track := &TrackH264{
+			PayloadType: 96,
+			SPS: []byte{
+				0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
+				0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
+				0x00, 0x03, 0x00, 0x3d, 0x08,
+			},
+			PPS: []byte{
+				0x68, 0xee, 0x3c, 0x80,
+			},
+		}
 
-	require.Equal(t, &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "video",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"96"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: "96 H264/90000",
+		require.Equal(t, &psdp.MediaDescription{
+			MediaName: psdp.MediaName{
+				Media:   "video",
+				Protos:  []string{"RTP", "AVP"},
+				Formats: []string{"96"},
 			},
-			{
-				Key: "fmtp",
-				Value: "96 packetization-mode=1; " +
-					"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "rtpmap",
+					Value: "96 H264/90000",
+				},
+				{
+					Key: "fmtp",
+					Value: "96 packetization-mode=1; " +
+						"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C",
+				},
+				{
+					Key:   "control",
+					Value: "",
+				},
 			},
-			{
-				Key:   "control",
-				Value: "",
+		}, track.MediaDescription())
+	})
+
+	t.Run("no sps/pps", func(t *testing.T) {
+		track := &TrackH264{
+			PayloadType: 96,
+		}
+
+		require.Equal(t, &psdp.MediaDescription{
+			MediaName: psdp.MediaName{
+				Media:   "video",
+				Protos:  []string{"RTP", "AVP"},
+				Formats: []string{"96"},
 			},
-		},
-	}, track.MediaDescription())
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "rtpmap",
+					Value: "96 H264/90000",
+				},
+				{
+					Key:   "fmtp",
+					Value: "96 packetization-mode=1",
+				},
+				{
+					Key:   "control",
+					Value: "",
+				},
+			},
+		}, track.MediaDescription())
+	})
 }
