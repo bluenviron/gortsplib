@@ -5,14 +5,14 @@ import (
 	"time"
 )
 
-const negativeThreshold = 0xFFFFFFF
+const negativeThreshold = 0xFFFFFFFF / 2
 
 // Decoder is a RTP timestamp decoder.
 type Decoder struct {
 	clockRate   time.Duration
 	initialized bool
-	tsOverall   time.Duration
-	tsPrev      uint32
+	overall     time.Duration
+	prev        uint32
 }
 
 // New allocates a Decoder.
@@ -26,25 +26,25 @@ func New(clockRate int) *Decoder {
 func (d *Decoder) Decode(ts uint32) time.Duration {
 	if !d.initialized {
 		d.initialized = true
-		d.tsPrev = ts
+		d.prev = ts
 		return 0
 	}
 
-	diff := ts - d.tsPrev
+	diff := ts - d.prev
 
 	// negative difference
 	if diff > negativeThreshold {
-		diff = d.tsPrev - ts
-		d.tsPrev = ts
-		d.tsOverall -= time.Duration(diff)
+		diff = d.prev - ts
+		d.prev = ts
+		d.overall -= time.Duration(diff)
 	} else {
-		d.tsPrev = ts
-		d.tsOverall += time.Duration(diff)
+		d.prev = ts
+		d.overall += time.Duration(diff)
 	}
 
-	// avoid an int64 overflow and preserve resolution by splitting division into two parts:
+	// avoid an int64 overflow and keep resolution by splitting division into two parts:
 	// first add the integer part, then the decimal part.
-	secs := d.tsOverall / d.clockRate
-	dec := d.tsOverall % d.clockRate
+	secs := d.overall / d.clockRate
+	dec := d.overall % d.clockRate
 	return secs*time.Second + dec*time.Second/d.clockRate
 }
