@@ -771,7 +771,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			th.Delivery = &de
 			v := uint(127)
 			th.TTL = &v
-			d := stream.serverMulticastHandlers[trackID].ip()
+			d := stream.streamTracks[trackID].multicastHandler.ip()
 			th.Destination = &d
 			th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 
