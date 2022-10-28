@@ -40,7 +40,7 @@ func (r *RingBuffer) Close() {
 	r.event.signal()
 }
 
-// Reset restores Pull() after a Close().
+// Reset restores Pull() behavior after a Close().
 func (r *RingBuffer) Reset() {
 	for i := uint64(0); i < r.size; i++ {
 		atomic.SwapPointer(&r.buffer[i], nil)
@@ -50,7 +50,7 @@ func (r *RingBuffer) Reset() {
 	atomic.StoreInt64(&r.closed, 0)
 }
 
-// Push pushes some data at the end of the buffer.
+// Push pushes data at the end of the buffer.
 func (r *RingBuffer) Push(data interface{}) {
 	writeIndex := atomic.AddUint64(&r.writeIndex, 1)
 	i := writeIndex % r.size
@@ -58,7 +58,7 @@ func (r *RingBuffer) Push(data interface{}) {
 	r.event.signal()
 }
 
-// Pull pulls some data from the beginning of the buffer.
+// Pull pulls data from the beginning of the buffer.
 func (r *RingBuffer) Pull() (interface{}, bool) {
 	for {
 		i := r.readIndex % r.size
