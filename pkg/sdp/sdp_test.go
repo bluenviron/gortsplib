@@ -1764,6 +1764,68 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"fritz box 660 cable",
+		[]byte("v=0\n" +
+			"o=- 224 1 IN IP4 192.168.178.1\n" +
+			"s=SatIPServer:1 0,0,4\n" +
+			"t=0 0\n" +
+			"m=video 0 RTP/AVP 33\n" +
+			"c=In IP4 0.0.0.0\n" +
+			"a=control:stream=1\n" +
+			"a=fmtp:33 ver=1.2;src=1;tuner=1,240,1,7,112,,dvbc,,,,6900,34;pids=0,16,17,18,20\n" +
+			"a=sendonly\n"),
+		[]byte("v=0\r\n" +
+			"o=- 224 1 IN IP4 192.168.178.1\r\n" +
+			"s=SatIPServer:1 0,0,4\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 33\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"a=control:stream=1\r\n" +
+			"a=fmtp:33 ver=1.2;src=1;tuner=1,240,1,7,112,,dvbc,,,,6900,34;pids=0,16,17,18,20\r\n" +
+			"a=sendonly\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      224,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.178.1",
+			},
+			SessionName:      "SatIPServer:1 0,0,4",
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"33"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "0.0.0.0",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "stream=1",
+						},
+						{
+							Key:   "fmtp",
+							Value: "33 ver=1.2;src=1;tuner=1,240,1,7,112,,dvbc,,,,6900,34;pids=0,16,17,18,20",
+						},
+						{
+							Key: "sendonly",
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {

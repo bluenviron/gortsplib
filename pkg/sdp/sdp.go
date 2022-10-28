@@ -181,7 +181,7 @@ func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, 
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if i := indexOf(fields[0], []string{"IN"}); i == -1 {
+	if i := indexOf(strings.ToUpper(fields[0]), []string{"IN"}); i == -1 {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
 
@@ -197,7 +197,7 @@ func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, 
 	}
 
 	return &psdp.ConnectionInformation{
-		NetworkType: fields[0],
+		NetworkType: strings.ToUpper(fields[0]),
 		AddressType: fields[1],
 		Address:     connAddr,
 	}, nil
