@@ -123,7 +123,7 @@ func (st *ServerStream) readerAdd(
 		return fmt.Errorf("stream is closed")
 	}
 
-	// check whether UDP ports are already in use by another reader
+	// check whether UDP ports are already assigned to another reader
 	if transport == TransportUDP {
 		for r := range st.readers {
 			if *r.setuppedTransport == TransportUDP &&

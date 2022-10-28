@@ -242,7 +242,7 @@ type ErrServerUDPPortsAlreadyInUse struct {
 
 // Error implements the error interface.
 func (e ErrServerUDPPortsAlreadyInUse) Error() string {
-	return fmt.Sprintf("UDP ports %d and %d are already in use by another reader",
+	return fmt.Sprintf("UDP ports %d and %d are already assigned to another reader",
 		e.Port, e.Port+1)
 }
 

@@ -289,9 +289,15 @@ func TestServerReadSetupErrorSameUDPPorts(t *testing.T) {
 
 	stream := NewServerStream(Tracks{track})
 	defer stream.Close()
+	first := int32(1)
 
 	s := &Server{
 		Handler: &testServerHandler{
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				if atomic.SwapInt32(&first, 0) == 1 {
+					require.EqualError(t, ctx.Error, "UDP ports 35466 and 35467 are already assigned to another reader")
+				}
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
