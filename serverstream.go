@@ -68,6 +68,9 @@ func (st *ServerStream) Close() error {
 	}
 
 	for _, track := range st.streamTracks {
+		if track.rtcpSender != nil {
+			track.rtcpSender.Close()
+		}
 		if track.multicastHandler != nil {
 			track.multicastHandler.close()
 		}
