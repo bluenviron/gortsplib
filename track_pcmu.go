@@ -14,11 +14,11 @@ type TrackPCMU struct {
 
 func newTrackPCMUFromMediaDescription(
 	control string,
-	rtpmapPart1 string) (*TrackPCMU, error,
+	clock string) (*TrackPCMU, error,
 ) {
-	tmp := strings.Split(rtpmapPart1, "/")
-	if len(tmp) >= 3 && tmp[2] != "1" {
-		return nil, fmt.Errorf("PCMU tracks must have only one channel")
+	tmp := strings.SplitN(clock, "/", 2)
+	if len(tmp) == 2 && tmp[1] != "1" {
+		return nil, fmt.Errorf("PCMU tracks can have only one channel")
 	}
 
 	return &TrackPCMU{

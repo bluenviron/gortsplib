@@ -9,12 +9,21 @@ import (
 
 func TestTrackGenericClone(t *testing.T) {
 	track := &TrackGeneric{
-		Media:   "video",
-		Formats: []string{"100", "101"},
-		RTPMap:  "98 H265/90000",
-		FMTP: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
-			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
+		Media: "video",
+		Payloads: []TrackGenericPayload{
+			{
+				Type:   98,
+				RTPMap: "H265/90000",
+				FMTP: "profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+					"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
+			},
+			{
+				Type: 100,
+			},
+		},
 	}
+	err := track.Init()
+	require.NoError(t, err)
 
 	clone := track.clone()
 	require.NotSame(t, track, clone)
@@ -23,17 +32,27 @@ func TestTrackGenericClone(t *testing.T) {
 
 func TestTrackGenericMediaDescription(t *testing.T) {
 	track := &TrackGeneric{
-		Media:   "video",
-		Formats: []string{"100", "101"},
-		RTPMap:  "98 H265/90000",
-		FMTP: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
-			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
+		Media: "video",
+		Payloads: []TrackGenericPayload{
+			{
+				Type:   98,
+				RTPMap: "H265/90000",
+				FMTP: "profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+					"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
+			},
+			{
+				Type: 100,
+			},
+		},
 	}
+	err := track.Init()
+	require.NoError(t, err)
+
 	require.Equal(t, &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:   "video",
 			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"100", "101"},
+			Formats: []string{"98", "100"},
 		},
 		Attributes: []psdp.Attribute{
 			{

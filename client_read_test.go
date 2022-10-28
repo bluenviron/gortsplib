@@ -246,10 +246,14 @@ func TestClientRead(t *testing.T) {
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
 				track := &TrackGeneric{
-					Media:   "application",
-					Formats: []string{"97"},
-					RTPMap:  "97 private/90000",
+					Media: "application",
+					Payloads: []TrackGenericPayload{{
+						Type:   97,
+						RTPMap: "97 private/90000",
+					}},
 				}
+				err = track.Init()
+				require.NoError(t, err)
 
 				tracks := Tracks{track}
 				tracks.setControls()

@@ -457,26 +457,41 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				MediaName: psdp.MediaName{
 					Media:   "video",
 					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"98", "96"},
+					Formats: []string{"96", "98"},
 				},
 				Attributes: []psdp.Attribute{
 					{
 						Key:   "rtpmap",
-						Value: "98 H265/90000",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "rtpmap",
+						Value: "98 MetaData",
+					},
+					{
+						Key: "rtcp-mux",
 					},
 					{
 						Key: "fmtp",
-						Value: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
-							"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
+						Value: "96 packetization-mode=1;profile-level-id=4d002a;" +
+							"sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==",
 					},
 				},
 			},
 			&TrackGeneric{
-				Media:   "video",
-				Formats: []string{"98", "96"},
-				RTPMap:  "98 H265/90000",
-				FMTP: "98 profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
-					"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
+				Media: "video",
+				Payloads: []TrackGenericPayload{
+					{
+						Type:   96,
+						RTPMap: "H264/90000",
+						FMTP:   "packetization-mode=1;profile-level-id=4d002a;sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==",
+					},
+					{
+						Type:   98,
+						RTPMap: "MetaData",
+					},
+				},
+				clockRate: 90000,
 			},
 		},
 	} {
@@ -503,7 +518,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 					Formats: []string{},
 				},
 			},
-			"unable to get clock rate: no formats provided",
+			"no media formats found",
 		},
 		{
 			"no rtpmap",
@@ -527,11 +542,11 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 				Attributes: []psdp.Attribute{
 					{
 						Key:   "rtpmap",
-						Value: "96",
+						Value: "97 mpeg4-generic/48000/2",
 					},
 				},
 			},
-			"unable to get clock rate: invalid rtpmap (96)",
+			"unable to get clock rate: attribute 'rtpmap' not found",
 		},
 		{
 			"invalid clockrate 2",
@@ -548,7 +563,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"unable to get clock rate: invalid rtpmap (96 mpeg4-generic)",
+			"unable to get clock rate: invalid rtpmap (mpeg4-generic)",
 		},
 		{
 			"invalid clockrate 3",
@@ -725,7 +740,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"invalid rtpmap (opus/48000)",
+			"invalid clock (48000)",
 		},
 		{
 			"opus invalid 2",

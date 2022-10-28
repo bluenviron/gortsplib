@@ -28,76 +28,110 @@ type Track interface {
 	url(*url.URL) (*url.URL, error)
 }
 
-func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
-	control := func() string {
-		for _, attr := range md.Attributes {
-			if attr.Key == "control" {
-				return attr.Value
+func getControlAttribute(attributes []psdp.Attribute) string {
+	for _, attr := range attributes {
+		if attr.Key == "control" {
+			return attr.Value
+		}
+	}
+	return ""
+}
+
+func getRtpmapAttribute(attributes []psdp.Attribute, payloadType uint8) string {
+	for _, attr := range attributes {
+		if attr.Key == "rtpmap" {
+			v := strings.TrimSpace(attr.Value)
+			if parts := strings.SplitN(v, " ", 2); len(parts) == 2 {
+				if tmp, err := strconv.ParseInt(parts[0], 10, 8); err == nil && uint8(tmp) == payloadType {
+					return parts[1]
+				}
 			}
 		}
-		return ""
-	}()
+	}
+	return ""
+}
 
-	rtpmapPart1, payloadType := func() (string, uint8) {
-		rtpmap, ok := md.Attribute("rtpmap")
-		if !ok {
-			return "", 0
+func getFmtpAttribute(attributes []psdp.Attribute, payloadType uint8) string {
+	for _, attr := range attributes {
+		if attr.Key == "fmtp" {
+			if parts := strings.SplitN(attr.Value, " ", 2); len(parts) == 2 {
+				if tmp, err := strconv.ParseInt(parts[0], 10, 8); err == nil && uint8(tmp) == payloadType {
+					return parts[1]
+				}
+			}
 		}
-		rtpmap = strings.TrimSpace(rtpmap)
+	}
+	return ""
+}
 
-		rtpmapParts := strings.Split(rtpmap, " ")
-		if len(rtpmapParts) != 2 {
-			return "", 0
-		}
+func getCodecAndClock(attributes []psdp.Attribute, payloadType uint8) (string, string) {
+	rtpmap := getRtpmapAttribute(attributes, payloadType)
+	if rtpmap == "" {
+		return "", ""
+	}
 
-		tmp, err := strconv.ParseInt(rtpmapParts[0], 10, 64)
+	parts2 := strings.SplitN(rtpmap, "/", 2)
+	if len(parts2) != 2 {
+		return "", ""
+	}
+
+	return parts2[0], parts2[1]
+}
+
+func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
+	if len(md.MediaName.Formats) == 0 {
+		return nil, fmt.Errorf("no media formats found")
+	}
+
+	control := getControlAttribute(md.Attributes)
+
+	if len(md.MediaName.Formats) == 1 {
+		tmp, err := strconv.ParseInt(md.MediaName.Formats[0], 10, 8)
 		if err != nil {
-			return "", 0
+			return nil, err
 		}
 		payloadType := uint8(tmp)
 
-		return rtpmapParts[1], payloadType
-	}()
+		codec, clock := getCodecAndClock(md.Attributes, payloadType)
 
-	if len(md.MediaName.Formats) == 1 {
 		switch {
 		case md.MediaName.Media == "video":
 			switch {
-			case md.MediaName.Formats[0] == "26":
+			case payloadType == 26:
 				return newTrackJPEGFromMediaDescription(control)
 
-			case md.MediaName.Formats[0] == "32":
+			case payloadType == 32:
 				return newTrackMPEG2VideoFromMediaDescription(control)
 
-			case rtpmapPart1 == "H264/90000":
+			case codec == "H264" && clock == "90000":
 				return newTrackH264FromMediaDescription(control, payloadType, md)
 
-			case rtpmapPart1 == "H265/90000":
+			case codec == "H265" && clock == "90000":
 				return newTrackH265FromMediaDescription(control, payloadType, md)
 
-			case rtpmapPart1 == "VP8/90000":
+			case codec == "VP8" && clock == "90000":
 				return newTrackVP8FromMediaDescription(control, payloadType, md)
 
-			case rtpmapPart1 == "VP9/90000":
+			case codec == "VP9" && clock == "90000":
 				return newTrackVP9FromMediaDescription(control, payloadType, md)
 			}
 
 		case md.MediaName.Media == "audio":
 			switch {
-			case md.MediaName.Formats[0] == "0":
-				return newTrackPCMUFromMediaDescription(control, rtpmapPart1)
+			case payloadType == 0:
+				return newTrackPCMUFromMediaDescription(control, clock)
 
-			case md.MediaName.Formats[0] == "8":
-				return newTrackPCMAFromMediaDescription(control, rtpmapPart1)
+			case payloadType == 8:
+				return newTrackPCMAFromMediaDescription(control, clock)
 
-			case md.MediaName.Formats[0] == "14":
+			case payloadType == 14:
 				return newTrackMPEG2AudioFromMediaDescription(control)
 
-			case strings.HasPrefix(strings.ToLower(rtpmapPart1), "mpeg4-generic/"):
+			case strings.ToLower(codec) == "mpeg4-generic":
 				return newTrackMPEG4AudioFromMediaDescription(control, payloadType, md)
 
-			case strings.HasPrefix(rtpmapPart1, "opus/"):
-				return newTrackOpusFromMediaDescription(control, payloadType, rtpmapPart1, md)
+			case codec == "opus":
+				return newTrackOpusFromMediaDescription(control, payloadType, clock, md)
 			}
 		}
 	}

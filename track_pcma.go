@@ -17,8 +17,8 @@ func newTrackPCMAFromMediaDescription(
 	rtpmapPart1 string) (*TrackPCMA, error,
 ) {
 	tmp := strings.Split(rtpmapPart1, "/")
-	if len(tmp) >= 3 && tmp[2] != "1" {
-		return nil, fmt.Errorf("PCMA tracks must have only one channel")
+	if len(tmp) == 2 && tmp[1] != "1" {
+		return nil, fmt.Errorf("PCMU tracks can have only one channel")
 	}
 
 	return &TrackPCMA{

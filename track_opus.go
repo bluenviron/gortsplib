@@ -20,20 +20,20 @@ type TrackOpus struct {
 func newTrackOpusFromMediaDescription(
 	control string,
 	payloadType uint8,
-	rtpmapPart1 string,
+	clock string,
 	md *psdp.MediaDescription,
 ) (*TrackOpus, error) {
-	tmp := strings.SplitN(rtpmapPart1, "/", 3)
-	if len(tmp) != 3 {
-		return nil, fmt.Errorf("invalid rtpmap (%v)", rtpmapPart1)
+	tmp := strings.SplitN(clock, "/", 32)
+	if len(tmp) != 2 {
+		return nil, fmt.Errorf("invalid clock (%v)", clock)
 	}
 
-	sampleRate, err := strconv.ParseInt(tmp[1], 10, 64)
+	sampleRate, err := strconv.ParseInt(tmp[0], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	channelCount, err := strconv.ParseInt(tmp[2], 10, 64)
+	channelCount, err := strconv.ParseInt(tmp[1], 10, 64)
 	if err != nil {
 		return nil, err
 	}
