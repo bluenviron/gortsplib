@@ -81,11 +81,6 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 		case h264.NALUTypeIDR:
 			idrPresent = true
 
-			// add SPS and PPS before every IDR
-			if e.sps != nil && e.pps != nil {
-				filteredNALUs = append(filteredNALUs, e.sps, e.pps)
-			}
-
 		case h264.NALUTypeNonIDR:
 			nonIDRPresent = true
 		}
@@ -93,8 +88,15 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 		filteredNALUs = append(filteredNALUs, nalu)
 	}
 
+	nalus = filteredNALUs
+
 	if !nonIDRPresent && !idrPresent {
 		return nil
+	}
+
+	// add SPS and PPS before every group that contains an IDR
+	if idrPresent {
+		nalus = append([][]byte{e.sps, e.pps}, nalus...)
 	}
 
 	var dts time.Duration
@@ -109,7 +111,7 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 		e.dtsExtractor = h264.NewDTSExtractor()
 
 		var err error
-		dts, err = e.dtsExtractor.Extract(filteredNALUs, pts)
+		dts, err = e.dtsExtractor.Extract(nalus, pts)
 		if err != nil {
 			return err
 		}
@@ -120,7 +122,7 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 
 	} else {
 		var err error
-		dts, err = e.dtsExtractor.Extract(filteredNALUs, pts)
+		dts, err = e.dtsExtractor.Extract(nalus, pts)
 		if err != nil {
 			return err
 		}
@@ -143,7 +145,7 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 	}
 
 	// encode into Annex-B
-	annexb, err := h264.AnnexBMarshal(filteredNALUs)
+	annexb, err := h264.AnnexBMarshal(nalus)
 	if err != nil {
 		return err
 	}
