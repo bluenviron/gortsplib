@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"log"
 	"sync"
@@ -11,14 +10,16 @@ import (
 )
 
 // This example shows how to
-// 1. create a RTSP server which accepts only connections encrypted with TLS (RTSPS)
-// 2. allow a single client to publish a stream with TCP
-// 3. allow multiple clients to read that stream with TCP
+// 1. create a RTSP server which accepts plain connections
+// 2. allow a single client to publish a stream, containing a H264 track, with TCP or UDP
+// 3. save the content of the H264 track into a file in MPEG-TS format
 
 type serverHandler struct {
-	mutex     sync.Mutex
-	stream    *gortsplib.ServerStream
-	publisher *gortsplib.ServerSession
+	mutex       sync.Mutex
+	stream      *gortsplib.ServerStream
+	h264TrackID int
+	h264track   *gortsplib.TrackH264
+	mpegtsMuxer *mpegtsEncoder
 }
 
 // called when a connection is opened.
@@ -43,32 +44,11 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	// if the session is the publisher,
 	// close the stream and disconnect any reader.
-	if sh.stream != nil && ctx.Session == sh.publisher {
+	if sh.stream != nil {
 		sh.stream.Close()
 		sh.stream = nil
 	}
-}
-
-// called after receiving a DESCRIBE request.
-func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
-	log.Printf("describe request")
-
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
-
-	// no one is publishing yet
-	if sh.stream == nil {
-		return &base.Response{
-			StatusCode: base.StatusNotFound,
-		}, nil, nil
-	}
-
-	// send the track list that is being published to the client
-	return &base.Response{
-		StatusCode: base.StatusOK,
-	}, sh.stream, nil
 }
 
 // called after receiving an ANNOUNCE request.
@@ -84,9 +64,33 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		}, fmt.Errorf("someone is already publishing")
 	}
 
-	// create the stream and save the publisher
+	// find the H264 track
+	h264TrackID, h264track := func() (int, *gortsplib.TrackH264) {
+		for i, track := range ctx.Tracks {
+			if h264track, ok := track.(*gortsplib.TrackH264); ok {
+				return i, h264track
+			}
+		}
+		return -1, nil
+	}()
+	if h264TrackID < 0 {
+		return &base.Response{
+			StatusCode: base.StatusBadRequest,
+		}, fmt.Errorf("H264 track not found")
+	}
+
+	// setup H264->MPEGTS encoder
+	mpegtsMuxer, err := newMPEGTSEncoder(h264track.SafeSPS(), h264track.SafePPS())
+	if err != nil {
+		return &base.Response{
+			StatusCode: base.StatusBadRequest,
+		}, err
+	}
+
+	// create a stream and save data
 	sh.stream = gortsplib.NewServerStream(ctx.Tracks)
-	sh.publisher = ctx.Session
+	sh.h264TrackID = h264TrackID
+	sh.mpegtsMuxer = mpegtsMuxer
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
@@ -97,25 +101,9 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
-	// no one is publishing yet
-	if sh.stream == nil {
-		return &base.Response{
-			StatusCode: base.StatusNotFound,
-		}, nil, nil
-	}
-
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, sh.stream, nil
-}
-
-// called after receiving a PLAY request.
-func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
-	log.Printf("play request")
-
-	return &base.Response{
-		StatusCode: base.StatusOK,
-	}, nil
 }
 
 // called after receiving a RECORD request.
@@ -132,26 +120,31 @@ func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx)
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	// if we are the publisher, route the RTP packet to all readers
-	if ctx.Session == sh.publisher {
-		sh.stream.WritePacketRTP(ctx.TrackID, ctx.Packet, ctx.PTSEqualsDTS)
+	if ctx.TrackID != sh.h264TrackID {
+		return
+	}
+
+	if ctx.H264NALUs == nil {
+		return
+	}
+
+	// encode H264 NALUs into MPEG-TS
+	err := sh.mpegtsMuxer.encode(ctx.H264NALUs, ctx.H264PTS)
+	if err != nil {
+		return
 	}
 }
 
 func main() {
-	// setup certificates - they can be generated with
-	// openssl genrsa -out server.key 2048
-	// openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
-	cert, err := tls.LoadX509KeyPair("server.crt", "server.key")
-	if err != nil {
-		panic(err)
-	}
-
 	// configure server
 	s := &gortsplib.Server{
-		Handler:     &serverHandler{},
-		TLSConfig:   &tls.Config{Certificates: []tls.Certificate{cert}},
-		RTSPAddress: ":8322",
+		Handler:           &serverHandler{},
+		RTSPAddress:       ":8554",
+		UDPRTPAddress:     ":8000",
+		UDPRTCPAddress:    ":8001",
+		MulticastIPRange:  "224.1.0.0/16",
+		MulticastRTPPort:  8002,
+		MulticastRTCPPort: 8003,
 	}
 
 	// start server and wait until a fatal error

@@ -83,7 +83,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		}, fmt.Errorf("someone is already publishing")
 	}
 
-	// save the track list and the publisher
+	// create the stream and save the publisher
 	sh.stream = gortsplib.NewServerStream(ctx.Tracks)
 	sh.publisher = ctx.Session
 
