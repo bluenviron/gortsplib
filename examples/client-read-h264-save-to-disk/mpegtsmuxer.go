@@ -11,8 +11,8 @@ import (
 	"github.com/asticode/go-astits"
 )
 
-// mpegtsEncoder allows to save a H264 stream into a MPEG-TS file.
-type mpegtsEncoder struct {
+// mpegtsMuxer allows to save a H264 stream into a MPEG-TS file.
+type mpegtsMuxer struct {
 	sps []byte
 	pps []byte
 
@@ -24,8 +24,8 @@ type mpegtsEncoder struct {
 	startDTS         time.Duration
 }
 
-// newMPEGTSEncoder allocates a mpegtsEncoder.
-func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
+// newMPEGTSMuxer allocates a mpegtsMuxer.
+func newMPEGTSMuxer(sps []byte, pps []byte) (*mpegtsMuxer, error) {
 	f, err := os.Create("mystream.ts")
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
 	})
 	mux.SetPCRPID(256)
 
-	return &mpegtsEncoder{
+	return &mpegtsMuxer{
 		sps: sps,
 		pps: pps,
 		f:   f,
@@ -48,14 +48,14 @@ func newMPEGTSEncoder(sps []byte, pps []byte) (*mpegtsEncoder, error) {
 	}, nil
 }
 
-// close closes all the mpegtsEncoder resources.
-func (e *mpegtsEncoder) close() {
+// close closes all the mpegtsMuxer resources.
+func (e *mpegtsMuxer) close() {
 	e.b.Flush()
 	e.f.Close()
 }
 
 // encode encodes H264 NALUs into MPEG-TS.
-func (e *mpegtsEncoder) encode(nalus [][]byte, pts time.Duration) error {
+func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 	// prepend an AUD. This is required by some players
 	filteredNALUs := [][]byte{
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},

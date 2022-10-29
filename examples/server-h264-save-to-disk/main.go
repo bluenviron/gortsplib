@@ -19,7 +19,7 @@ type serverHandler struct {
 	stream      *gortsplib.ServerStream
 	h264TrackID int
 	h264track   *gortsplib.TrackH264
-	mpegtsMuxer *mpegtsEncoder
+	mpegtsMuxer *mpegtsMuxer
 }
 
 // called when a connection is opened.
@@ -80,7 +80,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// setup H264->MPEGTS encoder
-	mpegtsMuxer, err := newMPEGTSEncoder(h264track.SafeSPS(), h264track.SafePPS())
+	mpegtsMuxer, err := newMPEGTSMuxer(h264track.SafeSPS(), h264track.SafePPS())
 	if err != nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
