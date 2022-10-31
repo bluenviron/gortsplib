@@ -62,16 +62,12 @@ func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, int) {
 		for i := uint16(0); i < bufferSize; i++ {
 			p := (r.absPos + i) & (bufferSize - 1)
 			if r.buffer[p] != nil {
-				ret[pos] = r.buffer[p]
+				ret[pos], r.buffer[p] = r.buffer[p], nil
 				pos++
 			}
 		}
 
 		ret[pos] = pkt
-
-		for i := 0; i < bufferSize; i++ {
-			r.buffer[i] = nil
-		}
 
 		r.expectedSeqNum = pkt.SequenceNumber + 1
 		return ret, int(relPos) - n + 1
