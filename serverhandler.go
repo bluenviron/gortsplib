@@ -227,3 +227,15 @@ type ServerHandlerOnPacketRTCP interface {
 	// called when receiving a RTCP packet.
 	OnPacketRTCP(*ServerHandlerOnPacketRTCPCtx)
 }
+
+// ServerHandlerOnDecodeErrorCtx is the context of OnDecodeError.
+type ServerHandlerOnDecodeErrorCtx struct {
+	Session *ServerSession
+	Error   error
+}
+
+// ServerHandlerOnDecodeError can be implemented by a ServerHandler.
+type ServerHandlerOnDecodeError interface {
+	// called when there's a non-fatal decoding error of RTP or RTCP packets.
+	OnDecodeError(*ServerHandlerOnDecodeErrorCtx)
+}

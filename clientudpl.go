@@ -193,6 +193,7 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 	pkt := u.ct.udpRTPPacketBuffer.next()
 	err := pkt.Unmarshal(payload)
 	if err != nil {
+		u.c.OnDecodeError(err)
 		return
 	}
 
@@ -201,8 +202,10 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 	for _, pkt := range packets {
 		out, err := u.ct.cleaner.Process(pkt)
 		if err != nil {
-			return
+			u.c.OnDecodeError(err)
+			continue
 		}
+
 		out0 := out[0]
 
 		u.ct.udpRTCPReceiver.ProcessPacketRTP(time.Now(), pkt, out0.PTSEqualsDTS)
@@ -220,6 +223,7 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
+		u.c.OnDecodeError(err)
 		return
 	}
 
@@ -235,6 +239,7 @@ func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
+		u.c.OnDecodeError(err)
 		return
 	}
 

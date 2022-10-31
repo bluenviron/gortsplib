@@ -195,6 +195,12 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 	pkt := u.s.udpRTPPacketBuffer.next()
 	err := pkt.Unmarshal(payload)
 	if err != nil {
+		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+			h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
+				Session: clientData.ss,
+				Error:   err,
+			})
+		}
 		return
 	}
 
@@ -206,8 +212,15 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 
 		out, err := clientData.track.cleaner.Process(pkt)
 		if err != nil {
-			return
+			if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+				h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
+					Session: clientData.ss,
+					Error:   err,
+				})
+			}
+			continue
 		}
+
 		out0 := out[0]
 
 		clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, out0.PTSEqualsDTS)
@@ -228,6 +241,12 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) {
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
+		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+			h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
+				Session: clientData.ss,
+				Error:   err,
+			})
+		}
 		return
 	}
 

@@ -240,6 +240,8 @@ type Client struct {
 	OnPacketRTP func(*ClientOnPacketRTPCtx)
 	// called when receiving a RTCP packet.
 	OnPacketRTCP func(*ClientOnPacketRTCPCtx)
+	// called when there's a non-fatal decoding error of RTP or RTCP packets.
+	OnDecodeError func(error)
 
 	//
 	// private
@@ -335,12 +337,24 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 
 	// callbacks
+	if c.OnRequest == nil {
+		c.OnRequest = func(*base.Request) {
+		}
+	}
+	if c.OnResponse == nil {
+		c.OnResponse = func(*base.Response) {
+		}
+	}
 	if c.OnPacketRTP == nil {
-		c.OnPacketRTP = func(ctx *ClientOnPacketRTPCtx) {
+		c.OnPacketRTP = func(*ClientOnPacketRTPCtx) {
 		}
 	}
 	if c.OnPacketRTCP == nil {
-		c.OnPacketRTCP = func(ctx *ClientOnPacketRTCPCtx) {
+		c.OnPacketRTCP = func(*ClientOnPacketRTCPCtx) {
+		}
+	}
+	if c.OnDecodeError == nil {
+		c.OnDecodeError = func(error) {
 		}
 	}
 
@@ -814,6 +828,7 @@ func (c *Client) runReader() {
 						if err != nil {
 							// some cameras send invalid RTCP packets.
 							// skip them.
+							c.OnDecodeError(err)
 							return nil
 						}
 
@@ -1038,9 +1053,7 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		c.sender.AddAuthorization(req)
 	}
 
-	if c.OnRequest != nil {
-		c.OnRequest(req)
-	}
+	c.OnRequest(req)
 
 	c.nconn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
 	err := c.conn.WriteRequest(req)
@@ -1067,9 +1080,7 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		return nil, err
 	}
 
-	if c.OnResponse != nil {
-		c.OnResponse(res)
-	}
+	c.OnResponse(res)
 
 	// get session from response
 	if v, ok := res.Header["Session"]; ok {

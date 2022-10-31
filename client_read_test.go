@@ -2669,7 +2669,6 @@ func TestClientReadDifferentSource(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
-		require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -2695,9 +2694,6 @@ func TestClientReadDifferentSource(t *testing.T) {
 	}()
 
 	c := Client{
-		TLSConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
 		Transport: func() *Transport {
 			v := TransportUDP
 			return &v
@@ -2715,4 +2711,160 @@ func TestClientReadDifferentSource(t *testing.T) {
 	defer c.Close()
 
 	<-packetRecv
+}
+
+func TestClientReadDecodeErrors(t *testing.T) {
+	for _, ca := range []string{
+		"invalid rtp",
+		"invalid rtcp",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			errorRecv := make(chan struct{})
+
+			l, err := net.Listen("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer l.Close()
+
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
+
+				nconn, err := l.Accept()
+				require.NoError(t, err)
+				defer nconn.Close()
+				conn := conn.NewConn(nconn)
+
+				req, err := conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/stream"), req.URL)
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+							string(base.Setup),
+							string(base.Play),
+						}, ", ")},
+					},
+				})
+				require.NoError(t, err)
+
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Describe, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/stream"), req.URL)
+
+				tracks := Tracks{&TrackH264{
+					PayloadType: 96,
+					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				}}
+				tracks.setControls()
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/stream/"},
+					},
+					Body: tracks.Marshal(false),
+				})
+				require.NoError(t, err)
+
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/stream/trackID=0"), req.URL)
+
+				var inTH headers.Transport
+				err = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err)
+
+				th := headers.Transport{
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
+						return &v
+					}(),
+					Protocol:    headers.TransportProtocolUDP,
+					ClientPorts: inTH.ClientPorts,
+					ServerPorts: &[2]int{34556, 34557},
+				}
+
+				l1, err := net.ListenPacket("udp", "127.0.0.1:34556")
+				require.NoError(t, err)
+				defer l1.Close()
+
+				l2, err := net.ListenPacket("udp", "127.0.0.1:34557")
+				require.NoError(t, err)
+				defer l2.Close()
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Marshal(),
+					},
+				})
+				require.NoError(t, err)
+
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Play, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/stream/"), req.URL)
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err)
+
+				switch ca {
+				case "invalid rtp":
+					l1.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: th.ClientPorts[0],
+					})
+
+				case "invalid rtcp":
+					l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: th.ClientPorts[1],
+					})
+				}
+
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/stream/"), req.URL)
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err)
+			}()
+
+			c := Client{
+				Transport: func() *Transport {
+					v := TransportUDP
+					return &v
+				}(),
+				OnDecodeError: func(err error) {
+					switch ca {
+					case "invalid rtp":
+						require.EqualError(t, err, "RTP header size insufficient: 2 < 4")
+					case "invalid rtcp":
+						require.EqualError(t, err, "rtcp: packet too short")
+					}
+					close(errorRecv)
+				},
+			}
+
+			err = startReading(&c, "rtsp://localhost:8554/stream")
+			require.NoError(t, err)
+			defer c.Close()
+
+			<-errorRecv
+		})
+	}
 }

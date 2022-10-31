@@ -1375,8 +1375,6 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
-			},
 		},
 		UDPRTPAddress:  "127.0.0.1:8000",
 		UDPRTCPAddress: "127.0.0.1:8001",
@@ -1475,4 +1473,142 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
 	}()
+}
+
+func TestServerPublishDecodeErrors(t *testing.T) {
+	for _, ca := range []string{
+		"invalid rtp",
+		"invalid rtcp",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			errorRecv := make(chan struct{})
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil, nil
+					},
+					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onDecodeError: func(ctx *ServerHandlerOnDecodeErrorCtx) {
+						switch ca {
+						case "invalid rtp":
+							require.EqualError(t, ctx.Error, "RTP header size insufficient: 2 < 4")
+						case "invalid rtcp":
+							require.EqualError(t, ctx.Error, "rtcp: packet too short")
+						}
+						close(errorRecv)
+					},
+				},
+				UDPRTPAddress:  "127.0.0.1:8000",
+				UDPRTCPAddress: "127.0.0.1:8001",
+				RTSPAddress:    "localhost:8554",
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			nconn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn.Close()
+			conn := conn.NewConn(nconn)
+
+			tracks := Tracks{&TrackH264{
+				PayloadType: 96,
+				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			}}
+			tracks.setControls()
+
+			res, err := writeReqReadRes(conn, base.Request{
+				Method: base.Announce,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: tracks.Marshal(false),
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			inTH := &headers.Transport{
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModeRecord
+					return &v
+				}(),
+				Protocol:    headers.TransportProtocolUDP,
+				ClientPorts: &[2]int{35466, 35467},
+			}
+
+			l1, err := net.ListenPacket("udp", "127.0.0.1:35466")
+			require.NoError(t, err)
+			defer l1.Close()
+
+			l2, err := net.ListenPacket("udp", "127.0.0.1:35467")
+			require.NoError(t, err)
+			defer l2.Close()
+
+			res, err = writeReqReadRes(conn, base.Request{
+				Method: base.Setup,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				Header: base.Header{
+					"CSeq":      base.HeaderValue{"2"},
+					"Transport": inTH.Marshal(),
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			var sx headers.Session
+			err = sx.Unmarshal(res.Header["Session"])
+			require.NoError(t, err)
+
+			var resTH headers.Transport
+			err = resTH.Unmarshal(res.Header["Transport"])
+			require.NoError(t, err)
+
+			res, err = writeReqReadRes(conn, base.Request{
+				Method: base.Record,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":    base.HeaderValue{"3"},
+					"Session": base.HeaderValue{sx.Session},
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			switch ca {
+			case "invalid rtp":
+				l1.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+					IP:   net.ParseIP("127.0.0.1"),
+					Port: resTH.ServerPorts[0],
+				})
+
+			case "invalid rtcp":
+				l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+					IP:   net.ParseIP("127.0.0.1"),
+					Port: resTH.ServerPorts[1],
+				})
+			}
+
+			<-errorRecv
+		})
+	}
 }

@@ -90,10 +90,11 @@ type testServerHandler struct {
 	onPlay         func(*ServerHandlerOnPlayCtx) (*base.Response, error)
 	onRecord       func(*ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
-	onPacketRTP    func(*ServerHandlerOnPacketRTPCtx)
-	onPacketRTCP   func(*ServerHandlerOnPacketRTCPCtx)
 	onSetParameter func(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 	onGetParameter func(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
+	onPacketRTP    func(*ServerHandlerOnPacketRTPCtx)
+	onPacketRTCP   func(*ServerHandlerOnPacketRTCPCtx)
+	onDecodeError  func(*ServerHandlerOnDecodeErrorCtx)
 }
 
 func (sh *testServerHandler) OnConnOpen(ctx *ServerHandlerOnConnOpenCtx) {
@@ -162,18 +163,6 @@ func (sh *testServerHandler) OnPause(ctx *ServerHandlerOnPauseCtx) (*base.Respon
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (sh *testServerHandler) OnPacketRTP(ctx *ServerHandlerOnPacketRTPCtx) {
-	if sh.onPacketRTP != nil {
-		sh.onPacketRTP(ctx)
-	}
-}
-
-func (sh *testServerHandler) OnPacketRTCP(ctx *ServerHandlerOnPacketRTCPCtx) {
-	if sh.onPacketRTCP != nil {
-		sh.onPacketRTCP(ctx)
-	}
-}
-
 func (sh *testServerHandler) OnSetParameter(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
 	if sh.onSetParameter != nil {
 		return sh.onSetParameter(ctx)
@@ -186,6 +175,24 @@ func (sh *testServerHandler) OnGetParameter(ctx *ServerHandlerOnGetParameterCtx)
 		return sh.onGetParameter(ctx)
 	}
 	return nil, fmt.Errorf("unimplemented")
+}
+
+func (sh *testServerHandler) OnPacketRTP(ctx *ServerHandlerOnPacketRTPCtx) {
+	if sh.onPacketRTP != nil {
+		sh.onPacketRTP(ctx)
+	}
+}
+
+func (sh *testServerHandler) OnPacketRTCP(ctx *ServerHandlerOnPacketRTCPCtx) {
+	if sh.onPacketRTCP != nil {
+		sh.onPacketRTCP(ctx)
+	}
+}
+
+func (sh *testServerHandler) OnDecodeError(ctx *ServerHandlerOnDecodeErrorCtx) {
+	if sh.onDecodeError != nil {
+		sh.onDecodeError(ctx)
+	}
 }
 
 func TestServerClose(t *testing.T) {
