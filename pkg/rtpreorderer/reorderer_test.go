@@ -161,52 +161,60 @@ func TestReorder(t *testing.T) {
 	r.absPos = 40
 
 	for _, entry := range sequence {
-		out := r.Process(entry.in)
+		out, missing := r.Process(entry.in)
 		require.Equal(t, entry.out, out)
+		require.Equal(t, 0, missing)
 	}
 }
 
 func TestBufferIsFull(t *testing.T) {
 	r := New()
 	r.absPos = 25
+	sn := uint16(1564)
+	toMiss := 34
 
-	out := r.Process(&rtp.Packet{
+	out, missing := r.Process(&rtp.Packet{
 		Header: rtp.Header{
-			SequenceNumber: 1,
+			SequenceNumber: sn,
 		},
 	})
 	require.Equal(t, []*rtp.Packet{{
 		Header: rtp.Header{
-			SequenceNumber: 1,
+			SequenceNumber: sn,
 		},
 	}}, out)
+	require.Equal(t, 0, missing)
+	sn++
 
 	var expected []*rtp.Packet
 
-	for i := uint16(0); i < 63; i++ {
-		out := r.Process(&rtp.Packet{
+	for i := 0; i < 64-toMiss; i++ {
+		out, missing := r.Process(&rtp.Packet{
 			Header: rtp.Header{
-				SequenceNumber: 3 + i,
+				SequenceNumber: sn + uint16(toMiss),
 			},
 		})
 		require.Equal(t, []*rtp.Packet(nil), out)
+		require.Equal(t, 0, missing)
 
 		expected = append(expected, &rtp.Packet{
 			Header: rtp.Header{
-				SequenceNumber: 3 + i,
+				SequenceNumber: sn + uint16(toMiss),
 			},
 		})
+		sn++
 	}
 
-	out = r.Process(&rtp.Packet{
+	out, missing = r.Process(&rtp.Packet{
 		Header: rtp.Header{
-			SequenceNumber: 3 + 64,
+			SequenceNumber: sn + uint16(toMiss),
 		},
 	})
+	require.Equal(t, toMiss, missing)
 
 	expected = append(expected, &rtp.Packet{
 		Header: rtp.Header{
-			SequenceNumber: 3 + 64,
+			SequenceNumber: sn + uint16(toMiss),
 		},
 	})
 

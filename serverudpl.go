@@ -204,7 +204,16 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 		return
 	}
 
-	packets := clientData.track.reorderer.Process(pkt)
+	packets, missing := clientData.track.reorderer.Process(pkt)
+
+	if missing != 0 {
+		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+			h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
+				Session: clientData.ss,
+				Error:   fmt.Errorf("%d RTP packet(s) lost", missing),
+			})
+		}
+	}
 
 	for _, pkt := range packets {
 		now := time.Now()

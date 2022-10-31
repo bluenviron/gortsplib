@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"crypto/rand"
+	"fmt"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -197,7 +198,11 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 		return
 	}
 
-	packets := u.ct.reorderer.Process(pkt)
+	packets, missing := u.ct.reorderer.Process(pkt)
+
+	if missing != 0 {
+		u.c.OnDecodeError(fmt.Errorf("%d RTP packet(s) lost", missing))
+	}
 
 	for _, pkt := range packets {
 		out, err := u.ct.cleaner.Process(pkt)

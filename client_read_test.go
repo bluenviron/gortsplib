@@ -2717,6 +2717,7 @@ func TestClientReadDecodeErrors(t *testing.T) {
 	for _, ca := range []string{
 		"invalid rtp",
 		"invalid rtcp",
+		"packets lost",
 	} {
 		t.Run(ca, func(t *testing.T) {
 			errorRecv := make(chan struct{})
@@ -2819,7 +2820,7 @@ func TestClientReadDecodeErrors(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				switch ca {
+				switch ca { //nolint:dupl
 				case "invalid rtp":
 					l1.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
@@ -2830,6 +2831,27 @@ func TestClientReadDecodeErrors(t *testing.T) {
 					l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
+					})
+
+				case "packets lost":
+					byts, _ := rtp.Packet{
+						Header: rtp.Header{
+							SequenceNumber: 30,
+						},
+					}.Marshal()
+					l1.WriteTo(byts, &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: th.ClientPorts[0],
+					})
+
+					byts, _ = rtp.Packet{
+						Header: rtp.Header{
+							SequenceNumber: 100,
+						},
+					}.Marshal()
+					l1.WriteTo(byts, &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: th.ClientPorts[0],
 					})
 				}
 
@@ -2855,6 +2877,8 @@ func TestClientReadDecodeErrors(t *testing.T) {
 						require.EqualError(t, err, "RTP header size insufficient: 2 < 4")
 					case "invalid rtcp":
 						require.EqualError(t, err, "rtcp: packet too short")
+					case "packets lost":
+						require.EqualError(t, err, "69 RTP packet(s) lost")
 					}
 					close(errorRecv)
 				},

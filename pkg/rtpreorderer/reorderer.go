@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	bufferSize = 64
+	bufferSize        = 64
+	negativeThreshold = 0xFFFF / 2
 )
 
 // Reorderer filters incoming RTP packets, in order to
@@ -27,11 +28,12 @@ func New() *Reorderer {
 }
 
 // Process processes a RTP packet.
-func (r *Reorderer) Process(pkt *rtp.Packet) []*rtp.Packet {
+// It returns a sequence of ordered packets and the number of missing packets.
+func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, int) {
 	if !r.initialized {
 		r.initialized = true
 		r.expectedSeqNum = pkt.SequenceNumber + 1
-		return []*rtp.Packet{pkt}
+		return []*rtp.Packet{pkt}, 0
 	}
 
 	relPos := pkt.SequenceNumber - r.expectedSeqNum
@@ -39,8 +41,8 @@ func (r *Reorderer) Process(pkt *rtp.Packet) []*rtp.Packet {
 	// packet is a duplicate or has been sent
 	// before the first packet processed by Reorderer.
 	// discard.
-	if relPos > 0xFFF {
-		return nil
+	if relPos > negativeThreshold {
+		return nil, 0
 	}
 
 	// there's a missing packet and buffer is full.
@@ -72,7 +74,7 @@ func (r *Reorderer) Process(pkt *rtp.Packet) []*rtp.Packet {
 		}
 
 		r.expectedSeqNum = pkt.SequenceNumber + 1
-		return ret
+		return ret, int(relPos) - n + 1
 	}
 
 	// there's a missing packet
@@ -81,12 +83,12 @@ func (r *Reorderer) Process(pkt *rtp.Packet) []*rtp.Packet {
 
 		// current packet is a duplicate. discard
 		if r.buffer[p] != nil {
-			return nil
+			return nil, 0
 		}
 
 		// put current packet in buffer
 		r.buffer[p] = pkt
-		return nil
+		return nil, 0
 	}
 
 	// all packets have been received correctly.
@@ -102,8 +104,8 @@ func (r *Reorderer) Process(pkt *rtp.Packet) []*rtp.Packet {
 	}
 
 	ret := make([]*rtp.Packet, n)
-	ret[0] = pkt
 
+	ret[0] = pkt
 	r.absPos++
 	r.absPos &= (bufferSize - 1)
 
@@ -115,5 +117,5 @@ func (r *Reorderer) Process(pkt *rtp.Packet) []*rtp.Packet {
 
 	r.expectedSeqNum = pkt.SequenceNumber + n
 
-	return ret
+	return ret, 0
 }
