@@ -49,7 +49,7 @@ func TestGenericOversized(t *testing.T) {
 		},
 		Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 2050/5),
 	})
-	require.EqualError(t, err, "payload size (2062) greater than maximum allowed (1472)")
+	require.EqualError(t, err, "payload size (2062) is greater than maximum allowed (1472)")
 }
 
 func TestH264Oversized(t *testing.T) {

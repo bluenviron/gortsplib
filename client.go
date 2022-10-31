@@ -820,7 +820,7 @@ func (c *Client) runReader() {
 						}
 					} else {
 						if len(payload) > maxPacketSize {
-							return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+							return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
 								len(payload), maxPacketSize)
 						}
 
@@ -846,7 +846,7 @@ func (c *Client) runReader() {
 				processFunc = func(track *clientTrack, isRTP bool, payload []byte) error {
 					if !isRTP {
 						if len(payload) > maxPacketSize {
-							return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+							return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
 								len(payload), maxPacketSize)
 						}
 

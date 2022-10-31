@@ -222,7 +222,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 		processFunc = func(trackID int, isRTP bool, payload []byte) error {
 			if !isRTP {
 				if len(payload) > maxPacketSize {
-					return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+					return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
 						len(payload), maxPacketSize)
 				}
 
@@ -274,7 +274,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 				}
 			} else {
 				if len(payload) > maxPacketSize {
-					return fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+					return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
 						len(payload), maxPacketSize)
 				}
 

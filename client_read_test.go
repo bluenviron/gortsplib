@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -2715,9 +2716,11 @@ func TestClientReadDifferentSource(t *testing.T) {
 
 func TestClientReadDecodeErrors(t *testing.T) {
 	for _, ca := range []string{
-		"invalid rtp",
-		"invalid rtcp",
+		"rtp invalid",
+		"rtcp invalid",
 		"packets lost",
+		"rtp too big",
+		"rtcp too big",
 	} {
 		t.Run(ca, func(t *testing.T) {
 			errorRecv := make(chan struct{})
@@ -2821,13 +2824,13 @@ func TestClientReadDecodeErrors(t *testing.T) {
 				require.NoError(t, err)
 
 				switch ca { //nolint:dupl
-				case "invalid rtp":
+				case "rtp invalid":
 					l1.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[0],
 					})
 
-				case "invalid rtcp":
+				case "rtcp invalid":
 					l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
@@ -2853,6 +2856,18 @@ func TestClientReadDecodeErrors(t *testing.T) {
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[0],
 					})
+
+				case "rtp too big":
+					l1.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: th.ClientPorts[0],
+					})
+
+				case "rtcp too big":
+					l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: th.ClientPorts[1],
+					})
 				}
 
 				req, err = conn.ReadRequest()
@@ -2873,12 +2888,16 @@ func TestClientReadDecodeErrors(t *testing.T) {
 				}(),
 				OnDecodeError: func(err error) {
 					switch ca {
-					case "invalid rtp":
+					case "rtp invalid":
 						require.EqualError(t, err, "RTP header size insufficient: 2 < 4")
-					case "invalid rtcp":
+					case "rtcp invalid":
 						require.EqualError(t, err, "rtcp: packet too short")
 					case "packets lost":
 						require.EqualError(t, err, "69 RTP packet(s) lost")
+					case "rtp too big":
+						require.EqualError(t, err, "RTP packet is too big to be read with UDP")
+					case "rtcp too big":
+						require.EqualError(t, err, "RTCP packet is too big to be read with UDP")
 					}
 					close(errorRecv)
 				},

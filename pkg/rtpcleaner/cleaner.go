@@ -134,7 +134,7 @@ func (p *Cleaner) Process(pkt *rtp.Packet) ([]*Output, error) {
 	}
 
 	if p.isTCP && pkt.MarshalSize() > maxPacketSize {
-		return nil, fmt.Errorf("payload size (%d) greater than maximum allowed (%d)",
+		return nil, fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
 			pkt.MarshalSize(), maxPacketSize)
 	}
 

@@ -171,7 +171,7 @@ func (u *clientUDPListener) runReader(forPlay bool) {
 	}
 
 	for {
-		buf := make([]byte, maxPacketSize)
+		buf := make([]byte, maxPacketSize+1)
 		n, addr, err := u.pc.ReadFrom(buf)
 		if err != nil {
 			return
@@ -191,6 +191,11 @@ func (u *clientUDPListener) runReader(forPlay bool) {
 }
 
 func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
+	if len(payload) == (maxPacketSize + 1) {
+		u.c.OnDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
+		return
+	}
+
 	pkt := u.ct.udpRTPPacketBuffer.next()
 	err := pkt.Unmarshal(payload)
 	if err != nil {
@@ -226,6 +231,11 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 }
 
 func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
+	if len(payload) == (maxPacketSize + 1) {
+		u.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
+		return
+	}
+
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		u.c.OnDecodeError(err)
@@ -242,6 +252,11 @@ func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 }
 
 func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
+	if len(payload) == (maxPacketSize + 1) {
+		u.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
+		return
+	}
+
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		u.c.OnDecodeError(err)
