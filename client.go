@@ -236,9 +236,9 @@ type Client struct {
 	OnRequest func(*base.Request)
 	// called after every response.
 	OnResponse func(*base.Response)
-	// called when a RTP packet arrives.
+	// called when receiving a RTP packet.
 	OnPacketRTP func(*ClientOnPacketRTPCtx)
-	// called when a RTCP packet arrives.
+	// called when receiving a RTCP packet.
 	OnPacketRTCP func(*ClientOnPacketRTCPCtx)
 
 	//
