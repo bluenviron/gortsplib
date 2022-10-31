@@ -176,7 +176,7 @@ type ServerSession struct {
 	lastRequestTime     time.Time
 	tcpConn             *ServerConn
 	announcedTracks     Tracks // publish
-	udpLastFrameTime    *int64 // publish
+	udpLastPacketTime   *int64 // publish
 	udpCheckStreamTimer *time.Timer
 	writerRunning       bool
 	writeBuffer         *ringbuffer.RingBuffer
@@ -412,7 +412,7 @@ func (ss *ServerSession) runInner() error {
 
 			// in case of RECORD, timeout happens when no RTP or RTCP packets are being received
 			if ss.state == ServerSessionStateRecord {
-				lft := atomic.LoadInt64(ss.udpLastFrameTime)
+				lft := atomic.LoadInt64(ss.udpLastPacketTime)
 				if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
 					return liberrors.ErrServerNoUDPPacketsInAWhile{}
 				}
@@ -565,7 +565,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		ss.announcedTracks = tracks
 
 		v := time.Now().Unix()
-		ss.udpLastFrameTime = &v
+		ss.udpLastPacketTime = &v
 		return res, err
 
 	case base.Setup:

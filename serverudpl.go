@@ -13,7 +13,7 @@ import (
 )
 
 type clientData struct {
-	ss           *ServerSession
+	session      *ServerSession
 	track        *ServerSessionSetuppedTrack
 	isPublishing bool
 }
@@ -31,6 +31,15 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 		copy(p.ip[12:], ip)
 	} else {
 		copy(p.ip[:], ip)
+	}
+}
+
+func onDecodeError(ss *ServerSession, err error) {
+	if h, ok := ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
+			Session: ss,
+			Error:   err,
+		})
 	}
 }
 
@@ -193,95 +202,67 @@ func (u *serverUDPListener) runReader() {
 
 func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 	if len(payload) == (maxPacketSize + 1) {
-		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
-			h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-				Session: clientData.ss,
-				Error:   fmt.Errorf("RTP packet is too big to be read with UDP"),
-			})
-		}
+		onDecodeError(clientData.session, fmt.Errorf("RTP packet is too big to be read with UDP"))
 		return
 	}
 
 	pkt := u.s.udpRTPPacketBuffer.next()
 	err := pkt.Unmarshal(payload)
 	if err != nil {
-		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
-			h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-				Session: clientData.ss,
-				Error:   err,
-			})
-		}
+		onDecodeError(clientData.session, err)
 		return
 	}
 
-	packets, missing := clientData.track.reorderer.Process(pkt)
+	now := time.Now()
+	atomic.StoreInt64(clientData.session.udpLastPacketTime, now.Unix())
 
+	packets, missing := clientData.track.reorderer.Process(pkt)
 	if missing != 0 {
-		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
-			h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-				Session: clientData.ss,
-				Error:   fmt.Errorf("%d RTP packet(s) lost", missing),
-			})
-		}
+		onDecodeError(clientData.session, fmt.Errorf("%d RTP packet(s) lost", missing))
+		// do not return
 	}
 
 	for _, pkt := range packets {
-		now := time.Now()
-		atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
-
 		out, err := clientData.track.cleaner.Process(pkt)
 		if err != nil {
-			if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
-				h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-					Session: clientData.ss,
-					Error:   err,
-				})
-			}
-			continue
+			onDecodeError(clientData.session, err)
+			// do not return
 		}
 
-		out0 := out[0]
+		if out != nil {
+			out0 := out[0]
 
-		clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, out0.PTSEqualsDTS)
+			clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, out0.PTSEqualsDTS)
 
-		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnPacketRTP); ok {
-			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-				Session:      clientData.ss,
-				TrackID:      clientData.track.id,
-				Packet:       out0.Packet,
-				PTSEqualsDTS: out0.PTSEqualsDTS,
-				H264NALUs:    out0.H264NALUs,
-				H264PTS:      out0.H264PTS,
-			})
+			if h, ok := clientData.session.s.Handler.(ServerHandlerOnPacketRTP); ok {
+				h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+					Session:      clientData.session,
+					TrackID:      clientData.track.id,
+					Packet:       out0.Packet,
+					PTSEqualsDTS: out0.PTSEqualsDTS,
+					H264NALUs:    out0.H264NALUs,
+					H264PTS:      out0.H264PTS,
+				})
+			}
 		}
 	}
 }
 
 func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) {
 	if len(payload) == (maxPacketSize + 1) {
-		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
-			h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-				Session: clientData.ss,
-				Error:   fmt.Errorf("RTCP packet is too big to be read with UDP"),
-			})
-		}
+		onDecodeError(clientData.session, fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		if h, ok := clientData.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
-			h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-				Session: clientData.ss,
-				Error:   err,
-			})
-		}
+		onDecodeError(clientData.session, err)
 		return
 	}
 
 	if clientData.isPublishing {
 		now := time.Now()
-		atomic.StoreInt64(clientData.ss.udpLastFrameTime, now.Unix())
+		atomic.StoreInt64(clientData.session.udpLastPacketTime, now.Unix())
 
 		for _, pkt := range packets {
 			clientData.track.udpRTCPReceiver.ProcessPacketRTCP(now, pkt)
@@ -289,7 +270,7 @@ func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) 
 	}
 
 	for _, pkt := range packets {
-		clientData.ss.onPacketRTCP(clientData.track.id, pkt)
+		clientData.session.onPacketRTCP(clientData.track.id, pkt)
 	}
 }
 
@@ -312,7 +293,7 @@ func (u *serverUDPListener) addClient(ip net.IP, port int, ss *ServerSession,
 	addr.fill(ip, port)
 
 	u.clients[addr] = &clientData{
-		ss:           ss,
+		session:      ss,
 		track:        track,
 		isPublishing: isPublishing,
 	}
@@ -323,7 +304,7 @@ func (u *serverUDPListener) removeClient(ss *ServerSession) {
 	defer u.clientsMutex.Unlock()
 
 	for addr, data := range u.clients {
-		if data.ss == ss {
+		if data.session == ss {
 			delete(u.clients, addr)
 		}
 	}

@@ -65,35 +65,25 @@ func (p *Cleaner) processH264(pkt *rtp.Packet) ([]*Output, error) {
 		p.h264Encoder.Init()
 	}
 
-	// decode
-	nalus, pts, err := p.h264Decoder.DecodeUntilMarker(pkt)
-	if err != nil {
-		// ignore decode errors, except for the case in which the
-		// encoder is active
-		if p.h264Encoder == nil {
-			return []*Output{{
-				Packet:       pkt,
-				PTSEqualsDTS: false,
-			}}, nil
-		}
-
-		if err == rtph264.ErrNonStartingPacketAndNoPrevious ||
-			err == rtph264.ErrMorePacketsNeeded {
-			return nil, nil
-		}
-
-		return nil, err
-	}
-
-	ptsEqualsDTS := h264.IDRPresent(nalus)
-
 	// re-encode
 	if p.h264Encoder != nil {
-		packets, err := p.h264Encoder.Encode(nalus, pts)
+		// decode
+		nalus, pts, err := p.h264Decoder.DecodeUntilMarker(pkt)
 		if err != nil {
-			return nil, err
+			if err == rtph264.ErrNonStartingPacketAndNoPrevious ||
+				err == rtph264.ErrMorePacketsNeeded { // hide standard errors
+				err = nil
+			}
+
+			return nil, err // original packets are oversized, do not return them
 		}
 
+		packets, err := p.h264Encoder.Encode(nalus, pts)
+		if err != nil {
+			return nil, err // original packets are oversized, do not return them
+		}
+
+		ptsEqualsDTS := h264.IDRPresent(nalus)
 		output := make([]*Output, len(packets))
 
 		for i, pkt := range packets {
@@ -115,9 +105,23 @@ func (p *Cleaner) processH264(pkt *rtp.Packet) ([]*Output, error) {
 		return output, nil
 	}
 
+	// decode
+	nalus, pts, err := p.h264Decoder.DecodeUntilMarker(pkt)
+	if err != nil {
+		if err == rtph264.ErrNonStartingPacketAndNoPrevious ||
+			err == rtph264.ErrMorePacketsNeeded { // hide standard errors
+			err = nil
+		}
+
+		return []*Output{{
+			Packet:       pkt,
+			PTSEqualsDTS: false,
+		}}, err
+	}
+
 	return []*Output{{
 		Packet:       pkt,
-		PTSEqualsDTS: ptsEqualsDTS,
+		PTSEqualsDTS: h264.IDRPresent(nalus),
 		H264NALUs:    nalus,
 		H264PTS:      pts,
 	}}, nil

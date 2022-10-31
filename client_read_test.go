@@ -250,7 +250,7 @@ func TestClientRead(t *testing.T) {
 					Media: "application",
 					Payloads: []TrackGenericPayload{{
 						Type:   97,
-						RTPMap: "97 private/90000",
+						RTPMap: "private/90000",
 					}},
 				}
 				err = track.Init()
@@ -2721,6 +2721,7 @@ func TestClientReadDecodeErrors(t *testing.T) {
 		"packets lost",
 		"rtp too big",
 		"rtcp too big",
+		"cleaner error",
 	} {
 		t.Run(ca, func(t *testing.T) {
 			errorRecv := make(chan struct{})
@@ -2761,11 +2762,23 @@ func TestClientReadDecodeErrors(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/stream"), req.URL)
 
-				tracks := Tracks{&TrackH264{
-					PayloadType: 96,
-					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				}}
+				var track Track
+				if ca != "cleaner error" {
+					track = &TrackGeneric{
+						Media: "application",
+						Payloads: []TrackGenericPayload{{
+							Type:   97,
+							RTPMap: "private/90000",
+						}},
+					}
+				} else {
+					track = &TrackH264{
+						PayloadType: 96,
+						SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+						PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+					}
+				}
+				tracks := Tracks{track}
 				tracks.setControls()
 
 				err = conn.WriteResponse(&base.Response{
@@ -2868,6 +2881,18 @@ func TestClientReadDecodeErrors(t *testing.T) {
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
 					})
+
+				case "cleaner error":
+					byts, _ := rtp.Packet{
+						Header: rtp.Header{
+							SequenceNumber: 100,
+						},
+						Payload: []byte{0x99},
+					}.Marshal()
+					l1.WriteTo(byts, &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: th.ClientPorts[0],
+					})
 				}
 
 				req, err = conn.ReadRequest()
@@ -2898,6 +2923,8 @@ func TestClientReadDecodeErrors(t *testing.T) {
 						require.EqualError(t, err, "RTP packet is too big to be read with UDP")
 					case "rtcp too big":
 						require.EqualError(t, err, "RTCP packet is too big to be read with UDP")
+					case "cleaner error":
+						require.EqualError(t, err, "packet type not supported (STAP-B)")
 					}
 					close(errorRecv)
 				},

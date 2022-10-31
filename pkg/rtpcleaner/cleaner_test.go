@@ -154,7 +154,7 @@ func TestH264ProcessEvenIfInvalid(t *testing.T) {
 		},
 		Payload: []byte{25},
 	})
-	require.NoError(t, err)
+	require.Error(t, err)
 	require.Equal(t, []*Output{{
 		Packet: &rtp.Packet{
 			Header: rtp.Header{
@@ -166,4 +166,49 @@ func TestH264ProcessEvenIfInvalid(t *testing.T) {
 			Payload: []byte{25},
 		},
 	}}, out)
+}
+
+func TestH264RandomAccess(t *testing.T) {
+	for _, ca := range []string{
+		"standard",
+		"oversized",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			cleaner := New(true, true)
+
+			var payload []byte
+			if ca == "standard" {
+				payload = append([]byte{0x1C, 1 << 6},
+					bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 10/5)...)
+			} else {
+				payload = append([]byte{0x1C, 1 << 6},
+					bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04, 0x05}, 2048/5)...)
+			}
+
+			out, err := cleaner.Process(&rtp.Packet{
+				Header: rtp.Header{
+					Version:        2,
+					PayloadType:    96,
+					SequenceNumber: 34572,
+				},
+				Payload: payload,
+			})
+			require.NoError(t, err)
+
+			if ca == "standard" {
+				require.Equal(t, []*Output{{
+					Packet: &rtp.Packet{
+						Header: rtp.Header{
+							Version:        2,
+							PayloadType:    96,
+							SequenceNumber: 34572,
+						},
+						Payload: payload,
+					},
+				}}, out)
+			} else {
+				require.Equal(t, []*Output(nil), out)
+			}
+		})
+	}
 }

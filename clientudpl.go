@@ -204,29 +204,31 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 	}
 
 	packets, missing := u.ct.reorderer.Process(pkt)
-
 	if missing != 0 {
 		u.c.OnDecodeError(fmt.Errorf("%d RTP packet(s) lost", missing))
+		// do not return
 	}
 
 	for _, pkt := range packets {
 		out, err := u.ct.cleaner.Process(pkt)
 		if err != nil {
 			u.c.OnDecodeError(err)
-			continue
+			// do not return
 		}
 
-		out0 := out[0]
+		if out != nil {
+			out0 := out[0]
 
-		u.ct.udpRTCPReceiver.ProcessPacketRTP(time.Now(), pkt, out0.PTSEqualsDTS)
+			u.ct.udpRTCPReceiver.ProcessPacketRTP(time.Now(), pkt, out0.PTSEqualsDTS)
 
-		u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
-			TrackID:      u.ct.id,
-			Packet:       out0.Packet,
-			PTSEqualsDTS: out0.PTSEqualsDTS,
-			H264NALUs:    out0.H264NALUs,
-			H264PTS:      out0.H264PTS,
-		})
+			u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
+				TrackID:      u.ct.id,
+				Packet:       out0.Packet,
+				PTSEqualsDTS: out0.PTSEqualsDTS,
+				H264NALUs:    out0.H264NALUs,
+				H264PTS:      out0.H264PTS,
+			})
+		}
 	}
 }
 

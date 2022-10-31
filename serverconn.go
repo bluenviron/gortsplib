@@ -257,7 +257,8 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 
 				out, err := sc.session.setuppedTracks[trackID].cleaner.Process(pkt)
 				if err != nil {
-					return err
+					onDecodeError(sc.session, err)
+					// do not return
 				}
 
 				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
