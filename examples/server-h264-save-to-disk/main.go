@@ -16,7 +16,7 @@ import (
 
 type serverHandler struct {
 	mutex       sync.Mutex
-	stream      *gortsplib.ServerStream
+	publisher   *gortsplib.ServerSession
 	h264TrackID int
 	h264track   *gortsplib.TrackH264
 	mpegtsMuxer *mpegtsMuxer
@@ -44,11 +44,8 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	// close the stream and disconnect any reader.
-	if sh.stream != nil {
-		sh.stream.Close()
-		sh.stream = nil
-	}
+	// allow someone else to publish
+	sh.publisher = nil
 }
 
 // called after receiving an ANNOUNCE request.
@@ -58,7 +55,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	if sh.stream != nil {
+	if sh.publisher != nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
 		}, fmt.Errorf("someone is already publishing")
@@ -87,8 +84,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		}, err
 	}
 
-	// create a stream and save data
-	sh.stream = gortsplib.NewServerStream(ctx.Tracks)
+	sh.publisher = ctx.Session
 	sh.h264TrackID = h264TrackID
 	sh.mpegtsMuxer = mpegtsMuxer
 
@@ -103,7 +99,7 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
-	}, sh.stream, nil
+	}, nil, nil
 }
 
 // called after receiving a RECORD request.
