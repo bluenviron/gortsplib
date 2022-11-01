@@ -769,14 +769,10 @@ func TestServerPublish(t *testing.T) {
 
 			// client -> server
 			if transport == "udp" {
-				time.Sleep(1 * time.Second)
-
 				l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[0],
 				})
-
-				time.Sleep(500 * time.Millisecond)
 
 				l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),

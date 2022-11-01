@@ -2677,7 +2677,6 @@ func TestClientReadDifferentSource(t *testing.T) {
 		require.NoError(t, err)
 
 		// server -> client (RTP)
-		time.Sleep(1 * time.Second)
 		l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: th.ClientPorts[0],
