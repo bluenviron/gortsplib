@@ -304,7 +304,7 @@ func TestClientClose(t *testing.T) {
 	_, err = c.Announce(u, nil)
 	require.EqualError(t, err, "terminated")
 
-	_, err = c.Setup(true, nil, nil, 0, 0)
+	_, err = c.Setup(nil, nil, 0, 0)
 	require.EqualError(t, err, "terminated")
 
 	_, err = c.Play(nil)

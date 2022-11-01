@@ -65,14 +65,6 @@ func (e ErrClientContentTypeUnsupported) Error() string {
 	return fmt.Sprintf("unsupported Content-Type header '%v'", e.CT)
 }
 
-// ErrClientCannotReadPublishAtSameTime is an error that can be returned by a client.
-type ErrClientCannotReadPublishAtSameTime struct{}
-
-// Error implements the error interface.
-func (e ErrClientCannotReadPublishAtSameTime) Error() string {
-	return "cannot read and publish at the same time"
-}
-
 // ErrClientCannotSetupTracksDifferentURLs is an error that can be returned by a client.
 type ErrClientCannotSetupTracksDifferentURLs struct{}
 

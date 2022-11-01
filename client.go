@@ -133,7 +133,6 @@ type announceReq struct {
 }
 
 type setupReq struct {
-	forPlay  bool
 	track    Track
 	baseURL  *url.URL
 	rtpPort  int
@@ -417,7 +416,7 @@ func (c *Client) StartPublishing(address string, tracks Tracks) error {
 	}
 
 	for _, track := range tracks {
-		_, err := c.Setup(false, track, u, 0, 0)
+		_, err := c.Setup(track, u, 0, 0)
 		if err != nil {
 			c.Close()
 			return err
@@ -482,7 +481,7 @@ func (c *Client) runInner() error {
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-c.setup:
-			res, err := c.doSetup(req.forPlay, req.track, req.baseURL, req.rtpPort, req.rtcpPort)
+			res, err := c.doSetup(req.track, req.baseURL, req.rtpPort, req.rtcpPort)
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-c.play:
@@ -664,7 +663,7 @@ func (c *Client) trySwitchingProtocol() error {
 	}
 
 	for _, track := range prevTracks {
-		_, err := c.doSetup(true, track.track, prevBaseURL, 0, 0)
+		_, err := c.doSetup(track.track, prevBaseURL, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -1308,7 +1307,6 @@ func (c *Client) Announce(u *url.URL, tracks Tracks) (*base.Response, error) {
 }
 
 func (c *Client) doSetup(
-	forPlay bool,
 	track Track,
 	baseURL *url.URL,
 	rtpPort int,
@@ -1321,12 +1319,6 @@ func (c *Client) doSetup(
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if (!forPlay && c.state != clientStatePreRecord) ||
-		(forPlay && c.state != clientStatePrePlay &&
-			c.state != clientStateInitial) {
-		return nil, liberrors.ErrClientCannotReadPublishAtSameTime{}
 	}
 
 	if c.baseURL != nil && *baseURL != *c.baseURL {
@@ -1355,7 +1347,7 @@ func (c *Client) doSetup(
 	}()
 
 	mode := headers.TransportModePlay
-	if !forPlay {
+	if c.state == clientStatePreRecord {
 		mode = headers.TransportModeRecord
 	}
 
@@ -1463,7 +1455,7 @@ func (c *Client) doSetup(
 			v := TransportTCP
 			c.effectiveTransport = &v
 
-			return c.doSetup(forPlay, track, baseURL, 0, 0)
+			return c.doSetup(track, baseURL, 0, 0)
 		}
 
 		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
@@ -1485,7 +1477,7 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
 		}
 
-		if !forPlay || !c.AnyPortEnable {
+		if c.state == clientStatePreRecord || !c.AnyPortEnable {
 			if thRes.ServerPorts == nil || isAnyPort(thRes.ServerPorts[0]) || isAnyPort(thRes.ServerPorts[1]) {
 				ct.udpRTPListener.close()
 				ct.udpRTCPListener.close()
@@ -1618,7 +1610,6 @@ func (c *Client) doSetup(
 // rtpPort and rtcpPort are used only if transport is UDP.
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
 func (c *Client) Setup(
-	forPlay bool,
 	track Track,
 	baseURL *url.URL,
 	rtpPort int,
@@ -1627,7 +1618,6 @@ func (c *Client) Setup(
 	cres := make(chan clientRes)
 	select {
 	case c.setup <- setupReq{
-		forPlay:  forPlay,
 		track:    track,
 		baseURL:  baseURL,
 		rtpPort:  rtpPort,
@@ -1714,7 +1704,7 @@ func (c *Client) Play(ra *headers.Range) (*base.Response, error) {
 // SetupAndPlay setups and play the given tracks.
 func (c *Client) SetupAndPlay(tracks Tracks, baseURL *url.URL) error {
 	for _, t := range tracks {
-		_, err := c.Setup(true, t, baseURL, 0, 0)
+		_, err := c.Setup(t, baseURL, 0, 0)
 		if err != nil {
 			return err
 		}

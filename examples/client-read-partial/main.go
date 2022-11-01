@@ -43,7 +43,7 @@ func main() {
 	// setup only H264 tracks, skipping audio or application tracks
 	for _, t := range tracks {
 		if _, ok := t.(*gortsplib.TrackH264); ok {
-			_, err := c.Setup(true, t, baseURL, 0, 0)
+			_, err := c.Setup(t, baseURL, 0, 0)
 			if err != nil {
 				panic(err)
 			}
