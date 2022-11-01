@@ -94,13 +94,18 @@ func getPOCDiff(poc1 uint32, poc2 uint32, sps *SPS) int32 {
 	return diff
 }
 
-func getSEIPicTimingDPBOutputDelay(buf []byte, sps *SPS) (uint32, bool) {
+type seiTimingInfo struct {
+	cpbRemovalDelay uint32
+	dpbOutputDelay  uint32
+}
+
+func parseSEITimingInfo(buf []byte, sps *SPS) (*seiTimingInfo, bool) {
 	buf = AntiCompetitionRemove(buf)
 	pos := 1
 
 	for {
 		if pos >= (len(buf) - 1) {
-			return 0, false
+			return nil, false
 		}
 
 		payloadType := 0
@@ -127,48 +132,49 @@ func getSEIPicTimingDPBOutputDelay(buf []byte, sps *SPS) (uint32, bool) {
 			buf2 := buf[pos:]
 			pos2 := 0
 
-			// cpbRemovalDelay
-			_, err := bits.ReadBits(buf2, &pos2, int(sps.VUI.NalHRD.CpbRemovalDelayLengthMinus1+1))
-			if err != nil {
-				return 0, false
-			}
+			ret := &seiTimingInfo{}
 
-			tmp, err := bits.ReadBits(buf2, &pos2, int(sps.VUI.NalHRD.DpbOutputDelayLengthMinus1+1))
+			tmp, err := bits.ReadBits(buf2, &pos2, int(sps.VUI.NalHRD.CpbRemovalDelayLengthMinus1+1))
 			if err != nil {
-				return 0, false
+				return nil, false
 			}
-			dpbOutputDelay := uint32(tmp)
+			ret.cpbRemovalDelay = uint32(tmp)
 
-			return dpbOutputDelay, true
+			tmp, err = bits.ReadBits(buf2, &pos2, int(sps.VUI.NalHRD.DpbOutputDelayLengthMinus1+1))
+			if err != nil {
+				return nil, false
+			}
+			ret.dpbOutputDelay = uint32(tmp)
+
+			return ret, true
 		}
 
 		pos += payloadSize
 	}
 }
 
-func findSEIPicTimingDPBOutputDelay(nalus [][]byte, sps *SPS) (uint32, bool) {
+func findSEITimingInfo(nalus [][]byte, sps *SPS) (*seiTimingInfo, bool) {
 	for _, nalu := range nalus {
 		typ := NALUType(nalu[0] & 0x1F)
 		if typ == NALUTypeSEI {
-			ret, ok := getSEIPicTimingDPBOutputDelay(nalu, sps)
+			ret, ok := parseSEITimingInfo(nalu, sps)
 			if ok {
 				return ret, true
 			}
 		}
 	}
-	return 0, false
+	return nil, false
 }
 
 // DTSExtractor is a utility that allows to extract NALU DTS from PTS.
 type DTSExtractor struct {
-	sps                 []byte
-	spsp                *SPS
-	prevPTS             time.Duration
-	prevDTS             *time.Duration
-	prevPOCDiff         int32
-	expectedPOC         uint32
-	ptsDTSOffset        time.Duration
-	firstDPBOutputDelay *uint32
+	sps          []byte
+	spsp         *SPS
+	prevPTS      time.Duration
+	prevDTS      *time.Duration
+	prevPOCDiff  int32
+	expectedPOC  uint32
+	ptsDTSOffset time.Duration
 }
 
 // NewDTSExtractor allocates a DTSExtractor.
@@ -255,7 +261,7 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 
 	// DTS is computed from SEI
 	case d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.NalHRD != nil:
-		dpbOutputDelay, ok := findSEIPicTimingDPBOutputDelay(nalus, d.spsp)
+		ti, ok := findSEITimingInfo(nalus, d.spsp)
 		if !ok {
 			// some streams declare that they use SEI pic timings, but they don't.
 			// assume PTS = DTS.
@@ -263,23 +269,15 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		}
 
 		// workaround for nvenc
-		// nvenc puts a wrong dpbOutputDelay in IDR frames that follows the first one.
-		// save the dpbOutputDelay of the first IDR frame and use if for subsequent
-		// IDR frames.
+		// nvenc puts a wrong dpbOutputDelay into timing infos of non-starting IDR frames
 		// https://forums.developer.nvidia.com/t/nvcodec-h-264-encoder-sei-pic-timing-dpb-output-delay/156050
 		// https://forums.developer.nvidia.com/t/h264-pic-timing-sei-message/71188
-		if idrPresent &&
-			d.spsp.VUI.NalHRD.CpbRemovalDelayLengthMinus1 == 15 &&
-			d.spsp.VUI.NalHRD.DpbOutputDelayLengthMinus1 == 5 {
-			if d.firstDPBOutputDelay == nil {
-				d.firstDPBOutputDelay = &dpbOutputDelay
-			} else {
-				dpbOutputDelay = *d.firstDPBOutputDelay
-			}
+		if idrPresent && ti.cpbRemovalDelay > 0 {
+			ti.dpbOutputDelay = 2
 		}
 
-		return pts - time.Duration(dpbOutputDelay)/2*time.Second*
-			time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2/time.Duration(d.spsp.VUI.TimingInfo.TimeScale), 0, nil
+		return pts - time.Duration(ti.dpbOutputDelay)*time.Second*
+			time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)/time.Duration(d.spsp.VUI.TimingInfo.TimeScale), 0, nil
 
 	// we assume PTS = DTS
 	default:
