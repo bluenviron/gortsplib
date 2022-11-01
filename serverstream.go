@@ -13,9 +13,9 @@ import (
 )
 
 type serverStreamTrack struct {
-	firstPacketSent    bool
 	lastSequenceNumber uint16
 	lastSSRC           uint32
+	lastTimeFilled     bool
 	lastTimeRTP        uint32
 	lastTimeNTP        time.Time
 	rtcpSender         *rtcpsender.RTCPSender
@@ -96,7 +96,7 @@ func (st *ServerStream) rtpInfo(trackID int, now time.Time) (uint16, uint32, boo
 
 	track := st.streamTracks[trackID]
 
-	if !track.firstPacketSent {
+	if !track.lastTimeFilled {
 		return 0, 0, false
 	}
 
@@ -253,8 +253,8 @@ func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDT
 	track := st.streamTracks[trackID]
 	now := time.Now()
 
-	if !track.firstPacketSent || ptsEqualsDTS {
-		track.firstPacketSent = true
+	if ptsEqualsDTS {
+		track.lastTimeFilled = true
 		track.lastTimeRTP = pkt.Header.Timestamp
 		track.lastTimeNTP = now
 	}
