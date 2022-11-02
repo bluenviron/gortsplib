@@ -216,10 +216,10 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	case <-sc.session.ctx.Done():
 	}
 
-	var processFunc func(int, bool, []byte) error
+	var processFunc func(*ServerSessionSetuppedTrack, bool, []byte) error
 
 	if sc.session.state == ServerSessionStatePlay {
-		processFunc = func(trackID int, isRTP bool, payload []byte) error {
+		processFunc = func(track *ServerSessionSetuppedTrack, isRTP bool, payload []byte) error {
 			if !isRTP {
 				if len(payload) > maxPacketSize {
 					return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
@@ -235,7 +235,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					for _, pkt := range packets {
 						h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
 							Session: sc.session,
-							TrackID: trackID,
+							TrackID: track.id,
 							Packet:  pkt,
 						})
 					}
@@ -247,7 +247,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	} else {
 		tcpRTPPacketBuffer := newRTPPacketMultiBuffer(uint64(sc.s.ReadBufferCount))
 
-		processFunc = func(trackID int, isRTP bool, payload []byte) error {
+		processFunc = func(track *ServerSessionSetuppedTrack, isRTP bool, payload []byte) error {
 			if isRTP {
 				pkt := tcpRTPPacketBuffer.next()
 				err := pkt.Unmarshal(payload)
@@ -255,23 +255,13 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					return err
 				}
 
-				out, err := sc.session.setuppedTracks[trackID].cleaner.Process(pkt)
-				if err != nil {
-					onDecodeError(sc.session, err)
-					// do not return
-				}
-
 				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
-					for _, entry := range out {
-						h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-							Session:      sc.session,
-							TrackID:      trackID,
-							Packet:       entry.Packet,
-							PTSEqualsDTS: entry.PTSEqualsDTS,
-							H264NALUs:    entry.H264NALUs,
-							H264PTS:      entry.H264PTS,
-						})
-					}
+					h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+						Session:      sc.session,
+						TrackID:      track.id,
+						Packet:       pkt,
+						PTSEqualsDTS: ptsEqualsDTS(track.track, pkt),
+					})
 				}
 			} else {
 				if len(payload) > maxPacketSize {
@@ -285,7 +275,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 				}
 
 				for _, pkt := range packets {
-					sc.session.onPacketRTCP(trackID, pkt)
+					sc.session.onPacketRTCP(track.id, pkt)
 				}
 			}
 
@@ -313,8 +303,8 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 			}
 
 			// forward frame only if it has been set up
-			if trackID, ok := sc.session.tcpTracksByChannel[channel]; ok {
-				err := processFunc(trackID, isRTP, twhat.Payload)
+			if track, ok := sc.session.tcpTracksByChannel[channel]; ok {
+				err := processFunc(track, isRTP, twhat.Payload)
 				if err != nil {
 					return err
 				}

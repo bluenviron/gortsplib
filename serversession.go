@@ -18,7 +18,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
-	"github.com/aler9/gortsplib/pkg/rtpcleaner"
 	"github.com/aler9/gortsplib/pkg/rtpreorderer"
 	"github.com/aler9/gortsplib/pkg/url"
 )
@@ -144,6 +143,7 @@ func (s ServerSessionState) String() string {
 // ServerSessionSetuppedTrack is a setupped track of a ServerSession.
 type ServerSessionSetuppedTrack struct {
 	id               int
+	track            Track // filled only when publishing
 	tcpChannel       int
 	udpRTPReadPort   int
 	udpRTPWriteAddr  *net.UDPAddr
@@ -153,7 +153,6 @@ type ServerSessionSetuppedTrack struct {
 	// publish
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver
 	reorderer       *rtpreorderer.Reorderer
-	cleaner         *rtpcleaner.Cleaner
 }
 
 // ServerSession is a server-side RTSP session.
@@ -167,7 +166,7 @@ type ServerSession struct {
 	conns               map[*ServerConn]struct{}
 	state               ServerSessionState
 	setuppedTracks      map[int]*ServerSessionSetuppedTrack
-	tcpTracksByChannel  map[int]int
+	tcpTracksByChannel  map[int]*ServerSessionSetuppedTrack
 	setuppedTransport   *Transport
 	setuppedBaseURL     *url.URL      // publish
 	setuppedStream      *ServerStream // read
@@ -742,6 +741,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			id: trackID,
 		}
 
+		if ss.state == ServerSessionStatePreRecord {
+			sst.track = ss.announcedTracks[trackID]
+		}
+
 		switch transport {
 		case TransportUDP:
 			sst.udpRTPReadPort = inTH.ClientPorts[0]
@@ -779,10 +782,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			sst.tcpChannel = inTH.InterleavedIDs[0]
 
 			if ss.tcpTracksByChannel == nil {
-				ss.tcpTracksByChannel = make(map[int]int)
+				ss.tcpTracksByChannel = make(map[int]*ServerSessionSetuppedTrack)
 			}
 
-			ss.tcpTracksByChannel[inTH.InterleavedIDs[0]] = trackID
+			ss.tcpTracksByChannel[inTH.InterleavedIDs[0]] = sst
 
 			th.Protocol = headers.TransportProtocolTCP
 			de := headers.TransportDeliveryUnicast
@@ -793,7 +796,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		if ss.setuppedTracks == nil {
 			ss.setuppedTracks = make(map[int]*ServerSessionSetuppedTrack)
 		}
-
 		ss.setuppedTracks[trackID] = sst
 
 		res.Header["Transport"] = th.Marshal()
@@ -961,12 +963,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.state = ServerSessionStateRecord
 
-		for trackID, st := range ss.setuppedTracks {
+		for _, st := range ss.setuppedTracks {
 			if *ss.setuppedTransport == TransportUDP {
 				st.reorderer = rtpreorderer.New()
 			}
-			_, isH264 := ss.announcedTracks[trackID].(*TrackH264)
-			st.cleaner = rtpcleaner.New(isH264, *ss.setuppedTransport == TransportTCP)
 		}
 
 		switch *ss.setuppedTransport {
@@ -987,7 +987,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				st.udpRTCPReceiver = rtcpreceiver.New(
 					ss.s.udpReceiverReportPeriod,
 					nil,
-					ss.announcedTracks[trackID].ClockRate(),
+					st.track.ClockRate(),
 					func(pkt rtcp.Packet) {
 						ss.WritePacketRTCP(ctrackID, pkt)
 					})
@@ -1078,7 +1078,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}
 
 			for _, st := range ss.setuppedTracks {
-				st.cleaner = nil
 				st.reorderer = nil
 			}
 

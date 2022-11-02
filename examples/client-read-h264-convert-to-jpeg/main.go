@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/rtph264"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -73,21 +74,25 @@ func main() {
 		panic("H264 track not found")
 	}
 
+	// setup RTP/H264->H264 decoder
+	rtpDec := &rtph264.Decoder{}
+	rtpDec.Init()
+
 	// setup H264->raw frames decoder
-	h264dec, err := newH264Decoder()
+	h264RawDec, err := newH264Decoder()
 	if err != nil {
 		panic(err)
 	}
-	defer h264dec.close()
+	defer h264RawDec.close()
 
-	// if present, send SPS and PPS from the SDP to the decoder
+	// if SPS and PPS are present into the SDP, send them to the decoder
 	sps := h264track.SafeSPS()
 	if sps != nil {
-		h264dec.decode(sps)
+		h264RawDec.decode(sps)
 	}
 	pps := h264track.SafePPS()
 	if pps != nil {
-		h264dec.decode(pps)
+		h264RawDec.decode(pps)
 	}
 
 	// called when a RTP packet arrives
@@ -97,13 +102,15 @@ func main() {
 			return
 		}
 
-		if ctx.H264NALUs == nil {
+		// convert RTP packets into NALUs
+		nalus, _, err := rtpDec.Decode(ctx.Packet)
+		if err != nil {
 			return
 		}
 
-		for _, nalu := range ctx.H264NALUs {
-			// convert H264 NALUs to RGBA frames
-			img, err := h264dec.decode(nalu)
+		for _, nalu := range nalus {
+			// convert NALUs into RGBA frames
+			img, err := h264RawDec.decode(nalu)
 			if err != nil {
 				panic(err)
 			}

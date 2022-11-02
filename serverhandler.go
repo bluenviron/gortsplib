@@ -1,8 +1,6 @@
 package gortsplib
 
 import (
-	"time"
-
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
@@ -205,8 +203,6 @@ type ServerHandlerOnPacketRTPCtx struct {
 	TrackID      int
 	Packet       *rtp.Packet
 	PTSEqualsDTS bool
-	H264NALUs    [][]byte
-	H264PTS      time.Duration
 }
 
 // ServerHandlerOnPacketRTP can be implemented by a ServerHandler.

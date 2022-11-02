@@ -1479,7 +1479,6 @@ func TestServerPublishDecodeErrors(t *testing.T) {
 		"packets lost",
 		"rtp too big",
 		"rtcp too big",
-		"cleaner error",
 	} {
 		t.Run(ca, func(t *testing.T) {
 			errorRecv := make(chan struct{})
@@ -1513,8 +1512,6 @@ func TestServerPublishDecodeErrors(t *testing.T) {
 							require.EqualError(t, ctx.Error, "RTP packet is too big to be read with UDP")
 						case "rtcp too big":
 							require.EqualError(t, ctx.Error, "RTCP packet is too big to be read with UDP")
-						case "cleaner error":
-							require.EqualError(t, ctx.Error, "packet type not supported (STAP-B)")
 						}
 						close(errorRecv)
 					},
@@ -1533,23 +1530,13 @@ func TestServerPublishDecodeErrors(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			var track Track
-			if ca != "cleaner error" {
-				track = &TrackGeneric{
-					Media: "application",
-					Payloads: []TrackGenericPayload{{
-						Type:   97,
-						RTPMap: "private/90000",
-					}},
-				}
-			} else {
-				track = &TrackH264{
-					PayloadType: 96,
-					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				}
-			}
-			tracks := Tracks{track}
+			tracks := Tracks{&TrackGeneric{
+				Media: "application",
+				Payloads: []TrackGenericPayload{{
+					Type:   97,
+					RTPMap: "private/90000",
+				}},
+			}}
 			tracks.setControls()
 
 			res, err := writeReqReadRes(conn, base.Request{
@@ -1659,18 +1646,6 @@ func TestServerPublishDecodeErrors(t *testing.T) {
 				l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[1],
-				})
-
-			case "cleaner error":
-				byts, _ := rtp.Packet{
-					Header: rtp.Header{
-						SequenceNumber: 100,
-					},
-					Payload: []byte{0x99},
-				}.Marshal()
-				l1.WriteTo(byts, &net.UDPAddr{
-					IP:   net.ParseIP("127.0.0.1"),
-					Port: resTH.ServerPorts[0],
 				})
 			}
 
