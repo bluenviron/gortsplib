@@ -28,7 +28,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
-	"github.com/aler9/gortsplib/pkg/rtpcleaner"
 	"github.com/aler9/gortsplib/pkg/rtpreorderer"
 	"github.com/aler9/gortsplib/pkg/sdp"
 	"github.com/aler9/gortsplib/pkg/url"
@@ -94,7 +93,6 @@ type clientTrack struct {
 	udpRTPPacketBuffer *rtpPacketMultiBuffer
 	udpRTCPReceiver    *rtcpreceiver.RTCPReceiver
 	reorderer          *rtpreorderer.Reorderer
-	cleaner            *rtpcleaner.Cleaner
 
 	// record
 	rtcpSender *rtcpsender.RTCPSender
@@ -165,8 +163,6 @@ type ClientOnPacketRTPCtx struct {
 	TrackID      int
 	Packet       *rtp.Packet
 	PTSEqualsDTS bool
-	H264NALUs    [][]byte
-	H264PTS      time.Duration
 }
 
 // ClientOnPacketRTCPCtx is the context of a RTCP packet.
@@ -704,8 +700,6 @@ func (c *Client) playRecordStart() {
 			if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
 				ct.reorderer = rtpreorderer.New()
 			}
-			_, isH264 := ct.track.(*TrackH264)
-			ct.cleaner = rtpcleaner.New(isH264, *c.effectiveTransport == TransportTCP)
 		}
 
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
@@ -804,30 +798,22 @@ func (c *Client) runReader() {
 							return err
 						}
 
-						out, err := track.cleaner.Process(pkt)
-						if err != nil {
-							return err
-						}
-
-						for _, entry := range out {
-							c.OnPacketRTP(&ClientOnPacketRTPCtx{
-								TrackID:      track.id,
-								Packet:       entry.Packet,
-								PTSEqualsDTS: entry.PTSEqualsDTS,
-								H264NALUs:    entry.H264NALUs,
-								H264PTS:      entry.H264PTS,
-							})
-						}
+						c.OnPacketRTP(&ClientOnPacketRTPCtx{
+							TrackID:      track.id,
+							Packet:       pkt,
+							PTSEqualsDTS: ptsEqualsDTS(track.track, pkt),
+						})
 					} else {
 						if len(payload) > maxPacketSize {
-							return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
-								len(payload), maxPacketSize)
+							c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+								len(payload), maxPacketSize))
+							return nil
 						}
 
 						packets, err := rtcp.Unmarshal(payload)
 						if err != nil {
 							// some cameras send invalid RTCP packets.
-							// skip them.
+							// ignore them.
 							c.OnDecodeError(err)
 							return nil
 						}
@@ -846,8 +832,9 @@ func (c *Client) runReader() {
 				processFunc = func(track *clientTrack, isRTP bool, payload []byte) error {
 					if !isRTP {
 						if len(payload) > maxPacketSize {
-							return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
-								len(payload), maxPacketSize)
+							c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+								len(payload), maxPacketSize))
+							return nil
 						}
 
 						packets, err := rtcp.Unmarshal(payload)
@@ -929,7 +916,6 @@ func (c *Client) playRecordStop(isClosing bool) {
 			ct.rtcpSender.Close()
 			ct.rtcpSender = nil
 		}
-		ct.cleaner = nil
 		ct.reorderer = nil
 	}
 

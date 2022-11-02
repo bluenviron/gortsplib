@@ -210,25 +210,14 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 	}
 
 	for _, pkt := range packets {
-		out, err := u.ct.cleaner.Process(pkt)
-		if err != nil {
-			u.c.OnDecodeError(err)
-			// do not return
-		}
+		ptsEqualsDTS := ptsEqualsDTS(u.ct.track, pkt)
+		u.ct.udpRTCPReceiver.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
 
-		if out != nil {
-			out0 := out[0]
-
-			u.ct.udpRTCPReceiver.ProcessPacketRTP(time.Now(), pkt, out0.PTSEqualsDTS)
-
-			u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
-				TrackID:      u.ct.id,
-				Packet:       out0.Packet,
-				PTSEqualsDTS: out0.PTSEqualsDTS,
-				H264NALUs:    out0.H264NALUs,
-				H264PTS:      out0.H264PTS,
-			})
-		}
+		u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
+			TrackID:      u.ct.id,
+			Packet:       pkt,
+			PTSEqualsDTS: ptsEqualsDTS,
+		})
 	}
 }
 

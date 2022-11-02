@@ -2717,10 +2717,10 @@ func TestClientReadDecodeErrors(t *testing.T) {
 	for _, ca := range []string{
 		"rtp invalid",
 		"rtcp invalid",
-		"packets lost",
+		"rtp packets lost",
 		"rtp too big",
 		"rtcp too big",
-		"cleaner error",
+		"rtcp too big tcp",
 	} {
 		t.Run(ca, func(t *testing.T) {
 			errorRecv := make(chan struct{})
@@ -2761,23 +2761,13 @@ func TestClientReadDecodeErrors(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/stream"), req.URL)
 
-				var track Track
-				if ca != "cleaner error" {
-					track = &TrackGeneric{
-						Media: "application",
-						Payloads: []TrackGenericPayload{{
-							Type:   97,
-							RTPMap: "private/90000",
-						}},
-					}
-				} else {
-					track = &TrackH264{
-						PayloadType: 96,
-						SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-						PPS:         []byte{0x01, 0x02, 0x03, 0x04},
-					}
-				}
-				tracks := Tracks{track}
+				tracks := Tracks{&TrackGeneric{
+					Media: "application",
+					Payloads: []TrackGenericPayload{{
+						Type:   97,
+						RTPMap: "private/90000",
+					}},
+				}}
 				tracks.setControls()
 
 				err = conn.WriteResponse(&base.Response{
@@ -2804,18 +2794,29 @@ func TestClientReadDecodeErrors(t *testing.T) {
 						v := headers.TransportDeliveryUnicast
 						return &v
 					}(),
-					Protocol:    headers.TransportProtocolUDP,
-					ClientPorts: inTH.ClientPorts,
-					ServerPorts: &[2]int{34556, 34557},
 				}
 
-				l1, err := net.ListenPacket("udp", "127.0.0.1:34556")
-				require.NoError(t, err)
-				defer l1.Close()
+				if ca != "rtcp too big tcp" {
+					th.Protocol = headers.TransportProtocolUDP
+					th.ClientPorts = inTH.ClientPorts
+					th.ServerPorts = &[2]int{34556, 34557}
+				} else {
+					th.Protocol = headers.TransportProtocolTCP
+					th.InterleavedIDs = inTH.InterleavedIDs
+				}
 
-				l2, err := net.ListenPacket("udp", "127.0.0.1:34557")
-				require.NoError(t, err)
-				defer l2.Close()
+				var l1 net.PacketConn
+				var l2 net.PacketConn
+
+				if ca != "rtcp too big tcp" {
+					l1, err = net.ListenPacket("udp", "127.0.0.1:34556")
+					require.NoError(t, err)
+					defer l1.Close()
+
+					l2, err = net.ListenPacket("udp", "127.0.0.1:34557")
+					require.NoError(t, err)
+					defer l2.Close()
+				}
 
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
@@ -2848,7 +2849,7 @@ func TestClientReadDecodeErrors(t *testing.T) {
 						Port: th.ClientPorts[1],
 					})
 
-				case "packets lost":
+				case "rtp packets lost":
 					byts, _ := rtp.Packet{
 						Header: rtp.Header{
 							SequenceNumber: 30,
@@ -2881,17 +2882,12 @@ func TestClientReadDecodeErrors(t *testing.T) {
 						Port: th.ClientPorts[1],
 					})
 
-				case "cleaner error":
-					byts, _ := rtp.Packet{
-						Header: rtp.Header{
-							SequenceNumber: 100,
-						},
-						Payload: []byte{0x99},
-					}.Marshal()
-					l1.WriteTo(byts, &net.UDPAddr{
-						IP:   net.ParseIP("127.0.0.1"),
-						Port: th.ClientPorts[0],
-					})
+				case "rtcp too big tcp":
+					err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+						Channel: 1,
+						Payload: bytes.Repeat([]byte{0x01, 0x02}, 2000/2),
+					}, make([]byte, 2048))
+					require.NoError(t, err)
 				}
 
 				req, err = conn.ReadRequest()
@@ -2907,7 +2903,11 @@ func TestClientReadDecodeErrors(t *testing.T) {
 
 			c := Client{
 				Transport: func() *Transport {
-					v := TransportUDP
+					if ca != "rtcp too big tcp" {
+						v := TransportUDP
+						return &v
+					}
+					v := TransportTCP
 					return &v
 				}(),
 				OnDecodeError: func(err error) {
@@ -2916,14 +2916,14 @@ func TestClientReadDecodeErrors(t *testing.T) {
 						require.EqualError(t, err, "RTP header size insufficient: 2 < 4")
 					case "rtcp invalid":
 						require.EqualError(t, err, "rtcp: packet too short")
-					case "packets lost":
+					case "rtp packets lost":
 						require.EqualError(t, err, "69 RTP packet(s) lost")
 					case "rtp too big":
 						require.EqualError(t, err, "RTP packet is too big to be read with UDP")
 					case "rtcp too big":
 						require.EqualError(t, err, "RTCP packet is too big to be read with UDP")
-					case "cleaner error":
-						require.EqualError(t, err, "packet type not supported (STAP-B)")
+					case "rtcp too big tcp":
+						require.EqualError(t, err, "RTCP packet size (2000) is greater than maximum allowed (1472)")
 					}
 					close(errorRecv)
 				},

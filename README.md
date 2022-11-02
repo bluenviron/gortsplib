@@ -23,7 +23,6 @@ Features:
     * Pause or seek without disconnecting from the server
     * Generate RTCP receiver reports (UDP only)
     * Reorder incoming RTP packets (UDP only)
-    * Clean up non-compliant streams (remove padding, re-encode RTP packets if they are too big)
   * Publish
     * Publish streams to servers with the UDP or TCP transport protocol
     * Publish TLS-encrypted streams (TCP only)
@@ -38,7 +37,6 @@ Features:
     * Read TLS-encrypted streams (TCP only)
     * Generate RTCP receiver reports (UDP only)
     * Reorder incoming RTP packets (UDP only)
-    * Clean up non-compliant streams (remove padding, re-encode RTP packets if they are too big)
   * Read
     * Write streams to clients with the UDP, UDP-multicast or TCP transport protocol
     * Write TLS-encrypted streams

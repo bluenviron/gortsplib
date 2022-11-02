@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/rtph264"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -45,8 +46,12 @@ func main() {
 		panic("H264 track not found")
 	}
 
-	// setup H264->MPEGTS encoder
-	enc, err := newMPEGTSMuxer(h264track.SafeSPS(), h264track.SafePPS())
+	// setup RTP/H264->H264 decoder
+	rtpDec := &rtph264.Decoder{}
+	rtpDec.Init()
+
+	// setup H264->MPEGTS muxer
+	mpegtsMuxer, err := newMPEGTSMuxer(h264track.SafeSPS(), h264track.SafePPS())
 	if err != nil {
 		panic(err)
 	}
@@ -57,15 +62,14 @@ func main() {
 			return
 		}
 
-		if ctx.H264NALUs == nil {
+		// convert RTP packets into NALUs
+		nalus, pts, err := rtpDec.Decode(ctx.Packet)
+		if err != nil {
 			return
 		}
 
 		// encode H264 NALUs into MPEG-TS
-		err = enc.encode(ctx.H264NALUs, ctx.H264PTS)
-		if err != nil {
-			return
-		}
+		mpegtsMuxer.encode(nalus, pts)
 	}
 
 	// setup and read all tracks

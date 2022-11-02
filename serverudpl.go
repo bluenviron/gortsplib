@@ -222,28 +222,19 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 		// do not return
 	}
 
+	track := clientData.track.track
+
 	for _, pkt := range packets {
-		out, err := clientData.track.cleaner.Process(pkt)
-		if err != nil {
-			onDecodeError(clientData.session, err)
-			// do not return
-		}
+		ptsEqualsDTS := ptsEqualsDTS(track, pkt)
+		clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, ptsEqualsDTS)
 
-		if out != nil {
-			out0 := out[0]
-
-			clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, out0.PTSEqualsDTS)
-
-			if h, ok := clientData.session.s.Handler.(ServerHandlerOnPacketRTP); ok {
-				h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-					Session:      clientData.session,
-					TrackID:      clientData.track.id,
-					Packet:       out0.Packet,
-					PTSEqualsDTS: out0.PTSEqualsDTS,
-					H264NALUs:    out0.H264NALUs,
-					H264PTS:      out0.H264PTS,
-				})
-			}
+		if h, ok := clientData.session.s.Handler.(ServerHandlerOnPacketRTP); ok {
+			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
+				Session:      clientData.session,
+				TrackID:      clientData.track.id,
+				Packet:       pkt,
+				PTSEqualsDTS: ptsEqualsDTS,
+			})
 		}
 	}
 }

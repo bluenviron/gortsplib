@@ -7,6 +7,7 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
 // This example shows how to
@@ -19,6 +20,7 @@ type serverHandler struct {
 	publisher   *gortsplib.ServerSession
 	h264TrackID int
 	h264track   *gortsplib.TrackH264
+	rtpDec      *rtph264.Decoder
 	mpegtsMuxer *mpegtsMuxer
 }
 
@@ -76,7 +78,11 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		}, fmt.Errorf("H264 track not found")
 	}
 
-	// setup H264->MPEGTS encoder
+	// setup RTP/H264->H264 decoder
+	rtpDec := &rtph264.Decoder{}
+	rtpDec.Init()
+
+	// setup H264->MPEGTS muxer
 	mpegtsMuxer, err := newMPEGTSMuxer(h264track.SafeSPS(), h264track.SafePPS())
 	if err != nil {
 		return &base.Response{
@@ -86,6 +92,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 	sh.publisher = ctx.Session
 	sh.h264TrackID = h264TrackID
+	sh.rtpDec = rtpDec
 	sh.mpegtsMuxer = mpegtsMuxer
 
 	return &base.Response{
@@ -120,15 +127,13 @@ func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx)
 		return
 	}
 
-	if ctx.H264NALUs == nil {
+	nalus, pts, err := sh.rtpDec.Decode(ctx.Packet)
+	if err != nil {
 		return
 	}
 
 	// encode H264 NALUs into MPEG-TS
-	err := sh.mpegtsMuxer.encode(ctx.H264NALUs, ctx.H264PTS)
-	if err != nil {
-		return
-	}
+	sh.mpegtsMuxer.encode(nalus, pts)
 }
 
 func main() {
