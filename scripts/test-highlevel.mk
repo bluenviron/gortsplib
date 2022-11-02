@@ -16,6 +16,5 @@ test-highlevel:
 	docker run --rm -it \
 	-v /var/run/docker.sock:/var/run/docker.sock:ro \
 	--network=host \
-	--name temp \
 	temp \
 	make test-highlevel-nodocker
