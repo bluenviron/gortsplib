@@ -2,18 +2,12 @@
 package rtpcleaner
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/h264"
 	"github.com/aler9/gortsplib/pkg/rtph264"
-)
-
-const (
-	// 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header)
-	maxPacketSize = 1472
 )
 
 // Output is the output of Clear().
@@ -32,7 +26,6 @@ type Cleaner struct {
 	isTCP  bool
 
 	h264Decoder *rtph264.Decoder
-	h264Encoder *rtph264.Encoder
 }
 
 // New allocates a Cleaner.
@@ -51,60 +44,6 @@ func New(isH264 bool, isTCP bool) *Cleaner {
 }
 
 func (p *Cleaner) processH264(pkt *rtp.Packet) ([]*Output, error) {
-	// check if we need to re-encode
-	if p.isTCP && p.h264Encoder == nil && pkt.MarshalSize() > maxPacketSize {
-		v1 := pkt.SSRC
-		v2 := pkt.SequenceNumber
-		v3 := pkt.Timestamp
-		p.h264Encoder = &rtph264.Encoder{
-			PayloadType:           pkt.PayloadType,
-			SSRC:                  &v1,
-			InitialSequenceNumber: &v2,
-			InitialTimestamp:      &v3,
-		}
-		p.h264Encoder.Init()
-	}
-
-	// re-encode
-	if p.h264Encoder != nil {
-		// decode
-		nalus, pts, err := p.h264Decoder.DecodeUntilMarker(pkt)
-		if err != nil {
-			if err == rtph264.ErrNonStartingPacketAndNoPrevious ||
-				err == rtph264.ErrMorePacketsNeeded { // hide standard errors
-				err = nil
-			}
-
-			return nil, err // original packets are oversized, do not return them
-		}
-
-		packets, err := p.h264Encoder.Encode(nalus, pts)
-		if err != nil {
-			return nil, err // original packets are oversized, do not return them
-		}
-
-		ptsEqualsDTS := h264.IDRPresent(nalus)
-		output := make([]*Output, len(packets))
-
-		for i, pkt := range packets {
-			if i != len(packets)-1 {
-				output[i] = &Output{
-					Packet:       pkt,
-					PTSEqualsDTS: false,
-				}
-			} else {
-				output[i] = &Output{
-					Packet:       pkt,
-					PTSEqualsDTS: ptsEqualsDTS,
-					H264NALUs:    nalus,
-					H264PTS:      pts,
-				}
-			}
-		}
-
-		return output, nil
-	}
-
 	// decode
 	nalus, pts, err := p.h264Decoder.DecodeUntilMarker(pkt)
 	if err != nil {
@@ -135,11 +74,6 @@ func (p *Cleaner) Process(pkt *rtp.Packet) ([]*Output, error) {
 
 	if p.h264Decoder != nil {
 		return p.processH264(pkt)
-	}
-
-	if p.isTCP && pkt.MarshalSize() > maxPacketSize {
-		return nil, fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
-			pkt.MarshalSize(), maxPacketSize)
 	}
 
 	return []*Output{{
