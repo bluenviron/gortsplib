@@ -805,14 +805,15 @@ func (c *Client) runReader() {
 						})
 					} else {
 						if len(payload) > maxPacketSize {
-							return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
-								len(payload), maxPacketSize)
+							c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+								len(payload), maxPacketSize))
+							return nil
 						}
 
 						packets, err := rtcp.Unmarshal(payload)
 						if err != nil {
 							// some cameras send invalid RTCP packets.
-							// skip them.
+							// ignore them.
 							c.OnDecodeError(err)
 							return nil
 						}
@@ -831,8 +832,9 @@ func (c *Client) runReader() {
 				processFunc = func(track *clientTrack, isRTP bool, payload []byte) error {
 					if !isRTP {
 						if len(payload) > maxPacketSize {
-							return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
-								len(payload), maxPacketSize)
+							c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+								len(payload), maxPacketSize))
+							return nil
 						}
 
 						packets, err := rtcp.Unmarshal(payload)

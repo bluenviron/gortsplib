@@ -222,8 +222,9 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 		processFunc = func(track *ServerSessionSetuppedTrack, isRTP bool, payload []byte) error {
 			if !isRTP {
 				if len(payload) > maxPacketSize {
-					return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
-						len(payload), maxPacketSize)
+					onDecodeError(sc.session, fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+						len(payload), maxPacketSize))
+					return nil
 				}
 
 				packets, err := rtcp.Unmarshal(payload)
@@ -265,8 +266,9 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 				}
 			} else {
 				if len(payload) > maxPacketSize {
-					return fmt.Errorf("payload size (%d) is greater than maximum allowed (%d)",
-						len(payload), maxPacketSize)
+					onDecodeError(sc.session, fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+						len(payload), maxPacketSize))
+					return nil
 				}
 
 				packets, err := rtcp.Unmarshal(payload)
