@@ -29,7 +29,7 @@ Features:
     * Publish TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
     * Pause without disconnecting from the server
-    * Generate RTCP sender reports (UDP only)
+    * Generate RTCP sender reports
 * Server
   * Handle requests from clients
   * Sessions and connections are independent
@@ -43,7 +43,7 @@ Features:
     * Write streams to clients with the UDP, UDP-multicast or TCP transport protocol
     * Write TLS-encrypted streams
     * Compute and provide SSRC, RTP-Info to clients
-    * Generate RTCP sender reports (UDP only)
+    * Generate RTCP sender reports
 * Utilities
   * Parse RTSP elements: requests, responses, SDP
   * Parse H264 elements and formats: RTP/H264, Annex-B, AVCC, anti-competition, DTS

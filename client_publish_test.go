@@ -834,151 +834,169 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 }
 
 func TestClientPublishRTCPReport(t *testing.T) {
-	reportReceived := make(chan struct{})
+	for _, ca := range []string{"udp", "tcp"} {
+		t.Run(ca, func(t *testing.T) {
+			reportReceived := make(chan struct{})
 
-	l, err := net.Listen("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer l.Close()
+			l, err := net.Listen("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer l.Close()
 
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
-		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+				nconn, err := l.Accept()
+				require.NoError(t, err)
+				defer nconn.Close()
+				conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Options, req.Method)
+				req, err := conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Public": base.HeaderValue{strings.Join([]string{
-					string(base.Announce),
-					string(base.Setup),
-					string(base.Record),
-				}, ", ")},
-			},
-		})
-		require.NoError(t, err)
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Announce),
+							string(base.Setup),
+							string(base.Record),
+						}, ", ")},
+					},
+				})
+				require.NoError(t, err)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Announce, req.Method)
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Announce, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-		})
-		require.NoError(t, err)
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Setup, req.Method)
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
 
-		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+				var inTH headers.Transport
+				err = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err)
 
-		l1, err := net.ListenPacket("udp", "localhost:34556")
-		require.NoError(t, err)
-		defer l1.Close()
-
-		l2, err := net.ListenPacket("udp", "localhost:34557")
-		require.NoError(t, err)
-		defer l2.Close()
-
-		err = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Transport": headers.Transport{
+				th := headers.Transport{
 					Delivery: func() *headers.TransportDelivery {
 						v := headers.TransportDeliveryUnicast
 						return &v
 					}(),
-					Protocol:    headers.TransportProtocolUDP,
-					ClientPorts: inTH.ClientPorts,
-					ServerPorts: &[2]int{34556, 34557},
-				}.Marshal(),
-			},
+				}
+
+				if ca == "udp" {
+					th.Protocol = headers.TransportProtocolUDP
+					th.ClientPorts = inTH.ClientPorts
+					th.ServerPorts = &[2]int{34556, 34557}
+				} else {
+					th.Protocol = headers.TransportProtocolTCP
+					th.InterleavedIDs = inTH.InterleavedIDs
+				}
+
+				l1, err := net.ListenPacket("udp", "localhost:34556")
+				require.NoError(t, err)
+				defer l1.Close()
+
+				l2, err := net.ListenPacket("udp", "localhost:34557")
+				require.NoError(t, err)
+				defer l2.Close()
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": th.Marshal(),
+					},
+				})
+				require.NoError(t, err)
+
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Record, req.Method)
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err)
+
+				var buf []byte
+
+				if ca == "udp" {
+					buf = make([]byte, 2048)
+					n, _, err := l2.ReadFrom(buf)
+					require.NoError(t, err)
+					buf = buf[:n]
+				} else {
+					for i := 0; i < 2; i++ {
+						_, err := conn.ReadInterleavedFrame()
+						require.NoError(t, err)
+					}
+
+					f, err := conn.ReadInterleavedFrame()
+					require.NoError(t, err)
+					require.Equal(t, 1, f.Channel)
+					buf = f.Payload
+				}
+
+				packets, err := rtcp.Unmarshal(buf)
+				require.NoError(t, err)
+				require.Equal(t, &rtcp.SenderReport{
+					SSRC:        0x38F27A2F,
+					NTPTime:     packets[0].(*rtcp.SenderReport).NTPTime,
+					RTPTime:     packets[0].(*rtcp.SenderReport).RTPTime,
+					PacketCount: 2,
+					OctetCount:  8,
+				}, packets[0])
+
+				close(reportReceived)
+
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err)
+			}()
+
+			c := Client{
+				Transport: func() *Transport {
+					if ca == "udp" {
+						v := TransportUDP
+						return &v
+					}
+					v := TransportTCP
+					return &v
+				}(),
+				udpSenderReportPeriod: 500 * time.Millisecond,
+			}
+
+			err = c.StartPublishing("rtsp://localhost:8554/teststream",
+				Tracks{&TrackH264{
+					PayloadType: 96,
+					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				}})
+			require.NoError(t, err)
+			defer c.Close()
+
+			err = c.WritePacketRTP(0, &testRTPPacket, true)
+			require.NoError(t, err)
+
+			err = c.WritePacketRTP(0, &testRTPPacket, true)
+			require.NoError(t, err)
+
+			<-reportReceived
 		})
-		require.NoError(t, err)
-
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Record, req.Method)
-
-		err = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-		})
-		require.NoError(t, err)
-
-		buf := make([]byte, 2048)
-		n, _, err := l1.ReadFrom(buf)
-		require.NoError(t, err)
-		var pkt rtp.Packet
-		err = pkt.Unmarshal(buf[:n])
-		require.NoError(t, err)
-
-		buf = make([]byte, 2048)
-		n, _, err = l2.ReadFrom(buf)
-		require.NoError(t, err)
-		packets, err := rtcp.Unmarshal(buf[:n])
-		require.NoError(t, err)
-		sr, ok := packets[0].(*rtcp.SenderReport)
-		require.True(t, ok)
-		require.Equal(t, &rtcp.SenderReport{
-			SSRC:        753621,
-			NTPTime:     sr.NTPTime,
-			RTPTime:     sr.RTPTime,
-			PacketCount: 1,
-			OctetCount:  4,
-		}, sr)
-
-		close(reportReceived)
-
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Teardown, req.Method)
-
-		err = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-		})
-		require.NoError(t, err)
-	}()
-
-	c := Client{
-		udpSenderReportPeriod: 1 * time.Second,
 	}
-
-	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
-	}
-
-	err = c.StartPublishing("rtsp://localhost:8554/teststream",
-		Tracks{track})
-	require.NoError(t, err)
-	defer c.Close()
-
-	err = c.WritePacketRTP(0, &rtp.Packet{
-		Header: rtp.Header{
-			Version:        2,
-			Marker:         true,
-			PayloadType:    96,
-			SequenceNumber: 946,
-			Timestamp:      54352,
-			SSRC:           753621,
-		},
-		Payload: []byte{0x01, 0x02, 0x03, 0x04},
-	}, true)
-	require.NoError(t, err)
-
-	<-reportReceived
 }
 
 func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {

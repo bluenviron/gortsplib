@@ -97,7 +97,7 @@ type clientTrack struct {
 	cleaner            *rtpcleaner.Cleaner
 
 	// record
-	udpRTCPSender *rtcpsender.RTCPSender
+	rtcpSender *rtcpsender.RTCPSender
 }
 
 func (s clientState) String() string {
@@ -751,19 +751,20 @@ func (c *Client) playRecordStart() {
 			v := time.Now().Unix()
 			c.tcpLastFrameTime = &v
 		}
-	} else if *c.effectiveTransport == TransportUDP {
+	} else {
 		for trackID, ct := range c.tracks {
 			ctrackID := trackID
-
-			ct.udpRTCPSender = rtcpsender.New(c.udpSenderReportPeriod,
+			ct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
 				ct.track.ClockRate(), func(pkt rtcp.Packet) {
 					c.WritePacketRTCP(ctrackID, pkt)
 				})
 		}
 
-		for _, ct := range c.tracks {
-			ct.udpRTPListener.start(false)
-			ct.udpRTCPListener.start(false)
+		if *c.effectiveTransport == TransportUDP {
+			for _, ct := range c.tracks {
+				ct.udpRTPListener.start(false)
+				ct.udpRTCPListener.start(false)
+			}
 		}
 	}
 
@@ -920,15 +921,14 @@ func (c *Client) playRecordStop(isClosing bool) {
 				ct.udpRTCPReceiver.Close()
 				ct.udpRTCPReceiver = nil
 			}
-		} else {
-			for _, ct := range c.tracks {
-				ct.udpRTCPSender.Close()
-				ct.udpRTCPSender = nil
-			}
 		}
 	}
 
 	for _, ct := range c.tracks {
+		if ct.rtcpSender != nil {
+			ct.rtcpSender.Close()
+			ct.rtcpSender = nil
+		}
 		ct.cleaner = nil
 		ct.reorderer = nil
 	}
@@ -1891,9 +1891,7 @@ func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool)
 	}
 	byts = byts[:n]
 
-	if c.tracks[trackID].udpRTCPSender != nil {
-		c.tracks[trackID].udpRTCPSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
-	}
+	c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
 
 	c.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,
