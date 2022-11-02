@@ -15,7 +15,7 @@ func TestRTCPSender(t *testing.T) {
 	}
 	done := make(chan struct{})
 
-	rs := New(500*time.Millisecond, 90000, func(pkt rtcp.Packet) {
+	rs := New(250*time.Millisecond, 90000, func(pkt rtcp.Packet) {
 		require.Equal(t, &rtcp.SenderReport{
 			SSRC:        0xba9da416,
 			NTPTime:     0xcbddcc34999997ff,
@@ -26,6 +26,8 @@ func TestRTCPSender(t *testing.T) {
 		close(done)
 	})
 	defer rs.Close()
+
+	time.Sleep(400 * time.Millisecond)
 
 	rtpPkt := rtp.Packet{
 		Header: rtp.Header{

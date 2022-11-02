@@ -81,7 +81,7 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 	}
 	v := uint32(0x65f83afb)
 
-	rr := New(500*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
+	rr := New(250*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
 		require.Equal(t, &rtcp.ReceiverReport{
 			SSRC: 0x65f83afb,
 			Reports: []rtcp.ReceptionReport{
@@ -96,6 +96,8 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 		close(done)
 	})
 	defer rr.Close()
+
+	time.Sleep(400 * time.Millisecond)
 
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
