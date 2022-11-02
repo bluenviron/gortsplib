@@ -213,6 +213,8 @@ type Client struct {
 	// user agent header
 	// It defaults to "gortsplib"
 	UserAgent string
+	// disable automatic RTCP sender reports.
+	DisableRTCPSenderReports bool
 
 	//
 	// system functions (all optional)
@@ -746,12 +748,14 @@ func (c *Client) playRecordStart() {
 			c.tcpLastFrameTime = &v
 		}
 	} else {
-		for trackID, ct := range c.tracks {
-			ctrackID := trackID
-			ct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
-				ct.track.ClockRate(), func(pkt rtcp.Packet) {
-					c.WritePacketRTCP(ctrackID, pkt)
-				})
+		if !c.DisableRTCPSenderReports {
+			for trackID, ct := range c.tracks {
+				ctrackID := trackID
+				ct.rtcpSender = rtcpsender.New(c.udpSenderReportPeriod,
+					ct.track.ClockRate(), func(pkt rtcp.Packet) {
+						c.WritePacketRTCP(ctrackID, pkt)
+					})
+			}
 		}
 
 		if *c.effectiveTransport == TransportUDP {
@@ -1877,7 +1881,10 @@ func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool)
 	}
 	byts = byts[:n]
 
-	c.tracks[trackID].rtcpSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
+	t := c.tracks[trackID]
+	if t.rtcpSender != nil {
+		t.rtcpSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
+	}
 
 	c.writeBuffer.Push(trackTypePayload{
 		trackID: trackID,

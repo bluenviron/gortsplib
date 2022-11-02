@@ -129,20 +129,17 @@ func (st *ServerStream) readerAdd(
 	if st.s == nil {
 		st.s = ss.s
 
-		for trackID, track := range st.streamTracks {
-			// always generate RTCP sender reports.
-			// they're mandatory when transport protocol is UDP or UDP-multicast.
-			// they're also needed when transport protocol is TCP and client is Nvidia Deepstream
-			// since they're used to compute NTP timestamp of frames:
-			// https://docs.nvidia.com/metropolis/deepstream/dev-guide/text/DS_NTP_Timestamp.html
-			cTrackID := trackID
-			track.rtcpSender = rtcpsender.New(
-				st.s.udpSenderReportPeriod,
-				st.tracks[trackID].ClockRate(),
-				func(pkt rtcp.Packet) {
-					st.WritePacketRTCP(cTrackID, pkt)
-				},
-			)
+		if !st.s.DisableRTCPSenderReports {
+			for trackID, track := range st.streamTracks {
+				cTrackID := trackID
+				track.rtcpSender = rtcpsender.New(
+					st.s.udpSenderReportPeriod,
+					st.tracks[trackID].ClockRate(),
+					func(pkt rtcp.Packet) {
+						st.WritePacketRTCP(cTrackID, pkt)
+					},
+				)
+			}
 		}
 	}
 

@@ -108,6 +108,8 @@ type Server struct {
 	// It allows to queue packets before sending them.
 	// It defaults to 256.
 	WriteBufferCount int
+	// disable automatic RTCP sender reports.
+	DisableRTCPSenderReports bool
 
 	//
 	// handler (optional)
