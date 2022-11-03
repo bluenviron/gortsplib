@@ -37,6 +37,7 @@ type ServerConn struct {
 
 	ctx        context.Context
 	ctxCancel  func()
+	userData   interface{}
 	remoteAddr *net.TCPAddr
 	conn       *conn.Conn
 	session    *ServerSession
@@ -89,6 +90,16 @@ func (sc *ServerConn) Close() error {
 // NetConn returns the underlying net.Conn.
 func (sc *ServerConn) NetConn() net.Conn {
 	return sc.nconn
+}
+
+// SetUserData sets some user data associated to the connection.
+func (sc *ServerConn) SetUserData(v interface{}) {
+	sc.userData = v
+}
+
+// UserData returns some user data associated to the connection.
+func (sc *ServerConn) UserData() interface{} {
+	return sc.userData
 }
 
 func (sc *ServerConn) ip() net.IP {
