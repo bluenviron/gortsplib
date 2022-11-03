@@ -163,6 +163,7 @@ type ServerSession struct {
 
 	ctx                 context.Context
 	ctxCancel           func()
+	userData            interface{}
 	conns               map[*ServerConn]struct{}
 	state               ServerSessionState
 	setuppedTracks      map[int]*ServerSessionSetuppedTrack
@@ -240,6 +241,16 @@ func (ss *ServerSession) SetuppedTransport() *Transport {
 // AnnouncedTracks returns the announced tracks.
 func (ss *ServerSession) AnnouncedTracks() Tracks {
 	return ss.announcedTracks
+}
+
+// SetUserData sets some user data associated to the session.
+func (ss *ServerSession) SetUserData(v interface{}) {
+	ss.userData = v
+}
+
+// UserData returns some user data associated to the session.
+func (ss *ServerSession) UserData() interface{} {
+	return ss.userData
 }
 
 func (ss *ServerSession) checkState(allowed map[ServerSessionState]struct{}) error {

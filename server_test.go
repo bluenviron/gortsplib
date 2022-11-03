@@ -636,6 +636,7 @@ func TestServerGetSetParameter(t *testing.T) {
 			s := &Server{
 				Handler: &testServerHandler{
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						ctx.Session.SetUserData(123)
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
@@ -643,6 +644,7 @@ func TestServerGetSetParameter(t *testing.T) {
 					onSetParameter: func(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
 						if ca == "inside session" {
 							require.NotNil(t, ctx.Session)
+							require.Equal(t, 123, ctx.Session.UserData())
 						}
 						params = ctx.Request.Body
 						return &base.Response{
