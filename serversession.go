@@ -310,13 +310,14 @@ func (ss *ServerSession) run() {
 		<-ss.writerDone
 	}
 
+	// close all associated connections, both UDP and TCP
+	// except for the ones that called TEARDOWN
+	// (that are detached from the session just after the request)
 	for sc := range ss.conns {
-		if sc == ss.tcpConn {
-			sc.Close()
+		sc.Close()
 
-			// make sure that OnFrame() is never called after OnSessionClose()
-			<-sc.done
-		}
+		// make sure that OnFrame() is never called after OnSessionClose()
+		<-sc.done
 
 		select {
 		case sc.sessionRemove <- ss:
@@ -379,6 +380,7 @@ func (ss *ServerSession) runInner() error {
 
 				// after a TEARDOWN, session must be unpaired with the connection
 				if req.req.Method == base.Teardown {
+					delete(ss.conns, req.sc)
 					returnedSession = nil
 				}
 			}
