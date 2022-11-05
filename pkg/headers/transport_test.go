@@ -1,6 +1,7 @@
 package headers
 
 import (
+	"fmt"
 	"net"
 	"testing"
 
@@ -245,6 +246,16 @@ func TestTransportUnmarshal(t *testing.T) {
 			require.Equal(t, ca.h, h)
 		})
 	}
+}
+
+func TestTransportsUnmarshal(t *testing.T) {
+	var trs Transports
+	casea := casesTransport[0]
+	caseb := casesTransport[3]
+	h := fmt.Sprintf("%s, %s", casea.vin[0], caseb.vin[0])
+	err := trs.Unmarshal(base.HeaderValue{h})
+	require.NoError(t, err)
+	require.Equal(t, trs, Transports{casea.h, caseb.h})
 }
 
 func TestTransportUnmarshalErrors(t *testing.T) {
