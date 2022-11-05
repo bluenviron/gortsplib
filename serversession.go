@@ -592,13 +592,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, err
 		}
 
-		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
+		var inTSH headers.Transports
+		err = inTSH.Unmarshal(req.Header["Transport"])
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerTransportHeaderInvalid{Err: err}
 		}
+		inTH := inTSH[0]
 
 		trackID, path, query, err := setupGetTrackIDPathQuery(req.URL, inTH.Mode,
 			ss.announcedTracks, ss.setuppedPath, ss.setuppedQuery, ss.setuppedBaseURL)

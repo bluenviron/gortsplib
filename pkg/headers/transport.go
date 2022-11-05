@@ -75,6 +75,8 @@ type Transport struct {
 	Mode *TransportMode
 }
 
+type Transports []Transport
+
 func parsePorts(val string) (*[2]int, error) {
 	ports := strings.Split(val, "-")
 	if len(ports) == 2 {
@@ -101,6 +103,36 @@ func parsePorts(val string) (*[2]int, error) {
 	}
 
 	return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+}
+
+func (ts *Transports) Unmarshal(v base.HeaderValue) (error) {
+	if len(v) == 0 {
+		return fmt.Errorf("value not provided")
+	}
+
+	if len(v) > 1 {
+		return fmt.Errorf("value provided multiple times (%v)", v)
+	}
+
+	*ts = nil
+
+	v0 := v[0]
+
+	transports := strings.Split(v0, ",") // , separated per RFC2326 section 12.39
+	for _, transport := range transports {
+		var tr Transport
+		err := tr.Unmarshal(base.HeaderValue{strings.TrimLeft(transport, " ")})
+		if err != nil {
+			return err
+		}
+		*ts = append(*ts, tr)
+	}
+
+	if *ts == nil {
+		return fmt.Errorf("no valid transports found")
+	}
+
+	return nil
 }
 
 // Unmarshal decodes a Transport header.
