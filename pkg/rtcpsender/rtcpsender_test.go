@@ -18,7 +18,7 @@ func TestRTCPSender(t *testing.T) {
 	rs := New(250*time.Millisecond, 90000, func(pkt rtcp.Packet) {
 		require.Equal(t, &rtcp.SenderReport{
 			SSRC:        0xba9da416,
-			NTPTime:     0xcbddcc34999997ff,
+			NTPTime:     14690122083862791680,
 			RTPTime:     0x4d185ae8,
 			PacketCount: 3,
 			OctetCount:  6,

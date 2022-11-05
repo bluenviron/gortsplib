@@ -84,12 +84,9 @@ func (rs *RTCPSender) report(ts time.Time) rtcp.Packet {
 		SSRC: *rs.senderSSRC,
 		NTPTime: func() uint64 {
 			// seconds since 1st January 1900
-			s := (float64(ts.UnixNano()) / 1000000000) + 2208988800
-
 			// higher 32 bits are the integer part, lower 32 bits are the fractional part
-			integerPart := uint32(s)
-			fractionalPart := uint32((s - float64(integerPart)) * 0xFFFFFFFF)
-			return uint64(integerPart)<<32 | uint64(fractionalPart)
+			s := uint64(ts.UnixNano()) + 2208988800*1000000000
+			return (s/1000000000)<<32 | (s % 1000000000)
 		}(),
 		RTPTime:     *rs.lastRTPTimeRTP + uint32((ts.Sub(rs.lastRTPTimeTime)).Seconds()*rs.clockRate),
 		PacketCount: rs.packetCount,
