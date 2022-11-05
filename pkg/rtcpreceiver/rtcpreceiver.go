@@ -39,7 +39,7 @@ type RTCPReceiver struct {
 
 	// data from rtcp packets
 	senderSSRC           uint32
-	lastSenderReportRTP  *uint32
+	lastSenderReportNTP  *uint32
 	lastSenderReportTime time.Time
 
 	terminate chan struct{}
@@ -99,7 +99,7 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
-	if rr.lastSenderReportRTP == nil || rr.lastSequenceNumber == nil {
+	if rr.lastSenderReportNTP == nil || rr.lastSequenceNumber == nil {
 		return nil
 	}
 
@@ -109,7 +109,8 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 			{
 				SSRC:               rr.senderSSRC,
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(*rr.lastSequenceNumber),
-				LastSenderReport:   *rr.lastSenderReportRTP,
+				// middle 32 bits out of 64 in the NTP timestamp of last sender report
+				LastSenderReport: *rr.lastSenderReportNTP,
 				// equivalent to taking the integer part after multiplying the
 				// loss fraction by 256
 				FractionLost: uint8(float64(rr.totalLostSinceReport*256) / float64(rr.totalSinceReport)),
@@ -201,7 +202,7 @@ func (rr *RTCPReceiver) ProcessPacketRTCP(ts time.Time, pkt rtcp.Packet) {
 
 		rr.senderSSRC = sr.SSRC
 		v := uint32(sr.NTPTime >> 16)
-		rr.lastSenderReportRTP = &v
+		rr.lastSenderReportNTP = &v
 		rr.lastSenderReportTime = ts
 	}
 }
