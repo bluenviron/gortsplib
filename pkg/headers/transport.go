@@ -75,6 +75,7 @@ type Transport struct {
 	Mode *TransportMode
 }
 
+// Transports is a list of transports.
 type Transports []Transport
 
 func parsePorts(val string) (*[2]int, error) {
@@ -105,7 +106,8 @@ func parsePorts(val string) (*[2]int, error) {
 	return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 }
 
-func (ts *Transports) Unmarshal(v base.HeaderValue) (error) {
+// Unmarshal decodes a Transport header.
+func (ts *Transports) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
