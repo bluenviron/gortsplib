@@ -57,7 +57,7 @@ func main() {
 		}
 
 		// route RTP packet to the server
-		err = c.WritePacketRTP(0, &pkt, true)
+		err = c.WritePacketRTP(0, &pkt)
 		if err != nil {
 			panic(err)
 		}

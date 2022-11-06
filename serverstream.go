@@ -232,7 +232,14 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 }
 
 // WritePacketRTP writes a RTP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool) {
+func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet) {
+	st.WritePacketRTPWithNTP(trackID, pkt, time.Now())
+}
+
+// WritePacketRTPWithNTP writes a RTP packet to all the readers of the stream.
+// ntp is the absolute time of the packet, and is needed to generate RTCP sender reports
+// that allows the receiver to reconstruct the absolute time of the packet.
+func (st *ServerStream) WritePacketRTPWithNTP(trackID int, pkt *rtp.Packet, ntp time.Time) {
 	byts := make([]byte, maxPacketSize)
 	n, err := pkt.MarshalTo(byts)
 	if err != nil {
@@ -248,19 +255,19 @@ func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDT
 	}
 
 	track := st.streamTracks[trackID]
-	now := time.Now()
+	ptsEqualsDTS := ptsEqualsDTS(st.tracks[trackID], pkt)
 
 	if ptsEqualsDTS {
 		track.lastTimeFilled = true
 		track.lastTimeRTP = pkt.Header.Timestamp
-		track.lastTimeNTP = now
+		track.lastTimeNTP = ntp
 	}
 
 	track.lastSequenceNumber = pkt.Header.SequenceNumber
 	track.lastSSRC = pkt.Header.SSRC
 
 	if track.rtcpSender != nil {
-		track.rtcpSender.ProcessPacketRTP(now, pkt, ptsEqualsDTS)
+		track.rtcpSender.ProcessPacketRTP(ntp, pkt, ptsEqualsDTS)
 	}
 
 	// send unicast

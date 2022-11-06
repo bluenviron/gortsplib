@@ -246,14 +246,14 @@ func TestClientPublishSerial(t *testing.T) {
 				c.Wait()
 			}()
 
-			err = c.WritePacketRTP(0, &testRTPPacket, true)
+			err = c.WritePacketRTP(0, &testRTPPacket)
 			require.NoError(t, err)
 
 			<-recvDone
 			c.Close()
 			<-done
 
-			err = c.WritePacketRTP(0, &testRTPPacket, true)
+			err = c.WritePacketRTP(0, &testRTPPacket)
 			require.Error(t, err)
 		})
 	}
@@ -403,7 +403,7 @@ func TestClientPublishParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := c.WritePacketRTP(0, &testRTPPacket, true)
+					err := c.WritePacketRTP(0, &testRTPPacket)
 					if err != nil {
 						return
 					}
@@ -552,7 +552,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			err = c.WritePacketRTP(0, &testRTPPacket, true)
+			err = c.WritePacketRTP(0, &testRTPPacket)
 			require.NoError(t, err)
 
 			_, err = c.Pause()
@@ -561,7 +561,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			_, err = c.Record()
 			require.NoError(t, err)
 
-			err = c.WritePacketRTP(0, &testRTPPacket, true)
+			err = c.WritePacketRTP(0, &testRTPPacket)
 			require.NoError(t, err)
 		})
 	}
@@ -693,7 +693,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := c.WritePacketRTP(0, &testRTPPacket, true)
+					err := c.WritePacketRTP(0, &testRTPPacket)
 					if err != nil {
 						return
 					}
@@ -829,7 +829,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	err = c.WritePacketRTP(0, &testRTPPacket, true)
+	err = c.WritePacketRTP(0, &testRTPPacket)
 	require.NoError(t, err)
 }
 
@@ -952,7 +952,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 					NTPTime:     packets[0].(*rtcp.SenderReport).NTPTime,
 					RTPTime:     packets[0].(*rtcp.SenderReport).RTPTime,
 					PacketCount: 2,
-					OctetCount:  8,
+					OctetCount:  2,
 				}, packets[0])
 
 				close(reportReceived)
@@ -988,11 +988,17 @@ func TestClientPublishRTCPReport(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			err = c.WritePacketRTP(0, &testRTPPacket, true)
-			require.NoError(t, err)
-
-			err = c.WritePacketRTP(0, &testRTPPacket, true)
-			require.NoError(t, err)
+			for i := 0; i < 2; i++ {
+				err = c.WritePacketRTP(0, &rtp.Packet{
+					Header: rtp.Header{
+						Version:     2,
+						PayloadType: 96,
+						SSRC:        0x38F27A2F,
+					},
+					Payload: []byte{0x05}, // IDR
+				})
+				require.NoError(t, err)
+			}
 
 			<-reportReceived
 		})

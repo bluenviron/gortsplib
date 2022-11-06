@@ -161,9 +161,8 @@ type clientRes struct {
 
 // ClientOnPacketRTPCtx is the context of a RTP packet.
 type ClientOnPacketRTPCtx struct {
-	TrackID      int
-	Packet       *rtp.Packet
-	PTSEqualsDTS bool
+	TrackID int
+	Packet  *rtp.Packet
 }
 
 // ClientOnPacketRTCPCtx is the context of a RTCP packet.
@@ -814,9 +813,8 @@ func (c *Client) runReader() {
 						}
 
 						c.OnPacketRTP(&ClientOnPacketRTPCtx{
-							TrackID:      track.id,
-							Packet:       pkt,
-							PTSEqualsDTS: ptsEqualsDTS(track.track, pkt),
+							TrackID: track.id,
+							Packet:  pkt,
 						})
 					} else {
 						if len(payload) > maxPacketSize {
@@ -1872,8 +1870,15 @@ func (c *Client) runWriter() {
 	}
 }
 
-// WritePacketRTP writes a RTP packet.
-func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool) error {
+// WritePacketRTP writes a RTP packet to all the readers of the stream.
+func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet) error {
+	return c.WritePacketRTPWithNTP(trackID, pkt, time.Now())
+}
+
+// WritePacketRTPWithNTP writes a RTP packet.
+// ntp is the absolute time of the packet, and is needed to generate RTCP sender reports
+// that allows the receiver to reconstruct the absolute time of the packet.
+func (c *Client) WritePacketRTPWithNTP(trackID int, pkt *rtp.Packet, ntp time.Time) error {
 	c.writeMutex.RLock()
 	defer c.writeMutex.RUnlock()
 
@@ -1895,7 +1900,7 @@ func (c *Client) WritePacketRTP(trackID int, pkt *rtp.Packet, ptsEqualsDTS bool)
 
 	t := c.tracks[trackID]
 	if t.rtcpSender != nil {
-		t.rtcpSender.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
+		t.rtcpSender.ProcessPacketRTP(ntp, pkt, ptsEqualsDTS(c.tracks[trackID].track, pkt))
 	}
 
 	c.writeBuffer.Push(trackTypePayload{
