@@ -599,7 +599,24 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerTransportHeaderInvalid{Err: err}
 		}
-		inTH := inTSH[0]
+
+		// Per RFC2326 section 12.39, client specifies transports in order of preference.
+		// Filter out the ones we don't support and then pick first supported transport.
+		var supportedTransports headers.Transports
+		for _, tr := range inTSH {
+			if tr.Protocol == headers.TransportProtocolUDP && ss.s.udpRTPListener == nil ||
+				(tr.Delivery != nil && *tr.Delivery == headers.TransportDeliveryMulticast &&
+					ss.s.MulticastIPRange == "") {
+				continue
+			}
+			supportedTransports = append(supportedTransports, tr)
+		}
+		if supportedTransports == nil {
+			return &base.Response{
+				StatusCode: base.StatusUnsupportedTransport,
+			}, nil
+		}
+		inTH := supportedTransports[0]
 
 		trackID, path, query, err := setupGetTrackIDPathQuery(req.URL, inTH.Mode,
 			ss.announcedTracks, ss.setuppedPath, ss.setuppedQuery, ss.setuppedBaseURL)
