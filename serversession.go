@@ -604,10 +604,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// Filter out the ones we don't support and then pick first supported transport.
 		var supportedTransports headers.Transports
 		for _, tr := range inTSH {
-			isUdp := tr.Protocol == headers.TransportProtocolUDP
 			isMulticast := tr.Delivery != nil && *tr.Delivery == headers.TransportDeliveryMulticast
-			if isUdp && ((!isMulticast && ss.s.udpRTPListener == nil) ||
-				(isMulticast && ss.s.MulticastIPRange == "")) {
+			if tr.Protocol == headers.TransportProtocolUDP &&
+				((!isMulticast && ss.s.udpRTPListener == nil) ||
+					(isMulticast && ss.s.MulticastIPRange == "")) {
 				continue
 			}
 			supportedTransports = append(supportedTransports, tr)
