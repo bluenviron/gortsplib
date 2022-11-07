@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/aler9/gortsplib"
@@ -10,7 +11,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server
 // 2. get tracks published on a path
-// 3. read only selected tracks
+// 3. read only the H264 track
 
 func main() {
 	c := gortsplib.Client{
@@ -40,18 +41,21 @@ func main() {
 		panic(err)
 	}
 
-	// setup only H264 tracks, skipping audio or application tracks
-	for _, t := range tracks {
-		if _, ok := t.(*gortsplib.TrackH264); ok {
-			_, err := c.Setup(t, baseURL, 0, 0)
-			if err != nil {
-				panic(err)
+	// find the H264 track
+	h264Track := func() gortsplib.Track {
+		for _, t := range tracks {
+			if _, ok := t.(*gortsplib.TrackH264); ok {
+				return t
 			}
 		}
+		return nil
+	}()
+	if h264Track == nil {
+		panic(fmt.Errorf("H264 track not found"))
 	}
 
-	// start reading tracks
-	_, err = c.Play(nil)
+	// setup and play the H264 track only
+	err = c.SetupAndPlay(gortsplib.Tracks{h264Track}, baseURL)
 	if err != nil {
 		panic(err)
 	}
