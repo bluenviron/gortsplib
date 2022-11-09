@@ -10,6 +10,34 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 )
 
+func parsePorts(val string) (*[2]int, error) {
+	ports := strings.Split(val, "-")
+	if len(ports) == 2 {
+		port1, err := strconv.ParseInt(ports[0], 10, 64)
+		if err != nil {
+			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+		}
+
+		port2, err := strconv.ParseInt(ports[1], 10, 64)
+		if err != nil {
+			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+		}
+
+		return &[2]int{int(port1), int(port2)}, nil
+	}
+
+	if len(ports) == 1 {
+		port1, err := strconv.ParseInt(ports[0], 10, 64)
+		if err != nil {
+			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+		}
+
+		return &[2]int{int(port1), int(port1 + 1)}, nil
+	}
+
+	return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
+}
+
 // TransportProtocol is a transport protocol.
 type TransportProtocol int
 
@@ -73,34 +101,6 @@ type Transport struct {
 
 	// (optional) mode
 	Mode *TransportMode
-}
-
-func parsePorts(val string) (*[2]int, error) {
-	ports := strings.Split(val, "-")
-	if len(ports) == 2 {
-		port1, err := strconv.ParseInt(ports[0], 10, 64)
-		if err != nil {
-			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
-		}
-
-		port2, err := strconv.ParseInt(ports[1], 10, 64)
-		if err != nil {
-			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
-		}
-
-		return &[2]int{int(port1), int(port2)}, nil
-	}
-
-	if len(ports) == 1 {
-		port1, err := strconv.ParseInt(ports[0], 10, 64)
-		if err != nil {
-			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
-		}
-
-		return &[2]int{int(port1), int(port1 + 1)}, nil
-	}
-
-	return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 }
 
 // Unmarshal decodes a Transport header.
@@ -249,7 +249,7 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 	return nil
 }
 
-// Marshal encodes a Transport header
+// Marshal encodes a Transport header.
 func (h Transport) Marshal() base.HeaderValue {
 	var rets []string
 
@@ -317,4 +317,44 @@ func (h Transport) Marshal() base.HeaderValue {
 	}
 
 	return base.HeaderValue{strings.Join(rets, ";")}
+}
+
+// Transports is a Transport header with multiple transports.
+type Transports []Transport
+
+// Unmarshal decodes a Transport header.
+func (ts *Transports) Unmarshal(v base.HeaderValue) error {
+	if len(v) == 0 {
+		return fmt.Errorf("value not provided")
+	}
+
+	if len(v) > 1 {
+		return fmt.Errorf("value provided multiple times (%v)", v)
+	}
+
+	v0 := v[0]
+	transports := strings.Split(v0, ",") // , separated per RFC2326 section 12.39
+	*ts = make([]Transport, len(transports))
+
+	for i, transport := range transports {
+		var tr Transport
+		err := tr.Unmarshal(base.HeaderValue{strings.TrimLeft(transport, " ")})
+		if err != nil {
+			return err
+		}
+		(*ts)[i] = tr
+	}
+
+	return nil
+}
+
+// Marshal encodes a Transport header.
+func (ts Transports) Marshal() base.HeaderValue {
+	vals := make([]string, len(ts))
+
+	for i, th := range ts {
+		vals[i] = th.Marshal()[0]
+	}
+
+	return base.HeaderValue{strings.Join(vals, ",")}
 }
