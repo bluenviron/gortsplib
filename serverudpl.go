@@ -201,7 +201,11 @@ func (u *serverUDPListener) runReader() {
 }
 
 func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
-	if len(payload) == (maxPacketSize + 1) {
+	plen := len(payload)
+
+	atomic.AddUint64(&clientData.session.readBytes, uint64(plen))
+
+	if plen == (maxPacketSize + 1) {
 		onDecodeError(clientData.session, fmt.Errorf("RTP packet is too big to be read with UDP"))
 		return
 	}
@@ -240,7 +244,11 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 }
 
 func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) {
-	if len(payload) == (maxPacketSize + 1) {
+	plen := len(payload)
+
+	atomic.AddUint64(&clientData.session.readBytes, uint64(plen))
+
+	if plen == (maxPacketSize + 1) {
 		onDecodeError(clientData.session, fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return
 	}

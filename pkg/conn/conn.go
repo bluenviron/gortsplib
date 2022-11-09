@@ -1,4 +1,4 @@
-// Package conn contains a RTSP TCP connection implementation.
+// Package conn contains a RTSP connection implementation.
 package conn
 
 import (
@@ -12,7 +12,7 @@ const (
 	readBufferSize = 4096
 )
 
-// Conn is a RTSP TCP connection.
+// Conn is a RTSP connection.
 type Conn struct {
 	w   io.Writer
 	br  *bufio.Reader

@@ -8,11 +8,13 @@ import (
 	"net"
 	gourl "net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtcp"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/bytecounter"
 	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/url"
@@ -39,6 +41,7 @@ type ServerConn struct {
 	ctxCancel  func()
 	userData   interface{}
 	remoteAddr *net.TCPAddr
+	bc         *bytecounter.ByteCounter
 	conn       *conn.Conn
 	session    *ServerSession
 	readFunc   func(readRequest chan readReq) error
@@ -56,16 +59,14 @@ func newServerConn(
 ) *ServerConn {
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 
-	nconn = func() net.Conn {
-		if s.TLSConfig != nil {
-			return tls.Server(nconn, s.TLSConfig)
-		}
-		return nconn
-	}()
+	if s.TLSConfig != nil {
+		nconn = tls.Server(nconn, s.TLSConfig)
+	}
 
 	sc := &ServerConn{
 		s:             s,
 		nconn:         nconn,
+		bc:            bytecounter.New(nconn),
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
 		remoteAddr:    nconn.RemoteAddr().(*net.TCPAddr),
@@ -90,6 +91,16 @@ func (sc *ServerConn) Close() error {
 // NetConn returns the underlying net.Conn.
 func (sc *ServerConn) NetConn() net.Conn {
 	return sc.nconn
+}
+
+// ReadBytes returns the number of read bytes.
+func (sc *ServerConn) ReadBytes() uint64 {
+	return sc.bc.ReadBytes()
+}
+
+// WrittenBytes returns the number of written bytes.
+func (sc *ServerConn) WrittenBytes() uint64 {
+	return sc.bc.WrittenBytes()
 }
 
 // SetUserData sets some user data associated to the connection.
@@ -120,7 +131,7 @@ func (sc *ServerConn) run() {
 		})
 	}
 
-	sc.conn = conn.NewConn(sc.nconn)
+	sc.conn = conn.NewConn(sc.bc)
 
 	readRequest := make(chan readReq)
 	readErr := make(chan error)
@@ -314,6 +325,8 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 				channel--
 				isRTP = false
 			}
+
+			atomic.AddUint64(&sc.session.readBytes, uint64(len(twhat.Payload)))
 
 			// forward frame only if it has been set up
 			if track, ok := sc.session.tcpTracksByChannel[channel]; ok {
