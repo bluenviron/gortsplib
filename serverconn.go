@@ -93,14 +93,14 @@ func (sc *ServerConn) NetConn() net.Conn {
 	return sc.nconn
 }
 
-// ReadBytes returns the number of read bytes.
-func (sc *ServerConn) ReadBytes() uint64 {
-	return sc.bc.ReadBytes()
+// BytesReceived returns the number of read bytes.
+func (sc *ServerConn) BytesReceived() uint64 {
+	return sc.bc.BytesReceived()
 }
 
-// WrittenBytes returns the number of written bytes.
-func (sc *ServerConn) WrittenBytes() uint64 {
-	return sc.bc.WrittenBytes()
+// BytesSent returns the number of written bytes.
+func (sc *ServerConn) BytesSent() uint64 {
+	return sc.bc.BytesSent()
 }
 
 // SetUserData sets some user data associated to the connection.

@@ -15,6 +15,6 @@ func TestByteCounter(t *testing.T) {
 	buf := make([]byte, 2)
 	bc.Read(buf)
 
-	require.Equal(t, uint64(4), bc.WrittenBytes())
-	require.Equal(t, uint64(2), bc.ReadBytes())
+	require.Equal(t, uint64(4), bc.BytesSent())
+	require.Equal(t, uint64(2), bc.BytesReceived())
 }

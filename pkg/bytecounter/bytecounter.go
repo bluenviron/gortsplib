@@ -34,12 +34,12 @@ func (bc *ByteCounter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// ReadBytes returns the number of read bytes.
-func (bc *ByteCounter) ReadBytes() uint64 {
+// BytesReceived returns the number of read bytes.
+func (bc *ByteCounter) BytesReceived() uint64 {
 	return atomic.LoadUint64(&bc.read)
 }
 
-// WrittenBytes returns the number of written bytes.
-func (bc *ByteCounter) WrittenBytes() uint64 {
+// BytesSent returns the number of written bytes.
+func (bc *ByteCounter) BytesSent() uint64 {
 	return atomic.LoadUint64(&bc.written)
 }

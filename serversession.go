@@ -217,13 +217,13 @@ func (ss *ServerSession) Close() error {
 	return nil
 }
 
-// ReadBytes returns the number of read bytes.
-func (ss *ServerSession) ReadBytes() uint64 {
+// BytesReceived returns the number of read bytes.
+func (ss *ServerSession) BytesReceived() uint64 {
 	return atomic.LoadUint64(&ss.readBytes)
 }
 
-// WrittenBytes returns the number of written bytes.
-func (ss *ServerSession) WrittenBytes() uint64 {
+// BytesSent returns the number of written bytes.
+func (ss *ServerSession) BytesSent() uint64 {
 	return atomic.LoadUint64(&ss.writtenBytes)
 }
 
