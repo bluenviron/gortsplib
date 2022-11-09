@@ -280,7 +280,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 	}
 }
 
-func TestServerReadSetupErrorSameUDPPorts(t *testing.T) {
+func TestServerReadSetupErrorSameUDPPortsAndIP(t *testing.T) {
 	track := &TrackH264{
 		PayloadType: 96,
 		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
@@ -295,7 +295,8 @@ func TestServerReadSetupErrorSameUDPPorts(t *testing.T) {
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				if atomic.SwapInt32(&first, 0) == 1 {
-					require.EqualError(t, ctx.Error, "UDP ports 35466 and 35467 are already assigned to another reader")
+					require.EqualError(t, ctx.Error,
+						"UDP ports 35466 and 35467 are already assigned to another reader with the same IP")
 				}
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
