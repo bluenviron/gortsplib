@@ -88,27 +88,19 @@ func setupGetTrackIDPathQuery(
 	return 0, "", "", fmt.Errorf("invalid track path (%s)", pathAndQuery)
 }
 
-func setupGetTransport(th headers.Transport) (Transport, bool) {
-	delivery := func() headers.TransportDelivery {
-		if th.Delivery != nil {
-			return *th.Delivery
+func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *headers.Transport {
+	// Per RFC2326 section 12.39, client specifies transports in order of preference.
+	// Filter out the ones we don't support and then pick first supported transport.
+	for _, tr := range tsh {
+		isMulticast := tr.Delivery != nil && *tr.Delivery == headers.TransportDeliveryMulticast
+		if tr.Protocol == headers.TransportProtocolUDP &&
+			((!isMulticast && s.udpRTPListener == nil) ||
+				(isMulticast && s.MulticastIPRange == "")) {
+			continue
 		}
-		return headers.TransportDeliveryUnicast
-	}()
-
-	switch th.Protocol {
-	case headers.TransportProtocolUDP:
-		if delivery == headers.TransportDeliveryUnicast {
-			return TransportUDP, true
-		}
-		return TransportUDPMulticast, true
-
-	default: // TCP
-		if delivery != headers.TransportDeliveryUnicast {
-			return 0, false
-		}
-		return TransportTCP, true
+		return &tr
 	}
+	return nil
 }
 
 // ServerSessionState is a state of a ServerSession.
@@ -600,24 +592,12 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerTransportHeaderInvalid{Err: err}
 		}
 
-		// Per RFC2326 section 12.39, client specifies transports in order of preference.
-		// Filter out the ones we don't support and then pick first supported transport.
-		var supportedTransports headers.Transports
-		for _, tr := range inTSH {
-			isMulticast := tr.Delivery != nil && *tr.Delivery == headers.TransportDeliveryMulticast
-			if tr.Protocol == headers.TransportProtocolUDP &&
-				((!isMulticast && ss.s.udpRTPListener == nil) ||
-					(isMulticast && ss.s.MulticastIPRange == "")) {
-				continue
-			}
-			supportedTransports = append(supportedTransports, tr)
-		}
-		if supportedTransports == nil {
+		inTH := findFirstSupportedTransportHeader(ss.s, inTSH)
+		if inTH == nil {
 			return &base.Response{
 				StatusCode: base.StatusUnsupportedTransport,
 			}, nil
 		}
-		inTH := supportedTransports[0]
 
 		trackID, path, query, err := setupGetTrackIDPathQuery(req.URL, inTH.Mode,
 			ss.announcedTracks, ss.setuppedPath, ss.setuppedQuery, ss.setuppedBaseURL)
@@ -633,35 +613,21 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerTrackAlreadySetup{TrackID: trackID}
 		}
 
-		transport, ok := setupGetTransport(inTH)
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusUnsupportedTransport,
-			}, nil
-		}
+		var transport Transport
 
-		switch transport {
-		case TransportUDP:
-			if inTH.ClientPorts == nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderNoClientPorts{}
+		if inTH.Protocol == headers.TransportProtocolUDP {
+			if inTH.Delivery != nil && *inTH.Delivery == headers.TransportDeliveryMulticast {
+				transport = TransportUDPMulticast
+			} else {
+				if inTH.ClientPorts == nil {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, liberrors.ErrServerTransportHeaderNoClientPorts{}
+				}
+
+				transport = TransportUDP
 			}
-
-			if ss.s.udpRTPListener == nil {
-				return &base.Response{
-					StatusCode: base.StatusUnsupportedTransport,
-				}, nil
-			}
-
-		case TransportUDPMulticast:
-			if ss.s.MulticastIPRange == "" {
-				return &base.Response{
-					StatusCode: base.StatusUnsupportedTransport,
-				}, nil
-			}
-
-		default: // TCP
+		} else {
 			if inTH.InterleavedIDs == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -680,6 +646,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerTransportHeaderInterleavedIDsAlreadyUsed{}
 			}
+
+			transport = TransportTCP
 		}
 
 		if ss.setuppedTransport != nil && *ss.setuppedTransport != transport {

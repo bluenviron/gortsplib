@@ -629,6 +629,85 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 }
 
+func TestServerSetupMultipleTransports(t *testing.T) {
+	stream := NewServerStream(Tracks{&TrackH264{
+		PayloadType: 96,
+		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+	}})
+	defer stream.Close()
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
+
+	inTHS := headers.Transports{
+		{
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
+				return &v
+			}(),
+			Mode: func() *headers.TransportMode {
+				v := headers.TransportModePlay
+				return &v
+			}(),
+			Protocol:    headers.TransportProtocolUDP,
+			ClientPorts: &[2]int{35466, 35467},
+		},
+		{
+			Delivery: func() *headers.TransportDelivery {
+				v := headers.TransportDeliveryUnicast
+				return &v
+			}(),
+			Mode: func() *headers.TransportMode {
+				v := headers.TransportModePlay
+				return &v
+			}(),
+			Protocol:       headers.TransportProtocolTCP,
+			InterleavedIDs: &[2]int{0, 1},
+		},
+	}
+
+	res, err := writeReqReadRes(conn, base.Request{
+		Method: base.Setup,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		Header: base.Header{
+			"CSeq":      base.HeaderValue{"1"},
+			"Transport": inTHS.Marshal(),
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	var th headers.Transport
+	err = th.Unmarshal(res.Header["Transport"])
+	require.NoError(t, err)
+	require.Equal(t, headers.Transport{
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Protocol:       headers.TransportProtocolTCP,
+		InterleavedIDs: &[2]int{0, 1},
+	}, th)
+}
+
 func TestServerGetSetParameter(t *testing.T) {
 	for _, ca := range []string{"inside session", "outside session"} {
 		t.Run(ca, func(t *testing.T) {

@@ -1,7 +1,6 @@
 package headers
 
 import (
-	"fmt"
 	"net"
 	"testing"
 
@@ -248,16 +247,6 @@ func TestTransportUnmarshal(t *testing.T) {
 	}
 }
 
-func TestTransportsUnmarshal(t *testing.T) {
-	var trs Transports
-	casea := casesTransport[0]
-	caseb := casesTransport[3]
-	h := fmt.Sprintf("%s, %s", casea.vin[0], caseb.vin[0])
-	err := trs.Unmarshal(base.HeaderValue{h})
-	require.NoError(t, err)
-	require.Equal(t, trs, Transports{casea.h, caseb.h})
-}
-
 func TestTransportUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -345,6 +334,91 @@ func TestTransportUnmarshalErrors(t *testing.T) {
 
 func TestTransportMarshal(t *testing.T) {
 	for _, ca := range casesTransport {
+		t.Run(ca.name, func(t *testing.T) {
+			req := ca.h.Marshal()
+			require.Equal(t, ca.vout, req)
+		})
+	}
+}
+
+var casesTransports = []struct {
+	name string
+	vin  base.HeaderValue
+	vout base.HeaderValue
+	h    Transports
+}{
+	{
+		"a",
+		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode="PLAY", RTP/AVP/TCP;unicast;interleaved=0-1`},
+		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play,RTP/AVP/TCP;unicast;interleaved=0-1`},
+		Transports{
+			{
+				Protocol: TransportProtocolUDP,
+				Delivery: func() *TransportDelivery {
+					v := TransportDeliveryUnicast
+					return &v
+				}(),
+				ClientPorts: &[2]int{3456, 3457},
+				Mode: func() *TransportMode {
+					v := TransportModePlay
+					return &v
+				}(),
+			},
+			Transport{
+				Protocol: TransportProtocolTCP,
+				Delivery: func() *TransportDelivery {
+					v := TransportDeliveryUnicast
+					return &v
+				}(),
+				InterleavedIDs: &[2]int{0, 1},
+			},
+		},
+	},
+}
+
+func TestTransportsUnmarshal(t *testing.T) {
+	for _, ca := range casesTransports {
+		t.Run(ca.name, func(t *testing.T) {
+			var h Transports
+			err := h.Unmarshal(ca.vin)
+			require.NoError(t, err)
+			require.Equal(t, ca.h, h)
+		})
+	}
+}
+
+func TestTransportsUnmarshalErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		hv   base.HeaderValue
+		err  string
+	}{
+		{
+			"empty",
+			base.HeaderValue{},
+			"value not provided",
+		},
+		{
+			"2 values",
+			base.HeaderValue{"a", "b"},
+			"value provided multiple times ([a b])",
+		},
+		{
+			"invalid",
+			base.HeaderValue{"aasd"},
+			"protocol not found (aasd)",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var h Transports
+			err := h.Unmarshal(ca.hv)
+			require.EqualError(t, err, ca.err)
+		})
+	}
+}
+
+func TestTransportsMarshal(t *testing.T) {
+	for _, ca := range casesTransports {
 		t.Run(ca.name, func(t *testing.T) {
 			req := ca.h.Marshal()
 			require.Equal(t, ca.vout, req)
