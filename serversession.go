@@ -155,6 +155,8 @@ type ServerSession struct {
 
 	ctx                 context.Context
 	ctxCancel           func()
+	readBytes           uint64
+	writtenBytes        uint64
 	userData            interface{}
 	conns               map[*ServerConn]struct{}
 	state               ServerSessionState
@@ -213,6 +215,16 @@ func newServerSession(
 func (ss *ServerSession) Close() error {
 	ss.ctxCancel()
 	return nil
+}
+
+// ReadBytes returns the number of read bytes.
+func (ss *ServerSession) ReadBytes() uint64 {
+	return atomic.LoadUint64(&ss.readBytes)
+}
+
+// WrittenBytes returns the number of written bytes.
+func (ss *ServerSession) WrittenBytes() uint64 {
+	return atomic.LoadUint64(&ss.writtenBytes)
 }
 
 // State returns the state of the session.
@@ -1183,6 +1195,8 @@ func (ss *ServerSession) runWriter() {
 			return
 		}
 		data := tmp.(trackTypePayload)
+
+		atomic.AddUint64(&ss.writtenBytes, uint64(len(data.payload)))
 
 		writeFunc(data.trackID, data.isRTP, data.payload)
 	}
