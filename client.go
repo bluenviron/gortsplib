@@ -22,6 +22,7 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/bytecounter"
 	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
@@ -215,6 +216,10 @@ type Client struct {
 	UserAgent string
 	// disable automatic RTCP sender reports.
 	DisableRTCPSenderReports bool
+	// pointer to a variable that stores received bytes.
+	BytesReceived *uint64
+	// pointer to a variable that stores sent bytes.
+	BytesSent *uint64
 
 	//
 	// system functions (all optional)
@@ -323,6 +328,12 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.UserAgent == "" {
 		c.UserAgent = "gortsplib"
+	}
+	if c.BytesReceived == nil {
+		c.BytesReceived = new(uint64)
+	}
+	if c.BytesSent == nil {
+		c.BytesSent = new(uint64)
 	}
 
 	// system functions
@@ -966,23 +977,22 @@ func (c *Client) connOpen() error {
 		return err
 	}
 
-	c.nconn = func() net.Conn {
-		if c.scheme == "rtsps" {
-			tlsConfig := c.TLSConfig
+	if c.scheme == "rtsps" {
+		tlsConfig := c.TLSConfig
 
-			if tlsConfig == nil {
-				tlsConfig = &tls.Config{}
-			}
-
-			host, _, _ := net.SplitHostPort(c.host)
-			tlsConfig.ServerName = host
-
-			return tls.Client(nconn, tlsConfig)
+		if tlsConfig == nil {
+			tlsConfig = &tls.Config{}
 		}
-		return nconn
-	}()
 
-	c.conn = conn.NewConn(c.nconn)
+		host, _, _ := net.SplitHostPort(c.host)
+		tlsConfig.ServerName = host
+
+		nconn = tls.Client(nconn, tlsConfig)
+	}
+
+	c.nconn = nconn
+	bc := bytecounter.New(c.nconn, c.BytesReceived, c.BytesSent)
+	c.conn = conn.NewConn(bc)
 
 	c.connCloserStart()
 	return nil
@@ -1855,6 +1865,8 @@ func (c *Client) runWriter() {
 			return
 		}
 		data := tmp.(trackTypePayload)
+
+		atomic.AddUint64(c.BytesSent, uint64(len(data.payload)))
 
 		writeFunc(data.trackID, data.isRTP, data.payload)
 	}

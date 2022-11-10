@@ -191,7 +191,11 @@ func (u *clientUDPListener) runReader(forPlay bool) {
 }
 
 func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
-	if len(payload) == (maxPacketSize + 1) {
+	plen := len(payload)
+
+	atomic.AddUint64(u.c.BytesReceived, uint64(plen))
+
+	if plen == (maxPacketSize + 1) {
 		u.c.OnDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
 		return
 	}
@@ -222,7 +226,11 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 }
 
 func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
-	if len(payload) == (maxPacketSize + 1) {
+	plen := len(payload)
+
+	atomic.AddUint64(u.c.BytesReceived, uint64(plen))
+
+	if plen == (maxPacketSize + 1) {
 		u.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return
 	}
@@ -243,7 +251,11 @@ func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 }
 
 func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
-	if len(payload) == (maxPacketSize + 1) {
+	plen := len(payload)
+
+	atomic.AddUint64(u.c.BytesReceived, uint64(plen))
+
+	if plen == (maxPacketSize + 1) {
 		u.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return
 	}
@@ -265,7 +277,6 @@ func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
 func (u *clientUDPListener) write(payload []byte) error {
 	// no mutex is needed here since Write() has an internal lock.
 	// https://github.com/golang/go/issues/27203#issuecomment-534386117
-
 	u.pc.SetWriteDeadline(time.Now().Add(u.c.WriteTimeout))
 	_, err := u.pc.WriteTo(payload, u.writeAddr)
 	return err
