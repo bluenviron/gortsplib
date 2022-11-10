@@ -155,8 +155,8 @@ type ServerSession struct {
 
 	ctx                 context.Context
 	ctxCancel           func()
-	readBytes           uint64
-	writtenBytes        uint64
+	bytesReceived       *uint64
+	bytesSent           *uint64
 	userData            interface{}
 	conns               map[*ServerConn]struct{}
 	state               ServerSessionState
@@ -197,6 +197,8 @@ func newServerSession(
 		author:              author,
 		ctx:                 ctx,
 		ctxCancel:           ctxCancel,
+		bytesReceived:       new(uint64),
+		bytesSent:           new(uint64),
 		conns:               make(map[*ServerConn]struct{}),
 		lastRequestTime:     time.Now(),
 		udpCheckStreamTimer: emptyTimer(),
@@ -219,12 +221,12 @@ func (ss *ServerSession) Close() error {
 
 // BytesReceived returns the number of read bytes.
 func (ss *ServerSession) BytesReceived() uint64 {
-	return atomic.LoadUint64(&ss.readBytes)
+	return atomic.LoadUint64(ss.bytesReceived)
 }
 
 // BytesSent returns the number of written bytes.
 func (ss *ServerSession) BytesSent() uint64 {
-	return atomic.LoadUint64(&ss.writtenBytes)
+	return atomic.LoadUint64(ss.bytesSent)
 }
 
 // State returns the state of the session.
@@ -1196,7 +1198,7 @@ func (ss *ServerSession) runWriter() {
 		}
 		data := tmp.(trackTypePayload)
 
-		atomic.AddUint64(&ss.writtenBytes, uint64(len(data.payload)))
+		atomic.AddUint64(ss.bytesSent, uint64(len(data.payload)))
 
 		writeFunc(data.trackID, data.isRTP, data.payload)
 	}

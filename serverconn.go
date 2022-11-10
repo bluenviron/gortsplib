@@ -66,7 +66,7 @@ func newServerConn(
 	sc := &ServerConn{
 		s:             s,
 		nconn:         nconn,
-		bc:            bytecounter.New(nconn),
+		bc:            bytecounter.New(nconn, nil, nil),
 		ctx:           ctx,
 		ctxCancel:     ctxCancel,
 		remoteAddr:    nconn.RemoteAddr().(*net.TCPAddr),
@@ -326,7 +326,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 				isRTP = false
 			}
 
-			atomic.AddUint64(&sc.session.readBytes, uint64(len(twhat.Payload)))
+			atomic.AddUint64(sc.session.bytesReceived, uint64(len(twhat.Payload)))
 
 			// forward frame only if it has been set up
 			if track, ok := sc.session.tcpTracksByChannel[channel]; ok {

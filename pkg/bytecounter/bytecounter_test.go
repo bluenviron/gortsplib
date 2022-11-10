@@ -8,7 +8,7 @@ import (
 )
 
 func TestByteCounter(t *testing.T) {
-	bc := New(bytes.NewBuffer(nil))
+	bc := New(bytes.NewBuffer(nil), nil, nil)
 
 	bc.Write([]byte{0x01, 0x02, 0x03, 0x04})
 
