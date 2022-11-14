@@ -10,8 +10,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
-// 2. check if there's an AAC track
-// 3. get AAC AUs of that track
+// 2. check if there's an MPEG4-audio track
+// 3. get access units of that track
 
 func main() {
 	c := gortsplib.Client{}
@@ -35,8 +35,8 @@ func main() {
 		panic(err)
 	}
 
-	// find the AAC track
-	aacTrack, aacTrackID := func() (*gortsplib.TrackMPEG4Audio, int) {
+	// find the MPEG4-audio track
+	mpeg4audioTrack, mpeg4audioTrackID := func() (*gortsplib.TrackMPEG4Audio, int) {
 		for i, track := range tracks {
 			if tt, ok := track.(*gortsplib.TrackMPEG4Audio); ok {
 				return tt, i
@@ -44,26 +44,26 @@ func main() {
 		}
 		return nil, -1
 	}()
-	if aacTrack == nil {
-		panic("AAC track not found")
+	if mpeg4audioTrack == nil {
+		panic("MPEG4-audio track not found")
 	}
 
 	// setup decoder
 	dec := &rtpmpeg4audio.Decoder{
-		SampleRate:       aacTrack.Config.SampleRate,
-		SizeLength:       aacTrack.SizeLength,
-		IndexLength:      aacTrack.IndexLength,
-		IndexDeltaLength: aacTrack.IndexDeltaLength,
+		SampleRate:       mpeg4audioTrack.Config.SampleRate,
+		SizeLength:       mpeg4audioTrack.SizeLength,
+		IndexLength:      mpeg4audioTrack.IndexLength,
+		IndexDeltaLength: mpeg4audioTrack.IndexDeltaLength,
 	}
 	dec.Init()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		if ctx.TrackID != aacTrackID {
+		if ctx.TrackID != mpeg4audioTrackID {
 			return
 		}
 
-		// decode AAC AUs from the RTP packet
+		// decode MPEG4-audio AUs from the RTP packet
 		aus, _, err := dec.Decode(ctx.Packet)
 		if err != nil {
 			return
@@ -71,7 +71,7 @@ func main() {
 
 		// print AUs
 		for _, au := range aus {
-			log.Printf("received AAC AU of size %d\n", len(au))
+			log.Printf("received MPEG4-audio AU of size %d\n", len(au))
 		}
 	}
 

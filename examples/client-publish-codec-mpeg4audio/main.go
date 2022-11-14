@@ -10,19 +10,19 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/AAC packets with GStreamer
-// 2. connect to a RTSP server, announce an AAC track
+// 1. generate RTP/MPEG4-audio packets with GStreamer
+// 2. connect to a RTSP server, announce an MPEG4-audio track
 // 3. route the packets from GStreamer to the server
 
 func main() {
-	// open a listener to receive RTP/AAC packets
+	// open a listener to receive RTP/MPEG4-audio packets
 	pc, err := net.ListenPacket("udp", "localhost:9000")
 	if err != nil {
 		panic(err)
 	}
 	defer pc.Close()
 
-	log.Println("Waiting for a RTP/AAC stream on UDP port 9000 - you can send one with GStreamer:\n" +
+	log.Println("Waiting for a RTP/MPEG4-audio stream on UDP port 9000 - you can send one with GStreamer:\n" +
 		"gst-launch-1.0 audiotestsrc freq=300 ! audioconvert ! audioresample ! audio/x-raw,rate=48000" +
 		" ! avenc_aac bitrate=128000 ! rtpmp4gpay ! udpsink host=127.0.0.1 port=9000")
 
@@ -34,7 +34,7 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create an AAC track
+	// create an MPEG4-audio track
 	track := &gortsplib.TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{

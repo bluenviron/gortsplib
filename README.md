@@ -45,7 +45,7 @@ Features:
 * Utilities
   * Parse RTSP elements: requests, responses, SDP
   * Parse H264 elements and formats: RTP/H264, Annex-B, AVCC, anti-competition, DTS
-  * Parse AAC elements and formats: RTP/AAC, ADTS, MPEG-4 audio configurations
+  * Parse MPEG4-audio (AAC) elements and formats: RTP/MPEG4-audio, ADTS, MPEG4-audio configurations
 
 ## Table of contents
 
@@ -57,16 +57,16 @@ Features:
 
 * [client-query](examples/client-query/main.go)
 * [client-read](examples/client-read/main.go)
-* [client-read-codec-aac](examples/client-read-codec-aac/main.go)
 * [client-read-codec-h264](examples/client-read-codec-h264/main.go)
 * [client-read-codec-h264-convert-to-jpeg](examples/client-read-codec-h264-convert-to-jpeg/main.go)
 * [client-read-codec-h264-save-to-disk](examples/client-read-codec-h264-save-to-disk/main.go)
+* [client-read-codec-mpeg4audio](examples/client-read-codec-mpeg4audio/main.go)
 * [client-read-partial](examples/client-read-partial/main.go)
 * [client-read-options](examples/client-read-options/main.go)
 * [client-read-pause](examples/client-read-pause/main.go)
 * [client-read-republish](examples/client-read-republish/main.go)
-* [client-publish-codec-aac](examples/client-publish-codec-aac/main.go)
 * [client-publish-codec-h264](examples/client-publish-codec-h264/main.go)
+* [client-publish-codec-mpeg4audio](examples/client-publish-codec-mpeg4audio/main.go)
 * [client-publish-codec-opus](examples/client-publish-codec-opus/main.go)
 * [client-publish-codec-pcma](examples/client-publish-codec-pcma/main.go)
 * [client-publish-codec-pcmu](examples/client-publish-codec-pcmu/main.go)
