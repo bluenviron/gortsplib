@@ -441,7 +441,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					{
 						Key: "fmtp",
 						Value: "96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; " +
-							"sprop-sps=QgEBAWAAAAMAkAAAAwAAAwB4oAPAgBDllmZpJMrgEAAAAwAQAAADAeCA; sprop-pps=RAHBcrRiQA==",
+							"sprop-sps=QgEBAWAAAAMAkAAAAwAAAwB4oAPAgBDllmZpJMrgEAAAAwAQAAADAeCA; " +
+							"sprop-pps=RAHBcrRiQA==; sprop-max-don-diff=2",
 					},
 				},
 			},
@@ -463,6 +464,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				PPS: []byte{
 					0x44, 0x1, 0xc1, 0x72, 0xb4, 0x62, 0x40,
 				},
+				MaxDONDiff: 2,
 			},
 		},
 		{

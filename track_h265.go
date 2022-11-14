@@ -8,6 +8,8 @@ import (
 	"sync"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/rtph265"
 )
 
 // TrackH265 is a H265 track.
@@ -16,6 +18,7 @@ type TrackH265 struct {
 	VPS         []byte
 	SPS         []byte
 	PPS         []byte
+	MaxDONDiff  int
 
 	trackBase
 	mutex sync.RWMutex
@@ -82,6 +85,13 @@ func (t *TrackH265) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 			if err != nil {
 				return fmt.Errorf("invalid sprop-pps (%v)", v)
 			}
+
+		case "sprop-max-don-diff":
+			tmp, err := strconv.ParseInt(tmp[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid sprop-max-don-diff (%v)", v)
+			}
+			t.MaxDONDiff = int(tmp)
 		}
 	}
 
@@ -111,6 +121,9 @@ func (t *TrackH265) MediaDescription() *psdp.MediaDescription {
 	}
 	if t.PPS != nil {
 		tmp = append(tmp, "sprop-pps="+base64.StdEncoding.EncodeToString(t.PPS))
+	}
+	if t.MaxDONDiff != 0 {
+		tmp = append(tmp, "sprop-max-don-diff="+strconv.FormatInt(int64(t.MaxDONDiff), 10))
 	}
 	if tmp != nil {
 		fmtp += " " + strings.Join(tmp, "; ")
@@ -145,8 +158,28 @@ func (t *TrackH265) clone() Track {
 		VPS:         t.VPS,
 		SPS:         t.SPS,
 		PPS:         t.PPS,
+		MaxDONDiff:  t.MaxDONDiff,
 		trackBase:   t.trackBase,
 	}
+}
+
+// CreateDecoder creates a decoder able to decode the content of the track.
+func (t *TrackH265) CreateDecoder() *rtph265.Decoder {
+	d := &rtph265.Decoder{
+		MaxDONDiff: t.MaxDONDiff,
+	}
+	d.Init()
+	return d
+}
+
+// CreateEncoder creates an encoder able to encode the content of the track.
+func (t *TrackH265) CreateEncoder() *rtph265.Encoder {
+	e := &rtph265.Encoder{
+		PayloadType: t.PayloadType,
+		MaxDONDiff:  t.MaxDONDiff,
+	}
+	e.Init()
+	return e
 }
 
 // SafeVPS returns the track VPS.

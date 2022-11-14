@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/aler9/gortsplib"
@@ -9,8 +10,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
-// 2. check if there's an LPCM track
-// 3. get LPCM packets of that track
+// 2. check if there's an H265 track
+// 3. get access units of that track
 
 func main() {
 	c := gortsplib.Client{}
@@ -34,35 +35,38 @@ func main() {
 		panic(err)
 	}
 
-	// find the LPCM track
-	track := func() *gortsplib.TrackLPCM {
+	// find the H265 track
+	track := func() *gortsplib.TrackH265 {
 		for _, track := range tracks {
-			if tt, ok := track.(*gortsplib.TrackLPCM); ok {
-				return tt
+			if track, ok := track.(*gortsplib.TrackH265); ok {
+				return track
 			}
 		}
 		return nil
 	}()
 	if track == nil {
-		panic("LPCM track not found")
+		panic("H265 track not found")
 	}
 
-	// setup decoder
+	// setup RTP/H265->H265 decoder
 	dec := track.CreateDecoder()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		// decode LPCM samples from the RTP packet
-		op, _, err := dec.Decode(ctx.Packet)
+		// convert RTP packets into NALUs
+		nalus, pts, err := dec.Decode(ctx.Packet)
 		if err != nil {
 			return
 		}
 
-		// print
-		log.Printf("received LPCM samples of size %d\n", len(op))
+		fmt.Println("PTS", pts)
+
+		for _, nalu := range nalus {
+			log.Printf("received NALU of size %d\n", len(nalu))
+		}
 	}
 
-	// setup and read the LPCM track only
+	// setup and read the H265 track only
 	err = c.SetupAndPlay(gortsplib.Tracks{track}, baseURL)
 	if err != nil {
 		panic(err)
