@@ -39,15 +39,15 @@ func main() {
 	}
 
 	// find the H264 track
-	h264TrackID, h264track := func() (int, *gortsplib.TrackH264) {
-		for i, track := range tracks {
-			if h264track, ok := track.(*gortsplib.TrackH264); ok {
-				return i, h264track
+	track := func() *gortsplib.TrackH264 {
+		for _, track := range tracks {
+			if track, ok := track.(*gortsplib.TrackH264); ok {
+				return track
 			}
 		}
-		return -1, nil
+		return nil
 	}()
-	if h264TrackID < 0 {
+	if track == nil {
 		panic("H264 track not found")
 	}
 
@@ -63,21 +63,17 @@ func main() {
 	defer h264RawDec.close()
 
 	// if SPS and PPS are present into the SDP, send them to the decoder
-	sps := h264track.SafeSPS()
+	sps := track.SafeSPS()
 	if sps != nil {
 		h264RawDec.decode(sps)
 	}
-	pps := h264track.SafePPS()
+	pps := track.SafePPS()
 	if pps != nil {
 		h264RawDec.decode(pps)
 	}
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		if ctx.TrackID != h264TrackID {
-			return
-		}
-
 		// convert RTP packets into NALUs
 		nalus, _, err := rtpDec.Decode(ctx.Packet)
 		if err != nil {
@@ -100,8 +96,8 @@ func main() {
 		}
 	}
 
-	// setup and read all tracks
-	err = c.SetupAndPlay(tracks, baseURL)
+	// setup and read the H264 track only
+	err = c.SetupAndPlay(gortsplib.Tracks{track}, baseURL)
 	if err != nil {
 		panic(err)
 	}

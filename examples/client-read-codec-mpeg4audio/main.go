@@ -36,33 +36,29 @@ func main() {
 	}
 
 	// find the MPEG4-audio track
-	mpeg4audioTrack, mpeg4audioTrackID := func() (*gortsplib.TrackMPEG4Audio, int) {
-		for i, track := range tracks {
+	track := func() *gortsplib.TrackMPEG4Audio {
+		for _, track := range tracks {
 			if tt, ok := track.(*gortsplib.TrackMPEG4Audio); ok {
-				return tt, i
+				return tt
 			}
 		}
-		return nil, -1
+		return nil
 	}()
-	if mpeg4audioTrack == nil {
+	if track == nil {
 		panic("MPEG4-audio track not found")
 	}
 
 	// setup decoder
 	dec := &rtpmpeg4audio.Decoder{
-		SampleRate:       mpeg4audioTrack.Config.SampleRate,
-		SizeLength:       mpeg4audioTrack.SizeLength,
-		IndexLength:      mpeg4audioTrack.IndexLength,
-		IndexDeltaLength: mpeg4audioTrack.IndexDeltaLength,
+		SampleRate:       track.Config.SampleRate,
+		SizeLength:       track.SizeLength,
+		IndexLength:      track.IndexLength,
+		IndexDeltaLength: track.IndexDeltaLength,
 	}
 	dec.Init()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		if ctx.TrackID != mpeg4audioTrackID {
-			return
-		}
-
 		// decode MPEG4-audio AUs from the RTP packet
 		aus, _, err := dec.Decode(ctx.Packet)
 		if err != nil {
@@ -75,8 +71,8 @@ func main() {
 		}
 	}
 
-	// setup and read all tracks
-	err = c.SetupAndPlay(tracks, baseURL)
+	// setup and read the MPEG4-audio track only
+	err = c.SetupAndPlay(gortsplib.Tracks{track}, baseURL)
 	if err != nil {
 		panic(err)
 	}
