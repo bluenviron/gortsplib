@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/rtpvp8"
 )
 
 // TrackVP8 is a VP8 track.
@@ -83,15 +85,6 @@ func (t *TrackVP8) ClockRate() int {
 	return 90000
 }
 
-func (t *TrackVP8) clone() Track {
-	return &TrackVP8{
-		trackBase:   t.trackBase,
-		PayloadType: t.PayloadType,
-		MaxFR:       t.MaxFR,
-		MaxFS:       t.MaxFS,
-	}
-}
-
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackVP8) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.PayloadType), 10)
@@ -130,4 +123,20 @@ func (t *TrackVP8) MediaDescription() *psdp.MediaDescription {
 			},
 		},
 	}
+}
+
+func (t *TrackVP8) clone() Track {
+	return &TrackVP8{
+		trackBase:   t.trackBase,
+		PayloadType: t.PayloadType,
+		MaxFR:       t.MaxFR,
+		MaxFS:       t.MaxFS,
+	}
+}
+
+// CreateDecoder creates a decoder able to decode the content of the track.
+func (t *TrackVP8) CreateDecoder() *rtpvp8.Decoder {
+	d := &rtpvp8.Decoder{}
+	d.Init()
+	return d
 }

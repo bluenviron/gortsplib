@@ -24,12 +24,6 @@ func (t *TrackJPEG) ClockRate() int {
 	return 90000
 }
 
-func (t *TrackJPEG) clone() Track {
-	return &TrackJPEG{
-		trackBase: t.trackBase,
-	}
-}
-
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackJPEG) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
@@ -48,5 +42,11 @@ func (t *TrackJPEG) MediaDescription() *psdp.MediaDescription {
 				Value: t.control,
 			},
 		},
+	}
+}
+
+func (t *TrackJPEG) clone() Track {
+	return &TrackJPEG{
+		trackBase: t.trackBase,
 	}
 }

@@ -124,15 +124,6 @@ func (t *TrackGeneric) ClockRate() int {
 	return t.clockRate
 }
 
-func (t *TrackGeneric) clone() Track {
-	return &TrackGeneric{
-		Media:     t.Media,
-		Payloads:  append([]TrackGenericPayload(nil), t.Payloads...),
-		trackBase: t.trackBase,
-		clockRate: t.clockRate,
-	}
-}
-
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackGeneric) MediaDescription() *psdp.MediaDescription {
 	formats := make([]string, len(t.Payloads))
@@ -169,5 +160,14 @@ func (t *TrackGeneric) MediaDescription() *psdp.MediaDescription {
 			Formats: formats,
 		},
 		Attributes: attributes,
+	}
+}
+
+func (t *TrackGeneric) clone() Track {
+	return &TrackGeneric{
+		Media:     t.Media,
+		Payloads:  append([]TrackGenericPayload(nil), t.Payloads...),
+		trackBase: t.trackBase,
+		clockRate: t.clockRate,
 	}
 }

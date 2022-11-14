@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/rtpvp9"
 )
 
 // TrackVP9 is a VP9 track.
@@ -92,16 +94,6 @@ func (t *TrackVP9) ClockRate() int {
 	return 90000
 }
 
-func (t *TrackVP9) clone() Track {
-	return &TrackVP9{
-		trackBase:   t.trackBase,
-		PayloadType: t.PayloadType,
-		MaxFR:       t.MaxFR,
-		MaxFS:       t.MaxFS,
-		ProfileID:   t.ProfileID,
-	}
-}
-
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackVP9) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.PayloadType), 10)
@@ -143,4 +135,21 @@ func (t *TrackVP9) MediaDescription() *psdp.MediaDescription {
 			},
 		},
 	}
+}
+
+func (t *TrackVP9) clone() Track {
+	return &TrackVP9{
+		trackBase:   t.trackBase,
+		PayloadType: t.PayloadType,
+		MaxFR:       t.MaxFR,
+		MaxFS:       t.MaxFS,
+		ProfileID:   t.ProfileID,
+	}
+}
+
+// CreateDecoder creates a decoder able to decode the content of the track.
+func (t *TrackVP9) CreateDecoder() *rtpvp9.Decoder {
+	d := &rtpvp9.Decoder{}
+	d.Init()
+	return d
 }

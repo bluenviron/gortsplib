@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/rtpopus"
 )
 
 // TrackOpus is a Opus track.
@@ -53,15 +55,6 @@ func (t *TrackOpus) ClockRate() int {
 	return t.SampleRate
 }
 
-func (t *TrackOpus) clone() Track {
-	return &TrackOpus{
-		PayloadType:  t.PayloadType,
-		SampleRate:   t.SampleRate,
-		ChannelCount: t.ChannelCount,
-		trackBase:    t.trackBase,
-	}
-}
-
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackOpus) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.PayloadType), 10)
@@ -93,4 +86,22 @@ func (t *TrackOpus) MediaDescription() *psdp.MediaDescription {
 			},
 		},
 	}
+}
+
+func (t *TrackOpus) clone() Track {
+	return &TrackOpus{
+		PayloadType:  t.PayloadType,
+		SampleRate:   t.SampleRate,
+		ChannelCount: t.ChannelCount,
+		trackBase:    t.trackBase,
+	}
+}
+
+// CreateDecoder creates a decoder able to decode the content of the track.
+func (t *TrackOpus) CreateDecoder() *rtpopus.Decoder {
+	d := &rtpopus.Decoder{
+		SampleRate: t.SampleRate,
+	}
+	d.Init()
+	return d
 }

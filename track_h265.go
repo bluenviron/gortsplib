@@ -93,6 +93,52 @@ func (t *TrackH265) ClockRate() int {
 	return 90000
 }
 
+// MediaDescription returns the track media description in SDP format.
+func (t *TrackH265) MediaDescription() *psdp.MediaDescription {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+
+	typ := strconv.FormatInt(int64(t.PayloadType), 10)
+
+	fmtp := typ
+
+	var tmp []string
+	if t.VPS != nil {
+		tmp = append(tmp, "sprop-vps="+base64.StdEncoding.EncodeToString(t.VPS))
+	}
+	if t.SPS != nil {
+		tmp = append(tmp, "sprop-sps="+base64.StdEncoding.EncodeToString(t.SPS))
+	}
+	if t.PPS != nil {
+		tmp = append(tmp, "sprop-pps="+base64.StdEncoding.EncodeToString(t.PPS))
+	}
+	if tmp != nil {
+		fmtp += " " + strings.Join(tmp, "; ")
+	}
+
+	return &psdp.MediaDescription{
+		MediaName: psdp.MediaName{
+			Media:   "video",
+			Protos:  []string{"RTP", "AVP"},
+			Formats: []string{typ},
+		},
+		Attributes: []psdp.Attribute{
+			{
+				Key:   "rtpmap",
+				Value: typ + " H265/90000",
+			},
+			{
+				Key:   "fmtp",
+				Value: fmtp,
+			},
+			{
+				Key:   "control",
+				Value: t.control,
+			},
+		},
+	}
+}
+
 func (t *TrackH265) clone() Track {
 	return &TrackH265{
 		PayloadType: t.PayloadType,
@@ -143,50 +189,4 @@ func (t *TrackH265) SafeSetPPS(v []byte) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.PPS = v
-}
-
-// MediaDescription returns the track media description in SDP format.
-func (t *TrackH265) MediaDescription() *psdp.MediaDescription {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-
-	typ := strconv.FormatInt(int64(t.PayloadType), 10)
-
-	fmtp := typ
-
-	var tmp []string
-	if t.VPS != nil {
-		tmp = append(tmp, "sprop-vps="+base64.StdEncoding.EncodeToString(t.VPS))
-	}
-	if t.SPS != nil {
-		tmp = append(tmp, "sprop-sps="+base64.StdEncoding.EncodeToString(t.SPS))
-	}
-	if t.PPS != nil {
-		tmp = append(tmp, "sprop-pps="+base64.StdEncoding.EncodeToString(t.PPS))
-	}
-	if tmp != nil {
-		fmtp += " " + strings.Join(tmp, "; ")
-	}
-
-	return &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "video",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{typ},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: typ + " H265/90000",
-			},
-			{
-				Key:   "fmtp",
-				Value: fmtp,
-			},
-			{
-				Key:   "control",
-				Value: t.control,
-			},
-		},
-	}
 }

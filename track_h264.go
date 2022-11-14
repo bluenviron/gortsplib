@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/rtph264"
 )
 
 // TrackH264 is a H264 track.
@@ -100,44 +102,6 @@ func (t *TrackH264) ClockRate() int {
 	return 90000
 }
 
-func (t *TrackH264) clone() Track {
-	return &TrackH264{
-		PayloadType:       t.PayloadType,
-		SPS:               t.SPS,
-		PPS:               t.PPS,
-		PacketizationMode: t.PacketizationMode,
-		trackBase:         t.trackBase,
-	}
-}
-
-// SafeSPS returns the track SPS.
-func (t *TrackH264) SafeSPS() []byte {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-	return t.SPS
-}
-
-// SafePPS returns the track PPS.
-func (t *TrackH264) SafePPS() []byte {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-	return t.PPS
-}
-
-// SafeSetSPS sets the track SPS.
-func (t *TrackH264) SafeSetSPS(v []byte) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	t.SPS = v
-}
-
-// SafeSetPPS sets the track PPS.
-func (t *TrackH264) SafeSetPPS(v []byte) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	t.PPS = v
-}
-
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
 	t.mutex.RLock()
@@ -189,4 +153,51 @@ func (t *TrackH264) MediaDescription() *psdp.MediaDescription {
 			},
 		},
 	}
+}
+
+func (t *TrackH264) clone() Track {
+	return &TrackH264{
+		PayloadType:       t.PayloadType,
+		SPS:               t.SPS,
+		PPS:               t.PPS,
+		PacketizationMode: t.PacketizationMode,
+		trackBase:         t.trackBase,
+	}
+}
+
+// CreateDecoder creates a decoder able to decode the content of the track.
+func (t *TrackH264) CreateDecoder() *rtph264.Decoder {
+	d := &rtph264.Decoder{
+		PacketizationMode: t.PacketizationMode,
+	}
+	d.Init()
+	return d
+}
+
+// SafeSPS returns the track SPS.
+func (t *TrackH264) SafeSPS() []byte {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+	return t.SPS
+}
+
+// SafePPS returns the track PPS.
+func (t *TrackH264) SafePPS() []byte {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+	return t.PPS
+}
+
+// SafeSetSPS sets the track SPS.
+func (t *TrackH264) SafeSetSPS(v []byte) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	t.SPS = v
+}
+
+// SafeSetPPS sets the track PPS.
+func (t *TrackH264) SafeSetPPS(v []byte) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	t.PPS = v
 }

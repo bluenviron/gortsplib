@@ -9,6 +9,7 @@ import (
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
+	"github.com/aler9/gortsplib/pkg/rtpmpeg4audio"
 )
 
 // TrackMPEG4Audio is a MPEG-4 audio track.
@@ -108,17 +109,6 @@ func (t *TrackMPEG4Audio) ClockRate() int {
 	return t.Config.SampleRate
 }
 
-func (t *TrackMPEG4Audio) clone() Track {
-	return &TrackMPEG4Audio{
-		PayloadType:      t.PayloadType,
-		Config:           t.Config,
-		SizeLength:       t.SizeLength,
-		IndexLength:      t.IndexLength,
-		IndexDeltaLength: t.IndexDeltaLength,
-		trackBase:        t.trackBase,
-	}
-}
-
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackMPEG4Audio) MediaDescription() *psdp.MediaDescription {
 	enc, err := t.Config.Marshal()
@@ -175,4 +165,27 @@ func (t *TrackMPEG4Audio) MediaDescription() *psdp.MediaDescription {
 			},
 		},
 	}
+}
+
+func (t *TrackMPEG4Audio) clone() Track {
+	return &TrackMPEG4Audio{
+		PayloadType:      t.PayloadType,
+		Config:           t.Config,
+		SizeLength:       t.SizeLength,
+		IndexLength:      t.IndexLength,
+		IndexDeltaLength: t.IndexDeltaLength,
+		trackBase:        t.trackBase,
+	}
+}
+
+// CreateDecoder creates a decoder able to decode the content of the track.
+func (t *TrackMPEG4Audio) CreateDecoder() *rtpmpeg4audio.Decoder {
+	d := &rtpmpeg4audio.Decoder{
+		SampleRate:       t.Config.SampleRate,
+		SizeLength:       t.SizeLength,
+		IndexLength:      t.IndexLength,
+		IndexDeltaLength: t.IndexDeltaLength,
+	}
+	d.Init()
+	return d
 }

@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/rtpvp8"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -49,8 +48,7 @@ func main() {
 	}
 
 	// setup decoder
-	dec := &rtpvp8.Decoder{}
-	dec.Init()
+	dec := track.CreateDecoder()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {

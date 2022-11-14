@@ -33,12 +33,6 @@ func (t *TrackPCMA) ClockRate() int {
 	return 8000
 }
 
-func (t *TrackPCMA) clone() Track {
-	return &TrackPCMA{
-		trackBase: t.trackBase,
-	}
-}
-
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackPCMA) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
@@ -57,5 +51,11 @@ func (t *TrackPCMA) MediaDescription() *psdp.MediaDescription {
 				Value: t.control,
 			},
 		},
+	}
+}
+
+func (t *TrackPCMA) clone() Track {
+	return &TrackPCMA{
+		trackBase: t.trackBase,
 	}
 }

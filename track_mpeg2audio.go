@@ -24,12 +24,6 @@ func (t *TrackMPEG2Audio) ClockRate() int {
 	return 90000
 }
 
-func (t *TrackMPEG2Audio) clone() Track {
-	return &TrackMPEG2Audio{
-		trackBase: t.trackBase,
-	}
-}
-
 // MediaDescription returns the track media description in SDP format.
 func (t *TrackMPEG2Audio) MediaDescription() *psdp.MediaDescription {
 	return &psdp.MediaDescription{
@@ -44,5 +38,11 @@ func (t *TrackMPEG2Audio) MediaDescription() *psdp.MediaDescription {
 				Value: t.control,
 			},
 		},
+	}
+}
+
+func (t *TrackMPEG2Audio) clone() Track {
+	return &TrackMPEG2Audio{
+		trackBase: t.trackBase,
 	}
 }

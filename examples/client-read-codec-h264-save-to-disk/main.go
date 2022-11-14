@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/rtph264"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -47,10 +46,7 @@ func main() {
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := &rtph264.Decoder{
-		PacketizationMode: track.PacketizationMode,
-	}
-	rtpDec.Init()
+	rtpDec := track.CreateDecoder()
 
 	// setup H264->MPEGTS muxer
 	mpegtsMuxer, err := newMPEGTSMuxer(track.SafeSPS(), track.SafePPS())
