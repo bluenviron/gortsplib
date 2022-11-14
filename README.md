@@ -48,7 +48,7 @@ Features:
   * Parse MPEG4-audio (AAC) elements and formats: RTP/MPEG4-audio, ADTS, MPEG4-audio configurations
   * Parse Opus elements: RTP/Opus
   * Parse VP8 elements: RTP/VP8
-  * Parse VP8 elements: RTP/VP9
+  * Parse VP9 elements: RTP/VP9
 
 ## Table of contents
 
