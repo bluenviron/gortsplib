@@ -59,7 +59,7 @@ func TestClientReadTracks(t *testing.T) {
 	track2 := &TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
-			Type:         2,
+			Type:         mpeg4audio.ObjectTypeAACLC,
 			SampleRate:   44100,
 			ChannelCount: 2,
 		},
@@ -71,7 +71,7 @@ func TestClientReadTracks(t *testing.T) {
 	track3 := &TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
-			Type:         2,
+			Type:         mpeg4audio.ObjectTypeAACLC,
 			SampleRate:   96000,
 			ChannelCount: 2,
 		},

@@ -109,7 +109,7 @@ func TestConfigMarshalErrors(t *testing.T) {
 		{
 			"invalid channel config",
 			Config{
-				Type:         2,
+				Type:         ObjectTypeAACLC,
 				SampleRate:   44100,
 				ChannelCount: 0,
 			},

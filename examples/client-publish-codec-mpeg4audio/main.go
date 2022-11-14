@@ -38,7 +38,7 @@ func main() {
 	track := &gortsplib.TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
-			Type:         2,
+			Type:         mpeg4audio.ObjectTypeAACLC,
 			SampleRate:   48000,
 			ChannelCount: 2,
 		},

@@ -16,7 +16,7 @@ var casesADTS = []struct {
 		[]byte{0xff, 0xf1, 0x4c, 0x80, 0x1, 0x3f, 0xfc, 0xaa, 0xbb},
 		ADTSPackets{
 			{
-				Type:         2,
+				Type:         ObjectTypeAACLC,
 				SampleRate:   48000,
 				ChannelCount: 2,
 				AU:           []byte{0xaa, 0xbb},
@@ -32,13 +32,13 @@ var casesADTS = []struct {
 		},
 		ADTSPackets{
 			{
-				Type:         2,
+				Type:         ObjectTypeAACLC,
 				SampleRate:   44100,
 				ChannelCount: 1,
 				AU:           []byte{0xaa, 0xbb},
 			},
 			{
-				Type:         2,
+				Type:         ObjectTypeAACLC,
 				SampleRate:   48000,
 				ChannelCount: 2,
 				AU:           []byte{0xcc, 0xdd},

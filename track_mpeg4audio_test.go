@@ -13,7 +13,7 @@ func TestTrackMPEG4AudioAttributes(t *testing.T) {
 	track := &TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
-			Type:         2,
+			Type:         mpeg4audio.ObjectTypeAACLC,
 			SampleRate:   48000,
 			ChannelCount: 2,
 		},
@@ -29,7 +29,7 @@ func TestTrackMPEG4AudioClone(t *testing.T) {
 	track := &TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
-			Type:         2,
+			Type:         mpeg4audio.ObjectTypeAACLC,
 			SampleRate:   48000,
 			ChannelCount: 2,
 		},
@@ -47,7 +47,7 @@ func TestTrackMPEG4AudioMediaDescription(t *testing.T) {
 	track := &TrackMPEG4Audio{
 		PayloadType: 96,
 		Config: &mpeg4audio.Config{
-			Type:         2,
+			Type:         mpeg4audio.ObjectTypeAACLC,
 			SampleRate:   48000,
 			ChannelCount: 2,
 		},
