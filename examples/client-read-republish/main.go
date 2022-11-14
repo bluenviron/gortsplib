@@ -46,7 +46,7 @@ func main() {
 
 	// called when a RTP packet arrives
 	reader.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		publisher.WritePacketRTP(ctx.TrackID, ctx.Packet, ctx.PTSEqualsDTS)
+		publisher.WritePacketRTP(ctx.TrackID, ctx.Packet)
 	}
 
 	// setup and read all tracks

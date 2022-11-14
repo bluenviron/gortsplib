@@ -234,10 +234,9 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 
 		if h, ok := clientData.session.s.Handler.(ServerHandlerOnPacketRTP); ok {
 			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-				Session:      clientData.session,
-				TrackID:      clientData.track.id,
-				Packet:       pkt,
-				PTSEqualsDTS: ptsEqualsDTS,
+				Session: clientData.session,
+				TrackID: clientData.track.id,
+				Packet:  pkt,
 			})
 		}
 	}

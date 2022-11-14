@@ -280,10 +280,9 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 
 				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
 					h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-						Session:      sc.session,
-						TrackID:      track.id,
-						Packet:       pkt,
-						PTSEqualsDTS: ptsEqualsDTS(track.track, pkt),
+						Session: sc.session,
+						TrackID: track.id,
+						Packet:  pkt,
 					})
 				}
 			} else {

@@ -199,10 +199,9 @@ type ServerHandlerOnSetParameter interface {
 
 // ServerHandlerOnPacketRTPCtx is the context of OnPacketRTP.
 type ServerHandlerOnPacketRTPCtx struct {
-	Session      *ServerSession
-	TrackID      int
-	Packet       *rtp.Packet
-	PTSEqualsDTS bool
+	Session *ServerSession
+	TrackID int
+	Packet  *rtp.Packet
 }
 
 // ServerHandlerOnPacketRTP can be implemented by a ServerHandler.
