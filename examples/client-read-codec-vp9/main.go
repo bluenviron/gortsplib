@@ -4,13 +4,13 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/rtpvp8"
+	"github.com/aler9/gortsplib/pkg/rtpvp9"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server and read all tracks on a path
-// 2. check if there's an VP8 track
+// 2. check if there's an VP9 track
 // 3. get access units of that track
 
 func main() {
@@ -35,26 +35,26 @@ func main() {
 		panic(err)
 	}
 
-	// find the VP8 track
-	track := func() *gortsplib.TrackVP8 {
+	// find the VP9 track
+	track := func() *gortsplib.TrackVP9 {
 		for _, track := range tracks {
-			if tt, ok := track.(*gortsplib.TrackVP8); ok {
+			if tt, ok := track.(*gortsplib.TrackVP9); ok {
 				return tt
 			}
 		}
 		return nil
 	}()
 	if track == nil {
-		panic("VP8 track not found")
+		panic("VP9 track not found")
 	}
 
 	// setup decoder
-	dec := &rtpvp8.Decoder{}
+	dec := &rtpvp9.Decoder{}
 	dec.Init()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		// decode a VP8 frame from the RTP packet
+		// decode a VP9 frame from the RTP packet
 		vf, _, err := dec.Decode(ctx.Packet)
 		if err != nil {
 			return
@@ -63,7 +63,7 @@ func main() {
 		log.Printf("received frame of size %d\n", len(vf))
 	}
 
-	// setup and read the VP8 track only
+	// setup and read the VP9 track only
 	err = c.SetupAndPlay(gortsplib.Tracks{track}, baseURL)
 	if err != nil {
 		panic(err)

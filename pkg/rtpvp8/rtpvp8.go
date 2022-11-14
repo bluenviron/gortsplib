@@ -2,5 +2,5 @@
 package rtpvp8
 
 const (
-	rtpClockRate = 90000 // vp8 always uses 90khz
+	rtpClockRate = 90000 // VP8 always uses 90khz
 )

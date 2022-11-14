@@ -36,30 +36,26 @@ func main() {
 	}
 
 	// find the Opus track
-	opusTrack, opusTrackID := func() (*gortsplib.TrackOpus, int) {
-		for i, track := range tracks {
+	track := func() *gortsplib.TrackOpus {
+		for _, track := range tracks {
 			if tt, ok := track.(*gortsplib.TrackOpus); ok {
-				return tt, i
+				return tt
 			}
 		}
-		return nil, -1
+		return nil
 	}()
-	if opusTrack == nil {
+	if track == nil {
 		panic("Opus track not found")
 	}
 
 	// setup decoder
 	dec := &rtpopus.Decoder{
-		SampleRate: opusTrack.SampleRate,
+		SampleRate: track.SampleRate,
 	}
 	dec.Init()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		if ctx.TrackID != opusTrackID {
-			return
-		}
-
 		// decode an Opus packet from the RTP packet
 		op, _, err := dec.Decode(ctx.Packet)
 		if err != nil {
@@ -70,8 +66,8 @@ func main() {
 		log.Printf("received Opus packet of size %d\n", len(op))
 	}
 
-	// setup and read all tracks
-	err = c.SetupAndPlay(tracks, baseURL)
+	// setup and read the Opus track only
+	err = c.SetupAndPlay(gortsplib.Tracks{track}, baseURL)
 	if err != nil {
 		panic(err)
 	}
