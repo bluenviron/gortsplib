@@ -71,6 +71,7 @@ Features:
 * [client-read-options](examples/client-read-options/main.go)
 * [client-read-pause](examples/client-read-pause/main.go)
 * [client-read-republish](examples/client-read-republish/main.go)
+* [client-publish-codec-g722](examples/client-publish-codec-g722/main.go)
 * [client-publish-codec-h264](examples/client-publish-codec-h264/main.go)
 * [client-publish-codec-mpeg4audio](examples/client-publish-codec-mpeg4audio/main.go)
 * [client-publish-codec-opus](examples/client-publish-codec-opus/main.go)

@@ -124,6 +124,9 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 			case payloadType == 8:
 				return newTrackPCMAFromMediaDescription(control, clock)
 
+			case payloadType == 9:
+				return newTrackG722FromMediaDescription(control, clock)
+
 			case payloadType == 14:
 				return newTrackMPEG2AudioFromMediaDescription(control)
 

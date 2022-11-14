@@ -39,6 +39,17 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackPCMU{},
 		},
 		{
+			"g722",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"9"},
+				},
+			},
+			&TrackG722{},
+		},
+		{
 			"mpeg audio",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
