@@ -46,6 +46,7 @@ Features:
   * Parse RTSP elements: requests, responses, SDP
   * Parse H264 elements and formats: RTP/H264, Annex-B, AVCC, anti-competition, DTS
   * Parse MPEG4-audio (AAC) elements and formats: RTP/MPEG4-audio, ADTS, MPEG4-audio configurations
+  * Parse Opus elements: RTP/Opus
 
 ## Table of contents
 
@@ -61,6 +62,7 @@ Features:
 * [client-read-codec-h264-convert-to-jpeg](examples/client-read-codec-h264-convert-to-jpeg/main.go)
 * [client-read-codec-h264-save-to-disk](examples/client-read-codec-h264-save-to-disk/main.go)
 * [client-read-codec-mpeg4audio](examples/client-read-codec-mpeg4audio/main.go)
+* [client-read-codec-opus](examples/client-read-codec-opus/main.go)
 * [client-read-partial](examples/client-read-partial/main.go)
 * [client-read-options](examples/client-read-options/main.go)
 * [client-read-pause](examples/client-read-pause/main.go)
