@@ -68,6 +68,7 @@ Features:
 * [client-publish-codec-aac](examples/client-publish-codec-aac/main.go)
 * [client-publish-codec-h264](examples/client-publish-codec-h264/main.go)
 * [client-publish-codec-opus](examples/client-publish-codec-opus/main.go)
+* [client-publish-codec-pcma](examples/client-publish-codec-pcma/main.go)
 * [client-publish-codec-pcmu](examples/client-publish-codec-pcmu/main.go)
 * [client-publish-options](examples/client-publish-options/main.go)
 * [client-publish-pause](examples/client-publish-pause/main.go)
