@@ -14,7 +14,8 @@ type TrackPCMU struct {
 
 func newTrackPCMUFromMediaDescription(
 	control string,
-	clock string) (*TrackPCMU, error,
+	clock string,
+) (*TrackPCMU, error,
 ) {
 	tmp := strings.SplitN(clock, "/", 2)
 	if len(tmp) == 2 && tmp[1] != "1" {

@@ -14,9 +14,10 @@ type TrackG722 struct {
 
 func newTrackG722FromMediaDescription(
 	control string,
-	rtpmapPart1 string) (*TrackG722, error,
+	clock string,
+) (*TrackG722, error,
 ) {
-	tmp := strings.Split(rtpmapPart1, "/")
+	tmp := strings.Split(clock, "/")
 	if len(tmp) == 2 && tmp[1] != "1" {
 		return nil, fmt.Errorf("G722 tracks can have only one channel")
 	}

@@ -10,7 +10,8 @@ type TrackJPEG struct {
 }
 
 func newTrackJPEGFromMediaDescription(
-	control string) (*TrackJPEG, error,
+	control string,
+) (*TrackJPEG, error,
 ) {
 	return &TrackJPEG{
 		trackBase: trackBase{

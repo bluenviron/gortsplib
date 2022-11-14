@@ -10,7 +10,8 @@ type TrackMPEG2Video struct {
 }
 
 func newTrackMPEG2VideoFromMediaDescription(
-	control string) (*TrackMPEG2Video, error,
+	control string,
+) (*TrackMPEG2Video, error,
 ) {
 	return &TrackMPEG2Video{
 		trackBase: trackBase{

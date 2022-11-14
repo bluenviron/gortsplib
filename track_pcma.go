@@ -14,9 +14,10 @@ type TrackPCMA struct {
 
 func newTrackPCMAFromMediaDescription(
 	control string,
-	rtpmapPart1 string) (*TrackPCMA, error,
+	clock string,
+) (*TrackPCMA, error,
 ) {
-	tmp := strings.Split(rtpmapPart1, "/")
+	tmp := strings.Split(clock, "/")
 	if len(tmp) == 2 && tmp[1] != "1" {
 		return nil, fmt.Errorf("PCMA tracks can have only one channel")
 	}

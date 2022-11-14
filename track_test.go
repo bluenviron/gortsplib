@@ -50,6 +50,72 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackG722{},
 		},
 		{
+			"lpcm 8",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"97"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "97 L8/48000/2",
+					},
+				},
+			},
+			&TrackLPCM{
+				PayloadType:  97,
+				BitDepth:     8,
+				SampleRate:   48000,
+				ChannelCount: 2,
+			},
+		},
+		{
+			"lpcm 16",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"97"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "97 L16/96000/2",
+					},
+				},
+			},
+			&TrackLPCM{
+				PayloadType:  97,
+				BitDepth:     16,
+				SampleRate:   96000,
+				ChannelCount: 2,
+			},
+		},
+		{
+			"lpcm 24",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"98"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "98 L24/44100/4",
+					},
+				},
+			},
+			&TrackLPCM{
+				PayloadType:  98,
+				BitDepth:     24,
+				SampleRate:   44100,
+				ChannelCount: 4,
+			},
+		},
+		{
 			"mpeg audio",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{

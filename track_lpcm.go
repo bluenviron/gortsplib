@@ -1,4 +1,4 @@
-package gortsplib
+package gortsplib //nolint:dupl
 
 import (
 	"fmt"
@@ -6,24 +6,37 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
-
-	"github.com/aler9/gortsplib/pkg/rtpopus"
 )
 
-// TrackOpus is a Opus track.
-type TrackOpus struct {
+// TrackLPCM is an uncompressed, Linear PCM track.
+type TrackLPCM struct {
 	PayloadType  uint8
+	BitDepth     int
 	SampleRate   int
 	ChannelCount int
 
 	trackBase
 }
 
-func newTrackOpusFromMediaDescription(
+func newTrackLPCMFromMediaDescription(
 	control string,
 	payloadType uint8,
+	codec string,
 	clock string,
-) (*TrackOpus, error) {
+) (*TrackLPCM, error,
+) {
+	var bitDepth int
+	switch codec {
+	case "L8":
+		bitDepth = 8
+
+	case "L16":
+		bitDepth = 16
+
+	case "L24":
+		bitDepth = 24
+	}
+
 	tmp := strings.SplitN(clock, "/", 32)
 	if len(tmp) != 2 {
 		return nil, fmt.Errorf("invalid clock (%v)", clock)
@@ -39,8 +52,9 @@ func newTrackOpusFromMediaDescription(
 		return nil, err
 	}
 
-	return &TrackOpus{
+	return &TrackLPCM{
 		PayloadType:  payloadType,
+		BitDepth:     bitDepth,
 		SampleRate:   int(sampleRate),
 		ChannelCount: int(channelCount),
 		trackBase: trackBase{
@@ -50,13 +64,25 @@ func newTrackOpusFromMediaDescription(
 }
 
 // ClockRate returns the track clock rate.
-func (t *TrackOpus) ClockRate() int {
+func (t *TrackLPCM) ClockRate() int {
 	return t.SampleRate
 }
 
 // MediaDescription returns the track media description in SDP format.
-func (t *TrackOpus) MediaDescription() *psdp.MediaDescription {
+func (t *TrackLPCM) MediaDescription() *psdp.MediaDescription {
 	typ := strconv.FormatInt(int64(t.PayloadType), 10)
+
+	var codec string
+	switch t.BitDepth {
+	case 8:
+		codec = "L8"
+
+	case 16:
+		codec = "L16"
+
+	case 24:
+		codec = "L24"
+	}
 
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
@@ -67,17 +93,8 @@ func (t *TrackOpus) MediaDescription() *psdp.MediaDescription {
 		Attributes: []psdp.Attribute{
 			{
 				Key: "rtpmap",
-				Value: typ + " opus/" + strconv.FormatInt(int64(t.SampleRate), 10) +
+				Value: typ + " " + codec + "/" + strconv.FormatInt(int64(t.SampleRate), 10) +
 					"/" + strconv.FormatInt(int64(t.ChannelCount), 10),
-			},
-			{
-				Key: "fmtp",
-				Value: typ + " sprop-stereo=" + func() string {
-					if t.ChannelCount == 2 {
-						return "1"
-					}
-					return "0"
-				}(),
 			},
 			{
 				Key:   "control",
@@ -87,20 +104,12 @@ func (t *TrackOpus) MediaDescription() *psdp.MediaDescription {
 	}
 }
 
-func (t *TrackOpus) clone() Track {
-	return &TrackOpus{
+func (t *TrackLPCM) clone() Track {
+	return &TrackLPCM{
 		PayloadType:  t.PayloadType,
+		BitDepth:     t.BitDepth,
 		SampleRate:   t.SampleRate,
 		ChannelCount: t.ChannelCount,
 		trackBase:    t.trackBase,
 	}
-}
-
-// CreateDecoder creates a decoder able to decode the content of the track.
-func (t *TrackOpus) CreateDecoder() *rtpopus.Decoder {
-	d := &rtpopus.Decoder{
-		SampleRate: t.SampleRate,
-	}
-	d.Init()
-	return d
 }
