@@ -18,6 +18,7 @@ type Reorderer struct {
 	expectedSeqNum uint16
 	buffer         []*rtp.Packet
 	absPos         uint16
+	negativeCount  int
 }
 
 // New allocates a Reorderer.
@@ -42,8 +43,26 @@ func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, int) {
 	// before the first packet processed by Reorderer.
 	// discard.
 	if relPos > negativeThreshold {
+		r.negativeCount++
+
+		// stream has been resetted, therefore reset reorderer too
+		if r.negativeCount > bufferSize {
+			r.negativeCount = 0
+
+			// clear buffer
+			for i := uint16(0); i < bufferSize; i++ {
+				p := (r.absPos + i) & (bufferSize - 1)
+				r.buffer[p] = nil
+			}
+
+			// reset position
+			r.expectedSeqNum = pkt.SequenceNumber + 1
+			return []*rtp.Packet{pkt}, 0
+		}
+
 		return nil, 0
 	}
+	r.negativeCount = 0
 
 	// there's a missing packet and buffer is full.
 	// return entire buffer and clear it.

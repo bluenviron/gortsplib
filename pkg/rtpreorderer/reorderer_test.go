@@ -220,3 +220,38 @@ func TestBufferIsFull(t *testing.T) {
 
 	require.Equal(t, expected, out)
 }
+
+func TestReset(t *testing.T) {
+	r := New()
+	sn := uint16(1234)
+
+	r.Process(&rtp.Packet{
+		Header: rtp.Header{
+			SequenceNumber: sn,
+		},
+	})
+
+	sn = 0xF234
+	for i := 0; i < 64; i++ {
+		out, missing := r.Process(&rtp.Packet{
+			Header: rtp.Header{
+				SequenceNumber: sn,
+			},
+		})
+		require.Equal(t, []*rtp.Packet(nil), out)
+		require.Equal(t, 0, missing)
+		sn++
+	}
+
+	out, missing := r.Process(&rtp.Packet{
+		Header: rtp.Header{
+			SequenceNumber: sn,
+		},
+	})
+	require.Equal(t, []*rtp.Packet{{
+		Header: rtp.Header{
+			SequenceNumber: sn,
+		},
+	}}, out)
+	require.Equal(t, 0, missing)
+}
