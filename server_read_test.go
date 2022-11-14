@@ -93,9 +93,10 @@ func TestServerReadSetupPath(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			stream := NewServerStream(Tracks{track, track, track, track, track})
@@ -160,9 +161,10 @@ func TestServerReadSetupErrors(t *testing.T) {
 			nconnClosed := make(chan struct{})
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			stream := NewServerStream(Tracks{track})
@@ -282,9 +284,10 @@ func TestServerReadSetupErrors(t *testing.T) {
 
 func TestServerReadSetupErrorSameUDPPortsAndIP(t *testing.T) {
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track})
@@ -375,9 +378,10 @@ func TestServerRead(t *testing.T) {
 			framesReceived := make(chan struct{})
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			stream := NewServerStream(Tracks{track})
@@ -716,9 +720,10 @@ func TestServerReadRTCPReport(t *testing.T) {
 	for _, ca := range []string{"udp", "tcp"} {
 		t.Run(ca, func(t *testing.T) {
 			stream := NewServerStream(Tracks{&TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}})
 			defer stream.Close()
 
@@ -864,9 +869,10 @@ func TestServerReadRTCPReport(t *testing.T) {
 
 func TestServerReadVLCMulticast(t *testing.T) {
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track})
@@ -919,9 +925,10 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	writerTerminate := make(chan struct{})
 
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track})
@@ -1019,9 +1026,10 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 
 func TestServerReadPlayPlay(t *testing.T) {
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track})
@@ -1109,9 +1117,10 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	writerTerminate := make(chan struct{})
 
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track})
@@ -1235,9 +1244,10 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	writerTerminate := make(chan struct{})
 
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track})
@@ -1369,9 +1379,10 @@ func TestServerReadTimeout(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			stream := NewServerStream(Tracks{track})
@@ -1484,9 +1495,10 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			stream := NewServerStream(Tracks{track})
@@ -1590,9 +1602,10 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 
 func TestServerReadUDPChangeConn(t *testing.T) {
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track})
@@ -1696,15 +1709,17 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 
 func TestServerReadPartialTracks(t *testing.T) {
 	track1 := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	track2 := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track1, track2})

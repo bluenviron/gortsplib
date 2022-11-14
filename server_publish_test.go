@@ -27,9 +27,10 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 		},
 		Body: func() []byte {
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 			track.SetControl(control)
 
@@ -232,9 +233,10 @@ func TestServerPublishSetupPath(t *testing.T) {
 			conn := conn.NewConn(nconn)
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 			track.SetControl(ca.control)
 
@@ -327,9 +329,10 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 	conn := conn.NewConn(nconn)
 
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	tracks := Tracks{track}
@@ -407,9 +410,10 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	conn := conn.NewConn(nconn)
 
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	tracks := Tracks{track}
@@ -508,15 +512,17 @@ func TestServerPublishErrorRecordPartialTracks(t *testing.T) {
 	conn := conn.NewConn(nconn)
 
 	track1 := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	track2 := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	tracks := Tracks{track1, track2}
@@ -665,9 +671,10 @@ func TestServerPublish(t *testing.T) {
 			<-nconnOpened
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			tracks := Tracks{track}
@@ -861,9 +868,10 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	conn := conn.NewConn(nconn)
 
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	tracks := Tracks{track}
@@ -966,9 +974,10 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	conn := conn.NewConn(nconn)
 
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	tracks := Tracks{track}
@@ -1143,9 +1152,10 @@ func TestServerPublishTimeout(t *testing.T) {
 			conn := conn.NewConn(nconn)
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			tracks := Tracks{track}
@@ -1272,9 +1282,10 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 			conn := conn.NewConn(nconn)
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			tracks := Tracks{track}
@@ -1391,9 +1402,10 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 		conn := conn.NewConn(nconn)
 
 		track := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track}

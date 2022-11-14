@@ -79,7 +79,9 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := &rtph264.Decoder{}
+	rtpDec := &rtph264.Decoder{
+		PacketizationMode: h264track.PacketizationMode,
+	}
 	rtpDec.Init()
 
 	// setup H264->MPEGTS muxer

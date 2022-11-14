@@ -258,6 +258,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				PPS: []byte{
 					0x68, 0xee, 0x3c, 0x80,
 				},
+				PacketizationMode: 1,
 			},
 		},
 		{
@@ -310,6 +311,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				PPS: []byte{
 					0x68, 0xeb, 0xe3, 0xcb, 0x22, 0xc0,
 				},
+				PacketizationMode: 1,
 			},
 		},
 		{
@@ -343,6 +345,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 				PPS: []byte{
 					0x68, 0xfa, 0x8f, 0x2c,
 				},
+				PacketizationMode: 1,
 			},
 		},
 		{

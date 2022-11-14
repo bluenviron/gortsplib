@@ -37,7 +37,8 @@ func main() {
 
 	// create an H264 track
 	track := &gortsplib.TrackH264{
-		PayloadType: 96,
+		PayloadType:       96,
+		PacketizationMode: 1,
 	}
 
 	// Client allows to set additional client options

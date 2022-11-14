@@ -51,9 +51,10 @@ func startReading(c *Client, ur string) error {
 
 func TestClientReadTracks(t *testing.T) {
 	track1 := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	track2 := &TrackMPEG4Audio{
@@ -498,15 +499,17 @@ func TestClientReadPartial(t *testing.T) {
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream"), req.URL)
 
 		track1 := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		track2 := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track1, track2}
@@ -651,9 +654,10 @@ func TestClientReadContentBase(t *testing.T) {
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 				track := &TrackH264{
-					PayloadType: 96,
-					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+					PayloadType:       96,
+					SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+					PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+					PacketizationMode: 1,
 				}
 
 				tracks := Tracks{track}
@@ -787,9 +791,10 @@ func TestClientReadAnyPort(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 
 				track := &TrackH264{
-					PayloadType: 96,
-					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+					PayloadType:       96,
+					SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+					PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+					PacketizationMode: 1,
 				}
 
 				tracks := Tracks{track}
@@ -945,9 +950,10 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			require.Equal(t, base.Describe, req.Method)
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			tracks := Tracks{track}
@@ -1038,9 +1044,10 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 			defer close(serverDone)
 
 			tracks := Tracks{&TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}}
 			tracks.setControls()
 
@@ -1302,9 +1309,10 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		track1 := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track1}
@@ -1512,9 +1520,10 @@ func TestClientReadRedirect(t *testing.T) {
 					}
 
 					track := &TrackH264{
-						PayloadType: 96,
-						SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-						PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+						PayloadType:       96,
+						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+						PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+						PacketizationMode: 1,
 					}
 
 					tracks := Tracks{track}
@@ -1672,9 +1681,10 @@ func TestClientReadPause(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 
 				track := &TrackH264{
-					PayloadType: 96,
-					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+					PayloadType:       96,
+					SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+					PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+					PacketizationMode: 1,
 				}
 
 				tracks := Tracks{track}
@@ -1846,9 +1856,10 @@ func TestClientReadRTCPReport(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 
 		track := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track}
@@ -2027,9 +2038,10 @@ func TestClientReadErrorTimeout(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 
 				track := &TrackH264{
-					PayloadType: 96,
-					SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-					PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+					PayloadType:       96,
+					SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+					PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+					PacketizationMode: 1,
 				}
 
 				tracks := Tracks{track}
@@ -2179,9 +2191,10 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 
 		track := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track}
@@ -2308,9 +2321,10 @@ func TestClientReadSeek(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 
 		track := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track}
@@ -2480,9 +2494,10 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 
 		track := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track}
@@ -2609,9 +2624,10 @@ func TestClientReadDifferentSource(t *testing.T) {
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
 
 		track := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track}
