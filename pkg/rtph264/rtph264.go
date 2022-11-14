@@ -2,5 +2,5 @@
 package rtph264
 
 const (
-	rtpClockRate = 90000 // h264 always uses 90khz
+	rtpClockRate = 90000 // H264 always uses 90khz
 )

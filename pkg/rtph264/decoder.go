@@ -24,6 +24,9 @@ var ErrNonStartingPacketAndNoPrevious = errors.New(
 
 // Decoder is a RTP/H264 decoder.
 type Decoder struct {
+	// indicates the packetization mode.
+	PacketizationMode int
+
 	timeDecoder         *rtptimedec.Decoder
 	firstPacketReceived bool
 	fragmentedSize      int
@@ -42,6 +45,10 @@ func (d *Decoder) Init() {
 
 // Decode decodes NALUs from a RTP/H264 packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+	if d.PacketizationMode >= 2 {
+		return nil, 0, fmt.Errorf("PacketizationMode >= 2 is not supported")
+	}
+
 	if len(pkt.Payload) < 1 {
 		d.fragments = d.fragments[:0] // discard pending fragmented packets
 		return nil, 0, fmt.Errorf("payload is too short")
@@ -154,7 +161,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		return nil, 0, err
 	}
 
-	return nalus, d.timeDecoder.Decode(pkt.Timestamp), err
+	return nalus, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
 // DecodeUntilMarker decodes NALUs from a RTP/H264 packet and puts them in a buffer.

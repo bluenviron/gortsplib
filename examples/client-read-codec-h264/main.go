@@ -52,7 +52,9 @@ func main() {
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := &rtph264.Decoder{}
+	rtpDec := &rtph264.Decoder{
+		PacketizationMode: track.PacketizationMode,
+	}
 	rtpDec.Init()
 
 	// setup H264->raw frames decoder

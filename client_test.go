@@ -106,9 +106,10 @@ func TestClientSession(t *testing.T) {
 		require.Equal(t, base.HeaderValue{"123456"}, req.Header["Session"])
 
 		track := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track}
@@ -189,9 +190,10 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err)
 
 		track := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		tracks := Tracks{track}
@@ -255,9 +257,10 @@ func TestClientDescribeCharset(t *testing.T) {
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		track1 := &TrackH264{
-			PayloadType: 96,
-			SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+			PayloadType:       96,
+			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+			PacketizationMode: 1,
 		}
 
 		err = conn.WriteResponse(&base.Response{

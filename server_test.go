@@ -340,9 +340,10 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 	for _, ca := range []string{"outside session", "inside session"} {
 		t.Run(ca, func(t *testing.T) {
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			stream := NewServerStream(Tracks{track})
@@ -425,9 +426,10 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track})
@@ -531,9 +533,10 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	stream := NewServerStream(Tracks{track})
@@ -631,9 +634,10 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 func TestServerSetupMultipleTransports(t *testing.T) {
 	stream := NewServerStream(Tracks{&TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}})
 	defer stream.Close()
 
@@ -712,9 +716,10 @@ func TestServerGetSetParameter(t *testing.T) {
 	for _, ca := range []string{"inside session", "outside session"} {
 		t.Run(ca, func(t *testing.T) {
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			stream := NewServerStream(Tracks{track})
@@ -885,9 +890,10 @@ func TestServerErrorInvalidSession(t *testing.T) {
 
 func TestServerSessionClose(t *testing.T) {
 	stream := NewServerStream(Tracks{&TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}})
 	defer stream.Close()
 
@@ -959,9 +965,10 @@ func TestServerSessionAutoClose(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
 			stream := NewServerStream(Tracks{&TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}})
 			defer stream.Close()
 
@@ -1023,9 +1030,10 @@ func TestServerSessionAutoClose(t *testing.T) {
 
 func TestServerSessionTeardown(t *testing.T) {
 	stream := NewServerStream(Tracks{&TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}})
 	defer stream.Close()
 
@@ -1103,9 +1111,10 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			nconnClosed := make(chan struct{})
 
 			track := &TrackH264{
-				PayloadType: 96,
-				SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
 			}
 
 			stream := NewServerStream(Tracks{track})
@@ -1223,9 +1232,10 @@ func TestServerAuth(t *testing.T) {
 	conn := conn.NewConn(nconn)
 
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:         []byte{0x01, 0x02, 0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	req := base.Request{

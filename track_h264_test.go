@@ -9,9 +9,10 @@ import (
 
 func TestTrackH264Attributes(t *testing.T) {
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02},
-		PPS:         []byte{0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02},
+		PPS:               []byte{0x03, 0x04},
+		PacketizationMode: 1,
 	}
 	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
@@ -175,7 +176,7 @@ func TestTrackH264GetSPSPPSErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			tr := &TrackH264{}
+			var tr TrackH264
 			err := tr.fillParamsFromMediaDescription(ca.md)
 			require.EqualError(t, err, ca.err)
 		})
@@ -184,9 +185,10 @@ func TestTrackH264GetSPSPPSErrors(t *testing.T) {
 
 func TestTrackH264Clone(t *testing.T) {
 	track := &TrackH264{
-		PayloadType: 96,
-		SPS:         []byte{0x01, 0x02},
-		PPS:         []byte{0x03, 0x04},
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02},
+		PPS:               []byte{0x03, 0x04},
+		PacketizationMode: 1,
 	}
 
 	clone := track.clone()
@@ -206,6 +208,7 @@ func TestTrackH264MediaDescription(t *testing.T) {
 			PPS: []byte{
 				0x68, 0xee, 0x3c, 0x80,
 			},
+			PacketizationMode: 1,
 		}
 
 		require.Equal(t, &psdp.MediaDescription{
@@ -234,7 +237,8 @@ func TestTrackH264MediaDescription(t *testing.T) {
 
 	t.Run("no sps/pps", func(t *testing.T) {
 		track := &TrackH264{
-			PayloadType: 96,
+			PayloadType:       96,
+			PacketizationMode: 1,
 		}
 
 		require.Equal(t, &psdp.MediaDescription{

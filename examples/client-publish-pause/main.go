@@ -38,7 +38,8 @@ func main() {
 
 	// create an H264 track
 	track := &gortsplib.TrackH264{
-		PayloadType: 96,
+		PayloadType:       96,
+		PacketizationMode: 1,
 	}
 
 	// connect to the server and start publishing the track
