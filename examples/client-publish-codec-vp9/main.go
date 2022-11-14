@@ -9,22 +9,22 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/VP8 packets with GStreamer
-// 2. connect to a RTSP server, announce an VP8 track
+// 1. generate RTP/VP9 packets with GStreamer
+// 2. connect to a RTSP server, announce an VP9 track
 // 3. route the packets from GStreamer to the server
 
 func main() {
-	// open a listener to receive RTP/VP8 packets
+	// open a listener to receive RTP/VP9 packets
 	pc, err := net.ListenPacket("udp", "localhost:9000")
 	if err != nil {
 		panic(err)
 	}
 	defer pc.Close()
 
-	log.Println("Waiting for a RTP/VP8 stream on UDP port 9000 - you can send one with GStreamer:\n" +
+	log.Println("Waiting for a RTP/VP9 stream on UDP port 9000 - you can send one with GStreamer:\n" +
 		"gst-launch-1.0 videotestsrc ! video/x-raw,width=1920,height=1080" +
-		" ! vp8enc cpu-used=8 deadline=1" +
-		" ! rtpvp8pay ! udpsink host=127.0.0.1 port=9000")
+		" ! vp9enc cpu-used=8 deadline=1" +
+		" ! rtpvp9pay ! udpsink host=127.0.0.1 port=9000")
 
 	// wait for first packet
 	buf := make([]byte, 2048)
@@ -34,8 +34,8 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create a VP8 track
-	track := &gortsplib.TrackVP8{
+	// create a VP9 track
+	track := &gortsplib.TrackVP9{
 		PayloadType: 96,
 	}
 

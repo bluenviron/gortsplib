@@ -47,7 +47,8 @@ Features:
   * Parse H264 elements and formats: RTP/H264, Annex-B, AVCC, anti-competition, DTS
   * Parse MPEG4-audio (AAC) elements and formats: RTP/MPEG4-audio, ADTS, MPEG4-audio configurations
   * Parse Opus elements: RTP/Opus
-  * Parse VP8 elements: RTP/Opus
+  * Parse VP8 elements: RTP/VP8
+  * Parse VP8 elements: RTP/VP9
 
 ## Table of contents
 
@@ -65,6 +66,7 @@ Features:
 * [client-read-codec-mpeg4audio](examples/client-read-codec-mpeg4audio/main.go)
 * [client-read-codec-opus](examples/client-read-codec-opus/main.go)
 * [client-read-codec-vp8](examples/client-read-codec-vp8/main.go)
+* [client-read-codec-vp9](examples/client-read-codec-vp9/main.go)
 * [client-read-partial](examples/client-read-partial/main.go)
 * [client-read-options](examples/client-read-options/main.go)
 * [client-read-pause](examples/client-read-pause/main.go)
@@ -75,6 +77,7 @@ Features:
 * [client-publish-codec-pcma](examples/client-publish-codec-pcma/main.go)
 * [client-publish-codec-pcmu](examples/client-publish-codec-pcmu/main.go)
 * [client-publish-codec-vp8](examples/client-publish-codec-vp8/main.go)
+* [client-publish-codec-vp9](examples/client-publish-codec-vp9/main.go)
 * [client-publish-options](examples/client-publish-options/main.go)
 * [client-publish-pause](examples/client-publish-pause/main.go)
 * [server](examples/server/main.go)
