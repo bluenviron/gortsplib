@@ -7,6 +7,10 @@ import (
 	"github.com/pion/rtp"
 )
 
+const (
+	rtpVersion = 2
+)
+
 func randUint32() uint32 {
 	var b [4]byte
 	rand.Read(b[:])

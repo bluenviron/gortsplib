@@ -349,44 +349,42 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func TestDecodePartOfFragmentedBeforeSingle(t *testing.T) {
+func TestDecodeCorruptedFragment(t *testing.T) {
 	d := &Decoder{}
 	d.Init()
 
-	pkt := rtp.Packet{
+	_, _, err := d.Decode(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
-			Marker:         true,
-			PayloadType:    96,
-			SequenceNumber: 17647,
-			Timestamp:      2289531307,
-			SSRC:           0x9dbb7812,
-		},
-		Payload: mergeBytes(
-			[]byte{0x1c, 0x45},
-			[]byte{0x04, 0x05, 0x06, 0x07},
-			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
-		),
-	}
-	_, _, err := d.Decode(&pkt)
-	require.Equal(t, ErrNonStartingPacketAndNoPrevious, err)
-
-	pkt = rtp.Packet{
-		Header: rtp.Header{
-			Version:        2,
-			Marker:         true,
+			Marker:         false,
 			PayloadType:    96,
 			SequenceNumber: 17645,
-			Timestamp:      2289528607,
+			Timestamp:      2289527317,
 			SSRC:           0x9dbb7812,
 		},
 		Payload: mergeBytes(
-			[]byte{0x05},
-			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
+			[]byte{
+				0x1c, 0x85,
+			},
+			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+			[]byte{0x00, 0x01},
 		),
-	}
-	_, _, err = d.Decode(&pkt)
+	})
+	require.Equal(t, ErrMorePacketsNeeded, err)
+
+	nalus, _, err := d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17646,
+			Timestamp:      2289527317,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x01, 0x00},
+	})
 	require.NoError(t, err)
+	require.Equal(t, [][]byte{{0x01, 0x00}}, nalus)
 }
 
 func TestDecodeSTAPAWithPadding(t *testing.T) {
@@ -538,7 +536,24 @@ func TestDecodeErrors(t *testing.T) {
 			"invalid FU-A packet (invalid size)",
 		},
 		{
-			"FU-A without start bit",
+			"FU-A with start and end bit",
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17646,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x1c, 0b11000000},
+				},
+			},
+			"invalid FU-A packet (can't contain both a start and end bit)",
+		},
+		{
+			"FU-A non-starting",
 			[]*rtp.Packet{
 				{
 					Header: rtp.Header{
@@ -563,111 +578,10 @@ func TestDecodeErrors(t *testing.T) {
 						Timestamp:      2289527317,
 						SSRC:           0x9dbb7812,
 					},
-					Payload: []byte{0x1c, 0x00},
+					Payload: []byte{0x1c, 0b01000000},
 				},
 			},
 			"invalid FU-A packet (non-starting)",
-		},
-		{
-			"FU-A with 2nd packet empty",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: mergeBytes(
-						[]byte{0x1c, 0x85},
-						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-						[]byte{0x00, 0x01},
-					),
-				},
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    96,
-						SequenceNumber: 17646,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-				},
-			},
-			"invalid FU-A packet (invalid size)",
-		},
-		{
-			"FU-A with 2nd packet invalid",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: mergeBytes(
-						[]byte{
-							0x1c, 0x85,
-						},
-						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-						[]byte{0x00, 0x01},
-					),
-				},
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    96,
-						SequenceNumber: 17646,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x01, 0x00},
-				},
-			},
-			"expected FU-A packet, got NonIDR packet",
-		},
-		{
-			"FU-A with two starting packets",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: mergeBytes(
-						[]byte{0x1c, 0x85},
-						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-						[]byte{0x00, 0x01},
-					),
-				},
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    96,
-						SequenceNumber: 17646,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: mergeBytes(
-						[]byte{0x1c, 0x85},
-						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-						[]byte{0x00, 0x01},
-					),
-				},
-			},
-			"invalid FU-A packet (decoded two starting packets in a row)",
 		},
 		{
 			"MTAP",
@@ -698,41 +612,4 @@ func TestDecodeErrors(t *testing.T) {
 			require.EqualError(t, lastErr, ca.err)
 		})
 	}
-}
-
-func TestEncode(t *testing.T) {
-	for _, ca := range cases {
-		t.Run(ca.name, func(t *testing.T) {
-			e := &Encoder{
-				PayloadType: 96,
-				SSRC: func() *uint32 {
-					v := uint32(0x9dbb7812)
-					return &v
-				}(),
-				InitialSequenceNumber: func() *uint16 {
-					v := uint16(0x44ed)
-					return &v
-				}(),
-				InitialTimestamp: func() *uint32 {
-					v := uint32(0x88776655)
-					return &v
-				}(),
-			}
-			e.Init()
-
-			pkts, err := e.Encode(ca.nalus, ca.pts)
-			require.NoError(t, err)
-			require.Equal(t, ca.pkts, pkts)
-		})
-	}
-}
-
-func TestEncodeRandomInitialState(t *testing.T) {
-	e := &Encoder{
-		PayloadType: 96,
-	}
-	e.Init()
-	require.NotEqual(t, nil, e.SSRC)
-	require.NotEqual(t, nil, e.InitialSequenceNumber)
-	require.NotEqual(t, nil, e.InitialTimestamp)
 }
