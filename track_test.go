@@ -259,6 +259,32 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
+			"vorbis",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 VORBIS/44100/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 configuration=AQIDBA==",
+					},
+				},
+			},
+			&TrackVorbis{
+				PayloadType:   96,
+				SampleRate:    44100,
+				ChannelCount:  2,
+				Configuration: []byte{0x01, 0x02, 0x03, 0x04},
+			},
+		},
+		{
 			"opus",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{

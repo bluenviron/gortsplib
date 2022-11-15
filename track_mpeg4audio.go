@@ -28,6 +28,13 @@ func newTrackMPEG4AudioFromMediaDescription(
 	payloadType uint8,
 	md *psdp.MediaDescription,
 ) (*TrackMPEG4Audio, error) {
+	t := &TrackMPEG4Audio{
+		PayloadType: payloadType,
+		trackBase: trackBase{
+			control: control,
+		},
+	}
+
 	v, ok := md.Attribute("fmtp")
 	if !ok {
 		return nil, fmt.Errorf("fmtp attribute is missing")
@@ -36,13 +43,6 @@ func newTrackMPEG4AudioFromMediaDescription(
 	tmp := strings.SplitN(v, " ", 2)
 	if len(tmp) != 2 {
 		return nil, fmt.Errorf("invalid fmtp (%v)", v)
-	}
-
-	t := &TrackMPEG4Audio{
-		PayloadType: payloadType,
-		trackBase: trackBase{
-			control: control,
-		},
 	}
 
 	for _, kv := range strings.Split(tmp[1], ";") {

@@ -132,8 +132,12 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 
 			case codec == "L8", codec == "L16", codec == "L24":
 				return newTrackLPCMFromMediaDescription(control, payloadType, codec, clock)
+
 			case strings.ToLower(codec) == "mpeg4-generic":
 				return newTrackMPEG4AudioFromMediaDescription(control, payloadType, md)
+
+			case codec == "VORBIS":
+				return newTrackVorbisFromMediaDescription(control, payloadType, clock, md)
 
 			case codec == "opus":
 				return newTrackOpusFromMediaDescription(control, payloadType, clock)
