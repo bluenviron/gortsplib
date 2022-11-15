@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/rtpsimpleaudio"
 )
 
 // TrackPCMU is a PCMU track.
@@ -59,4 +61,13 @@ func (t *TrackPCMU) clone() Track {
 	return &TrackPCMU{
 		trackBase: t.trackBase,
 	}
+}
+
+// CreateDecoder creates a decoder able to decode the content of the track.
+func (t *TrackPCMU) CreateDecoder() *rtpsimpleaudio.Decoder {
+	d := &rtpsimpleaudio.Decoder{
+		SampleRate: 8000,
+	}
+	d.Init()
+	return d
 }

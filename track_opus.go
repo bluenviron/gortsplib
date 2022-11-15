@@ -7,7 +7,7 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/pkg/rtpopus"
+	"github.com/aler9/gortsplib/pkg/rtpsimpleaudio"
 )
 
 // TrackOpus is a Opus track.
@@ -97,8 +97,8 @@ func (t *TrackOpus) clone() Track {
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.
-func (t *TrackOpus) CreateDecoder() *rtpopus.Decoder {
-	d := &rtpopus.Decoder{
+func (t *TrackOpus) CreateDecoder() *rtpsimpleaudio.Decoder {
+	d := &rtpsimpleaudio.Decoder{
 		SampleRate: t.SampleRate,
 	}
 	d.Init()

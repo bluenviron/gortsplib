@@ -29,6 +29,7 @@ Features:
     * Switch transport protocol automatically
     * Pause without disconnecting from the server
     * Generate RTCP sender reports
+
 * Server
   * Handle requests from clients
   * Sessions and connections are independent
@@ -42,13 +43,23 @@ Features:
     * Write TLS-encrypted streams
     * Compute and provide SSRC, RTP-Info to clients
     * Generate RTCP sender reports
+
 * Utilities
+  * Encode and decode codec-specific frames to/from RTP packets. The following codecs are supported:
+    * Video
+      * H264
+      * VP8
+      * VP9
+    * Audio
+      * G722
+      * LPCM
+      * MPEG4-Audio (AAC)
+      * Opus
+      * PCMA
+      * PCMU
   * Parse RTSP elements: requests, responses, SDP
-  * Parse H264 elements and formats: RTP/H264, Annex-B, AVCC, anti-competition, DTS
-  * Parse MPEG4-audio (AAC) elements and formats: RTP/MPEG4-audio, ADTS, MPEG4-audio configurations
-  * Parse Opus elements: RTP/Opus
-  * Parse VP8 elements: RTP/VP8
-  * Parse VP9 elements: RTP/VP9
+  * Parse H264 elements and formats: Annex-B, AVCC, anti-competition, DTS
+  * Parse MPEG4-audio (AAC) element and formats: ADTS, MPEG4-audio configurations
 
 ## Table of contents
 
@@ -60,11 +71,14 @@ Features:
 
 * [client-query](examples/client-query/main.go)
 * [client-read](examples/client-read/main.go)
+* [client-read-codec-g722](examples/client-read-codec-g722/main.go)
 * [client-read-codec-h264](examples/client-read-codec-h264/main.go)
 * [client-read-codec-h264-convert-to-jpeg](examples/client-read-codec-h264-convert-to-jpeg/main.go)
 * [client-read-codec-h264-save-to-disk](examples/client-read-codec-h264-save-to-disk/main.go)
 * [client-read-codec-mpeg4audio](examples/client-read-codec-mpeg4audio/main.go)
 * [client-read-codec-opus](examples/client-read-codec-opus/main.go)
+* [client-read-codec-pcma](examples/client-read-codec-pcma/main.go)
+* [client-read-codec-pcmu](examples/client-read-codec-pcmu/main.go)
 * [client-read-codec-vp8](examples/client-read-codec-vp8/main.go)
 * [client-read-codec-vp9](examples/client-read-codec-vp9/main.go)
 * [client-read-partial](examples/client-read-partial/main.go)

@@ -1,4 +1,4 @@
-package rtpopus
+package rtpsimpleaudio
 
 import (
 	"crypto/rand"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
-	"github.com/pion/rtp/codecs"
 )
 
 const (
@@ -19,7 +18,7 @@ func randUint32() uint32 {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
 }
 
-// Encoder is a RTP/Opus encoder.
+// Encoder is a RTP/simple audio encoder.
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8
@@ -40,11 +39,9 @@ type Encoder struct {
 	// It defaults to 1460.
 	PayloadMaxSize int
 
-	// sample rate of packets.
 	SampleRate int
 
 	sequenceNumber uint16
-	op             codecs.OpusPayloader
 }
 
 // Init initializes the encoder.
@@ -72,10 +69,10 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 	return *e.InitialTimestamp + uint32(ts.Seconds()*float64(e.SampleRate))
 }
 
-// Encode encodes an Opus packet into a RTP/Opus packet.
-func (e *Encoder) Encode(op []byte, pts time.Duration) (*rtp.Packet, error) {
-	if len(op) > e.PayloadMaxSize {
-		return nil, fmt.Errorf("packet size exceeds maximum size")
+// Encode encodes an audio frame into a RTP packet.
+func (e *Encoder) Encode(frame []byte, pts time.Duration) (*rtp.Packet, error) {
+	if len(frame) > e.PayloadMaxSize {
+		return nil, fmt.Errorf("frame is too big")
 	}
 
 	pkt := &rtp.Packet{
@@ -85,9 +82,9 @@ func (e *Encoder) Encode(op []byte, pts time.Duration) (*rtp.Packet, error) {
 			SequenceNumber: e.sequenceNumber,
 			Timestamp:      e.encodeTimestamp(pts),
 			SSRC:           *e.SSRC,
-			Marker:         true,
+			Marker:         false,
 		},
-		Payload: e.op.Payload(0, op)[0],
+		Payload: frame,
 	}
 
 	e.sequenceNumber++

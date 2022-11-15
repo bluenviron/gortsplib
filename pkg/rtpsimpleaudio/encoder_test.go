@@ -1,4 +1,4 @@
-package rtpopus
+package rtpsimpleaudio
 
 import (
 	"testing"
@@ -10,8 +10,8 @@ func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
-				PayloadType: 96,
-				SampleRate:  48000,
+				PayloadType: 0,
+				SampleRate:  8000,
 				SSRC: func() *uint32 {
 					v := uint32(0x9dbb7812)
 					return &v
@@ -27,7 +27,7 @@ func TestEncode(t *testing.T) {
 			}
 			e.Init()
 
-			pkt, err := e.Encode(ca.op, ca.pts)
+			pkt, err := e.Encode(ca.frame, ca.pts)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkt, pkt)
 		})
@@ -36,8 +36,8 @@ func TestEncode(t *testing.T) {
 
 func TestEncodeRandomInitialState(t *testing.T) {
 	e := &Encoder{
-		PayloadType: 96,
-		SampleRate:  48000,
+		PayloadType: 0,
+		SampleRate:  8000,
 	}
 	e.Init()
 	require.NotEqual(t, nil, e.SSRC)

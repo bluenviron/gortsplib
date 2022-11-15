@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/rtpsimpleaudio"
 )
 
 // TrackG722 is a G722 track.
@@ -59,4 +61,13 @@ func (t *TrackG722) clone() Track {
 	return &TrackG722{
 		trackBase: t.trackBase,
 	}
+}
+
+// CreateDecoder creates a decoder able to decode the content of the track.
+func (t *TrackG722) CreateDecoder() *rtpsimpleaudio.Decoder {
+	d := &rtpsimpleaudio.Decoder{
+		SampleRate: 8000,
+	}
+	d.Init()
+	return d
 }
