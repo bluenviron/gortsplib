@@ -1,4 +1,4 @@
-package gortsplib //nolint:dupl
+package gortsplib
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
+
+	"github.com/aler9/gortsplib/pkg/rtplpcm"
 )
 
 // TrackLPCM is an uncompressed, Linear PCM track.
@@ -112,4 +114,27 @@ func (t *TrackLPCM) clone() Track {
 		ChannelCount: t.ChannelCount,
 		trackBase:    t.trackBase,
 	}
+}
+
+// CreateDecoder creates a decoder able to decode the content of the track.
+func (t *TrackLPCM) CreateDecoder() *rtplpcm.Decoder {
+	d := &rtplpcm.Decoder{
+		BitDepth:     t.BitDepth,
+		SampleRate:   t.SampleRate,
+		ChannelCount: t.ChannelCount,
+	}
+	d.Init()
+	return d
+}
+
+// CreateEncoder creates an encoder able to encode the content of the track.
+func (t *TrackLPCM) CreateEncoder() *rtplpcm.Encoder {
+	e := &rtplpcm.Encoder{
+		PayloadType:  t.PayloadType,
+		BitDepth:     t.BitDepth,
+		SampleRate:   t.SampleRate,
+		ChannelCount: t.ChannelCount,
+	}
+	e.Init()
+	return e
 }

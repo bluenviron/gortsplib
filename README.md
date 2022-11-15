@@ -51,7 +51,7 @@ Features:
     * Audio
       * G722
       * LPCM
-      * MPEG4-Audio (AAC)
+      * MPEG4-audio (AAC)
       * Opus
       * PCMA
       * PCMU
@@ -73,6 +73,7 @@ Features:
 * [client-read-codec-h264](examples/client-read-codec-h264/main.go)
 * [client-read-codec-h264-convert-to-jpeg](examples/client-read-codec-h264-convert-to-jpeg/main.go)
 * [client-read-codec-h264-save-to-disk](examples/client-read-codec-h264-save-to-disk/main.go)
+* [client-read-codec-lpcm](examples/client-read-codec-lpcm/main.go)
 * [client-read-codec-mpeg4audio](examples/client-read-codec-mpeg4audio/main.go)
 * [client-read-codec-opus](examples/client-read-codec-opus/main.go)
 * [client-read-codec-pcma](examples/client-read-codec-pcma/main.go)

@@ -82,11 +82,9 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 }
 
 // Encode encodes AUs into RTP/MPEG4-audio packets.
-func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) Encode(aus [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte
-
-	pts := firstPTS
 
 	// split AUs into batches
 	for _, au := range aus {
@@ -119,18 +117,18 @@ func (e *Encoder) Encode(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, e
 	return rets, nil
 }
 
-func (e *Encoder) writeBatch(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) writeBatch(aus [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
 	if len(aus) == 1 {
 		// the AU fits into a single RTP packet
 		if len(aus[0]) < e.PayloadMaxSize {
-			return e.writeAggregated(aus, firstPTS)
+			return e.writeAggregated(aus, pts)
 		}
 
 		// split the AU into multiple fragmentation packet
-		return e.writeFragmented(aus[0], firstPTS)
+		return e.writeFragmented(aus[0], pts)
 	}
 
-	return e.writeAggregated(aus, firstPTS)
+	return e.writeAggregated(aus, pts)
 }
 
 func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
@@ -225,7 +223,7 @@ func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 	return ret
 }
 
-func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) writeAggregated(aus [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
 	payload := make([]byte, e.lenAggregated(aus, nil))
 
 	// AU-headers
@@ -262,7 +260,7 @@ func (e *Encoder) writeAggregated(aus [][]byte, firstPTS time.Duration) ([]*rtp.
 			Version:        rtpVersion,
 			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      e.encodeTimestamp(firstPTS),
+			Timestamp:      e.encodeTimestamp(pts),
 			SSRC:           *e.SSRC,
 			Marker:         true,
 		},
