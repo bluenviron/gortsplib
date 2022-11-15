@@ -58,32 +58,6 @@ var cases = []struct {
 		},
 	},
 	{
-		"negative timestamp",
-		[][]byte{
-			mergeBytes(
-				[]byte{0x05},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
-			),
-		},
-		-20 * time.Millisecond,
-		[]*rtp.Packet{
-			{
-				Header: rtp.Header{
-					Version:        2,
-					Marker:         true,
-					PayloadType:    96,
-					SequenceNumber: 17645,
-					Timestamp:      2289524557,
-					SSRC:           0x9dbb7812,
-				},
-				Payload: mergeBytes(
-					[]byte{0x05},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
-				),
-			},
-		},
-	},
-	{
 		"fragmented",
 		[][]byte{
 			mergeBytes(

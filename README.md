@@ -43,9 +43,10 @@ Features:
     * Compute and provide SSRC, RTP-Info to clients
     * Generate RTCP sender reports
 * Utilities
-  * Encode and decode codec-specific frames to/from RTP packets. The following codecs are supported:
+  * Encode and decode codec-specific frames into/from RTP packets. The following codecs are supported:
     * Video
       * H264
+      * H265
       * VP8
       * VP9
     * Audio
@@ -73,6 +74,7 @@ Features:
 * [client-read-codec-h264](examples/client-read-codec-h264/main.go)
 * [client-read-codec-h264-convert-to-jpeg](examples/client-read-codec-h264-convert-to-jpeg/main.go)
 * [client-read-codec-h264-save-to-disk](examples/client-read-codec-h264-save-to-disk/main.go)
+* [client-read-codec-h265](examples/client-read-codec-h265/main.go)
 * [client-read-codec-lpcm](examples/client-read-codec-lpcm/main.go)
 * [client-read-codec-mpeg4audio](examples/client-read-codec-mpeg4audio/main.go)
 * [client-read-codec-opus](examples/client-read-codec-opus/main.go)
@@ -86,6 +88,7 @@ Features:
 * [client-read-republish](examples/client-read-republish/main.go)
 * [client-publish-codec-g722](examples/client-publish-codec-g722/main.go)
 * [client-publish-codec-h264](examples/client-publish-codec-h264/main.go)
+* [client-publish-codec-h265](examples/client-publish-codec-h265/main.go)
 * [client-publish-codec-lpcm](examples/client-publish-codec-lpcm/main.go)
 * [client-publish-codec-mpeg4audio](examples/client-publish-codec-mpeg4audio/main.go)
 * [client-publish-codec-opus](examples/client-publish-codec-opus/main.go)
