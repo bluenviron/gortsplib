@@ -7,7 +7,7 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtph264"
 )
 
 // This example shows how to
@@ -79,10 +79,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := &rtph264.Decoder{
-		PacketizationMode: h264track.PacketizationMode,
-	}
-	rtpDec.Init()
+	rtpDec := h264track.CreateDecoder()
 
 	// setup H264->MPEGTS muxer
 	mpegtsMuxer, err := newMPEGTSMuxer(h264track.SafeSPS(), h264track.SafePPS())

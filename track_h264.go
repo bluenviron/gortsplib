@@ -10,7 +10,7 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/pkg/rtph264"
+	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtph264"
 )
 
 // TrackH264 is a H264 track.

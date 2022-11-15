@@ -9,7 +9,7 @@ import (
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
-	"github.com/aler9/gortsplib/pkg/rtpmpeg4audio"
+	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpmpeg4audio"
 )
 
 // TrackMPEG4Audio is a MPEG-4 audio track.

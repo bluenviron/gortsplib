@@ -6,7 +6,7 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/pkg/rtpsimpleaudio"
+	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpsimpleaudio"
 )
 
 // TrackPCMA is a PCMA track.

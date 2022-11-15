@@ -7,7 +7,7 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/pkg/rtplpcm"
+	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtplpcm"
 )
 
 // TrackLPCM is an uncompressed, Linear PCM track.
