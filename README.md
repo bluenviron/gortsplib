@@ -29,7 +29,6 @@ Features:
     * Switch transport protocol automatically
     * Pause without disconnecting from the server
     * Generate RTCP sender reports
-
 * Server
   * Handle requests from clients
   * Sessions and connections are independent
@@ -43,7 +42,6 @@ Features:
     * Write TLS-encrypted streams
     * Compute and provide SSRC, RTP-Info to clients
     * Generate RTCP sender reports
-
 * Utilities
   * Encode and decode codec-specific frames to/from RTP packets. The following codecs are supported:
     * Video

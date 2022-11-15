@@ -2,6 +2,7 @@ package rtph264
 
 import (
 	"crypto/rand"
+	"fmt"
 	"time"
 
 	"github.com/pion/rtp"
@@ -38,6 +39,8 @@ type Encoder struct {
 	// It defaults to 1460.
 	PayloadMaxSize int
 
+	PacketizationMode int
+
 	sequenceNumber uint16
 }
 
@@ -68,6 +71,10 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 
 // Encode encodes NALUs into RTP/H264 packets.
 func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
+	if e.PacketizationMode >= 2 {
+		return nil, fmt.Errorf("PacketizationMode >= 2 is not supported")
+	}
+
 	var rets []*rtp.Packet
 	var batch [][]byte
 

@@ -71,3 +71,13 @@ func (t *TrackPCMA) CreateDecoder() *rtpsimpleaudio.Decoder {
 	d.Init()
 	return d
 }
+
+// CreateEncoder creates an encoder able to encode the content of the track.
+func (t *TrackPCMA) CreateEncoder() *rtpsimpleaudio.Encoder {
+	e := &rtpsimpleaudio.Encoder{
+		PayloadType: 8,
+		SampleRate:  8000,
+	}
+	e.Init()
+	return e
+}

@@ -189,3 +189,16 @@ func (t *TrackMPEG4Audio) CreateDecoder() *rtpmpeg4audio.Decoder {
 	d.Init()
 	return d
 }
+
+// CreateEncoder creates an encoder able to encode the content of the track.
+func (t *TrackMPEG4Audio) CreateEncoder() *rtpmpeg4audio.Encoder {
+	e := &rtpmpeg4audio.Encoder{
+		PayloadType:      t.PayloadType,
+		SampleRate:       t.Config.SampleRate,
+		SizeLength:       t.SizeLength,
+		IndexLength:      t.IndexLength,
+		IndexDeltaLength: t.IndexDeltaLength,
+	}
+	e.Init()
+	return e
+}

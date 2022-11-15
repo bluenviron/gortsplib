@@ -71,3 +71,13 @@ func (t *TrackG722) CreateDecoder() *rtpsimpleaudio.Decoder {
 	d.Init()
 	return d
 }
+
+// CreateEncoder creates an encoder able to encode the content of the track.
+func (t *TrackG722) CreateEncoder() *rtpsimpleaudio.Encoder {
+	e := &rtpsimpleaudio.Encoder{
+		PayloadType: 9,
+		SampleRate:  8000,
+	}
+	e.Init()
+	return e
+}

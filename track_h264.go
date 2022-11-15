@@ -174,6 +174,16 @@ func (t *TrackH264) CreateDecoder() *rtph264.Decoder {
 	return d
 }
 
+// CreateEncoder creates an encoder able to encode the content of the track.
+func (t *TrackH264) CreateEncoder() *rtph264.Encoder {
+	e := &rtph264.Encoder{
+		PayloadType:       t.PayloadType,
+		PacketizationMode: t.PacketizationMode,
+	}
+	e.Init()
+	return e
+}
+
 // SafeSPS returns the track SPS.
 func (t *TrackH264) SafeSPS() []byte {
 	t.mutex.RLock()
