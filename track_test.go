@@ -162,37 +162,6 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"aac uppercase",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "audio",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"96"},
-				},
-				Attributes: []psdp.Attribute{
-					{
-						Key:   "rtpmap",
-						Value: "96 MPEG4-GENERIC/48000/2",
-					},
-					{
-						Key:   "fmtp",
-						Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
-					},
-				},
-			},
-			&TrackMPEG4Audio{
-				PayloadType: 96,
-				Config: &mpeg4audio.Config{
-					Type:         mpeg4audio.ObjectTypeAACLC,
-					SampleRate:   48000,
-					ChannelCount: 2,
-				},
-				SizeLength:       13,
-				IndexLength:      3,
-				IndexDeltaLength: 3,
-			},
-		},
-		{
 			"aac vlc rtsp server",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{

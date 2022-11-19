@@ -29,13 +29,13 @@ func newTrackLPCMFromMediaDescription(
 ) {
 	var bitDepth int
 	switch codec {
-	case "L8":
+	case "l8":
 		bitDepth = 8
 
-	case "L16":
+	case "l16":
 		bitDepth = 16
 
-	case "L24":
+	case "l24":
 		bitDepth = 24
 	}
 

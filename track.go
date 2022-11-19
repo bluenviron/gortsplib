@@ -93,6 +93,7 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 		payloadType := uint8(tmp)
 
 		codec, clock := getCodecAndClock(md.Attributes, payloadType)
+		codec = strings.ToLower(codec)
 
 		switch {
 		case md.MediaName.Media == "video":
@@ -103,16 +104,16 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 			case payloadType == 32:
 				return newTrackMPEG2VideoFromMediaDescription(control)
 
-			case codec == "H264" && clock == "90000":
+			case codec == "h264" && clock == "90000":
 				return newTrackH264FromMediaDescription(control, payloadType, md)
 
-			case codec == "H265" && clock == "90000":
+			case codec == "h265" && clock == "90000":
 				return newTrackH265FromMediaDescription(control, payloadType, md)
 
-			case codec == "VP8" && clock == "90000":
+			case codec == "vp8" && clock == "90000":
 				return newTrackVP8FromMediaDescription(control, payloadType, md)
 
-			case codec == "VP9" && clock == "90000":
+			case codec == "vp9" && clock == "90000":
 				return newTrackVP9FromMediaDescription(control, payloadType, md)
 			}
 
@@ -130,13 +131,13 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 			case payloadType == 14:
 				return newTrackMPEG2AudioFromMediaDescription(control)
 
-			case codec == "L8", codec == "L16", codec == "L24":
+			case codec == "l8", codec == "l16", codec == "l24":
 				return newTrackLPCMFromMediaDescription(control, payloadType, codec, clock)
 
-			case strings.ToLower(codec) == "mpeg4-generic":
+			case codec == "mpeg4-generic":
 				return newTrackMPEG4AudioFromMediaDescription(control, payloadType, md)
 
-			case codec == "VORBIS":
+			case codec == "vorbis":
 				return newTrackVorbisFromMediaDescription(control, payloadType, clock, md)
 
 			case codec == "opus":
