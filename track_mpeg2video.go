@@ -20,6 +20,11 @@ func newTrackMPEG2VideoFromMediaDescription(
 	}, nil
 }
 
+// String returns the track codec.
+func (t *TrackMPEG2Video) String() string {
+	return "MPEG2-video"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackMPEG2Video) ClockRate() int {
 	return 90000

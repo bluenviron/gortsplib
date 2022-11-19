@@ -13,6 +13,7 @@ func TestTrackOpusAttributes(t *testing.T) {
 		SampleRate:   48000,
 		ChannelCount: 2,
 	}
+	require.Equal(t, "Opus", track.String())
 	require.Equal(t, 48000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

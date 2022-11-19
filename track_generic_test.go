@@ -7,6 +7,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTrackGenericAttributes(t *testing.T) {
+	track := &TrackGeneric{
+		Media: "video",
+		Payloads: []TrackGenericPayload{
+			{
+				Type:   98,
+				RTPMap: "H265/90000",
+				FMTP: "profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+					"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
+			},
+			{
+				Type: 100,
+			},
+		},
+	}
+	err := track.Init()
+	require.NoError(t, err)
+
+	require.Equal(t, "Generic", track.String())
+	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, "", track.GetControl())
+}
+
 func TestTrackGenericClone(t *testing.T) {
 	track := &TrackGeneric{
 		Media: "video",

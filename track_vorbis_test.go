@@ -14,6 +14,7 @@ func TestTrackVorbisAttributes(t *testing.T) {
 		ChannelCount:  2,
 		Configuration: []byte{0x01, 0x02, 0x03, 0x04},
 	}
+	require.Equal(t, "Vorbis", track.String())
 	require.Equal(t, 48000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

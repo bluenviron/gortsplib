@@ -7,8 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackVP9ttributes(t *testing.T) {
+func TestTrackVP9Attributes(t *testing.T) {
 	track := &TrackVP9{}
+	require.Equal(t, "VP9", track.String())
 	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

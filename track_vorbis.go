@@ -90,6 +90,11 @@ func newTrackVorbisFromMediaDescription(
 	return t, nil
 }
 
+// String returns the track codec.
+func (t *TrackVorbis) String() string {
+	return "Vorbis"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackVorbis) ClockRate() int {
 	return t.SampleRate

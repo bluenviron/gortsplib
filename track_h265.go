@@ -98,6 +98,11 @@ func (t *TrackH265) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 	return nil
 }
 
+// String returns the track codec.
+func (t *TrackH265) String() string {
+	return "H265"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackH265) ClockRate() int {
 	return 90000

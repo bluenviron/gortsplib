@@ -20,6 +20,11 @@ func newTrackJPEGFromMediaDescription(
 	}, nil
 }
 
+// String returns the track codec.
+func (t *TrackJPEG) String() string {
+	return "JPEG"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackJPEG) ClockRate() int {
 	return 90000

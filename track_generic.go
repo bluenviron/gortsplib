@@ -119,6 +119,11 @@ func (t *TrackGeneric) Init() error {
 	return nil
 }
 
+// String returns the track codec.
+func (t *TrackGeneric) String() string {
+	return "Generic"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackGeneric) ClockRate() int {
 	return t.clockRate

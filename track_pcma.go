@@ -31,6 +31,11 @@ func newTrackPCMAFromMediaDescription(
 	}, nil
 }
 
+// String returns the track codec.
+func (t *TrackPCMA) String() string {
+	return "PCMA"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackPCMA) ClockRate() int {
 	return 8000

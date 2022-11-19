@@ -65,6 +65,11 @@ func newTrackLPCMFromMediaDescription(
 	}, nil
 }
 
+// String returns the track codec.
+func (t *TrackLPCM) String() string {
+	return "LPCM"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackLPCM) ClockRate() int {
 	return t.SampleRate

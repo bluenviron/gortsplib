@@ -9,6 +9,7 @@ import (
 
 func TestTrackMPEG2VideoAttributes(t *testing.T) {
 	track := &TrackMPEG2Video{}
+	require.Equal(t, "MPEG2-video", track.String())
 	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

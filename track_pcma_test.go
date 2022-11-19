@@ -9,6 +9,7 @@ import (
 
 func TestTrackPCMAAttributes(t *testing.T) {
 	track := &TrackPCMA{}
+	require.Equal(t, "PCMA", track.String())
 	require.Equal(t, 8000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

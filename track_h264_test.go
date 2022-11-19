@@ -14,6 +14,7 @@ func TestTrackH264Attributes(t *testing.T) {
 		PPS:               []byte{0x03, 0x04},
 		PacketizationMode: 1,
 	}
+	require.Equal(t, "H264", track.String())
 	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 	require.Equal(t, []byte{0x01, 0x02}, track.SafeSPS())

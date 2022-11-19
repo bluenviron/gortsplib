@@ -9,6 +9,7 @@ import (
 
 func TestTrackG722Attributes(t *testing.T) {
 	track := &TrackG722{}
+	require.Equal(t, "G722", track.String())
 	require.Equal(t, 8000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

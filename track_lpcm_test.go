@@ -14,6 +14,7 @@ func TestTrackLPCMAttributes(t *testing.T) {
 		SampleRate:   44100,
 		ChannelCount: 2,
 	}
+	require.Equal(t, "LPCM", track.String())
 	require.Equal(t, 44100, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

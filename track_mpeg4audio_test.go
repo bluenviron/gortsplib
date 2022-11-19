@@ -21,6 +21,7 @@ func TestTrackMPEG4AudioAttributes(t *testing.T) {
 		IndexLength:      3,
 		IndexDeltaLength: 3,
 	}
+	require.Equal(t, "MPEG4-audio", track.String())
 	require.Equal(t, 48000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

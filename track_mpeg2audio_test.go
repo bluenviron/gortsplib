@@ -9,6 +9,7 @@ import (
 
 func TestTrackMPEG2AudioAttributes(t *testing.T) {
 	track := &TrackMPEG2Audio{}
+	require.Equal(t, "MPEG2-audio", track.String())
 	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

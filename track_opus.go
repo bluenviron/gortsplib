@@ -49,6 +49,11 @@ func newTrackOpusFromMediaDescription(
 	}, nil
 }
 
+// String returns the track codec.
+func (t *TrackOpus) String() string {
+	return "Opus"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackOpus) ClockRate() int {
 	return t.SampleRate

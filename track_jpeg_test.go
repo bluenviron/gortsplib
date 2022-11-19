@@ -9,6 +9,7 @@ import (
 
 func TestTrackJPEGAttributes(t *testing.T) {
 	track := &TrackJPEG{}
+	require.Equal(t, "JPEG", track.String())
 	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

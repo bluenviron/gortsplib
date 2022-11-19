@@ -80,6 +80,11 @@ func (t *TrackVP8) fillParamsFromMediaDescription(md *psdp.MediaDescription) err
 	return nil
 }
 
+// String returns the track codec.
+func (t *TrackVP8) String() string {
+	return "VP8"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackVP8) ClockRate() int {
 	return 90000

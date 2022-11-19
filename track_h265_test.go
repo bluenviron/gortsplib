@@ -14,6 +14,7 @@ func TestTrackH265Attributes(t *testing.T) {
 		SPS:         []byte{0x03, 0x04},
 		PPS:         []byte{0x05, 0x06},
 	}
+	require.Equal(t, "H265", track.String())
 	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 	require.Equal(t, []byte{0x01, 0x02}, track.SafeVPS())

@@ -89,6 +89,11 @@ func (t *TrackVP9) fillParamsFromMediaDescription(md *psdp.MediaDescription) err
 	return nil
 }
 
+// String returns the track codec.
+func (t *TrackVP9) String() string {
+	return "VP9"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackVP9) ClockRate() int {
 	return 90000

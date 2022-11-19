@@ -97,6 +97,11 @@ func (t *TrackH264) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 	return fmt.Errorf("sprop-parameter-sets is missing (%v)", v)
 }
 
+// String returns the track codec.
+func (t *TrackH264) String() string {
+	return "H264"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackH264) ClockRate() int {
 	return 90000

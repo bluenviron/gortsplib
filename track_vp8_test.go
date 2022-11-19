@@ -9,6 +9,7 @@ import (
 
 func TestTrackVP8ttributes(t *testing.T) {
 	track := &TrackVP8{}
+	require.Equal(t, "VP8", track.String())
 	require.Equal(t, 90000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

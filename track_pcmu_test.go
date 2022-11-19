@@ -9,6 +9,7 @@ import (
 
 func TestTrackPCMUAttributes(t *testing.T) {
 	track := &TrackPCMU{}
+	require.Equal(t, "PCMU", track.String())
 	require.Equal(t, 8000, track.ClockRate())
 	require.Equal(t, "", track.GetControl())
 }

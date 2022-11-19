@@ -31,6 +31,11 @@ func newTrackG722FromMediaDescription(
 	}, nil
 }
 
+// String returns the track codec.
+func (t *TrackG722) String() string {
+	return "G722"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackG722) ClockRate() int {
 	return 8000

@@ -12,6 +12,9 @@ import (
 
 // Track is a RTSP track.
 type Track interface {
+	// String returns the track codec.
+	String() string
+
 	// ClockRate returns the track clock rate.
 	ClockRate() int
 

@@ -20,6 +20,11 @@ func newTrackMPEG2AudioFromMediaDescription(
 	}, nil
 }
 
+// String returns the track codec.
+func (t *TrackMPEG2Audio) String() string {
+	return "MPEG2-audio"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackMPEG2Audio) ClockRate() int {
 	return 90000

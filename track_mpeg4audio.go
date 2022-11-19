@@ -104,6 +104,11 @@ func newTrackMPEG4AudioFromMediaDescription(
 	return t, nil
 }
 
+// String returns the track codec.
+func (t *TrackMPEG4Audio) String() string {
+	return "MPEG4-audio"
+}
+
 // ClockRate returns the track clock rate.
 func (t *TrackMPEG4Audio) ClockRate() int {
 	return t.Config.SampleRate
