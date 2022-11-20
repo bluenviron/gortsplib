@@ -46,8 +46,8 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	// allow someone else to publish
 	sh.publisher = nil
+	sh.mpegtsMuxer.close()
 }
 
 // called after receiving an ANNOUNCE request.
@@ -58,9 +58,8 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	defer sh.mutex.Unlock()
 
 	if sh.publisher != nil {
-		return &base.Response{
-			StatusCode: base.StatusBadRequest,
-		}, fmt.Errorf("someone is already publishing")
+		sh.publisher.Close()
+		sh.mpegtsMuxer.close()
 	}
 
 	// find the H264 track
