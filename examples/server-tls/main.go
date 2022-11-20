@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
 	"log"
 	"sync"
 
@@ -78,10 +77,10 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
+	// disconnect existing publisher
 	if sh.stream != nil {
-		return &base.Response{
-			StatusCode: base.StatusBadRequest,
-		}, fmt.Errorf("someone is already publishing")
+		sh.stream.Close()
+		sh.publisher.Close()
 	}
 
 	// create the stream and save the publisher
