@@ -2374,7 +2374,7 @@ func TestClientReadSeek(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, headers.Range{
 			Value: &headers.RangeNPT{
-				Start: headers.RangeNPTTime(5500 * time.Millisecond),
+				Start: 5500 * time.Millisecond,
 			},
 		}, ra)
 
@@ -2400,7 +2400,7 @@ func TestClientReadSeek(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, headers.Range{
 			Value: &headers.RangeNPT{
-				Start: headers.RangeNPTTime(6400 * time.Millisecond),
+				Start: 6400 * time.Millisecond,
 			},
 		}, ra)
 
@@ -2443,14 +2443,14 @@ func TestClientReadSeek(t *testing.T) {
 
 	_, err = c.Play(&headers.Range{
 		Value: &headers.RangeNPT{
-			Start: headers.RangeNPTTime(5500 * time.Millisecond),
+			Start: 5500 * time.Millisecond,
 		},
 	})
 	require.NoError(t, err)
 
 	_, err = c.Seek(&headers.Range{
 		Value: &headers.RangeNPT{
-			Start: headers.RangeNPTTime(6400 * time.Millisecond),
+			Start: 6400 * time.Millisecond,
 		},
 	})
 	require.NoError(t, err)

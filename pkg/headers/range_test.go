@@ -63,9 +63,9 @@ var casesRange = []struct {
 		base.HeaderValue{`npt=123.45-125`},
 		Range{
 			Value: &RangeNPT{
-				Start: RangeNPTTime(123.45 * float64(time.Second)),
-				End: func() *RangeNPTTime {
-					v := RangeNPTTime(125 * time.Second)
+				Start: time.Duration(123.45 * float64(time.Second)),
+				End: func() *time.Duration {
+					v := 125 * time.Second
 					return &v
 				}(),
 			},
@@ -77,7 +77,7 @@ var casesRange = []struct {
 		base.HeaderValue{`npt=43535.3-`},
 		Range{
 			Value: &RangeNPT{
-				Start: RangeNPTTime(float64(12*3600+5*60+35.3) * float64(time.Second)),
+				Start: time.Duration(float64(12*3600+5*60+35.3) * float64(time.Second)),
 			},
 		},
 	},
@@ -87,9 +87,9 @@ var casesRange = []struct {
 		base.HeaderValue{`clock=19961108T142300Z-19961108T143520Z`},
 		Range{
 			Value: &RangeUTC{
-				Start: RangeUTCTime(time.Date(1996, 11, 8, 14, 23, 0, 0, time.UTC)),
-				End: func() *RangeUTCTime {
-					v := RangeUTCTime(time.Date(1996, 11, 8, 14, 35, 20, 0, time.UTC))
+				Start: time.Date(1996, 11, 8, 14, 23, 0, 0, time.UTC),
+				End: func() *time.Time {
+					v := time.Date(1996, 11, 8, 14, 35, 20, 0, time.UTC)
 					return &v
 				}(),
 			},
@@ -101,7 +101,7 @@ var casesRange = []struct {
 		base.HeaderValue{`clock=19960213T143205Z-`},
 		Range{
 			Value: &RangeUTC{
-				Start: RangeUTCTime(time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC)),
+				Start: time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC),
 			},
 		},
 	},
@@ -111,10 +111,10 @@ var casesRange = []struct {
 		base.HeaderValue{`clock=19960213T143205Z-;time=19970123T143720Z`},
 		Range{
 			Value: &RangeUTC{
-				Start: RangeUTCTime(time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC)),
+				Start: time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC),
 			},
-			Time: func() *RangeUTCTime {
-				v := RangeUTCTime(time.Date(1997, 1, 23, 14, 37, 20, 0, time.UTC))
+			Time: func() *time.Time {
+				v := time.Date(1997, 1, 23, 14, 37, 20, 0, time.UTC)
 				return &v
 			}(),
 		},

@@ -129,10 +129,7 @@ func (r RangeSMPTE) marshal() string {
 	return ret
 }
 
-// RangeNPTTime is a time expressed in NPT unit.
-type RangeNPTTime time.Duration
-
-func (t *RangeNPTTime) unmarshal(s string) error {
+func unmarshalRangeNPTTime(d *time.Duration, s string) error {
 	parts := strings.Split(s, ":")
 	if len(parts) > 3 {
 		return fmt.Errorf("invalid NPT time (%v)", s)
@@ -164,31 +161,31 @@ func (t *RangeNPTTime) unmarshal(s string) error {
 	}
 	seconds := tmp
 
-	*t = RangeNPTTime(time.Duration(seconds*float64(time.Second)) +
-		time.Duration(mins*60+hours*3600)*time.Second)
+	*d = time.Duration(seconds*float64(time.Second)) +
+		time.Duration(mins*60+hours*3600)*time.Second
 
 	return nil
 }
 
-func (t RangeNPTTime) marshal() string {
-	return strconv.FormatFloat(time.Duration(t).Seconds(), 'f', -1, 64)
+func marshalRangeNPTTime(d time.Duration) string {
+	return strconv.FormatFloat(d.Seconds(), 'f', -1, 64)
 }
 
-// RangeNPT is a range expressed in NPT unit.
+// RangeNPT is a range expressed in NPT units.
 type RangeNPT struct {
-	Start RangeNPTTime
-	End   *RangeNPTTime
+	Start time.Duration
+	End   *time.Duration
 }
 
 func (r *RangeNPT) unmarshal(start string, end string) error {
-	err := r.Start.unmarshal(start)
+	err := unmarshalRangeNPTTime(&r.Start, start)
 	if err != nil {
 		return err
 	}
 
 	if end != "" {
-		var v RangeNPTTime
-		err := v.unmarshal(end)
+		var v time.Duration
+		err := unmarshalRangeNPTTime(&v, end)
 		if err != nil {
 			return err
 		}
@@ -199,45 +196,41 @@ func (r *RangeNPT) unmarshal(start string, end string) error {
 }
 
 func (r RangeNPT) marshal() string {
-	ret := "npt=" + r.Start.marshal() + "-"
+	ret := "npt=" + marshalRangeNPTTime(r.Start) + "-"
 	if r.End != nil {
-		ret += r.End.marshal()
+		ret += marshalRangeNPTTime(*r.End)
 	}
 	return ret
 }
 
-// RangeUTCTime is a time expressed in UTC unit.
-type RangeUTCTime time.Time
-
-func (t *RangeUTCTime) unmarshal(s string) error {
+func unmarshalRangeUTCTime(t *time.Time, s string) error {
 	tmp, err := time.Parse("20060102T150405Z", s)
 	if err != nil {
 		return err
 	}
-
-	*t = RangeUTCTime(tmp)
+	*t = tmp
 	return nil
 }
 
-func (t RangeUTCTime) marshal() string {
-	return time.Time(t).Format("20060102T150405Z")
+func marshalRangeUTCTime(t time.Time) string {
+	return t.Format("20060102T150405Z")
 }
 
-// RangeUTC is a range expressed in UTC unit.
+// RangeUTC is a range expressed in UTC units.
 type RangeUTC struct {
-	Start RangeUTCTime
-	End   *RangeUTCTime
+	Start time.Time
+	End   *time.Time
 }
 
 func (r *RangeUTC) unmarshal(start string, end string) error {
-	err := r.Start.unmarshal(start)
+	err := unmarshalRangeUTCTime(&r.Start, start)
 	if err != nil {
 		return err
 	}
 
 	if end != "" {
-		var v RangeUTCTime
-		err := v.unmarshal(end)
+		var v time.Time
+		err := unmarshalRangeUTCTime(&v, end)
 		if err != nil {
 			return err
 		}
@@ -248,9 +241,9 @@ func (r *RangeUTC) unmarshal(start string, end string) error {
 }
 
 func (r RangeUTC) marshal() string {
-	ret := "clock=" + r.Start.marshal() + "-"
+	ret := "clock=" + marshalRangeUTCTime(r.Start) + "-"
 	if r.End != nil {
-		ret += r.End.marshal()
+		ret += marshalRangeUTCTime(*r.End)
 	}
 	return ret
 }
@@ -279,7 +272,7 @@ type Range struct {
 	Value RangeValue
 
 	// time at which the operation is to be made effective.
-	Time *RangeUTCTime
+	Time *time.Time
 }
 
 // Unmarshal decodes a Range header.
@@ -334,13 +327,13 @@ func (h *Range) Unmarshal(v base.HeaderValue) error {
 			h.Value = s
 
 		case "time":
-			t := &RangeUTCTime{}
-			err := t.unmarshal(v)
+			var t time.Time
+			err := unmarshalRangeUTCTime(&t, v)
 			if err != nil {
 				return err
 			}
 
-			h.Time = t
+			h.Time = &t
 		}
 	}
 
@@ -355,7 +348,7 @@ func (h *Range) Unmarshal(v base.HeaderValue) error {
 func (h Range) Marshal() base.HeaderValue {
 	v := h.Value.marshal()
 	if h.Time != nil {
-		v += ";time=" + h.Time.marshal()
+		v += ";time=" + marshalRangeUTCTime(*h.Time)
 	}
 	return base.HeaderValue{v}
 }

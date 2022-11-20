@@ -1656,7 +1656,7 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 	if ra == nil {
 		ra = &headers.Range{
 			Value: &headers.RangeNPT{
-				Start: headers.RangeNPTTime(0),
+				Start: 0,
 			},
 		}
 	}
