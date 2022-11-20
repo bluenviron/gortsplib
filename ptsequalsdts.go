@@ -7,7 +7,7 @@ import (
 )
 
 // find IDR NALUs without decoding RTP
-func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
+func rtpH264ContainsIDRorSPSorPPS(pkt *rtp.Packet) bool {
 	if len(pkt.Payload) == 0 {
 		return false
 	}
@@ -15,7 +15,7 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 	typ := h264.NALUType(pkt.Payload[0] & 0x1F)
 
 	switch typ {
-	case h264.NALUTypeIDR:
+	case h264.NALUTypeIDR, h264.NALUTypeSPS, h264.NALUTypePPS:
 		return true
 
 	case 24: // STAP-A
@@ -37,7 +37,8 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 			payload = payload[size:]
 
 			typ = h264.NALUType(nalu[0] & 0x1F)
-			if typ == h264.NALUTypeIDR {
+			switch typ {
+			case h264.NALUTypeIDR, h264.NALUTypeSPS, h264.NALUTypePPS:
 				return true
 			}
 		}
@@ -55,7 +56,11 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 		}
 
 		typ := h264.NALUType(pkt.Payload[1] & 0x1F)
-		return (typ == h264.NALUTypeIDR)
+		switch typ {
+		case h264.NALUTypeIDR, h264.NALUTypeSPS, h264.NALUTypePPS:
+			return true
+		}
+		return false
 
 	default:
 		return false
@@ -64,7 +69,7 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 
 func ptsEqualsDTS(track Track, pkt *rtp.Packet) bool {
 	if _, ok := track.(*TrackH264); ok {
-		return rtpH264ContainsIDR(pkt)
+		return rtpH264ContainsIDRorSPSorPPS(pkt)
 	}
 
 	return true
