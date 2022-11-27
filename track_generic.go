@@ -110,12 +110,7 @@ func newTrackGenericFromMediaDescription(
 
 // Init initializes a TrackGeneric
 func (t *TrackGeneric) Init() error {
-	var err error
-	t.clockRate, err = findClockRate(t)
-	if err != nil {
-		return fmt.Errorf("unable to get clock rate: %s", err)
-	}
-
+	t.clockRate, _ = findClockRate(t)
 	return nil
 }
 

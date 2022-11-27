@@ -100,16 +100,20 @@ func (st *ServerStream) rtpInfo(trackID int, now time.Time) (uint16, uint32, boo
 		return 0, 0, false
 	}
 
+	clockRate := st.tracks[trackID].ClockRate()
+	if clockRate == 0 {
+		return 0, 0, false
+	}
+
 	// sequence number of the first packet of the stream
 	seq := track.lastSequenceNumber + 1
 
 	// RTP timestamp corresponding to the time value in
 	// the Range response header.
 	// remove a small quantity in order to avoid DTS > PTS
-	cr := st.tracks[trackID].ClockRate()
 	ts := uint32(uint64(track.lastTimeRTP) +
-		uint64(now.Sub(track.lastTimeNTP).Seconds()*float64(cr)) -
-		uint64(cr)/10)
+		uint64(now.Sub(track.lastTimeNTP).Seconds()*float64(clockRate)) -
+		uint64(clockRate)/10)
 
 	return seq, ts, true
 }

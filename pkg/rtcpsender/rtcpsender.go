@@ -80,6 +80,10 @@ func (rs *RTCPSender) report(ts time.Time) rtcp.Packet {
 		return nil
 	}
 
+	if rs.clockRate == 0 {
+		return nil
+	}
+
 	return &rtcp.SenderReport{
 		SSRC: *rs.senderSSRC,
 		NTPTime: func() uint64 {

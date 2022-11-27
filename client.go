@@ -1229,7 +1229,7 @@ func (c *Client) doDescribe(u *url.URL) (Tracks, *url.URL, *base.Response, error
 	}
 
 	var tracks Tracks
-	sd, err := tracks.Unmarshal(res.Body, true)
+	sd, err := tracks.Unmarshal(res.Body)
 	if err != nil {
 		return nil, nil, nil, err
 	}

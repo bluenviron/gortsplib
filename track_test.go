@@ -600,68 +600,6 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 			"no media formats found",
 		},
 		{
-			"no rtpmap",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "video",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"90"},
-				},
-			},
-			"unable to get clock rate: attribute 'rtpmap' not found",
-		},
-		{
-			"invalid clockrate 1",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "video",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"96"},
-				},
-				Attributes: []psdp.Attribute{
-					{
-						Key:   "rtpmap",
-						Value: "97 mpeg4-generic/48000/2",
-					},
-				},
-			},
-			"unable to get clock rate: attribute 'rtpmap' not found",
-		},
-		{
-			"invalid clockrate 2",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "video",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"96"},
-				},
-				Attributes: []psdp.Attribute{
-					{
-						Key:   "rtpmap",
-						Value: "96 mpeg4-generic",
-					},
-				},
-			},
-			"unable to get clock rate: invalid rtpmap (mpeg4-generic)",
-		},
-		{
-			"invalid clockrate 3",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "video",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"96"},
-				},
-				Attributes: []psdp.Attribute{
-					{
-						Key:   "rtpmap",
-						Value: "96 mpeg4-generic/aa",
-					},
-				},
-			},
-			"unable to get clock rate: strconv.ParseInt: parsing \"aa\": invalid syntax",
-		},
-		{
 			"aac missing fmtp",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
@@ -966,7 +904,7 @@ func TestTrackURL(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var tracks Tracks
-			_, err := tracks.Unmarshal(ca.sdp, false)
+			_, err := tracks.Unmarshal(ca.sdp)
 			require.NoError(t, err)
 			ur, err := tracks[0].url(ca.baseURL)
 			require.NoError(t, err)

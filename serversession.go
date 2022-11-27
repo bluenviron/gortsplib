@@ -532,7 +532,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		var tracks Tracks
-		_, err = tracks.Unmarshal(req.Body, false)
+		_, err = tracks.Unmarshal(req.Body)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,

@@ -103,6 +103,10 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 		return nil
 	}
 
+	if rr.clockRate == 0 {
+		return nil
+	}
+
 	report := &rtcp.ReceiverReport{
 		SSRC: rr.receiverSSRC,
 		Reports: []rtcp.ReceptionReport{

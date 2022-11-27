@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	psdp "github.com/pion/sdp/v3"
 
@@ -14,7 +13,7 @@ import (
 type Tracks []Track
 
 // Unmarshal decodes tracks from the SDP format. It returns the decoded SDP.
-func (ts *Tracks) Unmarshal(byts []byte, skipGenericTracksWithoutClockRate bool) (*sdp.SessionDescription, error) {
+func (ts *Tracks) Unmarshal(byts []byte) (*sdp.SessionDescription, error) {
 	var sd sdp.SessionDescription
 	err := sd.Unmarshal(byts)
 	if err != nil {
@@ -26,10 +25,6 @@ func (ts *Tracks) Unmarshal(byts []byte, skipGenericTracksWithoutClockRate bool)
 	for i, md := range sd.MediaDescriptions {
 		t, err := newTrackFromMediaDescription(md)
 		if err != nil {
-			if skipGenericTracksWithoutClockRate &&
-				strings.HasPrefix(err.Error(), "unable to get clock rate") {
-				continue
-			}
 			return nil, fmt.Errorf("unable to parse track %d: %s", i+1, err)
 		}
 
