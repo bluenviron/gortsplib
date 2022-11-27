@@ -25,7 +25,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"8"},
 				},
 			},
-			&TrackPCMA{},
+			&TrackG711{},
 		},
 		{
 			"pcmu",
@@ -36,7 +36,9 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"0"},
 				},
 			},
-			&TrackPCMU{},
+			&TrackG711{
+				MULaw: true,
+			},
 		},
 		{
 			"g722",

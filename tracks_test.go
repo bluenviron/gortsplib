@@ -81,7 +81,8 @@ func TestTracksReadSkipGenericTracksWithoutClockRate(t *testing.T) {
 			PPS:               []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
 			PacketizationMode: 1,
 		},
-		&TrackPCMU{
+		&TrackG711{
+			MULaw: true,
 			trackBase: trackBase{
 				control: "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
 			},

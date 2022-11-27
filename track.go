@@ -122,11 +122,8 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
 
 		case md.MediaName.Media == "audio":
 			switch {
-			case payloadType == 0:
-				return newTrackPCMUFromMediaDescription(control, clock)
-
-			case payloadType == 8:
-				return newTrackPCMAFromMediaDescription(control, clock)
+			case payloadType == 0, payloadType == 8:
+				return newTrackG711FromMediaDescription(control, payloadType, clock)
 
 			case payloadType == 9:
 				return newTrackG722FromMediaDescription(control, clock)

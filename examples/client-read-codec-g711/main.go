@@ -35,9 +35,9 @@ func main() {
 	}
 
 	// find the PCMA track
-	track := func() *gortsplib.TrackPCMA {
+	track := func() *gortsplib.TrackG711 {
 		for _, track := range tracks {
-			if tt, ok := track.(*gortsplib.TrackPCMA); ok {
+			if tt, ok := track.(*gortsplib.TrackG711); ok {
 				return tt
 			}
 		}

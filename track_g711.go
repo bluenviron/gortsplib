@@ -1,4 +1,4 @@
-package gortsplib //nolint:dupl
+package gortsplib
 
 import (
 	"fmt"
@@ -9,22 +9,27 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpsimpleaudio"
 )
 
-// TrackPCMA is a PCMA track.
-type TrackPCMA struct {
+// TrackG711 is a PCMA track.
+type TrackG711 struct {
+	// whether to use mu-law. Otherwise, A-law is used.
+	MULaw bool
+
 	trackBase
 }
 
-func newTrackPCMAFromMediaDescription(
+func newTrackG711FromMediaDescription(
 	control string,
+	payloadType uint8,
 	clock string,
-) (*TrackPCMA, error,
+) (*TrackG711, error,
 ) {
 	tmp := strings.Split(clock, "/")
 	if len(tmp) == 2 && tmp[1] != "1" {
-		return nil, fmt.Errorf("PCMA tracks can have only one channel")
+		return nil, fmt.Errorf("G711 tracks can have only one channel")
 	}
 
-	return &TrackPCMA{
+	return &TrackG711{
+		MULaw: (payloadType == 0),
 		trackBase: trackBase{
 			control: control,
 		},
@@ -32,27 +37,37 @@ func newTrackPCMAFromMediaDescription(
 }
 
 // String returns the track codec.
-func (t *TrackPCMA) String() string {
-	return "PCMA"
+func (t *TrackG711) String() string {
+	return "G711"
 }
 
 // ClockRate returns the track clock rate.
-func (t *TrackPCMA) ClockRate() int {
+func (t *TrackG711) ClockRate() int {
 	return 8000
 }
 
 // MediaDescription returns the track media description in SDP format.
-func (t *TrackPCMA) MediaDescription() *psdp.MediaDescription {
+func (t *TrackG711) MediaDescription() *psdp.MediaDescription {
+	var formats []string
+	var rtpmap string
+	if t.MULaw {
+		formats = []string{"0"}
+		rtpmap = "0 PCMU/8000"
+	} else {
+		formats = []string{"8"}
+		rtpmap = "8 PCMA/8000"
+	}
+
 	return &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:   "audio",
 			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"8"},
+			Formats: formats,
 		},
 		Attributes: []psdp.Attribute{
 			{
 				Key:   "rtpmap",
-				Value: "8 PCMA/8000",
+				Value: rtpmap,
 			},
 			{
 				Key:   "control",
@@ -62,14 +77,15 @@ func (t *TrackPCMA) MediaDescription() *psdp.MediaDescription {
 	}
 }
 
-func (t *TrackPCMA) clone() Track {
-	return &TrackPCMA{
+func (t *TrackG711) clone() Track {
+	return &TrackG711{
+		MULaw:     t.MULaw,
 		trackBase: t.trackBase,
 	}
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.
-func (t *TrackPCMA) CreateDecoder() *rtpsimpleaudio.Decoder {
+func (t *TrackG711) CreateDecoder() *rtpsimpleaudio.Decoder {
 	d := &rtpsimpleaudio.Decoder{
 		SampleRate: 8000,
 	}
@@ -78,9 +94,16 @@ func (t *TrackPCMA) CreateDecoder() *rtpsimpleaudio.Decoder {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the track.
-func (t *TrackPCMA) CreateEncoder() *rtpsimpleaudio.Encoder {
+func (t *TrackG711) CreateEncoder() *rtpsimpleaudio.Encoder {
+	var payloadType uint8
+	if t.MULaw {
+		payloadType = 0
+	} else {
+		payloadType = 8
+	}
+
 	e := &rtpsimpleaudio.Encoder{
-		PayloadType: 8,
+		PayloadType: payloadType,
 		SampleRate:  8000,
 	}
 	e.Init()

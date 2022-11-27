@@ -50,12 +50,11 @@ Features:
       * VP8
       * VP9
     * Audio
+      * G711
       * G722
       * LPCM
       * MPEG4-audio (AAC)
       * Opus
-      * PCMA
-      * PCMU
   * Parse RTSP elements: requests, responses, SDP
   * Parse H264 elements and formats: Annex-B, AVCC, anti-competition, DTS
   * Parse MPEG4-audio (AAC) element and formats: ADTS, MPEG4-audio configurations
@@ -79,7 +78,6 @@ Features:
 * [client-read-codec-mpeg4audio](examples/client-read-codec-mpeg4audio/main.go)
 * [client-read-codec-opus](examples/client-read-codec-opus/main.go)
 * [client-read-codec-pcma](examples/client-read-codec-pcma/main.go)
-* [client-read-codec-pcmu](examples/client-read-codec-pcmu/main.go)
 * [client-read-codec-vp8](examples/client-read-codec-vp8/main.go)
 * [client-read-codec-vp9](examples/client-read-codec-vp9/main.go)
 * [client-read-partial](examples/client-read-partial/main.go)
@@ -93,7 +91,6 @@ Features:
 * [client-publish-codec-mpeg4audio](examples/client-publish-codec-mpeg4audio/main.go)
 * [client-publish-codec-opus](examples/client-publish-codec-opus/main.go)
 * [client-publish-codec-pcma](examples/client-publish-codec-pcma/main.go)
-* [client-publish-codec-pcmu](examples/client-publish-codec-pcmu/main.go)
 * [client-publish-codec-vp8](examples/client-publish-codec-vp8/main.go)
 * [client-publish-codec-vp9](examples/client-publish-codec-vp9/main.go)
 * [client-publish-options](examples/client-publish-options/main.go)
