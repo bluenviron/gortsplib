@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/rtp"
 )
 
 // TrackVorbis is a Vorbis track.
@@ -16,52 +15,48 @@ type TrackVorbis struct {
 	SampleRate    int
 	ChannelCount  int
 	Configuration []byte
-
-	trackBase
-	mutex sync.RWMutex
 }
 
-func newTrackVorbisFromMediaDescription(
-	control string,
-	payloadType uint8,
-	clock string,
-	md *psdp.MediaDescription,
-) (*TrackVorbis, error) {
+// String returns a description of the track.
+func (t *TrackVorbis) String() string {
+	return "Vorbis"
+}
+
+// ClockRate returns the clock rate.
+func (t *TrackVorbis) ClockRate() int {
+	return t.SampleRate
+}
+
+// GetPayloadType returns the payload type.
+func (t *TrackVorbis) GetPayloadType() uint8 {
+	return t.PayloadType
+}
+
+func (t *TrackVorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadType = payloadType
+
 	tmp := strings.SplitN(clock, "/", 32)
 	if len(tmp) != 2 {
-		return nil, fmt.Errorf("invalid clock (%v)", clock)
+		return fmt.Errorf("invalid clock (%v)", clock)
 	}
 
 	sampleRate, err := strconv.ParseInt(tmp[0], 10, 64)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	t.SampleRate = int(sampleRate)
 
 	channelCount, err := strconv.ParseInt(tmp[1], 10, 64)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	t.ChannelCount = int(channelCount)
+
+	if fmtp == "" {
+		return fmt.Errorf("fmtp attribute is missing")
 	}
 
-	t := &TrackVorbis{
-		PayloadType:  payloadType,
-		SampleRate:   int(sampleRate),
-		ChannelCount: int(channelCount),
-		trackBase: trackBase{
-			control: control,
-		},
-	}
-
-	v, ok := md.Attribute("fmtp")
-	if !ok {
-		return nil, fmt.Errorf("fmtp attribute is missing")
-	}
-
-	tmp = strings.SplitN(v, " ", 2)
-	if len(tmp) != 2 {
-		return nil, fmt.Errorf("invalid fmtp (%v)", v)
-	}
-
-	for _, kv := range strings.Split(tmp[1], ";") {
+	for _, kv := range strings.Split(fmtp, ";") {
 		kv = strings.Trim(kv, " ")
 
 		if len(kv) == 0 {
@@ -70,13 +65,13 @@ func newTrackVorbisFromMediaDescription(
 
 		tmp := strings.SplitN(kv, "=", 2)
 		if len(tmp) != 2 {
-			return nil, fmt.Errorf("invalid fmtp (%v)", v)
+			return fmt.Errorf("invalid fmtp (%v)", fmtp)
 		}
 
 		if tmp[0] == "configuration" {
 			conf, err := base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
-				return nil, fmt.Errorf("invalid AAC config (%v)", tmp[1])
+				return fmt.Errorf("invalid AAC config (%v)", tmp[1])
 			}
 
 			t.Configuration = conf
@@ -84,53 +79,16 @@ func newTrackVorbisFromMediaDescription(
 	}
 
 	if t.Configuration == nil {
-		return nil, fmt.Errorf("config is missing (%v)", v)
+		return fmt.Errorf("config is missing (%v)", fmtp)
 	}
 
-	return t, nil
+	return nil
 }
 
-// String returns the track codec.
-func (t *TrackVorbis) String() string {
-	return "Vorbis"
-}
-
-// ClockRate returns the track clock rate.
-func (t *TrackVorbis) ClockRate() int {
-	return t.SampleRate
-}
-
-// MediaDescription returns the track media description in SDP format.
-func (t *TrackVorbis) MediaDescription() *psdp.MediaDescription {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-
-	typ := strconv.FormatInt(int64(t.PayloadType), 10)
-
-	fmtp := typ + " configuration=" + base64.StdEncoding.EncodeToString(t.Configuration)
-
-	return &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "audio",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{typ},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key: "rtpmap",
-				Value: typ + " VORBIS/" + strconv.FormatInt(int64(t.SampleRate), 10) +
-					"/" + strconv.FormatInt(int64(t.ChannelCount), 10),
-			},
-			{
-				Key:   "fmtp",
-				Value: fmtp,
-			},
-			{
-				Key:   "control",
-				Value: t.control,
-			},
-		},
-	}
+func (t *TrackVorbis) marshal() (string, string) {
+	return "VORBIS/" + strconv.FormatInt(int64(t.SampleRate), 10) +
+			"/" + strconv.FormatInt(int64(t.ChannelCount), 10),
+		"configuration=" + base64.StdEncoding.EncodeToString(t.Configuration)
 }
 
 func (t *TrackVorbis) clone() Track {
@@ -139,6 +97,9 @@ func (t *TrackVorbis) clone() Track {
 		SampleRate:    t.SampleRate,
 		ChannelCount:  t.ChannelCount,
 		Configuration: t.Configuration,
-		trackBase:     t.trackBase,
 	}
+}
+
+func (t *TrackVorbis) ptsEqualsDTS(*rtp.Packet) bool {
+	return true
 }

@@ -15,10 +15,21 @@ import (
 // 2. allow a single client to publish a stream, containing a H264 track, with TCP or UDP
 // 3. save the content of the H264 track into a file in MPEG-TS format
 
+func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *gortsplib.TrackH264, int) {
+	for i, media := range medias {
+		for _, track := range media.Tracks {
+			if track, ok := track.(*gortsplib.TrackH264); ok {
+				return media, track, i
+			}
+		}
+	}
+	return nil, nil, -1
+}
+
 type serverHandler struct {
 	mutex       sync.Mutex
 	publisher   *gortsplib.ServerSession
-	h264TrackID int
+	mediaID     int
 	h264track   *gortsplib.TrackH264
 	rtpDec      *rtph264.Decoder
 	mpegtsMuxer *mpegtsMuxer
@@ -62,26 +73,19 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		sh.mpegtsMuxer.close()
 	}
 
-	// find the H264 track
-	h264TrackID, h264track := func() (int, *gortsplib.TrackH264) {
-		for i, track := range ctx.Tracks {
-			if h264track, ok := track.(*gortsplib.TrackH264); ok {
-				return i, h264track
-			}
-		}
-		return -1, nil
-	}()
-	if h264TrackID < 0 {
+	// find the H264 media and track
+	media, track, mediaID := findTrack(ctx.Medias)
+	if media == nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
 		}, fmt.Errorf("H264 track not found")
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := h264track.CreateDecoder()
+	rtpDec := track.CreateDecoder()
 
 	// setup H264->MPEGTS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(h264track.SafeSPS(), h264track.SafePPS())
+	mpegtsMuxer, err := newMPEGTSMuxer(track.SafeSPS(), track.SafePPS())
 	if err != nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
@@ -89,7 +93,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	sh.publisher = ctx.Session
-	sh.h264TrackID = h264TrackID
+	sh.mediaID = mediaID
 	sh.rtpDec = rtpDec
 	sh.mpegtsMuxer = mpegtsMuxer
 
@@ -121,7 +125,7 @@ func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx)
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	if ctx.TrackID != sh.h264TrackID {
+	if ctx.TrackID != sh.mediaID {
 		return
 	}
 

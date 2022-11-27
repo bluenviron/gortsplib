@@ -13,7 +13,7 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server and read all tracks on a path
+// 1. connect to a RTSP server and read all medias on a path
 // 2. check if there's a H264 track
 // 3. decode H264 into RGBA frames
 // 4. encode the frames into JPEG images and save them on disk
@@ -38,6 +38,17 @@ func saveToFile(img image.Image) error {
 	})
 }
 
+func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *gortsplib.TrackH264) {
+	for _, media := range medias {
+		for _, track := range media.Tracks {
+			if track, ok := track.(*gortsplib.TrackH264); ok {
+				return media, track
+			}
+		}
+	}
+	return nil, nil
+}
+
 func main() {
 	c := gortsplib.Client{}
 
@@ -54,23 +65,16 @@ func main() {
 	}
 	defer c.Close()
 
-	// find published tracks
-	tracks, baseURL, _, err := c.Describe(u)
+	// find published medias
+	medias, baseURL, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	// find the H264 track
-	track := func() *gortsplib.TrackH264 {
-		for _, track := range tracks {
-			if track, ok := track.(*gortsplib.TrackH264); ok {
-				return track
-			}
-		}
-		return nil
-	}()
-	if track == nil {
-		panic("H264 track not found")
+	// find the H264 media and track
+	media, track := findTrack(medias)
+	if media == nil {
+		panic("media not found")
 	}
 
 	// setup RTP/H264->H264 decoder
@@ -96,6 +100,11 @@ func main() {
 	// called when a RTP packet arrives
 	saveCount := 0
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
+		// get packets of specific track only
+		if ctx.Packet.PayloadType != track.GetPayloadType() {
+			return
+		}
+
 		// convert RTP packets into NALUs
 		nalus, _, err := rtpDec.Decode(ctx.Packet)
 		if err != nil {
@@ -128,8 +137,8 @@ func main() {
 		}
 	}
 
-	// setup and read the H264 track only
-	err = c.SetupAndPlay(gortsplib.Tracks{track}, baseURL)
+	// setup and read the H264 media only
+	err = c.SetupAndPlay(gortsplib.Medias{media}, baseURL)
 	if err != nil {
 		panic(err)
 	}

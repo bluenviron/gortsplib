@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/aler9/gortsplib"
@@ -13,15 +12,26 @@ import (
 // 2. get tracks published on a path
 // 3. read only the H264 track
 
+func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *gortsplib.TrackH264) {
+	for _, media := range medias {
+		for _, track := range media.Tracks {
+			if track, ok := track.(*gortsplib.TrackH264); ok {
+				return media, track
+			}
+		}
+	}
+	return nil, nil
+}
+
 func main() {
 	c := gortsplib.Client{
 		// called when a RTP packet arrives
 		OnPacketRTP: func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-			log.Printf("RTP packet from track %d, payload type %d\n", ctx.TrackID, ctx.Packet.Header.PayloadType)
+			log.Printf("RTP packet from media %d, payload type %d\n", ctx.MediaID, ctx.Packet.Header.PayloadType)
 		},
 		// called when a RTCP packet arrives
 		OnPacketRTCP: func(ctx *gortsplib.ClientOnPacketRTCPCtx) {
-			log.Printf("RTCP packet from track %d, type %T\n", ctx.TrackID, ctx.Packet)
+			log.Printf("RTCP packet from media %d, type %T\n", ctx.MediaID, ctx.Packet)
 		},
 	}
 
@@ -36,26 +46,19 @@ func main() {
 	}
 	defer c.Close()
 
-	tracks, baseURL, _, err := c.Describe(u)
+	medias, baseURL, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	// find the H264 track
-	h264Track := func() gortsplib.Track {
-		for _, t := range tracks {
-			if _, ok := t.(*gortsplib.TrackH264); ok {
-				return t
-			}
-		}
-		return nil
-	}()
-	if h264Track == nil {
-		panic(fmt.Errorf("H264 track not found"))
+	// find the H264 media and track
+	media, _ := findTrack(medias)
+	if media == nil {
+		panic("media not found")
 	}
 
-	// setup and play the H264 track only
-	err = c.SetupAndPlay(gortsplib.Tracks{h264Track}, baseURL)
+	// setup and play the H264 media only
+	err = c.SetupAndPlay(gortsplib.Medias{media}, baseURL)
 	if err != nil {
 		panic(err)
 	}

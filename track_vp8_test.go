@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"testing"
 
-	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,7 +10,6 @@ func TestTrackVP8ttributes(t *testing.T) {
 	track := &TrackVP8{}
 	require.Equal(t, "VP8", track.String())
 	require.Equal(t, 90000, track.ClockRate())
-	require.Equal(t, "", track.GetControl())
 }
 
 func TestTrackVP8Clone(t *testing.T) {
@@ -37,25 +35,7 @@ func TestTrackVP8MediaDescription(t *testing.T) {
 		MaxFS:       &maxFS,
 	}
 
-	require.Equal(t, &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "video",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"96"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: "96 VP8/90000",
-			},
-			{
-				Key:   "fmtp",
-				Value: "96 max-fr=123;max-fs=456",
-			},
-			{
-				Key:   "control",
-				Value: "",
-			},
-		},
-	}, track.MediaDescription())
+	rtpmap, fmtp := track.marshal()
+	require.Equal(t, "VP8/90000", rtpmap)
+	require.Equal(t, "max-fr=123;max-fs=456", fmtp)
 }

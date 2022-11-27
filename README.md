@@ -16,7 +16,7 @@ Features:
 * Client
   * Query servers about available streams and tracks
   * Read
-    * Read streams from servers with the UDP, UDP-multicast or TCP transport protocol
+    * Read media streams from servers with the UDP, UDP-multicast or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
     * Read only selected tracks of a stream
@@ -33,28 +33,19 @@ Features:
   * Handle requests from clients
   * Sessions and connections are independent
   * Publish
-    * Read streams from clients with the UDP or TCP transport protocol
+    * Read media streams from clients with the UDP or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
     * Generate RTCP receiver reports (UDP only)
     * Reorder incoming RTP packets (UDP only)
   * Read
-    * Write streams to clients with the UDP, UDP-multicast or TCP transport protocol
+    * Write media streams to clients with the UDP, UDP-multicast or TCP transport protocol
     * Write TLS-encrypted streams
     * Compute and provide SSRC, RTP-Info to clients
     * Generate RTCP sender reports
 * Utilities
   * Encode and decode codec-specific frames into/from RTP packets. The following codecs are supported:
-    * Video
-      * H264
-      * H265
-      * VP8
-      * VP9
-    * Audio
-      * G711
-      * G722
-      * LPCM
-      * MPEG4-audio (AAC)
-      * Opus
+    * Video: H264, H265, VP8, VP9
+    * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG4-audio (AAC), Opus
   * Parse RTSP elements: requests, responses, SDP
   * Parse H264 elements and formats: Annex-B, AVCC, anti-competition, DTS
   * Parse MPEG4-audio (AAC) element and formats: ADTS, MPEG4-audio configurations

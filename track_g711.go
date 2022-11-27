@@ -4,84 +4,61 @@ import (
 	"fmt"
 	"strings"
 
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpsimpleaudio"
 )
 
-// TrackG711 is a PCMA track.
+// TrackG711 is a G711 track, encoded with mu-law or A-law.
 type TrackG711 struct {
 	// whether to use mu-law. Otherwise, A-law is used.
 	MULaw bool
-
-	trackBase
 }
 
-func newTrackG711FromMediaDescription(
-	control string,
-	payloadType uint8,
-	clock string,
-) (*TrackG711, error,
-) {
-	tmp := strings.Split(clock, "/")
-	if len(tmp) == 2 && tmp[1] != "1" {
-		return nil, fmt.Errorf("G711 tracks can have only one channel")
-	}
-
-	return &TrackG711{
-		MULaw: (payloadType == 0),
-		trackBase: trackBase{
-			control: control,
-		},
-	}, nil
-}
-
-// String returns the track codec.
+// String returns a description of the track.
 func (t *TrackG711) String() string {
 	return "G711"
 }
 
-// ClockRate returns the track clock rate.
+// ClockRate returns the clock rate.
 func (t *TrackG711) ClockRate() int {
 	return 8000
 }
 
-// MediaDescription returns the track media description in SDP format.
-func (t *TrackG711) MediaDescription() *psdp.MediaDescription {
-	var formats []string
-	var rtpmap string
+// GetPayloadType returns the payload type.
+func (t *TrackG711) GetPayloadType() uint8 {
 	if t.MULaw {
-		formats = []string{"0"}
-		rtpmap = "0 PCMU/8000"
-	} else {
-		formats = []string{"8"}
-		rtpmap = "8 PCMA/8000"
+		return 0
+	}
+	return 8
+}
+
+func (t *TrackG711) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	tmp := strings.Split(clock, "/")
+	if len(tmp) == 2 && tmp[1] != "1" {
+		return fmt.Errorf("G711 tracks can have only one channel")
 	}
 
-	return &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "audio",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: formats,
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: rtpmap,
-			},
-			{
-				Key:   "control",
-				Value: t.control,
-			},
-		},
+	t.MULaw = (payloadType == 0)
+
+	return nil
+}
+
+func (t *TrackG711) marshal() (string, string) {
+	if t.MULaw {
+		return "PCMU/8000", ""
 	}
+	return "PCMA/8000", ""
 }
 
 func (t *TrackG711) clone() Track {
 	return &TrackG711{
-		MULaw:     t.MULaw,
-		trackBase: t.trackBase,
+		MULaw: t.MULaw,
 	}
+}
+
+func (t *TrackG711) ptsEqualsDTS(*rtp.Packet) bool {
+	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.
@@ -95,15 +72,8 @@ func (t *TrackG711) CreateDecoder() *rtpsimpleaudio.Decoder {
 
 // CreateEncoder creates an encoder able to encode the content of the track.
 func (t *TrackG711) CreateEncoder() *rtpsimpleaudio.Encoder {
-	var payloadType uint8
-	if t.MULaw {
-		payloadType = 0
-	} else {
-		payloadType = 8
-	}
-
 	e := &rtpsimpleaudio.Encoder{
-		PayloadType: payloadType,
+		PayloadType: t.GetPayloadType(),
 		SampleRate:  8000,
 	}
 	e.Init()

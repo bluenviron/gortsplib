@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"testing"
 
-	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +15,6 @@ func TestTrackLPCMAttributes(t *testing.T) {
 	}
 	require.Equal(t, "LPCM", track.String())
 	require.Equal(t, 44100, track.ClockRate())
-	require.Equal(t, "", track.GetControl())
 }
 
 func TestTracLPCMClone(t *testing.T) {
@@ -40,21 +38,7 @@ func TestTrackLPCMMediaDescription(t *testing.T) {
 		ChannelCount: 2,
 	}
 
-	require.Equal(t, &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "audio",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"96"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: "96 L24/96000/2",
-			},
-			{
-				Key:   "control",
-				Value: "",
-			},
-		},
-	}, track.MediaDescription())
+	rtpmap, fmtp := track.marshal()
+	require.Equal(t, "L24/96000/2", rtpmap)
+	require.Equal(t, "", fmtp)
 }

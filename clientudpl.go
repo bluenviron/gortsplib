@@ -22,10 +22,20 @@ func randIntn(n int) int {
 	return int(randUint32() & (uint32(n) - 1))
 }
 
+func clientFindTrackWithSSRC(tracks map[uint8]*clientMediaTrack, ssrc uint32) *clientMediaTrack {
+	for _, track := range tracks {
+		tssrc, ok := track.udpRTCPReceiver.LastSSRC()
+		if ok && tssrc == ssrc {
+			return track
+		}
+	}
+	return nil
+}
+
 type clientUDPListener struct {
 	c     *Client
 	pc    *net.UDPConn
-	ct    *clientTrack
+	cm    *clientMedia
 	isRTP bool
 
 	readIP    net.IP
@@ -38,7 +48,7 @@ type clientUDPListener struct {
 	readerDone chan struct{}
 }
 
-func newClientUDPListenerPair(c *Client, ct *clientTrack) (*clientUDPListener, *clientUDPListener) {
+func newClientUDPListenerPair(c *Client, cm *clientMedia) (*clientUDPListener, *clientUDPListener) {
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
@@ -47,7 +57,7 @@ func newClientUDPListenerPair(c *Client, ct *clientTrack) (*clientUDPListener, *
 			c,
 			false,
 			":"+strconv.FormatInt(int64(rtpPort), 10),
-			ct,
+			cm,
 			true)
 		if err != nil {
 			continue
@@ -58,7 +68,7 @@ func newClientUDPListenerPair(c *Client, ct *clientTrack) (*clientUDPListener, *
 			c,
 			false,
 			":"+strconv.FormatInt(int64(rtcpPort), 10),
-			ct,
+			cm,
 			false)
 		if err != nil {
 			rtpListener.close()
@@ -73,7 +83,7 @@ func newClientUDPListener(
 	c *Client,
 	multicast bool,
 	address string,
-	ct *clientTrack,
+	cm *clientMedia,
 	isRTP bool,
 ) (*clientUDPListener, error) {
 	var pc *net.UDPConn
@@ -124,7 +134,7 @@ func newClientUDPListener(
 	return &clientUDPListener{
 		c:     c,
 		pc:    pc,
-		ct:    ct,
+		cm:    cm,
 		isRTP: isRTP,
 		lastPacketTime: func() *int64 {
 			v := int64(0)
@@ -200,25 +210,30 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 		return
 	}
 
-	pkt := u.ct.udpRTPPacketBuffer.next()
+	pkt := u.c.udpRTPPacketBuffer.next()
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		u.c.OnDecodeError(err)
 		return
 	}
 
-	packets, missing := u.ct.reorderer.Process(pkt)
+	track, ok := u.cm.tracks[pkt.PayloadType]
+	if !ok {
+		u.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
+		return
+	}
+
+	packets, missing := track.udpReorderer.Process(pkt)
 	if missing != 0 {
 		u.c.OnDecodeError(fmt.Errorf("%d RTP packet(s) lost", missing))
 		// do not return
 	}
 
 	for _, pkt := range packets {
-		ptsEqualsDTS := ptsEqualsDTS(u.ct.track, pkt)
-		u.ct.udpRTCPReceiver.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
+		track.udpRTCPReceiver.ProcessPacket(pkt, time.Now(), track.track.ptsEqualsDTS(pkt))
 
 		u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
-			TrackID: u.ct.id,
+			MediaID: u.cm.id,
 			Packet:  pkt,
 		})
 	}
@@ -241,9 +256,15 @@ func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
 	}
 
 	for _, pkt := range packets {
-		u.ct.udpRTCPReceiver.ProcessPacketRTCP(now, pkt)
+		if sr, ok := pkt.(*rtcp.SenderReport); ok {
+			track := clientFindTrackWithSSRC(u.cm.tracks, sr.SSRC)
+			if track != nil {
+				track.udpRTCPReceiver.ProcessSenderReport(sr, now)
+			}
+		}
+
 		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-			TrackID: u.ct.id,
+			MediaID: u.cm.id,
 			Packet:  pkt,
 		})
 	}
@@ -267,7 +288,7 @@ func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
 
 	for _, pkt := range packets {
 		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-			TrackID: u.ct.id,
+			MediaID: u.cm.id,
 			Packet:  pkt,
 		})
 	}

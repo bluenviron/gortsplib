@@ -91,7 +91,7 @@ type ServerHandlerOnAnnounceCtx struct {
 	Request *base.Request
 	Path    string
 	Query   string
-	Tracks  Tracks
+	Medias  Medias
 }
 
 // ServerHandlerOnAnnounce can be implemented by a ServerHandler.

@@ -12,9 +12,22 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
+func serverFindTrackWithSSRC(
+	tracks map[uint8]*serverSessionSetuppedMediaTrack,
+	ssrc uint32,
+) *serverSessionSetuppedMediaTrack {
+	for _, track := range tracks {
+		tssrc, ok := track.udpRTCPReceiver.LastSSRC()
+		if ok && tssrc == ssrc {
+			return track
+		}
+	}
+	return nil
+}
+
 type clientData struct {
 	session      *ServerSession
-	track        *ServerSessionSetuppedTrack
+	media        *ServerSessionSetuppedMedia
 	isPublishing bool
 }
 
@@ -217,25 +230,28 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 		return
 	}
 
+	track, ok := clientData.media.tracks[pkt.PayloadType]
+	if !ok {
+		onDecodeError(clientData.session, fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
+		return
+	}
+
 	now := time.Now()
 	atomic.StoreInt64(clientData.session.udpLastPacketTime, now.Unix())
 
-	packets, missing := clientData.track.reorderer.Process(pkt)
+	packets, missing := track.udpReorderer.Process(pkt)
 	if missing != 0 {
 		onDecodeError(clientData.session, fmt.Errorf("%d RTP packet(s) lost", missing))
 		// do not return
 	}
 
-	track := clientData.track.track
-
 	for _, pkt := range packets {
-		ptsEqualsDTS := ptsEqualsDTS(track, pkt)
-		clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, ptsEqualsDTS)
+		track.udpRTCPReceiver.ProcessPacket(pkt, now, track.track.ptsEqualsDTS(pkt))
 
 		if h, ok := clientData.session.s.Handler.(ServerHandlerOnPacketRTP); ok {
 			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
 				Session: clientData.session,
-				TrackID: clientData.track.id,
+				TrackID: clientData.media.id,
 				Packet:  pkt,
 			})
 		}
@@ -263,12 +279,17 @@ func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) 
 		atomic.StoreInt64(clientData.session.udpLastPacketTime, now.Unix())
 
 		for _, pkt := range packets {
-			clientData.track.udpRTCPReceiver.ProcessPacketRTCP(now, pkt)
+			if sr, ok := pkt.(*rtcp.SenderReport); ok {
+				track := serverFindTrackWithSSRC(clientData.media.tracks, sr.SSRC)
+				if track != nil {
+					track.udpRTCPReceiver.ProcessSenderReport(sr, now)
+				}
+			}
 		}
 	}
 
 	for _, pkt := range packets {
-		clientData.session.onPacketRTCP(clientData.track.id, pkt)
+		clientData.session.onPacketRTCP(clientData.media.id, pkt)
 	}
 }
 
@@ -282,7 +303,7 @@ func (u *serverUDPListener) write(buf []byte, addr *net.UDPAddr) error {
 }
 
 func (u *serverUDPListener) addClient(ip net.IP, port int, ss *ServerSession,
-	track *ServerSessionSetuppedTrack, isPublishing bool,
+	media *ServerSessionSetuppedMedia, isPublishing bool,
 ) {
 	u.clientsMutex.Lock()
 	defer u.clientsMutex.Unlock()
@@ -292,7 +313,7 @@ func (u *serverUDPListener) addClient(ip net.IP, port int, ss *ServerSession,
 
 	u.clients[addr] = &clientData{
 		session:      ss,
-		track:        track,
+		media:        media,
 		isPublishing: isPublishing,
 	}
 }

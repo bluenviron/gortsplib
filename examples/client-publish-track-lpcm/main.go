@@ -33,19 +33,22 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create an LPCM track
-	track := &gortsplib.TrackLPCM{
-		PayloadType:  96,
-		BitDepth:     16,
-		SampleRate:   44100,
-		ChannelCount: 1,
+	// create a media that contains a LPCM track
+	media := &gortsplib.Media{
+		Type: gortsplib.MediaTypeAudio,
+		Tracks: []gortsplib.Track{&gortsplib.TrackLPCM{
+			PayloadType:  96,
+			BitDepth:     16,
+			SampleRate:   44100,
+			ChannelCount: 1,
+		}},
 	}
 
 	c := gortsplib.Client{}
 
-	// connect to the server and start publishing the track
+	// connect to the server and start publishing the media
 	err = c.StartPublishing("rtsp://localhost:8554/mystream",
-		gortsplib.Tracks{track})
+		gortsplib.Medias{media})
 	if err != nil {
 		panic(err)
 	}

@@ -132,7 +132,7 @@ type Server struct {
 	//
 
 	udpReceiverReportPeriod time.Duration
-	udpSenderReportPeriod   time.Duration
+	senderReportPeriod      time.Duration
 	sessionTimeout          time.Duration
 	checkStreamPeriod       time.Duration
 
@@ -187,8 +187,8 @@ func (s *Server) Start() error {
 	if s.udpReceiverReportPeriod == 0 {
 		s.udpReceiverReportPeriod = 10 * time.Second
 	}
-	if s.udpSenderReportPeriod == 0 {
-		s.udpSenderReportPeriod = 10 * time.Second
+	if s.senderReportPeriod == 0 {
+		s.senderReportPeriod = 10 * time.Second
 	}
 	if s.sessionTimeout == 0 {
 		s.sessionTimeout = 1 * 60 * time.Second

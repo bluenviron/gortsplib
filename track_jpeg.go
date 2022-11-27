@@ -1,58 +1,39 @@
 package gortsplib //nolint:dupl
 
 import (
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/rtp"
 )
 
 // TrackJPEG is a JPEG track.
-type TrackJPEG struct {
-	trackBase
-}
+type TrackJPEG struct{}
 
-func newTrackJPEGFromMediaDescription(
-	control string,
-) (*TrackJPEG, error,
-) {
-	return &TrackJPEG{
-		trackBase: trackBase{
-			control: control,
-		},
-	}, nil
-}
-
-// String returns the track codec.
+// String returns a description of the track.
 func (t *TrackJPEG) String() string {
 	return "JPEG"
 }
 
-// ClockRate returns the track clock rate.
+// ClockRate returns the clock rate.
 func (t *TrackJPEG) ClockRate() int {
 	return 90000
 }
 
-// MediaDescription returns the track media description in SDP format.
-func (t *TrackJPEG) MediaDescription() *psdp.MediaDescription {
-	return &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "video",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"26"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: "26 JPEG/90000",
-			},
-			{
-				Key:   "control",
-				Value: t.control,
-			},
-		},
-	}
+// GetPayloadType returns the payload type.
+func (t *TrackJPEG) GetPayloadType() uint8 {
+	return 26
+}
+
+func (t *TrackJPEG) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	return nil
+}
+
+func (t *TrackJPEG) marshal() (string, string) {
+	return "JPEG/90000", ""
 }
 
 func (t *TrackJPEG) clone() Track {
-	return &TrackJPEG{
-		trackBase: t.trackBase,
-	}
+	return &TrackJPEG{}
+}
+
+func (t *TrackJPEG) ptsEqualsDTS(*rtp.Packet) bool {
+	return true
 }

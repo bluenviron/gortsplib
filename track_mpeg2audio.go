@@ -1,54 +1,39 @@
 package gortsplib //nolint:dupl
 
 import (
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/rtp"
 )
 
 // TrackMPEG2Audio is a MPEG-1 or MPEG-2 audio track.
-type TrackMPEG2Audio struct {
-	trackBase
-}
+type TrackMPEG2Audio struct{}
 
-func newTrackMPEG2AudioFromMediaDescription(
-	control string,
-) (*TrackMPEG2Audio, error,
-) {
-	return &TrackMPEG2Audio{
-		trackBase: trackBase{
-			control: control,
-		},
-	}, nil
-}
-
-// String returns the track codec.
+// String returns a description of the track.
 func (t *TrackMPEG2Audio) String() string {
 	return "MPEG2-audio"
 }
 
-// ClockRate returns the track clock rate.
+// ClockRate returns the clock rate.
 func (t *TrackMPEG2Audio) ClockRate() int {
 	return 90000
 }
 
-// MediaDescription returns the track media description in SDP format.
-func (t *TrackMPEG2Audio) MediaDescription() *psdp.MediaDescription {
-	return &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "audio",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"14"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "control",
-				Value: t.control,
-			},
-		},
-	}
+// GetPayloadType returns the payload type.
+func (t *TrackMPEG2Audio) GetPayloadType() uint8 {
+	return 14
+}
+
+func (t *TrackMPEG2Audio) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	return nil
+}
+
+func (t *TrackMPEG2Audio) marshal() (string, string) {
+	return "", ""
 }
 
 func (t *TrackMPEG2Audio) clone() Track {
-	return &TrackMPEG2Audio{
-		trackBase: t.trackBase,
-	}
+	return &TrackMPEG2Audio{}
+}
+
+func (t *TrackMPEG2Audio) ptsEqualsDTS(*rtp.Packet) bool {
+	return true
 }

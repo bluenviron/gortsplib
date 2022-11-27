@@ -15,7 +15,7 @@ func TestRTCPSender(t *testing.T) {
 	}
 	done := make(chan struct{})
 
-	rs := New(250*time.Millisecond, 90000, func(pkt rtcp.Packet) {
+	rs := New(90000, func(pkt rtcp.Packet) {
 		require.Equal(t, &rtcp.SenderReport{
 			SSRC:        0xba9da416,
 			NTPTime:     14690122083862791680,
@@ -27,6 +27,7 @@ func TestRTCPSender(t *testing.T) {
 	})
 	defer rs.Close()
 
+	rs.Start(250 * time.Millisecond)
 	time.Sleep(400 * time.Millisecond)
 
 	rtpPkt := rtp.Packet{
@@ -41,7 +42,7 @@ func TestRTCPSender(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rs.ProcessPacketRTP(ts, &rtpPkt, true)
+	rs.ProcessPacket(&rtpPkt, ts, true)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -55,7 +56,7 @@ func TestRTCPSender(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 500000000, time.UTC)
-	rs.ProcessPacketRTP(ts, &rtpPkt, true)
+	rs.ProcessPacket(&rtpPkt, ts, true)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -69,7 +70,7 @@ func TestRTCPSender(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 500000000, time.UTC)
-	rs.ProcessPacketRTP(ts, &rtpPkt, false)
+	rs.ProcessPacket(&rtpPkt, ts, false)
 
 	<-done
 }

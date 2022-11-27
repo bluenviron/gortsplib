@@ -244,10 +244,10 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	case <-sc.session.ctx.Done():
 	}
 
-	var processFunc func(*ServerSessionSetuppedTrack, bool, []byte) error
+	var processFunc func(*ServerSessionSetuppedMedia, bool, []byte) error
 
 	if sc.session.state == ServerSessionStatePlay {
-		processFunc = func(track *ServerSessionSetuppedTrack, isRTP bool, payload []byte) error {
+		processFunc = func(track *ServerSessionSetuppedMedia, isRTP bool, payload []byte) error {
 			if !isRTP {
 				if len(payload) > maxPacketSize {
 					onDecodeError(sc.session, fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
@@ -277,7 +277,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	} else {
 		tcpRTPPacketBuffer := newRTPPacketMultiBuffer(uint64(sc.s.ReadBufferCount))
 
-		processFunc = func(track *ServerSessionSetuppedTrack, isRTP bool, payload []byte) error {
+		processFunc = func(track *ServerSessionSetuppedMedia, isRTP bool, payload []byte) error {
 			if isRTP {
 				pkt := tcpRTPPacketBuffer.next()
 				err := pkt.Unmarshal(payload)
@@ -336,7 +336,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 			atomic.AddUint64(sc.session.bytesReceived, uint64(len(twhat.Payload)))
 
 			// forward frame only if it has been set up
-			if track, ok := sc.session.tcpTracksByChannel[channel]; ok {
+			if track, ok := sc.session.tcpMediasByChannel[channel]; ok {
 				err := processFunc(track, isRTP, twhat.Payload)
 				if err != nil {
 					return err
@@ -451,7 +451,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 
 				if stream != nil {
-					res.Body = stream.Tracks().Marshal(multicast)
+					res.Body = stream.Medias().marshal(multicast)
 				}
 			}
 

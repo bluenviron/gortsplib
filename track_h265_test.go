@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"testing"
 
-	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +15,6 @@ func TestTrackH265Attributes(t *testing.T) {
 	}
 	require.Equal(t, "H265", track.String())
 	require.Equal(t, 90000, track.ClockRate())
-	require.Equal(t, "", track.GetControl())
 	require.Equal(t, []byte{0x01, 0x02}, track.SafeVPS())
 	require.Equal(t, []byte{0x03, 0x04}, track.SafeSPS())
 	require.Equal(t, []byte{0x05, 0x06}, track.SafePPS())
@@ -50,25 +48,7 @@ func TestTrackH265MediaDescription(t *testing.T) {
 		PPS:         []byte{0x05, 0x06},
 	}
 
-	require.Equal(t, &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "video",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"96"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: "96 H265/90000",
-			},
-			{
-				Key:   "fmtp",
-				Value: "96 sprop-vps=AQI=; sprop-sps=AwQ=; sprop-pps=BQY=",
-			},
-			{
-				Key:   "control",
-				Value: "",
-			},
-		},
-	}, track.MediaDescription())
+	rtpmap, fmtp := track.marshal()
+	require.Equal(t, "H265/90000", rtpmap)
+	require.Equal(t, "sprop-vps=AQI=; sprop-sps=AwQ=; sprop-pps=BQY=", fmtp)
 }

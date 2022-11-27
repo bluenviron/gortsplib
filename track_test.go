@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
-	"github.com/aler9/gortsplib/pkg/url"
 )
 
 func TestTrackNewFromMediaDescription(t *testing.T) {
@@ -17,7 +16,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 		track Track
 	}{
 		{
-			"pcma",
+			"audio g711 pcma",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -28,7 +27,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackG711{},
 		},
 		{
-			"pcmu",
+			"audio g711 pcmu",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -41,7 +40,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"g722",
+			"audio g722",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -52,7 +51,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackG722{},
 		},
 		{
-			"lpcm 8",
+			"audio lpcm 8",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -74,7 +73,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"lpcm 16",
+			"audio lpcm 16",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -96,7 +95,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"lpcm 24",
+			"audio lpcm 24",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -118,7 +117,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"mpeg audio",
+			"audio mpeg2 audio",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -129,7 +128,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackMPEG2Audio{},
 		},
 		{
-			"aac",
+			"audio aac",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -164,7 +163,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"aac vlc rtsp server",
+			"audio aac vlc rtsp server",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -195,7 +194,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"aac without indexlength",
+			"audio aac without indexlength",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -230,7 +229,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"vorbis",
+			"audio vorbis",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -256,7 +255,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"opus",
+			"audio opus",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -281,7 +280,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"jpeg",
+			"video jpeg",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -292,7 +291,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackJPEG{},
 		},
 		{
-			"mpeg video",
+			"video mpeg2 video",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -303,7 +302,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			&TrackMPEG2Video{},
 		},
 		{
-			"h264",
+			"video h264",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -336,7 +335,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"h264 with a space at the end of rtpmap",
+			"video h264 with a space at the end of rtpmap",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -355,7 +354,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"h264 vlc rtsp server",
+			"video h264 vlc rtsp server",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -389,7 +388,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"h264 sprop-parameter-sets with extra data",
+			"video h264 sprop-parameter-sets with extra data",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -423,7 +422,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"h265",
+			"video h265",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -465,7 +464,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"vp8",
+			"video vp8",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -496,7 +495,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"vp9",
+			"video vp9",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",
@@ -531,51 +530,46 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"multiple formats",
+			"application",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
-					Media:   "video",
+					Media:   "application",
 					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"96", "98"},
+					Formats: []string{"98"},
 				},
 				Attributes: []psdp.Attribute{
 					{
 						Key:   "rtpmap",
-						Value: "96 H264/90000",
-					},
-					{
-						Key:   "rtpmap",
-						Value: "98 MetaData",
+						Value: "98 MetaData/80000",
 					},
 					{
 						Key: "rtcp-mux",
 					},
-					{
-						Key: "fmtp",
-						Value: "96 packetization-mode=1;profile-level-id=4d002a;" +
-							"sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==",
-					},
 				},
 			},
 			&TrackGeneric{
-				Media: "video",
-				Payloads: []TrackGenericPayload{
-					{
-						Type:   96,
-						RTPMap: "H264/90000",
-						FMTP:   "packetization-mode=1;profile-level-id=4d002a;sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==",
-					},
-					{
-						Type:   98,
-						RTPMap: "MetaData",
-					},
+				PayloadType: 98,
+				RTPMap:      "MetaData/80000",
+				clockRate:   80000,
+			},
+		},
+		{
+			"application without clock rate",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "application",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"107"},
 				},
-				clockRate: 90000,
+			},
+			&TrackGeneric{
+				PayloadType: 107,
+				clockRate:   0,
 			},
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			track, err := newTrackFromMediaDescription(ca.md)
+			track, err := newTrackFromMediaDescription(ca.md, ca.md.MediaName.Formats[0])
 			require.NoError(t, err)
 			require.Equal(t, ca.track, track)
 		})
@@ -588,17 +582,6 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 		md   *psdp.MediaDescription
 		err  string
 	}{
-		{
-			"no formats",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "audio",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{},
-				},
-			},
-			"no media formats found",
-		},
 		{
 			"aac missing fmtp",
 			&psdp.MediaDescription{
@@ -635,7 +618,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"invalid fmtp (96)",
+			"fmtp attribute is missing",
 		},
 		{
 			"aac fmtp without key",
@@ -656,7 +639,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"invalid fmtp (96 profile-level-id)",
+			"invalid fmtp (profile-level-id)",
 		},
 		{
 			"aac missing config",
@@ -677,7 +660,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"config is missing (96 profile-level-id=1)",
+			"config is missing (profile-level-id=1)",
 		},
 		{
 			"aac invalid config 1",
@@ -740,7 +723,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"sizelength is missing (96 profile-level-id=1; config=1190)",
+			"sizelength is missing (profile-level-id=1; config=1190)",
 		},
 		{
 			"opus invalid 1",
@@ -795,126 +778,8 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := newTrackFromMediaDescription(ca.md)
+			_, err := newTrackFromMediaDescription(ca.md, ca.md.MediaName.Formats[0])
 			require.EqualError(t, err, ca.err)
 		})
 	}
-}
-
-func TestTrackURL(t *testing.T) {
-	for _, ca := range []struct {
-		name    string
-		sdp     []byte
-		baseURL *url.URL
-		ur      *url.URL
-	}{
-		{
-			"missing control",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-		},
-		{
-			"absolute control",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:rtsp://localhost/path/trackID=7"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/trackID=7"),
-		},
-		{
-			"relative control",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/trackID=5"),
-		},
-		{
-			"relative control, subpath",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/trackID=5"),
-		},
-		{
-			"relative control, url without slash",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/trackID=5"),
-		},
-		{
-			"relative control, url with query",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
-				"test?user=tmp&password=BagRep1&channel=1&stream=0.sdp"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
-				"test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=5"),
-		},
-		{
-			"relative control, url with special chars and query",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
-				"te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
-				"te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
-		},
-		{
-			"relative control, url with query without question mark",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
-		},
-		{
-			"relative control, control is query",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:?ctype=video"),
-			mustParseURL("rtsp://192.168.1.99:554/test"),
-			mustParseURL("rtsp://192.168.1.99:554/test?ctype=video"),
-		},
-		{
-			"relative control, control is query and no path",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:?ctype=video"),
-			mustParseURL("rtsp://192.168.1.99:554/"),
-			mustParseURL("rtsp://192.168.1.99:554/?ctype=video"),
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var tracks Tracks
-			_, err := tracks.Unmarshal(ca.sdp)
-			require.NoError(t, err)
-			ur, err := tracks[0].url(ca.baseURL)
-			require.NoError(t, err)
-			require.Equal(t, ca.ur, ur)
-		})
-	}
-}
-
-func TestTrackURLError(t *testing.T) {
-	track := &TrackH264{}
-	_, err := track.url(nil)
-	require.EqualError(t, err, "Content-Base header not provided")
 }

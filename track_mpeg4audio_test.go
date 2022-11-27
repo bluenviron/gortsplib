@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"testing"
 
-	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
@@ -23,7 +22,6 @@ func TestTrackMPEG4AudioAttributes(t *testing.T) {
 	}
 	require.Equal(t, "MPEG4-audio", track.String())
 	require.Equal(t, 48000, track.ClockRate())
-	require.Equal(t, "", track.GetControl())
 }
 
 func TestTrackMPEG4AudioClone(t *testing.T) {
@@ -57,25 +55,8 @@ func TestTrackMPEG4AudioMediaDescription(t *testing.T) {
 		IndexDeltaLength: 3,
 	}
 
-	require.Equal(t, &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "audio",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"96"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: "96 mpeg4-generic/48000/2",
-			},
-			{
-				Key:   "fmtp",
-				Value: "96 profile-level-id=1; mode=AAC-hbr; sizelength=13; indexlength=3; indexdeltalength=3; config=1190",
-			},
-			{
-				Key:   "control",
-				Value: "",
-			},
-		},
-	}, track.MediaDescription())
+	rtpmap, fmtp := track.marshal()
+	require.Equal(t, "mpeg4-generic/48000/2", rtpmap)
+	require.Equal(t, "profile-level-id=1; mode=AAC-hbr; sizelength=13;"+
+		" indexlength=3; indexdeltalength=3; config=1190", fmtp)
 }

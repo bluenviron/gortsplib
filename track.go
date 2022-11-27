@@ -1,34 +1,28 @@
 package gortsplib
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/pion/rtp"
 	psdp "github.com/pion/sdp/v3"
-
-	"github.com/aler9/gortsplib/pkg/url"
 )
 
 // Track is a RTSP track.
 type Track interface {
-	// String returns the track codec.
+	// String returns a description of the track.
 	String() string
 
-	// ClockRate returns the track clock rate.
+	// ClockRate returns the clock rate.
 	ClockRate() int
 
-	// GetControl returns the track control attribute.
-	GetControl() string
+	// GetPayloadType returns the payload type.
+	GetPayloadType() uint8
 
-	// SetControl sets the track control attribute.
-	SetControl(string)
-
-	// MediaDescription returns the track media description in SDP format.
-	MediaDescription() *psdp.MediaDescription
-
+	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error
+	marshal() (string, string)
 	clone() Track
-	url(*url.URL) (*url.URL, error)
+	ptsEqualsDTS(*rtp.Packet) bool
 }
 
 func getControlAttribute(attributes []psdp.Attribute) string {
@@ -40,9 +34,9 @@ func getControlAttribute(attributes []psdp.Attribute) string {
 	return ""
 }
 
-func getRtpmapAttribute(attributes []psdp.Attribute, payloadType uint8) string {
+func getTrackAttribute(attributes []psdp.Attribute, payloadType uint8, key string) string {
 	for _, attr := range attributes {
-		if attr.Key == "rtpmap" {
+		if attr.Key == key {
 			v := strings.TrimSpace(attr.Value)
 			if parts := strings.SplitN(v, " ", 2); len(parts) == 2 {
 				if tmp, err := strconv.ParseInt(parts[0], 10, 8); err == nil && uint8(tmp) == payloadType {
@@ -54,26 +48,8 @@ func getRtpmapAttribute(attributes []psdp.Attribute, payloadType uint8) string {
 	return ""
 }
 
-func getFmtpAttribute(attributes []psdp.Attribute, payloadType uint8) string {
-	for _, attr := range attributes {
-		if attr.Key == "fmtp" {
-			if parts := strings.SplitN(attr.Value, " ", 2); len(parts) == 2 {
-				if tmp, err := strconv.ParseInt(parts[0], 10, 8); err == nil && uint8(tmp) == payloadType {
-					return parts[1]
-				}
-			}
-		}
-	}
-	return ""
-}
-
-func getCodecAndClock(attributes []psdp.Attribute, payloadType uint8) (string, string) {
-	rtpmap := getRtpmapAttribute(attributes, payloadType)
-	if rtpmap == "" {
-		return "", ""
-	}
-
-	parts2 := strings.SplitN(rtpmap, "/", 2)
+func getCodecAndClock(rtpMap string) (string, string) {
+	parts2 := strings.SplitN(rtpMap, "/", 2)
 	if len(parts2) != 2 {
 		return "", ""
 	}
@@ -81,122 +57,73 @@ func getCodecAndClock(attributes []psdp.Attribute, payloadType uint8) (string, s
 	return parts2[0], parts2[1]
 }
 
-func newTrackFromMediaDescription(md *psdp.MediaDescription) (Track, error) {
-	if len(md.MediaName.Formats) == 0 {
-		return nil, fmt.Errorf("no media formats found")
+func newTrackFromMediaDescription(md *psdp.MediaDescription, payloadTypeStr string) (Track, error) {
+	tmp, err := strconv.ParseInt(payloadTypeStr, 10, 8)
+	if err != nil {
+		return nil, err
 	}
+	payloadType := uint8(tmp)
 
-	control := getControlAttribute(md.Attributes)
+	rtpMap := getTrackAttribute(md.Attributes, payloadType, "rtpmap")
+	codec, clock := getCodecAndClock(rtpMap)
+	codec = strings.ToLower(codec)
+	fmtp := getTrackAttribute(md.Attributes, payloadType, "fmtp")
 
-	if len(md.MediaName.Formats) == 1 {
-		tmp, err := strconv.ParseInt(md.MediaName.Formats[0], 10, 8)
-		if err != nil {
-			return nil, err
-		}
-		payloadType := uint8(tmp)
-
-		codec, clock := getCodecAndClock(md.Attributes, payloadType)
-		codec = strings.ToLower(codec)
-
+	track := func() Track {
 		switch {
 		case md.MediaName.Media == "video":
 			switch {
 			case payloadType == 26:
-				return newTrackJPEGFromMediaDescription(control)
+				return &TrackJPEG{}
 
 			case payloadType == 32:
-				return newTrackMPEG2VideoFromMediaDescription(control)
+				return &TrackMPEG2Video{}
 
 			case codec == "h264" && clock == "90000":
-				return newTrackH264FromMediaDescription(control, payloadType, md)
+				return &TrackH264{}
 
 			case codec == "h265" && clock == "90000":
-				return newTrackH265FromMediaDescription(control, payloadType, md)
+				return &TrackH265{}
 
 			case codec == "vp8" && clock == "90000":
-				return newTrackVP8FromMediaDescription(control, payloadType, md)
+				return &TrackVP8{}
 
 			case codec == "vp9" && clock == "90000":
-				return newTrackVP9FromMediaDescription(control, payloadType, md)
+				return &TrackVP9{}
 			}
 
 		case md.MediaName.Media == "audio":
 			switch {
 			case payloadType == 0, payloadType == 8:
-				return newTrackG711FromMediaDescription(control, payloadType, clock)
+				return &TrackG711{}
 
 			case payloadType == 9:
-				return newTrackG722FromMediaDescription(control, clock)
+				return &TrackG722{}
 
 			case payloadType == 14:
-				return newTrackMPEG2AudioFromMediaDescription(control)
+				return &TrackMPEG2Audio{}
 
 			case codec == "l8", codec == "l16", codec == "l24":
-				return newTrackLPCMFromMediaDescription(control, payloadType, codec, clock)
+				return &TrackLPCM{}
 
 			case codec == "mpeg4-generic":
-				return newTrackMPEG4AudioFromMediaDescription(control, payloadType, md)
+				return &TrackMPEG4Audio{}
 
 			case codec == "vorbis":
-				return newTrackVorbisFromMediaDescription(control, payloadType, clock, md)
+				return &TrackVorbis{}
 
 			case codec == "opus":
-				return newTrackOpusFromMediaDescription(control, payloadType, clock)
+				return &TrackOpus{}
 			}
 		}
+
+		return &TrackGeneric{}
+	}()
+
+	err = track.unmarshal(payloadType, clock, codec, rtpMap, fmtp)
+	if err != nil {
+		return nil, err
 	}
 
-	return newTrackGenericFromMediaDescription(control, md)
-}
-
-type trackBase struct {
-	control string
-}
-
-// GetControl gets the track control attribute.
-func (t *trackBase) GetControl() string {
-	return t.control
-}
-
-// SetControl sets the track control attribute.
-func (t *trackBase) SetControl(c string) {
-	t.control = c
-}
-
-func (t *trackBase) url(contentBase *url.URL) (*url.URL, error) {
-	if contentBase == nil {
-		return nil, fmt.Errorf("Content-Base header not provided")
-	}
-
-	control := t.GetControl()
-
-	// no control attribute, use base URL
-	if control == "" {
-		return contentBase, nil
-	}
-
-	// control attribute contains an absolute path
-	if strings.HasPrefix(control, "rtsp://") {
-		ur, err := url.Parse(control)
-		if err != nil {
-			return nil, err
-		}
-
-		// copy host and credentials
-		ur.Host = contentBase.Host
-		ur.User = contentBase.User
-		return ur, nil
-	}
-
-	// control attribute contains a relative control attribute
-	// insert the control attribute at the end of the URL
-	// if there's a query, insert it after the query
-	// otherwise insert it after the path
-	strURL := contentBase.String()
-	if control[0] != '?' && !strings.HasSuffix(strURL, "/") {
-		strURL += "/"
-	}
-
-	ur, _ := url.Parse(strURL + control)
-	return ur, nil
+	return track, nil
 }

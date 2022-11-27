@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtph265"
 )
@@ -20,39 +20,32 @@ type TrackH265 struct {
 	PPS         []byte
 	MaxDONDiff  int
 
-	trackBase
 	mutex sync.RWMutex
 }
 
-func newTrackH265FromMediaDescription(
-	control string,
-	payloadType uint8,
-	md *psdp.MediaDescription,
-) (*TrackH265, error) {
-	t := &TrackH265{
-		PayloadType: payloadType,
-		trackBase: trackBase{
-			control: control,
-		},
-	}
-
-	t.fillParamsFromMediaDescription(md)
-
-	return t, nil
+// String returns a description of the track.
+func (t *TrackH265) String() string {
+	return "H265"
 }
 
-func (t *TrackH265) fillParamsFromMediaDescription(md *psdp.MediaDescription) error {
-	v, ok := md.Attribute("fmtp")
-	if !ok {
-		return fmt.Errorf("fmtp attribute is missing")
+// ClockRate returns the clock rate.
+func (t *TrackH265) ClockRate() int {
+	return 90000
+}
+
+// GetPayloadType returns the payload type.
+func (t *TrackH265) GetPayloadType() uint8 {
+	return t.PayloadType
+}
+
+func (t *TrackH265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadType = payloadType
+
+	if fmtp == "" {
+		return nil // do not return any error
 	}
 
-	tmp := strings.SplitN(v, " ", 2)
-	if len(tmp) != 2 {
-		return fmt.Errorf("invalid fmtp attribute (%v)", v)
-	}
-
-	for _, kv := range strings.Split(tmp[1], ";") {
+	for _, kv := range strings.Split(fmtp, ";") {
 		kv = strings.Trim(kv, " ")
 
 		if len(kv) == 0 {
@@ -61,7 +54,7 @@ func (t *TrackH265) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 
 		tmp := strings.SplitN(kv, "=", 2)
 		if len(tmp) != 2 {
-			return fmt.Errorf("invalid fmtp attribute (%v)", v)
+			return fmt.Errorf("invalid fmtp attribute (%v)", fmtp)
 		}
 
 		switch tmp[0] {
@@ -69,27 +62,27 @@ func (t *TrackH265) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 			var err error
 			t.VPS, err = base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
-				return fmt.Errorf("invalid sprop-vps (%v)", v)
+				return fmt.Errorf("invalid sprop-vps (%v)", fmtp)
 			}
 
 		case "sprop-sps":
 			var err error
 			t.SPS, err = base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
-				return fmt.Errorf("invalid sprop-sps (%v)", v)
+				return fmt.Errorf("invalid sprop-sps (%v)", fmtp)
 			}
 
 		case "sprop-pps":
 			var err error
 			t.PPS, err = base64.StdEncoding.DecodeString(tmp[1])
 			if err != nil {
-				return fmt.Errorf("invalid sprop-pps (%v)", v)
+				return fmt.Errorf("invalid sprop-pps (%v)", fmtp)
 			}
 
 		case "sprop-max-don-diff":
 			tmp, err := strconv.ParseInt(tmp[1], 10, 64)
 			if err != nil {
-				return fmt.Errorf("invalid sprop-max-don-diff (%v)", v)
+				return fmt.Errorf("invalid sprop-max-don-diff (%v)", fmtp)
 			}
 			t.MaxDONDiff = int(tmp)
 		}
@@ -98,24 +91,9 @@ func (t *TrackH265) fillParamsFromMediaDescription(md *psdp.MediaDescription) er
 	return nil
 }
 
-// String returns the track codec.
-func (t *TrackH265) String() string {
-	return "H265"
-}
-
-// ClockRate returns the track clock rate.
-func (t *TrackH265) ClockRate() int {
-	return 90000
-}
-
-// MediaDescription returns the track media description in SDP format.
-func (t *TrackH265) MediaDescription() *psdp.MediaDescription {
+func (t *TrackH265) marshal() (string, string) {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
-
-	typ := strconv.FormatInt(int64(t.PayloadType), 10)
-
-	fmtp := typ
 
 	var tmp []string
 	if t.VPS != nil {
@@ -130,31 +108,12 @@ func (t *TrackH265) MediaDescription() *psdp.MediaDescription {
 	if t.MaxDONDiff != 0 {
 		tmp = append(tmp, "sprop-max-don-diff="+strconv.FormatInt(int64(t.MaxDONDiff), 10))
 	}
+	var fmtp string
 	if tmp != nil {
-		fmtp += " " + strings.Join(tmp, "; ")
+		fmtp = strings.Join(tmp, "; ")
 	}
 
-	return &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "video",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{typ},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: typ + " H265/90000",
-			},
-			{
-				Key:   "fmtp",
-				Value: fmtp,
-			},
-			{
-				Key:   "control",
-				Value: t.control,
-			},
-		},
-	}
+	return "H265/90000", fmtp
 }
 
 func (t *TrackH265) clone() Track {
@@ -164,8 +123,11 @@ func (t *TrackH265) clone() Track {
 		SPS:         t.SPS,
 		PPS:         t.PPS,
 		MaxDONDiff:  t.MaxDONDiff,
-		trackBase:   t.trackBase,
 	}
+}
+
+func (t *TrackH265) ptsEqualsDTS(*rtp.Packet) bool {
+	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.

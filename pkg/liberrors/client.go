@@ -65,12 +65,12 @@ func (e ErrClientContentTypeUnsupported) Error() string {
 	return fmt.Sprintf("unsupported Content-Type header '%v'", e.CT)
 }
 
-// ErrClientCannotSetupTracksDifferentURLs is an error that can be returned by a client.
-type ErrClientCannotSetupTracksDifferentURLs struct{}
+// ErrClientCannotSetupMediasDifferentURLs is an error that can be returned by a client.
+type ErrClientCannotSetupMediasDifferentURLs struct{}
 
 // Error implements the error interface.
-func (e ErrClientCannotSetupTracksDifferentURLs) Error() string {
-	return "cannot setup tracks with different base URLs"
+func (e ErrClientCannotSetupMediasDifferentURLs) Error() string {
+	return "cannot setup medias with different base URLs"
 }
 
 // ErrClientUDPPortsZero is an error that can be returned by a client.

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtplpcm"
 )
@@ -16,69 +16,58 @@ type TrackLPCM struct {
 	BitDepth     int
 	SampleRate   int
 	ChannelCount int
-
-	trackBase
 }
 
-func newTrackLPCMFromMediaDescription(
-	control string,
-	payloadType uint8,
-	codec string,
-	clock string,
-) (*TrackLPCM, error,
-) {
-	var bitDepth int
-	switch codec {
-	case "l8":
-		bitDepth = 8
-
-	case "l16":
-		bitDepth = 16
-
-	case "l24":
-		bitDepth = 24
-	}
-
-	tmp := strings.SplitN(clock, "/", 32)
-	if len(tmp) != 2 {
-		return nil, fmt.Errorf("invalid clock (%v)", clock)
-	}
-
-	sampleRate, err := strconv.ParseInt(tmp[0], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	channelCount, err := strconv.ParseInt(tmp[1], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	return &TrackLPCM{
-		PayloadType:  payloadType,
-		BitDepth:     bitDepth,
-		SampleRate:   int(sampleRate),
-		ChannelCount: int(channelCount),
-		trackBase: trackBase{
-			control: control,
-		},
-	}, nil
-}
-
-// String returns the track codec.
+// String returns a description of the track.
 func (t *TrackLPCM) String() string {
 	return "LPCM"
 }
 
-// ClockRate returns the track clock rate.
+// ClockRate returns the clock rate.
 func (t *TrackLPCM) ClockRate() int {
 	return t.SampleRate
 }
 
-// MediaDescription returns the track media description in SDP format.
-func (t *TrackLPCM) MediaDescription() *psdp.MediaDescription {
-	typ := strconv.FormatInt(int64(t.PayloadType), 10)
+// GetPayloadType returns the payload type.
+func (t *TrackLPCM) GetPayloadType() uint8 {
+	return t.PayloadType
+}
 
+func (t *TrackLPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadType = payloadType
+
+	switch codec {
+	case "l8":
+		t.BitDepth = 8
+
+	case "l16":
+		t.BitDepth = 16
+
+	case "l24":
+		t.BitDepth = 24
+	}
+
+	tmp := strings.SplitN(clock, "/", 32)
+	if len(tmp) != 2 {
+		return fmt.Errorf("invalid clock (%v)", clock)
+	}
+
+	sampleRate, err := strconv.ParseInt(tmp[0], 10, 64)
+	if err != nil {
+		return err
+	}
+	t.SampleRate = int(sampleRate)
+
+	channelCount, err := strconv.ParseInt(tmp[1], 10, 64)
+	if err != nil {
+		return err
+	}
+	t.ChannelCount = int(channelCount)
+
+	return nil
+}
+
+func (t *TrackLPCM) marshal() (string, string) {
 	var codec string
 	switch t.BitDepth {
 	case 8:
@@ -91,24 +80,8 @@ func (t *TrackLPCM) MediaDescription() *psdp.MediaDescription {
 		codec = "L24"
 	}
 
-	return &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "audio",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{typ},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key: "rtpmap",
-				Value: typ + " " + codec + "/" + strconv.FormatInt(int64(t.SampleRate), 10) +
-					"/" + strconv.FormatInt(int64(t.ChannelCount), 10),
-			},
-			{
-				Key:   "control",
-				Value: t.control,
-			},
-		},
-	}
+	return codec + "/" + strconv.FormatInt(int64(t.SampleRate), 10) +
+		"/" + strconv.FormatInt(int64(t.ChannelCount), 10), ""
 }
 
 func (t *TrackLPCM) clone() Track {
@@ -117,8 +90,11 @@ func (t *TrackLPCM) clone() Track {
 		BitDepth:     t.BitDepth,
 		SampleRate:   t.SampleRate,
 		ChannelCount: t.ChannelCount,
-		trackBase:    t.trackBase,
 	}
+}
+
+func (t *TrackLPCM) ptsEqualsDTS(*rtp.Packet) bool {
+	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.

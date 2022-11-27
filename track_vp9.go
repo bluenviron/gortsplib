@@ -5,106 +5,82 @@ import (
 	"strconv"
 	"strings"
 
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpvp9"
 )
 
 // TrackVP9 is a VP9 track.
 type TrackVP9 struct {
-	trackBase
 	PayloadType uint8
 	MaxFR       *int
 	MaxFS       *int
 	ProfileID   *int
 }
 
-func newTrackVP9FromMediaDescription(
-	control string,
-	payloadType uint8,
-	md *psdp.MediaDescription,
-) (*TrackVP9, error) {
-	t := &TrackVP9{
-		PayloadType: payloadType,
-		trackBase: trackBase{
-			control: control,
-		},
-	}
-
-	t.fillParamsFromMediaDescription(md)
-
-	return t, nil
+// String returns a description of the track.
+func (t *TrackVP9) String() string {
+	return "VP9"
 }
 
-func (t *TrackVP9) fillParamsFromMediaDescription(md *psdp.MediaDescription) error {
-	v, ok := md.Attribute("fmtp")
-	if !ok {
-		return fmt.Errorf("fmtp attribute is missing")
-	}
+// ClockRate returns the clock rate.
+func (t *TrackVP9) ClockRate() int {
+	return 90000
+}
 
-	tmp := strings.SplitN(v, " ", 2)
-	if len(tmp) != 2 {
-		return fmt.Errorf("invalid fmtp attribute (%v)", v)
-	}
+// GetPayloadType returns the payload type.
+func (t *TrackVP9) GetPayloadType() uint8 {
+	return t.PayloadType
+}
 
-	for _, kv := range strings.Split(tmp[1], ";") {
-		kv = strings.Trim(kv, " ")
+func (t *TrackVP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadType = payloadType
 
-		if len(kv) == 0 {
-			continue
-		}
+	if fmtp != "" {
+		for _, kv := range strings.Split(fmtp, ";") {
+			kv = strings.Trim(kv, " ")
 
-		tmp := strings.SplitN(kv, "=", 2)
-		if len(tmp) != 2 {
-			return fmt.Errorf("invalid fmtp attribute (%v)", v)
-		}
-
-		switch tmp[0] {
-		case "max-fr":
-			val, err := strconv.ParseUint(tmp[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid max-fr (%v)", tmp[1])
+			if len(kv) == 0 {
+				continue
 			}
-			v2 := int(val)
-			t.MaxFR = &v2
 
-		case "max-fs":
-			val, err := strconv.ParseUint(tmp[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid max-fs (%v)", tmp[1])
+			tmp := strings.SplitN(kv, "=", 2)
+			if len(tmp) != 2 {
+				return fmt.Errorf("invalid fmtp attribute (%v)", fmtp)
 			}
-			v2 := int(val)
-			t.MaxFS = &v2
 
-		case "profile-id":
-			val, err := strconv.ParseUint(tmp[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid profile-id (%v)", tmp[1])
+			switch tmp[0] {
+			case "max-fr":
+				val, err := strconv.ParseUint(tmp[1], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid max-fr (%v)", tmp[1])
+				}
+				v2 := int(val)
+				t.MaxFR = &v2
+
+			case "max-fs":
+				val, err := strconv.ParseUint(tmp[1], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid max-fs (%v)", tmp[1])
+				}
+				v2 := int(val)
+				t.MaxFS = &v2
+
+			case "profile-id":
+				val, err := strconv.ParseUint(tmp[1], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid profile-id (%v)", tmp[1])
+				}
+				v2 := int(val)
+				t.ProfileID = &v2
 			}
-			v2 := int(val)
-			t.ProfileID = &v2
 		}
 	}
 
 	return nil
 }
 
-// String returns the track codec.
-func (t *TrackVP9) String() string {
-	return "VP9"
-}
-
-// ClockRate returns the track clock rate.
-func (t *TrackVP9) ClockRate() int {
-	return 90000
-}
-
-// MediaDescription returns the track media description in SDP format.
-func (t *TrackVP9) MediaDescription() *psdp.MediaDescription {
-	typ := strconv.FormatInt(int64(t.PayloadType), 10)
-
-	fmtp := typ
-
+func (t *TrackVP9) marshal() (string, string) {
 	var tmp []string
 	if t.MaxFR != nil {
 		tmp = append(tmp, "max-fr="+strconv.FormatInt(int64(*t.MaxFR), 10))
@@ -115,41 +91,25 @@ func (t *TrackVP9) MediaDescription() *psdp.MediaDescription {
 	if t.ProfileID != nil {
 		tmp = append(tmp, "profile-id="+strconv.FormatInt(int64(*t.ProfileID), 10))
 	}
+	var fmtp string
 	if tmp != nil {
-		fmtp += " " + strings.Join(tmp, ";")
+		fmtp = strings.Join(tmp, ";")
 	}
 
-	return &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "video",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{typ},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: typ + " VP9/90000",
-			},
-			{
-				Key:   "fmtp",
-				Value: fmtp,
-			},
-			{
-				Key:   "control",
-				Value: t.control,
-			},
-		},
-	}
+	return "VP9/90000", fmtp
 }
 
 func (t *TrackVP9) clone() Track {
 	return &TrackVP9{
-		trackBase:   t.trackBase,
 		PayloadType: t.PayloadType,
 		MaxFR:       t.MaxFR,
 		MaxFS:       t.MaxFS,
 		ProfileID:   t.ProfileID,
 	}
+}
+
+func (t *TrackVP9) ptsEqualsDTS(*rtp.Packet) bool {
+	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.

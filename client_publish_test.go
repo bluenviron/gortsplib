@@ -17,10 +17,20 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 )
 
+var testH264Media = &Media{
+	Type: MediaTypeVideo,
+	Tracks: []Track{&TrackH264{
+		PayloadType:       96,
+		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+		PacketizationMode: 1,
+	}},
+}
+
 var testRTPPacket = rtp.Packet{
 	Header: rtp.Header{
 		Version:     2,
-		PayloadType: 97,
+		PayloadType: 96,
 		CSRC:        []uint32{},
 		SSRC:        0x38F27A2F,
 	},
@@ -114,7 +124,7 @@ func TestClientPublishSerial(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/trackID=0"), req.URL)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/mediaID=0"), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])
@@ -225,21 +235,14 @@ func TestClientPublishSerial(t *testing.T) {
 					return &v
 				}(),
 				OnPacketRTCP: func(ctx *ClientOnPacketRTCPCtx) {
-					require.Equal(t, 0, ctx.TrackID)
+					require.Equal(t, 0, ctx.MediaID)
 					require.Equal(t, &testRTCPPacket, ctx.Packet)
 					close(recvDone)
 				},
 			}
 
-			track := &TrackH264{
-				PayloadType:       96,
-				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PacketizationMode: 1,
-			}
-
 			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
-				Tracks{track})
+				Medias{testH264Media.clone()})
 			require.NoError(t, err)
 
 			done := make(chan struct{})
@@ -384,18 +387,11 @@ func TestClientPublishParallel(t *testing.T) {
 				}(),
 			}
 
-			track := &TrackH264{
-				PayloadType:       96,
-				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PacketizationMode: 1,
-			}
-
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
 
 			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
-				Tracks{track})
+				Medias{testH264Media.clone()})
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -544,15 +540,8 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}(),
 			}
 
-			track := &TrackH264{
-				PayloadType:       96,
-				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PacketizationMode: 1,
-			}
-
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
-				Tracks{track})
+				Medias{testH264Media.clone()})
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -679,15 +668,8 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}(),
 			}
 
-			track := &TrackH264{
-				PayloadType:       96,
-				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PacketizationMode: 1,
-			}
-
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
-				Tracks{track})
+				Medias{testH264Media.clone()})
 			require.NoError(t, err)
 
 			writerDone := make(chan struct{})
@@ -821,17 +803,10 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	track := &TrackH264{
-		PayloadType:       96,
-		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PacketizationMode: 1,
-	}
-
 	c := Client{}
 
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",
-		Tracks{track})
+		Medias{testH264Media.clone()})
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -1010,15 +985,8 @@ func TestClientPublishDecodeErrors(t *testing.T) {
 				},
 			}
 
-			track := &TrackH264{
-				PayloadType:       96,
-				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PacketizationMode: 1,
-			}
-
 			err = c.StartPublishing("rtsp://localhost:8554/stream",
-				Tracks{track})
+				Medias{testH264Media.clone()})
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1170,16 +1138,11 @@ func TestClientPublishRTCPReport(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				udpSenderReportPeriod: 500 * time.Millisecond,
+				senderReportPeriod: 500 * time.Millisecond,
 			}
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
-				Tracks{&TrackH264{
-					PayloadType:       96,
-					SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-					PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-					PacketizationMode: 1,
-				}})
+				Medias{testH264Media.clone()})
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1311,15 +1274,8 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 		},
 	}
 
-	track := &TrackH264{
-		PayloadType:       96,
-		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PacketizationMode: 1,
-	}
-
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",
-		Tracks{track})
+		Medias{testH264Media.clone()})
 	require.NoError(t, err)
 	defer c.Close()
 

@@ -34,23 +34,26 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create an MPEG4-audio track
-	track := &gortsplib.TrackMPEG4Audio{
-		PayloadType: 96,
-		Config: &mpeg4audio.Config{
-			Type:         mpeg4audio.ObjectTypeAACLC,
-			SampleRate:   48000,
-			ChannelCount: 2,
-		},
-		SizeLength:       13,
-		IndexLength:      3,
-		IndexDeltaLength: 3,
+	// create a media that contains a MPEG4-audio track
+	media := &gortsplib.Media{
+		Type: gortsplib.MediaTypeAudio,
+		Tracks: []gortsplib.Track{&gortsplib.TrackMPEG4Audio{
+			PayloadType: 96,
+			Config: &mpeg4audio.Config{
+				Type:         mpeg4audio.ObjectTypeAACLC,
+				SampleRate:   48000,
+				ChannelCount: 2,
+			},
+			SizeLength:       13,
+			IndexLength:      3,
+			IndexDeltaLength: 3,
+		}},
 	}
 
-	// connect to the server and start publishing the track
+	// connect to the server and start publishing the media
 	c := gortsplib.Client{}
 	err = c.StartPublishing("rtsp://localhost:8554/mystream",
-		gortsplib.Tracks{track})
+		gortsplib.Medias{media})
 	if err != nil {
 		panic(err)
 	}

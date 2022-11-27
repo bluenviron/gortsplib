@@ -33,14 +33,17 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create a G722 track
-	track := &gortsplib.TrackG722{}
+	// create a media that contains a G722 track
+	media := &gortsplib.Media{
+		Type:   gortsplib.MediaTypeAudio,
+		Tracks: []gortsplib.Track{&gortsplib.TrackG722{}},
+	}
 
 	c := gortsplib.Client{}
 
-	// connect to the server and start publishing the track
+	// connect to the server and start publishing the media
 	err = c.StartPublishing("rtsp://localhost:8554/mystream",
-		gortsplib.Tracks{track})
+		gortsplib.Medias{media})
 	if err != nil {
 		panic(err)
 	}

@@ -106,14 +106,14 @@ func (e ErrServerTransportHeaderInvalid) Error() string {
 	return fmt.Sprintf("invalid transport header: %v", e.Err)
 }
 
-// ErrServerTrackAlreadySetup is an error that can be returned by a server.
-type ErrServerTrackAlreadySetup struct {
-	TrackID int
+// ErrServerMediaAlreadySetup is an error that can be returned by a server.
+type ErrServerMediaAlreadySetup struct {
+	MediaID int
 }
 
 // Error implements the error interface.
-func (e ErrServerTrackAlreadySetup) Error() string {
-	return fmt.Sprintf("track %d has already been setup", e.TrackID)
+func (e ErrServerMediaAlreadySetup) Error() string {
+	return fmt.Sprintf("media %d has already been setup", e.MediaID)
 }
 
 // ErrServerTransportHeaderInvalidMode is an error that can be returned by a server.
@@ -158,28 +158,28 @@ func (e ErrServerTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
 	return "interleaved IDs already used"
 }
 
-// ErrServerTracksDifferentProtocols is an error that can be returned by a server.
-type ErrServerTracksDifferentProtocols struct{}
+// ErrServerMediasDifferentProtocols is an error that can be returned by a server.
+type ErrServerMediasDifferentProtocols struct{}
 
 // Error implements the error interface.
-func (e ErrServerTracksDifferentProtocols) Error() string {
-	return "can't setup tracks with different protocols"
+func (e ErrServerMediasDifferentProtocols) Error() string {
+	return "can't setup medias with different protocols"
 }
 
-// ErrServerNoTracksSetup is an error that can be returned by a server.
-type ErrServerNoTracksSetup struct{}
+// ErrServerNoMediasSetup is an error that can be returned by a server.
+type ErrServerNoMediasSetup struct{}
 
 // Error implements the error interface.
-func (e ErrServerNoTracksSetup) Error() string {
-	return "no tracks have been setup"
+func (e ErrServerNoMediasSetup) Error() string {
+	return "no medias have been setup"
 }
 
-// ErrServerNotAllAnnouncedTracksSetup is an error that can be returned by a server.
-type ErrServerNotAllAnnouncedTracksSetup struct{}
+// ErrServerNotAllAnnouncedMediasSetup is an error that can be returned by a server.
+type ErrServerNotAllAnnouncedMediasSetup struct{}
 
 // Error implements the error interface.
-func (e ErrServerNotAllAnnouncedTracksSetup) Error() string {
-	return "not all announced tracks have been setup"
+func (e ErrServerNotAllAnnouncedMediasSetup) Error() string {
+	return "not all announced medias have been setup"
 }
 
 // ErrServerLinkedToOtherSession is an error that can be returned by a server.

@@ -8,18 +8,19 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 )
 
-type serverStreamTrack struct {
-	lastSequenceNumber uint16
-	lastSSRC           uint32
-	lastTimeFilled     bool
-	lastTimeRTP        uint32
-	lastTimeNTP        time.Time
-	rtcpSender         *rtcpsender.RTCPSender
-	multicastHandler   *serverMulticastHandler
+type serverStreamMediaTrack struct {
+	track      Track
+	rtcpSender *rtcpsender.RTCPSender
+}
+
+type serverStreamMedia struct {
+	tracks           map[uint8]*serverStreamMediaTrack
+	multicastHandler *serverMulticastHandler
 }
 
 // ServerStream represents a data stream.
@@ -28,33 +29,62 @@ type serverStreamTrack struct {
 // - allocating multicast listeners
 // - gathering infos about the stream in order to generate SSRC and RTP-Info
 type ServerStream struct {
-	tracks Tracks
+	medias Medias
 
 	mutex                sync.RWMutex
 	s                    *Server
 	activeUnicastReaders map[*ServerSession]struct{}
 	readers              map[*ServerSession]struct{}
-	streamTracks         []*serverStreamTrack
+	streamMedias         []*serverStreamMedia
 	closed               bool
 }
 
 // NewServerStream allocates a ServerStream.
-func NewServerStream(tracks Tracks) *ServerStream {
-	tracks = tracks.clone()
-	tracks.setControls()
+func NewServerStream(medias Medias) *ServerStream {
+	medias = medias.clone()
+	medias.setControls()
 
 	st := &ServerStream{
-		tracks:               tracks,
+		medias:               medias,
 		activeUnicastReaders: make(map[*ServerSession]struct{}),
 		readers:              make(map[*ServerSession]struct{}),
 	}
 
-	st.streamTracks = make([]*serverStreamTrack, len(tracks))
-	for i := range st.streamTracks {
-		st.streamTracks[i] = &serverStreamTrack{}
+	st.streamMedias = make([]*serverStreamMedia, len(medias))
+	for mediaID, media := range medias {
+		ssm := &serverStreamMedia{}
+
+		ssm.tracks = make(map[uint8]*serverStreamMediaTrack)
+		for _, track := range media.Tracks {
+			tr := &serverStreamMediaTrack{
+				track: track,
+			}
+
+			ci := mediaID
+			tr.rtcpSender = rtcpsender.New(
+				track.ClockRate(),
+				func(pkt rtcp.Packet) {
+					st.WritePacketRTCP(ci, pkt)
+				},
+			)
+
+			ssm.tracks[track.GetPayloadType()] = tr
+		}
+
+		st.streamMedias[mediaID] = ssm
 	}
 
 	return st
+}
+
+func (st *ServerStream) initializeServerDependentPart() {
+	if !st.s.DisableRTCPSenderReports {
+		for _, ssm := range st.streamMedias {
+			for _, tr := range ssm.tracks {
+				tr.rtcpSender.Start(st.s.senderReportPeriod)
+			}
+		}
+	}
 }
 
 // Close closes a ServerStream.
@@ -67,55 +97,93 @@ func (st *ServerStream) Close() error {
 		ss.Close()
 	}
 
-	for _, track := range st.streamTracks {
-		if track.rtcpSender != nil {
-			track.rtcpSender.Close()
+	for _, ssm := range st.streamMedias {
+		for _, tr := range ssm.tracks {
+			if tr.rtcpSender != nil {
+				tr.rtcpSender.Close()
+			}
 		}
-		if track.multicastHandler != nil {
-			track.multicastHandler.close()
+
+		if ssm.multicastHandler != nil {
+			ssm.multicastHandler.close()
 		}
 	}
 
 	return nil
 }
 
-// Tracks returns the tracks of the stream.
-func (st *ServerStream) Tracks() Tracks {
-	return st.tracks
+// Medias returns the medias of the stream.
+func (st *ServerStream) Medias() Medias {
+	return st.medias
 }
 
-func (st *ServerStream) ssrc(trackID int) uint32 {
-	st.mutex.Lock()
-	defer st.mutex.Unlock()
-	return st.streamTracks[trackID].lastSSRC
-}
-
-func (st *ServerStream) rtpInfo(trackID int, now time.Time) (uint16, uint32, bool) {
+func (st *ServerStream) lastSSRC(mediaID int) (uint32, bool) {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
-	track := st.streamTracks[trackID]
+	media := st.streamMedias[mediaID]
 
-	if !track.lastTimeFilled {
-		return 0, 0, false
+	// since lastSSRC() is used to fill SSRC inside the Transport header,
+	// if there are multiple tracks inside a single media stream,
+	// do not return anything, since Transport headers don't support multiple SSRCs.
+	if len(media.tracks) > 1 {
+		return 0, false
 	}
 
-	clockRate := st.tracks[trackID].ClockRate()
+	var firstKey uint8
+	for key := range media.tracks {
+		firstKey = key
+		break
+	}
+
+	return media.tracks[firstKey].rtcpSender.LastSSRC()
+}
+
+func (st *ServerStream) rtpInfoEntry(mediaID int, now time.Time) *headers.RTPInfoEntry {
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
+
+	media := st.streamMedias[mediaID]
+
+	// if there are multiple tracks inside a single media stream,
+	// do not generate a RTP-Info entry, since RTP-Info doesn't support
+	// multiple sequence numbers / timestamps.
+	if len(media.tracks) > 1 {
+		return nil
+	}
+
+	var firstKey uint8
+	for key := range media.tracks {
+		firstKey = key
+		break
+	}
+
+	track := media.tracks[firstKey]
+
+	lastSeqNum, lastTimeRTP, lastTimeNTP, ok := track.rtcpSender.LastPacketData()
+	if !ok {
+		return nil
+	}
+
+	clockRate := track.track.ClockRate()
 	if clockRate == 0 {
-		return 0, 0, false
+		return nil
 	}
 
 	// sequence number of the first packet of the stream
-	seq := track.lastSequenceNumber + 1
+	seqNum := lastSeqNum + 1
 
 	// RTP timestamp corresponding to the time value in
 	// the Range response header.
 	// remove a small quantity in order to avoid DTS > PTS
-	ts := uint32(uint64(track.lastTimeRTP) +
-		uint64(now.Sub(track.lastTimeNTP).Seconds()*float64(clockRate)) -
+	ts := uint32(uint64(lastTimeRTP) +
+		uint64(now.Sub(lastTimeNTP).Seconds()*float64(clockRate)) -
 		uint64(clockRate)/10)
 
-	return seq, ts, true
+	return &headers.RTPInfoEntry{
+		SequenceNumber: &seqNum,
+		Timestamp:      &ts,
+	}
 }
 
 func (st *ServerStream) readerAdd(
@@ -132,19 +200,7 @@ func (st *ServerStream) readerAdd(
 
 	if st.s == nil {
 		st.s = ss.s
-
-		if !st.s.DisableRTCPSenderReports {
-			for trackID, track := range st.streamTracks {
-				cTrackID := trackID
-				track.rtcpSender = rtcpsender.New(
-					st.s.udpSenderReportPeriod,
-					st.tracks[trackID].ClockRate(),
-					func(pkt rtcp.Packet) {
-						st.WritePacketRTCP(cTrackID, pkt)
-					},
-				)
-			}
-		}
+		st.initializeServerDependentPart()
 	}
 
 	switch transport {
@@ -154,7 +210,7 @@ func (st *ServerStream) readerAdd(
 			if *r.setuppedTransport == TransportUDP &&
 				r.author.ip().Equal(ss.author.ip()) &&
 				r.author.zone() == ss.author.zone() {
-				for _, rt := range r.setuppedTracks {
+				for _, rt := range r.setuppedMedias {
 					if rt.udpRTPReadPort == clientPorts[0] {
 						return liberrors.ErrServerUDPPortsAlreadyInUse{Port: rt.udpRTPReadPort}
 					}
@@ -164,13 +220,13 @@ func (st *ServerStream) readerAdd(
 
 	case TransportUDPMulticast:
 		// allocate multicast listeners
-		for _, track := range st.streamTracks {
-			if track.multicastHandler == nil {
+		for _, media := range st.streamMedias {
+			if media.multicastHandler == nil {
 				mh, err := newServerMulticastHandler(st.s)
 				if err != nil {
 					return err
 				}
-				track.multicastHandler = mh
+				media.multicastHandler = mh
 			}
 		}
 	}
@@ -191,10 +247,10 @@ func (st *ServerStream) readerRemove(ss *ServerSession) {
 	delete(st.readers, ss)
 
 	if len(st.readers) == 0 {
-		for _, track := range st.streamTracks {
-			if track.multicastHandler != nil {
-				track.multicastHandler.close()
-				track.multicastHandler = nil
+		for _, media := range st.streamMedias {
+			if media.multicastHandler != nil {
+				media.multicastHandler.close()
+				media.multicastHandler = nil
 			}
 		}
 	}
@@ -209,9 +265,9 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 	}
 
 	if *ss.setuppedTransport == TransportUDPMulticast {
-		for trackID, track := range ss.setuppedTracks {
-			st.streamTracks[trackID].multicastHandler.rtcpl.addClient(
-				ss.author.ip(), st.streamTracks[trackID].multicastHandler.rtcpl.port(), ss, track, false)
+		for mediaID, media := range ss.setuppedMedias {
+			st.streamMedias[mediaID].multicastHandler.rtcpl.addClient(
+				ss.author.ip(), st.streamMedias[mediaID].multicastHandler.rtcpl.port(), ss, media, false)
 		}
 	} else {
 		st.activeUnicastReaders[ss] = struct{}{}
@@ -227,8 +283,8 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 	}
 
 	if *ss.setuppedTransport == TransportUDPMulticast {
-		for trackID := range ss.setuppedTracks {
-			st.streamTracks[trackID].multicastHandler.rtcpl.removeClient(ss)
+		for mediaID := range ss.setuppedMedias {
+			st.streamMedias[mediaID].multicastHandler.rtcpl.removeClient(ss)
 		}
 	} else {
 		delete(st.activeUnicastReaders, ss)
@@ -236,14 +292,14 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 }
 
 // WritePacketRTP writes a RTP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTP(trackID int, pkt *rtp.Packet) {
-	st.WritePacketRTPWithNTP(trackID, pkt, time.Now())
+func (st *ServerStream) WritePacketRTP(mediaID int, pkt *rtp.Packet) {
+	st.WritePacketRTPWithNTP(mediaID, pkt, time.Now())
 }
 
 // WritePacketRTPWithNTP writes a RTP packet to all the readers of the stream.
 // ntp is the absolute time of the packet, and is needed to generate RTCP sender reports
 // that allows the receiver to reconstruct the absolute time of the packet.
-func (st *ServerStream) WritePacketRTPWithNTP(trackID int, pkt *rtp.Packet, ntp time.Time) {
+func (st *ServerStream) WritePacketRTPWithNTP(mediaID int, pkt *rtp.Packet, ntp time.Time) {
 	byts := make([]byte, maxPacketSize)
 	n, err := pkt.MarshalTo(byts)
 	if err != nil {
@@ -258,35 +314,28 @@ func (st *ServerStream) WritePacketRTPWithNTP(trackID int, pkt *rtp.Packet, ntp 
 		return
 	}
 
-	track := st.streamTracks[trackID]
-	ptsEqualsDTS := ptsEqualsDTS(st.tracks[trackID], pkt)
+	media := st.streamMedias[mediaID]
 
-	if ptsEqualsDTS {
-		track.lastTimeFilled = true
-		track.lastTimeRTP = pkt.Header.Timestamp
-		track.lastTimeNTP = ntp
+	track, ok := media.tracks[pkt.PayloadType]
+	if !ok {
+		return
 	}
 
-	track.lastSequenceNumber = pkt.Header.SequenceNumber
-	track.lastSSRC = pkt.Header.SSRC
-
-	if track.rtcpSender != nil {
-		track.rtcpSender.ProcessPacketRTP(ntp, pkt, ptsEqualsDTS)
-	}
+	track.rtcpSender.ProcessPacket(pkt, ntp, track.track.ptsEqualsDTS(pkt))
 
 	// send unicast
 	for r := range st.activeUnicastReaders {
-		r.writePacketRTP(trackID, byts)
+		r.writePacketRTP(mediaID, byts)
 	}
 
 	// send multicast
-	if track.multicastHandler != nil {
-		track.multicastHandler.writePacketRTP(byts)
+	if media.multicastHandler != nil {
+		media.multicastHandler.writePacketRTP(byts)
 	}
 }
 
 // WritePacketRTCP writes a RTCP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTCP(trackID int, pkt rtcp.Packet) {
+func (st *ServerStream) WritePacketRTCP(mediaID int, pkt rtcp.Packet) {
 	byts, err := pkt.Marshal()
 	if err != nil {
 		return
@@ -299,14 +348,15 @@ func (st *ServerStream) WritePacketRTCP(trackID int, pkt rtcp.Packet) {
 		return
 	}
 
+	media := st.streamMedias[mediaID]
+
 	// send unicast
 	for r := range st.activeUnicastReaders {
-		r.writePacketRTCP(trackID, byts)
+		r.writePacketRTCP(mediaID, byts)
 	}
 
 	// send multicast
-	track := st.streamTracks[trackID]
-	if track.multicastHandler != nil {
-		track.multicastHandler.writePacketRTCP(byts)
+	if media.multicastHandler != nil {
+		media.multicastHandler.writePacketRTCP(byts)
 	}
 }

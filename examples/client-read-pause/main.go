@@ -9,7 +9,7 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server and read all tracks on a path
+// 1. connect to a RTSP server and read all medias on a path
 // 2. wait for 5 seconds
 // 3. pause for 5 seconds
 // 4. repeat
@@ -18,11 +18,11 @@ func main() {
 	c := gortsplib.Client{
 		// called when a RTP packet arrives
 		OnPacketRTP: func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-			log.Printf("RTP packet from track %d, payload type %d\n", ctx.TrackID, ctx.Packet.Header.PayloadType)
+			log.Printf("RTP packet from media %d, payload type %d\n", ctx.MediaID, ctx.Packet.Header.PayloadType)
 		},
 		// called when a RTCP packet arrives
 		OnPacketRTCP: func(ctx *gortsplib.ClientOnPacketRTCPCtx) {
-			log.Printf("RTCP packet from track %d, type %T\n", ctx.TrackID, ctx.Packet)
+			log.Printf("RTCP packet from media %d, type %T\n", ctx.MediaID, ctx.Packet)
 		},
 	}
 
@@ -39,14 +39,14 @@ func main() {
 	}
 	defer c.Close()
 
-	// find published tracks
-	tracks, baseURL, _, err := c.Describe(u)
+	// find published medias
+	medias, baseURL, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	// setup and read all tracks
-	err = c.SetupAndPlay(tracks, baseURL)
+	// setup and read all medias
+	err = c.SetupAndPlay(medias, baseURL)
 	if err != nil {
 		panic(err)
 	}

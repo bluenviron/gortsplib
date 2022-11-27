@@ -8,9 +8,20 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server and read all tracks on a path
+// 1. connect to a RTSP server and read all medias on a path
 // 2. check if there's an LPCM track
 // 3. get LPCM packets of that track
+
+func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *gortsplib.TrackLPCM) {
+	for _, media := range medias {
+		for _, track := range media.Tracks {
+			if track, ok := track.(*gortsplib.TrackLPCM); ok {
+				return media, track
+			}
+		}
+	}
+	return nil, nil
+}
 
 func main() {
 	c := gortsplib.Client{}
@@ -28,23 +39,16 @@ func main() {
 	}
 	defer c.Close()
 
-	// find published tracks
-	tracks, baseURL, _, err := c.Describe(u)
+	// find published medias
+	medias, baseURL, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	// find the LPCM track
-	track := func() *gortsplib.TrackLPCM {
-		for _, track := range tracks {
-			if tt, ok := track.(*gortsplib.TrackLPCM); ok {
-				return tt
-			}
-		}
-		return nil
-	}()
-	if track == nil {
-		panic("LPCM track not found")
+	// find the LPCM media and track
+	media, track := findTrack(medias)
+	if media == nil {
+		panic("media not found")
 	}
 
 	// setup decoder
@@ -52,6 +56,11 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
+		// get packets of specific track only
+		if ctx.Packet.PayloadType != track.GetPayloadType() {
+			return
+		}
+
 		// decode LPCM samples from the RTP packet
 		op, _, err := dec.Decode(ctx.Packet)
 		if err != nil {
@@ -62,8 +71,8 @@ func main() {
 		log.Printf("received LPCM samples of size %d\n", len(op))
 	}
 
-	// setup and read the LPCM track only
-	err = c.SetupAndPlay(gortsplib.Tracks{track}, baseURL)
+	// setup and read the LPCM media only
+	err = c.SetupAndPlay(gortsplib.Medias{media}, baseURL)
 	if err != nil {
 		panic(err)
 	}

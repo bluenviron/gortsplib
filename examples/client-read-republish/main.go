@@ -8,7 +8,7 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server and read all tracks on a path
+// 1. connect to a RTSP server and read all medias on a path
 // 2. re-publish all tracks on another path.
 
 func main() {
@@ -27,18 +27,18 @@ func main() {
 	}
 	defer reader.Close()
 
-	// find published tracks
-	tracks, baseURL, _, err := reader.Describe(sourceURL)
+	// find published medias
+	medias, baseURL, _, err := reader.Describe(sourceURL)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Printf("republishing %d tracks", len(tracks))
+	log.Printf("republishing %d medias", len(medias))
 
 	publisher := gortsplib.Client{}
 
-	// connect to the server and start publishing
-	err = publisher.StartPublishing("rtsp://localhost:8554/mystream2", tracks)
+	// connect to the server and start publishing the same medias
+	err = publisher.StartPublishing("rtsp://localhost:8554/mystream2", medias)
 	if err != nil {
 		panic(err)
 	}
@@ -46,11 +46,11 @@ func main() {
 
 	// called when a RTP packet arrives
 	reader.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		publisher.WritePacketRTP(ctx.TrackID, ctx.Packet)
+		publisher.WritePacketRTP(ctx.MediaID, ctx.Packet)
 	}
 
-	// setup and read all tracks
-	err = reader.SetupAndPlay(tracks, baseURL)
+	// setup and read all medias
+	err = reader.SetupAndPlay(medias, baseURL)
 	if err != nil {
 		panic(err)
 	}

@@ -33,18 +33,21 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create an Opus track
-	track := &gortsplib.TrackOpus{
-		PayloadType:  96,
-		SampleRate:   48000,
-		ChannelCount: 2,
+	// create a media that contains a Opus track
+	media := &gortsplib.Media{
+		Type: gortsplib.MediaTypeAudio,
+		Tracks: []gortsplib.Track{&gortsplib.TrackOpus{
+			PayloadType:  96,
+			SampleRate:   48000,
+			ChannelCount: 2,
+		}},
 	}
 
 	c := gortsplib.Client{}
 
-	// connect to the server and start publishing the track
+	// connect to the server and start publishing the media
 	err = c.StartPublishing("rtsp://localhost:8554/mystream",
-		gortsplib.Tracks{track})
+		gortsplib.Medias{media})
 	if err != nil {
 		panic(err)
 	}

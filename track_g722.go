@@ -4,68 +4,48 @@ import (
 	"fmt"
 	"strings"
 
-	psdp "github.com/pion/sdp/v3"
+	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpsimpleaudio"
 )
 
 // TrackG722 is a G722 track.
-type TrackG722 struct {
-	trackBase
-}
+type TrackG722 struct{}
 
-func newTrackG722FromMediaDescription(
-	control string,
-	clock string,
-) (*TrackG722, error,
-) {
-	tmp := strings.Split(clock, "/")
-	if len(tmp) == 2 && tmp[1] != "1" {
-		return nil, fmt.Errorf("G722 tracks can have only one channel")
-	}
-
-	return &TrackG722{
-		trackBase: trackBase{
-			control: control,
-		},
-	}, nil
-}
-
-// String returns the track codec.
+// String returns a description of the track.
 func (t *TrackG722) String() string {
 	return "G722"
 }
 
-// ClockRate returns the track clock rate.
+// ClockRate returns the clock rate.
 func (t *TrackG722) ClockRate() int {
 	return 8000
 }
 
-// MediaDescription returns the track media description in SDP format.
-func (t *TrackG722) MediaDescription() *psdp.MediaDescription {
-	return &psdp.MediaDescription{
-		MediaName: psdp.MediaName{
-			Media:   "audio",
-			Protos:  []string{"RTP", "AVP"},
-			Formats: []string{"9"},
-		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "rtpmap",
-				Value: "9 G722/8000",
-			},
-			{
-				Key:   "control",
-				Value: t.control,
-			},
-		},
+// GetPayloadType returns the payload type.
+func (t *TrackG722) GetPayloadType() uint8 {
+	return 9
+}
+
+func (t *TrackG722) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	tmp := strings.Split(clock, "/")
+	if len(tmp) == 2 && tmp[1] != "1" {
+		return fmt.Errorf("G722 tracks can have only one channel")
 	}
+
+	return nil
+}
+
+func (t *TrackG722) marshal() (string, string) {
+	return "G722/8000", ""
 }
 
 func (t *TrackG722) clone() Track {
-	return &TrackG722{
-		trackBase: t.trackBase,
-	}
+	return &TrackG722{}
+}
+
+func (t *TrackG722) ptsEqualsDTS(*rtp.Packet) bool {
+	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.

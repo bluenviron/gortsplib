@@ -36,16 +36,19 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create an H264 track
-	track := &gortsplib.TrackH264{
-		PayloadType:       96,
-		PacketizationMode: 1,
+	// create a media that contains a H264 track
+	media := &gortsplib.Media{
+		Type: gortsplib.MediaTypeVideo,
+		Tracks: []gortsplib.Track{&gortsplib.TrackH264{
+			PayloadType:       96,
+			PacketizationMode: 1,
+		}},
 	}
 
-	// connect to the server and start publishing the track
+	// connect to the server and start publishing the media
 	c := gortsplib.Client{}
 	err = c.StartPublishing("rtsp://localhost:8554/mystream",
-		gortsplib.Tracks{track})
+		gortsplib.Medias{media})
 	if err != nil {
 		panic(err)
 	}
