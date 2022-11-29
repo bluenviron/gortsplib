@@ -10,6 +10,7 @@ func TestMPEG2VideoAttributes(t *testing.T) {
 	track := &MPEG2Video{}
 	require.Equal(t, "MPEG2-video", track.String())
 	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, uint8(32), track.PayloadType())
 }
 
 func TestMPEG2VideoClone(t *testing.T) {

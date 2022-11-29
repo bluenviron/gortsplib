@@ -15,6 +15,7 @@ func TestH264Attributes(t *testing.T) {
 	}
 	require.Equal(t, "H264", track.String())
 	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, uint8(96), track.PayloadType())
 	require.Equal(t, []byte{0x01, 0x02}, track.SafeSPS())
 	require.Equal(t, []byte{0x03, 0x04}, track.SafePPS())
 

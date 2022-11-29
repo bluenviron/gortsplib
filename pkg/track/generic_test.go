@@ -18,6 +18,7 @@ func TestGenericAttributes(t *testing.T) {
 
 	require.Equal(t, "Generic", track.String())
 	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, uint8(98), track.PayloadType())
 }
 
 func TestGenericClone(t *testing.T) {

@@ -10,6 +10,7 @@ func TestJPEGAttributes(t *testing.T) {
 	track := &JPEG{}
 	require.Equal(t, "JPEG", track.String())
 	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, uint8(26), track.PayloadType())
 }
 
 func TestJPEGClone(t *testing.T) {

@@ -15,6 +15,7 @@ func TestVorbisAttributes(t *testing.T) {
 	}
 	require.Equal(t, "Vorbis", track.String())
 	require.Equal(t, 48000, track.ClockRate())
+	require.Equal(t, uint8(96), track.PayloadType())
 }
 
 func TestTracVorbisClone(t *testing.T) {

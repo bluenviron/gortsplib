@@ -7,9 +7,12 @@ import (
 )
 
 func TestVP8ttributes(t *testing.T) {
-	track := &VP8{}
+	track := &VP8{
+		PayloadTyp: 99,
+	}
 	require.Equal(t, "VP8", track.String())
 	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, uint8(99), track.PayloadType())
 }
 
 func TestVP8Clone(t *testing.T) {

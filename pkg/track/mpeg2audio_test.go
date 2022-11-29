@@ -10,6 +10,7 @@ func TestMPEG2AudioAttributes(t *testing.T) {
 	track := &MPEG2Audio{}
 	require.Equal(t, "MPEG2-audio", track.String())
 	require.Equal(t, 90000, track.ClockRate())
+	require.Equal(t, uint8(14), track.PayloadType())
 }
 
 func TestMPEG2AudioClone(t *testing.T) {

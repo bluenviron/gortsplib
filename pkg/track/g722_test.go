@@ -10,6 +10,7 @@ func TestG722Attributes(t *testing.T) {
 	track := &G722{}
 	require.Equal(t, "G722", track.String())
 	require.Equal(t, 8000, track.ClockRate())
+	require.Equal(t, uint8(9), track.PayloadType())
 }
 
 func TestG722Clone(t *testing.T) {

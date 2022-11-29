@@ -15,6 +15,7 @@ func TestLPCMAttributes(t *testing.T) {
 	}
 	require.Equal(t, "LPCM", track.String())
 	require.Equal(t, 44100, track.ClockRate())
+	require.Equal(t, uint8(96), track.PayloadType())
 }
 
 func TestTracLPCMClone(t *testing.T) {
