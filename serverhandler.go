@@ -5,6 +5,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/media"
 )
 
 // ServerHandler is the interface implemented by all the server handlers.
@@ -91,7 +92,7 @@ type ServerHandlerOnAnnounceCtx struct {
 	Request *base.Request
 	Path    string
 	Query   string
-	Medias  Medias
+	Medias  media.Medias
 }
 
 // ServerHandlerOnAnnounce can be implemented by a ServerHandler.

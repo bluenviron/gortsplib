@@ -1,4 +1,5 @@
-package gortsplib
+// Package media contains the media stream definition.
+package media
 
 import (
 	"fmt"
@@ -7,7 +8,6 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/pkg/sdp"
 	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
@@ -21,20 +21,20 @@ func getControlAttribute(attributes []psdp.Attribute) string {
 	return ""
 }
 
-// MediaType is the type of a media stream.
-type MediaType string
+// Type is the type of a media stream.
+type Type string
 
 // standard media stream types.
 const (
-	MediaTypeVideo       MediaType = "video"
-	MediaTypeAudio       MediaType = "audio"
-	MediaTypeApplication MediaType = "application"
+	TypeVideo       Type = "video"
+	TypeAudio       Type = "audio"
+	TypeApplication Type = "application"
 )
 
 // Media is a media stream. It contains one or more track.
 type Media struct {
 	// Media type.
-	Type MediaType
+	Type Type
 
 	// Control attribute.
 	Control string
@@ -44,7 +44,7 @@ type Media struct {
 }
 
 func (m *Media) unmarshal(md *psdp.MediaDescription) error {
-	m.Type = MediaType(md.MediaName.Media)
+	m.Type = Type(md.MediaName.Media)
 	m.Control = getControlAttribute(md.Attributes)
 	m.Tracks = nil
 
@@ -64,7 +64,8 @@ func (m *Media) unmarshal(md *psdp.MediaDescription) error {
 	return nil
 }
 
-func (m *Media) marshal() *psdp.MediaDescription {
+// Marshal encodes the media in SDP format.
+func (m *Media) Marshal() *psdp.MediaDescription {
 	md := &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:  string(m.Type),
@@ -102,7 +103,8 @@ func (m *Media) marshal() *psdp.MediaDescription {
 	return md
 }
 
-func (m Media) clone() *Media {
+// Clone clones the media.
+func (m Media) Clone() *Media {
 	ret := &Media{
 		Type:    m.Type,
 		Control: m.Control,
@@ -116,7 +118,8 @@ func (m Media) clone() *Media {
 	return ret
 }
 
-func (m Media) url(contentBase *url.URL) (*url.URL, error) {
+// URL returns the media URL.
+func (m Media) URL(contentBase *url.URL) (*url.URL, error) {
 	if contentBase == nil {
 		return nil, fmt.Errorf("Content-Base header not provided")
 	}
@@ -150,72 +153,4 @@ func (m Media) url(contentBase *url.URL) (*url.URL, error) {
 
 	ur, _ := url.Parse(strURL + m.Control)
 	return ur, nil
-}
-
-// Medias is a list of media streams.
-type Medias []*Media
-
-func (ms *Medias) unmarshal(mds []*psdp.MediaDescription) error {
-	*ms = make(Medias, len(mds))
-
-	for i, md := range mds {
-		var m Media
-		err := m.unmarshal(md)
-		if err != nil {
-			return fmt.Errorf("media %d is invalid: %v", i+1, err)
-		}
-		(*ms)[i] = &m
-	}
-
-	return nil
-}
-
-func (ms Medias) marshal(multicast bool) []byte {
-	var address string
-	if multicast {
-		address = "224.1.0.0"
-	} else {
-		address = "0.0.0.0"
-	}
-
-	sout := &sdp.SessionDescription{
-		SessionName: psdp.SessionName("Stream"),
-		Origin: psdp.Origin{
-			Username:       "-",
-			NetworkType:    "IN",
-			AddressType:    "IP4",
-			UnicastAddress: "127.0.0.1",
-		},
-		// required by Darwin Streaming Server
-		ConnectionInformation: &psdp.ConnectionInformation{
-			NetworkType: "IN",
-			AddressType: "IP4",
-			Address:     &psdp.Address{Address: address},
-		},
-		TimeDescriptions: []psdp.TimeDescription{
-			{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
-		},
-		MediaDescriptions: make([]*psdp.MediaDescription, len(ms)),
-	}
-
-	for i, media := range ms {
-		sout.MediaDescriptions[i] = media.marshal()
-	}
-
-	byts, _ := sout.Marshal()
-	return byts
-}
-
-func (ms Medias) clone() Medias {
-	ret := make(Medias, len(ms))
-	for i, media := range ms {
-		ret[i] = media.clone()
-	}
-	return ret
-}
-
-func (ms Medias) setControls() {
-	for i, media := range ms {
-		media.Control = "mediaID=" + strconv.FormatInt(int64(i), 10)
-	}
 }

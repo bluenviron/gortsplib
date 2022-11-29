@@ -10,6 +10,7 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 	"github.com/aler9/gortsplib/pkg/track"
 )
@@ -30,7 +31,7 @@ type serverStreamMedia struct {
 // - allocating multicast listeners
 // - gathering infos about the stream in order to generate SSRC and RTP-Info
 type ServerStream struct {
-	medias Medias
+	medias media.Medias
 
 	mutex                sync.RWMutex
 	s                    *Server
@@ -41,9 +42,9 @@ type ServerStream struct {
 }
 
 // NewServerStream allocates a ServerStream.
-func NewServerStream(medias Medias) *ServerStream {
-	medias = medias.clone()
-	medias.setControls()
+func NewServerStream(medias media.Medias) *ServerStream {
+	medias = medias.Clone()
+	medias.SetControls()
 
 	st := &ServerStream{
 		medias:               medias,
@@ -114,7 +115,7 @@ func (st *ServerStream) Close() error {
 }
 
 // Medias returns the medias of the stream.
-func (st *ServerStream) Medias() Medias {
+func (st *ServerStream) Medias() media.Medias {
 	return st.medias
 }
 

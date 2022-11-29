@@ -11,6 +11,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/auth"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/conn"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -105,8 +106,8 @@ func TestClientSession(t *testing.T) {
 
 		require.Equal(t, base.HeaderValue{"123456"}, req.Header["Session"])
 
-		medias := Medias{testH264Media.clone()}
-		medias.setControls()
+		medias := media.Medias{testH264Media.Clone()}
+		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -114,7 +115,7 @@ func TestClientSession(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Session":      base.HeaderValue{"123456"},
 			},
-			Body: medias.marshal(false),
+			Body: medias.Marshal(false),
 		})
 		require.NoError(t, err)
 	}()
@@ -182,15 +183,15 @@ func TestClientAuth(t *testing.T) {
 		err = v.ValidateRequest(req)
 		require.NoError(t, err)
 
-		medias := Medias{testH264Media.clone()}
-		medias.setControls()
+		medias := media.Medias{testH264Media.Clone()}
+		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: medias.marshal(false),
+			Body: medias.Marshal(false),
 		})
 		require.NoError(t, err)
 	}()
@@ -242,7 +243,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		medias := Medias{testH264Media.clone()}
+		medias := media.Medias{testH264Media.Clone()}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -250,7 +251,7 @@ func TestClientDescribeCharset(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: medias.marshal(false),
+			Body: medias.Marshal(false),
 		})
 		require.NoError(t, err)
 	}()

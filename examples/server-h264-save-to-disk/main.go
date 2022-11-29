@@ -7,6 +7,7 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtph264"
 	"github.com/aler9/gortsplib/pkg/track"
 )
@@ -16,7 +17,7 @@ import (
 // 2. allow a single client to publish a stream, containing a H264 track, with TCP or UDP
 // 3. save the content of the H264 track into a file in MPEG-TS format
 
-func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *track.H264, int) {
+func findTrack(medias media.Medias) (*media.Media, *track.H264, int) {
 	for i, media := range medias {
 		for _, trak := range media.Tracks {
 			if trak, ok := trak.(*track.H264); ok {
@@ -75,8 +76,8 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// find the H264 media and track
-	media, track, mediaID := findTrack(ctx.Medias)
-	if media == nil {
+	medi, track, mediaID := findTrack(ctx.Medias)
+	if medi == nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
 		}, fmt.Errorf("H264 track not found")

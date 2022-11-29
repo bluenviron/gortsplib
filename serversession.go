@@ -16,6 +16,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtpreorderer"
@@ -36,7 +37,7 @@ func stringsReverseIndex(s, substr string) int {
 func setupGetTrackIDPathQuery(
 	u *url.URL,
 	thMode *headers.TransportMode,
-	announcedMedias Medias,
+	announcedMedias media.Medias,
 	setuppedPath *string,
 	setuppedQuery *string,
 	setuppedBaseURL *url.URL,
@@ -80,8 +81,8 @@ func setupGetTrackIDPathQuery(
 		return mediaID, path, query, nil
 	}
 
-	for id, track := range announcedMedias {
-		u2, _ := track.url(setuppedBaseURL)
+	for id, media := range announcedMedias {
+		u2, _ := media.URL(setuppedBaseURL)
 		if u2.String() == u.String() {
 			return id, *setuppedPath, *setuppedQuery, nil
 		}
@@ -180,7 +181,7 @@ type ServerSessionSetuppedMedia struct {
 	udpRTCPWriteAddr *net.UDPAddr
 
 	// record
-	media  *Media
+	media  *media.Media
 	tracks map[uint8]*serverSessionSetuppedMediaTrack
 }
 
@@ -206,8 +207,8 @@ type ServerSession struct {
 	setuppedQuery       *string
 	lastRequestTime     time.Time
 	tcpConn             *ServerConn
-	announcedMedias     Medias // publish
-	udpLastPacketTime   *int64 // publish
+	announcedMedias     media.Medias // publish
+	udpLastPacketTime   *int64       // publish
 	udpCheckStreamTimer *time.Timer
 	writerRunning       bool
 	writeBuffer         *ringbuffer.RingBuffer
@@ -271,7 +272,7 @@ func (ss *ServerSession) State() ServerSessionState {
 	return ss.state
 }
 
-// SetuppedMedias returns the setupped medias.
+// SetuppedMedias returns the setupped media.
 func (ss *ServerSession) SetuppedMedias() map[int]*ServerSessionSetuppedMedia {
 	return ss.setuppedMedias
 }
@@ -281,8 +282,8 @@ func (ss *ServerSession) SetuppedTransport() *Transport {
 	return ss.setuppedTransport
 }
 
-// AnnouncedMedias returns the announced medias.
-func (ss *ServerSession) AnnouncedMedias() Medias {
+// AnnouncedMedias returns the announced media.
+func (ss *ServerSession) AnnouncedMedias() media.Medias {
 	return ss.announcedMedias
 }
 
@@ -578,8 +579,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerSDPInvalid{Err: err}
 		}
 
-		var medias Medias
-		err = medias.unmarshal(sd.MediaDescriptions)
+		var medias media.Medias
+		err = medias.Unmarshal(sd.MediaDescriptions)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
@@ -587,7 +588,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		for _, track := range medias {
-			trackURL, err := track.url(req.URL)
+			trackURL, err := track.URL(req.URL)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,

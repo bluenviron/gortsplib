@@ -451,7 +451,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 
 				if stream != nil {
-					res.Body = stream.Medias().marshal(multicast)
+					res.Body = stream.Medias().Marshal(multicast)
 				}
 			}
 

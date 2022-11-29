@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
@@ -13,7 +14,7 @@ import (
 // 2. get tracks published on a path
 // 3. read only the H264 track
 
-func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *track.H264) {
+func findTrack(medias media.Medias) (*media.Media, *track.H264) {
 	for _, media := range medias {
 		for _, trak := range media.Tracks {
 			if trak, ok := trak.(*track.H264); ok {
@@ -53,13 +54,13 @@ func main() {
 	}
 
 	// find the H264 media and track
-	media, _ := findTrack(medias)
-	if media == nil {
+	medi, _ := findTrack(medias)
+	if medi == nil {
 		panic("media not found")
 	}
 
 	// setup and play the H264 media only
-	err = c.SetupAndPlay(gortsplib.Medias{media}, baseURL)
+	err = c.SetupAndPlay(media.Medias{medi}, baseURL)
 	if err != nil {
 		panic(err)
 	}

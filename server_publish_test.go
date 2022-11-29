@@ -15,6 +15,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/sdp"
 	"github.com/aler9/gortsplib/pkg/track"
 )
@@ -28,8 +29,8 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
 		Body: func() []byte {
-			media := testH264Media.clone()
-			media.Control = control
+			medi := testH264Media.Clone()
+			medi.Control = control
 
 			sout := &sdp.SessionDescription{
 				SessionName: psdp.SessionName("Stream"),
@@ -42,7 +43,7 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 				TimeDescriptions: []psdp.TimeDescription{
 					{Timing: psdp.Timing{0, 0}}, //nolint:govet
 				},
-				MediaDescriptions: []*psdp.MediaDescription{media.marshal()},
+				MediaDescriptions: []*psdp.MediaDescription{medi.Marshal()},
 			}
 
 			byts, _ := sout.Marshal()
@@ -227,7 +228,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			media := testH264Media.clone()
+			media := testH264Media.Clone()
 			media.Control = ca.control
 
 			sout := &sdp.SessionDescription{
@@ -242,7 +243,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 					{Timing: psdp.Timing{0, 0}}, //nolint:govet
 				},
 				MediaDescriptions: []*psdp.MediaDescription{
-					media.marshal(),
+					media.Marshal(),
 				},
 			}
 
@@ -318,8 +319,8 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := Medias{testH264Media.clone()}
-	medias.setControls()
+	medias := media.Medias{testH264Media.Clone()}
+	medias.SetControls()
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
@@ -328,7 +329,7 @@ func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: medias.marshal(false),
+		Body: medias.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -392,8 +393,8 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := Medias{testH264Media.clone()}
-	medias.setControls()
+	medias := media.Medias{testH264Media.Clone()}
+	medias.SetControls()
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
@@ -402,7 +403,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: medias.marshal(false),
+		Body: medias.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -487,8 +488,8 @@ func TestServerPublishErrorRecordPartialMedias(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := Medias{testH264Media.clone(), testH264Media.clone()}
-	medias.setControls()
+	medias := media.Medias{testH264Media.Clone(), testH264Media.Clone()}
+	medias.SetControls()
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
@@ -497,7 +498,7 @@ func TestServerPublishErrorRecordPartialMedias(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: medias.marshal(false),
+		Body: medias.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -632,8 +633,8 @@ func TestServerPublish(t *testing.T) {
 
 			<-nconnOpened
 
-			medias := Medias{testH264Media.clone()}
-			medias.setControls()
+			medias := media.Medias{testH264Media.Clone()}
+			medias.SetControls()
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Announce,
@@ -642,7 +643,7 @@ func TestServerPublish(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: medias.marshal(false),
+				Body: medias.Marshal(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -828,8 +829,8 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := Medias{testH264Media.clone()}
-	medias.setControls()
+	medias := media.Medias{testH264Media.Clone()}
+	medias.SetControls()
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
@@ -838,7 +839,7 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: medias.marshal(false),
+		Body: medias.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -929,8 +930,8 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := Medias{testH264Media.clone()}
-	medias.setControls()
+	medias := media.Medias{testH264Media.Clone()}
+	medias.SetControls()
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
@@ -939,7 +940,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: medias.marshal(false),
+		Body: medias.Marshal(false),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1103,8 +1104,8 @@ func TestServerPublishTimeout(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			medias := Medias{testH264Media.clone()}
-			medias.setControls()
+			medias := media.Medias{testH264Media.Clone()}
+			medias.SetControls()
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Announce,
@@ -1113,7 +1114,7 @@ func TestServerPublishTimeout(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: medias.marshal(false),
+				Body: medias.Marshal(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1226,8 +1227,8 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 			conn := conn.NewConn(nconn)
 
-			medias := Medias{testH264Media.clone()}
-			medias.setControls()
+			medias := media.Medias{testH264Media.Clone()}
+			medias.SetControls()
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Announce,
@@ -1236,7 +1237,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: medias.marshal(false),
+				Body: medias.Marshal(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1339,8 +1340,8 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		medias := Medias{testH264Media.clone()}
-		medias.setControls()
+		medias := media.Medias{testH264Media.Clone()}
+		medias.SetControls()
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Announce,
@@ -1349,7 +1350,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 				"CSeq":         base.HeaderValue{"1"},
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: medias.marshal(false),
+			Body: medias.Marshal(false),
 		})
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1488,14 +1489,14 @@ func TestServerPublishDecodeErrors(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			medias := Medias{{
-				Type: MediaTypeApplication,
+			medias := media.Medias{{
+				Type: media.TypeApplication,
 				Tracks: []track.Track{&track.Generic{
 					PayloadTyp: 97,
 					RTPMap:     "private/90000",
 				}},
 			}}
-			medias.setControls()
+			medias.SetControls()
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Announce,
@@ -1504,7 +1505,7 @@ func TestServerPublishDecodeErrors(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: medias.marshal(false),
+				Body: medias.Marshal(false),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)

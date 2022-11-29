@@ -15,11 +15,12 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/track"
 )
 
-var testH264Media = &Media{
-	Type: MediaTypeVideo,
+var testH264Media = &media.Media{
+	Type: media.TypeVideo,
 	Tracks: []track.Track{&track.H264{
 		PayloadTyp:        96,
 		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
@@ -243,7 +244,7 @@ func TestClientPublishSerial(t *testing.T) {
 			}
 
 			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
-				Medias{testH264Media.clone()})
+				media.Medias{testH264Media.Clone()})
 			require.NoError(t, err)
 
 			done := make(chan struct{})
@@ -392,7 +393,7 @@ func TestClientPublishParallel(t *testing.T) {
 			defer func() { <-writerDone }()
 
 			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
-				Medias{testH264Media.clone()})
+				media.Medias{testH264Media.Clone()})
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -542,7 +543,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			}
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
-				Medias{testH264Media.clone()})
+				media.Medias{testH264Media.Clone()})
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -670,7 +671,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 			}
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
-				Medias{testH264Media.clone()})
+				media.Medias{testH264Media.Clone()})
 			require.NoError(t, err)
 
 			writerDone := make(chan struct{})
@@ -807,7 +808,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 	c := Client{}
 
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",
-		Medias{testH264Media.clone()})
+		media.Medias{testH264Media.Clone()})
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -987,7 +988,7 @@ func TestClientPublishDecodeErrors(t *testing.T) {
 			}
 
 			err = c.StartPublishing("rtsp://localhost:8554/stream",
-				Medias{testH264Media.clone()})
+				media.Medias{testH264Media.Clone()})
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1143,7 +1144,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 			}
 
 			err = c.StartPublishing("rtsp://localhost:8554/teststream",
-				Medias{testH264Media.clone()})
+				media.Medias{testH264Media.Clone()})
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1276,7 +1277,7 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 	}
 
 	err = c.StartPublishing("rtsp://localhost:8554/teststream",
-		Medias{testH264Media.clone()})
+		media.Medias{testH264Media.Clone()})
 	require.NoError(t, err)
 	defer c.Close()
 

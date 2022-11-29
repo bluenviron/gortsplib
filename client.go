@@ -26,6 +26,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
@@ -97,7 +98,7 @@ type clientMediaTrack struct {
 
 type clientMedia struct {
 	id              int
-	media           *Media
+	media           *media.Media
 	tracks          map[uint8]*clientMediaTrack
 	tcpChannel      int
 	udpRTPListener  *clientUDPListener
@@ -132,12 +133,12 @@ type describeReq struct {
 
 type announceReq struct {
 	url    *url.URL
-	medias Medias
+	medias media.Medias
 	res    chan clientRes
 }
 
 type setupReq struct {
-	media    *Media
+	media    *media.Media
 	baseURL  *url.URL
 	rtpPort  int
 	rtcpPort int
@@ -158,7 +159,7 @@ type pauseReq struct {
 }
 
 type clientRes struct {
-	medias  Medias
+	medias  media.Medias
 	baseURL *url.URL
 	res     *base.Response
 	err     error
@@ -407,8 +408,8 @@ func (c *Client) Start(scheme string, host string) error {
 	return nil
 }
 
-// StartPublishing connects to the address and starts publishing given medias.
-func (c *Client) StartPublishing(address string, medias Medias) error {
+// StartPublishing connects to the address and starts publishing given media.
+func (c *Client) StartPublishing(address string, medias media.Medias) error {
 	u, err := url.Parse(address)
 	if err != nil {
 		return err
@@ -421,7 +422,7 @@ func (c *Client) StartPublishing(address string, medias Medias) error {
 
 	// control attribute of medias is overridden by Announce().
 	// use a copy in order not to mess the client-read-republish example.
-	medias = medias.clone()
+	medias = medias.Clone()
 
 	_, err = c.Announce(u, medias)
 	if err != nil {
@@ -459,8 +460,8 @@ func (c *Client) Wait() error {
 }
 
 // Medias returns all the medias that the client is reading or publishing.
-func (c *Client) Medias() Medias {
-	ret := make(Medias, len(c.medias))
+func (c *Client) Medias() media.Medias {
+	ret := make(media.Medias, len(c.medias))
 	for i, media := range c.medias {
 		ret[i] = media.media
 	}
@@ -1173,7 +1174,7 @@ func (c *Client) Options(u *url.URL) (*base.Response, error) {
 	}
 }
 
-func (c *Client) doDescribe(u *url.URL) (Medias, *url.URL, *base.Response, error) {
+func (c *Client) doDescribe(u *url.URL) (media.Medias, *url.URL, *base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStateInitial:   {},
 		clientStatePrePlay:   {},
@@ -1238,8 +1239,8 @@ func (c *Client) doDescribe(u *url.URL) (Medias, *url.URL, *base.Response, error
 		return nil, nil, nil, err
 	}
 
-	var medias Medias
-	err = medias.unmarshal(sd.MediaDescriptions)
+	var medias media.Medias
+	err = medias.Unmarshal(sd.MediaDescriptions)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1255,7 +1256,7 @@ func (c *Client) doDescribe(u *url.URL) (Medias, *url.URL, *base.Response, error
 }
 
 // Describe writes a DESCRIBE request and reads a Response.
-func (c *Client) Describe(u *url.URL) (Medias, *url.URL, *base.Response, error) {
+func (c *Client) Describe(u *url.URL) (media.Medias, *url.URL, *base.Response, error) {
 	cres := make(chan clientRes)
 	select {
 	case c.describe <- describeReq{url: u, res: cres}:
@@ -1267,7 +1268,7 @@ func (c *Client) Describe(u *url.URL) (Medias, *url.URL, *base.Response, error) 
 	}
 }
 
-func (c *Client) doAnnounce(u *url.URL, medias Medias) (*base.Response, error) {
+func (c *Client) doAnnounce(u *url.URL, medias media.Medias) (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStateInitial: {},
 	})
@@ -1275,7 +1276,7 @@ func (c *Client) doAnnounce(u *url.URL, medias Medias) (*base.Response, error) {
 		return nil, err
 	}
 
-	medias.setControls()
+	medias.SetControls()
 
 	res, err := c.do(&base.Request{
 		Method: base.Announce,
@@ -1283,7 +1284,7 @@ func (c *Client) doAnnounce(u *url.URL, medias Medias) (*base.Response, error) {
 		Header: base.Header{
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: medias.marshal(false),
+		Body: medias.Marshal(false),
 	}, false, false)
 	if err != nil {
 		return nil, err
@@ -1302,7 +1303,7 @@ func (c *Client) doAnnounce(u *url.URL, medias Medias) (*base.Response, error) {
 }
 
 // Announce writes an ANNOUNCE request and reads a Response.
-func (c *Client) Announce(u *url.URL, medias Medias) (*base.Response, error) {
+func (c *Client) Announce(u *url.URL, medias media.Medias) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
 	case c.announce <- announceReq{url: u, medias: medias, res: cres}:
@@ -1315,7 +1316,7 @@ func (c *Client) Announce(u *url.URL, medias Medias) (*base.Response, error) {
 }
 
 func (c *Client) doSetup(
-	media *Media,
+	media *media.Media,
 	baseURL *url.URL,
 	rtpPort int,
 	rtcpPort int,
@@ -1424,7 +1425,7 @@ func (c *Client) doSetup(
 		th.InterleavedIDs = &[2]int{(mediaID * 2), (mediaID * 2) + 1}
 	}
 
-	mediaURL, err := media.url(baseURL)
+	mediaURL, err := media.URL(baseURL)
 	if err != nil {
 		if transport == TransportUDP {
 			cm.udpRTPListener.close()
@@ -1624,7 +1625,7 @@ func (c *Client) doSetup(
 // rtpPort and rtcpPort are used only if transport is UDP.
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
 func (c *Client) Setup(
-	media *Media,
+	media *media.Media,
 	baseURL *url.URL,
 	rtpPort int,
 	rtcpPort int,
@@ -1647,7 +1648,7 @@ func (c *Client) Setup(
 }
 
 // SetupAll setups all the given medias.
-func (c *Client) SetupAll(medias Medias, baseURL *url.URL) error {
+func (c *Client) SetupAll(medias media.Medias, baseURL *url.URL) error {
 	for _, m := range medias {
 		_, err := c.Setup(m, baseURL, 0, 0)
 		if err != nil {
@@ -1726,8 +1727,8 @@ func (c *Client) Play(ra *headers.Range) (*base.Response, error) {
 	}
 }
 
-// SetupAndPlay setups and play the given medias.
-func (c *Client) SetupAndPlay(medias Medias, baseURL *url.URL) error {
+// SetupAndPlay setups and play the given media.
+func (c *Client) SetupAndPlay(medias media.Medias, baseURL *url.URL) error {
 	err := c.SetupAll(medias, baseURL)
 	if err != nil {
 		return err

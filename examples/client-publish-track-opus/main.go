@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/pion/rtp"
 )
@@ -35,8 +36,8 @@ func main() {
 	log.Println("stream connected")
 
 	// create a media that contains a Opus track
-	media := &gortsplib.Media{
-		Type: gortsplib.MediaTypeAudio,
+	medi := &media.Media{
+		Type: media.TypeAudio,
 		Tracks: []track.Track{&track.Opus{
 			PayloadTyp:   96,
 			SampleRate:   48000,
@@ -48,7 +49,7 @@ func main() {
 
 	// connect to the server and start publishing the media
 	err = c.StartPublishing("rtsp://localhost:8554/mystream",
-		gortsplib.Medias{media})
+		media.Medias{medi})
 	if err != nil {
 		panic(err)
 	}

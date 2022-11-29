@@ -1,4 +1,4 @@
-package gortsplib
+package media
 
 import (
 	"testing"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/aler9/gortsplib/pkg/sdp"
 	"github.com/aler9/gortsplib/pkg/track"
-	"github.com/aler9/gortsplib/pkg/url"
 )
 
 var casesMedias = []struct {
@@ -394,7 +393,7 @@ func TestMediasUnmarshal(t *testing.T) {
 			require.NoError(t, err)
 
 			var medias Medias
-			err = medias.unmarshal(sdp.MediaDescriptions)
+			err = medias.Unmarshal(sdp.MediaDescriptions)
 			require.NoError(t, err)
 			require.Equal(t, ca.medias, medias)
 		})
@@ -430,7 +429,7 @@ func TestMediasReadErrors(t *testing.T) {
 			require.NoError(t, err)
 
 			var medias Medias
-			err = medias.unmarshal(sd.MediaDescriptions)
+			err = medias.Unmarshal(sd.MediaDescriptions)
 			require.EqualError(t, err, ca.err)
 		})
 	}
@@ -439,134 +438,8 @@ func TestMediasReadErrors(t *testing.T) {
 func TestMediasMarshal(t *testing.T) {
 	for _, ca := range casesMedias {
 		t.Run(ca.name, func(t *testing.T) {
-			byts := ca.medias.marshal(false)
+			byts := ca.medias.Marshal(false)
 			require.Equal(t, ca.out, string(byts))
 		})
 	}
-}
-
-func TestMediaURL(t *testing.T) {
-	for _, ca := range []struct {
-		name    string
-		sdp     []byte
-		baseURL *url.URL
-		ur      *url.URL
-	}{
-		{
-			"missing control",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-		},
-		{
-			"absolute control",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:rtsp://localhost/path/trackID=7"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/trackID=7"),
-		},
-		{
-			"relative control",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/trackID=5"),
-		},
-		{
-			"relative control, subpath",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/trackID=5"),
-		},
-		{
-			"relative control, url without slash",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/sub/path/trackID=5"),
-		},
-		{
-			"relative control, url with query",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
-				"test?user=tmp&password=BagRep1&channel=1&stream=0.sdp"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
-				"test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=5"),
-		},
-		{
-			"relative control, url with special chars and query",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
-				"te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/" +
-				"te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
-		},
-		{
-			"relative control, url with query without question mark",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:trackID=5"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp"),
-			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=5"),
-		},
-		{
-			"relative control, control is query",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:?ctype=video"),
-			mustParseURL("rtsp://192.168.1.99:554/test"),
-			mustParseURL("rtsp://192.168.1.99:554/test?ctype=video"),
-		},
-		{
-			"relative control, control is query and no path",
-			[]byte("v=0\r\n" +
-				"m=video 0 RTP/AVP 96\r\n" +
-				"a=rtpmap:96 H264/90000\r\n" +
-				"a=control:?ctype=video"),
-			mustParseURL("rtsp://192.168.1.99:554/"),
-			mustParseURL("rtsp://192.168.1.99:554/?ctype=video"),
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var sd sdp.SessionDescription
-			err := sd.Unmarshal(ca.sdp)
-			require.NoError(t, err)
-
-			var medias Medias
-			err = medias.unmarshal(sd.MediaDescriptions)
-			require.NoError(t, err)
-
-			ur, err := medias[0].url(ca.baseURL)
-			require.NoError(t, err)
-			require.Equal(t, ca.ur, ur)
-		})
-	}
-}
-
-func TestMediaURLError(t *testing.T) {
-	media := &Media{
-		Type:   "video",
-		Tracks: []track.Track{&track.H264{}},
-	}
-	_, err := media.url(nil)
-	require.EqualError(t, err, "Content-Base header not provided")
 }

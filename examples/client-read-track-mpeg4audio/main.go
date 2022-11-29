@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
@@ -13,7 +14,7 @@ import (
 // 2. check if there's an MPEG4-audio track
 // 3. get access units of that track
 
-func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *track.MPEG4Audio) {
+func findTrack(medias media.Medias) (*media.Media, *track.MPEG4Audio) {
 	for _, media := range medias {
 		for _, trak := range media.Tracks {
 			if trak, ok := trak.(*track.MPEG4Audio); ok {
@@ -47,8 +48,8 @@ func main() {
 	}
 
 	// find the MPEG4-audio media and track
-	media, track := findTrack(medias)
-	if media == nil {
+	medi, track := findTrack(medias)
+	if medi == nil {
 		panic("media not found")
 	}
 
@@ -75,7 +76,7 @@ func main() {
 	}
 
 	// setup and read the MPEG4-audio media only
-	err = c.SetupAndPlay(gortsplib.Medias{media}, baseURL)
+	err = c.SetupAndPlay(media.Medias{medi}, baseURL)
 	if err != nil {
 		panic(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/pion/rtp"
 )
@@ -36,8 +37,8 @@ func main() {
 	log.Println("stream connected")
 
 	// create a media that contains a H264 track
-	media := &gortsplib.Media{
-		Type: gortsplib.MediaTypeVideo,
+	medi := &media.Media{
+		Type: media.TypeVideo,
 		Tracks: []track.Track{&track.H264{
 			PayloadTyp:        96,
 			PacketizationMode: 1,
@@ -47,7 +48,7 @@ func main() {
 	// connect to the server and start publishing the media
 	c := gortsplib.Client{}
 	err = c.StartPublishing("rtsp://localhost:8554/mystream",
-		gortsplib.Medias{media})
+		media.Medias{medi})
 	if err != nil {
 		panic(err)
 	}

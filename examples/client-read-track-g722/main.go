@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
@@ -13,7 +14,7 @@ import (
 // 2. check if there's a G722 track
 // 3. get G722 frames of that track
 
-func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *track.G722) {
+func findTrack(medias media.Medias) (*media.Media, *track.G722) {
 	for _, media := range medias {
 		for _, trak := range media.Tracks {
 			if trak, ok := trak.(*track.G722); ok {
@@ -47,8 +48,8 @@ func main() {
 	}
 
 	// find the G722 media and track
-	media, track := findTrack(medias)
-	if media == nil {
+	medi, track := findTrack(medias)
+	if medi == nil {
 		panic("media not found")
 	}
 
@@ -73,7 +74,7 @@ func main() {
 	}
 
 	// setup and read the G722 media only
-	err = c.SetupAndPlay(gortsplib.Medias{media}, baseURL)
+	err = c.SetupAndPlay(media.Medias{medi}, baseURL)
 	if err != nil {
 		panic(err)
 	}
