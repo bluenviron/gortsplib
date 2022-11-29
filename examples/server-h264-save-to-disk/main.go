@@ -76,7 +76,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// find the H264 media and track
-	medi, track, mediaID := findTrack(ctx.Medias)
+	medi, trak, mediaID := findTrack(ctx.Medias)
 	if medi == nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
@@ -84,10 +84,10 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := track.CreateDecoder()
+	rtpDec := trak.CreateDecoder()
 
 	// setup H264->MPEGTS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(track.SafeSPS(), track.SafePPS())
+	mpegtsMuxer, err := newMPEGTSMuxer(trak.SafeSPS(), trak.SafePPS())
 	if err != nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,

@@ -776,9 +776,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		if ss.state == ServerSessionStatePreRecord {
 			sst.media = ss.announcedMedias[mediaID]
 			sst.tracks = make(map[uint8]*serverSessionSetuppedMediaTrack)
-			for _, track := range sst.media.Tracks {
-				sst.tracks[track.PayloadType()] = &serverSessionSetuppedMediaTrack{
-					track: track,
+			for _, trak := range sst.media.Tracks {
+				sst.tracks[trak.PayloadType()] = &serverSessionSetuppedMediaTrack{
+					track: trak,
 				}
 			}
 		}

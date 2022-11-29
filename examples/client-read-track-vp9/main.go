@@ -14,17 +14,6 @@ import (
 // 2. check if there's an VP9 track
 // 3. get access units of that track
 
-func findTrack(medias media.Medias) (*media.Media, *track.VP9) {
-	for _, media := range medias {
-		for _, trak := range media.Tracks {
-			if trak, ok := trak.(*track.VP9); ok {
-				return media, trak
-			}
-		}
-	}
-	return nil, nil
-}
-
 func main() {
 	c := gortsplib.Client{}
 
@@ -48,23 +37,24 @@ func main() {
 	}
 
 	// find the VP9 media and track
-	medi, track := findTrack(medias)
+	var trak *track.VP9
+	medi := medias.Find(&trak)
 	if medi == nil {
 		panic("media not found")
 	}
 
 	// setup decoder
-	dec := track.CreateDecoder()
+	rtpDec := trak.CreateDecoder()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
 		// get packets of specific track only
-		if ctx.Packet.PayloadType != track.PayloadType() {
+		if ctx.Packet.PayloadType != trak.PayloadType() {
 			return
 		}
 
 		// decode a VP9 frame from the RTP packet
-		vf, _, err := dec.Decode(ctx.Packet)
+		vf, _, err := rtpDec.Decode(ctx.Packet)
 		if err != nil {
 			return
 		}

@@ -14,17 +14,6 @@ import (
 // 2. check if there's a G722 track
 // 3. get G722 frames of that track
 
-func findTrack(medias media.Medias) (*media.Media, *track.G722) {
-	for _, media := range medias {
-		for _, trak := range media.Tracks {
-			if trak, ok := trak.(*track.G722); ok {
-				return media, trak
-			}
-		}
-	}
-	return nil, nil
-}
-
 func main() {
 	c := gortsplib.Client{}
 
@@ -48,23 +37,24 @@ func main() {
 	}
 
 	// find the G722 media and track
-	medi, track := findTrack(medias)
+	var trak *track.G722
+	medi := medias.Find(&trak)
 	if medi == nil {
 		panic("media not found")
 	}
 
 	// setup decoder
-	dec := track.CreateDecoder()
+	rtpDec := trak.CreateDecoder()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
 		// get packets of specific track only
-		if ctx.Packet.PayloadType != track.PayloadType() {
+		if ctx.Packet.PayloadType != trak.PayloadType() {
 			return
 		}
 
 		// decode an G722 packet from the RTP packet
-		op, _, err := dec.Decode(ctx.Packet)
+		op, _, err := rtpDec.Decode(ctx.Packet)
 		if err != nil {
 			return
 		}

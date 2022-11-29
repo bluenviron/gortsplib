@@ -14,17 +14,6 @@ import (
 // 2. check if there's an H265 track
 // 3. get access units of that track
 
-func findTrack(medias media.Medias) (*media.Media, *track.H265) {
-	for _, media := range medias {
-		for _, trak := range media.Tracks {
-			if trak, ok := trak.(*track.H265); ok {
-				return media, trak
-			}
-		}
-	}
-	return nil, nil
-}
-
 func main() {
 	c := gortsplib.Client{}
 
@@ -48,23 +37,24 @@ func main() {
 	}
 
 	// find the H265 media and track
-	medi, track := findTrack(medias)
+	var trak *track.H265
+	medi := medias.Find(&trak)
 	if medi == nil {
 		panic("media not found")
 	}
 
 	// setup RTP/H265->H265 decoder
-	dec := track.CreateDecoder()
+	rtpDec := trak.CreateDecoder()
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
 		// get packets of specific track only
-		if ctx.Packet.PayloadType != track.PayloadType() {
+		if ctx.Packet.PayloadType != trak.PayloadType() {
 			return
 		}
 
 		// convert RTP packets into NALUs
-		nalus, pts, err := dec.Decode(ctx.Packet)
+		nalus, pts, err := rtpDec.Decode(ctx.Packet)
 		if err != nil {
 			return
 		}

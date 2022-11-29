@@ -79,11 +79,11 @@ func (m *Media) Marshal() *psdp.MediaDescription {
 		},
 	}
 
-	for _, track := range m.Tracks {
-		typ := strconv.FormatUint(uint64(track.PayloadType()), 10)
+	for _, trak := range m.Tracks {
+		typ := strconv.FormatUint(uint64(trak.PayloadType()), 10)
 		md.MediaName.Formats = append(md.MediaName.Formats, typ)
 
-		rtpmap, fmtp := track.Marshal()
+		rtpmap, fmtp := trak.Marshal()
 
 		if rtpmap != "" {
 			md.Attributes = append(md.Attributes, psdp.Attribute{

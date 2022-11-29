@@ -445,3 +445,44 @@ func TestMediasMarshal(t *testing.T) {
 		})
 	}
 }
+
+func TestMediasFind(t *testing.T) {
+	tr := &track.Generic{
+		PayloadTyp: 97,
+		RTPMap:     "rtx/90000",
+		FMTP:       "apt=96",
+		ClockRat:   90000,
+	}
+
+	md := &Media{
+		Type: TypeVideo,
+		Tracks: []track.Track{
+			&track.VP8{
+				PayloadTyp: 96,
+			},
+			tr,
+			&track.VP9{
+				PayloadTyp: 98,
+			},
+		},
+	}
+
+	ms := Medias{
+		{
+			Type: TypeAudio,
+			Tracks: []track.Track{
+				&track.Opus{
+					PayloadTyp:   111,
+					SampleRate:   48000,
+					ChannelCount: 2,
+				},
+			},
+		},
+		md,
+	}
+
+	var trak *track.Generic
+	me := ms.Find(&trak)
+	require.Equal(t, md, me)
+	require.Equal(t, tr, trak)
+}

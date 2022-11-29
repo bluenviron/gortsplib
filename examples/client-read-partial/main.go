@@ -14,17 +14,6 @@ import (
 // 2. get tracks published on a path
 // 3. read only the H264 track
 
-func findTrack(medias media.Medias) (*media.Media, *track.H264) {
-	for _, media := range medias {
-		for _, trak := range media.Tracks {
-			if trak, ok := trak.(*track.H264); ok {
-				return media, trak
-			}
-		}
-	}
-	return nil, nil
-}
-
 func main() {
 	c := gortsplib.Client{
 		// called when a RTP packet arrives
@@ -54,7 +43,8 @@ func main() {
 	}
 
 	// find the H264 media and track
-	medi, _ := findTrack(medias)
+	var trak *track.H264
+	medi := medias.Find(&trak)
 	if medi == nil {
 		panic("media not found")
 	}

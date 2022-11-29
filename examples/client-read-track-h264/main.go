@@ -17,17 +17,6 @@ import (
 // This example requires the ffmpeg libraries, that can be installed in this way:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config
 
-func findTrack(medias media.Medias) (*media.Media, *track.H264) {
-	for _, media := range medias {
-		for _, trak := range media.Tracks {
-			if trak, ok := trak.(*track.H264); ok {
-				return media, trak
-			}
-		}
-	}
-	return nil, nil
-}
-
 func main() {
 	c := gortsplib.Client{}
 
@@ -51,13 +40,14 @@ func main() {
 	}
 
 	// find the H264 media and track
-	medi, track := findTrack(medias)
+	var trak *track.H264
+	medi := medias.Find(&trak)
 	if medi == nil {
 		panic("media not found")
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := track.CreateDecoder()
+	rtpDec := trak.CreateDecoder()
 
 	// setup H264->raw frames decoder
 	h264RawDec, err := newH264Decoder()
@@ -67,11 +57,11 @@ func main() {
 	defer h264RawDec.close()
 
 	// if SPS and PPS are present into the SDP, send them to the decoder
-	sps := track.SafeSPS()
+	sps := trak.SafeSPS()
 	if sps != nil {
 		h264RawDec.decode(sps)
 	}
-	pps := track.SafePPS()
+	pps := trak.SafePPS()
 	if pps != nil {
 		h264RawDec.decode(pps)
 	}
@@ -79,7 +69,7 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
 		// get packets of specific track only
-		if ctx.Packet.PayloadType != track.PayloadType() {
+		if ctx.Packet.PayloadType != trak.PayloadType() {
 			return
 		}
 

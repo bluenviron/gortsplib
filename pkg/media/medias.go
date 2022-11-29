@@ -2,6 +2,7 @@ package media
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	psdp "github.com/pion/sdp/v3"
@@ -78,4 +79,18 @@ func (ms Medias) SetControls() {
 	for i, media := range ms {
 		media.Control = "mediaID=" + strconv.FormatInt(int64(i), 10)
 	}
+}
+
+// Find finds a certain track among all the tracks in all the medias.
+// If the track is found, it is inserted into trak, and track media is returned.
+func (ms *Medias) Find(trak interface{}) *Media {
+	for _, media := range *ms {
+		for _, trakk := range media.Tracks {
+			if reflect.TypeOf(trakk) == reflect.TypeOf(trak).Elem() {
+				reflect.ValueOf(trak).Elem().Set(reflect.ValueOf(trakk))
+				return media
+			}
+		}
+	}
+	return nil
 }
