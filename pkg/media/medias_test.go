@@ -438,7 +438,9 @@ func TestMediasReadErrors(t *testing.T) {
 func TestMediasMarshal(t *testing.T) {
 	for _, ca := range casesMedias {
 		t.Run(ca.name, func(t *testing.T) {
-			byts := ca.medias.Marshal(false)
+			sdp := ca.medias.Marshal(false)
+			byts, err := sdp.Marshal()
+			require.NoError(t, err)
 			require.Equal(t, ca.out, string(byts))
 		})
 	}

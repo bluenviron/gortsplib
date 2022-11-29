@@ -1177,6 +1177,8 @@ func TestServerAuth(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
+	medias := media.Medias{testH264Media.Clone()}
+
 	req := base.Request{
 		Method: base.Announce,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
@@ -1184,7 +1186,7 @@ func TestServerAuth(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: media.Medias{testH264Media.Clone()}.Marshal(false),
+		Body: mustMarshalSDP(medias.Marshal(false)),
 	}
 
 	res, err := writeReqReadRes(conn, req)

@@ -451,7 +451,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 
 				if stream != nil {
-					res.Body = stream.Medias().Marshal(multicast)
+					byts, _ := stream.Medias().Marshal(multicast).Marshal()
+					res.Body = byts
 				}
 			}
 

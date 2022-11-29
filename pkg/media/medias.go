@@ -29,7 +29,7 @@ func (ms *Medias) Unmarshal(mds []*psdp.MediaDescription) error {
 }
 
 // Marshal encodes the medias in SDP format.
-func (ms Medias) Marshal(multicast bool) []byte {
+func (ms Medias) Marshal(multicast bool) *sdp.SessionDescription {
 	var address string
 	if multicast {
 		address = "224.1.0.0"
@@ -61,8 +61,7 @@ func (ms Medias) Marshal(multicast bool) []byte {
 		sout.MediaDescriptions[i] = media.Marshal()
 	}
 
-	byts, _ := sout.Marshal()
-	return byts
+	return sout
 }
 
 // Clone clones the media list.

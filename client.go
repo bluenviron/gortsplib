@@ -1278,13 +1278,18 @@ func (c *Client) doAnnounce(u *url.URL, medias media.Medias) (*base.Response, er
 
 	medias.SetControls()
 
+	byts, err := medias.Marshal(false).Marshal()
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := c.do(&base.Request{
 		Method: base.Announce,
 		URL:    u,
 		Header: base.Header{
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: medias.Marshal(false),
+		Body: byts,
 	}, false, false)
 	if err != nil {
 		return nil, err
