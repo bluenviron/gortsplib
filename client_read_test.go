@@ -20,6 +20,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -54,8 +55,8 @@ func TestClientReadTracks(t *testing.T) {
 
 	media2 := &Media{
 		Type: MediaTypeAudio,
-		Tracks: []Track{&TrackMPEG4Audio{
-			PayloadType: 96,
+		Tracks: []track.Track{&track.MPEG4Audio{
+			PayloadTyp: 96,
 			Config: &mpeg4audio.Config{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   44100,
@@ -69,8 +70,8 @@ func TestClientReadTracks(t *testing.T) {
 
 	media3 := &Media{
 		Type: MediaTypeAudio,
-		Tracks: []Track{&TrackMPEG4Audio{
-			PayloadType: 96,
+		Tracks: []track.Track{&track.MPEG4Audio{
+			PayloadTyp: 96,
 			Config: &mpeg4audio.Config{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   96000,
@@ -248,16 +249,16 @@ func TestClientRead(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
-				track := &TrackGeneric{
-					PayloadType: 96,
-					RTPMap:      "private/90000",
+				trak := &track.Generic{
+					PayloadTyp: 96,
+					RTPMap:     "private/90000",
 				}
-				err = track.Init()
+				err = trak.Init()
 				require.NoError(t, err)
 
 				media := &Media{
 					Type:   "application",
-					Tracks: []Track{track},
+					Tracks: []track.Track{trak},
 				}
 
 				medias := Medias{media}
@@ -2685,9 +2686,9 @@ func TestClientReadDecodeErrors(t *testing.T) {
 
 				medias := Medias{{
 					Type: MediaTypeApplication,
-					Tracks: []Track{&TrackGeneric{
-						PayloadType: 97,
-						RTPMap:      "private/90000",
+					Tracks: []track.Track{&track.Generic{
+						PayloadTyp: 97,
+						RTPMap:     "private/90000",
 					}},
 				}}
 				medias.setControls()

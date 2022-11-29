@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/pion/rtp"
 )
 
@@ -39,8 +40,8 @@ func main() {
 	// create a media that contains a H264 track
 	media := &gortsplib.Media{
 		Type: gortsplib.MediaTypeVideo,
-		Tracks: []gortsplib.Track{&gortsplib.TrackH264{
-			PayloadType:       96,
+		Tracks: []track.Track{&track.H264{
+			PayloadTyp:        96,
 			PacketizationMode: 1,
 		}},
 	}

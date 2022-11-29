@@ -1,4 +1,5 @@
-package gortsplib
+// Package track contains track definitions.
+package track
 
 import (
 	"strconv"
@@ -7,32 +8,6 @@ import (
 	"github.com/pion/rtp"
 	psdp "github.com/pion/sdp/v3"
 )
-
-// Track is a RTSP track.
-type Track interface {
-	// String returns a description of the track.
-	String() string
-
-	// ClockRate returns the clock rate.
-	ClockRate() int
-
-	// GetPayloadType returns the payload type.
-	GetPayloadType() uint8
-
-	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error
-	marshal() (string, string)
-	clone() Track
-	ptsEqualsDTS(*rtp.Packet) bool
-}
-
-func getControlAttribute(attributes []psdp.Attribute) string {
-	for _, attr := range attributes {
-		if attr.Key == "control" {
-			return attr.Value
-		}
-	}
-	return ""
-}
 
 func getTrackAttribute(attributes []psdp.Attribute, payloadType uint8, key string) string {
 	for _, attr := range attributes {
@@ -57,7 +32,31 @@ func getCodecAndClock(rtpMap string) (string, string) {
 	return parts2[0], parts2[1]
 }
 
-func newTrackFromMediaDescription(md *psdp.MediaDescription, payloadTypeStr string) (Track, error) {
+// Track is a RTSP track.
+type Track interface {
+	// String returns a description of the track.
+	String() string
+
+	// ClockRate returns the clock rate.
+	ClockRate() int
+
+	// PayloadType returns the payload type.
+	PayloadType() uint8
+
+	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error
+
+	// Marshal encodes the track in SDP format.
+	Marshal() (string, string)
+
+	// Clone clones the track.
+	Clone() Track
+
+	// PTSEqualsDTS checks whether PTS is equal to DTS in the RTP packet.
+	PTSEqualsDTS(*rtp.Packet) bool
+}
+
+// Unmarshal decodes a track from a media description.
+func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Track, error) {
 	tmp, err := strconv.ParseInt(payloadTypeStr, 10, 8)
 	if err != nil {
 		return nil, err
@@ -74,50 +73,50 @@ func newTrackFromMediaDescription(md *psdp.MediaDescription, payloadTypeStr stri
 		case md.MediaName.Media == "video":
 			switch {
 			case payloadType == 26:
-				return &TrackJPEG{}
+				return &JPEG{}
 
 			case payloadType == 32:
-				return &TrackMPEG2Video{}
+				return &MPEG2Video{}
 
 			case codec == "h264" && clock == "90000":
-				return &TrackH264{}
+				return &H264{}
 
 			case codec == "h265" && clock == "90000":
-				return &TrackH265{}
+				return &H265{}
 
 			case codec == "vp8" && clock == "90000":
-				return &TrackVP8{}
+				return &VP8{}
 
 			case codec == "vp9" && clock == "90000":
-				return &TrackVP9{}
+				return &VP9{}
 			}
 
 		case md.MediaName.Media == "audio":
 			switch {
 			case payloadType == 0, payloadType == 8:
-				return &TrackG711{}
+				return &G711{}
 
 			case payloadType == 9:
-				return &TrackG722{}
+				return &G722{}
 
 			case payloadType == 14:
-				return &TrackMPEG2Audio{}
+				return &MPEG2Audio{}
 
 			case codec == "l8", codec == "l16", codec == "l24":
-				return &TrackLPCM{}
+				return &LPCM{}
 
 			case codec == "mpeg4-generic":
-				return &TrackMPEG4Audio{}
+				return &MPEG4Audio{}
 
 			case codec == "vorbis":
-				return &TrackVorbis{}
+				return &Vorbis{}
 
 			case codec == "opus":
-				return &TrackOpus{}
+				return &Opus{}
 			}
 		}
 
-		return &TrackGeneric{}
+		return &Generic{}
 	}()
 
 	err = track.unmarshal(payloadType, clock, codec, rtpMap, fmtp)

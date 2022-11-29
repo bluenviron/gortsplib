@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"fmt"
@@ -51,57 +51,61 @@ func findClockRate(payloadType uint8, rtpMap string) (int, error) {
 	return int(v), nil
 }
 
-// TrackGeneric is a generic track.
-type TrackGeneric struct {
-	PayloadType uint8
-	RTPMap      string
-	FMTP        string
+// Generic is a generic track.
+type Generic struct {
+	PayloadTyp uint8
+	RTPMap     string
+	FMTP       string
 
-	clockRate int
+	// clock rate of the track. Filled automatically.
+	ClockRat int
 }
 
-// Init initializes a TrackGeneric
-func (t *TrackGeneric) Init() error {
-	t.clockRate, _ = findClockRate(t.PayloadType, t.RTPMap)
+// Init initializes a Generic.
+func (t *Generic) Init() error {
+	t.ClockRat, _ = findClockRate(t.PayloadTyp, t.RTPMap)
 	return nil
 }
 
 // String returns a description of the track.
-func (t *TrackGeneric) String() string {
+func (t *Generic) String() string {
 	return "Generic"
 }
 
-// ClockRate returns the clock rate.
-func (t *TrackGeneric) ClockRate() int {
-	return t.clockRate
+// ClockRate implements Track.
+func (t *Generic) ClockRate() int {
+	return t.ClockRat
 }
 
-// GetPayloadType returns the payload type.
-func (t *TrackGeneric) GetPayloadType() uint8 {
-	return t.PayloadType
+// PayloadType implements Track.
+func (t *Generic) PayloadType() uint8 {
+	return t.PayloadTyp
 }
 
-func (t *TrackGeneric) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
-	t.PayloadType = payloadType
+func (t *Generic) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadTyp = payloadType
 	t.RTPMap = rtpmap
 	t.FMTP = fmtp
 
 	return t.Init()
 }
 
-func (t *TrackGeneric) marshal() (string, string) {
+// Marshal implements Track.
+func (t *Generic) Marshal() (string, string) {
 	return t.RTPMap, t.FMTP
 }
 
-func (t *TrackGeneric) clone() Track {
-	return &TrackGeneric{
-		PayloadType: t.PayloadType,
-		RTPMap:      t.RTPMap,
-		FMTP:        t.FMTP,
-		clockRate:   t.clockRate,
+// Clone implements Track.
+func (t *Generic) Clone() Track {
+	return &Generic{
+		PayloadTyp: t.PayloadTyp,
+		RTPMap:     t.RTPMap,
+		FMTP:       t.FMTP,
+		ClockRat:   t.ClockRat,
 	}
 }
 
-func (t *TrackGeneric) ptsEqualsDTS(*rtp.Packet) bool {
+// PTSEqualsDTS implements Track.
+func (t *Generic) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }

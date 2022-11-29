@@ -31,6 +31,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
 	"github.com/aler9/gortsplib/pkg/rtpreorderer"
 	"github.com/aler9/gortsplib/pkg/sdp"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -84,7 +85,7 @@ const (
 )
 
 type clientMediaTrack struct {
-	track Track
+	track track.Track
 
 	// play
 	udpReorderer    *rtpreorderer.Reorderer
@@ -1601,9 +1602,9 @@ func (c *Client) doSetup(
 	cm.id = mediaID
 	cm.media = media
 	cm.tracks = make(map[uint8]*clientMediaTrack)
-	for _, track := range media.Tracks {
-		cm.tracks[track.GetPayloadType()] = &clientMediaTrack{
-			track: track,
+	for _, trak := range media.Tracks {
+		cm.tracks[trak.PayloadType()] = &clientMediaTrack{
+			track: trak,
 		}
 	}
 
@@ -1929,7 +1930,7 @@ func (c *Client) WritePacketRTPWithNTP(mediaID int, pkt *rtp.Packet, ntp time.Ti
 	}
 	byts = byts[:n]
 
-	track.rtcpSender.ProcessPacket(pkt, ntp, track.track.ptsEqualsDTS(pkt))
+	track.rtcpSender.ProcessPacket(pkt, ntp, track.track.PTSEqualsDTS(pkt))
 
 	c.writeBuffer.Push(mediaAndTypeAndPayload{
 		mediaID: mediaID,

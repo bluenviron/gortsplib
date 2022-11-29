@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"fmt"
@@ -10,30 +10,30 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpsimpleaudio"
 )
 
-// TrackOpus is a Opus track.
-type TrackOpus struct {
-	PayloadType  uint8
+// Opus is a Opus track.
+type Opus struct {
+	PayloadTyp   uint8
 	SampleRate   int
 	ChannelCount int
 }
 
-// String returns a description of the track.
-func (t *TrackOpus) String() string {
+// String implements Track.
+func (t *Opus) String() string {
 	return "Opus"
 }
 
-// ClockRate returns the clock rate.
-func (t *TrackOpus) ClockRate() int {
+// ClockRate implements Track.
+func (t *Opus) ClockRate() int {
 	return t.SampleRate
 }
 
-// GetPayloadType returns the payload type.
-func (t *TrackOpus) GetPayloadType() uint8 {
-	return t.PayloadType
+// PayloadType implements Track.
+func (t *Opus) PayloadType() uint8 {
+	return t.PayloadTyp
 }
 
-func (t *TrackOpus) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
-	t.PayloadType = payloadType
+func (t *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadTyp = payloadType
 
 	tmp := strings.SplitN(clock, "/", 32)
 	if len(tmp) != 2 {
@@ -55,7 +55,8 @@ func (t *TrackOpus) unmarshal(payloadType uint8, clock string, codec string, rtp
 	return nil
 }
 
-func (t *TrackOpus) marshal() (string, string) {
+// Marshal implements Track.
+func (t *Opus) Marshal() (string, string) {
 	fmtp := "sprop-stereo=" + func() string {
 		if t.ChannelCount == 2 {
 			return "1"
@@ -67,20 +68,22 @@ func (t *TrackOpus) marshal() (string, string) {
 		"/" + strconv.FormatInt(int64(t.ChannelCount), 10), fmtp
 }
 
-func (t *TrackOpus) clone() Track {
-	return &TrackOpus{
-		PayloadType:  t.PayloadType,
+// Clone implements Track.
+func (t *Opus) Clone() Track {
+	return &Opus{
+		PayloadTyp:   t.PayloadTyp,
 		SampleRate:   t.SampleRate,
 		ChannelCount: t.ChannelCount,
 	}
 }
 
-func (t *TrackOpus) ptsEqualsDTS(*rtp.Packet) bool {
+// PTSEqualsDTS implements Track.
+func (t *Opus) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.
-func (t *TrackOpus) CreateDecoder() *rtpsimpleaudio.Decoder {
+func (t *Opus) CreateDecoder() *rtpsimpleaudio.Decoder {
 	d := &rtpsimpleaudio.Decoder{
 		SampleRate: t.SampleRate,
 	}
@@ -89,9 +92,9 @@ func (t *TrackOpus) CreateDecoder() *rtpsimpleaudio.Decoder {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the track.
-func (t *TrackOpus) CreateEncoder() *rtpsimpleaudio.Encoder {
+func (t *Opus) CreateEncoder() *rtpsimpleaudio.Encoder {
 	e := &rtpsimpleaudio.Encoder{
-		PayloadType: t.PayloadType,
+		PayloadType: t.PayloadTyp,
 		SampleRate:  8000,
 	}
 	e.Init()

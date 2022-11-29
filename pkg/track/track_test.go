@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
 )
 
-func TestTrackNewFromMediaDescription(t *testing.T) {
+func TestNewFromMediaDescription(t *testing.T) {
 	for _, ca := range []struct {
 		name  string
 		md    *psdp.MediaDescription
@@ -24,7 +24,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"8"},
 				},
 			},
-			&TrackG711{},
+			&G711{},
 		},
 		{
 			"audio g711 pcmu",
@@ -35,7 +35,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"0"},
 				},
 			},
-			&TrackG711{
+			&G711{
 				MULaw: true,
 			},
 		},
@@ -48,7 +48,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"9"},
 				},
 			},
-			&TrackG722{},
+			&G722{},
 		},
 		{
 			"audio lpcm 8",
@@ -65,8 +65,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackLPCM{
-				PayloadType:  97,
+			&LPCM{
+				PayloadTyp:   97,
 				BitDepth:     8,
 				SampleRate:   48000,
 				ChannelCount: 2,
@@ -87,8 +87,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackLPCM{
-				PayloadType:  97,
+			&LPCM{
+				PayloadTyp:   97,
 				BitDepth:     16,
 				SampleRate:   96000,
 				ChannelCount: 2,
@@ -109,8 +109,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackLPCM{
-				PayloadType:  98,
+			&LPCM{
+				PayloadTyp:   98,
 				BitDepth:     24,
 				SampleRate:   44100,
 				ChannelCount: 4,
@@ -125,7 +125,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"14"},
 				},
 			},
-			&TrackMPEG2Audio{},
+			&MPEG2Audio{},
 		},
 		{
 			"audio aac",
@@ -150,8 +150,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackMPEG4Audio{
-				PayloadType: 96,
+			&MPEG4Audio{
+				PayloadTyp: 96,
 				Config: &mpeg4audio.Config{
 					Type:         mpeg4audio.ObjectTypeAACLC,
 					SampleRate:   48000,
@@ -181,8 +181,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackMPEG4Audio{
-				PayloadType: 96,
+			&MPEG4Audio{
+				PayloadTyp: 96,
 				Config: &mpeg4audio.Config{
 					Type:         mpeg4audio.ObjectTypeAACLC,
 					SampleRate:   48000,
@@ -216,8 +216,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackMPEG4Audio{
-				PayloadType: 96,
+			&MPEG4Audio{
+				PayloadTyp: 96,
 				Config: &mpeg4audio.Config{
 					Type:         mpeg4audio.ObjectTypeAACLC,
 					SampleRate:   48000,
@@ -247,8 +247,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackVorbis{
-				PayloadType:   96,
+			&Vorbis{
+				PayloadTyp:    96,
 				SampleRate:    44100,
 				ChannelCount:  2,
 				Configuration: []byte{0x01, 0x02, 0x03, 0x04},
@@ -273,8 +273,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackOpus{
-				PayloadType:  96,
+			&Opus{
+				PayloadTyp:   96,
 				SampleRate:   48000,
 				ChannelCount: 2,
 			},
@@ -288,7 +288,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"26"},
 				},
 			},
-			&TrackJPEG{},
+			&JPEG{},
 		},
 		{
 			"video mpeg2 video",
@@ -299,7 +299,7 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"32"},
 				},
 			},
-			&TrackMPEG2Video{},
+			&MPEG2Video{},
 		},
 		{
 			"video h264",
@@ -321,8 +321,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackH264{
-				PayloadType: 96,
+			&H264{
+				PayloadTyp: 96,
 				SPS: []byte{
 					0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
 					0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
@@ -349,8 +349,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackH264{
-				PayloadType: 96,
+			&H264{
+				PayloadTyp: 96,
 			},
 		},
 		{
@@ -373,8 +373,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackH264{
-				PayloadType: 96,
+			&H264{
+				PayloadTyp: 96,
 				SPS: []byte{
 					0x67, 0x64, 0x00, 0x1f, 0xac, 0xd9, 0x40, 0x50,
 					0x05, 0xbb, 0x01, 0x6c, 0x80, 0x00, 0x00, 0x03,
@@ -407,8 +407,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackH264{
-				PayloadType: 96,
+			&H264{
+				PayloadTyp: 96,
 				SPS: []byte{
 					0x67, 0x64, 0x00, 0x29, 0xac, 0x13, 0x31, 0x40,
 					0x78, 0x04, 0x47, 0xde, 0x03, 0xea, 0x02, 0x02,
@@ -442,8 +442,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackH265{
-				PayloadType: 96,
+			&H265{
+				PayloadTyp: 96,
 				VPS: []byte{
 					0x40, 0x1, 0xc, 0x1, 0xff, 0xff, 0x1, 0x60,
 					0x0, 0x0, 0x3, 0x0, 0x90, 0x0, 0x0, 0x3,
@@ -482,8 +482,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackVP8{
-				PayloadType: 96,
+			&VP8{
+				PayloadTyp: 96,
 				MaxFR: func() *int {
 					v := 123
 					return &v
@@ -513,8 +513,8 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackVP9{
-				PayloadType: 96,
+			&VP9{
+				PayloadTyp: 96,
 				MaxFR: func() *int {
 					v := 123
 					return &v
@@ -547,10 +547,10 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					},
 				},
 			},
-			&TrackGeneric{
-				PayloadType: 98,
-				RTPMap:      "MetaData/80000",
-				clockRate:   80000,
+			&Generic{
+				PayloadTyp: 98,
+				RTPMap:     "MetaData/80000",
+				ClockRat:   80000,
 			},
 		},
 		{
@@ -562,21 +562,21 @@ func TestTrackNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"107"},
 				},
 			},
-			&TrackGeneric{
-				PayloadType: 107,
-				clockRate:   0,
+			&Generic{
+				PayloadTyp: 107,
+				ClockRat:   0,
 			},
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			track, err := newTrackFromMediaDescription(ca.md, ca.md.MediaName.Formats[0])
+			track, err := Unmarshal(ca.md, ca.md.MediaName.Formats[0])
 			require.NoError(t, err)
 			require.Equal(t, ca.track, track)
 		})
 	}
 }
 
-func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
+func TestNewFromMediaDescriptionErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		md   *psdp.MediaDescription
@@ -778,7 +778,7 @@ func TestTrackNewFromMediaDescriptionErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := newTrackFromMediaDescription(ca.md, ca.md.MediaName.Formats[0])
+			_, err := Unmarshal(ca.md, ca.md.MediaName.Formats[0])
 			require.EqualError(t, err, ca.err)
 		})
 	}

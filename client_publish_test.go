@@ -15,12 +15,13 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/pkg/track"
 )
 
 var testH264Media = &Media{
 	Type: MediaTypeVideo,
-	Tracks: []Track{&TrackH264{
-		PayloadType:       96,
+	Tracks: []track.Track{&track.H264{
+		PayloadTyp:        96,
 		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
 		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
 		PacketizationMode: 1,

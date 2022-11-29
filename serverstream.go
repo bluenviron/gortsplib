@@ -11,10 +11,11 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/rtcpsender"
+	"github.com/aler9/gortsplib/pkg/track"
 )
 
 type serverStreamMediaTrack struct {
-	track      Track
+	track      track.Track
 	rtcpSender *rtcpsender.RTCPSender
 }
 
@@ -55,20 +56,20 @@ func NewServerStream(medias Medias) *ServerStream {
 		ssm := &serverStreamMedia{}
 
 		ssm.tracks = make(map[uint8]*serverStreamMediaTrack)
-		for _, track := range media.Tracks {
+		for _, trak := range media.Tracks {
 			tr := &serverStreamMediaTrack{
-				track: track,
+				track: trak,
 			}
 
 			ci := mediaID
 			tr.rtcpSender = rtcpsender.New(
-				track.ClockRate(),
+				trak.ClockRate(),
 				func(pkt rtcp.Packet) {
 					st.WritePacketRTCP(ci, pkt)
 				},
 			)
 
-			ssm.tracks[track.GetPayloadType()] = tr
+			ssm.tracks[trak.PayloadType()] = tr
 		}
 
 		st.streamMedias[mediaID] = ssm
@@ -321,7 +322,7 @@ func (st *ServerStream) WritePacketRTPWithNTP(mediaID int, pkt *rtp.Packet, ntp 
 		return
 	}
 
-	track.rtcpSender.ProcessPacket(pkt, ntp, track.track.ptsEqualsDTS(pkt))
+	track.rtcpSender.ProcessPacket(pkt, ntp, track.track.PTSEqualsDTS(pkt))
 
 	// send unicast
 	for r := range st.activeUnicastReaders {

@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/pion/rtp"
 )
 
@@ -36,8 +37,8 @@ func main() {
 	// create a media that contains a Opus track
 	media := &gortsplib.Media{
 		Type: gortsplib.MediaTypeAudio,
-		Tracks: []gortsplib.Track{&gortsplib.TrackOpus{
-			PayloadType:  96,
+		Tracks: []track.Track{&track.Opus{
+			PayloadTyp:   96,
 			SampleRate:   48000,
 			ChannelCount: 2,
 		}},

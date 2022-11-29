@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"encoding/hex"
@@ -12,32 +12,32 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpmpeg4audio"
 )
 
-// TrackMPEG4Audio is a MPEG-4 audio track.
-type TrackMPEG4Audio struct {
-	PayloadType      uint8
+// MPEG4Audio is a MPEG-4 audio track.
+type MPEG4Audio struct {
+	PayloadTyp       uint8
 	Config           *mpeg4audio.Config
 	SizeLength       int
 	IndexLength      int
 	IndexDeltaLength int
 }
 
-// String returns a description of the track.
-func (t *TrackMPEG4Audio) String() string {
+// String implements Track.
+func (t *MPEG4Audio) String() string {
 	return "MPEG4-audio"
 }
 
-// ClockRate returns the clock rate.
-func (t *TrackMPEG4Audio) ClockRate() int {
+// ClockRate implements Track.
+func (t *MPEG4Audio) ClockRate() int {
 	return t.Config.SampleRate
 }
 
-// GetPayloadType returns the payload type.
-func (t *TrackMPEG4Audio) GetPayloadType() uint8 {
-	return t.PayloadType
+// PayloadType implements Track.
+func (t *MPEG4Audio) PayloadType() uint8 {
+	return t.PayloadTyp
 }
 
-func (t *TrackMPEG4Audio) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
-	t.PayloadType = payloadType
+func (t *MPEG4Audio) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadTyp = payloadType
 
 	if fmtp == "" {
 		return fmt.Errorf("fmtp attribute is missing")
@@ -102,7 +102,8 @@ func (t *TrackMPEG4Audio) unmarshal(payloadType uint8, clock string, codec strin
 	return nil
 }
 
-func (t *TrackMPEG4Audio) marshal() (string, string) {
+// Marshal implements Track.
+func (t *MPEG4Audio) Marshal() (string, string) {
 	enc, err := t.Config.Marshal()
 	if err != nil {
 		return "", ""
@@ -139,9 +140,10 @@ func (t *TrackMPEG4Audio) marshal() (string, string) {
 		"/" + strconv.FormatInt(int64(t.Config.ChannelCount), 10), fmtp
 }
 
-func (t *TrackMPEG4Audio) clone() Track {
-	return &TrackMPEG4Audio{
-		PayloadType:      t.PayloadType,
+// Clone implements Track.
+func (t *MPEG4Audio) Clone() Track {
+	return &MPEG4Audio{
+		PayloadTyp:       t.PayloadTyp,
 		Config:           t.Config,
 		SizeLength:       t.SizeLength,
 		IndexLength:      t.IndexLength,
@@ -149,12 +151,13 @@ func (t *TrackMPEG4Audio) clone() Track {
 	}
 }
 
-func (t *TrackMPEG4Audio) ptsEqualsDTS(*rtp.Packet) bool {
+// PTSEqualsDTS implements Track.
+func (t *MPEG4Audio) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.
-func (t *TrackMPEG4Audio) CreateDecoder() *rtpmpeg4audio.Decoder {
+func (t *MPEG4Audio) CreateDecoder() *rtpmpeg4audio.Decoder {
 	d := &rtpmpeg4audio.Decoder{
 		SampleRate:       t.Config.SampleRate,
 		SizeLength:       t.SizeLength,
@@ -166,9 +169,9 @@ func (t *TrackMPEG4Audio) CreateDecoder() *rtpmpeg4audio.Decoder {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the track.
-func (t *TrackMPEG4Audio) CreateEncoder() *rtpmpeg4audio.Encoder {
+func (t *MPEG4Audio) CreateEncoder() *rtpmpeg4audio.Encoder {
 	e := &rtpmpeg4audio.Encoder{
-		PayloadType:      t.PayloadType,
+		PayloadType:      t.PayloadTyp,
 		SampleRate:       t.Config.SampleRate,
 		SizeLength:       t.SizeLength,
 		IndexLength:      t.IndexLength,

@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -12,11 +13,11 @@ import (
 // 2. get tracks published on a path
 // 3. read only the H264 track
 
-func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *gortsplib.TrackH264) {
+func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *track.H264) {
 	for _, media := range medias {
-		for _, track := range media.Tracks {
-			if track, ok := track.(*gortsplib.TrackH264); ok {
-				return media, track
+		for _, trak := range media.Tracks {
+			if trak, ok := trak.(*track.H264); ok {
+				return media, trak
 			}
 		}
 	}

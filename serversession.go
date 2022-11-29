@@ -20,6 +20,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/pkg/rtpreorderer"
 	"github.com/aler9/gortsplib/pkg/sdp"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -164,7 +165,7 @@ func (s ServerSessionState) String() string {
 }
 
 type serverSessionSetuppedMediaTrack struct {
-	track           Track
+	track           track.Track
 	udpReorderer    *rtpreorderer.Reorderer
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver
 }
@@ -775,7 +776,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			sst.media = ss.announcedMedias[mediaID]
 			sst.tracks = make(map[uint8]*serverSessionSetuppedMediaTrack)
 			for _, track := range sst.media.Tracks {
-				sst.tracks[track.GetPayloadType()] = &serverSessionSetuppedMediaTrack{
+				sst.tracks[track.PayloadType()] = &serverSessionSetuppedMediaTrack{
 					track: track,
 				}
 			}

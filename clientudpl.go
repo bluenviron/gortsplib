@@ -230,7 +230,7 @@ func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
 	}
 
 	for _, pkt := range packets {
-		track.udpRTCPReceiver.ProcessPacket(pkt, time.Now(), track.track.ptsEqualsDTS(pkt))
+		track.udpRTCPReceiver.ProcessPacket(pkt, time.Now(), track.track.PTSEqualsDTS(pkt))
 
 		u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
 			MediaID: u.cm.id,

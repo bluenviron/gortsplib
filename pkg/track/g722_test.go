@@ -1,4 +1,4 @@
-package gortsplib //nolint:dupl
+package track
 
 import (
 	"testing"
@@ -6,24 +6,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackG722Attributes(t *testing.T) {
-	track := &TrackG722{}
+func TestG722Attributes(t *testing.T) {
+	track := &G722{}
 	require.Equal(t, "G722", track.String())
 	require.Equal(t, 8000, track.ClockRate())
 }
 
-func TestTrackG722Clone(t *testing.T) {
-	track := &TrackG722{}
+func TestG722Clone(t *testing.T) {
+	track := &G722{}
 
-	clone := track.clone()
+	clone := track.Clone()
 	// require.NotSame(t, track, clone)
 	require.Equal(t, track, clone)
 }
 
-func TestTrackG722MediaDescription(t *testing.T) {
-	track := &TrackG722{}
+func TestG722MediaDescription(t *testing.T) {
+	track := &G722{}
 
-	rtpmap, fmtp := track.marshal()
+	rtpmap, fmtp := track.Marshal()
 	require.Equal(t, "G722/8000", rtpmap)
 	require.Equal(t, "", fmtp)
 }

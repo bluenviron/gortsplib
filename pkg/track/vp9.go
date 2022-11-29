@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"fmt"
@@ -10,31 +10,31 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpvp9"
 )
 
-// TrackVP9 is a VP9 track.
-type TrackVP9 struct {
-	PayloadType uint8
-	MaxFR       *int
-	MaxFS       *int
-	ProfileID   *int
+// VP9 is a VP9 track.
+type VP9 struct {
+	PayloadTyp uint8
+	MaxFR      *int
+	MaxFS      *int
+	ProfileID  *int
 }
 
-// String returns a description of the track.
-func (t *TrackVP9) String() string {
+// String implements Track.
+func (t *VP9) String() string {
 	return "VP9"
 }
 
-// ClockRate returns the clock rate.
-func (t *TrackVP9) ClockRate() int {
+// ClockRate implements Track.
+func (t *VP9) ClockRate() int {
 	return 90000
 }
 
-// GetPayloadType returns the payload type.
-func (t *TrackVP9) GetPayloadType() uint8 {
-	return t.PayloadType
+// PayloadType implements Track.
+func (t *VP9) PayloadType() uint8 {
+	return t.PayloadTyp
 }
 
-func (t *TrackVP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
-	t.PayloadType = payloadType
+func (t *VP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadTyp = payloadType
 
 	if fmtp != "" {
 		for _, kv := range strings.Split(fmtp, ";") {
@@ -80,7 +80,8 @@ func (t *TrackVP9) unmarshal(payloadType uint8, clock string, codec string, rtpm
 	return nil
 }
 
-func (t *TrackVP9) marshal() (string, string) {
+// Marshal implements Track.
+func (t *VP9) Marshal() (string, string) {
 	var tmp []string
 	if t.MaxFR != nil {
 		tmp = append(tmp, "max-fr="+strconv.FormatInt(int64(*t.MaxFR), 10))
@@ -99,21 +100,23 @@ func (t *TrackVP9) marshal() (string, string) {
 	return "VP9/90000", fmtp
 }
 
-func (t *TrackVP9) clone() Track {
-	return &TrackVP9{
-		PayloadType: t.PayloadType,
-		MaxFR:       t.MaxFR,
-		MaxFS:       t.MaxFS,
-		ProfileID:   t.ProfileID,
+// Clone implements Track.
+func (t *VP9) Clone() Track {
+	return &VP9{
+		PayloadTyp: t.PayloadTyp,
+		MaxFR:      t.MaxFR,
+		MaxFS:      t.MaxFS,
+		ProfileID:  t.ProfileID,
 	}
 }
 
-func (t *TrackVP9) ptsEqualsDTS(*rtp.Packet) bool {
+// PTSEqualsDTS implements Track.
+func (t *VP9) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.
-func (t *TrackVP9) CreateDecoder() *rtpvp9.Decoder {
+func (t *VP9) CreateDecoder() *rtpvp9.Decoder {
 	d := &rtpvp9.Decoder{}
 	d.Init()
 	return d

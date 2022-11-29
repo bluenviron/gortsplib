@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"encoding/base64"
@@ -9,31 +9,31 @@ import (
 	"github.com/pion/rtp"
 )
 
-// TrackVorbis is a Vorbis track.
-type TrackVorbis struct {
-	PayloadType   uint8
+// Vorbis is a Vorbis track.
+type Vorbis struct {
+	PayloadTyp    uint8
 	SampleRate    int
 	ChannelCount  int
 	Configuration []byte
 }
 
-// String returns a description of the track.
-func (t *TrackVorbis) String() string {
+// String implements Track.
+func (t *Vorbis) String() string {
 	return "Vorbis"
 }
 
-// ClockRate returns the clock rate.
-func (t *TrackVorbis) ClockRate() int {
+// ClockRate implements Track.
+func (t *Vorbis) ClockRate() int {
 	return t.SampleRate
 }
 
-// GetPayloadType returns the payload type.
-func (t *TrackVorbis) GetPayloadType() uint8 {
-	return t.PayloadType
+// PayloadType implements Track.
+func (t *Vorbis) PayloadType() uint8 {
+	return t.PayloadTyp
 }
 
-func (t *TrackVorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
-	t.PayloadType = payloadType
+func (t *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadTyp = payloadType
 
 	tmp := strings.SplitN(clock, "/", 32)
 	if len(tmp) != 2 {
@@ -85,21 +85,24 @@ func (t *TrackVorbis) unmarshal(payloadType uint8, clock string, codec string, r
 	return nil
 }
 
-func (t *TrackVorbis) marshal() (string, string) {
+// Marshal implements Track.
+func (t *Vorbis) Marshal() (string, string) {
 	return "VORBIS/" + strconv.FormatInt(int64(t.SampleRate), 10) +
 			"/" + strconv.FormatInt(int64(t.ChannelCount), 10),
 		"configuration=" + base64.StdEncoding.EncodeToString(t.Configuration)
 }
 
-func (t *TrackVorbis) clone() Track {
-	return &TrackVorbis{
-		PayloadType:   t.PayloadType,
+// Clone implements Track.
+func (t *Vorbis) Clone() Track {
+	return &Vorbis{
+		PayloadTyp:    t.PayloadTyp,
 		SampleRate:    t.SampleRate,
 		ChannelCount:  t.ChannelCount,
 		Configuration: t.Configuration,
 	}
 }
 
-func (t *TrackVorbis) ptsEqualsDTS(*rtp.Packet) bool {
+// PTSEqualsDTS implements Track.
+func (t *Vorbis) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }

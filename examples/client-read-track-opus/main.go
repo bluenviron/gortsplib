@@ -4,19 +4,20 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
 // This example shows how to
-// 1. connect to a RTSP server and read all medias on a path
+// 1. connect to a RTSP server
 // 2. check if there's an Opus track
 // 3. get Opus packets of that track
 
-func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *gortsplib.TrackOpus) {
+func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *track.Opus) {
 	for _, media := range medias {
-		for _, track := range media.Tracks {
-			if track, ok := track.(*gortsplib.TrackOpus); ok {
-				return media, track
+		for _, trak := range media.Tracks {
+			if trak, ok := trak.(*track.Opus); ok {
+				return media, trak
 			}
 		}
 	}
@@ -57,7 +58,7 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
 		// get packets of specific track only
-		if ctx.Packet.PayloadType != track.GetPayloadType() {
+		if ctx.Packet.PayloadType != track.PayloadType() {
 			return
 		}
 

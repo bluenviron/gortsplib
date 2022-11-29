@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"fmt"
@@ -10,31 +10,31 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtplpcm"
 )
 
-// TrackLPCM is an uncompressed, Linear PCM track.
-type TrackLPCM struct {
-	PayloadType  uint8
+// LPCM is an uncompressed, Linear PCM track.
+type LPCM struct {
+	PayloadTyp   uint8
 	BitDepth     int
 	SampleRate   int
 	ChannelCount int
 }
 
-// String returns a description of the track.
-func (t *TrackLPCM) String() string {
+// String implements Track.
+func (t *LPCM) String() string {
 	return "LPCM"
 }
 
-// ClockRate returns the clock rate.
-func (t *TrackLPCM) ClockRate() int {
+// ClockRate implements Track.
+func (t *LPCM) ClockRate() int {
 	return t.SampleRate
 }
 
-// GetPayloadType returns the payload type.
-func (t *TrackLPCM) GetPayloadType() uint8 {
-	return t.PayloadType
+// PayloadType implements Track.
+func (t *LPCM) PayloadType() uint8 {
+	return t.PayloadTyp
 }
 
-func (t *TrackLPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
-	t.PayloadType = payloadType
+func (t *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadTyp = payloadType
 
 	switch codec {
 	case "l8":
@@ -67,7 +67,8 @@ func (t *TrackLPCM) unmarshal(payloadType uint8, clock string, codec string, rtp
 	return nil
 }
 
-func (t *TrackLPCM) marshal() (string, string) {
+// Marshal implements Track.
+func (t *LPCM) Marshal() (string, string) {
 	var codec string
 	switch t.BitDepth {
 	case 8:
@@ -84,21 +85,23 @@ func (t *TrackLPCM) marshal() (string, string) {
 		"/" + strconv.FormatInt(int64(t.ChannelCount), 10), ""
 }
 
-func (t *TrackLPCM) clone() Track {
-	return &TrackLPCM{
-		PayloadType:  t.PayloadType,
+// Clone implements Track.
+func (t *LPCM) Clone() Track {
+	return &LPCM{
+		PayloadTyp:   t.PayloadTyp,
 		BitDepth:     t.BitDepth,
 		SampleRate:   t.SampleRate,
 		ChannelCount: t.ChannelCount,
 	}
 }
 
-func (t *TrackLPCM) ptsEqualsDTS(*rtp.Packet) bool {
+// PTSEqualsDTS implements Track.
+func (t *LPCM) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.
-func (t *TrackLPCM) CreateDecoder() *rtplpcm.Decoder {
+func (t *LPCM) CreateDecoder() *rtplpcm.Decoder {
 	d := &rtplpcm.Decoder{
 		BitDepth:     t.BitDepth,
 		SampleRate:   t.SampleRate,
@@ -109,9 +112,9 @@ func (t *TrackLPCM) CreateDecoder() *rtplpcm.Decoder {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the track.
-func (t *TrackLPCM) CreateEncoder() *rtplpcm.Encoder {
+func (t *LPCM) CreateEncoder() *rtplpcm.Encoder {
 	e := &rtplpcm.Encoder{
-		PayloadType:  t.PayloadType,
+		PayloadType:  t.PayloadTyp,
 		BitDepth:     t.BitDepth,
 		SampleRate:   t.SampleRate,
 		ChannelCount: t.ChannelCount,

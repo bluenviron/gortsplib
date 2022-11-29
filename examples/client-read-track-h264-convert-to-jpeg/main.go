@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
 // This example shows how to
-// 1. connect to a RTSP server and read all medias on a path
+// 1. connect to a RTSP server
 // 2. check if there's a H264 track
 // 3. decode H264 into RGBA frames
 // 4. encode the frames into JPEG images and save them on disk
@@ -38,11 +39,11 @@ func saveToFile(img image.Image) error {
 	})
 }
 
-func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *gortsplib.TrackH264) {
+func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *track.H264) {
 	for _, media := range medias {
-		for _, track := range media.Tracks {
-			if track, ok := track.(*gortsplib.TrackH264); ok {
-				return media, track
+		for _, trak := range media.Tracks {
+			if trak, ok := trak.(*track.H264); ok {
+				return media, trak
 			}
 		}
 	}
@@ -101,7 +102,7 @@ func main() {
 	saveCount := 0
 	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
 		// get packets of specific track only
-		if ctx.Packet.PayloadType != track.GetPayloadType() {
+		if ctx.Packet.PayloadType != track.PayloadType() {
 			return
 		}
 

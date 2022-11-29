@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"testing"
@@ -6,12 +6,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackH265Attributes(t *testing.T) {
-	track := &TrackH265{
-		PayloadType: 96,
-		VPS:         []byte{0x01, 0x02},
-		SPS:         []byte{0x03, 0x04},
-		PPS:         []byte{0x05, 0x06},
+func TestH265Attributes(t *testing.T) {
+	track := &H265{
+		PayloadTyp: 96,
+		VPS:        []byte{0x01, 0x02},
+		SPS:        []byte{0x03, 0x04},
+		PPS:        []byte{0x05, 0x06},
 	}
 	require.Equal(t, "H265", track.String())
 	require.Equal(t, 90000, track.ClockRate())
@@ -27,28 +27,28 @@ func TestTrackH265Attributes(t *testing.T) {
 	require.Equal(t, []byte{0x0B, 0x0C}, track.SafePPS())
 }
 
-func TestTrackH265Clone(t *testing.T) {
-	track := &TrackH265{
-		PayloadType: 96,
-		VPS:         []byte{0x01, 0x02},
-		SPS:         []byte{0x03, 0x04},
-		PPS:         []byte{0x05, 0x06},
+func TestH265Clone(t *testing.T) {
+	track := &H265{
+		PayloadTyp: 96,
+		VPS:        []byte{0x01, 0x02},
+		SPS:        []byte{0x03, 0x04},
+		PPS:        []byte{0x05, 0x06},
 	}
 
-	clone := track.clone()
+	clone := track.Clone()
 	require.NotSame(t, track, clone)
 	require.Equal(t, track, clone)
 }
 
-func TestTrackH265MediaDescription(t *testing.T) {
-	track := &TrackH265{
-		PayloadType: 96,
-		VPS:         []byte{0x01, 0x02},
-		SPS:         []byte{0x03, 0x04},
-		PPS:         []byte{0x05, 0x06},
+func TestH265MediaDescription(t *testing.T) {
+	track := &H265{
+		PayloadTyp: 96,
+		VPS:        []byte{0x01, 0x02},
+		SPS:        []byte{0x03, 0x04},
+		PPS:        []byte{0x05, 0x06},
 	}
 
-	rtpmap, fmtp := track.marshal()
+	rtpmap, fmtp := track.Marshal()
 	require.Equal(t, "H265/90000", rtpmap)
 	require.Equal(t, "sprop-vps=AQI=; sprop-sps=AwQ=; sprop-pps=BQY=", fmtp)
 }

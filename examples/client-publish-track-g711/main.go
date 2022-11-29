@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/pion/rtp"
 )
 
@@ -36,7 +37,7 @@ func main() {
 	// create a media that contains a G711 track
 	media := &gortsplib.Media{
 		Type:   gortsplib.MediaTypeAudio,
-		Tracks: []gortsplib.Track{&gortsplib.TrackG711{}},
+		Tracks: []track.Track{&track.G711{}},
 	}
 
 	c := gortsplib.Client{}

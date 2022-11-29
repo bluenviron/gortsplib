@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"encoding/base64"
@@ -12,34 +12,34 @@ import (
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtph265"
 )
 
-// TrackH265 is a H265 track.
-type TrackH265 struct {
-	PayloadType uint8
-	VPS         []byte
-	SPS         []byte
-	PPS         []byte
-	MaxDONDiff  int
+// H265 is a H265 track.
+type H265 struct {
+	PayloadTyp uint8
+	VPS        []byte
+	SPS        []byte
+	PPS        []byte
+	MaxDONDiff int
 
 	mutex sync.RWMutex
 }
 
-// String returns a description of the track.
-func (t *TrackH265) String() string {
+// String implements Track.
+func (t *H265) String() string {
 	return "H265"
 }
 
-// ClockRate returns the clock rate.
-func (t *TrackH265) ClockRate() int {
+// ClockRate implements Track.
+func (t *H265) ClockRate() int {
 	return 90000
 }
 
-// GetPayloadType returns the payload type.
-func (t *TrackH265) GetPayloadType() uint8 {
-	return t.PayloadType
+// PayloadType implements Track.
+func (t *H265) PayloadType() uint8 {
+	return t.PayloadTyp
 }
 
-func (t *TrackH265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
-	t.PayloadType = payloadType
+func (t *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+	t.PayloadTyp = payloadType
 
 	if fmtp == "" {
 		return nil // do not return any error
@@ -91,7 +91,8 @@ func (t *TrackH265) unmarshal(payloadType uint8, clock string, codec string, rtp
 	return nil
 }
 
-func (t *TrackH265) marshal() (string, string) {
+// Marshal implements Track.
+func (t *H265) Marshal() (string, string) {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
@@ -116,22 +117,24 @@ func (t *TrackH265) marshal() (string, string) {
 	return "H265/90000", fmtp
 }
 
-func (t *TrackH265) clone() Track {
-	return &TrackH265{
-		PayloadType: t.PayloadType,
-		VPS:         t.VPS,
-		SPS:         t.SPS,
-		PPS:         t.PPS,
-		MaxDONDiff:  t.MaxDONDiff,
+// Clone implements Track.
+func (t *H265) Clone() Track {
+	return &H265{
+		PayloadTyp: t.PayloadTyp,
+		VPS:        t.VPS,
+		SPS:        t.SPS,
+		PPS:        t.PPS,
+		MaxDONDiff: t.MaxDONDiff,
 	}
 }
 
-func (t *TrackH265) ptsEqualsDTS(*rtp.Packet) bool {
+// PTSEqualsDTS implements Track.
+func (t *H265) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the track.
-func (t *TrackH265) CreateDecoder() *rtph265.Decoder {
+func (t *H265) CreateDecoder() *rtph265.Decoder {
 	d := &rtph265.Decoder{
 		MaxDONDiff: t.MaxDONDiff,
 	}
@@ -140,9 +143,9 @@ func (t *TrackH265) CreateDecoder() *rtph265.Decoder {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the track.
-func (t *TrackH265) CreateEncoder() *rtph265.Encoder {
+func (t *H265) CreateEncoder() *rtph265.Encoder {
 	e := &rtph265.Encoder{
-		PayloadType: t.PayloadType,
+		PayloadType: t.PayloadTyp,
 		MaxDONDiff:  t.MaxDONDiff,
 	}
 	e.Init()
@@ -150,42 +153,42 @@ func (t *TrackH265) CreateEncoder() *rtph265.Encoder {
 }
 
 // SafeVPS returns the track VPS.
-func (t *TrackH265) SafeVPS() []byte {
+func (t *H265) SafeVPS() []byte {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 	return t.VPS
 }
 
 // SafeSPS returns the track SPS.
-func (t *TrackH265) SafeSPS() []byte {
+func (t *H265) SafeSPS() []byte {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 	return t.SPS
 }
 
 // SafePPS returns the track PPS.
-func (t *TrackH265) SafePPS() []byte {
+func (t *H265) SafePPS() []byte {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 	return t.PPS
 }
 
 // SafeSetVPS sets the track VPS.
-func (t *TrackH265) SafeSetVPS(v []byte) {
+func (t *H265) SafeSetVPS(v []byte) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.VPS = v
 }
 
 // SafeSetSPS sets the track SPS.
-func (t *TrackH265) SafeSetSPS(v []byte) {
+func (t *H265) SafeSetSPS(v []byte) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.SPS = v
 }
 
 // SafeSetPPS sets the track PPS.
-func (t *TrackH265) SafeSetPPS(v []byte) {
+func (t *H265) SafeSetPPS(v []byte) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.PPS = v

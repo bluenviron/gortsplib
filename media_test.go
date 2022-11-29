@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/pkg/sdp"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -59,8 +60,8 @@ var casesMedias = []struct {
 			{
 				Type:    "video",
 				Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
-				Tracks: []Track{&TrackH264{
-					PayloadType:       97,
+				Tracks: []track.Track{&track.H264{
+					PayloadTyp:        97,
 					PacketizationMode: 1,
 					SPS:               []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
 					PPS:               []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
@@ -69,14 +70,14 @@ var casesMedias = []struct {
 			{
 				Type:    "audio",
 				Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
-				Tracks: []Track{&TrackG711{
+				Tracks: []track.Track{&track.G711{
 					MULaw: true,
 				}},
 			},
 			{
 				Type: "application",
-				Tracks: []Track{&TrackGeneric{
-					PayloadType: 107,
+				Tracks: []track.Track{&track.Generic{
+					PayloadTyp: 107,
 				}},
 			},
 		},
@@ -223,117 +224,117 @@ var casesMedias = []struct {
 		Medias{
 			{
 				Type: "audio",
-				Tracks: []Track{
-					&TrackOpus{
-						PayloadType:  111,
+				Tracks: []track.Track{
+					&track.Opus{
+						PayloadTyp:   111,
 						SampleRate:   48000,
 						ChannelCount: 2,
 					},
-					&TrackGeneric{
-						PayloadType: 103,
-						RTPMap:      "ISAC/16000",
-						clockRate:   16000,
+					&track.Generic{
+						PayloadTyp: 103,
+						RTPMap:     "ISAC/16000",
+						ClockRat:   16000,
 					},
-					&TrackGeneric{
-						PayloadType: 104,
-						RTPMap:      "ISAC/32000",
-						clockRate:   32000,
+					&track.Generic{
+						PayloadTyp: 104,
+						RTPMap:     "ISAC/32000",
+						ClockRat:   32000,
 					},
-					&TrackG722{},
-					&TrackGeneric{
-						PayloadType: 102,
-						RTPMap:      "ILBC/8000",
-						clockRate:   8000,
+					&track.G722{},
+					&track.Generic{
+						PayloadTyp: 102,
+						RTPMap:     "ILBC/8000",
+						ClockRat:   8000,
 					},
-					&TrackG711{
+					&track.G711{
 						MULaw: true,
 					},
-					&TrackG711{
+					&track.G711{
 						MULaw: false,
 					},
-					&TrackGeneric{
-						PayloadType: 106,
-						RTPMap:      "CN/32000",
-						clockRate:   32000,
+					&track.Generic{
+						PayloadTyp: 106,
+						RTPMap:     "CN/32000",
+						ClockRat:   32000,
 					},
-					&TrackGeneric{
-						PayloadType: 105,
-						RTPMap:      "CN/16000",
-						clockRate:   16000,
+					&track.Generic{
+						PayloadTyp: 105,
+						RTPMap:     "CN/16000",
+						ClockRat:   16000,
 					},
-					&TrackGeneric{
-						PayloadType: 13,
-						RTPMap:      "CN/8000",
-						clockRate:   8000,
+					&track.Generic{
+						PayloadTyp: 13,
+						RTPMap:     "CN/8000",
+						ClockRat:   8000,
 					},
-					&TrackGeneric{
-						PayloadType: 110,
-						RTPMap:      "telephone-event/48000",
-						clockRate:   48000,
+					&track.Generic{
+						PayloadTyp: 110,
+						RTPMap:     "telephone-event/48000",
+						ClockRat:   48000,
 					},
-					&TrackGeneric{
-						PayloadType: 112,
-						RTPMap:      "telephone-event/32000",
-						clockRate:   32000,
+					&track.Generic{
+						PayloadTyp: 112,
+						RTPMap:     "telephone-event/32000",
+						ClockRat:   32000,
 					},
-					&TrackGeneric{
-						PayloadType: 113,
-						RTPMap:      "telephone-event/16000",
-						clockRate:   16000,
+					&track.Generic{
+						PayloadTyp: 113,
+						RTPMap:     "telephone-event/16000",
+						ClockRat:   16000,
 					},
-					&TrackGeneric{
-						PayloadType: 126,
-						RTPMap:      "telephone-event/8000",
-						clockRate:   8000,
+					&track.Generic{
+						PayloadTyp: 126,
+						RTPMap:     "telephone-event/8000",
+						ClockRat:   8000,
 					},
 				},
 			},
 			{
 				Type: "video",
-				Tracks: []Track{
-					&TrackVP8{
-						PayloadType: 96,
+				Tracks: []track.Track{
+					&track.VP8{
+						PayloadTyp: 96,
 					},
-					&TrackGeneric{
-						PayloadType: 97,
-						RTPMap:      "rtx/90000",
-						FMTP:        "apt=96",
-						clockRate:   90000,
+					&track.Generic{
+						PayloadTyp: 97,
+						RTPMap:     "rtx/90000",
+						FMTP:       "apt=96",
+						ClockRat:   90000,
 					},
-					&TrackVP9{
-						PayloadType: 98,
+					&track.VP9{
+						PayloadTyp: 98,
 					},
-					&TrackGeneric{
-						PayloadType: 99,
-						RTPMap:      "rtx/90000",
-						FMTP:        "apt=98",
-						clockRate:   90000,
+					&track.Generic{
+						PayloadTyp: 99,
+						RTPMap:     "rtx/90000",
+						FMTP:       "apt=98",
+						ClockRat:   90000,
 					},
-					&TrackH264{
-						PayloadType:       100,
+					&track.H264{
+						PayloadTyp:        100,
 						PacketizationMode: 1,
 					},
-					&TrackGeneric{
-						PayloadType: 101,
-						RTPMap:      "rtx/90000",
-						FMTP:        "apt=100",
-						clockRate:   90000,
+					&track.Generic{
+						PayloadTyp: 101,
+						RTPMap:     "rtx/90000",
+						FMTP:       "apt=100",
+						ClockRat:   90000,
 					},
-					&TrackGeneric{
-						PayloadType: 127,
-						RTPMap:      "red/90000",
-						clockRate:   90000,
+					&track.Generic{
+						PayloadTyp: 127,
+						RTPMap:     "red/90000",
+						ClockRat:   90000,
 					},
-					&TrackGeneric{
-						PayloadType: 124,
-						RTPMap:      "rtx/90000",
-						FMTP:        "apt=127",
-						clockRate:   90000,
+					&track.Generic{
+						PayloadTyp: 124,
+						RTPMap:     "rtx/90000",
+						FMTP:       "apt=127",
+						ClockRat:   90000,
 					},
-					&TrackGeneric{
-						PayloadType: 125,
-						RTPMap:      "ulpfec/90000",
-						clockRate:   90000,
+					&track.Generic{
+						PayloadTyp: 125,
+						RTPMap:     "ulpfec/90000",
+						ClockRat:   90000,
 					},
 				},
 			},
@@ -365,9 +366,9 @@ var casesMedias = []struct {
 		Medias{
 			{
 				Type: "video",
-				Tracks: []Track{
-					&TrackH264{
-						PayloadType: 96,
+				Tracks: []track.Track{
+					&track.H264{
+						PayloadTyp: 96,
 						SPS: []byte{
 							0x67, 0x4d, 0x00, 0x2a, 0x9d, 0xa8, 0x1e, 0x00,
 							0x89, 0xf9, 0x66, 0xe0, 0x20, 0x20, 0x20, 0x40,
@@ -375,9 +376,9 @@ var casesMedias = []struct {
 						PPS:               []byte{0x68, 0xee, 0x3c, 0x80},
 						PacketizationMode: 1,
 					},
-					&TrackGeneric{
-						PayloadType: 98,
-						RTPMap:      "MetaData",
+					&track.Generic{
+						PayloadTyp: 98,
+						RTPMap:     "MetaData",
 					},
 				},
 			},
@@ -564,7 +565,7 @@ func TestMediaURL(t *testing.T) {
 func TestMediaURLError(t *testing.T) {
 	media := &Media{
 		Type:   "video",
-		Tracks: []Track{&TrackH264{}},
+		Tracks: []track.Track{&track.H264{}},
 	}
 	_, err := media.url(nil)
 	require.EqualError(t, err, "Content-Base header not provided")

@@ -8,6 +8,7 @@ import (
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtph264"
+	"github.com/aler9/gortsplib/pkg/track"
 )
 
 // This example shows how to
@@ -15,11 +16,11 @@ import (
 // 2. allow a single client to publish a stream, containing a H264 track, with TCP or UDP
 // 3. save the content of the H264 track into a file in MPEG-TS format
 
-func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *gortsplib.TrackH264, int) {
+func findTrack(medias gortsplib.Medias) (*gortsplib.Media, *track.H264, int) {
 	for i, media := range medias {
-		for _, track := range media.Tracks {
-			if track, ok := track.(*gortsplib.TrackH264); ok {
-				return media, track, i
+		for _, trak := range media.Tracks {
+			if trak, ok := trak.(*track.H264); ok {
+				return media, trak, i
 			}
 		}
 	}
@@ -30,7 +31,7 @@ type serverHandler struct {
 	mutex       sync.Mutex
 	publisher   *gortsplib.ServerSession
 	mediaID     int
-	h264track   *gortsplib.TrackH264
+	h264track   *track.H264
 	rtpDec      *rtph264.Decoder
 	mpegtsMuxer *mpegtsMuxer
 }

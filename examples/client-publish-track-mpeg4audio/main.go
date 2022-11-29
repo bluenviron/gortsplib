@@ -6,6 +6,7 @@ import (
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/mpeg4audio"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/pion/rtp"
 )
 
@@ -37,8 +38,8 @@ func main() {
 	// create a media that contains a MPEG4-audio track
 	media := &gortsplib.Media{
 		Type: gortsplib.MediaTypeAudio,
-		Tracks: []gortsplib.Track{&gortsplib.TrackMPEG4Audio{
-			PayloadType: 96,
+		Tracks: []track.Track{&track.MPEG4Audio{
+			PayloadTyp: 96,
 			Config: &mpeg4audio.Config{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   48000,

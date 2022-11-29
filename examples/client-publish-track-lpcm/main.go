@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/pion/rtp"
 )
 
@@ -36,8 +37,8 @@ func main() {
 	// create a media that contains a LPCM track
 	media := &gortsplib.Media{
 		Type: gortsplib.MediaTypeAudio,
-		Tracks: []gortsplib.Track{&gortsplib.TrackLPCM{
-			PayloadType:  96,
+		Tracks: []track.Track{&track.LPCM{
+			PayloadTyp:   96,
 			BitDepth:     16,
 			SampleRate:   44100,
 			ChannelCount: 1,

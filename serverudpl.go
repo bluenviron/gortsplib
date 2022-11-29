@@ -246,7 +246,7 @@ func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
 	}
 
 	for _, pkt := range packets {
-		track.udpRTCPReceiver.ProcessPacket(pkt, now, track.track.ptsEqualsDTS(pkt))
+		track.udpRTCPReceiver.ProcessPacket(pkt, now, track.track.PTSEqualsDTS(pkt))
 
 		if h, ok := clientData.session.s.Handler.(ServerHandlerOnPacketRTP); ok {
 			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{

@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"testing"
@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackH264Attributes(t *testing.T) {
-	track := &TrackH264{
-		PayloadType:       96,
+func TestH264Attributes(t *testing.T) {
+	track := &H264{
+		PayloadTyp:        96,
 		SPS:               []byte{0x01, 0x02},
 		PPS:               []byte{0x03, 0x04},
 		PacketizationMode: 1,
@@ -24,23 +24,23 @@ func TestTrackH264Attributes(t *testing.T) {
 	require.Equal(t, []byte{0x09, 0x0A}, track.SafePPS())
 }
 
-func TestTrackH264Clone(t *testing.T) {
-	track := &TrackH264{
-		PayloadType:       96,
+func TestH264Clone(t *testing.T) {
+	track := &H264{
+		PayloadTyp:        96,
 		SPS:               []byte{0x01, 0x02},
 		PPS:               []byte{0x03, 0x04},
 		PacketizationMode: 1,
 	}
 
-	clone := track.clone()
+	clone := track.Clone()
 	require.NotSame(t, track, clone)
 	require.Equal(t, track, clone)
 }
 
-func TestTrackH264MediaDescription(t *testing.T) {
+func TestH264MediaDescription(t *testing.T) {
 	t.Run("standard", func(t *testing.T) {
-		track := &TrackH264{
-			PayloadType: 96,
+		track := &H264{
+			PayloadTyp: 96,
 			SPS: []byte{
 				0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
 				0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
@@ -52,19 +52,19 @@ func TestTrackH264MediaDescription(t *testing.T) {
 			PacketizationMode: 1,
 		}
 
-		rtpmap, fmtp := track.marshal()
+		rtpmap, fmtp := track.Marshal()
 		require.Equal(t, "H264/90000", rtpmap)
 		require.Equal(t, "packetization-mode=1; "+
 			"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C", fmtp)
 	})
 
 	t.Run("no sps/pps", func(t *testing.T) {
-		track := &TrackH264{
-			PayloadType:       96,
+		track := &H264{
+			PayloadTyp:        96,
 			PacketizationMode: 1,
 		}
 
-		rtpmap, fmtp := track.marshal()
+		rtpmap, fmtp := track.Marshal()
 		require.Equal(t, "H264/90000", rtpmap)
 		require.Equal(t, "packetization-mode=1", fmtp)
 	})

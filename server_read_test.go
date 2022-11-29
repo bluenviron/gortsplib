@@ -18,6 +18,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/sdp"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
 )
 
@@ -1944,16 +1945,16 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		return &ri, ssrcs
 	}
 
-	track := &TrackGeneric{
-		PayloadType: 96,
-		RTPMap:      "private/90000",
+	trak := &track.Generic{
+		PayloadTyp: 96,
+		RTPMap:     "private/90000",
 	}
-	err := track.Init()
+	err := trak.Init()
 	require.NoError(t, err)
 
 	media := &Media{
 		Type:   "application",
-		Tracks: []Track{track},
+		Tracks: []track.Track{trak},
 	}
 
 	stream := NewServerStream(Medias{media, media})

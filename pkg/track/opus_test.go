@@ -1,4 +1,4 @@
-package gortsplib
+package track
 
 import (
 	"testing"
@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrackOpusAttributes(t *testing.T) {
-	track := &TrackOpus{
-		PayloadType:  96,
+func TestOpusAttributes(t *testing.T) {
+	track := &Opus{
+		PayloadTyp:   96,
 		SampleRate:   48000,
 		ChannelCount: 2,
 	}
@@ -17,25 +17,25 @@ func TestTrackOpusAttributes(t *testing.T) {
 }
 
 func TestTracOpusClone(t *testing.T) {
-	track := &TrackOpus{
-		PayloadType:  96,
+	track := &Opus{
+		PayloadTyp:   96,
 		SampleRate:   48000,
 		ChannelCount: 2,
 	}
 
-	clone := track.clone()
+	clone := track.Clone()
 	require.NotSame(t, track, clone)
 	require.Equal(t, track, clone)
 }
 
-func TestTrackOpusMediaDescription(t *testing.T) {
-	track := &TrackOpus{
-		PayloadType:  96,
+func TestOpusMediaDescription(t *testing.T) {
+	track := &Opus{
+		PayloadTyp:   96,
 		SampleRate:   48000,
 		ChannelCount: 2,
 	}
 
-	rtpmap, fmtp := track.marshal()
+	rtpmap, fmtp := track.Marshal()
 	require.Equal(t, "opus/48000/2", rtpmap)
 	require.Equal(t, "sprop-stereo=1", fmtp)
 }

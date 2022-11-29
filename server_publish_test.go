@@ -16,6 +16,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/conn"
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/sdp"
+	"github.com/aler9/gortsplib/pkg/track"
 )
 
 func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
@@ -1489,9 +1490,9 @@ func TestServerPublishDecodeErrors(t *testing.T) {
 
 			medias := Medias{{
 				Type: MediaTypeApplication,
-				Tracks: []Track{&TrackGeneric{
-					PayloadType: 97,
-					RTPMap:      "private/90000",
+				Tracks: []track.Track{&track.Generic{
+					PayloadTyp: 97,
+					RTPMap:     "private/90000",
 				}},
 			}}
 			medias.setControls()
