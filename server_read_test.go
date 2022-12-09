@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bytes"
 	"crypto/tls"
 	"net"
 	"strconv"
@@ -712,6 +713,156 @@ func TestServerRead(t *testing.T) {
 
 			nconn.Close()
 			<-nconnClosed
+		})
+	}
+}
+
+func TestServerReadDecodeErrors(t *testing.T) {
+	for _, ca := range []struct {
+		proto string
+		name  string
+	}{
+		{"udp", "rtcp invalid"},
+		{"udp", "rtcp too big"},
+		{"tcp", "rtcp too big"},
+	} {
+		t.Run(ca.proto+" "+ca.name, func(t *testing.T) {
+			errorRecv := make(chan struct{})
+
+			track := &TrackH264{
+				PayloadType:       96,
+				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+				PacketizationMode: 1,
+			}
+
+			stream := NewServerStream(Tracks{track})
+			defer stream.Close()
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onDecodeError: func(ctx *ServerHandlerOnDecodeErrorCtx) {
+						switch {
+						case ca.proto == "udp" && ca.name == "rtcp invalid":
+							require.EqualError(t, ctx.Error, "rtcp: packet too short")
+
+						case ca.proto == "udp" && ca.name == "rtcp too big":
+							require.EqualError(t, ctx.Error, "RTCP packet is too big to be read with UDP")
+
+						case ca.proto == "tcp" && ca.name == "rtcp too big":
+							require.EqualError(t, ctx.Error, "RTCP packet size (2000) is greater than maximum allowed (1472)")
+						}
+						close(errorRecv)
+					},
+				},
+				UDPRTPAddress:  "127.0.0.1:8000",
+				UDPRTCPAddress: "127.0.0.1:8001",
+				RTSPAddress:    "localhost:8554",
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			nconn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn.Close()
+			conn := conn.NewConn(nconn)
+
+			inTH := &headers.Transport{
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
+					return &v
+				}(),
+			}
+
+			if ca.proto == "udp" {
+				inTH.Protocol = headers.TransportProtocolUDP
+				inTH.ClientPorts = &[2]int{35466, 35467}
+			} else {
+				inTH.Protocol = headers.TransportProtocolTCP
+				inTH.InterleavedIDs = &[2]int{0, 1}
+			}
+
+			res, err := writeReqReadRes(conn, base.Request{
+				Method: base.Setup,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				Header: base.Header{
+					"CSeq":      base.HeaderValue{"1"},
+					"Transport": inTH.Marshal(),
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			var resTH headers.Transport
+			err = resTH.Unmarshal(res.Header["Transport"])
+			require.NoError(t, err)
+
+			var l1 net.PacketConn
+			var l2 net.PacketConn
+
+			if ca.proto == "udp" {
+				l1, err = net.ListenPacket("udp", "127.0.0.1:35466")
+				require.NoError(t, err)
+				defer l1.Close()
+
+				l2, err = net.ListenPacket("udp", "127.0.0.1:35467")
+				require.NoError(t, err)
+				defer l2.Close()
+			}
+
+			var sx headers.Session
+			err = sx.Unmarshal(res.Header["Session"])
+			require.NoError(t, err)
+
+			res, err = writeReqReadRes(conn, base.Request{
+				Method: base.Play,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":    base.HeaderValue{"2"},
+					"Session": base.HeaderValue{sx.Session},
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			switch { //nolint:dupl
+			case ca.proto == "udp" && ca.name == "rtcp invalid":
+				l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+					IP:   net.ParseIP("127.0.0.1"),
+					Port: resTH.ServerPorts[1],
+				})
+
+			case ca.proto == "udp" && ca.name == "rtcp too big":
+				l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+					IP:   net.ParseIP("127.0.0.1"),
+					Port: resTH.ServerPorts[1],
+				})
+
+			case ca.proto == "tcp" && ca.name == "rtcp too big":
+				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					Channel: 1,
+					Payload: bytes.Repeat([]byte{0x01, 0x02}, 2000/2),
+				}, make([]byte, 2048))
+				require.NoError(t, err)
+			}
+
+			<-errorRecv
 		})
 	}
 }
