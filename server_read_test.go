@@ -772,7 +772,7 @@ func TestServerReadDecodeErrors(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Marshal(),
