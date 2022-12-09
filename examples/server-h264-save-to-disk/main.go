@@ -127,7 +127,7 @@ func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx)
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
-	if ctx.TrackID != sh.mediaID {
+	if ctx.MediaID != sh.mediaID {
 		return
 	}
 

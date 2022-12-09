@@ -109,7 +109,7 @@ type ServerHandlerOnSetupCtx struct {
 	Request   *base.Request
 	Path      string
 	Query     string
-	TrackID   int
+	MediaID   int
 	Transport Transport
 }
 
@@ -201,7 +201,7 @@ type ServerHandlerOnSetParameter interface {
 // ServerHandlerOnPacketRTPCtx is the context of OnPacketRTP.
 type ServerHandlerOnPacketRTPCtx struct {
 	Session *ServerSession
-	TrackID int
+	MediaID int
 	Packet  *rtp.Packet
 }
 
@@ -214,7 +214,7 @@ type ServerHandlerOnPacketRTP interface {
 // ServerHandlerOnPacketRTCPCtx is the context of OnPacketRTCP.
 type ServerHandlerOnPacketRTCPCtx struct {
 	Session *ServerSession
-	TrackID int
+	MediaID int
 	Packet  rtcp.Packet
 }
 

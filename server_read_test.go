@@ -103,7 +103,7 @@ func TestServerReadSetupPath(t *testing.T) {
 				Handler: &testServerHandler{
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						require.Equal(t, ca.path, ctx.Path)
-						require.Equal(t, ca.mediaID, ctx.TrackID)
+						require.Equal(t, ca.mediaID, ctx.MediaID)
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
@@ -412,7 +412,7 @@ func TestServerRead(t *testing.T) {
 							return
 						}
 
-						require.Equal(t, 0, ctx.TrackID)
+						require.Equal(t, 0, ctx.MediaID)
 						require.Equal(t, &testRTCPPacket, ctx.Packet)
 						close(framesReceived)
 					},

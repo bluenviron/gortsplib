@@ -34,7 +34,7 @@ func stringsReverseIndex(s, substr string) int {
 	return -1
 }
 
-func setupGetTrackIDPathQuery(
+func setupGetMediaIDPathQuery(
 	u *url.URL,
 	thMode *headers.TransportMode,
 	announcedMedias media.Medias,
@@ -661,7 +661,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, nil
 		}
 
-		mediaID, path, query, err := setupGetTrackIDPathQuery(req.URL, inTH.Mode,
+		mediaID, path, query, err := setupGetMediaIDPathQuery(req.URL, inTH.Mode,
 			ss.announcedMedias, ss.setuppedPath, ss.setuppedQuery, ss.setuppedBaseURL)
 		if err != nil {
 			return &base.Response{
@@ -717,7 +717,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			Request:   req,
 			Path:      path,
 			Query:     query,
-			TrackID:   mediaID,
+			MediaID:   mediaID,
 			Transport: transport,
 		})
 
@@ -1226,7 +1226,7 @@ func (ss *ServerSession) onPacketRTCP(mediaID int, pkt rtcp.Packet) {
 	if h, ok := ss.s.Handler.(ServerHandlerOnPacketRTCP); ok {
 		h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
 			Session: ss,
-			TrackID: mediaID,
+			MediaID: mediaID,
 			Packet:  pkt,
 		})
 	}

@@ -405,7 +405,7 @@ func TestServerPublishRead(t *testing.T) {
 						defer mutex.Unlock()
 
 						if ctx.Session == publisher {
-							stream.WritePacketRTP(ctx.TrackID, ctx.Packet)
+							stream.WritePacketRTP(ctx.MediaID, ctx.Packet)
 						}
 					},
 				},

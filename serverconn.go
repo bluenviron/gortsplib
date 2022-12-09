@@ -265,7 +265,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 					for _, pkt := range packets {
 						h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
 							Session: sc.session,
-							TrackID: track.id,
+							MediaID: track.id,
 							Packet:  pkt,
 						})
 					}
@@ -288,7 +288,7 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
 					h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
 						Session: sc.session,
-						TrackID: track.id,
+						MediaID: track.id,
 						Packet:  pkt,
 					})
 				}

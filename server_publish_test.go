@@ -210,7 +210,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						require.Equal(t, ca.path, ctx.Path)
-						require.Equal(t, ca.mediaID, ctx.TrackID)
+						require.Equal(t, ca.mediaID, ctx.MediaID)
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil, nil
@@ -592,11 +592,11 @@ func TestServerPublish(t *testing.T) {
 						}, nil
 					},
 					onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
-						require.Equal(t, 0, ctx.TrackID)
+						require.Equal(t, 0, ctx.MediaID)
 						require.Equal(t, &testRTPPacket, ctx.Packet)
 					},
 					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
-						require.Equal(t, 0, ctx.TrackID)
+						require.Equal(t, 0, ctx.MediaID)
 						require.Equal(t, &testRTCPPacket, ctx.Packet)
 						ctx.Session.WritePacketRTCP(0, &testRTCPPacket)
 					},
