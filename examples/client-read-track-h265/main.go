@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/aler9/gortsplib"
@@ -59,10 +58,8 @@ func main() {
 			return
 		}
 
-		fmt.Println("PTS", pts)
-
 		for _, nalu := range nalus {
-			log.Printf("received NALU of size %d\n", len(nalu))
+			log.Printf("received NALU with PTS %v and size %d\n", pts, len(nalu))
 		}
 	}
 
