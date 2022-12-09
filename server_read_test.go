@@ -724,6 +724,7 @@ func TestServerReadDecodeErrors(t *testing.T) {
 	}{
 		{"udp", "rtcp invalid"},
 		{"udp", "rtcp too big"},
+		{"tcp", "rtcp invalid"},
 		{"tcp", "rtcp too big"},
 	} {
 		t.Run(ca.proto+" "+ca.name, func(t *testing.T) {
@@ -758,6 +759,9 @@ func TestServerReadDecodeErrors(t *testing.T) {
 
 						case ca.proto == "udp" && ca.name == "rtcp too big":
 							require.EqualError(t, ctx.Error, "RTCP packet is too big to be read with UDP")
+
+						case ca.proto == "tcp" && ca.name == "rtcp invalid":
+							require.EqualError(t, ctx.Error, "rtcp: packet too short")
 
 						case ca.proto == "tcp" && ca.name == "rtcp too big":
 							require.EqualError(t, ctx.Error, "RTCP packet size (2000) is greater than maximum allowed (1472)")
@@ -853,6 +857,13 @@ func TestServerReadDecodeErrors(t *testing.T) {
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[1],
 				})
+
+			case ca.proto == "tcp" && ca.name == "rtcp invalid":
+				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					Channel: 1,
+					Payload: []byte{0x01, 0x02},
+				}, make([]byte, 2048))
+				require.NoError(t, err)
 
 			case ca.proto == "tcp" && ca.name == "rtcp too big":
 				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{

@@ -825,8 +825,6 @@ func (c *Client) runReader() {
 
 						packets, err := rtcp.Unmarshal(payload)
 						if err != nil {
-							// some cameras send invalid RTCP packets.
-							// ignore them.
 							c.OnDecodeError(err)
 							return nil
 						}
@@ -852,7 +850,8 @@ func (c *Client) runReader() {
 
 						packets, err := rtcp.Unmarshal(payload)
 						if err != nil {
-							return err
+							c.OnDecodeError(err)
+							return nil
 						}
 
 						for _, pkt := range packets {

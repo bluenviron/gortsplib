@@ -251,7 +251,8 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 
 				packets, err := rtcp.Unmarshal(payload)
 				if err != nil {
-					return err
+					onDecodeError(sc.session, err)
+					return nil
 				}
 
 				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
@@ -294,7 +295,8 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 
 				packets, err := rtcp.Unmarshal(payload)
 				if err != nil {
-					return err
+					onDecodeError(sc.session, err)
+					return nil
 				}
 
 				for _, pkt := range packets {
