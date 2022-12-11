@@ -100,7 +100,7 @@ func record(c *Client, ur string, medias media.Medias, cb func(*media.Media, rtc
 	return nil
 }
 
-func TestClientPublishSerial(t *testing.T) {
+func TestClientRecordSerial(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -304,7 +304,7 @@ func TestClientPublishSerial(t *testing.T) {
 	}
 }
 
-func TestClientPublishParallel(t *testing.T) {
+func TestClientRecordParallel(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -454,7 +454,7 @@ func TestClientPublishParallel(t *testing.T) {
 	}
 }
 
-func TestClientPublishPauseSerial(t *testing.T) {
+func TestClientRecordPauseSerial(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -600,7 +600,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 	}
 }
 
-func TestClientPublishPauseParallel(t *testing.T) {
+func TestClientRecordPauseParallel(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -738,7 +738,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 	}
 }
 
-func TestClientPublishAutomaticProtocol(t *testing.T) {
+func TestClientRecordAutomaticProtocol(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -854,7 +854,7 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestClientPublishDecodeErrors(t *testing.T) {
+func TestClientRecordDecodeErrors(t *testing.T) {
 	for _, ca := range []struct {
 		proto string
 		name  string
@@ -1034,7 +1034,7 @@ func TestClientPublishDecodeErrors(t *testing.T) {
 	}
 }
 
-func TestClientPublishRTCPReport(t *testing.T) {
+func TestClientRecordRTCPReport(t *testing.T) {
 	for _, ca := range []string{"udp", "tcp"} {
 		t.Run(ca, func(t *testing.T) {
 			reportReceived := make(chan struct{})
@@ -1202,7 +1202,7 @@ func TestClientPublishRTCPReport(t *testing.T) {
 	}
 }
 
-func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
+func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()

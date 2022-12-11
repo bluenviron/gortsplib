@@ -70,7 +70,7 @@ func readAll(c *Client, ur string, cb func(*media.Media, track.Track, *rtp.Packe
 	return nil
 }
 
-func TestClientReadTracks(t *testing.T) {
+func TestClientPlayTracks(t *testing.T) {
 	media1 := testH264Media.Clone()
 
 	media2 := &media.Media{
@@ -208,7 +208,7 @@ func TestClientReadTracks(t *testing.T) {
 	defer c.Close()
 }
 
-func TestClientRead(t *testing.T) {
+func TestClientPlay(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"multicast",
@@ -479,7 +479,7 @@ func TestClientRead(t *testing.T) {
 	}
 }
 
-func TestClientReadPartial(t *testing.T) {
+func TestClientPlayPartial(t *testing.T) {
 	listenIP := multicastCapableIP(t)
 	l, err := net.Listen("tcp", listenIP+":8554")
 	require.NoError(t, err)
@@ -621,7 +621,7 @@ func TestClientReadPartial(t *testing.T) {
 	<-packetRecv
 }
 
-func TestClientReadContentBase(t *testing.T) {
+func TestClientPlayContentBase(t *testing.T) {
 	for _, ca := range []string{
 		"absent",
 		"inside control attribute",
@@ -748,7 +748,7 @@ func TestClientReadContentBase(t *testing.T) {
 	}
 }
 
-func TestClientReadAnyPort(t *testing.T) {
+func TestClientPlayAnyPort(t *testing.T) {
 	for _, ca := range []string{
 		"zero",
 		"zero_one",
@@ -910,7 +910,7 @@ func TestClientReadAnyPort(t *testing.T) {
 	}
 }
 
-func TestClientReadAutomaticProtocol(t *testing.T) {
+func TestClientPlayAutomaticProtocol(t *testing.T) {
 	t.Run("switch after status code", func(t *testing.T) {
 		l, err := net.Listen("tcp", "localhost:8554")
 		require.NoError(t, err)
@@ -1255,7 +1255,7 @@ func TestClientReadAutomaticProtocol(t *testing.T) {
 	})
 }
 
-func TestClientReadDifferentInterleavedIDs(t *testing.T) {
+func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -1376,7 +1376,7 @@ func TestClientReadDifferentInterleavedIDs(t *testing.T) {
 	<-packetRecv
 }
 
-func TestClientReadRedirect(t *testing.T) {
+func TestClientPlayRedirect(t *testing.T) {
 	for _, withCredentials := range []bool{false, true} {
 		runName := "WithoutCredentials"
 		if withCredentials {
@@ -1565,7 +1565,7 @@ func TestClientReadRedirect(t *testing.T) {
 	}
 }
 
-func TestClientReadPause(t *testing.T) {
+func TestClientPlayPause(t *testing.T) {
 	writeFrames := func(inTH *headers.Transport, conn *conn.Conn) (chan struct{}, chan struct{}) {
 		writerTerminate := make(chan struct{})
 		writerDone := make(chan struct{})
@@ -1778,7 +1778,7 @@ func TestClientReadPause(t *testing.T) {
 	}
 }
 
-func TestClientReadRTCPReport(t *testing.T) {
+func TestClientPlayRTCPReport(t *testing.T) {
 	reportReceived := make(chan struct{})
 
 	l, err := net.Listen("tcp", "localhost:8554")
@@ -1952,7 +1952,7 @@ func TestClientReadRTCPReport(t *testing.T) {
 	<-reportReceived
 }
 
-func TestClientReadErrorTimeout(t *testing.T) {
+func TestClientPlayErrorTimeout(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -2104,7 +2104,7 @@ func TestClientReadErrorTimeout(t *testing.T) {
 	}
 }
 
-func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
+func TestClientPlayIgnoreTCPInvalidTrack(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -2227,7 +2227,7 @@ func TestClientReadIgnoreTCPInvalidTrack(t *testing.T) {
 	<-recv
 }
 
-func TestClientReadSeek(t *testing.T) {
+func TestClientPlaySeek(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -2389,7 +2389,7 @@ func TestClientReadSeek(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestClientReadKeepaliveFromSession(t *testing.T) {
+func TestClientPlayKeepaliveFromSession(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -2510,7 +2510,7 @@ func TestClientReadKeepaliveFromSession(t *testing.T) {
 	<-keepaliveOk
 }
 
-func TestClientReadDifferentSource(t *testing.T) {
+func TestClientPlayDifferentSource(t *testing.T) {
 	packetRecv := make(chan struct{})
 
 	l, err := net.Listen("tcp", "localhost:8554")
@@ -2646,7 +2646,7 @@ func TestClientReadDifferentSource(t *testing.T) {
 	<-packetRecv
 }
 
-func TestClientReadDecodeErrors(t *testing.T) {
+func TestClientPlayDecodeErrors(t *testing.T) {
 	for _, ca := range []struct {
 		proto string
 		name  string

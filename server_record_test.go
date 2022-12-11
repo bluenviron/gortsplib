@@ -52,7 +52,7 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 	}
 }
 
-func TestServerPublishErrorAnnounce(t *testing.T) {
+func TestServerRecordErrorAnnounce(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		req  base.Request
@@ -145,7 +145,7 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 	}
 }
 
-func TestServerPublishSetupPath(t *testing.T) {
+func TestServerRecordSetupPath(t *testing.T) {
 	for _, ca := range []struct {
 		name    string
 		control string
@@ -266,7 +266,7 @@ func TestServerPublishSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
+func TestServerRecordErrorSetupTrackTwice(t *testing.T) {
 	serverErr := make(chan error)
 
 	s := &Server{
@@ -365,7 +365,7 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	require.EqualError(t, err, "media has already been setup")
 }
 
-func TestServerPublishErrorRecordPartialMedias(t *testing.T) {
+func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 	serverErr := make(chan error)
 
 	s := &Server{
@@ -459,7 +459,7 @@ func TestServerPublishErrorRecordPartialMedias(t *testing.T) {
 	require.EqualError(t, err, "not all announced medias have been setup")
 }
 
-func TestServerPublish(t *testing.T) {
+func TestServerRecord(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -703,7 +703,7 @@ func TestServerPublish(t *testing.T) {
 	}
 }
 
-func TestServerPublishErrorInvalidProtocol(t *testing.T) {
+func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 	errorRecv := make(chan struct{})
 
 	s := &Server{
@@ -809,7 +809,7 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 	<-errorRecv
 }
 
-func TestServerPublishRTCPReport(t *testing.T) {
+func TestServerRecordRTCPReport(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -966,7 +966,7 @@ func TestServerPublishRTCPReport(t *testing.T) {
 	}, rr)
 }
 
-func TestServerPublishTimeout(t *testing.T) {
+func TestServerRecordTimeout(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -1090,7 +1090,7 @@ func TestServerPublishTimeout(t *testing.T) {
 	}
 }
 
-func TestServerPublishWithoutTeardown(t *testing.T) {
+func TestServerRecordWithoutTeardown(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -1212,7 +1212,7 @@ func TestServerPublishWithoutTeardown(t *testing.T) {
 	}
 }
 
-func TestServerPublishUDPChangeConn(t *testing.T) {
+func TestServerRecordUDPChangeConn(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
@@ -1329,7 +1329,7 @@ func TestServerPublishUDPChangeConn(t *testing.T) {
 	}()
 }
 
-func TestServerPublishDecodeErrors(t *testing.T) {
+func TestServerRecordDecodeErrors(t *testing.T) {
 	for _, ca := range []struct {
 		proto string
 		name  string

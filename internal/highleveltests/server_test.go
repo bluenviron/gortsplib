@@ -227,7 +227,7 @@ func buildImage(image string) error {
 	return ecmd.Run()
 }
 
-func TestServerPublishRead(t *testing.T) {
+func TestServerRecordRead(t *testing.T) {
 	files, err := os.ReadDir("images")
 	require.NoError(t, err)
 

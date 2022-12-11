@@ -49,7 +49,7 @@ func multicastCapableIP(t *testing.T) string {
 	return ""
 }
 
-func TestServerReadSetupPath(t *testing.T) {
+func TestServerPlaySetupPath(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		url  string
@@ -140,7 +140,7 @@ func TestServerReadSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerReadSetupErrors(t *testing.T) {
+func TestServerPlaySetupErrors(t *testing.T) {
 	for _, ca := range []string{
 		"different paths",
 		"double setup",
@@ -264,7 +264,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 	}
 }
 
-func TestServerReadSetupErrorSameUDPPortsAndIP(t *testing.T) {
+func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 	stream := NewServerStream(media.Medias{testH264Media.Clone()})
 	defer stream.Close()
 	first := int32(1)
@@ -338,7 +338,7 @@ func TestServerReadSetupErrorSameUDPPortsAndIP(t *testing.T) {
 	<-errorRecv
 }
 
-func TestServerRead(t *testing.T) {
+func TestServerPlay(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -685,7 +685,7 @@ func TestServerRead(t *testing.T) {
 	}
 }
 
-func TestServerReadDecodeErrors(t *testing.T) {
+func TestServerPlayDecodeErrors(t *testing.T) {
 	for _, ca := range []struct {
 		proto string
 		name  string
@@ -839,7 +839,7 @@ func TestServerReadDecodeErrors(t *testing.T) {
 	}
 }
 
-func TestServerReadRTCPReport(t *testing.T) {
+func TestServerPlayRTCPReport(t *testing.T) {
 	for _, ca := range []string{"udp", "tcp"} {
 		t.Run(ca, func(t *testing.T) {
 			stream := NewServerStream(media.Medias{testH264Media.Clone()})
@@ -985,7 +985,7 @@ func TestServerReadRTCPReport(t *testing.T) {
 	}
 }
 
-func TestServerReadVLCMulticast(t *testing.T) {
+func TestServerPlayVLCMulticast(t *testing.T) {
 	stream := NewServerStream(media.Medias{testH264Media.Clone()})
 	defer stream.Close()
 
@@ -1031,7 +1031,7 @@ func TestServerReadVLCMulticast(t *testing.T) {
 	require.Equal(t, "224.1.0.0", desc.ConnectionInformation.Address.Address)
 }
 
-func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
+func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
@@ -1128,7 +1128,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestServerReadPlayPlay(t *testing.T) {
+func TestServerPlayPlayPlay(t *testing.T) {
 	stream := NewServerStream(media.Medias{testH264Media.Clone()})
 	defer stream.Close()
 
@@ -1208,7 +1208,7 @@ func TestServerReadPlayPlay(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
 
-func TestServerReadPlayPausePlay(t *testing.T) {
+func TestServerPlayPlayPausePlay(t *testing.T) {
 	writerStarted := false
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
@@ -1329,7 +1329,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
 
-func TestServerReadPlayPausePause(t *testing.T) {
+func TestServerPlayPlayPausePause(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
@@ -1452,7 +1452,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
 
-func TestServerReadTimeout(t *testing.T) {
+func TestServerPlayTimeout(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"multicast",
@@ -1561,7 +1561,7 @@ func TestServerReadTimeout(t *testing.T) {
 	}
 }
 
-func TestServerReadWithoutTeardown(t *testing.T) {
+func TestServerPlayWithoutTeardown(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
 		"tcp",
@@ -1669,7 +1669,7 @@ func TestServerReadWithoutTeardown(t *testing.T) {
 	}
 }
 
-func TestServerReadUDPChangeConn(t *testing.T) {
+func TestServerPlayUDPChangeConn(t *testing.T) {
 	stream := NewServerStream(media.Medias{testH264Media.Clone()})
 	defer stream.Close()
 
@@ -1769,7 +1769,7 @@ func TestServerReadUDPChangeConn(t *testing.T) {
 	}()
 }
 
-func TestServerReadPartialMedias(t *testing.T) {
+func TestServerPlayPartialMedias(t *testing.T) {
 	stream := NewServerStream(media.Medias{testH264Media.Clone(), testH264Media.Clone()})
 	defer stream.Close()
 
@@ -1849,7 +1849,7 @@ func TestServerReadPartialMedias(t *testing.T) {
 	require.Equal(t, testRTPPacketMarshaled, f.Payload)
 }
 
-func TestServerReadAdditionalInfos(t *testing.T) {
+func TestServerPlayAdditionalInfos(t *testing.T) {
 	getInfos := func() (*headers.RTPInfo, []*uint32) {
 		nconn, err := net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
