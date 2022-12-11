@@ -10,8 +10,8 @@ import (
 	"github.com/aler9/gortsplib/v2"
 	"github.com/aler9/gortsplib/v2/pkg/base"
 	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtph264"
 	"github.com/aler9/gortsplib/v2/pkg/media"
-	"github.com/aler9/gortsplib/v2/pkg/rtpcodecs/rtph264"
 )
 
 // This example shows how to
