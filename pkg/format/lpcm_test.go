@@ -3,6 +3,7 @@ package format
 import (
 	"testing"
 
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,6 +17,7 @@ func TestLPCMAttributes(t *testing.T) {
 	require.Equal(t, "LPCM", format.String())
 	require.Equal(t, 44100, format.ClockRate())
 	require.Equal(t, uint8(96), format.PayloadType())
+	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
 func TestTracLPCMClone(t *testing.T) {

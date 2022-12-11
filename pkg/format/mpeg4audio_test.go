@@ -3,6 +3,7 @@ package format
 import (
 	"testing"
 
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib/v2/pkg/mpeg4audio"
@@ -23,6 +24,7 @@ func TestMPEG4AudioAttributes(t *testing.T) {
 	require.Equal(t, "MPEG4-audio", format.String())
 	require.Equal(t, 48000, format.ClockRate())
 	require.Equal(t, uint8(96), format.PayloadType())
+	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
 func TestMPEG4AudioClone(t *testing.T) {

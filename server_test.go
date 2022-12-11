@@ -1136,7 +1136,7 @@ func TestServerAuth(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-				err := authValidator.ValidateRequest(ctx.Request)
+				err := authValidator.ValidateRequest(ctx.Request, nil)
 				if err != nil {
 					return &base.Response{
 						StatusCode: base.StatusUnauthorized,

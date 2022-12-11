@@ -3,6 +3,7 @@ package format
 import (
 	"testing"
 
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,6 +24,22 @@ func TestH264Attributes(t *testing.T) {
 	format.SafeSetPPS([]byte{0x09, 0x0A})
 	require.Equal(t, []byte{0x07, 0x08}, format.SafeSPS())
 	require.Equal(t, []byte{0x09, 0x0A}, format.SafePPS())
+}
+
+func TestH264PTSEqualsDTS(t *testing.T) {
+	format := &H264{
+		PayloadTyp:        96,
+		SPS:               []byte{0x01, 0x02},
+		PPS:               []byte{0x03, 0x04},
+		PacketizationMode: 1,
+	}
+
+	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{
+		Payload: []byte{0x05},
+	}))
+	require.Equal(t, false, format.PTSEqualsDTS(&rtp.Packet{
+		Payload: []byte{0x01},
+	}))
 }
 
 func TestH264Clone(t *testing.T) {

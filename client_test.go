@@ -180,7 +180,7 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		err = v.ValidateRequest(req)
+		err = v.ValidateRequest(req, nil)
 		require.NoError(t, err)
 
 		medias := media.Medias{testH264Media.Clone()}

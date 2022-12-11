@@ -3,6 +3,7 @@ package format
 import (
 	"testing"
 
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,6 +17,7 @@ func TestH265Attributes(t *testing.T) {
 	require.Equal(t, "H265", format.String())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, uint8(96), format.PayloadType())
+	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 	require.Equal(t, []byte{0x01, 0x02}, format.SafeVPS())
 	require.Equal(t, []byte{0x03, 0x04}, format.SafeSPS())
 	require.Equal(t, []byte{0x05, 0x06}, format.SafePPS())

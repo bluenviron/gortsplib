@@ -3,6 +3,7 @@ package format
 import (
 	"testing"
 
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,6 +12,7 @@ func TestG722Attributes(t *testing.T) {
 	require.Equal(t, "G722", format.String())
 	require.Equal(t, 8000, format.ClockRate())
 	require.Equal(t, uint8(9), format.PayloadType())
+	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
 func TestG722Clone(t *testing.T) {

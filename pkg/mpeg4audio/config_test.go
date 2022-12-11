@@ -68,6 +68,15 @@ var configCases = []struct {
 		},
 	},
 	{
+		"aac-lc 44.1khz 8 chans",
+		[]byte{0x12, 0x38},
+		Config{
+			Type:         ObjectTypeAACLC,
+			SampleRate:   44100,
+			ChannelCount: 8,
+		},
+	},
+	{
 		"sbr (he-aac v1) 44.1khz stereo",
 		[]byte{0x2b, 0x8a, 0x00},
 		Config{
@@ -86,6 +95,46 @@ func TestConfigUnmarshal(t *testing.T) {
 			err := dec.Unmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
+		})
+	}
+}
+
+func TestConfigUnmarshalErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		enc  []byte
+		err  string
+	}{
+		{
+			"empty",
+			[]byte{},
+			"not enough bits",
+		},
+		{
+			"unsupported object type",
+			[]byte{0xF1},
+			"unsupported object type: 30",
+		},
+		{
+			"no sample rate index",
+			[]byte{0b00010000},
+			"not enough bits",
+		},
+		{
+			"invalid sample rate index",
+			[]byte{0b00010110, 0b10000000},
+			"invalid sample rate index (13)",
+		},
+		{
+			"channel config 0",
+			[]byte{0b00010100, 0b00000000},
+			"not yet supported",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var dec Config
+			err := dec.Unmarshal(ca.enc)
+			require.EqualError(t, err, ca.err)
 		})
 	}
 }

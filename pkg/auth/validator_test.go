@@ -64,7 +64,7 @@ func TestValidatorErrors(t *testing.T) {
 				Header: base.Header{
 					"Authorization": ca.hv,
 				},
-			})
+			}, nil)
 			require.EqualError(t, err, ca.err)
 		})
 	}

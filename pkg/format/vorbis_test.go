@@ -3,6 +3,7 @@ package format
 import (
 	"testing"
 
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,6 +17,7 @@ func TestVorbisAttributes(t *testing.T) {
 	require.Equal(t, "Vorbis", format.String())
 	require.Equal(t, 48000, format.ClockRate())
 	require.Equal(t, uint8(96), format.PayloadType())
+	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
 func TestTracVorbisClone(t *testing.T) {
