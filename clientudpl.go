@@ -2,13 +2,11 @@ package gortsplib
 
 import (
 	"crypto/rand"
-	"fmt"
 	"net"
 	"strconv"
 	"sync/atomic"
 	"time"
 
-	"github.com/pion/rtcp"
 	"golang.org/x/net/ipv4"
 )
 
@@ -25,7 +23,7 @@ func randIntn(n int) int {
 type clientUDPListener struct {
 	c     *Client
 	pc    *net.UDPConn
-	ct    *clientTrack
+	cm    *clientMedia
 	isRTP bool
 
 	readIP    net.IP
@@ -38,7 +36,7 @@ type clientUDPListener struct {
 	readerDone chan struct{}
 }
 
-func newClientUDPListenerPair(c *Client, ct *clientTrack) (*clientUDPListener, *clientUDPListener) {
+func newClientUDPListenerPair(c *Client, cm *clientMedia) (*clientUDPListener, *clientUDPListener) {
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
@@ -47,7 +45,7 @@ func newClientUDPListenerPair(c *Client, ct *clientTrack) (*clientUDPListener, *
 			c,
 			false,
 			":"+strconv.FormatInt(int64(rtpPort), 10),
-			ct,
+			cm,
 			true)
 		if err != nil {
 			continue
@@ -58,7 +56,7 @@ func newClientUDPListenerPair(c *Client, ct *clientTrack) (*clientUDPListener, *
 			c,
 			false,
 			":"+strconv.FormatInt(int64(rtcpPort), 10),
-			ct,
+			cm,
 			false)
 		if err != nil {
 			rtpListener.close()
@@ -73,7 +71,7 @@ func newClientUDPListener(
 	c *Client,
 	multicast bool,
 	address string,
-	ct *clientTrack,
+	cm *clientMedia,
 	isRTP bool,
 ) (*clientUDPListener, error) {
 	var pc *net.UDPConn
@@ -124,7 +122,7 @@ func newClientUDPListener(
 	return &clientUDPListener{
 		c:     c,
 		pc:    pc,
-		ct:    ct,
+		cm:    cm,
 		isRTP: isRTP,
 		lastPacketTime: func() *int64 {
 			v := int64(0)
@@ -159,15 +157,11 @@ func (u *clientUDPListener) stop() {
 func (u *clientUDPListener) runReader(forPlay bool) {
 	defer close(u.readerDone)
 
-	var processFunc func(time.Time, []byte)
-	if forPlay {
-		if u.isRTP {
-			processFunc = u.processPlayRTP
-		} else {
-			processFunc = u.processPlayRTCP
-		}
+	var readFunc func([]byte) error
+	if u.isRTP {
+		readFunc = u.cm.readRTP
 	} else {
-		processFunc = u.processRecordRTCP
+		readFunc = u.cm.readRTCP
 	}
 
 	for {
@@ -186,90 +180,7 @@ func (u *clientUDPListener) runReader(forPlay bool) {
 		now := time.Now()
 		atomic.StoreInt64(u.lastPacketTime, now.Unix())
 
-		processFunc(now, buf[:n])
-	}
-}
-
-func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
-	plen := len(payload)
-
-	atomic.AddUint64(u.c.BytesReceived, uint64(plen))
-
-	if plen == (maxPacketSize + 1) {
-		u.c.OnDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
-		return
-	}
-
-	pkt := u.ct.udpRTPPacketBuffer.next()
-	err := pkt.Unmarshal(payload)
-	if err != nil {
-		u.c.OnDecodeError(err)
-		return
-	}
-
-	packets, missing := u.ct.reorderer.Process(pkt)
-	if missing != 0 {
-		u.c.OnDecodeError(fmt.Errorf("%d RTP packet(s) lost", missing))
-		// do not return
-	}
-
-	for _, pkt := range packets {
-		ptsEqualsDTS := ptsEqualsDTS(u.ct.track, pkt)
-		u.ct.udpRTCPReceiver.ProcessPacketRTP(time.Now(), pkt, ptsEqualsDTS)
-
-		u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
-			TrackID: u.ct.id,
-			Packet:  pkt,
-		})
-	}
-}
-
-func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
-	plen := len(payload)
-
-	atomic.AddUint64(u.c.BytesReceived, uint64(plen))
-
-	if plen == (maxPacketSize + 1) {
-		u.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
-		return
-	}
-
-	packets, err := rtcp.Unmarshal(payload)
-	if err != nil {
-		u.c.OnDecodeError(err)
-		return
-	}
-
-	for _, pkt := range packets {
-		u.ct.udpRTCPReceiver.ProcessPacketRTCP(now, pkt)
-		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-			TrackID: u.ct.id,
-			Packet:  pkt,
-		})
-	}
-}
-
-func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
-	plen := len(payload)
-
-	atomic.AddUint64(u.c.BytesReceived, uint64(plen))
-
-	if plen == (maxPacketSize + 1) {
-		u.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
-		return
-	}
-
-	packets, err := rtcp.Unmarshal(payload)
-	if err != nil {
-		u.c.OnDecodeError(err)
-		return
-	}
-
-	for _, pkt := range packets {
-		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-			TrackID: u.ct.id,
-			Packet:  pkt,
-		})
+		readFunc(buf[:n])
 	}
 }
 

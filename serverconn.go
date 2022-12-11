@@ -4,20 +4,17 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"net"
 	gourl "net/url"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/pion/rtcp"
-
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/bytecounter"
-	"github.com/aler9/gortsplib/pkg/conn"
-	"github.com/aler9/gortsplib/pkg/liberrors"
-	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/bytecounter"
+	"github.com/aler9/gortsplib/v2/pkg/conn"
+	"github.com/aler9/gortsplib/v2/pkg/liberrors"
+	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
 func getSessionID(header base.Header) string {
@@ -244,76 +241,6 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 	case <-sc.session.ctx.Done():
 	}
 
-	var processFunc func(*ServerSessionSetuppedTrack, bool, []byte) error
-
-	if sc.session.state == ServerSessionStatePlay {
-		processFunc = func(track *ServerSessionSetuppedTrack, isRTP bool, payload []byte) error {
-			if !isRTP {
-				if len(payload) > maxPacketSize {
-					onDecodeError(sc.session, fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
-						len(payload), maxPacketSize))
-					return nil
-				}
-
-				packets, err := rtcp.Unmarshal(payload)
-				if err != nil {
-					onDecodeError(sc.session, err)
-					return nil
-				}
-
-				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTCP); ok {
-					for _, pkt := range packets {
-						h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
-							Session: sc.session,
-							TrackID: track.id,
-							Packet:  pkt,
-						})
-					}
-				}
-			}
-
-			return nil
-		}
-	} else {
-		tcpRTPPacketBuffer := newRTPPacketMultiBuffer(uint64(sc.s.ReadBufferCount))
-
-		processFunc = func(track *ServerSessionSetuppedTrack, isRTP bool, payload []byte) error {
-			if isRTP {
-				pkt := tcpRTPPacketBuffer.next()
-				err := pkt.Unmarshal(payload)
-				if err != nil {
-					return err
-				}
-
-				if h, ok := sc.s.Handler.(ServerHandlerOnPacketRTP); ok {
-					h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-						Session: sc.session,
-						TrackID: track.id,
-						Packet:  pkt,
-					})
-				}
-			} else {
-				if len(payload) > maxPacketSize {
-					onDecodeError(sc.session, fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
-						len(payload), maxPacketSize))
-					return nil
-				}
-
-				packets, err := rtcp.Unmarshal(payload)
-				if err != nil {
-					onDecodeError(sc.session, err)
-					return nil
-				}
-
-				for _, pkt := range packets {
-					sc.session.onPacketRTCP(track.id, pkt)
-				}
-			}
-
-			return nil
-		}
-	}
-
 	for {
 		if sc.session.state == ServerSessionStateRecord {
 			sc.nconn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
@@ -335,11 +262,11 @@ func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
 
 			atomic.AddUint64(sc.session.bytesReceived, uint64(len(twhat.Payload)))
 
-			// forward frame only if it has been set up
-			if track, ok := sc.session.tcpTracksByChannel[channel]; ok {
-				err := processFunc(track, isRTP, twhat.Payload)
-				if err != nil {
-					return err
+			if sm, ok := sc.session.tcpMediasByChannel[channel]; ok {
+				if isRTP {
+					sm.readRTP(twhat.Payload)
+				} else {
+					sm.readRTCP(twhat.Payload)
 				}
 			}
 
@@ -451,7 +378,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 
 				if stream != nil {
-					res.Body = stream.Tracks().Marshal(multicast)
+					byts, _ := stream.Medias().CloneAndSetControls().Marshal(multicast).Marshal()
+					res.Body = byts
 				}
 			}
 

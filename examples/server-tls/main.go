@@ -5,8 +5,12 @@ import (
 	"log"
 	"sync"
 
-	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/media"
 )
 
 // This example shows how to
@@ -50,7 +54,7 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 	}
 }
 
-// called after receiving a DESCRIBE request.
+// called when receiving a DESCRIBE request.
 func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("describe request")
 
@@ -64,13 +68,13 @@ func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (
 		}, nil, nil
 	}
 
-	// send the track list that is being published to the client
+	// send medias that are being published to the client
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, sh.stream, nil
 }
 
-// called after receiving an ANNOUNCE request.
+// called when receiving an ANNOUNCE request.
 func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 	log.Printf("announce request")
 
@@ -84,7 +88,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// create the stream and save the publisher
-	sh.stream = gortsplib.NewServerStream(ctx.Tracks)
+	sh.stream = gortsplib.NewServerStream(ctx.Medias)
 	sh.publisher = ctx.Session
 
 	return &base.Response{
@@ -92,7 +96,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}, nil
 }
 
-// called after receiving a SETUP request.
+// called when receiving a SETUP request.
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
@@ -108,7 +112,7 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 	}, sh.stream, nil
 }
 
-// called after receiving a PLAY request.
+// called when receiving a PLAY request.
 func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
 	log.Printf("play request")
 
@@ -117,24 +121,19 @@ func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Re
 	}, nil
 }
 
-// called after receiving a RECORD request.
+// called when receiving a RECORD request.
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
 	log.Printf("record request")
+
+	// called when receiving a RTP packet
+	ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+		// route the RTP packet to all readers
+		sh.stream.WritePacketRTP(medi, pkt)
+	})
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, nil
-}
-
-// called after receiving a RTP packet.
-func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
-
-	// if we are the publisher, route the RTP packet to all readers
-	if ctx.Session == sh.publisher {
-		sh.stream.WritePacketRTP(ctx.TrackID, ctx.Packet)
-	}
 }
 
 func main() {

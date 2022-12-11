@@ -1,10 +1,8 @@
 package gortsplib
 
 import (
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
-
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/media"
 )
 
 // ServerHandler is the interface implemented by all the server handlers.
@@ -79,7 +77,7 @@ type ServerHandlerOnDescribeCtx struct {
 
 // ServerHandlerOnDescribe can be implemented by a ServerHandler.
 type ServerHandlerOnDescribe interface {
-	// called after receiving a DESCRIBE request.
+	// called when receiving a DESCRIBE request.
 	OnDescribe(*ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error)
 }
 
@@ -91,12 +89,12 @@ type ServerHandlerOnAnnounceCtx struct {
 	Request *base.Request
 	Path    string
 	Query   string
-	Tracks  Tracks
+	Medias  media.Medias
 }
 
 // ServerHandlerOnAnnounce can be implemented by a ServerHandler.
 type ServerHandlerOnAnnounce interface {
-	// called after receiving an ANNOUNCE request.
+	// called when receiving an ANNOUNCE request.
 	OnAnnounce(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
 }
 
@@ -108,13 +106,12 @@ type ServerHandlerOnSetupCtx struct {
 	Request   *base.Request
 	Path      string
 	Query     string
-	TrackID   int
 	Transport Transport
 }
 
 // ServerHandlerOnSetup can be implemented by a ServerHandler.
 type ServerHandlerOnSetup interface {
-	// called after receiving a SETUP request.
+	// called when receiving a SETUP request.
 	// must return a Response and a stream.
 	// the stream is needed to
 	// - add the session the the stream's readers
@@ -133,7 +130,7 @@ type ServerHandlerOnPlayCtx struct {
 
 // ServerHandlerOnPlay can be implemented by a ServerHandler.
 type ServerHandlerOnPlay interface {
-	// called after receiving a PLAY request.
+	// called when receiving a PLAY request.
 	OnPlay(*ServerHandlerOnPlayCtx) (*base.Response, error)
 }
 
@@ -148,7 +145,7 @@ type ServerHandlerOnRecordCtx struct {
 
 // ServerHandlerOnRecord can be implemented by a ServerHandler.
 type ServerHandlerOnRecord interface {
-	// called after receiving a RECORD request.
+	// called when receiving a RECORD request.
 	OnRecord(*ServerHandlerOnRecordCtx) (*base.Response, error)
 }
 
@@ -163,7 +160,7 @@ type ServerHandlerOnPauseCtx struct {
 
 // ServerHandlerOnPause can be implemented by a ServerHandler.
 type ServerHandlerOnPause interface {
-	// called after receiving a PAUSE request.
+	// called when receiving a PAUSE request.
 	OnPause(*ServerHandlerOnPauseCtx) (*base.Response, error)
 }
 
@@ -178,7 +175,7 @@ type ServerHandlerOnGetParameterCtx struct {
 
 // ServerHandlerOnGetParameter can be implemented by a ServerHandler.
 type ServerHandlerOnGetParameter interface {
-	// called after receiving a GET_PARAMETER request.
+	// called when receiving a GET_PARAMETER request.
 	OnGetParameter(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
 }
 
@@ -193,34 +190,8 @@ type ServerHandlerOnSetParameterCtx struct {
 
 // ServerHandlerOnSetParameter can be implemented by a ServerHandler.
 type ServerHandlerOnSetParameter interface {
-	// called after receiving a SET_PARAMETER request.
+	// called when receiving a SET_PARAMETER request.
 	OnSetParameter(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
-}
-
-// ServerHandlerOnPacketRTPCtx is the context of OnPacketRTP.
-type ServerHandlerOnPacketRTPCtx struct {
-	Session *ServerSession
-	TrackID int
-	Packet  *rtp.Packet
-}
-
-// ServerHandlerOnPacketRTP can be implemented by a ServerHandler.
-type ServerHandlerOnPacketRTP interface {
-	// called when receiving a RTP packet.
-	OnPacketRTP(*ServerHandlerOnPacketRTPCtx)
-}
-
-// ServerHandlerOnPacketRTCPCtx is the context of OnPacketRTCP.
-type ServerHandlerOnPacketRTCPCtx struct {
-	Session *ServerSession
-	TrackID int
-	Packet  rtcp.Packet
-}
-
-// ServerHandlerOnPacketRTCP can be implemented by a ServerHandler.
-type ServerHandlerOnPacketRTCP interface {
-	// called when receiving a RTCP packet.
-	OnPacketRTCP(*ServerHandlerOnPacketRTCPCtx)
 }
 
 // ServerHandlerOnDecodeErrorCtx is the context of OnDecodeError.

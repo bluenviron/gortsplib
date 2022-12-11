@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/headers"
 )
 
 // ErrServerTerminated is an error that can be returned by a server.
@@ -106,14 +106,12 @@ func (e ErrServerTransportHeaderInvalid) Error() string {
 	return fmt.Sprintf("invalid transport header: %v", e.Err)
 }
 
-// ErrServerTrackAlreadySetup is an error that can be returned by a server.
-type ErrServerTrackAlreadySetup struct {
-	TrackID int
-}
+// ErrServerMediaAlreadySetup is an error that can be returned by a server.
+type ErrServerMediaAlreadySetup struct{}
 
 // Error implements the error interface.
-func (e ErrServerTrackAlreadySetup) Error() string {
-	return fmt.Sprintf("track %d has already been setup", e.TrackID)
+func (e ErrServerMediaAlreadySetup) Error() string {
+	return "media has already been setup"
 }
 
 // ErrServerTransportHeaderInvalidMode is an error that can be returned by a server.
@@ -158,28 +156,36 @@ func (e ErrServerTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
 	return "interleaved IDs already used"
 }
 
-// ErrServerTracksDifferentProtocols is an error that can be returned by a server.
-type ErrServerTracksDifferentProtocols struct{}
+// ErrServerMediasDifferentPaths is an error that can be returned by a server.
+type ErrServerMediasDifferentPaths struct{}
 
 // Error implements the error interface.
-func (e ErrServerTracksDifferentProtocols) Error() string {
-	return "can't setup tracks with different protocols"
+func (e ErrServerMediasDifferentPaths) Error() string {
+	return "can't setup medias with different paths"
 }
 
-// ErrServerNoTracksSetup is an error that can be returned by a server.
-type ErrServerNoTracksSetup struct{}
+// ErrServerMediasDifferentProtocols is an error that can be returned by a server.
+type ErrServerMediasDifferentProtocols struct{}
 
 // Error implements the error interface.
-func (e ErrServerNoTracksSetup) Error() string {
-	return "no tracks have been setup"
+func (e ErrServerMediasDifferentProtocols) Error() string {
+	return "can't setup medias with different protocols"
 }
 
-// ErrServerNotAllAnnouncedTracksSetup is an error that can be returned by a server.
-type ErrServerNotAllAnnouncedTracksSetup struct{}
+// ErrServerNoMediasSetup is an error that can be returned by a server.
+type ErrServerNoMediasSetup struct{}
 
 // Error implements the error interface.
-func (e ErrServerNotAllAnnouncedTracksSetup) Error() string {
-	return "not all announced tracks have been setup"
+func (e ErrServerNoMediasSetup) Error() string {
+	return "no medias have been setup"
+}
+
+// ErrServerNotAllAnnouncedMediasSetup is an error that can be returned by a server.
+type ErrServerNotAllAnnouncedMediasSetup struct{}
+
+// Error implements the error interface.
+func (e ErrServerNotAllAnnouncedMediasSetup) Error() string {
+	return "not all announced medias have been setup"
 }
 
 // ErrServerLinkedToOtherSession is an error that can be returned by a server.

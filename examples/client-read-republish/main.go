@@ -3,13 +3,16 @@ package main
 import (
 	"log"
 
-	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/url"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
-// 1. connect to a RTSP server and read all tracks on a path
-// 2. re-publish all tracks on another path.
+// 1. connect to a RTSP server and read all medias on a path
+// 2. re-publish all medias on another path.
 
 func main() {
 	reader := gortsplib.Client{}
@@ -27,30 +30,35 @@ func main() {
 	}
 	defer reader.Close()
 
-	// find published tracks
-	tracks, baseURL, _, err := reader.Describe(sourceURL)
+	// find published medias
+	medias, baseURL, _, err := reader.Describe(sourceURL)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Printf("republishing %d tracks", len(tracks))
+	log.Printf("republishing %d medias", len(medias))
 
+	// connect to the server and start recording the same medias
 	publisher := gortsplib.Client{}
-
-	// connect to the server and start publishing
-	err = publisher.StartPublishing("rtsp://localhost:8554/mystream2", tracks)
+	err = publisher.StartRecording("rtsp://localhost:8554/mystream2", medias)
 	if err != nil {
 		panic(err)
 	}
 	defer publisher.Close()
 
-	// called when a RTP packet arrives
-	reader.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		publisher.WritePacketRTP(ctx.TrackID, ctx.Packet)
+	// setup all medias
+	err = reader.SetupAll(medias, baseURL)
+	if err != nil {
+		panic(err)
 	}
 
-	// setup and read all tracks
-	err = reader.SetupAndPlay(tracks, baseURL)
+	// read RTP packets from reader and write them to publisher
+	reader.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+		publisher.WritePacketRTP(medi, pkt)
+	})
+
+	// start playing
+	_, err = reader.Play(nil)
 	if err != nil {
 		panic(err)
 	}

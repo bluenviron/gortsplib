@@ -14,12 +14,12 @@ Go &ge; 1.17 is required.
 Features:
 
 * Client
-  * Query servers about available streams and tracks
+  * Query servers about available streams and mediastreams
   * Read
-    * Read streams from servers with the UDP, UDP-multicast or TCP transport protocol
+    * Read media streams from servers with the UDP, UDP-multicast or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
-    * Read only selected tracks of a stream
+    * Read only selected media streams
     * Pause or seek without disconnecting from the server
     * Generate RTCP receiver reports (UDP only)
     * Reorder incoming RTP packets (UDP only)
@@ -33,28 +33,19 @@ Features:
   * Handle requests from clients
   * Sessions and connections are independent
   * Publish
-    * Read streams from clients with the UDP or TCP transport protocol
+    * Read media streams from clients with the UDP or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
     * Generate RTCP receiver reports (UDP only)
     * Reorder incoming RTP packets (UDP only)
   * Read
-    * Write streams to clients with the UDP, UDP-multicast or TCP transport protocol
+    * Write media streams to clients with the UDP, UDP-multicast or TCP transport protocol
     * Write TLS-encrypted streams
     * Compute and provide SSRC, RTP-Info to clients
     * Generate RTCP sender reports
 * Utilities
   * Encode and decode codec-specific frames into/from RTP packets. The following codecs are supported:
-    * Video
-      * H264
-      * H265
-      * VP8
-      * VP9
-    * Audio
-      * G711
-      * G722
-      * LPCM
-      * MPEG4-audio (AAC)
-      * Opus
+    * Video: H264, H265, VP8, VP9
+    * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG4-audio (AAC), Opus
   * Parse RTSP elements: requests, responses, SDP
   * Parse H264 elements and formats: Annex-B, AVCC, anti-competition, DTS
   * Parse MPEG4-audio (AAC) element and formats: ADTS, MPEG4-audio configurations
@@ -70,31 +61,30 @@ Features:
 * [client-query](examples/client-query/main.go)
 * [client-read](examples/client-read/main.go)
 * [client-read-options](examples/client-read-options/main.go)
-* [client-read-partial](examples/client-read-partial/main.go)
 * [client-read-pause](examples/client-read-pause/main.go)
 * [client-read-republish](examples/client-read-republish/main.go)
-* [client-read-track-g711](examples/client-read-track-g711/main.go)
-* [client-read-track-g722](examples/client-read-track-g722/main.go)
-* [client-read-track-h264](examples/client-read-track-h264/main.go)
-* [client-read-track-h264-convert-to-jpeg](examples/client-read-track-h264-convert-to-jpeg/main.go)
-* [client-read-track-h264-save-to-disk](examples/client-read-track-h264-save-to-disk/main.go)
-* [client-read-track-h265](examples/client-read-track-h265/main.go)
-* [client-read-track-lpcm](examples/client-read-track-lpcm/main.go)
-* [client-read-track-mpeg4audio](examples/client-read-track-mpeg4audio/main.go)
-* [client-read-track-opus](examples/client-read-track-opus/main.go)
-* [client-read-track-vp8](examples/client-read-track-vp8/main.go)
-* [client-read-track-vp9](examples/client-read-track-vp9/main.go)
+* [client-read-format-g711](examples/client-read-format-g711/main.go)
+* [client-read-format-g722](examples/client-read-format-g722/main.go)
+* [client-read-format-h264](examples/client-read-format-h264/main.go)
+* [client-read-format-h264-convert-to-jpeg](examples/client-read-format-h264-convert-to-jpeg/main.go)
+* [client-read-format-h264-save-to-disk](examples/client-read-format-h264-save-to-disk/main.go)
+* [client-read-format-h265](examples/client-read-format-h265/main.go)
+* [client-read-format-lpcm](examples/client-read-format-lpcm/main.go)
+* [client-read-format-mpeg4audio](examples/client-read-format-mpeg4audio/main.go)
+* [client-read-format-opus](examples/client-read-format-opus/main.go)
+* [client-read-format-vp8](examples/client-read-format-vp8/main.go)
+* [client-read-format-vp9](examples/client-read-format-vp9/main.go)
 * [client-publish-options](examples/client-publish-options/main.go)
 * [client-publish-pause](examples/client-publish-pause/main.go)
-* [client-publish-track-g711](examples/client-publish-track-g711/main.go)
-* [client-publish-track-g722](examples/client-publish-track-g722/main.go)
-* [client-publish-track-h264](examples/client-publish-track-h264/main.go)
-* [client-publish-track-h265](examples/client-publish-track-h265/main.go)
-* [client-publish-track-lpcm](examples/client-publish-track-lpcm/main.go)
-* [client-publish-track-mpeg4audio](examples/client-publish-track-mpeg4audio/main.go)
-* [client-publish-track-opus](examples/client-publish-track-opus/main.go)
-* [client-publish-track-vp8](examples/client-publish-track-vp8/main.go)
-* [client-publish-track-vp9](examples/client-publish-track-vp9/main.go)
+* [client-publish-format-g711](examples/client-publish-format-g711/main.go)
+* [client-publish-format-g722](examples/client-publish-format-g722/main.go)
+* [client-publish-format-h264](examples/client-publish-format-h264/main.go)
+* [client-publish-format-h265](examples/client-publish-format-h265/main.go)
+* [client-publish-format-lpcm](examples/client-publish-format-lpcm/main.go)
+* [client-publish-format-mpeg4audio](examples/client-publish-format-mpeg4audio/main.go)
+* [client-publish-format-opus](examples/client-publish-format-opus/main.go)
+* [client-publish-format-vp8](examples/client-publish-format-vp8/main.go)
+* [client-publish-format-vp9](examples/client-publish-format-vp9/main.go)
 * [server](examples/server/main.go)
 * [server-tls](examples/server-tls/main.go)
 * [server-h264-save-to-disk](examples/server-h264-save-to-disk/main.go)

@@ -27,19 +27,21 @@ type RTCPReceiver struct {
 	mutex           sync.Mutex
 
 	// data from RTP packets
-	firstRTPReceived     bool
+	initialized          bool
+	timeInitialized      bool
 	sequenceNumberCycles uint16
-	lastSequenceNumber   *uint16
-	lastRTPTimeRTP       *uint32
-	lastRTPTimeTime      time.Time
+	lastSSRC             uint32
+	lastSequenceNumber   uint16
+	lastTimeRTP          uint32
+	lastTimeNTP          time.Time
 	totalLost            uint32
 	totalLostSinceReport uint32
 	totalSinceReport     uint32
 	jitter               float64
 
-	// data from rtcp packets
-	senderSSRC           uint32
-	lastSenderReportNTP  *uint32
+	// data from RTCP packets
+	senderInitialized    bool
+	lastSenderReportNTP  uint32
 	lastSenderReportTime time.Time
 
 	terminate chan struct{}
@@ -47,7 +49,10 @@ type RTCPReceiver struct {
 }
 
 // New allocates a RTCPReceiver.
-func New(period time.Duration, receiverSSRC *uint32, clockRate int,
+func New(
+	period time.Duration,
+	receiverSSRC *uint32,
+	clockRate int,
 	writePacketRTCP func(rtcp.Packet),
 ) *RTCPReceiver {
 	rr := &RTCPReceiver{
@@ -99,11 +104,7 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
-	if rr.lastSenderReportNTP == nil || rr.lastSequenceNumber == nil {
-		return nil
-	}
-
-	if rr.clockRate == 0 {
+	if !rr.senderInitialized || !rr.initialized || rr.clockRate == 0 {
 		return nil
 	}
 
@@ -111,10 +112,10 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 		SSRC: rr.receiverSSRC,
 		Reports: []rtcp.ReceptionReport{
 			{
-				SSRC:               rr.senderSSRC,
-				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(*rr.lastSequenceNumber),
+				SSRC:               rr.lastSSRC,
+				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
 				// middle 32 bits out of 64 in the NTP timestamp of last sender report
-				LastSenderReport: *rr.lastSenderReportNTP,
+				LastSenderReport: rr.lastSenderReportNTP,
 				// equivalent to taking the integer part after multiplying the
 				// loss fraction by 256
 				FractionLost: uint8(float64(rr.totalLostSinceReport*256) / float64(rr.totalSinceReport)),
@@ -134,27 +135,27 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 	return report
 }
 
-// ProcessPacketRTP extracts the needed data from RTP packets.
-func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqualsDTS bool) {
+// ProcessPacket extracts the needed data from RTP packets.
+func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS bool) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
 	// first packet
-	if rr.lastSequenceNumber == nil {
-		rr.firstRTPReceived = true
+	if !rr.initialized {
+		rr.initialized = true
 		rr.totalSinceReport = 1
-		v := pkt.Header.SequenceNumber
-		rr.lastSequenceNumber = &v
+		rr.lastSSRC = pkt.SSRC
+		rr.lastSequenceNumber = pkt.SequenceNumber
 
 		if ptsEqualsDTS {
-			v := pkt.Header.Timestamp
-			rr.lastRTPTimeRTP = &v
-			rr.lastRTPTimeTime = ts
+			rr.timeInitialized = true
+			rr.lastTimeRTP = pkt.Timestamp
+			rr.lastTimeNTP = ntp
 		}
 
 		// subsequent packets
 	} else {
-		diff := int32(pkt.Header.SequenceNumber) - int32(*rr.lastSequenceNumber)
+		diff := int32(pkt.SequenceNumber) - int32(rr.lastSequenceNumber)
 
 		// overflow
 		if diff < -0x0FFF {
@@ -162,7 +163,7 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqual
 		}
 
 		// detect lost packets
-		if pkt.Header.SequenceNumber != (*rr.lastSequenceNumber + 1) {
+		if pkt.SequenceNumber != (rr.lastSequenceNumber + 1) {
 			rr.totalLost += uint32(uint16(diff) - 1)
 			rr.totalLostSinceReport += uint32(uint16(diff) - 1)
 
@@ -176,37 +177,42 @@ func (rr *RTCPReceiver) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqual
 		}
 
 		rr.totalSinceReport += uint32(uint16(diff))
-		v := pkt.Header.SequenceNumber
-		rr.lastSequenceNumber = &v
+		rr.lastSSRC = pkt.SSRC
+		rr.lastSequenceNumber = pkt.SequenceNumber
 
 		if ptsEqualsDTS {
-			if rr.lastRTPTimeRTP != nil {
+			if rr.timeInitialized {
 				// update jitter
 				// https://tools.ietf.org/html/rfc3550#page-39
-				D := ts.Sub(rr.lastRTPTimeTime).Seconds()*rr.clockRate -
-					(float64(pkt.Header.Timestamp) - float64(*rr.lastRTPTimeRTP))
+				D := ntp.Sub(rr.lastTimeNTP).Seconds()*rr.clockRate -
+					(float64(pkt.Timestamp) - float64(rr.lastTimeRTP))
 				if D < 0 {
 					D = -D
 				}
 				rr.jitter += (D - rr.jitter) / 16
 			}
 
-			v := pkt.Header.Timestamp
-			rr.lastRTPTimeRTP = &v
-			rr.lastRTPTimeTime = ts
+			rr.timeInitialized = true
+			rr.lastTimeRTP = pkt.Timestamp
+			rr.lastTimeNTP = ntp
+			rr.lastSSRC = pkt.SSRC
 		}
 	}
 }
 
-// ProcessPacketRTCP extracts the needed data from RTCP packets.
-func (rr *RTCPReceiver) ProcessPacketRTCP(ts time.Time, pkt rtcp.Packet) {
-	if sr, ok := (pkt).(*rtcp.SenderReport); ok {
-		rr.mutex.Lock()
-		defer rr.mutex.Unlock()
+// ProcessSenderReport extracts the needed data from RTCP sender reports.
+func (rr *RTCPReceiver) ProcessSenderReport(sr *rtcp.SenderReport, ts time.Time) {
+	rr.mutex.Lock()
+	defer rr.mutex.Unlock()
 
-		rr.senderSSRC = sr.SSRC
-		v := uint32(sr.NTPTime >> 16)
-		rr.lastSenderReportNTP = &v
-		rr.lastSenderReportTime = ts
-	}
+	rr.senderInitialized = true
+	rr.lastSenderReportNTP = uint32(sr.NTPTime >> 16)
+	rr.lastSenderReportTime = ts
+}
+
+// LastSSRC returns the SSRC of the last RTP packet.
+func (rr *RTCPReceiver) LastSSRC() (uint32, bool) {
+	rr.mutex.Lock()
+	defer rr.mutex.Unlock()
+	return rr.lastSSRC, rr.initialized
 }

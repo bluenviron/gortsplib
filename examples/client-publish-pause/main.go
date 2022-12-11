@@ -5,13 +5,15 @@ import (
 	"net"
 	"time"
 
-	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/media"
 	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. generate RTP/H264 frames from a file with GStreamer
-// 2. connect to a RTSP server, announce an H264 track
+// 2. connect to a RTSP server, announce an H264 media
 // 3. write the frames to the server for 5 seconds
 // 4. pause for 5 seconds
 // 5. repeat
@@ -36,16 +38,19 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create an H264 track
-	track := &gortsplib.TrackH264{
-		PayloadType:       96,
-		PacketizationMode: 1,
+	// create a media that contains a H264 format
+	medi := &media.Media{
+		Type: media.TypeVideo,
+		Formats: []format.Format{&format.H264{
+			PayloadTyp:        96,
+			PacketizationMode: 1,
+		}},
 	}
 
-	// connect to the server and start publishing the track
+	// connect to the server and start recording the media
 	c := gortsplib.Client{}
-	err = c.StartPublishing("rtsp://localhost:8554/mystream",
-		gortsplib.Tracks{track})
+	err = c.StartRecording("rtsp://localhost:8554/mystream",
+		media.Medias{medi})
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +67,7 @@ func main() {
 				}
 
 				// route RTP packet to the server
-				c.WritePacketRTP(0, &pkt)
+				c.WritePacketRTP(medi, &pkt)
 
 				// read another RTP packet from source
 				n, _, err = pc.ReadFrom(buf)

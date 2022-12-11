@@ -4,13 +4,17 @@ import (
 	"log"
 	"time"
 
-	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/url"
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. set additional client options
-// 2. connect to a RTSP server and read all tracks on a path
+// 2. connect to a RTSP server and read all medias on a path
 
 func main() {
 	// Client allows to set additional client options
@@ -21,14 +25,6 @@ func main() {
 		ReadTimeout: 10 * time.Second,
 		// timeout of write operations
 		WriteTimeout: 10 * time.Second,
-		// called when a RTP packet arrives
-		OnPacketRTP: func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-			log.Printf("RTP packet from track %d, payload type %d\n", ctx.TrackID, ctx.Packet.Header.PayloadType)
-		},
-		// called when a RTCP packet arrives
-		OnPacketRTCP: func(ctx *gortsplib.ClientOnPacketRTCPCtx) {
-			log.Printf("RTCP packet from track %d, type %T\n", ctx.TrackID, ctx.Packet)
-		},
 	}
 
 	// parse URL
@@ -44,14 +40,30 @@ func main() {
 	}
 	defer c.Close()
 
-	// find published tracks
-	tracks, baseURL, _, err := c.Describe(u)
+	// find published medias
+	medias, baseURL, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	// setup and read all tracks
-	err = c.SetupAndPlay(tracks, baseURL)
+	// setup all medias
+	err = c.SetupAll(medias, baseURL)
+	if err != nil {
+		panic(err)
+	}
+
+	// called when a RTP packet arrives
+	c.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+		log.Printf("RTP packet from media %v\n", medi)
+	})
+
+	// called when a RTCP packet arrives
+	c.OnPacketRTCPAny(func(medi *media.Media, pkt rtcp.Packet) {
+		log.Printf("RTCP packet from media %v, type %T\n", medi, pkt)
+	})
+
+	// start playing
+	_, err = c.Play(nil)
 	if err != nil {
 		panic(err)
 	}

@@ -14,10 +14,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/media"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -85,8 +88,6 @@ type testServerHandler struct {
 	onPlay         func(*gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error)
 	onRecord       func(*gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*gortsplib.ServerHandlerOnPauseCtx) (*base.Response, error)
-	onPacketRTP    func(*gortsplib.ServerHandlerOnPacketRTPCtx)
-	onPacketRTCP   func(*gortsplib.ServerHandlerOnPacketRTCPCtx)
 	onSetParameter func(*gortsplib.ServerHandlerOnSetParameterCtx) (*base.Response, error)
 	onGetParameter func(*gortsplib.ServerHandlerOnGetParameterCtx) (*base.Response, error)
 }
@@ -155,18 +156,6 @@ func (sh *testServerHandler) OnPause(ctx *gortsplib.ServerHandlerOnPauseCtx) (*b
 		return sh.onPause(ctx)
 	}
 	return nil, fmt.Errorf("unimplemented")
-}
-
-func (sh *testServerHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
-	if sh.onPacketRTP != nil {
-		sh.onPacketRTP(ctx)
-	}
-}
-
-func (sh *testServerHandler) OnPacketRTCP(ctx *gortsplib.ServerHandlerOnPacketRTCPCtx) {
-	if sh.onPacketRTCP != nil {
-		sh.onPacketRTCP(ctx)
-	}
 }
 
 func (sh *testServerHandler) OnSetParameter(ctx *gortsplib.ServerHandlerOnSetParameterCtx) (*base.Response, error) {
@@ -238,7 +227,7 @@ func buildImage(image string) error {
 	return ecmd.Run()
 }
 
-func TestServerPublishRead(t *testing.T) {
+func TestServerRecordRead(t *testing.T) {
 	files, err := os.ReadDir("images")
 	require.NoError(t, err)
 
@@ -339,7 +328,7 @@ func TestServerPublishRead(t *testing.T) {
 							}, fmt.Errorf("someone is already publishing")
 						}
 
-						stream = gortsplib.NewServerStream(ctx.Tracks)
+						stream = gortsplib.NewServerStream(ctx.Medias)
 						publisher = ctx.Session
 
 						return &base.Response{
@@ -396,17 +385,13 @@ func TestServerPublishRead(t *testing.T) {
 							}, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
+						ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+							stream.WritePacketRTP(medi, pkt)
+						})
+
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
-					},
-					onPacketRTP: func(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
-						mutex.Lock()
-						defer mutex.Unlock()
-
-						if ctx.Session == publisher {
-							stream.WritePacketRTP(ctx.TrackID, ctx.Packet)
-						}
 					},
 				},
 				RTSPAddress: "localhost:8554",

@@ -3,11 +3,10 @@ package gortsplib
 import (
 	"net"
 
-	"github.com/aler9/gortsplib/pkg/ringbuffer"
+	"github.com/aler9/gortsplib/v2/pkg/ringbuffer"
 )
 
-type trackTypePayload struct {
-	trackID int
+type typeAndPayload struct {
 	isRTP   bool
 	payload []byte
 }
@@ -69,7 +68,7 @@ func (h *serverMulticastHandler) runWriter() {
 		if !ok {
 			return
 		}
-		data := tmp.(trackTypePayload)
+		data := tmp.(typeAndPayload)
 
 		if data.isRTP {
 			h.rtpl.write(data.payload, rtpAddr)
@@ -80,14 +79,14 @@ func (h *serverMulticastHandler) runWriter() {
 }
 
 func (h *serverMulticastHandler) writePacketRTP(payload []byte) {
-	h.writeBuffer.Push(trackTypePayload{
+	h.writeBuffer.Push(typeAndPayload{
 		isRTP:   true,
 		payload: payload,
 	})
 }
 
 func (h *serverMulticastHandler) writePacketRTCP(payload []byte) {
-	h.writeBuffer.Push(trackTypePayload{
+	h.writeBuffer.Push(typeAndPayload{
 		isRTP:   false,
 		payload: payload,
 	})

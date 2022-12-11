@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/liberrors"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/liberrors"
 )
 
 func extractPort(address string) (int, error) {
@@ -132,22 +132,21 @@ type Server struct {
 	//
 
 	udpReceiverReportPeriod time.Duration
-	udpSenderReportPeriod   time.Duration
+	senderReportPeriod      time.Duration
 	sessionTimeout          time.Duration
 	checkStreamPeriod       time.Duration
 
-	ctx                context.Context
-	ctxCancel          func()
-	wg                 sync.WaitGroup
-	multicastNet       *net.IPNet
-	multicastNextIP    net.IP
-	tcpListener        net.Listener
-	udpRTPListener     *serverUDPListener
-	udpRTCPListener    *serverUDPListener
-	udpRTPPacketBuffer *rtpPacketMultiBuffer
-	sessions           map[string]*ServerSession
-	conns              map[*ServerConn]struct{}
-	closeError         error
+	ctx             context.Context
+	ctxCancel       func()
+	wg              sync.WaitGroup
+	multicastNet    *net.IPNet
+	multicastNextIP net.IP
+	tcpListener     net.Listener
+	udpRTPListener  *serverUDPListener
+	udpRTCPListener *serverUDPListener
+	sessions        map[string]*ServerSession
+	conns           map[*ServerConn]struct{}
+	closeError      error
 
 	// in
 	connClose         chan *ServerConn
@@ -187,8 +186,8 @@ func (s *Server) Start() error {
 	if s.udpReceiverReportPeriod == 0 {
 		s.udpReceiverReportPeriod = 10 * time.Second
 	}
-	if s.udpSenderReportPeriod == 0 {
-		s.udpSenderReportPeriod = 10 * time.Second
+	if s.senderReportPeriod == 0 {
+		s.senderReportPeriod = 10 * time.Second
 	}
 	if s.sessionTimeout == 0 {
 		s.sessionTimeout = 1 * 60 * time.Second
@@ -243,8 +242,6 @@ func (s *Server) Start() error {
 			s.udpRTPListener.close()
 			return err
 		}
-
-		s.udpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(s.ReadBufferCount))
 	}
 
 	if s.MulticastIPRange != "" && (s.MulticastRTPPort == 0 || s.MulticastRTCPPort == 0) ||
@@ -293,7 +290,6 @@ func (s *Server) Start() error {
 		}
 
 		s.multicastNextIP = s.multicastNet.IP
-		s.udpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(s.ReadBufferCount))
 	}
 
 	var err error

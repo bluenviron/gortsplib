@@ -8,10 +8,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/auth"
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/conn"
-	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/aler9/gortsplib/v2/pkg/auth"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/conn"
+	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
 func mustParseURL(s string) *url.URL {
@@ -105,15 +106,8 @@ func TestClientSession(t *testing.T) {
 
 		require.Equal(t, base.HeaderValue{"123456"}, req.Header["Session"])
 
-		track := &TrackH264{
-			PayloadType:       96,
-			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-			PacketizationMode: 1,
-		}
-
-		tracks := Tracks{track}
-		tracks.setControls()
+		medias := media.Medias{testH264Media.Clone()}
+		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -121,7 +115,7 @@ func TestClientSession(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Session":      base.HeaderValue{"123456"},
 			},
-			Body: tracks.Marshal(false),
+			Body: mustMarshalSDP(medias.Marshal(false)),
 		})
 		require.NoError(t, err)
 	}()
@@ -189,22 +183,15 @@ func TestClientAuth(t *testing.T) {
 		err = v.ValidateRequest(req)
 		require.NoError(t, err)
 
-		track := &TrackH264{
-			PayloadType:       96,
-			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-			PacketizationMode: 1,
-		}
-
-		tracks := Tracks{track}
-		tracks.setControls()
+		medias := media.Medias{testH264Media.Clone()}
+		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: tracks.Marshal(false),
+			Body: mustMarshalSDP(medias.Marshal(false)),
 		})
 		require.NoError(t, err)
 	}()
@@ -256,12 +243,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		track1 := &TrackH264{
-			PayloadType:       96,
-			SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-			PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-			PacketizationMode: 1,
-		}
+		medias := media.Medias{testH264Media.Clone()}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -269,7 +251,7 @@ func TestClientDescribeCharset(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: Tracks{track1}.Marshal(false),
+			Body: mustMarshalSDP(medias.Marshal(false)),
 		})
 		require.NoError(t, err)
 	}()

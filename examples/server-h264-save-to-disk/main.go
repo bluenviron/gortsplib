@@ -5,21 +5,25 @@ import (
 	"log"
 	"sync"
 
-	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtph264"
+	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/rtpcodecs/rtph264"
 )
 
 // This example shows how to
 // 1. create a RTSP server which accepts plain connections
-// 2. allow a single client to publish a stream, containing a H264 track, with TCP or UDP
-// 3. save the content of the H264 track into a file in MPEG-TS format
+// 2. allow a single client to publish a stream, containing a H264 media, with TCP or UDP
+// 3. save the content of the H264 media into a file in MPEG-TS format
 
 type serverHandler struct {
 	mutex       sync.Mutex
 	publisher   *gortsplib.ServerSession
-	h264TrackID int
-	h264track   *gortsplib.TrackH264
+	media       *media.Media
+	format      *format.H264
 	rtpDec      *rtph264.Decoder
 	mpegtsMuxer *mpegtsMuxer
 }
@@ -50,7 +54,7 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 	sh.mpegtsMuxer.close()
 }
 
-// called after receiving an ANNOUNCE request.
+// called when receiving an ANNOUNCE request.
 func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 	log.Printf("announce request")
 
@@ -62,26 +66,20 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		sh.mpegtsMuxer.close()
 	}
 
-	// find the H264 track
-	h264TrackID, h264track := func() (int, *gortsplib.TrackH264) {
-		for i, track := range ctx.Tracks {
-			if h264track, ok := track.(*gortsplib.TrackH264); ok {
-				return i, h264track
-			}
-		}
-		return -1, nil
-	}()
-	if h264TrackID < 0 {
+	// find the H264 media and format
+	var trak *format.H264
+	medi := ctx.Medias.Find(&trak)
+	if medi == nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
-		}, fmt.Errorf("H264 track not found")
+		}, fmt.Errorf("H264 media not found")
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := h264track.CreateDecoder()
+	rtpDec := trak.CreateDecoder()
 
 	// setup H264->MPEGTS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(h264track.SafeSPS(), h264track.SafePPS())
+	mpegtsMuxer, err := newMPEGTSMuxer(trak.SafeSPS(), trak.SafePPS())
 	if err != nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
@@ -89,7 +87,8 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	sh.publisher = ctx.Session
-	sh.h264TrackID = h264TrackID
+	sh.media = medi
+	sh.format = trak
 	sh.rtpDec = rtpDec
 	sh.mpegtsMuxer = mpegtsMuxer
 
@@ -98,7 +97,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}, nil
 }
 
-// called after receiving a SETUP request.
+// called when receiving a SETUP request.
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
@@ -107,31 +106,24 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 	}, nil, nil
 }
 
-// called after receiving a RECORD request.
+// called when receiving a RECORD request.
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
 	log.Printf("record request")
+
+	// called when receiving a RTP packet
+	ctx.Session.OnPacketRTP(sh.media, sh.format, func(pkt *rtp.Packet) {
+		nalus, pts, err := sh.rtpDec.Decode(pkt)
+		if err != nil {
+			return
+		}
+
+		// encode H264 NALUs into MPEG-TS
+		sh.mpegtsMuxer.encode(nalus, pts)
+	})
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, nil
-}
-
-// called after receiving a RTP packet.
-func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
-
-	if ctx.TrackID != sh.h264TrackID {
-		return
-	}
-
-	nalus, pts, err := sh.rtpDec.Decode(ctx.Packet)
-	if err != nil {
-		return
-	}
-
-	// encode H264 NALUs into MPEG-TS
-	sh.mpegtsMuxer.encode(nalus, pts)
 }
 
 func main() {

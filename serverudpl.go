@@ -5,17 +5,22 @@ import (
 	"net"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/pion/rtcp"
 	"golang.org/x/net/ipv4"
 )
 
-type clientData struct {
-	session      *ServerSession
-	track        *ServerSessionSetuppedTrack
-	isPublishing bool
+func serverFindFormatWithSSRC(
+	formats map[uint8]*serverSessionFormat,
+	ssrc uint32,
+) *serverSessionFormat {
+	for _, format := range formats {
+		tssrc, ok := format.udpRTCPReceiver.LastSSRC()
+		if ok && tssrc == ssrc {
+			return format
+		}
+	}
+	return nil
 }
 
 type clientAddr struct {
@@ -51,7 +56,7 @@ type serverUDPListener struct {
 	isRTP        bool
 	writeTimeout time.Duration
 	clientsMutex sync.RWMutex
-	clients      map[clientAddr]*clientData
+	clients      map[clientAddr]*serverSessionMedia
 
 	readerDone chan struct{}
 }
@@ -143,7 +148,7 @@ func newServerUDPListener(
 		s:            s,
 		pc:           pc,
 		listenIP:     listenIP,
-		clients:      make(map[clientAddr]*clientData),
+		clients:      make(map[clientAddr]*serverSessionMedia),
 		isRTP:        isRTP,
 		writeTimeout: s.WriteTimeout,
 		readerDone:   make(chan struct{}),
@@ -170,11 +175,15 @@ func (u *serverUDPListener) port() int {
 func (u *serverUDPListener) runReader() {
 	defer close(u.readerDone)
 
-	var processFunc func(*clientData, []byte)
+	var readFunc func(*serverSessionMedia, []byte)
 	if u.isRTP {
-		processFunc = u.processRTP
+		readFunc = func(sm *serverSessionMedia, payload []byte) {
+			sm.readRTP(payload)
+		}
 	} else {
-		processFunc = u.processRTCP
+		readFunc = func(sm *serverSessionMedia, payload []byte) {
+			sm.readRTCP(payload)
+		}
 	}
 
 	for {
@@ -190,85 +199,13 @@ func (u *serverUDPListener) runReader() {
 
 			var clientAddr clientAddr
 			clientAddr.fill(addr.IP, addr.Port)
-			clientData, ok := u.clients[clientAddr]
+			sm, ok := u.clients[clientAddr]
 			if !ok {
 				return
 			}
 
-			processFunc(clientData, buf[:n])
+			readFunc(sm, buf[:n])
 		}()
-	}
-}
-
-func (u *serverUDPListener) processRTP(clientData *clientData, payload []byte) {
-	plen := len(payload)
-
-	atomic.AddUint64(clientData.session.bytesReceived, uint64(plen))
-
-	if plen == (maxPacketSize + 1) {
-		onDecodeError(clientData.session, fmt.Errorf("RTP packet is too big to be read with UDP"))
-		return
-	}
-
-	pkt := u.s.udpRTPPacketBuffer.next()
-	err := pkt.Unmarshal(payload)
-	if err != nil {
-		onDecodeError(clientData.session, err)
-		return
-	}
-
-	now := time.Now()
-	atomic.StoreInt64(clientData.session.udpLastPacketTime, now.Unix())
-
-	packets, missing := clientData.track.reorderer.Process(pkt)
-	if missing != 0 {
-		onDecodeError(clientData.session, fmt.Errorf("%d RTP packet(s) lost", missing))
-		// do not return
-	}
-
-	track := clientData.track.track
-
-	for _, pkt := range packets {
-		ptsEqualsDTS := ptsEqualsDTS(track, pkt)
-		clientData.track.udpRTCPReceiver.ProcessPacketRTP(now, pkt, ptsEqualsDTS)
-
-		if h, ok := clientData.session.s.Handler.(ServerHandlerOnPacketRTP); ok {
-			h.OnPacketRTP(&ServerHandlerOnPacketRTPCtx{
-				Session: clientData.session,
-				TrackID: clientData.track.id,
-				Packet:  pkt,
-			})
-		}
-	}
-}
-
-func (u *serverUDPListener) processRTCP(clientData *clientData, payload []byte) {
-	plen := len(payload)
-
-	atomic.AddUint64(clientData.session.bytesReceived, uint64(plen))
-
-	if plen == (maxPacketSize + 1) {
-		onDecodeError(clientData.session, fmt.Errorf("RTCP packet is too big to be read with UDP"))
-		return
-	}
-
-	packets, err := rtcp.Unmarshal(payload)
-	if err != nil {
-		onDecodeError(clientData.session, err)
-		return
-	}
-
-	if clientData.isPublishing {
-		now := time.Now()
-		atomic.StoreInt64(clientData.session.udpLastPacketTime, now.Unix())
-
-		for _, pkt := range packets {
-			clientData.track.udpRTCPReceiver.ProcessPacketRTCP(now, pkt)
-		}
-	}
-
-	for _, pkt := range packets {
-		clientData.session.onPacketRTCP(clientData.track.id, pkt)
 	}
 }
 
@@ -281,28 +218,22 @@ func (u *serverUDPListener) write(buf []byte, addr *net.UDPAddr) error {
 	return err
 }
 
-func (u *serverUDPListener) addClient(ip net.IP, port int, ss *ServerSession,
-	track *ServerSessionSetuppedTrack, isPublishing bool,
-) {
+func (u *serverUDPListener) addClient(ip net.IP, port int, sm *serverSessionMedia) {
 	u.clientsMutex.Lock()
 	defer u.clientsMutex.Unlock()
 
 	var addr clientAddr
 	addr.fill(ip, port)
 
-	u.clients[addr] = &clientData{
-		session:      ss,
-		track:        track,
-		isPublishing: isPublishing,
-	}
+	u.clients[addr] = sm
 }
 
-func (u *serverUDPListener) removeClient(ss *ServerSession) {
+func (u *serverUDPListener) removeClient(sm *serverSessionMedia) {
 	u.clientsMutex.Lock()
 	defer u.clientsMutex.Unlock()
 
-	for addr, data := range u.clients {
-		if data.session == ss {
+	for addr, sm1 := range u.clients {
+		if sm1 == sm {
 			delete(u.clients, addr)
 		}
 	}

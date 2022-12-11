@@ -7,10 +7,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/auth"
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/conn"
-	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/aler9/gortsplib/v2/pkg/auth"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/conn"
+	"github.com/aler9/gortsplib/v2/pkg/headers"
+	"github.com/aler9/gortsplib/v2/pkg/media"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -92,8 +93,6 @@ type testServerHandler struct {
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
 	onSetParameter func(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 	onGetParameter func(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
-	onPacketRTP    func(*ServerHandlerOnPacketRTPCtx)
-	onPacketRTCP   func(*ServerHandlerOnPacketRTCPCtx)
 	onDecodeError  func(*ServerHandlerOnDecodeErrorCtx)
 }
 
@@ -175,18 +174,6 @@ func (sh *testServerHandler) OnGetParameter(ctx *ServerHandlerOnGetParameterCtx)
 		return sh.onGetParameter(ctx)
 	}
 	return nil, fmt.Errorf("unimplemented")
-}
-
-func (sh *testServerHandler) OnPacketRTP(ctx *ServerHandlerOnPacketRTPCtx) {
-	if sh.onPacketRTP != nil {
-		sh.onPacketRTP(ctx)
-	}
-}
-
-func (sh *testServerHandler) OnPacketRTCP(ctx *ServerHandlerOnPacketRTCPCtx) {
-	if sh.onPacketRTCP != nil {
-		sh.onPacketRTCP(ctx)
-	}
 }
 
 func (sh *testServerHandler) OnDecodeError(ctx *ServerHandlerOnDecodeErrorCtx) {
@@ -339,14 +326,7 @@ func (s *testServerErrMethodNotImplemented) OnSetup(
 func TestServerErrorMethodNotImplemented(t *testing.T) {
 	for _, ca := range []string{"outside session", "inside session"} {
 		t.Run(ca, func(t *testing.T) {
-			track := &TrackH264{
-				PayloadType:       96,
-				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PacketizationMode: 1,
-			}
-
-			stream := NewServerStream(Tracks{track})
+			stream := NewServerStream(media.Medias{testH264Media.Clone()})
 			defer stream.Close()
 
 			s := &Server{
@@ -368,7 +348,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{
@@ -400,7 +380,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.SetParameter,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 				Header: headers,
 			})
 			require.NoError(t, err)
@@ -415,7 +395,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Options,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 				Header: headers,
 			})
 			require.NoError(t, err)
@@ -425,14 +405,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 }
 
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
-	track := &TrackH264{
-		PayloadType:       96,
-		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PacketizationMode: 1,
-	}
-
-	stream := NewServerStream(Tracks{track})
+	stream := NewServerStream(media.Medias{testH264Media.Clone()})
 	defer stream.Close()
 
 	s := &Server{
@@ -467,7 +440,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err := writeReqReadRes(conn1, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -509,7 +482,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err = writeReqReadRes(conn2, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -532,14 +505,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 }
 
 func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
-	track := &TrackH264{
-		PayloadType:       96,
-		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PacketizationMode: 1,
-	}
-
-	stream := NewServerStream(Tracks{track})
+	stream := NewServerStream(media.Medias{testH264Media.Clone()})
 	defer stream.Close()
 
 	s := &Server{
@@ -574,7 +540,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -611,7 +577,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 			"Transport": headers.Transport{
@@ -633,12 +599,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 }
 
 func TestServerSetupMultipleTransports(t *testing.T) {
-	stream := NewServerStream(Tracks{&TrackH264{
-		PayloadType:       96,
-		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PacketizationMode: 1,
-	}})
+	stream := NewServerStream(media.Medias{testH264Media.Clone()})
 	defer stream.Close()
 
 	s := &Server{
@@ -690,7 +651,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"1"},
 			"Transport": inTHS.Marshal(),
@@ -715,14 +676,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 func TestServerGetSetParameter(t *testing.T) {
 	for _, ca := range []string{"inside session", "outside session"} {
 		t.Run(ca, func(t *testing.T) {
-			track := &TrackH264{
-				PayloadType:       96,
-				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PacketizationMode: 1,
-			}
-
-			stream := NewServerStream(Tracks{track})
+			stream := NewServerStream(media.Medias{testH264Media.Clone()})
 			defer stream.Close()
 
 			var params []byte
@@ -776,7 +730,7 @@ func TestServerGetSetParameter(t *testing.T) {
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{
@@ -889,12 +843,7 @@ func TestServerErrorInvalidSession(t *testing.T) {
 }
 
 func TestServerSessionClose(t *testing.T) {
-	stream := NewServerStream(Tracks{&TrackH264{
-		PayloadType:       96,
-		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PacketizationMode: 1,
-	}})
+	stream := NewServerStream(media.Medias{testH264Media.Clone()})
 	defer stream.Close()
 
 	var session *ServerSession
@@ -924,7 +873,7 @@ func TestServerSessionClose(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -964,12 +913,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
-			stream := NewServerStream(Tracks{&TrackH264{
-				PayloadType:       96,
-				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PacketizationMode: 1,
-			}})
+			stream := NewServerStream(media.Medias{testH264Media.Clone()})
 			defer stream.Close()
 
 			s := &Server{
@@ -1002,7 +946,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 
 			_, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 				Header: base.Header{
 					"CSeq": base.HeaderValue{"1"},
 					"Transport": headers.Transport{
@@ -1029,12 +973,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 }
 
 func TestServerSessionTeardown(t *testing.T) {
-	stream := NewServerStream(Tracks{&TrackH264{
-		PayloadType:       96,
-		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PacketizationMode: 1,
-	}})
+	stream := NewServerStream(media.Medias{testH264Media.Clone()})
 	defer stream.Close()
 
 	s := &Server{
@@ -1059,7 +998,7 @@ func TestServerSessionTeardown(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1110,14 +1049,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			nconnClosed := make(chan struct{})
 
-			track := &TrackH264{
-				PayloadType:       96,
-				SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-				PacketizationMode: 1,
-			}
-
-			stream := NewServerStream(Tracks{track})
+			stream := NewServerStream(media.Medias{testH264Media.Clone()})
 			defer stream.Close()
 
 			s := &Server{
@@ -1147,7 +1079,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{
@@ -1231,12 +1163,7 @@ func TestServerAuth(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	track := &TrackH264{
-		PayloadType:       96,
-		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PPS:               []byte{0x01, 0x02, 0x03, 0x04},
-		PacketizationMode: 1,
-	}
+	medias := media.Medias{testH264Media.Clone()}
 
 	req := base.Request{
 		Method: base.Announce,
@@ -1245,7 +1172,7 @@ func TestServerAuth(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: Tracks{track}.Marshal(false),
+		Body: mustMarshalSDP(medias.Marshal(false)),
 	}
 
 	res, err := writeReqReadRes(conn, req)

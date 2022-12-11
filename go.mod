@@ -1,4 +1,4 @@
-module github.com/aler9/gortsplib
+module github.com/aler9/gortsplib/v2
 
 go 1.17
 
