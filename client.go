@@ -423,12 +423,10 @@ func (c *Client) StartPublishing(address string, tracks Tracks) error {
 		return err
 	}
 
-	for _, track := range tracks {
-		_, err := c.Setup(track, u, 0, 0)
-		if err != nil {
-			c.Close()
-			return err
-		}
+	err = c.SetupAll(tracks, u)
+	if err != nil {
+		c.Close()
+		return err
 	}
 
 	_, err = c.Record()
@@ -1629,6 +1627,17 @@ func (c *Client) Setup(
 	}
 }
 
+// SetupAll setups all the given tracks.
+func (c *Client) SetupAll(tracks Tracks, baseURL *url.URL) error {
+	for _, t := range tracks {
+		_, err := c.Setup(t, baseURL, 0, 0)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStatePrePlay: {},
@@ -1700,14 +1709,12 @@ func (c *Client) Play(ra *headers.Range) (*base.Response, error) {
 
 // SetupAndPlay setups and play the given tracks.
 func (c *Client) SetupAndPlay(tracks Tracks, baseURL *url.URL) error {
-	for _, t := range tracks {
-		_, err := c.Setup(t, baseURL, 0, 0)
-		if err != nil {
-			return err
-		}
+	err := c.SetupAll(tracks, baseURL)
+	if err != nil {
+		return err
 	}
 
-	_, err := c.Play(nil)
+	_, err = c.Play(nil)
 	return err
 }
 

@@ -2436,10 +2436,8 @@ func TestClientReadSeek(t *testing.T) {
 	tracks, baseURL, _, err := c.Describe(u)
 	require.NoError(t, err)
 
-	for _, track := range tracks {
-		_, err := c.Setup(track, baseURL, 0, 0)
-		require.NoError(t, err)
-	}
+	err = c.SetupAll(tracks, baseURL)
+	require.NoError(t, err)
 
 	_, err = c.Play(&headers.Range{
 		Value: &headers.RangeNPT{
