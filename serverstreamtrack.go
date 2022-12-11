@@ -1,8 +1,8 @@
 package gortsplib
 
 import (
-	"github.com/aler9/gortsplib/pkg/rtcpsender"
-	"github.com/aler9/gortsplib/pkg/track"
+	"github.com/aler9/gortsplib/v2/pkg/rtcpsender"
+	"github.com/aler9/gortsplib/v2/pkg/track"
 )
 
 type serverStreamTrack struct {

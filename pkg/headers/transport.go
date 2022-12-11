@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/base"
 )
 
 func parsePorts(val string) (*[2]int, error) {

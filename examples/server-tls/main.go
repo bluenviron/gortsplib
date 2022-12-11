@@ -7,10 +7,10 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/media"
-	"github.com/aler9/gortsplib/pkg/track"
+	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/track"
 )
 
 // This example shows how to

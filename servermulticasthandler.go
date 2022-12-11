@@ -3,7 +3,7 @@ package gortsplib
 import (
 	"net"
 
-	"github.com/aler9/gortsplib/pkg/ringbuffer"
+	"github.com/aler9/gortsplib/v2/pkg/ringbuffer"
 )
 
 type typeAndPayload struct {

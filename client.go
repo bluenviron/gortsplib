@@ -20,16 +20,16 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/auth"
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/bytecounter"
-	"github.com/aler9/gortsplib/pkg/conn"
-	"github.com/aler9/gortsplib/pkg/headers"
-	"github.com/aler9/gortsplib/pkg/liberrors"
-	"github.com/aler9/gortsplib/pkg/media"
-	"github.com/aler9/gortsplib/pkg/sdp"
-	"github.com/aler9/gortsplib/pkg/track"
-	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/aler9/gortsplib/v2/pkg/auth"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/bytecounter"
+	"github.com/aler9/gortsplib/v2/pkg/conn"
+	"github.com/aler9/gortsplib/v2/pkg/headers"
+	"github.com/aler9/gortsplib/v2/pkg/liberrors"
+	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/sdp"
+	"github.com/aler9/gortsplib/v2/pkg/track"
+	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
 func isAnyPort(p int) bool {

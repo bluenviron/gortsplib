@@ -9,10 +9,10 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/media"
-	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
-	"github.com/aler9/gortsplib/pkg/rtpreorderer"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/rtcpreceiver"
+	"github.com/aler9/gortsplib/v2/pkg/rtpreorderer"
 )
 
 type serverSessionMedia struct {

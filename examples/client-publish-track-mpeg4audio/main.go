@@ -4,10 +4,10 @@ import (
 	"log"
 	"net"
 
-	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/media"
-	"github.com/aler9/gortsplib/pkg/mpeg4audio"
-	"github.com/aler9/gortsplib/pkg/track"
+	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/mpeg4audio"
+	"github.com/aler9/gortsplib/v2/pkg/track"
 	"github.com/pion/rtp"
 )
 

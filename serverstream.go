@@ -8,10 +8,10 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/headers"
-	"github.com/aler9/gortsplib/pkg/liberrors"
-	"github.com/aler9/gortsplib/pkg/media"
-	"github.com/aler9/gortsplib/pkg/rtcpsender"
+	"github.com/aler9/gortsplib/v2/pkg/headers"
+	"github.com/aler9/gortsplib/v2/pkg/liberrors"
+	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/rtcpsender"
 )
 
 // ServerStream represents a data stream.

@@ -10,11 +10,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/bytecounter"
-	"github.com/aler9/gortsplib/pkg/conn"
-	"github.com/aler9/gortsplib/pkg/liberrors"
-	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/bytecounter"
+	"github.com/aler9/gortsplib/v2/pkg/conn"
+	"github.com/aler9/gortsplib/v2/pkg/liberrors"
+	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
 func getSessionID(header base.Header) string {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpsimpleaudio"
+	"github.com/aler9/gortsplib/v2/pkg/rtpcodecs/rtpsimpleaudio"
 )
 
 // G711 is a G711 track, encoded with mu-law or A-law.

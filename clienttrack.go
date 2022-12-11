@@ -7,10 +7,10 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
-	"github.com/aler9/gortsplib/pkg/rtcpsender"
-	"github.com/aler9/gortsplib/pkg/rtpreorderer"
-	"github.com/aler9/gortsplib/pkg/track"
+	"github.com/aler9/gortsplib/v2/pkg/rtcpreceiver"
+	"github.com/aler9/gortsplib/v2/pkg/rtcpsender"
+	"github.com/aler9/gortsplib/v2/pkg/rtpreorderer"
+	"github.com/aler9/gortsplib/v2/pkg/track"
 )
 
 type clientTrack struct {

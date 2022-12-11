@@ -7,9 +7,9 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/bits"
-	"github.com/aler9/gortsplib/pkg/mpeg4audio"
-	"github.com/aler9/gortsplib/pkg/rtptimedec"
+	"github.com/aler9/gortsplib/v2/pkg/bits"
+	"github.com/aler9/gortsplib/v2/pkg/mpeg4audio"
+	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.

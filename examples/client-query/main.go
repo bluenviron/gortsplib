@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
 // This example shows how to

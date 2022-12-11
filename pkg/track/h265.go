@@ -9,7 +9,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtph265"
+	"github.com/aler9/gortsplib/v2/pkg/rtpcodecs/rtph265"
 )
 
 // H265 is a H265 track.

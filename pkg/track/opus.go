@@ -7,7 +7,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/rtpcodecs/rtpsimpleaudio"
+	"github.com/aler9/gortsplib/v2/pkg/rtpcodecs/rtpsimpleaudio"
 )
 
 // Opus is a Opus track.

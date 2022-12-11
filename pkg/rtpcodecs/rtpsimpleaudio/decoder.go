@@ -5,7 +5,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/pkg/rtptimedec"
+	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
 )
 
 // Decoder is a RTP/simple audio decoder.

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/base"
 )
 
 var casesRTPInfo = []struct {
