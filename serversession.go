@@ -13,12 +13,12 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/liberrors"
 	"github.com/aler9/gortsplib/v2/pkg/media"
 	"github.com/aler9/gortsplib/v2/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
@@ -738,9 +738,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		sm := newServerSessionMedia(ss, medi)
 
 		if ss.state == ServerSessionStatePreRecord {
-			sm.tracks = make(map[uint8]*serverSessionTrack)
-			for _, trak := range sm.media.Tracks {
-				sm.tracks[trak.PayloadType()] = newServerSessionTrack(sm, trak)
+			sm.formats = make(map[uint8]*serverSessionFormat)
+			for _, trak := range sm.media.Formats {
+				sm.formats[trak.PayloadType()] = newServerSessionFormat(sm, trak)
 			}
 		}
 
@@ -1079,10 +1079,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 }
 
 // OnPacketRTPAny sets the callback that is called when a RTP packet is read from any setupped media.
-func (ss *ServerSession) OnPacketRTPAny(cb func(*media.Media, track.Track, *rtp.Packet)) {
+func (ss *ServerSession) OnPacketRTPAny(cb func(*media.Media, format.Format, *rtp.Packet)) {
 	for _, sm := range ss.setuppedMedias {
 		cmedia := sm.media
-		for _, trak := range sm.media.Tracks {
+		for _, trak := range sm.media.Formats {
 			ss.OnPacketRTP(sm.media, trak, func(pkt *rtp.Packet) {
 				cb(cmedia, trak, pkt)
 			})
@@ -1101,9 +1101,9 @@ func (ss *ServerSession) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (ss *ServerSession) OnPacketRTP(medi *media.Media, trak track.Track, cb func(*rtp.Packet)) {
+func (ss *ServerSession) OnPacketRTP(medi *media.Media, trak format.Format, cb func(*rtp.Packet)) {
 	sm := ss.setuppedMedias[medi]
-	st := sm.tracks[trak.PayloadType()]
+	st := sm.formats[trak.PayloadType()]
 	st.onPacketRTP = cb
 }
 

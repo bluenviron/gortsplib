@@ -9,21 +9,21 @@ import (
 
 	"github.com/aler9/gortsplib/v2"
 	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/media"
 	"github.com/aler9/gortsplib/v2/pkg/rtpcodecs/rtph264"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 )
 
 // This example shows how to
 // 1. create a RTSP server which accepts plain connections
-// 2. allow a single client to publish a stream, containing a H264 track, with TCP or UDP
-// 3. save the content of the H264 track into a file in MPEG-TS format
+// 2. allow a single client to publish a stream, containing a H264 media, with TCP or UDP
+// 3. save the content of the H264 media into a file in MPEG-TS format
 
 type serverHandler struct {
 	mutex       sync.Mutex
 	publisher   *gortsplib.ServerSession
 	media       *media.Media
-	track       *track.H264
+	format      *format.H264
 	rtpDec      *rtph264.Decoder
 	mpegtsMuxer *mpegtsMuxer
 }
@@ -54,7 +54,7 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 	sh.mpegtsMuxer.close()
 }
 
-// called after receiving an ANNOUNCE request.
+// called when receiving an ANNOUNCE request.
 func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 	log.Printf("announce request")
 
@@ -66,13 +66,13 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		sh.mpegtsMuxer.close()
 	}
 
-	// find the H264 media and track
-	var trak *track.H264
+	// find the H264 media and format
+	var trak *format.H264
 	medi := ctx.Medias.Find(&trak)
 	if medi == nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
-		}, fmt.Errorf("H264 track not found")
+		}, fmt.Errorf("H264 media not found")
 	}
 
 	// setup RTP/H264->H264 decoder
@@ -88,7 +88,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 	sh.publisher = ctx.Session
 	sh.media = medi
-	sh.track = trak
+	sh.format = trak
 	sh.rtpDec = rtpDec
 	sh.mpegtsMuxer = mpegtsMuxer
 
@@ -97,7 +97,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}, nil
 }
 
-// called after receiving a SETUP request.
+// called when receiving a SETUP request.
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
@@ -106,12 +106,12 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 	}, nil, nil
 }
 
-// called after receiving a RECORD request.
+// called when receiving a RECORD request.
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
 	log.Printf("record request")
 
-	// called after receiving a RTP packet
-	ctx.Session.OnPacketRTP(sh.media, sh.track, func(pkt *rtp.Packet) {
+	// called when receiving a RTP packet
+	ctx.Session.OnPacketRTP(sh.media, sh.format, func(pkt *rtp.Packet) {
 		nalus, pts, err := sh.rtpDec.Decode(pkt)
 		if err != nil {
 			return

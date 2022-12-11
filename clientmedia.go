@@ -14,7 +14,7 @@ import (
 type clientMedia struct {
 	c                      *Client
 	media                  *media.Media
-	tracks                 map[uint8]*clientTrack
+	formats                map[uint8]*clientFormat
 	tcpChannel             int
 	udpRTPListener         *clientUDPListener
 	udpRTCPListener        *clientUDPListener
@@ -70,9 +70,9 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 func (cm *clientMedia) setMedia(medi *media.Media) {
 	cm.media = medi
 
-	cm.tracks = make(map[uint8]*clientTrack)
-	for _, trak := range medi.Tracks {
-		cm.tracks[trak.PayloadType()] = newClientTrack(cm, trak)
+	cm.formats = make(map[uint8]*clientFormat)
+	for _, trak := range medi.Formats {
+		cm.formats[trak.PayloadType()] = newClientFormat(cm, trak)
 	}
 }
 
@@ -105,7 +105,7 @@ func (cm *clientMedia) start() {
 		cm.tcpBuffer = make([]byte, maxPacketSize+4)
 	}
 
-	for _, ct := range cm.tracks {
+	for _, ct := range cm.formats {
 		ct.start(cm)
 	}
 
@@ -114,7 +114,7 @@ func (cm *clientMedia) start() {
 		cm.udpRTCPListener.start(cm.c.state == clientStatePlay)
 	}
 
-	for _, ct := range cm.tracks {
+	for _, ct := range cm.formats {
 		ct.startWriting()
 	}
 }
@@ -125,16 +125,16 @@ func (cm *clientMedia) stop() {
 		cm.udpRTCPListener.stop()
 	}
 
-	for _, ct := range cm.tracks {
+	for _, ct := range cm.formats {
 		ct.stop()
 	}
 }
 
-func (cm *clientMedia) findTrackWithSSRC(ssrc uint32) *clientTrack {
-	for _, track := range cm.tracks {
-		tssrc, ok := track.udpRTCPReceiver.LastSSRC()
+func (cm *clientMedia) findFormatWithSSRC(ssrc uint32) *clientFormat {
+	for _, format := range cm.formats {
+		tssrc, ok := format.udpRTCPReceiver.LastSSRC()
 		if ok && tssrc == ssrc {
-			return track
+			return format
 		}
 	}
 	return nil
@@ -199,7 +199,7 @@ func (cm *clientMedia) readRTPTCPPlay(payload []byte) error {
 		return err
 	}
 
-	trak, ok := cm.tracks[pkt.PayloadType]
+	trak, ok := cm.formats[pkt.PayloadType]
 	if !ok {
 		return nil
 	}
@@ -272,7 +272,7 @@ func (cm *clientMedia) readRTPUDPPlay(payload []byte) error {
 		return nil
 	}
 
-	trak, ok := cm.tracks[pkt.PayloadType]
+	trak, ok := cm.formats[pkt.PayloadType]
 	if !ok {
 		cm.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
 		return nil
@@ -301,9 +301,9 @@ func (cm *clientMedia) readRTCPUDPPlay(payload []byte) error {
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
-			track := cm.findTrackWithSSRC(sr.SSRC)
-			if track != nil {
-				track.udpRTCPReceiver.ProcessSenderReport(sr, now)
+			format := cm.findFormatWithSSRC(sr.SSRC)
+			if format != nil {
+				format.udpRTCPReceiver.ProcessSenderReport(sr, now)
 			}
 		}
 

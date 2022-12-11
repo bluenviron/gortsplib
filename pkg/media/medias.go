@@ -89,11 +89,11 @@ func (ms Medias) SetControls() {
 	}
 }
 
-// Find finds a certain track among all the tracks in all the medias.
-// If the track is found, it is inserted into trak, and track media is returned.
+// Find finds a certain format among all the formats in all the medias.
+// If the format is found, it is inserted into trak, and format media is returned.
 func (ms *Medias) Find(trak interface{}) *Media {
 	for _, media := range *ms {
-		for _, trakk := range media.Tracks {
+		for _, trakk := range media.Formats {
 			if reflect.TypeOf(trakk) == reflect.TypeOf(trak).Elem() {
 				reflect.ValueOf(trak).Elem().Set(reflect.ValueOf(trakk))
 				return media

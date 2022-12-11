@@ -18,11 +18,11 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/auth"
 	"github.com/aler9/gortsplib/v2/pkg/base"
 	"github.com/aler9/gortsplib/v2/pkg/conn"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/media"
 	"github.com/aler9/gortsplib/v2/pkg/mpeg4audio"
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
@@ -34,7 +34,7 @@ func mustMarshalSDP(sdp *sdp.SessionDescription) []byte {
 	return byts
 }
 
-func readAll(c *Client, ur string, cb func(*media.Media, track.Track, *rtp.Packet)) error {
+func readAll(c *Client, ur string, cb func(*media.Media, format.Format, *rtp.Packet)) error {
 	u, err := url.Parse(ur)
 	if err != nil {
 		return err
@@ -70,12 +70,12 @@ func readAll(c *Client, ur string, cb func(*media.Media, track.Track, *rtp.Packe
 	return nil
 }
 
-func TestClientPlayTracks(t *testing.T) {
+func TestClientPlayFormats(t *testing.T) {
 	media1 := testH264Media.Clone()
 
 	media2 := &media.Media{
 		Type: media.TypeAudio,
-		Tracks: []track.Track{&track.MPEG4Audio{
+		Formats: []format.Format{&format.MPEG4Audio{
 			PayloadTyp: 96,
 			Config: &mpeg4audio.Config{
 				Type:         mpeg4audio.ObjectTypeAACLC,
@@ -90,7 +90,7 @@ func TestClientPlayTracks(t *testing.T) {
 
 	media3 := &media.Media{
 		Type: media.TypeAudio,
-		Tracks: []track.Track{&track.MPEG4Audio{
+		Formats: []format.Format{&format.MPEG4Audio{
 			PayloadTyp: 96,
 			Config: &mpeg4audio.Config{
 				Type:         mpeg4audio.ObjectTypeAACLC,
@@ -267,7 +267,7 @@ func TestClientPlay(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
-				trak := &track.Generic{
+				trak := &format.Generic{
 					PayloadTyp: 96,
 					RTPMap:     "private/90000",
 				}
@@ -275,8 +275,8 @@ func TestClientPlay(t *testing.T) {
 				require.NoError(t, err)
 
 				medias := media.Medias{{
-					Type:   "application",
-					Tracks: []track.Track{trak},
+					Type:    "application",
+					Formats: []format.Format{trak},
 				}}
 				medias.SetControls()
 
@@ -466,7 +466,7 @@ func TestClientPlay(t *testing.T) {
 
 			err = readAll(&c,
 				scheme+"://"+listenIP+":8554/test/stream?param=value",
-				func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+				func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 					require.Equal(t, &testRTPPacket, pkt)
 					err := c.WritePacketRTCP(medi, &testRTCPPacket)
 					require.NoError(t, err)
@@ -608,9 +608,9 @@ func TestClientPlayPartial(t *testing.T) {
 	_, err = c.Setup(medias[1], baseURL, 0, 0)
 	require.NoError(t, err)
 
-	c.OnPacketRTPAny(func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+	c.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 		require.Equal(t, medias[1], medi)
-		require.Equal(t, medias[1].Tracks[0], trak)
+		require.Equal(t, medias[1].Formats[0], trak)
 		require.Equal(t, &testRTPPacket, pkt)
 		close(packetRecv)
 	})
@@ -892,7 +892,7 @@ func TestClientPlayAnyPort(t *testing.T) {
 
 			var med *media.Media
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
-				func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+				func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 					require.Equal(t, &testRTPPacket, pkt)
 					med = medi
 					close(packetRecv)
@@ -1012,7 +1012,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 
 		c := Client{}
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
-			func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+			func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1245,7 +1245,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		}
 
 		err = readAll(&c, "rtsp://myuser:mypass@localhost:8554/teststream",
-			func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+			func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1367,7 +1367,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+		func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 			close(packetRecv)
 		})
 	require.NoError(t, err)
@@ -1554,7 +1554,7 @@ func TestClientPlayRedirect(t *testing.T) {
 				ru = "rtsp://testusr:testpwd@localhost:8554/path1"
 			}
 			err = readAll(&c, ru,
-				func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+				func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 					close(packetRecv)
 				})
 			require.NoError(t, err)
@@ -1754,7 +1754,7 @@ func TestClientPlayPause(t *testing.T) {
 			}
 
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
-				func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+				func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 					if atomic.SwapInt32(&firstFrame, 1) == 0 {
 						close(packetRecv)
 					}
@@ -2104,7 +2104,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 	}
 }
 
-func TestClientPlayIgnoreTCPInvalidTrack(t *testing.T) {
+func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -2218,7 +2218,7 @@ func TestClientPlayIgnoreTCPInvalidTrack(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+		func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 			close(recv)
 		})
 	require.NoError(t, err)
@@ -2636,7 +2636,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/test/stream?param=value",
-		func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+		func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 			require.Equal(t, &testRTPPacket, pkt)
 			close(packetRecv)
 		})
@@ -2698,7 +2698,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 
 				medias := media.Medias{{
 					Type: media.TypeApplication,
-					Tracks: []track.Track{&track.Generic{
+					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 97,
 						RTPMap:     "private/90000",
 					}},

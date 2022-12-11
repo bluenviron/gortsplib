@@ -7,45 +7,45 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/rtcpreceiver"
 	"github.com/aler9/gortsplib/v2/pkg/rtcpsender"
 	"github.com/aler9/gortsplib/v2/pkg/rtpreorderer"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 )
 
-type clientTrack struct {
+type clientFormat struct {
 	c               *Client
 	cm              *clientMedia
-	track           track.Track
+	format          format.Format
 	udpReorderer    *rtpreorderer.Reorderer    // play
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver // play
 	rtcpSender      *rtcpsender.RTCPSender     // record
 	onPacketRTP     func(*rtp.Packet)
 }
 
-func newClientTrack(cm *clientMedia, trak track.Track) *clientTrack {
-	return &clientTrack{
+func newClientFormat(cm *clientMedia, trak format.Format) *clientFormat {
+	return &clientFormat{
 		c:           cm.c,
 		cm:          cm,
-		track:       trak,
+		format:      trak,
 		onPacketRTP: func(*rtp.Packet) {},
 	}
 }
 
-func (ct *clientTrack) start(cm *clientMedia) {
+func (ct *clientFormat) start(cm *clientMedia) {
 	if cm.c.state == clientStatePlay {
 		if cm.udpRTPListener != nil {
 			ct.udpReorderer = rtpreorderer.New()
 			ct.udpRTCPReceiver = rtcpreceiver.New(
 				cm.c.udpReceiverReportPeriod,
 				nil,
-				ct.track.ClockRate(), func(pkt rtcp.Packet) {
+				ct.format.ClockRate(), func(pkt rtcp.Packet) {
 					cm.writePacketRTCP(pkt)
 				})
 		}
 	} else {
 		ct.rtcpSender = rtcpsender.New(
-			ct.track.ClockRate(),
+			ct.format.ClockRate(),
 			func(pkt rtcp.Packet) {
 				cm.writePacketRTCP(pkt)
 			})
@@ -53,13 +53,13 @@ func (ct *clientTrack) start(cm *clientMedia) {
 }
 
 // start RTCP senders after write() has been allocated in order to avoid a crash
-func (ct *clientTrack) startWriting() {
+func (ct *clientFormat) startWriting() {
 	if ct.c.state != clientStatePlay && !ct.c.DisableRTCPSenderReports {
 		ct.rtcpSender.Start(ct.c.senderReportPeriod)
 	}
 }
 
-func (ct *clientTrack) stop() {
+func (ct *clientFormat) stop() {
 	if ct.udpRTCPReceiver != nil {
 		ct.udpRTCPReceiver.Close()
 		ct.udpRTCPReceiver = nil
@@ -71,7 +71,7 @@ func (ct *clientTrack) stop() {
 	}
 }
 
-func (ct *clientTrack) writePacketRTPWithNTP(pkt *rtp.Packet, ntp time.Time) error {
+func (ct *clientFormat) writePacketRTPWithNTP(pkt *rtp.Packet, ntp time.Time) error {
 	byts := make([]byte, maxPacketSize)
 	n, err := pkt.MarshalTo(byts)
 	if err != nil {
@@ -95,11 +95,11 @@ func (ct *clientTrack) writePacketRTPWithNTP(pkt *rtp.Packet, ntp time.Time) err
 		}
 	}
 
-	ct.rtcpSender.ProcessPacket(pkt, ntp, ct.track.PTSEqualsDTS(pkt))
+	ct.rtcpSender.ProcessPacket(pkt, ntp, ct.format.PTSEqualsDTS(pkt))
 	return nil
 }
 
-func (ct *clientTrack) readRTPUDP(pkt *rtp.Packet) {
+func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {
 	packets, missing := ct.udpReorderer.Process(pkt)
 	if missing != 0 {
 		ct.c.OnDecodeError(fmt.Errorf("%d RTP packet(s) lost", missing))
@@ -109,11 +109,11 @@ func (ct *clientTrack) readRTPUDP(pkt *rtp.Packet) {
 	now := time.Now()
 
 	for _, pkt := range packets {
-		ct.udpRTCPReceiver.ProcessPacket(pkt, now, ct.track.PTSEqualsDTS(pkt))
+		ct.udpRTCPReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
 		ct.onPacketRTP(pkt)
 	}
 }
 
-func (ct *clientTrack) readRTPTCP(pkt *rtp.Packet) {
+func (ct *clientFormat) readRTPTCP(pkt *rtp.Packet) {
 	ct.onPacketRTP(pkt)
 }

@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 )
 
 var casesMedias = []struct {
@@ -59,7 +59,7 @@ var casesMedias = []struct {
 			{
 				Type:    "video",
 				Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
-				Tracks: []track.Track{&track.H264{
+				Formats: []format.Format{&format.H264{
 					PayloadTyp:        97,
 					PacketizationMode: 1,
 					SPS:               []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
@@ -69,13 +69,13 @@ var casesMedias = []struct {
 			{
 				Type:    "audio",
 				Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
-				Tracks: []track.Track{&track.G711{
+				Formats: []format.Format{&format.G711{
 					MULaw: true,
 				}},
 			},
 			{
 				Type: "application",
-				Tracks: []track.Track{&track.Generic{
+				Formats: []format.Format{&format.Generic{
 					PayloadTyp: 107,
 				}},
 			},
@@ -223,65 +223,65 @@ var casesMedias = []struct {
 		Medias{
 			{
 				Type: "audio",
-				Tracks: []track.Track{
-					&track.Opus{
+				Formats: []format.Format{
+					&format.Opus{
 						PayloadTyp:   111,
 						SampleRate:   48000,
 						ChannelCount: 2,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 103,
 						RTPMap:     "ISAC/16000",
 						ClockRat:   16000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 104,
 						RTPMap:     "ISAC/32000",
 						ClockRat:   32000,
 					},
-					&track.G722{},
-					&track.Generic{
+					&format.G722{},
+					&format.Generic{
 						PayloadTyp: 102,
 						RTPMap:     "ILBC/8000",
 						ClockRat:   8000,
 					},
-					&track.G711{
+					&format.G711{
 						MULaw: true,
 					},
-					&track.G711{
+					&format.G711{
 						MULaw: false,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 106,
 						RTPMap:     "CN/32000",
 						ClockRat:   32000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 105,
 						RTPMap:     "CN/16000",
 						ClockRat:   16000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 13,
 						RTPMap:     "CN/8000",
 						ClockRat:   8000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 110,
 						RTPMap:     "telephone-event/48000",
 						ClockRat:   48000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 112,
 						RTPMap:     "telephone-event/32000",
 						ClockRat:   32000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 113,
 						RTPMap:     "telephone-event/16000",
 						ClockRat:   16000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 126,
 						RTPMap:     "telephone-event/8000",
 						ClockRat:   8000,
@@ -290,47 +290,47 @@ var casesMedias = []struct {
 			},
 			{
 				Type: "video",
-				Tracks: []track.Track{
-					&track.VP8{
+				Formats: []format.Format{
+					&format.VP8{
 						PayloadTyp: 96,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 97,
 						RTPMap:     "rtx/90000",
 						FMTP:       "apt=96",
 						ClockRat:   90000,
 					},
-					&track.VP9{
+					&format.VP9{
 						PayloadTyp: 98,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 99,
 						RTPMap:     "rtx/90000",
 						FMTP:       "apt=98",
 						ClockRat:   90000,
 					},
-					&track.H264{
+					&format.H264{
 						PayloadTyp:        100,
 						PacketizationMode: 1,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 101,
 						RTPMap:     "rtx/90000",
 						FMTP:       "apt=100",
 						ClockRat:   90000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 127,
 						RTPMap:     "red/90000",
 						ClockRat:   90000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 124,
 						RTPMap:     "rtx/90000",
 						FMTP:       "apt=127",
 						ClockRat:   90000,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 125,
 						RTPMap:     "ulpfec/90000",
 						ClockRat:   90000,
@@ -365,8 +365,8 @@ var casesMedias = []struct {
 		Medias{
 			{
 				Type: "video",
-				Tracks: []track.Track{
-					&track.H264{
+				Formats: []format.Format{
+					&format.H264{
 						PayloadTyp: 96,
 						SPS: []byte{
 							0x67, 0x4d, 0x00, 0x2a, 0x9d, 0xa8, 0x1e, 0x00,
@@ -375,7 +375,7 @@ var casesMedias = []struct {
 						PPS:               []byte{0x68, 0xee, 0x3c, 0x80},
 						PacketizationMode: 1,
 					},
-					&track.Generic{
+					&format.Generic{
 						PayloadTyp: 98,
 						RTPMap:     "MetaData",
 					},
@@ -447,7 +447,7 @@ func TestMediasMarshal(t *testing.T) {
 }
 
 func TestMediasFind(t *testing.T) {
-	tr := &track.Generic{
+	tr := &format.Generic{
 		PayloadTyp: 97,
 		RTPMap:     "rtx/90000",
 		FMTP:       "apt=96",
@@ -456,12 +456,12 @@ func TestMediasFind(t *testing.T) {
 
 	md := &Media{
 		Type: TypeVideo,
-		Tracks: []track.Track{
-			&track.VP8{
+		Formats: []format.Format{
+			&format.VP8{
 				PayloadTyp: 96,
 			},
 			tr,
-			&track.VP9{
+			&format.VP9{
 				PayloadTyp: 98,
 			},
 		},
@@ -470,8 +470,8 @@ func TestMediasFind(t *testing.T) {
 	ms := Medias{
 		{
 			Type: TypeAudio,
-			Tracks: []track.Track{
-				&track.Opus{
+			Formats: []format.Format{
+				&format.Opus{
 					PayloadTyp:   111,
 					SampleRate:   48000,
 					ChannelCount: 2,
@@ -481,7 +481,7 @@ func TestMediasFind(t *testing.T) {
 		md,
 	}
 
-	var trak *track.Generic
+	var trak *format.Generic
 	me := ms.Find(&trak)
 	require.Equal(t, md, me)
 	require.Equal(t, tr, trak)

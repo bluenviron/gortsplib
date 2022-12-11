@@ -8,7 +8,7 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/aler9/gortsplib/v2/pkg/track"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
@@ -31,7 +31,7 @@ const (
 	TypeApplication Type = "application"
 )
 
-// Media is a media stream. It contains one or more track.
+// Media is a media stream. It contains one or more format.
 type Media struct {
 	// Media type.
 	Type Type
@@ -39,26 +39,26 @@ type Media struct {
 	// Control attribute.
 	Control string
 
-	// Tracks contained into the media.
-	Tracks []track.Track
+	// Formats contained into the media.
+	Formats []format.Format
 }
 
 func (m *Media) unmarshal(md *psdp.MediaDescription) error {
 	m.Type = Type(md.MediaName.Media)
 	m.Control = getControlAttribute(md.Attributes)
-	m.Tracks = nil
+	m.Formats = nil
 
 	for _, payloadType := range md.MediaName.Formats {
-		track, err := track.Unmarshal(md, payloadType)
+		format, err := format.Unmarshal(md, payloadType)
 		if err != nil {
 			return err
 		}
 
-		m.Tracks = append(m.Tracks, track)
+		m.Formats = append(m.Formats, format)
 	}
 
-	if m.Tracks == nil {
-		return fmt.Errorf("no tracks found")
+	if m.Formats == nil {
+		return fmt.Errorf("no formats found")
 	}
 
 	return nil
@@ -79,7 +79,7 @@ func (m *Media) Marshal() *psdp.MediaDescription {
 		},
 	}
 
-	for _, trak := range m.Tracks {
+	for _, trak := range m.Formats {
 		typ := strconv.FormatUint(uint64(trak.PayloadType()), 10)
 		md.MediaName.Formats = append(md.MediaName.Formats, typ)
 
@@ -108,11 +108,11 @@ func (m Media) Clone() *Media {
 	ret := &Media{
 		Type:    m.Type,
 		Control: m.Control,
-		Tracks:  make([]track.Track, len(m.Tracks)),
+		Formats: make([]format.Format, len(m.Formats)),
 	}
 
-	for i, track := range m.Tracks {
-		ret.Tracks[i] = track.Clone()
+	for i, format := range m.Formats {
+		ret.Formats[i] = format.Clone()
 	}
 
 	return ret

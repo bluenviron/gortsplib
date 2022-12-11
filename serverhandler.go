@@ -77,7 +77,7 @@ type ServerHandlerOnDescribeCtx struct {
 
 // ServerHandlerOnDescribe can be implemented by a ServerHandler.
 type ServerHandlerOnDescribe interface {
-	// called after receiving a DESCRIBE request.
+	// called when receiving a DESCRIBE request.
 	OnDescribe(*ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error)
 }
 
@@ -94,7 +94,7 @@ type ServerHandlerOnAnnounceCtx struct {
 
 // ServerHandlerOnAnnounce can be implemented by a ServerHandler.
 type ServerHandlerOnAnnounce interface {
-	// called after receiving an ANNOUNCE request.
+	// called when receiving an ANNOUNCE request.
 	OnAnnounce(*ServerHandlerOnAnnounceCtx) (*base.Response, error)
 }
 
@@ -111,7 +111,7 @@ type ServerHandlerOnSetupCtx struct {
 
 // ServerHandlerOnSetup can be implemented by a ServerHandler.
 type ServerHandlerOnSetup interface {
-	// called after receiving a SETUP request.
+	// called when receiving a SETUP request.
 	// must return a Response and a stream.
 	// the stream is needed to
 	// - add the session the the stream's readers
@@ -130,7 +130,7 @@ type ServerHandlerOnPlayCtx struct {
 
 // ServerHandlerOnPlay can be implemented by a ServerHandler.
 type ServerHandlerOnPlay interface {
-	// called after receiving a PLAY request.
+	// called when receiving a PLAY request.
 	OnPlay(*ServerHandlerOnPlayCtx) (*base.Response, error)
 }
 
@@ -145,7 +145,7 @@ type ServerHandlerOnRecordCtx struct {
 
 // ServerHandlerOnRecord can be implemented by a ServerHandler.
 type ServerHandlerOnRecord interface {
-	// called after receiving a RECORD request.
+	// called when receiving a RECORD request.
 	OnRecord(*ServerHandlerOnRecordCtx) (*base.Response, error)
 }
 
@@ -160,7 +160,7 @@ type ServerHandlerOnPauseCtx struct {
 
 // ServerHandlerOnPause can be implemented by a ServerHandler.
 type ServerHandlerOnPause interface {
-	// called after receiving a PAUSE request.
+	// called when receiving a PAUSE request.
 	OnPause(*ServerHandlerOnPauseCtx) (*base.Response, error)
 }
 
@@ -175,7 +175,7 @@ type ServerHandlerOnGetParameterCtx struct {
 
 // ServerHandlerOnGetParameter can be implemented by a ServerHandler.
 type ServerHandlerOnGetParameter interface {
-	// called after receiving a GET_PARAMETER request.
+	// called when receiving a GET_PARAMETER request.
 	OnGetParameter(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
 }
 
@@ -190,7 +190,7 @@ type ServerHandlerOnSetParameterCtx struct {
 
 // ServerHandlerOnSetParameter can be implemented by a ServerHandler.
 type ServerHandlerOnSetParameter interface {
-	// called after receiving a SET_PARAMETER request.
+	// called when receiving a SET_PARAMETER request.
 	OnSetParameter(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 }
 

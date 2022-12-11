@@ -1,12 +1,12 @@
 package gortsplib
 
 type serverStreamMedia struct {
-	tracks           map[uint8]*serverStreamTrack
+	formats          map[uint8]*serverStreamFormat
 	multicastHandler *serverMulticastHandler
 }
 
 func (sm *serverStreamMedia) close() {
-	for _, tr := range sm.tracks {
+	for _, tr := range sm.formats {
 		if tr.rtcpSender != nil {
 			tr.rtcpSender.Close()
 		}

@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
@@ -137,8 +137,8 @@ func TestMediaURL(t *testing.T) {
 
 func TestMediaURLError(t *testing.T) {
 	media := &Media{
-		Type:   "video",
-		Tracks: []track.Track{&track.H264{}},
+		Type:    "video",
+		Formats: []format.Format{&format.H264{}},
 	}
 	_, err := media.URL(nil)
 	require.EqualError(t, err, "Content-Base header not provided")

@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/media"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
@@ -43,7 +43,7 @@ func main() {
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTPAny(func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+	c.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 		log.Printf("RTP packet from media %v\n", medi)
 	})
 

@@ -16,10 +16,10 @@ import (
 
 	"github.com/aler9/gortsplib/v2/pkg/base"
 	"github.com/aler9/gortsplib/v2/pkg/conn"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/media"
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
@@ -1939,7 +1939,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		return &ri, ssrcs
 	}
 
-	trak := &track.Generic{
+	trak := &format.Generic{
 		PayloadTyp: 96,
 		RTPMap:     "private/90000",
 	}
@@ -1947,8 +1947,8 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	require.NoError(t, err)
 
 	medi := &media.Media{
-		Type:   "application",
-		Tracks: []track.Track{trak},
+		Type:    "application",
+		Formats: []format.Format{trak},
 	}
 
 	stream := NewServerStream(media.Medias{medi.Clone(), medi.Clone()})

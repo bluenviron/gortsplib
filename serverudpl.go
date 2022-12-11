@@ -10,14 +10,14 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-func serverFindTrackWithSSRC(
-	tracks map[uint8]*serverSessionTrack,
+func serverFindFormatWithSSRC(
+	formats map[uint8]*serverSessionFormat,
 	ssrc uint32,
-) *serverSessionTrack {
-	for _, track := range tracks {
-		tssrc, ok := track.udpRTCPReceiver.LastSSRC()
+) *serverSessionFormat {
+	for _, format := range formats {
+		tssrc, ok := format.udpRTCPReceiver.LastSSRC()
 		if ok && tssrc == ssrc {
-			return track
+			return format
 		}
 	}
 	return nil

@@ -19,8 +19,8 @@ import (
 
 	"github.com/aler9/gortsplib/v2"
 	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/media"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -385,7 +385,7 @@ func TestServerRecordRead(t *testing.T) {
 							}, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
-						ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+						ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 							stream.WritePacketRTP(medi, pkt)
 						})
 

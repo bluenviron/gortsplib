@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib/v2"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/media"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. set additional client options
 // 2. generate RTP/H264 frames from a file with GStreamer
-// 3. connect to a RTSP server, announce an H264 track
+// 3. connect to a RTSP server, announce an H264 media
 // 4. write the frames to the server
 
 func main() {
@@ -37,10 +37,10 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create a media that contains a H264 track
+	// create a media that contains a H264 media
 	medi := &media.Media{
 		Type: media.TypeVideo,
-		Tracks: []track.Track{&track.H264{
+		Formats: []format.Format{&format.H264{
 			PayloadTyp:        96,
 			PacketizationMode: 1,
 		}},

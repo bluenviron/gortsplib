@@ -42,10 +42,10 @@ func NewServerStream(medias media.Medias) *ServerStream {
 	for _, media := range medias {
 		ssm := &serverStreamMedia{}
 
-		ssm.tracks = make(map[uint8]*serverStreamTrack)
-		for _, trak := range media.Tracks {
-			tr := &serverStreamTrack{
-				track: trak,
+		ssm.formats = make(map[uint8]*serverStreamFormat)
+		for _, trak := range media.Formats {
+			tr := &serverStreamFormat{
+				format: trak,
 			}
 
 			cmedia := media
@@ -56,7 +56,7 @@ func NewServerStream(medias media.Medias) *ServerStream {
 				},
 			)
 
-			ssm.tracks[trak.PayloadType()] = tr
+			ssm.formats[trak.PayloadType()] = tr
 		}
 
 		st.streamMedias[media] = ssm
@@ -68,7 +68,7 @@ func NewServerStream(medias media.Medias) *ServerStream {
 func (st *ServerStream) initializeServerDependentPart() {
 	if !st.s.DisableRTCPSenderReports {
 		for _, ssm := range st.streamMedias {
-			for _, tr := range ssm.tracks {
+			for _, tr := range ssm.formats {
 				tr.rtcpSender.Start(st.s.senderReportPeriod)
 			}
 		}
@@ -104,19 +104,19 @@ func (st *ServerStream) lastSSRC(medi *media.Media) (uint32, bool) {
 	sm := st.streamMedias[medi]
 
 	// since lastSSRC() is used to fill SSRC inside the Transport header,
-	// if there are multiple tracks inside a single media stream,
+	// if there are multiple formats inside a single media stream,
 	// do not return anything, since Transport headers don't support multiple SSRCs.
-	if len(sm.tracks) > 1 {
+	if len(sm.formats) > 1 {
 		return 0, false
 	}
 
 	var firstKey uint8
-	for key := range sm.tracks {
+	for key := range sm.formats {
 		firstKey = key
 		break
 	}
 
-	return sm.tracks[firstKey].rtcpSender.LastSSRC()
+	return sm.formats[firstKey].rtcpSender.LastSSRC()
 }
 
 func (st *ServerStream) rtpInfoEntry(medi *media.Media, now time.Time) *headers.RTPInfoEntry {
@@ -125,27 +125,27 @@ func (st *ServerStream) rtpInfoEntry(medi *media.Media, now time.Time) *headers.
 
 	sm := st.streamMedias[medi]
 
-	// if there are multiple tracks inside a single media stream,
+	// if there are multiple formats inside a single media stream,
 	// do not generate a RTP-Info entry, since RTP-Info doesn't support
 	// multiple sequence numbers / timestamps.
-	if len(sm.tracks) > 1 {
+	if len(sm.formats) > 1 {
 		return nil
 	}
 
 	var firstKey uint8
-	for key := range sm.tracks {
+	for key := range sm.formats {
 		firstKey = key
 		break
 	}
 
-	track := sm.tracks[firstKey]
+	format := sm.formats[firstKey]
 
-	lastSeqNum, lastTimeRTP, lastTimeNTP, ok := track.rtcpSender.LastPacketData()
+	lastSeqNum, lastTimeRTP, lastTimeNTP, ok := format.rtcpSender.LastPacketData()
 	if !ok {
 		return nil
 	}
 
-	clockRate := track.track.ClockRate()
+	clockRate := format.format.ClockRate()
 	if clockRate == 0 {
 		return nil
 	}
@@ -295,9 +295,9 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet
 
 	sm := st.streamMedias[medi]
 
-	trak := sm.tracks[pkt.PayloadType]
+	trak := sm.formats[pkt.PayloadType]
 
-	trak.rtcpSender.ProcessPacket(pkt, ntp, trak.track.PTSEqualsDTS(pkt))
+	trak.rtcpSender.ProcessPacket(pkt, ntp, trak.format.PTSEqualsDTS(pkt))
 
 	// send unicast
 	for r := range st.activeUnicastReaders {

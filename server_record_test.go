@@ -14,10 +14,10 @@ import (
 
 	"github.com/aler9/gortsplib/v2/pkg/base"
 	"github.com/aler9/gortsplib/v2/pkg/conn"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/media"
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 )
 
 func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
@@ -175,7 +175,7 @@ func TestServerRecordSetupPath(t *testing.T) {
 			s := &Server{
 				Handler: &testServerHandler{
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-						// make sure that track URLs are not overridden by NewServerStream()
+						// make sure that media URLs are not overridden by NewServerStream()
 						stream := NewServerStream(ctx.Medias)
 						defer stream.Close()
 
@@ -266,7 +266,7 @@ func TestServerRecordSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerRecordErrorSetupTrackTwice(t *testing.T) {
+func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 	serverErr := make(chan error)
 
 	s := &Server{
@@ -500,9 +500,9 @@ func TestServerRecord(t *testing.T) {
 						// these are sent after the response, only if onRecord returns StatusOK.
 						ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
 
-						ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+						ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
 							require.Equal(t, ctx.Session.AnnouncedMedias()[0], medi)
-							require.Equal(t, ctx.Session.AnnouncedMedias()[0].Tracks[0], trak)
+							require.Equal(t, ctx.Session.AnnouncedMedias()[0].Formats[0], trak)
 							require.Equal(t, &testRTPPacket, pkt)
 						})
 
@@ -1404,7 +1404,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 
 			medias := media.Medias{{
 				Type: media.TypeApplication,
-				Tracks: []track.Track{&track.Generic{
+				Formats: []format.Format{&format.Generic{
 					PayloadTyp: 97,
 					RTPMap:     "private/90000",
 				}},

@@ -24,11 +24,11 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/base"
 	"github.com/aler9/gortsplib/v2/pkg/bytecounter"
 	"github.com/aler9/gortsplib/v2/pkg/conn"
+	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/liberrors"
 	"github.com/aler9/gortsplib/v2/pkg/media"
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
-	"github.com/aler9/gortsplib/v2/pkg/track"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
@@ -613,8 +613,8 @@ func (c *Client) trySwitchingProtocol() error {
 		}
 
 		c.medias[i].onPacketRTCP = cm.onPacketRTCP
-		for j, tr := range cm.tracks {
-			c.medias[i].tracks[j].onPacketRTP = tr.onPacketRTP
+		for j, tr := range cm.formats {
+			c.medias[i].formats[j].onPacketRTP = tr.onPacketRTP
 		}
 	}
 
@@ -1568,10 +1568,10 @@ func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
 }
 
 // OnPacketRTPAny sets the callback that is called when a RTP packet is read from any setupped media.
-func (c *Client) OnPacketRTPAny(cb func(*media.Media, track.Track, *rtp.Packet)) {
+func (c *Client) OnPacketRTPAny(cb func(*media.Media, format.Format, *rtp.Packet)) {
 	for _, cm := range c.medias {
 		cmedia := cm.media
-		for _, trak := range cm.media.Tracks {
+		for _, trak := range cm.media.Formats {
 			c.OnPacketRTP(cm.media, trak, func(pkt *rtp.Packet) {
 				cb(cmedia, trak, pkt)
 			})
@@ -1590,9 +1590,9 @@ func (c *Client) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (c *Client) OnPacketRTP(medi *media.Media, trak track.Track, cb func(*rtp.Packet)) {
+func (c *Client) OnPacketRTP(medi *media.Media, trak format.Format, cb func(*rtp.Packet)) {
 	cm := c.medias[medi]
-	ct := cm.tracks[trak.PayloadType()]
+	ct := cm.formats[trak.PayloadType()]
 	ct.onPacketRTP = cb
 }
 
@@ -1610,7 +1610,7 @@ func (c *Client) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
 // WritePacketRTPWithNTP writes a RTP packet to the media stream.
 func (c *Client) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp time.Time) error {
 	cm := c.medias[medi]
-	ct := cm.tracks[pkt.PayloadType]
+	ct := cm.formats[pkt.PayloadType]
 	return ct.writePacketRTPWithNTP(pkt, ntp)
 }
 

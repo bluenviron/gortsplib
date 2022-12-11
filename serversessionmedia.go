@@ -26,7 +26,7 @@ type serverSessionMedia struct {
 	tcpRTPFrame            *base.InterleavedFrame
 	tcpRTCPFrame           *base.InterleavedFrame
 	tcpBuffer              []byte
-	tracks                 map[uint8]*serverSessionTrack // record
+	formats                map[uint8]*serverSessionFormat // record
 	writePacketRTPInQueue  func([]byte)
 	writePacketRTCPInQueue func([]byte)
 	readRTP                func([]byte) error
@@ -54,14 +54,14 @@ func (sm *serverSessionMedia) start() {
 			sm.readRTP = sm.readRTPUDPRecord
 			sm.readRTCP = sm.readRTCPUDPRecord
 
-			for _, tr := range sm.tracks {
+			for _, tr := range sm.formats {
 				tr.udpReorderer = rtpreorderer.New()
 
 				cmedia := sm.media
 				tr.udpRTCPReceiver = rtcpreceiver.New(
 					sm.ss.s.udpReceiverReportPeriod,
 					nil,
-					tr.track.ClockRate(),
+					tr.format.ClockRate(),
 					func(pkt rtcp.Packet) {
 						sm.ss.WritePacketRTCP(cmedia, pkt)
 					})
@@ -108,7 +108,7 @@ func (sm *serverSessionMedia) stop() {
 		sm.ss.s.udpRTCPListener.removeClient(sm)
 	}
 
-	for _, tr := range sm.tracks {
+	for _, tr := range sm.formats {
 		if tr.udpRTCPReceiver != nil {
 			tr.udpRTCPReceiver.Close()
 			tr.udpRTCPReceiver = nil
@@ -192,7 +192,7 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) error {
 		return nil
 	}
 
-	trak, ok := sm.tracks[pkt.PayloadType]
+	trak, ok := sm.formats[pkt.PayloadType]
 	if !ok {
 		onDecodeError(sm.ss, fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
 		return nil
@@ -226,9 +226,9 @@ func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) error {
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
-			track := serverFindTrackWithSSRC(sm.tracks, sr.SSRC)
-			if track != nil {
-				track.udpRTCPReceiver.ProcessSenderReport(sr, now)
+			format := serverFindFormatWithSSRC(sm.formats, sr.SSRC)
+			if format != nil {
+				format.udpRTCPReceiver.ProcessSenderReport(sr, now)
 			}
 		}
 	}
@@ -271,7 +271,7 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) error {
 		return err
 	}
 
-	trak, ok := sm.tracks[pkt.PayloadType]
+	trak, ok := sm.formats[pkt.PayloadType]
 	if !ok {
 		onDecodeError(sm.ss, fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
 		return nil

@@ -9,7 +9,7 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. get and print informations about tracks published on a path.
+// 2. get and print informations about medias published on a path.
 
 func main() {
 	c := gortsplib.Client{}
@@ -25,10 +25,10 @@ func main() {
 	}
 	defer c.Close()
 
-	tracks, _, _, err := c.Describe(u)
+	medias, _, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Printf("available tracks: %v\n", tracks)
+	log.Printf("available medias: %v\n", medias)
 }
