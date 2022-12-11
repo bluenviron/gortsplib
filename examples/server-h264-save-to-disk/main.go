@@ -68,7 +68,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 	// find the H264 media and format
 	var trak *format.H264
-	medi := ctx.Medias.Find(&trak)
+	medi := ctx.Medias.FindFormat(&trak)
 	if medi == nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,

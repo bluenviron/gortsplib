@@ -41,7 +41,7 @@ func main() {
 
 	// find the H264 media and format
 	var trak *format.H264
-	medi := medias.Find(&trak)
+	medi := medias.FindFormat(&trak)
 	if medi == nil {
 		panic("media not found")
 	}

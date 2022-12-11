@@ -38,7 +38,7 @@ func main() {
 
 	// find the MPEG4-audio media and format
 	var trak *format.MPEG4Audio
-	medi := medias.Find(&trak)
+	medi := medias.FindFormat(&trak)
 	if medi == nil {
 		panic("media not found")
 	}

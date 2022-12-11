@@ -38,7 +38,7 @@ func main() {
 
 	// find the VP8 media and format
 	var trak *format.VP8
-	medi := medias.Find(&trak)
+	medi := medias.FindFormat(&trak)
 	if medi == nil {
 		panic("media not found")
 	}

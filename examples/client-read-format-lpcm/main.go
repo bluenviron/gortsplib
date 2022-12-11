@@ -38,7 +38,7 @@ func main() {
 
 	// find the LPCM media and format
 	var trak *format.LPCM
-	medi := medias.Find(&trak)
+	medi := medias.FindFormat(&trak)
 	if medi == nil {
 		panic("media not found")
 	}

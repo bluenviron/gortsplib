@@ -446,7 +446,7 @@ func TestMediasMarshal(t *testing.T) {
 	}
 }
 
-func TestMediasFind(t *testing.T) {
+func TestMediasFindFormat(t *testing.T) {
 	tr := &format.Generic{
 		PayloadTyp: 97,
 		RTPMap:     "rtx/90000",
@@ -482,7 +482,7 @@ func TestMediasFind(t *testing.T) {
 	}
 
 	var trak *format.Generic
-	me := ms.Find(&trak)
+	me := ms.FindFormat(&trak)
 	require.Equal(t, md, me)
 	require.Equal(t, tr, trak)
 }

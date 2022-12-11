@@ -38,7 +38,7 @@ func main() {
 
 	// find the G711 media and format
 	var trak *format.G711
-	medi := medias.Find(&trak)
+	medi := medias.FindFormat(&trak)
 	if medi == nil {
 		panic("media not found")
 	}
