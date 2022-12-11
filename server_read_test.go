@@ -51,47 +51,40 @@ func multicastCapableIP(t *testing.T) string {
 
 func TestServerReadSetupPath(t *testing.T) {
 	for _, ca := range []struct {
-		name    string
-		url     string
-		path    string
-		mediaID int
+		name string
+		url  string
+		path string
 	}{
 		{
 			"normal",
 			"rtsp://localhost:8554/teststream/mediaID=2",
 			"teststream",
-			2,
 		},
 		{
 			"with query",
 			"rtsp://localhost:8554/teststream?testing=123/mediaID=4",
 			"teststream",
-			4,
 		},
 		{
 			// this is needed to support reading mpegts with ffmpeg
 			"without media id",
 			"rtsp://localhost:8554/teststream/",
 			"teststream",
-			0,
 		},
 		{
 			"subpath",
 			"rtsp://localhost:8554/test/stream/mediaID=0",
 			"test/stream",
-			0,
 		},
 		{
 			"subpath without media id",
 			"rtsp://localhost:8554/test/stream/",
 			"test/stream",
-			0,
 		},
 		{
 			"subpath with query",
 			"rtsp://localhost:8554/test/stream?testing=123/mediaID=4",
 			"test/stream",
-			4,
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -103,7 +96,6 @@ func TestServerReadSetupPath(t *testing.T) {
 				Handler: &testServerHandler{
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						require.Equal(t, ca.path, ctx.Path)
-						require.Equal(t, ca.mediaID, ctx.MediaID)
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
@@ -131,7 +123,7 @@ func TestServerReadSetupPath(t *testing.T) {
 					v := headers.TransportModePlay
 					return &v
 				}(),
-				InterleavedIDs: &[2]int{ca.mediaID * 2, (ca.mediaID * 2) + 1},
+				InterleavedIDs: &[2]int{0, 1},
 			}
 
 			res, err := writeReqReadRes(conn, base.Request{
@@ -172,7 +164,7 @@ func TestServerReadSetupErrors(t *testing.T) {
 							require.EqualError(t, ctx.Error, "can't setup medias with different paths")
 
 						case "double setup":
-							require.EqualError(t, ctx.Error, "media 0 has already been setup")
+							require.EqualError(t, ctx.Error, "media has already been setup")
 
 						case "closed stream":
 							require.EqualError(t, ctx.Error, "stream is closed")
@@ -390,31 +382,32 @@ func TestServerRead(t *testing.T) {
 						// send RTCP packets directly to the session.
 						// these are sent after the response, only if onPlay returns StatusOK.
 						if transport != "multicast" {
-							ctx.Session.WritePacketRTCP(0, &testRTCPPacket)
+							ctx.Session.WritePacketRTCP(stream.Medias()[0], &testRTCPPacket)
 						}
+
+						ctx.Session.OnPacketRTCPAny(func(medi *media.Media, pkt rtcp.Packet) {
+							// ignore multicast loopback
+							if transport == "multicast" && atomic.AddUint64(&counter, 1) <= 1 {
+								return
+							}
+
+							require.Equal(t, stream.Medias()[0], medi)
+							require.Equal(t, &testRTCPPacket, pkt)
+							close(framesReceived)
+						})
 
 						// the session is added to the stream only after onPlay returns
 						// with StatusOK; therefore we must wait before calling
 						// ServerStream.WritePacket*()
 						go func() {
 							time.Sleep(1 * time.Second)
-							stream.WritePacketRTCP(0, &testRTCPPacket)
-							stream.WritePacketRTP(0, &testRTPPacket)
+							stream.WritePacketRTCP(stream.Medias()[0], &testRTCPPacket)
+							stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
 						}()
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
-					},
-					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
-						// ignore multicast loopback
-						if transport == "multicast" && atomic.AddUint64(&counter, 1) <= 1 {
-							return
-						}
-
-						require.Equal(t, 0, ctx.MediaID)
-						require.Equal(t, &testRTCPPacket, ctx.Packet)
-						close(framesReceived)
 					},
 					onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
 						return &base.Response{
@@ -938,7 +931,7 @@ func TestServerReadRTCPReport(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			for i := 0; i < 2; i++ {
-				stream.WritePacketRTP(0, &rtp.Packet{
+				stream.WritePacketRTP(stream.Medias()[0], &rtp.Packet{
 					Header: rtp.Header{
 						Version:     2,
 						PayloadType: 96,
@@ -1061,7 +1054,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 				go func() {
 					defer close(writerDone)
 
-					stream.WritePacketRTP(0, &testRTPPacket)
+					stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
 
 					t := time.NewTicker(50 * time.Millisecond)
 					defer t.Stop()
@@ -1069,7 +1062,7 @@ func TestServerReadTCPResponseBeforeFrames(t *testing.T) {
 					for {
 						select {
 						case <-t.C:
-							stream.WritePacketRTP(0, &testRTPPacket)
+							stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
 						case <-writerTerminate:
 							return
 						}
@@ -1246,7 +1239,7 @@ func TestServerReadPlayPausePlay(t *testing.T) {
 						for {
 							select {
 							case <-t.C:
-								stream.WritePacketRTP(0, &testRTPPacket)
+								stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
 							case <-writerTerminate:
 								return
 							}
@@ -1364,7 +1357,7 @@ func TestServerReadPlayPausePause(t *testing.T) {
 					for {
 						select {
 						case <-t.C:
-							stream.WritePacketRTP(0, &testRTPPacket)
+							stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
 						case <-writerTerminate:
 							return
 						}
@@ -1790,8 +1783,8 @@ func TestServerReadPartialMedias(t *testing.T) {
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
 					time.Sleep(1 * time.Second)
-					stream.WritePacketRTP(0, &testRTPPacket)
-					stream.WritePacketRTP(1, &testRTPPacket)
+					stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+					stream.WritePacketRTP(stream.Medias()[1], &testRTPPacket)
 				}()
 
 				return &base.Response{
@@ -1958,7 +1951,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		Tracks: []track.Track{trak},
 	}
 
-	stream := NewServerStream(media.Medias{medi, medi})
+	stream := NewServerStream(media.Medias{medi.Clone(), medi.Clone()})
 	defer stream.Close()
 
 	s := &Server{
@@ -1981,7 +1974,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream.WritePacketRTP(0, &rtp.Packet{
+	stream.WritePacketRTP(stream.Medias()[0], &rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,
@@ -2015,7 +2008,7 @@ func TestServerReadAdditionalInfos(t *testing.T) {
 		nil,
 	}, ssrcs)
 
-	stream.WritePacketRTP(1, &rtp.Packet{
+	stream.WritePacketRTP(stream.Medias()[1], &rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,

@@ -74,6 +74,14 @@ func (ms Medias) Clone() Medias {
 	return ret
 }
 
+// CloneAndSetControls clones the media list and sets the control attribute
+// of all medias in the list.
+func (ms Medias) CloneAndSetControls() Medias {
+	ret := ms.Clone()
+	ret.SetControls()
+	return ret
+}
+
 // SetControls sets the control attribute of all medias in the list.
 func (ms Medias) SetControls() {
 	for i, media := range ms {

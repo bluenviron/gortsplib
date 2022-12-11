@@ -4,7 +4,10 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/media"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -35,22 +38,27 @@ func main() {
 
 	log.Printf("republishing %d medias", len(medias))
 
+	// connect to the server and start recording the same medias
 	publisher := gortsplib.Client{}
-
-	// connect to the server and start publishing the same medias
-	err = publisher.StartPublishing("rtsp://localhost:8554/mystream2", medias)
+	err = publisher.StartRecording("rtsp://localhost:8554/mystream2", medias)
 	if err != nil {
 		panic(err)
 	}
 	defer publisher.Close()
 
-	// called when a RTP packet arrives
-	reader.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		publisher.WritePacketRTP(ctx.MediaID, ctx.Packet)
+	// setup all medias
+	err = reader.SetupAll(medias, baseURL)
+	if err != nil {
+		panic(err)
 	}
 
-	// setup and read all medias
-	err = reader.SetupAndPlay(medias, baseURL)
+	// read RTP packets from reader and write them to publisher
+	reader.OnPacketRTPAny(func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+		publisher.WritePacketRTP(medi, pkt)
+	})
+
+	// start playing
+	_, err = reader.Play(nil)
 	if err != nil {
 		panic(err)
 	}

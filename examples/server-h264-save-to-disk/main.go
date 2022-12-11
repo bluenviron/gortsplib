@@ -5,6 +5,8 @@ import (
 	"log"
 	"sync"
 
+	"github.com/pion/rtp"
+
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/media"
@@ -17,22 +19,11 @@ import (
 // 2. allow a single client to publish a stream, containing a H264 track, with TCP or UDP
 // 3. save the content of the H264 track into a file in MPEG-TS format
 
-func findTrack(medias media.Medias) (*media.Media, *track.H264, int) {
-	for i, media := range medias {
-		for _, trak := range media.Tracks {
-			if trak, ok := trak.(*track.H264); ok {
-				return media, trak, i
-			}
-		}
-	}
-	return nil, nil, -1
-}
-
 type serverHandler struct {
 	mutex       sync.Mutex
 	publisher   *gortsplib.ServerSession
-	mediaID     int
-	h264track   *track.H264
+	media       *media.Media
+	track       *track.H264
 	rtpDec      *rtph264.Decoder
 	mpegtsMuxer *mpegtsMuxer
 }
@@ -76,7 +67,8 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// find the H264 media and track
-	medi, trak, mediaID := findTrack(ctx.Medias)
+	var trak *track.H264
+	medi := ctx.Medias.Find(&trak)
 	if medi == nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
@@ -95,7 +87,8 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	sh.publisher = ctx.Session
-	sh.mediaID = mediaID
+	sh.media = medi
+	sh.track = trak
 	sh.rtpDec = rtpDec
 	sh.mpegtsMuxer = mpegtsMuxer
 
@@ -117,27 +110,20 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
 	log.Printf("record request")
 
+	// called after receiving a RTP packet
+	ctx.Session.OnPacketRTP(sh.media, sh.track, func(pkt *rtp.Packet) {
+		nalus, pts, err := sh.rtpDec.Decode(pkt)
+		if err != nil {
+			return
+		}
+
+		// encode H264 NALUs into MPEG-TS
+		sh.mpegtsMuxer.encode(nalus, pts)
+	})
+
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, nil
-}
-
-// called after receiving a RTP packet.
-func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
-
-	if ctx.MediaID != sh.mediaID {
-		return
-	}
-
-	nalus, pts, err := sh.rtpDec.Decode(ctx.Packet)
-	if err != nil {
-		return
-	}
-
-	// encode H264 NALUs into MPEG-TS
-	sh.mpegtsMuxer.encode(nalus, pts)
 }
 
 func main() {

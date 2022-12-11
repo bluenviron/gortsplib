@@ -14,10 +14,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/media"
+	"github.com/aler9/gortsplib/pkg/track"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -85,8 +88,6 @@ type testServerHandler struct {
 	onPlay         func(*gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error)
 	onRecord       func(*gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*gortsplib.ServerHandlerOnPauseCtx) (*base.Response, error)
-	onPacketRTP    func(*gortsplib.ServerHandlerOnPacketRTPCtx)
-	onPacketRTCP   func(*gortsplib.ServerHandlerOnPacketRTCPCtx)
 	onSetParameter func(*gortsplib.ServerHandlerOnSetParameterCtx) (*base.Response, error)
 	onGetParameter func(*gortsplib.ServerHandlerOnGetParameterCtx) (*base.Response, error)
 }
@@ -155,18 +156,6 @@ func (sh *testServerHandler) OnPause(ctx *gortsplib.ServerHandlerOnPauseCtx) (*b
 		return sh.onPause(ctx)
 	}
 	return nil, fmt.Errorf("unimplemented")
-}
-
-func (sh *testServerHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
-	if sh.onPacketRTP != nil {
-		sh.onPacketRTP(ctx)
-	}
-}
-
-func (sh *testServerHandler) OnPacketRTCP(ctx *gortsplib.ServerHandlerOnPacketRTCPCtx) {
-	if sh.onPacketRTCP != nil {
-		sh.onPacketRTCP(ctx)
-	}
 }
 
 func (sh *testServerHandler) OnSetParameter(ctx *gortsplib.ServerHandlerOnSetParameterCtx) (*base.Response, error) {
@@ -396,17 +385,13 @@ func TestServerPublishRead(t *testing.T) {
 							}, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
+						ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+							stream.WritePacketRTP(medi, pkt)
+						})
+
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
-					},
-					onPacketRTP: func(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
-						mutex.Lock()
-						defer mutex.Unlock()
-
-						if ctx.Session == publisher {
-							stream.WritePacketRTP(ctx.MediaID, ctx.Packet)
-						}
 					},
 				},
 				RTSPAddress: "localhost:8554",

@@ -2,13 +2,11 @@ package gortsplib
 
 import (
 	"crypto/rand"
-	"fmt"
 	"net"
 	"strconv"
 	"sync/atomic"
 	"time"
 
-	"github.com/pion/rtcp"
 	"golang.org/x/net/ipv4"
 )
 
@@ -20,16 +18,6 @@ func randUint32() uint32 {
 
 func randIntn(n int) int {
 	return int(randUint32() & (uint32(n) - 1))
-}
-
-func clientFindTrackWithSSRC(tracks map[uint8]*clientMediaTrack, ssrc uint32) *clientMediaTrack {
-	for _, track := range tracks {
-		tssrc, ok := track.udpRTCPReceiver.LastSSRC()
-		if ok && tssrc == ssrc {
-			return track
-		}
-	}
-	return nil
 }
 
 type clientUDPListener struct {
@@ -169,15 +157,11 @@ func (u *clientUDPListener) stop() {
 func (u *clientUDPListener) runReader(forPlay bool) {
 	defer close(u.readerDone)
 
-	var processFunc func(time.Time, []byte)
-	if forPlay {
-		if u.isRTP {
-			processFunc = u.processPlayRTP
-		} else {
-			processFunc = u.processPlayRTCP
-		}
+	var readFunc func([]byte) error
+	if u.isRTP {
+		readFunc = u.cm.readRTP
 	} else {
-		processFunc = u.processRecordRTCP
+		readFunc = u.cm.readRTCP
 	}
 
 	for {
@@ -196,101 +180,7 @@ func (u *clientUDPListener) runReader(forPlay bool) {
 		now := time.Now()
 		atomic.StoreInt64(u.lastPacketTime, now.Unix())
 
-		processFunc(now, buf[:n])
-	}
-}
-
-func (u *clientUDPListener) processPlayRTP(now time.Time, payload []byte) {
-	plen := len(payload)
-
-	atomic.AddUint64(u.c.BytesReceived, uint64(plen))
-
-	if plen == (maxPacketSize + 1) {
-		u.c.OnDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
-		return
-	}
-
-	pkt := u.c.udpRTPPacketBuffer.next()
-	err := pkt.Unmarshal(payload)
-	if err != nil {
-		u.c.OnDecodeError(err)
-		return
-	}
-
-	track, ok := u.cm.tracks[pkt.PayloadType]
-	if !ok {
-		u.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
-		return
-	}
-
-	packets, missing := track.udpReorderer.Process(pkt)
-	if missing != 0 {
-		u.c.OnDecodeError(fmt.Errorf("%d RTP packet(s) lost", missing))
-		// do not return
-	}
-
-	for _, pkt := range packets {
-		track.udpRTCPReceiver.ProcessPacket(pkt, time.Now(), track.track.PTSEqualsDTS(pkt))
-
-		u.c.OnPacketRTP(&ClientOnPacketRTPCtx{
-			MediaID: u.cm.id,
-			Packet:  pkt,
-		})
-	}
-}
-
-func (u *clientUDPListener) processPlayRTCP(now time.Time, payload []byte) {
-	plen := len(payload)
-
-	atomic.AddUint64(u.c.BytesReceived, uint64(plen))
-
-	if plen == (maxPacketSize + 1) {
-		u.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
-		return
-	}
-
-	packets, err := rtcp.Unmarshal(payload)
-	if err != nil {
-		u.c.OnDecodeError(err)
-		return
-	}
-
-	for _, pkt := range packets {
-		if sr, ok := pkt.(*rtcp.SenderReport); ok {
-			track := clientFindTrackWithSSRC(u.cm.tracks, sr.SSRC)
-			if track != nil {
-				track.udpRTCPReceiver.ProcessSenderReport(sr, now)
-			}
-		}
-
-		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-			MediaID: u.cm.id,
-			Packet:  pkt,
-		})
-	}
-}
-
-func (u *clientUDPListener) processRecordRTCP(now time.Time, payload []byte) {
-	plen := len(payload)
-
-	atomic.AddUint64(u.c.BytesReceived, uint64(plen))
-
-	if plen == (maxPacketSize + 1) {
-		u.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
-		return
-	}
-
-	packets, err := rtcp.Unmarshal(payload)
-	if err != nil {
-		u.c.OnDecodeError(err)
-		return
-	}
-
-	for _, pkt := range packets {
-		u.c.OnPacketRTCP(&ClientOnPacketRTCPCtx{
-			MediaID: u.cm.id,
-			Packet:  pkt,
-		})
+		readFunc(buf[:n])
 	}
 }
 

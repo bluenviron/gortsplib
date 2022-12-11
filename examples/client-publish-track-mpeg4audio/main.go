@@ -52,9 +52,9 @@ func main() {
 		}},
 	}
 
-	// connect to the server and start publishing the media
+	// connect to the server and start recording the media
 	c := gortsplib.Client{}
-	err = c.StartPublishing("rtsp://localhost:8554/mystream",
+	err = c.StartRecording("rtsp://localhost:8554/mystream",
 		media.Medias{medi})
 	if err != nil {
 		panic(err)
@@ -70,7 +70,7 @@ func main() {
 		}
 
 		// route RTP packet to the server
-		err = c.WritePacketRTP(0, &pkt)
+		err = c.WritePacketRTP(medi, &pkt)
 		if err != nil {
 			panic(err)
 		}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -18,8 +17,6 @@ import (
 	"github.com/aler9/gortsplib/pkg/liberrors"
 	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/ringbuffer"
-	"github.com/aler9/gortsplib/pkg/rtcpreceiver"
-	"github.com/aler9/gortsplib/pkg/rtpreorderer"
 	"github.com/aler9/gortsplib/pkg/sdp"
 	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
@@ -34,61 +31,47 @@ func stringsReverseIndex(s, substr string) int {
 	return -1
 }
 
-func setupGetMediaIDPathQuery(
-	u *url.URL,
-	thMode *headers.TransportMode,
-	announcedMedias media.Medias,
-	setuppedPath *string,
-	setuppedQuery *string,
-	setuppedBaseURL *url.URL,
-) (int, string, string, error) {
+func serverParseURLForPlay(u *url.URL) (string, string, int, error) {
 	pathAndQuery, ok := u.RTSPPathAndQuery()
 	if !ok {
-		return 0, "", "", liberrors.ErrServerInvalidPath{}
+		return "", "", -1, liberrors.ErrServerInvalidPath{}
 	}
 
-	if thMode == nil || *thMode == headers.TransportModePlay {
-		i := stringsReverseIndex(pathAndQuery, "/mediaID=")
-
-		// URL doesn't contain mediaID - it's media zero
-		if i < 0 {
-			if !strings.HasSuffix(pathAndQuery, "/") {
-				return 0, "", "", fmt.Errorf("path of a SETUP request must end with a slash. " +
-					"This typically happens when VLC fails a request, and then switches to an " +
-					"unsupported RTSP dialect")
-			}
-			pathAndQuery = pathAndQuery[:len(pathAndQuery)-1]
-
-			path, query := url.PathSplitQuery(pathAndQuery)
-
-			// we assume it's track 0
-			return 0, path, query, nil
+	i := stringsReverseIndex(pathAndQuery, "/mediaID=")
+	if i < 0 {
+		if !strings.HasSuffix(pathAndQuery, "/") {
+			return "", "", -1, fmt.Errorf("path of a SETUP request must end with a slash. " +
+				"This typically happens when VLC fails a request, and then switches to an " +
+				"unsupported RTSP dialect")
 		}
 
-		tmp, err := strconv.ParseInt(pathAndQuery[i+len("/mediaID="):], 10, 64)
-		if err != nil || tmp < 0 {
-			return 0, "", "", fmt.Errorf("unable to parse track ID (%v)", pathAndQuery)
-		}
-		mediaID := int(tmp)
-		pathAndQuery = pathAndQuery[:i]
-
-		path, query := url.PathSplitQuery(pathAndQuery)
-
-		if setuppedPath != nil && (path != *setuppedPath || query != *setuppedQuery) {
-			return 0, "", "", fmt.Errorf("can't setup medias with different paths")
-		}
-
-		return mediaID, path, query, nil
+		path, query := url.PathSplitQuery(pathAndQuery[:len(pathAndQuery)-1])
+		return path, query, 0, nil
 	}
 
-	for id, media := range announcedMedias {
-		u2, _ := media.URL(setuppedBaseURL)
-		if u2.String() == u.String() {
-			return id, *setuppedPath, *setuppedQuery, nil
+	var t string
+	pathAndQuery, t = pathAndQuery[:i], pathAndQuery[i+len("/mediaID="):]
+	path, query := url.PathSplitQuery(pathAndQuery)
+	tmp, _ := strconv.ParseInt(t, 10, 64)
+	return path, query, int(tmp), nil
+}
+
+func findMediaByURL(medias media.Medias, baseURL *url.URL, u *url.URL) (*media.Media, bool) {
+	for _, media := range medias {
+		u1, err := media.URL(baseURL)
+		if err == nil && u1.String() == u.String() {
+			return media, true
 		}
 	}
 
-	return 0, "", "", fmt.Errorf("invalid track path (%s)", pathAndQuery)
+	return nil, false
+}
+
+func findMediaByID(medias media.Medias, id int) (*media.Media, bool) {
+	if len(medias) <= id {
+		return nil, false
+	}
+	return medias[id], true
 }
 
 func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *headers.Transport {
@@ -107,7 +90,7 @@ func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *heade
 }
 
 func findAndValidateTransport(inTH *headers.Transport,
-	tcpMediasByChannel map[int]*ServerSessionSetuppedMedia,
+	tcpMediasByChannel map[int]*serverSessionMedia,
 ) (Transport, error) {
 	if inTH.Protocol == headers.TransportProtocolUDP {
 		if inTH.Delivery != nil && *inTH.Delivery == headers.TransportDeliveryMulticast {
@@ -165,56 +148,33 @@ func (s ServerSessionState) String() string {
 	return "unknown"
 }
 
-type serverSessionSetuppedMediaTrack struct {
-	track           track.Track
-	udpReorderer    *rtpreorderer.Reorderer
-	udpRTCPReceiver *rtcpreceiver.RTCPReceiver
-}
-
-// ServerSessionSetuppedMedia is a setupped media of a ServerSession.
-type ServerSessionSetuppedMedia struct {
-	id               int
-	tcpChannel       int
-	udpRTPReadPort   int
-	udpRTPWriteAddr  *net.UDPAddr
-	udpRTCPReadPort  int
-	udpRTCPWriteAddr *net.UDPAddr
-
-	// record
-	media  *media.Media
-	tracks map[uint8]*serverSessionSetuppedMediaTrack
-}
-
 // ServerSession is a server-side RTSP session.
 type ServerSession struct {
 	s        *Server
 	secretID string // must not be shared, allows to take ownership of the session
 	author   *ServerConn
 
-	ctx                 context.Context
-	ctxCancel           func()
-	bytesReceived       *uint64
-	bytesSent           *uint64
-	userData            interface{}
-	conns               map[*ServerConn]struct{}
-	state               ServerSessionState
-	setuppedMedias      map[int]*ServerSessionSetuppedMedia
-	tcpMediasByChannel  map[int]*ServerSessionSetuppedMedia
-	setuppedTransport   *Transport
-	setuppedBaseURL     *url.URL      // publish
-	setuppedStream      *ServerStream // read
-	setuppedPath        *string
-	setuppedQuery       *string
-	lastRequestTime     time.Time
-	tcpConn             *ServerConn
-	announcedMedias     media.Medias // publish
-	udpLastPacketTime   *int64       // publish
-	udpCheckStreamTimer *time.Timer
-	writerRunning       bool
-	writeBuffer         *ringbuffer.RingBuffer
-
-	// writer channels
-	writerDone chan struct{}
+	ctx                   context.Context
+	ctxCancel             func()
+	bytesReceived         *uint64
+	bytesSent             *uint64
+	userData              interface{}
+	conns                 map[*ServerConn]struct{}
+	state                 ServerSessionState
+	setuppedMedias        map[*media.Media]*serverSessionMedia
+	setuppedMediasOrdered []*serverSessionMedia
+	tcpMediasByChannel    map[int]*serverSessionMedia
+	setuppedTransport     *Transport
+	setuppedStream        *ServerStream // read
+	setuppedPath          *string
+	setuppedQuery         string
+	lastRequestTime       time.Time
+	tcpConn               *ServerConn
+	announcedMedias       media.Medias // publish
+	udpLastPacketTime     *int64       // publish
+	udpCheckStreamTimer   *time.Timer
+	writer                serverWriter
+	rtpPacketBuffer       *rtpPacketMultiBuffer
 
 	// in
 	request     chan sessionRequestReq
@@ -272,11 +232,6 @@ func (ss *ServerSession) State() ServerSessionState {
 	return ss.state
 }
 
-// SetuppedMedias returns the setupped media.
-func (ss *ServerSession) SetuppedMedias() map[int]*ServerSessionSetuppedMedia {
-	return ss.setuppedMedias
-}
-
 // SetuppedTransport returns the transport negotiated during SETUP.
 func (ss *ServerSession) SetuppedTransport() *Transport {
 	return ss.setuppedTransport
@@ -325,36 +280,16 @@ func (ss *ServerSession) run() {
 
 	ss.ctxCancel()
 
-	switch ss.state {
-	case ServerSessionStatePlay:
-		ss.setuppedStream.readerSetInactive(ss)
-
-		if *ss.setuppedTransport == TransportUDP {
-			ss.s.udpRTCPListener.removeClient(ss)
-		}
-
-	case ServerSessionStateRecord:
-		if *ss.setuppedTransport == TransportUDP {
-			ss.s.udpRTPListener.removeClient(ss)
-			ss.s.udpRTCPListener.removeClient(ss)
-
-			for _, sm := range ss.setuppedMedias {
-				for _, tr := range sm.tracks {
-					tr.udpRTCPReceiver.Close()
-					tr.udpRTCPReceiver = nil
-				}
-			}
-		}
-	}
-
 	if ss.setuppedStream != nil {
+		ss.setuppedStream.readerSetInactive(ss)
 		ss.setuppedStream.readerRemove(ss)
 	}
 
-	if ss.writerRunning {
-		ss.writeBuffer.Close()
-		<-ss.writerDone
+	for _, sm := range ss.setuppedMedias {
+		sm.stop()
 	}
+
+	ss.writer.stop()
 
 	// close all associated connections, both UDP and TCP
 	// except for the ones that called TEARDOWN
@@ -457,12 +392,10 @@ func (ss *ServerSession) runInner() error {
 			}
 
 		case <-ss.startWriter:
-			if !ss.writerRunning && (ss.state == ServerSessionStateRecord ||
+			if (ss.state == ServerSessionStateRecord ||
 				ss.state == ServerSessionStatePlay) &&
 				*ss.setuppedTransport == TransportTCP {
-				ss.writerRunning = true
-				ss.writerDone = make(chan struct{})
-				go ss.runWriter()
+				ss.writer.start()
 			}
 
 		case <-ss.udpCheckStreamTimer.C:
@@ -587,26 +520,26 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerSDPInvalid{Err: err}
 		}
 
-		for _, track := range medias {
-			trackURL, err := track.URL(req.URL)
+		for _, medi := range medias {
+			mediURL, err := medi.URL(req.URL)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("unable to generate track URL")
+				}, fmt.Errorf("unable to generate media URL")
 			}
 
-			trackPath, ok := trackURL.RTSPPathAndQuery()
+			mediPath, ok := mediURL.RTSPPathAndQuery()
 			if !ok {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid track URL (%v)", trackURL)
+				}, fmt.Errorf("invalid media URL (%v)", mediURL)
 			}
 
-			if !strings.HasPrefix(trackPath, path) {
+			if !strings.HasPrefix(mediPath, path) {
 				return &base.Response{
 						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("invalid track path: must begin with '%s', but is '%s'",
-						path, trackPath)
+					}, fmt.Errorf("invalid media path: must begin with '%s', but is '%s'",
+						path, mediPath)
 			}
 		}
 
@@ -626,8 +559,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.state = ServerSessionStatePreRecord
 		ss.setuppedPath = &path
-		ss.setuppedQuery = &query
-		ss.setuppedBaseURL = req.URL
+		ss.setuppedQuery = query
 		ss.announcedMedias = medias
 
 		v := time.Now().Unix()
@@ -661,18 +593,28 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, nil
 		}
 
-		mediaID, path, query, err := setupGetMediaIDPathQuery(req.URL, inTH.Mode,
-			ss.announcedMedias, ss.setuppedPath, ss.setuppedQuery, ss.setuppedBaseURL)
-		if err != nil {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, err
-		}
+		var path string
+		var query string
+		var mediaID int
+		switch ss.state {
+		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
+			var err error
+			path, query, mediaID, err = serverParseURLForPlay(req.URL)
+			if err != nil {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, err
+			}
 
-		if _, ok := ss.setuppedMedias[mediaID]; ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerMediaAlreadySetup{MediaID: mediaID}
+			if ss.setuppedPath != nil && path != *ss.setuppedPath {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerMediasDifferentPaths{}
+			}
+
+		default: // record
+			path = *ss.setuppedPath
+			query = ss.setuppedQuery
 		}
 
 		transport, err := findAndValidateTransport(inTH, ss.tcpMediasByChannel)
@@ -717,7 +659,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			Request:   req,
 			Path:      path,
 			Query:     query,
-			MediaID:   mediaID,
 			Transport: transport,
 		})
 
@@ -737,6 +678,32 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			return res, err
 		}
 
+		var medi *media.Media
+		var ok bool
+		switch ss.state {
+		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
+			medi, ok = findMediaByID(stream.medias, mediaID)
+		default: // record
+			medi, ok = findMediaByURL(ss.announcedMedias, &url.URL{
+				Scheme:   req.URL.Scheme,
+				Host:     req.URL.Host,
+				Path:     path,
+				RawQuery: query,
+			}, req.URL)
+		}
+
+		if !ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, fmt.Errorf("media not found")
+		}
+
+		if _, ok := ss.setuppedMedias[medi]; ok {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, liberrors.ErrServerMediaAlreadySetup{}
+		}
+
 		if ss.state == ServerSessionStateInitial {
 			err := stream.readerAdd(ss,
 				transport,
@@ -750,14 +717,13 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 			ss.state = ServerSessionStatePrePlay
 			ss.setuppedPath = &path
-			ss.setuppedQuery = &query
 			ss.setuppedStream = stream
 		}
 
 		th := headers.Transport{}
 
 		if ss.state == ServerSessionStatePrePlay {
-			ssrc, ok := stream.lastSSRC(mediaID)
+			ssrc, ok := stream.lastSSRC(medi)
 			if ok {
 				th.SSRC = &ssrc
 			}
@@ -769,35 +735,30 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			res.Header = make(base.Header)
 		}
 
-		sst := &ServerSessionSetuppedMedia{
-			id: mediaID,
-		}
+		sm := newServerSessionMedia(ss, medi)
 
 		if ss.state == ServerSessionStatePreRecord {
-			sst.media = ss.announcedMedias[mediaID]
-			sst.tracks = make(map[uint8]*serverSessionSetuppedMediaTrack)
-			for _, trak := range sst.media.Tracks {
-				sst.tracks[trak.PayloadType()] = &serverSessionSetuppedMediaTrack{
-					track: trak,
-				}
+			sm.tracks = make(map[uint8]*serverSessionTrack)
+			for _, trak := range sm.media.Tracks {
+				sm.tracks[trak.PayloadType()] = newServerSessionTrack(sm, trak)
 			}
 		}
 
 		switch transport {
 		case TransportUDP:
-			sst.udpRTPReadPort = inTH.ClientPorts[0]
-			sst.udpRTCPReadPort = inTH.ClientPorts[1]
+			sm.udpRTPReadPort = inTH.ClientPorts[0]
+			sm.udpRTCPReadPort = inTH.ClientPorts[1]
 
-			sst.udpRTPWriteAddr = &net.UDPAddr{
+			sm.udpRTPWriteAddr = &net.UDPAddr{
 				IP:   ss.author.ip(),
 				Zone: ss.author.zone(),
-				Port: sst.udpRTPReadPort,
+				Port: sm.udpRTPReadPort,
 			}
 
-			sst.udpRTCPWriteAddr = &net.UDPAddr{
+			sm.udpRTCPWriteAddr = &net.UDPAddr{
 				IP:   ss.author.ip(),
 				Zone: ss.author.zone(),
-				Port: sst.udpRTCPReadPort,
+				Port: sm.udpRTCPReadPort,
 			}
 
 			th.Protocol = headers.TransportProtocolUDP
@@ -812,18 +773,18 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			th.Delivery = &de
 			v := uint(127)
 			th.TTL = &v
-			d := stream.streamMedias[mediaID].multicastHandler.ip()
+			d := stream.streamMedias[medi].multicastHandler.ip()
 			th.Destination = &d
 			th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 
 		default: // TCP
-			sst.tcpChannel = inTH.InterleavedIDs[0]
+			sm.tcpChannel = inTH.InterleavedIDs[0]
 
 			if ss.tcpMediasByChannel == nil {
-				ss.tcpMediasByChannel = make(map[int]*ServerSessionSetuppedMedia)
+				ss.tcpMediasByChannel = make(map[int]*serverSessionMedia)
 			}
 
-			ss.tcpMediasByChannel[inTH.InterleavedIDs[0]] = sst
+			ss.tcpMediasByChannel[inTH.InterleavedIDs[0]] = sm
 
 			th.Protocol = headers.TransportProtocolTCP
 			de := headers.TransportDeliveryUnicast
@@ -832,9 +793,10 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		if ss.setuppedMedias == nil {
-			ss.setuppedMedias = make(map[int]*ServerSessionSetuppedMedia)
+			ss.setuppedMedias = make(map[*media.Media]*serverSessionMedia)
 		}
-		ss.setuppedMedias[mediaID] = sst
+		ss.setuppedMedias[medi] = sm
+		ss.setuppedMediasOrdered = append(ss.setuppedMediasOrdered, sm)
 
 		res.Header["Transport"] = th.Marshal()
 
@@ -864,7 +826,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// inside the callback.
 		if ss.state != ServerSessionStatePlay &&
 			*ss.setuppedTransport != TransportUDPMulticast {
-			ss.writeBuffer, _ = ringbuffer.New(uint64(ss.s.WriteBufferCount))
+			ss.writer.buffer, _ = ringbuffer.New(uint64(ss.s.WriteBufferCount))
 		}
 
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{
@@ -877,7 +839,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		if res.StatusCode != base.StatusOK {
 			if ss.state != ServerSessionStatePlay {
-				ss.writeBuffer = nil
+				ss.writer.buffer = nil
 			}
 			return res, err
 		}
@@ -888,20 +850,16 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.state = ServerSessionStatePlay
 
+		for _, sm := range ss.setuppedMedias {
+			sm.start()
+		}
+
+		ss.setuppedStream.readerSetActive(ss)
+
 		switch *ss.setuppedTransport {
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-
-			ss.writerRunning = true
-			ss.writerDone = make(chan struct{})
-			go ss.runWriter()
-
-			for _, track := range ss.setuppedMedias {
-				// readers can send RTCP packets only
-				sc.s.udpRTCPListener.addClient(ss.author.ip(), track.udpRTCPReadPort, ss, track, false)
-
-				// firewall opening is performed by RTCP sender reports generated by ServerStream
-			}
+			ss.writer.start()
 
 		case TransportUDPMulticast:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
@@ -910,31 +868,19 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			ss.tcpConn = sc
 			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
 			err = errSwitchReadFunc
-
-			// runWriter() is called by ServerConn after the response has been sent
+			// writer.start() is called by ServerConn after the response has been sent
 		}
-
-		ss.setuppedStream.readerSetActive(ss)
-
-		var mediaIDs []int
-		for mediaID := range ss.setuppedMedias {
-			mediaIDs = append(mediaIDs, mediaID)
-		}
-
-		sort.Slice(mediaIDs, func(a, b int) bool {
-			return mediaIDs[a] < mediaIDs[b]
-		})
 
 		var ri headers.RTPInfo
 		now := time.Now()
 
-		for _, mediaID := range mediaIDs {
-			entry := ss.setuppedStream.rtpInfoEntry(mediaID, now)
+		for i, sm := range ss.setuppedMediasOrdered {
+			entry := ss.setuppedStream.rtpInfoEntry(sm.media, now)
 			if entry != nil {
 				entry.URL = (&url.URL{
 					Scheme: req.URL.Scheme,
 					Host:   req.URL.Host,
-					Path:   "/" + *ss.setuppedPath + "/mediaID=" + strconv.FormatInt(int64(mediaID), 10),
+					Path:   "/" + *ss.setuppedPath + "/mediaID=" + strconv.FormatInt(int64(i), 10),
 				}).String()
 
 				ri = append(ri, entry)
@@ -977,7 +923,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// when recording, writeBuffer is only used to send RTCP receiver reports,
 		// that are much smaller than RTP packets and are sent at a fixed interval.
 		// decrease RAM consumption by allocating less buffers.
-		ss.writeBuffer, _ = ringbuffer.New(uint64(8))
+		ss.writer.buffer, _ = ringbuffer.New(uint64(8))
 
 		res, err := ss.s.Handler.(ServerHandlerOnRecord).OnRecord(&ServerHandlerOnRecordCtx{
 			Session: ss,
@@ -988,53 +934,27 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		})
 
 		if res.StatusCode != base.StatusOK {
-			ss.writeBuffer = nil
+			ss.writer.buffer = nil
 			return res, err
 		}
 
 		ss.state = ServerSessionStateRecord
 
-		if *ss.setuppedTransport == TransportUDP {
-			for _, sm := range ss.setuppedMedias {
-				for _, tr := range sm.tracks {
-					tr.udpReorderer = rtpreorderer.New()
-				}
-			}
+		ss.rtpPacketBuffer = newRTPPacketMultiBuffer(uint64(ss.s.ReadBufferCount))
+
+		for _, sm := range ss.setuppedMedias {
+			sm.start()
 		}
 
 		switch *ss.setuppedTransport {
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
-
-			ss.writerRunning = true
-			ss.writerDone = make(chan struct{})
-			go ss.runWriter()
-
-			for mediaID, sm := range ss.setuppedMedias {
-				// open the firewall by sending test packets to the counterpart.
-				ss.WritePacketRTP(mediaID, &rtp.Packet{Header: rtp.Header{Version: 2}})
-				ss.WritePacketRTCP(mediaID, &rtcp.ReceiverReport{})
-
-				for _, tr := range sm.tracks {
-					cmediaID := mediaID
-					tr.udpRTCPReceiver = rtcpreceiver.New(
-						ss.s.udpReceiverReportPeriod,
-						nil,
-						tr.track.ClockRate(),
-						func(pkt rtcp.Packet) {
-							ss.WritePacketRTCP(cmediaID, pkt)
-						})
-				}
-
-				ss.s.udpRTPListener.addClient(ss.author.ip(), sm.udpRTPReadPort, ss, sm, true)
-				ss.s.udpRTCPListener.addClient(ss.author.ip(), sm.udpRTCPReadPort, ss, sm, true)
-			}
+			ss.writer.start()
 
 		default: // TCP
 			ss.tcpConn = sc
 			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
 			err = errSwitchReadFunc
-
 			// runWriter() is called by conn after sending the response
 		}
 
@@ -1065,23 +985,23 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			return res, err
 		}
 
-		if ss.writerRunning {
-			ss.writeBuffer.Close()
-			<-ss.writerDone
-			ss.writerRunning = false
+		ss.writer.stop()
+
+		if ss.setuppedStream != nil {
+			ss.setuppedStream.readerSetInactive(ss)
+		}
+
+		for _, sm := range ss.setuppedMedias {
+			sm.stop()
 		}
 
 		switch ss.state {
 		case ServerSessionStatePlay:
-			ss.setuppedStream.readerSetInactive(ss)
-
 			ss.state = ServerSessionStatePrePlay
 
 			switch *ss.setuppedTransport {
 			case TransportUDP:
 				ss.udpCheckStreamTimer = emptyTimer()
-
-				ss.s.udpRTCPListener.removeClient(ss)
 
 			case TransportUDPMulticast:
 				ss.udpCheckStreamTimer = emptyTimer()
@@ -1096,16 +1016,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			switch *ss.setuppedTransport {
 			case TransportUDP:
 				ss.udpCheckStreamTimer = emptyTimer()
-
-				ss.s.udpRTPListener.removeClient(ss)
-				ss.s.udpRTCPListener.removeClient(ss)
-
-				for _, sm := range ss.setuppedMedias {
-					for _, tr := range sm.tracks {
-						tr.udpRTCPReceiver.Close()
-						tr.udpRTCPReceiver = nil
-					}
-				}
 
 			default: // TCP
 				ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
@@ -1168,110 +1078,67 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 	}, nil
 }
 
-func (ss *ServerSession) runWriter() {
-	defer close(ss.writerDone)
-
-	var writeFunc func(int, bool, []byte)
-
-	if *ss.setuppedTransport == TransportUDP {
-		writeFunc = func(mediaID int, isRTP bool, payload []byte) {
-			if isRTP {
-				ss.s.udpRTPListener.write(payload, ss.setuppedMedias[mediaID].udpRTPWriteAddr)
-			} else {
-				ss.s.udpRTCPListener.write(payload, ss.setuppedMedias[mediaID].udpRTCPWriteAddr)
-			}
+// OnPacketRTPAny sets the callback that is called when a RTP packet is read from any setupped media.
+func (ss *ServerSession) OnPacketRTPAny(cb func(*media.Media, track.Track, *rtp.Packet)) {
+	for _, sm := range ss.setuppedMedias {
+		cmedia := sm.media
+		for _, trak := range sm.media.Tracks {
+			ss.OnPacketRTP(sm.media, trak, func(pkt *rtp.Packet) {
+				cb(cmedia, trak, pkt)
+			})
 		}
-	} else { // TCP
-		rtpFrames := make(map[int]*base.InterleavedFrame, len(ss.setuppedMedias))
-		rtcpFrames := make(map[int]*base.InterleavedFrame, len(ss.setuppedMedias))
-
-		for mediaID, sst := range ss.setuppedMedias {
-			rtpFrames[mediaID] = &base.InterleavedFrame{Channel: sst.tcpChannel}
-			rtcpFrames[mediaID] = &base.InterleavedFrame{Channel: sst.tcpChannel + 1}
-		}
-
-		buf := make([]byte, maxPacketSize+4)
-
-		writeFunc = func(mediaID int, isRTP bool, payload []byte) {
-			if isRTP {
-				fr := rtpFrames[mediaID]
-				fr.Payload = payload
-
-				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				ss.tcpConn.conn.WriteInterleavedFrame(fr, buf)
-			} else {
-				fr := rtcpFrames[mediaID]
-				fr.Payload = payload
-
-				ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ss.s.WriteTimeout))
-				ss.tcpConn.conn.WriteInterleavedFrame(fr, buf)
-			}
-		}
-	}
-
-	for {
-		tmp, ok := ss.writeBuffer.Pull()
-		if !ok {
-			return
-		}
-		data := tmp.(mediaAndTypeAndPayload)
-
-		atomic.AddUint64(ss.bytesSent, uint64(len(data.payload)))
-
-		writeFunc(data.mediaID, data.isRTP, data.payload)
 	}
 }
 
-func (ss *ServerSession) onPacketRTCP(mediaID int, pkt rtcp.Packet) {
-	if h, ok := ss.s.Handler.(ServerHandlerOnPacketRTCP); ok {
-		h.OnPacketRTCP(&ServerHandlerOnPacketRTCPCtx{
-			Session: ss,
-			MediaID: mediaID,
-			Packet:  pkt,
+// OnPacketRTCPAny sets the callback that is called when a RTCP packet is read from any setupped media.
+func (ss *ServerSession) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
+	for _, sm := range ss.setuppedMedias {
+		cmedia := sm.media
+		ss.OnPacketRTCP(sm.media, func(pkt rtcp.Packet) {
+			cb(cmedia, pkt)
 		})
 	}
 }
 
-func (ss *ServerSession) writePacketRTP(mediaID int, byts []byte) {
-	if _, ok := ss.setuppedMedias[mediaID]; !ok {
-		return
-	}
+// OnPacketRTP sets the callback that is called when a RTP packet is read.
+func (ss *ServerSession) OnPacketRTP(medi *media.Media, trak track.Track, cb func(*rtp.Packet)) {
+	sm := ss.setuppedMedias[medi]
+	st := sm.tracks[trak.PayloadType()]
+	st.onPacketRTP = cb
+}
 
-	ss.writeBuffer.Push(mediaAndTypeAndPayload{
-		mediaID: mediaID,
-		isRTP:   true,
-		payload: byts,
-	})
+// OnPacketRTCP sets the callback that is called when a RTCP packet is read.
+func (ss *ServerSession) OnPacketRTCP(medi *media.Media, cb func(rtcp.Packet)) {
+	sm := ss.setuppedMedias[medi]
+	sm.onPacketRTCP = cb
+}
+
+func (ss *ServerSession) writePacketRTP(medi *media.Media, byts []byte) {
+	sm := ss.setuppedMedias[medi]
+	sm.writePacketRTP(byts)
 }
 
 // WritePacketRTP writes a RTP packet to the session.
-func (ss *ServerSession) WritePacketRTP(mediaID int, pkt *rtp.Packet) {
+func (ss *ServerSession) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) {
 	byts, err := pkt.Marshal()
 	if err != nil {
 		return
 	}
 
-	ss.writePacketRTP(mediaID, byts)
+	ss.writePacketRTP(medi, byts)
 }
 
-func (ss *ServerSession) writePacketRTCP(mediaID int, byts []byte) {
-	if _, ok := ss.setuppedMedias[mediaID]; !ok {
-		return
-	}
-
-	ss.writeBuffer.Push(mediaAndTypeAndPayload{
-		mediaID: mediaID,
-		isRTP:   false,
-		payload: byts,
-	})
+func (ss *ServerSession) writePacketRTCP(medi *media.Media, byts []byte) {
+	sm := ss.setuppedMedias[medi]
+	sm.writePacketRTCP(byts)
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.
-func (ss *ServerSession) WritePacketRTCP(mediaID int, pkt rtcp.Packet) {
+func (ss *ServerSession) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) {
 	byts, err := pkt.Marshal()
 	if err != nil {
 		return
 	}
 
-	ss.writePacketRTCP(mediaID, byts)
+	ss.writePacketRTCP(medi, byts)
 }

@@ -5,8 +5,12 @@ import (
 	"log"
 	"sync"
 
+	"github.com/pion/rtp"
+
 	"github.com/aler9/gortsplib"
 	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/aler9/gortsplib/pkg/media"
+	"github.com/aler9/gortsplib/pkg/track"
 )
 
 // This example shows how to
@@ -121,20 +125,15 @@ func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Re
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
 	log.Printf("record request")
 
+	// called after receiving a RTP packet
+	ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+		// route the RTP packet to all readers
+		sh.stream.WritePacketRTP(medi, pkt)
+	})
+
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, nil
-}
-
-// called after receiving a RTP packet.
-func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
-
-	// if we are the publisher, route the RTP packet to all readers
-	if ctx.Session == sh.publisher {
-		sh.stream.WritePacketRTP(ctx.MediaID, ctx.Packet)
-	}
 }
 
 func main() {

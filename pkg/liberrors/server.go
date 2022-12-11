@@ -107,13 +107,11 @@ func (e ErrServerTransportHeaderInvalid) Error() string {
 }
 
 // ErrServerMediaAlreadySetup is an error that can be returned by a server.
-type ErrServerMediaAlreadySetup struct {
-	MediaID int
-}
+type ErrServerMediaAlreadySetup struct{}
 
 // Error implements the error interface.
 func (e ErrServerMediaAlreadySetup) Error() string {
-	return fmt.Sprintf("media %d has already been setup", e.MediaID)
+	return "media has already been setup"
 }
 
 // ErrServerTransportHeaderInvalidMode is an error that can be returned by a server.
@@ -156,6 +154,14 @@ type ErrServerTransportHeaderInterleavedIDsAlreadyUsed struct{}
 // Error implements the error interface.
 func (e ErrServerTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
 	return "interleaved IDs already used"
+}
+
+// ErrServerMediasDifferentPaths is an error that can be returned by a server.
+type ErrServerMediasDifferentPaths struct{}
+
+// Error implements the error interface.
+func (e ErrServerMediasDifferentPaths) Error() string {
+	return "can't setup medias with different paths"
 }
 
 // ErrServerMediasDifferentProtocols is an error that can be returned by a server.

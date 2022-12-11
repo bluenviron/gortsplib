@@ -97,17 +97,17 @@ func TestServerPublishErrorAnnounce(t *testing.T) {
 		{
 			"invalid URL 1",
 			invalidURLAnnounceReq(t, "rtsp://  aaaaa"),
-			"unable to generate track URL",
+			"unable to generate media URL",
 		},
 		{
 			"invalid URL 2",
 			invalidURLAnnounceReq(t, "rtsp://host"),
-			"invalid track URL (rtsp://localhost:8554)",
+			"invalid media URL (rtsp://localhost:8554)",
 		},
 		{
 			"invalid URL 3",
 			invalidURLAnnounceReq(t, "rtsp://host/otherpath"),
-			"invalid track path: must begin with 'teststream', but is 'otherpath'",
+			"invalid media path: must begin with 'teststream', but is 'otherpath'",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -151,49 +151,24 @@ func TestServerPublishSetupPath(t *testing.T) {
 		control string
 		url     string
 		path    string
-		mediaID int
 	}{
 		{
 			"normal",
-			"mediaID=0",
-			"rtsp://localhost:8554/teststream/mediaID=0",
+			"bbb=ccc",
+			"rtsp://localhost:8554/teststream/bbb=ccc",
 			"teststream",
-			0,
-		},
-		{
-			"unordered id",
-			"mediaID=2",
-			"rtsp://localhost:8554/teststream/mediaID=2",
-			"teststream",
-			0,
-		},
-		{
-			"custom param name",
-			"testing=0",
-			"rtsp://localhost:8554/teststream/testing=0",
-			"teststream",
-			0,
-		},
-		{
-			"query",
-			"?testing=0",
-			"rtsp://localhost:8554/teststream?testing=0",
-			"teststream",
-			0,
 		},
 		{
 			"subpath",
-			"mediaID=0",
-			"rtsp://localhost:8554/test/stream/mediaID=0",
+			"ddd=eee",
+			"rtsp://localhost:8554/test/stream/ddd=eee",
 			"test/stream",
-			0,
 		},
 		{
 			"subpath and query",
-			"?testing=0",
-			"rtsp://localhost:8554/test/stream?testing=0",
-			"test/stream",
-			0,
+			"fff=ggg",
+			"rtsp://localhost:8554/test/stream?testing=0/fff=ggg",
+			"test/stream?testing=0",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -209,8 +184,11 @@ func TestServerPublishSetupPath(t *testing.T) {
 						}, nil
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-						require.Equal(t, ca.path, ctx.Path)
-						require.Equal(t, ca.mediaID, ctx.MediaID)
+						p := ctx.Path
+						if ctx.Query != "" {
+							p += "?" + ctx.Query
+						}
+						require.Equal(t, ca.path, p)
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil, nil
@@ -288,80 +266,6 @@ func TestServerPublishSetupPath(t *testing.T) {
 	}
 }
 
-func TestServerPublishErrorSetupDifferentPaths(t *testing.T) {
-	serverErr := make(chan error)
-
-	s := &Server{
-		Handler: &testServerHandler{
-			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-				serverErr <- ctx.Error
-			},
-			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-				return &base.Response{
-					StatusCode: base.StatusOK,
-				}, nil
-			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-				return &base.Response{
-					StatusCode: base.StatusOK,
-				}, nil, nil
-			},
-		},
-		RTSPAddress: "localhost:8554",
-	}
-
-	err := s.Start()
-	require.NoError(t, err)
-	defer s.Close()
-
-	nconn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer nconn.Close()
-	conn := conn.NewConn(nconn)
-
-	medias := media.Medias{testH264Media.Clone()}
-	medias.SetControls()
-
-	res, err := writeReqReadRes(conn, base.Request{
-		Method: base.Announce,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq":         base.HeaderValue{"1"},
-			"Content-Type": base.HeaderValue{"application/sdp"},
-		},
-		Body: mustMarshalSDP(medias.Marshal(false)),
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	th := &headers.Transport{
-		Protocol: headers.TransportProtocolTCP,
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModeRecord
-			return &v
-		}(),
-		InterleavedIDs: &[2]int{0, 1},
-	}
-
-	res, err = writeReqReadRes(conn, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/test2stream/mediaID=0"),
-		Header: base.Header{
-			"CSeq":      base.HeaderValue{"2"},
-			"Transport": th.Marshal(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusBadRequest, res.StatusCode)
-
-	err = <-serverErr
-	require.EqualError(t, err, "invalid track path (test2stream/mediaID=0)")
-}
-
 func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	serverErr := make(chan error)
 
@@ -408,25 +312,23 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 
-	th := &headers.Transport{
-		Protocol: headers.TransportProtocolTCP,
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModeRecord
-			return &v
-		}(),
-		InterleavedIDs: &[2]int{0, 1},
-	}
-
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 		Header: base.Header{
-			"CSeq":      base.HeaderValue{"2"},
-			"Transport": th.Marshal(),
+			"CSeq": base.HeaderValue{"2"},
+			"Transport": headers.Transport{
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModeRecord
+					return &v
+				}(),
+				InterleavedIDs: &[2]int{0, 1},
+			}.Marshal(),
 		},
 	})
 	require.NoError(t, err)
@@ -440,16 +342,27 @@ func TestServerPublishErrorSetupTrackTwice(t *testing.T) {
 		Method: base.Setup,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
 		Header: base.Header{
-			"CSeq":      base.HeaderValue{"3"},
-			"Transport": th.Marshal(),
-			"Session":   base.HeaderValue{sx.Session},
+			"CSeq": base.HeaderValue{"3"},
+			"Transport": headers.Transport{
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModeRecord
+					return &v
+				}(),
+				InterleavedIDs: &[2]int{2, 3},
+			}.Marshal(),
+			"Session": base.HeaderValue{sx.Session},
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
 	err = <-serverErr
-	require.EqualError(t, err, "media 0 has already been setup")
+	require.EqualError(t, err, "media has already been setup")
 }
 
 func TestServerPublishErrorRecordPartialMedias(t *testing.T) {
@@ -585,20 +498,23 @@ func TestServerPublish(t *testing.T) {
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						// send RTCP packets directly to the session.
 						// these are sent after the response, only if onRecord returns StatusOK.
-						ctx.Session.WritePacketRTCP(0, &testRTCPPacket)
+						ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
+
+						ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+							require.Equal(t, ctx.Session.AnnouncedMedias()[0], medi)
+							require.Equal(t, ctx.Session.AnnouncedMedias()[0].Tracks[0], trak)
+							require.Equal(t, &testRTPPacket, pkt)
+						})
+
+						ctx.Session.OnPacketRTCPAny(func(medi *media.Media, pkt rtcp.Packet) {
+							require.Equal(t, ctx.Session.AnnouncedMedias()[0], medi)
+							require.Equal(t, &testRTCPPacket, pkt)
+							ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
+						})
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
-					},
-					onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
-						require.Equal(t, 0, ctx.MediaID)
-						require.Equal(t, &testRTPPacket, ctx.Packet)
-					},
-					onPacketRTCP: func(ctx *ServerHandlerOnPacketRTCPCtx) {
-						require.Equal(t, 0, ctx.MediaID)
-						require.Equal(t, &testRTCPPacket, ctx.Packet)
-						ctx.Session.WritePacketRTCP(0, &testRTCPPacket)
 					},
 				},
 				RTSPAddress: "localhost:8554",
@@ -810,9 +726,6 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
-			},
-			onPacketRTP: func(ctx *ServerHandlerOnPacketRTPCtx) {
-				t.Error("should not happen")
 			},
 		},
 		UDPRTPAddress:  "127.0.0.1:8000",

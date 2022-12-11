@@ -4,9 +4,9 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -66,15 +66,16 @@ func main() {
 		h264RawDec.decode(pps)
 	}
 
-	// called when a RTP packet arrives
-	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		// get packets of specific track only
-		if ctx.Packet.PayloadType != trak.PayloadType() {
-			return
-		}
+	// setup the chosen media only
+	_, err = c.Setup(medi, baseURL, 0, 0)
+	if err != nil {
+		panic(err)
+	}
 
+	// called when a RTP packet arrives
+	c.OnPacketRTP(medi, trak, func(pkt *rtp.Packet) {
 		// convert RTP packets into NALUs
-		nalus, _, err := rtpDec.Decode(ctx.Packet)
+		nalus, _, err := rtpDec.Decode(pkt)
 		if err != nil {
 			return
 		}
@@ -93,10 +94,10 @@ func main() {
 
 			log.Printf("decoded frame with size %v", img.Bounds().Max)
 		}
-	}
+	})
 
-	// setup and read the H264 media only
-	err = c.SetupAndPlay(media.Medias{medi}, baseURL)
+	// start playing
+	_, err = c.Play(nil)
 	if err != nil {
 		panic(err)
 	}

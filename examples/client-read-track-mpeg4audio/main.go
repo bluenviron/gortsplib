@@ -4,9 +4,9 @@ import (
 	"log"
 
 	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -46,15 +46,16 @@ func main() {
 	// setup decoder
 	rtpDec := trak.CreateDecoder()
 
-	// called when a RTP packet arrives
-	c.OnPacketRTP = func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-		// get packets of specific track only
-		if ctx.Packet.PayloadType != trak.PayloadType() {
-			return
-		}
+	// setup the chosen media only
+	_, err = c.Setup(medi, baseURL, 0, 0)
+	if err != nil {
+		panic(err)
+	}
 
+	// called when a RTP packet arrives
+	c.OnPacketRTP(medi, trak, func(pkt *rtp.Packet) {
 		// decode MPEG4-audio AUs from the RTP packet
-		aus, _, err := rtpDec.Decode(ctx.Packet)
+		aus, _, err := rtpDec.Decode(pkt)
 		if err != nil {
 			return
 		}
@@ -63,10 +64,10 @@ func main() {
 		for _, au := range aus {
 			log.Printf("received MPEG4-audio AU of size %d\n", len(au))
 		}
-	}
+	})
 
-	// setup and read the MPEG4-audio media only
-	err = c.SetupAndPlay(media.Medias{medi}, baseURL)
+	// start playing
+	_, err = c.Play(nil)
 	if err != nil {
 		panic(err)
 	}

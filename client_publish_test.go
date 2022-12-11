@@ -17,6 +17,7 @@ import (
 	"github.com/aler9/gortsplib/pkg/headers"
 	"github.com/aler9/gortsplib/pkg/media"
 	"github.com/aler9/gortsplib/pkg/track"
+	"github.com/aler9/gortsplib/pkg/url"
 )
 
 var testH264Media = &media.Media{
@@ -62,6 +63,42 @@ var testRTCPPacketMarshaled = func() []byte {
 	byts, _ := testRTCPPacket.Marshal()
 	return byts
 }()
+
+func record(c *Client, ur string, medias media.Medias, cb func(*media.Media, rtcp.Packet)) error {
+	u, err := url.Parse(ur)
+	if err != nil {
+		return err
+	}
+
+	err = c.Start(u.Scheme, u.Host)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.Announce(u, medias)
+	if err != nil {
+		c.Close()
+		return err
+	}
+
+	err = c.SetupAll(medias, u)
+	if err != nil {
+		c.Close()
+		return err
+	}
+
+	if cb != nil {
+		c.OnPacketRTCPAny(cb)
+	}
+
+	_, err = c.Record()
+	if err != nil {
+		c.Close()
+		return err
+	}
+
+	return nil
+}
 
 func TestClientPublishSerial(t *testing.T) {
 	for _, transport := range []string{
@@ -236,15 +273,16 @@ func TestClientPublishSerial(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnPacketRTCP: func(ctx *ClientOnPacketRTCPCtx) {
-					require.Equal(t, 0, ctx.MediaID)
-					require.Equal(t, &testRTCPPacket, ctx.Packet)
-					close(recvDone)
-				},
 			}
 
-			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
-				media.Medias{testH264Media.Clone()})
+			medi := testH264Media.Clone()
+			medias := media.Medias{medi}
+
+			err = record(&c, scheme+"://localhost:8554/teststream", medias,
+				func(medi *media.Media, pkt rtcp.Packet) {
+					require.Equal(t, &testRTCPPacket, pkt)
+					close(recvDone)
+				})
 			require.NoError(t, err)
 
 			done := make(chan struct{})
@@ -253,14 +291,14 @@ func TestClientPublishSerial(t *testing.T) {
 				c.Wait()
 			}()
 
-			err = c.WritePacketRTP(0, &testRTPPacket)
+			err = c.WritePacketRTP(medi, &testRTPPacket)
 			require.NoError(t, err)
 
 			<-recvDone
 			c.Close()
 			<-done
 
-			err = c.WritePacketRTP(0, &testRTPPacket)
+			err = c.WritePacketRTP(medi, &testRTPPacket)
 			require.Error(t, err)
 		})
 	}
@@ -392,8 +430,8 @@ func TestClientPublishParallel(t *testing.T) {
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
 
-			err = c.StartPublishing(scheme+"://localhost:8554/teststream",
-				media.Medias{testH264Media.Clone()})
+			medi := testH264Media.Clone()
+			err = record(&c, scheme+"://localhost:8554/teststream", media.Medias{medi}, nil)
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -404,7 +442,7 @@ func TestClientPublishParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := c.WritePacketRTP(0, &testRTPPacket)
+					err := c.WritePacketRTP(medi, &testRTPPacket)
 					if err != nil {
 						return
 					}
@@ -542,12 +580,12 @@ func TestClientPublishPauseSerial(t *testing.T) {
 				}(),
 			}
 
-			err = c.StartPublishing("rtsp://localhost:8554/teststream",
-				media.Medias{testH264Media.Clone()})
+			medi := testH264Media.Clone()
+			err = record(&c, "rtsp://localhost:8554/teststream", media.Medias{medi}, nil)
 			require.NoError(t, err)
 			defer c.Close()
 
-			err = c.WritePacketRTP(0, &testRTPPacket)
+			err = c.WritePacketRTP(medi, &testRTPPacket)
 			require.NoError(t, err)
 
 			_, err = c.Pause()
@@ -556,7 +594,7 @@ func TestClientPublishPauseSerial(t *testing.T) {
 			_, err = c.Record()
 			require.NoError(t, err)
 
-			err = c.WritePacketRTP(0, &testRTPPacket)
+			err = c.WritePacketRTP(medi, &testRTPPacket)
 			require.NoError(t, err)
 		})
 	}
@@ -670,8 +708,8 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				}(),
 			}
 
-			err = c.StartPublishing("rtsp://localhost:8554/teststream",
-				media.Medias{testH264Media.Clone()})
+			medi := testH264Media.Clone()
+			err = record(&c, "rtsp://localhost:8554/teststream", media.Medias{medi}, nil)
 			require.NoError(t, err)
 
 			writerDone := make(chan struct{})
@@ -682,7 +720,7 @@ func TestClientPublishPauseParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := c.WritePacketRTP(0, &testRTPPacket)
+					err := c.WritePacketRTP(medi, &testRTPPacket)
 					if err != nil {
 						return
 					}
@@ -807,12 +845,12 @@ func TestClientPublishAutomaticProtocol(t *testing.T) {
 
 	c := Client{}
 
-	err = c.StartPublishing("rtsp://localhost:8554/teststream",
-		media.Medias{testH264Media.Clone()})
+	medi := testH264Media.Clone()
+	err = record(&c, "rtsp://localhost:8554/teststream", media.Medias{medi}, nil)
 	require.NoError(t, err)
 	defer c.Close()
 
-	err = c.WritePacketRTP(0, &testRTPPacket)
+	err = c.WritePacketRTP(medi, &testRTPPacket)
 	require.NoError(t, err)
 }
 
@@ -987,8 +1025,7 @@ func TestClientPublishDecodeErrors(t *testing.T) {
 				},
 			}
 
-			err = c.StartPublishing("rtsp://localhost:8554/stream",
-				media.Medias{testH264Media.Clone()})
+			err = record(&c, "rtsp://localhost:8554/stream", media.Medias{testH264Media.Clone()}, nil)
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1143,13 +1180,13 @@ func TestClientPublishRTCPReport(t *testing.T) {
 				senderReportPeriod: 500 * time.Millisecond,
 			}
 
-			err = c.StartPublishing("rtsp://localhost:8554/teststream",
-				media.Medias{testH264Media.Clone()})
+			medi := testH264Media.Clone()
+			err = record(&c, "rtsp://localhost:8554/teststream", media.Medias{medi}, nil)
 			require.NoError(t, err)
 			defer c.Close()
 
 			for i := 0; i < 2; i++ {
-				err = c.WritePacketRTP(0, &rtp.Packet{
+				err = c.WritePacketRTP(medi, &rtp.Packet{
 					Header: rtp.Header{
 						Version:     2,
 						PayloadType: 96,
@@ -1268,16 +1305,14 @@ func TestClientPublishIgnoreTCPRTPPackets(t *testing.T) {
 			v := TransportTCP
 			return &v
 		}(),
-		OnPacketRTP: func(ctx *ClientOnPacketRTPCtx) {
-			t.Errorf("should not happen")
-		},
-		OnPacketRTCP: func(ctx *ClientOnPacketRTCPCtx) {
-			close(rtcpReceived)
-		},
 	}
 
-	err = c.StartPublishing("rtsp://localhost:8554/teststream",
-		media.Medias{testH264Media.Clone()})
+	medias := media.Medias{testH264Media.Clone()}
+
+	err = record(&c, "rtsp://localhost:8554/teststream", medias,
+		func(medi *media.Media, pkt rtcp.Packet) {
+			close(rtcpReceived)
+		})
 	require.NoError(t, err)
 	defer c.Close()
 

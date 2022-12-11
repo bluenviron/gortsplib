@@ -1,9 +1,6 @@
 package gortsplib
 
 import (
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
-
 	"github.com/aler9/gortsplib/pkg/base"
 	"github.com/aler9/gortsplib/pkg/media"
 )
@@ -109,7 +106,6 @@ type ServerHandlerOnSetupCtx struct {
 	Request   *base.Request
 	Path      string
 	Query     string
-	MediaID   int
 	Transport Transport
 }
 
@@ -196,32 +192,6 @@ type ServerHandlerOnSetParameterCtx struct {
 type ServerHandlerOnSetParameter interface {
 	// called after receiving a SET_PARAMETER request.
 	OnSetParameter(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
-}
-
-// ServerHandlerOnPacketRTPCtx is the context of OnPacketRTP.
-type ServerHandlerOnPacketRTPCtx struct {
-	Session *ServerSession
-	MediaID int
-	Packet  *rtp.Packet
-}
-
-// ServerHandlerOnPacketRTP can be implemented by a ServerHandler.
-type ServerHandlerOnPacketRTP interface {
-	// called when receiving a RTP packet.
-	OnPacketRTP(*ServerHandlerOnPacketRTPCtx)
-}
-
-// ServerHandlerOnPacketRTCPCtx is the context of OnPacketRTCP.
-type ServerHandlerOnPacketRTCPCtx struct {
-	Session *ServerSession
-	MediaID int
-	Packet  rtcp.Packet
-}
-
-// ServerHandlerOnPacketRTCP can be implemented by a ServerHandler.
-type ServerHandlerOnPacketRTCP interface {
-	// called when receiving a RTCP packet.
-	OnPacketRTCP(*ServerHandlerOnPacketRTCPCtx)
 }
 
 // ServerHandlerOnDecodeErrorCtx is the context of OnDecodeError.

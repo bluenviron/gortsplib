@@ -5,7 +5,11 @@ import (
 	"time"
 
 	"github.com/aler9/gortsplib"
+	"github.com/aler9/gortsplib/pkg/media"
+	"github.com/aler9/gortsplib/pkg/track"
 	"github.com/aler9/gortsplib/pkg/url"
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -15,16 +19,7 @@ import (
 // 4. repeat
 
 func main() {
-	c := gortsplib.Client{
-		// called when a RTP packet arrives
-		OnPacketRTP: func(ctx *gortsplib.ClientOnPacketRTPCtx) {
-			log.Printf("RTP packet from media %d, payload type %d\n", ctx.MediaID, ctx.Packet.Header.PayloadType)
-		},
-		// called when a RTCP packet arrives
-		OnPacketRTCP: func(ctx *gortsplib.ClientOnPacketRTCPCtx) {
-			log.Printf("RTCP packet from media %d, type %T\n", ctx.MediaID, ctx.Packet)
-		},
-	}
+	c := gortsplib.Client{}
 
 	// parse URL
 	u, err := url.Parse("rtsp://localhost:8554/mystream")
@@ -45,8 +40,24 @@ func main() {
 		panic(err)
 	}
 
-	// setup and read all medias
-	err = c.SetupAndPlay(medias, baseURL)
+	// setup all medias
+	err = c.SetupAll(medias, baseURL)
+	if err != nil {
+		panic(err)
+	}
+
+	// called when a RTP packet arrives
+	c.OnPacketRTPAny(func(medi *media.Media, trak track.Track, pkt *rtp.Packet) {
+		log.Printf("RTP packet from media %v\n", medi)
+	})
+
+	// called when a RTCP packet arrives
+	c.OnPacketRTCPAny(func(medi *media.Media, pkt rtcp.Packet) {
+		log.Printf("RTCP packet from media %v, type %T\n", medi, pkt)
+	})
+
+	// start playing
+	_, err = c.Play(nil)
 	if err != nil {
 		panic(err)
 	}
