@@ -253,3 +253,11 @@ type ErrServerSessionNotInUse struct{}
 func (e ErrServerSessionNotInUse) Error() string {
 	return "not in use"
 }
+
+// ErrServerUnexpectedFrame is an error that can be returned by a server.
+type ErrServerUnexpectedFrame struct{}
+
+// Error implements the error interface.
+func (e ErrServerUnexpectedFrame) Error() string {
+	return "received unexpected interleaved frame"
+}

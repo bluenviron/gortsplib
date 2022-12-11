@@ -210,21 +210,27 @@ func (sc *ServerConn) readFuncStandard(readRequest chan readReq) error {
 	sc.nconn.SetReadDeadline(time.Time{})
 
 	for {
-		req, err := sc.conn.ReadRequest()
+		any, err := sc.conn.ReadInterleavedFrameOrRequest()
 		if err != nil {
 			return err
 		}
 
-		cres := make(chan error)
-		select {
-		case readRequest <- readReq{req: req, res: cres}:
-			err = <-cres
-			if err != nil {
-				return err
+		switch what := any.(type) {
+		case *base.Request:
+			cres := make(chan error)
+			select {
+			case readRequest <- readReq{req: what, res: cres}:
+				err = <-cres
+				if err != nil {
+					return err
+				}
+
+			case <-sc.ctx.Done():
+				return liberrors.ErrServerTerminated{}
 			}
 
-		case <-sc.ctx.Done():
-			return liberrors.ErrServerTerminated{}
+		default:
+			return liberrors.ErrServerUnexpectedFrame{}
 		}
 	}
 }

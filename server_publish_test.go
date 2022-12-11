@@ -832,8 +832,14 @@ func TestServerPublish(t *testing.T) {
 }
 
 func TestServerPublishErrorInvalidProtocol(t *testing.T) {
+	errorRecv := make(chan struct{})
+
 	s := &Server{
 		Handler: &testServerHandler{
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				require.EqualError(t, ctx.Error, "received unexpected interleaved frame")
+				close(errorRecv)
+			},
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -937,6 +943,8 @@ func TestServerPublishErrorInvalidProtocol(t *testing.T) {
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	}, make([]byte, 1024))
 	require.NoError(t, err)
+
+	<-errorRecv
 }
 
 func TestServerPublishRTCPReport(t *testing.T) {
