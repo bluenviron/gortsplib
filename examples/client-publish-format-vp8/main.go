@@ -12,7 +12,7 @@ import (
 
 // This example shows how to
 // 1. generate RTP/VP8 packets with GStreamer
-// 2. connect to a RTSP server, announce an VP8 media
+// 2. connect to a RTSP server, announce a VP8 media
 // 3. route the packets from GStreamer to the server
 
 func main() {

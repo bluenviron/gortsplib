@@ -67,7 +67,6 @@ func (ct *clientFormat) stop() {
 
 	if ct.rtcpSender != nil {
 		ct.rtcpSender.Close()
-		ct.rtcpSender = nil
 	}
 }
 
@@ -79,21 +78,15 @@ func (ct *clientFormat) writePacketRTPWithNTP(pkt *rtp.Packet, ntp time.Time) er
 	}
 	byts = byts[:n]
 
-	ct.c.writeMutex.RLock()
-	defer ct.c.writeMutex.RUnlock()
+	select {
+	case <-ct.c.done:
+		return ct.c.closeError
+	default:
+	}
 
-	ok := ct.c.writer.queue(func() {
+	ct.c.writer.queue(func() {
 		ct.cm.writePacketRTPInQueue(byts)
 	})
-
-	if !ok {
-		select {
-		case <-ct.c.done:
-			return ct.c.closeError
-		default:
-			return nil
-		}
-	}
 
 	ct.rtcpSender.ProcessPacket(pkt, ntp, ct.format.PTSEqualsDTS(pkt))
 	return nil

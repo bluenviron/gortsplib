@@ -17,7 +17,6 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/liberrors"
 	"github.com/aler9/gortsplib/v2/pkg/media"
-	"github.com/aler9/gortsplib/v2/pkg/ringbuffer"
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
@@ -173,7 +172,7 @@ type ServerSession struct {
 	announcedMedias       media.Medias // publish
 	udpLastPacketTime     *int64       // publish
 	udpCheckStreamTimer   *time.Timer
-	writer                serverWriter
+	writer                writer
 	rtpPacketBuffer       *rtpPacketMultiBuffer
 
 	// in
@@ -826,7 +825,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// inside the callback.
 		if ss.state != ServerSessionStatePlay &&
 			*ss.setuppedTransport != TransportUDPMulticast {
-			ss.writer.buffer, _ = ringbuffer.New(uint64(ss.s.WriteBufferCount))
+			ss.writer.allocateBuffer(ss.s.WriteBufferCount)
 		}
 
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{
@@ -923,7 +922,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		// when recording, writeBuffer is only used to send RTCP receiver reports,
 		// that are much smaller than RTP packets and are sent at a fixed interval.
 		// decrease RAM consumption by allocating less buffers.
-		ss.writer.buffer, _ = ringbuffer.New(uint64(8))
+		ss.writer.allocateBuffer(8)
 
 		res, err := ss.s.Handler.(ServerHandlerOnRecord).OnRecord(&ServerHandlerOnRecordCtx{
 			Session: ss,

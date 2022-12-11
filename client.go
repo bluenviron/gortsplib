@@ -13,7 +13,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -243,8 +242,7 @@ type Client struct {
 	tcpLastFrameTime   *int64
 	keepaliveTimer     *time.Timer
 	closeError         error
-	writer             clientWriter
-	writeMutex         sync.RWMutex
+	writer             writer
 
 	// connCloser channels
 	connCloserTerminate chan struct{}
@@ -649,13 +647,20 @@ func (c *Client) playRecordStart() {
 		}
 	}
 
+	if c.state == clientStatePlay {
+		// when reading, buffer is only used to send RTCP receiver reports,
+		// that are much smaller than RTP packets and are sent at a fixed interval.
+		// decrease RAM consumption by allocating less buffers.
+		c.writer.allocateBuffer(8)
+	} else {
+		c.writer.allocateBuffer(c.WriteBufferCount)
+	}
+
+	c.writer.start()
+
 	for _, cm := range c.medias {
 		cm.start()
 	}
-
-	c.writeMutex.Lock()
-	c.writer.start(c)
-	c.writeMutex.Unlock()
 
 	// for some reason, SetReadDeadline() must always be called in the same
 	// goroutine, otherwise Read() freezes.
@@ -721,9 +726,7 @@ func (c *Client) playRecordStop(isClosing bool) {
 	c.checkStreamTimer = emptyTimer()
 	c.keepaliveTimer = emptyTimer()
 
-	c.writeMutex.Lock()
 	c.writer.stop()
-	c.writeMutex.Unlock()
 
 	for _, cm := range c.medias {
 		cm.stop()

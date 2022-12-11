@@ -170,21 +170,15 @@ func (cm *clientMedia) writePacketRTCP(pkt rtcp.Packet) error {
 		return err
 	}
 
-	cm.c.writeMutex.RLock()
-	defer cm.c.writeMutex.RUnlock()
+	select {
+	case <-cm.c.done:
+		return cm.c.closeError
+	default:
+	}
 
-	ok := cm.c.writer.queue(func() {
+	cm.c.writer.queue(func() {
 		cm.writePacketRTCPInQueue(byts)
 	})
-
-	if !ok {
-		select {
-		case <-cm.c.done:
-			return cm.c.closeError
-		default:
-			return nil
-		}
-	}
 
 	return nil
 }
