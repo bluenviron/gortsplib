@@ -11,6 +11,8 @@ RTSP 1.0 client and server library for the Go programming language, written for 
 
 Go &ge; 1.17 is required.
 
+***WARNING: the main branch contains code of the v2 version. The legacy v1 version is hosted in the [v1 branch](https://github.com/aler9/gortsplib/tree/v1).***
+
 Features:
 
 * Client
