@@ -45,7 +45,7 @@ Features:
     * Compute and provide SSRC, RTP-Info to clients
     * Generate RTCP sender reports
 * Utilities
-  * Encode and decode codec-specific frames into/from RTP packets. The following codecs are supported:
+  * Encode and decode format-specific frames into/from RTP packets. The following formats are supported:
     * Video: H264, H265, VP8, VP9
     * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG4-audio (AAC), Opus
   * Parse RTSP elements: requests, responses, SDP
