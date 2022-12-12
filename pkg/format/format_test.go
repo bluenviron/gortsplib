@@ -95,6 +95,28 @@ func TestNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
+			"audio lpcm 16 with no explicit channel",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"97"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "97 L16/16000",
+					},
+				},
+			},
+			&LPCM{
+				PayloadTyp:   97,
+				BitDepth:     16,
+				SampleRate:   16000,
+				ChannelCount: 1,
+			},
+		},
+		{
 			"audio lpcm 24",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{

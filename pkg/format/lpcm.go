@@ -47,22 +47,26 @@ func (t *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 		t.BitDepth = 24
 	}
 
-	tmp := strings.SplitN(clock, "/", 32)
-	if len(tmp) != 2 {
+	tmp := strings.SplitN(clock, "/", 2)
+	if len(tmp) < 1 {
 		return fmt.Errorf("invalid clock (%v)", clock)
 	}
 
-	sampleRate, err := strconv.ParseInt(tmp[0], 10, 64)
+	tmp1, err := strconv.ParseInt(tmp[0], 10, 64)
 	if err != nil {
 		return err
 	}
-	t.SampleRate = int(sampleRate)
+	t.SampleRate = int(tmp1)
 
-	channelCount, err := strconv.ParseInt(tmp[1], 10, 64)
-	if err != nil {
-		return err
+	if len(tmp) >= 2 {
+		tmp1, err := strconv.ParseInt(tmp[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		t.ChannelCount = int(tmp1)
+	} else {
+		t.ChannelCount = 1
 	}
-	t.ChannelCount = int(channelCount)
 
 	return nil
 }
