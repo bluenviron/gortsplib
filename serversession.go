@@ -236,9 +236,18 @@ func (ss *ServerSession) SetuppedTransport() *Transport {
 	return ss.setuppedTransport
 }
 
-// AnnouncedMedias returns the announced media.
+// AnnouncedMedias returns the announced medias.
 func (ss *ServerSession) AnnouncedMedias() media.Medias {
 	return ss.announcedMedias
+}
+
+// SetuppedMedias returns the setupped medias.
+func (ss *ServerSession) SetuppedMedias() media.Medias {
+	ret := make(media.Medias, len(ss.setuppedMedias))
+	for i, sm := range ss.setuppedMediasOrdered {
+		ret[i] = sm.media
+	}
+	return ret
 }
 
 // SetUserData sets some user data associated to the session.
