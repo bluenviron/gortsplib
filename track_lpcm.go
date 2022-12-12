@@ -39,8 +39,8 @@ func newTrackLPCMFromMediaDescription(
 		bitDepth = 24
 	}
 
-	tmp := strings.SplitN(clock, "/", 32)
-	if len(tmp) != 2 {
+	tmp := strings.SplitN(clock, "/", 2)
+	if len(tmp) < 1 {
 		return nil, fmt.Errorf("invalid clock (%v)", clock)
 	}
 
@@ -49,16 +49,22 @@ func newTrackLPCMFromMediaDescription(
 		return nil, err
 	}
 
-	channelCount, err := strconv.ParseInt(tmp[1], 10, 64)
-	if err != nil {
-		return nil, err
+	var channelCount int
+	if len(tmp) >= 2 {
+		tmp, err := strconv.ParseInt(tmp[1], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		channelCount = int(tmp)
+	} else {
+		channelCount = 1
 	}
 
 	return &TrackLPCM{
 		PayloadType:  payloadType,
 		BitDepth:     bitDepth,
 		SampleRate:   int(sampleRate),
-		ChannelCount: int(channelCount),
+		ChannelCount: channelCount,
 		trackBase: trackBase{
 			control: control,
 		},
