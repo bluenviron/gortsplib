@@ -17,14 +17,22 @@ const (
 // ErrMorePacketsNeeded is returned when more packets are needed.
 var ErrMorePacketsNeeded = errors.New("need more packets")
 
+// ErrNonStartingPacketAndNoPrevious is returned when we received a non-starting
+// packet of a fragmented NALU and we didn't received anything before.
+// It's normal to receive this when we are decoding a stream that has been already
+// running for some time.
+var ErrNonStartingPacketAndNoPrevious = errors.New(
+	"received a non-starting fragmentation unit without any previous fragmentation units")
+
 // Decoder is a RTP/H265 decoder.
 type Decoder struct {
 	// indicates that NALUs have an additional field that specifies the decoding order.
 	MaxDONDiff int
 
-	timeDecoder    *rtptimedec.Decoder
-	fragmentedSize int
-	fragments      [][]byte
+	timeDecoder         *rtptimedec.Decoder
+	firstPacketReceived bool
+	fragmentedSize      int
+	fragments           [][]byte
 }
 
 // Init initializes the decoder.
@@ -72,6 +80,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			payload = payload[size:]
 		}
 
+		if nalus == nil {
+			return nil, 0, fmt.Errorf("aggregation unit doesn't contain any NALU")
+		}
+
+		d.firstPacketReceived = true
+
 	case 49: // fragmentation unit
 		if len(pkt.Payload) < 3 {
 			d.fragments = d.fragments[:0] // discard pending fragmented packets
@@ -92,10 +106,16 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			head := uint16(pkt.Payload[0]&0b10000001)<<8 | uint16(typ)<<9 | uint16(pkt.Payload[1])
 			d.fragmentedSize = len(pkt.Payload[1:])
 			d.fragments = append(d.fragments, []byte{byte(head >> 8), byte(head)}, pkt.Payload[3:])
+			d.firstPacketReceived = true
+
 			return nil, 0, ErrMorePacketsNeeded
 		}
 
 		if len(d.fragments) == 0 {
+			if !d.firstPacketReceived {
+				return nil, 0, ErrNonStartingPacketAndNoPrevious
+			}
+
 			return nil, 0, fmt.Errorf("invalid fragmentation unit (non-starting)")
 		}
 
@@ -123,10 +143,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	case 50: // PACI
 		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.firstPacketReceived = true
 		return nil, 0, fmt.Errorf("PACI packets are not supported (yet)")
 
 	default:
 		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.firstPacketReceived = true
 		nalus = [][]byte{pkt.Payload}
 	}
 
