@@ -37,14 +37,14 @@ func main() {
 	}
 
 	// find the H265 media and format
-	var trak *format.H265
-	medi := medias.FindFormat(&trak)
+	var forma *format.H265
+	medi := medias.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
 	// setup RTP/H265->H265 decoder
-	rtpDec := trak.CreateDecoder()
+	rtpDec := forma.CreateDecoder()
 
 	// setup the chosen media only
 	_, err = c.Setup(medi, baseURL, 0, 0)
@@ -53,7 +53,7 @@ func main() {
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP(medi, trak, func(pkt *rtp.Packet) {
+	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// convert RTP packets into NALUs
 		nalus, pts, err := rtpDec.Decode(pkt)
 		if err != nil {

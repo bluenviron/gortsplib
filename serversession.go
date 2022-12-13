@@ -747,8 +747,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		if ss.state == ServerSessionStatePreRecord {
 			sm.formats = make(map[uint8]*serverSessionFormat)
-			for _, trak := range sm.media.Formats {
-				sm.formats[trak.PayloadType()] = newServerSessionFormat(sm, trak)
+			for _, forma := range sm.media.Formats {
+				sm.formats[forma.PayloadType()] = newServerSessionFormat(sm, forma)
 			}
 		}
 
@@ -1090,9 +1090,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 func (ss *ServerSession) OnPacketRTPAny(cb func(*media.Media, format.Format, *rtp.Packet)) {
 	for _, sm := range ss.setuppedMedias {
 		cmedia := sm.media
-		for _, trak := range sm.media.Formats {
-			ss.OnPacketRTP(sm.media, trak, func(pkt *rtp.Packet) {
-				cb(cmedia, trak, pkt)
+		for _, forma := range sm.media.Formats {
+			ss.OnPacketRTP(sm.media, forma, func(pkt *rtp.Packet) {
+				cb(cmedia, forma, pkt)
 			})
 		}
 	}
@@ -1109,9 +1109,9 @@ func (ss *ServerSession) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (ss *ServerSession) OnPacketRTP(medi *media.Media, trak format.Format, cb func(*rtp.Packet)) {
+func (ss *ServerSession) OnPacketRTP(medi *media.Media, forma format.Format, cb func(*rtp.Packet)) {
 	sm := ss.setuppedMedias[medi]
-	st := sm.formats[trak.PayloadType()]
+	st := sm.formats[forma.PayloadType()]
 	st.onPacketRTP = cb
 }
 

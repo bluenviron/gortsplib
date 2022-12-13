@@ -53,7 +53,7 @@ func main() {
 	}
 
 	// read RTP packets from reader and write them to publisher
-	reader.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+	reader.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 		publisher.WritePacketRTP(medi, pkt)
 	})
 

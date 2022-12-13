@@ -71,8 +71,8 @@ func (cm *clientMedia) setMedia(medi *media.Media) {
 	cm.media = medi
 
 	cm.formats = make(map[uint8]*clientFormat)
-	for _, trak := range medi.Formats {
-		cm.formats[trak.PayloadType()] = newClientFormat(cm, trak)
+	for _, forma := range medi.Formats {
+		cm.formats[forma.PayloadType()] = newClientFormat(cm, forma)
 	}
 }
 
@@ -193,12 +193,12 @@ func (cm *clientMedia) readRTPTCPPlay(payload []byte) error {
 		return err
 	}
 
-	trak, ok := cm.formats[pkt.PayloadType]
+	forma, ok := cm.formats[pkt.PayloadType]
 	if !ok {
 		return nil
 	}
 
-	trak.readRTPTCP(pkt)
+	forma.readRTPTCP(pkt)
 	return nil
 }
 
@@ -266,13 +266,13 @@ func (cm *clientMedia) readRTPUDPPlay(payload []byte) error {
 		return nil
 	}
 
-	trak, ok := cm.formats[pkt.PayloadType]
+	forma, ok := cm.formats[pkt.PayloadType]
 	if !ok {
 		cm.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
 		return nil
 	}
 
-	trak.readRTPUDP(pkt)
+	forma.readRTPUDP(pkt)
 	return nil
 }
 

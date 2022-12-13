@@ -53,7 +53,7 @@ func main() {
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+	c.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 		log.Printf("RTP packet from media %v\n", medi)
 	})
 

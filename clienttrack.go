@@ -23,11 +23,11 @@ type clientFormat struct {
 	onPacketRTP     func(*rtp.Packet)
 }
 
-func newClientFormat(cm *clientMedia, trak format.Format) *clientFormat {
+func newClientFormat(cm *clientMedia, forma format.Format) *clientFormat {
 	return &clientFormat{
 		c:           cm.c,
 		cm:          cm,
-		format:      trak,
+		format:      forma,
 		onPacketRTP: func(*rtp.Packet) {},
 	}
 }

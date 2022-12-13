@@ -67,8 +67,8 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// find the H264 media and format
-	var trak *format.H264
-	medi := ctx.Medias.FindFormat(&trak)
+	var forma *format.H264
+	medi := ctx.Medias.FindFormat(&forma)
 	if medi == nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
@@ -76,10 +76,10 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := trak.CreateDecoder()
+	rtpDec := forma.CreateDecoder()
 
 	// setup H264->MPEGTS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(trak.SafeSPS(), trak.SafePPS())
+	mpegtsMuxer, err := newMPEGTSMuxer(forma.SafeSPS(), forma.SafePPS())
 	if err != nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
@@ -88,7 +88,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 	sh.publisher = ctx.Session
 	sh.media = medi
-	sh.format = trak
+	sh.format = forma
 	sh.rtpDec = rtpDec
 	sh.mpegtsMuxer = mpegtsMuxer
 

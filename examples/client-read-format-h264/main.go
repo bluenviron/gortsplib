@@ -40,14 +40,14 @@ func main() {
 	}
 
 	// find the H264 media and format
-	var trak *format.H264
-	medi := medias.FindFormat(&trak)
+	var forma *format.H264
+	medi := medias.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
 	// setup RTP/H264->H264 decoder
-	rtpDec := trak.CreateDecoder()
+	rtpDec := forma.CreateDecoder()
 
 	// setup H264->raw frames decoder
 	h264RawDec, err := newH264Decoder()
@@ -57,11 +57,11 @@ func main() {
 	defer h264RawDec.close()
 
 	// if SPS and PPS are present into the SDP, send them to the decoder
-	sps := trak.SafeSPS()
+	sps := forma.SafeSPS()
 	if sps != nil {
 		h264RawDec.decode(sps)
 	}
-	pps := trak.SafePPS()
+	pps := forma.SafePPS()
 	if pps != nil {
 		h264RawDec.decode(pps)
 	}
@@ -73,7 +73,7 @@ func main() {
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP(medi, trak, func(pkt *rtp.Packet) {
+	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// convert RTP packets into NALUs
 		nalus, _, err := rtpDec.Decode(pkt)
 		if err != nil {

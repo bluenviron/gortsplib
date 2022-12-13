@@ -37,14 +37,14 @@ func main() {
 	}
 
 	// find the MPEG4-audio media and format
-	var trak *format.MPEG4Audio
-	medi := medias.FindFormat(&trak)
+	var forma *format.MPEG4Audio
+	medi := medias.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
 	// setup decoder
-	rtpDec := trak.CreateDecoder()
+	rtpDec := forma.CreateDecoder()
 
 	// setup the chosen media only
 	_, err = c.Setup(medi, baseURL, 0, 0)
@@ -53,7 +53,7 @@ func main() {
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP(medi, trak, func(pkt *rtp.Packet) {
+	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// decode MPEG4-audio AUs from the RTP packet
 		aus, _, err := rtpDec.Decode(pkt)
 		if err != nil {

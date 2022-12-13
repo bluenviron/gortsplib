@@ -500,9 +500,9 @@ func TestServerRecord(t *testing.T) {
 						// these are sent after the response, only if onRecord returns StatusOK.
 						ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
 
-						ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+						ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 							require.Equal(t, ctx.Session.AnnouncedMedias()[0], medi)
-							require.Equal(t, ctx.Session.AnnouncedMedias()[0].Formats[0], trak)
+							require.Equal(t, ctx.Session.AnnouncedMedias()[0].Formats[0], forma)
 							require.Equal(t, &testRTPPacket, pkt)
 						})
 

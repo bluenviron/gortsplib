@@ -126,7 +126,7 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 	log.Printf("record request")
 
 	// called when receiving a RTP packet
-	ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+	ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 		// route the RTP packet to all readers
 		sh.stream.WritePacketRTP(medi, pkt)
 	})

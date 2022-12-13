@@ -1939,16 +1939,16 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		return &ri, ssrcs
 	}
 
-	trak := &format.Generic{
+	forma := &format.Generic{
 		PayloadTyp: 96,
 		RTPMap:     "private/90000",
 	}
-	err := trak.Init()
+	err := forma.Init()
 	require.NoError(t, err)
 
 	medi := &media.Media{
 		Type:    "application",
-		Formats: []format.Format{trak},
+		Formats: []format.Format{forma},
 	}
 
 	stream := NewServerStream(media.Medias{medi.Clone(), medi.Clone()})

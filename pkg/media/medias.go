@@ -90,12 +90,12 @@ func (ms Medias) SetControls() {
 }
 
 // FindFormat finds a certain format among all the formats in all the medias.
-// If the format is found, it is inserted into trak, and format media is returned.
-func (ms Medias) FindFormat(trak interface{}) *Media {
+// If the format is found, it is inserted into forma, and format media is returned.
+func (ms Medias) FindFormat(forma interface{}) *Media {
 	for _, media := range ms {
-		for _, trakk := range media.Formats {
-			if reflect.TypeOf(trakk) == reflect.TypeOf(trak).Elem() {
-				reflect.ValueOf(trak).Elem().Set(reflect.ValueOf(trakk))
+		for _, formak := range media.Formats {
+			if reflect.TypeOf(formak) == reflect.TypeOf(forma).Elem() {
+				reflect.ValueOf(forma).Elem().Set(reflect.ValueOf(formak))
 				return media
 			}
 		}

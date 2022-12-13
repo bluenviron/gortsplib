@@ -481,8 +481,8 @@ func TestMediasFindFormat(t *testing.T) {
 		md,
 	}
 
-	var trak *format.Generic
-	me := ms.FindFormat(&trak)
+	var forma *format.Generic
+	me := ms.FindFormat(&forma)
 	require.Equal(t, md, me)
-	require.Equal(t, tr, trak)
+	require.Equal(t, tr, forma)
 }

@@ -267,16 +267,16 @@ func TestClientPlay(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
-				trak := &format.Generic{
+				forma := &format.Generic{
 					PayloadTyp: 96,
 					RTPMap:     "private/90000",
 				}
-				err = trak.Init()
+				err = forma.Init()
 				require.NoError(t, err)
 
 				medias := media.Medias{{
 					Type:    "application",
-					Formats: []format.Format{trak},
+					Formats: []format.Format{forma},
 				}}
 				medias.SetControls()
 
@@ -466,7 +466,7 @@ func TestClientPlay(t *testing.T) {
 
 			err = readAll(&c,
 				scheme+"://"+listenIP+":8554/test/stream?param=value",
-				func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+				func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 					require.Equal(t, &testRTPPacket, pkt)
 					err := c.WritePacketRTCP(medi, &testRTCPPacket)
 					require.NoError(t, err)
@@ -608,9 +608,9 @@ func TestClientPlayPartial(t *testing.T) {
 	_, err = c.Setup(medias[1], baseURL, 0, 0)
 	require.NoError(t, err)
 
-	c.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+	c.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 		require.Equal(t, medias[1], medi)
-		require.Equal(t, medias[1].Formats[0], trak)
+		require.Equal(t, medias[1].Formats[0], forma)
 		require.Equal(t, &testRTPPacket, pkt)
 		close(packetRecv)
 	})
@@ -892,7 +892,7 @@ func TestClientPlayAnyPort(t *testing.T) {
 
 			var med *media.Media
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
-				func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+				func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 					require.Equal(t, &testRTPPacket, pkt)
 					med = medi
 					close(packetRecv)
@@ -1012,7 +1012,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 
 		c := Client{}
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
-			func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+			func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1245,7 +1245,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		}
 
 		err = readAll(&c, "rtsp://myuser:mypass@localhost:8554/teststream",
-			func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+			func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1367,7 +1367,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+		func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 			close(packetRecv)
 		})
 	require.NoError(t, err)
@@ -1554,7 +1554,7 @@ func TestClientPlayRedirect(t *testing.T) {
 				ru = "rtsp://testusr:testpwd@localhost:8554/path1"
 			}
 			err = readAll(&c, ru,
-				func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+				func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 					close(packetRecv)
 				})
 			require.NoError(t, err)
@@ -1754,7 +1754,7 @@ func TestClientPlayPause(t *testing.T) {
 			}
 
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
-				func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+				func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 					if atomic.SwapInt32(&firstFrame, 1) == 0 {
 						close(packetRecv)
 					}
@@ -2218,7 +2218,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+		func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 			close(recv)
 		})
 	require.NoError(t, err)
@@ -2636,7 +2636,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/test/stream?param=value",
-		func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+		func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 			require.Equal(t, &testRTPPacket, pkt)
 			close(packetRecv)
 		})

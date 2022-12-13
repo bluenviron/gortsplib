@@ -19,10 +19,10 @@ type serverSessionFormat struct {
 	onPacketRTP     func(*rtp.Packet)
 }
 
-func newServerSessionFormat(sm *serverSessionMedia, trak format.Format) *serverSessionFormat {
+func newServerSessionFormat(sm *serverSessionMedia, forma format.Format) *serverSessionFormat {
 	return &serverSessionFormat{
 		sm:          sm,
-		format:      trak,
+		format:      forma,
 		onPacketRTP: func(*rtp.Packet) {},
 	}
 }

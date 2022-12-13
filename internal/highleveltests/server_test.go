@@ -385,7 +385,7 @@ func TestServerRecordRead(t *testing.T) {
 							}, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
-						ctx.Session.OnPacketRTPAny(func(medi *media.Media, trak format.Format, pkt *rtp.Packet) {
+						ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 							stream.WritePacketRTP(medi, pkt)
 						})
 

@@ -43,20 +43,20 @@ func NewServerStream(medias media.Medias) *ServerStream {
 		ssm := &serverStreamMedia{}
 
 		ssm.formats = make(map[uint8]*serverStreamFormat)
-		for _, trak := range media.Formats {
+		for _, forma := range media.Formats {
 			tr := &serverStreamFormat{
-				format: trak,
+				format: forma,
 			}
 
 			cmedia := media
 			tr.rtcpSender = rtcpsender.New(
-				trak.ClockRate(),
+				forma.ClockRate(),
 				func(pkt rtcp.Packet) {
 					st.WritePacketRTCP(cmedia, pkt)
 				},
 			)
 
-			ssm.formats[trak.PayloadType()] = tr
+			ssm.formats[forma.PayloadType()] = tr
 		}
 
 		st.streamMedias[media] = ssm
@@ -295,9 +295,9 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet
 
 	sm := st.streamMedias[medi]
 
-	trak := sm.formats[pkt.PayloadType]
+	forma := sm.formats[pkt.PayloadType]
 
-	trak.rtcpSender.ProcessPacket(pkt, ntp, trak.format.PTSEqualsDTS(pkt))
+	forma.rtcpSender.ProcessPacket(pkt, ntp, forma.format.PTSEqualsDTS(pkt))
 
 	// send unicast
 	for r := range st.activeUnicastReaders {

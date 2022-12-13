@@ -192,7 +192,7 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) error {
 		return nil
 	}
 
-	trak, ok := sm.formats[pkt.PayloadType]
+	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
 		onDecodeError(sm.ss, fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
 		return nil
@@ -201,7 +201,7 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) error {
 	now := time.Now()
 	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
 
-	trak.readRTPUDP(pkt, now)
+	forma.readRTPUDP(pkt, now)
 	return nil
 }
 
@@ -271,13 +271,13 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) error {
 		return err
 	}
 
-	trak, ok := sm.formats[pkt.PayloadType]
+	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
 		onDecodeError(sm.ss, fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
 		return nil
 	}
 
-	trak.readRTPTCP(pkt)
+	forma.readRTPTCP(pkt)
 	return nil
 }
 

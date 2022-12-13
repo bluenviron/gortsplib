@@ -1574,9 +1574,9 @@ func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
 func (c *Client) OnPacketRTPAny(cb func(*media.Media, format.Format, *rtp.Packet)) {
 	for _, cm := range c.medias {
 		cmedia := cm.media
-		for _, trak := range cm.media.Formats {
-			c.OnPacketRTP(cm.media, trak, func(pkt *rtp.Packet) {
-				cb(cmedia, trak, pkt)
+		for _, forma := range cm.media.Formats {
+			c.OnPacketRTP(cm.media, forma, func(pkt *rtp.Packet) {
+				cb(cmedia, forma, pkt)
 			})
 		}
 	}
@@ -1593,9 +1593,9 @@ func (c *Client) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (c *Client) OnPacketRTP(medi *media.Media, trak format.Format, cb func(*rtp.Packet)) {
+func (c *Client) OnPacketRTP(medi *media.Media, forma format.Format, cb func(*rtp.Packet)) {
 	cm := c.medias[medi]
-	ct := cm.formats[trak.PayloadType()]
+	ct := cm.formats[forma.PayloadType()]
 	ct.onPacketRTP = cb
 }
 
