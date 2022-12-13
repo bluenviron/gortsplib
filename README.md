@@ -16,7 +16,7 @@ Go &ge; 1.17 is required.
 Features:
 
 * Client
-  * Query servers about available streams and mediastreams
+  * Query servers about available media streams
   * Read
     * Read media streams from servers with the UDP, UDP-multicast or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
@@ -26,7 +26,7 @@ Features:
     * Generate RTCP receiver reports (UDP only)
     * Reorder incoming RTP packets (UDP only)
   * Publish
-    * Publish streams to servers with the UDP or TCP transport protocol
+    * Publish media streams to servers with the UDP or TCP transport protocol
     * Publish TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
     * Pause without disconnecting from the server
