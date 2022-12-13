@@ -121,9 +121,9 @@ func (t *H265) Marshal() (string, string) {
 func (t *H265) Clone() Format {
 	return &H265{
 		PayloadTyp: t.PayloadTyp,
-		VPS:        t.VPS,
-		SPS:        t.SPS,
-		PPS:        t.PPS,
+		VPS:        t.SafeVPS(),
+		SPS:        t.SafeSPS(),
+		PPS:        t.SafePPS(),
 		MaxDONDiff: t.MaxDONDiff,
 	}
 }

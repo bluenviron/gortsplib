@@ -181,8 +181,8 @@ func (t *H264) Marshal() (string, string) {
 func (t *H264) Clone() Format {
 	return &H264{
 		PayloadTyp:        t.PayloadTyp,
-		SPS:               t.SPS,
-		PPS:               t.PPS,
+		SPS:               t.SafeSPS(),
+		PPS:               t.SafePPS(),
 		PacketizationMode: t.PacketizationMode,
 	}
 }
