@@ -444,6 +444,30 @@ func TestNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
+			"h264 empty sprop-parameter-sets",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 packetization-mode=1; sprop-parameter-sets=",
+					},
+				},
+			},
+			&H264{
+				PayloadTyp:        96,
+				PacketizationMode: 1,
+			},
+		},
+		{
 			"video h265",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{

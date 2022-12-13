@@ -117,22 +117,20 @@ func (t *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 		switch tmp[0] {
 		case "sprop-parameter-sets":
 			tmp := strings.Split(tmp[1], ",")
-			if len(tmp) < 2 {
-				return fmt.Errorf("invalid sprop-parameter-sets (%v)", fmtp)
-			}
+			if len(tmp) >= 2 {
+				sps, err := base64.StdEncoding.DecodeString(tmp[0])
+				if err != nil {
+					return fmt.Errorf("invalid sprop-parameter-sets (%v)", fmtp)
+				}
 
-			sps, err := base64.StdEncoding.DecodeString(tmp[0])
-			if err != nil {
-				return fmt.Errorf("invalid sprop-parameter-sets (%v)", fmtp)
-			}
+				pps, err := base64.StdEncoding.DecodeString(tmp[1])
+				if err != nil {
+					return fmt.Errorf("invalid sprop-parameter-sets (%v)", fmtp)
+				}
 
-			pps, err := base64.StdEncoding.DecodeString(tmp[1])
-			if err != nil {
-				return fmt.Errorf("invalid sprop-parameter-sets (%v)", fmtp)
+				t.SPS = sps
+				t.PPS = pps
 			}
-
-			t.SPS = sps
-			t.PPS = pps
 
 		case "packetization-mode":
 			tmp, err := strconv.ParseInt(tmp[1], 10, 64)
