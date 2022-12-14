@@ -32,9 +32,17 @@ const (
 	NALUTypeSliceExtensionDepth           NALUType = 21
 	NALUTypeReserved22                    NALUType = 22
 	NALUTypeReserved23                    NALUType = 23
+
+	// additional NALU types for RTP/H264
+	NALUTypeSTAPA  NALUType = 24
+	NALUTypeSTAPB  NALUType = 25
+	NALUTypeMTAP16 NALUType = 26
+	NALUTypeMTAP24 NALUType = 27
+	NALUTypeFUA    NALUType = 28
+	NALUTypeFUB    NALUType = 29
 )
 
-var naluTypelabels = map[NALUType]string{
+var naluTypeLabels = map[NALUType]string{
 	NALUTypeNonIDR:                        "NonIDR",
 	NALUTypeDataPartitionA:                "DataPartitionA",
 	NALUTypeDataPartitionB:                "DataPartitionB",
@@ -58,11 +66,17 @@ var naluTypelabels = map[NALUType]string{
 	NALUTypeSliceExtensionDepth:           "SliceExtensionDepth",
 	NALUTypeReserved22:                    "Reserved22",
 	NALUTypeReserved23:                    "Reserved23",
+	NALUTypeSTAPA:                         "STAP-A",
+	NALUTypeSTAPB:                         "STAP-B",
+	NALUTypeMTAP16:                        "MTAP-16",
+	NALUTypeMTAP24:                        "MTAP-24",
+	NALUTypeFUA:                           "FU-A",
+	NALUTypeFUB:                           "FU-B",
 }
 
 // String implements fmt.Stringer.
 func (nt NALUType) String() string {
-	if l, ok := naluTypelabels[nt]; ok {
+	if l, ok := naluTypeLabels[nt]; ok {
 		return l
 	}
 	return fmt.Sprintf("unknown (%d)", nt)

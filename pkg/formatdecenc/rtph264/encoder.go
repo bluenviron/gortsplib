@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/v2/pkg/h264"
 )
 
 const (
@@ -158,7 +160,7 @@ func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) (
 	nalu = nalu[1:] // remove header
 
 	for i := range ret {
-		indicator := (nri << 5) | uint8(naluTypeFUA)
+		indicator := (nri << 5) | uint8(h264.NALUTypeFUA)
 
 		start := uint8(0)
 		if i == 0 {
@@ -216,7 +218,7 @@ func (e *Encoder) writeAggregated(nalus [][]byte, pts time.Duration, marker bool
 	payload := make([]byte, e.lenAggregated(nalus, nil))
 
 	// header
-	payload[0] = uint8(naluTypeSTAPA)
+	payload[0] = uint8(h264.NALUTypeSTAPA)
 	pos := 1
 
 	for _, nalu := range nalus {
