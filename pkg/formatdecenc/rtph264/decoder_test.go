@@ -419,6 +419,39 @@ func TestDecodeAnnexB(t *testing.T) {
 	}
 }
 
+func TestDecodeUntilMarker(t *testing.T) {
+	d := &Decoder{}
+	d.Init()
+
+	nalus, _, err := d.DecodeUntilMarker(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17647,
+			Timestamp:      2289531307,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x01, 0x02},
+	})
+	require.Equal(t, ErrMorePacketsNeeded, err)
+	require.Equal(t, [][]byte(nil), nalus)
+
+	nalus, _, err = d.DecodeUntilMarker(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 17647,
+			Timestamp:      2289531307,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x01, 0x02},
+	})
+	require.NoError(t, err)
+	require.Equal(t, [][]byte{{0x01, 0x02}, {0x01, 0x02}}, nalus)
+}
+
 func TestDecodeErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -527,7 +560,24 @@ func TestDecodeErrors(t *testing.T) {
 			"invalid FU-A packet (can't contain both a start and end bit)",
 		},
 		{
-			"FU-A non-starting",
+			"FU-A non-starting 1",
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17646,
+						Timestamp:      2289527317,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{0x1c, 0b01000000},
+				},
+			},
+			"received a non-starting FU-A packet without any previous FU-A starting packet",
+		},
+		{
+			"FU-A non-starting 2",
 			[]*rtp.Packet{
 				{
 					Header: rtp.Header{
