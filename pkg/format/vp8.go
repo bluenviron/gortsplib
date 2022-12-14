@@ -108,3 +108,12 @@ func (t *VP8) CreateDecoder() *rtpvp8.Decoder {
 	d.Init()
 	return d
 }
+
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (t *VP8) CreateEncoder() *rtpvp8.Encoder {
+	e := &rtpvp8.Encoder{
+		PayloadType: t.PayloadTyp,
+	}
+	e.Init()
+	return e
+}

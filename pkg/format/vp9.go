@@ -121,3 +121,12 @@ func (t *VP9) CreateDecoder() *rtpvp9.Decoder {
 	d.Init()
 	return d
 }
+
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (t *VP9) CreateEncoder() *rtpvp9.Encoder {
+	e := &rtpvp9.Encoder{
+		PayloadType: t.PayloadTyp,
+	}
+	e.Init()
+	return e
+}
