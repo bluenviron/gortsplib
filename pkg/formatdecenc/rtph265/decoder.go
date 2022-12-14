@@ -7,11 +7,8 @@ import (
 
 	"github.com/pion/rtp"
 
+	"github.com/aler9/gortsplib/v2/pkg/h265"
 	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
-)
-
-const (
-	maxNALUSize = 3 * 1024 * 1024
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -51,11 +48,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		return nil, 0, fmt.Errorf("payload is too short")
 	}
 
-	typ := (pkt.Payload[0] >> 1) & 0b111111
+	typ := h265.NALUType((pkt.Payload[0] >> 1) & 0b111111)
 	var nalus [][]byte
 
 	switch typ {
-	case 48: // aggregation unit
+	case h265.NALUTypeAggregationUnit:
 		d.fragments = d.fragments[:0] // discard pending fragmented packets
 
 		payload := pkt.Payload[2:]
@@ -86,7 +83,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 		d.firstPacketReceived = true
 
-	case 49: // fragmentation unit
+	case h265.NALUTypeFragmentationUnit:
 		if len(pkt.Payload) < 3 {
 			d.fragments = d.fragments[:0] // discard pending fragmented packets
 			return nil, 0, fmt.Errorf("payload is too short")
@@ -120,9 +117,9 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		}
 
 		d.fragmentedSize += len(pkt.Payload[3:])
-		if d.fragmentedSize > maxNALUSize {
+		if d.fragmentedSize > h265.MaxNALUSize {
 			d.fragments = d.fragments[:0]
-			return nil, 0, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", d.fragmentedSize, maxNALUSize)
+			return nil, 0, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", d.fragmentedSize, h265.MaxNALUSize)
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[3:])
@@ -141,7 +138,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		d.fragments = d.fragments[:0]
 		nalus = [][]byte{nalu}
 
-	case 50: // PACI
+	case h265.NALUTypePACI:
 		d.fragments = d.fragments[:0] // discard pending fragmented packets
 		d.firstPacketReceived = true
 		return nil, 0, fmt.Errorf("PACI packets are not supported (yet)")

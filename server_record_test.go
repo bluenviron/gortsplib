@@ -1402,7 +1402,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			medias := media.Medias{{
+			medias := media.Medias{&media.Media{
 				Type: media.TypeApplication,
 				Formats: []format.Format{&format.Generic{
 					PayloadTyp: 97,

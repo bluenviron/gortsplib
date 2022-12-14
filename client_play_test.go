@@ -274,7 +274,7 @@ func TestClientPlay(t *testing.T) {
 				err = forma.Init()
 				require.NoError(t, err)
 
-				medias := media.Medias{{
+				medias := media.Medias{&media.Media{
 					Type:    "application",
 					Formats: []format.Format{forma},
 				}}
@@ -2696,7 +2696,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				medias := media.Medias{{
+				medias := media.Medias{&media.Media{
 					Type: media.TypeApplication,
 					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 97,
