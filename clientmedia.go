@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/v2/pkg/base"
 	"github.com/aler9/gortsplib/v2/pkg/media"
@@ -187,7 +188,7 @@ func (cm *clientMedia) readRTPTCPPlay(payload []byte) error {
 	now := time.Now()
 	atomic.StoreInt64(cm.c.tcpLastFrameTime, now.Unix())
 
-	pkt := cm.c.rtpPacketBuffer.next()
+	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		return err
@@ -259,7 +260,7 @@ func (cm *clientMedia) readRTPUDPPlay(payload []byte) error {
 		return nil
 	}
 
-	pkt := cm.c.rtpPacketBuffer.next()
+	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		cm.c.OnDecodeError(err)

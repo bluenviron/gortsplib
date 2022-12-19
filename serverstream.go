@@ -292,11 +292,6 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet
 
 // WritePacketRTCP writes a RTCP packet to all the readers of the stream.
 func (st *ServerStream) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) {
-	byts, err := pkt.Marshal()
-	if err != nil {
-		return
-	}
-
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 
@@ -305,17 +300,5 @@ func (st *ServerStream) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) {
 	}
 
 	sm := st.streamMedias[medi]
-
-	// send unicast
-	for r := range st.activeUnicastReaders {
-		sm, ok := r.setuppedMedias[medi]
-		if ok {
-			sm.writePacketRTCP(byts)
-		}
-	}
-
-	// send multicast
-	if sm.multicastHandler != nil {
-		sm.multicastHandler.writePacketRTCP(byts)
-	}
+	sm.writePacketRTCP(st, pkt)
 }

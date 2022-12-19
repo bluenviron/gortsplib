@@ -173,7 +173,6 @@ type ServerSession struct {
 	udpLastPacketTime     *int64       // publish
 	udpCheckStreamTimer   *time.Timer
 	writer                writer
-	rtpPacketBuffer       *rtpPacketMultiBuffer
 
 	// in
 	request     chan sessionRequestReq
@@ -947,8 +946,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		ss.state = ServerSessionStateRecord
-
-		ss.rtpPacketBuffer = newRTPPacketMultiBuffer(uint64(ss.s.ReadBufferCount))
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()

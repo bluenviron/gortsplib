@@ -236,7 +236,6 @@ type Client struct {
 	medias             map[*media.Media]*clientMedia
 	tcpMediasByChannel map[int]*clientMedia
 	lastRange          *headers.Range
-	rtpPacketBuffer    *rtpPacketMultiBuffer // play
 	checkStreamTimer   *time.Timer
 	checkStreamInitial bool
 	tcpLastFrameTime   *int64
@@ -630,7 +629,6 @@ func (c *Client) playRecordStart() {
 
 	if c.state == clientStatePlay {
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
-		c.rtpPacketBuffer = newRTPPacketMultiBuffer(uint64(c.ReadBufferCount))
 
 		switch *c.effectiveTransport {
 		case TransportUDP:

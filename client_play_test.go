@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -274,10 +275,16 @@ func TestClientPlay(t *testing.T) {
 				err = forma.Init()
 				require.NoError(t, err)
 
-				medias := media.Medias{&media.Media{
-					Type:    "application",
-					Formats: []format.Format{forma},
-				}}
+				medias := media.Medias{
+					&media.Media{
+						Type:    "application",
+						Formats: []format.Format{forma},
+					},
+					&media.Media{
+						Type:    "application",
+						Formats: []format.Format{forma},
+					},
+				}
 				medias.SetControls()
 
 				err = conn.WriteResponse(&base.Response{
@@ -290,86 +297,91 @@ func TestClientPlay(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
-				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/mediaID=0"), req.URL)
+				var l1s [2]net.PacketConn
+				var l2s [2]net.PacketConn
+				var clientPorts [2]*[2]int
 
-				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
-
-				th := headers.Transport{}
-
-				var l1 net.PacketConn
-				var l2 net.PacketConn
-
-				switch transport {
-				case "udp":
-					v := headers.TransportDeliveryUnicast
-					th.Delivery = &v
-					th.Protocol = headers.TransportProtocolUDP
-					th.ClientPorts = inTH.ClientPorts
-					th.ServerPorts = &[2]int{34556, 34557}
-
-					l1, err = net.ListenPacket("udp", listenIP+":34556")
+				for i := 0; i < 2; i++ {
+					req, err = conn.ReadRequest()
 					require.NoError(t, err)
-					defer l1.Close()
+					require.Equal(t, base.Setup, req.Method)
+					require.Equal(t, mustParseURL(
+						scheme+"://"+listenIP+":8554/test/stream?param=value/mediaID="+strconv.FormatInt(int64(i), 10)), req.URL)
 
-					l2, err = net.ListenPacket("udp", listenIP+":34557")
-					require.NoError(t, err)
-					defer l2.Close()
-
-				case "multicast":
-					v := headers.TransportDeliveryMulticast
-					th.Delivery = &v
-					th.Protocol = headers.TransportProtocolUDP
-					v2 := net.ParseIP("224.1.0.1")
-					th.Destination = &v2
-					th.Ports = &[2]int{25000, 25001}
-
-					l1, err = net.ListenPacket("udp", "224.0.0.0:25000")
-					require.NoError(t, err)
-					defer l1.Close()
-
-					p := ipv4.NewPacketConn(l1)
-
-					intfs, err := net.Interfaces()
+					var inTH headers.Transport
+					err = inTH.Unmarshal(req.Header["Transport"])
 					require.NoError(t, err)
 
-					for _, intf := range intfs {
-						err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
+					var th headers.Transport
+
+					switch transport {
+					case "udp":
+						v := headers.TransportDeliveryUnicast
+						th.Delivery = &v
+						th.Protocol = headers.TransportProtocolUDP
+						th.ClientPorts = inTH.ClientPorts
+						clientPorts[i] = inTH.ClientPorts
+						th.ServerPorts = &[2]int{34556 + i*2, 34557 + i*2}
+
+						l1s[i], err = net.ListenPacket("udp", listenIP+":"+strconv.FormatInt(int64(th.ServerPorts[0]), 10))
 						require.NoError(t, err)
+						defer l1s[i].Close()
+
+						l2s[i], err = net.ListenPacket("udp", listenIP+":"+strconv.FormatInt(int64(th.ServerPorts[1]), 10))
+						require.NoError(t, err)
+						defer l2s[i].Close()
+
+					case "multicast":
+						v := headers.TransportDeliveryMulticast
+						th.Delivery = &v
+						th.Protocol = headers.TransportProtocolUDP
+						v2 := net.ParseIP("224.1.0.1")
+						th.Destination = &v2
+						th.Ports = &[2]int{25000 + i*2, 25001 + i*2}
+
+						l1s[i], err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
+						require.NoError(t, err)
+						defer l1s[i].Close()
+
+						p := ipv4.NewPacketConn(l1s[i])
+
+						intfs, err := net.Interfaces()
+						require.NoError(t, err)
+
+						for _, intf := range intfs {
+							err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
+							require.NoError(t, err)
+						}
+
+						l2s[i], err = net.ListenPacket("udp", "224.0.0.0:25001")
+						require.NoError(t, err)
+						defer l2s[i].Close()
+
+						p = ipv4.NewPacketConn(l2s[i])
+
+						intfs, err = net.Interfaces()
+						require.NoError(t, err)
+
+						for _, intf := range intfs {
+							err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
+							require.NoError(t, err)
+						}
+
+					case "tcp", "tls":
+						v := headers.TransportDeliveryUnicast
+						th.Delivery = &v
+						th.Protocol = headers.TransportProtocolTCP
+						th.InterleavedIDs = &[2]int{0 + i*2, 1 + i*2}
 					}
 
-					l2, err = net.ListenPacket("udp", "224.0.0.0:25001")
+					err = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Transport": th.Marshal(),
+						},
+					})
 					require.NoError(t, err)
-					defer l2.Close()
-
-					p = ipv4.NewPacketConn(l2)
-
-					intfs, err = net.Interfaces()
-					require.NoError(t, err)
-
-					for _, intf := range intfs {
-						err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
-						require.NoError(t, err)
-					}
-
-				case "tcp", "tls":
-					v := headers.TransportDeliveryUnicast
-					th.Delivery = &v
-					th.Protocol = headers.TransportProtocolTCP
-					th.InterleavedIDs = &[2]int{0, 1}
 				}
-
-				err = conn.WriteResponse(&base.Response{
-					StatusCode: base.StatusOK,
-					Header: base.Header{
-						"Transport": th.Marshal(),
-					},
-				})
-				require.NoError(t, err)
 
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
@@ -382,55 +394,57 @@ func TestClientPlay(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				// server -> client (RTP)
-				switch transport {
-				case "udp":
-					l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
-						IP:   net.ParseIP("127.0.0.1"),
-						Port: th.ClientPorts[0],
-					})
+				for i := 0; i < 2; i++ {
+					// server -> client (RTP)
+					switch transport {
+					case "udp":
+						l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+							IP:   net.ParseIP("127.0.0.1"),
+							Port: clientPorts[i][0],
+						})
 
-				case "multicast":
-					l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
-						IP:   net.ParseIP("224.1.0.1"),
-						Port: 25000,
-					})
+					case "multicast":
+						l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+							IP:   net.ParseIP("224.1.0.1"),
+							Port: 25000,
+						})
 
-				case "tcp", "tls":
-					err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
-						Channel: 0,
-						Payload: testRTPPacketMarshaled,
-					}, make([]byte, 1024))
-					require.NoError(t, err)
-				}
-
-				// client -> server (RTCP)
-				switch transport {
-				case "udp", "multicast":
-					// skip firewall opening
-					if transport == "udp" {
-						buf := make([]byte, 2048)
-						_, _, err := l2.ReadFrom(buf)
+					case "tcp", "tls":
+						err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
+							Channel: 0 + i*2,
+							Payload: testRTPPacketMarshaled,
+						}, make([]byte, 1024))
 						require.NoError(t, err)
 					}
 
-					buf := make([]byte, 2048)
-					n, _, err := l2.ReadFrom(buf)
-					require.NoError(t, err)
-					packets, err := rtcp.Unmarshal(buf[:n])
-					require.NoError(t, err)
-					require.Equal(t, &testRTCPPacket, packets[0])
-					close(packetRecv)
+					// client -> server (RTCP)
+					switch transport {
+					case "udp", "multicast":
+						// skip firewall opening
+						if transport == "udp" {
+							buf := make([]byte, 2048)
+							_, _, err := l2s[i].ReadFrom(buf)
+							require.NoError(t, err)
+						}
 
-				case "tcp", "tls":
-					f, err := conn.ReadInterleavedFrame()
-					require.NoError(t, err)
-					require.Equal(t, 1, f.Channel)
-					packets, err := rtcp.Unmarshal(f.Payload)
-					require.NoError(t, err)
-					require.Equal(t, &testRTCPPacket, packets[0])
-					close(packetRecv)
+						buf := make([]byte, 2048)
+						n, _, err := l2s[i].ReadFrom(buf)
+						require.NoError(t, err)
+						packets, err := rtcp.Unmarshal(buf[:n])
+						require.NoError(t, err)
+						require.Equal(t, &testRTCPPacket, packets[0])
+
+					case "tcp", "tls":
+						f, err := conn.ReadInterleavedFrame()
+						require.NoError(t, err)
+						require.Equal(t, 1+i*2, f.Channel)
+						packets, err := rtcp.Unmarshal(f.Payload)
+						require.NoError(t, err)
+						require.Equal(t, &testRTCPPacket, packets[0])
+					}
 				}
+
+				close(packetRecv)
 
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
@@ -464,15 +478,27 @@ func TestClientPlay(t *testing.T) {
 				}(),
 			}
 
-			err = readAll(&c,
-				scheme+"://"+listenIP+":8554/test/stream?param=value",
-				func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
-					require.Equal(t, &testRTPPacket, pkt)
-					err := c.WritePacketRTCP(medi, &testRTCPPacket)
-					require.NoError(t, err)
-				})
+			u, err := url.Parse(scheme + "://" + listenIP + ":8554/test/stream?param=value")
+			require.NoError(t, err)
+
+			err = c.Start(u.Scheme, u.Host)
 			require.NoError(t, err)
 			defer c.Close()
+
+			medias, baseURL, _, err := c.Describe(u)
+			require.NoError(t, err)
+
+			err = c.SetupAll(medias, baseURL)
+			require.NoError(t, err)
+
+			c.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+				require.Equal(t, &testRTPPacket, pkt)
+				err := c.WritePacketRTCP(medi, &testRTCPPacket)
+				require.NoError(t, err)
+			})
+
+			_, err = c.Play(nil)
+			require.NoError(t, err)
 
 			<-packetRecv
 		})

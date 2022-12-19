@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -499,18 +500,24 @@ func TestServerRecord(t *testing.T) {
 						// send RTCP packets directly to the session.
 						// these are sent after the response, only if onRecord returns StatusOK.
 						ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
+						ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[1], &testRTCPPacket)
 
-						ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
-							require.Equal(t, ctx.Session.AnnouncedMedias()[0], medi)
-							require.Equal(t, ctx.Session.AnnouncedMedias()[0].Formats[0], forma)
-							require.Equal(t, &testRTPPacket, pkt)
-						})
+						for i := 0; i < 2; i++ {
+							ctx.Session.OnPacketRTP(
+								ctx.Session.AnnouncedMedias()[i],
+								ctx.Session.AnnouncedMedias()[i].Formats[0],
+								func(pkt *rtp.Packet) {
+									require.Equal(t, &testRTPPacket, pkt)
+								})
 
-						ctx.Session.OnPacketRTCPAny(func(medi *media.Media, pkt rtcp.Packet) {
-							require.Equal(t, ctx.Session.AnnouncedMedias()[0], medi)
-							require.Equal(t, &testRTCPPacket, pkt)
-							ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
-						})
+							ci := i
+							ctx.Session.OnPacketRTCP(
+								ctx.Session.AnnouncedMedias()[i],
+								func(pkt rtcp.Packet) {
+									require.Equal(t, &testRTCPPacket, pkt)
+									ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[ci], &testRTCPPacket)
+								})
+						}
 
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -549,7 +556,7 @@ func TestServerRecord(t *testing.T) {
 
 			<-nconnOpened
 
-			medias := media.Medias{testH264Media.Clone()}
+			medias := media.Medias{testH264Media.Clone(), testH264Media.Clone()}
 			medias.SetControls()
 
 			res, err := writeReqReadRes(conn, base.Request{
@@ -566,54 +573,61 @@ func TestServerRecord(t *testing.T) {
 
 			<-sessionOpened
 
-			inTH := &headers.Transport{
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModeRecord
-					return &v
-				}(),
-			}
-
-			var l1 net.PacketConn
-			var l2 net.PacketConn
-
-			if transport == "udp" {
-				inTH.Protocol = headers.TransportProtocolUDP
-				inTH.ClientPorts = &[2]int{35466, 35467}
-
-				l1, err = net.ListenPacket("udp", "localhost:35466")
-				require.NoError(t, err)
-				defer l1.Close()
-
-				l2, err = net.ListenPacket("udp", "localhost:35467")
-				require.NoError(t, err)
-				defer l2.Close()
-			} else {
-				inTH.Protocol = headers.TransportProtocolTCP
-				inTH.InterleavedIDs = &[2]int{0, 1}
-			}
-
-			res, err = writeReqReadRes(conn, base.Request{
-				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
-				Header: base.Header{
-					"CSeq":      base.HeaderValue{"2"},
-					"Transport": inTH.Marshal(),
-				},
-			})
-			require.NoError(t, err)
-			require.Equal(t, base.StatusOK, res.StatusCode)
-
+			var l1s [2]net.PacketConn
+			var l2s [2]net.PacketConn
 			var sx headers.Session
-			err = sx.Unmarshal(res.Header["Session"])
-			require.NoError(t, err)
+			var serverPorts [2]*[2]int
 
-			var th headers.Transport
-			err = th.Unmarshal(res.Header["Transport"])
-			require.NoError(t, err)
+			for i := 0; i < 2; i++ {
+				inTH := &headers.Transport{
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
+						return &v
+					}(),
+					Mode: func() *headers.TransportMode {
+						v := headers.TransportModeRecord
+						return &v
+					}(),
+				}
+
+				if transport == "udp" {
+					inTH.Protocol = headers.TransportProtocolUDP
+					inTH.ClientPorts = &[2]int{35466 + i*2, 35467 + i*2}
+
+					l1s[i], err = net.ListenPacket("udp", "localhost:"+strconv.FormatInt(int64(inTH.ClientPorts[0]), 10))
+					require.NoError(t, err)
+					defer l1s[i].Close()
+
+					l2s[i], err = net.ListenPacket("udp", "localhost:"+strconv.FormatInt(int64(inTH.ClientPorts[1]), 10))
+					require.NoError(t, err)
+					defer l2s[i].Close()
+				} else {
+					inTH.Protocol = headers.TransportProtocolTCP
+					inTH.InterleavedIDs = &[2]int{2 + i*2, 3 + i*2}
+				}
+
+				res, err = writeReqReadRes(conn, base.Request{
+					Method: base.Setup,
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=" + strconv.FormatInt(int64(i), 10)),
+					Header: base.Header{
+						"CSeq":      base.HeaderValue{"2"},
+						"Transport": inTH.Marshal(),
+					},
+				})
+				require.NoError(t, err)
+				require.Equal(t, base.StatusOK, res.StatusCode)
+
+				err = sx.Unmarshal(res.Header["Session"])
+				require.NoError(t, err)
+
+				var th headers.Transport
+				err = th.Unmarshal(res.Header["Transport"])
+				require.NoError(t, err)
+
+				if transport == "udp" {
+					serverPorts[i] = th.ServerPorts
+				}
+			}
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Record,
@@ -626,62 +640,66 @@ func TestServerRecord(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
-			// server -> client (direct)
-			if transport == "udp" {
-				buf := make([]byte, 2048)
-				n, _, err := l2.ReadFrom(buf)
-				require.NoError(t, err)
-				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
-			} else {
-				f, err := conn.ReadInterleavedFrame()
-				require.NoError(t, err)
-				require.Equal(t, 1, f.Channel)
-				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+			for i := 0; i < 2; i++ {
+				// server -> client (direct)
+				if transport == "udp" {
+					buf := make([]byte, 2048)
+					n, _, err := l2s[i].ReadFrom(buf)
+					require.NoError(t, err)
+					require.Equal(t, testRTCPPacketMarshaled, buf[:n])
+				} else {
+					f, err := conn.ReadInterleavedFrame()
+					require.NoError(t, err)
+					require.Equal(t, 3+i*2, f.Channel)
+					require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+				}
+
+				// skip firewall opening
+				if transport == "udp" {
+					buf := make([]byte, 2048)
+					_, _, err := l2s[i].ReadFrom(buf)
+					require.NoError(t, err)
+				}
+
+				// client -> server
+				if transport == "udp" {
+					l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: serverPorts[i][0],
+					})
+
+					l2s[i].WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+						IP:   net.ParseIP("127.0.0.1"),
+						Port: serverPorts[i][1],
+					})
+				} else {
+					err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
+						Channel: 2 + i*2,
+						Payload: testRTPPacketMarshaled,
+					}, make([]byte, 1024))
+					require.NoError(t, err)
+
+					err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+						Channel: 3 + i*2,
+						Payload: testRTCPPacketMarshaled,
+					}, make([]byte, 1024))
+					require.NoError(t, err)
+				}
 			}
 
-			// skip firewall opening
-			if transport == "udp" {
-				buf := make([]byte, 2048)
-				_, _, err := l2.ReadFrom(buf)
-				require.NoError(t, err)
-			}
-
-			// client -> server
-			if transport == "udp" {
-				l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
-					IP:   net.ParseIP("127.0.0.1"),
-					Port: th.ServerPorts[0],
-				})
-
-				l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
-					IP:   net.ParseIP("127.0.0.1"),
-					Port: th.ServerPorts[1],
-				})
-			} else {
-				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
-					Channel: 0,
-					Payload: testRTPPacketMarshaled,
-				}, make([]byte, 1024))
-				require.NoError(t, err)
-
-				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
-					Channel: 1,
-					Payload: testRTCPPacketMarshaled,
-				}, make([]byte, 1024))
-				require.NoError(t, err)
-			}
-
-			// server -> client (RTCP)
-			if transport == "udp" {
-				buf := make([]byte, 2048)
-				n, _, err := l2.ReadFrom(buf)
-				require.NoError(t, err)
-				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
-			} else {
-				f, err := conn.ReadInterleavedFrame()
-				require.NoError(t, err)
-				require.Equal(t, 1, f.Channel)
-				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+			for i := 0; i < 2; i++ {
+				// server -> client (RTCP)
+				if transport == "udp" {
+					buf := make([]byte, 2048)
+					n, _, err := l2s[i].ReadFrom(buf)
+					require.NoError(t, err)
+					require.Equal(t, testRTCPPacketMarshaled, buf[:n])
+				} else {
+					f, err := conn.ReadInterleavedFrame()
+					require.NoError(t, err)
+					require.Equal(t, 3+i*2, f.Channel)
+					require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+				}
 			}
 
 			res, err = writeReqReadRes(conn, base.Request{

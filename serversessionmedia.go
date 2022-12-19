@@ -185,7 +185,7 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) error {
 		return nil
 	}
 
-	pkt := sm.ss.rtpPacketBuffer.next()
+	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		onDecodeError(sm.ss, err)
@@ -265,7 +265,7 @@ func (sm *serverSessionMedia) readRTCPTCPPlay(payload []byte) error {
 }
 
 func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) error {
-	pkt := sm.ss.rtpPacketBuffer.next()
+	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		return err
