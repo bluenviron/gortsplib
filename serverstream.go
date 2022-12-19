@@ -40,7 +40,7 @@ func NewServerStream(medias media.Medias) *ServerStream {
 
 	st.streamMedias = make(map[*media.Media]*serverStreamMedia, len(medias))
 	for _, media := range medias {
-		ssm := &serverStreamMedia{}
+		ssm := newServerStreamMedia(media)
 
 		ssm.formats = make(map[uint8]*serverStreamFormat)
 		for _, forma := range media.Formats {
@@ -279,13 +279,6 @@ func (st *ServerStream) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) {
 // ntp is the absolute time of the packet, and is needed to generate RTCP sender reports
 // that allows the receiver to reconstruct the absolute time of the packet.
 func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp time.Time) {
-	byts := make([]byte, maxPacketSize)
-	n, err := pkt.MarshalTo(byts)
-	if err != nil {
-		return
-	}
-	byts = byts[:n]
-
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 
@@ -294,23 +287,7 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet
 	}
 
 	sm := st.streamMedias[medi]
-
-	forma := sm.formats[pkt.PayloadType]
-
-	forma.rtcpSender.ProcessPacket(pkt, ntp, forma.format.PTSEqualsDTS(pkt))
-
-	// send unicast
-	for r := range st.activeUnicastReaders {
-		sm, ok := r.setuppedMedias[medi]
-		if ok {
-			sm.writePacketRTP(byts)
-		}
-	}
-
-	// send multicast
-	if sm.multicastHandler != nil {
-		sm.multicastHandler.writePacketRTP(byts)
-	}
+	sm.WritePacketRTPWithNTP(st, pkt, ntp)
 }
 
 // WritePacketRTCP writes a RTCP packet to all the readers of the stream.
