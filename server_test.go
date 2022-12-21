@@ -348,7 +348,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{
@@ -380,7 +380,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.SetParameter,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: headers,
 			})
 			require.NoError(t, err)
@@ -395,7 +395,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Options,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: headers,
 			})
 			require.NoError(t, err)
@@ -440,7 +440,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err := writeReqReadRes(conn1, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -482,7 +482,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err = writeReqReadRes(conn2, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -540,7 +540,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -577,7 +577,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 			"Transport": headers.Transport{
@@ -651,7 +651,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"1"},
 			"Transport": inTHS.Marshal(),
@@ -730,7 +730,7 @@ func TestServerGetSetParameter(t *testing.T) {
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{
@@ -873,7 +873,7 @@ func TestServerSessionClose(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -946,7 +946,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 
 			_, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq": base.HeaderValue{"1"},
 					"Transport": headers.Transport{
@@ -998,7 +998,7 @@ func TestServerSessionTeardown(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1079,7 +1079,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{

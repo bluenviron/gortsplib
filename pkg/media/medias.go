@@ -85,7 +85,7 @@ func (ms Medias) CloneAndSetControls() Medias {
 // SetControls sets the control attribute of all medias in the list.
 func (ms Medias) SetControls() {
 	for i, media := range ms {
-		media.Control = "mediaID=" + strconv.FormatInt(int64(i), 10)
+		media.Control = "trackID=" + strconv.FormatInt(int64(i), 10)
 	}
 }
 

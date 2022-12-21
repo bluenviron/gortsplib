@@ -36,7 +36,7 @@ func serverParseURLForPlay(u *url.URL) (string, string, int, error) {
 		return "", "", -1, liberrors.ErrServerInvalidPath{}
 	}
 
-	i := stringsReverseIndex(pathAndQuery, "/mediaID=")
+	i := stringsReverseIndex(pathAndQuery, "/trackID=")
 	if i < 0 {
 		if !strings.HasSuffix(pathAndQuery, "/") {
 			return "", "", -1, fmt.Errorf("path of a SETUP request must end with a slash. " +
@@ -49,7 +49,7 @@ func serverParseURLForPlay(u *url.URL) (string, string, int, error) {
 	}
 
 	var t string
-	pathAndQuery, t = pathAndQuery[:i], pathAndQuery[i+len("/mediaID="):]
+	pathAndQuery, t = pathAndQuery[:i], pathAndQuery[i+len("/trackID="):]
 	path, query := url.PathSplitQuery(pathAndQuery)
 	tmp, _ := strconv.ParseInt(t, 10, 64)
 	return path, query, int(tmp), nil
@@ -887,7 +887,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				entry.URL = (&url.URL{
 					Scheme: req.URL.Scheme,
 					Host:   req.URL.Host,
-					Path:   "/" + *ss.setuppedPath + "/mediaID=" + strconv.FormatInt(int64(i), 10),
+					Path:   "/" + *ss.setuppedPath + "/trackID=" + strconv.FormatInt(int64(i), 10),
 				}).String()
 
 				ri = append(ri, entry)

@@ -315,7 +315,7 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
@@ -341,7 +341,7 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 			"Transport": headers.Transport{
@@ -432,7 +432,7 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Marshal(),
@@ -608,7 +608,7 @@ func TestServerRecord(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=" + strconv.FormatInt(int64(i), 10)),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=" + strconv.FormatInt(int64(i), 10)),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"2"},
 						"Transport": inTH.Marshal(),
@@ -790,7 +790,7 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": inTH.Marshal(),
@@ -886,7 +886,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
@@ -1071,7 +1071,7 @@ func TestServerRecordTimeout(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
@@ -1194,7 +1194,7 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
@@ -1301,7 +1301,7 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 
 		res, err = writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
@@ -1475,7 +1475,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),

@@ -156,7 +156,7 @@ func TestClientPlayFormats(t *testing.T) {
 			req, err := conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
-			require.Equal(t, mustParseURL(fmt.Sprintf("rtsp://localhost:8554/teststream/mediaID=%d", i)), req.URL)
+			require.Equal(t, mustParseURL(fmt.Sprintf("rtsp://localhost:8554/teststream/trackID=%d", i)), req.URL)
 
 			var inTH headers.Transport
 			err = inTH.Unmarshal(req.Header["Transport"])
@@ -306,7 +306,7 @@ func TestClientPlay(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, base.Setup, req.Method)
 					require.Equal(t, mustParseURL(
-						scheme+"://"+listenIP+":8554/test/stream?param=value/mediaID="+strconv.FormatInt(int64(i), 10)), req.URL)
+						scheme+"://"+listenIP+":8554/test/stream?param=value/trackID="+strconv.FormatInt(int64(i), 10)), req.URL)
 
 					var inTH headers.Transport
 					err = inTH.Unmarshal(req.Header["Transport"])
@@ -561,7 +561,7 @@ func TestClientPlayPartial(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/mediaID=1"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/trackID=1"), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Unmarshal(req.Header["Transport"])
@@ -720,7 +720,7 @@ func TestClientPlayContentBase(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])
@@ -1116,7 +1116,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])
@@ -1212,7 +1212,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 				err = v.ValidateRequest(req, nil)
 				require.NoError(t, err)
@@ -1333,7 +1333,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/trackID=0"), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Unmarshal(req.Header["Transport"])
@@ -2591,7 +2591,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/mediaID=0"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/trackID=0"), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Unmarshal(req.Header["Transport"])

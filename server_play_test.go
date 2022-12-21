@@ -57,12 +57,12 @@ func TestServerPlaySetupPath(t *testing.T) {
 	}{
 		{
 			"normal",
-			"rtsp://localhost:8554/teststream/mediaID=2",
+			"rtsp://localhost:8554/teststream/trackID=2",
 			"teststream",
 		},
 		{
 			"with query",
-			"rtsp://localhost:8554/teststream?testing=123/mediaID=4",
+			"rtsp://localhost:8554/teststream?testing=123/trackID=4",
 			"teststream",
 		},
 		{
@@ -73,7 +73,7 @@ func TestServerPlaySetupPath(t *testing.T) {
 		},
 		{
 			"subpath",
-			"rtsp://localhost:8554/test/stream/mediaID=0",
+			"rtsp://localhost:8554/test/stream/trackID=0",
 			"test/stream",
 		},
 		{
@@ -83,7 +83,7 @@ func TestServerPlaySetupPath(t *testing.T) {
 		},
 		{
 			"subpath with query",
-			"rtsp://localhost:8554/test/stream?testing=123/mediaID=4",
+			"rtsp://localhost:8554/test/stream?testing=123/trackID=4",
 			"test/stream",
 		},
 	} {
@@ -204,7 +204,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": th.Marshal(),
@@ -223,7 +223,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/test12stream/mediaID=1"),
+					URL:    mustParseURL("rtsp://localhost:8554/test12stream/trackID=1"),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"2"},
 						"Transport": th.Marshal(),
@@ -244,7 +244,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"2"},
 						"Transport": th.Marshal(),
@@ -320,7 +320,7 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"1"},
 				"Transport": inTH.Marshal(),
@@ -479,7 +479,7 @@ func TestServerPlay(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Marshal(),
@@ -765,7 +765,7 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Marshal(),
@@ -894,7 +894,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Marshal(),
@@ -1089,7 +1089,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1161,7 +1161,7 @@ func TestServerPlayPlayPlay(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1271,7 +1271,7 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1388,7 +1388,7 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1532,7 +1532,7 @@ func TestServerPlayTimeout(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Marshal(),
@@ -1637,7 +1637,7 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Marshal(),
@@ -1723,7 +1723,7 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"1"},
 				"Transport": inTH.Marshal(),
@@ -1819,7 +1819,7 @@ func TestServerPlayPartialMedias(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=1"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=1"),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"1"},
 			"Transport": inTH.Marshal(),
@@ -1873,7 +1873,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"1"},
 				"Transport": inTH.Marshal(),
@@ -1906,7 +1906,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 
 		res, err = writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=1"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=1"),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
@@ -1991,7 +1991,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			URL: (&url.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
-				Path:   "/teststream/mediaID=0",
+				Path:   "/teststream/trackID=0",
 			}).String(),
 			SequenceNumber: func() *uint16 {
 				v := uint16(557)
@@ -2025,7 +2025,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			URL: (&url.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
-				Path:   "/teststream/mediaID=0",
+				Path:   "/teststream/trackID=0",
 			}).String(),
 			SequenceNumber: func() *uint16 {
 				v := uint16(557)
@@ -2037,7 +2037,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			URL: (&url.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
-				Path:   "/teststream/mediaID=1",
+				Path:   "/teststream/trackID=1",
 			}).String(),
 			SequenceNumber: func() *uint16 {
 				v := uint16(88)
