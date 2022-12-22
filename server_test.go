@@ -326,7 +326,7 @@ func (s *testServerErrMethodNotImplemented) OnSetup(
 func TestServerErrorMethodNotImplemented(t *testing.T) {
 	for _, ca := range []string{"outside session", "inside session"} {
 		t.Run(ca, func(t *testing.T) {
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
@@ -405,7 +405,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 }
 
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -505,7 +505,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 }
 
 func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -599,7 +599,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 }
 
 func TestServerSetupMultipleTransports(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -676,7 +676,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 func TestServerGetSetParameter(t *testing.T) {
 	for _, ca := range []string{"inside session", "outside session"} {
 		t.Run(ca, func(t *testing.T) {
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			var params []byte
@@ -843,7 +843,7 @@ func TestServerErrorInvalidSession(t *testing.T) {
 }
 
 func TestServerSessionClose(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	var session *ServerSession
@@ -913,7 +913,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
@@ -973,7 +973,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 }
 
 func TestServerSessionTeardown(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1049,7 +1049,7 @@ func TestServerErrorInvalidPath(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			nconnClosed := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
@@ -1163,7 +1163,7 @@ func TestServerAuth(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media.Clone()}
+	medias := media.Medias{testH264Media}
 
 	req := base.Request{
 		Method: base.Announce,

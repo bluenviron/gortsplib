@@ -20,19 +20,6 @@ func TestLPCMAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestTracLPCMClone(t *testing.T) {
-	format := &LPCM{
-		PayloadTyp:   96,
-		BitDepth:     16,
-		SampleRate:   48000,
-		ChannelCount: 2,
-	}
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestLPCMMediaDescription(t *testing.T) {
 	format := &LPCM{
 		PayloadTyp:   96,

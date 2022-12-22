@@ -106,8 +106,8 @@ func TestClientSession(t *testing.T) {
 
 		require.Equal(t, base.HeaderValue{"123456"}, req.Header["Session"])
 
-		medias := media.Medias{testH264Media.Clone()}
-		medias.SetControls()
+		medias := media.Medias{testH264Media}
+		medias[0].Control = "mediaID=0"
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -183,8 +183,8 @@ func TestClientAuth(t *testing.T) {
 		err = v.ValidateRequest(req, nil)
 		require.NoError(t, err)
 
-		medias := media.Medias{testH264Media.Clone()}
-		medias.SetControls()
+		medias := media.Medias{testH264Media}
+		medias[0].Control = "mediaID=0"
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -243,7 +243,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		medias := media.Medias{testH264Media.Clone()}
+		medias := media.Medias{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,

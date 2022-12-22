@@ -103,21 +103,6 @@ func (m *Media) Marshal() *psdp.MediaDescription {
 	return md
 }
 
-// Clone clones the media.
-func (m Media) Clone() *Media {
-	ret := &Media{
-		Type:    m.Type,
-		Control: m.Control,
-		Formats: make([]format.Format, len(m.Formats)),
-	}
-
-	for i, format := range m.Formats {
-		ret.Formats[i] = format.Clone()
-	}
-
-	return ret
-}
-
 // URL returns the media URL.
 func (m Media) URL(contentBase *url.URL) (*url.URL, error) {
 	if contentBase == nil {

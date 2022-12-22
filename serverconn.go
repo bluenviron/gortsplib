@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	gourl "net/url"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/bytecounter"
 	"github.com/aler9/gortsplib/v2/pkg/conn"
 	"github.com/aler9/gortsplib/v2/pkg/liberrors"
+	"github.com/aler9/gortsplib/v2/pkg/media"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
@@ -377,8 +379,18 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					}
 				}
 
+				medias := stream.Medias()
+				mediasCopy := make(media.Medias, len(medias))
+				for i, medi := range medias {
+					mediasCopy[i] = &media.Media{
+						Type:    medi.Type,
+						Formats: medi.Formats,
+						Control: "mediaID=" + strconv.FormatInt(int64(i), 10),
+					}
+				}
+
 				if stream != nil {
-					byts, _ := stream.Medias().CloneAndSetControls().Marshal(multicast).Marshal()
+					byts, _ := mediasCopy.Marshal(multicast).Marshal()
 					res.Body = byts
 				}
 			}

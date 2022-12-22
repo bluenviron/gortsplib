@@ -22,14 +22,6 @@ func TestG711Attributes(t *testing.T) {
 	require.Equal(t, uint8(0), format.PayloadType())
 }
 
-func TestG711Clone(t *testing.T) {
-	format := &G711{}
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestG711MediaDescription(t *testing.T) {
 	t.Run("pcma", func(t *testing.T) {
 		format := &G711{}

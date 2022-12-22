@@ -17,20 +17,6 @@ func TestVP8ttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestVP8Clone(t *testing.T) {
-	maxFR := 123
-	maxFS := 456
-	format := &VP8{
-		PayloadTyp: 96,
-		MaxFR:      &maxFR,
-		MaxFS:      &maxFS,
-	}
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestVP8MediaDescription(t *testing.T) {
 	maxFR := 123
 	maxFS := 456

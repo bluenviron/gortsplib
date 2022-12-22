@@ -89,16 +89,6 @@ func (t *LPCM) Marshal() (string, string) {
 		"/" + strconv.FormatInt(int64(t.ChannelCount), 10), ""
 }
 
-// Clone implements Format.
-func (t *LPCM) Clone() Format {
-	return &LPCM{
-		PayloadTyp:   t.PayloadTyp,
-		BitDepth:     t.BitDepth,
-		SampleRate:   t.SampleRate,
-		ChannelCount: t.ChannelCount,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *LPCM) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

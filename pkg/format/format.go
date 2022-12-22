@@ -48,9 +48,6 @@ type Format interface {
 	// Marshal encodes the format in SDP format.
 	Marshal() (string, string)
 
-	// Clone clones the format.
-	Clone() Format
-
 	// PTSEqualsDTS checks whether PTS is equal to DTS in the RTP packet.
 	PTSEqualsDTS(*rtp.Packet) bool
 }

@@ -17,22 +17,6 @@ func TestVP9Attributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestVP9Clone(t *testing.T) {
-	maxFR := 123
-	maxFS := 456
-	profileID := 789
-	format := &VP9{
-		PayloadTyp: 96,
-		MaxFR:      &maxFR,
-		MaxFS:      &maxFS,
-		ProfileID:  &profileID,
-	}
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestVP9MediaDescription(t *testing.T) {
 	maxFR := 123
 	maxFS := 456

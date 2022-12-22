@@ -88,7 +88,7 @@ func TestServerPlaySetupPath(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			stream := NewServerStream(media.Medias{medi, medi, medi, medi, medi})
 			defer stream.Close()
 
@@ -149,7 +149,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			nconnClosed := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			if ca == "closed stream" {
 				stream.Close()
 			} else {
@@ -265,7 +265,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 }
 
 func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 	first := int32(1)
 	errorRecv := make(chan struct{})
@@ -352,7 +352,7 @@ func TestServerPlay(t *testing.T) {
 			sessionClosed := make(chan struct{})
 			framesReceived := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			counter := uint64(0)
@@ -698,7 +698,7 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 		t.Run(ca.proto+" "+ca.name, func(t *testing.T) {
 			errorRecv := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
@@ -842,7 +842,7 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 func TestServerPlayRTCPReport(t *testing.T) {
 	for _, ca := range []string{"udp", "tcp"} {
 		t.Run(ca, func(t *testing.T) {
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
@@ -986,7 +986,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 }
 
 func TestServerPlayVLCMulticast(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	listenIP := multicastCapableIP(t)
@@ -1035,7 +1035,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1129,7 +1129,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 }
 
 func TestServerPlayPlayPlay(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1213,7 +1213,7 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1333,7 +1333,7 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1461,7 +1461,7 @@ func TestServerPlayTimeout(t *testing.T) {
 		t.Run(transport, func(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
@@ -1570,7 +1570,7 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 			nconnClosed := make(chan struct{})
 			sessionClosed := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
@@ -1670,7 +1670,7 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 }
 
 func TestServerPlayUDPChangeConn(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1770,7 +1770,7 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 }
 
 func TestServerPlayPartialMedias(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone(), testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media, testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1946,12 +1946,16 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	err := forma.Init()
 	require.NoError(t, err)
 
-	medi := &media.Media{
-		Type:    "application",
-		Formats: []format.Format{forma},
-	}
-
-	stream := NewServerStream(media.Medias{medi.Clone(), medi.Clone()})
+	stream := NewServerStream(media.Medias{
+		&media.Media{
+			Type:    "application",
+			Formats: []format.Format{forma},
+		},
+		&media.Media{
+			Type:    "application",
+			Formats: []format.Format{forma},
+		},
+	})
 	defer stream.Close()
 
 	s := &Server{

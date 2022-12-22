@@ -30,19 +30,6 @@ func TestH265Attributes(t *testing.T) {
 	require.Equal(t, []byte{0x0B, 0x0C}, format.SafePPS())
 }
 
-func TestH265Clone(t *testing.T) {
-	format := &H265{
-		PayloadTyp: 96,
-		VPS:        []byte{0x01, 0x02},
-		SPS:        []byte{0x03, 0x04},
-		PPS:        []byte{0x05, 0x06},
-	}
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestH265MediaDescription(t *testing.T) {
 	format := &H265{
 		PayloadTyp: 96,

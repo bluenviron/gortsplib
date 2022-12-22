@@ -31,11 +31,6 @@ func (t *JPEG) Marshal() (string, string) {
 	return "JPEG/90000", ""
 }
 
-// Clone implements Format.
-func (t *JPEG) Clone() Format {
-	return &JPEG{}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *JPEG) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

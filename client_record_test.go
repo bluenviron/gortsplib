@@ -275,7 +275,7 @@ func TestClientRecordSerial(t *testing.T) {
 				}(),
 			}
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -431,7 +431,7 @@ func TestClientRecordParallel(t *testing.T) {
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -584,7 +584,7 @@ func TestClientRecordPauseSerial(t *testing.T) {
 				}(),
 			}
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -715,7 +715,7 @@ func TestClientRecordPauseParallel(t *testing.T) {
 				}(),
 			}
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -855,7 +855,7 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 
 	c := Client{}
 
-	medi := testH264Media.Clone()
+	medi := testH264Media
 	medias := media.Medias{medi}
 	medias.SetControls()
 
@@ -1038,7 +1038,7 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 				},
 			}
 
-			medias := media.Medias{testH264Media.Clone()}
+			medias := media.Medias{testH264Media}
 			medias.SetControls()
 
 			err = record(&c, "rtsp://localhost:8554/stream", medias, nil)
@@ -1196,7 +1196,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 				senderReportPeriod: 500 * time.Millisecond,
 			}
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -1326,7 +1326,7 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 		}(),
 	}
 
-	medias := media.Medias{testH264Media.Clone()}
+	medias := media.Medias{testH264Media}
 	medias.SetControls()
 
 	err = record(&c, "rtsp://localhost:8554/teststream", medias,
