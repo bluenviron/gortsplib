@@ -17,6 +17,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/sdp"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
@@ -155,6 +156,10 @@ func TestClientRecordSerial(t *testing.T) {
 				require.Equal(t, base.Announce, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
+				var desc sdp.SessionDescription
+				err = desc.Unmarshal(req.Body)
+				require.NoError(t, err)
+
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
@@ -163,7 +168,8 @@ func TestClientRecordSerial(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL(
+					scheme+"://localhost:8554/teststream/"+controlAttribute(desc.MediaDescriptions[0])), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])

@@ -3,8 +3,8 @@ package media
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 
+	"github.com/google/uuid"
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
@@ -67,8 +67,8 @@ func (ms Medias) Marshal(multicast bool) *sdp.SessionDescription {
 
 // SetControls sets the control attribute of all medias in the list.
 func (ms Medias) SetControls() {
-	for i, media := range ms {
-		media.Control = "mediaID=" + strconv.FormatInt(int64(i), 10)
+	for _, media := range ms {
+		media.Control = "mediaUUID=" + uuid.New().String()
 	}
 }
 

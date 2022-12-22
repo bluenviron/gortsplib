@@ -222,8 +222,8 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 	}
 
 	if *ss.setuppedTransport == TransportUDPMulticast {
-		for mediaID, sm := range ss.setuppedMedias {
-			streamMedia := st.streamMedias[mediaID]
+		for medi, sm := range ss.setuppedMedias {
+			streamMedia := st.streamMedias[medi]
 			streamMedia.multicastHandler.rtcpl.addClient(
 				ss.author.ip(), streamMedia.multicastHandler.rtcpl.port(), sm)
 		}
@@ -241,8 +241,8 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 	}
 
 	if *ss.setuppedTransport == TransportUDPMulticast {
-		for mediaID, sm := range ss.setuppedMedias {
-			streamMedia := st.streamMedias[mediaID]
+		for medi, sm := range ss.setuppedMedias {
+			streamMedia := st.streamMedias[medi]
 			streamMedia.multicastHandler.rtcpl.removeClient(sm)
 		}
 	} else {

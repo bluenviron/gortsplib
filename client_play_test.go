@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -156,7 +155,7 @@ func TestClientPlayFormats(t *testing.T) {
 			req, err := conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
-			require.Equal(t, mustParseURL(fmt.Sprintf("rtsp://localhost:8554/teststream/mediaID=%d", i)), req.URL)
+			require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[i].Control), req.URL)
 
 			var inTH headers.Transport
 			err = inTH.Unmarshal(req.Header["Transport"])
@@ -279,14 +278,13 @@ func TestClientPlay(t *testing.T) {
 					&media.Media{
 						Type:    "application",
 						Formats: []format.Format{forma},
-						Control: "mediaID=0",
 					},
 					&media.Media{
 						Type:    "application",
 						Formats: []format.Format{forma},
-						Control: "mediaID=1",
 					},
 				}
+				medias.SetControls()
 
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
@@ -307,7 +305,7 @@ func TestClientPlay(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, base.Setup, req.Method)
 					require.Equal(t, mustParseURL(
-						scheme+"://"+listenIP+":8554/test/stream?param=value/mediaID="+strconv.FormatInt(int64(i), 10)), req.URL)
+						scheme+"://"+listenIP+":8554/test/stream?param=value/"+medias[i].Control), req.URL)
 
 					var inTH headers.Transport
 					err = inTH.Unmarshal(req.Header["Transport"])
@@ -575,7 +573,7 @@ func TestClientPlayPartial(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/mediaID=1"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"+medias[1].Control), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Unmarshal(req.Header["Transport"])
@@ -734,7 +732,7 @@ func TestClientPlayContentBase(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])
@@ -1130,7 +1128,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])
@@ -1226,7 +1224,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 				err = v.ValidateRequest(req, nil)
 				require.NoError(t, err)
@@ -1347,7 +1345,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Unmarshal(req.Header["Transport"])
@@ -2605,7 +2603,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/mediaID=0"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"+medias[0].Control), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Unmarshal(req.Header["Transport"])

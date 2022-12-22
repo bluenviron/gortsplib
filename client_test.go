@@ -107,7 +107,7 @@ func TestClientSession(t *testing.T) {
 		require.Equal(t, base.HeaderValue{"123456"}, req.Header["Session"])
 
 		medias := media.Medias{testH264Media}
-		medias[0].Control = "mediaID=0"
+		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -184,7 +184,7 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err)
 
 		medias := media.Medias{testH264Media}
-		medias[0].Control = "mediaID=0"
+		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
