@@ -283,7 +283,6 @@ func TestClientRecordSerial(t *testing.T) {
 
 			medi := testH264Media
 			medias := media.Medias{medi}
-			medias.SetControls()
 
 			err = record(&c, scheme+"://localhost:8554/teststream", medias,
 				func(medi *media.Media, pkt rtcp.Packet) {
@@ -439,7 +438,6 @@ func TestClientRecordParallel(t *testing.T) {
 
 			medi := testH264Media
 			medias := media.Medias{medi}
-			medias.SetControls()
 
 			err = record(&c, scheme+"://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
@@ -592,7 +590,6 @@ func TestClientRecordPauseSerial(t *testing.T) {
 
 			medi := testH264Media
 			medias := media.Medias{medi}
-			medias.SetControls()
 
 			err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
@@ -723,7 +720,6 @@ func TestClientRecordPauseParallel(t *testing.T) {
 
 			medi := testH264Media
 			medias := media.Medias{medi}
-			medias.SetControls()
 
 			err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
@@ -863,7 +859,6 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 
 	medi := testH264Media
 	medias := media.Medias{medi}
-	medias.SetControls()
 
 	err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 	require.NoError(t, err)
@@ -1045,7 +1040,6 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 			}
 
 			medias := media.Medias{testH264Media}
-			medias.SetControls()
 
 			err = record(&c, "rtsp://localhost:8554/stream", medias, nil)
 			require.NoError(t, err)
@@ -1204,7 +1198,6 @@ func TestClientRecordRTCPReport(t *testing.T) {
 
 			medi := testH264Media
 			medias := media.Medias{medi}
-			medias.SetControls()
 
 			err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
@@ -1333,7 +1326,6 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 	}
 
 	medias := media.Medias{testH264Media}
-	medias.SetControls()
 
 	err = record(&c, "rtsp://localhost:8554/teststream", medias,
 		func(medi *media.Media, pkt rtcp.Packet) {

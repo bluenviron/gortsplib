@@ -43,7 +43,6 @@ func main() {
 			PayloadTyp: 96,
 		}},
 	}}
-	medias.SetControls()
 
 	// connect to the server and start recording the media
 	c := gortsplib.Client{}

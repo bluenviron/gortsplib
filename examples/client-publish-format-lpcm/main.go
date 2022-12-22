@@ -45,7 +45,6 @@ func main() {
 			ChannelCount: 1,
 		}},
 	}}
-	medias.SetControls()
 
 	c := gortsplib.Client{}
 

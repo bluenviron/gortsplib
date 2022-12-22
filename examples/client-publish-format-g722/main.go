@@ -40,7 +40,6 @@ func main() {
 		Type:    media.TypeAudio,
 		Formats: []format.Format{&format.G722{}},
 	}}
-	medias.SetControls()
 
 	c := gortsplib.Client{}
 

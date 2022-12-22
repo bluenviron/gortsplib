@@ -45,7 +45,6 @@ func main() {
 			PacketizationMode: 1,
 		}},
 	}}
-	medias.SetControls()
 
 	// Client allows to set additional client options
 	c := &gortsplib.Client{

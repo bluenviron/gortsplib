@@ -38,6 +38,13 @@ func main() {
 
 	log.Printf("republishing %d medias", len(medias))
 
+	// setup all medias
+	// this must be called before StartRecording(), that overrides the control attribute.
+	err = reader.SetupAll(medias, baseURL)
+	if err != nil {
+		panic(err)
+	}
+
 	// connect to the server and start recording the same medias
 	publisher := gortsplib.Client{}
 	err = publisher.StartRecording("rtsp://localhost:8554/mystream2", medias)
@@ -45,12 +52,6 @@ func main() {
 		panic(err)
 	}
 	defer publisher.Close()
-
-	// setup all medias
-	err = reader.SetupAll(medias, baseURL)
-	if err != nil {
-		panic(err)
-	}
 
 	// read RTP packets from reader and write them to publisher
 	reader.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {

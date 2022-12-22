@@ -44,7 +44,6 @@ func main() {
 			PacketizationMode: 1,
 		}},
 	}}
-	medias.SetControls()
 
 	// connect to the server and start recording the media
 	c := gortsplib.Client{}
