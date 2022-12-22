@@ -3,22 +3,45 @@ package gortsplib
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/rtcpsender"
 )
 
 type serverStreamMedia struct {
+	uuid             uuid.UUID
 	media            *media.Media
 	formats          map[uint8]*serverStreamFormat
 	multicastHandler *serverMulticastHandler
 }
 
-func newServerStreamMedia(medi *media.Media) *serverStreamMedia {
-	return &serverStreamMedia{
+func newServerStreamMedia(st *ServerStream, medi *media.Media) *serverStreamMedia {
+	sm := &serverStreamMedia{
+		uuid:  uuid.New(),
 		media: medi,
 	}
+
+	sm.formats = make(map[uint8]*serverStreamFormat)
+	for _, forma := range medi.Formats {
+		tr := &serverStreamFormat{
+			format: forma,
+		}
+
+		cmedia := medi
+		tr.rtcpSender = rtcpsender.New(
+			forma.ClockRate(),
+			func(pkt rtcp.Packet) {
+				st.WritePacketRTCP(cmedia, pkt)
+			},
+		)
+
+		sm.formats[forma.PayloadType()] = tr
+	}
+
+	return sm
 }
 
 func (sm *serverStreamMedia) close() {

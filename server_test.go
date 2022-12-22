@@ -315,6 +315,14 @@ type testServerErrMethodNotImplemented struct {
 	stream *ServerStream
 }
 
+func (s *testServerErrMethodNotImplemented) OnDescribe(
+	ctx *ServerHandlerOnDescribeCtx,
+) (*base.Response, *ServerStream, error) {
+	return &base.Response{
+		StatusCode: base.StatusOK,
+	}, s.stream, nil
+}
+
 func (s *testServerErrMethodNotImplemented) OnSetup(
 	ctx *ServerHandlerOnSetupCtx,
 ) (*base.Response, *ServerStream, error) {
@@ -343,12 +351,15 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			var sx headers.Session
 
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{
@@ -380,7 +391,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.SetParameter,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 				Header: headers,
 			})
 			require.NoError(t, err)
@@ -395,7 +406,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Options,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
 				Header: headers,
 			})
 			require.NoError(t, err)
@@ -410,6 +421,11 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -438,9 +454,12 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	defer nconn1.Close()
 	conn1 := conn.NewConn(nconn1)
 
+	desc1, err := doDescribe(conn1)
+	require.NoError(t, err)
+
 	res, err := writeReqReadRes(conn1, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc1.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -480,9 +499,12 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	defer nconn2.Close()
 	conn2 := conn.NewConn(nconn2)
 
+	desc2, err := doDescribe(conn2)
+	require.NoError(t, err)
+
 	res, err = writeReqReadRes(conn2, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc2.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -510,6 +532,11 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -538,9 +565,12 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
+	desc, err := doDescribe(conn)
+	require.NoError(t, err)
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -577,7 +607,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 			"Transport": headers.Transport{
@@ -604,6 +634,11 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -621,6 +656,9 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 	require.NoError(t, err)
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
+
+	desc, err := doDescribe(conn)
+	require.NoError(t, err)
 
 	inTHS := headers.Transports{
 		{
@@ -651,7 +689,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"1"},
 			"Transport": inTHS.Marshal(),
@@ -683,6 +721,11 @@ func TestServerGetSetParameter(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						ctx.Session.SetUserData(123)
 						return &base.Response{
@@ -725,14 +768,17 @@ func TestServerGetSetParameter(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			var sx headers.Session
 
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 					Header: base.Header{
-						"CSeq": base.HeaderValue{"1"},
+						"CSeq": base.HeaderValue{"2"},
 						"Transport": headers.Transport{
 							Protocol: headers.TransportProtocolTCP,
 							Delivery: func() *headers.TransportDelivery {
@@ -755,7 +801,7 @@ func TestServerGetSetParameter(t *testing.T) {
 			}
 
 			headers := base.Header{
-				"CSeq": base.HeaderValue{"2"},
+				"CSeq": base.HeaderValue{"3"},
 			}
 			if ca == "inside session" {
 				headers["Session"] = base.HeaderValue{sx.Session}
@@ -771,7 +817,7 @@ func TestServerGetSetParameter(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			headers = base.Header{
-				"CSeq": base.HeaderValue{"3"},
+				"CSeq": base.HeaderValue{"4"},
 			}
 			if ca == "inside session" {
 				headers["Session"] = base.HeaderValue{sx.Session}
@@ -853,6 +899,11 @@ func TestServerSessionClose(t *testing.T) {
 			onSessionOpen: func(ctx *ServerHandlerOnSessionOpenCtx) {
 				session = ctx.Session
 			},
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -871,9 +922,12 @@ func TestServerSessionClose(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
+	desc, err := doDescribe(conn)
+	require.NoError(t, err)
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -921,6 +975,11 @@ func TestServerSessionAutoClose(t *testing.T) {
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						if ca == "200" {
 							return &base.Response{
@@ -944,9 +1003,12 @@ func TestServerSessionAutoClose(t *testing.T) {
 			require.NoError(t, err)
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			_, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
 					"CSeq": base.HeaderValue{"1"},
 					"Transport": headers.Transport{
@@ -978,6 +1040,11 @@ func TestServerSessionTeardown(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -996,9 +1063,12 @@ func TestServerSessionTeardown(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
+	desc, err := doDescribe(conn)
+	require.NoError(t, err)
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1058,6 +1128,11 @@ func TestServerErrorInvalidPath(t *testing.T) {
 						require.EqualError(t, ctx.Error, "invalid path")
 						close(nconnClosed)
 					},
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -1076,10 +1151,13 @@ func TestServerErrorInvalidPath(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{

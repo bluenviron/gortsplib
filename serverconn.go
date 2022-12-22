@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net"
 	gourl "net/url"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -379,13 +378,12 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					}
 				}
 
-				medias := stream.Medias()
-				mediasCopy := make(media.Medias, len(medias))
-				for i, medi := range medias {
+				mediasCopy := make(media.Medias, len(stream.medias))
+				for i, medi := range stream.medias {
 					mediasCopy[i] = &media.Media{
 						Type:    medi.Type,
 						Formats: medi.Formats,
-						Control: "mediaID=" + strconv.FormatInt(int64(i), 10),
+						Control: "mediaUUID=" + stream.streamMedias[medi].uuid.String(),
 					}
 				}
 
