@@ -2,13 +2,14 @@ package gortsplib
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/tls"
 	"fmt"
 	"net"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/aler9/gortsplib/v2/pkg/base"
 	"github.com/aler9/gortsplib/v2/pkg/liberrors"
@@ -26,23 +27,6 @@ func extractPort(address string) (int, error) {
 	}
 
 	return int(tmp2), nil
-}
-
-func newSessionSecretID(sessions map[string]*ServerSession) (string, error) {
-	for {
-		b := make([]byte, 4)
-		_, err := rand.Read(b)
-		if err != nil {
-			return "", err
-		}
-
-		u := uint32(b[3])<<24 | uint32(b[2])<<16 | uint32(b[1])<<8 | uint32(b[0])
-		id := strconv.FormatUint(uint64(u), 10)
-
-		if _, ok := sessions[id]; !ok {
-			return id, nil
-		}
-	}
 }
 
 type sessionRequestRes struct {
@@ -413,17 +397,7 @@ func (s *Server) run() {
 						continue
 					}
 
-					secretID, err := newSessionSecretID(s.sessions)
-					if err != nil {
-						req.res <- sessionRequestRes{
-							res: &base.Response{
-								StatusCode: base.StatusBadRequest,
-							},
-							err: fmt.Errorf("internal error"),
-						}
-						continue
-					}
-
+					secretID := uuid.New().String()
 					ss := newServerSession(s, secretID, req.sc)
 					s.sessions[secretID] = ss
 
