@@ -3,8 +3,8 @@ package media
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 
+	"github.com/google/uuid"
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/aler9/gortsplib/v2/pkg/sdp"
@@ -65,32 +65,15 @@ func (ms Medias) Marshal(multicast bool) *sdp.SessionDescription {
 	return sout
 }
 
-// Clone clones the media list.
-func (ms Medias) Clone() Medias {
-	ret := make(Medias, len(ms))
-	for i, media := range ms {
-		ret[i] = media.Clone()
-	}
-	return ret
-}
-
-// CloneAndSetControls clones the media list and sets the control attribute
-// of all medias in the list.
-func (ms Medias) CloneAndSetControls() Medias {
-	ret := ms.Clone()
-	ret.SetControls()
-	return ret
-}
-
 // SetControls sets the control attribute of all medias in the list.
 func (ms Medias) SetControls() {
-	for i, media := range ms {
-		media.Control = "mediaID=" + strconv.FormatInt(int64(i), 10)
+	for _, media := range ms {
+		media.Control = "mediaUUID=" + uuid.New().String()
 	}
 }
 
 // FindFormat finds a certain format among all the formats in all the medias.
-// If the format is found, it is inserted into forma, and format media is returned.
+// If the format is found, it is inserted into forma, and its media is returned.
 func (ms Medias) FindFormat(forma interface{}) *Media {
 	for _, media := range ms {
 		for _, formak := range media.Formats {

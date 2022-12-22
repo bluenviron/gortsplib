@@ -175,16 +175,6 @@ func (t *H264) Marshal() (string, string) {
 	return "H264/90000", fmtp
 }
 
-// Clone implements Format.
-func (t *H264) Clone() Format {
-	return &H264{
-		PayloadTyp:        t.PayloadTyp,
-		SPS:               t.SafeSPS(),
-		PPS:               t.SafePPS(),
-		PacketizationMode: t.PacketizationMode,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
 	return rtpH264ContainsIDR(pkt)

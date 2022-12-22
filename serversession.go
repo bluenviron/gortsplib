@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -30,47 +29,52 @@ func stringsReverseIndex(s, substr string) int {
 	return -1
 }
 
-func serverParseURLForPlay(u *url.URL) (string, string, int, error) {
+func serverParseURLForPlay(u *url.URL) (string, string, string, error) {
 	pathAndQuery, ok := u.RTSPPathAndQuery()
 	if !ok {
-		return "", "", -1, liberrors.ErrServerInvalidPath{}
+		return "", "", "", liberrors.ErrServerInvalidPath{}
 	}
 
-	i := stringsReverseIndex(pathAndQuery, "/mediaID=")
+	i := stringsReverseIndex(pathAndQuery, "/mediaUUID=")
 	if i < 0 {
 		if !strings.HasSuffix(pathAndQuery, "/") {
-			return "", "", -1, fmt.Errorf("path of a SETUP request must end with a slash. " +
+			return "", "", "", fmt.Errorf("path of a SETUP request must end with a slash. " +
 				"This typically happens when VLC fails a request, and then switches to an " +
 				"unsupported RTSP dialect")
 		}
 
 		path, query := url.PathSplitQuery(pathAndQuery[:len(pathAndQuery)-1])
-		return path, query, 0, nil
+		return path, query, "", nil
 	}
 
-	var t string
-	pathAndQuery, t = pathAndQuery[:i], pathAndQuery[i+len("/mediaID="):]
+	var mediaUUID string
+	pathAndQuery, mediaUUID = pathAndQuery[:i], pathAndQuery[i+len("/mediaUUID="):]
 	path, query := url.PathSplitQuery(pathAndQuery)
-	tmp, _ := strconv.ParseInt(t, 10, 64)
-	return path, query, int(tmp), nil
+	return path, query, mediaUUID, nil
 }
 
-func findMediaByURL(medias media.Medias, baseURL *url.URL, u *url.URL) (*media.Media, bool) {
+func findMediaByURL(medias media.Medias, baseURL *url.URL, u *url.URL) *media.Media {
 	for _, media := range medias {
 		u1, err := media.URL(baseURL)
 		if err == nil && u1.String() == u.String() {
-			return media, true
+			return media
 		}
 	}
 
-	return nil, false
+	return nil
 }
 
-func findMediaByID(medias media.Medias, id int) (*media.Media, bool) {
-	if len(medias) <= id {
-		return nil, false
+func findMediaByUUID(st *ServerStream, uuid string) *media.Media {
+	if uuid == "" {
+		return st.medias[0]
 	}
-	return medias[id], true
+
+	for _, sm := range st.streamMedias {
+		if sm.uuid.String() == uuid {
+			return sm.media
+		}
+	}
+	return nil
 }
 
 func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *headers.Transport {
@@ -602,11 +606,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		var path string
 		var query string
-		var mediaID int
+		var mediaUUID string
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
 			var err error
-			path, query, mediaID, err = serverParseURLForPlay(req.URL)
+			path, query, mediaUUID, err = serverParseURLForPlay(req.URL)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -686,12 +690,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		var medi *media.Media
-		var ok bool
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
-			medi, ok = findMediaByID(stream.medias, mediaID)
+			medi = findMediaByUUID(stream, mediaUUID)
 		default: // record
-			medi, ok = findMediaByURL(ss.announcedMedias, &url.URL{
+			medi = findMediaByURL(ss.announcedMedias, &url.URL{
 				Scheme:   req.URL.Scheme,
 				Host:     req.URL.Host,
 				Path:     path,
@@ -699,7 +702,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, req.URL)
 		}
 
-		if !ok {
+		if medi == nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, fmt.Errorf("media not found")
@@ -881,15 +884,14 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		var ri headers.RTPInfo
 		now := time.Now()
 
-		for i, sm := range ss.setuppedMediasOrdered {
+		for _, sm := range ss.setuppedMediasOrdered {
 			entry := ss.setuppedStream.rtpInfoEntry(sm.media, now)
 			if entry != nil {
 				entry.URL = (&url.URL{
 					Scheme: req.URL.Scheme,
 					Host:   req.URL.Host,
-					Path:   "/" + *ss.setuppedPath + "/mediaID=" + strconv.FormatInt(int64(i), 10),
+					Path:   "/" + *ss.setuppedPath + "/mediaUUID=" + ss.setuppedStream.streamMedias[sm.media].uuid.String(),
 				}).String()
-
 				ri = append(ri, entry)
 			}
 		}

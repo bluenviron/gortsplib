@@ -42,19 +42,6 @@ func TestH264PTSEqualsDTS(t *testing.T) {
 	}))
 }
 
-func TestH264Clone(t *testing.T) {
-	format := &H264{
-		PayloadTyp:        96,
-		SPS:               []byte{0x01, 0x02},
-		PPS:               []byte{0x03, 0x04},
-		PacketizationMode: 1,
-	}
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestH264MediaDescription(t *testing.T) {
 	t.Run("standard", func(t *testing.T) {
 		format := &H264{

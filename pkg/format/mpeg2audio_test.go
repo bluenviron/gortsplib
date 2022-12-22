@@ -15,14 +15,6 @@ func TestMPEG2AudioAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestMPEG2AudioClone(t *testing.T) {
-	format := &MPEG2Audio{}
-
-	clone := format.Clone()
-	// require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestMPEG2AudioMediaDescription(t *testing.T) {
 	format := &MPEG2Audio{}
 

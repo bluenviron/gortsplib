@@ -17,6 +17,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/media"
+	"github.com/aler9/gortsplib/v2/pkg/sdp"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
@@ -155,6 +156,10 @@ func TestClientRecordSerial(t *testing.T) {
 				require.Equal(t, base.Announce, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
+				var desc sdp.SessionDescription
+				err = desc.Unmarshal(req.Body)
+				require.NoError(t, err)
+
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
@@ -163,7 +168,8 @@ func TestClientRecordSerial(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL(
+					scheme+"://localhost:8554/teststream/"+controlAttribute(desc.MediaDescriptions[0])), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])
@@ -275,7 +281,7 @@ func TestClientRecordSerial(t *testing.T) {
 				}(),
 			}
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -431,7 +437,7 @@ func TestClientRecordParallel(t *testing.T) {
 			writerDone := make(chan struct{})
 			defer func() { <-writerDone }()
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -584,7 +590,7 @@ func TestClientRecordPauseSerial(t *testing.T) {
 				}(),
 			}
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -715,7 +721,7 @@ func TestClientRecordPauseParallel(t *testing.T) {
 				}(),
 			}
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -855,7 +861,7 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 
 	c := Client{}
 
-	medi := testH264Media.Clone()
+	medi := testH264Media
 	medias := media.Medias{medi}
 	medias.SetControls()
 
@@ -1038,7 +1044,7 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 				},
 			}
 
-			medias := media.Medias{testH264Media.Clone()}
+			medias := media.Medias{testH264Media}
 			medias.SetControls()
 
 			err = record(&c, "rtsp://localhost:8554/stream", medias, nil)
@@ -1196,7 +1202,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 				senderReportPeriod: 500 * time.Millisecond,
 			}
 
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medias := media.Medias{medi}
 			medias.SetControls()
 
@@ -1326,7 +1332,7 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 		}(),
 	}
 
-	medias := media.Medias{testH264Media.Clone()}
+	medias := media.Medias{testH264Media}
 	medias.SetControls()
 
 	err = record(&c, "rtsp://localhost:8554/teststream", medias,

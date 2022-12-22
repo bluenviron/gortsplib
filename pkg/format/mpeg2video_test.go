@@ -15,14 +15,6 @@ func TestMPEG2VideoAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestMPEG2VideoClone(t *testing.T) {
-	format := &MPEG2Video{}
-
-	clone := format.Clone()
-	// require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestMPEG2VideoMediaDescription(t *testing.T) {
 	format := &MPEG2Video{}
 

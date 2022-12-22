@@ -15,14 +15,6 @@ func TestG722Attributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestG722Clone(t *testing.T) {
-	format := &G722{}
-
-	clone := format.Clone()
-	// require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestG722MediaDescription(t *testing.T) {
 	format := &G722{}
 

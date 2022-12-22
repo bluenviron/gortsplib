@@ -117,17 +117,6 @@ func (t *H265) Marshal() (string, string) {
 	return "H265/90000", fmtp
 }
 
-// Clone implements Format.
-func (t *H265) Clone() Format {
-	return &H265{
-		PayloadTyp: t.PayloadTyp,
-		VPS:        t.SafeVPS(),
-		SPS:        t.SafeSPS(),
-		PPS:        t.SafePPS(),
-		MaxDONDiff: t.MaxDONDiff,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *H265) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

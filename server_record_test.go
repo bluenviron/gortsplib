@@ -30,7 +30,7 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
 		Body: func() []byte {
-			medi := testH264Media.Clone()
+			medi := testH264Media
 			medi.Control = control
 
 			sout := &sdp.SessionDescription{
@@ -207,7 +207,7 @@ func TestServerRecordSetupPath(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			media := testH264Media.Clone()
+			media := testH264Media
 			media.Control = ca.control
 
 			sout := &sdp.SessionDescription{
@@ -298,7 +298,7 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media.Clone()}
+	medias := media.Medias{testH264Media}
 	medias.SetControls()
 
 	res, err := writeReqReadRes(conn, base.Request{
@@ -315,7 +315,7 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
@@ -341,7 +341,7 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 			"Transport": headers.Transport{
@@ -402,7 +402,23 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media.Clone(), testH264Media.Clone()}
+	forma := &format.Generic{
+		PayloadTyp: 96,
+		RTPMap:     "private/90000",
+	}
+	err = forma.Init()
+	require.NoError(t, err)
+
+	medias := media.Medias{
+		&media.Media{
+			Type:    "application",
+			Formats: []format.Format{forma},
+		},
+		&media.Media{
+			Type:    "application",
+			Formats: []format.Format{forma},
+		},
+	}
 	medias.SetControls()
 
 	res, err := writeReqReadRes(conn, base.Request{
@@ -432,7 +448,7 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": th.Marshal(),
@@ -556,7 +572,26 @@ func TestServerRecord(t *testing.T) {
 
 			<-nconnOpened
 
-			medias := media.Medias{testH264Media.Clone(), testH264Media.Clone()}
+			medias := media.Medias{
+				&media.Media{
+					Type: media.TypeVideo,
+					Formats: []format.Format{&format.H264{
+						PayloadTyp:        96,
+						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+						PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+						PacketizationMode: 1,
+					}},
+				},
+				&media.Media{
+					Type: media.TypeVideo,
+					Formats: []format.Format{&format.H264{
+						PayloadTyp:        96,
+						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
+						PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+						PacketizationMode: 1,
+					}},
+				},
+			}
 			medias.SetControls()
 
 			res, err := writeReqReadRes(conn, base.Request{
@@ -608,7 +643,7 @@ func TestServerRecord(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=" + strconv.FormatInt(int64(i), 10)),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[i].Control),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"2"},
 						"Transport": inTH.Marshal(),
@@ -760,7 +795,7 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media.Clone()}
+	medias := media.Medias{testH264Media}
 	medias.SetControls()
 
 	res, err := writeReqReadRes(conn, base.Request{
@@ -790,7 +825,7 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": inTH.Marshal(),
@@ -861,7 +896,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media.Clone()}
+	medias := media.Medias{testH264Media}
 	medias.SetControls()
 
 	res, err := writeReqReadRes(conn, base.Request{
@@ -886,7 +921,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
@@ -1035,7 +1070,7 @@ func TestServerRecordTimeout(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			medias := media.Medias{testH264Media.Clone()}
+			medias := media.Medias{testH264Media}
 			medias.SetControls()
 
 			res, err := writeReqReadRes(conn, base.Request{
@@ -1071,7 +1106,7 @@ func TestServerRecordTimeout(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
@@ -1158,7 +1193,7 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 			conn := conn.NewConn(nconn)
 
-			medias := media.Medias{testH264Media.Clone()}
+			medias := media.Medias{testH264Media}
 			medias.SetControls()
 
 			res, err := writeReqReadRes(conn, base.Request{
@@ -1194,7 +1229,7 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
@@ -1271,7 +1306,7 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		medias := media.Medias{testH264Media.Clone()}
+		medias := media.Medias{testH264Media}
 		medias.SetControls()
 
 		res, err := writeReqReadRes(conn, base.Request{
@@ -1301,7 +1336,7 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 
 		res, err = writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
@@ -1475,7 +1510,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),

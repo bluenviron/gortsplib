@@ -23,21 +23,6 @@ func TestGenericAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestGenericClone(t *testing.T) {
-	format := &Generic{
-		PayloadTyp: 98,
-		RTPMap:     "H265/90000",
-		FMTP: "profile-id=1; sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
-			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=; sprop-pps=RAHgdrAwxmQ=",
-	}
-	err := format.Init()
-	require.NoError(t, err)
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestGenericMediaDescription(t *testing.T) {
 	format := &Generic{
 		PayloadTyp: 98,

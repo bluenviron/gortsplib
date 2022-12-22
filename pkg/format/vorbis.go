@@ -92,16 +92,6 @@ func (t *Vorbis) Marshal() (string, string) {
 		"configuration=" + base64.StdEncoding.EncodeToString(t.Configuration)
 }
 
-// Clone implements Format.
-func (t *Vorbis) Clone() Format {
-	return &Vorbis{
-		PayloadTyp:    t.PayloadTyp,
-		SampleRate:    t.SampleRate,
-		ChannelCount:  t.ChannelCount,
-		Configuration: t.Configuration,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *Vorbis) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

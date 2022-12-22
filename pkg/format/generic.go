@@ -95,16 +95,6 @@ func (t *Generic) Marshal() (string, string) {
 	return t.RTPMap, t.FMTP
 }
 
-// Clone implements Format.
-func (t *Generic) Clone() Format {
-	return &Generic{
-		PayloadTyp: t.PayloadTyp,
-		RTPMap:     t.RTPMap,
-		FMTP:       t.FMTP,
-		ClockRat:   t.ClockRat,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *Generic) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

@@ -68,15 +68,6 @@ func (t *Opus) Marshal() (string, string) {
 		"/" + strconv.FormatInt(int64(t.ChannelCount), 10), fmtp
 }
 
-// Clone implements Format.
-func (t *Opus) Clone() Format {
-	return &Opus{
-		PayloadTyp:   t.PayloadTyp,
-		SampleRate:   t.SampleRate,
-		ChannelCount: t.ChannelCount,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *Opus) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

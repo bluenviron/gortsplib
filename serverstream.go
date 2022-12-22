@@ -11,7 +11,6 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/liberrors"
 	"github.com/aler9/gortsplib/v2/pkg/media"
-	"github.com/aler9/gortsplib/v2/pkg/rtcpsender"
 )
 
 // ServerStream represents a data stream.
@@ -39,27 +38,8 @@ func NewServerStream(medias media.Medias) *ServerStream {
 	}
 
 	st.streamMedias = make(map[*media.Media]*serverStreamMedia, len(medias))
-	for _, media := range medias {
-		ssm := newServerStreamMedia(media)
-
-		ssm.formats = make(map[uint8]*serverStreamFormat)
-		for _, forma := range media.Formats {
-			tr := &serverStreamFormat{
-				format: forma,
-			}
-
-			cmedia := media
-			tr.rtcpSender = rtcpsender.New(
-				forma.ClockRate(),
-				func(pkt rtcp.Packet) {
-					st.WritePacketRTCP(cmedia, pkt)
-				},
-			)
-
-			ssm.formats[forma.PayloadType()] = tr
-		}
-
-		st.streamMedias[media] = ssm
+	for _, medi := range medias {
+		st.streamMedias[medi] = newServerStreamMedia(st, medi)
 	}
 
 	return st
@@ -242,8 +222,8 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 	}
 
 	if *ss.setuppedTransport == TransportUDPMulticast {
-		for mediaID, sm := range ss.setuppedMedias {
-			streamMedia := st.streamMedias[mediaID]
+		for medi, sm := range ss.setuppedMedias {
+			streamMedia := st.streamMedias[medi]
 			streamMedia.multicastHandler.rtcpl.addClient(
 				ss.author.ip(), streamMedia.multicastHandler.rtcpl.port(), sm)
 		}
@@ -261,8 +241,8 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 	}
 
 	if *ss.setuppedTransport == TransportUDPMulticast {
-		for mediaID, sm := range ss.setuppedMedias {
-			streamMedia := st.streamMedias[mediaID]
+		for medi, sm := range ss.setuppedMedias {
+			streamMedia := st.streamMedias[medi]
 			streamMedia.multicastHandler.rtcpl.removeClient(sm)
 		}
 	} else {

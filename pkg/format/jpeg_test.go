@@ -15,14 +15,6 @@ func TestJPEGAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestJPEGClone(t *testing.T) {
-	format := &JPEG{}
-
-	clone := format.Clone()
-	// require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestJPEGMediaDescription(t *testing.T) {
 	format := &JPEG{}
 

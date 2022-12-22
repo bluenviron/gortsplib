@@ -20,19 +20,6 @@ func TestVorbisAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestTracVorbisClone(t *testing.T) {
-	format := &Vorbis{
-		PayloadTyp:    96,
-		SampleRate:    48000,
-		ChannelCount:  2,
-		Configuration: []byte{0x01, 0x02, 0x03, 0x04},
-	}
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestVorbisMediaDescription(t *testing.T) {
 	format := &Vorbis{
 		PayloadTyp:    96,

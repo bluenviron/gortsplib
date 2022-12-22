@@ -3,14 +3,17 @@ package gortsplib
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"net"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/ipv4"
 
@@ -49,6 +52,36 @@ func multicastCapableIP(t *testing.T) string {
 	return ""
 }
 
+func controlAttribute(md *psdp.MediaDescription) string {
+	v, _ := md.Attribute("control")
+	return v
+}
+
+func doDescribe(conn *conn.Conn) (*sdp.SessionDescription, error) {
+	res, err := writeReqReadRes(conn, base.Request{
+		Method: base.Describe,
+		URL:    mustParseURL("rtsp://localhost:8554/pa"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != base.StatusOK {
+		return nil, errors.New("bad status code")
+	}
+
+	var desc sdp.SessionDescription
+	err = desc.Unmarshal(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return &desc, err
+}
+
 func TestServerPlaySetupPath(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -57,12 +90,12 @@ func TestServerPlaySetupPath(t *testing.T) {
 	}{
 		{
 			"normal",
-			"rtsp://localhost:8554/teststream/mediaID=2",
+			"rtsp://localhost:8554/teststream/[control2]",
 			"teststream",
 		},
 		{
 			"with query",
-			"rtsp://localhost:8554/teststream?testing=123/mediaID=4",
+			"rtsp://localhost:8554/teststream?testing=123/[control4]",
 			"teststream",
 		},
 		{
@@ -73,7 +106,7 @@ func TestServerPlaySetupPath(t *testing.T) {
 		},
 		{
 			"subpath",
-			"rtsp://localhost:8554/test/stream/mediaID=0",
+			"rtsp://localhost:8554/test/stream/[control0]",
 			"test/stream",
 		},
 		{
@@ -83,17 +116,27 @@ func TestServerPlaySetupPath(t *testing.T) {
 		},
 		{
 			"subpath with query",
-			"rtsp://localhost:8554/test/stream?testing=123/mediaID=4",
+			"rtsp://localhost:8554/test/stream?testing=123/[control4]",
 			"test/stream",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			medi := testH264Media.Clone()
-			stream := NewServerStream(media.Medias{medi, medi, medi, medi, medi})
+			stream := NewServerStream(media.Medias{
+				testH264Media,
+				testH264Media,
+				testH264Media,
+				testH264Media,
+				testH264Media,
+			})
 			defer stream.Close()
 
 			s := &Server{
 				Handler: &testServerHandler{
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						require.Equal(t, ca.path, ctx.Path)
 						return &base.Response{
@@ -113,6 +156,9 @@ func TestServerPlaySetupPath(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			th := &headers.Transport{
 				Protocol: headers.TransportProtocolTCP,
 				Delivery: func() *headers.TransportDelivery {
@@ -126,11 +172,16 @@ func TestServerPlaySetupPath(t *testing.T) {
 				InterleavedIDs: &[2]int{0, 1},
 			}
 
+			for i, md := range desc.MediaDescriptions {
+				v, _ := md.Attribute("control")
+				ca.url = strings.ReplaceAll(ca.url, "[control"+strconv.FormatInt(int64(i), 10)+"]", v)
+			}
+
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
 				URL:    mustParseURL(ca.url),
 				Header: base.Header{
-					"CSeq":      base.HeaderValue{"1"},
+					"CSeq":      base.HeaderValue{"2"},
 					"Transport": th.Marshal(),
 				},
 			})
@@ -149,7 +200,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			nconnClosed := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			if ca == "closed stream" {
 				stream.Close()
 			} else {
@@ -171,6 +222,11 @@ func TestServerPlaySetupErrors(t *testing.T) {
 						}
 						close(nconnClosed)
 					},
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -189,6 +245,9 @@ func TestServerPlaySetupErrors(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			th := &headers.Transport{
 				Protocol: headers.TransportProtocolTCP,
 				Delivery: func() *headers.TransportDelivery {
@@ -204,9 +263,9 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
-					"CSeq":      base.HeaderValue{"1"},
+					"CSeq":      base.HeaderValue{"2"},
 					"Transport": th.Marshal(),
 				},
 			})
@@ -223,9 +282,9 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/test12stream/mediaID=1"),
+					URL:    mustParseURL("rtsp://localhost:8554/test12stream/" + controlAttribute(desc.MediaDescriptions[0])),
 					Header: base.Header{
-						"CSeq":      base.HeaderValue{"2"},
+						"CSeq":      base.HeaderValue{"3"},
 						"Transport": th.Marshal(),
 						"Session":   base.HeaderValue{sx.Session},
 					},
@@ -244,9 +303,9 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+					URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 					Header: base.Header{
-						"CSeq":      base.HeaderValue{"2"},
+						"CSeq":      base.HeaderValue{"4"},
 						"Transport": th.Marshal(),
 						"Session":   base.HeaderValue{sx.Session},
 					},
@@ -265,7 +324,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 }
 
 func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 	first := int32(1)
 	errorRecv := make(chan struct{})
@@ -278,6 +337,11 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 						"UDP ports 35466 and 35467 are already assigned to another reader with the same IP")
 					close(errorRecv)
 				}
+			},
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
@@ -318,11 +382,14 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
+		desc, err := doDescribe(conn)
+		require.NoError(t, err)
+
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 			Header: base.Header{
-				"CSeq":      base.HeaderValue{"1"},
+				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
 			},
 		})
@@ -352,7 +419,7 @@ func TestServerPlay(t *testing.T) {
 			sessionClosed := make(chan struct{})
 			framesReceived := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			counter := uint64(0)
@@ -372,6 +439,11 @@ func TestServerPlay(t *testing.T) {
 					},
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
+					},
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
@@ -451,6 +523,9 @@ func TestServerPlay(t *testing.T) {
 
 			<-nconnOpened
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			inTH := &headers.Transport{
 				Mode: func() *headers.TransportMode {
 					v := headers.TransportModePlay
@@ -479,9 +554,9 @@ func TestServerPlay(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
-					"CSeq":      base.HeaderValue{"1"},
+					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
 				},
 			})
@@ -555,7 +630,7 @@ func TestServerPlay(t *testing.T) {
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream"),
 				Header: base.Header{
-					"CSeq":    base.HeaderValue{"2"},
+					"CSeq":    base.HeaderValue{"3"},
 					"Session": base.HeaderValue{sx.Session},
 				},
 			})
@@ -698,11 +773,16 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 		t.Run(ca.proto+" "+ca.name, func(t *testing.T) {
 			errorRecv := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
 				Handler: &testServerHandler{
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -744,6 +824,9 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			inTH := &headers.Transport{
 				Mode: func() *headers.TransportMode {
 					v := headers.TransportModePlay
@@ -765,9 +848,9 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
-					"CSeq":      base.HeaderValue{"1"},
+					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
 				},
 			})
@@ -799,7 +882,7 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq":    base.HeaderValue{"2"},
+					"CSeq":    base.HeaderValue{"3"},
 					"Session": base.HeaderValue{sx.Session},
 				},
 			})
@@ -842,11 +925,16 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 func TestServerPlayRTCPReport(t *testing.T) {
 	for _, ca := range []string{"udp", "tcp"} {
 		t.Run(ca, func(t *testing.T) {
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
 				Handler: &testServerHandler{
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
@@ -873,6 +961,9 @@ func TestServerPlayRTCPReport(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			inTH := &headers.Transport{
 				Mode: func() *headers.TransportMode {
 					v := headers.TransportModePlay
@@ -894,9 +985,9 @@ func TestServerPlayRTCPReport(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
-					"CSeq":      base.HeaderValue{"1"},
+					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
 				},
 			})
@@ -923,7 +1014,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq":    base.HeaderValue{"2"},
+					"CSeq":    base.HeaderValue{"3"},
 					"Session": base.HeaderValue{sx.Session},
 				},
 			})
@@ -975,7 +1066,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				Method: base.Teardown,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq":    base.HeaderValue{"3"},
+					"CSeq":    base.HeaderValue{"4"},
 					"Session": base.HeaderValue{sx.Session},
 				},
 			})
@@ -986,7 +1077,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 }
 
 func TestServerPlayVLCMulticast(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	listenIP := multicastCapableIP(t)
@@ -1035,7 +1126,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1044,6 +1135,11 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
+			},
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
@@ -1087,11 +1183,14 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
+	desc, err := doDescribe(conn)
+	require.NoError(t, err)
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
+			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
 				Protocol: headers.TransportProtocolTCP,
 				Delivery: func() *headers.TransportDelivery {
@@ -1117,7 +1216,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"3"},
 			"Session": base.HeaderValue{sx.Session},
 		},
 	})
@@ -1129,11 +1228,16 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 }
 
 func TestServerPlayPlayPlay(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -1159,11 +1263,14 @@ func TestServerPlayPlayPlay(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
+	desc, err := doDescribe(conn)
+	require.NoError(t, err)
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
+			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
 				Protocol: headers.TransportProtocolUDP,
 				Delivery: func() *headers.TransportDelivery {
@@ -1189,7 +1296,7 @@ func TestServerPlayPlayPlay(t *testing.T) {
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"3"},
 			"Session": base.HeaderValue{sx.Session},
 		},
 	})
@@ -1200,7 +1307,7 @@ func TestServerPlayPlayPlay(t *testing.T) {
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq":    base.HeaderValue{"3"},
+			"CSeq":    base.HeaderValue{"4"},
 			"Session": base.HeaderValue{sx.Session},
 		},
 	})
@@ -1213,7 +1320,7 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1221,6 +1328,11 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
+			},
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
@@ -1269,11 +1381,14 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
+	desc, err := doDescribe(conn)
+	require.NoError(t, err)
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
+			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
 				Protocol: headers.TransportProtocolTCP,
 				Delivery: func() *headers.TransportDelivery {
@@ -1333,7 +1448,7 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 	writerDone := make(chan struct{})
 	writerTerminate := make(chan struct{})
 
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
@@ -1341,6 +1456,11 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
+			},
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
 			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
@@ -1386,11 +1506,14 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
+	desc, err := doDescribe(conn)
+	require.NoError(t, err)
+
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
+			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
 				Protocol: headers.TransportProtocolTCP,
 				Delivery: func() *headers.TransportDelivery {
@@ -1416,7 +1539,7 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"3"},
 			"Session": base.HeaderValue{sx.Session},
 		},
 	})
@@ -1427,7 +1550,7 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 		Method: base.Pause,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"4"},
 			"Session": base.HeaderValue{sx.Session},
 		},
 	})
@@ -1441,7 +1564,7 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 		Method: base.Pause,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"5"},
 			"Session": base.HeaderValue{sx.Session},
 		},
 	})
@@ -1461,7 +1584,7 @@ func TestServerPlayTimeout(t *testing.T) {
 		t.Run(transport, func(t *testing.T) {
 			sessionClosed := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
@@ -1469,10 +1592,10 @@ func TestServerPlayTimeout(t *testing.T) {
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil
+						}, stream, nil
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
@@ -1510,6 +1633,9 @@ func TestServerPlayTimeout(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			inTH := &headers.Transport{
 				Mode: func() *headers.TransportMode {
 					v := headers.TransportModePlay
@@ -1532,9 +1658,9 @@ func TestServerPlayTimeout(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
-					"CSeq":      base.HeaderValue{"1"},
+					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
 				},
 			})
@@ -1549,7 +1675,7 @@ func TestServerPlayTimeout(t *testing.T) {
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq":    base.HeaderValue{"2"},
+					"CSeq":    base.HeaderValue{"3"},
 					"Session": base.HeaderValue{sx.Session},
 				},
 			})
@@ -1570,7 +1696,7 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 			nconnClosed := make(chan struct{})
 			sessionClosed := make(chan struct{})
 
-			stream := NewServerStream(media.Medias{testH264Media.Clone()})
+			stream := NewServerStream(media.Medias{testH264Media})
 			defer stream.Close()
 
 			s := &Server{
@@ -1581,10 +1707,10 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
-						}, nil
+						}, stream, nil
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
@@ -1616,6 +1742,9 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
+			desc, err := doDescribe(conn)
+			require.NoError(t, err)
+
 			inTH := &headers.Transport{
 				Delivery: func() *headers.TransportDelivery {
 					v := headers.TransportDeliveryUnicast
@@ -1637,9 +1766,9 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
-					"CSeq":      base.HeaderValue{"1"},
+					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
 				},
 			})
@@ -1654,7 +1783,7 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 				Method: base.Play,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
-					"CSeq":    base.HeaderValue{"2"},
+					"CSeq":    base.HeaderValue{"3"},
 					"Session": base.HeaderValue{sx.Session},
 				},
 			})
@@ -1670,11 +1799,16 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 }
 
 func TestServerPlayUDPChangeConn(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media})
 	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -1708,6 +1842,9 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
+		desc, err := doDescribe(conn)
+		require.NoError(t, err)
+
 		inTH := &headers.Transport{
 			Delivery: func() *headers.TransportDelivery {
 				v := headers.TransportDeliveryUnicast
@@ -1723,9 +1860,9 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 			Header: base.Header{
-				"CSeq":      base.HeaderValue{"1"},
+				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
 			},
 		})
@@ -1740,7 +1877,7 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 			Method: base.Play,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
-				"CSeq":    base.HeaderValue{"2"},
+				"CSeq":    base.HeaderValue{"3"},
 				"Session": base.HeaderValue{sx.Session},
 			},
 		})
@@ -1760,7 +1897,7 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 			Method: base.GetParameter,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
 			Header: base.Header{
-				"CSeq":    base.HeaderValue{"1"},
+				"CSeq":    base.HeaderValue{"4"},
 				"Session": base.HeaderValue{sxID},
 			},
 		})
@@ -1770,11 +1907,16 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 }
 
 func TestServerPlayPartialMedias(t *testing.T) {
-	stream := NewServerStream(media.Medias{testH264Media.Clone(), testH264Media.Clone()})
+	stream := NewServerStream(media.Medias{testH264Media, testH264Media})
 	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -1804,6 +1946,9 @@ func TestServerPlayPartialMedias(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
+	desc, err := doDescribe(conn)
+	require.NoError(t, err)
+
 	inTH := &headers.Transport{
 		Delivery: func() *headers.TransportDelivery {
 			v := headers.TransportDeliveryUnicast
@@ -1819,9 +1964,9 @@ func TestServerPlayPartialMedias(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=1"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[1])),
 		Header: base.Header{
-			"CSeq":      base.HeaderValue{"1"},
+			"CSeq":      base.HeaderValue{"2"},
 			"Transport": inTH.Marshal(),
 		},
 	})
@@ -1836,7 +1981,7 @@ func TestServerPlayPartialMedias(t *testing.T) {
 		Method: base.Play,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
+			"CSeq":    base.HeaderValue{"3"},
 			"Session": base.HeaderValue{sx.Session},
 		},
 	})
@@ -1856,7 +2001,8 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		ssrcs := make([]*uint32, 2)
+		desc, err := doDescribe(conn)
+		require.NoError(t, err)
 
 		inTH := &headers.Transport{
 			Delivery: func() *headers.TransportDelivery {
@@ -1873,9 +2019,9 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
 			Header: base.Header{
-				"CSeq":      base.HeaderValue{"1"},
+				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
 			},
 		})
@@ -1885,6 +2031,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		var th headers.Transport
 		err = th.Unmarshal(res.Header["Transport"])
 		require.NoError(t, err)
+		ssrcs := make([]*uint32, 2)
 		ssrcs[0] = th.SSRC
 
 		inTH = &headers.Transport{
@@ -1906,9 +2053,9 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 
 		res, err = writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/mediaID=1"),
+			URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[1])),
 			Header: base.Header{
-				"CSeq":      base.HeaderValue{"2"},
+				"CSeq":      base.HeaderValue{"3"},
 				"Transport": inTH.Marshal(),
 				"Session":   base.HeaderValue{sx.Session},
 			},
@@ -1925,7 +2072,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			Method: base.Play,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 			Header: base.Header{
-				"CSeq":    base.HeaderValue{"3"},
+				"CSeq":    base.HeaderValue{"4"},
 				"Session": base.HeaderValue{sx.Session},
 			},
 		})
@@ -1946,16 +2093,25 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	err := forma.Init()
 	require.NoError(t, err)
 
-	medi := &media.Media{
-		Type:    "application",
-		Formats: []format.Format{forma},
-	}
-
-	stream := NewServerStream(media.Medias{medi.Clone(), medi.Clone()})
+	stream := NewServerStream(media.Medias{
+		&media.Media{
+			Type:    "application",
+			Formats: []format.Format{forma},
+		},
+		&media.Media{
+			Type:    "application",
+			Formats: []format.Format{forma},
+		},
+	})
 	defer stream.Close()
 
 	s := &Server{
 		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
 			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
@@ -1991,7 +2147,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			URL: (&url.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
-				Path:   "/teststream/mediaID=0",
+				Path:   mustParseURL((*rtpInfo)[0].URL).Path,
 			}).String(),
 			SequenceNumber: func() *uint16 {
 				v := uint16(557)
@@ -2025,7 +2181,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			URL: (&url.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
-				Path:   "/teststream/mediaID=0",
+				Path:   mustParseURL((*rtpInfo)[0].URL).Path,
 			}).String(),
 			SequenceNumber: func() *uint16 {
 				v := uint16(557)
@@ -2037,7 +2193,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			URL: (&url.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
-				Path:   "/teststream/mediaID=1",
+				Path:   mustParseURL((*rtpInfo)[1].URL).Path,
 			}).String(),
 			SequenceNumber: func() *uint16 {
 				v := uint16(88)

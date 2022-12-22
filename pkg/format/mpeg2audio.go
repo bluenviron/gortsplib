@@ -31,11 +31,6 @@ func (t *MPEG2Audio) Marshal() (string, string) {
 	return "", ""
 }
 
-// Clone implements Format.
-func (t *MPEG2Audio) Clone() Format {
-	return &MPEG2Audio{}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *MPEG2Audio) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

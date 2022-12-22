@@ -52,13 +52,6 @@ func (t *G711) Marshal() (string, string) {
 	return "PCMA/8000", ""
 }
 
-// Clone implements Format.
-func (t *G711) Clone() Format {
-	return &G711{
-		MULaw: t.MULaw,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *G711) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

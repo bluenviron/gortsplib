@@ -140,17 +140,6 @@ func (t *MPEG4Audio) Marshal() (string, string) {
 		"/" + strconv.FormatInt(int64(t.Config.ChannelCount), 10), fmtp
 }
 
-// Clone implements Format.
-func (t *MPEG4Audio) Clone() Format {
-	return &MPEG4Audio{
-		PayloadTyp:       t.PayloadTyp,
-		Config:           t.Config,
-		SizeLength:       t.SizeLength,
-		IndexLength:      t.IndexLength,
-		IndexDeltaLength: t.IndexDeltaLength,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *MPEG4Audio) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

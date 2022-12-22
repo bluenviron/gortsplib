@@ -88,15 +88,6 @@ func (t *VP8) Marshal() (string, string) {
 	return "VP8/90000", fmtp
 }
 
-// Clone implements Format.
-func (t *VP8) Clone() Format {
-	return &VP8{
-		PayloadTyp: t.PayloadTyp,
-		MaxFR:      t.MaxFR,
-		MaxFS:      t.MaxFS,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *VP8) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

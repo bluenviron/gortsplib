@@ -100,16 +100,6 @@ func (t *VP9) Marshal() (string, string) {
 	return "VP9/90000", fmtp
 }
 
-// Clone implements Format.
-func (t *VP9) Clone() Format {
-	return &VP9{
-		PayloadTyp: t.PayloadTyp,
-		MaxFR:      t.MaxFR,
-		MaxFS:      t.MaxFS,
-		ProfileID:  t.ProfileID,
-	}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *VP9) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

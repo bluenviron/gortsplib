@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/asticode/go-astits v1.10.0
+	github.com/google/uuid v1.3.0
 	github.com/pion/rtcp v1.2.9
 	github.com/pion/rtp v1.7.13
 	github.com/pion/sdp/v3 v3.0.5

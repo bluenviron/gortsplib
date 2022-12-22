@@ -41,11 +41,6 @@ func (t *G722) Marshal() (string, string) {
 	return "G722/8000", ""
 }
 
-// Clone implements Format.
-func (t *G722) Clone() Format {
-	return &G722{}
-}
-
 // PTSEqualsDTS implements Format.
 func (t *G722) PTSEqualsDTS(*rtp.Packet) bool {
 	return true

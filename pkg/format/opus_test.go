@@ -19,18 +19,6 @@ func TestOpusAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestTracOpusClone(t *testing.T) {
-	format := &Opus{
-		PayloadTyp:   96,
-		SampleRate:   48000,
-		ChannelCount: 2,
-	}
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestOpusMediaDescription(t *testing.T) {
 	format := &Opus{
 		PayloadTyp:   96,

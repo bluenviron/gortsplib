@@ -27,24 +27,6 @@ func TestMPEG4AudioAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestMPEG4AudioClone(t *testing.T) {
-	format := &MPEG4Audio{
-		PayloadTyp: 96,
-		Config: &mpeg4audio.Config{
-			Type:         mpeg4audio.ObjectTypeAACLC,
-			SampleRate:   48000,
-			ChannelCount: 2,
-		},
-		SizeLength:       13,
-		IndexLength:      3,
-		IndexDeltaLength: 3,
-	}
-
-	clone := format.Clone()
-	require.NotSame(t, format, clone)
-	require.Equal(t, format, clone)
-}
-
 func TestMPEG4AudioMediaDescription(t *testing.T) {
 	format := &MPEG4Audio{
 		PayloadTyp: 96,

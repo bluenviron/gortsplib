@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -72,7 +71,7 @@ func readAll(c *Client, ur string, cb func(*media.Media, format.Format, *rtp.Pac
 }
 
 func TestClientPlayFormats(t *testing.T) {
-	media1 := testH264Media.Clone()
+	media1 := testH264Media
 
 	media2 := &media.Media{
 		Type: media.TypeAudio,
@@ -156,7 +155,7 @@ func TestClientPlayFormats(t *testing.T) {
 			req, err := conn.ReadRequest()
 			require.NoError(t, err)
 			require.Equal(t, base.Setup, req.Method)
-			require.Equal(t, mustParseURL(fmt.Sprintf("rtsp://localhost:8554/teststream/mediaID=%d", i)), req.URL)
+			require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[i].Control), req.URL)
 
 			var inTH headers.Transport
 			err = inTH.Unmarshal(req.Header["Transport"])
@@ -306,7 +305,7 @@ func TestClientPlay(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, base.Setup, req.Method)
 					require.Equal(t, mustParseURL(
-						scheme+"://"+listenIP+":8554/test/stream?param=value/mediaID="+strconv.FormatInt(int64(i), 10)), req.URL)
+						scheme+"://"+listenIP+":8554/test/stream?param=value/"+medias[i].Control), req.URL)
 
 					var inTH headers.Transport
 					err = inTH.Unmarshal(req.Header["Transport"])
@@ -542,9 +541,22 @@ func TestClientPlayPartial(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream"), req.URL)
 
+		forma := &format.Generic{
+			PayloadTyp: 96,
+			RTPMap:     "private/90000",
+		}
+		err = forma.Init()
+		require.NoError(t, err)
+
 		medias := media.Medias{
-			testH264Media.Clone(),
-			testH264Media.Clone(),
+			&media.Media{
+				Type:    "application",
+				Formats: []format.Format{forma},
+			},
+			&media.Media{
+				Type:    "application",
+				Formats: []format.Format{forma},
+			},
 		}
 		medias.SetControls()
 
@@ -561,7 +573,7 @@ func TestClientPlayPartial(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/mediaID=1"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"+medias[1].Control), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Unmarshal(req.Header["Transport"])
@@ -688,7 +700,7 @@ func TestClientPlayContentBase(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-				medias := media.Medias{testH264Media.Clone()}
+				medias := media.Medias{testH264Media}
 				medias.SetControls()
 
 				switch ca {
@@ -720,7 +732,7 @@ func TestClientPlayContentBase(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])
@@ -818,7 +830,7 @@ func TestClientPlayAnyPort(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				medias := media.Medias{testH264Media.Clone()}
+				medias := media.Medias{testH264Media}
 				medias.SetControls()
 
 				err = conn.WriteResponse(&base.Response{
@@ -972,7 +984,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
-			medias := media.Medias{testH264Media.Clone()}
+			medias := media.Medias{testH264Media}
 			medias.SetControls()
 
 			err = conn.WriteResponse(&base.Response{
@@ -1057,7 +1069,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		go func() {
 			defer close(serverDone)
 
-			medias := media.Medias{testH264Media.Clone()}
+			medias := media.Medias{testH264Media}
 			medias.SetControls()
 
 			func() {
@@ -1116,7 +1128,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])
@@ -1212,7 +1224,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
-				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 				err = v.ValidateRequest(req, nil)
 				require.NoError(t, err)
@@ -1317,7 +1329,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		medias := media.Medias{testH264Media.Clone()}
+		medias := media.Medias{testH264Media}
 		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
@@ -1333,7 +1345,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/mediaID=0"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Unmarshal(req.Header["Transport"])
@@ -1512,7 +1524,7 @@ func TestClientPlayRedirect(t *testing.T) {
 						require.Equal(t, base.Describe, req.Method)
 					}
 
-					medias := media.Medias{testH264Media.Clone()}
+					medias := media.Medias{testH264Media}
 					medias.SetControls()
 
 					err = conn.WriteResponse(&base.Response{
@@ -1673,7 +1685,7 @@ func TestClientPlayPause(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				medias := media.Medias{testH264Media.Clone()}
+				medias := media.Medias{testH264Media}
 				medias.SetControls()
 
 				err = conn.WriteResponse(&base.Response{
@@ -1841,7 +1853,7 @@ func TestClientPlayRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		medias := media.Medias{testH264Media.Clone()}
+		medias := media.Medias{testH264Media}
 		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
@@ -2019,7 +2031,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				medias := media.Medias{testH264Media.Clone()}
+				medias := media.Medias{testH264Media}
 				medias.SetControls()
 
 				err = conn.WriteResponse(&base.Response{
@@ -2165,7 +2177,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		medias := media.Medias{testH264Media.Clone()}
+		medias := media.Medias{testH264Media}
 		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
@@ -2288,7 +2300,7 @@ func TestClientPlaySeek(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		medias := media.Medias{testH264Media.Clone()}
+		medias := media.Medias{testH264Media}
 		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
@@ -2452,7 +2464,7 @@ func TestClientPlayKeepaliveFromSession(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		medias := media.Medias{testH264Media.Clone()}
+		medias := media.Medias{testH264Media}
 		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
@@ -2575,7 +2587,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
 
-		medias := media.Medias{testH264Media.Clone()}
+		medias := media.Medias{testH264Media}
 		medias.SetControls()
 
 		err = conn.WriteResponse(&base.Response{
@@ -2591,7 +2603,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Setup, req.Method)
-		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/mediaID=0"), req.URL)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"+medias[0].Control), req.URL)
 
 		var inTH headers.Transport
 		err = inTH.Unmarshal(req.Header["Transport"])
