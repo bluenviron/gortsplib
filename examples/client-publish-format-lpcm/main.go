@@ -36,7 +36,7 @@ func main() {
 	log.Println("stream connected")
 
 	// create a media that contains a LPCM format
-	medi := &media.Media{
+	medias := media.Medias{&media.Media{
 		Type: media.TypeAudio,
 		Formats: []format.Format{&format.LPCM{
 			PayloadTyp:   96,
@@ -44,13 +44,13 @@ func main() {
 			SampleRate:   44100,
 			ChannelCount: 1,
 		}},
-	}
+	}}
+	medias.SetControls()
 
 	c := gortsplib.Client{}
 
 	// connect to the server and start recording the media
-	err = c.StartRecording("rtsp://localhost:8554/mystream",
-		media.Medias{medi})
+	err = c.StartRecording("rtsp://localhost:8554/mystream", medias)
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +65,7 @@ func main() {
 		}
 
 		// route RTP packet to the server
-		err = c.WritePacketRTP(medi, &pkt)
+		err = c.WritePacketRTP(medias[0], &pkt)
 		if err != nil {
 			panic(err)
 		}

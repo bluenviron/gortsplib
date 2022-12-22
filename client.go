@@ -1059,8 +1059,6 @@ func (c *Client) doAnnounce(u *url.URL, medias media.Medias) (*base.Response, er
 		return nil, err
 	}
 
-	medias.SetControls()
-
 	byts, err := medias.Marshal(false).Marshal()
 	if err != nil {
 		return nil, err

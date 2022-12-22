@@ -277,6 +277,7 @@ func TestClientRecordSerial(t *testing.T) {
 
 			medi := testH264Media.Clone()
 			medias := media.Medias{medi}
+			medias.SetControls()
 
 			err = record(&c, scheme+"://localhost:8554/teststream", medias,
 				func(medi *media.Media, pkt rtcp.Packet) {
@@ -431,7 +432,10 @@ func TestClientRecordParallel(t *testing.T) {
 			defer func() { <-writerDone }()
 
 			medi := testH264Media.Clone()
-			err = record(&c, scheme+"://localhost:8554/teststream", media.Medias{medi}, nil)
+			medias := media.Medias{medi}
+			medias.SetControls()
+
+			err = record(&c, scheme+"://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -581,7 +585,10 @@ func TestClientRecordPauseSerial(t *testing.T) {
 			}
 
 			medi := testH264Media.Clone()
-			err = record(&c, "rtsp://localhost:8554/teststream", media.Medias{medi}, nil)
+			medias := media.Medias{medi}
+			medias.SetControls()
+
+			err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -709,7 +716,10 @@ func TestClientRecordPauseParallel(t *testing.T) {
 			}
 
 			medi := testH264Media.Clone()
-			err = record(&c, "rtsp://localhost:8554/teststream", media.Medias{medi}, nil)
+			medias := media.Medias{medi}
+			medias.SetControls()
+
+			err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
 
 			writerDone := make(chan struct{})
@@ -846,7 +856,10 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 	c := Client{}
 
 	medi := testH264Media.Clone()
-	err = record(&c, "rtsp://localhost:8554/teststream", media.Medias{medi}, nil)
+	medias := media.Medias{medi}
+	medias.SetControls()
+
+	err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -1025,7 +1038,10 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 				},
 			}
 
-			err = record(&c, "rtsp://localhost:8554/stream", media.Medias{testH264Media.Clone()}, nil)
+			medias := media.Medias{testH264Media.Clone()}
+			medias.SetControls()
+
+			err = record(&c, "rtsp://localhost:8554/stream", medias, nil)
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1181,7 +1197,10 @@ func TestClientRecordRTCPReport(t *testing.T) {
 			}
 
 			medi := testH264Media.Clone()
-			err = record(&c, "rtsp://localhost:8554/teststream", media.Medias{medi}, nil)
+			medias := media.Medias{medi}
+			medias.SetControls()
+
+			err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1308,6 +1327,7 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 	}
 
 	medias := media.Medias{testH264Media.Clone()}
+	medias.SetControls()
 
 	err = record(&c, "rtsp://localhost:8554/teststream", medias,
 		func(medi *media.Media, pkt rtcp.Packet) {

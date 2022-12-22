@@ -37,7 +37,7 @@ func main() {
 	log.Println("stream connected")
 
 	// create a media that contains a MPEG4-audio format
-	medi := &media.Media{
+	medias := media.Medias{&media.Media{
 		Type: media.TypeAudio,
 		Formats: []format.Format{&format.MPEG4Audio{
 			PayloadTyp: 96,
@@ -50,12 +50,12 @@ func main() {
 			IndexLength:      3,
 			IndexDeltaLength: 3,
 		}},
-	}
+	}}
+	medias.SetControls()
 
 	// connect to the server and start recording the media
 	c := gortsplib.Client{}
-	err = c.StartRecording("rtsp://localhost:8554/mystream",
-		media.Medias{medi})
+	err = c.StartRecording("rtsp://localhost:8554/mystream", medias)
 	if err != nil {
 		panic(err)
 	}
@@ -70,7 +70,7 @@ func main() {
 		}
 
 		// route RTP packet to the server
-		err = c.WritePacketRTP(medi, &pkt)
+		err = c.WritePacketRTP(medias[0], &pkt)
 		if err != nil {
 			panic(err)
 		}
