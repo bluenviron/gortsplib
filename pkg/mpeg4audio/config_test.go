@@ -77,13 +77,36 @@ var configCases = []struct {
 		},
 	},
 	{
-		"sbr (he-aac v1) 44.1khz stereo",
-		[]byte{0x2b, 0x8a, 0x00},
+		"sbr (he-aac v1) 44.1khz mono",
+		[]byte{0x2b, 0x8a, 0x08, 0x00},
 		Config{
-			Type:                ObjectTypeSBR,
+			Type:                ObjectTypeAACLC,
 			SampleRate:          22050,
 			ChannelCount:        1,
 			ExtensionSampleRate: 44100,
+			ExtensionType:       ObjectTypeSBR,
+		},
+	},
+	{
+		"sbr (he-aac v1) 44.1khz stereo",
+		[]byte{0x2b, 0x92, 0x08, 0x00}, // the data from fdk_aac
+		Config{
+			Type:                ObjectTypeAACLC,
+			SampleRate:          22050,
+			ChannelCount:        2,
+			ExtensionSampleRate: 44100,
+			ExtensionType:       ObjectTypeSBR,
+		},
+	},
+	{
+		"ps (he-aac v2) 48khz stereo",
+		[]byte{0xeb, 0x09, 0x88, 0x00}, // the data from fdk_aac
+		Config{
+			Type:                ObjectTypeAACLC,
+			SampleRate:          24000,
+			ChannelCount:        1, // for he_aac v2, ChannelCount only set to 1 ?
+			ExtensionSampleRate: 48000,
+			ExtensionType:       ObjectTypePS,
 		},
 	},
 }

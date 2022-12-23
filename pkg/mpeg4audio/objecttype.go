@@ -7,4 +7,5 @@ type ObjectType int
 const (
 	ObjectTypeAACLC ObjectType = 2
 	ObjectTypeSBR   ObjectType = 5
+	ObjectTypePS    ObjectType = 29
 )
