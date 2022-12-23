@@ -1,9 +1,6 @@
 package format
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpsimpleaudio"
@@ -28,11 +25,6 @@ func (t *G722) PayloadType() uint8 {
 }
 
 func (t *G722) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
-	tmp := strings.Split(clock, "/")
-	if len(tmp) == 2 && tmp[1] != "1" {
-		return fmt.Errorf("G722 formats can have only one channel")
-	}
-
 	return nil
 }
 

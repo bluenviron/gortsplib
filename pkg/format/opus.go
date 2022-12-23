@@ -35,7 +35,7 @@ func (t *Opus) PayloadType() uint8 {
 func (t *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
 	t.PayloadTyp = payloadType
 
-	tmp := strings.SplitN(clock, "/", 32)
+	tmp := strings.SplitN(clock, "/", 2)
 	if len(tmp) != 2 {
 		return fmt.Errorf("invalid clock (%v)", clock)
 	}

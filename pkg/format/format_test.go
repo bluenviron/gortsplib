@@ -629,7 +629,41 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 		err  string
 	}{
 		{
-			"aac missing fmtp",
+			"audio lpcm invalid clock",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"97"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "97 L8/",
+					},
+				},
+			},
+			"strconv.ParseInt: parsing \"\": invalid syntax",
+		},
+		{
+			"audio lpcm invalid channels",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"97"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "97 L8/48000/",
+					},
+				},
+			},
+			"strconv.ParseInt: parsing \"\": invalid syntax",
+		},
+		{
+			"audio aac missing fmtp",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -646,7 +680,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"fmtp attribute is missing",
 		},
 		{
-			"aac invalid fmtp",
+			"audio aac invalid fmtp",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -667,7 +701,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"fmtp attribute is missing",
 		},
 		{
-			"aac fmtp without key",
+			"audio aac fmtp without key",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -688,7 +722,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"invalid fmtp (profile-level-id)",
 		},
 		{
-			"aac missing config",
+			"audio aac missing config",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -709,7 +743,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"config is missing (profile-level-id=1)",
 		},
 		{
-			"aac invalid config 1",
+			"audio aac invalid config 1",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -730,7 +764,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"invalid AAC config (zz)",
 		},
 		{
-			"aac invalid config 2",
+			"audio aac invalid config 2",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -751,7 +785,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"invalid AAC config (aa)",
 		},
 		{
-			"aac missing sizelength",
+			"audio aac missing sizelength",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -772,7 +806,70 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"sizelength is missing (profile-level-id=1; config=1190)",
 		},
 		{
-			"opus invalid 1",
+			"audio aac invalid sizelength",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; sizelength=aaa",
+					},
+				},
+			},
+			"invalid AAC SizeLength (aaa)",
+		},
+		{
+			"audio aac invalid indexlength",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; indexlength=aaa",
+					},
+				},
+			},
+			"invalid AAC IndexLength (aaa)",
+		},
+		{
+			"audio aac invalid indexdeltalength",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 mpeg4-generic/48000/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 profile-level-id=1; indexdeltalength=aaa",
+					},
+				},
+			},
+			"invalid AAC IndexDeltaLength (aaa)",
+		},
+		{
+			"audio opus invalid 1",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -789,7 +886,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"invalid clock (48000)",
 		},
 		{
-			"opus invalid 2",
+			"audio opus invalid 2",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",
@@ -806,7 +903,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"strconv.ParseInt: parsing \"aa\": invalid syntax",
 		},
 		{
-			"opus invalid 3",
+			"audio opus invalid 3",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "audio",

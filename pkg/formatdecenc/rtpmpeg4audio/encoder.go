@@ -44,13 +44,13 @@ type Encoder struct {
 	// sample rate of packets.
 	SampleRate int
 
-	// The number of bits on which the AU-size field is encoded in the AU-header.
+	// The number of bits in which the AU-size field is encoded in the AU-header.
 	SizeLength int
 
-	// The number of bits on which the AU-Index is encoded in the first AU-header.
+	// The number of bits in which the AU-Index is encoded in the first AU-header.
 	IndexLength int
 
-	// The number of bits on which the AU-Index-delta field is encoded in any non-first AU-header.
+	// The number of bits in which the AU-Index-delta field is encoded in any non-first AU-header.
 	IndexDeltaLength int
 
 	sequenceNumber uint16

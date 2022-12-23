@@ -1,7 +1,6 @@
 package format
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -48,9 +47,6 @@ func (t *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 	}
 
 	tmp := strings.SplitN(clock, "/", 2)
-	if len(tmp) < 1 {
-		return fmt.Errorf("invalid clock (%v)", clock)
-	}
 
 	tmp1, err := strconv.ParseInt(tmp[0], 10, 64)
 	if err != nil {

@@ -32,3 +32,17 @@ func TestVP9MediaDescription(t *testing.T) {
 	require.Equal(t, "VP9/90000", rtpmap)
 	require.Equal(t, "max-fr=123;max-fs=456;profile-id=789", fmtp)
 }
+
+func TestVP9DecEncoder(t *testing.T) {
+	format := &VP9{}
+
+	enc := format.CreateEncoder()
+	pkts, err := enc.Encode([]byte{0x01, 0x02, 0x03, 0x04}, 0)
+	require.NoError(t, err)
+	require.Equal(t, format.PayloadType(), pkts[0].PayloadType)
+
+	dec := format.CreateDecoder()
+	byts, _, err := dec.Decode(pkts[0])
+	require.NoError(t, err)
+	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, byts)
+}
