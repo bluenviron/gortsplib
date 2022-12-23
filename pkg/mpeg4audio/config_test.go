@@ -84,7 +84,7 @@ var configCases = []struct {
 			SampleRate:          22050,
 			ChannelCount:        1,
 			ExtensionSampleRate: 44100,
-			ExtType:             ObjectTypeSBR,
+			ExtensionType:       ObjectTypeSBR,
 		},
 	},
 	{
@@ -95,7 +95,7 @@ var configCases = []struct {
 			SampleRate:          22050,
 			ChannelCount:        2,
 			ExtensionSampleRate: 44100,
-			ExtType:             ObjectTypeSBR,
+			ExtensionType:       ObjectTypeSBR,
 		},
 	},
 	{
@@ -106,7 +106,7 @@ var configCases = []struct {
 			SampleRate:          24000,
 			ChannelCount:        1, // for he_aac v2, ChannelCount only set to 1 ?
 			ExtensionSampleRate: 48000,
-			ExtType:             ObjectTypePS,
+			ExtensionType:       ObjectTypePS,
 		},
 	},
 }

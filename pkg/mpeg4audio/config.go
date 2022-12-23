@@ -17,8 +17,8 @@ type Config struct {
 	DependsOnCoreCoder bool
 	CoreCoderDelay     uint16
 
-	// SBR specific
-	ExtType             ObjectType
+	// SBR / PS specific
+	ExtensionType       ObjectType
 	ExtensionSampleRate int
 }
 
@@ -82,7 +82,7 @@ func (c *Config) Unmarshal(buf []byte) error {
 	}
 
 	if c.Type == ObjectTypeSBR || c.Type == ObjectTypePS {
-		c.ExtType = c.Type
+		c.ExtensionType = c.Type
 		extensionSamplingFrequencyIndex, err := bits.ReadBits(buf, &pos, 4)
 		if err != nil {
 			return err
@@ -150,7 +150,7 @@ func (c Config) marshalSize() int {
 		n += 4
 	}
 
-	if c.ExtType == ObjectTypeSBR || c.ExtType == ObjectTypePS {
+	if c.ExtensionType == ObjectTypeSBR || c.ExtensionType == ObjectTypePS {
 		_, ok := reverseSampleRates[c.ExtensionSampleRate]
 		if !ok {
 			n += 28
@@ -175,8 +175,8 @@ func (c Config) Marshal() ([]byte, error) {
 	buf := make([]byte, c.marshalSize())
 	pos := 0
 
-	if c.ExtType == ObjectTypeSBR || c.ExtType == ObjectTypePS {
-		bits.WriteBits(buf, &pos, uint64(c.ExtType), 5)
+	if c.ExtensionType == ObjectTypeSBR || c.ExtensionType == ObjectTypePS {
+		bits.WriteBits(buf, &pos, uint64(c.ExtensionType), 5)
 	} else {
 		bits.WriteBits(buf, &pos, uint64(c.Type), 5)
 	}
@@ -202,7 +202,7 @@ func (c Config) Marshal() ([]byte, error) {
 	}
 	bits.WriteBits(buf, &pos, uint64(channelConfig), 4)
 
-	if c.ExtType == ObjectTypeSBR || c.ExtType == ObjectTypePS {
+	if c.ExtensionType == ObjectTypeSBR || c.ExtensionType == ObjectTypePS {
 		sampleRateIndex, ok := reverseSampleRates[c.ExtensionSampleRate]
 		if !ok {
 			bits.WriteBits(buf, &pos, uint64(0x0F), 4)
