@@ -89,7 +89,7 @@ var configCases = []struct {
 	},
 	{
 		"sbr (he-aac v1) 44.1khz stereo",
-		[]byte{0x2b, 0x92, 0x08, 0x00}, //the data from fdk_aac
+		[]byte{0x2b, 0x92, 0x08, 0x00}, // the data from fdk_aac
 		Config{
 			Type:                ObjectTypeAACLC,
 			SampleRate:          22050,
@@ -100,7 +100,7 @@ var configCases = []struct {
 	},
 	{
 		"ps (he-aac v2) 48khz stereo",
-		[]byte{0xeb, 0x09, 0x88, 0x00}, //the data from fdk_aac
+		[]byte{0xeb, 0x09, 0x88, 0x00}, // the data from fdk_aac
 		Config{
 			Type:                ObjectTypeAACLC,
 			SampleRate:          24000,
