@@ -108,6 +108,10 @@ func (c *Config) Unmarshal(buf []byte) error {
 			return err
 		}
 		c.Type = ObjectType(tmp)
+
+		if c.Type != ObjectTypeAACLC {
+			return fmt.Errorf("unsupported object type: %d", c.Type)
+		}
 	}
 
 	c.FrameLengthFlag, err = bits.ReadFlag(buf, &pos)
