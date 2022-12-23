@@ -39,55 +39,53 @@ func (t *MPEG4Audio) PayloadType() uint8 {
 func (t *MPEG4Audio) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
 	t.PayloadTyp = payloadType
 
-	if fmtp == "" {
-		return fmt.Errorf("fmtp attribute is missing")
-	}
+	if fmtp != "" {
+		for _, kv := range strings.Split(fmtp, ";") {
+			kv = strings.Trim(kv, " ")
 
-	for _, kv := range strings.Split(fmtp, ";") {
-		kv = strings.Trim(kv, " ")
-
-		if len(kv) == 0 {
-			continue
-		}
-
-		tmp := strings.SplitN(kv, "=", 2)
-		if len(tmp) != 2 {
-			return fmt.Errorf("invalid fmtp (%v)", fmtp)
-		}
-
-		switch strings.ToLower(tmp[0]) {
-		case "config":
-			enc, err := hex.DecodeString(tmp[1])
-			if err != nil {
-				return fmt.Errorf("invalid AAC config (%v)", tmp[1])
+			if len(kv) == 0 {
+				continue
 			}
 
-			t.Config = &mpeg4audio.Config{}
-			err = t.Config.Unmarshal(enc)
-			if err != nil {
-				return fmt.Errorf("invalid AAC config (%v)", tmp[1])
+			tmp := strings.SplitN(kv, "=", 2)
+			if len(tmp) != 2 {
+				return fmt.Errorf("invalid fmtp (%v)", fmtp)
 			}
 
-		case "sizelength":
-			val, err := strconv.ParseUint(tmp[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid AAC SizeLength (%v)", tmp[1])
-			}
-			t.SizeLength = int(val)
+			switch strings.ToLower(tmp[0]) {
+			case "config":
+				enc, err := hex.DecodeString(tmp[1])
+				if err != nil {
+					return fmt.Errorf("invalid AAC config (%v)", tmp[1])
+				}
 
-		case "indexlength":
-			val, err := strconv.ParseUint(tmp[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid AAC IndexLength (%v)", tmp[1])
-			}
-			t.IndexLength = int(val)
+				t.Config = &mpeg4audio.Config{}
+				err = t.Config.Unmarshal(enc)
+				if err != nil {
+					return fmt.Errorf("invalid AAC config (%v)", tmp[1])
+				}
 
-		case "indexdeltalength":
-			val, err := strconv.ParseUint(tmp[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid AAC IndexDeltaLength (%v)", tmp[1])
+			case "sizelength":
+				val, err := strconv.ParseUint(tmp[1], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid AAC SizeLength (%v)", tmp[1])
+				}
+				t.SizeLength = int(val)
+
+			case "indexlength":
+				val, err := strconv.ParseUint(tmp[1], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid AAC IndexLength (%v)", tmp[1])
+				}
+				t.IndexLength = int(val)
+
+			case "indexdeltalength":
+				val, err := strconv.ParseUint(tmp[1], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid AAC IndexDeltaLength (%v)", tmp[1])
+				}
+				t.IndexDeltaLength = int(val)
 			}
-			t.IndexDeltaLength = int(val)
 		}
 	}
 

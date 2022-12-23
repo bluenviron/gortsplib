@@ -52,29 +52,27 @@ func (t *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap
 	}
 	t.ChannelCount = int(channelCount)
 
-	if fmtp == "" {
-		return fmt.Errorf("fmtp attribute is missing")
-	}
+	if fmtp != "" {
+		for _, kv := range strings.Split(fmtp, ";") {
+			kv = strings.Trim(kv, " ")
 
-	for _, kv := range strings.Split(fmtp, ";") {
-		kv = strings.Trim(kv, " ")
-
-		if len(kv) == 0 {
-			continue
-		}
-
-		tmp := strings.SplitN(kv, "=", 2)
-		if len(tmp) != 2 {
-			return fmt.Errorf("invalid fmtp (%v)", fmtp)
-		}
-
-		if tmp[0] == "configuration" {
-			conf, err := base64.StdEncoding.DecodeString(tmp[1])
-			if err != nil {
-				return fmt.Errorf("invalid AAC config (%v)", tmp[1])
+			if len(kv) == 0 {
+				continue
 			}
 
-			t.Configuration = conf
+			tmp := strings.SplitN(kv, "=", 2)
+			if len(tmp) != 2 {
+				return fmt.Errorf("invalid fmtp (%v)", fmtp)
+			}
+
+			if tmp[0] == "configuration" {
+				conf, err := base64.StdEncoding.DecodeString(tmp[1])
+				if err != nil {
+					return fmt.Errorf("invalid AAC config (%v)", tmp[1])
+				}
+
+				t.Configuration = conf
+			}
 		}
 	}
 

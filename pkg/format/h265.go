@@ -41,50 +41,48 @@ func (t *H265) PayloadType() uint8 {
 func (t *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
 	t.PayloadTyp = payloadType
 
-	if fmtp == "" {
-		return nil // do not return any error
-	}
+	if fmtp != "" {
+		for _, kv := range strings.Split(fmtp, ";") {
+			kv = strings.Trim(kv, " ")
 
-	for _, kv := range strings.Split(fmtp, ";") {
-		kv = strings.Trim(kv, " ")
-
-		if len(kv) == 0 {
-			continue
-		}
-
-		tmp := strings.SplitN(kv, "=", 2)
-		if len(tmp) != 2 {
-			return fmt.Errorf("invalid fmtp attribute (%v)", fmtp)
-		}
-
-		switch tmp[0] {
-		case "sprop-vps":
-			var err error
-			t.VPS, err = base64.StdEncoding.DecodeString(tmp[1])
-			if err != nil {
-				return fmt.Errorf("invalid sprop-vps (%v)", fmtp)
+			if len(kv) == 0 {
+				continue
 			}
 
-		case "sprop-sps":
-			var err error
-			t.SPS, err = base64.StdEncoding.DecodeString(tmp[1])
-			if err != nil {
-				return fmt.Errorf("invalid sprop-sps (%v)", fmtp)
+			tmp := strings.SplitN(kv, "=", 2)
+			if len(tmp) != 2 {
+				return fmt.Errorf("invalid fmtp attribute (%v)", fmtp)
 			}
 
-		case "sprop-pps":
-			var err error
-			t.PPS, err = base64.StdEncoding.DecodeString(tmp[1])
-			if err != nil {
-				return fmt.Errorf("invalid sprop-pps (%v)", fmtp)
-			}
+			switch tmp[0] {
+			case "sprop-vps":
+				var err error
+				t.VPS, err = base64.StdEncoding.DecodeString(tmp[1])
+				if err != nil {
+					return fmt.Errorf("invalid sprop-vps (%v)", fmtp)
+				}
 
-		case "sprop-max-don-diff":
-			tmp, err := strconv.ParseInt(tmp[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid sprop-max-don-diff (%v)", fmtp)
+			case "sprop-sps":
+				var err error
+				t.SPS, err = base64.StdEncoding.DecodeString(tmp[1])
+				if err != nil {
+					return fmt.Errorf("invalid sprop-sps (%v)", fmtp)
+				}
+
+			case "sprop-pps":
+				var err error
+				t.PPS, err = base64.StdEncoding.DecodeString(tmp[1])
+				if err != nil {
+					return fmt.Errorf("invalid sprop-pps (%v)", fmtp)
+				}
+
+			case "sprop-max-don-diff":
+				tmp, err := strconv.ParseInt(tmp[1], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid sprop-max-don-diff (%v)", fmtp)
+				}
+				t.MaxDONDiff = int(tmp)
 			}
-			t.MaxDONDiff = int(tmp)
 		}
 	}
 

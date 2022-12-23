@@ -1001,9 +1001,9 @@ func TestServerRecordRTCPReport(t *testing.T) {
 	buf = make([]byte, 2048)
 	n, _, err := l2.ReadFrom(buf)
 	require.NoError(t, err)
-	pkt, err := rtcp.Unmarshal(buf[:n])
+	pkts, err := rtcp.Unmarshal(buf[:n])
 	require.NoError(t, err)
-	rr, ok := pkt[0].(*rtcp.ReceiverReport)
+	rr, ok := pkts[0].(*rtcp.ReceiverReport)
 	require.True(t, ok)
 	require.Equal(t, &rtcp.ReceiverReport{
 		SSRC: rr.SSRC,

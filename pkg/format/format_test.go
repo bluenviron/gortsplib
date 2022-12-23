@@ -610,7 +610,46 @@ func TestNewFromMediaDescription(t *testing.T) {
 			},
 			&Generic{
 				PayloadTyp: 107,
-				ClockRat:   0,
+			},
+		},
+		{
+			"generic invalid rtpmap",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "application",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"98"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "98 custom",
+					},
+				},
+			},
+			&Generic{
+				PayloadTyp: 98,
+				RTPMap:     "custom",
+			},
+		},
+		{
+			"generic invalid rtpmap 2",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "application",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"98"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "98 custom/aaa",
+					},
+				},
+			},
+			&Generic{
+				PayloadTyp: 98,
+				RTPMap:     "custom/aaa",
 			},
 		},
 	} {
@@ -661,44 +700,6 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 				},
 			},
 			"strconv.ParseInt: parsing \"\": invalid syntax",
-		},
-		{
-			"audio aac missing fmtp",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "audio",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"96"},
-				},
-				Attributes: []psdp.Attribute{
-					{
-						Key:   "rtpmap",
-						Value: "96 mpeg4-generic/48000/2",
-					},
-				},
-			},
-			"fmtp attribute is missing",
-		},
-		{
-			"audio aac invalid fmtp",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "audio",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"96"},
-				},
-				Attributes: []psdp.Attribute{
-					{
-						Key:   "rtpmap",
-						Value: "96 mpeg4-generic/48000/2",
-					},
-					{
-						Key:   "fmtp",
-						Value: "96",
-					},
-				},
-			},
-			"fmtp attribute is missing",
 		},
 		{
 			"audio aac fmtp without key",
@@ -869,6 +870,27 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"invalid AAC IndexDeltaLength (aaa)",
 		},
 		{
+			"audio vorbis missing configuration",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 VORBIS/44100/2",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 aa=bb",
+					},
+				},
+			},
+			"config is missing (aa=bb)",
+		},
+		{
 			"audio opus invalid 1",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
@@ -918,6 +940,90 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 				},
 			},
 			"strconv.ParseInt: parsing \"aa\": invalid syntax",
+		},
+		{
+			"video h264 invalid fmtp",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 aaa",
+					},
+				},
+			},
+			"invalid fmtp attribute (aaa)",
+		},
+		{
+			"video h264 invalid sps",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 sprop-parameter-sets=kkk,vvv",
+					},
+				},
+			},
+			"invalid sprop-parameter-sets (kkk,vvv)",
+		},
+		{
+			"video h264 invalid pps",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,vvv",
+					},
+				},
+			},
+			"invalid sprop-parameter-sets (Z2QADKw7ULBLQgAAAwACAAADAD0I,vvv)",
+		},
+		{
+			"video h264 invalid packetization-mode",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 packetization-mode=aaa",
+					},
+				},
+			},
+			"invalid packetization-mode (aaa)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

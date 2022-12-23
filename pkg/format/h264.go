@@ -98,47 +98,45 @@ func (t *H264) PayloadType() uint8 {
 func (t *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
 	t.PayloadTyp = payloadType
 
-	if fmtp == "" {
-		return nil // do not return any error
-	}
+	if fmtp != "" {
+		for _, kv := range strings.Split(fmtp, ";") {
+			kv = strings.Trim(kv, " ")
 
-	for _, kv := range strings.Split(fmtp, ";") {
-		kv = strings.Trim(kv, " ")
-
-		if len(kv) == 0 {
-			continue
-		}
-
-		tmp := strings.SplitN(kv, "=", 2)
-		if len(tmp) != 2 {
-			return fmt.Errorf("invalid fmtp attribute (%v)", fmtp)
-		}
-
-		switch tmp[0] {
-		case "sprop-parameter-sets":
-			tmp := strings.Split(tmp[1], ",")
-			if len(tmp) >= 2 {
-				sps, err := base64.StdEncoding.DecodeString(tmp[0])
-				if err != nil {
-					return fmt.Errorf("invalid sprop-parameter-sets (%v)", fmtp)
-				}
-
-				pps, err := base64.StdEncoding.DecodeString(tmp[1])
-				if err != nil {
-					return fmt.Errorf("invalid sprop-parameter-sets (%v)", fmtp)
-				}
-
-				t.SPS = sps
-				t.PPS = pps
+			if len(kv) == 0 {
+				continue
 			}
 
-		case "packetization-mode":
-			tmp, err := strconv.ParseInt(tmp[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid packetization-mode (%v)", fmtp)
+			tmp := strings.SplitN(kv, "=", 2)
+			if len(tmp) != 2 {
+				return fmt.Errorf("invalid fmtp attribute (%v)", fmtp)
 			}
 
-			t.PacketizationMode = int(tmp)
+			switch tmp[0] {
+			case "sprop-parameter-sets":
+				tmp2 := strings.Split(tmp[1], ",")
+				if len(tmp2) >= 2 {
+					sps, err := base64.StdEncoding.DecodeString(tmp2[0])
+					if err != nil {
+						return fmt.Errorf("invalid sprop-parameter-sets (%v)", tmp[1])
+					}
+
+					pps, err := base64.StdEncoding.DecodeString(tmp2[1])
+					if err != nil {
+						return fmt.Errorf("invalid sprop-parameter-sets (%v)", tmp[1])
+					}
+
+					t.SPS = sps
+					t.PPS = pps
+				}
+
+			case "packetization-mode":
+				tmp2, err := strconv.ParseInt(tmp[1], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid packetization-mode (%v)", tmp[1])
+				}
+
+				t.PacketizationMode = int(tmp2)
+			}
 		}
 	}
 
