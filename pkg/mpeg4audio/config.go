@@ -12,14 +12,14 @@ type Config struct {
 	SampleRate   int
 	ChannelCount int
 
+	// SBR / PS specific
+	ExtensionType       ObjectType
+	ExtensionSampleRate int
+
 	// AAC-LC specific
 	FrameLengthFlag    bool
 	DependsOnCoreCoder bool
 	CoreCoderDelay     uint16
-
-	// SBR / PS specific
-	ExtensionType       ObjectType
-	ExtensionSampleRate int
 }
 
 // Unmarshal decodes a Config.
@@ -108,33 +108,33 @@ func (c *Config) Unmarshal(buf []byte) error {
 			return err
 		}
 		c.Type = ObjectType(tmp)
-	} else {
-		c.FrameLengthFlag, err = bits.ReadFlag(buf, &pos)
+	}
+
+	c.FrameLengthFlag, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	c.DependsOnCoreCoder, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	if c.DependsOnCoreCoder {
+		tmp, err := bits.ReadBits(buf, &pos, 14)
 		if err != nil {
 			return err
 		}
+		c.CoreCoderDelay = uint16(tmp)
+	}
 
-		c.DependsOnCoreCoder, err = bits.ReadFlag(buf, &pos)
-		if err != nil {
-			return err
-		}
+	extensionFlag, err := bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
 
-		if c.DependsOnCoreCoder {
-			tmp, err := bits.ReadBits(buf, &pos, 14)
-			if err != nil {
-				return err
-			}
-			c.CoreCoderDelay = uint16(tmp)
-		}
-
-		extensionFlag, err := bits.ReadFlag(buf, &pos)
-		if err != nil {
-			return err
-		}
-
-		if extensionFlag {
-			return fmt.Errorf("unsupported")
-		}
+	if extensionFlag {
+		return fmt.Errorf("unsupported")
 	}
 
 	return nil
