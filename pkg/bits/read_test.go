@@ -86,14 +86,3 @@ func TestReadFlagError(t *testing.T) {
 	_, err := ReadFlag(buf, &pos)
 	require.EqualError(t, err, "not enough bits")
 }
-
-func TestUint(t *testing.T) {
-	buf := []byte{0x45, 0x46, 0x47, 0x48, 0x49, 0x50, 0x51}
-	pos := 0
-	u8, _ := ReadUint8(buf, &pos)
-	require.Equal(t, uint8(0x45), u8)
-	u16, _ := ReadUint16(buf, &pos)
-	require.Equal(t, uint16(0x4647), u16)
-	u32, _ := ReadUint32(buf, &pos)
-	require.Equal(t, uint32(0x48495051), u32)
-}

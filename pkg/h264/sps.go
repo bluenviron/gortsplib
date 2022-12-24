@@ -56,17 +56,13 @@ func (h *SPS_HRD) unmarshal(buf []byte, pos *int) error {
 		return err
 	}
 
-	tmp, err := bits.ReadBits(buf, pos, 4)
+	err = bits.HasSpace(buf, *pos, 8)
 	if err != nil {
 		return err
 	}
-	h.BitRateScale = uint8(tmp)
 
-	tmp, err = bits.ReadBits(buf, pos, 4)
-	if err != nil {
-		return err
-	}
-	h.CpbSizeScale = uint8(tmp)
+	h.BitRateScale = uint8(bits.ReadBitsUnsafe(buf, pos, 4))
+	h.CpbSizeScale = uint8(bits.ReadBitsUnsafe(buf, pos, 4))
 
 	for i := uint32(0); i <= h.CpbCntMinus1; i++ {
 		v, err := bits.ReadGolombUnsigned(buf, pos)
@@ -88,29 +84,15 @@ func (h *SPS_HRD) unmarshal(buf []byte, pos *int) error {
 		h.CbrFlag = append(h.CbrFlag, vb)
 	}
 
-	tmp, err = bits.ReadBits(buf, pos, 5)
+	err = bits.HasSpace(buf, *pos, 5+5+5+5)
 	if err != nil {
 		return err
 	}
-	h.InitialCpbRemovalDelayLengthMinus1 = uint8(tmp)
 
-	tmp, err = bits.ReadBits(buf, pos, 5)
-	if err != nil {
-		return err
-	}
-	h.CpbRemovalDelayLengthMinus1 = uint8(tmp)
-
-	tmp, err = bits.ReadBits(buf, pos, 5)
-	if err != nil {
-		return err
-	}
-	h.DpbOutputDelayLengthMinus1 = uint8(tmp)
-
-	tmp, err = bits.ReadBits(buf, pos, 5)
-	if err != nil {
-		return err
-	}
-	h.TimeOffsetLength = uint8(tmp)
+	h.InitialCpbRemovalDelayLengthMinus1 = uint8(bits.ReadBitsUnsafe(buf, pos, 5))
+	h.CpbRemovalDelayLengthMinus1 = uint8(bits.ReadBitsUnsafe(buf, pos, 5))
+	h.DpbOutputDelayLengthMinus1 = uint8(bits.ReadBitsUnsafe(buf, pos, 5))
+	h.TimeOffsetLength = uint8(bits.ReadBitsUnsafe(buf, pos, 5))
 
 	return nil
 }
@@ -123,21 +105,14 @@ type SPS_TimingInfo struct { //nolint:revive
 }
 
 func (t *SPS_TimingInfo) unmarshal(buf []byte, pos *int) error {
-	var err error
-	t.NumUnitsInTick, err = bits.ReadUint32(buf, pos)
+	err := bits.HasSpace(buf, *pos, 32+32+1)
 	if err != nil {
 		return err
 	}
 
-	t.TimeScale, err = bits.ReadUint32(buf, pos)
-	if err != nil {
-		return err
-	}
-
-	t.FixedFrameRateFlag, err = bits.ReadFlag(buf, pos)
-	if err != nil {
-		return err
-	}
+	t.NumUnitsInTick = uint32(bits.ReadBitsUnsafe(buf, pos, 32))
+	t.TimeScale = uint32(bits.ReadBitsUnsafe(buf, pos, 32))
+	t.FixedFrameRateFlag = bits.ReadFlagUnsafe(buf, pos)
 
 	return nil
 }
@@ -243,21 +218,20 @@ func (v *SPS_VUI) unmarshal(buf []byte, pos *int) error {
 	}
 
 	if v.AspectRatioInfoPresentFlag {
-		v.AspectRatioIdc, err = bits.ReadUint8(buf, pos)
+		tmp, err := bits.ReadBits(buf, pos, 8)
 		if err != nil {
 			return err
 		}
+		v.AspectRatioIdc = uint8(tmp)
 
 		if v.AspectRatioIdc == 255 { // Extended_SAR
-			v.SarWidth, err = bits.ReadUint16(buf, pos)
+			err := bits.HasSpace(buf, *pos, 32)
 			if err != nil {
 				return err
 			}
 
-			v.SarHeight, err = bits.ReadUint16(buf, pos)
-			if err != nil {
-				return err
-			}
+			v.SarWidth = uint16(bits.ReadBitsUnsafe(buf, pos, 16))
+			v.SarHeight = uint16(bits.ReadBitsUnsafe(buf, pos, 16))
 		}
 	}
 
@@ -279,37 +253,24 @@ func (v *SPS_VUI) unmarshal(buf []byte, pos *int) error {
 	}
 
 	if v.VideoSignalTypePresentFlag {
-		tmp, err := bits.ReadBits(buf, pos, 3)
-		if err != nil {
-			return err
-		}
-		v.VideoFormat = uint8(tmp)
-
-		v.VideoFullRangeFlag, err = bits.ReadFlag(buf, pos)
+		err := bits.HasSpace(buf, *pos, 5)
 		if err != nil {
 			return err
 		}
 
-		v.ColourDescriptionPresentFlag, err = bits.ReadFlag(buf, pos)
-		if err != nil {
-			return err
-		}
+		v.VideoFormat = uint8(bits.ReadBitsUnsafe(buf, pos, 3))
+		v.VideoFullRangeFlag = bits.ReadFlagUnsafe(buf, pos)
+		v.ColourDescriptionPresentFlag = bits.ReadFlagUnsafe(buf, pos)
 
 		if v.ColourDescriptionPresentFlag {
-			v.ColourPrimaries, err = bits.ReadUint8(buf, pos)
+			err := bits.HasSpace(buf, *pos, 24)
 			if err != nil {
 				return err
 			}
 
-			v.TransferCharacteristics, err = bits.ReadUint8(buf, pos)
-			if err != nil {
-				return err
-			}
-
-			v.MatrixCoefficients, err = bits.ReadUint8(buf, pos)
-			if err != nil {
-				return err
-			}
+			v.ColourPrimaries = uint8(bits.ReadBitsUnsafe(buf, pos, 8))
+			v.TransferCharacteristics = uint8(bits.ReadBitsUnsafe(buf, pos, 8))
+			v.MatrixCoefficients = uint8(bits.ReadBitsUnsafe(buf, pos, 8))
 		}
 	}
 
@@ -490,7 +451,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	buf = EmulationPreventionRemove(buf)
 
 	if len(buf) < 4 {
-		return fmt.Errorf("buffer too short")
+		return fmt.Errorf("not enough bits")
 	}
 
 	forbidden := buf[0] >> 7
