@@ -24,8 +24,6 @@ type Config struct {
 
 // Unmarshal decodes a Config.
 func (c *Config) Unmarshal(buf []byte) error {
-	// ref: ISO 14496-3
-
 	pos := 0
 
 	tmp, err := bits.ReadBits(buf, &pos, 5)

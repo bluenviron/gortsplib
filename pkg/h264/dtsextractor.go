@@ -10,7 +10,7 @@ import (
 )
 
 func getPOC(buf []byte, sps *SPS) (uint32, error) {
-	buf = AntiCompetitionRemove(buf[:6])
+	buf = EmulationPreventionRemove(buf[:6])
 
 	isIDR := NALUType(buf[0]&0x1F) == NALUTypeIDR
 
@@ -100,7 +100,7 @@ type seiTimingInfo struct {
 }
 
 func parseSEITimingInfo(buf []byte, sps *SPS) (*seiTimingInfo, bool) {
-	buf = AntiCompetitionRemove(buf)
+	buf = EmulationPreventionRemove(buf)
 	pos := 1
 
 	for {

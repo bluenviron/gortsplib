@@ -487,9 +487,7 @@ type SPS struct {
 
 // Unmarshal decodes a SPS from bytes.
 func (s *SPS) Unmarshal(buf []byte) error {
-	// ref: ISO/IEC 14496-10:2020
-
-	buf = AntiCompetitionRemove(buf)
+	buf = EmulationPreventionRemove(buf)
 
 	if len(buf) < 4 {
 		return fmt.Errorf("buffer too short")

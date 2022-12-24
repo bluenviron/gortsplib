@@ -106,7 +106,20 @@ Related projects
 
 Standards
 
-* RTSP 1.0 https://tools.ietf.org/html/rfc2326
-* RTSP 2.0 https://tools.ietf.org/html/rfc7826
-* HTTP 1.1 https://tools.ietf.org/html/rfc2616
+* RTSP 1.0 https://www.rfc-editor.org/rfc/rfc2326
+* RTSP 2.0 https://www.rfc-editor.org/rfc/rfc7826
+* RTP Profile for Audio and Video Conferences with Minimal Control https://www.rfc-editor.org/rfc/rfc3551
+* RTP Payload Format for MPEG1/MPEG2 Video https://www.rfc-editor.org/rfc/rfc2250
+* RTP Payload Format for JPEG-compressed Video https://www.rfc-editor.org/rfc/rfc2435
+* RTP Payload Format for H.264 Video https://www.rfc-editor.org/rfc/rfc6184
+* RTP Payload Format for High Efficiency Video Coding (HEVC) https://www.rfc-editor.org/rfc/rfc7798.html
+* RTP Payload Format for VP8 Video https://www.rfc-editor.org/rfc/rfc7741.html
+* RTP Payload Format for VP9 Video https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16
+* RTP Payload Format for 12-bit DAT Audio and 20- and 24-bit Linear Sampled Audio https://www.rfc-editor.org/rfc/rfc3190.html
+* RTP Payload Format for the Opus Speech and Audio Codec https://www.rfc-editor.org/rfc/rfc7587.html
+* RTP Payload Format for MPEG-4 Audio/Visual Streams https://www.rfc-editor.org/rfc/rfc6416
+* RTP Payload Format for Transport of MPEG-4 Elementary Streams https://www.rfc-editor.org/rfc/rfc3640.html
+* ITU-T Rec. H.264 (08/2021) https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.264-202108-I!!PDF-E&type=items
+* ITU-T Rec. H.265 (08/2021) https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.265-202108-I!!PDF-E&type=items
+* ISO 14496-3, Coding of audio-visual objects, part 3, Audio
 * Golang project layout https://github.com/golang-standards/project-layout

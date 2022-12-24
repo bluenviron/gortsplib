@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAntiCompetitionRemove(t *testing.T) {
+func TestEmulationPreventionRemove(t *testing.T) {
 	for _, ca := range []struct {
 		name   string
 		unproc []byte
@@ -29,7 +29,7 @@ func TestAntiCompetitionRemove(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			unproc := AntiCompetitionRemove(ca.proc)
+			unproc := EmulationPreventionRemove(ca.proc)
 			require.Equal(t, ca.unproc, unproc)
 		})
 	}
