@@ -46,7 +46,7 @@ Features:
     * Generate RTCP sender reports
 * Utilities
   * Encode/decode format-specific frames into/from RTP packets. The following formats are supported:
-    * Video: H264, H265, MJPEG, VP8, VP9
+    * Video: H264, H265, M-JPEG, VP8, VP9
     * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG4 Audio (AAC), Opus
   * Parse RTSP elements: requests, responses, SDP
   * Parse H264 elements and formats: Annex-B, AVCC, anti-competition, DTS

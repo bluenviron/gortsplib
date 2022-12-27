@@ -22,7 +22,7 @@ func randUint32() uint32 {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
 }
 
-// Encoder is a RTP/MJPEG encoder.
+// Encoder is a RTP/M-JPEG encoder.
 type Encoder struct {
 	// SSRC of packets (optional).
 	// It defaults to a random value.
@@ -68,7 +68,7 @@ func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
 	return *e.InitialTimestamp + uint32(ts.Seconds()*rtpClockRate)
 }
 
-// Encode encodes an image into RTP/MJPEG packets.
+// Encode encodes an image into RTP/M-JPEG packets.
 func (e *Encoder) Encode(image []byte, pts time.Duration) ([]*rtp.Packet, error) {
 	l := len(image)
 	if l < 2 || image[0] != 0xFF || image[1] != jpeg.MarkerStartOfImage {

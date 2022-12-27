@@ -1,2 +1,2 @@
-// Package headers contains RTP/MJPEG headers.
+// Package headers contains RTP/M-JPEG headers.
 package headers

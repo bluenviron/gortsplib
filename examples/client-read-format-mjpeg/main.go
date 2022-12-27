@@ -14,7 +14,7 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a MJPEG media
+// 2. check if there's a M-JPEG media
 // 3. get JPEG images of that media
 // 4. decode JPEG images into raw images
 
@@ -40,14 +40,14 @@ func main() {
 		panic(err)
 	}
 
-	// find the MJPEG media and format
+	// find the M-JPEG media and format
 	var forma *format.MJPEG
 	medi := medias.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
-	// setup RTP/MJPEG->MJPEG decoder
+	// setup RTP/M-JPEG->M-JPEG decoder
 	rtpDec := forma.CreateDecoder()
 
 	// setup the chosen media only

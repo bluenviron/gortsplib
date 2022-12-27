@@ -11,19 +11,19 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/MJPEG packets with GStreamer
-// 2. connect to a RTSP server, announce an MJPEG media
+// 1. generate RTP/M-JPEG packets with GStreamer
+// 2. connect to a RTSP server, announce a M-JPEG media
 // 3. route the packets from GStreamer to the server
 
 func main() {
-	// open a listener to receive RTP/MJPEG packets
+	// open a listener to receive RTP/M-JPEG packets
 	pc, err := net.ListenPacket("udp", "localhost:9000")
 	if err != nil {
 		panic(err)
 	}
 	defer pc.Close()
 
-	log.Println("Waiting for a RTP/MJPEG stream on UDP port 9000 - you can send one with GStreamer:\n" +
+	log.Println("Waiting for a RTP/M-JPEG stream on UDP port 9000 - you can send one with GStreamer:\n" +
 		"gst-launch-1.0 videotestsrc ! video/x-raw,width=1920,height=1080,format=I420" +
 		" ! jpegenc ! rtpjpegpay ! udpsink host=127.0.0.1 port=9000")
 
@@ -35,7 +35,7 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create a media that contains a MJPEG format
+	// create a media that contains a M-JPEG format
 	medias := media.Medias{&media.Media{
 		Type:    media.TypeVideo,
 		Formats: []format.Format{&format.MJPEG{}},

@@ -94,7 +94,7 @@ var chmAcSymbols = []byte{ //nolint:dupl
 	0xf9, 0xfa,
 }
 
-// Decoder is a RTP/MJPEG decoder.
+// Decoder is a RTP/M-JPEG decoder.
 type Decoder struct {
 	timeDecoder         *rtptimedec.Decoder
 	firstPacketReceived bool
@@ -109,7 +109,7 @@ func (d *Decoder) Init() {
 	d.timeDecoder = rtptimedec.New(rtpClockRate)
 }
 
-// Decode decodes an image from a RTP/MJPEG packet.
+// Decode decodes an image from a RTP/M-JPEG packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	byts := pkt.Payload
 
