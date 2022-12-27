@@ -7,7 +7,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/v2/pkg/h265"
+	"github.com/aler9/gortsplib/v2/pkg/codecs/h265"
 	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
 )
 

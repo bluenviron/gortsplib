@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/aler9/gortsplib/v2/pkg/bits"
-	"github.com/aler9/gortsplib/v2/pkg/h264"
+	"github.com/aler9/gortsplib/v2/pkg/codecs/h264"
 )
 
 var subWidthC = []uint32{

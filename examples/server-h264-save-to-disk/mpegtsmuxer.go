@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/aler9/gortsplib/v2/pkg/h264"
+	"github.com/aler9/gortsplib/v2/pkg/codecs/h264"
 	"github.com/asticode/go-astits"
 )
 

@@ -10,8 +10,8 @@ import (
 
 	"github.com/pion/rtp"
 
+	"github.com/aler9/gortsplib/v2/pkg/codecs/h264"
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtph264"
-	"github.com/aler9/gortsplib/v2/pkg/h264"
 )
 
 // check whether a RTP/H264 packet contains a IDR, without decoding the packet.

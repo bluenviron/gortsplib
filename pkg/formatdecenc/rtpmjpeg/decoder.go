@@ -7,8 +7,8 @@ import (
 
 	"github.com/pion/rtp"
 
+	"github.com/aler9/gortsplib/v2/pkg/codecs/jpeg"
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpmjpeg/headers"
-	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpmjpeg/jpeg"
 	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
 )
 
