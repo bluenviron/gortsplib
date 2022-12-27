@@ -21,6 +21,236 @@ var subHeightC = []uint32{
 	1,
 }
 
+// SPS_DefaultDisplayWindow is a default display window.
+type SPS_DefaultDisplayWindow struct { //nolint:revive
+	LeftOffset   uint32
+	RightOffset  uint32
+	TopOffset    uint32
+	BottomOffset uint32
+}
+
+func (w *SPS_DefaultDisplayWindow) unmarshal(buf []byte, pos *int) error {
+	var err error
+	w.LeftOffset, err = bits.ReadGolombUnsigned(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	w.RightOffset, err = bits.ReadGolombUnsigned(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	w.TopOffset, err = bits.ReadGolombUnsigned(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	w.BottomOffset, err = bits.ReadGolombUnsigned(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SPS_TimingInfo is a timing info.
+type SPS_TimingInfo struct { //nolint:revive
+	NumUnitsInTick              uint32
+	TimeScale                   uint32
+	POCProportionalToTimingFlag bool
+
+	// POCProportionalToTimingFlag == true
+	NumTicksPOCDiffOneMinus1 uint32
+}
+
+func (t *SPS_TimingInfo) unmarshal(buf []byte, pos *int) error {
+	err := bits.HasSpace(buf, *pos, 32+32+1)
+	if err != nil {
+		return err
+	}
+
+	t.NumUnitsInTick = uint32(bits.ReadBitsUnsafe(buf, pos, 32))
+	t.TimeScale = uint32(bits.ReadBitsUnsafe(buf, pos, 32))
+	t.POCProportionalToTimingFlag = bits.ReadFlagUnsafe(buf, pos)
+
+	if t.POCProportionalToTimingFlag {
+		t.NumTicksPOCDiffOneMinus1, err = bits.ReadGolombUnsigned(buf, pos)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// SPS_VUI is a video usability information.
+type SPS_VUI struct { //nolint:revive
+	AspectRatioInfoPresentFlag bool
+
+	// AspectRatioInfoPresentFlag == true
+	AspectRatioIdc uint8
+	SarWidth       uint16
+	SarHeight      uint16
+
+	OverscanInfoPresentFlag bool
+
+	// OverscanInfoPresentFlag == true
+	OverscanAppropriateFlag    bool
+	VideoSignalTypePresentFlag bool
+
+	// VideoSignalTypePresentFlag == true
+	VideoFormat                  uint8
+	VideoFullRangeFlag           bool
+	ColourDescriptionPresentFlag bool
+
+	// ColourDescriptionPresentFlag == true
+	ColourPrimaries         uint8
+	TransferCharacteristics uint8
+	MatrixCoefficients      uint8
+
+	ChromaLocInfoPresentFlag bool
+
+	// ChromaLocInfoPresentFlag == true
+	ChromaSampleLocTypeTopField    uint32
+	ChromaSampleLocTypeBottomField uint32
+
+	NeutralChromaIndicationFlag bool
+	FieldSeqFlag                bool
+	FrameFieldInfoPresentFlag   bool
+	DefaultDisplayWindow        *SPS_DefaultDisplayWindow
+	TimingInfo                  *SPS_TimingInfo
+}
+
+func (v *SPS_VUI) unmarshal(buf []byte, pos *int) error {
+	var err error
+	v.AspectRatioInfoPresentFlag, err = bits.ReadFlag(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	if v.AspectRatioInfoPresentFlag {
+		tmp, err := bits.ReadBits(buf, pos, 8)
+		if err != nil {
+			return err
+		}
+		v.AspectRatioIdc = uint8(tmp)
+
+		if v.AspectRatioIdc == 255 { // EXTENDED_SAR
+			err := bits.HasSpace(buf, *pos, 32)
+			if err != nil {
+				return err
+			}
+
+			v.SarWidth = uint16(bits.ReadBitsUnsafe(buf, pos, 16))
+			v.SarHeight = uint16(bits.ReadBitsUnsafe(buf, pos, 16))
+		}
+	}
+
+	v.OverscanInfoPresentFlag, err = bits.ReadFlag(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	if v.OverscanInfoPresentFlag {
+		v.OverscanAppropriateFlag, err = bits.ReadFlag(buf, pos)
+		if err != nil {
+			return err
+		}
+	}
+
+	v.VideoSignalTypePresentFlag, err = bits.ReadFlag(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	if v.VideoSignalTypePresentFlag {
+		err := bits.HasSpace(buf, *pos, 5)
+		if err != nil {
+			return err
+		}
+
+		v.VideoFormat = uint8(bits.ReadBitsUnsafe(buf, pos, 3))
+		v.VideoFullRangeFlag = bits.ReadFlagUnsafe(buf, pos)
+		v.ColourDescriptionPresentFlag = bits.ReadFlagUnsafe(buf, pos)
+
+		if v.ColourDescriptionPresentFlag {
+			err := bits.HasSpace(buf, *pos, 24)
+			if err != nil {
+				return err
+			}
+
+			v.ColourPrimaries = uint8(bits.ReadBitsUnsafe(buf, pos, 8))
+			v.TransferCharacteristics = uint8(bits.ReadBitsUnsafe(buf, pos, 8))
+			v.MatrixCoefficients = uint8(bits.ReadBitsUnsafe(buf, pos, 8))
+		}
+	}
+
+	v.ChromaLocInfoPresentFlag, err = bits.ReadFlag(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	if v.ChromaLocInfoPresentFlag {
+		v.ChromaSampleLocTypeTopField, err = bits.ReadGolombUnsigned(buf, pos)
+		if err != nil {
+			return err
+		}
+
+		v.ChromaSampleLocTypeBottomField, err = bits.ReadGolombUnsigned(buf, pos)
+		if err != nil {
+			return err
+		}
+	}
+
+	v.NeutralChromaIndicationFlag, err = bits.ReadFlag(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	v.FieldSeqFlag, err = bits.ReadFlag(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	v.FrameFieldInfoPresentFlag, err = bits.ReadFlag(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	defaultDisplayWindowFlag, err := bits.ReadFlag(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	if defaultDisplayWindowFlag {
+		v.DefaultDisplayWindow = &SPS_DefaultDisplayWindow{}
+		err := v.DefaultDisplayWindow.unmarshal(buf, pos)
+		if err != nil {
+			return err
+		}
+	} else {
+		v.DefaultDisplayWindow = nil
+	}
+
+	timingInfoPresentFlag, err := bits.ReadFlag(buf, pos)
+	if err != nil {
+		return err
+	}
+
+	if timingInfoPresentFlag {
+		v.TimingInfo = &SPS_TimingInfo{}
+		err := v.TimingInfo.unmarshal(buf, pos)
+		if err != nil {
+			return err
+		}
+	} else {
+		v.TimingInfo = nil
+	}
+
+	return nil
+}
+
 // SPS_ProfileTierLevel is a profile level tier of a SPS.
 type SPS_ProfileTierLevel struct { //nolint:revive
 	GeneralProfileSpace             uint8
@@ -162,21 +392,39 @@ func (c *SPS_ConformanceWindow) unmarshal(buf []byte, pos *int) error {
 
 // SPS is a H265 sequence parameter set.
 type SPS struct {
-	VPSID                   uint8
-	MaxNumSubLayersMinus1   uint8
-	TemporalIDNestingFlag   bool
-	ProfileTierLevel        SPS_ProfileTierLevel
-	ID                      uint8
-	ChromaFormatIdc         uint32
-	SeparateColourPlaneFlag bool
-	PicWidthInLumaSamples   uint32
-	PicHeightInLumaSamples  uint32
-
-	ConformanceWindow *SPS_ConformanceWindow
-
-	BitDepthLumaMinus8          uint32
-	BitDepthChromaMinus8        uint32
-	Log2MaxPicOrderCntLsbMinus4 uint32
+	VPSID                                uint8
+	MaxSubLayersMinus1                   uint8
+	TemporalIDNestingFlag                bool
+	ProfileTierLevel                     SPS_ProfileTierLevel
+	ID                                   uint8
+	ChromaFormatIdc                      uint32
+	SeparateColourPlaneFlag              bool
+	PicWidthInLumaSamples                uint32
+	PicHeightInLumaSamples               uint32
+	ConformanceWindow                    *SPS_ConformanceWindow
+	BitDepthLumaMinus8                   uint32
+	BitDepthChromaMinus8                 uint32
+	Log2MaxPicOrderCntLsbMinus4          uint32
+	SubLayerOrderingInfoPresentFlag      bool
+	MaxDecPicBufferingMinus1             []uint32
+	MaxNumReorderPics                    []uint32
+	MaxLatencyIncreasePlus1              []uint32
+	Log2MinLumaCodingBlockSizeMinus3     uint32
+	Log2DiffMaxMinLumaCodingBlockSize    uint32
+	Log2MinLumaTransformBlockSizeMinus2  uint32
+	Log2DiffMaxMinLumaTransformBlockSize uint32
+	MaxTransformHierarchyDepthInter      uint32
+	MaxTransformHierarchyDepthIntra      uint32
+	ScalingListEnabledFlag               bool
+	ScalingListDataPresentFlag           bool
+	AmpEnabledFlag                       bool
+	SampleAdaptiveOffsetEnabledFlag      bool
+	PcmEnabledFlag                       bool
+	NumShortTermRefPicSets               uint32
+	LongTermRefPicsPresentFlag           bool
+	TemporalMvpEnabledFlag               bool
+	StrongIntraSmoothingEnabledFlag      bool
+	VUI                                  *SPS_VUI
 }
 
 // Unmarshal decodes a SPS from bytes.
@@ -202,10 +450,10 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	}
 
 	s.VPSID = uint8(bits.ReadBitsUnsafe(buf, &pos, 4))
-	s.MaxNumSubLayersMinus1 = uint8(bits.ReadBitsUnsafe(buf, &pos, 3))
+	s.MaxSubLayersMinus1 = uint8(bits.ReadBitsUnsafe(buf, &pos, 3))
 	s.TemporalIDNestingFlag = bits.ReadFlagUnsafe(buf, &pos)
 
-	err = s.ProfileTierLevel.unmarshal(buf, &pos, s.MaxNumSubLayersMinus1)
+	err = s.ProfileTierLevel.unmarshal(buf, &pos, s.MaxSubLayersMinus1)
 	if err != nil {
 		return err
 	}
@@ -268,6 +516,147 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		return err
 	}
 
+	s.SubLayerOrderingInfoPresentFlag, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	var start uint8
+	if s.SubLayerOrderingInfoPresentFlag {
+		start = 0
+	} else {
+		start = s.MaxSubLayersMinus1
+	}
+
+	s.MaxDecPicBufferingMinus1 = make([]uint32, s.MaxSubLayersMinus1-start+1)
+	s.MaxNumReorderPics = make([]uint32, s.MaxSubLayersMinus1-start+1)
+	s.MaxLatencyIncreasePlus1 = make([]uint32, s.MaxSubLayersMinus1-start+1)
+
+	for i := start; i <= s.MaxSubLayersMinus1; i++ {
+		s.MaxDecPicBufferingMinus1[i], err = bits.ReadGolombUnsigned(buf, &pos)
+		if err != nil {
+			return err
+		}
+
+		s.MaxNumReorderPics[i], err = bits.ReadGolombUnsigned(buf, &pos)
+		if err != nil {
+			return err
+		}
+
+		s.MaxLatencyIncreasePlus1[i], err = bits.ReadGolombUnsigned(buf, &pos)
+		if err != nil {
+			return err
+		}
+	}
+
+	s.Log2MinLumaCodingBlockSizeMinus3, err = bits.ReadGolombUnsigned(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	s.Log2DiffMaxMinLumaCodingBlockSize, err = bits.ReadGolombUnsigned(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	s.Log2MinLumaTransformBlockSizeMinus2, err = bits.ReadGolombUnsigned(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	s.Log2DiffMaxMinLumaTransformBlockSize, err = bits.ReadGolombUnsigned(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	s.MaxTransformHierarchyDepthInter, err = bits.ReadGolombUnsigned(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	s.MaxTransformHierarchyDepthIntra, err = bits.ReadGolombUnsigned(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	s.ScalingListEnabledFlag, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	if s.ScalingListEnabledFlag {
+		s.ScalingListDataPresentFlag, err = bits.ReadFlag(buf, &pos)
+		if err != nil {
+			return err
+		}
+
+		if s.ScalingListDataPresentFlag {
+			return fmt.Errorf("not supported yet")
+		}
+	}
+
+	s.AmpEnabledFlag, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	s.SampleAdaptiveOffsetEnabledFlag, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	s.PcmEnabledFlag, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	if s.PcmEnabledFlag {
+		return fmt.Errorf("not supported yet")
+	}
+
+	s.NumShortTermRefPicSets, err = bits.ReadGolombUnsigned(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	if s.NumShortTermRefPicSets > 0 {
+		return fmt.Errorf("not supported yet")
+	}
+
+	s.LongTermRefPicsPresentFlag, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	if s.LongTermRefPicsPresentFlag {
+		return fmt.Errorf("not supported yet")
+	}
+
+	s.TemporalMvpEnabledFlag, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	s.StrongIntraSmoothingEnabledFlag, err = bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	vuiParametersPresentFlag, err := bits.ReadFlag(buf, &pos)
+	if err != nil {
+		return err
+	}
+
+	if vuiParametersPresentFlag {
+		s.VUI = &SPS_VUI{}
+		err := s.VUI.unmarshal(buf, &pos)
+		if err != nil {
+			return err
+		}
+	} else {
+		s.VUI = nil
+	}
+
 	return nil
 }
 
@@ -293,4 +682,13 @@ func (s SPS) Height() int {
 	}
 
 	return int(height)
+}
+
+// FPS returns the frames per second of the video.
+func (s SPS) FPS() float64 {
+	if s.VUI == nil || s.VUI.TimingInfo == nil {
+		return 0
+	}
+
+	return float64(s.VUI.TimingInfo.TimeScale) / float64(s.VUI.TimingInfo.NumUnitsInTick)
 }

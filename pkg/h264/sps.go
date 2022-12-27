@@ -171,10 +171,15 @@ func (r *SPS_BitstreamRestriction) unmarshal(buf []byte, pos *int) error {
 // SPS_VUI is a video usability information.
 type SPS_VUI struct { //nolint:revive
 	AspectRatioInfoPresentFlag bool
-	AspectRatioIdc             uint8
-	SarWidth                   uint16
-	SarHeight                  uint16
-	OverscanInfoPresentFlag    bool
+
+	// AspectRatioInfoPresentFlag == true
+	AspectRatioIdc uint8
+	SarWidth       uint16
+	SarHeight      uint16
+
+	OverscanInfoPresentFlag bool
+
+	// OverscanInfoPresentFlag == true
 	OverscanAppropriateFlag    bool
 	VideoSignalTypePresentFlag bool
 
@@ -194,19 +199,12 @@ type SPS_VUI struct { //nolint:revive
 	ChromaSampleLocTypeTopField    uint32
 	ChromaSampleLocTypeBottomField uint32
 
-	// timingInfoPresentFlag == true
 	TimingInfo *SPS_TimingInfo
-
-	// nalHrdParametersPresentFlag == true
-	NalHRD *SPS_HRD
-
-	// vclHrdParametersPresentFlag == true
-	VclHRD *SPS_HRD
+	NalHRD     *SPS_HRD
+	VclHRD     *SPS_HRD
 
 	LowDelayHrdFlag      bool
 	PicStructPresentFlag bool
-
-	// bitstreamRestrictionFlag == true
 	BitstreamRestriction *SPS_BitstreamRestriction
 }
 
@@ -438,12 +436,8 @@ type SPS struct {
 	MbAdaptiveFrameFieldFlag bool
 
 	Direct8x8InferenceFlag bool
-
-	// frameCroppingFlag == true
-	FrameCropping *SPS_FrameCropping
-
-	// vuiParameterPresentFlag == true
-	VUI *SPS_VUI
+	FrameCropping          *SPS_FrameCropping
+	VUI                    *SPS_VUI
 }
 
 // Unmarshal decodes a SPS from bytes.
@@ -682,12 +676,12 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		s.FrameCropping = nil
 	}
 
-	vuiParameterPresentFlag, err := bits.ReadFlag(buf, &pos)
+	vuiParametersPresentFlag, err := bits.ReadFlag(buf, &pos)
 	if err != nil {
 		return err
 	}
 
-	if vuiParameterPresentFlag {
+	if vuiParametersPresentFlag {
 		s.VUI = &SPS_VUI{}
 		err := s.VUI.unmarshal(buf, &pos)
 		if err != nil {

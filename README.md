@@ -45,12 +45,12 @@ Features:
     * Compute and provide SSRC, RTP-Info to clients
     * Generate RTCP sender reports
 * Utilities
-  * Encode and decode format-specific frames into/from RTP packets. The following formats are supported:
+  * Encode/decode format-specific frames into/from RTP packets. The following formats are supported:
     * Video: H264, H265, VP8, VP9
-    * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG4-audio (AAC), Opus
+    * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG4 Audio (AAC), Opus
   * Parse RTSP elements: requests, responses, SDP
   * Parse H264 elements and formats: Annex-B, AVCC, anti-competition, DTS
-  * Parse MPEG4-audio (AAC) element and formats: ADTS, MPEG4-audio configurations
+  * Parse MPEG4 Audio (AAC) element and formats: ADTS, MPEG4 Audio configurations
 
 ## Table of contents
 
