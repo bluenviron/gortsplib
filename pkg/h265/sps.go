@@ -21,8 +21,8 @@ var subHeightC = []uint32{
 	1,
 }
 
-// SPS_ProfileLevelTier is a profile level tier of a SPS.
-type SPS_ProfileLevelTier struct { //nolint:revive
+// SPS_ProfileTierLevel is a profile level tier of a SPS.
+type SPS_ProfileTierLevel struct { //nolint:revive
 	GeneralProfileSpace             uint8
 	GeneralTierFlag                 uint8
 	GeneralProfileIdc               uint8
@@ -36,6 +36,7 @@ type SPS_ProfileLevelTier struct { //nolint:revive
 	Max8bitConstraintFlag           bool
 	Max422ChromeConstraintFlag      bool
 	Max420ChromaConstraintFlag      bool
+	MaxMonochromeConstraintFlag     bool
 	IntraConstraintFlag             bool
 	OnePictureOnlyConstraintFlag    bool
 	LowerBitRateConstraintFlag      bool
@@ -45,7 +46,7 @@ type SPS_ProfileLevelTier struct { //nolint:revive
 	SubLayerLevelPresentFlag        []bool
 }
 
-func (p *SPS_ProfileLevelTier) unmarshal(buf []byte, pos *int, maxNumSubLayersMinus1 uint8) error {
+func (p *SPS_ProfileTierLevel) unmarshal(buf []byte, pos *int, maxSubLayersMinus1 uint8) error {
 	err := bits.HasSpace(buf, *pos, 8+32+12+34+8)
 	if err != nil {
 		return err
@@ -68,6 +69,7 @@ func (p *SPS_ProfileLevelTier) unmarshal(buf []byte, pos *int, maxNumSubLayersMi
 	p.Max8bitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
 	p.Max422ChromeConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
 	p.Max420ChromaConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.MaxMonochromeConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
 	p.IntraConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
 	p.OnePictureOnlyConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
 	p.LowerBitRateConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
@@ -81,38 +83,38 @@ func (p *SPS_ProfileLevelTier) unmarshal(buf []byte, pos *int, maxNumSubLayersMi
 		p.GeneralProfileCompatibilityFlag[10] ||
 		p.GeneralProfileCompatibilityFlag[11] {
 		p.Max14BitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-		*pos += 33
-	} else {
 		*pos += 34
+	} else {
+		*pos += 35
 	}
 
 	p.LevelIdc = uint8(bits.ReadBitsUnsafe(buf, pos, 8))
 
-	if maxNumSubLayersMinus1 > 0 {
-		p.SubLayerProfilePresentFlag = make([]bool, maxNumSubLayersMinus1)
-		p.SubLayerLevelPresentFlag = make([]bool, maxNumSubLayersMinus1)
+	if maxSubLayersMinus1 > 0 {
+		p.SubLayerProfilePresentFlag = make([]bool, maxSubLayersMinus1)
+		p.SubLayerLevelPresentFlag = make([]bool, maxSubLayersMinus1)
 
-		err := bits.HasSpace(buf, *pos, int(2*maxNumSubLayersMinus1))
-		if err != nil {
-			return err
-		}
-	}
-
-	for j := uint8(0); j < maxNumSubLayersMinus1; j++ {
-		p.SubLayerProfilePresentFlag[j] = bits.ReadFlagUnsafe(buf, pos)
-		p.SubLayerLevelPresentFlag[j] = bits.ReadFlagUnsafe(buf, pos)
-	}
-
-	if maxNumSubLayersMinus1 > 0 {
-		err := bits.HasSpace(buf, *pos, int(8-maxNumSubLayersMinus1)*2)
+		err := bits.HasSpace(buf, *pos, int(2*maxSubLayersMinus1))
 		if err != nil {
 			return err
 		}
 
-		*pos += int(8-maxNumSubLayersMinus1) * 2
+		for j := uint8(0); j < maxSubLayersMinus1; j++ {
+			p.SubLayerProfilePresentFlag[j] = bits.ReadFlagUnsafe(buf, pos)
+			p.SubLayerLevelPresentFlag[j] = bits.ReadFlagUnsafe(buf, pos)
+		}
 	}
 
-	for i := uint8(0); i < maxNumSubLayersMinus1; i++ {
+	if maxSubLayersMinus1 > 0 {
+		err := bits.HasSpace(buf, *pos, int(8-maxSubLayersMinus1)*2)
+		if err != nil {
+			return err
+		}
+
+		*pos += int(8-maxSubLayersMinus1) * 2
+	}
+
+	for i := uint8(0); i < maxSubLayersMinus1; i++ {
 		if p.SubLayerProfilePresentFlag[i] {
 			return fmt.Errorf("SubLayerProfilePresentFlag not supported yet")
 		}
@@ -163,7 +165,7 @@ type SPS struct {
 	VPSID                   uint8
 	MaxNumSubLayersMinus1   uint8
 	TemporalIDNestingFlag   bool
-	ProfileLevelTier        SPS_ProfileLevelTier
+	ProfileTierLevel        SPS_ProfileTierLevel
 	ID                      uint8
 	ChromaFormatIdc         uint32
 	SeparateColourPlaneFlag bool
@@ -179,6 +181,8 @@ type SPS struct {
 
 // Unmarshal decodes a SPS from bytes.
 func (s *SPS) Unmarshal(buf []byte) error {
+	buf = h264.EmulationPreventionRemove(buf)
+
 	if len(buf) < 2 {
 		return fmt.Errorf("not enough bits")
 	}
@@ -190,7 +194,6 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	}
 
 	buf = buf[2:]
-	buf = h264.EmulationPreventionRemove(buf)
 	pos := 0
 
 	err := bits.HasSpace(buf, pos, 8)
@@ -202,7 +205,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	s.MaxNumSubLayersMinus1 = uint8(bits.ReadBitsUnsafe(buf, &pos, 3))
 	s.TemporalIDNestingFlag = bits.ReadFlagUnsafe(buf, &pos)
 
-	err = s.ProfileLevelTier.unmarshal(buf, &pos, s.MaxNumSubLayersMinus1)
+	err = s.ProfileTierLevel.unmarshal(buf, &pos, s.MaxNumSubLayersMinus1)
 	if err != nil {
 		return err
 	}

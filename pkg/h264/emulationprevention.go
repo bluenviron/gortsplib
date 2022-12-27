@@ -7,88 +7,27 @@ func EmulationPreventionRemove(nalu []byte) []byte {
 	// 0x00 0x00 0x03 0x02 -> 0x00 0x00 0x02
 	// 0x00 0x00 0x03 0x03 -> 0x00 0x00 0x03
 
-	n := 0
-	step := 0
-	start := 0
+	l := len(nalu)
+	n := l
 
-	for i, b := range nalu {
-		switch step {
-		case 0:
-			if b == 0 {
-				step++
-			}
-
-		case 1:
-			if b == 0 {
-				step++
-			} else {
-				step = 0
-			}
-
-		case 2:
-			if b == 3 {
-				step++
-			} else {
-				step = 0
-			}
-
-		case 3:
-			switch b {
-			case 3, 2, 1, 0:
-				n += len(nalu[start : i-3])
-				n += 3
-				step = 0
-				start = i + 1
-
-			default:
-				step = 0
-			}
+	for i := 2; i < l; i++ {
+		if nalu[i-2] == 0 && nalu[i-1] == 0 && nalu[i] == 3 {
+			n--
 		}
 	}
-
-	n += len(nalu[start:])
 
 	ret := make([]byte, n)
-	n = 0
-	step = 0
-	start = 0
+	pos := 0
+	start := 0
 
-	for i, b := range nalu {
-		switch step {
-		case 0:
-			if b == 0 {
-				step++
-			}
-
-		case 1:
-			if b == 0 {
-				step++
-			} else {
-				step = 0
-			}
-
-		case 2:
-			if b == 3 {
-				step++
-			} else {
-				step = 0
-			}
-
-		case 3:
-			switch b {
-			case 3, 2, 1, 0:
-				n += copy(ret[n:], nalu[start:i-3])
-				n += copy(ret[n:], []byte{0x00, 0x00, b})
-				step = 0
-				start = i + 1
-
-			default:
-				step = 0
-			}
+	for i := 2; i < l; i++ {
+		if nalu[i-2] == 0 && nalu[i-1] == 0 && nalu[i] == 3 {
+			pos += copy(ret[pos:], nalu[start:i])
+			start = i + 1
 		}
 	}
 
-	copy(ret[n:], nalu[start:])
+	copy(ret[pos:], nalu[start:])
 
 	return ret
 }

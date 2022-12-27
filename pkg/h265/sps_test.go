@@ -26,7 +26,7 @@ func TestSPSUnmarshal(t *testing.T) {
 			},
 			SPS{
 				TemporalIDNestingFlag: true,
-				ProfileLevelTier: SPS_ProfileLevelTier{
+				ProfileTierLevel: SPS_ProfileTierLevel{
 					GeneralProfileIdc: 1,
 					GeneralProfileCompatibilityFlag: [32]bool{
 						false, true, true, false, false, false, false, false,
@@ -36,10 +36,9 @@ func TestSPSUnmarshal(t *testing.T) {
 					},
 					ProgressiveSourceFlag:   true,
 					FrameOnlyConstraintFlag: true,
-					LevelIdc:                192,
+					LevelIdc:                120,
 				},
-				ID:                          14,
-				ChromaFormatIdc:             9,
+				ChromaFormatIdc:             1,
 				PicWidthInLumaSamples:       1920,
 				PicHeightInLumaSamples:      1080,
 				Log2MaxPicOrderCntLsbMinus4: 4,
@@ -59,7 +58,7 @@ func TestSPSUnmarshal(t *testing.T) {
 			},
 			SPS{
 				TemporalIDNestingFlag: true,
-				ProfileLevelTier: SPS_ProfileLevelTier{
+				ProfileTierLevel: SPS_ProfileTierLevel{
 					GeneralProfileIdc: 1,
 					GeneralProfileCompatibilityFlag: [32]bool{
 						false, true, true, false, false, false, false, false,
@@ -69,10 +68,9 @@ func TestSPSUnmarshal(t *testing.T) {
 					},
 					ProgressiveSourceFlag:   true,
 					FrameOnlyConstraintFlag: true,
-					LevelIdc:                192,
+					LevelIdc:                120,
 				},
-				ID:                          14,
-				ChromaFormatIdc:             9,
+				ChromaFormatIdc:             1,
 				PicWidthInLumaSamples:       1920,
 				PicHeightInLumaSamples:      800,
 				Log2MaxPicOrderCntLsbMinus4: 4,
@@ -81,7 +79,7 @@ func TestSPSUnmarshal(t *testing.T) {
 			800,
 		},
 		{
-			"todo",
+			"1280x720",
 			[]byte{
 				0x42, 0x01, 0x01, 0x04, 0x08, 0x00, 0x00, 0x03,
 				0x00, 0x98, 0x08, 0x00, 0x00, 0x03, 0x00, 0x00,
@@ -93,7 +91,7 @@ func TestSPSUnmarshal(t *testing.T) {
 			},
 			SPS{
 				TemporalIDNestingFlag: true,
-				ProfileLevelTier: SPS_ProfileLevelTier{
+				ProfileTierLevel: SPS_ProfileTierLevel{
 					GeneralProfileIdc: 4,
 					GeneralProfileCompatibilityFlag: [32]bool{
 						false, false, false, false, true, false, false, false,
@@ -101,12 +99,12 @@ func TestSPSUnmarshal(t *testing.T) {
 						false, false, false, false, false, false, false, false,
 						false, false, false, false, false, false, false, false,
 					},
-					ProgressiveSourceFlag:   true,
-					FrameOnlyConstraintFlag: true,
-					Max12bitConstraintFlag:  true,
-					LevelIdc:                23,
+					ProgressiveSourceFlag:      true,
+					FrameOnlyConstraintFlag:    true,
+					Max12bitConstraintFlag:     true,
+					LowerBitRateConstraintFlag: true,
+					LevelIdc:                   93,
 				},
-				ID:                          2,
 				ChromaFormatIdc:             3,
 				PicWidthInLumaSamples:       1280,
 				PicHeightInLumaSamples:      720,
