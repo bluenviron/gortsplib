@@ -2,7 +2,6 @@ package media
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/google/uuid"
 	psdp "github.com/pion/sdp/v3"
@@ -76,11 +75,9 @@ func (ms Medias) SetControls() {
 // If the format is found, it is inserted into forma, and its media is returned.
 func (ms Medias) FindFormat(forma interface{}) *Media {
 	for _, media := range ms {
-		for _, formak := range media.Formats {
-			if reflect.TypeOf(formak) == reflect.TypeOf(forma).Elem() {
-				reflect.ValueOf(forma).Elem().Set(reflect.ValueOf(formak))
-				return media
-			}
+		ok := media.FindFormat(forma)
+		if ok {
+			return media
 		}
 	}
 	return nil

@@ -3,6 +3,7 @@ package media
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -138,4 +139,15 @@ func (m Media) URL(contentBase *url.URL) (*url.URL, error) {
 
 	ur, _ := url.Parse(strURL + m.Control)
 	return ur, nil
+}
+
+// FindFormat finds a certain format among all the formats in the media.
+func (m Media) FindFormat(forma interface{}) bool {
+	for _, formak := range m.Formats {
+		if reflect.TypeOf(formak) == reflect.TypeOf(forma).Elem() {
+			reflect.ValueOf(forma).Elem().Set(reflect.ValueOf(formak))
+			return true
+		}
+	}
+	return false
 }
