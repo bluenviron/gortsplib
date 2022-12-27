@@ -46,7 +46,7 @@ Features:
     * Generate RTCP sender reports
 * Utilities
   * Encode/decode format-specific frames into/from RTP packets. The following formats are supported:
-    * Video: H264, H265, VP8, VP9
+    * Video: H264, H265, MJPEG, VP8, VP9
     * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG4 Audio (AAC), Opus
   * Parse RTSP elements: requests, responses, SDP
   * Parse H264 elements and formats: Annex-B, AVCC, anti-competition, DTS
@@ -72,6 +72,7 @@ Features:
 * [client-read-format-h264-save-to-disk](examples/client-read-format-h264-save-to-disk/main.go)
 * [client-read-format-h265](examples/client-read-format-h265/main.go)
 * [client-read-format-lpcm](examples/client-read-format-lpcm/main.go)
+* [client-read-format-mjpeg](examples/client-read-format-mjpeg/main.go)
 * [client-read-format-mpeg4audio](examples/client-read-format-mpeg4audio/main.go)
 * [client-read-format-opus](examples/client-read-format-opus/main.go)
 * [client-read-format-vp8](examples/client-read-format-vp8/main.go)
@@ -83,6 +84,7 @@ Features:
 * [client-publish-format-h264](examples/client-publish-format-h264/main.go)
 * [client-publish-format-h265](examples/client-publish-format-h265/main.go)
 * [client-publish-format-lpcm](examples/client-publish-format-lpcm/main.go)
+* [client-publish-format-mjpeg](examples/client-publish-format-mjpeg/main.go)
 * [client-publish-format-mpeg4audio](examples/client-publish-format-mpeg4audio/main.go)
 * [client-publish-format-opus](examples/client-publish-format-opus/main.go)
 * [client-publish-format-vp8](examples/client-publish-format-vp8/main.go)

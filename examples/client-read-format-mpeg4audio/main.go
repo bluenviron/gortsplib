@@ -57,6 +57,7 @@ func main() {
 		// decode MPEG4-audio AUs from the RTP packet
 		aus, _, err := rtpDec.Decode(pkt)
 		if err != nil {
+			log.Printf("ERR: %v", err)
 			return
 		}
 

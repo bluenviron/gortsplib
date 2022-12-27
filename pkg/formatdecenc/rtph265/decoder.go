@@ -19,7 +19,7 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 // It's normal to receive this when we are decoding a stream that has been already
 // running for some time.
 var ErrNonStartingPacketAndNoPrevious = errors.New(
-	"received a non-starting fragmentation unit without any previous fragmentation units")
+	"received a non-starting fragment without any previous starting fragment")
 
 // Decoder is a RTP/H265 decoder.
 type Decoder struct {

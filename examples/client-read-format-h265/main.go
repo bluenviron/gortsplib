@@ -5,6 +5,7 @@ import (
 
 	"github.com/aler9/gortsplib/v2"
 	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtph265"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 	"github.com/pion/rtp"
 )
@@ -57,6 +58,9 @@ func main() {
 		// convert RTP packets into NALUs
 		nalus, pts, err := rtpDec.Decode(pkt)
 		if err != nil {
+			if err != rtph265.ErrNonStartingPacketAndNoPrevious && err != rtph265.ErrMorePacketsNeeded {
+				log.Printf("ERR: %v", err)
+			}
 			return
 		}
 

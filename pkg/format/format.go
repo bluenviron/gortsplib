@@ -70,7 +70,7 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 		case md.MediaName.Media == "video":
 			switch {
 			case payloadType == 26:
-				return &JPEG{}
+				return &MJPEG{}
 
 			case payloadType == 32:
 				return &MPEG2Video{}

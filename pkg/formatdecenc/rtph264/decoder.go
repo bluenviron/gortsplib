@@ -20,7 +20,7 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 // It's normal to receive this when we are decoding a stream that has been already
 // running for some time.
 var ErrNonStartingPacketAndNoPrevious = errors.New(
-	"received a non-starting FU-A packet without any previous FU-A starting packet")
+	"received a non-starting fragment without any previous starting fragment")
 
 // Decoder is a RTP/H264 decoder.
 type Decoder struct {
@@ -190,8 +190,8 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	return ret, pts, nil
 }
 
+// some cameras / servers wrap NALUs into Annex-B
 func (d *Decoder) removeAnnexB(nalus [][]byte) ([][]byte, error) {
-	// some cameras / servers wrap NALUs into Annex-B
 	if !d.firstNALUParsed {
 		d.firstNALUParsed = true
 

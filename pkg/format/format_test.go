@@ -310,7 +310,7 @@ func TestNewFromMediaDescription(t *testing.T) {
 					Formats: []string{"26"},
 				},
 			},
-			&JPEG{},
+			&MJPEG{},
 		},
 		{
 			"video mpeg2 video",

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var casesHeader = []struct {
+var cases = []struct {
 	name   string
 	dec    []byte
 	enc    []byte
@@ -106,7 +106,7 @@ var casesHeader = []struct {
 }
 
 func TestHeaderRead(t *testing.T) {
-	for _, ca := range casesHeader {
+	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			h := make(Header)
 			err := h.read(bufio.NewReader(bytes.NewBuffer(ca.dec)))
@@ -174,7 +174,7 @@ func TestHeaderReadErrors(t *testing.T) {
 }
 
 func TestHeaderWrite(t *testing.T) {
-	for _, ca := range casesHeader {
+	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			buf := ca.header.marshal()
 			require.Equal(t, ca.enc, buf)
