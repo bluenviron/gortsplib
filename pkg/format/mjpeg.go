@@ -2,6 +2,8 @@ package format
 
 import (
 	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpmjpeg"
 )
 
 // MJPEG is a Motion-JPEG format.
@@ -34,4 +36,18 @@ func (t *MJPEG) Marshal() (string, string) {
 // PTSEqualsDTS implements Format.
 func (t *MJPEG) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
+}
+
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (t *MJPEG) CreateDecoder() *rtpmjpeg.Decoder {
+	d := &rtpmjpeg.Decoder{}
+	d.Init()
+	return d
+}
+
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (t *MJPEG) CreateEncoder() *rtpmjpeg.Encoder {
+	e := &rtpmjpeg.Encoder{}
+	e.Init()
+	return e
 }

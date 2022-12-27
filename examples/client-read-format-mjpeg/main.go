@@ -1,18 +1,22 @@
 package main
 
 import (
+	"bytes"
+	"image/jpeg"
 	"log"
 
 	"github.com/aler9/gortsplib/v2"
 	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpmjpeg"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a G711 media
-// 3. get G711 frames of that media
+// 2. check if there's a MJPEG media
+// 3. get JPEG images of that media
+// 4. decode JPEG images into raw images
 
 func main() {
 	c := gortsplib.Client{}
@@ -36,14 +40,14 @@ func main() {
 		panic(err)
 	}
 
-	// find the G711 media and format
-	var forma *format.G711
+	// find the MJPEG media and format
+	var forma *format.MJPEG
 	medi := medias.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
-	// setup decoder
+	// setup RTP/MJPEG->MJPEG decoder
 	rtpDec := forma.CreateDecoder()
 
 	// setup the chosen media only
@@ -54,15 +58,22 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
-		// decode a G711 packet from the RTP packet
-		op, _, err := rtpDec.Decode(pkt)
+		// convert RTP packets into JPEG images
+		enc, pts, err := rtpDec.Decode(pkt)
 		if err != nil {
-			log.Printf("ERR: %v", err)
+			if err != rtpmjpeg.ErrNonStartingPacketAndNoPrevious && err != rtpmjpeg.ErrMorePacketsNeeded {
+				log.Printf("ERR: %v", err)
+			}
 			return
 		}
 
-		// print
-		log.Printf("received G711 frame of size %d\n", len(op))
+		// convert JPEG images into raw images
+		image, err := jpeg.Decode(bytes.NewReader(enc))
+		if err != nil {
+			panic(err)
+		}
+
+		log.Printf("decoded image with size %v and pts %v", image.Bounds().Max, pts)
 	})
 
 	// start playing

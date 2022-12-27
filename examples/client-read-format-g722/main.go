@@ -57,6 +57,7 @@ func main() {
 		// decode a G722 packet from the RTP packet
 		op, _, err := rtpDec.Decode(pkt)
 		if err != nil {
+			log.Printf("ERR: %v", err)
 			return
 		}
 

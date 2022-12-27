@@ -574,7 +574,7 @@ func TestDecodeErrors(t *testing.T) {
 					Payload: []byte{0x1c, 0b01000000},
 				},
 			},
-			"received a non-starting FU-A packet without any previous FU-A starting packet",
+			"received a non-starting fragment without any previous starting fragment",
 		},
 		{
 			"FU-A non-starting 2",

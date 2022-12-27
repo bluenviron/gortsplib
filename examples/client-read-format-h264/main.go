@@ -5,6 +5,7 @@ import (
 
 	"github.com/aler9/gortsplib/v2"
 	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtph264"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 	"github.com/pion/rtp"
 )
@@ -75,8 +76,11 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// convert RTP packets into NALUs
-		nalus, _, err := rtpDec.Decode(pkt)
+		nalus, pts, err := rtpDec.Decode(pkt)
 		if err != nil {
+			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
+				log.Printf("ERR: %v", err)
+			}
 			return
 		}
 
@@ -92,7 +96,7 @@ func main() {
 				continue
 			}
 
-			log.Printf("decoded frame with size %v", img.Bounds().Max)
+			log.Printf("decoded frame with size %v and pts %v", img.Bounds().Max, pts)
 		}
 	})
 

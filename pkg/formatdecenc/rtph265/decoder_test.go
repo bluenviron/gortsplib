@@ -296,7 +296,7 @@ func TestDecodeErrors(t *testing.T) {
 					Payload: []byte{49 << 1, 0x00, 0b01000000},
 				},
 			},
-			"received a non-starting fragmentation unit without any previous fragmentation units",
+			"received a non-starting fragment without any previous starting fragment",
 		},
 		{
 			"fragmentation unit non-starting 2",

@@ -5,6 +5,7 @@ import (
 
 	"github.com/aler9/gortsplib/v2"
 	"github.com/aler9/gortsplib/v2/pkg/format"
+	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpvp9"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 	"github.com/pion/rtp"
 )
@@ -57,6 +58,9 @@ func main() {
 		// decode a VP9 frame from the RTP packet
 		vf, _, err := rtpDec.Decode(pkt)
 		if err != nil {
+			if err != rtpvp9.ErrNonStartingPacketAndNoPrevious && err != rtpvp9.ErrMorePacketsNeeded {
+				log.Printf("ERR: %v", err)
+			}
 			return
 		}
 
