@@ -166,7 +166,7 @@ func findSEITimingInfo(nalus [][]byte, sps *SPS) (*seiTimingInfo, bool) {
 	return nil, false
 }
 
-// DTSExtractor is a utility that allows to extract NALU DTS from PTS.
+// DTSExtractor allows to extract DTS from PTS.
 type DTSExtractor struct {
 	sps          []byte
 	spsp         *SPS

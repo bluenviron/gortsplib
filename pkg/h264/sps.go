@@ -429,7 +429,7 @@ type SPS struct {
 	MaxNumRefFrames                uint32
 	GapsInFrameNumValueAllowedFlag bool
 	PicWidthInMbsMinus1            uint32
-	PicHeightInMbsMinus1           uint32
+	PicHeightInMapUnitsMinus1      uint32
 	FrameMbsOnlyFlag               bool
 
 	// FrameMbsOnlyFlag == false
@@ -637,7 +637,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		return err
 	}
 
-	s.PicHeightInMbsMinus1, err = bits.ReadGolombUnsigned(buf, &pos)
+	s.PicHeightInMapUnitsMinus1, err = bits.ReadGolombUnsigned(buf, &pos)
 	if err != nil {
 		return err
 	}
@@ -711,10 +711,11 @@ func (s SPS) Height() int {
 	}
 
 	if s.FrameCropping != nil {
-		return int(((2 - f) * (s.PicHeightInMbsMinus1 + 1) * 16) - (s.FrameCropping.TopOffset+s.FrameCropping.BottomOffset)*2)
+		return int(((2 - f) * (s.PicHeightInMapUnitsMinus1 + 1) * 16) -
+			(s.FrameCropping.TopOffset+s.FrameCropping.BottomOffset)*2)
 	}
 
-	return int((2 - f) * (s.PicHeightInMbsMinus1 + 1) * 16)
+	return int((2 - f) * (s.PicHeightInMapUnitsMinus1 + 1) * 16)
 }
 
 // FPS returns the frames per second of the video.
