@@ -83,6 +83,7 @@ Features:
 * [client-publish-format-h264](examples/client-publish-format-h264/main.go)
 * [client-publish-format-h265](examples/client-publish-format-h265/main.go)
 * [client-publish-format-lpcm](examples/client-publish-format-lpcm/main.go)
+* [client-publish-format-mjpeg](examples/client-publish-format-mjpeg/main.go)
 * [client-publish-format-mpeg4audio](examples/client-publish-format-mpeg4audio/main.go)
 * [client-publish-format-opus](examples/client-publish-format-opus/main.go)
 * [client-publish-format-vp8](examples/client-publish-format-vp8/main.go)

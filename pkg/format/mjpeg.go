@@ -9,7 +9,7 @@ type MJPEG struct{}
 
 // String implements Format.
 func (t *MJPEG) String() string {
-	return "JPEG"
+	return "MJPEG"
 }
 
 // ClockRate implements Format.
