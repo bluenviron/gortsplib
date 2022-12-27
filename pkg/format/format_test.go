@@ -6,7 +6,7 @@ import (
 	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/v2/pkg/mpeg4audio"
+	"github.com/aler9/gortsplib/v2/pkg/codecs/mpeg4audio"
 )
 
 func TestNewFromMediaDescription(t *testing.T) {

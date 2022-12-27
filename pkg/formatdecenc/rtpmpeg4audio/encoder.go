@@ -7,7 +7,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/v2/pkg/bits"
-	"github.com/aler9/gortsplib/v2/pkg/mpeg4audio"
+	"github.com/aler9/gortsplib/v2/pkg/codecs/mpeg4audio"
 )
 
 const (
