@@ -390,6 +390,115 @@ func (c *SPS_ConformanceWindow) unmarshal(buf []byte, pos *int) error {
 	return nil
 }
 
+// SPS_ShortTermRefPicSet is a short-term reference picture set.
+type SPS_ShortTermRefPicSet struct { //nolint:revive
+	InterRefPicSetPredictionFlag bool
+	DeltaIdxMinus1               uint32
+	DeltaRpsSign                 bool
+	AbsDeltaRpsMinus1            uint32
+	NumNegativePics              uint32
+	NumPositivePics              uint32
+	DeltaPocS0Minus1             []uint32
+	UsedByCurrPicS0Flag          []bool
+	DeltaPocS1Minus1             []uint32
+	UsedByCurrPicS1Flag          []bool
+}
+
+func (r *SPS_ShortTermRefPicSet) unmarshal(buf []byte, pos *int, stRpsIdx uint32,
+	numShortTermRefPicSets uint32, shortTermRefPicSets []*SPS_ShortTermRefPicSet,
+) error {
+	var err error
+
+	if stRpsIdx != 0 {
+		r.InterRefPicSetPredictionFlag, err = bits.ReadFlag(buf, pos)
+		if err != nil {
+			return err
+		}
+	}
+
+	if r.InterRefPicSetPredictionFlag {
+		if stRpsIdx == numShortTermRefPicSets {
+			r.DeltaIdxMinus1, err = bits.ReadGolombUnsigned(buf, pos)
+			if err != nil {
+				return err
+			}
+		}
+
+		r.DeltaRpsSign, err = bits.ReadFlag(buf, pos)
+		if err != nil {
+			return err
+		}
+
+		r.AbsDeltaRpsMinus1, err = bits.ReadGolombUnsigned(buf, pos)
+		if err != nil {
+			return err
+		}
+
+		refRpsIdx := stRpsIdx - (r.DeltaIdxMinus1 + 1)
+		numDeltaPocs := shortTermRefPicSets[refRpsIdx].NumNegativePics + shortTermRefPicSets[refRpsIdx].NumPositivePics
+
+		for j := uint32(0); j <= numDeltaPocs; j++ {
+			usedByCurrPicFlag, err := bits.ReadFlag(buf, pos)
+			if err != nil {
+				return err
+			}
+
+			if usedByCurrPicFlag {
+				_, err := bits.ReadGolombUnsigned(buf, pos) // use_delta_flag
+				if err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		r.NumNegativePics, err = bits.ReadGolombUnsigned(buf, pos)
+		if err != nil {
+			return err
+		}
+
+		r.NumPositivePics, err = bits.ReadGolombUnsigned(buf, pos)
+		if err != nil {
+			return err
+		}
+
+		if r.NumNegativePics > 0 {
+			r.DeltaPocS0Minus1 = make([]uint32, r.NumNegativePics)
+			r.UsedByCurrPicS0Flag = make([]bool, r.NumNegativePics)
+
+			for i := uint32(0); i < r.NumNegativePics; i++ {
+				r.DeltaPocS0Minus1[i], err = bits.ReadGolombUnsigned(buf, pos)
+				if err != nil {
+					return err
+				}
+
+				r.UsedByCurrPicS0Flag[i], err = bits.ReadFlag(buf, pos)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		if r.NumPositivePics > 0 {
+			r.DeltaPocS1Minus1 = make([]uint32, r.NumPositivePics)
+			r.UsedByCurrPicS1Flag = make([]bool, r.NumPositivePics)
+
+			for i := uint32(0); i < r.NumPositivePics; i++ {
+				r.DeltaPocS1Minus1[i], err = bits.ReadGolombUnsigned(buf, pos)
+				if err != nil {
+					return err
+				}
+
+				r.UsedByCurrPicS1Flag[i], err = bits.ReadFlag(buf, pos)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // SPS is a H265 sequence parameter set.
 type SPS struct {
 	VPSID                                uint8
@@ -420,7 +529,7 @@ type SPS struct {
 	AmpEnabledFlag                       bool
 	SampleAdaptiveOffsetEnabledFlag      bool
 	PcmEnabledFlag                       bool
-	NumShortTermRefPicSets               uint32
+	ShortTermRefPicSets                  []*SPS_ShortTermRefPicSet
 	LongTermRefPicsPresentFlag           bool
 	TemporalMvpEnabledFlag               bool
 	StrongIntraSmoothingEnabledFlag      bool
@@ -591,7 +700,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		}
 
 		if s.ScalingListDataPresentFlag {
-			return fmt.Errorf("not supported yet")
+			return fmt.Errorf("ScalingListDataPresentFlag not supported yet")
 		}
 	}
 
@@ -611,16 +720,26 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	}
 
 	if s.PcmEnabledFlag {
-		return fmt.Errorf("not supported yet")
+		return fmt.Errorf("PcmEnabledFlag not supported yet")
 	}
 
-	s.NumShortTermRefPicSets, err = bits.ReadGolombUnsigned(buf, &pos)
+	numShortTermRefPicSets, err := bits.ReadGolombUnsigned(buf, &pos)
 	if err != nil {
 		return err
 	}
 
-	if s.NumShortTermRefPicSets > 0 {
-		return fmt.Errorf("not supported yet")
+	if numShortTermRefPicSets > 0 {
+		s.ShortTermRefPicSets = make([]*SPS_ShortTermRefPicSet, numShortTermRefPicSets)
+
+		for i := uint32(0); i < numShortTermRefPicSets; i++ {
+			s.ShortTermRefPicSets[i] = &SPS_ShortTermRefPicSet{}
+			err := s.ShortTermRefPicSets[i].unmarshal(buf, &pos, i, numShortTermRefPicSets, s.ShortTermRefPicSets)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		s.ShortTermRefPicSets = nil
 	}
 
 	s.LongTermRefPicsPresentFlag, err = bits.ReadFlag(buf, &pos)
@@ -629,7 +748,7 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	}
 
 	if s.LongTermRefPicsPresentFlag {
-		return fmt.Errorf("not supported yet")
+		return fmt.Errorf("LongTermRefPicsPresentFlag not supported yet")
 	}
 
 	s.TemporalMvpEnabledFlag, err = bits.ReadFlag(buf, &pos)
