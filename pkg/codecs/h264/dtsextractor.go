@@ -9,7 +9,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/bits"
 )
 
-func getPOC(buf []byte, sps *SPS) (uint32, error) {
+func getPictureOrderCount(buf []byte, sps *SPS) (uint32, error) {
 	buf = EmulationPreventionRemove(buf[:6])
 
 	isIDR := NALUType(buf[0]&0x1F) == NALUTypeIDR
@@ -17,26 +17,22 @@ func getPOC(buf []byte, sps *SPS) (uint32, error) {
 	buf = buf[1:]
 	pos := 0
 
-	// first_mb_in_slice
-	_, err := bits.ReadGolombUnsigned(buf, &pos)
+	_, err := bits.ReadGolombUnsigned(buf, &pos) // first_mb_in_slice
 	if err != nil {
 		return 0, err
 	}
 
-	// slice_type
-	_, err = bits.ReadGolombUnsigned(buf, &pos)
+	_, err = bits.ReadGolombUnsigned(buf, &pos) // slice_type
 	if err != nil {
 		return 0, err
 	}
 
-	// pic_parameter_set_id
-	_, err = bits.ReadGolombUnsigned(buf, &pos)
+	_, err = bits.ReadGolombUnsigned(buf, &pos) // pic_parameter_set_id
 	if err != nil {
 		return 0, err
 	}
 
-	// frame_num
-	_, err = bits.ReadBits(buf, &pos, int(sps.Log2MaxFrameNumMinus4+4))
+	_, err = bits.ReadBits(buf, &pos, int(sps.Log2MaxFrameNumMinus4+4)) // frame_num
 	if err != nil {
 		return 0, err
 	}
@@ -46,8 +42,7 @@ func getPOC(buf []byte, sps *SPS) (uint32, error) {
 	}
 
 	if isIDR {
-		// idr_pic_id
-		_, err = bits.ReadGolombUnsigned(buf, &pos)
+		_, err = bits.ReadGolombUnsigned(buf, &pos) // idr_pic_id
 		if err != nil {
 			return 0, err
 		}
@@ -68,11 +63,11 @@ func getPOC(buf []byte, sps *SPS) (uint32, error) {
 	return uint32(picOrderCntLsb), nil
 }
 
-func findPOC(nalus [][]byte, sps *SPS) (uint32, error) {
+func findPictureOrderCount(nalus [][]byte, sps *SPS) (uint32, error) {
 	for _, nalu := range nalus {
 		typ := NALUType(nalu[0] & 0x1F)
 		if typ == NALUTypeIDR || typ == NALUTypeNonIDR {
-			poc, err := getPOC(nalu, sps)
+			poc, err := getPictureOrderCount(nalu, sps)
 			if err != nil {
 				return 0, err
 			}
@@ -82,7 +77,7 @@ func findPOC(nalus [][]byte, sps *SPS) (uint32, error) {
 	return 0, fmt.Errorf("POC not found")
 }
 
-func getPOCDiff(poc1 uint32, poc2 uint32, sps *SPS) int32 {
+func getPictureOrderCountDiff(poc1 uint32, poc2 uint32, sps *SPS) int32 {
 	diff := int32(poc1) - int32(poc2)
 	switch {
 	case diff < -((1 << (sps.Log2MaxPicOrderCntLsbMinus4 + 3)) - 1):
@@ -168,13 +163,14 @@ func findSEITimingInfo(nalus [][]byte, sps *SPS) (*seiTimingInfo, bool) {
 
 // DTSExtractor allows to extract DTS from PTS.
 type DTSExtractor struct {
-	sps          []byte
-	spsp         *SPS
-	prevPTS      time.Duration
-	prevDTS      *time.Duration
-	prevPOCDiff  int32
-	expectedPOC  uint32
-	ptsDTSOffset time.Duration
+	sps           []byte
+	spsp          *SPS
+	prevPTS       time.Duration
+	prevDTSFilled bool
+	prevDTS       time.Duration
+	prevPOCDiff   int32
+	expectedPOC   uint32
+	ptsDTSOffset  time.Duration
 }
 
 // NewDTSExtractor allocates a DTSExtractor.
@@ -230,12 +226,12 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		d.expectedPOC += 2
 		d.expectedPOC &= ((1 << (d.spsp.Log2MaxPicOrderCntLsbMinus4 + 4)) - 1)
 
-		poc, err := findPOC(nalus, d.spsp)
+		poc, err := findPictureOrderCount(nalus, d.spsp)
 		if err != nil {
 			return 0, 0, err
 		}
 
-		pocDiff := getPOCDiff(poc, d.expectedPOC, d.spsp)
+		pocDiff := getPictureOrderCountDiff(poc, d.expectedPOC, d.spsp)
 
 		if pocDiff == 0 {
 			return pts - d.ptsDTSOffset, 0, nil
@@ -256,7 +252,7 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		}
 
 		// pocDiff : prevPOCDiff = (pts - dts - ptsDTSOffset) : (prevPTS - prevDTS - ptsDTSOffset)
-		return pts - d.ptsDTSOffset + time.Duration(math.Round(float64(*d.prevDTS-d.prevPTS+d.ptsDTSOffset)*
+		return pts - d.ptsDTSOffset + time.Duration(math.Round(float64(d.prevDTS-d.prevPTS+d.ptsDTSOffset)*
 			float64(pocDiff)/float64(d.prevPOCDiff))), pocDiff, nil
 
 	// DTS is computed from SEI
@@ -296,13 +292,14 @@ func (d *DTSExtractor) Extract(nalus [][]byte, pts time.Duration) (time.Duration
 		return 0, fmt.Errorf("DTS is greater than PTS")
 	}
 
-	if d.prevDTS != nil && dts <= *d.prevDTS {
+	if d.prevDTSFilled && dts <= d.prevDTS {
 		return 0, fmt.Errorf("DTS is not monotonically increasing, was %v, now is %v",
-			*d.prevDTS, dts)
+			d.prevDTS, dts)
 	}
 
 	d.prevPTS = pts
-	d.prevDTS = &dts
+	d.prevDTS = dts
+	d.prevDTSFilled = true
 	d.prevPOCDiff = pocDiff
 	return dts, err
 }

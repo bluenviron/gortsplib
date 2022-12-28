@@ -448,22 +448,6 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		return fmt.Errorf("not enough bits")
 	}
 
-	forbidden := buf[0] >> 7
-	nalRefIdc := (buf[0] >> 5) & 0x03
-	typ := NALUType(buf[0] & 0x1F)
-
-	if forbidden != 0 {
-		return fmt.Errorf("wrong forbidden bit")
-	}
-
-	if nalRefIdc == 0 {
-		return fmt.Errorf("wrong nal_ref_idc")
-	}
-
-	if typ != NALUTypeSPS {
-		return fmt.Errorf("not a SPS")
-	}
-
 	s.ProfileIdc = buf[1]
 	s.ConstraintSet0Flag = (buf[2] >> 7) == 1
 	s.ConstraintSet1Flag = (buf[2] >> 6 & 0x01) == 1

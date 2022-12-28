@@ -55,7 +55,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	var nalus [][]byte
 
 	switch typ {
-	case h265.NALUTypeAggregationUnit:
+	case h265.NALUType_AggregationUnit:
 		d.fragments = d.fragments[:0] // discard pending fragmented packets
 
 		payload := pkt.Payload[2:]
@@ -86,7 +86,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 		d.firstPacketReceived = true
 
-	case h265.NALUTypeFragmentationUnit:
+	case h265.NALUType_FragmentationUnit:
 		if len(pkt.Payload) < 3 {
 			d.fragments = d.fragments[:0] // discard pending fragmented packets
 			return nil, 0, fmt.Errorf("payload is too short")
@@ -141,7 +141,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		d.fragments = d.fragments[:0]
 		nalus = [][]byte{nalu}
 
-	case h265.NALUTypePACI:
+	case h265.NALUType_PACI:
 		d.fragments = d.fragments[:0] // discard pending fragmented packets
 		d.firstPacketReceived = true
 		return nil, 0, fmt.Errorf("PACI packets are not supported (yet)")

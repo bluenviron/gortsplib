@@ -529,11 +529,19 @@ type SPS struct {
 	AmpEnabledFlag                       bool
 	SampleAdaptiveOffsetEnabledFlag      bool
 	PcmEnabledFlag                       bool
-	ShortTermRefPicSets                  []*SPS_ShortTermRefPicSet
-	LongTermRefPicsPresentFlag           bool
-	TemporalMvpEnabledFlag               bool
-	StrongIntraSmoothingEnabledFlag      bool
-	VUI                                  *SPS_VUI
+
+	// PcmEnabledFlag == true
+	PcmSampleBitDepthLumaMinus1          uint8
+	PcmSampleBitDepthChromaMinus1        uint8
+	Log2MinPcmLumaCodingBlockSizeMinus3  uint32
+	Log2DiffMaxMinPcmLumaCodingBlockSize uint32
+	PcmLoopFilterDisabledFlag            bool
+
+	ShortTermRefPicSets             []*SPS_ShortTermRefPicSet
+	LongTermRefPicsPresentFlag      bool
+	TemporalMvpEnabledFlag          bool
+	StrongIntraSmoothingEnabledFlag bool
+	VUI                             *SPS_VUI
 }
 
 // Unmarshal decodes a SPS from bytes.
@@ -542,12 +550,6 @@ func (s *SPS) Unmarshal(buf []byte) error {
 
 	if len(buf) < 2 {
 		return fmt.Errorf("not enough bits")
-	}
-
-	typ := NALUType((buf[0] >> 1) & 0b111111)
-
-	if typ != NALUTypeSPS {
-		return fmt.Errorf("not a SPS")
 	}
 
 	buf = buf[2:]
@@ -720,7 +722,28 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	}
 
 	if s.PcmEnabledFlag {
-		return fmt.Errorf("PcmEnabledFlag not supported yet")
+		err := bits.HasSpace(buf, pos, 8)
+		if err != nil {
+			return err
+		}
+
+		s.PcmSampleBitDepthLumaMinus1 = uint8(bits.ReadBitsUnsafe(buf, &pos, 4))
+		s.PcmSampleBitDepthChromaMinus1 = uint8(bits.ReadBitsUnsafe(buf, &pos, 4))
+
+		s.Log2MinPcmLumaCodingBlockSizeMinus3, err = bits.ReadGolombUnsigned(buf, &pos)
+		if err != nil {
+			return err
+		}
+
+		s.Log2DiffMaxMinPcmLumaCodingBlockSize, err = bits.ReadGolombUnsigned(buf, &pos)
+		if err != nil {
+			return err
+		}
+
+		s.PcmLoopFilterDisabledFlag, err = bits.ReadFlag(buf, &pos)
+		if err != nil {
+			return err
+		}
 	}
 
 	numShortTermRefPicSets, err := bits.ReadGolombUnsigned(buf, &pos)
