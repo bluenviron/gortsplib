@@ -131,9 +131,7 @@ func getPictureOrderCountDiff(poc1 uint32, poc2 uint32, sps *SPS) int32 {
 
 // DTSExtractor allows to extract DTS from PTS.
 type DTSExtractor struct {
-	sps           []byte
 	spsp          *SPS
-	pps           []byte
 	ppsp          *PPS
 	prevDTSFilled bool
 	prevDTS       time.Duration
@@ -157,7 +155,6 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 			if err != nil {
 				return 0, fmt.Errorf("invalid SPS: %v", err)
 			}
-			d.sps = append([]byte(nil), nalu...)
 			d.spsp = &spsp
 
 		case NALUType_PPS_NUT:
@@ -166,7 +163,6 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 			if err != nil {
 				return 0, fmt.Errorf("invalid PPS: %v", err)
 			}
-			d.pps = append([]byte(nil), nalu...)
 			d.ppsp = &ppsp
 
 		case NALUType_IDR_W_RADL, NALUType_IDR_N_LP:
@@ -178,7 +174,7 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		return 0, fmt.Errorf("SPS not received yet")
 	}
 
-	if d.pps == nil {
+	if d.ppsp == nil {
 		return 0, fmt.Errorf("PPS not received yet")
 	}
 

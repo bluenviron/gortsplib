@@ -1,7 +1,6 @@
 package h264
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"time"
@@ -163,7 +162,6 @@ func findSEITimingInfo(nalus [][]byte, sps *SPS) (*seiTimingInfo, bool) {
 
 // DTSExtractor allows to extract DTS from PTS.
 type DTSExtractor struct {
-	sps           []byte
 	spsp          *SPS
 	prevPTS       time.Duration
 	prevDTSFilled bool
@@ -185,23 +183,20 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		typ := NALUType(nalu[0] & 0x1F)
 		switch typ {
 		case NALUTypeSPS:
-			if d.sps == nil || !bytes.Equal(d.sps, nalu) {
-				var spsp SPS
-				err := spsp.Unmarshal(nalu)
-				if err != nil {
-					return 0, 0, fmt.Errorf("invalid SPS: %v", err)
-				}
-				d.sps = append([]byte(nil), nalu...)
-				d.spsp = &spsp
+			var spsp SPS
+			err := spsp.Unmarshal(nalu)
+			if err != nil {
+				return 0, 0, fmt.Errorf("invalid SPS: %v", err)
+			}
+			d.spsp = &spsp
 
-				if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil &&
-					d.spsp.VUI.BitstreamRestriction != nil {
-					d.ptsDTSOffset = time.Duration(math.Round(float64(
-						time.Duration(d.spsp.VUI.BitstreamRestriction.MaxNumReorderFrames)*time.Second*
-							time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2) / float64(d.spsp.VUI.TimingInfo.TimeScale)))
-				} else {
-					d.ptsDTSOffset = 0
-				}
+			if d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil &&
+				d.spsp.VUI.BitstreamRestriction != nil {
+				d.ptsDTSOffset = time.Duration(math.Round(float64(
+					time.Duration(d.spsp.VUI.BitstreamRestriction.MaxNumReorderFrames)*time.Second*
+						time.Duration(d.spsp.VUI.TimingInfo.NumUnitsInTick)*2) / float64(d.spsp.VUI.TimingInfo.TimeScale)))
+			} else {
+				d.ptsDTSOffset = 0
 			}
 
 		case NALUTypeIDR:
