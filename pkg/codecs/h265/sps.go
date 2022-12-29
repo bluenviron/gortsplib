@@ -253,27 +253,27 @@ func (v *SPS_VUI) unmarshal(buf []byte, pos *int) error {
 
 // SPS_ProfileTierLevel is a profile level tier of a SPS.
 type SPS_ProfileTierLevel struct { //nolint:revive
-	GeneralProfileSpace             uint8
-	GeneralTierFlag                 uint8
-	GeneralProfileIdc               uint8
-	GeneralProfileCompatibilityFlag [32]bool
-	ProgressiveSourceFlag           bool
-	InterlacedSourceFlag            bool
-	NonPackedConstraintFlag         bool
-	FrameOnlyConstraintFlag         bool
-	Max12bitConstraintFlag          bool
-	Max10bitConstraintFlag          bool
-	Max8bitConstraintFlag           bool
-	Max422ChromeConstraintFlag      bool
-	Max420ChromaConstraintFlag      bool
-	MaxMonochromeConstraintFlag     bool
-	IntraConstraintFlag             bool
-	OnePictureOnlyConstraintFlag    bool
-	LowerBitRateConstraintFlag      bool
-	Max14BitConstraintFlag          bool
-	LevelIdc                        uint8
-	SubLayerProfilePresentFlag      []bool
-	SubLayerLevelPresentFlag        []bool
+	GeneralProfileSpace                 uint8
+	GeneralTierFlag                     uint8
+	GeneralProfileIdc                   uint8
+	GeneralProfileCompatibilityFlag     [32]bool
+	GeneralProgressiveSourceFlag        bool
+	GeneralInterlacedSourceFlag         bool
+	GeneralNonPackedConstraintFlag      bool
+	GeneralFrameOnlyConstraintFlag      bool
+	GeneralMax12bitConstraintFlag       bool
+	GeneralMax10bitConstraintFlag       bool
+	GeneralMax8bitConstraintFlag        bool
+	GeneralMax422ChromeConstraintFlag   bool
+	GeneralMax420ChromaConstraintFlag   bool
+	GeneralMaxMonochromeConstraintFlag  bool
+	GeneralIntraConstraintFlag          bool
+	GeneralOnePictureOnlyConstraintFlag bool
+	GeneralLowerBitRateConstraintFlag   bool
+	GeneralMax14BitConstraintFlag       bool
+	GeneralLevelIdc                     uint8
+	SubLayerProfilePresentFlag          []bool
+	SubLayerLevelPresentFlag            []bool
 }
 
 func (p *SPS_ProfileTierLevel) unmarshal(buf []byte, pos *int, maxSubLayersMinus1 uint8) error {
@@ -290,19 +290,19 @@ func (p *SPS_ProfileTierLevel) unmarshal(buf []byte, pos *int, maxSubLayersMinus
 		p.GeneralProfileCompatibilityFlag[j] = bits.ReadFlagUnsafe(buf, pos)
 	}
 
-	p.ProgressiveSourceFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.InterlacedSourceFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.NonPackedConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.FrameOnlyConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.Max12bitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.Max10bitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.Max8bitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.Max422ChromeConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.Max420ChromaConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.MaxMonochromeConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.IntraConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.OnePictureOnlyConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
-	p.LowerBitRateConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralProgressiveSourceFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralInterlacedSourceFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralNonPackedConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralFrameOnlyConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralMax12bitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralMax10bitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralMax8bitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralMax422ChromeConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralMax420ChromaConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralMaxMonochromeConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralIntraConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralOnePictureOnlyConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+	p.GeneralLowerBitRateConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
 
 	if p.GeneralProfileIdc == 5 ||
 		p.GeneralProfileIdc == 9 ||
@@ -312,13 +312,13 @@ func (p *SPS_ProfileTierLevel) unmarshal(buf []byte, pos *int, maxSubLayersMinus
 		p.GeneralProfileCompatibilityFlag[9] ||
 		p.GeneralProfileCompatibilityFlag[10] ||
 		p.GeneralProfileCompatibilityFlag[11] {
-		p.Max14BitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
+		p.GeneralMax14BitConstraintFlag = bits.ReadFlagUnsafe(buf, pos)
 		*pos += 34
 	} else {
 		*pos += 35
 	}
 
-	p.LevelIdc = uint8(bits.ReadBitsUnsafe(buf, pos, 8))
+	p.GeneralLevelIdc = uint8(bits.ReadBitsUnsafe(buf, pos, 8))
 
 	if maxSubLayersMinus1 > 0 {
 		p.SubLayerProfilePresentFlag = make([]bool, maxSubLayersMinus1)
