@@ -52,8 +52,8 @@ func getPictureOrderCount(buf []byte, sps *SPS) (uint32, error) {
 	return uint32(picOrderCntLsb), nil
 }
 
-func findPictureOrderCount(nalus [][]byte, sps *SPS) (uint32, error) {
-	for _, nalu := range nalus {
+func findPictureOrderCount(au [][]byte, sps *SPS) (uint32, error) {
+	for _, nalu := range au {
 		typ := NALUType(nalu[0] & 0x1F)
 		if typ == NALUTypeNonIDR {
 			poc, err := getPictureOrderCount(nalu, sps)
@@ -137,8 +137,8 @@ func parseSEITimingInfo(buf []byte, sps *SPS) (*seiTimingInfo, bool) {
 	}
 }
 
-func findSEITimingInfo(nalus [][]byte, sps *SPS) (*seiTimingInfo, bool) {
-	for _, nalu := range nalus {
+func findSEITimingInfo(au [][]byte, sps *SPS) (*seiTimingInfo, bool) {
+	for _, nalu := range au {
 		typ := NALUType(nalu[0] & 0x1F)
 		if typ == NALUTypeSEI {
 			ret, ok := parseSEITimingInfo(nalu, sps)
@@ -165,7 +165,7 @@ func NewDTSExtractor() *DTSExtractor {
 }
 
 // returns the difference between PTS POC (picture order count) and DTS POC.
-func (d *DTSExtractor) findPOCDiff(idrPresent bool, nalus [][]byte) (int, error) {
+func (d *DTSExtractor) findPOCDiff(idrPresent bool, au [][]byte) (int, error) {
 	switch {
 	// POC difference is computed by using PTS POC, timing infos and max_num_reorder_frames
 	case d.spsp.PicOrderCntType != 2 &&
@@ -179,7 +179,7 @@ func (d *DTSExtractor) findPOCDiff(idrPresent bool, nalus [][]byte) (int, error)
 		d.expectedPOC += 2
 		d.expectedPOC &= ((1 << (d.spsp.Log2MaxPicOrderCntLsbMinus4 + 4)) - 1)
 
-		poc, err := findPictureOrderCount(nalus, d.spsp)
+		poc, err := findPictureOrderCount(au, d.spsp)
 		if err != nil {
 			return 0, err
 		}
@@ -191,7 +191,7 @@ func (d *DTSExtractor) findPOCDiff(idrPresent bool, nalus [][]byte) (int, error)
 
 	// POC difference is computed from SEI
 	case d.spsp.VUI != nil && d.spsp.VUI.TimingInfo != nil && d.spsp.VUI.NalHRD != nil:
-		ti, ok := findSEITimingInfo(nalus, d.spsp)
+		ti, ok := findSEITimingInfo(au, d.spsp)
 		if !ok {
 			// some streams declare that they use SEI pic timings, but they don't.
 			// assume PTS = DTS.
@@ -214,10 +214,10 @@ func (d *DTSExtractor) findPOCDiff(idrPresent bool, nalus [][]byte) (int, error)
 	}
 }
 
-func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Duration, error) {
+func (d *DTSExtractor) extractInner(au [][]byte, pts time.Duration) (time.Duration, error) {
 	idrPresent := false
 
-	for _, nalu := range nalus {
+	for _, nalu := range au {
 		typ := NALUType(nalu[0] & 0x1F)
 		switch typ {
 		case NALUTypeSPS:
@@ -237,7 +237,7 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		return 0, fmt.Errorf("SPS not received yet")
 	}
 
-	pocDiff, err := d.findPOCDiff(idrPresent, nalus)
+	pocDiff, err := d.findPOCDiff(idrPresent, au)
 	if err != nil {
 		return 0, err
 	}
@@ -249,9 +249,9 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 	return dts, nil
 }
 
-// Extract extracts the DTS of a group of NALUs.
-func (d *DTSExtractor) Extract(nalus [][]byte, pts time.Duration) (time.Duration, error) {
-	dts, err := d.extractInner(nalus, pts)
+// Extract extracts the DTS of a access unit.
+func (d *DTSExtractor) Extract(au [][]byte, pts time.Duration) (time.Duration, error) {
+	dts, err := d.extractInner(au, pts)
 	if err != nil {
 		return 0, err
 	}

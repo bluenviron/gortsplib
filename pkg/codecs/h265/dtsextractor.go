@@ -102,8 +102,8 @@ func getPictureOrderCount(buf []byte, sps *SPS, pps *PPS) (uint32, uint32, error
 	return uint32(picOrderCntLsb), dtsPOC, nil
 }
 
-func findPictureOrderCount(nalus [][]byte, sps *SPS, pps *PPS) (uint32, uint32, error) {
-	for _, nalu := range nalus {
+func findPictureOrderCount(au [][]byte, sps *SPS, pps *PPS) (uint32, uint32, error) {
+	for _, nalu := range au {
 		typ := NALUType((nalu[0] >> 1) & 0b111111)
 		switch typ {
 		case NALUType_TRAIL_N, NALUType_TRAIL_R, NALUType_CRA_NUT, NALUType_RASL_N, NALUType_RASL_R:
@@ -142,10 +142,10 @@ func NewDTSExtractor() *DTSExtractor {
 	return &DTSExtractor{}
 }
 
-func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Duration, error) {
+func (d *DTSExtractor) extractInner(au [][]byte, pts time.Duration) (time.Duration, error) {
 	idrPresent := false
 
-	for _, nalu := range nalus {
+	for _, nalu := range au {
 		typ := NALUType((nalu[0] >> 1) & 0b111111)
 
 		switch typ {
@@ -191,7 +191,7 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 		dtsPOC &= ((1 << (d.spsp.Log2MaxPicOrderCntLsbMinus4 + 4)) - 1)
 	} else {
 		var err error
-		poc, dtsPOC, err = findPictureOrderCount(nalus, d.spsp, d.ppsp)
+		poc, dtsPOC, err = findPictureOrderCount(au, d.spsp, d.ppsp)
 		if err != nil {
 			return 0, err
 		}
@@ -205,9 +205,9 @@ func (d *DTSExtractor) extractInner(nalus [][]byte, pts time.Duration) (time.Dur
 	return dts, nil
 }
 
-// Extract extracts the DTS of a group of NALUs.
-func (d *DTSExtractor) Extract(nalus [][]byte, pts time.Duration) (time.Duration, error) {
-	dts, err := d.extractInner(nalus, pts)
+// Extract extracts the DTS of a access unit.
+func (d *DTSExtractor) Extract(au [][]byte, pts time.Duration) (time.Duration, error) {
+	dts, err := d.extractInner(au, pts)
 	if err != nil {
 		return 0, err
 	}
