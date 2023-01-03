@@ -62,7 +62,8 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// convert RTP packets into NALUs
-		nalus, pts, err := rtpDec.Decode(pkt)
+		// DecodeUntilMarker is necessary for the DTS extractor to work
+		nalus, pts, err := rtpDec.DecodeUntilMarker(pkt)
 		if err != nil {
 			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
