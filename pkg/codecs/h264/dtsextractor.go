@@ -153,7 +153,6 @@ func findSEITimingInfo(au [][]byte, sps *SPS) (*seiTimingInfo, bool) {
 // DTSExtractor allows to extract DTS from PTS.
 type DTSExtractor struct {
 	spsp          *SPS
-	prevPTS       time.Duration
 	prevDTSFilled bool
 	prevDTS       time.Duration
 	expectedPOC   uint32
@@ -265,8 +264,8 @@ func (d *DTSExtractor) Extract(au [][]byte, pts time.Duration) (time.Duration, e
 			d.prevDTS, dts)
 	}
 
-	d.prevPTS = pts
 	d.prevDTS = dts
 	d.prevDTSFilled = true
+
 	return dts, err
 }
