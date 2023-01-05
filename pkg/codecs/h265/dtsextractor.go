@@ -182,6 +182,10 @@ func (d *DTSExtractor) extractInner(au [][]byte, pts time.Duration) (time.Durati
 		return pts, nil
 	}
 
+	if d.spsp.VUI == nil || d.spsp.VUI.TimingInfo == nil {
+		return pts, nil
+	}
+
 	var poc uint32
 	var dtsPOC uint32
 
