@@ -236,6 +236,10 @@ func (d *DTSExtractor) extractInner(au [][]byte, pts time.Duration) (time.Durati
 		return 0, fmt.Errorf("SPS not received yet")
 	}
 
+	if d.spsp.VUI == nil || d.spsp.VUI.TimingInfo == nil {
+		return pts, nil
+	}
+
 	pocDiff, err := d.findPOCDiff(idrPresent, au)
 	if err != nil {
 		return 0, err

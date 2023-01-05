@@ -279,6 +279,27 @@ func TestDTSExtractor(t *testing.T) {
 				},
 			},
 		},
+		{
+			"no timing info",
+			[]sequenceSample{
+				{
+					[][]byte{
+						{ // SPS
+							0x27, 0x64, 0x00, 0x2a, 0xac, 0x52, 0x14, 0x07,
+							0x80, 0x22, 0x7e, 0x5f, 0xfc, 0x00, 0x04, 0x00,
+							0x05, 0xa8, 0x08, 0x08, 0x0d, 0xb6, 0x15, 0xaf,
+							0x7b, 0xe0, 0x20,
+						},
+						{
+							// IDR
+							byte(NALUTypeIDR),
+						},
+					},
+					1 * time.Second,
+					1 * time.Second,
+				},
+			},
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			ex := NewDTSExtractor()
