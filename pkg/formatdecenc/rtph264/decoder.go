@@ -174,7 +174,7 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	}
 
 	if (len(d.naluBuffer) + len(nalus)) > h264.MaxNALUsPerGroup {
-		return nil, 0, fmt.Errorf("number of NALUs contained inside a single group (%d) is too big (maximum is %d)",
+		return nil, 0, fmt.Errorf("NALU count (%d) exceeds maximum allowed (%d)",
 			len(d.naluBuffer)+len(nalus), h264.MaxNALUsPerGroup)
 	}
 

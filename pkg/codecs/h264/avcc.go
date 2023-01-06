@@ -27,7 +27,7 @@ func AVCCUnmarshal(buf []byte) ([][]byte, error) {
 		}
 
 		if (len(ret) + 1) > MaxNALUsPerGroup {
-			return nil, fmt.Errorf("number of NALUs contained inside a single group (%d) is too big (maximum is %d)",
+			return nil, fmt.Errorf("NALU count (%d) exceeds maximum allowed (%d)",
 				len(ret)+1, MaxNALUsPerGroup)
 		}
 

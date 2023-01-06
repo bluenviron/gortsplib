@@ -8,6 +8,10 @@ import (
 )
 
 func getPictureOrderCount(buf []byte, sps *SPS) (uint32, error) {
+	if len(buf) < 6 {
+		return 0, fmt.Errorf("not enough bits")
+	}
+
 	buf = EmulationPreventionRemove(buf[:6])
 
 	buf = buf[1:]

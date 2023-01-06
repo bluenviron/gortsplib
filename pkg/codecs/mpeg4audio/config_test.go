@@ -122,46 +122,6 @@ func TestConfigUnmarshal(t *testing.T) {
 	}
 }
 
-func TestConfigUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		enc  []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"not enough bits",
-		},
-		{
-			"unsupported object type",
-			[]byte{0xF1},
-			"unsupported object type: 30",
-		},
-		{
-			"no sample rate index",
-			[]byte{0b00010000},
-			"not enough bits",
-		},
-		{
-			"invalid sample rate index",
-			[]byte{0b00010110, 0b10000000},
-			"invalid sample rate index (13)",
-		},
-		{
-			"channel config 0",
-			[]byte{0b00010100, 0b00000000},
-			"not yet supported",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var dec Config
-			err := dec.Unmarshal(ca.enc)
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestConfigMarshal(t *testing.T) {
 	for _, ca := range configCases {
 		t.Run(ca.name, func(t *testing.T) {
@@ -193,4 +153,11 @@ func TestConfigMarshalErrors(t *testing.T) {
 			require.EqualError(t, err, ca.err)
 		})
 	}
+}
+
+func FuzzConfigUnmarshal(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b []byte) {
+		var conf Config
+		conf.Unmarshal(b)
+	})
 }

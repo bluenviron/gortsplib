@@ -639,9 +639,9 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		start = s.MaxSubLayersMinus1
 	}
 
-	s.MaxDecPicBufferingMinus1 = make([]uint32, s.MaxSubLayersMinus1-start+1)
-	s.MaxNumReorderPics = make([]uint32, s.MaxSubLayersMinus1-start+1)
-	s.MaxLatencyIncreasePlus1 = make([]uint32, s.MaxSubLayersMinus1-start+1)
+	s.MaxDecPicBufferingMinus1 = make([]uint32, s.MaxSubLayersMinus1+1)
+	s.MaxNumReorderPics = make([]uint32, s.MaxSubLayersMinus1+1)
+	s.MaxLatencyIncreasePlus1 = make([]uint32, s.MaxSubLayersMinus1+1)
 
 	for i := start; i <= s.MaxSubLayersMinus1; i++ {
 		s.MaxDecPicBufferingMinus1[i], err = bits.ReadGolombUnsigned(buf, &pos)

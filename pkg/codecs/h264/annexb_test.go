@@ -1,6 +1,7 @@
 package h264
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -124,6 +125,11 @@ func TestAnnexBUnmarshalError(t *testing.T) {
 			"empty NALU 2",
 			[]byte{0x00, 0x00, 0x01, 0xaa, 0x00, 0x00, 0x01},
 			"empty NALU",
+		},
+		{
+			"too many nalus",
+			bytes.Repeat([]byte{0x00, 0x00, 0x01, 0x0a}, 21),
+			"NALU count (21) exceeds maximum allowed (20)",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {

@@ -18,11 +18,11 @@ type PPS struct {
 
 // Unmarshal decodes a PPS.
 func (p *PPS) Unmarshal(buf []byte) error {
-	buf = h264.EmulationPreventionRemove(buf)
-
 	if len(buf) < 2 {
 		return fmt.Errorf("not enough bits")
 	}
+
+	buf = h264.EmulationPreventionRemove(buf)
 
 	buf = buf[2:]
 	pos := 0
@@ -38,21 +38,14 @@ func (p *PPS) Unmarshal(buf []byte) error {
 		return err
 	}
 
-	p.DependentSliceSegmentsEnabledFlag, err = bits.ReadFlag(buf, &pos)
+	err = bits.HasSpace(buf, pos, 5)
 	if err != nil {
 		return err
 	}
 
-	p.OutputFlagPresentFlag, err = bits.ReadFlag(buf, &pos)
-	if err != nil {
-		return err
-	}
-
-	tmp, err := bits.ReadBits(buf, &pos, 3)
-	if err != nil {
-		return err
-	}
-	p.NumExtraSliceHeaderBits = uint8(tmp)
+	p.DependentSliceSegmentsEnabledFlag = bits.ReadFlagUnsafe(buf, &pos)
+	p.OutputFlagPresentFlag = bits.ReadFlagUnsafe(buf, &pos)
+	p.NumExtraSliceHeaderBits = uint8(bits.ReadBitsUnsafe(buf, &pos, 3))
 
 	return nil
 }
