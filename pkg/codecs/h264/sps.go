@@ -565,6 +565,11 @@ func (s *SPS) Unmarshal(buf []byte) error {
 			return err
 		}
 
+		s.DeltaPicOrderAlwaysZeroFlag = false
+		s.OffsetForNonRefPic = 0
+		s.OffsetForTopToBottomField = 0
+		s.OffsetForRefFrames = nil
+
 	case 1:
 		s.Log2MaxPicOrderCntLsbMinus4 = 0
 
@@ -598,12 +603,15 @@ func (s *SPS) Unmarshal(buf []byte) error {
 			s.OffsetForRefFrames[i] = v
 		}
 
-	default:
+	case 2:
 		s.Log2MaxPicOrderCntLsbMinus4 = 0
 		s.DeltaPicOrderAlwaysZeroFlag = false
 		s.OffsetForNonRefPic = 0
 		s.OffsetForTopToBottomField = 0
 		s.OffsetForRefFrames = nil
+
+	default:
+		return fmt.Errorf("invalid pic_order_cnt_type: %d", s.PicOrderCntType)
 	}
 
 	s.MaxNumRefFrames, err = bits.ReadGolombUnsigned(buf, &pos)
