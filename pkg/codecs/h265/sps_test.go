@@ -382,3 +382,10 @@ func TestSPSUnmarshal(t *testing.T) {
 		})
 	}
 }
+
+func FuzzSPSUnmarshal(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b []byte) {
+		var sps SPS
+		sps.Unmarshal(b)
+	})
+}

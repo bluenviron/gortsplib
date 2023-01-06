@@ -9,6 +9,10 @@ import (
 )
 
 func getPictureOrderCount(buf []byte, sps *SPS, pps *PPS) (uint32, uint32, error) {
+	if len(buf) < 12 {
+		return 0, 0, fmt.Errorf("not enough bits")
+	}
+
 	buf = h264.EmulationPreventionRemove(buf[:12])
 
 	typ := NALUType((buf[0] >> 1) & 0b111111)
@@ -90,9 +94,15 @@ func getPictureOrderCount(buf []byte, sps *SPS, pps *PPS) (uint32, uint32, error
 		if typ == NALUType_TRAIL_N || typ == NALUType_RASL_N {
 			v = sps.MaxNumReorderPics[0] - uint32(len(rps.DeltaPocS1Minus1))
 		} else if typ == NALUType_TRAIL_R || typ == NALUType_RASL_R {
+			if len(rps.DeltaPocS0Minus1) == 0 {
+				return 0, 0, fmt.Errorf("invalid delta_poc_s0_minus1")
+			}
 			v = rps.DeltaPocS0Minus1[0] + sps.MaxNumReorderPics[0] - 1
 		}
 	} else { // I or P-frame
+		if len(rps.DeltaPocS0Minus1) == 0 {
+			return 0, 0, fmt.Errorf("invalid delta_poc_s0_minus1")
+		}
 		v = rps.DeltaPocS0Minus1[0] + sps.MaxNumReorderPics[0]
 	}
 
