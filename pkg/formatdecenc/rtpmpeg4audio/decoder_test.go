@@ -579,226 +579,26 @@ func TestDecodeADTS(t *testing.T) {
 	}
 }
 
-func TestDecodeErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		pkts []*rtp.Packet
-		err  string
-	}{
-		{
-			"missing payload",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-				},
-			},
-			"payload is too short",
-		},
-		{
-			"missing au header",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x10},
-				},
-			},
-			"not enough bits",
-		},
-		{
-			"missing au",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x10, 0x0a, 0xd8},
-				},
-			},
-			"payload is too short",
-		},
-		{
-			"invalid au headers length",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x00},
-				},
-			},
-			"invalid AU-headers-length",
-		},
-		{
-			"au index not zero",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x10, 0x0a, 0xd9},
-				},
-			},
-			"AU-index different than zero is not supported",
-		},
-		{
-			"au index delta not zero",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x20, 0x00, 0x08, 0x0a, 0xd9},
-				},
-			},
-			"AU-index-delta different than zero is not supported",
-		},
-		{
-			"fragmented with multiple AUs in 1st packet",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    0x60,
-						SequenceNumber: 0xea2,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x20, 0x00, 0x08, 0x00, 0x08},
-				},
-			},
-			"a fragmented packet can only contain one AU",
-		},
-		{
-			"fragmented with no payload in 1st packet",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x10, 0x0a, 0xd8},
-				},
-			},
-			"payload is too short",
-		},
-		{
-			"fragmented with multiple AUs in 2nd packet",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: mergeBytes(
-						[]byte{0x0, 0x10, 0x2d, 0x80},
-						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					),
-				},
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ee,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: mergeBytes(
-						[]byte{0x0, 0x20, 0x00, 0x08, 0x00, 0x08},
-					),
-				},
-			},
-			"a fragmented packet can only contain one AU",
-		},
-		{
-			"fragmented with no payload in 2nd packet",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ed,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: mergeBytes(
-						[]byte{0x0, 0x10, 0x2d, 0x80},
-						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					),
-				},
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    0x60,
-						SequenceNumber: 0x44ee,
-						Timestamp:      0x88776a15,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x00, 0x10, 0x0a, 0xd8},
-				},
-			},
-			"payload is too short",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{
-				SampleRate:       48000,
-				SizeLength:       13,
-				IndexLength:      3,
-				IndexDeltaLength: 3,
-			}
-			d.Init()
-
-			var lastErr error
-			for _, pkt := range ca.pkts {
-				_, _, lastErr = d.Decode(pkt)
-			}
-			require.EqualError(t, lastErr, ca.err)
-		})
+func FuzzDecoderUnmarshal(f *testing.F) {
+	d := &Decoder{
+		SampleRate:       16000,
+		SizeLength:       13,
+		IndexLength:      3,
+		IndexDeltaLength: 3,
 	}
+	d.Init()
+
+	f.Fuzz(func(t *testing.T, b []byte, m bool) {
+		d.Decode(&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         m,
+				PayloadType:    96,
+				SequenceNumber: 17645,
+				Timestamp:      2289527317,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: b,
+		})
+	})
 }

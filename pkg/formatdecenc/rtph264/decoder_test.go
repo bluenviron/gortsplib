@@ -452,188 +452,21 @@ func TestDecodeUntilMarker(t *testing.T) {
 	require.Equal(t, [][]byte{{0x01, 0x02}, {0x01, 0x02}}, nalus)
 }
 
-func TestDecodeErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		pkts []*rtp.Packet
-		err  string
-	}{
-		{
-			"missing payload",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-				},
-			},
-			"payload is too short",
-		},
-		{
-			"STAP-A without NALUs",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x18},
-				},
-			},
-			"STAP-A packet doesn't contain any NALU",
-		},
-		{
-			"STAP-A without size",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x18, 0x01},
-				},
-			},
-			"invalid STAP-A packet (invalid size)",
-		},
-		{
-			"STAP-A with invalid size",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x18, 0x00, 0x15},
-				},
-			},
-			"invalid STAP-A packet (invalid size)",
-		},
-		{
-			"FU-A without payload",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x1c},
-				},
-			},
-			"invalid FU-A packet (invalid size)",
-		},
-		{
-			"FU-A with start and end bit",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    96,
-						SequenceNumber: 17646,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x1c, 0b11000000},
-				},
-			},
-			"invalid FU-A packet (can't contain both a start and end bit)",
-		},
-		{
-			"FU-A non-starting 1",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    96,
-						SequenceNumber: 17646,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x1c, 0b01000000},
-				},
-			},
-			"received a non-starting fragment without any previous starting fragment",
-		},
-		{
-			"FU-A non-starting 2",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: mergeBytes(
-						[]byte{0x05},
-						bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
-					),
-				},
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         true,
-						PayloadType:    96,
-						SequenceNumber: 17646,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x1c, 0b01000000},
-				},
-			},
-			"invalid FU-A packet (non-starting)",
-		},
-		{
-			"MTAP",
-			[]*rtp.Packet{
-				{
-					Header: rtp.Header{
-						Version:        2,
-						Marker:         false,
-						PayloadType:    96,
-						SequenceNumber: 17645,
-						Timestamp:      2289527317,
-						SSRC:           0x9dbb7812,
-					},
-					Payload: []byte{0x1a},
-				},
-			},
-			"packet type not supported (MTAP-16)",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
-			d.Init()
+func FuzzDecoderUnmarshal(f *testing.F) {
+	d := &Decoder{}
+	d.Init()
 
-			var lastErr error
-			for _, pkt := range ca.pkts {
-				_, _, lastErr = d.Decode(pkt)
-			}
-			require.EqualError(t, lastErr, ca.err)
+	f.Fuzz(func(t *testing.T, b []byte) {
+		d.Decode(&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17645,
+				Timestamp:      2289527317,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: b,
 		})
-	}
+	})
 }

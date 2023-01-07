@@ -167,6 +167,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 		return nil, 0, ErrMorePacketsNeeded
 	}
 
+	if d.fragmentedSize < 2 {
+		return nil, 0, fmt.Errorf("invalid data")
+	}
+
 	data := make([]byte, d.fragmentedSize)
 	pos := 0
 
