@@ -46,14 +46,23 @@ func (cm *clientMedia) close() {
 func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, rtcpAddress string) error {
 	if rtpAddress != ":0" {
 		l1, err := newClientUDPListener(
-			cm.c, multicast, rtpAddress,
-			cm, true)
+			cm.c.ListenPacket,
+			cm.c.AnyPortEnable,
+			cm.c.WriteTimeout,
+			multicast,
+			rtpAddress,
+			cm,
+			true)
 		if err != nil {
 			return err
 		}
 
 		l2, err := newClientUDPListener(
-			cm.c, multicast, rtcpAddress,
+			cm.c.ListenPacket,
+			cm.c.AnyPortEnable,
+			cm.c.WriteTimeout,
+			multicast,
+			rtcpAddress,
 			cm, false)
 		if err != nil {
 			l1.close()
@@ -64,7 +73,12 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 		return nil
 	}
 
-	cm.udpRTPListener, cm.udpRTCPListener = newClientUDPListenerPair(cm.c, cm)
+	cm.udpRTPListener, cm.udpRTCPListener = newClientUDPListenerPair(
+		cm.c.ListenPacket,
+		cm.c.AnyPortEnable,
+		cm.c.WriteTimeout,
+		cm,
+	)
 	return nil
 }
 

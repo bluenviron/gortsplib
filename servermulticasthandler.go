@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/aler9/gortsplib/v2/pkg/ringbuffer"
@@ -20,7 +21,21 @@ type serverMulticastHandler struct {
 }
 
 func newServerMulticastHandler(s *Server) (*serverMulticastHandler, error) {
-	rtpl, rtcpl, err := newServerUDPListenerMulticastPair(s)
+	res := make(chan net.IP)
+	select {
+	case s.streamMulticastIP <- streamMulticastIPReq{res: res}:
+	case <-s.ctx.Done():
+		return nil, fmt.Errorf("terminated")
+	}
+	ip := <-res
+
+	rtpl, rtcpl, err := newServerUDPListenerMulticastPair(
+		s.ListenPacket,
+		s.WriteTimeout,
+		s.MulticastRTPPort,
+		s.MulticastRTCPPort,
+		ip,
+	)
 	if err != nil {
 		return nil, err
 	}

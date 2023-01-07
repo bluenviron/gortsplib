@@ -21,10 +21,11 @@ func randIntn(n int) int {
 }
 
 type clientUDPListener struct {
-	c     *Client
-	pc    *net.UDPConn
-	cm    *clientMedia
-	isRTP bool
+	anyPortEnable bool
+	writeTimeout  time.Duration
+	pc            *net.UDPConn
+	cm            *clientMedia
+	isRTP         bool
 
 	readIP    net.IP
 	readPort  int
@@ -36,13 +37,20 @@ type clientUDPListener struct {
 	readerDone chan struct{}
 }
 
-func newClientUDPListenerPair(c *Client, cm *clientMedia) (*clientUDPListener, *clientUDPListener) {
+func newClientUDPListenerPair(
+	listenPacket func(network, address string) (net.PacketConn, error),
+	anyPortEnable bool,
+	writeTimeout time.Duration,
+	cm *clientMedia,
+) (*clientUDPListener, *clientUDPListener) {
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
 		rtpPort := (randIntn((65535-10000)/2) * 2) + 10000
 		rtpListener, err := newClientUDPListener(
-			c,
+			listenPacket,
+			anyPortEnable,
+			writeTimeout,
 			false,
 			":"+strconv.FormatInt(int64(rtpPort), 10),
 			cm,
@@ -53,7 +61,9 @@ func newClientUDPListenerPair(c *Client, cm *clientMedia) (*clientUDPListener, *
 
 		rtcpPort := rtpPort + 1
 		rtcpListener, err := newClientUDPListener(
-			c,
+			listenPacket,
+			anyPortEnable,
+			writeTimeout,
 			false,
 			":"+strconv.FormatInt(int64(rtcpPort), 10),
 			cm,
@@ -68,7 +78,9 @@ func newClientUDPListenerPair(c *Client, cm *clientMedia) (*clientUDPListener, *
 }
 
 func newClientUDPListener(
-	c *Client,
+	listenPacket func(network, address string) (net.PacketConn, error),
+	anyPortEnable bool,
+	writeTimeout time.Duration,
 	multicast bool,
 	address string,
 	cm *clientMedia,
@@ -81,7 +93,7 @@ func newClientUDPListener(
 			return nil, err
 		}
 
-		tmp, err := c.ListenPacket("udp", "224.0.0.0:"+port)
+		tmp, err := listenPacket("udp", "224.0.0.0:"+port)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +119,7 @@ func newClientUDPListener(
 
 		pc = tmp.(*net.UDPConn)
 	} else {
-		tmp, err := c.ListenPacket("udp", address)
+		tmp, err := listenPacket("udp", address)
 		if err != nil {
 			return nil, err
 		}
@@ -120,10 +132,11 @@ func newClientUDPListener(
 	}
 
 	return &clientUDPListener{
-		c:     c,
-		pc:    pc,
-		cm:    cm,
-		isRTP: isRTP,
+		anyPortEnable: anyPortEnable,
+		writeTimeout:  writeTimeout,
+		pc:            pc,
+		cm:            cm,
+		isRTP:         isRTP,
 		lastPacketTime: func() *int64 {
 			v := int64(0)
 			return &v
@@ -173,7 +186,7 @@ func (u *clientUDPListener) runReader(forPlay bool) {
 
 		uaddr := addr.(*net.UDPAddr)
 
-		if !u.readIP.Equal(uaddr.IP) || (!u.c.AnyPortEnable && u.readPort != uaddr.Port) {
+		if !u.readIP.Equal(uaddr.IP) || (!u.anyPortEnable && u.readPort != uaddr.Port) {
 			continue
 		}
 
@@ -187,7 +200,7 @@ func (u *clientUDPListener) runReader(forPlay bool) {
 func (u *clientUDPListener) write(payload []byte) error {
 	// no mutex is needed here since Write() has an internal lock.
 	// https://github.com/golang/go/issues/27203#issuecomment-534386117
-	u.pc.SetWriteDeadline(time.Now().Add(u.c.WriteTimeout))
+	u.pc.SetWriteDeadline(time.Now().Add(u.writeTimeout))
 	_, err := u.pc.WriteTo(payload, u.writeAddr)
 	return err
 }

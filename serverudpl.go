@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 	"sync"
@@ -49,8 +48,6 @@ func onDecodeError(ss *ServerSession, err error) {
 }
 
 type serverUDPListener struct {
-	s *Server
-
 	pc           *net.UDPConn
 	listenIP     net.IP
 	isRTP        bool
@@ -61,23 +58,31 @@ type serverUDPListener struct {
 	readerDone chan struct{}
 }
 
-func newServerUDPListenerMulticastPair(s *Server) (*serverUDPListener, *serverUDPListener, error) {
-	res := make(chan net.IP)
-	select {
-	case s.streamMulticastIP <- streamMulticastIPReq{res: res}:
-	case <-s.ctx.Done():
-		return nil, nil, fmt.Errorf("terminated")
-	}
-	ip := <-res
-
-	rtpl, err := newServerUDPListener(s, true,
-		ip.String()+":"+strconv.FormatInt(int64(s.MulticastRTPPort), 10), true)
+func newServerUDPListenerMulticastPair(
+	listenPacket func(network, address string) (net.PacketConn, error),
+	writeTimeout time.Duration,
+	multicastRTPPort int,
+	multicastRTCPPort int,
+	ip net.IP,
+) (*serverUDPListener, *serverUDPListener, error) {
+	rtpl, err := newServerUDPListener(
+		listenPacket,
+		writeTimeout,
+		true,
+		ip.String()+":"+strconv.FormatInt(int64(multicastRTPPort), 10),
+		true,
+	)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rtcpl, err := newServerUDPListener(s, true,
-		ip.String()+":"+strconv.FormatInt(int64(s.MulticastRTCPPort), 10), false)
+	rtcpl, err := newServerUDPListener(
+		listenPacket,
+		writeTimeout,
+		true,
+		ip.String()+":"+strconv.FormatInt(int64(multicastRTCPPort), 10),
+		false,
+	)
 	if err != nil {
 		rtpl.close()
 		return nil, nil, err
@@ -87,7 +92,8 @@ func newServerUDPListenerMulticastPair(s *Server) (*serverUDPListener, *serverUD
 }
 
 func newServerUDPListener(
-	s *Server,
+	listenPacket func(network, address string) (net.PacketConn, error),
+	writeTimeout time.Duration,
 	multicast bool,
 	address string,
 	isRTP bool,
@@ -100,7 +106,7 @@ func newServerUDPListener(
 			return nil, err
 		}
 
-		tmp, err := s.ListenPacket("udp", "224.0.0.0:"+port)
+		tmp, err := listenPacket("udp", "224.0.0.0:"+port)
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +136,7 @@ func newServerUDPListener(
 
 		pc = tmp.(*net.UDPConn)
 	} else {
-		tmp, err := s.ListenPacket("udp", address)
+		tmp, err := listenPacket("udp", address)
 		if err != nil {
 			return nil, err
 		}
@@ -145,12 +151,11 @@ func newServerUDPListener(
 	}
 
 	u := &serverUDPListener{
-		s:            s,
 		pc:           pc,
 		listenIP:     listenIP,
 		clients:      make(map[clientAddr]*serverSessionMedia),
 		isRTP:        isRTP,
-		writeTimeout: s.WriteTimeout,
+		writeTimeout: writeTimeout,
 		readerDone:   make(chan struct{}),
 	}
 
@@ -212,7 +217,6 @@ func (u *serverUDPListener) runReader() {
 func (u *serverUDPListener) write(buf []byte, addr *net.UDPAddr) error {
 	// no mutex is needed here since Write() has an internal lock.
 	// https://github.com/golang/go/issues/27203#issuecomment-534386117
-
 	u.pc.SetWriteDeadline(time.Now().Add(u.writeTimeout))
 	_, err := u.pc.WriteTo(buf, addr)
 	return err
