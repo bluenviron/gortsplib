@@ -186,7 +186,15 @@ func (u *clientUDPListener) runReader(forPlay bool) {
 
 		uaddr := addr.(*net.UDPAddr)
 
-		if !u.readIP.Equal(uaddr.IP) || (!u.anyPortEnable && u.readPort != uaddr.Port) {
+		if !u.readIP.Equal(uaddr.IP) {
+			continue
+		}
+
+		// in case of anyPortEnable, store the port of the first packet we receive.
+		// this reduces security issues
+		if u.anyPortEnable && u.readPort == 0 {
+			u.readPort = uaddr.Port
+		} else if u.readPort != uaddr.Port {
 			continue
 		}
 

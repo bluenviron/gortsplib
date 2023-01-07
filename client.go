@@ -1247,14 +1247,16 @@ func (c *Client) doSetup(
 			}
 		}
 
-		cm.udpRTPListener.readIP = func() net.IP {
-			if thRes.Source != nil {
-				return *thRes.Source
-			}
-			return c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		}()
+		if thRes.Source != nil {
+			cm.udpRTPListener.readIP = *thRes.Source
+		} else {
+			cm.udpRTPListener.readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		}
+
 		if thRes.ServerPorts != nil {
-			cm.udpRTPListener.readPort = thRes.ServerPorts[0]
+			if !c.AnyPortEnable {
+				cm.udpRTPListener.readPort = thRes.ServerPorts[0]
+			}
 			cm.udpRTPListener.writeAddr = &net.UDPAddr{
 				IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
 				Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
@@ -1262,14 +1264,16 @@ func (c *Client) doSetup(
 			}
 		}
 
-		cm.udpRTCPListener.readIP = func() net.IP {
-			if thRes.Source != nil {
-				return *thRes.Source
-			}
-			return c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		}()
+		if thRes.Source != nil {
+			cm.udpRTCPListener.readIP = *thRes.Source
+		} else {
+			cm.udpRTCPListener.readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		}
+
 		if thRes.ServerPorts != nil {
-			cm.udpRTCPListener.readPort = thRes.ServerPorts[1]
+			if !c.AnyPortEnable {
+				cm.udpRTCPListener.readPort = thRes.ServerPorts[1]
+			}
 			cm.udpRTCPListener.writeAddr = &net.UDPAddr{
 				IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
 				Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
