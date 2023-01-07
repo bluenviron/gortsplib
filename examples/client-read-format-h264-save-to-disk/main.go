@@ -53,7 +53,7 @@ func main() {
 		panic(err)
 	}
 
-	// setup the chosen media only
+	// setup a single media
 	_, err = c.Setup(medi, baseURL, 0, 0)
 	if err != nil {
 		panic(err)
@@ -61,7 +61,7 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
-		// convert RTP packets into NALUs
+		// extract NALUs from RTP packets
 		// DecodeUntilMarker is necessary for the DTS extractor to work
 		nalus, pts, err := rtpDec.DecodeUntilMarker(pkt)
 		if err != nil {

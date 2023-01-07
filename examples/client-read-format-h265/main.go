@@ -47,7 +47,7 @@ func main() {
 	// setup RTP/H265->H265 decoder
 	rtpDec := forma.CreateDecoder()
 
-	// setup the chosen media only
+	// setup a single media
 	_, err = c.Setup(medi, baseURL, 0, 0)
 	if err != nil {
 		panic(err)
@@ -55,7 +55,7 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
-		// convert RTP packets into NALUs
+		// extract NALUs from RTP packets
 		nalus, pts, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtph265.ErrNonStartingPacketAndNoPrevious && err != rtph265.ErrMorePacketsNeeded {

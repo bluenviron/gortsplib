@@ -43,10 +43,10 @@ func main() {
 		panic("media not found")
 	}
 
-	// setup decoder
+	// create decoder
 	rtpDec := forma.CreateDecoder()
 
-	// setup the chosen media only
+	// setup a single media
 	_, err = c.Setup(medi, baseURL, 0, 0)
 	if err != nil {
 		panic(err)
@@ -54,7 +54,7 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
-		// decode a G711 packet from the RTP packet
+		// extract G711 frames from RTP packets
 		op, _, err := rtpDec.Decode(pkt)
 		if err != nil {
 			log.Printf("ERR: %v", err)

@@ -39,7 +39,7 @@ func main() {
 	log.Printf("republishing %d medias", len(medias))
 
 	// setup all medias
-	// this must be called before StartRecording(), that overrides the control attribute.
+	// this must be called before StartRecording(), since it overrides the control attribute.
 	err = reader.SetupAll(medias, baseURL)
 	if err != nil {
 		panic(err)
@@ -53,7 +53,7 @@ func main() {
 	}
 	defer publisher.Close()
 
-	// read RTP packets from reader and write them to publisher
+	// read RTP packets from the reader and route them to the publisher
 	reader.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 		publisher.WritePacketRTP(medi, pkt)
 	})

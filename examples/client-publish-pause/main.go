@@ -39,17 +39,17 @@ func main() {
 	log.Println("stream connected")
 
 	// create a media that contains a H264 format
-	medias := media.Medias{&media.Media{
+	medi := &media.Media{
 		Type: media.TypeVideo,
 		Formats: []format.Format{&format.H264{
 			PayloadTyp:        96,
 			PacketizationMode: 1,
 		}},
-	}}
+	}
 
 	// connect to the server and start recording the media
 	c := gortsplib.Client{}
-	err = c.StartRecording("rtsp://localhost:8554/mystream", medias)
+	err = c.StartRecording("rtsp://localhost:8554/mystream", media.Medias{medi})
 	if err != nil {
 		panic(err)
 	}
@@ -66,7 +66,7 @@ func main() {
 				}
 
 				// route RTP packet to the server
-				c.WritePacketRTP(medias[0], &pkt)
+				c.WritePacketRTP(medi, &pkt)
 
 				// read another RTP packet from source
 				n, _, err = pc.ReadFrom(buf)
