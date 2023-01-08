@@ -83,11 +83,14 @@ type DTSExtractor struct {
 	expectedPOC     uint32
 	reorderedFrames int
 	pauseDTS        int
+	pocIncrement    int
 }
 
 // NewDTSExtractor allocates a DTSExtractor.
 func NewDTSExtractor() *DTSExtractor {
-	return &DTSExtractor{}
+	return &DTSExtractor{
+		pocIncrement: 2,
+	}
 }
 
 func (d *DTSExtractor) extractInner(au [][]byte, pts time.Duration) (time.Duration, error) {
@@ -125,10 +128,11 @@ func (d *DTSExtractor) extractInner(au [][]byte, pts time.Duration) (time.Durati
 		d.expectedPOC = 0
 		d.reorderedFrames = 0
 		d.pauseDTS = 0
+		d.pocIncrement = 2
 		return pts, nil
 	}
 
-	d.expectedPOC += 2
+	d.expectedPOC += uint32(d.pocIncrement)
 	d.expectedPOC &= ((1 << (d.spsp.Log2MaxPicOrderCntLsbMinus4 + 4)) - 1)
 
 	if d.pauseDTS > 0 {
@@ -141,7 +145,12 @@ func (d *DTSExtractor) extractInner(au [][]byte, pts time.Duration) (time.Durati
 		return 0, err
 	}
 
-	pocDiff := int(getPictureOrderCountDiff(poc, d.expectedPOC, d.spsp)) + d.reorderedFrames*2
+	if d.pocIncrement == 2 && (poc%2) != 0 {
+		d.pocIncrement = 1
+		d.expectedPOC /= 2
+	}
+
+	pocDiff := int(getPictureOrderCountDiff(poc, d.expectedPOC, d.spsp)) + d.reorderedFrames*d.pocIncrement
 
 	if pocDiff < 0 {
 		return 0, fmt.Errorf("invalid POC")
@@ -151,14 +160,14 @@ func (d *DTSExtractor) extractInner(au [][]byte, pts time.Duration) (time.Durati
 		return pts, nil
 	}
 
-	reorderedFrames := (pocDiff - d.reorderedFrames*2) / 2
+	reorderedFrames := (pocDiff - d.reorderedFrames*d.pocIncrement) / d.pocIncrement
 	if reorderedFrames > d.reorderedFrames {
 		d.pauseDTS = (reorderedFrames - d.reorderedFrames - 1)
 		d.reorderedFrames = reorderedFrames
 		return d.prevDTS + 1*time.Millisecond, nil
 	}
 
-	return d.prevDTS + ((pts - d.prevDTS) * 2 / time.Duration(pocDiff+2)), nil
+	return d.prevDTS + ((pts - d.prevDTS) * time.Duration(d.pocIncrement) / time.Duration(pocDiff+d.pocIncrement)), nil
 }
 
 // Extract extracts the DTS of a access unit.
