@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"sync"
 
@@ -86,19 +85,6 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		sh.stream.Close()
 		sh.publisher.Close()
 	}
-
-	var forma *format.H265
-	medi := ctx.Medias.FindFormat(&forma)
-	if medi == nil {
-		return &base.Response{
-			StatusCode: base.StatusBadRequest,
-		}, fmt.Errorf("H264 media not found")
-	}
-
-	for _, x := range forma.PPS {
-		fmt.Printf("0x%.2x, ", x)
-	}
-	fmt.Println("")
 
 	// create the stream and save the publisher
 	sh.stream = gortsplib.NewServerStream(ctx.Medias)
