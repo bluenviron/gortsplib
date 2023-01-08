@@ -19,10 +19,6 @@ type DefineQuantizationTable struct {
 // Unmarshal decodes the marker.
 func (m *DefineQuantizationTable) Unmarshal(buf []byte) error {
 	for len(buf) != 0 {
-		if len(buf) < 1 {
-			return fmt.Errorf("image is too short")
-		}
-
 		id := buf[0] & 0x0F
 		precision := buf[0] >> 4
 		buf = buf[1:]
