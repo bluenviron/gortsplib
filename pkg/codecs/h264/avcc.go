@@ -15,15 +15,15 @@ func AVCCUnmarshal(buf []byte) ([][]byte, error) {
 			return nil, fmt.Errorf("invalid length")
 		}
 
-		le := int(uint32(buf[pos])<<24 | uint32(buf[pos+1])<<16 | uint32(buf[pos+2])<<8 | uint32(buf[pos+3]))
+		l := int(uint32(buf[pos])<<24 | uint32(buf[pos+1])<<16 | uint32(buf[pos+2])<<8 | uint32(buf[pos+3]))
 		pos += 4
 
-		if (bl - pos) < le {
-			return nil, fmt.Errorf("invalid length")
+		if l == 0 {
+			return nil, fmt.Errorf("invalid NALU")
 		}
 
-		if (bl - pos) > MaxNALUSize {
-			return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", bl-pos, MaxNALUSize)
+		if l > MaxNALUSize {
+			return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", l, MaxNALUSize)
 		}
 
 		if (len(ret) + 1) > MaxNALUsPerGroup {
@@ -31,8 +31,12 @@ func AVCCUnmarshal(buf []byte) ([][]byte, error) {
 				len(ret)+1, MaxNALUsPerGroup)
 		}
 
-		ret = append(ret, buf[pos:pos+le])
-		pos += le
+		if (bl - pos) < l {
+			return nil, fmt.Errorf("invalid length")
+		}
+
+		ret = append(ret, buf[pos:pos+l])
+		pos += l
 
 		if (bl - pos) == 0 {
 			break

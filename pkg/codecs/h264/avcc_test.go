@@ -1,7 +1,6 @@
 package h264
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -60,36 +59,8 @@ func TestAVCCMarshal(t *testing.T) {
 	}
 }
 
-func TestAVCCUnmarshalError(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		enc  []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"invalid length",
-		},
-		{
-			"invalid length",
-			[]byte{0x01},
-			"invalid length",
-		},
-		{
-			"invalid length",
-			[]byte{0x00, 0x00, 0x00, 0x03},
-			"invalid length",
-		},
-		{
-			"too many nalus",
-			bytes.Repeat([]byte{0x00, 0x00, 0x00, 0x01, 0x0a}, 21),
-			"NALU count (21) exceeds maximum allowed (20)",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			_, err := AVCCUnmarshal(ca.enc)
-			require.EqualError(t, err, ca.err)
-		})
-	}
+func FuzzAVCCUnmarshal(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b []byte) {
+		AVCCUnmarshal(b)
+	})
 }

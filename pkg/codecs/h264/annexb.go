@@ -8,25 +8,38 @@ import (
 func AnnexBUnmarshal(byts []byte) ([][]byte, error) {
 	bl := len(byts)
 	initZeroCount := 0
+	start := 0
 
 outer:
-	for i := 0; i < bl; i++ {
-		switch byts[i] {
-		case 0:
+	for {
+		if start >= bl || start >= 4 {
+			return nil, fmt.Errorf("initial delimiter not found")
+		}
+
+		switch initZeroCount {
+		case 0, 1:
+			if byts[start] != 0 {
+				return nil, fmt.Errorf("initial delimiter not found")
+			}
 			initZeroCount++
 
-		case 1:
-			break outer
+		case 2, 3:
+			switch byts[start] {
+			case 1:
+				start++
+				break outer
 
-		default:
-			return nil, fmt.Errorf("unexpected byte: %d", byts[i])
+			case 0:
+
+			default:
+				return nil, fmt.Errorf("initial delimiter not found")
+			}
+			initZeroCount++
 		}
-	}
-	if initZeroCount != 2 && initZeroCount != 3 {
-		return nil, fmt.Errorf("initial delimiter not found")
+
+		start++
 	}
 
-	start := initZeroCount + 1
 	zeroCount := 0
 	n := 0
 
@@ -67,16 +80,15 @@ outer:
 
 		case 1:
 			if zeroCount == 2 || zeroCount == 3 {
-				if (delimStart - start) > MaxNALUSize {
-					return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", delimStart-start, MaxNALUSize)
+				l := delimStart - start
+				if l == 0 {
+					return nil, fmt.Errorf("invalid NALU")
+				}
+				if l > MaxNALUSize {
+					return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", l, MaxNALUSize)
 				}
 
-				nalu := byts[start:delimStart]
-				if len(nalu) == 0 {
-					return nil, fmt.Errorf("empty NALU")
-				}
-
-				ret[pos] = nalu
+				ret[pos] = byts[start:delimStart]
 				pos++
 				start = i + 1
 			}
@@ -87,15 +99,15 @@ outer:
 		}
 	}
 
-	if (bl - start) > MaxNALUSize {
-		return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", bl-start, MaxNALUSize)
+	l := bl - start
+	if l == 0 {
+		return nil, fmt.Errorf("invalid NALU")
+	}
+	if l > MaxNALUSize {
+		return nil, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", l, MaxNALUSize)
 	}
 
-	nalu := byts[start:bl]
-	if len(nalu) == 0 {
-		return nil, fmt.Errorf("empty NALU")
-	}
-	ret[pos] = nalu
+	ret[pos] = byts[start:bl]
 
 	return ret, nil
 }

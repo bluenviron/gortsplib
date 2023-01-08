@@ -1,6 +1,6 @@
 package h264
 
-// EmulationPreventionRemove removes emlation prevention bytes from a NALU.
+// EmulationPreventionRemove removes emulation prevention bytes from a NALU.
 func EmulationPreventionRemove(nalu []byte) []byte {
 	// 0x00 0x00 0x03 0x00 -> 0x00 0x00 0x00
 	// 0x00 0x00 0x03 0x01 -> 0x00 0x00 0x01

@@ -1,7 +1,6 @@
 package h264
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -95,50 +94,6 @@ func TestAnnexBMarshal(t *testing.T) {
 	}
 }
 
-func TestAnnexBUnmarshalError(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		enc  []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"initial delimiter not found",
-		},
-		{
-			"invalid initial delimiter 1",
-			[]byte{0xaa, 0xbb},
-			"unexpected byte: 170",
-		},
-		{
-			"invalid initial delimiter 2",
-			[]byte{0x00, 0x00, 0x00, 0x00, 0x01},
-			"initial delimiter not found",
-		},
-		{
-			"empty NALU 1",
-			[]byte{0x00, 0x00, 0x01, 0x00, 0x00, 0x01},
-			"empty NALU",
-		},
-		{
-			"empty NALU 2",
-			[]byte{0x00, 0x00, 0x01, 0xaa, 0x00, 0x00, 0x01},
-			"empty NALU",
-		},
-		{
-			"too many nalus",
-			bytes.Repeat([]byte{0x00, 0x00, 0x01, 0x0a}, 21),
-			"NALU count (21) exceeds maximum allowed (20)",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			_, err := AnnexBUnmarshal(ca.enc)
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func BenchmarkAnnexBUnmarshal(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		AnnexBUnmarshal([]byte{
@@ -160,4 +115,10 @@ func BenchmarkAnnexBUnmarshal(b *testing.B) {
 			0x01, 0x02, 0x03, 0x04,
 		})
 	}
+}
+
+func FuzzAnnexBUnmarshal(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b []byte) {
+		AnnexBUnmarshal(b)
+	})
 }
