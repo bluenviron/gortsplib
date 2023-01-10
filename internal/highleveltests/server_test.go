@@ -283,7 +283,7 @@ func TestServerRecordRead(t *testing.T) {
 						}
 					},
 					onDescribe: func(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
-						if ctx.Path != "test/stream" {
+						if ctx.Path != "/test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, nil, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
@@ -308,7 +308,7 @@ func TestServerRecordRead(t *testing.T) {
 						}, stream, nil
 					},
 					onAnnounce: func(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-						if ctx.Path != "test/stream" {
+						if ctx.Path != "/test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
@@ -336,7 +336,7 @@ func TestServerRecordRead(t *testing.T) {
 						}, nil
 					},
 					onSetup: func(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
-						if ctx.Path != "test/stream" {
+						if ctx.Path != "/test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, nil, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
@@ -358,7 +358,7 @@ func TestServerRecordRead(t *testing.T) {
 						}, stream, nil
 					},
 					onPlay: func(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
-						if ctx.Path != "test/stream" {
+						if ctx.Path != "/test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
@@ -374,7 +374,7 @@ func TestServerRecordRead(t *testing.T) {
 						}, nil
 					},
 					onRecord: func(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
-						if ctx.Path != "test/stream" {
+						if ctx.Path != "/test/stream" {
 							return &base.Response{
 								StatusCode: base.StatusBadRequest,
 							}, fmt.Errorf("invalid path (%s)", ctx.Request.URL)
