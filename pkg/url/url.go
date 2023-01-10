@@ -87,11 +87,5 @@ func (u *URL) RTSPPathAndQuery() (string, bool) {
 		pathAndQuery += "?" + u.RawQuery
 	}
 
-	// remove leading slash
-	if len(pathAndQuery) == 0 || pathAndQuery[0] != '/' {
-		return "", false
-	}
-	pathAndQuery = pathAndQuery[1:]
-
 	return pathAndQuery, true
 }

@@ -101,14 +101,9 @@ func TestServerRecordErrorAnnounce(t *testing.T) {
 			"unable to generate media URL",
 		},
 		{
-			"invalid URL 2",
-			invalidURLAnnounceReq(t, "rtsp://host"),
-			"invalid media URL (rtsp://localhost:8554)",
-		},
-		{
 			"invalid URL 3",
 			invalidURLAnnounceReq(t, "rtsp://host/otherpath"),
-			"invalid media path: must begin with 'teststream', but is 'otherpath'",
+			"invalid media path: must begin with '/teststream', but is '/otherpath'",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -146,30 +141,54 @@ func TestServerRecordErrorAnnounce(t *testing.T) {
 	}
 }
 
-func TestServerRecordSetupPath(t *testing.T) {
+func TestServerRecordPath(t *testing.T) {
 	for _, ca := range []struct {
-		name    string
-		control string
-		url     string
-		path    string
+		name        string
+		control     string
+		announceURL string
+		setupURL    string
+		path        string
+		query       string
 	}{
 		{
 			"normal",
 			"bbb=ccc",
+			"rtsp://localhost:8554/teststream",
 			"rtsp://localhost:8554/teststream/bbb=ccc",
-			"teststream",
+			"/teststream",
+			"",
 		},
 		{
 			"subpath",
 			"ddd=eee",
+			"rtsp://localhost:8554/test/stream",
 			"rtsp://localhost:8554/test/stream/ddd=eee",
-			"test/stream",
+			"/test/stream",
+			"",
 		},
 		{
 			"subpath and query",
 			"fff=ggg",
+			"rtsp://localhost:8554/test/stream?testing=0",
 			"rtsp://localhost:8554/test/stream?testing=0/fff=ggg",
-			"test/stream?testing=0",
+			"/test/stream",
+			"testing=0",
+		},
+		{
+			"no path",
+			"streamid=1",
+			"rtsp://localhost:8554",
+			"rtsp://localhost:8554/streamid=1",
+			"",
+			"",
+		},
+		{
+			"single slash",
+			"streamid=1",
+			"rtsp://localhost:8554/",
+			"rtsp://localhost:8554//streamid=1",
+			"/",
+			"",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -185,14 +204,20 @@ func TestServerRecordSetupPath(t *testing.T) {
 						}, nil
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-						p := ctx.Path
-						if ctx.Query != "" {
-							p += "?" + ctx.Query
-						}
-						require.Equal(t, ca.path, p)
+						require.Equal(t, ca.path, ctx.Path)
+						require.Equal(t, ca.query, ctx.Query)
+
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil, nil
+					},
+					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						require.Equal(t, ca.path, ctx.Path)
+						require.Equal(t, ca.query, ctx.Query)
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
 					},
 				},
 				RTSPAddress: "localhost:8554",
@@ -230,7 +255,7 @@ func TestServerRecordSetupPath(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Announce,
-				URL:    mustParseURL("rtsp://localhost:8554/" + ca.path),
+				URL:    mustParseURL(ca.announceURL),
 				Header: base.Header{
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -255,10 +280,25 @@ func TestServerRecordSetupPath(t *testing.T) {
 
 			res, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL(ca.url),
+				URL:    mustParseURL(ca.setupURL),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": th.Marshal(),
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			var sx headers.Session
+			err = sx.Unmarshal(res.Header["Session"])
+			require.NoError(t, err)
+
+			res, err = writeReqReadRes(conn, base.Request{
+				Method: base.Record,
+				URL:    mustParseURL(ca.announceURL),
+				Header: base.Header{
+					"CSeq":    base.HeaderValue{"3"},
+					"Session": base.HeaderValue{sx.Session},
 				},
 			})
 			require.NoError(t, err)

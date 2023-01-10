@@ -450,8 +450,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, liberrors.ErrServerInvalidPath{}
 		}
 
-		if req.Method != base.Announce {
-			// path can end with a slash due to Content-Base, remove it
+		// pathAndQuery can end with a slash due to Content-Base, remove it
+		if ss.state == ServerSessionStatePrePlay || ss.state == ServerSessionStatePlay {
 			pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
 		}
 
@@ -694,12 +694,20 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
 			medi = findMediaByUUID(stream, mediaUUID)
 		default: // record
-			medi = findMediaByURL(ss.announcedMedias, &url.URL{
+			baseURL := &url.URL{
 				Scheme:   req.URL.Scheme,
 				Host:     req.URL.Host,
 				Path:     path,
 				RawQuery: query,
-			}, req.URL)
+			}
+
+			if baseURL.RawQuery != "" {
+				baseURL.RawQuery += "/"
+			} else {
+				baseURL.Path += "/"
+			}
+
+			medi = findMediaByURL(ss.announcedMedias, baseURL, req.URL)
 		}
 
 		if medi == nil {
@@ -824,8 +832,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			}, err
 		}
 
-		if ss.State() == ServerSessionStatePrePlay &&
-			path != *ss.setuppedPath {
+		if ss.State() == ServerSessionStatePrePlay && path != *ss.setuppedPath {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerPathHasChanged{Prev: *ss.setuppedPath, Cur: path}

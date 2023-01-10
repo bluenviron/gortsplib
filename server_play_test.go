@@ -82,47 +82,65 @@ func doDescribe(conn *conn.Conn) (*sdp.SessionDescription, error) {
 	return &desc, err
 }
 
-func TestServerPlaySetupPath(t *testing.T) {
+func TestServerPlayPath(t *testing.T) {
 	for _, ca := range []struct {
-		name string
-		url  string
-		path string
+		name     string
+		setupURL string
+		playURL  string
+		path     string
 	}{
 		{
 			"normal",
-			"rtsp://localhost:8554/teststream/[control2]",
-			"teststream",
+			"rtsp://localhost:8554/teststream[control]",
+			"rtsp://localhost:8554/teststream/",
+			"/teststream",
 		},
 		{
 			"with query",
-			"rtsp://localhost:8554/teststream?testing=123/[control4]",
-			"teststream",
+			"rtsp://localhost:8554/teststream?testing=123[control]",
+			"rtsp://localhost:8554/teststream/",
+			"/teststream",
 		},
 		{
 			// this is needed to support reading mpegts with ffmpeg
 			"without media id",
 			"rtsp://localhost:8554/teststream/",
-			"teststream",
+			"rtsp://localhost:8554/teststream/",
+			"/teststream",
 		},
 		{
 			"subpath",
-			"rtsp://localhost:8554/test/stream/[control0]",
-			"test/stream",
+			"rtsp://localhost:8554/test/stream[control]",
+			"rtsp://localhost:8554/test/stream/",
+			"/test/stream",
 		},
 		{
 			"subpath without media id",
 			"rtsp://localhost:8554/test/stream/",
-			"test/stream",
+			"rtsp://localhost:8554/test/stream/",
+			"/test/stream",
 		},
 		{
 			"subpath with query",
-			"rtsp://localhost:8554/test/stream?testing=123/[control4]",
-			"test/stream",
+			"rtsp://localhost:8554/test/stream?testing=123[control]",
+			"rtsp://localhost:8554/test/stream",
+			"/test/stream",
+		},
+		{
+			"no slash",
+			"rtsp://localhost:8554[control]",
+			"rtsp://localhost:8554/",
+			"",
+		},
+		{
+			"single slash",
+			"rtsp://localhost:8554/[control]",
+			"rtsp://localhost:8554//",
+			"/",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			stream := NewServerStream(media.Medias{
-				testH264Media,
 				testH264Media,
 				testH264Media,
 				testH264Media,
@@ -139,9 +157,17 @@ func TestServerPlaySetupPath(t *testing.T) {
 					},
 					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						require.Equal(t, ca.path, ctx.Path)
+
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
+					},
+					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						require.Equal(t, ca.path, ctx.Path)
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
 					},
 				},
 				RTSPAddress: "localhost:8554",
@@ -172,17 +198,29 @@ func TestServerPlaySetupPath(t *testing.T) {
 				InterleavedIDs: &[2]int{0, 1},
 			}
 
-			for i, md := range desc.MediaDescriptions {
-				v, _ := md.Attribute("control")
-				ca.url = strings.ReplaceAll(ca.url, "[control"+strconv.FormatInt(int64(i), 10)+"]", v)
-			}
+			v, _ := desc.MediaDescriptions[1].Attribute("control")
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL(ca.url),
+				URL:    mustParseURL(strings.ReplaceAll(ca.setupURL, "[control]", "/"+v)),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": th.Marshal(),
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			var sx headers.Session
+			err = sx.Unmarshal(res.Header["Session"])
+			require.NoError(t, err)
+
+			res, err = writeReqReadRes(conn, base.Request{
+				Method: base.Play,
+				URL:    mustParseURL(ca.playURL),
+				Header: base.Header{
+					"CSeq":    base.HeaderValue{"3"},
+					"Session": base.HeaderValue{sx.Session},
 				},
 			})
 			require.NoError(t, err)

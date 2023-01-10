@@ -113,28 +113,49 @@ func TestURLCloneWithoutCredentials(t *testing.T) {
 
 func TestURLRTSPPathAndQuery(t *testing.T) {
 	for _, ca := range []struct {
-		u *URL
-		b string
+		name string
+		u    *URL
+		b    string
 	}{
 		{
+			"standard",
 			mustParse("rtsp://localhost:8554/teststream/trackID=1"),
-			"teststream/trackID=1",
+			"/teststream/trackID=1",
 		},
 		{
+			"subpath",
 			mustParse("rtsp://localhost:8554/test/stream/trackID=1"),
-			"test/stream/trackID=1",
+			"/test/stream/trackID=1",
 		},
 		{
+			"path and query",
 			mustParse("rtsp://192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1"),
-			"test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1",
+			"/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1",
 		},
 		{
+			"path and query with special chars",
 			mustParse("rtsp://192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
-			"te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
+			"/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
 		},
 		{
+			"path and query attached",
 			mustParse("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
-			"user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
+			"/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
+		},
+		{
+			"no path",
+			mustParse("rtsp://192.168.1.99:554"),
+			"",
+		},
+		{
+			"single slash",
+			mustParse("rtsp://192.168.1.99:554/"),
+			"/",
+		},
+		{
+			"no slash and query",
+			mustParse("rtsp://192.168.1.99:554?testing"),
+			"?testing",
 		},
 	} {
 		b, ok := ca.u.RTSPPathAndQuery()
