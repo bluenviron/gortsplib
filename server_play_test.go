@@ -2180,6 +2180,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	})
 
 	rtpInfo, ssrcs := getInfos()
+	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/mediaUUID="))
 	require.Equal(t, &headers.RTPInfo{
 		&headers.RTPInfoEntry{
 			URL: (&url.URL{
@@ -2214,6 +2215,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	})
 
 	rtpInfo, ssrcs = getInfos()
+	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/mediaUUID="))
 	require.Equal(t, &headers.RTPInfo{
 		&headers.RTPInfoEntry{
 			URL: (&url.URL{

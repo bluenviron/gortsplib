@@ -897,7 +897,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				entry.URL = (&url.URL{
 					Scheme: req.URL.Scheme,
 					Host:   req.URL.Host,
-					Path:   "/" + *ss.setuppedPath + "/mediaUUID=" + ss.setuppedStream.streamMedias[sm.media].uuid.String(),
+					Path:   *ss.setuppedPath + "/mediaUUID=" + ss.setuppedStream.streamMedias[sm.media].uuid.String(),
 				}).String()
 				ri = append(ri, entry)
 			}
