@@ -586,14 +586,12 @@ func (c *Client) trySwitchingProtocol() error {
 	prevScheme := c.scheme
 	prevHost := c.host
 	prevBaseURL := c.baseURL
-	prevUseGetParameter := c.useGetParameter
 	prevMedias := c.medias
 
 	c.reset()
 
 	v := TransportTCP
 	c.effectiveTransport = &v
-	c.useGetParameter = prevUseGetParameter
 	c.scheme = prevScheme
 	c.host = prevHost
 
@@ -621,6 +619,26 @@ func (c *Client) trySwitchingProtocol() error {
 	}
 
 	return nil
+}
+
+func (c *Client) trySwitchingProtocol2(medi *media.Media, baseURL *url.URL) (*base.Response, error) {
+	prevScheme := c.scheme
+	prevHost := c.host
+
+	c.reset()
+
+	v := TransportTCP
+	c.effectiveTransport = &v
+	c.scheme = prevScheme
+	c.host = prevHost
+
+	// some Hikvision cameras require a describe before a setup
+	_, _, _, err := c.doDescribe(c.lastDescribeURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.doSetup(medi, baseURL, 0, 0)
 }
 
 func (c *Client) playRecordStart() {
@@ -1128,7 +1146,7 @@ func (c *Client) doSetup(
 		c.effectiveTransport = &v
 	}
 
-	transport := func() Transport {
+	requestedTransport := func() Transport {
 		// transport set by previous Setup() or trySwitchingProtocol()
 		if c.effectiveTransport != nil {
 			return *c.effectiveTransport
@@ -1154,7 +1172,7 @@ func (c *Client) doSetup(
 
 	cm := newClientMedia(c)
 
-	switch transport {
+	switch requestedTransport {
 	case TransportUDP:
 		if (rtpPort == 0 && rtcpPort != 0) ||
 			(rtpPort != 0 && rtcpPort == 0) {
@@ -1233,7 +1251,22 @@ func (c *Client) doSetup(
 		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
 	}
 
-	switch transport {
+	switch requestedTransport {
+	case TransportUDP, TransportUDPMulticast:
+		if thRes.Protocol == headers.TransportProtocolTCP {
+			cm.close()
+
+			// switch transport automatically
+			if c.effectiveTransport == nil &&
+				c.Transport == nil {
+				return c.trySwitchingProtocol2(medi, baseURL)
+			}
+
+			return nil, liberrors.ErrClientServerRequestedTCP{}
+		}
+	}
+
+	switch requestedTransport {
 	case TransportUDP:
 		if thRes.Delivery != nil && *thRes.Delivery != headers.TransportDeliveryUnicast {
 			cm.close()
@@ -1318,6 +1351,10 @@ func (c *Client) doSetup(
 		}
 
 	case TransportTCP:
+		if thRes.Protocol != headers.TransportProtocolTCP {
+			return nil, liberrors.ErrClientServerRequestedUDP{}
+		}
+
 		if thRes.Delivery != nil && *thRes.Delivery != headers.TransportDeliveryUnicast {
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
 		}
@@ -1353,7 +1390,7 @@ func (c *Client) doSetup(
 	cm.setMedia(medi)
 
 	c.baseURL = baseURL
-	c.effectiveTransport = &transport
+	c.effectiveTransport = &requestedTransport
 
 	if mode == headers.TransportModePlay {
 		c.state = clientStatePrePlay

@@ -1059,6 +1059,169 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		<-packetRecv
 	})
 
+	t.Run("switch after tcp response", func(t *testing.T) {
+		l, err := net.Listen("tcp", "localhost:8554")
+		require.NoError(t, err)
+		defer l.Close()
+
+		serverDone := make(chan struct{})
+		defer func() { <-serverDone }()
+		go func() {
+			defer close(serverDone)
+
+			medias := media.Medias{testH264Media}
+			medias.SetControls()
+
+			func() {
+				nconn, err := l.Accept()
+				require.NoError(t, err)
+				defer nconn.Close()
+				co := conn.NewConn(nconn)
+
+				req, err := co.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				err = co.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+							string(base.Setup),
+							string(base.Play),
+						}, ", ")},
+					},
+				})
+				require.NoError(t, err)
+
+				req, err = co.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Describe, req.Method)
+
+				err = co.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+					},
+					Body: mustMarshalSDP(medias.Marshal(false)),
+				})
+				require.NoError(t, err)
+
+				req, err = co.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+
+				err = co.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": headers.Transport{
+							Protocol: headers.TransportProtocolTCP,
+							Delivery: func() *headers.TransportDelivery {
+								v := headers.TransportDeliveryUnicast
+								return &v
+							}(),
+							InterleavedIDs: &[2]int{0, 1},
+							ServerPorts:    &[2]int{12312, 12313},
+						}.Marshal(),
+					},
+				})
+				require.NoError(t, err)
+
+				_, err = co.ReadRequest()
+				require.Error(t, err)
+			}()
+
+			func() {
+				nconn, err := l.Accept()
+				require.NoError(t, err)
+				defer nconn.Close()
+				co := conn.NewConn(nconn)
+
+				req, err := co.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				err = co.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+							string(base.Setup),
+							string(base.Play),
+						}, ", ")},
+					},
+				})
+				require.NoError(t, err)
+
+				req, err = co.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Describe, req.Method)
+
+				err = co.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+					},
+					Body: mustMarshalSDP(medias.Marshal(false)),
+				})
+				require.NoError(t, err)
+
+				req, err = co.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+
+				var inTH headers.Transport
+				err = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err)
+				require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
+
+				err = co.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Transport": headers.Transport{
+							Protocol: headers.TransportProtocolTCP,
+							Delivery: func() *headers.TransportDelivery {
+								v := headers.TransportDeliveryUnicast
+								return &v
+							}(),
+							InterleavedIDs: &[2]int{0, 1},
+						}.Marshal(),
+					},
+				})
+				require.NoError(t, err)
+
+				req, err = co.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Play, req.Method)
+
+				err = co.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err)
+
+				err = co.WriteInterleavedFrame(&base.InterleavedFrame{
+					Channel: 0,
+					Payload: testRTPPacketMarshaled,
+				}, make([]byte, 1024))
+				require.NoError(t, err)
+			}()
+		}()
+
+		packetRecv := make(chan struct{})
+
+		c := Client{}
+		err = readAll(&c, "rtsp://localhost:8554/teststream",
+			func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+				close(packetRecv)
+			})
+		require.NoError(t, err)
+		defer c.Close()
+
+		<-packetRecv
+	})
+
 	t.Run("switch after timeout", func(t *testing.T) {
 		l, err := net.Listen("tcp", "localhost:8554")
 		require.NoError(t, err)
