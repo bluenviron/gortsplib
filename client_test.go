@@ -103,7 +103,6 @@ func TestClientSession(t *testing.T) {
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
-
 		require.Equal(t, base.HeaderValue{"123456"}, req.Header["Session"])
 
 		medias := media.Medias{testH264Media}

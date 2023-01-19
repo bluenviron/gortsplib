@@ -529,19 +529,22 @@ func (c *Client) runInner() error {
 }
 
 func (c *Client) doClose() {
+	if c.state != clientStatePlay && c.state != clientStateRecord && c.conn != nil {
+		c.connCloserStop()
+	}
+
 	if c.state == clientStatePlay || c.state == clientStateRecord {
 		c.playRecordStop(true)
+	}
 
+	if c.baseURL != nil {
 		c.do(&base.Request{
 			Method: base.Teardown,
 			URL:    c.baseURL,
 		}, true, false)
+	}
 
-		c.nconn.Close()
-		c.nconn = nil
-		c.conn = nil
-	} else if c.nconn != nil {
-		c.connCloserStop()
+	if c.nconn != nil {
 		c.nconn.Close()
 		c.nconn = nil
 		c.conn = nil
@@ -1259,6 +1262,7 @@ func (c *Client) doSetup(
 			// switch transport automatically
 			if c.effectiveTransport == nil &&
 				c.Transport == nil {
+				c.baseURL = baseURL
 				return c.trySwitchingProtocol2(medi, baseURL)
 			}
 

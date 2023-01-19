@@ -1128,6 +1128,15 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				})
 				require.NoError(t, err)
 
+				req, err = co.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Teardown, req.Method)
+
+				err = co.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err)
+
 				_, err = co.ReadRequest()
 				require.Error(t, err)
 			}()
