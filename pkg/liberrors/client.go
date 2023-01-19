@@ -107,6 +107,22 @@ func (e ErrClientTransportHeaderInvalid) Error() string {
 	return fmt.Sprintf("invalid transport header: %v", e.Err)
 }
 
+// ErrClientServerRequestedTCP is an error that can be returned by a client.
+type ErrClientServerRequestedTCP struct{}
+
+// Error implements the error interface.
+func (e ErrClientServerRequestedTCP) Error() string {
+	return "server wants to use the TCP transport protocol"
+}
+
+// ErrClientServerRequestedUDP is an error that can be returned by a client.
+type ErrClientServerRequestedUDP struct{}
+
+// Error implements the error interface.
+func (e ErrClientServerRequestedUDP) Error() string {
+	return "server wants to use the UDP transport protocol"
+}
+
 // ErrClientTransportHeaderInvalidDelivery is an error that can be returned by a client.
 type ErrClientTransportHeaderInvalidDelivery struct{}
 
