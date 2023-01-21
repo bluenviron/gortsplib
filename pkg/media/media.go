@@ -66,7 +66,7 @@ func (m *Media) unmarshal(md *psdp.MediaDescription) error {
 }
 
 // Marshal encodes the media in SDP format.
-func (m *Media) Marshal() *psdp.MediaDescription {
+func (m Media) Marshal() *psdp.MediaDescription {
 	md := &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:  string(m.Type),
