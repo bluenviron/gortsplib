@@ -66,6 +66,7 @@ func (s *SessionDescription) unmarshalProtocolVersion(value string) error {
 	if value != "0" {
 		return fmt.Errorf("invalid version")
 	}
+
 	return nil
 }
 
@@ -89,9 +90,6 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 	}
 
 	fields := strings.SplitN(value[i+1:], " ", 3)
-	if len(fields) < 2 {
-		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, value)
-	}
 
 	s.Origin.NetworkType = "IN"
 
@@ -105,9 +103,6 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 	}
 
 	fields = strings.SplitN(value[:i], " ", 4)
-	if len(fields) < 1 {
-		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, value)
-	}
 
 	var err error
 	s.Origin.SessionVersion, err = strconv.ParseUint(fields[len(fields)-1], 10, 64)
@@ -205,6 +200,7 @@ func (s *SessionDescription) unmarshalSessionConnectionInformation(value string)
 	if err != nil {
 		return fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, value)
 	}
+
 	return nil
 }
 

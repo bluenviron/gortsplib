@@ -1,0 +1,2 @@
+go test fuzz v1
+string("v=0\no=X 0 IN IP4")
