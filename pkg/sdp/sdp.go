@@ -362,7 +362,7 @@ func parseTimeUnits(value string) (int64, error) {
 func (s *SessionDescription) unmarshalRepeatTimes(value string) error {
 	fields := strings.Fields(value)
 	if len(fields) < 3 {
-		return fmt.Errorf("%w `r=%v`", errSDPInvalidSyntax, fields)
+		return fmt.Errorf("%w `r=%v`", errSDPInvalidSyntax, value)
 	}
 
 	latestTimeDesc := &s.TimeDescriptions[len(s.TimeDescriptions)-1]
@@ -499,19 +499,154 @@ func (s *SessionDescription) unmarshalMediaAttribute(value string) error {
 	return nil
 }
 
+type unmarshalState int
+
+const (
+	stateInitial unmarshalState = iota
+	stateSession
+	stateMedia
+	stateTimeDescription
+)
+
+func (s *SessionDescription) unmarshalSession(state *unmarshalState, key byte, val string) error {
+	switch key {
+	case 'o':
+		err := s.unmarshalOrigin(val)
+		if err != nil {
+			return err
+		}
+
+	case 's':
+		err := s.unmarshalSessionName(val)
+		if err != nil {
+			return err
+		}
+
+	case 'i':
+		err := s.unmarshalSessionInformation(val)
+		if err != nil {
+			return err
+		}
+
+	case 'u':
+		err := s.unmarshalURI(val)
+		if err != nil {
+			return err
+		}
+
+	case 'e':
+		err := s.unmarshalEmail(val)
+		if err != nil {
+			return err
+		}
+
+	case 'p':
+		err := s.unmarshalPhone(val)
+		if err != nil {
+			return err
+		}
+
+	case 'c':
+		err := s.unmarshalSessionConnectionInformation(val)
+		if err != nil {
+			return err
+		}
+
+	case 'b':
+		err := s.unmarshalSessionBandwidth(val)
+		if err != nil {
+			return err
+		}
+
+	case 'z':
+		err := s.unmarshalTimeZones(val)
+		if err != nil {
+			return err
+		}
+
+	case 'k':
+		err := s.unmarshalSessionEncryptionKey(val)
+		if err != nil {
+			return err
+		}
+
+	case 'a':
+		err := s.unmarshalSessionAttribute(val)
+		if err != nil {
+			return err
+		}
+
+	case 't':
+		err := s.unmarshalTiming(val)
+		if err != nil {
+			return err
+		}
+		*state = stateTimeDescription
+
+	case 'm':
+		err := s.unmarshalMediaDescription(val)
+		if err != nil {
+			return err
+		}
+		*state = stateMedia
+
+	default:
+		return fmt.Errorf("invalid key: %c", key)
+	}
+
+	return nil
+}
+
+func (s *SessionDescription) unmarshalMedia(key byte, val string) error {
+	switch key {
+	case 'm':
+		err := s.unmarshalMediaDescription(val)
+		if err != nil {
+			return err
+		}
+
+	case 'i':
+		err := s.unmarshalMediaTitle(val)
+		if err != nil {
+			return err
+		}
+
+	case 'c':
+		err := s.unmarshalMediaConnectionInformation(val)
+		if err != nil {
+			return err
+		}
+
+	case 'b':
+		err := s.unmarshalMediaBandwidth(val)
+		if err != nil {
+			return err
+		}
+
+	case 'k':
+		err := s.unmarshalMediaEncryptionKey(val)
+		if err != nil {
+			return err
+		}
+
+	case 'a':
+		err := s.unmarshalMediaAttribute(val)
+		if err != nil {
+			return err
+		}
+
+	default:
+		return fmt.Errorf("invalid key: %c", key)
+	}
+
+	return nil
+}
+
 // Unmarshal decodes a SessionDescription.
 // This is rewritten from scratch to guarantee compatibility with most RTSP
 // implementations.
 func (s *SessionDescription) Unmarshal(byts []byte) error {
 	str := string(byts)
-
-	type stateVal int
-
-	const (
-		stateInitial stateVal = iota
-		stateSession
-		stateMedia
-	)
 
 	state := stateInitial
 
@@ -533,7 +668,7 @@ func (s *SessionDescription) Unmarshal(byts []byte) error {
 			case 'v':
 				err := s.unmarshalProtocolVersion(val)
 				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
+					return err
 				}
 				state = stateSession
 
@@ -542,136 +677,31 @@ func (s *SessionDescription) Unmarshal(byts []byte) error {
 			}
 
 		case stateSession:
-			switch key {
-			case 'o':
-				err := s.unmarshalOrigin(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 's':
-				err := s.unmarshalSessionName(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'i':
-				err := s.unmarshalSessionInformation(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'u':
-				err := s.unmarshalURI(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'e':
-				err := s.unmarshalEmail(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'p':
-				err := s.unmarshalPhone(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'c':
-				err := s.unmarshalSessionConnectionInformation(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'b':
-				err := s.unmarshalSessionBandwidth(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'z':
-				err := s.unmarshalTimeZones(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'k':
-				err := s.unmarshalSessionEncryptionKey(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'a':
-				err := s.unmarshalSessionAttribute(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 't':
-				err := s.unmarshalTiming(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'r':
-				err := s.unmarshalRepeatTimes(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'm':
-				err := s.unmarshalMediaDescription(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-				state = stateMedia
-
-			default:
-				return fmt.Errorf("invalid key: %c (%s)", key, line)
+			err := s.unmarshalSession(&state, key, val)
+			if err != nil {
+				return err
 			}
 
 		case stateMedia:
+			err := s.unmarshalMedia(key, val)
+			if err != nil {
+				return err
+			}
+
+		case stateTimeDescription:
 			switch key {
-			case 'm':
-				err := s.unmarshalMediaDescription(val)
+			case 'r':
+				err := s.unmarshalRepeatTimes(val)
 				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'i':
-				err := s.unmarshalMediaTitle(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'c':
-				err := s.unmarshalMediaConnectionInformation(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'b':
-				err := s.unmarshalMediaBandwidth(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'k':
-				err := s.unmarshalMediaEncryptionKey(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'a':
-				err := s.unmarshalMediaAttribute(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
+					return err
 				}
 
 			default:
-				return fmt.Errorf("invalid key: %c (%s)", key, line)
+				state = stateSession
+				err := s.unmarshalSession(&state, key, val)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

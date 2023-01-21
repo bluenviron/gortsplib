@@ -1940,3 +1940,10 @@ func TestMarshal(t *testing.T) {
 		})
 	}
 }
+
+func FuzzUnmarshal(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b string) {
+		desc := SessionDescription{}
+		desc.Unmarshal([]byte(b))
+	})
+}
