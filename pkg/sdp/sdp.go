@@ -62,7 +62,7 @@ func parsePort(value string) (int, error) {
 	return port, nil
 }
 
-func (s *SessionDescription) unmarshalVersion(value string) error {
+func (s *SessionDescription) unmarshalProtocolVersion(value string) error {
 	if value != "0" {
 		return fmt.Errorf("invalid version")
 	}
@@ -74,67 +74,63 @@ func (s *SessionDescription) unmarshalSessionName(value string) error {
 	return nil
 }
 
+// This is rewritten from scratch to guarantee compatibility with most RTSP
+// implementations.
 func (s *SessionDescription) unmarshalOrigin(value string) error {
-	// special case for live reporter app
-	if value[:3] == "-0 " {
+	value = strings.TrimSpace(value)
+
+	if strings.HasPrefix(value, "-0 ") { // live reporter app
 		value = "- 0 " + value[3:]
 	}
 
-	// find spaces from end to beginning, to support multiple spaces
-	// in the first field
-	fields := func() []string {
-		values := strings.Split(strings.TrimSpace(value), " ")
-
-		// special case for some onvif2 cameras
-		if strings.Compare(values[len(values)-1], "IP4") == 0 {
-			values = append(values, "127.0.0.1")
-		}
-
-		return append([]string{strings.Join(values[0:len(values)-5], " ")}, values[len(values)-5:]...)
-	}()
-
-	if len(fields) != 6 {
-		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, fields)
+	i := strings.Index(value, " IN ")
+	if i < 0 {
+		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, value)
 	}
 
-	var sessionID uint64
+	fields := strings.SplitN(value[i+1:], " ", 3)
+	if len(fields) < 2 {
+		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, value)
+	}
+
+	s.Origin.NetworkType = "IN"
+
+	s.Origin.AddressType = fields[1]
+	if i2 := indexOf(s.Origin.AddressType, []string{"IP4", "IP6"}); i2 == -1 {
+		return fmt.Errorf("%w `%v`", errSDPInvalidValue, s.Origin.AddressType)
+	}
+
+	if len(fields) >= 3 {
+		s.Origin.UnicastAddress = fields[2]
+	}
+
+	fields = strings.SplitN(value[:i], " ", 4)
+	if len(fields) < 1 {
+		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, value)
+	}
+
 	var err error
-	switch {
-	case strings.HasPrefix(fields[1], "0x") || strings.HasPrefix(fields[1], "0X"):
-		sessionID, err = strconv.ParseUint(fields[1][2:], 16, 64)
-	case strings.ContainsAny(fields[1], "abcdefABCDEF"):
-		sessionID, err = strconv.ParseUint(fields[1], 16, 64)
-	default:
-		sessionID, err = strconv.ParseUint(fields[1], 10, 64)
-	}
+	s.Origin.SessionVersion, err = strconv.ParseUint(fields[len(fields)-1], 10, 64)
 	if err != nil {
-		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[1])
+		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[len(fields)-1])
 	}
 
-	sessionVersion, err := strconv.ParseUint(fields[2], 10, 64)
-	if err != nil {
-		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[2])
+	if len(fields) >= 2 {
+		switch {
+		case strings.HasPrefix(fields[len(fields)-2], "0x"), strings.HasPrefix(fields[len(fields)-2], "0X"):
+			s.Origin.SessionID, err = strconv.ParseUint(fields[len(fields)-2][2:], 16, 64)
+		case strings.ContainsAny(fields[len(fields)-2], "abcdefABCDEF"):
+			s.Origin.SessionID, err = strconv.ParseUint(fields[len(fields)-2], 16, 64)
+		default:
+			s.Origin.SessionID, err = strconv.ParseUint(fields[len(fields)-2], 10, 64)
+		}
+		if err != nil {
+			return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[len(fields)-2])
+		}
 	}
 
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if i := indexOf(fields[3], []string{"IN"}); i == -1 {
-		return fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
-	}
-
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if i := indexOf(fields[4], []string{"IP4", "IP6"}); i == -1 {
-		return fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
-	}
-
-	s.Origin = psdp.Origin{
-		Username:       fields[0],
-		SessionID:      sessionID,
-		SessionVersion: sessionVersion,
-		NetworkType:    fields[3],
-		AddressType:    fields[4],
-		UnicastAddress: fields[5],
+	if len(fields) >= 3 {
+		s.Origin.Username = strings.Join(fields[:len(fields)-2], " ")
 	}
 
 	return nil
@@ -535,7 +531,7 @@ func (s *SessionDescription) Unmarshal(byts []byte) error {
 		case stateInitial:
 			switch key {
 			case 'v':
-				err := s.unmarshalVersion(val)
+				err := s.unmarshalProtocolVersion(val)
 				if err != nil {
 					return fmt.Errorf("%s (%s)", err, line)
 				}

@@ -830,7 +830,7 @@ var cases = []struct {
 			"b=AS:5000\r\n" +
 			"a=control:rtsp://10.10.1.30:8554/onvif2/audio/trackID=1\r\n"),
 		[]byte("v=0\r\n" +
-			"o=RTSP 16381778200090761968 16381778200090839277 IN IP4 127.0.0.1\r\n" +
+			"o=RTSP 16381778200090761968 16381778200090839277 IN IP4 \r\n" +
 			"s=RTSP Server\r\n" +
 			"e=NONE\r\n" +
 			"t=0 0\r\n" +
@@ -856,7 +856,7 @@ var cases = []struct {
 				SessionVersion: 16381778200090839277,
 				NetworkType:    "IN",
 				AddressType:    "IP4",
-				UnicastAddress: "127.0.0.1",
+				UnicastAddress: "",
 			},
 			SessionName: psdp.SessionName("RTSP Server"),
 			EmailAddress: func() *psdp.EmailAddress {
@@ -1817,6 +1817,98 @@ var cases = []struct {
 						{
 							Key:   "fmtp",
 							Value: "33 ver=1.2;src=1;tuner=1,240,1,7,112,,dvbc,,,,6900,34;pids=0,16,17,18,20",
+						},
+						{
+							Key: "sendonly",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"onvif specification example",
+		[]byte("v=0\r\n" +
+			"o= 2890842807 IN IP4 192.168.0.1\r\n" +
+			"s=RTSP Session with audiobackchannel\r\n" +
+			"m=video 0 RTP/AVP 26\r\n" +
+			"a=control:rtsp://192.168.0.1/video\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audio\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audioback\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=sendonly\r\n"),
+		[]byte("v=0\r\n" +
+			"o= 0 2890842807 IN IP4 192.168.0.1\r\n" +
+			"s=RTSP Session with audiobackchannel\r\n" +
+			"m=video 0 RTP/AVP 26\r\n" +
+			"a=control:rtsp://192.168.0.1/video\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audio\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audioback\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=sendonly\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				SessionVersion: 2890842807,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.0.1",
+			},
+			SessionName: "RTSP Session with audiobackchannel",
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"26"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.0.1/video",
+						},
+						{
+							Key: "recvonly",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.0.1/audio",
+						},
+						{
+							Key: "recvonly",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.0.1/audioback",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "0 PCMU/8000",
 						},
 						{
 							Key: "sendonly",

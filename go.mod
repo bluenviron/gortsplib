@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/pion/rtcp v1.2.9
 	github.com/pion/rtp v0.0.0-20230107162714-c3ea6851e25b
-	github.com/pion/sdp/v3 v3.0.5
+	github.com/pion/sdp/v3 v3.0.6
 	github.com/stretchr/testify v1.7.1
 	golang.org/x/net v0.0.0-20220526153639-5463443f8c37
 )
