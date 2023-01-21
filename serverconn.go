@@ -25,6 +25,18 @@ func getSessionID(header base.Header) string {
 	return ""
 }
 
+func filterMedias(medias media.Medias, streamMedias map[*media.Media]*serverStreamMedia) media.Medias {
+	copy := make(media.Medias, len(medias))
+	for i, medi := range medias {
+		copy[i] = &media.Media{
+			Type:    medi.Type,
+			Formats: medi.Formats,
+			Control: "mediaUUID=" + streamMedias[medi].uuid.String(),
+		}
+	}
+	return copy
+}
+
 type readReq struct {
 	req *base.Request
 	res chan error
@@ -378,17 +390,8 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 					}
 				}
 
-				mediasCopy := make(media.Medias, len(stream.medias))
-				for i, medi := range stream.medias {
-					mediasCopy[i] = &media.Media{
-						Type:    medi.Type,
-						Formats: medi.Formats,
-						Control: "mediaUUID=" + stream.streamMedias[medi].uuid.String(),
-					}
-				}
-
 				if stream != nil {
-					byts, _ := mediasCopy.Marshal(multicast).Marshal()
+					byts, _ := filterMedias(stream.medias, stream.streamMedias).Marshal(multicast).Marshal()
 					res.Body = byts
 				}
 			}
