@@ -29,7 +29,8 @@ func filterMedias(medias media.Medias, streamMedias map[*media.Media]*serverStre
 	copy := make(media.Medias, len(medias))
 	for i, medi := range medias {
 		copy[i] = &media.Media{
-			Type:    medi.Type,
+			Type: medi.Type,
+			// Direction: skipped for the moment
 			Formats: medi.Formats,
 			Control: "mediaUUID=" + streamMedias[medi].uuid.String(),
 		}

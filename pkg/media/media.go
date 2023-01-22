@@ -22,6 +22,32 @@ func getControlAttribute(attributes []psdp.Attribute) string {
 	return ""
 }
 
+func getDirection(attributes []psdp.Attribute) Direction {
+	for _, attr := range attributes {
+		switch attr.Key {
+		case "sendonly":
+			return DirectionSendonly
+
+		case "recvonly":
+			return DirectionRecvonly
+
+		case "sendrecv":
+			return DirectionSendrecv
+		}
+	}
+	return ""
+}
+
+// Direction is the direction of a media stream.
+type Direction string
+
+// standard directions.
+const (
+	DirectionSendonly Direction = "sendonly"
+	DirectionRecvonly Direction = "recvonly"
+	DirectionSendrecv Direction = "sendrecv"
+)
+
 // Type is the type of a media stream.
 type Type string
 
@@ -37,6 +63,9 @@ type Media struct {
 	// Media type.
 	Type Type
 
+	// Direction of the stream.
+	Direction Direction
+
 	// Control attribute.
 	Control string
 
@@ -46,9 +75,10 @@ type Media struct {
 
 func (m *Media) unmarshal(md *psdp.MediaDescription) error {
 	m.Type = Type(md.MediaName.Media)
+	m.Direction = getDirection(md.Attributes)
 	m.Control = getControlAttribute(md.Attributes)
-	m.Formats = nil
 
+	m.Formats = nil
 	for _, payloadType := range md.MediaName.Formats {
 		format, err := format.Unmarshal(md, payloadType)
 		if err != nil {
@@ -78,6 +108,12 @@ func (m Media) Marshal() *psdp.MediaDescription {
 				Value: m.Control,
 			},
 		},
+	}
+
+	if m.Direction != "" {
+		md.Attributes = append(md.Attributes, psdp.Attribute{
+			Key: string(m.Direction),
+		})
 	}
 
 	for _, forma := range m.Formats {
