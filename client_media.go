@@ -121,7 +121,7 @@ func (cm *clientMedia) start() {
 	}
 
 	for _, ct := range cm.formats {
-		ct.start(cm)
+		ct.start()
 	}
 
 	if cm.udpRTPListener != nil {

@@ -12,7 +12,7 @@ type typeAndPayload struct {
 	payload []byte
 }
 
-type serverMulticastHandler struct {
+type serverMulticastWriter struct {
 	rtpl        *serverUDPListener
 	rtcpl       *serverUDPListener
 	writeBuffer *ringbuffer.RingBuffer
@@ -20,7 +20,7 @@ type serverMulticastHandler struct {
 	writerDone chan struct{}
 }
 
-func newServerMulticastHandler(s *Server) (*serverMulticastHandler, error) {
+func newServerMulticastWriter(s *Server) (*serverMulticastWriter, error) {
 	res := make(chan net.IP)
 	select {
 	case s.streamMulticastIP <- streamMulticastIPReq{res: res}:
@@ -42,7 +42,7 @@ func newServerMulticastHandler(s *Server) (*serverMulticastHandler, error) {
 
 	wb, _ := ringbuffer.New(uint64(s.WriteBufferCount))
 
-	h := &serverMulticastHandler{
+	h := &serverMulticastWriter{
 		rtpl:        rtpl,
 		rtcpl:       rtcpl,
 		writeBuffer: wb,
@@ -54,18 +54,18 @@ func newServerMulticastHandler(s *Server) (*serverMulticastHandler, error) {
 	return h, nil
 }
 
-func (h *serverMulticastHandler) close() {
+func (h *serverMulticastWriter) close() {
 	h.rtpl.close()
 	h.rtcpl.close()
 	h.writeBuffer.Close()
 	<-h.writerDone
 }
 
-func (h *serverMulticastHandler) ip() net.IP {
+func (h *serverMulticastWriter) ip() net.IP {
 	return h.rtpl.ip()
 }
 
-func (h *serverMulticastHandler) runWriter() {
+func (h *serverMulticastWriter) runWriter() {
 	defer close(h.writerDone)
 
 	rtpAddr := &net.UDPAddr{
@@ -93,14 +93,14 @@ func (h *serverMulticastHandler) runWriter() {
 	}
 }
 
-func (h *serverMulticastHandler) writePacketRTP(payload []byte) {
+func (h *serverMulticastWriter) writePacketRTP(payload []byte) {
 	h.writeBuffer.Push(typeAndPayload{
 		isRTP:   true,
 		payload: payload,
 	})
 }
 
-func (h *serverMulticastHandler) writePacketRTCP(payload []byte) {
+func (h *serverMulticastWriter) writePacketRTCP(payload []byte) {
 	h.writeBuffer.Push(typeAndPayload{
 		isRTP:   false,
 		payload: payload,

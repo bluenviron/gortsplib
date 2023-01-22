@@ -32,27 +32,27 @@ func newClientFormat(cm *clientMedia, forma format.Format) *clientFormat {
 	}
 }
 
-func (ct *clientFormat) start(cm *clientMedia) {
-	if cm.c.state == clientStatePlay {
-		if cm.udpRTPListener != nil {
+func (ct *clientFormat) start() {
+	if ct.cm.c.state == clientStatePlay {
+		if ct.cm.udpRTPListener != nil {
 			ct.udpReorderer = rtpreorderer.New()
 			ct.udpRTCPReceiver = rtcpreceiver.New(
-				cm.c.udpReceiverReportPeriod,
+				ct.cm.c.udpReceiverReportPeriod,
 				nil,
 				ct.format.ClockRate(), func(pkt rtcp.Packet) {
-					cm.writePacketRTCP(pkt)
+					ct.cm.writePacketRTCP(pkt)
 				})
 		}
 	} else {
 		ct.rtcpSender = rtcpsender.New(
 			ct.format.ClockRate(),
 			func(pkt rtcp.Packet) {
-				cm.writePacketRTCP(pkt)
+				ct.cm.writePacketRTCP(pkt)
 			})
 	}
 }
 
-// start RTCP senders after write() has been allocated in order to avoid a crash
+// start writing after write*() has been allocated in order to avoid a crash
 func (ct *clientFormat) startWriting() {
 	if ct.c.state != clientStatePlay && !ct.c.DisableRTCPSenderReports {
 		ct.rtcpSender.Start(ct.c.senderReportPeriod)

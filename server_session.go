@@ -755,13 +755,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		sm := newServerSessionMedia(ss, medi)
 
-		if ss.state == ServerSessionStatePreRecord {
-			sm.formats = make(map[uint8]*serverSessionFormat)
-			for _, forma := range sm.media.Formats {
-				sm.formats[forma.PayloadType()] = newServerSessionFormat(sm, forma)
-			}
-		}
-
 		switch transport {
 		case TransportUDP:
 			sm.udpRTPReadPort = inTH.ClientPorts[0]
@@ -791,7 +784,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			th.Delivery = &de
 			v := uint(127)
 			th.TTL = &v
-			d := stream.streamMedias[medi].multicastHandler.ip()
+			d := stream.streamMedias[medi].multicastWriter.ip()
 			th.Destination = &d
 			th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 
