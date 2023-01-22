@@ -54,6 +54,16 @@ type Format interface {
 
 // Unmarshal decodes a format from a media description.
 func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error) {
+	if payloadTypeStr == "smart/1/90000" {
+		attr, ok := md.Attribute("rtpmap")
+		if ok {
+			i := strings.Index(attr, " TP-LINK/90000")
+			if i >= 0 {
+				payloadTypeStr = attr[:i]
+			}
+		}
+	}
+
 	tmp, err := strconv.ParseInt(payloadTypeStr, 10, 8)
 	if err != nil {
 		return nil, err

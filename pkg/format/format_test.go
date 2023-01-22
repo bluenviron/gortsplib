@@ -613,7 +613,7 @@ func TestNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"generic invalid rtpmap",
+			"application invalid rtpmap",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "application",
@@ -633,7 +633,7 @@ func TestNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"generic invalid rtpmap 2",
+			"application invalid rtpmap 2",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "application",
@@ -650,6 +650,27 @@ func TestNewFromMediaDescription(t *testing.T) {
 			&Generic{
 				PayloadTyp: 98,
 				RTPMap:     "custom/aaa",
+			},
+		},
+		{
+			"application tp-link",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "application",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"smart/1/90000"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "95 TP-LINK/90000",
+					},
+				},
+			},
+			&Generic{
+				PayloadTyp: 95,
+				RTPMap:     "TP-LINK/90000",
+				ClockRat:   90000,
 			},
 		},
 	} {
