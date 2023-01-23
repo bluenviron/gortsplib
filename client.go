@@ -207,7 +207,8 @@ type Client struct {
 	// called after every response.
 	OnResponse func(*base.Response)
 	// called when there's a non-fatal warning.
-	// TODO: rename.
+	OnWarning func(error)
+	// Deprecated: replaced by OnWarning.
 	OnDecodeError func(error)
 
 	//
@@ -312,9 +313,12 @@ func (c *Client) Start(scheme string, host string) error {
 		c.OnResponse = func(*base.Response) {
 		}
 	}
-	if c.OnDecodeError == nil {
-		c.OnDecodeError = func(error) {
+	if c.OnWarning == nil {
+		c.OnWarning = func(error) {
 		}
+	}
+	if c.OnDecodeError != nil {
+		c.OnWarning = c.OnDecodeError
 	}
 
 	// private
@@ -587,7 +591,7 @@ func (c *Client) checkState(allowed map[clientState]struct{}) error {
 }
 
 func (c *Client) trySwitchingProtocol() error {
-	c.OnDecodeError(fmt.Errorf("no UDP packets received, switching to TCP"))
+	c.OnWarning(fmt.Errorf("no UDP packets received, switching to TCP"))
 
 	prevScheme := c.scheme
 	prevHost := c.host
@@ -628,7 +632,7 @@ func (c *Client) trySwitchingProtocol() error {
 }
 
 func (c *Client) trySwitchingProtocol2(medi *media.Media, baseURL *url.URL) (*base.Response, error) {
-	c.OnDecodeError(fmt.Errorf("switching to TCP due to server request"))
+	c.OnWarning(fmt.Errorf("switching to TCP due to server request"))
 
 	prevScheme := c.scheme
 	prevHost := c.host
@@ -1243,7 +1247,7 @@ func (c *Client) doSetup(
 		if res.StatusCode == base.StatusUnsupportedTransport &&
 			c.effectiveTransport == nil &&
 			c.Transport == nil {
-			c.OnDecodeError(fmt.Errorf("switching to TCP due to server request"))
+			c.OnWarning(fmt.Errorf("switching to TCP due to server request"))
 			v := TransportTCP
 			c.effectiveTransport = &v
 			return c.doSetup(medi, baseURL, 0, 0)

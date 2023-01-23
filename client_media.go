@@ -222,14 +222,14 @@ func (cm *clientMedia) readRTCPTCPPlay(payload []byte) error {
 	atomic.StoreInt64(cm.c.tcpLastFrameTime, now.Unix())
 
 	if len(payload) > maxPacketSize {
-		cm.c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+		cm.c.OnWarning(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
 			len(payload), maxPacketSize))
 		return nil
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		cm.c.OnDecodeError(err)
+		cm.c.OnWarning(err)
 		return nil
 	}
 
@@ -246,14 +246,14 @@ func (cm *clientMedia) readRTPTCPRecord(payload []byte) error {
 
 func (cm *clientMedia) readRTCPTCPRecord(payload []byte) error {
 	if len(payload) > maxPacketSize {
-		cm.c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+		cm.c.OnWarning(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
 			len(payload), maxPacketSize))
 		return nil
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		cm.c.OnDecodeError(err)
+		cm.c.OnWarning(err)
 		return nil
 	}
 
@@ -270,20 +270,20 @@ func (cm *clientMedia) readRTPUDPPlay(payload []byte) error {
 	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
 	if plen == (maxPacketSize + 1) {
-		cm.c.OnDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
+		cm.c.OnWarning(fmt.Errorf("RTP packet is too big to be read with UDP"))
 		return nil
 	}
 
 	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
-		cm.c.OnDecodeError(err)
+		cm.c.OnWarning(err)
 		return nil
 	}
 
 	forma, ok := cm.formats[pkt.PayloadType]
 	if !ok {
-		cm.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
+		cm.c.OnWarning(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
 		return nil
 	}
 
@@ -298,13 +298,13 @@ func (cm *clientMedia) readRTCPUDPPlay(payload []byte) error {
 	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
 	if plen == (maxPacketSize + 1) {
-		cm.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
+		cm.c.OnWarning(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return nil
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		cm.c.OnDecodeError(err)
+		cm.c.OnWarning(err)
 		return nil
 	}
 
@@ -332,13 +332,13 @@ func (cm *clientMedia) readRTCPUDPRecord(payload []byte) error {
 	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
 	if plen == (maxPacketSize + 1) {
-		cm.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
+		cm.c.OnWarning(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return nil
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		cm.c.OnDecodeError(err)
+		cm.c.OnWarning(err)
 		return nil
 	}
 

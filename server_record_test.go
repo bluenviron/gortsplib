@@ -1455,7 +1455,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onDecodeError: func(ctx *ServerHandlerOnDecodeErrorCtx) {
+					onWarning: func(ctx *ServerHandlerOnWarningCtx) {
 						switch {
 						case ca.proto == "udp" && ca.name == "rtp invalid":
 							require.EqualError(t, ctx.Error, "RTP header size insufficient: 2 < 4")
