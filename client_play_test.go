@@ -1048,7 +1048,11 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 
 		packetRecv := make(chan struct{})
 
-		c := Client{}
+		c := Client{
+			OnDecodeError: func(err error) {
+				require.EqualError(t, err, "switching to TCP due to server request")
+			},
+		}
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
 			func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 				close(packetRecv)
@@ -1220,7 +1224,11 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 
 		packetRecv := make(chan struct{})
 
-		c := Client{}
+		c := Client{
+			OnDecodeError: func(err error) {
+				require.EqualError(t, err, "switching to TCP due to server request")
+			},
+		}
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
 			func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 				close(packetRecv)
@@ -1451,6 +1459,9 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		packetRecv := make(chan struct{})
 
 		c := Client{
+			OnDecodeError: func(err error) {
+				require.EqualError(t, err, "no UDP packets received, switching to TCP")
+			},
 			ReadTimeout: 1 * time.Second,
 		}
 
