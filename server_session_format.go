@@ -52,7 +52,7 @@ func (sf *serverSessionFormat) stop() {
 func (sf *serverSessionFormat) readRTPUDP(pkt *rtp.Packet, now time.Time) {
 	packets, missing := sf.udpReorderer.Process(pkt)
 	if missing != 0 {
-		onDecodeError(sf.sm.ss, fmt.Errorf("%d RTP packet(s) lost", missing))
+		onWarning(sf.sm.ss, fmt.Errorf("%d RTP packet(s) lost", missing))
 		// do not return
 	}
 

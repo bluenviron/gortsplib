@@ -1021,7 +1021,7 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnDecodeError: func(err error) {
+				OnWarning: func(err error) {
 					switch {
 					case ca.proto == "udp" && ca.name == "rtcp invalid":
 						require.EqualError(t, err, "rtcp: packet too short")

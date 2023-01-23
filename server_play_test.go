@@ -831,7 +831,7 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onDecodeError: func(ctx *ServerHandlerOnDecodeErrorCtx) {
+					onWarning: func(ctx *ServerHandlerOnWarningCtx) {
 						switch {
 						case ca.proto == "udp" && ca.name == "rtcp invalid":
 							require.EqualError(t, ctx.Error, "rtcp: packet too short")

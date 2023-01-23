@@ -1049,7 +1049,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			OnDecodeError: func(err error) {
+			OnWarning: func(err error) {
 				require.EqualError(t, err, "switching to TCP due to server request")
 			},
 		}
@@ -1225,7 +1225,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			OnDecodeError: func(err error) {
+			OnWarning: func(err error) {
 				require.EqualError(t, err, "switching to TCP due to server request")
 			},
 		}
@@ -1459,7 +1459,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			OnDecodeError: func(err error) {
+			OnWarning: func(err error) {
 				require.EqualError(t, err, "no UDP packets received, switching to TCP")
 			},
 			ReadTimeout: 1 * time.Second,
@@ -3072,7 +3072,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnDecodeError: func(err error) {
+				OnWarning: func(err error) {
 					switch {
 					case ca.proto == "udp" && ca.name == "rtp invalid":
 						require.EqualError(t, err, "RTP header size insufficient: 2 < 4")

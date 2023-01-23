@@ -38,8 +38,13 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 	}
 }
 
-func onDecodeError(ss *ServerSession, err error) {
-	if h, ok := ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+func onWarning(ss *ServerSession, err error) {
+	if h, ok := ss.s.Handler.(ServerHandlerOnWarning); ok {
+		h.OnWarning(&ServerHandlerOnWarningCtx{
+			Session: ss,
+			Error:   err,
+		})
+	} else if h, ok := ss.s.Handler.(ServerHandlerOnDecodeError); ok {
 		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
 			Session: ss,
 			Error:   err,
