@@ -93,6 +93,7 @@ Features:
 * [server](examples/server/main.go)
 * [server-tls](examples/server-tls/main.go)
 * [server-h264-save-to-disk](examples/server-h264-save-to-disk/main.go)
+* [proxy](examples/proxy/main.go)
 
 ## API Documentation
 
