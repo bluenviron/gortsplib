@@ -50,6 +50,12 @@ func newServerSessionMedia(ss *ServerSession, medi *media.Media) *serverSessionM
 }
 
 func (sm *serverSessionMedia) start() {
+	// allocate udpRTCPReceiver before udpRTCPListener
+	// otherwise udpRTCPReceiver.LastSSRC() can't be called.
+	for _, sf := range sm.formats {
+		sf.start()
+	}
+
 	switch *sm.ss.setuppedTransport {
 	case TransportUDP, TransportUDPMulticast:
 		sm.writePacketRTPInQueue = sm.writePacketRTPInQueueUDP
@@ -93,10 +99,6 @@ func (sm *serverSessionMedia) start() {
 			sm.ss.s.udpRTPListener.addClient(sm.ss.author.ip(), sm.udpRTPReadPort, sm)
 			sm.ss.s.udpRTCPListener.addClient(sm.ss.author.ip(), sm.udpRTCPReadPort, sm)
 		}
-	}
-
-	for _, sf := range sm.formats {
-		sf.start()
 	}
 }
 
