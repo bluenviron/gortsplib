@@ -632,7 +632,7 @@ func (c *Client) trySwitchingProtocol() error {
 }
 
 func (c *Client) trySwitchingProtocol2(medi *media.Media, baseURL *url.URL) (*base.Response, error) {
-	c.OnWarning(fmt.Errorf("switching to TCP due to server request"))
+	c.OnWarning(fmt.Errorf("switching to TCP because server requested it"))
 
 	prevScheme := c.scheme
 	prevHost := c.host
@@ -1247,7 +1247,7 @@ func (c *Client) doSetup(
 		if res.StatusCode == base.StatusUnsupportedTransport &&
 			c.effectiveTransport == nil &&
 			c.Transport == nil {
-			c.OnWarning(fmt.Errorf("switching to TCP due to server request"))
+			c.OnWarning(fmt.Errorf("switching to TCP because server requested it"))
 			v := TransportTCP
 			c.effectiveTransport = &v
 			return c.doSetup(medi, baseURL, 0, 0)

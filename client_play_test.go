@@ -1050,7 +1050,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 
 		c := Client{
 			OnWarning: func(err error) {
-				require.EqualError(t, err, "switching to TCP due to server request")
+				require.EqualError(t, err, "switching to TCP because server requested it")
 			},
 		}
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -1226,7 +1226,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 
 		c := Client{
 			OnWarning: func(err error) {
-				require.EqualError(t, err, "switching to TCP due to server request")
+				require.EqualError(t, err, "switching to TCP because server requested it")
 			},
 		}
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
