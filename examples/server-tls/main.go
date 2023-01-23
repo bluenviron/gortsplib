@@ -145,7 +145,7 @@ func main() {
 		panic(err)
 	}
 
-	// configure server
+	// configure the server
 	s := &gortsplib.Server{
 		Handler:     &serverHandler{},
 		TLSConfig:   &tls.Config{Certificates: []tls.Certificate{cert}},

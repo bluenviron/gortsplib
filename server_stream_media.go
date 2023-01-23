@@ -12,10 +12,10 @@ import (
 )
 
 type serverStreamMedia struct {
-	uuid             uuid.UUID
-	media            *media.Media
-	formats          map[uint8]*serverStreamFormat
-	multicastHandler *serverMulticastHandler
+	uuid            uuid.UUID
+	media           *media.Media
+	formats         map[uint8]*serverStreamFormat
+	multicastWriter *serverMulticastWriter
 }
 
 func newServerStreamMedia(st *ServerStream, medi *media.Media) *serverStreamMedia {
@@ -51,19 +51,19 @@ func (sm *serverStreamMedia) close() {
 		}
 	}
 
-	if sm.multicastHandler != nil {
-		sm.multicastHandler.close()
+	if sm.multicastWriter != nil {
+		sm.multicastWriter.close()
 	}
 }
 
 func (sm *serverStreamMedia) allocateMulticastHandler(s *Server) error {
-	if sm.multicastHandler == nil {
-		mh, err := newServerMulticastHandler(s)
+	if sm.multicastWriter == nil {
+		mh, err := newServerMulticastWriter(s)
 		if err != nil {
 			return err
 		}
 
-		sm.multicastHandler = mh
+		sm.multicastWriter = mh
 	}
 	return nil
 }
@@ -89,8 +89,8 @@ func (sm *serverStreamMedia) WritePacketRTPWithNTP(ss *ServerStream, pkt *rtp.Pa
 	}
 
 	// send multicast
-	if sm.multicastHandler != nil {
-		sm.multicastHandler.writePacketRTP(byts)
+	if sm.multicastWriter != nil {
+		sm.multicastWriter.writePacketRTP(byts)
 	}
 }
 
@@ -109,7 +109,7 @@ func (sm *serverStreamMedia) writePacketRTCP(ss *ServerStream, pkt rtcp.Packet) 
 	}
 
 	// send multicast
-	if sm.multicastHandler != nil {
-		sm.multicastHandler.writePacketRTCP(byts)
+	if sm.multicastWriter != nil {
+		sm.multicastWriter.writePacketRTCP(byts)
 	}
 }

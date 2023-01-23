@@ -136,7 +136,7 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 }
 
 func main() {
-	// configure server
+	// configure the server
 	s := &gortsplib.Server{
 		Handler:           &serverHandler{},
 		RTSPAddress:       ":8554",

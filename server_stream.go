@@ -205,9 +205,9 @@ func (st *ServerStream) readerRemove(ss *ServerSession) {
 
 	if len(st.readers) == 0 {
 		for _, media := range st.streamMedias {
-			if media.multicastHandler != nil {
-				media.multicastHandler.close()
-				media.multicastHandler = nil
+			if media.multicastWriter != nil {
+				media.multicastWriter.close()
+				media.multicastWriter = nil
 			}
 		}
 	}
@@ -224,8 +224,8 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 	if *ss.setuppedTransport == TransportUDPMulticast {
 		for medi, sm := range ss.setuppedMedias {
 			streamMedia := st.streamMedias[medi]
-			streamMedia.multicastHandler.rtcpl.addClient(
-				ss.author.ip(), streamMedia.multicastHandler.rtcpl.port(), sm)
+			streamMedia.multicastWriter.rtcpl.addClient(
+				ss.author.ip(), streamMedia.multicastWriter.rtcpl.port(), sm)
 		}
 	} else {
 		st.activeUnicastReaders[ss] = struct{}{}
@@ -243,7 +243,7 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 	if *ss.setuppedTransport == TransportUDPMulticast {
 		for medi, sm := range ss.setuppedMedias {
 			streamMedia := st.streamMedias[medi]
-			streamMedia.multicastHandler.rtcpl.removeClient(sm)
+			streamMedia.multicastWriter.rtcpl.removeClient(sm)
 		}
 	} else {
 		delete(st.activeUnicastReaders, ss)
