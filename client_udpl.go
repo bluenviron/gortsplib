@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"crypto/rand"
+	"math/big"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -10,14 +11,10 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-func randUint32() uint32 {
-	var b [4]byte
-	rand.Read(b[:])
-	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
-}
-
-func randIntn(n int) int {
-	return int(randUint32() & (uint32(n) - 1))
+func randInRange(max int) int {
+	b := big.NewInt(int64(max + 1))
+	n, _ := rand.Int(rand.Reader, b)
+	return int(n.Int64())
 }
 
 type clientUDPListener struct {
@@ -46,7 +43,7 @@ func newClientUDPListenerPair(
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
-		rtpPort := (randIntn((65535-10000)/2) * 2) + 10000
+		rtpPort := randInRange((65535-10000)/2)*2 + 10000
 		rtpListener, err := newClientUDPListener(
 			listenPacket,
 			anyPortEnable,
