@@ -386,7 +386,7 @@ func (ss *ServerSession) runInner() error {
 			}
 
 			if (err == nil || err == errSwitchReadFunc) && savedMethod == base.Teardown {
-				return liberrors.ErrServerSessionTeardown{Author: req.sc.NetConn().RemoteAddr()}
+				return liberrors.ErrServerSessionTornDown{Author: req.sc.NetConn().RemoteAddr()}
 			}
 
 		case sc := <-ss.connRemove:

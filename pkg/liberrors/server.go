@@ -196,14 +196,14 @@ func (e ErrServerLinkedToOtherSession) Error() string {
 	return "connection is linked to another session"
 }
 
-// ErrServerSessionTeardown is an error that can be returned by a server.
-type ErrServerSessionTeardown struct {
+// ErrServerSessionTornDown is an error that can be returned by a server.
+type ErrServerSessionTornDown struct {
 	Author net.Addr
 }
 
 // Error implements the error interface.
-func (e ErrServerSessionTeardown) Error() string {
-	return fmt.Sprintf("teared down by %v", e.Author)
+func (e ErrServerSessionTornDown) Error() string {
+	return fmt.Sprintf("torn down by %v", e.Author)
 }
 
 // ErrServerSessionLinkedToOtherConn is an error that can be returned by a server.
