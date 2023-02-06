@@ -7,6 +7,12 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/codecs/h264"
 )
 
+const (
+	maxNegativePics     = 255
+	maxPositivePics     = 255
+	maxShortTermRefPics = 64
+)
+
 var subWidthC = []uint32{
 	1,
 	2,
@@ -462,6 +468,10 @@ func (r *SPS_ShortTermRefPicSet) unmarshal(buf []byte, pos *int, stRpsIdx uint32
 		}
 
 		if r.NumNegativePics > 0 {
+			if r.NumNegativePics > maxNegativePics {
+				return fmt.Errorf("num_negative_pics exceeds %d", maxNegativePics)
+			}
+
 			r.DeltaPocS0Minus1 = make([]uint32, r.NumNegativePics)
 			r.UsedByCurrPicS0Flag = make([]bool, r.NumNegativePics)
 
@@ -479,6 +489,10 @@ func (r *SPS_ShortTermRefPicSet) unmarshal(buf []byte, pos *int, stRpsIdx uint32
 		}
 
 		if r.NumPositivePics > 0 {
+			if r.NumPositivePics > maxPositivePics {
+				return fmt.Errorf("num_positive_pics exceeds %d", maxPositivePics)
+			}
+
 			r.DeltaPocS1Minus1 = make([]uint32, r.NumPositivePics)
 			r.UsedByCurrPicS1Flag = make([]bool, r.NumPositivePics)
 
@@ -752,6 +766,10 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	}
 
 	if numShortTermRefPicSets > 0 {
+		if numShortTermRefPicSets > maxShortTermRefPics {
+			return fmt.Errorf("num_short_term_ref_pic_sets exceeds %d", maxShortTermRefPics)
+		}
+
 		s.ShortTermRefPicSets = make([]*SPS_ShortTermRefPicSet, numShortTermRefPicSets)
 
 		for i := uint32(0); i < numShortTermRefPicSets; i++ {

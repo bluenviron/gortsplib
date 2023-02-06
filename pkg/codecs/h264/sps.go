@@ -6,6 +6,10 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/bits"
 )
 
+const (
+	maxRefFrames = 255
+)
+
 func readScalingList(buf []byte, pos *int, size int) ([]int32, bool, error) {
 	lastScale := int32(8)
 	nextScale := int32(8)
@@ -591,6 +595,10 @@ func (s *SPS) Unmarshal(buf []byte) error {
 		numRefFramesInPicOrderCntCycle, err := bits.ReadGolombUnsigned(buf, &pos)
 		if err != nil {
 			return err
+		}
+
+		if numRefFramesInPicOrderCntCycle > maxRefFrames {
+			return fmt.Errorf("num_ref_frames_in_pic_order_cnt_cycle exceeds %d", maxRefFrames)
 		}
 
 		s.OffsetForRefFrames = make([]int32, numRefFramesInPicOrderCntCycle)
