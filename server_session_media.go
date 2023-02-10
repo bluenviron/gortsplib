@@ -165,6 +165,9 @@ func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) error {
 		return nil
 	}
 
+	now := time.Now()
+	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
+
 	for _, pkt := range packets {
 		sm.onPacketRTCP(pkt)
 	}
