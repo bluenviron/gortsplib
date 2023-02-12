@@ -57,6 +57,7 @@ Features:
 
 * [Examples](#examples)
 * [API Documentation](#api-documentation)
+* [Standards](#standards)
 * [Links](#links)
 
 ## Examples
@@ -99,16 +100,7 @@ Features:
 
 https://pkg.go.dev/github.com/aler9/gortsplib/v2#pkg-index
 
-## Links
-
-Related projects
-
-* rtsp-simple-server https://github.com/aler9/rtsp-simple-server
-* pion/sdp (SDP library used internally) https://github.com/pion/sdp
-* pion/rtp (RTP library used internally) https://github.com/pion/rtp
-* pion/rtcp (RTCP library used internally) https://github.com/pion/rtcp
-
-Standards
+## Standards
 
 * RTSP 1.0 https://www.rfc-editor.org/rfc/rfc2326
 * RTSP 2.0 https://www.rfc-editor.org/rfc/rfc7826
@@ -127,3 +119,12 @@ Standards
 * ITU-T Rec. H.265 (08/2021) https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.265-202108-I!!PDF-E&type=items
 * ISO 14496-3, Coding of audio-visual objects, part 3, Audio
 * Golang project layout https://github.com/golang-standards/project-layout
+
+## Links
+
+Related projects
+
+* rtsp-simple-server https://github.com/aler9/rtsp-simple-server
+* pion/sdp (SDP library used internally) https://github.com/pion/sdp
+* pion/rtp (RTP library used internally) https://github.com/pion/rtp
+* pion/rtcp (RTCP library used internally) https://github.com/pion/rtcp
