@@ -575,8 +575,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		ss.setuppedQuery = query
 		ss.announcedMedias = medias
 
-		v := time.Now().Unix()
-		ss.udpLastPacketTime = &v
 		return res, err
 
 	case base.Setup:
@@ -862,6 +860,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.state = ServerSessionStatePlay
 
+		v := time.Now().Unix()
+		ss.udpLastPacketTime = &v
+
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
 		}
@@ -904,8 +905,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			res.Header["RTP-Info"] = ri.Marshal()
 		}
 
-		v := time.Now().Unix()
-		ss.udpLastPacketTime = &v
 		return res, err
 
 	case base.Record:
@@ -952,6 +951,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		ss.state = ServerSessionStateRecord
+
+		v := time.Now().Unix()
+		ss.udpLastPacketTime = &v
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
