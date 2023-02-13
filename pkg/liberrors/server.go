@@ -24,20 +24,12 @@ func (e ErrServerSessionNotFound) Error() string {
 	return "session not found"
 }
 
-// ErrServerNoUDPPacketsInAWhile is an error that can be returned by a server.
-type ErrServerNoUDPPacketsInAWhile struct{}
+// ErrServerSessionTimedOut is an error that can be returned by a server.
+type ErrServerSessionTimedOut struct{}
 
 // Error implements the error interface.
-func (e ErrServerNoUDPPacketsInAWhile) Error() string {
-	return "no UDP packets received in a while"
-}
-
-// ErrServerNoRTSPRequestsInAWhile is an error that can be returned by a server.
-type ErrServerNoRTSPRequestsInAWhile struct{}
-
-// Error implements the error interface.
-func (e ErrServerNoRTSPRequestsInAWhile) Error() string {
-	return "no RTSP requests received in a while"
+func (e ErrServerSessionTimedOut) Error() string {
+	return "session timed out"
 }
 
 // ErrServerCSeqMissing is an error that can be returned by a server.

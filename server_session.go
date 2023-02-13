@@ -412,16 +412,18 @@ func (ss *ServerSession) runInner() error {
 		case <-ss.udpCheckStreamTimer.C:
 			now := time.Now()
 
+			lft := atomic.LoadInt64(ss.udpLastPacketTime)
+
 			// in case of RECORD, timeout happens when no RTP or RTCP packets are being received
 			if ss.state == ServerSessionStateRecord {
-				lft := atomic.LoadInt64(ss.udpLastPacketTime)
 				if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
-					return liberrors.ErrServerNoUDPPacketsInAWhile{}
+					return liberrors.ErrServerSessionTimedOut{}
 				}
 
-				// in case of PLAY, timeout happens when no RTSP keepalives are being received
-			} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout {
-				return liberrors.ErrServerNoRTSPRequestsInAWhile{}
+				// in case of PLAY, timeout happens when no RTSP keepalives and no RTCP packets are being received
+			} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout &&
+				now.Sub(time.Unix(lft, 0)) >= ss.s.sessionTimeout {
+				return liberrors.ErrServerSessionTimedOut{}
 			}
 
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
@@ -573,8 +575,6 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		ss.setuppedQuery = query
 		ss.announcedMedias = medias
 
-		v := time.Now().Unix()
-		ss.udpLastPacketTime = &v
 		return res, err
 
 	case base.Setup:
@@ -860,6 +860,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		ss.state = ServerSessionStatePlay
 
+		v := time.Now().Unix()
+		ss.udpLastPacketTime = &v
+
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
 		}
@@ -948,6 +951,9 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		}
 
 		ss.state = ServerSessionStateRecord
+
+		v := time.Now().Unix()
+		ss.udpLastPacketTime = &v
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
