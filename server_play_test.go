@@ -1646,9 +1646,10 @@ func TestServerPlayTimeout(t *testing.T) {
 						}, nil
 					},
 				},
-				ReadTimeout:    1 * time.Second,
-				sessionTimeout: 1 * time.Second,
-				RTSPAddress:    "localhost:8554",
+				ReadTimeout:       1 * time.Second,
+				sessionTimeout:    1 * time.Second,
+				RTSPAddress:       "localhost:8554",
+				checkStreamPeriod: 500 * time.Millisecond,
 			}
 
 			switch transport {

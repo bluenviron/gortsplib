@@ -1092,8 +1092,9 @@ func TestServerRecordTimeout(t *testing.T) {
 						}, nil
 					},
 				},
-				ReadTimeout: 1 * time.Second,
-				RTSPAddress: "localhost:8554",
+				ReadTimeout:       1 * time.Second,
+				RTSPAddress:       "localhost:8554",
+				checkStreamPeriod: 500 * time.Millisecond,
 			}
 
 			if transport == "udp" {
