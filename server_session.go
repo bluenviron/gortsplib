@@ -420,7 +420,7 @@ func (ss *ServerSession) runInner() error {
 					return liberrors.ErrServerSessionTimedOut{}
 				}
 
-				// in case of PLAY, timeout happens when no RTSP keepalives and no RTP or RTCP packets are being received
+				// in case of PLAY, timeout happens when no RTSP keepalives and no RTCP packets are being received
 			} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout &&
 				now.Sub(time.Unix(lft, 0)) >= ss.s.sessionTimeout {
 				return liberrors.ErrServerSessionTimedOut{}
