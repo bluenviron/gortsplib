@@ -417,13 +417,13 @@ func (ss *ServerSession) runInner() error {
 			// in case of RECORD, timeout happens when no RTP or RTCP packets are being received
 			if ss.state == ServerSessionStateRecord {
 				if now.Sub(time.Unix(lft, 0)) >= ss.s.ReadTimeout {
-					return liberrors.ErrServerNoUDPPacketsInAWhile{}
+					return liberrors.ErrServerSessionTimedOut{}
 				}
 
 				// in case of PLAY, timeout happens when no RTSP keepalives and no RTP or RTCP packets are being received
 			} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout &&
 				now.Sub(time.Unix(lft, 0)) >= ss.s.sessionTimeout {
-				return liberrors.ErrServerNoRTSPRequestsInAWhile{}
+				return liberrors.ErrServerSessionTimedOut{}
 			}
 
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
