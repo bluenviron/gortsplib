@@ -9,7 +9,7 @@
 
 RTSP 1.0 client and server library for the Go programming language, written for [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-Go &ge; 1.17 is required.
+Go &ge; 1.18 is required.
 
 ***WARNING: the main branch contains code of the v2 version. The legacy v1 version is hosted in the [v1 branch](https://github.com/aler9/gortsplib/tree/v1).***
 
