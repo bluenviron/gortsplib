@@ -53,6 +53,12 @@ Features:
     * Video: H264, H265, M-JPEG
     * Audio: MPEG4 Audio (AAC)
 
+## Important announcement
+
+my main open source projects are being transferred to the [bluenviron organization](https://github.com/bluenviron), in order to allow the community to maintain and evolve the code regardless of my personal availability.
+
+In the next months, the repository name will be changed accordingly.
+
 ## Table of contents
 
 * [Examples](#examples)
