@@ -138,13 +138,8 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 func main() {
 	// configure the server
 	s := &gortsplib.Server{
-		Handler:           &serverHandler{},
-		RTSPAddress:       ":8554",
-		UDPRTPAddress:     ":8000",
-		UDPRTCPAddress:    ":8001",
-		MulticastIPRange:  "224.1.0.0/16",
-		MulticastRTPPort:  8002,
-		MulticastRTCPPort: 8003,
+		Handler:     &serverHandler{},
+		RTSPAddress: ":8554",
 	}
 
 	// start server and wait until a fatal error
