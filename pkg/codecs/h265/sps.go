@@ -789,7 +789,14 @@ func (s *SPS) Unmarshal(buf []byte) error {
 	}
 
 	if s.LongTermRefPicsPresentFlag {
-		return fmt.Errorf("LongTermRefPicsPresentFlag not supported yet")
+		numLongTermRefPicsSPS, err := bits.ReadGolombUnsigned(buf, &pos)
+		if err != nil {
+			return err
+		}
+
+		if numLongTermRefPicsSPS > 0 {
+			return fmt.Errorf("long term ref pics inside SPS are not supported yet")
+		}
 	}
 
 	s.TemporalMvpEnabledFlag, err = bits.ReadFlag(buf, &pos)

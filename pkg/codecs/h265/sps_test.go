@@ -373,6 +373,58 @@ func TestSPSUnmarshal(t *testing.T) {
 			1728,
 			17,
 		},
+		{
+			"long_term_ref_pics_present_flag",
+			[]byte{
+				0x42, 0x01, 0x01, 0x01, 0x60, 0x00, 0x00, 0x03,
+				0x00, 0xb0, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
+				0x00, 0x5d, 0xa0, 0x02, 0x80, 0x80, 0x2d, 0x16,
+				0x36, 0xb9, 0x24, 0xcb, 0xf0, 0x08, 0x00, 0x00,
+				0x03, 0x00, 0x08, 0x00, 0x00, 0x03, 0x01, 0x95,
+				0x08,
+			},
+			SPS{
+				TemporalIDNestingFlag: true,
+				ProfileTierLevel: SPS_ProfileTierLevel{
+					GeneralProfileIdc: 1,
+					GeneralProfileCompatibilityFlag: [32]bool{
+						false, true, true, false, false, false, false, false,
+						false, false, false, false, false, false, false, false,
+						false, false, false, false, false, false, false, false,
+						false, false, false, false, false, false, false, false,
+					},
+					GeneralProgressiveSourceFlag:   true,
+					GeneralNonPackedConstraintFlag: true,
+					GeneralFrameOnlyConstraintFlag: true,
+					GeneralLevelIdc:                93,
+				},
+				ChromaFormatIdc:                      1,
+				PicWidthInLumaSamples:                1280,
+				PicHeightInLumaSamples:               720,
+				Log2MaxPicOrderCntLsbMinus4:          12,
+				SubLayerOrderingInfoPresentFlag:      true,
+				MaxDecPicBufferingMinus1:             []uint32{1},
+				MaxNumReorderPics:                    []uint32{0},
+				MaxLatencyIncreasePlus1:              []uint32{0},
+				Log2DiffMaxMinLumaCodingBlockSize:    3,
+				Log2DiffMaxMinLumaTransformBlockSize: 3,
+				SampleAdaptiveOffsetEnabledFlag:      true,
+				LongTermRefPicsPresentFlag:           true,
+				TemporalMvpEnabledFlag:               true,
+				StrongIntraSmoothingEnabledFlag:      true,
+				VUI: &SPS_VUI{
+					TimingInfo: &SPS_TimingInfo{
+						NumUnitsInTick:              1,
+						TimeScale:                   50,
+						POCProportionalToTimingFlag: true,
+						NumTicksPOCDiffOneMinus1:    1,
+					},
+				},
+			},
+			1280,
+			720,
+			50,
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var sps SPS
