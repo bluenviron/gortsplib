@@ -207,6 +207,8 @@ func (d *Decoder) removeAnnexB(nalus [][]byte) ([][]byte, error) {
 				}
 
 				return h264.AnnexBUnmarshal(nalu)
+			} else {
+				d.firstNALUParsed = false
 			}
 		}
 	} else if d.annexBMode {
