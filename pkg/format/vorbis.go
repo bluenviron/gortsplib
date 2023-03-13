@@ -32,7 +32,7 @@ func (t *Vorbis) PayloadType() uint8 {
 	return t.PayloadTyp
 }
 
-func (t *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	t.PayloadTyp = payloadType
 
 	tmp := strings.SplitN(clock, "/", 2)
@@ -52,42 +52,33 @@ func (t *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap
 	}
 	t.ChannelCount = int(channelCount)
 
-	if fmtp != "" {
-		for _, kv := range strings.Split(fmtp, ";") {
-			kv = strings.Trim(kv, " ")
-
-			if len(kv) == 0 {
-				continue
+	for key, val := range fmtp {
+		if key == "configuration" {
+			conf, err := base64.StdEncoding.DecodeString(val)
+			if err != nil {
+				return fmt.Errorf("invalid AAC config (%v)", val)
 			}
 
-			tmp := strings.SplitN(kv, "=", 2)
-			if len(tmp) != 2 {
-				return fmt.Errorf("invalid fmtp (%v)", fmtp)
-			}
-
-			if tmp[0] == "configuration" {
-				conf, err := base64.StdEncoding.DecodeString(tmp[1])
-				if err != nil {
-					return fmt.Errorf("invalid AAC config (%v)", tmp[1])
-				}
-
-				t.Configuration = conf
-			}
+			t.Configuration = conf
 		}
 	}
 
 	if t.Configuration == nil {
-		return fmt.Errorf("config is missing (%v)", fmtp)
+		return fmt.Errorf("config is missing")
 	}
 
 	return nil
 }
 
 // Marshal implements Format.
-func (t *Vorbis) Marshal() (string, string) {
+func (t *Vorbis) Marshal() (string, map[string]string) {
+	fmtp := map[string]string{
+		"configuration": base64.StdEncoding.EncodeToString(t.Configuration),
+	}
+
 	return "VORBIS/" + strconv.FormatInt(int64(t.SampleRate), 10) +
 			"/" + strconv.FormatInt(int64(t.ChannelCount), 10),
-		"configuration=" + base64.StdEncoding.EncodeToString(t.Configuration)
+		fmtp
 }
 
 // PTSEqualsDTS implements Format.

@@ -30,7 +30,11 @@ func TestVP9MediaDescription(t *testing.T) {
 
 	rtpmap, fmtp := format.Marshal()
 	require.Equal(t, "VP9/90000", rtpmap)
-	require.Equal(t, "max-fr=123;max-fs=456;profile-id=789", fmtp)
+	require.Equal(t, map[string]string{
+		"max-fr":     "123",
+		"max-fs":     "456",
+		"profile-id": "789",
+	}, fmtp)
 }
 
 func TestVP9DecEncoder(t *testing.T) {

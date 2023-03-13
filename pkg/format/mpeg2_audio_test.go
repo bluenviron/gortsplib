@@ -20,5 +20,5 @@ func TestMPEG2AudioMediaDescription(t *testing.T) {
 
 	rtpmap, fmtp := format.Marshal()
 	require.Equal(t, "", rtpmap)
-	require.Equal(t, "", fmtp)
+	require.Equal(t, map[string]string(nil), fmtp)
 }

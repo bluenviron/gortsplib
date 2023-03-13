@@ -24,13 +24,13 @@ func (t *G722) PayloadType() uint8 {
 	return 9
 }
 
-func (t *G722) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *G722) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	return nil
 }
 
 // Marshal implements Format.
-func (t *G722) Marshal() (string, string) {
-	return "G722/8000", ""
+func (t *G722) Marshal() (string, map[string]string) {
+	return "G722/8000", nil
 }
 
 // PTSEqualsDTS implements Format.

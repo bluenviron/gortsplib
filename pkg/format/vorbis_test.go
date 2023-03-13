@@ -30,5 +30,7 @@ func TestVorbisMediaDescription(t *testing.T) {
 
 	rtpmap, fmtp := format.Marshal()
 	require.Equal(t, "VORBIS/48000/2", rtpmap)
-	require.Equal(t, "configuration=AQIDBA==", fmtp)
+	require.Equal(t, map[string]string{
+		"configuration": "AQIDBA==",
+	}, fmtp)
 }

@@ -59,8 +59,11 @@ func TestH264MediaDescription(t *testing.T) {
 
 		rtpmap, fmtp := format.Marshal()
 		require.Equal(t, "H264/90000", rtpmap)
-		require.Equal(t, "packetization-mode=1; "+
-			"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==; profile-level-id=64000C", fmtp)
+		require.Equal(t, map[string]string{
+			"packetization-mode":   "1",
+			"sprop-parameter-sets": "Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==",
+			"profile-level-id":     "64000C",
+		}, fmtp)
 	})
 
 	t.Run("no sps/pps", func(t *testing.T) {
@@ -71,7 +74,9 @@ func TestH264MediaDescription(t *testing.T) {
 
 		rtpmap, fmtp := format.Marshal()
 		require.Equal(t, "H264/90000", rtpmap)
-		require.Equal(t, "packetization-mode=1", fmtp)
+		require.Equal(t, map[string]string{
+			"packetization-mode": "1",
+		}, fmtp)
 	})
 }
 

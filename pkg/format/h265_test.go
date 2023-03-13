@@ -40,7 +40,11 @@ func TestH265MediaDescription(t *testing.T) {
 
 	rtpmap, fmtp := format.Marshal()
 	require.Equal(t, "H265/90000", rtpmap)
-	require.Equal(t, "sprop-vps=AQI=; sprop-sps=AwQ=; sprop-pps=BQY=", fmtp)
+	require.Equal(t, map[string]string{
+		"sprop-vps": "AQI=",
+		"sprop-sps": "AwQ=",
+		"sprop-pps": "BQY=",
+	}, fmtp)
 }
 
 func TestH265DecEncoder(t *testing.T) {

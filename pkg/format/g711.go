@@ -30,17 +30,17 @@ func (t *G711) PayloadType() uint8 {
 	return 8
 }
 
-func (t *G711) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *G711) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	t.MULaw = (payloadType == 0)
 	return nil
 }
 
 // Marshal implements Format.
-func (t *G711) Marshal() (string, string) {
+func (t *G711) Marshal() (string, map[string]string) {
 	if t.MULaw {
-		return "PCMU/8000", ""
+		return "PCMU/8000", nil
 	}
-	return "PCMA/8000", ""
+	return "PCMA/8000", nil
 }
 
 // PTSEqualsDTS implements Format.

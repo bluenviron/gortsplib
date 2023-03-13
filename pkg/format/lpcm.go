@@ -32,7 +32,7 @@ func (t *LPCM) PayloadType() uint8 {
 	return t.PayloadTyp
 }
 
-func (t *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	t.PayloadTyp = payloadType
 
 	switch codec {
@@ -68,7 +68,7 @@ func (t *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 }
 
 // Marshal implements Format.
-func (t *LPCM) Marshal() (string, string) {
+func (t *LPCM) Marshal() (string, map[string]string) {
 	var codec string
 	switch t.BitDepth {
 	case 8:
@@ -82,7 +82,7 @@ func (t *LPCM) Marshal() (string, string) {
 	}
 
 	return codec + "/" + strconv.FormatInt(int64(t.SampleRate), 10) +
-		"/" + strconv.FormatInt(int64(t.ChannelCount), 10), ""
+		"/" + strconv.FormatInt(int64(t.ChannelCount), 10), nil
 }
 
 // PTSEqualsDTS implements Format.

@@ -32,6 +32,31 @@ func getCodecAndClock(rtpMap string) (string, string) {
 	return parts2[0], parts2[1]
 }
 
+func decodeFMTP(enc string) map[string]string {
+	if enc == "" {
+		return nil
+	}
+
+	ret := make(map[string]string)
+
+	for _, kv := range strings.Split(enc, ";") {
+		kv = strings.Trim(kv, " ")
+
+		if len(kv) == 0 {
+			continue
+		}
+
+		tmp := strings.SplitN(kv, "=", 2)
+		if len(tmp) != 2 {
+			continue
+		}
+
+		ret[strings.ToLower(tmp[0])] = tmp[1]
+	}
+
+	return ret
+}
+
 // Format is a format of a media.
 // It defines a codec and a payload type used to ship the media.
 type Format interface {
@@ -44,10 +69,10 @@ type Format interface {
 	// PayloadType returns the payload type.
 	PayloadType() uint8
 
-	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error
+	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error
 
 	// Marshal encodes the format in SDP format.
-	Marshal() (string, string)
+	Marshal() (string, map[string]string)
 
 	// PTSEqualsDTS checks whether PTS is equal to DTS in RTP packets.
 	PTSEqualsDTS(*rtp.Packet) bool
@@ -74,7 +99,7 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 	rtpMap := getFormatAttribute(md.Attributes, payloadType, "rtpmap")
 	codec, clock := getCodecAndClock(rtpMap)
 	codec = strings.ToLower(codec)
-	fmtp := getFormatAttribute(md.Attributes, payloadType, "fmtp")
+	fmtp := decodeFMTP(getFormatAttribute(md.Attributes, payloadType, "fmtp"))
 
 	format := func() Format {
 		switch {
