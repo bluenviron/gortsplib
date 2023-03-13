@@ -39,9 +39,8 @@ func main() {
 	medi := &media.Media{
 		Type: media.TypeAudio,
 		Formats: []format.Format{&format.Opus{
-			PayloadTyp:   96,
-			SampleRate:   48000,
-			ChannelCount: 2,
+			PayloadTyp: 96,
+			IsStereo:   false,
 		}},
 	}
 
