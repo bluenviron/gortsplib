@@ -296,9 +296,8 @@ func TestNewFromMediaDescription(t *testing.T) {
 				},
 			},
 			&Opus{
-				PayloadTyp:   96,
-				SampleRate:   48000,
-				ChannelCount: 2,
+				PayloadTyp: 96,
+				IsStereo:   true,
 			},
 		},
 		{

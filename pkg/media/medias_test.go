@@ -194,7 +194,7 @@ var casesMedias = []struct {
 			"a=control\r\n" +
 			"a=sendonly\r\n" +
 			"a=rtpmap:111 opus/48000/2\r\n" +
-			"a=fmtp:111 sprop-stereo=1\r\n" +
+			"a=fmtp:111 sprop-stereo=0\r\n" +
 			"a=rtpmap:103 ISAC/16000\r\n" +
 			"a=rtpmap:104 ISAC/32000\r\n" +
 			"a=rtpmap:9 G722/8000\r\n" +
@@ -230,9 +230,8 @@ var casesMedias = []struct {
 				Direction: DirectionSendonly,
 				Formats: []format.Format{
 					&format.Opus{
-						PayloadTyp:   111,
-						SampleRate:   48000,
-						ChannelCount: 2,
+						PayloadTyp: 111,
+						IsStereo:   false,
 					},
 					&format.Generic{
 						PayloadTyp: 103,
@@ -534,9 +533,8 @@ func TestMediasFindFormat(t *testing.T) {
 			Type: TypeAudio,
 			Formats: []format.Format{
 				&format.Opus{
-					PayloadTyp:   111,
-					SampleRate:   48000,
-					ChannelCount: 2,
+					PayloadTyp: 111,
+					IsStereo:   true,
 				},
 			},
 		},

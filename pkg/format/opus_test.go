@@ -9,9 +9,8 @@ import (
 
 func TestOpusAttributes(t *testing.T) {
 	format := &Opus{
-		PayloadTyp:   96,
-		SampleRate:   48000,
-		ChannelCount: 2,
+		PayloadTyp: 96,
+		IsStereo:   true,
 	}
 	require.Equal(t, "Opus", format.String())
 	require.Equal(t, 48000, format.ClockRate())
@@ -21,9 +20,8 @@ func TestOpusAttributes(t *testing.T) {
 
 func TestOpusMediaDescription(t *testing.T) {
 	format := &Opus{
-		PayloadTyp:   96,
-		SampleRate:   48000,
-		ChannelCount: 2,
+		PayloadTyp: 96,
+		IsStereo:   true,
 	}
 
 	rtpmap, fmtp := format.Marshal()
