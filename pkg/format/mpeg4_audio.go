@@ -12,7 +12,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpmpeg4audio"
 )
 
-// MPEG4Audio is a MPEG-4 audio format.
+// MPEG4Audio is a format that uses a MPEG-4 audio codec.
 type MPEG4Audio struct {
 	PayloadTyp       uint8
 	Config           *mpeg4audio.Config

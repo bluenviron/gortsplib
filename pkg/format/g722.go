@@ -6,7 +6,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpsimpleaudio"
 )
 
-// G722 is a G722 format.
+// G722 is a format that uses the G722 codec.
 type G722 struct{}
 
 // String implements Format.

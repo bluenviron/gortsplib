@@ -9,7 +9,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// Vorbis is a Vorbis format.
+// Vorbis is a format that uses the Vorbis codec.
 type Vorbis struct {
 	PayloadTyp    uint8
 	SampleRate    int

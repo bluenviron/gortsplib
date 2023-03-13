@@ -12,7 +12,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtph265"
 )
 
-// H265 is a H265 format.
+// H265 is a format that uses the H265 codec.
 type H265 struct {
 	PayloadTyp uint8
 	VPS        []byte

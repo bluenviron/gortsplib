@@ -10,7 +10,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpvp9"
 )
 
-// VP9 is a VP9 format.
+// VP9 is a format that uses the VP9 codec.
 type VP9 struct {
 	PayloadTyp uint8
 	MaxFR      *int
