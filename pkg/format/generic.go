@@ -55,7 +55,7 @@ func findClockRate(payloadType uint8, rtpMap string) (int, error) {
 type Generic struct {
 	PayloadTyp uint8
 	RTPMap     string
-	FMTP       string
+	FMTP       map[string]string
 
 	// clock rate of the format. Filled automatically.
 	ClockRat int
@@ -82,7 +82,10 @@ func (t *Generic) PayloadType() uint8 {
 	return t.PayloadTyp
 }
 
-func (t *Generic) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *Generic) unmarshal(
+	payloadType uint8, clock string, codec string,
+	rtpmap string, fmtp map[string]string,
+) error {
 	t.PayloadTyp = payloadType
 	t.RTPMap = rtpmap
 	t.FMTP = fmtp
@@ -91,7 +94,7 @@ func (t *Generic) unmarshal(payloadType uint8, clock string, codec string, rtpma
 }
 
 // Marshal implements Format.
-func (t *Generic) Marshal() (string, string) {
+func (t *Generic) Marshal() (string, map[string]string) {
 	return t.RTPMap, t.FMTP
 }
 

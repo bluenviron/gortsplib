@@ -42,8 +42,14 @@ func TestMPEG4AudioMediaDescription(t *testing.T) {
 
 	rtpmap, fmtp := format.Marshal()
 	require.Equal(t, "mpeg4-generic/48000/2", rtpmap)
-	require.Equal(t, "profile-level-id=1; mode=AAC-hbr; sizelength=13;"+
-		" indexlength=3; indexdeltalength=3; config=1190", fmtp)
+	require.Equal(t, map[string]string{
+		"profile-level-id": "1",
+		"mode":             "AAC-hbr",
+		"sizelength":       "13",
+		"indexlength":      "3",
+		"indexdeltalength": "3",
+		"config":           "1190",
+	}, fmtp)
 }
 
 func TestMPEG4AudioDecEncoder(t *testing.T) {

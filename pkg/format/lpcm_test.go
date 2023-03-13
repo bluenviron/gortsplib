@@ -34,7 +34,7 @@ func TestLPCMMediaDescription(t *testing.T) {
 
 			rtpmap, fmtp := format.Marshal()
 			require.Equal(t, fmt.Sprintf("L%d/96000/2", ca), rtpmap)
-			require.Equal(t, "", fmtp)
+			require.Equal(t, map[string]string(nil), fmtp)
 		})
 	}
 }

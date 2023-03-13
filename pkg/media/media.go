@@ -4,6 +4,7 @@ package media
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -130,10 +131,23 @@ func (m Media) Marshal() *psdp.MediaDescription {
 			})
 		}
 
-		if fmtp != "" {
+		if len(fmtp) != 0 {
+			keys := make([]string, len(fmtp))
+			i := 0
+			for key := range fmtp {
+				keys[i] = key
+				i++
+			}
+			sort.Strings(keys)
+
+			tmp := make([]string, len(fmtp))
+			for i, key := range keys {
+				tmp[i] = key + "=" + fmtp[key]
+			}
+
 			md.Attributes = append(md.Attributes, psdp.Attribute{
 				Key:   "fmtp",
-				Value: typ + " " + fmtp,
+				Value: typ + " " + strings.Join(tmp, "; "),
 			})
 		}
 	}

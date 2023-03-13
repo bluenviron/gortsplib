@@ -33,7 +33,7 @@ func (t *Opus) PayloadType() uint8 {
 	return t.PayloadTyp
 }
 
-func (t *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	t.PayloadTyp = payloadType
 
 	tmp := strings.SplitN(clock, "/", 2)
@@ -57,22 +57,9 @@ func (t *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 		return fmt.Errorf("invalid channel count: %d", channelCount)
 	}
 
-	if fmtp != "" {
-		for _, kv := range strings.Split(fmtp, ";") {
-			kv = strings.Trim(kv, " ")
-
-			if len(kv) == 0 {
-				continue
-			}
-
-			tmp := strings.SplitN(kv, "=", 2)
-			if len(tmp) != 2 {
-				return fmt.Errorf("invalid fmtp (%v)", fmtp)
-			}
-
-			if strings.ToLower(tmp[0]) == "sprop-stereo" {
-				t.IsStereo = (tmp[1] == "1")
-			}
+	for key, val := range fmtp {
+		if key == "sprop-stereo" {
+			t.IsStereo = (val == "1")
 		}
 	}
 
@@ -80,13 +67,15 @@ func (t *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 }
 
 // Marshal implements Format.
-func (t *Opus) Marshal() (string, string) {
-	fmtp := "sprop-stereo=" + func() string {
-		if t.IsStereo {
-			return "1"
-		}
-		return "0"
-	}()
+func (t *Opus) Marshal() (string, map[string]string) {
+	fmtp := map[string]string{
+		"sprop-stereo": func() string {
+			if t.IsStereo {
+				return "1"
+			}
+			return "0"
+		}(),
+	}
 
 	// RFC7587: The RTP clock rate in "a=rtpmap" MUST be 48000, and the
 	// number of channels MUST be 2.

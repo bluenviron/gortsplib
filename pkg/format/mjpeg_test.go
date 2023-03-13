@@ -20,7 +20,7 @@ func TestMJPEGMediaDescription(t *testing.T) {
 
 	rtpmap, fmtp := format.Marshal()
 	require.Equal(t, "JPEG/90000", rtpmap)
-	require.Equal(t, "", fmtp)
+	require.Equal(t, map[string]string(nil), fmtp)
 }
 
 func TestMJPEGDecEncoder(t *testing.T) {

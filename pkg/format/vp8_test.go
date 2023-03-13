@@ -28,7 +28,10 @@ func TestVP8MediaDescription(t *testing.T) {
 
 	rtpmap, fmtp := format.Marshal()
 	require.Equal(t, "VP8/90000", rtpmap)
-	require.Equal(t, "max-fr=123;max-fs=456", fmtp)
+	require.Equal(t, map[string]string{
+		"max-fr": "123",
+		"max-fs": "456",
+	}, fmtp)
 }
 
 func TestVP8DecEncoder(t *testing.T) {

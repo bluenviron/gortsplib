@@ -3,7 +3,6 @@ package format
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/pion/rtp"
 
@@ -33,47 +32,34 @@ func (t *VP9) PayloadType() uint8 {
 	return t.PayloadTyp
 }
 
-func (t *VP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *VP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	t.PayloadTyp = payloadType
 
-	if fmtp != "" {
-		for _, kv := range strings.Split(fmtp, ";") {
-			kv = strings.Trim(kv, " ")
-
-			if len(kv) == 0 {
-				continue
+	for key, val := range fmtp {
+		switch key {
+		case "max-fr":
+			n, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid max-fr (%v)", val)
 			}
+			v2 := int(n)
+			t.MaxFR = &v2
 
-			tmp := strings.SplitN(kv, "=", 2)
-			if len(tmp) != 2 {
-				return fmt.Errorf("invalid fmtp attribute (%v)", fmtp)
+		case "max-fs":
+			n, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid max-fs (%v)", val)
 			}
+			v2 := int(n)
+			t.MaxFS = &v2
 
-			switch tmp[0] {
-			case "max-fr":
-				val, err := strconv.ParseUint(tmp[1], 10, 64)
-				if err != nil {
-					return fmt.Errorf("invalid max-fr (%v)", tmp[1])
-				}
-				v2 := int(val)
-				t.MaxFR = &v2
-
-			case "max-fs":
-				val, err := strconv.ParseUint(tmp[1], 10, 64)
-				if err != nil {
-					return fmt.Errorf("invalid max-fs (%v)", tmp[1])
-				}
-				v2 := int(val)
-				t.MaxFS = &v2
-
-			case "profile-id":
-				val, err := strconv.ParseUint(tmp[1], 10, 64)
-				if err != nil {
-					return fmt.Errorf("invalid profile-id (%v)", tmp[1])
-				}
-				v2 := int(val)
-				t.ProfileID = &v2
+		case "profile-id":
+			n, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid profile-id (%v)", val)
 			}
+			v2 := int(n)
+			t.ProfileID = &v2
 		}
 	}
 
@@ -81,20 +67,16 @@ func (t *VP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 }
 
 // Marshal implements Format.
-func (t *VP9) Marshal() (string, string) {
-	var tmp []string
+func (t *VP9) Marshal() (string, map[string]string) {
+	fmtp := make(map[string]string)
 	if t.MaxFR != nil {
-		tmp = append(tmp, "max-fr="+strconv.FormatInt(int64(*t.MaxFR), 10))
+		fmtp["max-fr"] = strconv.FormatInt(int64(*t.MaxFR), 10)
 	}
 	if t.MaxFS != nil {
-		tmp = append(tmp, "max-fs="+strconv.FormatInt(int64(*t.MaxFS), 10))
+		fmtp["max-fs"] = strconv.FormatInt(int64(*t.MaxFS), 10)
 	}
 	if t.ProfileID != nil {
-		tmp = append(tmp, "profile-id="+strconv.FormatInt(int64(*t.ProfileID), 10))
-	}
-	var fmtp string
-	if tmp != nil {
-		fmtp = strings.Join(tmp, ";")
+		fmtp["profile-id"] = strconv.FormatInt(int64(*t.ProfileID), 10)
 	}
 
 	return "VP9/90000", fmtp

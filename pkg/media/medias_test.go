@@ -49,7 +49,7 @@ var casesMedias = []struct {
 			"m=video 0 RTP/AVP 97\r\n" +
 			"a=control:rtsp://10.0.100.50/profile5/media.smp/trackID=v\r\n" +
 			"a=rtpmap:97 H264/90000\r\n" +
-			"a=fmtp:97 packetization-mode=1; sprop-parameter-sets=Z2QAKKy0A8ARPyo=,aO4Bniw=; profile-level-id=640028\r\n" +
+			"a=fmtp:97 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKy0A8ARPyo=,aO4Bniw=\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
 			"a=control:rtsp://10.0.100.50/profile5/media.smp/trackID=a\r\n" +
 			"a=recvonly\r\n" +
@@ -302,8 +302,10 @@ var casesMedias = []struct {
 					&format.Generic{
 						PayloadTyp: 97,
 						RTPMap:     "rtx/90000",
-						FMTP:       "apt=96",
-						ClockRat:   90000,
+						FMTP: map[string]string{
+							"apt": "96",
+						},
+						ClockRat: 90000,
 					},
 					&format.VP9{
 						PayloadTyp: 98,
@@ -311,8 +313,10 @@ var casesMedias = []struct {
 					&format.Generic{
 						PayloadTyp: 99,
 						RTPMap:     "rtx/90000",
-						FMTP:       "apt=98",
-						ClockRat:   90000,
+						FMTP: map[string]string{
+							"apt": "98",
+						},
+						ClockRat: 90000,
 					},
 					&format.H264{
 						PayloadTyp:        100,
@@ -321,8 +325,10 @@ var casesMedias = []struct {
 					&format.Generic{
 						PayloadTyp: 101,
 						RTPMap:     "rtx/90000",
-						FMTP:       "apt=100",
-						ClockRat:   90000,
+						FMTP: map[string]string{
+							"apt": "100",
+						},
+						ClockRat: 90000,
 					},
 					&format.Generic{
 						PayloadTyp: 127,
@@ -332,8 +338,10 @@ var casesMedias = []struct {
 					&format.Generic{
 						PayloadTyp: 124,
 						RTPMap:     "rtx/90000",
-						FMTP:       "apt=127",
-						ClockRat:   90000,
+						FMTP: map[string]string{
+							"apt": "127",
+						},
+						ClockRat: 90000,
 					},
 					&format.Generic{
 						PayloadTyp: 125,
@@ -364,8 +372,8 @@ var casesMedias = []struct {
 			"m=video 0 RTP/AVP 96 98\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
-			"a=fmtp:96 packetization-mode=1;" +
-			" sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==; profile-level-id=4D002A\r\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=4D002A; " +
+			"sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==\r\n" +
 			"a=rtpmap:98 MetaData\r\n",
 		Medias{
 			{
@@ -511,8 +519,10 @@ func TestMediasFindFormat(t *testing.T) {
 	tr := &format.Generic{
 		PayloadTyp: 97,
 		RTPMap:     "rtx/90000",
-		FMTP:       "apt=96",
-		ClockRat:   90000,
+		FMTP: map[string]string{
+			"apt": "96",
+		},
+		ClockRat: 90000,
 	}
 
 	md := &Media{

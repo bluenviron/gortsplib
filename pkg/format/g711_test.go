@@ -28,7 +28,7 @@ func TestG711MediaDescription(t *testing.T) {
 
 		rtpmap, fmtp := format.Marshal()
 		require.Equal(t, "PCMA/8000", rtpmap)
-		require.Equal(t, "", fmtp)
+		require.Equal(t, map[string]string(nil), fmtp)
 	})
 
 	t.Run("pcmu", func(t *testing.T) {
@@ -38,7 +38,7 @@ func TestG711MediaDescription(t *testing.T) {
 
 		rtpmap, fmtp := format.Marshal()
 		require.Equal(t, "PCMU/8000", rtpmap)
-		require.Equal(t, "", fmtp)
+		require.Equal(t, map[string]string(nil), fmtp)
 	})
 }
 

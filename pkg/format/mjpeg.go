@@ -24,13 +24,13 @@ func (t *MJPEG) PayloadType() uint8 {
 	return 26
 }
 
-func (t *MJPEG) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *MJPEG) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	return nil
 }
 
 // Marshal implements Format.
-func (t *MJPEG) Marshal() (string, string) {
-	return "JPEG/90000", ""
+func (t *MJPEG) Marshal() (string, map[string]string) {
+	return "JPEG/90000", nil
 }
 
 // PTSEqualsDTS implements Format.

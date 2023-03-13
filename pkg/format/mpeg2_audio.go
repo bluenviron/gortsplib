@@ -22,13 +22,16 @@ func (t *MPEG2Audio) PayloadType() uint8 {
 	return 14
 }
 
-func (t *MPEG2Audio) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *MPEG2Audio) unmarshal(
+	payloadType uint8, clock string, codec string,
+	rtpmap string, fmtp map[string]string,
+) error {
 	return nil
 }
 
 // Marshal implements Format.
-func (t *MPEG2Audio) Marshal() (string, string) {
-	return "", ""
+func (t *MPEG2Audio) Marshal() (string, map[string]string) {
+	return "", nil
 }
 
 // PTSEqualsDTS implements Format.

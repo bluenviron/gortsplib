@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/pion/rtp"
 
@@ -36,75 +35,65 @@ func (t *MPEG4Audio) PayloadType() uint8 {
 	return t.PayloadTyp
 }
 
-func (t *MPEG4Audio) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *MPEG4Audio) unmarshal(
+	payloadType uint8, clock string, codec string,
+	rtpmap string, fmtp map[string]string,
+) error {
 	t.PayloadTyp = payloadType
 
-	if fmtp != "" {
-		for _, kv := range strings.Split(fmtp, ";") {
-			kv = strings.Trim(kv, " ")
-
-			if len(kv) == 0 {
-				continue
+	for key, val := range fmtp {
+		switch key {
+		case "config":
+			enc, err := hex.DecodeString(val)
+			if err != nil {
+				return fmt.Errorf("invalid AAC config (%v)", val)
 			}
 
-			tmp := strings.SplitN(kv, "=", 2)
-			if len(tmp) != 2 {
-				return fmt.Errorf("invalid fmtp (%v)", fmtp)
+			t.Config = &mpeg4audio.Config{}
+			err = t.Config.Unmarshal(enc)
+			if err != nil {
+				return fmt.Errorf("invalid AAC config (%v)", val)
 			}
 
-			switch strings.ToLower(tmp[0]) {
-			case "config":
-				enc, err := hex.DecodeString(tmp[1])
-				if err != nil {
-					return fmt.Errorf("invalid AAC config (%v)", tmp[1])
-				}
-
-				t.Config = &mpeg4audio.Config{}
-				err = t.Config.Unmarshal(enc)
-				if err != nil {
-					return fmt.Errorf("invalid AAC config (%v)", tmp[1])
-				}
-
-			case "sizelength":
-				val, err := strconv.ParseUint(tmp[1], 10, 64)
-				if err != nil {
-					return fmt.Errorf("invalid AAC SizeLength (%v)", tmp[1])
-				}
-				t.SizeLength = int(val)
-
-			case "indexlength":
-				val, err := strconv.ParseUint(tmp[1], 10, 64)
-				if err != nil {
-					return fmt.Errorf("invalid AAC IndexLength (%v)", tmp[1])
-				}
-				t.IndexLength = int(val)
-
-			case "indexdeltalength":
-				val, err := strconv.ParseUint(tmp[1], 10, 64)
-				if err != nil {
-					return fmt.Errorf("invalid AAC IndexDeltaLength (%v)", tmp[1])
-				}
-				t.IndexDeltaLength = int(val)
+		case "sizelength":
+			n, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid AAC SizeLength (%v)", val)
 			}
+			t.SizeLength = int(n)
+
+		case "indexlength":
+			n, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid AAC IndexLength (%v)", val)
+			}
+			t.IndexLength = int(n)
+
+		case "indexdeltalength":
+			n, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid AAC IndexDeltaLength (%v)", val)
+			}
+			t.IndexDeltaLength = int(n)
 		}
 	}
 
 	if t.Config == nil {
-		return fmt.Errorf("config is missing (%v)", fmtp)
+		return fmt.Errorf("config is missing")
 	}
 
 	if t.SizeLength == 0 {
-		return fmt.Errorf("sizelength is missing (%v)", fmtp)
+		return fmt.Errorf("sizelength is missing")
 	}
 
 	return nil
 }
 
 // Marshal implements Format.
-func (t *MPEG4Audio) Marshal() (string, string) {
+func (t *MPEG4Audio) Marshal() (string, map[string]string) {
 	enc, err := t.Config.Marshal()
 	if err != nil {
-		return "", ""
+		return "", nil
 	}
 
 	sampleRate := t.Config.SampleRate
@@ -112,27 +101,20 @@ func (t *MPEG4Audio) Marshal() (string, string) {
 		sampleRate = t.Config.ExtensionSampleRate
 	}
 
-	fmtp := "profile-level-id=1; " +
-		"mode=AAC-hbr; " +
-		func() string {
-			if t.SizeLength > 0 {
-				return fmt.Sprintf("sizelength=%d; ", t.SizeLength)
-			}
-			return ""
-		}() +
-		func() string {
-			if t.IndexLength > 0 {
-				return fmt.Sprintf("indexlength=%d; ", t.IndexLength)
-			}
-			return ""
-		}() +
-		func() string {
-			if t.IndexDeltaLength > 0 {
-				return fmt.Sprintf("indexdeltalength=%d; ", t.IndexDeltaLength)
-			}
-			return ""
-		}() +
-		"config=" + hex.EncodeToString(enc)
+	fmtp := make(map[string]string)
+
+	fmtp["profile-level-id"] = "1"
+	fmtp["mode"] = "AAC-hbr"
+	if t.SizeLength > 0 {
+		fmtp["sizelength"] = strconv.FormatInt(int64(t.SizeLength), 10)
+	}
+	if t.IndexLength > 0 {
+		fmtp["indexlength"] = strconv.FormatInt(int64(t.IndexLength), 10)
+	}
+	if t.IndexDeltaLength > 0 {
+		fmtp["indexdeltalength"] = strconv.FormatInt(int64(t.IndexDeltaLength), 10)
+	}
+	fmtp["config"] = hex.EncodeToString(enc)
 
 	return "mpeg4-generic/" + strconv.FormatInt(int64(sampleRate), 10) +
 		"/" + strconv.FormatInt(int64(t.Config.ChannelCount), 10), fmtp

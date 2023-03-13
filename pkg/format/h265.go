@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/pion/rtp"
@@ -38,51 +37,38 @@ func (t *H265) PayloadType() uint8 {
 	return t.PayloadTyp
 }
 
-func (t *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp string) error {
+func (t *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	t.PayloadTyp = payloadType
 
-	if fmtp != "" {
-		for _, kv := range strings.Split(fmtp, ";") {
-			kv = strings.Trim(kv, " ")
-
-			if len(kv) == 0 {
-				continue
+	for key, val := range fmtp {
+		switch key {
+		case "sprop-vps":
+			var err error
+			t.VPS, err = base64.StdEncoding.DecodeString(val)
+			if err != nil {
+				return fmt.Errorf("invalid sprop-vps (%v)", fmtp)
 			}
 
-			tmp := strings.SplitN(kv, "=", 2)
-			if len(tmp) != 2 {
-				return fmt.Errorf("invalid fmtp attribute (%v)", fmtp)
+		case "sprop-sps":
+			var err error
+			t.SPS, err = base64.StdEncoding.DecodeString(val)
+			if err != nil {
+				return fmt.Errorf("invalid sprop-sps (%v)", fmtp)
 			}
 
-			switch tmp[0] {
-			case "sprop-vps":
-				var err error
-				t.VPS, err = base64.StdEncoding.DecodeString(tmp[1])
-				if err != nil {
-					return fmt.Errorf("invalid sprop-vps (%v)", fmtp)
-				}
-
-			case "sprop-sps":
-				var err error
-				t.SPS, err = base64.StdEncoding.DecodeString(tmp[1])
-				if err != nil {
-					return fmt.Errorf("invalid sprop-sps (%v)", fmtp)
-				}
-
-			case "sprop-pps":
-				var err error
-				t.PPS, err = base64.StdEncoding.DecodeString(tmp[1])
-				if err != nil {
-					return fmt.Errorf("invalid sprop-pps (%v)", fmtp)
-				}
-
-			case "sprop-max-don-diff":
-				tmp, err := strconv.ParseInt(tmp[1], 10, 64)
-				if err != nil {
-					return fmt.Errorf("invalid sprop-max-don-diff (%v)", fmtp)
-				}
-				t.MaxDONDiff = int(tmp)
+		case "sprop-pps":
+			var err error
+			t.PPS, err = base64.StdEncoding.DecodeString(val)
+			if err != nil {
+				return fmt.Errorf("invalid sprop-pps (%v)", fmtp)
 			}
+
+		case "sprop-max-don-diff":
+			tmp, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid sprop-max-don-diff (%v)", fmtp)
+			}
+			t.MaxDONDiff = int(tmp)
 		}
 	}
 
@@ -90,26 +76,22 @@ func (t *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 }
 
 // Marshal implements Format.
-func (t *H265) Marshal() (string, string) {
+func (t *H265) Marshal() (string, map[string]string) {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
-	var tmp []string
+	fmtp := make(map[string]string)
 	if t.VPS != nil {
-		tmp = append(tmp, "sprop-vps="+base64.StdEncoding.EncodeToString(t.VPS))
+		fmtp["sprop-vps"] = base64.StdEncoding.EncodeToString(t.VPS)
 	}
 	if t.SPS != nil {
-		tmp = append(tmp, "sprop-sps="+base64.StdEncoding.EncodeToString(t.SPS))
+		fmtp["sprop-sps"] = base64.StdEncoding.EncodeToString(t.SPS)
 	}
 	if t.PPS != nil {
-		tmp = append(tmp, "sprop-pps="+base64.StdEncoding.EncodeToString(t.PPS))
+		fmtp["sprop-pps"] = base64.StdEncoding.EncodeToString(t.PPS)
 	}
 	if t.MaxDONDiff != 0 {
-		tmp = append(tmp, "sprop-max-don-diff="+strconv.FormatInt(int64(t.MaxDONDiff), 10))
-	}
-	var fmtp string
-	if tmp != nil {
-		fmtp = strings.Join(tmp, "; ")
+		fmtp["sprop-max-don-diff"] = strconv.FormatInt(int64(t.MaxDONDiff), 10)
 	}
 
 	return "H265/90000", fmtp

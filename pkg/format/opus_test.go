@@ -26,7 +26,9 @@ func TestOpusMediaDescription(t *testing.T) {
 
 	rtpmap, fmtp := format.Marshal()
 	require.Equal(t, "opus/48000/2", rtpmap)
-	require.Equal(t, "sprop-stereo=1", fmtp)
+	require.Equal(t, map[string]string{
+		"sprop-stereo": "1",
+	}, fmtp)
 }
 
 func TestOpusDecEncoder(t *testing.T) {

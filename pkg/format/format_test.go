@@ -722,27 +722,6 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 			"strconv.ParseInt: parsing \"\": invalid syntax",
 		},
 		{
-			"audio aac fmtp without key",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "audio",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"96"},
-				},
-				Attributes: []psdp.Attribute{
-					{
-						Key:   "rtpmap",
-						Value: "96 mpeg4-generic/48000/2",
-					},
-					{
-						Key:   "fmtp",
-						Value: "96 profile-level-id",
-					},
-				},
-			},
-			"invalid fmtp (profile-level-id)",
-		},
-		{
 			"audio aac missing config",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
@@ -761,7 +740,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"config is missing (profile-level-id=1)",
+			"config is missing",
 		},
 		{
 			"audio aac invalid config 1",
@@ -824,7 +803,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"sizelength is missing (profile-level-id=1; config=1190)",
+			"sizelength is missing",
 		},
 		{
 			"audio aac invalid sizelength",
@@ -908,7 +887,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"config is missing (aa=bb)",
+			"config is missing",
 		},
 		{
 			"audio opus invalid 1",
@@ -960,27 +939,6 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 				},
 			},
 			"strconv.ParseInt: parsing \"aa\": invalid syntax",
-		},
-		{
-			"video h264 invalid fmtp",
-			&psdp.MediaDescription{
-				MediaName: psdp.MediaName{
-					Media:   "video",
-					Protos:  []string{"RTP", "AVP"},
-					Formats: []string{"96"},
-				},
-				Attributes: []psdp.Attribute{
-					{
-						Key:   "rtpmap",
-						Value: "96 H264/90000",
-					},
-					{
-						Key:   "fmtp",
-						Value: "96 aaa",
-					},
-				},
-			},
-			"invalid fmtp attribute (aaa)",
 		},
 		{
 			"video h264 invalid sps",

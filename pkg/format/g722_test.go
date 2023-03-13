@@ -20,7 +20,7 @@ func TestG722MediaDescription(t *testing.T) {
 
 	rtpmap, fmtp := format.Marshal()
 	require.Equal(t, "G722/8000", rtpmap)
-	require.Equal(t, "", fmtp)
+	require.Equal(t, map[string]string(nil), fmtp)
 }
 
 func TestG722DecEncoder(t *testing.T) {
