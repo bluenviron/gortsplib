@@ -128,6 +128,24 @@ func TestDecodeAnnexB(t *testing.T) {
 	d := &Decoder{}
 	d.Init()
 
+	nalus, _, err := d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 17647,
+			Timestamp:      2289531307,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: mergeBytes(
+			[]byte{0x01, 0x02, 0x03, 0x04},
+		),
+	})
+	require.NoError(t, err)
+	require.Equal(t, [][]byte{
+		{0x01, 0x02, 0x03, 0x04},
+	}, nalus)
+
 	for i := 0; i < 2; i++ {
 		nalus, _, err := d.Decode(&rtp.Packet{
 			Header: rtp.Header{

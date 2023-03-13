@@ -31,7 +31,6 @@ type Decoder struct {
 	firstPacketReceived bool
 	fragmentedSize      int
 	fragments           [][]byte
-	firstNALUParsed     bool
 	annexBMode          bool
 
 	// for DecodeUntilMarker()
@@ -192,35 +191,20 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 
 // some cameras / servers wrap NALUs into Annex-B
 func (d *Decoder) removeAnnexB(nalus [][]byte) ([][]byte, error) {
-	if !d.firstNALUParsed {
-		d.firstNALUParsed = true
-
-		if len(nalus) == 1 {
-			nalu := nalus[0]
-
-			i := bytes.Index(nalu, []byte{0x00, 0x00, 0x00, 0x01})
-			if i >= 0 {
-				d.annexBMode = true
-
-				if !bytes.HasPrefix(nalu, []byte{0x00, 0x00, 0x00, 0x01}) {
-					nalu = append([]byte{0x00, 0x00, 0x00, 0x01}, nalu...)
-				}
-
-				return h264.AnnexBUnmarshal(nalu)
-			}
-		}
-	} else if d.annexBMode {
-		if len(nalus) != 1 {
-			return nil, fmt.Errorf("multiple NALUs in Annex-B mode are not supported")
-		}
-
+	if len(nalus) == 1 {
 		nalu := nalus[0]
 
-		if !bytes.HasPrefix(nalu, []byte{0x00, 0x00, 0x00, 0x01}) {
-			nalu = append([]byte{0x00, 0x00, 0x00, 0x01}, nalu...)
+		if !d.annexBMode && bytes.Contains(nalu, []byte{0x00, 0x00, 0x00, 0x01}) {
+			d.annexBMode = true
 		}
 
-		return h264.AnnexBUnmarshal(nalu)
+		if d.annexBMode {
+			if !bytes.HasPrefix(nalu, []byte{0x00, 0x00, 0x00, 0x01}) {
+				nalu = append([]byte{0x00, 0x00, 0x00, 0x01}, nalu...)
+			}
+
+			return h264.AnnexBUnmarshal(nalu)
+		}
 	}
 
 	return nalus, nil
