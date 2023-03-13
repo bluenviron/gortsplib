@@ -6,7 +6,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpmjpeg"
 )
 
-// MJPEG is a Motion-JPEG format.
+// MJPEG is a format that uses the Motion-JPEG codec.
 type MJPEG struct{}
 
 // String implements Format.

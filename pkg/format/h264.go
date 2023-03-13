@@ -70,7 +70,7 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 	}
 }
 
-// H264 is a H264 format.
+// H264 is a format that uses the H264 codec.
 type H264 struct {
 	PayloadTyp        uint8
 	SPS               []byte

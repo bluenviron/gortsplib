@@ -162,12 +162,12 @@ type Client struct {
 	// This can be a security issue.
 	// It defaults to false.
 	AnyPortEnable bool
-	// the stream transport (UDP, Multicast or TCP).
+	// transport protocol (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
 	Transport *Transport
 	// If the client is reading with UDP, it must receive
-	// at least a packet within this timeout.
+	// at least a packet within this timeout, otherwise it switches to TCP.
 	// It defaults to 3 seconds.
 	InitialUDPReadTimeout time.Duration
 	// read buffer count.

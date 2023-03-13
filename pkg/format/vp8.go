@@ -10,7 +10,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpvp8"
 )
 
-// VP8 is a VP8 format.
+// VP8 is a format that uses the VP8 codec.
 type VP8 struct {
 	PayloadTyp uint8
 	MaxFR      *int

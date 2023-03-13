@@ -61,7 +61,7 @@ type Generic struct {
 	ClockRat int
 }
 
-// Init initializes a Generic.
+// Init computes the clock rate of the format. It it mandatory to call it.
 func (t *Generic) Init() error {
 	t.ClockRat, _ = findClockRate(t.PayloadTyp, t.RTPMap)
 	return nil

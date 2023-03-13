@@ -4,7 +4,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// MPEG2Video is a MPEG-1 or MPEG-2 video format.
+// MPEG2Video is a format that uses a MPEG-1 or MPEG-2 video codec.
 type MPEG2Video struct{}
 
 // String implements Format.

@@ -58,7 +58,8 @@ const (
 	TypeApplication Type = "application"
 )
 
-// Media is a media stream. It contains one or more format.
+// Media is a media stream.
+// It contains one or more formats.
 type Media struct {
 	// Media type.
 	Type Type

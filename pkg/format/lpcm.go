@@ -9,7 +9,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtplpcm"
 )
 
-// LPCM is an uncompressed, Linear PCM format.
+// LPCM is a format that uses the uncompressed, Linear PCM codec.
 type LPCM struct {
 	PayloadTyp   uint8
 	BitDepth     int

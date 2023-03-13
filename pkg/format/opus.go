@@ -10,7 +10,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpsimpleaudio"
 )
 
-// Opus is a Opus format.
+// Opus is a format that uses the Opus codec.
 type Opus struct {
 	PayloadTyp   uint8
 	SampleRate   int

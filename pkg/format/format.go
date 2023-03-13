@@ -32,7 +32,8 @@ func getCodecAndClock(rtpMap string) (string, string) {
 	return parts2[0], parts2[1]
 }
 
-// Format is a RTSP format.
+// Format is a format of a media.
+// It defines a codec and a payload type used to ship the media.
 type Format interface {
 	// String returns a description of the format.
 	String() string
@@ -48,7 +49,7 @@ type Format interface {
 	// Marshal encodes the format in SDP format.
 	Marshal() (string, string)
 
-	// PTSEqualsDTS checks whether PTS is equal to DTS in the RTP packet.
+	// PTSEqualsDTS checks whether PTS is equal to DTS in RTP packets.
 	PTSEqualsDTS(*rtp.Packet) bool
 }
 

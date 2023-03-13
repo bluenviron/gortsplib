@@ -1,4 +1,3 @@
-
 # gortsplib
 
 [![Test](https://github.com/aler9/gortsplib/workflows/test/badge.svg)](https://github.com/aler9/gortsplib/actions?query=workflow:test)

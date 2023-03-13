@@ -6,7 +6,7 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpsimpleaudio"
 )
 
-// G711 is a G711 format, encoded with mu-law or A-law.
+// G711 is a format that uses the G711 codec, encoded with mu-law or A-law.
 type G711 struct {
 	// whether to use mu-law. Otherwise, A-law is used.
 	MULaw bool
