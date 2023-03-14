@@ -1,5 +1,5 @@
-// Package rtptimedec contains a RTP timestamp decoder.
-package rtptimedec
+// Package rtptime contains a RTP timestamp decoder and encoder.
+package rtptime
 
 import (
 	"time"
@@ -15,14 +15,14 @@ type Decoder struct {
 	prev        uint32
 }
 
-// New allocates a Decoder.
-func New(clockRate int) *Decoder {
+// NewDecoder allocates a Decoder.
+func NewDecoder(clockRate int) *Decoder {
 	return &Decoder{
 		clockRate: time.Duration(clockRate),
 	}
 }
 
-// Decode decodes a RTP timestamp.
+// Decode decodes a timestamp.
 func (d *Decoder) Decode(ts uint32) time.Duration {
 	if !d.initialized {
 		d.initialized = true
@@ -42,7 +42,7 @@ func (d *Decoder) Decode(ts uint32) time.Duration {
 		d.overall += time.Duration(diff)
 	}
 
-	// avoid an int64 overflow and keep resolution by splitting division into two parts:
+	// avoid an int64 overflow and preserve resolution by splitting division into two parts:
 	// first add the integer part, then the decimal part.
 	secs := d.overall / d.clockRate
 	dec := d.overall % d.clockRate

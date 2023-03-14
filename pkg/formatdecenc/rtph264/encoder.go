@@ -8,6 +8,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/v2/pkg/codecs/h264"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 const (
@@ -44,6 +45,7 @@ type Encoder struct {
 	PacketizationMode int
 
 	sequenceNumber uint16
+	timeEncoder    *rtptime.Encoder
 }
 
 // Init initializes the encoder.
@@ -65,10 +67,7 @@ func (e *Encoder) Init() {
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-}
-
-func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
-	return *e.InitialTimestamp + uint32(ts.Seconds()*rtpClockRate)
+	e.timeEncoder = rtptime.NewEncoder(rtpClockRate, *e.InitialTimestamp)
 }
 
 // Encode encodes NALUs into RTP/H264 packets.
@@ -131,7 +130,7 @@ func (e *Encoder) writeSingle(nalu []byte, pts time.Duration, marker bool) ([]*r
 			Version:        rtpVersion,
 			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      e.encodeTimestamp(pts),
+			Timestamp:      e.timeEncoder.Encode(pts),
 			SSRC:           *e.SSRC,
 			Marker:         marker,
 		},
@@ -153,7 +152,7 @@ func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) (
 	}
 
 	ret := make([]*rtp.Packet, packetCount)
-	encPTS := e.encodeTimestamp(pts)
+	encPTS := e.timeEncoder.Encode(pts)
 
 	nri := (nalu[0] >> 5) & 0x03
 	typ := nalu[0] & 0x1F
@@ -238,7 +237,7 @@ func (e *Encoder) writeAggregated(nalus [][]byte, pts time.Duration, marker bool
 			Version:        rtpVersion,
 			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      e.encodeTimestamp(pts),
+			Timestamp:      e.timeEncoder.Encode(pts),
 			SSRC:           *e.SSRC,
 			Marker:         marker,
 		},

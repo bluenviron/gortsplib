@@ -1,4 +1,4 @@
-package rtptimedec
+package rtptime
 
 import (
 	"testing"
@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNegativeDiff(t *testing.T) {
-	d := New(90000)
+func TestDecoderNegativeDiff(t *testing.T) {
+	d := NewDecoder(90000)
 
 	i := uint32(0)
 	pts := d.Decode(i)
@@ -27,8 +27,8 @@ func TestNegativeDiff(t *testing.T) {
 	require.Equal(t, 3*time.Second, pts)
 }
 
-func TestOverflow(t *testing.T) {
-	d := New(90000)
+func TestDecoderOverflow(t *testing.T) {
+	d := NewDecoder(90000)
 
 	i := uint32(0xFFFFFFFF - 90000 + 1)
 	secs := time.Duration(0)
@@ -56,8 +56,8 @@ func TestOverflow(t *testing.T) {
 	}
 }
 
-func TestOverflowAndBack(t *testing.T) {
-	d := New(90000)
+func TestDecoderOverflowAndBack(t *testing.T) {
+	d := NewDecoder(90000)
 
 	pts := d.Decode(0xFFFFFFFF - 90000 + 1)
 	require.Equal(t, time.Duration(0), pts)
@@ -81,7 +81,7 @@ func TestOverflowAndBack(t *testing.T) {
 func BenchmarkDecoder(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		func() {
-			d := New(90000)
+			d := NewDecoder(90000)
 			n := uint32(0)
 			for j := 0; j < 200; j++ {
 				if (j % 2) == 0 {

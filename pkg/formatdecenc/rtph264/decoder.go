@@ -9,7 +9,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/v2/pkg/codecs/h264"
-	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -27,7 +27,7 @@ type Decoder struct {
 	// indicates the packetization mode.
 	PacketizationMode int
 
-	timeDecoder         *rtptimedec.Decoder
+	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
 	fragmentedSize      int
 	fragments           [][]byte
@@ -39,7 +39,7 @@ type Decoder struct {
 
 // Init initializes the decoder.
 func (d *Decoder) Init() {
-	d.timeDecoder = rtptimedec.New(rtpClockRate)
+	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
 }
 
 // Decode decodes NALUs from a RTP/H264 packet.

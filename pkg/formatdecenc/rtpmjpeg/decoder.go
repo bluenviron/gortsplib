@@ -9,7 +9,7 @@ import (
 
 	"github.com/aler9/gortsplib/v2/pkg/codecs/jpeg"
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpmjpeg/headers"
-	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -96,7 +96,7 @@ var chmAcSymbols = []byte{ //nolint:dupl
 
 // Decoder is a RTP/M-JPEG decoder.
 type Decoder struct {
-	timeDecoder         *rtptimedec.Decoder
+	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
 	fragmentedSize      int
 	fragments           [][]byte
@@ -106,7 +106,7 @@ type Decoder struct {
 
 // Init initializes the decoder.
 func (d *Decoder) Init() {
-	d.timeDecoder = rtptimedec.New(rtpClockRate)
+	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
 }
 
 // Decode decodes an image from a RTP/M-JPEG packet.

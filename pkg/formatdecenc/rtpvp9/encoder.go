@@ -7,6 +7,8 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
+
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 const (
@@ -45,6 +47,7 @@ type Encoder struct {
 	InitialPictureID *uint16
 
 	sequenceNumber uint16
+	timeEncoder    *rtptime.Encoder
 	vp             codecs.VP9Payloader
 }
 
@@ -71,14 +74,11 @@ func (e *Encoder) Init() {
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
+	e.timeEncoder = rtptime.NewEncoder(rtpClockRate, *e.InitialTimestamp)
 
 	e.vp.InitialPictureIDFn = func() uint16 {
 		return *e.InitialPictureID
 	}
-}
-
-func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
-	return *e.InitialTimestamp + uint32(ts.Seconds()*rtpClockRate)
 }
 
 // Encode encodes a VP9 frame into RTP/VP9 packets.
@@ -97,7 +97,7 @@ func (e *Encoder) Encode(frame []byte, pts time.Duration) ([]*rtp.Packet, error)
 				Version:        rtpVersion,
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      e.encodeTimestamp(pts),
+				Timestamp:      e.timeEncoder.Encode(pts),
 				SSRC:           *e.SSRC,
 				Marker:         i == (plen - 1),
 			},

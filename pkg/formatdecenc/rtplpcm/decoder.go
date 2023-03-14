@@ -6,7 +6,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 // Decoder is a RTP/LPCM decoder.
@@ -15,13 +15,13 @@ type Decoder struct {
 	SampleRate   int
 	ChannelCount int
 
-	timeDecoder *rtptimedec.Decoder
+	timeDecoder *rtptime.Decoder
 	sampleSize  int
 }
 
 // Init initializes the decoder.
 func (d *Decoder) Init() {
-	d.timeDecoder = rtptimedec.New(d.SampleRate)
+	d.timeDecoder = rtptime.NewDecoder(d.SampleRate)
 	d.sampleSize = d.BitDepth * d.ChannelCount / 8
 }
 

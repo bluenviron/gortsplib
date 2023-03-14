@@ -8,6 +8,7 @@ import (
 
 	"github.com/aler9/gortsplib/v2/pkg/bits"
 	"github.com/aler9/gortsplib/v2/pkg/codecs/mpeg4audio"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 const (
@@ -54,6 +55,7 @@ type Encoder struct {
 	IndexDeltaLength int
 
 	sequenceNumber uint16
+	timeEncoder    *rtptime.Encoder
 }
 
 // Init initializes the encoder.
@@ -75,10 +77,7 @@ func (e *Encoder) Init() {
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-}
-
-func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
-	return *e.InitialTimestamp + uint32(ts.Seconds()*float64(e.SampleRate))
+	e.timeEncoder = rtptime.NewEncoder(e.SampleRate, *e.InitialTimestamp)
 }
 
 // Encode encodes AUs into RTP/MPEG4-audio packets.
@@ -145,7 +144,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 	}
 
 	ret := make([]*rtp.Packet, packetCount)
-	encPTS := e.encodeTimestamp(pts)
+	encPTS := e.timeEncoder.Encode(pts)
 
 	for i := range ret {
 		var le int
@@ -260,7 +259,7 @@ func (e *Encoder) writeAggregated(aus [][]byte, pts time.Duration) ([]*rtp.Packe
 			Version:        rtpVersion,
 			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      e.encodeTimestamp(pts),
+			Timestamp:      e.timeEncoder.Encode(pts),
 			SSRC:           *e.SSRC,
 			Marker:         true,
 		},

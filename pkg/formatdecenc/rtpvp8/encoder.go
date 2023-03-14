@@ -7,6 +7,8 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
+
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 const (
@@ -41,6 +43,7 @@ type Encoder struct {
 	PayloadMaxSize int
 
 	sequenceNumber uint16
+	timeEncoder    *rtptime.Encoder
 	vp             codecs.VP8Payloader
 }
 
@@ -63,10 +66,7 @@ func (e *Encoder) Init() {
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-}
-
-func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
-	return *e.InitialTimestamp + uint32(ts.Seconds()*rtpClockRate)
+	e.timeEncoder = rtptime.NewEncoder(rtpClockRate, *e.InitialTimestamp)
 }
 
 // Encode encodes a VP8 frame into RTP/VP8 packets.
@@ -85,7 +85,7 @@ func (e *Encoder) Encode(frame []byte, pts time.Duration) ([]*rtp.Packet, error)
 				Version:        rtpVersion,
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      e.encodeTimestamp(pts),
+				Timestamp:      e.timeEncoder.Encode(pts),
 				SSRC:           *e.SSRC,
 				Marker:         i == (plen - 1),
 			},

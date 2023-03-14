@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
+
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 const (
@@ -44,6 +46,7 @@ type Encoder struct {
 	ChannelCount int
 
 	sequenceNumber uint16
+	timeEncoder    *rtptime.Encoder
 	sampleSize     int
 	maxPayloadSize int
 }
@@ -67,12 +70,9 @@ func (e *Encoder) Init() {
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
+	e.timeEncoder = rtptime.NewEncoder(e.SampleRate, *e.InitialTimestamp)
 	e.sampleSize = e.BitDepth * e.ChannelCount / 8
 	e.maxPayloadSize = (e.PayloadMaxSize / e.sampleSize) * e.sampleSize
-}
-
-func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
-	return *e.InitialTimestamp + uint32(ts.Seconds()*float64(e.SampleRate))
 }
 
 // Encode encodes audio samples into RTP packets.
@@ -102,7 +102,7 @@ func (e *Encoder) Encode(samples []byte, pts time.Duration) ([]*rtp.Packet, erro
 				Version:        rtpVersion,
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      e.encodeTimestamp(pts),
+				Timestamp:      e.timeEncoder.Encode(pts),
 				SSRC:           *e.SSRC,
 				Marker:         false,
 			},
