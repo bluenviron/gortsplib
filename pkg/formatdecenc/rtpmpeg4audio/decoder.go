@@ -9,7 +9,7 @@ import (
 
 	"github.com/aler9/gortsplib/v2/pkg/bits"
 	"github.com/aler9/gortsplib/v2/pkg/codecs/mpeg4audio"
-	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -29,7 +29,7 @@ type Decoder struct {
 	// The number of bits in which the AU-Index-delta field is encoded in any non-first AU-header.
 	IndexDeltaLength int
 
-	timeDecoder    *rtptimedec.Decoder
+	timeDecoder    *rtptime.Decoder
 	firstAUParsed  bool
 	adtsMode       bool
 	fragments      [][]byte
@@ -38,7 +38,7 @@ type Decoder struct {
 
 // Init initializes the decoder.
 func (d *Decoder) Init() {
-	d.timeDecoder = rtptimedec.New(d.SampleRate)
+	d.timeDecoder = rtptime.NewDecoder(d.SampleRate)
 }
 
 // Decode decodes AUs from a RTP/MPEG4-audio packet.

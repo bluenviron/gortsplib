@@ -5,19 +5,19 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 // Decoder is a RTP/simple audio decoder.
 type Decoder struct {
 	SampleRate int
 
-	timeDecoder *rtptimedec.Decoder
+	timeDecoder *rtptime.Decoder
 }
 
 // Init initializes the decoder.
 func (d *Decoder) Init() {
-	d.timeDecoder = rtptimedec.New(d.SampleRate)
+	d.timeDecoder = rtptime.NewDecoder(d.SampleRate)
 }
 
 // Decode decodes an audio frame from a RTP packet.

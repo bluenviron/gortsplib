@@ -8,7 +8,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/aler9/gortsplib/v2/pkg/codecs/h265"
-	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -26,7 +26,7 @@ type Decoder struct {
 	// indicates that NALUs have an additional field that specifies the decoding order.
 	MaxDONDiff int
 
-	timeDecoder         *rtptimedec.Decoder
+	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
 	fragmentedSize      int
 	fragments           [][]byte
@@ -37,7 +37,7 @@ type Decoder struct {
 
 // Init initializes the decoder.
 func (d *Decoder) Init() {
-	d.timeDecoder = rtptimedec.New(rtpClockRate)
+	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
 }
 
 // Decode decodes NALUs from a RTP/H265 packet.

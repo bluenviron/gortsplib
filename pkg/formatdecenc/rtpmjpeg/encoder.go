@@ -10,6 +10,7 @@ import (
 
 	"github.com/aler9/gortsplib/v2/pkg/codecs/jpeg"
 	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtpmjpeg/headers"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 const (
@@ -41,6 +42,7 @@ type Encoder struct {
 	PayloadMaxSize int
 
 	sequenceNumber uint16
+	timeEncoder    *rtptime.Encoder
 }
 
 // Init initializes the encoder.
@@ -62,10 +64,7 @@ func (e *Encoder) Init() {
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-}
-
-func (e *Encoder) encodeTimestamp(ts time.Duration) uint32 {
-	return *e.InitialTimestamp + uint32(ts.Seconds()*rtpClockRate)
+	e.timeEncoder = rtptime.NewEncoder(rtpClockRate, *e.InitialTimestamp)
 }
 
 // Encode encodes an image into RTP/M-JPEG packets.
@@ -260,7 +259,7 @@ outer:
 				Version:        rtpVersion,
 				PayloadType:    26,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      e.encodeTimestamp(pts),
+				Timestamp:      e.timeEncoder.Encode(pts),
 				SSRC:           *e.SSRC,
 				Marker:         len(data) == 0,
 			},

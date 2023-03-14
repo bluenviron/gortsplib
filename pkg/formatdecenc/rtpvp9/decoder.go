@@ -8,7 +8,7 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
 
-	"github.com/aler9/gortsplib/v2/pkg/rtptimedec"
+	"github.com/aler9/gortsplib/v2/pkg/rtptime"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -23,14 +23,14 @@ var ErrNonStartingPacketAndNoPrevious = errors.New(
 
 // Decoder is a RTP/VP9 decoder.
 type Decoder struct {
-	timeDecoder         *rtptimedec.Decoder
+	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
 	fragments           [][]byte
 }
 
 // Init initializes the decoder.
 func (d *Decoder) Init() {
-	d.timeDecoder = rtptimedec.New(rtpClockRate)
+	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
 }
 
 // Decode decodes a VP9 frame from a RTP/VP9 packet.
