@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -1049,8 +1050,8 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			OnWarning: func(err error) {
-				require.EqualError(t, err, "switching to TCP because server requested it")
+			Log: func(level LogLevel, format string, args ...interface{}) {
+				require.Equal(t, format, "switching to TCP because server requested it")
 			},
 		}
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -1225,8 +1226,8 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			OnWarning: func(err error) {
-				require.EqualError(t, err, "switching to TCP because server requested it")
+			Log: func(level LogLevel, format string, args ...interface{}) {
+				require.Equal(t, format, "switching to TCP because server requested it")
 			},
 		}
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -1459,8 +1460,8 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			OnWarning: func(err error) {
-				require.EqualError(t, err, "no UDP packets received, switching to TCP")
+			Log: func(level LogLevel, format string, args ...interface{}) {
+				require.Equal(t, format, "no UDP packets received, switching to TCP")
 			},
 			ReadTimeout: 1 * time.Second,
 		}
@@ -3072,7 +3073,8 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnWarning: func(err error) {
+				Log: func(level LogLevel, format string, args ...interface{}) {
+					err := fmt.Errorf(format, args...)
 					switch {
 					case ca.proto == "udp" && ca.name == "rtp invalid":
 						require.EqualError(t, err, "RTP header size insufficient: 2 < 4")

@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -140,6 +141,24 @@ type clientRes struct {
 	err     error
 }
 
+// LogLevel is a log level.
+type LogLevel int
+
+// Log levels.
+const (
+	LogLevelDebug LogLevel = iota + 1
+	LogLevelInfo
+	LogLevelWarn
+	LogLevelError
+)
+
+// LogFunc is the prototype of the log function.
+type LogFunc func(level LogLevel, format string, args ...interface{})
+
+func defaultLog(level LogLevel, format string, args ...interface{}) {
+	log.Printf(format, args...)
+}
+
 // Client is a RTSP client.
 type Client struct {
 	//
@@ -206,10 +225,17 @@ type Client struct {
 	OnRequest func(*base.Request)
 	// called after every response.
 	OnResponse func(*base.Response)
-	// called when there's a non-fatal warning.
+	// Deprecated. replaced by Log.
 	OnWarning func(error)
-	// Deprecated: replaced by OnWarning.
+	// Deprecated. replaced by Log.
 	OnDecodeError func(error)
+
+	//
+	// logging (all optional)
+	//
+	// function that receives log messages.
+	// It defaults to log.Printf.
+	Log LogFunc
 
 	//
 	// private
@@ -313,12 +339,19 @@ func (c *Client) Start(scheme string, host string) error {
 		c.OnResponse = func(*base.Response) {
 		}
 	}
-	if c.OnWarning == nil {
-		c.OnWarning = func(error) {
+	if c.OnDecodeError != nil {
+		c.Log = func(level LogLevel, format string, args ...interface{}) {
+			c.OnDecodeError(fmt.Errorf(format, args...))
 		}
 	}
-	if c.OnDecodeError != nil {
-		c.OnWarning = c.OnDecodeError
+	if c.OnWarning != nil {
+		c.Log = func(level LogLevel, format string, args ...interface{}) {
+			c.OnDecodeError(fmt.Errorf(format, args...))
+		}
+	}
+
+	if c.Log == nil {
+		c.Log = defaultLog
 	}
 
 	// private
@@ -591,7 +624,7 @@ func (c *Client) checkState(allowed map[clientState]struct{}) error {
 }
 
 func (c *Client) trySwitchingProtocol() error {
-	c.OnWarning(fmt.Errorf("no UDP packets received, switching to TCP"))
+	c.Log(LogLevelWarn, "no UDP packets received, switching to TCP")
 
 	prevScheme := c.scheme
 	prevHost := c.host
@@ -632,7 +665,7 @@ func (c *Client) trySwitchingProtocol() error {
 }
 
 func (c *Client) trySwitchingProtocol2(medi *media.Media, baseURL *url.URL) (*base.Response, error) {
-	c.OnWarning(fmt.Errorf("switching to TCP because server requested it"))
+	c.Log(LogLevelWarn, "switching to TCP because server requested it")
 
 	prevScheme := c.scheme
 	prevHost := c.host
@@ -1247,7 +1280,7 @@ func (c *Client) doSetup(
 		if res.StatusCode == base.StatusUnsupportedTransport &&
 			c.effectiveTransport == nil &&
 			c.Transport == nil {
-			c.OnWarning(fmt.Errorf("switching to TCP because server requested it"))
+			c.Log(LogLevelWarn, "switching to TCP because server requested it")
 			v := TransportTCP
 			c.effectiveTransport = &v
 			return c.doSetup(medi, baseURL, 0, 0)
