@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"strings"
 	"testing"
@@ -1021,7 +1022,8 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnWarning: func(err error) {
+				Log: func(level LogLevel, format string, args ...interface{}) {
+					err := fmt.Errorf(format, args...)
 					switch {
 					case ca.proto == "udp" && ca.name == "rtcp invalid":
 						require.EqualError(t, err, "rtcp: packet too short")
