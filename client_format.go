@@ -92,8 +92,11 @@ func (ct *clientFormat) writePacketRTPWithNTP(pkt *rtp.Packet, ntp time.Time) er
 }
 
 func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {
+	if ct.cm.c.DisableRTPReordering {
+		ct.onPacketRTP(pkt)
+	}
 	packets, missing := ct.udpReorderer.Process(pkt)
-	if missing != 0 {
+	if missing != 0 && !ct.cm.c.DisableRTPReordering {
 		ct.c.Log(LogLevelWarn, "%d RTP packet(s) lost", missing)
 		// do not return
 	}
@@ -102,7 +105,9 @@ func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {
 
 	for _, pkt := range packets {
 		ct.udpRTCPReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
-		ct.onPacketRTP(pkt)
+		if !ct.cm.c.DisableRTPReordering {
+			ct.onPacketRTP(pkt)
+		}
 	}
 }
 

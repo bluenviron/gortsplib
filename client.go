@@ -207,6 +207,8 @@ type Client struct {
 	BytesReceived *uint64
 	// pointer to a variable that stores sent bytes.
 	BytesSent *uint64
+	// disable RTP packets reordering
+	DisableRTPReordering bool
 
 	//
 	// system functions (all optional)
