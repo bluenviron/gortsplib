@@ -246,9 +246,7 @@ func TestServerRecordPath(t *testing.T) {
 				TimeDescriptions: []psdp.TimeDescription{
 					{Timing: psdp.Timing{0, 0}}, //nolint:govet
 				},
-				MediaDescriptions: []*psdp.MediaDescription{
-					media.Marshal(),
-				},
+				MediaDescriptions: []*psdp.MediaDescription{media.Marshal()},
 			}
 
 			byts, _ := sout.Marshal()
@@ -348,7 +346,7 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: mustMarshalSDP(medias.Marshal(false)),
+		Body: mustMarshalMedias(medias),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -468,7 +466,7 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: mustMarshalSDP(medias.Marshal(false)),
+		Body: mustMarshalMedias(medias),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -641,7 +639,7 @@ func TestServerRecord(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: mustMarshalSDP(medias.Marshal(false)),
+				Body: mustMarshalMedias(medias),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -845,7 +843,7 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: mustMarshalSDP(medias.Marshal(false)),
+		Body: mustMarshalMedias(medias),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -946,7 +944,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: mustMarshalSDP(medias.Marshal(false)),
+		Body: mustMarshalMedias(medias),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1121,7 +1119,7 @@ func TestServerRecordTimeout(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: mustMarshalSDP(medias.Marshal(false)),
+				Body: mustMarshalMedias(medias),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1244,7 +1242,7 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: mustMarshalSDP(medias.Marshal(false)),
+				Body: mustMarshalMedias(medias),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1357,7 +1355,7 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 				"CSeq":         base.HeaderValue{"1"},
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 		require.Equal(t, base.StatusOK, res.StatusCode)
@@ -1512,7 +1510,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 					"CSeq":         base.HeaderValue{"1"},
 					"Content-Type": base.HeaderValue{"application/sdp"},
 				},
-				Body: mustMarshalSDP(medias.Marshal(false)),
+				Body: mustMarshalMedias(medias),
 			})
 			require.NoError(t, err)
 			require.Equal(t, base.StatusOK, res.StatusCode)

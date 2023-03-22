@@ -170,7 +170,7 @@ func TestClientRecordSerial(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL(
-					scheme+"://localhost:8554/teststream/"+controlAttribute(desc.MediaDescriptions[0])), req.URL)
+					scheme+"://localhost:8554/teststream/"+relativeControlAttribute(desc.MediaDescriptions[0])), req.URL)
 
 				var inTH headers.Transport
 				err = inTH.Unmarshal(req.Header["Transport"])

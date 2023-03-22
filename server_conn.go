@@ -25,15 +25,27 @@ func getSessionID(header base.Header) string {
 	return ""
 }
 
-func filterMedias(medias media.Medias, streamMedias map[*media.Media]*serverStreamMedia) media.Medias {
+func mediasForSDP(
+	medias media.Medias,
+	streamMedias map[*media.Media]*serverStreamMedia,
+	contentBase *url.URL,
+) media.Medias {
 	copy := make(media.Medias, len(medias))
 	for i, medi := range medias {
-		copy[i] = &media.Media{
+		mc := &media.Media{
 			Type: medi.Type,
 			// Direction: skipped for the moment
 			Formats: medi.Formats,
 			Control: "mediaUUID=" + streamMedias[medi].uuid.String(),
 		}
+
+		// always use the absolute URL of the track as control attribute, in order
+		// to support GStreamer's rtspsrc. When a relative control is used, GStreamer
+		// puts it between path and query, instead of appending it to the URL.
+		u, _ := mc.URL(contentBase)
+		mc.Control = u.String()
+
+		copy[i] = mc
 	}
 	return copy
 }
@@ -392,7 +404,7 @@ func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
 				}
 
 				if stream != nil {
-					byts, _ := filterMedias(stream.medias, stream.streamMedias).Marshal(multicast).Marshal()
+					byts, _ := mediasForSDP(stream.medias, stream.streamMedias, req.URL).Marshal(multicast).Marshal()
 					res.Body = byts
 				}
 			}

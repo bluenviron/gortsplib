@@ -23,15 +23,15 @@ import (
 	"github.com/aler9/gortsplib/v2/pkg/format"
 	"github.com/aler9/gortsplib/v2/pkg/headers"
 	"github.com/aler9/gortsplib/v2/pkg/media"
-	"github.com/aler9/gortsplib/v2/pkg/sdp"
 	"github.com/aler9/gortsplib/v2/pkg/url"
 )
 
-func mustMarshalSDP(sdp *sdp.SessionDescription) []byte {
-	byts, err := sdp.Marshal()
+func mustMarshalMedias(medias media.Medias) []byte {
+	byts, err := medias.Marshal(false).Marshal()
 	if err != nil {
 		panic(err)
 	}
+
 	return byts
 }
 
@@ -148,7 +148,7 @@ func TestClientPlayFormats(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 
@@ -293,7 +293,7 @@ func TestClientPlay(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{scheme + "://" + listenIP + ":8554/test/stream?param=value/"},
 					},
-					Body: mustMarshalSDP(medias.Marshal(false)),
+					Body: mustMarshalMedias(medias),
 				})
 				require.NoError(t, err)
 
@@ -567,7 +567,7 @@ func TestClientPlayPartial(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://" + listenIP + ":8554/teststream/"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 
@@ -711,12 +711,12 @@ func TestClientPlayContentBase(t *testing.T) {
 						Header: base.Header{
 							"Content-Type": base.HeaderValue{"application/sdp"},
 						},
-						Body: mustMarshalSDP(medias.Marshal(false)),
+						Body: mustMarshalMedias(medias),
 					})
 					require.NoError(t, err)
 
 				case "inside control attribute":
-					body := string(mustMarshalSDP(medias.Marshal(false)))
+					body := string(mustMarshalMedias(medias))
 					body = strings.Replace(body, "t=0 0", "t=0 0\r\na=control:rtsp://localhost:8554/teststream", 1)
 
 					err = conn.WriteResponse(&base.Response{
@@ -840,7 +840,7 @@ func TestClientPlayAnyPort(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalSDP(medias.Marshal(false)),
+					Body: mustMarshalMedias(medias),
 				})
 				require.NoError(t, err)
 
@@ -994,7 +994,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					"Content-Type": base.HeaderValue{"application/sdp"},
 					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
-				Body: mustMarshalSDP(medias.Marshal(false)),
+				Body: mustMarshalMedias(medias),
 			})
 			require.NoError(t, err)
 
@@ -1109,7 +1109,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalSDP(medias.Marshal(false)),
+					Body: mustMarshalMedias(medias),
 				})
 				require.NoError(t, err)
 
@@ -1178,7 +1178,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalSDP(medias.Marshal(false)),
+					Body: mustMarshalMedias(medias),
 				})
 				require.NoError(t, err)
 
@@ -1302,7 +1302,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalSDP(medias.Marshal(false)),
+					Body: mustMarshalMedias(medias),
 				})
 				require.NoError(t, err)
 
@@ -1384,7 +1384,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalSDP(medias.Marshal(false)),
+					Body: mustMarshalMedias(medias),
 				})
 				require.NoError(t, err)
 
@@ -1522,7 +1522,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 
@@ -1717,7 +1717,7 @@ func TestClientPlayRedirect(t *testing.T) {
 							"Content-Type": base.HeaderValue{"application/sdp"},
 							"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 						},
-						Body: mustMarshalSDP(medias.Marshal(false)),
+						Body: mustMarshalMedias(medias),
 					})
 					require.NoError(t, err)
 
@@ -1878,7 +1878,7 @@ func TestClientPlayPause(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalSDP(medias.Marshal(false)),
+					Body: mustMarshalMedias(medias),
 				})
 				require.NoError(t, err)
 
@@ -2046,7 +2046,7 @@ func TestClientPlayRTCPReport(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 
@@ -2224,7 +2224,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalSDP(medias.Marshal(false)),
+					Body: mustMarshalMedias(medias),
 				})
 				require.NoError(t, err)
 
@@ -2370,7 +2370,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 
@@ -2493,7 +2493,7 @@ func TestClientPlaySeek(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 
@@ -2657,7 +2657,7 @@ func TestClientPlayKeepaliveFromSession(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 
@@ -2780,7 +2780,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/test/stream?param=value/"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 
@@ -2933,7 +2933,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/stream/"},
 					},
-					Body: mustMarshalSDP(medias.Marshal(false)),
+					Body: mustMarshalMedias(medias),
 				})
 				require.NoError(t, err)
 

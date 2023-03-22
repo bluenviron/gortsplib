@@ -359,7 +359,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+					URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"1"},
 						"Transport": headers.Transport{
@@ -391,7 +391,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.SetParameter,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 				Header: headers,
 			})
 			require.NoError(t, err)
@@ -459,7 +459,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err := writeReqReadRes(conn1, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc1.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc1.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -504,7 +504,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err = writeReqReadRes(conn2, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc2.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc2.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -570,7 +570,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -607,7 +607,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 			"Transport": headers.Transport{
@@ -689,7 +689,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"1"},
 			"Transport": inTHS.Marshal(),
@@ -776,7 +776,7 @@ func TestServerGetSetParameter(t *testing.T) {
 			if ca == "inside session" {
 				res, err := writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+					URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 					Header: base.Header{
 						"CSeq": base.HeaderValue{"2"},
 						"Transport": headers.Transport{
@@ -927,7 +927,7 @@ func TestServerSessionClose(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1008,7 +1008,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 
 			_, err = writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
 					"CSeq": base.HeaderValue{"1"},
 					"Transport": headers.Transport{
@@ -1068,7 +1068,7 @@ func TestServerSessionTeardown(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -1156,7 +1156,7 @@ func TestServerAuth(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: mustMarshalSDP(medias.Marshal(false)),
+		Body: mustMarshalMedias(medias),
 	}
 
 	res, err := writeReqReadRes(conn, req)

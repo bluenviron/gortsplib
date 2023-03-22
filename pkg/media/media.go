@@ -155,7 +155,7 @@ func (m Media) Marshal() *psdp.MediaDescription {
 	return md
 }
 
-// URL returns the media URL.
+// URL returns the absolute URL of the media.
 func (m Media) URL(contentBase *url.URL) (*url.URL, error) {
 	if contentBase == nil {
 		return nil, fmt.Errorf("Content-Base header not provided")
