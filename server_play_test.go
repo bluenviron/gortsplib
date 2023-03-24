@@ -52,7 +52,13 @@ func multicastCapableIP(t *testing.T) string {
 	return ""
 }
 
-func controlAttribute(md *psdp.MediaDescription) string {
+func relativeControlAttribute(md *psdp.MediaDescription) string {
+	v, _ := md.Attribute("control")
+	i := strings.Index(v, "mediaUUID=")
+	return v[i:]
+}
+
+func absoluteControlAttribute(md *psdp.MediaDescription) string {
 	v, _ := md.Attribute("control")
 	return v
 }
@@ -60,7 +66,7 @@ func controlAttribute(md *psdp.MediaDescription) string {
 func doDescribe(conn *conn.Conn) (*sdp.SessionDescription, error) {
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Describe,
-		URL:    mustParseURL("rtsp://localhost:8554/pa"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 		},
@@ -198,11 +204,10 @@ func TestServerPlayPath(t *testing.T) {
 				InterleavedIDs: &[2]int{0, 1},
 			}
 
-			v, _ := desc.MediaDescriptions[1].Attribute("control")
-
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL(strings.ReplaceAll(ca.setupURL, "[control]", "/"+v)),
+				URL: mustParseURL(strings.ReplaceAll(ca.setupURL, "[control]", "/"+
+					relativeControlAttribute(desc.MediaDescriptions[1]))),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": th.Marshal(),
@@ -301,7 +306,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": th.Marshal(),
@@ -320,7 +325,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/test12stream/" + controlAttribute(desc.MediaDescriptions[0])),
+					URL:    mustParseURL("rtsp://localhost:8554/test12stream/" + relativeControlAttribute(desc.MediaDescriptions[0])),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"3"},
 						"Transport": th.Marshal(),
@@ -341,7 +346,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+					URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"4"},
 						"Transport": th.Marshal(),
@@ -425,7 +430,7 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+			URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
@@ -592,7 +597,7 @@ func TestServerPlay(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://" + listenIP + ":8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
@@ -886,7 +891,7 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
@@ -1023,7 +1028,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
@@ -1226,7 +1231,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
@@ -1306,7 +1311,7 @@ func TestServerPlayPlayPlay(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
@@ -1424,7 +1429,7 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
@@ -1549,7 +1554,7 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"2"},
 			"Transport": headers.Transport{
@@ -1697,7 +1702,7 @@ func TestServerPlayTimeout(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
@@ -1805,7 +1810,7 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": inTH.Marshal(),
@@ -1899,7 +1904,7 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+			URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
@@ -2003,7 +2008,7 @@ func TestServerPlayPartialMedias(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[1])),
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[1])),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"2"},
 			"Transport": inTH.Marshal(),
@@ -2058,7 +2063,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[0])),
+			URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
@@ -2092,7 +2097,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 
 		res, err = writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL("rtsp://localhost:8554/teststream/" + controlAttribute(desc.MediaDescriptions[1])),
+			URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[1])),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"3"},
 				"Transport": inTH.Marshal(),

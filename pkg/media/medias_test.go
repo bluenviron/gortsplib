@@ -16,7 +16,7 @@ var casesMedias = []struct {
 	medias Medias
 }{
 	{
-		"one track for each media",
+		"one format for each media, absolute",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 10.0.0.131\r\n" +
 			"s=Media Presentation\r\n" +
@@ -84,7 +84,74 @@ var casesMedias = []struct {
 		},
 	},
 	{
-		"multiple tracks for each media",
+		"one format for each media, relative",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 10.0.0.131\r\n" +
+			"s=Media Presentation\r\n" +
+			"i=samsung\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:2632\r\n" +
+			"t=0 0\r\n" +
+			"a=range:npt=now-\r\n" +
+			"m=video 42504 RTP/AVP 97\r\n" +
+			"b=AS:2560\r\n" +
+			"a=rtpmap:97 H264/90000\r\n" +
+			"a=control:trackID=1\r\n" +
+			"a=cliprect:0,0,1080,1920\r\n" +
+			"a=framesize:97 1920-1080\r\n" +
+			"a=framerate:30.0\r\n" +
+			"a=fmtp:97 packetization-mode=1;profile-level-id=640028;sprop-parameter-sets=Z2QAKKy0A8ARPyo=,aO4Bniw=\r\n" +
+			"m=audio 42506 RTP/AVP 0\r\n" +
+			"b=AS:64\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=control:trackID=2\r\n" +
+			"a=recvonly\r\n" +
+			"m=application 42508 RTP/AVP 107\r\n" +
+			"b=AS:8\r\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=Stream\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 97\r\n" +
+			"a=control:trackID=1\r\n" +
+			"a=rtpmap:97 H264/90000\r\n" +
+			"a=fmtp:97 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKy0A8ARPyo=,aO4Bniw=\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:trackID=2\r\n" +
+			"a=recvonly\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"m=application 0 RTP/AVP 107\r\n" +
+			"a=control\r\n",
+		Medias{
+			{
+				Type:    "video",
+				Control: "trackID=1",
+				Formats: []format.Format{&format.H264{
+					PayloadTyp:        97,
+					PacketizationMode: 1,
+					SPS:               []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
+					PPS:               []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
+				}},
+			},
+			{
+				Type:      "audio",
+				Direction: DirectionRecvonly,
+				Control:   "trackID=2",
+				Formats: []format.Format{&format.G711{
+					MULaw: true,
+				}},
+			},
+			{
+				Type: "application",
+				Formats: []format.Format{&format.Generic{
+					PayloadTyp: 107,
+				}},
+			},
+		},
+	},
+	{
+		"multiple formats for each media",
 		"v=0\r\n" +
 			"o=- 4158123474391860926 2 IN IP4 127.0.0.1\r\n" +
 			"s=-\r\n" +
@@ -353,7 +420,7 @@ var casesMedias = []struct {
 		},
 	},
 	{
-		"multiple tracks for each media 2",
+		"multiple formats for each media 2",
 		"v=0\r\n" +
 			"o=- 4158123474391860926 2 IN IP4 127.0.0.1\r\n" +
 			"s=-\r\n" +
@@ -417,17 +484,14 @@ var casesMedias = []struct {
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 26\r\n" +
-
 			"a=control:rtsp://192.168.0.1/video\r\n" +
 			"a=recvonly\r\n" +
 			"a=rtpmap:26 JPEG/90000\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
-
 			"a=control:rtsp://192.168.0.1/audio\r\n" +
 			"a=recvonly\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
-
 			"a=control:rtsp://192.168.0.1/audioback\r\n" +
 			"a=sendonly\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n",
@@ -507,8 +571,7 @@ func TestMediasReadErrors(t *testing.T) {
 func TestMediasMarshal(t *testing.T) {
 	for _, ca := range casesMedias {
 		t.Run(ca.name, func(t *testing.T) {
-			sdp := ca.medias.Marshal(false)
-			byts, err := sdp.Marshal()
+			byts, err := ca.medias.Marshal(false).Marshal()
 			require.NoError(t, err)
 			require.Equal(t, ca.out, string(byts))
 		})

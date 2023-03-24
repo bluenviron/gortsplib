@@ -114,7 +114,7 @@ func TestClientSession(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Session":      base.HeaderValue{"123456"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 	}()
@@ -190,7 +190,7 @@ func TestClientAuth(t *testing.T) {
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 	}()
@@ -250,7 +250,7 @@ func TestClientDescribeCharset(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalSDP(medias.Marshal(false)),
+			Body: mustMarshalMedias(medias),
 		})
 		require.NoError(t, err)
 	}()
