@@ -167,7 +167,8 @@ func (m Media) URL(contentBase *url.URL) (*url.URL, error) {
 	}
 
 	// control attribute contains an absolute path
-	if strings.HasPrefix(m.Control, "rtsp://") {
+	if strings.HasPrefix(m.Control, "rtsp://") ||
+		strings.HasPrefix(m.Control, "rtsps://") {
 		ur, err := url.Parse(m.Control)
 		if err != nil {
 			return nil, err
