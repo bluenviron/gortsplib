@@ -10,4 +10,5 @@ const (
 	MarkerStartOfFrame1           = 0xC0
 	MarkerStartOfScan             = 0xDA
 	MarkerEndOfImage              = 0xD9
+	MarkerComment                 = 0xFE
 )
