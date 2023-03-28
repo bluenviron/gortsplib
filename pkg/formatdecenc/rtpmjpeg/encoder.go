@@ -95,7 +95,8 @@ outer:
 
 		switch h1 {
 		case 0xE0, 0xE1, 0xE2, // JFIF
-			jpeg.MarkerDefineHuffmanTable:
+			jpeg.MarkerDefineHuffmanTable,
+			jpeg.MarkerComment:
 			mlen := int(image[0])<<8 | int(image[1])
 			if len(image) < mlen {
 				return nil, fmt.Errorf("image is too short")
@@ -176,13 +177,6 @@ outer:
 
 			data = image
 			break outer
-
-		case jpeg.MarkerComment:
-			mlen := int(image[0])<<8 | int(image[1])
-			if len(image) < mlen {
-				return nil, fmt.Errorf("image is too short")
-			}
-			image = image[mlen:]
 
 		default:
 			return nil, fmt.Errorf("unknown marker: 0x%.2x", h1)
