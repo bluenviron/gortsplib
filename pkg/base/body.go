@@ -13,7 +13,7 @@ const (
 
 type body []byte
 
-func (b *body) read(header Header, rb *bufio.Reader) error {
+func (b *body) unmarshal(header Header, rb *bufio.Reader) error {
 	cls, ok := header["Content-Length"]
 	if !ok || len(cls) != 1 {
 		*b = nil

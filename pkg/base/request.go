@@ -48,9 +48,9 @@ type Request struct {
 	Body []byte
 }
 
-// Read reads a request.
-func (req *Request) Read(rb *bufio.Reader) error {
-	byts, err := readBytesLimited(rb, ' ', requestMaxMethodLength)
+// Unmarshal reads a request.
+func (req *Request) Unmarshal(br *bufio.Reader) error {
+	byts, err := readBytesLimited(br, ' ', requestMaxMethodLength)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (req *Request) Read(rb *bufio.Reader) error {
 		return fmt.Errorf("empty method")
 	}
 
-	byts, err = readBytesLimited(rb, ' ', requestMaxURLLength)
+	byts, err = readBytesLimited(br, ' ', requestMaxURLLength)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (req *Request) Read(rb *bufio.Reader) error {
 	}
 	req.URL = ur
 
-	byts, err = readBytesLimited(rb, '\r', requestMaxProtocolLength)
+	byts, err = readBytesLimited(br, '\r', requestMaxProtocolLength)
 	if err != nil {
 		return err
 	}
@@ -82,17 +82,17 @@ func (req *Request) Read(rb *bufio.Reader) error {
 		return fmt.Errorf("expected '%s', got %v", rtspProtocol10, proto)
 	}
 
-	err = readByteEqual(rb, '\n')
+	err = readByteEqual(br, '\n')
 	if err != nil {
 		return err
 	}
 
-	err = req.Header.read(rb)
+	err = req.Header.unmarshal(br)
 	if err != nil {
 		return err
 	}
 
-	err = (*body)(&req.Body).read(req.Header, rb)
+	err = (*body)(&req.Body).unmarshal(req.Header, br)
 	if err != nil {
 		return err
 	}

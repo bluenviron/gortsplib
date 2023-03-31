@@ -22,18 +22,18 @@ var casesBody = []struct {
 	},
 }
 
-func TestBodyRead(t *testing.T) {
+func TestBodyUnmarshal(t *testing.T) {
 	for _, ca := range casesBody {
 		t.Run(ca.name, func(t *testing.T) {
 			var p body
-			err := p.read(ca.h, bufio.NewReader(bytes.NewReader(ca.byts)))
+			err := p.unmarshal(ca.h, bufio.NewReader(bytes.NewReader(ca.byts)))
 			require.NoError(t, err)
 			require.Equal(t, ca.byts, []byte(p))
 		})
 	}
 }
 
-func TestBodyReadErrors(t *testing.T) {
+func TestBodyUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		h    Header
@@ -67,7 +67,7 @@ func TestBodyReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var p body
-			err := p.read(ca.h, bufio.NewReader(bytes.NewReader(ca.byts)))
+			err := p.unmarshal(ca.h, bufio.NewReader(bytes.NewReader(ca.byts)))
 			require.EqualError(t, err, ca.err)
 		})
 	}

@@ -533,7 +533,7 @@ func TestMediasUnmarshal(t *testing.T) {
 	}
 }
 
-func TestMediasReadErrors(t *testing.T) {
+func TestMediasUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		sdp  string

@@ -31,19 +31,19 @@ func NewConn(rw io.ReadWriter) *Conn {
 
 // ReadRequest reads a Request.
 func (c *Conn) ReadRequest() (*base.Request, error) {
-	err := c.req.Read(c.br)
+	err := c.req.Unmarshal(c.br)
 	return &c.req, err
 }
 
 // ReadResponse reads a Response.
 func (c *Conn) ReadResponse() (*base.Response, error) {
-	err := c.res.Read(c.br)
+	err := c.res.Unmarshal(c.br)
 	return &c.res, err
 }
 
 // ReadInterleavedFrame reads a InterleavedFrame.
 func (c *Conn) ReadInterleavedFrame() (*base.InterleavedFrame, error) {
-	err := c.fr.Read(c.br)
+	err := c.fr.Unmarshal(c.br)
 	return &c.fr, err
 }
 
