@@ -205,19 +205,3 @@ type ServerHandlerOnWarning interface {
 	// called when there's a non-fatal decoding error of RTP or RTCP packets.
 	OnWarning(*ServerHandlerOnWarningCtx)
 }
-
-// ServerHandlerOnDecodeErrorCtx is the context of OnDecodeError.
-//
-// Deprecated. Replaced by ServerHandlerOnWarningCtx.
-type ServerHandlerOnDecodeErrorCtx struct {
-	Session *ServerSession
-	Error   error
-}
-
-// ServerHandlerOnDecodeError can be implemented by a ServerHandler.
-//
-// Deprecated. Replaced by ServerHandlerOnWarning.
-type ServerHandlerOnDecodeError interface {
-	// called when there's a non-fatal decoding error of RTP or RTCP packets.
-	OnDecodeError(*ServerHandlerOnDecodeErrorCtx)
-}
