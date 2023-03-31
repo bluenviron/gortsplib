@@ -44,11 +44,6 @@ func onWarning(ss *ServerSession, err error) {
 			Session: ss,
 			Error:   err,
 		})
-	} else if h, ok := ss.s.Handler.(ServerHandlerOnDecodeError); ok {
-		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-			Session: ss,
-			Error:   err,
-		})
 	}
 }
 

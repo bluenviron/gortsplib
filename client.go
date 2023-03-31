@@ -225,10 +225,6 @@ type Client struct {
 	OnRequest func(*base.Request)
 	// called after every response.
 	OnResponse func(*base.Response)
-	// Deprecated. replaced by Log.
-	OnWarning func(error)
-	// Deprecated. replaced by Log.
-	OnDecodeError func(error)
 
 	//
 	// logging (all optional)
@@ -337,16 +333,6 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.OnResponse == nil {
 		c.OnResponse = func(*base.Response) {
-		}
-	}
-	if c.OnDecodeError != nil {
-		c.Log = func(level LogLevel, format string, args ...interface{}) {
-			c.OnDecodeError(fmt.Errorf(format, args...))
-		}
-	}
-	if c.OnWarning != nil {
-		c.Log = func(level LogLevel, format string, args ...interface{}) {
-			c.OnDecodeError(fmt.Errorf(format, args...))
 		}
 	}
 
