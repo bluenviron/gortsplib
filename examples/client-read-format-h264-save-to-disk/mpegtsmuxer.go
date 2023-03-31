@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/aler9/gortsplib/v2/pkg/codecs/h264"
 	"github.com/asticode/go-astits"
+	"github.com/bluenviron/gortsplib/v3/pkg/codecs/h264"
 )
 
 // mpegtsMuxer allows to save a H264 stream into a MPEG-TS file.

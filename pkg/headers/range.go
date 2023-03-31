@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aler9/gortsplib/v2/pkg/base"
+	"github.com/bluenviron/gortsplib/v3/pkg/base"
 )
 
 func leadingZero(v uint) string {

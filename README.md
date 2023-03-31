@@ -4,7 +4,7 @@
 [![Lint](https://github.com/bluenviron/gortsplib/workflows/lint/badge.svg)](https://github.com/bluenviron/gortsplib/actions?query=workflow:lint)
 [![Go Report Card](https://goreportcard.com/badge/github.com/bluenviron/gortsplib)](https://goreportcard.com/report/github.com/bluenviron/gortsplib)
 [![CodeCov](https://codecov.io/gh/bluenviron/gortsplib/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bluenviron/gortsplib/branch/main)
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/aler9/gortsplib/v2)](https://pkg.go.dev/github.com/aler9/gortsplib/v2#pkg-index)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/bluenviron/gortsplib/v3)](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index)
 
 RTSP 1.0 client and server library for the Go programming language, written for [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
@@ -49,12 +49,6 @@ Features:
   * Parse codec-specific elements. The following codecs are supported:
     * Video: H264, H265, M-JPEG
     * Audio: MPEG4 Audio (AAC)
-
-## Important announcement
-
-my main open source projects are being transferred to the [bluenviron organization](https://github.com/bluenviron), in order to allow the community to maintain and evolve the code regardless of my personal availability.
-
-In the next months, the repository name will be changed accordingly.
 
 ## Table of contents
 
@@ -101,7 +95,7 @@ In the next months, the repository name will be changed accordingly.
 
 ## API Documentation
 
-https://pkg.go.dev/github.com/aler9/gortsplib/v2#pkg-index
+https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 
 ## Standards
 

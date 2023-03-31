@@ -8,7 +8,7 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
 
-	"github.com/aler9/gortsplib/v2/pkg/rtptime"
+	"github.com/bluenviron/gortsplib/v3/pkg/rtptime"
 )
 
 const (

@@ -8,7 +8,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/aler9/gortsplib/v2/pkg/formatdecenc/rtph265"
+	"github.com/bluenviron/gortsplib/v3/pkg/formatdecenc/rtph265"
 )
 
 // H265 is a format that uses the H265 codec.

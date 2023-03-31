@@ -3,7 +3,7 @@ package h264
 import (
 	"fmt"
 
-	"github.com/aler9/gortsplib/v2/pkg/bits"
+	"github.com/bluenviron/gortsplib/v3/pkg/bits"
 )
 
 const (

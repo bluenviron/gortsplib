@@ -1,4 +1,4 @@
-module github.com/aler9/gortsplib/v2
+module github.com/bluenviron/gortsplib/v3
 
 go 1.18
 
