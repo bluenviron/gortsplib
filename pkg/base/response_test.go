@@ -92,20 +92,20 @@ var casesResponse = []struct {
 	},
 }
 
-func TestResponseRead(t *testing.T) {
+func TestResponseUnmarshal(t *testing.T) {
 	// keep res global to make sure that all its fields are overridden.
 	var res Response
 
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
-			err := res.Read(bufio.NewReader(bytes.NewBuffer(c.byts)))
+			err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(c.byts)))
 			require.NoError(t, err)
 			require.Equal(t, c.res, res)
 		})
 	}
 }
 
-func TestResponseReadErrors(t *testing.T) {
+func TestResponseUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte
@@ -169,7 +169,7 @@ func TestResponseReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var res Response
-			err := res.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
+			err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(ca.byts)))
 			require.EqualError(t, err, ca.err)
 		})
 	}
@@ -220,7 +220,7 @@ func TestResponseString(t *testing.T) {
 		"testing")
 
 	var res Response
-	err := res.Read(bufio.NewReader(bytes.NewBuffer(byts)))
+	err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(byts)))
 	require.NoError(t, err)
 	require.Equal(t, string(byts), res.String())
 }

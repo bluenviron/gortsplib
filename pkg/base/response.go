@@ -132,9 +132,9 @@ type Response struct {
 	Body []byte
 }
 
-// Read reads a response.
-func (res *Response) Read(rb *bufio.Reader) error {
-	byts, err := readBytesLimited(rb, ' ', 255)
+// Unmarshal reads a response.
+func (res *Response) Unmarshal(br *bufio.Reader) error {
+	byts, err := readBytesLimited(br, ' ', 255)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (res *Response) Read(rb *bufio.Reader) error {
 		return fmt.Errorf("expected '%s', got %v", rtspProtocol10, proto)
 	}
 
-	byts, err = readBytesLimited(rb, ' ', 4)
+	byts, err = readBytesLimited(br, ' ', 4)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (res *Response) Read(rb *bufio.Reader) error {
 	}
 	res.StatusCode = StatusCode(statusCode64)
 
-	byts, err = readBytesLimited(rb, '\r', 255)
+	byts, err = readBytesLimited(br, '\r', 255)
 	if err != nil {
 		return err
 	}
@@ -166,17 +166,17 @@ func (res *Response) Read(rb *bufio.Reader) error {
 		return fmt.Errorf("empty status message")
 	}
 
-	err = readByteEqual(rb, '\n')
+	err = readByteEqual(br, '\n')
 	if err != nil {
 		return err
 	}
 
-	err = res.Header.read(rb)
+	err = res.Header.unmarshal(br)
 	if err != nil {
 		return err
 	}
 
-	err = (*body)(&res.Body).read(res.Header, rb)
+	err = (*body)(&res.Body).unmarshal(res.Header, br)
 	if err != nil {
 		return err
 	}

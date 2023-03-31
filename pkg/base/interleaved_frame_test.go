@@ -31,20 +31,20 @@ var casesInterleavedFrame = []struct {
 	},
 }
 
-func TestInterleavedFrameRead(t *testing.T) {
+func TestInterleavedFrameUnmarshal(t *testing.T) {
 	// keep f global to make sure that all its fields are overridden.
 	var f InterleavedFrame
 
 	for _, ca := range casesInterleavedFrame {
 		t.Run(ca.name, func(t *testing.T) {
-			err := f.Read(bufio.NewReader(bytes.NewBuffer(ca.enc)))
+			err := f.Unmarshal(bufio.NewReader(bytes.NewBuffer(ca.enc)))
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, f)
 		})
 	}
 }
 
-func TestInterleavedFrameReadErrors(t *testing.T) {
+func TestInterleavedFrameUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte
@@ -68,7 +68,7 @@ func TestInterleavedFrameReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var f InterleavedFrame
-			err := f.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
+			err := f.Unmarshal(bufio.NewReader(bytes.NewBuffer(ca.byts)))
 			require.EqualError(t, err, ca.err)
 		})
 	}

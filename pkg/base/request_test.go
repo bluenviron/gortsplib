@@ -140,20 +140,20 @@ var casesRequest = []struct {
 	},
 }
 
-func TestRequestRead(t *testing.T) {
+func TestRequestUnmarshal(t *testing.T) {
 	// keep req global to make sure that all its fields are overridden.
 	var req Request
 
 	for _, ca := range casesRequest {
 		t.Run(ca.name, func(t *testing.T) {
-			err := req.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
+			err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(ca.byts)))
 			require.NoError(t, err)
 			require.Equal(t, ca.req, req)
 		})
 	}
 }
 
-func TestRequestReadErrors(t *testing.T) {
+func TestRequestUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		byts []byte
@@ -222,7 +222,7 @@ func TestRequestReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			var req Request
-			err := req.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
+			err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(ca.byts)))
 			require.EqualError(t, err, ca.err)
 		})
 	}
@@ -246,7 +246,7 @@ func TestRequestString(t *testing.T) {
 		"testing")
 
 	var req Request
-	err := req.Read(bufio.NewReader(bytes.NewBuffer(byts)))
+	err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(byts)))
 	require.NoError(t, err)
 	require.Equal(t, string(byts), req.String())
 }

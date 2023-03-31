@@ -21,8 +21,8 @@ type InterleavedFrame struct {
 	Payload []byte
 }
 
-// Read decodes an interleaved frame.
-func (f *InterleavedFrame) Read(br *bufio.Reader) error {
+// Unmarshal decodes an interleaved frame.
+func (f *InterleavedFrame) Unmarshal(br *bufio.Reader) error {
 	var header [4]byte
 	_, err := io.ReadFull(br, header[:])
 	if err != nil {

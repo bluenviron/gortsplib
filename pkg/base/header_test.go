@@ -105,18 +105,18 @@ var cases = []struct {
 	},
 }
 
-func TestHeaderRead(t *testing.T) {
+func TestHeaderUnmarshal(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			h := make(Header)
-			err := h.read(bufio.NewReader(bytes.NewBuffer(ca.dec)))
+			err := h.unmarshal(bufio.NewReader(bytes.NewBuffer(ca.dec)))
 			require.NoError(t, err)
 			require.Equal(t, ca.header, h)
 		})
 	}
 }
 
-func TestHeaderReadErrors(t *testing.T) {
+func TestHeaderUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		dec  []byte
@@ -167,7 +167,7 @@ func TestHeaderReadErrors(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			h := make(Header)
-			err := h.read(bufio.NewReader(bytes.NewBuffer(ca.dec)))
+			err := h.unmarshal(bufio.NewReader(bytes.NewBuffer(ca.dec)))
 			require.EqualError(t, err, ca.err)
 		})
 	}
