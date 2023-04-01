@@ -24,7 +24,7 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
 	"github.com/bluenviron/gortsplib/v3/pkg/bytecounter"
 	"github.com/bluenviron/gortsplib/v3/pkg/conn"
-	"github.com/bluenviron/gortsplib/v3/pkg/format"
+	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/headers"
 	"github.com/bluenviron/gortsplib/v3/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v3/pkg/media"
@@ -1642,7 +1642,7 @@ func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
 }
 
 // OnPacketRTPAny sets the callback that is called when a RTP packet is read from any setupped media.
-func (c *Client) OnPacketRTPAny(cb func(*media.Media, format.Format, *rtp.Packet)) {
+func (c *Client) OnPacketRTPAny(cb func(*media.Media, formats.Format, *rtp.Packet)) {
 	for _, cm := range c.medias {
 		cmedia := cm.media
 		for _, forma := range cm.media.Formats {
@@ -1664,7 +1664,7 @@ func (c *Client) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (c *Client) OnPacketRTP(medi *media.Media, forma format.Format, cb func(*rtp.Packet)) {
+func (c *Client) OnPacketRTP(medi *media.Media, forma formats.Format, cb func(*rtp.Packet)) {
 	cm := c.medias[medi]
 	ct := cm.formats[forma.PayloadType()]
 	ct.onPacketRTP = cb

@@ -12,7 +12,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
-	"github.com/bluenviron/gortsplib/v3/pkg/format"
+	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/headers"
 	"github.com/bluenviron/gortsplib/v3/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v3/pkg/media"
@@ -1092,7 +1092,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 }
 
 // OnPacketRTPAny sets the callback that is called when a RTP packet is read from any setupped media.
-func (ss *ServerSession) OnPacketRTPAny(cb func(*media.Media, format.Format, *rtp.Packet)) {
+func (ss *ServerSession) OnPacketRTPAny(cb func(*media.Media, formats.Format, *rtp.Packet)) {
 	for _, sm := range ss.setuppedMedias {
 		cmedia := sm.media
 		for _, forma := range sm.media.Formats {
@@ -1114,7 +1114,7 @@ func (ss *ServerSession) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (ss *ServerSession) OnPacketRTP(medi *media.Media, forma format.Format, cb func(*rtp.Packet)) {
+func (ss *ServerSession) OnPacketRTP(medi *media.Media, forma formats.Format, cb func(*rtp.Packet)) {
 	sm := ss.setuppedMedias[medi]
 	st := sm.formats[forma.PayloadType()]
 	st.onPacketRTP = cb

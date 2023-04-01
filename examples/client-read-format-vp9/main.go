@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"github.com/bluenviron/gortsplib/v3"
-	"github.com/bluenviron/gortsplib/v3/pkg/format"
-	"github.com/bluenviron/gortsplib/v3/pkg/formatdecenc/rtpvp9"
+	"github.com/bluenviron/gortsplib/v3/pkg/formats"
+	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpvp9"
 	"github.com/bluenviron/gortsplib/v3/pkg/url"
 	"github.com/pion/rtp"
 )
@@ -38,7 +38,7 @@ func main() {
 	}
 
 	// find the VP9 media and format
-	var forma *format.VP9
+	var forma *formats.VP9
 	medi := medias.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")

@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/bluenviron/gortsplib/v3"
-	"github.com/bluenviron/gortsplib/v3/pkg/format"
+	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/media"
 	"github.com/pion/rtp"
 )
@@ -39,7 +39,7 @@ func main() {
 	// create a media that contains a H265 format
 	medi := &media.Media{
 		Type: media.TypeVideo,
-		Formats: []format.Format{&format.H265{
+		Formats: []formats.Format{&formats.H265{
 			PayloadTyp: 96,
 		}},
 	}

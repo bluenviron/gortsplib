@@ -1,11 +1,11 @@
 package gortsplib
 
 import (
-	"github.com/bluenviron/gortsplib/v3/pkg/format"
+	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/rtcpsender"
 )
 
 type serverStreamFormat struct {
-	format     format.Format
+	format     formats.Format
 	rtcpSender *rtcpsender.RTCPSender
 }
