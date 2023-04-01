@@ -18,32 +18,32 @@ type LPCM struct {
 }
 
 // String implements Format.
-func (t *LPCM) String() string {
+func (f *LPCM) String() string {
 	return "LPCM"
 }
 
 // ClockRate implements Format.
-func (t *LPCM) ClockRate() int {
-	return t.SampleRate
+func (f *LPCM) ClockRate() int {
+	return f.SampleRate
 }
 
 // PayloadType implements Format.
-func (t *LPCM) PayloadType() uint8 {
-	return t.PayloadTyp
+func (f *LPCM) PayloadType() uint8 {
+	return f.PayloadTyp
 }
 
-func (t *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	t.PayloadTyp = payloadType
+func (f *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	f.PayloadTyp = payloadType
 
 	switch codec {
 	case "l8":
-		t.BitDepth = 8
+		f.BitDepth = 8
 
 	case "l16":
-		t.BitDepth = 16
+		f.BitDepth = 16
 
 	case "l24":
-		t.BitDepth = 24
+		f.BitDepth = 24
 	}
 
 	tmp := strings.SplitN(clock, "/", 2)
@@ -52,25 +52,25 @@ func (t *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 	if err != nil {
 		return err
 	}
-	t.SampleRate = int(tmp1)
+	f.SampleRate = int(tmp1)
 
 	if len(tmp) >= 2 {
 		tmp1, err := strconv.ParseInt(tmp[1], 10, 64)
 		if err != nil {
 			return err
 		}
-		t.ChannelCount = int(tmp1)
+		f.ChannelCount = int(tmp1)
 	} else {
-		t.ChannelCount = 1
+		f.ChannelCount = 1
 	}
 
 	return nil
 }
 
 // Marshal implements Format.
-func (t *LPCM) Marshal() (string, map[string]string) {
+func (f *LPCM) Marshal() (string, map[string]string) {
 	var codec string
-	switch t.BitDepth {
+	switch f.BitDepth {
 	case 8:
 		codec = "L8"
 
@@ -81,33 +81,33 @@ func (t *LPCM) Marshal() (string, map[string]string) {
 		codec = "L24"
 	}
 
-	return codec + "/" + strconv.FormatInt(int64(t.SampleRate), 10) +
-		"/" + strconv.FormatInt(int64(t.ChannelCount), 10), nil
+	return codec + "/" + strconv.FormatInt(int64(f.SampleRate), 10) +
+		"/" + strconv.FormatInt(int64(f.ChannelCount), 10), nil
 }
 
 // PTSEqualsDTS implements Format.
-func (t *LPCM) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *LPCM) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
-func (t *LPCM) CreateDecoder() *rtplpcm.Decoder {
+func (f *LPCM) CreateDecoder() *rtplpcm.Decoder {
 	d := &rtplpcm.Decoder{
-		BitDepth:     t.BitDepth,
-		SampleRate:   t.SampleRate,
-		ChannelCount: t.ChannelCount,
+		BitDepth:     f.BitDepth,
+		SampleRate:   f.SampleRate,
+		ChannelCount: f.ChannelCount,
 	}
 	d.Init()
 	return d
 }
 
 // CreateEncoder creates an encoder able to encode the content of the format.
-func (t *LPCM) CreateEncoder() *rtplpcm.Encoder {
+func (f *LPCM) CreateEncoder() *rtplpcm.Encoder {
 	e := &rtplpcm.Encoder{
-		PayloadType:  t.PayloadTyp,
-		BitDepth:     t.BitDepth,
-		SampleRate:   t.SampleRate,
-		ChannelCount: t.ChannelCount,
+		PayloadType:  f.PayloadTyp,
+		BitDepth:     f.BitDepth,
+		SampleRate:   f.SampleRate,
+		ChannelCount: f.ChannelCount,
 	}
 	e.Init()
 	return e

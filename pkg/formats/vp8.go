@@ -17,22 +17,22 @@ type VP8 struct {
 }
 
 // String implements Format.
-func (t *VP8) String() string {
+func (f *VP8) String() string {
 	return "VP8"
 }
 
 // ClockRate implements Format.
-func (t *VP8) ClockRate() int {
+func (f *VP8) ClockRate() int {
 	return 90000
 }
 
 // PayloadType implements Format.
-func (t *VP8) PayloadType() uint8 {
-	return t.PayloadTyp
+func (f *VP8) PayloadType() uint8 {
+	return f.PayloadTyp
 }
 
-func (t *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	t.PayloadTyp = payloadType
+func (f *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	f.PayloadTyp = payloadType
 
 	for key, val := range fmtp {
 		switch key {
@@ -42,7 +42,7 @@ func (t *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 				return fmt.Errorf("invalid max-fr (%v)", val)
 			}
 			v2 := int(n)
-			t.MaxFR = &v2
+			f.MaxFR = &v2
 
 		case "max-fs":
 			n, err := strconv.ParseUint(val, 10, 64)
@@ -50,7 +50,7 @@ func (t *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 				return fmt.Errorf("invalid max-fs (%v)", val)
 			}
 			v2 := int(n)
-			t.MaxFS = &v2
+			f.MaxFS = &v2
 		}
 	}
 
@@ -58,34 +58,34 @@ func (t *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 }
 
 // Marshal implements Format.
-func (t *VP8) Marshal() (string, map[string]string) {
+func (f *VP8) Marshal() (string, map[string]string) {
 	fmtp := make(map[string]string)
-	if t.MaxFR != nil {
-		fmtp["max-fr"] = strconv.FormatInt(int64(*t.MaxFR), 10)
+	if f.MaxFR != nil {
+		fmtp["max-fr"] = strconv.FormatInt(int64(*f.MaxFR), 10)
 	}
-	if t.MaxFS != nil {
-		fmtp["max-fs"] = strconv.FormatInt(int64(*t.MaxFS), 10)
+	if f.MaxFS != nil {
+		fmtp["max-fs"] = strconv.FormatInt(int64(*f.MaxFS), 10)
 	}
 
 	return "VP8/90000", fmtp
 }
 
 // PTSEqualsDTS implements Format.
-func (t *VP8) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *VP8) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
-func (t *VP8) CreateDecoder() *rtpvp8.Decoder {
+func (f *VP8) CreateDecoder() *rtpvp8.Decoder {
 	d := &rtpvp8.Decoder{}
 	d.Init()
 	return d
 }
 
 // CreateEncoder creates an encoder able to encode the content of the format.
-func (t *VP8) CreateEncoder() *rtpvp8.Encoder {
+func (f *VP8) CreateEncoder() *rtpvp8.Encoder {
 	e := &rtpvp8.Encoder{
-		PayloadType: t.PayloadTyp,
+		PayloadType: f.PayloadTyp,
 	}
 	e.Init()
 	return e

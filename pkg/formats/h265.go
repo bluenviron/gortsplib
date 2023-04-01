@@ -11,7 +11,7 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtph265"
 )
 
-// H265 is a format that uses the H265 codec.
+// H265 is a format that uses the H265 codef.
 type H265 struct {
 	PayloadTyp uint8
 	VPS        []byte
@@ -22,43 +22,43 @@ type H265 struct {
 	mutex sync.RWMutex
 }
 
-// String implements Format.
-func (t *H265) String() string {
+// String implements Formaf.
+func (f *H265) String() string {
 	return "H265"
 }
 
-// ClockRate implements Format.
-func (t *H265) ClockRate() int {
+// ClockRate implements Formaf.
+func (f *H265) ClockRate() int {
 	return 90000
 }
 
-// PayloadType implements Format.
-func (t *H265) PayloadType() uint8 {
-	return t.PayloadTyp
+// PayloadType implements Formaf.
+func (f *H265) PayloadType() uint8 {
+	return f.PayloadTyp
 }
 
-func (t *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	t.PayloadTyp = payloadType
+func (f *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	f.PayloadTyp = payloadType
 
 	for key, val := range fmtp {
 		switch key {
 		case "sprop-vps":
 			var err error
-			t.VPS, err = base64.StdEncoding.DecodeString(val)
+			f.VPS, err = base64.StdEncoding.DecodeString(val)
 			if err != nil {
 				return fmt.Errorf("invalid sprop-vps (%v)", fmtp)
 			}
 
 		case "sprop-sps":
 			var err error
-			t.SPS, err = base64.StdEncoding.DecodeString(val)
+			f.SPS, err = base64.StdEncoding.DecodeString(val)
 			if err != nil {
 				return fmt.Errorf("invalid sprop-sps (%v)", fmtp)
 			}
 
 		case "sprop-pps":
 			var err error
-			t.PPS, err = base64.StdEncoding.DecodeString(val)
+			f.PPS, err = base64.StdEncoding.DecodeString(val)
 			if err != nil {
 				return fmt.Errorf("invalid sprop-pps (%v)", fmtp)
 			}
@@ -68,97 +68,71 @@ func (t *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 			if err != nil {
 				return fmt.Errorf("invalid sprop-max-don-diff (%v)", fmtp)
 			}
-			t.MaxDONDiff = int(tmp)
+			f.MaxDONDiff = int(tmp)
 		}
 	}
 
 	return nil
 }
 
-// Marshal implements Format.
-func (t *H265) Marshal() (string, map[string]string) {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+// Marshal implements Formaf.
+func (f *H265) Marshal() (string, map[string]string) {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
 
 	fmtp := make(map[string]string)
-	if t.VPS != nil {
-		fmtp["sprop-vps"] = base64.StdEncoding.EncodeToString(t.VPS)
+	if f.VPS != nil {
+		fmtp["sprop-vps"] = base64.StdEncoding.EncodeToString(f.VPS)
 	}
-	if t.SPS != nil {
-		fmtp["sprop-sps"] = base64.StdEncoding.EncodeToString(t.SPS)
+	if f.SPS != nil {
+		fmtp["sprop-sps"] = base64.StdEncoding.EncodeToString(f.SPS)
 	}
-	if t.PPS != nil {
-		fmtp["sprop-pps"] = base64.StdEncoding.EncodeToString(t.PPS)
+	if f.PPS != nil {
+		fmtp["sprop-pps"] = base64.StdEncoding.EncodeToString(f.PPS)
 	}
-	if t.MaxDONDiff != 0 {
-		fmtp["sprop-max-don-diff"] = strconv.FormatInt(int64(t.MaxDONDiff), 10)
+	if f.MaxDONDiff != 0 {
+		fmtp["sprop-max-don-diff"] = strconv.FormatInt(int64(f.MaxDONDiff), 10)
 	}
 
 	return "H265/90000", fmtp
 }
 
-// PTSEqualsDTS implements Format.
-func (t *H265) PTSEqualsDTS(*rtp.Packet) bool {
+// PTSEqualsDTS implements Formaf.
+func (f *H265) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-func (t *H265) CreateDecoder() *rtph265.Decoder {
+// CreateDecoder creates a decoder able to decode the content of the formaf.
+func (f *H265) CreateDecoder() *rtph265.Decoder {
 	d := &rtph265.Decoder{
-		MaxDONDiff: t.MaxDONDiff,
+		MaxDONDiff: f.MaxDONDiff,
 	}
 	d.Init()
 	return d
 }
 
-// CreateEncoder creates an encoder able to encode the content of the format.
-func (t *H265) CreateEncoder() *rtph265.Encoder {
+// CreateEncoder creates an encoder able to encode the content of the formaf.
+func (f *H265) CreateEncoder() *rtph265.Encoder {
 	e := &rtph265.Encoder{
-		PayloadType: t.PayloadTyp,
-		MaxDONDiff:  t.MaxDONDiff,
+		PayloadType: f.PayloadTyp,
+		MaxDONDiff:  f.MaxDONDiff,
 	}
 	e.Init()
 	return e
 }
 
-// SafeVPS returns the format VPS.
-func (t *H265) SafeVPS() []byte {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-	return t.VPS
+// SafeSetParams sets the codec parameters.
+func (f *H265) SafeSetParams(vps []byte, sps []byte, pps []byte) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+	f.VPS = vps
+	f.SPS = sps
+	f.PPS = pps
 }
 
-// SafeSPS returns the format SPS.
-func (t *H265) SafeSPS() []byte {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-	return t.SPS
-}
-
-// SafePPS returns the format PPS.
-func (t *H265) SafePPS() []byte {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-	return t.PPS
-}
-
-// SafeSetVPS sets the format VPS.
-func (t *H265) SafeSetVPS(v []byte) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	t.VPS = v
-}
-
-// SafeSetSPS sets the format SPS.
-func (t *H265) SafeSetSPS(v []byte) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	t.SPS = v
-}
-
-// SafeSetPPS sets the format PPS.
-func (t *H265) SafeSetPPS(v []byte) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	t.PPS = v
+// SafeParams returns the codec parameters.
+func (f *H265) SafeParams() ([]byte, []byte, []byte) {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+	return f.VPS, f.SPS, f.PPS
 }

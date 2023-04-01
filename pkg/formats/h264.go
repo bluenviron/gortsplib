@@ -10,8 +10,8 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/codecs/h264"
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtph264"
+	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
 )
 
 // check whether a RTP/H264 packet contains a IDR, without decoding the packet.
@@ -70,7 +70,7 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 	}
 }
 
-// H264 is a format that uses the H264 codec.
+// H264 is a format that uses the H264 codef.
 type H264 struct {
 	PayloadTyp        uint8
 	SPS               []byte
@@ -80,23 +80,23 @@ type H264 struct {
 	mutex sync.RWMutex
 }
 
-// String implements Format.
-func (t *H264) String() string {
+// String implements Formaf.
+func (f *H264) String() string {
 	return "H264"
 }
 
-// ClockRate implements Format.
-func (t *H264) ClockRate() int {
+// ClockRate implements Formaf.
+func (f *H264) ClockRate() int {
 	return 90000
 }
 
-// PayloadType implements Format.
-func (t *H264) PayloadType() uint8 {
-	return t.PayloadTyp
+// PayloadType implements Formaf.
+func (f *H264) PayloadType() uint8 {
+	return f.PayloadTyp
 }
 
-func (t *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	t.PayloadTyp = payloadType
+func (f *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	f.PayloadTyp = payloadType
 
 	for key, val := range fmtp {
 		switch key {
@@ -113,8 +113,8 @@ func (t *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 					return fmt.Errorf("invalid sprop-parameter-sets (%v)", val)
 				}
 
-				t.SPS = sps
-				t.PPS = pps
+				f.SPS = sps
+				f.PPS = pps
 			}
 
 		case "packetization-mode":
@@ -123,89 +123,76 @@ func (t *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 				return fmt.Errorf("invalid packetization-mode (%v)", val)
 			}
 
-			t.PacketizationMode = int(tmp2)
+			f.PacketizationMode = int(tmp2)
 		}
 	}
 
 	return nil
 }
 
-// Marshal implements Format.
-func (t *H264) Marshal() (string, map[string]string) {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
+// Marshal implements Formaf.
+func (f *H264) Marshal() (string, map[string]string) {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
 
 	fmtp := make(map[string]string)
 
-	if t.PacketizationMode != 0 {
-		fmtp["packetization-mode"] = strconv.FormatInt(int64(t.PacketizationMode), 10)
+	if f.PacketizationMode != 0 {
+		fmtp["packetization-mode"] = strconv.FormatInt(int64(f.PacketizationMode), 10)
 	}
 
 	var tmp2 []string
-	if t.SPS != nil {
-		tmp2 = append(tmp2, base64.StdEncoding.EncodeToString(t.SPS))
+	if f.SPS != nil {
+		tmp2 = append(tmp2, base64.StdEncoding.EncodeToString(f.SPS))
 	}
-	if t.PPS != nil {
-		tmp2 = append(tmp2, base64.StdEncoding.EncodeToString(t.PPS))
+	if f.PPS != nil {
+		tmp2 = append(tmp2, base64.StdEncoding.EncodeToString(f.PPS))
 	}
 	if tmp2 != nil {
 		fmtp["sprop-parameter-sets"] = strings.Join(tmp2, ",")
 	}
-	if len(t.SPS) >= 4 {
-		fmtp["profile-level-id"] = strings.ToUpper(hex.EncodeToString(t.SPS[1:4]))
+	if len(f.SPS) >= 4 {
+		fmtp["profile-level-id"] = strings.ToUpper(hex.EncodeToString(f.SPS[1:4]))
 	}
 
 	return "H264/90000", fmtp
 }
 
-// PTSEqualsDTS implements Format.
-func (t *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
+// PTSEqualsDTS implements Formaf.
+func (f *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
 	return rtpH264ContainsIDR(pkt)
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-func (t *H264) CreateDecoder() *rtph264.Decoder {
+// CreateDecoder creates a decoder able to decode the content of the formaf.
+func (f *H264) CreateDecoder() *rtph264.Decoder {
 	d := &rtph264.Decoder{
-		PacketizationMode: t.PacketizationMode,
+		PacketizationMode: f.PacketizationMode,
 	}
 	d.Init()
 	return d
 }
 
-// CreateEncoder creates an encoder able to encode the content of the format.
-func (t *H264) CreateEncoder() *rtph264.Encoder {
+// CreateEncoder creates an encoder able to encode the content of the formaf.
+func (f *H264) CreateEncoder() *rtph264.Encoder {
 	e := &rtph264.Encoder{
-		PayloadType:       t.PayloadTyp,
-		PacketizationMode: t.PacketizationMode,
+		PayloadType:       f.PayloadTyp,
+		PacketizationMode: f.PacketizationMode,
 	}
 	e.Init()
 	return e
 }
 
-// SafeSPS returns the format SPS.
-func (t *H264) SafeSPS() []byte {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-	return t.SPS
+// SafeSetParams sets the codec parameters.
+func (f *H264) SafeSetParams(sps []byte, pps []byte) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+	f.SPS = sps
+	f.PPS = pps
 }
 
-// SafePPS returns the format PPS.
-func (t *H264) SafePPS() []byte {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-	return t.PPS
-}
-
-// SafeSetSPS sets the format SPS.
-func (t *H264) SafeSetSPS(v []byte) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	t.SPS = v
-}
-
-// SafeSetPPS sets the format PPS.
-func (t *H264) SafeSetPPS(v []byte) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	t.PPS = v
+// SafeParams returns the codec parameters.
+func (f *H264) SafeParams() ([]byte, []byte) {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+	return f.SPS, f.PPS
 }

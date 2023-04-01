@@ -13,43 +13,43 @@ type G711 struct {
 }
 
 // String implements Format.
-func (t *G711) String() string {
+func (f *G711) String() string {
 	return "G711"
 }
 
 // ClockRate implements Format.
-func (t *G711) ClockRate() int {
+func (f *G711) ClockRate() int {
 	return 8000
 }
 
 // PayloadType implements Format.
-func (t *G711) PayloadType() uint8 {
-	if t.MULaw {
+func (f *G711) PayloadType() uint8 {
+	if f.MULaw {
 		return 0
 	}
 	return 8
 }
 
-func (t *G711) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	t.MULaw = (payloadType == 0)
+func (f *G711) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	f.MULaw = (payloadType == 0)
 	return nil
 }
 
 // Marshal implements Format.
-func (t *G711) Marshal() (string, map[string]string) {
-	if t.MULaw {
+func (f *G711) Marshal() (string, map[string]string) {
+	if f.MULaw {
 		return "PCMU/8000", nil
 	}
 	return "PCMA/8000", nil
 }
 
 // PTSEqualsDTS implements Format.
-func (t *G711) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *G711) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
-func (t *G711) CreateDecoder() *rtpsimpleaudio.Decoder {
+func (f *G711) CreateDecoder() *rtpsimpleaudio.Decoder {
 	d := &rtpsimpleaudio.Decoder{
 		SampleRate: 8000,
 	}
@@ -58,9 +58,9 @@ func (t *G711) CreateDecoder() *rtpsimpleaudio.Decoder {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the format.
-func (t *G711) CreateEncoder() *rtpsimpleaudio.Encoder {
+func (f *G711) CreateEncoder() *rtpsimpleaudio.Encoder {
 	e := &rtpsimpleaudio.Encoder{
-		PayloadType: t.PayloadType(),
+		PayloadType: f.PayloadType(),
 		SampleRate:  8000,
 	}
 	e.Init()

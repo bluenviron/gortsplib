@@ -1,3 +1,0 @@
-go test fuzz v1
-[]byte("\x000\xb3000000000")
-uint64(18)

@@ -18,22 +18,22 @@ type Vorbis struct {
 }
 
 // String implements Format.
-func (t *Vorbis) String() string {
+func (f *Vorbis) String() string {
 	return "Vorbis"
 }
 
 // ClockRate implements Format.
-func (t *Vorbis) ClockRate() int {
-	return t.SampleRate
+func (f *Vorbis) ClockRate() int {
+	return f.SampleRate
 }
 
 // PayloadType implements Format.
-func (t *Vorbis) PayloadType() uint8 {
-	return t.PayloadTyp
+func (f *Vorbis) PayloadType() uint8 {
+	return f.PayloadTyp
 }
 
-func (t *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	t.PayloadTyp = payloadType
+func (f *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	f.PayloadTyp = payloadType
 
 	tmp := strings.SplitN(clock, "/", 2)
 	if len(tmp) != 2 {
@@ -44,13 +44,13 @@ func (t *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap
 	if err != nil {
 		return err
 	}
-	t.SampleRate = int(sampleRate)
+	f.SampleRate = int(sampleRate)
 
 	channelCount, err := strconv.ParseInt(tmp[1], 10, 64)
 	if err != nil {
 		return err
 	}
-	t.ChannelCount = int(channelCount)
+	f.ChannelCount = int(channelCount)
 
 	for key, val := range fmtp {
 		if key == "configuration" {
@@ -59,11 +59,11 @@ func (t *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap
 				return fmt.Errorf("invalid AAC config (%v)", val)
 			}
 
-			t.Configuration = conf
+			f.Configuration = conf
 		}
 	}
 
-	if t.Configuration == nil {
+	if f.Configuration == nil {
 		return fmt.Errorf("config is missing")
 	}
 
@@ -71,17 +71,17 @@ func (t *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap
 }
 
 // Marshal implements Format.
-func (t *Vorbis) Marshal() (string, map[string]string) {
+func (f *Vorbis) Marshal() (string, map[string]string) {
 	fmtp := map[string]string{
-		"configuration": base64.StdEncoding.EncodeToString(t.Configuration),
+		"configuration": base64.StdEncoding.EncodeToString(f.Configuration),
 	}
 
-	return "VORBIS/" + strconv.FormatInt(int64(t.SampleRate), 10) +
-			"/" + strconv.FormatInt(int64(t.ChannelCount), 10),
+	return "VORBIS/" + strconv.FormatInt(int64(f.SampleRate), 10) +
+			"/" + strconv.FormatInt(int64(f.ChannelCount), 10),
 		fmtp
 }
 
 // PTSEqualsDTS implements Format.
-func (t *Vorbis) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *Vorbis) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }

@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/asticode/go-astits v1.11.0
+	github.com/bluenviron/mediacommon v0.2.0
 	github.com/google/uuid v1.3.0
 	github.com/pion/rtcp v1.2.10
 	github.com/pion/rtp v0.0.0-20230107162714-c3ea6851e25b

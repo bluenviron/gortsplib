@@ -1,3 +1,0 @@
-go test fuzz v1
-[]byte("\x000\x920!0000000")
-uint64(156)
