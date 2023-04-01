@@ -81,13 +81,11 @@ func main() {
 	defer h264RawDec.close()
 
 	// if SPS and PPS are present into the SDP, send them to the decoder
-	sps := forma.SafeSPS()
-	if sps != nil {
-		h264RawDec.decode(sps)
+	if forma.SPS != nil {
+		h264RawDec.decode(forma.SPS)
 	}
-	pps := forma.SafePPS()
-	if pps != nil {
-		h264RawDec.decode(pps)
+	if forma.PPS != nil {
+		h264RawDec.decode(forma.PPS)
 	}
 
 	// setup a single media

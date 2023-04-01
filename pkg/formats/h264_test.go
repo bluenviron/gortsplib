@@ -17,13 +17,16 @@ func TestH264Attributes(t *testing.T) {
 	require.Equal(t, "H264", format.String())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, uint8(96), format.PayloadType())
-	require.Equal(t, []byte{0x01, 0x02}, format.SafeSPS())
-	require.Equal(t, []byte{0x03, 0x04}, format.SafePPS())
 
-	format.SafeSetSPS([]byte{0x07, 0x08})
-	format.SafeSetPPS([]byte{0x09, 0x0A})
-	require.Equal(t, []byte{0x07, 0x08}, format.SafeSPS())
-	require.Equal(t, []byte{0x09, 0x0A}, format.SafePPS())
+	sps, pps := format.SafeParams()
+	require.Equal(t, []byte{0x01, 0x02}, sps)
+	require.Equal(t, []byte{0x03, 0x04}, pps)
+
+	format.SafeSetParams([]byte{0x07, 0x08}, []byte{0x09, 0x0A})
+
+	sps, pps = format.SafeParams()
+	require.Equal(t, []byte{0x07, 0x08}, sps)
+	require.Equal(t, []byte{0x09, 0x0A}, pps)
 }
 
 func TestH264PTSEqualsDTS(t *testing.T) {

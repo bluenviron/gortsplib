@@ -21,25 +21,25 @@ type MPEG4Audio struct {
 }
 
 // String implements Format.
-func (t *MPEG4Audio) String() string {
+func (f *MPEG4Audio) String() string {
 	return "MPEG4-audio"
 }
 
 // ClockRate implements Format.
-func (t *MPEG4Audio) ClockRate() int {
-	return t.Config.SampleRate
+func (f *MPEG4Audio) ClockRate() int {
+	return f.Config.SampleRate
 }
 
 // PayloadType implements Format.
-func (t *MPEG4Audio) PayloadType() uint8 {
-	return t.PayloadTyp
+func (f *MPEG4Audio) PayloadType() uint8 {
+	return f.PayloadTyp
 }
 
-func (t *MPEG4Audio) unmarshal(
+func (f *MPEG4Audio) unmarshal(
 	payloadType uint8, clock string, codec string,
 	rtpmap string, fmtp map[string]string,
 ) error {
-	t.PayloadTyp = payloadType
+	f.PayloadTyp = payloadType
 
 	for key, val := range fmtp {
 		switch key {
@@ -49,8 +49,8 @@ func (t *MPEG4Audio) unmarshal(
 				return fmt.Errorf("invalid AAC config (%v)", val)
 			}
 
-			t.Config = &mpeg4audio.Config{}
-			err = t.Config.Unmarshal(enc)
+			f.Config = &mpeg4audio.Config{}
+			err = f.Config.Unmarshal(enc)
 			if err != nil {
 				return fmt.Errorf("invalid AAC config (%v)", val)
 			}
@@ -60,29 +60,29 @@ func (t *MPEG4Audio) unmarshal(
 			if err != nil {
 				return fmt.Errorf("invalid AAC SizeLength (%v)", val)
 			}
-			t.SizeLength = int(n)
+			f.SizeLength = int(n)
 
 		case "indexlength":
 			n, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid AAC IndexLength (%v)", val)
 			}
-			t.IndexLength = int(n)
+			f.IndexLength = int(n)
 
 		case "indexdeltalength":
 			n, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid AAC IndexDeltaLength (%v)", val)
 			}
-			t.IndexDeltaLength = int(n)
+			f.IndexDeltaLength = int(n)
 		}
 	}
 
-	if t.Config == nil {
+	if f.Config == nil {
 		return fmt.Errorf("config is missing")
 	}
 
-	if t.SizeLength == 0 {
+	if f.SizeLength == 0 {
 		return fmt.Errorf("sizelength is missing")
 	}
 
@@ -90,61 +90,61 @@ func (t *MPEG4Audio) unmarshal(
 }
 
 // Marshal implements Format.
-func (t *MPEG4Audio) Marshal() (string, map[string]string) {
-	enc, err := t.Config.Marshal()
+func (f *MPEG4Audio) Marshal() (string, map[string]string) {
+	enc, err := f.Config.Marshal()
 	if err != nil {
 		return "", nil
 	}
 
-	sampleRate := t.Config.SampleRate
-	if t.Config.ExtensionSampleRate != 0 {
-		sampleRate = t.Config.ExtensionSampleRate
+	sampleRate := f.Config.SampleRate
+	if f.Config.ExtensionSampleRate != 0 {
+		sampleRate = f.Config.ExtensionSampleRate
 	}
 
 	fmtp := make(map[string]string)
 
 	fmtp["profile-level-id"] = "1"
 	fmtp["mode"] = "AAC-hbr"
-	if t.SizeLength > 0 {
-		fmtp["sizelength"] = strconv.FormatInt(int64(t.SizeLength), 10)
+	if f.SizeLength > 0 {
+		fmtp["sizelength"] = strconv.FormatInt(int64(f.SizeLength), 10)
 	}
-	if t.IndexLength > 0 {
-		fmtp["indexlength"] = strconv.FormatInt(int64(t.IndexLength), 10)
+	if f.IndexLength > 0 {
+		fmtp["indexlength"] = strconv.FormatInt(int64(f.IndexLength), 10)
 	}
-	if t.IndexDeltaLength > 0 {
-		fmtp["indexdeltalength"] = strconv.FormatInt(int64(t.IndexDeltaLength), 10)
+	if f.IndexDeltaLength > 0 {
+		fmtp["indexdeltalength"] = strconv.FormatInt(int64(f.IndexDeltaLength), 10)
 	}
 	fmtp["config"] = hex.EncodeToString(enc)
 
 	return "mpeg4-generic/" + strconv.FormatInt(int64(sampleRate), 10) +
-		"/" + strconv.FormatInt(int64(t.Config.ChannelCount), 10), fmtp
+		"/" + strconv.FormatInt(int64(f.Config.ChannelCount), 10), fmtp
 }
 
 // PTSEqualsDTS implements Format.
-func (t *MPEG4Audio) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *MPEG4Audio) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
-func (t *MPEG4Audio) CreateDecoder() *rtpmpeg4audio.Decoder {
+func (f *MPEG4Audio) CreateDecoder() *rtpmpeg4audio.Decoder {
 	d := &rtpmpeg4audio.Decoder{
-		SampleRate:       t.Config.SampleRate,
-		SizeLength:       t.SizeLength,
-		IndexLength:      t.IndexLength,
-		IndexDeltaLength: t.IndexDeltaLength,
+		SampleRate:       f.Config.SampleRate,
+		SizeLength:       f.SizeLength,
+		IndexLength:      f.IndexLength,
+		IndexDeltaLength: f.IndexDeltaLength,
 	}
 	d.Init()
 	return d
 }
 
 // CreateEncoder creates an encoder able to encode the content of the format.
-func (t *MPEG4Audio) CreateEncoder() *rtpmpeg4audio.Encoder {
+func (f *MPEG4Audio) CreateEncoder() *rtpmpeg4audio.Encoder {
 	e := &rtpmpeg4audio.Encoder{
-		PayloadType:      t.PayloadTyp,
-		SampleRate:       t.Config.SampleRate,
-		SizeLength:       t.SizeLength,
-		IndexLength:      t.IndexLength,
-		IndexDeltaLength: t.IndexDeltaLength,
+		PayloadType:      f.PayloadTyp,
+		SampleRate:       f.Config.SampleRate,
+		SizeLength:       f.SizeLength,
+		IndexLength:      f.IndexLength,
+		IndexDeltaLength: f.IndexDeltaLength,
 	}
 	e.Init()
 	return e

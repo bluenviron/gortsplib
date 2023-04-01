@@ -79,7 +79,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	rtpDec := forma.CreateDecoder()
 
 	// setup H264->MPEGTS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(forma.SafeSPS(), forma.SafePPS())
+	mpegtsMuxer, err := newMPEGTSMuxer(forma.SPS, forma.PPS)
 	if err != nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,

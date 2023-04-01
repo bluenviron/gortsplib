@@ -8,21 +8,21 @@ import (
 type MPEG2Audio struct{}
 
 // String implements Format.
-func (t *MPEG2Audio) String() string {
+func (f *MPEG2Audio) String() string {
 	return "MPEG2-audio"
 }
 
 // ClockRate implements Format.
-func (t *MPEG2Audio) ClockRate() int {
+func (f *MPEG2Audio) ClockRate() int {
 	return 90000
 }
 
 // PayloadType implements Format.
-func (t *MPEG2Audio) PayloadType() uint8 {
+func (f *MPEG2Audio) PayloadType() uint8 {
 	return 14
 }
 
-func (t *MPEG2Audio) unmarshal(
+func (f *MPEG2Audio) unmarshal(
 	payloadType uint8, clock string, codec string,
 	rtpmap string, fmtp map[string]string,
 ) error {
@@ -30,11 +30,11 @@ func (t *MPEG2Audio) unmarshal(
 }
 
 // Marshal implements Format.
-func (t *MPEG2Audio) Marshal() (string, map[string]string) {
+func (f *MPEG2Audio) Marshal() (string, map[string]string) {
 	return "", nil
 }
 
 // PTSEqualsDTS implements Format.
-func (t *MPEG2Audio) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *MPEG2Audio) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }

@@ -62,43 +62,43 @@ type Generic struct {
 }
 
 // Init computes the clock rate of the format. It it mandatory to call it.
-func (t *Generic) Init() error {
-	t.ClockRat, _ = findClockRate(t.PayloadTyp, t.RTPMap)
+func (f *Generic) Init() error {
+	f.ClockRat, _ = findClockRate(f.PayloadTyp, f.RTPMap)
 	return nil
 }
 
 // String returns a description of the format.
-func (t *Generic) String() string {
+func (f *Generic) String() string {
 	return "Generic"
 }
 
 // ClockRate implements Format.
-func (t *Generic) ClockRate() int {
-	return t.ClockRat
+func (f *Generic) ClockRate() int {
+	return f.ClockRat
 }
 
 // PayloadType implements Format.
-func (t *Generic) PayloadType() uint8 {
-	return t.PayloadTyp
+func (f *Generic) PayloadType() uint8 {
+	return f.PayloadTyp
 }
 
-func (t *Generic) unmarshal(
+func (f *Generic) unmarshal(
 	payloadType uint8, clock string, codec string,
 	rtpmap string, fmtp map[string]string,
 ) error {
-	t.PayloadTyp = payloadType
-	t.RTPMap = rtpmap
-	t.FMTP = fmtp
+	f.PayloadTyp = payloadType
+	f.RTPMap = rtpmap
+	f.FMTP = fmtp
 
-	return t.Init()
+	return f.Init()
 }
 
 // Marshal implements Format.
-func (t *Generic) Marshal() (string, map[string]string) {
-	return t.RTPMap, t.FMTP
+func (f *Generic) Marshal() (string, map[string]string) {
+	return f.RTPMap, f.FMTP
 }
 
 // PTSEqualsDTS implements Format.
-func (t *Generic) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *Generic) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }

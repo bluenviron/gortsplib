@@ -18,16 +18,18 @@ func TestH265Attributes(t *testing.T) {
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, uint8(96), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
-	require.Equal(t, []byte{0x01, 0x02}, format.SafeVPS())
-	require.Equal(t, []byte{0x03, 0x04}, format.SafeSPS())
-	require.Equal(t, []byte{0x05, 0x06}, format.SafePPS())
 
-	format.SafeSetVPS([]byte{0x07, 0x08})
-	format.SafeSetSPS([]byte{0x09, 0x0A})
-	format.SafeSetPPS([]byte{0x0B, 0x0C})
-	require.Equal(t, []byte{0x07, 0x08}, format.SafeVPS())
-	require.Equal(t, []byte{0x09, 0x0A}, format.SafeSPS())
-	require.Equal(t, []byte{0x0B, 0x0C}, format.SafePPS())
+	vps, sps, pps := format.SafeParams()
+	require.Equal(t, []byte{0x01, 0x02}, vps)
+	require.Equal(t, []byte{0x03, 0x04}, sps)
+	require.Equal(t, []byte{0x05, 0x06}, pps)
+
+	format.SafeSetParams([]byte{0x07, 0x08}, []byte{0x09, 0x0A}, []byte{0x0B, 0x0C})
+
+	vps, sps, pps = format.SafeParams()
+	require.Equal(t, []byte{0x07, 0x08}, vps)
+	require.Equal(t, []byte{0x09, 0x0A}, sps)
+	require.Equal(t, []byte{0x0B, 0x0C}, pps)
 }
 
 func TestH265MediaDescription(t *testing.T) {

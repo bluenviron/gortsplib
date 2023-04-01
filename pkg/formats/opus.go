@@ -17,24 +17,24 @@ type Opus struct {
 }
 
 // String implements Format.
-func (t *Opus) String() string {
+func (f *Opus) String() string {
 	return "Opus"
 }
 
 // ClockRate implements Format.
-func (t *Opus) ClockRate() int {
+func (f *Opus) ClockRate() int {
 	// RFC7587: the RTP timestamp is incremented with a 48000 Hz
 	// clock rate for all modes of Opus and all sampling rates.
 	return 48000
 }
 
 // PayloadType implements Format.
-func (t *Opus) PayloadType() uint8 {
-	return t.PayloadTyp
+func (f *Opus) PayloadType() uint8 {
+	return f.PayloadTyp
 }
 
-func (t *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	t.PayloadTyp = payloadType
+func (f *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	f.PayloadTyp = payloadType
 
 	tmp := strings.SplitN(clock, "/", 2)
 	if len(tmp) != 2 {
@@ -59,7 +59,7 @@ func (t *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 
 	for key, val := range fmtp {
 		if key == "sprop-stereo" {
-			t.IsStereo = (val == "1")
+			f.IsStereo = (val == "1")
 		}
 	}
 
@@ -67,10 +67,10 @@ func (t *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 }
 
 // Marshal implements Format.
-func (t *Opus) Marshal() (string, map[string]string) {
+func (f *Opus) Marshal() (string, map[string]string) {
 	fmtp := map[string]string{
 		"sprop-stereo": func() string {
-			if t.IsStereo {
+			if f.IsStereo {
 				return "1"
 			}
 			return "0"
@@ -83,12 +83,12 @@ func (t *Opus) Marshal() (string, map[string]string) {
 }
 
 // PTSEqualsDTS implements Format.
-func (t *Opus) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *Opus) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
-func (t *Opus) CreateDecoder() *rtpsimpleaudio.Decoder {
+func (f *Opus) CreateDecoder() *rtpsimpleaudio.Decoder {
 	d := &rtpsimpleaudio.Decoder{
 		SampleRate: 48000,
 	}
@@ -97,9 +97,9 @@ func (t *Opus) CreateDecoder() *rtpsimpleaudio.Decoder {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the format.
-func (t *Opus) CreateEncoder() *rtpsimpleaudio.Encoder {
+func (f *Opus) CreateEncoder() *rtpsimpleaudio.Encoder {
 	e := &rtpsimpleaudio.Encoder{
-		PayloadType: t.PayloadTyp,
+		PayloadType: f.PayloadTyp,
 		SampleRate:  48000,
 	}
 	e.Init()
