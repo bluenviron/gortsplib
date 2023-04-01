@@ -7,8 +7,8 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmpeg4audio"
+	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
 
 // MPEG4Audio is a format that uses a MPEG-4 audio codec.

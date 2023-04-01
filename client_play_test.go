@@ -18,12 +18,12 @@ import (
 
 	"github.com/bluenviron/gortsplib/v3/pkg/auth"
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
-	"github.com/bluenviron/gortsplib/v3/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/gortsplib/v3/pkg/conn"
 	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/headers"
 	"github.com/bluenviron/gortsplib/v3/pkg/media"
 	"github.com/bluenviron/gortsplib/v3/pkg/url"
+	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
 
 func mustMarshalMedias(medias media.Medias) []byte {

@@ -7,9 +7,9 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/codecs/jpeg"
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmjpeg/headers"
 	"github.com/bluenviron/gortsplib/v3/pkg/rtptime"
+	"github.com/bluenviron/mediacommon/pkg/codecs/jpeg"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.

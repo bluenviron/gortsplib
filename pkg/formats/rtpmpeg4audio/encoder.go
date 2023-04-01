@@ -6,9 +6,9 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/bits"
-	"github.com/bluenviron/gortsplib/v3/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/gortsplib/v3/pkg/rtptime"
+	"github.com/bluenviron/mediacommon/pkg/bits"
+	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
 
 const (

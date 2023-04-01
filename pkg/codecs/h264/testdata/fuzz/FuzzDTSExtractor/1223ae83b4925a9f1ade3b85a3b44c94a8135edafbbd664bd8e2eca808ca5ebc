@@ -1,3 +1,0 @@
-go test fuzz v1
-[]byte("'000\xdc10")
-uint64(23)
