@@ -46,9 +46,6 @@ Features:
   * Encode/decode format-specific frames into/from RTP packets. The following formats are supported:
     * Video: H264, H265, M-JPEG, VP8, VP9
     * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG4 Audio (AAC), Opus
-  * Parse codec-specific elements. The following codecs are supported:
-    * Video: H264, H265, M-JPEG
-    * Audio: MPEG4 Audio (AAC)
 
 ## Table of contents
 
