@@ -15,7 +15,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
 	"github.com/bluenviron/gortsplib/v3/pkg/conn"
-	"github.com/bluenviron/gortsplib/v3/pkg/format"
+	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/headers"
 	"github.com/bluenviron/gortsplib/v3/pkg/media"
 	"github.com/bluenviron/gortsplib/v3/pkg/sdp"
@@ -440,7 +440,7 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	forma := &format.Generic{
+	forma := &formats.Generic{
 		PayloadTyp: 96,
 		RTPMap:     "private/90000",
 	}
@@ -450,11 +450,11 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 	medias := media.Medias{
 		&media.Media{
 			Type:    "application",
-			Formats: []format.Format{forma},
+			Formats: []formats.Format{forma},
 		},
 		&media.Media{
 			Type:    "application",
-			Formats: []format.Format{forma},
+			Formats: []formats.Format{forma},
 		},
 	}
 	medias.SetControls()
@@ -613,7 +613,7 @@ func TestServerRecord(t *testing.T) {
 			medias := media.Medias{
 				&media.Media{
 					Type: media.TypeVideo,
-					Formats: []format.Format{&format.H264{
+					Formats: []formats.Format{&formats.H264{
 						PayloadTyp:        96,
 						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
 						PPS:               []byte{0x01, 0x02, 0x03, 0x04},
@@ -622,7 +622,7 @@ func TestServerRecord(t *testing.T) {
 				},
 				&media.Media{
 					Type: media.TypeVideo,
-					Formats: []format.Format{&format.H264{
+					Formats: []formats.Format{&formats.H264{
 						PayloadTyp:        96,
 						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
 						PPS:               []byte{0x01, 0x02, 0x03, 0x04},
@@ -1496,7 +1496,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 
 			medias := media.Medias{&media.Media{
 				Type: media.TypeApplication,
-				Formats: []format.Format{&format.Generic{
+				Formats: []formats.Format{&formats.Generic{
 					PayloadTyp: 97,
 					RTPMap:     "private/90000",
 				}},

@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/bluenviron/gortsplib/v3"
-	"github.com/bluenviron/gortsplib/v3/pkg/format"
+	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/media"
 	"github.com/pion/rtp"
 )
@@ -38,7 +38,7 @@ func main() {
 	// create a media that contains a Opus format
 	medi := &media.Media{
 		Type: media.TypeAudio,
-		Formats: []format.Format{&format.Opus{
+		Formats: []formats.Format{&formats.Opus{
 			PayloadTyp: 96,
 			IsStereo:   false,
 		}},

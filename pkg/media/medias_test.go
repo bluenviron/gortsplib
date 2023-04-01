@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/format"
+	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/sdp"
 )
 
@@ -60,7 +60,7 @@ var casesMedias = []struct {
 			{
 				Type:    "video",
 				Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
-				Formats: []format.Format{&format.H264{
+				Formats: []formats.Format{&formats.H264{
 					PayloadTyp:        97,
 					PacketizationMode: 1,
 					SPS:               []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
@@ -71,13 +71,13 @@ var casesMedias = []struct {
 				Type:      "audio",
 				Direction: DirectionRecvonly,
 				Control:   "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
-				Formats: []format.Format{&format.G711{
+				Formats: []formats.Format{&formats.G711{
 					MULaw: true,
 				}},
 			},
 			{
 				Type: "application",
-				Formats: []format.Format{&format.Generic{
+				Formats: []formats.Format{&formats.Generic{
 					PayloadTyp: 107,
 				}},
 			},
@@ -127,7 +127,7 @@ var casesMedias = []struct {
 			{
 				Type:    "video",
 				Control: "trackID=1",
-				Formats: []format.Format{&format.H264{
+				Formats: []formats.Format{&formats.H264{
 					PayloadTyp:        97,
 					PacketizationMode: 1,
 					SPS:               []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
@@ -138,13 +138,13 @@ var casesMedias = []struct {
 				Type:      "audio",
 				Direction: DirectionRecvonly,
 				Control:   "trackID=2",
-				Formats: []format.Format{&format.G711{
+				Formats: []formats.Format{&formats.G711{
 					MULaw: true,
 				}},
 			},
 			{
 				Type: "application",
-				Formats: []format.Format{&format.Generic{
+				Formats: []formats.Format{&formats.Generic{
 					PayloadTyp: 107,
 				}},
 			},
@@ -295,64 +295,64 @@ var casesMedias = []struct {
 			{
 				Type:      "audio",
 				Direction: DirectionSendonly,
-				Formats: []format.Format{
-					&format.Opus{
+				Formats: []formats.Format{
+					&formats.Opus{
 						PayloadTyp: 111,
 						IsStereo:   false,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 103,
 						RTPMap:     "ISAC/16000",
 						ClockRat:   16000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 104,
 						RTPMap:     "ISAC/32000",
 						ClockRat:   32000,
 					},
-					&format.G722{},
-					&format.Generic{
+					&formats.G722{},
+					&formats.Generic{
 						PayloadTyp: 102,
 						RTPMap:     "ILBC/8000",
 						ClockRat:   8000,
 					},
-					&format.G711{
+					&formats.G711{
 						MULaw: true,
 					},
-					&format.G711{
+					&formats.G711{
 						MULaw: false,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 106,
 						RTPMap:     "CN/32000",
 						ClockRat:   32000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 105,
 						RTPMap:     "CN/16000",
 						ClockRat:   16000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 13,
 						RTPMap:     "CN/8000",
 						ClockRat:   8000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 110,
 						RTPMap:     "telephone-event/48000",
 						ClockRat:   48000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 112,
 						RTPMap:     "telephone-event/32000",
 						ClockRat:   32000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 113,
 						RTPMap:     "telephone-event/16000",
 						ClockRat:   16000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 126,
 						RTPMap:     "telephone-event/8000",
 						ClockRat:   8000,
@@ -362,11 +362,11 @@ var casesMedias = []struct {
 			{
 				Type:      "video",
 				Direction: DirectionSendonly,
-				Formats: []format.Format{
-					&format.VP8{
+				Formats: []formats.Format{
+					&formats.VP8{
 						PayloadTyp: 96,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 97,
 						RTPMap:     "rtx/90000",
 						FMTP: map[string]string{
@@ -374,10 +374,10 @@ var casesMedias = []struct {
 						},
 						ClockRat: 90000,
 					},
-					&format.VP9{
+					&formats.VP9{
 						PayloadTyp: 98,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 99,
 						RTPMap:     "rtx/90000",
 						FMTP: map[string]string{
@@ -385,11 +385,11 @@ var casesMedias = []struct {
 						},
 						ClockRat: 90000,
 					},
-					&format.H264{
+					&formats.H264{
 						PayloadTyp:        100,
 						PacketizationMode: 1,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 101,
 						RTPMap:     "rtx/90000",
 						FMTP: map[string]string{
@@ -397,12 +397,12 @@ var casesMedias = []struct {
 						},
 						ClockRat: 90000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 127,
 						RTPMap:     "red/90000",
 						ClockRat:   90000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 124,
 						RTPMap:     "rtx/90000",
 						FMTP: map[string]string{
@@ -410,7 +410,7 @@ var casesMedias = []struct {
 						},
 						ClockRat: 90000,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 125,
 						RTPMap:     "ulpfec/90000",
 						ClockRat:   90000,
@@ -445,8 +445,8 @@ var casesMedias = []struct {
 		Medias{
 			{
 				Type: "video",
-				Formats: []format.Format{
-					&format.H264{
+				Formats: []formats.Format{
+					&formats.H264{
 						PayloadTyp: 96,
 						SPS: []byte{
 							0x67, 0x4d, 0x00, 0x2a, 0x9d, 0xa8, 0x1e, 0x00,
@@ -455,7 +455,7 @@ var casesMedias = []struct {
 						PPS:               []byte{0x68, 0xee, 0x3c, 0x80},
 						PacketizationMode: 1,
 					},
-					&format.Generic{
+					&formats.Generic{
 						PayloadTyp: 98,
 						RTPMap:     "MetaData",
 					},
@@ -500,19 +500,19 @@ var casesMedias = []struct {
 				Type:      "video",
 				Direction: DirectionRecvonly,
 				Control:   "rtsp://192.168.0.1/video",
-				Formats:   []format.Format{&format.MJPEG{}},
+				Formats:   []formats.Format{&formats.MJPEG{}},
 			},
 			{
 				Type:      "audio",
 				Direction: DirectionRecvonly,
 				Control:   "rtsp://192.168.0.1/audio",
-				Formats:   []format.Format{&format.G711{MULaw: true}},
+				Formats:   []formats.Format{&formats.G711{MULaw: true}},
 			},
 			{
 				Type:      "audio",
 				Direction: DirectionSendonly,
 				Control:   "rtsp://192.168.0.1/audioback",
-				Formats:   []format.Format{&format.G711{MULaw: true}},
+				Formats:   []formats.Format{&formats.G711{MULaw: true}},
 			},
 		},
 	},
@@ -579,7 +579,7 @@ func TestMediasMarshal(t *testing.T) {
 }
 
 func TestMediasFindFormat(t *testing.T) {
-	tr := &format.Generic{
+	tr := &formats.Generic{
 		PayloadTyp: 97,
 		RTPMap:     "rtx/90000",
 		FMTP: map[string]string{
@@ -590,12 +590,12 @@ func TestMediasFindFormat(t *testing.T) {
 
 	md := &Media{
 		Type: TypeVideo,
-		Formats: []format.Format{
-			&format.VP8{
+		Formats: []formats.Format{
+			&formats.VP8{
 				PayloadTyp: 96,
 			},
 			tr,
-			&format.VP9{
+			&formats.VP9{
 				PayloadTyp: 98,
 			},
 		},
@@ -604,8 +604,8 @@ func TestMediasFindFormat(t *testing.T) {
 	ms := Medias{
 		{
 			Type: TypeAudio,
-			Formats: []format.Format{
-				&format.Opus{
+			Formats: []formats.Format{
+				&formats.Opus{
 					PayloadTyp: 111,
 					IsStereo:   true,
 				},
@@ -614,7 +614,7 @@ func TestMediasFindFormat(t *testing.T) {
 		md,
 	}
 
-	var forma *format.Generic
+	var forma *formats.Generic
 	me := ms.FindFormat(&forma)
 	require.Equal(t, md, me)
 	require.Equal(t, tr, forma)
