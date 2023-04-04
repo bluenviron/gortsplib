@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -94,7 +95,7 @@ func (ct *clientFormat) writePacketRTPWithNTP(pkt *rtp.Packet, ntp time.Time) er
 func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {
 	packets, missing := ct.udpReorderer.Process(pkt)
 	if missing != 0 {
-		ct.c.Log(LogLevelWarn, "%d RTP packet(s) lost", missing)
+		ct.c.OnPacketLost(fmt.Errorf("%d RTP packet(s) lost", missing))
 		// do not return
 	}
 

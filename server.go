@@ -99,6 +99,7 @@ type Server struct {
 	// handler (optional)
 	//
 	// an handler to handle server events.
+	// It may implement one or more of the ServerHandler* interfaces.
 	Handler ServerHandler
 
 	//

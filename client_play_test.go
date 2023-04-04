@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -1047,13 +1046,16 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
+		msgRecv := make(chan struct{})
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			Log: func(level LogLevel, format string, args ...interface{}) {
-				require.Equal(t, format, "switching to TCP because server requested it")
+			OnTransportSwitch: func(err error) {
+				require.EqualError(t, err, "switching to TCP because server requested it")
+				close(msgRecv)
 			},
 		}
+
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
 			func(medi *media.Media, forma formats.Format, pkt *rtp.Packet) {
 				close(packetRecv)
@@ -1061,6 +1063,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 		defer c.Close()
 
+		<-msgRecv
 		<-packetRecv
 	})
 
@@ -1223,13 +1226,16 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 			}()
 		}()
 
+		msgRecv := make(chan struct{})
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			Log: func(level LogLevel, format string, args ...interface{}) {
-				require.Equal(t, format, "switching to TCP because server requested it")
+			OnTransportSwitch: func(err error) {
+				require.EqualError(t, err, "switching to TCP because server requested it")
+				close(msgRecv)
 			},
 		}
+
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
 			func(medi *media.Media, forma formats.Format, pkt *rtp.Packet) {
 				close(packetRecv)
@@ -1237,6 +1243,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 		defer c.Close()
 
+		<-msgRecv
 		<-packetRecv
 	})
 
@@ -1457,11 +1464,13 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 			}()
 		}()
 
+		msgRecv := make(chan struct{})
 		packetRecv := make(chan struct{})
 
 		c := Client{
-			Log: func(level LogLevel, format string, args ...interface{}) {
-				require.Equal(t, format, "no UDP packets received, switching to TCP")
+			OnTransportSwitch: func(err error) {
+				require.EqualError(t, err, "no UDP packets received, switching to TCP")
+				close(msgRecv)
 			},
 			ReadTimeout: 1 * time.Second,
 		}
@@ -1473,6 +1482,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 		defer c.Close()
 
+		<-msgRecv
 		<-packetRecv
 	})
 }
@@ -3073,17 +3083,19 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				Log: func(level LogLevel, format string, args ...interface{}) {
-					err := fmt.Errorf(format, args...)
+				OnPacketLost: func(err error) {
+					if ca.proto == "udp" && ca.name == "rtp packets lost" {
+						require.EqualError(t, err, "69 RTP packet(s) lost")
+					}
+					close(errorRecv)
+				},
+				OnDecodeError: func(err error) {
 					switch {
 					case ca.proto == "udp" && ca.name == "rtp invalid":
 						require.EqualError(t, err, "RTP header size insufficient: 2 < 4")
 
 					case ca.proto == "udp" && ca.name == "rtcp invalid":
 						require.EqualError(t, err, "rtcp: packet too short")
-
-					case ca.proto == "udp" && ca.name == "rtp packets lost":
-						require.EqualError(t, err, "69 RTP packet(s) lost")
 
 					case ca.proto == "udp" && ca.name == "rtp too big":
 						require.EqualError(t, err, "RTP packet is too big to be read with UDP")

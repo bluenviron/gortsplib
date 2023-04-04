@@ -263,6 +263,34 @@ func (ss *ServerSession) UserData() interface{} {
 	return ss.userData
 }
 
+func (ss *ServerSession) onPacketLost(err error) {
+	if h, ok := ss.s.Handler.(ServerHandlerOnPacketLost); ok {
+		h.OnPacketLost(&ServerHandlerOnPacketLostCtx{
+			Session: ss,
+			Error:   err,
+		})
+	} else if h, ok := ss.s.Handler.(ServerHandlerOnWarning); ok {
+		h.OnWarning(&ServerHandlerOnWarningCtx{
+			Session: ss,
+			Error:   err,
+		})
+	}
+}
+
+func (ss *ServerSession) onDecodeError(err error) {
+	if h, ok := ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
+			Session: ss,
+			Error:   err,
+		})
+	} else if h, ok := ss.s.Handler.(ServerHandlerOnWarning); ok {
+		h.OnWarning(&ServerHandlerOnWarningCtx{
+			Session: ss,
+			Error:   err,
+		})
+	}
+}
+
 func (ss *ServerSession) checkState(allowed map[ServerSessionState]struct{}) error {
 	if _, ok := allowed[ss.state]; ok {
 		return nil

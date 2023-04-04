@@ -38,15 +38,6 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 	}
 }
 
-func onWarning(ss *ServerSession, err error) {
-	if h, ok := ss.s.Handler.(ServerHandlerOnWarning); ok {
-		h.OnWarning(&ServerHandlerOnWarningCtx{
-			Session: ss,
-			Error:   err,
-		})
-	}
-}
-
 type serverUDPListener struct {
 	pc           *net.UDPConn
 	listenIP     net.IP

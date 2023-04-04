@@ -1454,16 +1454,19 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onWarning: func(ctx *ServerHandlerOnWarningCtx) {
+					onPacketLost: func(ctx *ServerHandlerOnPacketLostCtx) {
+						if ca.proto == "udp" && ca.name == "rtp packets lost" {
+							require.EqualError(t, ctx.Error, "69 RTP packet(s) lost")
+						}
+						close(errorRecv)
+					},
+					onDecodeError: func(ctx *ServerHandlerOnDecodeErrorCtx) {
 						switch {
 						case ca.proto == "udp" && ca.name == "rtp invalid":
 							require.EqualError(t, ctx.Error, "RTP header size insufficient: 2 < 4")
 
 						case ca.proto == "udp" && ca.name == "rtcp invalid":
 							require.EqualError(t, ctx.Error, "rtcp: packet too short")
-
-						case ca.proto == "udp" && ca.name == "rtp packets lost":
-							require.EqualError(t, ctx.Error, "69 RTP packet(s) lost")
 
 						case ca.proto == "udp" && ca.name == "rtp too big":
 							require.EqualError(t, ctx.Error, "RTP packet is too big to be read with UDP")
