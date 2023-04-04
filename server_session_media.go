@@ -155,13 +155,13 @@ func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) error {
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (maxPacketSize + 1) {
-		onWarning(sm.ss, fmt.Errorf("RTCP packet is too big to be read with UDP"))
+		sm.ss.onDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return nil
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		onWarning(sm.ss, err)
+		sm.ss.onDecodeError(err)
 		return nil
 	}
 
@@ -181,20 +181,20 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) error {
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (maxPacketSize + 1) {
-		onWarning(sm.ss, fmt.Errorf("RTP packet is too big to be read with UDP"))
+		sm.ss.onDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
 		return nil
 	}
 
 	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
-		onWarning(sm.ss, err)
+		sm.ss.onDecodeError(err)
 		return nil
 	}
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
-		onWarning(sm.ss, fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
+		sm.ss.onDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
 		return nil
 	}
 
@@ -211,13 +211,13 @@ func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) error {
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (maxPacketSize + 1) {
-		onWarning(sm.ss, fmt.Errorf("RTCP packet is too big to be read with UDP"))
+		sm.ss.onDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return nil
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		onWarning(sm.ss, err)
+		sm.ss.onDecodeError(err)
 		return nil
 	}
 
@@ -246,14 +246,14 @@ func (sm *serverSessionMedia) readRTPTCPPlay(payload []byte) error {
 
 func (sm *serverSessionMedia) readRTCPTCPPlay(payload []byte) error {
 	if len(payload) > maxPacketSize {
-		onWarning(sm.ss, fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+		sm.ss.onDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
 			len(payload), maxPacketSize))
 		return nil
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		onWarning(sm.ss, err)
+		sm.ss.onDecodeError(err)
 		return nil
 	}
 
@@ -273,7 +273,7 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) error {
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
-		onWarning(sm.ss, fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
+		sm.ss.onDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
 		return nil
 	}
 
@@ -283,14 +283,14 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) error {
 
 func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) error {
 	if len(payload) > maxPacketSize {
-		onWarning(sm.ss, fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+		sm.ss.onDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
 			len(payload), maxPacketSize))
 		return nil
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		onWarning(sm.ss, err)
+		sm.ss.onDecodeError(err)
 		return nil
 	}
 

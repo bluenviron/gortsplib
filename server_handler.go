@@ -195,13 +195,38 @@ type ServerHandlerOnSetParameter interface {
 }
 
 // ServerHandlerOnWarningCtx is the context of OnWarning.
+//
+// Deprecated: ServerHandlerOnWarning is deprecated.
 type ServerHandlerOnWarningCtx struct {
 	Session *ServerSession
 	Error   error
 }
 
 // ServerHandlerOnWarning can be implemented by a ServerHandler.
+//
+// Deprecated: replaced by OnPacketLost, OnDecodeError.
 type ServerHandlerOnWarning interface {
-	// called when there's a non-fatal decoding error of RTP or RTCP packets.
 	OnWarning(*ServerHandlerOnWarningCtx)
+}
+
+// ServerHandlerOnPacketLostCtx is the context of OnPacketLost.
+type ServerHandlerOnPacketLostCtx struct {
+	Session *ServerSession
+	Error   error
+}
+
+// ServerHandlerOnPacketLost can be implemented by a ServerHandler.
+type ServerHandlerOnPacketLost interface {
+	OnPacketLost(*ServerHandlerOnPacketLostCtx)
+}
+
+// ServerHandlerOnDecodeErrorCtx is the context of OnDecodeError.
+type ServerHandlerOnDecodeErrorCtx struct {
+	Session *ServerSession
+	Error   error
+}
+
+// ServerHandlerOnDecodeError can be implemented by a ServerHandler.
+type ServerHandlerOnDecodeError interface {
+	OnDecodeError(*ServerHandlerOnDecodeErrorCtx)
 }

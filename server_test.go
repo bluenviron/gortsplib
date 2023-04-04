@@ -93,7 +93,8 @@ type testServerHandler struct {
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
 	onSetParameter func(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 	onGetParameter func(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
-	onWarning      func(*ServerHandlerOnWarningCtx)
+	onPacketLost   func(*ServerHandlerOnPacketLostCtx)
+	onDecodeError  func(*ServerHandlerOnDecodeErrorCtx)
 }
 
 func (sh *testServerHandler) OnConnOpen(ctx *ServerHandlerOnConnOpenCtx) {
@@ -176,9 +177,15 @@ func (sh *testServerHandler) OnGetParameter(ctx *ServerHandlerOnGetParameterCtx)
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (sh *testServerHandler) OnWarning(ctx *ServerHandlerOnWarningCtx) {
-	if sh.onWarning != nil {
-		sh.onWarning(ctx)
+func (sh *testServerHandler) OnPacketLost(ctx *ServerHandlerOnPacketLostCtx) {
+	if sh.onPacketLost != nil {
+		sh.onPacketLost(ctx)
+	}
+}
+
+func (sh *testServerHandler) OnDecodeError(ctx *ServerHandlerOnDecodeErrorCtx) {
+	if sh.onDecodeError != nil {
+		sh.onDecodeError(ctx)
 	}
 }
 
