@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
@@ -68,6 +69,12 @@ func findBaseURL(sd *sdp.SessionDescription, res *base.Response, u *url.URL) (*u
 
 	// use URL of request
 	return u, nil
+}
+
+func resetMediaControls(ms media.Medias) {
+	for _, media := range ms {
+		media.Control = "mediaUUID=" + uuid.New().String()
+	}
 }
 
 type clientState int
@@ -1118,7 +1125,7 @@ func (c *Client) doAnnounce(u *url.URL, medias media.Medias) (*base.Response, er
 		return nil, err
 	}
 
-	medias.SetControls()
+	resetMediaControls(medias)
 
 	byts, err := medias.Marshal(false).Marshal()
 	if err != nil {

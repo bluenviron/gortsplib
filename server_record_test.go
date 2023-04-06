@@ -337,7 +337,7 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 	conn := conn.NewConn(nconn)
 
 	medias := media.Medias{testH264Media}
-	medias.SetControls()
+	resetMediaControls(medias)
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
@@ -457,7 +457,7 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 			Formats: []formats.Format{forma},
 		},
 	}
-	medias.SetControls()
+	resetMediaControls(medias)
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
@@ -630,7 +630,7 @@ func TestServerRecord(t *testing.T) {
 					}},
 				},
 			}
-			medias.SetControls()
+			resetMediaControls(medias)
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Announce,
@@ -834,7 +834,7 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 	conn := conn.NewConn(nconn)
 
 	medias := media.Medias{testH264Media}
-	medias.SetControls()
+	resetMediaControls(medias)
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
@@ -935,7 +935,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 	conn := conn.NewConn(nconn)
 
 	medias := media.Medias{testH264Media}
-	medias.SetControls()
+	resetMediaControls(medias)
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
@@ -1110,7 +1110,7 @@ func TestServerRecordTimeout(t *testing.T) {
 			conn := conn.NewConn(nconn)
 
 			medias := media.Medias{testH264Media}
-			medias.SetControls()
+			resetMediaControls(medias)
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Announce,
@@ -1233,7 +1233,7 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 			conn := conn.NewConn(nconn)
 
 			medias := media.Medias{testH264Media}
-			medias.SetControls()
+			resetMediaControls(medias)
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Announce,
@@ -1346,7 +1346,7 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 		conn := conn.NewConn(nconn)
 
 		medias := media.Medias{testH264Media}
-		medias.SetControls()
+		resetMediaControls(medias)
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Announce,
@@ -1504,7 +1504,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 					RTPMap:     "private/90000",
 				}},
 			}}
-			medias.SetControls()
+			resetMediaControls(medias)
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Announce,
