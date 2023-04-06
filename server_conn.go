@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	gourl "net/url"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -36,12 +37,15 @@ func mediasForSDP(
 			Type: medi.Type,
 			// Direction: skipped for the moment
 			Formats: medi.Formats,
-			Control: "mediaUUID=" + streamMedias[medi].uuid.String(),
+			// we have to use trackID=number in order to support clients
+			// like the Grandstream GXV3500.
+			Control: "trackID=" + strconv.FormatInt(int64(i), 10),
 		}
 
 		// always use the absolute URL of the track as control attribute, in order
-		// to support GStreamer's rtspsrc. When a relative control is used, GStreamer
-		// puts it between path and query, instead of appending it to the URL.
+		// to fix compatibility between GStreamer and URLs with queries.
+		// (when a relative control is used, GStreamer puts it between path and query,
+		// instead of appending it to the URL).
 		u, _ := mc.URL(contentBase)
 		mc.Control = u.String()
 

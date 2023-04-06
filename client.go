@@ -16,7 +16,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
@@ -72,8 +71,8 @@ func findBaseURL(sd *sdp.SessionDescription, res *base.Response, u *url.URL) (*u
 }
 
 func resetMediaControls(ms media.Medias) {
-	for _, media := range ms {
-		media.Control = "mediaUUID=" + uuid.New().String()
+	for i, media := range ms {
+		media.Control = "trackID=" + strconv.FormatInt(int64(i), 10)
 	}
 }
 

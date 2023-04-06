@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
@@ -12,16 +11,16 @@ import (
 )
 
 type serverStreamMedia struct {
-	uuid            uuid.UUID
+	trackID         int
 	media           *media.Media
 	formats         map[uint8]*serverStreamFormat
 	multicastWriter *serverMulticastWriter
 }
 
-func newServerStreamMedia(st *ServerStream, medi *media.Media) *serverStreamMedia {
+func newServerStreamMedia(st *ServerStream, medi *media.Media, trackID int) *serverStreamMedia {
 	sm := &serverStreamMedia{
-		uuid:  uuid.New(),
-		media: medi,
+		trackID: trackID,
+		media:   medi,
 	}
 
 	sm.formats = make(map[uint8]*serverStreamFormat)
