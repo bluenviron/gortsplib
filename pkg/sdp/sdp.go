@@ -75,58 +75,69 @@ func (s *SessionDescription) unmarshalSessionName(value string) error {
 	return nil
 }
 
-// This is rewritten from scratch to guarantee compatibility with most RTSP
+func stringsReverseIndexByte(s string, b byte) int {
+	for i := len(s) - 2; i >= 0; i-- {
+		if s[i] == b {
+			return i
+		}
+	}
+	return -1
+}
+
+// This is rewritten from scratch to make it compatible with most RTSP
 // implementations.
 func (s *SessionDescription) unmarshalOrigin(value string) error {
-	value = strings.TrimSpace(value)
-
-	if strings.HasPrefix(value, "-0 ") { // live reporter app
-		value = "- 0 " + value[3:]
+	i := strings.Index(value, " IN IP4 ")
+	if i < 0 {
+		i = strings.Index(value, " IN IP6 ")
+		if i < 0 {
+			return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, value)
+		}
 	}
 
-	i := strings.Index(value, " IN ")
+	s.Origin.NetworkType = value[i+1 : i+3]
+	s.Origin.AddressType = value[i+4 : i+7]
+	s.Origin.UnicastAddress = strings.TrimSpace(value[i+8:])
+	value = value[:i]
+
+	i = stringsReverseIndexByte(value, ' ')
 	if i < 0 {
 		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, value)
 	}
 
-	fields := strings.SplitN(value[i+1:], " ", 3)
-
-	s.Origin.NetworkType = "IN"
-
-	s.Origin.AddressType = fields[1]
-	if i2 := indexOf(s.Origin.AddressType, []string{"IP4", "IP6"}); i2 == -1 {
-		return fmt.Errorf("%w `%v`", errSDPInvalidValue, s.Origin.AddressType)
-	}
-
-	if len(fields) >= 3 {
-		s.Origin.UnicastAddress = fields[2]
-	}
-
-	fields = strings.SplitN(value[:i], " ", 4)
+	var tmp string
+	tmp, value = value[i+1:], value[:i]
 
 	var err error
-	s.Origin.SessionVersion, err = strconv.ParseUint(fields[len(fields)-1], 10, 64)
+	s.Origin.SessionVersion, err = strconv.ParseUint(tmp, 10, 64)
 	if err != nil {
-		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[len(fields)-1])
+		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, tmp)
 	}
 
-	if len(fields) >= 2 {
-		switch {
-		case strings.HasPrefix(fields[len(fields)-2], "0x"), strings.HasPrefix(fields[len(fields)-2], "0X"):
-			s.Origin.SessionID, err = strconv.ParseUint(fields[len(fields)-2][2:], 16, 64)
-		case strings.ContainsAny(fields[len(fields)-2], "abcdefABCDEF"):
-			s.Origin.SessionID, err = strconv.ParseUint(fields[len(fields)-2], 16, 64)
-		default:
-			s.Origin.SessionID, err = strconv.ParseUint(fields[len(fields)-2], 10, 64)
-		}
-		if err != nil {
-			return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[len(fields)-2])
-		}
+	if value == "-0" { // live reporter app
+		value = "- 0"
 	}
 
-	if len(fields) >= 3 {
-		s.Origin.Username = strings.Join(fields[:len(fields)-2], " ")
+	i = stringsReverseIndexByte(value, ' ')
+	if i < 0 {
+		return nil
 	}
+
+	tmp, value = value[i+1:], value[:i]
+
+	switch {
+	case strings.HasPrefix(tmp, "0x"), strings.HasPrefix(tmp, "0X"):
+		s.Origin.SessionID, err = strconv.ParseUint(tmp[2:], 16, 64)
+	case strings.ContainsAny(tmp, "abcdefABCDEF"):
+		s.Origin.SessionID, err = strconv.ParseUint(tmp, 16, 64)
+	default:
+		s.Origin.SessionID, err = strconv.ParseUint(tmp, 10, 64)
+	}
+	if err != nil {
+		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, tmp)
+	}
+
+	s.Origin.Username = value
 
 	return nil
 }
