@@ -2120,6 +2120,104 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"fuzhou",
+		[]byte("v=0\n" +
+			"o=JefferyZhang Inno Fuzhou 0 0 IN IP4 127.0.0.1\n" +
+			"s=RbsLive\n" +
+			"c=IN IP4 0.0.0.0\n" +
+			"t=0 0\n" +
+			"a=tool:libmpp at 2.0.1\n" +
+			"m=video 0 RTP/AVP 96\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=fmtp:96 profile-level-id=64C028;sprop-parameter-sets=Z2TAKKwa0A8ARPywDwiEag==,aO48sA==\n" +
+			"a=control:track1\n" +
+			"m=audio 0 RTP/AVP 97\n" +
+			"a=rtpmap:97 MPEG4-GENERIC/48000/2\n" +
+			"a=fmtp:97 profile-level-id=15;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1190\n" +
+			"a=control:track2\n"),
+		[]byte("v=0\r\n" +
+			"o=JefferyZhang Inno Fuzhou 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=RbsLive\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=tool:libmpp at 2.0.1\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 profile-level-id=64C028;sprop-parameter-sets=Z2TAKKwa0A8ARPywDwiEag==,aO48sA==\r\n" +
+			"a=control:track1\r\n" +
+			"m=audio 0 RTP/AVP 97\r\n" +
+			"a=rtpmap:97 MPEG4-GENERIC/48000/2\r\n" +
+			"a=fmtp:97 profile-level-id=15;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1190\r\n" +
+			"a=control:track2\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "JefferyZhang Inno Fuzhou",
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "127.0.0.1",
+			},
+			SessionName: "RbsLive",
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "0.0.0.0",
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "tool",
+					Value: "libmpp at 2.0.1",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=64C028;sprop-parameter-sets=Z2TAKKwa0A8ARPywDwiEag==,aO48sA==",
+						},
+						{
+							Key:   "control",
+							Value: "track1",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"97"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "97 MPEG4-GENERIC/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "97 profile-level-id=15;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1190",
+						},
+						{
+							Key:   "control",
+							Value: "track2",
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
