@@ -38,8 +38,8 @@ func NewServerStream(medias media.Medias) *ServerStream {
 	}
 
 	st.streamMedias = make(map[*media.Media]*serverStreamMedia, len(medias))
-	for _, medi := range medias {
-		st.streamMedias[medi] = newServerStreamMedia(st, medi)
+	for i, medi := range medias {
+		st.streamMedias[medi] = newServerStreamMedia(st, medi, i)
 	}
 
 	return st

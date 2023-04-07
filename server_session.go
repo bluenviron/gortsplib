@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -35,7 +36,7 @@ func serverParseURLForPlay(u *url.URL) (string, string, string, error) {
 		return "", "", "", liberrors.ErrServerInvalidPath{}
 	}
 
-	i := stringsReverseIndex(pathAndQuery, "/mediaUUID=")
+	i := stringsReverseIndex(pathAndQuery, "/trackID=")
 	if i < 0 {
 		if !strings.HasSuffix(pathAndQuery, "/") {
 			return "", "", "", fmt.Errorf("path of a SETUP request must end with a slash. " +
@@ -47,10 +48,10 @@ func serverParseURLForPlay(u *url.URL) (string, string, string, error) {
 		return path, query, "", nil
 	}
 
-	var mediaUUID string
-	pathAndQuery, mediaUUID = pathAndQuery[:i], pathAndQuery[i+len("/mediaUUID="):]
+	var trackID string
+	pathAndQuery, trackID = pathAndQuery[:i], pathAndQuery[i+len("/trackID="):]
 	path, query := url.PathSplitQuery(pathAndQuery)
-	return path, query, mediaUUID, nil
+	return path, query, trackID, nil
 }
 
 func findMediaByURL(medias media.Medias, baseURL *url.URL, u *url.URL) *media.Media {
@@ -64,17 +65,22 @@ func findMediaByURL(medias media.Medias, baseURL *url.URL, u *url.URL) *media.Me
 	return nil
 }
 
-func findMediaByUUID(st *ServerStream, uuid string) *media.Media {
-	if uuid == "" {
+func findMediaByTrackID(st *ServerStream, trackID string) *media.Media {
+	if trackID == "" {
 		return st.medias[0]
 	}
 
-	for _, sm := range st.streamMedias {
-		if sm.uuid.String() == uuid {
-			return sm.media
-		}
+	tmp, err := strconv.ParseInt(trackID, 10, 64)
+	if err != nil {
+		return nil
 	}
-	return nil
+	id := int(tmp)
+
+	if len(st.medias) <= id {
+		return nil
+	}
+
+	return st.medias[id]
 }
 
 func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *headers.Transport {
@@ -634,11 +640,11 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		var path string
 		var query string
-		var mediaUUID string
+		var trackID string
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
 			var err error
-			path, query, mediaUUID, err = serverParseURLForPlay(req.URL)
+			path, query, trackID, err = serverParseURLForPlay(req.URL)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -720,7 +726,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		var medi *media.Media
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
-			medi = findMediaByUUID(stream, mediaUUID)
+			medi = findMediaByTrackID(stream, trackID)
 		default: // record
 			baseURL := &url.URL{
 				Scheme:   req.URL.Scheme,
@@ -921,7 +927,8 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				entry.URL = (&url.URL{
 					Scheme: req.URL.Scheme,
 					Host:   req.URL.Host,
-					Path:   *ss.setuppedPath + "/mediaUUID=" + ss.setuppedStream.streamMedias[sm.media].uuid.String(),
+					Path: *ss.setuppedPath + "/trackID=" +
+						strconv.FormatInt(int64(ss.setuppedStream.streamMedias[sm.media].trackID), 10),
 				}).String()
 				ri = append(ri, entry)
 			}

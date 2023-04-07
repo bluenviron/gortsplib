@@ -3,7 +3,6 @@ package media
 import (
 	"fmt"
 
-	"github.com/google/uuid"
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/bluenviron/gortsplib/v3/pkg/sdp"
@@ -62,13 +61,6 @@ func (ms Medias) Marshal(multicast bool) *sdp.SessionDescription {
 	}
 
 	return sout
-}
-
-// SetControls sets the control attribute of all medias in the list.
-func (ms Medias) SetControls() {
-	for _, media := range ms {
-		media.Control = "mediaUUID=" + uuid.New().String()
-	}
 }
 
 // FindFormat finds a certain format among all the formats in all the medias.

@@ -54,7 +54,7 @@ func multicastCapableIP(t *testing.T) string {
 
 func relativeControlAttribute(md *psdp.MediaDescription) string {
 	v, _ := md.Attribute("control")
-	i := strings.Index(v, "mediaUUID=")
+	i := strings.Index(v, "trackID=")
 	return v[i:]
 }
 
@@ -2186,7 +2186,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	})
 
 	rtpInfo, ssrcs := getInfos()
-	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/mediaUUID="))
+	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/trackID="))
 	require.Equal(t, &headers.RTPInfo{
 		&headers.RTPInfoEntry{
 			URL: (&url.URL{
@@ -2221,7 +2221,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	})
 
 	rtpInfo, ssrcs = getInfos()
-	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/mediaUUID="))
+	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/trackID="))
 	require.Equal(t, &headers.RTPInfo{
 		&headers.RTPInfoEntry{
 			URL: (&url.URL{
