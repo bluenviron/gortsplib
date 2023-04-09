@@ -20,7 +20,7 @@ func (b *body) unmarshal(header Header, rb *bufio.Reader) error {
 		return nil
 	}
 
-	cl, err := strconv.ParseInt(cls[0], 10, 64)
+	cl, err := strconv.ParseUint(cls[0], 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid Content-Length")
 	}
