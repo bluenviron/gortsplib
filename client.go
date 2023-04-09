@@ -221,7 +221,7 @@ type Client struct {
 	OnTransportSwitch func(err error)
 	// called when the client detects lost packets.
 	OnPacketLost func(err error)
-	// called when there's a decode error.
+	// called when a non-fatal decode error occurs.
 	OnDecodeError func(err error)
 	// Deprecated: replaced by OnTransportSwitch, OnPacketLost, OnDecodeError
 	Log ClientLogFunc
