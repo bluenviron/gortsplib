@@ -75,10 +75,10 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		}, fmt.Errorf("H264 media not found")
 	}
 
-	// setup RTP/H264->H264 decoder
+	// setup RTP/H264 -> H264 decoder
 	rtpDec := forma.CreateDecoder()
 
-	// setup H264->MPEGTS muxer
+	// setup H264 -> MPEGTS muxer
 	mpegtsMuxer, err := newMPEGTSMuxer(forma.SPS, forma.PPS)
 	if err != nil {
 		return &base.Response{

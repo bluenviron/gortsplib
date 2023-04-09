@@ -70,10 +70,10 @@ func main() {
 		panic("media not found")
 	}
 
-	// setup RTP/H264->H264 decoder
+	// setup RTP/H264 -> H264 decoder
 	rtpDec := forma.CreateDecoder()
 
-	// setup H264->raw frames decoder
+	// setup H264 -> raw frames decoder
 	h264RawDec, err := newH264Decoder()
 	if err != nil {
 		panic(err)
@@ -97,8 +97,8 @@ func main() {
 	// called when a RTP packet arrives
 	saveCount := 0
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
-		// extract NALUs from RTP packets
-		nalus, _, err := rtpDec.Decode(pkt)
+		// extract access units from RTP packets
+		au, _, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
@@ -106,7 +106,7 @@ func main() {
 			return
 		}
 
-		for _, nalu := range nalus {
+		for _, nalu := range au {
 			// convert NALUs into RGBA frames
 			img, err := h264RawDec.decode(nalu)
 			if err != nil {

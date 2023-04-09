@@ -44,7 +44,7 @@ func main() {
 		panic("media not found")
 	}
 
-	// setup RTP/H265->H265 decoder
+	// setup RTP/H265 -> H265 decoder
 	rtpDec := forma.CreateDecoder()
 
 	// setup a single media
@@ -55,8 +55,8 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
-		// extract NALUs from RTP packets
-		nalus, pts, err := rtpDec.Decode(pkt)
+		// extract access units from RTP packets
+		au, pts, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtph265.ErrNonStartingPacketAndNoPrevious && err != rtph265.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
@@ -64,7 +64,7 @@ func main() {
 			return
 		}
 
-		for _, nalu := range nalus {
+		for _, nalu := range au {
 			log.Printf("received NALU with PTS %v and size %d\n", pts, len(nalu))
 		}
 	})
