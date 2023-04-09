@@ -70,6 +70,7 @@ Features:
 * [client-read-format-lpcm](examples/client-read-format-lpcm/main.go)
 * [client-read-format-mjpeg](examples/client-read-format-mjpeg/main.go)
 * [client-read-format-mpeg4audio](examples/client-read-format-mpeg4audio/main.go)
+* [client-read-format-mpeg4audio-save-to-disk](examples/client-read-format-mpeg4audio-save-to-disk/main.go)
 * [client-read-format-opus](examples/client-read-format-opus/main.go)
 * [client-read-format-vp8](examples/client-read-format-vp8/main.go)
 * [client-read-format-vp9](examples/client-read-format-vp9/main.go)

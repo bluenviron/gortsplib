@@ -5,18 +5,14 @@ import (
 
 	"github.com/bluenviron/gortsplib/v3"
 	"github.com/bluenviron/gortsplib/v3/pkg/formats"
-	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtph264"
 	"github.com/bluenviron/gortsplib/v3/pkg/url"
 	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an H264 media
-// 3. decode H264 into RGBA frames
-
-// This example requires the ffmpeg libraries, that can be installed in this way:
-// apt install -y libavformat-dev libswscale-dev gcc pkg-config
+// 2. check if there's an MPEG4-audio media
+// 3. save the content of the media into a file in MPEG-TS format
 
 func main() {
 	c := gortsplib.Client{}
@@ -40,29 +36,20 @@ func main() {
 		panic(err)
 	}
 
-	// find the H264 media and format
-	var forma *formats.H264
+	// find the MPEG4-audio media and format
+	var forma *formats.MPEG4Audio
 	medi := medias.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
-	// setup RTP/H264 -> H264 decoder
+	// setup RTP/MPEG4-audio -> MPEG4-audio decoder
 	rtpDec := forma.CreateDecoder()
 
-	// setup H264 -> raw frames decoder
-	h264RawDec, err := newH264Decoder()
+	// setup MPEG4-audio -> MPEG-TS muxer
+	mpegtsMuxer, err := newMPEGTSMuxer(forma.Config)
 	if err != nil {
 		panic(err)
-	}
-	defer h264RawDec.close()
-
-	// if SPS and PPS are present into the SDP, send them to the decoder
-	if forma.SPS != nil {
-		h264RawDec.decode(forma.SPS)
-	}
-	if forma.PPS != nil {
-		h264RawDec.decode(forma.PPS)
 	}
 
 	// setup a single media
@@ -74,27 +61,15 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// extract access units from RTP packets
-		au, pts, err := rtpDec.Decode(pkt)
+		aus, pts, err := rtpDec.Decode(pkt)
 		if err != nil {
-			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
-				log.Printf("ERR: %v", err)
-			}
+			log.Printf("ERR: %v", err)
 			return
 		}
 
-		for _, nalu := range au {
-			// convert NALUs into RGBA frames
-			img, err := h264RawDec.decode(nalu)
-			if err != nil {
-				panic(err)
-			}
-
-			// wait for a frame
-			if img == nil {
-				continue
-			}
-
-			log.Printf("decoded frame with size %v and pts %v", img.Bounds().Max, pts)
+		for _, au := range aus {
+			// encode the access unit into MPEG-TS
+			mpegtsMuxer.encode(au, pts)
 		}
 	})
 

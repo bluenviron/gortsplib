@@ -13,7 +13,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server
 // 2. check if there's a H264 media
-// 3. save the content of the H264 media into a file in MPEG-TS format
+// 3. save the content of the media into a file in MPEG-TS format
 
 func main() {
 	c := gortsplib.Client{}
@@ -44,10 +44,10 @@ func main() {
 		panic("media not found")
 	}
 
-	// setup RTP/H264->H264 decoder
+	// setup RTP/H264 -> H264 decoder
 	rtpDec := forma.CreateDecoder()
 
-	// setup H264->MPEGTS muxer
+	// setup H264 -> MPEG-TS muxer
 	mpegtsMuxer, err := newMPEGTSMuxer(forma.SPS, forma.PPS)
 	if err != nil {
 		panic(err)
@@ -61,9 +61,9 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
-		// extract NALUs from RTP packets
+		// extract access unit from RTP packets
 		// DecodeUntilMarker is necessary for the DTS extractor to work
-		nalus, pts, err := rtpDec.DecodeUntilMarker(pkt)
+		au, pts, err := rtpDec.DecodeUntilMarker(pkt)
 		if err != nil {
 			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
@@ -71,8 +71,8 @@ func main() {
 			return
 		}
 
-		// encode H264 NALUs into MPEG-TS
-		mpegtsMuxer.encode(nalus, pts)
+		// encode the access unit into MPEG-TS
+		mpegtsMuxer.encode(au, pts)
 	})
 
 	// start playing
