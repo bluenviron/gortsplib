@@ -217,6 +217,7 @@ type ServerHandlerOnPacketLostCtx struct {
 
 // ServerHandlerOnPacketLost can be implemented by a ServerHandler.
 type ServerHandlerOnPacketLost interface {
+	// called when the server detects lost packets.
 	OnPacketLost(*ServerHandlerOnPacketLostCtx)
 }
 
@@ -228,5 +229,6 @@ type ServerHandlerOnDecodeErrorCtx struct {
 
 // ServerHandlerOnDecodeError can be implemented by a ServerHandler.
 type ServerHandlerOnDecodeError interface {
+	// called when a non-fatal decode error occurs.
 	OnDecodeError(*ServerHandlerOnDecodeErrorCtx)
 }
