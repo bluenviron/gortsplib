@@ -49,7 +49,6 @@ func (h *Header) unmarshal(br *bufio.Reader) error {
 			if err != nil {
 				return err
 			}
-
 			break
 		}
 
@@ -62,6 +61,7 @@ func (h *Header) unmarshal(br *bufio.Reader) error {
 		if err != nil {
 			return fmt.Errorf("value is missing")
 		}
+
 		key += string(byts[:len(byts)-1])
 		key = headerKeyNormalize(key)
 

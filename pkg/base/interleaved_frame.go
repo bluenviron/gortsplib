@@ -40,10 +40,7 @@ func (f *InterleavedFrame) Unmarshal(br *bufio.Reader) error {
 	f.Payload = make([]byte, payloadLen)
 
 	_, err = io.ReadFull(br, f.Payload)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // MarshalSize returns the size of an InterleavedFrame.

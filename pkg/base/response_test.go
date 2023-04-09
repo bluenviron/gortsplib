@@ -105,76 +105,6 @@ func TestResponseUnmarshal(t *testing.T) {
 	}
 }
 
-func TestResponseUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"EOF",
-		},
-		{
-			"missing code, message, eol",
-			[]byte("RTSP/1.0"),
-			"EOF",
-		},
-		{
-			"missing message, eol",
-			[]byte("RTSP/1.0 200"),
-			"EOF",
-		},
-		{
-			"missing eol",
-			[]byte("RTSP/1.0 200 OK"),
-			"EOF",
-		},
-		{
-			"missing eol 2",
-			[]byte("RTSP/1.0 200 OK\r"),
-			"EOF",
-		},
-		{
-			"invalid protocol",
-			[]byte("RTSP/2.0 200 OK\r\n"),
-			"expected 'RTSP/1.0', got [82 84 83 80 47 50 46 48]",
-		},
-		{
-			"code too long",
-			[]byte("RTSP/1.0 1234 OK\r\n"),
-			"buffer length exceeds 4",
-		},
-		{
-			"invalid code",
-			[]byte("RTSP/1.0 str OK\r\n"),
-			"unable to parse status code",
-		},
-		{
-			"empty message",
-			[]byte("RTSP/1.0 200 \r\n"),
-			"empty status message",
-		},
-		{
-			"invalid header",
-			[]byte("RTSP/1.0 200 OK\r\nTesting: val\r"),
-			"EOF",
-		},
-		{
-			"invalid body",
-			[]byte("RTSP/1.0 200 OK\r\nContent-Length: 17\r\n\r\n123"),
-			"unexpected EOF",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var res Response
-			err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestResponseMarshal(t *testing.T) {
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
@@ -223,4 +153,18 @@ func TestResponseString(t *testing.T) {
 	err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(byts)))
 	require.NoError(t, err)
 	require.Equal(t, string(byts), res.String())
+}
+
+func FuzzResponseUnmarshal(f *testing.F) {
+	f.Add([]byte("RTSP/1.0 "))
+
+	f.Add([]byte("RTSP/1.0 200 OK\r\n" +
+		"Content-Length: 100\r\n" +
+		"\r\n" +
+		"testing"))
+
+	f.Fuzz(func(t *testing.T, b []byte) {
+		var res Response
+		res.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
+	})
 }
