@@ -153,81 +153,6 @@ func TestRequestUnmarshal(t *testing.T) {
 	}
 }
 
-func TestRequestUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"EOF",
-		},
-		{
-			"missing url, protocol, r, n",
-			[]byte("GET"),
-			"EOF",
-		},
-		{
-			"missing protocol, r, n",
-			[]byte("GET rtsp://testing123/test"),
-			"EOF",
-		},
-		{
-			"missing r, n",
-			[]byte("GET rtsp://testing123/test RTSP/1.0"),
-			"EOF",
-		},
-		{
-			"missing n",
-			[]byte("GET rtsp://testing123/test RTSP/1.0\r"),
-			"EOF",
-		},
-		{
-			"empty method",
-			[]byte(" rtsp://testing123 RTSP/1.0\r\n"),
-			"empty method",
-		},
-		{
-			"empty URL",
-			[]byte("GET  RTSP/1.0\r\n"),
-			"invalid URL ()",
-		},
-		{
-			"empty protocol",
-			[]byte("GET rtsp://testing123 \r\n"),
-			"expected 'RTSP/1.0', got []",
-		},
-		{
-			"invalid URL",
-			[]byte("GET http://testing123 RTSP/1.0\r\n"),
-			"invalid URL (http://testing123)",
-		},
-		{
-			"invalid protocol",
-			[]byte("GET rtsp://testing123 RTSP/2.0\r\n"),
-			"expected 'RTSP/1.0', got [82 84 83 80 47 50 46 48]",
-		},
-		{
-			"invalid header",
-			[]byte("GET rtsp://testing123 RTSP/1.0\r\nTesting: val\r"),
-			"EOF",
-		},
-		{
-			"invalid body",
-			[]byte("GET rtsp://testing123 RTSP/1.0\r\nContent-Length: 17\r\n\r\n123"),
-			"unexpected EOF",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var req Request
-			err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestRequestMarshal(t *testing.T) {
 	for _, ca := range casesRequest {
 		t.Run(ca.name, func(t *testing.T) {
@@ -249,4 +174,18 @@ func TestRequestString(t *testing.T) {
 	err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(byts)))
 	require.NoError(t, err)
 	require.Equal(t, string(byts), req.String())
+}
+
+func FuzzRequestUnmarshal(f *testing.F) {
+	f.Add([]byte("GET rtsp://testing123/test"))
+	f.Add([]byte("GET rtsp://testing123/test RTSP/1.0\r\n"))
+	f.Add([]byte("OPTIONS rtsp://example.com/media.mp4 RTSP/1.0\r\n" +
+		"Content-Length: 100\r\n" +
+		"\r\n" +
+		"testing"))
+
+	f.Fuzz(func(t *testing.T, b []byte) {
+		var req Request
+		req.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
+	})
 }

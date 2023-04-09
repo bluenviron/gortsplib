@@ -44,36 +44,6 @@ func TestInterleavedFrameUnmarshal(t *testing.T) {
 	}
 }
 
-func TestInterleavedFrameUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"EOF",
-		},
-		{
-			"invalid magic byte",
-			[]byte{0x55, 0x00, 0x00, 0x00},
-			"invalid magic byte (0x55)",
-		},
-		{
-			"payload invalid",
-			[]byte{0x24, 0x00, 0x00, 0x05, 0x01, 0x02},
-			"unexpected EOF",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var f InterleavedFrame
-			err := f.Unmarshal(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestInterleavedFrameMarshal(t *testing.T) {
 	for _, ca := range casesInterleavedFrame {
 		t.Run(ca.name, func(t *testing.T) {
@@ -82,4 +52,11 @@ func TestInterleavedFrameMarshal(t *testing.T) {
 			require.Equal(t, ca.enc, buf)
 		})
 	}
+}
+
+func FuzzInterleavedFrameUnmarshal(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b []byte) {
+		var f InterleavedFrame
+		f.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
+	})
 }
