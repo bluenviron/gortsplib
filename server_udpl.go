@@ -60,7 +60,7 @@ func newServerUDPListenerMulticastPair(
 		listenPacket,
 		writeTimeout,
 		true,
-		ip.String()+":"+strconv.FormatInt(int64(multicastRTPPort), 10),
+		net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTPPort), 10)),
 		true,
 	)
 	if err != nil {
@@ -71,7 +71,7 @@ func newServerUDPListenerMulticastPair(
 		listenPacket,
 		writeTimeout,
 		true,
-		ip.String()+":"+strconv.FormatInt(int64(multicastRTCPPort), 10),
+		net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTCPPort), 10)),
 		false,
 	)
 	if err != nil {
@@ -97,7 +97,7 @@ func newServerUDPListener(
 			return nil, err
 		}
 
-		tmp, err := listenPacket("udp", "224.0.0.0:"+port)
+		tmp, err := listenPacket(restrictNetwork("udp", "224.0.0.0:"+port))
 		if err != nil {
 			return nil, err
 		}
@@ -127,7 +127,7 @@ func newServerUDPListener(
 
 		pc = tmp.(*net.UDPConn)
 	} else {
-		tmp, err := listenPacket("udp", address)
+		tmp, err := listenPacket(restrictNetwork("udp", address))
 		if err != nil {
 			return nil, err
 		}

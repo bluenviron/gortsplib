@@ -49,7 +49,7 @@ func newClientUDPListenerPair(
 			anyPortEnable,
 			writeTimeout,
 			false,
-			":"+strconv.FormatInt(int64(rtpPort), 10),
+			net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
 			cm,
 			true)
 		if err != nil {
@@ -62,7 +62,7 @@ func newClientUDPListenerPair(
 			anyPortEnable,
 			writeTimeout,
 			false,
-			":"+strconv.FormatInt(int64(rtcpPort), 10),
+			net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
 			cm,
 			false)
 		if err != nil {
@@ -90,7 +90,7 @@ func newClientUDPListener(
 			return nil, err
 		}
 
-		tmp, err := listenPacket("udp", "224.0.0.0:"+port)
+		tmp, err := listenPacket(restrictNetwork("udp", "224.0.0.0:"+port))
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +116,7 @@ func newClientUDPListener(
 
 		pc = tmp.(*net.UDPConn)
 	} else {
-		tmp, err := listenPacket("udp", address)
+		tmp, err := listenPacket(restrictNetwork("udp", address))
 		if err != nil {
 			return nil, err
 		}
