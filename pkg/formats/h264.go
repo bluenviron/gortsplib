@@ -70,7 +70,8 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 	}
 }
 
-// H264 is a format that uses the H264 codef.
+// H264 is a RTP format that uses the H264 codec, defined in MPEG-4 part 10.
+// Specification: https://datatracker.ietf.org/doc/html/rfc6184
 type H264 struct {
 	PayloadTyp        uint8
 	SPS               []byte
@@ -101,14 +102,14 @@ func (f *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 	for key, val := range fmtp {
 		switch key {
 		case "sprop-parameter-sets":
-			tmp2 := strings.Split(val, ",")
-			if len(tmp2) >= 2 {
-				sps, err := base64.StdEncoding.DecodeString(tmp2[0])
+			tmp := strings.Split(val, ",")
+			if len(tmp) >= 2 {
+				sps, err := base64.StdEncoding.DecodeString(tmp[0])
 				if err != nil {
 					return fmt.Errorf("invalid sprop-parameter-sets (%v)", val)
 				}
 
-				pps, err := base64.StdEncoding.DecodeString(tmp2[1])
+				pps, err := base64.StdEncoding.DecodeString(tmp[1])
 				if err != nil {
 					return fmt.Errorf("invalid sprop-parameter-sets (%v)", val)
 				}
@@ -118,12 +119,12 @@ func (f *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 			}
 
 		case "packetization-mode":
-			tmp2, err := strconv.ParseInt(val, 10, 64)
+			tmp, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid packetization-mode (%v)", val)
 			}
 
-			f.PacketizationMode = int(tmp2)
+			f.PacketizationMode = int(tmp)
 		}
 	}
 
@@ -141,15 +142,15 @@ func (f *H264) Marshal() (string, map[string]string) {
 		fmtp["packetization-mode"] = strconv.FormatInt(int64(f.PacketizationMode), 10)
 	}
 
-	var tmp2 []string
+	var tmp []string
 	if f.SPS != nil {
-		tmp2 = append(tmp2, base64.StdEncoding.EncodeToString(f.SPS))
+		tmp = append(tmp, base64.StdEncoding.EncodeToString(f.SPS))
 	}
 	if f.PPS != nil {
-		tmp2 = append(tmp2, base64.StdEncoding.EncodeToString(f.PPS))
+		tmp = append(tmp, base64.StdEncoding.EncodeToString(f.PPS))
 	}
-	if tmp2 != nil {
-		fmtp["sprop-parameter-sets"] = strings.Join(tmp2, ",")
+	if tmp != nil {
+		fmtp["sprop-parameter-sets"] = strings.Join(tmp, ",")
 	}
 	if len(f.SPS) >= 4 {
 		fmtp["profile-level-id"] = strings.ToUpper(hex.EncodeToString(f.SPS[1:4]))
@@ -163,7 +164,7 @@ func (f *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
 	return rtpH264ContainsIDR(pkt)
 }
 
-// CreateDecoder creates a decoder able to decode the content of the formaf.
+// CreateDecoder creates a decoder able to decode the content of the format.
 func (f *H264) CreateDecoder() *rtph264.Decoder {
 	d := &rtph264.Decoder{
 		PacketizationMode: f.PacketizationMode,
@@ -172,7 +173,7 @@ func (f *H264) CreateDecoder() *rtph264.Decoder {
 	return d
 }
 
-// CreateEncoder creates an encoder able to encode the content of the formaf.
+// CreateEncoder creates an encoder able to encode the content of the format.
 func (f *H264) CreateEncoder() *rtph264.Encoder {
 	e := &rtph264.Encoder{
 		PayloadType:       f.PayloadTyp,

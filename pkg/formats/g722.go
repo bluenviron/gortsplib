@@ -6,7 +6,8 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpsimpleaudio"
 )
 
-// G722 is a format that uses the G722 codec.
+// G722 is a RTP format that uses the G722 codec.
+// Specification: https://datatracker.ietf.org/doc/html/rfc3551
 type G722 struct{}
 
 // String implements Format.

@@ -51,7 +51,7 @@ func findClockRate(payloadType uint8, rtpMap string) (int, error) {
 	return int(v), nil
 }
 
-// Generic is a generic format.
+// Generic is a generic RTP format.
 type Generic struct {
 	PayloadTyp uint8
 	RTPMap     string

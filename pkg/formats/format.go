@@ -57,8 +57,8 @@ func decodeFMTP(enc string) map[string]string {
 	return ret
 }
 
-// Format is a format of a media.
-// It defines a codec and a payload type used to ship the media.
+// Format is a RTP format of a media.
+// It defines a codec and a payload type used to transmit the media.
 type Format interface {
 	// String returns a description of the format.
 	String() string
@@ -110,6 +110,9 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 
 			case payloadType == 32:
 				return &MPEG2Video{}
+
+			case codec == "mp4v-es" && clock == "90000":
+				return &MPEG4Video{}
 
 			case codec == "h264" && clock == "90000":
 				return &H264{}
