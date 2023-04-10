@@ -6,7 +6,8 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpsimpleaudio"
 )
 
-// G711 is a format that uses the G711 codec, encoded with mu-law or A-law.
+// G711 is a RTP format that uses the G711 codec, encoded with mu-law or A-law.
+// Specification: https://datatracker.ietf.org/doc/html/rfc3551
 type G711 struct {
 	// whether to use mu-law. Otherwise, A-law is used.
 	MULaw bool

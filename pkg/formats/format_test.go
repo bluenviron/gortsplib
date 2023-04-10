@@ -323,6 +323,39 @@ func TestNewFromMediaDescription(t *testing.T) {
 			&MPEG2Video{},
 		},
 		{
+			"video mpeg4 video",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 MP4V-ES/90000",
+					},
+					{
+						Key: "fmtp",
+						Value: "96 profile-level-id=1; " +
+							"config=000001B001000001B58913000001000000012000C48D8AEE053C04641443000001B24C61766335382E3133342E313030",
+					},
+				},
+			},
+			&MPEG4Video{
+				PayloadTyp:     96,
+				ProfileLevelID: 1,
+				Config: []byte{
+					0x00, 0x00, 0x01, 0xb0, 0x01, 0x00, 0x00, 0x01,
+					0xb5, 0x89, 0x13, 0x00, 0x00, 0x01, 0x00, 0x00,
+					0x00, 0x01, 0x20, 0x00, 0xc4, 0x8d, 0x8a, 0xee,
+					0x05, 0x3c, 0x04, 0x64, 0x14, 0x43, 0x00, 0x00,
+					0x01, 0xb2, 0x4c, 0x61, 0x76, 0x63, 0x35, 0x38,
+					0x2e, 0x31, 0x33, 0x34, 0x2e, 0x31, 0x30, 0x30,
+				},
+			},
+		},
+		{
 			"video h264",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
@@ -443,7 +476,7 @@ func TestNewFromMediaDescription(t *testing.T) {
 			},
 		},
 		{
-			"h264 empty sprop-parameter-sets",
+			"video h264 empty sprop-parameter-sets",
 			&psdp.MediaDescription{
 				MediaName: psdp.MediaName{
 					Media:   "video",

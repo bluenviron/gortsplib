@@ -11,7 +11,8 @@ import (
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
 
-// MPEG4Audio is a format that uses a MPEG-4 audio codec.
+// MPEG4Audio is a RTP format that uses a MPEG-4 audio codec.
+// Specification: https://datatracker.ietf.org/doc/html/rfc3640
 type MPEG4Audio struct {
 	PayloadTyp       uint8
 	Config           *mpeg4audio.Config

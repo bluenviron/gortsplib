@@ -9,7 +9,8 @@ import (
 	"github.com/pion/rtp"
 )
 
-// Vorbis is a format that uses the Vorbis codec.
+// Vorbis is a RTP format that uses the Vorbis codec.
+// Specification: https://datatracker.ietf.org/doc/html/rfc5215
 type Vorbis struct {
 	PayloadTyp    uint8
 	SampleRate    int

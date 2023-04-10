@@ -11,7 +11,8 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtph265"
 )
 
-// H265 is a format that uses the H265 codef.
+// H265 is a RTP format that uses the H265 codec.
+// Specification: https://datatracker.ietf.org/doc/html/rfc7798
 type H265 struct {
 	PayloadTyp uint8
 	VPS        []byte
@@ -102,7 +103,7 @@ func (f *H265) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the formaf.
+// CreateDecoder creates a decoder able to decode the content of the format.
 func (f *H265) CreateDecoder() *rtph265.Decoder {
 	d := &rtph265.Decoder{
 		MaxDONDiff: f.MaxDONDiff,
@@ -111,7 +112,7 @@ func (f *H265) CreateDecoder() *rtph265.Decoder {
 	return d
 }
 
-// CreateEncoder creates an encoder able to encode the content of the formaf.
+// CreateEncoder creates an encoder able to encode the content of the format.
 func (f *H265) CreateEncoder() *rtph265.Encoder {
 	e := &rtph265.Encoder{
 		PayloadType: f.PayloadTyp,

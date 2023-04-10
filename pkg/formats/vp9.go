@@ -9,7 +9,8 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpvp9"
 )
 
-// VP9 is a format that uses the VP9 codec.
+// VP9 is a RTP format that uses the VP9 codec.
+// Specification: https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16
 type VP9 struct {
 	PayloadTyp uint8
 	MaxFR      *int

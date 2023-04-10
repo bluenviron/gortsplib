@@ -9,7 +9,8 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtplpcm"
 )
 
-// LPCM is a format that uses the uncompressed, Linear PCM codec.
+// LPCM is a RTP format that uses the uncompressed, Linear PCM codec.
+// Specification: https://datatracker.ietf.org/doc/html/rfc3190
 type LPCM struct {
 	PayloadTyp   uint8
 	BitDepth     int

@@ -9,7 +9,8 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpvp8"
 )
 
-// VP8 is a format that uses the VP8 codec.
+// VP8 is a RTP format that uses the VP8 codec.
+// Specification: https://datatracker.ietf.org/doc/html/rfc7741
 type VP8 struct {
 	PayloadTyp uint8
 	MaxFR      *int

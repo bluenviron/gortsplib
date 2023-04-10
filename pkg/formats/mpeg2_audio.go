@@ -4,7 +4,8 @@ import (
 	"github.com/pion/rtp"
 )
 
-// MPEG2Audio is a format that uses a MPEG-1 or MPEG-2 audio codec.
+// MPEG2Audio is a RTP format that uses a MPEG-1 or MPEG-2 audio codec.
+// Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEG2Audio struct{}
 
 // String implements Format.
