@@ -14,11 +14,3 @@ func TestMPEG2VideoAttributes(t *testing.T) {
 	require.Equal(t, uint8(32), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
-
-func TestMPEG2VideoMediaDescription(t *testing.T) {
-	format := &MPEG2Video{}
-
-	rtpmap, fmtp := format.Marshal()
-	require.Equal(t, "", rtpmap)
-	require.Equal(t, map[string]string(nil), fmtp)
-}

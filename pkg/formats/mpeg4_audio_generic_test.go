@@ -27,31 +27,6 @@ func TestMPEG4AudioGenericAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestMPEG4AudioGenericMediaDescription(t *testing.T) {
-	format := &MPEG4AudioGeneric{
-		PayloadTyp: 96,
-		Config: &mpeg4audio.Config{
-			Type:         mpeg4audio.ObjectTypeAACLC,
-			SampleRate:   48000,
-			ChannelCount: 2,
-		},
-		SizeLength:       13,
-		IndexLength:      3,
-		IndexDeltaLength: 3,
-	}
-
-	rtpmap, fmtp := format.Marshal()
-	require.Equal(t, "mpeg4-generic/48000/2", rtpmap)
-	require.Equal(t, map[string]string{
-		"profile-level-id": "1",
-		"mode":             "AAC-hbr",
-		"sizelength":       "13",
-		"indexlength":      "3",
-		"indexdeltalength": "3",
-		"config":           "1190",
-	}, fmtp)
-}
-
 func TestMPEG4AudioGenericDecEncoder(t *testing.T) {
 	format := &MPEG4AudioGeneric{
 		PayloadTyp: 96,

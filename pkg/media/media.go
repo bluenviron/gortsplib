@@ -39,6 +39,45 @@ func getDirection(attributes []psdp.Attribute) Direction {
 	return ""
 }
 
+func getFormatAttribute(attributes []psdp.Attribute, payloadType uint8, key string) string {
+	for _, attr := range attributes {
+		if attr.Key == key {
+			v := strings.TrimSpace(attr.Value)
+			if parts := strings.SplitN(v, " ", 2); len(parts) == 2 {
+				if tmp, err := strconv.ParseInt(parts[0], 10, 8); err == nil && uint8(tmp) == payloadType {
+					return parts[1]
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func decodeFMTP(enc string) map[string]string {
+	if enc == "" {
+		return nil
+	}
+
+	ret := make(map[string]string)
+
+	for _, kv := range strings.Split(enc, ";") {
+		kv = strings.Trim(kv, " ")
+
+		if len(kv) == 0 {
+			continue
+		}
+
+		tmp := strings.SplitN(kv, "=", 2)
+		if len(tmp) != 2 {
+			continue
+		}
+
+		ret[strings.ToLower(tmp[0])] = tmp[1]
+	}
+
+	return ret
+}
+
 // Direction is the direction of a media stream.
 type Direction string
 
@@ -82,7 +121,28 @@ func (m *Media) unmarshal(md *psdp.MediaDescription) error {
 
 	m.Formats = nil
 	for _, payloadType := range md.MediaName.Formats {
-		format, err := formats.Unmarshal(md, payloadType)
+		if payloadType == "smart/1/90000" {
+			for _, attr := range md.Attributes {
+				if attr.Key == "rtpmap" {
+					i := strings.Index(attr.Value, " TP-LINK/90000")
+					if i >= 0 {
+						payloadType = attr.Value[:i]
+						break
+					}
+				}
+			}
+		}
+
+		tmp, err := strconv.ParseInt(payloadType, 10, 8)
+		if err != nil {
+			return err
+		}
+		payloadTypeInt := uint8(tmp)
+
+		rtpMap := getFormatAttribute(md.Attributes, payloadTypeInt, "rtpmap")
+		fmtp := decodeFMTP(getFormatAttribute(md.Attributes, payloadTypeInt, "fmtp"))
+
+		format, err := formats.Unmarshal(string(m.Type), payloadTypeInt, rtpMap, fmtp)
 		if err != nil {
 			return err
 		}

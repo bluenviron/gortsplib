@@ -1,0 +1,7 @@
+go test fuzz v1
+string("")
+string("")
+string("")
+string("")
+string("")
+string("0")

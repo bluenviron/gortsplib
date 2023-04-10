@@ -1,0 +1,5 @@
+go test fuzz v1
+string("")
+string("\f3r\x05\x00\xe7\xe8")
+string("2\xf5\xe13")
+string("7")

@@ -45,44 +45,6 @@ func TestH264PTSEqualsDTS(t *testing.T) {
 	}))
 }
 
-func TestH264MediaDescription(t *testing.T) {
-	t.Run("standard", func(t *testing.T) {
-		format := &H264{
-			PayloadTyp: 96,
-			SPS: []byte{
-				0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
-				0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
-				0x00, 0x03, 0x00, 0x3d, 0x08,
-			},
-			PPS: []byte{
-				0x68, 0xee, 0x3c, 0x80,
-			},
-			PacketizationMode: 1,
-		}
-
-		rtpmap, fmtp := format.Marshal()
-		require.Equal(t, "H264/90000", rtpmap)
-		require.Equal(t, map[string]string{
-			"packetization-mode":   "1",
-			"sprop-parameter-sets": "Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==",
-			"profile-level-id":     "64000C",
-		}, fmtp)
-	})
-
-	t.Run("no sps/pps", func(t *testing.T) {
-		format := &H264{
-			PayloadTyp:        96,
-			PacketizationMode: 1,
-		}
-
-		rtpmap, fmtp := format.Marshal()
-		require.Equal(t, "H264/90000", rtpmap)
-		require.Equal(t, map[string]string{
-			"packetization-mode": "1",
-		}, fmtp)
-	})
-}
-
 func TestH264DecEncoder(t *testing.T) {
 	format := &H264{}
 

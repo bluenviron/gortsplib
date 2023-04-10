@@ -147,7 +147,7 @@ func (f *MPEG4AudioLATM) Marshal() (string, map[string]string) {
 	}
 
 	if f.SBREnabled != nil {
-		if *f.CPresent {
+		if *f.SBREnabled {
 			fmtp["SBR-enabled"] = "1"
 		} else {
 			fmtp["SBR-enabled"] = "0"

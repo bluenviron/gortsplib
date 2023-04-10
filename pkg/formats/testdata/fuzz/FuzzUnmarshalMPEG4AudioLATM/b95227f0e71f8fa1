@@ -1,0 +1,7 @@
+go test fuzz v1
+string("")
+string("")
+string("oc\x97\xf3V\x8e\xe0")
+string("")
+string("9A")
+string("X")
