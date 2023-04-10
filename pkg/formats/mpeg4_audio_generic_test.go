@@ -9,8 +9,8 @@ import (
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
 
-func TestMPEG4AudioAttributes(t *testing.T) {
-	format := &MPEG4Audio{
+func TestMPEG4AudioGenericAttributes(t *testing.T) {
+	format := &MPEG4AudioGeneric{
 		PayloadTyp: 96,
 		Config: &mpeg4audio.Config{
 			Type:         mpeg4audio.ObjectTypeAACLC,
@@ -21,14 +21,14 @@ func TestMPEG4AudioAttributes(t *testing.T) {
 		IndexLength:      3,
 		IndexDeltaLength: 3,
 	}
-	require.Equal(t, "MPEG4-audio", format.String())
+	require.Equal(t, "MPEG4-audio-gen", format.String())
 	require.Equal(t, 48000, format.ClockRate())
 	require.Equal(t, uint8(96), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestMPEG4AudioMediaDescription(t *testing.T) {
-	format := &MPEG4Audio{
+func TestMPEG4AudioGenericMediaDescription(t *testing.T) {
+	format := &MPEG4AudioGeneric{
 		PayloadTyp: 96,
 		Config: &mpeg4audio.Config{
 			Type:         mpeg4audio.ObjectTypeAACLC,
@@ -52,8 +52,8 @@ func TestMPEG4AudioMediaDescription(t *testing.T) {
 	}, fmtp)
 }
 
-func TestMPEG4AudioDecEncoder(t *testing.T) {
-	format := &MPEG4Audio{
+func TestMPEG4AudioGenericDecEncoder(t *testing.T) {
+	format := &MPEG4AudioGeneric{
 		PayloadTyp: 96,
 		Config: &mpeg4audio.Config{
 			Type:         mpeg4audio.ObjectTypeAACLC,
