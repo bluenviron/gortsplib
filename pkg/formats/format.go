@@ -142,7 +142,10 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 				return &LPCM{}
 
 			case codec == "mpeg4-generic":
-				return &MPEG4Audio{}
+				return &MPEG4AudioGeneric{}
+
+			case codec == "mp4a-latm":
+				return &MPEG4AudioLATM{}
 
 			case codec == "vorbis":
 				return &Vorbis{}

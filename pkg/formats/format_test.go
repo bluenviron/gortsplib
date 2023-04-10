@@ -9,7 +9,15 @@ import (
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
 
-func TestNewFromMediaDescription(t *testing.T) {
+func intPtr(v int) *int {
+	return &v
+}
+
+func boolPtr(v bool) *bool {
+	return &v
+}
+
+func TestUnmarshal(t *testing.T) {
 	for _, ca := range []struct {
 		name   string
 		md     *psdp.MediaDescription
@@ -248,6 +256,68 @@ func TestNewFromMediaDescription(t *testing.T) {
 				SizeLength:       13,
 				IndexLength:      0,
 				IndexDeltaLength: 0,
+			},
+		},
+		{
+			"audio aac lc latm",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 MP4A-LATM/24000/2",
+					},
+					{
+						Key: "fmtp",
+						Value: "96 110 profile-level-id=1; bitrate=64000; cpresent=0; " +
+							"object=2; config=400026203fc0",
+					},
+				},
+			},
+			&MPEG4AudioLATM{
+				PayloadTyp:     96,
+				SampleRate:     24000,
+				Channels:       2,
+				ProfileLevelID: 30,
+				Bitrate:        intPtr(64000),
+				CPresent:       boolPtr(false),
+				Object:         2,
+				Config:         []byte{0x40, 0x00, 0x26, 0x20, 0x3f, 0xc0},
+			},
+		},
+		{
+			"audio aac v2 latm",
+			&psdp.MediaDescription{
+				MediaName: psdp.MediaName{
+					Media:   "audio",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"110"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "110 MP4A-LATM/24000/1",
+					},
+					{
+						Key: "fmtp",
+						Value: "110 profile-level-id=15; object=2; cpresent=0; " +
+							"config=400026103fc0; SBR-enabled=1",
+					},
+				},
+			},
+			&MPEG4AudioLATM{
+				PayloadTyp:     110,
+				SampleRate:     24000,
+				Channels:       1,
+				ProfileLevelID: 15,
+				CPresent:       boolPtr(false),
+				Object:         2,
+				SBREnabled:     boolPtr(true),
+				Config:         []byte{0x40, 0x00, 0x26, 0x10, 0x3f, 0xc0},
 			},
 		},
 		{
@@ -562,14 +632,8 @@ func TestNewFromMediaDescription(t *testing.T) {
 			},
 			&VP8{
 				PayloadTyp: 96,
-				MaxFR: func() *int {
-					v := 123
-					return &v
-				}(),
-				MaxFS: func() *int {
-					v := 456
-					return &v
-				}(),
+				MaxFR:      intPtr(123),
+				MaxFS:      intPtr(456),
 			},
 		},
 		{
@@ -593,18 +657,9 @@ func TestNewFromMediaDescription(t *testing.T) {
 			},
 			&VP9{
 				PayloadTyp: 96,
-				MaxFR: func() *int {
-					v := 123
-					return &v
-				}(),
-				MaxFS: func() *int {
-					v := 456
-					return &v
-				}(),
-				ProfileID: func() *int {
-					v := 789
-					return &v
-				}(),
+				MaxFR:      intPtr(123),
+				MaxFS:      intPtr(456),
+				ProfileID:  intPtr(789),
 			},
 		},
 		{
@@ -714,7 +769,7 @@ func TestNewFromMediaDescription(t *testing.T) {
 	}
 }
 
-func TestNewFromMediaDescriptionErrors(t *testing.T) {
+func TestUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		md   *psdp.MediaDescription
@@ -794,7 +849,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"invalid AAC config (zz)",
+			"invalid AAC config: zz",
 		},
 		{
 			"audio aac invalid config 2",
@@ -815,7 +870,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"invalid AAC config (aa)",
+			"invalid AAC config: aa",
 		},
 		{
 			"audio aac missing sizelength",
@@ -857,7 +912,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"invalid AAC SizeLength (aaa)",
+			"invalid AAC SizeLength: aaa",
 		},
 		{
 			"audio aac invalid indexlength",
@@ -878,7 +933,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"invalid AAC IndexLength (aaa)",
+			"invalid AAC IndexLength: aaa",
 		},
 		{
 			"audio aac invalid indexdeltalength",
@@ -899,7 +954,7 @@ func TestNewFromMediaDescriptionErrors(t *testing.T) {
 					},
 				},
 			},
-			"invalid AAC IndexDeltaLength (aaa)",
+			"invalid AAC IndexDeltaLength: aaa",
 		},
 		{
 			"audio vorbis missing configuration",

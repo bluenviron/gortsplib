@@ -9,39 +9,38 @@ import (
 	"github.com/pion/rtp"
 )
 
-// MPEG4Video is a RTP format that uses the video codec defined in MPEG-4 part 2.
+// MPEG4Video is an alias for MPEG4VideoES.
+type MPEG4Video = MPEG4VideoES
+
+// MPEG4VideoES is a RTP format that uses the video codec defined in MPEG-4 part 2.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.1
-type MPEG4Video struct {
+type MPEG4VideoES struct {
 	PayloadTyp     uint8
 	ProfileLevelID int
 	Config         []byte
 }
 
 // String implements Format.
-func (f *MPEG4Video) String() string {
-	return "MPEG4-video"
+func (f *MPEG4VideoES) String() string {
+	return "MPEG4-video-es"
 }
 
 // ClockRate implements Format.
-func (f *MPEG4Video) ClockRate() int {
+func (f *MPEG4VideoES) ClockRate() int {
 	return 90000
 }
 
 // PayloadType implements Format.
-func (f *MPEG4Video) PayloadType() uint8 {
+func (f *MPEG4VideoES) PayloadType() uint8 {
 	return f.PayloadTyp
 }
 
-func (f *MPEG4Video) unmarshal(
+func (f *MPEG4VideoES) unmarshal(
 	payloadType uint8, clock string, codec string,
 	rtpmap string, fmtp map[string]string,
 ) error {
 	f.PayloadTyp = payloadType
-
-	// If this parameter is not specified by
-	// the procedure, its default value of 1 (Simple Profile/Level 1) is
-	// used.
-	f.ProfileLevelID = 1
+	f.ProfileLevelID = 1 // default value defined by specification
 
 	for key, val := range fmtp {
 		switch key {
@@ -66,7 +65,7 @@ func (f *MPEG4Video) unmarshal(
 }
 
 // Marshal implements Format.
-func (f *MPEG4Video) Marshal() (string, map[string]string) {
+func (f *MPEG4VideoES) Marshal() (string, map[string]string) {
 	fmtp := map[string]string{
 		"profile-level-id": strconv.FormatInt(int64(f.ProfileLevelID), 10),
 		"config":           strings.ToUpper(hex.EncodeToString(f.Config)),
@@ -76,6 +75,6 @@ func (f *MPEG4Video) Marshal() (string, map[string]string) {
 }
 
 // PTSEqualsDTS implements Format.
-func (f *MPEG4Video) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *MPEG4VideoES) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
