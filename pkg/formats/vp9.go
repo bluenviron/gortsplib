@@ -41,24 +41,27 @@ func (f *VP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 		case "max-fr":
 			n, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
-				return fmt.Errorf("invalid max-fr (%v)", val)
+				return fmt.Errorf("invalid max-fr: %v", val)
 			}
+
 			v2 := int(n)
 			f.MaxFR = &v2
 
 		case "max-fs":
 			n, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
-				return fmt.Errorf("invalid max-fs (%v)", val)
+				return fmt.Errorf("invalid max-fs: %v", val)
 			}
+
 			v2 := int(n)
 			f.MaxFS = &v2
 
 		case "profile-id":
 			n, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
-				return fmt.Errorf("invalid profile-id (%v)", val)
+				return fmt.Errorf("invalid profile-id: %v", val)
 			}
+
 			v2 := int(n)
 			f.ProfileID = &v2
 		}

@@ -32,23 +32,6 @@ func TestH265Attributes(t *testing.T) {
 	require.Equal(t, []byte{0x0B, 0x0C}, pps)
 }
 
-func TestH265MediaDescription(t *testing.T) {
-	format := &H265{
-		PayloadTyp: 96,
-		VPS:        []byte{0x01, 0x02},
-		SPS:        []byte{0x03, 0x04},
-		PPS:        []byte{0x05, 0x06},
-	}
-
-	rtpmap, fmtp := format.Marshal()
-	require.Equal(t, "H265/90000", rtpmap)
-	require.Equal(t, map[string]string{
-		"sprop-vps": "AQI=",
-		"sprop-sps": "AwQ=",
-		"sprop-pps": "BQY=",
-	}, fmtp)
-}
-
 func TestH265DecEncoder(t *testing.T) {
 	format := &H265{}
 

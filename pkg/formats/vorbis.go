@@ -57,7 +57,7 @@ func (f *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap
 		if key == "configuration" {
 			conf, err := base64.StdEncoding.DecodeString(val)
 			if err != nil {
-				return fmt.Errorf("invalid AAC config (%v)", val)
+				return fmt.Errorf("invalid config: %v", val)
 			}
 
 			f.Configuration = conf

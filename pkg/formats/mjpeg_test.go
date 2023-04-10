@@ -15,14 +15,6 @@ func TestMJPEGAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestMJPEGMediaDescription(t *testing.T) {
-	format := &MJPEG{}
-
-	rtpmap, fmtp := format.Marshal()
-	require.Equal(t, "JPEG/90000", rtpmap)
-	require.Equal(t, map[string]string(nil), fmtp)
-}
-
 func TestMJPEGDecEncoder(t *testing.T) {
 	format := &MJPEG{}
 

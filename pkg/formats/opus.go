@@ -43,18 +43,12 @@ func (f *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 	}
 
 	sampleRate, err := strconv.ParseInt(tmp[0], 10, 64)
-	if err != nil {
-		return err
-	}
-	if sampleRate != 48000 {
+	if err != nil || sampleRate != 48000 {
 		return fmt.Errorf("invalid sample rate: %d", sampleRate)
 	}
 
 	channelCount, err := strconv.ParseInt(tmp[1], 10, 64)
-	if err != nil {
-		return err
-	}
-	if channelCount != 2 {
+	if err != nil || channelCount != 2 {
 		return fmt.Errorf("invalid channel count: %d", channelCount)
 	}
 

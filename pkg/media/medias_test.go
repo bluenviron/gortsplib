@@ -516,6 +516,63 @@ var casesMedias = []struct {
 			},
 		},
 	},
+	{
+		"tp-link",
+		"v=0\r\n" +
+			"o=- 4158123474391860926 2 IN IP4 127.0.0.1\r\n" +
+			"s=-\r\n" +
+			"t=0 0\r\n" +
+			"m=application 42504 RTP/AVP smart/1/90000\r\n" +
+			"a=rtpmap:95 TP-LINK/90000\r\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=Stream\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"m=application 0 RTP/AVP 95\r\n" +
+			"a=control\r\n" +
+			"a=rtpmap:95 TP-LINK/90000\r\n",
+		Medias{
+			{
+				Type: "application",
+				Formats: []formats.Format{&formats.Generic{
+					PayloadTyp: 95,
+					RTPMap:     "TP-LINK/90000",
+					ClockRat:   90000,
+				}},
+			},
+		},
+	},
+	{
+		"h264 with space at end",
+		"v=0\r\n" +
+			"o=- 4158123474391860926 2 IN IP4 127.0.0.1\r\n" +
+			"s=-\r\n" +
+			"t=0 0\r\n" +
+			"m=video 42504 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000 \r\n" +
+			"a=fmtp:96 packetization-mode=1\r\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=Stream\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=control\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1\r\n",
+		Medias{
+			{
+				Type: "video",
+				Formats: []formats.Format{
+					&formats.H264{
+						PayloadTyp:        96,
+						PacketizationMode: 1,
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestMediasUnmarshal(t *testing.T) {

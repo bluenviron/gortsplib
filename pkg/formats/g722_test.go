@@ -15,14 +15,6 @@ func TestG722Attributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestG722MediaDescription(t *testing.T) {
-	format := &G722{}
-
-	rtpmap, fmtp := format.Marshal()
-	require.Equal(t, "G722/8000", rtpmap)
-	require.Equal(t, map[string]string(nil), fmtp)
-}
-
 func TestG722DecEncoder(t *testing.T) {
 	format := &G722{}
 

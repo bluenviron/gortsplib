@@ -40,16 +40,18 @@ func (f *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 		case "max-fr":
 			n, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
-				return fmt.Errorf("invalid max-fr (%v)", val)
+				return fmt.Errorf("invalid max-fr: %v", val)
 			}
+
 			v2 := int(n)
 			f.MaxFR = &v2
 
 		case "max-fs":
 			n, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
-				return fmt.Errorf("invalid max-fs (%v)", val)
+				return fmt.Errorf("invalid max-fs: %v", val)
 			}
+
 			v2 := int(n)
 			f.MaxFS = &v2
 		}
@@ -61,9 +63,11 @@ func (f *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 // Marshal implements Format.
 func (f *VP8) Marshal() (string, map[string]string) {
 	fmtp := make(map[string]string)
+
 	if f.MaxFR != nil {
 		fmtp["max-fr"] = strconv.FormatInt(int64(*f.MaxFR), 10)
 	}
+
 	if f.MaxFS != nil {
 		fmtp["max-fs"] = strconv.FormatInt(int64(*f.MaxFS), 10)
 	}

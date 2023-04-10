@@ -18,19 +18,6 @@ func TestOpusAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestOpusMediaDescription(t *testing.T) {
-	format := &Opus{
-		PayloadTyp: 96,
-		IsStereo:   true,
-	}
-
-	rtpmap, fmtp := format.Marshal()
-	require.Equal(t, "opus/48000/2", rtpmap)
-	require.Equal(t, map[string]string{
-		"sprop-stereo": "1",
-	}, fmtp)
-}
-
 func TestOpusDecEncoder(t *testing.T) {
 	format := &Opus{}
 
