@@ -290,7 +290,7 @@ func (s *Server) Start() error {
 	}
 
 	var err error
-	s.tcpListener, err = s.Listen("tcp", s.RTSPAddress)
+	s.tcpListener, err = s.Listen(restrictNetwork("tcp", s.RTSPAddress))
 	if err != nil {
 		if s.udpRTPListener != nil {
 			s.udpRTPListener.close()

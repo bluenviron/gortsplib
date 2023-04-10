@@ -63,7 +63,8 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 			cm.c.WriteTimeout,
 			multicast,
 			rtcpAddress,
-			cm, false)
+			cm,
+			false)
 		if err != nil {
 			l1.close()
 			return err

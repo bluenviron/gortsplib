@@ -322,11 +322,11 @@ func TestClientPlay(t *testing.T) {
 						clientPorts[i] = inTH.ClientPorts
 						th.ServerPorts = &[2]int{34556 + i*2, 34557 + i*2}
 
-						l1s[i], err = net.ListenPacket("udp", listenIP+":"+strconv.FormatInt(int64(th.ServerPorts[0]), 10))
+						l1s[i], err = net.ListenPacket("udp", net.JoinHostPort(listenIP, strconv.FormatInt(int64(th.ServerPorts[0]), 10)))
 						require.NoError(t, err)
 						defer l1s[i].Close()
 
-						l2s[i], err = net.ListenPacket("udp", listenIP+":"+strconv.FormatInt(int64(th.ServerPorts[1]), 10))
+						l2s[i], err = net.ListenPacket("udp", net.JoinHostPort(listenIP, strconv.FormatInt(int64(th.ServerPorts[1]), 10)))
 						require.NoError(t, err)
 						defer l2s[i].Close()
 

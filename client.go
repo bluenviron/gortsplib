@@ -1232,8 +1232,8 @@ func (c *Client) doSetup(
 
 		err := cm.allocateUDPListeners(
 			false,
-			":"+strconv.FormatInt(int64(rtpPort), 10),
-			":"+strconv.FormatInt(int64(rtcpPort), 10),
+			net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
+			net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
 		)
 		if err != nil {
 			return nil, err
@@ -1377,8 +1377,8 @@ func (c *Client) doSetup(
 
 		err := cm.allocateUDPListeners(
 			true,
-			thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[0]), 10),
-			thRes.Destination.String()+":"+strconv.FormatInt(int64(thRes.Ports[1]), 10),
+			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[0]), 10)),
+			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[1]), 10)),
 		)
 		if err != nil {
 			return nil, err
