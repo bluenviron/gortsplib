@@ -25,7 +25,7 @@ func main() {
 
 	log.Println("Waiting for a RTP/H264 stream on UDP port 9000 - you can send one with GStreamer:\n" +
 		"gst-launch-1.0 videotestsrc ! video/x-raw,width=1920,height=1080" +
-		" ! x264enc speed-preset=veryfast tune=zerolatency bitrate=600000" +
+		" ! x264enc speed-preset=veryfast tune=zerolatency bitrate=6000" +
 		" ! rtph264pay ! udpsink host=127.0.0.1 port=9000")
 
 	// wait for first packet
