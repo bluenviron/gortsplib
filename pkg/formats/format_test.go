@@ -344,6 +344,16 @@ var casesFormat = []struct {
 		nil,
 	},
 	{
+		"video mpeg-ts",
+		"video",
+		33,
+		"",
+		nil,
+		&MPEGTS{},
+		"MP2T/90000",
+		nil,
+	},
+	{
 		"video mpeg4 video",
 		"video",
 		96,
