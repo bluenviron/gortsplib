@@ -51,6 +51,9 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 			case payloadType == 32:
 				return &MPEG2Video{}
 
+			case payloadType == 33:
+				return &MPEGTS{}
+
 			case codec == "mp4v-es" && clock == "90000":
 				return &MPEG4Video{}
 
