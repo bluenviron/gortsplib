@@ -6,7 +6,7 @@
 [![CodeCov](https://codecov.io/gh/bluenviron/gortsplib/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bluenviron/gortsplib/branch/main)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/bluenviron/gortsplib/v3)](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index)
 
-RTSP 1.0 client and server library for the Go programming language, written for [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
+RTSP 1.0 client and server library for the Go programming language, written for [MediaMTX](https://github.com/aler9/mediamtx).
 
 Go &ge; 1.18 is required.
 

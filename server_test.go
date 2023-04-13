@@ -358,42 +358,34 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc, err := doDescribe(conn)
-			require.NoError(t, err)
+			desc := doDescribe(t, conn)
 
-			var sx headers.Session
+			var session string
 
 			if ca == "inside session" {
-				res, err := writeReqReadRes(conn, base.Request{
-					Method: base.Setup,
-					URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
-					Header: base.Header{
-						"CSeq": base.HeaderValue{"1"},
-						"Transport": headers.Transport{
-							Protocol: headers.TransportProtocolTCP,
-							Delivery: func() *headers.TransportDelivery {
-								v := headers.TransportDeliveryUnicast
-								return &v
-							}(),
-							Mode: func() *headers.TransportMode {
-								v := headers.TransportModePlay
-								return &v
-							}(),
-							InterleavedIDs: &[2]int{0, 1},
-						}.Marshal(),
-					},
-				})
-				require.NoError(t, err)
+				inTH := &headers.Transport{
+					Protocol: headers.TransportProtocolTCP,
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
+						return &v
+					}(),
+					Mode: func() *headers.TransportMode {
+						v := headers.TransportModePlay
+						return &v
+					}(),
+					InterleavedIDs: &[2]int{0, 1},
+				}
 
-				err = sx.Unmarshal(res.Header["Session"])
-				require.NoError(t, err)
+				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
+
+				session = readSession(t, res)
 			}
 
 			headers := base.Header{
 				"CSeq": base.HeaderValue{"2"},
 			}
 			if ca == "inside session" {
-				headers["Session"] = base.HeaderValue{sx.Session}
+				headers["Session"] = base.HeaderValue{session}
 			}
 
 			res, err := writeReqReadRes(conn, base.Request{
@@ -408,7 +400,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 				"CSeq": base.HeaderValue{"3"},
 			}
 			if ca == "inside session" {
-				headers["Session"] = base.HeaderValue{sx.Session}
+				headers["Session"] = base.HeaderValue{session}
 			}
 
 			res, err = writeReqReadRes(conn, base.Request{
@@ -461,53 +453,33 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	defer nconn1.Close()
 	conn1 := conn.NewConn(nconn1)
 
-	desc1, err := doDescribe(conn1)
-	require.NoError(t, err)
+	desc1 := doDescribe(t, conn1)
 
-	res, err := writeReqReadRes(conn1, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL(absoluteControlAttribute(desc1.MediaDescriptions[0])),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIDs: &[2]int{0, 1},
-			}.Marshal(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	inTH := &headers.Transport{
+		Protocol: headers.TransportProtocolTCP,
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModePlay
+			return &v
+		}(),
+		InterleavedIDs: &[2]int{0, 1},
+	}
 
-	var sx headers.Session
-	err = sx.Unmarshal(res.Header["Session"])
-	require.NoError(t, err)
+	res, _ := doSetup(t, conn1, absoluteControlAttribute(desc1.MediaDescriptions[0]), inTH)
 
-	res, err = writeReqReadRes(conn1, base.Request{
-		Method: base.Play,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
-			"Session": base.HeaderValue{sx.Session},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	session := readSession(t, res)
+
+	doPlay(t, conn1, "rtsp://localhost:8554/teststream", session)
 
 	nconn2, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn2.Close()
 	conn2 := conn.NewConn(nconn2)
 
-	desc2, err := doDescribe(conn2)
-	require.NoError(t, err)
+	desc2 := doDescribe(t, conn2)
 
 	res, err = writeReqReadRes(conn2, base.Request{
 		Method: base.Setup,
@@ -526,7 +498,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 				}(),
 				InterleavedIDs: &[2]int{0, 1},
 			}.Marshal(),
-			"Session": base.HeaderValue{sx.Session},
+			"Session": base.HeaderValue{session},
 		},
 	})
 	require.NoError(t, err)
@@ -572,45 +544,26 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc, err := doDescribe(conn)
-	require.NoError(t, err)
+	desc := doDescribe(t, conn)
 
-	res, err := writeReqReadRes(conn, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIDs: &[2]int{0, 1},
-			}.Marshal(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	inTH := &headers.Transport{
+		Protocol: headers.TransportProtocolTCP,
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModePlay
+			return &v
+		}(),
+		InterleavedIDs: &[2]int{0, 1},
+	}
 
-	var sx headers.Session
-	err = sx.Unmarshal(res.Header["Session"])
-	require.NoError(t, err)
+	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
 
-	res, err = writeReqReadRes(conn, base.Request{
-		Method: base.Play,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
-			"Session": base.HeaderValue{sx.Session},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	session := readSession(t, res)
+
+	doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
@@ -664,8 +617,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc, err := doDescribe(conn)
-	require.NoError(t, err)
+	desc := doDescribe(t, conn)
 
 	inTHS := headers.Transports{
 		{
@@ -775,43 +727,34 @@ func TestServerGetSetParameter(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc, err := doDescribe(conn)
-			require.NoError(t, err)
+			desc := doDescribe(t, conn)
 
-			var sx headers.Session
+			var session string
 
 			if ca == "inside session" {
-				res, err := writeReqReadRes(conn, base.Request{
-					Method: base.Setup,
-					URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
-					Header: base.Header{
-						"CSeq": base.HeaderValue{"2"},
-						"Transport": headers.Transport{
-							Protocol: headers.TransportProtocolTCP,
-							Delivery: func() *headers.TransportDelivery {
-								v := headers.TransportDeliveryUnicast
-								return &v
-							}(),
-							Mode: func() *headers.TransportMode {
-								v := headers.TransportModePlay
-								return &v
-							}(),
-							InterleavedIDs: &[2]int{0, 1},
-						}.Marshal(),
-					},
-				})
-				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
+				inTH := &headers.Transport{
+					Protocol: headers.TransportProtocolTCP,
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
+						return &v
+					}(),
+					Mode: func() *headers.TransportMode {
+						v := headers.TransportModePlay
+						return &v
+					}(),
+					InterleavedIDs: &[2]int{0, 1},
+				}
 
-				err = sx.Unmarshal(res.Header["Session"])
-				require.NoError(t, err)
+				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
+
+				session = readSession(t, res)
 			}
 
 			headers := base.Header{
 				"CSeq": base.HeaderValue{"3"},
 			}
 			if ca == "inside session" {
-				headers["Session"] = base.HeaderValue{sx.Session}
+				headers["Session"] = base.HeaderValue{session}
 			}
 
 			res, err := writeReqReadRes(conn, base.Request{
@@ -827,7 +770,7 @@ func TestServerGetSetParameter(t *testing.T) {
 				"CSeq": base.HeaderValue{"4"},
 			}
 			if ca == "inside session" {
-				headers["Session"] = base.HeaderValue{sx.Session}
+				headers["Session"] = base.HeaderValue{session}
 			}
 
 			res, err = writeReqReadRes(conn, base.Request{
@@ -929,30 +872,22 @@ func TestServerSessionClose(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc, err := doDescribe(conn)
-	require.NoError(t, err)
+	desc := doDescribe(t, conn)
 
-	res, err := writeReqReadRes(conn, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIDs: &[2]int{0, 1},
-			}.Marshal(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	inTH := &headers.Transport{
+		Protocol: headers.TransportProtocolTCP,
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModePlay
+			return &v
+		}(),
+		InterleavedIDs: &[2]int{0, 1},
+	}
+
+	doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
 
 	session.Close()
 	session.Close()
@@ -1010,29 +945,36 @@ func TestServerSessionAutoClose(t *testing.T) {
 			require.NoError(t, err)
 			conn := conn.NewConn(nconn)
 
-			desc, err := doDescribe(conn)
-			require.NoError(t, err)
+			desc := doDescribe(t, conn)
 
-			_, err = writeReqReadRes(conn, base.Request{
+			inTH := &headers.Transport{
+				Protocol: headers.TransportProtocolTCP,
+				Delivery: func() *headers.TransportDelivery {
+					v := headers.TransportDeliveryUnicast
+					return &v
+				}(),
+				Mode: func() *headers.TransportMode {
+					v := headers.TransportModePlay
+					return &v
+				}(),
+				InterleavedIDs: &[2]int{0, 1},
+			}
+
+			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
 				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 				Header: base.Header{
-					"CSeq": base.HeaderValue{"1"},
-					"Transport": headers.Transport{
-						Protocol: headers.TransportProtocolTCP,
-						Delivery: func() *headers.TransportDelivery {
-							v := headers.TransportDeliveryUnicast
-							return &v
-						}(),
-						Mode: func() *headers.TransportMode {
-							v := headers.TransportModePlay
-							return &v
-						}(),
-						InterleavedIDs: &[2]int{0, 1},
-					}.Marshal(),
+					"CSeq":      base.HeaderValue{"1"},
+					"Transport": inTH.Marshal(),
 				},
 			})
 			require.NoError(t, err)
+
+			if ca == "200" {
+				require.Equal(t, base.StatusOK, res.StatusCode)
+			} else {
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
+			}
 
 			nconn.Close()
 
@@ -1070,41 +1012,31 @@ func TestServerSessionTeardown(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc, err := doDescribe(conn)
-	require.NoError(t, err)
+	desc := doDescribe(t, conn)
 
-	res, err := writeReqReadRes(conn, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIDs: &[2]int{0, 1},
-			}.Marshal(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	inTH := &headers.Transport{
+		Protocol: headers.TransportProtocolTCP,
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModePlay
+			return &v
+		}(),
+		InterleavedIDs: &[2]int{0, 1},
+	}
 
-	var sx headers.Session
-	err = sx.Unmarshal(res.Header["Session"])
-	require.NoError(t, err)
+	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
+
+	session := readSession(t, res)
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Teardown,
 		URL:    mustParseURL("rtsp://localhost:8554/"),
 		Header: base.Header{
 			"CSeq":    base.HeaderValue{"2"},
-			"Session": base.HeaderValue{sx.Session},
+			"Session": base.HeaderValue{session},
 		},
 	})
 	require.NoError(t, err)
