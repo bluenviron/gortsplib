@@ -124,14 +124,6 @@ func (e ErrServerTransportHeaderNoClientPorts) Error() string {
 	return "transport header does not contain client ports"
 }
 
-// ErrServerTransportHeaderNoInterleavedIDs is an error that can be returned by a server.
-type ErrServerTransportHeaderNoInterleavedIDs struct{}
-
-// Error implements the error interface.
-func (e ErrServerTransportHeaderNoInterleavedIDs) Error() string {
-	return "transport header does not contain interleaved IDs"
-}
-
 // ErrServerTransportHeaderInvalidInterleavedIDs is an error that can be returned by a server.
 type ErrServerTransportHeaderInvalidInterleavedIDs struct{}
 

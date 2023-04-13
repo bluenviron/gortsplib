@@ -112,20 +112,26 @@ func findAndValidateTransport(inTH *headers.Transport,
 		return TransportUDP, nil
 	}
 
-	if inTH.InterleavedIDs == nil {
-		return 0, liberrors.ErrServerTransportHeaderNoInterleavedIDs{}
-	}
+	if inTH.InterleavedIDs != nil {
+		if (inTH.InterleavedIDs[0]%2) != 0 ||
+			(inTH.InterleavedIDs[0]+1) != inTH.InterleavedIDs[1] {
+			return 0, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{}
+		}
 
-	if (inTH.InterleavedIDs[0]%2) != 0 ||
-		(inTH.InterleavedIDs[0]+1) != inTH.InterleavedIDs[1] {
-		return 0, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{}
-	}
-
-	if _, ok := tcpMediasByChannel[inTH.InterleavedIDs[0]]; ok {
-		return 0, liberrors.ErrServerTransportHeaderInterleavedIDsAlreadyUsed{}
+		if _, ok := tcpMediasByChannel[inTH.InterleavedIDs[0]]; ok {
+			return 0, liberrors.ErrServerTransportHeaderInterleavedIDsAlreadyUsed{}
+		}
 	}
 
 	return TransportTCP, nil
+}
+
+func findFreeChannel(tcpMediasByChannel map[int]*serverSessionMedia) int {
+	for i := 0; ; i += 2 {
+		if _, ok := tcpMediasByChannel[i]; !ok {
+			return i
+		}
+	}
 }
 
 // ServerSessionState is a state of a ServerSession.
@@ -823,18 +829,22 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 			th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 
 		default: // TCP
-			sm.tcpChannel = inTH.InterleavedIDs[0]
+			if inTH.InterleavedIDs != nil {
+				sm.tcpChannel = inTH.InterleavedIDs[0]
+			} else {
+				sm.tcpChannel = findFreeChannel(ss.tcpMediasByChannel)
+			}
 
 			if ss.tcpMediasByChannel == nil {
 				ss.tcpMediasByChannel = make(map[int]*serverSessionMedia)
 			}
 
-			ss.tcpMediasByChannel[inTH.InterleavedIDs[0]] = sm
+			ss.tcpMediasByChannel[sm.tcpChannel] = sm
 
 			th.Protocol = headers.TransportProtocolTCP
 			de := headers.TransportDeliveryUnicast
 			th.Delivery = &de
-			th.InterleavedIDs = inTH.InterleavedIDs
+			th.InterleavedIDs = &[2]int{sm.tcpChannel, sm.tcpChannel + 1}
 		}
 
 		if ss.setuppedMedias == nil {
