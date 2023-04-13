@@ -1970,3 +1970,102 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		}(),
 	}, ssrcs)
 }
+
+func TestServerPlayNoInterleavedIDs(t *testing.T) {
+	forma := &formats.Generic{
+		PayloadTyp: 96,
+		RTPMap:     "private/90000",
+	}
+	err := forma.Init()
+	require.NoError(t, err)
+
+	stream := NewServerStream(media.Medias{
+		&media.Media{
+			Type:    "application",
+			Formats: []formats.Format{forma},
+		},
+		&media.Media{
+			Type:    "application",
+			Formats: []formats.Format{forma},
+		},
+	})
+	defer stream.Close()
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+
+	err = s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
+
+	desc := doDescribe(t, conn)
+
+	inTH := &headers.Transport{
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModePlay
+			return &v
+		}(),
+		Protocol: headers.TransportProtocolTCP,
+	}
+
+	res, th := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
+
+	require.Equal(t, &[2]int{0, 1}, th.InterleavedIDs)
+
+	session := readSession(t, res)
+
+	res, err = writeReqReadRes(conn, base.Request{
+		Method: base.Setup,
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[1])),
+		Header: base.Header{
+			"CSeq":      base.HeaderValue{"3"},
+			"Transport": inTH.Marshal(),
+			"Session":   base.HeaderValue{session},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	err = th.Unmarshal(res.Header["Transport"])
+	require.NoError(t, err)
+
+	require.Equal(t, &[2]int{2, 3}, th.InterleavedIDs)
+
+	doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
+
+	for i := 0; i < 2; i++ {
+		stream.WritePacketRTP(stream.Medias()[i], &testRTPPacket)
+
+		f, err := conn.ReadInterleavedFrame()
+		require.NoError(t, err)
+		require.Equal(t, i*2, f.Channel)
+		require.Equal(t, testRTPPacketMarshaled, f.Payload)
+	}
+}
