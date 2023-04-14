@@ -376,7 +376,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 					InterleavedIDs: &[2]int{0, 1},
 				}
 
-				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
+				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
 
 				session = readSession(t, res)
 			}
@@ -468,7 +468,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, _ := doSetup(t, conn1, absoluteControlAttribute(desc1.MediaDescriptions[0]), inTH)
+	res, _ := doSetup(t, conn1, absoluteControlAttribute(desc1.MediaDescriptions[0]), inTH, "")
 
 	session := readSession(t, res)
 
@@ -559,7 +559,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
+	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
 
 	session := readSession(t, res)
 
@@ -745,7 +745,7 @@ func TestServerGetSetParameter(t *testing.T) {
 					InterleavedIDs: &[2]int{0, 1},
 				}
 
-				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
+				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
 
 				session = readSession(t, res)
 			}
@@ -887,7 +887,7 @@ func TestServerSessionClose(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
+	doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
 
 	session.Close()
 	session.Close()
@@ -1027,20 +1027,11 @@ func TestServerSessionTeardown(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH)
+	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
 
 	session := readSession(t, res)
 
-	res, err = writeReqReadRes(conn, base.Request{
-		Method: base.Teardown,
-		URL:    mustParseURL("rtsp://localhost:8554/"),
-		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
-			"Session": base.HeaderValue{session},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	doTeardown(t, conn, "rtsp://localhost:8554/", session)
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Options,

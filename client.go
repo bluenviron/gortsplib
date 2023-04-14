@@ -1494,7 +1494,7 @@ func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Resp
 		return nil, err
 	}
 
-	// open the firewall by sending test packets to the counterpart.
+	// open the firewall by sending empty packets to the counterpart.
 	// do this before sending the request.
 	// don't do this with multicast, otherwise the RTP packet is going to be broadcasted
 	// to all listeners, including us, messing up the stream.
