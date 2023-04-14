@@ -97,30 +97,30 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 
 ## Standards
 
-* RTSP 1.0 https://datatracker.ietf.org/doc/html/rfc2326
-* RTSP 2.0 https://datatracker.ietf.org/doc/html/rfc7826
-* RTP Profile for Audio and Video Conferences with Minimal Control https://datatracker.ietf.org/doc/html/rfc3551
-* RTP Payload Format for MPEG1/MPEG2 Video https://datatracker.ietf.org/doc/html/rfc2250
-* RTP Payload Format for JPEG-compressed Video https://datatracker.ietf.org/doc/html/rfc2435
-* RTP Payload Format for MPEG-4 Audio/Visual Streams https://datatracker.ietf.org/doc/html/rfc6416
-* RTP Payload Format for H.264 Video https://datatracker.ietf.org/doc/html/rfc6184
-* RTP Payload Format for High Efficiency Video Coding (HEVC) https://datatracker.ietf.org/doc/html/rfc7798
-* RTP Payload Format for VP8 Video https://datatracker.ietf.org/doc/html/rfc7741
-* RTP Payload Format for VP9 Video https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16
-* RTP Payload Format for 12-bit DAT Audio and 20- and 24-bit Linear Sampled Audio https://datatracker.ietf.org/doc/html/rfc3190
-* RTP Payload Format for Vorbis Encoded Audio https://datatracker.ietf.org/doc/html/rfc5215
-* RTP Payload Format for the Opus Speech and Audio Codec https://datatracker.ietf.org/doc/html/rfc7587
-* RTP Payload Format for Transport of MPEG-4 Elementary Streams https://datatracker.ietf.org/doc/html/rfc3640
-* ITU-T Rec. H.264 (08/2021) https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.264-202108-I!!PDF-E&type=items
-* ITU-T Rec. H.265 (08/2021) https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.265-202108-I!!PDF-E&type=items
+* [RFC2326, RTSP 1.0](https://datatracker.ietf.org/doc/html/rfc2326)
+* [RFC7826, RTSP 2.0](https://datatracker.ietf.org/doc/html/rfc7826)
+* [RFC3551, RTP Profile for Audio and Video Conferences with Minimal Control](https://datatracker.ietf.org/doc/html/rfc3551)
+* [RFC2250, RTP Payload Format for MPEG1/MPEG2 Video](https://datatracker.ietf.org/doc/html/rfc2250)
+* [RFC2435, RTP Payload Format for JPEG-compressed Video](https://datatracker.ietf.org/doc/html/rfc2435)
+* [RFC6416, RTP Payload Format for MPEG-4 Audio/Visual Streams](https://datatracker.ietf.org/doc/html/rfc6416)
+* [RFC6184, RTP Payload Format for H.264 Video](https://datatracker.ietf.org/doc/html/rfc6184)
+* [RFC7798, RTP Payload Format for High Efficiency Video Coding (HEVC)](https://datatracker.ietf.org/doc/html/rfc7798)
+* [RFC7741, RTP Payload Format for VP8 Video](https://datatracker.ietf.org/doc/html/rfc7741)
+* [RTP Payload Format for VP9 Video](https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16)
+* [RFC3190, RTP Payload Format for 12-bit DAT Audio and 20- and 24-bit Linear Sampled Audio](https://datatracker.ietf.org/doc/html/rfc3190)
+* [RFC5215, RTP Payload Format for Vorbis Encoded Audio](https://datatracker.ietf.org/doc/html/rfc5215)
+* [RFC7587, RTP Payload Format for the Opus Speech and Audio Codec](https://datatracker.ietf.org/doc/html/rfc7587)
+* [RFC3640, RTP Payload Format for Transport of MPEG-4 Elementary Streams](https://datatracker.ietf.org/doc/html/rfc3640)
+* [ITU-T Rec. H.264 (08/2021)](https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.264-202108-I!!PDF-E&type=items)
+* [ITU-T Rec. H.265 (08/2021)](https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.265-202108-I!!PDF-E&type=items)
 * ISO 14496-3, Coding of audio-visual objects, part 3, Audio
-* Golang project layout https://github.com/golang-standards/project-layout
+* [Golang project layout](https://github.com/golang-standards/project-layout)
 
 ## Links
 
 Related projects
 
-* MediaMTX https://github.com/aler9/mediamtx
-* pion/sdp (SDP library used internally) https://github.com/pion/sdp
-* pion/rtp (RTP library used internally) https://github.com/pion/rtp
-* pion/rtcp (RTCP library used internally) https://github.com/pion/rtcp
+* [MediaMTX](https://github.com/aler9/mediamtx)
+* [pion/sdp (SDP library used internally)](https://github.com/pion/sdp)
+* [pion/rtp (RTP library used internally)](https://github.com/pion/rtp)
+* [pion/rtcp (RTCP library used internally)](https://github.com/pion/rtcp)
