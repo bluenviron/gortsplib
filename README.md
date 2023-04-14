@@ -120,7 +120,7 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 
 Related projects
 
-* rtsp-simple-server https://github.com/aler9/rtsp-simple-server
+* MediaMTX https://github.com/aler9/mediamtx
 * pion/sdp (SDP library used internally) https://github.com/pion/sdp
 * pion/rtp (RTP library used internally) https://github.com/pion/rtp
 * pion/rtcp (RTCP library used internally) https://github.com/pion/rtcp

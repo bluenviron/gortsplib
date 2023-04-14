@@ -92,7 +92,7 @@ func (sm *serverSessionMedia) start() {
 			// readers can send RTCP packets only
 			sm.ss.s.udpRTCPListener.addClient(sm.ss.author.ip(), sm.udpRTCPReadPort, sm)
 		} else {
-			// open the firewall by sending test packets to the counterpart.
+			// open the firewall by sending empty packets to the counterpart.
 			sm.ss.WritePacketRTP(sm.media, &rtp.Packet{Header: rtp.Header{Version: 2}})
 			sm.ss.WritePacketRTCP(sm.media, &rtcp.ReceiverReport{})
 
