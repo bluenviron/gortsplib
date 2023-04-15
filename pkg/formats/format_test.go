@@ -134,6 +134,7 @@ var casesFormat = []struct {
 		96,
 		"mpeg4-generic/48000/2",
 		map[string]string{
+			"streamtype":       "5",
 			"profile-level-id": "1",
 			"mode":             "AAC-hbr",
 			"sizelength":       "13",
@@ -142,7 +143,8 @@ var casesFormat = []struct {
 			"config":           "11900810",
 		},
 		&MPEG4Audio{
-			PayloadTyp: 96,
+			PayloadTyp:     96,
+			ProfileLevelID: 1,
 			Config: &mpeg4audio.Config{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   48000,
@@ -154,6 +156,7 @@ var casesFormat = []struct {
 		},
 		"mpeg4-generic/48000/2",
 		map[string]string{
+			"streamtype":       "5",
 			"profile-level-id": "1",
 			"mode":             "AAC-hbr",
 			"sizelength":       "13",
@@ -176,7 +179,8 @@ var casesFormat = []struct {
 			"config":           "1190",
 		},
 		&MPEG4Audio{
-			PayloadTyp: 96,
+			PayloadTyp:     96,
+			ProfileLevelID: 1,
 			Config: &mpeg4audio.Config{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   48000,
@@ -188,6 +192,7 @@ var casesFormat = []struct {
 		},
 		"mpeg4-generic/48000/2",
 		map[string]string{
+			"streamtype":       "5",
 			"profile-level-id": "1",
 			"mode":             "AAC-hbr",
 			"sizelength":       "13",
@@ -202,14 +207,15 @@ var casesFormat = []struct {
 		96,
 		"mpeg4-generic/48000/2",
 		map[string]string{
-			"streamtype":       "3",
+			"streamtype":       "5",
 			"profile-level-id": "14",
 			"mode":             "AAC-hbr",
 			"config":           "1190",
 			"sizelength":       "13",
 		},
 		&MPEG4Audio{
-			PayloadTyp: 96,
+			PayloadTyp:     96,
+			ProfileLevelID: 14,
 			Config: &mpeg4audio.Config{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   48000,
@@ -219,7 +225,8 @@ var casesFormat = []struct {
 		},
 		"mpeg4-generic/48000/2",
 		map[string]string{
-			"profile-level-id": "1",
+			"streamtype":       "5",
+			"profile-level-id": "14",
 			"mode":             "AAC-hbr",
 			"config":           "1190",
 			"sizelength":       "13",
@@ -646,6 +653,64 @@ func TestMarshal(t *testing.T) {
 	}
 }
 
+func TestUnmarshalMPEG4AudioGenericErrors(t *testing.T) {
+	_, err := Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"streamtype": "10",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"mode": "asd",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"profile-level-id": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"config": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"config": "0ab2",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"sizelength": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"indexlength": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"indexdeltalength": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"profile-level-id": "1",
+		"sizelength":       "13",
+		"indexlength":      "3",
+		"indexdeltalength": "3",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+		"profile-level-id": "1",
+		"config":           "1190",
+		"indexlength":      "3",
+		"indexdeltalength": "3",
+	})
+	require.Error(t, err)
+}
+
 func FuzzUnmarshalH264(f *testing.F) {
 	f.Fuzz(func(t *testing.T, sps string, pktMode string) {
 		Unmarshal("video", 96, "H264/90000", map[string]string{
@@ -669,17 +734,6 @@ func FuzzUnmarshalH265(f *testing.F) {
 func FuzzUnmarshalLPCM(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a string) {
 		Unmarshal("audio", 96, "L16/"+a, nil)
-	})
-}
-
-func FuzzUnmarshalMPEG4AudioGeneric(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a, b, c, d string) {
-		Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-			"config":           a,
-			"sizelength":       b,
-			"indexlength":      c,
-			"indexdeltalength": d,
-		})
 	})
 }
 
