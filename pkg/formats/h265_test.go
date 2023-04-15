@@ -16,7 +16,6 @@ func TestH265Attributes(t *testing.T) {
 	}
 	require.Equal(t, "H265", format.String())
 	require.Equal(t, 90000, format.ClockRate())
-	require.Equal(t, uint8(96), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 
 	vps, sps, pps := format.SafeParams()

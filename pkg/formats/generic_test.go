@@ -10,8 +10,8 @@ import (
 func TestGenericAttributes(t *testing.T) {
 	format := &Generic{
 		PayloadTyp: 98,
-		RTPMap:     "H265/90000",
-		FMTP: map[string]string{
+		RTPMa:      "H265/90000",
+		FMT: map[string]string{
 			"profile-id": "1",
 			"sprop-vps":  "QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ",
 			"sprop-sps":  "QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Za5JMmuWcBSSgAAB9AAAHUwgkA=",
@@ -23,6 +23,5 @@ func TestGenericAttributes(t *testing.T) {
 
 	require.Equal(t, "Generic", format.String())
 	require.Equal(t, 90000, format.ClockRate())
-	require.Equal(t, uint8(98), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

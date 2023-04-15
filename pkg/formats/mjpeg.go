@@ -10,6 +10,10 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc2435
 type MJPEG struct{}
 
+func (f *MJPEG) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	return nil
+}
+
 // String implements Format.
 func (f *MJPEG) String() string {
 	return "M-JPEG"
@@ -25,13 +29,14 @@ func (f *MJPEG) PayloadType() uint8 {
 	return 26
 }
 
-func (f *MJPEG) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	return nil
+// RTPMap implements Format.
+func (f *MJPEG) RTPMap() string {
+	return "JPEG/90000"
 }
 
-// Marshal implements Format.
-func (f *MJPEG) Marshal() (string, map[string]string) {
-	return "JPEG/90000", nil
+// FMTP implements Format.
+func (f *MJPEG) FMTP() map[string]string {
+	return nil
 }
 
 // PTSEqualsDTS implements Format.

@@ -17,21 +17,6 @@ type VP8 struct {
 	MaxFS      *int
 }
 
-// String implements Format.
-func (f *VP8) String() string {
-	return "VP8"
-}
-
-// ClockRate implements Format.
-func (f *VP8) ClockRate() int {
-	return 90000
-}
-
-// PayloadType implements Format.
-func (f *VP8) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
@@ -60,8 +45,28 @@ func (f *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 	return nil
 }
 
-// Marshal implements Format.
-func (f *VP8) Marshal() (string, map[string]string) {
+// String implements Format.
+func (f *VP8) String() string {
+	return "VP8"
+}
+
+// ClockRate implements Format.
+func (f *VP8) ClockRate() int {
+	return 90000
+}
+
+// PayloadType implements Format.
+func (f *VP8) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *VP8) RTPMap() string {
+	return "VP8/90000"
+}
+
+// FMTP implements Format.
+func (f *VP8) FMTP() map[string]string {
 	fmtp := make(map[string]string)
 
 	if f.MaxFR != nil {
@@ -72,7 +77,7 @@ func (f *VP8) Marshal() (string, map[string]string) {
 		fmtp["max-fs"] = strconv.FormatInt(int64(*f.MaxFS), 10)
 	}
 
-	return "VP8/90000", fmtp
+	return fmtp
 }
 
 // PTSEqualsDTS implements Format.

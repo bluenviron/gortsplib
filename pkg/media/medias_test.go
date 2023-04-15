@@ -302,18 +302,18 @@ var casesMedias = []struct {
 					},
 					&formats.Generic{
 						PayloadTyp: 103,
-						RTPMap:     "ISAC/16000",
+						RTPMa:      "ISAC/16000",
 						ClockRat:   16000,
 					},
 					&formats.Generic{
 						PayloadTyp: 104,
-						RTPMap:     "ISAC/32000",
+						RTPMa:      "ISAC/32000",
 						ClockRat:   32000,
 					},
 					&formats.G722{},
 					&formats.Generic{
 						PayloadTyp: 102,
-						RTPMap:     "ILBC/8000",
+						RTPMa:      "ILBC/8000",
 						ClockRat:   8000,
 					},
 					&formats.G711{
@@ -324,37 +324,37 @@ var casesMedias = []struct {
 					},
 					&formats.Generic{
 						PayloadTyp: 106,
-						RTPMap:     "CN/32000",
+						RTPMa:      "CN/32000",
 						ClockRat:   32000,
 					},
 					&formats.Generic{
 						PayloadTyp: 105,
-						RTPMap:     "CN/16000",
+						RTPMa:      "CN/16000",
 						ClockRat:   16000,
 					},
 					&formats.Generic{
 						PayloadTyp: 13,
-						RTPMap:     "CN/8000",
+						RTPMa:      "CN/8000",
 						ClockRat:   8000,
 					},
 					&formats.Generic{
 						PayloadTyp: 110,
-						RTPMap:     "telephone-event/48000",
+						RTPMa:      "telephone-event/48000",
 						ClockRat:   48000,
 					},
 					&formats.Generic{
 						PayloadTyp: 112,
-						RTPMap:     "telephone-event/32000",
+						RTPMa:      "telephone-event/32000",
 						ClockRat:   32000,
 					},
 					&formats.Generic{
 						PayloadTyp: 113,
-						RTPMap:     "telephone-event/16000",
+						RTPMa:      "telephone-event/16000",
 						ClockRat:   16000,
 					},
 					&formats.Generic{
 						PayloadTyp: 126,
-						RTPMap:     "telephone-event/8000",
+						RTPMa:      "telephone-event/8000",
 						ClockRat:   8000,
 					},
 				},
@@ -368,8 +368,8 @@ var casesMedias = []struct {
 					},
 					&formats.Generic{
 						PayloadTyp: 97,
-						RTPMap:     "rtx/90000",
-						FMTP: map[string]string{
+						RTPMa:      "rtx/90000",
+						FMT: map[string]string{
 							"apt": "96",
 						},
 						ClockRat: 90000,
@@ -379,8 +379,8 @@ var casesMedias = []struct {
 					},
 					&formats.Generic{
 						PayloadTyp: 99,
-						RTPMap:     "rtx/90000",
-						FMTP: map[string]string{
+						RTPMa:      "rtx/90000",
+						FMT: map[string]string{
 							"apt": "98",
 						},
 						ClockRat: 90000,
@@ -391,28 +391,28 @@ var casesMedias = []struct {
 					},
 					&formats.Generic{
 						PayloadTyp: 101,
-						RTPMap:     "rtx/90000",
-						FMTP: map[string]string{
+						RTPMa:      "rtx/90000",
+						FMT: map[string]string{
 							"apt": "100",
 						},
 						ClockRat: 90000,
 					},
 					&formats.Generic{
 						PayloadTyp: 127,
-						RTPMap:     "red/90000",
+						RTPMa:      "red/90000",
 						ClockRat:   90000,
 					},
 					&formats.Generic{
 						PayloadTyp: 124,
-						RTPMap:     "rtx/90000",
-						FMTP: map[string]string{
+						RTPMa:      "rtx/90000",
+						FMT: map[string]string{
 							"apt": "127",
 						},
 						ClockRat: 90000,
 					},
 					&formats.Generic{
 						PayloadTyp: 125,
-						RTPMap:     "ulpfec/90000",
+						RTPMa:      "ulpfec/90000",
 						ClockRat:   90000,
 					},
 				},
@@ -457,7 +457,7 @@ var casesMedias = []struct {
 					},
 					&formats.Generic{
 						PayloadTyp: 98,
-						RTPMap:     "MetaData",
+						RTPMa:      "MetaData",
 					},
 				},
 			},
@@ -537,7 +537,7 @@ var casesMedias = []struct {
 				Type: "application",
 				Formats: []formats.Format{&formats.Generic{
 					PayloadTyp: 95,
-					RTPMap:     "TP-LINK/90000",
+					RTPMa:      "TP-LINK/90000",
 					ClockRat:   90000,
 				}},
 			},
@@ -638,8 +638,8 @@ func TestMediasMarshal(t *testing.T) {
 func TestMediasFindFormat(t *testing.T) {
 	tr := &formats.Generic{
 		PayloadTyp: 97,
-		RTPMap:     "rtx/90000",
-		FMTP: map[string]string{
+		RTPMa:      "rtx/90000",
+		FMT: map[string]string{
 			"apt": "96",
 		},
 		ClockRat: 90000,

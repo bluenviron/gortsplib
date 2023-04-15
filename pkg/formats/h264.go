@@ -81,21 +81,6 @@ type H264 struct {
 	mutex sync.RWMutex
 }
 
-// String implements Formaf.
-func (f *H264) String() string {
-	return "H264"
-}
-
-// ClockRate implements Formaf.
-func (f *H264) ClockRate() int {
-	return 90000
-}
-
-// PayloadType implements Formaf.
-func (f *H264) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
@@ -131,8 +116,28 @@ func (f *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 	return nil
 }
 
-// Marshal implements Formaf.
-func (f *H264) Marshal() (string, map[string]string) {
+// String implements Format.
+func (f *H264) String() string {
+	return "H264"
+}
+
+// ClockRate implements Format.
+func (f *H264) ClockRate() int {
+	return 90000
+}
+
+// PayloadType implements Format.
+func (f *H264) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *H264) RTPMap() string {
+	return "H264/90000"
+}
+
+// FMTP implements Format.
+func (f *H264) FMTP() map[string]string {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
@@ -156,10 +161,10 @@ func (f *H264) Marshal() (string, map[string]string) {
 		fmtp["profile-level-id"] = strings.ToUpper(hex.EncodeToString(f.SPS[1:4]))
 	}
 
-	return "H264/90000", fmtp
+	return fmtp
 }
 
-// PTSEqualsDTS implements Formaf.
+// PTSEqualsDTS implements Format.
 func (f *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
 	return rtpH264ContainsIDR(pkt)
 }

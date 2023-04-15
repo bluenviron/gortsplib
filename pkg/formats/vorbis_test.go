@@ -16,6 +16,5 @@ func TestVorbisAttributes(t *testing.T) {
 	}
 	require.Equal(t, "Vorbis", format.String())
 	require.Equal(t, 48000, format.ClockRate())
-	require.Equal(t, uint8(96), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

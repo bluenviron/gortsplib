@@ -26,21 +26,6 @@ type MPEG4AudioGeneric struct {
 	IndexDeltaLength int
 }
 
-// String implements Format.
-func (f *MPEG4AudioGeneric) String() string {
-	return "MPEG4-audio-gen"
-}
-
-// ClockRate implements Format.
-func (f *MPEG4AudioGeneric) ClockRate() int {
-	return f.Config.SampleRate
-}
-
-// PayloadType implements Format.
-func (f *MPEG4AudioGeneric) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *MPEG4AudioGeneric) unmarshal(
 	payloadType uint8, clock string, codec string,
 	rtpmap string, fmtp map[string]string,
@@ -113,16 +98,37 @@ func (f *MPEG4AudioGeneric) unmarshal(
 	return nil
 }
 
-// Marshal implements Format.
-func (f *MPEG4AudioGeneric) Marshal() (string, map[string]string) {
-	enc, err := f.Config.Marshal()
-	if err != nil {
-		return "", nil
-	}
+// String implements Format.
+func (f *MPEG4AudioGeneric) String() string {
+	return "MPEG4-audio-gen"
+}
 
+// ClockRate implements Format.
+func (f *MPEG4AudioGeneric) ClockRate() int {
+	return f.Config.SampleRate
+}
+
+// PayloadType implements Format.
+func (f *MPEG4AudioGeneric) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *MPEG4AudioGeneric) RTPMap() string {
 	sampleRate := f.Config.SampleRate
 	if f.Config.ExtensionSampleRate != 0 {
 		sampleRate = f.Config.ExtensionSampleRate
+	}
+
+	return "mpeg4-generic/" + strconv.FormatInt(int64(sampleRate), 10) +
+		"/" + strconv.FormatInt(int64(f.Config.ChannelCount), 10)
+}
+
+// FMTP implements Format.
+func (f *MPEG4AudioGeneric) FMTP() map[string]string {
+	enc, err := f.Config.Marshal()
+	if err != nil {
+		return nil
 	}
 
 	profileLevelID := f.ProfileLevelID
@@ -150,8 +156,7 @@ func (f *MPEG4AudioGeneric) Marshal() (string, map[string]string) {
 
 	fmtp["config"] = hex.EncodeToString(enc)
 
-	return "mpeg4-generic/" + strconv.FormatInt(int64(sampleRate), 10) +
-		"/" + strconv.FormatInt(int64(f.Config.ChannelCount), 10), fmtp
+	return fmtp
 }
 
 // PTSEqualsDTS implements Format.

@@ -23,21 +23,6 @@ type H265 struct {
 	mutex sync.RWMutex
 }
 
-// String implements Formaf.
-func (f *H265) String() string {
-	return "H265"
-}
-
-// ClockRate implements Formaf.
-func (f *H265) ClockRate() int {
-	return 90000
-}
-
-// PayloadType implements Formaf.
-func (f *H265) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
@@ -76,8 +61,28 @@ func (f *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 	return nil
 }
 
-// Marshal implements Formaf.
-func (f *H265) Marshal() (string, map[string]string) {
+// String implements Format.
+func (f *H265) String() string {
+	return "H265"
+}
+
+// ClockRate implements Format.
+func (f *H265) ClockRate() int {
+	return 90000
+}
+
+// PayloadType implements Format.
+func (f *H265) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *H265) RTPMap() string {
+	return "H265/90000"
+}
+
+// FMTP implements Format.
+func (f *H265) FMTP() map[string]string {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
@@ -95,10 +100,10 @@ func (f *H265) Marshal() (string, map[string]string) {
 		fmtp["sprop-max-don-diff"] = strconv.FormatInt(int64(f.MaxDONDiff), 10)
 	}
 
-	return "H265/90000", fmtp
+	return fmtp
 }
 
-// PTSEqualsDTS implements Formaf.
+// PTSEqualsDTS implements Format.
 func (f *H265) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }

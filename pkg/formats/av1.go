@@ -16,21 +16,6 @@ type AV1 struct {
 	Tier       *int
 }
 
-// String implements Format.
-func (f *AV1) String() string {
-	return "AV1"
-}
-
-// ClockRate implements Format.
-func (f *AV1) ClockRate() int {
-	return 90000
-}
-
-// PayloadType implements Format.
-func (f *AV1) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *AV1) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
@@ -68,8 +53,28 @@ func (f *AV1) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 	return nil
 }
 
-// Marshal implements Format.
-func (f *AV1) Marshal() (string, map[string]string) {
+// String implements Format.
+func (f *AV1) String() string {
+	return "AV1"
+}
+
+// ClockRate implements Format.
+func (f *AV1) ClockRate() int {
+	return 90000
+}
+
+// PayloadType implements Format.
+func (f *AV1) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *AV1) RTPMap() string {
+	return "AV1/90000"
+}
+
+// FMTP implements Format.
+func (f *AV1) FMTP() map[string]string {
 	fmtp := make(map[string]string)
 
 	if f.LevelIdx != nil {
@@ -82,7 +87,7 @@ func (f *AV1) Marshal() (string, map[string]string) {
 		fmtp["tier"] = strconv.FormatInt(int64(*f.Tier), 10)
 	}
 
-	return "AV1/90000", fmtp
+	return fmtp
 }
 
 // PTSEqualsDTS implements Format.

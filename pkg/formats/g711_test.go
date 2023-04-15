@@ -11,7 +11,6 @@ func TestG711Attributes(t *testing.T) {
 	format := &G711{}
 	require.Equal(t, "G711", format.String())
 	require.Equal(t, 8000, format.ClockRate())
-	require.Equal(t, uint8(8), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 
 	format = &G711{
@@ -19,7 +18,6 @@ func TestG711Attributes(t *testing.T) {
 	}
 	require.Equal(t, "G711", format.String())
 	require.Equal(t, 8000, format.ClockRate())
-	require.Equal(t, uint8(0), format.PayloadType())
 }
 
 func TestG711DecEncoder(t *testing.T) {

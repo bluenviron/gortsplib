@@ -13,6 +13,11 @@ type G711 struct {
 	MULaw bool
 }
 
+func (f *G711) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	f.MULaw = (payloadType == 0)
+	return nil
+}
+
 // String implements Format.
 func (f *G711) String() string {
 	return "G711"
@@ -31,17 +36,17 @@ func (f *G711) PayloadType() uint8 {
 	return 8
 }
 
-func (f *G711) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	f.MULaw = (payloadType == 0)
-	return nil
+// RTPMap implements Format.
+func (f *G711) RTPMap() string {
+	if f.MULaw {
+		return "PCMU/8000"
+	}
+	return "PCMA/8000"
 }
 
-// Marshal implements Format.
-func (f *G711) Marshal() (string, map[string]string) {
-	if f.MULaw {
-		return "PCMU/8000", nil
-	}
-	return "PCMA/8000", nil
+// FMTP implements Format.
+func (f *G711) FMTP() map[string]string {
+	return nil
 }
 
 // PTSEqualsDTS implements Format.
