@@ -609,7 +609,7 @@ var casesFormat = []struct {
 		nil,
 		&Generic{
 			PayloadTyp: 98,
-			RTPMap:     "MetaData/80000",
+			RTPMa:      "MetaData/80000",
 			ClockRat:   80000,
 		},
 		"MetaData/80000",
@@ -635,7 +635,7 @@ var casesFormat = []struct {
 		nil,
 		&Generic{
 			PayloadTyp: 98,
-			RTPMap:     "custom",
+			RTPMa:      "custom",
 		},
 		"custom",
 		nil,
@@ -648,7 +648,7 @@ var casesFormat = []struct {
 		nil,
 		&Generic{
 			PayloadTyp: 98,
-			RTPMap:     "custom/aaa",
+			RTPMa:      "custom/aaa",
 		},
 		"custom/aaa",
 		nil,
@@ -668,10 +668,9 @@ func TestUnmarshal(t *testing.T) {
 func TestMarshal(t *testing.T) {
 	for _, ca := range casesFormat {
 		t.Run(ca.name, func(t *testing.T) {
-			rtpMap, fmtp := ca.dec.Marshal()
 			require.Equal(t, ca.payloadType, ca.dec.PayloadType())
-			require.Equal(t, ca.encRtpMap, rtpMap)
-			require.Equal(t, ca.encFmtp, fmtp)
+			require.Equal(t, ca.encRtpMap, ca.dec.RTPMap())
+			require.Equal(t, ca.encFmtp, ca.dec.FMTP())
 		})
 	}
 }

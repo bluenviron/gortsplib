@@ -14,7 +14,6 @@ func TestOpusAttributes(t *testing.T) {
 	}
 	require.Equal(t, "Opus", format.String())
 	require.Equal(t, 48000, format.ClockRate())
-	require.Equal(t, uint8(96), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 

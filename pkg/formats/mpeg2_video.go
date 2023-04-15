@@ -8,6 +8,13 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEG2Video struct{}
 
+func (f *MPEG2Video) unmarshal(
+	payloadType uint8, clock string, codec string,
+	rtpmap string, fmtp map[string]string,
+) error {
+	return nil
+}
+
 // String implements Format.
 func (f *MPEG2Video) String() string {
 	return "MPEG2-video"
@@ -23,16 +30,14 @@ func (f *MPEG2Video) PayloadType() uint8 {
 	return 32
 }
 
-func (f *MPEG2Video) unmarshal(
-	payloadType uint8, clock string, codec string,
-	rtpmap string, fmtp map[string]string,
-) error {
-	return nil
+// RTPMap implements Format.
+func (f *MPEG2Video) RTPMap() string {
+	return ""
 }
 
-// Marshal implements Format.
-func (f *MPEG2Video) Marshal() (string, map[string]string) {
-	return "", nil
+// FMTP implements Format.
+func (f *MPEG2Video) FMTP() map[string]string {
+	return nil
 }
 
 // PTSEqualsDTS implements Format.

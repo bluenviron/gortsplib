@@ -8,6 +8,10 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEGTS struct{}
 
+func (f *MPEGTS) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	return nil
+}
+
 // String implements Format.
 func (f *MPEGTS) String() string {
 	return "MPEG-TS"
@@ -23,13 +27,14 @@ func (f *MPEGTS) PayloadType() uint8 {
 	return 33
 }
 
-func (f *MPEGTS) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	return nil
+// RTPMap implements Format.
+func (f *MPEGTS) RTPMap() string {
+	return "MP2T/90000"
 }
 
-// Marshal implements Format.
-func (f *MPEGTS) Marshal() (string, map[string]string) {
-	return "MP2T/90000", nil
+// FMTP implements Format.
+func (f *MPEGTS) FMTP() map[string]string {
+	return nil
 }
 
 // PTSEqualsDTS implements Format.

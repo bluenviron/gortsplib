@@ -15,6 +15,5 @@ func TestMPEG4VideoESAttributes(t *testing.T) {
 	}
 	require.Equal(t, "MPEG4-video-es", format.String())
 	require.Equal(t, 90000, format.ClockRate())
-	require.Equal(t, uint8(96), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

@@ -24,21 +24,6 @@ type MPEG4AudioLATM struct {
 	SBREnabled     *bool
 }
 
-// String implements Format.
-func (f *MPEG4AudioLATM) String() string {
-	return "MPEG4-audio-latm"
-}
-
-// ClockRate implements Format.
-func (f *MPEG4AudioLATM) ClockRate() int {
-	return f.SampleRate
-}
-
-// PayloadType implements Format.
-func (f *MPEG4AudioLATM) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *MPEG4AudioLATM) unmarshal(
 	payloadType uint8, clock string, codec string,
 	rtpmap string, fmtp map[string]string,
@@ -135,8 +120,29 @@ func (f *MPEG4AudioLATM) unmarshal(
 	return nil
 }
 
-// Marshal implements Format.
-func (f *MPEG4AudioLATM) Marshal() (string, map[string]string) {
+// String implements Format.
+func (f *MPEG4AudioLATM) String() string {
+	return "MPEG4-audio-latm"
+}
+
+// ClockRate implements Format.
+func (f *MPEG4AudioLATM) ClockRate() int {
+	return f.SampleRate
+}
+
+// PayloadType implements Format.
+func (f *MPEG4AudioLATM) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *MPEG4AudioLATM) RTPMap() string {
+	return "MP4A-LATM/" + strconv.FormatInt(int64(f.SampleRate), 10) +
+		"/" + strconv.FormatInt(int64(f.Channels), 10)
+}
+
+// FMTP implements Format.
+func (f *MPEG4AudioLATM) FMTP() map[string]string {
 	fmtp := map[string]string{
 		"profile-level-id": strconv.FormatInt(int64(f.ProfileLevelID), 10),
 		"config":           hex.EncodeToString(f.Config),
@@ -163,8 +169,7 @@ func (f *MPEG4AudioLATM) Marshal() (string, map[string]string) {
 		}
 	}
 
-	return "MP4A-LATM/" + strconv.FormatInt(int64(f.SampleRate), 10) +
-		"/" + strconv.FormatInt(int64(f.Channels), 10), fmtp
+	return fmtp
 }
 
 // PTSEqualsDTS implements Format.

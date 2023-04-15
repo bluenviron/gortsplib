@@ -18,21 +18,6 @@ type VP9 struct {
 	ProfileID  *int
 }
 
-// String implements Format.
-func (f *VP9) String() string {
-	return "VP9"
-}
-
-// ClockRate implements Format.
-func (f *VP9) ClockRate() int {
-	return 90000
-}
-
-// PayloadType implements Format.
-func (f *VP9) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *VP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
@@ -70,8 +55,28 @@ func (f *VP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 	return nil
 }
 
-// Marshal implements Format.
-func (f *VP9) Marshal() (string, map[string]string) {
+// String implements Format.
+func (f *VP9) String() string {
+	return "VP9"
+}
+
+// ClockRate implements Format.
+func (f *VP9) ClockRate() int {
+	return 90000
+}
+
+// PayloadType implements Format.
+func (f *VP9) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *VP9) RTPMap() string {
+	return "VP9/90000"
+}
+
+// FMTP implements Format.
+func (f *VP9) FMTP() map[string]string {
 	fmtp := make(map[string]string)
 
 	if f.MaxFR != nil {
@@ -84,7 +89,7 @@ func (f *VP9) Marshal() (string, map[string]string) {
 		fmtp["profile-id"] = strconv.FormatInt(int64(*f.ProfileID), 10)
 	}
 
-	return "VP9/90000", fmtp
+	return fmtp
 }
 
 // PTSEqualsDTS implements Format.

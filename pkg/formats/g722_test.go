@@ -11,7 +11,6 @@ func TestG722Attributes(t *testing.T) {
 	format := &G722{}
 	require.Equal(t, "G722", format.String())
 	require.Equal(t, 8000, format.ClockRate())
-	require.Equal(t, uint8(9), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 

@@ -19,6 +19,8 @@ func getCodecAndClock(rtpMap string) (string, string) {
 // Format is a RTP format of a media.
 // It defines a codec and a payload type used to transmit the media.
 type Format interface {
+	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error
+
 	// String returns a description of the format.
 	String() string
 
@@ -28,10 +30,11 @@ type Format interface {
 	// PayloadType returns the payload type.
 	PayloadType() uint8
 
-	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error
+	// RTPMap returns the rtpmap attribute.
+	RTPMap() string
 
-	// Marshal encodes the format in SDP format.
-	Marshal() (string, map[string]string)
+	// FMTP returns the fmtp attribute.
+	FMTP() map[string]string
 
 	// PTSEqualsDTS checks whether PTS is equal to DTS in RTP packets.
 	PTSEqualsDTS(*rtp.Packet) bool

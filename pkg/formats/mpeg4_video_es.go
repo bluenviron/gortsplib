@@ -20,21 +20,6 @@ type MPEG4VideoES struct {
 	Config         []byte
 }
 
-// String implements Format.
-func (f *MPEG4VideoES) String() string {
-	return "MPEG4-video-es"
-}
-
-// ClockRate implements Format.
-func (f *MPEG4VideoES) ClockRate() int {
-	return 90000
-}
-
-// PayloadType implements Format.
-func (f *MPEG4VideoES) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *MPEG4VideoES) unmarshal(
 	payloadType uint8, clock string, codec string,
 	rtpmap string, fmtp map[string]string,
@@ -64,14 +49,34 @@ func (f *MPEG4VideoES) unmarshal(
 	return nil
 }
 
-// Marshal implements Format.
-func (f *MPEG4VideoES) Marshal() (string, map[string]string) {
+// String implements Format.
+func (f *MPEG4VideoES) String() string {
+	return "MPEG4-video-es"
+}
+
+// ClockRate implements Format.
+func (f *MPEG4VideoES) ClockRate() int {
+	return 90000
+}
+
+// PayloadType implements Format.
+func (f *MPEG4VideoES) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *MPEG4VideoES) RTPMap() string {
+	return "MP4V-ES/90000"
+}
+
+// FMTP implements Format.
+func (f *MPEG4VideoES) FMTP() map[string]string {
 	fmtp := map[string]string{
 		"profile-level-id": strconv.FormatInt(int64(f.ProfileLevelID), 10),
 		"config":           strings.ToUpper(hex.EncodeToString(f.Config)),
 	}
 
-	return "MP4V-ES/90000", fmtp
+	return fmtp
 }
 
 // PTSEqualsDTS implements Format.

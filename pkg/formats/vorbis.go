@@ -18,21 +18,6 @@ type Vorbis struct {
 	Configuration []byte
 }
 
-// String implements Format.
-func (f *Vorbis) String() string {
-	return "Vorbis"
-}
-
-// ClockRate implements Format.
-func (f *Vorbis) ClockRate() int {
-	return f.SampleRate
-}
-
-// PayloadType implements Format.
-func (f *Vorbis) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
@@ -71,15 +56,34 @@ func (f *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap
 	return nil
 }
 
-// Marshal implements Format.
-func (f *Vorbis) Marshal() (string, map[string]string) {
+// String implements Format.
+func (f *Vorbis) String() string {
+	return "Vorbis"
+}
+
+// ClockRate implements Format.
+func (f *Vorbis) ClockRate() int {
+	return f.SampleRate
+}
+
+// PayloadType implements Format.
+func (f *Vorbis) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *Vorbis) RTPMap() string {
+	return "VORBIS/" + strconv.FormatInt(int64(f.SampleRate), 10) +
+		"/" + strconv.FormatInt(int64(f.ChannelCount), 10)
+}
+
+// FMTP implements Format.
+func (f *Vorbis) FMTP() map[string]string {
 	fmtp := map[string]string{
 		"configuration": base64.StdEncoding.EncodeToString(f.Configuration),
 	}
 
-	return "VORBIS/" + strconv.FormatInt(int64(f.SampleRate), 10) +
-			"/" + strconv.FormatInt(int64(f.ChannelCount), 10),
-		fmtp
+	return fmtp
 }
 
 // PTSEqualsDTS implements Format.

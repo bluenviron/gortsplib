@@ -13,6 +13,5 @@ func TestAV1Attributes(t *testing.T) {
 	}
 	require.Equal(t, "AV1", format.String())
 	require.Equal(t, 90000, format.ClockRate())
-	require.Equal(t, uint8(100), format.PayloadType())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

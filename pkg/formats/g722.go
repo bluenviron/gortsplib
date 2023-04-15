@@ -10,6 +10,10 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc3551
 type G722 struct{}
 
+func (f *G722) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+	return nil
+}
+
 // String implements Format.
 func (f *G722) String() string {
 	return "G722"
@@ -25,13 +29,14 @@ func (f *G722) PayloadType() uint8 {
 	return 9
 }
 
-func (f *G722) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
-	return nil
+// RTPMap implements Format.
+func (f *G722) RTPMap() string {
+	return "G722/8000"
 }
 
-// Marshal implements Format.
-func (f *G722) Marshal() (string, map[string]string) {
-	return "G722/8000", nil
+// FMTP implements Format.
+func (f *G722) FMTP() map[string]string {
+	return nil
 }
 
 // PTSEqualsDTS implements Format.

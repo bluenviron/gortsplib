@@ -269,7 +269,7 @@ func TestClientPlay(t *testing.T) {
 
 				forma := &formats.Generic{
 					PayloadTyp: 96,
-					RTPMap:     "private/90000",
+					RTPMa:      "private/90000",
 				}
 				err = forma.Init()
 				require.NoError(t, err)
@@ -543,7 +543,7 @@ func TestClientPlayPartial(t *testing.T) {
 
 		forma := &formats.Generic{
 			PayloadTyp: 96,
-			RTPMap:     "private/90000",
+			RTPMa:      "private/90000",
 		}
 		err = forma.Init()
 		require.NoError(t, err)
@@ -2932,7 +2932,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 					Type: media.TypeApplication,
 					Formats: []formats.Format{&formats.Generic{
 						PayloadTyp: 97,
-						RTPMap:     "private/90000",
+						RTPMa:      "private/90000",
 					}},
 				}}
 				resetMediaControls(medias)

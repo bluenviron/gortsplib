@@ -78,6 +78,17 @@ func decodeFMTP(enc string) map[string]string {
 	return ret
 }
 
+func sortedKeys(fmtp map[string]string) []string {
+	keys := make([]string, len(fmtp))
+	i := 0
+	for key := range fmtp {
+		keys[i] = key
+		i++
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 // Direction is the direction of a media stream.
 type Direction string
 
@@ -182,8 +193,7 @@ func (m Media) Marshal() *psdp.MediaDescription {
 		typ := strconv.FormatUint(uint64(forma.PayloadType()), 10)
 		md.MediaName.Formats = append(md.MediaName.Formats, typ)
 
-		rtpmap, fmtp := forma.Marshal()
-
+		rtpmap := forma.RTPMap()
 		if rtpmap != "" {
 			md.Attributes = append(md.Attributes, psdp.Attribute{
 				Key:   "rtpmap",
@@ -191,17 +201,10 @@ func (m Media) Marshal() *psdp.MediaDescription {
 			})
 		}
 
+		fmtp := forma.FMTP()
 		if len(fmtp) != 0 {
-			keys := make([]string, len(fmtp))
-			i := 0
-			for key := range fmtp {
-				keys[i] = key
-				i++
-			}
-			sort.Strings(keys)
-
 			tmp := make([]string, len(fmtp))
-			for i, key := range keys {
+			for i, key := range sortedKeys(fmtp) {
 				tmp[i] = key + "=" + fmtp[key]
 			}
 

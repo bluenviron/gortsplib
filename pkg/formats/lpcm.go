@@ -18,21 +18,6 @@ type LPCM struct {
 	ChannelCount int
 }
 
-// String implements Format.
-func (f *LPCM) String() string {
-	return "LPCM"
-}
-
-// ClockRate implements Format.
-func (f *LPCM) ClockRate() int {
-	return f.SampleRate
-}
-
-// PayloadType implements Format.
-func (f *LPCM) PayloadType() uint8 {
-	return f.PayloadTyp
-}
-
 func (f *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
@@ -68,8 +53,23 @@ func (f *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 	return nil
 }
 
-// Marshal implements Format.
-func (f *LPCM) Marshal() (string, map[string]string) {
+// String implements Format.
+func (f *LPCM) String() string {
+	return "LPCM"
+}
+
+// ClockRate implements Format.
+func (f *LPCM) ClockRate() int {
+	return f.SampleRate
+}
+
+// PayloadType implements Format.
+func (f *LPCM) PayloadType() uint8 {
+	return f.PayloadTyp
+}
+
+// RTPMap implements Format.
+func (f *LPCM) RTPMap() string {
 	var codec string
 	switch f.BitDepth {
 	case 8:
@@ -83,7 +83,12 @@ func (f *LPCM) Marshal() (string, map[string]string) {
 	}
 
 	return codec + "/" + strconv.FormatInt(int64(f.SampleRate), 10) +
-		"/" + strconv.FormatInt(int64(f.ChannelCount), 10), nil
+		"/" + strconv.FormatInt(int64(f.ChannelCount), 10)
+}
+
+// FMTP implements Format.
+func (f *LPCM) FMTP() map[string]string {
+	return nil
 }
 
 // PTSEqualsDTS implements Format.
