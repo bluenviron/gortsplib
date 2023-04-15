@@ -118,7 +118,7 @@ func (cm *clientMedia) start() {
 
 		cm.tcpRTPFrame = &base.InterleavedFrame{Channel: cm.tcpChannel}
 		cm.tcpRTCPFrame = &base.InterleavedFrame{Channel: cm.tcpChannel + 1}
-		cm.tcpBuffer = make([]byte, maxPacketSize+4)
+		cm.tcpBuffer = make([]byte, udpMaxPayloadSize+4)
 	}
 
 	for _, ct := range cm.formats {
@@ -222,9 +222,9 @@ func (cm *clientMedia) readRTCPTCPPlay(payload []byte) error {
 	now := time.Now()
 	atomic.StoreInt64(cm.c.tcpLastFrameTime, now.Unix())
 
-	if len(payload) > maxPacketSize {
+	if len(payload) > udpMaxPayloadSize {
 		cm.c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
-			len(payload), maxPacketSize))
+			len(payload), udpMaxPayloadSize))
 		return nil
 	}
 
@@ -246,9 +246,9 @@ func (cm *clientMedia) readRTPTCPRecord(payload []byte) error {
 }
 
 func (cm *clientMedia) readRTCPTCPRecord(payload []byte) error {
-	if len(payload) > maxPacketSize {
+	if len(payload) > udpMaxPayloadSize {
 		cm.c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
-			len(payload), maxPacketSize))
+			len(payload), udpMaxPayloadSize))
 		return nil
 	}
 
@@ -270,7 +270,7 @@ func (cm *clientMedia) readRTPUDPPlay(payload []byte) error {
 
 	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
-	if plen == (maxPacketSize + 1) {
+	if plen == (udpMaxPayloadSize + 1) {
 		cm.c.OnDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
 		return nil
 	}
@@ -298,7 +298,7 @@ func (cm *clientMedia) readRTCPUDPPlay(payload []byte) error {
 
 	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
-	if plen == (maxPacketSize + 1) {
+	if plen == (udpMaxPayloadSize + 1) {
 		cm.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return nil
 	}
@@ -332,7 +332,7 @@ func (cm *clientMedia) readRTCPUDPRecord(payload []byte) error {
 
 	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
-	if plen == (maxPacketSize + 1) {
+	if plen == (udpMaxPayloadSize + 1) {
 		cm.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return nil
 	}

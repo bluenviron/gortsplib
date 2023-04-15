@@ -82,7 +82,7 @@ func (sm *serverSessionMedia) start() {
 
 		sm.tcpRTPFrame = &base.InterleavedFrame{Channel: sm.tcpChannel}
 		sm.tcpRTCPFrame = &base.InterleavedFrame{Channel: sm.tcpChannel + 1}
-		sm.tcpBuffer = make([]byte, maxPacketSize+4)
+		sm.tcpBuffer = make([]byte, udpMaxPayloadSize+4)
 	}
 
 	if *sm.ss.setuppedTransport == TransportUDP {
@@ -154,7 +154,7 @@ func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) error {
 
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
-	if plen == (maxPacketSize + 1) {
+	if plen == (udpMaxPayloadSize + 1) {
 		sm.ss.onDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return nil
 	}
@@ -180,7 +180,7 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) error {
 
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
-	if plen == (maxPacketSize + 1) {
+	if plen == (udpMaxPayloadSize + 1) {
 		sm.ss.onDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
 		return nil
 	}
@@ -210,7 +210,7 @@ func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) error {
 
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
-	if plen == (maxPacketSize + 1) {
+	if plen == (udpMaxPayloadSize + 1) {
 		sm.ss.onDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
 		return nil
 	}
@@ -245,9 +245,9 @@ func (sm *serverSessionMedia) readRTPTCPPlay(payload []byte) error {
 }
 
 func (sm *serverSessionMedia) readRTCPTCPPlay(payload []byte) error {
-	if len(payload) > maxPacketSize {
+	if len(payload) > udpMaxPayloadSize {
 		sm.ss.onDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
-			len(payload), maxPacketSize))
+			len(payload), udpMaxPayloadSize))
 		return nil
 	}
 
@@ -282,9 +282,9 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) error {
 }
 
 func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) error {
-	if len(payload) > maxPacketSize {
+	if len(payload) > udpMaxPayloadSize {
 		sm.ss.onDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
-			len(payload), maxPacketSize))
+			len(payload), udpMaxPayloadSize))
 		return nil
 	}
 

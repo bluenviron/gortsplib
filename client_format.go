@@ -71,7 +71,7 @@ func (ct *clientFormat) stop() {
 }
 
 func (ct *clientFormat) writePacketRTPWithNTP(pkt *rtp.Packet, ntp time.Time) error {
-	byts := make([]byte, maxPacketSize)
+	byts := make([]byte, udpMaxPayloadSize)
 	n, err := pkt.MarshalTo(byts)
 	if err != nil {
 		return err
