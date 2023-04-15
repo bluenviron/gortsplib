@@ -1,7 +1,0 @@
-go test fuzz v1
-string("%20")
-string("")
-string("oc\x97\xf3V\x8e\xe0")
-string("")
-string("\x0f\x11")
-string("Z")

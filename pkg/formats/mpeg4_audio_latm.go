@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
 )
 
@@ -17,7 +18,7 @@ type MPEG4AudioLATM struct {
 	Channels       int
 	ProfileLevelID int
 	Bitrate        *int
-	Object         int
+	Object         mpeg4audio.ObjectType
 	CPresent       *bool
 	Config         []byte
 	SBREnabled     *bool
@@ -84,10 +85,18 @@ func (f *MPEG4AudioLATM) unmarshal(
 		case "object":
 			tmp, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
-				return fmt.Errorf("invalid object: %v", val)
+				return fmt.Errorf("invalid object type: %v", val)
 			}
 
-			f.Object = int(tmp)
+			f.Object = mpeg4audio.ObjectType(int(tmp))
+
+			switch f.Object {
+			case mpeg4audio.ObjectTypeAACLC,
+				mpeg4audio.ObjectTypeSBR,
+				mpeg4audio.ObjectTypePS:
+			default:
+				return fmt.Errorf("unsupported object type: %d", f.Object)
+			}
 
 		case "cpresent":
 			tmp, err := strconv.ParseInt(val, 10, 64)
