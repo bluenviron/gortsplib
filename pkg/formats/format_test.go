@@ -711,6 +711,59 @@ func TestUnmarshalMPEG4AudioGenericErrors(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestUnmarshalMPEG4AudioLATMErrors(t *testing.T) {
+	_, err := Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+		"profile-level-id": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+		"bitrate": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+		"object": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+		"object": "120",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+		"cpresent": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+		"config": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+		"sbr-enabled": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+		"profile-level-id": "15",
+		"cpresent":         "0",
+		"config":           "400026103fc0",
+		"sbr-enabled":      "1",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+		"profile-level-id": "15",
+		"object":           "2",
+		"cpresent":         "0",
+		"sbr-enabled":      "1",
+	})
+	require.Error(t, err)
+}
+
 func FuzzUnmarshalH264(f *testing.F) {
 	f.Fuzz(func(t *testing.T, sps string, pktMode string) {
 		Unmarshal("video", 96, "H264/90000", map[string]string{
@@ -734,19 +787,6 @@ func FuzzUnmarshalH265(f *testing.F) {
 func FuzzUnmarshalLPCM(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a string) {
 		Unmarshal("audio", 96, "L16/"+a, nil)
-	})
-}
-
-func FuzzUnmarshalMPEG4AudioLATM(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a, b, c, d, e, f string) {
-		Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-			"profile-level-id": a,
-			"bitrate":          b,
-			"object":           c,
-			"cpresent":         d,
-			"config":           e,
-			"sbr-enabled":      f,
-		})
 	})
 }
 
