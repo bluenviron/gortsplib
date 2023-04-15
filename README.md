@@ -99,6 +99,7 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 
 * [RFC2326, RTSP 1.0](https://datatracker.ietf.org/doc/html/rfc2326)
 * [RFC7826, RTSP 2.0](https://datatracker.ietf.org/doc/html/rfc7826)
+* [RFC8866, SDP: Session Description Protocol](https://datatracker.ietf.org/doc/html/rfc8866)
 * [RFC3551, RTP Profile for Audio and Video Conferences with Minimal Control](https://datatracker.ietf.org/doc/html/rfc3551)
 * [RFC2250, RTP Payload Format for MPEG1/MPEG2 Video](https://datatracker.ietf.org/doc/html/rfc2250)
 * [RFC2435, RTP Payload Format for JPEG-compressed Video](https://datatracker.ietf.org/doc/html/rfc2435)
@@ -111,6 +112,7 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 * [RFC5215, RTP Payload Format for Vorbis Encoded Audio](https://datatracker.ietf.org/doc/html/rfc5215)
 * [RFC7587, RTP Payload Format for the Opus Speech and Audio Codec](https://datatracker.ietf.org/doc/html/rfc7587)
 * [RFC3640, RTP Payload Format for Transport of MPEG-4 Elementary Streams](https://datatracker.ietf.org/doc/html/rfc3640)
+* [RTP Payload Format For AV1 (v1.0)](https://aomediacodec.github.io/av1-rtp-spec/)
 * [ITU-T Rec. H.264 (08/2021)](https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.264-202108-I!!PDF-E&type=items)
 * [ITU-T Rec. H.265 (08/2021)](https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.265-202108-I!!PDF-E&type=items)
 * ISO 14496-3, Coding of audio-visual objects, part 3, Audio

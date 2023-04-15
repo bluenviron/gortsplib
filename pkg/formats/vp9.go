@@ -73,6 +73,7 @@ func (f *VP9) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 // Marshal implements Format.
 func (f *VP9) Marshal() (string, map[string]string) {
 	fmtp := make(map[string]string)
+
 	if f.MaxFR != nil {
 		fmtp["max-fr"] = strconv.FormatInt(int64(*f.MaxFR), 10)
 	}

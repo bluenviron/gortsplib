@@ -579,6 +579,29 @@ var casesFormat = []struct {
 		},
 	},
 	{
+		"video av1",
+		"video",
+		96,
+		"AV1/90000",
+		map[string]string{
+			"profile":   "2",
+			"level-idx": "8",
+			"tier":      "1",
+		},
+		&AV1{
+			PayloadTyp: 96,
+			Profile:    intPtr(2),
+			LevelIdx:   intPtr(8),
+			Tier:       intPtr(1),
+		},
+		"AV1/90000",
+		map[string]string{
+			"profile":   "2",
+			"level-idx": "8",
+			"tier":      "1",
+		},
+	},
+	{
 		"application",
 		"application",
 		98,
@@ -760,6 +783,23 @@ func TestUnmarshalMPEG4AudioLATMErrors(t *testing.T) {
 		"object":           "2",
 		"cpresent":         "0",
 		"sbr-enabled":      "1",
+	})
+	require.Error(t, err)
+}
+
+func TestUnmarshalAV1Errors(t *testing.T) {
+	_, err := Unmarshal("video", 96, "AV1/90000", map[string]string{
+		"level-idx": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("video", 96, "AV1/90000", map[string]string{
+		"profile": "aaa",
+	})
+	require.Error(t, err)
+
+	_, err = Unmarshal("video", 96, "AV1/90000", map[string]string{
+		"tier": "aaa",
 	})
 	require.Error(t, err)
 }

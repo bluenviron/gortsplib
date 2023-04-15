@@ -68,6 +68,9 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 
 			case codec == "vp9" && clock == "90000":
 				return &VP9{}
+
+			case codec == "av1" && clock == "90000":
+				return &AV1{}
 			}
 
 		case mediaType == "audio":
