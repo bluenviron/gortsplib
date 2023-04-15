@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/pion/rtp"
 
@@ -18,6 +19,7 @@ type MPEG4Audio = MPEG4AudioGeneric
 // Specification: https://datatracker.ietf.org/doc/html/rfc3640
 type MPEG4AudioGeneric struct {
 	PayloadTyp       uint8
+	ProfileLevelID   int
 	Config           *mpeg4audio.Config
 	SizeLength       int
 	IndexLength      int
@@ -47,6 +49,24 @@ func (f *MPEG4AudioGeneric) unmarshal(
 
 	for key, val := range fmtp {
 		switch key {
+		case "streamtype":
+			if val != "5" { // AudioStream in ISO 14496-1
+				return fmt.Errorf("streamtype of AAC must be 5")
+			}
+
+		case "mode":
+			if strings.ToLower(val) != "aac-hbr" {
+				return fmt.Errorf("unsupported AAC mode: %v", val)
+			}
+
+		case "profile-level-id":
+			tmp, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid profile-level-id: %v", val)
+			}
+
+			f.ProfileLevelID = int(tmp)
+
 		case "config":
 			enc, err := hex.DecodeString(val)
 			if err != nil {
@@ -105,9 +125,15 @@ func (f *MPEG4AudioGeneric) Marshal() (string, map[string]string) {
 		sampleRate = f.Config.ExtensionSampleRate
 	}
 
+	profileLevelID := f.ProfileLevelID
+	if profileLevelID == 0 { // support legacy definition which didn't include profile-level-id
+		profileLevelID = 1
+	}
+
 	fmtp := map[string]string{
-		"profile-level-id": "1",
+		"streamtype":       "5",
 		"mode":             "AAC-hbr",
+		"profile-level-id": strconv.FormatInt(int64(profileLevelID), 10),
 	}
 
 	if f.SizeLength > 0 {
