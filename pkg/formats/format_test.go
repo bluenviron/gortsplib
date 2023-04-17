@@ -295,6 +295,32 @@ var casesFormat = []struct {
 		},
 	},
 	{
+		"audio aac latm no channels",
+		"audio",
+		110,
+		"MP4A-LATM/48000",
+		map[string]string{
+			"cpresent": "0",
+			"config":   "40002310",
+		},
+		&MPEG4AudioLATM{
+			PayloadTyp:     110,
+			SampleRate:     48000,
+			Channels:       1,
+			ProfileLevelID: 30,
+			CPresent:       boolPtr(false),
+			Object:         2,
+			Config:         []byte{0x40, 0x00, 0x23, 0x10},
+		},
+		"MP4A-LATM/48000/1",
+		map[string]string{
+			"profile-level-id": "30",
+			"object":           "2",
+			"cpresent":         "0",
+			"config":           "40002310",
+		},
+	},
+	{
 		"audio vorbis",
 		"audio",
 		96,
@@ -766,14 +792,6 @@ func TestUnmarshalMPEG4AudioLATMErrors(t *testing.T) {
 
 	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
 		"sbr-enabled": "aaa",
-	})
-	require.Error(t, err)
-
-	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"profile-level-id": "15",
-		"cpresent":         "0",
-		"config":           "400026103fc0",
-		"sbr-enabled":      "1",
 	})
 	require.Error(t, err)
 
