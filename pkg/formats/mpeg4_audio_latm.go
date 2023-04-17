@@ -29,21 +29,22 @@ func (f *MPEG4AudioLATM) unmarshal(
 	rtpmap string, fmtp map[string]string,
 ) error {
 	tmp := strings.SplitN(clock, "/", 2)
-	if len(tmp) != 2 {
-		return fmt.Errorf("invalid clock: %v", clock)
-	}
 
-	tmp2, err := strconv.ParseInt(tmp[0], 10, 64)
+	tmp1, err := strconv.ParseInt(tmp[0], 10, 64)
 	if err != nil {
 		return err
 	}
-	f.SampleRate = int(tmp2)
+	f.SampleRate = int(tmp1)
 
-	tmp2, err = strconv.ParseInt(tmp[1], 10, 64)
-	if err != nil {
-		return err
+	if len(tmp) >= 2 {
+		tmp2, err := strconv.ParseInt(tmp[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		f.Channels = int(tmp2)
+	} else {
+		f.Channels = 1
 	}
-	f.Channels = int(tmp2)
 
 	f.PayloadTyp = payloadType
 	f.ProfileLevelID = 30 // default value defined by specification
@@ -111,8 +112,9 @@ func (f *MPEG4AudioLATM) unmarshal(
 	}
 
 	if f.Object == 0 {
-		return fmt.Errorf("object is missing")
+		f.Object = 2
 	}
+
 	if f.Config == nil {
 		return fmt.Errorf("config is missing")
 	}
