@@ -120,8 +120,13 @@ func (f *MPEG4AudioGeneric) RTPMap() string {
 		sampleRate = f.Config.ExtensionSampleRate
 	}
 
+	channelCount := f.Config.ChannelCount
+	if f.Config.ExtensionType == mpeg4audio.ObjectTypePS {
+		channelCount = 2
+	}
+
 	return "mpeg4-generic/" + strconv.FormatInt(int64(sampleRate), 10) +
-		"/" + strconv.FormatInt(int64(f.Config.ChannelCount), 10)
+		"/" + strconv.FormatInt(int64(channelCount), 10)
 }
 
 // FMTP implements Format.

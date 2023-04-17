@@ -233,7 +233,40 @@ var casesFormat = []struct {
 		},
 	},
 	{
-		"audio aac lc latm",
+		"audio aac he-aac v2 ps",
+		"audio",
+		96,
+		"mpeg4-generic/48000/2",
+		map[string]string{
+			"streamtype":       "5",
+			"profile-level-id": "48",
+			"mode":             "AAC-hbr",
+			"config":           "eb098800",
+			"sizelength":       "13",
+		},
+		&MPEG4Audio{
+			PayloadTyp:     96,
+			ProfileLevelID: 48,
+			Config: &mpeg4audio.Config{
+				Type:                2,
+				ExtensionType:       29,
+				ExtensionSampleRate: 48000,
+				SampleRate:          24000,
+				ChannelCount:        1,
+			},
+			SizeLength: 13,
+		},
+		"mpeg4-generic/48000/2",
+		map[string]string{
+			"streamtype":       "5",
+			"profile-level-id": "48",
+			"mode":             "AAC-hbr",
+			"config":           "eb098800",
+			"sizelength":       "13",
+		},
+	},
+	{
+		"audio aac latm lc",
 		"audio",
 		96,
 		"MP4A-LATM/24000/2",
@@ -246,13 +279,21 @@ var casesFormat = []struct {
 		},
 		&MPEG4AudioLATM{
 			PayloadTyp:     96,
-			SampleRate:     24000,
-			Channels:       2,
 			ProfileLevelID: 1,
 			Bitrate:        intPtr(64000),
 			CPresent:       boolPtr(false),
-			Object:         2,
-			Config:         []byte{0x40, 0x00, 0x26, 0x20, 0x3f, 0xc0},
+			Config: &mpeg4audio.StreamMuxConfig{
+				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
+					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
+						AudioSpecificConfig: &mpeg4audio.Config{
+							Type:         2,
+							SampleRate:   24000,
+							ChannelCount: 2,
+						},
+						LatmBufferFullness: 255,
+					}},
+				}},
+			},
 		},
 		"MP4A-LATM/24000/2",
 		map[string]string{
@@ -264,7 +305,7 @@ var casesFormat = []struct {
 		},
 	},
 	{
-		"audio aac v2 latm",
+		"audio aac latm he-aac v2",
 		"audio",
 		110,
 		"MP4A-LATM/24000/1",
@@ -277,13 +318,21 @@ var casesFormat = []struct {
 		},
 		&MPEG4AudioLATM{
 			PayloadTyp:     110,
-			SampleRate:     24000,
-			Channels:       1,
 			ProfileLevelID: 15,
 			CPresent:       boolPtr(false),
-			Object:         2,
 			SBREnabled:     boolPtr(true),
-			Config:         []byte{0x40, 0x00, 0x26, 0x10, 0x3f, 0xc0},
+			Config: &mpeg4audio.StreamMuxConfig{
+				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
+					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
+						AudioSpecificConfig: &mpeg4audio.Config{
+							Type:         2,
+							SampleRate:   24000,
+							ChannelCount: 1,
+						},
+						LatmBufferFullness: 255,
+					}},
+				}},
+			},
 		},
 		"MP4A-LATM/24000/1",
 		map[string]string{
@@ -292,6 +341,89 @@ var casesFormat = []struct {
 			"cpresent":         "0",
 			"config":           "400026103fc0",
 			"SBR-enabled":      "1",
+		},
+	},
+	{
+		"audio aac latm hierarchical sbr",
+		"audio",
+		110,
+		"MP4A-LATM/48000/2",
+		map[string]string{
+			"profile-level-id": "44",
+			"bitrate":          "64000",
+			"cpresent":         "0",
+			"config":           "40005623101fe0",
+			"sbr-enabled":      "1",
+		},
+		&MPEG4AudioLATM{
+			PayloadTyp:     110,
+			ProfileLevelID: 44,
+			CPresent:       boolPtr(false),
+			SBREnabled:     boolPtr(true),
+			Bitrate:        intPtr(64000),
+			Config: &mpeg4audio.StreamMuxConfig{
+				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
+					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
+						AudioSpecificConfig: &mpeg4audio.Config{
+							Type:                2,
+							ExtensionType:       5,
+							ExtensionSampleRate: 48000,
+							SampleRate:          24000,
+							ChannelCount:        2,
+						},
+						LatmBufferFullness: 255,
+					}},
+				}},
+			},
+		},
+		"MP4A-LATM/48000/2",
+		map[string]string{
+			"profile-level-id": "44",
+			"object":           "2",
+			"cpresent":         "0",
+			"config":           "40005623101fe0",
+			"SBR-enabled":      "1",
+			"bitrate":          "64000",
+		},
+	},
+	{
+		"audio aac latm hierarchical ps",
+		"audio",
+		110,
+		"MP4A-LATM/48000/2",
+		map[string]string{
+			"profile-level-id": "48",
+			"bitrate":          "64000",
+			"cpresent":         "0",
+			"config":           "4001d613101fe0",
+		},
+		&MPEG4AudioLATM{
+			PayloadTyp:     110,
+			ProfileLevelID: 48,
+			Bitrate:        intPtr(64000),
+			CPresent:       boolPtr(false),
+			Config: &mpeg4audio.StreamMuxConfig{
+				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
+					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
+						AudioSpecificConfig: &mpeg4audio.Config{
+							Type:                2,
+							ExtensionType:       29,
+							ExtensionSampleRate: 48000,
+							SampleRate:          24000,
+							ChannelCount:        1,
+						},
+						LatmBufferFullness: 255,
+					}},
+				}},
+			},
+		},
+		"MP4A-LATM/48000/2",
+		map[string]string{
+			"profile-level-id": "48",
+			"object":           "2",
+			"cpresent":         "0",
+			"config":           "4001d613101fe0",
+			"bitrate":          "64000",
 		},
 	},
 	{
@@ -305,19 +437,27 @@ var casesFormat = []struct {
 		},
 		&MPEG4AudioLATM{
 			PayloadTyp:     110,
-			SampleRate:     48000,
-			Channels:       1,
 			ProfileLevelID: 30,
 			CPresent:       boolPtr(false),
-			Object:         2,
-			Config:         []byte{0x40, 0x00, 0x23, 0x10},
+			Config: &mpeg4audio.StreamMuxConfig{
+				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
+					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
+						AudioSpecificConfig: &mpeg4audio.Config{
+							Type:         2,
+							SampleRate:   48000,
+							ChannelCount: 1,
+						},
+						LatmBufferFullness: 255,
+					}},
+				}},
+			},
 		},
 		"MP4A-LATM/48000/1",
 		map[string]string{
 			"profile-level-id": "30",
 			"object":           "2",
 			"cpresent":         "0",
-			"config":           "40002310",
+			"config":           "400023103fc0",
 		},
 	},
 	{
