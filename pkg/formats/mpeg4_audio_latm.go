@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
@@ -14,13 +13,10 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.3
 type MPEG4AudioLATM struct {
 	PayloadTyp     uint8
-	SampleRate     int
-	Channels       int
 	ProfileLevelID int
 	Bitrate        *int
-	Object         mpeg4audio.ObjectType
 	CPresent       *bool
-	Config         []byte
+	Config         *mpeg4audio.StreamMuxConfig
 	SBREnabled     *bool
 }
 
@@ -28,24 +24,6 @@ func (f *MPEG4AudioLATM) unmarshal(
 	payloadType uint8, clock string, codec string,
 	rtpmap string, fmtp map[string]string,
 ) error {
-	tmp := strings.SplitN(clock, "/", 2)
-
-	tmp1, err := strconv.ParseInt(tmp[0], 10, 64)
-	if err != nil {
-		return err
-	}
-	f.SampleRate = int(tmp1)
-
-	if len(tmp) >= 2 {
-		tmp2, err := strconv.ParseInt(tmp[1], 10, 64)
-		if err != nil {
-			return err
-		}
-		f.Channels = int(tmp2)
-	} else {
-		f.Channels = 1
-	}
-
 	f.PayloadTyp = payloadType
 	f.ProfileLevelID = 30 // default value defined by specification
 
@@ -68,22 +46,6 @@ func (f *MPEG4AudioLATM) unmarshal(
 			v := int(tmp)
 			f.Bitrate = &v
 
-		case "object":
-			tmp, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid object type: %v", val)
-			}
-
-			f.Object = mpeg4audio.ObjectType(int(tmp))
-
-			switch f.Object {
-			case mpeg4audio.ObjectTypeAACLC,
-				mpeg4audio.ObjectTypeSBR,
-				mpeg4audio.ObjectTypePS:
-			default:
-				return fmt.Errorf("unsupported object type: %d", f.Object)
-			}
-
 		case "cpresent":
 			tmp, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
@@ -94,10 +56,15 @@ func (f *MPEG4AudioLATM) unmarshal(
 			f.CPresent = &v
 
 		case "config":
-			var err error
-			f.Config, err = hex.DecodeString(val)
+			enc, err := hex.DecodeString(val)
 			if err != nil {
 				return fmt.Errorf("invalid AAC config: %v", val)
+			}
+
+			f.Config = &mpeg4audio.StreamMuxConfig{}
+			err = f.Config.Unmarshal(enc)
+			if err != nil {
+				return fmt.Errorf("invalid AAC config: %v", err)
 			}
 
 		case "sbr-enabled":
@@ -109,10 +76,6 @@ func (f *MPEG4AudioLATM) unmarshal(
 			v := (tmp == 1)
 			f.SBREnabled = &v
 		}
-	}
-
-	if f.Object == 0 {
-		f.Object = 2
 	}
 
 	if f.Config == nil {
@@ -129,7 +92,7 @@ func (f *MPEG4AudioLATM) String() string {
 
 // ClockRate implements Format.
 func (f *MPEG4AudioLATM) ClockRate() int {
-	return f.SampleRate
+	return f.Config.Programs[0].Layers[0].AudioSpecificConfig.SampleRate
 }
 
 // PayloadType implements Format.
@@ -139,16 +102,33 @@ func (f *MPEG4AudioLATM) PayloadType() uint8 {
 
 // RTPMap implements Format.
 func (f *MPEG4AudioLATM) RTPMap() string {
-	return "MP4A-LATM/" + strconv.FormatInt(int64(f.SampleRate), 10) +
-		"/" + strconv.FormatInt(int64(f.Channels), 10)
+	aoc := f.Config.Programs[0].Layers[0].AudioSpecificConfig
+
+	sampleRate := aoc.SampleRate
+	if aoc.ExtensionSampleRate != 0 {
+		sampleRate = aoc.ExtensionSampleRate
+	}
+
+	channelCount := aoc.ChannelCount
+	if aoc.ExtensionType == mpeg4audio.ObjectTypePS {
+		channelCount = 2
+	}
+
+	return "MP4A-LATM/" + strconv.FormatInt(int64(sampleRate), 10) +
+		"/" + strconv.FormatInt(int64(channelCount), 10)
 }
 
 // FMTP implements Format.
 func (f *MPEG4AudioLATM) FMTP() map[string]string {
+	enc, err := f.Config.Marshal()
+	if err != nil {
+		return nil
+	}
+
 	fmtp := map[string]string{
 		"profile-level-id": strconv.FormatInt(int64(f.ProfileLevelID), 10),
-		"config":           hex.EncodeToString(f.Config),
-		"object":           strconv.FormatInt(int64(f.Object), 10),
+		"config":           hex.EncodeToString(enc),
+		"object":           strconv.FormatInt(int64(f.Config.Programs[0].Layers[0].AudioSpecificConfig.Type), 10),
 	}
 
 	if f.Bitrate != nil {
