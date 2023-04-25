@@ -54,6 +54,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	// AU-headers-length (16 bits)
 	headersLen := int(uint16(pkt.Payload[0])<<8 | uint16(pkt.Payload[1]))
 	if headersLen == 0 {
+		d.fragments = d.fragments[:0] // discard pending fragmented packets
 		return nil, 0, fmt.Errorf("invalid AU-headers-length")
 	}
 	payload := pkt.Payload[2:]

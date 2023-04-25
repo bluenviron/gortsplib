@@ -2,7 +2,6 @@ package rtpmpeg2audio
 
 import (
 	"crypto/rand"
-	"fmt"
 	"time"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg2audio"
@@ -80,20 +79,16 @@ func (e *Encoder) Encode(frames [][]byte, pts time.Duration) ([]*rtp.Packet, err
 	var batch [][]byte
 
 	for _, frame := range frames {
-		if len(frame) > e.PayloadMaxSize {
-			return nil, fmt.Errorf("frame is too big")
-		}
-
 		if lenAggregated(batch, frame) <= e.PayloadMaxSize {
 			batch = append(batch, frame)
 		} else {
 			// write last batch
 			if batch != nil {
-				pkt, err := e.writeBatch(batch, pts)
+				pkts, err := e.writeBatch(batch, pts)
 				if err != nil {
 					return nil, err
 				}
-				rets = append(rets, pkt)
+				rets = append(rets, pkts...)
 
 				for _, frame := range batch {
 					var h mpeg2audio.FrameHeader
@@ -112,22 +107,71 @@ func (e *Encoder) Encode(frames [][]byte, pts time.Duration) ([]*rtp.Packet, err
 	}
 
 	// write last batch
-	pkt, err := e.writeBatch(batch, pts)
+	pkts, err := e.writeBatch(batch, pts)
 	if err != nil {
 		return nil, err
 	}
-	rets = append(rets, pkt)
+	rets = append(rets, pkts...)
 
 	return rets, nil
 }
 
-func (e *Encoder) writeBatch(frames [][]byte, pts time.Duration) (*rtp.Packet, error) {
-	l := 4
-	for _, frame := range frames {
-		l += len(frame)
+func (e *Encoder) writeBatch(frames [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
+	if len(frames) != 1 || lenAggregated(frames, nil) < e.PayloadMaxSize {
+		return e.writeAggregated(frames, pts)
 	}
 
-	payload := make([]byte, l)
+	return e.writeFragmented(frames[0], pts)
+}
+
+func (e *Encoder) writeFragmented(frame []byte, pts time.Duration) ([]*rtp.Packet, error) {
+	availPerPacket := e.PayloadMaxSize - 4
+	le := len(frame)
+	packetCount := le / availPerPacket
+	lastPacketSize := le % availPerPacket
+	if lastPacketSize > 0 {
+		packetCount++
+	}
+
+	pos := 0
+	ret := make([]*rtp.Packet, packetCount)
+	encPTS := e.timeEncoder.Encode(pts)
+
+	for i := range ret {
+		var le int
+		if i != (packetCount - 1) {
+			le = availPerPacket
+		} else {
+			le = lastPacketSize
+		}
+
+		payload := make([]byte, 4+le)
+		payload[2] = byte(pos >> 8)
+		payload[3] = byte(pos)
+
+		pos += copy(payload[4:], frame[pos:])
+
+		ret[i] = &rtp.Packet{
+			Header: rtp.Header{
+				Version:        rtpVersion,
+				PayloadType:    14,
+				SequenceNumber: e.sequenceNumber,
+				Timestamp:      encPTS,
+				SSRC:           *e.SSRC,
+				Marker:         true,
+			},
+			Payload: payload,
+		}
+
+		e.sequenceNumber++
+	}
+
+	return ret, nil
+}
+
+func (e *Encoder) writeAggregated(frames [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
+	payload := make([]byte, lenAggregated(frames, nil))
+
 	n := 4
 	for _, frame := range frames {
 		n += copy(payload[n:], frame)
@@ -147,5 +191,5 @@ func (e *Encoder) writeBatch(frames [][]byte, pts time.Duration) (*rtp.Packet, e
 
 	e.sequenceNumber++
 
-	return pkt, nil
+	return []*rtp.Packet{pkt}, nil
 }

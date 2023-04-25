@@ -13,7 +13,13 @@ func TestDecode(t *testing.T) {
 			d := &Decoder{}
 			d.Init()
 
-			frames, _, err := d.Decode(ca.pkt)
+			var frames [][]byte
+			var err error
+
+			for _, pkt := range ca.pkts {
+				frames, _, err = d.Decode(pkt)
+			}
+
 			require.NoError(t, err)
 			require.Equal(t, ca.frames, frames)
 		})
@@ -24,12 +30,23 @@ func FuzzDecoder(f *testing.F) {
 	d := &Decoder{}
 	d.Init()
 
-	f.Fuzz(func(t *testing.T, b []byte) {
+	f.Fuzz(func(t *testing.T, a []byte, b []byte) {
 		d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
-				PayloadType:    96,
+				PayloadType:    14,
 				SequenceNumber: 17645,
+				Timestamp:      2289527317,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: a,
+		})
+
+		d.Decode(&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				PayloadType:    14,
+				SequenceNumber: 17646,
 				Timestamp:      2289527317,
 				SSRC:           0x9dbb7812,
 			},
