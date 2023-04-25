@@ -118,17 +118,11 @@ func (e *Encoder) Encode(aus [][]byte, pts time.Duration) ([]*rtp.Packet, error)
 }
 
 func (e *Encoder) writeBatch(aus [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
-	if len(aus) == 1 {
-		// the AU fits into a single RTP packet
-		if len(aus[0]) < e.PayloadMaxSize {
-			return e.writeAggregated(aus, pts)
-		}
-
-		// split the AU into multiple fragmentation packet
-		return e.writeFragmented(aus[0], pts)
+	if len(aus) != 1 || e.lenAggregated(aus, nil) < e.PayloadMaxSize {
+		return e.writeAggregated(aus, pts)
 	}
 
-	return e.writeAggregated(aus, pts)
+	return e.writeFragmented(aus[0], pts)
 }
 
 func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
@@ -137,9 +131,11 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 	if (auHeadersLen % 8) != 0 {
 		auHeadersLenBytes++
 	}
+
 	auMaxSize := e.PayloadMaxSize - 2 - auHeadersLenBytes
-	packetCount := len(au) / auMaxSize
-	lastPacketSize := len(au) % auMaxSize
+	le := len(au)
+	packetCount := le / auMaxSize
+	lastPacketSize := le % auMaxSize
 	if lastPacketSize > 0 {
 		packetCount++
 	}
@@ -155,19 +151,19 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 			le = lastPacketSize
 		}
 
-		byts := make([]byte, 2+auHeadersLenBytes+le)
+		payload := make([]byte, 2+auHeadersLenBytes+le)
 
 		// AU-headers-length
-		byts[0] = byte(auHeadersLen >> 8)
-		byts[1] = byte(auHeadersLen)
+		payload[0] = byte(auHeadersLen >> 8)
+		payload[1] = byte(auHeadersLen)
 
 		// AU-headers
 		pos := 0
-		bits.WriteBits(byts[2:], &pos, uint64(le), e.SizeLength)
-		bits.WriteBits(byts[2:], &pos, 0, e.IndexLength)
+		bits.WriteBits(payload[2:], &pos, uint64(le), e.SizeLength)
+		bits.WriteBits(payload[2:], &pos, 0, e.IndexLength)
 
 		// AU
-		copy(byts[2+auHeadersLenBytes:], au[:le])
+		copy(payload[2+auHeadersLenBytes:], au[:le])
 		au = au[le:]
 
 		ret[i] = &rtp.Packet{
@@ -179,7 +175,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 				SSRC:           *e.SSRC,
 				Marker:         (i == (packetCount - 1)),
 			},
-			Payload: byts,
+			Payload: payload,
 		}
 
 		e.sequenceNumber++

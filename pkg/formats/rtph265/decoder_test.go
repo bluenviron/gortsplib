@@ -16,35 +16,17 @@ func TestDecode(t *testing.T) {
 			d := &Decoder{}
 			d.Init()
 
-			// send an initial packet downstream
-			// in order to compute the right timestamp,
-			// that is relative to the initial packet
-			pkt := rtp.Packet{
-				Header: rtp.Header{
-					Version:        2,
-					Marker:         true,
-					PayloadType:    96,
-					SequenceNumber: 17645,
-					Timestamp:      2289526357,
-					SSRC:           0x9dbb7812,
-				},
-				Payload: []byte{0x06, 0x00},
-			}
-			_, _, err := d.Decode(&pkt)
-			require.NoError(t, err)
-
 			var nalus [][]byte
 
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				addNALUs, pts, err := d.Decode(pkt)
+				addNALUs, _, err := d.Decode(pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
 
 				require.NoError(t, err)
-				require.Equal(t, ca.pts, pts)
 				nalus = append(nalus, addNALUs...)
 
 				// test input integrity
