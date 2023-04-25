@@ -204,7 +204,7 @@ func TestDecodeUntilMarker(t *testing.T) {
 	require.Equal(t, [][]byte{{0x01, 0x02}, {0x01, 0x02}}, nalus)
 }
 
-func FuzzDecoderUnmarshal(f *testing.F) {
+func FuzzDecoder(f *testing.F) {
 	d := &Decoder{}
 	d.Init()
 

@@ -1,7 +1,9 @@
-package formats
+package formats //nolint:dupl
 
 import (
 	"github.com/pion/rtp"
+
+	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmpeg2audio"
 )
 
 // MPEG2Audio is a RTP format that uses a MPEG-1 or MPEG-2 audio codec.
@@ -43,4 +45,18 @@ func (f *MPEG2Audio) FMTP() map[string]string {
 // PTSEqualsDTS implements Format.
 func (f *MPEG2Audio) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
+}
+
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *MPEG2Audio) CreateDecoder() *rtpmpeg2audio.Decoder {
+	d := &rtpmpeg2audio.Decoder{}
+	d.Init()
+	return d
+}
+
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *MPEG2Audio) CreateEncoder() *rtpmpeg2audio.Encoder {
+	e := &rtpmpeg2audio.Encoder{}
+	e.Init()
+	return e
 }

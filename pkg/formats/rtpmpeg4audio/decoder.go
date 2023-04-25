@@ -16,6 +16,7 @@ import (
 var ErrMorePacketsNeeded = errors.New("need more packets")
 
 // Decoder is a RTP/MPEG4-audio decoder.
+// Specification: https://datatracker.ietf.org/doc/html/rfc3640
 type Decoder struct {
 	// sample rate of input packets.
 	SampleRate int
@@ -73,7 +74,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	var aus [][]byte
 
 	if len(d.fragments) == 0 {
-		if pkt.Header.Marker {
+		if pkt.Marker {
 			// AUs
 			aus = make([][]byte, len(dataLens))
 			for i, dataLen := range dataLens {
@@ -117,7 +118,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 		d.fragments = append(d.fragments, payload[:dataLens[0]])
 
-		if !pkt.Header.Marker {
+		if !pkt.Marker {
 			return nil, 0, ErrMorePacketsNeeded
 		}
 

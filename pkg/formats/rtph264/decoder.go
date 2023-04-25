@@ -23,6 +23,7 @@ var ErrNonStartingPacketAndNoPrevious = errors.New(
 	"received a non-starting fragment without any previous starting fragment")
 
 // Decoder is a RTP/H264 decoder.
+// Specification: https://datatracker.ietf.org/doc/html/rfc6184
 type Decoder struct {
 	// indicates the packetization mode.
 	PacketizationMode int

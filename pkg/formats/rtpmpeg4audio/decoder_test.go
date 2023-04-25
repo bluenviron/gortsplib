@@ -109,7 +109,7 @@ func TestDecodeADTS(t *testing.T) {
 	}
 }
 
-func FuzzDecoderUnmarshal(f *testing.F) {
+func FuzzDecoder(f *testing.F) {
 	d := &Decoder{
 		SampleRate:       16000,
 		SizeLength:       13,

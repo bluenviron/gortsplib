@@ -22,6 +22,7 @@ func randUint32() uint32 {
 }
 
 // Encoder is a RTP/VP9 encoder.
+// Specification: https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8

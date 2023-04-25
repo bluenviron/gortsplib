@@ -1,7 +1,4 @@
-//go:build go1.18
-// +build go1.18
-
-package rtpmjpeg
+package rtpmpeg2audio
 
 import (
 	"testing"
@@ -16,16 +13,9 @@ func TestDecode(t *testing.T) {
 			d := &Decoder{}
 			d.Init()
 
-			for _, pkt := range ca.pkts {
-				image, pts, err := d.Decode(pkt)
-				if err == ErrMorePacketsNeeded {
-					continue
-				}
-
-				require.NoError(t, err)
-				require.Equal(t, ca.pts, pts)
-				require.Equal(t, ca.image, image)
-			}
+			frames, _, err := d.Decode(ca.pkt)
+			require.NoError(t, err)
+			require.Equal(t, ca.frames, frames)
 		})
 	}
 }
@@ -34,11 +24,10 @@ func FuzzDecoder(f *testing.F) {
 	d := &Decoder{}
 	d.Init()
 
-	f.Fuzz(func(t *testing.T, b []byte, m bool) {
+	f.Fuzz(func(t *testing.T, b []byte) {
 		d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
-				Marker:         m,
 				PayloadType:    96,
 				SequenceNumber: 17645,
 				Timestamp:      2289527317,

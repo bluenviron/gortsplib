@@ -21,6 +21,7 @@ func randUint32() uint32 {
 }
 
 // Encoder is a RTP/H265 encoder.
+// Specification: https://datatracker.ietf.org/doc/html/rfc7798
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8
