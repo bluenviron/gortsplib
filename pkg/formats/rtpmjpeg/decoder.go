@@ -95,6 +95,7 @@ var chmAcSymbols = []byte{ //nolint:dupl
 }
 
 // Decoder is a RTP/M-JPEG decoder.
+// Specification: https://datatracker.ietf.org/doc/html/rfc2435
 type Decoder struct {
 	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool

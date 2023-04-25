@@ -21,6 +21,7 @@ func randUint32() uint32 {
 }
 
 // Encoder is a RTP/LPCM encoder.
+// Specification: https://datatracker.ietf.org/doc/html/rfc3190
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8

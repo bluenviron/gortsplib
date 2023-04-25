@@ -10,6 +10,7 @@ import (
 )
 
 // Decoder is a RTP/LPCM decoder.
+// Specification: https://datatracker.ietf.org/doc/html/rfc3190
 type Decoder struct {
 	BitDepth     int
 	SampleRate   int

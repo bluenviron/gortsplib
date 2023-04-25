@@ -30,7 +30,7 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func FuzzDecoderUnmarshal(f *testing.F) {
+func FuzzDecoder(f *testing.F) {
 	d := &Decoder{}
 	d.Init()
 

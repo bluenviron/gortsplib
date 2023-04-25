@@ -54,7 +54,7 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func FuzzDecoderUnmarshal(f *testing.F) {
+func FuzzDecoder(f *testing.F) {
 	d := &Decoder{
 		BitDepth:     24,
 		SampleRate:   48000,

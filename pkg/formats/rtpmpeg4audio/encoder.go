@@ -22,6 +22,7 @@ func randUint32() uint32 {
 }
 
 // Encoder is a RTP/MPEG4-audio encoder.
+// Specification: https://datatracker.ietf.org/doc/html/rfc3640
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8

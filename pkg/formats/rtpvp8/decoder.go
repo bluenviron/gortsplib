@@ -22,6 +22,7 @@ var ErrNonStartingPacketAndNoPrevious = errors.New(
 	"received a non-starting fragment without any previous starting fragment")
 
 // Decoder is a RTP/VP8 decoder.
+// Specification: https://datatracker.ietf.org/doc/html/rfc7741
 type Decoder struct {
 	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
