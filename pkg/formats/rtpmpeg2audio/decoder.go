@@ -31,11 +31,13 @@ func (d *Decoder) Init() {
 // Decode decodes frames from a RTP/MPEG2-audio packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if len(pkt.Payload) < 5 {
+		d.fragments = d.fragments[:0] // discard pending fragmented packets
 		return nil, 0, fmt.Errorf("payload is too short")
 	}
 
 	mbz := uint16(pkt.Payload[0])<<8 | uint16(pkt.Payload[1])
 	if mbz != 0 {
+		d.fragments = d.fragments[:0] // discard pending fragmented packets
 		return nil, 0, fmt.Errorf("invalid MBZ: %v", mbz)
 	}
 
