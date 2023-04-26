@@ -16,10 +16,19 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 
 // ErrNonStartingPacketAndNoPrevious is returned when we received a non-starting
 // packet of a fragmented NALU and we didn't received anything before.
-// It's normal to receive this when we are decoding a stream that has been already
+// It's normal to receive this when decoding a stream that has been already
 // running for some time.
 var ErrNonStartingPacketAndNoPrevious = errors.New(
 	"received a non-starting fragment without any previous starting fragment")
+
+func joinFragments(fragments [][]byte, size int) []byte {
+	ret := make([]byte, size)
+	n := 0
+	for _, p := range fragments {
+		n += copy(ret[n:], p)
+	}
+	return ret
+}
 
 // Decoder is a RTP/H265 decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc7798
@@ -132,15 +141,9 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, ErrMorePacketsNeeded
 		}
 
-		nalu := make([]byte, d.fragmentedSize)
-		pos := 0
-
-		for _, frag := range d.fragments {
-			pos += copy(nalu[pos:], frag)
-		}
+		nalus = [][]byte{joinFragments(d.fragments, d.fragmentedSize)}
 
 		d.fragments = d.fragments[:0]
-		nalus = [][]byte{nalu}
 
 	case h265.NALUType_PACI:
 		d.fragments = d.fragments[:0] // discard pending fragmented packets
