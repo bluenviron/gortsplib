@@ -17,7 +17,7 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 
 // ErrNonStartingPacketAndNoPrevious is returned when we received a non-starting
 // fragment of an image and we didn't received anything before.
-// It's normal to receive this when we are decoding a stream that has been already
+// It's normal to receive this when decoding a stream that has been already
 // running for some time.
 var ErrNonStartingPacketAndNoPrevious = errors.New(
 	"received a non-starting fragment without any previous starting fragment")
@@ -94,6 +94,15 @@ var chmAcSymbols = []byte{ //nolint:dupl
 	0xf9, 0xfa,
 }
 
+func joinFragments(fragments [][]byte, size int) []byte {
+	ret := make([]byte, size)
+	n := 0
+	for _, p := range fragments {
+		n += copy(ret[n:], p)
+	}
+	return ret
+}
+
 // Decoder is a RTP/M-JPEG decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2435
 type Decoder struct {
@@ -130,6 +139,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	}
 
 	if jh.FragmentOffset == 0 {
+		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragmentedSize = 0
+		d.firstPacketReceived = true
+
 		if jh.Quantization >= 128 {
 			d.firstQTHeader = &headers.QuantizationTable{}
 			n, err := d.firstQTHeader.Unmarshal(byts)
@@ -141,22 +154,17 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 			d.firstQTHeader = nil
 		}
 
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
-		d.fragmentedSize = len(byts)
 		d.fragments = append(d.fragments, byts)
+		d.fragmentedSize = len(byts)
 		d.firstJpegHeader = &jh
-		d.firstPacketReceived = true
 	} else {
-		if len(d.fragments) == 0 {
+		if int(jh.FragmentOffset) != d.fragmentedSize {
 			if !d.firstPacketReceived {
 				return nil, 0, ErrNonStartingPacketAndNoPrevious
 			}
 
-			return nil, 0, fmt.Errorf("received a non-starting fragment")
-		}
-
-		if int(jh.FragmentOffset) != d.fragmentedSize {
 			d.fragments = d.fragments[:0] // discard pending fragmented packets
+			d.fragmentedSize = 0
 			return nil, 0, fmt.Errorf("received wrong fragment")
 		}
 
@@ -172,14 +180,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 		return nil, 0, fmt.Errorf("invalid data")
 	}
 
-	data := make([]byte, d.fragmentedSize)
-	pos := 0
-
-	for _, frag := range d.fragments {
-		pos += copy(data[pos:], frag)
-	}
+	data := joinFragments(d.fragments, d.fragmentedSize)
 
 	d.fragments = d.fragments[:0]
+	d.fragmentedSize = 0
 
 	var buf []byte
 

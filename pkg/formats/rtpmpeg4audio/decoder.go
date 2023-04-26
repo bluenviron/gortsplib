@@ -15,6 +15,15 @@ import (
 // ErrMorePacketsNeeded is returned when more packets are needed.
 var ErrMorePacketsNeeded = errors.New("need more packets")
 
+func joinFragments(fragments [][]byte, size int) []byte {
+	ret := make([]byte, size)
+	n := 0
+	for _, p := range fragments {
+		n += copy(ret[n:], p)
+	}
+	return ret
+}
+
 // Decoder is a RTP/MPEG4-audio decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3640
 type Decoder struct {
@@ -123,12 +132,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, ErrMorePacketsNeeded
 		}
 
-		ret := make([]byte, d.fragmentedSize)
-		n := 0
-		for _, p := range d.fragments {
-			n += copy(ret[n:], p)
-		}
-		aus = [][]byte{ret}
+		aus = [][]byte{joinFragments(d.fragments, d.fragmentedSize)}
 
 		d.fragments = d.fragments[:0]
 	}

@@ -16,10 +16,19 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 
 // ErrNonStartingPacketAndNoPrevious is returned when we received a non-starting
 // packet of a fragmented frame and we didn't received anything before.
-// It's normal to receive this when we are decoding a stream that has been already
+// It's normal to receive this when decoding a stream that has been already
 // running for some time.
 var ErrNonStartingPacketAndNoPrevious = errors.New(
 	"received a non-starting fragment without any previous starting fragment")
+
+func joinFragments(fragments [][]byte, size int) []byte {
+	ret := make([]byte, size)
+	n := 0
+	for _, p := range fragments {
+		n += copy(ret[n:], p)
+	}
+	return ret
+}
 
 // Decoder is a RTP/VP8 decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc7741
@@ -80,12 +89,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 			n += len(frag)
 		}
 
-		frame = make([]byte, n)
-		pos := 0
-
-		for _, frag := range d.fragments {
-			pos += copy(frame[pos:], frag)
-		}
+		frame = joinFragments(d.fragments, n)
 
 		d.fragments = d.fragments[:0]
 	}
