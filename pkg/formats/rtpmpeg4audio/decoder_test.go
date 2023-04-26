@@ -70,15 +70,15 @@ func TestDecodeADTS(t *testing.T) {
 }
 
 func FuzzDecoder(f *testing.F) {
-	d := &Decoder{
-		SampleRate:       16000,
-		SizeLength:       13,
-		IndexLength:      3,
-		IndexDeltaLength: 3,
-	}
-	d.Init()
-
 	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
+		d := &Decoder{
+			SampleRate:       16000,
+			SizeLength:       13,
+			IndexLength:      3,
+			IndexDeltaLength: 3,
+		}
+		d.Init()
+
 		d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,

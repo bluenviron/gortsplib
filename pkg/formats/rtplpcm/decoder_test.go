@@ -31,14 +31,14 @@ func TestDecode(t *testing.T) {
 }
 
 func FuzzDecoder(f *testing.F) {
-	d := &Decoder{
-		BitDepth:     24,
-		SampleRate:   48000,
-		ChannelCount: 2,
-	}
-	d.Init()
-
 	f.Fuzz(func(t *testing.T, b []byte) {
+		d := &Decoder{
+			BitDepth:     24,
+			SampleRate:   48000,
+			ChannelCount: 2,
+		}
+		d.Init()
+
 		d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
