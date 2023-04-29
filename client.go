@@ -361,7 +361,8 @@ func (c *Client) Start(scheme string, host string) error {
 		c.senderReportPeriod = 10 * time.Second
 	}
 	if c.udpReceiverReportPeriod == 0 {
-		c.udpReceiverReportPeriod = 10 * time.Second
+		// some cameras require a maximum of 5secs between keepalives
+		c.udpReceiverReportPeriod = 5 * time.Second
 	}
 	if c.checkStreamPeriod == 0 {
 		c.checkStreamPeriod = 1 * time.Second
