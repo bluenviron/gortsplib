@@ -44,7 +44,7 @@ Features:
 * Utilities
   * Parse RTSP elements
   * Encode/decode format-specific frames into/from RTP packets. The following formats are supported:
-    * Video: H264, H265, M-JPEG, VP8, VP9, MPEG-4 Video (H263, DivX)
+    * Video: H264, H265, M-JPEG, VP8, VP9, MPEG-4 Video (H263, Xvid)
     * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG-2 Audio (MP3), MPEG-4 Audio (AAC), Opus
 
 ## Table of contents
