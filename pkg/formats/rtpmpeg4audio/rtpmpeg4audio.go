@@ -1,2 +1,2 @@
-// Package rtpmpeg4audio contains a RTP/MPEG4-audio decoder and encoder.
+// Package rtpmpeg4audio contains a RTP/MPEG-4 Audio decoder and encoder.
 package rtpmpeg4audio

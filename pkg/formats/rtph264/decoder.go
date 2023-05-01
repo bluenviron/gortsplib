@@ -52,7 +52,7 @@ func (d *Decoder) Init() {
 	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
 }
 
-// Decode decodes NALUs from a RTP/H264 packet.
+// Decode decodes NALUs from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if d.PacketizationMode >= 2 {
 		return nil, 0, fmt.Errorf("PacketizationMode >= 2 is not supported")
@@ -167,7 +167,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	return nalus, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
-// DecodeUntilMarker decodes NALUs from a RTP/H264 packet and puts them in a buffer.
+// DecodeUntilMarker decodes NALUs from a RTP packet and puts them in a buffer.
 // When a packet has the marker flag (meaning that all the NALUs with the same PTS have
 // been received), the buffer is returned.
 func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, error) {

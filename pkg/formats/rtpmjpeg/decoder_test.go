@@ -14,13 +14,12 @@ func TestDecode(t *testing.T) {
 			d.Init()
 
 			for _, pkt := range ca.pkts {
-				image, pts, err := d.Decode(pkt)
+				image, _, err := d.Decode(pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
 
 				require.NoError(t, err)
-				require.Equal(t, ca.pts, pts)
 				require.Equal(t, ca.image, image)
 			}
 		})

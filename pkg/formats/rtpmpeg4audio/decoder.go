@@ -24,7 +24,7 @@ func joinFragments(fragments [][]byte, size int) []byte {
 	return ret
 }
 
-// Decoder is a RTP/MPEG4-audio decoder.
+// Decoder is a RTP/MPEG-4 Audio decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3640
 type Decoder struct {
 	// sample rate of input packets.
@@ -51,7 +51,7 @@ func (d *Decoder) Init() {
 	d.timeDecoder = rtptime.NewDecoder(d.SampleRate)
 }
 
-// Decode decodes AUs from a RTP/MPEG4-audio packet.
+// Decode decodes AUs from a RTP packet.
 // It returns the AUs and the PTS of the first AU.
 // The PTS of subsequent AUs can be calculated by adding time.Second*mpeg4audio.SamplesPerAccessUnit/clockRate.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {

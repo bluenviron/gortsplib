@@ -12,7 +12,7 @@ import (
 // MPEG4Video is an alias for MPEG4VideoES.
 type MPEG4Video = MPEG4VideoES
 
-// MPEG4VideoES is a RTP format that uses the video codec defined in MPEG-4 part 2.
+// MPEG4VideoES is a RTP format that uses a MPEG-4 Video codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.1
 type MPEG4VideoES struct {
 	PayloadTyp     uint8

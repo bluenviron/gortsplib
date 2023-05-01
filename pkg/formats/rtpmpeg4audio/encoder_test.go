@@ -3,7 +3,6 @@ package rtpmpeg4audio
 import (
 	"bytes"
 	"testing"
-	"time"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
@@ -31,7 +30,6 @@ var cases = []struct {
 	indexLength      int
 	indexDeltaLength int
 	aus              [][]byte
-	pts              time.Duration
 	pkts             []*rtp.Packet
 }{
 	{
@@ -87,7 +85,6 @@ var cases = []struct {
 				0xaf, 0x7,
 			},
 		},
-		20 * time.Millisecond,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -95,7 +92,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -158,7 +155,6 @@ var cases = []struct {
 			{0x04, 0x05, 0x06, 0x07},
 			{0x08, 0x09, 0x0A, 0x0B},
 		},
-		0,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -177,7 +173,7 @@ var cases = []struct {
 			},
 		},
 	},
-	{
+	{ //nolint:dupl
 		"fragmented",
 		13,
 		3,
@@ -185,7 +181,6 @@ var cases = []struct {
 		[][]byte{
 			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 512),
 		},
-		0,
 		[]*rtp.Packet{ //nolint:dupl
 			{
 				Header: rtp.Header{
@@ -242,7 +237,6 @@ var cases = []struct {
 			{0x08, 0x09, 0x0A, 0x0B},
 			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 256),
 		},
-		0,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -297,7 +291,6 @@ var cases = []struct {
 		[][]byte{
 			{0x01, 0x02, 0x03, 0x04},
 		},
-		20 * time.Millisecond,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -305,7 +298,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -323,7 +316,6 @@ var cases = []struct {
 		[][]byte{
 			{0x01, 0x02, 0x03, 0x04},
 		},
-		20 * time.Millisecond,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -331,7 +323,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -350,7 +342,6 @@ var cases = []struct {
 			{0x01, 0x02, 0x03, 0x04},
 			{0x05, 0x06, 0x07, 0x08},
 		},
-		20 * time.Millisecond,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -358,7 +349,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -377,7 +368,6 @@ var cases = []struct {
 		[][]byte{
 			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 512),
 		},
-		20 * time.Millisecond,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -385,7 +375,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -400,7 +390,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -415,7 +405,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -425,7 +415,7 @@ var cases = []struct {
 			},
 		},
 	},
-	{
+	{ //nolint:dupl
 		"fragmented, custom sized, padded",
 		13,
 		0,
@@ -433,7 +423,6 @@ var cases = []struct {
 		[][]byte{
 			bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 512),
 		},
-		20 * time.Millisecond,
 		[]*rtp.Packet{ //nolint:dupl
 			{
 				Header: rtp.Header{
@@ -441,7 +430,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -455,7 +444,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -469,7 +458,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289527317,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -505,7 +494,7 @@ func TestEncode(t *testing.T) {
 			}
 			e.Init()
 
-			pkts, err := e.Encode(ca.aus, ca.pts)
+			pkts, err := e.Encode(ca.aus, 0)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})

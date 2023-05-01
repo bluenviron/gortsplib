@@ -81,7 +81,7 @@ func (e *Encoder) Init() {
 	e.timeEncoder = rtptime.NewEncoder(e.SampleRate, *e.InitialTimestamp)
 }
 
-// Encode encodes AUs into RTP/MPEG4-audio packets.
+// Encode encodes AUs into RTP packets.
 func (e *Encoder) Encode(aus [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte

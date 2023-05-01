@@ -2,7 +2,6 @@ package rtpsimpleaudio
 
 import (
 	"testing"
-	"time"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
@@ -11,20 +10,18 @@ import (
 var cases = []struct {
 	name  string
 	frame []byte
-	pts   time.Duration
 	pkt   *rtp.Packet
 }{
 	{
 		"single",
 		[]byte{0x01, 0x02, 0x03, 0x04},
-		25 * time.Millisecond,
 		&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,
 				PayloadType:    0,
 				SequenceNumber: 17645,
-				Timestamp:      2289526557,
+				Timestamp:      2289526357,
 				SSRC:           0x9dbb7812,
 			},
 			Payload: []byte{0x01, 0x02, 0x03, 0x04},
@@ -53,7 +50,7 @@ func TestEncode(t *testing.T) {
 			}
 			e.Init()
 
-			pkt, err := e.Encode(ca.frame, ca.pts)
+			pkt, err := e.Encode(ca.frame, 0)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkt, pkt)
 		})

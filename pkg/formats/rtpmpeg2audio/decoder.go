@@ -30,7 +30,7 @@ func joinFragments(fragments [][]byte, size int) []byte {
 	return ret
 }
 
-// Decoder is a RTP/MPEG2-audio decoder.
+// Decoder is a RTP/MPEG-2 Audio decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type Decoder struct {
 	timeDecoder         *rtptime.Decoder
@@ -45,7 +45,7 @@ func (d *Decoder) Init() {
 	d.timeDecoder = rtptime.NewDecoder(90000)
 }
 
-// Decode decodes frames from a RTP/MPEG2-audio packet.
+// Decode decodes frames from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if len(pkt.Payload) < 5 {
 		d.fragments = d.fragments[:0] // discard pending fragmented packets
