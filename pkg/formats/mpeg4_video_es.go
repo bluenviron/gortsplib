@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/pion/rtp"
+
+	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmpeg4video"
 )
 
 // MPEG4Video is an alias for MPEG4VideoES.
@@ -82,4 +84,20 @@ func (f *MPEG4VideoES) FMTP() map[string]string {
 // PTSEqualsDTS implements Format.
 func (f *MPEG4VideoES) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
+}
+
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *MPEG4VideoES) CreateDecoder() *rtpmpeg4video.Decoder {
+	d := &rtpmpeg4video.Decoder{}
+	d.Init()
+	return d
+}
+
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *MPEG4VideoES) CreateEncoder() *rtpmpeg4video.Encoder {
+	e := &rtpmpeg4video.Encoder{
+		PayloadType: f.PayloadTyp,
+	}
+	e.Init()
+	return e
 }
