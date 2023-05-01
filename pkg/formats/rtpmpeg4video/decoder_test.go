@@ -1,4 +1,4 @@
-package rtpmjpeg
+package rtpmpeg4video
 
 import (
 	"testing"
@@ -13,15 +13,19 @@ func TestDecode(t *testing.T) {
 			d := &Decoder{}
 			d.Init()
 
+			var frame []byte
+			var err error
+
 			for _, pkt := range ca.pkts {
-				image, _, err := d.Decode(pkt)
+				frame, _, err = d.Decode(pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
 
 				require.NoError(t, err)
-				require.Equal(t, ca.image, image)
 			}
+
+			require.Equal(t, ca.frame, frame)
 		})
 	}
 }
@@ -48,7 +52,7 @@ func FuzzDecoder(f *testing.F) {
 				Version:        2,
 				Marker:         bm,
 				PayloadType:    96,
-				SequenceNumber: 17645,
+				SequenceNumber: 17646,
 				Timestamp:      2289527317,
 				SSRC:           0x9dbb7812,
 			},

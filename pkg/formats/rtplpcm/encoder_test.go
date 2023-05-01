@@ -3,7 +3,6 @@ package rtplpcm
 import (
 	"bytes"
 	"testing"
-	"time"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
@@ -12,13 +11,11 @@ import (
 var cases = []struct {
 	name    string
 	samples []byte
-	pts     time.Duration
 	pkts    []*rtp.Packet
 }{
 	{
 		"single",
 		[]byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
-		25 * time.Millisecond,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -26,7 +23,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289527557,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
@@ -36,7 +33,6 @@ var cases = []struct {
 	{
 		"splitted",
 		bytes.Repeat([]byte{0x41, 0x42, 0x43}, 680),
-		25 * time.Millisecond,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -44,7 +40,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289527557,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: bytes.Repeat([]byte{0x41, 0x42, 0x43}, 486),
@@ -55,7 +51,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289527800,
+					Timestamp:      2289526600,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: bytes.Repeat([]byte{0x41, 0x42, 0x43}, 194),
@@ -87,7 +83,7 @@ func TestEncode(t *testing.T) {
 			}
 			e.Init()
 
-			pkts, err := e.Encode(ca.samples, ca.pts)
+			pkts, err := e.Encode(ca.samples, 0)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})

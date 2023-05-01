@@ -2,7 +2,6 @@ package rtpmjpeg
 
 import (
 	"testing"
-	"time"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
@@ -11,7 +10,6 @@ import (
 var cases = []struct {
 	name  string
 	image []byte
-	pts   time.Duration
 	pkts  []*rtp.Packet
 }{
 	{
@@ -276,7 +274,6 @@ var cases = []struct {
 			0x59, 0x54, 0xda, 0xb6, 0xb3, 0x2e, 0xb3, 0x7f,
 			0xe7, 0x7f, 0xaa, 0xff, 0xff, 0xd9,
 		},
-		0,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -527,7 +524,7 @@ func TestEncode(t *testing.T) {
 			}
 			e.Init()
 
-			pkts, err := e.Encode(ca.image, ca.pts)
+			pkts, err := e.Encode(ca.image, 0)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})

@@ -3,7 +3,6 @@ package rtph265
 import (
 	"bytes"
 	"testing"
-	"time"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
@@ -28,13 +27,11 @@ func mergeBytes(vals ...[]byte) []byte {
 var cases = []struct {
 	name  string
 	nalus [][]byte
-	pts   time.Duration
 	pkts  []*rtp.Packet
 }{
 	{
 		"single",
 		[][]byte{{0x01, 0x02, 0x03, 0x04, 0x05}},
-		25 * time.Millisecond,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -42,7 +39,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289528607,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{0x01, 0x02, 0x03, 0x04, 0x05},
@@ -56,7 +53,6 @@ var cases = []struct {
 			{0x08, 0x08},
 			{0x09, 0x09},
 		},
-		0,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -79,7 +75,6 @@ var cases = []struct {
 		[][]byte{
 			bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 1024),
 		},
-		55 * time.Millisecond,
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -87,7 +82,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289531307,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -102,7 +97,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289531307,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -116,7 +111,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289531307,
+					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -148,7 +143,7 @@ func TestEncode(t *testing.T) {
 			}
 			e.Init()
 
-			pkts, err := e.Encode(ca.nalus, ca.pts)
+			pkts, err := e.Encode(ca.nalus, 0)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})

@@ -43,7 +43,7 @@ func (d *Decoder) Init() {
 	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
 }
 
-// Decode decodes a VP8 frame from a RTP/VP8 packet.
+// Decode decodes a VP8 frame from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	var vpkt codecs.VP8Packet
 	_, err := vpkt.Unmarshal(pkt.Payload)

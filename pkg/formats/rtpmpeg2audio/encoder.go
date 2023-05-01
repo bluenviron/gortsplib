@@ -28,7 +28,7 @@ func lenAggregated(frames [][]byte, frame []byte) int {
 	return l
 }
 
-// Encoder is a RTP/MPEG2-audio encoder.
+// Encoder is a RTP/MPEG-2 Audio encoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type Encoder struct {
 	// SSRC of packets (optional).
@@ -73,7 +73,7 @@ func (e *Encoder) Init() {
 	e.timeEncoder = rtptime.NewEncoder(90000, *e.InitialTimestamp)
 }
 
-// Encode encodes frames into RTP/MPEG2-audio packets.
+// Encode encodes frames into RTP packets.
 func (e *Encoder) Encode(frames [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte

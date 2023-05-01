@@ -1,4 +1,4 @@
-package rtpvp9
+package rtpmpeg4video
 
 import (
 	"bytes"
@@ -7,22 +7,6 @@ import (
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
-
-func mergeBytes(vals ...[]byte) []byte {
-	size := 0
-	for _, v := range vals {
-		size += len(v)
-	}
-	res := make([]byte, size)
-
-	pos := 0
-	for _, v := range vals {
-		n := copy(res[pos:], v)
-		pos += n
-	}
-
-	return res
-}
 
 var cases = []struct {
 	name  string
@@ -42,13 +26,15 @@ var cases = []struct {
 					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: []byte{0x9c, 0xb5, 0xaf, 0x01, 0x02, 0x03, 0x04},
+				Payload: []byte{
+					0x01, 0x02, 0x03, 0x04,
+				},
 			},
 		},
 	},
 	{
 		"fragmented",
-		bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 4096/4),
+		bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 150/4),
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -59,30 +45,18 @@ var cases = []struct {
 					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: mergeBytes([]byte{0x98, 0xb5, 0xaf}, bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 364), []byte{0x01}),
-			},
-			{
-				Header: rtp.Header{
-					Version:        2,
-					Marker:         false,
-					PayloadType:    96,
-					SequenceNumber: 17646,
-					Timestamp:      2289526357,
-					SSRC:           0x9dbb7812,
-				},
-				Payload: mergeBytes([]byte{0x90, 0xb5, 0xaf, 0x02, 0x03, 0x04},
-					bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 363), []byte{0x01, 0x02}),
+				Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 100/4),
 			},
 			{
 				Header: rtp.Header{
 					Version:        2,
 					Marker:         true,
 					PayloadType:    96,
-					SequenceNumber: 17647,
+					SequenceNumber: 17646,
 					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: mergeBytes([]byte{0x94, 0xb5, 0xaf, 0x03, 0x04}, bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 295)),
+				Payload: bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 50/4),
 			},
 		},
 	},
@@ -105,10 +79,7 @@ func TestEncode(t *testing.T) {
 					v := uint32(0x88776655)
 					return &v
 				}(),
-				InitialPictureID: func() *uint16 {
-					v := uint16(0x35af)
-					return &v
-				}(),
+				PayloadMaxSize: 100,
 			}
 			e.Init()
 

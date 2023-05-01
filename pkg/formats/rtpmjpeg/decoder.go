@@ -119,7 +119,7 @@ func (d *Decoder) Init() {
 	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
 }
 
-// Decode decodes an image from a RTP/M-JPEG packet.
+// Decode decodes an image from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	byts := pkt.Payload
 

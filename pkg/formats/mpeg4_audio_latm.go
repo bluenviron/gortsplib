@@ -9,7 +9,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// MPEG4AudioLATM is a RTP format that uses a MPEG-4 audio codec.
+// MPEG4AudioLATM is a RTP format that uses a MPEG-4 Audio codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.3
 type MPEG4AudioLATM struct {
 	PayloadTyp     uint8

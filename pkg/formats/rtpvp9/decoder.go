@@ -43,7 +43,7 @@ func (d *Decoder) Init() {
 	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
 }
 
-// Decode decodes a VP9 frame from a RTP/VP9 packet.
+// Decode decodes a VP9 frame from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	var vpkt codecs.VP9Packet
 	_, err := vpkt.Unmarshal(pkt.Payload)
