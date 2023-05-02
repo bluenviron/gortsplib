@@ -10,6 +10,7 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v3/pkg/rtcpsender"
+	"github.com/bluenviron/gortsplib/v3/pkg/rtplossdetector"
 	"github.com/bluenviron/gortsplib/v3/pkg/rtpreorderer"
 )
 
@@ -17,9 +18,10 @@ type clientFormat struct {
 	c               *Client
 	cm              *clientMedia
 	format          formats.Format
-	udpReorderer    *rtpreorderer.Reorderer    // play
-	udpRTCPReceiver *rtcpreceiver.RTCPReceiver // play
-	rtcpSender      *rtcpsender.RTCPSender     // record
+	udpReorderer    *rtpreorderer.Reorderer       // play
+	udpRTCPReceiver *rtcpreceiver.RTCPReceiver    // play
+	tcpLossDetector *rtplossdetector.LossDetector // play
+	rtcpSender      *rtcpsender.RTCPSender        // record
 	onPacketRTP     func(*rtp.Packet)
 }
 
@@ -42,6 +44,8 @@ func (ct *clientFormat) start() {
 				ct.format.ClockRate(), func(pkt rtcp.Packet) {
 					ct.cm.writePacketRTCP(pkt)
 				})
+		} else {
+			ct.tcpLossDetector = rtplossdetector.New()
 		}
 	} else {
 		ct.rtcpSender = rtcpsender.New(
@@ -93,9 +97,16 @@ func (ct *clientFormat) writePacketRTPWithNTP(pkt *rtp.Packet, ntp time.Time) er
 }
 
 func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {
-	packets, missing := ct.udpReorderer.Process(pkt)
-	if missing != 0 {
-		ct.c.OnPacketLost(fmt.Errorf("%d RTP packet(s) lost", missing))
+	packets, lost := ct.udpReorderer.Process(pkt)
+	if lost != 0 {
+		ct.c.OnPacketLost(fmt.Errorf("%d RTP %s lost",
+			lost,
+			func() string {
+				if lost == 1 {
+					return "packet"
+				}
+				return "packets"
+			}()))
 		// do not return
 	}
 
@@ -108,5 +119,18 @@ func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {
 }
 
 func (ct *clientFormat) readRTPTCP(pkt *rtp.Packet) {
+	lost := ct.tcpLossDetector.Process(pkt)
+	if lost != 0 {
+		ct.c.OnPacketLost(fmt.Errorf("%d RTP %s lost",
+			lost,
+			func() string {
+				if lost == 1 {
+					return "packet"
+				}
+				return "packets"
+			}()))
+		// do not return
+	}
+
 	ct.onPacketRTP(pkt)
 }

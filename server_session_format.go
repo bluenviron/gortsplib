@@ -9,6 +9,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v3/pkg/formats"
 	"github.com/bluenviron/gortsplib/v3/pkg/rtcpreceiver"
+	"github.com/bluenviron/gortsplib/v3/pkg/rtplossdetector"
 	"github.com/bluenviron/gortsplib/v3/pkg/rtpreorderer"
 )
 
@@ -16,6 +17,7 @@ type serverSessionFormat struct {
 	sm              *serverSessionMedia
 	format          formats.Format
 	udpReorderer    *rtpreorderer.Reorderer
+	tcpLossDetector *rtplossdetector.LossDetector
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver
 	onPacketRTP     func(*rtp.Packet)
 }
@@ -29,16 +31,19 @@ func newServerSessionFormat(sm *serverSessionMedia, forma formats.Format) *serve
 }
 
 func (sf *serverSessionFormat) start() {
-	if (*sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast) &&
-		sf.sm.ss.state != ServerSessionStatePlay {
-		sf.udpReorderer = rtpreorderer.New()
-		sf.udpRTCPReceiver = rtcpreceiver.New(
-			sf.sm.ss.s.udpReceiverReportPeriod,
-			nil,
-			sf.format.ClockRate(),
-			func(pkt rtcp.Packet) {
-				sf.sm.ss.WritePacketRTCP(sf.sm.media, pkt)
-			})
+	if sf.sm.ss.state != ServerSessionStatePlay {
+		if *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast {
+			sf.udpReorderer = rtpreorderer.New()
+			sf.udpRTCPReceiver = rtcpreceiver.New(
+				sf.sm.ss.s.udpReceiverReportPeriod,
+				nil,
+				sf.format.ClockRate(),
+				func(pkt rtcp.Packet) {
+					sf.sm.ss.WritePacketRTCP(sf.sm.media, pkt)
+				})
+		} else {
+			sf.tcpLossDetector = rtplossdetector.New()
+		}
 	}
 }
 
@@ -50,9 +55,16 @@ func (sf *serverSessionFormat) stop() {
 }
 
 func (sf *serverSessionFormat) readRTPUDP(pkt *rtp.Packet, now time.Time) {
-	packets, missing := sf.udpReorderer.Process(pkt)
-	if missing != 0 {
-		sf.sm.ss.onPacketLost(fmt.Errorf("%d RTP packet(s) lost", missing))
+	packets, lost := sf.udpReorderer.Process(pkt)
+	if lost != 0 {
+		sf.sm.ss.onPacketLost(fmt.Errorf("%d RTP %s lost",
+			lost,
+			func() string {
+				if lost == 1 {
+					return "packet"
+				}
+				return "packets"
+			}()))
 		// do not return
 	}
 
@@ -63,5 +75,18 @@ func (sf *serverSessionFormat) readRTPUDP(pkt *rtp.Packet, now time.Time) {
 }
 
 func (sf *serverSessionFormat) readRTPTCP(pkt *rtp.Packet) {
+	lost := sf.tcpLossDetector.Process(pkt)
+	if lost != 0 {
+		sf.sm.ss.onPacketLost(fmt.Errorf("%d RTP %s lost",
+			lost,
+			func() string {
+				if lost == 1 {
+					return "packet"
+				}
+				return "packets"
+			}()))
+		// do not return
+	}
+
 	sf.onPacketRTP(pkt)
 }
