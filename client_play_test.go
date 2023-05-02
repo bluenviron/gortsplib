@@ -3085,7 +3085,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 				}(),
 				OnPacketLost: func(err error) {
 					if ca.proto == "udp" && ca.name == "rtp packets lost" {
-						require.EqualError(t, err, "69 RTP packet(s) lost")
+						require.EqualError(t, err, "69 RTP packets lost")
 					}
 					close(errorRecv)
 				},

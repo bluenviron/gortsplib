@@ -1218,7 +1218,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 					},
 					onPacketLost: func(ctx *ServerHandlerOnPacketLostCtx) {
 						if ca.proto == "udp" && ca.name == "rtp packets lost" {
-							require.EqualError(t, ctx.Error, "69 RTP packet(s) lost")
+							require.EqualError(t, ctx.Error, "69 RTP packets lost")
 						}
 						close(errorRecv)
 					},
