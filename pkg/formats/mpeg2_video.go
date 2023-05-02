@@ -4,7 +4,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// MPEG2Video is a RTP format that uses a MPEG-1 or MPEG-2 video codec.
+// MPEG2Video is a RTP format that uses a MPEG-1 or MPEG-2 Video codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEG2Video struct{}
 
