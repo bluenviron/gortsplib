@@ -125,10 +125,10 @@ func (e *Encoder) writeBatch(frames [][]byte, pts time.Duration) ([]*rtp.Packet,
 }
 
 func (e *Encoder) writeFragmented(frame []byte, pts time.Duration) ([]*rtp.Packet, error) {
-	availPerPacket := e.PayloadMaxSize - 4
+	avail := e.PayloadMaxSize - 4
 	le := len(frame)
-	packetCount := le / availPerPacket
-	lastPacketSize := le % availPerPacket
+	packetCount := le / avail
+	lastPacketSize := le % avail
 	if lastPacketSize > 0 {
 		packetCount++
 	}
@@ -140,7 +140,7 @@ func (e *Encoder) writeFragmented(frame []byte, pts time.Duration) ([]*rtp.Packe
 	for i := range ret {
 		var le int
 		if i != (packetCount - 1) {
-			le = availPerPacket
+			le = avail
 		} else {
 			le = lastPacketSize
 		}

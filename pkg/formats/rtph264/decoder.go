@@ -39,7 +39,7 @@ type Decoder struct {
 
 	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
-	fragmentedSize      int
+	fragmentsSize       int
 	fragments           [][]byte
 	annexBMode          bool
 
@@ -59,7 +59,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	if len(pkt.Payload) < 1 {
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		return nil, 0, fmt.Errorf("payload is too short")
 	}
 
@@ -76,7 +76,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		end := (pkt.Payload[1] >> 6) & 0x01
 
 		if start == 1 {
-			d.fragments = d.fragments[:0] // discard pending fragmented packets
+			d.fragments = d.fragments[:0] // discard pending fragments
 
 			if end != 0 {
 				return nil, 0, fmt.Errorf("invalid FU-A packet (can't contain both a start and end bit)")
@@ -84,7 +84,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 			nri := (pkt.Payload[0] >> 5) & 0x03
 			typ := pkt.Payload[1] & 0x1F
-			d.fragmentedSize = len(pkt.Payload[1:])
+			d.fragmentsSize = len(pkt.Payload[1:])
 			d.fragments = append(d.fragments, []byte{(nri << 5) | typ}, pkt.Payload[2:])
 			d.firstPacketReceived = true
 
@@ -99,10 +99,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, fmt.Errorf("invalid FU-A packet (non-starting)")
 		}
 
-		d.fragmentedSize += len(pkt.Payload[2:])
-		if d.fragmentedSize > h264.MaxNALUSize {
+		d.fragmentsSize += len(pkt.Payload[2:])
+		if d.fragmentsSize > h264.MaxNALUSize {
 			d.fragments = d.fragments[:0]
-			return nil, 0, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", d.fragmentedSize, h264.MaxNALUSize)
+			return nil, 0, fmt.Errorf("NALU size (%d) is too big, maximum is %d", d.fragmentsSize, h264.MaxNALUSize)
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[2:])
@@ -111,12 +111,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, ErrMorePacketsNeeded
 		}
 
-		nalus = [][]byte{joinFragments(d.fragments, d.fragmentedSize)}
+		nalus = [][]byte{joinFragments(d.fragments, d.fragmentsSize)}
 
 		d.fragments = d.fragments[:0]
 
 	case h264.NALUTypeSTAPA:
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 
 		payload := pkt.Payload[1:]
 
@@ -149,12 +149,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	case h264.NALUTypeSTAPB, h264.NALUTypeMTAP16,
 		h264.NALUTypeMTAP24, h264.NALUTypeFUB:
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		d.firstPacketReceived = true
 		return nil, 0, fmt.Errorf("packet type not supported (%v)", typ)
 
 	default:
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		d.firstPacketReceived = true
 		nalus = [][]byte{pkt.Payload}
 	}

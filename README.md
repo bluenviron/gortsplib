@@ -44,8 +44,8 @@ Features:
 * Utilities
   * Parse RTSP elements
   * Encode/decode format-specific frames into/from RTP packets. The following formats are supported:
-    * Video: H264, H265, M-JPEG, VP8, VP9, MPEG-4 Video (H263, Xvid)
-    * Audio: G711 (PCMA, PCMU), G722, LPCM, MPEG-2 Audio (MP3), MPEG-4 Audio (AAC), Opus
+    * Video: AV1, VP9, VP8, H265, H264, MPEG-4 Video (H263, Xvid), M-JPEG
+    * Audio: Opus, MPEG-4 Audio (AAC), MPEG-2 Audio (MP3), G722, G711 (PCMA, PCMU), LPCM
 
 ## Table of contents
 
@@ -97,6 +97,7 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 
 ## Standards
 
+* [Codec standards](https://github.com/bluenviron/mediacommon#standards)
 * [RFC2326, RTSP 1.0](https://datatracker.ietf.org/doc/html/rfc2326)
 * [RFC7826, RTSP 2.0](https://datatracker.ietf.org/doc/html/rfc7826)
 * [RFC8866, SDP: Session Description Protocol](https://datatracker.ietf.org/doc/html/rfc8866)
@@ -113,9 +114,6 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 * [RFC7587, RTP Payload Format for the Opus Speech and Audio Codec](https://datatracker.ietf.org/doc/html/rfc7587)
 * [RFC3640, RTP Payload Format for Transport of MPEG-4 Elementary Streams](https://datatracker.ietf.org/doc/html/rfc3640)
 * [RTP Payload Format For AV1 (v1.0)](https://aomediacodec.github.io/av1-rtp-spec/)
-* [ITU-T Rec. H.264 (08/2021)](https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.264-202108-I!!PDF-E&type=items)
-* [ITU-T Rec. H.265 (08/2021)](https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-H.265-202108-I!!PDF-E&type=items)
-* ISO 14496-3, Coding of audio-visual objects, part 3, Audio
 * [Golang project layout](https://github.com/golang-standards/project-layout)
 
 ## Links

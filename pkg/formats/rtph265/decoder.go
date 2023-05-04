@@ -38,7 +38,7 @@ type Decoder struct {
 
 	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
-	fragmentedSize      int
+	fragmentsSize       int
 	fragments           [][]byte
 
 	// for DecodeUntilMarker()
@@ -57,7 +57,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	}
 
 	if len(pkt.Payload) < 2 {
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		return nil, 0, fmt.Errorf("payload is too short")
 	}
 
@@ -66,7 +66,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	switch typ {
 	case h265.NALUType_AggregationUnit:
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 
 		payload := pkt.Payload[2:]
 
@@ -98,7 +98,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	case h265.NALUType_FragmentationUnit:
 		if len(pkt.Payload) < 3 {
-			d.fragments = d.fragments[:0] // discard pending fragmented packets
+			d.fragments = d.fragments[:0] // discard pending fragments
 			return nil, 0, fmt.Errorf("payload is too short")
 		}
 
@@ -106,7 +106,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		end := (pkt.Payload[2] >> 6) & 0x01
 
 		if start == 1 {
-			d.fragments = d.fragments[:0] // discard pending fragmented packets
+			d.fragments = d.fragments[:0] // discard pending fragments
 
 			if end != 0 {
 				return nil, 0, fmt.Errorf("invalid fragmentation unit (can't contain both a start and end bit)")
@@ -114,7 +114,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 			typ := pkt.Payload[2] & 0b111111
 			head := uint16(pkt.Payload[0]&0b10000001)<<8 | uint16(typ)<<9 | uint16(pkt.Payload[1])
-			d.fragmentedSize = len(pkt.Payload[1:])
+			d.fragmentsSize = len(pkt.Payload[1:])
 			d.fragments = append(d.fragments, []byte{byte(head >> 8), byte(head)}, pkt.Payload[3:])
 			d.firstPacketReceived = true
 
@@ -129,10 +129,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, fmt.Errorf("invalid fragmentation unit (non-starting)")
 		}
 
-		d.fragmentedSize += len(pkt.Payload[3:])
-		if d.fragmentedSize > h265.MaxNALUSize {
+		d.fragmentsSize += len(pkt.Payload[3:])
+		if d.fragmentsSize > h265.MaxNALUSize {
 			d.fragments = d.fragments[:0]
-			return nil, 0, fmt.Errorf("NALU size (%d) is too big (maximum is %d)", d.fragmentedSize, h265.MaxNALUSize)
+			return nil, 0, fmt.Errorf("NALU size (%d) is too big, maximum is %d", d.fragmentsSize, h265.MaxNALUSize)
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[3:])
@@ -141,17 +141,17 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			return nil, 0, ErrMorePacketsNeeded
 		}
 
-		nalus = [][]byte{joinFragments(d.fragments, d.fragmentedSize)}
+		nalus = [][]byte{joinFragments(d.fragments, d.fragmentsSize)}
 
 		d.fragments = d.fragments[:0]
 
 	case h265.NALUType_PACI:
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		d.firstPacketReceived = true
 		return nil, 0, fmt.Errorf("PACI packets are not supported (yet)")
 
 	default:
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		d.firstPacketReceived = true
 		nalus = [][]byte{pkt.Payload}
 	}

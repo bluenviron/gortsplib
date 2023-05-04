@@ -146,8 +146,10 @@ func (e *Encoder) writeSingle(nalu []byte, pts time.Duration, marker bool) ([]*r
 func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) ([]*rtp.Packet, error) {
 	// use only FU-A, not FU-B, since we always use non-interleaved mode
 	// (packetization-mode=1)
-	packetCount := (len(nalu) - 1) / (e.PayloadMaxSize - 2)
-	lastPacketSize := (len(nalu) - 1) % (e.PayloadMaxSize - 2)
+	avail := e.PayloadMaxSize - 2
+	le := len(nalu) - 1
+	packetCount := le / avail
+	lastPacketSize := le % avail
 	if lastPacketSize > 0 {
 		packetCount++
 	}
@@ -167,7 +169,7 @@ func (e *Encoder) writeFragmented(nalu []byte, pts time.Duration, marker bool) (
 			start = 1
 		}
 		end := uint8(0)
-		le := e.PayloadMaxSize - 2
+		le := avail
 		if i == (packetCount - 1) {
 			end = 1
 			le = lastPacketSize
