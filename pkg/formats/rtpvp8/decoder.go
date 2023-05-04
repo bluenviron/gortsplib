@@ -48,19 +48,19 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	var vpkt codecs.VP8Packet
 	_, err := vpkt.Unmarshal(pkt.Payload)
 	if err != nil {
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		return nil, 0, err
 	}
 
 	if vpkt.PID != 0 {
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		return nil, 0, fmt.Errorf("packets containing single partitions are not supported")
 	}
 
 	var frame []byte
 
 	if vpkt.S == 1 {
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		d.firstPacketReceived = true
 
 		if !pkt.Marker {

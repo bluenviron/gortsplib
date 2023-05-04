@@ -1,10 +1,12 @@
-package formats
+package formats //nolint:dupl
 
 import (
 	"fmt"
 	"strconv"
 
 	"github.com/pion/rtp"
+
+	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpav1"
 )
 
 // AV1 is a RTP format that uses the AV1 codec.
@@ -93,4 +95,20 @@ func (f *AV1) FMTP() map[string]string {
 // PTSEqualsDTS implements Format.
 func (f *AV1) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
+}
+
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *AV1) CreateDecoder() *rtpav1.Decoder {
+	d := &rtpav1.Decoder{}
+	d.Init()
+	return d
+}
+
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *AV1) CreateEncoder() *rtpav1.Encoder {
+	e := &rtpav1.Encoder{
+		PayloadType: f.PayloadTyp,
+	}
+	e.Init()
+	return e
 }

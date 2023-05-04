@@ -144,8 +144,10 @@ func (e *Encoder) writeSingle(nalu []byte, pts time.Duration, marker bool) ([]*r
 }
 
 func (e *Encoder) writeFragmentationUnits(nalu []byte, pts time.Duration, marker bool) ([]*rtp.Packet, error) {
-	n := (len(nalu) - 2) / (e.PayloadMaxSize - 3)
-	lastPacketSize := (len(nalu) - 2) % (e.PayloadMaxSize - 3)
+	avail := e.PayloadMaxSize - 3
+	le := len(nalu) - 2
+	n := le / avail
+	lastPacketSize := le % avail
 	if lastPacketSize > 0 {
 		n++
 	}
@@ -162,7 +164,7 @@ func (e *Encoder) writeFragmentationUnits(nalu []byte, pts time.Duration, marker
 			start = 1
 		}
 		end := uint8(0)
-		le := e.PayloadMaxSize - 3
+		le := avail
 		if i == (n - 1) {
 			end = 1
 			le = lastPacketSize

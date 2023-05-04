@@ -132,10 +132,10 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 		auHeadersLenBytes++
 	}
 
-	auMaxSize := e.PayloadMaxSize - 2 - auHeadersLenBytes
+	avail := e.PayloadMaxSize - 2 - auHeadersLenBytes
 	le := len(au)
-	packetCount := le / auMaxSize
-	lastPacketSize := le % auMaxSize
+	packetCount := le / avail
+	lastPacketSize := le % avail
 	if lastPacketSize > 0 {
 		packetCount++
 	}
@@ -146,7 +146,7 @@ func (e *Encoder) writeFragmented(au []byte, pts time.Duration) ([]*rtp.Packet, 
 	for i := range ret {
 		var le int
 		if i != (packetCount - 1) {
-			le = auMaxSize
+			le = avail
 		} else {
 			le = lastPacketSize
 		}

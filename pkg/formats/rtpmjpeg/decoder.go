@@ -108,7 +108,7 @@ func joinFragments(fragments [][]byte, size int) []byte {
 type Decoder struct {
 	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
-	fragmentedSize      int
+	fragmentsSize       int
 	fragments           [][]byte
 	firstJpegHeader     *headers.JPEG
 	firstQTHeader       *headers.QuantizationTable
@@ -139,8 +139,8 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	}
 
 	if jh.FragmentOffset == 0 {
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
-		d.fragmentedSize = 0
+		d.fragments = d.fragments[:0] // discard pending fragments
+		d.fragmentsSize = 0
 		d.firstPacketReceived = true
 
 		if jh.Quantization >= 128 {
@@ -155,20 +155,20 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 		}
 
 		d.fragments = append(d.fragments, byts)
-		d.fragmentedSize = len(byts)
+		d.fragmentsSize = len(byts)
 		d.firstJpegHeader = &jh
 	} else {
-		if int(jh.FragmentOffset) != d.fragmentedSize {
+		if int(jh.FragmentOffset) != d.fragmentsSize {
 			if !d.firstPacketReceived {
 				return nil, 0, ErrNonStartingPacketAndNoPrevious
 			}
 
-			d.fragments = d.fragments[:0] // discard pending fragmented packets
-			d.fragmentedSize = 0
+			d.fragments = d.fragments[:0] // discard pending fragments
+			d.fragmentsSize = 0
 			return nil, 0, fmt.Errorf("received wrong fragment")
 		}
 
-		d.fragmentedSize += len(byts)
+		d.fragmentsSize += len(byts)
 		d.fragments = append(d.fragments, byts)
 	}
 
@@ -176,14 +176,14 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 		return nil, 0, ErrMorePacketsNeeded
 	}
 
-	if d.fragmentedSize < 2 {
+	if d.fragmentsSize < 2 {
 		return nil, 0, fmt.Errorf("invalid data")
 	}
 
-	data := joinFragments(d.fragments, d.fragmentedSize)
+	data := joinFragments(d.fragments, d.fragmentsSize)
 
 	d.fragments = d.fragments[:0]
-	d.fragmentedSize = 0
+	d.fragmentsSize = 0
 
 	var buf []byte
 

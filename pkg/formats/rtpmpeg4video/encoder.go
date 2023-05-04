@@ -69,10 +69,10 @@ func (e *Encoder) Init() {
 
 // Encode encodes a frame into RTP packets.
 func (e *Encoder) Encode(frame []byte, pts time.Duration) ([]*rtp.Packet, error) {
-	availPerPacket := e.PayloadMaxSize
+	avail := e.PayloadMaxSize
 	le := len(frame)
-	packetCount := le / availPerPacket
-	lastPacketSize := le % availPerPacket
+	packetCount := le / avail
+	lastPacketSize := le % avail
 	if lastPacketSize > 0 {
 		packetCount++
 	}
@@ -84,7 +84,7 @@ func (e *Encoder) Encode(frame []byte, pts time.Duration) ([]*rtp.Packet, error)
 	for i := range ret {
 		var le int
 		if i != (packetCount - 1) {
-			le = availPerPacket
+			le = avail
 		} else {
 			le = lastPacketSize
 		}

@@ -48,14 +48,14 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	var vpkt codecs.VP9Packet
 	_, err := vpkt.Unmarshal(pkt.Payload)
 	if err != nil {
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		return nil, 0, err
 	}
 
 	var frame []byte
 
 	if vpkt.B {
-		d.fragments = d.fragments[:0] // discard pending fragmented packets
+		d.fragments = d.fragments[:0] // discard pending fragments
 		d.firstPacketReceived = true
 
 		if !vpkt.E {

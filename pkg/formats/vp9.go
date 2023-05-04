@@ -1,4 +1,4 @@
-package formats
+package formats //nolint:dupl
 
 import (
 	"fmt"
