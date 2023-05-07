@@ -1045,17 +1045,17 @@ func TestServerSessionTeardown(t *testing.T) {
 }
 
 func TestServerAuth(t *testing.T) {
-	authValidator := auth.NewValidator("myuser", "mypass", nil)
+	nonce := auth.GenerateNonce()
 
 	s := &Server{
 		Handler: &testServerHandler{
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-				err := authValidator.ValidateRequest(ctx.Request, nil)
+				err := auth.Validate(ctx.Request, "myuser", "mypass", nil, nil, "IPCAM", nonce)
 				if err != nil {
 					return &base.Response{
 						StatusCode: base.StatusUnauthorized,
 						Header: base.Header{
-							"WWW-Authenticate": authValidator.Header(),
+							"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
 						},
 					}, nil
 				}

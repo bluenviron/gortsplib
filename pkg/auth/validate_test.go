@@ -8,7 +8,7 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
 )
 
-func TestValidatorErrors(t *testing.T) {
+func TestValidateErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		hv   base.HeaderValue
@@ -56,15 +56,21 @@ func TestValidatorErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			va := NewValidator("myuser", "mypass", nil)
-			va.nonce = "abcde"
-			err := va.Validate(&base.Request{
-				Method: base.Describe,
-				URL:    nil,
-				Header: base.Header{
-					"Authorization": ca.hv,
+			err := Validate(
+				&base.Request{
+					Method: base.Describe,
+					URL:    nil,
+					Header: base.Header{
+						"Authorization": ca.hv,
+					},
 				},
-			}, nil)
+				"myuser",
+				"mypass",
+				nil,
+				nil,
+				"IPCAM",
+				"abcde",
+			)
 			require.EqualError(t, err, ca.err)
 		})
 	}
