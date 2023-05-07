@@ -102,9 +102,9 @@ func (va *Validator) Header() base.HeaderValue {
 	return ret
 }
 
-// Validate validates a request sent by a client.
+// ValidateRequest validates a request sent by a client.
 // Deprecated: Validator{} has been replaced by Validate()
-func (va *Validator) Validate(req *base.Request, baseURL *url.URL) error {
+func (va *Validator) ValidateRequest(req *base.Request, baseURL *url.URL) error {
 	var auth headers.Authorization
 	err := auth.Unmarshal(req.Header["Authorization"])
 	if err != nil {
