@@ -8,7 +8,16 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/headers"
 )
 
-// Sender allows to generate credentials for a Validator.
+func findHeader(v base.HeaderValue, prefix string) string {
+	for _, vi := range v {
+		if strings.HasPrefix(vi, prefix) {
+			return vi
+		}
+	}
+	return ""
+}
+
+// Sender allows to send credentials.
 type Sender struct {
 	user   string
 	pass   string
@@ -17,18 +26,12 @@ type Sender struct {
 	nonce  string
 }
 
-// NewSender allocates a Sender with the WWW-Authenticate header provided by
-// a Validator and a set of credentials.
+// NewSender allocates a Sender.
+// It requires a WWW-Authenticate header (provided by the server)
+// and a set of credentials.
 func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 	// prefer digest
-	if v0 := func() string {
-		for _, vi := range v {
-			if strings.HasPrefix(vi, "Digest") {
-				return vi
-			}
-		}
-		return ""
-	}(); v0 != "" {
+	if v0 := findHeader(v, "Digest"); v0 != "" {
 		var auth headers.Authenticate
 		err := auth.Unmarshal(base.HeaderValue{v0})
 		if err != nil {
@@ -52,14 +55,7 @@ func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 		}, nil
 	}
 
-	if v0 := func() string {
-		for _, vi := range v {
-			if strings.HasPrefix(vi, "Basic") {
-				return vi
-			}
-		}
-		return ""
-	}(); v0 != "" {
+	if v0 := findHeader(v, "Basic"); v0 != "" {
 		var auth headers.Authenticate
 		err := auth.Unmarshal(base.HeaderValue{v0})
 		if err != nil {

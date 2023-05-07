@@ -1286,12 +1286,12 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				v := auth.NewValidator("myuser", "mypass", nil)
+				nonce := auth.GenerateNonce()
 
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusUnauthorized,
 					Header: base.Header{
-						"WWW-Authenticate": v.Header(),
+						"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
 					},
 				})
 				require.NoError(t, err)
@@ -1300,7 +1300,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				err = v.ValidateRequest(req, nil)
+				err = auth.Validate(req, "myuser", "mypass", nil, nil, "IPCAM", nonce)
 				require.NoError(t, err)
 
 				err = conn.WriteResponse(&base.Response{
@@ -1399,12 +1399,12 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Setup, req.Method)
 
-				v := auth.NewValidator("myuser", "mypass", nil)
+				nonce := auth.GenerateNonce()
 
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusUnauthorized,
 					Header: base.Header{
-						"WWW-Authenticate": v.Header(),
+						"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
 					},
 				})
 				require.NoError(t, err)
@@ -1414,7 +1414,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
-				err = v.ValidateRequest(req, nil)
+				err = auth.Validate(req, "myuser", "mypass", nil, nil, "IPCAM", nonce)
 				require.NoError(t, err)
 
 				var inTH headers.Transport

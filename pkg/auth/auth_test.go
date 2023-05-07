@@ -47,10 +47,10 @@ func TestAuth(t *testing.T) {
 			}
 
 			t.Run(c1.name+"_"+conf, func(t *testing.T) {
-				va := NewValidator("testuser", "testpass", c1.methods)
-				wwwAuthenticate := va.Header()
+				nonce := GenerateNonce()
 
-				se, err := NewSender(wwwAuthenticate,
+				se, err := NewSender(
+					GenerateWWWAuthenticate(c1.methods, "IPCAM", nonce),
 					func() string {
 						if conf == "wronguser" {
 							return "test1user"
@@ -78,7 +78,7 @@ func TestAuth(t *testing.T) {
 
 				req.URL = mustParseURL("rtsp://myhost/mypath")
 
-				err = va.ValidateRequest(req, nil)
+				err = Validate(req, "testuser", "testpass", nil, c1.methods, "IPCAM", nonce)
 
 				if conf != "nofail" {
 					require.Error(t, err)
@@ -104,10 +104,12 @@ func TestAuthVLC(t *testing.T) {
 			"rtsp://myhost/mypath/test?testing/trackID=0",
 		},
 	} {
-		va := NewValidator("testuser", "testpass",
-			[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
+		nonce := GenerateNonce()
 
-		se, err := NewSender(va.Header(), "testuser", "testpass")
+		se, err := NewSender(
+			GenerateWWWAuthenticate(nil, "IPCAM", nonce),
+			"testuser",
+			"testpass")
 		require.NoError(t, err)
 
 		req := &base.Request{
@@ -117,53 +119,10 @@ func TestAuthVLC(t *testing.T) {
 		se.AddAuthorization(req)
 		req.URL = mustParseURL(ca.mediaURL)
 
-		err = va.ValidateRequest(req, mustParseURL(ca.clientURL))
+		err = Validate(req, "testuser", "testpass", mustParseURL(ca.clientURL), nil, "IPCAM", nonce)
 		require.NoError(t, err)
 
-		err = va.ValidateRequest(req, mustParseURL("rtsp://invalid"))
+		err = Validate(req, "testuser", "testpass", mustParseURL("rtsp://invalid"), nil, "IPCAM", nonce)
 		require.Error(t, err)
-	}
-}
-
-func TestAuthHashed(t *testing.T) {
-	for _, conf := range []string{
-		"nofail",
-		"wronguser",
-		"wrongpass",
-	} {
-		t.Run(conf, func(t *testing.T) {
-			se := NewValidator("sha256:rl3rgi4NcZkpAEcacZnQ2VuOfJ0FxAqCRaKB/SwdZoQ=",
-				"sha256:E9JJ8stBJ7QM+nV4ZoUCeHk/gU3tPFh/5YieiJp6n2w=",
-				[]headers.AuthMethod{headers.AuthBasic, headers.AuthDigest})
-
-			va, err := NewSender(se.Header(),
-				func() string {
-					if conf == "wronguser" {
-						return "test1user"
-					}
-					return "testuser"
-				}(),
-				func() string {
-					if conf == "wrongpass" {
-						return "test1pass"
-					}
-					return "testpass"
-				}())
-			require.NoError(t, err)
-
-			req := &base.Request{
-				Method: base.Announce,
-				URL:    mustParseURL("rtsp://myhost/mypath"),
-			}
-			va.AddAuthorization(req)
-
-			err = se.ValidateRequest(req, nil)
-
-			if conf != "nofail" {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
 	}
 }
