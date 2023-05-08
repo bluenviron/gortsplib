@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
 	"github.com/bluenviron/gortsplib/v3/pkg/liberrors"
 )
@@ -410,9 +408,8 @@ func (s *Server) run() {
 						continue
 					}
 
-					secretID := uuid.New().String()
-					ss := newServerSession(s, secretID, req.sc)
-					s.sessions[secretID] = ss
+					ss := newServerSession(s, req.sc)
+					s.sessions[ss.secretID] = ss
 
 					select {
 					case ss.request <- req:
