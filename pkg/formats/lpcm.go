@@ -34,14 +34,14 @@ func (f *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 
 	tmp := strings.SplitN(clock, "/", 2)
 
-	tmp1, err := strconv.ParseInt(tmp[0], 10, 64)
+	tmp1, err := strconv.ParseUint(tmp[0], 10, 31)
 	if err != nil {
 		return err
 	}
 	f.SampleRate = int(tmp1)
 
 	if len(tmp) >= 2 {
-		tmp1, err := strconv.ParseInt(tmp[1], 10, 64)
+		tmp1, err := strconv.ParseUint(tmp[1], 10, 31)
 		if err != nil {
 			return err
 		}

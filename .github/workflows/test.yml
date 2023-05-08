@@ -40,3 +40,11 @@ jobs:
         go-version: "1.20"
 
     - run: make test-highlevel-nodocker
+
+  test32:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - run: make test32

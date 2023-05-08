@@ -21,7 +21,7 @@ func extractPort(address string) (int, error) {
 		return 0, err
 	}
 
-	tmp2, err := strconv.ParseInt(tmp, 10, 64)
+	tmp2, err := strconv.ParseUint(tmp, 10, 16)
 	if err != nil {
 		return 0, err
 	}

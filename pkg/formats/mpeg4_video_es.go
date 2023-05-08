@@ -32,7 +32,7 @@ func (f *MPEG4VideoES) unmarshal(
 	for key, val := range fmtp {
 		switch key {
 		case "profile-level-id":
-			tmp, err := strconv.ParseInt(val, 10, 64)
+			tmp, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid profile-level-id: %v", val)
 			}

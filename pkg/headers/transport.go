@@ -13,12 +13,12 @@ import (
 func parsePorts(val string) (*[2]int, error) {
 	ports := strings.Split(val, "-")
 	if len(ports) == 2 {
-		port1, err := strconv.ParseInt(ports[0], 10, 64)
+		port1, err := strconv.ParseUint(ports[0], 10, 31)
 		if err != nil {
 			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 		}
 
-		port2, err := strconv.ParseInt(ports[1], 10, 64)
+		port2, err := strconv.ParseUint(ports[1], 10, 31)
 		if err != nil {
 			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 		}
@@ -27,7 +27,7 @@ func parsePorts(val string) (*[2]int, error) {
 	}
 
 	if len(ports) == 1 {
-		port1, err := strconv.ParseInt(ports[0], 10, 64)
+		port1, err := strconv.ParseUint(ports[0], 10, 31)
 		if err != nil {
 			return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 		}
@@ -175,7 +175,7 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 			h.InterleavedIDs = ports
 
 		case "ttl":
-			tmp, err := strconv.ParseUint(v, 10, 64)
+			tmp, err := strconv.ParseUint(v, 10, 32)
 			if err != nil {
 				return err
 			}

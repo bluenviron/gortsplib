@@ -45,7 +45,7 @@ func (f *MPEG4AudioGeneric) unmarshal(
 			}
 
 		case "profile-level-id":
-			tmp, err := strconv.ParseInt(val, 10, 64)
+			tmp, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid profile-level-id: %v", val)
 			}
@@ -65,22 +65,22 @@ func (f *MPEG4AudioGeneric) unmarshal(
 			}
 
 		case "sizelength":
-			n, err := strconv.ParseUint(val, 10, 64)
-			if err != nil {
+			n, err := strconv.ParseUint(val, 10, 31)
+			if err != nil || n > 100 {
 				return fmt.Errorf("invalid AAC SizeLength: %v", val)
 			}
 			f.SizeLength = int(n)
 
 		case "indexlength":
-			n, err := strconv.ParseUint(val, 10, 64)
-			if err != nil {
+			n, err := strconv.ParseUint(val, 10, 31)
+			if err != nil || n > 100 {
 				return fmt.Errorf("invalid AAC IndexLength: %v", val)
 			}
 			f.IndexLength = int(n)
 
 		case "indexdeltalength":
-			n, err := strconv.ParseUint(val, 10, 64)
-			if err != nil {
+			n, err := strconv.ParseUint(val, 10, 31)
+			if err != nil || n > 100 {
 				return fmt.Errorf("invalid AAC IndexDeltaLength: %v", val)
 			}
 			f.IndexDeltaLength = int(n)

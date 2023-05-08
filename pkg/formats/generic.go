@@ -43,7 +43,7 @@ func findClockRate(payloadType uint8, rtpMap string) (int, error) {
 		return 0, fmt.Errorf("invalid rtpmap (%v)", rtpMap)
 	}
 
-	v, err := strconv.ParseInt(tmp[1], 10, 64)
+	v, err := strconv.ParseUint(tmp[1], 10, 31)
 	if err != nil {
 		return 0, err
 	}

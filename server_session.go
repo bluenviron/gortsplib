@@ -70,7 +70,7 @@ func findMediaByTrackID(st *ServerStream, trackID string) *media.Media {
 		return st.medias[0]
 	}
 
-	tmp, err := strconv.ParseInt(trackID, 10, 64)
+	tmp, err := strconv.ParseUint(trackID, 10, 31)
 	if err != nil {
 		return nil
 	}

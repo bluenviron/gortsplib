@@ -50,7 +50,7 @@ func (f *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 			}
 
 		case "sprop-max-don-diff":
-			tmp, err := strconv.ParseInt(val, 10, 64)
+			tmp, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid sprop-max-don-diff (%v)", fmtp)
 			}

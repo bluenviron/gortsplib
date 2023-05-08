@@ -44,7 +44,7 @@ func getFormatAttribute(attributes []psdp.Attribute, payloadType uint8, key stri
 		if attr.Key == key {
 			v := strings.TrimSpace(attr.Value)
 			if parts := strings.SplitN(v, " ", 2); len(parts) == 2 {
-				if tmp, err := strconv.ParseInt(parts[0], 10, 8); err == nil && uint8(tmp) == payloadType {
+				if tmp, err := strconv.ParseUint(parts[0], 10, 8); err == nil && uint8(tmp) == payloadType {
 					return parts[1]
 				}
 			}
@@ -144,7 +144,7 @@ func (m *Media) unmarshal(md *psdp.MediaDescription) error {
 			}
 		}
 
-		tmp, err := strconv.ParseInt(payloadType, 10, 8)
+		tmp, err := strconv.ParseUint(payloadType, 10, 8)
 		if err != nil {
 			return err
 		}
