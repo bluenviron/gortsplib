@@ -104,7 +104,7 @@ func (f *H264) unmarshal(payloadType uint8, clock string, codec string, rtpmap s
 			}
 
 		case "packetization-mode":
-			tmp, err := strconv.ParseInt(val, 10, 64)
+			tmp, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid packetization-mode (%v)", val)
 			}

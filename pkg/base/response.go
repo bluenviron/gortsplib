@@ -150,11 +150,11 @@ func (res *Response) Unmarshal(br *bufio.Reader) error {
 	}
 	statusCodeStr := string(byts[:len(byts)-1])
 
-	statusCode64, err := strconv.ParseInt(statusCodeStr, 10, 32)
+	tmp, err := strconv.ParseUint(statusCodeStr, 10, 31)
 	if err != nil {
 		return fmt.Errorf("unable to parse status code")
 	}
-	res.StatusCode = StatusCode(statusCode64)
+	res.StatusCode = StatusCode(tmp)
 
 	byts, err = readBytesLimited(br, '\r', 255)
 	if err != nil {

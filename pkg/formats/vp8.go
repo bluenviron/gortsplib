@@ -23,7 +23,7 @@ func (f *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 	for key, val := range fmtp {
 		switch key {
 		case "max-fr":
-			n, err := strconv.ParseUint(val, 10, 64)
+			n, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid max-fr: %v", val)
 			}
@@ -32,7 +32,7 @@ func (f *VP8) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 			f.MaxFR = &v2
 
 		case "max-fs":
-			n, err := strconv.ParseUint(val, 10, 64)
+			n, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid max-fs: %v", val)
 			}

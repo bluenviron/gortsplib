@@ -26,13 +26,13 @@ func (f *Vorbis) unmarshal(payloadType uint8, clock string, codec string, rtpmap
 		return fmt.Errorf("invalid clock (%v)", clock)
 	}
 
-	sampleRate, err := strconv.ParseInt(tmp[0], 10, 64)
+	sampleRate, err := strconv.ParseUint(tmp[0], 10, 31)
 	if err != nil {
 		return err
 	}
 	f.SampleRate = int(sampleRate)
 
-	channelCount, err := strconv.ParseInt(tmp[1], 10, 64)
+	channelCount, err := strconv.ParseUint(tmp[1], 10, 31)
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,7 @@ help:
 	@echo "  mod-tidy        run go mod tidy"
 	@echo "  format          format source files"
 	@echo "  test            run tests"
+	@echo "  test32          run tests on a 32-bit system"
 	@echo "  test-highlevel  run high-level tests"
 	@echo "  lint            run linter"
 	@echo "  bench           run benchmarks"

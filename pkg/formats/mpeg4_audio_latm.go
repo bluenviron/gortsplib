@@ -30,7 +30,7 @@ func (f *MPEG4AudioLATM) unmarshal(
 	for key, val := range fmtp {
 		switch key {
 		case "profile-level-id":
-			tmp, err := strconv.ParseInt(val, 10, 64)
+			tmp, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid profile-level-id: %v", val)
 			}
@@ -38,7 +38,7 @@ func (f *MPEG4AudioLATM) unmarshal(
 			f.ProfileLevelID = int(tmp)
 
 		case "bitrate":
-			tmp, err := strconv.ParseInt(val, 10, 64)
+			tmp, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid bitrate: %v", val)
 			}
@@ -47,12 +47,7 @@ func (f *MPEG4AudioLATM) unmarshal(
 			f.Bitrate = &v
 
 		case "cpresent":
-			tmp, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid cpresent: %v", val)
-			}
-
-			v := (tmp == 1)
+			v := (val == "1")
 			f.CPresent = &v
 
 		case "config":
@@ -68,12 +63,7 @@ func (f *MPEG4AudioLATM) unmarshal(
 			}
 
 		case "sbr-enabled":
-			tmp, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid SBR-enabled: %v", val)
-			}
-
-			v := (tmp == 1)
+			v := (val == "1")
 			f.SBREnabled = &v
 		}
 	}

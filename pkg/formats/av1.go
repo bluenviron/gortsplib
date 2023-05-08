@@ -24,7 +24,7 @@ func (f *AV1) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 	for key, val := range fmtp {
 		switch key {
 		case "level-idx":
-			n, err := strconv.ParseUint(val, 10, 64)
+			n, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid level-idx: %v", val)
 			}
@@ -33,7 +33,7 @@ func (f *AV1) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 			f.LevelIdx = &v2
 
 		case "profile":
-			n, err := strconv.ParseUint(val, 10, 64)
+			n, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid profile: %v", val)
 			}
@@ -42,7 +42,7 @@ func (f *AV1) unmarshal(payloadType uint8, clock string, codec string, rtpmap st
 			f.Profile = &v2
 
 		case "tier":
-			n, err := strconv.ParseUint(val, 10, 64)
+			n, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
 				return fmt.Errorf("invalid tier: %v", val)
 			}
