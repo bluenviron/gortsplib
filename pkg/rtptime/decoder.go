@@ -7,6 +7,14 @@ import (
 
 const negativeThreshold = 0xFFFFFFFF / 2
 
+// avoid an int64 overflow and preserve resolution by splitting division into two parts:
+// first add the integer part, then the decimal part.
+func multiplyAndDivide(v, m, d time.Duration) time.Duration {
+	secs := v / d
+	dec := v % d
+	return (secs*m + dec*m/d)
+}
+
 // Decoder is a RTP timestamp decoder.
 type Decoder struct {
 	clockRate   time.Duration
@@ -42,9 +50,5 @@ func (d *Decoder) Decode(ts uint32) time.Duration {
 		d.overall += time.Duration(diff)
 	}
 
-	// avoid an int64 overflow and preserve resolution by splitting division into two parts:
-	// first add the integer part, then the decimal part.
-	secs := d.overall / d.clockRate
-	dec := d.overall % d.clockRate
-	return secs*time.Second + dec*time.Second/d.clockRate
+	return multiplyAndDivide(d.overall, time.Second, d.clockRate)
 }

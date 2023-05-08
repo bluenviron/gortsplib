@@ -12,6 +12,9 @@ func TestEncoder(t *testing.T) {
 
 	ts := e.Encode(0)
 	require.Equal(t, uint32(12345), ts)
+
+	ts = e.Encode(3 * time.Second / 2)
+	require.Equal(t, uint32(12345+135000), ts)
 }
 
 func BenchmarkEncoder(b *testing.B) {
