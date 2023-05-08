@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
@@ -198,10 +199,12 @@ type ServerSession struct {
 
 func newServerSession(
 	s *Server,
-	secretID string,
 	author *ServerConn,
 ) *ServerSession {
 	ctx, ctxCancel := context.WithCancel(s.ctx)
+
+	// use an UUID without dashes, since dashes confuse some clients.
+	secretID := strings.ReplaceAll(uuid.New().String(), "-", "")
 
 	ss := &ServerSession{
 		s:                   s,
