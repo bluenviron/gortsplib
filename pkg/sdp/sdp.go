@@ -406,14 +406,13 @@ func (s *SessionDescription) unmarshalMediaDescription(value string) error {
 
 	newMediaDesc := &psdp.MediaDescription{}
 
-	if fields[0] == "application/TP-LINK" {
-		fields[0] = "application"
-	}
-
 	// <media>
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	if i := indexOf(fields[0], []string{"audio", "video", "text", "application", "message"}); i == -1 {
+	if fields[0] != "video" &&
+		fields[0] != "audio" &&
+		fields[0] != "application" &&
+		!strings.HasPrefix(fields[0], "application/") {
 		return fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
 	newMediaDesc.MediaName.Media = fields[0]

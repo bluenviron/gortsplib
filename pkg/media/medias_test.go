@@ -522,22 +522,50 @@ var casesMedias = []struct {
 			"o=- 4158123474391860926 2 IN IP4 127.0.0.1\r\n" +
 			"s=-\r\n" +
 			"t=0 0\r\n" +
-			"m=application 42504 RTP/AVP smart/1/90000\r\n" +
+			"m=application/TP-LINK 0 RTP/AVP smart/1/90000\r\n" +
 			"a=rtpmap:95 TP-LINK/90000\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
 			"s=Stream\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
-			"m=application 0 RTP/AVP 95\r\n" +
+			"m=application/TP-LINK 0 RTP/AVP 95\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:95 TP-LINK/90000\r\n",
 		Medias{
 			{
-				Type: "application",
+				Type: "application/TP-LINK",
 				Formats: []formats.Format{&formats.Generic{
 					PayloadTyp: 95,
 					RTPMa:      "TP-LINK/90000",
+					ClockRat:   90000,
+				}},
+			},
+		},
+	},
+	{
+		"mercury",
+		"v=0\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.0.60\n" +
+			"s=Session streamed by \"MERCURY RTSP Server\"\n" +
+			"t=0 0\n" +
+			"a=smart_encoder:virtualIFrame=1\n" +
+			"m=application/MERCURY 0 RTP/AVP smart/1/90000\n" +
+			"a=rtpmap:95 MERCURY/90000\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=Stream\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"m=application/MERCURY 0 RTP/AVP 95\r\n" +
+			"a=control\r\n" +
+			"a=rtpmap:95 MERCURY/90000\r\n",
+		Medias{
+			{
+				Type: "application/MERCURY",
+				Formats: []formats.Format{&formats.Generic{
+					PayloadTyp: 95,
+					RTPMa:      "MERCURY/90000",
 					ClockRat:   90000,
 				}},
 			},

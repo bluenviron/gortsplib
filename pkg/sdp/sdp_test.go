@@ -1876,7 +1876,7 @@ var cases = []struct {
 			"m=audio 0 RTP/AVP 8\r\n" +
 			"a=rtpmap:8 PCMA/8000\r\n" +
 			"a=control:track2\r\n" +
-			"m=application 0 RTP/AVP smart/1/90000\r\n" +
+			"m=application/TP-LINK 0 RTP/AVP smart/1/90000\r\n" +
 			"a=rtpmap:95 TP-LINK/90000\r\n" +
 			"a=control:track3\r\n"),
 		SessionDescription{
@@ -1945,7 +1945,7 @@ var cases = []struct {
 				},
 				{
 					MediaName: psdp.MediaName{
-						Media:   "application",
+						Media:   "application/TP-LINK",
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"smart/1/90000"},
 					},
@@ -2209,6 +2209,138 @@ var cases = []struct {
 						{
 							Key:   "control",
 							Value: "track2",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"mercury",
+		[]byte("v=0\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.0.60\n" +
+			"s=Session streamed by \"MERCURY RTSP Server\"\n" +
+			"t=0 0\n" +
+			"a=smart_encoder:virtualIFrame=1\n" +
+			"m=video 0 RTP/AVP 96\n" +
+			"c=IN IP4 0.0.0.0\n" +
+			"b=AS:4096\n" +
+			"a=range:npt=0-\n" +
+			"a=control:track1\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=4D001F;" +
+			" sprop-parameter-sets=J00AH+dAKALdgKUFBQXwAAADABAAAAMCi2gD6AXf//wK,KO48gA==\n" +
+			"m=audio 0 RTP/AVP 8\n" +
+			"a=rtpmap:8 PCMA/8000\n" +
+			"a=control:track2\n" +
+			"m=application/MERCURY 0 RTP/AVP smart/1/90000\n" +
+			"a=rtpmap:95 MERCURY/90000\n" +
+			"a=control:track3\n"),
+		[]byte("v=0\r\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.0.60\r\n" +
+			"s=Session streamed by \"MERCURY RTSP Server\"\r\n" +
+			"t=0 0\r\n" +
+			"a=smart_encoder:virtualIFrame=1\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:4096\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:track1\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=4D001F;" +
+			" sprop-parameter-sets=J00AH+dAKALdgKUFBQXwAAADABAAAAMCi2gD6AXf//wK,KO48gA==\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n" +
+			"a=control:track2\r\n" +
+			"m=application/MERCURY 0 RTP/AVP smart/1/90000\r\n" +
+			"a=rtpmap:95 MERCURY/90000\r\n" +
+			"a=control:track3\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "- 14665860",
+				SessionID:      31787219,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.0.60",
+			},
+			SessionName:      "Session streamed by \"MERCURY RTSP Server\"",
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "smart_encoder",
+					Value: "virtualIFrame=1",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "0.0.0.0",
+						},
+					},
+					Bandwidth: []psdp.Bandwidth{{
+						Type:      "AS",
+						Bandwidth: 4096,
+					}},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "range",
+							Value: "npt=0-",
+						},
+						{
+							Key:   "control",
+							Value: "track1",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 packetization-mode=1; profile-level-id=4D001F;" +
+								" sprop-parameter-sets=J00AH+dAKALdgKUFBQXwAAADABAAAAMCi2gD6AXf//wK,KO48gA==",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"8"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "8 PCMA/8000",
+						},
+						{
+							Key:   "control",
+							Value: "track2",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "application/MERCURY",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"smart/1/90000"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "95 MERCURY/90000",
+						},
+						{
+							Key:   "control",
+							Value: "track3",
 						},
 					},
 				},
