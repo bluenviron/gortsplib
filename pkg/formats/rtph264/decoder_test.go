@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
@@ -181,6 +182,28 @@ func TestDecodeUntilMarker(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{{0x01, 0x02}, {0x01, 0x02}}, nalus)
+}
+
+func TestDecoderErrorLimit(t *testing.T) {
+	d := &Decoder{}
+	d.Init()
+	var err error
+
+	for i := 0; i <= h264.MaxNALUsPerGroup; i++ {
+		_, _, err = d.DecodeUntilMarker(&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17645,
+				Timestamp:      2289527317,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{1, 2, 3, 4},
+		})
+	}
+
+	require.EqualError(t, err, "NALU count exceeds maximum allowed (20)")
 }
 
 func FuzzDecoder(f *testing.F) {
