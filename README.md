@@ -6,7 +6,7 @@
 [![CodeCov](https://codecov.io/gh/bluenviron/gortsplib/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bluenviron/gortsplib/branch/main)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/bluenviron/gortsplib/v3)](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index)
 
-RTSP 1.0 client and server library for the Go programming language, written for [MediaMTX](https://github.com/aler9/mediamtx).
+RTSP 1.0 client and server library for the Go programming language, written for [MediaMTX](https://github.com/bluenviron/mediamtx).
 
 Go &ge; 1.18 is required.
 
@@ -97,7 +97,6 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 
 ## Standards
 
-* [Codec standards](https://github.com/bluenviron/mediacommon#standards)
 * [RFC2326, RTSP 1.0](https://datatracker.ietf.org/doc/html/rfc2326)
 * [RFC7826, RTSP 2.0](https://datatracker.ietf.org/doc/html/rfc7826)
 * [RFC8866, SDP: Session Description Protocol](https://datatracker.ietf.org/doc/html/rfc8866)
@@ -114,13 +113,14 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 * [RFC7587, RTP Payload Format for the Opus Speech and Audio Codec](https://datatracker.ietf.org/doc/html/rfc7587)
 * [RFC3640, RTP Payload Format for Transport of MPEG-4 Elementary Streams](https://datatracker.ietf.org/doc/html/rfc3640)
 * [RTP Payload Format For AV1 (v1.0)](https://aomediacodec.github.io/av1-rtp-spec/)
+* [Codec standards](https://github.com/bluenviron/mediacommon#standards)
 * [Golang project layout](https://github.com/golang-standards/project-layout)
 
 ## Links
 
 Related projects
 
-* [MediaMTX](https://github.com/aler9/mediamtx)
+* [MediaMTX](https://github.com/bluenviron/mediamtx)
 * [pion/sdp (SDP library used internally)](https://github.com/pion/sdp)
 * [pion/rtp (RTP library used internally)](https://github.com/pion/rtp)
 * [pion/rtcp (RTCP library used internally)](https://github.com/pion/rtcp)

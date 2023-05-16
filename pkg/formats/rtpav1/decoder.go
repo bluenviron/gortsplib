@@ -40,7 +40,8 @@ type Decoder struct {
 	fragments           [][]byte
 
 	// for DecodeUntilMarker()
-	obuBuffer [][]byte
+	frameBuffer    [][]byte
+	frameBufferLen int
 }
 
 // Init initializes the decoder.
@@ -131,20 +132,27 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	if err != nil {
 		return nil, 0, err
 	}
+	l := len(obus)
 
-	if (len(d.obuBuffer) + len(obus)) > av1.MaxOBUsPerTemporalUnit {
-		return nil, 0, fmt.Errorf("OBU count (%d) exceeds maximum allowed (%d)",
-			len(d.obuBuffer)+len(obus), av1.MaxOBUsPerTemporalUnit)
+	if (d.frameBufferLen + l) > av1.MaxOBUsPerTemporalUnit {
+		d.frameBuffer = nil
+		d.frameBufferLen = 0
+		return nil, 0, fmt.Errorf("OBU count exceeds maximum allowed (%d)",
+			av1.MaxOBUsPerTemporalUnit)
 	}
 
-	d.obuBuffer = append(d.obuBuffer, obus...)
+	d.frameBuffer = append(d.frameBuffer, obus...)
+	d.frameBufferLen += l
 
 	if !pkt.Marker {
 		return nil, 0, ErrMorePacketsNeeded
 	}
 
-	ret := d.obuBuffer
-	d.obuBuffer = d.obuBuffer[:0]
+	ret := d.frameBuffer
+
+	// do not reuse frameBuffer to avoid race conditions
+	d.frameBuffer = nil
+	d.frameBufferLen = 0
 
 	return ret, pts, nil
 }

@@ -44,7 +44,8 @@ type Decoder struct {
 	annexBMode          bool
 
 	// for DecodeUntilMarker()
-	naluBuffer [][]byte
+	frameBuffer    [][]byte
+	frameBufferLen int
 }
 
 // Init initializes the decoder.
@@ -175,20 +176,27 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	if err != nil {
 		return nil, 0, err
 	}
+	l := len(nalus)
 
-	if (len(d.naluBuffer) + len(nalus)) > h264.MaxNALUsPerGroup {
-		return nil, 0, fmt.Errorf("NALU count (%d) exceeds maximum allowed (%d)",
-			len(d.naluBuffer)+len(nalus), h264.MaxNALUsPerGroup)
+	if (d.frameBufferLen + l) > h264.MaxNALUsPerGroup {
+		d.frameBuffer = nil
+		d.frameBufferLen = 0
+		return nil, 0, fmt.Errorf("NALU count exceeds maximum allowed (%d)",
+			h264.MaxNALUsPerGroup)
 	}
 
-	d.naluBuffer = append(d.naluBuffer, nalus...)
+	d.frameBuffer = append(d.frameBuffer, nalus...)
+	d.frameBufferLen += l
 
 	if !pkt.Marker {
 		return nil, 0, ErrMorePacketsNeeded
 	}
 
-	ret := d.naluBuffer
-	d.naluBuffer = d.naluBuffer[:0]
+	ret := d.frameBuffer
+
+	// do not reuse frameBuffer to avoid race conditions
+	d.frameBuffer = nil
+	d.frameBufferLen = 0
 
 	return ret, pts, nil
 }

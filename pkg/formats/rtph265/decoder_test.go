@@ -3,6 +3,7 @@ package rtph265
 import (
 	"testing"
 
+	"github.com/bluenviron/mediacommon/pkg/codecs/h265"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
@@ -33,6 +34,28 @@ func TestDecode(t *testing.T) {
 			require.Equal(t, ca.nalus, nalus)
 		})
 	}
+}
+
+func TestDecoderErrorLimit(t *testing.T) {
+	d := &Decoder{}
+	d.Init()
+	var err error
+
+	for i := 0; i <= h265.MaxNALUsPerGroup; i++ {
+		_, _, err = d.DecodeUntilMarker(&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17645,
+				Timestamp:      2289527317,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{1, 2, 3, 4},
+		})
+	}
+
+	require.EqualError(t, err, "NALU count exceeds maximum allowed (20)")
 }
 
 func FuzzDecoder(f *testing.F) {
