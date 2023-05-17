@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/bluenviron/gortsplib/v3/pkg/ringbuffer"
@@ -21,13 +20,10 @@ type serverMulticastWriter struct {
 }
 
 func newServerMulticastWriter(s *Server) (*serverMulticastWriter, error) {
-	res := make(chan net.IP)
-	select {
-	case s.streamMulticastIP <- streamMulticastIPReq{res: res}:
-	case <-s.ctx.Done():
-		return nil, fmt.Errorf("terminated")
+	ip, err := s.getMulticastIP()
+	if err != nil {
+		return nil, err
 	}
-	ip := <-res
 
 	rtpl, rtcpl, err := newServerUDPListenerMulticastPair(
 		s.ListenPacket,

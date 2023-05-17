@@ -2693,10 +2693,7 @@ func TestClientPlayKeepaliveFromSession(t *testing.T) {
 				}.Marshal(),
 				"Session": headers.Session{
 					Session: "ABCDE",
-					Timeout: func() *uint {
-						v := uint(1)
-						return &v
-					}(),
+					Timeout: uintPtr(1),
 				}.Marshal(),
 			},
 		})

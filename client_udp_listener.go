@@ -11,6 +11,10 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
+func int64Ptr(v int64) *int64 {
+	return &v
+}
+
 func randInRange(max int) int {
 	b := big.NewInt(int64(max + 1))
 	n, _ := rand.Int(rand.Reader, b)
@@ -129,15 +133,12 @@ func newClientUDPListener(
 	}
 
 	return &clientUDPListener{
-		anyPortEnable: anyPortEnable,
-		writeTimeout:  writeTimeout,
-		pc:            pc,
-		cm:            cm,
-		isRTP:         isRTP,
-		lastPacketTime: func() *int64 {
-			v := int64(0)
-			return &v
-		}(),
+		anyPortEnable:  anyPortEnable,
+		writeTimeout:   writeTimeout,
+		pc:             pc,
+		cm:             cm,
+		isRTP:          isRTP,
+		lastPacketTime: int64Ptr(0),
 	}, nil
 }
 

@@ -3,12 +3,10 @@ package gortsplib
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"net"
 	gourl "net/url"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
@@ -71,10 +69,11 @@ type ServerConn struct {
 	bc         *bytecounter.ByteCounter
 	conn       *conn.Conn
 	session    *ServerSession
-	readFunc   func(readRequest chan readReq) error
 
 	// in
-	sessionRemove chan *ServerSession
+	chHandleRequest chan readReq
+	chReadErr       chan error
+	chRemoveSession chan *ServerSession
 
 	// out
 	done chan struct{}
@@ -91,17 +90,17 @@ func newServerConn(
 	}
 
 	sc := &ServerConn{
-		s:             s,
-		nconn:         nconn,
-		bc:            bytecounter.New(nconn, nil, nil),
-		ctx:           ctx,
-		ctxCancel:     ctxCancel,
-		remoteAddr:    nconn.RemoteAddr().(*net.TCPAddr),
-		sessionRemove: make(chan *ServerSession),
-		done:          make(chan struct{}),
+		s:               s,
+		nconn:           nconn,
+		bc:              bytecounter.New(nconn, nil, nil),
+		ctx:             ctx,
+		ctxCancel:       ctxCancel,
+		remoteAddr:      nconn.RemoteAddr().(*net.TCPAddr),
+		chHandleRequest: make(chan readReq),
+		chReadErr:       make(chan error),
+		chRemoveSession: make(chan *ServerSession),
+		done:            make(chan struct{}),
 	}
-
-	sc.readFunc = sc.readFuncStandard
 
 	s.wg.Add(1)
 	go sc.run()
@@ -159,30 +158,21 @@ func (sc *ServerConn) run() {
 	}
 
 	sc.conn = conn.NewConn(sc.bc)
+	cr := newServerConnReader(sc)
 
-	readRequest := make(chan readReq)
-	readErr := make(chan error)
-	readDone := make(chan struct{})
-	go sc.runReader(readRequest, readErr, readDone)
-
-	err := sc.runInner(readRequest, readErr)
+	err := sc.runInner()
 
 	sc.ctxCancel()
 
 	sc.nconn.Close()
-	<-readDone
+
+	cr.wait()
 
 	if sc.session != nil {
-		select {
-		case sc.session.connRemove <- sc:
-		case <-sc.session.ctx.Done():
-		}
+		sc.session.removeConn(sc)
 	}
 
-	select {
-	case sc.s.connClose <- sc:
-	case <-sc.s.ctx.Done():
-	}
+	sc.s.closeConn(sc)
 
 	if h, ok := sc.s.Handler.(ServerHandlerOnConnClose); ok {
 		h.OnConnClose(&ServerHandlerOnConnCloseCtx{
@@ -192,16 +182,16 @@ func (sc *ServerConn) run() {
 	}
 }
 
-func (sc *ServerConn) runInner(readRequest chan readReq, readErr chan error) error {
+func (sc *ServerConn) runInner() error {
 	for {
 		select {
-		case req := <-readRequest:
+		case req := <-sc.chHandleRequest:
 			req.res <- sc.handleRequestOuter(req.req)
 
-		case err := <-readErr:
+		case err := <-sc.chReadErr:
 			return err
 
-		case ss := <-sc.sessionRemove:
+		case ss := <-sc.chRemoveSession:
 			if sc.session == ss {
 				sc.session = nil
 			}
@@ -212,111 +202,7 @@ func (sc *ServerConn) runInner(readRequest chan readReq, readErr chan error) err
 	}
 }
 
-var errSwitchReadFunc = errors.New("switch read function")
-
-func (sc *ServerConn) runReader(readRequest chan readReq, readErr chan error, readDone chan struct{}) {
-	defer close(readDone)
-
-	for {
-		err := sc.readFunc(readRequest)
-
-		if err == errSwitchReadFunc {
-			continue
-		}
-
-		select {
-		case readErr <- err:
-		case <-sc.ctx.Done():
-		}
-		break
-	}
-}
-
-func (sc *ServerConn) readFuncStandard(readRequest chan readReq) error {
-	// reset deadline
-	sc.nconn.SetReadDeadline(time.Time{})
-
-	for {
-		any, err := sc.conn.ReadInterleavedFrameOrRequest()
-		if err != nil {
-			return err
-		}
-
-		switch what := any.(type) {
-		case *base.Request:
-			cres := make(chan error)
-			select {
-			case readRequest <- readReq{req: what, res: cres}:
-				err = <-cres
-				if err != nil {
-					return err
-				}
-
-			case <-sc.ctx.Done():
-				return liberrors.ErrServerTerminated{}
-			}
-
-		default:
-			return liberrors.ErrServerUnexpectedFrame{}
-		}
-	}
-}
-
-func (sc *ServerConn) readFuncTCP(readRequest chan readReq) error {
-	// reset deadline
-	sc.nconn.SetReadDeadline(time.Time{})
-
-	select {
-	case sc.session.startWriter <- struct{}{}:
-	case <-sc.session.ctx.Done():
-	}
-
-	for {
-		if sc.session.state == ServerSessionStateRecord {
-			sc.nconn.SetReadDeadline(time.Now().Add(sc.s.ReadTimeout))
-		}
-
-		what, err := sc.conn.ReadInterleavedFrameOrRequest()
-		if err != nil {
-			return err
-		}
-
-		switch twhat := what.(type) {
-		case *base.InterleavedFrame:
-			channel := twhat.Channel
-			isRTP := true
-			if (channel % 2) != 0 {
-				channel--
-				isRTP = false
-			}
-
-			atomic.AddUint64(sc.session.bytesReceived, uint64(len(twhat.Payload)))
-
-			if sm, ok := sc.session.tcpMediasByChannel[channel]; ok {
-				if isRTP {
-					sm.readRTP(twhat.Payload)
-				} else {
-					sm.readRTCP(twhat.Payload)
-				}
-			}
-
-		case *base.Request:
-			cres := make(chan error)
-			select {
-			case readRequest <- readReq{req: twhat, res: cres}:
-				err := <-cres
-				if err != nil {
-					return err
-				}
-
-			case <-sc.ctx.Done():
-				return liberrors.ErrServerTerminated{}
-			}
-		}
-	}
-}
-
-func (sc *ServerConn) handleRequest(req *base.Request) (*base.Response, error) {
+func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, error) {
 	if cseq, ok := req.Header["CSeq"]; !ok || len(cseq) != 1 {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
@@ -491,7 +377,7 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		h.OnRequest(sc, req)
 	}
 
-	res, err := sc.handleRequest(req)
+	res, err := sc.handleRequestInner(req)
 
 	if res.Header == nil {
 		res.Header = make(base.Header)
@@ -544,17 +430,9 @@ func (sc *ServerConn) handleRequestInSession(
 			res:    cres,
 		}
 
-		select {
-		case sc.session.request <- sreq:
-			res := <-cres
-			sc.session = res.ss
-			return res.res, res.err
-
-		case <-sc.session.ctx.Done():
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerTerminated{}
-		}
+		res, session, err := sc.session.handleRequest(sreq)
+		sc.session = session
+		return res, err
 	}
 
 	// otherwise, pass through Server
@@ -567,15 +445,31 @@ func (sc *ServerConn) handleRequestInSession(
 		res:    cres,
 	}
 
-	select {
-	case sc.s.sessionRequest <- sreq:
-		res := <-cres
-		sc.session = res.ss
-		return res.res, res.err
+	res, session, err := sc.s.handleRequest(sreq)
+	sc.session = session
+	return res, err
+}
 
-	case <-sc.s.ctx.Done():
-		return &base.Response{
-			StatusCode: base.StatusBadRequest,
-		}, liberrors.ErrServerTerminated{}
+func (sc *ServerConn) removeSession(ss *ServerSession) {
+	select {
+	case sc.chRemoveSession <- ss:
+	case <-sc.ctx.Done():
+	}
+}
+
+func (sc *ServerConn) handleRequest(req readReq) error {
+	select {
+	case sc.chHandleRequest <- req:
+		return <-req.res
+
+	case <-sc.ctx.Done():
+		return liberrors.ErrServerTerminated{}
+	}
+}
+
+func (sc *ServerConn) readErr(err error) {
+	select {
+	case sc.chReadErr <- err:
+	case <-sc.ctx.Done():
 	}
 }

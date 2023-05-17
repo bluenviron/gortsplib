@@ -25,6 +25,18 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/url"
 )
 
+func uintPtr(v uint) *uint {
+	return &v
+}
+
+func uint16Ptr(v uint16) *uint16 {
+	return &v
+}
+
+func uint32Ptr(v uint32) *uint32 {
+	return &v
+}
+
 func multicastCapableIP(t *testing.T) string {
 	intfs, err := net.Interfaces()
 	require.NoError(t, err)
@@ -1895,18 +1907,12 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 				Host:   "localhost:8554",
 				Path:   mustParseURL((*rtpInfo)[0].URL).Path,
 			}).String(),
-			SequenceNumber: func() *uint16 {
-				v := uint16(557)
-				return &v
-			}(),
-			Timestamp: (*rtpInfo)[0].Timestamp,
+			SequenceNumber: uint16Ptr(557),
+			Timestamp:      (*rtpInfo)[0].Timestamp,
 		},
 	}, rtpInfo)
 	require.Equal(t, []*uint32{
-		func() *uint32 {
-			v := uint32(96342362)
-			return &v
-		}(),
+		uint32Ptr(96342362),
 		nil,
 	}, ssrcs)
 
@@ -1930,11 +1936,8 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 				Host:   "localhost:8554",
 				Path:   mustParseURL((*rtpInfo)[0].URL).Path,
 			}).String(),
-			SequenceNumber: func() *uint16 {
-				v := uint16(557)
-				return &v
-			}(),
-			Timestamp: (*rtpInfo)[0].Timestamp,
+			SequenceNumber: uint16Ptr(557),
+			Timestamp:      (*rtpInfo)[0].Timestamp,
 		},
 		&headers.RTPInfoEntry{
 			URL: (&url.URL{
@@ -1942,22 +1945,13 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 				Host:   "localhost:8554",
 				Path:   mustParseURL((*rtpInfo)[1].URL).Path,
 			}).String(),
-			SequenceNumber: func() *uint16 {
-				v := uint16(88)
-				return &v
-			}(),
-			Timestamp: (*rtpInfo)[1].Timestamp,
+			SequenceNumber: uint16Ptr(88),
+			Timestamp:      (*rtpInfo)[1].Timestamp,
 		},
 	}, rtpInfo)
 	require.Equal(t, []*uint32{
-		func() *uint32 {
-			v := uint32(96342362)
-			return &v
-		}(),
-		func() *uint32 {
-			v := uint32(536474323)
-			return &v
-		}(),
+		uint32Ptr(96342362),
+		uint32Ptr(536474323),
 	}, ssrcs)
 }
 

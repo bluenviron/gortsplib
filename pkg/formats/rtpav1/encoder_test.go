@@ -7,6 +7,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func uint16Ptr(v uint16) *uint16 {
+	return &v
+}
+
+func uint32Ptr(v uint32) *uint32 {
+	return &v
+}
+
 var shortOBU = []byte{
 	0x0a, 0x0e, 0x00, 0x00, 0x00, 0x4a, 0xab, 0xbf,
 	0xc3, 0x77, 0x6b, 0xe4, 0x40, 0x40, 0x40, 0x41,
@@ -977,19 +985,10 @@ func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
-				PayloadType: 96,
-				SSRC: func() *uint32 {
-					v := uint32(0x9dbb7812)
-					return &v
-				}(),
-				InitialSequenceNumber: func() *uint16 {
-					v := uint16(0x44ed)
-					return &v
-				}(),
-				InitialTimestamp: func() *uint32 {
-					v := uint32(0x88776655)
-					return &v
-				}(),
+				PayloadType:           96,
+				SSRC:                  uint32Ptr(0x9dbb7812),
+				InitialSequenceNumber: uint16Ptr(0x44ed),
+				InitialTimestamp:      uint32Ptr(0x88776655),
 			}
 			e.Init()
 
