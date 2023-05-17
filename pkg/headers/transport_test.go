@@ -60,10 +60,7 @@ var casesTransport = []struct {
 				v := net.ParseIP("225.219.201.15")
 				return &v
 			}(),
-			TTL: func() *uint {
-				v := uint(127)
-				return &v
-			}(),
+			TTL:   uintPtr(127),
 			Ports: &[2]int{7000, 7001},
 		},
 	},
@@ -92,10 +89,7 @@ var casesTransport = []struct {
 			}(),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
-			SSRC: func() *uint32 {
-				v := uint32(0x0B6020AD)
-				return &v
-			}(),
+			SSRC:        uint32Ptr(0x0B6020AD),
 		},
 	},
 	{
@@ -153,10 +147,7 @@ var casesTransport = []struct {
 			}(),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
-			SSRC: func() *uint32 {
-				v := uint32(0x04317f)
-				return &v
-			}(),
+			SSRC:        uint32Ptr(0x04317f),
 		},
 	},
 	{
@@ -175,10 +166,7 @@ var casesTransport = []struct {
 			}(),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
-			SSRC: func() *uint32 {
-				v := uint32(0x04317f)
-				return &v
-			}(),
+			SSRC:        uint32Ptr(0x04317f),
 		},
 	},
 	{
@@ -192,10 +180,7 @@ var casesTransport = []struct {
 				return &v
 			}(),
 			InterleavedIDs: &[2]int{0, 1},
-			SSRC: func() *uint32 {
-				v := uint32(0xD93FF)
-				return &v
-			}(),
+			SSRC:           uint32Ptr(0xD93FF),
 		},
 	},
 	{
@@ -208,10 +193,7 @@ var casesTransport = []struct {
 				v := TransportDeliveryUnicast
 				return &v
 			}(),
-			SSRC: func() *uint32 {
-				v := uint32(0x45dcb578)
-				return &v
-			}(),
+			SSRC:        uint32Ptr(0x45dcb578),
 			ClientPorts: &[2]int{32560, 32561},
 			ServerPorts: &[2]int{3046, 3047},
 		},

@@ -192,9 +192,9 @@ type ServerSession struct {
 	writer                writer
 
 	// in
-	request     chan sessionRequestReq
-	connRemove  chan *ServerConn
-	startWriter chan struct{}
+	chHandleRequest chan sessionRequestReq
+	chRemoveConn    chan *ServerConn
+	chStartWriter   chan struct{}
 }
 
 func newServerSession(
@@ -217,9 +217,9 @@ func newServerSession(
 		conns:               make(map[*ServerConn]struct{}),
 		lastRequestTime:     time.Now(),
 		udpCheckStreamTimer: emptyTimer(),
-		request:             make(chan sessionRequestReq),
-		connRemove:          make(chan *ServerConn),
-		startWriter:         make(chan struct{}),
+		chHandleRequest:     make(chan sessionRequestReq),
+		chRemoveConn:        make(chan *ServerConn),
+		chStartWriter:       make(chan struct{}),
 	}
 
 	s.wg.Add(1)
@@ -354,16 +354,10 @@ func (ss *ServerSession) run() {
 		// make sure that OnFrame() is never called after OnSessionClose()
 		<-sc.done
 
-		select {
-		case sc.sessionRemove <- ss:
-		case <-sc.ctx.Done():
-		}
+		sc.removeSession(ss)
 	}
 
-	select {
-	case ss.s.sessionClose <- ss:
-	case <-ss.s.ctx.Done():
-	}
+	ss.s.closeSession(ss)
 
 	if h, ok := ss.s.Handler.(ServerHandlerOnSessionClose); ok {
 		h.OnSessionClose(&ServerHandlerOnSessionCloseCtx{
@@ -376,18 +370,18 @@ func (ss *ServerSession) run() {
 func (ss *ServerSession) runInner() error {
 	for {
 		select {
-		case req := <-ss.request:
+		case req := <-ss.chHandleRequest:
 			ss.lastRequestTime = time.Now()
 
 			if _, ok := ss.conns[req.sc]; !ok {
 				ss.conns[req.sc] = struct{}{}
 			}
 
-			res, err := ss.handleRequest(req.sc, req.req)
+			res, err := ss.handleRequestInner(req.sc, req.req)
 
 			returnedSession := ss
 
-			if err == nil || err == errSwitchReadFunc {
+			if err == nil || isErrSwitchReadFunc(err) {
 				// ANNOUNCE responses don't contain the session header.
 				if req.req.Method != base.Announce &&
 					req.req.Method != base.Teardown {
@@ -428,11 +422,11 @@ func (ss *ServerSession) runInner() error {
 				ss:  returnedSession,
 			}
 
-			if (err == nil || err == errSwitchReadFunc) && savedMethod == base.Teardown {
+			if (err == nil || isErrSwitchReadFunc(err)) && savedMethod == base.Teardown {
 				return liberrors.ErrServerSessionTornDown{Author: req.sc.NetConn().RemoteAddr()}
 			}
 
-		case sc := <-ss.connRemove:
+		case sc := <-ss.chRemoveConn:
 			delete(ss.conns, sc)
 
 			// if session is not in state RECORD or PLAY, or transport is TCP,
@@ -445,7 +439,7 @@ func (ss *ServerSession) runInner() error {
 				return liberrors.ErrServerSessionNotInUse{}
 			}
 
-		case <-ss.startWriter:
+		case <-ss.chStartWriter:
 			if (ss.state == ServerSessionStateRecord ||
 				ss.state == ServerSessionStatePlay) &&
 				*ss.setuppedTransport == TransportTCP {
@@ -477,7 +471,7 @@ func (ss *ServerSession) runInner() error {
 	}
 }
 
-func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base.Response, error) {
+func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (*base.Response, error) {
 	if ss.tcpConn != nil && sc != ss.tcpConn {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
@@ -926,8 +920,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		default: // TCP
 			ss.tcpConn = sc
-			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
-			err = errSwitchReadFunc
+			err = errSwitchReadFunc{true}
 			// writer.start() is called by ServerConn after the response has been sent
 		}
 
@@ -1014,8 +1007,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 
 		default: // TCP
 			ss.tcpConn = sc
-			ss.tcpConn.readFunc = ss.tcpConn.readFuncTCP
-			err = errSwitchReadFunc
+			err = errSwitchReadFunc{true}
 			// runWriter() is called by conn after sending the response
 		}
 
@@ -1068,8 +1060,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.udpCheckStreamTimer = emptyTimer()
 
 			default: // TCP
-				ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
-				err = errSwitchReadFunc
+				err = errSwitchReadFunc{false}
 				ss.tcpConn = nil
 			}
 
@@ -1079,8 +1070,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 				ss.udpCheckStreamTimer = emptyTimer()
 
 			default: // TCP
-				ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
-				err = errSwitchReadFunc
+				err = errSwitchReadFunc{false}
 				ss.tcpConn = nil
 			}
 
@@ -1093,8 +1083,7 @@ func (ss *ServerSession) handleRequest(sc *ServerConn, req *base.Request) (*base
 		var err error
 		if (ss.state == ServerSessionStatePlay || ss.state == ServerSessionStateRecord) &&
 			*ss.setuppedTransport == TransportTCP {
-			ss.tcpConn.readFunc = ss.tcpConn.readFuncStandard
-			err = errSwitchReadFunc
+			err = errSwitchReadFunc{false}
 		}
 
 		return &base.Response{
@@ -1202,4 +1191,31 @@ func (ss *ServerSession) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) {
 	}
 
 	ss.writePacketRTCP(medi, byts)
+}
+
+func (ss *ServerSession) handleRequest(req sessionRequestReq) (*base.Response, *ServerSession, error) {
+	select {
+	case ss.chHandleRequest <- req:
+		res := <-req.res
+		return res.res, res.ss, res.err
+
+	case <-ss.ctx.Done():
+		return &base.Response{
+			StatusCode: base.StatusBadRequest,
+		}, req.sc.session, liberrors.ErrServerTerminated{}
+	}
+}
+
+func (ss *ServerSession) removeConn(sc *ServerConn) {
+	select {
+	case ss.chRemoveConn <- sc:
+	case <-ss.ctx.Done():
+	}
+}
+
+func (ss *ServerSession) startWriter() {
+	select {
+	case ss.chStartWriter <- struct{}{}:
+	case <-ss.ctx.Done():
+	}
 }
