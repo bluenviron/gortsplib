@@ -6,24 +6,24 @@ import (
 
 // this struct contains a queue that allows to detach the routine that is reading a stream
 // from the routine that is writing a stream.
-type writer struct {
+type asyncProcessor struct {
 	running bool
 	buffer  *ringbuffer.RingBuffer
 
 	done chan struct{}
 }
 
-func (w *writer) allocateBuffer(size int) {
+func (w *asyncProcessor) allocateBuffer(size int) {
 	w.buffer, _ = ringbuffer.New(uint64(size))
 }
 
-func (w *writer) start() {
+func (w *asyncProcessor) start() {
 	w.running = true
 	w.done = make(chan struct{})
 	go w.run()
 }
 
-func (w *writer) stop() {
+func (w *asyncProcessor) stop() {
 	if w.running {
 		w.buffer.Close()
 		<-w.done
@@ -31,7 +31,7 @@ func (w *writer) stop() {
 	}
 }
 
-func (w *writer) run() {
+func (w *asyncProcessor) run() {
 	defer close(w.done)
 
 	for {
@@ -44,6 +44,6 @@ func (w *writer) run() {
 	}
 }
 
-func (w *writer) queue(cb func()) {
+func (w *asyncProcessor) queue(cb func()) {
 	w.buffer.Push(cb)
 }
