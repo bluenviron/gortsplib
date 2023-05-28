@@ -258,7 +258,7 @@ type Client struct {
 	tcpLastFrameTime   *int64
 	keepaliveTimer     *time.Timer
 	closeError         error
-	writer             writer
+	writer             asyncProcessor
 
 	// connCloser channels
 	connCloserTerminate chan struct{}

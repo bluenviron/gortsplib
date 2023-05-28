@@ -189,7 +189,7 @@ type ServerSession struct {
 	announcedMedias       media.Medias // publish
 	udpLastPacketTime     *int64       // publish
 	udpCheckStreamTimer   *time.Timer
-	writer                writer
+	writer                asyncProcessor
 
 	// in
 	chHandleRequest chan sessionRequestReq
