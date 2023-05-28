@@ -23,7 +23,7 @@ type H265 struct {
 	mutex sync.RWMutex
 }
 
-func (f *H265) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+func (f *H265) unmarshal(payloadType uint8, _ string, _ string, _ string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
 	for key, val := range fmtp {

@@ -467,7 +467,7 @@ func (c *Client) runInner() error {
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-c.play:
-			res, err := c.doPlay(req.ra, false)
+			res, err := c.doPlay(req.ra)
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-c.record:
@@ -593,7 +593,7 @@ func (c *Client) trySwitchingProtocol() error {
 		}
 	}
 
-	_, err = c.doPlay(c.lastRange, true)
+	_, err = c.doPlay(c.lastRange)
 	if err != nil {
 		return err
 	}
@@ -1424,7 +1424,7 @@ func (c *Client) SetupAll(medias media.Medias, baseURL *url.URL) error {
 	return nil
 }
 
-func (c *Client) doPlay(ra *headers.Range, isSwitchingProtocol bool) (*base.Response, error) {
+func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStatePrePlay: {},
 	})

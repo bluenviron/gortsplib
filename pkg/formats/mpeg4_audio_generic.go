@@ -27,8 +27,8 @@ type MPEG4AudioGeneric struct {
 }
 
 func (f *MPEG4AudioGeneric) unmarshal(
-	payloadType uint8, clock string, codec string,
-	rtpmap string, fmtp map[string]string,
+	payloadType uint8, _ string, _ string,
+	_ string, fmtp map[string]string,
 ) error {
 	f.PayloadTyp = payloadType
 

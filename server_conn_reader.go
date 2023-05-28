@@ -68,12 +68,12 @@ func (cr *serverConnReader) readFuncStandard() error {
 	cr.sc.nconn.SetReadDeadline(time.Time{})
 
 	for {
-		any, err := cr.sc.conn.ReadInterleavedFrameOrRequest()
+		what, err := cr.sc.conn.ReadInterleavedFrameOrRequest()
 		if err != nil {
 			return err
 		}
 
-		switch what := any.(type) {
+		switch what := what.(type) {
 		case *base.Request:
 			cres := make(chan error)
 			req := readReq{req: what, res: cres}

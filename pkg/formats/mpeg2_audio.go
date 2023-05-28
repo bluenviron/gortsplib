@@ -10,10 +10,7 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEG2Audio struct{}
 
-func (f *MPEG2Audio) unmarshal(
-	payloadType uint8, clock string, codec string,
-	rtpmap string, fmtp map[string]string,
-) error {
+func (f *MPEG2Audio) unmarshal(_ uint8, _ string, _ string, _ string, _ map[string]string) error {
 	return nil
 }
 

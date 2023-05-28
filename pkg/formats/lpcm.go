@@ -18,7 +18,7 @@ type LPCM struct {
 	ChannelCount int
 }
 
-func (f *LPCM) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+func (f *LPCM) unmarshal(payloadType uint8, clock string, codec string, _ string, _ map[string]string) error {
 	f.PayloadTyp = payloadType
 
 	switch codec {

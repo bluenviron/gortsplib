@@ -26,10 +26,10 @@ func getSessionID(header base.Header) string {
 
 func mediasForSDP(
 	medias media.Medias,
-	streamMedias map[*media.Media]*serverStreamMedia,
 	contentBase *url.URL,
 ) media.Medias {
-	copy := make(media.Medias, len(medias))
+	newMedias := make(media.Medias, len(medias))
+
 	for i, medi := range medias {
 		mc := &media.Media{
 			Type: medi.Type,
@@ -47,9 +47,10 @@ func mediasForSDP(
 		u, _ := mc.URL(contentBase)
 		mc.Control = u.String()
 
-		copy[i] = mc
+		newMedias[i] = mc
 	}
-	return copy
+
+	return newMedias
 }
 
 type readReq struct {
@@ -294,7 +295,7 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 				}
 
 				if stream != nil {
-					byts, _ := mediasForSDP(stream.medias, stream.streamMedias, req.URL).Marshal(multicast).Marshal()
+					byts, _ := mediasForSDP(stream.medias, req.URL).Marshal(multicast).Marshal()
 					res.Body = byts
 				}
 			}

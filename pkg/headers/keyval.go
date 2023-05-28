@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func readKey(origstr string, str string, separator byte) (string, string) {
+func readKey(str string, separator byte) (string, string) {
 	i := 0
 	for {
 		if i >= len(str) || str[i] == '=' || str[i] == separator {
@@ -47,7 +47,7 @@ func keyValParse(str string, separator byte) (map[string]string, error) {
 
 	for len(str) > 0 {
 		var k string
-		k, str = readKey(origstr, str, separator)
+		k, str = readKey(str, separator)
 
 		if len(k) > 0 {
 			if len(str) > 0 && str[0] == '=' {

@@ -57,20 +57,17 @@ type Generic struct {
 	RTPMa      string
 	FMT        map[string]string
 
-	// clock rate of the format. Filled automatically.
+	// clock rate of the format. Filled when calling Init().
 	ClockRat int
 }
 
-// Init computes the clock rate of the format. It it mandatory to call it.
+// Init computes the clock rate of the format. It is mandatory to call it.
 func (f *Generic) Init() error {
 	f.ClockRat, _ = findClockRate(f.PayloadTyp, f.RTPMa)
 	return nil
 }
 
-func (f *Generic) unmarshal(
-	payloadType uint8, clock string, codec string,
-	rtpmap string, fmtp map[string]string,
-) error {
+func (f *Generic) unmarshal(payloadType uint8, _ string, _ string, rtpmap string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 	f.RTPMa = rtpmap
 	f.FMT = fmtp
