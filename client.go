@@ -76,6 +76,20 @@ func resetMediaControls(ms media.Medias) {
 	}
 }
 
+func supportsGetParameter(header base.Header) bool {
+	pub, ok := header["Public"]
+	if !ok || len(pub) != 1 {
+		return false
+	}
+
+	for _, m := range strings.Split(pub[0], ",") {
+		if base.Method(strings.Trim(m, " ")) == base.GetParameter {
+			return true
+		}
+	}
+	return false
+}
+
 type clientState int
 
 const (
@@ -825,62 +839,60 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 	return res, nil
 }
 
+func (c *Client) atLeastOneUDPPacketHasBeenReceived() bool {
+	for _, ct := range c.medias {
+		lft := atomic.LoadInt64(ct.udpRTPListener.lastPacketTime)
+		if lft != 0 {
+			return false
+		}
+
+		lft = atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime)
+		if lft != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *Client) isInUDPTimeout() bool {
+	now := time.Now()
+	for _, ct := range c.medias {
+		lft := time.Unix(atomic.LoadInt64(ct.udpRTPListener.lastPacketTime), 0)
+		if now.Sub(lft) < c.ReadTimeout {
+			return false
+		}
+
+		lft = time.Unix(atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime), 0)
+		if now.Sub(lft) < c.ReadTimeout {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *Client) isInTCPTimeout() bool {
+	now := time.Now()
+	lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
+	return now.Sub(lft) >= c.ReadTimeout
+}
+
 func (c *Client) checkTimeout() error {
 	if *c.effectiveTransport == TransportUDP ||
 		*c.effectiveTransport == TransportUDPMulticast {
 		if c.checkTimeoutInitial {
 			c.checkTimeoutInitial = false
 
-			// check that at least one packet has been received
-			inTimeout := func() bool {
-				for _, ct := range c.medias {
-					lft := atomic.LoadInt64(ct.udpRTPListener.lastPacketTime)
-					if lft != 0 {
-						return false
-					}
-
-					lft = atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime)
-					if lft != 0 {
-						return false
-					}
-				}
-				return true
-			}()
-			if inTimeout {
+			if c.atLeastOneUDPPacketHasBeenReceived() {
 				err := c.trySwitchingProtocol()
 				if err != nil {
 					return err
 				}
 			}
-		} else {
-			inTimeout := func() bool {
-				now := time.Now()
-				for _, ct := range c.medias {
-					lft := time.Unix(atomic.LoadInt64(ct.udpRTPListener.lastPacketTime), 0)
-					if now.Sub(lft) < c.ReadTimeout {
-						return false
-					}
-
-					lft = time.Unix(atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime), 0)
-					if now.Sub(lft) < c.ReadTimeout {
-						return false
-					}
-				}
-				return true
-			}()
-			if inTimeout {
-				return liberrors.ErrClientUDPTimeout{}
-			}
+		} else if c.isInUDPTimeout() {
+			return liberrors.ErrClientUDPTimeout{}
 		}
-	} else { // TCP
-		inTimeout := func() bool {
-			now := time.Now()
-			lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
-			return now.Sub(lft) >= c.ReadTimeout
-		}()
-		if inTimeout {
-			return liberrors.ErrClientTCPTimeout{}
-		}
+	} else if c.isInTCPTimeout() {
+		return liberrors.ErrClientTCPTimeout{}
 	}
 
 	return nil
@@ -921,7 +933,7 @@ func (c *Client) doOptions(u *url.URL) (*base.Response, error) {
 
 	if res.StatusCode != base.StatusOK {
 		// since this method is not implemented by every RTSP server,
-		// return only if status code is not 404
+		// return an error only if status code is not 404
 		if res.StatusCode == base.StatusNotFound {
 			return res, nil
 		}
@@ -929,20 +941,7 @@ func (c *Client) doOptions(u *url.URL) (*base.Response, error) {
 	}
 
 	c.optionsSent = true
-
-	c.useGetParameter = func() bool {
-		pub, ok := res.Header["Public"]
-		if !ok || len(pub) != 1 {
-			return false
-		}
-
-		for _, m := range strings.Split(pub[0], ",") {
-			if base.Method(strings.Trim(m, " ")) == base.GetParameter {
-				return true
-			}
-		}
-		return false
-	}()
+	c.useGetParameter = supportsGetParameter(res.Header)
 
 	return res, nil
 }
