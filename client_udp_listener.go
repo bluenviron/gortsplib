@@ -106,16 +106,9 @@ func newClientUDPListener(
 			return nil, err
 		}
 
-		intfs, err := net.Interfaces()
+		err = joinMulticastGroupOnAtLeastOneInterface(p, net.ParseIP(host))
 		if err != nil {
 			return nil, err
-		}
-
-		for _, intf := range intfs {
-			err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(host)})
-			if err != nil {
-				return nil, err
-			}
 		}
 
 		pc = tmp.(*net.UDPConn)

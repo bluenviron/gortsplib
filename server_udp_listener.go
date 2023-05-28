@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"sync"
@@ -19,6 +20,30 @@ func serverFindFormatWithSSRC(
 			return format
 		}
 	}
+	return nil
+}
+
+func joinMulticastGroupOnAtLeastOneInterface(p *ipv4.PacketConn, listenIP net.IP) error {
+	intfs, err := net.Interfaces()
+	if err != nil {
+		return err
+	}
+
+	success := false
+
+	for _, intf := range intfs {
+		if (intf.Flags & net.FlagMulticast) != 0 {
+			err := p.JoinGroup(&intf, &net.UDPAddr{IP: listenIP})
+			if err == nil {
+				success = true
+			}
+		}
+	}
+
+	if !success {
+		return fmt.Errorf("unable to activate multicast on any network interface")
+	}
+
 	return nil
 }
 
@@ -109,20 +134,11 @@ func newServerUDPListener(
 			return nil, err
 		}
 
-		intfs, err := net.Interfaces()
-		if err != nil {
-			return nil, err
-		}
-
 		listenIP = net.ParseIP(host)
 
-		for _, intf := range intfs {
-			if (intf.Flags & net.FlagMulticast) != 0 {
-				// do not check for errors.
-				// on macOS, there are interfaces with the multicast flag but
-				// without support for multicast, that makes this function fail.
-				p.JoinGroup(&intf, &net.UDPAddr{IP: listenIP})
-			}
+		err = joinMulticastGroupOnAtLeastOneInterface(p, listenIP)
+		if err != nil {
+			return nil, err
 		}
 
 		pc = tmp.(*net.UDPConn)
