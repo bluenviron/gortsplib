@@ -232,49 +232,45 @@ type Client struct {
 
 	senderReportPeriod      time.Duration
 	udpReceiverReportPeriod time.Duration
-	checkStreamPeriod       time.Duration
+	checkTimeoutPeriod      time.Duration
 	keepalivePeriod         time.Duration
 
-	scheme             string
-	host               string
-	ctx                context.Context
-	ctxCancel          func()
-	state              clientState
-	nconn              net.Conn
-	conn               *conn.Conn
-	session            string
-	sender             *auth.Sender
-	cseq               int
-	optionsSent        bool
-	useGetParameter    bool
-	lastDescribeURL    *url.URL
-	baseURL            *url.URL
-	effectiveTransport *Transport
-	medias             map[*media.Media]*clientMedia
-	tcpMediasByChannel map[int]*clientMedia
-	lastRange          *headers.Range
-	checkStreamTimer   *time.Timer
-	checkStreamInitial bool
-	tcpLastFrameTime   *int64
-	keepaliveTimer     *time.Timer
-	closeError         error
-	writer             asyncProcessor
-
-	// connCloser channels
-	connCloserTerminate chan struct{}
-	connCloserDone      chan struct{}
-
-	// reader channels
-	readerErr chan error
+	scheme              string
+	host                string
+	ctx                 context.Context
+	ctxCancel           func()
+	state               clientState
+	nconn               net.Conn
+	conn                *conn.Conn
+	session             string
+	sender              *auth.Sender
+	cseq                int
+	optionsSent         bool
+	useGetParameter     bool
+	lastDescribeURL     *url.URL
+	baseURL             *url.URL
+	effectiveTransport  *Transport
+	medias              map[*media.Media]*clientMedia
+	tcpMediasByChannel  map[int]*clientMedia
+	lastRange           *headers.Range
+	checkTimeoutTimer   *time.Timer
+	checkTimeoutInitial bool
+	tcpLastFrameTime    *int64
+	keepaliveTimer      *time.Timer
+	closeError          error
+	writer              asyncProcessor
+	reader              *clientReader
+	connCloser          *clientConnCloser
 
 	// in
-	options  chan optionsReq
-	describe chan describeReq
-	announce chan announceReq
-	setup    chan setupReq
-	play     chan playReq
-	record   chan recordReq
-	pause    chan pauseReq
+	options   chan optionsReq
+	describe  chan describeReq
+	announce  chan announceReq
+	setup     chan setupReq
+	play      chan playReq
+	record    chan recordReq
+	pause     chan pauseReq
+	readError chan error
 
 	// out
 	done chan struct{}
@@ -364,8 +360,8 @@ func (c *Client) Start(scheme string, host string) error {
 		// some cameras require a maximum of 5secs between keepalives
 		c.udpReceiverReportPeriod = 5 * time.Second
 	}
-	if c.checkStreamPeriod == 0 {
-		c.checkStreamPeriod = 1 * time.Second
+	if c.checkTimeoutPeriod == 0 {
+		c.checkTimeoutPeriod = 1 * time.Second
 	}
 	if c.keepalivePeriod == 0 {
 		c.keepalivePeriod = 30 * time.Second
@@ -377,7 +373,7 @@ func (c *Client) Start(scheme string, host string) error {
 	c.host = host
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
-	c.checkStreamTimer = emptyTimer()
+	c.checkTimeoutTimer = emptyTimer()
 	c.keepaliveTimer = emptyTimer()
 	c.options = make(chan optionsReq)
 	c.describe = make(chan describeReq)
@@ -386,6 +382,7 @@ func (c *Client) Start(scheme string, host string) error {
 	c.play = make(chan playReq)
 	c.record = make(chan recordReq)
 	c.pause = make(chan pauseReq)
+	c.readError = make(chan error)
 	c.done = make(chan struct{})
 
 	go c.run()
@@ -481,86 +478,22 @@ func (c *Client) runInner() error {
 			res, err := c.doPause()
 			req.res <- clientRes{res: res, err: err}
 
-		case <-c.checkStreamTimer.C:
-			if *c.effectiveTransport == TransportUDP ||
-				*c.effectiveTransport == TransportUDPMulticast {
-				if c.checkStreamInitial {
-					c.checkStreamInitial = false
-
-					// check that at least one packet has been received
-					inTimeout := func() bool {
-						for _, ct := range c.medias {
-							lft := atomic.LoadInt64(ct.udpRTPListener.lastPacketTime)
-							if lft != 0 {
-								return false
-							}
-
-							lft = atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime)
-							if lft != 0 {
-								return false
-							}
-						}
-						return true
-					}()
-					if inTimeout {
-						err := c.trySwitchingProtocol()
-						if err != nil {
-							return err
-						}
-					}
-				} else {
-					inTimeout := func() bool {
-						now := time.Now()
-						for _, ct := range c.medias {
-							lft := time.Unix(atomic.LoadInt64(ct.udpRTPListener.lastPacketTime), 0)
-							if now.Sub(lft) < c.ReadTimeout {
-								return false
-							}
-
-							lft = time.Unix(atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime), 0)
-							if now.Sub(lft) < c.ReadTimeout {
-								return false
-							}
-						}
-						return true
-					}()
-					if inTimeout {
-						return liberrors.ErrClientUDPTimeout{}
-					}
-				}
-			} else { // TCP
-				inTimeout := func() bool {
-					now := time.Now()
-					lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
-					return now.Sub(lft) >= c.ReadTimeout
-				}()
-				if inTimeout {
-					return liberrors.ErrClientTCPTimeout{}
-				}
-			}
-
-			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
-
-		case <-c.keepaliveTimer.C:
-			_, err := c.do(&base.Request{
-				Method: func() base.Method {
-					// the VLC integrated rtsp server requires GET_PARAMETER
-					if c.useGetParameter {
-						return base.GetParameter
-					}
-					return base.Options
-				}(),
-				// use the stream base URL, otherwise some cameras do not reply
-				URL: c.baseURL,
-			}, true, false)
+		case <-c.checkTimeoutTimer.C:
+			err := c.checkTimeout()
 			if err != nil {
 				return err
 			}
+			c.checkTimeoutTimer = time.NewTimer(c.checkTimeoutPeriod)
 
+		case <-c.keepaliveTimer.C:
+			err := c.doKeepalive()
+			if err != nil {
+				return err
+			}
 			c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
-		case err := <-c.readerErr:
-			c.readerErr = nil
+		case err := <-c.readError:
+			c.reader = nil
 			return err
 
 		case <-c.ctx.Done():
@@ -571,7 +504,8 @@ func (c *Client) runInner() error {
 
 func (c *Client) doClose() {
 	if c.state != clientStatePlay && c.state != clientStateRecord && c.conn != nil {
-		c.connCloserStop()
+		c.connCloser.close()
+		c.connCloser = nil
 	}
 
 	if c.state == clientStatePlay || c.state == clientStateRecord {
@@ -690,22 +624,22 @@ func (c *Client) trySwitchingProtocol2(medi *media.Media, baseURL *url.URL) (*ba
 }
 
 func (c *Client) playRecordStart() {
-	// stop connCloser
-	c.connCloserStop()
+	c.connCloser.close()
+	c.connCloser = nil
 
 	if c.state == clientStatePlay {
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
 		switch *c.effectiveTransport {
 		case TransportUDP:
-			c.checkStreamTimer = time.NewTimer(c.InitialUDPReadTimeout)
-			c.checkStreamInitial = true
+			c.checkTimeoutTimer = time.NewTimer(c.InitialUDPReadTimeout)
+			c.checkTimeoutInitial = true
 
 		case TransportUDPMulticast:
-			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
+			c.checkTimeoutTimer = time.NewTimer(c.checkTimeoutPeriod)
 
 		default: // TCP
-			c.checkStreamTimer = time.NewTimer(c.checkStreamPeriod)
+			c.checkTimeoutTimer = time.NewTimer(c.checkTimeoutPeriod)
 			v := time.Now().Unix()
 			c.tcpLastFrameTime = &v
 		}
@@ -726,68 +660,18 @@ func (c *Client) playRecordStart() {
 		cm.start()
 	}
 
-	// for some reason, SetReadDeadline() must always be called in the same
-	// goroutine, otherwise Read() freezes.
-	// therefore, we disable the deadline and perform a check with a ticker.
-	c.nconn.SetReadDeadline(time.Time{})
-
-	// start reader
-	c.readerErr = make(chan error)
-	go c.runReader()
-}
-
-func (c *Client) runReader() {
-	c.readerErr <- func() error {
-		if *c.effectiveTransport == TransportUDP || *c.effectiveTransport == TransportUDPMulticast {
-			for {
-				_, err := c.conn.ReadResponse()
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			for {
-				what, err := c.conn.ReadInterleavedFrameOrResponse()
-				if err != nil {
-					return err
-				}
-
-				if fr, ok := what.(*base.InterleavedFrame); ok {
-					channel := fr.Channel
-					isRTP := true
-					if (channel % 2) != 0 {
-						channel--
-						isRTP = false
-					}
-
-					media, ok := c.tcpMediasByChannel[channel]
-					if !ok {
-						continue
-					}
-
-					if isRTP {
-						err = media.readRTP(fr.Payload)
-					} else {
-						err = media.readRTCP(fr.Payload)
-					}
-					if err != nil {
-						return err
-					}
-				}
-			}
-		}
-	}()
+	c.reader = newClientReader(c)
 }
 
 func (c *Client) playRecordStop(isClosing bool) {
-	// stop reader
-	if c.readerErr != nil {
-		c.nconn.SetReadDeadline(time.Now())
-		<-c.readerErr
+	if c.reader != nil {
+		c.reader.close()
+		<-c.readError
+		c.reader = nil
 	}
 
 	// stop timers
-	c.checkStreamTimer = emptyTimer()
+	c.checkTimeoutTimer = emptyTimer()
 	c.keepaliveTimer = emptyTimer()
 
 	c.writer.stop()
@@ -796,9 +680,8 @@ func (c *Client) playRecordStop(isClosing bool) {
 		cm.stop()
 	}
 
-	// start connCloser
 	if !isClosing {
-		c.connCloserStart()
+		c.connCloser = newClientConnCloser(c.ctx, c.nconn)
 	}
 }
 
@@ -821,10 +704,10 @@ func (c *Client) connOpen() error {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(c.ctx, c.ReadTimeout)
-	defer cancel()
+	dialCtx, dialCtxCancel := context.WithTimeout(c.ctx, c.ReadTimeout)
+	defer dialCtxCancel()
 
-	nconn, err := c.DialContext(ctx, "tcp", c.host)
+	nconn, err := c.DialContext(dialCtx, "tcp", c.host)
 	if err != nil {
 		return err
 	}
@@ -845,31 +728,9 @@ func (c *Client) connOpen() error {
 	c.nconn = nconn
 	bc := bytecounter.New(c.nconn, c.BytesReceived, c.BytesSent)
 	c.conn = conn.NewConn(bc)
+	c.connCloser = newClientConnCloser(c.ctx, c.nconn)
 
-	c.connCloserStart()
 	return nil
-}
-
-func (c *Client) connCloserStart() {
-	c.connCloserTerminate = make(chan struct{})
-	c.connCloserDone = make(chan struct{})
-
-	go func() {
-		defer close(c.connCloserDone)
-
-		select {
-		case <-c.ctx.Done():
-			c.nconn.Close()
-
-		case <-c.connCloserTerminate:
-		}
-	}()
-}
-
-func (c *Client) connCloserStop() {
-	close(c.connCloserTerminate)
-	<-c.connCloserDone
-	c.connCloserDone = nil
 }
 
 func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*base.Response, error) {
@@ -962,6 +823,82 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 	}
 
 	return res, nil
+}
+
+func (c *Client) checkTimeout() error {
+	if *c.effectiveTransport == TransportUDP ||
+		*c.effectiveTransport == TransportUDPMulticast {
+		if c.checkTimeoutInitial {
+			c.checkTimeoutInitial = false
+
+			// check that at least one packet has been received
+			inTimeout := func() bool {
+				for _, ct := range c.medias {
+					lft := atomic.LoadInt64(ct.udpRTPListener.lastPacketTime)
+					if lft != 0 {
+						return false
+					}
+
+					lft = atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime)
+					if lft != 0 {
+						return false
+					}
+				}
+				return true
+			}()
+			if inTimeout {
+				err := c.trySwitchingProtocol()
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			inTimeout := func() bool {
+				now := time.Now()
+				for _, ct := range c.medias {
+					lft := time.Unix(atomic.LoadInt64(ct.udpRTPListener.lastPacketTime), 0)
+					if now.Sub(lft) < c.ReadTimeout {
+						return false
+					}
+
+					lft = time.Unix(atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime), 0)
+					if now.Sub(lft) < c.ReadTimeout {
+						return false
+					}
+				}
+				return true
+			}()
+			if inTimeout {
+				return liberrors.ErrClientUDPTimeout{}
+			}
+		}
+	} else { // TCP
+		inTimeout := func() bool {
+			now := time.Now()
+			lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
+			return now.Sub(lft) >= c.ReadTimeout
+		}()
+		if inTimeout {
+			return liberrors.ErrClientTCPTimeout{}
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) doKeepalive() error {
+	_, err := c.do(&base.Request{
+		Method: func() base.Method {
+			// the VLC integrated rtsp server requires GET_PARAMETER
+			if c.useGetParameter {
+				return base.GetParameter
+			}
+			return base.Options
+		}(),
+		// use the stream base URL, otherwise some cameras do not reply
+		URL: c.baseURL,
+	}, true, false)
+	return err
 }
 
 func (c *Client) doOptions(u *url.URL) (*base.Response, error) {
