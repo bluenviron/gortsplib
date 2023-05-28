@@ -323,7 +323,7 @@ type testServerErrMethodNotImplemented struct {
 }
 
 func (s *testServerErrMethodNotImplemented) OnDescribe(
-	ctx *ServerHandlerOnDescribeCtx,
+	_ *ServerHandlerOnDescribeCtx,
 ) (*base.Response, *ServerStream, error) {
 	return &base.Response{
 		StatusCode: base.StatusOK,
@@ -331,7 +331,7 @@ func (s *testServerErrMethodNotImplemented) OnDescribe(
 }
 
 func (s *testServerErrMethodNotImplemented) OnSetup(
-	ctx *ServerHandlerOnSetupCtx,
+	_ *ServerHandlerOnSetupCtx,
 ) (*base.Response, *ServerStream, error) {
 	return &base.Response{
 		StatusCode: base.StatusOK,

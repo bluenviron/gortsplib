@@ -23,8 +23,8 @@ type MPEG4VideoES struct {
 }
 
 func (f *MPEG4VideoES) unmarshal(
-	payloadType uint8, clock string, codec string,
-	rtpmap string, fmtp map[string]string,
+	payloadType uint8, _ string, _ string,
+	_ string, fmtp map[string]string,
 ) error {
 	f.PayloadTyp = payloadType
 	f.ProfileLevelID = 1 // default value defined by specification

@@ -240,7 +240,7 @@ func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) error {
 	return nil
 }
 
-func (sm *serverSessionMedia) readRTPTCPPlay(payload []byte) error {
+func (sm *serverSessionMedia) readRTPTCPPlay(_ []byte) error {
 	return nil
 }
 

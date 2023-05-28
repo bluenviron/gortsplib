@@ -21,8 +21,8 @@ type MPEG4AudioLATM struct {
 }
 
 func (f *MPEG4AudioLATM) unmarshal(
-	payloadType uint8, clock string, codec string,
-	rtpmap string, fmtp map[string]string,
+	payloadType uint8, _ string, _ string,
+	_ string, fmtp map[string]string,
 ) error {
 	f.PayloadTyp = payloadType
 	f.ProfileLevelID = 30 // default value defined by specification

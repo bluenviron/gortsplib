@@ -126,8 +126,8 @@ func (cm *clientMedia) start() {
 	}
 
 	if cm.udpRTPListener != nil {
-		cm.udpRTPListener.start(cm.c.state == clientStatePlay)
-		cm.udpRTCPListener.start(cm.c.state == clientStatePlay)
+		cm.udpRTPListener.start()
+		cm.udpRTCPListener.start()
 	}
 
 	for _, ct := range cm.formats {
@@ -241,7 +241,7 @@ func (cm *clientMedia) readRTCPTCPPlay(payload []byte) error {
 	return nil
 }
 
-func (cm *clientMedia) readRTPTCPRecord(payload []byte) error {
+func (cm *clientMedia) readRTPTCPRecord(_ []byte) error {
 	return nil
 }
 
@@ -323,7 +323,7 @@ func (cm *clientMedia) readRTCPUDPPlay(payload []byte) error {
 	return nil
 }
 
-func (cm *clientMedia) readRTPUDPRecord(payload []byte) error {
+func (cm *clientMedia) readRTPUDPRecord(_ []byte) error {
 	return nil
 }
 

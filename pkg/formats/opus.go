@@ -17,7 +17,7 @@ type Opus struct {
 	IsStereo   bool
 }
 
-func (f *Opus) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+func (f *Opus) unmarshal(payloadType uint8, clock string, _ string, _ string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
 	tmp := strings.SplitN(clock, "/", 2)

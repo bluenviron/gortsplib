@@ -66,7 +66,8 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 		MediaDescriptions: []*psdp.MediaDescription{medi.Marshal()},
 	}
 
-	byts, _ := sout.Marshal()
+	byts, err := sout.Marshal()
+	require.NoError(t, err)
 
 	return base.Request{
 		Method: base.Announce,

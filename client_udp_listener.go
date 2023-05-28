@@ -153,11 +153,11 @@ func (u *clientUDPListener) port() int {
 	return u.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
-func (u *clientUDPListener) start(forPlay bool) {
+func (u *clientUDPListener) start() {
 	u.running = true
 	u.pc.SetReadDeadline(time.Time{})
 	u.readerDone = make(chan struct{})
-	go u.runReader(forPlay)
+	go u.runReader()
 }
 
 func (u *clientUDPListener) stop() {
@@ -165,7 +165,7 @@ func (u *clientUDPListener) stop() {
 	<-u.readerDone
 }
 
-func (u *clientUDPListener) runReader(forPlay bool) {
+func (u *clientUDPListener) runReader() {
 	defer close(u.readerDone)
 
 	var readFunc func([]byte) error

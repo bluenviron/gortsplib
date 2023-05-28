@@ -18,7 +18,7 @@ type AV1 struct {
 	Tier       *int
 }
 
-func (f *AV1) unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error {
+func (f *AV1) unmarshal(payloadType uint8, _ string, _ string, _ string, fmtp map[string]string) error {
 	f.PayloadTyp = payloadType
 
 	for key, val := range fmtp {
