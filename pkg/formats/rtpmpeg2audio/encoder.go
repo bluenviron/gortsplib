@@ -28,7 +28,7 @@ func lenAggregated(frames [][]byte, frame []byte) int {
 	return l
 }
 
-// Encoder is a RTP/MPEG-2 Audio encoder.
+// Encoder is a RTP/MPEG-1/2 Audio encoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type Encoder struct {
 	// SSRC of packets (optional).
