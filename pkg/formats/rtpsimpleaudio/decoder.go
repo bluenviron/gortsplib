@@ -16,8 +16,9 @@ type Decoder struct {
 }
 
 // Init initializes the decoder.
-func (d *Decoder) Init() {
+func (d *Decoder) Init() error {
 	d.timeDecoder = rtptime.NewDecoder(d.SampleRate)
+	return nil
 }
 
 // Decode decodes an audio frame from a RTP packet.

@@ -281,7 +281,7 @@ var casesFormat = []struct {
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
 			Bitrate:        intPtr(64000),
-			CPresent:       boolPtr(false),
+			CPresent:       false,
 			Config: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
@@ -319,7 +319,7 @@ var casesFormat = []struct {
 		&MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 15,
-			CPresent:       boolPtr(false),
+			CPresent:       false,
 			SBREnabled:     boolPtr(true),
 			Config: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
@@ -358,7 +358,7 @@ var casesFormat = []struct {
 		&MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 44,
-			CPresent:       boolPtr(false),
+			CPresent:       false,
 			SBREnabled:     boolPtr(true),
 			Bitrate:        intPtr(64000),
 			Config: &mpeg4audio.StreamMuxConfig{
@@ -401,7 +401,7 @@ var casesFormat = []struct {
 			PayloadTyp:     110,
 			ProfileLevelID: 48,
 			Bitrate:        intPtr(64000),
-			CPresent:       boolPtr(false),
+			CPresent:       false,
 			Config: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
@@ -438,7 +438,7 @@ var casesFormat = []struct {
 		&MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 30,
-			CPresent:       boolPtr(false),
+			CPresent:       false,
 			Config: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
@@ -911,27 +911,12 @@ func TestUnmarshalMPEG4AudioLATMErrors(t *testing.T) {
 	require.Error(t, err)
 
 	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"object": "aaa",
-	})
-	require.Error(t, err)
-
-	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"object": "120",
-	})
-	require.Error(t, err)
-
-	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"cpresent": "aaa",
+		"cpresent": "0",
 	})
 	require.Error(t, err)
 
 	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
 		"config": "aaa",
-	})
-	require.Error(t, err)
-
-	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"sbr-enabled": "aaa",
 	})
 	require.Error(t, err)
 

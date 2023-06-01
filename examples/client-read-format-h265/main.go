@@ -45,7 +45,10 @@ func main() {
 	}
 
 	// setup RTP/H265 -> H265 decoder
-	rtpDec := forma.CreateDecoder()
+	rtpDec, err := forma.CreateDecoder2()
+	if err != nil {
+		panic(err)
+	}
 
 	// setup a single media
 	_, err = c.Setup(medi, baseURL, 0, 0)

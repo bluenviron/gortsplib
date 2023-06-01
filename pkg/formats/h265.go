@@ -109,22 +109,48 @@ func (f *H265) PTSEqualsDTS(*rtp.Packet) bool {
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
+//
+// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
 func (f *H265) CreateDecoder() *rtph265.Decoder {
-	d := &rtph265.Decoder{
-		MaxDONDiff: f.MaxDONDiff,
-	}
-	d.Init()
+	d, _ := f.CreateDecoder2()
 	return d
 }
 
+// CreateDecoder2 creates a decoder able to decode the content of the format.
+func (f *H265) CreateDecoder2() (*rtph265.Decoder, error) {
+	d := &rtph265.Decoder{
+		MaxDONDiff: f.MaxDONDiff,
+	}
+
+	err := d.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
 // CreateEncoder creates an encoder able to encode the content of the format.
+//
+// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
 func (f *H265) CreateEncoder() *rtph265.Encoder {
+	e, _ := f.CreateEncoder2()
+	return e
+}
+
+// CreateEncoder2 creates an encoder able to encode the content of the format.
+func (f *H265) CreateEncoder2() (*rtph265.Encoder, error) {
 	e := &rtph265.Encoder{
 		PayloadType: f.PayloadTyp,
 		MaxDONDiff:  f.MaxDONDiff,
 	}
-	e.Init()
-	return e
+
+	err := e.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }
 
 // SafeSetParams sets the codec parameters.

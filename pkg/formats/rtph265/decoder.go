@@ -47,16 +47,17 @@ type Decoder struct {
 }
 
 // Init initializes the decoder.
-func (d *Decoder) Init() {
+func (d *Decoder) Init() error {
+	if d.MaxDONDiff != 0 {
+		return fmt.Errorf("MaxDONDiff != 0 is not supported (yet)")
+	}
+
 	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
+	return nil
 }
 
 // Decode decodes NALUs from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
-	if d.MaxDONDiff != 0 {
-		return nil, 0, fmt.Errorf("MaxDONDiff != 0 is not supported (yet)")
-	}
-
 	if len(pkt.Payload) < 2 {
 		d.fragments = d.fragments[:0] // discard pending fragments
 		return nil, 0, fmt.Errorf("payload is too short")
@@ -143,7 +144,6 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		}
 
 		nalus = [][]byte{joinFragments(d.fragments, d.fragmentsSize)}
-
 		d.fragments = d.fragments[:0]
 
 	case h265.NALUType_PACI:

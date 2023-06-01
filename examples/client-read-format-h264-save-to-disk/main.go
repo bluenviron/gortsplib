@@ -45,7 +45,10 @@ func main() {
 	}
 
 	// setup RTP/H264 -> H264 decoder
-	rtpDec := forma.CreateDecoder()
+	rtpDec, err := forma.CreateDecoder2()
+	if err != nil {
+		panic(err)
+	}
 
 	// setup H264 -> MPEG-TS muxer
 	mpegtsMuxer, err := newMPEGTSMuxer(forma.SPS, forma.PPS)

@@ -1,4 +1,4 @@
-package rtpmpeg4audio
+package rtpmpeg4audiogeneric
 
 import (
 	"bytes"

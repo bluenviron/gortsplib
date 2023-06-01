@@ -278,12 +278,16 @@ func TestMJPEGDecEncoder(t *testing.T) {
 		0xe7, 0x7f, 0xaa, 0xff, 0xff, 0xd9,
 	}
 
-	enc := format.CreateEncoder()
+	enc, err := format.CreateEncoder2()
+	require.NoError(t, err)
+
 	pkts, err := enc.Encode(b, 0)
 	require.NoError(t, err)
 	require.Equal(t, format.PayloadType(), pkts[0].PayloadType)
 
-	dec := format.CreateDecoder()
+	dec, err := format.CreateDecoder2()
+	require.NoError(t, err)
+
 	var byts []byte
 	for _, pkt := range pkts {
 		byts, _, _ = dec.Decode(pkt)

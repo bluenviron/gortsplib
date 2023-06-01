@@ -21,15 +21,16 @@ func TestDecode(t *testing.T) {
 				clone := pkt.Clone()
 
 				addNALUs, _, err := d.Decode(pkt)
+
+				// test input integrity
+				require.Equal(t, clone, pkt)
+
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
 
 				require.NoError(t, err)
 				nalus = append(nalus, addNALUs...)
-
-				// test input integrity
-				require.Equal(t, clone, pkt)
 			}
 
 			require.Equal(t, ca.nalus, nalus)

@@ -17,7 +17,9 @@ func TestMPEG2AudioAttributes(t *testing.T) {
 func TestMPEG2AudioDecEncoder(t *testing.T) {
 	format := &MPEG2Audio{}
 
-	enc := format.CreateEncoder()
+	enc, err := format.CreateEncoder2()
+	require.NoError(t, err)
+
 	pkts, err := enc.Encode([][]byte{{
 		0xff, 0xfb, 0x14, 0x64, 0x00, 0x0f, 0xf0, 0x00,
 		0x00, 0x69, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00,
@@ -35,7 +37,9 @@ func TestMPEG2AudioDecEncoder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, format.PayloadType(), pkts[0].PayloadType)
 
-	dec := format.CreateDecoder()
+	dec, err := format.CreateDecoder2()
+	require.NoError(t, err)
+
 	byts, _, err := dec.Decode(pkts[0])
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{{

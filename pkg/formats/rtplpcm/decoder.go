@@ -21,9 +21,10 @@ type Decoder struct {
 }
 
 // Init initializes the decoder.
-func (d *Decoder) Init() {
+func (d *Decoder) Init() error {
 	d.timeDecoder = rtptime.NewDecoder(d.SampleRate)
 	d.sampleSize = d.BitDepth * d.ChannelCount / 8
+	return nil
 }
 
 // Decode decodes audio samples from a RTP packet.

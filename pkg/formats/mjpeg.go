@@ -45,15 +45,41 @@ func (f *MJPEG) PTSEqualsDTS(*rtp.Packet) bool {
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
+//
+// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
 func (f *MJPEG) CreateDecoder() *rtpmjpeg.Decoder {
-	d := &rtpmjpeg.Decoder{}
-	d.Init()
+	d, _ := f.CreateDecoder2()
 	return d
 }
 
+// CreateDecoder2 creates a decoder able to decode the content of the format.
+func (f *MJPEG) CreateDecoder2() (*rtpmjpeg.Decoder, error) {
+	d := &rtpmjpeg.Decoder{}
+
+	err := d.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
 // CreateEncoder creates an encoder able to encode the content of the format.
+//
+// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
 func (f *MJPEG) CreateEncoder() *rtpmjpeg.Encoder {
-	e := &rtpmjpeg.Encoder{}
-	e.Init()
+	e, _ := f.CreateEncoder2()
 	return e
+}
+
+// CreateEncoder2 creates an encoder able to encode the content of the format.
+func (f *MJPEG) CreateEncoder2() (*rtpmjpeg.Encoder, error) {
+	e := &rtpmjpeg.Encoder{}
+
+	err := e.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }

@@ -48,7 +48,10 @@ func main() {
 	}
 
 	// create decoder
-	rtpDec := forma.CreateDecoder()
+	rtpDec, err := forma.CreateDecoder2()
+	if err != nil {
+		panic(err)
+	}
 
 	// setup a single media
 	_, err = c.Setup(medi, baseURL, 0, 0)

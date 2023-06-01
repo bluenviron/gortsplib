@@ -45,8 +45,9 @@ type Decoder struct {
 }
 
 // Init initializes the decoder.
-func (d *Decoder) Init() {
+func (d *Decoder) Init() error {
 	d.timeDecoder = rtptime.NewDecoder(90000)
+	return nil
 }
 
 // Decode decodes OBUs from a RTP packet.
