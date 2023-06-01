@@ -39,6 +39,43 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+func TestDecodeOtherData(t *testing.T) {
+	d := &Decoder{
+		Config: &mpeg4audio.StreamMuxConfig{
+			Programs: []*mpeg4audio.StreamMuxConfigProgram{{
+				Layers: []*mpeg4audio.StreamMuxConfigLayer{{
+					AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
+						Type:         2,
+						SampleRate:   48000,
+						ChannelCount: 2,
+					},
+					LatmBufferFullness: 255,
+				}},
+			}},
+			OtherDataPresent: true,
+			OtherDataLenBits: 16,
+		},
+	}
+	d.Init()
+
+	au, _, err := d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 17645,
+			Timestamp:      2289526357,
+			SSRC:           2646308882,
+		},
+		Payload: []byte{
+			0x04, 0x01, 0x02, 0x03, 0x04, 5, 6,
+		},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, []byte{1, 2, 3, 4}, au)
+}
+
 func FuzzDecoder(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
 		d := &Decoder{
