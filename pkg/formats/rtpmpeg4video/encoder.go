@@ -89,9 +89,6 @@ func (e *Encoder) Encode(frame []byte, pts time.Duration) ([]*rtp.Packet, error)
 			le = lastPacketSize
 		}
 
-		payload := make([]byte, le)
-		pos += copy(payload, frame[pos:])
-
 		ret[i] = &rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
@@ -101,7 +98,7 @@ func (e *Encoder) Encode(frame []byte, pts time.Duration) ([]*rtp.Packet, error)
 				SSRC:           *e.SSRC,
 				Marker:         (i == len(ret)-1),
 			},
-			Payload: payload,
+			Payload: frame[pos : pos+le],
 		}
 
 		e.sequenceNumber++
