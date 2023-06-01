@@ -49,16 +49,17 @@ type Decoder struct {
 }
 
 // Init initializes the decoder.
-func (d *Decoder) Init() {
+func (d *Decoder) Init() error {
+	if d.PacketizationMode >= 2 {
+		return fmt.Errorf("PacketizationMode >= 2 is not supported")
+	}
+
 	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
+	return nil
 }
 
 // Decode decodes NALUs from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
-	if d.PacketizationMode >= 2 {
-		return nil, 0, fmt.Errorf("PacketizationMode >= 2 is not supported")
-	}
-
 	if len(pkt.Payload) < 1 {
 		d.fragments = d.fragments[:0] // discard pending fragments
 		return nil, 0, fmt.Errorf("payload is too short")
@@ -113,7 +114,6 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		}
 
 		nalus = [][]byte{joinFragments(d.fragments, d.fragmentsSize)}
-
 		d.fragments = d.fragments[:0]
 
 	case h264.NALUTypeSTAPA:

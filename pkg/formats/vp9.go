@@ -98,17 +98,43 @@ func (f *VP9) PTSEqualsDTS(*rtp.Packet) bool {
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
+//
+// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
 func (f *VP9) CreateDecoder() *rtpvp9.Decoder {
-	d := &rtpvp9.Decoder{}
-	d.Init()
+	d, _ := f.CreateDecoder2()
 	return d
 }
 
+// CreateDecoder2 creates a decoder able to decode the content of the format.
+func (f *VP9) CreateDecoder2() (*rtpvp9.Decoder, error) {
+	d := &rtpvp9.Decoder{}
+
+	err := d.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
 // CreateEncoder creates an encoder able to encode the content of the format.
+//
+// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
 func (f *VP9) CreateEncoder() *rtpvp9.Encoder {
+	e, _ := f.CreateEncoder2()
+	return e
+}
+
+// CreateEncoder2 creates an encoder able to encode the content of the format.
+func (f *VP9) CreateEncoder2() (*rtpvp9.Encoder, error) {
 	e := &rtpvp9.Encoder{
 		PayloadType: f.PayloadTyp,
 	}
-	e.Init()
-	return e
+
+	err := e.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }

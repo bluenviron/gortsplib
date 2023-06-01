@@ -19,12 +19,16 @@ func TestVP9Attributes(t *testing.T) {
 func TestVP9DecEncoder(t *testing.T) {
 	format := &VP9{}
 
-	enc := format.CreateEncoder()
+	enc, err := format.CreateEncoder2()
+	require.NoError(t, err)
+
 	pkts, err := enc.Encode([]byte{0x01, 0x02, 0x03, 0x04}, 0)
 	require.NoError(t, err)
 	require.Equal(t, format.PayloadType(), pkts[0].PayloadType)
 
-	dec := format.CreateDecoder()
+	dec, err := format.CreateDecoder2()
+	require.NoError(t, err)
+
 	byts, _, err := dec.Decode(pkts[0])
 	require.NoError(t, err)
 	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, byts)

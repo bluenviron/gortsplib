@@ -52,7 +52,7 @@ type Encoder struct {
 }
 
 // Init initializes the encoder.
-func (e *Encoder) Init() {
+func (e *Encoder) Init() error {
 	if e.SSRC == nil {
 		v := randUint32()
 		e.SSRC = &v
@@ -71,6 +71,7 @@ func (e *Encoder) Init() {
 
 	e.sequenceNumber = *e.InitialSequenceNumber
 	e.timeEncoder = rtptime.NewEncoder(90000, *e.InitialTimestamp)
+	return nil
 }
 
 // Encode encodes frames into RTP packets.

@@ -47,7 +47,7 @@ type Encoder struct {
 }
 
 // Init initializes the encoder.
-func (e *Encoder) Init() {
+func (e *Encoder) Init() error {
 	if e.SSRC == nil {
 		v := randUint32()
 		e.SSRC = &v
@@ -66,6 +66,7 @@ func (e *Encoder) Init() {
 
 	e.sequenceNumber = *e.InitialSequenceNumber
 	e.timeEncoder = rtptime.NewEncoder(rtpClockRate, *e.InitialTimestamp)
+	return nil
 }
 
 // Encode encodes an image into RTP/M-JPEG packets.

@@ -170,22 +170,48 @@ func (f *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
+//
+// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
 func (f *H264) CreateDecoder() *rtph264.Decoder {
-	d := &rtph264.Decoder{
-		PacketizationMode: f.PacketizationMode,
-	}
-	d.Init()
+	d, _ := f.CreateDecoder2()
 	return d
 }
 
+// CreateDecoder2 creates a decoder able to decode the content of the format.
+func (f *H264) CreateDecoder2() (*rtph264.Decoder, error) {
+	d := &rtph264.Decoder{
+		PacketizationMode: f.PacketizationMode,
+	}
+
+	err := d.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
 // CreateEncoder creates an encoder able to encode the content of the format.
+//
+// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
 func (f *H264) CreateEncoder() *rtph264.Encoder {
+	e, _ := f.CreateEncoder2()
+	return e
+}
+
+// CreateEncoder2 creates an encoder able to encode the content of the format.
+func (f *H264) CreateEncoder2() (*rtph264.Encoder, error) {
 	e := &rtph264.Encoder{
 		PayloadType:       f.PayloadTyp,
 		PacketizationMode: f.PacketizationMode,
 	}
-	e.Init()
-	return e
+
+	err := e.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }
 
 // SafeSetParams sets the codec parameters.

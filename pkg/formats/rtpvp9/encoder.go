@@ -53,7 +53,7 @@ type Encoder struct {
 }
 
 // Init initializes the encoder.
-func (e *Encoder) Init() {
+func (e *Encoder) Init() error {
 	if e.SSRC == nil {
 		v := randUint32()
 		e.SSRC = &v
@@ -80,6 +80,8 @@ func (e *Encoder) Init() {
 	e.vp.InitialPictureIDFn = func() uint16 {
 		return *e.InitialPictureID
 	}
+
+	return nil
 }
 
 // Encode encodes a VP9 frame into RTP/VP9 packets.

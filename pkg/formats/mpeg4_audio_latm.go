@@ -7,6 +7,8 @@ import (
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
+
+	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmpeg4audiolatm"
 )
 
 // MPEG4AudioLATM is a RTP format that uses a MPEG-4 Audio codec.
@@ -15,7 +17,7 @@ type MPEG4AudioLATM struct {
 	PayloadTyp     uint8
 	ProfileLevelID int
 	Bitrate        *int
-	CPresent       *bool
+	CPresent       bool
 	Config         *mpeg4audio.StreamMuxConfig
 	SBREnabled     *bool
 }
@@ -25,7 +27,10 @@ func (f *MPEG4AudioLATM) unmarshal(
 	_ string, fmtp map[string]string,
 ) error {
 	f.PayloadTyp = payloadType
-	f.ProfileLevelID = 30 // default value defined by specification
+
+	// default value set by specification
+	f.ProfileLevelID = 30
+	f.CPresent = true
 
 	for key, val := range fmtp {
 		switch key {
@@ -47,8 +52,7 @@ func (f *MPEG4AudioLATM) unmarshal(
 			f.Bitrate = &v
 
 		case "cpresent":
-			v := (val == "1")
-			f.CPresent = &v
+			f.CPresent = (val == "1")
 
 		case "config":
 			enc, err := hex.DecodeString(val)
@@ -68,8 +72,14 @@ func (f *MPEG4AudioLATM) unmarshal(
 		}
 	}
 
-	if f.Config == nil {
-		return fmt.Errorf("config is missing")
+	if f.CPresent {
+		if f.Config != nil {
+			return fmt.Errorf("config and cpresent can't be used at the same time")
+		}
+	} else {
+		if f.Config == nil {
+			return fmt.Errorf("config is missing")
+		}
 	}
 
 	return nil
@@ -125,12 +135,10 @@ func (f *MPEG4AudioLATM) FMTP() map[string]string {
 		fmtp["bitrate"] = strconv.FormatInt(int64(*f.Bitrate), 10)
 	}
 
-	if f.CPresent != nil {
-		if *f.CPresent {
-			fmtp["cpresent"] = "1"
-		} else {
-			fmtp["cpresent"] = "0"
-		}
+	if f.CPresent {
+		fmtp["cpresent"] = "1"
+	} else {
+		fmtp["cpresent"] = "0"
 	}
 
 	if f.SBREnabled != nil {
@@ -147,4 +155,49 @@ func (f *MPEG4AudioLATM) FMTP() map[string]string {
 // PTSEqualsDTS implements Format.
 func (f *MPEG4AudioLATM) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
+}
+
+// CreateDecoder creates a decoder able to decode the content of the format.
+//
+// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
+func (f *MPEG4AudioLATM) CreateDecoder() *rtpmpeg4audiolatm.Decoder {
+	d, _ := f.CreateDecoder2()
+	return d
+}
+
+// CreateDecoder2 creates a decoder able to decode the content of the format.
+func (f *MPEG4AudioLATM) CreateDecoder2() (*rtpmpeg4audiolatm.Decoder, error) {
+	d := &rtpmpeg4audiolatm.Decoder{
+		Config: f.Config,
+	}
+
+	err := d.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
+// CreateEncoder creates an encoder able to encode the content of the format.
+//
+// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
+func (f *MPEG4AudioLATM) CreateEncoder() *rtpmpeg4audiolatm.Encoder {
+	e, _ := f.CreateEncoder2()
+	return e
+}
+
+// CreateEncoder2 creates an encoder able to encode the content of the format.
+func (f *MPEG4AudioLATM) CreateEncoder2() (*rtpmpeg4audiolatm.Encoder, error) {
+	e := &rtpmpeg4audiolatm.Encoder{
+		PayloadType: f.PayloadTyp,
+		Config:      f.Config,
+	}
+
+	err := e.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }

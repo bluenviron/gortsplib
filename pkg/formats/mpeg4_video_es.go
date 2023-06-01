@@ -87,17 +87,43 @@ func (f *MPEG4VideoES) PTSEqualsDTS(*rtp.Packet) bool {
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
+//
+// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
 func (f *MPEG4VideoES) CreateDecoder() *rtpmpeg4video.Decoder {
-	d := &rtpmpeg4video.Decoder{}
-	d.Init()
+	d, _ := f.CreateDecoder2()
 	return d
 }
 
+// CreateDecoder2 creates a decoder able to decode the content of the format.
+func (f *MPEG4VideoES) CreateDecoder2() (*rtpmpeg4video.Decoder, error) {
+	d := &rtpmpeg4video.Decoder{}
+
+	err := d.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
 // CreateEncoder creates an encoder able to encode the content of the format.
+//
+// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
 func (f *MPEG4VideoES) CreateEncoder() *rtpmpeg4video.Encoder {
+	e, _ := f.CreateEncoder2()
+	return e
+}
+
+// CreateEncoder2 creates an encoder able to encode the content of the format.
+func (f *MPEG4VideoES) CreateEncoder2() (*rtpmpeg4video.Encoder, error) {
 	e := &rtpmpeg4video.Encoder{
 		PayloadType: f.PayloadTyp,
 	}
-	e.Init()
-	return e
+
+	err := e.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }

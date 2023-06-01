@@ -1,4 +1,4 @@
-package rtpmpeg4audio
+package rtpmpeg4audiogeneric
 
 import (
 	"testing"
@@ -24,15 +24,16 @@ func TestDecode(t *testing.T) {
 				clone := pkt.Clone()
 
 				addAUs, _, err := d.Decode(pkt)
+
+				// test input integrity
+				require.Equal(t, clone, pkt)
+
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
 
 				require.NoError(t, err)
 				aus = append(aus, addAUs...)
-
-				// test input integrity
-				require.Equal(t, clone, pkt)
 			}
 
 			require.Equal(t, ca.aus, aus)

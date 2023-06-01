@@ -50,7 +50,11 @@ type Encoder struct {
 }
 
 // Init initializes the encoder.
-func (e *Encoder) Init() {
+func (e *Encoder) Init() error {
+	if e.MaxDONDiff != 0 {
+		return fmt.Errorf("MaxDONDiff != 0 is not supported (yet)")
+	}
+
 	if e.SSRC == nil {
 		v := randUint32()
 		e.SSRC = &v
@@ -69,14 +73,11 @@ func (e *Encoder) Init() {
 
 	e.sequenceNumber = *e.InitialSequenceNumber
 	e.timeEncoder = rtptime.NewEncoder(rtpClockRate, *e.InitialTimestamp)
+	return nil
 }
 
 // Encode encodes NALUs into RTP/H265 packets.
 func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
-	if e.MaxDONDiff != 0 {
-		return nil, fmt.Errorf("MaxDONDiff != 0 is not supported (yet)")
-	}
-
 	var rets []*rtp.Packet
 	var batch [][]byte
 

@@ -115,8 +115,9 @@ type Decoder struct {
 }
 
 // Init initializes the decoder.
-func (d *Decoder) Init() {
+func (d *Decoder) Init() error {
 	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
+	return nil
 }
 
 // Decode decodes an image from a RTP packet.
@@ -181,7 +182,6 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	}
 
 	data := joinFragments(d.fragments, d.fragmentsSize)
-
 	d.fragments = d.fragments[:0]
 	d.fragmentsSize = 0
 

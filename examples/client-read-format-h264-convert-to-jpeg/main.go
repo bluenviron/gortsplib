@@ -71,7 +71,10 @@ func main() {
 	}
 
 	// setup RTP/H264 -> H264 decoder
-	rtpDec := forma.CreateDecoder()
+	rtpDec, err := forma.CreateDecoder2()
+	if err != nil {
+		panic(err)
+	}
 
 	// setup H264 -> raw frames decoder
 	h264RawDec, err := newH264Decoder()

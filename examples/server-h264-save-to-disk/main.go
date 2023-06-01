@@ -76,7 +76,10 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// setup RTP/H264 -> H264 decoder
-	rtpDec := forma.CreateDecoder()
+	rtpDec, err := forma.CreateDecoder2()
+	if err != nil {
+		panic(err)
+	}
 
 	// setup H264 -> MPEGTS muxer
 	mpegtsMuxer, err := newMPEGTSMuxer(forma.SPS, forma.PPS)

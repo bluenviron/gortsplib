@@ -53,7 +53,7 @@ type Encoder struct {
 }
 
 // Init initializes the encoder.
-func (e *Encoder) Init() {
+func (e *Encoder) Init() error {
 	if e.SSRC == nil {
 		v := randUint32()
 		e.SSRC = &v
@@ -74,6 +74,16 @@ func (e *Encoder) Init() {
 	e.timeEncoder = rtptime.NewEncoder(e.SampleRate, *e.InitialTimestamp)
 	e.sampleSize = e.BitDepth * e.ChannelCount / 8
 	e.maxPayloadSize = (e.PayloadMaxSize / e.sampleSize) * e.sampleSize
+	return nil
+}
+
+func (e *Encoder) packetCount(slen int) int {
+	n := (slen / e.maxPayloadSize)
+	if (slen % e.maxPayloadSize) != 0 {
+		n++
+	}
+
+	return n
 }
 
 // Encode encodes audio samples into RTP packets.
@@ -83,12 +93,8 @@ func (e *Encoder) Encode(samples []byte, pts time.Duration) ([]*rtp.Packet, erro
 		return nil, fmt.Errorf("invalid samples")
 	}
 
-	n := (slen / e.maxPayloadSize)
-	if (slen % e.maxPayloadSize) != 0 {
-		n++
-	}
-
-	ret := make([]*rtp.Packet, n)
+	packetCount := e.packetCount(slen)
+	ret := make([]*rtp.Packet, packetCount)
 	i := 0
 	pos := 0
 	payloadSize := e.maxPayloadSize
