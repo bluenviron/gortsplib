@@ -25,7 +25,7 @@ func TestMPEG4AudioLATMAttributes(t *testing.T) {
 			}},
 		},
 	}
-	require.Equal(t, "MPEG4-audio-latm", format.String())
+	require.Equal(t, "MPEG4-audio", format.String())
 	require.Equal(t, 44100, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
