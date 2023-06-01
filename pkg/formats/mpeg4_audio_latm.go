@@ -87,7 +87,8 @@ func (f *MPEG4AudioLATM) unmarshal(
 
 // String implements Format.
 func (f *MPEG4AudioLATM) String() string {
-	return "MPEG4-audio-latm"
+	// currently, String() returns the codec name, hence hide the format name.
+	return "MPEG4-audio"
 }
 
 // ClockRate implements Format.

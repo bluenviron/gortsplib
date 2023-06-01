@@ -100,7 +100,8 @@ func (f *MPEG4AudioGeneric) unmarshal(
 
 // String implements Format.
 func (f *MPEG4AudioGeneric) String() string {
-	return "MPEG4-audio-gen"
+	// currently, String() returns the codec name, hence hide the format name.
+	return "MPEG4-audio"
 }
 
 // ClockRate implements Format.
