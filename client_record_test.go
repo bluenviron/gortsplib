@@ -1023,14 +1023,11 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 				}(),
 				OnDecodeError: func(err error) {
 					switch {
-					case ca.proto == "udp" && ca.name == "rtcp invalid":
+					case ca.name == "rtcp invalid":
 						require.EqualError(t, err, "rtcp: packet too short")
 
 					case ca.proto == "udp" && ca.name == "rtcp too big":
 						require.EqualError(t, err, "RTCP packet is too big to be read with UDP")
-
-					case ca.proto == "tcp" && ca.name == "rtcp invalid":
-						require.EqualError(t, err, "rtcp: packet too short")
 
 					case ca.proto == "tcp" && ca.name == "rtcp too big":
 						require.EqualError(t, err, "RTCP packet size (2000) is greater than maximum allowed (1472)")

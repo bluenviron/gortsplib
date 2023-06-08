@@ -1194,8 +1194,10 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 		{"udp", "rtp packets lost"},
 		{"udp", "rtp too big"},
 		{"udp", "rtcp too big"},
+		{"udp", "rtp unknown format"},
 		{"tcp", "rtcp invalid"},
 		{"tcp", "rtcp too big"},
+		{"tcp", "rtp unknown format"},
 	} {
 		t.Run(ca.proto+" "+ca.name, func(t *testing.T) {
 			errorRecv := make(chan struct{})
@@ -1228,7 +1230,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 						case ca.proto == "udp" && ca.name == "rtp invalid":
 							require.EqualError(t, ctx.Error, "RTP header size insufficient: 2 < 4")
 
-						case ca.proto == "udp" && ca.name == "rtcp invalid":
+						case ca.name == "rtcp invalid":
 							require.EqualError(t, ctx.Error, "rtcp: packet too short")
 
 						case ca.proto == "udp" && ca.name == "rtp too big":
@@ -1237,11 +1239,11 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 						case ca.proto == "udp" && ca.name == "rtcp too big":
 							require.EqualError(t, ctx.Error, "RTCP packet is too big to be read with UDP")
 
-						case ca.proto == "tcp" && ca.name == "rtcp invalid":
-							require.EqualError(t, ctx.Error, "rtcp: packet too short")
-
 						case ca.proto == "tcp" && ca.name == "rtcp too big":
 							require.EqualError(t, ctx.Error, "RTCP packet size (2000) is greater than maximum allowed (1472)")
+
+						case ca.name == "rtp unknown format":
+							require.EqualError(t, ctx.Error, "received RTP packet with unknown format: 111")
 						}
 						close(errorRecv)
 					},
@@ -1357,6 +1359,17 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 					Port: resTH.ServerPorts[1],
 				})
 
+			case ca.proto == "udp" && ca.name == "rtp unknown format":
+				byts, _ := rtp.Packet{
+					Header: rtp.Header{
+						PayloadType: 111,
+					},
+				}.Marshal()
+				l1.WriteTo(byts, &net.UDPAddr{
+					IP:   net.ParseIP("127.0.0.1"),
+					Port: resTH.ServerPorts[0],
+				})
+
 			case ca.proto == "tcp" && ca.name == "rtcp invalid":
 				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 1,
@@ -1368,6 +1381,18 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 1,
 					Payload: bytes.Repeat([]byte{0x01, 0x02}, 2000/2),
+				}, make([]byte, 2048))
+				require.NoError(t, err)
+
+			case ca.proto == "tcp" && ca.name == "rtp unknown format":
+				byts, _ := rtp.Packet{
+					Header: rtp.Header{
+						PayloadType: 111,
+					},
+				}.Marshal()
+				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					Channel: 0,
+					Payload: byts,
 				}, make([]byte, 2048))
 				require.NoError(t, err)
 			}
