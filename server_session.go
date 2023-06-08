@@ -22,6 +22,8 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/url"
 )
 
+type readFunc func([]byte)
+
 func stringsReverseIndex(s, substr string) int {
 	for i := len(s) - 1 - len(substr); i >= 0; i-- {
 		if s[i:i+len(substr)] == substr {
@@ -99,42 +101,6 @@ func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *heade
 	return nil
 }
 
-func findAndValidateTransport(inTH *headers.Transport,
-	tcpMediasByChannel map[int]*serverSessionMedia,
-) (Transport, error) {
-	if inTH.Protocol == headers.TransportProtocolUDP {
-		if inTH.Delivery != nil && *inTH.Delivery == headers.TransportDeliveryMulticast {
-			return TransportUDPMulticast, nil
-		}
-
-		if inTH.ClientPorts == nil {
-			return 0, liberrors.ErrServerTransportHeaderNoClientPorts{}
-		}
-		return TransportUDP, nil
-	}
-
-	if inTH.InterleavedIDs != nil {
-		if (inTH.InterleavedIDs[0]%2) != 0 ||
-			(inTH.InterleavedIDs[0]+1) != inTH.InterleavedIDs[1] {
-			return 0, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{}
-		}
-
-		if _, ok := tcpMediasByChannel[inTH.InterleavedIDs[0]]; ok {
-			return 0, liberrors.ErrServerTransportHeaderInterleavedIDsAlreadyUsed{}
-		}
-	}
-
-	return TransportTCP, nil
-}
-
-func findFreeChannel(tcpMediasByChannel map[int]*serverSessionMedia) int {
-	for i := 0; ; i += 2 {
-		if _, ok := tcpMediasByChannel[i]; !ok {
-			return i
-		}
-	}
-}
-
 // ServerSessionState is a state of a ServerSession.
 type ServerSessionState int
 
@@ -179,7 +145,7 @@ type ServerSession struct {
 	state                 ServerSessionState
 	setuppedMedias        map[*media.Media]*serverSessionMedia
 	setuppedMediasOrdered []*serverSessionMedia
-	tcpMediasByChannel    map[int]*serverSessionMedia
+	tcpCallbackByChannel  map[int]readFunc
 	setuppedTransport     *Transport
 	setuppedStream        *ServerStream // read
 	setuppedPath          *string
@@ -665,11 +631,36 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			query = ss.setuppedQuery
 		}
 
-		transport, err := findAndValidateTransport(inTH, ss.tcpMediasByChannel)
-		if err != nil {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, err
+		var transport Transport
+
+		if inTH.Protocol == headers.TransportProtocolUDP {
+			if inTH.Delivery != nil && *inTH.Delivery == headers.TransportDeliveryMulticast {
+				transport = TransportUDPMulticast
+			} else {
+				transport = TransportUDP
+
+				if inTH.ClientPorts == nil {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, liberrors.ErrServerTransportHeaderNoClientPorts{}
+				}
+			}
+		} else {
+			transport = TransportTCP
+
+			if inTH.InterleavedIDs != nil {
+				if (inTH.InterleavedIDs[0] + 1) != inTH.InterleavedIDs[1] {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, liberrors.ErrServerTransportHeaderInvalidInterleavedIDs{}
+				}
+
+				if ss.isChannelPairInUse(inTH.InterleavedIDs[0]) {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, liberrors.ErrServerTransportHeaderInterleavedIDsInUse{}
+				}
+			}
 		}
 
 		if ss.setuppedTransport != nil && *ss.setuppedTransport != transport {
@@ -829,14 +820,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			if inTH.InterleavedIDs != nil {
 				sm.tcpChannel = inTH.InterleavedIDs[0]
 			} else {
-				sm.tcpChannel = findFreeChannel(ss.tcpMediasByChannel)
+				sm.tcpChannel = ss.findFreeChannelPair()
 			}
-
-			if ss.tcpMediasByChannel == nil {
-				ss.tcpMediasByChannel = make(map[int]*serverSessionMedia)
-			}
-
-			ss.tcpMediasByChannel[sm.tcpChannel] = sm
 
 			th.Protocol = headers.TransportProtocolTCP
 			de := headers.TransportDeliveryUnicast
@@ -1126,6 +1111,23 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 	return &base.Response{
 		StatusCode: base.StatusNotImplemented,
 	}, nil
+}
+
+func (ss *ServerSession) isChannelPairInUse(channel int) bool {
+	for _, sm := range ss.setuppedMedias {
+		if sm.tcpChannel == channel || sm.tcpChannel == (channel+1) {
+			return true
+		}
+	}
+	return false
+}
+
+func (ss *ServerSession) findFreeChannelPair() int {
+	for i := 0; ; i += 2 { // prefer even channels
+		if !ss.isChannelPairInUse(i) {
+			return i
+		}
+	}
 }
 
 // OnPacketRTPAny sets the callback that is called when a RTP packet is read from any setupped media.

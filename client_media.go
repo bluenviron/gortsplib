@@ -24,8 +24,6 @@ type clientMedia struct {
 	tcpBuffer              []byte
 	writePacketRTPInQueue  func([]byte)
 	writePacketRTCPInQueue func([]byte)
-	readRTP                func([]byte) error
-	readRTCP               func([]byte) error
 	onPacketRTCP           func(rtcp.Packet)
 }
 
@@ -51,8 +49,7 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 			cm.c.WriteTimeout,
 			multicast,
 			rtpAddress,
-			cm,
-			true)
+		)
 		if err != nil {
 			return err
 		}
@@ -63,8 +60,7 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 			cm.c.WriteTimeout,
 			multicast,
 			rtcpAddress,
-			cm,
-			false)
+		)
 		if err != nil {
 			l1.close()
 			return err
@@ -78,7 +74,6 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 		cm.c.ListenPacket,
 		cm.c.AnyPortEnable,
 		cm.c.WriteTimeout,
-		cm,
 	)
 	return nil
 }
@@ -98,22 +93,26 @@ func (cm *clientMedia) start() {
 		cm.writePacketRTCPInQueue = cm.writePacketRTCPInQueueUDP
 
 		if cm.c.state == clientStatePlay {
-			cm.readRTP = cm.readRTPUDPPlay
-			cm.readRTCP = cm.readRTCPUDPPlay
+			cm.udpRTPListener.readFunc = cm.readRTPUDPPlay
+			cm.udpRTCPListener.readFunc = cm.readRTCPUDPPlay
 		} else {
-			cm.readRTP = cm.readRTPUDPRecord
-			cm.readRTCP = cm.readRTCPUDPRecord
+			cm.udpRTPListener.readFunc = cm.readRTPUDPRecord
+			cm.udpRTCPListener.readFunc = cm.readRTCPUDPRecord
 		}
 	} else {
 		cm.writePacketRTPInQueue = cm.writePacketRTPInQueueTCP
 		cm.writePacketRTCPInQueue = cm.writePacketRTCPInQueueTCP
 
+		if cm.c.tcpCallbackByChannel == nil {
+			cm.c.tcpCallbackByChannel = make(map[int]readFunc)
+		}
+
 		if cm.c.state == clientStatePlay {
-			cm.readRTP = cm.readRTPTCPPlay
-			cm.readRTCP = cm.readRTCPTCPPlay
+			cm.c.tcpCallbackByChannel[cm.tcpChannel] = cm.readRTPTCPPlay
+			cm.c.tcpCallbackByChannel[cm.tcpChannel+1] = cm.readRTCPTCPPlay
 		} else {
-			cm.readRTP = cm.readRTPTCPRecord
-			cm.readRTCP = cm.readRTCPTCPRecord
+			cm.c.tcpCallbackByChannel[cm.tcpChannel] = cm.readRTPTCPRecord
+			cm.c.tcpCallbackByChannel[cm.tcpChannel+1] = cm.readRTCPTCPRecord
 		}
 
 		cm.tcpRTPFrame = &base.InterleavedFrame{Channel: cm.tcpChannel}
@@ -199,101 +198,95 @@ func (cm *clientMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	return nil
 }
 
-func (cm *clientMedia) readRTPTCPPlay(payload []byte) error {
+func (cm *clientMedia) readRTPTCPPlay(payload []byte) {
 	now := time.Now()
 	atomic.StoreInt64(cm.c.tcpLastFrameTime, now.Unix())
 
 	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
-		return err
+		cm.c.OnDecodeError(err)
+		return
 	}
 
 	forma, ok := cm.formats[pkt.PayloadType]
 	if !ok {
 		cm.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown format: %d", pkt.PayloadType))
-		return nil
+		return
 	}
 
 	forma.readRTPTCP(pkt)
-	return nil
 }
 
-func (cm *clientMedia) readRTCPTCPPlay(payload []byte) error {
+func (cm *clientMedia) readRTCPTCPPlay(payload []byte) {
 	now := time.Now()
 	atomic.StoreInt64(cm.c.tcpLastFrameTime, now.Unix())
 
 	if len(payload) > udpMaxPayloadSize {
 		cm.c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
 			len(payload), udpMaxPayloadSize))
-		return nil
+		return
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		cm.c.OnDecodeError(err)
-		return nil
+		return
 	}
 
 	for _, pkt := range packets {
 		cm.onPacketRTCP(pkt)
 	}
-
-	return nil
 }
 
-func (cm *clientMedia) readRTPTCPRecord(_ []byte) error {
-	return nil
+func (cm *clientMedia) readRTPTCPRecord(_ []byte) {
 }
 
-func (cm *clientMedia) readRTCPTCPRecord(payload []byte) error {
+func (cm *clientMedia) readRTCPTCPRecord(payload []byte) {
 	if len(payload) > udpMaxPayloadSize {
 		cm.c.OnDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
 			len(payload), udpMaxPayloadSize))
-		return nil
+		return
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		cm.c.OnDecodeError(err)
-		return nil
+		return
 	}
 
 	for _, pkt := range packets {
 		cm.onPacketRTCP(pkt)
 	}
-
-	return nil
 }
 
-func (cm *clientMedia) readRTPUDPPlay(payload []byte) error {
+func (cm *clientMedia) readRTPUDPPlay(payload []byte) {
 	plen := len(payload)
 
 	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
 		cm.c.OnDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
-		return nil
+		return
 	}
 
 	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		cm.c.OnDecodeError(err)
-		return nil
+		return
 	}
 
 	forma, ok := cm.formats[pkt.PayloadType]
 	if !ok {
 		cm.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown format: %d", pkt.PayloadType))
-		return nil
+		return
 	}
 
 	forma.readRTPUDP(pkt)
-	return nil
 }
 
-func (cm *clientMedia) readRTCPUDPPlay(payload []byte) error {
+func (cm *clientMedia) readRTCPUDPPlay(payload []byte) {
 	now := time.Now()
 	plen := len(payload)
 
@@ -301,13 +294,13 @@ func (cm *clientMedia) readRTCPUDPPlay(payload []byte) error {
 
 	if plen == (udpMaxPayloadSize + 1) {
 		cm.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
-		return nil
+		return
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		cm.c.OnDecodeError(err)
-		return nil
+		return
 	}
 
 	for _, pkt := range packets {
@@ -320,33 +313,28 @@ func (cm *clientMedia) readRTCPUDPPlay(payload []byte) error {
 
 		cm.onPacketRTCP(pkt)
 	}
-
-	return nil
 }
 
-func (cm *clientMedia) readRTPUDPRecord(_ []byte) error {
-	return nil
+func (cm *clientMedia) readRTPUDPRecord(_ []byte) {
 }
 
-func (cm *clientMedia) readRTCPUDPRecord(payload []byte) error {
+func (cm *clientMedia) readRTCPUDPRecord(payload []byte) {
 	plen := len(payload)
 
 	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
 		cm.c.OnDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
-		return nil
+		return
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		cm.c.OnDecodeError(err)
-		return nil
+		return
 	}
 
 	for _, pkt := range packets {
 		cm.onPacketRTCP(pkt)
 	}
-
-	return nil
 }

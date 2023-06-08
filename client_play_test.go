@@ -1551,7 +1551,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 				return &v
 			}(),
 			Protocol:       headers.TransportProtocolTCP,
-			InterleavedIDs: &[2]int{2, 3},
+			InterleavedIDs: &[2]int{1, 2}, // use odd value
 		}
 
 		err = conn.WriteResponse(&base.Response{
@@ -1573,7 +1573,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 		require.NoError(t, err)
 
 		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
-			Channel: 2,
+			Channel: 1,
 			Payload: testRTPPacketMarshaled,
 		}, make([]byte, 1024))
 		require.NoError(t, err)

@@ -66,12 +66,11 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 type serverUDPListener struct {
 	pc           *net.UDPConn
 	listenIP     net.IP
-	isRTP        bool
 	writeTimeout time.Duration
 	clientsMutex sync.RWMutex
-	clients      map[clientAddr]*serverSessionMedia
+	clients      map[clientAddr]readFunc
 
-	readerDone chan struct{}
+	done chan struct{}
 }
 
 func newServerUDPListenerMulticastPair(
@@ -86,7 +85,6 @@ func newServerUDPListenerMulticastPair(
 		writeTimeout,
 		true,
 		net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTPPort), 10)),
-		true,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -97,7 +95,6 @@ func newServerUDPListenerMulticastPair(
 		writeTimeout,
 		true,
 		net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTCPPort), 10)),
-		false,
 	)
 	if err != nil {
 		rtpl.close()
@@ -112,7 +109,6 @@ func newServerUDPListener(
 	writeTimeout time.Duration,
 	multicast bool,
 	address string,
-	isRTP bool,
 ) (*serverUDPListener, error) {
 	var pc *net.UDPConn
 	var listenIP net.IP
@@ -160,20 +156,19 @@ func newServerUDPListener(
 	u := &serverUDPListener{
 		pc:           pc,
 		listenIP:     listenIP,
-		clients:      make(map[clientAddr]*serverSessionMedia),
-		isRTP:        isRTP,
+		clients:      make(map[clientAddr]readFunc),
 		writeTimeout: writeTimeout,
-		readerDone:   make(chan struct{}),
+		done:         make(chan struct{}),
 	}
 
-	go u.runReader()
+	go u.run()
 
 	return u, nil
 }
 
 func (u *serverUDPListener) close() {
 	u.pc.Close()
-	<-u.readerDone
+	<-u.done
 }
 
 func (u *serverUDPListener) ip() net.IP {
@@ -184,19 +179,8 @@ func (u *serverUDPListener) port() int {
 	return u.pc.LocalAddr().(*net.UDPAddr).Port
 }
 
-func (u *serverUDPListener) runReader() {
-	defer close(u.readerDone)
-
-	var readFunc func(*serverSessionMedia, []byte)
-	if u.isRTP {
-		readFunc = func(sm *serverSessionMedia, payload []byte) {
-			sm.readRTP(payload)
-		}
-	} else {
-		readFunc = func(sm *serverSessionMedia, payload []byte) {
-			sm.readRTCP(payload)
-		}
-	}
+func (u *serverUDPListener) run() {
+	defer close(u.done)
 
 	for {
 		buf := make([]byte, udpMaxPayloadSize+1)
@@ -211,12 +195,12 @@ func (u *serverUDPListener) runReader() {
 
 			var clientAddr clientAddr
 			clientAddr.fill(addr.IP, addr.Port)
-			sm, ok := u.clients[clientAddr]
+			cb, ok := u.clients[clientAddr]
 			if !ok {
 				return
 			}
 
-			readFunc(sm, buf[:n])
+			cb(buf[:n])
 		}()
 	}
 }
@@ -229,23 +213,22 @@ func (u *serverUDPListener) write(buf []byte, addr *net.UDPAddr) error {
 	return err
 }
 
-func (u *serverUDPListener) addClient(ip net.IP, port int, sm *serverSessionMedia) {
-	u.clientsMutex.Lock()
-	defer u.clientsMutex.Unlock()
-
+func (u *serverUDPListener) addClient(ip net.IP, port int, cb readFunc) {
 	var addr clientAddr
 	addr.fill(ip, port)
 
-	u.clients[addr] = sm
-}
-
-func (u *serverUDPListener) removeClient(sm *serverSessionMedia) {
 	u.clientsMutex.Lock()
 	defer u.clientsMutex.Unlock()
 
-	for addr, sm1 := range u.clients {
-		if sm1 == sm {
-			delete(u.clients, addr)
-		}
-	}
+	u.clients[addr] = cb
+}
+
+func (u *serverUDPListener) removeClient(ip net.IP, port int) {
+	var addr clientAddr
+	addr.fill(ip, port)
+
+	u.clientsMutex.Lock()
+	defer u.clientsMutex.Unlock()
+
+	delete(u.clients, addr)
 }

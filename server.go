@@ -222,7 +222,6 @@ func (s *Server) Start() error {
 			s.WriteTimeout,
 			false,
 			s.UDPRTPAddress,
-			true,
 		)
 		if err != nil {
 			return err
@@ -233,7 +232,6 @@ func (s *Server) Start() error {
 			s.WriteTimeout,
 			false,
 			s.UDPRTCPAddress,
-			false,
 		)
 		if err != nil {
 			s.udpRTPListener.close()

@@ -57,25 +57,8 @@ func (r *clientReader) runInner() error {
 				r.c.OnResponse(what)
 
 			case *base.InterleavedFrame:
-				channel := what.Channel
-				isRTP := true
-				if (channel % 2) != 0 {
-					channel--
-					isRTP = false
-				}
-
-				media, ok := r.c.tcpMediasByChannel[channel]
-				if !ok {
-					continue
-				}
-
-				if isRTP {
-					err = media.readRTP(what.Payload)
-				} else {
-					err = media.readRTCP(what.Payload)
-				}
-				if err != nil {
-					return err
+				if cb, ok := r.c.tcpCallbackByChannel[what.Channel]; ok {
+					cb(what.Payload)
 				}
 			}
 		}

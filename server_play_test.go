@@ -644,7 +644,7 @@ func TestServerPlay(t *testing.T) {
 				v := headers.TransportDeliveryUnicast
 				inTH.Delivery = &v
 				inTH.Protocol = headers.TransportProtocolTCP
-				inTH.InterleavedIDs = &[2]int{4, 5}
+				inTH.InterleavedIDs = &[2]int{5, 6} // off value
 			}
 
 			res, th := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
@@ -721,10 +721,10 @@ func TestServerPlay(t *testing.T) {
 				require.NoError(t, err)
 
 				switch f.Channel {
-				case 4:
+				case 5:
 					require.Equal(t, testRTPPacketMarshaled, f.Payload)
 
-				case 5:
+				case 6:
 					require.Equal(t, testRTCPPacketMarshaled, f.Payload)
 
 				default:
@@ -749,10 +749,10 @@ func TestServerPlay(t *testing.T) {
 					require.NoError(t, err)
 
 					switch f.Channel {
-					case 4:
+					case 5:
 						require.Equal(t, testRTPPacketMarshaled, f.Payload)
 
-					case 5:
+					case 6:
 						require.Equal(t, testRTCPPacketMarshaled, f.Payload)
 
 					default:
@@ -779,7 +779,7 @@ func TestServerPlay(t *testing.T) {
 
 			default:
 				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
-					Channel: 5,
+					Channel: 6,
 					Payload: testRTCPPacketMarshaled,
 				}, make([]byte, 1024))
 				require.NoError(t, err)
