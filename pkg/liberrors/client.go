@@ -163,12 +163,12 @@ func (e ErrClientTransportHeaderInvalidInterleavedIDs) Error() string {
 	return "invalid interleaved IDs"
 }
 
-// ErrClientTransportHeaderInterleavedIDsAlreadyUsed is an error that can be returned by a client.
-type ErrClientTransportHeaderInterleavedIDsAlreadyUsed struct{}
+// ErrClientTransportHeaderInterleavedIDsInUse is an error that can be returned by a client.
+type ErrClientTransportHeaderInterleavedIDsInUse struct{}
 
 // Error implements the error interface.
-func (e ErrClientTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
-	return "interleaved IDs already used"
+func (e ErrClientTransportHeaderInterleavedIDsInUse) Error() string {
+	return "interleaved IDs are in use"
 }
 
 // ErrClientUDPTimeout is an error that can be returned by a client.

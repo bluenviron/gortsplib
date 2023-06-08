@@ -25,9 +25,8 @@ type clientUDPListener struct {
 	anyPortEnable bool
 	writeTimeout  time.Duration
 	pc            *net.UDPConn
-	cm            *clientMedia
-	isRTP         bool
 
+	readFunc  readFunc
 	readIP    net.IP
 	readPort  int
 	writeAddr *net.UDPAddr
@@ -35,14 +34,13 @@ type clientUDPListener struct {
 	running        bool
 	lastPacketTime *int64
 
-	readerDone chan struct{}
+	done chan struct{}
 }
 
 func newClientUDPListenerPair(
 	listenPacket func(network, address string) (net.PacketConn, error),
 	anyPortEnable bool,
 	writeTimeout time.Duration,
-	cm *clientMedia,
 ) (*clientUDPListener, *clientUDPListener) {
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
@@ -54,8 +52,7 @@ func newClientUDPListenerPair(
 			writeTimeout,
 			false,
 			net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
-			cm,
-			true)
+		)
 		if err != nil {
 			continue
 		}
@@ -67,8 +64,7 @@ func newClientUDPListenerPair(
 			writeTimeout,
 			false,
 			net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
-			cm,
-			false)
+		)
 		if err != nil {
 			rtpListener.close()
 			continue
@@ -84,8 +80,6 @@ func newClientUDPListener(
 	writeTimeout time.Duration,
 	multicast bool,
 	address string,
-	cm *clientMedia,
-	isRTP bool,
 ) (*clientUDPListener, error) {
 	var pc *net.UDPConn
 	if multicast {
@@ -129,8 +123,6 @@ func newClientUDPListener(
 		anyPortEnable:  anyPortEnable,
 		writeTimeout:   writeTimeout,
 		pc:             pc,
-		cm:             cm,
-		isRTP:          isRTP,
 		lastPacketTime: int64Ptr(0),
 	}, nil
 }
@@ -149,24 +141,17 @@ func (u *clientUDPListener) port() int {
 func (u *clientUDPListener) start() {
 	u.running = true
 	u.pc.SetReadDeadline(time.Time{})
-	u.readerDone = make(chan struct{})
-	go u.runReader()
+	u.done = make(chan struct{})
+	go u.run()
 }
 
 func (u *clientUDPListener) stop() {
 	u.pc.SetReadDeadline(time.Now())
-	<-u.readerDone
+	<-u.done
 }
 
-func (u *clientUDPListener) runReader() {
-	defer close(u.readerDone)
-
-	var readFunc func([]byte) error
-	if u.isRTP {
-		readFunc = u.cm.readRTP
-	} else {
-		readFunc = u.cm.readRTCP
-	}
+func (u *clientUDPListener) run() {
+	defer close(u.done)
 
 	for {
 		buf := make([]byte, udpMaxPayloadSize+1)
@@ -192,7 +177,7 @@ func (u *clientUDPListener) runReader() {
 		now := time.Now()
 		atomic.StoreInt64(u.lastPacketTime, now.Unix())
 
-		readFunc(buf[:n])
+		u.readFunc(buf[:n])
 	}
 }
 

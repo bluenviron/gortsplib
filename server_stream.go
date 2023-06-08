@@ -225,7 +225,7 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 		for medi, sm := range ss.setuppedMedias {
 			streamMedia := st.streamMedias[medi]
 			streamMedia.multicastWriter.rtcpl.addClient(
-				ss.author.ip(), streamMedia.multicastWriter.rtcpl.port(), sm)
+				ss.author.ip(), streamMedia.multicastWriter.rtcpl.port(), sm.readRTCPUDPPlay)
 		}
 	} else {
 		st.activeUnicastReaders[ss] = struct{}{}
@@ -241,9 +241,9 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 	}
 
 	if *ss.setuppedTransport == TransportUDPMulticast {
-		for medi, sm := range ss.setuppedMedias {
+		for medi := range ss.setuppedMedias {
 			streamMedia := st.streamMedias[medi]
-			streamMedia.multicastWriter.rtcpl.removeClient(sm)
+			streamMedia.multicastWriter.rtcpl.removeClient(ss.author.ip(), streamMedia.multicastWriter.rtcpl.port())
 		}
 	} else {
 		delete(st.activeUnicastReaders, ss)

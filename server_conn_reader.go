@@ -106,21 +106,10 @@ func (cr *serverConnReader) readFuncTCP() error {
 
 		switch twhat := what.(type) {
 		case *base.InterleavedFrame:
-			channel := twhat.Channel
-			isRTP := true
-			if (channel % 2) != 0 {
-				channel--
-				isRTP = false
-			}
-
 			atomic.AddUint64(cr.sc.session.bytesReceived, uint64(len(twhat.Payload)))
 
-			if sm, ok := cr.sc.session.tcpMediasByChannel[channel]; ok {
-				if isRTP {
-					sm.readRTP(twhat.Payload)
-				} else {
-					sm.readRTCP(twhat.Payload)
-				}
+			if cb, ok := cr.sc.session.tcpCallbackByChannel[twhat.Channel]; ok {
+				cb(twhat.Payload)
 			}
 
 		case *base.Request:

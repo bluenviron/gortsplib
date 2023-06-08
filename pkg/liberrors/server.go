@@ -132,12 +132,12 @@ func (e ErrServerTransportHeaderInvalidInterleavedIDs) Error() string {
 	return "invalid interleaved IDs"
 }
 
-// ErrServerTransportHeaderInterleavedIDsAlreadyUsed is an error that can be returned by a server.
-type ErrServerTransportHeaderInterleavedIDsAlreadyUsed struct{}
+// ErrServerTransportHeaderInterleavedIDsInUse is an error that can be returned by a server.
+type ErrServerTransportHeaderInterleavedIDsInUse struct{}
 
 // Error implements the error interface.
-func (e ErrServerTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
-	return "interleaved IDs already used"
+func (e ErrServerTransportHeaderInterleavedIDsInUse) Error() string {
+	return "interleaved IDs are in use"
 }
 
 // ErrServerMediasDifferentPaths is an error that can be returned by a server.
