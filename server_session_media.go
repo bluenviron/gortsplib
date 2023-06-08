@@ -194,7 +194,7 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) error {
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
-		sm.ss.onDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
+		sm.ss.onDecodeError(fmt.Errorf("received RTP packet with unknown format: %d", pkt.PayloadType))
 		return nil
 	}
 
@@ -273,7 +273,7 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) error {
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
-		sm.ss.onDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
+		sm.ss.onDecodeError(fmt.Errorf("received RTP packet with unknown format: %d", pkt.PayloadType))
 		return nil
 	}
 

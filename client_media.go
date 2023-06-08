@@ -211,6 +211,7 @@ func (cm *clientMedia) readRTPTCPPlay(payload []byte) error {
 
 	forma, ok := cm.formats[pkt.PayloadType]
 	if !ok {
+		cm.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown format: %d", pkt.PayloadType))
 		return nil
 	}
 
@@ -284,7 +285,7 @@ func (cm *clientMedia) readRTPUDPPlay(payload []byte) error {
 
 	forma, ok := cm.formats[pkt.PayloadType]
 	if !ok {
-		cm.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown payload type (%d)", pkt.PayloadType))
+		cm.c.OnDecodeError(fmt.Errorf("received RTP packet with unknown format: %d", pkt.PayloadType))
 		return nil
 	}
 
