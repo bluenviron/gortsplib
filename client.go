@@ -1382,7 +1382,7 @@ func (c *Client) doSetup(
 
 func (c *Client) isChannelPairInUse(channel int) bool {
 	for _, cm := range c.medias {
-		if cm.tcpChannel == channel || cm.tcpChannel == (channel+1) {
+		if (cm.tcpChannel+1) == channel || cm.tcpChannel == channel || cm.tcpChannel == (channel+1) {
 			return true
 		}
 	}
