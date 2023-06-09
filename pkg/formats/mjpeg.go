@@ -14,9 +14,16 @@ func (f *MJPEG) unmarshal(_ uint8, _ string, _ string, _ string, _ map[string]st
 	return nil
 }
 
-// String implements Format.
-func (f *MJPEG) String() string {
+// Codec implements Format.
+func (f *MJPEG) Codec() string {
 	return "M-JPEG"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *MJPEG) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.

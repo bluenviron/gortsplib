@@ -14,7 +14,7 @@ func TestLPCMAttributes(t *testing.T) {
 		SampleRate:   44100,
 		ChannelCount: 2,
 	}
-	require.Equal(t, "LPCM", format.String())
+	require.Equal(t, "LPCM", format.Codec())
 	require.Equal(t, 44100, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

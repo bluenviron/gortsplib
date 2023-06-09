@@ -21,7 +21,7 @@ func TestMPEG4AudioGenericAttributes(t *testing.T) {
 		IndexLength:      3,
 		IndexDeltaLength: 3,
 	}
-	require.Equal(t, "MPEG4-audio", format.String())
+	require.Equal(t, "MPEG-4 Audio", format.Codec())
 	require.Equal(t, 48000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

@@ -9,7 +9,7 @@ import (
 
 func TestMPEGTSAttributes(t *testing.T) {
 	format := &MPEGTS{}
-	require.Equal(t, "MPEG-TS", format.String())
+	require.Equal(t, "MPEG-TS", format.Codec())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

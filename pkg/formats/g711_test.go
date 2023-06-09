@@ -9,14 +9,14 @@ import (
 
 func TestG711Attributes(t *testing.T) {
 	format := &G711{}
-	require.Equal(t, "G711", format.String())
+	require.Equal(t, "G711", format.Codec())
 	require.Equal(t, 8000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 
 	format = &G711{
 		MULaw: true,
 	}
-	require.Equal(t, "G711", format.String())
+	require.Equal(t, "G711", format.Codec())
 	require.Equal(t, 8000, format.ClockRate())
 }
 

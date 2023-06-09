@@ -116,9 +116,16 @@ func (f *H264) unmarshal(payloadType uint8, _ string, _ string, _ string, fmtp m
 	return nil
 }
 
-// String implements Format.
-func (f *H264) String() string {
+// Codec implements Format.
+func (f *H264) Codec() string {
 	return "H264"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *H264) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.

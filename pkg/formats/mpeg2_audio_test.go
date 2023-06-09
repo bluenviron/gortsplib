@@ -9,7 +9,7 @@ import (
 
 func TestMPEG2AudioAttributes(t *testing.T) {
 	format := &MPEG2Audio{}
-	require.Equal(t, "MPEG2-audio", format.String())
+	require.Equal(t, "MPEG-1/2 Audio", format.Codec())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

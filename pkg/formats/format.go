@@ -17,11 +17,14 @@ func getCodecAndClock(rtpMap string) (string, string) {
 }
 
 // Format is a RTP format of a media.
-// It defines a codec and a payload type used to transmit the media.
+// It defines a codec and a payload type to transmit the media.
 type Format interface {
 	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error
 
-	// String returns a description of the format.
+	// Codec returns the codec name.
+	Codec() string
+
+	// Deprecated: replaced by Codec().
 	String() string
 
 	// ClockRate returns the clock rate.

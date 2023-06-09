@@ -53,9 +53,16 @@ func (f *LPCM) unmarshal(payloadType uint8, clock string, codec string, _ string
 	return nil
 }
 
-// String implements Format.
-func (f *LPCM) String() string {
+// Codec implements Format.
+func (f *LPCM) Codec() string {
 	return "LPCM"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *LPCM) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.

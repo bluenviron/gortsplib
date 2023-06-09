@@ -18,9 +18,16 @@ func (f *G711) unmarshal(payloadType uint8, _ string, _ string, _ string, _ map[
 	return nil
 }
 
-// String implements Format.
-func (f *G711) String() string {
+// Codec implements Format.
+func (f *G711) Codec() string {
 	return "G711"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *G711) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.

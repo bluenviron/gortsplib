@@ -55,9 +55,16 @@ func (f *VP9) unmarshal(payloadType uint8, _ string, _ string, _ string, fmtp ma
 	return nil
 }
 
-// String implements Format.
-func (f *VP9) String() string {
+// Codec implements Format.
+func (f *VP9) Codec() string {
 	return "VP9"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *VP9) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.

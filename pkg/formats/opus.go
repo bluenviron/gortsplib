@@ -44,9 +44,16 @@ func (f *Opus) unmarshal(payloadType uint8, clock string, _ string, _ string, fm
 	return nil
 }
 
-// String implements Format.
-func (f *Opus) String() string {
+// Codec implements Format.
+func (f *Opus) Codec() string {
 	return "Opus"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *Opus) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.

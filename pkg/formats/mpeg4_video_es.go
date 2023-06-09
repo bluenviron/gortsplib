@@ -51,9 +51,16 @@ func (f *MPEG4VideoES) unmarshal(
 	return nil
 }
 
+// Codec implements Format.
+func (f *MPEG4VideoES) Codec() string {
+	return "MPEG-4 Video"
+}
+
 // String implements Format.
+//
+// Deprecated: replaced by Codec().
 func (f *MPEG4VideoES) String() string {
-	return "MPEG4-video-es"
+	return f.Codec()
 }
 
 // ClockRate implements Format.

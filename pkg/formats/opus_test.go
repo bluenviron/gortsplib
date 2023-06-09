@@ -12,7 +12,7 @@ func TestOpusAttributes(t *testing.T) {
 		PayloadTyp: 96,
 		IsStereo:   true,
 	}
-	require.Equal(t, "Opus", format.String())
+	require.Equal(t, "Opus", format.Codec())
 	require.Equal(t, 48000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

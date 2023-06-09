@@ -85,10 +85,16 @@ func (f *MPEG4AudioLATM) unmarshal(
 	return nil
 }
 
+// Codec implements Format.
+func (f *MPEG4AudioLATM) Codec() string {
+	return "MPEG-4 Audio"
+}
+
 // String implements Format.
+//
+// Deprecated: replaced by Codec().
 func (f *MPEG4AudioLATM) String() string {
-	// currently, String() returns the codec name, hence hide the format name.
-	return "MPEG4-audio"
+	return f.Codec()
 }
 
 // ClockRate implements Format.

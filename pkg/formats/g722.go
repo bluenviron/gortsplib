@@ -14,9 +14,16 @@ func (f *G722) unmarshal(_ uint8, _ string, _ string, _ string, _ map[string]str
 	return nil
 }
 
-// String implements Format.
-func (f *G722) String() string {
+// Codec implements Format.
+func (f *G722) Codec() string {
 	return "G722"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *G722) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.
