@@ -1115,7 +1115,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 func (ss *ServerSession) isChannelPairInUse(channel int) bool {
 	for _, sm := range ss.setuppedMedias {
-		if sm.tcpChannel == channel || sm.tcpChannel == (channel+1) {
+		if (sm.tcpChannel+1) == channel || sm.tcpChannel == channel || sm.tcpChannel == (channel+1) {
 			return true
 		}
 	}
