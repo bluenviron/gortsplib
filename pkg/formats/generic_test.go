@@ -21,7 +21,7 @@ func TestGenericAttributes(t *testing.T) {
 	err := format.Init()
 	require.NoError(t, err)
 
-	require.Equal(t, "Generic", format.String())
+	require.Equal(t, "Generic", format.Codec())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

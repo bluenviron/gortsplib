@@ -11,7 +11,7 @@ func TestVP9Attributes(t *testing.T) {
 	format := &VP9{
 		PayloadTyp: 100,
 	}
-	require.Equal(t, "VP9", format.String())
+	require.Equal(t, "VP9", format.Codec())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

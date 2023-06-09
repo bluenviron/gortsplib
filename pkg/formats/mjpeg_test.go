@@ -9,7 +9,7 @@ import (
 
 func TestMJPEGAttributes(t *testing.T) {
 	format := &MJPEG{}
-	require.Equal(t, "M-JPEG", format.String())
+	require.Equal(t, "M-JPEG", format.Codec())
 	require.Equal(t, 90000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }

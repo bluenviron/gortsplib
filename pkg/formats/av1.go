@@ -55,9 +55,16 @@ func (f *AV1) unmarshal(payloadType uint8, _ string, _ string, _ string, fmtp ma
 	return nil
 }
 
-// String implements Format.
-func (f *AV1) String() string {
+// Codec implements Format.
+func (f *AV1) Codec() string {
 	return "AV1"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *AV1) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.

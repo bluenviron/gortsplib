@@ -56,9 +56,16 @@ func (f *Vorbis) unmarshal(payloadType uint8, clock string, _ string, _ string, 
 	return nil
 }
 
-// String implements Format.
-func (f *Vorbis) String() string {
+// Codec implements Format.
+func (f *Vorbis) Codec() string {
 	return "Vorbis"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *Vorbis) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.

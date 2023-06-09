@@ -1,4 +1,4 @@
-package formats
+package formats //nolint:dupl
 
 import (
 	"github.com/pion/rtp"
@@ -12,9 +12,16 @@ func (f *MPEG2Video) unmarshal(_ uint8, _ string, _ string, _ string, _ map[stri
 	return nil
 }
 
+// Codec implements Format.
+func (f *MPEG2Video) Codec() string {
+	return "MPEG-1/2 Video"
+}
+
 // String implements Format.
+//
+// Deprecated: replaced by Codec().
 func (f *MPEG2Video) String() string {
-	return "MPEG2-video"
+	return f.Codec()
 }
 
 // ClockRate implements Format.

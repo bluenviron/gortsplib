@@ -75,9 +75,16 @@ func (f *Generic) unmarshal(payloadType uint8, _ string, _ string, rtpmap string
 	return f.Init()
 }
 
-// String returns a description of the format.
-func (f *Generic) String() string {
+// Codec implements Format.
+func (f *Generic) Codec() string {
 	return "Generic"
+}
+
+// String implements Format.
+//
+// Deprecated: replaced by Codec().
+func (f *Generic) String() string {
+	return f.Codec()
 }
 
 // ClockRate implements Format.
