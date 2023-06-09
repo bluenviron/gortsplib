@@ -43,14 +43,13 @@ Features:
     * Generate RTCP sender reports
 * Utilities
   * Parse RTSP elements
-  * Encode/decode codec-specific frames into/from RTP packets. The following codecs are supported:
-    * Video: AV1, VP9, VP8, H265, H264, MPEG-4 Video (H263, Xvid), M-JPEG
-    * Audio: Opus, MPEG-4 Audio (AAC) (two formats: MPEG4-Generic and MP4A-LATM), MPEG-1/2 Audio (MP3), G722, G711 (PCMA, PCMU), LPCM
+  * Encode/decode format-specific frames into/from RTP packets
 
 ## Table of contents
 
 * [Examples](#examples)
 * [API Documentation](#api-documentation)
+* [RTP Payload Formats](#rtp-payload-formats)
 * [Standards](#standards)
 * [Links](#links)
 
@@ -94,6 +93,34 @@ Features:
 ## API Documentation
 
 https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
+
+## RTP Payload Formats
+
+In RTSP, media streams are routed between server and clients by using RTP packets. In order to decode a stream, RTP packets must be converted into codec-specific frames. This conversion happens by following a RTP payload format. This library provides encoders and decoders for the following formats:
+
+### Video
+
+|codec|format|documentation|
+|-----|------|-------------|
+|AV1|AV1|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#AV1)|
+|VP9|VP9|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#VP9)|
+|VP8|VP8|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#VP8)|
+|H265|H265|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#H265)|
+|H264|H264|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#H264)|
+|MPEG-4 Video (H263, Xvid)|MP4V-ES|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4VideoES)|
+|M-JPEG|JPEG|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MJPEG)|
+
+### Audio
+
+|codec|format|documentation|
+|-----|------|-------------|
+|Opus|Opus|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#Opus)|
+|MPEG-4 Audio (AAC)|mpeg4-generic|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioGeneric)|
+|MPEG-4 Audio (AAC)|MP4A-LATM|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioLATM)|
+|MPEG-1/2 Audio (MP3)|mpeg2-audio|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG2Audio)|
+|G722|G722|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G722)|
+|G711 (PCMA, PCMU)|G711|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G711)|
+|LPCM|LPCM|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#LPCM)|
 
 ## Standards
 

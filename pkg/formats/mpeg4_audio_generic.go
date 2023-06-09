@@ -15,7 +15,7 @@ import (
 // MPEG4Audio is an alias for MPEG4AudioGeneric.
 type MPEG4Audio = MPEG4AudioGeneric
 
-// MPEG4AudioGeneric is a RTP format that uses a MPEG-4 Audio codec.
+// MPEG4AudioGeneric is a RTP format for a MPEG-4 Audio codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3640
 type MPEG4AudioGeneric struct {
 	PayloadTyp       uint8
