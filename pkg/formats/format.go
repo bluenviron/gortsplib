@@ -16,8 +16,8 @@ func getCodecAndClock(rtpMap string) (string, string) {
 	return strings.ToLower(parts2[0]), parts2[1]
 }
 
-// Format is a RTP format of a media.
-// It defines a codec and a payload type to transmit the media.
+// Format is a media format.
+// It defines the payload type of RTP packets and how to encode/decode them.
 type Format interface {
 	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error
 

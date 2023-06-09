@@ -70,7 +70,7 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 	}
 }
 
-// H264 is a RTP format that uses the H264 codec, defined in MPEG-4 part 10.
+// H264 is a RTP format for the H264 codec, defined in MPEG-4 part 10.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6184
 type H264 struct {
 	PayloadTyp        uint8

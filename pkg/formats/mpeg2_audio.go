@@ -6,7 +6,7 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmpeg2audio"
 )
 
-// MPEG2Audio is a RTP format that uses a MPEG-1/2 Audio codec.
+// MPEG2Audio is a RTP format for a MPEG-1/2 Audio codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEG2Audio struct{}
 
