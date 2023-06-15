@@ -708,6 +708,11 @@ func (c *Client) connOpen() error {
 		return fmt.Errorf("RTSPS can be used only with TCP")
 	}
 
+	// strip the mandatory [] from IPv6 address in preparation for split or join
+	if strings.HasPrefix(c.host, "[") && strings.HasSuffix(c.host, "]") {
+		c.host = c.host[1 : len(c.host)-1]
+	}
+
 	// add default port
 	_, _, err := net.SplitHostPort(c.host)
 	if err != nil {
