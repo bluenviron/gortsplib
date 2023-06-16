@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v3/pkg/auth"
@@ -346,4 +347,85 @@ func TestClientCloseDuringRequest(t *testing.T) {
 	c.Close()
 	<-optionsDone
 	close(releaseConn)
+}
+
+func TestClient_setHost(t *testing.T) {
+	tests := map[string]struct {
+		host, scheme string
+		transport    Transport
+		expectedErr  error
+		expectedURL  *url.URL
+	}{
+		"base": {
+			host:   "localhost",
+			scheme: "rtsp",
+			expectedURL: &url.URL{
+				Scheme: "rtsp",
+				Host:   "localhost:554",
+			},
+		},
+		"literal ipv6": {
+			host:   "::1",
+			scheme: "rtsp",
+			expectedURL: &url.URL{
+				Scheme: "rtsp",
+				Host:   "[::1]:554",
+			},
+		},
+		"ipv6": {
+			host:   "[::1]",
+			scheme: "rtsp",
+			expectedURL: &url.URL{
+				Scheme: "rtsp",
+				Host:   "[::1]:554",
+			},
+		},
+		"ipv6 with port": {
+			host:   "[::1]:8554",
+			scheme: "rtsp",
+			expectedURL: &url.URL{
+				Scheme: "rtsp",
+				Host:   "[::1]:8554",
+			},
+		},
+		"ipv4 with port": {
+			host:   "127.0.0.1:8554",
+			scheme: "rtsp",
+			expectedURL: &url.URL{
+				Scheme: "rtsp",
+				Host:   "127.0.0.1:8554",
+			},
+		},
+		"rtsps": {
+			host:      "testhostname.com",
+			scheme:    "rtsps",
+			transport: TransportTCP,
+			expectedURL: &url.URL{
+				Scheme: "rtsps",
+				Host:   "testhostname.com:322",
+			},
+		},
+		"invalid scheme": {
+			scheme:      "invalid scheme",
+			expectedURL: nil,
+			expectedErr: ErrUnsupportedScheme,
+		},
+		"secure without tcp": {
+			scheme:      "rtsps",
+			transport:   TransportUDP,
+			expectedErr: ErrRTSPSRequiresTCP,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			c := Client{Transport: &test.transport}
+			err := c.setHostAndScheme(test.host, test.scheme)
+			if !assert.ErrorIs(t, err, test.expectedErr) {
+				return
+			}
+
+			assert.Equal(t, test.expectedURL, c.url)
+		})
+	}
 }

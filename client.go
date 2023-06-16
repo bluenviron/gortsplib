@@ -9,6 +9,7 @@ package gortsplib
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -29,6 +30,16 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/media"
 	"github.com/bluenviron/gortsplib/v3/pkg/sdp"
 	"github.com/bluenviron/gortsplib/v3/pkg/url"
+)
+
+var (
+
+	// ErrUnsupportedScheme is returned when any other scheme than rtsp or rtsps is defined.
+	ErrUnsupportedScheme = errors.New("unsupported scheme")
+
+	// ErrRTSPSRequiresTCP is returned when rtsps is defined but the Transport is explicitly set to something else than
+	// TransportTCP.
+	ErrRTSPSRequiresTCP = errors.New("RTSPS can be used only with TCP")
 )
 
 func isAnyPort(p int) bool {
@@ -249,8 +260,7 @@ type Client struct {
 	checkTimeoutPeriod      time.Duration
 	keepalivePeriod         time.Duration
 
-	scheme               string
-	host                 string
+	url                  *url.URL
 	ctx                  context.Context
 	ctxCancel            func()
 	state                clientState
@@ -381,10 +391,12 @@ func (c *Client) Start(scheme string, host string) error {
 		c.keepalivePeriod = 30 * time.Second
 	}
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
+	err := c.setHostAndScheme(host, scheme)
+	if err != nil {
+		return fmt.Errorf("unable to set scheme and hostname: %w", err)
+	}
 
-	c.scheme = scheme
-	c.host = host
+	ctx, ctxCancel := context.WithCancel(context.Background())
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
 	c.checkTimeoutTimer = emptyTimer()
@@ -402,6 +414,60 @@ func (c *Client) Start(scheme string, host string) error {
 	go c.run()
 
 	return nil
+}
+
+func (c *Client) setHostAndScheme(host, scheme string) error {
+	if scheme != "rtsp" && scheme != "rtsps" {
+		return fmt.Errorf("%w '%s'", ErrUnsupportedScheme, scheme)
+	}
+
+	if scheme == "rtsps" && c.Transport != nil && *c.Transport != TransportTCP {
+		return ErrRTSPSRequiresTCP
+	}
+
+	c.url = &url.URL{
+		Scheme: scheme,
+		Host:   makeValidHost(host),
+	}
+
+	if c.url.Port() == "" {
+		c.url.Host = net.JoinHostPort(c.url.Hostname(), SchemePort(scheme))
+	}
+
+	return nil
+}
+
+func makeValidHost(host string) string {
+	ip := net.ParseIP(host)
+
+	notALiteralIPAddress := ip == nil
+	if notALiteralIPAddress {
+		return host
+	}
+
+	literalIPv4 := ip.To4() != nil
+	if literalIPv4 {
+		return host
+	}
+
+	return wrapIPv6(host)
+}
+
+func wrapIPv6(host string) string {
+	return "[" + host + "]"
+}
+
+// SchemePort returns the corresponding default port for the scheme.
+// When there is no default port for the scheme known, the returned string is empty.
+func SchemePort(scheme string) string {
+	switch scheme {
+	case "rtsp":
+		return "554"
+	case "rtsps":
+		return "322"
+	default:
+		return ""
+	}
 }
 
 // StartRecording connects to the address and starts publishing given media.
@@ -577,8 +643,8 @@ func (c *Client) checkState(allowed map[clientState]struct{}) error {
 func (c *Client) trySwitchingProtocol() error {
 	c.OnTransportSwitch(fmt.Errorf("no UDP packets received, switching to TCP"))
 
-	prevScheme := c.scheme
-	prevHost := c.host
+	prevScheme := c.url.Scheme
+	prevHost := c.url.Host
 	prevBaseURL := c.baseURL
 	prevMedias := c.medias
 
@@ -586,11 +652,13 @@ func (c *Client) trySwitchingProtocol() error {
 
 	v := TransportTCP
 	c.effectiveTransport = &v
-	c.scheme = prevScheme
-	c.host = prevHost
+	err := c.setHostAndScheme(prevHost, prevScheme)
+	if err != nil {
+		return fmt.Errorf("unable to set scheme and host: %w", err)
+	}
 
 	// some Hikvision cameras require a describe before a setup
-	_, _, _, err := c.doDescribe(c.lastDescribeURL)
+	_, _, _, err = c.doDescribe(c.lastDescribeURL)
 	if err != nil {
 		return err
 	}
@@ -618,15 +686,16 @@ func (c *Client) trySwitchingProtocol() error {
 func (c *Client) trySwitchingProtocol2(medi *media.Media, baseURL *url.URL) (*base.Response, error) {
 	c.OnTransportSwitch(fmt.Errorf("switching to TCP because server requested it"))
 
-	prevScheme := c.scheme
-	prevHost := c.host
+	prevScheme := c.url.Scheme
+	prevHost := c.url.Host
 
 	c.reset()
 
 	v := TransportTCP
 	c.effectiveTransport = &v
-	c.scheme = prevScheme
-	c.host = prevHost
+	if err := c.setHostAndScheme(prevHost, prevScheme); err != nil {
+		return nil, fmt.Errorf("unable to set scheme and host: %w", err)
+	}
 
 	// some Hikvision cameras require a describe before a setup
 	_, _, _, err := c.doDescribe(c.lastDescribeURL)
@@ -700,41 +769,22 @@ func (c *Client) playRecordStop(isClosing bool) {
 }
 
 func (c *Client) connOpen() error {
-	if c.scheme != "rtsp" && c.scheme != "rtsps" {
-		return fmt.Errorf("unsupported scheme '%s'", c.scheme)
-	}
-
-	if c.scheme == "rtsps" && c.Transport != nil && *c.Transport != TransportTCP {
-		return fmt.Errorf("RTSPS can be used only with TCP")
-	}
-
-	// add default port
-	_, _, err := net.SplitHostPort(c.host)
-	if err != nil {
-		if c.scheme == "rtsp" {
-			c.host = net.JoinHostPort(c.host, "554")
-		} else { // rtsps
-			c.host = net.JoinHostPort(c.host, "322")
-		}
-	}
-
 	dialCtx, dialCtxCancel := context.WithTimeout(c.ctx, c.ReadTimeout)
 	defer dialCtxCancel()
 
-	nconn, err := c.DialContext(dialCtx, "tcp", c.host)
+	nconn, err := c.DialContext(dialCtx, "tcp", c.url.Host)
 	if err != nil {
 		return err
 	}
 
-	if c.scheme == "rtsps" {
+	if c.url.Scheme == "rtsps" {
 		tlsConfig := c.TLSConfig
 
 		if tlsConfig == nil {
 			tlsConfig = &tls.Config{}
 		}
 
-		host, _, _ := net.SplitHostPort(c.host)
-		tlsConfig.ServerName = host
+		tlsConfig.ServerName = c.url.Hostname()
 
 		nconn = tls.Client(nconn, tlsConfig)
 	}
@@ -997,8 +1047,9 @@ func (c *Client) doDescribe(u *url.URL) (media.Medias, *url.URL, *base.Response,
 				ru.User = u.User
 			}
 
-			c.scheme = ru.Scheme
-			c.host = ru.Host
+			if err = c.setHostAndScheme(ru.Host, ru.Scheme); err != nil {
+				return nil, nil, nil, fmt.Errorf("unable to set host and scheme from response url: %w", err)
+			}
 
 			return c.doDescribe(ru)
 		}
@@ -1125,7 +1176,7 @@ func (c *Client) doSetup(
 	}
 
 	// always use TCP if encrypted
-	if c.scheme == "rtsps" {
+	if c.url.Scheme == "rtsps" {
 		v := TransportTCP
 		c.effectiveTransport = &v
 	}
