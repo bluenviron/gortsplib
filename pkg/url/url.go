@@ -89,3 +89,18 @@ func (u *URL) RTSPPathAndQuery() (string, bool) {
 
 	return pathAndQuery, true
 }
+
+// Hostname returns u.Host, stripping any valid port number if present.
+//
+// If the result is enclosed in square brackets, as literal IPv6 addresses are,
+// the square brackets are removed from the result.
+func (u *URL) Hostname() string {
+	return (*url.URL)(u).Hostname()
+}
+
+// Port returns the port part of u.Host, without the leading colon.
+//
+// If u.Host doesn't contain a valid numeric port, Port returns an empty string.
+func (u *URL) Port() string {
+	return (*url.URL)(u).Port()
+}

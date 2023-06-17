@@ -23,6 +23,35 @@ func mustParseURL(s string) *url.URL {
 	return u
 }
 
+func TestClientURLToAddress(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		url  string
+		addr string
+	}{
+		{
+			"rtsp ipv6 with port",
+			"rtsp://[::1]:8888/path",
+			"[::1]:8888",
+		},
+		{
+			"rtsp ipv6 without port",
+			"rtsp://[::1]/path",
+			"[::1]:554",
+		},
+		{
+			"rtsps without port",
+			"rtsps://2.2.2.2/path",
+			"2.2.2.2:322",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			addr := canonicalAddr(mustParseURL(ca.url))
+			require.Equal(t, ca.addr, addr)
+		})
+	}
+}
+
 func TestClientTLSSetServerName(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
