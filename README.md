@@ -96,7 +96,7 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 
 ## RTP Payload Formats
 
-In RTSP, media streams are routed between server and clients by using RTP packets. In order to decode a stream, RTP packets must be converted into codec-specific frames. This conversion happens by following a RTP payload format. This library provides encoders and decoders for the following formats:
+In RTSP, media streams are routed between server and clients by using RTP packets. In order to decode a stream, RTP packets must be converted into codec-specific frames. This conversion happens by using a RTP payload format. This library provides encoders and decoders for the following formats:
 
 ### Video
 
