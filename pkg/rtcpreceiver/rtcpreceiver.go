@@ -27,22 +27,22 @@ type RTCPReceiver struct {
 	mutex           sync.Mutex
 
 	// data from RTP packets
-	initialized          bool
-	timeInitialized      bool
-	sequenceNumberCycles uint16
-	lastSSRC             uint32
-	lastSequenceNumber   uint16
-	lastTimeRTP          uint32
-	lastTimeNTP          time.Time
-	totalLost            uint32
-	totalLostSinceReport uint32
-	totalSinceReport     uint32
-	jitter               float64
+	firstRTPPacketReceived bool
+	timeInitialized        bool
+	sequenceNumberCycles   uint16
+	lastSSRC               uint32
+	lastSequenceNumber     uint16
+	lastTimeRTP            uint32
+	lastTimeNTP            time.Time
+	totalLost              uint32
+	totalLostSinceReport   uint32
+	totalSinceReport       uint32
+	jitter                 float64
 
 	// data from RTCP packets
-	senderInitialized    bool
-	lastSenderReportNTP  uint32
-	lastSenderReportTime time.Time
+	firstSenderReportReceived bool
+	lastSenderReportNTP       uint32
+	lastSenderReportTime      time.Time
 
 	terminate chan struct{}
 	done      chan struct{}
@@ -104,7 +104,7 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
-	if !rr.senderInitialized || !rr.initialized || rr.clockRate == 0 {
+	if !rr.firstRTPPacketReceived || rr.clockRate == 0 {
 		return nil
 	}
 
@@ -114,19 +114,23 @@ func (rr *RTCPReceiver) report(ts time.Time) rtcp.Packet {
 			{
 				SSRC:               rr.lastSSRC,
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
-				// middle 32 bits out of 64 in the NTP timestamp of last sender report
-				LastSenderReport: rr.lastSenderReportNTP,
 				// equivalent to taking the integer part after multiplying the
 				// loss fraction by 256
 				FractionLost: uint8(float64(rr.totalLostSinceReport*256) / float64(rr.totalSinceReport)),
 				TotalLost:    rr.totalLost,
-				// delay, expressed in units of 1/65536 seconds, between
-				// receiving the last SR packet from source SSRC_n and sending this
-				// reception report block
-				Delay:  uint32(ts.Sub(rr.lastSenderReportTime).Seconds() * 65536),
-				Jitter: uint32(rr.jitter),
+				Jitter:       uint32(rr.jitter),
 			},
 		},
+	}
+
+	if rr.firstSenderReportReceived {
+		// middle 32 bits out of 64 in the NTP timestamp of last sender report
+		report.Reports[0].LastSenderReport = rr.lastSenderReportNTP
+
+		// delay, expressed in units of 1/65536 seconds, between
+		// receiving the last SR packet from source SSRC_n and sending this
+		// reception report block
+		report.Reports[0].Delay = uint32(ts.Sub(rr.lastSenderReportTime).Seconds() * 65536)
 	}
 
 	rr.totalLostSinceReport = 0
@@ -141,8 +145,8 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsD
 	defer rr.mutex.Unlock()
 
 	// first packet
-	if !rr.initialized {
-		rr.initialized = true
+	if !rr.firstRTPPacketReceived {
+		rr.firstRTPPacketReceived = true
 		rr.totalSinceReport = 1
 		rr.lastSSRC = pkt.SSRC
 		rr.lastSequenceNumber = pkt.SequenceNumber
@@ -205,7 +209,7 @@ func (rr *RTCPReceiver) ProcessSenderReport(sr *rtcp.SenderReport, ts time.Time)
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
-	rr.senderInitialized = true
+	rr.firstSenderReportReceived = true
 	rr.lastSenderReportNTP = uint32(sr.NTPTime >> 16)
 	rr.lastSenderReportTime = ts
 }
@@ -214,5 +218,5 @@ func (rr *RTCPReceiver) ProcessSenderReport(sr *rtcp.SenderReport, ts time.Time)
 func (rr *RTCPReceiver) LastSSRC() (uint32, bool) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
-	return rr.lastSSRC, rr.initialized
+	return rr.lastSSRC, rr.firstRTPPacketReceived
 }
