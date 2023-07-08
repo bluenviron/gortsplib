@@ -199,11 +199,8 @@ type Client struct {
 	// a TLS configuration to connect to TLS (RTSPS) servers.
 	// It defaults to nil.
 	TLSConfig *tls.Config
-	// disable being redirected to other servers, that can happen during Describe().
-	// It defaults to false.
-	RedirectDisable bool
-	// enable communication with servers which don't provide server ports or use
-	// different server ports than the ones announced.
+	// enable communication with servers which don't provide UDP server ports
+	// or use different server ports than the announced ones.
 	// This can be a security issue.
 	// It defaults to false.
 	AnyPortEnable bool
@@ -224,7 +221,7 @@ type Client struct {
 	// It allows to queue packets before sending them.
 	// It defaults to 256.
 	WriteBufferCount int
-	// user agent header
+	// user agent header.
 	// It defaults to "gortsplib"
 	UserAgent string
 	// disable automatic RTCP sender reports.
@@ -233,6 +230,8 @@ type Client struct {
 	BytesReceived *uint64
 	// pointer to a variable that stores sent bytes.
 	BytesSent *uint64
+	// Deprecated: disabling redirects doesn't improve security.
+	RedirectDisable bool
 
 	//
 	// system functions (all optional)
@@ -538,7 +537,7 @@ func (c *Client) runInner() error {
 }
 
 func (c *Client) doClose() {
-	if c.state != clientStatePlay && c.state != clientStateRecord && c.conn != nil {
+	if c.connCloser != nil {
 		c.connCloser.close()
 		c.connCloser = nil
 	}
@@ -1132,39 +1131,37 @@ func (c *Client) doSetup(
 		return nil, liberrors.ErrClientCannotSetupMediasDifferentURLs{}
 	}
 
-	// always use TCP if encrypted
-	if c.connURL.Scheme == "rtsps" {
-		v := TransportTCP
-		c.effectiveTransport = &v
-	}
-
-	requestedTransport := func() Transport {
-		// transport set by previous Setup() or trySwitchingProtocol()
-		if c.effectiveTransport != nil {
-			return *c.effectiveTransport
-		}
-
-		// transport set by conf
-		if c.Transport != nil {
-			return *c.Transport
-		}
-
-		// try UDP
-		return TransportUDP
-	}()
-
-	mode := headers.TransportModePlay
-	if c.state == clientStatePreRecord {
-		mode = headers.TransportModeRecord
-	}
-
 	th := headers.Transport{
-		Mode: &mode,
+		Mode: func() *headers.TransportMode {
+			if c.state == clientStatePreRecord {
+				v := headers.TransportModeRecord
+				return &v
+			}
+
+			v := headers.TransportModePlay
+			return &v
+		}(),
 	}
 
 	cm := newClientMedia(c)
 
-	switch requestedTransport {
+	if c.effectiveTransport == nil {
+		if c.connURL.Scheme == "rtsps" { // always use TCP if encrypted
+			v := TransportTCP
+			c.effectiveTransport = &v
+		} else if c.Transport != nil { // take transport from config
+			c.effectiveTransport = c.Transport
+		}
+	}
+
+	var desiredTransport Transport
+	if c.effectiveTransport != nil {
+		desiredTransport = *c.effectiveTransport
+	} else {
+		desiredTransport = TransportUDP
+	}
+
+	switch desiredTransport {
 	case TransportUDP:
 		if (rtpPort == 0 && rtcpPort != 0) ||
 			(rtpPort != 0 && rtcpPort == 0) {
@@ -1225,8 +1222,7 @@ func (c *Client) doSetup(
 
 		// switch transport automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
-			c.effectiveTransport == nil &&
-			c.Transport == nil {
+			c.effectiveTransport == nil {
 			c.OnTransportSwitch(fmt.Errorf("switching to TCP because server requested it"))
 			v := TransportTCP
 			c.effectiveTransport = &v
@@ -1243,7 +1239,7 @@ func (c *Client) doSetup(
 		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
 	}
 
-	switch requestedTransport {
+	switch desiredTransport {
 	case TransportUDP, TransportUDPMulticast:
 		if thRes.Protocol == headers.TransportProtocolTCP {
 			cm.close()
@@ -1259,7 +1255,7 @@ func (c *Client) doSetup(
 		}
 	}
 
-	switch requestedTransport {
+	switch desiredTransport {
 	case TransportUDP:
 		if thRes.Delivery != nil && *thRes.Delivery != headers.TransportDeliveryUnicast {
 			cm.close()
@@ -1377,12 +1373,10 @@ func (c *Client) doSetup(
 	cm.setMedia(medi)
 
 	c.baseURL = baseURL
-	c.effectiveTransport = &requestedTransport
+	c.effectiveTransport = &desiredTransport
 
-	if mode == headers.TransportModePlay {
+	if c.state == clientStateInitial {
 		c.state = clientStatePrePlay
-	} else {
-		c.state = clientStatePreRecord
 	}
 
 	return res, nil
