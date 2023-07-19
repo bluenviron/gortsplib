@@ -45,28 +45,6 @@ func (d *Decoder) Init() error {
 	return nil
 }
 
-func decodePayloadLengthInfo(buf []byte) (int, int, error) {
-	lb := len(buf)
-	l := 0
-	n := 0
-
-	for {
-		if (lb - n) == 0 {
-			return 0, 0, fmt.Errorf("not enough bytes")
-		}
-
-		b := buf[n]
-		n++
-		l += int(b)
-
-		if b != 0xFF {
-			break
-		}
-	}
-
-	return l, n, nil
-}
-
 // Decode decodes an AU from a RTP packet.
 // It returns the AU and its PTS.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
@@ -74,7 +52,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	buf := pkt.Payload
 
 	if len(d.fragments) == 0 {
-		pl, n, err := decodePayloadLengthInfo(buf)
+		pl, n, err := payloadLengthInfoDecode(buf)
 		if err != nil {
 			return nil, 0, err
 		}

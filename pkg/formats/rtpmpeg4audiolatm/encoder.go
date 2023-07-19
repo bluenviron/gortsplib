@@ -77,17 +77,6 @@ func (e *Encoder) Init() error {
 	return nil
 }
 
-func payloadLengthInfoLen(auLen int) int {
-	return auLen/255 + 1
-}
-
-func payloadLengthInfo(plil int, auLen int, buf []byte) {
-	for i := 0; i < plil; i++ {
-		buf[i] = 255
-	}
-	buf[plil-1] = byte(auLen % 255)
-}
-
 func (e *Encoder) packetCount(auLen int, plil int) int {
 	totalLen := plil + auLen
 	packetCount := totalLen / e.PayloadMaxSize
@@ -101,7 +90,7 @@ func (e *Encoder) packetCount(auLen int, plil int) int {
 // Encode encodes AUs into RTP packets.
 func (e *Encoder) Encode(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
 	auLen := len(au)
-	plil := payloadLengthInfoLen(auLen)
+	plil := payloadLengthInfoEncodeSize(auLen)
 	packetCount := e.packetCount(auLen, plil)
 
 	avail := e.PayloadMaxSize - plil
@@ -124,7 +113,7 @@ func (e *Encoder) Encode(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
 
 		if i == 0 {
 			payload = make([]byte, plil+l)
-			payloadLengthInfo(plil, auLen, payload)
+			payloadLengthInfoEncode(plil, auLen, payload)
 			copy(payload[plil:], au[:l])
 		} else {
 			payload = au[:l]
