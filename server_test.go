@@ -1052,7 +1052,7 @@ func TestServerAuth(t *testing.T) {
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				err := auth.Validate(ctx.Request, "myuser", "mypass", nil, nil, "IPCAM", nonce)
 				if err != nil {
-					return &base.Response{
+					return &base.Response{ //nolint:nilerr
 						StatusCode: base.StatusUnauthorized,
 						Header: base.Header{
 							"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
