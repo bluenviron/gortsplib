@@ -100,35 +100,36 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 
 ### Video
 
-|codec|rtp format|documentation|encoder and decoder available|
-|-----|----------|-------------|-----------------------------|
-|AV1|AV1|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#AV1)|:heavy_check_mark:|
-|VP9|VP9|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#VP9)|:heavy_check_mark:|
-|VP8|VP8|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#VP8)|:heavy_check_mark:|
-|H265|H265|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#H265)|:heavy_check_mark:|
-|H264|H264|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#H264)|:heavy_check_mark:|
-|MPEG-2 Video|unnamed|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG2Video)||
-|MPEG-4 Video (H263, Xvid)|MP4V-ES|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4VideoES)|:heavy_check_mark:|
-|M-JPEG|JPEG|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MJPEG)|:heavy_check_mark:|
+|format / codec|variant|documentation|encoder and decoder available|
+|--------------|-------|-------------|-----------------------------|
+|AV1||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#AV1)|:heavy_check_mark:|
+|VP9||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#VP9)|:heavy_check_mark:|
+|VP8||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#VP8)|:heavy_check_mark:|
+|H265||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#H265)|:heavy_check_mark:|
+|H264||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#H264)|:heavy_check_mark:|
+|MPEG-4 Video (H263, Xvid)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4VideoES)|:heavy_check_mark:|
+|MPEG-2 Video||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG2Video)||
+|M-JPEG||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MJPEG)|:heavy_check_mark:|
 
 ### Audio
 
-|codec|rtp format|documentation|encoder and decoder available|
-|-----|----------|-------------|-----------------------------|
-|Opus|opus|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#Opus)|:heavy_check_mark:|
-|Vorbis|VORBIS|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#Vorbis)||
-|MPEG-4 Audio (AAC)|mpeg4-generic|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioGeneric)|:heavy_check_mark:|
-|MPEG-4 Audio (AAC)|MP4A-LATM|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioLATM)|:heavy_check_mark:|
-|MPEG-1/2 Audio (MP3)|unnamed|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG2Audio)|:heavy_check_mark:|
-|G722|unnamed|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G722)|:heavy_check_mark:|
-|G711 (PCMA, PCMU)|unnamed|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G711)|:heavy_check_mark:|
-|LPCM|L8/L16/L24|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#LPCM)|:heavy_check_mark:|
+|format / codec|variant|documentation|encoder and decoder available|
+|--------------|-------|-------------|-----------------------------|
+|Opus||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#Opus)|:heavy_check_mark:|
+|Vorbis||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#Vorbis)||
+|MPEG-4 Audio (AAC)|Generic (RFC3640)|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioGeneric)|:heavy_check_mark:|
+|MPEG-4 Audio (AAC)|LATM (RFC6416)|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioLATM)|:heavy_check_mark:|
+|MPEG-1/2 Audio (MP3)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG2Audio)|:heavy_check_mark:|
+|G726||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G726)||
+|G722||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G722)|:heavy_check_mark:|
+|G711 (PCMA, PCMU)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G711)|:heavy_check_mark:|
+|LPCM||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#LPCM)|:heavy_check_mark:|
 
 ### Mixed
 
-|codec|rtp format|documentation|encoder and decoder available|
-|-----|----------|-------------|-----------------------------|
-|MPEG-TS|MP2T|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEGTS)||
+|format / codec|variant|documentation|encoder and decoder available|
+|--------------|-------|-------------|-----------------------------|
+|MPEG-TS||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEGTS)||
 
 ## Standards
 

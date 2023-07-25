@@ -87,6 +87,16 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 			case payloadType == 9:
 				return &G722{}
 
+			case (codec == "g726-16" ||
+				codec == "g726-24" ||
+				codec == "g726-32" ||
+				codec == "g726-40" ||
+				codec == "aal2-g726-16" ||
+				codec == "aal2-g726-24" ||
+				codec == "aal2-g726-32" ||
+				codec == "aal2-g726-40") && clock == "8000":
+				return &G726{}
+
 			case payloadType == 14:
 				return &MPEG2Audio{}
 
