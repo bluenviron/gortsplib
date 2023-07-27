@@ -190,7 +190,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 	d.Init()
 	var err error
 
-	for i := 0; i <= h264.MaxNALUsPerGroup; i++ {
+	for i := 0; i <= h264.MaxNALUsPerAccessUnit; i++ {
 		_, _, err = d.DecodeUntilMarker(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,

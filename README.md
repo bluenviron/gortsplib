@@ -51,7 +51,7 @@ Features:
 * [API Documentation](#api-documentation)
 * [RTP Payload Formats](#rtp-payload-formats)
 * [Standards](#standards)
-* [Links](#links)
+* [Related projects](#related-projects)
 
 ## Examples
 
@@ -152,11 +152,11 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 * [Codec standards](https://github.com/bluenviron/mediacommon#standards)
 * [Golang project layout](https://github.com/golang-standards/project-layout)
 
-## Links
-
-Related projects
+## Related projects
 
 * [MediaMTX](https://github.com/bluenviron/mediamtx)
+* [gohlslib](https://github.com/bluenviron/gohlslib)
+* [mediacommon](https://github.com/bluenviron/mediacommon)
 * [pion/sdp (SDP library used internally)](https://github.com/pion/sdp)
 * [pion/rtp (RTP library used internally)](https://github.com/pion/rtp)
 * [pion/rtcp (RTCP library used internally)](https://github.com/pion/rtcp)

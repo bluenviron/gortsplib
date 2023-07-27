@@ -178,11 +178,11 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	}
 	l := len(nalus)
 
-	if (d.frameBufferLen + l) > h264.MaxNALUsPerGroup {
+	if (d.frameBufferLen + l) > h264.MaxNALUsPerAccessUnit {
 		d.frameBuffer = nil
 		d.frameBufferLen = 0
 		return nil, 0, fmt.Errorf("NALU count exceeds maximum allowed (%d)",
-			h264.MaxNALUsPerGroup)
+			h264.MaxNALUsPerAccessUnit)
 	}
 
 	d.frameBuffer = append(d.frameBuffer, nalus...)

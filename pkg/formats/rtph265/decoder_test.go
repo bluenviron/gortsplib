@@ -42,7 +42,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 	d.Init()
 	var err error
 
-	for i := 0; i <= h265.MaxNALUsPerGroup; i++ {
+	for i := 0; i <= h265.MaxNALUsPerAccessUnit; i++ {
 		_, _, err = d.DecodeUntilMarker(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
