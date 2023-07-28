@@ -69,7 +69,7 @@ func (sm *serverStreamMedia) allocateMulticastHandler(s *Server) error {
 
 func (sm *serverStreamMedia) WritePacketRTPWithNTP(ss *ServerStream, pkt *rtp.Packet, ntp time.Time) {
 	byts := make([]byte, udpMaxPayloadSize)
-	n, err := pkt.MarshalTo(byts)
+	n, err := rtpPacketMarshalToSafe(pkt, byts)
 	if err != nil {
 		return
 	}
