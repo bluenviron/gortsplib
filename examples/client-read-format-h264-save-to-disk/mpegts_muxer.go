@@ -2,14 +2,17 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"log"
 	"os"
 	"time"
 
-	"github.com/asticode/go-astits"
 	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
+	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
 )
+
+func durationGoToMPEGTS(v time.Duration) int64 {
+	return int64(v.Seconds() * 90000)
+}
 
 // mpegtsMuxer allows to save a H264 stream into a MPEG-TS file.
 type mpegtsMuxer struct {
@@ -18,7 +21,8 @@ type mpegtsMuxer struct {
 
 	f                *os.File
 	b                *bufio.Writer
-	mux              *astits.Muxer
+	w                *mpegts.Writer
+	track            *mpegts.Track
 	dtsExtractor     *h264.DTSExtractor
 	firstIDRReceived bool
 	startDTS         time.Duration
@@ -32,19 +36,20 @@ func newMPEGTSMuxer(sps []byte, pps []byte) (*mpegtsMuxer, error) {
 	}
 	b := bufio.NewWriter(f)
 
-	mux := astits.NewMuxer(context.Background(), b)
-	mux.AddElementaryStream(astits.PMTElementaryStream{
-		ElementaryPID: 256,
-		StreamType:    astits.StreamTypeH264Video,
-	})
-	mux.SetPCRPID(256)
+	track := &mpegts.Track{
+		PID:   256,
+		Codec: &mpegts.CodecH264{},
+	}
+
+	w := mpegts.NewWriter(b, []*mpegts.Track{track})
 
 	return &mpegtsMuxer{
-		sps: sps,
-		pps: pps,
-		f:   f,
-		b:   b,
-		mux: mux,
+		sps:   sps,
+		pps:   pps,
+		f:     f,
+		b:     b,
+		w:     w,
+		track: track,
 	}, nil
 }
 
@@ -54,8 +59,8 @@ func (e *mpegtsMuxer) close() {
 	e.f.Close()
 }
 
-// encode encodes H264 NALUs into MPEG-TS.
-func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
+// encode encodes a H264 access unit into MPEG-TS.
+func (e *mpegtsMuxer) encode(au [][]byte, pts time.Duration) error {
 	// prepend an AUD. This is required by some players
 	filteredNALUs := [][]byte{
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},
@@ -64,7 +69,7 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 	nonIDRPresent := false
 	idrPresent := false
 
-	for _, nalu := range nalus {
+	for _, nalu := range au {
 		typ := h264.NALUType(nalu[0] & 0x1F)
 		switch typ {
 		case h264.NALUTypeSPS:
@@ -88,7 +93,7 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 		filteredNALUs = append(filteredNALUs, nalu)
 	}
 
-	nalus = filteredNALUs
+	au = filteredNALUs
 
 	if !nonIDRPresent && !idrPresent {
 		return nil
@@ -96,7 +101,7 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 
 	// add SPS and PPS before every group that contains an IDR
 	if idrPresent {
-		nalus = append([][]byte{e.sps, e.pps}, nalus...)
+		au = append([][]byte{e.sps, e.pps}, au...)
 	}
 
 	var dts time.Duration
@@ -111,7 +116,7 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 		e.dtsExtractor = h264.NewDTSExtractor()
 
 		var err error
-		dts, err = e.dtsExtractor.Extract(nalus, pts)
+		dts, err = e.dtsExtractor.Extract(au, pts)
 		if err != nil {
 			return err
 		}
@@ -122,7 +127,7 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 
 	} else {
 		var err error
-		dts, err = e.dtsExtractor.Extract(nalus, pts)
+		dts, err = e.dtsExtractor.Extract(au, pts)
 		if err != nil {
 			return err
 		}
@@ -131,39 +136,8 @@ func (e *mpegtsMuxer) encode(nalus [][]byte, pts time.Duration) error {
 		pts -= e.startDTS
 	}
 
-	oh := &astits.PESOptionalHeader{
-		MarkerBits: 2,
-	}
-
-	if dts == pts {
-		oh.PTSDTSIndicator = astits.PTSDTSIndicatorOnlyPTS
-		oh.PTS = &astits.ClockReference{Base: int64(pts.Seconds() * 90000)}
-	} else {
-		oh.PTSDTSIndicator = astits.PTSDTSIndicatorBothPresent
-		oh.DTS = &astits.ClockReference{Base: int64(dts.Seconds() * 90000)}
-		oh.PTS = &astits.ClockReference{Base: int64(pts.Seconds() * 90000)}
-	}
-
-	// encode into Annex-B
-	annexb, err := h264.AnnexBMarshal(nalus)
-	if err != nil {
-		return err
-	}
-
-	// write TS packet
-	_, err = e.mux.WriteData(&astits.MuxerData{
-		PID: 256,
-		AdaptationField: &astits.PacketAdaptationField{
-			RandomAccessIndicator: idrPresent,
-		},
-		PES: &astits.PESData{
-			Header: &astits.PESHeader{
-				OptionalHeader: oh,
-				StreamID:       224, // video
-			},
-			Data: annexb,
-		},
-	})
+	// encode into MPEG-TS
+	err := e.w.WriteH26x(e.track, durationGoToMPEGTS(pts), durationGoToMPEGTS(dts), idrPresent, au)
 	if err != nil {
 		return err
 	}
