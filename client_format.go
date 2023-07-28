@@ -22,7 +22,7 @@ type clientFormat struct {
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver    // play
 	tcpLossDetector *rtplossdetector.LossDetector // play
 	rtcpSender      *rtcpsender.RTCPSender        // record
-	onPacketRTP     func(*rtp.Packet)
+	onPacketRTP     OnPacketRTPFunc
 }
 
 func newClientFormat(cm *clientMedia, forma formats.Format) *clientFormat {

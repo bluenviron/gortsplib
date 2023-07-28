@@ -1131,7 +1131,7 @@ func (ss *ServerSession) findFreeChannelPair() int {
 }
 
 // OnPacketRTPAny sets the callback that is called when a RTP packet is read from any setupped media.
-func (ss *ServerSession) OnPacketRTPAny(cb func(*media.Media, formats.Format, *rtp.Packet)) {
+func (ss *ServerSession) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
 	for _, sm := range ss.setuppedMedias {
 		cmedia := sm.media
 		for _, forma := range sm.media.Formats {
@@ -1143,7 +1143,7 @@ func (ss *ServerSession) OnPacketRTPAny(cb func(*media.Media, formats.Format, *r
 }
 
 // OnPacketRTCPAny sets the callback that is called when a RTCP packet is read from any setupped media.
-func (ss *ServerSession) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
+func (ss *ServerSession) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 	for _, sm := range ss.setuppedMedias {
 		cmedia := sm.media
 		ss.OnPacketRTCP(sm.media, func(pkt rtcp.Packet) {
@@ -1153,14 +1153,14 @@ func (ss *ServerSession) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (ss *ServerSession) OnPacketRTP(medi *media.Media, forma formats.Format, cb func(*rtp.Packet)) {
+func (ss *ServerSession) OnPacketRTP(medi *media.Media, forma formats.Format, cb OnPacketRTPFunc) {
 	sm := ss.setuppedMedias[medi]
 	st := sm.formats[forma.PayloadType()]
 	st.onPacketRTP = cb
 }
 
 // OnPacketRTCP sets the callback that is called when a RTCP packet is read.
-func (ss *ServerSession) OnPacketRTCP(medi *media.Media, cb func(rtcp.Packet)) {
+func (ss *ServerSession) OnPacketRTCP(medi *media.Media, cb OnPacketRTCPFunc) {
 	sm := ss.setuppedMedias[medi]
 	sm.onPacketRTCP = cb
 }

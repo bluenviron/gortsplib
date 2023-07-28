@@ -180,6 +180,33 @@ type clientRes struct {
 	err     error
 }
 
+// ClientOnRequestFunc is the prototype of Client.OnRequest.
+type ClientOnRequestFunc func(*base.Request)
+
+// ClientOnResponseFunc is the prototype of Client.OnResponse.
+type ClientOnResponseFunc func(*base.Response)
+
+// ClientOnTransportSwitchFunc is the prototype of Client.OnTransportSwitch.
+type ClientOnTransportSwitchFunc func(err error)
+
+// ClientOnPacketLostFunc is the prototype of Client.OnPacketLost.
+type ClientOnPacketLostFunc func(err error)
+
+// ClientOnDecodeErrorFunc is the prototype of Client.OnDecodeError.
+type ClientOnDecodeErrorFunc func(err error)
+
+// OnPacketRTPFunc is the prototype of the callback passed to OnPacketRTP().
+type OnPacketRTPFunc func(*rtp.Packet)
+
+// OnPacketRTPAnyFunc is the prototype of the callback passed to OnPacketRTP(Any).
+type OnPacketRTPAnyFunc func(*media.Media, formats.Format, *rtp.Packet)
+
+// OnPacketRTCPFunc is the prototype of the callback passed to OnPacketRTCP().
+type OnPacketRTCPFunc func(rtcp.Packet)
+
+// OnPacketRTCPAnyFunc is the prototype of the callback passed to OnPacketRTCPAny().
+type OnPacketRTCPAnyFunc func(*media.Media, rtcp.Packet)
+
 // ClientLogFunc is the prototype of the log function.
 //
 // Deprecated: Log() is deprecated.
@@ -247,15 +274,15 @@ type Client struct {
 	// callbacks (all optional)
 	//
 	// called before every request.
-	OnRequest func(*base.Request)
+	OnRequest ClientOnRequestFunc
 	// called after every response.
-	OnResponse func(*base.Response)
+	OnResponse ClientOnResponseFunc
 	// called when the transport protocol changes.
-	OnTransportSwitch func(err error)
+	OnTransportSwitch ClientOnTransportSwitchFunc
 	// called when the client detects lost packets.
-	OnPacketLost func(err error)
+	OnPacketLost ClientOnPacketLostFunc
 	// called when a non-fatal decode error occurs.
-	OnDecodeError func(err error)
+	OnDecodeError ClientOnDecodeErrorFunc
 	// Deprecated: replaced by OnTransportSwitch, OnPacketLost, OnDecodeError
 	Log ClientLogFunc
 
@@ -1608,7 +1635,7 @@ func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
 }
 
 // OnPacketRTPAny sets the callback that is called when a RTP packet is read from any setupped media.
-func (c *Client) OnPacketRTPAny(cb func(*media.Media, formats.Format, *rtp.Packet)) {
+func (c *Client) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
 	for _, cm := range c.medias {
 		cmedia := cm.media
 		for _, forma := range cm.media.Formats {
@@ -1620,7 +1647,7 @@ func (c *Client) OnPacketRTPAny(cb func(*media.Media, formats.Format, *rtp.Packe
 }
 
 // OnPacketRTCPAny sets the callback that is called when a RTCP packet is read from any setupped media.
-func (c *Client) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
+func (c *Client) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 	for _, cm := range c.medias {
 		cmedia := cm.media
 		c.OnPacketRTCP(cm.media, func(pkt rtcp.Packet) {
@@ -1630,14 +1657,14 @@ func (c *Client) OnPacketRTCPAny(cb func(*media.Media, rtcp.Packet)) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (c *Client) OnPacketRTP(medi *media.Media, forma formats.Format, cb func(*rtp.Packet)) {
+func (c *Client) OnPacketRTP(medi *media.Media, forma formats.Format, cb OnPacketRTPFunc) {
 	cm := c.medias[medi]
 	ct := cm.formats[forma.PayloadType()]
 	ct.onPacketRTP = cb
 }
 
 // OnPacketRTCP sets the callback that is called when a RTCP packet is read.
-func (c *Client) OnPacketRTCP(medi *media.Media, cb func(rtcp.Packet)) {
+func (c *Client) OnPacketRTCP(medi *media.Media, cb OnPacketRTCPFunc) {
 	cm := c.medias[medi]
 	cm.onPacketRTCP = cb
 }

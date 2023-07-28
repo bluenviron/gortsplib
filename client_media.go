@@ -24,7 +24,7 @@ type clientMedia struct {
 	tcpBuffer              []byte
 	writePacketRTPInQueue  func([]byte)
 	writePacketRTCPInQueue func([]byte)
-	onPacketRTCP           func(rtcp.Packet)
+	onPacketRTCP           OnPacketRTCPFunc
 }
 
 func newClientMedia(c *Client) *clientMedia {

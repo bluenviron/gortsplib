@@ -27,7 +27,7 @@ type serverSessionMedia struct {
 	formats                map[uint8]*serverSessionFormat // record only
 	writePacketRTPInQueue  func([]byte)
 	writePacketRTCPInQueue func([]byte)
-	onPacketRTCP           func(rtcp.Packet)
+	onPacketRTCP           OnPacketRTCPFunc
 }
 
 func newServerSessionMedia(ss *ServerSession, medi *media.Media) *serverSessionMedia {
