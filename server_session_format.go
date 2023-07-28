@@ -19,7 +19,7 @@ type serverSessionFormat struct {
 	udpReorderer    *rtpreorderer.Reorderer
 	tcpLossDetector *rtplossdetector.LossDetector
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver
-	onPacketRTP     func(*rtp.Packet)
+	onPacketRTP     OnPacketRTPFunc
 }
 
 func newServerSessionFormat(sm *serverSessionMedia, forma formats.Format) *serverSessionFormat {
