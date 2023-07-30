@@ -3,8 +3,8 @@ module github.com/bluenviron/gortsplib/v3
 go 1.18
 
 require (
-	github.com/asticode/go-astits v1.11.0
-	github.com/bluenviron/mediacommon v0.7.0
+	github.com/asticode/go-astits v1.11.1-0.20230727094110-0df190a2dd87
+	github.com/bluenviron/mediacommon v0.7.1-0.20230730144331-10b74a4f6eda
 	github.com/google/uuid v1.3.0
 	github.com/pion/rtcp v1.2.10
 	github.com/pion/rtp v1.8.0

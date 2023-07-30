@@ -18,7 +18,7 @@ func payloadLengthInfoDecode(buf []byte) (int, int, error) {
 		n++
 		l += int(b)
 
-		if b != 0xFF {
+		if b != 255 {
 			break
 		}
 	}
@@ -31,7 +31,7 @@ func payloadLengthInfoEncodeSize(auLen int) int {
 }
 
 func payloadLengthInfoEncode(plil int, auLen int, buf []byte) {
-	for i := 0; i < plil; i++ {
+	for i := 0; i < (plil - 1); i++ {
 		buf[i] = 255
 	}
 	buf[plil-1] = byte(auLen % 255)
