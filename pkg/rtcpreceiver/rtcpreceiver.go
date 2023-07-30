@@ -10,10 +10,13 @@ import (
 	"github.com/pion/rtp"
 )
 
-func randUint32() uint32 {
+func randUint32() (uint32, error) {
 	var b [4]byte
-	rand.Read(b[:])
-	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
+	_, err := rand.Read(b[:])
+	if err != nil {
+		return 0, err
+	}
+	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
 var now = time.Now
@@ -54,15 +57,18 @@ func New(
 	receiverSSRC *uint32,
 	clockRate int,
 	writePacketRTCP func(rtcp.Packet),
-) *RTCPReceiver {
+) (*RTCPReceiver, error) {
+	if receiverSSRC == nil {
+		v, err := randUint32()
+		if err != nil {
+			return nil, err
+		}
+		receiverSSRC = &v
+	}
+
 	rr := &RTCPReceiver{
-		period: period,
-		receiverSSRC: func() uint32 {
-			if receiverSSRC == nil {
-				return randUint32()
-			}
-			return *receiverSSRC
-		}(),
+		period:          period,
+		receiverSSRC:    *receiverSSRC,
 		clockRate:       float64(clockRate),
 		writePacketRTCP: writePacketRTCP,
 		terminate:       make(chan struct{}),
@@ -71,7 +77,7 @@ func New(
 
 	go rr.run()
 
-	return rr
+	return rr, nil
 }
 
 // Close closes the RTCPReceiver.

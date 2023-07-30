@@ -34,13 +34,17 @@ func (sf *serverSessionFormat) start() {
 	if sf.sm.ss.state != ServerSessionStatePlay {
 		if *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast {
 			sf.udpReorderer = rtpreorderer.New()
-			sf.udpRTCPReceiver = rtcpreceiver.New(
+			var err error
+			sf.udpRTCPReceiver, err = rtcpreceiver.New(
 				sf.sm.ss.s.udpReceiverReportPeriod,
 				nil,
 				sf.format.ClockRate(),
 				func(pkt rtcp.Packet) {
 					sf.sm.ss.WritePacketRTCP(sf.sm.media, pkt)
 				})
+			if err != nil {
+				panic(err)
+			}
 		} else {
 			sf.tcpLossDetector = rtplossdetector.New()
 		}

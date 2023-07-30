@@ -1045,7 +1045,8 @@ func TestServerSessionTeardown(t *testing.T) {
 }
 
 func TestServerAuth(t *testing.T) {
-	nonce := auth.GenerateNonce()
+	nonce, err := auth.GenerateNonce()
+	require.NoError(t, err)
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -1068,7 +1069,7 @@ func TestServerAuth(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err := s.Start()
+	err = s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 

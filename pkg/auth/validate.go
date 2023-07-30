@@ -11,10 +11,14 @@ import (
 )
 
 // GenerateNonce generates a nonce that can be used in Validate().
-func GenerateNonce() string {
+func GenerateNonce() (string, error) {
 	byts := make([]byte, 16)
-	rand.Read(byts)
-	return hex.EncodeToString(byts)
+	_, err := rand.Read(byts)
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(byts), nil
 }
 
 // GenerateWWWAuthenticate generates a WWW-Authenticate header.
