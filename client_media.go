@@ -70,12 +70,13 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 		return nil
 	}
 
-	cm.udpRTPListener, cm.udpRTCPListener = newClientUDPListenerPair(
+	var err error
+	cm.udpRTPListener, cm.udpRTCPListener, err = newClientUDPListenerPair(
 		cm.c.ListenPacket,
 		cm.c.AnyPortEnable,
 		cm.c.WriteTimeout,
 	)
-	return nil
+	return err
 }
 
 func (cm *clientMedia) setMedia(medi *media.Media) {

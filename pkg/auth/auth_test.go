@@ -47,7 +47,8 @@ func TestAuth(t *testing.T) {
 			}
 
 			t.Run(c1.name+"_"+conf, func(t *testing.T) {
-				nonce := GenerateNonce()
+				nonce, err := GenerateNonce()
+				require.NoError(t, err)
 
 				se, err := NewSender(
 					GenerateWWWAuthenticate(c1.methods, "IPCAM", nonce),
@@ -104,7 +105,8 @@ func TestAuthVLC(t *testing.T) {
 			"rtsp://myhost/mypath/test?testing/trackID=0",
 		},
 	} {
-		nonce := GenerateNonce()
+		nonce, err := GenerateNonce()
+		require.NoError(t, err)
 
 		se, err := NewSender(
 			GenerateWWWAuthenticate(nil, "IPCAM", nonce),

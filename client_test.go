@@ -194,7 +194,8 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		nonce := auth.GenerateNonce()
+		nonce, err := auth.GenerateNonce()
+		require.NoError(t, err)
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusUnauthorized,

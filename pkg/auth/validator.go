@@ -2,7 +2,6 @@ package auth
 
 import (
 	"crypto/md5"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -65,9 +64,10 @@ func NewValidator(user string, pass string, methods []headers.AuthMethod) *Valid
 		methods = []headers.AuthMethod{headers.AuthBasic}
 	}
 
-	nonceByts := make([]byte, 16)
-	rand.Read(nonceByts)
-	nonce := hex.EncodeToString(nonceByts)
+	nonce, err := GenerateNonce()
+	if err != nil {
+		panic(err)
+	}
 
 	return &Validator{
 		user:       user,

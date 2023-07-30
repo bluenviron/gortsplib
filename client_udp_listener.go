@@ -15,10 +15,13 @@ func int64Ptr(v int64) *int64 {
 	return &v
 }
 
-func randInRange(max int) int {
+func randInRange(max int) (int, error) {
 	b := big.NewInt(int64(max + 1))
-	n, _ := rand.Int(rand.Reader, b)
-	return int(n.Int64())
+	n, err := rand.Int(rand.Reader, b)
+	if err != nil {
+		return 0, err
+	}
+	return int(n.Int64()), nil
 }
 
 type clientUDPListener struct {
@@ -41,11 +44,16 @@ func newClientUDPListenerPair(
 	listenPacket func(network, address string) (net.PacketConn, error),
 	anyPortEnable bool,
 	writeTimeout time.Duration,
-) (*clientUDPListener, *clientUDPListener) {
+) (*clientUDPListener, *clientUDPListener, error) {
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
-		rtpPort := randInRange((65535-10000)/2)*2 + 10000
+		v, err := randInRange((65535 - 10000) / 2)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rtpPort := v*2 + 10000
 		rtpListener, err := newClientUDPListener(
 			listenPacket,
 			anyPortEnable,
@@ -70,7 +78,7 @@ func newClientUDPListenerPair(
 			continue
 		}
 
-		return rtpListener, rtcpListener
+		return rtpListener, rtcpListener, nil
 	}
 }
 
