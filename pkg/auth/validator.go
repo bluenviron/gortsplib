@@ -64,10 +64,7 @@ func NewValidator(user string, pass string, methods []headers.AuthMethod) *Valid
 		methods = []headers.AuthMethod{headers.AuthBasic}
 	}
 
-	nonce, err := GenerateNonce()
-	if err != nil {
-		panic(err)
-	}
+	nonce := GenerateNonce()
 
 	return &Validator{
 		user:       user,

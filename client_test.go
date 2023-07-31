@@ -194,7 +194,7 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		nonce, err := auth.GenerateNonce()
+		nonce, err := auth.GenerateNonce2()
 		require.NoError(t, err)
 
 		err = conn.WriteResponse(&base.Response{
