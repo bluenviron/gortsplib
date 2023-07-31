@@ -1045,7 +1045,7 @@ func TestServerSessionTeardown(t *testing.T) {
 }
 
 func TestServerAuth(t *testing.T) {
-	nonce, err := auth.GenerateNonce()
+	nonce, err := auth.GenerateNonce2()
 	require.NoError(t, err)
 
 	s := &Server{
