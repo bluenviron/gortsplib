@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -14,28 +13,6 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/rtplossdetector"
 	"github.com/bluenviron/gortsplib/v3/pkg/rtpreorderer"
 )
-
-// workaround until this gets tagged:
-// https://github.com/pion/rtp/pull/234
-func rtpPacketMarshalToSafe(p *rtp.Packet, buf []byte) (n int, err error) {
-	n, err = p.Header.MarshalTo(buf)
-	if err != nil {
-		return 0, err
-	}
-
-	// Make sure the buffer is large enough to hold the packet.
-	if n+len(p.Payload)+int(p.PaddingSize) > len(buf) {
-		return 0, io.ErrShortBuffer
-	}
-
-	m := copy(buf[n:], p.Payload)
-
-	if p.Header.Padding {
-		buf[n+m+int(p.PaddingSize-1)] = p.PaddingSize
-	}
-
-	return n + m + int(p.PaddingSize), nil
-}
 
 type clientFormat struct {
 	c               *Client
@@ -103,7 +80,7 @@ func (ct *clientFormat) stop() {
 
 func (ct *clientFormat) writePacketRTPWithNTP(pkt *rtp.Packet, ntp time.Time) error {
 	byts := make([]byte, udpMaxPayloadSize)
-	n, err := rtpPacketMarshalToSafe(pkt, byts)
+	n, err := pkt.MarshalTo(byts)
 	if err != nil {
 		return err
 	}
