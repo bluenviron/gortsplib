@@ -87,6 +87,8 @@ func stringsReverseIndexByte(s string, b byte) int {
 // This is rewritten from scratch to make it compatible with most RTSP
 // implementations.
 func (s *SessionDescription) unmarshalOrigin(value string) error {
+	value = strings.Replace(value, " IN IPV4 ", " IN IP4 ", 1)
+
 	i := strings.Index(value, " IN IP4 ")
 	if i < 0 {
 		i = strings.Index(value, " IN IP6 ")
@@ -171,7 +173,8 @@ func (s *SessionDescription) unmarshalPhone(value string) error {
 }
 
 func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, error) {
-	// special case for some hikvision cameras
+	value = strings.Replace(value, "IN IPV4 ", "IN IP4 ", 1)
+
 	if strings.HasPrefix(value, "IN c=IN") {
 		value = value[len("IN c="):]
 	}
