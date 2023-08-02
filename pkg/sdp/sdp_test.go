@@ -565,7 +565,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"live reporter app",
+		"issue mediamtx/75",
 		[]byte("v=0\r\n" +
 			"o=-0 0 IN IP4 127.0.0.1\r\n" +
 			"s=No Name\r\n" +
