@@ -55,7 +55,7 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 				return &MJPEG{}
 
 			case payloadType == 32:
-				return &MPEG2Video{}
+				return &MPEG1Video{}
 
 			case payloadType == 33:
 				return &MPEGTS{}
@@ -98,7 +98,7 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 				return &G726{}
 
 			case payloadType == 14:
-				return &MPEG2Audio{}
+				return &MPEG1Audio{}
 
 			case codec == "l8", codec == "l16", codec == "l24":
 				return &LPCM{}

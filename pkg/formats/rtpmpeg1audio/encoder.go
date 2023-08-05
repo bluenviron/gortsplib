@@ -1,4 +1,4 @@
-package rtpmpeg2audio
+package rtpmpeg1audio
 
 import (
 	"crypto/rand"
