@@ -37,7 +37,6 @@ func newMPEGTSMuxer(sps []byte, pps []byte) (*mpegtsMuxer, error) {
 	b := bufio.NewWriter(f)
 
 	track := &mpegts.Track{
-		PID:   256,
 		Codec: &mpegts.CodecH264{},
 	}
 

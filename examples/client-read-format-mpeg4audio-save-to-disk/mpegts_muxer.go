@@ -32,7 +32,6 @@ func newMPEGTSMuxer(config *mpeg4audio.Config) (*mpegtsMuxer, error) {
 	b := bufio.NewWriter(f)
 
 	track := &mpegts.Track{
-		PID: 256,
 		Codec: &mpegts.CodecMPEG4Audio{
 			Config: *config,
 		},

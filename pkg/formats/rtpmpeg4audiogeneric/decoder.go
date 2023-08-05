@@ -124,7 +124,8 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		d.fragmentsSize += int(dataLens[0])
 		if d.fragmentsSize > mpeg4audio.MaxAccessUnitSize {
 			d.fragments = d.fragments[:0] // discard pending fragments
-			return nil, 0, fmt.Errorf("AU size (%d) is too big, maximum is %d", d.fragmentsSize, mpeg4audio.MaxAccessUnitSize)
+			return nil, 0, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
+				d.fragmentsSize, mpeg4audio.MaxAccessUnitSize)
 		}
 
 		d.fragments = append(d.fragments, payload[:dataLens[0]])

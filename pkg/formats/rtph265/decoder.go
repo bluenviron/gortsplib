@@ -42,8 +42,9 @@ type Decoder struct {
 	fragments           [][]byte
 
 	// for DecodeUntilMarker()
-	frameBuffer    [][]byte
-	frameBufferLen int
+	frameBuffer     [][]byte
+	frameBufferLen  int
+	frameBufferSize int
 }
 
 // Init initializes the decoder.
@@ -132,9 +133,9 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		}
 
 		d.fragmentsSize += len(pkt.Payload[3:])
-		if d.fragmentsSize > h265.MaxNALUSize {
+		if d.fragmentsSize > h265.MaxAccessUnitSize {
 			d.fragments = d.fragments[:0]
-			return nil, 0, fmt.Errorf("NALU size (%d) is too big, maximum is %d", d.fragmentsSize, h265.MaxNALUSize)
+			return nil, 0, fmt.Errorf("NALU size (%d) is too big, maximum is %d", d.fragmentsSize, h265.MaxAccessUnitSize)
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[3:])
@@ -173,12 +174,28 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	if (d.frameBufferLen + l) > h265.MaxNALUsPerAccessUnit {
 		d.frameBuffer = nil
 		d.frameBufferLen = 0
+		d.frameBufferSize = 0
 		return nil, 0, fmt.Errorf("NALU count exceeds maximum allowed (%d)",
 			h265.MaxNALUsPerAccessUnit)
 	}
 
+	addSize := 0
+
+	for _, nalu := range nalus {
+		addSize += len(nalu)
+	}
+
+	if (d.frameBufferSize + addSize) > h265.MaxAccessUnitSize {
+		d.frameBuffer = nil
+		d.frameBufferLen = 0
+		d.frameBufferSize = 0
+		return nil, 0, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
+			d.frameBufferSize+addSize, h265.MaxAccessUnitSize)
+	}
+
 	d.frameBuffer = append(d.frameBuffer, nalus...)
 	d.frameBufferLen += l
+	d.frameBufferSize += addSize
 
 	if !pkt.Marker {
 		return nil, 0, ErrMorePacketsNeeded
@@ -189,6 +206,7 @@ func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, e
 	// do not reuse frameBuffer to avoid race conditions
 	d.frameBuffer = nil
 	d.frameBufferLen = 0
+	d.frameBufferSize = 0
 
 	return ret, pts, nil
 }

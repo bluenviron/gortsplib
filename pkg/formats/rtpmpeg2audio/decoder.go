@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg2audio"
+	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg1audio"
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v3/pkg/rtptime"
@@ -72,7 +72,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 		buf := pkt.Payload[4:]
 		for {
-			var h mpeg2audio.FrameHeader
+			var h mpeg1audio.FrameHeader
 			err := h.Unmarshal(buf)
 			if err != nil {
 				return nil, 0, err
