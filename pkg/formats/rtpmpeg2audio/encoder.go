@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"time"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg2audio"
+	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg1audio"
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v3/pkg/rtptime"
@@ -105,7 +105,7 @@ func (e *Encoder) Encode(frames [][]byte, pts time.Duration) ([]*rtp.Packet, err
 				rets = append(rets, pkts...)
 
 				for _, frame := range batch {
-					var h mpeg2audio.FrameHeader
+					var h mpeg1audio.FrameHeader
 					err := h.Unmarshal(frame)
 					if err != nil {
 						return nil, err
