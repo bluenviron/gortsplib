@@ -108,7 +108,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 |H265||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#H265)|:heavy_check_mark:|
 |H264||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#H264)|:heavy_check_mark:|
 |MPEG-4 Video (H263, Xvid)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4VideoES)|:heavy_check_mark:|
-|MPEG-2 Video||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG2Video)||
+|MPEG-1/2 Video||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG1Video)||
 |M-JPEG||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MJPEG)|:heavy_check_mark:|
 
 ### Audio
@@ -119,7 +119,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 |Vorbis||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#Vorbis)||
 |MPEG-4 Audio (AAC)|Generic (RFC3640)|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioGeneric)|:heavy_check_mark:|
 |MPEG-4 Audio (AAC)|LATM (RFC6416)|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioLATM)|:heavy_check_mark:|
-|MPEG-1/2 Audio (MP3)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG2Audio)|:heavy_check_mark:|
+|MPEG-1/2 Audio (MP3)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG1Audio)|:heavy_check_mark:|
 |G726||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G726)||
 |G722||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G722)|:heavy_check_mark:|
 |G711 (PCMA, PCMU)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G711)|:heavy_check_mark:|
