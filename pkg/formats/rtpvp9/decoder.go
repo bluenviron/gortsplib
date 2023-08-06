@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bluenviron/mediacommon/pkg/codecs/vp9"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
 
@@ -35,6 +36,7 @@ func joinFragments(fragments [][]byte, size int) []byte {
 type Decoder struct {
 	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
+	fragmentsSize       int
 	fragments           [][]byte
 }
 
@@ -60,6 +62,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 		d.firstPacketReceived = true
 
 		if !vpkt.E {
+			d.fragmentsSize = len(vpkt.Payload)
 			d.fragments = append(d.fragments, vpkt.Payload)
 			return nil, 0, ErrMorePacketsNeeded
 		}
@@ -74,18 +77,20 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 			return nil, 0, fmt.Errorf("received a non-starting fragment")
 		}
 
+		d.fragmentsSize += len(vpkt.Payload)
+
+		if d.fragmentsSize > vp9.MaxFrameSize {
+			d.fragments = d.fragments[:0] // discard pending fragments
+			return nil, 0, fmt.Errorf("frame size (%d) is too big, maximum is %d", d.fragmentsSize, vp9.MaxFrameSize)
+		}
+
 		d.fragments = append(d.fragments, vpkt.Payload)
 
 		if !vpkt.E {
 			return nil, 0, ErrMorePacketsNeeded
 		}
 
-		n := 0
-		for _, frag := range d.fragments {
-			n += len(frag)
-		}
-
-		frame = joinFragments(d.fragments, n)
+		frame = joinFragments(d.fragments, d.fragmentsSize)
 		d.fragments = d.fragments[:0]
 	}
 
