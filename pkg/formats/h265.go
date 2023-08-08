@@ -6,10 +6,66 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/bluenviron/mediacommon/pkg/codecs/h265"
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtph265"
 )
+
+// check whether a RTP/H265 packet is random access, without decoding the packet.
+func rtpH265IsRandomAccess(pkt *rtp.Packet) bool {
+	if len(pkt.Payload) == 0 {
+		return false
+	}
+
+	typ := h265.NALUType((pkt.Payload[0] >> 1) & 0b111111)
+
+	switch typ {
+	case h265.NALUType_IDR_W_RADL, h265.NALUType_IDR_N_LP, h265.NALUType_CRA_NUT:
+		return true
+
+	case h265.NALUType_AggregationUnit:
+		payload := pkt.Payload[2:]
+
+		for len(payload) > 0 {
+			if len(payload) < 2 {
+				return false
+			}
+
+			size := uint16(payload[0])<<8 | uint16(payload[1])
+			payload = payload[2:]
+
+			if size == 0 || int(size) > len(payload) {
+				return false
+			}
+
+			var nalu []byte
+			nalu, payload = payload[:size], payload[size:]
+
+			typ = h265.NALUType((nalu[0] >> 1) & 0b111111)
+			if typ == h265.NALUType_IDR_W_RADL || typ == h265.NALUType_IDR_N_LP || typ == h265.NALUType_CRA_NUT {
+				return true
+			}
+		}
+
+	case h265.NALUType_FragmentationUnit:
+		if len(pkt.Payload) < 3 {
+			return false
+		}
+
+		start := pkt.Payload[1] >> 7
+		if start != 1 {
+			return false
+		}
+
+		typ := h265.NALUType(pkt.Payload[2] & 0b111111)
+		if typ == h265.NALUType_IDR_W_RADL || typ == h265.NALUType_IDR_N_LP || typ == h265.NALUType_CRA_NUT {
+			return true
+		}
+	}
+
+	return false
+}
 
 // H265 is a RTP format for the H265 codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc7798
@@ -111,8 +167,8 @@ func (f *H265) FMTP() map[string]string {
 }
 
 // PTSEqualsDTS implements Format.
-func (f *H265) PTSEqualsDTS(*rtp.Packet) bool {
-	return true
+func (f *H265) PTSEqualsDTS(pkt *rtp.Packet) bool {
+	return rtpH265IsRandomAccess(pkt)
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
