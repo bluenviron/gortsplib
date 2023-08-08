@@ -41,16 +41,14 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 				return false
 			}
 
-			nalu := payload[:size]
-			payload = payload[size:]
+			var nalu []byte
+			nalu, payload = payload[:size], payload[size:]
 
 			typ = h264.NALUType(nalu[0] & 0x1F)
 			if typ == h264.NALUTypeIDR {
 				return true
 			}
 		}
-
-		return false
 
 	case 28: // FU-A
 		if len(pkt.Payload) < 2 {
@@ -63,11 +61,12 @@ func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
 		}
 
 		typ := h264.NALUType(pkt.Payload[1] & 0x1F)
-		return (typ == h264.NALUTypeIDR)
-
-	default:
-		return false
+		if typ == h264.NALUTypeIDR {
+			return true
+		}
 	}
+
+	return false
 }
 
 // H264 is a RTP format for the H264 codec, defined in MPEG-4 part 10.
