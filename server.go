@@ -90,6 +90,10 @@ type Server struct {
 	// It allows to queue packets before sending them.
 	// It defaults to 256.
 	WriteBufferCount int
+	// maximum size of outgoing RTP / RTCP packets.
+	// This must be less than the UDP MTU (1472 bytes).
+	// It defaults to 1472.
+	MaxPacketSize int
 	// disable automatic RTCP sender reports.
 	DisableRTCPSenderReports bool
 
@@ -154,9 +158,13 @@ func (s *Server) Start() error {
 	}
 	if s.WriteBufferCount == 0 {
 		s.WriteBufferCount = 256
-	}
-	if (s.WriteBufferCount & (s.WriteBufferCount - 1)) != 0 {
+	} else if (s.WriteBufferCount & (s.WriteBufferCount - 1)) != 0 {
 		return fmt.Errorf("WriteBufferCount must be a power of two")
+	}
+	if s.MaxPacketSize == 0 {
+		s.MaxPacketSize = udpMaxPayloadSize
+	} else if s.MaxPacketSize > udpMaxPayloadSize {
+		return fmt.Errorf("MaxPacketSize must be less than %d", udpMaxPayloadSize)
 	}
 
 	// system functions

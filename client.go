@@ -243,6 +243,10 @@ type Client struct {
 	// It allows to queue packets before sending them.
 	// It defaults to 256.
 	WriteBufferCount int
+	// maximum size of outgoing RTP / RTCP packets.
+	// This must be less than the UDP MTU (1472 bytes).
+	// It defaults to 1472.
+	MaxPacketSize int
 	// user agent header.
 	// It defaults to "gortsplib"
 	UserAgent string
@@ -343,9 +347,13 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.WriteBufferCount == 0 {
 		c.WriteBufferCount = 256
-	}
-	if (c.WriteBufferCount & (c.WriteBufferCount - 1)) != 0 {
+	} else if (c.WriteBufferCount & (c.WriteBufferCount - 1)) != 0 {
 		return fmt.Errorf("WriteBufferCount must be a power of two")
+	}
+	if c.MaxPacketSize == 0 {
+		c.MaxPacketSize = udpMaxPayloadSize
+	} else if c.MaxPacketSize > udpMaxPayloadSize {
+		return fmt.Errorf("MaxPacketSize must be less than %d", udpMaxPayloadSize)
 	}
 	if c.UserAgent == "" {
 		c.UserAgent = "gortsplib"
@@ -1650,7 +1658,7 @@ func (c *Client) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
 
 // WritePacketRTPWithNTP writes a RTP packet to the media stream.
 func (c *Client) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp time.Time) error {
-	byts := make([]byte, udpMaxPayloadSize)
+	byts := make([]byte, c.MaxPacketSize)
 	n, err := pkt.MarshalTo(byts)
 	if err != nil {
 		return err

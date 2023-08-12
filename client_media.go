@@ -118,7 +118,7 @@ func (cm *clientMedia) start() {
 
 		cm.tcpRTPFrame = &base.InterleavedFrame{Channel: cm.tcpChannel}
 		cm.tcpRTCPFrame = &base.InterleavedFrame{Channel: cm.tcpChannel + 1}
-		cm.tcpBuffer = make([]byte, udpMaxPayloadSize+4)
+		cm.tcpBuffer = make([]byte, cm.c.MaxPacketSize+4)
 	}
 
 	for _, ct := range cm.formats {

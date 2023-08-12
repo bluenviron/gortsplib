@@ -251,7 +251,7 @@ func (st *ServerStream) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error
 // ntp is the absolute time of the packet, and is needed to generate RTCP sender reports
 // that allows the receiver to reconstruct the absolute time of the packet.
 func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp time.Time) error {
-	byts := make([]byte, udpMaxPayloadSize)
+	byts := make([]byte, st.s.MaxPacketSize)
 	n, err := pkt.MarshalTo(byts)
 	if err != nil {
 		return err

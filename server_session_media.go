@@ -93,7 +93,7 @@ func (sm *serverSessionMedia) start() {
 
 		sm.tcpRTPFrame = &base.InterleavedFrame{Channel: sm.tcpChannel}
 		sm.tcpRTCPFrame = &base.InterleavedFrame{Channel: sm.tcpChannel + 1}
-		sm.tcpBuffer = make([]byte, udpMaxPayloadSize+4)
+		sm.tcpBuffer = make([]byte, sm.ss.s.MaxPacketSize+4)
 	}
 }
 

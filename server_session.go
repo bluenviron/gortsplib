@@ -1161,10 +1161,12 @@ func (ss *ServerSession) writePacketRTP(medi *media.Media, byts []byte) {
 
 // WritePacketRTP writes a RTP packet to the session.
 func (ss *ServerSession) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
-	byts, err := pkt.Marshal()
+	byts := make([]byte, ss.s.MaxPacketSize)
+	n, err := pkt.MarshalTo(byts)
 	if err != nil {
 		return err
 	}
+	byts = byts[:n]
 
 	ss.writePacketRTP(medi, byts)
 	return nil

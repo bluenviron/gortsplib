@@ -520,7 +520,7 @@ func TestServerRecord(t *testing.T) {
 						}, nil, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
-						// send RTCP packets directly to the session.
+						// queue sending of RTCP packets.
 						// these are sent after the response, only if onRecord returns StatusOK.
 						err := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
 						require.NoError(t, err)
