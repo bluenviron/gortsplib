@@ -19,10 +19,10 @@ import (
 // - allocating multicast listeners
 // - gathering infos about the stream in order to generate SSRC and RTP-Info
 type ServerStream struct {
+	s      *Server
 	medias media.Medias
 
 	mutex                sync.RWMutex
-	s                    *Server
 	activeUnicastReaders map[*ServerSession]struct{}
 	readers              map[*ServerSession]struct{}
 	streamMedias         map[*media.Media]*serverStreamMedia
@@ -30,8 +30,9 @@ type ServerStream struct {
 }
 
 // NewServerStream allocates a ServerStream.
-func NewServerStream(medias media.Medias) *ServerStream {
+func NewServerStream(s *Server, medias media.Medias) *ServerStream {
 	st := &ServerStream{
+		s:                    s,
 		medias:               medias,
 		activeUnicastReaders: make(map[*ServerSession]struct{}),
 		readers:              make(map[*ServerSession]struct{}),
@@ -42,10 +43,6 @@ func NewServerStream(medias media.Medias) *ServerStream {
 		st.streamMedias[medi] = newServerStreamMedia(st, medi, i)
 	}
 
-	return st
-}
-
-func (st *ServerStream) initializeServerDependentPart() {
 	if !st.s.DisableRTCPSenderReports {
 		for _, ssm := range st.streamMedias {
 			for _, tr := range ssm.formats {
@@ -53,6 +50,8 @@ func (st *ServerStream) initializeServerDependentPart() {
 			}
 		}
 	}
+
+	return st
 }
 
 // Close closes a ServerStream.
@@ -154,11 +153,6 @@ func (st *ServerStream) readerAdd(
 
 	if st.closed {
 		return fmt.Errorf("stream is closed")
-	}
-
-	if st.s == nil {
-		st.s = ss.s
-		st.initializeServerDependentPart()
 	}
 
 	switch transport {

@@ -2,24 +2,24 @@ package main
 
 import (
 	"log"
+	"sync"
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/media"
 )
 
 type server struct {
-	getStream func() *gortsplib.ServerStream
+	s      *gortsplib.Server
+	mutex  sync.Mutex
+	stream *gortsplib.ServerStream
 }
 
-func newServer(
-	getStream func() *gortsplib.ServerStream,
-) *server {
-	s := &server{
-		getStream: getStream,
-	}
+func newServer() *server {
+	s := &server{}
 
 	// configure the server
-	rs := &gortsplib.Server{
+	s.s = &gortsplib.Server{
 		Handler:           s,
 		RTSPAddress:       ":8554",
 		UDPRTPAddress:     ":8000",
@@ -29,9 +29,7 @@ func newServer(
 		MulticastRTCPPort: 8003,
 	}
 
-	// start server and wait until a fatal error
-	log.Printf("server is ready")
-	panic(rs.StartAndWait())
+	return s
 }
 
 // called when a connection is opened.
@@ -58,10 +56,11 @@ func (s *server) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
 func (s *server) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("describe request")
 
-	stream := s.getStream()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	// stream is not available yet
-	if stream == nil {
+	if s.stream == nil {
 		return &base.Response{
 			StatusCode: base.StatusNotFound,
 		}, nil, nil
@@ -69,17 +68,18 @@ func (s *server) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Re
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
-	}, stream, nil
+	}, s.stream, nil
 }
 
 // called when receiving a SETUP request.
 func (s *server) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
-	stream := s.getStream()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	// stream is not available yet
-	if stream == nil {
+	if s.stream == nil {
 		return &base.Response{
 			StatusCode: base.StatusNotFound,
 		}, nil, nil
@@ -87,7 +87,7 @@ func (s *server) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
-	}, stream, nil
+	}, s.stream, nil
 }
 
 // called when receiving a PLAY request.
@@ -97,4 +97,18 @@ func (s *server) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, 
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, nil
+}
+
+func (s *server) setStreamReady(medias media.Medias) *gortsplib.ServerStream {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.stream = gortsplib.NewServerStream(s.s, medias)
+	return s.stream
+}
+
+func (s *server) setStreamUnready() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.stream.Close()
+	s.stream = nil
 }
