@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	rtpVersion = 2
+	rtpVersion            = 2
+	defaultPayloadMaxSize = 1460 // 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
 )
 
 func randUint32() (uint32, error) {
@@ -75,7 +76,7 @@ func (e *Encoder) Init() error {
 		e.InitialTimestamp = &v
 	}
 	if e.PayloadMaxSize == 0 {
-		e.PayloadMaxSize = 1460 // 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
+		e.PayloadMaxSize = defaultPayloadMaxSize
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber

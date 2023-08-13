@@ -82,9 +82,9 @@ func (h *serverMulticastWriter) runWriter() {
 		data := tmp.(typeAndPayload)
 
 		if data.isRTP {
-			h.rtpl.write(data.payload, rtpAddr)
+			h.rtpl.write(data.payload, rtpAddr) //nolint:errcheck
 		} else {
-			h.rtcpl.write(data.payload, rtcpAddr)
+			h.rtcpl.write(data.payload, rtcpAddr) //nolint:errcheck
 		}
 	}
 }

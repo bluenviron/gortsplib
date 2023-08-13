@@ -77,7 +77,7 @@ func (h *Header) unmarshal(br *bufio.Reader) error {
 				break
 			}
 		}
-		br.UnreadByte()
+		br.UnreadByte() //nolint:errcheck
 
 		byts, err = readBytesLimited(br, '\r', headerMaxValueLength)
 		if err != nil {

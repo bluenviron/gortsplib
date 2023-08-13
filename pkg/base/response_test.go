@@ -165,6 +165,6 @@ func FuzzResponseUnmarshal(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, b []byte) {
 		var res Response
-		res.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
+		res.Unmarshal(bufio.NewReader(bytes.NewBuffer(b))) //nolint:errcheck
 	})
 }

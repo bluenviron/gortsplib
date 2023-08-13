@@ -477,7 +477,8 @@ func TestEncode(t *testing.T) {
 				InitialTimestamp:      uint32Ptr(0x88776655),
 				PayloadMaxSize:        400,
 			}
-			e.Init()
+			err := e.Init()
+			require.NoError(t, err)
 
 			pkts, err := e.Encode(ca.frames, 0)
 			require.NoError(t, err)
@@ -488,7 +489,8 @@ func TestEncode(t *testing.T) {
 
 func TestEncodeRandomInitialState(t *testing.T) {
 	e := &Encoder{}
-	e.Init()
+	err := e.Init()
+	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
 	require.NotEqual(t, nil, e.InitialTimestamp)

@@ -38,12 +38,13 @@ func (ct *clientFormat) start() {
 	if ct.cm.c.state == clientStatePlay {
 		if ct.cm.udpRTPListener != nil {
 			ct.udpReorderer = rtpreorderer.New()
+
 			var err error
 			ct.udpRTCPReceiver, err = rtcpreceiver.New(
 				ct.cm.c.udpReceiverReportPeriod,
 				nil,
 				ct.format.ClockRate(), func(pkt rtcp.Packet) {
-					ct.cm.writePacketRTCP(pkt)
+					ct.cm.writePacketRTCP(pkt) //nolint:errcheck
 				})
 			if err != nil {
 				panic(err)
@@ -55,7 +56,7 @@ func (ct *clientFormat) start() {
 		ct.rtcpSender = rtcpsender.New(
 			ct.format.ClockRate(),
 			func(pkt rtcp.Packet) {
-				ct.cm.writePacketRTCP(pkt)
+				ct.cm.writePacketRTCP(pkt) //nolint:errcheck
 			})
 	}
 }

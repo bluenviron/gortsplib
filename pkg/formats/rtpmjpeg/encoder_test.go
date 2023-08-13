@@ -521,7 +521,8 @@ func TestEncode(t *testing.T) {
 				InitialSequenceNumber: uint16Ptr(0x44ed),
 				InitialTimestamp:      uint32Ptr(2289528607),
 			}
-			e.Init()
+			err := e.Init()
+			require.NoError(t, err)
 
 			pkts, err := e.Encode(ca.image, 0)
 			require.NoError(t, err)

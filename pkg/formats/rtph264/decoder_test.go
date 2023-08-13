@@ -13,7 +13,8 @@ func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{}
-			d.Init()
+			err := d.Init()
+			require.NoError(t, err)
 
 			var nalus [][]byte
 
@@ -40,9 +41,10 @@ func TestDecode(t *testing.T) {
 
 func TestDecodeCorruptedFragment(t *testing.T) {
 	d := &Decoder{}
-	d.Init()
+	err := d.Init()
+	require.NoError(t, err)
 
-	_, _, err := d.Decode(&rtp.Packet{
+	_, _, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			Marker:         false,
@@ -78,7 +80,8 @@ func TestDecodeCorruptedFragment(t *testing.T) {
 
 func TestDecodeSTAPAWithPadding(t *testing.T) {
 	d := &Decoder{}
-	d.Init()
+	err := d.Init()
+	require.NoError(t, err)
 
 	pkt := rtp.Packet{
 		Header: rtp.Header{
@@ -107,7 +110,8 @@ func TestDecodeSTAPAWithPadding(t *testing.T) {
 
 func TestDecodeAnnexB(t *testing.T) {
 	d := &Decoder{}
-	d.Init()
+	err := d.Init()
+	require.NoError(t, err)
 
 	nalus, _, err := d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -154,7 +158,8 @@ func TestDecodeAnnexB(t *testing.T) {
 
 func TestDecodeUntilMarker(t *testing.T) {
 	d := &Decoder{}
-	d.Init()
+	err := d.Init()
+	require.NoError(t, err)
 
 	nalus, _, err := d.DecodeUntilMarker(&rtp.Packet{
 		Header: rtp.Header{
@@ -187,8 +192,8 @@ func TestDecodeUntilMarker(t *testing.T) {
 
 func TestDecoderErrorLimit(t *testing.T) {
 	d := &Decoder{}
-	d.Init()
-	var err error
+	err := d.Init()
+	require.NoError(t, err)
 
 	for i := 0; i <= h264.MaxNALUsPerAccessUnit; i++ {
 		_, _, err = d.DecodeUntilMarker(&rtp.Packet{
@@ -210,9 +215,9 @@ func TestDecoderErrorLimit(t *testing.T) {
 func FuzzDecoder(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a []byte, b []byte) {
 		d := &Decoder{}
-		d.Init()
+		d.Init() //nolint:errcheck
 
-		d.Decode(&rtp.Packet{
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,
@@ -224,7 +229,7 @@ func FuzzDecoder(f *testing.F) {
 			Payload: a,
 		})
 
-		d.Decode(&rtp.Packet{
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,

@@ -16,7 +16,8 @@ func TestDecode(t *testing.T) {
 				IndexLength:      ca.indexLength,
 				IndexDeltaLength: ca.indexDeltaLength,
 			}
-			d.Init()
+			err := d.Init()
+			require.NoError(t, err)
 
 			var aus [][]byte
 
@@ -48,7 +49,8 @@ func TestDecodeADTS(t *testing.T) {
 		IndexLength:      3,
 		IndexDeltaLength: 3,
 	}
-	d.Init()
+	err := d.Init()
+	require.NoError(t, err)
 
 	for i := 0; i < 2; i++ {
 		aus, _, err := d.Decode(&rtp.Packet{
@@ -78,9 +80,10 @@ func FuzzDecoder(f *testing.F) {
 			IndexLength:      3,
 			IndexDeltaLength: 3,
 		}
-		d.Init()
+		err := d.Init()
+		require.NoError(t, err)
 
-		d.Decode(&rtp.Packet{
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         am,
@@ -92,7 +95,7 @@ func FuzzDecoder(f *testing.F) {
 			Payload: a,
 		})
 
-		d.Decode(&rtp.Packet{
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         bm,

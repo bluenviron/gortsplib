@@ -64,7 +64,7 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 }
 
 type serverUDPListener struct {
-	pc           *net.UDPConn
+	pc           net.PacketConn
 	listenIP     net.IP
 	writeTimeout time.Duration
 	clientsMutex sync.RWMutex
@@ -184,10 +184,11 @@ func (u *serverUDPListener) run() {
 
 	for {
 		buf := make([]byte, udpMaxPayloadSize+1)
-		n, addr, err := u.pc.ReadFromUDP(buf)
+		n, addr2, err := u.pc.ReadFrom(buf)
 		if err != nil {
 			break
 		}
+		addr := addr2.(*net.UDPAddr)
 
 		func() {
 			u.clientsMutex.RLock()

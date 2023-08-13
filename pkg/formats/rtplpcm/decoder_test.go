@@ -15,7 +15,8 @@ func TestDecode(t *testing.T) {
 				SampleRate:   48000,
 				ChannelCount: 2,
 			}
-			d.Init()
+			err := d.Init()
+			require.NoError(t, err)
 
 			var samples []byte
 
@@ -37,9 +38,9 @@ func FuzzDecoder(f *testing.F) {
 			SampleRate:   48000,
 			ChannelCount: 2,
 		}
-		d.Init()
+		d.Init() //nolint:errcheck
 
-		d.Decode(&rtp.Packet{
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,
