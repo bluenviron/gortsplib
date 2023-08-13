@@ -321,6 +321,8 @@ func (s *Server) Start() error {
 func (s *Server) Close() error {
 	s.ctxCancel()
 	s.wg.Wait()
+
+	// TODO: remove return value in next major version
 	return s.closeError
 }
 

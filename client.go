@@ -488,6 +488,8 @@ func (c *Client) StartRecording(address string, medias media.Medias) error {
 func (c *Client) Close() error {
 	c.ctxCancel()
 	<-c.done
+
+	// TODO: remove return value in next major version
 	return c.closeError
 }
 
@@ -574,7 +576,7 @@ func (c *Client) doClose() {
 	}
 
 	if c.baseURL != nil {
-		c.do(&base.Request{
+		c.do(&base.Request{ //nolint:errcheck
 			Method: base.Teardown,
 			URL:    c.baseURL,
 		}, true, false)
@@ -1289,11 +1291,11 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
 		}
 
-		if c.state == clientStatePreRecord || !c.AnyPortEnable {
-			if thRes.ServerPorts == nil || isAnyPort(thRes.ServerPorts[0]) || isAnyPort(thRes.ServerPorts[1]) {
-				cm.close()
-				return nil, liberrors.ErrClientServerPortsNotProvided{}
-			}
+		serverPortsValid := thRes.ServerPorts != nil && !isAnyPort(thRes.ServerPorts[0]) && !isAnyPort(thRes.ServerPorts[1])
+
+		if (c.state == clientStatePreRecord || !c.AnyPortEnable) && !serverPortsValid {
+			cm.close()
+			return nil, liberrors.ErrClientServerPortsNotProvided{}
 		}
 
 		if thRes.Source != nil {
@@ -1302,7 +1304,7 @@ func (c *Client) doSetup(
 			cm.udpRTPListener.readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 
-		if thRes.ServerPorts != nil {
+		if serverPortsValid {
 			if !c.AnyPortEnable {
 				cm.udpRTPListener.readPort = thRes.ServerPorts[0]
 			}
@@ -1319,7 +1321,7 @@ func (c *Client) doSetup(
 			cm.udpRTCPListener.readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 
-		if thRes.ServerPorts != nil {
+		if serverPortsValid {
 			if !c.AnyPortEnable {
 				cm.udpRTCPListener.readPort = thRes.ServerPorts[1]
 			}
@@ -1478,10 +1480,10 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 	if *c.effectiveTransport == TransportUDP {
 		for _, ct := range c.medias {
 			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
-			ct.udpRTPListener.write(byts)
+			ct.udpRTPListener.write(byts) //nolint:errcheck
 
 			byts, _ = (&rtcp.ReceiverReport{}).Marshal()
-			ct.udpRTCPListener.write(byts)
+			ct.udpRTCPListener.write(byts) //nolint:errcheck
 		}
 	}
 

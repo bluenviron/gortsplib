@@ -53,7 +53,7 @@ func (c *Conn) ReadInterleavedFrameOrRequest() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.br.UnreadByte()
+	c.br.UnreadByte() //nolint:errcheck
 
 	if b == base.InterleavedFrameMagicByte {
 		return c.ReadInterleavedFrame()
@@ -68,7 +68,7 @@ func (c *Conn) ReadInterleavedFrameOrResponse() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.br.UnreadByte()
+	c.br.UnreadByte() //nolint:errcheck
 
 	if b == base.InterleavedFrameMagicByte {
 		return c.ReadInterleavedFrame()

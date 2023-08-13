@@ -26,7 +26,7 @@ func readBytesLimited(rb *bufio.Reader, delim byte, n int) ([]byte, error) {
 		}
 
 		if byts[len(byts)-1] == delim {
-			rb.Discard(len(byts))
+			rb.Discard(len(byts)) //nolint:errcheck
 			return byts, nil
 		}
 	}

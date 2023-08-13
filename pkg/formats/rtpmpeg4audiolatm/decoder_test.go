@@ -14,10 +14,10 @@ func TestDecode(t *testing.T) {
 			d := &Decoder{
 				Config: ca.config,
 			}
-			d.Init()
+			err := d.Init()
+			require.NoError(t, err)
 
 			var au []byte
-			var err error
 
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
@@ -56,7 +56,8 @@ func TestDecodeOtherData(t *testing.T) {
 			OtherDataLenBits: 16,
 		},
 	}
-	d.Init()
+	err := d.Init()
+	require.NoError(t, err)
 
 	au, _, err := d.Decode(&rtp.Packet{
 		Header: rtp.Header{
@@ -92,9 +93,9 @@ func FuzzDecoder(f *testing.F) {
 				}},
 			},
 		}
-		d.Init()
+		d.Init() //nolint:errcheck
 
-		d.Decode(&rtp.Packet{
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         am,
@@ -106,7 +107,7 @@ func FuzzDecoder(f *testing.F) {
 			Payload: a,
 		})
 
-		d.Decode(&rtp.Packet{
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         bm,

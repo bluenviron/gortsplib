@@ -764,17 +764,19 @@ func TestServerPlay(t *testing.T) {
 			// client -> server (RTCP)
 			switch transport {
 			case "udp":
-				l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+				_, err := l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[1],
 				})
+				require.NoError(t, err)
 				<-framesReceived
 
 			case "multicast":
-				l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+				_, err := l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 					IP:   *th.Destination,
 					Port: th.Ports[1],
 				})
+				require.NoError(t, err)
 				<-framesReceived
 
 			default:
@@ -928,26 +930,28 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 
 			switch { //nolint:dupl
 			case ca.proto == "udp" && ca.name == "rtcp invalid":
-				l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+				_, err := l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[1],
 				})
+				require.NoError(t, err)
 
 			case ca.proto == "udp" && ca.name == "rtcp too big":
-				l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+				_, err := l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[1],
 				})
+				require.NoError(t, err)
 
 			case ca.proto == "tcp" && ca.name == "rtcp invalid":
-				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 1,
 					Payload: []byte{0x01, 0x02},
 				}, make([]byte, 2048))
 				require.NoError(t, err)
 
 			case ca.proto == "tcp" && ca.name == "rtcp too big":
-				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 1,
 					Payload: bytes.Repeat([]byte{0x01, 0x02}, 2000/2),
 				}, make([]byte, 2048))

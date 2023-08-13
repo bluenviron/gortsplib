@@ -80,7 +80,8 @@ func TestEncode(t *testing.T) {
 				SampleRate:            48000,
 				ChannelCount:          2,
 			}
-			e.Init()
+			err := e.Init()
+			require.NoError(t, err)
 
 			pkts, err := e.Encode(ca.samples, 0)
 			require.NoError(t, err)
@@ -96,7 +97,8 @@ func TestEncodeRandomInitialState(t *testing.T) {
 		SampleRate:   48000,
 		ChannelCount: 2,
 	}
-	e.Init()
+	err := e.Init()
+	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
 	require.NotEqual(t, nil, e.InitialTimestamp)

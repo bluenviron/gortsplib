@@ -672,15 +672,17 @@ func TestServerRecord(t *testing.T) {
 
 				// client -> server
 				if transport == "udp" {
-					l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+					_, err = l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: serverPorts[i][0],
 					})
+					require.NoError(t, err)
 
-					l2s[i].WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+					_, err = l2s[i].WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: serverPorts[i][1],
 					})
+					require.NoError(t, err)
 				} else {
 					err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
 						Channel: 2 + i*2,
@@ -1313,16 +1315,18 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 
 			switch { //nolint:dupl
 			case ca.proto == "udp" && ca.name == "rtp invalid":
-				l1.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+				_, err := l1.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[0],
 				})
+				require.NoError(t, err)
 
 			case ca.proto == "udp" && ca.name == "rtcp invalid":
-				l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+				_, err := l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[1],
 				})
+				require.NoError(t, err)
 
 			case ca.proto == "udp" && ca.name == "rtp packets lost":
 				byts, _ := rtp.Packet{
@@ -1331,10 +1335,12 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 						SequenceNumber: 30,
 					},
 				}.Marshal()
-				l1.WriteTo(byts, &net.UDPAddr{
+
+				_, err := l1.WriteTo(byts, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[0],
 				})
+				require.NoError(t, err)
 
 				byts, _ = rtp.Packet{
 					Header: rtp.Header{
@@ -1342,22 +1348,26 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 						SequenceNumber: 100,
 					},
 				}.Marshal()
-				l1.WriteTo(byts, &net.UDPAddr{
+
+				_, err = l1.WriteTo(byts, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[0],
 				})
+				require.NoError(t, err)
 
 			case ca.proto == "udp" && ca.name == "rtp too big":
-				l1.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+				_, err := l1.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[0],
 				})
+				require.NoError(t, err)
 
 			case ca.proto == "udp" && ca.name == "rtcp too big":
-				l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+				_, err := l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[1],
 				})
+				require.NoError(t, err)
 
 			case ca.proto == "udp" && ca.name == "rtp unknown format":
 				byts, _ := rtp.Packet{
@@ -1365,20 +1375,22 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 						PayloadType: 111,
 					},
 				}.Marshal()
-				l1.WriteTo(byts, &net.UDPAddr{
+
+				_, err := l1.WriteTo(byts, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[0],
 				})
+				require.NoError(t, err)
 
 			case ca.proto == "tcp" && ca.name == "rtcp invalid":
-				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 1,
 					Payload: []byte{0x01, 0x02},
 				}, make([]byte, 2048))
 				require.NoError(t, err)
 
 			case ca.proto == "tcp" && ca.name == "rtcp too big":
-				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 1,
 					Payload: bytes.Repeat([]byte{0x01, 0x02}, 2000/2),
 				}, make([]byte, 2048))
@@ -1390,7 +1402,8 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 						PayloadType: 111,
 					},
 				}.Marshal()
-				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+
+				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 0,
 					Payload: byts,
 				}, make([]byte, 2048))

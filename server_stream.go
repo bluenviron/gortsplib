@@ -69,6 +69,7 @@ func (st *ServerStream) Close() error {
 		sm.close()
 	}
 
+	// TODO: remove return value in next major version
 	return nil
 }
 

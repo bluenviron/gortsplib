@@ -197,6 +197,7 @@ func newServerSession(
 // Close closes the ServerSession.
 func (ss *ServerSession) Close() error {
 	ss.ctxCancel()
+	// TODO: remove return value in next major version
 	return nil
 }
 

@@ -2480,6 +2480,6 @@ func FuzzUnmarshal(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, b string) {
 		desc := SessionDescription{}
-		desc.Unmarshal([]byte(b))
+		desc.Unmarshal([]byte(b)) //nolint:errcheck
 	})
 }

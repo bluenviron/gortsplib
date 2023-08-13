@@ -12,7 +12,8 @@ func TestDecode(t *testing.T) {
 			d := &Decoder{
 				SampleRate: 8000,
 			}
-			d.Init()
+			err := d.Init()
+			require.NoError(t, err)
 
 			frame, _, err := d.Decode(ca.pkt)
 			require.NoError(t, err)

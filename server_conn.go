@@ -112,6 +112,7 @@ func newServerConn(
 // Close closes the ServerConn.
 func (sc *ServerConn) Close() error {
 	sc.ctxCancel()
+	// TODO: remove return value in next major version
 	return nil
 }
 
@@ -397,7 +398,10 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	}
 
 	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-	sc.conn.WriteResponse(res)
+	err2 := sc.conn.WriteResponse(res)
+	if err == nil && err2 != nil {
+		err = err2
+	}
 
 	return err
 }

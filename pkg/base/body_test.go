@@ -45,7 +45,7 @@ func TestBodyMarshal(t *testing.T) {
 func FuzzBodyUnmarshal(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a string, b []byte) {
 		var p body
-		p.unmarshal(
+		p.unmarshal( //nolint:errcheck
 			Header{
 				"Content-Length": HeaderValue{a},
 			},

@@ -491,7 +491,8 @@ func TestEncode(t *testing.T) {
 				IndexLength:           ca.indexLength,
 				IndexDeltaLength:      ca.indexDeltaLength,
 			}
-			e.Init()
+			err := e.Init()
+			require.NoError(t, err)
 
 			pkts, err := e.Encode(ca.aus, 0)
 			require.NoError(t, err)
@@ -508,7 +509,8 @@ func TestEncodeRandomInitialState(t *testing.T) {
 		IndexLength:      3,
 		IndexDeltaLength: 3,
 	}
-	e.Init()
+	err := e.Init()
+	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
 	require.NotEqual(t, nil, e.InitialTimestamp)

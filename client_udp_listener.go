@@ -27,7 +27,7 @@ func randInRange(max int) (int, error) {
 type clientUDPListener struct {
 	anyPortEnable bool
 	writeTimeout  time.Duration
-	pc            *net.UDPConn
+	pc            net.PacketConn
 
 	readFunc  readFunc
 	readIP    net.IP

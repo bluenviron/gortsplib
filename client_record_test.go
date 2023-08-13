@@ -226,6 +226,7 @@ func TestClientRecordSerial(t *testing.T) {
 					buf := make([]byte, 2048)
 					n, _, err := l1.ReadFrom(buf)
 					require.NoError(t, err)
+
 					var pkt rtp.Packet
 					err = pkt.Unmarshal(buf[:n])
 					require.NoError(t, err)
@@ -234,6 +235,7 @@ func TestClientRecordSerial(t *testing.T) {
 					f, err := conn.ReadInterleavedFrame()
 					require.NoError(t, err)
 					require.Equal(t, 0, f.Channel)
+
 					var pkt rtp.Packet
 					err = pkt.Unmarshal(f.Payload)
 					require.NoError(t, err)
@@ -242,10 +244,11 @@ func TestClientRecordSerial(t *testing.T) {
 
 				// server -> client (RTCP)
 				if transport == "udp" {
-					l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+					_, err := l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
 					})
+					require.NoError(t, err)
 				} else {
 					err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
 						Channel: 1,
@@ -294,7 +297,7 @@ func TestClientRecordSerial(t *testing.T) {
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				c.Wait()
+				c.Wait() //nolint:errcheck
 			}()
 
 			err = c.WritePacketRTP(medi, &testRTPPacket)
@@ -976,16 +979,18 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 
 				switch { //nolint:dupl
 				case ca.proto == "udp" && ca.name == "rtcp invalid":
-					l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+					_, err := l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
 					})
+					require.NoError(t, err)
 
 				case ca.proto == "udp" && ca.name == "rtcp too big":
-					l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+					_, err := l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
 					})
+					require.NoError(t, err)
 
 				case ca.proto == "tcp" && ca.name == "rtcp invalid":
 					err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
@@ -1291,13 +1296,13 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 0,
 			Payload: testRTPPacketMarshaled,
 		}, make([]byte, 1024))
 		require.NoError(t, err)
 
-		conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 1,
 			Payload: testRTCPPacketMarshaled,
 		}, make([]byte, 1024))

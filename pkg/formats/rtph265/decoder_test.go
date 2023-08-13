@@ -12,7 +12,8 @@ func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{}
-			d.Init()
+			err := d.Init()
+			require.NoError(t, err)
 
 			var nalus [][]byte
 
@@ -39,8 +40,8 @@ func TestDecode(t *testing.T) {
 
 func TestDecoderErrorLimit(t *testing.T) {
 	d := &Decoder{}
-	d.Init()
-	var err error
+	err := d.Init()
+	require.NoError(t, err)
 
 	for i := 0; i <= h265.MaxNALUsPerAccessUnit; i++ {
 		_, _, err = d.DecodeUntilMarker(&rtp.Packet{
@@ -62,9 +63,9 @@ func TestDecoderErrorLimit(t *testing.T) {
 func FuzzDecoder(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a []byte, b []byte) {
 		d := &Decoder{}
-		d.Init()
+		d.Init() //nolint:errcheck
 
-		d.Decode(&rtp.Packet{
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,
@@ -76,7 +77,7 @@ func FuzzDecoder(f *testing.F) {
 			Payload: a,
 		})
 
-		d.Decode(&rtp.Packet{
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,
