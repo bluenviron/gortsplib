@@ -3,7 +3,7 @@ package rtpmpeg4audio
 import (
 	"errors"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmpeg4audiogeneric"
+	"github.com/bluenviron/gortsplib/v4/pkg/formats/rtpmpeg4audiogeneric"
 )
 
 // ErrMorePacketsNeeded is an alis for rtpmpeg4audiogeneric.ErrMorePacketsNeeded.

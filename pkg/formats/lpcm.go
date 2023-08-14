@@ -6,7 +6,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtplpcm"
+	"github.com/bluenviron/gortsplib/v4/pkg/formats/rtplpcm"
 )
 
 // LPCM is a RTP format for the uncompressed, Linear PCM codec.

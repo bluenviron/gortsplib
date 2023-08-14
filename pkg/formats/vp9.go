@@ -6,7 +6,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpvp9"
+	"github.com/bluenviron/gortsplib/v4/pkg/formats/rtpvp9"
 )
 
 // VP9 is a RTP format for the VP9 codec.

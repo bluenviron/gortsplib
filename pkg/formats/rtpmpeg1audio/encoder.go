@@ -7,7 +7,7 @@ import (
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg1audio"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/rtptime"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 )
 
 const (

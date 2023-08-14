@@ -5,7 +5,7 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
 // Medias is a list of media streams.

@@ -2,7 +2,7 @@
 package rtpmpeg2audio
 
 import (
-	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmpeg1audio"
+	"github.com/bluenviron/gortsplib/v4/pkg/formats/rtpmpeg1audio"
 )
 
 // ErrMorePacketsNeeded is an alis for rtpmpeg1audio.ErrMorePacketsNeeded.

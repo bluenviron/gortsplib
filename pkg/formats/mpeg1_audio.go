@@ -3,7 +3,7 @@ package formats //nolint:dupl
 import (
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmpeg1audio"
+	"github.com/bluenviron/gortsplib/v4/pkg/formats/rtpmpeg1audio"
 )
 
 // MPEG1Audio is a RTP format for a MPEG-1/2 Audio codec.

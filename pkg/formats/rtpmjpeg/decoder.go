@@ -7,8 +7,8 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v3/pkg/formats/rtpmjpeg/headers"
-	"github.com/bluenviron/gortsplib/v3/pkg/rtptime"
+	"github.com/bluenviron/gortsplib/v4/pkg/formats/rtpmjpeg/headers"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/mediacommon/pkg/codecs/jpeg"
 )
 
