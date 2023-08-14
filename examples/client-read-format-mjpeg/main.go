@@ -61,8 +61,13 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
+		pts, ok := c.PacketPTS(forma, pkt)
+		if !ok {
+			return
+		}
+
 		// extract JPEG images from RTP packets
-		enc, pts, err := rtpDec.Decode(pkt)
+		enc, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtpmjpeg.ErrNonStartingPacketAndNoPrevious && err != rtpmjpeg.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
@@ -76,7 +81,7 @@ func main() {
 			panic(err)
 		}
 
-		log.Printf("decoded image with size %v and pts %v", image.Bounds().Max, pts)
+		log.Printf("decoded image with PTS %v and size %v", pts, image.Bounds().Max)
 	})
 
 	// start playing

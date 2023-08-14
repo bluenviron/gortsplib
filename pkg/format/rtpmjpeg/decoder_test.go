@@ -15,7 +15,7 @@ func TestDecode(t *testing.T) {
 			require.NoError(t, err)
 
 			for _, pkt := range ca.pkts {
-				image, _, err := d.Decode(pkt)
+				image, err := d.Decode(pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}

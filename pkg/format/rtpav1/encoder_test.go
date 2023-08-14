@@ -244,7 +244,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -265,7 +264,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -460,7 +458,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -502,7 +499,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -525,7 +521,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -720,7 +715,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -915,7 +909,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -988,12 +981,11 @@ func TestEncode(t *testing.T) {
 				PayloadType:           96,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
-				InitialTimestamp:      uint32Ptr(0x88776655),
 			}
 			err := e.Init()
 			require.NoError(t, err)
 
-			pkts, err := e.Encode(ca.obus, 0)
+			pkts, err := e.Encode(ca.obus)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})
@@ -1008,5 +1000,4 @@ func TestEncodeRandomInitialState(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
-	require.NotEqual(t, nil, e.InitialTimestamp)
 }

@@ -58,8 +58,13 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
+		pts, ok := c.PacketPTS(forma, pkt)
+		if !ok {
+			return
+		}
+
 		// extract VP8 frames from RTP packets
-		vf, _, err := rtpDec.Decode(pkt)
+		vf, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtpvp8.ErrNonStartingPacketAndNoPrevious && err != rtpvp8.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
@@ -67,7 +72,7 @@ func main() {
 			return
 		}
 
-		log.Printf("received frame of size %d\n", len(vf))
+		log.Printf("received frame with PTS %v size %d\n", pts, len(vf))
 	})
 
 	// start playing

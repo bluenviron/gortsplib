@@ -172,7 +172,6 @@ func (f *MPEG4AudioGeneric) PTSEqualsDTS(*rtp.Packet) bool {
 // CreateDecoder creates a decoder able to decode the content of the format.
 func (f *MPEG4AudioGeneric) CreateDecoder() (*rtpmpeg4audio.Decoder, error) {
 	d := &rtpmpeg4audio.Decoder{
-		SampleRate:       f.Config.SampleRate,
 		SizeLength:       f.SizeLength,
 		IndexLength:      f.IndexLength,
 		IndexDeltaLength: f.IndexDeltaLength,
@@ -190,7 +189,6 @@ func (f *MPEG4AudioGeneric) CreateDecoder() (*rtpmpeg4audio.Decoder, error) {
 func (f *MPEG4AudioGeneric) CreateEncoder() (*rtpmpeg4audio.Encoder, error) {
 	e := &rtpmpeg4audio.Encoder{
 		PayloadType:      f.PayloadTyp,
-		SampleRate:       f.Config.SampleRate,
 		SizeLength:       f.SizeLength,
 		IndexLength:      f.IndexLength,
 		IndexDeltaLength: f.IndexDeltaLength,

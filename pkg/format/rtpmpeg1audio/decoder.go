@@ -3,12 +3,9 @@ package rtpmpeg1audio
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg1audio"
 	"github.com/pion/rtp"
-
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -33,7 +30,6 @@ func joinFragments(fragments [][]byte, size int) []byte {
 // Decoder is a RTP/MPEG-1/2 Audio decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type Decoder struct {
-	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
 	fragments           [][]byte
 	fragmentsSize       int
@@ -42,23 +38,22 @@ type Decoder struct {
 
 // Init initializes the decoder.
 func (d *Decoder) Init() error {
-	d.timeDecoder = rtptime.NewDecoder(90000)
 	return nil
 }
 
 // Decode decodes frames from a RTP packet.
-func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	if len(pkt.Payload) < 5 {
 		d.fragments = d.fragments[:0] // discard pending fragments
 		d.fragmentsSize = 0
-		return nil, 0, fmt.Errorf("payload is too short")
+		return nil, fmt.Errorf("payload is too short")
 	}
 
 	mbz := uint16(pkt.Payload[0])<<8 | uint16(pkt.Payload[1])
 	if mbz != 0 {
 		d.fragments = d.fragments[:0] // discard pending fragments
 		d.fragmentsSize = 0
-		return nil, 0, fmt.Errorf("invalid MBZ: %v", mbz)
+		return nil, fmt.Errorf("invalid MBZ: %v", mbz)
 	}
 
 	offset := uint16(pkt.Payload[2])<<8 | uint16(pkt.Payload[3])
@@ -75,7 +70,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			var h mpeg1audio.FrameHeader
 			err := h.Unmarshal(buf)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 
 			fl := h.FrameLen()
@@ -88,24 +83,24 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 				}
 			} else {
 				if len(frames) != 0 {
-					return nil, 0, fmt.Errorf("invalid packet")
+					return nil, fmt.Errorf("invalid packet")
 				}
 
 				d.fragments = append(d.fragments, buf)
 				d.fragmentsSize = bl
 				d.fragmentsExpected = fl - bl
-				return nil, 0, ErrMorePacketsNeeded
+				return nil, ErrMorePacketsNeeded
 			}
 		}
 	} else {
 		if int(offset) != d.fragmentsSize {
 			if !d.firstPacketReceived {
-				return nil, 0, ErrNonStartingPacketAndNoPrevious
+				return nil, ErrNonStartingPacketAndNoPrevious
 			}
 
 			d.fragments = d.fragments[:0] // discard pending fragments
 			d.fragmentsSize = 0
-			return nil, 0, fmt.Errorf("unexpected offset %v, expected %v", offset, d.fragmentsSize)
+			return nil, fmt.Errorf("unexpected offset %v, expected %v", offset, d.fragmentsSize)
 		}
 
 		bl := len(pkt.Payload[4:])
@@ -115,13 +110,13 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		if d.fragmentsExpected < 0 {
 			d.fragments = d.fragments[:0] // discard pending fragments
 			d.fragmentsSize = 0
-			return nil, 0, fmt.Errorf("fragment is too big")
+			return nil, fmt.Errorf("fragment is too big")
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[4:])
 
 		if d.fragmentsExpected > 0 {
-			return nil, 0, ErrMorePacketsNeeded
+			return nil, ErrMorePacketsNeeded
 		}
 
 		frames = [][]byte{joinFragments(d.fragments, d.fragmentsSize)}
@@ -129,5 +124,5 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 		d.fragmentsSize = 0
 	}
 
-	return frames, d.timeDecoder.Decode(pkt.Timestamp), nil
+	return frames, nil
 }

@@ -17,7 +17,7 @@ func TestDecode(t *testing.T) {
 			var frame []byte
 
 			for _, pkt := range ca.pkts {
-				frame, _, err = d.Decode(pkt)
+				frame, err = d.Decode(pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}

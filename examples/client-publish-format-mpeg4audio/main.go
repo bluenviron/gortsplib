@@ -24,7 +24,7 @@ func main() {
 	}
 	defer pc.Close()
 
-	log.Println("Waiting for a RTP/MPEG4-audio stream on UDP port 9000 - you can send one with GStreamer:\n" +
+	log.Println("Waiting for a RTP/MPEG-4 audio stream on UDP port 9000 - you can send one with GStreamer:\n" +
 		"gst-launch-1.0 audiotestsrc freq=300 ! audioconvert ! audioresample ! audio/x-raw,rate=48000" +
 		" ! avenc_aac bitrate=128000 ! rtpmp4gpay ! udpsink host=127.0.0.1 port=9000")
 
@@ -36,7 +36,7 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create a media that contains a MPEG4-audio format
+	// create a media that contains a MPEG-4 audio format
 	medi := &media.Media{
 		Type: media.TypeAudio,
 		Formats: []format.Format{&format.MPEG4Audio{

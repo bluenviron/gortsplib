@@ -12,7 +12,6 @@ func TestDecode(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
 				BitDepth:     24,
-				SampleRate:   48000,
 				ChannelCount: 2,
 			}
 			err := d.Init()
@@ -21,7 +20,7 @@ func TestDecode(t *testing.T) {
 			var samples []byte
 
 			for _, pkt := range ca.pkts {
-				partial, _, err := d.Decode(pkt)
+				partial, err := d.Decode(pkt)
 				require.NoError(t, err)
 				samples = append(samples, partial...)
 			}
@@ -35,7 +34,6 @@ func FuzzDecoder(f *testing.F) {
 	f.Fuzz(func(t *testing.T, b []byte) {
 		d := &Decoder{
 			BitDepth:     24,
-			SampleRate:   48000,
 			ChannelCount: 2,
 		}
 		d.Init() //nolint:errcheck

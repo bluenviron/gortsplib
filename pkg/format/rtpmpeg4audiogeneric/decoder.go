@@ -3,13 +3,10 @@ package rtpmpeg4audiogeneric
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/bluenviron/mediacommon/pkg/bits"
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
-
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
@@ -27,9 +24,6 @@ func joinFragments(fragments [][]byte, size int) []byte {
 // Decoder is a RTP/MPEG-4 Audio decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3640
 type Decoder struct {
-	// sample rate of input packets.
-	SampleRate int
-
 	// The number of bits in which the AU-size field is encoded in the AU-header.
 	SizeLength int
 
@@ -39,7 +33,6 @@ type Decoder struct {
 	// The number of bits in which the AU-Index-delta field is encoded in any non-first AU-header.
 	IndexDeltaLength int
 
-	timeDecoder   *rtptime.Decoder
 	firstAUParsed bool
 	adtsMode      bool
 	fragments     [][]byte
@@ -48,24 +41,23 @@ type Decoder struct {
 
 // Init initializes the decoder.
 func (d *Decoder) Init() error {
-	d.timeDecoder = rtptime.NewDecoder(d.SampleRate)
 	return nil
 }
 
 // Decode decodes AUs from a RTP packet.
 // It returns the AUs and the PTS of the first AU.
 // The PTS of subsequent AUs can be calculated by adding time.Second*mpeg4audio.SamplesPerAccessUnit/clockRate.
-func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	if len(pkt.Payload) < 2 {
 		d.fragments = d.fragments[:0] // discard pending fragments
-		return nil, 0, fmt.Errorf("payload is too short")
+		return nil, fmt.Errorf("payload is too short")
 	}
 
 	// AU-headers-length (16 bits)
 	headersLen := int(uint16(pkt.Payload[0])<<8 | uint16(pkt.Payload[1]))
 	if headersLen == 0 {
 		d.fragments = d.fragments[:0] // discard pending fragments
-		return nil, 0, fmt.Errorf("invalid AU-headers-length")
+		return nil, fmt.Errorf("invalid AU-headers-length")
 	}
 	payload := pkt.Payload[2:]
 
@@ -73,7 +65,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	dataLens, err := d.readAUHeaders(payload, headersLen)
 	if err != nil {
 		d.fragments = d.fragments[:0] // discard pending fragments
-		return nil, 0, err
+		return nil, err
 	}
 
 	pos := (headersLen / 8)
@@ -90,7 +82,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			aus = make([][]byte, len(dataLens))
 			for i, dataLen := range dataLens {
 				if len(payload) < int(dataLen) {
-					return nil, 0, fmt.Errorf("payload is too short")
+					return nil, fmt.Errorf("payload is too short")
 				}
 
 				aus[i] = payload[:dataLen]
@@ -98,40 +90,40 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 			}
 		} else {
 			if len(dataLens) != 1 {
-				return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
+				return nil, fmt.Errorf("a fragmented packet can only contain one AU")
 			}
 
 			if len(payload) < int(dataLens[0]) {
-				return nil, 0, fmt.Errorf("payload is too short")
+				return nil, fmt.Errorf("payload is too short")
 			}
 
 			d.fragmentsSize = int(dataLens[0])
 			d.fragments = append(d.fragments, payload[:dataLens[0]])
-			return nil, 0, ErrMorePacketsNeeded
+			return nil, ErrMorePacketsNeeded
 		}
 	} else {
 		// we are decoding a fragmented AU
 		if len(dataLens) != 1 {
 			d.fragments = d.fragments[:0] // discard pending fragments
-			return nil, 0, fmt.Errorf("a fragmented packet can only contain one AU")
+			return nil, fmt.Errorf("a fragmented packet can only contain one AU")
 		}
 
 		if len(payload) < int(dataLens[0]) {
 			d.fragments = d.fragments[:0] // discard pending fragments
-			return nil, 0, fmt.Errorf("payload is too short")
+			return nil, fmt.Errorf("payload is too short")
 		}
 
 		d.fragmentsSize += int(dataLens[0])
 		if d.fragmentsSize > mpeg4audio.MaxAccessUnitSize {
 			d.fragments = d.fragments[:0] // discard pending fragments
-			return nil, 0, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
+			return nil, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
 				d.fragmentsSize, mpeg4audio.MaxAccessUnitSize)
 		}
 
 		d.fragments = append(d.fragments, payload[:dataLens[0]])
 
 		if !pkt.Marker {
-			return nil, 0, ErrMorePacketsNeeded
+			return nil, ErrMorePacketsNeeded
 		}
 
 		aus = [][]byte{joinFragments(d.fragments, d.fragmentsSize)}
@@ -140,10 +132,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 
 	aus, err = d.removeADTS(aus)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	return aus, d.timeDecoder.Decode(pkt.Timestamp), nil
+	return aus, nil
 }
 
 func (d *Decoder) readAUHeaders(buf []byte, headersLen int) ([]uint64, error) {

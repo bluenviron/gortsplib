@@ -97,11 +97,12 @@ func main() {
 		panic(err)
 	}
 
-	// called when a RTP packet arrives
 	saveCount := 0
+
+	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// extract access units from RTP packets
-		au, _, err := rtpDec.Decode(pkt)
+		au, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)

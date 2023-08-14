@@ -27,6 +27,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
@@ -316,6 +317,7 @@ type Client struct {
 	writer               asyncProcessor
 	reader               *clientReader
 	connCloser           *clientConnCloser
+	timeDecoder          *rtptime.GlobalDecoder
 
 	// in
 	options   chan optionsReq
@@ -671,6 +673,23 @@ func (c *Client) playRecordStart() {
 	c.connCloser.close()
 	c.connCloser = nil
 
+	c.timeDecoder = rtptime.NewGlobalDecoder()
+
+	if c.state == clientStatePlay {
+		// when reading, buffer is only used to send RTCP receiver reports,
+		// that are much smaller than RTP packets and are sent at a fixed interval.
+		// decrease RAM consumption by allocating less buffers.
+		c.writer.allocateBuffer(8)
+	} else {
+		c.writer.allocateBuffer(c.WriteBufferCount)
+	}
+
+	c.writer.start()
+
+	for _, cm := range c.medias {
+		cm.start()
+	}
+
 	if c.state == clientStatePlay {
 		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
@@ -689,21 +708,6 @@ func (c *Client) playRecordStart() {
 		}
 	}
 
-	if c.state == clientStatePlay {
-		// when reading, buffer is only used to send RTCP receiver reports,
-		// that are much smaller than RTP packets and are sent at a fixed interval.
-		// decrease RAM consumption by allocating less buffers.
-		c.writer.allocateBuffer(8)
-	} else {
-		c.writer.allocateBuffer(c.WriteBufferCount)
-	}
-
-	c.writer.start()
-
-	for _, cm := range c.medias {
-		cm.start()
-	}
-
 	c.reader = newClientReader(c)
 }
 
@@ -714,15 +718,16 @@ func (c *Client) playRecordStop(isClosing bool) {
 		c.reader = nil
 	}
 
-	// stop timers
 	c.checkTimeoutTimer = emptyTimer()
 	c.keepaliveTimer = emptyTimer()
-
-	c.writer.stop()
 
 	for _, cm := range c.medias {
 		cm.stop()
 	}
+
+	c.writer.stop()
+
+	c.timeDecoder = nil
 
 	if !isClosing {
 		c.connCloser = newClientConnCloser(c.ctx, c.nconn)
@@ -1698,6 +1703,12 @@ func (c *Client) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) error {
 	cm := c.medias[medi]
 	cm.writePacketRTCP(byts)
 	return nil
+}
+
+// PacketPTS returns the PTS of an incoming RTP packet.
+// It is computed by decoding the packet timestamp and sychronizing it with other tracks.
+func (c *Client) PacketPTS(forma format.Format, pkt *rtp.Packet) (time.Duration, bool) {
+	return c.timeDecoder.Decode(forma, pkt)
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.

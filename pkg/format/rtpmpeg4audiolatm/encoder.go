@@ -2,13 +2,8 @@ package rtpmpeg4audiolatm
 
 import (
 	"crypto/rand"
-	"fmt"
-	"time"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
-
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 )
 
 const (
@@ -31,9 +26,6 @@ type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8
 
-	// StreamMuxConfig.
-	Config *mpeg4audio.StreamMuxConfig
-
 	// SSRC of packets (optional).
 	// It defaults to a random value.
 	SSRC *uint32
@@ -42,24 +34,15 @@ type Encoder struct {
 	// It defaults to a random value.
 	InitialSequenceNumber *uint16
 
-	// initial timestamp of packets (optional).
-	// It defaults to a random value.
-	InitialTimestamp *uint32
-
 	// maximum size of packet payloads (optional).
 	// It defaults to 1460.
 	PayloadMaxSize int
 
 	sequenceNumber uint16
-	timeEncoder    *rtptime.Encoder
 }
 
 // Init initializes the encoder.
 func (e *Encoder) Init() error {
-	if e.Config == nil || len(e.Config.Programs) != 1 || len(e.Config.Programs[0].Layers) != 1 {
-		return fmt.Errorf("unsupported StreamMuxConfig")
-	}
-
 	if e.SSRC == nil {
 		v, err := randUint32()
 		if err != nil {
@@ -75,19 +58,11 @@ func (e *Encoder) Init() error {
 		v2 := uint16(v)
 		e.InitialSequenceNumber = &v2
 	}
-	if e.InitialTimestamp == nil {
-		v, err := randUint32()
-		if err != nil {
-			return err
-		}
-		e.InitialTimestamp = &v
-	}
 	if e.PayloadMaxSize == 0 {
 		e.PayloadMaxSize = defaultPayloadMaxSize
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-	e.timeEncoder = rtptime.NewEncoder(e.Config.Programs[0].Layers[0].AudioSpecificConfig.SampleRate, *e.InitialTimestamp)
 	return nil
 }
 
@@ -101,15 +76,14 @@ func (e *Encoder) packetCount(auLen int, plil int) int {
 	return packetCount
 }
 
-// Encode encodes AUs into RTP packets.
-func (e *Encoder) Encode(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
+// Encode encodes an access unit into RTP packets.
+func (e *Encoder) Encode(au []byte) ([]*rtp.Packet, error) {
 	auLen := len(au)
 	plil := payloadLengthInfoEncodeSize(auLen)
 	packetCount := e.packetCount(auLen, plil)
 
 	avail := e.PayloadMaxSize - plil
 	ret := make([]*rtp.Packet, packetCount)
-	encPTS := e.timeEncoder.Encode(pts)
 
 	for i := range ret {
 		var final bool
@@ -138,7 +112,6 @@ func (e *Encoder) Encode(au []byte, pts time.Duration) ([]*rtp.Packet, error) {
 				Version:        rtpVersion,
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      encPTS,
 				SSRC:           *e.SSRC,
 				Marker:         final,
 			},

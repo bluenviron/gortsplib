@@ -57,15 +57,20 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
+		pts, ok := c.PacketPTS(forma, pkt)
+		if !ok {
+			return
+		}
+
 		// extract Opus packets from RTP packets
-		op, _, err := rtpDec.Decode(pkt)
+		op, err := rtpDec.Decode(pkt)
 		if err != nil {
 			log.Printf("ERR: %v", err)
 			return
 		}
 
 		// print
-		log.Printf("received Opus packet of size %d\n", len(op))
+		log.Printf("received Opus packet with PTS %v size %d\n", pts, len(op))
 	})
 
 	// start playing

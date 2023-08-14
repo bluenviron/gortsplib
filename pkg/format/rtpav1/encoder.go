@@ -2,12 +2,9 @@ package rtpav1
 
 import (
 	"crypto/rand"
-	"time"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/av1"
 	"github.com/pion/rtp"
-
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 )
 
 const (
@@ -38,16 +35,11 @@ type Encoder struct {
 	// It defaults to a random value.
 	InitialSequenceNumber *uint16
 
-	// initial timestamp of packets (optional).
-	// It defaults to a random value.
-	InitialTimestamp *uint32
-
 	// maximum size of packet payloads (optional).
 	// It defaults to 1460.
 	PayloadMaxSize int
 
 	sequenceNumber uint16
-	timeEncoder    *rtptime.Encoder
 }
 
 // Init initializes the encoder.
@@ -67,30 +59,21 @@ func (e *Encoder) Init() error {
 		v2 := uint16(v)
 		e.InitialSequenceNumber = &v2
 	}
-	if e.InitialTimestamp == nil {
-		v, err := randUint32()
-		if err != nil {
-			return err
-		}
-		e.InitialTimestamp = &v
-	}
 	if e.PayloadMaxSize == 0 {
 		e.PayloadMaxSize = defaultPayloadMaxSize
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-	e.timeEncoder = rtptime.NewEncoder(90000, *e.InitialTimestamp)
 	return nil
 }
 
 // Encode encodes OBUs into RTP packets.
-func (e *Encoder) Encode(obus [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 	isKeyFrame, err := av1.ContainsKeyFrame(obus)
 	if err != nil {
 		return nil, err
 	}
 
-	ts := e.timeEncoder.Encode(pts)
 	var curPacket *rtp.Packet
 	var packets []*rtp.Packet
 	curPayloadLen := 0
@@ -101,7 +84,6 @@ func (e *Encoder) Encode(obus [][]byte, pts time.Duration) ([]*rtp.Packet, error
 				Version:        rtpVersion,
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      ts,
 				SSRC:           *e.SSRC,
 			},
 			Payload: []byte{0},

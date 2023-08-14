@@ -17,7 +17,7 @@ func TestDecode(t *testing.T) {
 			var frames [][]byte
 
 			for _, pkt := range ca.pkts {
-				frames, _, err = d.Decode(pkt)
+				frames, err = d.Decode(pkt)
 			}
 
 			require.NoError(t, err)

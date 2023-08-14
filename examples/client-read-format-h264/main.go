@@ -76,8 +76,13 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
+		pts, ok := c.PacketPTS(forma, pkt)
+		if !ok {
+			return
+		}
+
 		// extract access units from RTP packets
-		au, pts, err := rtpDec.Decode(pkt)
+		au, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
@@ -97,7 +102,7 @@ func main() {
 				continue
 			}
 
-			log.Printf("decoded frame with size %v and pts %v", img.Bounds().Max, pts)
+			log.Printf("decoded frame with PTS %v and size %v and pts %v", pts, img.Bounds().Max)
 		}
 	})
 

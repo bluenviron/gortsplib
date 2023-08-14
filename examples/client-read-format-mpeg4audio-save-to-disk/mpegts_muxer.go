@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"log"
 	"os"
 	"time"
 
@@ -54,14 +53,7 @@ func (e *mpegtsMuxer) close() {
 	e.f.Close()
 }
 
-// encode encodes a MPEG4-audio access unit into MPEG-TS.
-func (e *mpegtsMuxer) encode(au []byte, pts time.Duration) error {
-	// encode into MPEG-TS
-	err := e.w.WriteMPEG4Audio(e.track, durationGoToMPEGTS(pts), [][]byte{au})
-	if err != nil {
-		return err
-	}
-
-	log.Println("wrote TS packet")
-	return nil
+// encode encodes MPEG-4 audio access units into MPEG-TS.
+func (e *mpegtsMuxer) encode(aus [][]byte, pts time.Duration) error {
+	return e.w.WriteMPEG4Audio(e.track, durationGoToMPEGTS(pts), aus)
 }

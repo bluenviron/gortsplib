@@ -3,11 +3,8 @@ package rtplpcm
 import (
 	"crypto/rand"
 	"fmt"
-	"time"
 
 	"github.com/pion/rtp"
-
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 )
 
 const (
@@ -30,6 +27,12 @@ type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8
 
+	// bit depth.
+	BitDepth int
+
+	// channel count.
+	ChannelCount int
+
 	// SSRC of packets (optional).
 	// It defaults to a random value.
 	SSRC *uint32
@@ -38,20 +41,11 @@ type Encoder struct {
 	// It defaults to a random value.
 	InitialSequenceNumber *uint16
 
-	// initial timestamp of packets (optional).
-	// It defaults to a random value.
-	InitialTimestamp *uint32
-
 	// maximum size of packet payloads (optional).
 	// It defaults to 1460.
 	PayloadMaxSize int
 
-	BitDepth     int
-	SampleRate   int
-	ChannelCount int
-
 	sequenceNumber uint16
-	timeEncoder    *rtptime.Encoder
 	sampleSize     int
 	maxPayloadSize int
 }
@@ -73,19 +67,11 @@ func (e *Encoder) Init() error {
 		v2 := uint16(v)
 		e.InitialSequenceNumber = &v2
 	}
-	if e.InitialTimestamp == nil {
-		v, err := randUint32()
-		if err != nil {
-			return err
-		}
-		e.InitialTimestamp = &v
-	}
 	if e.PayloadMaxSize == 0 {
 		e.PayloadMaxSize = defaultPayloadMaxSize
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-	e.timeEncoder = rtptime.NewEncoder(e.SampleRate, *e.InitialTimestamp)
 	e.sampleSize = e.BitDepth * e.ChannelCount / 8
 	e.maxPayloadSize = (e.PayloadMaxSize / e.sampleSize) * e.sampleSize
 	return nil
@@ -101,7 +87,7 @@ func (e *Encoder) packetCount(slen int) int {
 }
 
 // Encode encodes audio samples into RTP packets.
-func (e *Encoder) Encode(samples []byte, pts time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) Encode(samples []byte) ([]*rtp.Packet, error) {
 	slen := len(samples)
 	if (slen % e.sampleSize) != 0 {
 		return nil, fmt.Errorf("invalid samples")
@@ -112,6 +98,7 @@ func (e *Encoder) Encode(samples []byte, pts time.Duration) ([]*rtp.Packet, erro
 	i := 0
 	pos := 0
 	payloadSize := e.maxPayloadSize
+	timestamp := uint32(0)
 
 	for {
 		if payloadSize > len(samples[pos:]) {
@@ -123,7 +110,7 @@ func (e *Encoder) Encode(samples []byte, pts time.Duration) ([]*rtp.Packet, erro
 				Version:        rtpVersion,
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      e.timeEncoder.Encode(pts),
+				Timestamp:      timestamp,
 				SSRC:           *e.SSRC,
 				Marker:         false,
 			},
@@ -133,7 +120,7 @@ func (e *Encoder) Encode(samples []byte, pts time.Duration) ([]*rtp.Packet, erro
 		e.sequenceNumber++
 		i++
 		pos += payloadSize
-		pts += time.Duration(payloadSize/e.sampleSize) * time.Second / time.Duration(e.SampleRate)
+		timestamp += uint32(payloadSize / e.sampleSize)
 
 		if pos == slen {
 			break

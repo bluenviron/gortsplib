@@ -100,7 +100,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -170,7 +169,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -196,7 +194,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -210,7 +207,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -224,7 +220,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -252,7 +247,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -267,7 +261,7 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289529429,
+					Timestamp:      3072,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -281,7 +275,7 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289529429,
+					Timestamp:      3072,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -306,7 +300,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -331,7 +324,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -357,7 +349,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{
@@ -383,7 +374,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -398,7 +388,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -413,7 +402,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -438,7 +426,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -452,7 +439,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -466,7 +452,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
@@ -483,10 +468,8 @@ func TestEncode(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
 				PayloadType:           96,
-				SampleRate:            48000,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
-				InitialTimestamp:      uint32Ptr(0x88776655),
 				SizeLength:            ca.sizeLength,
 				IndexLength:           ca.indexLength,
 				IndexDeltaLength:      ca.indexDeltaLength,
@@ -494,7 +477,7 @@ func TestEncode(t *testing.T) {
 			err := e.Init()
 			require.NoError(t, err)
 
-			pkts, err := e.Encode(ca.aus, 0)
+			pkts, err := e.Encode(ca.aus)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})
@@ -504,7 +487,6 @@ func TestEncode(t *testing.T) {
 func TestEncodeRandomInitialState(t *testing.T) {
 	e := &Encoder{
 		PayloadType:      96,
-		SampleRate:       48000,
 		SizeLength:       13,
 		IndexLength:      3,
 		IndexDeltaLength: 3,
@@ -513,5 +495,4 @@ func TestEncodeRandomInitialState(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
-	require.NotEqual(t, nil, e.InitialTimestamp)
 }

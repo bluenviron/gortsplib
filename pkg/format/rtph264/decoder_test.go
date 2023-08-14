@@ -21,7 +21,7 @@ func TestDecode(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				addNALUs, _, err := d.Decode(pkt)
+				addNALUs, err := d.Decode(pkt)
 
 				// test input integrity
 				require.Equal(t, clone, pkt)
@@ -44,7 +44,7 @@ func TestDecodeCorruptedFragment(t *testing.T) {
 	err := d.Init()
 	require.NoError(t, err)
 
-	_, _, err = d.Decode(&rtp.Packet{
+	_, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			Marker:         true,
@@ -63,7 +63,7 @@ func TestDecodeCorruptedFragment(t *testing.T) {
 	})
 	require.Equal(t, ErrMorePacketsNeeded, err)
 
-	nalus, _, err := d.Decode(&rtp.Packet{
+	nalus, err := d.Decode(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			Marker:         true,
@@ -89,7 +89,6 @@ func TestDecodeSTAPAWithPadding(t *testing.T) {
 			Marker:         true,
 			PayloadType:    96,
 			SequenceNumber: 17645,
-			Timestamp:      2289526357,
 			SSRC:           0x9dbb7812,
 		},
 		Payload: []byte{
@@ -100,7 +99,7 @@ func TestDecodeSTAPAWithPadding(t *testing.T) {
 		},
 	}
 
-	nalus, _, err := d.Decode(&pkt)
+	nalus, err := d.Decode(&pkt)
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{
 		{0xaa, 0xbb},
@@ -113,7 +112,7 @@ func TestDecodeAnnexB(t *testing.T) {
 	err := d.Init()
 	require.NoError(t, err)
 
-	nalus, _, err := d.Decode(&rtp.Packet{
+	nalus, err := d.Decode(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			Marker:         true,
@@ -132,7 +131,7 @@ func TestDecodeAnnexB(t *testing.T) {
 	}, nalus)
 
 	for i := 0; i < 2; i++ {
-		nalus, _, err := d.Decode(&rtp.Packet{
+		nalus, err := d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         true,
@@ -161,7 +160,7 @@ func TestDecodeAccessUnit(t *testing.T) {
 	err := d.Init()
 	require.NoError(t, err)
 
-	nalus, _, err := d.Decode(&rtp.Packet{
+	nalus, err := d.Decode(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			Marker:         false,
@@ -175,7 +174,7 @@ func TestDecodeAccessUnit(t *testing.T) {
 	require.Equal(t, ErrMorePacketsNeeded, err)
 	require.Equal(t, [][]byte(nil), nalus)
 
-	nalus, _, err = d.Decode(&rtp.Packet{
+	nalus, err = d.Decode(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			Marker:         true,
@@ -196,7 +195,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i <= h264.MaxNALUsPerAccessUnit; i++ {
-		_, _, err = d.Decode(&rtp.Packet{
+		_, err = d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,

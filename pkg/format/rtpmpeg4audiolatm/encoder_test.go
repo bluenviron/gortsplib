@@ -61,7 +61,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           2646308882,
 				},
 				Payload: []byte{
@@ -92,7 +91,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           2646308882,
 				},
 				Payload: mergeBytes(
@@ -108,7 +106,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289526357,
 					SSRC:           2646308882,
 				},
 				Payload: mergeBytes(
@@ -123,7 +120,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289526357,
 					SSRC:           2646308882,
 				},
 				Payload: mergeBytes(
@@ -140,15 +136,13 @@ func TestEncode(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
 				PayloadType:           96,
-				Config:                ca.config,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
-				InitialTimestamp:      uint32Ptr(0x88776655),
 			}
 			err := e.Init()
 			require.NoError(t, err)
 
-			pkts, err := e.Encode(ca.au, 0)
+			pkts, err := e.Encode(ca.au)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})
@@ -158,22 +152,9 @@ func TestEncode(t *testing.T) {
 func TestEncodeRandomInitialState(t *testing.T) {
 	e := &Encoder{
 		PayloadType: 96,
-		Config: &mpeg4audio.StreamMuxConfig{
-			Programs: []*mpeg4audio.StreamMuxConfigProgram{{
-				Layers: []*mpeg4audio.StreamMuxConfigLayer{{
-					AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   48000,
-						ChannelCount: 2,
-					},
-					LatmBufferFullness: 255,
-				}},
-			}},
-		},
 	}
 	err := e.Init()
 	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
-	require.NotEqual(t, nil, e.InitialTimestamp)
 }

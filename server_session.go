@@ -18,6 +18,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
@@ -156,6 +157,7 @@ type ServerSession struct {
 	udpLastPacketTime     *int64       // publish
 	udpCheckStreamTimer   *time.Timer
 	writer                asyncProcessor
+	timeDecoder           *rtptime.GlobalDecoder
 
 	// in
 	chHandleRequest chan sessionRequestReq
@@ -876,6 +878,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		v := ss.s.timeNow().Unix()
 		ss.udpLastPacketTime = &v
 
+		ss.timeDecoder = rtptime.NewGlobalDecoder()
+
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
 		}
@@ -968,6 +972,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		v := ss.s.timeNow().Unix()
 		ss.udpLastPacketTime = &v
 
+		ss.timeDecoder = rtptime.NewGlobalDecoder()
+
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
 		}
@@ -1019,6 +1025,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		for _, sm := range ss.setuppedMedias {
 			sm.stop()
 		}
+
+		ss.timeDecoder = nil
 
 		switch ss.state {
 		case ServerSessionStatePlay:
@@ -1184,6 +1192,12 @@ func (ss *ServerSession) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) err
 
 	ss.writePacketRTCP(medi, byts)
 	return nil
+}
+
+// PacketPTS returns the PTS of an incoming RTP packet.
+// It is computed by decoding the packet timestamp and sychronizing it with other tracks.
+func (ss *ServerSession) PacketPTS(forma format.Format, pkt *rtp.Packet) (time.Duration, bool) {
+	return ss.timeDecoder.Decode(forma, pkt)
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.

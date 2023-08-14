@@ -47,7 +47,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: []byte{0x9c, 0xb5, 0xaf, 0x01, 0x02, 0x03, 0x04},
@@ -64,7 +63,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17645,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes([]byte{0x98, 0xb5, 0xaf}, bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 364), []byte{0x01}),
@@ -75,7 +73,6 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes([]byte{0x90, 0xb5, 0xaf, 0x02, 0x03, 0x04},
@@ -87,7 +84,6 @@ var cases = []struct {
 					Marker:         true,
 					PayloadType:    96,
 					SequenceNumber: 17647,
-					Timestamp:      2289526357,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes([]byte{0x94, 0xb5, 0xaf, 0x03, 0x04}, bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 295)),
@@ -103,13 +99,12 @@ func TestEncode(t *testing.T) {
 				PayloadType:           96,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
-				InitialTimestamp:      uint32Ptr(0x88776655),
 				InitialPictureID:      uint16Ptr(0x35af),
 			}
 			err := e.Init()
 			require.NoError(t, err)
 
-			pkts, err := e.Encode(ca.frame, 0)
+			pkts, err := e.Encode(ca.frame)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})
@@ -124,5 +119,4 @@ func TestEncodeRandomInitialState(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
-	require.NotEqual(t, nil, e.InitialTimestamp)
 }
