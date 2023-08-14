@@ -550,7 +550,8 @@ func TestServerPlay(t *testing.T) {
 						// send RTCP packets directly to the session.
 						// these are sent after the response, only if onPlay returns StatusOK.
 						if transport != "multicast" {
-							ctx.Session.WritePacketRTCP(stream.Medias()[0], &testRTCPPacket)
+							err := ctx.Session.WritePacketRTCP(stream.Medias()[0], &testRTCPPacket)
+							require.NoError(t, err)
 						}
 
 						ctx.Session.OnPacketRTCPAny(func(medi *media.Media, pkt rtcp.Packet) {

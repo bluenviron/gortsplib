@@ -522,8 +522,10 @@ func TestServerRecord(t *testing.T) {
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						// send RTCP packets directly to the session.
 						// these are sent after the response, only if onRecord returns StatusOK.
-						ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
-						ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[1], &testRTCPPacket)
+						err := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
+						require.NoError(t, err)
+						err = ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[1], &testRTCPPacket)
+						require.NoError(t, err)
 
 						for i := 0; i < 2; i++ {
 							ctx.Session.OnPacketRTP(
@@ -538,7 +540,8 @@ func TestServerRecord(t *testing.T) {
 								ctx.Session.AnnouncedMedias()[i],
 								func(pkt rtcp.Packet) {
 									require.Equal(t, &testRTCPPacket, pkt)
-									ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[ci], &testRTCPPacket)
+									err := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[ci], &testRTCPPacket)
+									require.NoError(t, err)
 								})
 						}
 

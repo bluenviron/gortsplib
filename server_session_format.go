@@ -40,7 +40,7 @@ func (sf *serverSessionFormat) start() {
 				nil,
 				sf.format.ClockRate(),
 				func(pkt rtcp.Packet) {
-					sf.sm.ss.WritePacketRTCP(sf.sm.media, pkt)
+					sf.sm.ss.WritePacketRTCP(sf.sm.media, pkt) //nolint:errcheck
 				})
 			if err != nil {
 				panic(err)

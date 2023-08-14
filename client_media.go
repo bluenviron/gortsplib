@@ -180,23 +180,10 @@ func (cm *clientMedia) writePacketRTCPInQueueTCP(payload []byte) {
 	cm.c.conn.WriteInterleavedFrame(cm.tcpRTCPFrame, cm.tcpBuffer) //nolint:errcheck
 }
 
-func (cm *clientMedia) writePacketRTCP(pkt rtcp.Packet) error {
-	byts, err := pkt.Marshal()
-	if err != nil {
-		return err
-	}
-
-	select {
-	case <-cm.c.done:
-		return cm.c.closeError
-	default:
-	}
-
+func (cm *clientMedia) writePacketRTCP(byts []byte) {
 	cm.c.writer.queue(func() {
 		cm.writePacketRTCPInQueue(byts)
 	})
-
-	return nil
 }
 
 func (cm *clientMedia) readRTPTCPPlay(payload []byte) {

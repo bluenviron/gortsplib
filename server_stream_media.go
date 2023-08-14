@@ -11,16 +11,18 @@ import (
 )
 
 type serverStreamMedia struct {
-	trackID         int
+	st              *ServerStream
 	media           *media.Media
+	trackID         int
 	formats         map[uint8]*serverStreamFormat
 	multicastWriter *serverMulticastWriter
 }
 
 func newServerStreamMedia(st *ServerStream, medi *media.Media, trackID int) *serverStreamMedia {
 	sm := &serverStreamMedia{
-		trackID: trackID,
+		st:      st,
 		media:   medi,
+		trackID: trackID,
 	}
 
 	sm.formats = make(map[uint8]*serverStreamFormat)
@@ -67,20 +69,13 @@ func (sm *serverStreamMedia) allocateMulticastHandler(s *Server) error {
 	return nil
 }
 
-func (sm *serverStreamMedia) writePacketRTPWithNTP(ss *ServerStream, pkt *rtp.Packet, ntp time.Time) error {
-	byts := make([]byte, udpMaxPayloadSize)
-	n, err := pkt.MarshalTo(byts)
-	if err != nil {
-		return err
-	}
-	byts = byts[:n]
-
+func (sm *serverStreamMedia) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) {
 	forma := sm.formats[pkt.PayloadType]
 
 	forma.rtcpSender.ProcessPacket(pkt, ntp, forma.format.PTSEqualsDTS(pkt))
 
 	// send unicast
-	for r := range ss.activeUnicastReaders {
+	for r := range sm.st.activeUnicastReaders {
 		sm, ok := r.setuppedMedias[sm.media]
 		if ok {
 			sm.writePacketRTP(byts)
@@ -91,18 +86,11 @@ func (sm *serverStreamMedia) writePacketRTPWithNTP(ss *ServerStream, pkt *rtp.Pa
 	if sm.multicastWriter != nil {
 		sm.multicastWriter.writePacketRTP(byts)
 	}
-
-	return nil
 }
 
-func (sm *serverStreamMedia) writePacketRTCP(ss *ServerStream, pkt rtcp.Packet) error {
-	byts, err := pkt.Marshal()
-	if err != nil {
-		return err
-	}
-
+func (sm *serverStreamMedia) writePacketRTCP(byts []byte) {
 	// send unicast
-	for r := range ss.activeUnicastReaders {
+	for r := range sm.st.activeUnicastReaders {
 		sm, ok := r.setuppedMedias[sm.media]
 		if ok {
 			sm.writePacketRTCP(byts)
@@ -113,6 +101,4 @@ func (sm *serverStreamMedia) writePacketRTCP(ss *ServerStream, pkt rtcp.Packet) 
 	if sm.multicastWriter != nil {
 		sm.multicastWriter.writePacketRTCP(byts)
 	}
-
-	return nil
 }
