@@ -18,7 +18,7 @@ func TestDecode(t *testing.T) {
 			var obus [][]byte
 
 			for _, pkt := range ca.pkts {
-				addOBUs, _, err := d.Decode(pkt)
+				addOBUs, _, err := d.DecodeUntilMarker(pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
@@ -59,7 +59,7 @@ func FuzzDecoder(f *testing.F) {
 		d := &Decoder{}
 		d.Init() //nolint:errcheck
 
-		d.Decode(&rtp.Packet{ //nolint:errcheck
+		d.DecodeUntilMarker(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         am,
@@ -71,7 +71,7 @@ func FuzzDecoder(f *testing.F) {
 			Payload: a,
 		})
 
-		d.Decode(&rtp.Packet{ //nolint:errcheck
+		d.DecodeUntilMarker(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         bm,

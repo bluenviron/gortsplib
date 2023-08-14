@@ -60,7 +60,13 @@ func (d *Decoder) Init() error {
 }
 
 // Decode decodes NALUs from a RTP packet.
+//
+// Deprecated: this method returns incomplete access units.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+	return d.decodeNALUs(pkt)
+}
+
+func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if len(pkt.Payload) < 1 {
 		d.fragments = d.fragments[:0] // discard pending fragments
 		return nil, 0, fmt.Errorf("payload is too short")
@@ -170,11 +176,9 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	return nalus, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
-// DecodeUntilMarker decodes NALUs from a RTP packet and puts them in a buffer.
-// When a packet has the marker flag (meaning that all the NALUs with the same PTS have
-// been received), the buffer is returned.
+// DecodeUntilMarker decodes an access unit from a RTP packet.
 func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
-	nalus, pts, err := d.Decode(pkt)
+	nalus, pts, err := d.decodeNALUs(pkt)
 	if err != nil {
 		return nil, 0, err
 	}

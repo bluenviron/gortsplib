@@ -65,7 +65,6 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// extract access unit from RTP packets
-		// DecodeUntilMarker is necessary for the DTS extractor to work
 		au, pts, err := rtpDec.DecodeUntilMarker(pkt)
 		if err != nil {
 			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {

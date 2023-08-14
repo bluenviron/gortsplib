@@ -101,7 +101,7 @@ func main() {
 	saveCount := 0
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// extract access units from RTP packets
-		au, _, err := rtpDec.Decode(pkt)
+		au, _, err := rtpDec.DecodeUntilMarker(pkt)
 		if err != nil {
 			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)

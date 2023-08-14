@@ -59,7 +59,7 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// extract access units from RTP packets
-		au, pts, err := rtpDec.Decode(pkt)
+		au, pts, err := rtpDec.DecodeUntilMarker(pkt)
 		if err != nil {
 			if err != rtph265.ErrNonStartingPacketAndNoPrevious && err != rtph265.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
