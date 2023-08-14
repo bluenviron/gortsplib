@@ -165,8 +165,8 @@ func (f *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
 	return false
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *H264) CreateDecoder2() (*rtph264.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *H264) CreateDecoder() (*rtph264.Decoder, error) {
 	d := &rtph264.Decoder{
 		PacketizationMode: f.PacketizationMode,
 	}
@@ -179,8 +179,8 @@ func (f *H264) CreateDecoder2() (*rtph264.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *H264) CreateEncoder2() (*rtph264.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *H264) CreateEncoder() (*rtph264.Encoder, error) {
 	e := &rtph264.Encoder{
 		PayloadType:       f.PayloadTyp,
 		PacketizationMode: f.PacketizationMode,

@@ -44,8 +44,8 @@ func (f *G722) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *G722) CreateDecoder2() (*rtpsimpleaudio.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *G722) CreateDecoder() (*rtpsimpleaudio.Decoder, error) {
 	d := &rtpsimpleaudio.Decoder{
 		SampleRate: 8000,
 	}
@@ -58,8 +58,8 @@ func (f *G722) CreateDecoder2() (*rtpsimpleaudio.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *G722) CreateEncoder2() (*rtpsimpleaudio.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *G722) CreateEncoder() (*rtpsimpleaudio.Encoder, error) {
 	e := &rtpsimpleaudio.Encoder{
 		PayloadType: 9,
 		SampleRate:  8000,

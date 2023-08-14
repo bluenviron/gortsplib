@@ -18,7 +18,7 @@ func TestDecode(t *testing.T) {
 			var obus [][]byte
 
 			for _, pkt := range ca.pkts {
-				addOBUs, _, err := d.DecodeUntilMarker(pkt)
+				addOBUs, _, err := d.Decode(pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
@@ -38,7 +38,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i <= av1.MaxOBUsPerTemporalUnit; i++ {
-		_, _, err = d.DecodeUntilMarker(&rtp.Packet{
+		_, _, err = d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,
@@ -59,7 +59,7 @@ func FuzzDecoder(f *testing.F) {
 		d := &Decoder{}
 		d.Init() //nolint:errcheck
 
-		d.DecodeUntilMarker(&rtp.Packet{ //nolint:errcheck
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         am,
@@ -71,7 +71,7 @@ func FuzzDecoder(f *testing.F) {
 			Payload: a,
 		})
 
-		d.DecodeUntilMarker(&rtp.Packet{ //nolint:errcheck
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         bm,

@@ -97,8 +97,8 @@ func (f *AV1) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *AV1) CreateDecoder2() (*rtpav1.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *AV1) CreateDecoder() (*rtpav1.Decoder, error) {
 	d := &rtpav1.Decoder{}
 
 	err := d.Init()
@@ -109,8 +109,8 @@ func (f *AV1) CreateDecoder2() (*rtpav1.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *AV1) CreateEncoder2() (*rtpav1.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *AV1) CreateEncoder() (*rtpav1.Encoder, error) {
 	e := &rtpav1.Encoder{
 		PayloadType: f.PayloadTyp,
 	}

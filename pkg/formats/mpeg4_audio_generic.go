@@ -169,8 +169,8 @@ func (f *MPEG4AudioGeneric) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *MPEG4AudioGeneric) CreateDecoder2() (*rtpmpeg4audio.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *MPEG4AudioGeneric) CreateDecoder() (*rtpmpeg4audio.Decoder, error) {
 	d := &rtpmpeg4audio.Decoder{
 		SampleRate:       f.Config.SampleRate,
 		SizeLength:       f.SizeLength,
@@ -186,8 +186,8 @@ func (f *MPEG4AudioGeneric) CreateDecoder2() (*rtpmpeg4audio.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *MPEG4AudioGeneric) CreateEncoder2() (*rtpmpeg4audio.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *MPEG4AudioGeneric) CreateEncoder() (*rtpmpeg4audio.Encoder, error) {
 	e := &rtpmpeg4audio.Encoder{
 		PayloadType:      f.PayloadTyp,
 		SampleRate:       f.Config.SampleRate,

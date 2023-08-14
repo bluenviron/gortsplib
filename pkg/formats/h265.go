@@ -164,8 +164,8 @@ func (f *H265) PTSEqualsDTS(pkt *rtp.Packet) bool {
 	return false
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *H265) CreateDecoder2() (*rtph265.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *H265) CreateDecoder() (*rtph265.Decoder, error) {
 	d := &rtph265.Decoder{
 		MaxDONDiff: f.MaxDONDiff,
 	}
@@ -178,8 +178,8 @@ func (f *H265) CreateDecoder2() (*rtph265.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *H265) CreateEncoder2() (*rtph265.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *H265) CreateEncoder() (*rtph265.Encoder, error) {
 	e := &rtph265.Encoder{
 		PayloadType: f.PayloadTyp,
 		MaxDONDiff:  f.MaxDONDiff,

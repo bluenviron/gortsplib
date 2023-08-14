@@ -96,8 +96,8 @@ func (f *LPCM) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *LPCM) CreateDecoder2() (*rtplpcm.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *LPCM) CreateDecoder() (*rtplpcm.Decoder, error) {
 	d := &rtplpcm.Decoder{
 		BitDepth:     f.BitDepth,
 		SampleRate:   f.SampleRate,
@@ -112,8 +112,8 @@ func (f *LPCM) CreateDecoder2() (*rtplpcm.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *LPCM) CreateEncoder2() (*rtplpcm.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *LPCM) CreateEncoder() (*rtplpcm.Encoder, error) {
 	e := &rtplpcm.Encoder{
 		PayloadType:  f.PayloadTyp,
 		BitDepth:     f.BitDepth,

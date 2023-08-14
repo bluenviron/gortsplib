@@ -44,8 +44,8 @@ func (f *MJPEG) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *MJPEG) CreateDecoder2() (*rtpmjpeg.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *MJPEG) CreateDecoder() (*rtpmjpeg.Decoder, error) {
 	d := &rtpmjpeg.Decoder{}
 
 	err := d.Init()
@@ -56,8 +56,8 @@ func (f *MJPEG) CreateDecoder2() (*rtpmjpeg.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *MJPEG) CreateEncoder2() (*rtpmjpeg.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *MJPEG) CreateEncoder() (*rtpmjpeg.Encoder, error) {
 	e := &rtpmjpeg.Encoder{}
 
 	err := e.Init()

@@ -157,8 +157,8 @@ func (f *MPEG4AudioLATM) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *MPEG4AudioLATM) CreateDecoder2() (*rtpmpeg4audiolatm.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *MPEG4AudioLATM) CreateDecoder() (*rtpmpeg4audiolatm.Decoder, error) {
 	d := &rtpmpeg4audiolatm.Decoder{
 		Config: f.Config,
 	}
@@ -171,8 +171,8 @@ func (f *MPEG4AudioLATM) CreateDecoder2() (*rtpmpeg4audiolatm.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *MPEG4AudioLATM) CreateEncoder2() (*rtpmpeg4audiolatm.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *MPEG4AudioLATM) CreateEncoder() (*rtpmpeg4audiolatm.Encoder, error) {
 	e := &rtpmpeg4audiolatm.Encoder{
 		PayloadType: f.PayloadTyp,
 		Config:      f.Config,

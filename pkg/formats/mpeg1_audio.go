@@ -44,8 +44,8 @@ func (f *MPEG1Audio) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *MPEG1Audio) CreateDecoder2() (*rtpmpeg1audio.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *MPEG1Audio) CreateDecoder() (*rtpmpeg1audio.Decoder, error) {
 	d := &rtpmpeg1audio.Decoder{}
 
 	err := d.Init()
@@ -56,8 +56,8 @@ func (f *MPEG1Audio) CreateDecoder2() (*rtpmpeg1audio.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *MPEG1Audio) CreateEncoder2() (*rtpmpeg1audio.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *MPEG1Audio) CreateEncoder() (*rtpmpeg1audio.Encoder, error) {
 	e := &rtpmpeg1audio.Encoder{}
 
 	err := e.Init()

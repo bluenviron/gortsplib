@@ -44,7 +44,7 @@ func main() {
 	}
 
 	// setup RTP/MPEG4-audio -> MPEG4-audio decoder
-	rtpDec, err := forma.CreateDecoder2()
+	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)
 	}

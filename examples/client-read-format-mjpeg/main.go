@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// create decoder
-	rtpDec, err := forma.CreateDecoder2()
+	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)
 	}

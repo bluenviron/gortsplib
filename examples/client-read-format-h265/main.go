@@ -45,7 +45,7 @@ func main() {
 	}
 
 	// setup RTP/H265 -> H265 decoder
-	rtpDec, err := forma.CreateDecoder2()
+	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)
 	}
@@ -59,7 +59,7 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// extract access units from RTP packets
-		au, pts, err := rtpDec.DecodeUntilMarker(pkt)
+		au, pts, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtph265.ErrNonStartingPacketAndNoPrevious && err != rtph265.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)

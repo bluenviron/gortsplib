@@ -20,7 +20,7 @@ func TestDecode(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				addNALUs, _, err := d.DecodeUntilMarker(pkt)
+				addNALUs, _, err := d.Decode(pkt)
 
 				// test input integrity
 				require.Equal(t, clone, pkt)
@@ -44,7 +44,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i <= h265.MaxNALUsPerAccessUnit; i++ {
-		_, _, err = d.DecodeUntilMarker(&rtp.Packet{
+		_, _, err = d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,
@@ -65,7 +65,7 @@ func FuzzDecoder(f *testing.F) {
 		d := &Decoder{}
 		d.Init() //nolint:errcheck
 
-		d.DecodeUntilMarker(&rtp.Packet{ //nolint:errcheck
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,
@@ -77,7 +77,7 @@ func FuzzDecoder(f *testing.F) {
 			Payload: a,
 		})
 
-		d.DecodeUntilMarker(&rtp.Packet{ //nolint:errcheck
+		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,

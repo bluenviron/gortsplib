@@ -86,8 +86,8 @@ func (f *Opus) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder2 creates a decoder able to decode the content of the format.
-func (f *Opus) CreateDecoder2() (*rtpsimpleaudio.Decoder, error) {
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *Opus) CreateDecoder() (*rtpsimpleaudio.Decoder, error) {
 	d := &rtpsimpleaudio.Decoder{
 		SampleRate: 48000,
 	}
@@ -100,8 +100,8 @@ func (f *Opus) CreateDecoder2() (*rtpsimpleaudio.Decoder, error) {
 	return d, nil
 }
 
-// CreateEncoder2 creates an encoder able to encode the content of the format.
-func (f *Opus) CreateEncoder2() (*rtpsimpleaudio.Encoder, error) {
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *Opus) CreateEncoder() (*rtpsimpleaudio.Encoder, error) {
 	e := &rtpsimpleaudio.Encoder{
 		PayloadType: f.PayloadTyp,
 		SampleRate:  48000,

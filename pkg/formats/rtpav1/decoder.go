@@ -39,7 +39,7 @@ type Decoder struct {
 	fragmentsSize       int
 	fragments           [][]byte
 
-	// for DecodeUntilMarker()
+	// for Decode()
 	frameBuffer     [][]byte
 	frameBufferLen  int
 	frameBufferSize int
@@ -125,8 +125,8 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	return obus, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
-// DecodeUntilMarker decodes a temporal unit from a RTP packet.
-func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+// Decode decodes a temporal unit from a RTP packet.
+func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	obus, pts, err := d.decodeOBUs(pkt)
 	if err != nil {
 		return nil, 0, err

@@ -23,14 +23,14 @@ func TestG711Attributes(t *testing.T) {
 func TestG711DecEncoder(t *testing.T) {
 	format := &G711{}
 
-	enc, err := format.CreateEncoder2()
+	enc, err := format.CreateEncoder()
 	require.NoError(t, err)
 
 	pkt, err := enc.Encode([]byte{0x01, 0x02, 0x03, 0x04}, 0)
 	require.NoError(t, err)
 	require.Equal(t, format.PayloadType(), pkt.PayloadType)
 
-	dec, err := format.CreateDecoder2()
+	dec, err := format.CreateDecoder()
 	require.NoError(t, err)
 
 	byts, _, err := dec.Decode(pkt)

@@ -41,7 +41,7 @@ type Decoder struct {
 	fragmentsSize       int
 	fragments           [][]byte
 
-	// for DecodeUntilMarker()
+	// for Decode()
 	frameBuffer     [][]byte
 	frameBufferLen  int
 	frameBufferSize int
@@ -160,8 +160,8 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, time.Duration, error) 
 	return nalus, d.timeDecoder.Decode(pkt.Timestamp), nil
 }
 
-// DecodeUntilMarker decodes an access unit from a RTP packet.
-func (d *Decoder) DecodeUntilMarker(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
+// Decode decodes an access unit from a RTP packet.
+func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	nalus, pts, err := d.decodeNALUs(pkt)
 	if err != nil {
 		return nil, 0, err
