@@ -461,12 +461,9 @@ func (c *Client) StartRecording(address string, medias media.Medias) error {
 }
 
 // Close closes all client resources and waits for them to close.
-func (c *Client) Close() error {
+func (c *Client) Close() {
 	c.ctxCancel()
 	<-c.done
-
-	// TODO: remove return value in next major version
-	return c.closeError
 }
 
 // Wait waits until all client resources are closed.

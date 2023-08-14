@@ -110,10 +110,8 @@ func newServerConn(
 }
 
 // Close closes the ServerConn.
-func (sc *ServerConn) Close() error {
+func (sc *ServerConn) Close() {
 	sc.ctxCancel()
-	// TODO: remove return value in next major version
-	return nil
 }
 
 // NetConn returns the underlying net.Conn.

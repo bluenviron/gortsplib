@@ -56,7 +56,7 @@ func (st *ServerStream) initializeServerDependentPart() {
 }
 
 // Close closes a ServerStream.
-func (st *ServerStream) Close() error {
+func (st *ServerStream) Close() {
 	st.mutex.Lock()
 	st.closed = true
 	st.mutex.Unlock()
@@ -68,9 +68,6 @@ func (st *ServerStream) Close() error {
 	for _, sm := range st.streamMedias {
 		sm.close()
 	}
-
-	// TODO: remove return value in next major version
-	return nil
 }
 
 // Medias returns the medias of the stream.

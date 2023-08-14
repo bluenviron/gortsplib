@@ -195,10 +195,8 @@ func newServerSession(
 }
 
 // Close closes the ServerSession.
-func (ss *ServerSession) Close() error {
+func (ss *ServerSession) Close() {
 	ss.ctxCancel()
-	// TODO: remove return value in next major version
-	return nil
 }
 
 // BytesReceived returns the number of read bytes.

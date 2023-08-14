@@ -318,12 +318,9 @@ func (s *Server) Start() error {
 }
 
 // Close closes all the server resources and waits for them to close.
-func (s *Server) Close() error {
+func (s *Server) Close() {
 	s.ctxCancel()
 	s.wg.Wait()
-
-	// TODO: remove return value in next major version
-	return s.closeError
 }
 
 // Wait waits until all server resources are closed.
