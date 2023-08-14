@@ -96,7 +96,7 @@ https://pkg.go.dev/github.com/bluenviron/gortsplib/v3#pkg-index
 
 ## RTP Payload Formats
 
-In RTSP, media streams are routed between server and clients by using RTP packets. In order to decode a stream, RTP packets must be converted into codec-specific frames. This conversion happens by using a RTP payload format. This library recognizes the following formats:
+In RTSP, media streams are routed between server and clients by using RTP packets. Conversion between RTP packets and codec-specific frames happens by using a payload format. This library recognizes the following payload formats:
 
 ### Video
 
@@ -120,6 +120,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 |MPEG-4 Audio (AAC)|Generic (RFC3640)|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioGeneric)|:heavy_check_mark:|
 |MPEG-4 Audio (AAC)|LATM (RFC6416)|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG4AudioLATM)|:heavy_check_mark:|
 |MPEG-1/2 Audio (MP3)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#MPEG1Audio)|:heavy_check_mark:|
+|Speex||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#Speex)||
 |G726||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G726)||
 |G722||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G722)|:heavy_check_mark:|
 |G711 (PCMA, PCMU)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v3/pkg/formats#G711)|:heavy_check_mark:|
@@ -148,6 +149,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 * [RFC5215, RTP Payload Format for Vorbis Encoded Audio](https://datatracker.ietf.org/doc/html/rfc5215)
 * [RFC7587, RTP Payload Format for the Opus Speech and Audio Codec](https://datatracker.ietf.org/doc/html/rfc7587)
 * [RFC3640, RTP Payload Format for Transport of MPEG-4 Elementary Streams](https://datatracker.ietf.org/doc/html/rfc3640)
+* [RFC5574, RTP Payload Format for the Speex Codec](https://datatracker.ietf.org/doc/html/rfc5574)
 * [RTP Payload Format For AV1 (v1.0)](https://aomediacodec.github.io/av1-rtp-spec/)
 * [Codec standards](https://github.com/bluenviron/mediacommon#standards)
 * [Golang project layout](https://github.com/golang-standards/project-layout)

@@ -527,6 +527,24 @@ var casesFormat = []struct {
 		},
 	},
 	{
+		"audio speex",
+		"audio",
+		96,
+		"speex/16000",
+		map[string]string{
+			"vbr": "off",
+		},
+		&Speex{
+			PayloadTyp: 96,
+			SampleRate: 16000,
+			VBR:        boolPtr(false),
+		},
+		"speex/16000",
+		map[string]string{
+			"vbr": "off",
+		},
+	},
+	{
 		"audio vorbis",
 		"audio",
 		96,

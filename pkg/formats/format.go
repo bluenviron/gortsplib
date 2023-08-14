@@ -109,6 +109,9 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 			case codec == "mp4a-latm":
 				return &MPEG4AudioLATM{}
 
+			case codec == "speex":
+				return &Speex{}
+
 			case codec == "vorbis":
 				return &Vorbis{}
 
