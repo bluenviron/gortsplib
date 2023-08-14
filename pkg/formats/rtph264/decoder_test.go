@@ -21,7 +21,7 @@ func TestDecode(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				addNALUs, _, err := d.Decode(pkt)
+				addNALUs, _, err := d.DecodeUntilMarker(pkt)
 
 				// test input integrity
 				require.Equal(t, clone, pkt)
@@ -44,10 +44,10 @@ func TestDecodeCorruptedFragment(t *testing.T) {
 	err := d.Init()
 	require.NoError(t, err)
 
-	_, _, err = d.Decode(&rtp.Packet{
+	_, _, err = d.DecodeUntilMarker(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
-			Marker:         false,
+			Marker:         true,
 			PayloadType:    96,
 			SequenceNumber: 17645,
 			Timestamp:      2289527317,
@@ -63,10 +63,10 @@ func TestDecodeCorruptedFragment(t *testing.T) {
 	})
 	require.Equal(t, ErrMorePacketsNeeded, err)
 
-	nalus, _, err := d.Decode(&rtp.Packet{
+	nalus, _, err := d.DecodeUntilMarker(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
-			Marker:         false,
+			Marker:         true,
 			PayloadType:    96,
 			SequenceNumber: 17646,
 			Timestamp:      2289527317,
@@ -100,7 +100,7 @@ func TestDecodeSTAPAWithPadding(t *testing.T) {
 		},
 	}
 
-	nalus, _, err := d.Decode(&pkt)
+	nalus, _, err := d.DecodeUntilMarker(&pkt)
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{
 		{0xaa, 0xbb},
@@ -113,7 +113,7 @@ func TestDecodeAnnexB(t *testing.T) {
 	err := d.Init()
 	require.NoError(t, err)
 
-	nalus, _, err := d.Decode(&rtp.Packet{
+	nalus, _, err := d.DecodeUntilMarker(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			Marker:         true,
@@ -132,7 +132,7 @@ func TestDecodeAnnexB(t *testing.T) {
 	}, nalus)
 
 	for i := 0; i < 2; i++ {
-		nalus, _, err := d.Decode(&rtp.Packet{
+		nalus, _, err := d.DecodeUntilMarker(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         true,
@@ -217,7 +217,7 @@ func FuzzDecoder(f *testing.F) {
 		d := &Decoder{}
 		d.Init() //nolint:errcheck
 
-		d.Decode(&rtp.Packet{ //nolint:errcheck
+		d.DecodeUntilMarker(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,
@@ -229,7 +229,7 @@ func FuzzDecoder(f *testing.F) {
 			Payload: a,
 		})
 
-		d.Decode(&rtp.Packet{ //nolint:errcheck
+		d.DecodeUntilMarker(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,

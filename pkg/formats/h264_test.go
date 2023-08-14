@@ -57,7 +57,7 @@ func TestH264DecEncoder(t *testing.T) {
 	dec, err := format.CreateDecoder2()
 	require.NoError(t, err)
 
-	byts, _, err := dec.Decode(pkts[0])
+	byts, _, err := dec.DecodeUntilMarker(pkts[0])
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{{0x01, 0x02, 0x03, 0x04}}, byts)
 }
