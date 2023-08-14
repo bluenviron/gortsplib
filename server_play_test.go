@@ -568,9 +568,11 @@ func TestServerPlay(t *testing.T) {
 						// with StatusOK; therefore we must wait before calling
 						// ServerStream.WritePacket*()
 						go func() {
-							time.Sleep(1 * time.Second)
-							stream.WritePacketRTCP(stream.Medias()[0], &testRTCPPacket)
-							stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+							time.Sleep(500 * time.Millisecond)
+							err := stream.WritePacketRTCP(stream.Medias()[0], &testRTCPPacket)
+							require.NoError(t, err)
+							err = stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+							require.NoError(t, err)
 						}()
 
 						return &base.Response{
@@ -1042,7 +1044,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 			doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
 
 			for i := 0; i < 2; i++ {
-				stream.WritePacketRTP(stream.Medias()[0], &rtp.Packet{
+				err := stream.WritePacketRTP(stream.Medias()[0], &rtp.Packet{
 					Header: rtp.Header{
 						Version:     2,
 						PayloadType: 96,
@@ -1050,6 +1052,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 					},
 					Payload: []byte{0x05}, // IDR
 				})
+				require.NoError(t, err)
 			}
 
 			var buf []byte
@@ -1161,15 +1164,17 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 				go func() {
 					defer close(writerDone)
 
-					stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+					err := stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+					require.NoError(t, err)
 
-					t := time.NewTicker(50 * time.Millisecond)
-					defer t.Stop()
+					ti := time.NewTicker(50 * time.Millisecond)
+					defer ti.Stop()
 
 					for {
 						select {
-						case <-t.C:
-							stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+						case <-ti.C:
+							err := stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+							require.NoError(t, err)
 						case <-writerTerminate:
 							return
 						}
@@ -1308,13 +1313,14 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 					go func() {
 						defer close(writerDone)
 
-						t := time.NewTicker(50 * time.Millisecond)
-						defer t.Stop()
+						ti := time.NewTicker(50 * time.Millisecond)
+						defer ti.Stop()
 
 						for {
 							select {
-							case <-t.C:
-								stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+							case <-ti.C:
+								err := stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+								require.NoError(t, err)
 							case <-writerTerminate:
 								return
 							}
@@ -1395,13 +1401,14 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 				go func() {
 					defer close(writerDone)
 
-					t := time.NewTicker(50 * time.Millisecond)
-					defer t.Stop()
+					ti := time.NewTicker(50 * time.Millisecond)
+					defer ti.Stop()
 
 					for {
 						select {
-						case <-t.C:
-							stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+						case <-ti.C:
+							err := stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+							require.NoError(t, err)
 						case <-writerTerminate:
 							return
 						}
@@ -1743,9 +1750,11 @@ func TestServerPlayPartialMedias(t *testing.T) {
 			},
 			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
-					time.Sleep(1 * time.Second)
-					stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
-					stream.WritePacketRTP(stream.Medias()[1], &testRTPPacket)
+					time.Sleep(500 * time.Millisecond)
+					err := stream.WritePacketRTP(stream.Medias()[0], &testRTPPacket)
+					require.NoError(t, err)
+					err = stream.WritePacketRTP(stream.Medias()[1], &testRTPPacket)
+					require.NoError(t, err)
 				}()
 
 				return &base.Response{
@@ -1891,7 +1900,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream.WritePacketRTP(stream.Medias()[0], &rtp.Packet{
+	err = stream.WritePacketRTP(stream.Medias()[0], &rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,
@@ -1901,6 +1910,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		},
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	})
+	require.NoError(t, err)
 
 	rtpInfo, ssrcs := getInfos()
 	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/trackID="))
@@ -1920,7 +1930,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		nil,
 	}, ssrcs)
 
-	stream.WritePacketRTP(stream.Medias()[1], &rtp.Packet{
+	err = stream.WritePacketRTP(stream.Medias()[1], &rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			PayloadType:    96,
@@ -1930,6 +1940,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		},
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	})
+	require.NoError(t, err)
 
 	rtpInfo, ssrcs = getInfos()
 	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/trackID="))
@@ -2036,7 +2047,8 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 	doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
 
 	for i := 0; i < 2; i++ {
-		stream.WritePacketRTP(stream.Medias()[i], &testRTPPacket)
+		err := stream.WritePacketRTP(stream.Medias()[i], &testRTPPacket)
+		require.NoError(t, err)
 
 		f, err := conn.ReadInterleavedFrame()
 		require.NoError(t, err)
