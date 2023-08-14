@@ -818,10 +818,10 @@ func TestServerRecordRTCPReport(t *testing.T) {
 				}, nil
 			},
 		},
-		udpReceiverReportPeriod: 1 * time.Second,
-		UDPRTPAddress:           "127.0.0.1:8000",
-		UDPRTCPAddress:          "127.0.0.1:8001",
-		RTSPAddress:             "localhost:8554",
+		UDPRTPAddress:        "127.0.0.1:8000",
+		UDPRTCPAddress:       "127.0.0.1:8001",
+		RTSPAddress:          "localhost:8554",
+		receiverReportPeriod: 500 * time.Millisecond,
 	}
 
 	err := s.Start()
@@ -874,7 +874,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 			Timestamp:      54352,
 			SSRC:           753621,
 		},
-		Payload: []byte{0x01, 0x02, 0x03, 0x04},
+		Payload: []byte{1, 2, 3, 4},
 	}).Marshal()
 	_, err = l1.WriteTo(byts, &net.UDPAddr{
 		IP:   net.ParseIP("127.0.0.1"),
@@ -883,11 +883,11 @@ func TestServerRecordRTCPReport(t *testing.T) {
 	require.NoError(t, err)
 
 	// wait for the packet's SSRC to be saved
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	byts, _ = (&rtcp.SenderReport{
 		SSRC:        753621,
-		NTPTime:     0xcbddcc34999997ff,
+		NTPTime:     ntpTimeGoToRTCP(time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC)),
 		RTPTime:     54352,
 		PacketCount: 1,
 		OctetCount:  4,
@@ -916,7 +916,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 			{
 				SSRC:               rr.Reports[0].SSRC,
 				LastSequenceNumber: 534,
-				LastSenderReport:   rr.Reports[0].LastSenderReport,
+				LastSenderReport:   4004511744,
 				Delay:              rr.Reports[0].Delay,
 			},
 		},
@@ -1417,4 +1417,138 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 			<-errorRecv
 		})
 	}
+}
+
+func TestServerRecordPacketNTP(t *testing.T) {
+	recv := make(chan struct{})
+	first := false
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil, nil
+			},
+			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+				ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+					if !first {
+						first = true
+					} else {
+						ntp, ok := ctx.Session.PacketNTP(medi, pkt)
+						require.Equal(t, true, ok)
+						require.Equal(t, time.Date(2018, 2, 20, 19, 0, 1, 0, time.UTC), ntp.UTC())
+						close(recv)
+					}
+				})
+
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		UDPRTPAddress:  "127.0.0.1:8000",
+		UDPRTCPAddress: "127.0.0.1:8001",
+		RTSPAddress:    "localhost:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
+
+	medias := media.Medias{testH264Media}
+	resetMediaControls(medias)
+
+	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
+
+	l1, err := net.ListenPacket("udp", "localhost:34556")
+	require.NoError(t, err)
+	defer l1.Close()
+
+	l2, err := net.ListenPacket("udp", "localhost:34557")
+	require.NoError(t, err)
+	defer l2.Close()
+
+	inTH := &headers.Transport{
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModeRecord
+			return &v
+		}(),
+		Protocol:    headers.TransportProtocolUDP,
+		ClientPorts: &[2]int{34556, 34557},
+	}
+
+	res, th := doSetup(t, conn, "rtsp://localhost:8554/teststream/"+medias[0].Control, inTH, "")
+
+	session := readSession(t, res)
+
+	doRecord(t, conn, "rtsp://localhost:8554/teststream", session)
+
+	byts, _ := (&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 534,
+			Timestamp:      54352,
+			SSRC:           753621,
+		},
+		Payload: []byte{1, 2, 3, 4},
+	}).Marshal()
+	_, err = l1.WriteTo(byts, &net.UDPAddr{
+		IP:   net.ParseIP("127.0.0.1"),
+		Port: th.ServerPorts[0],
+	})
+	require.NoError(t, err)
+
+	// wait for the packet's SSRC to be saved
+	time.Sleep(100 * time.Millisecond)
+
+	byts, _ = (&rtcp.SenderReport{
+		SSRC:        753621,
+		NTPTime:     ntpTimeGoToRTCP(time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC)),
+		RTPTime:     54352,
+		PacketCount: 1,
+		OctetCount:  4,
+	}).Marshal()
+	_, err = l2.WriteTo(byts, &net.UDPAddr{
+		IP:   net.ParseIP("127.0.0.1"),
+		Port: th.ServerPorts[1],
+	})
+	require.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+
+	byts, _ = (&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 535,
+			Timestamp:      54352 + 90000,
+			SSRC:           753621,
+		},
+		Payload: []byte{1, 2, 3, 4},
+	}).Marshal()
+	_, err = l1.WriteTo(byts, &net.UDPAddr{
+		IP:   net.ParseIP("127.0.0.1"),
+		Port: th.ServerPorts[0],
+	})
+	require.NoError(t, err)
+
+	<-recv
 }

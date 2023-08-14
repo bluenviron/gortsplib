@@ -18,7 +18,7 @@ type serverSessionFormat struct {
 	format          format.Format
 	udpReorderer    *rtpreorderer.Reorderer
 	tcpLossDetector *rtplossdetector.LossDetector
-	udpRTCPReceiver *rtcpreceiver.RTCPReceiver
+	rtcpReceiver    *rtcpreceiver.RTCPReceiver
 	onPacketRTP     OnPacketRTPFunc
 }
 
@@ -34,27 +34,31 @@ func (sf *serverSessionFormat) start() {
 	if sf.sm.ss.state != ServerSessionStatePlay {
 		if *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast {
 			sf.udpReorderer = rtpreorderer.New()
-			var err error
-			sf.udpRTCPReceiver, err = rtcpreceiver.New(
-				sf.sm.ss.s.udpReceiverReportPeriod,
-				nil,
-				sf.format.ClockRate(),
-				func(pkt rtcp.Packet) {
-					sf.sm.ss.WritePacketRTCP(sf.sm.media, pkt) //nolint:errcheck
-				})
-			if err != nil {
-				panic(err)
-			}
 		} else {
 			sf.tcpLossDetector = rtplossdetector.New()
+		}
+
+		var err error
+		sf.rtcpReceiver, err = rtcpreceiver.New(
+			sf.format.ClockRate(),
+			nil,
+			sf.sm.ss.s.receiverReportPeriod,
+			sf.sm.ss.s.timeNow,
+			func(pkt rtcp.Packet) {
+				if *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast {
+					sf.sm.ss.WritePacketRTCP(sf.sm.media, pkt) //nolint:errcheck
+				}
+			})
+		if err != nil {
+			panic(err)
 		}
 	}
 }
 
 func (sf *serverSessionFormat) stop() {
-	if sf.udpRTCPReceiver != nil {
-		sf.udpRTCPReceiver.Close()
-		sf.udpRTCPReceiver = nil
+	if sf.rtcpReceiver != nil {
+		sf.rtcpReceiver.Close()
+		sf.rtcpReceiver = nil
 	}
 }
 
@@ -73,7 +77,7 @@ func (sf *serverSessionFormat) readRTPUDP(pkt *rtp.Packet, now time.Time) {
 	}
 
 	for _, pkt := range packets {
-		sf.udpRTCPReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
+		sf.rtcpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
 		sf.onPacketRTP(pkt)
 	}
 }
@@ -92,5 +96,7 @@ func (sf *serverSessionFormat) readRTPTCP(pkt *rtp.Packet) {
 		// do not return
 	}
 
+	now := sf.sm.ss.s.timeNow()
+	sf.rtcpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
 	sf.onPacketRTP(pkt)
 }

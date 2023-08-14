@@ -20,17 +20,16 @@ func TestRTCPSender(t *testing.T) {
 		curTime = v
 	}
 
-	timeNow = func() time.Time {
-		mutex.Lock()
-		defer mutex.Unlock()
-		return curTime
-	}
-
 	sent := make(chan struct{})
 
 	rs := New(
 		90000,
 		100*time.Millisecond,
+		func() time.Time {
+			mutex.Lock()
+			defer mutex.Unlock()
+			return curTime
+		},
 		func(pkt rtcp.Packet) {
 			require.Equal(t, &rtcp.SenderReport{
 				SSRC: 0xba9da416,

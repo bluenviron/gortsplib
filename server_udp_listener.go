@@ -15,7 +15,7 @@ func serverFindFormatWithSSRC(
 	ssrc uint32,
 ) *serverSessionFormat {
 	for _, format := range formats {
-		tssrc, ok := format.udpRTCPReceiver.LastSSRC()
+		tssrc, ok := format.rtcpReceiver.LastSSRC()
 		if ok && tssrc == ssrc {
 			return format
 		}

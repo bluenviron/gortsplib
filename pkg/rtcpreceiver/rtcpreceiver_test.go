@@ -9,14 +9,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRTCPReceiverBase(t *testing.T) {
-	timeNow = func() time.Time {
-		return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
-	}
-	done := make(chan struct{})
-	v := uint32(0x65f83afb)
+func uint32Ptr(v uint32) *uint32 {
+	return &v
+}
 
-	rr, err := New(500*time.Millisecond, &v, 90000,
+func TestRTCPReceiverBase(t *testing.T) {
+	done := make(chan struct{})
+
+	rr, err := New(
+		90000,
+		uint32Ptr(0x65f83afb),
+		500*time.Millisecond,
+		func() time.Time {
+			return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
+		},
 		func(pkt rtcp.Packet) {
 			require.Equal(t, &rtcp.ReceiverReport{
 				SSRC: 0x65f83afb,
@@ -77,25 +83,28 @@ func TestRTCPReceiverBase(t *testing.T) {
 
 func TestRTCPReceiverOverflow(t *testing.T) {
 	done := make(chan struct{})
-	timeNow = func() time.Time {
-		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	}
-	v := uint32(0x65f83afb)
 
-	rr, err := New(250*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
-		require.Equal(t, &rtcp.ReceiverReport{
-			SSRC: 0x65f83afb,
-			Reports: []rtcp.ReceptionReport{
-				{
-					SSRC:               0xba9da416,
-					LastSequenceNumber: 1 << 16,
-					LastSenderReport:   0x887a17ce,
-					Delay:              1 * 65536,
+	rr, err := New(
+		90000,
+		uint32Ptr(0x65f83afb),
+		250*time.Millisecond,
+		func() time.Time {
+			return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
+		},
+		func(pkt rtcp.Packet) {
+			require.Equal(t, &rtcp.ReceiverReport{
+				SSRC: 0x65f83afb,
+				Reports: []rtcp.ReceptionReport{
+					{
+						SSRC:               0xba9da416,
+						LastSequenceNumber: 1 << 16,
+						LastSenderReport:   0x887a17ce,
+						Delay:              1 * 65536,
+					},
 				},
-			},
-		}, pkt)
-		close(done)
-	})
+			}, pkt)
+			close(done)
+		})
 	require.NoError(t, err)
 	defer rr.Close()
 
@@ -144,30 +153,33 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 
 func TestRTCPReceiverPacketLost(t *testing.T) {
 	done := make(chan struct{})
-	timeNow = func() time.Time {
-		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	}
-	v := uint32(0x65f83afb)
 
-	rr, err := New(500*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
-		require.Equal(t, &rtcp.ReceiverReport{
-			SSRC: 0x65f83afb,
-			Reports: []rtcp.ReceptionReport{
-				{
-					SSRC:               0xba9da416,
-					LastSequenceNumber: 0x0122,
-					LastSenderReport:   0x887a17ce,
-					FractionLost: func() uint8 {
-						v := float64(1) / 3
-						return uint8(v * 256)
-					}(),
-					TotalLost: 1,
-					Delay:     1 * 65536,
+	rr, err := New(
+		90000,
+		uint32Ptr(0x65f83afb),
+		500*time.Millisecond,
+		func() time.Time {
+			return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
+		},
+		func(pkt rtcp.Packet) {
+			require.Equal(t, &rtcp.ReceiverReport{
+				SSRC: 0x65f83afb,
+				Reports: []rtcp.ReceptionReport{
+					{
+						SSRC:               0xba9da416,
+						LastSequenceNumber: 0x0122,
+						LastSenderReport:   0x887a17ce,
+						FractionLost: func() uint8 {
+							v := float64(1) / 3
+							return uint8(v * 256)
+						}(),
+						TotalLost: 1,
+						Delay:     1 * 65536,
+					},
 				},
-			},
-		}, pkt)
-		close(done)
-	})
+			}, pkt)
+			close(done)
+		})
 	require.NoError(t, err)
 	defer rr.Close()
 
@@ -214,30 +226,33 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 
 func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 	done := make(chan struct{})
-	timeNow = func() time.Time {
-		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	}
-	v := uint32(0x65f83afb)
 
-	rr, err := New(500*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
-		require.Equal(t, &rtcp.ReceiverReport{
-			SSRC: 0x65f83afb,
-			Reports: []rtcp.ReceptionReport{
-				{
-					SSRC:               0xba9da416,
-					LastSequenceNumber: 1<<16 | 0x0002,
-					LastSenderReport:   0x887a17ce,
-					FractionLost: func() uint8 {
-						v := float64(2) / 4
-						return uint8(v * 256)
-					}(),
-					TotalLost: 2,
-					Delay:     1 * 65536,
+	rr, err := New(
+		90000,
+		uint32Ptr(0x65f83afb),
+		500*time.Millisecond,
+		func() time.Time {
+			return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
+		},
+		func(pkt rtcp.Packet) {
+			require.Equal(t, &rtcp.ReceiverReport{
+				SSRC: 0x65f83afb,
+				Reports: []rtcp.ReceptionReport{
+					{
+						SSRC:               0xba9da416,
+						LastSequenceNumber: 1<<16 | 0x0002,
+						LastSenderReport:   0x887a17ce,
+						FractionLost: func() uint8 {
+							v := float64(2) / 4
+							return uint8(v * 256)
+						}(),
+						TotalLost: 2,
+						Delay:     1 * 65536,
+					},
 				},
-			},
-		}, pkt)
-		close(done)
-	})
+			}, pkt)
+			close(done)
+		})
 	require.NoError(t, err)
 	defer rr.Close()
 
@@ -284,26 +299,29 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 
 func TestRTCPReceiverJitter(t *testing.T) {
 	done := make(chan struct{})
-	timeNow = func() time.Time {
-		return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
-	}
-	v := uint32(0x65f83afb)
 
-	rr, err := New(500*time.Millisecond, &v, 90000, func(pkt rtcp.Packet) {
-		require.Equal(t, &rtcp.ReceiverReport{
-			SSRC: 0x65f83afb,
-			Reports: []rtcp.ReceptionReport{
-				{
-					SSRC:               0xba9da416,
-					LastSequenceNumber: 948,
-					LastSenderReport:   0x887a17ce,
-					Delay:              2 * 65536,
-					Jitter:             45000 / 16,
+	rr, err := New(
+		90000,
+		uint32Ptr(0x65f83afb),
+		500*time.Millisecond,
+		func() time.Time {
+			return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
+		},
+		func(pkt rtcp.Packet) {
+			require.Equal(t, &rtcp.ReceiverReport{
+				SSRC: 0x65f83afb,
+				Reports: []rtcp.ReceptionReport{
+					{
+						SSRC:               0xba9da416,
+						LastSequenceNumber: 948,
+						LastSenderReport:   0x887a17ce,
+						Delay:              2 * 65536,
+						Jitter:             45000 / 16,
+					},
 				},
-			},
-		}, pkt)
-		close(done)
-	})
+			}, pkt)
+			close(done)
+		})
 	require.NoError(t, err)
 	defer rr.Close()
 

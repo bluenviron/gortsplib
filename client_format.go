@@ -18,8 +18,8 @@ type clientFormat struct {
 	cm              *clientMedia
 	format          format.Format
 	udpReorderer    *rtpreorderer.Reorderer       // play
-	udpRTCPReceiver *rtcpreceiver.RTCPReceiver    // play
 	tcpLossDetector *rtplossdetector.LossDetector // play
+	rtcpReceiver    *rtcpreceiver.RTCPReceiver    // play
 	rtcpSender      *rtcpsender.RTCPSender        // record
 	onPacketRTP     OnPacketRTPFunc
 }
@@ -36,24 +36,29 @@ func (ct *clientFormat) start() {
 	if ct.cm.c.state == clientStatePlay {
 		if ct.cm.udpRTPListener != nil {
 			ct.udpReorderer = rtpreorderer.New()
-
-			var err error
-			ct.udpRTCPReceiver, err = rtcpreceiver.New(
-				ct.cm.c.udpReceiverReportPeriod,
-				nil,
-				ct.format.ClockRate(), func(pkt rtcp.Packet) {
-					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
-				})
-			if err != nil {
-				panic(err)
-			}
 		} else {
 			ct.tcpLossDetector = rtplossdetector.New()
+		}
+
+		var err error
+		ct.rtcpReceiver, err = rtcpreceiver.New(
+			ct.format.ClockRate(),
+			nil,
+			ct.cm.c.receiverReportPeriod,
+			ct.cm.c.timeNow,
+			func(pkt rtcp.Packet) {
+				if ct.cm.udpRTPListener != nil {
+					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
+				}
+			})
+		if err != nil {
+			panic(err)
 		}
 	} else {
 		ct.rtcpSender = rtcpsender.New(
 			ct.format.ClockRate(),
 			ct.cm.c.senderReportPeriod,
+			ct.cm.c.timeNow,
 			func(pkt rtcp.Packet) {
 				if !ct.cm.c.DisableRTCPSenderReports {
 					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
@@ -63,9 +68,9 @@ func (ct *clientFormat) start() {
 }
 
 func (ct *clientFormat) stop() {
-	if ct.udpRTCPReceiver != nil {
-		ct.udpRTCPReceiver.Close()
-		ct.udpRTCPReceiver = nil
+	if ct.rtcpReceiver != nil {
+		ct.rtcpReceiver.Close()
+		ct.rtcpReceiver = nil
 	}
 
 	if ct.rtcpSender != nil {
@@ -95,10 +100,10 @@ func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {
 		// do not return
 	}
 
-	now := time.Now()
+	now := ct.cm.c.timeNow()
 
 	for _, pkt := range packets {
-		ct.udpRTCPReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
+		ct.rtcpReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
 		ct.onPacketRTP(pkt)
 	}
 }
@@ -117,5 +122,7 @@ func (ct *clientFormat) readRTPTCP(pkt *rtp.Packet) {
 		// do not return
 	}
 
+	now := ct.cm.c.timeNow()
+	ct.rtcpReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
 	ct.onPacketRTP(pkt)
 }

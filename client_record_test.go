@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -64,6 +65,11 @@ var testRTCPPacketMarshaled = func() []byte {
 	byts, _ := testRTCPPacket.Marshal()
 	return byts
 }()
+
+func ntpTimeGoToRTCP(v time.Time) uint64 {
+	s := uint64(v.UnixNano()) + 2208988800*1000000000
+	return (s/1000000000)<<32 | (s % 1000000000)
+}
 
 func record(c *Client, ur string, medias media.Medias, cb func(*media.Media, rtcp.Packet)) error {
 	u, err := url.Parse(ur)
@@ -1168,10 +1174,10 @@ func TestClientRecordRTCPReport(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, &rtcp.SenderReport{
 					SSRC:        0x38F27A2F,
-					NTPTime:     packets[0].(*rtcp.SenderReport).NTPTime,
-					RTPTime:     packets[0].(*rtcp.SenderReport).RTPTime,
-					PacketCount: 2,
-					OctetCount:  2,
+					NTPTime:     ntpTimeGoToRTCP(time.Date(1996, 2, 13, 14, 33, 5, 0, time.UTC)),
+					RTPTime:     1300000 + 60*90000,
+					PacketCount: 1,
+					OctetCount:  1,
 				}, packets[0])
 
 				close(reportReceived)
@@ -1186,6 +1192,9 @@ func TestClientRecordRTCPReport(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
+			var curTime time.Time
+			var curTimeMutex sync.Mutex
+
 			c := Client{
 				Transport: func() *Transport {
 					if ca == "udp" {
@@ -1195,7 +1204,12 @@ func TestClientRecordRTCPReport(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				senderReportPeriod: 500 * time.Millisecond,
+				timeNow: func() time.Time {
+					curTimeMutex.Lock()
+					defer curTimeMutex.Unlock()
+					return curTime
+				},
+				senderReportPeriod: 100 * time.Millisecond,
 			}
 
 			medi := testH264Media
@@ -1205,17 +1219,27 @@ func TestClientRecordRTCPReport(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			for i := 0; i < 2; i++ {
-				err = c.WritePacketRTP(medi, &rtp.Packet{
+			curTimeMutex.Lock()
+			curTime = time.Date(2013, 6, 10, 1, 0, 0, 0, time.UTC)
+			curTimeMutex.Unlock()
+
+			err = c.WritePacketRTPWithNTP(
+				medi,
+				&rtp.Packet{
 					Header: rtp.Header{
 						Version:     2,
 						PayloadType: 96,
 						SSRC:        0x38F27A2F,
+						Timestamp:   1300000,
 					},
 					Payload: []byte{0x05}, // IDR
-				})
-				require.NoError(t, err)
-			}
+				},
+				time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC))
+			require.NoError(t, err)
+
+			curTimeMutex.Lock()
+			curTime = time.Date(2013, 6, 10, 1, 1, 0, 0, time.UTC)
+			curTimeMutex.Unlock()
 
 			<-reportReceived
 		})
