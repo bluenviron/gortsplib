@@ -83,7 +83,6 @@ type ServerHandlerOnDescribe interface {
 
 // ServerHandlerOnAnnounceCtx is the context of OnAnnounce.
 type ServerHandlerOnAnnounceCtx struct {
-	Server  *Server
 	Session *ServerSession
 	Conn    *ServerConn
 	Request *base.Request
@@ -100,7 +99,6 @@ type ServerHandlerOnAnnounce interface {
 
 // ServerHandlerOnSetupCtx is the context of OnSetup.
 type ServerHandlerOnSetupCtx struct {
-	Server    *Server
 	Session   *ServerSession
 	Conn      *ServerConn
 	Request   *base.Request

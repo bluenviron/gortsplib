@@ -19,6 +19,7 @@ import (
 // 3. allow multiple clients to read that stream with TCP
 
 type serverHandler struct {
+	s         *gortsplib.Server
 	mutex     sync.Mutex
 	stream    *gortsplib.ServerStream
 	publisher *gortsplib.ServerSession
@@ -88,7 +89,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// create the stream and save the publisher
-	sh.stream = gortsplib.NewServerStream(ctx.Server, ctx.Medias)
+	sh.stream = gortsplib.NewServerStream(sh.s, ctx.Medias)
 	sh.publisher = ctx.Session
 
 	return &base.Response{
@@ -146,13 +147,14 @@ func main() {
 	}
 
 	// configure the server
-	s := &gortsplib.Server{
-		Handler:     &serverHandler{},
+	h := &serverHandler{}
+	h.s = &gortsplib.Server{
+		Handler:     h,
 		TLSConfig:   &tls.Config{Certificates: []tls.Certificate{cert}},
 		RTSPAddress: ":8322",
 	}
 
 	// start server and wait until a fatal error
 	log.Printf("server is ready")
-	panic(s.StartAndWait())
+	panic(h.s.StartAndWait())
 }

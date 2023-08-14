@@ -219,11 +219,12 @@ func TestServerRecordPath(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			s := &Server{
+			var s *Server
+			s = &Server{
 				Handler: &testServerHandler{
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						// make sure that media URLs are not overridden by NewServerStream()
-						stream := NewServerStream(ctx.Server, ctx.Medias)
+						stream := NewServerStream(s, ctx.Medias)
 						defer stream.Close()
 
 						return &base.Response{

@@ -549,7 +549,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		res, err := ss.s.Handler.(ServerHandlerOnAnnounce).OnAnnounce(&ServerHandlerOnAnnounceCtx{
-			Server:  ss.s,
 			Session: ss,
 			Conn:    sc,
 			Request: req,
@@ -681,7 +680,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		res, stream, err := ss.s.Handler.(ServerHandlerOnSetup).OnSetup(&ServerHandlerOnSetupCtx{
-			Server:    ss.s,
 			Session:   ss,
 			Conn:      sc,
 			Request:   req,

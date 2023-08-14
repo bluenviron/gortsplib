@@ -269,7 +269,8 @@ func TestServerRecordRead(t *testing.T) {
 			var stream *gortsplib.ServerStream
 			var publisher *gortsplib.ServerSession
 
-			s := &gortsplib.Server{
+			var s *gortsplib.Server
+			s = &gortsplib.Server{
 				Handler: &testServerHandler{
 					onSessionClose: func(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
 						mutex.Lock()
@@ -328,7 +329,7 @@ func TestServerRecordRead(t *testing.T) {
 							}, fmt.Errorf("someone is already publishing")
 						}
 
-						stream = gortsplib.NewServerStream(ctx.Server, ctx.Medias)
+						stream = gortsplib.NewServerStream(s, ctx.Medias)
 						publisher = ctx.Session
 
 						return &base.Response{
