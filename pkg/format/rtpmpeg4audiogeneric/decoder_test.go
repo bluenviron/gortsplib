@@ -11,7 +11,6 @@ func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
-				SampleRate:       48000,
 				SizeLength:       ca.sizeLength,
 				IndexLength:      ca.indexLength,
 				IndexDeltaLength: ca.indexDeltaLength,
@@ -24,7 +23,7 @@ func TestDecode(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				addAUs, _, err := d.Decode(pkt)
+				addAUs, err := d.Decode(pkt)
 
 				// test input integrity
 				require.Equal(t, clone, pkt)
@@ -44,7 +43,6 @@ func TestDecode(t *testing.T) {
 
 func TestDecodeADTS(t *testing.T) {
 	d := &Decoder{
-		SampleRate:       16000,
 		SizeLength:       13,
 		IndexLength:      3,
 		IndexDeltaLength: 3,
@@ -53,13 +51,12 @@ func TestDecodeADTS(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < 2; i++ {
-		aus, _, err := d.Decode(&rtp.Packet{
+		aus, err := d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         true,
 				PayloadType:    96,
 				SequenceNumber: 17645,
-				Timestamp:      2289526357,
 				SSRC:           0x9dbb7812,
 			},
 			Payload: []byte{
@@ -75,7 +72,6 @@ func TestDecodeADTS(t *testing.T) {
 func FuzzDecoder(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
 		d := &Decoder{
-			SampleRate:       16000,
 			SizeLength:       13,
 			IndexLength:      3,
 			IndexDeltaLength: 3,

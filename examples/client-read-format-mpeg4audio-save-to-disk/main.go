@@ -63,17 +63,26 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
+		pts, ok := c.PacketPTS(forma, pkt)
+		if !ok {
+			return
+		}
+
 		// extract access units from RTP packets
-		aus, pts, err := rtpDec.Decode(pkt)
+		aus, err := rtpDec.Decode(pkt)
 		if err != nil {
 			log.Printf("ERR: %v", err)
 			return
 		}
 
-		for _, au := range aus {
-			// encode the access unit into MPEG-TS
-			mpegtsMuxer.encode(au, pts)
+		// encode access units into MPEG-TS
+		err = mpegtsMuxer.encode(aus, pts)
+		if err != nil {
+			log.Printf("ERR: %v", err)
+			return
 		}
+
+		log.Printf("saved TS packet")
 	})
 
 	// start playing

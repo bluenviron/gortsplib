@@ -46,9 +46,7 @@ func (f *G722) PTSEqualsDTS(*rtp.Packet) bool {
 
 // CreateDecoder creates a decoder able to decode the content of the format.
 func (f *G722) CreateDecoder() (*rtpsimpleaudio.Decoder, error) {
-	d := &rtpsimpleaudio.Decoder{
-		SampleRate: 8000,
-	}
+	d := &rtpsimpleaudio.Decoder{}
 
 	err := d.Init()
 	if err != nil {
@@ -62,7 +60,6 @@ func (f *G722) CreateDecoder() (*rtpsimpleaudio.Decoder, error) {
 func (f *G722) CreateEncoder() (*rtpsimpleaudio.Encoder, error) {
 	e := &rtpsimpleaudio.Encoder{
 		PayloadType: 9,
-		SampleRate:  8000,
 	}
 
 	err := e.Init()

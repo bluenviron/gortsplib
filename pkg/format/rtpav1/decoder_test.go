@@ -18,7 +18,7 @@ func TestDecode(t *testing.T) {
 			var obus [][]byte
 
 			for _, pkt := range ca.pkts {
-				addOBUs, _, err := d.Decode(pkt)
+				addOBUs, err := d.Decode(pkt)
 				if err == ErrMorePacketsNeeded {
 					continue
 				}
@@ -38,7 +38,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i <= av1.MaxOBUsPerTemporalUnit; i++ {
-		_, _, err = d.Decode(&rtp.Packet{
+		_, err = d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,

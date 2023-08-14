@@ -2,12 +2,9 @@ package rtpmpeg1audio
 
 import (
 	"crypto/rand"
-	"time"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg1audio"
 	"github.com/pion/rtp"
-
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 )
 
 const (
@@ -43,16 +40,11 @@ type Encoder struct {
 	// It defaults to a random value.
 	InitialSequenceNumber *uint16
 
-	// initial timestamp of packets (optional).
-	// It defaults to a random value.
-	InitialTimestamp *uint32
-
 	// maximum size of packet payloads (optional).
 	// It defaults to 1460.
 	PayloadMaxSize int
 
 	sequenceNumber uint16
-	timeEncoder    *rtptime.Encoder
 }
 
 // Init initializes the encoder.
@@ -72,34 +64,27 @@ func (e *Encoder) Init() error {
 		v2 := uint16(v)
 		e.InitialSequenceNumber = &v2
 	}
-	if e.InitialTimestamp == nil {
-		v, err := randUint32()
-		if err != nil {
-			return err
-		}
-		e.InitialTimestamp = &v
-	}
 	if e.PayloadMaxSize == 0 {
 		e.PayloadMaxSize = defaultPayloadMaxSize
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-	e.timeEncoder = rtptime.NewEncoder(90000, *e.InitialTimestamp)
 	return nil
 }
 
 // Encode encodes frames into RTP packets.
-func (e *Encoder) Encode(frames [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) Encode(frames [][]byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte
+	timestamp := uint32(0)
 
 	for _, frame := range frames {
 		if lenAggregated(batch, frame) <= e.PayloadMaxSize {
 			batch = append(batch, frame)
 		} else {
-			// write last batch
+			// write current batch
 			if batch != nil {
-				pkts, err := e.writeBatch(batch, pts)
+				pkts, err := e.writeBatch(batch, timestamp)
 				if err != nil {
 					return nil, err
 				}
@@ -112,7 +97,7 @@ func (e *Encoder) Encode(frames [][]byte, pts time.Duration) ([]*rtp.Packet, err
 						return nil, err
 					}
 
-					pts += time.Duration(h.SampleCount()) * time.Second / time.Duration(h.SampleRate)
+					timestamp += uint32(h.SampleCount())
 				}
 			}
 
@@ -122,7 +107,7 @@ func (e *Encoder) Encode(frames [][]byte, pts time.Duration) ([]*rtp.Packet, err
 	}
 
 	// write last batch
-	pkts, err := e.writeBatch(batch, pts)
+	pkts, err := e.writeBatch(batch, timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -131,15 +116,15 @@ func (e *Encoder) Encode(frames [][]byte, pts time.Duration) ([]*rtp.Packet, err
 	return rets, nil
 }
 
-func (e *Encoder) writeBatch(frames [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) writeBatch(frames [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
 	if len(frames) != 1 || lenAggregated(frames, nil) < e.PayloadMaxSize {
-		return e.writeAggregated(frames, pts)
+		return e.writeAggregated(frames, timestamp)
 	}
 
-	return e.writeFragmented(frames[0], pts)
+	return e.writeFragmented(frames[0], timestamp)
 }
 
-func (e *Encoder) writeFragmented(frame []byte, pts time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) writeFragmented(frame []byte, timestamp uint32) ([]*rtp.Packet, error) {
 	avail := e.PayloadMaxSize - 4
 	le := len(frame)
 	packetCount := le / avail
@@ -150,7 +135,6 @@ func (e *Encoder) writeFragmented(frame []byte, pts time.Duration) ([]*rtp.Packe
 
 	pos := 0
 	ret := make([]*rtp.Packet, packetCount)
-	encPTS := e.timeEncoder.Encode(pts)
 
 	for i := range ret {
 		var le int
@@ -171,7 +155,7 @@ func (e *Encoder) writeFragmented(frame []byte, pts time.Duration) ([]*rtp.Packe
 				Version:        rtpVersion,
 				PayloadType:    14,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      encPTS,
+				Timestamp:      timestamp,
 				SSRC:           *e.SSRC,
 				Marker:         true,
 			},
@@ -184,7 +168,7 @@ func (e *Encoder) writeFragmented(frame []byte, pts time.Duration) ([]*rtp.Packe
 	return ret, nil
 }
 
-func (e *Encoder) writeAggregated(frames [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) writeAggregated(frames [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
 	payload := make([]byte, lenAggregated(frames, nil))
 
 	n := 4
@@ -197,7 +181,7 @@ func (e *Encoder) writeAggregated(frames [][]byte, pts time.Duration) ([]*rtp.Pa
 			Version:        rtpVersion,
 			PayloadType:    14,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      e.timeEncoder.Encode(pts),
+			Timestamp:      timestamp,
 			SSRC:           *e.SSRC,
 			Marker:         true,
 		},

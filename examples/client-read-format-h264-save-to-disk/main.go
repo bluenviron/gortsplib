@@ -64,8 +64,13 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
+		pts, ok := c.PacketPTS(forma, pkt)
+		if !ok {
+			return
+		}
+
 		// extract access unit from RTP packets
-		au, pts, err := rtpDec.Decode(pkt)
+		au, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
@@ -74,7 +79,13 @@ func main() {
 		}
 
 		// encode the access unit into MPEG-TS
-		mpegtsMuxer.encode(au, pts)
+		err = mpegtsMuxer.encode(au, pts)
+		if err != nil {
+			log.Printf("ERR: %v", err)
+			return
+		}
+
+		log.Printf("saved TS packet")
 	})
 
 	// start playing

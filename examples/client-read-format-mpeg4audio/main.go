@@ -57,8 +57,13 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
+		pts, ok := c.PacketPTS(forma, pkt)
+		if !ok {
+			return
+		}
+
 		// extract access units from RTP packets
-		aus, _, err := rtpDec.Decode(pkt)
+		aus, err := rtpDec.Decode(pkt)
 		if err != nil {
 			log.Printf("ERR: %v", err)
 			return
@@ -66,7 +71,7 @@ func main() {
 
 		// print AUs
 		for _, au := range aus {
-			log.Printf("received MPEG4-audio AU of size %d\n", len(au))
+			log.Printf("received access unit with PTS %v size %d\n", pts, len(au))
 		}
 	})
 

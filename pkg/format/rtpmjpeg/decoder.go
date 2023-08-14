@@ -3,11 +3,9 @@ package rtpmjpeg
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/mediacommon/pkg/codecs/jpeg"
 )
 
@@ -105,7 +103,6 @@ func joinFragments(fragments [][]byte, size int) []byte {
 // Decoder is a RTP/M-JPEG decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2435
 type Decoder struct {
-	timeDecoder         *rtptime.Decoder
 	firstPacketReceived bool
 	fragmentsSize       int
 	fragments           [][]byte
@@ -115,27 +112,26 @@ type Decoder struct {
 
 // Init initializes the decoder.
 func (d *Decoder) Init() error {
-	d.timeDecoder = rtptime.NewDecoder(rtpClockRate)
 	return nil
 }
 
 // Decode decodes an image from a RTP packet.
-func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
+func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	byts := pkt.Payload
 
 	var jh headerJPEG
 	n, err := jh.unmarshal(byts)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	byts = byts[n:]
 
 	if jh.Width > maxDimension {
-		return nil, 0, fmt.Errorf("Width of %d is not supported", jh.Width)
+		return nil, fmt.Errorf("Width of %d is not supported", jh.Width)
 	}
 
 	if jh.Height > maxDimension {
-		return nil, 0, fmt.Errorf("Height of %d is not supported", jh.Height)
+		return nil, fmt.Errorf("Height of %d is not supported", jh.Height)
 	}
 
 	if jh.FragmentOffset == 0 {
@@ -147,7 +143,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 			d.firstQTHeader = &headerQuantizationTable{}
 			n, err := d.firstQTHeader.unmarshal(byts)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			byts = byts[n:]
 		} else {
@@ -160,12 +156,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	} else {
 		if int(jh.FragmentOffset) != d.fragmentsSize {
 			if !d.firstPacketReceived {
-				return nil, 0, ErrNonStartingPacketAndNoPrevious
+				return nil, ErrNonStartingPacketAndNoPrevious
 			}
 
 			d.fragments = d.fragments[:0] // discard pending fragments
 			d.fragmentsSize = 0
-			return nil, 0, fmt.Errorf("received wrong fragment")
+			return nil, fmt.Errorf("received wrong fragment")
 		}
 
 		d.fragmentsSize += len(byts)
@@ -173,11 +169,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	}
 
 	if !pkt.Marker {
-		return nil, 0, ErrMorePacketsNeeded
+		return nil, ErrMorePacketsNeeded
 	}
 
 	if d.fragmentsSize < 2 {
-		return nil, 0, fmt.Errorf("invalid data")
+		return nil, fmt.Errorf("invalid data")
 	}
 
 	data := joinFragments(d.fragments, d.fragmentsSize)
@@ -242,5 +238,5 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 		buf = append(buf, []byte{0xFF, jpeg.MarkerEndOfImage}...)
 	}
 
-	return buf, d.timeDecoder.Decode(pkt.Timestamp), nil
+	return buf, nil
 }

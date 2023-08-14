@@ -2,6 +2,5 @@
 package rtpmjpeg
 
 const (
-	rtpClockRate = 90000
 	maxDimension = 2040
 )

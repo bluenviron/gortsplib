@@ -29,7 +29,6 @@ var cases = []struct {
 				Marker:         false,
 				PayloadType:    0,
 				SequenceNumber: 17645,
-				Timestamp:      2289526357,
 				SSRC:           0x9dbb7812,
 			},
 			Payload: []byte{0x01, 0x02, 0x03, 0x04},
@@ -42,15 +41,13 @@ func TestEncode(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
 				PayloadType:           0,
-				SampleRate:            8000,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
-				InitialTimestamp:      uint32Ptr(0x88776655),
 			}
 			err := e.Init()
 			require.NoError(t, err)
 
-			pkt, err := e.Encode(ca.frame, 0)
+			pkt, err := e.Encode(ca.frame)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkt, pkt)
 		})
@@ -60,11 +57,9 @@ func TestEncode(t *testing.T) {
 func TestEncodeRandomInitialState(t *testing.T) {
 	e := &Encoder{
 		PayloadType: 0,
-		SampleRate:  8000,
 	}
 	err := e.Init()
 	require.NoError(t, err)
 	require.NotEqual(t, nil, e.SSRC)
 	require.NotEqual(t, nil, e.InitialSequenceNumber)
-	require.NotEqual(t, nil, e.InitialTimestamp)
 }

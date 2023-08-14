@@ -20,6 +20,7 @@ import (
 // 3. save the content of the H264 media into a file in MPEG-TS format
 
 type serverHandler struct {
+	s           *gortsplib.Server
 	mutex       sync.Mutex
 	publisher   *gortsplib.ServerSession
 	media       *media.Media
@@ -115,13 +116,18 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 
 	// called when receiving a RTP packet
 	ctx.Session.OnPacketRTP(sh.media, sh.format, func(pkt *rtp.Packet) {
-		nalus, pts, err := sh.rtpDec.Decode(pkt)
+		pts, ok := ctx.Session.PacketPTS(sh.format, pkt)
+		if !ok {
+			return
+		}
+
+		au, err := sh.rtpDec.Decode(pkt)
 		if err != nil {
 			return
 		}
 
-		// encode H264 NALUs into MPEG-TS
-		sh.mpegtsMuxer.encode(nalus, pts)
+		// encode H264 access unit into MPEG-TS
+		sh.mpegtsMuxer.encode(au, pts)
 	})
 
 	return &base.Response{
@@ -131,8 +137,9 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 
 func main() {
 	// configure the server
-	s := &gortsplib.Server{
-		Handler:           &serverHandler{},
+	h := &serverHandler{}
+	h.s = &gortsplib.Server{
+		Handler:           h,
 		RTSPAddress:       ":8554",
 		UDPRTPAddress:     ":8000",
 		UDPRTCPAddress:    ":8001",
@@ -143,5 +150,5 @@ func main() {
 
 	// start server and wait until a fatal error
 	log.Printf("server is ready")
-	panic(s.StartAndWait())
+	panic(h.s.StartAndWait())
 }

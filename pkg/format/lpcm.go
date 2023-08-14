@@ -100,7 +100,6 @@ func (f *LPCM) PTSEqualsDTS(*rtp.Packet) bool {
 func (f *LPCM) CreateDecoder() (*rtplpcm.Decoder, error) {
 	d := &rtplpcm.Decoder{
 		BitDepth:     f.BitDepth,
-		SampleRate:   f.SampleRate,
 		ChannelCount: f.ChannelCount,
 	}
 
@@ -117,7 +116,6 @@ func (f *LPCM) CreateEncoder() (*rtplpcm.Encoder, error) {
 	e := &rtplpcm.Encoder{
 		PayloadType:  f.PayloadTyp,
 		BitDepth:     f.BitDepth,
-		SampleRate:   f.SampleRate,
 		ChannelCount: f.ChannelCount,
 	}
 

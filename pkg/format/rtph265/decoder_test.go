@@ -20,7 +20,7 @@ func TestDecode(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				addNALUs, _, err := d.Decode(pkt)
+				addNALUs, err := d.Decode(pkt)
 
 				// test input integrity
 				require.Equal(t, clone, pkt)
@@ -44,7 +44,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i <= h265.MaxNALUsPerAccessUnit; i++ {
-		_, _, err = d.Decode(&rtp.Packet{
+		_, err = d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         false,

@@ -4,11 +4,9 @@ import (
 	"crypto/rand"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/mediacommon/pkg/codecs/jpeg"
 )
 
@@ -37,16 +35,11 @@ type Encoder struct {
 	// It defaults to a random value.
 	InitialSequenceNumber *uint16
 
-	// initial timestamp of packets (optional).
-	// It defaults to a random value.
-	InitialTimestamp *uint32
-
 	// maximum size of packet payloads (optional).
 	// It defaults to 1460.
 	PayloadMaxSize int
 
 	sequenceNumber uint16
-	timeEncoder    *rtptime.Encoder
 }
 
 // Init initializes the encoder.
@@ -66,24 +59,16 @@ func (e *Encoder) Init() error {
 		v2 := uint16(v)
 		e.InitialSequenceNumber = &v2
 	}
-	if e.InitialTimestamp == nil {
-		v, err := randUint32()
-		if err != nil {
-			return err
-		}
-		e.InitialTimestamp = &v
-	}
 	if e.PayloadMaxSize == 0 {
 		e.PayloadMaxSize = defaultPayloadMaxSize
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-	e.timeEncoder = rtptime.NewEncoder(rtpClockRate, *e.InitialTimestamp)
 	return nil
 }
 
 // Encode encodes an image into RTP/M-JPEG packets.
-func (e *Encoder) Encode(image []byte, pts time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) Encode(image []byte) ([]*rtp.Packet, error) {
 	l := len(image)
 	if l < 2 || image[0] != 0xFF || image[1] != jpeg.MarkerStartOfImage {
 		return nil, fmt.Errorf("SOI not found")
@@ -275,7 +260,6 @@ outer:
 				Version:        rtpVersion,
 				PayloadType:    26,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      e.timeEncoder.Encode(pts),
 				SSRC:           *e.SSRC,
 				Marker:         len(data) == 0,
 			},

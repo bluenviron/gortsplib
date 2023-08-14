@@ -3,11 +3,8 @@ package rtph265
 import (
 	"crypto/rand"
 	"fmt"
-	"time"
 
 	"github.com/pion/rtp"
-
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 )
 
 const (
@@ -38,10 +35,6 @@ type Encoder struct {
 	// It defaults to a random value.
 	InitialSequenceNumber *uint16
 
-	// initial timestamp of packets (optional).
-	// It defaults to a random value.
-	InitialTimestamp *uint32
-
 	// maximum size of packet payloads (optional).
 	// It defaults to 1460.
 	PayloadMaxSize int
@@ -50,7 +43,6 @@ type Encoder struct {
 	MaxDONDiff int
 
 	sequenceNumber uint16
-	timeEncoder    *rtptime.Encoder
 }
 
 // Init initializes the encoder.
@@ -74,24 +66,16 @@ func (e *Encoder) Init() error {
 		v2 := uint16(v)
 		e.InitialSequenceNumber = &v2
 	}
-	if e.InitialTimestamp == nil {
-		v, err := randUint32()
-		if err != nil {
-			return err
-		}
-		e.InitialTimestamp = &v
-	}
 	if e.PayloadMaxSize == 0 {
 		e.PayloadMaxSize = defaultPayloadMaxSize
 	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
-	e.timeEncoder = rtptime.NewEncoder(rtpClockRate, *e.InitialTimestamp)
 	return nil
 }
 
 // Encode encodes NALUs into RTP/H265 packets.
-func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([]*rtp.Packet, error) {
+func (e *Encoder) Encode(nalus [][]byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte
 
@@ -103,7 +87,7 @@ func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([]*rtp.Packet, erro
 		} else {
 			// write batch
 			if batch != nil {
-				pkts, err := e.writeBatch(batch, pts, false)
+				pkts, err := e.writeBatch(batch, false)
 				if err != nil {
 					return nil, err
 				}
@@ -116,8 +100,8 @@ func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([]*rtp.Packet, erro
 	}
 
 	// write final batch
-	// marker is used to indicate when all NALUs with same PTS have been sent
-	pkts, err := e.writeBatch(batch, pts, true)
+	// marker is used to indicate that the entire access unit has been sent
+	pkts, err := e.writeBatch(batch, true)
 	if err != nil {
 		return nil, err
 	}
@@ -126,27 +110,26 @@ func (e *Encoder) Encode(nalus [][]byte, pts time.Duration) ([]*rtp.Packet, erro
 	return rets, nil
 }
 
-func (e *Encoder) writeBatch(nalus [][]byte, pts time.Duration, marker bool) ([]*rtp.Packet, error) {
+func (e *Encoder) writeBatch(nalus [][]byte, marker bool) ([]*rtp.Packet, error) {
 	if len(nalus) == 1 {
 		// the NALU fits into a single RTP packet
 		if len(nalus[0]) < e.PayloadMaxSize {
-			return e.writeSingle(nalus[0], pts, marker)
+			return e.writeSingle(nalus[0], marker)
 		}
 
 		// split the NALU into multiple fragmentation packet
-		return e.writeFragmentationUnits(nalus[0], pts, marker)
+		return e.writeFragmentationUnits(nalus[0], marker)
 	}
 
-	return e.writeAggregationUnit(nalus, pts, marker)
+	return e.writeAggregationUnit(nalus, marker)
 }
 
-func (e *Encoder) writeSingle(nalu []byte, pts time.Duration, marker bool) ([]*rtp.Packet, error) {
+func (e *Encoder) writeSingle(nalu []byte, marker bool) ([]*rtp.Packet, error) {
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
 			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      e.timeEncoder.Encode(pts),
 			SSRC:           *e.SSRC,
 			Marker:         marker,
 		},
@@ -158,7 +141,7 @@ func (e *Encoder) writeSingle(nalu []byte, pts time.Duration, marker bool) ([]*r
 	return []*rtp.Packet{pkt}, nil
 }
 
-func (e *Encoder) writeFragmentationUnits(nalu []byte, pts time.Duration, marker bool) ([]*rtp.Packet, error) {
+func (e *Encoder) writeFragmentationUnits(nalu []byte, marker bool) ([]*rtp.Packet, error) {
 	avail := e.PayloadMaxSize - 3
 	le := len(nalu) - 2
 	n := le / avail
@@ -168,7 +151,6 @@ func (e *Encoder) writeFragmentationUnits(nalu []byte, pts time.Duration, marker
 	}
 
 	ret := make([]*rtp.Packet, n)
-	encPTS := e.timeEncoder.Encode(pts)
 
 	head := nalu[:2]
 	nalu = nalu[2:]
@@ -197,7 +179,6 @@ func (e *Encoder) writeFragmentationUnits(nalu []byte, pts time.Duration, marker
 				Version:        rtpVersion,
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
-				Timestamp:      encPTS,
 				SSRC:           *e.SSRC,
 				Marker:         (i == (n-1) && marker),
 			},
@@ -226,7 +207,7 @@ func (e *Encoder) lenAggregationUnit(nalus [][]byte, addNALU []byte) int {
 	return ret
 }
 
-func (e *Encoder) writeAggregationUnit(nalus [][]byte, pts time.Duration, marker bool) ([]*rtp.Packet, error) {
+func (e *Encoder) writeAggregationUnit(nalus [][]byte, marker bool) ([]*rtp.Packet, error) {
 	payload := make([]byte, e.lenAggregationUnit(nalus, nil))
 
 	// header
@@ -252,7 +233,6 @@ func (e *Encoder) writeAggregationUnit(nalus [][]byte, pts time.Duration, marker
 			Version:        rtpVersion,
 			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
-			Timestamp:      e.timeEncoder.Encode(pts),
 			SSRC:           *e.SSRC,
 			Marker:         marker,
 		},
