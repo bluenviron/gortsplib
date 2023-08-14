@@ -33,7 +33,7 @@ func newServerStreamMedia(st *ServerStream, medi *media.Media, trackID int) *ser
 		tr.rtcpSender = rtcpsender.New(
 			forma.ClockRate(),
 			func(pkt rtcp.Packet) {
-				st.WritePacketRTCP(cmedia, pkt)
+				st.WritePacketRTCP(cmedia, pkt) //nolint:errcheck
 			},
 		)
 
@@ -67,11 +67,11 @@ func (sm *serverStreamMedia) allocateMulticastHandler(s *Server) error {
 	return nil
 }
 
-func (sm *serverStreamMedia) WritePacketRTPWithNTP(ss *ServerStream, pkt *rtp.Packet, ntp time.Time) {
+func (sm *serverStreamMedia) writePacketRTPWithNTP(ss *ServerStream, pkt *rtp.Packet, ntp time.Time) error {
 	byts := make([]byte, udpMaxPayloadSize)
 	n, err := pkt.MarshalTo(byts)
 	if err != nil {
-		return
+		return err
 	}
 	byts = byts[:n]
 
@@ -91,12 +91,14 @@ func (sm *serverStreamMedia) WritePacketRTPWithNTP(ss *ServerStream, pkt *rtp.Pa
 	if sm.multicastWriter != nil {
 		sm.multicastWriter.writePacketRTP(byts)
 	}
+
+	return nil
 }
 
-func (sm *serverStreamMedia) writePacketRTCP(ss *ServerStream, pkt rtcp.Packet) {
+func (sm *serverStreamMedia) writePacketRTCP(ss *ServerStream, pkt rtcp.Packet) error {
 	byts, err := pkt.Marshal()
 	if err != nil {
-		return
+		return err
 	}
 
 	// send unicast
@@ -111,4 +113,6 @@ func (sm *serverStreamMedia) writePacketRTCP(ss *ServerStream, pkt rtcp.Packet) 
 	if sm.multicastWriter != nil {
 		sm.multicastWriter.writePacketRTCP(byts)
 	}
+
+	return nil
 }
