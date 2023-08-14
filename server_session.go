@@ -1172,13 +1172,14 @@ func (ss *ServerSession) writePacketRTP(medi *media.Media, byts []byte) {
 }
 
 // WritePacketRTP writes a RTP packet to the session.
-func (ss *ServerSession) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) {
+func (ss *ServerSession) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
 	byts, err := pkt.Marshal()
 	if err != nil {
-		return
+		return err
 	}
 
 	ss.writePacketRTP(medi, byts)
+	return nil
 }
 
 func (ss *ServerSession) writePacketRTCP(medi *media.Media, byts []byte) {
@@ -1187,13 +1188,14 @@ func (ss *ServerSession) writePacketRTCP(medi *media.Media, byts []byte) {
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.
-func (ss *ServerSession) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) {
+func (ss *ServerSession) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) error {
 	byts, err := pkt.Marshal()
 	if err != nil {
-		return
+		return err
 	}
 
 	ss.writePacketRTCP(medi, byts)
+	return nil
 }
 
 func (ss *ServerSession) handleRequest(req sessionRequestReq) (*base.Response, *ServerSession, error) {

@@ -1678,13 +1678,39 @@ func (c *Client) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
 
 // WritePacketRTPWithNTP writes a RTP packet to the media stream.
 func (c *Client) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp time.Time) error {
+	byts := make([]byte, udpMaxPayloadSize)
+	n, err := pkt.MarshalTo(byts)
+	if err != nil {
+		return err
+	}
+	byts = byts[:n]
+
+	select {
+	case <-c.done:
+		return c.closeError
+	default:
+	}
+
 	cm := c.medias[medi]
 	ct := cm.formats[pkt.PayloadType]
-	return ct.writePacketRTPWithNTP(pkt, ntp)
+	ct.writePacketRTP(byts, pkt, ntp)
+	return nil
 }
 
 // WritePacketRTCP writes a RTCP packet to the media stream.
 func (c *Client) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) error {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return err
+	}
+
+	select {
+	case <-c.done:
+		return c.closeError
+	default:
+	}
+
 	cm := c.medias[medi]
-	return cm.writePacketRTCP(pkt)
+	cm.writePacketRTCP(byts)
+	return nil
 }

@@ -260,6 +260,13 @@ func (st *ServerStream) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error
 // ntp is the absolute time of the packet, and is needed to generate RTCP sender reports
 // that allows the receiver to reconstruct the absolute time of the packet.
 func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp time.Time) error {
+	byts := make([]byte, udpMaxPayloadSize)
+	n, err := pkt.MarshalTo(byts)
+	if err != nil {
+		return err
+	}
+	byts = byts[:n]
+
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 
@@ -268,11 +275,17 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet
 	}
 
 	sm := st.streamMedias[medi]
-	return sm.writePacketRTPWithNTP(st, pkt, ntp)
+	sm.writePacketRTP(byts, pkt, ntp)
+	return nil
 }
 
 // WritePacketRTCP writes a RTCP packet to all the readers of the stream.
 func (st *ServerStream) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) error {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return err
+	}
+
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 
@@ -281,5 +294,6 @@ func (st *ServerStream) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) erro
 	}
 
 	sm := st.streamMedias[medi]
-	return sm.writePacketRTCP(st, pkt)
+	sm.writePacketRTCP(byts)
+	return nil
 }
