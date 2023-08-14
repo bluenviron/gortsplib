@@ -7,7 +7,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtplossdetector"
@@ -16,7 +16,7 @@ import (
 
 type clientFormat struct {
 	cm              *clientMedia
-	format          formats.Format
+	format          format.Format
 	udpReorderer    *rtpreorderer.Reorderer       // play
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver    // play
 	tcpLossDetector *rtplossdetector.LossDetector // play
@@ -24,7 +24,7 @@ type clientFormat struct {
 	onPacketRTP     OnPacketRTPFunc
 }
 
-func newClientFormat(cm *clientMedia, forma formats.Format) *clientFormat {
+func newClientFormat(cm *clientMedia, forma format.Format) *clientFormat {
 	return &clientFormat{
 		cm:          cm,
 		format:      forma,

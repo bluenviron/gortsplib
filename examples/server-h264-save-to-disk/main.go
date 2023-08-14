@@ -9,8 +9,8 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats/rtph264"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 )
 
@@ -23,7 +23,7 @@ type serverHandler struct {
 	mutex       sync.Mutex
 	publisher   *gortsplib.ServerSession
 	media       *media.Media
-	format      *formats.H264
+	format      *format.H264
 	rtpDec      *rtph264.Decoder
 	mpegtsMuxer *mpegtsMuxer
 }
@@ -67,7 +67,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// find the H264 media and format
-	var forma *formats.H264
+	var forma *format.H264
 	medi := ctx.Medias.FindFormat(&forma)
 	if medi == nil {
 		return &base.Response{

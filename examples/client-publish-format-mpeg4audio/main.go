@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
@@ -39,7 +39,7 @@ func main() {
 	// create a media that contains a MPEG4-audio format
 	medi := &media.Media{
 		Type: media.TypeAudio,
-		Formats: []formats.Format{&formats.MPEG4Audio{
+		Formats: []format.Format{&format.MPEG4Audio{
 			PayloadTyp: 96,
 			Config: &mpeg4audio.Config{
 				Type:         mpeg4audio.ObjectTypeAACLC,

@@ -14,7 +14,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
@@ -23,7 +23,7 @@ import (
 
 var testH264Media = &media.Media{
 	Type: media.TypeVideo,
-	Formats: []formats.Format{&formats.H264{
+	Formats: []format.Format{&format.H264{
 		PayloadTyp:        96,
 		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
 		PPS:               []byte{0x01, 0x02, 0x03, 0x04},

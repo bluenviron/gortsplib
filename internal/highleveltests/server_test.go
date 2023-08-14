@@ -19,7 +19,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 )
 
@@ -386,7 +386,7 @@ func TestServerRecordRead(t *testing.T) {
 							}, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
-						ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma formats.Format, pkt *rtp.Packet) {
+						ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 							stream.WritePacketRTP(medi, pkt)
 						})
 

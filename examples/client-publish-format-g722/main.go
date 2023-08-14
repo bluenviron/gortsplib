@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/pion/rtp"
 )
@@ -38,7 +38,7 @@ func main() {
 	// create a media that contains a G722 format
 	medi := &media.Media{
 		Type:    media.TypeAudio,
-		Formats: []formats.Format{&formats.G722{}},
+		Formats: []format.Format{&format.G722{}},
 	}
 
 	c := gortsplib.Client{}

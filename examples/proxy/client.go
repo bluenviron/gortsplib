@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/pion/rtp"
@@ -74,7 +74,7 @@ func (c *client) read() error {
 	log.Printf("stream is ready and can be read from the server at rtsp://localhost:8554/stream\n")
 
 	// called when a RTP packet arrives
-	rc.OnPacketRTPAny(func(medi *media.Media, forma formats.Format, pkt *rtp.Packet) {
+	rc.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 		// route incoming packets to the server stream
 		stream.WritePacketRTP(medi, pkt)
 	})

@@ -23,7 +23,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
@@ -199,7 +199,7 @@ type ClientOnDecodeErrorFunc func(err error)
 type OnPacketRTPFunc func(*rtp.Packet)
 
 // OnPacketRTPAnyFunc is the prototype of the callback passed to OnPacketRTP(Any).
-type OnPacketRTPAnyFunc func(*media.Media, formats.Format, *rtp.Packet)
+type OnPacketRTPAnyFunc func(*media.Media, format.Format, *rtp.Packet)
 
 // OnPacketRTCPFunc is the prototype of the callback passed to OnPacketRTCP().
 type OnPacketRTCPFunc func(rtcp.Packet)
@@ -1639,7 +1639,7 @@ func (c *Client) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (c *Client) OnPacketRTP(medi *media.Media, forma formats.Format, cb OnPacketRTPFunc) {
+func (c *Client) OnPacketRTP(medi *media.Media, forma format.Format, cb OnPacketRTPFunc) {
 	cm := c.medias[medi]
 	ct := cm.formats[forma.PayloadType()]
 	ct.onPacketRTP = cb

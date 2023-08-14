@@ -11,7 +11,7 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
@@ -125,7 +125,7 @@ type Media struct {
 	Control string
 
 	// Formats contained into the media.
-	Formats []formats.Format
+	Formats []format.Format
 }
 
 func (m *Media) unmarshal(md *psdp.MediaDescription) error {
@@ -156,7 +156,7 @@ func (m *Media) unmarshal(md *psdp.MediaDescription) error {
 		rtpMap := getFormatAttribute(md.Attributes, payloadTypeInt, "rtpmap")
 		fmtp := decodeFMTP(getFormatAttribute(md.Attributes, payloadTypeInt, "fmtp"))
 
-		format, err := formats.Unmarshal(string(m.Type), payloadTypeInt, rtpMap, fmtp)
+		format, err := format.Unmarshal(string(m.Type), payloadTypeInt, rtpMap, fmtp)
 		if err != nil {
 			return err
 		}

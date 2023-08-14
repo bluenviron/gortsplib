@@ -15,7 +15,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
@@ -431,7 +431,7 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	forma := &formats.Generic{
+	forma := &format.Generic{
 		PayloadTyp: 96,
 		RTPMa:      "private/90000",
 	}
@@ -441,11 +441,11 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 	medias := media.Medias{
 		&media.Media{
 			Type:    "application",
-			Formats: []formats.Format{forma},
+			Formats: []format.Format{forma},
 		},
 		&media.Media{
 			Type:    "application",
-			Formats: []formats.Format{forma},
+			Formats: []format.Format{forma},
 		},
 	}
 	resetMediaControls(medias)
@@ -586,7 +586,7 @@ func TestServerRecord(t *testing.T) {
 			medias := media.Medias{
 				&media.Media{
 					Type: media.TypeVideo,
-					Formats: []formats.Format{&formats.H264{
+					Formats: []format.Format{&format.H264{
 						PayloadTyp:        96,
 						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
 						PPS:               []byte{0x01, 0x02, 0x03, 0x04},
@@ -595,7 +595,7 @@ func TestServerRecord(t *testing.T) {
 				},
 				&media.Media{
 					Type: media.TypeVideo,
-					Formats: []formats.Format{&formats.H264{
+					Formats: []format.Format{&format.H264{
 						PayloadTyp:        96,
 						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
 						PPS:               []byte{0x01, 0x02, 0x03, 0x04},
@@ -1270,7 +1270,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 
 			medias := media.Medias{&media.Media{
 				Type: media.TypeApplication,
-				Formats: []formats.Format{&formats.Generic{
+				Formats: []format.Format{&format.Generic{
 					PayloadTyp: 97,
 					RTPMa:      "private/90000",
 				}},

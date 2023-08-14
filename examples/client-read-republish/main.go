@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/pion/rtp"
@@ -54,7 +54,7 @@ func main() {
 	defer publisher.Close()
 
 	// read RTP packets from the reader and route them to the publisher
-	reader.OnPacketRTPAny(func(medi *media.Media, forma formats.Format, pkt *rtp.Packet) {
+	reader.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
 		publisher.WritePacketRTP(medi, pkt)
 	})
 

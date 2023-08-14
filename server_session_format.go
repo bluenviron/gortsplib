@@ -7,7 +7,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtplossdetector"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
@@ -15,14 +15,14 @@ import (
 
 type serverSessionFormat struct {
 	sm              *serverSessionMedia
-	format          formats.Format
+	format          format.Format
 	udpReorderer    *rtpreorderer.Reorderer
 	tcpLossDetector *rtplossdetector.LossDetector
 	udpRTCPReceiver *rtcpreceiver.RTCPReceiver
 	onPacketRTP     OnPacketRTPFunc
 }
 
-func newServerSessionFormat(sm *serverSessionMedia, forma formats.Format) *serverSessionFormat {
+func newServerSessionFormat(sm *serverSessionMedia, forma format.Format) *serverSessionFormat {
 	return &serverSessionFormat{
 		sm:          sm,
 		format:      forma,

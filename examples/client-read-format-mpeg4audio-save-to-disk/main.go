@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/pion/rtp"
 )
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	// find the MPEG4-audio media and format
-	var forma *formats.MPEG4Audio
+	var forma *format.MPEG4Audio
 	medi := medias.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")

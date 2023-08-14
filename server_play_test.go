@@ -18,7 +18,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
-	"github.com/bluenviron/gortsplib/v4/pkg/formats"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
@@ -1877,7 +1877,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		return &ri, ssrcs
 	}
 
-	forma := &formats.Generic{
+	forma := &format.Generic{
 		PayloadTyp: 96,
 		RTPMa:      "private/90000",
 	}
@@ -1914,11 +1914,11 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	stream = NewServerStream(s, media.Medias{
 		&media.Media{
 			Type:    "application",
-			Formats: []formats.Format{forma},
+			Formats: []format.Format{forma},
 		},
 		&media.Media{
 			Type:    "application",
-			Formats: []formats.Format{forma},
+			Formats: []format.Format{forma},
 		},
 	})
 	defer stream.Close()
@@ -1994,7 +1994,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 }
 
 func TestServerPlayNoInterleavedIDs(t *testing.T) {
-	forma := &formats.Generic{
+	forma := &format.Generic{
 		PayloadTyp: 96,
 		RTPMa:      "private/90000",
 	}
@@ -2031,11 +2031,11 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 	stream = NewServerStream(s, media.Medias{
 		&media.Media{
 			Type:    "application",
-			Formats: []formats.Format{forma},
+			Formats: []format.Format{forma},
 		},
 		&media.Media{
 			Type:    "application",
-			Formats: []formats.Format{forma},
+			Formats: []format.Format{forma},
 		},
 	})
 	defer stream.Close()
