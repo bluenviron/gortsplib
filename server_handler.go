@@ -194,21 +194,6 @@ type ServerHandlerOnSetParameter interface {
 	OnSetParameter(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 }
 
-// ServerHandlerOnWarningCtx is the context of OnWarning.
-//
-// Deprecated: ServerHandlerOnWarning is deprecated.
-type ServerHandlerOnWarningCtx struct {
-	Session *ServerSession
-	Error   error
-}
-
-// ServerHandlerOnWarning can be implemented by a ServerHandler.
-//
-// Deprecated: replaced by OnPacketLost, OnDecodeError.
-type ServerHandlerOnWarning interface {
-	OnWarning(*ServerHandlerOnWarningCtx)
-}
-
 // ServerHandlerOnPacketLostCtx is the context of OnPacketLost.
 type ServerHandlerOnPacketLostCtx struct {
 	Session *ServerSession

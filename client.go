@@ -207,11 +207,6 @@ type OnPacketRTCPFunc func(rtcp.Packet)
 // OnPacketRTCPAnyFunc is the prototype of the callback passed to OnPacketRTCPAny().
 type OnPacketRTCPAnyFunc func(*media.Media, rtcp.Packet)
 
-// ClientLogFunc is the prototype of the log function.
-//
-// Deprecated: Log() is deprecated.
-type ClientLogFunc func(level LogLevel, format string, args ...interface{})
-
 // Client is a RTSP client.
 type Client struct {
 	//
@@ -257,8 +252,6 @@ type Client struct {
 	BytesReceived *uint64
 	// pointer to a variable that stores sent bytes.
 	BytesSent *uint64
-	// Deprecated: disabling redirects doesn't improve security.
-	RedirectDisable bool
 
 	//
 	// system functions (all optional)
@@ -283,8 +276,6 @@ type Client struct {
 	OnPacketLost ClientOnPacketLostFunc
 	// called when a non-fatal decode error occurs.
 	OnDecodeError ClientOnDecodeErrorFunc
-	// Deprecated: replaced by OnTransportSwitch, OnPacketLost, OnDecodeError
-	Log ClientLogFunc
 
 	//
 	// private
@@ -383,27 +374,12 @@ func (c *Client) Start(scheme string, host string) error {
 		c.OnResponse = func(*base.Response) {
 		}
 	}
-	if c.Log != nil && c.OnTransportSwitch == nil {
-		c.OnTransportSwitch = func(err error) {
-			c.Log(LogLevelWarn, "%v", err)
-		}
-	}
 	if c.OnTransportSwitch == nil {
 		c.OnTransportSwitch = func(err error) {
 		}
 	}
-	if c.Log != nil && c.OnPacketLost == nil {
-		c.OnPacketLost = func(err error) {
-			c.Log(LogLevelWarn, "%v", err)
-		}
-	}
 	if c.OnPacketLost == nil {
 		c.OnPacketLost = func(err error) {
-		}
-	}
-	if c.Log != nil && c.OnDecodeError == nil {
-		c.OnDecodeError = func(err error) {
-			c.Log(LogLevelWarn, "%v", err)
 		}
 	}
 	if c.OnDecodeError == nil {
@@ -1016,8 +992,7 @@ func (c *Client) doDescribe(u *url.URL) (media.Medias, *url.URL, *base.Response,
 
 	if res.StatusCode != base.StatusOK {
 		// redirect
-		if !c.RedirectDisable &&
-			res.StatusCode >= base.StatusMovedPermanently &&
+		if res.StatusCode >= base.StatusMovedPermanently &&
 			res.StatusCode <= base.StatusUseProxy &&
 			len(res.Header["Location"]) == 1 {
 			c.reset()

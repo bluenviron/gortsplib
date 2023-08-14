@@ -41,13 +41,6 @@ func (f *G726) Codec() string {
 	return "G726"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *G726) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *G726) ClockRate() int {
 	return 8000

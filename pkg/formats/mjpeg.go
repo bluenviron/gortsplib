@@ -19,13 +19,6 @@ func (f *MJPEG) Codec() string {
 	return "M-JPEG"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *MJPEG) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *MJPEG) ClockRate() int {
 	return 90000
@@ -51,14 +44,6 @@ func (f *MJPEG) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-//
-// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
-func (f *MJPEG) CreateDecoder() *rtpmjpeg.Decoder {
-	d, _ := f.CreateDecoder2()
-	return d
-}
-
 // CreateDecoder2 creates a decoder able to decode the content of the format.
 func (f *MJPEG) CreateDecoder2() (*rtpmjpeg.Decoder, error) {
 	d := &rtpmjpeg.Decoder{}
@@ -69,14 +54,6 @@ func (f *MJPEG) CreateDecoder2() (*rtpmjpeg.Decoder, error) {
 	}
 
 	return d, nil
-}
-
-// CreateEncoder creates an encoder able to encode the content of the format.
-//
-// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
-func (f *MJPEG) CreateEncoder() *rtpmjpeg.Encoder {
-	e, _ := f.CreateEncoder2()
-	return e
 }
 
 // CreateEncoder2 creates an encoder able to encode the content of the format.

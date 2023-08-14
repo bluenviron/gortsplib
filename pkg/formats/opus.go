@@ -49,13 +49,6 @@ func (f *Opus) Codec() string {
 	return "Opus"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *Opus) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *Opus) ClockRate() int {
 	// RFC7587: the RTP timestamp is incremented with a 48000 Hz
@@ -93,14 +86,6 @@ func (f *Opus) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-//
-// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
-func (f *Opus) CreateDecoder() *rtpsimpleaudio.Decoder {
-	d, _ := f.CreateDecoder2()
-	return d
-}
-
 // CreateDecoder2 creates a decoder able to decode the content of the format.
 func (f *Opus) CreateDecoder2() (*rtpsimpleaudio.Decoder, error) {
 	d := &rtpsimpleaudio.Decoder{
@@ -113,14 +98,6 @@ func (f *Opus) CreateDecoder2() (*rtpsimpleaudio.Decoder, error) {
 	}
 
 	return d, nil
-}
-
-// CreateEncoder creates an encoder able to encode the content of the format.
-//
-// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
-func (f *Opus) CreateEncoder() *rtpsimpleaudio.Encoder {
-	e, _ := f.CreateEncoder2()
-	return e
 }
 
 // CreateEncoder2 creates an encoder able to encode the content of the format.

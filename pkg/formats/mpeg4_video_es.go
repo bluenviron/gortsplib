@@ -56,13 +56,6 @@ func (f *MPEG4VideoES) Codec() string {
 	return "MPEG-4 Video"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *MPEG4VideoES) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *MPEG4VideoES) ClockRate() int {
 	return 90000
@@ -93,14 +86,6 @@ func (f *MPEG4VideoES) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-//
-// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
-func (f *MPEG4VideoES) CreateDecoder() *rtpmpeg4video.Decoder {
-	d, _ := f.CreateDecoder2()
-	return d
-}
-
 // CreateDecoder2 creates a decoder able to decode the content of the format.
 func (f *MPEG4VideoES) CreateDecoder2() (*rtpmpeg4video.Decoder, error) {
 	d := &rtpmpeg4video.Decoder{}
@@ -111,14 +96,6 @@ func (f *MPEG4VideoES) CreateDecoder2() (*rtpmpeg4video.Decoder, error) {
 	}
 
 	return d, nil
-}
-
-// CreateEncoder creates an encoder able to encode the content of the format.
-//
-// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
-func (f *MPEG4VideoES) CreateEncoder() *rtpmpeg4video.Encoder {
-	e, _ := f.CreateEncoder2()
-	return e
 }
 
 // CreateEncoder2 creates an encoder able to encode the content of the format.

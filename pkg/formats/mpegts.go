@@ -17,13 +17,6 @@ func (f *MPEGTS) Codec() string {
 	return "MPEG-TS"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *MPEGTS) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *MPEGTS) ClockRate() int {
 	return 90000

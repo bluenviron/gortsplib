@@ -17,13 +17,6 @@ func (f *MPEG1Video) Codec() string {
 	return "MPEG-1/2 Video"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *MPEG1Video) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *MPEG1Video) ClockRate() int {
 	return 90000
@@ -48,8 +41,3 @@ func (f *MPEG1Video) FMTP() map[string]string {
 func (f *MPEG1Video) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
-
-// MPEG2Video is an alias for MPEG1Video.
-//
-// Deprecated: replaced by MPEG1Video.
-type MPEG2Video = MPEG1Video

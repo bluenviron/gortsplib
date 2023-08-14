@@ -24,9 +24,6 @@ type Format interface {
 	// Codec returns the codec name.
 	Codec() string
 
-	// Deprecated: replaced by Codec().
-	String() string
-
 	// ClockRate returns the clock rate.
 	ClockRate() int
 

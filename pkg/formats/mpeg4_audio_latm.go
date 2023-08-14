@@ -90,13 +90,6 @@ func (f *MPEG4AudioLATM) Codec() string {
 	return "MPEG-4 Audio"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *MPEG4AudioLATM) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *MPEG4AudioLATM) ClockRate() int {
 	return f.Config.Programs[0].Layers[0].AudioSpecificConfig.SampleRate
@@ -164,14 +157,6 @@ func (f *MPEG4AudioLATM) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-//
-// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
-func (f *MPEG4AudioLATM) CreateDecoder() *rtpmpeg4audiolatm.Decoder {
-	d, _ := f.CreateDecoder2()
-	return d
-}
-
 // CreateDecoder2 creates a decoder able to decode the content of the format.
 func (f *MPEG4AudioLATM) CreateDecoder2() (*rtpmpeg4audiolatm.Decoder, error) {
 	d := &rtpmpeg4audiolatm.Decoder{
@@ -184,14 +169,6 @@ func (f *MPEG4AudioLATM) CreateDecoder2() (*rtpmpeg4audiolatm.Decoder, error) {
 	}
 
 	return d, nil
-}
-
-// CreateEncoder creates an encoder able to encode the content of the format.
-//
-// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
-func (f *MPEG4AudioLATM) CreateEncoder() *rtpmpeg4audiolatm.Encoder {
-	e, _ := f.CreateEncoder2()
-	return e
 }
 
 // CreateEncoder2 creates an encoder able to encode the content of the format.

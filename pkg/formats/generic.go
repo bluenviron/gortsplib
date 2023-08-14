@@ -80,13 +80,6 @@ func (f *Generic) Codec() string {
 	return "Generic"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *Generic) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *Generic) ClockRate() int {
 	return f.ClockRat

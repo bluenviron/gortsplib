@@ -67,13 +67,6 @@ func (f *H265) Codec() string {
 	return "H265"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *H265) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *H265) ClockRate() int {
 	return 90000
@@ -171,14 +164,6 @@ func (f *H265) PTSEqualsDTS(pkt *rtp.Packet) bool {
 	return false
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-//
-// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
-func (f *H265) CreateDecoder() *rtph265.Decoder {
-	d, _ := f.CreateDecoder2()
-	return d
-}
-
 // CreateDecoder2 creates a decoder able to decode the content of the format.
 func (f *H265) CreateDecoder2() (*rtph265.Decoder, error) {
 	d := &rtph265.Decoder{
@@ -191,14 +176,6 @@ func (f *H265) CreateDecoder2() (*rtph265.Decoder, error) {
 	}
 
 	return d, nil
-}
-
-// CreateEncoder creates an encoder able to encode the content of the format.
-//
-// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
-func (f *H265) CreateEncoder() *rtph265.Encoder {
-	e, _ := f.CreateEncoder2()
-	return e
 }
 
 // CreateEncoder2 creates an encoder able to encode the content of the format.

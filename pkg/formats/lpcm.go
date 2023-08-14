@@ -58,13 +58,6 @@ func (f *LPCM) Codec() string {
 	return "LPCM"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *LPCM) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *LPCM) ClockRate() int {
 	return f.SampleRate
@@ -103,14 +96,6 @@ func (f *LPCM) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-//
-// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
-func (f *LPCM) CreateDecoder() *rtplpcm.Decoder {
-	d, _ := f.CreateDecoder2()
-	return d
-}
-
 // CreateDecoder2 creates a decoder able to decode the content of the format.
 func (f *LPCM) CreateDecoder2() (*rtplpcm.Decoder, error) {
 	d := &rtplpcm.Decoder{
@@ -125,14 +110,6 @@ func (f *LPCM) CreateDecoder2() (*rtplpcm.Decoder, error) {
 	}
 
 	return d, nil
-}
-
-// CreateEncoder creates an encoder able to encode the content of the format.
-//
-// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
-func (f *LPCM) CreateEncoder() *rtplpcm.Encoder {
-	e, _ := f.CreateEncoder2()
-	return e
 }
 
 // CreateEncoder2 creates an encoder able to encode the content of the format.

@@ -60,13 +60,6 @@ func (f *VP9) Codec() string {
 	return "VP9"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *VP9) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *VP9) ClockRate() int {
 	return 90000
@@ -104,14 +97,6 @@ func (f *VP9) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-//
-// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
-func (f *VP9) CreateDecoder() *rtpvp9.Decoder {
-	d, _ := f.CreateDecoder2()
-	return d
-}
-
 // CreateDecoder2 creates a decoder able to decode the content of the format.
 func (f *VP9) CreateDecoder2() (*rtpvp9.Decoder, error) {
 	d := &rtpvp9.Decoder{}
@@ -122,14 +107,6 @@ func (f *VP9) CreateDecoder2() (*rtpvp9.Decoder, error) {
 	}
 
 	return d, nil
-}
-
-// CreateEncoder creates an encoder able to encode the content of the format.
-//
-// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
-func (f *VP9) CreateEncoder() *rtpvp9.Encoder {
-	e, _ := f.CreateEncoder2()
-	return e
 }
 
 // CreateEncoder2 creates an encoder able to encode the content of the format.

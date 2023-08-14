@@ -251,22 +251,12 @@ func (ss *ServerSession) onPacketLost(err error) {
 			Session: ss,
 			Error:   err,
 		})
-	} else if h, ok := ss.s.Handler.(ServerHandlerOnWarning); ok {
-		h.OnWarning(&ServerHandlerOnWarningCtx{
-			Session: ss,
-			Error:   err,
-		})
 	}
 }
 
 func (ss *ServerSession) onDecodeError(err error) {
 	if h, ok := ss.s.Handler.(ServerHandlerOnDecodeError); ok {
 		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-			Session: ss,
-			Error:   err,
-		})
-	} else if h, ok := ss.s.Handler.(ServerHandlerOnWarning); ok {
-		h.OnWarning(&ServerHandlerOnWarningCtx{
 			Session: ss,
 			Error:   err,
 		})

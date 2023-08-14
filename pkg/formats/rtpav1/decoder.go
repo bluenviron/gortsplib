@@ -51,13 +51,6 @@ func (d *Decoder) Init() error {
 	return nil
 }
 
-// Decode decodes OBUs from a RTP packet.
-//
-// Deprecated: this method returns incomplete temporal units.
-func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
-	return d.decodeOBUs(pkt)
-}
-
 func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	var av1header codecs.AV1Packet
 	_, err := av1header.Unmarshal(pkt.Payload)

@@ -57,13 +57,6 @@ func (d *Decoder) Init() error {
 	return nil
 }
 
-// Decode decodes NALUs from a RTP packet.
-//
-// Deprecated: this method returns incomplete access units.
-func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
-	return d.decodeNALUs(pkt)
-}
-
 func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, time.Duration, error) {
 	if len(pkt.Payload) < 2 {
 		d.fragments = d.fragments[:0] // discard pending fragments

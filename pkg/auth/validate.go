@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -9,6 +10,12 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
+
+func md5Hex(in string) string {
+	h := md5.New()
+	h.Write([]byte(in))
+	return hex.EncodeToString(h.Sum(nil))
+}
 
 // GenerateNonce2 generates a nonce that can be used in Validate().
 func GenerateNonce2() (string, error) {
@@ -19,17 +26,6 @@ func GenerateNonce2() (string, error) {
 	}
 
 	return hex.EncodeToString(byts), nil
-}
-
-// GenerateNonce generates a nonce that can be used in Validate().
-//
-// Deprecated: use GenerateNonce2.
-func GenerateNonce() string {
-	v, err := GenerateNonce2()
-	if err != nil {
-		panic(err)
-	}
-	return v
 }
 
 // GenerateWWWAuthenticate generates a WWW-Authenticate header.

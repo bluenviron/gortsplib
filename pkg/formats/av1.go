@@ -60,13 +60,6 @@ func (f *AV1) Codec() string {
 	return "AV1"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *AV1) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *AV1) ClockRate() int {
 	return 90000
@@ -104,14 +97,6 @@ func (f *AV1) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-//
-// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
-func (f *AV1) CreateDecoder() *rtpav1.Decoder {
-	d, _ := f.CreateDecoder2()
-	return d
-}
-
 // CreateDecoder2 creates a decoder able to decode the content of the format.
 func (f *AV1) CreateDecoder2() (*rtpav1.Decoder, error) {
 	d := &rtpav1.Decoder{}
@@ -122,14 +107,6 @@ func (f *AV1) CreateDecoder2() (*rtpav1.Decoder, error) {
 	}
 
 	return d, nil
-}
-
-// CreateEncoder creates an encoder able to encode the content of the format.
-//
-// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
-func (f *AV1) CreateEncoder() *rtpav1.Encoder {
-	e, _ := f.CreateEncoder2()
-	return e
 }
 
 // CreateEncoder2 creates an encoder able to encode the content of the format.

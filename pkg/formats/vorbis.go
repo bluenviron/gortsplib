@@ -61,13 +61,6 @@ func (f *Vorbis) Codec() string {
 	return "Vorbis"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *Vorbis) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *Vorbis) ClockRate() int {
 	return f.SampleRate

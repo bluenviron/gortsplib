@@ -19,13 +19,6 @@ func (f *MPEG1Audio) Codec() string {
 	return "MPEG-1/2 Audio"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *MPEG1Audio) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *MPEG1Audio) ClockRate() int {
 	return 90000
@@ -51,14 +44,6 @@ func (f *MPEG1Audio) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
-// CreateDecoder creates a decoder able to decode the content of the format.
-//
-// Deprecated: this has been replaced by CreateDecoder2() that can also return an error.
-func (f *MPEG1Audio) CreateDecoder() *rtpmpeg1audio.Decoder {
-	d, _ := f.CreateDecoder2()
-	return d
-}
-
 // CreateDecoder2 creates a decoder able to decode the content of the format.
 func (f *MPEG1Audio) CreateDecoder2() (*rtpmpeg1audio.Decoder, error) {
 	d := &rtpmpeg1audio.Decoder{}
@@ -69,14 +54,6 @@ func (f *MPEG1Audio) CreateDecoder2() (*rtpmpeg1audio.Decoder, error) {
 	}
 
 	return d, nil
-}
-
-// CreateEncoder creates an encoder able to encode the content of the format.
-//
-// Deprecated: this has been replaced by CreateEncoder2() that can also return an error.
-func (f *MPEG1Audio) CreateEncoder() *rtpmpeg1audio.Encoder {
-	e, _ := f.CreateEncoder2()
-	return e
 }
 
 // CreateEncoder2 creates an encoder able to encode the content of the format.
@@ -90,8 +67,3 @@ func (f *MPEG1Audio) CreateEncoder2() (*rtpmpeg1audio.Encoder, error) {
 
 	return e, nil
 }
-
-// MPEG2Audio is an alias for MPEG1Audio.
-//
-// Deprecated: replaced by MPEG1Audio.
-type MPEG2Audio = MPEG1Audio
