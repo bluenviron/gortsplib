@@ -9,6 +9,14 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
 )
 
+func durationPtr(v time.Duration) *time.Duration {
+	return &v
+}
+
+func timePtr(v time.Time) *time.Time {
+	return &v
+}
+
 var casesRange = []struct {
 	name string
 	vin  base.HeaderValue
@@ -64,10 +72,7 @@ var casesRange = []struct {
 		Range{
 			Value: &RangeNPT{
 				Start: time.Duration(123.45 * float64(time.Second)),
-				End: func() *time.Duration {
-					v := 125 * time.Second
-					return &v
-				}(),
+				End:   durationPtr(125 * time.Second),
 			},
 		},
 	},
@@ -88,10 +93,7 @@ var casesRange = []struct {
 		Range{
 			Value: &RangeUTC{
 				Start: time.Date(1996, 11, 8, 14, 23, 0, 0, time.UTC),
-				End: func() *time.Time {
-					v := time.Date(1996, 11, 8, 14, 35, 20, 0, time.UTC)
-					return &v
-				}(),
+				End:   timePtr(time.Date(1996, 11, 8, 14, 35, 20, 0, time.UTC)),
 			},
 		},
 	},
@@ -113,10 +115,7 @@ var casesRange = []struct {
 			Value: &RangeUTC{
 				Start: time.Date(1996, 2, 13, 14, 32, 5, 0, time.UTC),
 			},
-			Time: func() *time.Time {
-				v := time.Date(1997, 1, 23, 14, 37, 20, 0, time.UTC)
-				return &v
-			}(),
+			Time: timePtr(time.Date(1997, 1, 23, 14, 37, 20, 0, time.UTC)),
 		},
 	},
 }

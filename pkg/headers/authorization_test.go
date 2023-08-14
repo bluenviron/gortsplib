@@ -32,18 +32,9 @@ var casesAuthorization = []struct {
 			Method: AuthDigest,
 			DigestValues: Authenticate{
 				Method: AuthDigest,
-				Realm: func() *string {
-					v := "4419b63f5e51"
-					return &v
-				}(),
-				Nonce: func() *string {
-					v := "8b84a3b789283a8bea8da7fa7d41f08b"
-					return &v
-				}(),
-				Stale: func() *string {
-					v := "FALSE"
-					return &v
-				}(),
+				Realm:  stringPtr("4419b63f5e51"),
+				Nonce:  stringPtr("8b84a3b789283a8bea8da7fa7d41f08b"),
+				Stale:  stringPtr("FALSE"),
 			},
 		},
 	},

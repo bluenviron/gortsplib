@@ -9,6 +9,10 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
 )
 
+func ipPtr(v net.IP) *net.IP {
+	return &v
+}
+
 var casesTransport = []struct {
 	name string
 	vin  base.HeaderValue
@@ -56,12 +60,9 @@ var casesTransport = []struct {
 				v := TransportDeliveryMulticast
 				return &v
 			}(),
-			Destination: func() *net.IP {
-				v := net.ParseIP("225.219.201.15")
-				return &v
-			}(),
-			TTL:   uintPtr(127),
-			Ports: &[2]int{7000, 7001},
+			Destination: ipPtr(net.ParseIP("225.219.201.15")),
+			TTL:         uintPtr(127),
+			Ports:       &[2]int{7000, 7001},
 		},
 	},
 	{
@@ -108,10 +109,7 @@ var casesTransport = []struct {
 			}(),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{5000, 5001},
-			Source: func() *net.IP {
-				v := net.ParseIP("127.0.0.1")
-				return &v
-			}(),
+			Source:      ipPtr(net.ParseIP("127.0.0.1")),
 		},
 	},
 	{
@@ -208,10 +206,7 @@ var casesTransport = []struct {
 				v := TransportDeliveryUnicast
 				return &v
 			}(),
-			Source: func() *net.IP {
-				v := net.ParseIP("172.16.8.2")
-				return &v
-			}(),
+			Source:      ipPtr(net.ParseIP("172.16.8.2")),
 			ClientPorts: &[2]int{14236, 14237},
 			ServerPorts: &[2]int{56002, 56003},
 		},
