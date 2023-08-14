@@ -6,8 +6,7 @@ import (
 )
 
 const (
-	bufferSize        = 64
-	negativeThreshold = 0xFFFF / 2
+	bufferSize = 64
 )
 
 // Reorderer filters incoming RTP packets, in order to
@@ -37,12 +36,12 @@ func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, int) {
 		return []*rtp.Packet{pkt}, 0
 	}
 
-	relPos := pkt.SequenceNumber - r.expectedSeqNum
+	relPos := int16(pkt.SequenceNumber - r.expectedSeqNum)
 
 	// packet is a duplicate or has been sent
 	// before the first packet processed by Reorderer.
 	// discard.
-	if relPos > negativeThreshold {
+	if relPos < 0 {
 		r.negativeCount++
 
 		// stream has been resetted, therefore reset reorderer too
@@ -94,7 +93,7 @@ func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, int) {
 
 	// there's a missing packet
 	if relPos != 0 {
-		p := (r.absPos + relPos) & (bufferSize - 1)
+		p := (r.absPos + uint16(relPos)) & (bufferSize - 1)
 
 		// current packet is a duplicate. discard
 		if r.buffer[p] != nil {

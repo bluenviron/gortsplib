@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-const negativeThreshold = 0xFFFFFFFF / 2
-
 // avoid an int64 overflow and preserve resolution by splitting division into two parts:
 // first add the integer part, then the decimal part.
 func multiplyAndDivide(v, m, d time.Duration) time.Duration {
@@ -38,17 +36,9 @@ func (d *Decoder) Decode(ts uint32) time.Duration {
 		return 0
 	}
 
-	diff := ts - d.prev
-
-	// negative difference
-	if diff > negativeThreshold {
-		diff = d.prev - ts
-		d.prev = ts
-		d.overall -= time.Duration(diff)
-	} else {
-		d.prev = ts
-		d.overall += time.Duration(diff)
-	}
+	diff := int32(ts - d.prev)
+	d.prev = ts
+	d.overall += time.Duration(diff)
 
 	return multiplyAndDivide(d.overall, time.Second, d.clockRate)
 }
