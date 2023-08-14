@@ -34,8 +34,11 @@ func newServerStreamMedia(st *ServerStream, medi *media.Media, trackID int) *ser
 		cmedia := medi
 		tr.rtcpSender = rtcpsender.New(
 			forma.ClockRate(),
+			st.s.senderReportPeriod,
 			func(pkt rtcp.Packet) {
-				st.WritePacketRTCP(cmedia, pkt) //nolint:errcheck
+				if !st.s.DisableRTCPSenderReports {
+					st.WritePacketRTCP(cmedia, pkt) //nolint:errcheck
+				}
 			},
 		)
 

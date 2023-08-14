@@ -43,14 +43,6 @@ func NewServerStream(s *Server, medias media.Medias) *ServerStream {
 		st.streamMedias[medi] = newServerStreamMedia(st, medi, i)
 	}
 
-	if !st.s.DisableRTCPSenderReports {
-		for _, ssm := range st.streamMedias {
-			for _, tr := range ssm.formats {
-				tr.rtcpSender.Start(st.s.senderReportPeriod)
-			}
-		}
-	}
-
 	return st
 }
 
@@ -248,8 +240,7 @@ func (st *ServerStream) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error
 }
 
 // WritePacketRTPWithNTP writes a RTP packet to all the readers of the stream.
-// ntp is the absolute time of the packet, and is needed to generate RTCP sender reports
-// that allows the receiver to reconstruct the absolute time of the packet.
+// ntp is the absolute time of the packet, and is sent with periodic RTCP sender reports.
 func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp time.Time) error {
 	byts := make([]byte, st.s.MaxPacketSize)
 	n, err := pkt.MarshalTo(byts)

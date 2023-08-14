@@ -129,10 +129,6 @@ func (cm *clientMedia) start() {
 		cm.udpRTPListener.start()
 		cm.udpRTCPListener.start()
 	}
-
-	for _, ct := range cm.formats {
-		ct.startWriting()
-	}
 }
 
 func (cm *clientMedia) stop() {

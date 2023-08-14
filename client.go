@@ -1651,12 +1651,13 @@ func (c *Client) OnPacketRTCP(medi *media.Media, cb OnPacketRTCPFunc) {
 	cm.onPacketRTCP = cb
 }
 
-// WritePacketRTP writes a RTP packet to the media stream.
+// WritePacketRTP writes a RTP packet to the server.
 func (c *Client) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
 	return c.WritePacketRTPWithNTP(medi, pkt, time.Now())
 }
 
-// WritePacketRTPWithNTP writes a RTP packet to the media stream.
+// WritePacketRTPWithNTP writes a RTP packet to the server.
+// ntp is the absolute time of the packet, and is sent with periodic RTCP sender reports.
 func (c *Client) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp time.Time) error {
 	byts := make([]byte, c.MaxPacketSize)
 	n, err := pkt.MarshalTo(byts)
@@ -1677,7 +1678,7 @@ func (c *Client) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp t
 	return nil
 }
 
-// WritePacketRTCP writes a RTCP packet to the media stream.
+// WritePacketRTCP writes a RTCP packet to the server.
 func (c *Client) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) error {
 	byts, err := pkt.Marshal()
 	if err != nil {

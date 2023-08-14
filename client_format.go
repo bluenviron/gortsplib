@@ -53,16 +53,12 @@ func (ct *clientFormat) start() {
 	} else {
 		ct.rtcpSender = rtcpsender.New(
 			ct.format.ClockRate(),
+			ct.cm.c.senderReportPeriod,
 			func(pkt rtcp.Packet) {
-				ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
+				if !ct.cm.c.DisableRTCPSenderReports {
+					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
+				}
 			})
-	}
-}
-
-// start writing after write*() has been allocated in order to avoid a crash
-func (ct *clientFormat) startWriting() {
-	if ct.cm.c.state != clientStatePlay && !ct.cm.c.DisableRTCPSenderReports {
-		ct.rtcpSender.Start(ct.cm.c.senderReportPeriod)
 	}
 }
 

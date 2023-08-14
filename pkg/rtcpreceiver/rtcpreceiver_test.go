@@ -10,7 +10,7 @@ import (
 )
 
 func TestRTCPReceiverBase(t *testing.T) {
-	now = func() time.Time {
+	timeNow = func() time.Time {
 		return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
 	}
 	done := make(chan struct{})
@@ -77,7 +77,7 @@ func TestRTCPReceiverBase(t *testing.T) {
 
 func TestRTCPReceiverOverflow(t *testing.T) {
 	done := make(chan struct{})
-	now = func() time.Time {
+	timeNow = func() time.Time {
 		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
 	}
 	v := uint32(0x65f83afb)
@@ -144,7 +144,7 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 
 func TestRTCPReceiverPacketLost(t *testing.T) {
 	done := make(chan struct{})
-	now = func() time.Time {
+	timeNow = func() time.Time {
 		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
 	}
 	v := uint32(0x65f83afb)
@@ -214,7 +214,7 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 
 func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 	done := make(chan struct{})
-	now = func() time.Time {
+	timeNow = func() time.Time {
 		return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
 	}
 	v := uint32(0x65f83afb)
@@ -284,7 +284,7 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 
 func TestRTCPReceiverJitter(t *testing.T) {
 	done := make(chan struct{})
-	now = func() time.Time {
+	timeNow = func() time.Time {
 		return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
 	}
 	v := uint32(0x65f83afb)
