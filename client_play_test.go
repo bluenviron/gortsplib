@@ -25,6 +25,10 @@ import (
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
 
+func ipPtr(v net.IP) *net.IP {
+	return &v
+}
+
 func mustMarshalMedias(medias media.Medias) []byte {
 	byts, err := medias.Marshal(false).Marshal()
 	if err != nil {
@@ -2818,10 +2822,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 			Protocol:    headers.TransportProtocolUDP,
 			ClientPorts: inTH.ClientPorts,
 			ServerPorts: &[2]int{34556, 34557},
-			Source: func() *net.IP {
-				i := net.ParseIP("127.0.1.1")
-				return &i
-			}(),
+			Source:      ipPtr(net.ParseIP("127.0.1.1")),
 		}
 
 		l1, err := net.ListenPacket("udp", "127.0.1.1:34556")

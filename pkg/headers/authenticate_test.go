@@ -8,6 +8,10 @@ import (
 	"github.com/bluenviron/gortsplib/v3/pkg/base"
 )
 
+func stringPtr(v string) *string {
+	return &v
+}
+
 var casesAuthenticate = []struct {
 	name string
 	vin  base.HeaderValue
@@ -20,10 +24,7 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Basic realm="4419b63f5e51"`},
 		Authenticate{
 			Method: AuthBasic,
-			Realm: func() *string {
-				v := "4419b63f5e51"
-				return &v
-			}(),
+			Realm:  stringPtr("4419b63f5e51"),
 		},
 	},
 	{
@@ -32,18 +33,9 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		Authenticate{
 			Method: AuthDigest,
-			Realm: func() *string {
-				v := "4419b63f5e51"
-				return &v
-			}(),
-			Nonce: func() *string {
-				v := "8b84a3b789283a8bea8da7fa7d41f08b"
-				return &v
-			}(),
-			Stale: func() *string {
-				v := "FALSE"
-				return &v
-			}(),
+			Realm:  stringPtr("4419b63f5e51"),
+			Nonce:  stringPtr("8b84a3b789283a8bea8da7fa7d41f08b"),
+			Stale:  stringPtr("FALSE"),
 		},
 	},
 	{
@@ -52,18 +44,9 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		Authenticate{
 			Method: AuthDigest,
-			Realm: func() *string {
-				v := "4419b63f5e51"
-				return &v
-			}(),
-			Nonce: func() *string {
-				v := "8b84a3b789283a8bea8da7fa7d41f08b"
-				return &v
-			}(),
-			Stale: func() *string {
-				v := "FALSE"
-				return &v
-			}(),
+			Realm:  stringPtr("4419b63f5e51"),
+			Nonce:  stringPtr("8b84a3b789283a8bea8da7fa7d41f08b"),
+			Stale:  stringPtr("FALSE"),
 		},
 	},
 	{
@@ -72,18 +55,9 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="133767111917411116111311118211673010032", stale="FALSE"`},
 		Authenticate{
 			Method: AuthDigest,
-			Realm: func() *string {
-				v := "4419b63f5e51"
-				return &v
-			}(),
-			Nonce: func() *string {
-				v := "133767111917411116111311118211673010032"
-				return &v
-			}(),
-			Stale: func() *string {
-				v := "FALSE"
-				return &v
-			}(),
+			Realm:  stringPtr("4419b63f5e51"),
+			Nonce:  stringPtr("133767111917411116111311118211673010032"),
+			Stale:  stringPtr("FALSE"),
 		},
 	},
 	{
@@ -91,27 +65,12 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
 		base.HeaderValue{`Digest username="aa", realm="bb", nonce="cc", uri="dd", response="ee"`},
 		Authenticate{
-			Method: AuthDigest,
-			Username: func() *string {
-				v := "aa"
-				return &v
-			}(),
-			Realm: func() *string {
-				v := "bb"
-				return &v
-			}(),
-			Nonce: func() *string {
-				v := "cc"
-				return &v
-			}(),
-			URI: func() *string {
-				v := "dd"
-				return &v
-			}(),
-			Response: func() *string {
-				v := "ee"
-				return &v
-			}(),
+			Method:   AuthDigest,
+			Username: stringPtr("aa"),
+			Realm:    stringPtr("bb"),
+			Nonce:    stringPtr("cc"),
+			URI:      stringPtr("dd"),
+			Response: stringPtr("ee"),
 		},
 	},
 	{
@@ -123,27 +82,12 @@ var casesAuthenticate = []struct {
 			`nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", ` +
 			`response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
 		Authenticate{
-			Method: AuthDigest,
-			Username: func() *string {
-				v := ""
-				return &v
-			}(),
-			Realm: func() *string {
-				v := "IPCAM"
-				return &v
-			}(),
-			Nonce: func() *string {
-				v := "5d17cd12b9fa8a85ac5ceef0926ea5a6"
-				return &v
-			}(),
-			URI: func() *string {
-				v := "rtsp://localhost:8554/mystream"
-				return &v
-			}(),
-			Response: func() *string {
-				v := "c072ae90eb4a27f4cdcb90d62266b2a1"
-				return &v
-			}(),
+			Method:   AuthDigest,
+			Username: stringPtr(""),
+			Realm:    stringPtr("IPCAM"),
+			Nonce:    stringPtr("5d17cd12b9fa8a85ac5ceef0926ea5a6"),
+			URI:      stringPtr("rtsp://localhost:8554/mystream"),
+			Response: stringPtr("c072ae90eb4a27f4cdcb90d62266b2a1"),
 		},
 	},
 	{
@@ -153,27 +97,12 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest realm="Please log in with a valid username", ` +
 			`nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE", algorithm="MD5"`},
 		Authenticate{
-			Method: AuthDigest,
-			Realm: func() *string {
-				v := "Please log in with a valid username"
-				return &v
-			}(),
-			Nonce: func() *string {
-				v := "752a62306daf32b401a41004555c7663"
-				return &v
-			}(),
-			Opaque: func() *string {
-				v := ""
-				return &v
-			}(),
-			Stale: func() *string {
-				v := "FALSE"
-				return &v
-			}(),
-			Algorithm: func() *string {
-				v := "MD5"
-				return &v
-			}(),
+			Method:    AuthDigest,
+			Realm:     stringPtr("Please log in with a valid username"),
+			Nonce:     stringPtr("752a62306daf32b401a41004555c7663"),
+			Opaque:    stringPtr(""),
+			Stale:     stringPtr("FALSE"),
+			Algorithm: stringPtr("MD5"),
 		},
 	},
 }
