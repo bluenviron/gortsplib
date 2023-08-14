@@ -14,61 +14,6 @@ import (
 	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
 )
 
-// check whether a RTP/H264 packet contains a IDR, without decoding the packet.
-func rtpH264ContainsIDR(pkt *rtp.Packet) bool {
-	if len(pkt.Payload) == 0 {
-		return false
-	}
-
-	typ := h264.NALUType(pkt.Payload[0] & 0x1F)
-
-	switch typ {
-	case h264.NALUTypeIDR:
-		return true
-
-	case 24: // STAP-A
-		payload := pkt.Payload[1:]
-
-		for len(payload) > 0 {
-			if len(payload) < 2 {
-				return false
-			}
-
-			size := uint16(payload[0])<<8 | uint16(payload[1])
-			payload = payload[2:]
-
-			if size == 0 || int(size) > len(payload) {
-				return false
-			}
-
-			var nalu []byte
-			nalu, payload = payload[:size], payload[size:]
-
-			typ = h264.NALUType(nalu[0] & 0x1F)
-			if typ == h264.NALUTypeIDR {
-				return true
-			}
-		}
-
-	case 28: // FU-A
-		if len(pkt.Payload) < 2 {
-			return false
-		}
-
-		start := pkt.Payload[1] >> 7
-		if start != 1 {
-			return false
-		}
-
-		typ := h264.NALUType(pkt.Payload[1] & 0x1F)
-		if typ == h264.NALUTypeIDR {
-			return true
-		}
-	}
-
-	return false
-}
-
 // H264 is a RTP format for the H264 codec, defined in MPEG-4 part 10.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6184
 type H264 struct {
@@ -172,7 +117,59 @@ func (f *H264) FMTP() map[string]string {
 
 // PTSEqualsDTS implements Format.
 func (f *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
-	return rtpH264ContainsIDR(pkt)
+	if len(pkt.Payload) == 0 {
+		return false
+	}
+
+	typ := h264.NALUType(pkt.Payload[0] & 0x1F)
+
+	switch typ {
+	case h264.NALUTypeIDR, h264.NALUTypeSPS, h264.NALUTypePPS:
+		return true
+
+	case 24: // STAP-A
+		payload := pkt.Payload[1:]
+
+		for len(payload) > 0 {
+			if len(payload) < 2 {
+				return false
+			}
+
+			size := uint16(payload[0])<<8 | uint16(payload[1])
+			payload = payload[2:]
+
+			if size == 0 || int(size) > len(payload) {
+				return false
+			}
+
+			var nalu []byte
+			nalu, payload = payload[:size], payload[size:]
+
+			typ = h264.NALUType(nalu[0] & 0x1F)
+			switch typ {
+			case h264.NALUTypeIDR, h264.NALUTypeSPS, h264.NALUTypePPS:
+				return true
+			}
+		}
+
+	case 28: // FU-A
+		if len(pkt.Payload) < 2 {
+			return false
+		}
+
+		start := pkt.Payload[1] >> 7
+		if start != 1 {
+			return false
+		}
+
+		typ := h264.NALUType(pkt.Payload[1] & 0x1F)
+		switch typ {
+		case h264.NALUTypeIDR, h264.NALUTypeSPS, h264.NALUTypePPS:
+			return true
+		}
+	}
+
+	return false
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
