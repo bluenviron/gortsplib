@@ -1,4 +1,4 @@
-package headers
+package rtpmjpeg
 
 import (
 	"testing"
@@ -9,14 +9,14 @@ import (
 var casesJpeg = []struct {
 	name string
 	enc  []byte
-	dec  JPEG
+	dec  headerJPEG
 }{
 	{
 		"base",
 		[]byte{
 			0x0, 0x0, 0x0, 0x0, 0x1, 0xff, 0x8, 0x4,
 		},
-		JPEG{
+		headerJPEG{
 			TypeSpecific: 0,
 			Type:         1,
 			Quantization: 255,
@@ -26,21 +26,21 @@ var casesJpeg = []struct {
 	},
 }
 
-func TestJpegUnmarshal(t *testing.T) {
+func TestHeaderJpegUnmarshal(t *testing.T) {
 	for _, ca := range casesJpeg {
 		t.Run(ca.name, func(t *testing.T) {
-			var h JPEG
-			_, err := h.Unmarshal(ca.enc)
+			var h headerJPEG
+			_, err := h.unmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, h)
 		})
 	}
 }
 
-func TestJpegMarshal(t *testing.T) {
+func TestHeaderJpegMarshal(t *testing.T) {
 	for _, ca := range casesJpeg {
 		t.Run(ca.name, func(t *testing.T) {
-			buf := ca.dec.Marshal(nil)
+			buf := ca.dec.marshal(nil)
 			require.Equal(t, ca.enc, buf)
 		})
 	}

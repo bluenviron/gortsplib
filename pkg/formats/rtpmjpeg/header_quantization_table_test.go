@@ -1,4 +1,4 @@
-package headers
+package rtpmjpeg
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 var casesQuantizationTable = []struct {
 	name string
 	enc  []byte
-	dec  QuantizationTable
+	dec  headerQuantizationTable
 }{
 	{
 		"base",
@@ -25,7 +25,7 @@ var casesQuantizationTable = []struct {
 			0x1, 0x2, 0x3, 0x4, 0x1, 0x2, 0x3, 0x4,
 			0x1, 0x2, 0x3, 0x4,
 		},
-		QuantizationTable{
+		headerQuantizationTable{
 			MBZ:       1,
 			Precision: 0,
 			Tables:    bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 64/4),
@@ -33,21 +33,21 @@ var casesQuantizationTable = []struct {
 	},
 }
 
-func TestQuantizationTableUnmarshal(t *testing.T) {
+func TestHeaderQuantizationTableUnmarshal(t *testing.T) {
 	for _, ca := range casesQuantizationTable {
 		t.Run(ca.name, func(t *testing.T) {
-			var h QuantizationTable
-			_, err := h.Unmarshal(ca.enc)
+			var h headerQuantizationTable
+			_, err := h.unmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, h)
 		})
 	}
 }
 
-func TestQuantizationTableMarshal(t *testing.T) {
+func TestHeaderQuantizationTableMarshal(t *testing.T) {
 	for _, ca := range casesQuantizationTable {
 		t.Run(ca.name, func(t *testing.T) {
-			buf := ca.dec.Marshal(nil)
+			buf := ca.dec.marshal(nil)
 			require.Equal(t, ca.enc, buf)
 		})
 	}

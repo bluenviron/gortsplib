@@ -1,18 +1,16 @@
-package headers
+package rtpmjpeg
 
 import (
 	"fmt"
 )
 
-// QuantizationTable is a Quantization Table header.
-type QuantizationTable struct {
+type headerQuantizationTable struct {
 	MBZ       uint8
 	Precision uint8
 	Tables    []byte
 }
 
-// Unmarshal decodes the header.
-func (h *QuantizationTable) Unmarshal(byts []byte) (int, error) {
+func (h *headerQuantizationTable) unmarshal(byts []byte) (int, error) {
 	if len(byts) < 4 {
 		return 0, fmt.Errorf("buffer is too short")
 	}
@@ -38,8 +36,7 @@ func (h *QuantizationTable) Unmarshal(byts []byte) (int, error) {
 	return 4 + length, nil
 }
 
-// Marshal encodes the header.
-func (h QuantizationTable) Marshal(byts []byte) []byte {
+func (h headerQuantizationTable) marshal(byts []byte) []byte {
 	byts = append(byts, h.MBZ)
 	byts = append(byts, h.Precision)
 	l := len(h.Tables)

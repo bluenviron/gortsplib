@@ -8,7 +8,6 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/formats/rtpmjpeg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/mediacommon/pkg/codecs/jpeg"
 )
@@ -211,7 +210,7 @@ outer:
 		return nil, fmt.Errorf("image data not found")
 	}
 
-	jh := headers.JPEG{
+	jh := headerJPEG{
 		TypeSpecific: 0,
 		Type:         sof.Type,
 		Quantization: 255,
@@ -231,19 +230,19 @@ outer:
 		var buf []byte
 
 		jh.FragmentOffset = uint32(offset)
-		buf = jh.Marshal(buf)
+		buf = jh.marshal(buf)
 
 		if dri != nil {
-			buf = headers.RestartMarker{
+			buf = headerRestartMarker{
 				Interval: dri.Interval,
 				Count:    0xFFFF,
-			}.Marshal(buf)
+			}.marshal(buf)
 		}
 
 		if first {
 			first = false
 
-			qth := headers.QuantizationTable{}
+			qth := headerQuantizationTable{}
 
 			ids := make([]uint8, len(quantizationTables))
 			i := 0
@@ -258,7 +257,7 @@ outer:
 				qth.Tables = append(qth.Tables, quantizationTables[id]...)
 			}
 
-			buf = qth.Marshal(buf)
+			buf = qth.marshal(buf)
 		}
 
 		remaining := e.PayloadMaxSize - len(buf)

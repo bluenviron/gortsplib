@@ -1,17 +1,15 @@
-package headers
+package rtpmjpeg
 
 import (
 	"fmt"
 )
 
-// RestartMarker is a Restart Marker header.
-type RestartMarker struct {
+type headerRestartMarker struct {
 	Interval uint16
 	Count    uint16
 }
 
-// Unmarshal decodes the header.
-func (h *RestartMarker) Unmarshal(byts []byte) (int, error) {
+func (h *headerRestartMarker) unmarshal(byts []byte) (int, error) {
 	if len(byts) < 4 {
 		return 0, fmt.Errorf("buffer is too short")
 	}
@@ -21,8 +19,7 @@ func (h *RestartMarker) Unmarshal(byts []byte) (int, error) {
 	return 4, nil
 }
 
-// Marshal encodes the header.
-func (h RestartMarker) Marshal(byts []byte) []byte {
+func (h headerRestartMarker) marshal(byts []byte) []byte {
 	byts = append(byts, []byte{byte(h.Interval >> 8), byte(h.Interval)}...)
 	byts = append(byts, []byte{byte(h.Count >> 8), byte(h.Count)}...)
 	return byts

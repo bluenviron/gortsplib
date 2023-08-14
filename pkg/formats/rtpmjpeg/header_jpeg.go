@@ -1,11 +1,10 @@
-package headers
+package rtpmjpeg
 
 import (
 	"fmt"
 )
 
-// JPEG is a JPEG header.
-type JPEG struct {
+type headerJPEG struct {
 	TypeSpecific   uint8
 	FragmentOffset uint32
 	Type           uint8
@@ -14,8 +13,7 @@ type JPEG struct {
 	Height         int
 }
 
-// Unmarshal decodes the header.
-func (h *JPEG) Unmarshal(byts []byte) (int, error) {
+func (h *headerJPEG) unmarshal(byts []byte) (int, error) {
 	if len(byts) < 8 {
 		return 0, fmt.Errorf("buffer is too short")
 	}
@@ -39,8 +37,7 @@ func (h *JPEG) Unmarshal(byts []byte) (int, error) {
 	return 8, nil
 }
 
-// Marshal encodes the header.
-func (h JPEG) Marshal(byts []byte) []byte {
+func (h headerJPEG) marshal(byts []byte) []byte {
 	byts = append(byts, h.TypeSpecific)
 	byts = append(byts, []byte{byte(h.FragmentOffset >> 16), byte(h.FragmentOffset >> 8), byte(h.FragmentOffset)}...)
 	byts = append(byts, h.Type)

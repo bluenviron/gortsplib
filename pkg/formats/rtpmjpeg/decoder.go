@@ -7,7 +7,6 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/formats/rtpmjpeg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/mediacommon/pkg/codecs/jpeg"
 )
@@ -110,8 +109,8 @@ type Decoder struct {
 	firstPacketReceived bool
 	fragmentsSize       int
 	fragments           [][]byte
-	firstJpegHeader     *headers.JPEG
-	firstQTHeader       *headers.QuantizationTable
+	firstJpegHeader     *headerJPEG
+	firstQTHeader       *headerQuantizationTable
 }
 
 // Init initializes the decoder.
@@ -124,8 +123,8 @@ func (d *Decoder) Init() error {
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 	byts := pkt.Payload
 
-	var jh headers.JPEG
-	n, err := jh.Unmarshal(byts)
+	var jh headerJPEG
+	n, err := jh.unmarshal(byts)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -145,8 +144,8 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, time.Duration, error) {
 		d.firstPacketReceived = true
 
 		if jh.Quantization >= 128 {
-			d.firstQTHeader = &headers.QuantizationTable{}
-			n, err := d.firstQTHeader.Unmarshal(byts)
+			d.firstQTHeader = &headerQuantizationTable{}
+			n, err := d.firstQTHeader.unmarshal(byts)
 			if err != nil {
 				return nil, 0, err
 			}

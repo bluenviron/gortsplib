@@ -1,4 +1,4 @@
-package headers
+package rtpmjpeg
 
 import (
 	"testing"
@@ -9,35 +9,35 @@ import (
 var casesRestartMarker = []struct {
 	name string
 	enc  []byte
-	dec  RestartMarker
+	dec  headerRestartMarker
 }{
 	{
 		"base",
 		[]byte{
 			0x4, 0xd2, 0xff, 0xff,
 		},
-		RestartMarker{
+		headerRestartMarker{
 			Interval: 1234,
 			Count:    0xffff,
 		},
 	},
 }
 
-func TestRestartMarkerUnmarshal(t *testing.T) {
+func TestHeaderRestartMarkerUnmarshal(t *testing.T) {
 	for _, ca := range casesRestartMarker {
 		t.Run(ca.name, func(t *testing.T) {
-			var h RestartMarker
-			_, err := h.Unmarshal(ca.enc)
+			var h headerRestartMarker
+			_, err := h.unmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, h)
 		})
 	}
 }
 
-func TestRestartMarkerMarshal(t *testing.T) {
+func TestHeaderRestartMarkerMarshal(t *testing.T) {
 	for _, ca := range casesRestartMarker {
 		t.Run(ca.name, func(t *testing.T) {
-			buf := ca.dec.Marshal(nil)
+			buf := ca.dec.marshal(nil)
 			require.Equal(t, ca.enc, buf)
 		})
 	}
