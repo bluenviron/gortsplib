@@ -285,10 +285,11 @@ type Client struct {
 	// private
 	//
 
-	senderReportPeriod      time.Duration
-	udpReceiverReportPeriod time.Duration
-	checkTimeoutPeriod      time.Duration
-	keepalivePeriod         time.Duration
+	timeNow              func() time.Time
+	senderReportPeriod   time.Duration
+	receiverReportPeriod time.Duration
+	checkTimeoutPeriod   time.Duration
+	keepalivePeriod      time.Duration
 
 	connURL              *url.URL
 	ctx                  context.Context
@@ -396,12 +397,15 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 
 	// private
+	if c.timeNow == nil {
+		c.timeNow = time.Now
+	}
 	if c.senderReportPeriod == 0 {
 		c.senderReportPeriod = 10 * time.Second
 	}
-	if c.udpReceiverReportPeriod == 0 {
+	if c.receiverReportPeriod == 0 {
 		// some cameras require a maximum of 5secs between keepalives
-		c.udpReceiverReportPeriod = 5 * time.Second
+		c.receiverReportPeriod = 5 * time.Second
 	}
 	if c.checkTimeoutPeriod == 0 {
 		c.checkTimeoutPeriod = 1 * time.Second
@@ -680,7 +684,7 @@ func (c *Client) playRecordStart() {
 
 		default: // TCP
 			c.checkTimeoutTimer = time.NewTimer(c.checkTimeoutPeriod)
-			v := time.Now().Unix()
+			v := c.timeNow().Unix()
 			c.tcpLastFrameTime = &v
 		}
 	}
@@ -870,7 +874,7 @@ func (c *Client) atLeastOneUDPPacketHasBeenReceived() bool {
 }
 
 func (c *Client) isInUDPTimeout() bool {
-	now := time.Now()
+	now := c.timeNow()
 	for _, ct := range c.medias {
 		lft := time.Unix(atomic.LoadInt64(ct.udpRTPListener.lastPacketTime), 0)
 		if now.Sub(lft) < c.ReadTimeout {
@@ -886,7 +890,7 @@ func (c *Client) isInUDPTimeout() bool {
 }
 
 func (c *Client) isInTCPTimeout() bool {
-	now := time.Now()
+	now := c.timeNow()
 	lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
 	return now.Sub(lft) >= c.ReadTimeout
 }
@@ -1653,7 +1657,7 @@ func (c *Client) OnPacketRTCP(medi *media.Media, cb OnPacketRTCPFunc) {
 
 // WritePacketRTP writes a RTP packet to the server.
 func (c *Client) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
-	return c.WritePacketRTPWithNTP(medi, pkt, time.Now())
+	return c.WritePacketRTPWithNTP(medi, pkt, c.timeNow())
 }
 
 // WritePacketRTPWithNTP writes a RTP packet to the server.
@@ -1694,4 +1698,12 @@ func (c *Client) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) error {
 	cm := c.medias[medi]
 	cm.writePacketRTCP(byts)
 	return nil
+}
+
+// PacketNTP returns the NTP timestamp of an incoming RTP packet.
+// The NTP timestamp is computed from sender reports.
+func (c *Client) PacketNTP(medi *media.Media, pkt *rtp.Packet) (time.Time, bool) {
+	cm := c.medias[medi]
+	ct := cm.formats[pkt.PayloadType]
+	return ct.rtcpReceiver.PacketNTP(pkt.Timestamp)
 }

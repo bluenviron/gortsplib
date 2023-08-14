@@ -236,7 +236,7 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 
 // WritePacketRTP writes a RTP packet to all the readers of the stream.
 func (st *ServerStream) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
-	return st.WritePacketRTPWithNTP(medi, pkt, time.Now())
+	return st.WritePacketRTPWithNTP(medi, pkt, st.s.timeNow())
 }
 
 // WritePacketRTPWithNTP writes a RTP packet to all the readers of the stream.

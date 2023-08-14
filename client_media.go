@@ -44,9 +44,7 @@ func (cm *clientMedia) close() {
 func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, rtcpAddress string) error {
 	if rtpAddress != ":0" {
 		l1, err := newClientUDPListener(
-			cm.c.ListenPacket,
-			cm.c.AnyPortEnable,
-			cm.c.WriteTimeout,
+			cm.c,
 			multicast,
 			rtpAddress,
 		)
@@ -55,9 +53,7 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 		}
 
 		l2, err := newClientUDPListener(
-			cm.c.ListenPacket,
-			cm.c.AnyPortEnable,
-			cm.c.WriteTimeout,
+			cm.c,
 			multicast,
 			rtcpAddress,
 		)
@@ -71,11 +67,7 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 	}
 
 	var err error
-	cm.udpRTPListener, cm.udpRTCPListener, err = newClientUDPListenerPair(
-		cm.c.ListenPacket,
-		cm.c.AnyPortEnable,
-		cm.c.WriteTimeout,
-	)
+	cm.udpRTPListener, cm.udpRTCPListener, err = newClientUDPListenerPair(cm.c)
 	return err
 }
 
@@ -144,7 +136,7 @@ func (cm *clientMedia) stop() {
 
 func (cm *clientMedia) findFormatWithSSRC(ssrc uint32) *clientFormat {
 	for _, format := range cm.formats {
-		tssrc, ok := format.udpRTCPReceiver.LastSSRC()
+		tssrc, ok := format.rtcpReceiver.LastSSRC()
 		if ok && tssrc == ssrc {
 			return format
 		}
@@ -183,7 +175,7 @@ func (cm *clientMedia) writePacketRTCP(byts []byte) {
 }
 
 func (cm *clientMedia) readRTPTCPPlay(payload []byte) {
-	now := time.Now()
+	now := cm.c.timeNow()
 	atomic.StoreInt64(cm.c.tcpLastFrameTime, now.Unix())
 
 	pkt := &rtp.Packet{}
@@ -203,7 +195,7 @@ func (cm *clientMedia) readRTPTCPPlay(payload []byte) {
 }
 
 func (cm *clientMedia) readRTCPTCPPlay(payload []byte) {
-	now := time.Now()
+	now := cm.c.timeNow()
 	atomic.StoreInt64(cm.c.tcpLastFrameTime, now.Unix())
 
 	if len(payload) > udpMaxPayloadSize {
@@ -219,6 +211,13 @@ func (cm *clientMedia) readRTCPTCPPlay(payload []byte) {
 	}
 
 	for _, pkt := range packets {
+		if sr, ok := pkt.(*rtcp.SenderReport); ok {
+			format := cm.findFormatWithSSRC(sr.SSRC)
+			if format != nil {
+				format.rtcpReceiver.ProcessSenderReport(sr, now)
+			}
+		}
+
 		cm.onPacketRTCP(pkt)
 	}
 }
@@ -271,7 +270,7 @@ func (cm *clientMedia) readRTPUDPPlay(payload []byte) {
 }
 
 func (cm *clientMedia) readRTCPUDPPlay(payload []byte) {
-	now := time.Now()
+	now := cm.c.timeNow()
 	plen := len(payload)
 
 	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
@@ -291,7 +290,7 @@ func (cm *clientMedia) readRTCPUDPPlay(payload []byte) {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
 			format := cm.findFormatWithSSRC(sr.SSRC)
 			if format != nil {
-				format.udpRTCPReceiver.ProcessSenderReport(sr, now)
+				format.rtcpReceiver.ProcessSenderReport(sr, now)
 			}
 		}
 

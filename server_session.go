@@ -181,7 +181,7 @@ func newServerSession(
 		bytesReceived:       new(uint64),
 		bytesSent:           new(uint64),
 		conns:               make(map[*ServerConn]struct{}),
-		lastRequestTime:     time.Now(),
+		lastRequestTime:     s.timeNow(),
 		udpCheckStreamTimer: emptyTimer(),
 		chHandleRequest:     make(chan sessionRequestReq),
 		chRemoveConn:        make(chan *ServerConn),
@@ -326,7 +326,7 @@ func (ss *ServerSession) runInner() error {
 	for {
 		select {
 		case req := <-ss.chHandleRequest:
-			ss.lastRequestTime = time.Now()
+			ss.lastRequestTime = ss.s.timeNow()
 
 			if _, ok := ss.conns[req.sc]; !ok {
 				ss.conns[req.sc] = struct{}{}
@@ -402,7 +402,7 @@ func (ss *ServerSession) runInner() error {
 			}
 
 		case <-ss.udpCheckStreamTimer.C:
-			now := time.Now()
+			now := ss.s.timeNow()
 
 			lft := atomic.LoadInt64(ss.udpLastPacketTime)
 
@@ -873,7 +873,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		ss.state = ServerSessionStatePlay
 
-		v := time.Now().Unix()
+		v := ss.s.timeNow().Unix()
 		ss.udpLastPacketTime = &v
 
 		for _, sm := range ss.setuppedMedias {
@@ -897,7 +897,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		var ri headers.RTPInfo
-		now := time.Now()
+		now := ss.s.timeNow()
 
 		for _, sm := range ss.setuppedMediasOrdered {
 			entry := ss.setuppedStream.rtpInfoEntry(sm.media, now)
@@ -965,7 +965,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		ss.state = ServerSessionStateRecord
 
-		v := time.Now().Unix()
+		v := ss.s.timeNow().Unix()
 		ss.udpLastPacketTime = &v
 
 		for _, sm := range ss.setuppedMedias {
@@ -1184,6 +1184,14 @@ func (ss *ServerSession) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) err
 
 	ss.writePacketRTCP(medi, byts)
 	return nil
+}
+
+// PacketNTP returns the NTP timestamp of an incoming RTP packet.
+// The NTP timestamp is computed from sender reports.
+func (ss *ServerSession) PacketNTP(medi *media.Media, pkt *rtp.Packet) (time.Time, bool) {
+	sm := ss.setuppedMedias[medi]
+	sf := sm.formats[pkt.PayloadType]
+	return sf.rtcpReceiver.PacketNTP(pkt.Timestamp)
 }
 
 func (ss *ServerSession) handleRequest(req sessionRequestReq) (*base.Response, *ServerSession, error) {

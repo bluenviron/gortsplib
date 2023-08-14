@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -977,6 +978,9 @@ func TestServerPlayRTCPReport(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			var stream *ServerStream
 
+			var curTime time.Time
+			var curTimeMutex sync.Mutex
+
 			s := &Server{
 				Handler: &testServerHandler{
 					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
@@ -995,10 +999,15 @@ func TestServerPlayRTCPReport(t *testing.T) {
 						}, nil
 					},
 				},
-				senderReportPeriod: 1 * time.Second,
-				RTSPAddress:        "localhost:8554",
-				UDPRTPAddress:      "127.0.0.1:8000",
-				UDPRTCPAddress:     "127.0.0.1:8001",
+				RTSPAddress:    "localhost:8554",
+				UDPRTPAddress:  "127.0.0.1:8000",
+				UDPRTCPAddress: "127.0.0.1:8001",
+				timeNow: func() time.Time {
+					curTimeMutex.Lock()
+					defer curTimeMutex.Unlock()
+					return curTime
+				},
+				senderReportPeriod: 100 * time.Millisecond,
 			}
 
 			err := s.Start()
@@ -1052,17 +1061,27 @@ func TestServerPlayRTCPReport(t *testing.T) {
 
 			doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
 
-			for i := 0; i < 2; i++ {
-				err := stream.WritePacketRTP(stream.Medias()[0], &rtp.Packet{
+			curTimeMutex.Lock()
+			curTime = time.Date(2014, 6, 7, 15, 0, 0, 0, time.UTC)
+			curTimeMutex.Unlock()
+
+			err = stream.WritePacketRTPWithNTP(
+				stream.Medias()[0],
+				&rtp.Packet{
 					Header: rtp.Header{
 						Version:     2,
 						PayloadType: 96,
 						SSRC:        0x38F27A2F,
+						Timestamp:   240000,
 					},
 					Payload: []byte{0x05}, // IDR
-				})
-				require.NoError(t, err)
-			}
+				},
+				time.Date(2017, 8, 10, 12, 22, 0, 0, time.UTC))
+			require.NoError(t, err)
+
+			curTimeMutex.Lock()
+			curTime = time.Date(2014, 6, 7, 15, 0, 30, 0, time.UTC)
+			curTimeMutex.Unlock()
 
 			var buf []byte
 
@@ -1073,10 +1092,8 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				require.NoError(t, err)
 				buf = buf[:n]
 			} else {
-				for i := 0; i < 2; i++ {
-					_, err := conn.ReadInterleavedFrame()
-					require.NoError(t, err)
-				}
+				_, err := conn.ReadInterleavedFrame()
+				require.NoError(t, err)
 
 				f, err := conn.ReadInterleavedFrame()
 				require.NoError(t, err)
@@ -1088,10 +1105,10 @@ func TestServerPlayRTCPReport(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, &rtcp.SenderReport{
 				SSRC:        0x38F27A2F,
-				NTPTime:     packets[0].(*rtcp.SenderReport).NTPTime,
-				RTPTime:     packets[0].(*rtcp.SenderReport).RTPTime,
-				PacketCount: 2,
-				OctetCount:  2,
+				NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 10, 12, 22, 30, 0, time.UTC)),
+				RTPTime:     240000 + 90000*30,
+				PacketCount: 1,
+				OctetCount:  1,
 			}, packets[0])
 
 			doTeardown(t, conn, "rtsp://localhost:8554/teststream", session)

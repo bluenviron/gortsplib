@@ -25,9 +25,8 @@ func randInRange(max int) (int, error) {
 }
 
 type clientUDPListener struct {
-	anyPortEnable bool
-	writeTimeout  time.Duration
-	pc            net.PacketConn
+	c  *Client
+	pc net.PacketConn
 
 	readFunc  readFunc
 	readIP    net.IP
@@ -40,11 +39,7 @@ type clientUDPListener struct {
 	done chan struct{}
 }
 
-func newClientUDPListenerPair(
-	listenPacket func(network, address string) (net.PacketConn, error),
-	anyPortEnable bool,
-	writeTimeout time.Duration,
-) (*clientUDPListener, *clientUDPListener, error) {
+func newClientUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener, error) {
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
@@ -55,9 +50,7 @@ func newClientUDPListenerPair(
 
 		rtpPort := v*2 + 10000
 		rtpListener, err := newClientUDPListener(
-			listenPacket,
-			anyPortEnable,
-			writeTimeout,
+			c,
 			false,
 			net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
 		)
@@ -67,9 +60,7 @@ func newClientUDPListenerPair(
 
 		rtcpPort := rtpPort + 1
 		rtcpListener, err := newClientUDPListener(
-			listenPacket,
-			anyPortEnable,
-			writeTimeout,
+			c,
 			false,
 			net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
 		)
@@ -83,9 +74,7 @@ func newClientUDPListenerPair(
 }
 
 func newClientUDPListener(
-	listenPacket func(network, address string) (net.PacketConn, error),
-	anyPortEnable bool,
-	writeTimeout time.Duration,
+	c *Client,
 	multicast bool,
 	address string,
 ) (*clientUDPListener, error) {
@@ -96,7 +85,7 @@ func newClientUDPListener(
 			return nil, err
 		}
 
-		tmp, err := listenPacket(restrictNetwork("udp", "224.0.0.0:"+port))
+		tmp, err := c.ListenPacket(restrictNetwork("udp", "224.0.0.0:"+port))
 		if err != nil {
 			return nil, err
 		}
@@ -115,7 +104,7 @@ func newClientUDPListener(
 
 		pc = tmp.(*net.UDPConn)
 	} else {
-		tmp, err := listenPacket(restrictNetwork("udp", address))
+		tmp, err := c.ListenPacket(restrictNetwork("udp", address))
 		if err != nil {
 			return nil, err
 		}
@@ -128,8 +117,7 @@ func newClientUDPListener(
 	}
 
 	return &clientUDPListener{
-		anyPortEnable:  anyPortEnable,
-		writeTimeout:   writeTimeout,
+		c:              c,
 		pc:             pc,
 		lastPacketTime: int64Ptr(0),
 	}, nil
@@ -176,13 +164,13 @@ func (u *clientUDPListener) run() {
 
 		// in case of anyPortEnable, store the port of the first packet we receive.
 		// this reduces security issues
-		if u.anyPortEnable && u.readPort == 0 {
+		if u.c.AnyPortEnable && u.readPort == 0 {
 			u.readPort = uaddr.Port
 		} else if u.readPort != uaddr.Port {
 			continue
 		}
 
-		now := time.Now()
+		now := u.c.timeNow()
 		atomic.StoreInt64(u.lastPacketTime, now.Unix())
 
 		u.readFunc(buf[:n])
@@ -192,7 +180,7 @@ func (u *clientUDPListener) run() {
 func (u *clientUDPListener) write(payload []byte) error {
 	// no mutex is needed here since Write() has an internal lock.
 	// https://github.com/golang/go/issues/27203#issuecomment-534386117
-	u.pc.SetWriteDeadline(time.Now().Add(u.writeTimeout))
+	u.pc.SetWriteDeadline(time.Now().Add(u.c.WriteTimeout))
 	_, err := u.pc.WriteTo(payload, u.writeAddr)
 	return err
 }

@@ -9,8 +9,6 @@ import (
 	"github.com/pion/rtp"
 )
 
-var timeNow = time.Now
-
 // seconds since 1st January 1900
 // higher 32 bits are the integer part, lower 32 bits are the fractional part
 func ntpTimeGoToRTCP(v time.Time) uint64 {
@@ -22,6 +20,7 @@ func ntpTimeGoToRTCP(v time.Time) uint64 {
 type RTCPSender struct {
 	clockRate       float64
 	period          time.Duration
+	timeNow         func() time.Time
 	writePacketRTCP func(rtcp.Packet)
 	mutex           sync.Mutex
 
@@ -43,11 +42,17 @@ type RTCPSender struct {
 func New(
 	clockRate int,
 	period time.Duration,
+	timeNow func() time.Time,
 	writePacketRTCP func(rtcp.Packet),
 ) *RTCPSender {
+	if timeNow == nil {
+		timeNow = time.Now
+	}
+
 	rs := &RTCPSender{
 		clockRate:       float64(clockRate),
 		period:          period,
+		timeNow:         timeNow,
 		writePacketRTCP: writePacketRTCP,
 		terminate:       make(chan struct{}),
 		done:            make(chan struct{}),
@@ -92,7 +97,7 @@ func (rs *RTCPSender) report() rtcp.Packet {
 		return nil
 	}
 
-	systemTimeDiff := timeNow().Sub(rs.lastTimeSystem)
+	systemTimeDiff := rs.timeNow().Sub(rs.lastTimeSystem)
 	ntpTime := rs.lastTimeNTP.Add(systemTimeDiff)
 	rtpTime := rs.lastTimeRTP + uint32(systemTimeDiff.Seconds()*rs.clockRate)
 
@@ -114,7 +119,7 @@ func (rs *RTCPSender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS
 		rs.initialized = true
 		rs.lastTimeRTP = pkt.Timestamp
 		rs.lastTimeNTP = ntp
-		rs.lastTimeSystem = timeNow()
+		rs.lastTimeSystem = rs.timeNow()
 	}
 
 	rs.lastSSRC = pkt.SSRC

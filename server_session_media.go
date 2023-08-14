@@ -160,7 +160,7 @@ func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) {
 		return
 	}
 
-	now := time.Now()
+	now := sm.ss.s.timeNow()
 	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
 
 	for _, pkt := range packets {
@@ -191,7 +191,7 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) {
 		return
 	}
 
-	now := time.Now()
+	now := sm.ss.s.timeNow()
 	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
 
 	forma.readRTPUDP(pkt, now)
@@ -213,19 +213,17 @@ func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) {
 		return
 	}
 
-	now := time.Now()
+	now := sm.ss.s.timeNow()
 	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
 			format := serverFindFormatWithSSRC(sm.formats, sr.SSRC)
 			if format != nil {
-				format.udpRTCPReceiver.ProcessSenderReport(sr, now)
+				format.rtcpReceiver.ProcessSenderReport(sr, now)
 			}
 		}
-	}
 
-	for _, pkt := range packets {
 		sm.onPacketRTCP(pkt)
 	}
 }
@@ -281,7 +279,16 @@ func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) {
 		return
 	}
 
+	now := sm.ss.s.timeNow()
+
 	for _, pkt := range packets {
+		if sr, ok := pkt.(*rtcp.SenderReport); ok {
+			format := serverFindFormatWithSSRC(sm.formats, sr.SSRC)
+			if format != nil {
+				format.rtcpReceiver.ProcessSenderReport(sr, now)
+			}
+		}
+
 		sm.onPacketRTCP(pkt)
 	}
 }

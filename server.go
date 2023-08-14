@@ -118,10 +118,11 @@ type Server struct {
 	// private
 	//
 
-	udpReceiverReportPeriod time.Duration
-	senderReportPeriod      time.Duration
-	sessionTimeout          time.Duration
-	checkStreamPeriod       time.Duration
+	timeNow              func() time.Time
+	senderReportPeriod   time.Duration
+	receiverReportPeriod time.Duration
+	sessionTimeout       time.Duration
+	checkStreamPeriod    time.Duration
 
 	ctx             context.Context
 	ctxCancel       func()
@@ -176,11 +177,14 @@ func (s *Server) Start() error {
 	}
 
 	// private
-	if s.udpReceiverReportPeriod == 0 {
-		s.udpReceiverReportPeriod = 10 * time.Second
+	if s.timeNow == nil {
+		s.timeNow = time.Now
 	}
 	if s.senderReportPeriod == 0 {
 		s.senderReportPeriod = 10 * time.Second
+	}
+	if s.receiverReportPeriod == 0 {
+		s.receiverReportPeriod = 10 * time.Second
 	}
 	if s.sessionTimeout == 0 {
 		s.sessionTimeout = 1 * 60 * time.Second

@@ -2138,12 +2138,12 @@ func TestClientPlayRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 
 		// wait for the packet's SSRC to be saved
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 
 		sr := &rtcp.SenderReport{
 			SSRC:        753621,
-			NTPTime:     0,
-			RTPTime:     0,
+			NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 12, 15, 30, 0, 0, time.UTC)),
+			RTPTime:     54352,
 			PacketCount: 1,
 			OctetCount:  4,
 		}
@@ -2167,7 +2167,7 @@ func TestClientPlayRTCPReport(t *testing.T) {
 				{
 					SSRC:               rr.Reports[0].SSRC,
 					LastSequenceNumber: 946,
-					LastSenderReport:   rr.Reports[0].LastSenderReport,
+					LastSenderReport:   2641887232,
 					Delay:              rr.Reports[0].Delay,
 				},
 			},
@@ -2187,7 +2187,7 @@ func TestClientPlayRTCPReport(t *testing.T) {
 	}()
 
 	c := Client{
-		udpReceiverReportPeriod: 1 * time.Second,
+		receiverReportPeriod: 500 * time.Millisecond,
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream", nil)
@@ -3165,4 +3165,185 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 			<-errorRecv
 		})
 	}
+}
+
+func TestClientPlayPacketNTP(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		nconn, err := l.Accept()
+		require.NoError(t, err)
+		defer nconn.Close()
+		conn := conn.NewConn(nconn)
+
+		req, err := conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err)
+
+		req, err = conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+
+		medias := media.Medias{testH264Media}
+		resetMediaControls(medias)
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+			},
+			Body: mustMarshalMedias(medias),
+		})
+		require.NoError(t, err)
+
+		req, err = conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+
+		var inTH headers.Transport
+		err = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err)
+
+		l1, err := net.ListenPacket("udp", "localhost:27556")
+		require.NoError(t, err)
+		defer l1.Close()
+
+		l2, err := net.ListenPacket("udp", "localhost:27557")
+		require.NoError(t, err)
+		defer l2.Close()
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": headers.Transport{
+					Protocol: headers.TransportProtocolUDP,
+					Delivery: func() *headers.TransportDelivery {
+						v := headers.TransportDeliveryUnicast
+						return &v
+					}(),
+					ServerPorts: &[2]int{27556, 27557},
+					ClientPorts: inTH.ClientPorts,
+				}.Marshal(),
+			},
+		})
+		require.NoError(t, err)
+
+		req, err = conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err)
+
+		// skip firewall opening
+		buf := make([]byte, 2048)
+		_, _, err = l2.ReadFrom(buf)
+		require.NoError(t, err)
+
+		pkt := rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         true,
+				PayloadType:    96,
+				SequenceNumber: 946,
+				Timestamp:      54352,
+				SSRC:           753621,
+			},
+			Payload: []byte{1, 2, 3, 4},
+		}
+		byts, _ := pkt.Marshal()
+		_, err = l1.WriteTo(byts, &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: inTH.ClientPorts[0],
+		})
+		require.NoError(t, err)
+
+		// wait for the packet's SSRC to be saved
+		time.Sleep(100 * time.Millisecond)
+
+		sr := &rtcp.SenderReport{
+			SSRC:        753621,
+			NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 12, 15, 30, 0, 0, time.UTC)),
+			RTPTime:     54352,
+			PacketCount: 1,
+			OctetCount:  4,
+		}
+		byts, _ = sr.Marshal()
+		_, err = l2.WriteTo(byts, &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: inTH.ClientPorts[1],
+		})
+		require.NoError(t, err)
+
+		time.Sleep(100 * time.Millisecond)
+
+		pkt = rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         true,
+				PayloadType:    96,
+				SequenceNumber: 947,
+				Timestamp:      54352 + 90000,
+				SSRC:           753621,
+			},
+			Payload: []byte{5, 6, 7, 8},
+		}
+		byts, _ = pkt.Marshal()
+		_, err = l1.WriteTo(byts, &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: inTH.ClientPorts[0],
+		})
+		require.NoError(t, err)
+
+		req, err = conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err)
+	}()
+
+	c := Client{}
+
+	recv := make(chan struct{})
+	first := false
+
+	err = readAll(&c, "rtsp://localhost:8554/teststream",
+		func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+			if !first {
+				first = true
+			} else {
+				ntp, ok := c.PacketNTP(medi, pkt)
+				require.Equal(t, true, ok)
+				require.Equal(t, time.Date(2017, 8, 12, 15, 30, 1, 0, time.UTC), ntp.UTC())
+				close(recv)
+			}
+		})
+	require.NoError(t, err)
+	defer c.Close()
+
+	<-recv
 }
