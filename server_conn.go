@@ -12,8 +12,8 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
@@ -24,14 +24,13 @@ func getSessionID(header base.Header) string {
 	return ""
 }
 
-func mediasForSDP(
-	medias media.Medias,
-	contentBase *url.URL,
-) media.Medias {
-	newMedias := make(media.Medias, len(medias))
+func streamDescCopyForServer(d *description.Session, contentBase *url.URL) *description.Session {
+	out := &description.Session{
+		Medias: make([]*description.Media, len(d.Medias)),
+	}
 
-	for i, medi := range medias {
-		mc := &media.Media{
+	for i, medi := range d.Medias {
+		mc := &description.Media{
 			Type: medi.Type,
 			// Direction: skipped for the moment
 			Formats: medi.Formats,
@@ -47,10 +46,10 @@ func mediasForSDP(
 		u, _ := mc.URL(contentBase)
 		mc.Control = u.String()
 
-		newMedias[i] = mc
+		out.Medias[i] = mc
 	}
 
-	return newMedias
+	return out
 }
 
 type readReq struct {
@@ -294,7 +293,7 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 				}
 
 				if stream != nil {
-					byts, _ := mediasForSDP(stream.medias, req.URL).Marshal(multicast).Marshal()
+					byts, _ := streamDescCopyForServer(stream.desc, req.URL).Marshal(multicast)
 					res.Body = byts
 				}
 			}

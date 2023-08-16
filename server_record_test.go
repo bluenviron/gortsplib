@@ -15,13 +15,13 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
-func doAnnounce(t *testing.T, conn *conn.Conn, u string, medias media.Medias) {
+func doAnnounce(t *testing.T, conn *conn.Conn, u string, medias []*description.Media) {
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Announce,
 		URL:    mustParseURL(u),
@@ -29,7 +29,7 @@ func doAnnounce(t *testing.T, conn *conn.Conn, u string, medias media.Medias) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: mustMarshalMedias(medias),
+		Body: mediasToSDP(medias),
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
@@ -224,7 +224,7 @@ func TestServerRecordPath(t *testing.T) {
 				Handler: &testServerHandler{
 					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						// make sure that media URLs are not overridden by NewServerStream()
-						stream := NewServerStream(s, ctx.Medias)
+						stream := NewServerStream(s, ctx.Description)
 						defer stream.Close()
 
 						return &base.Response{
@@ -344,8 +344,7 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media}
-	resetMediaControls(medias)
+	medias := []*description.Media{testH264Media}
 
 	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
@@ -438,17 +437,16 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 	err = forma.Init()
 	require.NoError(t, err)
 
-	medias := media.Medias{
-		&media.Media{
+	medias := []*description.Media{
+		{
 			Type:    "application",
 			Formats: []format.Format{forma},
 		},
-		&media.Media{
+		{
 			Type:    "application",
 			Formats: []format.Format{forma},
 		},
 	}
-	resetMediaControls(medias)
 
 	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
@@ -523,25 +521,25 @@ func TestServerRecord(t *testing.T) {
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						// queue sending of RTCP packets.
 						// these are sent after the response, only if onRecord returns StatusOK.
-						err := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[0], &testRTCPPacket)
+						err := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedDescription().Medias[0], &testRTCPPacket)
 						require.NoError(t, err)
-						err = ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[1], &testRTCPPacket)
+						err = ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedDescription().Medias[1], &testRTCPPacket)
 						require.NoError(t, err)
 
 						for i := 0; i < 2; i++ {
 							ctx.Session.OnPacketRTP(
-								ctx.Session.AnnouncedMedias()[i],
-								ctx.Session.AnnouncedMedias()[i].Formats[0],
+								ctx.Session.AnnouncedDescription().Medias[i],
+								ctx.Session.AnnouncedDescription().Medias[i].Formats[0],
 								func(pkt *rtp.Packet) {
 									require.Equal(t, &testRTPPacket, pkt)
 								})
 
 							ci := i
 							ctx.Session.OnPacketRTCP(
-								ctx.Session.AnnouncedMedias()[i],
+								ctx.Session.AnnouncedDescription().Medias[i],
 								func(pkt rtcp.Packet) {
 									require.Equal(t, &testRTCPPacket, pkt)
-									err := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedMedias()[ci], &testRTCPPacket)
+									err := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedDescription().Medias[ci], &testRTCPPacket)
 									require.NoError(t, err)
 								})
 						}
@@ -583,9 +581,9 @@ func TestServerRecord(t *testing.T) {
 
 			<-nconnOpened
 
-			medias := media.Medias{
-				&media.Media{
-					Type: media.TypeVideo,
+			medias := []*description.Media{
+				{
+					Type: description.MediaTypeVideo,
 					Formats: []format.Format{&format.H264{
 						PayloadTyp:        96,
 						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
@@ -593,8 +591,8 @@ func TestServerRecord(t *testing.T) {
 						PacketizationMode: 1,
 					}},
 				},
-				&media.Media{
-					Type: media.TypeVideo,
+				{
+					Type: description.MediaTypeVideo,
 					Formats: []format.Format{&format.H264{
 						PayloadTyp:        96,
 						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
@@ -603,7 +601,6 @@ func TestServerRecord(t *testing.T) {
 					}},
 				},
 			}
-			resetMediaControls(medias)
 
 			doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
@@ -766,8 +763,7 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media}
-	resetMediaControls(medias)
+	medias := []*description.Media{testH264Media}
 
 	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
@@ -833,8 +829,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media}
-	resetMediaControls(medias)
+	medias := []*description.Media{testH264Media}
 
 	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
@@ -974,8 +969,7 @@ func TestServerRecordTimeout(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			medias := media.Medias{testH264Media}
-			resetMediaControls(medias)
+			medias := []*description.Media{testH264Media}
 
 			doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
@@ -1063,8 +1057,7 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 			conn := conn.NewConn(nconn)
 
-			medias := media.Medias{testH264Media}
-			resetMediaControls(medias)
+			medias := []*description.Media{testH264Media}
 
 			doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
@@ -1142,8 +1135,7 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
@@ -1273,14 +1265,13 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			medias := media.Medias{&media.Media{
-				Type: media.TypeApplication,
+			medias := []*description.Media{{
+				Type: description.MediaTypeApplication,
 				Formats: []format.Format{&format.Generic{
 					PayloadTyp: 97,
 					RTPMa:      "private/90000",
 				}},
 			}}
-			resetMediaControls(medias)
 
 			doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
@@ -1438,7 +1429,7 @@ func TestServerRecordPacketNTP(t *testing.T) {
 				}, nil, nil
 			},
 			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
-				ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+				ctx.Session.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 					if !first {
 						first = true
 					} else {
@@ -1468,8 +1459,7 @@ func TestServerRecordPacketNTP(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media}
-	resetMediaControls(medias)
+	medias := []*description.Media{testH264Media}
 
 	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 

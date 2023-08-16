@@ -5,8 +5,8 @@ import (
 	"net"
 
 	"github.com/bluenviron/gortsplib/v4"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/pion/rtp"
 )
 
@@ -36,17 +36,19 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create a media that contains a VP8 format
-	medi := &media.Media{
-		Type: media.TypeVideo,
-		Formats: []format.Format{&format.VP8{
-			PayloadTyp: 96,
+	// create a description that contains a VP8 format
+	desc := &description.Session{
+		Medias: []*description.Media{{
+			Type: description.MediaTypeVideo,
+			Formats: []format.Format{&format.VP8{
+				PayloadTyp: 96,
+			}},
 		}},
 	}
 
-	// connect to the server and start recording the media
+	// connect to the server and start recording
 	c := gortsplib.Client{}
-	err = c.StartRecording("rtsp://localhost:8554/mystream", media.Medias{medi})
+	err = c.StartRecording("rtsp://localhost:8554/mystream", desc)
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +63,7 @@ func main() {
 		}
 
 		// route RTP packet to the server
-		err = c.WritePacketRTP(medi, &pkt)
+		err = c.WritePacketRTP(desc.Medias[0], &pkt)
 		if err != nil {
 			panic(err)
 		}

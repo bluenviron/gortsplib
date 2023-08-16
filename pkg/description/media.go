@@ -1,5 +1,5 @@
-// Package media contains the media stream definition.
-package media
+// Package description contains objects to describe streams.
+package description
 
 import (
 	"fmt"
@@ -26,17 +26,17 @@ func getControlAttribute(attributes []psdp.Attribute) string {
 	return ""
 }
 
-func getDirection(attributes []psdp.Attribute) Direction {
+func getDirection(attributes []psdp.Attribute) MediaDirection {
 	for _, attr := range attributes {
 		switch attr.Key {
 		case "sendonly":
-			return DirectionSendonly
+			return MediaDirectionSendonly
 
 		case "recvonly":
-			return DirectionRecvonly
+			return MediaDirectionRecvonly
 
 		case "sendrecv":
-			return DirectionSendrecv
+			return MediaDirectionSendrecv
 		}
 	}
 	return ""
@@ -92,34 +92,34 @@ func sortedKeys(fmtp map[string]string) []string {
 	return keys
 }
 
-// Direction is the direction of a media stream.
-type Direction string
+// MediaDirection is the direction of a media stream.
+type MediaDirection string
 
 // standard directions.
 const (
-	DirectionSendonly Direction = "sendonly"
-	DirectionRecvonly Direction = "recvonly"
-	DirectionSendrecv Direction = "sendrecv"
+	MediaDirectionSendonly MediaDirection = "sendonly"
+	MediaDirectionRecvonly MediaDirection = "recvonly"
+	MediaDirectionSendrecv MediaDirection = "sendrecv"
 )
 
-// Type is the type of a media stream.
-type Type string
+// MediaType is the type of a media stream.
+type MediaType string
 
 // standard media stream types.
 const (
-	TypeVideo       Type = "video"
-	TypeAudio       Type = "audio"
-	TypeApplication Type = "application"
+	MediaTypeVideo       MediaType = "video"
+	MediaTypeAudio       MediaType = "audio"
+	MediaTypeApplication MediaType = "application"
 )
 
 // Media is a media stream.
 // It contains one or more formats.
 type Media struct {
 	// Media type.
-	Type Type
+	Type MediaType
 
 	// Direction of the stream.
-	Direction Direction
+	Direction MediaDirection
 
 	// Control attribute.
 	Control string
@@ -128,8 +128,9 @@ type Media struct {
 	Formats []format.Format
 }
 
-func (m *Media) unmarshal(md *psdp.MediaDescription) error {
-	m.Type = Type(md.MediaName.Media)
+// Unmarshal decodes the media from the SDP format.
+func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
+	m.Type = MediaType(md.MediaName.Media)
 	m.Direction = getDirection(md.Attributes)
 	m.Control = getControlAttribute(md.Attributes)
 

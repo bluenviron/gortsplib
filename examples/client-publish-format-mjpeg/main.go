@@ -5,8 +5,8 @@ import (
 	"net"
 
 	"github.com/bluenviron/gortsplib/v4"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/pion/rtp"
 )
 
@@ -35,15 +35,17 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create a media that contains a M-JPEG format
-	medi := &media.Media{
-		Type:    media.TypeVideo,
-		Formats: []format.Format{&format.MJPEG{}},
+	// create a description that contains a M-JPEG format
+	desc := &description.Session{
+		Medias: []*description.Media{{
+			Type:    description.MediaTypeVideo,
+			Formats: []format.Format{&format.MJPEG{}},
+		}},
 	}
 
-	// connect to the server and start recording the media
+	// connect to the server and start recording
 	c := gortsplib.Client{}
-	err = c.StartRecording("rtsp://localhost:8554/mystream", media.Medias{medi})
+	err = c.StartRecording("rtsp://localhost:8554/mystream", desc)
 	if err != nil {
 		panic(err)
 	}
@@ -58,7 +60,7 @@ func main() {
 		}
 
 		// route RTP packet to the server
-		err = c.WritePacketRTP(medi, &pkt)
+		err = c.WritePacketRTP(desc.Medias[0], &pkt)
 		if err != nil {
 			panic(err)
 		}

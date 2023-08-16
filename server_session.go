@@ -14,10 +14,10 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
@@ -58,7 +58,7 @@ func serverParseURLForPlay(u *url.URL) (string, string, string, error) {
 	return path, query, trackID, nil
 }
 
-func findMediaByURL(medias media.Medias, baseURL *url.URL, u *url.URL) *media.Media {
+func findMediaByURL(medias []*description.Media, baseURL *url.URL, u *url.URL) *description.Media {
 	for _, media := range medias {
 		u1, err := media.URL(baseURL)
 		if err == nil && u1.String() == u.String() {
@@ -69,9 +69,9 @@ func findMediaByURL(medias media.Medias, baseURL *url.URL, u *url.URL) *media.Me
 	return nil
 }
 
-func findMediaByTrackID(st *ServerStream, trackID string) *media.Media {
+func findMediaByTrackID(medias []*description.Media, trackID string) *description.Media {
 	if trackID == "" {
-		return st.medias[0]
+		return medias[0]
 	}
 
 	tmp, err := strconv.ParseUint(trackID, 10, 31)
@@ -80,11 +80,11 @@ func findMediaByTrackID(st *ServerStream, trackID string) *media.Media {
 	}
 	id := int(tmp)
 
-	if len(st.medias) <= id {
+	if len(medias) <= id {
 		return nil
 	}
 
-	return st.medias[id]
+	return medias[id]
 }
 
 func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *headers.Transport {
@@ -144,7 +144,7 @@ type ServerSession struct {
 	userData              interface{}
 	conns                 map[*ServerConn]struct{}
 	state                 ServerSessionState
-	setuppedMedias        map[*media.Media]*serverSessionMedia
+	setuppedMedias        map[*description.Media]*serverSessionMedia
 	setuppedMediasOrdered []*serverSessionMedia
 	tcpCallbackByChannel  map[int]readFunc
 	setuppedTransport     *Transport
@@ -153,8 +153,8 @@ type ServerSession struct {
 	setuppedQuery         string
 	lastRequestTime       time.Time
 	tcpConn               *ServerConn
-	announcedMedias       media.Medias // publish
-	udpLastPacketTime     *int64       // publish
+	announcedDesc         *description.Session // publish
+	udpLastPacketTime     *int64               // publish
 	udpCheckStreamTimer   *time.Timer
 	writer                asyncProcessor
 	timeDecoder           *rtptime.GlobalDecoder
@@ -221,14 +221,14 @@ func (ss *ServerSession) SetuppedTransport() *Transport {
 	return ss.setuppedTransport
 }
 
-// AnnouncedMedias returns the announced medias.
-func (ss *ServerSession) AnnouncedMedias() media.Medias {
-	return ss.announcedMedias
+// AnnouncedDescription returns the announced stream description.
+func (ss *ServerSession) AnnouncedDescription() *description.Session {
+	return ss.announcedDesc
 }
 
 // SetuppedMedias returns the setupped medias.
-func (ss *ServerSession) SetuppedMedias() media.Medias {
-	ret := make(media.Medias, len(ss.setuppedMedias))
+func (ss *ServerSession) SetuppedMedias() []*description.Media {
+	ret := make([]*description.Media, len(ss.setuppedMedias))
 	for i, sm := range ss.setuppedMediasOrdered {
 		ret[i] = sm.media
 	}
@@ -511,23 +511,23 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, liberrors.ErrServerContentTypeUnsupported{CT: ct}
 		}
 
-		var sd sdp.SessionDescription
-		err = sd.Unmarshal(req.Body)
+		var ssd sdp.SessionDescription
+		err = ssd.Unmarshal(req.Body)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerSDPInvalid{Err: err}
 		}
 
-		var medias media.Medias
-		err = medias.Unmarshal(sd.MediaDescriptions)
+		var desc description.Session
+		err = desc.Unmarshal(&ssd)
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerSDPInvalid{Err: err}
 		}
 
-		for _, medi := range medias {
+		for _, medi := range desc.Medias {
 			mediURL, err := medi.URL(req.URL)
 			if err != nil {
 				return &base.Response{
@@ -551,12 +551,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		res, err := ss.s.Handler.(ServerHandlerOnAnnounce).OnAnnounce(&ServerHandlerOnAnnounceCtx{
-			Session: ss,
-			Conn:    sc,
-			Request: req,
-			Path:    path,
-			Query:   query,
-			Medias:  medias,
+			Session:     ss,
+			Conn:        sc,
+			Request:     req,
+			Path:        path,
+			Query:       query,
+			Description: &desc,
 		})
 
 		if res.StatusCode != base.StatusOK {
@@ -566,7 +566,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		ss.state = ServerSessionStatePreRecord
 		ss.setuppedPath = &path
 		ss.setuppedQuery = query
-		ss.announcedMedias = medias
+		ss.announcedDesc = &desc
 
 		return res, err
 
@@ -706,10 +706,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			return res, err
 		}
 
-		var medi *media.Media
+		var medi *description.Media
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
-			medi = findMediaByTrackID(stream, trackID)
+			medi = findMediaByTrackID(stream.desc.Medias, trackID)
 		default: // record
 			baseURL := &url.URL{
 				Scheme:   req.URL.Scheme,
@@ -724,7 +724,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				baseURL.Path += "/"
 			}
 
-			medi = findMediaByURL(ss.announcedMedias, baseURL, req.URL)
+			medi = findMediaByURL(ss.announcedDesc.Medias, baseURL, req.URL)
 		}
 
 		if medi == nil {
@@ -819,7 +819,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		if ss.setuppedMedias == nil {
-			ss.setuppedMedias = make(map[*media.Media]*serverSessionMedia)
+			ss.setuppedMedias = make(map[*description.Media]*serverSessionMedia)
 		}
 		ss.setuppedMedias[medi] = sm
 		ss.setuppedMediasOrdered = append(ss.setuppedMediasOrdered, sm)
@@ -934,7 +934,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, err
 		}
 
-		if len(ss.setuppedMedias) != len(ss.announcedMedias) {
+		if len(ss.setuppedMedias) != len(ss.announcedDesc.Medias) {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerNotAllAnnouncedMediasSetup{}
@@ -1148,25 +1148,25 @@ func (ss *ServerSession) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 }
 
 // OnPacketRTP sets the callback that is called when a RTP packet is read.
-func (ss *ServerSession) OnPacketRTP(medi *media.Media, forma format.Format, cb OnPacketRTPFunc) {
+func (ss *ServerSession) OnPacketRTP(medi *description.Media, forma format.Format, cb OnPacketRTPFunc) {
 	sm := ss.setuppedMedias[medi]
 	st := sm.formats[forma.PayloadType()]
 	st.onPacketRTP = cb
 }
 
 // OnPacketRTCP sets the callback that is called when a RTCP packet is read.
-func (ss *ServerSession) OnPacketRTCP(medi *media.Media, cb OnPacketRTCPFunc) {
+func (ss *ServerSession) OnPacketRTCP(medi *description.Media, cb OnPacketRTCPFunc) {
 	sm := ss.setuppedMedias[medi]
 	sm.onPacketRTCP = cb
 }
 
-func (ss *ServerSession) writePacketRTP(medi *media.Media, byts []byte) {
+func (ss *ServerSession) writePacketRTP(medi *description.Media, byts []byte) {
 	sm := ss.setuppedMedias[medi]
 	sm.writePacketRTP(byts)
 }
 
 // WritePacketRTP writes a RTP packet to the session.
-func (ss *ServerSession) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
+func (ss *ServerSession) WritePacketRTP(medi *description.Media, pkt *rtp.Packet) error {
 	byts := make([]byte, ss.s.MaxPacketSize)
 	n, err := pkt.MarshalTo(byts)
 	if err != nil {
@@ -1178,13 +1178,13 @@ func (ss *ServerSession) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) erro
 	return nil
 }
 
-func (ss *ServerSession) writePacketRTCP(medi *media.Media, byts []byte) {
+func (ss *ServerSession) writePacketRTCP(medi *description.Media, byts []byte) {
 	sm := ss.setuppedMedias[medi]
 	sm.writePacketRTCP(byts)
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.
-func (ss *ServerSession) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) error {
+func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error {
 	byts, err := pkt.Marshal()
 	if err != nil {
 		return err
@@ -1202,7 +1202,7 @@ func (ss *ServerSession) PacketPTS(forma format.Format, pkt *rtp.Packet) (time.D
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.
 // The NTP timestamp is computed from sender reports.
-func (ss *ServerSession) PacketNTP(medi *media.Media, pkt *rtp.Packet) (time.Time, bool) {
+func (ss *ServerSession) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[pkt.PayloadType]
 	return sf.rtcpReceiver.PacketNTP(pkt.Timestamp)

@@ -6,7 +6,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 )
 
 type server struct {
@@ -99,10 +99,10 @@ func (s *server) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, 
 	}, nil
 }
 
-func (s *server) setStreamReady(medias media.Medias) *gortsplib.ServerStream {
+func (s *server) setStreamReady(desc *description.Session) *gortsplib.ServerStream {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.stream = gortsplib.NewServerStream(s.s, medias)
+	s.stream = gortsplib.NewServerStream(s.s, desc)
 	return s.stream
 }
 

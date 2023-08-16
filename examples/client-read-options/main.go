@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
@@ -41,24 +41,24 @@ func main() {
 	defer c.Close()
 
 	// find published medias
-	medias, baseURL, _, err := c.Describe(u)
+	desc, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
 	// setup all medias
-	err = c.SetupAll(baseURL, medias)
+	err = c.SetupAll(desc.BaseURL, desc.Medias)
 	if err != nil {
 		panic(err)
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+	c.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 		log.Printf("RTP packet from media %v\n", medi)
 	})
 
 	// called when a RTCP packet arrives
-	c.OnPacketRTCPAny(func(medi *media.Media, pkt rtcp.Packet) {
+	c.OnPacketRTCPAny(func(medi *description.Media, pkt rtcp.Packet) {
 		log.Printf("RTCP packet from media %v, type %T\n", medi, pkt)
 	})
 

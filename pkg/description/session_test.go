@@ -1,4 +1,4 @@
-package media
+package description
 
 import (
 	"testing"
@@ -9,11 +9,11 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
-var casesMedias = []struct {
-	name   string
-	in     string
-	out    string
-	medias Medias
+var casesSession = []struct {
+	name string
+	in   string
+	out  string
+	desc Session
 }{
 	{
 		"one format for each media, absolute",
@@ -43,7 +43,7 @@ var casesMedias = []struct {
 			"b=AS:8\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Stream\r\n" +
+			"s=Session\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 97\r\n" +
@@ -56,30 +56,32 @@ var casesMedias = []struct {
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
 			"a=control\r\n",
-		Medias{
-			{
-				Type:    "video",
-				Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
-				Formats: []format.Format{&format.H264{
-					PayloadTyp:        97,
-					PacketizationMode: 1,
-					SPS:               []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
-					PPS:               []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
-				}},
-			},
-			{
-				Type:      "audio",
-				Direction: DirectionRecvonly,
-				Control:   "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
-				Formats: []format.Format{&format.G711{
-					MULaw: true,
-				}},
-			},
-			{
-				Type: "application",
-				Formats: []format.Format{&format.Generic{
-					PayloadTyp: 107,
-				}},
+		Session{
+			Medias: []*Media{
+				{
+					Type:    "video",
+					Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
+					Formats: []format.Format{&format.H264{
+						PayloadTyp:        97,
+						PacketizationMode: 1,
+						SPS:               []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
+						PPS:               []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
+					}},
+				},
+				{
+					Type:      "audio",
+					Direction: MediaDirectionRecvonly,
+					Control:   "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
+					Formats: []format.Format{&format.G711{
+						MULaw: true,
+					}},
+				},
+				{
+					Type: "application",
+					Formats: []format.Format{&format.Generic{
+						PayloadTyp: 107,
+					}},
+				},
 			},
 		},
 	},
@@ -110,7 +112,7 @@ var casesMedias = []struct {
 			"b=AS:8\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Stream\r\n" +
+			"s=Session\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 97\r\n" +
@@ -123,30 +125,32 @@ var casesMedias = []struct {
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
 			"a=control\r\n",
-		Medias{
-			{
-				Type:    "video",
-				Control: "trackID=1",
-				Formats: []format.Format{&format.H264{
-					PayloadTyp:        97,
-					PacketizationMode: 1,
-					SPS:               []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
-					PPS:               []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
-				}},
-			},
-			{
-				Type:      "audio",
-				Direction: DirectionRecvonly,
-				Control:   "trackID=2",
-				Formats: []format.Format{&format.G711{
-					MULaw: true,
-				}},
-			},
-			{
-				Type: "application",
-				Formats: []format.Format{&format.Generic{
-					PayloadTyp: 107,
-				}},
+		Session{
+			Medias: []*Media{
+				{
+					Type:    "video",
+					Control: "trackID=1",
+					Formats: []format.Format{&format.H264{
+						PayloadTyp:        97,
+						PacketizationMode: 1,
+						SPS:               []byte{0x67, 0x64, 0x00, 0x28, 0xac, 0xb4, 0x03, 0xc0, 0x11, 0x3f, 0x2a},
+						PPS:               []byte{0x68, 0xee, 0x01, 0x9e, 0x2c},
+					}},
+				},
+				{
+					Type:      "audio",
+					Direction: MediaDirectionRecvonly,
+					Control:   "trackID=2",
+					Formats: []format.Format{&format.G711{
+						MULaw: true,
+					}},
+				},
+				{
+					Type: "application",
+					Formats: []format.Format{&format.Generic{
+						PayloadTyp: 107,
+					}},
+				},
 			},
 		},
 	},
@@ -157,7 +161,7 @@ var casesMedias = []struct {
 			"s=-\r\n" +
 			"t=0 0\r\n" +
 			"a=group:BUNDLE audio video\r\n" +
-			"a=msid-semantic: WMS mediaStreamLocal\r\n" +
+			"a=msid-semantic: WMS mediaSessionLocal\r\n" +
 			"m=audio 9 UDP/TLS/RTP/SAVPF 111 103 104 9 102 0 8 106 105 13 110 112 113 126\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"a=rtcp:9 IN IP4 0.0.0.0\r\n" +
@@ -190,8 +194,8 @@ var casesMedias = []struct {
 			"a=rtpmap:113 telephone-event/16000\r\n" +
 			"a=rtpmap:126 telephone-event/8000\r\n" +
 			"a=ssrc:3754810229 cname:CvU1TYqkVsjj5XOt\r\n" +
-			"a=ssrc:3754810229 msid:mediaStreamLocal 101\r\n" +
-			"a=ssrc:3754810229 mslabel:mediaStreamLocal\r\n" +
+			"a=ssrc:3754810229 msid:mediaSessionLocal 101\r\n" +
+			"a=ssrc:3754810229 mslabel:mediaSessionLocal\r\n" +
 			"a=ssrc:3754810229 label:101\r\n" +
 			"m=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 127 124 125\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
@@ -245,16 +249,16 @@ var casesMedias = []struct {
 			"a=rtpmap:125 ulpfec/90000\r\n" +
 			"a=ssrc-group:FID 2712436124 1733091158\r\n" +
 			"a=ssrc:2712436124 cname:CvU1TYqkVsjj5XOt\r\n" +
-			"a=ssrc:2712436124 msid:mediaStreamLocal 100\r\n" +
-			"a=ssrc:2712436124 mslabel:mediaStreamLocal\r\n" +
+			"a=ssrc:2712436124 msid:mediaSessionLocal 100\r\n" +
+			"a=ssrc:2712436124 mslabel:mediaSessionLocal\r\n" +
 			"a=ssrc:2712436124 label:100\r\n" +
 			"a=ssrc:1733091158 cname:CvU1TYqkVsjj5XOt\r\n" +
-			"a=ssrc:1733091158 msid:mediaStreamLocal 100\r\n" +
-			"a=ssrc:1733091158 mslabel:mediaStreamLocal\r\n" +
+			"a=ssrc:1733091158 msid:mediaSessionLocal 100\r\n" +
+			"a=ssrc:1733091158 mslabel:mediaSessionLocal\r\n" +
 			"a=ssrc:1733091158 label:100\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Stream\r\n" +
+			"s=Session\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=audio 0 RTP/AVP 111 103 104 9 102 0 8 106 105 13 110 112 113 126\r\n" +
@@ -291,129 +295,131 @@ var casesMedias = []struct {
 			"a=rtpmap:127 red/90000\r\n" +
 			"a=rtpmap:124 rtx/90000\r\n" +
 			"a=fmtp:124 apt=127\r\na=rtpmap:125 ulpfec/90000\r\n",
-		Medias{
-			{
-				Type:      "audio",
-				Direction: DirectionSendonly,
-				Formats: []format.Format{
-					&format.Opus{
-						PayloadTyp: 111,
-						IsStereo:   false,
-					},
-					&format.Generic{
-						PayloadTyp: 103,
-						RTPMa:      "ISAC/16000",
-						ClockRat:   16000,
-					},
-					&format.Generic{
-						PayloadTyp: 104,
-						RTPMa:      "ISAC/32000",
-						ClockRat:   32000,
-					},
-					&format.G722{},
-					&format.Generic{
-						PayloadTyp: 102,
-						RTPMa:      "ILBC/8000",
-						ClockRat:   8000,
-					},
-					&format.G711{
-						MULaw: true,
-					},
-					&format.G711{
-						MULaw: false,
-					},
-					&format.Generic{
-						PayloadTyp: 106,
-						RTPMa:      "CN/32000",
-						ClockRat:   32000,
-					},
-					&format.Generic{
-						PayloadTyp: 105,
-						RTPMa:      "CN/16000",
-						ClockRat:   16000,
-					},
-					&format.Generic{
-						PayloadTyp: 13,
-						RTPMa:      "CN/8000",
-						ClockRat:   8000,
-					},
-					&format.Generic{
-						PayloadTyp: 110,
-						RTPMa:      "telephone-event/48000",
-						ClockRat:   48000,
-					},
-					&format.Generic{
-						PayloadTyp: 112,
-						RTPMa:      "telephone-event/32000",
-						ClockRat:   32000,
-					},
-					&format.Generic{
-						PayloadTyp: 113,
-						RTPMa:      "telephone-event/16000",
-						ClockRat:   16000,
-					},
-					&format.Generic{
-						PayloadTyp: 126,
-						RTPMa:      "telephone-event/8000",
-						ClockRat:   8000,
+		Session{
+			Medias: []*Media{
+				{
+					Type:      "audio",
+					Direction: MediaDirectionSendonly,
+					Formats: []format.Format{
+						&format.Opus{
+							PayloadTyp: 111,
+							IsStereo:   false,
+						},
+						&format.Generic{
+							PayloadTyp: 103,
+							RTPMa:      "ISAC/16000",
+							ClockRat:   16000,
+						},
+						&format.Generic{
+							PayloadTyp: 104,
+							RTPMa:      "ISAC/32000",
+							ClockRat:   32000,
+						},
+						&format.G722{},
+						&format.Generic{
+							PayloadTyp: 102,
+							RTPMa:      "ILBC/8000",
+							ClockRat:   8000,
+						},
+						&format.G711{
+							MULaw: true,
+						},
+						&format.G711{
+							MULaw: false,
+						},
+						&format.Generic{
+							PayloadTyp: 106,
+							RTPMa:      "CN/32000",
+							ClockRat:   32000,
+						},
+						&format.Generic{
+							PayloadTyp: 105,
+							RTPMa:      "CN/16000",
+							ClockRat:   16000,
+						},
+						&format.Generic{
+							PayloadTyp: 13,
+							RTPMa:      "CN/8000",
+							ClockRat:   8000,
+						},
+						&format.Generic{
+							PayloadTyp: 110,
+							RTPMa:      "telephone-event/48000",
+							ClockRat:   48000,
+						},
+						&format.Generic{
+							PayloadTyp: 112,
+							RTPMa:      "telephone-event/32000",
+							ClockRat:   32000,
+						},
+						&format.Generic{
+							PayloadTyp: 113,
+							RTPMa:      "telephone-event/16000",
+							ClockRat:   16000,
+						},
+						&format.Generic{
+							PayloadTyp: 126,
+							RTPMa:      "telephone-event/8000",
+							ClockRat:   8000,
+						},
 					},
 				},
-			},
-			{
-				Type:      "video",
-				Direction: DirectionSendonly,
-				Formats: []format.Format{
-					&format.VP8{
-						PayloadTyp: 96,
-					},
-					&format.Generic{
-						PayloadTyp: 97,
-						RTPMa:      "rtx/90000",
-						FMT: map[string]string{
-							"apt": "96",
+				{
+					Type:      "video",
+					Direction: MediaDirectionSendonly,
+					Formats: []format.Format{
+						&format.VP8{
+							PayloadTyp: 96,
 						},
-						ClockRat: 90000,
-					},
-					&format.VP9{
-						PayloadTyp: 98,
-					},
-					&format.Generic{
-						PayloadTyp: 99,
-						RTPMa:      "rtx/90000",
-						FMT: map[string]string{
-							"apt": "98",
+						&format.Generic{
+							PayloadTyp: 97,
+							RTPMa:      "rtx/90000",
+							FMT: map[string]string{
+								"apt": "96",
+							},
+							ClockRat: 90000,
 						},
-						ClockRat: 90000,
-					},
-					&format.H264{
-						PayloadTyp:        100,
-						PacketizationMode: 1,
-					},
-					&format.Generic{
-						PayloadTyp: 101,
-						RTPMa:      "rtx/90000",
-						FMT: map[string]string{
-							"apt": "100",
+						&format.VP9{
+							PayloadTyp: 98,
 						},
-						ClockRat: 90000,
-					},
-					&format.Generic{
-						PayloadTyp: 127,
-						RTPMa:      "red/90000",
-						ClockRat:   90000,
-					},
-					&format.Generic{
-						PayloadTyp: 124,
-						RTPMa:      "rtx/90000",
-						FMT: map[string]string{
-							"apt": "127",
+						&format.Generic{
+							PayloadTyp: 99,
+							RTPMa:      "rtx/90000",
+							FMT: map[string]string{
+								"apt": "98",
+							},
+							ClockRat: 90000,
 						},
-						ClockRat: 90000,
-					},
-					&format.Generic{
-						PayloadTyp: 125,
-						RTPMa:      "ulpfec/90000",
-						ClockRat:   90000,
+						&format.H264{
+							PayloadTyp:        100,
+							PacketizationMode: 1,
+						},
+						&format.Generic{
+							PayloadTyp: 101,
+							RTPMa:      "rtx/90000",
+							FMT: map[string]string{
+								"apt": "100",
+							},
+							ClockRat: 90000,
+						},
+						&format.Generic{
+							PayloadTyp: 127,
+							RTPMa:      "red/90000",
+							ClockRat:   90000,
+						},
+						&format.Generic{
+							PayloadTyp: 124,
+							RTPMa:      "rtx/90000",
+							FMT: map[string]string{
+								"apt": "127",
+							},
+							ClockRat: 90000,
+						},
+						&format.Generic{
+							PayloadTyp: 125,
+							RTPMa:      "ulpfec/90000",
+							ClockRat:   90000,
+						},
 					},
 				},
 			},
@@ -433,7 +439,7 @@ var casesMedias = []struct {
 			"sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Stream\r\n" +
+			"s=Session\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 96 98\r\n" +
@@ -442,22 +448,24 @@ var casesMedias = []struct {
 			"a=fmtp:96 packetization-mode=1; profile-level-id=4D002A; " +
 			"sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==\r\n" +
 			"a=rtpmap:98 MetaData\r\n",
-		Medias{
-			{
-				Type: "video",
-				Formats: []format.Format{
-					&format.H264{
-						PayloadTyp: 96,
-						SPS: []byte{
-							0x67, 0x4d, 0x00, 0x2a, 0x9d, 0xa8, 0x1e, 0x00,
-							0x89, 0xf9, 0x66, 0xe0, 0x20, 0x20, 0x20, 0x40,
+		Session{
+			Medias: []*Media{
+				{
+					Type: "video",
+					Formats: []format.Format{
+						&format.H264{
+							PayloadTyp: 96,
+							SPS: []byte{
+								0x67, 0x4d, 0x00, 0x2a, 0x9d, 0xa8, 0x1e, 0x00,
+								0x89, 0xf9, 0x66, 0xe0, 0x20, 0x20, 0x20, 0x40,
+							},
+							PPS:               []byte{0x68, 0xee, 0x3c, 0x80},
+							PacketizationMode: 1,
 						},
-						PPS:               []byte{0x68, 0xee, 0x3c, 0x80},
-						PacketizationMode: 1,
-					},
-					&format.Generic{
-						PayloadTyp: 98,
-						RTPMa:      "MetaData",
+						&format.Generic{
+							PayloadTyp: 98,
+							RTPMa:      "MetaData",
+						},
 					},
 				},
 			},
@@ -480,7 +488,7 @@ var casesMedias = []struct {
 			"a=sendonly\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Stream\r\n" +
+			"s=Session\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 26\r\n" +
@@ -495,24 +503,26 @@ var casesMedias = []struct {
 			"a=control:rtsp://192.168.0.1/audioback\r\n" +
 			"a=sendonly\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n",
-		Medias{
-			{
-				Type:      "video",
-				Direction: DirectionRecvonly,
-				Control:   "rtsp://192.168.0.1/video",
-				Formats:   []format.Format{&format.MJPEG{}},
-			},
-			{
-				Type:      "audio",
-				Direction: DirectionRecvonly,
-				Control:   "rtsp://192.168.0.1/audio",
-				Formats:   []format.Format{&format.G711{MULaw: true}},
-			},
-			{
-				Type:      "audio",
-				Direction: DirectionSendonly,
-				Control:   "rtsp://192.168.0.1/audioback",
-				Formats:   []format.Format{&format.G711{MULaw: true}},
+		Session{
+			Medias: []*Media{
+				{
+					Type:      "video",
+					Direction: MediaDirectionRecvonly,
+					Control:   "rtsp://192.168.0.1/video",
+					Formats:   []format.Format{&format.MJPEG{}},
+				},
+				{
+					Type:      "audio",
+					Direction: MediaDirectionRecvonly,
+					Control:   "rtsp://192.168.0.1/audio",
+					Formats:   []format.Format{&format.G711{MULaw: true}},
+				},
+				{
+					Type:      "audio",
+					Direction: MediaDirectionSendonly,
+					Control:   "rtsp://192.168.0.1/audioback",
+					Formats:   []format.Format{&format.G711{MULaw: true}},
+				},
 			},
 		},
 	},
@@ -526,20 +536,22 @@ var casesMedias = []struct {
 			"a=rtpmap:95 TP-LINK/90000\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Stream\r\n" +
+			"s=Session\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=application/TP-LINK 0 RTP/AVP 95\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:95 TP-LINK/90000\r\n",
-		Medias{
-			{
-				Type: "application/TP-LINK",
-				Formats: []format.Format{&format.Generic{
-					PayloadTyp: 95,
-					RTPMa:      "TP-LINK/90000",
-					ClockRat:   90000,
-				}},
+		Session{
+			Medias: []*Media{
+				{
+					Type: "application/TP-LINK",
+					Formats: []format.Format{&format.Generic{
+						PayloadTyp: 95,
+						RTPMa:      "TP-LINK/90000",
+						ClockRat:   90000,
+					}},
+				},
 			},
 		},
 	},
@@ -554,20 +566,22 @@ var casesMedias = []struct {
 			"a=rtpmap:95 MERCURY/90000\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Stream\r\n" +
+			"s=Session\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=application/MERCURY 0 RTP/AVP 95\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:95 MERCURY/90000\r\n",
-		Medias{
-			{
-				Type: "application/MERCURY",
-				Formats: []format.Format{&format.Generic{
-					PayloadTyp: 95,
-					RTPMa:      "MERCURY/90000",
-					ClockRat:   90000,
-				}},
+		Session{
+			Medias: []*Media{
+				{
+					Type: "application/MERCURY",
+					Formats: []format.Format{&format.Generic{
+						PayloadTyp: 95,
+						RTPMa:      "MERCURY/90000",
+						ClockRat:   90000,
+					}},
+				},
 			},
 		},
 	},
@@ -582,20 +596,22 @@ var casesMedias = []struct {
 			"a=fmtp:96 packetization-mode=1\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Stream\r\n" +
+			"s=Session\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 96\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
 			"a=fmtp:96 packetization-mode=1\r\n",
-		Medias{
-			{
-				Type: "video",
-				Formats: []format.Format{
-					&format.H264{
-						PayloadTyp:        96,
-						PacketizationMode: 1,
+		Session{
+			Medias: []*Media{
+				{
+					Type: "video",
+					Formats: []format.Format{
+						&format.H264{
+							PayloadTyp:        96,
+							PacketizationMode: 1,
+						},
 					},
 				},
 			},
@@ -603,22 +619,22 @@ var casesMedias = []struct {
 	},
 }
 
-func TestMediasUnmarshal(t *testing.T) {
-	for _, ca := range casesMedias {
+func TestSessionUnmarshal(t *testing.T) {
+	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
 			var sdp sdp.SessionDescription
 			err := sdp.Unmarshal([]byte(ca.in))
 			require.NoError(t, err)
 
-			var medias Medias
-			err = medias.Unmarshal(sdp.MediaDescriptions)
+			var desc Session
+			err = desc.Unmarshal(&sdp)
 			require.NoError(t, err)
-			require.Equal(t, ca.medias, medias)
+			require.Equal(t, ca.desc, desc)
 		})
 	}
 }
 
-func TestMediasUnmarshalErrors(t *testing.T) {
+func TestSessionUnmarshalErrors(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		sdp  string
@@ -646,24 +662,24 @@ func TestMediasUnmarshalErrors(t *testing.T) {
 			err := sd.Unmarshal([]byte(ca.sdp))
 			require.NoError(t, err)
 
-			var medias Medias
-			err = medias.Unmarshal(sd.MediaDescriptions)
+			var desc Session
+			err = desc.Unmarshal(&sd)
 			require.EqualError(t, err, ca.err)
 		})
 	}
 }
 
-func TestMediasMarshal(t *testing.T) {
-	for _, ca := range casesMedias {
+func TestSessionMarshal(t *testing.T) {
+	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
-			byts, err := ca.medias.Marshal(false).Marshal()
+			byts, err := ca.desc.Marshal(false)
 			require.NoError(t, err)
 			require.Equal(t, ca.out, string(byts))
 		})
 	}
 }
 
-func TestMediasFindFormat(t *testing.T) {
+func TestSessionFindFormat(t *testing.T) {
 	tr := &format.Generic{
 		PayloadTyp: 97,
 		RTPMa:      "rtx/90000",
@@ -674,7 +690,7 @@ func TestMediasFindFormat(t *testing.T) {
 	}
 
 	md := &Media{
-		Type: TypeVideo,
+		Type: MediaTypeVideo,
 		Formats: []format.Format{
 			&format.VP8{
 				PayloadTyp: 96,
@@ -686,21 +702,23 @@ func TestMediasFindFormat(t *testing.T) {
 		},
 	}
 
-	ms := Medias{
-		{
-			Type: TypeAudio,
-			Formats: []format.Format{
-				&format.Opus{
-					PayloadTyp: 111,
-					IsStereo:   true,
+	desc := &Session{
+		Medias: []*Media{
+			{
+				Type: MediaTypeAudio,
+				Formats: []format.Format{
+					&format.Opus{
+						PayloadTyp: 111,
+						IsStereo:   true,
+					},
 				},
 			},
+			md,
 		},
-		md,
 	}
 
 	var forma *format.Generic
-	me := ms.FindFormat(&forma)
+	me := desc.FindFormat(&forma)
 	require.Equal(t, md, me)
 	require.Equal(t, tr, forma)
 }

@@ -9,12 +9,12 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 )
 
 type clientMedia struct {
 	c                      *Client
-	media                  *media.Media
+	media                  *description.Media
 	formats                map[uint8]*clientFormat
 	tcpChannel             int
 	udpRTPListener         *clientUDPListener
@@ -71,7 +71,7 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 	return err
 }
 
-func (cm *clientMedia) setMedia(medi *media.Media) {
+func (cm *clientMedia) setMedia(medi *description.Media) {
 	cm.media = medi
 
 	cm.formats = make(map[uint8]*clientFormat)

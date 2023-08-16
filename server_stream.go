@@ -8,9 +8,9 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 )
 
 func firstFormat(formats map[uint8]*serverStreamFormat) *serverStreamFormat {
@@ -29,27 +29,27 @@ func firstFormat(formats map[uint8]*serverStreamFormat) *serverStreamFormat {
 // - allocating multicast listeners
 // - gathering infos about the stream in order to generate SSRC and RTP-Info
 type ServerStream struct {
-	s      *Server
-	medias media.Medias
+	s    *Server
+	desc *description.Session
 
 	mutex                sync.RWMutex
 	activeUnicastReaders map[*ServerSession]struct{}
 	readers              map[*ServerSession]struct{}
-	streamMedias         map[*media.Media]*serverStreamMedia
+	streamMedias         map[*description.Media]*serverStreamMedia
 	closed               bool
 }
 
 // NewServerStream allocates a ServerStream.
-func NewServerStream(s *Server, medias media.Medias) *ServerStream {
+func NewServerStream(s *Server, desc *description.Session) *ServerStream {
 	st := &ServerStream{
 		s:                    s,
-		medias:               medias,
+		desc:                 desc,
 		activeUnicastReaders: make(map[*ServerSession]struct{}),
 		readers:              make(map[*ServerSession]struct{}),
 	}
 
-	st.streamMedias = make(map[*media.Media]*serverStreamMedia, len(medias))
-	for i, medi := range medias {
+	st.streamMedias = make(map[*description.Media]*serverStreamMedia, len(desc.Medias))
+	for i, medi := range desc.Medias {
 		st.streamMedias[medi] = newServerStreamMedia(st, medi, i)
 	}
 
@@ -71,12 +71,12 @@ func (st *ServerStream) Close() {
 	}
 }
 
-// Medias returns the medias of the stream.
-func (st *ServerStream) Medias() media.Medias {
-	return st.medias
+// Description returns the description of the stream.
+func (st *ServerStream) Description() *description.Session {
+	return st.desc
 }
 
-func (st *ServerStream) senderSSRC(medi *media.Media) (uint32, bool) {
+func (st *ServerStream) senderSSRC(medi *description.Media) (uint32, bool) {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
@@ -92,7 +92,7 @@ func (st *ServerStream) senderSSRC(medi *media.Media) (uint32, bool) {
 	return firstFormat(sm.formats).rtcpSender.SenderSSRC()
 }
 
-func (st *ServerStream) rtpInfoEntry(medi *media.Media, now time.Time) *headers.RTPInfoEntry {
+func (st *ServerStream) rtpInfoEntry(medi *description.Media, now time.Time) *headers.RTPInfoEntry {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
@@ -233,13 +233,13 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 }
 
 // WritePacketRTP writes a RTP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTP(medi *media.Media, pkt *rtp.Packet) error {
+func (st *ServerStream) WritePacketRTP(medi *description.Media, pkt *rtp.Packet) error {
 	return st.WritePacketRTPWithNTP(medi, pkt, st.s.timeNow())
 }
 
 // WritePacketRTPWithNTP writes a RTP packet to all the readers of the stream.
 // ntp is the absolute time of the packet, and is sent with periodic RTCP sender reports.
-func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet, ntp time.Time) error {
+func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet, ntp time.Time) error {
 	byts := make([]byte, st.s.MaxPacketSize)
 	n, err := pkt.MarshalTo(byts)
 	if err != nil {
@@ -260,7 +260,7 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *media.Media, pkt *rtp.Packet
 }
 
 // WritePacketRTCP writes a RTCP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTCP(medi *media.Media, pkt rtcp.Packet) error {
+func (st *ServerStream) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error {
 	byts, err := pkt.Marshal()
 	if err != nil {
 		return err
