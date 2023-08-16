@@ -56,7 +56,7 @@ func main() {
 	}
 
 	// setup a single media
-	_, err = c.Setup(medi, baseURL, 0, 0)
+	_, err = c.Setup(baseURL, medi, 0, 0)
 	if err != nil {
 		panic(err)
 	}

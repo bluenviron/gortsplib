@@ -453,7 +453,7 @@ func (c *Client) StartRecording(address string, medias media.Medias) error {
 		return err
 	}
 
-	err = c.SetupAll(medias, u)
+	err = c.SetupAll(u, medias)
 	if err != nil {
 		c.Close()
 		return err
@@ -507,7 +507,7 @@ func (c *Client) runInner() error {
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-c.setup:
-			res, err := c.doSetup(req.media, req.baseURL, req.rtpPort, req.rtcpPort)
+			res, err := c.doSetup(req.baseURL, req.media, req.rtpPort, req.rtcpPort)
 			req.res <- clientRes{res: res, err: err}
 
 		case req := <-c.play:
@@ -624,7 +624,7 @@ func (c *Client) trySwitchingProtocol() error {
 	}
 
 	for i, cm := range prevMedias {
-		_, err := c.doSetup(cm.media, prevBaseURL, 0, 0)
+		_, err := c.doSetup(prevBaseURL, cm.media, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -660,7 +660,7 @@ func (c *Client) trySwitchingProtocol2(medi *media.Media, baseURL *url.URL) (*ba
 		return nil, err
 	}
 
-	return c.doSetup(medi, baseURL, 0, 0)
+	return c.doSetup(baseURL, medi, 0, 0)
 }
 
 func (c *Client) playRecordStart() {
@@ -1122,8 +1122,8 @@ func (c *Client) Announce(u *url.URL, medias media.Medias) (*base.Response, erro
 }
 
 func (c *Client) doSetup(
-	medi *media.Media,
 	baseURL *url.URL,
+	medi *media.Media,
 	rtpPort int,
 	rtcpPort int,
 ) (*base.Response, error) {
@@ -1235,7 +1235,7 @@ func (c *Client) doSetup(
 			c.OnTransportSwitch(fmt.Errorf("switching to TCP because server requested it"))
 			v := TransportTCP
 			c.effectiveTransport = &v
-			return c.doSetup(medi, baseURL, 0, 0)
+			return c.doSetup(baseURL, medi, 0, 0)
 		}
 
 		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
@@ -1412,8 +1412,8 @@ func (c *Client) findFreeChannelPair() int {
 // rtpPort and rtcpPort are used only if transport is UDP.
 // if rtpPort and rtcpPort are zero, they are chosen automatically.
 func (c *Client) Setup(
-	media *media.Media,
 	baseURL *url.URL,
+	media *media.Media,
 	rtpPort int,
 	rtcpPort int,
 ) (*base.Response, error) {
@@ -1435,9 +1435,9 @@ func (c *Client) Setup(
 }
 
 // SetupAll setups all the given medias.
-func (c *Client) SetupAll(medias media.Medias, baseURL *url.URL) error {
+func (c *Client) SetupAll(baseURL *url.URL, medias media.Medias) error {
 	for _, m := range medias {
-		_, err := c.Setup(m, baseURL, 0, 0)
+		_, err := c.Setup(baseURL, m, 0, 0)
 		if err != nil {
 			return err
 		}

@@ -55,7 +55,7 @@ func readAll(c *Client, ur string, cb func(*media.Media, format.Format, *rtp.Pac
 		return err
 	}
 
-	err = c.SetupAll(medias, baseURL)
+	err = c.SetupAll(baseURL, medias)
 	if err != nil {
 		c.Close()
 		return err
@@ -493,7 +493,7 @@ func TestClientPlay(t *testing.T) {
 			medias, baseURL, _, err := c.Describe(u)
 			require.NoError(t, err)
 
-			err = c.SetupAll(medias, baseURL)
+			err = c.SetupAll(baseURL, medias)
 			require.NoError(t, err)
 
 			c.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
@@ -649,7 +649,7 @@ func TestClientPlayPartial(t *testing.T) {
 	medias, baseURL, _, err := c.Describe(u)
 	require.NoError(t, err)
 
-	_, err = c.Setup(medias[1], baseURL, 0, 0)
+	_, err = c.Setup(baseURL, medias[1], 0, 0)
 	require.NoError(t, err)
 
 	c.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
@@ -2617,7 +2617,7 @@ func TestClientPlaySeek(t *testing.T) {
 	medias, baseURL, _, err := c.Describe(u)
 	require.NoError(t, err)
 
-	err = c.SetupAll(medias, baseURL)
+	err = c.SetupAll(baseURL, medias)
 	require.NoError(t, err)
 
 	_, err = c.Play(&headers.Range{

@@ -82,7 +82,7 @@ func record(c *Client, ur string, medias media.Medias, cb func(*media.Media, rtc
 		return err
 	}
 
-	err = c.SetupAll(medias, u)
+	err = c.SetupAll(u, medias)
 	if err != nil {
 		c.Close()
 		return err

@@ -63,7 +63,7 @@ func (c *client) read() error {
 	}
 
 	// setup all medias
-	err = rc.SetupAll(medias, baseURL)
+	err = rc.SetupAll(baseURL, medias)
 	if err != nil {
 		return err
 	}

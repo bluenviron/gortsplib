@@ -40,7 +40,7 @@ func main() {
 
 	// setup all medias
 	// this must be called before StartRecording(), since it overrides the control attribute.
-	err = reader.SetupAll(medias, baseURL)
+	err = reader.SetupAll(baseURL, medias)
 	if err != nil {
 		panic(err)
 	}

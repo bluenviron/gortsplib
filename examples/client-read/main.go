@@ -38,7 +38,7 @@ func main() {
 	}
 
 	// setup all medias
-	err = c.SetupAll(medias, baseURL)
+	err = c.SetupAll(baseURL, medias)
 	if err != nil {
 		panic(err)
 	}
