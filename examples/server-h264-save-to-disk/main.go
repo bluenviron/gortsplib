@@ -9,9 +9,9 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 )
 
 // This example shows how to
@@ -23,7 +23,7 @@ type serverHandler struct {
 	s           *gortsplib.Server
 	mutex       sync.Mutex
 	publisher   *gortsplib.ServerSession
-	media       *media.Media
+	media       *description.Media
 	format      *format.H264
 	rtpDec      *rtph264.Decoder
 	mpegtsMuxer *mpegtsMuxer
@@ -69,7 +69,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 	// find the H264 media and format
 	var forma *format.H264
-	medi := ctx.Medias.FindFormat(&forma)
+	medi := ctx.Description.FindFormat(&forma)
 	if medi == nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,

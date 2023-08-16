@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/pion/rtp"
 )
 
@@ -38,18 +38,20 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create a media that contains a H264 format
-	medi := &media.Media{
-		Type: media.TypeVideo,
-		Formats: []format.Format{&format.H264{
-			PayloadTyp:        96,
-			PacketizationMode: 1,
+	// create a stream description that contains a H264 format
+	desc := &description.Session{
+		Medias: []*description.Media{{
+			Type: description.MediaTypeVideo,
+			Formats: []format.Format{&format.H264{
+				PayloadTyp:        96,
+				PacketizationMode: 1,
+			}},
 		}},
 	}
 
-	// connect to the server and start recording the media
+	// connect to the server and start recording
 	c := gortsplib.Client{}
-	err = c.StartRecording("rtsp://localhost:8554/mystream", media.Medias{medi})
+	err = c.StartRecording("rtsp://localhost:8554/mystream", desc)
 	if err != nil {
 		panic(err)
 	}
@@ -66,7 +68,7 @@ func main() {
 				}
 
 				// route RTP packet to the server
-				c.WritePacketRTP(medi, &pkt)
+				c.WritePacketRTP(desc.Medias[0], &pkt)
 
 				// read another RTP packet from source
 				n, _, err = pc.ReadFrom(buf)

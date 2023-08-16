@@ -9,8 +9,8 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 )
 
 // This example shows how to
@@ -89,7 +89,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// create the stream and save the publisher
-	sh.stream = gortsplib.NewServerStream(sh.s, ctx.Medias)
+	sh.stream = gortsplib.NewServerStream(sh.s, ctx.Description)
 	sh.publisher = ctx.Session
 
 	return &base.Response{
@@ -127,7 +127,7 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 	log.Printf("record request")
 
 	// called when receiving a RTP packet
-	ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+	ctx.Session.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 		// route the RTP packet to all readers
 		sh.stream.WritePacketRTP(medi, pkt)
 	})

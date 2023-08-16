@@ -25,10 +25,10 @@ func main() {
 	}
 	defer c.Close()
 
-	medias, _, _, err := c.Describe(u)
+	desc, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Printf("available medias: %v\n", medias)
+	log.Printf("available medias: %v\n", desc.Medias)
 }

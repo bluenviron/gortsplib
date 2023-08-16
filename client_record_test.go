@@ -15,15 +15,15 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
-var testH264Media = &media.Media{
-	Type: media.TypeVideo,
+var testH264Media = &description.Media{
+	Type: description.MediaTypeVideo,
 	Formats: []format.Format{&format.H264{
 		PayloadTyp:        96,
 		SPS:               []byte{0x01, 0x02, 0x03, 0x04},
@@ -65,7 +65,7 @@ func ntpTimeGoToRTCP(v time.Time) uint64 {
 	return (s/1000000000)<<32 | (s % 1000000000)
 }
 
-func record(c *Client, ur string, medias media.Medias, cb func(*media.Media, rtcp.Packet)) error {
+func record(c *Client, ur string, medias []*description.Media, cb func(*description.Media, rtcp.Packet)) error {
 	u, err := url.Parse(ur)
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func record(c *Client, ur string, medias media.Medias, cb func(*media.Media, rtc
 		return err
 	}
 
-	_, err = c.Announce(u, medias)
+	_, err = c.Announce(u, &description.Session{Medias: medias})
 	if err != nil {
 		c.Close()
 		return err
@@ -285,10 +285,10 @@ func TestClientRecordSerial(t *testing.T) {
 			}
 
 			medi := testH264Media
-			medias := media.Medias{medi}
+			medias := []*description.Media{medi}
 
 			err = record(&c, scheme+"://localhost:8554/teststream", medias,
-				func(medi *media.Media, pkt rtcp.Packet) {
+				func(medi *description.Media, pkt rtcp.Packet) {
 					require.Equal(t, &testRTCPPacket, pkt)
 					close(recvDone)
 				})
@@ -440,7 +440,7 @@ func TestClientRecordParallel(t *testing.T) {
 			defer func() { <-writerDone }()
 
 			medi := testH264Media
-			medias := media.Medias{medi}
+			medias := []*description.Media{medi}
 
 			err = record(&c, scheme+"://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
@@ -592,7 +592,7 @@ func TestClientRecordPauseSerial(t *testing.T) {
 			}
 
 			medi := testH264Media
-			medias := media.Medias{medi}
+			medias := []*description.Media{medi}
 
 			err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
@@ -722,7 +722,7 @@ func TestClientRecordPauseParallel(t *testing.T) {
 			}
 
 			medi := testH264Media
-			medias := media.Medias{medi}
+			medias := []*description.Media{medi}
 
 			err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
@@ -861,7 +861,7 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 	c := Client{}
 
 	medi := testH264Media
-	medias := media.Medias{medi}
+	medias := []*description.Media{medi}
 
 	err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 	require.NoError(t, err)
@@ -1041,7 +1041,7 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 				},
 			}
 
-			medias := media.Medias{testH264Media}
+			medias := []*description.Media{testH264Media}
 
 			err = record(&c, "rtsp://localhost:8554/stream", medias, nil)
 			require.NoError(t, err)
@@ -1207,7 +1207,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 			}
 
 			medi := testH264Media
-			medias := media.Medias{medi}
+			medias := []*description.Media{medi}
 
 			err = record(&c, "rtsp://localhost:8554/teststream", medias, nil)
 			require.NoError(t, err)
@@ -1345,10 +1345,10 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 		}(),
 	}
 
-	medias := media.Medias{testH264Media}
+	medias := []*description.Media{testH264Media}
 
 	err = record(&c, "rtsp://localhost:8554/teststream", medias,
-		func(medi *media.Media, pkt rtcp.Packet) {
+		func(medi *description.Media, pkt rtcp.Packet) {
 			close(rtcpReceived)
 		})
 	require.NoError(t, err)

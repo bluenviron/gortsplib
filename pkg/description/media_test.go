@@ -1,4 +1,4 @@
-package media
+package description
 
 import (
 	"testing"
@@ -133,11 +133,11 @@ func TestMediaURL(t *testing.T) {
 			err := sd.Unmarshal(ca.sdp)
 			require.NoError(t, err)
 
-			var medias Medias
-			err = medias.Unmarshal(sd.MediaDescriptions)
+			var media Media
+			err = media.Unmarshal(sd.MediaDescriptions[0])
 			require.NoError(t, err)
 
-			ur, err := medias[0].URL(ca.baseURL)
+			ur, err := media.URL(ca.baseURL)
 			require.NoError(t, err)
 			require.Equal(t, ca.ur, ur)
 		})

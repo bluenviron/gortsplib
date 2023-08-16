@@ -19,8 +19,8 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -329,7 +329,7 @@ func TestServerRecordRead(t *testing.T) {
 							}, fmt.Errorf("someone is already publishing")
 						}
 
-						stream = gortsplib.NewServerStream(s, ctx.Medias)
+						stream = gortsplib.NewServerStream(s, ctx.Description)
 						publisher = ctx.Session
 
 						return &base.Response{
@@ -386,7 +386,7 @@ func TestServerRecordRead(t *testing.T) {
 							}, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
-						ctx.Session.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+						ctx.Session.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 							stream.WritePacketRTP(medi, pkt)
 						})
 

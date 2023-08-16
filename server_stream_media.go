@@ -6,19 +6,19 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
 )
 
 type serverStreamMedia struct {
 	st              *ServerStream
-	media           *media.Media
+	media           *description.Media
 	trackID         int
 	formats         map[uint8]*serverStreamFormat
 	multicastWriter *serverMulticastWriter
 }
 
-func newServerStreamMedia(st *ServerStream, medi *media.Media, trackID int) *serverStreamMedia {
+func newServerStreamMedia(st *ServerStream, medi *description.Media, trackID int) *serverStreamMedia {
 	sm := &serverStreamMedia{
 		st:      st,
 		media:   medi,

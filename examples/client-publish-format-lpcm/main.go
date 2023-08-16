@@ -5,8 +5,8 @@ import (
 	"net"
 
 	"github.com/bluenviron/gortsplib/v4"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/pion/rtp"
 )
 
@@ -35,21 +35,23 @@ func main() {
 	}
 	log.Println("stream connected")
 
-	// create a media that contains a LPCM format
-	medi := &media.Media{
-		Type: media.TypeAudio,
-		Formats: []format.Format{&format.LPCM{
-			PayloadTyp:   96,
-			BitDepth:     16,
-			SampleRate:   44100,
-			ChannelCount: 1,
+	// create a description that contains a LPCM format
+	desc := &description.Session{
+		Medias: []*description.Media{{
+			Type: description.MediaTypeVideo,
+			Formats: []format.Format{&format.LPCM{
+				PayloadTyp:   96,
+				BitDepth:     16,
+				SampleRate:   44100,
+				ChannelCount: 1,
+			}},
 		}},
 	}
 
 	c := gortsplib.Client{}
 
-	// connect to the server and start recording the media
-	err = c.StartRecording("rtsp://localhost:8554/mystream", media.Medias{medi})
+	// connect to the server and start recording
+	err = c.StartRecording("rtsp://localhost:8554/mystream", desc)
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +66,7 @@ func main() {
 		}
 
 		// route RTP packet to the server
-		err = c.WritePacketRTP(medi, &pkt)
+		err = c.WritePacketRTP(desc.Medias[0], &pkt)
 		if err != nil {
 			panic(err)
 		}

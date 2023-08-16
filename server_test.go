@@ -11,8 +11,8 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -353,7 +353,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream := NewServerStream(s, media.Medias{testH264Media})
+			stream := NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
 			defer stream.Close()
 
 			h.stream = stream
@@ -452,7 +452,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, media.Medias{testH264Media})
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
 	defer stream.Close()
 
 	nconn1, err := net.Dial("tcp", "localhost:8554")
@@ -545,7 +545,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, media.Medias{testH264Media})
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -620,7 +620,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, media.Medias{testH264Media})
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -731,7 +731,7 @@ func TestServerGetSetParameter(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, media.Medias{testH264Media})
+			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -881,7 +881,7 @@ func TestServerSessionClose(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, media.Medias{testH264Media})
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -962,7 +962,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, media.Medias{testH264Media})
+			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1030,7 +1030,7 @@ func TestServerSessionTeardown(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, media.Medias{testH264Media})
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1104,7 +1104,7 @@ func TestServerAuth(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	medias := media.Medias{testH264Media}
+	medias := []*description.Media{testH264Media}
 
 	req := base.Request{
 		Method: base.Announce,
@@ -1113,7 +1113,7 @@ func TestServerAuth(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: mustMarshalMedias(medias),
+		Body: mediasToSDP(medias),
 	}
 
 	res, err := writeReqReadRes(conn, req)

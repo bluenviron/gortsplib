@@ -2,7 +2,7 @@ package gortsplib
 
 import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 )
 
 // ServerHandler is the interface implemented by all the server handlers.
@@ -83,12 +83,12 @@ type ServerHandlerOnDescribe interface {
 
 // ServerHandlerOnAnnounceCtx is the context of OnAnnounce.
 type ServerHandlerOnAnnounceCtx struct {
-	Session *ServerSession
-	Conn    *ServerConn
-	Request *base.Request
-	Path    string
-	Query   string
-	Medias  media.Medias
+	Session     *ServerSession
+	Conn        *ServerConn
+	Request     *base.Request
+	Path        string
+	Query       string
+	Description *description.Session
 }
 
 // ServerHandlerOnAnnounce can be implemented by a ServerHandler.

@@ -11,7 +11,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
@@ -134,8 +134,7 @@ func TestClientSession(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, base.HeaderValue{"123456"}, req.Header["Session"])
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -143,7 +142,7 @@ func TestClientSession(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Session":      base.HeaderValue{"123456"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 	}()
@@ -157,7 +156,7 @@ func TestClientSession(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	_, _, _, err = c.Describe(u)
+	_, _, err = c.Describe(u)
 	require.NoError(t, err)
 }
 
@@ -212,15 +211,14 @@ func TestClientAuth(t *testing.T) {
 		err = auth.Validate(req, "myuser", "mypass", nil, nil, "IPCAM", nonce)
 		require.NoError(t, err)
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 	}()
@@ -234,7 +232,7 @@ func TestClientAuth(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	_, _, _, err = c.Describe(u)
+	_, _, err = c.Describe(u)
 	require.NoError(t, err)
 }
 
@@ -272,7 +270,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		medias := media.Medias{testH264Media}
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -280,7 +278,7 @@ func TestClientDescribeCharset(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 	}()
@@ -294,7 +292,7 @@ func TestClientDescribeCharset(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	_, _, _, err = c.Describe(u)
+	_, _, err = c.Describe(u)
 	require.NoError(t, err)
 }
 
@@ -312,7 +310,7 @@ func TestClientClose(t *testing.T) {
 	_, err = c.Options(u)
 	require.EqualError(t, err, "terminated")
 
-	_, _, _, err = c.Describe(u)
+	_, _, err = c.Describe(u)
 	require.EqualError(t, err, "terminated")
 
 	_, err = c.Announce(u, nil)

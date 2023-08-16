@@ -10,12 +10,12 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 )
 
 type serverSessionMedia struct {
 	ss                     *ServerSession
-	media                  *media.Media
+	media                  *description.Media
 	tcpChannel             int
 	udpRTPReadPort         int
 	udpRTPWriteAddr        *net.UDPAddr
@@ -30,7 +30,7 @@ type serverSessionMedia struct {
 	onPacketRTCP           OnPacketRTCPFunc
 }
 
-func newServerSessionMedia(ss *ServerSession, medi *media.Media) *serverSessionMedia {
+func newServerSessionMedia(ss *ServerSession, medi *description.Media) *serverSessionMedia {
 	sm := &serverSessionMedia{
 		ss:           ss,
 		media:        medi,

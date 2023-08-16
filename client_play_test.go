@@ -12,15 +12,16 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/ipv4"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/media"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
@@ -29,8 +30,34 @@ func ipPtr(v net.IP) *net.IP {
 	return &v
 }
 
-func mustMarshalMedias(medias media.Medias) []byte {
-	byts, err := medias.Marshal(false).Marshal()
+func mediasToSDP(medias []*description.Media) []byte {
+	resetMediaControls(medias)
+
+	sout := &psdp.SessionDescription{
+		SessionName: psdp.SessionName("Stream"),
+		Origin: psdp.Origin{
+			Username:       "-",
+			NetworkType:    "IN",
+			AddressType:    "IP4",
+			UnicastAddress: "127.0.0.1",
+		},
+		// required by Darwin Streaming Server
+		ConnectionInformation: &psdp.ConnectionInformation{
+			NetworkType: "IN",
+			AddressType: "IP4",
+			Address:     &psdp.Address{Address: "0.0.0.0"},
+		},
+		TimeDescriptions: []psdp.TimeDescription{
+			{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
+		},
+		MediaDescriptions: make([]*psdp.MediaDescription, len(medias)),
+	}
+
+	for i, media := range medias {
+		sout.MediaDescriptions[i] = media.Marshal()
+	}
+
+	byts, err := sout.Marshal()
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +80,7 @@ func mustMarshalPacketRTCP(pkt rtcp.Packet) []byte {
 	return byts
 }
 
-func readAll(c *Client, ur string, cb func(*media.Media, format.Format, *rtp.Packet)) error {
+func readAll(c *Client, ur string, cb func(*description.Media, format.Format, *rtp.Packet)) error {
 	u, err := url.Parse(ur)
 	if err != nil {
 		return err
@@ -64,13 +91,13 @@ func readAll(c *Client, ur string, cb func(*media.Media, format.Format, *rtp.Pac
 		return err
 	}
 
-	medias, baseURL, _, err := c.Describe(u)
+	sd, _, err := c.Describe(u)
 	if err != nil {
 		c.Close()
 		return err
 	}
 
-	err = c.SetupAll(baseURL, medias)
+	err = c.SetupAll(sd.BaseURL, sd.Medias)
 	if err != nil {
 		c.Close()
 		return err
@@ -92,8 +119,8 @@ func readAll(c *Client, ur string, cb func(*media.Media, format.Format, *rtp.Pac
 func TestClientPlayFormats(t *testing.T) {
 	media1 := testH264Media
 
-	media2 := &media.Media{
-		Type: media.TypeAudio,
+	media2 := &description.Media{
+		Type: description.MediaTypeAudio,
 		Formats: []format.Format{&format.MPEG4Audio{
 			PayloadTyp: 96,
 			Config: &mpeg4audio.Config{
@@ -107,8 +134,8 @@ func TestClientPlayFormats(t *testing.T) {
 		}},
 	}
 
-	media3 := &media.Media{
-		Type: media.TypeAudio,
+	media3 := &description.Media{
+		Type: description.MediaTypeAudio,
 		Formats: []format.Format{&format.MPEG4Audio{
 			PayloadTyp: 96,
 			Config: &mpeg4audio.Config{
@@ -157,8 +184,7 @@ func TestClientPlayFormats(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		medias := media.Medias{media1, media2, media3}
-		resetMediaControls(medias)
+		medias := []*description.Media{media1, media2, media3}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -166,7 +192,7 @@ func TestClientPlayFormats(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 
@@ -293,17 +319,16 @@ func TestClientPlay(t *testing.T) {
 				err = forma.Init()
 				require.NoError(t, err)
 
-				medias := media.Medias{
-					&media.Media{
+				medias := []*description.Media{
+					{
 						Type:    "application",
 						Formats: []format.Format{forma},
 					},
-					&media.Media{
+					{
 						Type:    "application",
 						Formats: []format.Format{forma},
 					},
 				}
-				resetMediaControls(medias)
 
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
@@ -311,7 +336,7 @@ func TestClientPlay(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{scheme + "://" + listenIP + ":8554/test/stream?param=value/"},
 					},
-					Body: mustMarshalMedias(medias),
+					Body: mediasToSDP(medias),
 				})
 				require.NoError(t, err)
 
@@ -505,13 +530,13 @@ func TestClientPlay(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			medias, baseURL, _, err := c.Describe(u)
+			sd, _, err := c.Describe(u)
 			require.NoError(t, err)
 
-			err = c.SetupAll(baseURL, medias)
+			err = c.SetupAll(sd.BaseURL, sd.Medias)
 			require.NoError(t, err)
 
-			c.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+			c.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 				require.Equal(t, &testRTPPacket, pkt)
 				err := c.WritePacketRTCP(medi, &testRTCPPacket)
 				require.NoError(t, err)
@@ -569,17 +594,16 @@ func TestClientPlayPartial(t *testing.T) {
 		err = forma.Init()
 		require.NoError(t, err)
 
-		medias := media.Medias{
-			&media.Media{
+		medias := []*description.Media{
+			{
 				Type:    "application",
 				Formats: []format.Format{forma},
 			},
-			&media.Media{
+			{
 				Type:    "application",
 				Formats: []format.Format{forma},
 			},
 		}
-		resetMediaControls(medias)
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -587,7 +611,7 @@ func TestClientPlayPartial(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://" + listenIP + ":8554/teststream/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 
@@ -661,15 +685,15 @@ func TestClientPlayPartial(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	medias, baseURL, _, err := c.Describe(u)
+	sd, _, err := c.Describe(u)
 	require.NoError(t, err)
 
-	_, err = c.Setup(baseURL, medias[1], 0, 0)
+	_, err = c.Setup(sd.BaseURL, sd.Medias[1], 0, 0)
 	require.NoError(t, err)
 
-	c.OnPacketRTPAny(func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
-		require.Equal(t, medias[1], medi)
-		require.Equal(t, medias[1].Formats[0], forma)
+	c.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+		require.Equal(t, sd.Medias[1], medi)
+		require.Equal(t, sd.Medias[1].Formats[0], forma)
 		require.Equal(t, &testRTPPacket, pkt)
 		close(packetRecv)
 	})
@@ -721,8 +745,7 @@ func TestClientPlayContentBase(t *testing.T) {
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-				medias := media.Medias{testH264Media}
-				resetMediaControls(medias)
+				medias := []*description.Media{testH264Media}
 
 				switch ca {
 				case "absent":
@@ -731,12 +754,12 @@ func TestClientPlayContentBase(t *testing.T) {
 						Header: base.Header{
 							"Content-Type": base.HeaderValue{"application/sdp"},
 						},
-						Body: mustMarshalMedias(medias),
+						Body: mediasToSDP(medias),
 					})
 					require.NoError(t, err)
 
 				case "inside control attribute":
-					body := string(mustMarshalMedias(medias))
+					body := string(mediasToSDP(medias))
 					body = strings.Replace(body, "t=0 0", "t=0 0\r\na=control:rtsp://localhost:8554/teststream", 1)
 
 					err = conn.WriteResponse(&base.Response{
@@ -851,8 +874,7 @@ func TestClientPlayAnyPort(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				medias := media.Medias{testH264Media}
-				resetMediaControls(medias)
+				medias := []*description.Media{testH264Media}
 
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
@@ -860,7 +882,7 @@ func TestClientPlayAnyPort(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalMedias(medias),
+					Body: mediasToSDP(medias),
 				})
 				require.NoError(t, err)
 
@@ -950,9 +972,9 @@ func TestClientPlayAnyPort(t *testing.T) {
 				AnyPortEnable: true,
 			}
 
-			var med *media.Media
+			var med *description.Media
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
-				func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+				func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 					require.Equal(t, &testRTPPacket, pkt)
 					med = medi
 					close(packetRecv)
@@ -1007,8 +1029,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.Describe, req.Method)
 
-			medias := media.Medias{testH264Media}
-			resetMediaControls(medias)
+			medias := []*description.Media{testH264Media}
 
 			err = conn.WriteResponse(&base.Response{
 				StatusCode: base.StatusOK,
@@ -1016,7 +1037,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					"Content-Type": base.HeaderValue{"application/sdp"},
 					"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 				},
-				Body: mustMarshalMedias(medias),
+				Body: mediasToSDP(medias),
 			})
 			require.NoError(t, err)
 
@@ -1080,7 +1101,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		}
 
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
-			func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+			func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1100,8 +1121,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		go func() {
 			defer close(serverDone)
 
-			medias := media.Medias{testH264Media}
-			resetMediaControls(medias)
+			medias := []*description.Media{testH264Media}
 
 			func() {
 				nconn, err := l.Accept()
@@ -1135,7 +1155,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalMedias(medias),
+					Body: mediasToSDP(medias),
 				})
 				require.NoError(t, err)
 
@@ -1204,7 +1224,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalMedias(medias),
+					Body: mediasToSDP(medias),
 				})
 				require.NoError(t, err)
 
@@ -1260,7 +1280,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		}
 
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
-			func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+			func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1280,8 +1300,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		go func() {
 			defer close(serverDone)
 
-			medias := media.Medias{testH264Media}
-			resetMediaControls(medias)
+			medias := []*description.Media{testH264Media}
 
 			func() {
 				nconn, err := l.Accept()
@@ -1333,7 +1352,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalMedias(medias),
+					Body: mediasToSDP(medias),
 				})
 				require.NoError(t, err)
 
@@ -1415,7 +1434,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalMedias(medias),
+					Body: mediasToSDP(medias),
 				})
 				require.NoError(t, err)
 
@@ -1501,7 +1520,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		}
 
 		err = readAll(&c, "rtsp://myuser:mypass@localhost:8554/teststream",
-			func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+			func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1548,8 +1567,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -1557,7 +1575,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 
@@ -1624,7 +1642,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+		func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 			close(packetRecv)
 		})
 	require.NoError(t, err)
@@ -1743,8 +1761,7 @@ func TestClientPlayRedirect(t *testing.T) {
 						require.Equal(t, base.Describe, req.Method)
 					}
 
-					medias := media.Medias{testH264Media}
-					resetMediaControls(medias)
+					medias := []*description.Media{testH264Media}
 
 					err = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
@@ -1752,7 +1769,7 @@ func TestClientPlayRedirect(t *testing.T) {
 							"Content-Type": base.HeaderValue{"application/sdp"},
 							"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 						},
-						Body: mustMarshalMedias(medias),
+						Body: mediasToSDP(medias),
 					})
 					require.NoError(t, err)
 
@@ -1812,7 +1829,7 @@ func TestClientPlayRedirect(t *testing.T) {
 				ru = "rtsp://testusr:testpwd@localhost:8554/path1"
 			}
 			err = readAll(&c, ru,
-				func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+				func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 					close(packetRecv)
 				})
 			require.NoError(t, err)
@@ -1907,8 +1924,7 @@ func TestClientPlayPause(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				medias := media.Medias{testH264Media}
-				resetMediaControls(medias)
+				medias := []*description.Media{testH264Media}
 
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
@@ -1916,7 +1932,7 @@ func TestClientPlayPause(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalMedias(medias),
+					Body: mediasToSDP(medias),
 				})
 				require.NoError(t, err)
 
@@ -2014,7 +2030,7 @@ func TestClientPlayPause(t *testing.T) {
 			}
 
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
-				func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+				func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 					if atomic.SwapInt32(&firstFrame, 1) == 0 {
 						close(packetRecv)
 					}
@@ -2075,8 +2091,7 @@ func TestClientPlayRTCPReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -2084,7 +2099,7 @@ func TestClientPlayRTCPReport(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 
@@ -2249,8 +2264,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				medias := media.Medias{testH264Media}
-				resetMediaControls(medias)
+				medias := []*description.Media{testH264Media}
 
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
@@ -2258,7 +2272,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 					},
-					Body: mustMarshalMedias(medias),
+					Body: mediasToSDP(medias),
 				})
 				require.NoError(t, err)
 
@@ -2396,8 +2410,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -2405,7 +2418,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 
@@ -2475,7 +2488,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+		func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 			close(recv)
 		})
 	require.NoError(t, err)
@@ -2519,8 +2532,7 @@ func TestClientPlaySeek(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -2528,7 +2540,7 @@ func TestClientPlaySeek(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 
@@ -2625,10 +2637,10 @@ func TestClientPlaySeek(t *testing.T) {
 	require.NoError(t, err)
 	defer c.Close()
 
-	medias, baseURL, _, err := c.Describe(u)
+	sd, _, err := c.Describe(u)
 	require.NoError(t, err)
 
-	err = c.SetupAll(baseURL, medias)
+	err = c.SetupAll(sd.BaseURL, sd.Medias)
 	require.NoError(t, err)
 
 	_, err = c.Play(&headers.Range{
@@ -2683,8 +2695,7 @@ func TestClientPlayKeepaliveFromSession(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -2692,7 +2703,7 @@ func TestClientPlayKeepaliveFromSession(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 
@@ -2803,8 +2814,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -2812,7 +2822,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/test/stream?param=value/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 
@@ -2888,7 +2898,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/test/stream?param=value",
-		func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+		func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 			require.Equal(t, &testRTPPacket, pkt)
 			close(packetRecv)
 		})
@@ -2953,14 +2963,13 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, base.Describe, req.Method)
 
-				medias := media.Medias{&media.Media{
-					Type: media.TypeApplication,
+				medias := []*description.Media{{
+					Type: description.MediaTypeApplication,
 					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 97,
 						RTPMa:      "private/90000",
 					}},
 				}}
-				resetMediaControls(medias)
 
 				err = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
@@ -2968,7 +2977,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 						"Content-Type": base.HeaderValue{"application/sdp"},
 						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/stream/"},
 					},
-					Body: mustMarshalMedias(medias),
+					Body: mediasToSDP(medias),
 				})
 				require.NoError(t, err)
 
@@ -3217,8 +3226,7 @@ func TestClientPlayPacketNTP(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, base.Describe, req.Method)
 
-		medias := media.Medias{testH264Media}
-		resetMediaControls(medias)
+		medias := []*description.Media{testH264Media}
 
 		err = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -3226,7 +3234,7 @@ func TestClientPlayPacketNTP(t *testing.T) {
 				"Content-Type": base.HeaderValue{"application/sdp"},
 				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
 			},
-			Body: mustMarshalMedias(medias),
+			Body: mediasToSDP(medias),
 		})
 		require.NoError(t, err)
 
@@ -3341,7 +3349,7 @@ func TestClientPlayPacketNTP(t *testing.T) {
 	first := false
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *media.Media, forma format.Format, pkt *rtp.Packet) {
+		func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
 			if !first {
 				first = true
 			} else {

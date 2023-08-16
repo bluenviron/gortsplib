@@ -32,14 +32,14 @@ func main() {
 	defer c.Close()
 
 	// find published medias
-	medias, baseURL, _, err := c.Describe(u)
+	desc, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
 	// find the H264 media and format
 	var forma *format.H264
-	medi := medias.FindFormat(&forma)
+	medi := desc.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
@@ -57,7 +57,7 @@ func main() {
 	}
 
 	// setup a single media
-	_, err = c.Setup(baseURL, medi, 0, 0)
+	_, err = c.Setup(desc.BaseURL, medi, 0, 0)
 	if err != nil {
 		panic(err)
 	}

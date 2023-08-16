@@ -11,7 +11,7 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an MPEG4-audio media
+// 2. check if there's an MPEG-4 audio media
 // 3. save the content of the media into a file in MPEG-TS format
 
 func main() {
@@ -31,32 +31,32 @@ func main() {
 	defer c.Close()
 
 	// find published medias
-	medias, baseURL, _, err := c.Describe(u)
+	desc, _, err := c.Describe(u)
 	if err != nil {
 		panic(err)
 	}
 
-	// find the MPEG4-audio media and format
+	// find the MPEG-4 audio media and format
 	var forma *format.MPEG4Audio
-	medi := medias.FindFormat(&forma)
+	medi := desc.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
-	// setup RTP/MPEG4-audio -> MPEG4-audio decoder
+	// setup RTP/MPEG-4 audio -> MPEG-4 audio decoder
 	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)
 	}
 
-	// setup MPEG4-audio -> MPEG-TS muxer
+	// setup MPEG-4 audio -> MPEG-TS muxer
 	mpegtsMuxer, err := newMPEGTSMuxer(forma.Config)
 	if err != nil {
 		panic(err)
 	}
 
 	// setup a single media
-	_, err = c.Setup(baseURL, medi, 0, 0)
+	_, err = c.Setup(desc.BaseURL, medi, 0, 0)
 	if err != nil {
 		panic(err)
 	}
