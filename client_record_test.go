@@ -42,10 +42,7 @@ var testRTPPacket = rtp.Packet{
 	Payload: []byte{0x01, 0x02, 0x03, 0x04},
 }
 
-var testRTPPacketMarshaled = func() []byte {
-	byts, _ := testRTPPacket.Marshal()
-	return byts
-}()
+var testRTPPacketMarshaled = mustMarshalPacketRTP(&testRTPPacket)
 
 var testRTCPPacket = rtcp.SourceDescription{
 	Chunks: []rtcp.SourceDescriptionChunk{
@@ -61,10 +58,7 @@ var testRTCPPacket = rtcp.SourceDescription{
 	},
 }
 
-var testRTCPPacketMarshaled = func() []byte {
-	byts, _ := testRTCPPacket.Marshal()
-	return byts
-}()
+var testRTCPPacketMarshaled = mustMarshalPacketRTCP(&testRTCPPacket)
 
 func ntpTimeGoToRTCP(v time.Time) uint64 {
 	s := uint64(v.UnixNano()) + 2208988800*1000000000

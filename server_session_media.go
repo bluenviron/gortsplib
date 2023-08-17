@@ -108,6 +108,16 @@ func (sm *serverSessionMedia) stop() {
 	}
 }
 
+func (sm *serverSessionMedia) findFormatWithSSRC(ssrc uint32) *serverSessionFormat {
+	for _, format := range sm.formats {
+		tssrc, ok := format.rtcpReceiver.SenderSSRC()
+		if ok && tssrc == ssrc {
+			return format
+		}
+	}
+	return nil
+}
+
 func (sm *serverSessionMedia) writePacketRTPInQueueUDP(payload []byte) {
 	atomic.AddUint64(sm.ss.bytesSent, uint64(len(payload)))
 	sm.ss.s.udpRTPListener.write(payload, sm.udpRTPWriteAddr) //nolint:errcheck
@@ -218,7 +228,7 @@ func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) {
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
-			format := serverFindFormatWithSSRC(sm.formats, sr.SSRC)
+			format := sm.findFormatWithSSRC(sr.SSRC)
 			if format != nil {
 				format.rtcpReceiver.ProcessSenderReport(sr, now)
 			}
@@ -283,7 +293,7 @@ func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) {
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
-			format := serverFindFormatWithSSRC(sm.formats, sr.SSRC)
+			format := sm.findFormatWithSSRC(sr.SSRC)
 			if format != nil {
 				format.rtcpReceiver.ProcessSenderReport(sr, now)
 			}

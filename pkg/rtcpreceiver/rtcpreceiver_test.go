@@ -62,7 +62,8 @@ func TestRTCPReceiverBase(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -76,7 +77,8 @@ func TestRTCPReceiverBase(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	<-done
 }
@@ -132,7 +134,8 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -146,7 +149,8 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	<-done
 }
@@ -205,7 +209,8 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -219,7 +224,8 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	<-done
 }
@@ -278,7 +284,8 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -292,7 +299,8 @@ func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	<-done
 }
@@ -347,7 +355,8 @@ func TestRTCPReceiverJitter(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -361,7 +370,8 @@ func TestRTCPReceiverJitter(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, true)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -375,7 +385,8 @@ func TestRTCPReceiverJitter(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
-	rr.ProcessPacket(&rtpPkt, ts, false)
+	err = rr.ProcessPacket(&rtpPkt, ts, false)
+	require.NoError(t, err)
 
 	<-done
 }

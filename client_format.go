@@ -103,7 +103,12 @@ func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {
 	now := ct.cm.c.timeNow()
 
 	for _, pkt := range packets {
-		ct.rtcpReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
+		err := ct.rtcpReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
+		if err != nil {
+			ct.cm.c.OnDecodeError(err)
+			continue
+		}
+
 		ct.onPacketRTP(pkt)
 	}
 }
@@ -123,6 +128,12 @@ func (ct *clientFormat) readRTPTCP(pkt *rtp.Packet) {
 	}
 
 	now := ct.cm.c.timeNow()
-	ct.rtcpReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
+
+	err := ct.rtcpReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
+	if err != nil {
+		ct.cm.c.OnDecodeError(err)
+		return
+	}
+
 	ct.onPacketRTP(pkt)
 }

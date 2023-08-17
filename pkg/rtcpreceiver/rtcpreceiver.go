@@ -3,6 +3,7 @@ package rtcpreceiver
 
 import (
 	"crypto/rand"
+	"fmt"
 	"sync"
 	"time"
 
@@ -33,14 +34,14 @@ type RTCPReceiver struct {
 	period          time.Duration
 	timeNow         func() time.Time
 	writePacketRTCP func(rtcp.Packet)
-	mutex           sync.Mutex
+	mutex           sync.RWMutex
 
 	// data from RTP packets
 	firstRTPPacketReceived bool
 	timeInitialized        bool
 	sequenceNumberCycles   uint16
-	lastSSRC               uint32
 	lastSequenceNumber     uint16
+	senderSSRC             uint32
 	lastTimeRTP            uint32
 	lastTimeSystem         time.Time
 	totalLost              uint32
@@ -133,7 +134,7 @@ func (rr *RTCPReceiver) report() rtcp.Packet {
 		SSRC: rr.receiverSSRC,
 		Reports: []rtcp.ReceptionReport{
 			{
-				SSRC:               rr.lastSSRC,
+				SSRC:               rr.senderSSRC,
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
 				// equivalent to taking the integer part after multiplying the
 				// loss fraction by 256
@@ -161,7 +162,7 @@ func (rr *RTCPReceiver) report() rtcp.Packet {
 }
 
 // ProcessPacket extracts the needed data from RTP packets.
-func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqualsDTS bool) {
+func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqualsDTS bool) error {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
@@ -169,8 +170,8 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 	if !rr.firstRTPPacketReceived {
 		rr.firstRTPPacketReceived = true
 		rr.totalSinceReport = 1
-		rr.lastSSRC = pkt.SSRC
 		rr.lastSequenceNumber = pkt.SequenceNumber
+		rr.senderSSRC = pkt.SSRC
 
 		if ptsEqualsDTS {
 			rr.timeInitialized = true
@@ -180,6 +181,10 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 
 		// subsequent packets
 	} else {
+		if pkt.SSRC != rr.senderSSRC {
+			return fmt.Errorf("received packet with wrong SSRC %d, expected %d", pkt.SSRC, rr.senderSSRC)
+		}
+
 		diff := int32(pkt.SequenceNumber) - int32(rr.lastSequenceNumber)
 
 		// overflow
@@ -202,7 +207,6 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 		}
 
 		rr.totalSinceReport += uint32(uint16(diff))
-		rr.lastSSRC = pkt.SSRC
 		rr.lastSequenceNumber = pkt.SequenceNumber
 
 		if ptsEqualsDTS {
@@ -220,9 +224,10 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 			rr.timeInitialized = true
 			rr.lastTimeRTP = pkt.Timestamp
 			rr.lastTimeSystem = system
-			rr.lastSSRC = pkt.SSRC
 		}
 	}
+
+	return nil
 }
 
 // ProcessSenderReport extracts the needed data from RTCP sender reports.
@@ -234,13 +239,6 @@ func (rr *RTCPReceiver) ProcessSenderReport(sr *rtcp.SenderReport, system time.T
 	rr.lastSenderReportTimeNTP = sr.NTPTime
 	rr.lastSenderReportTimeRTP = sr.RTPTime
 	rr.lastSenderReportTimeSystem = system
-}
-
-// LastSSRC returns the SSRC of the last RTP packet.
-func (rr *RTCPReceiver) LastSSRC() (uint32, bool) {
-	rr.mutex.Lock()
-	defer rr.mutex.Unlock()
-	return rr.lastSSRC, rr.firstRTPPacketReceived
 }
 
 // PacketNTP returns the NTP timestamp of the packet.
@@ -256,4 +254,11 @@ func (rr *RTCPReceiver) PacketNTP(ts uint32) (time.Time, bool) {
 	timeDiffGo := (time.Duration(timeDiff) * time.Second) / time.Duration(rr.clockRate)
 
 	return ntpTimeRTCPToGo(rr.lastSenderReportTimeNTP).Add(timeDiffGo), true
+}
+
+// SenderSSRC returns the SSRC of outgoing RTP packets.
+func (rr *RTCPReceiver) SenderSSRC() (uint32, bool) {
+	rr.mutex.RLock()
+	defer rr.mutex.RUnlock()
+	return rr.senderSSRC, rr.firstRTPPacketReceived
 }

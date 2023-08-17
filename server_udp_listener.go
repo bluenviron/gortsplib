@@ -10,19 +10,6 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-func serverFindFormatWithSSRC(
-	formats map[uint8]*serverSessionFormat,
-	ssrc uint32,
-) *serverSessionFormat {
-	for _, format := range formats {
-		tssrc, ok := format.rtcpReceiver.LastSSRC()
-		if ok && tssrc == ssrc {
-			return format
-		}
-	}
-	return nil
-}
-
 func joinMulticastGroupOnAtLeastOneInterface(p *ipv4.PacketConn, listenIP net.IP) error {
 	intfs, err := net.Interfaces()
 	if err != nil {

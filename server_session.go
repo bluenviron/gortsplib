@@ -758,7 +758,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		th := headers.Transport{}
 
 		if ss.state == ServerSessionStatePrePlay {
-			ssrc, ok := stream.lastSSRC(medi)
+			ssrc, ok := stream.senderSSRC(medi)
 			if ok {
 				th.SSRC = &ssrc
 			}
