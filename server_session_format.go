@@ -58,7 +58,6 @@ func (sf *serverSessionFormat) start() {
 func (sf *serverSessionFormat) stop() {
 	if sf.rtcpReceiver != nil {
 		sf.rtcpReceiver.Close()
-		sf.rtcpReceiver = nil
 	}
 }
 
@@ -77,7 +76,12 @@ func (sf *serverSessionFormat) readRTPUDP(pkt *rtp.Packet, now time.Time) {
 	}
 
 	for _, pkt := range packets {
-		sf.rtcpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
+		err := sf.rtcpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
+		if err != nil {
+			sf.sm.ss.onDecodeError(err)
+			continue
+		}
+
 		sf.onPacketRTP(pkt)
 	}
 }
@@ -97,6 +101,12 @@ func (sf *serverSessionFormat) readRTPTCP(pkt *rtp.Packet) {
 	}
 
 	now := sf.sm.ss.s.timeNow()
-	sf.rtcpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
+
+	err := sf.rtcpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
+	if err != nil {
+		sf.sm.ss.onDecodeError(err)
+		return
+	}
+
 	sf.onPacketRTP(pkt)
 }

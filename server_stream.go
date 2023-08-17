@@ -13,6 +13,16 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/media"
 )
 
+func firstFormat(formats map[uint8]*serverStreamFormat) *serverStreamFormat {
+	var firstKey uint8
+	for key := range formats {
+		firstKey = key
+		break
+	}
+
+	return formats[firstKey]
+}
+
 // ServerStream represents a data stream.
 // This is in charge of
 // - distributing the stream to each reader
@@ -66,26 +76,20 @@ func (st *ServerStream) Medias() media.Medias {
 	return st.medias
 }
 
-func (st *ServerStream) lastSSRC(medi *media.Media) (uint32, bool) {
+func (st *ServerStream) senderSSRC(medi *media.Media) (uint32, bool) {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
 	sm := st.streamMedias[medi]
 
-	// since lastSSRC() is used to fill SSRC inside the Transport header,
+	// senderSSRC() is used to fill SSRC inside the Transport header.
 	// if there are multiple formats inside a single media stream,
 	// do not return anything, since Transport headers don't support multiple SSRCs.
 	if len(sm.formats) > 1 {
 		return 0, false
 	}
 
-	var firstKey uint8
-	for key := range sm.formats {
-		firstKey = key
-		break
-	}
-
-	return sm.formats[firstKey].rtcpSender.LastSSRC()
+	return firstFormat(sm.formats).rtcpSender.SenderSSRC()
 }
 
 func (st *ServerStream) rtpInfoEntry(medi *media.Media, now time.Time) *headers.RTPInfoEntry {
@@ -101,13 +105,7 @@ func (st *ServerStream) rtpInfoEntry(medi *media.Media, now time.Time) *headers.
 		return nil
 	}
 
-	var firstKey uint8
-	for key := range sm.formats {
-		firstKey = key
-		break
-	}
-
-	format := sm.formats[firstKey]
+	format := firstFormat(sm.formats)
 
 	lastSeqNum, lastTimeRTP, lastTimeNTP, ok := format.rtcpSender.LastPacketData()
 	if !ok {

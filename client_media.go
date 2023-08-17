@@ -136,7 +136,7 @@ func (cm *clientMedia) stop() {
 
 func (cm *clientMedia) findFormatWithSSRC(ssrc uint32) *clientFormat {
 	for _, format := range cm.formats {
-		tssrc, ok := format.rtcpReceiver.LastSSRC()
+		tssrc, ok := format.rtcpReceiver.SenderSSRC()
 		if ok && tssrc == ssrc {
 			return format
 		}
