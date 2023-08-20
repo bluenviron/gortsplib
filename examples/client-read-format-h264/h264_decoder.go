@@ -20,7 +20,7 @@ func frameLineSize(frame *C.AVFrame) *C.int {
 	return (*C.int)(unsafe.Pointer(&frame.linesize[0]))
 }
 
-// h264Decoder is a wrapper around ffmpeg's H264 decoder.
+// h264Decoder is a wrapper around FFmpeg's H264 decoder.
 type h264Decoder struct {
 	codecCtx    *C.AVCodecContext
 	srcFrame    *C.AVFrame
@@ -122,7 +122,7 @@ func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
 		d.dstFramePtr = (*[1 << 30]uint8)(unsafe.Pointer(d.dstFrame.data[0]))[:dstFrameSize:dstFrameSize]
 	}
 
-	// convert frame from YUV420 to RGB
+	// convert color space from YUV420 to RGB
 	res = C.sws_scale(d.swsCtx, frameData(d.srcFrame), frameLineSize(d.srcFrame),
 		0, d.srcFrame.height, frameData(d.dstFrame), frameLineSize(d.dstFrame))
 	if res < 0 {

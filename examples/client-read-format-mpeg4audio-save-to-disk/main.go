@@ -63,7 +63,8 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
-		pts, ok := c.PacketPTS(forma, pkt)
+		// decode timestamp
+		pts, ok := c.PacketPTS(medi, pkt)
 		if !ok {
 			return
 		}

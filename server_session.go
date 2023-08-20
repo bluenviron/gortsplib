@@ -1196,8 +1196,10 @@ func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packe
 
 // PacketPTS returns the PTS of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
-func (ss *ServerSession) PacketPTS(forma format.Format, pkt *rtp.Packet) (time.Duration, bool) {
-	return ss.timeDecoder.Decode(forma, pkt)
+func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Duration, bool) {
+	sm := ss.setuppedMedias[medi]
+	sf := sm.formats[pkt.PayloadType]
+	return ss.timeDecoder.Decode(sf.format, pkt)
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.
