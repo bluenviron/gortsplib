@@ -28,6 +28,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"missing control",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n"),
 			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/path/"),
@@ -36,6 +37,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"absolute control",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:rtsp://localhost/path/trackID=7"),
@@ -45,6 +47,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"absolute control rtsps",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:rtsps://localhost/path/trackID=7"),
@@ -54,6 +57,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"relative control",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
@@ -63,6 +67,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"relative control, subpath",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
@@ -72,6 +77,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"relative control, subpath, without slash",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
@@ -81,6 +87,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"relative control, url with query",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
@@ -92,6 +99,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"relative control, url with special chars and query",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
@@ -103,6 +111,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"relative control, url with query without question mark",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:trackID=5"),
@@ -112,6 +121,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"relative control, control is query",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:?ctype=video"),
@@ -121,6 +131,7 @@ func TestMediaURL(t *testing.T) {
 		{
 			"relative control, control is query and no path",
 			[]byte("v=0\r\n" +
+				"s= \r\n" +
 				"m=video 0 RTP/AVP 96\r\n" +
 				"a=rtpmap:96 H264/90000\r\n" +
 				"a=control:?ctype=video"),

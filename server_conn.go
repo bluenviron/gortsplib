@@ -24,8 +24,9 @@ func getSessionID(header base.Header) string {
 	return ""
 }
 
-func streamDescCopyForServer(d *description.Session, contentBase *url.URL) *description.Session {
+func serverSideDescription(d *description.Session, contentBase *url.URL) *description.Session {
 	out := &description.Session{
+		Title:  d.Title,
 		Medias: make([]*description.Media, len(d.Medias)),
 	}
 
@@ -293,7 +294,7 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 				}
 
 				if stream != nil {
-					byts, _ := streamDescCopyForServer(stream.desc, req.URL).Marshal(multicast)
+					byts, _ := serverSideDescription(stream.desc, req.URL).Marshal(multicast)
 					res.Body = byts
 				}
 			}
