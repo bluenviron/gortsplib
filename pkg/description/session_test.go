@@ -51,8 +51,8 @@ var casesSession = []struct {
 			"a=rtpmap:97 H264/90000\r\n" +
 			"a=fmtp:97 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKy0A8ARPyo=,aO4Bniw=\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=control:rtsp://10.0.100.50/profile5/media.smp/trackID=a\r\n" +
 			"a=recvonly\r\n" +
+			"a=control:rtsp://10.0.100.50/profile5/media.smp/trackID=a\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
 			"a=control\r\n",
@@ -121,8 +121,8 @@ var casesSession = []struct {
 			"a=rtpmap:97 H264/90000\r\n" +
 			"a=fmtp:97 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKy0A8ARPyo=,aO4Bniw=\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=control:trackID=2\r\n" +
 			"a=recvonly\r\n" +
+			"a=control:trackID=2\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
 			"a=control\r\n",
@@ -264,8 +264,9 @@ var casesSession = []struct {
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=audio 0 RTP/AVP 111 103 104 9 102 0 8 106 105 13 110 112 113 126\r\n" +
-			"a=control\r\n" +
+			"a=mid:audio\r\n" +
 			"a=sendonly\r\n" +
+			"a=control\r\n" +
 			"a=rtpmap:111 opus/48000/2\r\n" +
 			"a=fmtp:111 sprop-stereo=0\r\n" +
 			"a=rtpmap:103 ISAC/16000\r\n" +
@@ -282,8 +283,9 @@ var casesSession = []struct {
 			"a=rtpmap:113 telephone-event/16000\r\n" +
 			"a=rtpmap:126 telephone-event/8000\r\n" +
 			"m=video 0 RTP/AVP 96 97 98 99 100 101 127 124 125\r\n" +
-			"a=control\r\n" +
+			"a=mid:video\r\n" +
 			"a=sendonly\r\n" +
+			"a=control\r\n" +
 			"a=rtpmap:96 VP8/90000\r\n" +
 			"a=rtpmap:97 rtx/90000\r\n" +
 			"a=fmtp:97 apt=96\r\n" +
@@ -301,6 +303,7 @@ var casesSession = []struct {
 			Title: ``,
 			Medias: []*Media{
 				{
+					ID:        "audio",
 					Type:      MediaTypeAudio,
 					Direction: MediaDirectionSendonly,
 					Formats: []format.Format{
@@ -368,6 +371,7 @@ var casesSession = []struct {
 					},
 				},
 				{
+					ID:        "video",
 					Type:      MediaTypeVideo,
 					Direction: MediaDirectionSendonly,
 					Formats: []format.Format{
@@ -496,16 +500,16 @@ var casesSession = []struct {
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 26\r\n" +
-			"a=control:rtsp://192.168.0.1/video\r\n" +
 			"a=recvonly\r\n" +
+			"a=control:rtsp://192.168.0.1/video\r\n" +
 			"a=rtpmap:26 JPEG/90000\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=control:rtsp://192.168.0.1/audio\r\n" +
 			"a=recvonly\r\n" +
+			"a=control:rtsp://192.168.0.1/audio\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=control:rtsp://192.168.0.1/audioback\r\n" +
 			"a=sendonly\r\n" +
+			"a=control:rtsp://192.168.0.1/audioback\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n",
 		Session{
 			Title: `RTSP Session with audiobackchannel`,
@@ -709,6 +713,27 @@ func FuzzSessionUnmarshalErrors(f *testing.F) {
 		"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
 		"a=fmtp:97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=zzz1210\r\n" +
 		"a=control:streamid=1\r\n")
+
+	f.Add("v=0\r\n" +
+		"o=- 4158123474391860926 2 IN IP4 127.0.0.1\r\n" +
+		"s=-\r\n" +
+		"t=0 0\r\n" +
+		"m=video 42504 RTP/AVP 96\r\n" +
+		"a=rtpmap:96 H264/90000\r\n" +
+		"a=fmtp:96 packetization-mode=1\r\n" +
+		"m=audio 0 RTP/AVP/TCP 0\r\n" +
+		"a=mid:2\r\n")
+
+	f.Add("v=0\r\n" +
+		"o=- 4158123474391860926 2 IN IP4 127.0.0.1\r\n" +
+		"s=-\r\n" +
+		"t=0 0\r\n" +
+		"m=video 42504 RTP/AVP 96\r\n" +
+		"a=mid:2\r\n" +
+		"a=rtpmap:96 H264/90000\r\n" +
+		"a=fmtp:96 packetization-mode=1\r\n" +
+		"m=audio 0 RTP/AVP/TCP 0\r\n" +
+		"a=mid:2\r\n")
 
 	f.Fuzz(func(t *testing.T, enc string) {
 		var sd sdp.SessionDescription
