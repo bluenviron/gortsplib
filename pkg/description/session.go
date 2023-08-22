@@ -9,10 +9,13 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
-// Session is the description of a RTSP session.
+// Session is the description of a RTSP stream.
 type Session struct {
 	// base URL of the stream (read only).
 	BaseURL *url.URL
+
+	// title of the stream (optional).
+	Title string
 
 	// available media streams.
 	Medias []*Media
@@ -32,6 +35,11 @@ func (d *Session) FindFormat(forma interface{}) *Media {
 
 // Unmarshal decodes the description from SDP.
 func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
+	d.Title = string(ssd.SessionName)
+	if d.Title == " " {
+		d.Title = ""
+	}
+
 	d.Medias = make([]*Media, len(ssd.MediaDescriptions))
 
 	for i, md := range ssd.MediaDescriptions {
@@ -48,6 +56,15 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 
 // Marshal encodes the description in SDP.
 func (d Session) Marshal(multicast bool) ([]byte, error) {
+	var sessionName psdp.SessionName
+	if d.Title != "" {
+		sessionName = psdp.SessionName(d.Title)
+	} else {
+		// RFC 4566: If a session has no meaningful name, the
+		// value "s= " SHOULD be used (i.e., a single space as the session name).
+		sessionName = psdp.SessionName(" ")
+	}
+
 	var address string
 	if multicast {
 		address = "224.1.0.0"
@@ -56,7 +73,7 @@ func (d Session) Marshal(multicast bool) ([]byte, error) {
 	}
 
 	sout := &sdp.SessionDescription{
-		SessionName: psdp.SessionName("Session"),
+		SessionName: sessionName,
 		Origin: psdp.Origin{
 			Username:       "-",
 			NetworkType:    "IN",

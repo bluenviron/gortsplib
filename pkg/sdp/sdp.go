@@ -715,5 +715,9 @@ func (s *SessionDescription) Unmarshal(byts []byte) error {
 		}
 	}
 
+	if s.SessionName == "" {
+		return fmt.Errorf("session name not present")
+	}
+
 	return nil
 }

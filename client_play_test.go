@@ -12,7 +12,6 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
-	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/ipv4"
 
@@ -31,36 +30,17 @@ func ipPtr(v net.IP) *net.IP {
 }
 
 func mediasToSDP(medias []*description.Media) []byte {
-	resetMediaControls(medias)
-
-	sout := &psdp.SessionDescription{
-		SessionName: psdp.SessionName("Stream"),
-		Origin: psdp.Origin{
-			Username:       "-",
-			NetworkType:    "IN",
-			AddressType:    "IP4",
-			UnicastAddress: "127.0.0.1",
-		},
-		// required by Darwin Streaming Server
-		ConnectionInformation: &psdp.ConnectionInformation{
-			NetworkType: "IN",
-			AddressType: "IP4",
-			Address:     &psdp.Address{Address: "0.0.0.0"},
-		},
-		TimeDescriptions: []psdp.TimeDescription{
-			{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
-		},
-		MediaDescriptions: make([]*psdp.MediaDescription, len(medias)),
+	desc := &description.Session{
+		Medias: medias,
 	}
 
-	for i, media := range medias {
-		sout.MediaDescriptions[i] = media.Marshal()
-	}
+	prepareForAnnounce(desc)
 
-	byts, err := sout.Marshal()
+	byts, err := desc.Marshal(false)
 	if err != nil {
 		panic(err)
 	}
+
 	return byts
 }
 

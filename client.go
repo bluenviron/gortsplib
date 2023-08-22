@@ -91,8 +91,8 @@ func findBaseURL(sd *sdp.SessionDescription, res *base.Response, u *url.URL) (*u
 	return u, nil
 }
 
-func resetMediaControls(ms []*description.Media) {
-	for i, media := range ms {
+func prepareForAnnounce(desc *description.Session) {
+	for i, media := range desc.Medias {
 		media.Control = "trackID=" + strconv.FormatInt(int64(i), 10)
 	}
 }
@@ -1086,7 +1086,7 @@ func (c *Client) doAnnounce(u *url.URL, desc *description.Session) (*base.Respon
 		return nil, err
 	}
 
-	resetMediaControls(desc.Medias)
+	prepareForAnnounce(desc)
 
 	byts, err := desc.Marshal(false)
 	if err != nil {

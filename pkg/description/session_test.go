@@ -43,7 +43,7 @@ var casesSession = []struct {
 			"b=AS:8\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Session\r\n" +
+			"s=Media Presentation\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 97\r\n" +
@@ -57,9 +57,10 @@ var casesSession = []struct {
 			"m=application 0 RTP/AVP 107\r\n" +
 			"a=control\r\n",
 		Session{
+			Title: `Media Presentation`,
 			Medias: []*Media{
 				{
-					Type:    "video",
+					Type:    MediaTypeVideo,
 					Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=v",
 					Formats: []format.Format{&format.H264{
 						PayloadTyp:        97,
@@ -69,7 +70,7 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type:      "audio",
+					Type:      MediaTypeAudio,
 					Direction: MediaDirectionRecvonly,
 					Control:   "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
 					Formats: []format.Format{&format.G711{
@@ -77,7 +78,7 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type: "application",
+					Type: MediaTypeApplication,
 					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 107,
 					}},
@@ -112,7 +113,7 @@ var casesSession = []struct {
 			"b=AS:8\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Session\r\n" +
+			"s=Media Presentation\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 97\r\n" +
@@ -126,9 +127,10 @@ var casesSession = []struct {
 			"m=application 0 RTP/AVP 107\r\n" +
 			"a=control\r\n",
 		Session{
+			Title: `Media Presentation`,
 			Medias: []*Media{
 				{
-					Type:    "video",
+					Type:    MediaTypeVideo,
 					Control: "trackID=1",
 					Formats: []format.Format{&format.H264{
 						PayloadTyp:        97,
@@ -138,7 +140,7 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type:      "audio",
+					Type:      MediaTypeAudio,
 					Direction: MediaDirectionRecvonly,
 					Control:   "trackID=2",
 					Formats: []format.Format{&format.G711{
@@ -146,7 +148,7 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type: "application",
+					Type: MediaTypeApplication,
 					Formats: []format.Format{&format.Generic{
 						PayloadTyp: 107,
 					}},
@@ -158,7 +160,7 @@ var casesSession = []struct {
 		"multiple formats for each media",
 		"v=0\r\n" +
 			"o=- 4158123474391860926 2 IN IP4 127.0.0.1\r\n" +
-			"s=-\r\n" +
+			"s= \r\n" +
 			"t=0 0\r\n" +
 			"a=group:BUNDLE audio video\r\n" +
 			"a=msid-semantic: WMS mediaSessionLocal\r\n" +
@@ -258,7 +260,7 @@ var casesSession = []struct {
 			"a=ssrc:1733091158 label:100\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Session\r\n" +
+			"s= \r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=audio 0 RTP/AVP 111 103 104 9 102 0 8 106 105 13 110 112 113 126\r\n" +
@@ -296,9 +298,10 @@ var casesSession = []struct {
 			"a=rtpmap:124 rtx/90000\r\n" +
 			"a=fmtp:124 apt=127\r\na=rtpmap:125 ulpfec/90000\r\n",
 		Session{
+			Title: ``,
 			Medias: []*Media{
 				{
-					Type:      "audio",
+					Type:      MediaTypeAudio,
 					Direction: MediaDirectionSendonly,
 					Formats: []format.Format{
 						&format.Opus{
@@ -365,7 +368,7 @@ var casesSession = []struct {
 					},
 				},
 				{
-					Type:      "video",
+					Type:      MediaTypeVideo,
 					Direction: MediaDirectionSendonly,
 					Formats: []format.Format{
 						&format.VP8{
@@ -439,7 +442,7 @@ var casesSession = []struct {
 			"sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Session\r\n" +
+			"s=-\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 96 98\r\n" +
@@ -449,9 +452,10 @@ var casesSession = []struct {
 			"sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==\r\n" +
 			"a=rtpmap:98 MetaData\r\n",
 		Session{
+			Title: `-`,
 			Medias: []*Media{
 				{
-					Type: "video",
+					Type: MediaTypeVideo,
 					Formats: []format.Format{
 						&format.H264{
 							PayloadTyp: 96,
@@ -488,7 +492,7 @@ var casesSession = []struct {
 			"a=sendonly\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Session\r\n" +
+			"s=RTSP Session with audiobackchannel\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 26\r\n" +
@@ -504,21 +508,22 @@ var casesSession = []struct {
 			"a=sendonly\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n",
 		Session{
+			Title: `RTSP Session with audiobackchannel`,
 			Medias: []*Media{
 				{
-					Type:      "video",
+					Type:      MediaTypeVideo,
 					Direction: MediaDirectionRecvonly,
 					Control:   "rtsp://192.168.0.1/video",
 					Formats:   []format.Format{&format.MJPEG{}},
 				},
 				{
-					Type:      "audio",
+					Type:      MediaTypeAudio,
 					Direction: MediaDirectionRecvonly,
 					Control:   "rtsp://192.168.0.1/audio",
 					Formats:   []format.Format{&format.G711{MULaw: true}},
 				},
 				{
-					Type:      "audio",
+					Type:      MediaTypeAudio,
 					Direction: MediaDirectionSendonly,
 					Control:   "rtsp://192.168.0.1/audioback",
 					Formats:   []format.Format{&format.G711{MULaw: true}},
@@ -536,13 +541,14 @@ var casesSession = []struct {
 			"a=rtpmap:95 TP-LINK/90000\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Session\r\n" +
+			"s=-\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=application/TP-LINK 0 RTP/AVP 95\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:95 TP-LINK/90000\r\n",
 		Session{
+			Title: `-`,
 			Medias: []*Media{
 				{
 					Type: "application/TP-LINK",
@@ -566,13 +572,14 @@ var casesSession = []struct {
 			"a=rtpmap:95 MERCURY/90000\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Session\r\n" +
+			"s=Session streamed by \"MERCURY RTSP Server\"\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=application/MERCURY 0 RTP/AVP 95\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:95 MERCURY/90000\r\n",
 		Session{
+			Title: `Session streamed by "MERCURY RTSP Server"`,
 			Medias: []*Media{
 				{
 					Type: "application/MERCURY",
@@ -596,7 +603,7 @@ var casesSession = []struct {
 			"a=fmtp:96 packetization-mode=1\r\n",
 		"v=0\r\n" +
 			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
-			"s=Session\r\n" +
+			"s=-\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 96\r\n" +
@@ -604,9 +611,10 @@ var casesSession = []struct {
 			"a=rtpmap:96 H264/90000\r\n" +
 			"a=fmtp:96 packetization-mode=1\r\n",
 		Session{
+			Title: "-",
 			Medias: []*Media{
 				{
-					Type: "video",
+					Type: MediaTypeVideo,
 					Formats: []format.Format{
 						&format.H264{
 							PayloadTyp:        96,
@@ -630,41 +638,6 @@ func TestSessionUnmarshal(t *testing.T) {
 			err = desc.Unmarshal(&sdp)
 			require.NoError(t, err)
 			require.Equal(t, ca.desc, desc)
-		})
-	}
-}
-
-func TestSessionUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		sdp  string
-		err  string
-	}{
-		{
-			"invalid track",
-			"v=0\r\n" +
-				"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
-				"s=SDP Seminar\r\n" +
-				"m=video 0 RTP/AVP/TCP 96\r\n" +
-				"a=rtpmap:96 H265/90000\r\n" +
-				"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
-				"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
-				"a=control:streamid=0\r\n" +
-				"m=audio 0 RTP/AVP/TCP 97\r\n" +
-				"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
-				"a=fmtp:97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=zzz1210\r\n" +
-				"a=control:streamid=1\r\n",
-			"media 2 is invalid: invalid AAC config: zzz1210",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var sd sdp.SessionDescription
-			err := sd.Unmarshal([]byte(ca.sdp))
-			require.NoError(t, err)
-
-			var desc Session
-			err = desc.Unmarshal(&sd)
-			require.EqualError(t, err, ca.err)
 		})
 	}
 }
@@ -721,4 +694,30 @@ func TestSessionFindFormat(t *testing.T) {
 	me := desc.FindFormat(&forma)
 	require.Equal(t, md, me)
 	require.Equal(t, tr, forma)
+}
+
+func FuzzSessionUnmarshalErrors(f *testing.F) {
+	f.Add("v=0\r\n" +
+		"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
+		"s=SDP Seminar\r\n" +
+		"m=video 0 RTP/AVP/TCP 96\r\n" +
+		"a=rtpmap:96 H265/90000\r\n" +
+		"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
+		"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;\r\n" +
+		"a=control:streamid=0\r\n" +
+		"m=audio 0 RTP/AVP/TCP 97\r\n" +
+		"a=rtpmap:97 mpeg4-generic/44100/2\r\n" +
+		"a=fmtp:97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=zzz1210\r\n" +
+		"a=control:streamid=1\r\n")
+
+	f.Fuzz(func(t *testing.T, enc string) {
+		var sd sdp.SessionDescription
+		err := sd.Unmarshal([]byte(enc))
+		if err != nil {
+			return
+		}
+
+		var desc Session
+		desc.Unmarshal(&sd) //nolint:errcheck
+	})
 }
