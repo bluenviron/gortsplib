@@ -629,6 +629,89 @@ var casesSession = []struct {
 			},
 		},
 	},
+	{
+		"ulpfec rfc5109",
+		"v=0\r\n" +
+			"o=adam 289083124 289083124 IN IP4 host.example.com\r\n" +
+			"s=ULP FEC Seminar\r\n" +
+			"t=0 0\r\n" +
+			"c=IN IP4 224.2.17.12/127\r\n" +
+			"a=group:FEC 1 2\r\n" +
+			"a=group:FEC 3 4\r\n" +
+			"m=audio 30000 RTP/AVP 0\r\n" +
+			"a=mid:1\r\n" +
+			"m=application 30002 RTP/AVP 100\r\n" +
+			"a=rtpmap:100 ulpfec/8000\r\n" +
+			"a=mid:2\r\n" +
+			"m=video 30004 RTP/AVP 31\r\n" +
+			"a=mid:3\r\n" +
+			"m=application 30004 RTP/AVP 101\r\n" +
+			"c=IN IP4 224.2.17.13/127\r\n" +
+			"a=rtpmap:101 ulpfec/8000\r\n" +
+			"a=mid:4\r\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=ULP FEC Seminar\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=group:FEC 1 2\r\n" +
+			"a=group:FEC 3 4\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=mid:1\r\n" +
+			"a=control\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"m=application 0 RTP/AVP 100\r\n" +
+			"a=mid:2\r\n" +
+			"a=control\r\n" +
+			"a=rtpmap:100 ulpfec/8000\r\n" +
+			"m=video 0 RTP/AVP 31\r\n" +
+			"a=mid:3\r\n" +
+			"a=control\r\n" +
+			"m=application 0 RTP/AVP 101\r\n" +
+			"a=mid:4\r\n" +
+			"a=control\r\n" +
+			"a=rtpmap:101 ulpfec/8000\r\n",
+		Session{
+			Title: "ULP FEC Seminar",
+			FECGroups: []SessionFECGroup{
+				{"1", "2"},
+				{"3", "4"},
+			},
+			Medias: []*Media{
+				{
+					ID:      "1",
+					Type:    MediaTypeAudio,
+					Formats: []format.Format{&format.G711{MULaw: true}},
+				},
+				{
+					ID:   "2",
+					Type: MediaTypeApplication,
+					Formats: []format.Format{&format.Generic{
+						PayloadTyp: 100,
+						RTPMa:      "ulpfec/8000",
+						ClockRat:   8000,
+					}},
+				},
+				{
+					ID:   "3",
+					Type: MediaTypeVideo,
+					Formats: []format.Format{&format.Generic{
+						PayloadTyp: 31,
+						ClockRat:   90000,
+					}},
+				},
+				{
+					ID:   "4",
+					Type: MediaTypeApplication,
+					Formats: []format.Format{&format.Generic{
+						PayloadTyp: 101,
+						RTPMa:      "ulpfec/8000",
+						ClockRat:   8000,
+					}},
+				},
+			},
+		},
+	},
 }
 
 func TestSessionUnmarshal(t *testing.T) {
@@ -734,6 +817,25 @@ func FuzzSessionUnmarshalErrors(f *testing.F) {
 		"a=fmtp:96 packetization-mode=1\r\n" +
 		"m=audio 0 RTP/AVP/TCP 0\r\n" +
 		"a=mid:2\r\n")
+
+	f.Add("v=0\r\n" +
+		"o=adam 289083124 289083124 IN IP4 host.example.com\r\n" +
+		"s=ULP FEC Seminar\r\n" +
+		"t=0 0\r\n" +
+		"c=IN IP4 224.2.17.12/127\r\n" +
+		"a=group:FEC 1 2\r\n" +
+		"a=group:FEC 3 4\r\n" +
+		"m=audio 30000 RTP/AVP 0\r\n" +
+		"a=mid:1\r\n" +
+		"m=application 30002 RTP/AVP 100\r\n" +
+		"a=rtpmap:100 ulpfec/8000\r\n" +
+		"a=mid:2\r\n" +
+		"m=video 30004 RTP/AVP 31\r\n" +
+		"a=mid:3\r\n" +
+		"m=application 30004 RTP/AVP 101\r\n" +
+		"c=IN IP4 224.2.17.13/127\r\n" +
+		"a=rtpmap:101 ulpfec/8000\r\n" +
+		"a=mid:4\r\n")
 
 	f.Fuzz(func(t *testing.T, enc string) {
 		var sd sdp.SessionDescription

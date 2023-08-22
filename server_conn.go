@@ -26,18 +26,20 @@ func getSessionID(header base.Header) string {
 
 func serverSideDescription(d *description.Session, contentBase *url.URL) *description.Session {
 	out := &description.Session{
-		Title:  d.Title,
-		Medias: make([]*description.Media, len(d.Medias)),
+		Title:     d.Title,
+		FECGroups: d.FECGroups,
+		Medias:    make([]*description.Media, len(d.Medias)),
 	}
 
 	for i, medi := range d.Medias {
 		mc := &description.Media{
 			Type: medi.Type,
+			ID:   medi.ID,
 			// Direction: skipped for the moment
-			Formats: medi.Formats,
 			// we have to use trackID=number in order to support clients
 			// like the Grandstream GXV3500.
 			Control: "trackID=" + strconv.FormatInt(int64(i), 10),
+			Formats: medi.Formats,
 		}
 
 		// always use the absolute URL of the track as control attribute, in order
