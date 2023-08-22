@@ -2,6 +2,7 @@ package description
 
 import (
 	"fmt"
+	"strings"
 
 	psdp "github.com/pion/sdp/v3"
 
@@ -36,15 +37,21 @@ func hasMediaWithID(medias []*Media, id string) bool {
 	return false
 }
 
+// SessionFECGroup is a FEC group.
+type SessionFECGroup []string
+
 // Session is the description of a RTSP stream.
 type Session struct {
-	// base URL of the stream (read only).
+	// Base URL of the stream (read only).
 	BaseURL *url.URL
 
-	// title of the stream (optional).
+	// Title of the stream (optional).
 	Title string
 
-	// available media streams.
+	// FEC groups (RFC5109).
+	FECGroups []SessionFECGroup
+
+	// Media streams.
 	Medias []*Media
 }
 
@@ -85,6 +92,20 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 
 	if atLeastOneHasMID(d.Medias) && atLeastOneDoesntHaveMID(d.Medias) {
 		return fmt.Errorf("media IDs sent partially")
+	}
+
+	for _, attr := range ssd.Attributes {
+		if attr.Key == "group" && strings.HasPrefix(attr.Value, "FEC ") {
+			group := SessionFECGroup(strings.Split(attr.Value[len("FEC "):], " "))
+
+			for _, id := range group {
+				if !hasMediaWithID(d.Medias, id) {
+					return fmt.Errorf("FEC group points to an invalid media ID: %v", id)
+				}
+			}
+
+			d.FECGroups = append(d.FECGroups, group)
+		}
 	}
 
 	return nil
@@ -130,6 +151,13 @@ func (d Session) Marshal(multicast bool) ([]byte, error) {
 
 	for i, media := range d.Medias {
 		sout.MediaDescriptions[i] = media.Marshal()
+	}
+
+	for _, group := range d.FECGroups {
+		sout.Attributes = append(sout.Attributes, psdp.Attribute{
+			Key:   "group",
+			Value: "FEC " + strings.Join(group, " "),
+		})
 	}
 
 	return sout.Marshal()

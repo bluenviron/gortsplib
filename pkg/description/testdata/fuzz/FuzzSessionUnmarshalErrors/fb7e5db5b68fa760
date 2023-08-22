@@ -1,0 +1,2 @@
+go test fuzz v1
+string("v=0\ns=0\na=group:FEC 0")
