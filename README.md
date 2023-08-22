@@ -57,6 +57,7 @@ Features:
 
 * [client-query](examples/client-query/main.go)
 * [client-read](examples/client-read/main.go)
+* [client-read-timestamp](examples/client-read-timestamp/main.go)
 * [client-read-options](examples/client-read-options/main.go)
 * [client-read-pause](examples/client-read-pause/main.go)
 * [client-read-republish](examples/client-read-republish/main.go)

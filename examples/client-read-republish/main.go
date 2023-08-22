@@ -11,8 +11,9 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server and read all medias on a path
-// 2. re-publish all medias on another path.
+// 1. connect to a RTSP server
+// 2. read all medias on a path
+// 3. re-publish all medias on another path.
 
 func main() {
 	reader := gortsplib.Client{}

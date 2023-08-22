@@ -1,13 +1,7 @@
 package gortsplib
 
 import (
-	"time"
-
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
-
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
 )
 
 type serverStreamMedia struct {
@@ -27,23 +21,9 @@ func newServerStreamMedia(st *ServerStream, medi *description.Media, trackID int
 
 	sm.formats = make(map[uint8]*serverStreamFormat)
 	for _, forma := range medi.Formats {
-		tr := &serverStreamFormat{
-			format: forma,
-		}
-
-		cmedia := medi
-		tr.rtcpSender = rtcpsender.New(
-			forma.ClockRate(),
-			st.s.senderReportPeriod,
-			st.s.timeNow,
-			func(pkt rtcp.Packet) {
-				if !st.s.DisableRTCPSenderReports {
-					st.WritePacketRTCP(cmedia, pkt) //nolint:errcheck
-				}
-			},
-		)
-
-		sm.formats[forma.PayloadType()] = tr
+		sm.formats[forma.PayloadType()] = newServerStreamFormat(
+			sm,
+			forma)
 	}
 
 	return sm
@@ -71,25 +51,6 @@ func (sm *serverStreamMedia) allocateMulticastHandler(s *Server) error {
 		sm.multicastWriter = mh
 	}
 	return nil
-}
-
-func (sm *serverStreamMedia) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) {
-	forma := sm.formats[pkt.PayloadType]
-
-	forma.rtcpSender.ProcessPacket(pkt, ntp, forma.format.PTSEqualsDTS(pkt))
-
-	// send unicast
-	for r := range sm.st.activeUnicastReaders {
-		sm, ok := r.setuppedMedias[sm.media]
-		if ok {
-			sm.writePacketRTP(byts)
-		}
-	}
-
-	// send multicast
-	if sm.multicastWriter != nil {
-		sm.multicastWriter.writePacketRTP(byts)
-	}
 }
 
 func (sm *serverStreamMedia) writePacketRTCP(byts []byte) {

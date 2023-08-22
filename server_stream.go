@@ -255,7 +255,8 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.
 	}
 
 	sm := st.streamMedias[medi]
-	sm.writePacketRTP(byts, pkt, ntp)
+	sf := sm.formats[pkt.PayloadType]
+	sf.writePacketRTP(byts, pkt, ntp)
 	return nil
 }
 

@@ -116,7 +116,8 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 
 	// called when receiving a RTP packet
 	ctx.Session.OnPacketRTP(sh.media, sh.format, func(pkt *rtp.Packet) {
-		pts, ok := ctx.Session.PacketPTS(sh.format, pkt)
+		// decode timestamp
+		pts, ok := ctx.Session.PacketPTS(sh.media, pkt)
 		if !ok {
 			return
 		}

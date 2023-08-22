@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/bluenviron/gortsplib/v4"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/pion/rtp"
@@ -11,8 +12,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an LPCM media
-// 3. get LPCM packets of that media
+// 2. read all media streams on a path
+// 3. Get the PTS and NTP timestamp of incoming RTP packets
 
 func main() {
 	c := gortsplib.Client{}
@@ -36,42 +37,21 @@ func main() {
 		panic(err)
 	}
 
-	// find the LPCM media and format
-	var forma *format.LPCM
-	medi := desc.FindFormat(&forma)
-	if medi == nil {
-		panic("media not found")
-	}
-
-	// create decoder
-	rtpDec, err := forma.CreateDecoder()
-	if err != nil {
-		panic(err)
-	}
-
-	// setup a single media
-	_, err = c.Setup(desc.BaseURL, medi, 0, 0)
+	// setup all medias
+	err = c.SetupAll(desc.BaseURL, desc.Medias)
 	if err != nil {
 		panic(err)
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
-		// decode timestamp
-		pts, ok := c.PacketPTS(medi, pkt)
-		if !ok {
-			return
-		}
+	c.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+		// get the PTS timestamp of the packet, i.e. timestamp relative to the start of the session
+		pts, ptsAvailable := c.PacketPTS(medi, pkt)
+		log.Printf("PTS: available=%v, value=%v\n", ptsAvailable, pts)
 
-		// extract LPCM samples from RTP packets
-		op, err := rtpDec.Decode(pkt)
-		if err != nil {
-			log.Printf("ERR: %v", err)
-			return
-		}
-
-		// print
-		log.Printf("received LPCM samples with PTS %v size %d\n", pts, len(op))
+		// get the NTP timestamp of the packet, i.e. the absolute timestamp
+		ntp, ntpAvailable := c.PacketNTP(medi, pkt)
+		log.Printf("NTP: available=%v, value=%v\n", ntpAvailable, ntp)
 	})
 
 	// start playing

@@ -1707,8 +1707,10 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 
 // PacketPTS returns the PTS of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
-func (c *Client) PacketPTS(forma format.Format, pkt *rtp.Packet) (time.Duration, bool) {
-	return c.timeDecoder.Decode(forma, pkt)
+func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Duration, bool) {
+	cm := c.medias[medi]
+	ct := cm.formats[pkt.PayloadType]
+	return c.timeDecoder.Decode(ct.format, pkt)
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.
