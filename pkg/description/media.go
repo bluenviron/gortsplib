@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	psdp "github.com/pion/sdp/v3"
 
@@ -17,9 +18,23 @@ import (
 
 var smartRegexp = regexp.MustCompile("^([0-9]+) (.*?)/90000")
 
-func getControlAttribute(attributes []psdp.Attribute) string {
+func replaceSmartPayloadType(payloadType string, attributes []psdp.Attribute) string {
+	if payloadType == "smart/1/90000" {
+		for _, attr := range attributes {
+			if attr.Key == "rtpmap" {
+				sm := smartRegexp.FindStringSubmatch(attr.Value)
+				if sm != nil {
+					return sm[1]
+				}
+			}
+		}
+	}
+	return payloadType
+}
+
+func getAttribute(attributes []psdp.Attribute, key string) string {
 	for _, attr := range attributes {
-		if attr.Key == "control" {
+		if attr.Key == key {
 			return attr.Value
 		}
 	}
@@ -92,6 +107,15 @@ func sortedKeys(fmtp map[string]string) []string {
 	return keys
 }
 
+func isAlphaNumeric(v string) bool {
+	for _, r := range v {
+		if !unicode.IsLetter(r) && !unicode.IsNumber(r) {
+			return false
+		}
+	}
+	return true
+}
+
 // MediaDirection is the direction of a media stream.
 type MediaDirection string
 
@@ -118,7 +142,10 @@ type Media struct {
 	// Media type.
 	Type MediaType
 
-	// Direction of the stream.
+	// Media ID (optional).
+	ID string
+
+	// Direction of the stream (optional).
 	Direction MediaDirection
 
 	// Control attribute.
@@ -131,22 +158,18 @@ type Media struct {
 // Unmarshal decodes the media from the SDP format.
 func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 	m.Type = MediaType(md.MediaName.Media)
+
+	m.ID = getAttribute(md.Attributes, "mid")
+	if m.ID != "" && !isAlphaNumeric(m.ID) {
+		return fmt.Errorf("invalid mid: %v", m.ID)
+	}
+
 	m.Direction = getDirection(md.Attributes)
-	m.Control = getControlAttribute(md.Attributes)
+	m.Control = getAttribute(md.Attributes, "control")
 
 	m.Formats = nil
 	for _, payloadType := range md.MediaName.Formats {
-		if payloadType == "smart/1/90000" {
-			for _, attr := range md.Attributes {
-				if attr.Key == "rtpmap" {
-					sm := smartRegexp.FindStringSubmatch(attr.Value)
-					if sm != nil {
-						payloadType = sm[1]
-						break
-					}
-				}
-			}
-		}
+		payloadType = replaceSmartPayloadType(payloadType, md.Attributes)
 
 		tmp, err := strconv.ParseUint(payloadType, 10, 8)
 		if err != nil {
@@ -179,12 +202,13 @@ func (m Media) Marshal() *psdp.MediaDescription {
 			Media:  string(m.Type),
 			Protos: []string{"RTP", "AVP"},
 		},
-		Attributes: []psdp.Attribute{
-			{
-				Key:   "control",
-				Value: m.Control,
-			},
-		},
+	}
+
+	if m.ID != "" {
+		md.Attributes = append(md.Attributes, psdp.Attribute{
+			Key:   "mid",
+			Value: m.ID,
+		})
 	}
 
 	if m.Direction != "" {
@@ -192,6 +216,11 @@ func (m Media) Marshal() *psdp.MediaDescription {
 			Key: string(m.Direction),
 		})
 	}
+
+	md.Attributes = append(md.Attributes, psdp.Attribute{
+		Key:   "control",
+		Value: m.Control,
+	})
 
 	for _, forma := range m.Formats {
 		typ := strconv.FormatUint(uint64(forma.PayloadType()), 10)

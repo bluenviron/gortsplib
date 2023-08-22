@@ -9,6 +9,33 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
+func atLeastOneHasMID(medias []*Media) bool {
+	for _, media := range medias {
+		if media.ID != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func atLeastOneDoesntHaveMID(medias []*Media) bool {
+	for _, media := range medias {
+		if media.ID == "" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasMediaWithID(medias []*Media, id string) bool {
+	for _, media := range medias {
+		if media.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 // Session is the description of a RTSP stream.
 type Session struct {
 	// base URL of the stream (read only).
@@ -48,7 +75,16 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 		if err != nil {
 			return fmt.Errorf("media %d is invalid: %v", i+1, err)
 		}
+
+		if m.ID != "" && hasMediaWithID(d.Medias[:i], m.ID) {
+			return fmt.Errorf("duplicate media IDs")
+		}
+
 		d.Medias[i] = &m
+	}
+
+	if atLeastOneHasMID(d.Medias) && atLeastOneDoesntHaveMID(d.Medias) {
+		return fmt.Errorf("media IDs sent partially")
 	}
 
 	return nil
