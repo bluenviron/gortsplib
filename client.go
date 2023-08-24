@@ -1,6 +1,5 @@
 /*
-Package gortsplib is a RTSP 1.0 library for the Go programming language,
-written for rtsp-simple-server.
+Package gortsplib is a RTSP 1.0 library for the Go programming language.
 
 Examples are available at https://github.com/bluenviron/gortsplib/tree/main/examples
 */
@@ -10,6 +9,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -390,6 +390,7 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.OnTransportSwitch == nil {
 		c.OnTransportSwitch = func(err error) {
+			log.Println(err.Error())
 		}
 	}
 	if c.Log != nil && c.OnPacketLost == nil {
@@ -399,6 +400,7 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.OnPacketLost == nil {
 		c.OnPacketLost = func(err error) {
+			log.Println(err.Error())
 		}
 	}
 	if c.Log != nil && c.OnDecodeError == nil {
@@ -408,6 +410,7 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.OnDecodeError == nil {
 		c.OnDecodeError = func(err error) {
+			log.Println(err.Error())
 		}
 	}
 
