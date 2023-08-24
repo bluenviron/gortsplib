@@ -58,7 +58,7 @@ func (cr *serverConnReader) run() {
 			continue
 		}
 
-		cr.sc.readErr(err)
+		cr.sc.readError(err)
 		break
 	}
 }
@@ -68,7 +68,7 @@ func (cr *serverConnReader) readFuncStandard() error {
 	cr.sc.nconn.SetReadDeadline(time.Time{})
 
 	for {
-		what, err := cr.sc.conn.ReadInterleavedFrameOrRequest()
+		what, err := cr.sc.conn.Read()
 		if err != nil {
 			return err
 		}
@@ -77,12 +77,15 @@ func (cr *serverConnReader) readFuncStandard() error {
 		case *base.Request:
 			cres := make(chan error)
 			req := readReq{req: what, res: cres}
-			err := cr.sc.handleRequest(req)
+			err := cr.sc.readRequest(req)
 			if err != nil {
 				return err
 			}
 
-		default:
+		case *base.Response:
+			return liberrors.ErrServerUnexpectedResponse{}
+
+		case *base.InterleavedFrame:
 			return liberrors.ErrServerUnexpectedFrame{}
 		}
 	}
@@ -99,25 +102,28 @@ func (cr *serverConnReader) readFuncTCP() error {
 			cr.sc.nconn.SetReadDeadline(time.Now().Add(cr.sc.s.ReadTimeout))
 		}
 
-		what, err := cr.sc.conn.ReadInterleavedFrameOrRequest()
+		what, err := cr.sc.conn.Read()
 		if err != nil {
 			return err
 		}
 
-		switch twhat := what.(type) {
-		case *base.InterleavedFrame:
-			atomic.AddUint64(cr.sc.session.bytesReceived, uint64(len(twhat.Payload)))
-
-			if cb, ok := cr.sc.session.tcpCallbackByChannel[twhat.Channel]; ok {
-				cb(twhat.Payload)
-			}
-
+		switch what := what.(type) {
 		case *base.Request:
 			cres := make(chan error)
-			req := readReq{req: twhat, res: cres}
-			err := cr.sc.handleRequest(req)
+			req := readReq{req: what, res: cres}
+			err := cr.sc.readRequest(req)
 			if err != nil {
 				return err
+			}
+
+		case *base.Response:
+			return liberrors.ErrServerUnexpectedResponse{}
+
+		case *base.InterleavedFrame:
+			atomic.AddUint64(cr.sc.session.bytesReceived, uint64(len(what.Payload)))
+
+			if cb, ok := cr.sc.session.tcpCallbackByChannel[what.Channel]; ok {
+				cb(what.Payload)
 			}
 		}
 	}

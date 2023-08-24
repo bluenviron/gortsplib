@@ -1,65 +1,69 @@
 package gortsplib
 
 import (
-	"time"
+	"sync/atomic"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
 type clientReader struct {
-	c        *Client
-	closeErr chan error
+	c                      *Client
+	allowInterleavedFrames atomic.Bool
 }
 
 func newClientReader(c *Client) *clientReader {
 	r := &clientReader{
-		c:        c,
-		closeErr: make(chan error),
+		c: c,
 	}
-
-	// for some reason, SetReadDeadline() must always be called in the same
-	// goroutine, otherwise Read() freezes.
-	// therefore, we disable the deadline and perform a check with a ticker.
-	r.c.nconn.SetReadDeadline(time.Time{})
 
 	go r.run()
 
 	return r
 }
 
-func (r *clientReader) close() {
-	r.c.nconn.SetReadDeadline(time.Now())
+func (r *clientReader) setAllowInterleavedFrames(v bool) {
+	r.allowInterleavedFrames.Store(v)
+}
+
+func (r *clientReader) wait() {
+	for {
+		select {
+		case <-r.c.chReadError:
+			return
+
+		case <-r.c.chReadResponse:
+		case <-r.c.chReadRequest:
+		}
+	}
 }
 
 func (r *clientReader) run() {
-	r.c.readError <- r.runInner()
+	err := r.runInner()
+	r.c.readError(err)
 }
 
 func (r *clientReader) runInner() error {
-	if *r.c.effectiveTransport == TransportUDP || *r.c.effectiveTransport == TransportUDPMulticast {
-		for {
-			res, err := r.c.conn.ReadResponse()
-			if err != nil {
-				return err
-			}
-
-			r.c.OnResponse(res)
+	for {
+		what, err := r.c.conn.Read()
+		if err != nil {
+			return err
 		}
-	} else {
-		for {
-			what, err := r.c.conn.ReadInterleavedFrameOrResponse()
-			if err != nil {
-				return err
+
+		switch what := what.(type) {
+		case *base.Response:
+			r.c.readResponse(what)
+
+		case *base.Request:
+			r.c.readRequest(what)
+
+		case *base.InterleavedFrame:
+			if !r.allowInterleavedFrames.Load() {
+				return liberrors.ErrClientUnexpectedFrame{}
 			}
 
-			switch what := what.(type) {
-			case *base.Response:
-				r.c.OnResponse(what)
-
-			case *base.InterleavedFrame:
-				if cb, ok := r.c.tcpCallbackByChannel[what.Channel]; ok {
-					cb(what.Payload)
-				}
+			if cb, ok := r.c.tcpCallbackByChannel[what.Channel]; ok {
+				cb(what.Payload)
 			}
 		}
 	}

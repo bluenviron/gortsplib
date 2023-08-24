@@ -375,3 +375,92 @@ func TestClientCloseDuringRequest(t *testing.T) {
 	<-optionsDone
 	close(releaseConn)
 }
+
+func TestClientReplyToServerRequest(t *testing.T) {
+	for _, ca := range []string{"after response", "before response"} {
+		t.Run(ca, func(t *testing.T) {
+			l, err := net.Listen("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer l.Close()
+
+			serverDone := make(chan struct{})
+
+			go func() {
+				defer close(serverDone)
+
+				nconn, err := l.Accept()
+				require.NoError(t, err)
+				conn := conn.NewConn(nconn)
+				defer nconn.Close()
+
+				req, err := conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				if ca == "after response" {
+					err = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Public": base.HeaderValue{strings.Join([]string{
+								string(base.Describe),
+							}, ", ")},
+						},
+					})
+					require.NoError(t, err)
+
+					err = conn.WriteRequest(&base.Request{
+						Method: base.Options,
+						URL:    nil,
+						Header: base.Header{
+							"CSeq": base.HeaderValue{"4"},
+						},
+					})
+					require.NoError(t, err)
+
+					res, err := conn.ReadResponse()
+					require.NoError(t, err)
+					require.Equal(t, base.StatusOK, res.StatusCode)
+					require.Equal(t, "4", res.Header["CSeq"][0])
+				} else {
+					err = conn.WriteRequest(&base.Request{
+						Method: base.Options,
+						URL:    nil,
+						Header: base.Header{
+							"CSeq": base.HeaderValue{"4"},
+						},
+					})
+					require.NoError(t, err)
+
+					res, err := conn.ReadResponse()
+					require.NoError(t, err)
+					require.Equal(t, base.StatusOK, res.StatusCode)
+					require.Equal(t, "4", res.Header["CSeq"][0])
+
+					err = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Public": base.HeaderValue{strings.Join([]string{
+								string(base.Describe),
+							}, ", ")},
+						},
+					})
+					require.NoError(t, err)
+				}
+			}()
+
+			u, err := url.Parse("rtsp://localhost:8554/stream")
+			require.NoError(t, err)
+
+			c := Client{}
+
+			err = c.Start(u.Scheme, u.Host)
+			require.NoError(t, err)
+			defer c.Close()
+
+			_, err = c.Options(u)
+			require.NoError(t, err)
+
+			<-serverDone
+		})
+	}
+}

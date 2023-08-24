@@ -251,3 +251,11 @@ type ErrServerUnexpectedFrame struct{}
 func (e ErrServerUnexpectedFrame) Error() string {
 	return "received unexpected interleaved frame"
 }
+
+// ErrServerUnexpectedResponse is an error that can be returned by a client.
+type ErrServerUnexpectedResponse struct{}
+
+// Error implements the error interface.
+func (e ErrServerUnexpectedResponse) Error() string {
+	return "received unexpected response"
+}

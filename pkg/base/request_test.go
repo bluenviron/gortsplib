@@ -138,6 +138,21 @@ var casesRequest = []struct {
 			),
 		},
 	},
+	{
+		"server-side announce",
+		[]byte("OPTIONS * RTSP/1.0\r\n" +
+			"CSeq: 1\r\n" +
+			"User-Agent: RDIPCamera\r\n" +
+			"\r\n"),
+		Request{
+			Method: "OPTIONS",
+			URL:    nil,
+			Header: Header{
+				"CSeq":       HeaderValue{"1"},
+				"User-Agent": HeaderValue{"RDIPCamera"},
+			},
+		},
+	},
 }
 
 func TestRequestUnmarshal(t *testing.T) {

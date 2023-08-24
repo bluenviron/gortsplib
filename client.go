@@ -315,18 +315,19 @@ type Client struct {
 	closeError           error
 	writer               asyncProcessor
 	reader               *clientReader
-	connCloser           *clientConnCloser
 	timeDecoder          *rtptime.GlobalDecoder
 
 	// in
-	options   chan optionsReq
-	describe  chan describeReq
-	announce  chan announceReq
-	setup     chan setupReq
-	play      chan playReq
-	record    chan recordReq
-	pause     chan pauseReq
-	readError chan error
+	chOptions      chan optionsReq
+	chDescribe     chan describeReq
+	chAnnounce     chan announceReq
+	chSetup        chan setupReq
+	chPlay         chan playReq
+	chRecord       chan recordReq
+	chPause        chan pauseReq
+	chReadError    chan error
+	chReadResponse chan *base.Response
+	chReadRequest  chan *base.Request
 
 	// out
 	done chan struct{}
@@ -425,14 +426,16 @@ func (c *Client) Start(scheme string, host string) error {
 	c.ctxCancel = ctxCancel
 	c.checkTimeoutTimer = emptyTimer()
 	c.keepaliveTimer = emptyTimer()
-	c.options = make(chan optionsReq)
-	c.describe = make(chan describeReq)
-	c.announce = make(chan announceReq)
-	c.setup = make(chan setupReq)
-	c.play = make(chan playReq)
-	c.record = make(chan recordReq)
-	c.pause = make(chan pauseReq)
-	c.readError = make(chan error)
+	c.chOptions = make(chan optionsReq)
+	c.chDescribe = make(chan describeReq)
+	c.chAnnounce = make(chan announceReq)
+	c.chSetup = make(chan setupReq)
+	c.chPlay = make(chan playReq)
+	c.chRecord = make(chan recordReq)
+	c.chPause = make(chan pauseReq)
+	c.chReadError = make(chan error)
+	c.chReadResponse = make(chan *base.Response)
+	c.chReadRequest = make(chan *base.Request)
 	c.done = make(chan struct{})
 
 	go c.run()
@@ -499,51 +502,60 @@ func (c *Client) run() {
 func (c *Client) runInner() error {
 	for {
 		select {
-		case req := <-c.options:
+		case req := <-c.chOptions:
 			res, err := c.doOptions(req.url)
 			req.res <- clientRes{res: res, err: err}
 
-		case req := <-c.describe:
+		case req := <-c.chDescribe:
 			sd, res, err := c.doDescribe(req.url)
 			req.res <- clientRes{sd: sd, res: res, err: err}
 
-		case req := <-c.announce:
+		case req := <-c.chAnnounce:
 			res, err := c.doAnnounce(req.url, req.desc)
 			req.res <- clientRes{res: res, err: err}
 
-		case req := <-c.setup:
+		case req := <-c.chSetup:
 			res, err := c.doSetup(req.baseURL, req.media, req.rtpPort, req.rtcpPort)
 			req.res <- clientRes{res: res, err: err}
 
-		case req := <-c.play:
+		case req := <-c.chPlay:
 			res, err := c.doPlay(req.ra)
 			req.res <- clientRes{res: res, err: err}
 
-		case req := <-c.record:
+		case req := <-c.chRecord:
 			res, err := c.doRecord()
 			req.res <- clientRes{res: res, err: err}
 
-		case req := <-c.pause:
+		case req := <-c.chPause:
 			res, err := c.doPause()
 			req.res <- clientRes{res: res, err: err}
 
 		case <-c.checkTimeoutTimer.C:
-			err := c.checkTimeout()
+			err := c.doCheckTimeout()
 			if err != nil {
 				return err
 			}
 			c.checkTimeoutTimer = time.NewTimer(c.checkTimeoutPeriod)
 
 		case <-c.keepaliveTimer.C:
-			err := c.doKeepalive()
+			err := c.doKeepAlive()
 			if err != nil {
 				return err
 			}
 			c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
-		case err := <-c.readError:
+		case err := <-c.chReadError:
 			c.reader = nil
 			return err
+
+		case <-c.chReadResponse:
+			return liberrors.ErrClientUnexpectedResponse{}
+
+		case req := <-c.chReadRequest:
+			err := c.handleServerRequest(req)
+			if err != nil {
+				return err
+			}
 
 		case <-c.ctx.Done():
 			return liberrors.ErrClientTerminated{}
@@ -551,24 +563,72 @@ func (c *Client) runInner() error {
 	}
 }
 
+func (c *Client) waitResponse() (*base.Response, error) {
+	for {
+		select {
+		case <-time.After(c.ReadTimeout):
+			return nil, liberrors.ErrClientRequestTimedOut{}
+
+		case err := <-c.chReadError:
+			c.reader = nil
+			return nil, err
+
+		case res := <-c.chReadResponse:
+			return res, nil
+
+		case req := <-c.chReadRequest:
+			err := c.handleServerRequest(req)
+			if err != nil {
+				return nil, err
+			}
+
+		case <-c.ctx.Done():
+			return nil, liberrors.ErrClientTerminated{}
+		}
+	}
+}
+
+func (c *Client) handleServerRequest(req *base.Request) error {
+	if req.Method != base.Options {
+		return liberrors.ErrClientUnhandledMethod{Method: req.Method}
+	}
+
+	if cseq, ok := req.Header["CSeq"]; !ok || len(cseq) != 1 {
+		return liberrors.ErrClientMissingCSeq{}
+	}
+
+	res := &base.Response{
+		StatusCode: base.StatusOK,
+		Header: base.Header{
+			"User-Agent": base.HeaderValue{c.UserAgent},
+			"CSeq":       req.Header["CSeq"],
+		},
+	}
+
+	c.nconn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
+	return c.conn.WriteResponse(res)
+}
+
 func (c *Client) doClose() {
-	if c.connCloser != nil {
-		c.connCloser.close()
-		c.connCloser = nil
-	}
-
 	if c.state == clientStatePlay || c.state == clientStateRecord {
-		c.playRecordStop(true)
+		c.stopWriter()
+		c.stopReadRoutines()
 	}
 
-	if c.baseURL != nil {
+	if c.nconn != nil && c.baseURL != nil {
 		c.do(&base.Request{ //nolint:errcheck
 			Method: base.Teardown,
 			URL:    c.baseURL,
-		}, true, false)
+		}, true)
 	}
 
-	if c.nconn != nil {
+	if c.reader != nil {
+		c.nconn.Close()
+		c.reader.wait()
+		c.reader = nil
+		c.nconn = nil
+		c.conn = nil
+	} else if c.nconn != nil {
 		c.nconn.Close()
 		c.nconn = nil
 		c.conn = nil
@@ -668,12 +728,8 @@ func (c *Client) trySwitchingProtocol2(medi *description.Media, baseURL *url.URL
 	return c.doSetup(baseURL, medi, 0, 0)
 }
 
-func (c *Client) playRecordStart() {
-	c.connCloser.close()
-	c.connCloser = nil
-
-	c.timeDecoder = rtptime.NewGlobalDecoder()
-
+func (c *Client) startReadRoutines() {
+	// allocate writer here because it's needed by RTCP receiver / sender
 	if c.state == clientStatePlay {
 		// when reading, buffer is only used to send RTCP receiver reports,
 		// that are much smaller than RTP packets and are sent at a fixed interval.
@@ -683,7 +739,7 @@ func (c *Client) playRecordStart() {
 		c.writer.allocateBuffer(c.WriteBufferCount)
 	}
 
-	c.writer.start()
+	c.timeDecoder = rtptime.NewGlobalDecoder()
 
 	for _, cm := range c.medias {
 		cm.start()
@@ -707,14 +763,14 @@ func (c *Client) playRecordStart() {
 		}
 	}
 
-	c.reader = newClientReader(c)
+	if *c.effectiveTransport == TransportTCP {
+		c.reader.setAllowInterleavedFrames(true)
+	}
 }
 
-func (c *Client) playRecordStop(isClosing bool) {
+func (c *Client) stopReadRoutines() {
 	if c.reader != nil {
-		c.reader.close()
-		<-c.readError
-		c.reader = nil
+		c.reader.setAllowInterleavedFrames(false)
 	}
 
 	c.checkTimeoutTimer = emptyTimer()
@@ -724,22 +780,28 @@ func (c *Client) playRecordStop(isClosing bool) {
 		cm.stop()
 	}
 
-	c.writer.stop()
-
 	c.timeDecoder = nil
+}
 
-	if !isClosing {
-		c.connCloser = newClientConnCloser(c.ctx, c.nconn)
-	}
+func (c *Client) startWriter() {
+	c.writer.start()
+}
+
+func (c *Client) stopWriter() {
+	c.writer.stop()
 }
 
 func (c *Client) connOpen() error {
+	if c.nconn != nil {
+		return nil
+	}
+
 	if c.connURL.Scheme != "rtsp" && c.connURL.Scheme != "rtsps" {
-		return fmt.Errorf("unsupported scheme '%s'", c.connURL.Scheme)
+		return liberrors.ErrClientUnsupportedScheme{Scheme: c.connURL.Scheme}
 	}
 
 	if c.connURL.Scheme == "rtsps" && c.Transport != nil && *c.Transport != TransportTCP {
-		return fmt.Errorf("RTSPS can be used only with TCP")
+		return liberrors.ErrClientRTSPSTCP{}
 	}
 
 	dialCtx, dialCtxCancel := context.WithTimeout(c.ctx, c.ReadTimeout)
@@ -752,11 +814,9 @@ func (c *Client) connOpen() error {
 
 	if c.connURL.Scheme == "rtsps" {
 		tlsConfig := c.TLSConfig
-
 		if tlsConfig == nil {
 			tlsConfig = &tls.Config{}
 		}
-
 		tlsConfig.ServerName = c.connURL.Hostname()
 
 		nconn = tls.Client(nconn, tlsConfig)
@@ -765,19 +825,12 @@ func (c *Client) connOpen() error {
 	c.nconn = nconn
 	bc := bytecounter.New(c.nconn, c.BytesReceived, c.BytesSent)
 	c.conn = conn.NewConn(bc)
-	c.connCloser = newClientConnCloser(c.ctx, c.nconn)
+	c.reader = newClientReader(c)
 
 	return nil
 }
 
-func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*base.Response, error) {
-	if c.nconn == nil {
-		err := c.connOpen()
-		if err != nil {
-			return nil, err
-		}
-	}
-
+func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error) {
 	if !c.optionsSent && req.Method != base.Options {
 		_, err := c.doOptions(req.URL)
 		if err != nil {
@@ -814,18 +867,9 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		return nil, nil
 	}
 
-	c.nconn.SetReadDeadline(time.Now().Add(c.ReadTimeout))
-	var res *base.Response
-	if allowFrames {
-		// read the response and ignore interleaved frames in between;
-		// interleaved frames are sent in two cases:
-		// * when the server is v4lrtspserver, before the PLAY response
-		// * when the stream is already playing
-		res, err = c.conn.ReadResponseIgnoreFrames()
-	} else {
-		res, err = c.conn.ReadResponse()
-	}
+	res, err := c.waitResponse()
 	if err != nil {
+		c.ctxCancel()
 		return nil, err
 	}
 
@@ -856,7 +900,7 @@ func (c *Client) do(req *base.Request, skipResponse bool, allowFrames bool) (*ba
 		}
 		c.sender = sender
 
-		return c.do(req, skipResponse, allowFrames)
+		return c.do(req, skipResponse)
 	}
 
 	return res, nil
@@ -899,7 +943,7 @@ func (c *Client) isInTCPTimeout() bool {
 	return now.Sub(lft) >= c.ReadTimeout
 }
 
-func (c *Client) checkTimeout() error {
+func (c *Client) doCheckTimeout() error {
 	if *c.effectiveTransport == TransportUDP ||
 		*c.effectiveTransport == TransportUDPMulticast {
 		if c.checkTimeoutInitial {
@@ -921,7 +965,7 @@ func (c *Client) checkTimeout() error {
 	return nil
 }
 
-func (c *Client) doKeepalive() error {
+func (c *Client) doKeepAlive() error {
 	_, err := c.do(&base.Request{
 		Method: func() base.Method {
 			// the VLC integrated rtsp server requires GET_PARAMETER
@@ -932,7 +976,7 @@ func (c *Client) doKeepalive() error {
 		}(),
 		// use the stream base URL, otherwise some cameras do not reply
 		URL: c.baseURL,
-	}, true, false)
+	}, false)
 	return err
 }
 
@@ -946,10 +990,15 @@ func (c *Client) doOptions(u *url.URL) (*base.Response, error) {
 		return nil, err
 	}
 
+	err = c.connOpen()
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := c.do(&base.Request{
 		Method: base.Options,
 		URL:    u,
-	}, false, false)
+	}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -973,12 +1022,12 @@ func (c *Client) doOptions(u *url.URL) (*base.Response, error) {
 func (c *Client) Options(u *url.URL) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
-	case c.options <- optionsReq{url: u, res: cres}:
+	case c.chOptions <- optionsReq{url: u, res: cres}:
 		res := <-cres
 		return res.res, res.err
 
-	case <-c.ctx.Done():
-		return nil, liberrors.ErrClientTerminated{}
+	case <-c.done:
+		return nil, c.closeError
 	}
 }
 
@@ -992,13 +1041,18 @@ func (c *Client) doDescribe(u *url.URL) (*description.Session, *base.Response, e
 		return nil, nil, err
 	}
 
+	err = c.connOpen()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	res, err := c.do(&base.Request{
 		Method: base.Describe,
 		URL:    u,
 		Header: base.Header{
 			"Accept": base.HeaderValue{"application/sdp"},
 		},
-	}, false, false)
+	}, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1069,12 +1123,12 @@ func (c *Client) doDescribe(u *url.URL) (*description.Session, *base.Response, e
 func (c *Client) Describe(u *url.URL) (*description.Session, *base.Response, error) {
 	cres := make(chan clientRes)
 	select {
-	case c.describe <- describeReq{url: u, res: cres}:
+	case c.chDescribe <- describeReq{url: u, res: cres}:
 		res := <-cres
 		return res.sd, res.res, res.err
 
-	case <-c.ctx.Done():
-		return nil, nil, liberrors.ErrClientTerminated{}
+	case <-c.done:
+		return nil, nil, c.closeError
 	}
 }
 
@@ -1082,6 +1136,11 @@ func (c *Client) doAnnounce(u *url.URL, desc *description.Session) (*base.Respon
 	err := c.checkState(map[clientState]struct{}{
 		clientStateInitial: {},
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.connOpen()
 	if err != nil {
 		return nil, err
 	}
@@ -1100,7 +1159,7 @@ func (c *Client) doAnnounce(u *url.URL, desc *description.Session) (*base.Respon
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
 		Body: byts,
-	}, false, false)
+	}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1121,12 +1180,12 @@ func (c *Client) doAnnounce(u *url.URL, desc *description.Session) (*base.Respon
 func (c *Client) Announce(u *url.URL, desc *description.Session) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
-	case c.announce <- announceReq{url: u, desc: desc, res: cres}:
+	case c.chAnnounce <- announceReq{url: u, desc: desc, res: cres}:
 		res := <-cres
 		return res.res, res.err
 
-	case <-c.ctx.Done():
-		return nil, liberrors.ErrClientTerminated{}
+	case <-c.done:
+		return nil, c.closeError
 	}
 }
 
@@ -1141,6 +1200,11 @@ func (c *Client) doSetup(
 		clientStatePrePlay:   {},
 		clientStatePreRecord: {},
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.connOpen()
 	if err != nil {
 		return nil, err
 	}
@@ -1229,7 +1293,7 @@ func (c *Client) doSetup(
 		Header: base.Header{
 			"Transport": th.Marshal(),
 		},
-	}, false, false)
+	}, false)
 	if err != nil {
 		cm.close()
 		return nil, err
@@ -1428,7 +1492,7 @@ func (c *Client) Setup(
 ) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
-	case c.setup <- setupReq{
+	case c.chSetup <- setupReq{
 		baseURL:  baseURL,
 		media:    media,
 		rtpPort:  rtpPort,
@@ -1438,8 +1502,8 @@ func (c *Client) Setup(
 		res := <-cres
 		return res.res, res.err
 
-	case <-c.ctx.Done():
-		return nil, liberrors.ErrClientTerminated{}
+	case <-c.done:
+		return nil, c.closeError
 	}
 }
 
@@ -1462,19 +1526,8 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 		return nil, err
 	}
 
-	// open the firewall by sending empty packets to the counterpart.
-	// do this before sending the request.
-	// don't do this with multicast, otherwise the RTP packet is going to be broadcasted
-	// to all listeners, including us, messing up the stream.
-	if *c.effectiveTransport == TransportUDP {
-		for _, ct := range c.medias {
-			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
-			ct.udpRTPListener.write(byts) //nolint:errcheck
-
-			byts, _ = (&rtcp.ReceiverReport{}).Marshal()
-			ct.udpRTCPListener.write(byts) //nolint:errcheck
-		}
-	}
+	c.state = clientStatePlay
+	c.startReadRoutines()
 
 	// Range is mandatory in Parrot Streaming Server
 	if ra == nil {
@@ -1491,20 +1544,37 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 		Header: base.Header{
 			"Range": ra.Marshal(),
 		},
-	}, false, *c.effectiveTransport == TransportTCP)
+	}, false)
 	if err != nil {
+		c.stopReadRoutines()
+		c.state = clientStatePrePlay
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
+		c.stopReadRoutines()
+		c.state = clientStatePrePlay
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
 
+	// open the firewall by sending empty packets to the counterpart.
+	// do this before sending the request.
+	// don't do this with multicast, otherwise the RTP packet is going to be broadcasted
+	// to all listeners, including us, messing up the stream.
+	if *c.effectiveTransport == TransportUDP {
+		for _, cm := range c.medias {
+			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
+			cm.udpRTPListener.write(byts) //nolint:errcheck
+
+			byts, _ = (&rtcp.ReceiverReport{}).Marshal()
+			cm.udpRTCPListener.write(byts) //nolint:errcheck
+		}
+	}
+
+	c.startWriter()
 	c.lastRange = ra
-	c.state = clientStatePlay
-	c.playRecordStart()
 
 	return res, nil
 }
@@ -1514,12 +1584,12 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 func (c *Client) Play(ra *headers.Range) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
-	case c.play <- playReq{ra: ra, res: cres}:
+	case c.chPlay <- playReq{ra: ra, res: cres}:
 		res := <-cres
 		return res.res, res.err
 
-	case <-c.ctx.Done():
-		return nil, liberrors.ErrClientTerminated{}
+	case <-c.done:
+		return nil, c.closeError
 	}
 }
 
@@ -1531,22 +1601,28 @@ func (c *Client) doRecord() (*base.Response, error) {
 		return nil, err
 	}
 
+	c.state = clientStateRecord
+	c.startReadRoutines()
+
 	res, err := c.do(&base.Request{
 		Method: base.Record,
 		URL:    c.baseURL,
-	}, false, false)
+	}, false)
 	if err != nil {
+		c.stopReadRoutines()
+		c.state = clientStatePreRecord
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
+		c.stopReadRoutines()
+		c.state = clientStatePreRecord
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
 	}
 
-	c.state = clientStateRecord
-	c.playRecordStart()
+	c.startWriter()
 
 	return nil, nil
 }
@@ -1556,12 +1632,12 @@ func (c *Client) doRecord() (*base.Response, error) {
 func (c *Client) Record() (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
-	case c.record <- recordReq{res: cres}:
+	case c.chRecord <- recordReq{res: cres}:
 		res := <-cres
 		return res.res, res.err
 
-	case <-c.ctx.Done():
-		return nil, liberrors.ErrClientTerminated{}
+	case <-c.done:
+		return nil, c.closeError
 	}
 }
 
@@ -1574,28 +1650,31 @@ func (c *Client) doPause() (*base.Response, error) {
 		return nil, err
 	}
 
-	c.playRecordStop(false)
+	c.stopWriter()
 
-	// change state regardless of the response
+	res, err := c.do(&base.Request{
+		Method: base.Pause,
+		URL:    c.baseURL,
+	}, false)
+	if err != nil {
+		c.startWriter()
+		return nil, err
+	}
+
+	if res.StatusCode != base.StatusOK {
+		c.startWriter()
+		return nil, liberrors.ErrClientBadStatusCode{
+			Code: res.StatusCode, Message: res.StatusMessage,
+		}
+	}
+
+	c.stopReadRoutines()
+
 	switch c.state {
 	case clientStatePlay:
 		c.state = clientStatePrePlay
 	case clientStateRecord:
 		c.state = clientStatePreRecord
-	}
-
-	res, err := c.do(&base.Request{
-		Method: base.Pause,
-		URL:    c.baseURL,
-	}, false, *c.effectiveTransport == TransportTCP)
-	if err != nil {
-		return nil, err
-	}
-
-	if res.StatusCode != base.StatusOK {
-		return nil, liberrors.ErrClientBadStatusCode{
-			Code: res.StatusCode, Message: res.StatusMessage,
-		}
 	}
 
 	return res, nil
@@ -1606,12 +1685,12 @@ func (c *Client) doPause() (*base.Response, error) {
 func (c *Client) Pause() (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
-	case c.pause <- pauseReq{res: cres}:
+	case c.chPause <- pauseReq{res: cres}:
 		res := <-cres
 		return res.res, res.err
 
-	case <-c.ctx.Done():
-		return nil, liberrors.ErrClientTerminated{}
+	case <-c.done:
+		return nil, c.closeError
 	}
 }
 
@@ -1719,4 +1798,16 @@ func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time,
 	cm := c.medias[medi]
 	ct := cm.formats[pkt.PayloadType]
 	return ct.rtcpReceiver.PacketNTP(pkt.Timestamp)
+}
+
+func (c *Client) readResponse(res *base.Response) {
+	c.chReadResponse <- res
+}
+
+func (c *Client) readRequest(req *base.Request) {
+	c.chReadRequest <- req
+}
+
+func (c *Client) readError(err error) {
+	c.chReadError <- err
 }

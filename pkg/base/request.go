@@ -66,11 +66,15 @@ func (req *Request) Unmarshal(br *bufio.Reader) error {
 	}
 	rawURL := string(byts[:len(byts)-1])
 
-	ur, err := url.Parse(rawURL)
-	if err != nil {
-		return fmt.Errorf("invalid URL (%v)", rawURL)
+	if rawURL != "*" {
+		ur, err := url.Parse(rawURL)
+		if err != nil {
+			return fmt.Errorf("invalid URL (%v)", rawURL)
+		}
+		req.URL = ur
+	} else {
+		req.URL = nil
 	}
-	req.URL = ur
 
 	byts, err = readBytesLimited(br, '\r', requestMaxProtocolLength)
 	if err != nil {
@@ -102,10 +106,15 @@ func (req *Request) Unmarshal(br *bufio.Reader) error {
 
 // MarshalSize returns the size of a Request.
 func (req Request) MarshalSize() int {
-	n := 0
+	n := len(req.Method) + 1
 
-	urStr := req.URL.CloneWithoutCredentials().String()
-	n += len([]byte(string(req.Method) + " " + urStr + " " + rtspProtocol10 + "\r\n"))
+	if req.URL != nil {
+		n += len(req.URL.CloneWithoutCredentials().String())
+	} else {
+		n++
+	}
+
+	n += 1 + len(rtspProtocol10) + 2
 
 	if len(req.Body) != 0 {
 		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}
@@ -122,8 +131,23 @@ func (req Request) MarshalSize() int {
 func (req Request) MarshalTo(buf []byte) (int, error) {
 	pos := 0
 
-	urStr := req.URL.CloneWithoutCredentials().String()
-	pos += copy(buf[pos:], []byte(string(req.Method)+" "+urStr+" "+rtspProtocol10+"\r\n"))
+	pos += copy(buf[pos:], []byte(req.Method))
+	buf[pos] = ' '
+	pos++
+
+	if req.URL != nil {
+		pos += copy(buf[pos:], []byte(req.URL.CloneWithoutCredentials().String()))
+	} else {
+		pos += copy(buf[pos:], []byte("*"))
+	}
+
+	buf[pos] = ' '
+	pos++
+	pos += copy(buf[pos:], rtspProtocol10)
+	buf[pos] = '\r'
+	pos++
+	buf[pos] = '\n'
+	pos++
 
 	if len(req.Body) != 0 {
 		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}

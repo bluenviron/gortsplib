@@ -14,11 +14,11 @@ const (
 
 // Conn is a RTSP connection.
 type Conn struct {
-	w   io.Writer
-	br  *bufio.Reader
-	req base.Request
-	res base.Response
-	fr  base.InterleavedFrame
+	w  io.Writer
+	br *bufio.Reader
+
+	// reuse interleaved frames. they should never be passed to secondary routines
+	fr base.InterleavedFrame
 }
 
 // NewConn allocates a Conn.
@@ -29,80 +29,42 @@ func NewConn(rw io.ReadWriter) *Conn {
 	}
 }
 
+// Read reads a Request, a Response or an Interleaved frame.
+func (c *Conn) Read() (interface{}, error) {
+	byts, err := c.br.Peek(2)
+	if err != nil {
+		return nil, err
+	}
+
+	if byts[0] == base.InterleavedFrameMagicByte {
+		return c.ReadInterleavedFrame()
+	}
+
+	if byts[0] == 'R' && byts[1] == 'T' {
+		return c.ReadResponse()
+	}
+
+	return c.ReadRequest()
+}
+
 // ReadRequest reads a Request.
 func (c *Conn) ReadRequest() (*base.Request, error) {
-	err := c.req.Unmarshal(c.br)
-	return &c.req, err
+	var req base.Request
+	err := req.Unmarshal(c.br)
+	return &req, err
 }
 
 // ReadResponse reads a Response.
 func (c *Conn) ReadResponse() (*base.Response, error) {
-	err := c.res.Unmarshal(c.br)
-	return &c.res, err
+	var res base.Response
+	err := res.Unmarshal(c.br)
+	return &res, err
 }
 
 // ReadInterleavedFrame reads a InterleavedFrame.
 func (c *Conn) ReadInterleavedFrame() (*base.InterleavedFrame, error) {
 	err := c.fr.Unmarshal(c.br)
 	return &c.fr, err
-}
-
-// ReadInterleavedFrameOrRequest reads an InterleavedFrame or a Request.
-func (c *Conn) ReadInterleavedFrameOrRequest() (interface{}, error) {
-	b, err := c.br.ReadByte()
-	if err != nil {
-		return nil, err
-	}
-	c.br.UnreadByte() //nolint:errcheck
-
-	if b == base.InterleavedFrameMagicByte {
-		return c.ReadInterleavedFrame()
-	}
-
-	return c.ReadRequest()
-}
-
-// ReadInterleavedFrameOrResponse reads an InterleavedFrame or a Response.
-func (c *Conn) ReadInterleavedFrameOrResponse() (interface{}, error) {
-	b, err := c.br.ReadByte()
-	if err != nil {
-		return nil, err
-	}
-	c.br.UnreadByte() //nolint:errcheck
-
-	if b == base.InterleavedFrameMagicByte {
-		return c.ReadInterleavedFrame()
-	}
-
-	return c.ReadResponse()
-}
-
-// ReadRequestIgnoreFrames reads a Request and ignores frames in between.
-func (c *Conn) ReadRequestIgnoreFrames() (*base.Request, error) {
-	for {
-		recv, err := c.ReadInterleavedFrameOrRequest()
-		if err != nil {
-			return nil, err
-		}
-
-		if req, ok := recv.(*base.Request); ok {
-			return req, nil
-		}
-	}
-}
-
-// ReadResponseIgnoreFrames reads a Response and ignores frames in between.
-func (c *Conn) ReadResponseIgnoreFrames() (*base.Response, error) {
-	for {
-		recv, err := c.ReadInterleavedFrameOrResponse()
-		if err != nil {
-			return nil, err
-		}
-
-		if res, ok := recv.(*base.Response); ok {
-			return res, nil
-		}
-	}
 }
 
 // WriteRequest writes a request.

@@ -102,6 +102,35 @@ func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *heade
 	return nil
 }
 
+func generateRTPInfo(
+	now time.Time,
+	setuppedMediasOrdered []*serverSessionMedia,
+	setuppedStream *ServerStream,
+	setuppedPath string,
+	u *url.URL,
+) (headers.RTPInfo, bool) {
+	var ri headers.RTPInfo
+
+	for _, sm := range setuppedMediasOrdered {
+		entry := setuppedStream.rtpInfoEntry(sm.media, now)
+		if entry != nil {
+			entry.URL = (&url.URL{
+				Scheme: u.Scheme,
+				Host:   u.Host,
+				Path: setuppedPath + "/trackID=" +
+					strconv.FormatInt(int64(setuppedStream.streamMedias[sm.media].trackID), 10),
+			}).String()
+			ri = append(ri, entry)
+		}
+	}
+
+	if len(ri) == 0 {
+		return nil, false
+	}
+
+	return ri, true
+}
+
 // ServerSessionState is a state of a ServerSession.
 type ServerSessionState int
 
@@ -900,26 +929,18 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			// writer.start() is called by ServerConn after the response has been sent
 		}
 
-		var ri headers.RTPInfo
-		now := ss.s.timeNow()
+		rtpInfo, ok := generateRTPInfo(
+			ss.s.timeNow(),
+			ss.setuppedMediasOrdered,
+			ss.setuppedStream,
+			*ss.setuppedPath,
+			req.URL)
 
-		for _, sm := range ss.setuppedMediasOrdered {
-			entry := ss.setuppedStream.rtpInfoEntry(sm.media, now)
-			if entry != nil {
-				entry.URL = (&url.URL{
-					Scheme: req.URL.Scheme,
-					Host:   req.URL.Host,
-					Path: *ss.setuppedPath + "/trackID=" +
-						strconv.FormatInt(int64(ss.setuppedStream.streamMedias[sm.media].trackID), 10),
-				}).String()
-				ri = append(ri, entry)
-			}
-		}
-		if len(ri) > 0 {
+		if ok {
 			if res.Header == nil {
 				res.Header = make(base.Header)
 			}
-			res.Header["RTP-Info"] = ri.Marshal()
+			res.Header["RTP-Info"] = rtpInfo.Marshal()
 		}
 
 		return res, err

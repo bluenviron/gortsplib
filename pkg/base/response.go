@@ -194,9 +194,7 @@ func (res Response) MarshalSize() int {
 		}
 	}
 
-	n += len([]byte(rtspProtocol10 + " " +
-		strconv.FormatInt(int64(res.StatusCode), 10) + " " +
-		res.StatusMessage + "\r\n"))
+	n += len(rtspProtocol10) + 1 + len(strconv.FormatInt(int64(res.StatusCode), 10)) + 1 + len(res.StatusMessage) + 2
 
 	if len(res.Body) != 0 {
 		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}
@@ -219,9 +217,17 @@ func (res Response) MarshalTo(buf []byte) (int, error) {
 
 	pos := 0
 
-	pos += copy(buf[pos:], []byte(rtspProtocol10+" "+
-		strconv.FormatInt(int64(res.StatusCode), 10)+" "+
-		res.StatusMessage+"\r\n"))
+	pos += copy(buf[pos:], []byte(rtspProtocol10))
+	buf[pos] = ' '
+	pos++
+	pos += copy(buf[pos:], []byte(strconv.FormatInt(int64(res.StatusCode), 10)))
+	buf[pos] = ' '
+	pos++
+	pos += copy(buf[pos:], []byte(res.StatusMessage))
+	buf[pos] = '\r'
+	pos++
+	buf[pos] = '\n'
+	pos++
 
 	if len(res.Body) != 0 {
 		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}

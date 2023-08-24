@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -39,7 +40,7 @@ var testRTPPacket = rtp.Packet{
 		CSRC:        []uint32{},
 		SSRC:        0x38F27A2F,
 	},
-	Payload: []byte{0x01, 0x02, 0x03, 0x04},
+	Payload: []byte{1, 2, 3, 4},
 }
 
 var testRTPPacketMarshaled = mustMarshalPacketRTP(&testRTPPacket)
@@ -99,6 +100,23 @@ func record(c *Client, ur string, medias []*description.Media, cb func(*descript
 	}
 
 	return nil
+}
+
+func readRequestIgnoreFrames(c *conn.Conn) (*base.Request, error) {
+	for {
+		what, err := c.Read()
+		if err != nil {
+			return nil, err
+		}
+
+		switch what := what.(type) {
+		case *base.InterleavedFrame:
+		case *base.Request:
+			return what, nil
+		case *base.Response:
+			return nil, fmt.Errorf("unexpected response")
+		}
+	}
 }
 
 func TestClientRecordSerial(t *testing.T) {
@@ -412,7 +430,7 @@ func TestClientRecordParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = conn.ReadRequestIgnoreFrames()
+				req, err = readRequestIgnoreFrames(conn)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -552,7 +570,7 @@ func TestClientRecordPauseSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = conn.ReadRequestIgnoreFrames()
+				req, err = readRequestIgnoreFrames(conn)
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
@@ -570,7 +588,7 @@ func TestClientRecordPauseSerial(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = conn.ReadRequestIgnoreFrames()
+				req, err = readRequestIgnoreFrames(conn)
 				require.NoError(t, err)
 				require.Equal(t, base.Teardown, req.Method)
 
@@ -700,7 +718,7 @@ func TestClientRecordPauseParallel(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				req, err = conn.ReadRequestIgnoreFrames()
+				req, err = readRequestIgnoreFrames(conn)
 				require.NoError(t, err)
 				require.Equal(t, base.Pause, req.Method)
 
