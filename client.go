@@ -316,6 +316,7 @@ type Client struct {
 	writer               asyncProcessor
 	reader               *clientReader
 	timeDecoder          *rtptime.GlobalDecoder
+	mustClose            bool
 
 	// in
 	chOptions      chan optionsReq
@@ -506,29 +507,57 @@ func (c *Client) runInner() error {
 			res, err := c.doOptions(req.url)
 			req.res <- clientRes{res: res, err: err}
 
+			if c.mustClose {
+				return err
+			}
+
 		case req := <-c.chDescribe:
 			sd, res, err := c.doDescribe(req.url)
 			req.res <- clientRes{sd: sd, res: res, err: err}
+
+			if c.mustClose {
+				return err
+			}
 
 		case req := <-c.chAnnounce:
 			res, err := c.doAnnounce(req.url, req.desc)
 			req.res <- clientRes{res: res, err: err}
 
+			if c.mustClose {
+				return err
+			}
+
 		case req := <-c.chSetup:
 			res, err := c.doSetup(req.baseURL, req.media, req.rtpPort, req.rtcpPort)
 			req.res <- clientRes{res: res, err: err}
+
+			if c.mustClose {
+				return err
+			}
 
 		case req := <-c.chPlay:
 			res, err := c.doPlay(req.ra)
 			req.res <- clientRes{res: res, err: err}
 
+			if c.mustClose {
+				return err
+			}
+
 		case req := <-c.chRecord:
 			res, err := c.doRecord()
 			req.res <- clientRes{res: res, err: err}
 
+			if c.mustClose {
+				return err
+			}
+
 		case req := <-c.chPause:
 			res, err := c.doPause()
 			req.res <- clientRes{res: res, err: err}
+
+			if c.mustClose {
+				return err
+			}
 
 		case <-c.checkTimeoutTimer.C:
 			err := c.doCheckTimeout()
@@ -869,7 +898,7 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 
 	res, err := c.waitResponse()
 	if err != nil {
-		c.ctxCancel()
+		c.mustClose = true
 		return nil, err
 	}
 
@@ -889,7 +918,7 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		}
 	}
 
-	// if required, send request again with authentication
+	// send request again with authentication
 	if res.StatusCode == base.StatusUnauthorized && req.URL.User != nil && c.sender == nil {
 		pass, _ := req.URL.User.Password()
 		user := req.URL.User.Username()
