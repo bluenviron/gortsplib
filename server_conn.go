@@ -74,8 +74,8 @@ type ServerConn struct {
 	session    *ServerSession
 
 	// in
-	chHandleRequest chan readReq
-	chReadErr       chan error
+	chReadRequest   chan readReq
+	chReadError     chan error
 	chRemoveSession chan *ServerSession
 
 	// out
@@ -99,8 +99,8 @@ func newServerConn(
 		ctx:             ctx,
 		ctxCancel:       ctxCancel,
 		remoteAddr:      nconn.RemoteAddr().(*net.TCPAddr),
-		chHandleRequest: make(chan readReq),
-		chReadErr:       make(chan error),
+		chReadRequest:   make(chan readReq),
+		chReadError:     make(chan error),
 		chRemoveSession: make(chan *ServerSession),
 		done:            make(chan struct{}),
 	}
@@ -187,10 +187,10 @@ func (sc *ServerConn) run() {
 func (sc *ServerConn) runInner() error {
 	for {
 		select {
-		case req := <-sc.chHandleRequest:
+		case req := <-sc.chReadRequest:
 			req.res <- sc.handleRequestOuter(req.req)
 
-		case err := <-sc.chReadErr:
+		case err := <-sc.chReadError:
 			return err
 
 		case ss := <-sc.chRemoveSession:
@@ -462,9 +462,9 @@ func (sc *ServerConn) removeSession(ss *ServerSession) {
 	}
 }
 
-func (sc *ServerConn) handleRequest(req readReq) error {
+func (sc *ServerConn) readRequest(req readReq) error {
 	select {
-	case sc.chHandleRequest <- req:
+	case sc.chReadRequest <- req:
 		return <-req.res
 
 	case <-sc.ctx.Done():
@@ -472,9 +472,9 @@ func (sc *ServerConn) handleRequest(req readReq) error {
 	}
 }
 
-func (sc *ServerConn) readErr(err error) {
+func (sc *ServerConn) readError(err error) {
 	select {
-	case sc.chReadErr <- err:
+	case sc.chReadError <- err:
 	case <-sc.ctx.Done():
 	}
 }

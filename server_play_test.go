@@ -119,7 +119,7 @@ func doSetup(t *testing.T, conn *conn.Conn, u string,
 	return res, &th
 }
 
-func doPlay(t *testing.T, conn *conn.Conn, u string, session string) {
+func doPlay(t *testing.T, conn *conn.Conn, u string, session string) *base.Response {
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Play,
 		URL:    mustParseURL(u),
@@ -130,6 +130,7 @@ func doPlay(t *testing.T, conn *conn.Conn, u string, session string) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
+	return res
 }
 
 func doPause(t *testing.T, conn *conn.Conn, u string, session string) {
@@ -1887,7 +1888,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 
 		ssrcs[1] = th.SSRC
 
-		doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
+		res = doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
 
 		var ri headers.RTPInfo
 		err = ri.Unmarshal(res.Header["RTP-Info"])
