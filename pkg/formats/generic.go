@@ -1,7 +1,6 @@
 package formats
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -34,21 +33,19 @@ func findClockRate(payloadType uint8, rtpMap string) (int, error) {
 	// get clock rate from rtpmap
 	// https://tools.ietf.org/html/rfc4566
 	// a=rtpmap:<payload type> <encoding name>/<clock rate> [/<encoding parameters>]
-	if rtpMap == "" {
-		return 0, fmt.Errorf("attribute 'rtpmap' not found")
+	if rtpMap != "" {
+		if tmp := strings.Split(rtpMap, "/"); len(tmp) >= 2 {
+			v, err := strconv.ParseUint(tmp[1], 10, 31)
+			if err != nil {
+				return 0, err
+			}
+			return int(v), nil
+		}
 	}
 
-	tmp := strings.Split(rtpMap, "/")
-	if len(tmp) != 2 && len(tmp) != 3 {
-		return 0, fmt.Errorf("invalid rtpmap (%v)", rtpMap)
-	}
-
-	v, err := strconv.ParseUint(tmp[1], 10, 31)
-	if err != nil {
-		return 0, err
-	}
-
-	return int(v), nil
+	// no clock rate was found.
+	// do not throw an error, but return zero, that disables RTCP sender and receiver reports.
+	return 0, nil
 }
 
 // Generic is a generic RTP format.
@@ -63,8 +60,9 @@ type Generic struct {
 
 // Init computes the clock rate of the format. It is mandatory to call it.
 func (f *Generic) Init() error {
-	f.ClockRat, _ = findClockRate(f.PayloadTyp, f.RTPMa)
-	return nil
+	var err error
+	f.ClockRat, err = findClockRate(f.PayloadTyp, f.RTPMa)
+	return err
 }
 
 func (f *Generic) unmarshal(payloadType uint8, _ string, _ string, rtpmap string, fmtp map[string]string) error {

@@ -890,19 +890,6 @@ var casesFormat = []struct {
 		"custom",
 		nil,
 	},
-	{
-		"application invalid rtpmap 2",
-		"application",
-		98,
-		"custom/aaa",
-		nil,
-		&Generic{
-			PayloadTyp: 98,
-			RTPMa:      "custom/aaa",
-		},
-		"custom/aaa",
-		nil,
-	},
 }
 
 func TestUnmarshal(t *testing.T) {
