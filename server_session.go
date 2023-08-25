@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -280,6 +281,8 @@ func (ss *ServerSession) onPacketLost(err error) {
 			Session: ss,
 			Error:   err,
 		})
+	} else {
+		log.Println(err.Error())
 	}
 }
 
@@ -289,6 +292,8 @@ func (ss *ServerSession) onDecodeError(err error) {
 			Session: ss,
 			Error:   err,
 		})
+	} else {
+		log.Println(err.Error())
 	}
 }
 
