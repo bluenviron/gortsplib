@@ -18,12 +18,12 @@ type Vorbis struct {
 	Configuration []byte
 }
 
-func (f *Vorbis) unmarshal(payloadType uint8, clock string, _ string, _ string, fmtp map[string]string) error {
-	f.PayloadTyp = payloadType
+func (f *Vorbis) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
-	tmp := strings.SplitN(clock, "/", 2)
+	tmp := strings.SplitN(ctx.clock, "/", 2)
 	if len(tmp) != 2 {
-		return fmt.Errorf("invalid clock (%v)", clock)
+		return fmt.Errorf("invalid clock (%v)", ctx.clock)
 	}
 
 	sampleRate, err := strconv.ParseUint(tmp[0], 10, 31)
@@ -38,7 +38,7 @@ func (f *Vorbis) unmarshal(payloadType uint8, clock string, _ string, _ string, 
 	}
 	f.ChannelCount = int(channelCount)
 
-	for key, val := range fmtp {
+	for key, val := range ctx.fmtp {
 		if key == "configuration" {
 			conf, err := base64.StdEncoding.DecodeString(val)
 			if err != nil {

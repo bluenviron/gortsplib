@@ -13,8 +13,8 @@ type G711 struct {
 	MULaw bool
 }
 
-func (f *G711) unmarshal(payloadType uint8, _ string, _ string, _ string, _ map[string]string) error {
-	f.MULaw = (payloadType == 0)
+func (f *G711) unmarshal(ctx *unmarshalContext) error {
+	f.MULaw = (ctx.payloadType == 0)
 	return nil
 }
 

@@ -16,10 +16,19 @@ func getCodecAndClock(rtpMap string) (string, string) {
 	return strings.ToLower(parts2[0]), parts2[1]
 }
 
+type unmarshalContext struct {
+	mediaType   string
+	payloadType uint8
+	clock       string
+	codec       string
+	rtpMap      string
+	fmtp        map[string]string
+}
+
 // Format is a media format.
 // It defines the payload type of RTP packets and how to encode/decode them.
 type Format interface {
-	unmarshal(payloadType uint8, clock string, codec string, rtpmap string, fmtp map[string]string) error
+	unmarshal(ctx *unmarshalContext) error
 
 	// Codec returns the codec name.
 	Codec() string
@@ -46,81 +55,86 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 
 	format := func() Format {
 		switch {
-		case mediaType == "video":
-			switch {
-			case payloadType == 26:
-				return &MJPEG{}
+		// video
 
-			case payloadType == 32:
-				return &MPEG1Video{}
+		case payloadType == 26:
+			return &MJPEG{}
 
-			case payloadType == 33:
-				return &MPEGTS{}
+		case payloadType == 32:
+			return &MPEG1Video{}
 
-			case codec == "mp4v-es" && clock == "90000":
-				return &MPEG4Video{}
+		case payloadType == 33:
+			return &MPEGTS{}
 
-			case codec == "h264" && clock == "90000":
-				return &H264{}
+		case codec == "mp4v-es" && clock == "90000":
+			return &MPEG4Video{}
 
-			case codec == "h265" && clock == "90000":
-				return &H265{}
+		case codec == "h264" && clock == "90000":
+			return &H264{}
 
-			case codec == "vp8" && clock == "90000":
-				return &VP8{}
+		case codec == "h265" && clock == "90000":
+			return &H265{}
 
-			case codec == "vp9" && clock == "90000":
-				return &VP9{}
+		case codec == "vp8" && clock == "90000":
+			return &VP8{}
 
-			case codec == "av1" && clock == "90000":
-				return &AV1{}
-			}
+		case codec == "vp9" && clock == "90000":
+			return &VP9{}
 
-		case mediaType == "audio":
-			switch {
-			case payloadType == 0, payloadType == 8:
-				return &G711{}
+		case codec == "av1" && clock == "90000":
+			return &AV1{}
 
-			case payloadType == 9:
-				return &G722{}
+		// audio
 
-			case (codec == "g726-16" ||
-				codec == "g726-24" ||
-				codec == "g726-32" ||
-				codec == "g726-40" ||
-				codec == "aal2-g726-16" ||
-				codec == "aal2-g726-24" ||
-				codec == "aal2-g726-32" ||
-				codec == "aal2-g726-40") && clock == "8000":
-				return &G726{}
+		case payloadType == 0, payloadType == 8:
+			return &G711{}
 
-			case payloadType == 14:
-				return &MPEG1Audio{}
+		case payloadType == 9:
+			return &G722{}
 
-			case codec == "l8", codec == "l16", codec == "l24":
-				return &LPCM{}
+		case (codec == "g726-16" ||
+			codec == "g726-24" ||
+			codec == "g726-32" ||
+			codec == "g726-40" ||
+			codec == "aal2-g726-16" ||
+			codec == "aal2-g726-24" ||
+			codec == "aal2-g726-32" ||
+			codec == "aal2-g726-40") && clock == "8000":
+			return &G726{}
 
-			case codec == "mpeg4-generic":
-				return &MPEG4AudioGeneric{}
+		case payloadType == 14:
+			return &MPEG1Audio{}
 
-			case codec == "mp4a-latm":
-				return &MPEG4AudioLATM{}
+		case codec == "l8", codec == "l16", codec == "l24":
+			return &LPCM{}
 
-			case codec == "speex":
-				return &Speex{}
+		case codec == "mpeg4-generic":
+			return &MPEG4AudioGeneric{}
 
-			case codec == "vorbis":
-				return &Vorbis{}
+		case codec == "mp4a-latm":
+			return &MPEG4AudioLATM{}
 
-			case codec == "opus":
-				return &Opus{}
-			}
+		case codec == "speex":
+			return &Speex{}
+
+		case codec == "vorbis":
+			return &Vorbis{}
+
+		case codec == "opus":
+			return &Opus{}
 		}
 
 		return &Generic{}
 	}()
 
-	err := format.unmarshal(payloadType, clock, codec, rtpMap, fmtp)
+	err := format.unmarshal(&unmarshalContext{
+		mediaType:   mediaType,
+		payloadType: payloadType,
+		clock:       clock,
+		codec:       codec,
+		rtpMap:      rtpMap,
+		fmtp:        fmtp,
+	})
 	if err != nil {
 		return nil, err
 	}

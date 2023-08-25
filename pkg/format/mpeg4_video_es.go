@@ -22,14 +22,11 @@ type MPEG4VideoES struct {
 	Config         []byte
 }
 
-func (f *MPEG4VideoES) unmarshal(
-	payloadType uint8, _ string, _ string,
-	_ string, fmtp map[string]string,
-) error {
-	f.PayloadTyp = payloadType
-	f.ProfileLevelID = 1 // default value defined by specification
+func (f *MPEG4VideoES) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
+	f.ProfileLevelID = 1 // default value imposed by specification
 
-	for key, val := range fmtp {
+	for key, val := range ctx.fmtp {
 		switch key {
 		case "profile-level-id":
 			tmp, err := strconv.ParseUint(val, 10, 31)

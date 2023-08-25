@@ -17,10 +17,10 @@ type VP8 struct {
 	MaxFS      *int
 }
 
-func (f *VP8) unmarshal(payloadType uint8, _ string, _ string, _ string, fmtp map[string]string) error {
-	f.PayloadTyp = payloadType
+func (f *VP8) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
-	for key, val := range fmtp {
+	for key, val := range ctx.fmtp {
 		switch key {
 		case "max-fr":
 			n, err := strconv.ParseUint(val, 10, 31)
