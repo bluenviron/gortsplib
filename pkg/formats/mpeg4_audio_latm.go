@@ -22,17 +22,14 @@ type MPEG4AudioLATM struct {
 	SBREnabled     *bool
 }
 
-func (f *MPEG4AudioLATM) unmarshal(
-	payloadType uint8, _ string, _ string,
-	_ string, fmtp map[string]string,
-) error {
-	f.PayloadTyp = payloadType
+func (f *MPEG4AudioLATM) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
 	// default value set by specification
 	f.ProfileLevelID = 30
 	f.CPresent = true
 
-	for key, val := range fmtp {
+	for key, val := range ctx.fmtp {
 		switch key {
 		case "profile-level-id":
 			tmp, err := strconv.ParseUint(val, 10, 31)

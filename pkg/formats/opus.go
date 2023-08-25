@@ -17,12 +17,12 @@ type Opus struct {
 	IsStereo   bool
 }
 
-func (f *Opus) unmarshal(payloadType uint8, clock string, _ string, _ string, fmtp map[string]string) error {
-	f.PayloadTyp = payloadType
+func (f *Opus) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
-	tmp := strings.SplitN(clock, "/", 2)
+	tmp := strings.SplitN(ctx.clock, "/", 2)
 	if len(tmp) != 2 {
-		return fmt.Errorf("invalid clock (%v)", clock)
+		return fmt.Errorf("invalid clock (%v)", ctx.clock)
 	}
 
 	sampleRate, err := strconv.ParseUint(tmp[0], 10, 31)
@@ -35,7 +35,7 @@ func (f *Opus) unmarshal(payloadType uint8, clock string, _ string, _ string, fm
 		return fmt.Errorf("invalid channel count: %d", channelCount)
 	}
 
-	for key, val := range fmtp {
+	for key, val := range ctx.fmtp {
 		if key == "sprop-stereo" {
 			f.IsStereo = (val == "1")
 		}

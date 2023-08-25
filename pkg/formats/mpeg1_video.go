@@ -8,7 +8,7 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEG1Video struct{}
 
-func (f *MPEG1Video) unmarshal(_ uint8, _ string, _ string, _ string, _ map[string]string) error {
+func (f *MPEG1Video) unmarshal(_ *unmarshalContext) error {
 	return nil
 }
 

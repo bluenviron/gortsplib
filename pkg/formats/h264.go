@@ -25,10 +25,10 @@ type H264 struct {
 	mutex sync.RWMutex
 }
 
-func (f *H264) unmarshal(payloadType uint8, _ string, _ string, _ string, fmtp map[string]string) error {
-	f.PayloadTyp = payloadType
+func (f *H264) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
-	for key, val := range fmtp {
+	for key, val := range ctx.fmtp {
 		switch key {
 		case "sprop-parameter-sets":
 			tmp := strings.Split(val, ",")

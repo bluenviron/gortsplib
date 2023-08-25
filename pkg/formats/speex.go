@@ -15,16 +15,16 @@ type Speex struct {
 	VBR        *bool
 }
 
-func (f *Speex) unmarshal(payloadType uint8, clock string, _ string, _ string, fmtp map[string]string) error {
-	f.PayloadTyp = payloadType
+func (f *Speex) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
-	sampleRate, err := strconv.ParseUint(clock, 10, 31)
+	sampleRate, err := strconv.ParseUint(ctx.clock, 10, 31)
 	if err != nil {
 		return err
 	}
 	f.SampleRate = int(sampleRate)
 
-	for key, val := range fmtp {
+	for key, val := range ctx.fmtp {
 		if key == "vbr" {
 			if val != "on" && val != "off" {
 				return fmt.Errorf("invalid vbr value: %v", val)
