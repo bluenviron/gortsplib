@@ -18,10 +18,10 @@ type LPCM struct {
 	ChannelCount int
 }
 
-func (f *LPCM) unmarshal(payloadType uint8, clock string, codec string, _ string, _ map[string]string) error {
-	f.PayloadTyp = payloadType
+func (f *LPCM) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
-	switch codec {
+	switch ctx.codec {
 	case "l8":
 		f.BitDepth = 8
 
@@ -32,7 +32,7 @@ func (f *LPCM) unmarshal(payloadType uint8, clock string, codec string, _ string
 		f.BitDepth = 24
 	}
 
-	tmp := strings.SplitN(clock, "/", 2)
+	tmp := strings.SplitN(ctx.clock, "/", 2)
 
 	tmp1, err := strconv.ParseUint(tmp[0], 10, 31)
 	if err != nil {

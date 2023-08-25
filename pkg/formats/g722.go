@@ -10,7 +10,7 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc3551
 type G722 struct{}
 
-func (f *G722) unmarshal(_ uint8, _ string, _ string, _ string, _ map[string]string) error {
+func (f *G722) unmarshal(_ *unmarshalContext) error {
 	return nil
 }
 

@@ -15,19 +15,19 @@ type G726 struct {
 	BigEndian  bool
 }
 
-func (f *G726) unmarshal(payloadType uint8, _ string, codec string, _ string, _ map[string]string) error {
-	f.PayloadTyp = payloadType
+func (f *G726) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
-	if strings.HasPrefix(codec, "aal2-") {
+	if strings.HasPrefix(ctx.codec, "aal2-") {
 		f.BigEndian = true
 	}
 
 	switch {
-	case strings.HasSuffix(codec, "-16"):
+	case strings.HasSuffix(ctx.codec, "-16"):
 		f.BitRate = 16
-	case strings.HasSuffix(codec, "-24"):
+	case strings.HasSuffix(ctx.codec, "-24"):
 		f.BitRate = 24
-	case strings.HasSuffix(codec, "-32"):
+	case strings.HasSuffix(ctx.codec, "-32"):
 		f.BitRate = 32
 	default:
 		f.BitRate = 40

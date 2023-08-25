@@ -24,36 +24,36 @@ type H265 struct {
 	mutex sync.RWMutex
 }
 
-func (f *H265) unmarshal(payloadType uint8, _ string, _ string, _ string, fmtp map[string]string) error {
-	f.PayloadTyp = payloadType
+func (f *H265) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
-	for key, val := range fmtp {
+	for key, val := range ctx.fmtp {
 		switch key {
 		case "sprop-vps":
 			var err error
 			f.VPS, err = base64.StdEncoding.DecodeString(val)
 			if err != nil {
-				return fmt.Errorf("invalid sprop-vps (%v)", fmtp)
+				return fmt.Errorf("invalid sprop-vps (%v)", ctx.fmtp)
 			}
 
 		case "sprop-sps":
 			var err error
 			f.SPS, err = base64.StdEncoding.DecodeString(val)
 			if err != nil {
-				return fmt.Errorf("invalid sprop-sps (%v)", fmtp)
+				return fmt.Errorf("invalid sprop-sps (%v)", ctx.fmtp)
 			}
 
 		case "sprop-pps":
 			var err error
 			f.PPS, err = base64.StdEncoding.DecodeString(val)
 			if err != nil {
-				return fmt.Errorf("invalid sprop-pps (%v)", fmtp)
+				return fmt.Errorf("invalid sprop-pps (%v)", ctx.fmtp)
 			}
 
 		case "sprop-max-don-diff":
 			tmp, err := strconv.ParseUint(val, 10, 31)
 			if err != nil {
-				return fmt.Errorf("invalid sprop-max-don-diff (%v)", fmtp)
+				return fmt.Errorf("invalid sprop-max-don-diff (%v)", ctx.fmtp)
 			}
 			f.MaxDONDiff = int(tmp)
 		}

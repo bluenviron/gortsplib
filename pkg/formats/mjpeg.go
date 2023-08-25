@@ -10,7 +10,7 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc2435
 type MJPEG struct{}
 
-func (f *MJPEG) unmarshal(_ uint8, _ string, _ string, _ string, _ map[string]string) error {
+func (f *MJPEG) unmarshal(_ *unmarshalContext) error {
 	return nil
 }
 

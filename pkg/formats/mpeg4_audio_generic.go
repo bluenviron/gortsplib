@@ -26,13 +26,10 @@ type MPEG4AudioGeneric struct {
 	IndexDeltaLength int
 }
 
-func (f *MPEG4AudioGeneric) unmarshal(
-	payloadType uint8, _ string, _ string,
-	_ string, fmtp map[string]string,
-) error {
-	f.PayloadTyp = payloadType
+func (f *MPEG4AudioGeneric) unmarshal(ctx *unmarshalContext) error {
+	f.PayloadTyp = ctx.payloadType
 
-	for key, val := range fmtp {
+	for key, val := range ctx.fmtp {
 		switch key {
 		case "streamtype":
 			if val != "5" { // AudioStream in ISO 14496-1

@@ -912,109 +912,116 @@ func TestMarshal(t *testing.T) {
 	}
 }
 
-func TestUnmarshalMPEG4AudioGenericErrors(t *testing.T) {
-	_, err := Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"streamtype": "10",
+func TestUnmarshalErrors(t *testing.T) {
+	t.Run("invalid video", func(t *testing.T) {
+		_, err := Unmarshal("video", 96, "", map[string]string{})
+		require.Error(t, err)
 	})
-	require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"mode": "asd",
-	})
-	require.Error(t, err)
+	t.Run("mpeg-4 audio generic", func(t *testing.T) {
+		_, err := Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"streamtype": "10",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"profile-level-id": "aaa",
-	})
-	require.Error(t, err)
+		_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"mode": "asd",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"config": "aaa",
-	})
-	require.Error(t, err)
+		_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"profile-level-id": "aaa",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"config": "0ab2",
-	})
-	require.Error(t, err)
+		_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"config": "aaa",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"sizelength": "aaa",
-	})
-	require.Error(t, err)
+		_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"config": "0ab2",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"indexlength": "aaa",
-	})
-	require.Error(t, err)
+		_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"sizelength": "aaa",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"indexdeltalength": "aaa",
-	})
-	require.Error(t, err)
+		_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"indexlength": "aaa",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"profile-level-id": "1",
-		"sizelength":       "13",
-		"indexlength":      "3",
-		"indexdeltalength": "3",
-	})
-	require.Error(t, err)
+		_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"indexdeltalength": "aaa",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
-		"profile-level-id": "1",
-		"config":           "1190",
-		"indexlength":      "3",
-		"indexdeltalength": "3",
-	})
-	require.Error(t, err)
-}
+		_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"profile-level-id": "1",
+			"sizelength":       "13",
+			"indexlength":      "3",
+			"indexdeltalength": "3",
+		})
+		require.Error(t, err)
 
-func TestUnmarshalMPEG4AudioLATMErrors(t *testing.T) {
-	_, err := Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"profile-level-id": "aaa",
+		_, err = Unmarshal("audio", 96, "MPEG4-generic/48000/2", map[string]string{
+			"profile-level-id": "1",
+			"config":           "1190",
+			"indexlength":      "3",
+			"indexdeltalength": "3",
+		})
+		require.Error(t, err)
 	})
-	require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"bitrate": "aaa",
-	})
-	require.Error(t, err)
+	t.Run("mpeg-4 audio latm", func(t *testing.T) {
+		_, err := Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+			"profile-level-id": "aaa",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"cpresent": "0",
-	})
-	require.Error(t, err)
+		_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+			"bitrate": "aaa",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"config": "aaa",
-	})
-	require.Error(t, err)
+		_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+			"cpresent": "0",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
-		"profile-level-id": "15",
-		"object":           "2",
-		"cpresent":         "0",
-		"sbr-enabled":      "1",
-	})
-	require.Error(t, err)
-}
+		_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+			"config": "aaa",
+		})
+		require.Error(t, err)
 
-func TestUnmarshalAV1Errors(t *testing.T) {
-	_, err := Unmarshal("video", 96, "AV1/90000", map[string]string{
-		"level-idx": "aaa",
+		_, err = Unmarshal("audio", 96, "MP4A-LATM/48000/2", map[string]string{
+			"profile-level-id": "15",
+			"object":           "2",
+			"cpresent":         "0",
+			"sbr-enabled":      "1",
+		})
+		require.Error(t, err)
 	})
-	require.Error(t, err)
 
-	_, err = Unmarshal("video", 96, "AV1/90000", map[string]string{
-		"profile": "aaa",
-	})
-	require.Error(t, err)
+	t.Run("av1", func(t *testing.T) {
+		_, err := Unmarshal("video", 96, "AV1/90000", map[string]string{
+			"level-idx": "aaa",
+		})
+		require.Error(t, err)
 
-	_, err = Unmarshal("video", 96, "AV1/90000", map[string]string{
-		"tier": "aaa",
+		_, err = Unmarshal("video", 96, "AV1/90000", map[string]string{
+			"profile": "aaa",
+		})
+		require.Error(t, err)
+
+		_, err = Unmarshal("video", 96, "AV1/90000", map[string]string{
+			"tier": "aaa",
+		})
+		require.Error(t, err)
 	})
-	require.Error(t, err)
 }
 
 func FuzzUnmarshalH264(f *testing.F) {
