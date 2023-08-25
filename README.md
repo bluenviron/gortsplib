@@ -18,32 +18,29 @@ Features:
     * Read media streams from servers with the UDP, UDP-multicast or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
-    * Read only selected media streams
+    * Read selected media streams only
     * Pause or seek without disconnecting from the server
-    * Generate RTCP receiver reports (UDP only)
-    * Reorder incoming RTP packets (UDP only)
+    * Get PTS (relative) timestamp of incoming packets
+    * Get NTP (absolute) timestamp of incoming packets
   * Publish
     * Publish media streams to servers with the UDP or TCP transport protocol
     * Publish TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
     * Pause without disconnecting from the server
-    * Generate RTCP sender reports
 * Server
   * Handle requests from clients
-  * Sessions and connections are independent
   * Publish
     * Read media streams from clients with the UDP or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
-    * Generate RTCP receiver reports (UDP only)
-    * Reorder incoming RTP packets (UDP only)
+    * Get PTS (relative) timestamp of incoming packets
+    * Get NTP (absolute) timestamp of incoming packets
   * Read
     * Write media streams to clients with the UDP, UDP-multicast or TCP transport protocol
-    * Write TLS-encrypted streams
+    * Write TLS-encrypted streams (TCP only)
     * Compute and provide SSRC, RTP-Info to clients
-    * Generate RTCP sender reports
 * Utilities
   * Parse RTSP elements
-  * Encode/decode format-specific frames into/from RTP packets
+  * Encode/decode codec-specific frames into/from RTP packets
 
 ## Table of contents
 
