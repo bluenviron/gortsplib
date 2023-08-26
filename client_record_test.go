@@ -776,6 +776,8 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 	require.NoError(t, err)
 	defer l.Close()
 
+	recv := make(chan struct{})
+
 	serverDone := make(chan struct{})
 	defer func() { <-serverDone }()
 	go func() {
@@ -866,6 +868,8 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, testRTPPacket, pkt)
 
+		close(recv)
+
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
 		require.Equal(t, base.Teardown, req.Method)
@@ -887,6 +891,8 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 
 	err = c.WritePacketRTP(medi, &testRTPPacket)
 	require.NoError(t, err)
+
+	<-recv
 }
 
 func TestClientRecordDecodeErrors(t *testing.T) {

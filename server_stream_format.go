@@ -36,19 +36,27 @@ func newServerStreamFormat(sm *serverStreamMedia, forma format.Format) *serverSt
 	return sf
 }
 
-func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) {
+func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
 	sf.rtcpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
 
 	// send unicast
 	for r := range sf.sm.st.activeUnicastReaders {
 		sm, ok := r.setuppedMedias[sf.sm.media]
 		if ok {
-			sm.writePacketRTP(byts)
+			err := sm.writePacketRTP(byts)
+			if err != nil {
+				r.onStreamWriteError(err)
+			}
 		}
 	}
 
 	// send multicast
 	if sf.sm.multicastWriter != nil {
-		sf.sm.multicastWriter.writePacketRTP(byts)
+		err := sf.sm.multicastWriter.writePacketRTP(byts)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }

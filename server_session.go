@@ -297,6 +297,17 @@ func (ss *ServerSession) onDecodeError(err error) {
 	}
 }
 
+func (ss *ServerSession) onStreamWriteError(err error) {
+	if h, ok := ss.s.Handler.(ServerHandlerOnStreamWriteError); ok {
+		h.OnStreamWriteError(&ServerHandlerOnStreamWriteErrorCtx{
+			Session: ss,
+			Error:   err,
+		})
+	} else {
+		log.Println(err.Error())
+	}
+}
+
 func (ss *ServerSession) checkState(allowed map[ServerSessionState]struct{}) error {
 	if _, ok := allowed[ss.state]; ok {
 		return nil
@@ -1186,9 +1197,9 @@ func (ss *ServerSession) OnPacketRTCP(medi *description.Media, cb OnPacketRTCPFu
 	sm.onPacketRTCP = cb
 }
 
-func (ss *ServerSession) writePacketRTP(medi *description.Media, byts []byte) {
+func (ss *ServerSession) writePacketRTP(medi *description.Media, byts []byte) error {
 	sm := ss.setuppedMedias[medi]
-	sm.writePacketRTP(byts)
+	return sm.writePacketRTP(byts)
 }
 
 // WritePacketRTP writes a RTP packet to the session.
@@ -1200,13 +1211,12 @@ func (ss *ServerSession) WritePacketRTP(medi *description.Media, pkt *rtp.Packet
 	}
 	byts = byts[:n]
 
-	ss.writePacketRTP(medi, byts)
-	return nil
+	return ss.writePacketRTP(medi, byts)
 }
 
-func (ss *ServerSession) writePacketRTCP(medi *description.Media, byts []byte) {
+func (ss *ServerSession) writePacketRTCP(medi *description.Media, byts []byte) error {
 	sm := ss.setuppedMedias[medi]
-	sm.writePacketRTCP(byts)
+	return sm.writePacketRTCP(byts)
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.
@@ -1216,8 +1226,7 @@ func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packe
 		return err
 	}
 
-	ss.writePacketRTCP(medi, byts)
-	return nil
+	return ss.writePacketRTCP(medi, byts)
 }
 
 // PacketPTS returns the PTS of an incoming RTP packet.

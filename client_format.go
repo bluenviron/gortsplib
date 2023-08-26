@@ -8,6 +8,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtplossdetector"
@@ -78,12 +79,17 @@ func (ct *clientFormat) stop() {
 	}
 }
 
-func (ct *clientFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) {
+func (ct *clientFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
 	ct.rtcpSender.ProcessPacket(pkt, ntp, ct.format.PTSEqualsDTS(pkt))
 
-	ct.cm.c.writer.queue(func() {
+	ok := ct.cm.c.writer.push(func() {
 		ct.cm.writePacketRTPInQueue(byts)
 	})
+	if !ok {
+		return liberrors.ErrClientWriteQueueFull{}
+	}
+
+	return nil
 }
 
 func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {

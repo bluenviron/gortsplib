@@ -256,3 +256,11 @@ type ErrClientUnhandledMethod struct {
 func (e ErrClientUnhandledMethod) Error() string {
 	return fmt.Sprintf("unhandled method: %v", e.Method)
 }
+
+// ErrClientWriteQueueFull is an error that can be returned by a client.
+type ErrClientWriteQueueFull struct{}
+
+// Error implements the error interface.
+func (e ErrClientWriteQueueFull) Error() string {
+	return "write queue is full"
+}

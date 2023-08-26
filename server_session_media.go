@@ -11,6 +11,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
 type serverSessionMedia struct {
@@ -142,16 +143,26 @@ func (sm *serverSessionMedia) writePacketRTCPInQueueTCP(payload []byte) {
 	sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.tcpRTCPFrame, sm.tcpBuffer) //nolint:errcheck
 }
 
-func (sm *serverSessionMedia) writePacketRTP(payload []byte) {
-	sm.ss.writer.queue(func() {
+func (sm *serverSessionMedia) writePacketRTP(payload []byte) error {
+	ok := sm.ss.writer.push(func() {
 		sm.writePacketRTPInQueue(payload)
 	})
+	if !ok {
+		return liberrors.ErrServerWriteQueueFull{}
+	}
+
+	return nil
 }
 
-func (sm *serverSessionMedia) writePacketRTCP(payload []byte) {
-	sm.ss.writer.queue(func() {
+func (sm *serverSessionMedia) writePacketRTCP(payload []byte) error {
+	ok := sm.ss.writer.push(func() {
 		sm.writePacketRTCPInQueue(payload)
 	})
+	if !ok {
+		return liberrors.ErrServerWriteQueueFull{}
+	}
+
+	return nil
 }
 
 func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) {
