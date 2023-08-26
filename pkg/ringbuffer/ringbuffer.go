@@ -3,18 +3,18 @@ package ringbuffer
 
 import (
 	"fmt"
-	"sync/atomic"
-	"unsafe"
+	"sync"
 )
 
 // RingBuffer is a ring buffer.
 type RingBuffer struct {
 	size       uint64
+	mutex      sync.Mutex
+	cond       *sync.Cond
+	buffer     []interface{}
 	readIndex  uint64
 	writeIndex uint64
-	closed     int64
-	buffer     []unsafe.Pointer
-	event      *event
+	closed     bool
 }
 
 // New allocates a RingBuffer.
@@ -25,53 +25,82 @@ func New(size uint64) (*RingBuffer, error) {
 		return nil, fmt.Errorf("size must be a power of two")
 	}
 
-	return &RingBuffer{
-		size:       size,
-		readIndex:  1,
-		writeIndex: 0,
-		buffer:     make([]unsafe.Pointer, size),
-		event:      newEvent(),
-	}, nil
+	r := &RingBuffer{
+		size:   size,
+		buffer: make([]interface{}, size),
+	}
+
+	r.cond = sync.NewCond(&r.mutex)
+
+	return r, nil
 }
 
 // Close makes Pull() return false.
 func (r *RingBuffer) Close() {
-	atomic.StoreInt64(&r.closed, 1)
-	r.event.signal()
+	r.mutex.Lock()
+
+	r.closed = true
+
+	// discard pending data to make Pull() exit immediately
+	for i := uint64(0); i < r.size; i++ {
+		r.buffer[i] = nil
+	}
+
+	r.mutex.Unlock()
+	r.cond.Broadcast()
 }
 
 // Reset restores Pull() behavior after a Close().
 func (r *RingBuffer) Reset() {
 	for i := uint64(0); i < r.size; i++ {
-		atomic.SwapPointer(&r.buffer[i], nil)
+		r.buffer[i] = nil
 	}
-	atomic.SwapUint64(&r.writeIndex, 0)
-	r.readIndex = 1
-	atomic.StoreInt64(&r.closed, 0)
+
+	r.writeIndex = 0
+	r.readIndex = 0
+	r.closed = false
 }
 
 // Push pushes data at the end of the buffer.
-func (r *RingBuffer) Push(data interface{}) {
-	writeIndex := atomic.AddUint64(&r.writeIndex, 1)
-	i := writeIndex % r.size
-	atomic.SwapPointer(&r.buffer[i], unsafe.Pointer(&data))
-	r.event.signal()
+func (r *RingBuffer) Push(data interface{}) bool {
+	r.mutex.Lock()
+
+	if r.buffer[r.writeIndex] != nil {
+		r.mutex.Unlock()
+		return false
+	}
+
+	r.buffer[r.writeIndex] = data
+	r.writeIndex = (r.writeIndex + 1) % r.size
+
+	r.mutex.Unlock()
+
+	r.cond.Broadcast()
+
+	return true
 }
 
 // Pull pulls data from the beginning of the buffer.
 func (r *RingBuffer) Pull() (interface{}, bool) {
 	for {
-		i := r.readIndex % r.size
-		res := (*interface{})(atomic.SwapPointer(&r.buffer[i], nil))
-		if res == nil {
-			if atomic.SwapInt64(&r.closed, 0) == 1 {
-				return nil, false
-			}
-			r.event.wait()
-			continue
+		r.mutex.Lock()
+
+		data := r.buffer[r.readIndex]
+
+		if data != nil {
+			r.buffer[r.readIndex] = nil
+			r.readIndex = (r.readIndex + 1) % r.size
+			r.mutex.Unlock()
+			return data, true
 		}
 
-		r.readIndex++
-		return *res, true
+		if r.closed {
+			r.mutex.Unlock()
+			return nil, false
+		}
+
+		r.cond.Wait()
+
+		r.mutex.Unlock()
 	}
 }
