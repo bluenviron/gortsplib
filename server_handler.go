@@ -224,6 +224,6 @@ type ServerHandlerOnStreamWriteErrorCtx struct {
 
 // ServerHandlerOnStreamWriteError can be implemented by a ServerHandler.
 type ServerHandlerOnStreamWriteError interface {
-	// called when a write error occurs when writing a stream.
+	// called when a ServerStream is unable to write packets to a session.
 	OnStreamWriteError(*ServerHandlerOnStreamWriteErrorCtx)
 }
