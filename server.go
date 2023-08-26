@@ -79,17 +79,9 @@ type Server struct {
 	WriteTimeout time.Duration
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
-	// read buffer count.
-	// If greater than 1, allows to pass buffers to routines different than the one
-	// that is reading frames.
-	// It also allows to buffer routed frames and mitigate network fluctuations
-	// that are particularly relevant when using UDP.
+	// Size of the queue of outgoing packets.
 	// It defaults to 256.
-	ReadBufferCount int
-	// write buffer count.
-	// It allows to queue packets before sending them.
-	// It defaults to 256.
-	WriteBufferCount int
+	WriteBufferSize int
 	// maximum size of outgoing RTP / RTCP packets.
 	// This must be less than the UDP MTU (1472 bytes).
 	// It defaults to 1472.
@@ -154,13 +146,10 @@ func (s *Server) Start() error {
 	if s.WriteTimeout == 0 {
 		s.WriteTimeout = 10 * time.Second
 	}
-	if s.ReadBufferCount == 0 {
-		s.ReadBufferCount = 256
-	}
-	if s.WriteBufferCount == 0 {
-		s.WriteBufferCount = 256
-	} else if (s.WriteBufferCount & (s.WriteBufferCount - 1)) != 0 {
-		return fmt.Errorf("WriteBufferCount must be a power of two")
+	if s.WriteBufferSize == 0 {
+		s.WriteBufferSize = 256
+	} else if (s.WriteBufferSize & (s.WriteBufferSize - 1)) != 0 {
+		return fmt.Errorf("WriteBufferSize must be a power of two")
 	}
 	if s.MaxPacketSize == 0 {
 		s.MaxPacketSize = udpMaxPayloadSize

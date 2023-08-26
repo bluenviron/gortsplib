@@ -885,7 +885,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		// inside the callback.
 		if ss.state != ServerSessionStatePlay &&
 			*ss.setuppedTransport != TransportUDPMulticast {
-			ss.writer.allocateBuffer(ss.s.WriteBufferCount)
+			ss.writer.allocateBuffer(ss.s.WriteBufferSize)
 		}
 
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{

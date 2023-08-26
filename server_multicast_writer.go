@@ -36,7 +36,7 @@ func newServerMulticastWriter(s *Server) (*serverMulticastWriter, error) {
 		return nil, err
 	}
 
-	wb, _ := ringbuffer.New(uint64(s.WriteBufferCount))
+	wb, _ := ringbuffer.New(uint64(s.WriteBufferSize))
 
 	h := &serverMulticastWriter{
 		rtpl:        rtpl,
