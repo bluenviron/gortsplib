@@ -10,6 +10,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
 type clientMedia struct {
@@ -168,10 +169,15 @@ func (cm *clientMedia) writePacketRTCPInQueueTCP(payload []byte) {
 	cm.c.conn.WriteInterleavedFrame(cm.tcpRTCPFrame, cm.tcpBuffer) //nolint:errcheck
 }
 
-func (cm *clientMedia) writePacketRTCP(byts []byte) {
-	cm.c.writer.queue(func() {
+func (cm *clientMedia) writePacketRTCP(byts []byte) error {
+	ok := cm.c.writer.push(func() {
 		cm.writePacketRTCPInQueue(byts)
 	})
+	if !ok {
+		return liberrors.ErrClientWriteQueueFull{}
+	}
+
+	return nil
 }
 
 func (cm *clientMedia) readRTPTCPPlay(payload []byte) {

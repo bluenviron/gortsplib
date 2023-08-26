@@ -2,6 +2,8 @@ package gortsplib
 
 import (
 	"net"
+
+	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
 type serverMulticastWriter struct {
@@ -62,14 +64,24 @@ func (h *serverMulticastWriter) ip() net.IP {
 	return h.rtpl.ip()
 }
 
-func (h *serverMulticastWriter) writePacketRTP(payload []byte) {
-	h.writer.queue(func() {
+func (h *serverMulticastWriter) writePacketRTP(payload []byte) error {
+	ok := h.writer.push(func() {
 		h.rtpl.write(payload, h.rtpAddr) //nolint:errcheck
 	})
+	if !ok {
+		return liberrors.ErrServerWriteQueueFull{}
+	}
+
+	return nil
 }
 
-func (h *serverMulticastWriter) writePacketRTCP(payload []byte) {
-	h.writer.queue(func() {
+func (h *serverMulticastWriter) writePacketRTCP(payload []byte) error {
+	ok := h.writer.push(func() {
 		h.rtcpl.write(payload, h.rtcpAddr) //nolint:errcheck
 	})
+	if !ok {
+		return liberrors.ErrServerWriteQueueFull{}
+	}
+
+	return nil
 }

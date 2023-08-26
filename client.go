@@ -1785,8 +1785,7 @@ func (c *Client) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet,
 
 	cm := c.medias[medi]
 	ct := cm.formats[pkt.PayloadType]
-	ct.writePacketRTP(byts, pkt, ntp)
-	return nil
+	return ct.writePacketRTP(byts, pkt, ntp)
 }
 
 // WritePacketRTCP writes a RTCP packet to the server.
@@ -1803,8 +1802,7 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 	}
 
 	cm := c.medias[medi]
-	cm.writePacketRTCP(byts)
-	return nil
+	return cm.writePacketRTCP(byts)
 }
 
 // PacketPTS returns the PTS of an incoming RTP packet.

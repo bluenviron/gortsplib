@@ -53,17 +53,25 @@ func (sm *serverStreamMedia) allocateMulticastHandler(s *Server) error {
 	return nil
 }
 
-func (sm *serverStreamMedia) writePacketRTCP(byts []byte) {
+func (sm *serverStreamMedia) writePacketRTCP(byts []byte) error {
 	// send unicast
 	for r := range sm.st.activeUnicastReaders {
 		sm, ok := r.setuppedMedias[sm.media]
 		if ok {
-			sm.writePacketRTCP(byts)
+			err := sm.writePacketRTCP(byts)
+			if err != nil {
+				r.onStreamWriteError(err)
+			}
 		}
 	}
 
 	// send multicast
 	if sm.multicastWriter != nil {
-		sm.multicastWriter.writePacketRTCP(byts)
+		err := sm.multicastWriter.writePacketRTCP(byts)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }

@@ -215,3 +215,15 @@ type ServerHandlerOnDecodeError interface {
 	// called when a non-fatal decode error occurs.
 	OnDecodeError(*ServerHandlerOnDecodeErrorCtx)
 }
+
+// ServerHandlerOnStreamWriteErrorCtx is the context of OnStreamWriteError.
+type ServerHandlerOnStreamWriteErrorCtx struct {
+	Session *ServerSession
+	Error   error
+}
+
+// ServerHandlerOnStreamWriteError can be implemented by a ServerHandler.
+type ServerHandlerOnStreamWriteError interface {
+	// called when a write error occurs when writing a stream.
+	OnStreamWriteError(*ServerHandlerOnStreamWriteErrorCtx)
+}

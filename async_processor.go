@@ -44,6 +44,6 @@ func (w *asyncProcessor) run() {
 	}
 }
 
-func (w *asyncProcessor) queue(cb func()) {
-	w.buffer.Push(cb)
+func (w *asyncProcessor) push(cb func()) bool {
+	return w.buffer.Push(cb)
 }
