@@ -51,30 +51,28 @@ func TestClose(t *testing.T) {
 	r, err := New(1024)
 	require.NoError(t, err)
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-
-		_, ok := r.Pull()
-		require.Equal(t, true, ok)
-
-		_, ok = r.Pull()
-		require.Equal(t, false, ok)
-	}()
-
 	ok := r.Push([]byte{1, 2, 3, 4})
-	require.Equal(t, true, ok)
-
-	r.Close()
-	<-done
-
-	r.Reset()
-
-	ok = r.Push([]byte{5, 6, 7, 8})
 	require.Equal(t, true, ok)
 
 	_, ok = r.Pull()
 	require.Equal(t, true, ok)
+
+	ok = r.Push([]byte{5, 6, 7, 8})
+	require.Equal(t, true, ok)
+
+	r.Close()
+
+	_, ok = r.Pull()
+	require.Equal(t, false, ok)
+
+	r.Reset()
+
+	ok = r.Push([]byte{9, 10, 11, 12})
+	require.Equal(t, true, ok)
+
+	data, ok := r.Pull()
+	require.Equal(t, true, ok)
+	require.Equal(t, []byte{9, 10, 11, 12}, data)
 }
 
 func TestOverflow(t *testing.T) {

@@ -38,7 +38,14 @@ func New(size uint64) (*RingBuffer, error) {
 // Close makes Pull() return false.
 func (r *RingBuffer) Close() {
 	r.mutex.Lock()
+
 	r.closed = true
+
+	// discard pending data to make Pull() exit immediately
+	for i := uint64(0); i < r.size; i++ {
+		r.buffer[i] = nil
+	}
+
 	r.mutex.Unlock()
 	r.cond.Broadcast()
 }
@@ -48,6 +55,7 @@ func (r *RingBuffer) Reset() {
 	for i := uint64(0); i < r.size; i++ {
 		r.buffer[i] = nil
 	}
+
 	r.writeIndex = 0
 	r.readIndex = 0
 	r.closed = false
@@ -64,6 +72,7 @@ func (r *RingBuffer) Push(data interface{}) bool {
 
 	r.buffer[r.writeIndex] = data
 	r.writeIndex = (r.writeIndex + 1) % r.size
+
 	r.mutex.Unlock()
 
 	r.cond.Broadcast()
