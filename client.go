@@ -234,15 +234,9 @@ type Client struct {
 	// at least a packet within this timeout, otherwise it switches to TCP.
 	// It defaults to 3 seconds.
 	InitialUDPReadTimeout time.Duration
-	// read buffer count.
-	// If greater than 1, allows to pass buffers to routines different than the one
-	// that is reading frames.
+	// Size of the queue of outgoing packets.
 	// It defaults to 256.
-	ReadBufferCount int
-	// write buffer count.
-	// It allows to queue packets before sending them.
-	// It defaults to 256.
-	WriteBufferCount int
+	WriteQueueSize int
 	// maximum size of outgoing RTP / RTCP packets.
 	// This must be less than the UDP MTU (1472 bytes).
 	// It defaults to 1472.
@@ -346,13 +340,10 @@ func (c *Client) Start(scheme string, host string) error {
 	if c.InitialUDPReadTimeout == 0 {
 		c.InitialUDPReadTimeout = 3 * time.Second
 	}
-	if c.ReadBufferCount == 0 {
-		c.ReadBufferCount = 256
-	}
-	if c.WriteBufferCount == 0 {
-		c.WriteBufferCount = 256
-	} else if (c.WriteBufferCount & (c.WriteBufferCount - 1)) != 0 {
-		return fmt.Errorf("WriteBufferCount must be a power of two")
+	if c.WriteQueueSize == 0 {
+		c.WriteQueueSize = 256
+	} else if (c.WriteQueueSize & (c.WriteQueueSize - 1)) != 0 {
+		return fmt.Errorf("WriteQueueSize must be a power of two")
 	}
 	if c.MaxPacketSize == 0 {
 		c.MaxPacketSize = udpMaxPayloadSize
@@ -768,7 +759,7 @@ func (c *Client) startReadRoutines() {
 		// decrease RAM consumption by allocating less buffers.
 		c.writer.allocateBuffer(8)
 	} else {
-		c.writer.allocateBuffer(c.WriteBufferCount)
+		c.writer.allocateBuffer(c.WriteQueueSize)
 	}
 
 	c.timeDecoder = rtptime.NewGlobalDecoder()
