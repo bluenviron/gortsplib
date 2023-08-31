@@ -58,6 +58,7 @@ func (sf *serverSessionFormat) start() {
 func (sf *serverSessionFormat) stop() {
 	if sf.rtcpReceiver != nil {
 		sf.rtcpReceiver.Close()
+		sf.rtcpReceiver = nil
 	}
 }
 
