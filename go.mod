@@ -3,7 +3,7 @@ module github.com/bluenviron/gortsplib/v3
 go 1.19
 
 require (
-	github.com/bluenviron/mediacommon v1.0.0
+	github.com/bluenviron/mediacommon v1.0.1
 	github.com/google/uuid v1.3.1
 	github.com/pion/rtcp v1.2.10
 	github.com/pion/rtp v1.8.1
@@ -14,7 +14,7 @@ require (
 
 require (
 	github.com/asticode/go-astikit v0.30.0 // indirect
-	github.com/asticode/go-astits v1.12.0 // indirect
+	github.com/asticode/go-astits v1.13.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
