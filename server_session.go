@@ -336,17 +336,6 @@ func (ss *ServerSession) run() {
 
 	ss.ctxCancel()
 
-	if ss.setuppedStream != nil {
-		ss.setuppedStream.readerSetInactive(ss)
-		ss.setuppedStream.readerRemove(ss)
-	}
-
-	for _, sm := range ss.setuppedMedias {
-		sm.stop()
-	}
-
-	ss.writer.stop()
-
 	// close all associated connections, both UDP and TCP
 	// except for the ones that called TEARDOWN
 	// (that are detached from the session just after the request)
@@ -357,6 +346,17 @@ func (ss *ServerSession) run() {
 		<-sc.done
 
 		sc.removeSession(ss)
+	}
+
+	if ss.setuppedStream != nil {
+		ss.setuppedStream.readerSetInactive(ss)
+		ss.setuppedStream.readerRemove(ss)
+	}
+
+	ss.writer.stop()
+
+	for _, sm := range ss.setuppedMedias {
+		sm.stop()
 	}
 
 	ss.s.closeSession(ss)
@@ -929,8 +929,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			sm.start()
 		}
 
-		ss.setuppedStream.readerSetActive(ss)
-
 		switch *ss.setuppedTransport {
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
@@ -944,6 +942,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			err = errSwitchReadFunc{true}
 			// writer.start() is called by ServerConn after the response has been sent
 		}
+
+		ss.setuppedStream.readerSetActive(ss)
 
 		rtpInfo, ok := generateRTPInfo(
 			ss.s.timeNow(),
@@ -1053,11 +1053,11 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			return res, err
 		}
 
-		ss.writer.stop()
-
 		if ss.setuppedStream != nil {
 			ss.setuppedStream.readerSetInactive(ss)
 		}
+
+		ss.writer.stop()
 
 		for _, sm := range ss.setuppedMedias {
 			sm.stop()

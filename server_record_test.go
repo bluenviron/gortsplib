@@ -1541,3 +1541,75 @@ func TestServerRecordPacketNTP(t *testing.T) {
 
 	<-recv
 }
+
+func TestServerRecordPausePause(t *testing.T) {
+	s := &Server{
+		Handler: &testServerHandler{
+			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil, nil
+			},
+			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		RTSPAddress:    "localhost:8554",
+		UDPRTPAddress:  "127.0.0.1:8000",
+		UDPRTCPAddress: "127.0.0.1:8001",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
+
+	medias := []*description.Media{{
+		Type: description.MediaTypeApplication,
+		Formats: []format.Format{&format.Generic{
+			PayloadTyp: 97,
+			RTPMa:      "private/90000",
+		}},
+	}}
+
+	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
+
+	inTH := &headers.Transport{
+		Delivery: func() *headers.TransportDelivery {
+			v := headers.TransportDeliveryUnicast
+			return &v
+		}(),
+		Mode: func() *headers.TransportMode {
+			v := headers.TransportModeRecord
+			return &v
+		}(),
+		Protocol:    headers.TransportProtocolUDP,
+		ClientPorts: &[2]int{35466, 35467},
+	}
+
+	res, _ := doSetup(t, conn, "rtsp://localhost:8554/teststream/"+medias[0].Control, inTH, "")
+
+	session := readSession(t, res)
+
+	doRecord(t, conn, "rtsp://localhost:8554/teststream", session)
+
+	doPause(t, conn, "rtsp://localhost:8554/teststream", session)
+
+	doPause(t, conn, "rtsp://localhost:8554/teststream", session)
+}
