@@ -47,8 +47,8 @@ type RTCPReceiver struct {
 	lastSenderReportNTP       uint32
 	lastSenderReportTime      time.Time
 
-	terminate chan struct{}
-	done      chan struct{}
+	terminated bool
+	done       chan struct{}
 }
 
 // New allocates a RTCPReceiver.
@@ -71,7 +71,7 @@ func New(
 		receiverSSRC:    *receiverSSRC,
 		clockRate:       float64(clockRate),
 		writePacketRTCP: writePacketRTCP,
-		terminate:       make(chan struct{}),
+		terminated:      false,
 		done:            make(chan struct{}),
 	}
 
@@ -82,7 +82,7 @@ func New(
 
 // Close closes the RTCPReceiver.
 func (rr *RTCPReceiver) Close() {
-	close(rr.terminate)
+	rr.terminated = false
 	<-rr.done
 }
 
@@ -92,16 +92,10 @@ func (rr *RTCPReceiver) run() {
 	t := time.NewTicker(rr.period)
 	defer t.Stop()
 
-	for {
-		select {
-		case <-t.C:
-			report := rr.report(now())
-			if report != nil {
-				rr.writePacketRTCP(report)
-			}
-
-		case <-rr.terminate:
-			return
+	for !rr.terminated {
+		report := rr.report()
+		if report != nil {
+			rr.writePacketRTCP(report)
 		}
 	}
 }
