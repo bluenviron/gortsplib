@@ -43,6 +43,12 @@ func (f *H264) unmarshal(ctx *unmarshalContext) error {
 					return fmt.Errorf("invalid sprop-parameter-sets (%v)", val)
 				}
 
+				var spsp h264.SPS
+				err = spsp.Unmarshal(sps)
+				if err != nil {
+					return fmt.Errorf("invalid SPS: %v", err)
+				}
+
 				f.SPS = sps
 				f.PPS = pps
 			}

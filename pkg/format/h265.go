@@ -43,11 +43,23 @@ func (f *H265) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid sprop-sps (%v)", ctx.fmtp)
 			}
 
+			var spsp h265.SPS
+			err = spsp.Unmarshal(f.SPS)
+			if err != nil {
+				return fmt.Errorf("invalid SPS: %v", err)
+			}
+
 		case "sprop-pps":
 			var err error
 			f.PPS, err = base64.StdEncoding.DecodeString(val)
 			if err != nil {
 				return fmt.Errorf("invalid sprop-pps (%v)", ctx.fmtp)
+			}
+
+			var ppsp h265.PPS
+			err = ppsp.Unmarshal(f.PPS)
+			if err != nil {
+				return fmt.Errorf("invalid PPS: %v", err)
 			}
 
 		case "sprop-max-don-diff":
