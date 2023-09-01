@@ -586,8 +586,8 @@ func TestServerRecord(t *testing.T) {
 					Type: description.MediaTypeVideo,
 					Formats: []format.Format{&format.H264{
 						PayloadTyp:        96,
-						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-						PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+						SPS:               testH264Media.Formats[0].(*format.H264).SPS,
+						PPS:               testH264Media.Formats[0].(*format.H264).PPS,
 						PacketizationMode: 1,
 					}},
 				},
@@ -595,8 +595,8 @@ func TestServerRecord(t *testing.T) {
 					Type: description.MediaTypeVideo,
 					Formats: []format.Format{&format.H264{
 						PayloadTyp:        96,
-						SPS:               []byte{0x01, 0x02, 0x03, 0x04},
-						PPS:               []byte{0x01, 0x02, 0x03, 0x04},
+						SPS:               testH264Media.Formats[0].(*format.H264).SPS,
+						PPS:               testH264Media.Formats[0].(*format.H264).PPS,
 						PacketizationMode: 1,
 					}},
 				},
