@@ -5,14 +5,12 @@ import (
 	"fmt"
 
 	"github.com/pion/rtp"
+
+	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4video"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.
 var ErrMorePacketsNeeded = errors.New("need more packets")
-
-const (
-	maxFrameSize = 1 * 1024 * 1024
-)
 
 func joinFragments(fragments [][]byte, size int) []byte {
 	ret := make([]byte, size)
@@ -49,9 +47,9 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		}
 	} else {
 		d.fragmentsSize += len(pkt.Payload)
-		if d.fragmentsSize > maxFrameSize {
+		if d.fragmentsSize > mpeg4video.MaxFrameSize {
 			d.fragments = d.fragments[:0] // discard pending fragments
-			return nil, fmt.Errorf("frame size (%d) is too big, maximum is %d", d.fragmentsSize, maxFrameSize)
+			return nil, fmt.Errorf("frame size (%d) is too big, maximum is %d", d.fragmentsSize, mpeg4video.MaxFrameSize)
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload)

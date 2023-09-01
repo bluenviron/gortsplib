@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
+	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4video"
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpmpeg4video"
@@ -20,6 +22,8 @@ type MPEG4VideoES struct {
 	PayloadTyp     uint8
 	ProfileLevelID int
 	Config         []byte
+
+	mutex sync.RWMutex
 }
 
 func (f *MPEG4VideoES) unmarshal(ctx *unmarshalContext) error {
@@ -41,6 +45,11 @@ func (f *MPEG4VideoES) unmarshal(ctx *unmarshalContext) error {
 			f.Config, err = hex.DecodeString(val)
 			if err != nil {
 				return fmt.Errorf("invalid config: %v", val)
+			}
+
+			err = mpeg4video.IsValidConfig(f.Config)
+			if err != nil {
+				return fmt.Errorf("invalid config: %v", err)
 			}
 		}
 	}
@@ -72,7 +81,10 @@ func (f *MPEG4VideoES) RTPMap() string {
 func (f *MPEG4VideoES) FMTP() map[string]string {
 	fmtp := map[string]string{
 		"profile-level-id": strconv.FormatInt(int64(f.ProfileLevelID), 10),
-		"config":           strings.ToUpper(hex.EncodeToString(f.Config)),
+	}
+
+	if f.Config != nil {
+		fmtp["config"] = strings.ToUpper(hex.EncodeToString(f.Config))
 	}
 
 	return fmtp
@@ -107,4 +119,18 @@ func (f *MPEG4VideoES) CreateEncoder() (*rtpmpeg4video.Encoder, error) {
 	}
 
 	return e, nil
+}
+
+// SafeSetParams sets the codec parameters.
+func (f *MPEG4VideoES) SafeSetParams(config []byte) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+	f.Config = config
+}
+
+// SafeParams returns the codec parameters.
+func (f *MPEG4VideoES) SafeParams() []byte {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+	return f.Config
 }
