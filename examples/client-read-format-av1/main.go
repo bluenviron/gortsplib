@@ -5,14 +5,15 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpvp9"
 	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an MPEG-4 audio media
-// 3. save the content of the media into a file in MPEG-TS format
+// 2. check if there's a AV1 media
+// 3. get access units of that media
 
 func main() {
 	c := gortsplib.Client{}
@@ -36,21 +37,15 @@ func main() {
 		panic(err)
 	}
 
-	// find the MPEG-4 audio media and format
-	var forma *format.MPEG4Audio
+	// find the AV1 media and format
+	var forma *format.AV1
 	medi := desc.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
-	// setup RTP/MPEG-4 audio -> MPEG-4 audio decoder
+	// create decoder
 	rtpDec, err := forma.CreateDecoder()
-	if err != nil {
-		panic(err)
-	}
-
-	// setup MPEG-4 audio -> MPEG-TS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(forma.Config)
 	if err != nil {
 		panic(err)
 	}
@@ -70,21 +65,16 @@ func main() {
 			return
 		}
 
-		// extract access units from RTP packets
-		aus, err := rtpDec.Decode(pkt)
+		// extract AV1 temporal units from RTP packets
+		tu, err := rtpDec.Decode(pkt)
 		if err != nil {
-			log.Printf("ERR: %v", err)
+			if err != rtpvp9.ErrNonStartingPacketAndNoPrevious && err != rtpvp9.ErrMorePacketsNeeded {
+				log.Printf("ERR: %v", err)
+			}
 			return
 		}
 
-		// encode access units into MPEG-TS
-		err = mpegtsMuxer.encode(aus, pts)
-		if err != nil {
-			log.Printf("ERR: %v", err)
-			return
-		}
-
-		log.Printf("saved TS packet")
+		log.Printf("received temporal unit with PTS %v and size %d\n", pts, len(tu))
 	})
 
 	// start playing

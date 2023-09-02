@@ -58,6 +58,7 @@ Features:
 * [client-read-options](examples/client-read-options/main.go)
 * [client-read-pause](examples/client-read-pause/main.go)
 * [client-read-republish](examples/client-read-republish/main.go)
+* [client-read-format-av1](examples/client-read-format-av1/main.go)
 * [client-read-format-g711](examples/client-read-format-g711/main.go)
 * [client-read-format-g722](examples/client-read-format-g722/main.go)
 * [client-read-format-h264](examples/client-read-format-h264/main.go)
