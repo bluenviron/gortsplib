@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
+	"github.com/bluenviron/mediacommon/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
 )
 
@@ -13,8 +13,9 @@ func durationGoToMPEGTS(v time.Duration) int64 {
 	return int64(v.Seconds() * 90000)
 }
 
-// mpegtsMuxer allows to save a H264 stream into a MPEG-TS file.
+// mpegtsMuxer allows to save a H265 stream into a MPEG-TS file.
 type mpegtsMuxer struct {
+	vps []byte
 	sps []byte
 	pps []byte
 
@@ -22,11 +23,11 @@ type mpegtsMuxer struct {
 	b            *bufio.Writer
 	w            *mpegts.Writer
 	track        *mpegts.Track
-	dtsExtractor *h264.DTSExtractor
+	dtsExtractor *h265.DTSExtractor
 }
 
 // newMPEGTSMuxer allocates a mpegtsMuxer.
-func newMPEGTSMuxer(sps []byte, pps []byte) (*mpegtsMuxer, error) {
+func newMPEGTSMuxer(vps []byte, sps []byte, pps []byte) (*mpegtsMuxer, error) {
 	f, err := os.Create("mystream.ts")
 	if err != nil {
 		return nil, err
@@ -34,12 +35,13 @@ func newMPEGTSMuxer(sps []byte, pps []byte) (*mpegtsMuxer, error) {
 	b := bufio.NewWriter(f)
 
 	track := &mpegts.Track{
-		Codec: &mpegts.CodecH264{},
+		Codec: &mpegts.CodecH265{},
 	}
 
 	w := mpegts.NewWriter(b, []*mpegts.Track{track})
 
 	return &mpegtsMuxer{
+		vps:   vps,
 		sps:   sps,
 		pps:   pps,
 		f:     f,
@@ -55,35 +57,35 @@ func (e *mpegtsMuxer) close() {
 	e.f.Close()
 }
 
-// encode encodes a H264 access unit into MPEG-TS.
+// encode encodes a H265 access unit into MPEG-TS.
 func (e *mpegtsMuxer) encode(au [][]byte, pts time.Duration) error {
 	// prepend an AUD. This is required by some players
 	filteredAU := [][]byte{
-		{byte(h264.NALUTypeAccessUnitDelimiter), 240},
+		{byte(h265.NALUType_AUD_NUT) << 1, 1, 0x50},
 	}
 
-	nonIDRPresent := false
-	idrPresent := false
+	isRandomAccess := false
 
 	for _, nalu := range au {
-		typ := h264.NALUType(nalu[0] & 0x1F)
+		typ := h265.NALUType((nalu[0] >> 1) & 0b111111)
 		switch typ {
-		case h264.NALUTypeSPS:
+		case h265.NALUType_VPS_NUT:
+			e.vps = nalu
+			continue
+
+		case h265.NALUType_SPS_NUT:
 			e.sps = nalu
 			continue
 
-		case h264.NALUTypePPS:
+		case h265.NALUType_PPS_NUT:
 			e.pps = nalu
 			continue
 
-		case h264.NALUTypeAccessUnitDelimiter:
+		case h265.NALUType_AUD_NUT:
 			continue
 
-		case h264.NALUTypeIDR:
-			idrPresent = true
-
-		case h264.NALUTypeNonIDR:
-			nonIDRPresent = true
+		case h265.NALUType_IDR_W_RADL, h265.NALUType_IDR_N_LP, h265.NALUType_CRA_NUT:
+			isRandomAccess = true
 		}
 
 		filteredAU = append(filteredAU, nalu)
@@ -91,23 +93,23 @@ func (e *mpegtsMuxer) encode(au [][]byte, pts time.Duration) error {
 
 	au = filteredAU
 
-	if len(au) <= 1 || (!nonIDRPresent && !idrPresent) {
+	if len(au) <= 1 {
 		return nil
 	}
 
-	// add SPS and PPS before access unit that contains an IDR
-	if idrPresent {
-		au = append([][]byte{e.sps, e.pps}, au...)
+	// add VPS, SPS and PPS before random access access unit
+	if isRandomAccess {
+		au = append([][]byte{e.vps, e.sps, e.pps}, au...)
 	}
 
 	var dts time.Duration
 
 	if e.dtsExtractor == nil {
 		// skip samples silently until we find one with a IDR
-		if !idrPresent {
+		if !isRandomAccess {
 			return nil
 		}
-		e.dtsExtractor = h264.NewDTSExtractor()
+		e.dtsExtractor = h265.NewDTSExtractor()
 	}
 
 	var err error
@@ -117,5 +119,5 @@ func (e *mpegtsMuxer) encode(au [][]byte, pts time.Duration) error {
 	}
 
 	// encode into MPEG-TS
-	return e.w.WriteH26x(e.track, durationGoToMPEGTS(pts), durationGoToMPEGTS(dts), idrPresent, au)
+	return e.w.WriteH26x(e.track, durationGoToMPEGTS(pts), durationGoToMPEGTS(dts), isRandomAccess, au)
 }

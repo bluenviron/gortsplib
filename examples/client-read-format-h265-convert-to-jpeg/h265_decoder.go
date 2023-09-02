@@ -20,8 +20,8 @@ func frameLineSize(frame *C.AVFrame) *C.int {
 	return (*C.int)(unsafe.Pointer(&frame.linesize[0]))
 }
 
-// h264Decoder is a wrapper around FFmpeg's H264 decoder.
-type h264Decoder struct {
+// h265Decoder is a wrapper around FFmpeg's H265 decoder.
+type h265Decoder struct {
 	codecCtx    *C.AVCodecContext
 	srcFrame    *C.AVFrame
 	swsCtx      *C.struct_SwsContext
@@ -29,9 +29,9 @@ type h264Decoder struct {
 	dstFramePtr []uint8
 }
 
-// newH264Decoder allocates a new h264Decoder.
-func newH264Decoder() (*h264Decoder, error) {
-	codec := C.avcodec_find_decoder(C.AV_CODEC_ID_H264)
+// newH265Decoder allocates a new h265Decoder.
+func newH265Decoder() (*h265Decoder, error) {
+	codec := C.avcodec_find_decoder(C.AV_CODEC_ID_H265)
 	if codec == nil {
 		return nil, fmt.Errorf("avcodec_find_decoder() failed")
 	}
@@ -53,14 +53,14 @@ func newH264Decoder() (*h264Decoder, error) {
 		return nil, fmt.Errorf("av_frame_alloc() failed")
 	}
 
-	return &h264Decoder{
+	return &h265Decoder{
 		codecCtx: codecCtx,
 		srcFrame: srcFrame,
 	}, nil
 }
 
 // close closes the decoder.
-func (d *h264Decoder) close() {
+func (d *h265Decoder) close() {
 	if d.dstFrame != nil {
 		C.av_frame_free(&d.dstFrame)
 	}
@@ -73,7 +73,7 @@ func (d *h264Decoder) close() {
 	C.avcodec_close(d.codecCtx)
 }
 
-func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
+func (d *h265Decoder) decode(nalu []byte) (image.Image, error) {
 	nalu = append([]uint8{0x00, 0x00, 0x00, 0x01}, []uint8(nalu)...)
 
 	// send NALU to decoder

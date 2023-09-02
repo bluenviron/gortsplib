@@ -64,6 +64,8 @@ Features:
 * [client-read-format-h264-convert-to-jpeg](examples/client-read-format-h264-convert-to-jpeg/main.go)
 * [client-read-format-h264-save-to-disk](examples/client-read-format-h264-save-to-disk/main.go)
 * [client-read-format-h265](examples/client-read-format-h265/main.go)
+* [client-read-format-h265-convert-to-jpeg](examples/client-read-format-h265-convert-to-jpeg/main.go)
+* [client-read-format-h265-save-to-disk](examples/client-read-format-h265-save-to-disk/main.go)
 * [client-read-format-lpcm](examples/client-read-format-lpcm/main.go)
 * [client-read-format-mjpeg](examples/client-read-format-mjpeg/main.go)
 * [client-read-format-mpeg4audio](examples/client-read-format-mpeg4audio/main.go)
