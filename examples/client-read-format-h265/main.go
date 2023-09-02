@@ -12,8 +12,11 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an H265 media
-// 3. get access units of that media
+// 2. check if there's an H265 media stream
+// 3. decode the H264 media stream into RGBA frames
+
+// This example requires the FFmpeg libraries, that can be installed with this command:
+// apt install -y libavformat-dev libswscale-dev gcc pkg-config
 
 func main() {
 	c := gortsplib.Client{}
@@ -50,6 +53,24 @@ func main() {
 		panic(err)
 	}
 
+	// setup H265 -> raw frames decoder
+	frameDec, err := newH265Decoder()
+	if err != nil {
+		panic(err)
+	}
+	defer frameDec.close()
+
+	// if VPS, SPS and PPS are present into the SDP, send them to the decoder
+	if forma.VPS != nil {
+		frameDec.decode(forma.VPS)
+	}
+	if forma.SPS != nil {
+		frameDec.decode(forma.SPS)
+	}
+	if forma.PPS != nil {
+		frameDec.decode(forma.PPS)
+	}
+
 	// setup a single media
 	_, err = c.Setup(desc.BaseURL, medi, 0, 0)
 	if err != nil {
@@ -61,6 +82,7 @@ func main() {
 		// decode timestamp
 		pts, ok := c.PacketPTS(medi, pkt)
 		if !ok {
+			log.Printf("waiting for timestamp")
 			return
 		}
 
@@ -74,7 +96,18 @@ func main() {
 		}
 
 		for _, nalu := range au {
-			log.Printf("received NALU with PTS %v and size %d\n", pts, len(nalu))
+			// convert NALUs into RGBA frames
+			img, err := frameDec.decode(nalu)
+			if err != nil {
+				panic(err)
+			}
+
+			// wait for a frame
+			if img == nil {
+				continue
+			}
+
+			log.Printf("decoded frame with PTS %v and size %v", pts, img.Bounds().Max)
 		}
 	})
 

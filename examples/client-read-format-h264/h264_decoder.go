@@ -109,24 +109,24 @@ func (d *h264Decoder) decode(nalu []byte) (image.Image, error) {
 		d.dstFrame.color_range = C.AVCOL_RANGE_JPEG
 		res = C.av_frame_get_buffer(d.dstFrame, 1)
 		if res < 0 {
-			return nil, fmt.Errorf("av_frame_get_buffer() err")
+			return nil, fmt.Errorf("av_frame_get_buffer() failed")
 		}
 
 		d.swsCtx = C.sws_getContext(d.srcFrame.width, d.srcFrame.height, C.AV_PIX_FMT_YUV420P,
 			d.dstFrame.width, d.dstFrame.height, (int32)(d.dstFrame.format), C.SWS_BILINEAR, nil, nil, nil)
 		if d.swsCtx == nil {
-			return nil, fmt.Errorf("sws_getContext() err")
+			return nil, fmt.Errorf("sws_getContext() failed")
 		}
 
 		dstFrameSize := C.av_image_get_buffer_size((int32)(d.dstFrame.format), d.dstFrame.width, d.dstFrame.height, 1)
 		d.dstFramePtr = (*[1 << 30]uint8)(unsafe.Pointer(d.dstFrame.data[0]))[:dstFrameSize:dstFrameSize]
 	}
 
-	// convert color space from YUV420 to RGB
+	// convert color space from YUV420 to RGBA
 	res = C.sws_scale(d.swsCtx, frameData(d.srcFrame), frameLineSize(d.srcFrame),
 		0, d.srcFrame.height, frameData(d.dstFrame), frameLineSize(d.dstFrame))
 	if res < 0 {
-		return nil, fmt.Errorf("sws_scale() err")
+		return nil, fmt.Errorf("sws_scale() failed")
 	}
 
 	// embed frame into an image.Image

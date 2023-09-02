@@ -58,7 +58,7 @@ func (e *mpegtsMuxer) close() {
 // encode encodes a H264 access unit into MPEG-TS.
 func (e *mpegtsMuxer) encode(au [][]byte, pts time.Duration) error {
 	// prepend an AUD. This is required by some players
-	filteredNALUs := [][]byte{
+	filteredAU := [][]byte{
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},
 	}
 
@@ -69,11 +69,11 @@ func (e *mpegtsMuxer) encode(au [][]byte, pts time.Duration) error {
 		typ := h264.NALUType(nalu[0] & 0x1F)
 		switch typ {
 		case h264.NALUTypeSPS:
-			e.sps = append([]byte(nil), nalu...)
+			e.sps = nalu
 			continue
 
 		case h264.NALUTypePPS:
-			e.pps = append([]byte(nil), nalu...)
+			e.pps = nalu
 			continue
 
 		case h264.NALUTypeAccessUnitDelimiter:
@@ -86,16 +86,16 @@ func (e *mpegtsMuxer) encode(au [][]byte, pts time.Duration) error {
 			nonIDRPresent = true
 		}
 
-		filteredNALUs = append(filteredNALUs, nalu)
+		filteredAU = append(filteredAU, nalu)
 	}
 
-	au = filteredNALUs
+	au = filteredAU
 
 	if len(au) <= 1 || (!nonIDRPresent && !idrPresent) {
 		return nil
 	}
 
-	// add SPS and PPS before every group that contains an IDR
+	// add SPS and PPS before every access unit that contains an IDR
 	if idrPresent {
 		au = append([][]byte{e.sps, e.pps}, au...)
 	}
