@@ -71,6 +71,10 @@ func (d *GlobalDecoder) Decode(
 	track GlobalDecoderTrack,
 	pkt *rtp.Packet,
 ) (time.Duration, bool) {
+	if track.ClockRate() == 0 {
+		return 0, false
+	}
+
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
