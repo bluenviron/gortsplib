@@ -138,3 +138,12 @@ func TestGlobalDecoder(t *testing.T) {
 	require.Equal(t, true, ok)
 	require.Equal(t, 6*time.Second, pts)
 }
+
+func TestGlobalDecoderInvalidClockRate(t *testing.T) {
+	g := NewGlobalDecoder()
+
+	tr := &dummyTrack{clockRate: 0, ptsEqualsDTS: true}
+
+	_, ok := g.Decode(tr, &rtp.Packet{Header: rtp.Header{Timestamp: 90000}})
+	require.Equal(t, false, ok)
+}
