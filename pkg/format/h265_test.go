@@ -42,6 +42,12 @@ func TestH265PTSEqualsDTS(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{
 		Payload: []byte{byte(h265.NALUType_CRA_NUT) << 1},
 	}))
+
+	// CRA_NUT inside FragmentationUnit
+	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{
+		Payload: []byte{0x62, 0x1, 0x95, 0xaf, 0xe8},
+	}))
+
 	require.Equal(t, false, format.PTSEqualsDTS(&rtp.Packet{
 		Payload: []byte{byte(h265.NALUType_TRAIL_N) << 1},
 	}))

@@ -160,7 +160,7 @@ func (f *H265) PTSEqualsDTS(pkt *rtp.Packet) bool {
 			return false
 		}
 
-		start := pkt.Payload[1] >> 7
+		start := pkt.Payload[2] >> 7
 		if start != 1 {
 			return false
 		}
