@@ -1,6 +1,7 @@
 package format
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"strconv"
@@ -36,12 +37,18 @@ func (f *H265) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid sprop-vps (%v)", ctx.fmtp)
 			}
 
+			// some cameras ships parameters with Annex-B prefix
+			f.VPS = bytes.TrimPrefix(f.VPS, []byte{0, 0, 0, 1})
+
 		case "sprop-sps":
 			var err error
 			f.SPS, err = base64.StdEncoding.DecodeString(val)
 			if err != nil {
 				return fmt.Errorf("invalid sprop-sps (%v)", ctx.fmtp)
 			}
+
+			// some cameras ships parameters with Annex-B prefix
+			f.SPS = bytes.TrimPrefix(f.SPS, []byte{0, 0, 0, 1})
 
 			var spsp h265.SPS
 			err = spsp.Unmarshal(f.SPS)
@@ -55,6 +62,9 @@ func (f *H265) unmarshal(ctx *unmarshalContext) error {
 			if err != nil {
 				return fmt.Errorf("invalid sprop-pps (%v)", ctx.fmtp)
 			}
+
+			// some cameras ships parameters with Annex-B prefix
+			f.PPS = bytes.TrimPrefix(f.PPS, []byte{0, 0, 0, 1})
 
 			var ppsp h265.PPS
 			err = ppsp.Unmarshal(f.PPS)
