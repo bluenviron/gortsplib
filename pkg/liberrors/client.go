@@ -231,14 +231,6 @@ func (e ErrClientRTSPSTCP) Error() string {
 	return "RTSPS can be used only with TCP"
 }
 
-// ErrClientUnexpectedResponse is an error that can be returned by a client.
-type ErrClientUnexpectedResponse struct{}
-
-// Error implements the error interface.
-func (e ErrClientUnexpectedResponse) Error() string {
-	return "received unexpected response"
-}
-
 // ErrClientUnhandledMethod is an error that can be returned by a client.
 type ErrClientUnhandledMethod struct {
 	Method base.Method

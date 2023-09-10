@@ -224,7 +224,12 @@ func (e ErrServerSessionNotInUse) Error() string {
 type ErrServerUnexpectedFrame = ErrClientUnexpectedFrame
 
 // ErrServerUnexpectedResponse is an error that can be returned by a server.
-type ErrServerUnexpectedResponse = ErrClientUnexpectedResponse
+type ErrServerUnexpectedResponse struct{}
+
+// Error implements the error interface.
+func (e ErrServerUnexpectedResponse) Error() string {
+	return "received unexpected response"
+}
 
 // ErrServerWriteQueueFull is an error that can be returned by a server.
 type ErrServerWriteQueueFull = ErrClientWriteQueueFull

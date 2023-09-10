@@ -2638,121 +2638,178 @@ func TestClientPlaySeek(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestClientPlayKeepaliveFromSession(t *testing.T) {
-	l, err := net.Listen("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer l.Close()
-
-	keepaliveOk := make(chan struct{})
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		nconn, err := l.Accept()
-		require.NoError(t, err)
-		defer nconn.Close()
-		conn := conn.NewConn(nconn)
-
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Options, req.Method)
-
-		err = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Public": base.HeaderValue{strings.Join([]string{
-					string(base.Describe),
-					string(base.Setup),
-					string(base.Play),
-				}, ", ")},
-			},
-		})
-		require.NoError(t, err)
-
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Describe, req.Method)
-
-		medias := []*description.Media{testH264Media}
-
-		err = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Content-Type": base.HeaderValue{"application/sdp"},
-				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
-			},
-			Body: mediasToSDP(medias),
-		})
-		require.NoError(t, err)
-
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Setup, req.Method)
-
-		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
-
-		err = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-			Header: base.Header{
-				"Transport": headers.Transport{
-					Protocol: headers.TransportProtocolUDP,
-					Delivery: func() *headers.TransportDelivery {
-						v := headers.TransportDeliveryUnicast
-						return &v
-					}(),
-					ClientPorts: inTH.ClientPorts,
-					ServerPorts: &[2]int{34556, 34557},
-				}.Marshal(),
-				"Session": headers.Session{
-					Session: "ABCDE",
-					Timeout: uintPtr(1),
-				}.Marshal(),
-			},
-		})
-		require.NoError(t, err)
-
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Play, req.Method)
-
-		err = conn.WriteResponse(&base.Response{
-			StatusCode: base.StatusOK,
-		})
-		require.NoError(t, err)
-
-		recv := make(chan struct{})
-		go func() {
-			defer close(recv)
-			req, err = conn.ReadRequest()
+func TestClientPlayKeepalive(t *testing.T) {
+	for _, ca := range []string{"response before frame", "response after frame", "no response"} {
+		t.Run(ca, func(t *testing.T) {
+			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
-			require.Equal(t, base.Options, req.Method)
+			defer l.Close()
 
-			err = conn.WriteResponse(&base.Response{
-				StatusCode: base.StatusOK,
-			})
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
+
+				nconn, err := l.Accept()
+				require.NoError(t, err)
+				defer nconn.Close()
+				conn := conn.NewConn(nconn)
+
+				req, err := conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"CSeq": req.Header["CSeq"],
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+							string(base.Setup),
+							string(base.Play),
+						}, ", ")},
+					},
+				})
+				require.NoError(t, err)
+
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Describe, req.Method)
+
+				medias := []*description.Media{testH264Media}
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"CSeq":         req.Header["CSeq"],
+						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+					},
+					Body: mediasToSDP(medias),
+				})
+				require.NoError(t, err)
+
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Setup, req.Method)
+
+				var inTH headers.Transport
+				err = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err)
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"CSeq": req.Header["CSeq"],
+						"Transport": headers.Transport{
+							Protocol: headers.TransportProtocolTCP,
+							Delivery: func() *headers.TransportDelivery {
+								v := headers.TransportDeliveryUnicast
+								return &v
+							}(),
+							InterleavedIDs: &[2]int{0, 1},
+						}.Marshal(),
+						"Session": headers.Session{
+							Session: "ABCDE",
+							Timeout: uintPtr(1),
+						}.Marshal(),
+					},
+				})
+				require.NoError(t, err)
+
+				req, err = conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Play, req.Method)
+
+				err = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"CSeq": req.Header["CSeq"],
+					},
+				})
+				require.NoError(t, err)
+
+				recv := make(chan struct{})
+				go func() {
+					defer close(recv)
+					req, err = conn.ReadRequest()
+					require.NoError(t, err)
+					require.Equal(t, base.Options, req.Method)
+				}()
+
+				select {
+				case <-recv:
+				case <-time.After(2 * time.Second):
+					t.Errorf("should not happen")
+				}
+
+				if ca == "response before frame" {
+					err = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"CSeq": req.Header["CSeq"],
+						},
+					})
+					require.NoError(t, err)
+				}
+
+				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					Channel: 0,
+					Payload: testRTPPacketMarshaled,
+				}, make([]byte, 1024))
+				require.NoError(t, err)
+
+				if ca == "response after frame" {
+					err = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+					})
+					require.NoError(t, err)
+				}
+
+				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					Channel: 0,
+					Payload: testRTPPacketMarshaled,
+				}, make([]byte, 1024))
+				require.NoError(t, err)
+			}()
+
+			done1 := make(chan struct{})
+			done2 := make(chan struct{})
+			n := 0
+			m := 0
+
+			v := TransportTCP
+			c := Client{
+				Transport: &v,
+				OnResponse: func(res *base.Response) {
+					m++
+					if ca != "no response" {
+						if m >= 5 {
+							close(done2)
+						}
+					} else {
+						if m >= 4 {
+							close(done2)
+						}
+					}
+				},
+			}
+
+			err = readAll(&c, "rtsp://localhost:8554/teststream",
+				func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+					require.Equal(t, &testRTPPacket, pkt)
+					n++
+					if n == 2 {
+						close(done1)
+					}
+				})
 			require.NoError(t, err)
-		}()
+			defer c.Close()
 
-		select {
-		case <-recv:
-		case <-time.After(3 * time.Second):
-			t.Errorf("should not happen")
-		}
-
-		close(keepaliveOk)
-	}()
-
-	c := Client{}
-
-	err = readAll(&c, "rtsp://localhost:8554/teststream", nil)
-	require.NoError(t, err)
-	defer c.Close()
-
-	<-keepaliveOk
+			<-done1
+			<-done2
+		})
+	}
 }
 
 func TestClientPlayDifferentSource(t *testing.T) {
