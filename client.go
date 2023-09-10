@@ -264,10 +264,14 @@ type Client struct {
 	//
 	// callbacks (all optional)
 	//
-	// called before every request.
+	// called when sending a request to the server.
 	OnRequest ClientOnRequestFunc
-	// called after every response.
+	// called when receiving a response from the server.
 	OnResponse ClientOnResponseFunc
+	// called when receiving a request from the server.
+	OnServerRequest ClientOnRequestFunc
+	// called when sending a response to the server.
+	OnServerResponse ClientOnResponseFunc
 	// called when the transport protocol changes.
 	OnTransportSwitch ClientOnTransportSwitchFunc
 	// called when the client detects lost packets.
@@ -375,6 +379,14 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.OnResponse == nil {
 		c.OnResponse = func(*base.Response) {
+		}
+	}
+	if c.OnServerRequest == nil {
+		c.OnServerRequest = func(*base.Request) {
+		}
+	}
+	if c.OnServerResponse == nil {
+		c.OnServerResponse = func(*base.Response) {
 		}
 	}
 	if c.OnTransportSwitch == nil {
@@ -612,21 +624,26 @@ func (c *Client) waitResponse() (*base.Response, error) {
 }
 
 func (c *Client) handleServerRequest(req *base.Request) error {
+	c.OnServerRequest(req)
+
 	if req.Method != base.Options {
 		return liberrors.ErrClientUnhandledMethod{Method: req.Method}
 	}
 
-	if cseq, ok := req.Header["CSeq"]; !ok || len(cseq) != 1 {
-		return liberrors.ErrClientMissingCSeq{}
+	h := base.Header{
+		"User-Agent": base.HeaderValue{c.UserAgent},
+	}
+
+	if cseq, ok := req.Header["CSeq"]; ok {
+		h["CSeq"] = cseq
 	}
 
 	res := &base.Response{
 		StatusCode: base.StatusOK,
-		Header: base.Header{
-			"User-Agent": base.HeaderValue{c.UserAgent},
-			"CSeq":       req.Header["CSeq"],
-		},
+		Header:     h,
 	}
+
+	c.OnServerResponse(res)
 
 	c.nconn.SetWriteDeadline(time.Now().Add(c.WriteTimeout))
 	return c.conn.WriteResponse(res)
