@@ -44,9 +44,7 @@ func serverParseURLForPlay(u *url.URL) (string, string, string, error) {
 	i := stringsReverseIndex(pathAndQuery, "/trackID=")
 	if i < 0 {
 		if !strings.HasSuffix(pathAndQuery, "/") {
-			return "", "", "", fmt.Errorf("path of a SETUP request must end with a slash. " +
-				"This typically happens when VLC fails a request, and then switches to an " +
-				"unsupported RTSP dialect")
+			return "", "", "", liberrors.ErrServerPathNoSlash{}
 		}
 
 		path, query := url.PathSplitQuery(pathAndQuery[:len(pathAndQuery)-1])
@@ -775,7 +773,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		if medi == nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, fmt.Errorf("media not found")
+			}, liberrors.ErrServerMediaNotFound{}
 		}
 
 		if _, ok := ss.setuppedMedias[medi]; ok {

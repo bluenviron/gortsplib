@@ -1,13 +1,13 @@
 package gortsplib
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtplossdetector"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
@@ -65,14 +65,7 @@ func (sf *serverSessionFormat) stop() {
 func (sf *serverSessionFormat) readRTPUDP(pkt *rtp.Packet, now time.Time) {
 	packets, lost := sf.udpReorderer.Process(pkt)
 	if lost != 0 {
-		sf.sm.ss.onPacketLost(fmt.Errorf("%d RTP %s lost",
-			lost,
-			func() string {
-				if lost == 1 {
-					return "packet"
-				}
-				return "packets"
-			}()))
+		sf.sm.ss.onPacketLost(liberrors.ErrServerRTPPacketsLost{Lost: lost})
 		// do not return
 	}
 
@@ -90,14 +83,7 @@ func (sf *serverSessionFormat) readRTPUDP(pkt *rtp.Packet, now time.Time) {
 func (sf *serverSessionFormat) readRTPTCP(pkt *rtp.Packet) {
 	lost := sf.tcpLossDetector.Process(pkt)
 	if lost != 0 {
-		sf.sm.ss.onPacketLost(fmt.Errorf("%d RTP %s lost",
-			lost,
-			func() string {
-				if lost == 1 {
-					return "packet"
-				}
-				return "packets"
-			}()))
+		sf.sm.ss.onPacketLost(liberrors.ErrServerRTPPacketsLost{Lost: lost})
 		// do not return
 	}
 

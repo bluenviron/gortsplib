@@ -459,7 +459,7 @@ func (s *Server) getMulticastIP() (net.IP, error) {
 		return <-res, nil
 
 	case <-s.ctx.Done():
-		return nil, fmt.Errorf("terminated")
+		return nil, liberrors.ErrServerTerminated{}
 	}
 }
 
