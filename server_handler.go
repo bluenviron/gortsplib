@@ -57,13 +57,13 @@ type ServerHandlerOnSessionClose interface {
 
 // ServerHandlerOnRequest can be implemented by a ServerHandler.
 type ServerHandlerOnRequest interface {
-	// called before every request.
+	// called when receiving a request from a connection.
 	OnRequest(*ServerConn, *base.Request)
 }
 
 // ServerHandlerOnResponse can be implemented by a ServerHandler.
 type ServerHandlerOnResponse interface {
-	// called after every response.
+	// called when sending a response to a connection.
 	OnResponse(*ServerConn, *base.Response)
 }
 

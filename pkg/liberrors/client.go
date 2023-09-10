@@ -239,14 +239,6 @@ func (e ErrClientUnexpectedResponse) Error() string {
 	return "received unexpected response"
 }
 
-// ErrClientMissingCSeq is an error that can be returned by a client.
-type ErrClientMissingCSeq struct{}
-
-// Error implements the error interface.
-func (e ErrClientMissingCSeq) Error() string {
-	return "CSeq is missing"
-}
-
 // ErrClientUnhandledMethod is an error that can be returned by a client.
 type ErrClientUnhandledMethod struct {
 	Method base.Method
