@@ -1,7 +1,7 @@
 package gortsplib
 
 import (
-	"sync/atomic"
+	"sync"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
@@ -9,7 +9,8 @@ import (
 
 type clientReader struct {
 	c                      *Client
-	allowInterleavedFrames atomic.Bool
+	mutex                  sync.Mutex
+	allowInterleavedFrames bool
 }
 
 func newClientReader(c *Client) *clientReader {
@@ -23,7 +24,9 @@ func newClientReader(c *Client) *clientReader {
 }
 
 func (r *clientReader) setAllowInterleavedFrames(v bool) {
-	r.allowInterleavedFrames.Store(v)
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.allowInterleavedFrames = v
 }
 
 func (r *clientReader) wait() {
@@ -58,13 +61,17 @@ func (r *clientReader) runInner() error {
 			r.c.readRequest(what)
 
 		case *base.InterleavedFrame:
-			if !r.allowInterleavedFrames.Load() {
+			r.mutex.Lock()
+
+			if !r.allowInterleavedFrames {
+				r.mutex.Unlock()
 				return liberrors.ErrClientUnexpectedFrame{}
 			}
 
 			if cb, ok := r.c.tcpCallbackByChannel[what.Channel]; ok {
 				cb(what.Payload)
 			}
+			r.mutex.Unlock()
 		}
 	}
 }
