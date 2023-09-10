@@ -583,7 +583,8 @@ func (c *Client) runInner() error {
 			c.reader = nil
 			return err
 
-		case <-c.chReadResponse:
+		case res := <-c.chReadResponse:
+			c.OnResponse(res)
 			return liberrors.ErrClientUnexpectedResponse{}
 
 		case req := <-c.chReadRequest:
@@ -612,6 +613,7 @@ func (c *Client) waitResponse() (*base.Response, error) {
 			return nil, err
 
 		case res := <-c.chReadResponse:
+			c.OnResponse(res)
 			return res, nil
 
 		case req := <-c.chReadRequest:
@@ -915,8 +917,6 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		c.mustClose = true
 		return nil, err
 	}
-
-	c.OnResponse(res)
 
 	// get session from response
 	if v, ok := res.Header["Session"]; ok {
