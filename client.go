@@ -599,9 +599,12 @@ func (c *Client) runInner() error {
 }
 
 func (c *Client) waitResponse() (*base.Response, error) {
+	t := time.NewTimer(c.ReadTimeout)
+	defer t.Stop()
+
 	for {
 		select {
-		case <-time.After(c.ReadTimeout):
+		case <-t.C:
 			return nil, liberrors.ErrClientRequestTimedOut{}
 
 		case err := <-c.chReadError:
