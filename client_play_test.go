@@ -2896,13 +2896,13 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 		{"udp", "rtp invalid"},
 		{"udp", "rtcp invalid"},
 		{"udp", "rtp packets lost"},
-		{"udp", "rtp unknown format"},
+		{"udp", "rtp unknown payload type"},
 		{"udp", "wrong ssrc"},
 		{"udp", "rtcp too big"},
 		{"udp", "rtp too big"},
 		{"tcp", "rtp invalid"},
 		{"tcp", "rtcp invalid"},
-		{"tcp", "rtp unknown format"},
+		{"tcp", "rtp unknown payload type"},
 		{"tcp", "wrong ssrc"},
 		{"tcp", "rtcp too big"},
 	} {
@@ -3077,7 +3077,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 						},
 					}))
 
-				case ca.name == "rtp unknown format":
+				case ca.name == "rtp unknown payload type":
 					writeRTP(mustMarshalPacketRTP(&rtp.Packet{
 						Header: rtp.Header{
 							PayloadType: 111,
@@ -3140,8 +3140,8 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 					case ca.name == "rtcp invalid":
 						require.EqualError(t, err, "rtcp: packet too short")
 
-					case ca.name == "rtp unknown format":
-						require.EqualError(t, err, "received RTP packet with unknown format: 111")
+					case ca.name == "rtp unknown payload type":
+						require.EqualError(t, err, "received RTP packet with unknown payload type: 111")
 
 					case ca.name == "wrong ssrc":
 						require.EqualError(t, err, "received packet with wrong SSRC 456, expected 123")

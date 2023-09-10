@@ -713,7 +713,7 @@ func (c *Client) checkState(allowed map[clientState]struct{}) error {
 }
 
 func (c *Client) trySwitchingProtocol() error {
-	c.OnTransportSwitch(fmt.Errorf("no UDP packets received, switching to TCP"))
+	c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP{})
 
 	prevConnURL := c.connURL
 	prevBaseURL := c.baseURL
@@ -752,7 +752,7 @@ func (c *Client) trySwitchingProtocol() error {
 }
 
 func (c *Client) trySwitchingProtocol2(medi *description.Media, baseURL *url.URL) (*base.Response, error) {
-	c.OnTransportSwitch(fmt.Errorf("switching to TCP because server requested it"))
+	c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 
 	prevConnURL := c.connURL
 
@@ -939,7 +939,7 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 
 		sender, err := auth.NewSender(res.Header["WWW-Authenticate"], user, pass)
 		if err != nil {
-			return nil, fmt.Errorf("unable to setup authentication: %s", err)
+			return nil, liberrors.ErrClientAuthSetup{Err: err}
 		}
 		c.sender = sender
 
@@ -1142,13 +1142,13 @@ func (c *Client) doDescribe(u *url.URL) (*description.Session, *base.Response, e
 	var ssd sdp.SessionDescription
 	err = ssd.Unmarshal(res.Body)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, liberrors.ErrClientSDPInvalid{Err: err}
 	}
 
 	var desc description.Session
 	err = desc.Unmarshal(&ssd)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, liberrors.ErrClientSDPInvalid{Err: err}
 	}
 
 	baseURL, err := findBaseURL(&ssd, res, u)
@@ -1348,7 +1348,7 @@ func (c *Client) doSetup(
 		// switch transport automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
 			c.effectiveTransport == nil {
-			c.OnTransportSwitch(fmt.Errorf("switching to TCP because server requested it"))
+			c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 			v := TransportTCP
 			c.effectiveTransport = &v
 			return c.doSetup(baseURL, medi, 0, 0)

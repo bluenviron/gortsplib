@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"fmt"
 	"net"
 	"sync/atomic"
 	"time"
@@ -171,7 +170,7 @@ func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) {
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
-		sm.ss.onDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
+		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
 		return
 	}
 
@@ -195,7 +194,7 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) {
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
-		sm.ss.onDecodeError(fmt.Errorf("RTP packet is too big to be read with UDP"))
+		sm.ss.onDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
 		return
 	}
 
@@ -208,7 +207,7 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) {
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
-		sm.ss.onDecodeError(fmt.Errorf("received RTP packet with unknown format: %d", pkt.PayloadType))
+		sm.ss.onDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: pkt.PayloadType})
 		return
 	}
 
@@ -224,7 +223,7 @@ func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) {
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
-		sm.ss.onDecodeError(fmt.Errorf("RTCP packet is too big to be read with UDP"))
+		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
 		return
 	}
 
@@ -254,8 +253,7 @@ func (sm *serverSessionMedia) readRTPTCPPlay(_ []byte) {
 
 func (sm *serverSessionMedia) readRTCPTCPPlay(payload []byte) {
 	if len(payload) > udpMaxPayloadSize {
-		sm.ss.onDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
-			len(payload), udpMaxPayloadSize))
+		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
 		return
 	}
 
@@ -280,7 +278,7 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) {
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
-		sm.ss.onDecodeError(fmt.Errorf("received RTP packet with unknown format: %d", pkt.PayloadType))
+		sm.ss.onDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: pkt.PayloadType})
 		return
 	}
 
@@ -289,8 +287,7 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) {
 
 func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) {
 	if len(payload) > udpMaxPayloadSize {
-		sm.ss.onDecodeError(fmt.Errorf("RTCP packet size (%d) is greater than maximum allowed (%d)",
-			len(payload), udpMaxPayloadSize))
+		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
 		return
 	}
 

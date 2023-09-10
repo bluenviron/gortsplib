@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -142,7 +141,7 @@ func (st *ServerStream) readerAdd(
 	defer st.mutex.Unlock()
 
 	if st.closed {
-		return fmt.Errorf("stream is closed")
+		return liberrors.ErrServerStreamClosed{}
 	}
 
 	switch transport {
@@ -251,7 +250,7 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.
 	defer st.mutex.RUnlock()
 
 	if st.closed {
-		return fmt.Errorf("stream is closed")
+		return liberrors.ErrServerStreamClosed{}
 	}
 
 	sm := st.streamMedias[medi]
@@ -270,7 +269,7 @@ func (st *ServerStream) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet
 	defer st.mutex.RUnlock()
 
 	if st.closed {
-		return fmt.Errorf("stream is closed")
+		return liberrors.ErrServerStreamClosed{}
 	}
 
 	sm := st.streamMedias[medi]
