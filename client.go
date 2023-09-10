@@ -599,7 +599,7 @@ func (c *Client) runInner() error {
 	}
 }
 
-func (c *Client) waitResponse() (*base.Response, error) {
+func (c *Client) waitResponse(requestCseqStr string) (*base.Response, error) {
 	t := time.NewTimer(c.ReadTimeout)
 	defer t.Stop()
 
@@ -614,7 +614,11 @@ func (c *Client) waitResponse() (*base.Response, error) {
 
 		case res := <-c.chReadResponse:
 			c.OnResponse(res)
-			return res, nil
+
+			// accept response if CSeq equals request CSeq, or if CSeq is not present
+			if cseq, ok := res.Header["CSeq"]; !ok || len(cseq) != 1 || cseq[0] == requestCseqStr {
+				return res, nil
+			}
 
 		case req := <-c.chReadRequest:
 			err := c.handleServerRequest(req)
@@ -892,7 +896,8 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 	}
 
 	c.cseq++
-	req.Header["CSeq"] = base.HeaderValue{strconv.FormatInt(int64(c.cseq), 10)}
+	cseqStr := strconv.FormatInt(int64(c.cseq), 10)
+	req.Header["CSeq"] = base.HeaderValue{cseqStr}
 
 	req.Header["User-Agent"] = base.HeaderValue{c.UserAgent}
 
@@ -912,7 +917,7 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		return nil, nil
 	}
 
-	res, err := c.waitResponse()
+	res, err := c.waitResponse(cseqStr)
 	if err != nil {
 		c.mustClose = true
 		return nil, err
