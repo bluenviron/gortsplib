@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"net"
 	"sync/atomic"
 	"time"
 
@@ -41,11 +42,17 @@ func (cm *clientMedia) close() {
 	}
 }
 
-func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, rtcpAddress string) error {
+func (cm *clientMedia) allocateUDPListeners(
+	multicastEnable bool,
+	multicastSourceIP net.IP,
+	rtpAddress string,
+	rtcpAddress string,
+) error {
 	if rtpAddress != ":0" {
 		l1, err := newClientUDPListener(
 			cm.c,
-			multicast,
+			multicastEnable,
+			multicastSourceIP,
 			rtpAddress,
 		)
 		if err != nil {
@@ -54,7 +61,8 @@ func (cm *clientMedia) allocateUDPListeners(multicast bool, rtpAddress string, r
 
 		l2, err := newClientUDPListener(
 			cm.c,
-			multicast,
+			multicastEnable,
+			multicastSourceIP,
 			rtcpAddress,
 		)
 		if err != nil {

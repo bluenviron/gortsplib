@@ -6,7 +6,4 @@ const (
 
 	// 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header)
 	udpMaxPayloadSize = 1472
-
-	// same size as GStreamer's rtspsrc
-	multicastTTL = 16
 )
