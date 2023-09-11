@@ -41,18 +41,6 @@ func (sm *serverStreamMedia) close() {
 	}
 }
 
-func (sm *serverStreamMedia) allocateMulticastHandler(s *Server) error {
-	if sm.multicastWriter == nil {
-		mh, err := newServerMulticastWriter(s)
-		if err != nil {
-			return err
-		}
-
-		sm.multicastWriter = mh
-	}
-	return nil
-}
-
 func (sm *serverStreamMedia) writePacketRTCP(byts []byte) error {
 	// send unicast
 	for r := range sm.st.activeUnicastReaders {

@@ -57,6 +57,23 @@ func serverParseURLForPlay(u *url.URL) (string, string, string, error) {
 	return path, query, trackID, nil
 }
 
+func recordBaseURL(u *url.URL, path string, query string) *url.URL {
+	baseURL := &url.URL{
+		Scheme:   u.Scheme,
+		Host:     u.Host,
+		Path:     path,
+		RawQuery: query,
+	}
+
+	if baseURL.RawQuery != "" {
+		baseURL.RawQuery += "/"
+	} else {
+		baseURL.Path += "/"
+	}
+
+	return baseURL
+}
+
 func findMediaByURL(medias []*description.Media, baseURL *url.URL, u *url.URL) *description.Media {
 	for _, media := range medias {
 		u1, err := media.URL(baseURL)
@@ -754,20 +771,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
 			medi = findMediaByTrackID(stream.desc.Medias, trackID)
 		default: // record
-			baseURL := &url.URL{
-				Scheme:   req.URL.Scheme,
-				Host:     req.URL.Host,
-				Path:     path,
-				RawQuery: query,
-			}
-
-			if baseURL.RawQuery != "" {
-				baseURL.RawQuery += "/"
-			} else {
-				baseURL.Path += "/"
-			}
-
-			medi = findMediaByURL(ss.announcedDesc.Medias, baseURL, req.URL)
+			medi = findMediaByURL(ss.announcedDesc.Medias, recordBaseURL(req.URL, path, query), req.URL)
 		}
 
 		if medi == nil {
@@ -782,9 +786,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, liberrors.ErrServerMediaAlreadySetup{}
 		}
 
+		ss.setuppedTransport = &transport
+
 		if ss.state == ServerSessionStateInitial {
 			err := stream.readerAdd(ss,
-				transport,
 				inTH.ClientPorts,
 			)
 			if err != nil {
@@ -806,8 +811,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				th.SSRC = &ssrc
 			}
 		}
-
-		ss.setuppedTransport = &transport
 
 		if res.Header == nil {
 			res.Header = make(base.Header)
