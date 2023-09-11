@@ -287,7 +287,6 @@ type Client struct {
 	senderReportPeriod   time.Duration
 	receiverReportPeriod time.Duration
 	checkTimeoutPeriod   time.Duration
-	keepalivePeriod      time.Duration
 
 	connURL              *url.URL
 	ctx                  context.Context
@@ -309,6 +308,7 @@ type Client struct {
 	checkTimeoutTimer    *time.Timer
 	checkTimeoutInitial  bool
 	tcpLastFrameTime     *int64
+	keepalivePeriod      time.Duration
 	keepaliveTimer       *time.Timer
 	closeError           error
 	writer               asyncProcessor
@@ -419,9 +419,6 @@ func (c *Client) Start(scheme string, host string) error {
 	if c.checkTimeoutPeriod == 0 {
 		c.checkTimeoutPeriod = 1 * time.Second
 	}
-	if c.keepalivePeriod == 0 {
-		c.keepalivePeriod = 30 * time.Second
-	}
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
@@ -432,6 +429,7 @@ func (c *Client) Start(scheme string, host string) error {
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
 	c.checkTimeoutTimer = emptyTimer()
+	c.keepalivePeriod = 30 * time.Second
 	c.keepaliveTimer = emptyTimer()
 	c.chOptions = make(chan optionsReq)
 	c.chDescribe = make(chan describeReq)
@@ -585,7 +583,7 @@ func (c *Client) runInner() error {
 
 		case res := <-c.chReadResponse:
 			c.OnResponse(res)
-			return liberrors.ErrClientUnexpectedResponse{}
+			// these are responses to keepalives, ignore them.
 
 		case req := <-c.chReadRequest:
 			err := c.handleServerRequest(req)
@@ -1014,6 +1012,7 @@ func (c *Client) doCheckTimeout() error {
 }
 
 func (c *Client) doKeepAlive() error {
+	// some cameras do not reply to keepalives, do not wait for responses.
 	_, err := c.do(&base.Request{
 		Method: func() base.Method {
 			// the VLC integrated rtsp server requires GET_PARAMETER
@@ -1024,7 +1023,7 @@ func (c *Client) doKeepAlive() error {
 		}(),
 		// use the stream base URL, otherwise some cameras do not reply
 		URL: c.baseURL,
-	}, false)
+	}, true)
 	return err
 }
 
