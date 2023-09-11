@@ -1303,6 +1303,7 @@ func (c *Client) doSetup(
 
 		err := cm.allocateUDPListeners(
 			false,
+			nil,
 			net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
 			net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
 		)
@@ -1398,10 +1399,11 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientServerPortsNotProvided{}
 		}
 
+		var readIP net.IP
 		if thRes.Source != nil {
-			cm.udpRTPListener.readIP = *thRes.Source
+			readIP = *thRes.Source
 		} else {
-			cm.udpRTPListener.readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+			readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 
 		if serverPortsValid {
@@ -1414,12 +1416,7 @@ func (c *Client) doSetup(
 				Port: thRes.ServerPorts[0],
 			}
 		}
-
-		if thRes.Source != nil {
-			cm.udpRTCPListener.readIP = *thRes.Source
-		} else {
-			cm.udpRTCPListener.readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
-		}
+		cm.udpRTPListener.readIP = readIP
 
 		if serverPortsValid {
 			if !c.AnyPortEnable {
@@ -1431,6 +1428,7 @@ func (c *Client) doSetup(
 				Port: thRes.ServerPorts[1],
 			}
 		}
+		cm.udpRTCPListener.readIP = readIP
 
 	case TransportUDPMulticast:
 		if thRes.Delivery == nil || *thRes.Delivery != headers.TransportDeliveryMulticast {
@@ -1445,8 +1443,16 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderNoDestination{}
 		}
 
+		var readIP net.IP
+		if thRes.Source != nil {
+			readIP = *thRes.Source
+		} else {
+			readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		}
+
 		err := cm.allocateUDPListeners(
 			true,
+			readIP,
 			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[0]), 10)),
 			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[1]), 10)),
 		)
@@ -1454,14 +1460,14 @@ func (c *Client) doSetup(
 			return nil, err
 		}
 
-		cm.udpRTPListener.readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		cm.udpRTPListener.readIP = readIP
 		cm.udpRTPListener.readPort = thRes.Ports[0]
 		cm.udpRTPListener.writeAddr = &net.UDPAddr{
 			IP:   *thRes.Destination,
 			Port: thRes.Ports[0],
 		}
 
-		cm.udpRTCPListener.readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		cm.udpRTCPListener.readIP = readIP
 		cm.udpRTCPListener.readPort = thRes.Ports[1]
 		cm.udpRTCPListener.writeAddr = &net.UDPAddr{
 			IP:   *thRes.Destination,

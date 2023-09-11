@@ -1,38 +1,13 @@
 package gortsplib
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
-	"golang.org/x/net/ipv4"
+	"github.com/bluenviron/gortsplib/v4/pkg/multicast"
 )
-
-func joinMulticastGroupOnAtLeastOneInterface(p *ipv4.PacketConn, listenIP net.IP) error {
-	intfs, err := net.Interfaces()
-	if err != nil {
-		return err
-	}
-
-	success := false
-
-	for _, intf := range intfs {
-		if (intf.Flags & net.FlagMulticast) != 0 {
-			err := p.JoinGroup(&intf, &net.UDPAddr{IP: listenIP})
-			if err == nil {
-				success = true
-			}
-		}
-	}
-
-	if !success {
-		return fmt.Errorf("unable to activate multicast on any network interface")
-	}
-
-	return nil
-}
 
 type clientAddr struct {
 	ip   [net.IPv6len]byte // use a fixed-size array to enable the equality operator
@@ -94,43 +69,28 @@ func newServerUDPListenerMulticastPair(
 func newServerUDPListener(
 	listenPacket func(network, address string) (net.PacketConn, error),
 	writeTimeout time.Duration,
-	multicast bool,
+	multicastEnable bool,
 	address string,
 ) (*serverUDPListener, error) {
-	var pc *net.UDPConn
+	var pc packetConn
 	var listenIP net.IP
-	if multicast {
-		host, port, err := net.SplitHostPort(address)
+	if multicastEnable {
+		var err error
+		pc, err = multicast.NewMultiConn(address, listenPacket)
 		if err != nil {
 			return nil, err
 		}
 
-		tmp, err := listenPacket(restrictNetwork("udp", "224.0.0.0:"+port))
+		host, _, err := net.SplitHostPort(address)
 		if err != nil {
 			return nil, err
 		}
-
-		p := ipv4.NewPacketConn(tmp)
-
-		err = p.SetMulticastTTL(multicastTTL)
-		if err != nil {
-			return nil, err
-		}
-
 		listenIP = net.ParseIP(host)
-
-		err = joinMulticastGroupOnAtLeastOneInterface(p, listenIP)
-		if err != nil {
-			return nil, err
-		}
-
-		pc = tmp.(*net.UDPConn)
 	} else {
 		tmp, err := listenPacket(restrictNetwork("udp", address))
 		if err != nil {
 			return nil, err
 		}
-
 		pc = tmp.(*net.UDPConn)
 		listenIP = tmp.LocalAddr().(*net.UDPAddr).IP
 	}

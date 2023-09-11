@@ -32,6 +32,7 @@ linters-settings:
     - (*net.TCPConn).SetKeepAlive
     - (*net.TCPConn).SetKeepAlivePeriod
     - (*net.TCPConn).SetNoDelay
+    - (*net.UDPConn).Close
     - (net.Listener).Close
     - (net.PacketConn).Close
     - (net.PacketConn).SetReadDeadline
