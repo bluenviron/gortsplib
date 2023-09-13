@@ -116,6 +116,38 @@ var cases = []struct {
 		},
 	},
 	{
+		"fragmented to the limit",
+		[][]byte{bytes.Repeat([]byte{1}, 2917)},
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x1c, 0x81},
+					bytes.Repeat([]byte{1}, 1458),
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x1c, 0x41},
+					bytes.Repeat([]byte{1}, 1458),
+				),
+			},
+		},
+	},
+	{
 		"aggregated",
 		[][]byte{
 			{0x09, 0xF0},

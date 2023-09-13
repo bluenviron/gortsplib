@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
@@ -34,25 +33,12 @@ func mergeBytes(vals ...[]byte) []byte {
 }
 
 var cases = []struct {
-	name   string
-	config *mpeg4audio.StreamMuxConfig
-	au     []byte
-	pkts   []*rtp.Packet
+	name string
+	au   []byte
+	pkts []*rtp.Packet
 }{
 	{
 		"single",
-		&mpeg4audio.StreamMuxConfig{
-			Programs: []*mpeg4audio.StreamMuxConfigProgram{{
-				Layers: []*mpeg4audio.StreamMuxConfigLayer{{
-					AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   48000,
-						ChannelCount: 2,
-					},
-					LatmBufferFullness: 255,
-				}},
-			}},
-		},
 		[]byte{1, 2, 3, 4},
 		[]*rtp.Packet{
 			{
@@ -71,18 +57,6 @@ var cases = []struct {
 	},
 	{
 		"fragmented",
-		&mpeg4audio.StreamMuxConfig{
-			Programs: []*mpeg4audio.StreamMuxConfigProgram{{
-				Layers: []*mpeg4audio.StreamMuxConfigLayer{{
-					AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   48000,
-						ChannelCount: 2,
-					},
-					LatmBufferFullness: 255,
-				}},
-			}},
-		},
 		bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 512),
 		[]*rtp.Packet{
 			{
@@ -125,6 +99,38 @@ var cases = []struct {
 				Payload: mergeBytes(
 					[]byte{7},
 					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 149),
+				),
+			},
+		},
+	},
+	{
+		"fragmented to the limit",
+		bytes.Repeat([]byte{1}, 2908),
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					SSRC:           2646308882,
+				},
+				Payload: mergeBytes(
+					bytes.Repeat([]byte{0xff}, 11),
+					[]byte{0x67},
+					bytes.Repeat([]byte{1}, 1448),
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					SSRC:           2646308882,
+				},
+				Payload: mergeBytes(
+					bytes.Repeat([]byte{1}, 1460),
 				),
 			},
 		},

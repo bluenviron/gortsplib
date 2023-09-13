@@ -29,6 +29,14 @@ func lenAggregated(frames [][]byte, frame []byte) int {
 	return l
 }
 
+func packetCount(avail, le int) int {
+	n := le / avail
+	if (le % avail) != 0 {
+		n++
+	}
+	return n
+}
+
 // Encoder is a RTP/MPEG-1/2 Audio encoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type Encoder struct {
@@ -127,21 +135,15 @@ func (e *Encoder) writeBatch(frames [][]byte, timestamp uint32) ([]*rtp.Packet, 
 func (e *Encoder) writeFragmented(frame []byte, timestamp uint32) ([]*rtp.Packet, error) {
 	avail := e.PayloadMaxSize - 4
 	le := len(frame)
-	packetCount := le / avail
-	lastPacketSize := le % avail
-	if lastPacketSize > 0 {
-		packetCount++
-	}
+	packetCount := packetCount(avail, le)
 
-	pos := 0
 	ret := make([]*rtp.Packet, packetCount)
+	pos := 0
+	le = avail
 
 	for i := range ret {
-		var le int
-		if i != (packetCount - 1) {
-			le = avail
-		} else {
-			le = lastPacketSize
+		if i == (packetCount - 1) {
+			le = len(frame) - pos
 		}
 
 		payload := make([]byte, 4+le)

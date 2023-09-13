@@ -20,6 +20,14 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
+func packetCount(avail, le int) int {
+	n := le / avail
+	if (le % avail) != 0 {
+		n++
+	}
+	return n
+}
+
 // Encoder is a RTP/MPEG-4 Video encoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6416
 type Encoder struct {
@@ -66,29 +74,18 @@ func (e *Encoder) Init() error {
 	return nil
 }
 
-func packetCount(avail, le int) int {
-	packetCount := le / avail
-	lastPacketSize := le % avail
-	if lastPacketSize > 0 {
-		packetCount++
-	}
-	return packetCount
-}
-
 // Encode encodes a frame into RTP packets.
 func (e *Encoder) Encode(frame []byte) ([]*rtp.Packet, error) {
 	avail := e.PayloadMaxSize
 	le := len(frame)
 	packetCount := packetCount(avail, le)
 
-	pos := 0
 	ret := make([]*rtp.Packet, packetCount)
+	pos := 0
+	le = avail
 
 	for i := range ret {
-		var le int
-		if i != (packetCount - 1) {
-			le = avail
-		} else {
+		if i == (packetCount - 1) {
 			le = len(frame[pos:])
 		}
 
@@ -98,7 +95,7 @@ func (e *Encoder) Encode(frame []byte) ([]*rtp.Packet, error) {
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
 				SSRC:           *e.SSRC,
-				Marker:         (i == len(ret)-1),
+				Marker:         (i == packetCount-1),
 			},
 			Payload: frame[pos : pos+le],
 		}

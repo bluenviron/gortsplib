@@ -68,12 +68,11 @@ func (e *Encoder) Init() error {
 
 func (e *Encoder) packetCount(auLen int, plil int) int {
 	totalLen := plil + auLen
-	packetCount := totalLen / e.PayloadMaxSize
-	lastPacketSize := totalLen % e.PayloadMaxSize
-	if lastPacketSize > 0 {
-		packetCount++
+	n := totalLen / e.PayloadMaxSize
+	if (totalLen % e.PayloadMaxSize) != 0 {
+		n++
 	}
-	return packetCount
+	return n
 }
 
 // Encode encodes an access unit into RTP packets.
@@ -82,29 +81,25 @@ func (e *Encoder) Encode(au []byte) ([]*rtp.Packet, error) {
 	plil := payloadLengthInfoEncodeSize(auLen)
 	packetCount := e.packetCount(auLen, plil)
 
-	avail := e.PayloadMaxSize - plil
 	ret := make([]*rtp.Packet, packetCount)
+	le := e.PayloadMaxSize - plil
 
 	for i := range ret {
-		var final bool
-		var l int
-
-		if len(au) < avail {
-			l = len(au)
-			final = true
-		} else {
-			l = avail
-			final = false
+		if i == (packetCount - 1) {
+			le = len(au)
 		}
 
 		var payload []byte
 
 		if i == 0 {
-			payload = make([]byte, plil+l)
+			payload = make([]byte, plil+le)
 			payloadLengthInfoEncode(plil, auLen, payload)
-			copy(payload[plil:], au[:l])
+			copy(payload[plil:], au[:le])
+			au = au[le:]
+			le = e.PayloadMaxSize
 		} else {
-			payload = au[:l]
+			payload = au[:le]
+			au = au[le:]
 		}
 
 		ret[i] = &rtp.Packet{
@@ -113,19 +108,12 @@ func (e *Encoder) Encode(au []byte) ([]*rtp.Packet, error) {
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
 				SSRC:           *e.SSRC,
-				Marker:         final,
+				Marker:         (i == packetCount-1),
 			},
 			Payload: payload,
 		}
 
 		e.sequenceNumber++
-
-		if final {
-			break
-		}
-
-		au = au[l:]
-		avail = e.PayloadMaxSize
 	}
 
 	return ret, nil

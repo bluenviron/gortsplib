@@ -82,7 +82,6 @@ func (e *Encoder) packetCount(slen int) int {
 	if (slen % e.maxPayloadSize) != 0 {
 		n++
 	}
-
 	return n
 }
 
@@ -95,12 +94,11 @@ func (e *Encoder) Encode(samples []byte) ([]*rtp.Packet, error) {
 
 	packetCount := e.packetCount(slen)
 	ret := make([]*rtp.Packet, packetCount)
-	i := 0
 	pos := 0
 	payloadSize := e.maxPayloadSize
 	timestamp := uint32(0)
 
-	for {
+	for i := range ret {
 		if payloadSize > len(samples[pos:]) {
 			payloadSize = len(samples[pos:])
 		}
@@ -118,13 +116,8 @@ func (e *Encoder) Encode(samples []byte) ([]*rtp.Packet, error) {
 		}
 
 		e.sequenceNumber++
-		i++
 		pos += payloadSize
 		timestamp += uint32(payloadSize / e.sampleSize)
-
-		if pos == slen {
-			break
-		}
 	}
 
 	return ret, nil

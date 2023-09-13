@@ -23,6 +23,14 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
+func packetCount(avail, le int) int {
+	n := le / avail
+	if (le % avail) != 0 {
+		n++
+	}
+	return n
+}
+
 // Encoder is a RTP/MPEG4-audio encoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3640
 type Encoder struct {
@@ -132,20 +140,14 @@ func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, e
 
 	avail := e.PayloadMaxSize - 2 - auHeadersLenBytes
 	le := len(au)
-	packetCount := le / avail
-	lastPacketSize := le % avail
-	if lastPacketSize > 0 {
-		packetCount++
-	}
+	packetCount := packetCount(avail, le)
 
 	ret := make([]*rtp.Packet, packetCount)
+	le = avail
 
 	for i := range ret {
-		var le int
-		if i != (packetCount - 1) {
-			le = avail
-		} else {
-			le = lastPacketSize
+		if i == (packetCount - 1) {
+			le = len(au)
 		}
 
 		payload := make([]byte, 2+auHeadersLenBytes+le)
@@ -160,7 +162,7 @@ func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, e
 		bits.WriteBits(payload[2:], &pos, 0, e.IndexLength)
 
 		// AU
-		copy(payload[2+auHeadersLenBytes:], au[:le])
+		copy(payload[2+auHeadersLenBytes:], au)
 		au = au[le:]
 
 		ret[i] = &rtp.Packet{
@@ -170,7 +172,7 @@ func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, e
 				SequenceNumber: e.sequenceNumber,
 				Timestamp:      timestamp,
 				SSRC:           *e.SSRC,
-				Marker:         (i == (packetCount - 1)),
+				Marker:         (i == packetCount-1),
 			},
 			Payload: payload,
 		}

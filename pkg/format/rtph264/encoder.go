@@ -23,6 +23,30 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
+func lenAggregated(nalus [][]byte, addNALU []byte) int {
+	ret := 1 // header
+
+	for _, nalu := range nalus {
+		ret += 2         // size
+		ret += len(nalu) // nalu
+	}
+
+	if addNALU != nil {
+		ret += 2            // size
+		ret += len(addNALU) // nalu
+	}
+
+	return ret
+}
+
+func packetCount(avail, le int) int {
+	n := le / avail
+	if (le % avail) != 0 {
+		n++
+	}
+	return n
+}
+
 // Encoder is a RTP/H264 encoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6184
 type Encoder struct {
@@ -82,7 +106,7 @@ func (e *Encoder) Encode(nalus [][]byte) ([]*rtp.Packet, error) {
 
 	// split NALUs into batches
 	for _, nalu := range nalus {
-		if e.lenAggregated(batch, nalu) <= e.PayloadMaxSize {
+		if lenAggregated(batch, nalu) <= e.PayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, nalu)
 		} else {
@@ -147,37 +171,27 @@ func (e *Encoder) writeFragmented(nalu []byte, marker bool) ([]*rtp.Packet, erro
 	// (packetization-mode=1)
 	avail := e.PayloadMaxSize - 2
 	le := len(nalu) - 1
-	packetCount := le / avail
-	lastPacketSize := le % avail
-	if lastPacketSize > 0 {
-		packetCount++
-	}
+	packetCount := packetCount(avail, le)
 
 	ret := make([]*rtp.Packet, packetCount)
 
 	nri := (nalu[0] >> 5) & 0x03
 	typ := nalu[0] & 0x1F
 	nalu = nalu[1:] // remove header
+	le = avail
+	start := uint8(1)
+	end := uint8(0)
 
 	for i := range ret {
-		indicator := (nri << 5) | uint8(h264.NALUTypeFUA)
-
-		start := uint8(0)
-		if i == 0 {
-			start = 1
-		}
-		end := uint8(0)
-		le := avail
 		if i == (packetCount - 1) {
 			end = 1
-			le = lastPacketSize
+			le = len(nalu)
 		}
-		header := (start << 7) | (end << 6) | typ
 
 		data := make([]byte, 2+le)
-		data[0] = indicator
-		data[1] = header
-		copy(data[2:], nalu[:le])
+		data[0] = (nri << 5) | uint8(h264.NALUTypeFUA)
+		data[1] = (start << 7) | (end << 6) | typ
+		copy(data[2:], nalu)
 		nalu = nalu[le:]
 
 		ret[i] = &rtp.Packet{
@@ -192,29 +206,14 @@ func (e *Encoder) writeFragmented(nalu []byte, marker bool) ([]*rtp.Packet, erro
 		}
 
 		e.sequenceNumber++
+		start = 0
 	}
 
 	return ret, nil
 }
 
-func (e *Encoder) lenAggregated(nalus [][]byte, addNALU []byte) int {
-	ret := 1 // header
-
-	for _, nalu := range nalus {
-		ret += 2         // size
-		ret += len(nalu) // nalu
-	}
-
-	if addNALU != nil {
-		ret += 2            // size
-		ret += len(addNALU) // nalu
-	}
-
-	return ret
-}
-
 func (e *Encoder) writeAggregated(nalus [][]byte, marker bool) ([]*rtp.Packet, error) {
-	payload := make([]byte, e.lenAggregated(nalus, nil))
+	payload := make([]byte, lenAggregated(nalus, nil))
 
 	// header
 	payload[0] = uint8(h264.NALUTypeSTAPA)

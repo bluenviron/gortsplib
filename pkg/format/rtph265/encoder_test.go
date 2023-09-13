@@ -124,6 +124,38 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"fragmented to the limit",
+		[][]byte{bytes.Repeat([]byte{1}, 2916)},
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x63, 0x01, 0x80},
+					bytes.Repeat([]byte{1}, 1457),
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{0x63, 0x01, 0x40},
+					bytes.Repeat([]byte{1}, 1457),
+				),
+			},
+		},
+	},
 }
 
 func TestEncode(t *testing.T) {
