@@ -109,7 +109,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 |H265||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#H265)|:heavy_check_mark:|
 |H264||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#H264)|:heavy_check_mark:|
 |MPEG-4 Video (H263, Xvid)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEG4VideoES)|:heavy_check_mark:|
-|MPEG-1/2 Video||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEG1Video)||
+|MPEG-1/2 Video||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEG1Video)|:heavy_check_mark:|
 |M-JPEG||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MJPEG)|:heavy_check_mark:|
 
 ### Audio
@@ -127,7 +127,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 |G711 (PCMA, PCMU)||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#G711)|:heavy_check_mark:|
 |LPCM||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#LPCM)|:heavy_check_mark:|
 
-### Mixed
+### Other
 
 |format / codec|variant|documentation|encoder and decoder available|
 |--------------|-------|-------------|-----------------------------|

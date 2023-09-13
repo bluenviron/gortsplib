@@ -2,6 +2,8 @@ package format //nolint:dupl
 
 import (
 	"github.com/pion/rtp"
+
+	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpmpeg1video"
 )
 
 // MPEG1Video is a RTP format for a MPEG-1/2 Video codec.
@@ -40,4 +42,28 @@ func (f *MPEG1Video) FMTP() map[string]string {
 // PTSEqualsDTS implements Format.
 func (f *MPEG1Video) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
+}
+
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *MPEG1Video) CreateDecoder() (*rtpmpeg1video.Decoder, error) {
+	d := &rtpmpeg1video.Decoder{}
+
+	err := d.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *MPEG1Video) CreateEncoder() (*rtpmpeg1video.Encoder, error) {
+	e := &rtpmpeg1video.Encoder{}
+
+	err := e.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }
