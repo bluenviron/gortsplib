@@ -21,6 +21,14 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
+func packetCount(avail, le int) int {
+	n := le / avail
+	if (le % avail) != 0 {
+		n++
+	}
+	return n
+}
+
 // Encoder is a RTP/H265 encoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc7798
 type Encoder struct {
@@ -144,34 +152,27 @@ func (e *Encoder) writeSingle(nalu []byte, marker bool) ([]*rtp.Packet, error) {
 func (e *Encoder) writeFragmentationUnits(nalu []byte, marker bool) ([]*rtp.Packet, error) {
 	avail := e.PayloadMaxSize - 3
 	le := len(nalu) - 2
-	n := le / avail
-	lastPacketSize := le % avail
-	if lastPacketSize > 0 {
-		n++
-	}
+	packetCount := packetCount(avail, le)
 
-	ret := make([]*rtp.Packet, n)
+	ret := make([]*rtp.Packet, packetCount)
 
 	head := nalu[:2]
 	nalu = nalu[2:]
+	le = avail
+	start := uint8(1)
+	end := uint8(0)
 
 	for i := range ret {
-		start := uint8(0)
-		if i == 0 {
-			start = 1
-		}
-		end := uint8(0)
-		le := avail
-		if i == (n - 1) {
+		if i == (packetCount - 1) {
+			le = len(nalu)
 			end = 1
-			le = lastPacketSize
 		}
 
 		data := make([]byte, 3+le)
 		data[0] = head[0]&0b10000001 | 49<<1
 		data[1] = head[1]
 		data[2] = (start << 7) | (end << 6) | (head[0]>>1)&0b111111
-		copy(data[3:], nalu[:le])
+		copy(data[3:], nalu)
 		nalu = nalu[le:]
 
 		ret[i] = &rtp.Packet{
@@ -180,12 +181,13 @@ func (e *Encoder) writeFragmentationUnits(nalu []byte, marker bool) ([]*rtp.Pack
 				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
 				SSRC:           *e.SSRC,
-				Marker:         (i == (n-1) && marker),
+				Marker:         (i == (packetCount-1) && marker),
 			},
 			Payload: data,
 		}
 
 		e.sequenceNumber++
+		start = 0
 	}
 
 	return ret, nil
