@@ -1,3 +1,6 @@
+//go:build !linux
+// +build !linux
+
 package multicast
 
 import (
@@ -41,12 +44,6 @@ func NewSingleConn(
 	connIP := ipv4.NewPacketConn(conn)
 
 	err = connIP.JoinGroup(intf, &net.UDPAddr{IP: addr.IP})
-	if err != nil {
-		conn.Close() //nolint:errcheck
-		return nil, err
-	}
-
-	err = setupReadFrom(connIP)
 	if err != nil {
 		conn.Close() //nolint:errcheck
 		return nil, err
@@ -108,5 +105,5 @@ func (c *SingleConn) WriteTo(b []byte, addr net.Addr) (int, error) {
 
 // ReadFrom implements Conn.
 func (c *SingleConn) ReadFrom(b []byte) (int, net.Addr, error) {
-	return readFrom(c.connIP, c.addr.IP, b)
+	return c.conn.ReadFrom(b)
 }

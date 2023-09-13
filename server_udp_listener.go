@@ -97,6 +97,7 @@ func newServerUDPListener(
 
 	err := pc.SetReadBuffer(udpKernelReadBufferSize)
 	if err != nil {
+		pc.Close()
 		return nil, err
 	}
 
