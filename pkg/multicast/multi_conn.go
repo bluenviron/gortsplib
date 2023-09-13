@@ -1,3 +1,6 @@
+//go:build !linux
+// +build !linux
+
 package multicast
 
 import (
@@ -62,12 +65,6 @@ func NewMultiConn(
 	if enabledInterfaces == nil {
 		readConn.Close() //nolint:errcheck
 		return nil, fmt.Errorf("no multicast-capable interfaces found")
-	}
-
-	err = setupReadFrom(readConnIP)
-	if err != nil {
-		readConn.Close() //nolint:errcheck
-		return nil, err
 	}
 
 	writeConns := make([]*net.UDPConn, len(enabledInterfaces))
@@ -174,5 +171,5 @@ func (c *MultiConn) WriteTo(b []byte, addr net.Addr) (int, error) {
 
 // ReadFrom implements Conn.
 func (c *MultiConn) ReadFrom(b []byte) (int, net.Addr, error) {
-	return readFrom(c.readConnIP, c.addr.IP, b)
+	return c.readConn.ReadFrom(b)
 }
