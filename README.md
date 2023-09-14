@@ -135,9 +135,14 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 
 ## Standards
 
+Protocol
+
 * [RFC2326, RTSP 1.0](https://datatracker.ietf.org/doc/html/rfc2326)
 * [RFC7826, RTSP 2.0](https://datatracker.ietf.org/doc/html/rfc7826)
 * [RFC8866, SDP: Session Description Protocol](https://datatracker.ietf.org/doc/html/rfc8866)
+
+Payload formats
+
 * [RFC3551, RTP Profile for Audio and Video Conferences with Minimal Control](https://datatracker.ietf.org/doc/html/rfc3551)
 * [RFC2250, RTP Payload Format for MPEG1/MPEG2 Video](https://datatracker.ietf.org/doc/html/rfc2250)
 * [RFC2435, RTP Payload Format for JPEG-compressed Video](https://datatracker.ietf.org/doc/html/rfc2435)
@@ -152,6 +157,9 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 * [RFC3640, RTP Payload Format for Transport of MPEG-4 Elementary Streams](https://datatracker.ietf.org/doc/html/rfc3640)
 * [RFC5574, RTP Payload Format for the Speex Codec](https://datatracker.ietf.org/doc/html/rfc5574)
 * [RTP Payload Format For AV1 (v1.0)](https://aomediacodec.github.io/av1-rtp-spec/)
+
+Other
+
 * [Codec standards](https://github.com/bluenviron/mediacommon#standards)
 * [Golang project layout](https://github.com/golang-standards/project-layout)
 
