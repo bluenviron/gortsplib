@@ -47,7 +47,7 @@ Features:
 * [Examples](#examples)
 * [API Documentation](#api-documentation)
 * [RTP Payload Formats](#rtp-payload-formats)
-* [Standards](#standards)
+* [Specifications](#specifications)
 * [Related projects](#related-projects)
 
 ## Examples
@@ -133,35 +133,29 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 |--------------|-------|-------------|-----------------------------|
 |MPEG-TS||[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEGTS)||
 
-## Standards
+## Specifications
 
-Protocol
-
-* [RFC2326, RTSP 1.0](https://datatracker.ietf.org/doc/html/rfc2326)
-* [RFC7826, RTSP 2.0](https://datatracker.ietf.org/doc/html/rfc7826)
-* [RFC8866, SDP: Session Description Protocol](https://datatracker.ietf.org/doc/html/rfc8866)
-
-Payload formats
-
-* [RFC3551, RTP Profile for Audio and Video Conferences with Minimal Control](https://datatracker.ietf.org/doc/html/rfc3551)
-* [RFC2250, RTP Payload Format for MPEG1/MPEG2 Video](https://datatracker.ietf.org/doc/html/rfc2250)
-* [RFC2435, RTP Payload Format for JPEG-compressed Video](https://datatracker.ietf.org/doc/html/rfc2435)
-* [RFC6416, RTP Payload Format for MPEG-4 Audio/Visual Streams](https://datatracker.ietf.org/doc/html/rfc6416)
-* [RFC6184, RTP Payload Format for H.264 Video](https://datatracker.ietf.org/doc/html/rfc6184)
-* [RFC7798, RTP Payload Format for High Efficiency Video Coding (HEVC)](https://datatracker.ietf.org/doc/html/rfc7798)
-* [RFC7741, RTP Payload Format for VP8 Video](https://datatracker.ietf.org/doc/html/rfc7741)
-* [RTP Payload Format for VP9 Video](https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16)
-* [RFC3190, RTP Payload Format for 12-bit DAT Audio and 20- and 24-bit Linear Sampled Audio](https://datatracker.ietf.org/doc/html/rfc3190)
-* [RFC5215, RTP Payload Format for Vorbis Encoded Audio](https://datatracker.ietf.org/doc/html/rfc5215)
-* [RFC7587, RTP Payload Format for the Opus Speech and Audio Codec](https://datatracker.ietf.org/doc/html/rfc7587)
-* [RFC3640, RTP Payload Format for Transport of MPEG-4 Elementary Streams](https://datatracker.ietf.org/doc/html/rfc3640)
-* [RFC5574, RTP Payload Format for the Speex Codec](https://datatracker.ietf.org/doc/html/rfc5574)
-* [RTP Payload Format For AV1 (v1.0)](https://aomediacodec.github.io/av1-rtp-spec/)
-
-Other
-
-* [Codec standards](https://github.com/bluenviron/mediacommon#standards)
-* [Golang project layout](https://github.com/golang-standards/project-layout)
+|name|area|
+|----|----|
+|[RFC2326, RTSP 1.0](https://datatracker.ietf.org/doc/html/rfc2326)|protocol|
+|[RFC7826, RTSP 2.0](https://datatracker.ietf.org/doc/html/rfc7826)|protocol|
+|[RFC8866, SDP: Session Description Protocol](https://datatracker.ietf.org/doc/html/rfc8866)|SDP|
+|[RFC3551, RTP Profile for Audio and Video Conferences with Minimal Control](https://datatracker.ietf.org/doc/html/rfc3551)|G726, G722, G711 payload formats|
+|[RFC2250, RTP Payload Format for MPEG1/MPEG2 Video](https://datatracker.ietf.org/doc/html/rfc2250)|MPEG-1 video, MPEG-2 audio, MPEG-TS payload formats|
+|[RFC2435, RTP Payload Format for JPEG-compressed Video](https://datatracker.ietf.org/doc/html/rfc2435)|M-JPEG payload format|
+|[RFC6416, RTP Payload Format for MPEG-4 Audio/Visual Streams](https://datatracker.ietf.org/doc/html/rfc6416)|MPEG-4 audio payload format|
+|[RFC6184, RTP Payload Format for H.264 Video](https://datatracker.ietf.org/doc/html/rfc6184)|H264 payload format|
+|[RFC7798, RTP Payload Format for High Efficiency Video Coding (HEVC)](https://datatracker.ietf.org/doc/html/rfc7798)|H265 payload format|
+|[RFC7741, RTP Payload Format for VP8 Video](https://datatracker.ietf.org/doc/html/rfc7741)|VP8 payload format|
+|[RTP Payload Format for VP9 Video](https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16)|VP9 payload format|
+|[RFC3190, RTP Payload Format for 12-bit DAT Audio and 20- and 24-bit Linear Sampled Audio](https://datatracker.ietf.org/doc/html/rfc3190)|LPCM format|
+|[RFC5215, RTP Payload Format for Vorbis Encoded Audio](https://datatracker.ietf.org/doc/html/rfc5215)|Vorbis format|
+|[RFC7587, RTP Payload Format for the Opus Speech and Audio Codec](https://datatracker.ietf.org/doc/html/rfc7587)|Opus format|
+|[RFC3640, RTP Payload Format for Transport of MPEG-4 Elementary Streams](https://datatracker.ietf.org/doc/html/rfc3640)|MPEG-4 audio, MPEG-4 video payload formats|
+|[RFC5574, RTP Payload Format for the Speex Codec](https://datatracker.ietf.org/doc/html/rfc5574)|Speex payload format|
+|[RTP Payload Format For AV1 (v1.0)](https://aomediacodec.github.io/av1-rtp-spec/)|AV1 payload format|
+|[Codec specifications](https://github.com/bluenviron/mediacommon#specifications)|codecs|
+|[Golang project layout](https://github.com/golang-standards/project-layout)|project layout|
 
 ## Related projects
 
