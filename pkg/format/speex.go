@@ -43,13 +43,6 @@ func (f *Speex) Codec() string {
 	return "Speex"
 }
 
-// String implements Format.
-//
-// Deprecated: replaced by Codec().
-func (f *Speex) String() string {
-	return f.Codec()
-}
-
 // ClockRate implements Format.
 func (f *Speex) ClockRate() int {
 	return f.SampleRate
