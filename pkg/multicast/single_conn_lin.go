@@ -72,13 +72,6 @@ func NewSingleConn(
 		return nil, err
 	}
 
-	const SO_REUSEPORT = 0x0f //nolint:revive
-	err = syscall.SetsockoptInt(sock, syscall.SOL_SOCKET, SO_REUSEPORT, 1)
-	if err != nil {
-		syscall.Close(sock) //nolint:errcheck
-		return nil, err
-	}
-
 	err = syscall.SetsockoptString(sock, syscall.SOL_SOCKET, syscall.SO_BINDTODEVICE, intf.Name)
 	if err != nil {
 		syscall.Close(sock) //nolint:errcheck
