@@ -42,13 +42,6 @@ func NewMultiConn(
 		return nil, err
 	}
 
-	const SO_REUSEPORT = 0x0f //nolint:revive
-	err = syscall.SetsockoptInt(readSock, syscall.SOL_SOCKET, SO_REUSEPORT, 1)
-	if err != nil {
-		syscall.Close(readSock) //nolint:errcheck
-		return nil, err
-	}
-
 	var lsa syscall.SockaddrInet4
 	lsa.Port = addr.Port
 	copy(lsa.Addr[:], addr.IP.To4())
@@ -104,17 +97,6 @@ func NewMultiConn(
 		}
 
 		err = syscall.SetsockoptInt(writeSock, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
-		if err != nil {
-			syscall.Close(writeSock) //nolint:errcheck
-			for j := 0; j < i; j++ {
-				syscall.Close(writeSocks[j]) //nolint:errcheck
-			}
-			syscall.Close(readSock) //nolint:errcheck
-			return nil, err
-		}
-
-		const SO_REUSEPORT = 0x0f //nolint:revive
-		err = syscall.SetsockoptInt(writeSock, syscall.SOL_SOCKET, SO_REUSEPORT, 1)
 		if err != nil {
 			syscall.Close(writeSock) //nolint:errcheck
 			for j := 0; j < i; j++ {
