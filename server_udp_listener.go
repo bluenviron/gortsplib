@@ -76,7 +76,7 @@ func newServerUDPListener(
 	var listenIP net.IP
 	if multicastEnable {
 		var err error
-		pc, err = multicast.NewMultiConn(address, listenPacket)
+		pc, err = multicast.NewMultiConn(address, false, listenPacket)
 		if err != nil {
 			return nil, err
 		}

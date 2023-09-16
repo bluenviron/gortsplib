@@ -24,6 +24,7 @@ type MultiConn struct {
 // NewMultiConn allocates a MultiConn.
 func NewMultiConn(
 	address string,
+	readOnly bool,
 	_ func(network, address string) (net.PacketConn, error),
 ) (Conn, error) {
 	addr, err := net.ResolveUDPAddr("udp4", address)
@@ -84,76 +85,82 @@ func NewMultiConn(
 		return nil, fmt.Errorf("no multicast-capable interfaces found")
 	}
 
-	writeSocks := make([]int, len(enabledInterfaces))
+	var writeFiles []*os.File
+	var writeConns []net.PacketConn
 
-	for i, intf := range enabledInterfaces {
-		writeSock, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
-		if err != nil {
-			for j := 0; j < i; j++ {
-				syscall.Close(writeSocks[j]) //nolint:errcheck
+	if !readOnly {
+		writeSocks := make([]int, len(enabledInterfaces))
+
+		for i, intf := range enabledInterfaces {
+			writeSock, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
+			if err != nil {
+				for j := 0; j < i; j++ {
+					syscall.Close(writeSocks[j]) //nolint:errcheck
+				}
+				syscall.Close(readSock) //nolint:errcheck
+				return nil, err
 			}
-			syscall.Close(readSock) //nolint:errcheck
-			return nil, err
+
+			err = syscall.SetsockoptInt(writeSock, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			if err != nil {
+				syscall.Close(writeSock) //nolint:errcheck
+				for j := 0; j < i; j++ {
+					syscall.Close(writeSocks[j]) //nolint:errcheck
+				}
+				syscall.Close(readSock) //nolint:errcheck
+				return nil, err
+			}
+
+			var lsa syscall.SockaddrInet4
+			lsa.Port = addr.Port
+			copy(lsa.Addr[:], addr.IP.To4())
+			err = syscall.Bind(writeSock, &lsa)
+			if err != nil {
+				syscall.Close(writeSock) //nolint:errcheck
+				for j := 0; j < i; j++ {
+					syscall.Close(writeSocks[j]) //nolint:errcheck
+				}
+				syscall.Close(readSock) //nolint:errcheck
+				return nil, err
+			}
+
+			var mreqn syscall.IPMreqn
+			mreqn.Ifindex = int32(intf.Index)
+
+			err = syscall.SetsockoptIPMreqn(writeSock, syscall.IPPROTO_IP, syscall.IP_MULTICAST_IF, &mreqn)
+			if err != nil {
+				syscall.Close(writeSock) //nolint:errcheck
+				for j := 0; j < i; j++ {
+					syscall.Close(writeSocks[j]) //nolint:errcheck
+				}
+				syscall.Close(readSock) //nolint:errcheck
+				return nil, err
+			}
+
+			err = syscall.SetsockoptInt(writeSock, syscall.IPPROTO_IP, syscall.IP_MULTICAST_TTL, multicastTTL)
+			if err != nil {
+				syscall.Close(writeSock) //nolint:errcheck
+				for j := 0; j < i; j++ {
+					syscall.Close(writeSocks[j]) //nolint:errcheck
+				}
+				syscall.Close(readSock) //nolint:errcheck
+				return nil, err
+			}
+
+			writeSocks[i] = writeSock
 		}
 
-		err = syscall.SetsockoptInt(writeSock, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
-		if err != nil {
-			syscall.Close(writeSock) //nolint:errcheck
-			for j := 0; j < i; j++ {
-				syscall.Close(writeSocks[j]) //nolint:errcheck
-			}
-			syscall.Close(readSock) //nolint:errcheck
-			return nil, err
+		writeFiles = make([]*os.File, len(writeSocks))
+		writeConns = make([]net.PacketConn, len(writeSocks))
+
+		for i, writeSock := range writeSocks {
+			writeFiles[i] = os.NewFile(uintptr(writeSock), "")
+			writeConns[i], _ = net.FilePacketConn(writeFiles[i])
 		}
-
-		var lsa syscall.SockaddrInet4
-		lsa.Port = addr.Port
-		copy(lsa.Addr[:], addr.IP.To4())
-		err = syscall.Bind(writeSock, &lsa)
-		if err != nil {
-			syscall.Close(writeSock) //nolint:errcheck
-			for j := 0; j < i; j++ {
-				syscall.Close(writeSocks[j]) //nolint:errcheck
-			}
-			syscall.Close(readSock) //nolint:errcheck
-			return nil, err
-		}
-
-		var mreqn syscall.IPMreqn
-		mreqn.Ifindex = int32(intf.Index)
-
-		err = syscall.SetsockoptIPMreqn(writeSock, syscall.IPPROTO_IP, syscall.IP_MULTICAST_IF, &mreqn)
-		if err != nil {
-			syscall.Close(writeSock) //nolint:errcheck
-			for j := 0; j < i; j++ {
-				syscall.Close(writeSocks[j]) //nolint:errcheck
-			}
-			syscall.Close(readSock) //nolint:errcheck
-			return nil, err
-		}
-
-		err = syscall.SetsockoptInt(writeSock, syscall.IPPROTO_IP, syscall.IP_MULTICAST_TTL, multicastTTL)
-		if err != nil {
-			syscall.Close(writeSock) //nolint:errcheck
-			for j := 0; j < i; j++ {
-				syscall.Close(writeSocks[j]) //nolint:errcheck
-			}
-			syscall.Close(readSock) //nolint:errcheck
-			return nil, err
-		}
-
-		writeSocks[i] = writeSock
 	}
 
 	readFile := os.NewFile(uintptr(readSock), "")
 	readConn, _ := net.FilePacketConn(readFile)
-	writeFiles := make([]*os.File, len(writeSocks))
-	writeConns := make([]net.PacketConn, len(writeSocks))
-
-	for i, writeSock := range writeSocks {
-		writeFiles[i] = os.NewFile(uintptr(writeSock), "")
-		writeConns[i], _ = net.FilePacketConn(writeFiles[i])
-	}
 
 	return &MultiConn{
 		addr:       addr,
