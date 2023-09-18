@@ -82,13 +82,13 @@ func (e *Encoder) Init() error {
 	return nil
 }
 
-// Encode encodes NALUs into RTP/H265 packets.
-func (e *Encoder) Encode(nalus [][]byte) ([]*rtp.Packet, error) {
+// Encode encodes an access unit into RTP/H265 packets.
+func (e *Encoder) Encode(au [][]byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte
 
 	// split NALUs into batches
-	for _, nalu := range nalus {
+	for _, nalu := range au {
 		if e.lenAggregationUnit(batch, nalu) <= e.PayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, nalu)

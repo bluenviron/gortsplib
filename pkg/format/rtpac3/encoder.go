@@ -1,10 +1,11 @@
-package rtpmpeg1audio
+package rtpac3
 
 import (
 	"crypto/rand"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg1audio"
 	"github.com/pion/rtp"
+
+	"github.com/bluenviron/mediacommon/pkg/codecs/ac3"
 )
 
 const (
@@ -21,14 +22,6 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
-func lenAggregated(frames [][]byte, frame []byte) int {
-	n := 4 + len(frame)
-	for _, fr := range frames {
-		n += len(fr)
-	}
-	return n
-}
-
 func packetCount(avail, le int) int {
 	n := le / avail
 	if (le % avail) != 0 {
@@ -37,9 +30,12 @@ func packetCount(avail, le int) int {
 	return n
 }
 
-// Encoder is a RTP/MPEG-1/2 Audio encoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc2250
+// Encoder is a AC-3 encoder.
+// Specification: https://datatracker.ietf.org/doc/html/rfc4184
 type Encoder struct {
+	// payload type of packets.
+	PayloadType uint8
+
 	// SSRC of packets (optional).
 	// It defaults to a random value.
 	SSRC *uint32
@@ -86,8 +82,10 @@ func (e *Encoder) Encode(frames [][]byte) ([]*rtp.Packet, error) {
 	var batch [][]byte
 	timestamp := uint32(0)
 
+	// split frames into batches
 	for _, frame := range frames {
-		if lenAggregated(batch, frame) <= e.PayloadMaxSize {
+		if e.lenAggregated(batch, frame) <= e.PayloadMaxSize {
+			// add to existing batch
 			batch = append(batch, frame)
 		} else {
 			// write current batch
@@ -97,16 +95,7 @@ func (e *Encoder) Encode(frames [][]byte) ([]*rtp.Packet, error) {
 					return nil, err
 				}
 				rets = append(rets, pkts...)
-
-				for _, frame := range batch {
-					var h mpeg1audio.FrameHeader
-					err := h.Unmarshal(frame)
-					if err != nil {
-						return nil, err
-					}
-
-					timestamp += uint32(h.SampleCount())
-				}
+				timestamp += uint32(len(batch)) * ac3.SamplesPerFrame
 			}
 
 			// initialize new batch
@@ -125,7 +114,7 @@ func (e *Encoder) Encode(frames [][]byte) ([]*rtp.Packet, error) {
 }
 
 func (e *Encoder) writeBatch(frames [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
-	if len(frames) != 1 || lenAggregated(frames, nil) < e.PayloadMaxSize {
+	if len(frames) != 1 || e.lenAggregated(frames, nil) < e.PayloadMaxSize {
 		return e.writeAggregated(frames, timestamp)
 	}
 
@@ -138,42 +127,58 @@ func (e *Encoder) writeFragmented(frame []byte, timestamp uint32) ([]*rtp.Packet
 	packetCount := packetCount(avail, le)
 
 	ret := make([]*rtp.Packet, packetCount)
-	pos := 0
 	le = avail
+
+	ft := uint8(2)
+	if avail >= (len(frame) * 5 / 8) {
+		ft = 1
+	}
 
 	for i := range ret {
 		if i == (packetCount - 1) {
-			le = len(frame) - pos
+			le = len(frame)
 		}
 
-		payload := make([]byte, 4+le)
-		payload[2] = byte(pos >> 8)
-		payload[3] = byte(pos)
+		payload := make([]byte, 2+le)
+		payload[0] = ft
+		payload[1] = uint8(packetCount)
 
-		pos += copy(payload[4:], frame[pos:])
+		n := copy(payload[2:], frame)
+		frame = frame[n:]
 
 		ret[i] = &rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
-				PayloadType:    14,
+				PayloadType:    e.PayloadType,
 				SequenceNumber: e.sequenceNumber,
 				Timestamp:      timestamp,
 				SSRC:           *e.SSRC,
-				Marker:         true,
+				Marker:         i == (packetCount - 1),
 			},
 			Payload: payload,
 		}
 
 		e.sequenceNumber++
+		ft = 3
 	}
 
 	return ret, nil
 }
 
-func (e *Encoder) writeAggregated(frames [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
-	payload := make([]byte, lenAggregated(frames, nil))
+func (e *Encoder) lenAggregated(frames [][]byte, addFrame []byte) int {
+	n := 2 + len(addFrame)
+	for _, frame := range frames {
+		n += len(frame)
+	}
+	return n
+}
 
-	n := 4
+func (e *Encoder) writeAggregated(frames [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
+	payload := make([]byte, e.lenAggregated(frames, nil))
+
+	payload[1] = uint8(len(frames))
+
+	n := 2
 	for _, frame := range frames {
 		n += copy(payload[n:], frame)
 	}
@@ -181,7 +186,7 @@ func (e *Encoder) writeAggregated(frames [][]byte, timestamp uint32) ([]*rtp.Pac
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
-			PayloadType:    14,
+			PayloadType:    e.PayloadType,
 			SequenceNumber: e.sequenceNumber,
 			Timestamp:      timestamp,
 			SSRC:           *e.SSRC,

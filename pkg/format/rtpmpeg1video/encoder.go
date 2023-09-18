@@ -22,11 +22,11 @@ func randUint32() (uint32, error) {
 }
 
 func lenAggregated(slices [][]byte, slice []byte) int {
-	l := 4 + len(slice)
+	n := 4 + len(slice)
 	for _, fr := range slices {
-		l += len(fr)
+		n += len(fr)
 	}
-	return l
+	return n
 }
 
 func packetCount(avail, le int) int {
