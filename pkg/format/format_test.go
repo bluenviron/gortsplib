@@ -747,6 +747,35 @@ var casesFormat = []struct {
 		},
 	},
 	{
+		"video h264 annexb",
+		"video",
+		96,
+		"H264/90000",
+		map[string]string{
+			"sprop-parameter-sets": "AAAAAWdNAB6NjUBaHtCAAAOEAACvyAI=,AAAAAWjuOIA=",
+			"packetization-mode":   "1",
+			"profile-level-id":     "4DE028",
+		},
+		&H264{
+			PayloadTyp: 96,
+			SPS: []byte{
+				0x67, 0x4d, 0x00, 0x1e, 0x8d, 0x8d, 0x40, 0x5a,
+				0x1e, 0xd0, 0x80, 0x00, 0x03, 0x84, 0x00, 0x00,
+				0xaf, 0xc8, 0x02,
+			},
+			PPS: []byte{
+				0x68, 0xee, 0x38, 0x80,
+			},
+			PacketizationMode: 1,
+		},
+		"H264/90000",
+		map[string]string{
+			"packetization-mode":   "1",
+			"profile-level-id":     "4D001E",
+			"sprop-parameter-sets": "Z00AHo2NQFoe0IAAA4QAAK/IAg==,aO44gA==",
+		},
+	},
+	{
 		"video h265",
 		"video",
 		96,
