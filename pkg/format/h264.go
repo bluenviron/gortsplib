@@ -1,6 +1,7 @@
 package format
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -33,24 +34,28 @@ func (f *H264) unmarshal(ctx *unmarshalContext) error {
 		case "sprop-parameter-sets":
 			tmp := strings.Split(val, ",")
 			if len(tmp) >= 2 {
-				sps, err := base64.StdEncoding.DecodeString(tmp[0])
+				var err error
+				f.SPS, err = base64.StdEncoding.DecodeString(tmp[0])
 				if err != nil {
 					return fmt.Errorf("invalid sprop-parameter-sets (%v)", val)
 				}
 
-				pps, err := base64.StdEncoding.DecodeString(tmp[1])
+				// some cameras ship parameters with Annex-B prefix
+				f.SPS = bytes.TrimPrefix(f.SPS, []byte{0, 0, 0, 1})
+
+				f.PPS, err = base64.StdEncoding.DecodeString(tmp[1])
 				if err != nil {
 					return fmt.Errorf("invalid sprop-parameter-sets (%v)", val)
 				}
+
+				// some cameras ship parameters with Annex-B prefix
+				f.PPS = bytes.TrimPrefix(f.PPS, []byte{0, 0, 0, 1})
 
 				var spsp h264.SPS
-				err = spsp.Unmarshal(sps)
+				err = spsp.Unmarshal(f.SPS)
 				if err != nil {
 					return fmt.Errorf("invalid SPS: %v", err)
 				}
-
-				f.SPS = sps
-				f.PPS = pps
 			}
 
 		case "packetization-mode":
