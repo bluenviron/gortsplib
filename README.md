@@ -93,7 +93,7 @@ Features:
 
 ## API Documentation
 
-https://pkg.go.dev/github.com/bluenviron/gortsplib/v4#pkg-index
+[Click to open the API Documentation](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4#pkg-index)
 
 ## RTP Payload Formats
 
