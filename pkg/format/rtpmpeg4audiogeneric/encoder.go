@@ -184,7 +184,7 @@ func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, e
 }
 
 func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
-	ret := 2 // AU-headers-length
+	n := 2 // AU-headers-length
 
 	// AU-headers
 	auHeadersLen := 0
@@ -204,18 +204,18 @@ func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 			auHeadersLen += e.SizeLength + e.IndexDeltaLength
 		}
 	}
-	ret += auHeadersLen / 8
+	n += auHeadersLen / 8
 	if (auHeadersLen % 8) != 0 {
-		ret++
+		n++
 	}
 
 	// AU
 	for _, au := range aus {
-		ret += len(au)
+		n += len(au)
 	}
-	ret += len(addAU)
+	n += len(addAU)
 
-	return ret
+	return n
 }
 
 func (e *Encoder) writeAggregated(aus [][]byte, timestamp uint32) ([]*rtp.Packet, error) {

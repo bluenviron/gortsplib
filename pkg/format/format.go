@@ -57,40 +57,55 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 		switch {
 		// video
 
-		case payloadType == 26:
-			return &MJPEG{}
-
-		case payloadType == 32:
-			return &MPEG1Video{}
-
-		case payloadType == 33:
-			return &MPEGTS{}
-
-		case codec == "mp4v-es" && clock == "90000":
-			return &MPEG4Video{}
-
-		case codec == "h264" && clock == "90000":
-			return &H264{}
-
-		case codec == "h265" && clock == "90000":
-			return &H265{}
-
-		case codec == "vp8" && clock == "90000":
-			return &VP8{}
+		case codec == "av1" && clock == "90000":
+			return &AV1{}
 
 		case codec == "vp9" && clock == "90000":
 			return &VP9{}
 
-		case codec == "av1" && clock == "90000":
-			return &AV1{}
+		case codec == "vp8" && clock == "90000":
+			return &VP8{}
+
+		case codec == "h265" && clock == "90000":
+			return &H265{}
+
+		case codec == "h264" && clock == "90000":
+			return &H264{}
+
+		case codec == "mp4v-es" && clock == "90000":
+			return &MPEG4Video{}
+
+		case payloadType == 32:
+			return &MPEG1Video{}
+
+		case payloadType == 26:
+			return &MJPEG{}
+
+		case payloadType == 33:
+			return &MPEGTS{}
 
 		// audio
 
-		case payloadType == 0, payloadType == 8:
-			return &G711{}
+		case codec == "opus":
+			return &Opus{}
 
-		case payloadType == 9:
-			return &G722{}
+		case codec == "vorbis":
+			return &Vorbis{}
+
+		case codec == "mpeg4-generic":
+			return &MPEG4AudioGeneric{}
+
+		case codec == "mp4a-latm":
+			return &MPEG4AudioLATM{}
+
+		case payloadType == 14:
+			return &MPEG1Audio{}
+
+		case codec == "ac3":
+			return &AC3{}
+
+		case codec == "speex":
+			return &Speex{}
 
 		case (codec == "g726-16" ||
 			codec == "g726-24" ||
@@ -102,26 +117,14 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 			codec == "aal2-g726-40") && clock == "8000":
 			return &G726{}
 
-		case payloadType == 14:
-			return &MPEG1Audio{}
+		case payloadType == 9:
+			return &G722{}
+
+		case payloadType == 0, payloadType == 8:
+			return &G711{}
 
 		case codec == "l8", codec == "l16", codec == "l24":
 			return &LPCM{}
-
-		case codec == "mpeg4-generic":
-			return &MPEG4AudioGeneric{}
-
-		case codec == "mp4a-latm":
-			return &MPEG4AudioLATM{}
-
-		case codec == "speex":
-			return &Speex{}
-
-		case codec == "vorbis":
-			return &Vorbis{}
-
-		case codec == "opus":
-			return &Opus{}
 		}
 
 		return &Generic{}

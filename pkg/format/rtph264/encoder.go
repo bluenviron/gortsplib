@@ -24,19 +24,19 @@ func randUint32() (uint32, error) {
 }
 
 func lenAggregated(nalus [][]byte, addNALU []byte) int {
-	ret := 1 // header
+	n := 1 // header
 
 	for _, nalu := range nalus {
-		ret += 2         // size
-		ret += len(nalu) // nalu
+		n += 2         // size
+		n += len(nalu) // nalu
 	}
 
 	if addNALU != nil {
-		ret += 2            // size
-		ret += len(addNALU) // nalu
+		n += 2            // size
+		n += len(addNALU) // nalu
 	}
 
-	return ret
+	return n
 }
 
 func packetCount(avail, le int) int {
@@ -99,13 +99,13 @@ func (e *Encoder) Init() error {
 	return nil
 }
 
-// Encode encodes NALUs into RTP/H264 packets.
-func (e *Encoder) Encode(nalus [][]byte) ([]*rtp.Packet, error) {
+// Encode encodes an access unit into RTP/H264 packets.
+func (e *Encoder) Encode(au [][]byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte
 
 	// split NALUs into batches
-	for _, nalu := range nalus {
+	for _, nalu := range au {
 		if lenAggregated(batch, nalu) <= e.PayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, nalu)
