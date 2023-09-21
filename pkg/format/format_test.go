@@ -343,12 +343,13 @@ var casesFormat = []struct {
 			"object":           "2",
 			"config":           "400026203fc0",
 		},
-		&MPEG4AudioLATM{
+		&MPEG4Audio{
+			LATM:           true,
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
 			Bitrate:        intPtr(64000),
 			CPresent:       false,
-			Config: &mpeg4audio.StreamMuxConfig{
+			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 						AudioSpecificConfig: &mpeg4audio.Config{
@@ -382,12 +383,13 @@ var casesFormat = []struct {
 			"config":           "400026103fc0",
 			"sbr-enabled":      "1",
 		},
-		&MPEG4AudioLATM{
+		&MPEG4Audio{
+			LATM:           true,
 			PayloadTyp:     110,
 			ProfileLevelID: 15,
 			CPresent:       false,
 			SBREnabled:     boolPtr(true),
-			Config: &mpeg4audio.StreamMuxConfig{
+			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 						AudioSpecificConfig: &mpeg4audio.Config{
@@ -421,13 +423,14 @@ var casesFormat = []struct {
 			"config":           "40005623101fe0",
 			"sbr-enabled":      "1",
 		},
-		&MPEG4AudioLATM{
+		&MPEG4Audio{
+			LATM:           true,
 			PayloadTyp:     110,
 			ProfileLevelID: 44,
 			CPresent:       false,
 			SBREnabled:     boolPtr(true),
 			Bitrate:        intPtr(64000),
-			Config: &mpeg4audio.StreamMuxConfig{
+			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 						AudioSpecificConfig: &mpeg4audio.Config{
@@ -463,12 +466,13 @@ var casesFormat = []struct {
 			"cpresent":         "0",
 			"config":           "4001d613101fe0",
 		},
-		&MPEG4AudioLATM{
+		&MPEG4Audio{
+			LATM:           true,
 			PayloadTyp:     110,
 			ProfileLevelID: 48,
 			Bitrate:        intPtr(64000),
 			CPresent:       false,
-			Config: &mpeg4audio.StreamMuxConfig{
+			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 						AudioSpecificConfig: &mpeg4audio.Config{
@@ -501,11 +505,12 @@ var casesFormat = []struct {
 			"cpresent": "0",
 			"config":   "40002310",
 		},
-		&MPEG4AudioLATM{
+		&MPEG4Audio{
+			LATM:           true,
 			PayloadTyp:     110,
 			ProfileLevelID: 30,
 			CPresent:       false,
-			Config: &mpeg4audio.StreamMuxConfig{
+			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 						AudioSpecificConfig: &mpeg4audio.Config{
@@ -1141,7 +1146,7 @@ func FuzzUnmarshalLPCM(f *testing.F) {
 	})
 }
 
-func FuzzUnmarshalMPEG4VideoES(f *testing.F) {
+func FuzzUnmarshalMPEG4Video(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a, b string) {
 		Unmarshal("video", 96, "MP4V-ES/90000", map[string]string{ //nolint:errcheck
 			"profile-level-id": a,

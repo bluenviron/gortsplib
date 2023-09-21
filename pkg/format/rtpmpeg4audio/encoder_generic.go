@@ -1,29 +1,13 @@
-package rtpmpeg4audiogeneric
+package rtpmpeg4audio
 
 import (
-	"crypto/rand"
-
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/mediacommon/pkg/bits"
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
 
-const (
-	rtpVersion            = 2
-	defaultPayloadMaxSize = 1460 // 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header) - 12 (RTP header)
-)
-
-func randUint32() (uint32, error) {
-	var b [4]byte
-	_, err := rand.Read(b[:])
-	if err != nil {
-		return 0, err
-	}
-	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
-}
-
-func packetCount(avail, le int) int {
+func packetCountGeneric(avail, le int) int {
 	n := le / avail
 	if (le % avail) != 0 {
 		n++
@@ -31,76 +15,20 @@ func packetCount(avail, le int) int {
 	return n
 }
 
-// Encoder is a RTP/MPEG4-audio encoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc3640
-type Encoder struct {
-	// payload type of packets.
-	PayloadType uint8
-
-	// The number of bits in which the AU-size field is encoded in the AU-header.
-	SizeLength int
-
-	// The number of bits in which the AU-Index is encoded in the first AU-header.
-	IndexLength int
-
-	// The number of bits in which the AU-Index-delta field is encoded in any non-first AU-header.
-	IndexDeltaLength int
-
-	// SSRC of packets (optional).
-	// It defaults to a random value.
-	SSRC *uint32
-
-	// initial sequence number of packets (optional).
-	// It defaults to a random value.
-	InitialSequenceNumber *uint16
-
-	// maximum size of packet payloads (optional).
-	// It defaults to 1460.
-	PayloadMaxSize int
-
-	sequenceNumber uint16
-}
-
-// Init initializes the encoder.
-func (e *Encoder) Init() error {
-	if e.SSRC == nil {
-		v, err := randUint32()
-		if err != nil {
-			return err
-		}
-		e.SSRC = &v
-	}
-	if e.InitialSequenceNumber == nil {
-		v, err := randUint32()
-		if err != nil {
-			return err
-		}
-		v2 := uint16(v)
-		e.InitialSequenceNumber = &v2
-	}
-	if e.PayloadMaxSize == 0 {
-		e.PayloadMaxSize = defaultPayloadMaxSize
-	}
-
-	e.sequenceNumber = *e.InitialSequenceNumber
-	return nil
-}
-
-// Encode encodes AUs into RTP packets.
-func (e *Encoder) Encode(aus [][]byte) ([]*rtp.Packet, error) {
+func (e *Encoder) encodeGeneric(aus [][]byte) ([]*rtp.Packet, error) {
 	var rets []*rtp.Packet
 	var batch [][]byte
 	timestamp := uint32(0)
 
 	// split AUs into batches
 	for _, au := range aus {
-		if e.lenAggregated(batch, au) <= e.PayloadMaxSize {
+		if e.lenGenericAggregated(batch, au) <= e.PayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, au)
 		} else {
 			// write current batch
 			if batch != nil {
-				pkts, err := e.writeBatch(batch, timestamp)
+				pkts, err := e.writeGenericBatch(batch, timestamp)
 				if err != nil {
 					return nil, err
 				}
@@ -114,7 +42,7 @@ func (e *Encoder) Encode(aus [][]byte) ([]*rtp.Packet, error) {
 	}
 
 	// write last batch
-	pkts, err := e.writeBatch(batch, timestamp)
+	pkts, err := e.writeGenericBatch(batch, timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -123,15 +51,15 @@ func (e *Encoder) Encode(aus [][]byte) ([]*rtp.Packet, error) {
 	return rets, nil
 }
 
-func (e *Encoder) writeBatch(aus [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
-	if len(aus) != 1 || e.lenAggregated(aus, nil) < e.PayloadMaxSize {
-		return e.writeAggregated(aus, timestamp)
+func (e *Encoder) writeGenericBatch(aus [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
+	if len(aus) != 1 || e.lenGenericAggregated(aus, nil) < e.PayloadMaxSize {
+		return e.writeGenericAggregated(aus, timestamp)
 	}
 
-	return e.writeFragmented(aus[0], timestamp)
+	return e.writeGenericFragmented(aus[0], timestamp)
 }
 
-func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, error) {
+func (e *Encoder) writeGenericFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, error) {
 	auHeadersLen := e.SizeLength + e.IndexLength
 	auHeadersLenBytes := auHeadersLen / 8
 	if (auHeadersLen % 8) != 0 {
@@ -140,7 +68,7 @@ func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, e
 
 	avail := e.PayloadMaxSize - 2 - auHeadersLenBytes
 	le := len(au)
-	packetCount := packetCount(avail, le)
+	packetCount := packetCountGeneric(avail, le)
 
 	ret := make([]*rtp.Packet, packetCount)
 	le = avail
@@ -183,7 +111,7 @@ func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, e
 	return ret, nil
 }
 
-func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
+func (e *Encoder) lenGenericAggregated(aus [][]byte, addAU []byte) int {
 	n := 2 // AU-headers-length
 
 	// AU-headers
@@ -218,8 +146,8 @@ func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 	return n
 }
 
-func (e *Encoder) writeAggregated(aus [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
-	payload := make([]byte, e.lenAggregated(aus, nil))
+func (e *Encoder) writeGenericAggregated(aus [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
+	payload := make([]byte, e.lenGenericAggregated(aus, nil))
 
 	// AU-headers
 	written := 0

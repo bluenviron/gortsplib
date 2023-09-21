@@ -13,12 +13,9 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpmpeg4video"
 )
 
-// MPEG4Video is an alias for MPEG4VideoES.
-type MPEG4Video = MPEG4VideoES
-
-// MPEG4VideoES is a RTP format for a MPEG-4 Video codec.
+// MPEG4Video is a RTP format for a MPEG-4 Video codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.1
-type MPEG4VideoES struct {
+type MPEG4Video struct {
 	PayloadTyp     uint8
 	ProfileLevelID int
 	Config         []byte
@@ -26,7 +23,7 @@ type MPEG4VideoES struct {
 	mutex sync.RWMutex
 }
 
-func (f *MPEG4VideoES) unmarshal(ctx *unmarshalContext) error {
+func (f *MPEG4Video) unmarshal(ctx *unmarshalContext) error {
 	f.PayloadTyp = ctx.payloadType
 	f.ProfileLevelID = 1 // default value imposed by specification
 
@@ -58,27 +55,27 @@ func (f *MPEG4VideoES) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
-func (f *MPEG4VideoES) Codec() string {
+func (f *MPEG4Video) Codec() string {
 	return "MPEG-4 Video"
 }
 
 // ClockRate implements Format.
-func (f *MPEG4VideoES) ClockRate() int {
+func (f *MPEG4Video) ClockRate() int {
 	return 90000
 }
 
 // PayloadType implements Format.
-func (f *MPEG4VideoES) PayloadType() uint8 {
+func (f *MPEG4Video) PayloadType() uint8 {
 	return f.PayloadTyp
 }
 
 // RTPMap implements Format.
-func (f *MPEG4VideoES) RTPMap() string {
+func (f *MPEG4Video) RTPMap() string {
 	return "MP4V-ES/90000"
 }
 
 // FMTP implements Format.
-func (f *MPEG4VideoES) FMTP() map[string]string {
+func (f *MPEG4Video) FMTP() map[string]string {
 	fmtp := map[string]string{
 		"profile-level-id": strconv.FormatInt(int64(f.ProfileLevelID), 10),
 	}
@@ -91,12 +88,12 @@ func (f *MPEG4VideoES) FMTP() map[string]string {
 }
 
 // PTSEqualsDTS implements Format.
-func (f *MPEG4VideoES) PTSEqualsDTS(*rtp.Packet) bool {
+func (f *MPEG4Video) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
-func (f *MPEG4VideoES) CreateDecoder() (*rtpmpeg4video.Decoder, error) {
+func (f *MPEG4Video) CreateDecoder() (*rtpmpeg4video.Decoder, error) {
 	d := &rtpmpeg4video.Decoder{}
 
 	err := d.Init()
@@ -108,7 +105,7 @@ func (f *MPEG4VideoES) CreateDecoder() (*rtpmpeg4video.Decoder, error) {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the format.
-func (f *MPEG4VideoES) CreateEncoder() (*rtpmpeg4video.Encoder, error) {
+func (f *MPEG4Video) CreateEncoder() (*rtpmpeg4video.Encoder, error) {
 	e := &rtpmpeg4video.Encoder{
 		PayloadType: f.PayloadTyp,
 	}
@@ -122,14 +119,14 @@ func (f *MPEG4VideoES) CreateEncoder() (*rtpmpeg4video.Encoder, error) {
 }
 
 // SafeSetParams sets the codec parameters.
-func (f *MPEG4VideoES) SafeSetParams(config []byte) {
+func (f *MPEG4Video) SafeSetParams(config []byte) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 	f.Config = config
 }
 
 // SafeParams returns the codec parameters.
-func (f *MPEG4VideoES) SafeParams() []byte {
+func (f *MPEG4Video) SafeParams() []byte {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 	return f.Config

@@ -1,4 +1,4 @@
-package rtpmpeg4audiolatm
+package rtpmpeg4audio
 
 import (
 	"bytes"
@@ -8,31 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func uint16Ptr(v uint16) *uint16 {
-	return &v
-}
-
-func uint32Ptr(v uint32) *uint32 {
-	return &v
-}
-
-func mergeBytes(vals ...[]byte) []byte {
-	size := 0
-	for _, v := range vals {
-		size += len(v)
-	}
-	res := make([]byte, size)
-
-	pos := 0
-	for _, v := range vals {
-		n := copy(res[pos:], v)
-		pos += n
-	}
-
-	return res
-}
-
-var cases = []struct {
+var casesLATM = []struct {
 	name string
 	au   []byte
 	pkts []*rtp.Packet
@@ -137,10 +113,11 @@ var cases = []struct {
 	},
 }
 
-func TestEncode(t *testing.T) {
-	for _, ca := range cases {
+func TestEncodeLATM(t *testing.T) {
+	for _, ca := range casesLATM {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
+				LATM:                  true,
 				PayloadType:           96,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
@@ -148,19 +125,9 @@ func TestEncode(t *testing.T) {
 			err := e.Init()
 			require.NoError(t, err)
 
-			pkts, err := e.Encode(ca.au)
+			pkts, err := e.Encode([][]byte{ca.au})
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})
 	}
-}
-
-func TestEncodeRandomInitialState(t *testing.T) {
-	e := &Encoder{
-		PayloadType: 96,
-	}
-	err := e.Init()
-	require.NoError(t, err)
-	require.NotEqual(t, nil, e.SSRC)
-	require.NotEqual(t, nil, e.InitialSequenceNumber)
 }
