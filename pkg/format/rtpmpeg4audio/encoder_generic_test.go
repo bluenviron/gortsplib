@@ -1,4 +1,4 @@
-package rtpmpeg4audiogeneric
+package rtpmpeg4audio
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func mergeBytes(vals ...[]byte) []byte {
 	return res
 }
 
-var cases = []struct {
+var casesGeneric = []struct {
 	name             string
 	sizeLength       int
 	indexLength      int
@@ -498,8 +498,8 @@ var cases = []struct {
 	},
 }
 
-func TestEncode(t *testing.T) {
-	for _, ca := range cases {
+func TestEncodeGeneric(t *testing.T) {
+	for _, ca := range casesGeneric {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
 				PayloadType:           96,
@@ -517,17 +517,4 @@ func TestEncode(t *testing.T) {
 			require.Equal(t, ca.pkts, pkts)
 		})
 	}
-}
-
-func TestEncodeRandomInitialState(t *testing.T) {
-	e := &Encoder{
-		PayloadType:      96,
-		SizeLength:       13,
-		IndexLength:      3,
-		IndexDeltaLength: 3,
-	}
-	err := e.Init()
-	require.NoError(t, err)
-	require.NotEqual(t, nil, e.SSRC)
-	require.NotEqual(t, nil, e.InitialSequenceNumber)
 }

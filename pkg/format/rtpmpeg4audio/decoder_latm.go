@@ -1,41 +1,13 @@
-package rtpmpeg4audiolatm
+package rtpmpeg4audio
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
 )
 
-// ErrMorePacketsNeeded is returned when more packets are needed.
-var ErrMorePacketsNeeded = errors.New("need more packets")
-
-func joinFragments(fragments [][]byte, size int) []byte {
-	ret := make([]byte, size)
-	n := 0
-	for _, p := range fragments {
-		n += copy(ret[n:], p)
-	}
-	return ret
-}
-
-// Decoder is a RTP/MPEG-4 Audio decoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.3
-type Decoder struct {
-	fragments         [][]byte
-	fragmentsSize     int
-	fragmentsExpected int
-}
-
-// Init initializes the decoder.
-func (d *Decoder) Init() error {
-	return nil
-}
-
-// Decode decodes an AU from a RTP packet.
-// It returns the AU and its PTS.
-func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
+func (d *Decoder) decodeLATM(pkt *rtp.Packet) ([][]byte, error) {
 	var au []byte
 	buf := pkt.Payload
 
@@ -79,5 +51,5 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		d.fragments = d.fragments[:0]
 	}
 
-	return au, nil
+	return [][]byte{au}, nil
 }

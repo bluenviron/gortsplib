@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMPEG4VideoESAttributes(t *testing.T) {
-	format := &MPEG4VideoES{
+func TestMPEG4VideoAttributes(t *testing.T) {
+	format := &MPEG4Video{
 		PayloadTyp:     96,
 		ProfileLevelID: 1,
 		Config:         []byte{0x01, 0x02, 0x03},
@@ -18,8 +18,8 @@ func TestMPEG4VideoESAttributes(t *testing.T) {
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
 
-func TestMPEG4VideoESDecEncoder(t *testing.T) {
-	format := &MPEG4VideoES{
+func TestMPEG4VideoDecEncoder(t *testing.T) {
+	format := &MPEG4Video{
 		PayloadTyp: 96,
 	}
 

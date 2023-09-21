@@ -92,11 +92,8 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 		case codec == "vorbis":
 			return &Vorbis{}
 
-		case codec == "mpeg4-generic":
-			return &MPEG4AudioGeneric{}
-
-		case codec == "mp4a-latm":
-			return &MPEG4AudioLATM{}
+		case codec == "mpeg4-generic", codec == "mp4a-latm":
+			return &MPEG4Audio{}
 
 		case payloadType == 14:
 			return &MPEG1Audio{}

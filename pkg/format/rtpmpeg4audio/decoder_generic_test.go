@@ -1,4 +1,4 @@
-package rtpmpeg4audiogeneric
+package rtpmpeg4audio
 
 import (
 	"testing"
@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecode(t *testing.T) {
-	for _, ca := range cases {
+func TestDecodeGeneric(t *testing.T) {
+	for _, ca := range casesGeneric {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
 				SizeLength:       ca.sizeLength,
@@ -41,7 +41,7 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func TestDecodeADTS(t *testing.T) {
+func TestDecodeGenericADTS(t *testing.T) {
 	d := &Decoder{
 		SizeLength:       13,
 		IndexLength:      3,
@@ -69,7 +69,7 @@ func TestDecodeADTS(t *testing.T) {
 	}
 }
 
-func FuzzDecoder(f *testing.F) {
+func FuzzDecoderGeneric(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
 		d := &Decoder{
 			SizeLength:       13,

@@ -1,4 +1,4 @@
-package rtpmpeg4audiolatm
+package rtpmpeg4audio
 
 import (
 	"testing"
@@ -7,19 +7,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecode(t *testing.T) {
-	for _, ca := range cases {
+func TestDecodeLATM(t *testing.T) {
+	for _, ca := range casesLATM {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
+			d := &Decoder{
+				LATM: true,
+			}
 			err := d.Init()
 			require.NoError(t, err)
 
-			var au []byte
+			var aus [][]byte
 
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				au, err = d.Decode(pkt)
+				aus, err = d.Decode(pkt)
 
 				// test input integrity
 				require.Equal(t, clone, pkt)
@@ -31,17 +33,19 @@ func TestDecode(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			require.Equal(t, ca.au, au)
+			require.Equal(t, ca.au, aus[0])
 		})
 	}
 }
 
-func TestDecodeOtherData(t *testing.T) {
-	d := &Decoder{}
+func TestDecodeLATMOtherData(t *testing.T) {
+	d := &Decoder{
+		LATM: true,
+	}
 	err := d.Init()
 	require.NoError(t, err)
 
-	au, err := d.Decode(&rtp.Packet{
+	aus, err := d.Decode(&rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			Marker:         true,
@@ -55,12 +59,14 @@ func TestDecodeOtherData(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.Equal(t, []byte{1, 2, 3, 4}, au)
+	require.Equal(t, []byte{1, 2, 3, 4}, aus[0])
 }
 
-func FuzzDecoder(f *testing.F) {
+func FuzzDecoderLATM(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
-		d := &Decoder{}
+		d := &Decoder{
+			LATM: true,
+		}
 		d.Init() //nolint:errcheck
 
 		d.Decode(&rtp.Packet{ //nolint:errcheck

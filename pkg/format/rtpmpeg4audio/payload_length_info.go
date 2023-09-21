@@ -1,4 +1,4 @@
-package rtpmpeg4audiolatm
+package rtpmpeg4audio
 
 import (
 	"fmt"
