@@ -809,6 +809,25 @@ var casesFormat = []struct {
 		},
 	},
 	{
+		"video h264 with unparsable parameters (mediamtx/2348)",
+		"video",
+		96,
+		"H264/90000",
+		map[string]string{
+			"sprop-parameter-sets": "QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Y2uSTJrlnAIAAADAAgAAAMAyEA=,RAHgdrAmQA==",
+			"packetization-mode":   "1",
+			"profile-level-id":     "010101",
+		},
+		&H264{
+			PayloadTyp:        96,
+			PacketizationMode: 1,
+		},
+		"H264/90000",
+		map[string]string{
+			"packetization-mode": "1",
+		},
+	},
+	{
 		"video h265",
 		"video",
 		96,
