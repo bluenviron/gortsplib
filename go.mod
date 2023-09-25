@@ -6,7 +6,7 @@ require (
 	github.com/bluenviron/mediacommon v1.4.0
 	github.com/google/uuid v1.3.1
 	github.com/pion/rtcp v1.2.10
-	github.com/pion/rtp v1.8.1
+	github.com/pion/rtp v1.8.2
 	github.com/pion/sdp/v3 v3.0.6
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/net v0.15.0
