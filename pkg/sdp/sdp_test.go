@@ -2433,6 +2433,98 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"issue mediamtx/2473",
+		[]byte("v=0\r\n" +
+			"o=- 38990265062388 38990265062388 IN IP4 192.168.1.10\r\n" +
+			"a=range:npt=0-\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"a=rtpmap:96 H265/90000 \r\n" +
+			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkk5TNwEBAQQAAEZQAAV+QoQ=; sprop-pps=RAHA8vAiQA==\r\n" +
+			"a=control:trackID=3\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=control:trackID=4\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 38990265062388 38990265062388 IN IP4 192.168.1.10\r\n" +
+			"a=range:npt=0-\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"a=rtpmap:96 H265/90000 \r\n" +
+			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkk5TNwEBAQQAAEZQAAV+QoQ=; sprop-pps=RAHA8vAiQA==\r\n" +
+			"a=control:trackID=3\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=control:trackID=4\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      38990265062388,
+				SessionVersion: 38990265062388,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.1.10",
+			},
+			SessionName: "",
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "range",
+					Value: "npt=0-",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "0.0.0.0",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H265/90000 ",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+								"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkk5TNwEBAQQAAEZQAAV+QoQ=; sprop-pps=RAHA8vAiQA==",
+						},
+						{
+							Key:   "control",
+							Value: "trackID=3",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"8"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "trackID=4",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "8 PCMA/8000",
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
