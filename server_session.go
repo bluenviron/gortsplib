@@ -194,7 +194,7 @@ type ServerSession struct {
 	tcpCallbackByChannel  map[int]readFunc
 	setuppedTransport     *Transport
 	setuppedStream        *ServerStream // read
-	setuppedPath          *string
+	setuppedPath          string
 	setuppedQuery         string
 	lastRequestTime       time.Time
 	tcpConn               *ServerConn
@@ -264,6 +264,21 @@ func (ss *ServerSession) State() ServerSessionState {
 // SetuppedTransport returns the transport negotiated during SETUP.
 func (ss *ServerSession) SetuppedTransport() *Transport {
 	return ss.setuppedTransport
+}
+
+// SetuppedStream returns the stream associated with the session.
+func (ss *ServerSession) SetuppedStream() *ServerStream {
+	return ss.setuppedStream
+}
+
+// SetuppedPath returns the path sent during SETUP or ANNOUNCE.
+func (ss *ServerSession) SetuppedPath() string {
+	return ss.setuppedPath
+}
+
+// SetuppedQuery returns the query sent during SETUP or ANNOUNCE.
+func (ss *ServerSession) SetuppedQuery() string {
+	return ss.setuppedQuery
 }
 
 // AnnouncedDescription returns the announced stream description.
@@ -624,7 +639,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		ss.state = ServerSessionStatePreRecord
-		ss.setuppedPath = &path
+		ss.setuppedPath = path
 		ss.setuppedQuery = query
 		ss.announcedDesc = &desc
 
@@ -670,14 +685,14 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}, err
 			}
 
-			if ss.setuppedPath != nil && path != *ss.setuppedPath {
+			if ss.state == ServerSessionStatePrePlay && path != ss.setuppedPath {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerMediasDifferentPaths{}
 			}
 
 		default: // record
-			path = *ss.setuppedPath
+			path = ss.setuppedPath
 			query = ss.setuppedQuery
 		}
 
@@ -799,7 +814,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 
 			ss.state = ServerSessionStatePrePlay
-			ss.setuppedPath = &path
+			ss.setuppedPath = path
+			ss.setuppedQuery = query
 			ss.setuppedStream = stream
 		}
 
@@ -886,10 +902,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, err
 		}
 
-		if ss.State() == ServerSessionStatePrePlay && path != *ss.setuppedPath {
+		if ss.State() == ServerSessionStatePrePlay && path != ss.setuppedPath {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerPathHasChanged{Prev: *ss.setuppedPath, Cur: path}
+			}, liberrors.ErrServerPathHasChanged{Prev: ss.setuppedPath, Cur: path}
 		}
 
 		// allocate writeBuffer before calling OnPlay().
@@ -950,7 +966,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			ss.s.timeNow(),
 			ss.setuppedMediasOrdered,
 			ss.setuppedStream,
-			*ss.setuppedPath,
+			ss.setuppedPath,
 			req.URL)
 
 		if ok {
@@ -978,10 +994,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, liberrors.ErrServerNotAllAnnouncedMediasSetup{}
 		}
 
-		if path != *ss.setuppedPath {
+		if path != ss.setuppedPath {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerPathHasChanged{Prev: *ss.setuppedPath, Cur: path}
+			}, liberrors.ErrServerPathHasChanged{Prev: ss.setuppedPath, Cur: path}
 		}
 
 		// allocate writeBuffer before calling OnRecord().

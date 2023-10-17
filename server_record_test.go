@@ -519,6 +519,19 @@ func TestServerRecord(t *testing.T) {
 						}, nil, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						switch transport {
+						case "udp":
+							v := TransportUDP
+							require.Equal(t, &v, ctx.Session.SetuppedTransport())
+
+						case "tcp", "tls":
+							v := TransportTCP
+							require.Equal(t, &v, ctx.Session.SetuppedTransport())
+						}
+
+						require.Equal(t, "param=value", ctx.Session.SetuppedQuery())
+						require.Equal(t, ctx.Session.AnnouncedDescription().Medias, ctx.Session.SetuppedMedias())
+
 						// queue sending of RTCP packets.
 						// these are sent after the response, only if onRecord returns StatusOK.
 						err := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedDescription().Medias[0], &testRTCPPacket)
@@ -602,7 +615,7 @@ func TestServerRecord(t *testing.T) {
 				},
 			}
 
-			doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
+			doAnnounce(t, conn, "rtsp://localhost:8554/teststream?param=value", medias)
 
 			<-sessionOpened
 
@@ -639,7 +652,7 @@ func TestServerRecord(t *testing.T) {
 					inTH.InterleavedIDs = &[2]int{2 + i*2, 3 + i*2}
 				}
 
-				res, th := doSetup(t, conn, "rtsp://localhost:8554/teststream/"+medias[i].Control, inTH, "")
+				res, th := doSetup(t, conn, "rtsp://localhost:8554/teststream?param=value/"+medias[i].Control, inTH, "")
 
 				session = readSession(t, res)
 

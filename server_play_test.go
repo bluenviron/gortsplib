@@ -78,7 +78,7 @@ func absoluteControlAttribute(md *psdp.MediaDescription) string {
 func doDescribe(t *testing.T, conn *conn.Conn) *sdp.SessionDescription {
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Describe,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+		URL:    mustParseURL("rtsp://localhost:8554/teststream?param=value"),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 		},
@@ -553,6 +553,23 @@ func TestServerPlay(t *testing.T) {
 						}, stream, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						switch transport {
+						case "udp":
+							v := TransportUDP
+							require.Equal(t, &v, ctx.Session.SetuppedTransport())
+
+						case "tcp", "tls":
+							v := TransportTCP
+							require.Equal(t, &v, ctx.Session.SetuppedTransport())
+
+						case "multicast":
+							v := TransportUDPMulticast
+							require.Equal(t, &v, ctx.Session.SetuppedTransport())
+						}
+
+						require.Equal(t, "param=value", ctx.Session.SetuppedQuery())
+						require.Equal(t, stream.Description().Medias, ctx.Session.SetuppedMedias())
+
 						// send RTCP packets directly to the session.
 						// these are sent after the response, only if onPlay returns StatusOK.
 						if transport != "multicast" {
