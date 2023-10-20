@@ -2525,6 +2525,36 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"issue gortsplib/448",
+		[]byte("m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=control:trackID=0\r\n"),
+		[]byte("v=0\r\n" +
+			"o= 0 0   \r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=control:trackID=0\r\n"),
+		SessionDescription{
+			MediaDescriptions: []*psdp.MediaDescription{{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "control",
+						Value: "trackID=0",
+					},
+				},
+			}},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {

@@ -682,7 +682,11 @@ func (s *SessionDescription) Unmarshal(byts []byte) error {
 				state = stateSession
 
 			default:
-				return fmt.Errorf("invalid key: %c (%s)", key, line)
+				state = stateSession
+				err := s.unmarshalSession(&state, key, val)
+				if err != nil {
+					return err
+				}
 			}
 
 		case stateSession:
