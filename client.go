@@ -614,7 +614,7 @@ func (c *Client) waitResponse(requestCseqStr string) (*base.Response, error) {
 			c.OnResponse(res)
 
 			// accept response if CSeq equals request CSeq, or if CSeq is not present
-			if cseq, ok := res.Header["CSeq"]; !ok || len(cseq) != 1 || cseq[0] == requestCseqStr {
+			if cseq, ok := res.Header["CSeq"]; !ok || len(cseq) != 1 || strings.TrimSpace(cseq[0]) == requestCseqStr {
 				return res, nil
 			}
 

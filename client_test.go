@@ -99,6 +99,86 @@ func TestClientTLSSetServerName(t *testing.T) {
 	<-serverDone
 }
 
+func TestClientClose(t *testing.T) {
+	u, err := url.Parse("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	c := Client{}
+
+	err = c.Start(u.Scheme, u.Host)
+	require.NoError(t, err)
+
+	c.Close()
+
+	_, err = c.Options(u)
+	require.EqualError(t, err, "terminated")
+
+	_, _, err = c.Describe(u)
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Announce(u, nil)
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Setup(nil, nil, 0, 0)
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Play(nil)
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Record()
+	require.EqualError(t, err, "terminated")
+
+	_, err = c.Pause()
+	require.EqualError(t, err, "terminated")
+}
+
+func TestClientCloseDuringRequest(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	requestReceived := make(chan struct{})
+	releaseConn := make(chan struct{})
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		nconn, err := l.Accept()
+		require.NoError(t, err)
+		defer nconn.Close()
+		conn := conn.NewConn(nconn)
+
+		req, err := conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		close(requestReceived)
+		<-releaseConn
+	}()
+
+	u, err := url.Parse("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	c := Client{}
+
+	err = c.Start(u.Scheme, u.Host)
+	require.NoError(t, err)
+
+	optionsDone := make(chan struct{})
+	go func() {
+		defer close(optionsDone)
+		_, err := c.Options(u)
+		require.Error(t, err)
+	}()
+
+	<-requestReceived
+	c.Close()
+	<-optionsDone
+	close(releaseConn)
+}
+
 func TestClientSession(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -236,6 +316,83 @@ func TestClientAuth(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestClientCSeq(t *testing.T) {
+	for _, ca := range []string{
+		"different cseq",
+		"space at the end",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			l, err := net.Listen("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer l.Close()
+
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+			go func() {
+				defer close(serverDone)
+
+				nconn, err := l.Accept()
+				require.NoError(t, err)
+				defer nconn.Close()
+				conn := conn.NewConn(nconn)
+
+				req, err := conn.ReadRequest()
+				require.NoError(t, err)
+				require.Equal(t, base.Options, req.Method)
+
+				switch ca {
+				case "different cseq":
+					err = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Public": base.HeaderValue{strings.Join([]string{
+								string(base.Describe),
+							}, ", ")},
+							"CSeq": base.HeaderValue{"150"},
+						},
+					})
+					require.NoError(t, err)
+
+					err = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Public": base.HeaderValue{strings.Join([]string{
+								string(base.Describe),
+							}, ", ")},
+							"CSeq": req.Header["CSeq"],
+						},
+					})
+					require.NoError(t, err)
+
+				case "space at the end":
+					err = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Public": base.HeaderValue{strings.Join([]string{
+								string(base.Describe),
+							}, ", ")},
+							"CSeq": base.HeaderValue{req.Header["CSeq"][0] + " "},
+						},
+					})
+					require.NoError(t, err)
+				}
+			}()
+
+			u, err := url.Parse("rtsp://localhost:8554/teststream")
+			require.NoError(t, err)
+
+			c := Client{}
+
+			err = c.Start(u.Scheme, u.Host)
+			require.NoError(t, err)
+			defer c.Close()
+
+			_, err = c.Options(u)
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestClientDescribeCharset(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
@@ -294,86 +451,6 @@ func TestClientDescribeCharset(t *testing.T) {
 
 	_, _, err = c.Describe(u)
 	require.NoError(t, err)
-}
-
-func TestClientClose(t *testing.T) {
-	u, err := url.Parse("rtsp://localhost:8554/teststream")
-	require.NoError(t, err)
-
-	c := Client{}
-
-	err = c.Start(u.Scheme, u.Host)
-	require.NoError(t, err)
-
-	c.Close()
-
-	_, err = c.Options(u)
-	require.EqualError(t, err, "terminated")
-
-	_, _, err = c.Describe(u)
-	require.EqualError(t, err, "terminated")
-
-	_, err = c.Announce(u, nil)
-	require.EqualError(t, err, "terminated")
-
-	_, err = c.Setup(nil, nil, 0, 0)
-	require.EqualError(t, err, "terminated")
-
-	_, err = c.Play(nil)
-	require.EqualError(t, err, "terminated")
-
-	_, err = c.Record()
-	require.EqualError(t, err, "terminated")
-
-	_, err = c.Pause()
-	require.EqualError(t, err, "terminated")
-}
-
-func TestClientCloseDuringRequest(t *testing.T) {
-	l, err := net.Listen("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer l.Close()
-
-	requestReceived := make(chan struct{})
-	releaseConn := make(chan struct{})
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-	go func() {
-		defer close(serverDone)
-
-		nconn, err := l.Accept()
-		require.NoError(t, err)
-		defer nconn.Close()
-		conn := conn.NewConn(nconn)
-
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
-		require.Equal(t, base.Options, req.Method)
-
-		close(requestReceived)
-		<-releaseConn
-	}()
-
-	u, err := url.Parse("rtsp://localhost:8554/teststream")
-	require.NoError(t, err)
-
-	c := Client{}
-
-	err = c.Start(u.Scheme, u.Host)
-	require.NoError(t, err)
-
-	optionsDone := make(chan struct{})
-	go func() {
-		defer close(optionsDone)
-		_, err := c.Options(u)
-		require.Error(t, err)
-	}()
-
-	<-requestReceived
-	c.Close()
-	<-optionsDone
-	close(releaseConn)
 }
 
 func TestClientReplyToServerRequest(t *testing.T) {
