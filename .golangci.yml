@@ -32,7 +32,6 @@ linters-settings:
     - (*net.TCPConn).SetKeepAlive
     - (*net.TCPConn).SetKeepAlivePeriod
     - (*net.TCPConn).SetNoDelay
-    - (*net.UDPConn).Close
     - (net.Listener).Close
     - (net.PacketConn).Close
     - (net.PacketConn).SetReadDeadline
@@ -53,6 +52,11 @@ linters-settings:
     - (github.com/datarhei/gosrt.Conn).Close
     - (github.com/datarhei/gosrt.Conn).SetReadDeadline
     - (github.com/datarhei/gosrt.Conn).SetWriteDeadline
+    - (*github.com/bluenviron/gortsplib/v4.Client).Close
+    - (*github.com/bluenviron/gortsplib/v4.Server).Close
+    - (*github.com/bluenviron/gortsplib/v4.ServerSession).Close
+    - (*github.com/bluenviron/gortsplib/v4.ServerStream).Close
+    - (*github.com/bluenviron/gortsplib/v4.ServerConn).Close
 
   govet:
     enable-all: true
