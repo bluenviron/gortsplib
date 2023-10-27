@@ -2555,6 +2555,51 @@ var cases = []struct {
 			}},
 		},
 	},
+	{
+		"issue mediamtx/2558",
+		[]byte("v=0\r\n" +
+			"o=- 1698210484.879535 1698210484.879535 IN IP4 46.242.10.231:12626\r\n" +
+			"s=Playout\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=33;" +
+			" sprop-parameter-sets=Z00AM4qKUDwBE/L/4AAgAC2AgA==,aO48gA==\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 97041581188 97041581188 IN IP4 46.242.10.231:12626\r\n" +
+			"s=Playout\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=33;" +
+			" sprop-parameter-sets=Z00AM4qKUDwBE/L/4AAgAC2AgA==,aO48gA==\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      97041581188,
+				SessionVersion: 97041581188,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "46.242.10.231:12626",
+			},
+			SessionName: "Playout",
+			MediaDescriptions: []*psdp.MediaDescription{{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 packetization-mode=1; profile-level-id=33; sprop-parameter-sets=Z00AM4qKUDwBE/L/4AAgAC2AgA==,aO48gA==",
+					},
+				},
+			}},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
