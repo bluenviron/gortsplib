@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -37,6 +38,7 @@ type ServerStream struct {
 	activeUnicastReaders map[*ServerSession]struct{}
 	streamMedias         map[*description.Media]*serverStreamMedia
 	closed               bool
+	bytesSent            *uint64
 }
 
 // NewServerStream allocates a ServerStream.
@@ -46,6 +48,7 @@ func NewServerStream(s *Server, desc *description.Session) *ServerStream {
 		desc:                 desc,
 		readers:              make(map[*ServerSession]struct{}),
 		activeUnicastReaders: make(map[*ServerSession]struct{}),
+		bytesSent:            new(uint64),
 	}
 
 	st.streamMedias = make(map[*description.Media]*serverStreamMedia, len(desc.Medias))
@@ -69,6 +72,11 @@ func (st *ServerStream) Close() {
 	for _, sm := range st.streamMedias {
 		sm.close()
 	}
+}
+
+// BytesSent returns the number of written bytes.
+func (st *ServerStream) BytesSent() uint64 {
+	return atomic.LoadUint64(st.bytesSent)
 }
 
 // Description returns the description of the stream.

@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -46,6 +47,8 @@ func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp t
 			err := sm.writePacketRTP(byts)
 			if err != nil {
 				r.onStreamWriteError(err)
+			} else {
+				atomic.AddUint64(sf.sm.st.bytesSent, uint64(len(byts)))
 			}
 		}
 	}
@@ -56,6 +59,7 @@ func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp t
 		if err != nil {
 			return err
 		}
+		atomic.AddUint64(sf.sm.st.bytesSent, uint64(len(byts)))
 	}
 
 	return nil
