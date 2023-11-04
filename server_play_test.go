@@ -673,7 +673,7 @@ func TestServerPlay(t *testing.T) {
 				v := headers.TransportDeliveryUnicast
 				inTH.Delivery = &v
 				inTH.Protocol = headers.TransportProtocolTCP
-				inTH.InterleavedIDs = &[2]int{5, 6} // off value
+				inTH.InterleavedIDs = &[2]int{5, 6} // odd value
 			}
 
 			res, th := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
@@ -2121,4 +2121,77 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 		require.Equal(t, i*2, f.Channel)
 		require.Equal(t, testRTPPacketMarshaled, f.Payload)
 	}
+}
+
+func TestServerPlayBytesSent(t *testing.T) {
+	var stream *ServerStream
+
+	s := &Server{
+		RTSPAddress:       "localhost:8554",
+		MulticastIPRange:  "224.1.0.0/16",
+		MulticastRTPPort:  8000,
+		MulticastRTCPPort: 8001,
+		Handler: &testServerHandler{
+			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	defer stream.Close()
+
+	for _, transport := range []string{"tcp", "multicast"} {
+		nconn, err := net.Dial("tcp", "localhost:8554")
+		require.NoError(t, err)
+		defer nconn.Close()
+		conn := conn.NewConn(nconn)
+
+		desc := doDescribe(t, conn)
+
+		inTH := &headers.Transport{
+			Mode: func() *headers.TransportMode {
+				v := headers.TransportModePlay
+				return &v
+			}(),
+		}
+
+		if transport == "multicast" {
+			v := headers.TransportDeliveryMulticast
+			inTH.Delivery = &v
+			inTH.Protocol = headers.TransportProtocolUDP
+		} else {
+			v := headers.TransportDeliveryUnicast
+			inTH.Delivery = &v
+			inTH.Protocol = headers.TransportProtocolTCP
+			inTH.InterleavedIDs = &[2]int{0, 1}
+		}
+
+		res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+
+		session := readSession(t, res)
+
+		doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
+	}
+
+	err = stream.WritePacketRTP(stream.Description().Medias[0], &testRTPPacket)
+	require.NoError(t, err)
+
+	require.Equal(t, uint64(16*2), stream.BytesSent())
 }
