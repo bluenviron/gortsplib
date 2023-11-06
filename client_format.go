@@ -79,6 +79,18 @@ func (ct *clientFormat) stop() {
 }
 
 func (ct *clientFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
+
+	if ct.rtcpSender == nil {
+		ct.rtcpSender = rtcpsender.New(
+			ct.format.ClockRate(),
+			ct.cm.c.senderReportPeriod,
+			ct.cm.c.timeNow,
+			func(pkt rtcp.Packet) {
+				if !ct.cm.c.DisableRTCPSenderReports {
+					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
+				}
+			})
+	}
 	ct.rtcpSender.ProcessPacket(pkt, ntp, ct.format.PTSEqualsDTS(pkt))
 
 	ok := ct.cm.c.writer.push(func() {
