@@ -8,7 +8,6 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
 func md5Hex(in string) string {
@@ -68,7 +67,7 @@ func Validate(
 	req *base.Request,
 	user string,
 	pass string,
-	baseURL *url.URL,
+	baseURL *base.URL,
 	methods []headers.AuthMethod,
 	realm string,
 	nonce string,

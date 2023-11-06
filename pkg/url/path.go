@@ -1,15 +1,12 @@
 package url
 
 import (
-	"strings"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
 // PathSplitQuery splits a path from a query.
+//
+// Deprecated: replaced by base.PathSplitQuery
 func PathSplitQuery(pathAndQuery string) (string, string) {
-	i := strings.Index(pathAndQuery, "?")
-	if i >= 0 {
-		return pathAndQuery[:i], pathAndQuery[i+1:]
-	}
-
-	return pathAndQuery, ""
+	return base.PathSplitQuery(pathAndQuery)
 }

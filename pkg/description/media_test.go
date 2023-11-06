@@ -5,13 +5,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
-func mustParseURL(s string) *url.URL {
-	u, err := url.Parse(s)
+func mustParseURL(s string) *base.URL {
+	u, err := base.ParseURL(s)
 	if err != nil {
 		panic(err)
 	}
@@ -22,8 +22,8 @@ func TestMediaURL(t *testing.T) {
 	for _, ca := range []struct {
 		name    string
 		sdp     []byte
-		baseURL *url.URL
-		ur      *url.URL
+		baseURL *base.URL
+		ur      *base.URL
 	}{
 		{
 			"missing control",

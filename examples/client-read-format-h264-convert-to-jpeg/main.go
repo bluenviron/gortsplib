@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
 	"github.com/pion/rtp"
 )
@@ -46,7 +46,7 @@ func main() {
 	c := gortsplib.Client{}
 
 	// parse URL
-	u, err := url.Parse("rtsp://localhost:8554/mystream")
+	u, err := base.ParseURL("rtsp://localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}

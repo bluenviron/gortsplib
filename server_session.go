@@ -21,7 +21,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
 type readFunc func([]byte)
@@ -35,7 +34,7 @@ func stringsReverseIndex(s, substr string) int {
 	return -1
 }
 
-func serverParseURLForPlay(u *url.URL) (string, string, string, error) {
+func serverParseURLForPlay(u *base.URL) (string, string, string, error) {
 	pathAndQuery, ok := u.RTSPPathAndQuery()
 	if !ok {
 		return "", "", "", liberrors.ErrServerInvalidPath{}
@@ -47,18 +46,18 @@ func serverParseURLForPlay(u *url.URL) (string, string, string, error) {
 			return "", "", "", liberrors.ErrServerPathNoSlash{}
 		}
 
-		path, query := url.PathSplitQuery(pathAndQuery[:len(pathAndQuery)-1])
+		path, query := base.PathSplitQuery(pathAndQuery[:len(pathAndQuery)-1])
 		return path, query, "", nil
 	}
 
 	var trackID string
 	pathAndQuery, trackID = pathAndQuery[:i], pathAndQuery[i+len("/trackID="):]
-	path, query := url.PathSplitQuery(pathAndQuery)
+	path, query := base.PathSplitQuery(pathAndQuery)
 	return path, query, trackID, nil
 }
 
-func recordBaseURL(u *url.URL, path string, query string) *url.URL {
-	baseURL := &url.URL{
+func recordBaseURL(u *base.URL, path string, query string) *base.URL {
+	baseURL := &base.URL{
 		Scheme:   u.Scheme,
 		Host:     u.Host,
 		Path:     path,
@@ -74,7 +73,7 @@ func recordBaseURL(u *url.URL, path string, query string) *url.URL {
 	return baseURL
 }
 
-func findMediaByURL(medias []*description.Media, baseURL *url.URL, u *url.URL) *description.Media {
+func findMediaByURL(medias []*description.Media, baseURL *base.URL, u *base.URL) *description.Media {
 	for _, media := range medias {
 		u1, err := media.URL(baseURL)
 		if err == nil && u1.String() == u.String() {
@@ -123,14 +122,14 @@ func generateRTPInfo(
 	setuppedMediasOrdered []*serverSessionMedia,
 	setuppedStream *ServerStream,
 	setuppedPath string,
-	u *url.URL,
+	u *base.URL,
 ) (headers.RTPInfo, bool) {
 	var ri headers.RTPInfo
 
 	for _, sm := range setuppedMediasOrdered {
 		entry := setuppedStream.rtpInfoEntry(sm.media, now)
 		if entry != nil {
-			entry.URL = (&url.URL{
+			entry.URL = (&base.URL{
 				Scheme: u.Scheme,
 				Host:   u.Host,
 				Path: setuppedPath + "/trackID=" +
@@ -526,7 +525,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
 		}
 
-		path, query = url.PathSplitQuery(pathAndQuery)
+		path, query = base.PathSplitQuery(pathAndQuery)
 	}
 
 	switch req.Method {

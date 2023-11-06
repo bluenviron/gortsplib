@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/pion/rtp"
 )
 
@@ -44,7 +44,7 @@ func (c *client) read() error {
 	rc := gortsplib.Client{}
 
 	// parse URL
-	u, err := url.Parse(existingStream)
+	u, err := base.ParseURL(existingStream)
 	if err != nil {
 		return err
 	}

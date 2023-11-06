@@ -12,8 +12,8 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
 var smartRegexp = regexp.MustCompile("^([0-9]+) (.*?)/90000")
@@ -252,7 +252,7 @@ func (m Media) Marshal() *psdp.MediaDescription {
 }
 
 // URL returns the absolute URL of the media.
-func (m Media) URL(contentBase *url.URL) (*url.URL, error) {
+func (m Media) URL(contentBase *base.URL) (*base.URL, error) {
 	if contentBase == nil {
 		return nil, fmt.Errorf("Content-Base header not provided")
 	}
@@ -265,7 +265,7 @@ func (m Media) URL(contentBase *url.URL) (*url.URL, error) {
 	// control attribute contains an absolute path
 	if strings.HasPrefix(m.Control, "rtsp://") ||
 		strings.HasPrefix(m.Control, "rtsps://") {
-		ur, err := url.Parse(m.Control)
+		ur, err := base.ParseURL(m.Control)
 		if err != nil {
 			return nil, err
 		}
@@ -285,7 +285,7 @@ func (m Media) URL(contentBase *url.URL) (*url.URL, error) {
 		strURL += "/"
 	}
 
-	ur, _ := url.Parse(strURL + m.Control)
+	ur, _ := base.ParseURL(strURL + m.Control)
 	return ur, nil
 }
 

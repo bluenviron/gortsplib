@@ -6,8 +6,8 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
 func atLeastOneHasMID(medias []*Media) bool {
@@ -43,7 +43,7 @@ type SessionFECGroup []string
 // Session is the description of a RTSP stream.
 type Session struct {
 	// Base URL of the stream (read only).
-	BaseURL *url.URL
+	BaseURL *base.URL
 
 	// Title of the stream (optional).
 	Title string

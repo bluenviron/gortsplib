@@ -14,7 +14,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
 func getSessionID(header base.Header) string {
@@ -24,7 +23,7 @@ func getSessionID(header base.Header) string {
 	return ""
 }
 
-func serverSideDescription(d *description.Session, contentBase *url.URL) *description.Session {
+func serverSideDescription(d *description.Session, contentBase *base.URL) *description.Session {
 	out := &description.Session{
 		Title:     d.Title,
 		FECGroups: d.FECGroups,
@@ -225,7 +224,7 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 			}, liberrors.ErrServerInvalidPath{}
 		}
 
-		path, query = url.PathSplitQuery(pathAndQuery)
+		path, query = base.PathSplitQuery(pathAndQuery)
 	}
 
 	switch req.Method {
