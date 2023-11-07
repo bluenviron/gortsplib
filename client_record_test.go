@@ -20,7 +20,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
 var testH264Media = &description.Media{
@@ -74,7 +73,7 @@ func ntpTimeGoToRTCP(v time.Time) uint64 {
 }
 
 func record(c *Client, ur string, medias []*description.Media, cb func(*description.Media, rtcp.Packet)) error {
-	u, err := url.Parse(ur)
+	u, err := base.ParseURL(ur)
 	if err != nil {
 		return err
 	}

@@ -23,7 +23,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
 func uintPtr(v uint) *uint {
@@ -1978,7 +1977,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/trackID="))
 	require.Equal(t, &headers.RTPInfo{
 		&headers.RTPInfoEntry{
-			URL: (&url.URL{
+			URL: (&base.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
 				Path:   mustParseURL((*rtpInfo)[0].URL).Path,
@@ -2008,7 +2007,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	require.True(t, strings.HasPrefix(mustParseURL((*rtpInfo)[0].URL).Path, "/teststream/trackID="))
 	require.Equal(t, &headers.RTPInfo{
 		&headers.RTPInfoEntry{
-			URL: (&url.URL{
+			URL: (&base.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
 				Path:   mustParseURL((*rtpInfo)[0].URL).Path,
@@ -2017,7 +2016,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			Timestamp:      (*rtpInfo)[0].Timestamp,
 		},
 		&headers.RTPInfoEntry{
-			URL: (&url.URL{
+			URL: (&base.URL{
 				Scheme: "rtsp",
 				Host:   "localhost:8554",
 				Path:   mustParseURL((*rtpInfo)[1].URL).Path,

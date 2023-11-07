@@ -1,4 +1,4 @@
-package url
+package base
 
 import (
 	"net/url"
@@ -7,15 +7,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mustParse(s string) *URL {
-	u, err := Parse(s)
+func mustParseURL(s string) *URL {
+	u, err := ParseURL(s)
 	if err != nil {
 		panic(err)
 	}
 	return u
 }
 
-func TestURLParse(t *testing.T) {
+func TestParseURL(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		enc  string
@@ -33,7 +33,7 @@ func TestURLParse(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			u, err := Parse(ca.enc)
+			u, err := ParseURL(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.u, u)
 		})
@@ -68,14 +68,14 @@ func TestURLParseErrors(t *testing.T) {
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
-			_, err := Parse(ca.enc)
+			_, err := ParseURL(ca.enc)
 			require.EqualError(t, err, ca.err)
 		})
 	}
 }
 
 func TestURLClone(t *testing.T) {
-	u := mustParse("rtsp://localhost:8554/test/stream")
+	u := mustParseURL("rtsp://localhost:8554/test/stream")
 	u2 := u.Clone()
 	u.Host = "otherhost"
 
@@ -93,7 +93,7 @@ func TestURLClone(t *testing.T) {
 }
 
 func TestURLCloneWithoutCredentials(t *testing.T) {
-	u := mustParse("rtsp://user:pass@localhost:8554/test/stream")
+	u := mustParseURL("rtsp://user:pass@localhost:8554/test/stream")
 	u2 := u.CloneWithoutCredentials()
 	u.Host = "otherhost"
 
@@ -119,42 +119,42 @@ func TestURLRTSPPathAndQuery(t *testing.T) {
 	}{
 		{
 			"standard",
-			mustParse("rtsp://localhost:8554/teststream/trackID=1"),
+			mustParseURL("rtsp://localhost:8554/teststream/trackID=1"),
 			"/teststream/trackID=1",
 		},
 		{
 			"subpath",
-			mustParse("rtsp://localhost:8554/test/stream/trackID=1"),
+			mustParseURL("rtsp://localhost:8554/test/stream/trackID=1"),
 			"/test/stream/trackID=1",
 		},
 		{
 			"path and query",
-			mustParse("rtsp://192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1"),
+			mustParseURL("rtsp://192.168.1.99:554/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1"),
 			"/test?user=tmp&password=BagRep1&channel=1&stream=0.sdp/trackID=1",
 		},
 		{
 			"path and query with special chars",
-			mustParse("rtsp://192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
+			mustParseURL("rtsp://192.168.1.99:554/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
 			"/te!st?user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
 		},
 		{
 			"path and query attached",
-			mustParse("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
+			mustParseURL("rtsp://192.168.1.99:554/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1"),
 			"/user=tmp&password=BagRep1!&channel=1&stream=0.sdp/trackID=1",
 		},
 		{
 			"no path",
-			mustParse("rtsp://192.168.1.99:554"),
+			mustParseURL("rtsp://192.168.1.99:554"),
 			"",
 		},
 		{
 			"single slash",
-			mustParse("rtsp://192.168.1.99:554/"),
+			mustParseURL("rtsp://192.168.1.99:554/"),
 			"/",
 		},
 		{
 			"no slash and query",
-			mustParse("rtsp://192.168.1.99:554?testing"),
+			mustParseURL("rtsp://192.168.1.99:554?testing"),
 			"?testing",
 		},
 	} {

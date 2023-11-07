@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
 // This example shows how to
@@ -14,7 +14,7 @@ import (
 func main() {
 	c := gortsplib.Client{}
 
-	u, err := url.Parse("rtsp://localhost:8554/mypath")
+	u, err := base.ParseURL("rtsp://localhost:8554/mypath")
 	if err != nil {
 		panic(err)
 	}

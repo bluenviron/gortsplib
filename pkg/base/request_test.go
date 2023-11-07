@@ -6,17 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
-
-func mustParseURL(s string) *url.URL {
-	u, err := url.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
 
 var casesRequest = []struct {
 	name string

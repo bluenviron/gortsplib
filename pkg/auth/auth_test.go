@@ -7,11 +7,10 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
-func mustParseURL(s string) *url.URL {
-	u, err := url.Parse(s)
+func mustParseURL(s string) *base.URL {
+	u, err := base.ParseURL(s)
 	if err != nil {
 		panic(err)
 	}

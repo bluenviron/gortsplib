@@ -7,11 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 )
 
-func mustParseURL(s string) *url.URL {
-	u, err := url.Parse(s)
+func mustParseURL(s string) *base.URL {
+	u, err := base.ParseURL(s)
 	if err != nil {
 		panic(err)
 	}
@@ -32,7 +31,7 @@ func TestRead(t *testing.T) {
 				"\r\n"),
 			&base.Request{
 				Method: base.Describe,
-				URL: &url.URL{
+				URL: &base.URL{
 					Scheme: "rtsp",
 					Host:   "example.com",
 					Path:   "/media.mp4",

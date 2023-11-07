@@ -21,7 +21,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/url"
 	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
 )
 
@@ -61,7 +60,7 @@ func mustMarshalPacketRTCP(pkt rtcp.Packet) []byte {
 }
 
 func readAll(c *Client, ur string, cb func(*description.Media, format.Format, *rtp.Packet)) error {
-	u, err := url.Parse(ur)
+	u, err := base.ParseURL(ur)
 	if err != nil {
 		return err
 	}
@@ -503,7 +502,7 @@ func TestClientPlay(t *testing.T) {
 				}(),
 			}
 
-			u, err := url.Parse(scheme + "://" + listenIP + ":8554/test/stream?param=value")
+			u, err := base.ParseURL(scheme + "://" + listenIP + ":8554/test/stream?param=value")
 			require.NoError(t, err)
 
 			err = c.Start(u.Scheme, u.Host)
@@ -658,7 +657,7 @@ func TestClientPlayPartial(t *testing.T) {
 		}(),
 	}
 
-	u, err := url.Parse("rtsp://" + listenIP + ":8554/teststream")
+	u, err := base.ParseURL("rtsp://" + listenIP + ":8554/teststream")
 	require.NoError(t, err)
 
 	err = c.Start(u.Scheme, u.Host)
@@ -2610,7 +2609,7 @@ func TestClientPlaySeek(t *testing.T) {
 		}(),
 	}
 
-	u, err := url.Parse("rtsp://localhost:8554/teststream")
+	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
 	err = c.Start(u.Scheme, u.Host)
