@@ -13,6 +13,14 @@ func ipPtr(v net.IP) *net.IP {
 	return &v
 }
 
+func deliveryPtr(v TransportDelivery) *TransportDelivery {
+	return &v
+}
+
+func transportModePtr(v TransportMode) *TransportMode {
+	return &v
+}
+
 var casesTransport = []struct {
 	name string
 	vin  base.HeaderValue
@@ -24,16 +32,10 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode="PLAY"`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
 			ClientPorts: &[2]int{3456, 3457},
-			Mode: func() *TransportMode {
-				v := TransportModePlay
-				return &v
-			}(),
+			Mode:        transportModePtr(TransportModePlay),
 		},
 	},
 	{
@@ -41,11 +43,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP/UDP;unicast;client_port=3056-3057;server_port=5000-5001`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3056-3057;server_port=5000-5001`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
 			ClientPorts: &[2]int{3056, 3057},
 			ServerPorts: &[2]int{5000, 5001},
 		},
@@ -55,11 +54,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
 		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryMulticast
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryMulticast),
 			Destination: ipPtr(net.ParseIP("225.219.201.15")),
 			TTL:         uintPtr(127),
 			Ports:       &[2]int{7000, 7001},
@@ -79,15 +75,9 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP/UDP;unicast;server_port=8052;client_port=14186;ssrc=0B6020AD;mode=PLAY`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0B6020AD;mode=play`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
-			Mode: func() *TransportMode {
-				v := TransportModePlay
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
+			Mode:        transportModePtr(TransportModePlay),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
 			SSRC:        uint32Ptr(0x0B6020AD),
@@ -98,15 +88,9 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP/UDP;unicast;mode=receive;source=127.0.0.1;client_port=14186-14187;server_port=5000-5001`},
 		base.HeaderValue{`RTP/AVP;unicast;source=127.0.0.1;client_port=14186-14187;server_port=5000-5001;mode=record`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
-			Mode: func() *TransportMode {
-				v := TransportModeRecord
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
+			Mode:        transportModePtr(TransportModeRecord),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{5000, 5001},
 			Source:      ipPtr(net.ParseIP("127.0.0.1")),
@@ -117,16 +101,10 @@ var casesTransport = []struct {
 		base.HeaderValue{`client_port=3456-3457;RTP/AVP;mode="PLAY";unicast`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
 			ClientPorts: &[2]int{3456, 3457},
-			Mode: func() *TransportMode {
-				v := TransportModePlay
-				return &v
-			}(),
+			Mode:        transportModePtr(TransportModePlay),
 		},
 	},
 	{
@@ -134,15 +112,9 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP/UDP;unicast;client_port=14186;server_port=8052;ssrc=4317f;mode=play`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0004317F;mode=play`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
-			Mode: func() *TransportMode {
-				v := TransportModePlay
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
+			Mode:        transportModePtr(TransportModePlay),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
 			SSRC:        uint32Ptr(0x04317f),
@@ -153,15 +125,9 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP/UDP;unicast;client_port=14186;server_port=8052;ssrc= 4317f;mode=play`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0004317F;mode=play`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
-			Mode: func() *TransportMode {
-				v := TransportModePlay
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
+			Mode:        transportModePtr(TransportModePlay),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
 			SSRC:        uint32Ptr(0x04317f),
@@ -172,11 +138,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP/TCP;unicast;interleaved=0-1;ssrc=     D93FF`},
 		base.HeaderValue{`RTP/AVP/TCP;unicast;interleaved=0-1;ssrc=000D93FF`},
 		Transport{
-			Protocol: TransportProtocolTCP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
+			Protocol:       TransportProtocolTCP,
+			Delivery:       deliveryPtr(TransportDeliveryUnicast),
 			InterleavedIDs: &[2]int{0, 1},
 			SSRC:           uint32Ptr(0xD93FF),
 		},
@@ -186,11 +149,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP/UDP;unicast;source=;client_port=32560-32561;server_port=3046-3047;ssrc=45dcb578`},
 		base.HeaderValue{`RTP/AVP;unicast;client_port=32560-32561;server_port=3046-3047;ssrc=45DCB578`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
 			SSRC:        uint32Ptr(0x45dcb578),
 			ClientPorts: &[2]int{32560, 32561},
 			ServerPorts: &[2]int{3046, 3047},
@@ -201,11 +161,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14236;source=172.16.8.2;server_port=56002;ssrc=1449463210`},
 		base.HeaderValue{`RTP/AVP;unicast;source=172.16.8.2;client_port=14236-14237;server_port=56002-56003`},
 		Transport{
-			Protocol: TransportProtocolUDP,
-			Delivery: func() *TransportDelivery {
-				v := TransportDeliveryUnicast
-				return &v
-			}(),
+			Protocol:    TransportProtocolUDP,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
 			Source:      ipPtr(net.ParseIP("172.16.8.2")),
 			ClientPorts: &[2]int{14236, 14237},
 			ServerPorts: &[2]int{56002, 56003},
@@ -330,23 +287,14 @@ var casesTransports = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play,RTP/AVP/TCP;unicast;interleaved=0-1`},
 		Transports{
 			{
-				Protocol: TransportProtocolUDP,
-				Delivery: func() *TransportDelivery {
-					v := TransportDeliveryUnicast
-					return &v
-				}(),
+				Protocol:    TransportProtocolUDP,
+				Delivery:    deliveryPtr(TransportDeliveryUnicast),
 				ClientPorts: &[2]int{3456, 3457},
-				Mode: func() *TransportMode {
-					v := TransportModePlay
-					return &v
-				}(),
+				Mode:        transportModePtr(TransportModePlay),
 			},
 			Transport{
-				Protocol: TransportProtocolTCP,
-				Delivery: func() *TransportDelivery {
-					v := TransportDeliveryUnicast
-					return &v
-				}(),
+				Protocol:       TransportProtocolTCP,
+				Delivery:       deliveryPtr(TransportDeliveryUnicast),
 				InterleavedIDs: &[2]int{0, 1},
 			},
 		},
