@@ -292,15 +292,9 @@ func TestServerRecordPath(t *testing.T) {
 			require.Equal(t, base.StatusOK, res.StatusCode)
 
 			th := &headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModeRecord
-					return &v
-				}(),
+				Protocol:       headers.TransportProtocolTCP,
+				Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+				Mode:           transportModePtr(headers.TransportModeRecord),
 				InterleavedIDs: &[2]int{0, 1},
 			}
 
@@ -349,15 +343,9 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
 	inTH := &headers.Transport{
-		Protocol: headers.TransportProtocolTCP,
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModeRecord
-			return &v
-		}(),
+		Protocol:       headers.TransportProtocolTCP,
+		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:           transportModePtr(headers.TransportModeRecord),
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
@@ -366,15 +354,9 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 	session := readSession(t, res)
 
 	inTH = &headers.Transport{
-		Protocol: headers.TransportProtocolTCP,
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModeRecord
-			return &v
-		}(),
+		Protocol:       headers.TransportProtocolTCP,
+		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:           transportModePtr(headers.TransportModeRecord),
 		InterleavedIDs: &[2]int{2, 3},
 	}
 
@@ -451,15 +433,9 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
 	inTH := &headers.Transport{
-		Protocol: headers.TransportProtocolTCP,
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModeRecord
-			return &v
-		}(),
+		Protocol:       headers.TransportProtocolTCP,
+		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:           transportModePtr(headers.TransportModeRecord),
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
@@ -626,14 +602,8 @@ func TestServerRecord(t *testing.T) {
 
 			for i := 0; i < 2; i++ {
 				inTH := &headers.Transport{
-					Delivery: func() *headers.TransportDelivery {
-						v := headers.TransportDeliveryUnicast
-						return &v
-					}(),
-					Mode: func() *headers.TransportMode {
-						v := headers.TransportModeRecord
-						return &v
-					}(),
+					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
+					Mode:     transportModePtr(headers.TransportModeRecord),
 				}
 
 				if transport == "udp" {
@@ -781,14 +751,8 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
 	inTH := &headers.Transport{
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModeRecord
-			return &v
-		}(),
+		Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:        transportModePtr(headers.TransportModeRecord),
 		Protocol:    headers.TransportProtocolUDP,
 		ClientPorts: &[2]int{35466, 35467},
 	}
@@ -855,14 +819,8 @@ func TestServerRecordRTCPReport(t *testing.T) {
 	defer l2.Close()
 
 	inTH := &headers.Transport{
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModeRecord
-			return &v
-		}(),
+		Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:        transportModePtr(headers.TransportModeRecord),
 		Protocol:    headers.TransportProtocolUDP,
 		ClientPorts: &[2]int{34556, 34557},
 	}
@@ -987,14 +945,8 @@ func TestServerRecordTimeout(t *testing.T) {
 			doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
 			inTH := &headers.Transport{
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModeRecord
-					return &v
-				}(),
+				Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
+				Mode:     transportModePtr(headers.TransportModeRecord),
 			}
 
 			if transport == "udp" {
@@ -1075,14 +1027,8 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 			doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
 			inTH := &headers.Transport{
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModeRecord
-					return &v
-				}(),
+				Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
+				Mode:     transportModePtr(headers.TransportModeRecord),
 			}
 
 			if transport == "udp" {
@@ -1153,14 +1099,8 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 		doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
 		inTH := &headers.Transport{
-			Delivery: func() *headers.TransportDelivery {
-				v := headers.TransportDeliveryUnicast
-				return &v
-			}(),
-			Mode: func() *headers.TransportMode {
-				v := headers.TransportModeRecord
-				return &v
-			}(),
+			Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+			Mode:        transportModePtr(headers.TransportModeRecord),
 			Protocol:    headers.TransportProtocolUDP,
 			ClientPorts: &[2]int{35466, 35467},
 		}
@@ -1289,14 +1229,8 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 			doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
 			inTH := &headers.Transport{
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModeRecord
-					return &v
-				}(),
+				Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
+				Mode:     transportModePtr(headers.TransportModeRecord),
 			}
 
 			if ca.proto == "udp" {
@@ -1485,14 +1419,8 @@ func TestServerRecordPacketNTP(t *testing.T) {
 	defer l2.Close()
 
 	inTH := &headers.Transport{
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModeRecord
-			return &v
-		}(),
+		Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:        transportModePtr(headers.TransportModeRecord),
 		Protocol:    headers.TransportProtocolUDP,
 		ClientPorts: &[2]int{34556, 34557},
 	}
@@ -1604,14 +1532,8 @@ func TestServerRecordPausePause(t *testing.T) {
 	doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
 
 	inTH := &headers.Transport{
-		Delivery: func() *headers.TransportDelivery {
-			v := headers.TransportDeliveryUnicast
-			return &v
-		}(),
-		Mode: func() *headers.TransportMode {
-			v := headers.TransportModeRecord
-			return &v
-		}(),
+		Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:        transportModePtr(headers.TransportModeRecord),
 		Protocol:    headers.TransportProtocolUDP,
 		ClientPorts: &[2]int{35466, 35467},
 	}
