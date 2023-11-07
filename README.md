@@ -14,33 +14,33 @@ Features:
 
 * Client
   * Query servers about available media streams
-  * Read
+  * Play (read)
     * Read media streams from servers with the UDP, UDP-multicast or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
-    * Read selected media streams only
+    * Read selected media streams
     * Pause or seek without disconnecting from the server
     * Get PTS (relative) timestamp of incoming packets
     * Get NTP (absolute) timestamp of incoming packets
-  * Publish
-    * Publish media streams to servers with the UDP or TCP transport protocol
-    * Publish TLS-encrypted streams (TCP only)
+  * Record (write)
+    * Write media streams to servers with the UDP or TCP transport protocol
+    * Write TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
     * Pause without disconnecting from the server
 * Server
   * Handle requests from clients
-  * Publish
+  * Record (read)
     * Read media streams from clients with the UDP or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
     * Get PTS (relative) timestamp of incoming packets
     * Get NTP (absolute) timestamp of incoming packets
-  * Read
+  * Play (write)
     * Write media streams to clients with the UDP, UDP-multicast or TCP transport protocol
     * Write TLS-encrypted streams (TCP only)
     * Compute and provide SSRC, RTP-Info to clients
 * Utilities
   * Parse RTSP elements
-  * Encode/decode codec-specific frames into/from RTP packets
+  * Encode/decode RTP packets into/from codec-specific frames
 
 ## Table of contents
 
@@ -53,39 +53,39 @@ Features:
 ## Examples
 
 * [client-query](examples/client-query/main.go)
-* [client-read](examples/client-read/main.go)
-* [client-read-timestamp](examples/client-read-timestamp/main.go)
-* [client-read-options](examples/client-read-options/main.go)
-* [client-read-pause](examples/client-read-pause/main.go)
-* [client-read-republish](examples/client-read-republish/main.go)
-* [client-read-format-av1](examples/client-read-format-av1/main.go)
-* [client-read-format-g711](examples/client-read-format-g711/main.go)
-* [client-read-format-g722](examples/client-read-format-g722/main.go)
-* [client-read-format-h264](examples/client-read-format-h264/main.go)
-* [client-read-format-h264-convert-to-jpeg](examples/client-read-format-h264-convert-to-jpeg/main.go)
-* [client-read-format-h264-save-to-disk](examples/client-read-format-h264-save-to-disk/main.go)
-* [client-read-format-h265](examples/client-read-format-h265/main.go)
-* [client-read-format-h265-convert-to-jpeg](examples/client-read-format-h265-convert-to-jpeg/main.go)
-* [client-read-format-h265-save-to-disk](examples/client-read-format-h265-save-to-disk/main.go)
-* [client-read-format-lpcm](examples/client-read-format-lpcm/main.go)
-* [client-read-format-mjpeg](examples/client-read-format-mjpeg/main.go)
-* [client-read-format-mpeg4audio](examples/client-read-format-mpeg4audio/main.go)
-* [client-read-format-mpeg4audio-save-to-disk](examples/client-read-format-mpeg4audio-save-to-disk/main.go)
-* [client-read-format-opus](examples/client-read-format-opus/main.go)
-* [client-read-format-vp8](examples/client-read-format-vp8/main.go)
-* [client-read-format-vp9](examples/client-read-format-vp9/main.go)
-* [client-publish-options](examples/client-publish-options/main.go)
-* [client-publish-pause](examples/client-publish-pause/main.go)
-* [client-publish-format-g711](examples/client-publish-format-g711/main.go)
-* [client-publish-format-g722](examples/client-publish-format-g722/main.go)
-* [client-publish-format-h264](examples/client-publish-format-h264/main.go)
-* [client-publish-format-h265](examples/client-publish-format-h265/main.go)
-* [client-publish-format-lpcm](examples/client-publish-format-lpcm/main.go)
-* [client-publish-format-mjpeg](examples/client-publish-format-mjpeg/main.go)
-* [client-publish-format-mpeg4audio](examples/client-publish-format-mpeg4audio/main.go)
-* [client-publish-format-opus](examples/client-publish-format-opus/main.go)
-* [client-publish-format-vp8](examples/client-publish-format-vp8/main.go)
-* [client-publish-format-vp9](examples/client-publish-format-vp9/main.go)
+* [client-play](examples/client-play/main.go)
+* [client-play-timestamp](examples/client-play-timestamp/main.go)
+* [client-play-options](examples/client-play-options/main.go)
+* [client-play-pause](examples/client-play-pause/main.go)
+* [client-play-to-record](examples/client-play-to-record/main.go)
+* [client-play-format-av1](examples/client-play-format-av1/main.go)
+* [client-play-format-g711](examples/client-play-format-g711/main.go)
+* [client-play-format-g722](examples/client-play-format-g722/main.go)
+* [client-play-format-h264](examples/client-play-format-h264/main.go)
+* [client-play-format-h264-convert-to-jpeg](examples/client-play-format-h264-convert-to-jpeg/main.go)
+* [client-play-format-h264-save-to-disk](examples/client-play-format-h264-save-to-disk/main.go)
+* [client-play-format-h265](examples/client-play-format-h265/main.go)
+* [client-play-format-h265-convert-to-jpeg](examples/client-play-format-h265-convert-to-jpeg/main.go)
+* [client-play-format-h265-save-to-disk](examples/client-play-format-h265-save-to-disk/main.go)
+* [client-play-format-lpcm](examples/client-play-format-lpcm/main.go)
+* [client-play-format-mjpeg](examples/client-play-format-mjpeg/main.go)
+* [client-play-format-mpeg4audio](examples/client-play-format-mpeg4audio/main.go)
+* [client-play-format-mpeg4audio-save-to-disk](examples/client-play-format-mpeg4audio-save-to-disk/main.go)
+* [client-play-format-opus](examples/client-play-format-opus/main.go)
+* [client-play-format-vp8](examples/client-play-format-vp8/main.go)
+* [client-play-format-vp9](examples/client-play-format-vp9/main.go)
+* [client-record-options](examples/client-record-options/main.go)
+* [client-record-pause](examples/client-record-pause/main.go)
+* [client-record-format-g711](examples/client-record-format-g711/main.go)
+* [client-record-format-g722](examples/client-record-format-g722/main.go)
+* [client-record-format-h264](examples/client-record-format-h264/main.go)
+* [client-record-format-h265](examples/client-record-format-h265/main.go)
+* [client-record-format-lpcm](examples/client-record-format-lpcm/main.go)
+* [client-record-format-mjpeg](examples/client-record-format-mjpeg/main.go)
+* [client-record-format-mpeg4audio](examples/client-record-format-mpeg4audio/main.go)
+* [client-record-format-opus](examples/client-record-format-opus/main.go)
+* [client-record-format-vp8](examples/client-record-format-vp8/main.go)
+* [client-record-format-vp9](examples/client-record-format-vp9/main.go)
 * [server](examples/server/main.go)
 * [server-tls](examples/server-tls/main.go)
 * [server-h264-save-to-disk](examples/server-h264-save-to-disk/main.go)
@@ -97,7 +97,7 @@ Features:
 
 ## RTP Payload Formats
 
-In RTSP, media streams are routed between server and clients by using RTP packets, which are encoded in a specific, codec-dependent, format, that is declared during the handshake. This library supports the following formats:
+In RTSP, media streams are routed between server and clients by using RTP packets, which are encoded in a specific, codec-dependent, format. This library supports the following formats:
 
 ### Video
 

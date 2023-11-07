@@ -56,7 +56,7 @@ func (c *client) read() error {
 	}
 	defer rc.Close()
 
-	// find published medias
+	// find available medias
 	desc, _, err := rc.Describe(u)
 	if err != nil {
 		return err
