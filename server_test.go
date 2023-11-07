@@ -311,7 +311,40 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Options,
 		URL:    mustParseURL("rtsp://localhost:8554/"),
-		Header: base.Header{},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
+	<-nconnClosed
+}
+
+func TestServerErrorNilURL(t *testing.T) {
+	nconnClosed := make(chan struct{})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				require.EqualError(t, ctx.Error, "invalid path")
+				close(nconnClosed)
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
+
+	res, err := writeReqReadRes(conn, base.Request{
+		Method: base.Describe,
+		URL:    nil,
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
