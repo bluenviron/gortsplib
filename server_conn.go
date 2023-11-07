@@ -208,8 +208,13 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 	if cseq, ok := req.Header["CSeq"]; !ok || len(cseq) != 1 {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
-			Header:     base.Header{},
 		}, liberrors.ErrServerCSeqMissing{}
+	}
+
+	if req.Method != base.Options && req.URL == nil {
+		return &base.Response{
+			StatusCode: base.StatusBadRequest,
+		}, liberrors.ErrServerInvalidPath{}
 	}
 
 	sxID := getSessionID(req.Header)
@@ -218,12 +223,6 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 	var query string
 	switch req.Method {
 	case base.Describe, base.GetParameter, base.SetParameter:
-		if req.URL == nil {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerInvalidPath{}
-		}
-
 		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
 		if !ok {
 			return &base.Response{
