@@ -93,12 +93,13 @@ func (cm *clientMedia) start() {
 		cm.writePacketRTPInQueue = cm.writePacketRTPInQueueUDP
 		cm.writePacketRTCPInQueue = cm.writePacketRTCPInQueueUDP
 
-		if cm.c.state == clientStatePlay {
-			cm.udpRTPListener.readFunc = cm.readRTPUDPPlay
-			cm.udpRTCPListener.readFunc = cm.readRTCPUDPPlay
-		} else {
+		if cm.c.state == clientStateRecord ||
+			(cm.media.Direction != nil && *cm.media.Direction == description.MediaDirectionSendonly) {
 			cm.udpRTPListener.readFunc = cm.readRTPUDPRecord
 			cm.udpRTCPListener.readFunc = cm.readRTCPUDPRecord
+		} else {
+			cm.udpRTPListener.readFunc = cm.readRTPUDPPlay
+			cm.udpRTCPListener.readFunc = cm.readRTCPUDPPlay
 		}
 	} else {
 		cm.writePacketRTPInQueue = cm.writePacketRTPInQueueTCP
@@ -108,12 +109,13 @@ func (cm *clientMedia) start() {
 			cm.c.tcpCallbackByChannel = make(map[int]readFunc)
 		}
 
-		if cm.c.state == clientStatePlay {
-			cm.c.tcpCallbackByChannel[cm.tcpChannel] = cm.readRTPTCPPlay
-			cm.c.tcpCallbackByChannel[cm.tcpChannel+1] = cm.readRTCPTCPPlay
-		} else {
+		if cm.c.state == clientStateRecord ||
+			(cm.media.Direction != nil && *cm.media.Direction == description.MediaDirectionSendonly) {
 			cm.c.tcpCallbackByChannel[cm.tcpChannel] = cm.readRTPTCPRecord
 			cm.c.tcpCallbackByChannel[cm.tcpChannel+1] = cm.readRTCPTCPRecord
+		} else {
+			cm.c.tcpCallbackByChannel[cm.tcpChannel] = cm.readRTPTCPPlay
+			cm.c.tcpCallbackByChannel[cm.tcpChannel+1] = cm.readRTCPTCPPlay
 		}
 
 		cm.tcpRTPFrame = &base.InterleavedFrame{Channel: cm.tcpChannel}

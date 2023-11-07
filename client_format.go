@@ -6,6 +6,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
@@ -20,7 +21,7 @@ type clientFormat struct {
 	udpReorderer    *rtpreorderer.Reorderer       // play
 	tcpLossDetector *rtplossdetector.LossDetector // play
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver    // play
-	rtcpSender      *rtcpsender.RTCPSender        // record
+	rtcpSender      *rtcpsender.RTCPSender        // record or backchannel
 	onPacketRTP     OnPacketRTPFunc
 }
 
@@ -33,7 +34,18 @@ func newClientFormat(cm *clientMedia, forma format.Format) *clientFormat {
 }
 
 func (ct *clientFormat) start() {
-	if ct.cm.c.state == clientStatePlay {
+	if ct.cm.c.state == clientStateRecord ||
+		(ct.cm.media.Direction != nil && *ct.cm.media.Direction == description.MediaDirectionSendonly) {
+		ct.rtcpSender = rtcpsender.New(
+			ct.format.ClockRate(),
+			ct.cm.c.senderReportPeriod,
+			ct.cm.c.timeNow,
+			func(pkt rtcp.Packet) {
+				if !ct.cm.c.DisableRTCPSenderReports {
+					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
+				}
+			})
+	} else {
 		if ct.cm.udpRTPListener != nil {
 			ct.udpReorderer = rtpreorderer.New()
 		} else {
@@ -54,16 +66,6 @@ func (ct *clientFormat) start() {
 		if err != nil {
 			panic(err)
 		}
-	} else {
-		ct.rtcpSender = rtcpsender.New(
-			ct.format.ClockRate(),
-			ct.cm.c.senderReportPeriod,
-			ct.cm.c.timeNow,
-			func(pkt rtcp.Packet) {
-				if !ct.cm.c.DisableRTCPSenderReports {
-					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
-				}
-			})
 	}
 }
 

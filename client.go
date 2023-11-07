@@ -245,6 +245,8 @@ type Client struct {
 	UserAgent string
 	// disable automatic RTCP sender reports.
 	DisableRTCPSenderReports bool
+	// explicitly request back channels to the server.
+	RequestBackChannels bool
 	// pointer to a variable that stores received bytes.
 	BytesReceived *uint64
 	// pointer to a variable that stores sent bytes.
@@ -287,33 +289,34 @@ type Client struct {
 	receiverReportPeriod time.Duration
 	checkTimeoutPeriod   time.Duration
 
-	connURL              *base.URL
-	ctx                  context.Context
-	ctxCancel            func()
-	state                clientState
-	nconn                net.Conn
-	conn                 *conn.Conn
-	session              string
-	sender               *auth.Sender
-	cseq                 int
-	optionsSent          bool
-	useGetParameter      bool
-	lastDescribeURL      *base.URL
-	baseURL              *base.URL
-	effectiveTransport   *Transport
-	medias               map[*description.Media]*clientMedia
-	tcpCallbackByChannel map[int]readFunc
-	lastRange            *headers.Range
-	checkTimeoutTimer    *time.Timer
-	checkTimeoutInitial  bool
-	tcpLastFrameTime     *int64
-	keepalivePeriod      time.Duration
-	keepaliveTimer       *time.Timer
-	closeError           error
-	writer               asyncProcessor
-	reader               *clientReader
-	timeDecoder          *rtptime.GlobalDecoder
-	mustClose            bool
+	connURL                *base.URL
+	ctx                    context.Context
+	ctxCancel              func()
+	state                  clientState
+	nconn                  net.Conn
+	conn                   *conn.Conn
+	session                string
+	sender                 *auth.Sender
+	cseq                   int
+	optionsSent            bool
+	useGetParameter        bool
+	lastDescribeURL        *base.URL
+	baseURL                *base.URL
+	effectiveTransport     *Transport
+	hasSetuppedBackChannel bool
+	medias                 map[*description.Media]*clientMedia
+	tcpCallbackByChannel   map[int]readFunc
+	lastRange              *headers.Range
+	checkTimeoutTimer      *time.Timer
+	checkTimeoutInitial    bool
+	tcpLastFrameTime       *int64
+	keepalivePeriod        time.Duration
+	keepaliveTimer         *time.Timer
+	closeError             error
+	writer                 asyncProcessor
+	reader                 *clientReader
+	timeDecoder            *rtptime.GlobalDecoder
+	mustClose              bool
 
 	// in
 	chOptions      chan optionsReq
@@ -662,9 +665,16 @@ func (c *Client) doClose() {
 	}
 
 	if c.nconn != nil && c.baseURL != nil {
+		header := base.Header{}
+
+		if c.hasSetuppedBackChannel {
+			header["Require"] = base.HeaderValue{"www.onvif.org/ver20/backchannel"}
+		}
+
 		c.do(&base.Request{ //nolint:errcheck
 			Method: base.Teardown,
 			URL:    c.baseURL,
+			Header: header,
 		}, true)
 	}
 
@@ -696,6 +706,7 @@ func (c *Client) reset() {
 	c.useGetParameter = false
 	c.baseURL = nil
 	c.effectiveTransport = nil
+	c.hasSetuppedBackChannel = false
 	c.medias = nil
 	c.tcpCallbackByChannel = nil
 }
@@ -776,13 +787,13 @@ func (c *Client) trySwitchingProtocol2(medi *description.Media, baseURL *base.UR
 
 func (c *Client) startReadRoutines() {
 	// allocate writer here because it's needed by RTCP receiver / sender
-	if c.state == clientStatePlay {
+	if c.state == clientStateRecord || c.hasSetuppedBackChannel {
+		c.writer.allocateBuffer(c.WriteQueueSize)
+	} else {
 		// when reading, buffer is only used to send RTCP receiver reports,
 		// that are much smaller than RTP packets and are sent at a fixed interval.
 		// decrease RAM consumption by allocating less buffers.
 		c.writer.allocateBuffer(8)
-	} else {
-		c.writer.allocateBuffer(c.WriteQueueSize)
 	}
 
 	c.timeDecoder = rtptime.NewGlobalDecoder()
@@ -1092,12 +1103,18 @@ func (c *Client) doDescribe(u *base.URL) (*description.Session, *base.Response, 
 		return nil, nil, err
 	}
 
+	header := base.Header{
+		"Accept": base.HeaderValue{"application/sdp"},
+	}
+
+	if c.RequestBackChannels {
+		header["Require"] = base.HeaderValue{"www.onvif.org/ver20/backchannel"}
+	}
+
 	res, err := c.do(&base.Request{
 		Method: base.Describe,
 		URL:    u,
-		Header: base.Header{
-			"Accept": base.HeaderValue{"application/sdp"},
-		},
+		Header: header,
 	}, false)
 	if err != nil {
 		return nil, nil, err
@@ -1334,12 +1351,18 @@ func (c *Client) doSetup(
 		return nil, err
 	}
 
+	header := base.Header{
+		"Transport": th.Marshal(),
+	}
+
+	if medi.Direction != nil && *medi.Direction == description.MediaDirectionSendonly {
+		header["Require"] = base.HeaderValue{"www.onvif.org/ver20/backchannel"}
+	}
+
 	res, err := c.do(&base.Request{
 		Method: base.Setup,
 		URL:    mediaURL,
-		Header: base.Header{
-			"Transport": th.Marshal(),
-		},
+		Header: header,
 	}, false)
 	if err != nil {
 		cm.close()
@@ -1509,6 +1532,10 @@ func (c *Client) doSetup(
 	c.baseURL = baseURL
 	c.effectiveTransport = &desiredTransport
 
+	if medi.Direction != nil && *medi.Direction == description.MediaDirectionSendonly {
+		c.hasSetuppedBackChannel = true
+	}
+
 	if c.state == clientStateInitial {
 		c.state = clientStatePrePlay
 	}
@@ -1590,12 +1617,18 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 		}
 	}
 
+	header := base.Header{
+		"Range": ra.Marshal(),
+	}
+
+	if c.hasSetuppedBackChannel {
+		header["Require"] = base.HeaderValue{"www.onvif.org/ver20/backchannel"}
+	}
+
 	res, err := c.do(&base.Request{
 		Method: base.Play,
 		URL:    c.baseURL,
-		Header: base.Header{
-			"Range": ra.Marshal(),
-		},
+		Header: header,
 	}, false)
 	if err != nil {
 		c.stopReadRoutines()

@@ -41,20 +41,23 @@ func getAttribute(attributes []psdp.Attribute, key string) string {
 	return ""
 }
 
-func getDirection(attributes []psdp.Attribute) MediaDirection {
+func getDirection(attributes []psdp.Attribute) *MediaDirection {
 	for _, attr := range attributes {
 		switch attr.Key {
 		case "sendonly":
-			return MediaDirectionSendonly
+			v := MediaDirectionSendonly
+			return &v
 
 		case "recvonly":
-			return MediaDirectionRecvonly
+			v := MediaDirectionRecvonly
+			return &v
 
 		case "sendrecv":
-			return MediaDirectionSendrecv
+			v := MediaDirectionSendrecv
+			return &v
 		}
 	}
-	return ""
+	return nil
 }
 
 func getFormatAttribute(attributes []psdp.Attribute, payloadType uint8, key string) string {
@@ -117,19 +120,19 @@ func isAlphaNumeric(v string) bool {
 }
 
 // MediaDirection is the direction of a media stream.
-type MediaDirection string
+type MediaDirection int
 
-// standard directions.
+// directions.
 const (
-	MediaDirectionSendonly MediaDirection = "sendonly"
-	MediaDirectionRecvonly MediaDirection = "recvonly"
-	MediaDirectionSendrecv MediaDirection = "sendrecv"
+	MediaDirectionSendonly MediaDirection = iota
+	MediaDirectionRecvonly
+	MediaDirectionSendrecv
 )
 
 // MediaType is the type of a media stream.
 type MediaType string
 
-// standard media stream types.
+// media types.
 const (
 	MediaTypeVideo       MediaType = "video"
 	MediaTypeAudio       MediaType = "audio"
@@ -146,7 +149,7 @@ type Media struct {
 	ID string
 
 	// Direction of the stream (optional).
-	Direction MediaDirection
+	Direction *MediaDirection
 
 	// Control attribute.
 	Control string
@@ -211,10 +214,21 @@ func (m Media) Marshal() *psdp.MediaDescription {
 		})
 	}
 
-	if m.Direction != "" {
-		md.Attributes = append(md.Attributes, psdp.Attribute{
-			Key: string(m.Direction),
-		})
+	if m.Direction != nil {
+		switch *m.Direction {
+		case MediaDirectionSendonly:
+			md.Attributes = append(md.Attributes, psdp.Attribute{
+				Key: "sendonly",
+			})
+		case MediaDirectionRecvonly:
+			md.Attributes = append(md.Attributes, psdp.Attribute{
+				Key: "recvonly",
+			})
+		case MediaDirectionSendrecv:
+			md.Attributes = append(md.Attributes, psdp.Attribute{
+				Key: "sendrecv",
+			})
+		}
 	}
 
 	md.Attributes = append(md.Attributes, psdp.Attribute{

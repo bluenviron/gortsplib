@@ -9,6 +9,10 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
+func directionPtr(v MediaDirection) *MediaDirection {
+	return &v
+}
+
 var casesSession = []struct {
 	name string
 	in   string
@@ -71,7 +75,7 @@ var casesSession = []struct {
 				},
 				{
 					Type:      MediaTypeAudio,
-					Direction: MediaDirectionRecvonly,
+					Direction: directionPtr(MediaDirectionRecvonly),
 					Control:   "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
 					Formats: []format.Format{&format.G711{
 						MULaw: true,
@@ -141,7 +145,7 @@ var casesSession = []struct {
 				},
 				{
 					Type:      MediaTypeAudio,
-					Direction: MediaDirectionRecvonly,
+					Direction: directionPtr(MediaDirectionRecvonly),
 					Control:   "trackID=2",
 					Formats: []format.Format{&format.G711{
 						MULaw: true,
@@ -305,7 +309,7 @@ var casesSession = []struct {
 				{
 					ID:        "audio",
 					Type:      MediaTypeAudio,
-					Direction: MediaDirectionSendonly,
+					Direction: directionPtr(MediaDirectionSendonly),
 					Formats: []format.Format{
 						&format.Opus{
 							PayloadTyp: 111,
@@ -373,7 +377,7 @@ var casesSession = []struct {
 				{
 					ID:        "video",
 					Type:      MediaTypeVideo,
-					Direction: MediaDirectionSendonly,
+					Direction: directionPtr(MediaDirectionSendonly),
 					Formats: []format.Format{
 						&format.VP8{
 							PayloadTyp: 96,
@@ -516,19 +520,19 @@ var casesSession = []struct {
 			Medias: []*Media{
 				{
 					Type:      MediaTypeVideo,
-					Direction: MediaDirectionRecvonly,
+					Direction: directionPtr(MediaDirectionRecvonly),
 					Control:   "rtsp://192.168.0.1/video",
 					Formats:   []format.Format{&format.MJPEG{}},
 				},
 				{
 					Type:      MediaTypeAudio,
-					Direction: MediaDirectionRecvonly,
+					Direction: directionPtr(MediaDirectionRecvonly),
 					Control:   "rtsp://192.168.0.1/audio",
 					Formats:   []format.Format{&format.G711{MULaw: true}},
 				},
 				{
 					Type:      MediaTypeAudio,
-					Direction: MediaDirectionSendonly,
+					Direction: directionPtr(MediaDirectionSendonly),
 					Control:   "rtsp://192.168.0.1/audioback",
 					Formats:   []format.Format{&format.G711{MULaw: true}},
 				},
