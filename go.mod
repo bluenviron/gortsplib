@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/bluenviron/mediacommon v1.5.0
 	github.com/google/uuid v1.4.0
-	github.com/pion/rtcp v1.2.10
+	github.com/pion/rtcp v1.2.12
 	github.com/pion/rtp v1.8.2
 	github.com/pion/sdp/v3 v3.0.6
 	github.com/stretchr/testify v1.8.4
