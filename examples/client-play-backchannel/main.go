@@ -18,8 +18,7 @@ import (
 
 func findPCMUBackChannel(desc *description.Session) *description.Media {
 	for _, media := range desc.Medias {
-		if media.Direction != nil &&
-			*media.Direction == description.MediaDirectionSendonly {
+		if media.IsBackChannel {
 			for _, forma := range media.Formats {
 				if g711, ok := forma.(*format.G711); ok {
 					if g711.MULaw {
@@ -40,9 +39,16 @@ func main() {
 	}
 	defer pc.Close()
 
-	log.Println("Waiting for a RTP/G711 stream on UDP port 9000 - you can send one with GStreamer:\n" +
+	log.Println("Waiting for a RTP/G711 stream on UDP port 9000 - you can generate one with GStreamer:\n\n" +
+		"* audio from a test sine:\n\n" +
 		"gst-launch-1.0 audiotestsrc freq=300 ! audioconvert ! audioresample ! audio/x-raw,rate=8000" +
-		" ! mulawenc ! rtppcmupay ! udpsink host=127.0.0.1 port=9000")
+		" ! mulawenc ! rtppcmupay ! udpsink host=127.0.0.1 port=9000\n\n" +
+		"* audio from a file:\n\n" +
+		"gst-launch-1.0 filesrc location=my_file.mp4 ! decodebin ! audioconvert ! audioresample ! audio/x-raw,rate=8000" +
+		" ! mulawenc ! rtppcmupay ! udpsink host=127.0.0.1 port=9000\n\n" +
+		"* audio from a microphone:\n\n" +
+		"gst-launch-1.0 pulsesrc ! audioconvert ! audioresample ! audio/x-raw,rate=8000" +
+		" ! mulawenc ! rtppcmupay ! udpsink host=127.0.0.1 port=9000\n")
 
 	// wait for first packet
 	buf := make([]byte, 2048)
