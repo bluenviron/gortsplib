@@ -6,7 +6,6 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
@@ -21,7 +20,7 @@ type clientFormat struct {
 	udpReorderer    *rtpreorderer.Reorderer       // play
 	tcpLossDetector *rtplossdetector.LossDetector // play
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver    // play
-	rtcpSender      *rtcpsender.RTCPSender        // record or backchannel
+	rtcpSender      *rtcpsender.RTCPSender        // record or back channel
 	onPacketRTP     OnPacketRTPFunc
 }
 
@@ -34,8 +33,7 @@ func newClientFormat(cm *clientMedia, forma format.Format) *clientFormat {
 }
 
 func (ct *clientFormat) start() {
-	if ct.cm.c.state == clientStateRecord ||
-		(ct.cm.media.Direction != nil && *ct.cm.media.Direction == description.MediaDirectionSendonly) {
+	if ct.cm.c.state == clientStateRecord || ct.cm.media.IsBackChannel {
 		ct.rtcpSender = rtcpsender.New(
 			ct.format.ClockRate(),
 			ct.cm.c.senderReportPeriod,

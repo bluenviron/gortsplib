@@ -93,8 +93,7 @@ func (cm *clientMedia) start() {
 		cm.writePacketRTPInQueue = cm.writePacketRTPInQueueUDP
 		cm.writePacketRTCPInQueue = cm.writePacketRTCPInQueueUDP
 
-		if cm.c.state == clientStateRecord ||
-			(cm.media.Direction != nil && *cm.media.Direction == description.MediaDirectionSendonly) {
+		if cm.c.state == clientStateRecord || cm.media.IsBackChannel {
 			cm.udpRTPListener.readFunc = cm.readRTPUDPRecord
 			cm.udpRTCPListener.readFunc = cm.readRTCPUDPRecord
 		} else {
@@ -109,8 +108,7 @@ func (cm *clientMedia) start() {
 			cm.c.tcpCallbackByChannel = make(map[int]readFunc)
 		}
 
-		if cm.c.state == clientStateRecord ||
-			(cm.media.Direction != nil && *cm.media.Direction == description.MediaDirectionSendonly) {
+		if cm.c.state == clientStateRecord || cm.media.IsBackChannel {
 			cm.c.tcpCallbackByChannel[cm.tcpChannel] = cm.readRTPTCPRecord
 			cm.c.tcpCallbackByChannel[cm.tcpChannel+1] = cm.readRTCPTCPRecord
 		} else {

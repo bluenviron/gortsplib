@@ -40,10 +40,6 @@ func transportModePtr(v headers.TransportMode) *headers.TransportMode {
 	return &v
 }
 
-func directionPtr(v description.MediaDirection) *description.MediaDirection {
-	return &v
-}
-
 func mediasToSDP(medias []*description.Media) []byte {
 	desc := &description.Session{
 		Medias: medias,
@@ -3388,9 +3384,9 @@ func TestClientPlayBackChannel(t *testing.T) {
 			Body: mediasToSDP([]*description.Media{
 				testH264Media,
 				{
-					Type:      description.MediaTypeAudio,
-					Formats:   []format.Format{&format.G711{}},
-					Direction: directionPtr(description.MediaDirectionSendonly),
+					Type:          description.MediaTypeAudio,
+					Formats:       []format.Format{&format.G711{}},
+					IsBackChannel: true,
 				},
 			}),
 		})
