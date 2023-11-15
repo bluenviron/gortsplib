@@ -20,6 +20,7 @@ Features:
     * Switch transport protocol automatically
     * Read selected media streams
     * Pause or seek without disconnecting from the server
+    * Write to ONVIF back channels
     * Get PTS (relative) timestamp of incoming packets
     * Get NTP (absolute) timestamp of incoming packets
   * Record (write)
@@ -58,6 +59,7 @@ Features:
 * [client-play-options](examples/client-play-options/main.go)
 * [client-play-pause](examples/client-play-pause/main.go)
 * [client-play-to-record](examples/client-play-to-record/main.go)
+* [client-play-backchannel](examples/client-play-backchannel/main.go)
 * [client-play-format-av1](examples/client-play-format-av1/main.go)
 * [client-play-format-g711](examples/client-play-format-g711/main.go)
 * [client-play-format-g722](examples/client-play-format-g722/main.go)

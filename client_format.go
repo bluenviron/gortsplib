@@ -20,7 +20,7 @@ type clientFormat struct {
 	udpReorderer    *rtpreorderer.Reorderer       // play
 	tcpLossDetector *rtplossdetector.LossDetector // play
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver    // play
-	rtcpSender      *rtcpsender.RTCPSender        // record
+	rtcpSender      *rtcpsender.RTCPSender        // record or back channel
 	onPacketRTP     OnPacketRTPFunc
 }
 
@@ -33,7 +33,17 @@ func newClientFormat(cm *clientMedia, forma format.Format) *clientFormat {
 }
 
 func (ct *clientFormat) start() {
-	if ct.cm.c.state == clientStatePlay {
+	if ct.cm.c.state == clientStateRecord || ct.cm.media.IsBackChannel {
+		ct.rtcpSender = rtcpsender.New(
+			ct.format.ClockRate(),
+			ct.cm.c.senderReportPeriod,
+			ct.cm.c.timeNow,
+			func(pkt rtcp.Packet) {
+				if !ct.cm.c.DisableRTCPSenderReports {
+					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
+				}
+			})
+	} else {
 		if ct.cm.udpRTPListener != nil {
 			ct.udpReorderer = rtpreorderer.New()
 		} else {
@@ -54,16 +64,6 @@ func (ct *clientFormat) start() {
 		if err != nil {
 			panic(err)
 		}
-	} else {
-		ct.rtcpSender = rtcpsender.New(
-			ct.format.ClockRate(),
-			ct.cm.c.senderReportPeriod,
-			ct.cm.c.timeNow,
-			func(pkt rtcp.Packet) {
-				if !ct.cm.c.DisableRTCPSenderReports {
-					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
-				}
-			})
 	}
 }
 

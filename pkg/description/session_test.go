@@ -51,7 +51,6 @@ var casesSession = []struct {
 			"a=rtpmap:97 H264/90000\r\n" +
 			"a=fmtp:97 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKy0A8ARPyo=,aO4Bniw=\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=recvonly\r\n" +
 			"a=control:rtsp://10.0.100.50/profile5/media.smp/trackID=a\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
@@ -70,9 +69,8 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type:      MediaTypeAudio,
-					Direction: MediaDirectionRecvonly,
-					Control:   "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
+					Type:    MediaTypeAudio,
+					Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
 					Formats: []format.Format{&format.G711{
 						MULaw: true,
 					}},
@@ -121,7 +119,6 @@ var casesSession = []struct {
 			"a=rtpmap:97 H264/90000\r\n" +
 			"a=fmtp:97 packetization-mode=1; profile-level-id=640028; sprop-parameter-sets=Z2QAKKy0A8ARPyo=,aO4Bniw=\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=recvonly\r\n" +
 			"a=control:trackID=2\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
@@ -140,9 +137,8 @@ var casesSession = []struct {
 					}},
 				},
 				{
-					Type:      MediaTypeAudio,
-					Direction: MediaDirectionRecvonly,
-					Control:   "trackID=2",
+					Type:    MediaTypeAudio,
+					Control: "trackID=2",
 					Formats: []format.Format{&format.G711{
 						MULaw: true,
 					}},
@@ -303,9 +299,9 @@ var casesSession = []struct {
 			Title: ``,
 			Medias: []*Media{
 				{
-					ID:        "audio",
-					Type:      MediaTypeAudio,
-					Direction: MediaDirectionSendonly,
+					ID:            "audio",
+					Type:          MediaTypeAudio,
+					IsBackChannel: true,
 					Formats: []format.Format{
 						&format.Opus{
 							PayloadTyp: 111,
@@ -371,9 +367,9 @@ var casesSession = []struct {
 					},
 				},
 				{
-					ID:        "video",
-					Type:      MediaTypeVideo,
-					Direction: MediaDirectionSendonly,
+					ID:            "video",
+					Type:          MediaTypeVideo,
+					IsBackChannel: true,
 					Formats: []format.Format{
 						&format.VP8{
 							PayloadTyp: 96,
@@ -500,11 +496,9 @@ var casesSession = []struct {
 			"c=IN IP4 0.0.0.0\r\n" +
 			"t=0 0\r\n" +
 			"m=video 0 RTP/AVP 26\r\n" +
-			"a=recvonly\r\n" +
 			"a=control:rtsp://192.168.0.1/video\r\n" +
 			"a=rtpmap:26 JPEG/90000\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=recvonly\r\n" +
 			"a=control:rtsp://192.168.0.1/audio\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
@@ -515,22 +509,20 @@ var casesSession = []struct {
 			Title: `RTSP Session with audiobackchannel`,
 			Medias: []*Media{
 				{
-					Type:      MediaTypeVideo,
-					Direction: MediaDirectionRecvonly,
-					Control:   "rtsp://192.168.0.1/video",
-					Formats:   []format.Format{&format.MJPEG{}},
+					Type:    MediaTypeVideo,
+					Control: "rtsp://192.168.0.1/video",
+					Formats: []format.Format{&format.MJPEG{}},
 				},
 				{
-					Type:      MediaTypeAudio,
-					Direction: MediaDirectionRecvonly,
-					Control:   "rtsp://192.168.0.1/audio",
-					Formats:   []format.Format{&format.G711{MULaw: true}},
+					Type:    MediaTypeAudio,
+					Control: "rtsp://192.168.0.1/audio",
+					Formats: []format.Format{&format.G711{MULaw: true}},
 				},
 				{
-					Type:      MediaTypeAudio,
-					Direction: MediaDirectionSendonly,
-					Control:   "rtsp://192.168.0.1/audioback",
-					Formats:   []format.Format{&format.G711{MULaw: true}},
+					Type:          MediaTypeAudio,
+					IsBackChannel: true,
+					Control:       "rtsp://192.168.0.1/audioback",
+					Formats:       []format.Format{&format.G711{MULaw: true}},
 				},
 			},
 		},

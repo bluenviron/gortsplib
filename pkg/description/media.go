@@ -41,20 +41,13 @@ func getAttribute(attributes []psdp.Attribute, key string) string {
 	return ""
 }
 
-func getDirection(attributes []psdp.Attribute) MediaDirection {
+func isBackChannel(attributes []psdp.Attribute) bool {
 	for _, attr := range attributes {
-		switch attr.Key {
-		case "sendonly":
-			return MediaDirectionSendonly
-
-		case "recvonly":
-			return MediaDirectionRecvonly
-
-		case "sendrecv":
-			return MediaDirectionSendrecv
+		if attr.Key == "sendonly" {
+			return true
 		}
 	}
-	return ""
+	return false
 }
 
 func getFormatAttribute(attributes []psdp.Attribute, payloadType uint8, key string) string {
@@ -116,20 +109,10 @@ func isAlphaNumeric(v string) bool {
 	return true
 }
 
-// MediaDirection is the direction of a media stream.
-type MediaDirection string
-
-// standard directions.
-const (
-	MediaDirectionSendonly MediaDirection = "sendonly"
-	MediaDirectionRecvonly MediaDirection = "recvonly"
-	MediaDirectionSendrecv MediaDirection = "sendrecv"
-)
-
 // MediaType is the type of a media stream.
 type MediaType string
 
-// standard media stream types.
+// media types.
 const (
 	MediaTypeVideo       MediaType = "video"
 	MediaTypeAudio       MediaType = "audio"
@@ -145,8 +128,8 @@ type Media struct {
 	// Media ID (optional).
 	ID string
 
-	// Direction of the stream (optional).
-	Direction MediaDirection
+	// Whether this media is a back channel.
+	IsBackChannel bool
 
 	// Control attribute.
 	Control string
@@ -164,7 +147,7 @@ func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 		return fmt.Errorf("invalid mid: %v", m.ID)
 	}
 
-	m.Direction = getDirection(md.Attributes)
+	m.IsBackChannel = isBackChannel(md.Attributes)
 	m.Control = getAttribute(md.Attributes, "control")
 
 	m.Formats = nil
@@ -211,9 +194,9 @@ func (m Media) Marshal() *psdp.MediaDescription {
 		})
 	}
 
-	if m.Direction != "" {
+	if m.IsBackChannel {
 		md.Attributes = append(md.Attributes, psdp.Attribute{
-			Key: string(m.Direction),
+			Key: "sendonly",
 		})
 	}
 

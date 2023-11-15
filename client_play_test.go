@@ -3337,3 +3337,189 @@ func TestClientPlayPacketNTP(t *testing.T) {
 
 	<-recv
 }
+
+func TestClientPlayBackChannel(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+
+		nconn, err := l.Accept()
+		require.NoError(t, err)
+		defer nconn.Close()
+		conn := conn.NewConn(nconn)
+
+		req, err := conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Options, req.Method)
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err)
+
+		req, err = conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, base.HeaderValue{"www.onvif.org/ver20/backchannel"}, req.Header["Require"])
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+			},
+			Body: mediasToSDP([]*description.Media{
+				testH264Media,
+				{
+					Type:          description.MediaTypeAudio,
+					Formats:       []format.Format{&format.G711{}},
+					IsBackChannel: true,
+				},
+			}),
+		})
+		require.NoError(t, err)
+
+		req, err = conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, base.HeaderValue(nil), req.Header["Require"])
+
+		var inTH headers.Transport
+		err = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err)
+
+		th := headers.Transport{
+			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+			Protocol:       headers.TransportProtocolTCP,
+			InterleavedIDs: inTH.InterleavedIDs,
+		}
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Marshal(),
+			},
+		})
+		require.NoError(t, err)
+
+		req, err = conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, base.HeaderValue{"www.onvif.org/ver20/backchannel"}, req.Header["Require"])
+
+		err = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err)
+
+		th = headers.Transport{
+			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+			Protocol:       headers.TransportProtocolTCP,
+			InterleavedIDs: inTH.InterleavedIDs,
+		}
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Marshal(),
+			},
+		})
+		require.NoError(t, err)
+
+		req, err = conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Play, req.Method)
+		require.Equal(t, base.HeaderValue{"www.onvif.org/ver20/backchannel"}, req.Header["Require"])
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err)
+
+		f, err := conn.ReadInterleavedFrame()
+		require.NoError(t, err)
+		require.Equal(t, 2, f.Channel)
+
+		f, err = conn.ReadInterleavedFrame()
+		require.NoError(t, err)
+		require.Equal(t, 3, f.Channel)
+
+		packets, err := rtcp.Unmarshal(f.Payload)
+		require.NoError(t, err)
+
+		sr, ok := packets[0].(*rtcp.SenderReport)
+		require.Equal(t, true, ok)
+		require.Equal(t, uint32(0x38F27A2F), sr.SSRC)
+		require.Equal(t, uint32(1), sr.PacketCount)
+		require.Equal(t, uint32(4), sr.OctetCount)
+
+		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+			Channel: 0,
+			Payload: testRTPPacketMarshaled,
+		}, make([]byte, 1024))
+		require.NoError(t, err)
+
+		req, err = conn.ReadRequest()
+		require.NoError(t, err)
+		require.Equal(t, base.Teardown, req.Method)
+		require.Equal(t, base.HeaderValue{"www.onvif.org/ver20/backchannel"}, req.Header["Require"])
+
+		err = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err)
+	}()
+
+	c := Client{
+		RequestBackChannels:  true,
+		Transport:            transportPtr(TransportTCP),
+		senderReportPeriod:   500 * time.Millisecond,
+		receiverReportPeriod: 750 * time.Millisecond,
+	}
+
+	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	err = c.Start(u.Scheme, u.Host)
+	require.NoError(t, err)
+	defer c.Close()
+
+	sd, _, err := c.Describe(u)
+	require.NoError(t, err)
+
+	err = c.SetupAll(sd.BaseURL, sd.Medias)
+	require.NoError(t, err)
+
+	recv := make(chan struct{})
+
+	c.OnPacketRTP(sd.Medias[0], sd.Medias[0].Formats[0], func(pkt *rtp.Packet) {
+		close(recv)
+	})
+
+	_, err = c.Play(nil)
+	require.NoError(t, err)
+
+	err = c.WritePacketRTP(sd.Medias[1], &rtp.Packet{
+		Header: rtp.Header{
+			Version:     2,
+			PayloadType: 8,
+			CSRC:        []uint32{},
+			SSRC:        0x38F27A2F,
+		},
+		Payload: []byte{1, 2, 3, 4},
+	})
+	require.NoError(t, err)
+
+	<-recv
+}

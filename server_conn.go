@@ -32,9 +32,9 @@ func serverSideDescription(d *description.Session, contentBase *base.URL) *descr
 
 	for i, medi := range d.Medias {
 		mc := &description.Media{
-			Type: medi.Type,
-			ID:   medi.ID,
-			// Direction: skipped for the moment
+			Type:          medi.Type,
+			ID:            medi.ID,
+			IsBackChannel: medi.IsBackChannel,
 			// we have to use trackID=number in order to support clients
 			// like the Grandstream GXV3500.
 			Control: "trackID=" + strconv.FormatInt(int64(i), 10),
