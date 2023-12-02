@@ -2600,6 +2600,63 @@ var cases = []struct {
 			}},
 		},
 	},
+	{
+		"issue gortsplib/474",
+		[]byte("m=metadata 0 RTP/AVP 98\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:1000\r\n" +
+			"a=rtpmap:98 METADATA/90000\r\n" +
+			"a=control:track2\r\n" +
+			"a=x-onvif-track:track2\r\n" +
+			"a=x-bufferdelay:1.000000\r\n"),
+		[]byte("v=0\r\n" +
+			"o= 0 0   \r\n" +
+			"m=metadata 0 RTP/AVP 98\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:1000\r\n" +
+			"a=rtpmap:98 METADATA/90000\r\n" +
+			"a=control:track2\r\n" +
+			"a=x-onvif-track:track2\r\n" +
+			"a=x-bufferdelay:1.000000\r\n"),
+		SessionDescription{
+			MediaDescriptions: []*psdp.MediaDescription{{
+				MediaName: psdp.MediaName{
+					Media:   "metadata",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"98"},
+				},
+				ConnectionInformation: &psdp.ConnectionInformation{
+					NetworkType: "IN",
+					AddressType: "IP4",
+					Address: &psdp.Address{
+						Address: "0.0.0.0",
+					},
+				},
+				Bandwidth: []psdp.Bandwidth{{
+					Type:      "AS",
+					Bandwidth: 1000,
+				}},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "98 METADATA/90000",
+					},
+					{
+						Key:   "control",
+						Value: "track2",
+					},
+					{
+						Key:   "x-onvif-track",
+						Value: "track2",
+					},
+					{
+						Key:   "x-bufferdelay",
+						Value: "1.000000",
+					},
+				},
+			}},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {

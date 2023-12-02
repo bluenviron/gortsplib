@@ -425,7 +425,8 @@ func (s *SessionDescription) unmarshalMediaDescription(value string) error {
 	if fields[0] != "video" &&
 		fields[0] != "audio" &&
 		fields[0] != "application" &&
-		!strings.HasPrefix(fields[0], "application/") {
+		!strings.HasPrefix(fields[0], "application/") &&
+		fields[0] != "metadata" {
 		return fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
 	newMediaDesc.MediaName.Media = fields[0]
