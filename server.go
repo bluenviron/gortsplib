@@ -218,22 +218,24 @@ func (s *Server) Start() error {
 			return fmt.Errorf("RTP and RTCP ports must be consecutive")
 		}
 
-		s.udpRTPListener, err = newServerUDPListener(
-			s.ListenPacket,
-			s.WriteTimeout,
-			false,
-			s.UDPRTPAddress,
-		)
+		s.udpRTPListener = &serverUDPListener{
+			listenPacket:    s.ListenPacket,
+			writeTimeout:    s.WriteTimeout,
+			multicastEnable: false,
+			address:         s.UDPRTPAddress,
+		}
+		err = s.udpRTPListener.initialize()
 		if err != nil {
 			return err
 		}
 
-		s.udpRTCPListener, err = newServerUDPListener(
-			s.ListenPacket,
-			s.WriteTimeout,
-			false,
-			s.UDPRTCPAddress,
-		)
+		s.udpRTCPListener = &serverUDPListener{
+			listenPacket:    s.ListenPacket,
+			writeTimeout:    s.WriteTimeout,
+			multicastEnable: false,
+			address:         s.UDPRTCPAddress,
+		}
+		err = s.udpRTCPListener.initialize()
 		if err != nil {
 			s.udpRTPListener.close()
 			return err
@@ -299,8 +301,10 @@ func (s *Server) Start() error {
 	s.chCloseSession = make(chan *ServerSession)
 	s.chGetMulticastIP = make(chan chGetMulticastIPReq)
 
-	var err error
-	s.tcpListener, err = newServerTCPListener(s)
+	s.tcpListener = &serverTCPListener{
+		s: s,
+	}
+	err := s.tcpListener.initialize()
 	if err != nil {
 		if s.udpRTPListener != nil {
 			s.udpRTPListener.close()
@@ -356,7 +360,11 @@ func (s *Server) runInner() error {
 			return err
 
 		case nconn := <-s.chNewConn:
-			sc := newServerConn(s, nconn)
+			sc := &ServerConn{
+				s:     s,
+				nconn: nconn,
+			}
+			sc.initialize()
 			s.conns[sc] = struct{}{}
 
 		case sc := <-s.chCloseConn:
@@ -400,7 +408,11 @@ func (s *Server) runInner() error {
 					continue
 				}
 
-				ss := newServerSession(s, req.sc)
+				ss := &ServerSession{
+					s:      s,
+					author: req.sc,
+				}
+				ss.initialize()
 				s.sessions[ss.secretID] = ss
 
 				select {

@@ -14,7 +14,9 @@ import (
 )
 
 type clientMedia struct {
-	c                      *Client
+	c            *Client
+	onPacketRTCP OnPacketRTCPFunc
+
 	media                  *description.Media
 	formats                map[uint8]*clientFormat
 	tcpChannel             int
@@ -25,14 +27,6 @@ type clientMedia struct {
 	tcpBuffer              []byte
 	writePacketRTPInQueue  func([]byte)
 	writePacketRTCPInQueue func([]byte)
-	onPacketRTCP           OnPacketRTCPFunc
-}
-
-func newClientMedia(c *Client) *clientMedia {
-	return &clientMedia{
-		c:            c,
-		onPacketRTCP: func(rtcp.Packet) {},
-	}
 }
 
 func (cm *clientMedia) close() {
@@ -49,22 +43,24 @@ func (cm *clientMedia) allocateUDPListeners(
 	rtcpAddress string,
 ) error {
 	if rtpAddress != ":0" {
-		l1, err := newClientUDPListener(
-			cm.c,
-			multicastEnable,
-			multicastSourceIP,
-			rtpAddress,
-		)
+		l1 := &clientUDPListener{
+			c:                 cm.c,
+			multicastEnable:   multicastEnable,
+			multicastSourceIP: multicastSourceIP,
+			address:           rtpAddress,
+		}
+		err := l1.initialize()
 		if err != nil {
 			return err
 		}
 
-		l2, err := newClientUDPListener(
-			cm.c,
-			multicastEnable,
-			multicastSourceIP,
-			rtcpAddress,
-		)
+		l2 := &clientUDPListener{
+			c:                 cm.c,
+			multicastEnable:   multicastEnable,
+			multicastSourceIP: multicastSourceIP,
+			address:           rtcpAddress,
+		}
+		err = l2.initialize()
 		if err != nil {
 			l1.close()
 			return err
@@ -75,7 +71,7 @@ func (cm *clientMedia) allocateUDPListeners(
 	}
 
 	var err error
-	cm.udpRTPListener, cm.udpRTCPListener, err = newClientUDPListenerPair(cm.c)
+	cm.udpRTPListener, cm.udpRTCPListener, err = clientAllocateUDPListenerPair(cm.c)
 	return err
 }
 
@@ -84,7 +80,11 @@ func (cm *clientMedia) setMedia(medi *description.Media) {
 
 	cm.formats = make(map[uint8]*clientFormat)
 	for _, forma := range medi.Formats {
-		cm.formats[forma.PayloadType()] = newClientFormat(cm, forma)
+		cm.formats[forma.PayloadType()] = &clientFormat{
+			cm:          cm,
+			format:      forma,
+			onPacketRTP: func(*rtp.Packet) {},
+		}
 	}
 }
 

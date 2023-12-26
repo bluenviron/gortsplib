@@ -27,15 +27,10 @@ type serverConnReader struct {
 	chReadDone chan struct{}
 }
 
-func newServerConnReader(sc *ServerConn) *serverConnReader {
-	cr := &serverConnReader{
-		sc:         sc,
-		chReadDone: make(chan struct{}),
-	}
+func (cr *serverConnReader) initialize() {
+	cr.chReadDone = make(chan struct{})
 
 	go cr.run()
-
-	return cr
 }
 
 func (cr *serverConnReader) wait() {

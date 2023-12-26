@@ -177,10 +177,10 @@ func (s ServerSessionState) String() string {
 
 // ServerSession is a server-side RTSP session.
 type ServerSession struct {
-	s        *Server
-	secretID string // must not be shared, allows to take ownership of the session
-	author   *ServerConn
+	s      *Server
+	author *ServerConn
 
+	secretID              string // must not be shared, allows to take ownership of the session
 	ctx                   context.Context
 	ctxCancel             func()
 	bytesReceived         *uint64
@@ -209,35 +209,26 @@ type ServerSession struct {
 	chStartWriter   chan struct{}
 }
 
-func newServerSession(
-	s *Server,
-	author *ServerConn,
-) *ServerSession {
-	ctx, ctxCancel := context.WithCancel(s.ctx)
+func (ss *ServerSession) initialize() {
+	ctx, ctxCancel := context.WithCancel(ss.s.ctx)
 
 	// use an UUID without dashes, since dashes confuse some clients.
 	secretID := strings.ReplaceAll(uuid.New().String(), "-", "")
 
-	ss := &ServerSession{
-		s:                   s,
-		secretID:            secretID,
-		author:              author,
-		ctx:                 ctx,
-		ctxCancel:           ctxCancel,
-		bytesReceived:       new(uint64),
-		bytesSent:           new(uint64),
-		conns:               make(map[*ServerConn]struct{}),
-		lastRequestTime:     s.timeNow(),
-		udpCheckStreamTimer: emptyTimer(),
-		chHandleRequest:     make(chan sessionRequestReq),
-		chRemoveConn:        make(chan *ServerConn),
-		chStartWriter:       make(chan struct{}),
-	}
+	ss.secretID = secretID
+	ss.ctx = ctx
+	ss.ctxCancel = ctxCancel
+	ss.bytesReceived = new(uint64)
+	ss.bytesSent = new(uint64)
+	ss.conns = make(map[*ServerConn]struct{})
+	ss.lastRequestTime = ss.s.timeNow()
+	ss.udpCheckStreamTimer = emptyTimer()
+	ss.chHandleRequest = make(chan sessionRequestReq)
+	ss.chRemoveConn = make(chan *ServerConn)
+	ss.chStartWriter = make(chan struct{})
 
-	s.wg.Add(1)
+	ss.s.wg.Add(1)
 	go ss.run()
-
-	return ss
 }
 
 // Close closes the ServerSession.
@@ -831,7 +822,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			res.Header = make(base.Header)
 		}
 
-		sm := newServerSessionMedia(ss, medi)
+		sm := &serverSessionMedia{
+			ss:           ss,
+			media:        medi,
+			onPacketRTCP: func(p rtcp.Packet) {},
+		}
+		sm.initialize()
 
 		switch transport {
 		case TransportUDP:

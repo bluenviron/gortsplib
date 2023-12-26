@@ -25,28 +25,22 @@ type mpegtsMuxer struct {
 	dtsExtractor *h264.DTSExtractor
 }
 
-// newMPEGTSMuxer allocates a mpegtsMuxer.
-func newMPEGTSMuxer(sps []byte, pps []byte) (*mpegtsMuxer, error) {
-	f, err := os.Create("mystream.ts")
+// initialize initializes a mpegtsMuxer.
+func (e *mpegtsMuxer) initialize() error {
+	var err error
+	e.f, err = os.Create("mystream.ts")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	b := bufio.NewWriter(f)
+	e.b = bufio.NewWriter(e.f)
 
-	track := &mpegts.Track{
+	e.track = &mpegts.Track{
 		Codec: &mpegts.CodecH264{},
 	}
 
-	w := mpegts.NewWriter(b, []*mpegts.Track{track})
+	e.w = mpegts.NewWriter(e.b, []*mpegts.Track{e.track})
 
-	return &mpegtsMuxer{
-		sps:   sps,
-		pps:   pps,
-		f:     f,
-		b:     b,
-		w:     w,
-		track: track,
-	}, nil
+	return nil
 }
 
 // close closes all the mpegtsMuxer resources.
@@ -55,8 +49,8 @@ func (e *mpegtsMuxer) close() {
 	e.f.Close()
 }
 
-// encode encodes a H264 access unit into MPEG-TS.
-func (e *mpegtsMuxer) encode(au [][]byte, pts time.Duration) error {
+// writeH264 writes a H264 access unit into MPEG-TS.
+func (e *mpegtsMuxer) writeH264(au [][]byte, pts time.Duration) error {
 	// prepend an AUD. This is required by some players
 	filteredAU := [][]byte{
 		{byte(h264.NALUTypeAccessUnitDelimiter), 240},

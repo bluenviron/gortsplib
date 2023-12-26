@@ -25,39 +25,31 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 	}
 }
 
-type serverUDPListener struct {
-	pc           net.PacketConn
-	listenIP     net.IP
-	writeTimeout time.Duration
-	clientsMutex sync.RWMutex
-	clients      map[clientAddr]readFunc
-
-	done chan struct{}
-}
-
-func newServerUDPListenerMulticastPair(
+func serverAllocateUDPListenerMulticastPair(
 	listenPacket func(network, address string) (net.PacketConn, error),
 	writeTimeout time.Duration,
 	multicastRTPPort int,
 	multicastRTCPPort int,
 	ip net.IP,
 ) (*serverUDPListener, *serverUDPListener, error) {
-	rtpl, err := newServerUDPListener(
-		listenPacket,
-		writeTimeout,
-		true,
-		net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTPPort), 10)),
-	)
+	rtpl := &serverUDPListener{
+		listenPacket:    listenPacket,
+		writeTimeout:    writeTimeout,
+		multicastEnable: true,
+		address:         net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTPPort), 10)),
+	}
+	err := rtpl.initialize()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rtcpl, err := newServerUDPListener(
-		listenPacket,
-		writeTimeout,
-		true,
-		net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTCPPort), 10)),
-	)
+	rtcpl := &serverUDPListener{
+		listenPacket:    listenPacket,
+		writeTimeout:    writeTimeout,
+		multicastEnable: true,
+		address:         net.JoinHostPort(ip.String(), strconv.FormatInt(int64(multicastRTCPPort), 10)),
+	}
+	err = rtcpl.initialize()
 	if err != nil {
 		rtpl.close()
 		return nil, nil, err
@@ -66,52 +58,54 @@ func newServerUDPListenerMulticastPair(
 	return rtpl, rtcpl, nil
 }
 
-func newServerUDPListener(
-	listenPacket func(network, address string) (net.PacketConn, error),
-	writeTimeout time.Duration,
-	multicastEnable bool,
-	address string,
-) (*serverUDPListener, error) {
-	var pc packetConn
-	var listenIP net.IP
-	if multicastEnable {
+type serverUDPListener struct {
+	listenPacket    func(network, address string) (net.PacketConn, error)
+	writeTimeout    time.Duration
+	multicastEnable bool
+	address         string
+
+	pc           packetConn
+	listenIP     net.IP
+	clientsMutex sync.RWMutex
+	clients      map[clientAddr]readFunc
+
+	done chan struct{}
+}
+
+func (u *serverUDPListener) initialize() error {
+	if u.multicastEnable {
 		var err error
-		pc, err = multicast.NewMultiConn(address, false, listenPacket)
+		u.pc, err = multicast.NewMultiConn(u.address, false, u.listenPacket)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		host, _, err := net.SplitHostPort(address)
+		host, _, err := net.SplitHostPort(u.address)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		listenIP = net.ParseIP(host)
+		u.listenIP = net.ParseIP(host)
 	} else {
-		tmp, err := listenPacket(restrictNetwork("udp", address))
+		tmp, err := u.listenPacket(restrictNetwork("udp", u.address))
 		if err != nil {
-			return nil, err
+			return err
 		}
-		pc = tmp.(*net.UDPConn)
-		listenIP = tmp.LocalAddr().(*net.UDPAddr).IP
+		u.pc = tmp.(*net.UDPConn)
+		u.listenIP = tmp.LocalAddr().(*net.UDPAddr).IP
 	}
 
-	err := pc.SetReadBuffer(udpKernelReadBufferSize)
+	err := u.pc.SetReadBuffer(udpKernelReadBufferSize)
 	if err != nil {
-		pc.Close()
-		return nil, err
+		u.pc.Close()
+		return err
 	}
 
-	u := &serverUDPListener{
-		pc:           pc,
-		listenIP:     listenIP,
-		clients:      make(map[clientAddr]readFunc),
-		writeTimeout: writeTimeout,
-		done:         make(chan struct{}),
-	}
+	u.clients = make(map[clientAddr]readFunc)
+	u.done = make(chan struct{})
 
 	go u.run()
 
-	return u, nil
+	return nil
 }
 
 func (u *serverUDPListener) close() {

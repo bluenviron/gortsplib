@@ -51,7 +51,12 @@ func main() {
 	}
 
 	// setup H265 -> MPEG-TS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(forma.VPS, forma.SPS, forma.PPS)
+	mpegtsMuxer := &mpegtsMuxer{
+		vps: forma.VPS,
+		sps: forma.SPS,
+		pps: forma.PPS,
+	}
+	mpegtsMuxer.initialize()
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +86,7 @@ func main() {
 		}
 
 		// encode the access unit into MPEG-TS
-		err = mpegtsMuxer.encode(au, pts)
+		err = mpegtsMuxer.writeH265(au, pts)
 		if err != nil {
 			log.Printf("ERR: %v", err)
 			return

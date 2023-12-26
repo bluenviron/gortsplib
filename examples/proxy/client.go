@@ -20,15 +20,9 @@ type client struct {
 	s *server
 }
 
-func newClient(s *server) *client {
-	c := &client{
-		s: s,
-	}
-
+func (c *client) initialize() {
 	// start a separated routine
 	go c.run()
-
-	return c
 }
 
 func (c *client) run() {

@@ -51,7 +51,11 @@ func main() {
 	}
 
 	// setup H264 -> MPEG-TS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(forma.SPS, forma.PPS)
+	mpegtsMuxer := &mpegtsMuxer{
+		sps: forma.SPS,
+		pps: forma.PPS,
+	}
+	mpegtsMuxer.initialize()
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +85,7 @@ func main() {
 		}
 
 		// encode the access unit into MPEG-TS
-		err = mpegtsMuxer.encode(au, pts)
+		err = mpegtsMuxer.writeH264(au, pts)
 		if err != nil {
 			log.Printf("ERR: %v", err)
 			return

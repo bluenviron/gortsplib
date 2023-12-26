@@ -29,34 +29,31 @@ type h265Decoder struct {
 	dstFramePtr []uint8
 }
 
-// newH265Decoder allocates a new h265Decoder.
-func newH265Decoder() (*h265Decoder, error) {
+// initialize initializes a h265Decoder.
+func (d *h265Decoder) initialize() error {
 	codec := C.avcodec_find_decoder(C.AV_CODEC_ID_H265)
 	if codec == nil {
-		return nil, fmt.Errorf("avcodec_find_decoder() failed")
+		return fmt.Errorf("avcodec_find_decoder() failed")
 	}
 
-	codecCtx := C.avcodec_alloc_context3(codec)
-	if codecCtx == nil {
-		return nil, fmt.Errorf("avcodec_alloc_context3() failed")
+	d.codecCtx = C.avcodec_alloc_context3(codec)
+	if d.codecCtx == nil {
+		return fmt.Errorf("avcodec_alloc_context3() failed")
 	}
 
-	res := C.avcodec_open2(codecCtx, codec, nil)
+	res := C.avcodec_open2(d.codecCtx, codec, nil)
 	if res < 0 {
-		C.avcodec_close(codecCtx)
-		return nil, fmt.Errorf("avcodec_open2() failed")
+		C.avcodec_close(d.codecCtx)
+		return fmt.Errorf("avcodec_open2() failed")
 	}
 
-	srcFrame := C.av_frame_alloc()
-	if srcFrame == nil {
-		C.avcodec_close(codecCtx)
-		return nil, fmt.Errorf("av_frame_alloc() failed")
+	d.srcFrame = C.av_frame_alloc()
+	if d.srcFrame == nil {
+		C.avcodec_close(d.codecCtx)
+		return fmt.Errorf("av_frame_alloc() failed")
 	}
 
-	return &h265Decoder{
-		codecCtx: codecCtx,
-		srcFrame: srcFrame,
-	}, nil
+	return nil
 }
 
 // close closes the decoder.

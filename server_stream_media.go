@@ -5,28 +5,24 @@ import (
 )
 
 type serverStreamMedia struct {
-	st              *ServerStream
-	media           *description.Media
-	trackID         int
+	st      *ServerStream
+	media   *description.Media
+	trackID int
+
 	formats         map[uint8]*serverStreamFormat
 	multicastWriter *serverMulticastWriter
 }
 
-func newServerStreamMedia(st *ServerStream, medi *description.Media, trackID int) *serverStreamMedia {
-	sm := &serverStreamMedia{
-		st:      st,
-		media:   medi,
-		trackID: trackID,
-	}
-
+func (sm *serverStreamMedia) initialize() {
 	sm.formats = make(map[uint8]*serverStreamFormat)
-	for _, forma := range medi.Formats {
-		sm.formats[forma.PayloadType()] = newServerStreamFormat(
-			sm,
-			forma)
+	for _, forma := range sm.media.Formats {
+		sf := &serverStreamFormat{
+			sm:     sm,
+			format: forma,
+		}
+		sf.initialize()
+		sm.formats[forma.PayloadType()] = sf
 	}
-
-	return sm
 }
 
 func (sm *serverStreamMedia) close() {

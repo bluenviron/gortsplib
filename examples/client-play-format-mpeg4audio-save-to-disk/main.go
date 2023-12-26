@@ -50,7 +50,10 @@ func main() {
 	}
 
 	// setup MPEG-4 audio -> MPEG-TS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(forma.Config)
+	mpegtsMuxer := &mpegtsMuxer{
+		config: forma.Config,
+	}
+	mpegtsMuxer.initialize()
 	if err != nil {
 		panic(err)
 	}
@@ -78,7 +81,7 @@ func main() {
 		}
 
 		// encode access units into MPEG-TS
-		err = mpegtsMuxer.encode(aus, pts)
+		err = mpegtsMuxer.writeMPEG4Audio(aus, pts)
 		if err != nil {
 			log.Printf("ERR: %v", err)
 			return

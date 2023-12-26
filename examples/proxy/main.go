@@ -9,11 +9,13 @@ import "log"
 
 func main() {
 	// allocate the server.
-	s := newServer()
+	s := &server{}
+	s.initialize()
 
 	// allocate the client.
 	// give client access to the server.
-	newClient(s)
+	c := &client{s: s}
+	c.initialize()
 
 	// start server and wait until a fatal error
 	log.Printf("server is ready")
