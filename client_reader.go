@@ -8,19 +8,14 @@ import (
 )
 
 type clientReader struct {
-	c                      *Client
+	c *Client
+
 	mutex                  sync.Mutex
 	allowInterleavedFrames bool
 }
 
-func newClientReader(c *Client) *clientReader {
-	r := &clientReader{
-		c: c,
-	}
-
+func (r *clientReader) start() {
 	go r.run()
-
-	return r
 }
 
 func (r *clientReader) setAllowInterleavedFrames(v bool) {

@@ -15,9 +15,7 @@ type server struct {
 	stream *gortsplib.ServerStream
 }
 
-func newServer() *server {
-	s := &server{}
-
+func (s *server) initialize() {
 	// configure the server
 	s.s = &gortsplib.Server{
 		Handler:           s,
@@ -28,8 +26,6 @@ func newServer() *server {
 		MulticastRTPPort:  8002,
 		MulticastRTCPPort: 8003,
 	}
-
-	return s
 }
 
 // called when a connection is opened.

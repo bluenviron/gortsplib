@@ -7,6 +7,8 @@ import (
 )
 
 type serverMulticastWriter struct {
+	s *Server
+
 	rtpl     *serverUDPListener
 	rtcpl    *serverUDPListener
 	writer   asyncProcessor
@@ -14,21 +16,21 @@ type serverMulticastWriter struct {
 	rtcpAddr *net.UDPAddr
 }
 
-func newServerMulticastWriter(s *Server) (*serverMulticastWriter, error) {
-	ip, err := s.getMulticastIP()
+func (h *serverMulticastWriter) initialize() error {
+	ip, err := h.s.getMulticastIP()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	rtpl, rtcpl, err := newServerUDPListenerMulticastPair(
-		s.ListenPacket,
-		s.WriteTimeout,
-		s.MulticastRTPPort,
-		s.MulticastRTCPPort,
+	rtpl, rtcpl, err := serverAllocateUDPListenerMulticastPair(
+		h.s.ListenPacket,
+		h.s.WriteTimeout,
+		h.s.MulticastRTPPort,
+		h.s.MulticastRTCPPort,
 		ip,
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	rtpAddr := &net.UDPAddr{
@@ -41,17 +43,15 @@ func newServerMulticastWriter(s *Server) (*serverMulticastWriter, error) {
 		Port: rtcpl.port(),
 	}
 
-	h := &serverMulticastWriter{
-		rtpl:     rtpl,
-		rtcpl:    rtcpl,
-		rtpAddr:  rtpAddr,
-		rtcpAddr: rtcpAddr,
-	}
+	h.rtpl = rtpl
+	h.rtcpl = rtcpl
+	h.rtpAddr = rtpAddr
+	h.rtcpAddr = rtcpAddr
 
-	h.writer.allocateBuffer(s.WriteQueueSize)
+	h.writer.allocateBuffer(h.s.WriteQueueSize)
 	h.writer.start()
 
-	return h, nil
+	return nil
 }
 
 func (h *serverMulticastWriter) close() {

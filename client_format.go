@@ -15,50 +15,43 @@ import (
 )
 
 type clientFormat struct {
-	cm              *clientMedia
-	format          format.Format
+	cm          *clientMedia
+	format      format.Format
+	onPacketRTP OnPacketRTPFunc
+
 	udpReorderer    *rtpreorderer.Reorderer       // play
 	tcpLossDetector *rtplossdetector.LossDetector // play
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver    // play
 	rtcpSender      *rtcpsender.RTCPSender        // record or back channel
-	onPacketRTP     OnPacketRTPFunc
 }
 
-func newClientFormat(cm *clientMedia, forma format.Format) *clientFormat {
-	return &clientFormat{
-		cm:          cm,
-		format:      forma,
-		onPacketRTP: func(*rtp.Packet) {},
-	}
-}
-
-func (ct *clientFormat) start() {
-	if ct.cm.c.state == clientStateRecord || ct.cm.media.IsBackChannel {
-		ct.rtcpSender = rtcpsender.New(
-			ct.format.ClockRate(),
-			ct.cm.c.senderReportPeriod,
-			ct.cm.c.timeNow,
+func (cf *clientFormat) start() {
+	if cf.cm.c.state == clientStateRecord || cf.cm.media.IsBackChannel {
+		cf.rtcpSender = rtcpsender.New(
+			cf.format.ClockRate(),
+			cf.cm.c.senderReportPeriod,
+			cf.cm.c.timeNow,
 			func(pkt rtcp.Packet) {
-				if !ct.cm.c.DisableRTCPSenderReports {
-					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
+				if !cf.cm.c.DisableRTCPSenderReports {
+					cf.cm.c.WritePacketRTCP(cf.cm.media, pkt) //nolint:errcheck
 				}
 			})
 	} else {
-		if ct.cm.udpRTPListener != nil {
-			ct.udpReorderer = rtpreorderer.New()
+		if cf.cm.udpRTPListener != nil {
+			cf.udpReorderer = rtpreorderer.New()
 		} else {
-			ct.tcpLossDetector = rtplossdetector.New()
+			cf.tcpLossDetector = rtplossdetector.New()
 		}
 
 		var err error
-		ct.rtcpReceiver, err = rtcpreceiver.New(
-			ct.format.ClockRate(),
+		cf.rtcpReceiver, err = rtcpreceiver.New(
+			cf.format.ClockRate(),
 			nil,
-			ct.cm.c.receiverReportPeriod,
-			ct.cm.c.timeNow,
+			cf.cm.c.receiverReportPeriod,
+			cf.cm.c.timeNow,
 			func(pkt rtcp.Packet) {
-				if ct.cm.udpRTPListener != nil {
-					ct.cm.c.WritePacketRTCP(ct.cm.media, pkt) //nolint:errcheck
+				if cf.cm.udpRTPListener != nil {
+					cf.cm.c.WritePacketRTCP(cf.cm.media, pkt) //nolint:errcheck
 				}
 			})
 		if err != nil {
@@ -67,22 +60,22 @@ func (ct *clientFormat) start() {
 	}
 }
 
-func (ct *clientFormat) stop() {
-	if ct.rtcpReceiver != nil {
-		ct.rtcpReceiver.Close()
-		ct.rtcpReceiver = nil
+func (cf *clientFormat) stop() {
+	if cf.rtcpReceiver != nil {
+		cf.rtcpReceiver.Close()
+		cf.rtcpReceiver = nil
 	}
 
-	if ct.rtcpSender != nil {
-		ct.rtcpSender.Close()
+	if cf.rtcpSender != nil {
+		cf.rtcpSender.Close()
 	}
 }
 
-func (ct *clientFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
-	ct.rtcpSender.ProcessPacket(pkt, ntp, ct.format.PTSEqualsDTS(pkt))
+func (cf *clientFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
+	cf.rtcpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
 
-	ok := ct.cm.c.writer.push(func() {
-		ct.cm.writePacketRTPInQueue(byts)
+	ok := cf.cm.c.writer.push(func() {
+		cf.cm.writePacketRTPInQueue(byts)
 	})
 	if !ok {
 		return liberrors.ErrClientWriteQueueFull{}
@@ -91,40 +84,40 @@ func (ct *clientFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Ti
 	return nil
 }
 
-func (ct *clientFormat) readRTPUDP(pkt *rtp.Packet) {
-	packets, lost := ct.udpReorderer.Process(pkt)
+func (cf *clientFormat) readRTPUDP(pkt *rtp.Packet) {
+	packets, lost := cf.udpReorderer.Process(pkt)
 	if lost != 0 {
-		ct.cm.c.OnPacketLost(liberrors.ErrClientRTPPacketsLost{Lost: lost})
+		cf.cm.c.OnPacketLost(liberrors.ErrClientRTPPacketsLost{Lost: lost})
 		// do not return
 	}
 
-	now := ct.cm.c.timeNow()
+	now := cf.cm.c.timeNow()
 
 	for _, pkt := range packets {
-		err := ct.rtcpReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
+		err := cf.rtcpReceiver.ProcessPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
 		if err != nil {
-			ct.cm.c.OnDecodeError(err)
+			cf.cm.c.OnDecodeError(err)
 			continue
 		}
 
-		ct.onPacketRTP(pkt)
+		cf.onPacketRTP(pkt)
 	}
 }
 
-func (ct *clientFormat) readRTPTCP(pkt *rtp.Packet) {
-	lost := ct.tcpLossDetector.Process(pkt)
+func (cf *clientFormat) readRTPTCP(pkt *rtp.Packet) {
+	lost := cf.tcpLossDetector.Process(pkt)
 	if lost != 0 {
-		ct.cm.c.OnPacketLost(liberrors.ErrClientRTPPacketsLost{Lost: lost})
+		cf.cm.c.OnPacketLost(liberrors.ErrClientRTPPacketsLost{Lost: lost})
 		// do not return
 	}
 
-	now := ct.cm.c.timeNow()
+	now := cf.cm.c.timeNow()
 
-	err := ct.rtcpReceiver.ProcessPacket(pkt, now, ct.format.PTSEqualsDTS(pkt))
+	err := cf.rtcpReceiver.ProcessPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
 	if err != nil {
-		ct.cm.c.OnDecodeError(err)
+		cf.cm.c.OnDecodeError(err)
 		return
 	}
 
-	ct.onPacketRTP(pkt)
+	cf.onPacketRTP(pkt)
 }

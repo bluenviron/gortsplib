@@ -884,7 +884,10 @@ func (c *Client) connOpen() error {
 	c.nconn = nconn
 	bc := bytecounter.New(c.nconn, c.BytesReceived, c.BytesSent)
 	c.conn = conn.NewConn(bc)
-	c.reader = newClientReader(c)
+	c.reader = &clientReader{
+		c: c,
+	}
+	c.reader.start()
 
 	return nil
 }
@@ -1290,7 +1293,10 @@ func (c *Client) doSetup(
 		}(),
 	}
 
-	cm := newClientMedia(c)
+	cm := &clientMedia{
+		c:            c,
+		onPacketRTCP: func(rtcp.Packet) {},
+	}
 
 	if c.effectiveTransport == nil {
 		if c.connURL.Scheme == "rtsps" { // always use TCP if encrypted

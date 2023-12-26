@@ -14,8 +14,10 @@ import (
 )
 
 type serverSessionMedia struct {
-	ss                     *ServerSession
-	media                  *description.Media
+	ss           *ServerSession
+	media        *description.Media
+	onPacketRTCP OnPacketRTCPFunc
+
 	tcpChannel             int
 	udpRTPReadPort         int
 	udpRTPWriteAddr        *net.UDPAddr
@@ -27,24 +29,19 @@ type serverSessionMedia struct {
 	formats                map[uint8]*serverSessionFormat // record only
 	writePacketRTPInQueue  func([]byte)
 	writePacketRTCPInQueue func([]byte)
-	onPacketRTCP           OnPacketRTCPFunc
 }
 
-func newServerSessionMedia(ss *ServerSession, medi *description.Media) *serverSessionMedia {
-	sm := &serverSessionMedia{
-		ss:           ss,
-		media:        medi,
-		onPacketRTCP: func(rtcp.Packet) {},
-	}
-
-	if ss.state == ServerSessionStatePreRecord {
+func (sm *serverSessionMedia) initialize() {
+	if sm.ss.state == ServerSessionStatePreRecord {
 		sm.formats = make(map[uint8]*serverSessionFormat)
-		for _, forma := range medi.Formats {
-			sm.formats[forma.PayloadType()] = newServerSessionFormat(sm, forma)
+		for _, forma := range sm.media.Formats {
+			sm.formats[forma.PayloadType()] = &serverSessionFormat{
+				sm:          sm,
+				format:      forma,
+				onPacketRTP: func(*rtp.Packet) {},
+			}
 		}
 	}
-
-	return sm
 }
 
 func (sm *serverSessionMedia) start() {

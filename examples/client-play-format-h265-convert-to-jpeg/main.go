@@ -78,7 +78,8 @@ func main() {
 	}
 
 	// setup H265 -> raw frames decoder
-	frameDec, err := newH265Decoder()
+	frameDec := &h265Decoder{}
+	err = frameDec.initialize()
 	if err != nil {
 		panic(err)
 	}

@@ -24,22 +24,7 @@ func randInRange(max int) (int, error) {
 	return int(n.Int64()), nil
 }
 
-type clientUDPListener struct {
-	c  *Client
-	pc net.PacketConn
-
-	readFunc  readFunc
-	readIP    net.IP
-	readPort  int
-	writeAddr *net.UDPAddr
-
-	running        bool
-	lastPacketTime *int64
-
-	done chan struct{}
-}
-
-func newClientUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener, error) {
+func clientAllocateUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener, error) {
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
@@ -49,23 +34,26 @@ func newClientUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener
 		}
 
 		rtpPort := v*2 + 10000
-		rtpListener, err := newClientUDPListener(
-			c,
-			false,
-			nil,
-			net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
-		)
+		rtcpPort := rtpPort + 1
+
+		rtpListener := &clientUDPListener{
+			c:                 c,
+			multicastEnable:   false,
+			multicastSourceIP: nil,
+			address:           net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
+		}
+		err = rtpListener.initialize()
 		if err != nil {
 			continue
 		}
 
-		rtcpPort := rtpPort + 1
-		rtcpListener, err := newClientUDPListener(
-			c,
-			false,
-			nil,
-			net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
-		)
+		rtcpListener := &clientUDPListener{
+			c:                 c,
+			multicastEnable:   false,
+			multicastSourceIP: nil,
+			address:           net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
+		}
+		err = rtcpListener.initialize()
 		if err != nil {
 			rtpListener.close()
 			continue
@@ -80,42 +68,51 @@ type packetConn interface {
 	SetReadBuffer(int) error
 }
 
-func newClientUDPListener(
-	c *Client,
-	multicastEnable bool,
-	multicastSourceIP net.IP,
-	address string,
-) (*clientUDPListener, error) {
-	var pc packetConn
-	if multicastEnable {
-		intf, err := multicast.InterfaceForSource(multicastSourceIP)
+type clientUDPListener struct {
+	c                 *Client
+	multicastEnable   bool
+	multicastSourceIP net.IP
+	address           string
+
+	pc        packetConn
+	readFunc  readFunc
+	readIP    net.IP
+	readPort  int
+	writeAddr *net.UDPAddr
+
+	running        bool
+	lastPacketTime *int64
+
+	done chan struct{}
+}
+
+func (u *clientUDPListener) initialize() error {
+	if u.multicastEnable {
+		intf, err := multicast.InterfaceForSource(u.multicastSourceIP)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		pc, err = multicast.NewSingleConn(intf, address, c.ListenPacket)
+		u.pc, err = multicast.NewSingleConn(intf, u.address, u.c.ListenPacket)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	} else {
-		tmp, err := c.ListenPacket(restrictNetwork("udp", address))
+		tmp, err := u.c.ListenPacket(restrictNetwork("udp", u.address))
 		if err != nil {
-			return nil, err
+			return err
 		}
-		pc = tmp.(*net.UDPConn)
+		u.pc = tmp.(*net.UDPConn)
 	}
 
-	err := pc.SetReadBuffer(udpKernelReadBufferSize)
+	err := u.pc.SetReadBuffer(udpKernelReadBufferSize)
 	if err != nil {
-		pc.Close()
-		return nil, err
+		u.pc.Close()
+		return err
 	}
 
-	return &clientUDPListener{
-		c:              c,
-		pc:             pc,
-		lastPacketTime: int64Ptr(0),
-	}, nil
+	u.lastPacketTime = int64Ptr(0)
+	return nil
 }
 
 func (u *clientUDPListener) close() {

@@ -14,20 +14,13 @@ import (
 )
 
 type serverSessionFormat struct {
-	sm              *serverSessionMedia
-	format          format.Format
+	sm          *serverSessionMedia
+	format      format.Format
+	onPacketRTP OnPacketRTPFunc
+
 	udpReorderer    *rtpreorderer.Reorderer
 	tcpLossDetector *rtplossdetector.LossDetector
 	rtcpReceiver    *rtcpreceiver.RTCPReceiver
-	onPacketRTP     OnPacketRTPFunc
-}
-
-func newServerSessionFormat(sm *serverSessionMedia, forma format.Format) *serverSessionFormat {
-	return &serverSessionFormat{
-		sm:          sm,
-		format:      forma,
-		onPacketRTP: func(*rtp.Packet) {},
-	}
 }
 
 func (sf *serverSessionFormat) start() {

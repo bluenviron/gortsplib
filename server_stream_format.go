@@ -12,29 +12,23 @@ import (
 )
 
 type serverStreamFormat struct {
-	sm         *serverStreamMedia
-	format     format.Format
+	sm     *serverStreamMedia
+	format format.Format
+
 	rtcpSender *rtcpsender.RTCPSender
 }
 
-func newServerStreamFormat(sm *serverStreamMedia, forma format.Format) *serverStreamFormat {
-	sf := &serverStreamFormat{
-		sm:     sm,
-		format: forma,
-	}
-
+func (sf *serverStreamFormat) initialize() {
 	sf.rtcpSender = rtcpsender.New(
-		forma.ClockRate(),
-		sm.st.s.senderReportPeriod,
-		sm.st.s.timeNow,
+		sf.format.ClockRate(),
+		sf.sm.st.s.senderReportPeriod,
+		sf.sm.st.s.timeNow,
 		func(pkt rtcp.Packet) {
-			if !sm.st.s.DisableRTCPSenderReports {
-				sm.st.WritePacketRTCP(sm.media, pkt) //nolint:errcheck
+			if !sf.sm.st.s.DisableRTCPSenderReports {
+				sf.sm.st.WritePacketRTCP(sf.sm.media, pkt) //nolint:errcheck
 			}
 		},
 	)
-
-	return sf
 }
 
 func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {

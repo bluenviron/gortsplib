@@ -53,7 +53,13 @@ func NewServerStream(s *Server, desc *description.Session) *ServerStream {
 
 	st.streamMedias = make(map[*description.Media]*serverStreamMedia, len(desc.Medias))
 	for i, medi := range desc.Medias {
-		st.streamMedias[medi] = newServerStreamMedia(st, medi, i)
+		sm := &serverStreamMedia{
+			st:      st,
+			media:   medi,
+			trackID: i,
+		}
+		sm.initialize()
+		st.streamMedias[medi] = sm
 	}
 
 	return st
@@ -170,11 +176,14 @@ func (st *ServerStream) readerAdd(
 	case TransportUDPMulticast:
 		if st.multicastReaderCount == 0 {
 			for _, media := range st.streamMedias {
-				mh, err := newServerMulticastWriter(st.s)
+				mw := &serverMulticastWriter{
+					s: st.s,
+				}
+				err := mw.initialize()
 				if err != nil {
 					return err
 				}
-				media.multicastWriter = mh
+				media.multicastWriter = mw
 			}
 		}
 		st.multicastReaderCount++

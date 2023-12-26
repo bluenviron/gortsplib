@@ -83,7 +83,11 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// setup H264 -> MPEGTS muxer
-	mpegtsMuxer, err := newMPEGTSMuxer(forma.SPS, forma.PPS)
+	mpegtsMuxer := &mpegtsMuxer{
+		sps: forma.SPS,
+		pps: forma.PPS,
+	}
+	mpegtsMuxer.initialize()
 	if err != nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
@@ -128,7 +132,7 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 		}
 
 		// encode H264 access unit into MPEG-TS
-		sh.mpegtsMuxer.encode(au, pts)
+		sh.mpegtsMuxer.writeH264(au, pts)
 	})
 
 	return &base.Response{

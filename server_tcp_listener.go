@@ -5,27 +5,22 @@ import (
 )
 
 type serverTCPListener struct {
-	s  *Server
+	s *Server
+
 	ln net.Listener
 }
 
-func newServerTCPListener(
-	s *Server,
-) (*serverTCPListener, error) {
-	ln, err := s.Listen(restrictNetwork("tcp", s.RTSPAddress))
+func (sl *serverTCPListener) initialize() error {
+	var err error
+	sl.ln, err = sl.s.Listen(restrictNetwork("tcp", sl.s.RTSPAddress))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	sl := &serverTCPListener{
-		s:  s,
-		ln: ln,
-	}
-
-	s.wg.Add(1)
+	sl.s.wg.Add(1)
 	go sl.run()
 
-	return sl, nil
+	return nil
 }
 
 func (sl *serverTCPListener) close() {

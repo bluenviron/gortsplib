@@ -61,7 +61,7 @@ func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
 			UnicastAddress: "127.0.0.1",
 		},
 		TimeDescriptions: []psdp.TimeDescription{
-			{Timing: psdp.Timing{0, 0}}, //nolint:govet
+			{Timing: psdp.Timing{}},
 		},
 		MediaDescriptions: []*psdp.MediaDescription{medi.Marshal()},
 	}
@@ -272,7 +272,7 @@ func TestServerRecordPath(t *testing.T) {
 					UnicastAddress: "127.0.0.1",
 				},
 				TimeDescriptions: []psdp.TimeDescription{
-					{Timing: psdp.Timing{0, 0}}, //nolint:govet
+					{Timing: psdp.Timing{}},
 				},
 				MediaDescriptions: []*psdp.MediaDescription{media.Marshal()},
 			}
