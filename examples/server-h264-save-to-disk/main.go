@@ -84,8 +84,9 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 	// setup H264 -> MPEGTS muxer
 	mpegtsMuxer := &mpegtsMuxer{
-		sps: forma.SPS,
-		pps: forma.PPS,
+		fileName: "mystream.ts",
+		sps:      forma.SPS,
+		pps:      forma.PPS,
 	}
 	mpegtsMuxer.initialize()
 	if err != nil {
