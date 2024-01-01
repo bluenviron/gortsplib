@@ -15,7 +15,8 @@ func durationGoToMPEGTS(v time.Duration) int64 {
 
 // mpegtsMuxer allows to save a MPEG4-audio stream into a MPEG-TS file.
 type mpegtsMuxer struct {
-	config *mpeg4audio.Config
+	fileName string
+	config   *mpeg4audio.Config
 
 	f     *os.File
 	b     *bufio.Writer
@@ -26,7 +27,7 @@ type mpegtsMuxer struct {
 // initialize initializes a mpegtsMuxer.
 func (e *mpegtsMuxer) initialize() error {
 	var err error
-	e.f, err = os.Create("mystream.ts")
+	e.f, err = os.Create(e.fileName)
 	if err != nil {
 		return err
 	}

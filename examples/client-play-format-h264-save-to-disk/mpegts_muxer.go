@@ -15,8 +15,9 @@ func durationGoToMPEGTS(v time.Duration) int64 {
 
 // mpegtsMuxer allows to save a H264 stream into a MPEG-TS file.
 type mpegtsMuxer struct {
-	sps []byte
-	pps []byte
+	fileName string
+	sps      []byte
+	pps      []byte
 
 	f            *os.File
 	b            *bufio.Writer
@@ -28,7 +29,7 @@ type mpegtsMuxer struct {
 // initialize initializes a mpegtsMuxer.
 func (e *mpegtsMuxer) initialize() error {
 	var err error
-	e.f, err = os.Create("mystream.ts")
+	e.f, err = os.Create(e.fileName)
 	if err != nil {
 		return err
 	}

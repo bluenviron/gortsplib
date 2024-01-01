@@ -51,7 +51,8 @@ func main() {
 
 	// setup MPEG-4 audio -> MPEG-TS muxer
 	mpegtsMuxer := &mpegtsMuxer{
-		config: forma.Config,
+		fileName: "mystream.ts",
+		config:   forma.Config,
 	}
 	mpegtsMuxer.initialize()
 	if err != nil {

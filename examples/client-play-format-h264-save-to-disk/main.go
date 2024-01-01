@@ -52,8 +52,9 @@ func main() {
 
 	// setup H264 -> MPEG-TS muxer
 	mpegtsMuxer := &mpegtsMuxer{
-		sps: forma.SPS,
-		pps: forma.PPS,
+		fileName: "mystream.ts",
+		sps:      forma.SPS,
+		pps:      forma.PPS,
 	}
 	mpegtsMuxer.initialize()
 	if err != nil {

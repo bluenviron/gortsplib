@@ -52,9 +52,10 @@ func main() {
 
 	// setup H265 -> MPEG-TS muxer
 	mpegtsMuxer := &mpegtsMuxer{
-		vps: forma.VPS,
-		sps: forma.SPS,
-		pps: forma.PPS,
+		fileName: "mystream.ts",
+		vps:      forma.VPS,
+		sps:      forma.SPS,
+		pps:      forma.PPS,
 	}
 	mpegtsMuxer.initialize()
 	if err != nil {
