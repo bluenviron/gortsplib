@@ -46,7 +46,7 @@ func (f *MPEG4Video) unmarshal(ctx *unmarshalContext) error {
 
 			err = mpeg4video.IsValidConfig(f.Config)
 			if err != nil {
-				return fmt.Errorf("invalid config: %v", err)
+				return fmt.Errorf("invalid config: %w", err)
 			}
 		}
 	}

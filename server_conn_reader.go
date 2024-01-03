@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"errors"
 	"sync/atomic"
 	"time"
 
@@ -8,17 +9,17 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
-type errSwitchReadFunc struct {
+type switchReadFuncError struct {
 	tcp bool
 }
 
-func (errSwitchReadFunc) Error() string {
+func (switchReadFuncError) Error() string {
 	return "switching read function"
 }
 
-func isErrSwitchReadFunc(err error) bool {
-	_, ok := err.(errSwitchReadFunc)
-	return ok
+func isSwitchReadFuncError(err error) bool {
+	var eerr switchReadFuncError
+	return errors.As(err, &eerr)
 }
 
 type serverConnReader struct {
@@ -44,8 +45,9 @@ func (cr *serverConnReader) run() {
 
 	for {
 		err := readFunc()
-		if err, ok := err.(errSwitchReadFunc); ok {
-			if err.tcp {
+		var eerr switchReadFuncError
+		if errors.As(err, &eerr) {
+			if eerr.tcp {
 				readFunc = cr.readFuncTCP
 			} else {
 				readFunc = cr.readFuncStandard

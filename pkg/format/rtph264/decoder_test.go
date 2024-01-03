@@ -2,6 +2,7 @@ package rtph264
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
@@ -26,7 +27,7 @@ func TestDecode(t *testing.T) {
 				// test input integrity
 				require.Equal(t, clone, pkt)
 
-				if err == ErrMorePacketsNeeded {
+				if errors.Is(err, ErrMorePacketsNeeded) {
 					continue
 				}
 

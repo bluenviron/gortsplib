@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	gourl "net/url"
 	"strconv"
@@ -384,7 +385,8 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	}
 
 	// add cseq
-	if _, ok := err.(liberrors.ErrServerCSeqMissing); !ok {
+	var eerr liberrors.ErrServerCSeqMissing
+	if !errors.As(err, &eerr) {
 		res.Header["CSeq"] = req.Header["CSeq"]
 	}
 

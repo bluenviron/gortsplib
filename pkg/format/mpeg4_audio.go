@@ -141,7 +141,7 @@ func (f *MPEG4Audio) unmarshal(ctx *unmarshalContext) error {
 				f.StreamMuxConfig = &mpeg4audio.StreamMuxConfig{}
 				err = f.StreamMuxConfig.Unmarshal(enc)
 				if err != nil {
-					return fmt.Errorf("invalid AAC config: %v", err)
+					return fmt.Errorf("invalid AAC config: %w", err)
 				}
 
 			case "sbr-enabled":

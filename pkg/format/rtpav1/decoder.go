@@ -52,7 +52,7 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 	if err != nil {
 		d.fragments = d.fragments[:0] // discard pending fragments
 		d.fragmentsSize = 0
-		return nil, fmt.Errorf("invalid header: %v", err)
+		return nil, fmt.Errorf("invalid header: %w", err)
 	}
 
 	for _, el := range av1header.OBUElements {

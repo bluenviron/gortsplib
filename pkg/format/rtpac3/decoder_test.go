@@ -1,6 +1,7 @@
 package rtpac3
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/pion/rtp"
@@ -24,7 +25,7 @@ func TestDecode(t *testing.T) {
 				// test input integrity
 				require.Equal(t, clone, pkt)
 
-				if err == ErrMorePacketsNeeded {
+				if errors.Is(err, ErrMorePacketsNeeded) {
 					continue
 				}
 
