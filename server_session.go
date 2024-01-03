@@ -403,7 +403,7 @@ func (ss *ServerSession) runInner() error {
 
 			returnedSession := ss
 
-			if err == nil || isErrSwitchReadFunc(err) {
+			if err == nil || isSwitchReadFuncError(err) {
 				// ANNOUNCE responses don't contain the session header.
 				if req.req.Method != base.Announce &&
 					req.req.Method != base.Teardown {
@@ -444,7 +444,7 @@ func (ss *ServerSession) runInner() error {
 				ss:  returnedSession,
 			}
 
-			if (err == nil || isErrSwitchReadFunc(err)) && savedMethod == base.Teardown {
+			if (err == nil || isSwitchReadFuncError(err)) && savedMethod == base.Teardown {
 				return liberrors.ErrServerSessionTornDown{Author: req.sc.NetConn().RemoteAddr()}
 			}
 
@@ -951,7 +951,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		default: // TCP
 			ss.tcpConn = sc
-			err = errSwitchReadFunc{true}
+			err = switchReadFuncError{true}
 			// writer.start() is called by ServerConn after the response has been sent
 		}
 
@@ -1034,7 +1034,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		default: // TCP
 			ss.tcpConn = sc
-			err = errSwitchReadFunc{true}
+			err = switchReadFuncError{true}
 			// runWriter() is called by conn after sending the response
 		}
 
@@ -1089,7 +1089,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				ss.udpCheckStreamTimer = emptyTimer()
 
 			default: // TCP
-				err = errSwitchReadFunc{false}
+				err = switchReadFuncError{false}
 				ss.tcpConn = nil
 			}
 
@@ -1099,7 +1099,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				ss.udpCheckStreamTimer = emptyTimer()
 
 			default: // TCP
-				err = errSwitchReadFunc{false}
+				err = switchReadFuncError{false}
 				ss.tcpConn = nil
 			}
 
@@ -1112,7 +1112,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		var err error
 		if (ss.state == ServerSessionStatePlay || ss.state == ServerSessionStateRecord) &&
 			*ss.setuppedTransport == TransportTCP {
-			err = errSwitchReadFunc{false}
+			err = switchReadFuncError{false}
 		}
 
 		return &base.Response{

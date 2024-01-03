@@ -80,7 +80,7 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 		var m Media
 		err := m.Unmarshal(md)
 		if err != nil {
-			return fmt.Errorf("media %d is invalid: %v", i+1, err)
+			return fmt.Errorf("media %d is invalid: %w", i+1, err)
 		}
 
 		if m.ID != "" && hasMediaWithID(d.Medias[:i], m.ID) {

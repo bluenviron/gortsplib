@@ -1,6 +1,7 @@
 package rtpav1
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/av1"
@@ -19,7 +20,7 @@ func TestDecode(t *testing.T) {
 
 			for _, pkt := range ca.pkts {
 				addOBUs, err := d.Decode(pkt)
-				if err == ErrMorePacketsNeeded {
+				if errors.Is(err, ErrMorePacketsNeeded) {
 					continue
 				}
 

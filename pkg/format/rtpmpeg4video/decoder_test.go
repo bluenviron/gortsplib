@@ -1,6 +1,7 @@
 package rtpmpeg4video
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/pion/rtp"
@@ -18,7 +19,7 @@ func TestDecode(t *testing.T) {
 
 			for _, pkt := range ca.pkts {
 				frame, err = d.Decode(pkt)
-				if err == ErrMorePacketsNeeded {
+				if errors.Is(err, ErrMorePacketsNeeded) {
 					continue
 				}
 

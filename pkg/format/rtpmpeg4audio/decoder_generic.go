@@ -176,7 +176,7 @@ func (d *Decoder) removeADTS(aus [][]byte) ([][]byte, error) {
 		var pkts mpeg4audio.ADTSPackets
 		err := pkts.Unmarshal(aus[0])
 		if err != nil {
-			return nil, fmt.Errorf("unable to decode ADTS: %s", err)
+			return nil, fmt.Errorf("unable to decode ADTS: %w", err)
 		}
 
 		if len(pkts) != 1 {

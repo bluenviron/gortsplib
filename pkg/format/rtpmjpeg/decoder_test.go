@@ -1,6 +1,7 @@
 package rtpmjpeg
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/pion/rtp"
@@ -16,7 +17,7 @@ func TestDecode(t *testing.T) {
 
 			for _, pkt := range ca.pkts {
 				image, err := d.Decode(pkt)
-				if err == ErrMorePacketsNeeded {
+				if errors.Is(err, ErrMorePacketsNeeded) {
 					continue
 				}
 
