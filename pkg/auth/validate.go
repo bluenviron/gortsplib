@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
@@ -122,6 +123,12 @@ func Validate(
 
 		if *auth.DigestValues.Username != user {
 			return fmt.Errorf("authentication failed")
+		}
+
+		// Workaroud for Grandstream GXD3500
+		userAgent, exists := req.Header["User-Agent"]
+		if exists && strings.HasPrefix(userAgent[0], "Grandstream") && req.Method == "SETUP" {
+			return nil // Grandstrem SETUP sends invalid Digest Data, and probably does for PLAY too. Ignore it
 		}
 
 		ur := req.URL
