@@ -103,7 +103,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 
 ### Video
 
-|format|documentation|encoder and decoder available|
+|codec|documentation|encoder and decoder available|
 |------|-------------|-----------------------------|
 |AV1|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#AV1)|:heavy_check_mark:|
 |VP9|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#VP9)|:heavy_check_mark:|
@@ -116,7 +116,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 
 ### Audio
 
-|format|documentation|encoder and decoder available|
+|codec|documentation|encoder and decoder available|
 |------|-------------|-----------------------------|
 |Opus|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#Opus)|:heavy_check_mark:|
 |Vorbis|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#Vorbis)||
@@ -131,7 +131,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 
 ### Other
 
-|format|documentation|encoder and decoder available|
+|codec|documentation|encoder and decoder available|
 |------|-------------|-----------------------------|
 |MPEG-TS|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEGTS)||
 
@@ -155,7 +155,7 @@ In RTSP, media streams are routed between server and clients by using RTP packet
 |[RFC4184, RTP Payload Format for AC-3 Audio](https://datatracker.ietf.org/doc/html/rfc4184)|AC-3 payload format|
 |[RFC6416, RTP Payload Format for MPEG-4 Audio/Visual Streams](https://datatracker.ietf.org/doc/html/rfc6416)|MPEG-4 audio payload format|
 |[RFC5574, RTP Payload Format for the Speex Codec](https://datatracker.ietf.org/doc/html/rfc5574)|Speex payload format|
-|[RFC3551, RTP Profile for Audio and Video Conferences with Minimal Control](https://datatracker.ietf.org/doc/html/rfc3551)|G726, G722, G711 payload formats|
+|[RFC3551, RTP Profile for Audio and Video Conferences with Minimal Control](https://datatracker.ietf.org/doc/html/rfc3551)|G726, G722, G711, LPCM payload formats|
 |[RFC3190, RTP Payload Format for 12-bit DAT Audio and 20- and 24-bit Linear Sampled Audio](https://datatracker.ietf.org/doc/html/rfc3190)|LPCM payload format|
 |[Codec specifications](https://github.com/bluenviron/mediacommon#specifications)|codecs|
 |[Golang project layout](https://github.com/golang-standards/project-layout)|project layout|

@@ -9,7 +9,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpav1"
 )
 
-// AV1 is a RTP format for the AV1 codec.
+// AV1 is the RTP format for the AV1 codec.
 // Specification: https://aomediacodec.github.io/av1-rtp-spec/
 type AV1 struct {
 	PayloadTyp uint8

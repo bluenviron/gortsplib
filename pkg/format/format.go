@@ -55,25 +55,11 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 
 	format := func() Format {
 		switch {
+		/*
+		* static payload types
+		**/
+
 		// video
-
-		case codec == "av1" && clock == "90000":
-			return &AV1{}
-
-		case codec == "vp9" && clock == "90000":
-			return &VP9{}
-
-		case codec == "vp8" && clock == "90000":
-			return &VP8{}
-
-		case codec == "h265" && clock == "90000":
-			return &H265{}
-
-		case codec == "h264" && clock == "90000":
-			return &H264{}
-
-		case codec == "mp4v-es" && clock == "90000":
-			return &MPEG4Video{}
 
 		case payloadType == 32:
 			return &MPEG1Video{}
@@ -86,33 +72,8 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 
 		// audio
 
-		case codec == "opus":
-			return &Opus{}
-
-		case codec == "vorbis":
-			return &Vorbis{}
-
-		case codec == "mpeg4-generic", codec == "mp4a-latm":
-			return &MPEG4Audio{}
-
 		case payloadType == 14:
 			return &MPEG1Audio{}
-
-		case codec == "ac3":
-			return &AC3{}
-
-		case codec == "speex":
-			return &Speex{}
-
-		case (codec == "g726-16" ||
-			codec == "g726-24" ||
-			codec == "g726-32" ||
-			codec == "g726-40" ||
-			codec == "aal2-g726-16" ||
-			codec == "aal2-g726-24" ||
-			codec == "aal2-g726-32" ||
-			codec == "aal2-g726-40") && clock == "8000":
-			return &G726{}
 
 		case payloadType == 9:
 			return &G722{}
@@ -120,8 +81,65 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 		case payloadType == 0, payloadType == 8:
 			return &G711{}
 
-		case codec == "l8", codec == "l16", codec == "l24":
+		case payloadType == 10, payloadType == 11:
 			return &LPCM{}
+
+		/*
+		* dynamic payload types
+		**/
+
+		case payloadType >= 96 && payloadType <= 127:
+			switch {
+			// video
+
+			case codec == "av1" && clock == "90000":
+				return &AV1{}
+
+			case codec == "vp9" && clock == "90000":
+				return &VP9{}
+
+			case codec == "vp8" && clock == "90000":
+				return &VP8{}
+
+			case codec == "h265" && clock == "90000":
+				return &H265{}
+
+			case codec == "h264" && clock == "90000":
+				return &H264{}
+
+			case codec == "mp4v-es" && clock == "90000":
+				return &MPEG4Video{}
+
+			// audio
+
+			case codec == "opus":
+				return &Opus{}
+
+			case codec == "vorbis":
+				return &Vorbis{}
+
+			case codec == "mpeg4-generic", codec == "mp4a-latm":
+				return &MPEG4Audio{}
+
+			case codec == "ac3":
+				return &AC3{}
+
+			case codec == "speex":
+				return &Speex{}
+
+			case (codec == "g726-16" ||
+				codec == "g726-24" ||
+				codec == "g726-32" ||
+				codec == "g726-40" ||
+				codec == "aal2-g726-16" ||
+				codec == "aal2-g726-24" ||
+				codec == "aal2-g726-32" ||
+				codec == "aal2-g726-40") && clock == "8000":
+				return &G726{}
+
+			case codec == "l8", codec == "l16", codec == "l24":
+				return &LPCM{}
+			}
 		}
 
 		return &Generic{}

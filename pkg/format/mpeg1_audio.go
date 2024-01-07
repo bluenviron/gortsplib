@@ -6,7 +6,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpmpeg1audio"
 )
 
-// MPEG1Audio is a RTP format for a MPEG-1/2 Audio codec.
+// MPEG1Audio is the RTP format for a MPEG-1/2 Audio codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEG1Audio struct{}
 

@@ -12,14 +12,14 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpmpeg4audio"
 )
 
-// MPEG4Audio is a RTP format for a MPEG-4 Audio codec.
+// MPEG4Audio is the RTP format for a MPEG-4 Audio codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3640
 // Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.3
 type MPEG4Audio struct {
 	// payload type of packets.
 	PayloadTyp uint8
 
-	// use RFC6416 (LATM) instead of RFC3640 (generic).
+	// use LATM format (RFC6416) instead of generic format (RFC3640).
 	LATM bool
 
 	// profile level ID.

@@ -9,7 +9,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpac3"
 )
 
-// AC3 is a RTP format for the AC-3 codec.
+// AC3 is the RTP format for the AC-3 codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc4184
 type AC3 struct {
 	PayloadTyp   uint8

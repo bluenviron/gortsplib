@@ -15,7 +15,7 @@ import (
 	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
 )
 
-// H264 is a RTP format for the H264 codec.
+// H264 is the RTP format for the H264 codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6184
 type H264 struct {
 	PayloadTyp        uint8

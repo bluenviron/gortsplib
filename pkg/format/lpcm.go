@@ -9,8 +9,9 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtplpcm"
 )
 
-// LPCM is a RTP format for the uncompressed, Linear PCM codec.
+// LPCM is the RTP format for the LPCM codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3190
+// Specification: https://datatracker.ietf.org/doc/html/rfc3551
 type LPCM struct {
 	PayloadTyp   uint8
 	BitDepth     int
@@ -20,6 +21,20 @@ type LPCM struct {
 
 func (f *LPCM) unmarshal(ctx *unmarshalContext) error {
 	f.PayloadTyp = ctx.payloadType
+
+	if ctx.payloadType == 10 {
+		f.BitDepth = 16
+		f.SampleRate = 44100
+		f.ChannelCount = 2
+		return nil
+	}
+
+	if ctx.payloadType == 11 {
+		f.BitDepth = 16
+		f.SampleRate = 44100
+		f.ChannelCount = 1
+		return nil
+	}
 
 	switch ctx.codec {
 	case "l8":
