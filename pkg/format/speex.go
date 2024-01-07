@@ -7,7 +7,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// Speex is a RTP format for the Speex codec.
+// Speex is the RTP format for the Speex codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc5574
 type Speex struct {
 	PayloadTyp uint8

@@ -7,7 +7,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// G726 is a RTP format for the G726 codec.
+// G726 is the RTP format for the G726 codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3551
 type G726 struct {
 	PayloadTyp uint8

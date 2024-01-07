@@ -10,7 +10,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpsimpleaudio"
 )
 
-// Opus is a RTP format for the Opus codec.
+// Opus is the RTP format for the Opus codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc7587
 type Opus struct {
 	PayloadTyp uint8

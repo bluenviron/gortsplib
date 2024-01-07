@@ -6,7 +6,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpmpeg1video"
 )
 
-// MPEG1Video is a RTP format for a MPEG-1/2 Video codec.
+// MPEG1Video is the RTP format for a MPEG-1/2 Video codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEG1Video struct{}
 

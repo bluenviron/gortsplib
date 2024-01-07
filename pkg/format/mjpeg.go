@@ -6,7 +6,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpmjpeg"
 )
 
-// MJPEG is a RTP format for the Motion-JPEG codec.
+// MJPEG is the RTP format for the Motion-JPEG codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2435
 type MJPEG struct{}
 

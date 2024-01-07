@@ -4,7 +4,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// MPEGTS is a RTP format for MPEG-TS.
+// MPEGTS is the RTP format for MPEG-TS.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type MPEGTS struct{}
 
