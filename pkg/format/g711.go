@@ -1,20 +1,60 @@
 package format
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpsimpleaudio"
+	"github.com/bluenviron/gortsplib/v4/pkg/format/rtplpcm"
 )
 
 // G711 is the RTP format for the G711 codec, encoded with mu-law or A-law.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3551
 type G711 struct {
-	// whether to use mu-law. Otherwise, A-law is used.
-	MULaw bool
+	PayloadTyp   uint8
+	MULaw        bool
+	SampleRate   int
+	ChannelCount int
 }
 
 func (f *G711) unmarshal(ctx *unmarshalContext) error {
-	f.MULaw = (ctx.payloadType == 0)
+	f.PayloadTyp = ctx.payloadType
+
+	if ctx.payloadType == 0 {
+		f.MULaw = true
+		f.SampleRate = 8000
+		f.ChannelCount = 1
+		return nil
+	}
+
+	if ctx.payloadType == 8 {
+		f.MULaw = false
+		f.SampleRate = 8000
+		f.ChannelCount = 1
+		return nil
+	}
+
+	f.MULaw = (ctx.codec == "pcmu")
+
+	tmp := strings.SplitN(ctx.clock, "/", 2)
+
+	tmp1, err := strconv.ParseUint(tmp[0], 10, 31)
+	if err != nil {
+		return err
+	}
+	f.SampleRate = int(tmp1)
+
+	if len(tmp) >= 2 {
+		tmp1, err := strconv.ParseUint(tmp[1], 10, 31)
+		if err != nil {
+			return err
+		}
+		f.ChannelCount = int(tmp1)
+	} else {
+		f.ChannelCount = 1
+	}
+
 	return nil
 }
 
@@ -30,18 +70,26 @@ func (f *G711) ClockRate() int {
 
 // PayloadType implements Format.
 func (f *G711) PayloadType() uint8 {
-	if f.MULaw {
-		return 0
-	}
-	return 8
+	return f.PayloadTyp
 }
 
 // RTPMap implements Format.
 func (f *G711) RTPMap() string {
+	ret := ""
+
 	if f.MULaw {
-		return "PCMU/8000"
+		ret += "PCMU"
+	} else {
+		ret += "PCMA"
 	}
-	return "PCMA/8000"
+
+	ret += "/" + strconv.FormatInt(int64(f.SampleRate), 10)
+
+	if f.ChannelCount != 1 {
+		ret += "/" + strconv.FormatInt(int64(f.ChannelCount), 10)
+	}
+
+	return ret
 }
 
 // FMTP implements Format.
@@ -55,8 +103,11 @@ func (f *G711) PTSEqualsDTS(*rtp.Packet) bool {
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
-func (f *G711) CreateDecoder() (*rtpsimpleaudio.Decoder, error) {
-	d := &rtpsimpleaudio.Decoder{}
+func (f *G711) CreateDecoder() (*rtplpcm.Decoder, error) {
+	d := &rtplpcm.Decoder{
+		BitDepth:     8,
+		ChannelCount: f.ChannelCount,
+	}
 
 	err := d.Init()
 	if err != nil {
@@ -67,9 +118,11 @@ func (f *G711) CreateDecoder() (*rtpsimpleaudio.Decoder, error) {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the format.
-func (f *G711) CreateEncoder() (*rtpsimpleaudio.Encoder, error) {
-	e := &rtpsimpleaudio.Encoder{
-		PayloadType: f.PayloadType(),
+func (f *G711) CreateEncoder() (*rtplpcm.Encoder, error) {
+	e := &rtplpcm.Encoder{
+		PayloadType:  f.PayloadType(),
+		BitDepth:     8,
+		ChannelCount: f.ChannelCount,
 	}
 
 	err := e.Init()

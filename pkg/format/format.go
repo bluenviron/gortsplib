@@ -137,6 +137,9 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 				codec == "aal2-g726-40") && clock == "8000":
 				return &G726{}
 
+			case codec == "pcma", codec == "pcmu":
+				return &G711{}
+
 			case codec == "l8", codec == "l16", codec == "l24":
 				return &LPCM{}
 			}

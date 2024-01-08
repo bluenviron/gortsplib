@@ -27,25 +27,63 @@ var casesFormat = []struct {
 	encFmtp     map[string]string
 }{
 	{
-		"audio g711 pcma",
+		"audio g711 pcma static payload type",
 		"audio",
 		8,
 		"",
 		nil,
-		&G711{},
+		&G711{
+			PayloadTyp:   8,
+			MULaw:        false,
+			SampleRate:   8000,
+			ChannelCount: 1,
+		},
 		"PCMA/8000",
 		nil,
 	},
 	{
-		"audio g711 pcmu",
+		"audio g711 pcmu static payload type",
 		"audio",
 		0,
 		"",
 		nil,
 		&G711{
-			MULaw: true,
+			PayloadTyp:   0,
+			MULaw:        true,
+			SampleRate:   8000,
+			ChannelCount: 1,
 		},
 		"PCMU/8000",
+		nil,
+	},
+	{
+		"audio g711 pcma dynamic payload type",
+		"audio",
+		96,
+		"PCMA/16000/2",
+		nil,
+		&G711{
+			PayloadTyp:   96,
+			MULaw:        false,
+			SampleRate:   16000,
+			ChannelCount: 2,
+		},
+		"PCMA/16000/2",
+		nil,
+	},
+	{
+		"audio g711 pcmu dynamic payload type",
+		"audio",
+		96,
+		"PCMU/16000/2",
+		nil,
+		&G711{
+			PayloadTyp:   96,
+			MULaw:        true,
+			SampleRate:   16000,
+			ChannelCount: 2,
+		},
+		"PCMU/16000/2",
 		nil,
 	},
 	{
@@ -125,7 +163,7 @@ var casesFormat = []struct {
 		nil,
 	},
 	{
-		"audio lpcm 8",
+		"audio lpcm 8 dynamic payload type",
 		"audio",
 		97,
 		"L8/48000/2",
@@ -140,7 +178,7 @@ var casesFormat = []struct {
 		nil,
 	},
 	{
-		"audio lpcm 16",
+		"audio lpcm 16 dynamic payload type",
 		"audio",
 		97,
 		"L16/96000/2",
@@ -155,7 +193,7 @@ var casesFormat = []struct {
 		nil,
 	},
 	{
-		"audio lpcm 16 rfc3551 stereo",
+		"audio lpcm 16 static payload type",
 		"audio",
 		10,
 		"",
@@ -170,7 +208,7 @@ var casesFormat = []struct {
 		nil,
 	},
 	{
-		"audio lpcm 16 rfc3551 mono",
+		"audio lpcm 16 static payload type",
 		"audio",
 		11,
 		"",

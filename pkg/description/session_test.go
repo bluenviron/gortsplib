@@ -72,7 +72,10 @@ var casesSession = []struct {
 					Type:    MediaTypeAudio,
 					Control: "rtsp://10.0.100.50/profile5/media.smp/trackID=a",
 					Formats: []format.Format{&format.G711{
-						MULaw: true,
+						PayloadTyp:   0,
+						MULaw:        true,
+						SampleRate:   8000,
+						ChannelCount: 1,
 					}},
 				},
 				{
@@ -140,7 +143,10 @@ var casesSession = []struct {
 					Type:    MediaTypeAudio,
 					Control: "trackID=2",
 					Formats: []format.Format{&format.G711{
-						MULaw: true,
+						PayloadTyp:   0,
+						MULaw:        true,
+						SampleRate:   8000,
+						ChannelCount: 1,
 					}},
 				},
 				{
@@ -324,10 +330,16 @@ var casesSession = []struct {
 							ClockRat:   8000,
 						},
 						&format.G711{
-							MULaw: true,
+							PayloadTyp:   0,
+							MULaw:        true,
+							SampleRate:   8000,
+							ChannelCount: 1,
 						},
 						&format.G711{
-							MULaw: false,
+							PayloadTyp:   8,
+							MULaw:        false,
+							SampleRate:   8000,
+							ChannelCount: 1,
 						},
 						&format.Generic{
 							PayloadTyp: 106,
@@ -516,13 +528,23 @@ var casesSession = []struct {
 				{
 					Type:    MediaTypeAudio,
 					Control: "rtsp://192.168.0.1/audio",
-					Formats: []format.Format{&format.G711{MULaw: true}},
+					Formats: []format.Format{&format.G711{
+						PayloadTyp:   0,
+						MULaw:        true,
+						SampleRate:   8000,
+						ChannelCount: 1,
+					}},
 				},
 				{
 					Type:          MediaTypeAudio,
 					IsBackChannel: true,
 					Control:       "rtsp://192.168.0.1/audioback",
-					Formats:       []format.Format{&format.G711{MULaw: true}},
+					Formats: []format.Format{&format.G711{
+						PayloadTyp:   0,
+						MULaw:        true,
+						SampleRate:   8000,
+						ChannelCount: 1,
+					}},
 				},
 			},
 		},
@@ -671,9 +693,14 @@ var casesSession = []struct {
 			},
 			Medias: []*Media{
 				{
-					ID:      "1",
-					Type:    MediaTypeAudio,
-					Formats: []format.Format{&format.G711{MULaw: true}},
+					ID:   "1",
+					Type: MediaTypeAudio,
+					Formats: []format.Format{&format.G711{
+						PayloadTyp:   0,
+						MULaw:        true,
+						SampleRate:   8000,
+						ChannelCount: 1,
+					}},
 				},
 				{
 					ID:   "2",
