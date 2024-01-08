@@ -3384,8 +3384,13 @@ func TestClientPlayBackChannel(t *testing.T) {
 			Body: mediasToSDP([]*description.Media{
 				testH264Media,
 				{
-					Type:          description.MediaTypeAudio,
-					Formats:       []format.Format{&format.G711{}},
+					Type: description.MediaTypeAudio,
+					Formats: []format.Format{&format.G711{
+						PayloadTyp:   8,
+						MULaw:        false,
+						SampleRate:   8000,
+						ChannelCount: 1,
+					}},
 					IsBackChannel: true,
 				},
 			}),

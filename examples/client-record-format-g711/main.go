@@ -38,8 +38,13 @@ func main() {
 	// create a description that contains a G711 format
 	desc := &description.Session{
 		Medias: []*description.Media{{
-			Type:    description.MediaTypeVideo,
-			Formats: []format.Format{&format.G711{}},
+			Type: description.MediaTypeVideo,
+			Formats: []format.Format{&format.G711{
+				PayloadTyp:   8,
+				MULaw:        false,
+				SampleRate:   8000,
+				ChannelCount: 1,
+			}},
 		}},
 	}
 
