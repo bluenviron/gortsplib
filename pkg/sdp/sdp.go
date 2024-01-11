@@ -198,6 +198,11 @@ func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, 
 		return nil, fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, fields)
 	}
 
+	// When requesting backchannel on avigilon cameras, they respond with an additional C: attribute with a value of SM.
+	if i := indexOf(strings.ToUpper(fields[0]), []string{"SM"}); i > -1 {
+		return nil, nil
+	}
+
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
 	if i := indexOf(strings.ToUpper(fields[0]), []string{"IN"}); i == -1 {
