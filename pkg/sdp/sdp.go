@@ -199,6 +199,7 @@ func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, 
 	}
 
 	// When requesting backchannel on avigilon cameras, they respond with an additional C: attribute with a value of SM.
+	// https://github.com/bluenviron/gortsplib/issues/479
 	if i := indexOf(strings.ToUpper(fields[0]), []string{"SM"}); i > -1 {
 		return nil, nil
 	}
