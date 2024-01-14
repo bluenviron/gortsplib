@@ -328,10 +328,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.175.31.17",
 			},
-			SessionName: "RTSP Server",
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
-			},
+			SessionName:      "RTSP Server",
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
 				{
 					Key:   "control",
@@ -613,7 +611,7 @@ var cases = []struct {
 				AddressType: "IP4",
 				Address:     &psdp.Address{Address: "0.0.0.0"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{Timing: psdp.Timing{StartTime: 0, StopTime: 0}}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
 				{
 					Key:   "control",
@@ -723,7 +721,7 @@ var cases = []struct {
 				AddressType: "IP4",
 				Address:     &psdp.Address{Address: "0.0.0.0"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{Timing: psdp.Timing{StartTime: 0, StopTime: 0}}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
 				{
 					Key:   "range",
@@ -824,7 +822,7 @@ var cases = []struct {
 				AddressType: "IP4",
 				Address:     &psdp.Address{Address: "0.0.0.0"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{Timing: psdp.Timing{StartTime: 0, StopTime: 0}}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
 				{
 					Key:   "tool",
@@ -924,7 +922,7 @@ var cases = []struct {
 				AddressType: "IP4",
 				Address:     &psdp.Address{Address: "239.3.1.142"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{Timing: psdp.Timing{StartTime: 0, StopTime: 0}}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
 				{
 					Key:   "range",
@@ -1005,7 +1003,7 @@ var cases = []struct {
 				v := psdp.EmailAddress("NONE")
 				return &v
 			}(),
-			TimeDescriptions: []psdp.TimeDescription{{Timing: psdp.Timing{StartTime: 0, StopTime: 0}}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
 				{Key: "recvonly"},
 				{
@@ -1162,7 +1160,7 @@ var cases = []struct {
 					Bandwidth: 104,
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{Timing: psdp.Timing{StartTime: 0, StopTime: 0}}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
 				{
 					Key:   "maxps",
@@ -1490,9 +1488,7 @@ var cases = []struct {
 				v := psdp.Information("Live infrared")
 				return &v
 			}(),
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
-			},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -1616,10 +1612,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "127.0.0.1",
 			},
-			SessionName: "RTP session",
-			TimeDescriptions: []psdp.TimeDescription{
-				{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
-			},
+			SessionName:      "RTP session",
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			EmailAddress: func() *psdp.EmailAddress {
 				e := psdp.EmailAddress("NONE")
 				return &e
@@ -2789,6 +2783,133 @@ var cases = []struct {
 						{
 							Key:   "rtpmap",
 							Value: "107 METADATA/90000",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue gortsplib/501",
+		[]byte("v=0\r\n" +
+			"o=- 1705180917694 1705180917694 IN IP4 192.168.1.63\r\n" +
+			"s=Live\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPrimary/micCfg0/trackID=9?mtu=1440&streamType=u\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0 97\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"c=SM SM spk0_trackID2\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPrimary/spk0/trackID=2?mtu=1440&streamType=u\r\n" +
+			"a=sendonly\r\n" +
+			"a=rtpmap:0 pcmu/8000\r\n" +
+			"a=rtpmap:97 opus/48000/2\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPr\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 1705180917694 1705180917694 IN IP4 192.168.1.63\r\n" +
+			"s=Live\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPrimary/micCfg0/trackID=9?mtu=1440&streamType=u\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0 97\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPrimary/spk0/trackID=2?mtu=1440&streamType=u\r\n" +
+			"a=sendonly\r\n" +
+			"a=rtpmap:0 pcmu/8000\r\n" +
+			"a=rtpmap:97 opus/48000/2\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPr\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      1705180917694,
+				SessionVersion: 1705180917694,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.1.63",
+			},
+			SessionName:      "Live",
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "192.168.1.63",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.1.63/defaultPrimary/micCfg0/trackID=9?mtu=1440&streamType=u",
+						},
+						{
+							Key:   "recvonly",
+							Value: "",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0", "97"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "192.168.1.63",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.1.63/defaultPrimary/spk0/trackID=2?mtu=1440&streamType=u",
+						},
+						{
+							Key: "sendonly",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "0 pcmu/8000",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "97 opus/48000/2",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "192.168.1.63",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.1.63/defaultPr",
 						},
 					},
 				},
