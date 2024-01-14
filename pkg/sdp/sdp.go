@@ -482,6 +482,10 @@ func (s *SessionDescription) unmarshalMediaTitle(value string) error {
 }
 
 func (s *SessionDescription) unmarshalMediaConnectionInformation(value string) error {
+	if strings.HasPrefix(value, "SM ") {
+		return nil
+	}
+
 	latestMediaDesc := s.MediaDescriptions[len(s.MediaDescriptions)-1]
 	var err error
 	latestMediaDesc.ConnectionInformation, err = unmarshalConnectionInformation(value)
