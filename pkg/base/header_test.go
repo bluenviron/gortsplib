@@ -45,60 +45,27 @@ var cases = []struct {
 		},
 	},
 	{
-		"empty",
-		[]byte("Testing:\r\n" +
-			"\r\n"),
-		[]byte("Testing: \r\n" +
-			"\r\n"),
-		Header{
-			"Testing": HeaderValue{""},
-		},
-	},
-	{
-		"without space",
-		[]byte("CSeq:2\r\n" +
-			"\r\n"),
-		[]byte("CSeq: 2\r\n" +
-			"\r\n"),
-		Header{
-			"CSeq": HeaderValue{"2"},
-		},
-	},
-	{
-		"with multiple spaces",
-		[]byte("CSeq:  2\r\n" +
-			"\r\n"),
-		[]byte("CSeq: 2\r\n" +
-			"\r\n"),
-		Header{
-			"CSeq": HeaderValue{"2"},
-		},
-	},
-	{
-		"normalized keys, standard",
-		[]byte("content-type: testing\r\n" +
-			"content-length: value\r\n" +
-			"\r\n"),
-		[]byte("Content-Length: value\r\n" +
-			"Content-Type: testing\r\n" +
-			"\r\n"),
-		Header{
-			"Content-Length": HeaderValue{"value"},
-			"Content-Type":   HeaderValue{"testing"},
-		},
-	},
-	{
-		"normalized keys, non-standard",
-		[]byte("www-authenticate: value\r\n" +
-			"cseq: value\r\n" +
-			"rtp-info: value\r\n" +
-			"\r\n"),
+		"various",
+		[]byte(
+			"Testing:\r\n" +
+				"content-type: testing\r\n" +
+				"content-length:value\r\n" +
+				"www-authenticate: value\r\n" +
+				"cseq:  value\r\n" +
+				"rtp-info: value\r\n" +
+				"\r\n"),
 		[]byte("CSeq: value\r\n" +
+			"Content-Length: value\r\n" +
+			"Content-Type: testing\r\n" +
+			"Testing: \r\n" +
 			"RTP-Info: value\r\n" +
 			"WWW-Authenticate: value\r\n" +
 			"\r\n"),
 		Header{
+			"Content-Length":   HeaderValue{"value"},
+			"Content-Type":     HeaderValue{"testing"},
 			"CSeq":             HeaderValue{"value"},
+			"Testing":          HeaderValue{""},
 			"RTP-Info":         HeaderValue{"value"},
 			"WWW-Authenticate": HeaderValue{"value"},
 		},

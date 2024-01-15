@@ -97,18 +97,26 @@ func (h *Header) unmarshal(br *bufio.Reader) error {
 	return nil
 }
 
-func (h Header) marshalSize() int {
-	// sort headers by key
-	// in order to obtain deterministic results
+// sort headers by key
+// in order to obtain deterministic results
+func (h Header) sortedKeys() []string {
 	keys := make([]string, len(h))
 	for key := range h {
 		keys = append(keys, key)
 	}
-	sort.Strings(keys)
 
+	// some cameras require CSeq to be put before everything else
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] == "CSeq" || (keys[j] != "CSeq" && keys[i] < keys[j])
+	})
+
+	return keys
+}
+
+func (h Header) marshalSize() int {
 	n := 0
 
-	for _, key := range keys {
+	for _, key := range h.sortedKeys() {
 		for _, val := range h[key] {
 			n += len([]byte(key + ": " + val + "\r\n"))
 		}
@@ -120,17 +128,9 @@ func (h Header) marshalSize() int {
 }
 
 func (h Header) marshalTo(buf []byte) int {
-	// sort headers by key
-	// in order to obtain deterministic results
-	keys := make([]string, len(h))
-	for key := range h {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-
 	pos := 0
 
-	for _, key := range keys {
+	for _, key := range h.sortedKeys() {
 		for _, val := range h[key] {
 			pos += copy(buf[pos:], []byte(key+": "+val+"\r\n"))
 		}

@@ -114,15 +114,16 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 	var tmp string
 	tmp, value = value[i+1:], value[:i]
 
+	tmp = strings.TrimRight(tmp, " ")
+
 	var err error
 
-	switch {
-	case strings.ContainsAny(tmp, "."):
-		i := strings.Index(tmp, ".")
+	if i := strings.Index(tmp, "."); i >= 0 {
 		s.Origin.SessionVersion, err = strconv.ParseUint(tmp[:i], 16, 64)
-	default:
+	} else {
 		s.Origin.SessionVersion, err = strconv.ParseUint(tmp, 10, 64)
 	}
+
 	if err != nil {
 		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, tmp)
 	}

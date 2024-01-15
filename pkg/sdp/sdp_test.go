@@ -227,8 +227,7 @@ var cases = []struct {
 					Value: "0 1 UDP 2113667327 203.0.113.1 54400 typ host",
 				},
 				{
-					Key:   "recvonly",
-					Value: "",
+					Key: "recvonly",
 				},
 			},
 			MediaDescriptions: []*psdp.MediaDescription{
@@ -371,8 +370,7 @@ var cases = []struct {
 							Value: "?ctype=video",
 						},
 						{
-							Key:   "recvonly",
-							Value: "",
+							Key: "recvonly",
 						},
 					},
 				},
@@ -393,8 +391,7 @@ var cases = []struct {
 							Value: "?ctype=app106",
 						},
 						{
-							Key:   "sendonly",
-							Value: "",
+							Key: "sendonly",
 						},
 					},
 				},
@@ -746,8 +743,7 @@ var cases = []struct {
 							Value: "trackID=1",
 						},
 						{
-							Key:   "recvonly",
-							Value: "",
+							Key: "recvonly",
 						},
 						{
 							Key:   "framerate",
@@ -996,7 +992,6 @@ var cases = []struct {
 				SessionVersion: 16381778200090839277,
 				NetworkType:    "IN",
 				AddressType:    "IP4",
-				UnicastAddress: "",
 			},
 			SessionName: psdp.SessionName("RTSP Server"),
 			EmailAddress: func() *psdp.EmailAddress {
@@ -2419,8 +2414,7 @@ var cases = []struct {
 								"sprop-parameter-sets=Z2QAKKwbGoB4AiflwFuAgICgAAB9AAATiB0MAEr4AAL68F3lxoYAJXwAAX14LvLhQA==,aO48MA==",
 						},
 						{
-							Key:   "recvonly",
-							Value: "",
+							Key: "recvonly",
 						},
 					},
 				},
@@ -2462,7 +2456,6 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "192.168.1.10",
 			},
-			SessionName: "",
 			Attributes: []psdp.Attribute{
 				{
 					Key:   "range",
@@ -2857,8 +2850,7 @@ var cases = []struct {
 							Value: "rtsp://192.168.1.63/defaultPrimary/micCfg0/trackID=9?mtu=1440&streamType=u",
 						},
 						{
-							Key:   "recvonly",
-							Value: "",
+							Key: "recvonly",
 						},
 					},
 				},
@@ -2910,6 +2902,112 @@ var cases = []struct {
 						{
 							Key:   "control",
 							Value: "rtsp://192.168.1.63/defaultPr",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue mediamtx/2887",
+		[]byte("v=0\r\n" +
+			"o=- 57160522 782967157  IN IP4 192.168.1.44\r\n" +
+			"s=live\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=AS:2058\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:rtsp://192.168.1.44:554/video/live00_0\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"b=AS:64\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n" +
+			"a=control:rtsp://192.168.1.44:554/audio/live00_0\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 57160522 782967157 IN IP4 192.168.1.44\r\n" +
+			"s=live\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=AS:2058\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:rtsp://192.168.1.44:554/video/live00_0\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"b=AS:64\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n" +
+			"a=control:rtsp://192.168.1.44:554/audio/live00_0\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      57160522,
+				SessionVersion: 782967157,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.1.44",
+			},
+			SessionName: "live",
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "0.0.0.0",
+				},
+			},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "control",
+					Value: "*",
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Bandwidth: []psdp.Bandwidth{{
+						Type:      "AS",
+						Bandwidth: 2058,
+					}},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "range",
+							Value: "npt=0-",
+						},
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.1.44:554/video/live00_0",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"8"},
+					},
+					Bandwidth: []psdp.Bandwidth{{
+						Type:      "AS",
+						Bandwidth: 64,
+					}},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "8 PCMA/8000",
+						},
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.1.44:554/audio/live00_0",
 						},
 					},
 				},
