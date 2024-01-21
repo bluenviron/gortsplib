@@ -6,13 +6,14 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
 	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an MPEG-4 audio media
-// 3. save the content of the media into a file in MPEG-TS format
+// 2. check if there's an MPEG-4 audio format
+// 3. save the content of the format into a file in MPEG-TS format
 
 func main() {
 	c := gortsplib.Client{}
@@ -52,7 +53,11 @@ func main() {
 	// setup MPEG-4 audio -> MPEG-TS muxer
 	mpegtsMuxer := &mpegtsMuxer{
 		fileName: "mystream.ts",
-		config:   forma.Config,
+		track: &mpegts.Track{
+			Codec: &mpegts.CodecMPEG4Audio{
+				Config: *forma.Config,
+			},
+		},
 	}
 	mpegtsMuxer.initialize()
 	if err != nil {

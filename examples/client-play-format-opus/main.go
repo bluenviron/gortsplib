@@ -11,8 +11,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an Opus media
-// 3. get Opus packets of that media
+// 2. check if there's an Opus format
+// 3. get Opus packets of that format
 
 func main() {
 	c := gortsplib.Client{}

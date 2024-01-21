@@ -18,8 +18,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a H264 media stream
-// 3. decode the H264 media stream into RGBA frames
+// 2. check if there's a H264 format
+// 3. decode the H264 format into RGBA frames
 // 4. convert frames to JPEG images and save them on disk
 
 // This example requires the FFmpeg libraries, that can be installed with this command:

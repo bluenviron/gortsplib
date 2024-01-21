@@ -74,6 +74,7 @@ Features:
 * [client-play-format-mpeg4audio](examples/client-play-format-mpeg4audio/main.go)
 * [client-play-format-mpeg4audio-save-to-disk](examples/client-play-format-mpeg4audio-save-to-disk/main.go)
 * [client-play-format-opus](examples/client-play-format-opus/main.go)
+* [client-play-format-opus-save-to-disk](examples/client-play-format-opus-save-to-disk/main.go)
 * [client-play-format-vp8](examples/client-play-format-vp8/main.go)
 * [client-play-format-vp9](examples/client-play-format-vp9/main.go)
 * [client-record-options](examples/client-record-options/main.go)

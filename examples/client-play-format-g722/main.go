@@ -11,8 +11,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a G722 media
-// 3. get G722 frames of that media
+// 2. check if there's a G722 format
+// 3. get G722 frames of that format
 
 func main() {
 	c := gortsplib.Client{}

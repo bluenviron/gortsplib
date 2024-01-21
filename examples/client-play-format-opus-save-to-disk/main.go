@@ -6,17 +6,14 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph265"
+	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
 	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an H265 format
-// 3. decode the H265 format into RGBA frames
-
-// This example requires the FFmpeg libraries, that can be installed with this command:
-// apt install -y libavformat-dev libswscale-dev gcc pkg-config
+// 2. check if there's a Opus format
+// 3. save the content of the format into a file in MPEG-TS format
 
 func main() {
 	c := gortsplib.Client{}
@@ -40,36 +37,36 @@ func main() {
 		panic(err)
 	}
 
-	// find the H265 media and format
-	var forma *format.H265
+	// find the Opus media and format
+	var forma *format.Opus
 	medi := desc.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
-	// setup RTP/H265 -> H265 decoder
+	// setup RTP/Opus -> Opus decoder
 	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)
 	}
 
-	// setup H265 -> raw frames decoder
-	frameDec := &h265Decoder{}
-	err = frameDec.initialize()
+	// setup Opus -> MPEG-TS muxer
+	mpegtsMuxer := &mpegtsMuxer{
+		fileName: "mystream.ts",
+		track: &mpegts.Track{
+			Codec: &mpegts.CodecOpus{
+				ChannelCount: func() int {
+					if forma.IsStereo {
+						return 2
+					}
+					return 1
+				}(),
+			},
+		},
+	}
+	mpegtsMuxer.initialize()
 	if err != nil {
 		panic(err)
-	}
-	defer frameDec.close()
-
-	// if VPS, SPS and PPS are present into the SDP, send them to the decoder
-	if forma.VPS != nil {
-		frameDec.decode(forma.VPS)
-	}
-	if forma.SPS != nil {
-		frameDec.decode(forma.SPS)
-	}
-	if forma.PPS != nil {
-		frameDec.decode(forma.PPS)
 	}
 
 	// setup a single media
@@ -87,29 +84,21 @@ func main() {
 			return
 		}
 
-		// extract access units from RTP packets
-		au, err := rtpDec.Decode(pkt)
+		// extract Opus packets from RTP packets
+		opkt, err := rtpDec.Decode(pkt)
 		if err != nil {
-			if err != rtph265.ErrNonStartingPacketAndNoPrevious && err != rtph265.ErrMorePacketsNeeded {
-				log.Printf("ERR: %v", err)
-			}
+			log.Printf("ERR: %v", err)
 			return
 		}
 
-		for _, nalu := range au {
-			// convert NALUs into RGBA frames
-			img, err := frameDec.decode(nalu)
-			if err != nil {
-				panic(err)
-			}
-
-			// wait for a frame
-			if img == nil {
-				continue
-			}
-
-			log.Printf("decoded frame with PTS %v and size %v", pts, img.Bounds().Max)
+		// encode Opus packets into MPEG-TS
+		err = mpegtsMuxer.writeOpus(opkt, pts)
+		if err != nil {
+			log.Printf("ERR: %v", err)
+			return
 		}
+
+		log.Printf("saved TS packet")
 	})
 
 	// start playing
