@@ -12,8 +12,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an H264 media stream
-// 3. decode the H264 media stream into RGBA frames
+// 2. check if there's an H264 format
+// 3. decode the H264 format into RGBA frames
 
 // This example requires the FFmpeg libraries, that can be installed with this command:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config

@@ -14,8 +14,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a M-JPEG media
-// 3. get JPEG images of that media
+// 2. check if there's a M-JPEG format
+// 3. get JPEG images of that format
 // 4. decode JPEG images into raw images
 
 func main() {

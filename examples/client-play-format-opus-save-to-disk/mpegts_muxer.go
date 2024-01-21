@@ -42,7 +42,7 @@ func (e *mpegtsMuxer) close() {
 	e.f.Close()
 }
 
-// writeMPEG4Audio writes MPEG-4 audio access units into MPEG-TS.
-func (e *mpegtsMuxer) writeMPEG4Audio(aus [][]byte, pts time.Duration) error {
-	return e.w.WriteMPEG4Audio(e.track, durationGoToMPEGTS(pts), aus)
+// writeOpus writes Opus packets into MPEG-TS.
+func (e *mpegtsMuxer) writeOpus(pkt []byte, pts time.Duration) error {
+	return e.w.WriteOpus(e.track, durationGoToMPEGTS(pts), [][]byte{pkt})
 }

@@ -11,8 +11,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an MPEG4-audio media
-// 3. get access units of that media
+// 2. check if there's an MPEG-4 audio format
+// 3. get access units of that format
 
 func main() {
 	c := gortsplib.Client{}
@@ -36,7 +36,7 @@ func main() {
 		panic(err)
 	}
 
-	// find the MPEG4-audio media and format
+	// find the MPEG-4 audio media and format
 	var forma *format.MPEG4Audio
 	medi := desc.FindFormat(&forma)
 	if medi == nil {

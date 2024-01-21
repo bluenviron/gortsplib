@@ -12,8 +12,8 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a VP8 media
-// 3. get access units of that media
+// 2. check if there's a VP8 format
+// 3. get access units of that format
 
 func main() {
 	c := gortsplib.Client{}

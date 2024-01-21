@@ -12,12 +12,12 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/MPEG4-audio packets with GStreamer
-// 2. connect to a RTSP server, announce an MPEG4-audio media
+// 1. generate RTP/MPEG-4 audio packets with GStreamer
+// 2. connect to a RTSP server, announce an MPEG-4 audio media
 // 3. route the packets from GStreamer to the server
 
 func main() {
-	// open a listener to receive RTP/MPEG4-audio packets
+	// open a listener to receive RTP/MPEG-4 audio packets
 	pc, err := net.ListenPacket("udp", "localhost:9000")
 	if err != nil {
 		panic(err)
