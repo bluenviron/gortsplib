@@ -122,12 +122,12 @@ func (sc *ServerConn) BytesSent() uint64 {
 	return sc.bc.BytesSent()
 }
 
-// SetUserData sets some user data associated to the connection.
+// SetUserData sets some user data associated with the connection.
 func (sc *ServerConn) SetUserData(v interface{}) {
 	sc.userData = v
 }
 
-// UserData returns some user data associated to the connection.
+// UserData returns some user data associated with the connection.
 func (sc *ServerConn) UserData() interface{} {
 	return sc.userData
 }
