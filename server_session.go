@@ -285,12 +285,12 @@ func (ss *ServerSession) SetuppedMedias() []*description.Media {
 	return ret
 }
 
-// SetUserData sets some user data associated to the session.
+// SetUserData sets some user data associated with the session.
 func (ss *ServerSession) SetUserData(v interface{}) {
 	ss.userData = v
 }
 
-// UserData returns some user data associated to the session.
+// UserData returns some user data associated with the session.
 func (ss *ServerSession) UserData() interface{} {
 	return ss.userData
 }
