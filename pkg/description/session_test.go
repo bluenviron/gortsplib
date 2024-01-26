@@ -550,7 +550,7 @@ var casesSession = []struct {
 		},
 	},
 	{
-		"tp-link",
+		"issue mediamtx/1267 (tp-link)",
 		"v=0\r\n" +
 			"o=- 4158123474391860926 2 IN IP4 127.0.0.1\r\n" +
 			"s=-\r\n" +
@@ -575,6 +575,39 @@ var casesSession = []struct {
 						RTPMa:      "TP-LINK/90000",
 						ClockRat:   90000,
 					}},
+				},
+			},
+		},
+	},
+	{
+		"issue gortsplib/509 (tp-link)",
+		"v=0\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.1.102\n" +
+			"s=Session streamed by \"TP-LINK RTSP Server\"\n" +
+			"t=0 0\n" +
+			"a=smart_encoder:virtualIFrame=1\n" +
+			"m=application/tp-link 0 RTP/AVP smart/0/25000\n" +
+			"a=rtpmap:95 tp-link/25000\n" +
+			"a=control:track3\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=Session streamed by \"TP-LINK RTSP Server\"\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"m=application/tp-link 0 RTP/AVP 95\r\n" +
+			"a=control:track3\r\n" +
+			"a=rtpmap:95 tp-link/25000\r\n",
+		Session{
+			Title: `Session streamed by "TP-LINK RTSP Server"`,
+			Medias: []*Media{
+				{
+					Type: "application/tp-link",
+					Formats: []format.Format{&format.Generic{
+						PayloadTyp: 95,
+						RTPMa:      "tp-link/25000",
+						ClockRat:   25000,
+					}},
+					Control: "track3",
 				},
 			},
 		},
