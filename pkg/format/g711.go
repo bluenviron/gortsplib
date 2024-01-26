@@ -65,7 +65,7 @@ func (f *G711) Codec() string {
 
 // ClockRate implements Format.
 func (f *G711) ClockRate() int {
-	return 8000
+	return f.SampleRate
 }
 
 // PayloadType implements Format.

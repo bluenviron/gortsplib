@@ -8,28 +8,48 @@ import (
 )
 
 func TestG711Attributes(t *testing.T) {
-	t.Run("pcma", func(t *testing.T) {
-		format := &G711{
-			PayloadTyp:   8,
-			MULaw:        false,
-			SampleRate:   8000,
-			ChannelCount: 1,
-		}
-		require.Equal(t, "G711", format.Codec())
-		require.Equal(t, 8000, format.ClockRate())
-		require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
-	})
-
-	t.Run("pcmu", func(t *testing.T) {
-		format := &G711{
-			PayloadTyp:   0,
-			MULaw:        true,
-			SampleRate:   8000,
-			ChannelCount: 1,
-		}
-		require.Equal(t, "G711", format.Codec())
-		require.Equal(t, 8000, format.ClockRate())
-	})
+	for _, ca := range []struct {
+		name      string
+		format    *G711
+		clockRate int
+	}{
+		{
+			"pcma 8khz",
+			&G711{
+				PayloadTyp:   8,
+				MULaw:        false,
+				SampleRate:   8000,
+				ChannelCount: 1,
+			},
+			8000,
+		},
+		{
+			"pcmu 8khz",
+			&G711{
+				PayloadTyp:   0,
+				MULaw:        true,
+				SampleRate:   8000,
+				ChannelCount: 1,
+			},
+			8000,
+		},
+		{
+			"pcma 16khz",
+			&G711{
+				PayloadTyp:   96,
+				MULaw:        true,
+				SampleRate:   16000,
+				ChannelCount: 1,
+			},
+			16000,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			require.Equal(t, "G711", ca.format.Codec())
+			require.Equal(t, ca.clockRate, ca.format.ClockRate())
+			require.Equal(t, true, ca.format.PTSEqualsDTS(&rtp.Packet{}))
+		})
+	}
 }
 
 func TestG711DecEncoder(t *testing.T) {
