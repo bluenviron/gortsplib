@@ -16,15 +16,19 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 )
 
-var smartRegexp = regexp.MustCompile("^([0-9]+) (.*?)/90000")
+var (
+	smartPayloadTypeRegexp = regexp.MustCompile("^smart/[0-9]/[0-9]+$")
+	smartRtpmapRegexp      = regexp.MustCompile("^([0-9]+) (.+)/[0-9]+$")
+)
 
 func replaceSmartPayloadType(payloadType string, attributes []psdp.Attribute) string {
-	if payloadType == "smart/1/90000" {
+	re1 := smartPayloadTypeRegexp.FindStringSubmatch(payloadType)
+	if re1 != nil {
 		for _, attr := range attributes {
 			if attr.Key == "rtpmap" {
-				sm := smartRegexp.FindStringSubmatch(attr.Value)
-				if sm != nil {
-					return sm[1]
+				re2 := smartRtpmapRegexp.FindStringSubmatch(attr.Value)
+				if re2 != nil {
+					return re2[1]
 				}
 			}
 		}
