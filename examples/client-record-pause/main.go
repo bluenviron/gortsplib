@@ -13,7 +13,7 @@ import (
 
 // This example shows how to
 // 1. generate RTP/H264 frames from a file with GStreamer
-// 2. connect to a RTSP server, announce an H264 media
+// 2. connect to a RTSP server, announce an H264 format
 // 3. write the frames to the server for 5 seconds
 // 4. pause for 5 seconds
 // 5. repeat

@@ -14,7 +14,7 @@ import (
 // This example shows how to
 // 1. set additional client options
 // 2. generate RTP/H264 frames from a file with GStreamer
-// 3. connect to a RTSP server, announce an H264 media
+// 3. connect to a RTSP server, announce an H264 format
 // 4. write the frames to the server
 
 func main() {

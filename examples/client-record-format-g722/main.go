@@ -12,7 +12,7 @@ import (
 
 // This example shows how to
 // 1. generate RTP/G722 packets with GStreamer
-// 2. connect to a RTSP server, announce a G722 media
+// 2. connect to a RTSP server, announce a G722 format
 // 3. route the packets from GStreamer to the server
 
 func main() {

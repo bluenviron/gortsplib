@@ -12,7 +12,7 @@ import (
 
 // This example shows how to
 // 1. generate RTP/Opus packets with GStreamer
-// 2. connect to a RTSP server, announce an Opus media
+// 2. connect to a RTSP server, announce an Opus format
 // 3. route the packets from GStreamer to the server
 
 func main() {

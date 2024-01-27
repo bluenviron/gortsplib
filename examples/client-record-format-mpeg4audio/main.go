@@ -13,7 +13,7 @@ import (
 
 // This example shows how to
 // 1. generate RTP/MPEG-4 audio packets with GStreamer
-// 2. connect to a RTSP server, announce an MPEG-4 audio media
+// 2. connect to a RTSP server, announce an MPEG-4 audio format
 // 3. route the packets from GStreamer to the server
 
 func main() {
