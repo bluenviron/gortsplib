@@ -12,7 +12,7 @@ import (
 
 // This example shows how to
 // 1. generate RTP/H264 packets with GStreamer
-// 2. connect to a RTSP server, announce an H264 media
+// 2. connect to a RTSP server, announce an H264 format
 // 3. route the packets from GStreamer to the server
 
 func main() {

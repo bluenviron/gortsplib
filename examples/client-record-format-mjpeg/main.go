@@ -12,7 +12,7 @@ import (
 
 // This example shows how to
 // 1. generate RTP/M-JPEG packets with GStreamer
-// 2. connect to a RTSP server, announce a M-JPEG media
+// 2. connect to a RTSP server, announce a M-JPEG format
 // 3. route the packets from GStreamer to the server
 
 func main() {

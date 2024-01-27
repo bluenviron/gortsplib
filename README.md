@@ -85,6 +85,7 @@ Features:
 * [client-record-format-h265](examples/client-record-format-h265/main.go)
 * [client-record-format-lpcm](examples/client-record-format-lpcm/main.go)
 * [client-record-format-mjpeg](examples/client-record-format-mjpeg/main.go)
+* [client-record-format-mjpeg-from-image](examples/client-record-format-mjpeg-from-image/main.go)
 * [client-record-format-mpeg4audio](examples/client-record-format-mpeg4audio/main.go)
 * [client-record-format-opus](examples/client-record-format-opus/main.go)
 * [client-record-format-vp8](examples/client-record-format-vp8/main.go)
