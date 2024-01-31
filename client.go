@@ -1886,7 +1886,7 @@ func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Durat
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.
-// The NTP timestamp is computed from sender reports.
+// The NTP timestamp is computed from RTCP sender reports.
 func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
 	cm := c.medias[medi]
 	ct := cm.formats[pkt.PayloadType]
