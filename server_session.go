@@ -1250,7 +1250,7 @@ func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (ti
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.
-// The NTP timestamp is computed from sender reports.
+// The NTP timestamp is computed from RTCP sender reports.
 func (ss *ServerSession) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[pkt.PayloadType]
