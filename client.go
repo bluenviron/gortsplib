@@ -1890,6 +1890,9 @@ func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Durat
 func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
 	cm := c.medias[medi]
 	ct := cm.formats[pkt.PayloadType]
+	if ct.rtcpReceiver == nil {
+		return time.Time{}, false
+	}
 	return ct.rtcpReceiver.PacketNTP(pkt.Timestamp)
 }
 
