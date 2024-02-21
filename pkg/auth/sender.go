@@ -19,11 +19,9 @@ func findHeader(v base.HeaderValue, prefix string) string {
 
 // Sender allows to send credentials.
 type Sender struct {
-	user   string
-	pass   string
-	method headers.AuthMethod
-	realm  string
-	nonce  string
+	user               string
+	pass               string
+	authenticateHeader *headers.Authenticate
 }
 
 // NewSender allocates a Sender.
@@ -38,20 +36,10 @@ func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 			return nil, err
 		}
 
-		if auth.Realm == nil {
-			return nil, fmt.Errorf("realm is missing")
-		}
-
-		if auth.Nonce == nil {
-			return nil, fmt.Errorf("nonce is missing")
-		}
-
 		return &Sender{
-			user:   user,
-			pass:   pass,
-			method: headers.AuthDigest,
-			realm:  *auth.Realm,
-			nonce:  *auth.Nonce,
+			user:               user,
+			pass:               pass,
+			authenticateHeader: &auth,
 		}, nil
 	}
 
@@ -62,15 +50,10 @@ func NewSender(v base.HeaderValue, user string, pass string) (*Sender, error) {
 			return nil, err
 		}
 
-		if auth.Realm == nil {
-			return nil, fmt.Errorf("realm is missing")
-		}
-
 		return &Sender{
-			user:   user,
-			pass:   pass,
-			method: headers.AuthBasic,
-			realm:  *auth.Realm,
+			user:               user,
+			pass:               pass,
+			authenticateHeader: &auth,
 		}, nil
 	}
 
@@ -82,26 +65,19 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 	urStr := req.URL.CloneWithoutCredentials().String()
 
 	h := headers.Authorization{
-		Method: se.method,
+		Method: se.authenticateHeader.Method,
 	}
 
-	switch se.method {
-	case headers.AuthBasic:
+	if se.authenticateHeader.Method == headers.AuthBasic {
 		h.BasicUser = se.user
 		h.BasicPass = se.pass
-
-	default: // headers.AuthDigest
-		response := md5Hex(md5Hex(se.user+":"+se.realm+":"+se.pass) + ":" +
-			se.nonce + ":" + md5Hex(string(req.Method)+":"+urStr))
-
-		h.DigestValues = headers.Authenticate{
-			Method:   headers.AuthDigest,
-			Username: &se.user,
-			Realm:    &se.realm,
-			Nonce:    &se.nonce,
-			URI:      &urStr,
-			Response: &response,
-		}
+	} else { // digest
+		h.Username = se.user
+		h.Realm = se.authenticateHeader.Realm
+		h.Nonce = se.authenticateHeader.Nonce
+		h.URI = urStr
+		h.Response = md5Hex(md5Hex(se.user+":"+se.authenticateHeader.Realm+":"+se.pass) + ":" +
+			se.authenticateHeader.Nonce + ":" + md5Hex(string(req.Method)+":"+urStr))
 	}
 
 	if req.Header == nil {

@@ -39,14 +39,14 @@ func GenerateWWWAuthenticate(methods []headers.AuthMethod, realm string, nonce s
 		case headers.AuthBasic:
 			ret = append(ret, (&headers.Authenticate{
 				Method: headers.AuthBasic,
-				Realm:  &realm,
+				Realm:  realm,
 			}).Marshal()...)
 
 		case headers.AuthDigest:
 			ret = append(ret, headers.Authenticate{
 				Method: headers.AuthDigest,
-				Realm:  &realm,
-				Nonce:  &nonce,
+				Realm:  realm,
+				Nonce:  nonce,
 			}.Marshal()...)
 		}
 	}
@@ -92,46 +92,26 @@ func Validate(
 			return fmt.Errorf("authentication failed")
 		}
 	case auth.Method == headers.AuthDigest && contains(methods, headers.AuthDigest):
-		if auth.DigestValues.Realm == nil {
-			return fmt.Errorf("realm is missing")
-		}
-
-		if auth.DigestValues.Nonce == nil {
-			return fmt.Errorf("nonce is missing")
-		}
-
-		if auth.DigestValues.Username == nil {
-			return fmt.Errorf("username is missing")
-		}
-
-		if auth.DigestValues.URI == nil {
-			return fmt.Errorf("uri is missing")
-		}
-
-		if auth.DigestValues.Response == nil {
-			return fmt.Errorf("response is missing")
-		}
-
-		if *auth.DigestValues.Nonce != nonce {
+		if auth.Nonce != nonce {
 			return fmt.Errorf("wrong nonce")
 		}
 
-		if *auth.DigestValues.Realm != realm {
+		if auth.Realm != realm {
 			return fmt.Errorf("wrong realm")
 		}
 
-		if *auth.DigestValues.Username != user {
+		if auth.Username != user {
 			return fmt.Errorf("authentication failed")
 		}
 
 		ur := req.URL
 
-		if *auth.DigestValues.URI != ur.String() {
+		if auth.URI != ur.String() {
 			// in SETUP requests, VLC strips the control attribute.
 			// try again with the base URL.
 			if baseURL != nil {
 				ur = baseURL
-				if *auth.DigestValues.URI != ur.String() {
+				if auth.URI != ur.String() {
 					return fmt.Errorf("wrong URL")
 				}
 			} else {
@@ -142,7 +122,7 @@ func Validate(
 		response := md5Hex(md5Hex(user+":"+realm+":"+pass) +
 			":" + nonce + ":" + md5Hex(string(req.Method)+":"+ur.String()))
 
-		if *auth.DigestValues.Response != response {
+		if auth.Response != response {
 			return fmt.Errorf("authentication failed")
 		}
 	default:
