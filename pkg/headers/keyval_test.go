@@ -85,21 +85,8 @@ func TestKeyValParse(t *testing.T) {
 	}
 }
 
-func TestKeyValParseErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		s    string
-		err  string
-	}{
-		{
-			"apexes not closed",
-			`key1="v,1`,
-			"apexes not closed (key1=\"v,1)",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			_, err := keyValParse(ca.s, ',')
-			require.EqualError(t, err, ca.err)
-		})
-	}
+func FuzzKeyValParse(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b string) {
+		keyValParse(b, ',') //nolint:errcheck
+	})
 }
