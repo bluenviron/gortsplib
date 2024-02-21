@@ -49,19 +49,17 @@ func keyValParse(str string, separator byte) (map[string]string, error) {
 		var k string
 		k, str = readKey(str, separator)
 
-		if len(k) > 0 {
-			if len(str) > 0 && str[0] == '=' {
-				var v string
-				var err error
-				v, str, err = readValue(origstr, str[1:], separator)
-				if err != nil {
-					return nil, err
-				}
-
-				ret[k] = v
-			} else {
-				ret[k] = ""
+		if len(str) > 0 && str[0] == '=' {
+			var v string
+			var err error
+			v, str, err = readValue(origstr, str[1:], separator)
+			if err != nil {
+				return nil, err
 			}
+
+			ret[k] = v
+		} else {
+			ret[k] = ""
 		}
 
 		// skip separator
