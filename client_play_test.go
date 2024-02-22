@@ -1691,12 +1691,13 @@ func TestClientPlayRedirect(t *testing.T) {
 							authOpaque := "exampleOpaque"
 							authStale := "FALSE"
 							authAlg := "MD5"
+
 							err = conn.WriteResponse(&base.Response{
 								Header: base.Header{
 									"WWW-Authenticate": headers.Authenticate{
 										Method:    headers.AuthDigest,
-										Realm:     &authRealm,
-										Nonce:     &authNonce,
+										Realm:     authRealm,
+										Nonce:     authNonce,
 										Opaque:    &authOpaque,
 										Stale:     &authStale,
 										Algorithm: &authAlg,
@@ -1706,13 +1707,16 @@ func TestClientPlayRedirect(t *testing.T) {
 							})
 							require.NoError(t, err)
 						}
+
 						req, err = conn.ReadRequest()
 						require.NoError(t, err)
+
 						authHeaderVal, exists := req.Header["Authorization"]
 						require.True(t, exists)
-						var authHeader headers.Authenticate
+
+						var authHeader headers.Authorization
 						require.NoError(t, authHeader.Unmarshal(authHeaderVal))
-						require.Equal(t, *authHeader.Username, "testusr")
+						require.Equal(t, authHeader.Username, "testusr")
 						require.Equal(t, base.Describe, req.Method)
 					}
 

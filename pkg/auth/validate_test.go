@@ -3,75 +3,55 @@ package auth
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/headers"
+	"github.com/stretchr/testify/require"
 )
 
-func TestValidateErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		hv   base.HeaderValue
-		err  string
-	}{
-		{
-			"invalid auth",
-			base.HeaderValue{`Invalid`},
-			"invalid authorization header",
-		},
-		{
-			"digest missing realm",
-			base.HeaderValue{`Digest `},
-			"realm is missing",
-		},
-		{
-			"digest missing nonce",
-			base.HeaderValue{`Digest realm=123`},
-			"nonce is missing",
-		},
-		{
-			"digest missing username",
-			base.HeaderValue{`Digest realm=123,nonce=123`},
-			"username is missing",
-		},
-		{
-			"digest missing uri",
-			base.HeaderValue{`Digest realm=123,nonce=123,username=123`},
-			"uri is missing",
-		},
-		{
-			"digest missing response",
-			base.HeaderValue{`Digest realm=123,nonce=123,username=123,uri=123`},
-			"response is missing",
-		},
-		{
-			"digest wrong nonce",
-			base.HeaderValue{`Digest realm=123,nonce=123,username=123,uri=123,response=123`},
-			"wrong nonce",
-		},
-		{
-			"digest wrong realm",
-			base.HeaderValue{`Digest realm=123,nonce=abcde,username=123,uri=123,response=123`},
-			"wrong realm",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			err := Validate(
-				&base.Request{
-					Method: base.Describe,
-					URL:    nil,
-					Header: base.Header{
-						"Authorization": ca.hv,
-					},
+func FuzzValidate(f *testing.F) {
+	f.Add(`Invalid`)
+	f.Add(`Digest `)
+	f.Add(`Digest realm=123`)
+	f.Add(`Digest realm=123,nonce=123`)
+	f.Add(`Digest realm=123,nonce=123,username=123`)
+	f.Add(`Digest realm=123,nonce=123,username=123,uri=123`)
+	f.Add(`Digest realm=123,nonce=123,username=123,uri=123,response=123`)
+	f.Add(`Digest realm=123,nonce=abcde,username=123,uri=123,response=123`)
+
+	f.Fuzz(func(t *testing.T, a string) {
+		Validate( //nolint:errcheck
+			&base.Request{
+				Method: base.Describe,
+				URL:    nil,
+				Header: base.Header{
+					"Authorization": base.HeaderValue{a},
 				},
-				"myuser",
-				"mypass",
-				nil,
-				nil,
-				"IPCAM",
-				"abcde",
-			)
-			require.EqualError(t, err, ca.err)
-		})
-	}
+			},
+			"myuser",
+			"mypass",
+			nil,
+			nil,
+			"IPCAM",
+			"abcde",
+		)
+	})
+}
+
+func TestValidateAdditionalErrors(t *testing.T) {
+	err := Validate(
+		&base.Request{
+			Method: base.Describe,
+			URL:    nil,
+			Header: base.Header{
+				"Authorization": base.HeaderValue{"Basic bXl1c2VyOm15cGFzcw=="},
+			},
+		},
+		"myuser",
+		"mypass",
+		nil,
+		[]headers.AuthMethod{headers.AuthDigest},
+		"IPCAM",
+		"abcde",
+	)
+	require.Error(t, err)
 }

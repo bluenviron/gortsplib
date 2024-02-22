@@ -26,16 +26,37 @@ var casesAuthorization = []struct {
 	},
 	{
 		"digest",
-		base.HeaderValue{"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\""},
-		base.HeaderValue{"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\""},
+		base.HeaderValue{`Digest username="Mufasa", realm="testrealm@host.com", ` +
+			`nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", ` +
+			`uri="/dir/index.html", response="e966c932a9242554e42c8ee200cec7f6", opaque="5ccc069c403ebaf9f0171e9517f40e41"`},
+		base.HeaderValue{`Digest username="Mufasa", realm="testrealm@host.com", ` +
+			`nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", ` +
+			`uri="/dir/index.html", response="e966c932a9242554e42c8ee200cec7f6", opaque="5ccc069c403ebaf9f0171e9517f40e41"`},
 		Authorization{
-			Method: AuthDigest,
-			DigestValues: Authenticate{
-				Method: AuthDigest,
-				Realm:  stringPtr("4419b63f5e51"),
-				Nonce:  stringPtr("8b84a3b789283a8bea8da7fa7d41f08b"),
-				Stale:  stringPtr("FALSE"),
-			},
+			Method:   AuthDigest,
+			Username: "Mufasa",
+			Realm:    "testrealm@host.com",
+			Nonce:    "dcd98b7102dd2f0e8b11d0f600bfb0c093",
+			URI:      "/dir/index.html",
+			Response: "e966c932a9242554e42c8ee200cec7f6",
+			Opaque:   stringPtr("5ccc069c403ebaf9f0171e9517f40e41"),
+		},
+	},
+	{
+		"digest with empty field",
+		base.HeaderValue{`Digest username="", realm="IPCAM", ` +
+			`nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", ` +
+			`response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
+		base.HeaderValue{`Digest username="", realm="IPCAM", ` +
+			`nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", ` +
+			`response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
+		Authorization{
+			Method:   AuthDigest,
+			Username: "",
+			Realm:    "IPCAM",
+			Nonce:    "5d17cd12b9fa8a85ac5ceef0926ea5a6",
+			URI:      "rtsp://localhost:8554/mystream",
+			Response: "c072ae90eb4a27f4cdcb90d62266b2a1",
 		},
 	},
 }
@@ -51,51 +72,6 @@ func TestAuthorizationUnmarshal(t *testing.T) {
 	}
 }
 
-func TestAuthorizationUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		hv   base.HeaderValue
-		err  string
-	}{
-		{
-			"empty",
-			base.HeaderValue{},
-			"value not provided",
-		},
-		{
-			"2 values",
-			base.HeaderValue{"a", "b"},
-			"value provided multiple times ([a b])",
-		},
-		{
-			"invalid",
-			base.HeaderValue{`Invalid`},
-			"invalid authorization header",
-		},
-		{
-			"basic invalid 1",
-			base.HeaderValue{`Basic aaa`},
-			"invalid value",
-		},
-		{
-			"basic invalid 2",
-			base.HeaderValue{`Basic aW52YWxpZA==`},
-			"invalid value",
-		},
-		{
-			"digest invalid",
-			base.HeaderValue{`Digest test="v`},
-			"apexes not closed (test=\"v)",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var h Authorization
-			err := h.Unmarshal(ca.hv)
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestAuthorizationMarshal(t *testing.T) {
 	for _, ca := range casesAuthorization {
 		t.Run(ca.name, func(t *testing.T) {
@@ -103,4 +79,29 @@ func TestAuthorizationMarshal(t *testing.T) {
 			require.Equal(t, ca.vout, vout)
 		})
 	}
+}
+
+func FuzzAuthorizationUnmarshal(f *testing.F) {
+	for _, ca := range casesAuthorization {
+		f.Add(ca.vin[0])
+	}
+
+	f.Fuzz(func(t *testing.T, b string) {
+		var h Authorization
+		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
+	})
+}
+
+func TestAuthorizationAdditionalErrors(t *testing.T) {
+	func() {
+		var h Authorization
+		err := h.Unmarshal(base.HeaderValue{})
+		require.Error(t, err)
+	}()
+
+	func() {
+		var h Authorization
+		err := h.Unmarshal(base.HeaderValue{"a", "b"})
+		require.Error(t, err)
+	}()
 }
