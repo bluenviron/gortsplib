@@ -39,10 +39,13 @@ func (h *RTPInfo) Unmarshal(v base.HeaderValue) error {
 			return err
 		}
 
+		urlReceived := false
+
 		for k, v := range kvs {
 			switch k {
 			case "url":
 				e.URL = v
+				urlReceived = true
 
 			case "seq":
 				vi, err := strconv.ParseUint(v, 10, 16)
@@ -65,7 +68,7 @@ func (h *RTPInfo) Unmarshal(v base.HeaderValue) error {
 			}
 		}
 
-		if e.URL == "" {
+		if !urlReceived {
 			return fmt.Errorf("URL is missing")
 		}
 

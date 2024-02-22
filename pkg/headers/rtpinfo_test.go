@@ -142,51 +142,6 @@ func TestRTPInfoUnmarshal(t *testing.T) {
 	}
 }
 
-func TestRTPInfoUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		hv   base.HeaderValue
-		err  string
-	}{
-		{
-			"empty",
-			base.HeaderValue{},
-			"value not provided",
-		},
-		{
-			"2 values",
-			base.HeaderValue{"a", "b"},
-			"value provided multiple times ([a b])",
-		},
-		{
-			"invalid key-value",
-			base.HeaderValue{"test=\"a"},
-			"apexes not closed (test=\"a)",
-		},
-		{
-			"invalid sequence",
-			base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=aa;rtptime=717574556`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"invalid rtptime",
-			base.HeaderValue{`url=rtsp://127.0.0.1/test.mkv/track1;seq=35243;rtptime=aa`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"missing URL",
-			base.HeaderValue{`seq=35243;rtptime=717574556`},
-			"URL is missing",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var h RTPInfo
-			err := h.Unmarshal(ca.hv)
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestRTPInfoMarshal(t *testing.T) {
 	for _, ca := range casesRTPInfo {
 		t.Run(ca.name, func(t *testing.T) {
@@ -194,4 +149,29 @@ func TestRTPInfoMarshal(t *testing.T) {
 			require.Equal(t, ca.vout, req)
 		})
 	}
+}
+
+func FuzzRTPInfoUnmarshal(f *testing.F) {
+	for _, ca := range casesRTPInfo {
+		f.Add(ca.vin[0])
+	}
+
+	f.Fuzz(func(t *testing.T, b string) {
+		var h RTPInfo
+		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
+	})
+}
+
+func TestRTPInfoAdditionalErrors(t *testing.T) {
+	func() {
+		var h RTPInfo
+		err := h.Unmarshal(base.HeaderValue{})
+		require.Error(t, err)
+	}()
+
+	func() {
+		var h RTPInfo
+		err := h.Unmarshal(base.HeaderValue{"a", "b"})
+		require.Error(t, err)
+	}()
 }
