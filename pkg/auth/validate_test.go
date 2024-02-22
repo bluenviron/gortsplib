@@ -49,7 +49,7 @@ func TestValidateAdditionalErrors(t *testing.T) {
 		"myuser",
 		"mypass",
 		nil,
-		[]headers.AuthMethod{headers.AuthDigest},
+		[]headers.AuthMethod{headers.AuthDigestMD5},
 		"IPCAM",
 		"abcde",
 	)

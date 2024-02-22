@@ -15,9 +15,32 @@ const (
 	// AuthBasic is the Basic authentication method
 	AuthBasic AuthMethod = iota
 
-	// AuthDigest is the Digest authentication method
-	AuthDigest
+	// AuthDigestMD5 is the Digest authentication method with the MD5 hash
+	AuthDigestMD5
+
+	// AuthDigestSHA256 is the Digest authentication method with the SHA-256 hash
+	AuthDigestSHA256
 )
+
+const (
+	// AuthDigest is an alias for AuthDigestMD5
+	//
+	// Deprecated: replaced by AuthDigestMD5
+	AuthDigest = AuthDigestMD5
+)
+
+func algorithmToMethod(v *string) (AuthMethod, error) {
+	switch {
+	case v == nil, strings.ToLower(*v) == "md5":
+		return AuthDigestMD5, nil
+
+	case strings.ToLower(*v) == "sha-256":
+		return AuthDigestSHA256, nil
+
+	default:
+		return 0, fmt.Errorf("unrecognized algorithm: %v", *v)
+	}
+}
 
 // Authenticate is a WWW-Authenticate header.
 type Authenticate struct {
@@ -39,9 +62,6 @@ type Authenticate struct {
 
 	// stale
 	Stale *string
-
-	// algorithm
-	Algorithm *string
 }
 
 // Unmarshal decodes a WWW-Authenticate header.
@@ -62,18 +82,20 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 	}
 	method, v0 := v0[:i], v0[i+1:]
 
+	isDigest := false
+
 	switch method {
 	case "Basic":
 		h.Method = AuthBasic
 
 	case "Digest":
-		h.Method = AuthDigest
+		isDigest = true
 
 	default:
 		return fmt.Errorf("invalid method (%s)", method)
 	}
 
-	if h.Method == AuthBasic {
+	if !isDigest {
 		kvs, err := keyValParse(v0, ',')
 		if err != nil {
 			return err
@@ -101,6 +123,7 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 
 		realmReceived := false
 		nonceReceived := false
+		var algorithm *string
 
 		for k, rv := range kvs {
 			v := rv
@@ -121,12 +144,17 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 				h.Stale = &v
 
 			case "algorithm":
-				h.Algorithm = &v
+				algorithm = &v
 			}
 		}
 
 		if !realmReceived || !nonceReceived {
 			return fmt.Errorf("one or more digest fields are missing")
+		}
+
+		h.Method, err = algorithmToMethod(algorithm)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -150,8 +178,10 @@ func (h Authenticate) Marshal() base.HeaderValue {
 		ret += ", stale=\"" + *h.Stale + "\""
 	}
 
-	if h.Algorithm != nil {
-		ret += ", algorithm=\"" + *h.Algorithm + "\""
+	if h.Method == AuthDigestMD5 {
+		ret += ", algorithm=\"MD5\""
+	} else {
+		ret += ", algorithm=\"SHA-256\""
 	}
 
 	return base.HeaderValue{ret}

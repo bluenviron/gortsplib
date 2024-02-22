@@ -1690,17 +1690,15 @@ func TestClientPlayRedirect(t *testing.T) {
 							authNonce := "exampleNonce"
 							authOpaque := "exampleOpaque"
 							authStale := "FALSE"
-							authAlg := "MD5"
 
 							err = conn.WriteResponse(&base.Response{
 								Header: base.Header{
 									"WWW-Authenticate": headers.Authenticate{
-										Method:    headers.AuthDigest,
-										Realm:     authRealm,
-										Nonce:     authNonce,
-										Opaque:    &authOpaque,
-										Stale:     &authStale,
-										Algorithm: &authAlg,
+										Method: headers.AuthDigestMD5,
+										Realm:  authRealm,
+										Nonce:  authNonce,
+										Opaque: &authOpaque,
+										Stale:  &authStale,
 									}.Marshal(),
 								},
 								StatusCode: base.StatusUnauthorized,
