@@ -42,7 +42,7 @@ type Authorization struct {
 	// response
 	Response string
 
-	// response
+	// opaque
 	Opaque *string
 }
 
@@ -64,18 +64,20 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 	}
 	method, v0 := v0[:i], v0[i+1:]
 
+	isDigest := false
+
 	switch method {
 	case "Basic":
 		h.Method = AuthBasic
 
 	case "Digest":
-		h.Method = AuthDigest
+		isDigest = true
 
 	default:
 		return fmt.Errorf("invalid method (%s)", method)
 	}
 
-	if h.Method == AuthBasic {
+	if !isDigest {
 		tmp, err := base64.StdEncoding.DecodeString(v0)
 		if err != nil {
 			return fmt.Errorf("invalid value")
@@ -98,6 +100,7 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 		nonceReceived := false
 		uriReceived := false
 		responseReceived := false
+		var algorithm *string
 
 		for k, rv := range kvs {
 			v := rv
@@ -125,11 +128,19 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 
 			case "opaque":
 				h.Opaque = &v
+
+			case "algorithm":
+				algorithm = &v
 			}
 		}
 
 		if !realmReceived || !usernameReceived || !nonceReceived || !uriReceived || !responseReceived {
 			return fmt.Errorf("one or more digest fields are missing")
+		}
+
+		h.Method, err = algorithmToMethod(algorithm)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -149,6 +160,12 @@ func (h Authorization) Marshal() base.HeaderValue {
 
 	if h.Opaque != nil {
 		ret += ", opaque=\"" + *h.Opaque + "\""
+	}
+
+	if h.Method == AuthDigestMD5 {
+		ret += ", algorithm=\"MD5\""
+	} else {
+		ret += ", algorithm=\"SHA-256\""
 	}
 
 	return base.HeaderValue{ret}

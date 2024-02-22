@@ -27,11 +27,15 @@ func TestAuth(t *testing.T) {
 			[]headers.AuthMethod{headers.AuthBasic},
 		},
 		{
-			"digest",
-			[]headers.AuthMethod{headers.AuthDigest},
+			"digest md5",
+			[]headers.AuthMethod{headers.AuthDigestMD5},
 		},
 		{
-			"both",
+			"digest sha256",
+			[]headers.AuthMethod{headers.AuthDigestSHA256},
+		},
+		{
+			"all",
 			nil,
 		},
 	} {
