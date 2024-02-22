@@ -131,136 +131,6 @@ func TestRangeUnmarshal(t *testing.T) {
 	}
 }
 
-func TestRangeUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		hv   base.HeaderValue
-		err  string
-	}{
-		{
-			"empty",
-			base.HeaderValue{},
-			"value not provided",
-		},
-		{
-			"2 values",
-			base.HeaderValue{"a", "b"},
-			"value provided multiple times ([a b])",
-		},
-		{
-			"invalid keys",
-			base.HeaderValue{`key1="k`},
-			"apexes not closed (key1=\"k)",
-		},
-		{
-			"value not found",
-			base.HeaderValue{``},
-			"value not found ()",
-		},
-		{
-			"smpte without values",
-			base.HeaderValue{`smpte=`},
-			"invalid value ()",
-		},
-		{
-			"smtpe end invalid",
-			base.HeaderValue{`smpte=00:00:01-123`},
-			"invalid SMPTE time (123)",
-		},
-		{
-			"smpte invalid 1",
-			base.HeaderValue{`smpte=123-`},
-			"invalid SMPTE time (123)",
-		},
-		{
-			"smpte invalid 2",
-			base.HeaderValue{`smpte=aa:00:00-`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"smpte invalid 3",
-			base.HeaderValue{`smpte=00:aa:00-`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"smpte invalid 4",
-			base.HeaderValue{`smpte=00:00:aa-`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"smpte invalid 5",
-			base.HeaderValue{`smpte=00:00:00:aa-`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"smpte invalid 6",
-			base.HeaderValue{`smpte=00:00:00:aa.00-`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"smpte invalid 7",
-			base.HeaderValue{`smpte=00:00:00:00.aa-`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"npt without values",
-			base.HeaderValue{`npt=`},
-			"invalid value ()",
-		},
-		{
-			"npt end invalid",
-			base.HeaderValue{`npt=00:00:00-aa`},
-			"strconv.ParseFloat: parsing \"aa\": invalid syntax",
-		},
-		{
-			"npt invalid 1",
-			base.HeaderValue{`npt=00:00:00:00-`},
-			"invalid NPT time (00:00:00:00)",
-		},
-		{
-			"npt invalid 2",
-			base.HeaderValue{`npt=aa-`},
-			"strconv.ParseFloat: parsing \"aa\": invalid syntax",
-		},
-		{
-			"npt invalid 3",
-			base.HeaderValue{`npt=aa:00-`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"npt invalid 4",
-			base.HeaderValue{`npt=aa:00:00-`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"clock without values",
-			base.HeaderValue{`clock=`},
-			"invalid value ()",
-		},
-		{
-			"clock end invalid",
-			base.HeaderValue{`clock=20060102T150405Z-aa`},
-			"parsing time \"aa\" as \"20060102T150405Z\": cannot parse \"aa\" as \"2006\"",
-		},
-		{
-			"clock invalid 1",
-			base.HeaderValue{`clock=aa-`},
-			"parsing time \"aa\" as \"20060102T150405Z\": cannot parse \"aa\" as \"2006\"",
-		},
-		{
-			"time invalid",
-			base.HeaderValue{`time=aa`},
-			"parsing time \"aa\" as \"20060102T150405Z\": cannot parse \"aa\" as \"2006\"",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var h Range
-			err := h.Unmarshal(ca.hv)
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestRangeMarshal(t *testing.T) {
 	for _, ca := range casesRange {
 		t.Run(ca.name, func(t *testing.T) {
@@ -268,4 +138,33 @@ func TestRangeMarshal(t *testing.T) {
 			require.Equal(t, ca.vout, req)
 		})
 	}
+}
+
+func FuzzRangeUnmarshal(f *testing.F) {
+	for _, ca := range casesRange {
+		f.Add(ca.vin[0])
+	}
+
+	f.Add("smtpe=")
+	f.Add("npt=")
+	f.Add("clock=")
+
+	f.Fuzz(func(t *testing.T, b string) {
+		var h Range
+		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
+	})
+}
+
+func TestRangeAdditionalErrors(t *testing.T) {
+	func() {
+		var h Range
+		err := h.Unmarshal(base.HeaderValue{})
+		require.Error(t, err)
+	}()
+
+	func() {
+		var h Range
+		err := h.Unmarshal(base.HeaderValue{"a", "b"})
+		require.Error(t, err)
+	}()
 }

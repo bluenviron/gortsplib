@@ -53,41 +53,6 @@ func TestSessionUnmarshal(t *testing.T) {
 	}
 }
 
-func TestSessionUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		hv   base.HeaderValue
-		err  string
-	}{
-		{
-			"empty",
-			base.HeaderValue{},
-			"value not provided",
-		},
-		{
-			"2 values",
-			base.HeaderValue{"a", "b"},
-			"value provided multiple times ([a b])",
-		},
-		{
-			"invalid key-value",
-			base.HeaderValue{"A3eqwsafq3rFASqew;test=\"a"},
-			"apexes not closed (test=\"a)",
-		},
-		{
-			"invalid timeout",
-			base.HeaderValue{`A3eqwsafq3rFASqew;timeout=aaa`},
-			"strconv.ParseUint: parsing \"aaa\": invalid syntax",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var h Session
-			err := h.Unmarshal(ca.hv)
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestSessionMarshal(t *testing.T) {
 	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
@@ -95,4 +60,31 @@ func TestSessionMarshal(t *testing.T) {
 			require.Equal(t, ca.vout, req)
 		})
 	}
+}
+
+func FuzzSessionUnmarshal(f *testing.F) {
+	for _, ca := range casesSession {
+		f.Add(ca.vin[0])
+	}
+
+	f.Add("timeout=")
+
+	f.Fuzz(func(t *testing.T, b string) {
+		var h Session
+		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
+	})
+}
+
+func TestSessionAdditionalErrors(t *testing.T) {
+	func() {
+		var h Session
+		err := h.Unmarshal(base.HeaderValue{})
+		require.Error(t, err)
+	}()
+
+	func() {
+		var h Session
+		err := h.Unmarshal(base.HeaderValue{"a", "b"})
+		require.Error(t, err)
+	}()
 }

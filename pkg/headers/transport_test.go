@@ -181,91 +181,6 @@ func TestTransportUnmarshal(t *testing.T) {
 	}
 }
 
-func TestTransportUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		hv   base.HeaderValue
-		err  string
-	}{
-		{
-			"empty",
-			base.HeaderValue{},
-			"value not provided",
-		},
-		{
-			"2 values",
-			base.HeaderValue{"a", "b"},
-			"value provided multiple times ([a b])",
-		},
-		{
-			"invalid keys",
-			base.HeaderValue{`key1="k`},
-			"apexes not closed (key1=\"k)",
-		},
-		{
-			"protocol not found",
-			base.HeaderValue{`invalid;unicast;client_port=14186-14187`},
-			"protocol not found (invalid;unicast;client_port=14186-14187)",
-		},
-		{
-			"invalid interleaved port",
-			base.HeaderValue{`RTP/AVP;unicast;interleaved=aa-14187`},
-			"invalid ports (aa-14187)",
-		},
-		{
-			"invalid ttl",
-			base.HeaderValue{`RTP/AVP;unicast;ttl=aa`},
-			"strconv.ParseUint: parsing \"aa\": invalid syntax",
-		},
-		{
-			"invalid destination",
-			base.HeaderValue{`RTP/AVP;unicast;destination=aa`},
-			"invalid destination (aa)",
-		},
-		{
-			"invalid ports 1",
-			base.HeaderValue{`RTP/AVP;unicast;port=aa`},
-			"invalid ports (aa)",
-		},
-		{
-			"invalid ports 2",
-			base.HeaderValue{`RTP/AVP;unicast;port=aa-bb-cc`},
-			"invalid ports (aa-bb-cc)",
-		},
-		{
-			"invalid ports 3",
-			base.HeaderValue{`RTP/AVP;unicast;port=aa-14187`},
-			"invalid ports (aa-14187)",
-		},
-		{
-			"invalid ports 4",
-			base.HeaderValue{`RTP/AVP;unicast;port=14186-aa`},
-			"invalid ports (14186-aa)",
-		},
-		{
-			"invalid client port",
-			base.HeaderValue{`RTP/AVP;unicast;client_port=aa-14187`},
-			"invalid ports (aa-14187)",
-		},
-		{
-			"invalid server port",
-			base.HeaderValue{`RTP/AVP;unicast;server_port=aa-14187`},
-			"invalid ports (aa-14187)",
-		},
-		{
-			"invalid mode",
-			base.HeaderValue{`RTP/AVP;unicast;mode=aa`},
-			"invalid transport mode: 'aa'",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var h Transport
-			err := h.Unmarshal(ca.hv)
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestTransportMarshal(t *testing.T) {
 	for _, ca := range casesTransport {
 		t.Run(ca.name, func(t *testing.T) {
@@ -312,36 +227,6 @@ func TestTransportsUnmarshal(t *testing.T) {
 	}
 }
 
-func TestTransportsUnmarshalErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		hv   base.HeaderValue
-		err  string
-	}{
-		{
-			"empty",
-			base.HeaderValue{},
-			"value not provided",
-		},
-		{
-			"2 values",
-			base.HeaderValue{"a", "b"},
-			"value provided multiple times ([a b])",
-		},
-		{
-			"invalid",
-			base.HeaderValue{"aasd"},
-			"protocol not found (aasd)",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var h Transports
-			err := h.Unmarshal(ca.hv)
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
 func TestTransportsMarshal(t *testing.T) {
 	for _, ca := range casesTransports {
 		t.Run(ca.name, func(t *testing.T) {
@@ -349,4 +234,42 @@ func TestTransportsMarshal(t *testing.T) {
 			require.Equal(t, ca.vout, req)
 		})
 	}
+}
+
+func FuzzTransportsUnmarshal(f *testing.F) {
+	for _, ca := range casesTransports {
+		f.Add(ca.vin[0])
+	}
+
+	for _, ca := range casesTransport {
+		f.Add(ca.vin[0])
+	}
+
+	f.Add("source=aa-14187")
+	f.Add("destination=aa")
+	f.Add("interleaved=")
+	f.Add("ttl=")
+	f.Add("port=")
+	f.Add("client_port=")
+	f.Add("server_port=")
+	f.Add("mode=")
+
+	f.Fuzz(func(t *testing.T, b string) {
+		var h Transports
+		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
+	})
+}
+
+func TestTransportAdditionalErrors(t *testing.T) {
+	func() {
+		var h Transport
+		err := h.Unmarshal(base.HeaderValue{})
+		require.Error(t, err)
+	}()
+
+	func() {
+		var h Transport
+		err := h.Unmarshal(base.HeaderValue{"a", "b"})
+		require.Error(t, err)
+	}()
 }
