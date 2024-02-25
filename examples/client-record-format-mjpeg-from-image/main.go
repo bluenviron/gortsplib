@@ -45,7 +45,11 @@ func main() {
 	}
 
 	// setup timestamp generator
-	rtpTime := rtptime.NewEncoder(forma.ClockRate(), 0)
+	rtpTime := &rtptime.Encoder{ClockRate: forma.ClockRate()}
+	err = rtpTime.Initialize()
+	if err != nil {
+		panic(err)
+	}
 	start := time.Now()
 
 	// setup a ticker to sleep between frames
@@ -89,7 +93,7 @@ func main() {
 		}
 
 		// get current timestamp
-		ts := rtpTime.Encode(time.Now().Sub(start))
+		ts := rtpTime.Encode(time.Since(start))
 
 		// write packets to the server
 		for _, pkt := range pkts {

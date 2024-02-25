@@ -1,6 +1,7 @@
 package rtptime
 
 import (
+	"crypto/rand"
 	"time"
 )
 
@@ -12,23 +13,47 @@ func divCeil(n, d uint64) uint64 {
 	return v
 }
 
-// Encoder is a RTP timestamp encoder.
-type Encoder struct {
-	clockRate        time.Duration
-	initialTimestamp time.Duration
+func randUint32() (uint32, error) {
+	var b [4]byte
+	_, err := rand.Read(b[:])
+	if err != nil {
+		return 0, err
+	}
+	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
-// NewEncoder allocates an Encoder.
-func NewEncoder(clockRate int, initialTimestamp uint32) *Encoder {
-	return &Encoder{
-		clockRate: time.Duration(clockRate),
-		// ((2^32) * 1000000000) is less than 2^63
-		initialTimestamp: time.Duration(divCeil(uint64(initialTimestamp)*uint64(time.Second), uint64(clockRate))),
+// Encoder is a RTP timestamp encoder.
+type Encoder struct {
+	// Clock rate.
+	ClockRate int
+
+	// (optional) initial timestamp.
+	// It defaults to a random value.
+	InitialTimestamp *uint32
+
+	clockRateTD        time.Duration
+	initialTimestampTD time.Duration
+}
+
+// Initialize initializes an Encoder.
+func (e *Encoder) Initialize() error {
+	e.clockRateTD = time.Duration(e.ClockRate)
+
+	if e.InitialTimestamp == nil {
+		v, err := randUint32()
+		if err != nil {
+			return err
+		}
+		e.InitialTimestamp = &v
 	}
+
+	e.initialTimestampTD = time.Duration(divCeil(uint64(*e.InitialTimestamp)*uint64(time.Second), uint64(e.ClockRate)))
+
+	return nil
 }
 
 // Encode encodes a timestamp.
 func (e *Encoder) Encode(ts time.Duration) uint32 {
-	ts = e.initialTimestamp + ts
-	return uint32(multiplyAndDivide(ts, e.clockRate, time.Second))
+	ts += e.initialTimestampTD
+	return uint32(multiplyAndDivide(ts, e.clockRateTD, time.Second))
 }
