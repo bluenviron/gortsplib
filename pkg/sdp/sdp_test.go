@@ -2443,6 +2443,7 @@ var cases = []struct {
 			"a=rtpmap:8 PCMA/8000\r\n"),
 		[]byte("v=0\r\n" +
 			"o=- 38990265062388 38990265062388 IN IP4 192.168.1.10\r\n" +
+			"s=\r\n" +
 			"a=range:npt=0-\r\n" +
 			"m=video 0 RTP/AVP 96\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
@@ -2526,6 +2527,7 @@ var cases = []struct {
 			"a=control:trackID=0\r\n"),
 		[]byte("v=0\r\n" +
 			"o= 0 0   \r\n" +
+			"s=\r\n" +
 			"m=video 0 RTP/AVP 96\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
 			"a=control:trackID=0\r\n"),
@@ -2605,6 +2607,7 @@ var cases = []struct {
 			"a=x-bufferdelay:1.000000\r\n"),
 		[]byte("v=0\r\n" +
 			"o= 0 0   \r\n" +
+			"s=\r\n" +
 			"m=metadata 0 RTP/AVP 98\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"b=AS:1000\r\n" +
