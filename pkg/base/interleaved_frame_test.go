@@ -55,7 +55,7 @@ func TestInterleavedFrameMarshal(t *testing.T) {
 }
 
 func FuzzInterleavedFrameUnmarshal(f *testing.F) {
-	f.Fuzz(func(t *testing.T, b []byte) {
+	f.Fuzz(func(_ *testing.T, b []byte) {
 		var f InterleavedFrame
 		f.Unmarshal(bufio.NewReader(bytes.NewBuffer(b))) //nolint:errcheck
 	})

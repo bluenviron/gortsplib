@@ -14,7 +14,7 @@ func FuzzSender(f *testing.F) {
 	f.Add(`Basic`)
 	f.Add(`Basic nonce=123`)
 
-	f.Fuzz(func(t *testing.T, a string) {
+	f.Fuzz(func(_ *testing.T, a string) {
 		NewSender(base.HeaderValue{a}, "myuser", "mypass") //nolint:errcheck
 	})
 }

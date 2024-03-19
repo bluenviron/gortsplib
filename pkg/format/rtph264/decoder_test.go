@@ -213,7 +213,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 }
 
 func FuzzDecoder(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a []byte, b []byte) {
+	f.Fuzz(func(_ *testing.T, a []byte, b []byte) {
 		d := &Decoder{}
 		d.Init() //nolint:errcheck
 

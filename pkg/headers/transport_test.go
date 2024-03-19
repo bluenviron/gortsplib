@@ -254,7 +254,7 @@ func FuzzTransportsUnmarshal(f *testing.F) {
 	f.Add("server_port=")
 	f.Add("mode=")
 
-	f.Fuzz(func(t *testing.T, b string) {
+	f.Fuzz(func(_ *testing.T, b string) {
 		var h Transports
 		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
 	})

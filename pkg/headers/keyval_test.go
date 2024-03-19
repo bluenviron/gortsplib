@@ -86,7 +86,7 @@ func TestKeyValParse(t *testing.T) {
 }
 
 func FuzzKeyValParse(f *testing.F) {
-	f.Fuzz(func(t *testing.T, b string) {
+	f.Fuzz(func(_ *testing.T, b string) {
 		keyValParse(b, ',') //nolint:errcheck
 	})
 }

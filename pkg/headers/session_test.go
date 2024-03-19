@@ -69,7 +69,7 @@ func FuzzSessionUnmarshal(f *testing.F) {
 
 	f.Add("timeout=")
 
-	f.Fuzz(func(t *testing.T, b string) {
+	f.Fuzz(func(_ *testing.T, b string) {
 		var h Session
 		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
 	})

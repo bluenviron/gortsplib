@@ -889,7 +889,7 @@ func FuzzSessionUnmarshalErrors(f *testing.F) {
 		"a=rtpmap:101 ulpfec/8000\r\n" +
 		"a=mid:4\r\n")
 
-	f.Fuzz(func(t *testing.T, enc string) {
+	f.Fuzz(func(_ *testing.T, enc string) {
 		var sd sdp.SessionDescription
 		err := sd.Unmarshal([]byte(enc))
 		if err != nil {

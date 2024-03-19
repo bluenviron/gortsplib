@@ -18,7 +18,7 @@ func FuzzValidate(f *testing.F) {
 	f.Add(`Digest realm=123,nonce=123,username=123,uri=123,response=123`)
 	f.Add(`Digest realm=123,nonce=abcde,username=123,uri=123,response=123`)
 
-	f.Fuzz(func(t *testing.T, a string) {
+	f.Fuzz(func(_ *testing.T, a string) {
 		Validate( //nolint:errcheck
 			&base.Request{
 				Method: base.Describe,

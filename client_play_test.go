@@ -524,7 +524,7 @@ func TestClientPlay(t *testing.T) {
 			err = c.SetupAll(sd.BaseURL, sd.Medias)
 			require.NoError(t, err)
 
-			c.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+			c.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 				require.Equal(t, &testRTPPacket, pkt)
 				err := c.WritePacketRTCP(medi, &testRTCPPacket)
 				require.NoError(t, err)
@@ -950,7 +950,7 @@ func TestClientPlayAnyPort(t *testing.T) {
 
 			var med *description.Media
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
-				func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+				func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 					require.Equal(t, &testRTPPacket, pkt)
 					med = medi
 					close(packetRecv)
@@ -1074,7 +1074,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		}
 
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
-			func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+			func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1247,7 +1247,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		}
 
 		err = readAll(&c, "rtsp://localhost:8554/teststream",
-			func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+			func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1481,7 +1481,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		}
 
 		err = readAll(&c, "rtsp://myuser:mypass@localhost:8554/teststream",
-			func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+			func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
 				close(packetRecv)
 			})
 		require.NoError(t, err)
@@ -1597,7 +1597,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+		func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
 			close(packetRecv)
 		})
 	require.NoError(t, err)
@@ -1783,7 +1783,7 @@ func TestClientPlayRedirect(t *testing.T) {
 				ru = "rtsp://testusr:testpwd@localhost:8554/path1"
 			}
 			err = readAll(&c, ru,
-				func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+				func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
 					close(packetRecv)
 				})
 			require.NoError(t, err)
@@ -1981,7 +1981,7 @@ func TestClientPlayPause(t *testing.T) {
 			}
 
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
-				func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+				func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
 					if atomic.SwapInt32(&firstFrame, 1) == 0 {
 						close(packetRecv)
 					}
@@ -2427,7 +2427,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+		func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
 			close(recv)
 		})
 	require.NoError(t, err)
@@ -2731,7 +2731,7 @@ func TestClientPlayKeepalive(t *testing.T) {
 			v := TransportTCP
 			c := Client{
 				Transport: &v,
-				OnResponse: func(res *base.Response) {
+				OnResponse: func(_ *base.Response) {
 					m++
 					if ca != "no response" {
 						if m >= 5 {
@@ -2746,7 +2746,7 @@ func TestClientPlayKeepalive(t *testing.T) {
 			}
 
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
-				func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+				func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
 					require.Equal(t, &testRTPPacket, pkt)
 					n++
 					if n == 2 {
@@ -2879,7 +2879,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/test/stream?param=value",
-		func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+		func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
 			require.Equal(t, &testRTPPacket, pkt)
 			close(packetRecv)
 		})
@@ -3324,7 +3324,7 @@ func TestClientPlayPacketNTP(t *testing.T) {
 	first := false
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
-		func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+		func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 			if !first {
 				first = true
 			} else {
@@ -3510,7 +3510,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 
 	recv := make(chan struct{})
 
-	c.OnPacketRTP(sd.Medias[0], sd.Medias[0].Formats[0], func(pkt *rtp.Packet) {
+	c.OnPacketRTP(sd.Medias[0], sd.Medias[0].Formats[0], func(_ *rtp.Packet) {
 		close(recv)
 	})
 

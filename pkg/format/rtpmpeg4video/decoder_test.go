@@ -32,7 +32,7 @@ func TestDecode(t *testing.T) {
 }
 
 func FuzzDecoder(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
+	f.Fuzz(func(_ *testing.T, a []byte, am bool, b []byte, bm bool) {
 		d := &Decoder{}
 		d.Init() //nolint:errcheck
 
