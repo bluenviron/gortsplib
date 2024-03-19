@@ -227,7 +227,7 @@ func TestServerPlayPath(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
@@ -315,12 +315,12 @@ func TestServerPlaySetupErrors(t *testing.T) {
 						}
 						close(nconnClosed)
 					},
-					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
@@ -428,17 +428,17 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 					close(errorRecv)
 				}
 			},
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -511,24 +511,24 @@ func TestServerPlay(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnOpen: func(ctx *ServerHandlerOnConnOpenCtx) {
+					onConnOpen: func(_ *ServerHandlerOnConnOpenCtx) {
 						close(nconnOpened)
 					},
-					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+					onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
 						close(nconnClosed)
 					},
-					onSessionOpen: func(ctx *ServerHandlerOnSessionOpenCtx) {
+					onSessionOpen: func(_ *ServerHandlerOnSessionOpenCtx) {
 						close(sessionOpened)
 					},
-					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+					onSessionClose: func(_ *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
@@ -584,7 +584,7 @@ func TestServerPlay(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
+					onGetParameter: func(_ *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -847,17 +847,17 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+					onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -975,17 +975,17 @@ func TestServerPlayRTCPReport(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+					onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -1108,7 +1108,7 @@ func TestServerPlayVLCMulticast(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
@@ -1157,21 +1157,21 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 	s := &Server{
 		RTSPAddress: "localhost:8554",
 		Handler: &testServerHandler{
-			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+			onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
 			},
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
 					defer close(writerDone)
 
@@ -1237,17 +1237,17 @@ func TestServerPlayPlayPlay(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -1295,21 +1295,21 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+			onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
 			},
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				if !writerStarted {
 					writerStarted = true
 					go func() {
@@ -1334,7 +1334,7 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+			onPause: func(_ *ServerHandlerOnPauseCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -1380,21 +1380,21 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+			onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
 				close(writerTerminate)
 				<-writerDone
 			},
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
 					defer close(writerDone)
 
@@ -1416,7 +1416,7 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+			onPause: func(_ *ServerHandlerOnPauseCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -1469,20 +1469,20 @@ func TestServerPlayTimeout(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+					onSessionClose: func(_ *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+					onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -1559,23 +1559,23 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+					onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
 						close(nconnClosed)
 					},
-					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+					onSessionClose: func(_ *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+					onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -1637,22 +1637,22 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
+			onGetParameter: func(_ *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -1720,17 +1720,17 @@ func TestServerPlayPartialMedias(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				go func() {
 					time.Sleep(500 * time.Millisecond)
 					err := stream.WritePacketRTP(stream.Description().Medias[0], &testRTPPacket)
@@ -1834,17 +1834,17 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -1953,17 +1953,17 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -2035,17 +2035,17 @@ func TestServerPlayBytesSent(t *testing.T) {
 		MulticastRTPPort:  8000,
 		MulticastRTCPPort: 8001,
 		Handler: &testServerHandler{
-			onDescribe: func(ctx *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil

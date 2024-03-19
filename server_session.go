@@ -825,7 +825,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		sm := &serverSessionMedia{
 			ss:           ss,
 			media:        medi,
-			onPacketRTCP: func(p rtcp.Packet) {},
+			onPacketRTCP: func(_ rtcp.Packet) {},
 		}
 		sm.initialize()
 

@@ -309,7 +309,7 @@ func TestClientRecordSerial(t *testing.T) {
 			medias := []*description.Media{medi}
 
 			err = record(&c, scheme+"://localhost:8554/teststream", medias,
-				func(medi *description.Media, pkt rtcp.Packet) {
+				func(_ *description.Media, pkt rtcp.Packet) {
 					require.Equal(t, &testRTCPPacket, pkt)
 					close(recvDone)
 				})
@@ -1351,7 +1351,7 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 	medias := []*description.Media{testH264Media}
 
 	err = record(&c, "rtsp://localhost:8554/teststream", medias,
-		func(medi *description.Media, pkt rtcp.Packet) {
+		func(_ *description.Media, _ rtcp.Packet) {
 			close(rtcpReceived)
 		})
 	require.NoError(t, err)

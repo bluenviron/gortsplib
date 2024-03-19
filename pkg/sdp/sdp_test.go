@@ -2964,7 +2964,7 @@ func FuzzUnmarshal(f *testing.F) {
 	f.Add("v=0\r\n" +
 		"o = IN \r\n")
 
-	f.Fuzz(func(t *testing.T, b string) {
+	f.Fuzz(func(_ *testing.T, b string) {
 		desc := SessionDescription{}
 		desc.Unmarshal([]byte(b)) //nolint:errcheck
 	})

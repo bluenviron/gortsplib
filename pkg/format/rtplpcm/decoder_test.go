@@ -31,7 +31,7 @@ func TestDecode(t *testing.T) {
 }
 
 func FuzzDecoder(f *testing.F) {
-	f.Fuzz(func(t *testing.T, b []byte) {
+	f.Fuzz(func(_ *testing.T, b []byte) {
 		d := &Decoder{
 			BitDepth:     24,
 			ChannelCount: 2,

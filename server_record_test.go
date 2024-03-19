@@ -142,7 +142,7 @@ func TestServerRecordErrorAnnounce(t *testing.T) {
 						require.EqualError(t, ctx.Error, ca.err)
 						close(nconnClosed)
 					},
-					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -315,12 +315,12 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				serverErr <- ctx.Error
 			},
-			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+			onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil, nil
@@ -384,17 +384,17 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				serverErr <- ctx.Error
 			},
-			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+			onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil, nil
 			},
-			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+			onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -472,24 +472,24 @@ func TestServerRecord(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnOpen: func(ctx *ServerHandlerOnConnOpenCtx) {
+					onConnOpen: func(_ *ServerHandlerOnConnOpenCtx) {
 						close(nconnOpened)
 					},
-					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+					onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
 						close(nconnClosed)
 					},
-					onSessionOpen: func(ctx *ServerHandlerOnSessionOpenCtx) {
+					onSessionOpen: func(_ *ServerHandlerOnSessionOpenCtx) {
 						close(sessionOpened)
 					},
-					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+					onSessionClose: func(_ *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil, nil
@@ -716,17 +716,17 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 				require.EqualError(t, ctx.Error, "received unexpected interleaved frame")
 				close(errorRecv)
 			},
-			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+			onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil, nil
 			},
-			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+			onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -775,17 +775,17 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 func TestServerRecordRTCPReport(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
-			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+			onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil, nil
 			},
-			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+			onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -899,23 +899,23 @@ func TestServerRecordTimeout(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+					onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
 						close(nconnClosed)
 					},
-					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+					onSessionClose: func(_ *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil, nil
 					},
-					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+					onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -983,23 +983,23 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+					onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
 						close(nconnClosed)
 					},
-					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+					onSessionClose: func(_ *ServerHandlerOnSessionCloseCtx) {
 						close(sessionClosed)
 					},
-					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil, nil
 					},
-					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+					onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -1056,22 +1056,22 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 func TestServerRecordUDPChangeConn(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
-			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+			onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil, nil
 			},
-			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+			onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
+			onGetParameter: func(_ *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -1156,17 +1156,17 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 
 			s := &Server{
 				Handler: &testServerHandler{
-					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil, nil
 					},
-					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+					onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -1365,18 +1365,18 @@ func TestServerRecordPacketNTP(t *testing.T) {
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+			onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil, nil
 			},
 			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
-				ctx.Session.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+				ctx.Session.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 					if !first {
 						first = true
 					} else {
@@ -1486,22 +1486,22 @@ func TestServerRecordPacketNTP(t *testing.T) {
 func TestServerRecordPausePause(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
-			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+			onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil, nil
 			},
-			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+			onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+			onPause: func(_ *ServerHandlerOnPauseCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil

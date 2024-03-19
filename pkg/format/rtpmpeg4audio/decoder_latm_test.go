@@ -64,7 +64,7 @@ func TestDecodeLATMOtherData(t *testing.T) {
 }
 
 func FuzzDecoderLATM(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
+	f.Fuzz(func(_ *testing.T, a []byte, am bool, b []byte, bm bool) {
 		d := &Decoder{
 			LATM: true,
 		}

@@ -43,7 +43,7 @@ func TestBodyMarshal(t *testing.T) {
 }
 
 func FuzzBodyUnmarshal(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a string, b []byte) {
+	f.Fuzz(func(_ *testing.T, a string, b []byte) {
 		var p body
 		p.unmarshal( //nolint:errcheck
 			Header{

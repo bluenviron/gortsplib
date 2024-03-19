@@ -132,7 +132,7 @@ func FuzzHeaderUnmarshal(f *testing.F) {
 	}
 	f.Add([]byte(str))
 
-	f.Fuzz(func(t *testing.T, b []byte) {
+	f.Fuzz(func(_ *testing.T, b []byte) {
 		var h Header
 		h.unmarshal(bufio.NewReader(bytes.NewBuffer(b))) //nolint:errcheck
 	})

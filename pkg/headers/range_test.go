@@ -149,7 +149,7 @@ func FuzzRangeUnmarshal(f *testing.F) {
 	f.Add("npt=")
 	f.Add("clock=")
 
-	f.Fuzz(func(t *testing.T, b string) {
+	f.Fuzz(func(_ *testing.T, b string) {
 		var h Range
 		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
 	})

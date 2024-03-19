@@ -1208,7 +1208,7 @@ func TestUnmarshalErrors(t *testing.T) {
 }
 
 func FuzzUnmarshalH264(f *testing.F) {
-	f.Fuzz(func(t *testing.T, sps string, pktMode string) {
+	f.Fuzz(func(_ *testing.T, sps string, pktMode string) {
 		Unmarshal("video", 96, "H264/90000", map[string]string{ //nolint:errcheck
 			"sprop-parameter-sets": sps,
 			"packetization-mode":   pktMode,
@@ -1217,7 +1217,7 @@ func FuzzUnmarshalH264(f *testing.F) {
 }
 
 func FuzzUnmarshalH265(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a, b, c, d string) {
+	f.Fuzz(func(_ *testing.T, a, b, c, d string) {
 		Unmarshal("video", 96, "H265/90000", map[string]string{ //nolint:errcheck
 			"sprop-vps":          a,
 			"sprop-sps":          b,
@@ -1228,13 +1228,13 @@ func FuzzUnmarshalH265(f *testing.F) {
 }
 
 func FuzzUnmarshalLPCM(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a string) {
+	f.Fuzz(func(_ *testing.T, a string) {
 		Unmarshal("audio", 96, "L16/"+a, nil) //nolint:errcheck
 	})
 }
 
 func FuzzUnmarshalMPEG4Video(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a, b string) {
+	f.Fuzz(func(_ *testing.T, a, b string) {
 		Unmarshal("video", 96, "MP4V-ES/90000", map[string]string{ //nolint:errcheck
 			"profile-level-id": a,
 			"config":           b,
@@ -1245,13 +1245,13 @@ func FuzzUnmarshalMPEG4Video(f *testing.F) {
 func FuzzUnmarshalOpus(f *testing.F) {
 	f.Add("48000/a")
 
-	f.Fuzz(func(t *testing.T, a string) {
+	f.Fuzz(func(_ *testing.T, a string) {
 		Unmarshal("audio", 96, "Opus/"+a, nil) //nolint:errcheck
 	})
 }
 
 func FuzzUnmarshalVorbis(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a, b string) {
+	f.Fuzz(func(_ *testing.T, a, b string) {
 		Unmarshal("audio", 96, "Vorbis/"+a, map[string]string{ //nolint:errcheck
 			"configuration": b,
 		})
@@ -1259,7 +1259,7 @@ func FuzzUnmarshalVorbis(f *testing.F) {
 }
 
 func FuzzUnmarshalVP8(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a, b string) {
+	f.Fuzz(func(_ *testing.T, a, b string) {
 		Unmarshal("video", 96, "VP8/90000", map[string]string{ //nolint:errcheck
 			"max-fr": a,
 			"max-fs": b,
@@ -1268,7 +1268,7 @@ func FuzzUnmarshalVP8(f *testing.F) {
 }
 
 func FuzzUnmarshalVP9(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a, b, c string) {
+	f.Fuzz(func(_ *testing.T, a, b, c string) {
 		Unmarshal("video", 96, "VP9/90000", map[string]string{ //nolint:errcheck
 			"max-fr":     a,
 			"max-fs":     b,

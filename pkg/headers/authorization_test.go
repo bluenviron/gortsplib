@@ -103,7 +103,7 @@ func FuzzAuthorizationUnmarshal(f *testing.F) {
 		f.Add(ca.vin[0])
 	}
 
-	f.Fuzz(func(t *testing.T, b string) {
+	f.Fuzz(func(_ *testing.T, b string) {
 		var h Authorization
 		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
 	})
