@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var casesHeader = []struct {
+var cases = []struct {
 	name   string
 	dec    []byte
 	enc    []byte
@@ -105,79 +105,35 @@ var casesHeader = []struct {
 	},
 }
 
-func TestHeaderRead(t *testing.T) {
-	for _, ca := range casesHeader {
+func TestHeaderUnmarshal(t *testing.T) {
+	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			h := make(Header)
-			err := h.read(bufio.NewReader(bytes.NewBuffer(ca.dec)))
+			err := h.unmarshal(bufio.NewReader(bytes.NewBuffer(ca.dec)))
 			require.NoError(t, err)
 			require.Equal(t, ca.header, h)
 		})
 	}
 }
 
-func TestHeaderReadErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		dec  []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"EOF",
-		},
-		{
-			"missing value",
-			[]byte("Testing:"),
-			"EOF",
-		},
-		{
-			"missing eol",
-			[]byte("Testing: val"),
-			"EOF",
-		},
-		{
-			"r without n",
-			[]byte("Testing: val\rTesting: val\r\n"),
-			"expected '\n', got 'T'",
-		},
-		{
-			"final r without n",
-			[]byte("Testing: val\r\nTesting: val\r\n\r"),
-			"EOF",
-		},
-		{
-			"missing value",
-			[]byte("Testing\r\n"),
-			"value is missing",
-		},
-		{
-			"too many entries",
-			func() []byte {
-				var ret []byte
-				for i := 0; i < headerMaxEntryCount+2; i++ {
-					ret = append(ret, []byte("Testing: val\r\n")...)
-				}
-				ret = append(ret, []byte("\r\n")...)
-				return ret
-			}(),
-			"headers count exceeds 255",
-		},
-	} {
+func TestHeaderWrite(t *testing.T) {
+	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			h := make(Header)
-			err := h.read(bufio.NewReader(bytes.NewBuffer(ca.dec)))
-			require.EqualError(t, err, ca.err)
+			buf := ca.header.marshal()
+			require.Equal(t, ca.enc, buf)
 		})
 	}
 }
 
-func TestHeaderWrite(t *testing.T) {
-	for _, ca := range casesHeader {
-		t.Run(ca.name, func(t *testing.T) {
-			buf := ca.header.write()
-			require.Equal(t, ca.enc, buf)
-		})
+func FuzzHeaderUnmarshal(f *testing.F) {
+	str := ""
+	for i := 0; i < 300; i++ {
+		str += "Key: val\r\n"
 	}
+	f.Add([]byte(str))
+
+	f.Fuzz(func(_ *testing.T, b []byte) {
+		var h Header
+		h.unmarshal(bufio.NewReader(bytes.NewBuffer(b))) //nolint:errcheck
+	})
 }

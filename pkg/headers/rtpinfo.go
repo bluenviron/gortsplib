@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
 // RTPInfoEntry is an entry of a RTP-Info header.
@@ -18,8 +18,8 @@ type RTPInfoEntry struct {
 // RTPInfo is a RTP-Info header.
 type RTPInfo []*RTPInfoEntry
 
-// Read decodes a RTP-Info header.
-func (h *RTPInfo) Read(v base.HeaderValue) error {
+// Unmarshal decodes a RTP-Info header.
+func (h *RTPInfo) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -39,10 +39,13 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 			return err
 		}
 
+		urlReceived := false
+
 		for k, v := range kvs {
 			switch k {
 			case "url":
 				e.URL = v
+				urlReceived = true
 
 			case "seq":
 				vi, err := strconv.ParseUint(v, 10, 16)
@@ -65,7 +68,7 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 			}
 		}
 
-		if e.URL == "" {
+		if !urlReceived {
 			return fmt.Errorf("URL is missing")
 		}
 
@@ -75,8 +78,8 @@ func (h *RTPInfo) Read(v base.HeaderValue) error {
 	return nil
 }
 
-// Write encodes a RTP-Info header.
-func (h RTPInfo) Write() base.HeaderValue {
+// Marshal encodes a RTP-Info header.
+func (h RTPInfo) Marshal() base.HeaderValue {
 	rets := make([]string, len(h))
 
 	for i, e := range h {

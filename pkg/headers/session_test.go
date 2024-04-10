@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
 var casesSession = []struct {
@@ -28,10 +28,7 @@ var casesSession = []struct {
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
 		Session{
 			Session: "A3eqwsafq3rFASqew",
-			Timeout: func() *uint {
-				v := uint(47)
-				return &v
-			}(),
+			Timeout: uintPtr(47),
 		},
 	},
 	{
@@ -40,65 +37,54 @@ var casesSession = []struct {
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
 		Session{
 			Session: "A3eqwsafq3rFASqew",
-			Timeout: func() *uint {
-				v := uint(47)
-				return &v
-			}(),
+			Timeout: uintPtr(47),
 		},
 	},
 }
 
-func TestSessionRead(t *testing.T) {
+func TestSessionUnmarshal(t *testing.T) {
 	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Session
-			err := h.Read(ca.vin)
+			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
 		})
 	}
 }
 
-func TestSessionReadErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		hv   base.HeaderValue
-		err  string
-	}{
-		{
-			"empty",
-			base.HeaderValue{},
-			"value not provided",
-		},
-		{
-			"2 values",
-			base.HeaderValue{"a", "b"},
-			"value provided multiple times ([a b])",
-		},
-		{
-			"invalid key-value",
-			base.HeaderValue{"A3eqwsafq3rFASqew;test=\"a"},
-			"apexes not closed (test=\"a)",
-		},
-		{
-			"invalid timeout",
-			base.HeaderValue{`A3eqwsafq3rFASqew;timeout=aaa`},
-			"strconv.ParseUint: parsing \"aaa\": invalid syntax",
-		},
-	} {
+func TestSessionMarshal(t *testing.T) {
+	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
-			var h Session
-			err := h.Read(ca.hv)
-			require.EqualError(t, err, ca.err)
+			req := ca.h.Marshal()
+			require.Equal(t, ca.vout, req)
 		})
 	}
 }
 
-func TestSessionWrite(t *testing.T) {
+func FuzzSessionUnmarshal(f *testing.F) {
 	for _, ca := range casesSession {
-		t.Run(ca.name, func(t *testing.T) {
-			req := ca.h.Write()
-			require.Equal(t, ca.vout, req)
-		})
+		f.Add(ca.vin[0])
 	}
+
+	f.Add("timeout=")
+
+	f.Fuzz(func(_ *testing.T, b string) {
+		var h Session
+		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
+	})
+}
+
+func TestSessionAdditionalErrors(t *testing.T) {
+	func() {
+		var h Session
+		err := h.Unmarshal(base.HeaderValue{})
+		require.Error(t, err)
+	}()
+
+	func() {
+		var h Session
+		err := h.Unmarshal(base.HeaderValue{"a", "b"})
+		require.Error(t, err)
+	}()
 }

@@ -62,10 +62,11 @@ func parsePort(value string) (int, error) {
 	return port, nil
 }
 
-func (s *SessionDescription) unmarshalVersion(value string) error {
+func (s *SessionDescription) unmarshalProtocolVersion(value string) error {
 	if value != "0" {
 		return fmt.Errorf("invalid version")
 	}
+
 	return nil
 }
 
@@ -74,68 +75,85 @@ func (s *SessionDescription) unmarshalSessionName(value string) error {
 	return nil
 }
 
-func (s *SessionDescription) unmarshalOrigin(value string) error {
-	// special case for live reporter app
-	if value[:3] == "-0 " {
-		value = "- 0 " + value[3:]
-	}
-
-	// find spaces from end to beginning, to support multiple spaces
-	// in the first field
-	fields := func() []string {
-		values := strings.Split(strings.TrimSpace(value), " ")
-
-		// special case for some onvif2 cameras
-		if strings.Compare(values[len(values)-1], "IP4") == 0 {
-			values = append(values, "127.0.0.1")
+func stringsReverseIndexByte(s string, b byte) int {
+	for i := len(s) - 2; i >= 0; i-- {
+		if s[i] == b {
+			return i
 		}
+	}
+	return -1
+}
 
-		return append([]string{strings.Join(values[0:len(values)-5], " ")}, values[len(values)-5:]...)
-	}()
+// This is rewritten from scratch to make it compatible with most RTSP
+// implementations.
+func (s *SessionDescription) unmarshalOrigin(value string) error {
+	value = strings.Replace(value, " IN IPV4 ", " IN IP4 ", 1)
 
-	if len(fields) != 6 {
-		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, fields)
+	if strings.HasSuffix(value, "IN IP4") {
+		value += " "
 	}
 
-	var sessionID uint64
+	i := strings.Index(value, " IN IP4 ")
+	if i < 0 {
+		i = strings.Index(value, " IN IP6 ")
+		if i < 0 {
+			return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, value)
+		}
+	}
+
+	s.Origin.NetworkType = value[i+1 : i+3]
+	s.Origin.AddressType = value[i+4 : i+7]
+	s.Origin.UnicastAddress = strings.TrimSpace(value[i+8:])
+	value = value[:i]
+
+	i = stringsReverseIndexByte(value, ' ')
+	if i < 0 {
+		return fmt.Errorf("%w `o=%v`", errSDPInvalidSyntax, value)
+	}
+
+	var tmp string
+	tmp, value = value[i+1:], value[:i]
+
 	var err error
+
 	switch {
-	case strings.HasPrefix(fields[1], "0x") || strings.HasPrefix(fields[1], "0X"):
-		sessionID, err = strconv.ParseUint(fields[1][2:], 16, 64)
-	case strings.ContainsAny(fields[1], "abcdefABCDEF"):
-		sessionID, err = strconv.ParseUint(fields[1], 16, 64)
+	case strings.ContainsAny(tmp, "."):
+		i := strings.Index(tmp, ".")
+		s.Origin.SessionVersion, err = strconv.ParseUint(tmp[:i], 16, 64)
 	default:
-		sessionID, err = strconv.ParseUint(fields[1], 10, 64)
+		s.Origin.SessionVersion, err = strconv.ParseUint(tmp, 10, 64)
 	}
 	if err != nil {
-		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[1])
+		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, tmp)
 	}
 
-	sessionVersion, err := strconv.ParseUint(fields[2], 10, 64)
+	if value == "-0" { // live reporter app
+		value = "- 0"
+	}
+
+	i = stringsReverseIndexByte(value, ' ')
+	if i < 0 {
+		return nil
+	}
+
+	tmp, value = value[i+1:], value[:i]
+
+	switch {
+	case strings.HasPrefix(tmp, "0x"), strings.HasPrefix(tmp, "0X"):
+		s.Origin.SessionID, err = strconv.ParseUint(tmp[2:], 16, 64)
+	case strings.ContainsAny(tmp, "abcdefABCDEF"):
+		s.Origin.SessionID, err = strconv.ParseUint(tmp, 16, 64)
+	case strings.ContainsAny(tmp, "."):
+		i := strings.Index(tmp, ".")
+		s.Origin.SessionID, err = strconv.ParseUint(tmp[:i], 16, 64)
+	default:
+		s.Origin.SessionID, err = strconv.ParseUint(tmp, 10, 64)
+	}
 	if err != nil {
-		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, fields[2])
+		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, tmp)
 	}
 
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if i := indexOf(fields[3], []string{"IN"}); i == -1 {
-		return fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
-	}
-
-	// Set according to currently registered with IANA
-	// https://tools.ietf.org/html/rfc4566#section-8.2.7
-	if i := indexOf(fields[4], []string{"IP4", "IP6"}); i == -1 {
-		return fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[3])
-	}
-
-	s.Origin = psdp.Origin{
-		Username:       fields[0],
-		SessionID:      sessionID,
-		SessionVersion: sessionVersion,
-		NetworkType:    fields[3],
-		AddressType:    fields[4],
-		UnicastAddress: fields[5],
-	}
+	s.Origin.Username = value
 
 	return nil
 }
@@ -169,7 +187,8 @@ func (s *SessionDescription) unmarshalPhone(value string) error {
 }
 
 func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, error) {
-	// special case for some hikvision cameras
+	value = strings.Replace(value, "IN IPV4 ", "IN IP4 ", 1)
+
 	if strings.HasPrefix(value, "IN c=IN") {
 		value = value[len("IN c="):]
 	}
@@ -181,7 +200,7 @@ func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, 
 
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-8.2.6
-	if i := indexOf(fields[0], []string{"IN"}); i == -1 {
+	if i := indexOf(strings.ToUpper(fields[0]), []string{"IN"}); i == -1 {
 		return nil, fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
 
@@ -197,7 +216,7 @@ func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, 
 	}
 
 	return &psdp.ConnectionInformation{
-		NetworkType: fields[0],
+		NetworkType: strings.ToUpper(fields[0]),
 		AddressType: fields[1],
 		Address:     connAddr,
 	}, nil
@@ -209,6 +228,7 @@ func (s *SessionDescription) unmarshalSessionConnectionInformation(value string)
 	if err != nil {
 		return fmt.Errorf("%w `c=%v`", errSDPInvalidSyntax, value)
 	}
+
 	return nil
 }
 
@@ -366,7 +386,7 @@ func parseTimeUnits(value string) (int64, error) {
 func (s *SessionDescription) unmarshalRepeatTimes(value string) error {
 	fields := strings.Fields(value)
 	if len(fields) < 3 {
-		return fmt.Errorf("%w `r=%v`", errSDPInvalidSyntax, fields)
+		return fmt.Errorf("%w `r=%v`", errSDPInvalidSyntax, value)
 	}
 
 	latestTimeDesc := &s.TimeDescriptions[len(s.TimeDescriptions)-1]
@@ -406,7 +426,11 @@ func (s *SessionDescription) unmarshalMediaDescription(value string) error {
 	// <media>
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	if i := indexOf(fields[0], []string{"audio", "video", "text", "application", "message"}); i == -1 {
+	if fields[0] != "video" &&
+		fields[0] != "audio" &&
+		fields[0] != "application" &&
+		!strings.HasPrefix(fields[0], "application/") &&
+		fields[0] != "metadata" {
 		return fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
 	newMediaDesc.MediaName.Media = fields[0]
@@ -458,6 +482,10 @@ func (s *SessionDescription) unmarshalMediaTitle(value string) error {
 }
 
 func (s *SessionDescription) unmarshalMediaConnectionInformation(value string) error {
+	if strings.HasPrefix(value, "SM ") {
+		return nil
+	}
+
 	latestMediaDesc := s.MediaDescriptions[len(s.MediaDescriptions)-1]
 	var err error
 	latestMediaDesc.ConnectionInformation, err = unmarshalConnectionInformation(value)
@@ -499,19 +527,154 @@ func (s *SessionDescription) unmarshalMediaAttribute(value string) error {
 	return nil
 }
 
+type unmarshalState int
+
+const (
+	stateInitial unmarshalState = iota
+	stateSession
+	stateMedia
+	stateTimeDescription
+)
+
+func (s *SessionDescription) unmarshalSession(state *unmarshalState, key byte, val string) error {
+	switch key {
+	case 'o':
+		err := s.unmarshalOrigin(val)
+		if err != nil {
+			return err
+		}
+
+	case 's':
+		err := s.unmarshalSessionName(val)
+		if err != nil {
+			return err
+		}
+
+	case 'i':
+		err := s.unmarshalSessionInformation(val)
+		if err != nil {
+			return err
+		}
+
+	case 'u':
+		err := s.unmarshalURI(val)
+		if err != nil {
+			return err
+		}
+
+	case 'e':
+		err := s.unmarshalEmail(val)
+		if err != nil {
+			return err
+		}
+
+	case 'p':
+		err := s.unmarshalPhone(val)
+		if err != nil {
+			return err
+		}
+
+	case 'c':
+		err := s.unmarshalSessionConnectionInformation(val)
+		if err != nil {
+			return err
+		}
+
+	case 'b':
+		err := s.unmarshalSessionBandwidth(val)
+		if err != nil {
+			return err
+		}
+
+	case 'z':
+		err := s.unmarshalTimeZones(val)
+		if err != nil {
+			return err
+		}
+
+	case 'k':
+		err := s.unmarshalSessionEncryptionKey(val)
+		if err != nil {
+			return err
+		}
+
+	case 'a':
+		err := s.unmarshalSessionAttribute(val)
+		if err != nil {
+			return err
+		}
+
+	case 't':
+		err := s.unmarshalTiming(val)
+		if err != nil {
+			return err
+		}
+		*state = stateTimeDescription
+
+	case 'm':
+		err := s.unmarshalMediaDescription(val)
+		if err != nil {
+			return err
+		}
+		*state = stateMedia
+
+	default:
+		return fmt.Errorf("invalid key: %c", key)
+	}
+
+	return nil
+}
+
+func (s *SessionDescription) unmarshalMedia(key byte, val string) error {
+	switch key {
+	case 'm':
+		err := s.unmarshalMediaDescription(val)
+		if err != nil {
+			return err
+		}
+
+	case 'i':
+		err := s.unmarshalMediaTitle(val)
+		if err != nil {
+			return err
+		}
+
+	case 'c':
+		err := s.unmarshalMediaConnectionInformation(val)
+		if err != nil {
+			return err
+		}
+
+	case 'b':
+		err := s.unmarshalMediaBandwidth(val)
+		if err != nil {
+			return err
+		}
+
+	case 'k':
+		err := s.unmarshalMediaEncryptionKey(val)
+		if err != nil {
+			return err
+		}
+
+	case 'a':
+		err := s.unmarshalMediaAttribute(val)
+		if err != nil {
+			return err
+		}
+
+	default:
+		return fmt.Errorf("invalid key: %c", key)
+	}
+
+	return nil
+}
+
 // Unmarshal decodes a SessionDescription.
 // This is rewritten from scratch to guarantee compatibility with most RTSP
 // implementations.
 func (s *SessionDescription) Unmarshal(byts []byte) error {
 	str := string(byts)
-
-	type stateVal int
-
-	const (
-		stateInitial stateVal = iota
-		stateSession
-		stateMedia
-	)
 
 	state := stateInitial
 
@@ -531,147 +694,46 @@ func (s *SessionDescription) Unmarshal(byts []byte) error {
 		case stateInitial:
 			switch key {
 			case 'v':
-				err := s.unmarshalVersion(val)
+				err := s.unmarshalProtocolVersion(val)
 				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
+					return err
 				}
 				state = stateSession
 
 			default:
-				return fmt.Errorf("invalid key: %c (%s)", key, line)
+				state = stateSession
+				err := s.unmarshalSession(&state, key, val)
+				if err != nil {
+					return err
+				}
 			}
 
 		case stateSession:
-			switch key {
-			case 'o':
-				err := s.unmarshalOrigin(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 's':
-				err := s.unmarshalSessionName(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'i':
-				err := s.unmarshalSessionInformation(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'u':
-				err := s.unmarshalURI(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'e':
-				err := s.unmarshalEmail(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'p':
-				err := s.unmarshalPhone(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'c':
-				err := s.unmarshalSessionConnectionInformation(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'b':
-				err := s.unmarshalSessionBandwidth(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'z':
-				err := s.unmarshalTimeZones(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'k':
-				err := s.unmarshalSessionEncryptionKey(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'a':
-				err := s.unmarshalSessionAttribute(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 't':
-				err := s.unmarshalTiming(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'r':
-				err := s.unmarshalRepeatTimes(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'm':
-				err := s.unmarshalMediaDescription(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-				state = stateMedia
-
-			default:
-				return fmt.Errorf("invalid key: %c (%s)", key, line)
+			err := s.unmarshalSession(&state, key, val)
+			if err != nil {
+				return err
 			}
 
 		case stateMedia:
+			err := s.unmarshalMedia(key, val)
+			if err != nil {
+				return err
+			}
+
+		case stateTimeDescription:
 			switch key {
-			case 'm':
-				err := s.unmarshalMediaDescription(val)
+			case 'r':
+				err := s.unmarshalRepeatTimes(val)
 				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'i':
-				err := s.unmarshalMediaTitle(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'c':
-				err := s.unmarshalMediaConnectionInformation(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'b':
-				err := s.unmarshalMediaBandwidth(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'k':
-				err := s.unmarshalMediaEncryptionKey(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
-				}
-
-			case 'a':
-				err := s.unmarshalMediaAttribute(val)
-				if err != nil {
-					return fmt.Errorf("%s (%s)", err, line)
+					return err
 				}
 
 			default:
-				return fmt.Errorf("invalid key: %c (%s)", key, line)
+				state = stateSession
+				err := s.unmarshalSession(&state, key, val)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
 // Authorization is an Authorization header.
@@ -13,18 +13,41 @@ type Authorization struct {
 	// authentication method
 	Method AuthMethod
 
-	// basic user
+	//
+	// Basic authentication fields
+	//
+
+	// user
 	BasicUser string
 
-	// basic password
+	// password
 	BasicPass string
 
-	// digest values
-	DigestValues Authenticate
+	//
+	// Digest authentication fields
+	//
+
+	// username
+	Username string
+
+	// realm
+	Realm string
+
+	// nonce
+	Nonce string
+
+	// URI
+	URI string
+
+	// response
+	Response string
+
+	// opaque
+	Opaque *string
 }
 
-// Read decodes an Authorization header.
-func (h *Authorization) Read(v base.HeaderValue) error {
+// Unmarshal decodes an Authorization header.
+func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -35,12 +58,26 @@ func (h *Authorization) Read(v base.HeaderValue) error {
 
 	v0 := v[0]
 
-	switch {
-	case strings.HasPrefix(v0, "Basic "):
+	i := strings.IndexByte(v0, ' ')
+	if i < 0 {
+		return fmt.Errorf("unable to split between method and keys (%v)", v0)
+	}
+	method, v0 := v0[:i], v0[i+1:]
+
+	isDigest := false
+
+	switch method {
+	case "Basic":
 		h.Method = AuthBasic
 
-		v0 = v0[len("Basic "):]
+	case "Digest":
+		isDigest = true
 
+	default:
+		return fmt.Errorf("invalid method (%s)", method)
+	}
+
+	if !isDigest {
 		tmp, err := base64.StdEncoding.DecodeString(v0)
 		if err != nil {
 			return fmt.Errorf("invalid value")
@@ -52,34 +89,84 @@ func (h *Authorization) Read(v base.HeaderValue) error {
 		}
 
 		h.BasicUser, h.BasicPass = tmp2[0], tmp2[1]
-
-	case strings.HasPrefix(v0, "Digest "):
-		h.Method = AuthDigest
-
-		var vals Authenticate
-		err := vals.Read(base.HeaderValue{v0})
+	} else { // digest
+		kvs, err := keyValParse(v0, ',')
 		if err != nil {
 			return err
 		}
 
-		h.DigestValues = vals
+		realmReceived := false
+		usernameReceived := false
+		nonceReceived := false
+		uriReceived := false
+		responseReceived := false
+		var algorithm *string
 
-	default:
-		return fmt.Errorf("invalid authorization header")
+		for k, rv := range kvs {
+			v := rv
+
+			switch k {
+			case "realm":
+				h.Realm = v
+				realmReceived = true
+
+			case "username":
+				h.Username = v
+				usernameReceived = true
+
+			case "nonce":
+				h.Nonce = v
+				nonceReceived = true
+
+			case "uri":
+				h.URI = v
+				uriReceived = true
+
+			case "response":
+				h.Response = v
+				responseReceived = true
+
+			case "opaque":
+				h.Opaque = &v
+
+			case "algorithm":
+				algorithm = &v
+			}
+		}
+
+		if !realmReceived || !usernameReceived || !nonceReceived || !uriReceived || !responseReceived {
+			return fmt.Errorf("one or more digest fields are missing")
+		}
+
+		h.Method, err = algorithmToMethod(algorithm)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-// Write encodes an Authorization header.
-func (h Authorization) Write() base.HeaderValue {
-	switch h.Method {
-	case AuthBasic:
-		response := base64.StdEncoding.EncodeToString([]byte(h.BasicUser + ":" + h.BasicPass))
-
-		return base.HeaderValue{"Basic " + response}
-
-	default: // AuthDigest
-		return h.DigestValues.Write()
+// Marshal encodes an Authorization header.
+func (h Authorization) Marshal() base.HeaderValue {
+	if h.Method == AuthBasic {
+		return base.HeaderValue{"Basic " +
+			base64.StdEncoding.EncodeToString([]byte(h.BasicUser+":"+h.BasicPass))}
 	}
+
+	ret := "Digest " +
+		"username=\"" + h.Username + "\", realm=\"" + h.Realm + "\", " +
+		"nonce=\"" + h.Nonce + "\", uri=\"" + h.URI + "\", response=\"" + h.Response + "\""
+
+	if h.Opaque != nil {
+		ret += ", opaque=\"" + *h.Opaque + "\""
+	}
+
+	if h.Method == AuthDigestMD5 {
+		ret += ", algorithm=\"MD5\""
+	} else {
+		ret += ", algorithm=\"SHA-256\""
+	}
+
+	return base.HeaderValue{ret}
 }

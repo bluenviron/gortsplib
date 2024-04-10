@@ -2,16 +2,16 @@ name: test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, v4 ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, v4 ]
 
 jobs:
   test:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        go: ["1.16", "1.17", "1.18"]
+        go: ["1.19", "1.20", "1.21"]
 
     steps:
     - uses: actions/checkout@v2
@@ -24,5 +24,27 @@ jobs:
 
     - run: make test-nodocker
 
-    - if: matrix.go == '1.18'
-      run: bash <(curl -s https://codecov.io/bash)
+    - if: matrix.go == '1.21'
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+  test_highlevel:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.21"
+
+    - run: make test-highlevel-nodocker
+
+  test32:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - run: make test32

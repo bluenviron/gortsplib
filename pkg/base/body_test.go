@@ -22,62 +22,33 @@ var casesBody = []struct {
 	},
 }
 
-func TestBodyRead(t *testing.T) {
+func TestBodyUnmarshal(t *testing.T) {
 	for _, ca := range casesBody {
 		t.Run(ca.name, func(t *testing.T) {
 			var p body
-			err := p.read(ca.h, bufio.NewReader(bytes.NewReader(ca.byts)))
+			err := p.unmarshal(ca.h, bufio.NewReader(bytes.NewReader(ca.byts)))
 			require.NoError(t, err)
 			require.Equal(t, ca.byts, []byte(p))
 		})
 	}
 }
 
-func TestBodyReadErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		h    Header
-		byts []byte
-		err  string
-	}{
-		{
-			"invalid body",
-			Header{
-				"Content-Length": HeaderValue{"17"},
-			},
-			[]byte("123"),
-			"unexpected EOF",
-		},
-		{
-			"invalid content-length",
-			Header{
-				"Content-Length": HeaderValue{"aaa"},
-			},
-			[]byte("123"),
-			"invalid Content-Length",
-		},
-		{
-			"too big content-length",
-			Header{
-				"Content-Length": HeaderValue{"1000000"},
-			},
-			[]byte("123"),
-			"Content-Length exceeds 131072 (it's 1000000)",
-		},
-	} {
+func TestBodyMarshal(t *testing.T) {
+	for _, ca := range casesBody {
 		t.Run(ca.name, func(t *testing.T) {
-			var p body
-			err := p.read(ca.h, bufio.NewReader(bytes.NewReader(ca.byts)))
-			require.EqualError(t, err, ca.err)
+			buf := body(ca.byts).marshal()
+			require.Equal(t, ca.byts, buf)
 		})
 	}
 }
 
-func TestBodyWrite(t *testing.T) {
-	for _, ca := range casesBody {
-		t.Run(ca.name, func(t *testing.T) {
-			buf := body(ca.byts).write()
-			require.Equal(t, ca.byts, buf)
-		})
-	}
+func FuzzBodyUnmarshal(f *testing.F) {
+	f.Fuzz(func(_ *testing.T, a string, b []byte) {
+		var p body
+		p.unmarshal( //nolint:errcheck
+			Header{
+				"Content-Length": HeaderValue{a},
+			},
+			bufio.NewReader(bytes.NewReader(b)))
+	})
 }

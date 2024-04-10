@@ -2,17 +2,15 @@ package gortsplib
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/tls"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
 func extractPort(address string) (int, error) {
@@ -21,28 +19,12 @@ func extractPort(address string) (int, error) {
 		return 0, err
 	}
 
-	tmp2, err := strconv.ParseInt(tmp, 10, 64)
+	tmp2, err := strconv.ParseUint(tmp, 10, 16)
 	if err != nil {
 		return 0, err
 	}
 
 	return int(tmp2), nil
-}
-
-func newSessionSecretID(sessions map[string]*ServerSession) (string, error) {
-	for {
-		b := make([]byte, 4)
-		_, err := rand.Read(b)
-		if err != nil {
-			return "", err
-		}
-
-		id := strconv.FormatUint(uint64(binary.LittleEndian.Uint32(b)), 10)
-
-		if _, ok := sessions[id]; !ok {
-			return id, nil
-		}
-	}
 }
 
 type sessionRequestRes struct {
@@ -59,32 +41,18 @@ type sessionRequestReq struct {
 	res    chan sessionRequestRes
 }
 
-type streamMulticastIPReq struct {
+type chGetMulticastIPReq struct {
 	res chan net.IP
 }
 
 // Server is a RTSP server.
 type Server struct {
 	//
-	// handler
+	// RTSP parameters (all optional except RTSPAddress)
 	//
-	// an handler to handle server events.
-	Handler ServerHandler
-
-	//
-	// RTSP parameters
-	//
-	// timeout of read operations.
-	// It defaults to 10 seconds
-	ReadTimeout time.Duration
-	// timeout of write operations.
-	// It defaults to 10 seconds
-	WriteTimeout time.Duration
 	// the RTSP address of the server, to accept connections and send and receive
 	// packets with the TCP transport.
 	RTSPAddress string
-	// a TLS configuration to accept TLS (RTSPS) connections.
-	TLSConfig *tls.Config
 	// a port to send and receive RTP packets with the UDP transport.
 	// If UDPRTPAddress and UDPRTCPAddress are filled, the server can support the UDP transport.
 	UDPRTPAddress string
@@ -103,20 +71,33 @@ type Server struct {
 	// If MulticastIPRange, MulticastRTPPort, MulticastRTCPPort are filled, the server
 	// can support the UDP-multicast transport.
 	MulticastRTCPPort int
-	// read buffer count.
-	// If greater than 1, allows to pass buffers to routines different than the one
-	// that is reading frames.
-	// It also allows to buffer routed frames and mitigate network fluctuations
-	// that are particularly relevant when using UDP.
+	// timeout of read operations.
+	// It defaults to 10 seconds
+	ReadTimeout time.Duration
+	// timeout of write operations.
+	// It defaults to 10 seconds
+	WriteTimeout time.Duration
+	// a TLS configuration to accept TLS (RTSPS) connections.
+	TLSConfig *tls.Config
+	// Size of the queue of outgoing packets.
 	// It defaults to 256.
-	ReadBufferCount int
-	// write buffer count.
-	// It allows to queue packets before sending them.
-	// It defaults to 256.
-	WriteBufferCount int
+	WriteQueueSize int
+	// maximum size of outgoing RTP / RTCP packets.
+	// This must be less than the UDP MTU (1472 bytes).
+	// It defaults to 1472.
+	MaxPacketSize int
+	// disable automatic RTCP sender reports.
+	DisableRTCPSenderReports bool
 
 	//
-	// system functions
+	// handler (optional)
+	//
+	// an handler to handle server events.
+	// It may implement one or more of the ServerHandler* interfaces.
+	Handler ServerHandler
+
+	//
+	// system functions (all optional)
 	//
 	// function used to initialize the TCP listener.
 	// It defaults to net.Listen.
@@ -129,29 +110,31 @@ type Server struct {
 	// private
 	//
 
-	udpReceiverReportPeriod time.Duration
-	udpSenderReportPeriod   time.Duration
-	sessionTimeout          time.Duration
-	checkStreamPeriod       time.Duration
+	timeNow              func() time.Time
+	senderReportPeriod   time.Duration
+	receiverReportPeriod time.Duration
+	sessionTimeout       time.Duration
+	checkStreamPeriod    time.Duration
 
-	ctx                context.Context
-	ctxCancel          func()
-	wg                 sync.WaitGroup
-	multicastNet       *net.IPNet
-	multicastNextIP    net.IP
-	tcpListener        net.Listener
-	udpRTPListener     *serverUDPListener
-	udpRTCPListener    *serverUDPListener
-	udpRTPPacketBuffer *rtpPacketMultiBuffer
-	sessions           map[string]*ServerSession
-	conns              map[*ServerConn]struct{}
-	closeError         error
+	ctx             context.Context
+	ctxCancel       func()
+	wg              sync.WaitGroup
+	multicastNet    *net.IPNet
+	multicastNextIP net.IP
+	tcpListener     *serverTCPListener
+	udpRTPListener  *serverUDPListener
+	udpRTCPListener *serverUDPListener
+	sessions        map[string]*ServerSession
+	conns           map[*ServerConn]struct{}
+	closeError      error
 
 	// in
-	connClose         chan *ServerConn
-	sessionRequest    chan sessionRequestReq
-	sessionClose      chan *ServerSession
-	streamMulticastIP chan streamMulticastIPReq
+	chNewConn        chan net.Conn
+	chAcceptErr      chan error
+	chCloseConn      chan *ServerConn
+	chHandleRequest  chan sessionRequestReq
+	chCloseSession   chan *ServerSession
+	chGetMulticastIP chan chGetMulticastIPReq
 }
 
 // Start starts the server.
@@ -163,11 +146,15 @@ func (s *Server) Start() error {
 	if s.WriteTimeout == 0 {
 		s.WriteTimeout = 10 * time.Second
 	}
-	if s.ReadBufferCount == 0 {
-		s.ReadBufferCount = 256
+	if s.WriteQueueSize == 0 {
+		s.WriteQueueSize = 256
+	} else if (s.WriteQueueSize & (s.WriteQueueSize - 1)) != 0 {
+		return fmt.Errorf("WriteQueueSize must be a power of two")
 	}
-	if s.WriteBufferCount == 0 {
-		s.WriteBufferCount = 256
+	if s.MaxPacketSize == 0 {
+		s.MaxPacketSize = udpMaxPayloadSize
+	} else if s.MaxPacketSize > udpMaxPayloadSize {
+		return fmt.Errorf("MaxPacketSize must be less than %d", udpMaxPayloadSize)
 	}
 
 	// system functions
@@ -179,11 +166,14 @@ func (s *Server) Start() error {
 	}
 
 	// private
-	if s.udpReceiverReportPeriod == 0 {
-		s.udpReceiverReportPeriod = 10 * time.Second
+	if s.timeNow == nil {
+		s.timeNow = time.Now
 	}
-	if s.udpSenderReportPeriod == 0 {
-		s.udpSenderReportPeriod = 10 * time.Second
+	if s.senderReportPeriod == 0 {
+		s.senderReportPeriod = 10 * time.Second
+	}
+	if s.receiverReportPeriod == 0 {
+		s.receiverReportPeriod = 10 * time.Second
 	}
 	if s.sessionTimeout == 0 {
 		s.sessionTimeout = 1 * 60 * time.Second
@@ -228,18 +218,28 @@ func (s *Server) Start() error {
 			return fmt.Errorf("RTP and RTCP ports must be consecutive")
 		}
 
-		s.udpRTPListener, err = newServerUDPListener(s, false, s.UDPRTPAddress, true)
+		s.udpRTPListener = &serverUDPListener{
+			listenPacket:    s.ListenPacket,
+			writeTimeout:    s.WriteTimeout,
+			multicastEnable: false,
+			address:         s.UDPRTPAddress,
+		}
+		err = s.udpRTPListener.initialize()
 		if err != nil {
 			return err
 		}
 
-		s.udpRTCPListener, err = newServerUDPListener(s, false, s.UDPRTCPAddress, false)
+		s.udpRTCPListener = &serverUDPListener{
+			listenPacket:    s.ListenPacket,
+			writeTimeout:    s.WriteTimeout,
+			multicastEnable: false,
+			address:         s.UDPRTCPAddress,
+		}
+		err = s.udpRTCPListener.initialize()
 		if err != nil {
 			s.udpRTPListener.close()
 			return err
 		}
-
-		s.udpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(s.ReadBufferCount))
 	}
 
 	if s.MulticastIPRange != "" && (s.MulticastRTPPort == 0 || s.MulticastRTCPPort == 0) ||
@@ -288,11 +288,23 @@ func (s *Server) Start() error {
 		}
 
 		s.multicastNextIP = s.multicastNet.IP
-		s.udpRTPPacketBuffer = newRTPPacketMultiBuffer(uint64(s.ReadBufferCount))
 	}
 
-	var err error
-	s.tcpListener, err = s.Listen("tcp", s.RTSPAddress)
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+
+	s.sessions = make(map[string]*ServerSession)
+	s.conns = make(map[*ServerConn]struct{})
+	s.chNewConn = make(chan net.Conn)
+	s.chAcceptErr = make(chan error)
+	s.chCloseConn = make(chan *ServerConn)
+	s.chHandleRequest = make(chan sessionRequestReq)
+	s.chCloseSession = make(chan *ServerSession)
+	s.chGetMulticastIP = make(chan chGetMulticastIPReq)
+
+	s.tcpListener = &serverTCPListener{
+		s: s,
+	}
+	err := s.tcpListener.initialize()
 	if err != nil {
 		if s.udpRTPListener != nil {
 			s.udpRTPListener.close()
@@ -300,10 +312,9 @@ func (s *Server) Start() error {
 		if s.udpRTCPListener != nil {
 			s.udpRTCPListener.close()
 		}
+		s.ctxCancel()
 		return err
 	}
-
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 
 	s.wg.Add(1)
 	go s.run()
@@ -312,10 +323,9 @@ func (s *Server) Start() error {
 }
 
 // Close closes all the server resources and waits for them to close.
-func (s *Server) Close() error {
+func (s *Server) Close() {
 	s.ctxCancel()
 	s.wg.Wait()
-	return s.closeError
 }
 
 // Wait waits until all server resources are closed.
@@ -328,128 +338,7 @@ func (s *Server) Wait() error {
 func (s *Server) run() {
 	defer s.wg.Done()
 
-	s.sessions = make(map[string]*ServerSession)
-	s.conns = make(map[*ServerConn]struct{})
-	s.connClose = make(chan *ServerConn)
-	s.sessionRequest = make(chan sessionRequestReq)
-	s.sessionClose = make(chan *ServerSession)
-	s.streamMulticastIP = make(chan streamMulticastIPReq)
-
-	s.wg.Add(1)
-	connNew := make(chan net.Conn)
-	acceptErr := make(chan error)
-	go func() {
-		defer s.wg.Done()
-		err := func() error {
-			for {
-				nconn, err := s.tcpListener.Accept()
-				if err != nil {
-					return err
-				}
-
-				select {
-				case connNew <- nconn:
-				case <-s.ctx.Done():
-					nconn.Close()
-				}
-			}
-		}()
-
-		select {
-		case acceptErr <- err:
-		case <-s.ctx.Done():
-		}
-	}()
-
-	s.closeError = func() error {
-		for {
-			select {
-			case err := <-acceptErr:
-				return err
-
-			case nconn := <-connNew:
-				sc := newServerConn(s, nconn)
-				s.conns[sc] = struct{}{}
-
-			case sc := <-s.connClose:
-				if _, ok := s.conns[sc]; !ok {
-					continue
-				}
-				delete(s.conns, sc)
-				sc.Close()
-
-			case req := <-s.sessionRequest:
-				if ss, ok := s.sessions[req.id]; ok {
-					if !req.sc.ip().Equal(ss.author.ip()) ||
-						req.sc.zone() != ss.author.zone() {
-						req.res <- sessionRequestRes{
-							res: &base.Response{
-								StatusCode: base.StatusBadRequest,
-							},
-							err: liberrors.ErrServerCannotUseSessionCreatedByOtherIP{},
-						}
-						continue
-					}
-
-					ss.request <- req
-				} else {
-					if !req.create {
-						req.res <- sessionRequestRes{
-							res: &base.Response{
-								StatusCode: base.StatusSessionNotFound,
-							},
-							err: liberrors.ErrServerSessionNotFound{},
-						}
-						continue
-					}
-
-					secretID, err := newSessionSecretID(s.sessions)
-					if err != nil {
-						req.res <- sessionRequestRes{
-							res: &base.Response{
-								StatusCode: base.StatusBadRequest,
-							},
-							err: fmt.Errorf("internal error"),
-						}
-						continue
-					}
-
-					ss := newServerSession(s, secretID, req.sc)
-					s.sessions[secretID] = ss
-
-					select {
-					case ss.request <- req:
-					case <-ss.ctx.Done():
-						req.res <- sessionRequestRes{
-							res: &base.Response{
-								StatusCode: base.StatusBadRequest,
-							},
-							err: liberrors.ErrServerTerminated{},
-						}
-					}
-				}
-
-			case ss := <-s.sessionClose:
-				if sss, ok := s.sessions[ss.secretID]; !ok || sss != ss {
-					continue
-				}
-				delete(s.sessions, ss.secretID)
-				ss.Close()
-
-			case req := <-s.streamMulticastIP:
-				ip32 := binary.BigEndian.Uint32(s.multicastNextIP)
-				mask := binary.BigEndian.Uint32(s.multicastNet.Mask)
-				ip32 = (ip32 & mask) | ((ip32 + 1) & ^mask)
-				ip := make(net.IP, 4)
-				binary.BigEndian.PutUint32(ip, ip32)
-				s.multicastNextIP = ip
-				req.res <- ip
-
-			case <-s.ctx.Done():
-				return liberrors.ErrServerTerminated{}
-			}
-		}
-	}()
+	s.closeError = s.runInner()
 
 	s.ctxCancel()
 
@@ -461,7 +350,108 @@ func (s *Server) run() {
 		s.udpRTPListener.close()
 	}
 
-	s.tcpListener.Close()
+	s.tcpListener.close()
+}
+
+func (s *Server) runInner() error {
+	for {
+		select {
+		case err := <-s.chAcceptErr:
+			return err
+
+		case nconn := <-s.chNewConn:
+			sc := &ServerConn{
+				s:     s,
+				nconn: nconn,
+			}
+			sc.initialize()
+			s.conns[sc] = struct{}{}
+
+		case sc := <-s.chCloseConn:
+			if _, ok := s.conns[sc]; !ok {
+				continue
+			}
+			delete(s.conns, sc)
+			sc.Close()
+
+		case req := <-s.chHandleRequest:
+			if ss, ok := s.sessions[req.id]; ok {
+				if !req.sc.ip().Equal(ss.author.ip()) ||
+					req.sc.zone() != ss.author.zone() {
+					req.res <- sessionRequestRes{
+						res: &base.Response{
+							StatusCode: base.StatusBadRequest,
+						},
+						err: liberrors.ErrServerCannotUseSessionCreatedByOtherIP{},
+					}
+					continue
+				}
+
+				select {
+				case ss.chHandleRequest <- req:
+				case <-ss.ctx.Done():
+					req.res <- sessionRequestRes{
+						res: &base.Response{
+							StatusCode: base.StatusBadRequest,
+						},
+						err: liberrors.ErrServerTerminated{},
+					}
+				}
+			} else {
+				if !req.create {
+					req.res <- sessionRequestRes{
+						res: &base.Response{
+							StatusCode: base.StatusSessionNotFound,
+						},
+						err: liberrors.ErrServerSessionNotFound{},
+					}
+					continue
+				}
+
+				ss := &ServerSession{
+					s:      s,
+					author: req.sc,
+				}
+				ss.initialize()
+				s.sessions[ss.secretID] = ss
+
+				select {
+				case ss.chHandleRequest <- req:
+				case <-ss.ctx.Done():
+					req.res <- sessionRequestRes{
+						res: &base.Response{
+							StatusCode: base.StatusBadRequest,
+						},
+						err: liberrors.ErrServerTerminated{},
+					}
+				}
+			}
+
+		case ss := <-s.chCloseSession:
+			if sss, ok := s.sessions[ss.secretID]; !ok || sss != ss {
+				continue
+			}
+			delete(s.sessions, ss.secretID)
+			ss.Close()
+
+		case req := <-s.chGetMulticastIP:
+			ip32 := uint32(s.multicastNextIP[0])<<24 | uint32(s.multicastNextIP[1])<<16 |
+				uint32(s.multicastNextIP[2])<<8 | uint32(s.multicastNextIP[3])
+			mask := uint32(s.multicastNet.Mask[0])<<24 | uint32(s.multicastNet.Mask[1])<<16 |
+				uint32(s.multicastNet.Mask[2])<<8 | uint32(s.multicastNet.Mask[3])
+			ip32 = (ip32 & mask) | ((ip32 + 1) & ^mask)
+			ip := make(net.IP, 4)
+			ip[0] = byte(ip32 >> 24)
+			ip[1] = byte(ip32 >> 16)
+			ip[2] = byte(ip32 >> 8)
+			ip[3] = byte(ip32)
+			s.multicastNextIP = ip
+			req.res <- ip
+
+		case <-s.ctx.Done():
+			return liberrors.ErrServerTerminated{}
+		}
+	}
 }
 
 // StartAndWait starts the server and waits until a fatal error.
@@ -472,4 +462,57 @@ func (s *Server) StartAndWait() error {
 	}
 
 	return s.Wait()
+}
+
+func (s *Server) getMulticastIP() (net.IP, error) {
+	res := make(chan net.IP)
+	select {
+	case s.chGetMulticastIP <- chGetMulticastIPReq{res: res}:
+		return <-res, nil
+
+	case <-s.ctx.Done():
+		return nil, liberrors.ErrServerTerminated{}
+	}
+}
+
+func (s *Server) newConn(nconn net.Conn) {
+	select {
+	case s.chNewConn <- nconn:
+	case <-s.ctx.Done():
+		nconn.Close()
+	}
+}
+
+func (s *Server) acceptErr(err error) {
+	select {
+	case s.chAcceptErr <- err:
+	case <-s.ctx.Done():
+	}
+}
+
+func (s *Server) closeConn(sc *ServerConn) {
+	select {
+	case s.chCloseConn <- sc:
+	case <-s.ctx.Done():
+	}
+}
+
+func (s *Server) closeSession(ss *ServerSession) {
+	select {
+	case s.chCloseSession <- ss:
+	case <-s.ctx.Done():
+	}
+}
+
+func (s *Server) handleRequest(req sessionRequestReq) (*base.Response, *ServerSession, error) {
+	select {
+	case s.chHandleRequest <- req:
+		res := <-req.res
+		return res.res, res.ss, res.err
+
+	case <-s.ctx.Done():
+		return &base.Response{
+			StatusCode: base.StatusBadRequest,
+		}, req.sc.session, liberrors.ErrServerTerminated{}
+	}
 }

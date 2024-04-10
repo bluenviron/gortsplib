@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
 var casesAuthorization = []struct {
@@ -26,90 +26,99 @@ var casesAuthorization = []struct {
 	},
 	{
 		"digest",
-		base.HeaderValue{"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\""},
-		base.HeaderValue{"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\""},
+		base.HeaderValue{`Digest username="Mufasa", realm="testrealm@host.com", ` +
+			`nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", ` +
+			`uri="/dir/index.html", response="e966c932a9242554e42c8ee200cec7f6", opaque="5ccc069c403ebaf9f0171e9517f40e41"`},
+		base.HeaderValue{`Digest username="Mufasa", realm="testrealm@host.com", ` +
+			`nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", uri="/dir/index.html", ` +
+			`response="e966c932a9242554e42c8ee200cec7f6", opaque="5ccc069c403ebaf9f0171e9517f40e41", algorithm="MD5"`},
 		Authorization{
-			Method: AuthDigest,
-			DigestValues: Authenticate{
-				Method: AuthDigest,
-				Realm: func() *string {
-					v := "4419b63f5e51"
-					return &v
-				}(),
-				Nonce: func() *string {
-					v := "8b84a3b789283a8bea8da7fa7d41f08b"
-					return &v
-				}(),
-				Stale: func() *string {
-					v := "FALSE"
-					return &v
-				}(),
-			},
+			Method:   AuthDigestMD5,
+			Username: "Mufasa",
+			Realm:    "testrealm@host.com",
+			Nonce:    "dcd98b7102dd2f0e8b11d0f600bfb0c093",
+			URI:      "/dir/index.html",
+			Response: "e966c932a9242554e42c8ee200cec7f6",
+			Opaque:   stringPtr("5ccc069c403ebaf9f0171e9517f40e41"),
+		},
+	},
+	{
+		"digest with empty field",
+		base.HeaderValue{`Digest username="", realm="IPCAM", ` +
+			`nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", ` +
+			`response="c072ae90eb4a27f4cdcb90d62266b2a1"`},
+		base.HeaderValue{`Digest username="", realm="IPCAM", ` +
+			`nonce="5d17cd12b9fa8a85ac5ceef0926ea5a6", uri="rtsp://localhost:8554/mystream", ` +
+			`response="c072ae90eb4a27f4cdcb90d62266b2a1", algorithm="MD5"`},
+		Authorization{
+			Method:   AuthDigestMD5,
+			Username: "",
+			Realm:    "IPCAM",
+			Nonce:    "5d17cd12b9fa8a85ac5ceef0926ea5a6",
+			URI:      "rtsp://localhost:8554/mystream",
+			Response: "c072ae90eb4a27f4cdcb90d62266b2a1",
+		},
+	},
+	{
+		"digest sha256",
+		base.HeaderValue{`Digest username="admin", realm="IP Camera(AB705)", ` +
+			`nonce="1ad195c2b2ca5a03784e53f88e16f579", uri="rtsp://192.168.80.76/", ` +
+			`response="9e2324f104f3ce507d17e44a78fc1293001fe84805bde65d2aaa9be97a5a8913", algorithm="SHA-256"`},
+		base.HeaderValue{`Digest username="admin", realm="IP Camera(AB705)", ` +
+			`nonce="1ad195c2b2ca5a03784e53f88e16f579", uri="rtsp://192.168.80.76/", ` +
+			`response="9e2324f104f3ce507d17e44a78fc1293001fe84805bde65d2aaa9be97a5a8913", algorithm="SHA-256"`},
+		Authorization{
+			Method:   AuthDigestSHA256,
+			Username: "admin",
+			Realm:    "IP Camera(AB705)",
+			Nonce:    "1ad195c2b2ca5a03784e53f88e16f579",
+			URI:      "rtsp://192.168.80.76/",
+			Response: "9e2324f104f3ce507d17e44a78fc1293001fe84805bde65d2aaa9be97a5a8913",
 		},
 	},
 }
 
-func TestAuthorizationRead(t *testing.T) {
+func TestAuthorizationUnmarshal(t *testing.T) {
 	for _, ca := range casesAuthorization {
 		t.Run(ca.name, func(t *testing.T) {
 			var h Authorization
-			err := h.Read(ca.vin)
+			err := h.Unmarshal(ca.vin)
 			require.NoError(t, err)
 			require.Equal(t, ca.h, h)
 		})
 	}
 }
 
-func TestAuthorizationReadErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		hv   base.HeaderValue
-		err  string
-	}{
-		{
-			"empty",
-			base.HeaderValue{},
-			"value not provided",
-		},
-		{
-			"2 values",
-			base.HeaderValue{"a", "b"},
-			"value provided multiple times ([a b])",
-		},
-		{
-			"invalid",
-			base.HeaderValue{`Invalid`},
-			"invalid authorization header",
-		},
-		{
-			"basic invalid 1",
-			base.HeaderValue{`Basic aaa`},
-			"invalid value",
-		},
-		{
-			"basic invalid 2",
-			base.HeaderValue{`Basic aW52YWxpZA==`},
-			"invalid value",
-		},
-		{
-			"digest invalid",
-			base.HeaderValue{`Digest test="v`},
-			"apexes not closed (test=\"v)",
-		},
-	} {
+func TestAuthorizationMarshal(t *testing.T) {
+	for _, ca := range casesAuthorization {
 		t.Run(ca.name, func(t *testing.T) {
-			var h Authorization
-			err := h.Read(ca.hv)
-			require.EqualError(t, err, ca.err)
+			vout := ca.h.Marshal()
+			require.Equal(t, ca.vout, vout)
 		})
 	}
 }
 
-func TestAuthorizationWrite(t *testing.T) {
+func FuzzAuthorizationUnmarshal(f *testing.F) {
 	for _, ca := range casesAuthorization {
-		t.Run(ca.name, func(t *testing.T) {
-			vout := ca.h.Write()
-			require.Equal(t, ca.vout, vout)
-		})
+		f.Add(ca.vin[0])
 	}
+
+	f.Fuzz(func(_ *testing.T, b string) {
+		var h Authorization
+		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
+	})
+}
+
+func TestAuthorizationAdditionalErrors(t *testing.T) {
+	func() {
+		var h Authorization
+		err := h.Unmarshal(base.HeaderValue{})
+		require.Error(t, err)
+	}()
+
+	func() {
+		var h Authorization
+		err := h.Unmarshal(base.HeaderValue{"a", "b"})
+		require.Error(t, err)
+	}()
 }

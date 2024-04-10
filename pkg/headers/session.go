@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
 // Session is a Session header.
@@ -17,8 +17,8 @@ type Session struct {
 	Timeout *uint
 }
 
-// Read decodes a Session header.
-func (h *Session) Read(v base.HeaderValue) error {
+// Unmarshal decodes a Session header.
+func (h *Session) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -47,7 +47,7 @@ func (h *Session) Read(v base.HeaderValue) error {
 
 	for k, v := range kvs {
 		if k == "timeout" {
-			iv, err := strconv.ParseUint(v, 10, 64)
+			iv, err := strconv.ParseUint(v, 10, 32)
 			if err != nil {
 				return err
 			}
@@ -59,8 +59,8 @@ func (h *Session) Read(v base.HeaderValue) error {
 	return nil
 }
 
-// Write encodes a Session header.
-func (h Session) Write() base.HeaderValue {
+// Marshal encodes a Session header.
+func (h Session) Marshal() base.HeaderValue {
 	ret := h.Session
 
 	if h.Timeout != nil {

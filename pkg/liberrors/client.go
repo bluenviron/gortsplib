@@ -3,7 +3,7 @@ package liberrors
 import (
 	"fmt"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
 // ErrClientTerminated is an error that can be returned by a client.
@@ -65,20 +65,12 @@ func (e ErrClientContentTypeUnsupported) Error() string {
 	return fmt.Sprintf("unsupported Content-Type header '%v'", e.CT)
 }
 
-// ErrClientCannotReadPublishAtSameTime is an error that can be returned by a client.
-type ErrClientCannotReadPublishAtSameTime struct{}
+// ErrClientCannotSetupMediasDifferentURLs is an error that can be returned by a client.
+type ErrClientCannotSetupMediasDifferentURLs struct{}
 
 // Error implements the error interface.
-func (e ErrClientCannotReadPublishAtSameTime) Error() string {
-	return "cannot read and publish at the same time"
-}
-
-// ErrClientCannotSetupTracksDifferentURLs is an error that can be returned by a client.
-type ErrClientCannotSetupTracksDifferentURLs struct{}
-
-// Error implements the error interface.
-func (e ErrClientCannotSetupTracksDifferentURLs) Error() string {
-	return "cannot setup tracks with different base URLs"
+func (e ErrClientCannotSetupMediasDifferentURLs) Error() string {
+	return "cannot setup medias with different base URLs"
 }
 
 // ErrClientUDPPortsZero is an error that can be returned by a client.
@@ -113,6 +105,22 @@ type ErrClientTransportHeaderInvalid struct {
 // Error implements the error interface.
 func (e ErrClientTransportHeaderInvalid) Error() string {
 	return fmt.Sprintf("invalid transport header: %v", e.Err)
+}
+
+// ErrClientServerRequestedTCP is an error that can be returned by a client.
+type ErrClientServerRequestedTCP struct{}
+
+// Error implements the error interface.
+func (e ErrClientServerRequestedTCP) Error() string {
+	return "server wants to use the TCP transport protocol"
+}
+
+// ErrClientServerRequestedUDP is an error that can be returned by a client.
+type ErrClientServerRequestedUDP struct{}
+
+// Error implements the error interface.
+func (e ErrClientServerRequestedUDP) Error() string {
+	return "server wants to use the UDP transport protocol"
 }
 
 // ErrClientTransportHeaderInvalidDelivery is an error that can be returned by a client.
@@ -155,12 +163,12 @@ func (e ErrClientTransportHeaderInvalidInterleavedIDs) Error() string {
 	return "invalid interleaved IDs"
 }
 
-// ErrClientTransportHeaderInterleavedIDsAlreadyUsed is an error that can be returned by a client.
-type ErrClientTransportHeaderInterleavedIDsAlreadyUsed struct{}
+// ErrClientTransportHeaderInterleavedIDsInUse is an error that can be returned by a client.
+type ErrClientTransportHeaderInterleavedIDsInUse struct{}
 
 // Error implements the error interface.
-func (e ErrClientTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
-	return "interleaved IDs already used"
+func (e ErrClientTransportHeaderInterleavedIDsInUse) Error() string {
+	return "interleaved IDs are in use"
 }
 
 // ErrClientUDPTimeout is an error that can be returned by a client.
@@ -187,4 +195,147 @@ type ErrClientRTPInfoInvalid struct {
 // Error implements the error interface.
 func (e ErrClientRTPInfoInvalid) Error() string {
 	return fmt.Sprintf("invalid RTP-Info: %v", e.Err)
+}
+
+// ErrClientUnexpectedFrame is an error that can be returned by a client.
+type ErrClientUnexpectedFrame struct{}
+
+// Error implements the error interface.
+func (e ErrClientUnexpectedFrame) Error() string {
+	return "received unexpected interleaved frame"
+}
+
+// ErrClientRequestTimedOut is an error that can be returned by a client.
+type ErrClientRequestTimedOut struct{}
+
+// Error implements the error interface.
+func (e ErrClientRequestTimedOut) Error() string {
+	return "request timed out"
+}
+
+// ErrClientUnsupportedScheme is an error that can be returned by a client.
+type ErrClientUnsupportedScheme struct {
+	Scheme string
+}
+
+// Error implements the error interface.
+func (e ErrClientUnsupportedScheme) Error() string {
+	return fmt.Sprintf("unsupported scheme: %v", e.Scheme)
+}
+
+// ErrClientRTSPSTCP is an error that can be returned by a client.
+type ErrClientRTSPSTCP struct{}
+
+// Error implements the error interface.
+func (e ErrClientRTSPSTCP) Error() string {
+	return "RTSPS can be used only with TCP"
+}
+
+// ErrClientUnhandledMethod is an error that can be returned by a client.
+type ErrClientUnhandledMethod struct {
+	Method base.Method
+}
+
+// Error implements the error interface.
+func (e ErrClientUnhandledMethod) Error() string {
+	return fmt.Sprintf("unhandled method: %v", e.Method)
+}
+
+// ErrClientWriteQueueFull is an error that can be returned by a client.
+type ErrClientWriteQueueFull struct{}
+
+// Error implements the error interface.
+func (e ErrClientWriteQueueFull) Error() string {
+	return "write queue is full"
+}
+
+// ErrClientRTPPacketsLost is an error that can be returned by a client.
+type ErrClientRTPPacketsLost struct {
+	Lost int
+}
+
+// Error implements the error interface.
+func (e ErrClientRTPPacketsLost) Error() string {
+	return fmt.Sprintf("%d RTP %s lost",
+		e.Lost,
+		func() string {
+			if e.Lost == 1 {
+				return "packet"
+			}
+			return "packets"
+		}())
+}
+
+// ErrClientRTPPacketUnknownPayloadType is an error that can be returned by a client.
+type ErrClientRTPPacketUnknownPayloadType struct {
+	PayloadType uint8
+}
+
+// Error implements the error interface.
+func (e ErrClientRTPPacketUnknownPayloadType) Error() string {
+	return fmt.Sprintf("received RTP packet with unknown payload type: %d", e.PayloadType)
+}
+
+// ErrClientRTCPPacketTooBig is an error that can be returned by a client.
+type ErrClientRTCPPacketTooBig struct {
+	L   int
+	Max int
+}
+
+// Error implements the error interface.
+func (e ErrClientRTCPPacketTooBig) Error() string {
+	return fmt.Sprintf("RTCP packet size (%d) is greater than maximum allowed (%d)",
+		e.L, e.Max)
+}
+
+// ErrClientRTPPacketTooBigUDP is an error that can be returned by a client.
+type ErrClientRTPPacketTooBigUDP struct{}
+
+// Error implements the error interface.
+func (e ErrClientRTPPacketTooBigUDP) Error() string {
+	return "RTP packet is too big to be read with UDP"
+}
+
+// ErrClientRTCPPacketTooBigUDP is an error that can be returned by a client.
+type ErrClientRTCPPacketTooBigUDP struct{}
+
+// Error implements the error interface.
+func (e ErrClientRTCPPacketTooBigUDP) Error() string {
+	return "RTCP packet is too big to be read with UDP"
+}
+
+// ErrClientSwitchToTCP is an error that can be returned by a client.
+type ErrClientSwitchToTCP struct{}
+
+// Error implements the error interface.
+func (e ErrClientSwitchToTCP) Error() string {
+	return "no UDP packets received, switching to TCP"
+}
+
+// ErrClientSwitchToTCP2 is an error that can be returned by a client.
+type ErrClientSwitchToTCP2 struct{}
+
+// Error implements the error interface.
+func (e ErrClientSwitchToTCP2) Error() string {
+	return "switching to TCP because server requested it"
+}
+
+// ErrClientAuthSetup is an error that can be returned by a client.
+type ErrClientAuthSetup struct {
+	Err error
+}
+
+// Error implements the error interface.
+func (e ErrClientAuthSetup) Error() string {
+	return fmt.Sprintf("unable to setup authentication: %s", e.Err)
+}
+
+// ErrClientSDPInvalid is an error that can be returned by a client.
+type ErrClientSDPInvalid struct {
+	Err error
+}
+
+// Error implements the error interface.
+func (e ErrClientSDPInvalid) Error() string {
+	return fmt.Sprintf("invalid SDP: %v", e.Err)
 }

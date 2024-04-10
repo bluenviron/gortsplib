@@ -1,16 +1,18 @@
 package gortsplib
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aler9/gortsplib/pkg/auth"
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/bluenviron/gortsplib/v4/pkg/auth"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/conn"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -67,25 +69,16 @@ NkxNic7oHgsZpIkZ8HK+QjAAWA==
 -----END PRIVATE KEY-----
 `)
 
-func writeReqReadRes(conn net.Conn,
-	br *bufio.Reader,
+func writeReqReadRes(
+	conn *conn.Conn,
 	req base.Request,
 ) (*base.Response, error) {
-	byts, _ := req.Write()
-	_, err := conn.Write(byts)
+	err := conn.WriteRequest(&req)
 	if err != nil {
 		return nil, err
 	}
 
-	var res base.Response
-	err = res.Read(br)
-	return &res, err
-}
-
-func readResIgnoreFrames(br *bufio.Reader) (*base.Response, error) {
-	var res base.Response
-	err := res.ReadIgnoreFrames(2048, br)
-	return &res, err
+	return conn.ReadResponse()
 }
 
 type testServerHandler struct {
@@ -99,10 +92,10 @@ type testServerHandler struct {
 	onPlay         func(*ServerHandlerOnPlayCtx) (*base.Response, error)
 	onRecord       func(*ServerHandlerOnRecordCtx) (*base.Response, error)
 	onPause        func(*ServerHandlerOnPauseCtx) (*base.Response, error)
-	onPacketRTP    func(*ServerHandlerOnPacketRTPCtx)
-	onPacketRTCP   func(*ServerHandlerOnPacketRTCPCtx)
 	onSetParameter func(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
 	onGetParameter func(*ServerHandlerOnGetParameterCtx) (*base.Response, error)
+	onPacketLost   func(*ServerHandlerOnPacketLostCtx)
+	onDecodeError  func(*ServerHandlerOnDecodeErrorCtx)
 }
 
 func (sh *testServerHandler) OnConnOpen(ctx *ServerHandlerOnConnOpenCtx) {
@@ -171,18 +164,6 @@ func (sh *testServerHandler) OnPause(ctx *ServerHandlerOnPauseCtx) (*base.Respon
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (sh *testServerHandler) OnPacketRTP(ctx *ServerHandlerOnPacketRTPCtx) {
-	if sh.onPacketRTP != nil {
-		sh.onPacketRTP(ctx)
-	}
-}
-
-func (sh *testServerHandler) OnPacketRTCP(ctx *ServerHandlerOnPacketRTCPCtx) {
-	if sh.onPacketRTCP != nil {
-		sh.onPacketRTCP(ctx)
-	}
-}
-
 func (sh *testServerHandler) OnSetParameter(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
 	if sh.onSetParameter != nil {
 		return sh.onSetParameter(ctx)
@@ -195,6 +176,18 @@ func (sh *testServerHandler) OnGetParameter(ctx *ServerHandlerOnGetParameterCtx)
 		return sh.onGetParameter(ctx)
 	}
 	return nil, fmt.Errorf("unimplemented")
+}
+
+func (sh *testServerHandler) OnPacketLost(ctx *ServerHandlerOnPacketLostCtx) {
+	if sh.onPacketLost != nil {
+		sh.onPacketLost(ctx)
+	}
+}
+
+func (sh *testServerHandler) OnDecodeError(ctx *ServerHandlerOnDecodeErrorCtx) {
+	if sh.onDecodeError != nil {
+		sh.onDecodeError(ctx)
+	}
 }
 
 func TestServerClose(t *testing.T) {
@@ -232,7 +225,7 @@ func TestServerErrorInvalidUDPPorts(t *testing.T) {
 }
 
 func TestServerConnClose(t *testing.T) {
-	connClosed := make(chan struct{})
+	nconnClosed := make(chan struct{})
 
 	s := &Server{
 		Handler: &testServerHandler{
@@ -240,8 +233,8 @@ func TestServerConnClose(t *testing.T) {
 				ctx.Conn.Close()
 				ctx.Conn.Close()
 			},
-			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-				close(connClosed)
+			onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
+				close(nconnClosed)
 			},
 		},
 		RTSPAddress: "localhost:8554",
@@ -251,11 +244,21 @@ func TestServerConnClose(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	conn, err := net.Dial("tcp", "localhost:8554")
+	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
-	defer conn.Close()
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
 
-	<-connClosed
+	<-nconnClosed
+
+	_, err = writeReqReadRes(conn, base.Request{
+		Method: base.Options,
+		URL:    mustParseURL("rtsp://localhost:8554/"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+		},
+	})
+	require.Error(t, err)
 }
 
 func TestServerCSeq(t *testing.T) {
@@ -266,12 +269,12 @@ func TestServerCSeq(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	conn, err := net.Dial("tcp", "localhost:8554")
+	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
-	defer conn.Close()
-	br := bufio.NewReader(conn)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
 
-	res, err := writeReqReadRes(conn, br, base.Request{
+	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Options,
 		URL:    mustParseURL("rtsp://localhost:8554/"),
 		Header: base.Header{
@@ -285,13 +288,13 @@ func TestServerCSeq(t *testing.T) {
 }
 
 func TestServerErrorCSeqMissing(t *testing.T) {
-	connClosed := make(chan struct{})
+	nconnClosed := make(chan struct{})
 
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 				require.EqualError(t, ctx.Error, "CSeq is missing")
-				close(connClosed)
+				close(nconnClosed)
 			},
 		},
 		RTSPAddress: "localhost:8554",
@@ -300,30 +303,29 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	conn, err := net.Dial("tcp", "localhost:8554")
+	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
-	defer conn.Close()
-	br := bufio.NewReader(conn)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
 
-	res, err := writeReqReadRes(conn, br, base.Request{
+	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Options,
 		URL:    mustParseURL("rtsp://localhost:8554/"),
-		Header: base.Header{},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
-	<-connClosed
+	<-nconnClosed
 }
 
-func TestServerErrorInvalidMethod(t *testing.T) {
-	connClosed := make(chan struct{})
+func TestServerErrorNilURL(t *testing.T) {
+	nconnClosed := make(chan struct{})
 
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-				require.EqualError(t, ctx.Error, "unhandled request: INVALID rtsp://localhost:8554/")
-				close(connClosed)
+				require.EqualError(t, ctx.Error, "invalid path")
+				close(nconnClosed)
 			},
 		},
 		RTSPAddress: "localhost:8554",
@@ -332,14 +334,14 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	conn, err := net.Dial("tcp", "localhost:8554")
+	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
-	defer conn.Close()
-	br := bufio.NewReader(conn)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
 
-	res, err := writeReqReadRes(conn, br, base.Request{
-		Method: "INVALID",
-		URL:    mustParseURL("rtsp://localhost:8554/"),
+	res, err := writeReqReadRes(conn, base.Request{
+		Method: base.Describe,
+		URL:    nil,
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 		},
@@ -347,29 +349,124 @@ func TestServerErrorInvalidMethod(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
-	<-connClosed
+	<-nconnClosed
+}
+
+type testServerErrMethodNotImplemented struct {
+	stream *ServerStream
+}
+
+func (s *testServerErrMethodNotImplemented) OnDescribe(
+	_ *ServerHandlerOnDescribeCtx,
+) (*base.Response, *ServerStream, error) {
+	return &base.Response{
+		StatusCode: base.StatusOK,
+	}, s.stream, nil
+}
+
+func (s *testServerErrMethodNotImplemented) OnSetup(
+	_ *ServerHandlerOnSetupCtx,
+) (*base.Response, *ServerStream, error) {
+	return &base.Response{
+		StatusCode: base.StatusOK,
+	}, s.stream, nil
+}
+
+func TestServerErrorMethodNotImplemented(t *testing.T) {
+	for _, ca := range []string{"outside session", "inside session"} {
+		t.Run(ca, func(t *testing.T) {
+			h := &testServerErrMethodNotImplemented{}
+
+			s := &Server{
+				Handler:     h,
+				RTSPAddress: "localhost:8554",
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			stream := NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			defer stream.Close()
+
+			h.stream = stream
+
+			nconn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn.Close()
+			conn := conn.NewConn(nconn)
+
+			desc := doDescribe(t, conn)
+
+			var session string
+
+			if ca == "inside session" {
+				inTH := &headers.Transport{
+					Protocol:       headers.TransportProtocolTCP,
+					Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+					Mode:           transportModePtr(headers.TransportModePlay),
+					InterleavedIDs: &[2]int{0, 1},
+				}
+
+				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+
+				session = readSession(t, res)
+			}
+
+			headers := base.Header{
+				"CSeq": base.HeaderValue{"2"},
+			}
+			if ca == "inside session" {
+				headers["Session"] = base.HeaderValue{session}
+			}
+
+			res, err := writeReqReadRes(conn, base.Request{
+				Method: base.SetParameter,
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+				Header: headers,
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusNotImplemented, res.StatusCode)
+
+			headers = base.Header{
+				"CSeq": base.HeaderValue{"3"},
+			}
+			if ca == "inside session" {
+				headers["Session"] = base.HeaderValue{session}
+			}
+
+			res, err = writeReqReadRes(conn, base.Request{
+				Method: base.Options,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
+				Header: headers,
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+		})
+	}
 }
 
 func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
-
-	stream := NewServerStream(Tracks{track})
-	defer stream.Close()
+	var stream *ServerStream
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+			onPause: func(_ *ServerHandlerOnPauseCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
@@ -378,75 +475,52 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
-	conn1, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn1.Close()
-	br1 := bufio.NewReader(conn1)
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	defer stream.Close()
 
-	res, err := writeReqReadRes(conn1, br1, base.Request{
+	nconn1, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn1.Close()
+	conn1 := conn.NewConn(nconn1)
+
+	desc1 := doDescribe(t, conn1)
+
+	inTH := &headers.Transport{
+		Protocol:       headers.TransportProtocolTCP,
+		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:           transportModePtr(headers.TransportModePlay),
+		InterleavedIDs: &[2]int{0, 1},
+	}
+
+	res, _ := doSetup(t, conn1, absoluteControlAttribute(desc1.MediaDescriptions[0]), inTH, "")
+
+	session := readSession(t, res)
+
+	doPlay(t, conn1, "rtsp://localhost:8554/teststream", session)
+
+	nconn2, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn2.Close()
+	conn2 := conn.NewConn(nconn2)
+
+	desc2 := doDescribe(t, conn2)
+
+	res, err = writeReqReadRes(conn2, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+		URL:    mustParseURL(absoluteControlAttribute(desc2.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
+				Protocol:       headers.TransportProtocolTCP,
+				Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+				Mode:           transportModePtr(headers.TransportModePlay),
 				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	var sx headers.Session
-	err = sx.Read(res.Header["Session"])
-	require.NoError(t, err)
-
-	res, err = writeReqReadRes(conn1, br1, base.Request{
-		Method: base.Play,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
-			"Session": base.HeaderValue{sx.Session},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	conn2, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn2.Close()
-	br2 := bufio.NewReader(conn2)
-
-	res, err = writeReqReadRes(conn2, br2, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
-			"Session": base.HeaderValue{sx.Session},
+			}.Marshal(),
+			"Session": base.HeaderValue{session},
 		},
 	})
 	require.NoError(t, err)
@@ -454,117 +528,28 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 }
 
 func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
-
-	stream := NewServerStream(Tracks{track})
-	defer stream.Close()
+	var stream *ServerStream
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
 			},
-			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+			onPause: func(_ *ServerHandlerOnPauseCtx) (*base.Response, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil
-			},
-		},
-		RTSPAddress: "localhost:8554",
-	}
-
-	err = s.Start()
-	require.NoError(t, err)
-	defer s.Close()
-
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	br := bufio.NewReader(conn)
-
-	res, err := writeReqReadRes(conn, br, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	var sx headers.Session
-	err = sx.Read(res.Header["Session"])
-	require.NoError(t, err)
-
-	res, err = writeReqReadRes(conn, br, base.Request{
-		Method: base.Play,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq":    base.HeaderValue{"2"},
-			"Session": base.HeaderValue{sx.Session},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	res, err = writeReqReadRes(conn, br, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"3"},
-			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusBadRequest, res.StatusCode)
-}
-
-func TestServerGetSetParameter(t *testing.T) {
-	var params []byte
-
-	s := &Server{
-		Handler: &testServerHandler{
-			onSetParameter: func(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
-				params = ctx.Request.Body
-				return &base.Response{
-					StatusCode: base.StatusOK,
-				}, nil
-			},
-			onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
-				return &base.Response{
-					StatusCode: base.StatusOK,
-					Body:       params,
 				}, nil
 			},
 		},
@@ -575,43 +560,224 @@ func TestServerGetSetParameter(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
-	br := bufio.NewReader(conn)
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	defer stream.Close()
 
-	res, err := writeReqReadRes(conn, br, base.Request{
-		Method: base.Options,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-		},
-	})
+	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
 
-	res, err = writeReqReadRes(conn, br, base.Request{
-		Method: base.SetParameter,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"12"},
-		},
-		Body: []byte("param1: 123456\r\n"),
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	desc := doDescribe(t, conn)
 
-	res, err = writeReqReadRes(conn, br, base.Request{
-		Method: base.GetParameter,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+	inTH := &headers.Transport{
+		Protocol:       headers.TransportProtocolTCP,
+		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:           transportModePtr(headers.TransportModePlay),
+		InterleavedIDs: &[2]int{0, 1},
+	}
+
+	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+
+	session := readSession(t, res)
+
+	doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
+
+	res, err = writeReqReadRes(conn, base.Request{
+		Method: base.Setup,
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
+			"Transport": headers.Transport{
+				Protocol:       headers.TransportProtocolTCP,
+				Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+				Mode:           transportModePtr(headers.TransportModePlay),
+				InterleavedIDs: &[2]int{0, 1},
+			}.Marshal(),
 		},
-		Body: []byte("param1\r\n"),
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusBadRequest, res.StatusCode)
+}
+
+func TestServerSetupMultipleTransports(t *testing.T) {
+	var stream *ServerStream
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	defer stream.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
+
+	desc := doDescribe(t, conn)
+
+	inTHS := headers.Transports{
+		{
+			Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+			Mode:        transportModePtr(headers.TransportModePlay),
+			Protocol:    headers.TransportProtocolUDP,
+			ClientPorts: &[2]int{35466, 35467},
+		},
+		{
+			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+			Mode:           transportModePtr(headers.TransportModePlay),
+			Protocol:       headers.TransportProtocolTCP,
+			InterleavedIDs: &[2]int{0, 1},
+		},
+	}
+
+	res, err := writeReqReadRes(conn, base.Request{
+		Method: base.Setup,
+		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+		Header: base.Header{
+			"CSeq":      base.HeaderValue{"1"},
+			"Transport": inTHS.Marshal(),
+		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
-	require.Equal(t, []byte("param1: 123456\r\n"), res.Body)
+
+	var th headers.Transport
+	err = th.Unmarshal(res.Header["Transport"])
+	require.NoError(t, err)
+	require.Equal(t, headers.Transport{
+		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+		Protocol:       headers.TransportProtocolTCP,
+		InterleavedIDs: &[2]int{0, 1},
+	}, th)
+}
+
+func TestServerGetSetParameter(t *testing.T) {
+	for _, ca := range []string{"inside session", "outside session"} {
+		t.Run(ca, func(t *testing.T) {
+			var stream *ServerStream
+			var params []byte
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						ctx.Session.SetUserData(123)
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+					onSetParameter: func(ctx *ServerHandlerOnSetParameterCtx) (*base.Response, error) {
+						if ca == "inside session" {
+							require.NotNil(t, ctx.Session)
+							require.Equal(t, 123, ctx.Session.UserData())
+						} else {
+							ctx.Conn.SetUserData(456)
+						}
+						params = ctx.Request.Body
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onGetParameter: func(ctx *ServerHandlerOnGetParameterCtx) (*base.Response, error) {
+						if ca == "inside session" {
+							require.NotNil(t, ctx.Session)
+						} else {
+							require.Equal(t, 456, ctx.Conn.UserData())
+						}
+						return &base.Response{
+							StatusCode: base.StatusOK,
+							Body:       params,
+						}, nil
+					},
+				},
+				RTSPAddress: "localhost:8554",
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			defer stream.Close()
+
+			nconn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn.Close()
+			conn := conn.NewConn(nconn)
+
+			desc := doDescribe(t, conn)
+
+			var session string
+
+			if ca == "inside session" {
+				inTH := &headers.Transport{
+					Protocol:       headers.TransportProtocolTCP,
+					Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+					Mode:           transportModePtr(headers.TransportModePlay),
+					InterleavedIDs: &[2]int{0, 1},
+				}
+
+				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+
+				session = readSession(t, res)
+			}
+
+			headers := base.Header{
+				"CSeq": base.HeaderValue{"3"},
+			}
+			if ca == "inside session" {
+				headers["Session"] = base.HeaderValue{session}
+			}
+
+			res, err := writeReqReadRes(conn, base.Request{
+				Method: base.SetParameter,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: headers,
+				Body:   []byte("param1: 123456\r\n"),
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			headers = base.Header{
+				"CSeq": base.HeaderValue{"4"},
+			}
+			if ca == "inside session" {
+				headers["Session"] = base.HeaderValue{session}
+			}
+
+			res, err = writeReqReadRes(conn, base.Request{
+				Method: base.GetParameter,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: headers,
+				Body:   []byte("param1\r\n"),
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+			require.Equal(t, []byte("param1: 123456\r\n"), res.Body)
+		})
+	}
 }
 
 func TestServerErrorInvalidSession(t *testing.T) {
@@ -624,17 +790,17 @@ func TestServerErrorInvalidSession(t *testing.T) {
 		t.Run(string(method), func(t *testing.T) {
 			s := &Server{
 				Handler: &testServerHandler{
-					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+					onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+					onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+					onPause: func(_ *ServerHandlerOnPauseCtx) (*base.Response, error) {
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -647,12 +813,12 @@ func TestServerErrorInvalidSession(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			conn, err := net.Dial("tcp", "localhost:8554")
+			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
-			defer conn.Close()
-			br := bufio.NewReader(conn)
+			defer nconn.Close()
+			conn := conn.NewConn(nconn)
 
-			res, err := writeReqReadRes(conn, br, base.Request{
+			res, err := writeReqReadRes(conn, base.Request{
 				Method: method,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
 				Header: base.Header{
@@ -667,21 +833,27 @@ func TestServerErrorInvalidSession(t *testing.T) {
 }
 
 func TestServerSessionClose(t *testing.T) {
-	sessionClosed := make(chan struct{})
+	var stream *ServerStream
+	var session *ServerSession
+	connClosed := make(chan struct{})
 
 	s := &Server{
 		Handler: &testServerHandler{
 			onSessionOpen: func(ctx *ServerHandlerOnSessionOpenCtx) {
-				ctx.Session.Close()
-				ctx.Session.Close()
+				session = ctx.Session
 			},
-			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
-				close(sessionClosed)
+			onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
+				close(connClosed)
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
-				}, nil, nil
+				}, stream, nil
+			},
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
 			},
 		},
 		RTSPAddress: "localhost:8554",
@@ -691,50 +863,131 @@ func TestServerSessionClose(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer conn.Close()
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	defer stream.Close()
 
-	byts, _ := base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
+
+	desc := doDescribe(t, conn)
+
+	inTH := &headers.Transport{
+		Protocol:       headers.TransportProtocolTCP,
+		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:           transportModePtr(headers.TransportModePlay),
+		InterleavedIDs: &[2]int{0, 1},
+	}
+
+	doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+
+	session.Close()
+	session.Close()
+
+	select {
+	case <-connClosed:
+	case <-time.After(2 * time.Second):
+		t.Errorf("should not happen")
+	}
+
+	_, err = writeReqReadRes(conn, base.Request{
+		Method: base.Options,
+		URL:    mustParseURL("rtsp://localhost:8554/"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
+			"CSeq": base.HeaderValue{"2"},
 		},
-	}.Write()
-	_, err = conn.Write(byts)
-	require.NoError(t, err)
-
-	<-sessionClosed
+	})
+	require.Error(t, err)
 }
 
 func TestServerSessionAutoClose(t *testing.T) {
-	sessionClosed := make(chan struct{})
+	for _, ca := range []string{
+		"200", "400",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			var stream *ServerStream
+			sessionClosed := make(chan struct{})
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+			s := &Server{
+				Handler: &testServerHandler{
+					onSessionClose: func(_ *ServerHandlerOnSessionCloseCtx) {
+						close(sessionClosed)
+					},
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						if ca == "200" {
+							return &base.Response{
+								StatusCode: base.StatusOK,
+							}, stream, nil
+						}
 
-	stream := NewServerStream(Tracks{track})
-	defer stream.Close()
+						return &base.Response{
+							StatusCode: base.StatusBadRequest,
+						}, nil, fmt.Errorf("error")
+					},
+				},
+				RTSPAddress: "localhost:8554",
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			defer stream.Close()
+
+			nconn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			conn := conn.NewConn(nconn)
+
+			desc := doDescribe(t, conn)
+
+			inTH := &headers.Transport{
+				Protocol:       headers.TransportProtocolTCP,
+				Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+				Mode:           transportModePtr(headers.TransportModePlay),
+				InterleavedIDs: &[2]int{0, 1},
+			}
+
+			res, err := writeReqReadRes(conn, base.Request{
+				Method: base.Setup,
+				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+				Header: base.Header{
+					"CSeq":      base.HeaderValue{"1"},
+					"Transport": inTH.Marshal(),
+				},
+			})
+			require.NoError(t, err)
+
+			if ca == "200" {
+				require.Equal(t, base.StatusOK, res.StatusCode)
+			} else {
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
+			}
+
+			nconn.Close()
+
+			<-sessionClosed
+		})
+	}
+}
+
+func TestServerSessionTeardown(t *testing.T) {
+	var stream *ServerStream
 
 	s := &Server{
 		Handler: &testServerHandler{
-			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
-				close(sessionClosed)
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
 			},
-			onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, stream, nil
@@ -743,192 +996,57 @@ func TestServerSessionAutoClose(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
-	conn, err := net.Dial("tcp", "localhost:8554")
-	require.NoError(t, err)
-	br := bufio.NewReader(conn)
+	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	defer stream.Close()
 
-	res, err := writeReqReadRes(conn, br, base.Request{
-		Method: base.Setup,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
+
+	desc := doDescribe(t, conn)
+
+	inTH := &headers.Transport{
+		Protocol:       headers.TransportProtocolTCP,
+		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+		Mode:           transportModePtr(headers.TransportModePlay),
+		InterleavedIDs: &[2]int{0, 1},
+	}
+
+	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+
+	session := readSession(t, res)
+
+	doTeardown(t, conn, "rtsp://localhost:8554/", session)
+
+	res, err = writeReqReadRes(conn, base.Request{
+		Method: base.Options,
+		URL:    mustParseURL("rtsp://localhost:8554/"),
 		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-			"Transport": headers.Transport{
-				Protocol: headers.TransportProtocolTCP,
-				Delivery: func() *headers.TransportDelivery {
-					v := headers.TransportDeliveryUnicast
-					return &v
-				}(),
-				Mode: func() *headers.TransportMode {
-					v := headers.TransportModePlay
-					return &v
-				}(),
-				InterleavedIDs: &[2]int{0, 1},
-			}.Write(),
+			"CSeq": base.HeaderValue{"3"},
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	conn.Close()
-
-	<-sessionClosed
-}
-
-func TestServerErrorInvalidPath(t *testing.T) {
-	for _, method := range []base.Method{
-		base.Describe,
-		base.Announce,
-		base.Play,
-		base.Record,
-		base.Pause,
-		// base.GetParameter,
-		// base.SetParameter,
-	} {
-		t.Run(string(method), func(t *testing.T) {
-			connClosed := make(chan struct{})
-
-			track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-			require.NoError(t, err)
-
-			stream := NewServerStream(Tracks{track})
-			defer stream.Close()
-
-			s := &Server{
-				Handler: &testServerHandler{
-					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-						require.EqualError(t, ctx.Error, "invalid path")
-						close(connClosed)
-					},
-					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, nil
-					},
-					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, stream, nil
-					},
-					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
-						return &base.Response{
-							StatusCode: base.StatusOK,
-						}, nil
-					},
-				},
-				RTSPAddress: "localhost:8554",
-			}
-
-			err = s.Start()
-			require.NoError(t, err)
-			defer s.Close()
-
-			conn, err := net.Dial("tcp", "localhost:8554")
-			require.NoError(t, err)
-			defer conn.Close()
-			br := bufio.NewReader(conn)
-
-			sxID := ""
-
-			if method == base.Record {
-				track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-				require.NoError(t, err)
-
-				tracks := Tracks{track}
-				tracks.setControls()
-
-				res, err := writeReqReadRes(conn, br, base.Request{
-					Method: base.Announce,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-					Header: base.Header{
-						"CSeq":         base.HeaderValue{"1"},
-						"Content-Type": base.HeaderValue{"application/sdp"},
-					},
-					Body: tracks.Write(false),
-				})
-				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
-			}
-
-			if method == base.Play || method == base.Record || method == base.Pause {
-				res, err := writeReqReadRes(conn, br, base.Request{
-					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/trackID=0"),
-					Header: base.Header{
-						"CSeq":    base.HeaderValue{"2"},
-						"Session": base.HeaderValue{sxID},
-						"Transport": headers.Transport{
-							Protocol: headers.TransportProtocolTCP,
-							Delivery: func() *headers.TransportDelivery {
-								v := headers.TransportDeliveryUnicast
-								return &v
-							}(),
-							Mode: func() *headers.TransportMode {
-								if method == base.Play || method == base.Pause {
-									v := headers.TransportModePlay
-									return &v
-								}
-								v := headers.TransportModeRecord
-								return &v
-							}(),
-							InterleavedIDs: &[2]int{0, 1},
-						}.Write(),
-					},
-				})
-				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
-
-				var sx headers.Session
-				err = sx.Read(res.Header["Session"])
-				require.NoError(t, err)
-
-				sxID = sx.Session
-			}
-
-			if method == base.Pause {
-				res, err := writeReqReadRes(conn, br, base.Request{
-					Method: base.Play,
-					URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
-					Header: base.Header{
-						"CSeq":    base.HeaderValue{"2"},
-						"Session": base.HeaderValue{sxID},
-					},
-				})
-				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
-			}
-
-			res, err := writeReqReadRes(conn, br, base.Request{
-				Method: method,
-				URL:    mustParseURL("rtsp://localhost:8554"),
-				Header: base.Header{
-					"CSeq":    base.HeaderValue{"3"},
-					"Session": base.HeaderValue{sxID},
-				},
-			})
-			require.NoError(t, err)
-			require.Equal(t, base.StatusBadRequest, res.StatusCode)
-
-			<-connClosed
-		})
-	}
 }
 
 func TestServerAuth(t *testing.T) {
-	authValidator := auth.NewValidator("myuser", "mypass", nil)
+	nonce, err := auth.GenerateNonce()
+	require.NoError(t, err)
 
 	s := &Server{
 		Handler: &testServerHandler{
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-				err := authValidator.ValidateRequest(ctx.Request)
+				err := auth.Validate(ctx.Request, "myuser", "mypass", nil, nil, "IPCAM", nonce)
 				if err != nil {
-					return &base.Response{
+					return &base.Response{ //nolint:nilerr
 						StatusCode: base.StatusUnauthorized,
 						Header: base.Header{
-							"WWW-Authenticate": authValidator.Header(),
+							"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
 						},
 					}, nil
 				}
@@ -941,17 +1059,16 @@ func TestServerAuth(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err := s.Start()
+	err = s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
-	conn, err := net.Dial("tcp", "localhost:8554")
+	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
-	defer conn.Close()
-	br := bufio.NewReader(conn)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
 
-	track, err := NewTrackH264(96, []byte{0x01, 0x02, 0x03, 0x04}, []byte{0x01, 0x02, 0x03, 0x04}, nil)
-	require.NoError(t, err)
+	medias := []*description.Media{testH264Media}
 
 	req := base.Request{
 		Method: base.Announce,
@@ -960,10 +1077,10 @@ func TestServerAuth(t *testing.T) {
 			"CSeq":         base.HeaderValue{"1"},
 			"Content-Type": base.HeaderValue{"application/sdp"},
 		},
-		Body: Tracks{track}.Write(false),
+		Body: mediasToSDP(medias),
 	}
 
-	res, err := writeReqReadRes(conn, br, req)
+	res, err := writeReqReadRes(conn, req)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusUnauthorized, res.StatusCode)
 
@@ -971,7 +1088,7 @@ func TestServerAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	sender.AddAuthorization(&req)
-	res, err = writeReqReadRes(conn, br, req)
+	res, err = writeReqReadRes(conn, req)
 	require.NoError(t, err)
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }

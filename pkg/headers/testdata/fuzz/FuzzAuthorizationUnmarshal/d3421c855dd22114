@@ -1,0 +1,2 @@
+go test fuzz v1
+string("Digest username,realm,nonce,uri,response,algorithm")

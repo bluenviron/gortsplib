@@ -1,4 +1,3 @@
-//nolint:govet
 package sdp
 
 import (
@@ -43,7 +42,7 @@ var cases = []struct {
 				return &v
 			}(),
 			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{3034423619, 3042462419}, nil},
+				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
@@ -74,7 +73,7 @@ var cases = []struct {
 				return &v
 			}(),
 			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{3034423619, 3042462419}, nil},
+				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
@@ -109,7 +108,7 @@ var cases = []struct {
 				return &v
 			}(),
 			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{3034423619, 3042462419}, nil},
+				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
@@ -208,20 +207,29 @@ var cases = []struct {
 				},
 			},
 			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{2873397496, 2873404696}, nil},
-				{psdp.Timing{3034423619, 3042462419}, []psdp.RepeatTime{{604800, 3600, []int64{0, 90000}}}},
+				{Timing: psdp.Timing{StartTime: 2873397496, StopTime: 2873404696}},
+				{
+					Timing:      psdp.Timing{StartTime: 3034423619, StopTime: 3042462419},
+					RepeatTimes: []psdp.RepeatTime{{Interval: 604800, Duration: 3600, Offsets: []int64{0, 90000}}},
+				},
 			},
 			TimeZones: []psdp.TimeZone{
-				{2882844526, -3600},
-				{2898848070, 0},
+				{AdjustmentTime: 2882844526, Offset: -3600},
+				{AdjustmentTime: 2898848070},
 			},
 			EncryptionKey: func() *psdp.EncryptionKey {
 				v := psdp.EncryptionKey("prompt")
 				return &v
 			}(),
 			Attributes: []psdp.Attribute{
-				{"candidate", "0 1 UDP 2113667327 203.0.113.1 54400 typ host"},
-				{"recvonly", ""},
+				{
+					Key:   "candidate",
+					Value: "0 1 UDP 2113667327 203.0.113.1 54400 typ host",
+				},
+				{
+					Key:   "recvonly",
+					Value: "",
+				},
 			},
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
@@ -252,7 +260,9 @@ var cases = []struct {
 						return &v
 					}(),
 					Attributes: []psdp.Attribute{
-						{"sendrecv", ""},
+						{
+							Key: "sendrecv",
+						},
 					},
 				},
 				{
@@ -263,7 +273,10 @@ var cases = []struct {
 						Formats: []string{"99"},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "99 h263-1998/90000"},
+						{
+							Key:   "rtpmap",
+							Value: "99 h263-1998/90000",
+						},
 					},
 				},
 			},
@@ -315,14 +328,21 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.175.31.17",
 			},
-			SessionName: "RTSP Server",
-			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{0, 0}, nil},
-			},
+			SessionName:      "RTSP Server",
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
-				{"control", "*"},
-				{"source-filter", " incl IN IP4 * 10.175.31.17"},
-				{"range", "npt=0-"},
+				{
+					Key:   "control",
+					Value: "*",
+				},
+				{
+					Key:   "source-filter",
+					Value: " incl IN IP4 * 10.175.31.17",
+				},
+				{
+					Key:   "range",
+					Value: "npt=0-",
+				},
 			},
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
@@ -338,10 +358,22 @@ var cases = []struct {
 						Address:     &psdp.Address{Address: "0.0.0.0"},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "96 H264/90000"},
-						{"fmtp", "96 profile-level-id=4D001E; packetization-mode=1; sprop-parameter-sets=Z00AHpWoKAv+VA==,aO48gA=="},
-						{"control", "?ctype=video"},
-						{"recvonly", ""},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=4D001E; packetization-mode=1; sprop-parameter-sets=Z00AHpWoKAv+VA==,aO48gA==",
+						},
+						{
+							Key:   "control",
+							Value: "?ctype=video",
+						},
+						{
+							Key:   "recvonly",
+							Value: "",
+						},
 					},
 				},
 				{
@@ -352,9 +384,18 @@ var cases = []struct {
 						Formats: []string{"106"},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "106 vnd.onvif.metadata/90000"},
-						{"control", "?ctype=app106"},
-						{"sendonly", ""},
+						{
+							Key:   "rtpmap",
+							Value: "106 vnd.onvif.metadata/90000",
+						},
+						{
+							Key:   "control",
+							Value: "?ctype=app106",
+						},
+						{
+							Key:   "sendonly",
+							Value: "",
+						},
 					},
 				},
 			},
@@ -405,10 +446,19 @@ var cases = []struct {
 						Formats: []string{"96"},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "96 H265/90000"},
-						{"fmtp", "96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
-							"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;"},
-						{"control", "streamid=0"},
+						{
+							Key:   "rtpmap",
+							Value: "96 H265/90000",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
+								"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;",
+						},
+						{
+							Key:   "control",
+							Value: "streamid=0",
+						},
 					},
 				},
 				{
@@ -419,9 +469,18 @@ var cases = []struct {
 						Formats: []string{"97"},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "97 mpeg4-generic/44100/2"},
-						{"fmtp", "97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1210"},
-						{"control", "streamid=1"},
+						{
+							Key:   "rtpmap",
+							Value: "97 mpeg4-generic/44100/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1210",
+						},
+						{
+							Key:   "control",
+							Value: "streamid=1",
+						},
 					},
 				},
 			},
@@ -463,10 +522,19 @@ var cases = []struct {
 						Formats: []string{"96"},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "96 H265/90000"},
-						{"fmtp", "96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
-							"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;"},
-						{"control", "streamid=0"},
+						{
+							Key:   "rtpmap",
+							Value: "96 H265/90000",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 sprop-vps=QAEMAf//AWAAAAMAsAAAAwAAAwB4FwJA; " +
+								"sprop-sps=QgEBAWAAAAMAsAAAAwAAAwB4oAKggC8c1YgXuRZFL/y5/E/qbgQEBAE=; sprop-pps=RAHAcvBTJA==;",
+						},
+						{
+							Key:   "control",
+							Value: "streamid=0",
+						},
 					},
 				},
 				{
@@ -477,16 +545,25 @@ var cases = []struct {
 						Formats: []string{"97"},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "97 mpeg4-generic/44100/2"},
-						{"fmtp", "97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1210"},
-						{"control", "streamid=1"},
+						{
+							Key:   "rtpmap",
+							Value: "97 mpeg4-generic/44100/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1210",
+						},
+						{
+							Key:   "control",
+							Value: "streamid=1",
+						},
 					},
 				},
 			},
 		},
 	},
 	{
-		"live reporter app",
+		"issue mediamtx/75",
 		[]byte("v=0\r\n" +
 			"o=-0 0 IN IP4 127.0.0.1\r\n" +
 			"s=No Name\r\n" +
@@ -534,9 +611,12 @@ var cases = []struct {
 				AddressType: "IP4",
 				Address:     &psdp.Address{Address: "0.0.0.0"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
-				{"control", "*"},
+				{
+					Key:   "control",
+					Value: "*",
+				},
 			},
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
@@ -553,9 +633,18 @@ var cases = []struct {
 						},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "96 H264/90000"},
-						{"fmtp", "96 packetization-mode=1; sprop-parameter-sets=J2QAHqxWgKA9pqAgIMBA,KO48sA==; profile-level-id=64001E"},
-						{"control", "streamid=0"},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 packetization-mode=1; sprop-parameter-sets=J2QAHqxWgKA9pqAgIMBA,KO48sA==; profile-level-id=64001E",
+						},
+						{
+							Key:   "control",
+							Value: "streamid=0",
+						},
 					},
 				},
 				{
@@ -572,16 +661,25 @@ var cases = []struct {
 						},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "97 MPEG4-GENERIC/48000/1"},
-						{"fmtp", "97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexLength=3;indexDeltaLength=3;config=118856E500"},
-						{"control", "streamid=1"},
+						{
+							Key:   "rtpmap",
+							Value: "97 MPEG4-GENERIC/48000/1",
+						},
+						{
+							Key:   "fmtp",
+							Value: "97 profile-level-id=1;mode=AAC-hbr;sizelength=13;indexLength=3;indexDeltaLength=3;config=118856E500",
+						},
+						{
+							Key:   "control",
+							Value: "streamid=1",
+						},
 					},
 				},
 			},
 		},
 	},
 	{
-		"sony_snc_wr630",
+		"issue mediamtx/85",
 		[]byte("v=0\r\n" +
 			"o=- 12345 1 IN IP4 10.21.61.139\r\n" +
 			"s=Sony RTSP Server\r\n" +
@@ -623,9 +721,12 @@ var cases = []struct {
 				AddressType: "IP4",
 				Address:     &psdp.Address{Address: "0.0.0.0"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
-				{"range", "npt=now-"},
+				{
+					Key:   "range",
+					Value: "npt=now-",
+				},
 			},
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
@@ -636,19 +737,34 @@ var cases = []struct {
 						Formats: []string{"105"},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "105 H264/90000"},
-						{"control", "trackID=1"},
-						{"recvonly", ""},
-						{"framerate", "25.0"},
-						{"fmtp", "105 packetization-mode=1; profile-level-id=640028; " +
-							"sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA=="},
+						{
+							Key:   "rtpmap",
+							Value: "105 H264/90000",
+						},
+						{
+							Key:   "control",
+							Value: "trackID=1",
+						},
+						{
+							Key:   "recvonly",
+							Value: "",
+						},
+						{
+							Key:   "framerate",
+							Value: "25.0",
+						},
+						{
+							Key: "fmtp",
+							Value: "105 packetization-mode=1; profile-level-id=640028; " +
+								"sprop-parameter-sets=Z2QAKKwa0A8ARPy4CIAAAAMAgAAADLWgAtwAHJ173CPFCKg=,KO4ESSJAAAAAAAAAAA==",
+						},
 					},
 				},
 			},
 		},
 	},
 	{
-		"vlc",
+		"issue mediamtx/115",
 		[]byte("v=0\r\n" +
 			"o=- 16379793953309178445 16379793953309178445 IN IP4 5c2b68da\r\n" +
 			"s=Unnamed\r\n" +
@@ -706,12 +822,21 @@ var cases = []struct {
 				AddressType: "IP4",
 				Address:     &psdp.Address{Address: "0.0.0.0"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
-				{"tool", "vlc 3.0.11"},
-				{"recvonly", ""},
-				{"type", "broadcast"},
-				{"charset", "UTF-8"},
+				{
+					Key:   "tool",
+					Value: "vlc 3.0.11",
+				},
+				{Key: "recvonly"},
+				{
+					Key:   "type",
+					Value: "broadcast",
+				},
+				{
+					Key:   "charset",
+					Value: "UTF-8",
+				},
 			},
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
@@ -727,9 +852,15 @@ var cases = []struct {
 						},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "96 mpeg4-generic/22050"},
-						{"fmtp", "96 streamtype=5; profile-level-id=15; " +
-							"mode=AAC-hbr; config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;"},
+						{
+							Key:   "rtpmap",
+							Value: "96 mpeg4-generic/22050",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 streamtype=5; profile-level-id=15; " +
+								"mode=AAC-hbr; config=1388; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;",
+						},
 					},
 				},
 				{
@@ -745,15 +876,21 @@ var cases = []struct {
 						},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "96 H264/90000"},
-						{"fmtp", "96 packetization-mode=1;profile-level-id=640028;sprop-parameter-sets=J2QAKKwrQCgDzQDxImo=,KO4CXLA=;"},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 packetization-mode=1;profile-level-id=640028;sprop-parameter-sets=J2QAKKwrQCgDzQDxImo=,KO4CXLA=;",
+						},
 					},
 				},
 			},
 		},
 	},
 	{
-		"mp2t",
+		"issue mediamtx/120",
 		[]byte("v=0\r\n" +
 			"o=- 1702415089 4281335390 IN IP4 127.0.0.1\r\n" +
 			"s=live\r\n" +
@@ -785,9 +922,12 @@ var cases = []struct {
 				AddressType: "IP4",
 				Address:     &psdp.Address{Address: "239.3.1.142"},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
-				{"range", "clock=0-"},
+				{
+					Key:   "range",
+					Value: "clock=0-",
+				},
 			},
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
@@ -808,7 +948,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"empty unicast address in origin",
+		"issue mediamtx/121",
 		[]byte("v=0\r\n" +
 			"o=RTSP 16381778200090761968 16381778200090839277 IN IP4 \r\n" +
 			"s=RTSP Server\r\n" +
@@ -830,7 +970,7 @@ var cases = []struct {
 			"b=AS:5000\r\n" +
 			"a=control:rtsp://10.10.1.30:8554/onvif2/audio/trackID=1\r\n"),
 		[]byte("v=0\r\n" +
-			"o=RTSP 16381778200090761968 16381778200090839277 IN IP4 127.0.0.1\r\n" +
+			"o=RTSP 16381778200090761968 16381778200090839277 IN IP4 \r\n" +
 			"s=RTSP Server\r\n" +
 			"e=NONE\r\n" +
 			"t=0 0\r\n" +
@@ -856,17 +996,20 @@ var cases = []struct {
 				SessionVersion: 16381778200090839277,
 				NetworkType:    "IN",
 				AddressType:    "IP4",
-				UnicastAddress: "127.0.0.1",
+				UnicastAddress: "",
 			},
 			SessionName: psdp.SessionName("RTSP Server"),
 			EmailAddress: func() *psdp.EmailAddress {
 				v := psdp.EmailAddress("NONE")
 				return &v
 			}(),
-			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
-				{"recvonly", ""},
-				{"x-dimensions", "1920,1080"},
+				{Key: "recvonly"},
+				{
+					Key:   "x-dimensions",
+					Value: "1920,1080",
+				},
 			},
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
@@ -888,11 +1031,26 @@ var cases = []struct {
 						},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "96 H264/90000"},
-						{"fmtp", "96 packetization-mode=1;profile-level-id=64001e;sprop-parameter-sets=Z2QAHqwsaoMg5puAgICB,aO4xshs="},
-						{"Media_header", "MEDIAINFO=494D4B48010100000400010000000000000000000000000000000000000000000000000000000000;"},
-						{"appversion", "1.0"},
-						{"control", "rtsp://10.10.1.30:8554/onvif2/audio/trackID=0"},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 packetization-mode=1;profile-level-id=64001e;sprop-parameter-sets=Z2QAHqwsaoMg5puAgICB,aO4xshs=",
+						},
+						{
+							Key:   "Media_header",
+							Value: "MEDIAINFO=494D4B48010100000400010000000000000000000000000000000000000000000000000000000000;",
+						},
+						{
+							Key:   "appversion",
+							Value: "1.0",
+						},
+						{
+							Key:   "control",
+							Value: "rtsp://10.10.1.30:8554/onvif2/audio/trackID=0",
+						},
 					},
 				},
 				{
@@ -914,15 +1072,21 @@ var cases = []struct {
 						},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "0 PCMU/8000/1"},
-						{"control", "rtsp://10.10.1.30:8554/onvif2/audio/trackID=1"},
+						{
+							Key:   "rtpmap",
+							Value: "0 PCMU/8000/1",
+						},
+						{
+							Key:   "control",
+							Value: "rtsp://10.10.1.30:8554/onvif2/audio/trackID=1",
+						},
 					},
 				},
 			},
 		},
 	},
 	{
-		"bandwidth rs",
+		"issue mediamtx/136",
 		[]byte("v=0\r\n" +
 			"o=- 200710060441230578 200710060441230578 IN IP4 127.0.0.1\r\n" +
 			"s=<No Title>\r\n" +
@@ -996,14 +1160,29 @@ var cases = []struct {
 					Bandwidth: 104,
 				},
 			},
-			TimeDescriptions: []psdp.TimeDescription{{psdp.Timing{0, 0}, nil}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
-				{"maxps", "1250"},
-				{"control", "rtsp://61.135.88.175:554/refuse/unavailable_media.wmv/"},
-				{"etag", "{CCEE392D-83DF-F4AA-130B-E8A05562CE63}"},
-				{"range", "npt=3.000-6.185"},
-				{"type", "notstridable"},
-				{"recvonly", ""},
+				{
+					Key:   "maxps",
+					Value: "1250",
+				},
+				{
+					Key:   "control",
+					Value: "rtsp://61.135.88.175:554/refuse/unavailable_media.wmv/",
+				},
+				{
+					Key:   "etag",
+					Value: "{CCEE392D-83DF-F4AA-130B-E8A05562CE63}",
+				},
+				{
+					Key:   "range",
+					Value: "npt=3.000-6.185",
+				},
+				{
+					Key:   "type",
+					Value: "notstridable",
+				},
+				{Key: "recvonly"},
 			},
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
@@ -1033,9 +1212,18 @@ var cases = []struct {
 						},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "96 x-asf-pf/1000"},
-						{"control", "video"},
-						{"stream", "1"},
+						{
+							Key:   "rtpmap",
+							Value: "96 x-asf-pf/1000",
+						},
+						{
+							Key:   "control",
+							Value: "video",
+						},
+						{
+							Key:   "stream",
+							Value: "1",
+						},
 					},
 				},
 				{
@@ -1056,16 +1244,25 @@ var cases = []struct {
 						},
 					},
 					Attributes: []psdp.Attribute{
-						{"rtpmap", "96 x-wms-rtx/1000"},
-						{"control", "rtx"},
-						{"stream", "65536"},
+						{
+							Key:   "rtpmap",
+							Value: "96 x-wms-rtx/1000",
+						},
+						{
+							Key:   "control",
+							Value: "rtx",
+						},
+						{
+							Key:   "stream",
+							Value: "65536",
+						},
 					},
 				},
 			},
 		},
 	},
 	{
-		"spaces in origin",
+		"issue mediamtx/127",
 		[]byte("v=0\r\n" +
 			"o=RTSP Session 1 2 IN IP4 0.0.0.0\r\n" +
 			"s=Sony RTSP Server\r\n"),
@@ -1085,7 +1282,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"some hikvision cameras",
+		"issue mediamtx/227",
 		[]byte("v=0\r\n" +
 			"o=- 1109162014219182 0 IN IP4 0.0.0.0\r\n" +
 			"s=HIK Media Server V3.1.3\r\n" +
@@ -1197,7 +1394,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"hex session id",
+		"issue gortsplib/60",
 		[]byte("v=0\r\n" +
 			"o=jdoe 0xAC4EC96E 2890842807 IN IP4 10.47.16.5\r\n" +
 			"s=SDP Seminar\r\n" +
@@ -1223,12 +1420,12 @@ var cases = []struct {
 				return &v
 			}(),
 			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{3034423619, 3042462419}, nil},
+				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
 	{
-		"FLIR with bad timing",
+		"issue gortsplib/85",
 		[]byte("v=0\r\n" +
 			"o=- 0 0 IN IP4 172.16.2.20\r\n" +
 			"s=IR stream\r\n" +
@@ -1291,9 +1488,7 @@ var cases = []struct {
 				v := psdp.Information("Live infrared")
 				return &v
 			}(),
-			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{0, 0}, nil},
-			},
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -1383,7 +1578,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"FLIR IOI TRK-101 with trailing space in origin field",
+		"issue gortsplib/116",
 		[]byte("v=0\r\n" +
 			"o=- 1 1 IN IP4 127.0.0.1 \r\n" +
 			"s=RTP session\r\n" +
@@ -1417,10 +1612,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "127.0.0.1",
 			},
-			SessionName: "RTP session",
-			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{0, 0}, nil},
-			},
+			SessionName:      "RTP session",
+			TimeDescriptions: []psdp.TimeDescription{{}},
 			EmailAddress: func() *psdp.EmailAddress {
 				e := psdp.EmailAddress("NONE")
 				return &e
@@ -1463,7 +1656,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"hex session id for 0XAC4EC96E",
+		"issue gortsplib/112 a",
 		[]byte("v=0\r\n" +
 			"o=jdoe 0XAC4EC96E 2890842807 IN IP4 10.47.16.5\r\n" +
 			"s=SDP Seminar\r\n" +
@@ -1489,12 +1682,12 @@ var cases = []struct {
 				return &v
 			}(),
 			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{3034423619, 3042462419}, nil},
+				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
 	{
-		"hex session id for 103bdb6f",
+		"issue gortsplib/112 b",
 		[]byte("v=0\r\n" +
 			"o=jdoe 103bdb6f 2890842807 IN IP4 10.47.16.5\r\n" +
 			"s=SDP Seminar\r\n" +
@@ -1520,12 +1713,12 @@ var cases = []struct {
 				return &v
 			}(),
 			TimeDescriptions: []psdp.TimeDescription{
-				{psdp.Timing{3034423619, 3042462419}, nil},
+				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
 		},
 	},
 	{
-		"tias",
+		"issue mediamtx/948",
 		[]byte("v=0\r\n" +
 			"o=- 1681692777 1681692777 IN IP4 127.0.0.1\r\n" +
 			"s=Video Stream\r\n" +
@@ -1638,6 +1831,1094 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"issue mediamtx/990",
+		[]byte("v=0\r\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.4.226\r\n" +
+			"s=Session streamed by \"TP-LINK RTSP Server\"\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:4096\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:track1\r\n" +
+			"a=rtpmap:96 H265/90000\r\n" +
+			"a=fmtp:96 profile-space=0;profile-id=1;tier-flag=0;level-id=150;interop-constraints=000000000000;" +
+			"sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ;" +
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkkya5ZwCAAADAAIAAAMAHhA=;" +
+			"sprop-pps=RAHgdrAmQA==\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n" +
+			"a=control:track2\r\n" +
+			"m=application/TP-LINK 0 RTP/AVP smart/1/90000\r\n" +
+			"a=rtpmap:95 TP-LINK/90000\r\n" +
+			"a=control:track3\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.4.226\r\n" +
+			"s=Session streamed by \"TP-LINK RTSP Server\"\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:4096\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:track1\r\n" +
+			"a=rtpmap:96 H265/90000\r\n" +
+			"a=fmtp:96 profile-space=0;profile-id=1;tier-flag=0;level-id=150;interop-constraints=000000000000;" +
+			"sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ;" +
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkkya5ZwCAAADAAIAAAMAHhA=;" +
+			"sprop-pps=RAHgdrAmQA==\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n" +
+			"a=control:track2\r\n" +
+			"m=application/TP-LINK 0 RTP/AVP smart/1/90000\r\n" +
+			"a=rtpmap:95 TP-LINK/90000\r\n" +
+			"a=control:track3\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "- 14665860",
+				SessionID:      31787219,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.4.226",
+			},
+			SessionName:      "Session streamed by \"TP-LINK RTSP Server\"",
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "0.0.0.0",
+						},
+					},
+					Bandwidth: []psdp.Bandwidth{{Type: "AS", Bandwidth: 4096}},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "range",
+							Value: "npt=0-",
+						},
+						{
+							Key:   "control",
+							Value: "track1",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 H265/90000",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 profile-space=0;profile-id=1;tier-flag=0;level-id=150;" +
+								"interop-constraints=000000000000;sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ;" +
+								"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkkya5ZwCAAADAAIAAAMAHhA=;sprop-pps=RAHgdrAmQA==",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"8"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "8 PCMA/8000",
+						},
+						{
+							Key:   "control",
+							Value: "track2",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "application/TP-LINK",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"smart/1/90000"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "95 TP-LINK/90000",
+						},
+						{
+							Key:   "control",
+							Value: "track3",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue mediamtx/1119",
+		[]byte("v=0\n" +
+			"o=- 224 1 IN IP4 192.168.178.1\n" +
+			"s=SatIPServer:1 0,0,4\n" +
+			"t=0 0\n" +
+			"m=video 0 RTP/AVP 33\n" +
+			"c=In IP4 0.0.0.0\n" +
+			"a=control:stream=1\n" +
+			"a=fmtp:33 ver=1.2;src=1;tuner=1,240,1,7,112,,dvbc,,,,6900,34;pids=0,16,17,18,20\n" +
+			"a=sendonly\n"),
+		[]byte("v=0\r\n" +
+			"o=- 224 1 IN IP4 192.168.178.1\r\n" +
+			"s=SatIPServer:1 0,0,4\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 33\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"a=control:stream=1\r\n" +
+			"a=fmtp:33 ver=1.2;src=1;tuner=1,240,1,7,112,,dvbc,,,,6900,34;pids=0,16,17,18,20\r\n" +
+			"a=sendonly\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      224,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.178.1",
+			},
+			SessionName:      "SatIPServer:1 0,0,4",
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"33"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "0.0.0.0",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "stream=1",
+						},
+						{
+							Key:   "fmtp",
+							Value: "33 ver=1.2;src=1;tuner=1,240,1,7,112,,dvbc,,,,6900,34;pids=0,16,17,18,20",
+						},
+						{
+							Key: "sendonly",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"onvif specification",
+		[]byte("v=0\r\n" +
+			"o= 2890842807 IN IP4 192.168.0.1\r\n" +
+			"s=RTSP Session with audiobackchannel\r\n" +
+			"m=video 0 RTP/AVP 26\r\n" +
+			"a=control:rtsp://192.168.0.1/video\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audio\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audioback\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=sendonly\r\n"),
+		[]byte("v=0\r\n" +
+			"o= 0 2890842807 IN IP4 192.168.0.1\r\n" +
+			"s=RTSP Session with audiobackchannel\r\n" +
+			"m=video 0 RTP/AVP 26\r\n" +
+			"a=control:rtsp://192.168.0.1/video\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audio\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audioback\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=sendonly\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				SessionVersion: 2890842807,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.0.1",
+			},
+			SessionName: "RTSP Session with audiobackchannel",
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"26"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.0.1/video",
+						},
+						{
+							Key: "recvonly",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.0.1/audio",
+						},
+						{
+							Key: "recvonly",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.0.1/audioback",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "0 PCMU/8000",
+						},
+						{
+							Key: "sendonly",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue gortsplib/201",
+		[]byte("v=0\n" +
+			"o=JefferyZhang Inno Fuzhou 0 0 IN IP4 127.0.0.1\n" +
+			"s=RbsLive\n" +
+			"c=IN IP4 0.0.0.0\n" +
+			"t=0 0\n" +
+			"a=tool:libmpp at 2.0.1\n" +
+			"m=video 0 RTP/AVP 96\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=fmtp:96 profile-level-id=64C028;sprop-parameter-sets=Z2TAKKwa0A8ARPywDwiEag==,aO48sA==\n" +
+			"a=control:track1\n" +
+			"m=audio 0 RTP/AVP 97\n" +
+			"a=rtpmap:97 MPEG4-GENERIC/48000/2\n" +
+			"a=fmtp:97 profile-level-id=15;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1190\n" +
+			"a=control:track2\n"),
+		[]byte("v=0\r\n" +
+			"o=JefferyZhang Inno Fuzhou 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=RbsLive\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=tool:libmpp at 2.0.1\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 profile-level-id=64C028;sprop-parameter-sets=Z2TAKKwa0A8ARPywDwiEag==,aO48sA==\r\n" +
+			"a=control:track1\r\n" +
+			"m=audio 0 RTP/AVP 97\r\n" +
+			"a=rtpmap:97 MPEG4-GENERIC/48000/2\r\n" +
+			"a=fmtp:97 profile-level-id=15;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1190\r\n" +
+			"a=control:track2\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "JefferyZhang Inno Fuzhou",
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "127.0.0.1",
+			},
+			SessionName: "RbsLive",
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "0.0.0.0",
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "tool",
+					Value: "libmpp at 2.0.1",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=64C028;sprop-parameter-sets=Z2TAKKwa0A8ARPywDwiEag==,aO48sA==",
+						},
+						{
+							Key:   "control",
+							Value: "track1",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"97"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "97 MPEG4-GENERIC/48000/2",
+						},
+						{
+							Key:   "fmtp",
+							Value: "97 profile-level-id=15;mode=AAC-hbr;sizelength=13;indexlength=3;indexdeltalength=3;config=1190",
+						},
+						{
+							Key:   "control",
+							Value: "track2",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue gortsplib/271",
+		[]byte("v=0\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.0.60\n" +
+			"s=Session streamed by \"MERCURY RTSP Server\"\n" +
+			"t=0 0\n" +
+			"a=smart_encoder:virtualIFrame=1\n" +
+			"m=video 0 RTP/AVP 96\n" +
+			"c=IN IP4 0.0.0.0\n" +
+			"b=AS:4096\n" +
+			"a=range:npt=0-\n" +
+			"a=control:track1\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=4D001F;" +
+			" sprop-parameter-sets=J00AH+dAKALdgKUFBQXwAAADABAAAAMCi2gD6AXf//wK,KO48gA==\n" +
+			"m=audio 0 RTP/AVP 8\n" +
+			"a=rtpmap:8 PCMA/8000\n" +
+			"a=control:track2\n" +
+			"m=application/MERCURY 0 RTP/AVP smart/1/90000\n" +
+			"a=rtpmap:95 MERCURY/90000\n" +
+			"a=control:track3\n"),
+		[]byte("v=0\r\n" +
+			"o=- 14665860 31787219 1 IN IP4 192.168.0.60\r\n" +
+			"s=Session streamed by \"MERCURY RTSP Server\"\r\n" +
+			"t=0 0\r\n" +
+			"a=smart_encoder:virtualIFrame=1\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:4096\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:track1\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=4D001F;" +
+			" sprop-parameter-sets=J00AH+dAKALdgKUFBQXwAAADABAAAAMCi2gD6AXf//wK,KO48gA==\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n" +
+			"a=control:track2\r\n" +
+			"m=application/MERCURY 0 RTP/AVP smart/1/90000\r\n" +
+			"a=rtpmap:95 MERCURY/90000\r\n" +
+			"a=control:track3\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "- 14665860",
+				SessionID:      31787219,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.0.60",
+			},
+			SessionName:      "Session streamed by \"MERCURY RTSP Server\"",
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "smart_encoder",
+					Value: "virtualIFrame=1",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "0.0.0.0",
+						},
+					},
+					Bandwidth: []psdp.Bandwidth{{
+						Type:      "AS",
+						Bandwidth: 4096,
+					}},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "range",
+							Value: "npt=0-",
+						},
+						{
+							Key:   "control",
+							Value: "track1",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 packetization-mode=1; profile-level-id=4D001F;" +
+								" sprop-parameter-sets=J00AH+dAKALdgKUFBQXwAAADABAAAAMCi2gD6AXf//wK,KO48gA==",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"8"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "8 PCMA/8000",
+						},
+						{
+							Key:   "control",
+							Value: "track2",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "application/MERCURY",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"smart/1/90000"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "95 MERCURY/90000",
+						},
+						{
+							Key:   "control",
+							Value: "track3",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue mediamtx/2128",
+		[]byte("v=0\r\n" +
+			"o=- 1 1 IN IPV4 10.10.10.10\r\n" +
+			"s=Media Presentation\r\n" +
+			"c=IN IPV4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"a=range:npt=now-\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=control:rtsp://10.10.10.10:5556/vurix/1414/0/video\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=64001F;" +
+			"sprop-parameter-sets=Z2QAKKwbGoB4AiflwFuAgICgAAB9AAATiB0MAEr4AAL68F3lxoYAJXwAAX14LvLhQA==,aO48MA==\r\n" +
+			"a=recvonly\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 1 1 IN IP4 10.10.10.10\r\n" +
+			"s=Media Presentation\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"a=range:npt=now-\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=control:rtsp://10.10.10.10:5556/vurix/1414/0/video\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=64001F;" +
+			"sprop-parameter-sets=Z2QAKKwbGoB4AiflwFuAgICgAAB9AAATiB0MAEr4AAL68F3lxoYAJXwAAX14LvLhQA==,aO48MA==\r\n" +
+			"a=recvonly\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      1,
+				SessionVersion: 1,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "10.10.10.10",
+			},
+			SessionName:      "Media Presentation",
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "0.0.0.0",
+				},
+			},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "control",
+					Value: "*",
+				},
+				{
+					Key:   "range",
+					Value: "npt=now-",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://10.10.10.10:5556/vurix/1414/0/video",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 packetization-mode=1;profile-level-id=64001F;" +
+								"sprop-parameter-sets=Z2QAKKwbGoB4AiflwFuAgICgAAB9AAATiB0MAEr4AAL68F3lxoYAJXwAAX14LvLhQA==,aO48MA==",
+						},
+						{
+							Key:   "recvonly",
+							Value: "",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue mediamtx/2473",
+		[]byte("v=0\r\n" +
+			"o=- 38990265062388 38990265062388 IN IP4 192.168.1.10\r\n" +
+			"a=range:npt=0-\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"a=rtpmap:96 H265/90000 \r\n" +
+			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkk5TNwEBAQQAAEZQAAV+QoQ=; sprop-pps=RAHA8vAiQA==\r\n" +
+			"a=control:trackID=3\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=control:trackID=4\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 38990265062388 38990265062388 IN IP4 192.168.1.10\r\n" +
+			"s=\r\n" +
+			"a=range:npt=0-\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"a=rtpmap:96 H265/90000 \r\n" +
+			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+			"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkk5TNwEBAQQAAEZQAAV+QoQ=; sprop-pps=RAHA8vAiQA==\r\n" +
+			"a=control:trackID=3\r\n" +
+			"m=audio 0 RTP/AVP 8\r\n" +
+			"a=control:trackID=4\r\n" +
+			"a=rtpmap:8 PCMA/8000\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      38990265062388,
+				SessionVersion: 38990265062388,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.1.10",
+			},
+			SessionName: "",
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "range",
+					Value: "npt=0-",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "0.0.0.0",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "rtpmap",
+							Value: "96 H265/90000 ",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 sprop-vps=QAEMAf//AWAAAAMAAAMAAAMAAAMAlqwJ; " +
+								"sprop-sps=QgEBAWAAAAMAAAMAAAMAAAMAlqABICAFEWNrkk5TNwEBAQQAAEZQAAV+QoQ=; sprop-pps=RAHA8vAiQA==",
+						},
+						{
+							Key:   "control",
+							Value: "trackID=3",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"8"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "trackID=4",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "8 PCMA/8000",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue gortsplib/448",
+		[]byte("m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=control:trackID=0\r\n"),
+		[]byte("v=0\r\n" +
+			"o= 0 0   \r\n" +
+			"s=\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=control:trackID=0\r\n"),
+		SessionDescription{
+			MediaDescriptions: []*psdp.MediaDescription{{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "control",
+						Value: "trackID=0",
+					},
+				},
+			}},
+		},
+	},
+	{
+		"issue mediamtx/2558",
+		[]byte("v=0\r\n" +
+			"o=- 1698210484.879535 1698210484.879535 IN IP4 46.242.10.231:12626\r\n" +
+			"s=Playout\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=33;" +
+			" sprop-parameter-sets=Z00AM4qKUDwBE/L/4AAgAC2AgA==,aO48gA==\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 97041581188 97041581188 IN IP4 46.242.10.231:12626\r\n" +
+			"s=Playout\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=33;" +
+			" sprop-parameter-sets=Z00AM4qKUDwBE/L/4AAgAC2AgA==,aO48gA==\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      97041581188,
+				SessionVersion: 97041581188,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "46.242.10.231:12626",
+			},
+			SessionName: "Playout",
+			MediaDescriptions: []*psdp.MediaDescription{{
+				MediaName: psdp.MediaName{
+					Media:   "video",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"96"},
+				},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "96 H264/90000",
+					},
+					{
+						Key:   "fmtp",
+						Value: "96 packetization-mode=1; profile-level-id=33; sprop-parameter-sets=Z00AM4qKUDwBE/L/4AAgAC2AgA==,aO48gA==",
+					},
+				},
+			}},
+		},
+	},
+	{
+		"issue gortsplib/474",
+		[]byte("m=metadata 0 RTP/AVP 98\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:1000\r\n" +
+			"a=rtpmap:98 METADATA/90000\r\n" +
+			"a=control:track2\r\n" +
+			"a=x-onvif-track:track2\r\n" +
+			"a=x-bufferdelay:1.000000\r\n"),
+		[]byte("v=0\r\n" +
+			"o= 0 0   \r\n" +
+			"s=\r\n" +
+			"m=metadata 0 RTP/AVP 98\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:1000\r\n" +
+			"a=rtpmap:98 METADATA/90000\r\n" +
+			"a=control:track2\r\n" +
+			"a=x-onvif-track:track2\r\n" +
+			"a=x-bufferdelay:1.000000\r\n"),
+		SessionDescription{
+			MediaDescriptions: []*psdp.MediaDescription{{
+				MediaName: psdp.MediaName{
+					Media:   "metadata",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"98"},
+				},
+				ConnectionInformation: &psdp.ConnectionInformation{
+					NetworkType: "IN",
+					AddressType: "IP4",
+					Address: &psdp.Address{
+						Address: "0.0.0.0",
+					},
+				},
+				Bandwidth: []psdp.Bandwidth{{
+					Type:      "AS",
+					Bandwidth: 1000,
+				}},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "98 METADATA/90000",
+					},
+					{
+						Key:   "control",
+						Value: "track2",
+					},
+					{
+						Key:   "x-onvif-track",
+						Value: "track2",
+					},
+					{
+						Key:   "x-bufferdelay",
+						Value: "1.000000",
+					},
+				},
+			}},
+		},
+	},
+	{
+		"issue mediamtx/2762",
+		[]byte("v=0\r\n" +
+			"o=Channel1 3910280086 3910366486 IN IP4\r\n" +
+			"s=Channel1\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=3910280086 3910366486\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:*\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=control:0\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=recvonly\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=4D4016;" +
+			"sprop-parameter-sets=Z01AFo2NQFAX/L/4BDgEQ3AQEBQAAA+gAACcQ6GB9ACMq7y40MD6AEZV3lwo,aO44gA==\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:1\r\n" +
+			"a=recvonly\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"m=application 0 RTP/AVP 107\r\n" +
+			"a=control:2\r\n" +
+			"a=recvonly\r\n" +
+			"a=rtpmap:107 METADATA/90000\r\n"),
+		[]byte("v=0\r\n" +
+			"o=Channel1 3910280086 3910366486 IN IP4 \r\n" +
+			"s=Channel1\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=3910280086 3910366486\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=control:*\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=control:0\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=recvonly\r\n" +
+			"a=fmtp:96 packetization-mode=1;profile-level-id=4D4016;" +
+			"sprop-parameter-sets=Z01AFo2NQFAX/L/4BDgEQ3AQEBQAAA+gAACcQ6GB9ACMq7y40MD6AEZV3lwo,aO44gA==\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:1\r\n" +
+			"a=recvonly\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"m=application 0 RTP/AVP 107\r\n" +
+			"a=control:2\r\na=recvonly\r\na=rtpmap:107 METADATA/90000\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "Channel1",
+				SessionID:      3910280086,
+				SessionVersion: 3910366486,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+			},
+			SessionName: "Channel1",
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "0.0.0.0",
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{{Timing: psdp.Timing{StartTime: 3910280086, StopTime: 3910366486}}},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "range",
+					Value: "npt=0-",
+				},
+				{
+					Key:   "control",
+					Value: "*",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "0",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key: "recvonly",
+						},
+						{
+							Key: "fmtp",
+							Value: "96 packetization-mode=1;profile-level-id=4D4016;" +
+								"sprop-parameter-sets=Z01AFo2NQFAX/L/4BDgEQ3AQEBQAAA+gAACcQ6GB9ACMq7y40MD6AEZV3lwo,aO44gA==",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "1",
+						},
+						{
+							Key: "recvonly",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "0 PCMU/8000",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "application",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"107"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "2",
+						},
+						{
+							Key: "recvonly",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "107 METADATA/90000",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue gortsplib/501",
+		[]byte("v=0\r\n" +
+			"o=- 1705180917694 1705180917694 IN IP4 192.168.1.63\r\n" +
+			"s=Live\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPrimary/micCfg0/trackID=9?mtu=1440&streamType=u\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0 97\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"c=SM SM spk0_trackID2\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPrimary/spk0/trackID=2?mtu=1440&streamType=u\r\n" +
+			"a=sendonly\r\n" +
+			"a=rtpmap:0 pcmu/8000\r\n" +
+			"a=rtpmap:97 opus/48000/2\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPr\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 1705180917694 1705180917694 IN IP4 192.168.1.63\r\n" +
+			"s=Live\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPrimary/micCfg0/trackID=9?mtu=1440&streamType=u\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0 97\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPrimary/spk0/trackID=2?mtu=1440&streamType=u\r\n" +
+			"a=sendonly\r\n" +
+			"a=rtpmap:0 pcmu/8000\r\n" +
+			"a=rtpmap:97 opus/48000/2\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"c=IN IP4 192.168.1.63\r\n" +
+			"a=control:rtsp://192.168.1.63/defaultPr\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      1705180917694,
+				SessionVersion: 1705180917694,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.1.63",
+			},
+			SessionName:      "Live",
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "192.168.1.63",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.1.63/defaultPrimary/micCfg0/trackID=9?mtu=1440&streamType=u",
+						},
+						{
+							Key:   "recvonly",
+							Value: "",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0", "97"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "192.168.1.63",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.1.63/defaultPrimary/spk0/trackID=2?mtu=1440&streamType=u",
+						},
+						{
+							Key: "sendonly",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "0 pcmu/8000",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "97 opus/48000/2",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					ConnectionInformation: &psdp.ConnectionInformation{
+						NetworkType: "IN",
+						AddressType: "IP4",
+						Address: &psdp.Address{
+							Address: "192.168.1.63",
+						},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.1.63/defaultPr",
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
@@ -1659,4 +2940,32 @@ func TestMarshal(t *testing.T) {
 			require.Equal(t, string(c.enc), string(enc))
 		})
 	}
+}
+
+func FuzzUnmarshal(f *testing.F) {
+	f.Add("v=0\r\n" +
+		"t=2873397496 2873404696\r\n" +
+		"t=3034423619 3042462419\r\n" +
+		"r=aa bb 0 90000\r\n")
+
+	f.Add("v=0\r\n" +
+		"t=2873397496 2873404696\r\n" +
+		"t=3034423619 3042462419\r\n" +
+		"r=123 bb 0 90000\r\n")
+
+	f.Add("v=0\r\n" +
+		"m=audio 49170 RTP/AVP 80000\r\n" +
+		"i=Vivamus a posuere nisl\r\n" +
+		"c=IN IP4 203.0.113.1\r\n" +
+		"b=X-YZ:128\r\n" +
+		"k=prompt\r\n" +
+		"a=sendrecv\r\n")
+
+	f.Add("v=0\r\n" +
+		"o = IN \r\n")
+
+	f.Fuzz(func(_ *testing.T, b string) {
+		desc := SessionDescription{}
+		desc.Unmarshal([]byte(b)) //nolint:errcheck
+	})
 }

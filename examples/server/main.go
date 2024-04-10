@@ -1,12 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"sync"
 
-	"github.com/aler9/gortsplib"
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/pion/rtp"
+
+	"github.com/bluenviron/gortsplib/v4"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 )
 
 // This example shows how to
@@ -15,6 +18,7 @@ import (
 // 3. allow multiple clients to read that stream with TCP, UDP or UDP-multicast
 
 type serverHandler struct {
+	s         *gortsplib.Server
 	mutex     sync.Mutex
 	stream    *gortsplib.ServerStream
 	publisher *gortsplib.ServerSession
@@ -50,7 +54,7 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 	}
 }
 
-// called after receiving a DESCRIBE request.
+// called when receiving a DESCRIBE request.
 func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("describe request")
 
@@ -64,27 +68,27 @@ func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (
 		}, nil, nil
 	}
 
-	// send the track list that is being published to the client
+	// send medias that are being published to the client
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, sh.stream, nil
 }
 
-// called after receiving an ANNOUNCE request.
+// called when receiving an ANNOUNCE request.
 func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (*base.Response, error) {
 	log.Printf("announce request")
 
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
 
+	// disconnect existing publisher
 	if sh.stream != nil {
-		return &base.Response{
-			StatusCode: base.StatusBadRequest,
-		}, fmt.Errorf("someone is already publishing")
+		sh.stream.Close()
+		sh.publisher.Close()
 	}
 
-	// save the track list and the publisher
-	sh.stream = gortsplib.NewServerStream(ctx.Tracks)
+	// create the stream and save the publisher
+	sh.stream = gortsplib.NewServerStream(sh.s, ctx.Description)
 	sh.publisher = ctx.Session
 
 	return &base.Response{
@@ -92,7 +96,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}, nil
 }
 
-// called after receiving a SETUP request.
+// called when receiving a SETUP request.
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
@@ -108,7 +112,7 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 	}, sh.stream, nil
 }
 
-// called after receiving a PLAY request.
+// called when receiving a PLAY request.
 func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
 	log.Printf("play request")
 
@@ -117,30 +121,26 @@ func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Re
 	}, nil
 }
 
-// called after receiving a RECORD request.
+// called when receiving a RECORD request.
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
 	log.Printf("record request")
+
+	// called when receiving a RTP packet
+	ctx.Session.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+		// route the RTP packet to all readers
+		sh.stream.WritePacketRTP(medi, pkt)
+	})
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, nil
 }
 
-// called after receiving a RTP packet.
-func (sh *serverHandler) OnPacketRTP(ctx *gortsplib.ServerHandlerOnPacketRTPCtx) {
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
-
-	// if we are the publisher, route the RTP packet to all readers
-	if ctx.Session == sh.publisher {
-		sh.stream.WritePacketRTP(ctx.TrackID, ctx.Packet, ctx.PTSEqualsDTS)
-	}
-}
-
 func main() {
-	// configure server
-	s := &gortsplib.Server{
-		Handler:           &serverHandler{},
+	// configure the server
+	h := &serverHandler{}
+	h.s = &gortsplib.Server{
+		Handler:           h,
 		RTSPAddress:       ":8554",
 		UDPRTPAddress:     ":8000",
 		UDPRTCPAddress:    ":8001",
@@ -151,5 +151,5 @@ func main() {
 
 	// start server and wait until a fatal error
 	log.Printf("server is ready")
-	panic(s.StartAndWait())
+	panic(h.s.StartAndWait())
 }

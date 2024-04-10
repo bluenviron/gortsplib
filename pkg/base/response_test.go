@@ -92,100 +92,30 @@ var casesResponse = []struct {
 	},
 }
 
-func TestResponseRead(t *testing.T) {
+func TestResponseUnmarshal(t *testing.T) {
 	// keep res global to make sure that all its fields are overridden.
 	var res Response
 
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
-			err := res.Read(bufio.NewReader(bytes.NewBuffer(c.byts)))
+			err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(c.byts)))
 			require.NoError(t, err)
 			require.Equal(t, c.res, res)
 		})
 	}
 }
 
-func TestResponseReadErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"EOF",
-		},
-		{
-			"missing code, message, eol",
-			[]byte("RTSP/1.0"),
-			"EOF",
-		},
-		{
-			"missing message, eol",
-			[]byte("RTSP/1.0 200"),
-			"EOF",
-		},
-		{
-			"missing eol",
-			[]byte("RTSP/1.0 200 OK"),
-			"EOF",
-		},
-		{
-			"missing eol 2",
-			[]byte("RTSP/1.0 200 OK\r"),
-			"EOF",
-		},
-		{
-			"invalid protocol",
-			[]byte("RTSP/2.0 200 OK\r\n"),
-			"expected 'RTSP/1.0', got [82 84 83 80 47 50 46 48]",
-		},
-		{
-			"code too long",
-			[]byte("RTSP/1.0 1234 OK\r\n"),
-			"buffer length exceeds 4",
-		},
-		{
-			"invalid code",
-			[]byte("RTSP/1.0 str OK\r\n"),
-			"unable to parse status code",
-		},
-		{
-			"empty message",
-			[]byte("RTSP/1.0 200 \r\n"),
-			"empty status message",
-		},
-		{
-			"invalid header",
-			[]byte("RTSP/1.0 200 OK\r\nTesting: val\r"),
-			"EOF",
-		},
-		{
-			"invalid body",
-			[]byte("RTSP/1.0 200 OK\r\nContent-Length: 17\r\n\r\n123"),
-			"unexpected EOF",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var res Response
-			err := res.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
-func TestResponseWrite(t *testing.T) {
+func TestResponseMarshal(t *testing.T) {
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
-			buf, err := c.res.Write()
+			buf, err := c.res.Marshal()
 			require.NoError(t, err)
 			require.Equal(t, c.byts, buf)
 		})
 	}
 }
 
-func TestResponseWriteAutoFillStatus(t *testing.T) {
+func TestResponseMarshalAutoFillStatus(t *testing.T) {
 	res := &Response{
 		StatusCode: StatusMethodNotAllowed,
 		Header: Header{
@@ -207,31 +137,9 @@ func TestResponseWriteAutoFillStatus(t *testing.T) {
 		"\r\n",
 	)
 
-	buf, err := res.Write()
+	buf, err := res.Marshal()
 	require.NoError(t, err)
 	require.Equal(t, byts, buf)
-}
-
-func TestResponseReadIgnoreFrames(t *testing.T) {
-	byts := []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}
-	byts = append(byts, []byte("RTSP/1.0 200 OK\r\n"+
-		"CSeq: 1\r\n"+
-		"Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n"+
-		"\r\n")...)
-
-	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	var res Response
-	err := res.ReadIgnoreFrames(10, rb)
-	require.NoError(t, err)
-}
-
-func TestResponseReadIgnoreFramesErrors(t *testing.T) {
-	byts := []byte{0x25}
-
-	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	var res Response
-	err := res.ReadIgnoreFrames(10, rb)
-	require.EqualError(t, err, "EOF")
 }
 
 func TestResponseString(t *testing.T) {
@@ -242,7 +150,21 @@ func TestResponseString(t *testing.T) {
 		"testing")
 
 	var res Response
-	err := res.Read(bufio.NewReader(bytes.NewBuffer(byts)))
+	err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(byts)))
 	require.NoError(t, err)
 	require.Equal(t, string(byts), res.String())
+}
+
+func FuzzResponseUnmarshal(f *testing.F) {
+	f.Add([]byte("RTSP/1.0 "))
+
+	f.Add([]byte("RTSP/1.0 200 OK\r\n" +
+		"Content-Length: 100\r\n" +
+		"\r\n" +
+		"testing"))
+
+	f.Fuzz(func(_ *testing.T, b []byte) {
+		var res Response
+		res.Unmarshal(bufio.NewReader(bytes.NewBuffer(b))) //nolint:errcheck
+	})
 }

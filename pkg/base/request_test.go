@@ -6,17 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/aler9/gortsplib/pkg/url"
 )
-
-func mustParseURL(s string) *url.URL {
-	u, err := url.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
 
 var casesRequest = []struct {
 	name string
@@ -138,127 +128,44 @@ var casesRequest = []struct {
 			),
 		},
 	},
+	{
+		"server-side announce",
+		[]byte("OPTIONS * RTSP/1.0\r\n" +
+			"CSeq: 1\r\n" +
+			"User-Agent: RDIPCamera\r\n" +
+			"\r\n"),
+		Request{
+			Method: "OPTIONS",
+			URL:    nil,
+			Header: Header{
+				"CSeq":       HeaderValue{"1"},
+				"User-Agent": HeaderValue{"RDIPCamera"},
+			},
+		},
+	},
 }
 
-func TestRequestRead(t *testing.T) {
+func TestRequestUnmarshal(t *testing.T) {
 	// keep req global to make sure that all its fields are overridden.
 	var req Request
 
 	for _, ca := range casesRequest {
 		t.Run(ca.name, func(t *testing.T) {
-			err := req.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
+			err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(ca.byts)))
 			require.NoError(t, err)
 			require.Equal(t, ca.req, req)
 		})
 	}
 }
 
-func TestRequestReadErrors(t *testing.T) {
-	for _, ca := range []struct {
-		name string
-		byts []byte
-		err  string
-	}{
-		{
-			"empty",
-			[]byte{},
-			"EOF",
-		},
-		{
-			"missing url, protocol, r, n",
-			[]byte("GET"),
-			"EOF",
-		},
-		{
-			"missing protocol, r, n",
-			[]byte("GET rtsp://testing123/test"),
-			"EOF",
-		},
-		{
-			"missing r, n",
-			[]byte("GET rtsp://testing123/test RTSP/1.0"),
-			"EOF",
-		},
-		{
-			"missing n",
-			[]byte("GET rtsp://testing123/test RTSP/1.0\r"),
-			"EOF",
-		},
-		{
-			"empty method",
-			[]byte(" rtsp://testing123 RTSP/1.0\r\n"),
-			"empty method",
-		},
-		{
-			"empty URL",
-			[]byte("GET  RTSP/1.0\r\n"),
-			"invalid URL ()",
-		},
-		{
-			"empty protocol",
-			[]byte("GET rtsp://testing123 \r\n"),
-			"expected 'RTSP/1.0', got []",
-		},
-		{
-			"invalid URL",
-			[]byte("GET http://testing123 RTSP/1.0\r\n"),
-			"invalid URL (http://testing123)",
-		},
-		{
-			"invalid protocol",
-			[]byte("GET rtsp://testing123 RTSP/2.0\r\n"),
-			"expected 'RTSP/1.0', got [82 84 83 80 47 50 46 48]",
-		},
-		{
-			"invalid header",
-			[]byte("GET rtsp://testing123 RTSP/1.0\r\nTesting: val\r"),
-			"EOF",
-		},
-		{
-			"invalid body",
-			[]byte("GET rtsp://testing123 RTSP/1.0\r\nContent-Length: 17\r\n\r\n123"),
-			"unexpected EOF",
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			var req Request
-			err := req.Read(bufio.NewReader(bytes.NewBuffer(ca.byts)))
-			require.EqualError(t, err, ca.err)
-		})
-	}
-}
-
-func TestRequestWrite(t *testing.T) {
+func TestRequestMarshal(t *testing.T) {
 	for _, ca := range casesRequest {
 		t.Run(ca.name, func(t *testing.T) {
-			buf, err := ca.req.Write()
+			buf, err := ca.req.Marshal()
 			require.NoError(t, err)
 			require.Equal(t, ca.byts, buf)
 		})
 	}
-}
-
-func TestRequestReadIgnoreFrames(t *testing.T) {
-	byts := []byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4}
-	byts = append(byts, []byte("OPTIONS rtsp://example.com/media.mp4 RTSP/1.0\r\n"+
-		"CSeq: 1\r\n"+
-		"Proxy-Require: gzipped-messages\r\n"+
-		"Require: implicit-play\r\n"+
-		"\r\n")...)
-
-	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	var req Request
-	err := req.ReadIgnoreFrames(10, rb)
-	require.NoError(t, err)
-}
-
-func TestRequestReadIgnoreFramesErrors(t *testing.T) {
-	byts := []byte{0x25}
-
-	rb := bufio.NewReader(bytes.NewBuffer(byts))
-	var req Request
-	err := req.ReadIgnoreFrames(10, rb)
-	require.EqualError(t, err, "EOF")
 }
 
 func TestRequestString(t *testing.T) {
@@ -269,7 +176,21 @@ func TestRequestString(t *testing.T) {
 		"testing")
 
 	var req Request
-	err := req.Read(bufio.NewReader(bytes.NewBuffer(byts)))
+	err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(byts)))
 	require.NoError(t, err)
 	require.Equal(t, string(byts), req.String())
+}
+
+func FuzzRequestUnmarshal(f *testing.F) {
+	f.Add([]byte("GET rtsp://testing123/test"))
+	f.Add([]byte("GET rtsp://testing123/test RTSP/1.0\r\n"))
+	f.Add([]byte("OPTIONS rtsp://example.com/media.mp4 RTSP/1.0\r\n" +
+		"Content-Length: 100\r\n" +
+		"\r\n" +
+		"testing"))
+
+	f.Fuzz(func(_ *testing.T, b []byte) {
+		var req Request
+		req.Unmarshal(bufio.NewReader(bytes.NewBuffer(b))) //nolint:errcheck
+	})
 }

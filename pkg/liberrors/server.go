@@ -4,17 +4,11 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/aler9/gortsplib/pkg/base"
-	"github.com/aler9/gortsplib/pkg/headers"
+	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 )
 
 // ErrServerTerminated is an error that can be returned by a server.
-type ErrServerTerminated struct{}
-
-// Error implements the error interface.
-func (e ErrServerTerminated) Error() string {
-	return "terminated"
-}
+type ErrServerTerminated = ErrClientTerminated
 
 // ErrServerSessionNotFound is an error that can be returned by a server.
 type ErrServerSessionNotFound struct{}
@@ -24,20 +18,12 @@ func (e ErrServerSessionNotFound) Error() string {
 	return "session not found"
 }
 
-// ErrServerNoUDPPacketsInAWhile is an error that can be returned by a server.
-type ErrServerNoUDPPacketsInAWhile struct{}
+// ErrServerSessionTimedOut is an error that can be returned by a server.
+type ErrServerSessionTimedOut struct{}
 
 // Error implements the error interface.
-func (e ErrServerNoUDPPacketsInAWhile) Error() string {
-	return "no UDP packets received in a while"
-}
-
-// ErrServerNoRTSPRequestsInAWhile is an error that can be returned by a server.
-type ErrServerNoRTSPRequestsInAWhile struct{}
-
-// Error implements the error interface.
-func (e ErrServerNoRTSPRequestsInAWhile) Error() string {
-	return "no RTSP requests received in a while"
+func (e ErrServerSessionTimedOut) Error() string {
+	return "session timed out"
 }
 
 // ErrServerCSeqMissing is an error that can be returned by a server.
@@ -46,16 +32,6 @@ type ErrServerCSeqMissing struct{}
 // Error implements the error interface.
 func (e ErrServerCSeqMissing) Error() string {
 	return "CSeq is missing"
-}
-
-// ErrServerUnhandledRequest is an error that can be returned by a server.
-type ErrServerUnhandledRequest struct {
-	Request *base.Request
-}
-
-// Error implements the error interface.
-func (e ErrServerUnhandledRequest) Error() string {
-	return fmt.Sprintf("unhandled request: %v %v", e.Request.Method, e.Request.URL)
 }
 
 // ErrServerInvalidState is an error that can be returned by a server.
@@ -79,56 +55,36 @@ func (e ErrServerInvalidPath) Error() string {
 }
 
 // ErrServerContentTypeMissing is an error that can be returned by a server.
-type ErrServerContentTypeMissing struct{}
-
-// Error implements the error interface.
-func (e ErrServerContentTypeMissing) Error() string {
-	return "Content-Type header is missing"
-}
+type ErrServerContentTypeMissing = ErrClientContentTypeMissing
 
 // ErrServerContentTypeUnsupported is an error that can be returned by a server.
-type ErrServerContentTypeUnsupported struct {
-	CT base.HeaderValue
-}
-
-// Error implements the error interface.
-func (e ErrServerContentTypeUnsupported) Error() string {
-	return fmt.Sprintf("unsupported Content-Type header '%v'", e.CT)
-}
+type ErrServerContentTypeUnsupported = ErrClientContentTypeUnsupported
 
 // ErrServerSDPInvalid is an error that can be returned by a server.
-type ErrServerSDPInvalid struct {
-	Err error
-}
-
-// Error implements the error interface.
-func (e ErrServerSDPInvalid) Error() string {
-	return fmt.Sprintf("invalid SDP: %v", e.Err)
-}
+type ErrServerSDPInvalid = ErrClientSDPInvalid
 
 // ErrServerTransportHeaderInvalid is an error that can be returned by a server.
-type ErrServerTransportHeaderInvalid struct {
-	Err error
-}
+type ErrServerTransportHeaderInvalid = ErrClientTransportHeaderInvalid
+
+// ErrServerMediaAlreadySetup is an error that can be returned by a server.
+type ErrServerMediaAlreadySetup struct{}
 
 // Error implements the error interface.
-func (e ErrServerTransportHeaderInvalid) Error() string {
-	return fmt.Sprintf("invalid transport header: %v", e.Err)
+func (e ErrServerMediaAlreadySetup) Error() string {
+	return "media has already been setup"
 }
 
-// ErrServerTrackAlreadySetup is an error that can be returned by a server.
-type ErrServerTrackAlreadySetup struct {
-	TrackID int
-}
+// ErrServerMediaNotFound is an error that can be returned by a server.
+type ErrServerMediaNotFound struct{}
 
 // Error implements the error interface.
-func (e ErrServerTrackAlreadySetup) Error() string {
-	return fmt.Sprintf("track %d has already been setup", e.TrackID)
+func (e ErrServerMediaNotFound) Error() string {
+	return "media not found"
 }
 
 // ErrServerTransportHeaderInvalidMode is an error that can be returned by a server.
 type ErrServerTransportHeaderInvalidMode struct {
-	Mode *headers.TransportMode
+	Mode headers.TransportMode
 }
 
 // Error implements the error interface.
@@ -144,14 +100,6 @@ func (e ErrServerTransportHeaderNoClientPorts) Error() string {
 	return "transport header does not contain client ports"
 }
 
-// ErrServerTransportHeaderNoInterleavedIDs is an error that can be returned by a server.
-type ErrServerTransportHeaderNoInterleavedIDs struct{}
-
-// Error implements the error interface.
-func (e ErrServerTransportHeaderNoInterleavedIDs) Error() string {
-	return "transport header does not contain interleaved IDs"
-}
-
 // ErrServerTransportHeaderInvalidInterleavedIDs is an error that can be returned by a server.
 type ErrServerTransportHeaderInvalidInterleavedIDs struct{}
 
@@ -160,36 +108,44 @@ func (e ErrServerTransportHeaderInvalidInterleavedIDs) Error() string {
 	return "invalid interleaved IDs"
 }
 
-// ErrServerTransportHeaderInterleavedIDsAlreadyUsed is an error that can be returned by a server.
-type ErrServerTransportHeaderInterleavedIDsAlreadyUsed struct{}
+// ErrServerTransportHeaderInterleavedIDsInUse is an error that can be returned by a server.
+type ErrServerTransportHeaderInterleavedIDsInUse struct{}
 
 // Error implements the error interface.
-func (e ErrServerTransportHeaderInterleavedIDsAlreadyUsed) Error() string {
-	return "interleaved IDs already used"
+func (e ErrServerTransportHeaderInterleavedIDsInUse) Error() string {
+	return "interleaved IDs are in use"
 }
 
-// ErrServerTracksDifferentProtocols is an error that can be returned by a server.
-type ErrServerTracksDifferentProtocols struct{}
+// ErrServerMediasDifferentPaths is an error that can be returned by a server.
+type ErrServerMediasDifferentPaths struct{}
 
 // Error implements the error interface.
-func (e ErrServerTracksDifferentProtocols) Error() string {
-	return "can't setup tracks with different protocols"
+func (e ErrServerMediasDifferentPaths) Error() string {
+	return "can't setup medias with different paths"
 }
 
-// ErrServerNoTracksSetup is an error that can be returned by a server.
-type ErrServerNoTracksSetup struct{}
+// ErrServerMediasDifferentProtocols is an error that can be returned by a server.
+type ErrServerMediasDifferentProtocols struct{}
 
 // Error implements the error interface.
-func (e ErrServerNoTracksSetup) Error() string {
-	return "no tracks have been setup"
+func (e ErrServerMediasDifferentProtocols) Error() string {
+	return "can't setup medias with different protocols"
 }
 
-// ErrServerNotAllAnnouncedTracksSetup is an error that can be returned by a server.
-type ErrServerNotAllAnnouncedTracksSetup struct{}
+// ErrServerNoMediasSetup is an error that can be returned by a server.
+type ErrServerNoMediasSetup struct{}
 
 // Error implements the error interface.
-func (e ErrServerNotAllAnnouncedTracksSetup) Error() string {
-	return "not all announced tracks have been setup"
+func (e ErrServerNoMediasSetup) Error() string {
+	return "no medias have been setup"
+}
+
+// ErrServerNotAllAnnouncedMediasSetup is an error that can be returned by a server.
+type ErrServerNotAllAnnouncedMediasSetup struct{}
+
+// Error implements the error interface.
+func (e ErrServerNotAllAnnouncedMediasSetup) Error() string {
+	return "not all announced medias have been setup"
 }
 
 // ErrServerLinkedToOtherSession is an error that can be returned by a server.
@@ -200,14 +156,14 @@ func (e ErrServerLinkedToOtherSession) Error() string {
 	return "connection is linked to another session"
 }
 
-// ErrServerSessionTeardown is an error that can be returned by a server.
-type ErrServerSessionTeardown struct {
+// ErrServerSessionTornDown is an error that can be returned by a server.
+type ErrServerSessionTornDown struct {
 	Author net.Addr
 }
 
 // Error implements the error interface.
-func (e ErrServerSessionTeardown) Error() string {
-	return fmt.Sprintf("teared down by %v", e.Author)
+func (e ErrServerSessionTornDown) Error() string {
+	return fmt.Sprintf("torn down by %v", e.Author)
 }
 
 // ErrServerSessionLinkedToOtherConn is an error that can be returned by a server.
@@ -252,7 +208,7 @@ type ErrServerUDPPortsAlreadyInUse struct {
 
 // Error implements the error interface.
 func (e ErrServerUDPPortsAlreadyInUse) Error() string {
-	return fmt.Sprintf("UDP ports %d and %d are already in use by another reader",
+	return fmt.Sprintf("UDP ports %d and %d are already assigned to another reader with the same IP",
 		e.Port, e.Port+1)
 }
 
@@ -262,4 +218,51 @@ type ErrServerSessionNotInUse struct{}
 // Error implements the error interface.
 func (e ErrServerSessionNotInUse) Error() string {
 	return "not in use"
+}
+
+// ErrServerUnexpectedFrame is an error that can be returned by a server.
+type ErrServerUnexpectedFrame = ErrClientUnexpectedFrame
+
+// ErrServerUnexpectedResponse is an error that can be returned by a server.
+type ErrServerUnexpectedResponse struct{}
+
+// Error implements the error interface.
+func (e ErrServerUnexpectedResponse) Error() string {
+	return "received unexpected response"
+}
+
+// ErrServerWriteQueueFull is an error that can be returned by a server.
+type ErrServerWriteQueueFull = ErrClientWriteQueueFull
+
+// ErrServerRTPPacketsLost is an error that can be returned by a server.
+type ErrServerRTPPacketsLost = ErrClientRTPPacketsLost
+
+// ErrServerRTPPacketUnknownPayloadType is an error that can be returned by a server.
+type ErrServerRTPPacketUnknownPayloadType = ErrClientRTPPacketUnknownPayloadType
+
+// ErrServerRTCPPacketTooBig is an error that can be returned by a server.
+type ErrServerRTCPPacketTooBig = ErrClientRTCPPacketTooBig
+
+// ErrServerRTPPacketTooBigUDP is an error that can be returned by a server.
+type ErrServerRTPPacketTooBigUDP = ErrClientRTPPacketTooBigUDP
+
+// ErrServerRTCPPacketTooBigUDP is an error that can be returned by a server.
+type ErrServerRTCPPacketTooBigUDP = ErrClientRTCPPacketTooBigUDP
+
+// ErrServerStreamClosed is an error that can be returned by a server.
+type ErrServerStreamClosed struct{}
+
+// Error implements the error interface.
+func (e ErrServerStreamClosed) Error() string {
+	return "stream is closed"
+}
+
+// ErrServerPathNoSlash is an error that can be returned by a server.
+type ErrServerPathNoSlash struct{}
+
+// Error implements the error interface.
+func (ErrServerPathNoSlash) Error() string {
+	return "path of a SETUP request must end with a slash. " +
+		"This typically happens when VLC fails a request, and then switches to an " +
+		"unsupported RTSP dialect"
 }

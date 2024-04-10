@@ -9,33 +9,50 @@ import (
 	"github.com/pion/rtp"
 )
 
-var now = time.Now
+// seconds since 1st January 1900
+// higher 32 bits are the integer part, lower 32 bits are the fractional part
+func ntpTimeGoToRTCP(v time.Time) uint64 {
+	s := uint64(v.UnixNano()) + 2208988800*1000000000
+	return (s/1000000000)<<32 | (s % 1000000000)
+}
 
 // RTCPSender is a utility to generate RTCP sender reports.
 type RTCPSender struct {
-	period          time.Duration
 	clockRate       float64
+	period          time.Duration
+	timeNow         func() time.Time
 	writePacketRTCP func(rtcp.Packet)
-	mutex           sync.Mutex
+	mutex           sync.RWMutex
 
 	// data from RTP packets
-	senderSSRC      *uint32
-	lastRTPTimeRTP  *uint32
-	lastRTPTimeTime time.Time
-	packetCount     uint32
-	octetCount      uint32
+	initialized        bool
+	lastTimeRTP        uint32
+	lastTimeNTP        time.Time
+	lastTimeSystem     time.Time
+	senderSSRC         uint32
+	lastSequenceNumber uint16
+	packetCount        uint32
+	octetCount         uint32
 
 	terminate chan struct{}
 	done      chan struct{}
 }
 
 // New allocates a RTCPSender.
-func New(period time.Duration, clockRate int,
+func New(
+	clockRate int,
+	period time.Duration,
+	timeNow func() time.Time,
 	writePacketRTCP func(rtcp.Packet),
 ) *RTCPSender {
+	if timeNow == nil {
+		timeNow = time.Now
+	}
+
 	rs := &RTCPSender{
-		period:          period,
 		clockRate:       float64(clockRate),
+		period:          period,
+		timeNow:         timeNow,
 		writePacketRTCP: writePacketRTCP,
 		terminate:       make(chan struct{}),
 		done:            make(chan struct{}),
@@ -61,7 +78,7 @@ func (rs *RTCPSender) run() {
 	for {
 		select {
 		case <-t.C:
-			report := rs.report(now())
+			report := rs.report()
 			if report != nil {
 				rs.writePacketRTCP(report)
 			}
@@ -72,47 +89,56 @@ func (rs *RTCPSender) run() {
 	}
 }
 
-func (rs *RTCPSender) report(ts time.Time) rtcp.Packet {
+func (rs *RTCPSender) report() rtcp.Packet {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
-	if rs.senderSSRC == nil || rs.lastRTPTimeRTP == nil {
+	if !rs.initialized {
 		return nil
 	}
 
-	return &rtcp.SenderReport{
-		SSRC: *rs.senderSSRC,
-		NTPTime: func() uint64 {
-			// seconds since 1st January 1900
-			s := (float64(ts.UnixNano()) / 1000000000) + 2208988800
+	systemTimeDiff := rs.timeNow().Sub(rs.lastTimeSystem)
+	ntpTime := rs.lastTimeNTP.Add(systemTimeDiff)
+	rtpTime := rs.lastTimeRTP + uint32(systemTimeDiff.Seconds()*rs.clockRate)
 
-			// higher 32 bits are the integer part, lower 32 bits are the fractional part
-			integerPart := uint32(s)
-			fractionalPart := uint32((s - float64(integerPart)) * 0xFFFFFFFF)
-			return uint64(integerPart)<<32 | uint64(fractionalPart)
-		}(),
-		RTPTime:     *rs.lastRTPTimeRTP + uint32((ts.Sub(rs.lastRTPTimeTime)).Seconds()*rs.clockRate),
+	return &rtcp.SenderReport{
+		SSRC:        rs.senderSSRC,
+		NTPTime:     ntpTimeGoToRTCP(ntpTime),
+		RTPTime:     rtpTime,
 		PacketCount: rs.packetCount,
 		OctetCount:  rs.octetCount,
 	}
 }
 
-// ProcessPacketRTP extracts the needed data from RTP packets.
-func (rs *RTCPSender) ProcessPacketRTP(ts time.Time, pkt *rtp.Packet, ptsEqualsDTS bool) {
+// ProcessPacket extracts data from RTP packets.
+func (rs *RTCPSender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS bool) {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
-	if rs.senderSSRC == nil {
-		v := pkt.SSRC
-		rs.senderSSRC = &v
+	if ptsEqualsDTS {
+		rs.initialized = true
+		rs.lastTimeRTP = pkt.Timestamp
+		rs.lastTimeNTP = ntp
+		rs.lastTimeSystem = rs.timeNow()
+		rs.senderSSRC = pkt.SSRC
 	}
 
-	if ptsEqualsDTS {
-		v := pkt.Timestamp
-		rs.lastRTPTimeRTP = &v
-		rs.lastRTPTimeTime = ts
-	}
+	rs.lastSequenceNumber = pkt.SequenceNumber
 
 	rs.packetCount++
 	rs.octetCount += uint32(len(pkt.Payload))
+}
+
+// SenderSSRC returns the SSRC of outgoing RTP packets.
+func (rs *RTCPSender) SenderSSRC() (uint32, bool) {
+	rs.mutex.RLock()
+	defer rs.mutex.RUnlock()
+	return rs.senderSSRC, rs.initialized
+}
+
+// LastPacketData returns metadata of the last RTP packet.
+func (rs *RTCPSender) LastPacketData() (uint16, uint32, time.Time, bool) {
+	rs.mutex.RLock()
+	defer rs.mutex.RUnlock()
+	return rs.lastSequenceNumber, rs.lastTimeRTP, rs.lastTimeNTP, rs.initialized
 }

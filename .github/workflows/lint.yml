@@ -2,9 +2,9 @@ name: lint
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, v4 ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, v4 ]
 
 jobs:
   golangci-lint:
@@ -13,9 +13,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - uses: golangci/golangci-lint-action@v2
+    - uses: actions/setup-go@v3
       with:
-        version: v1.45.2
+        go-version: "1.19"
+
+    - uses: golangci/golangci-lint-action@v3
+      with:
+        version: v1.56.2
 
   go-mod-tidy:
     runs-on: ubuntu-20.04
@@ -25,9 +29,8 @@ jobs:
 
     - uses: actions/setup-go@v2
       with:
-        go-version: "1.17"
+        go-version: "1.21"
 
     - run: |
-        go mod download
         go mod tidy
         git diff --exit-code

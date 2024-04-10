@@ -5,8 +5,6 @@ import (
 	"bufio"
 	"fmt"
 	"strconv"
-
-	"github.com/aler9/gortsplib/pkg/url"
 )
 
 const (
@@ -39,7 +37,7 @@ type Request struct {
 	Method Method
 
 	// request url
-	URL *url.URL
+	URL *URL
 
 	// map of header values
 	Header Header
@@ -48,9 +46,9 @@ type Request struct {
 	Body []byte
 }
 
-// Read reads a request.
-func (req *Request) Read(rb *bufio.Reader) error {
-	byts, err := readBytesLimited(rb, ' ', requestMaxMethodLength)
+// Unmarshal reads a request.
+func (req *Request) Unmarshal(br *bufio.Reader) error {
+	byts, err := readBytesLimited(br, ' ', requestMaxMethodLength)
 	if err != nil {
 		return err
 	}
@@ -60,19 +58,23 @@ func (req *Request) Read(rb *bufio.Reader) error {
 		return fmt.Errorf("empty method")
 	}
 
-	byts, err = readBytesLimited(rb, ' ', requestMaxURLLength)
+	byts, err = readBytesLimited(br, ' ', requestMaxURLLength)
 	if err != nil {
 		return err
 	}
 	rawURL := string(byts[:len(byts)-1])
 
-	ur, err := url.Parse(rawURL)
-	if err != nil {
-		return fmt.Errorf("invalid URL (%v)", rawURL)
+	if rawURL != "*" {
+		ur, err := ParseURL(rawURL)
+		if err != nil {
+			return fmt.Errorf("invalid URL (%v)", rawURL)
+		}
+		req.URL = ur
+	} else {
+		req.URL = nil
 	}
-	req.URL = ur
 
-	byts, err = readBytesLimited(rb, '\r', requestMaxProtocolLength)
+	byts, err = readBytesLimited(br, '\r', requestMaxProtocolLength)
 	if err != nil {
 		return err
 	}
@@ -118,17 +120,17 @@ func (req *Request) ReadIgnoreServer(rb *bufio.Reader) error {
 		return fmt.Errorf("expected '%s', got %v", rtspProtocol10, proto)
 	}
 
-	err = readByteEqual(rb, '\n')
+	err = readByteEqual(br, '\n')
 	if err != nil {
 		return err
 	}
 
-	err = req.Header.read(rb)
+	err = req.Header.unmarshal(br)
 	if err != nil {
 		return err
 	}
 
-	err = (*body)(&req.Body).read(req.Header, rb)
+	err = (*body)(&req.Body).unmarshal(req.Header, br)
 	if err != nil {
 		return err
 	}
@@ -136,68 +138,71 @@ func (req *Request) ReadIgnoreServer(rb *bufio.Reader) error {
 	return nil
 }
 
-// ReadIgnoreFrames reads a request and ignores any interleaved frame sent
-// before the request.
-func (req *Request) ReadIgnoreFrames(maxPayloadSize int, rb *bufio.Reader) error {
-	var f InterleavedFrame
+// MarshalSize returns the size of a Request.
+func (req Request) MarshalSize() int {
+	n := len(req.Method) + 1
 
-	for {
-		recv, err := ReadInterleavedFrameOrRequest(&f, maxPayloadSize, req, rb)
-		if err != nil {
-			return err
-		}
-
-		if _, ok := recv.(*Request); ok {
-			return nil
-		}
+	if req.URL != nil {
+		n += len(req.URL.CloneWithoutCredentials().String())
+	} else {
+		n++
 	}
-}
 
-// WriteSize returns the size of a Request.
-func (req Request) WriteSize() int {
-	n := 0
-
-	urStr := req.URL.CloneWithoutCredentials().String()
-	n += len([]byte(string(req.Method) + " " + urStr + " " + rtspProtocol10 + "\r\n"))
+	n += 1 + len(rtspProtocol10) + 2
 
 	if len(req.Body) != 0 {
 		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}
 	}
 
-	n += req.Header.writeSize()
+	n += req.Header.marshalSize()
 
-	n += body(req.Body).writeSize()
+	n += body(req.Body).marshalSize()
 
 	return n
 }
 
-// WriteTo writes a Request.
-func (req Request) WriteTo(buf []byte) (int, error) {
+// MarshalTo writes a Request.
+func (req Request) MarshalTo(buf []byte) (int, error) {
 	pos := 0
 
-	urStr := req.URL.CloneWithoutCredentials().String()
-	pos += copy(buf[pos:], []byte(string(req.Method)+" "+urStr+" "+rtspProtocol10+"\r\n"))
+	pos += copy(buf[pos:], []byte(req.Method))
+	buf[pos] = ' '
+	pos++
+
+	if req.URL != nil {
+		pos += copy(buf[pos:], []byte(req.URL.CloneWithoutCredentials().String()))
+	} else {
+		pos += copy(buf[pos:], []byte("*"))
+	}
+
+	buf[pos] = ' '
+	pos++
+	pos += copy(buf[pos:], rtspProtocol10)
+	buf[pos] = '\r'
+	pos++
+	buf[pos] = '\n'
+	pos++
 
 	if len(req.Body) != 0 {
 		req.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(req.Body)), 10)}
 	}
 
-	pos += req.Header.writeTo(buf[pos:])
+	pos += req.Header.marshalTo(buf[pos:])
 
-	pos += body(req.Body).writeTo(buf[pos:])
+	pos += body(req.Body).marshalTo(buf[pos:])
 
 	return pos, nil
 }
 
-// Write writes a Request.
-func (req Request) Write() ([]byte, error) {
-	buf := make([]byte, req.WriteSize())
-	_, err := req.WriteTo(buf)
+// Marshal writes a Request.
+func (req Request) Marshal() ([]byte, error) {
+	buf := make([]byte, req.MarshalSize())
+	_, err := req.MarshalTo(buf)
 	return buf, err
 }
 
 // String implements fmt.Stringer.
 func (req Request) String() string {
-	buf, _ := req.Write()
+	buf, _ := req.Marshal()
 	return string(buf)
 }

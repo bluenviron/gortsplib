@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aler9/gortsplib/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
 // AuthMethod is an authentication method.
@@ -15,42 +15,57 @@ const (
 	// AuthBasic is the Basic authentication method
 	AuthBasic AuthMethod = iota
 
-	// AuthDigest is the Digest authentication method
-	AuthDigest
+	// AuthDigestMD5 is the Digest authentication method with the MD5 hash
+	AuthDigestMD5
+
+	// AuthDigestSHA256 is the Digest authentication method with the SHA-256 hash
+	AuthDigestSHA256
 )
 
-// Authenticate is an Authenticate or a WWW-Authenticate header.
+const (
+	// AuthDigest is an alias for AuthDigestMD5
+	//
+	// Deprecated: replaced by AuthDigestMD5
+	AuthDigest = AuthDigestMD5
+)
+
+func algorithmToMethod(v *string) (AuthMethod, error) {
+	switch {
+	case v == nil, strings.ToLower(*v) == "md5":
+		return AuthDigestMD5, nil
+
+	case strings.ToLower(*v) == "sha-256":
+		return AuthDigestSHA256, nil
+
+	default:
+		return 0, fmt.Errorf("unrecognized algorithm: %v", *v)
+	}
+}
+
+// Authenticate is a WWW-Authenticate header.
 type Authenticate struct {
 	// authentication method
 	Method AuthMethod
 
-	// (optional) username
-	Username *string
+	// realm
+	Realm string
 
-	// (optional) realm
-	Realm *string
+	//
+	// Digest authentication fields
+	//
 
-	// (optional) nonce
-	Nonce *string
+	// nonce
+	Nonce string
 
-	// (optional) uri
-	URI *string
-
-	// (optional) response
-	Response *string
-
-	// (optional) opaque
+	// opaque
 	Opaque *string
 
-	// (optional) stale
+	// stale
 	Stale *string
-
-	// (optional) algorithm
-	Algorithm *string
 }
 
-// Read decodes an Authenticate or a WWW-Authenticate header.
-func (h *Authenticate) Read(v base.HeaderValue) error {
+// Unmarshal decodes a WWW-Authenticate header.
+func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 	if len(v) == 0 {
 		return fmt.Errorf("value not provided")
 	}
@@ -67,104 +82,107 @@ func (h *Authenticate) Read(v base.HeaderValue) error {
 	}
 	method, v0 := v0[:i], v0[i+1:]
 
+	isDigest := false
+
 	switch method {
 	case "Basic":
 		h.Method = AuthBasic
 
 	case "Digest":
-		h.Method = AuthDigest
+		isDigest = true
 
 	default:
 		return fmt.Errorf("invalid method (%s)", method)
 	}
 
-	kvs, err := keyValParse(v0, ',')
-	if err != nil {
-		return err
-	}
+	if !isDigest {
+		kvs, err := keyValParse(v0, ',')
+		if err != nil {
+			return err
+		}
 
-	for k, rv := range kvs {
-		v := rv
+		realmReceived := false
 
-		switch k {
-		case "username":
-			h.Username = &v
+		for k, rv := range kvs {
+			v := rv
 
-		case "realm":
-			h.Realm = &v
+			if k == "realm" {
+				h.Realm = v
+				realmReceived = true
+			}
+		}
 
-		case "nonce":
-			h.Nonce = &v
+		if !realmReceived {
+			return fmt.Errorf("realm is missing")
+		}
+	} else { // digest
+		kvs, err := keyValParse(v0, ',')
+		if err != nil {
+			return err
+		}
 
-		case "uri":
-			h.URI = &v
+		realmReceived := false
+		nonceReceived := false
+		var algorithm *string
 
-		case "response":
-			h.Response = &v
+		for k, rv := range kvs {
+			v := rv
 
-		case "opaque":
-			h.Opaque = &v
+			switch k {
+			case "realm":
+				h.Realm = v
+				realmReceived = true
 
-		case "stale":
-			h.Stale = &v
+			case "nonce":
+				h.Nonce = v
+				nonceReceived = true
 
-		case "algorithm":
-			h.Algorithm = &v
+			case "opaque":
+				h.Opaque = &v
+
+			case "stale":
+				h.Stale = &v
+
+			case "algorithm":
+				algorithm = &v
+			}
+		}
+
+		if !realmReceived || !nonceReceived {
+			return fmt.Errorf("one or more digest fields are missing")
+		}
+
+		h.Method, err = algorithmToMethod(algorithm)
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-// Write encodes an Authenticate or a WWW-Authenticate header.
-func (h Authenticate) Write() base.HeaderValue {
-	ret := ""
-
-	switch h.Method {
-	case AuthBasic:
-		ret += "Basic"
-
-	case AuthDigest:
-		ret += "Digest"
+// Marshal encodes a WWW-Authenticate header.
+func (h Authenticate) Marshal() base.HeaderValue {
+	if h.Method == AuthBasic {
+		return base.HeaderValue{"Basic " +
+			"realm=\"" + h.Realm + "\""}
 	}
 
-	ret += " "
-
-	var rets []string
-
-	if h.Username != nil {
-		rets = append(rets, "username=\""+*h.Username+"\"")
-	}
-
-	if h.Realm != nil {
-		rets = append(rets, "realm=\""+*h.Realm+"\"")
-	}
-
-	if h.Nonce != nil {
-		rets = append(rets, "nonce=\""+*h.Nonce+"\"")
-	}
-
-	if h.URI != nil {
-		rets = append(rets, "uri=\""+*h.URI+"\"")
-	}
-
-	if h.Response != nil {
-		rets = append(rets, "response=\""+*h.Response+"\"")
-	}
+	ret := "Digest realm=\"" + h.Realm + "\", nonce=\"" + h.Nonce + "\""
 
 	if h.Opaque != nil {
-		rets = append(rets, "opaque=\""+*h.Opaque+"\"")
+		ret += ", opaque=\"" + *h.Opaque + "\""
 	}
 
 	if h.Stale != nil {
-		rets = append(rets, "stale=\""+*h.Stale+"\"")
+		ret += ", stale=\"" + *h.Stale + "\""
 	}
 
-	if h.Algorithm != nil {
-		rets = append(rets, "algorithm=\""+*h.Algorithm+"\"")
+	if h.Method == AuthDigestMD5 {
+		ret += ", algorithm=\"MD5\""
+	} else {
+		ret += ", algorithm=\"SHA-256\""
 	}
-
-	ret += strings.Join(rets, ", ")
 
 	return base.HeaderValue{ret}
 }

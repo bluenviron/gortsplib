@@ -34,22 +34,21 @@ type HeaderValue []string
 // Header is a RTSP reader, present in both Requests and Responses.
 type Header map[string]HeaderValue
 
-func (h *Header) read(rb *bufio.Reader) error {
+func (h *Header) unmarshal(br *bufio.Reader) error {
 	*h = make(Header)
 	count := 0
 
 	for {
-		byt, err := rb.ReadByte()
+		byt, err := br.ReadByte()
 		if err != nil {
 			return err
 		}
 
 		if byt == '\r' {
-			err := readByteEqual(rb, '\n')
+			err := readByteEqual(br, '\n')
 			if err != nil {
 				return err
 			}
-
 			break
 		}
 
@@ -58,17 +57,18 @@ func (h *Header) read(rb *bufio.Reader) error {
 		}
 
 		key := string([]byte{byt})
-		byts, err := readBytesLimited(rb, ':', headerMaxKeyLength-1)
+		byts, err := readBytesLimited(br, ':', headerMaxKeyLength-1)
 		if err != nil {
 			return fmt.Errorf("value is missing")
 		}
+
 		key += string(byts[:len(byts)-1])
 		key = headerKeyNormalize(key)
 
 		// https://tools.ietf.org/html/rfc2616
 		// The field value MAY be preceded by any amount of spaces
 		for {
-			byt, err := rb.ReadByte()
+			byt, err := br.ReadByte()
 			if err != nil {
 				return err
 			}
@@ -77,15 +77,15 @@ func (h *Header) read(rb *bufio.Reader) error {
 				break
 			}
 		}
-		rb.UnreadByte()
+		br.UnreadByte() //nolint:errcheck
 
-		byts, err = readBytesLimited(rb, '\r', headerMaxValueLength)
+		byts, err = readBytesLimited(br, '\r', headerMaxValueLength)
 		if err != nil {
 			return err
 		}
 		val := string(byts[:len(byts)-1])
 
-		err = readByteEqual(rb, '\n')
+		err = readByteEqual(br, '\n')
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func (h *Header) read(rb *bufio.Reader) error {
 	return nil
 }
 
-func (h Header) writeSize() int {
+func (h Header) marshalSize() int {
 	// sort headers by key
 	// in order to obtain deterministic results
 	keys := make([]string, len(h))
@@ -119,7 +119,7 @@ func (h Header) writeSize() int {
 	return n
 }
 
-func (h Header) writeTo(buf []byte) int {
+func (h Header) marshalTo(buf []byte) int {
 	// sort headers by key
 	// in order to obtain deterministic results
 	keys := make([]string, len(h))
@@ -141,8 +141,8 @@ func (h Header) writeTo(buf []byte) int {
 	return pos
 }
 
-func (h Header) write() []byte {
-	buf := make([]byte, h.writeSize())
-	h.writeTo(buf)
+func (h Header) marshal() []byte {
+	buf := make([]byte, h.marshalSize())
+	h.marshalTo(buf)
 	return buf
 }
