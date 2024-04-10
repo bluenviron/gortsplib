@@ -42,6 +42,10 @@ func (d *Decoder) decodeGeneric(pkt *rtp.Packet) ([][]byte, error) {
 			// AUs
 			aus = make([][]byte, len(dataLens))
 			for i, dataLen := range dataLens {
+				if int(dataLen) == 0 {
+					return nil, fmt.Errorf("invalid AU-data-length")
+				}
+
 				if len(payload) < int(dataLen) {
 					return nil, fmt.Errorf("payload is too short")
 				}
