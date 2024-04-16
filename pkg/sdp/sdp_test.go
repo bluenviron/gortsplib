@@ -2561,7 +2561,7 @@ var cases = []struct {
 			"a=fmtp:96 packetization-mode=1; profile-level-id=33;" +
 			" sprop-parameter-sets=Z00AM4qKUDwBE/L/4AAgAC2AgA==,aO48gA==\r\n"),
 		[]byte("v=0\r\n" +
-			"o=- 97041581188 97041581188 IN IP4 46.242.10.231:12626\r\n" +
+			"o=- 1698210484 1698210484 IN IP4 46.242.10.231:12626\r\n" +
 			"s=Playout\r\n" +
 			"m=video 0 RTP/AVP 96\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
@@ -2570,8 +2570,8 @@ var cases = []struct {
 		SessionDescription{
 			Origin: psdp.Origin{
 				Username:       "-",
-				SessionID:      97041581188,
-				SessionVersion: 97041581188,
+				SessionID:      1698210484,
+				SessionVersion: 1698210484,
 				NetworkType:    "IN",
 				AddressType:    "IP4",
 				UnicastAddress: "46.242.10.231:12626",
@@ -2913,6 +2913,128 @@ var cases = []struct {
 						{
 							Key:   "control",
 							Value: "rtsp://192.168.1.63/defaultPr",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue mediamtx/2708",
+		[]byte("v=0\r\n" +
+			"o=- -1962418793961427 -1962418793961418 IN IP4 192.168.221.104\r\n" +
+			"s=Media Presentation\r\n" +
+			"e=NONE\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:8000\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"a=range:npt=now-\r\n" +
+			"a=mpeg4-iod: \"data:application/mpeg4-iod;base64,AoDUAE8BAf/1AQOAbwABQFBkYXRhOmFwcGxpY2F0aW9uL21wZWc" +
+			"0LW9kLWF1O2Jhc2U2NCxBUjBCR3dVZkF4Y0F5U1FBWlFRTklCRUVrK0FBZWhJQUFIb1NBQVlCQkE9PQQNAQUABAAAAAAAAAAAAAY" +
+			"JAQAAAAAAAAAAAzoAAkA2ZGF0YTphcHBsaWNhdGlvbi9tcGVnNC1iaWZzLWF1O2Jhc2U2NCx3QkFTWVFTSVVFVUZQd0E9BBICDQAAA" +
+			"gAAAAAAAAAABQMAAEAGCQEAAAAAAAAAAA==\"\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=AS:8000\r\n" +
+			"a=framerate:30.0\r\n" +
+			"a=control:trackID=1\r\n" +
+			"a=rtpmap:96 MP4V-ES/90000\r\n" +
+			"a=fmtp:96 profile-level-id=245; config=000001B0F5000001B509000001000000012008D48D88032514043C14440F\r\n" +
+			"a=mpeg4-esid:201\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 1962418793961427 1962418793961418 IN IP4 192.168.221.104\r\n" +
+			"s=Media Presentation\r\n" +
+			"e=NONE\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"b=AS:8000\r\n" +
+			"t=0 0\r\n" +
+			"a=control:*\r\n" +
+			"a=range:npt=now-\r\n" +
+			"a=mpeg4-iod: \"data:application/mpeg4-iod;base64,AoDUAE8BAf/1AQOAbwABQFBkYXRhOmFwcGxpY2F0aW9uL21wZWc" +
+			"0LW9kLWF1O2Jhc2U2NCxBUjBCR3dVZkF4Y0F5U1FBWlFRTklCRUVrK0FBZWhJQUFIb1NBQVlCQkE9PQQNAQUABAAAAAAAAAAAAAY" +
+			"JAQAAAAAAAAAAAzoAAkA2ZGF0YTphcHBsaWNhdGlvbi9tcGVnNC1iaWZzLWF1O2Jhc2U2NCx3QkFTWVFTSVVFVUZQd0E9BBICDQAAA" +
+			"gAAAAAAAAAABQMAAEAGCQEAAAAAAAAAAA==\"\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"b=AS:8000\r\n" +
+			"a=framerate:30.0\r\n" +
+			"a=control:trackID=1\r\n" +
+			"a=rtpmap:96 MP4V-ES/90000\r\n" +
+			"a=fmtp:96 profile-level-id=245; config=000001B0F5000001B509000001000000012008D48D88032514043C14440F\r\n" +
+			"a=mpeg4-esid:201\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      1962418793961427,
+				SessionVersion: 1962418793961418,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.221.104",
+			},
+			SessionName: "Media Presentation",
+			EmailAddress: func() *psdp.EmailAddress {
+				v := psdp.EmailAddress("NONE")
+				return &v
+			}(),
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "0.0.0.0",
+				},
+			},
+			Bandwidth: []psdp.Bandwidth{{
+				Type:      "AS",
+				Bandwidth: 8000,
+			}},
+			TimeDescriptions: []psdp.TimeDescription{{}},
+			Attributes: []psdp.Attribute{
+				{
+					Key:   "control",
+					Value: "*",
+				},
+				{
+					Key:   "range",
+					Value: "npt=now-",
+				},
+				{
+					Key: "mpeg4-iod",
+					Value: " \"data:application/mpeg4-iod;base64,AoDUAE8BAf/1AQOAbwABQFBkYXRhOmFwcGxpY2" +
+						"F0aW9uL21wZWc0LW9kLWF1O2Jhc2U2NCxBUjBCR3dVZkF4Y0F5U1FBWlFRTklCRUVrK0FBZWhJQUFIb1NBQV" +
+						"lCQkE9PQQNAQUABAAAAAAAAAAAAAYJAQAAAAAAAAAAAzoAAkA2ZGF0YTphcHBsaWNhdGlvbi9tcGVnNC1iaWZ" +
+						"zLWF1O2Jhc2U2NCx3QkFTWVFTSVVFVUZQd0E9BBICDQAAAgAAAAAAAAAABQMAAEAGCQEAAAAAAAAAAA==\"",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Bandwidth: []psdp.Bandwidth{{
+						Type:      "AS",
+						Bandwidth: 8000,
+					}},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "framerate",
+							Value: "30.0",
+						},
+						{
+							Key:   "control",
+							Value: "trackID=1",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 MP4V-ES/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 profile-level-id=245; config=000001B0F5000001B509000001000000012008D48D88032514043C14440F",
+						},
+						{
+							Key:   "mpeg4-esid",
+							Value: "201",
 						},
 					},
 				},
