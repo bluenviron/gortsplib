@@ -114,15 +114,13 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 	var tmp string
 	tmp, value = value[i+1:], value[:i]
 
-	var err error
-
-	switch {
-	case strings.ContainsAny(tmp, "."):
-		i := strings.Index(tmp, ".")
-		s.Origin.SessionVersion, err = strconv.ParseUint(tmp[:i], 16, 64)
-	default:
-		s.Origin.SessionVersion, err = strconv.ParseUint(tmp, 10, 64)
+	if i := strings.Index(tmp, "."); i >= 0 {
+		tmp = tmp[:i]
 	}
+	tmp = strings.TrimPrefix(tmp, "-")
+
+	var err error
+	s.Origin.SessionVersion, err = strconv.ParseUint(tmp, 10, 64)
 	if err != nil {
 		return fmt.Errorf("%w `%v`", errSDPInvalidNumericValue, tmp)
 	}
@@ -143,10 +141,12 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 		s.Origin.SessionID, err = strconv.ParseUint(tmp[2:], 16, 64)
 	case strings.ContainsAny(tmp, "abcdefABCDEF"):
 		s.Origin.SessionID, err = strconv.ParseUint(tmp, 16, 64)
-	case strings.ContainsAny(tmp, "."):
-		i := strings.Index(tmp, ".")
-		s.Origin.SessionID, err = strconv.ParseUint(tmp[:i], 16, 64)
 	default:
+		if i := strings.Index(tmp, "."); i >= 0 {
+			tmp = tmp[:i]
+		}
+		tmp = strings.TrimPrefix(tmp, "-")
+
 		s.Origin.SessionID, err = strconv.ParseUint(tmp, 10, 64)
 	}
 	if err != nil {
