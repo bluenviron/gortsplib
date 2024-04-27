@@ -22,7 +22,7 @@ func TestVP9DecEncoder(t *testing.T) {
 	enc, err := format.CreateEncoder()
 	require.NoError(t, err)
 
-	pkts, err := enc.Encode([]byte{0x01, 0x02, 0x03, 0x04})
+	pkts, err := enc.Encode([]byte{0x82, 0x49, 0x83, 0x42, 0x0, 0x77, 0xf0, 0x32, 0x34})
 	require.NoError(t, err)
 	require.Equal(t, format.PayloadType(), pkts[0].PayloadType)
 
@@ -31,5 +31,5 @@ func TestVP9DecEncoder(t *testing.T) {
 
 	byts, err := dec.Decode(pkts[0])
 	require.NoError(t, err)
-	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, byts)
+	require.Equal(t, []byte{0x82, 0x49, 0x83, 0x42, 0x0, 0x77, 0xf0, 0x32, 0x34}, byts)
 }
