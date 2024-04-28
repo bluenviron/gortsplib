@@ -637,11 +637,13 @@ func TestServerRecord(t *testing.T) {
 				// server -> client (direct)
 				if transport == "udp" {
 					buf := make([]byte, 2048)
-					n, _, err := l2s[i].ReadFrom(buf)
+					var n int
+					n, _, err = l2s[i].ReadFrom(buf)
 					require.NoError(t, err)
 					require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 				} else {
-					f, err := conn.ReadInterleavedFrame()
+					var f *base.InterleavedFrame
+					f, err = conn.ReadInterleavedFrame()
 					require.NoError(t, err)
 					require.Equal(t, 3+i*2, f.Channel)
 					require.Equal(t, testRTCPPacketMarshaled, f.Payload)
@@ -650,7 +652,7 @@ func TestServerRecord(t *testing.T) {
 				// skip firewall opening
 				if transport == "udp" {
 					buf := make([]byte, 2048)
-					_, _, err := l2s[i].ReadFrom(buf)
+					_, _, err = l2s[i].ReadFrom(buf)
 					require.NoError(t, err)
 				}
 

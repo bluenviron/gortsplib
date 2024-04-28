@@ -114,7 +114,7 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 	var tmp string
 	tmp, value = value[i+1:], value[:i]
 
-	if i := strings.Index(tmp, "."); i >= 0 {
+	if i = strings.Index(tmp, "."); i >= 0 {
 		tmp = tmp[:i]
 	}
 	tmp = strings.TrimPrefix(tmp, "-")

@@ -287,7 +287,7 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 				// to return a SDP that contains a multicast address.
 				multicast := false
 				if sc.s.MulticastIPRange != "" {
-					if q, err := gourl.ParseQuery(query); err == nil {
+					if q, err2 := gourl.ParseQuery(query); err2 == nil {
 						if _, ok := q["vlcmulticast"]; ok {
 							multicast = true
 						}

@@ -682,11 +682,12 @@ func TestServerPlay(t *testing.T) {
 
 				p := ipv4.NewPacketConn(l1)
 
-				intfs, err := net.Interfaces()
+				var intfs []net.Interface
+				intfs, err = net.Interfaces()
 				require.NoError(t, err)
 
 				for _, intf := range intfs {
-					err := p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
+					err = p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
 					require.NoError(t, err)
 				}
 
@@ -700,7 +701,7 @@ func TestServerPlay(t *testing.T) {
 				require.NoError(t, err)
 
 				for _, intf := range intfs {
-					err := p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
+					err = p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
 					require.NoError(t, err)
 				}
 
@@ -719,12 +720,14 @@ func TestServerPlay(t *testing.T) {
 			switch transport {
 			case "udp":
 				buf := make([]byte, 2048)
-				n, _, err := l2.ReadFrom(buf)
+				var n int
+				n, _, err = l2.ReadFrom(buf)
 				require.NoError(t, err)
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 
 			case "tcp", "tls":
-				f, err := conn.ReadInterleavedFrame()
+				var f *base.InterleavedFrame
+				f, err = conn.ReadInterleavedFrame()
 				require.NoError(t, err)
 
 				switch f.Channel {
@@ -742,7 +745,8 @@ func TestServerPlay(t *testing.T) {
 			// server -> client (through stream)
 			if transport == "udp" || transport == "multicast" {
 				buf := make([]byte, 2048)
-				n, _, err := l1.ReadFrom(buf)
+				var n int
+				n, _, err = l1.ReadFrom(buf)
 				require.NoError(t, err)
 				require.Equal(t, testRTPPacketMarshaled, buf[:n])
 
@@ -752,7 +756,8 @@ func TestServerPlay(t *testing.T) {
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 			} else {
 				for i := 0; i < 2; i++ {
-					f, err := conn.ReadInterleavedFrame()
+					var f *base.InterleavedFrame
+					f, err = conn.ReadInterleavedFrame()
 					require.NoError(t, err)
 
 					switch f.Channel {
@@ -771,7 +776,7 @@ func TestServerPlay(t *testing.T) {
 			// client -> server (RTCP)
 			switch transport {
 			case "udp":
-				_, err := l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+				_, err = l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[1],
 				})
@@ -779,7 +784,7 @@ func TestServerPlay(t *testing.T) {
 				<-framesReceived
 
 			case "multicast":
-				_, err := l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+				_, err = l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 					IP:   *th.Destination,
 					Port: th.Ports[1],
 				})
@@ -787,7 +792,7 @@ func TestServerPlay(t *testing.T) {
 				<-framesReceived
 
 			default:
-				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 6,
 					Payload: testRTCPPacketMarshaled,
 				}, make([]byte, 1024))
@@ -1078,10 +1083,11 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				require.NoError(t, err)
 				buf = buf[:n]
 			} else {
-				_, err := conn.ReadInterleavedFrame()
+				_, err = conn.ReadInterleavedFrame()
 				require.NoError(t, err)
 
-				f, err := conn.ReadInterleavedFrame()
+				var f *base.InterleavedFrame
+				f, err = conn.ReadInterleavedFrame()
 				require.NoError(t, err)
 				require.Equal(t, 1, f.Channel)
 				buf = f.Payload
@@ -2061,7 +2067,8 @@ func TestServerPlayBytesSent(t *testing.T) {
 	defer stream.Close()
 
 	for _, transport := range []string{"tcp", "multicast"} {
-		nconn, err := net.Dial("tcp", "localhost:8554")
+		var nconn net.Conn
+		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)

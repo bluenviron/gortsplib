@@ -136,9 +136,9 @@ func (u *serverUDPListener) run() {
 			u.clientsMutex.RLock()
 			defer u.clientsMutex.RUnlock()
 
-			var clientAddr clientAddr
-			clientAddr.fill(addr.IP, addr.Port)
-			cb, ok := u.clients[clientAddr]
+			var ca clientAddr
+			ca.fill(addr.IP, addr.Port)
+			cb, ok := u.clients[ca]
 			if !ok {
 				return
 			}

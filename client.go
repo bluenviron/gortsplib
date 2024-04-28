@@ -748,7 +748,7 @@ func (c *Client) trySwitchingProtocol() error {
 	}
 
 	for i, cm := range prevMedias {
-		_, err := c.doSetup(prevBaseURL, cm.media, 0, 0)
+		_, err = c.doSetup(prevBaseURL, cm.media, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -1132,7 +1132,8 @@ func (c *Client) doDescribe(u *base.URL) (*description.Session, *base.Response, 
 			len(res.Header["Location"]) == 1 {
 			c.reset()
 
-			ru, err := base.ParseURL(res.Header["Location"][0])
+			var ru *base.URL
+			ru, err = base.ParseURL(res.Header["Location"][0])
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1325,7 +1326,7 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientUDPPortsNotConsecutive{}
 		}
 
-		err := cm.allocateUDPListeners(
+		err = cm.allocateUDPListeners(
 			false,
 			nil,
 			net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
@@ -1480,7 +1481,7 @@ func (c *Client) doSetup(
 			readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 
-		err := cm.allocateUDPListeners(
+		err = cm.allocateUDPListeners(
 			true,
 			readIP,
 			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[0]), 10)),
