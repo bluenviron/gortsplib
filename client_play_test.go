@@ -149,16 +149,16 @@ func TestClientPlayFormats(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -168,16 +168,16 @@ func TestClientPlayFormats(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		medias := []*description.Media{media1, media2, media3}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -185,17 +185,17 @@ func TestClientPlayFormats(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
 		for i := 0; i < 3; i++ {
-			req, err := conn.ReadRequest()
-			require.NoError(t, err)
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
 			require.Equal(t, base.Setup, req.Method)
 			require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[i].Control), req.URL)
 
 			var inTH headers.Transport
-			err = inTH.Unmarshal(req.Header["Transport"])
-			require.NoError(t, err)
+			err2 = inTH.Unmarshal(req.Header["Transport"])
+			require.NoError(t, err2)
 
 			th := headers.Transport{
 				Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
@@ -204,34 +204,34 @@ func TestClientPlayFormats(t *testing.T) {
 				ServerPorts: &[2]int{34556 + i*2, 34557 + i*2},
 			}
 
-			err = conn.WriteResponse(&base.Response{
+			err2 = conn.WriteResponse(&base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Transport": th.Marshal(),
 				},
 			})
-			require.NoError(t, err)
+			require.NoError(t, err2)
 		}
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	c := Client{}
@@ -260,7 +260,8 @@ func TestClientPlay(t *testing.T) {
 			if transport == "tls" {
 				scheme = "rtsps"
 
-				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				var cert tls.Certificate
+				cert, err = tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 
 				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
@@ -273,17 +274,17 @@ func TestClientPlay(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -293,10 +294,10 @@ func TestClientPlay(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value"), req.URL)
 
@@ -304,8 +305,8 @@ func TestClientPlay(t *testing.T) {
 					PayloadTyp: 96,
 					RTPMa:      "private/90000",
 				}
-				err = forma.Init()
-				require.NoError(t, err)
+				err2 = forma.Init()
+				require.NoError(t, err2)
 
 				medias := []*description.Media{
 					{
@@ -318,7 +319,7 @@ func TestClientPlay(t *testing.T) {
 					},
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -326,22 +327,22 @@ func TestClientPlay(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				var l1s [2]net.PacketConn
 				var l2s [2]net.PacketConn
 				var clientPorts [2]*[2]int
 
 				for i := 0; i < 2; i++ {
-					req, err = conn.ReadRequest()
-					require.NoError(t, err)
+					req, err2 = conn.ReadRequest()
+					require.NoError(t, err2)
 					require.Equal(t, base.Setup, req.Method)
 					require.Equal(t, mustParseURL(
 						scheme+"://"+listenIP+":8554/test/stream?param=value/"+medias[i].Control), req.URL)
 
 					var inTH headers.Transport
-					err = inTH.Unmarshal(req.Header["Transport"])
-					require.NoError(t, err)
+					err2 = inTH.Unmarshal(req.Header["Transport"])
+					require.NoError(t, err2)
 
 					var th headers.Transport
 
@@ -354,12 +355,14 @@ func TestClientPlay(t *testing.T) {
 						clientPorts[i] = inTH.ClientPorts
 						th.ServerPorts = &[2]int{34556 + i*2, 34557 + i*2}
 
-						l1s[i], err = net.ListenPacket("udp", net.JoinHostPort(listenIP, strconv.FormatInt(int64(th.ServerPorts[0]), 10)))
-						require.NoError(t, err)
+						l1s[i], err2 = net.ListenPacket(
+							"udp", net.JoinHostPort(listenIP, strconv.FormatInt(int64(th.ServerPorts[0]), 10)))
+						require.NoError(t, err2)
 						defer l1s[i].Close()
 
-						l2s[i], err = net.ListenPacket("udp", net.JoinHostPort(listenIP, strconv.FormatInt(int64(th.ServerPorts[1]), 10)))
-						require.NoError(t, err)
+						l2s[i], err2 = net.ListenPacket(
+							"udp", net.JoinHostPort(listenIP, strconv.FormatInt(int64(th.ServerPorts[1]), 10)))
+						require.NoError(t, err2)
 						defer l2s[i].Close()
 
 					case "multicast":
@@ -370,32 +373,33 @@ func TestClientPlay(t *testing.T) {
 						th.Destination = &v2
 						th.Ports = &[2]int{25000 + i*2, 25001 + i*2}
 
-						l1s[i], err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
-						require.NoError(t, err)
+						l1s[i], err2 = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
+						require.NoError(t, err2)
 						defer l1s[i].Close()
 
 						p := ipv4.NewPacketConn(l1s[i])
 
-						intfs, err := net.Interfaces()
-						require.NoError(t, err)
+						var intfs []net.Interface
+						intfs, err2 = net.Interfaces()
+						require.NoError(t, err2)
 
 						for _, intf := range intfs {
-							err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
-							require.NoError(t, err)
+							err2 = p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
+							require.NoError(t, err2)
 						}
 
-						l2s[i], err = net.ListenPacket("udp", "224.0.0.0:25001")
-						require.NoError(t, err)
+						l2s[i], err2 = net.ListenPacket("udp", "224.0.0.0:25001")
+						require.NoError(t, err2)
 						defer l2s[i].Close()
 
 						p = ipv4.NewPacketConn(l2s[i])
 
-						intfs, err = net.Interfaces()
-						require.NoError(t, err)
+						intfs, err2 = net.Interfaces()
+						require.NoError(t, err2)
 
 						for _, intf := range intfs {
-							err := p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
-							require.NoError(t, err)
+							err2 = p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP("224.1.0.1")})
+							require.NoError(t, err2)
 						}
 
 					case "tcp", "tls":
@@ -405,49 +409,49 @@ func TestClientPlay(t *testing.T) {
 						th.InterleavedIDs = &[2]int{0 + i*2, 1 + i*2}
 					}
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Transport": th.Marshal(),
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
 				require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				for i := 0; i < 2; i++ {
 					// server -> client (RTP)
 					switch transport {
 					case "udp":
-						_, err := l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+						_, err2 = l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 							IP:   net.ParseIP("127.0.0.1"),
 							Port: clientPorts[i][0],
 						})
-						require.NoError(t, err)
+						require.NoError(t, err2)
 
 					case "multicast":
-						_, err := l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+						_, err2 = l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 							IP:   net.ParseIP("224.1.0.1"),
 							Port: 25000,
 						})
-						require.NoError(t, err)
+						require.NoError(t, err2)
 
 					case "tcp", "tls":
-						err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
+						err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 							Channel: 0 + i*2,
 							Payload: testRTPPacketMarshaled,
 						}, make([]byte, 1024))
-						require.NoError(t, err)
+						require.NoError(t, err2)
 					}
 
 					// client -> server (RTCP)
@@ -456,38 +460,42 @@ func TestClientPlay(t *testing.T) {
 						// skip firewall opening
 						if transport == "udp" {
 							buf := make([]byte, 2048)
-							_, _, err := l2s[i].ReadFrom(buf)
-							require.NoError(t, err)
+							_, _, err2 = l2s[i].ReadFrom(buf)
+							require.NoError(t, err2)
 						}
 
 						buf := make([]byte, 2048)
-						n, _, err := l2s[i].ReadFrom(buf)
-						require.NoError(t, err)
-						packets, err := rtcp.Unmarshal(buf[:n])
-						require.NoError(t, err)
+						var n int
+						n, _, err2 = l2s[i].ReadFrom(buf)
+						require.NoError(t, err2)
+						var packets []rtcp.Packet
+						packets, err2 = rtcp.Unmarshal(buf[:n])
+						require.NoError(t, err2)
 						require.Equal(t, &testRTCPPacket, packets[0])
 
 					case "tcp", "tls":
-						f, err := conn.ReadInterleavedFrame()
-						require.NoError(t, err)
+						var f *base.InterleavedFrame
+						f, err2 = conn.ReadInterleavedFrame()
+						require.NoError(t, err2)
 						require.Equal(t, 1+i*2, f.Channel)
-						packets, err := rtcp.Unmarshal(f.Payload)
-						require.NoError(t, err)
+						var packets []rtcp.Packet
+						packets, err2 = rtcp.Unmarshal(f.Payload)
+						require.NoError(t, err2)
 						require.Equal(t, &testRTCPPacket, packets[0])
 					}
 				}
 
 				close(packetRecv)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://"+listenIP+":8554/test/stream?param=value/"), req.URL)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			c := Client{
@@ -526,8 +534,8 @@ func TestClientPlay(t *testing.T) {
 
 			c.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 				require.Equal(t, &testRTPPacket, pkt)
-				err := c.WritePacketRTCP(medi, &testRTCPPacket)
-				require.NoError(t, err)
+				err2 := c.WritePacketRTCP(medi, &testRTCPPacket)
+				require.NoError(t, err2)
 			})
 
 			_, err = c.Play(nil)
@@ -549,16 +557,16 @@ func TestClientPlayPartial(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -568,10 +576,10 @@ func TestClientPlayPartial(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream"), req.URL)
 
@@ -579,8 +587,8 @@ func TestClientPlayPartial(t *testing.T) {
 			PayloadTyp: 96,
 			RTPMa:      "private/90000",
 		}
-		err = forma.Init()
-		require.NoError(t, err)
+		err2 = forma.Init()
+		require.NoError(t, err2)
 
 		medias := []*description.Media{
 			{
@@ -593,7 +601,7 @@ func TestClientPlayPartial(t *testing.T) {
 			},
 		}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -601,7 +609,7 @@ func TestClientPlayPartial(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
 		req, err = conn.ReadRequest()
 		require.NoError(t, err)
@@ -609,8 +617,8 @@ func TestClientPlayPartial(t *testing.T) {
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"+medias[1].Control), req.URL)
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 		require.Equal(t, &[2]int{0, 1}, inTH.InterleavedIDs)
 
 		th := headers.Transport{
@@ -619,39 +627,39 @@ func TestClientPlayPartial(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 0,
 			Payload: testRTPPacketMarshaled,
 		}, make([]byte, 1024))
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://"+listenIP+":8554/teststream/"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	packetRecv := make(chan struct{})
@@ -701,16 +709,16 @@ func TestClientPlayContentBase(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -720,10 +728,10 @@ func TestClientPlayContentBase(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
@@ -731,20 +739,20 @@ func TestClientPlayContentBase(t *testing.T) {
 
 				switch ca {
 				case "absent":
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Content-Type": base.HeaderValue{"application/sdp"},
 						},
 						Body: mediasToSDP(medias),
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
 				case "inside control attribute":
 					body := string(mediasToSDP(medias))
 					body = strings.Replace(body, "t=0 0", "t=0 0\r\na=control:rtsp://localhost:8554/teststream", 1)
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Content-Type": base.HeaderValue{"application/sdp"},
@@ -752,17 +760,17 @@ func TestClientPlayContentBase(t *testing.T) {
 						},
 						Body: []byte(body),
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
@@ -771,33 +779,33 @@ func TestClientPlayContentBase(t *testing.T) {
 					ServerPorts: &[2]int{34556, 34557},
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			c := Client{}
@@ -828,16 +836,16 @@ func TestClientPlayAnyPort(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -847,15 +855,15 @@ func TestClientPlayAnyPort(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
 				medias := []*description.Media{testH264Media}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -863,25 +871,25 @@ func TestClientPlayAnyPort(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var th headers.Transport
-				err = th.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = th.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
-				l1a, err := net.ListenPacket("udp", "localhost:13344")
-				require.NoError(t, err)
+				l1a, err2 := net.ListenPacket("udp", "localhost:13344")
+				require.NoError(t, err2)
 				defer l1a.Close()
 
-				l1b, err := net.ListenPacket("udp", "localhost:23041")
-				require.NoError(t, err)
+				l1b, err2 := net.ListenPacket("udp", "localhost:23041")
+				require.NoError(t, err2)
 				defer l1b.Close()
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": headers.Transport{
@@ -906,36 +914,38 @@ func TestClientPlayAnyPort(t *testing.T) {
 						}.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				time.Sleep(500 * time.Millisecond)
 
-				_, err = l1a.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+				_, err2 = l1a.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ClientPorts[0],
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				// read RTCP
 				if ca == "random" {
 					// skip firewall opening
 					buf := make([]byte, 2048)
-					_, _, err := l1b.ReadFrom(buf)
+					_, _, err = l1b.ReadFrom(buf)
 					require.NoError(t, err)
 
 					buf = make([]byte, 2048)
-					n, _, err := l1b.ReadFrom(buf)
+					var n int
+					n, _, err = l1b.ReadFrom(buf)
 					require.NoError(t, err)
-					packets, err := rtcp.Unmarshal(buf[:n])
+					var packets []rtcp.Packet
+					packets, err = rtcp.Unmarshal(buf[:n])
 					require.NoError(t, err)
 					require.Equal(t, &testRTCPPacket, packets[0])
 					close(serverRecv)
@@ -980,16 +990,16 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		go func() {
 			defer close(serverDone)
 
-			nconn, err := l.Accept()
-			require.NoError(t, err)
+			nconn, err2 := l.Accept()
+			require.NoError(t, err2)
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			req, err := conn.ReadRequest()
-			require.NoError(t, err)
+			req, err2 := conn.ReadRequest()
+			require.NoError(t, err2)
 			require.Equal(t, base.Options, req.Method)
 
-			err = conn.WriteResponse(&base.Response{
+			err2 = conn.WriteResponse(&base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Public": base.HeaderValue{strings.Join([]string{
@@ -999,15 +1009,15 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					}, ", ")},
 				},
 			})
-			require.NoError(t, err)
+			require.NoError(t, err2)
 
-			req, err = conn.ReadRequest()
-			require.NoError(t, err)
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
 			require.Equal(t, base.Describe, req.Method)
 
 			medias := []*description.Media{testH264Media}
 
-			err = conn.WriteResponse(&base.Response{
+			err2 = conn.WriteResponse(&base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1015,27 +1025,27 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				},
 				Body: mediasToSDP(medias),
 			})
-			require.NoError(t, err)
+			require.NoError(t, err2)
 
-			req, err = conn.ReadRequest()
-			require.NoError(t, err)
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
 			require.Equal(t, base.Setup, req.Method)
 
-			err = conn.WriteResponse(&base.Response{
+			err2 = conn.WriteResponse(&base.Response{
 				StatusCode: base.StatusUnsupportedTransport,
 			})
-			require.NoError(t, err)
+			require.NoError(t, err2)
 
-			req, err = conn.ReadRequest()
-			require.NoError(t, err)
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
 			require.Equal(t, base.Setup, req.Method)
 
 			var inTH headers.Transport
-			err = inTH.Unmarshal(req.Header["Transport"])
-			require.NoError(t, err)
+			err2 = inTH.Unmarshal(req.Header["Transport"])
+			require.NoError(t, err2)
 			require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
 
-			err = conn.WriteResponse(&base.Response{
+			err2 = conn.WriteResponse(&base.Response{
 				StatusCode: base.StatusOK,
 				Header: base.Header{
 					"Transport": headers.Transport{
@@ -1045,22 +1055,22 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					}.Marshal(),
 				},
 			})
-			require.NoError(t, err)
+			require.NoError(t, err2)
 
-			req, err = conn.ReadRequest()
-			require.NoError(t, err)
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
 			require.Equal(t, base.Play, req.Method)
 
-			err = conn.WriteResponse(&base.Response{
+			err2 = conn.WriteResponse(&base.Response{
 				StatusCode: base.StatusOK,
 			})
-			require.NoError(t, err)
+			require.NoError(t, err2)
 
-			err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+			err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 				Channel: 0,
 				Payload: testRTPPacketMarshaled,
 			}, make([]byte, 1024))
-			require.NoError(t, err)
+			require.NoError(t, err2)
 		}()
 
 		msgRecv := make(chan struct{})
@@ -1097,16 +1107,16 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 			medias := []*description.Media{testH264Media}
 
 			func() {
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				co := conn.NewConn(nconn)
 
-				req, err := co.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := co.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = co.WriteResponse(&base.Response{
+				err2 = co.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -1116,13 +1126,13 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = co.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = co.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
-				err = co.WriteResponse(&base.Response{
+				err2 = co.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1130,13 +1140,13 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = co.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = co.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
-				err = co.WriteResponse(&base.Response{
+				err2 = co.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": headers.Transport{
@@ -1147,32 +1157,32 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						}.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = co.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = co.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = co.WriteResponse(&base.Response{
+				err2 = co.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				_, err = co.ReadRequest()
-				require.Error(t, err)
+				_, err2 = co.ReadRequest()
+				require.Error(t, err2)
 			}()
 
 			func() {
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				co := conn.NewConn(nconn)
 
-				req, err := co.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := co.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = co.WriteResponse(&base.Response{
+				err2 = co.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -1182,13 +1192,13 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = co.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = co.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
-				err = co.WriteResponse(&base.Response{
+				err2 = co.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1196,18 +1206,18 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = co.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = co.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 				require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
 
-				err = co.WriteResponse(&base.Response{
+				err2 = co.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": headers.Transport{
@@ -1217,22 +1227,22 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						}.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = co.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = co.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 
-				err = co.WriteResponse(&base.Response{
+				err2 = co.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				err = co.WriteInterleavedFrame(&base.InterleavedFrame{
+				err2 = co.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 0,
 					Payload: testRTPPacketMarshaled,
 				}, make([]byte, 1024))
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 		}()
 
@@ -1270,16 +1280,16 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 			medias := []*description.Media{testH264Media}
 
 			func() {
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -1289,31 +1299,31 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
-				nonce, err := auth.GenerateNonce()
-				require.NoError(t, err)
+				nonce, err2 := auth.GenerateNonce()
+				require.NoError(t, err2)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusUnauthorized,
 					Header: base.Header{
 						"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
-				err = auth.Validate(req, "myuser", "mypass", nil, nil, "IPCAM", nonce)
-				require.NoError(t, err)
+				err2 = auth.Validate(req, "myuser", "mypass", nil, nil, "IPCAM", nonce)
+				require.NoError(t, err2)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1321,10 +1331,10 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
@@ -1339,44 +1349,44 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					ClientPorts: inTH.ClientPorts,
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			func() {
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -1386,13 +1396,13 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1400,34 +1410,34 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
-				nonce, err := auth.GenerateNonce()
-				require.NoError(t, err)
+				nonce, err2 := auth.GenerateNonce()
+				require.NoError(t, err2)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusUnauthorized,
 					Header: base.Header{
 						"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
-				err = auth.Validate(req, "myuser", "mypass", nil, nil, "IPCAM", nonce)
-				require.NoError(t, err)
+				err2 = auth.Validate(req, "myuser", "mypass", nil, nil, "IPCAM", nonce)
+				require.NoError(t, err2)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
@@ -1435,37 +1445,37 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 					InterleavedIDs: inTH.InterleavedIDs,
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 0,
 					Payload: testRTPPacketMarshaled,
 				}, make([]byte, 1024))
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 		}()
 
@@ -1502,16 +1512,16 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -1521,16 +1531,16 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		medias := []*description.Media{testH264Media}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1538,16 +1548,16 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 
 		th := headers.Transport{
 			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
@@ -1555,39 +1565,39 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 			InterleavedIDs: &[2]int{1, 2}, // use odd value
 		}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 1,
 			Payload: testRTPPacketMarshaled,
 		}, make([]byte, 1024))
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	packetRecv := make(chan struct{})
@@ -1623,16 +1633,17 @@ func TestClientPlayRedirect(t *testing.T) {
 				defer close(serverDone)
 
 				func() {
-					nconn, err := l.Accept()
+					var nconn net.Conn
+					nconn, err = l.Accept()
 					require.NoError(t, err)
 					defer nconn.Close()
 					conn := conn.NewConn(nconn)
 
-					req, err := conn.ReadRequest()
-					require.NoError(t, err)
+					req, err2 := conn.ReadRequest()
+					require.NoError(t, err2)
 					require.Equal(t, base.Options, req.Method)
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Public": base.HeaderValue{strings.Join([]string{
@@ -1642,32 +1653,32 @@ func TestClientPlayRedirect(t *testing.T) {
 							}, ", ")},
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
-					req, err = conn.ReadRequest()
-					require.NoError(t, err)
+					req, err2 = conn.ReadRequest()
+					require.NoError(t, err2)
 					require.Equal(t, base.Describe, req.Method)
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusMovedPermanently,
 						Header: base.Header{
 							"Location": base.HeaderValue{"rtsp://localhost:8554/test"},
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}()
 
 				func() {
-					nconn, err := l.Accept()
-					require.NoError(t, err)
+					nconn, err2 := l.Accept()
+					require.NoError(t, err2)
 					defer nconn.Close()
 					conn := conn.NewConn(nconn)
 
-					req, err := conn.ReadRequest()
-					require.NoError(t, err)
+					req, err2 := conn.ReadRequest()
+					require.NoError(t, err2)
 					require.Equal(t, base.Options, req.Method)
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Public": base.HeaderValue{strings.Join([]string{
@@ -1678,10 +1689,10 @@ func TestClientPlayRedirect(t *testing.T) {
 						},
 					})
 
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
-					req, err = conn.ReadRequest()
-					require.NoError(t, err)
+					req, err2 = conn.ReadRequest()
+					require.NoError(t, err2)
 					require.Equal(t, base.Describe, req.Method)
 
 					if withCredentials {
@@ -1691,7 +1702,7 @@ func TestClientPlayRedirect(t *testing.T) {
 							authOpaque := "exampleOpaque"
 							authStale := "FALSE"
 
-							err = conn.WriteResponse(&base.Response{
+							err2 = conn.WriteResponse(&base.Response{
 								Header: base.Header{
 									"WWW-Authenticate": headers.Authenticate{
 										Method: headers.AuthDigestMD5,
@@ -1703,11 +1714,11 @@ func TestClientPlayRedirect(t *testing.T) {
 								},
 								StatusCode: base.StatusUnauthorized,
 							})
-							require.NoError(t, err)
+							require.NoError(t, err2)
 						}
 
-						req, err = conn.ReadRequest()
-						require.NoError(t, err)
+						req, err2 = conn.ReadRequest()
+						require.NoError(t, err2)
 
 						authHeaderVal, exists := req.Header["Authorization"]
 						require.True(t, exists)
@@ -1720,7 +1731,7 @@ func TestClientPlayRedirect(t *testing.T) {
 
 					medias := []*description.Media{testH264Media}
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1728,17 +1739,17 @@ func TestClientPlayRedirect(t *testing.T) {
 						},
 						Body: mediasToSDP(medias),
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
-					req, err = conn.ReadRequest()
-					require.NoError(t, err)
+					req, err2 = conn.ReadRequest()
+					require.NoError(t, err2)
 					require.Equal(t, base.Setup, req.Method)
 
 					var th headers.Transport
-					err = th.Unmarshal(req.Header["Transport"])
-					require.NoError(t, err)
+					err2 = th.Unmarshal(req.Header["Transport"])
+					require.NoError(t, err2)
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Transport": headers.Transport{
@@ -1749,28 +1760,28 @@ func TestClientPlayRedirect(t *testing.T) {
 							}.Marshal(),
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
-					req, err = conn.ReadRequest()
-					require.NoError(t, err)
+					req, err2 = conn.ReadRequest()
+					require.NoError(t, err2)
 					require.Equal(t, base.Play, req.Method)
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
 					time.Sleep(500 * time.Millisecond)
 
-					l1, err := net.ListenPacket("udp", "localhost:34556")
-					require.NoError(t, err)
+					l1, err2 := net.ListenPacket("udp", "localhost:34556")
+					require.NoError(t, err2)
 					defer l1.Close()
 
-					_, err = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+					_, err2 = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[0],
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}()
 			}()
 
@@ -1853,16 +1864,16 @@ func TestClientPlayPause(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -1872,15 +1883,15 @@ func TestClientPlayPause(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
 				medias := []*description.Media{testH264Media}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -1888,15 +1899,15 @@ func TestClientPlayPause(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -1911,59 +1922,59 @@ func TestClientPlayPause(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				writerTerminate, writerDone := writeFrames(&inTH, conn)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Pause, req.Method)
 
 				close(writerTerminate)
 				<-writerDone
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				req, err = conn.ReadRequest()
 				require.NoError(t, err)
 				require.Equal(t, base.Play, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				writerTerminate, writerDone = writeFrames(&inTH, conn)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
 				close(writerTerminate)
 				<-writerDone
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			firstFrame := int32(0)
@@ -2017,16 +2028,16 @@ func TestClientPlayRTCPReport(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -2036,15 +2047,15 @@ func TestClientPlayRTCPReport(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 
 		medias := []*description.Media{testH264Media}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -2052,25 +2063,25 @@ func TestClientPlayRTCPReport(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 
-		l1, err := net.ListenPacket("udp", "localhost:27556")
-		require.NoError(t, err)
+		l1, err2 := net.ListenPacket("udp", "localhost:27556")
+		require.NoError(t, err2)
 		defer l1.Close()
 
-		l2, err := net.ListenPacket("udp", "localhost:27557")
-		require.NoError(t, err)
+		l2, err2 := net.ListenPacket("udp", "localhost:27557")
+		require.NoError(t, err2)
 		defer l2.Close()
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": headers.Transport{
@@ -2081,23 +2092,23 @@ func TestClientPlayRTCPReport(t *testing.T) {
 				}.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
 		// skip firewall opening
 		buf := make([]byte, 2048)
-		_, _, err = l2.ReadFrom(buf)
-		require.NoError(t, err)
+		_, _, err2 = l2.ReadFrom(buf)
+		require.NoError(t, err2)
 
-		_, err = l1.WriteTo(mustMarshalPacketRTP(&rtp.Packet{
+		_, err2 = l1.WriteTo(mustMarshalPacketRTP(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         true,
@@ -2111,12 +2122,12 @@ func TestClientPlayRTCPReport(t *testing.T) {
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: inTH.ClientPorts[0],
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
 		// wait for the packet's SSRC to be saved
 		time.Sleep(200 * time.Millisecond)
 
-		_, err = l2.WriteTo(mustMarshalPacketRTCP(&rtcp.SenderReport{
+		_, err2 = l2.WriteTo(mustMarshalPacketRTCP(&rtcp.SenderReport{
 			SSRC:        753621,
 			NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 12, 15, 30, 0, 0, time.UTC)),
 			RTPTime:     54352,
@@ -2126,13 +2137,13 @@ func TestClientPlayRTCPReport(t *testing.T) {
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: inTH.ClientPorts[1],
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
 		buf = make([]byte, 2048)
-		n, _, err := l2.ReadFrom(buf)
-		require.NoError(t, err)
-		packets, err := rtcp.Unmarshal(buf[:n])
-		require.NoError(t, err)
+		n, _, err2 := l2.ReadFrom(buf)
+		require.NoError(t, err2)
+		packets, err2 := rtcp.Unmarshal(buf[:n])
+		require.NoError(t, err2)
 		rr, ok := packets[0].(*rtcp.ReceiverReport)
 		require.True(t, ok)
 		require.Equal(t, &rtcp.ReceiverReport{
@@ -2150,14 +2161,14 @@ func TestClientPlayRTCPReport(t *testing.T) {
 
 		close(reportReceived)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	c := Client{
@@ -2187,16 +2198,16 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -2206,15 +2217,15 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
 				medias := []*description.Media{testH264Media}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -2222,15 +2233,15 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2238,9 +2249,8 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 
 				var l1 net.PacketConn
 				if transport == "udp" || transport == "auto" {
-					var err error
-					l1, err = net.ListenPacket("udp", "localhost:34556")
-					require.NoError(t, err)
+					l1, err2 = net.ListenPacket("udp", "localhost:34556")
+					require.NoError(t, err2)
 					defer l1.Close()
 
 					th.Protocol = headers.TransportProtocolUDP
@@ -2251,40 +2261,40 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				if transport == "udp" || transport == "auto" {
 					// write a packet to skip the protocol autodetection feature
-					_, err = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+					_, err2 = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[0],
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			c := Client{
@@ -2330,16 +2340,16 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -2349,10 +2359,10 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 
 		medias := []*description.Media{testH264Media}
@@ -2365,15 +2375,15 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 
 		th := headers.Transport{
 			Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2381,43 +2391,43 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 		th.Protocol = headers.TransportProtocolTCP
 		th.InterleavedIDs = inTH.InterleavedIDs
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 6,
 			Payload: testRTPPacketMarshaled,
 		}, make([]byte, 1024))
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 0,
 			Payload: testRTPPacketMarshaled,
 		}, make([]byte, 1024))
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	recv := make(chan struct{})
@@ -2446,16 +2456,16 @@ func TestClientPlaySeek(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -2465,15 +2475,15 @@ func TestClientPlaySeek(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 
 		medias := []*description.Media{testH264Media}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -2481,15 +2491,15 @@ func TestClientPlaySeek(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 
 		th := headers.Transport{
 			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2497,66 +2507,66 @@ func TestClientPlaySeek(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 
 		var ra headers.Range
-		err = ra.Unmarshal(req.Header["Range"])
-		require.NoError(t, err)
+		err2 = ra.Unmarshal(req.Header["Range"])
+		require.NoError(t, err2)
 		require.Equal(t, headers.Range{
 			Value: &headers.RangeNPT{
 				Start: 5500 * time.Millisecond,
 			},
 		}, ra)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Pause, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 
-		err = ra.Unmarshal(req.Header["Range"])
-		require.NoError(t, err)
+		err2 = ra.Unmarshal(req.Header["Range"])
+		require.NoError(t, err2)
 		require.Equal(t, headers.Range{
 			Value: &headers.RangeNPT{
 				Start: 6400 * time.Millisecond,
 			},
 		}, ra)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	c := Client{
@@ -2603,16 +2613,16 @@ func TestClientPlayKeepalive(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"CSeq": req.Header["CSeq"],
@@ -2623,15 +2633,15 @@ func TestClientPlayKeepalive(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
 				medias := []*description.Media{testH264Media}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"CSeq":         req.Header["CSeq"],
@@ -2640,17 +2650,17 @@ func TestClientPlayKeepalive(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"CSeq": req.Header["CSeq"],
@@ -2665,25 +2675,25 @@ func TestClientPlayKeepalive(t *testing.T) {
 						}.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"CSeq": req.Header["CSeq"],
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				recv := make(chan struct{})
 				go func() {
 					defer close(recv)
-					req, err = conn.ReadRequest()
-					require.NoError(t, err)
+					req, err2 = conn.ReadRequest()
+					require.NoError(t, err2)
 					require.Equal(t, base.Options, req.Method)
 				}()
 
@@ -2694,33 +2704,33 @@ func TestClientPlayKeepalive(t *testing.T) {
 				}
 
 				if ca == "response before frame" {
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"CSeq": req.Header["CSeq"],
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 
-				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 0,
 					Payload: testRTPPacketMarshaled,
 				}, make([]byte, 1024))
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				if ca == "response after frame" {
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 
-				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 0,
 					Payload: testRTPPacketMarshaled,
 				}, make([]byte, 1024))
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			done1 := make(chan struct{})
@@ -2774,17 +2784,17 @@ func TestClientPlayDifferentSource(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -2794,16 +2804,16 @@ func TestClientPlayDifferentSource(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value"), req.URL)
 
 		medias := []*description.Media{testH264Media}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -2811,16 +2821,16 @@ func TestClientPlayDifferentSource(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"+medias[0].Control), req.URL)
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 
 		th := headers.Transport{
 			Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2830,48 +2840,48 @@ func TestClientPlayDifferentSource(t *testing.T) {
 			Source:      ipPtr(net.ParseIP("127.0.1.1")),
 		}
 
-		l1, err := net.ListenPacket("udp", "127.0.1.1:34556")
-		require.NoError(t, err)
+		l1, err2 := net.ListenPacket("udp", "127.0.1.1:34556")
+		require.NoError(t, err2)
 		defer l1.Close()
 
-		l2, err := net.ListenPacket("udp", "127.0.1.1:34557")
-		require.NoError(t, err)
+		l2, err2 := net.ListenPacket("udp", "127.0.1.1:34557")
+		require.NoError(t, err2)
 		defer l2.Close()
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
 		// server -> client (RTP)
-		_, err = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+		_, err2 = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: th.ClientPorts[0],
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/test/stream?param=value/"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	c := Client{
@@ -2919,16 +2929,16 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -2938,10 +2948,10 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
 				medias := []*description.Media{{
@@ -2952,7 +2962,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 					}},
 				}}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Content-Type": base.HeaderValue{"application/sdp"},
@@ -2960,15 +2970,15 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 					},
 					Body: mediasToSDP(medias),
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2987,66 +2997,66 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 				var l2 net.PacketConn
 
 				if ca.proto == "udp" {
-					l1, err = net.ListenPacket("udp", "127.0.0.1:34556")
-					require.NoError(t, err)
+					l1, err2 = net.ListenPacket("udp", "127.0.0.1:34556")
+					require.NoError(t, err2)
 					defer l1.Close()
 
-					l2, err = net.ListenPacket("udp", "127.0.0.1:34557")
-					require.NoError(t, err)
+					l2, err2 = net.ListenPacket("udp", "127.0.0.1:34557")
+					require.NoError(t, err2)
 					defer l2.Close()
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				var writeRTP func(buf []byte)
 				var writeRTCP func(byts []byte)
 
 				if ca.proto == "udp" { //nolint:dupl
 					writeRTP = func(byts []byte) {
-						_, err = l1.WriteTo(byts, &net.UDPAddr{
+						_, err2 = l1.WriteTo(byts, &net.UDPAddr{
 							IP:   net.ParseIP("127.0.0.1"),
 							Port: th.ClientPorts[0],
 						})
-						require.NoError(t, err)
+						require.NoError(t, err2)
 					}
 
 					writeRTCP = func(byts []byte) {
-						_, err = l2.WriteTo(byts, &net.UDPAddr{
+						_, err2 = l2.WriteTo(byts, &net.UDPAddr{
 							IP:   net.ParseIP("127.0.0.1"),
 							Port: th.ClientPorts[1],
 						})
-						require.NoError(t, err)
+						require.NoError(t, err2)
 					}
 				} else {
 					writeRTP = func(byts []byte) {
-						err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+						err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 							Channel: 0,
 							Payload: byts,
 						}, make([]byte, 2048))
-						require.NoError(t, err)
+						require.NoError(t, err2)
 					}
 
 					writeRTCP = func(byts []byte) {
-						err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+						err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 							Channel: 1,
 							Payload: byts,
 						}, make([]byte, 2048))
-						require.NoError(t, err)
+						require.NoError(t, err2)
 					}
 				}
 
@@ -3100,21 +3110,21 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 					}))
 
 				case ca.proto == "udp" && ca.name == "rtp too big":
-					_, err := l1.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+					_, err2 = l1.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[0],
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			c := Client{
@@ -3179,16 +3189,16 @@ func TestClientPlayPacketNTP(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -3198,15 +3208,15 @@ func TestClientPlayPacketNTP(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 
 		medias := []*description.Media{testH264Media}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -3214,25 +3224,25 @@ func TestClientPlayPacketNTP(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 
-		l1, err := net.ListenPacket("udp", "localhost:27556")
-		require.NoError(t, err)
+		l1, err2 := net.ListenPacket("udp", "localhost:27556")
+		require.NoError(t, err2)
 		defer l1.Close()
 
-		l2, err := net.ListenPacket("udp", "localhost:27557")
-		require.NoError(t, err)
+		l2, err2 := net.ListenPacket("udp", "localhost:27557")
+		require.NoError(t, err2)
 		defer l2.Close()
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": headers.Transport{
@@ -3243,23 +3253,23 @@ func TestClientPlayPacketNTP(t *testing.T) {
 				}.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
 		// skip firewall opening
 		buf := make([]byte, 2048)
-		_, _, err = l2.ReadFrom(buf)
-		require.NoError(t, err)
+		_, _, err2 = l2.ReadFrom(buf)
+		require.NoError(t, err2)
 
-		_, err = l1.WriteTo(mustMarshalPacketRTP(&rtp.Packet{
+		_, err2 = l1.WriteTo(mustMarshalPacketRTP(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         true,
@@ -3273,12 +3283,12 @@ func TestClientPlayPacketNTP(t *testing.T) {
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: inTH.ClientPorts[0],
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
 		// wait for the packet's SSRC to be saved
 		time.Sleep(100 * time.Millisecond)
 
-		_, err = l2.WriteTo(mustMarshalPacketRTCP(&rtcp.SenderReport{
+		_, err2 = l2.WriteTo(mustMarshalPacketRTCP(&rtcp.SenderReport{
 			SSRC:        753621,
 			NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 12, 15, 30, 0, 0, time.UTC)),
 			RTPTime:     54352,
@@ -3288,11 +3298,11 @@ func TestClientPlayPacketNTP(t *testing.T) {
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: inTH.ClientPorts[1],
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
 		time.Sleep(100 * time.Millisecond)
 
-		_, err = l1.WriteTo(mustMarshalPacketRTP(&rtp.Packet{
+		_, err2 = l1.WriteTo(mustMarshalPacketRTP(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         true,
@@ -3306,16 +3316,16 @@ func TestClientPlayPacketNTP(t *testing.T) {
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: inTH.ClientPorts[0],
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	c := Client{}
@@ -3351,16 +3361,16 @@ func TestClientPlayBackChannel(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -3370,14 +3380,14 @@ func TestClientPlayBackChannel(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, base.HeaderValue{"www.onvif.org/ver20/backchannel"}, req.Header["Require"])
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -3397,16 +3407,16 @@ func TestClientPlayBackChannel(t *testing.T) {
 				},
 			}),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, base.HeaderValue(nil), req.Header["Require"])
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 
 		th := headers.Transport{
 			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
@@ -3414,21 +3424,21 @@ func TestClientPlayBackChannel(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 		require.Equal(t, base.HeaderValue{"www.onvif.org/ver20/backchannel"}, req.Header["Require"])
 
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 
 		th = headers.Transport{
 			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
@@ -3436,34 +3446,34 @@ func TestClientPlayBackChannel(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Play, req.Method)
 		require.Equal(t, base.HeaderValue{"www.onvif.org/ver20/backchannel"}, req.Header["Require"])
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		f, err := conn.ReadInterleavedFrame()
-		require.NoError(t, err)
+		f, err2 := conn.ReadInterleavedFrame()
+		require.NoError(t, err2)
 		require.Equal(t, 2, f.Channel)
 
-		f, err = conn.ReadInterleavedFrame()
-		require.NoError(t, err)
+		f, err2 = conn.ReadInterleavedFrame()
+		require.NoError(t, err2)
 		require.Equal(t, 3, f.Channel)
 
-		packets, err := rtcp.Unmarshal(f.Payload)
-		require.NoError(t, err)
+		packets, err2 := rtcp.Unmarshal(f.Payload)
+		require.NoError(t, err2)
 
 		sr, ok := packets[0].(*rtcp.SenderReport)
 		require.Equal(t, true, ok)
@@ -3471,21 +3481,21 @@ func TestClientPlayBackChannel(t *testing.T) {
 		require.Equal(t, uint32(1), sr.PacketCount)
 		require.Equal(t, uint32(4), sr.OctetCount)
 
-		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 0,
 			Payload: testRTPPacketMarshaled,
 		}, make([]byte, 1024))
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 		require.Equal(t, base.HeaderValue{"www.onvif.org/ver20/backchannel"}, req.Header["Require"])
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	c := Client{

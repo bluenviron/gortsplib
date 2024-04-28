@@ -45,7 +45,7 @@ func (h *Header) unmarshal(br *bufio.Reader) error {
 		}
 
 		if byt == '\r' {
-			err := readByteEqual(br, '\n')
+			err = readByteEqual(br, '\n')
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ func (h *Header) unmarshal(br *bufio.Reader) error {
 		// https://tools.ietf.org/html/rfc2616
 		// The field value MAY be preceded by any amount of spaces
 		for {
-			byt, err := br.ReadByte()
+			byt, err = br.ReadByte()
 			if err != nil {
 				return err
 			}

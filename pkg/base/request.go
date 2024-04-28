@@ -65,7 +65,8 @@ func (req *Request) Unmarshal(br *bufio.Reader) error {
 	rawURL := string(byts[:len(byts)-1])
 
 	if rawURL != "*" {
-		ur, err := ParseURL(rawURL)
+		var ur *URL
+		ur, err = ParseURL(rawURL)
 		if err != nil {
 			return fmt.Errorf("invalid URL (%v)", rawURL)
 		}

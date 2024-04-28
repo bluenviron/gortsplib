@@ -61,12 +61,12 @@ func TestClientTLSSetServerName(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 
-		cert, err := tls.X509KeyPair(serverCert, serverKey)
-		require.NoError(t, err)
+		cert, err2 := tls.X509KeyPair(serverCert, serverKey)
+		require.NoError(t, err2)
 
 		tnconn := tls.Server(nconn, &tls.Config{
 			Certificates:       []tls.Certificate{cert},
@@ -77,8 +77,8 @@ func TestClientTLSSetServerName(t *testing.T) {
 			},
 		})
 
-		err = tnconn.Handshake()
-		require.EqualError(t, err, "remote error: tls: bad certificate")
+		err2 = tnconn.Handshake()
+		require.EqualError(t, err2, "remote error: tls: bad certificate")
 	}()
 
 	u, err := base.ParseURL("rtsps://localhost:8554/stream")
@@ -144,13 +144,13 @@ func TestClientCloseDuringRequest(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
 		close(requestReceived)
@@ -188,16 +188,16 @@ func TestClientSession(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		conn := conn.NewConn(nconn)
 		defer nconn.Close()
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -206,16 +206,16 @@ func TestClientSession(t *testing.T) {
 				"Session": base.HeaderValue{"123456"},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, base.HeaderValue{"123456"}, req.Header["Session"])
 
 		medias := []*description.Media{testH264Media}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
@@ -223,7 +223,7 @@ func TestClientSession(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	u, err := base.ParseURL("rtsp://localhost:8554/stream")
@@ -249,16 +249,16 @@ func TestClientAuth(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		conn := conn.NewConn(nconn)
 		defer nconn.Close()
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -266,40 +266,40 @@ func TestClientAuth(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 
-		nonce, err := auth.GenerateNonce()
-		require.NoError(t, err)
+		nonce, err2 := auth.GenerateNonce()
+		require.NoError(t, err2)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusUnauthorized,
 			Header: base.Header{
 				"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 
-		err = auth.Validate(req, "myuser", "mypass", nil, nil, "IPCAM", nonce)
-		require.NoError(t, err)
+		err2 = auth.Validate(req, "myuser", "mypass", nil, nil, "IPCAM", nonce)
+		require.NoError(t, err2)
 
 		medias := []*description.Media{testH264Media}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp"},
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/stream")
@@ -330,18 +330,18 @@ func TestClientCSeq(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
 				switch ca {
 				case "different cseq":
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Public": base.HeaderValue{strings.Join([]string{
@@ -350,9 +350,9 @@ func TestClientCSeq(t *testing.T) {
 							"CSeq": base.HeaderValue{"150"},
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Public": base.HeaderValue{strings.Join([]string{
@@ -361,10 +361,10 @@ func TestClientCSeq(t *testing.T) {
 							"CSeq": req.Header["CSeq"],
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
 				case "space at the end":
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Public": base.HeaderValue{strings.Join([]string{
@@ -373,7 +373,7 @@ func TestClientCSeq(t *testing.T) {
 							"CSeq": base.HeaderValue{req.Header["CSeq"][0] + " "},
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 			}()
 
@@ -402,16 +402,16 @@ func TestClientDescribeCharset(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -419,16 +419,16 @@ func TestClientDescribeCharset(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
 		medias := []*description.Media{testH264Media}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
@@ -436,7 +436,7 @@ func TestClientDescribeCharset(t *testing.T) {
 			},
 			Body: mediasToSDP(medias),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
@@ -464,17 +464,17 @@ func TestClientReplyToServerRequest(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				conn := conn.NewConn(nconn)
 				defer nconn.Close()
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
 				if ca == "after response" {
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Public": base.HeaderValue{strings.Join([]string{
@@ -482,37 +482,38 @@ func TestClientReplyToServerRequest(t *testing.T) {
 							}, ", ")},
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
-					err = conn.WriteRequest(&base.Request{
+					err2 = conn.WriteRequest(&base.Request{
 						Method: base.Options,
 						URL:    nil,
 						Header: base.Header{
 							"CSeq": base.HeaderValue{"4"},
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
-					res, err := conn.ReadResponse()
-					require.NoError(t, err)
+					var res *base.Response
+					res, err2 = conn.ReadResponse()
+					require.NoError(t, err2)
 					require.Equal(t, base.StatusOK, res.StatusCode)
 					require.Equal(t, "4", res.Header["CSeq"][0])
 				} else {
-					err = conn.WriteRequest(&base.Request{
+					err2 = conn.WriteRequest(&base.Request{
 						Method: base.Options,
 						URL:    nil,
 						Header: base.Header{
 							"CSeq": base.HeaderValue{"4"},
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
-					res, err := conn.ReadResponse()
-					require.NoError(t, err)
+					res, err2 := conn.ReadResponse()
+					require.NoError(t, err2)
 					require.Equal(t, base.StatusOK, res.StatusCode)
 					require.Equal(t, "4", res.Header["CSeq"][0])
 
-					err = conn.WriteResponse(&base.Response{
+					err2 = conn.WriteResponse(&base.Response{
 						StatusCode: base.StatusOK,
 						Header: base.Header{
 							"Public": base.HeaderValue{strings.Join([]string{
@@ -520,7 +521,7 @@ func TestClientReplyToServerRequest(t *testing.T) {
 							}, ", ")},
 						},
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 			}()
 

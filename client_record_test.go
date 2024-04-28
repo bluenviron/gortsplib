@@ -140,7 +140,8 @@ func TestClientRecordSerial(t *testing.T) {
 			if transport == "tls" {
 				scheme = "rtsps"
 
-				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				var cert tls.Certificate
+				cert, err = tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 
 				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
@@ -153,17 +154,17 @@ func TestClientRecordSerial(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -173,41 +174,41 @@ func TestClientRecordSerial(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Announce, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
 				var desc sdp.SessionDescription
 				err = desc.Unmarshal(req.Body)
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL(
 					scheme+"://localhost:8554/teststream/"+relativeControlAttribute(desc.MediaDescriptions[0])), req.URL)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				var l1 net.PacketConn
 				var l2 net.PacketConn
 				if transport == "udp" {
-					l1, err = net.ListenPacket("udp", "localhost:34556")
-					require.NoError(t, err)
+					l1, err2 = net.ListenPacket("udp", "localhost:34556")
+					require.NoError(t, err2)
 					defer l1.Close()
 
-					l2, err = net.ListenPacket("udp", "localhost:34557")
-					require.NoError(t, err)
+					l2, err2 = net.ListenPacket("udp", "localhost:34557")
+					require.NoError(t, err2)
 					defer l2.Close()
 				}
 
@@ -224,69 +225,71 @@ func TestClientRecordSerial(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Record, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				// client -> server (RTP)
 				if transport == "udp" {
 					buf := make([]byte, 2048)
-					n, _, err := l1.ReadFrom(buf)
-					require.NoError(t, err)
+					var n int
+					n, _, err2 = l1.ReadFrom(buf)
+					require.NoError(t, err2)
 
 					var pkt rtp.Packet
-					err = pkt.Unmarshal(buf[:n])
-					require.NoError(t, err)
+					err2 = pkt.Unmarshal(buf[:n])
+					require.NoError(t, err2)
 					require.Equal(t, testRTPPacket, pkt)
 				} else {
-					f, err := conn.ReadInterleavedFrame()
-					require.NoError(t, err)
+					var f *base.InterleavedFrame
+					f, err2 = conn.ReadInterleavedFrame()
+					require.NoError(t, err2)
 					require.Equal(t, 0, f.Channel)
 
 					var pkt rtp.Packet
-					err = pkt.Unmarshal(f.Payload)
-					require.NoError(t, err)
+					err2 = pkt.Unmarshal(f.Payload)
+					require.NoError(t, err2)
 					require.Equal(t, testRTPPacket, pkt)
 				}
 
 				// server -> client (RTCP)
 				if transport == "udp" {
-					_, err := l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+					_, err2 = l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				} else {
-					err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 						Channel: 1,
 						Payload: testRTCPPacketMarshaled,
 					}, make([]byte, 1024))
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			recvDone := make(chan struct{})
@@ -349,7 +352,8 @@ func TestClientRecordParallel(t *testing.T) {
 			if transport == "tls" {
 				scheme = "rtsps"
 
-				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				var cert tls.Certificate
+				cert, err = tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 
 				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
@@ -362,16 +366,16 @@ func TestClientRecordParallel(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -381,24 +385,24 @@ func TestClientRecordParallel(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Announce, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -413,31 +417,31 @@ func TestClientRecordParallel(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Record, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = readRequestIgnoreFrames(conn)
-				require.NoError(t, err)
+				req, err2 = readRequestIgnoreFrames(conn)
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			c := Client{
@@ -498,16 +502,16 @@ func TestClientRecordPauseSerial(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -518,24 +522,24 @@ func TestClientRecordPauseSerial(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Announce, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -550,49 +554,49 @@ func TestClientRecordPauseSerial(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Record, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = readRequestIgnoreFrames(conn)
-				require.NoError(t, err)
+				req, err2 = readRequestIgnoreFrames(conn)
+				require.NoError(t, err2)
 				require.Equal(t, base.Pause, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Record, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = readRequestIgnoreFrames(conn)
-				require.NoError(t, err)
+				req, err2 = readRequestIgnoreFrames(conn)
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			c := Client{
@@ -643,16 +647,16 @@ func TestClientRecordPauseParallel(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -663,24 +667,24 @@ func TestClientRecordPauseParallel(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Announce, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -695,31 +699,31 @@ func TestClientRecordPauseParallel(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Record, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = readRequestIgnoreFrames(conn)
-				require.NoError(t, err)
+				req, err2 = readRequestIgnoreFrames(conn)
+				require.NoError(t, err2)
 				require.Equal(t, base.Pause, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			c := Client{
@@ -747,8 +751,8 @@ func TestClientRecordPauseParallel(t *testing.T) {
 				defer t.Stop()
 
 				for range t.C {
-					err := c.WritePacketRTP(medi, &testRTPPacket)
-					if err != nil {
+					err2 := c.WritePacketRTP(medi, &testRTPPacket)
+					if err2 != nil {
 						return
 					}
 				}
@@ -777,17 +781,17 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -797,34 +801,34 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Announce, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusUnsupportedTransport,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 		require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
 
 		th := headers.Transport{
@@ -833,42 +837,42 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 			InterleavedIDs: &[2]int{0, 1},
 		}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Record, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		f, err := conn.ReadInterleavedFrame()
-		require.NoError(t, err)
+		f, err2 := conn.ReadInterleavedFrame()
+		require.NoError(t, err2)
 		require.Equal(t, 0, f.Channel)
 		var pkt rtp.Packet
-		err = pkt.Unmarshal(f.Payload)
-		require.NoError(t, err)
+		err2 = pkt.Unmarshal(f.Payload)
+		require.NoError(t, err2)
 		require.Equal(t, testRTPPacket, pkt)
 
 		close(recv)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	c := Client{}
@@ -908,16 +912,16 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -927,24 +931,24 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Announce, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -963,70 +967,70 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 				var l2 net.PacketConn
 
 				if ca.proto == "udp" {
-					l1, err = net.ListenPacket("udp", "127.0.0.1:34556")
-					require.NoError(t, err)
+					l1, err2 = net.ListenPacket("udp", "127.0.0.1:34556")
+					require.NoError(t, err2)
 					defer l1.Close()
 
-					l2, err = net.ListenPacket("udp", "127.0.0.1:34557")
-					require.NoError(t, err)
+					l2, err2 = net.ListenPacket("udp", "127.0.0.1:34557")
+					require.NoError(t, err2)
 					defer l2.Close()
 				}
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Record, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				switch { //nolint:dupl
 				case ca.proto == "udp" && ca.name == "rtcp invalid":
-					_, err := l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+					_, err2 = l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
 				case ca.proto == "udp" && ca.name == "rtcp too big":
-					_, err := l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+					_, err2 = l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: th.ClientPorts[1],
 					})
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
 				case ca.proto == "tcp" && ca.name == "rtcp invalid":
-					err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 						Channel: 1,
 						Payload: []byte{0x01, 0x02},
 					}, make([]byte, 2048))
-					require.NoError(t, err)
+					require.NoError(t, err2)
 
 				case ca.proto == "tcp" && ca.name == "rtcp too big":
-					err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 						Channel: 1,
 						Payload: bytes.Repeat([]byte{0x01, 0x02}, 2000/2),
 					}, make([]byte, 2048))
-					require.NoError(t, err)
+					require.NoError(t, err2)
 				}
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			c := Client{
@@ -1078,16 +1082,16 @@ func TestClientRecordRTCPReport(t *testing.T) {
 			go func() {
 				defer close(serverDone)
 
-				nconn, err := l.Accept()
-				require.NoError(t, err)
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
 				defer nconn.Close()
 				conn := conn.NewConn(nconn)
 
-				req, err := conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Options, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Public": base.HeaderValue{strings.Join([]string{
@@ -1097,24 +1101,24 @@ func TestClientRecordRTCPReport(t *testing.T) {
 						}, ", ")},
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Announce, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 
 				var inTH headers.Transport
-				err = inTH.Unmarshal(req.Header["Transport"])
-				require.NoError(t, err)
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
 
 				th := headers.Transport{
 					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -1129,52 +1133,54 @@ func TestClientRecordRTCPReport(t *testing.T) {
 					th.InterleavedIDs = inTH.InterleavedIDs
 				}
 
-				l1, err := net.ListenPacket("udp", "localhost:34556")
-				require.NoError(t, err)
+				l1, err2 := net.ListenPacket("udp", "localhost:34556")
+				require.NoError(t, err2)
 				defer l1.Close()
 
-				l2, err := net.ListenPacket("udp", "localhost:34557")
-				require.NoError(t, err)
+				l2, err2 := net.ListenPacket("udp", "localhost:34557")
+				require.NoError(t, err2)
 				defer l2.Close()
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
 					},
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Record, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 
 				var buf []byte
 
 				if ca == "udp" {
 					buf = make([]byte, 2048)
-					n, _, err := l2.ReadFrom(buf)
-					require.NoError(t, err)
+					var n int
+					n, _, err2 = l2.ReadFrom(buf)
+					require.NoError(t, err2)
 					buf = buf[:n]
 				} else {
 					for i := 0; i < 2; i++ {
-						_, err := conn.ReadInterleavedFrame()
-						require.NoError(t, err)
+						_, err2 = conn.ReadInterleavedFrame()
+						require.NoError(t, err2)
 					}
 
-					f, err := conn.ReadInterleavedFrame()
-					require.NoError(t, err)
+					var f *base.InterleavedFrame
+					f, err2 = conn.ReadInterleavedFrame()
+					require.NoError(t, err2)
 					require.Equal(t, 1, f.Channel)
 					buf = f.Payload
 				}
 
-				packets, err := rtcp.Unmarshal(buf)
-				require.NoError(t, err)
+				packets, err2 := rtcp.Unmarshal(buf)
+				require.NoError(t, err2)
 				require.Equal(t, &rtcp.SenderReport{
 					SSRC:        0x38F27A2F,
 					NTPTime:     ntpTimeGoToRTCP(time.Date(1996, 2, 13, 14, 33, 5, 0, time.UTC)),
@@ -1185,14 +1191,14 @@ func TestClientRecordRTCPReport(t *testing.T) {
 
 				close(reportReceived)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Teardown, req.Method)
 
-				err = conn.WriteResponse(&base.Response{
+				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
-				require.NoError(t, err)
+				require.NoError(t, err2)
 			}()
 
 			var curTime time.Time
@@ -1259,16 +1265,16 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 	go func() {
 		defer close(serverDone)
 
-		nconn, err := l.Accept()
-		require.NoError(t, err)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		req, err := conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Options, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Public": base.HeaderValue{strings.Join([]string{
@@ -1278,24 +1284,24 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 				}, ", ")},
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Announce, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
 
 		var inTH headers.Transport
-		err = inTH.Unmarshal(req.Header["Transport"])
-		require.NoError(t, err)
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
 
 		th := headers.Transport{
 			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
@@ -1303,43 +1309,43 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
 			},
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Record, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 0,
 			Payload: testRTPPacketMarshaled,
 		}, make([]byte, 1024))
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 1,
 			Payload: testRTCPPacketMarshaled,
 		}, make([]byte, 1024))
-		require.NoError(t, err)
+		require.NoError(t, err2)
 
-		req, err = conn.ReadRequest()
-		require.NoError(t, err)
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
 		require.Equal(t, base.Teardown, req.Method)
 
-		err = conn.WriteResponse(&base.Response{
+		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err2)
 	}()
 
 	rtcpReceived := make(chan struct{})

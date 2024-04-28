@@ -593,7 +593,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		for _, medi := range desc.Medias {
-			mediURL, err := medi.URL(req.URL)
+			var mediURL *base.URL
+			mediURL, err = medi.URL(req.URL)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
@@ -662,12 +663,9 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, nil
 		}
 
-		var path string
-		var query string
 		var trackID string
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
-			var err error
 			path, query, trackID, err = serverParseURLForPlay(req.URL)
 			if err != nil {
 				return &base.Response{
@@ -794,7 +792,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		ss.setuppedTransport = &transport
 
 		if ss.state == ServerSessionStateInitial {
-			err := stream.readerAdd(ss,
+			err = stream.readerAdd(ss,
 				inTH.ClientPorts,
 			)
 			if err != nil {

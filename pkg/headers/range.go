@@ -52,7 +52,7 @@ func (t *RangeSMPTETime) unmarshal(s string) error {
 	t.Time = time.Duration(seconds+mins*60+hours*3600) * time.Second
 
 	if len(parts) == 4 {
-		parts := strings.Split(parts[3], ".")
+		parts = strings.Split(parts[3], ".")
 		if len(parts) == 2 {
 			tmp, err := strconv.ParseUint(parts[0], 10, 64)
 			if err != nil {

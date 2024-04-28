@@ -189,7 +189,7 @@ func TestBufferIsFull(t *testing.T) {
 	var expected []*rtp.Packet
 
 	for i := 0; i < 64-toMiss; i++ {
-		out, missing := r.Process(&rtp.Packet{
+		out, missing = r.Process(&rtp.Packet{
 			Header: rtp.Header{
 				SequenceNumber: sn + uint16(toMiss),
 			},
