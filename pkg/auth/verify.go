@@ -61,7 +61,7 @@ const (
 	VerifyMethodDigestSHA256
 )
 
-// Verify validates a request sent by a client.
+// Verify verifies a request sent by a client.
 func Verify(
 	req *base.Request,
 	user string,
@@ -119,7 +119,7 @@ func Verify(
 		}
 
 	case auth.Method == headers.AuthMethodBasic && contains(methods, VerifyMethodBasic):
-		if auth.BasicUser != user {
+		if auth.Username != user {
 			return fmt.Errorf("authentication failed")
 		}
 

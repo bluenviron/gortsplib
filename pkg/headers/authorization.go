@@ -13,11 +13,16 @@ type Authorization struct {
 	// authentication method
 	Method AuthMethod
 
+	// username
+	Username string
+
 	//
 	// Basic authentication fields
 	//
 
 	// user
+	//
+	// Deprecated: replaced by Username.
 	BasicUser string
 
 	// password
@@ -26,9 +31,6 @@ type Authorization struct {
 	//
 	// Digest authentication fields
 	//
-
-	// username
-	Username string
 
 	// realm
 	Realm string
@@ -89,7 +91,8 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 			return fmt.Errorf("invalid value")
 		}
 
-		h.BasicUser, h.BasicPass = tmp2[0], tmp2[1]
+		h.Username, h.BasicPass = tmp2[0], tmp2[1]
+		h.BasicUser = h.Username
 	} else { // digest
 		kvs, err := keyValParse(v0, ',')
 		if err != nil {
@@ -149,8 +152,11 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 // Marshal encodes an Authorization header.
 func (h Authorization) Marshal() base.HeaderValue {
 	if h.Method == AuthMethodBasic {
+		if h.BasicUser != "" {
+			h.Username = h.BasicUser
+		}
 		return base.HeaderValue{"Basic " +
-			base64.StdEncoding.EncodeToString([]byte(h.BasicUser+":"+h.BasicPass))}
+			base64.StdEncoding.EncodeToString([]byte(h.Username+":"+h.BasicPass))}
 	}
 
 	ret := "Digest " +

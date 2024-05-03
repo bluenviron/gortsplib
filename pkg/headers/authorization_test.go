@@ -24,6 +24,7 @@ var casesAuthorization = []struct {
 		base.HeaderValue{"Basic bXl1c2VyOm15cGFzcw=="},
 		Authorization{
 			Method:    AuthMethodBasic,
+			Username:  "myuser",
 			BasicUser: "myuser",
 			BasicPass: "mypass",
 		},

@@ -10,10 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
@@ -46,6 +48,12 @@ func serverSideDescription(d *description.Session) *description.Session {
 	return out
 }
 
+func credentialsProvided(req *base.Request) bool {
+	var auth headers.Authorization
+	err := auth.Unmarshal(req.Header["Authorization"])
+	return err == nil && auth.Username != ""
+}
+
 type readReq struct {
 	req *base.Request
 	res chan error
@@ -64,6 +72,7 @@ type ServerConn struct {
 	conn       *conn.Conn
 	session    *ServerSession
 	reader     *serverConnReader
+	authNonce  string
 
 	// in
 	chRemoveSession chan *ServerSession
@@ -135,6 +144,48 @@ func (sc *ServerConn) Stats() *StatsConn {
 		BytesReceived: sc.bc.BytesReceived(),
 		BytesSent:     sc.bc.BytesSent(),
 	}
+}
+
+// VerifyCredentials verifies credentials provided by the user.
+func (sc *ServerConn) VerifyCredentials(
+	req *base.Request,
+	expectedUser string,
+	expectedPass string,
+) bool {
+	// we do not support using an empty string as user
+	// since it interferes with credentialsProvided()
+	if expectedUser == "" {
+		return false
+	}
+
+	if sc.authNonce == "" {
+		n, err := auth.GenerateNonce()
+		if err != nil {
+			return false
+		}
+		sc.authNonce = n
+	}
+
+	err := auth.Verify(
+		req,
+		expectedUser,
+		expectedPass,
+		sc.s.AuthMethods,
+		serverAuthRealm,
+		sc.authNonce)
+
+	return (err == nil)
+}
+
+func (sc *ServerConn) handleAuthError(req *base.Request, res *base.Response) error {
+	// if credentials have not been provided, clear error and send the WWW-Authenticate header.
+	if !credentialsProvided(req) {
+		res.Header["WWW-Authenticate"] = auth.GenerateWWWAuthenticate(sc.s.AuthMethods, serverAuthRealm, sc.authNonce)
+		return nil
+	}
+
+	// if credentials have been provided (and are wrong), close the connection.
+	return liberrors.ErrServerAuth{}
 }
 
 func (sc *ServerConn) ip() net.IP {
@@ -386,14 +437,20 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 		res.Header = make(base.Header)
 	}
 
+	// handle auth errors
+	var eerr1 liberrors.ErrServerAuth
+	if errors.As(err, &eerr1) {
+		err = sc.handleAuthError(req, res)
+	}
+
 	// add cseq
-	var eerr liberrors.ErrServerCSeqMissing
-	if !errors.As(err, &eerr) {
+	var eerr2 liberrors.ErrServerCSeqMissing
+	if !errors.As(err, &eerr2) {
 		res.Header["CSeq"] = req.Header["CSeq"]
 	}
 
 	// add server
-	res.Header["Server"] = base.HeaderValue{"gortsplib"}
+	res.Header["Server"] = base.HeaderValue{serverHeader}
 
 	if h, ok := sc.s.Handler.(ServerHandlerOnResponse); ok {
 		h.OnResponse(sc, res)

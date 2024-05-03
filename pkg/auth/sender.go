@@ -53,11 +53,11 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 		Method: se.authHeader.Method,
 	}
 
+	h.Username = se.user
+
 	if se.authHeader.Method == headers.AuthMethodBasic {
-		h.BasicUser = se.user
 		h.BasicPass = se.pass
 	} else { // digest
-		h.Username = se.user
 		h.Realm = se.authHeader.Realm
 		h.Nonce = se.authHeader.Nonce
 		h.URI = urStr

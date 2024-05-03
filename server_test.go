@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
+	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -1035,20 +1037,87 @@ func TestServerSessionTeardown(t *testing.T) {
 }
 
 func TestServerAuth(t *testing.T) {
-	nonce, err := auth.GenerateNonce()
-	require.NoError(t, err)
+	for _, method := range []string{"all", "basic", "digest_md5", "digest_sha256"} {
+		t.Run(method, func(t *testing.T) {
+			s := &Server{
+				Handler: &testServerHandler{
+					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+						ok := ctx.Conn.VerifyCredentials(ctx.Request, "myuser", "mypass")
+						if !ok {
+							return &base.Response{
+								StatusCode: base.StatusUnauthorized,
+							}, liberrors.ErrServerAuth{}
+						}
 
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+				},
+				RTSPAddress: "localhost:8554",
+				AuthMethods: func() []auth.VerifyMethod {
+					switch method {
+					case "basic":
+						return []auth.VerifyMethod{auth.VerifyMethodBasic}
+
+					case "digest_md5":
+						return []auth.VerifyMethod{auth.VerifyMethodDigestMD5}
+
+					case "digest_sha256":
+						return []auth.VerifyMethod{auth.VerifyMethodDigestSHA256}
+					}
+					return nil
+				}(),
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			nconn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn.Close()
+			conn := conn.NewConn(nconn)
+
+			medias := []*description.Media{testH264Media}
+
+			req := base.Request{
+				Method: base.Announce,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: mediasToSDP(medias),
+			}
+
+			res, err := writeReqReadRes(conn, req)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusUnauthorized, res.StatusCode)
+
+			sender, err := auth.NewSender(res.Header["WWW-Authenticate"], "myuser", "mypass")
+			require.NoError(t, err)
+
+			sender.AddAuthorization(&req)
+			res, err = writeReqReadRes(conn, req)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+		})
+	}
+}
+
+func TestServerAuthFail(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				require.EqualError(t, ctx.Error, "authentication error")
+			},
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-				err2 := auth.Verify(ctx.Request, "myuser", "mypass", nil, "IPCAM", nonce)
-				if err2 != nil {
-					return &base.Response{ //nolint:nilerr
-						StatusCode: base.StatusUnauthorized,
-						Header: base.Header{
-							"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
-						},
-					}, nil
+				ok := ctx.Conn.VerifyCredentials(ctx.Request, "myuser2", "mypass2")
+				if !ok {
+					return &base.Response{
+						StatusCode: http.StatusUnauthorized,
+					}, liberrors.ErrServerAuth{}
 				}
 
 				return &base.Response{
@@ -1059,7 +1128,7 @@ func TestServerAuth(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1088,7 +1157,11 @@ func TestServerAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	sender.AddAuthorization(&req)
+
 	res, err = writeReqReadRes(conn, req)
 	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+	require.Equal(t, base.StatusUnauthorized, res.StatusCode)
+
+	_, err = writeReqReadRes(conn, req)
+	require.Error(t, err)
 }

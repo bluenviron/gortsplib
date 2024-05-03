@@ -34,6 +34,10 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
+const (
+	clientUserAgent = "gortsplib"
+)
+
 // avoid an int64 overflow and preserve resolution by splitting division into two parts:
 // first add the integer part, then the decimal part.
 func multiplyAndDivide(v, m, d time.Duration) time.Duration {
@@ -386,7 +390,7 @@ func (c *Client) Start(scheme string, host string) error {
 		return fmt.Errorf("MaxPacketSize must be less than %d", udpMaxPayloadSize)
 	}
 	if c.UserAgent == "" {
-		c.UserAgent = "gortsplib"
+		c.UserAgent = clientUserAgent
 	}
 
 	// system functions
