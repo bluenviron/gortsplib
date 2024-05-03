@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -82,7 +83,7 @@ func TestAuth(t *testing.T) {
 
 				req.URL = mustParseURL("rtsp://myhost/mypath")
 
-				err = Validate(req, "testuser", "testpass", nil, c1.methods, "IPCAM", nonce)
+				err = Validate(req, "testuser", "testpass", c1.methods, "IPCAM", nonce)
 
 				if conf != "nofail" {
 					require.Error(t, err)
@@ -96,8 +97,8 @@ func TestAuth(t *testing.T) {
 
 func TestAuthVLC(t *testing.T) {
 	for _, ca := range []struct {
-		clientURL string
-		mediaURL  string
+		baseURL  string
+		mediaURL string
 	}{
 		{
 			"rtsp://myhost/mypath/",
@@ -119,15 +120,14 @@ func TestAuthVLC(t *testing.T) {
 
 		req := &base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL(ca.clientURL),
+			URL:    mustParseURL(ca.baseURL),
 		}
 		se.AddAuthorization(req)
 		req.URL = mustParseURL(ca.mediaURL)
 
-		err = Validate(req, "testuser", "testpass", mustParseURL(ca.clientURL), nil, "IPCAM", nonce)
-		require.NoError(t, err)
+		fmt.Println(req.URL, req.Header)
 
-		err = Validate(req, "testuser", "testpass", mustParseURL("rtsp://invalid"), nil, "IPCAM", nonce)
-		require.Error(t, err)
+		err = Validate(req, "testuser", "testpass", nil, "IPCAM", nonce)
+		require.NoError(t, err)
 	}
 }

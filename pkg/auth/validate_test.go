@@ -30,7 +30,6 @@ func FuzzValidate(f *testing.F) {
 			"myuser",
 			"mypass",
 			nil,
-			nil,
 			"IPCAM",
 			"abcde",
 		)
@@ -48,7 +47,6 @@ func TestValidateAdditionalErrors(t *testing.T) {
 		},
 		"myuser",
 		"mypass",
-		nil,
 		[]headers.AuthMethod{headers.AuthDigestMD5},
 		"IPCAM",
 		"abcde",

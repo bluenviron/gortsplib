@@ -5,10 +5,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 )
+
+var reControlAttribute = regexp.MustCompile("^(.+/)trackID=[0-9]+$")
 
 func md5Hex(in string) string {
 	h := md5.New()
@@ -31,12 +34,28 @@ func contains(list []headers.AuthMethod, item headers.AuthMethod) bool {
 	return false
 }
 
+func urlMatches(expected string, received string, isSetup bool) bool {
+	if received == expected {
+		return true
+	}
+
+	// in SETUP requests, VLC uses the base URL of the stream
+	// instead of the URL of the track.
+	// Strip the control attribute to obtain the URL of the stream.
+	if isSetup {
+		if m := reControlAttribute.FindStringSubmatch(expected); m != nil && received == m[1] {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Validate validates a request sent by a client.
 func Validate(
 	req *base.Request,
 	user string,
 	pass string,
-	baseURL *base.URL,
 	methods []headers.AuthMethod,
 	realm string,
 	nonce string,
@@ -66,29 +85,18 @@ func Validate(
 			return fmt.Errorf("authentication failed")
 		}
 
-		ur := req.URL
-
-		if auth.URI != ur.String() {
-			// in SETUP requests, VLC strips the control attribute.
-			// try again with the base URL.
-			if baseURL != nil {
-				ur = baseURL
-				if auth.URI != ur.String() {
-					return fmt.Errorf("wrong URL")
-				}
-			} else {
-				return fmt.Errorf("wrong URL")
-			}
+		if !urlMatches(req.URL.String(), auth.URI, req.Method == base.Setup) {
+			return fmt.Errorf("wrong URL")
 		}
 
 		var response string
 
 		if auth.Method == headers.AuthDigestSHA256 {
 			response = sha256Hex(sha256Hex(user+":"+realm+":"+pass) +
-				":" + nonce + ":" + sha256Hex(string(req.Method)+":"+ur.String()))
+				":" + nonce + ":" + sha256Hex(string(req.Method)+":"+auth.URI))
 		} else {
 			response = md5Hex(md5Hex(user+":"+realm+":"+pass) +
-				":" + nonce + ":" + md5Hex(string(req.Method)+":"+ur.String()))
+				":" + nonce + ":" + md5Hex(string(req.Method)+":"+auth.URI))
 		}
 
 		if auth.Response != response {
