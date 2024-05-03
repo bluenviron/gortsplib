@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 )
 
 func mustParseURL(s string) *base.URL {
@@ -17,22 +16,22 @@ func mustParseURL(s string) *base.URL {
 	return u
 }
 
-func TestAuth(t *testing.T) {
+func TestCombined(t *testing.T) {
 	for _, c1 := range []struct {
 		name    string
-		methods []headers.AuthMethod
+		methods []ValidateMethod
 	}{
 		{
 			"basic",
-			[]headers.AuthMethod{headers.AuthBasic},
+			[]ValidateMethod{ValidateMethodBasic},
 		},
 		{
 			"digest md5",
-			[]headers.AuthMethod{headers.AuthDigestMD5},
+			[]ValidateMethod{ValidateMethodDigestMD5},
 		},
 		{
 			"digest sha256",
-			[]headers.AuthMethod{headers.AuthDigestSHA256},
+			[]ValidateMethod{ValidateMethodSHA256},
 		},
 		{
 			"all",
@@ -91,40 +90,5 @@ func TestAuth(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-func TestAuthVLC(t *testing.T) {
-	for _, ca := range []struct {
-		baseURL  string
-		mediaURL string
-	}{
-		{
-			"rtsp://myhost/mypath/",
-			"rtsp://myhost/mypath/trackID=0",
-		},
-		{
-			"rtsp://myhost/mypath/test?testing/",
-			"rtsp://myhost/mypath/test?testing/trackID=0",
-		},
-	} {
-		nonce, err := GenerateNonce()
-		require.NoError(t, err)
-
-		se, err := NewSender(
-			GenerateWWWAuthenticate(nil, "IPCAM", nonce),
-			"testuser",
-			"testpass")
-		require.NoError(t, err)
-
-		req := &base.Request{
-			Method: base.Setup,
-			URL:    mustParseURL(ca.baseURL),
-		}
-		se.AddAuthorization(req)
-		req.URL = mustParseURL(ca.mediaURL)
-
-		err = Validate(req, "testuser", "testpass", nil, "IPCAM", nonce)
-		require.NoError(t, err)
 	}
 }

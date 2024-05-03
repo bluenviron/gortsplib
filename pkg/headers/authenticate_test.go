@@ -23,7 +23,7 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Basic realm="4419b63f5e51"`},
 		base.HeaderValue{`Basic realm="4419b63f5e51"`},
 		Authenticate{
-			Method: AuthBasic,
+			Method: AuthMethodBasic,
 			Realm:  "4419b63f5e51",
 		},
 	},
@@ -31,9 +31,9 @@ var casesAuthenticate = []struct {
 		"digest 1",
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale="FALSE"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +
-			`stale="FALSE", algorithm="MD5"`},
+			`stale="FALSE"`},
 		Authenticate{
-			Method: AuthDigestMD5,
+			Method: AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
 			Stale:  stringPtr("FALSE"),
@@ -43,9 +43,9 @@ var casesAuthenticate = []struct {
 		"digest 2",
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", stale=FALSE`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +
-			`stale="FALSE", algorithm="MD5"`},
+			`stale="FALSE"`},
 		Authenticate{
-			Method: AuthDigestMD5,
+			Method: AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
 			Stale:  stringPtr("FALSE"),
@@ -55,9 +55,9 @@ var casesAuthenticate = []struct {
 		"digest 3",
 		base.HeaderValue{`Digest realm="4419b63f5e51",nonce="133767111917411116111311118211673010032",  stale="FALSE"`},
 		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="133767111917411116111311118211673010032", ` +
-			`stale="FALSE", algorithm="MD5"`},
+			`stale="FALSE"`},
 		Authenticate{
-			Method: AuthDigestMD5,
+			Method: AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "133767111917411116111311118211673010032",
 			Stale:  stringPtr("FALSE"),
@@ -66,15 +66,29 @@ var casesAuthenticate = []struct {
 	{
 		"digest after failed auth",
 		base.HeaderValue{`Digest realm="Please log in with a valid username",` +
-			`nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE,algorithm=MD5`},
+			`nonce="752a62306daf32b401a41004555c7663",opaque="",stale=FALSE`},
 		base.HeaderValue{`Digest realm="Please log in with a valid username", ` +
-			`nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE", algorithm="MD5"`},
+			`nonce="752a62306daf32b401a41004555c7663", opaque="", stale="FALSE"`},
 		Authenticate{
-			Method: AuthDigestMD5,
+			Method: AuthMethodDigest,
 			Realm:  "Please log in with a valid username",
 			Nonce:  "752a62306daf32b401a41004555c7663",
 			Opaque: stringPtr(""),
 			Stale:  stringPtr("FALSE"),
+		},
+	},
+	{
+		"digest md5 explicit",
+		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +
+			`stale="FALSE", algorithm="MD5"`},
+		base.HeaderValue{`Digest realm="4419b63f5e51", nonce="8b84a3b789283a8bea8da7fa7d41f08b", ` +
+			`stale="FALSE", algorithm="MD5"`},
+		Authenticate{
+			Method:    AuthMethodDigest,
+			Realm:     "4419b63f5e51",
+			Nonce:     "8b84a3b789283a8bea8da7fa7d41f08b",
+			Stale:     stringPtr("FALSE"),
+			Algorithm: algorithmPtr(AuthAlgorithmMD5),
 		},
 	},
 	{
@@ -84,10 +98,11 @@ var casesAuthenticate = []struct {
 		base.HeaderValue{`Digest realm="IP Camera(AB705)", ` +
 			`nonce="fcc86deace979a488b2bfb89f4d0812c", stale="FALSE", algorithm="SHA-256"`},
 		Authenticate{
-			Method: AuthDigestSHA256,
-			Realm:  "IP Camera(AB705)",
-			Nonce:  "fcc86deace979a488b2bfb89f4d0812c",
-			Stale:  stringPtr("FALSE"),
+			Method:    AuthMethodDigest,
+			Realm:     "IP Camera(AB705)",
+			Nonce:     "fcc86deace979a488b2bfb89f4d0812c",
+			Stale:     stringPtr("FALSE"),
+			Algorithm: algorithmPtr(AuthAlgorithmSHA256),
 		},
 	},
 }

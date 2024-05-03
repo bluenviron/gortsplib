@@ -44,6 +44,9 @@ type Authorization struct {
 
 	// opaque
 	Opaque *string
+
+	// algorithm
+	Algorithm *AuthAlgorithm
 }
 
 // Unmarshal decodes an Authorization header.
@@ -64,20 +67,18 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 	}
 	method, v0 := v0[:i], v0[i+1:]
 
-	isDigest := false
-
 	switch method {
 	case "Basic":
-		h.Method = AuthBasic
+		h.Method = AuthMethodBasic
 
 	case "Digest":
-		isDigest = true
+		h.Method = AuthMethodDigest
 
 	default:
 		return fmt.Errorf("invalid method (%s)", method)
 	}
 
-	if !isDigest {
+	if h.Method == AuthMethodBasic {
 		tmp, err := base64.StdEncoding.DecodeString(v0)
 		if err != nil {
 			return fmt.Errorf("invalid value")
@@ -100,7 +101,6 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 		nonceReceived := false
 		uriReceived := false
 		responseReceived := false
-		var algorithm *string
 
 		for k, rv := range kvs {
 			v := rv
@@ -130,17 +130,16 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 				h.Opaque = &v
 
 			case "algorithm":
-				algorithm = &v
+				a, err := parseAuthAlgorithm(v)
+				if err != nil {
+					return err
+				}
+				h.Algorithm = &a
 			}
 		}
 
 		if !realmReceived || !usernameReceived || !nonceReceived || !uriReceived || !responseReceived {
 			return fmt.Errorf("one or more digest fields are missing")
-		}
-
-		h.Method, err = algorithmToMethod(algorithm)
-		if err != nil {
-			return err
 		}
 	}
 
@@ -149,7 +148,7 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 
 // Marshal encodes an Authorization header.
 func (h Authorization) Marshal() base.HeaderValue {
-	if h.Method == AuthBasic {
+	if h.Method == AuthMethodBasic {
 		return base.HeaderValue{"Basic " +
 			base64.StdEncoding.EncodeToString([]byte(h.BasicUser+":"+h.BasicPass))}
 	}
@@ -162,10 +161,12 @@ func (h Authorization) Marshal() base.HeaderValue {
 		ret += ", opaque=\"" + *h.Opaque + "\""
 	}
 
-	if h.Method == AuthDigestMD5 {
-		ret += ", algorithm=\"MD5\""
-	} else {
-		ret += ", algorithm=\"SHA-256\""
+	if h.Algorithm != nil {
+		if *h.Algorithm == AuthAlgorithmMD5 {
+			ret += ", algorithm=\"MD5\""
+		} else {
+			ret += ", algorithm=\"SHA-256\""
+		}
 	}
 
 	return base.HeaderValue{ret}
