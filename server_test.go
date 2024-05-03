@@ -1035,20 +1035,77 @@ func TestServerSessionTeardown(t *testing.T) {
 }
 
 func TestServerAuth(t *testing.T) {
-	nonce, err := auth.GenerateNonce()
-	require.NoError(t, err)
+	for _, method := range []string{"all", "basic", "digest"} {
+		t.Run(method, func(t *testing.T) {
+			s := &Server{
+				Handler: &testServerHandler{
+					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+						var methods []headers.AuthMethod
+						if method == "basic" {
+							methods = []headers.AuthMethod{headers.AuthBasic}
+						} else if method == "digest" {
+							methods = []headers.AuthMethod{headers.AuthDigestMD5}
+						}
 
+						res, err := ctx.Conn.ValidateCredentials(ctx.Request, "myuser", "mypass", nil, methods)
+						if err != nil {
+							return res, err
+						}
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+				},
+				RTSPAddress: "localhost:8554",
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			nconn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn.Close()
+			conn := conn.NewConn(nconn)
+
+			medias := []*description.Media{testH264Media}
+
+			req := base.Request{
+				Method: base.Announce,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: mediasToSDP(medias),
+			}
+
+			res, err := writeReqReadRes(conn, req)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusUnauthorized, res.StatusCode)
+
+			sender, err := auth.NewSender(res.Header["WWW-Authenticate"], "myuser", "mypass")
+			require.NoError(t, err)
+
+			sender.AddAuthorization(&req)
+			res, err = writeReqReadRes(conn, req)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+		})
+	}
+}
+
+func TestServerAuthFail(t *testing.T) {
 	s := &Server{
 		Handler: &testServerHandler{
+			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+				require.EqualError(t, ctx.Error, "authentication error")
+			},
 			onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-				err2 := auth.Validate(ctx.Request, "myuser", "mypass", nil, nil, "IPCAM", nonce)
-				if err2 != nil {
-					return &base.Response{ //nolint:nilerr
-						StatusCode: base.StatusUnauthorized,
-						Header: base.Header{
-							"WWW-Authenticate": auth.GenerateWWWAuthenticate(nil, "IPCAM", nonce),
-						},
-					}, nil
+				res, err := ctx.Conn.ValidateCredentials(ctx.Request, "myuser2", "mypass2", nil, nil)
+				if err != nil {
+					return res, err
 				}
 
 				return &base.Response{
@@ -1059,7 +1116,7 @@ func TestServerAuth(t *testing.T) {
 		RTSPAddress: "localhost:8554",
 	}
 
-	err = s.Start()
+	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
 
@@ -1088,7 +1145,13 @@ func TestServerAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	sender.AddAuthorization(&req)
-	res, err = writeReqReadRes(conn, req)
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	for i := 0; i < 3; i++ {
+		res, err = writeReqReadRes(conn, req)
+		require.NoError(t, err)
+		require.Equal(t, base.StatusUnauthorized, res.StatusCode)
+	}
+
+	_, err = writeReqReadRes(conn, req)
+	require.Error(t, err)
 }

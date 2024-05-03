@@ -92,6 +92,7 @@ Features:
 * [client-record-format-vp9](examples/client-record-format-vp9/main.go)
 * [server](examples/server/main.go)
 * [server-tls](examples/server-tls/main.go)
+* [server-auth](examples/server-auth/main.go)
 * [server-h264-save-to-disk](examples/server-h264-save-to-disk/main.go)
 * [proxy](examples/proxy/main.go)
 
