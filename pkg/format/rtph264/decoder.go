@@ -117,7 +117,7 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 
 		payload := pkt.Payload[1:]
 
-		for len(payload) > 0 {
+		for {
 			if len(payload) < 2 {
 				return nil, fmt.Errorf("invalid STAP-A packet (invalid size)")
 			}
@@ -136,6 +136,10 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 
 			nalus = append(nalus, payload[:size])
 			payload = payload[size:]
+
+			if len(payload) == 0 {
+				break
+			}
 		}
 
 		if nalus == nil {

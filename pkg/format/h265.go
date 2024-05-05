@@ -142,7 +142,7 @@ func (f *H265) PTSEqualsDTS(pkt *rtp.Packet) bool {
 	case h265.NALUType_AggregationUnit:
 		payload := pkt.Payload[2:]
 
-		for len(payload) > 0 {
+		for {
 			if len(payload) < 2 {
 				return false
 			}
@@ -162,6 +162,10 @@ func (f *H265) PTSEqualsDTS(pkt *rtp.Packet) bool {
 			case h265.NALUType_IDR_W_RADL, h265.NALUType_IDR_N_LP, h265.NALUType_CRA_NUT,
 				h265.NALUType_VPS_NUT, h265.NALUType_SPS_NUT, h265.NALUType_PPS_NUT:
 				return true
+			}
+
+			if len(payload) == 0 {
+				break
 			}
 		}
 
