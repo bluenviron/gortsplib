@@ -209,7 +209,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 		})
 	}
 
-	require.EqualError(t, err, "NALU count exceeds maximum allowed (21)")
+	require.EqualError(t, err, "NALU count exceeds maximum allowed (25)")
 }
 
 func FuzzDecoder(f *testing.F) {
