@@ -29,6 +29,15 @@ func joinFragments(fragments [][]byte, size int) []byte {
 	return ret
 }
 
+func isAllZero(buf []byte) bool {
+	for _, b := range buf {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // Decoder is a RTP/H264 decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6184
 type Decoder struct {
@@ -125,8 +134,8 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			size := uint16(payload[0])<<8 | uint16(payload[1])
 			payload = payload[2:]
 
-			// avoid final padding
-			if size == 0 {
+			// discard padding
+			if size == 0 && isAllZero(payload) {
 				break
 			}
 
