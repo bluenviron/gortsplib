@@ -191,7 +191,7 @@ outer:
 		return nil, fmt.Errorf("JPEG type %d is not supported", sof.Type)
 	}
 
-	if data == nil {
+	if len(data) == 0 {
 		return nil, fmt.Errorf("image data not found")
 	}
 
@@ -211,7 +211,7 @@ outer:
 	offset := 0
 	var ret []*rtp.Packet
 
-	for len(data) > 0 {
+	for {
 		var buf []byte
 
 		jh.FragmentOffset = uint32(offset)
@@ -266,6 +266,10 @@ outer:
 			Payload: buf,
 		})
 		e.sequenceNumber++
+
+		if len(data) == 0 {
+			break
+		}
 	}
 
 	return ret, nil

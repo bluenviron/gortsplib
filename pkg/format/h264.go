@@ -136,7 +136,7 @@ func (f *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
 	case 24: // STAP-A
 		payload := pkt.Payload[1:]
 
-		for len(payload) > 0 {
+		for {
 			if len(payload) < 2 {
 				return false
 			}
@@ -155,6 +155,10 @@ func (f *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
 			switch typ {
 			case h264.NALUTypeIDR, h264.NALUTypeSPS, h264.NALUTypePPS:
 				return true
+			}
+
+			if len(payload) == 0 {
+				break
 			}
 		}
 
