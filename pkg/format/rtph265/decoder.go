@@ -75,10 +75,6 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			size := uint16(payload[0])<<8 | uint16(payload[1])
 			payload = payload[2:]
 
-			if size == 0 {
-				break
-			}
-
 			if int(size) > len(payload) {
 				return nil, fmt.Errorf("invalid aggregation unit (invalid size)")
 			}
