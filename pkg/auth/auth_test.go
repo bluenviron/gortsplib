@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -124,8 +123,6 @@ func TestAuthVLC(t *testing.T) {
 		}
 		se.AddAuthorization(req)
 		req.URL = mustParseURL(ca.mediaURL)
-
-		fmt.Println(req.URL, req.Header)
 
 		err = Validate(req, "testuser", "testpass", nil, "IPCAM", nonce)
 		require.NoError(t, err)
