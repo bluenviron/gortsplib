@@ -1901,6 +1901,13 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			SequenceNumber: uint16Ptr(557),
 			Timestamp:      (*rtpInfo)[0].Timestamp,
 		},
+		&headers.RTPInfoEntry{
+			URL: (&base.URL{
+				Scheme: "rtsp",
+				Host:   "localhost:8554",
+				Path:   mustParseURL((*rtpInfo)[1].URL).Path,
+			}).String(),
+		},
 	}, rtpInfo)
 	require.Equal(t, []*uint32{
 		uint32Ptr(96342362),
