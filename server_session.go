@@ -128,15 +128,16 @@ func generateRTPInfo(
 
 	for _, sm := range setuppedMediasOrdered {
 		entry := setuppedStream.rtpInfoEntry(sm.media, now)
-		if entry != nil {
-			entry.URL = (&base.URL{
-				Scheme: u.Scheme,
-				Host:   u.Host,
-				Path: setuppedPath + "/trackID=" +
-					strconv.FormatInt(int64(setuppedStream.streamMedias[sm.media].trackID), 10),
-			}).String()
-			ri = append(ri, entry)
+		if entry == nil {
+			entry = &headers.RTPInfoEntry{}
 		}
+		entry.URL = (&base.URL{
+			Scheme: u.Scheme,
+			Host:   u.Host,
+			Path: setuppedPath + "/trackID=" +
+				strconv.FormatInt(int64(setuppedStream.streamMedias[sm.media].trackID), 10),
+		}).String()
+		ri = append(ri, entry)
 	}
 
 	if len(ri) == 0 {
