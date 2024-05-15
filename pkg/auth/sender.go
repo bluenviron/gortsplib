@@ -7,63 +7,41 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 )
 
-func findAuthenticateHeader(auths []headers.Authenticate, method headers.AuthMethod) *headers.Authenticate {
-	for _, auth := range auths {
-		if auth.Method == method {
-			return &auth
-		}
-	}
-	return nil
-}
-
-func pickAuthenticateHeader(auths []headers.Authenticate) (*headers.Authenticate, error) {
-	if auth := findAuthenticateHeader(auths, headers.AuthDigestSHA256); auth != nil {
-		return auth, nil
-	}
-
-	if auth := findAuthenticateHeader(auths, headers.AuthDigestMD5); auth != nil {
-		return auth, nil
-	}
-
-	if auth := findAuthenticateHeader(auths, headers.AuthBasic); auth != nil {
-		return auth, nil
-	}
-
-	return nil, fmt.Errorf("no authentication methods available")
-}
-
 // Sender allows to send credentials.
 type Sender struct {
-	user               string
-	pass               string
-	authenticateHeader *headers.Authenticate
+	user       string
+	pass       string
+	authHeader *headers.Authenticate
 }
 
 // NewSender allocates a Sender.
 // It requires a WWW-Authenticate header (provided by the server)
 // and a set of credentials.
-func NewSender(vals base.HeaderValue, user string, pass string) (*Sender, error) {
-	var auths []headers.Authenticate //nolint:prealloc
+func NewSender(wwwAuth base.HeaderValue, user string, pass string) (*Sender, error) {
+	var bestAuthHeader *headers.Authenticate
 
-	for _, v := range vals {
+	for _, v := range wwwAuth {
 		var auth headers.Authenticate
 		err := auth.Unmarshal(base.HeaderValue{v})
 		if err != nil {
 			continue // ignore unrecognized headers
 		}
 
-		auths = append(auths, auth)
+		if bestAuthHeader == nil ||
+			(auth.Algorithm != nil && *auth.Algorithm == headers.AuthAlgorithmSHA256) ||
+			(bestAuthHeader.Method == headers.AuthMethodBasic) {
+			bestAuthHeader = &auth
+		}
 	}
 
-	auth, err := pickAuthenticateHeader(auths)
-	if err != nil {
-		return nil, err
+	if bestAuthHeader == nil {
+		return nil, fmt.Errorf("no authentication methods available")
 	}
 
 	return &Sender{
-		user:               user,
-		pass:               pass,
-		authenticateHeader: auth,
+		user:       user,
+		pass:       pass,
+		authHeader: bestAuthHeader,
 	}, nil
 }
 
@@ -72,29 +50,26 @@ func (se *Sender) AddAuthorization(req *base.Request) {
 	urStr := req.URL.CloneWithoutCredentials().String()
 
 	h := headers.Authorization{
-		Method: se.authenticateHeader.Method,
+		Method: se.authHeader.Method,
 	}
 
-	switch se.authenticateHeader.Method {
-	case headers.AuthBasic:
+	if se.authHeader.Method == headers.AuthMethodBasic {
 		h.BasicUser = se.user
 		h.BasicPass = se.pass
-
-	case headers.AuthDigestMD5:
+	} else { // digest
 		h.Username = se.user
-		h.Realm = se.authenticateHeader.Realm
-		h.Nonce = se.authenticateHeader.Nonce
+		h.Realm = se.authHeader.Realm
+		h.Nonce = se.authHeader.Nonce
 		h.URI = urStr
-		h.Response = md5Hex(md5Hex(se.user+":"+se.authenticateHeader.Realm+":"+se.pass) + ":" +
-			se.authenticateHeader.Nonce + ":" + md5Hex(string(req.Method)+":"+urStr))
+		h.Algorithm = se.authHeader.Algorithm
 
-	default: // digest SHA-256
-		h.Username = se.user
-		h.Realm = se.authenticateHeader.Realm
-		h.Nonce = se.authenticateHeader.Nonce
-		h.URI = urStr
-		h.Response = sha256Hex(sha256Hex(se.user+":"+se.authenticateHeader.Realm+":"+se.pass) + ":" +
-			se.authenticateHeader.Nonce + ":" + sha256Hex(string(req.Method)+":"+urStr))
+		if se.authHeader.Algorithm == nil || *se.authHeader.Algorithm == headers.AuthAlgorithmMD5 {
+			h.Response = md5Hex(md5Hex(se.user+":"+se.authHeader.Realm+":"+se.pass) + ":" +
+				se.authHeader.Nonce + ":" + md5Hex(string(req.Method)+":"+urStr))
+		} else { // sha256
+			h.Response = sha256Hex(sha256Hex(se.user+":"+se.authHeader.Realm+":"+se.pass) + ":" +
+				se.authHeader.Nonce + ":" + sha256Hex(string(req.Method)+":"+urStr))
+		}
 	}
 
 	if req.Header == nil {

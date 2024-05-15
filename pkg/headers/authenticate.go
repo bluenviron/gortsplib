@@ -11,34 +11,31 @@ import (
 // AuthMethod is an authentication method.
 type AuthMethod int
 
+// authentication methods.
 const (
-	// AuthBasic is the Basic authentication method
-	AuthBasic AuthMethod = iota
-
-	// AuthDigestMD5 is the Digest authentication method with the MD5 hash
-	AuthDigestMD5
-
-	// AuthDigestSHA256 is the Digest authentication method with the SHA-256 hash
-	AuthDigestSHA256
+	AuthMethodBasic AuthMethod = iota
+	AuthMethodDigest
 )
 
+// AuthAlgorithm is a digest algorithm.
+type AuthAlgorithm int
+
+// digest algorithms.
 const (
-	// AuthDigest is an alias for AuthDigestMD5
-	//
-	// Deprecated: replaced by AuthDigestMD5
-	AuthDigest = AuthDigestMD5
+	AuthAlgorithmMD5 AuthAlgorithm = iota
+	AuthAlgorithmSHA256
 )
 
-func algorithmToMethod(v *string) (AuthMethod, error) {
+func parseAuthAlgorithm(v string) (AuthAlgorithm, error) {
 	switch {
-	case v == nil, strings.ToLower(*v) == "md5":
-		return AuthDigestMD5, nil
+	case strings.ToLower(v) == "md5":
+		return AuthAlgorithmMD5, nil
 
-	case strings.ToLower(*v) == "sha-256":
-		return AuthDigestSHA256, nil
+	case strings.ToLower(v) == "sha-256":
+		return AuthAlgorithmSHA256, nil
 
 	default:
-		return 0, fmt.Errorf("unrecognized algorithm: %v", *v)
+		return 0, fmt.Errorf("unrecognized algorithm: %v", v)
 	}
 }
 
@@ -62,6 +59,9 @@ type Authenticate struct {
 
 	// stale
 	Stale *string
+
+	// algorithm
+	Algorithm *AuthAlgorithm
 }
 
 // Unmarshal decodes a WWW-Authenticate header.
@@ -82,20 +82,18 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 	}
 	method, v0 := v0[:i], v0[i+1:]
 
-	isDigest := false
-
 	switch method {
 	case "Basic":
-		h.Method = AuthBasic
+		h.Method = AuthMethodBasic
 
 	case "Digest":
-		isDigest = true
+		h.Method = AuthMethodDigest
 
 	default:
 		return fmt.Errorf("invalid method (%s)", method)
 	}
 
-	if !isDigest {
+	if h.Method == AuthMethodBasic {
 		kvs, err := keyValParse(v0, ',')
 		if err != nil {
 			return err
@@ -123,7 +121,6 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 
 		realmReceived := false
 		nonceReceived := false
-		var algorithm *string
 
 		for k, rv := range kvs {
 			v := rv
@@ -144,17 +141,16 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 				h.Stale = &v
 
 			case "algorithm":
-				algorithm = &v
+				a, err := parseAuthAlgorithm(v)
+				if err != nil {
+					return err
+				}
+				h.Algorithm = &a
 			}
 		}
 
 		if !realmReceived || !nonceReceived {
 			return fmt.Errorf("one or more digest fields are missing")
-		}
-
-		h.Method, err = algorithmToMethod(algorithm)
-		if err != nil {
-			return err
 		}
 	}
 
@@ -163,7 +159,7 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 
 // Marshal encodes a WWW-Authenticate header.
 func (h Authenticate) Marshal() base.HeaderValue {
-	if h.Method == AuthBasic {
+	if h.Method == AuthMethodBasic {
 		return base.HeaderValue{"Basic " +
 			"realm=\"" + h.Realm + "\""}
 	}
@@ -178,10 +174,12 @@ func (h Authenticate) Marshal() base.HeaderValue {
 		ret += ", stale=\"" + *h.Stale + "\""
 	}
 
-	if h.Method == AuthDigestMD5 {
-		ret += ", algorithm=\"MD5\""
-	} else {
-		ret += ", algorithm=\"SHA-256\""
+	if h.Algorithm != nil {
+		if *h.Algorithm == AuthAlgorithmMD5 {
+			ret += ", algorithm=\"MD5\""
+		} else {
+			ret += ", algorithm=\"SHA-256\""
+		}
 	}
 
 	return base.HeaderValue{ret}

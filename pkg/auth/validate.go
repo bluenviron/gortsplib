@@ -25,7 +25,7 @@ func sha256Hex(in string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func contains(list []headers.AuthMethod, item headers.AuthMethod) bool {
+func contains(list []ValidateMethod, item ValidateMethod) bool {
 	for _, i := range list {
 		if i == item {
 			return true
@@ -51,17 +51,27 @@ func urlMatches(expected string, received string, isSetup bool) bool {
 	return false
 }
 
+// ValidateMethod is a validation method.
+type ValidateMethod int
+
+// validation methods.
+const (
+	ValidateMethodBasic ValidateMethod = iota
+	ValidateMethodDigestMD5
+	ValidateMethodSHA256
+)
+
 // Validate validates a request sent by a client.
 func Validate(
 	req *base.Request,
 	user string,
 	pass string,
-	methods []headers.AuthMethod,
+	methods []ValidateMethod,
 	realm string,
 	nonce string,
 ) error {
 	if methods == nil {
-		methods = []headers.AuthMethod{headers.AuthDigestSHA256, headers.AuthDigestMD5, headers.AuthBasic}
+		methods = []ValidateMethod{ValidateMethodBasic, ValidateMethodDigestMD5, ValidateMethodSHA256}
 	}
 
 	var auth headers.Authorization
@@ -71,8 +81,11 @@ func Validate(
 	}
 
 	switch {
-	case (auth.Method == headers.AuthDigestSHA256 && contains(methods, headers.AuthDigestSHA256)) ||
-		(auth.Method == headers.AuthDigestMD5 && contains(methods, headers.AuthDigestMD5)):
+	case auth.Method == headers.AuthMethodDigest &&
+		(contains(methods, ValidateMethodDigestMD5) &&
+			(auth.Algorithm == nil || *auth.Algorithm == headers.AuthAlgorithmMD5) ||
+			contains(methods, ValidateMethodSHA256) &&
+				auth.Algorithm != nil && *auth.Algorithm == headers.AuthAlgorithmSHA256):
 		if auth.Nonce != nonce {
 			return fmt.Errorf("wrong nonce")
 		}
@@ -91,19 +104,19 @@ func Validate(
 
 		var response string
 
-		if auth.Method == headers.AuthDigestSHA256 {
-			response = sha256Hex(sha256Hex(user+":"+realm+":"+pass) +
-				":" + nonce + ":" + sha256Hex(string(req.Method)+":"+auth.URI))
-		} else {
+		if auth.Algorithm == nil || *auth.Algorithm == headers.AuthAlgorithmMD5 {
 			response = md5Hex(md5Hex(user+":"+realm+":"+pass) +
 				":" + nonce + ":" + md5Hex(string(req.Method)+":"+auth.URI))
+		} else { // sha256
+			response = sha256Hex(sha256Hex(user+":"+realm+":"+pass) +
+				":" + nonce + ":" + sha256Hex(string(req.Method)+":"+auth.URI))
 		}
 
 		if auth.Response != response {
 			return fmt.Errorf("authentication failed")
 		}
 
-	case auth.Method == headers.AuthBasic && contains(methods, headers.AuthBasic):
+	case auth.Method == headers.AuthMethodBasic && contains(methods, ValidateMethodBasic):
 		if auth.BasicUser != user {
 			return fmt.Errorf("authentication failed")
 		}

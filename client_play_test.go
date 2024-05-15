@@ -1705,7 +1705,7 @@ func TestClientPlayRedirect(t *testing.T) {
 							err2 = conn.WriteResponse(&base.Response{
 								Header: base.Header{
 									"WWW-Authenticate": headers.Authenticate{
-										Method: headers.AuthDigestMD5,
+										Method: headers.AuthMethodDigest,
 										Realm:  authRealm,
 										Nonce:  authNonce,
 										Opaque: &authOpaque,
