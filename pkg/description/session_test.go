@@ -836,6 +836,10 @@ func TestSessionFindFormat(t *testing.T) {
 }
 
 func FuzzSessionUnmarshalErrors(f *testing.F) {
+	for _, ca := range casesSession {
+		f.Add(ca.in)
+	}
+
 	f.Add("v=0\r\n" +
 		"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
 		"s=SDP Seminar\r\n" +

@@ -182,12 +182,9 @@ func TestRequestString(t *testing.T) {
 }
 
 func FuzzRequestUnmarshal(f *testing.F) {
-	f.Add([]byte("GET rtsp://testing123/test"))
-	f.Add([]byte("GET rtsp://testing123/test RTSP/1.0\r\n"))
-	f.Add([]byte("OPTIONS rtsp://example.com/media.mp4 RTSP/1.0\r\n" +
-		"Content-Length: 100\r\n" +
-		"\r\n" +
-		"testing"))
+	for _, ca := range casesRequest {
+		f.Add(ca.byts)
+	}
 
 	f.Fuzz(func(_ *testing.T, b []byte) {
 		var req Request
