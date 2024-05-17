@@ -156,12 +156,9 @@ func TestResponseString(t *testing.T) {
 }
 
 func FuzzResponseUnmarshal(f *testing.F) {
-	f.Add([]byte("RTSP/1.0 "))
-
-	f.Add([]byte("RTSP/1.0 200 OK\r\n" +
-		"Content-Length: 100\r\n" +
-		"\r\n" +
-		"testing"))
+	for _, ca := range casesResponse {
+		f.Add(ca.byts)
+	}
 
 	f.Fuzz(func(_ *testing.T, b []byte) {
 		var res Response

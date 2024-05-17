@@ -43,6 +43,10 @@ func TestBodyMarshal(t *testing.T) {
 }
 
 func FuzzBodyUnmarshal(f *testing.F) {
+	for _, ca := range casesBody {
+		f.Add(ca.h["Content-Length"][0], ca.byts)
+	}
+
 	f.Fuzz(func(_ *testing.T, a string, b []byte) {
 		var p body
 		p.unmarshal( //nolint:errcheck

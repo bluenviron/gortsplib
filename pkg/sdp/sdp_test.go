@@ -3065,26 +3065,9 @@ func TestMarshal(t *testing.T) {
 }
 
 func FuzzUnmarshal(f *testing.F) {
-	f.Add("v=0\r\n" +
-		"t=2873397496 2873404696\r\n" +
-		"t=3034423619 3042462419\r\n" +
-		"r=aa bb 0 90000\r\n")
-
-	f.Add("v=0\r\n" +
-		"t=2873397496 2873404696\r\n" +
-		"t=3034423619 3042462419\r\n" +
-		"r=123 bb 0 90000\r\n")
-
-	f.Add("v=0\r\n" +
-		"m=audio 49170 RTP/AVP 80000\r\n" +
-		"i=Vivamus a posuere nisl\r\n" +
-		"c=IN IP4 203.0.113.1\r\n" +
-		"b=X-YZ:128\r\n" +
-		"k=prompt\r\n" +
-		"a=sendrecv\r\n")
-
-	f.Add("v=0\r\n" +
-		"o = IN \r\n")
+	for _, c := range cases {
+		f.Add(string(c.enc))
+	}
 
 	f.Fuzz(func(_ *testing.T, b string) {
 		desc := SessionDescription{}

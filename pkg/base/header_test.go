@@ -126,6 +126,10 @@ func TestHeaderWrite(t *testing.T) {
 }
 
 func FuzzHeaderUnmarshal(f *testing.F) {
+	for _, ca := range cases {
+		f.Add(ca.enc)
+	}
+
 	str := ""
 	for i := 0; i < 300; i++ {
 		str += "Key: val\r\n"
