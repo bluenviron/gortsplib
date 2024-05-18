@@ -310,8 +310,9 @@ var casesSession = []struct {
 					IsBackChannel: true,
 					Formats: []format.Format{
 						&format.Opus{
-							PayloadTyp: 111,
-							IsStereo:   false,
+							PayloadTyp:   111,
+							IsStereo:     false,
+							ChannelCount: 1,
 						},
 						&format.Generic{
 							PayloadTyp: 103,
@@ -820,8 +821,9 @@ func TestSessionFindFormat(t *testing.T) {
 				Type: MediaTypeAudio,
 				Formats: []format.Format{
 					&format.Opus{
-						PayloadTyp: 111,
-						IsStereo:   true,
+						PayloadTyp:   111,
+						IsStereo:     true,
+						ChannelCount: 2,
 					},
 				},
 			},
