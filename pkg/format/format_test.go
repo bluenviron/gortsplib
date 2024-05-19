@@ -645,12 +645,35 @@ var casesFormat = []struct {
 			"sprop-stereo": "1",
 		},
 		&Opus{
-			PayloadTyp: 96,
-			IsStereo:   true,
+			PayloadTyp:   96,
+			IsStereo:     true,
+			ChannelCount: 2,
 		},
 		"opus/48000/2",
 		map[string]string{
 			"sprop-stereo": "1",
+		},
+	},
+	{
+		"audio opus 5.1",
+		"audio",
+		96,
+		"multiopus/48000/6",
+		map[string]string{
+			"num_streams":     "4",
+			"coupled_streams": "2",
+			"channel_mapping": "0,4,1,2,3,5",
+		},
+		&Opus{
+			PayloadTyp:   96,
+			ChannelCount: 6,
+		},
+		"multiopus/48000/6",
+		map[string]string{
+			"channel_mapping":      "0,4,1,2,3,5",
+			"coupled_streams":      "2",
+			"num_streams":          "4",
+			"sprop-maxcapturerate": "48000",
 		},
 	},
 	{
@@ -1247,6 +1270,14 @@ func FuzzUnmarshalOpus(f *testing.F) {
 
 	f.Fuzz(func(_ *testing.T, a string) {
 		Unmarshal("audio", 96, "Opus/"+a, nil) //nolint:errcheck
+	})
+}
+
+func FuzzUnmarshalOpusMulti(f *testing.F) {
+	f.Add("48000/a")
+
+	f.Fuzz(func(_ *testing.T, a string) {
+		Unmarshal("audio", 96, "multiopus/"+a, nil) //nolint:errcheck
 	})
 }
 

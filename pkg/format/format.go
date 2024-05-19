@@ -112,7 +112,7 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 
 			// audio
 
-			case codec == "opus":
+			case codec == "opus", codec == "multiopus":
 				return &Opus{}
 
 			case codec == "vorbis":
