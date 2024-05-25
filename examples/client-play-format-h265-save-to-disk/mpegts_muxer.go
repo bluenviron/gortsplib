@@ -53,10 +53,7 @@ func (e *mpegtsMuxer) close() {
 
 // writeH265 writes a H265 access unit into MPEG-TS.
 func (e *mpegtsMuxer) writeH265(au [][]byte, pts time.Duration) error {
-	// prepend an AUD. This is required by some players
-	filteredAU := [][]byte{
-		{byte(h265.NALUType_AUD_NUT) << 1, 1, 0x50},
-	}
+	var filteredAU [][]byte
 
 	isRandomAccess := false
 
@@ -87,7 +84,7 @@ func (e *mpegtsMuxer) writeH265(au [][]byte, pts time.Duration) error {
 
 	au = filteredAU
 
-	if len(au) <= 1 {
+	if au == nil {
 		return nil
 	}
 
