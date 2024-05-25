@@ -47,7 +47,7 @@ func main() {
 		panic("media not found")
 	}
 
-	// setup RTP/H264 -> H264 decoder
+	// setup RTP -> H264 decoder
 	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)

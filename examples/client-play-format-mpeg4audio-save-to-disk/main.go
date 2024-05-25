@@ -44,7 +44,7 @@ func main() {
 		panic("media not found")
 	}
 
-	// setup RTP/MPEG-4 audio -> MPEG-4 audio decoder
+	// setup RTP -> MPEG-4 audio decoder
 	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)

@@ -82,6 +82,7 @@ Features:
 * [client-record-format-g711](examples/client-record-format-g711/main.go)
 * [client-record-format-g722](examples/client-record-format-g722/main.go)
 * [client-record-format-h264](examples/client-record-format-h264/main.go)
+* [client-record-format-h264-from-disk](examples/client-record-format-h264-from-disk/main.go)
 * [client-record-format-h265](examples/client-record-format-h265/main.go)
 * [client-record-format-lpcm](examples/client-record-format-lpcm/main.go)
 * [client-record-format-mjpeg](examples/client-record-format-mjpeg/main.go)

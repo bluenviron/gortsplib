@@ -12,7 +12,7 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/MPEG-4 audio packets with GStreamer
+// 1. generate a MPEG-4 audio stream and RTP packets with GStreamer
 // 2. connect to a RTSP server, announce an MPEG-4 audio format
 // 3. route the packets from GStreamer to the server
 
