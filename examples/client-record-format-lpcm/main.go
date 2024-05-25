@@ -11,7 +11,7 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/LPCM packets with GStreamer
+// 1. generate a LPCM stream and RTP packets with GStreamer
 // 2. connect to a RTSP server, announce an LPCM format
 // 3. route the packets from GStreamer to the server
 

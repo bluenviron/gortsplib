@@ -11,7 +11,7 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/VP9 packets with GStreamer
+// 1. generate a VP9 stream and RTP packets with GStreamer
 // 2. connect to a RTSP server, announce a VP9 format
 // 3. route the packets from GStreamer to the server
 

@@ -17,8 +17,30 @@ import (
 // 1. connect to a RTSP server, announce a M-JPEG format
 // 2. generate an image
 // 3. encode the image with JPEG
-// 4. generate RTP/M-JPEG packets from the JPEG image
+// 4. generate RTP packets from the JPEG image
 // 5. write packets to the server
+
+func createRandomImage(i int) *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, 640, 480))
+
+	var cl color.RGBA
+	switch i {
+	case 0:
+		cl = color.RGBA{255, 0, 0, 0}
+	case 1:
+		cl = color.RGBA{0, 255, 0, 0}
+	case 2:
+		cl = color.RGBA{0, 0, 255, 0}
+	}
+
+	for y := 0; y < img.Rect.Dy(); y++ {
+		for x := 0; x < img.Rect.Dx(); x++ {
+			img.SetRGBA(x, y, cl)
+		}
+	}
+
+	return img
+}
 
 func main() {
 	// create a description that contains a M-JPEG format
@@ -38,13 +60,13 @@ func main() {
 	}
 	defer c.Close()
 
-	// setup JPEG -> RTP/M-JPEG encoder
+	// setup JPEG -> RTP encoder
 	rtpEnc, err := forma.CreateEncoder()
 	if err != nil {
 		panic(err)
 	}
 
-	// setup timestamp generator
+	// setup RTP timestamp generator
 	rtpTime := &rtptime.Encoder{ClockRate: forma.ClockRate()}
 	err = rtpTime.Initialize()
 	if err != nil {
@@ -59,34 +81,18 @@ func main() {
 	i := 0
 
 	for range ticker.C {
-		// create a RGBA image
-		image := image.NewRGBA(image.Rect(0, 0, 640, 480))
-
-		// fill the image
-		var cl color.RGBA
-		switch i {
-		case 0:
-			cl = color.RGBA{255, 0, 0, 0}
-		case 1:
-			cl = color.RGBA{0, 255, 0, 0}
-		case 2:
-			cl = color.RGBA{0, 0, 255, 0}
-		}
-		for y := 0; y < image.Rect.Dy(); y++ {
-			for x := 0; x < image.Rect.Dx(); x++ {
-				image.SetRGBA(x, y, cl)
-			}
-		}
+		// create a random image
+		img := createRandomImage(i)
 		i = (i + 1) % 3
 
 		// encode the image with JPEG
 		var buf bytes.Buffer
-		err := jpeg.Encode(&buf, image, &jpeg.Options{Quality: 80})
+		err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80})
 		if err != nil {
 			panic(err)
 		}
 
-		// generate RTP/M-JPEG packets from the JPEG image
+		// generate RTP packets from the JPEG image
 		pkts, err := rtpEnc.Encode(buf.Bytes())
 		if err != nil {
 			panic(err)

@@ -44,7 +44,7 @@ func main() {
 		panic("media not found")
 	}
 
-	// setup RTP/Opus -> Opus decoder
+	// setup RTP -> Opus decoder
 	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)

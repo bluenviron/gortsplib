@@ -11,7 +11,7 @@ import (
 )
 
 // This example shows how to
-// 1. generate RTP/G711 packets with GStreamer
+// 1. generate a G711 and RTP packets with GStreamer
 // 2. connect to a RTSP server, announce a G711 format
 // 3. route the packets from GStreamer to the server
 
