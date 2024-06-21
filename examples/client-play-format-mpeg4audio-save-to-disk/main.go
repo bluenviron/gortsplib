@@ -13,7 +13,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server
 // 2. check if there's an MPEG-4 audio format
-// 3. save the content of the format into a file in MPEG-TS format
+// 3. save the content of the format in a file in MPEG-TS format
 
 func main() {
 	c := gortsplib.Client{}
@@ -59,10 +59,11 @@ func main() {
 			},
 		},
 	}
-	mpegtsMuxer.initialize()
+	err = mpegtsMuxer.initialize()
 	if err != nil {
 		panic(err)
 	}
+	defer mpegtsMuxer.close()
 
 	// setup a single media
 	_, err = c.Setup(desc.BaseURL, medi, 0, 0)

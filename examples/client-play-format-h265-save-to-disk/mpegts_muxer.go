@@ -110,5 +110,5 @@ func (e *mpegtsMuxer) writeH265(au [][]byte, pts time.Duration) error {
 	}
 
 	// encode into MPEG-TS
-	return e.w.WriteH26x(e.track, durationGoToMPEGTS(pts), durationGoToMPEGTS(dts), isRandomAccess, au)
+	return e.w.WriteH265(e.track, durationGoToMPEGTS(pts), durationGoToMPEGTS(dts), isRandomAccess, au)
 }
