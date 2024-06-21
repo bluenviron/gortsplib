@@ -17,7 +17,7 @@ import (
 // This example shows how to
 // 1. create a RTSP server which accepts plain connections
 // 2. allow a single client to publish a stream, containing a H264 media, with TCP or UDP
-// 3. save the content of the H264 media into a file in MPEG-TS format
+// 3. save the content of the H264 media in a file in MPEG-TS format
 
 type serverHandler struct {
 	s           *gortsplib.Server
@@ -88,7 +88,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		sps:      forma.SPS,
 		pps:      forma.PPS,
 	}
-	mpegtsMuxer.initialize()
+	err = mpegtsMuxer.initialize()
 	if err != nil {
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,

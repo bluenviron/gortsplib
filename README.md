@@ -66,6 +66,7 @@ Features:
 * [client-play-format-h264](examples/client-play-format-h264/main.go)
 * [client-play-format-h264-convert-to-jpeg](examples/client-play-format-h264-convert-to-jpeg/main.go)
 * [client-play-format-h264-save-to-disk](examples/client-play-format-h264-save-to-disk/main.go)
+* [client-play-format-h264-mpeg4audio-save-to-disk](examples/client-play-format-h264-mpeg4audio-save-to-disk/main.go)
 * [client-play-format-h265](examples/client-play-format-h265/main.go)
 * [client-play-format-h265-convert-to-jpeg](examples/client-play-format-h265-convert-to-jpeg/main.go)
 * [client-play-format-h265-save-to-disk](examples/client-play-format-h265-save-to-disk/main.go)
