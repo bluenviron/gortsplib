@@ -229,6 +229,7 @@ outer:
 
 			qth := headerQuantizationTable{}
 
+			// gather and sort tables IDs
 			ids := make([]uint8, len(quantizationTables))
 			i := 0
 			for id := range quantizationTables {
@@ -238,8 +239,10 @@ outer:
 			sort.Slice(ids, func(i, j int) bool {
 				return ids[i] < ids[j]
 			})
+
+			// add tables sorted by ID
 			for _, id := range ids {
-				qth.Tables = append(qth.Tables, quantizationTables[id]...)
+				qth.Tables = append(qth.Tables, quantizationTables[id])
 			}
 
 			buf = qth.marshal(buf)
