@@ -23,12 +23,13 @@ func (h *headerJPEG) unmarshal(byts []byte) (int, error) {
 
 	h.Type = byts[4]
 	if h.Type != 1 {
-		return 0, fmt.Errorf("Type %d is not supported", h.Type)
+		return 0, fmt.Errorf("type %d is not supported", h.Type)
 	}
 
 	h.Quantization = byts[5]
-	if h.Quantization != 255 {
-		return 0, fmt.Errorf("Q %d is not supported", h.Quantization)
+	if h.Quantization == 0 ||
+		(h.Quantization > 99 && h.Quantization < 127) {
+		return 0, fmt.Errorf("quantization %d is invalid", h.Quantization)
 	}
 
 	h.Width = int(byts[6]) * 8

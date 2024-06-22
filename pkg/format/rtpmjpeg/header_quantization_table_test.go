@@ -28,7 +28,7 @@ var casesQuantizationTable = []struct {
 		headerQuantizationTable{
 			MBZ:       1,
 			Precision: 0,
-			Tables:    bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 64/4),
+			Tables:    [][]byte{bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 64/4)},
 		},
 	},
 }

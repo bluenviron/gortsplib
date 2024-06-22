@@ -91,6 +91,65 @@ var chmAcSymbols = []byte{ //nolint:dupl
 	0xf9, 0xfa,
 }
 
+var lumaQuantizers = []int{
+	0x10, 0x0b, 0x0c, 0x0e, 0x0c, 0x0a, 0x10, 0x0e,
+	0x0d, 0x0e, 0x12, 0x11, 0x10, 0x13, 0x18, 0x28,
+	0x1a, 0x18, 0x16, 0x16, 0x18, 0x31, 0x23, 0x25,
+	0x1d, 0x28, 0x3a, 0x33, 0x3d, 0x3c, 0x39, 0x33,
+	0x38, 0x37, 0x40, 0x48, 0x5c, 0x4e, 0x40, 0x44,
+	0x57, 0x45, 0x37, 0x38, 0x50, 0x6d, 0x51, 0x57,
+	0x5f, 0x62, 0x67, 0x68, 0x67, 0x3e, 0x4d, 0x71,
+	0x79, 0x70, 0x64, 0x78, 0x5c, 0x65, 0x67, 0x63,
+}
+
+var chromaQuantizers = []int{
+	0x11, 0x12, 0x12, 0x18, 0x15, 0x18, 0x2f, 0x1a,
+	0x1a, 0x2f, 0x63, 0x42, 0x38, 0x42, 0x63, 0x63,
+	0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63,
+	0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63,
+	0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63,
+	0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63,
+	0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63,
+	0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63,
+}
+
+func makeQuantizationTables(q uint8) [][]byte {
+	var scale int
+	if q < 50 {
+		scale = 5000 / int(q)
+	} else {
+		scale = 200 - 2*int(q)
+	}
+
+	tables := make([][]byte, 2)
+
+	tables[0] = make([]byte, 64)
+
+	for i := 0; i < 64; i++ {
+		v := (lumaQuantizers[i]*scale + 50) / 100
+		if v > 255 {
+			v = 255
+		} else if v == 0 {
+			v = 1
+		}
+		tables[0][i] = byte(v)
+	}
+
+	tables[1] = make([]byte, 64)
+
+	for i := 0; i < 64; i++ {
+		v := (chromaQuantizers[i]*scale + 50) / 100
+		if v > 255 {
+			v = 255
+		} else if v == 0 {
+			v = 1
+		}
+		tables[1][i] = byte(v)
+	}
+
+	return tables
+}
+
 func joinFragments(fragments [][]byte, size int) []byte {
 	ret := make([]byte, size)
 	n := 0
@@ -107,7 +166,7 @@ type Decoder struct {
 	fragmentsSize       int
 	fragments           [][]byte
 	firstJpegHeader     *headerJPEG
-	firstQTHeader       *headerQuantizationTable
+	quantizationTables  [][]byte
 }
 
 // Init initializes the decoder.
@@ -127,11 +186,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	byts = byts[n:]
 
 	if jh.Width > maxDimension {
-		return nil, fmt.Errorf("Width of %d is not supported", jh.Width)
+		return nil, fmt.Errorf("width of %d is not supported", jh.Width)
 	}
 
 	if jh.Height > maxDimension {
-		return nil, fmt.Errorf("Height of %d is not supported", jh.Height)
+		return nil, fmt.Errorf("height of %d is not supported", jh.Height)
 	}
 
 	if jh.FragmentOffset == 0 {
@@ -140,14 +199,15 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		d.firstPacketReceived = true
 
 		if jh.Quantization >= 128 {
-			d.firstQTHeader = &headerQuantizationTable{}
-			n, err := d.firstQTHeader.unmarshal(byts)
+			var hqt headerQuantizationTable
+			n, err := hqt.unmarshal(byts)
 			if err != nil {
 				return nil, err
 			}
+			d.quantizationTables = hqt.Tables
 			byts = byts[n:]
 		} else {
-			d.firstQTHeader = nil
+			d.quantizationTables = makeQuantizationTables(jh.Quantization)
 		}
 
 		d.fragments = append(d.fragments, byts)
@@ -186,10 +246,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 
 	var dqt jpeg.DefineQuantizationTable
 	id := uint8(0)
-	for i := 0; i < len(d.firstQTHeader.Tables); i += 64 {
+	for _, table := range d.quantizationTables {
 		dqt.Tables = append(dqt.Tables, jpeg.QuantizationTable{
 			ID:   id,
-			Data: d.firstQTHeader.Tables[i : i+64],
+			Data: table,
 		})
 		id++
 	}
