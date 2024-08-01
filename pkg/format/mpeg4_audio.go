@@ -328,5 +328,8 @@ func (f *MPEG4Audio) GetConfig() *mpeg4audio.Config {
 	if !f.LATM {
 		return f.Config
 	}
+	if f.CPresent {
+		return nil
+	}
 	return f.StreamMuxConfig.Programs[0].Layers[0].AudioSpecificConfig
 }
