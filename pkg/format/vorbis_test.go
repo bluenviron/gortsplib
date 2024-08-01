@@ -21,8 +21,12 @@ func TestVorbisAttributes(t *testing.T) {
 
 func FuzzUnmarshalVorbis(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, a, b string) {
-		Unmarshal("audio", 96, "Vorbis/"+a, map[string]string{ //nolint:errcheck
+		fo, err := Unmarshal("audio", 96, "Vorbis/"+a, map[string]string{
 			"configuration": b,
 		})
+		if err == nil {
+			fo.RTPMap()
+			fo.FMTP()
+		}
 	})
 }

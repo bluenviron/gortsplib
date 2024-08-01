@@ -58,6 +58,10 @@ func FuzzUnmarshalAV1(f *testing.F) {
 			ma["tier"] = f
 		}
 
-		Unmarshal("video", 96, "AV1/90000", ma) //nolint:errcheck
+		fo, err := Unmarshal("video", 96, "AV1/90000", ma)
+		if err == nil {
+			fo.(*AV1).RTPMap()
+			fo.(*AV1).FMTP()
+		}
 	})
 }

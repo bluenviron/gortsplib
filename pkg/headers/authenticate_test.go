@@ -134,7 +134,10 @@ func FuzzAuthenticateUnmarshal(f *testing.F) {
 
 	f.Fuzz(func(_ *testing.T, b string) {
 		var h Authenticate
-		h.Unmarshal(base.HeaderValue{b}) //nolint:errcheck
+		err := h.Unmarshal(base.HeaderValue{b})
+		if err == nil {
+			h.Marshal()
+		}
 	})
 }
 

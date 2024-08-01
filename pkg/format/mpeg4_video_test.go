@@ -56,6 +56,10 @@ func FuzzUnmarshalMPEG4Video(f *testing.F) {
 			ma["config"] = d
 		}
 
-		Unmarshal("audio", 96, "MP4V-ES/90000", ma) //nolint:errcheck
+		fo, err := Unmarshal("audio", 96, "MP4V-ES/90000", ma)
+		if err == nil {
+			fo.RTPMap()
+			fo.FMTP()
+		}
 	})
 }

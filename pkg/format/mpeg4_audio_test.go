@@ -222,8 +222,10 @@ func FuzzUnmarshalMPEG4AudioLATM(f *testing.F) {
 			ma["sbr-enabled"] = l
 		}
 
-		fo, err := Unmarshal("audio", 96, "MP4A-LATM/48000/2", ma) //nolint:errcheck
+		fo, err := Unmarshal("audio", 96, "MP4A-LATM/48000/2", ma)
 		if err == nil {
+			fo.(*MPEG4Audio).RTPMap()
+			fo.(*MPEG4Audio).FMTP()
 			fo.(*MPEG4Audio).GetConfig()
 		}
 	})

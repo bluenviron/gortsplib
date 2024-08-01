@@ -39,7 +39,11 @@ func FuzzUnmarshalOpus(f *testing.F) {
 	f.Add("48000/a")
 
 	f.Fuzz(func(_ *testing.T, a string) {
-		Unmarshal("audio", 96, "Opus/"+a, nil) //nolint:errcheck
+		fo, err := Unmarshal("audio", 96, "Opus/"+a, nil)
+		if err == nil {
+			fo.RTPMap()
+			fo.FMTP()
+		}
 	})
 }
 
@@ -47,6 +51,10 @@ func FuzzUnmarshalOpusMulti(f *testing.F) {
 	f.Add("48000/a")
 
 	f.Fuzz(func(_ *testing.T, a string) {
-		Unmarshal("audio", 96, "multiopus/"+a, nil) //nolint:errcheck
+		fo, err := Unmarshal("audio", 96, "multiopus/"+a, nil)
+		if err == nil {
+			fo.RTPMap()
+			fo.FMTP()
+		}
 	})
 }

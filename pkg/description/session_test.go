@@ -837,7 +837,7 @@ func TestSessionFindFormat(t *testing.T) {
 	require.Equal(t, tr, forma)
 }
 
-func FuzzSessionUnmarshalErrors(f *testing.F) {
+func FuzzSessionUnmarshal(f *testing.F) {
 	for _, ca := range casesSession {
 		f.Add(ca.in)
 	}
@@ -898,11 +898,9 @@ func FuzzSessionUnmarshalErrors(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, enc string) {
 		var sd sdp.SessionDescription
 		err := sd.Unmarshal([]byte(enc))
-		if err != nil {
-			return
+		if err == nil {
+			var desc Session
+			desc.Unmarshal(&sd) //nolint:errcheck
 		}
-
-		var desc Session
-		desc.Unmarshal(&sd) //nolint:errcheck
 	})
 }
