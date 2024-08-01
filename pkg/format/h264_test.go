@@ -61,3 +61,25 @@ func TestH264DecEncoder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{{0x01, 0x02, 0x03, 0x04}}, byts)
 }
+
+func FuzzUnmarshalH264(f *testing.F) {
+	f.Fuzz(func(
+		_ *testing.T,
+		a bool,
+		b string,
+		c bool,
+		d string,
+	) {
+		ma := map[string]string{}
+
+		if a {
+			ma["sprop-parameter-sets"] = b
+		}
+
+		if c {
+			ma["packetization-mode"] = d
+		}
+
+		Unmarshal("video", 96, "H264/90000", ma) //nolint:errcheck
+	})
+}

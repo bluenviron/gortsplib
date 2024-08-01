@@ -33,3 +33,31 @@ func TestVP9DecEncoder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte{0x82, 0x49, 0x83, 0x42, 0x0, 0x77, 0xf0, 0x32, 0x34}, byts)
 }
+
+func FuzzUnmarshalVP9(f *testing.F) {
+	f.Fuzz(func(
+		_ *testing.T,
+		a bool,
+		b string,
+		c bool,
+		d string,
+		e bool,
+		f string,
+	) {
+		ma := map[string]string{}
+
+		if a {
+			ma["max-fr"] = b
+		}
+
+		if c {
+			ma["max-fs"] = d
+		}
+
+		if e {
+			ma["profile-id"] = f
+		}
+
+		Unmarshal("audio", 96, "VP9/90000", ma) //nolint:errcheck
+	})
+}

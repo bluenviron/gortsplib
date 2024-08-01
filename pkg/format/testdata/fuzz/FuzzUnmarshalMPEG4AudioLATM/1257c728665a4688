@@ -1,0 +1,13 @@
+go test fuzz v1
+bool(false)
+string("")
+bool(true)
+string("")
+bool(false)
+string("")
+bool(false)
+string("")
+bool(false)
+string("")
+bool(false)
+string("")

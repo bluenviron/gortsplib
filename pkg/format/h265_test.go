@@ -70,3 +70,33 @@ func TestH265DecEncoder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, [][]byte{{0x01, 0x02, 0x03, 0x04}}, byts)
 }
+
+func FuzzUnmarshalH265(f *testing.F) {
+	f.Fuzz(func(
+		_ *testing.T,
+		a bool,
+		b string,
+		c bool,
+		d string,
+	) {
+		ma := map[string]string{}
+
+		if a {
+			ma["sprop-vps"] = b
+		}
+
+		if c {
+			ma["sprop-sps"] = d
+		}
+
+		if c {
+			ma["sprop-pps"] = d
+		}
+
+		if c {
+			ma["sprop-max-don-diff"] = d
+		}
+
+		Unmarshal("video", 96, "H265/90000", ma) //nolint:errcheck
+	})
+}
