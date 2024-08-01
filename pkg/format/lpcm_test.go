@@ -44,6 +44,10 @@ func TestLPCMDecEncoder(t *testing.T) {
 
 func FuzzUnmarshalLPCM(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, a string) {
-		Unmarshal("audio", 96, "L16/"+a, nil) //nolint:errcheck
+		fo, err := Unmarshal("audio", 96, "L16/"+a, nil)
+		if err == nil {
+			fo.RTPMap()
+			fo.FMTP()
+		}
 	})
 }

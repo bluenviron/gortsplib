@@ -104,6 +104,12 @@ func FuzzSender(f *testing.F) {
 	}
 
 	f.Fuzz(func(_ *testing.T, a string) {
-		NewSender(base.HeaderValue{a}, "myuser", "mypass") //nolint:errcheck
+		se, err := NewSender(base.HeaderValue{a}, "myuser", "mypass")
+		if err == nil {
+			se.AddAuthorization(&base.Request{
+				Method: base.Setup,
+				URL:    mustParseURL("rtsp://myhost/mypath?key=val/trackID=3"),
+			})
+		}
 	})
 }

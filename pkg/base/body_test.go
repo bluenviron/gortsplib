@@ -49,10 +49,13 @@ func FuzzBodyUnmarshal(f *testing.F) {
 
 	f.Fuzz(func(_ *testing.T, a string, b []byte) {
 		var p body
-		p.unmarshal( //nolint:errcheck
+		err := p.unmarshal(
 			Header{
 				"Content-Length": HeaderValue{a},
 			},
 			bufio.NewReader(bytes.NewReader(b)))
+		if err == nil {
+			p.marshal()
+		}
 	})
 }

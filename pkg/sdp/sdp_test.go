@@ -3070,7 +3070,10 @@ func FuzzUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(_ *testing.T, b string) {
-		desc := SessionDescription{}
-		desc.Unmarshal([]byte(b)) //nolint:errcheck
+		var desc SessionDescription
+		err := desc.Unmarshal([]byte(b))
+		if err == nil {
+			desc.Marshal() //nolint:errcheck
+		}
 	})
 }

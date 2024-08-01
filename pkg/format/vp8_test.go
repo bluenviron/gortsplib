@@ -52,6 +52,10 @@ func FuzzUnmarshalVP8(f *testing.F) {
 			ma["max-fs"] = d
 		}
 
-		Unmarshal("audio", 96, "VP8/90000", ma) //nolint:errcheck
+		fo, err := Unmarshal("audio", 96, "VP8/90000", ma)
+		if err == nil {
+			fo.RTPMap()
+			fo.FMTP()
+		}
 	})
 }

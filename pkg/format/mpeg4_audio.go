@@ -174,6 +174,9 @@ func (f *MPEG4Audio) ClockRate() int {
 	if !f.LATM {
 		return f.Config.SampleRate
 	}
+	if f.CPresent {
+		return 16000
+	}
 	return f.StreamMuxConfig.Programs[0].Layers[0].AudioSpecificConfig.SampleRate
 }
 
@@ -197,6 +200,10 @@ func (f *MPEG4Audio) RTPMap() string {
 
 		return "mpeg4-generic/" + strconv.FormatInt(int64(sampleRate), 10) +
 			"/" + strconv.FormatInt(int64(channelCount), 10)
+	}
+
+	if f.CPresent {
+		return "MP4A-LATM/16000/1"
 	}
 
 	aoc := f.StreamMuxConfig.Programs[0].Layers[0].AudioSpecificConfig
@@ -251,15 +258,8 @@ func (f *MPEG4Audio) FMTP() map[string]string {
 		return fmtp
 	}
 
-	enc, err := f.StreamMuxConfig.Marshal()
-	if err != nil {
-		return nil
-	}
-
 	fmtp := map[string]string{
 		"profile-level-id": strconv.FormatInt(int64(f.ProfileLevelID), 10),
-		"config":           hex.EncodeToString(enc),
-		"object":           strconv.FormatInt(int64(f.StreamMuxConfig.Programs[0].Layers[0].AudioSpecificConfig.Type), 10),
 	}
 
 	if f.Bitrate != nil {
@@ -270,6 +270,14 @@ func (f *MPEG4Audio) FMTP() map[string]string {
 		fmtp["cpresent"] = "1"
 	} else {
 		fmtp["cpresent"] = "0"
+
+		enc, err := f.StreamMuxConfig.Marshal()
+		if err != nil {
+			return nil
+		}
+
+		fmtp["config"] = hex.EncodeToString(enc)
+		fmtp["object"] = strconv.FormatInt(int64(f.StreamMuxConfig.Programs[0].Layers[0].AudioSpecificConfig.Type), 10)
 	}
 
 	if f.SBREnabled != nil {

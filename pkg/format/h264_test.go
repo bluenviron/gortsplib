@@ -80,6 +80,10 @@ func FuzzUnmarshalH264(f *testing.F) {
 			ma["packetization-mode"] = d
 		}
 
-		Unmarshal("video", 96, "H264/90000", ma) //nolint:errcheck
+		fo, err := Unmarshal("video", 96, "H264/90000", ma)
+		if err == nil {
+			fo.RTPMap()
+			fo.FMTP()
+		}
 	})
 }

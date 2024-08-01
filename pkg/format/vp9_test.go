@@ -58,6 +58,10 @@ func FuzzUnmarshalVP9(f *testing.F) {
 			ma["profile-id"] = f
 		}
 
-		Unmarshal("audio", 96, "VP9/90000", ma) //nolint:errcheck
+		fo, err := Unmarshal("audio", 96, "VP9/90000", ma)
+		if err == nil {
+			fo.RTPMap()
+			fo.FMTP()
+		}
 	})
 }

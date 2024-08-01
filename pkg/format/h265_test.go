@@ -97,6 +97,10 @@ func FuzzUnmarshalH265(f *testing.F) {
 			ma["sprop-max-don-diff"] = d
 		}
 
-		Unmarshal("video", 96, "H265/90000", ma) //nolint:errcheck
+		fo, err := Unmarshal("video", 96, "H265/90000", ma)
+		if err == nil {
+			fo.RTPMap()
+			fo.FMTP()
+		}
 	})
 }
