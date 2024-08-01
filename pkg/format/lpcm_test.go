@@ -41,3 +41,9 @@ func TestLPCMDecEncoder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, byts)
 }
+
+func FuzzUnmarshalLPCM(f *testing.F) {
+	f.Fuzz(func(_ *testing.T, a string) {
+		Unmarshal("audio", 96, "L16/"+a, nil) //nolint:errcheck
+	})
+}

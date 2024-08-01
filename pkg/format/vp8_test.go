@@ -33,3 +33,25 @@ func TestVP8DecEncoder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, byts)
 }
+
+func FuzzUnmarshalVP8(f *testing.F) {
+	f.Fuzz(func(
+		_ *testing.T,
+		a bool,
+		b string,
+		c bool,
+		d string,
+	) {
+		ma := map[string]string{}
+
+		if a {
+			ma["max-fr"] = b
+		}
+
+		if c {
+			ma["max-fs"] = d
+		}
+
+		Unmarshal("audio", 96, "VP8/90000", ma) //nolint:errcheck
+	})
+}

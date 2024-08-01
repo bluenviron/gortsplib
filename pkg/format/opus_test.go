@@ -34,3 +34,19 @@ func TestOpusDecEncoder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, byts)
 }
+
+func FuzzUnmarshalOpus(f *testing.F) {
+	f.Add("48000/a")
+
+	f.Fuzz(func(_ *testing.T, a string) {
+		Unmarshal("audio", 96, "Opus/"+a, nil) //nolint:errcheck
+	})
+}
+
+func FuzzUnmarshalOpusMulti(f *testing.F) {
+	f.Add("48000/a")
+
+	f.Fuzz(func(_ *testing.T, a string) {
+		Unmarshal("audio", 96, "multiopus/"+a, nil) //nolint:errcheck
+	})
+}

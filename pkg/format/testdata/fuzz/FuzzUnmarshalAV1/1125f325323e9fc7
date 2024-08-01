@@ -1,0 +1,7 @@
+go test fuzz v1
+bool(true)
+string("")
+bool(false)
+string(" \x17T\x9b")
+bool(true)
+string("")
