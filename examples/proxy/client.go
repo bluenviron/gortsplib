@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	existingStream = "rtsp://x.x.x.x:8554/mystream"
+	existingStream = "rtsp://u37001:p37001@192.168.26.202/onvif-media/media.amp?profile=profile_1_h264&sessiontimeout=60&streamtype=unicast"
 	reconnectPause = 2 * time.Second
 )
 
@@ -61,6 +61,22 @@ func (c *client) read() error {
 	if err != nil {
 		return err
 	}
+
+	// HACK!!!
+	// HACK. Add backchannel into desc before it is passed to the Server with setStreamReady()
+	// HACK!!!
+	var extraMedia = new(description.Media)
+	extraMedia.IsBackChannel = true
+	extraMedia.Type = description.MediaTypeAudio
+	extraMedia.Control = "track=extrabackchannel"
+	extraMedia.Formats = []format.Format{&format.G711{
+		PayloadTyp:   0, // 0 = MULAW 8 = ALAW
+		MULaw:        true,
+		SampleRate:   8000,
+		ChannelCount: 1,
+	}}
+
+	desc.Medias = append(desc.Medias, extraMedia)
 
 	stream := c.s.setStreamReady(desc)
 	defer c.s.setStreamUnready()
