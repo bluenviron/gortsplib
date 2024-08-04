@@ -1199,7 +1199,9 @@ func (ss *ServerSession) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 func (ss *ServerSession) OnPacketRTP(medi *description.Media, forma format.Format, cb OnPacketRTPFunc) {
 	sm := ss.setuppedMedias[medi]
 	st := sm.formats[forma.PayloadType()]
-	st.onPacketRTP = cb
+	if st != nil {
+		st.onPacketRTP = cb // RJH HACK. Don't understand. I think this function is called when RTP comes in from the upstream rtsp camera AND also when backchannel data comes in
+	}
 }
 
 // OnPacketRTCP sets the callback that is called when a RTCP packet is read.
