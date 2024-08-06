@@ -37,8 +37,13 @@ func (f *InterleavedFrame) Unmarshal(br *bufio.Reader) error {
 	payloadLen := int(uint16(header[2])<<8 | uint16(header[3]))
 
 	f.Channel = int(header[1])
-	f.Payload = make([]byte, payloadLen)
-
+	if cap(f.Payload) < payloadLen {
+		// if there's not enough space, extend the buffer
+		f.Payload = append(f.Payload[:cap(f.Payload)], make([]byte, payloadLen-cap(f.Payload))...)
+	} else {
+		// otherwise, set the len of the buffer to the payloadLen
+		f.Payload = f.Payload[:payloadLen]
+	}
 	_, err = io.ReadFull(br, f.Payload)
 	return err
 }

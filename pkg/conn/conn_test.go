@@ -76,6 +76,38 @@ func TestRead(t *testing.T) {
 	}
 }
 
+func TestReadInterleavedFrameWithBufferReuse(t *testing.T) {
+	buf := bytes.NewBuffer([]byte{0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4, 0x24, 0x6, 0x0, 0x3, 0x2, 0x3, 0x4, 0x24, 0x6, 0x0, 0x5, 0x3, 0x4, 0x5, 0x6, 0x7})
+	conn := NewConn(buf)
+	// read first packet
+	dec1, err1 := conn.Read()
+	require.NoError(t, err1)
+	require.Equal(t, &base.InterleavedFrame{
+		Channel: 6,
+		Payload: []byte{0x01, 0x02, 0x03, 0x04},
+	}, dec1)
+	p1 := &dec1.(*base.InterleavedFrame).Payload
+	// read second packet
+	dec2, err2 := conn.Read()
+	require.NoError(t, err2)
+	require.Equal(t, &base.InterleavedFrame{
+		Channel: 6,
+		Payload: []byte{0x02, 0x03, 0x04},
+	}, dec2)
+	p2 := &dec2.(*base.InterleavedFrame).Payload
+	// read third packet
+	dec3, err3 := conn.Read()
+	require.NoError(t, err3)
+	require.Equal(t, &base.InterleavedFrame{
+		Channel: 6,
+		Payload: []byte{0x03, 0x04, 0x05, 0x06, 0x07},
+	}, dec3)
+	p3 := &dec3.(*base.InterleavedFrame).Payload
+	// assert that the buffer was reused
+	require.Equal(t, p1, p2)
+	require.Equal(t, p2, p3)
+}
+
 func TestReadError(t *testing.T) {
 	var buf bytes.Buffer
 	conn := NewConn(&buf)
