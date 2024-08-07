@@ -19,13 +19,25 @@ type Conn struct {
 
 	// reuse interleaved frames. they should never be passed to secondary routines
 	fr base.InterleavedFrame
+
+	frameBufferReuseEnable bool
 }
 
 // NewConn allocates a Conn.
-func NewConn(rw io.ReadWriter) *Conn {
+func NewConn(rw io.ReadWriter, opts ...ConnOption) *Conn {
 	return &Conn{
 		w:  rw,
 		br: bufio.NewReaderSize(rw, readBufferSize),
+	}
+}
+
+// ConnOption is an option for Conn.
+type ConnOption func(c *Conn)
+
+// ConnOptionFrameBufferReuseEnable enables buffer reuse.
+func ConnOptionFrameBufferReuseEnable(v bool) ConnOption {
+	return func(c *Conn) {
+		c.frameBufferReuseEnable = v
 	}
 }
 
@@ -63,6 +75,9 @@ func (c *Conn) ReadResponse() (*base.Response, error) {
 
 // ReadInterleavedFrame reads a InterleavedFrame.
 func (c *Conn) ReadInterleavedFrame() (*base.InterleavedFrame, error) {
+	if !c.frameBufferReuseEnable {
+		c.fr.Payload = nil // reset the payload, causing a new buffer to be allocated
+	}
 	err := c.fr.Unmarshal(c.br)
 	return &c.fr, err
 }
