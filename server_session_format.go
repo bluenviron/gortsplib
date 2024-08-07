@@ -24,7 +24,7 @@ type serverSessionFormat struct {
 }
 
 func (sf *serverSessionFormat) start() {
-	if sf.sm.ss.state != ServerSessionStatePlay {
+	if sf.sm.ss.state != ServerSessionStatePlay /* Do this mean ServerSessionStateRecord */ || (sf.sm.ss.state == ServerSessionStatePlay && sf.sm.media.IsBackChannel) {
 		if *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast {
 			sf.udpReorderer = rtpreorderer.New()
 		} else {
