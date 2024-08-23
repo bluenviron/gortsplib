@@ -728,7 +728,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			if inTH.Mode != nil && *inTH.Mode != headers.TransportModePlay {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: *inTH.Mode}
+				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: inTH.Mode}
 			}
 
 		default: // record
@@ -741,7 +741,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			if inTH.Mode == nil || *inTH.Mode != headers.TransportModeRecord {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
-				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: *inTH.Mode}
+				}, liberrors.ErrServerTransportHeaderInvalidMode{Mode: inTH.Mode}
 			}
 		}
 

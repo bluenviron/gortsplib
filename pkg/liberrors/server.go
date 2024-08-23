@@ -84,12 +84,16 @@ func (e ErrServerMediaNotFound) Error() string {
 
 // ErrServerTransportHeaderInvalidMode is an error that can be returned by a server.
 type ErrServerTransportHeaderInvalidMode struct {
-	Mode headers.TransportMode
+	Mode *headers.TransportMode
 }
 
 // Error implements the error interface.
 func (e ErrServerTransportHeaderInvalidMode) Error() string {
-	return fmt.Sprintf("transport header contains a invalid mode (%v)", e.Mode)
+	m := "null"
+	if e.Mode != nil {
+		m = e.Mode.String()
+	}
+	return fmt.Sprintf("transport header contains a invalid mode (%v)", m)
 }
 
 // ErrServerTransportHeaderNoClientPorts is an error that can be returned by a server.

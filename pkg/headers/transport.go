@@ -47,6 +47,14 @@ const (
 	TransportProtocolTCP
 )
 
+// String implements fmt.Stringer.
+func (p TransportProtocol) String() string {
+	if p == TransportProtocolUDP {
+		return "RTP/AVP"
+	}
+	return "RTP/AVP/TCP"
+}
+
 // TransportDelivery is a delivery method.
 type TransportDelivery int
 
@@ -55,6 +63,14 @@ const (
 	TransportDeliveryUnicast TransportDelivery = iota
 	TransportDeliveryMulticast
 )
+
+// String implements fmt.Stringer.
+func (d TransportDelivery) String() string {
+	if d == TransportDeliveryUnicast {
+		return "unicast"
+	}
+	return "multicast"
+}
 
 // TransportMode is a transport mode.
 type TransportMode int
@@ -66,6 +82,33 @@ const (
 	// TransportModeRecord is the "record" transport mode
 	TransportModeRecord
 )
+
+func (m *TransportMode) unmarshal(v string) error {
+	str := strings.ToLower(v)
+
+	switch str {
+	case "play":
+		*m = TransportModePlay
+		return nil
+
+		// receive is an old alias for record, used by ffmpeg with the
+		// -listen flag, and by Darwin Streaming Server
+	case "record", "receive":
+		*m = TransportModeRecord
+		return nil
+
+	default:
+		return fmt.Errorf("invalid transport mode: '%s'", str)
+	}
+}
+
+// String implements fmt.Stringer.
+func (m TransportMode) String() string {
+	if m == TransportModePlay {
+		return "play"
+	}
+	return "record"
+}
 
 // Transport is a Transport header.
 type Transport struct {
@@ -218,24 +261,12 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 			}
 
 		case "mode":
-			str := strings.ToLower(v)
-			str = strings.TrimPrefix(str, "\"")
-			str = strings.TrimSuffix(str, "\"")
-
-			switch str {
-			case "play":
-				v := TransportModePlay
-				h.Mode = &v
-
-				// receive is an old alias for record, used by ffmpeg with the
-				// -listen flag, and by Darwin Streaming Server
-			case "record", "receive":
-				v := TransportModeRecord
-				h.Mode = &v
-
-			default:
-				return fmt.Errorf("invalid transport mode: '%s'", str)
+			var m TransportMode
+			err = m.unmarshal(v)
+			if err != nil {
+				return err
 			}
+			h.Mode = &m
 
 		default:
 			// ignore non-standard keys
@@ -253,18 +284,10 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 func (h Transport) Marshal() base.HeaderValue {
 	var rets []string
 
-	if h.Protocol == TransportProtocolUDP {
-		rets = append(rets, "RTP/AVP")
-	} else {
-		rets = append(rets, "RTP/AVP/TCP")
-	}
+	rets = append(rets, h.Protocol.String())
 
 	if h.Delivery != nil {
-		if *h.Delivery == TransportDeliveryUnicast {
-			rets = append(rets, "unicast")
-		} else {
-			rets = append(rets, "multicast")
-		}
+		rets = append(rets, h.Delivery.String())
 	}
 
 	if h.Source != nil {
@@ -309,11 +332,7 @@ func (h Transport) Marshal() base.HeaderValue {
 	}
 
 	if h.Mode != nil {
-		if *h.Mode == TransportModePlay {
-			rets = append(rets, "mode=play")
-		} else {
-			rets = append(rets, "mode=record")
-		}
+		rets = append(rets, "mode="+h.Mode.String())
 	}
 
 	return base.HeaderValue{strings.Join(rets, ";")}
