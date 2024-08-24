@@ -48,7 +48,7 @@ func main() {
 		" ! mulawenc ! rtppcmupay ! udpsink host=127.0.0.1 port=9000\n\n" +
 		"* audio from a microphone:\n\n" +
 		"gst-launch-1.0 pulsesrc ! audioconvert ! audioresample ! audio/x-raw,rate=8000" +
-		" ! mulawenc ! rtppcmupay ! udpsink host=127.0.0.1 port=9000\n")
+		" ! mulawenc ! rtppcmupay ! udpsink host=127.0.0.1 port=9000")
 
 	// wait for first packet
 	buf := make([]byte, 2048)
