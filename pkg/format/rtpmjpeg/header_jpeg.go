@@ -22,7 +22,7 @@ func (h *headerJPEG) unmarshal(byts []byte) (int, error) {
 	h.FragmentOffset = uint32(byts[1])<<16 | uint32(byts[2])<<8 | uint32(byts[3])
 
 	h.Type = byts[4]
-	if h.Type != 1 {
+	if h.Type != 0 && h.Type != 1 {
 		return 0, fmt.Errorf("type %d is not supported", h.Type)
 	}
 
