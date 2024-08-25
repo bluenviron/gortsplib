@@ -971,15 +971,15 @@ func (c *Client) atLeastOneUDPPacketHasBeenReceived() bool {
 	for _, ct := range c.medias {
 		lft := atomic.LoadInt64(ct.udpRTPListener.lastPacketTime)
 		if lft != 0 {
-			return false
+			return true
 		}
 
 		lft = atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime)
 		if lft != 0 {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 func (c *Client) isInUDPTimeout() bool {
@@ -1007,10 +1007,10 @@ func (c *Client) isInTCPTimeout() bool {
 func (c *Client) doCheckTimeout() error {
 	if *c.effectiveTransport == TransportUDP ||
 		*c.effectiveTransport == TransportUDPMulticast {
-		if c.checkTimeoutInitial && !c.backChannelSetupped {
+		if c.checkTimeoutInitial && !c.backChannelSetupped && c.Transport == nil {
 			c.checkTimeoutInitial = false
 
-			if c.atLeastOneUDPPacketHasBeenReceived() {
+			if !c.atLeastOneUDPPacketHasBeenReceived() {
 				err := c.trySwitchingProtocol()
 				if err != nil {
 					return err

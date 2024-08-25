@@ -2278,7 +2278,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 				})
 				require.NoError(t, err2)
 
-				if transport == "udp" || transport == "auto" {
+				if transport == "auto" {
 					// write a packet to skip the protocol autodetection feature
 					_, err2 = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
