@@ -187,7 +187,7 @@ outer:
 		return nil, fmt.Errorf("SOF not found")
 	}
 
-	if sof.Type != 1 {
+	if sof.Type > 63 {
 		return nil, fmt.Errorf("JPEG type %d is not supported", sof.Type)
 	}
 
