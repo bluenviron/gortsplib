@@ -110,7 +110,7 @@ func TestServerRecordErrorAnnounce(t *testing.T) {
 			"unsupported Content-Type header '[aa]'",
 		},
 		{
-			"invalid medias",
+			"invalid sdp",
 			base.Request{
 				Method: base.Announce,
 				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
@@ -121,6 +121,29 @@ func TestServerRecordErrorAnnounce(t *testing.T) {
 				Body: []byte{0x01, 0x02, 0x03, 0x04},
 			},
 			"invalid SDP: invalid line: (\x01\x02\x03\x04)",
+		},
+		{
+			"invalid session",
+			base.Request{
+				Method: base.Announce,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: []byte("v=0\r\n" +
+					"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+					"s=-\r\n" +
+					"c=IN IP4 0.0.0.0\r\n" +
+					"t=0 0\r\n" +
+					"m=video 0 RTP/AVP 96\r\n" +
+					"a=control\r\n" +
+					"a=rtpmap:97 H264/90000\r\n" +
+					"a=fmtp:aa packetization-mode=1; profile-level-id=4D002A; " +
+					"sprop-parameter-sets=Z00AKp2oHgCJ+WbgICAgQA==,aO48gA==\r\n",
+				),
+			},
+			"invalid SDP: media 1 is invalid: clock rate not found",
 		},
 		{
 			"invalid URL 1",
@@ -164,6 +187,87 @@ func TestServerRecordErrorAnnounce(t *testing.T) {
 			require.NoError(t, err)
 
 			<-nconnClosed
+		})
+	}
+}
+
+func TestServerRecordErrorSetup(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		err  string
+	}{
+		{
+			"invalid transport",
+			"transport header contains a invalid mode (null)",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			s := &Server{
+				Handler: &testServerHandler{
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+						require.EqualError(t, ctx.Error, ca.err)
+					},
+					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil, nil
+					},
+					onRecord: func(_ *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+					onPause: func(_ *ServerHandlerOnPauseCtx) (*base.Response, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+				},
+				RTSPAddress:    "localhost:8554",
+				UDPRTPAddress:  "127.0.0.1:8000",
+				UDPRTCPAddress: "127.0.0.1:8001",
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			nconn, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn.Close()
+			conn := conn.NewConn(nconn)
+
+			medias := []*description.Media{testH264Media}
+
+			doAnnounce(t, conn, "rtsp://localhost:8554/teststream", medias)
+
+			var inTH *headers.Transport
+
+			switch ca.name {
+			case "invalid transport":
+				inTH = &headers.Transport{
+					Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+					Mode:        nil,
+					Protocol:    headers.TransportProtocolUDP,
+					ClientPorts: &[2]int{35466, 35467},
+				}
+			}
+
+			res, err := writeReqReadRes(conn, base.Request{
+				Method: base.Setup,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream/" + medias[0].Control),
+				Header: base.Header{
+					"CSeq":      base.HeaderValue{"1"},
+					"Transport": inTH.Marshal(),
+				},
+			})
+			require.NoError(t, err)
+			require.NotEqual(t, base.StatusOK, res.StatusCode)
 		})
 	}
 }
