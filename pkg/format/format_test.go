@@ -743,7 +743,8 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 MP4V-ES/90000\n" +
-			"a=fmtp:96 profile-level-id=1; config=000001B001000001B58913000001000000012000C48D8AEE053C04641443000001B24C61766335382E3133342E313030\n",
+			"a=fmtp:96 profile-level-id=1; " +
+			"config=000001B001000001B58913000001000000012000C48D8AEE053C04641443000001B24C61766335382E3133342E313030\n",
 		&MPEG4Video{
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
@@ -770,7 +771,8 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 H264/90000\n" +
-			"a=fmtp:96 packetization-mode=1; profile-level-id=64000C; sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==\n",
+			"a=fmtp:96 packetization-mode=1; profile-level-id=64000C; " +
+			"sprop-parameter-sets=Z2QADKw7ULBLQgAAAwACAAADAD0I,aO48gA==\n",
 		&H264{
 			PayloadTyp: 96,
 			SPS: []byte{
@@ -797,7 +799,8 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 H264/90000\n" +
-			"a=fmtp:96 packetization-mode=1; profile-level-id=64001f; sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,aOvjyyLA\n",
+			"a=fmtp:96 packetization-mode=1; profile-level-id=64001f; " +
+			"sprop-parameter-sets=Z2QAH6zZQFAFuwFsgAAAAwCAAAAeB4wYyw==,aOvjyyLA\n",
 		&H264{
 			PayloadTyp: 96,
 			SPS: []byte{
@@ -825,7 +828,8 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 H264/90000\n" +
-			"a=fmtp:96 packetization-mode=1; profile-level-id=640029; sprop-parameter-sets=Z2QAKawTMUB4BEfeA+oCAgPgAAADACAAAAZSgA==,aPqPLA==,aF6jzAMA\n",
+			"a=fmtp:96 packetization-mode=1; profile-level-id=640029; " +
+			"sprop-parameter-sets=Z2QAKawTMUB4BEfeA+oCAgPgAAADACAAAAZSgA==,aPqPLA==,aF6jzAMA\n",
 		&H264{
 			PayloadTyp: 96,
 			SPS: []byte{
@@ -870,7 +874,8 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 H264/90000\n" +
-			"a=fmtp:96 packetization-mode=1; profile-level-id=4DE028; sprop-parameter-sets=AAAAAWdNAB6NjUBaHtCAAAOEAACvyAI=,AAAAAWjuOIA=\n",
+			"a=fmtp:96 packetization-mode=1; profile-level-id=4DE028; " +
+			"sprop-parameter-sets=AAAAAWdNAB6NjUBaHtCAAAOEAACvyAI=,AAAAAWjuOIA=\n",
 		&H264{
 			PayloadTyp: 96,
 			SPS: []byte{
@@ -897,7 +902,8 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 H264/90000\n" +
-			"a=fmtp:96 packetization-mode=1; profile-level-id=010101; sprop-parameter-sets=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Y2uSTJrlnAIAAADAAgAAAMAyEA=,RAHgdrAmQA==\n",
+			"a=fmtp:96 packetization-mode=1; profile-level-id=010101; " +
+			"sprop-parameter-sets=QgEBAWAAAAMAAAMAAAMAAAMAlqADwIAQ5Y2uSTJrlnAIAAADAAgAAAMAyEA=,RAHgdrAmQA==\n",
 		&H264{
 			PayloadTyp:        96,
 			PacketizationMode: 1,
@@ -966,7 +972,8 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 H265/90000\n" +
-			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; sprop-sps=QgEBAWAAAAMAkAAAAwAAAwB4oAPAgBDllmZpJMrgEAAAAwAQAAADAeCA; " +
+			"a=fmtp:96 sprop-vps=QAEMAf//AWAAAAMAkAAAAwAAAwB4mZgJ; " +
+			"sprop-sps=QgEBAWAAAAMAkAAAAwAAAwB4oAPAgBDllmZpJMrgEAAAAwAQAAADAeCA; " +
 			"sprop-pps=RAHBcrRiQA==; sprop-max-don-diff=2\n",
 		&H265{
 			PayloadTyp: 96,
@@ -1003,7 +1010,8 @@ var casesFormat = []struct {
 			"s=\n" +
 			"m=video 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 H265/90000\n" +
-			"a=fmtp:96 sprop-vps=AAAAAUABDAH//wFgAAADAAADAAADAAADAJasCQ==; sprop-sps=AAAAAUIBAQFgAAADAAADAAADAAADAJagBaIB4WNrkkya5Zk=; " +
+			"a=fmtp:96 sprop-vps=AAAAAUABDAH//wFgAAADAAADAAADAAADAJasCQ==; " +
+			"sprop-sps=AAAAAUIBAQFgAAADAAADAAADAAADAJagBaIB4WNrkkya5Zk=; " +
 			"sprop-pps=AAAAAUQB4HawJkA=\n",
 		&H265{
 			PayloadTyp: 96,
@@ -1224,7 +1232,7 @@ func FuzzUnmarshal(f *testing.F) {
 		err := desc.Unmarshal([]byte(in))
 
 		if err == nil && len(desc.MediaDescriptions) == 1 && len(desc.MediaDescriptions[0].MediaName.Formats) == 1 {
-			Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0])
+			Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0]) //nolint:errcheck
 		}
 	})
 }

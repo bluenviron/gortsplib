@@ -15,8 +15,8 @@ func int64Ptr(v int64) *int64 {
 	return &v
 }
 
-func randInRange(max int) (int, error) {
-	b := big.NewInt(int64(max + 1))
+func randInRange(maxVal int) (int, error) {
+	b := big.NewInt(int64(maxVal + 1))
 	n, err := rand.Int(rand.Reader, b)
 	if err != nil {
 		return 0, err

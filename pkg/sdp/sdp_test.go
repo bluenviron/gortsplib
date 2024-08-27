@@ -3010,7 +3010,8 @@ var cases = []struct {
 			"m=video 0 RTP/AVP 96\r\n" +
 			"a=control:trackID=0\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
-			"a=fmtp:96 packetization-mode=1; sprop-parameter-sets=Z00AMpY1QFEBf03AQEBAgA==,aO4xsg==; profile-level-id=4D0032\r\n" +
+			"a=fmtp:96 packetization-mode=1; sprop-parameter-sets=Z00AMpY1QFEBf03AQEBAgA==,aO4xsg==; " +
+			"profile-level-id=4D0032\r\n" +
 			"m=audio 0 RTP/AVP 14\r\n" +
 			"a=control:trackID=1\r\n" +
 			"m=text 0 RTP/AVP 103\r\n" +
@@ -3023,7 +3024,8 @@ var cases = []struct {
 			"m=video 0 RTP/AVP 96\r\n" +
 			"a=control:trackID=0\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
-			"a=fmtp:96 packetization-mode=1; sprop-parameter-sets=Z00AMpY1QFEBf03AQEBAgA==,aO4xsg==; profile-level-id=4D0032\r\n" +
+			"a=fmtp:96 packetization-mode=1; sprop-parameter-sets=Z00AMpY1QFEBf03AQEBAgA==,aO4xsg==; " +
+			"profile-level-id=4D0032\r\n" +
 			"m=audio 0 RTP/AVP 14\r\n" +
 			"a=control:trackID=1\r\n" +
 			"m=text 0 RTP/AVP 103\r\n" +
@@ -3060,8 +3062,9 @@ var cases = []struct {
 							Value: "96 H264/90000",
 						},
 						{
-							Key:   "fmtp",
-							Value: "96 packetization-mode=1; sprop-parameter-sets=Z00AMpY1QFEBf03AQEBAgA==,aO4xsg==; profile-level-id=4D0032",
+							Key: "fmtp",
+							Value: "96 packetization-mode=1; sprop-parameter-sets=Z00AMpY1QFEBf03AQEBAgA==,aO4xsg==; " +
+								"profile-level-id=4D0032",
 						},
 					},
 				},

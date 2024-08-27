@@ -103,7 +103,8 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 
 			if d.fragmentsSize > av1.MaxTemporalUnitSize {
 				d.resetFragments()
-				return nil, fmt.Errorf("temporal unit size (%d) is too big, maximum is %d", d.fragmentsSize, av1.MaxTemporalUnitSize)
+				return nil, fmt.Errorf("temporal unit size (%d) is too big, maximum is %d",
+					d.fragmentsSize, av1.MaxTemporalUnitSize)
 			}
 
 			d.fragments = append(d.fragments, av1header.OBUElements[elementCount-1])

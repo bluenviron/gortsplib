@@ -1914,7 +1914,7 @@ func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Durat
 	return multiplyAndDivide(time.Duration(v), time.Second, time.Duration(ct.format.ClockRate())), true
 }
 
-// PacketPTS returns the PTS of an incoming RTP packet.
+// PacketPTS2 returns the PTS of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
 func (c *Client) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
 	cm := c.medias[medi]
