@@ -8,10 +8,14 @@ import (
 
 // ByteCounter is a io.ReadWriter wrapper that allows to count read and written bytes and errors.
 type ByteCounter struct {
-	rw       io.ReadWriter
+	rw io.ReadWriter
+
+	// These counters track total number of bytes read/written using the .Read() and .Write() methods.
+	// Only bytes that are successfully read/written are counted.
 	received *uint64
 	sent     *uint64
 
+	// These counters track the number errors that occurred during read/write operations.
 	readErrors  *uint64
 	writeErrors *uint64
 }
