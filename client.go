@@ -251,6 +251,10 @@ type Client struct {
 	BytesReceived *uint64
 	// pointer to a variable that stores sent bytes.
 	BytesSent *uint64
+	// pointer to a variable that stores read errors.
+	ReadErrors *uint64
+	// pointer to a variable that stores write errors.
+	WriteErrors *uint64
 
 	//
 	// system functions (all optional)
@@ -365,6 +369,12 @@ func (c *Client) Start(scheme string, host string) error {
 	}
 	if c.BytesSent == nil {
 		c.BytesSent = new(uint64)
+	}
+	if c.ReadErrors == nil {
+		c.ReadErrors = new(uint64)
+	}
+	if c.WriteErrors == nil {
+		c.WriteErrors = new(uint64)
 	}
 
 	// system functions
@@ -882,7 +892,7 @@ func (c *Client) connOpen() error {
 	}
 
 	c.nconn = nconn
-	bc := bytecounter.New(c.nconn, c.BytesReceived, c.BytesSent)
+	bc := bytecounter.New(c.nconn, c.BytesReceived, c.BytesSent, c.ReadErrors, c.WriteErrors)
 	c.conn = conn.NewConn(bc)
 	c.reader = &clientReader{
 		c: c,

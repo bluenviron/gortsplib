@@ -89,7 +89,7 @@ func (sc *ServerConn) initialize() {
 		sc.nconn = tls.Server(sc.nconn, sc.s.TLSConfig)
 	}
 
-	sc.bc = bytecounter.New(sc.nconn, nil, nil)
+	sc.bc = bytecounter.New(sc.nconn, nil, nil, nil, nil)
 	sc.ctx = ctx
 	sc.ctxCancel = ctxCancel
 	sc.remoteAddr = sc.nconn.RemoteAddr().(*net.TCPAddr)
@@ -120,6 +120,14 @@ func (sc *ServerConn) BytesReceived() uint64 {
 // BytesSent returns the number of written bytes.
 func (sc *ServerConn) BytesSent() uint64 {
 	return sc.bc.BytesSent()
+}
+
+func (sc *ServerConn) WriteErrors() uint64 {
+	return sc.bc.WriteErrors()
+}
+
+func (sc *ServerConn) ReadErrors() uint64 {
+	return sc.bc.ReadErrors()
 }
 
 // SetUserData sets some user data associated with the connection.
