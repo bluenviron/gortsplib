@@ -200,6 +200,8 @@ func TestClientRecordSerial(t *testing.T) {
 				err2 = inTH.Unmarshal(req.Header["Transport"])
 				require.NoError(t, err2)
 
+				require.Equal(t, headers.TransportModeRecord, *inTH.Mode)
+
 				var l1 net.PacketConn
 				var l2 net.PacketConn
 				if transport == "udp" {
