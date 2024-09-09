@@ -8,6 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func sessionInformationPtr(v psdp.Information) *psdp.Information {
+	return &v
+}
+
+func emailAddressPtr(v psdp.EmailAddress) *psdp.EmailAddress {
+	return &v
+}
+
+func mediaTitlePtr(v psdp.Information) *psdp.Information {
+	return &v
+}
+
 var cases = []struct {
 	name string
 	dec  []byte
@@ -36,11 +48,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.47.16.5",
 			},
-			SessionName: "SDP Seminar",
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("A Seminar on the session description protocol")
-				return &v
-			}(),
+			SessionName:        "SDP Seminar",
+			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -67,11 +76,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.47.16.5",
 			},
-			SessionName: "SDP Seminar",
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("A Seminar on the session description protocol")
-				return &v
-			}(),
+			SessionName:        "SDP Seminar",
+			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -102,11 +108,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.47.16.5",
 			},
-			SessionName: "SDP Seminar",
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("A Seminar on the session description protocol")
-				return &v
-			}(),
+			SessionName:        "SDP Seminar",
+			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -173,19 +176,13 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.47.16.5",
 			},
-			SessionName: "SDP Seminar",
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("A Seminar on the session description protocol")
-				return &v
-			}(),
+			SessionName:        "SDP Seminar",
+			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
 			URI: func() *url.URL {
 				u, _ := url.Parse("http://www.example.com/seminars/sdp.pdf")
 				return u
 			}(),
-			EmailAddress: func() *psdp.EmailAddress {
-				v := psdp.EmailAddress("j.doe@example.com (Jane Doe)")
-				return &v
-			}(),
+			EmailAddress: emailAddressPtr("j.doe@example.com (Jane Doe)"),
 			PhoneNumber: func() *psdp.PhoneNumber {
 				v := psdp.PhoneNumber("+1 617 555-6011")
 				return &v
@@ -239,10 +236,7 @@ var cases = []struct {
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0"},
 					},
-					MediaTitle: func() *psdp.Information {
-						v := psdp.Information("Vivamus a posuere nisl")
-						return &v
-					}(),
+					MediaTitle: mediaTitlePtr("Vivamus a posuere nisl"),
 					ConnectionInformation: &psdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
@@ -812,11 +806,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "5c2b68da",
 			},
-			SessionName: psdp.SessionName("Unnamed"),
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("N/A")
-				return &v
-			}(),
+			SessionName:        psdp.SessionName("Unnamed"),
+			SessionInformation: sessionInformationPtr("N/A"),
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -998,11 +989,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "",
 			},
-			SessionName: psdp.SessionName("RTSP Server"),
-			EmailAddress: func() *psdp.EmailAddress {
-				v := psdp.EmailAddress("NONE")
-				return &v
-			}(),
+			SessionName:      psdp.SessionName("RTSP Server"),
+			EmailAddress:     emailAddressPtr("NONE"),
 			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
 				{Key: "recvonly"},
@@ -1325,15 +1313,9 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "0.0.0.0",
 			},
-			SessionName: psdp.SessionName("HIK Media Server V3.1.3"),
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("HIK Media Server Session Description : standard")
-				return &v
-			}(),
-			EmailAddress: func() *psdp.EmailAddress {
-				v := psdp.EmailAddress("NONE")
-				return &v
-			}(),
+			SessionName:        psdp.SessionName("HIK Media Server V3.1.3"),
+			SessionInformation: sessionInformationPtr("HIK Media Server Session Description : standard"),
+			EmailAddress:       emailAddressPtr("NONE"),
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -1361,10 +1343,7 @@ var cases = []struct {
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					MediaTitle: func() *psdp.Information {
-						v := psdp.Information("Video Media")
-						return &v
-					}(),
+					MediaTitle: mediaTitlePtr("Video Media"),
 					Attributes: []psdp.Attribute{
 						{
 							Key:   "rtpmap",
@@ -1414,11 +1393,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.47.16.5",
 			},
-			SessionName: "SDP Seminar",
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("A Seminar on the session description protocol")
-				return &v
-			}(),
+			SessionName:        "SDP Seminar",
+			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -1483,12 +1459,9 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "172.16.2.20",
 			},
-			SessionName: "IR stream",
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("Live infrared")
-				return &v
-			}(),
-			TimeDescriptions: []psdp.TimeDescription{{}},
+			SessionName:        "IR stream",
+			SessionInformation: sessionInformationPtr("Live infrared"),
+			TimeDescriptions:   []psdp.TimeDescription{{}},
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -1614,10 +1587,7 @@ var cases = []struct {
 			},
 			SessionName:      "RTP session",
 			TimeDescriptions: []psdp.TimeDescription{{}},
-			EmailAddress: func() *psdp.EmailAddress {
-				e := psdp.EmailAddress("NONE")
-				return &e
-			}(),
+			EmailAddress:     emailAddressPtr("NONE"),
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
 					MediaName: psdp.MediaName{
@@ -1676,11 +1646,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.47.16.5",
 			},
-			SessionName: "SDP Seminar",
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("A Seminar on the session description protocol")
-				return &v
-			}(),
+			SessionName:        "SDP Seminar",
+			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -1707,11 +1674,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "10.47.16.5",
 			},
-			SessionName: "SDP Seminar",
-			SessionInformation: func() *psdp.Information {
-				v := psdp.Information("A Seminar on the session description protocol")
-				return &v
-			}(),
+			SessionName:        "SDP Seminar",
+			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -2970,11 +2934,8 @@ var cases = []struct {
 				AddressType:    "IP4",
 				UnicastAddress: "192.168.221.104",
 			},
-			SessionName: "Media Presentation",
-			EmailAddress: func() *psdp.EmailAddress {
-				v := psdp.EmailAddress("NONE")
-				return &v
-			}(),
+			SessionName:  "Media Presentation",
+			EmailAddress: emailAddressPtr("NONE"),
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -3035,6 +2996,102 @@ var cases = []struct {
 						{
 							Key:   "mpeg4-esid",
 							Value: "201",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue mediamtx/3583",
+		[]byte("v=0\r\n" +
+			"s=DWC-MV94WiAT\r\n" +
+			"c=IN IP4 10.1.10.178\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=control:trackID=0\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1; sprop-parameter-sets=Z00AMpY1QFEBf03AQEBAgA==,aO4xsg==; profile-level-id=4D0032\r\n" +
+			"m=audio 0 RTP/AVP 14\r\n" +
+			"a=control:trackID=1\r\n" +
+			"m=text 0 RTP/AVP 103\r\n" +
+			"a=control:trackID=2\r\n" +
+			"a=rtpmap:103 object-detection/1000\r\n"),
+		[]byte("v=0\r\n" +
+			"o= 0 0   \r\n" +
+			"s=DWC-MV94WiAT\r\n" +
+			"c=IN IP4 10.1.10.178\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=control:trackID=0\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1; sprop-parameter-sets=Z00AMpY1QFEBf03AQEBAgA==,aO4xsg==; profile-level-id=4D0032\r\n" +
+			"m=audio 0 RTP/AVP 14\r\n" +
+			"a=control:trackID=1\r\n" +
+			"m=text 0 RTP/AVP 103\r\n" +
+			"a=control:trackID=2\r\n" +
+			"a=rtpmap:103 object-detection/1000\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "",
+				SessionID:      0,
+				SessionVersion: 0,
+			},
+			SessionName: "DWC-MV94WiAT",
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "10.1.10.178",
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "trackID=0",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "96 H264/90000",
+						},
+						{
+							Key:   "fmtp",
+							Value: "96 packetization-mode=1; sprop-parameter-sets=Z00AMpY1QFEBf03AQEBAgA==,aO4xsg==; profile-level-id=4D0032",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"14"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "trackID=1",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "text",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"103"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "trackID=2",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "103 object-detection/1000",
 						},
 					},
 				},
