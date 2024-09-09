@@ -1288,9 +1288,8 @@ func (c *Client) doSetup(
 				v := headers.TransportModeRecord
 				return &v
 			}
-
-			v := headers.TransportModePlay
-			return &v
+			// when playing, omit mode, since it causes errors with some servers.
+			return nil
 		}(),
 	}
 

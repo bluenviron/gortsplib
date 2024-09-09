@@ -344,6 +344,8 @@ func TestClientPlay(t *testing.T) {
 					err2 = inTH.Unmarshal(req.Header["Transport"])
 					require.NoError(t, err2)
 
+					require.Equal(t, (*headers.TransportMode)(nil), inTH.Mode)
+
 					var th headers.Transport
 
 					switch transport {
