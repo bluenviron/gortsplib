@@ -104,3 +104,9 @@ func FuzzUnmarshalH265(f *testing.F) {
 		}
 	})
 }
+
+func FuzzH265PTSEqualsDTS(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b []byte) {
+		(&H265{}).PTSEqualsDTS(&rtp.Packet{Payload: b})
+	})
+}
