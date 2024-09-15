@@ -34,28 +34,53 @@ func stringsReverseIndex(s, substr string) int {
 	return -1
 }
 
-func serverParseURLForPlay(u *base.URL) (string, string, string, error) {
-	pathAndQuery, ok := u.RTSPPathAndQuery()
-	if !ok {
-		return "", "", "", liberrors.ErrServerInvalidPath{}
-	}
-
-	i := stringsReverseIndex(pathAndQuery, "/trackID=")
-	if i < 0 {
-		if !strings.HasSuffix(pathAndQuery, "/") {
-			return "", "", "", liberrors.ErrServerPathNoSlash{}
+// used for all methods except SETUP
+func getPathAndQuery(u *base.URL, isAnnounce bool) (string, string) {
+	if !isAnnounce {
+		// FFmpeg format
+		if strings.HasSuffix(u.RawQuery, "/") {
+			return u.Path, u.RawQuery[:len(u.RawQuery)-1]
 		}
 
-		path, query := base.PathSplitQuery(pathAndQuery[:len(pathAndQuery)-1])
-		return path, query, "", nil
+		// GStreamer format
+		if len(u.Path) > 1 && strings.HasSuffix(u.Path, "/") {
+			return u.Path[:len(u.Path)-1], u.RawQuery
+		}
 	}
 
-	var trackID string
-	pathAndQuery, trackID = pathAndQuery[:i], pathAndQuery[i+len("/trackID="):]
-	path, query := base.PathSplitQuery(pathAndQuery)
-	return path, query, trackID, nil
+	return u.Path, u.RawQuery
 }
 
+// used for SETUP when playing
+func getPathAndQueryAndTrackID(u *base.URL) (string, string, string, error) {
+	// FFmpeg format
+	i := stringsReverseIndex(u.RawQuery, "/trackID=")
+	if i >= 0 {
+		path := u.Path
+		query := u.RawQuery[:i]
+		trackID := u.RawQuery[i+len("/trackID="):]
+		return path, query, trackID, nil
+	}
+
+	// GStreamer format
+	i = stringsReverseIndex(u.Path, "/trackID=")
+	if i >= 0 {
+		path := u.Path[:i]
+		query := u.RawQuery
+		trackID := u.Path[i+len("/trackID="):]
+		return path, query, trackID, nil
+	}
+
+	// no track ID and a trailing slash.
+	// this happens when trying to read a MPEG-TS stream with FFmpeg.
+	if strings.HasSuffix(u.Path[1:], "/") {
+		return u.Path[:len(u.Path)-1], u.RawQuery, "0", nil
+	}
+
+	return "", "", "", liberrors.ErrServerPathNoSlash{}
+}
+
+// used for SETUP when recording
 func findMediaByURL(
 	medias []*description.Media,
 	path string,
@@ -520,21 +545,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 	var path string
 	var query string
+
 	switch req.Method {
-	case base.Announce, base.Play, base.Record, base.Pause, base.GetParameter, base.SetParameter:
-		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerInvalidPath{}
-		}
-
-		// pathAndQuery can end with a slash due to Content-Base, remove it
-		if ss.state == ServerSessionStatePrePlay || ss.state == ServerSessionStatePlay {
-			pathAndQuery = strings.TrimSuffix(pathAndQuery, "/")
-		}
-
-		path, query = base.PathSplitQuery(pathAndQuery)
+	case base.Announce:
+		path, query = getPathAndQuery(req.URL, true)
+	case base.Pause, base.GetParameter, base.SetParameter, base.Play, base.Record:
+		path, query = getPathAndQuery(req.URL, false)
 	}
 
 	switch req.Method {
@@ -610,30 +626,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, liberrors.ErrServerSDPInvalid{Err: err}
 		}
 
-		for _, medi := range desc.Medias {
-			var mediURL *base.URL
-			mediURL, err = medi.URL(req.URL)
-			if err != nil {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("unable to generate media URL")
-			}
-
-			mediPath, ok := mediURL.RTSPPathAndQuery()
-			if !ok {
-				return &base.Response{
-					StatusCode: base.StatusBadRequest,
-				}, fmt.Errorf("invalid media URL (%v)", mediURL)
-			}
-
-			if !strings.HasPrefix(mediPath, path) {
-				return &base.Response{
-						StatusCode: base.StatusBadRequest,
-					}, fmt.Errorf("invalid media path: must begin with '%s', but is '%s'",
-						path, mediPath)
-			}
-		}
-
 		res, err := ss.s.Handler.(ServerHandlerOnAnnounce).OnAnnounce(&ServerHandlerOnAnnounceCtx{
 			Session:     ss,
 			Conn:        sc,
@@ -682,9 +674,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		var trackID string
+
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
-			path, query, trackID, err = serverParseURLForPlay(req.URL)
+			path, query, trackID, err = getPathAndQueryAndTrackID(req.URL)
 			if err != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,

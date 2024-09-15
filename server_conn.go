@@ -24,7 +24,7 @@ func getSessionID(header base.Header) string {
 	return ""
 }
 
-func serverSideDescription(d *description.Session, contentBase *base.URL) *description.Session {
+func serverSideDescription(d *description.Session) *description.Session {
 	out := &description.Session{
 		Title:     d.Title,
 		FECGroups: d.FECGroups,
@@ -32,7 +32,7 @@ func serverSideDescription(d *description.Session, contentBase *base.URL) *descr
 	}
 
 	for i, medi := range d.Medias {
-		mc := &description.Media{
+		out.Medias[i] = &description.Media{
 			Type:          medi.Type,
 			ID:            medi.ID,
 			IsBackChannel: medi.IsBackChannel,
@@ -41,15 +41,6 @@ func serverSideDescription(d *description.Session, contentBase *base.URL) *descr
 			Control: "trackID=" + strconv.FormatInt(int64(i), 10),
 			Formats: medi.Formats,
 		}
-
-		// always use the absolute URL of the track as control attribute, in order
-		// to fix compatibility between GStreamer and URLs with queries.
-		// (when a relative control is used, GStreamer puts it between path and query,
-		// instead of appending it to the URL).
-		u, _ := mc.URL(contentBase)
-		mc.Control = u.String()
-
-		out.Medias[i] = mc
 	}
 
 	return out
@@ -215,16 +206,10 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 
 	var path string
 	var query string
+
 	switch req.Method {
 	case base.Describe, base.GetParameter, base.SetParameter:
-		pathAndQuery, ok := req.URL.RTSPPathAndQuery()
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerInvalidPath{}
-		}
-
-		path, query = base.PathSplitQuery(pathAndQuery)
+		path, query = getPathAndQuery(req.URL, false)
 	}
 
 	switch req.Method {
@@ -295,7 +280,7 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 				}
 
 				if stream != nil {
-					byts, _ := serverSideDescription(stream.desc, req.URL).Marshal(multicast)
+					byts, _ := serverSideDescription(stream.desc).Marshal(multicast)
 					res.Body = byts
 				}
 			}

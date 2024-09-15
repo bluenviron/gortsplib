@@ -24,7 +24,7 @@ func randInRange(max int) (int, error) {
 	return int(n.Int64()), nil
 }
 
-func clientAllocateUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener, error) {
+func allocateUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener, error) {
 	// choose two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
