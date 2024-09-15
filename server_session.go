@@ -73,6 +73,9 @@ func getPathAndQueryAndTrackID(u *base.URL) (string, string, string, error) {
 
 	// no track ID and a trailing slash.
 	// this happens when trying to read a MPEG-TS stream with FFmpeg.
+	if strings.HasSuffix(u.RawQuery, "/") {
+		return u.Path, u.RawQuery[:len(u.RawQuery)-1], "0", nil
+	}
 	if strings.HasSuffix(u.Path[1:], "/") {
 		return u.Path[:len(u.Path)-1], u.RawQuery, "0", nil
 	}

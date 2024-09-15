@@ -199,6 +199,18 @@ func TestServerPlayPath(t *testing.T) {
 			"/teststream",
 		},
 		{
+			"without media id, query, ffmpeg",
+			"rtsp://localhost:8554/teststream?testing=123/",
+			"rtsp://localhost:8554/teststream/",
+			"/teststream",
+		},
+		{
+			"without media id, query, gstreamer",
+			"rtsp://localhost:8554/teststream/?testing=123",
+			"rtsp://localhost:8554/teststream/",
+			"/teststream",
+		},
+		{
 			"subpath",
 			"rtsp://localhost:8554/test/stream[control]",
 			"rtsp://localhost:8554/test/stream/",
