@@ -71,7 +71,7 @@ func (cm *clientMedia) allocateUDPListeners(
 	}
 
 	var err error
-	cm.udpRTPListener, cm.udpRTCPListener, err = clientAllocateUDPListenerPair(cm.c)
+	cm.udpRTPListener, cm.udpRTCPListener, err = allocateUDPListenerPair(cm.c)
 	return err
 }
 

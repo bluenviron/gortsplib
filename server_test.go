@@ -408,7 +408,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 					InterleavedIDs: &[2]int{0, 1},
 				}
 
-				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+				res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 				session = readSession(t, res)
 			}
@@ -422,7 +422,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.SetParameter,
-				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+				URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
 				Header: headers,
 			})
 			require.NoError(t, err)
@@ -496,7 +496,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, _ := doSetup(t, conn1, absoluteControlAttribute(desc1.MediaDescriptions[0]), inTH, "")
+	res, _ := doSetup(t, conn1, mediaURL(t, desc1.BaseURL, desc1.Medias[0]).String(), inTH, "")
 
 	session := readSession(t, res)
 
@@ -511,7 +511,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 
 	res, err = writeReqReadRes(conn2, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL(absoluteControlAttribute(desc2.MediaDescriptions[0])),
+		URL:    mediaURL(t, desc2.BaseURL, desc2.Medias[0]),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"1"},
 			"Transport": headers.Transport{
@@ -577,7 +577,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+	res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 	session := readSession(t, res)
 
@@ -585,7 +585,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 
 	res, err = writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+		URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
 		Header: base.Header{
 			"CSeq": base.HeaderValue{"3"},
 			"Transport": headers.Transport{
@@ -650,7 +650,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Setup,
-		URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+		URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
 		Header: base.Header{
 			"CSeq":      base.HeaderValue{"1"},
 			"Transport": inTHS.Marshal(),
@@ -739,7 +739,7 @@ func TestServerGetSetParameter(t *testing.T) {
 					InterleavedIDs: &[2]int{0, 1},
 				}
 
-				res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+				res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 				session = readSession(t, res)
 			}
@@ -880,7 +880,7 @@ func TestServerSessionClose(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+	doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 	session.Close()
 	session.Close()
@@ -956,7 +956,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+				URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"1"},
 					"Transport": inTH.Marshal(),
@@ -1017,7 +1017,7 @@ func TestServerSessionTeardown(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+	res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 	session := readSession(t, res)
 

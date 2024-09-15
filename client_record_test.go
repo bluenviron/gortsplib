@@ -185,6 +185,10 @@ func TestClientRecordSerial(t *testing.T) {
 				err = desc.Unmarshal(req.Body)
 				require.NoError(t, err2)
 
+				var desc2 description.Session
+				err = desc2.Unmarshal(&desc)
+				require.NoError(t, err2)
+
 				err2 = conn.WriteResponse(&base.Response{
 					StatusCode: base.StatusOK,
 				})
@@ -194,7 +198,7 @@ func TestClientRecordSerial(t *testing.T) {
 				require.NoError(t, err2)
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL(
-					scheme+"://localhost:8554/teststream/"+relativeControlAttribute(desc.MediaDescriptions[0])), req.URL)
+					scheme+"://localhost:8554/teststream/"+desc2.Medias[0].Control), req.URL)
 
 				var inTH headers.Transport
 				err2 = inTH.Unmarshal(req.Header["Transport"])

@@ -75,6 +75,8 @@ func (u *URL) CloneWithoutCredentials() *URL {
 }
 
 // RTSPPathAndQuery returns the path and query of a RTSP URL.
+//
+// Deprecated: not useful anymore.
 func (u *URL) RTSPPathAndQuery() (string, bool) {
 	var pathAndQuery string
 	if u.RawPath != "" {

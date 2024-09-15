@@ -48,38 +48,6 @@ func doRecord(t *testing.T, conn *conn.Conn, u string, session string) {
 	require.Equal(t, base.StatusOK, res.StatusCode)
 }
 
-func invalidURLAnnounceReq(t *testing.T, control string) base.Request {
-	medi := testH264Media
-	medi.Control = control
-
-	sout := &sdp.SessionDescription{
-		SessionName: psdp.SessionName("Stream"),
-		Origin: psdp.Origin{
-			Username:       "-",
-			NetworkType:    "IN",
-			AddressType:    "IP4",
-			UnicastAddress: "127.0.0.1",
-		},
-		TimeDescriptions: []psdp.TimeDescription{
-			{Timing: psdp.Timing{}},
-		},
-		MediaDescriptions: []*psdp.MediaDescription{medi.Marshal()},
-	}
-
-	byts, err := sout.Marshal()
-	require.NoError(t, err)
-
-	return base.Request{
-		Method: base.Announce,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream"),
-		Header: base.Header{
-			"CSeq":         base.HeaderValue{"1"},
-			"Content-Type": base.HeaderValue{"application/sdp"},
-		},
-		Body: byts,
-	}
-}
-
 func TestServerRecordErrorAnnounce(t *testing.T) {
 	for _, ca := range []struct {
 		name string
@@ -144,16 +112,6 @@ func TestServerRecordErrorAnnounce(t *testing.T) {
 				),
 			},
 			"invalid SDP: media 1 is invalid: clock rate not found",
-		},
-		{
-			"invalid URL 1",
-			invalidURLAnnounceReq(t, "rtsp://  aaaaa"),
-			"unable to generate media URL",
-		},
-		{
-			"invalid URL 3",
-			invalidURLAnnounceReq(t, "rtsp://host/otherpath"),
-			"invalid media path: must begin with '/teststream', but is '/otherpath'",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
