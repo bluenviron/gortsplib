@@ -56,28 +56,45 @@ func serverParseURLForPlay(u *base.URL) (string, string, string, error) {
 	return path, query, trackID, nil
 }
 
-func recordBaseURL(u *base.URL, path string, query string) *base.URL {
-	baseURL := &base.URL{
-		Scheme:   u.Scheme,
-		Host:     u.Host,
-		Path:     path,
-		RawQuery: query,
-	}
-
-	if baseURL.RawQuery != "" {
-		baseURL.RawQuery += "/"
-	} else {
-		baseURL.Path += "/"
-	}
-
-	return baseURL
-}
-
-func findMediaByURL(medias []*description.Media, baseURL *base.URL, u *base.URL) *description.Media {
+func findMediaByURL(
+	medias []*description.Media,
+	path string,
+	query string,
+	u *base.URL,
+) *description.Media {
 	for _, media := range medias {
-		u1, err := media.URL(baseURL)
-		if err == nil && u1.String() == u.String() {
-			return media
+		if strings.HasPrefix(media.Control, "rtsp://") ||
+			strings.HasPrefix(media.Control, "rtsps://") {
+			if media.Control == u.String() {
+				return media
+			}
+		} else {
+			// FFmpeg format
+			u1 := &base.URL{
+				Scheme:   u.Scheme,
+				Host:     u.Host,
+				Path:     path,
+				RawQuery: query,
+			}
+			if query != "" {
+				u1.RawQuery += "/" + media.Control
+			} else {
+				u1.Path += "/" + media.Control
+			}
+			if u1.String() == u.String() {
+				return media
+			}
+
+			// GStreamer format
+			u2 := &base.URL{
+				Scheme:   u.Scheme,
+				Host:     u.Host,
+				Path:     path + "/" + media.Control,
+				RawQuery: query,
+			}
+			if u2.String() == u.String() {
+				return media
+			}
 		}
 	}
 
@@ -775,7 +792,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
 			medi = findMediaByTrackID(stream.desc.Medias, trackID)
 		default: // record
-			medi = findMediaByURL(ss.announcedDesc.Medias, recordBaseURL(req.URL, path, query), req.URL)
+			medi = findMediaByURL(ss.announcedDesc.Medias, path, query, req.URL)
 		}
 
 		if medi == nil {
