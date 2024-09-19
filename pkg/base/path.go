@@ -5,6 +5,8 @@ import (
 )
 
 // PathSplitQuery splits a path from a query.
+//
+// Deprecated: not useful anymore.
 func PathSplitQuery(pathAndQuery string) (string, string) {
 	i := strings.Index(pathAndQuery, "?")
 	if i >= 0 {

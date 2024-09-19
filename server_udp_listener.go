@@ -25,7 +25,7 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 	}
 }
 
-func serverAllocateUDPListenerMulticastPair(
+func allocateUDPListenerMulticastPair(
 	listenPacket func(network, address string) (net.PacketConn, error),
 	writeTimeout time.Duration,
 	multicastRTPPort int,

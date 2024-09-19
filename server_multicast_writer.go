@@ -22,7 +22,7 @@ func (h *serverMulticastWriter) initialize() error {
 		return err
 	}
 
-	rtpl, rtcpl, err := serverAllocateUDPListenerMulticastPair(
+	rtpl, rtcpl, err := allocateUDPListenerMulticastPair(
 		h.s.ListenPacket,
 		h.s.WriteTimeout,
 		h.s.MulticastRTPPort,

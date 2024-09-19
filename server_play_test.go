@@ -13,7 +13,6 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
-	psdp "github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/ipv4"
 
@@ -63,18 +62,13 @@ func multicastCapableIP(t *testing.T) string {
 	return ""
 }
 
-func relativeControlAttribute(md *psdp.MediaDescription) string {
-	v, _ := md.Attribute("control")
-	i := strings.Index(v, "trackID=")
-	return v[i:]
+func mediaURL(t *testing.T, baseURL *base.URL, media *description.Media) *base.URL {
+	u, err := media.URL(baseURL)
+	require.NoError(t, err)
+	return u
 }
 
-func absoluteControlAttribute(md *psdp.MediaDescription) string {
-	v, _ := md.Attribute("control")
-	return v
-}
-
-func doDescribe(t *testing.T, conn *conn.Conn) *sdp.SessionDescription {
+func doDescribe(t *testing.T, conn *conn.Conn) *description.Session {
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Describe,
 		URL:    mustParseURL("rtsp://localhost:8554/teststream?param=value"),
@@ -88,7 +82,14 @@ func doDescribe(t *testing.T, conn *conn.Conn) *sdp.SessionDescription {
 	var desc sdp.SessionDescription
 	err = desc.Unmarshal(res.Body)
 	require.NoError(t, err)
-	return &desc
+
+	var desc2 description.Session
+	err = desc2.Unmarshal(&desc)
+	require.NoError(t, err)
+
+	desc2.BaseURL = mustParseURL(res.Header["Content-Base"][0])
+
+	return &desc2
 }
 
 func doSetup(t *testing.T, conn *conn.Conn, u string,
@@ -179,8 +180,14 @@ func TestServerPlayPath(t *testing.T) {
 			"/teststream",
 		},
 		{
-			"with query",
+			"with query, ffmpeg format",
 			"rtsp://localhost:8554/teststream?testing=123[control]",
+			"rtsp://localhost:8554/teststream/",
+			"/teststream",
+		},
+		{
+			"with query, gstreamer format",
+			"rtsp://localhost:8554/teststream[control]?testing=123",
 			"rtsp://localhost:8554/teststream/",
 			"/teststream",
 		},
@@ -188,6 +195,18 @@ func TestServerPlayPath(t *testing.T) {
 			// this is needed to support reading mpegts with ffmpeg
 			"without media id",
 			"rtsp://localhost:8554/teststream/",
+			"rtsp://localhost:8554/teststream/",
+			"/teststream",
+		},
+		{
+			"without media id, query, ffmpeg",
+			"rtsp://localhost:8554/teststream?testing=123/",
+			"rtsp://localhost:8554/teststream/",
+			"/teststream",
+		},
+		{
+			"without media id, query, gstreamer",
+			"rtsp://localhost:8554/teststream/?testing=123",
 			"rtsp://localhost:8554/teststream/",
 			"/teststream",
 		},
@@ -204,15 +223,21 @@ func TestServerPlayPath(t *testing.T) {
 			"/test/stream",
 		},
 		{
-			"subpath with query",
+			"subpath with query, ffmpeg format",
 			"rtsp://localhost:8554/test/stream?testing=123[control]",
+			"rtsp://localhost:8554/test/stream",
+			"/test/stream",
+		},
+		{
+			"subpath with query, gstreamer format",
+			"rtsp://localhost:8554/test/stream[control]?testing=123",
 			"rtsp://localhost:8554/test/stream",
 			"/test/stream",
 		},
 		{
 			"no slash",
 			"rtsp://localhost:8554[control]",
-			"rtsp://localhost:8554/",
+			"rtsp://localhost:8554",
 			"",
 		},
 		{
@@ -279,8 +304,7 @@ func TestServerPlayPath(t *testing.T) {
 			}
 
 			res, _ := doSetup(t, conn,
-				strings.ReplaceAll(ca.setupURL, "[control]", "/"+
-					relativeControlAttribute(desc.MediaDescriptions[1])),
+				strings.ReplaceAll(ca.setupURL, "[control]", "/"+desc.Medias[1].Control),
 				th, "")
 
 			session := readSession(t, res)
@@ -356,7 +380,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: base.Setup,
-				URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+				URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
 				Header: base.Header{
 					"CSeq":      base.HeaderValue{"2"},
 					"Transport": th.Marshal(),
@@ -374,7 +398,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL("rtsp://localhost:8554/test12stream/" + relativeControlAttribute(desc.MediaDescriptions[0])),
+					URL:    mustParseURL("rtsp://localhost:8554/test12stream/" + desc.Medias[0].Control),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"3"},
 						"Transport": th.Marshal(),
@@ -394,7 +418,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
-					URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+					URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
 					Header: base.Header{
 						"CSeq":      base.HeaderValue{"4"},
 						"Transport": th.Marshal(),
@@ -473,7 +497,7 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
-			URL:    mustParseURL(absoluteControlAttribute(desc.MediaDescriptions[0])),
+			URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
 			Header: base.Header{
 				"CSeq":      base.HeaderValue{"2"},
 				"Transport": inTH.Marshal(),
@@ -654,7 +678,7 @@ func TestServerPlay(t *testing.T) {
 				inTH.InterleavedIDs = &[2]int{5, 6} // odd value
 			}
 
-			res, th := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+			res, th := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 			var l1 net.PacketConn
 			var l2 net.PacketConn
@@ -916,7 +940,7 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
-			res, resTH := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+			res, resTH := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 			var l1 net.PacketConn
 			var l2 net.PacketConn
@@ -1034,7 +1058,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
-			res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+			res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 			var l1 net.PacketConn
 			var l2 net.PacketConn
@@ -1228,7 +1252,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+	res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 	session := readSession(t, res)
 
@@ -1285,7 +1309,7 @@ func TestServerPlayPlayPlay(t *testing.T) {
 		ClientPorts: &[2]int{30450, 30451},
 	}
 
-	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+	res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 	session := readSession(t, res)
 
@@ -1370,7 +1394,7 @@ func TestServerPlayPlayPausePlay(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+	res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 	session := readSession(t, res)
 
@@ -1452,7 +1476,7 @@ func TestServerPlayPlayPausePause(t *testing.T) {
 		InterleavedIDs: &[2]int{0, 1},
 	}
 
-	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+	res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 	session := readSession(t, res)
 
@@ -1542,7 +1566,7 @@ func TestServerPlayTimeout(t *testing.T) {
 				inTH.Protocol = headers.TransportProtocolUDP
 			}
 
-			res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+			res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 			session := readSession(t, res)
 
@@ -1624,7 +1648,7 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 				inTH.InterleavedIDs = &[2]int{0, 1}
 			}
 
-			res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+			res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 			session := readSession(t, res)
 
@@ -1693,7 +1717,7 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
-		res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+		res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 		session := readSession(t, res)
 
@@ -1774,7 +1798,7 @@ func TestServerPlayPartialMedias(t *testing.T) {
 		InterleavedIDs: &[2]int{4, 5},
 	}
 
-	res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+	res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 	session := readSession(t, res)
 
@@ -1802,7 +1826,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			InterleavedIDs: &[2]int{0, 1},
 		}
 
-		res, th := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+		res, th := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 		ssrcs := make([]*uint32, 2)
 		ssrcs[0] = th.SSRC
@@ -1816,7 +1840,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 
 		session := readSession(t, res)
 
-		_, th = doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[1]), inTH, session)
+		_, th = doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[1]).String(), inTH, session)
 
 		ssrcs[1] = th.SSRC
 
@@ -2016,13 +2040,13 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 		Protocol: headers.TransportProtocolTCP,
 	}
 
-	res, th := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+	res, th := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 	require.Equal(t, &[2]int{0, 1}, th.InterleavedIDs)
 
 	session := readSession(t, res)
 
-	_, th = doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[1]), inTH, session)
+	_, th = doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[1]).String(), inTH, session)
 
 	require.Equal(t, &[2]int{2, 3}, th.InterleavedIDs)
 
@@ -2097,7 +2121,7 @@ func TestServerPlayBytesSent(t *testing.T) {
 			inTH.InterleavedIDs = &[2]int{0, 1}
 		}
 
-		res, _ := doSetup(t, conn, absoluteControlAttribute(desc.MediaDescriptions[0]), inTH, "")
+		res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 		session := readSession(t, res)
 
