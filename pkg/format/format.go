@@ -88,7 +88,9 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 		* dynamic payload types
 		**/
 
-		case payloadType >= 96 && payloadType <= 127:
+		// Some cameras use payload types in the "undefined" ranges of 35-71 and 77-95,
+		// so include those along with the "dynamic" range of 96-127.
+		case (payloadType >= 35 && payloadType <= 71) || (payloadType >= 77 && payloadType <= 127):
 			switch {
 			// video
 
