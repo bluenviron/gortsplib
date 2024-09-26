@@ -55,6 +55,16 @@ func TestMediaURL(t *testing.T) {
 			mustParseURL("rtsps://myuser:mypass@192.168.1.99:554/path/trackID=7"),
 		},
 		{
+			"absolute control, base url no trailing slash",
+			[]byte("v=0\r\n" +
+				"s= \r\n" +
+				"m=video 0 RTP/AVP 96\r\n" +
+				"a=rtpmap:96 H264/90000\r\n" +
+				"a=control:/test"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554"),
+			mustParseURL("rtsp://myuser:mypass@192.168.1.99:554/test"),
+		},
+		{
 			"relative control",
 			[]byte("v=0\r\n" +
 				"s= \r\n" +
