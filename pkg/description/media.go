@@ -268,7 +268,7 @@ func (m Media) URL(contentBase *base.URL) (*base.URL, error) {
 	// if there's a query, insert it after the query
 	// otherwise insert it after the path
 	strURL := contentBase.String()
-	if m.Control[0] != '?' && !strings.HasSuffix(strURL, "/") {
+	if m.Control[0] != '?' && m.Control[0] != '/' && !strings.HasSuffix(strURL, "/") {
 		strURL += "/"
 	}
 
