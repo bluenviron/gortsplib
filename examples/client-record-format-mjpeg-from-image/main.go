@@ -10,7 +10,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 )
 
 // This example shows how to
@@ -19,6 +18,12 @@ import (
 // 3. encode the image with JPEG
 // 4. generate RTP packets from the JPEG image
 // 5. write packets to the server
+
+func multiplyAndDivide(v, m, d int64) int64 {
+	secs := v / d
+	dec := v % d
+	return (secs*m + dec*m/d)
+}
 
 func createRandomImage(i int) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, 640, 480))
@@ -66,12 +71,6 @@ func main() {
 		panic(err)
 	}
 
-	// setup RTP timestamp generator
-	rtpTime := &rtptime.Encoder{ClockRate: forma.ClockRate()}
-	err = rtpTime.Initialize()
-	if err != nil {
-		panic(err)
-	}
 	start := time.Now()
 
 	// setup a ticker to sleep between frames
@@ -99,11 +98,11 @@ func main() {
 		}
 
 		// get current timestamp
-		ts := rtpTime.Encode(time.Since(start))
+		pts := uint32(multiplyAndDivide(int64(time.Since(start)), int64(forma.ClockRate()), int64(time.Second)))
 
 		// write packets to the server
 		for _, pkt := range pkts {
-			pkt.Timestamp = ts
+			pkt.Timestamp = pts
 
 			err = c.WritePacketRTP(desc.Medias[0], pkt)
 			if err != nil {

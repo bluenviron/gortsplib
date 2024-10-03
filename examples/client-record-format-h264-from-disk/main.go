@@ -9,7 +9,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
 )
 
@@ -74,18 +73,15 @@ func main() {
 		panic(err)
 	}
 
-	// setup RTP timestamp generator
-	rtpTime := &rtptime.Encoder{ClockRate: forma.ClockRate()}
-	err = rtpTime.Initialize()
-	if err != nil {
-		panic(err)
-	}
-
+	timeDecoder := mpegts.NewTimeDecoder2()
 	var firstDTS *int64
 	var startTime time.Time
 
 	// setup a callback that is called whenever a H264 access unit is read from the file
 	r.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
+		dts = timeDecoder.Decode(dts)
+		pts = timeDecoder.Decode(pts)
+
 		// sleep between access units
 		if firstDTS != nil {
 			timeDrift := time.Duration(dts-*firstDTS)*time.Second/90000 - time.Since(startTime)
@@ -105,10 +101,11 @@ func main() {
 			return err
 		}
 
-		// set timestamp
-		rtpTime := rtpTime.Encode(time.Duration(pts) * time.Second / 90000)
+		// set packet timestamp
+		// we don't have to perform any conversion
+		// since H264 clock rate is the same in both MPEG-TS and RTSP
 		for _, packet := range packets {
-			packet.Timestamp = rtpTime
+			packet.Timestamp = uint32(pts)
 		}
 
 		// write packets to the server

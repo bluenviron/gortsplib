@@ -23,6 +23,8 @@ func randUint32() (uint32, error) {
 }
 
 // Encoder is a RTP timestamp encoder.
+//
+// Deprecated: not used anymore.
 type Encoder struct {
 	// Clock rate.
 	ClockRate int

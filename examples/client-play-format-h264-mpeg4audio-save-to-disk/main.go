@@ -84,7 +84,7 @@ func main() {
 	// called when a H264/RTP packet arrives
 	c.OnPacketRTP(h264Media, h264Format, func(pkt *rtp.Packet) {
 		// decode timestamp
-		pts, ok := c.PacketPTS(h264Media, pkt)
+		pts, ok := c.PacketPTS2(h264Media, pkt)
 		if !ok {
 			log.Printf("waiting for timestamp")
 			return
@@ -112,7 +112,7 @@ func main() {
 	// called when a MPEG-4 audio / RTP packet arrives
 	c.OnPacketRTP(mpeg4AudioMedia, mpeg4AudioFormat, func(pkt *rtp.Packet) {
 		// decode timestamp
-		pts, ok := c.PacketPTS(mpeg4AudioMedia, pkt)
+		pts, ok := c.PacketPTS2(mpeg4AudioMedia, pkt)
 		if !ok {
 			log.Printf("waiting for timestamp")
 			return

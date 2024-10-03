@@ -317,6 +317,7 @@ type Client struct {
 	writer               asyncProcessor
 	reader               *clientReader
 	timeDecoder          *rtptime.GlobalDecoder
+	timeDecoder2         *rtptime.GlobalDecoder2
 	mustClose            bool
 
 	// in
@@ -799,6 +800,7 @@ func (c *Client) startReadRoutines() {
 	}
 
 	c.timeDecoder = rtptime.NewGlobalDecoder()
+	c.timeDecoder2 = rtptime.NewGlobalDecoder2()
 
 	for _, cm := range c.medias {
 		cm.start()
@@ -1879,10 +1881,20 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 
 // PacketPTS returns the PTS of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
+//
+// Deprecated: replaced by PacketPTS2.
 func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Duration, bool) {
 	cm := c.medias[medi]
 	ct := cm.formats[pkt.PayloadType]
 	return c.timeDecoder.Decode(ct.format, pkt)
+}
+
+// PacketPTS returns the PTS of an incoming RTP packet.
+// It is computed by decoding the packet timestamp and sychronizing it with other tracks.
+func (c *Client) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
+	cm := c.medias[medi]
+	ct := cm.formats[pkt.PayloadType]
+	return c.timeDecoder2.Decode(ct.format, pkt)
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.

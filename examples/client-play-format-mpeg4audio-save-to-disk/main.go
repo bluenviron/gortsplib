@@ -53,6 +53,7 @@ func main() {
 	// setup MPEG-4 audio -> MPEG-TS muxer
 	mpegtsMuxer := &mpegtsMuxer{
 		fileName: "mystream.ts",
+		format:   forma,
 		track: &mpegts.Track{
 			Codec: &mpegts.CodecMPEG4Audio{
 				Config: *forma.Config,
@@ -74,7 +75,7 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// decode timestamp
-		pts, ok := c.PacketPTS(medi, pkt)
+		pts, ok := c.PacketPTS2(medi, pkt)
 		if !ok {
 			log.Printf("waiting for timestamp")
 			return
