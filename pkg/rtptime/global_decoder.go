@@ -51,6 +51,8 @@ type GlobalDecoderTrack interface {
 }
 
 // GlobalDecoder is a RTP timestamp decoder.
+//
+// Deprecated: replaced by GlobalDecoder2.
 type GlobalDecoder struct {
 	mutex        sync.Mutex
 	leadingTrack GlobalDecoderTrack
@@ -60,6 +62,8 @@ type GlobalDecoder struct {
 }
 
 // NewGlobalDecoder allocates a GlobalDecoder.
+//
+// Deprecated: replaced by NewGlobalDecoder2.
 func NewGlobalDecoder() *GlobalDecoder {
 	return &GlobalDecoder{
 		tracks: make(map[GlobalDecoderTrack]*globalDecoderTrackData),
@@ -104,16 +108,14 @@ func (d *GlobalDecoder) Decode(
 		return df.startPTS, true
 	}
 
+	pts := df.decode(pkt.Timestamp)
+
 	// update startNTP / startPTS
 	if d.leadingTrack == track && track.PTSEqualsDTS(pkt) {
-		pts := df.decode(pkt.Timestamp)
-
 		now := timeNow()
 		d.startNTP = now
 		d.startPTS = pts
-
-		return pts, true
 	}
 
-	return df.decode(pkt.Timestamp), true
+	return pts, true
 }

@@ -3,15 +3,10 @@ package main
 import (
 	"bufio"
 	"os"
-	"time"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
 )
-
-func durationGoToMPEGTS(v time.Duration) int64 {
-	return int64(v.Seconds() * 90000)
-}
 
 // mpegtsMuxer allows to save a H264 stream into a MPEG-TS file.
 type mpegtsMuxer struct {
@@ -23,7 +18,7 @@ type mpegtsMuxer struct {
 	b            *bufio.Writer
 	w            *mpegts.Writer
 	track        *mpegts.Track
-	dtsExtractor *h264.DTSExtractor
+	dtsExtractor *h264.DTSExtractor2
 }
 
 // initialize initializes a mpegtsMuxer.
@@ -51,7 +46,7 @@ func (e *mpegtsMuxer) close() {
 }
 
 // writeH264 writes a H264 access unit into MPEG-TS.
-func (e *mpegtsMuxer) writeH264(au [][]byte, pts time.Duration) error {
+func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 	var filteredAU [][]byte
 
 	nonIDRPresent := false
@@ -92,22 +87,19 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts time.Duration) error {
 		au = append([][]byte{e.sps, e.pps}, au...)
 	}
 
-	var dts time.Duration
-
 	if e.dtsExtractor == nil {
 		// skip samples silently until we find one with a IDR
 		if !idrPresent {
 			return nil
 		}
-		e.dtsExtractor = h264.NewDTSExtractor()
+		e.dtsExtractor = h264.NewDTSExtractor2()
 	}
 
-	var err error
-	dts, err = e.dtsExtractor.Extract(au, pts)
+	dts, err := e.dtsExtractor.Extract(au, pts)
 	if err != nil {
 		return err
 	}
 
 	// encode into MPEG-TS
-	return e.w.WriteH264(e.track, durationGoToMPEGTS(pts), durationGoToMPEGTS(dts), idrPresent, au)
+	return e.w.WriteH264(e.track, pts, dts, idrPresent, au)
 }

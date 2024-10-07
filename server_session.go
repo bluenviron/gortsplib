@@ -248,6 +248,7 @@ type ServerSession struct {
 	udpCheckStreamTimer   *time.Timer
 	writer                asyncProcessor
 	timeDecoder           *rtptime.GlobalDecoder
+	timeDecoder2          *rtptime.GlobalDecoder2
 
 	// in
 	chHandleRequest chan sessionRequestReq
@@ -948,6 +949,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		ss.udpLastPacketTime = &v
 
 		ss.timeDecoder = rtptime.NewGlobalDecoder()
+		ss.timeDecoder2 = rtptime.NewGlobalDecoder2()
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
@@ -1034,6 +1036,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		ss.udpLastPacketTime = &v
 
 		ss.timeDecoder = rtptime.NewGlobalDecoder()
+		ss.timeDecoder2 = rtptime.NewGlobalDecoder2()
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
@@ -1088,6 +1091,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		ss.timeDecoder = nil
+		ss.timeDecoder2 = nil
 
 		switch ss.state {
 		case ServerSessionStatePlay:
@@ -1255,10 +1259,20 @@ func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packe
 
 // PacketPTS returns the PTS of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
+//
+// Deprecated: replaced by PacketPTS2.
 func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Duration, bool) {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[pkt.PayloadType]
 	return ss.timeDecoder.Decode(sf.format, pkt)
+}
+
+// PacketPTS2 returns the PTS of an incoming RTP packet.
+// It is computed by decoding the packet timestamp and sychronizing it with other tracks.
+func (ss *ServerSession) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
+	sm := ss.setuppedMedias[medi]
+	sf := sm.formats[pkt.PayloadType]
+	return ss.timeDecoder2.Decode(sf.format, pkt)
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.

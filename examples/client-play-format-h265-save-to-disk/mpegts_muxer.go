@@ -3,15 +3,10 @@ package main
 import (
 	"bufio"
 	"os"
-	"time"
 
 	"github.com/bluenviron/mediacommon/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
 )
-
-func durationGoToMPEGTS(v time.Duration) int64 {
-	return int64(v.Seconds() * 90000)
-}
 
 // mpegtsMuxer allows to save a H265 stream into a MPEG-TS file.
 type mpegtsMuxer struct {
@@ -24,7 +19,7 @@ type mpegtsMuxer struct {
 	b            *bufio.Writer
 	w            *mpegts.Writer
 	track        *mpegts.Track
-	dtsExtractor *h265.DTSExtractor
+	dtsExtractor *h265.DTSExtractor2
 }
 
 // initialize initializes a mpegtsMuxer.
@@ -52,7 +47,7 @@ func (e *mpegtsMuxer) close() {
 }
 
 // writeH265 writes a H265 access unit into MPEG-TS.
-func (e *mpegtsMuxer) writeH265(au [][]byte, pts time.Duration) error {
+func (e *mpegtsMuxer) writeH265(au [][]byte, pts int64) error {
 	var filteredAU [][]byte
 
 	isRandomAccess := false
@@ -93,22 +88,19 @@ func (e *mpegtsMuxer) writeH265(au [][]byte, pts time.Duration) error {
 		au = append([][]byte{e.vps, e.sps, e.pps}, au...)
 	}
 
-	var dts time.Duration
-
 	if e.dtsExtractor == nil {
 		// skip samples silently until we find one with a IDR
 		if !isRandomAccess {
 			return nil
 		}
-		e.dtsExtractor = h265.NewDTSExtractor()
+		e.dtsExtractor = h265.NewDTSExtractor2()
 	}
 
-	var err error
-	dts, err = e.dtsExtractor.Extract(au, pts)
+	dts, err := e.dtsExtractor.Extract(au, pts)
 	if err != nil {
 		return err
 	}
 
 	// encode into MPEG-TS
-	return e.w.WriteH265(e.track, durationGoToMPEGTS(pts), durationGoToMPEGTS(dts), isRandomAccess, au)
+	return e.w.WriteH265(e.track, pts, dts, isRandomAccess, au)
 }

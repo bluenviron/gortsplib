@@ -53,6 +53,7 @@ func main() {
 	// setup Opus -> MPEG-TS muxer
 	mpegtsMuxer := &mpegtsMuxer{
 		fileName: "mystream.ts",
+		format:   forma,
 		track: &mpegts.Track{
 			Codec: &mpegts.CodecOpus{
 				ChannelCount: forma.ChannelCount,
@@ -74,7 +75,7 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// decode timestamp
-		pts, ok := c.PacketPTS(medi, pkt)
+		pts, ok := c.PacketPTS2(medi, pkt)
 		if !ok {
 			log.Printf("waiting for timestamp")
 			return

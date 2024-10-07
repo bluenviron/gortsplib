@@ -4,15 +4,16 @@ import (
 	"bufio"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
 )
 
-func durationGoToMPEGTS(v time.Duration) int64 {
-	return int64(v.Seconds() * 90000)
+func multiplyAndDivide(v, m, d int64) int64 {
+	secs := v / d
+	dec := v % d
+	return (secs*m + dec*m/d)
 }
 
 // mpegtsMuxer allows to save a H264 / MPEG-4 audio stream into a MPEG-TS file.
@@ -26,7 +27,7 @@ type mpegtsMuxer struct {
 	w               *mpegts.Writer
 	h264Track       *mpegts.Track
 	mpeg4AudioTrack *mpegts.Track
-	dtsExtractor    *h264.DTSExtractor
+	dtsExtractor    *h264.DTSExtractor2
 	mutex           sync.Mutex
 }
 
@@ -61,7 +62,7 @@ func (e *mpegtsMuxer) close() {
 }
 
 // writeH264 writes a H264 access unit into MPEG-TS.
-func (e *mpegtsMuxer) writeH264(au [][]byte, pts time.Duration) error {
+func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
@@ -105,30 +106,27 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts time.Duration) error {
 		au = append([][]byte{e.h264Format.SPS, e.h264Format.PPS}, au...)
 	}
 
-	var dts time.Duration
-
 	if e.dtsExtractor == nil {
 		// skip samples silently until we find one with a IDR
 		if !idrPresent {
 			return nil
 		}
-		e.dtsExtractor = h264.NewDTSExtractor()
+		e.dtsExtractor = h264.NewDTSExtractor2()
 	}
 
-	var err error
-	dts, err = e.dtsExtractor.Extract(au, pts)
+	dts, err := e.dtsExtractor.Extract(au, pts)
 	if err != nil {
 		return err
 	}
 
 	// encode into MPEG-TS
-	return e.w.WriteH264(e.h264Track, durationGoToMPEGTS(pts), durationGoToMPEGTS(dts), idrPresent, au)
+	return e.w.WriteH264(e.h264Track, pts, dts, idrPresent, au)
 }
 
 // writeMPEG4Audio writes MPEG-4 audio access units into MPEG-TS.
-func (e *mpegtsMuxer) writeMPEG4Audio(aus [][]byte, pts time.Duration) error {
+func (e *mpegtsMuxer) writeMPEG4Audio(aus [][]byte, pts int64) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	return e.w.WriteMPEG4Audio(e.mpeg4AudioTrack, durationGoToMPEGTS(pts), aus)
+	return e.w.WriteMPEG4Audio(e.mpeg4AudioTrack, multiplyAndDivide(pts, 90000, int64(e.mpeg4AudioFormat.ClockRate())), aus)
 }
