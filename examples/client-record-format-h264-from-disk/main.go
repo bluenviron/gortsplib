@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
@@ -25,6 +26,15 @@ func findTrack(r *mpegts.Reader) (*mpegts.Track, error) {
 		}
 	}
 	return nil, fmt.Errorf("H264 track not found")
+}
+
+func randUint32() (uint32, error) {
+	var b [4]byte
+	_, err := rand.Read(b[:])
+	if err != nil {
+		return 0, err
+	}
+	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
 func main() {
@@ -73,6 +83,11 @@ func main() {
 		panic(err)
 	}
 
+	randomStart, err := randUint32()
+	if err != nil {
+		panic(err)
+	}
+
 	timeDecoder := mpegts.NewTimeDecoder2()
 	var firstDTS *int64
 	var startTime time.Time
@@ -105,7 +120,7 @@ func main() {
 		// we don't have to perform any conversion
 		// since H264 clock rate is the same in both MPEG-TS and RTSP
 		for _, packet := range packets {
-			packet.Timestamp = uint32(pts)
+			packet.Timestamp = randomStart + uint32(pts)
 		}
 
 		// write packets to the server
