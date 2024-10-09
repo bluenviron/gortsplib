@@ -18,15 +18,3 @@ func TestVorbisAttributes(t *testing.T) {
 	require.Equal(t, 48000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
 }
-
-func FuzzUnmarshalVorbis(f *testing.F) {
-	f.Fuzz(func(_ *testing.T, a, b string) {
-		fo, err := Unmarshal("audio", 96, "Vorbis/"+a, map[string]string{
-			"configuration": b,
-		})
-		if err == nil {
-			fo.RTPMap()
-			fo.FMTP()
-		}
-	})
-}

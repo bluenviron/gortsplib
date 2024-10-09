@@ -2,10 +2,47 @@
 package format
 
 import (
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pion/rtp"
+	psdp "github.com/pion/sdp/v3"
 )
+
+var (
+	smartPayloadTypeRegexp = regexp.MustCompile("^smart/[0-9]/[0-9]+$")
+	smartRtpmapRegexp      = regexp.MustCompile("^([0-9]+) (.+)/[0-9]+$")
+)
+
+func replaceSmartPayloadType(payloadType string, attributes []psdp.Attribute) string {
+	re1 := smartPayloadTypeRegexp.FindStringSubmatch(payloadType)
+	if re1 != nil {
+		for _, attr := range attributes {
+			if attr.Key == "rtpmap" {
+				re2 := smartRtpmapRegexp.FindStringSubmatch(attr.Value)
+				if re2 != nil {
+					return re2[1]
+				}
+			}
+		}
+	}
+	return payloadType
+}
+
+func getFormatAttribute(attributes []psdp.Attribute, payloadType uint8, key string) string {
+	for _, attr := range attributes {
+		if attr.Key == key {
+			v := strings.TrimSpace(attr.Value)
+			if parts := strings.SplitN(v, " ", 2); len(parts) == 2 {
+				if tmp, err := strconv.ParseUint(parts[0], 10, 8); err == nil && uint8(tmp) == payloadType {
+					return parts[1]
+				}
+			}
+		}
+	}
+	return ""
+}
 
 func getCodecAndClock(rtpMap string) (string, string) {
 	parts2 := strings.SplitN(rtpMap, "/", 2)
@@ -14,6 +51,31 @@ func getCodecAndClock(rtpMap string) (string, string) {
 	}
 
 	return strings.ToLower(parts2[0]), parts2[1]
+}
+
+func decodeFMTP(enc string) map[string]string {
+	if enc == "" {
+		return nil
+	}
+
+	ret := make(map[string]string)
+
+	for _, kv := range strings.Split(enc, ";") {
+		kv = strings.Trim(kv, " ")
+
+		if len(kv) == 0 {
+			continue
+		}
+
+		tmp := strings.SplitN(kv, "=", 2)
+		if len(tmp) != 2 {
+			continue
+		}
+
+		ret[strings.ToLower(tmp[0])] = tmp[1]
+	}
+
+	return ret
 }
 
 type unmarshalContext struct {
@@ -50,7 +112,19 @@ type Format interface {
 }
 
 // Unmarshal decodes a format from a media description.
-func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[string]string) (Format, error) {
+func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error) {
+	mediaType := md.MediaName.Media
+	payloadTypeStr = replaceSmartPayloadType(payloadTypeStr, md.Attributes)
+
+	tmp, err := strconv.ParseUint(payloadTypeStr, 10, 8)
+	if err != nil {
+		return nil, err
+	}
+	payloadType := uint8(tmp)
+
+	rtpMap := getFormatAttribute(md.Attributes, payloadType, "rtpmap")
+	fmtp := decodeFMTP(getFormatAttribute(md.Attributes, payloadType, "fmtp"))
+
 	codec, clock := getCodecAndClock(rtpMap)
 
 	format := func() Format {
@@ -148,7 +222,7 @@ func Unmarshal(mediaType string, payloadType uint8, rtpMap string, fmtp map[stri
 		return &Generic{}
 	}()
 
-	err := format.unmarshal(&unmarshalContext{
+	err = format.unmarshal(&unmarshalContext{
 		mediaType:   mediaType,
 		payloadType: payloadType,
 		clock:       clock,

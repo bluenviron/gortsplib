@@ -4,7 +4,6 @@ package description
 import (
 	"fmt"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,26 +14,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 )
-
-var (
-	smartPayloadTypeRegexp = regexp.MustCompile("^smart/[0-9]/[0-9]+$")
-	smartRtpmapRegexp      = regexp.MustCompile("^([0-9]+) (.+)/[0-9]+$")
-)
-
-func replaceSmartPayloadType(payloadType string, attributes []psdp.Attribute) string {
-	re1 := smartPayloadTypeRegexp.FindStringSubmatch(payloadType)
-	if re1 != nil {
-		for _, attr := range attributes {
-			if attr.Key == "rtpmap" {
-				re2 := smartRtpmapRegexp.FindStringSubmatch(attr.Value)
-				if re2 != nil {
-					return re2[1]
-				}
-			}
-		}
-	}
-	return payloadType
-}
 
 func getAttribute(attributes []psdp.Attribute, key string) string {
 	for _, attr := range attributes {
@@ -52,45 +31,6 @@ func isBackChannel(attributes []psdp.Attribute) bool {
 		}
 	}
 	return false
-}
-
-func getFormatAttribute(attributes []psdp.Attribute, payloadType uint8, key string) string {
-	for _, attr := range attributes {
-		if attr.Key == key {
-			v := strings.TrimSpace(attr.Value)
-			if parts := strings.SplitN(v, " ", 2); len(parts) == 2 {
-				if tmp, err := strconv.ParseUint(parts[0], 10, 8); err == nil && uint8(tmp) == payloadType {
-					return parts[1]
-				}
-			}
-		}
-	}
-	return ""
-}
-
-func decodeFMTP(enc string) map[string]string {
-	if enc == "" {
-		return nil
-	}
-
-	ret := make(map[string]string)
-
-	for _, kv := range strings.Split(enc, ";") {
-		kv = strings.Trim(kv, " ")
-
-		if len(kv) == 0 {
-			continue
-		}
-
-		tmp := strings.SplitN(kv, "=", 2)
-		if len(tmp) != 2 {
-			continue
-		}
-
-		ret[strings.ToLower(tmp[0])] = tmp[1]
-	}
-
-	return ret
 }
 
 func sortedKeys(fmtp map[string]string) []string {
@@ -155,19 +95,9 @@ func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 	m.Control = getAttribute(md.Attributes, "control")
 
 	m.Formats = nil
+
 	for _, payloadType := range md.MediaName.Formats {
-		payloadType = replaceSmartPayloadType(payloadType, md.Attributes)
-
-		tmp, err := strconv.ParseUint(payloadType, 10, 8)
-		if err != nil {
-			return err
-		}
-		payloadTypeInt := uint8(tmp)
-
-		rtpMap := getFormatAttribute(md.Attributes, payloadTypeInt, "rtpmap")
-		fmtp := decodeFMTP(getFormatAttribute(md.Attributes, payloadTypeInt, "fmtp"))
-
-		format, err := format.Unmarshal(string(m.Type), payloadTypeInt, rtpMap, fmtp)
+		format, err := format.Unmarshal(md, payloadType)
 		if err != nil {
 			return err
 		}

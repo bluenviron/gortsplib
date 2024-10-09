@@ -1,5 +1,0 @@
-go test fuzz v1
-bool(true)
-string("")
-bool(true)
-string("")
