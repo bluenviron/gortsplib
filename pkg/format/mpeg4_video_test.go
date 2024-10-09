@@ -37,29 +37,3 @@ func TestMPEG4VideoDecEncoder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte{0x01, 0x02, 0x03, 0x04}, byts)
 }
-
-func FuzzUnmarshalMPEG4Video(f *testing.F) {
-	f.Fuzz(func(
-		_ *testing.T,
-		a bool,
-		b string,
-		c bool,
-		d string,
-	) {
-		ma := map[string]string{}
-
-		if a {
-			ma["profile-level-id"] = b
-		}
-
-		if c {
-			ma["config"] = d
-		}
-
-		fo, err := Unmarshal("audio", 96, "MP4V-ES/90000", ma)
-		if err == nil {
-			fo.RTPMap()
-			fo.FMTP()
-		}
-	})
-}

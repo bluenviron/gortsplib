@@ -1,0 +1,2 @@
+go test fuzz v1
+string("m=audio 0 AVP 110\na=rtpmap:110 MP4A-LATM/\na=fmtp:110 Config=7001d01010")

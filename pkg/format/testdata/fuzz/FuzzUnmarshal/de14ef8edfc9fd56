@@ -1,0 +1,2 @@
+go test fuzz v1
+string("m=audio 0 AVP 96\na=rtpmap:96 AC3/0/A")

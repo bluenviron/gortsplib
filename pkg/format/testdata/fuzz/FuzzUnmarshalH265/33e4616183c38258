@@ -1,5 +1,0 @@
-go test fuzz v1
-bool(false)
-string("\xd9\xf3fǆ\xd7\xf6\x1d6")
-bool(true)
-string("\v\xd7F?O\xc1\x86\t")
