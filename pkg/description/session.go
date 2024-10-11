@@ -137,7 +137,7 @@ func (d Session) Marshal(multicast bool) ([]byte, error) {
 			AddressType:    "IP4",
 			UnicastAddress: "127.0.0.1",
 		},
-		// required by Darwin Sessioning Server
+		// required by Darwin Streaming Server
 		ConnectionInformation: &psdp.ConnectionInformation{
 			NetworkType: "IN",
 			AddressType: "IP4",
