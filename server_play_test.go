@@ -319,6 +319,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 		"different paths",
 		"double setup",
 		"closed stream",
+		"different protocols",
 	} {
 		t.Run(ca, func(t *testing.T) {
 			var stream *ServerStream
@@ -336,6 +337,9 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 						case "closed stream":
 							require.EqualError(t, ctx.Error, "stream is closed")
+
+						case "different protocols":
+							require.EqualError(t, ctx.Error, "can't setup medias with different protocols")
 						}
 						close(nconnClosed)
 					},
@@ -350,7 +354,9 @@ func TestServerPlaySetupErrors(t *testing.T) {
 						}, stream, nil
 					},
 				},
-				RTSPAddress: "localhost:8554",
+				RTSPAddress:    "localhost:8554",
+				UDPRTPAddress:  "127.0.0.1:8000",
+				UDPRTCPAddress: "127.0.0.1:8001",
 			}
 
 			err := s.Start()
@@ -372,10 +378,10 @@ func TestServerPlaySetupErrors(t *testing.T) {
 			desc := doDescribe(t, conn)
 
 			th := &headers.Transport{
-				Protocol:       headers.TransportProtocolTCP,
-				Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
-				Mode:           transportModePtr(headers.TransportModePlay),
-				InterleavedIDs: &[2]int{0, 1},
+				Protocol:    headers.TransportProtocolUDP,
+				Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+				Mode:        transportModePtr(headers.TransportModePlay),
+				ClientPorts: &[2]int{35466, 35467},
 			}
 
 			res, err := writeReqReadRes(conn, base.Request{
@@ -387,14 +393,16 @@ func TestServerPlaySetupErrors(t *testing.T) {
 				},
 			})
 
-			switch ca {
-			case "different paths":
+			if ca != "closed stream" {
 				require.NoError(t, err)
 				require.Equal(t, base.StatusOK, res.StatusCode)
+			}
 
+			switch ca {
+			case "different paths":
 				session := readSession(t, res)
 
-				th.InterleavedIDs = &[2]int{2, 3}
+				th.ClientPorts = &[2]int{35468, 35469}
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
@@ -409,12 +417,9 @@ func TestServerPlaySetupErrors(t *testing.T) {
 				require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
 			case "double setup":
-				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
-
 				session := readSession(t, res)
 
-				th.InterleavedIDs = &[2]int{2, 3}
+				th.ClientPorts = &[2]int{35468, 35469}
 
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Setup,
@@ -429,6 +434,24 @@ func TestServerPlaySetupErrors(t *testing.T) {
 				require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
 			case "closed stream":
+				require.NoError(t, err)
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
+			case "different protocols":
+				session := readSession(t, res)
+
+				th.Protocol = headers.TransportProtocolTCP
+				th.InterleavedIDs = &[2]int{0, 1}
+
+				res, err = writeReqReadRes(conn, base.Request{
+					Method: base.Setup,
+					URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
+					Header: base.Header{
+						"CSeq":      base.HeaderValue{"4"},
+						"Transport": th.Marshal(),
+						"Session":   base.HeaderValue{session},
+					},
+				})
 				require.NoError(t, err)
 				require.Equal(t, base.StatusBadRequest, res.StatusCode)
 			}
