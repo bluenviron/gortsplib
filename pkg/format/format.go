@@ -144,6 +144,9 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 		case payloadType == 33:
 			return &MPEGTS{}
 
+		case payloadType == 35 && codec == "h264" && clock == "90000": // Bosch cameras
+			return &H264{}
+
 		// audio
 
 		case payloadType == 14:
