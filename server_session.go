@@ -662,15 +662,15 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, err
 		}
 
-		var inTSH headers.Transports
-		err = inTSH.Unmarshal(req.Header["Transport"])
+		var transportHeaders headers.Transports
+		err = transportHeaders.Unmarshal(req.Header["Transport"])
 		if err != nil {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerTransportHeaderInvalid{Err: err}
 		}
 
-		inTH := findFirstSupportedTransportHeader(ss.s, inTSH)
+		inTH := findFirstSupportedTransportHeader(ss.s, transportHeaders)
 		if inTH == nil {
 			return &base.Response{
 				StatusCode: base.StatusUnsupportedTransport,
@@ -706,16 +706,26 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				transport = TransportUDPMulticast
 			} else {
 				transport = TransportUDP
-
-				if inTH.ClientPorts == nil {
-					return &base.Response{
-						StatusCode: base.StatusBadRequest,
-					}, liberrors.ErrServerTransportHeaderNoClientPorts{}
-				}
 			}
 		} else {
 			transport = TransportTCP
+		}
 
+		if ss.setuppedTransport != nil && *ss.setuppedTransport != transport {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, liberrors.ErrServerMediasDifferentProtocols{}
+		}
+
+		switch transport {
+		case TransportUDP:
+			if inTH.ClientPorts == nil {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerTransportHeaderNoClientPorts{}
+			}
+
+		case TransportTCP:
 			if inTH.InterleavedIDs != nil {
 				if (inTH.InterleavedIDs[0] + 1) != inTH.InterleavedIDs[1] {
 					return &base.Response{
@@ -729,12 +739,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					}, liberrors.ErrServerTransportHeaderInterleavedIDsInUse{}
 				}
 			}
-		}
-
-		if ss.setuppedTransport != nil && *ss.setuppedTransport != transport {
-			return &base.Response{
-				StatusCode: base.StatusBadRequest,
-			}, liberrors.ErrServerMediasDifferentProtocols{}
 		}
 
 		switch ss.state {
