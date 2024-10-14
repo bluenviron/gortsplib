@@ -144,6 +144,9 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 		case payloadType == 33:
 			return &MPEGTS{}
 
+		case payloadType == 35 && codec == "h264" && clock == "90000": // Bosch cameras
+			return &H264{}
+
 		// audio
 
 		case payloadType == 14:
@@ -160,10 +163,9 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 
 		/*
 		* dynamic payload types
-		* 35 (unassigned payload type) - bosch rstp particularity on dsp media
 		**/
 
-		case payloadType == 35, payloadType >= 96 && payloadType <= 127:
+		case payloadType >= 96 && payloadType <= 127:
 			switch {
 			// video
 

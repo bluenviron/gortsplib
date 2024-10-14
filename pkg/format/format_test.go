@@ -928,6 +928,39 @@ var casesFormat = []struct {
 		},
 	},
 	{
+		"video h264 bosch (issue gortsplib/632)",
+		"v=0\n" +
+			"o=- 0 0 IN IP4 10.100.14.102\n" +
+			"s=LIVE VIEW\n" +
+			"c=IN IP4 0.0.0.0\n" +
+			"t=0 0\n" +
+			"a=control:rtsp://10.100.14.102:554/?inst=2&h26x=4\n" +
+			"m=video 0 RTP/AVP 35\n" +
+			"a=rtpmap:35 H264/90000\n" +
+			"a=control:rtsp://10.100.14.102:554/?inst=2&h26x=4&stream=video\n" +
+			"a=recvonly\n" +
+			"a=fmtp:35 packetization-mode=1;profile-level-id=4d4029;sprop-parameter-sets=Z01AKY2NYDwBE/LgLcBDQECA,aO44gA==\n",
+		&H264{
+			PayloadTyp: 35,
+			SPS: []byte{
+				0x67, 0x4d, 0x40, 0x29, 0x8d, 0x8d, 0x60, 0x3c,
+				0x01, 0x13, 0xf2, 0xe0, 0x2d, 0xc0, 0x43, 0x40,
+				0x40, 0x80,
+			},
+			PPS: []byte{
+				0x68, 0xee, 0x38, 0x80,
+			},
+			PacketizationMode: 1,
+		},
+		35,
+		"H264/90000",
+		map[string]string{
+			"packetization-mode":   "1",
+			"profile-level-id":     "4D4029",
+			"sprop-parameter-sets": "Z01AKY2NYDwBE/LgLcBDQECA,aO44gA==",
+		},
+	},
+	{
 		"video h265",
 		"v=0\n" +
 			"s=\n" +
@@ -1152,39 +1185,6 @@ var casesFormat = []struct {
 		95,
 		"TP-LINK/90000",
 		nil,
-	},
-	{
-		"bosch video h264",
-		"v=0\n" +
-			"o=- 0 0 IN IP4 10.100.14.102\n" +
-			"s=LIVE VIEW\n" +
-			"c=IN IP4 0.0.0.0\n" +
-			"t=0 0\n" +
-			"a=control:rtsp://10.100.14.102:554/?inst=2&h26x=4\n" +
-			"m=video 0 RTP/AVP 35\n" +
-			"a=rtpmap:35 H264/90000\n" +
-			"a=control:rtsp://10.100.14.102:554/?inst=2&h26x=4&stream=video\n" +
-			"a=recvonly\n" +
-			"a=fmtp:35 packetization-mode=1;profile-level-id=4d4029;sprop-parameter-sets=Z01AKY2NYDwBE/LgLcBDQECA,aO44gA==\n",
-		&H264{
-			PayloadTyp: 35,
-			SPS: []byte{
-				0x67, 0x4d, 0x40, 0x29, 0x8d, 0x8d, 0x60, 0x3c,
-				0x01, 0x13, 0xf2, 0xe0, 0x2d, 0xc0, 0x43, 0x40,
-				0x40, 0x80,
-			},
-			PPS: []byte{
-				0x68, 0xee, 0x38, 0x80,
-			},
-			PacketizationMode: 1,
-		},
-		35,
-		"H264/90000",
-		map[string]string{
-			"packetization-mode":   "1",
-			"profile-level-id":     "4D4029",
-			"sprop-parameter-sets": "Z01AKY2NYDwBE/LgLcBDQECA,aO44gA==",
-		},
 	},
 }
 
