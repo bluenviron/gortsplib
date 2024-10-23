@@ -46,17 +46,21 @@ func (d *Decoder) Init() error {
 	return nil
 }
 
+func (d *Decoder) resetFragments() {
+	d.fragments = d.fragments[:0]
+	d.fragmentsSize = 0
+}
+
 func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 	var av1header codecs.AV1Packet
 	_, err := av1header.Unmarshal(pkt.Payload)
 	if err != nil {
-		d.fragments = d.fragments[:0] // discard pending fragments
-		d.fragmentsSize = 0
+		d.resetFragments()
 		return nil, fmt.Errorf("invalid header: %w", err)
 	}
 
 	if av1header.Z {
-		if len(d.fragments) == 0 {
+		if d.fragmentsSize == 0 {
 			if !d.firstPacketReceived {
 				return nil, ErrNonStartingPacketAndNoPrevious
 			}
@@ -66,8 +70,7 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 
 		d.fragmentsSize += len(av1header.OBUElements[0])
 		if d.fragmentsSize > av1.MaxTemporalUnitSize {
-			d.fragments = d.fragments[:0]
-			d.fragmentsSize = 0
+			d.resetFragments()
 			return nil, fmt.Errorf("OBU size (%d) is too big, maximum is %d", d.fragmentsSize, av1.MaxTemporalUnitSize)
 		}
 
@@ -82,17 +85,16 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 	if len(av1header.OBUElements) > 0 {
 		if d.fragmentsSize != 0 {
 			obus = append(obus, joinFragments(d.fragments, d.fragmentsSize))
-			d.fragments = d.fragments[:0]
-			d.fragmentsSize = 0
+			d.resetFragments()
 		}
 
 		if av1header.Y {
 			elementCount := len(av1header.OBUElements)
 
 			d.fragmentsSize += len(av1header.OBUElements[elementCount-1])
+
 			if d.fragmentsSize > av1.MaxTemporalUnitSize {
-				d.fragments = d.fragments[:0]
-				d.fragmentsSize = 0
+				d.resetFragments()
 				return nil, fmt.Errorf("OBU size (%d) is too big, maximum is %d", d.fragmentsSize, av1.MaxTemporalUnitSize)
 			}
 
@@ -103,8 +105,7 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 		obus = append(obus, av1header.OBUElements...)
 	} else if !av1header.Y {
 		obus = append(obus, joinFragments(d.fragments, d.fragmentsSize))
-		d.fragments = d.fragments[:0]
-		d.fragmentsSize = 0
+		d.resetFragments()
 	}
 
 	if len(obus) == 0 {

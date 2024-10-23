@@ -33,11 +33,16 @@ func (d *Decoder) Init() error {
 	return nil
 }
 
+func (d *Decoder) resetFragments() {
+	d.fragments = d.fragments[:0]
+	d.fragmentsSize = 0
+}
+
 // Decode decodes a frame from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	var frame []byte
 
-	if len(d.fragments) == 0 {
+	if d.fragmentsSize == 0 {
 		if pkt.Marker {
 			frame = pkt.Payload
 		} else {
@@ -48,7 +53,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	} else {
 		d.fragmentsSize += len(pkt.Payload)
 		if d.fragmentsSize > mpeg4video.MaxFrameSize {
-			d.fragments = d.fragments[:0] // discard pending fragments
+			d.resetFragments()
 			return nil, fmt.Errorf("frame size (%d) is too big, maximum is %d", d.fragmentsSize, mpeg4video.MaxFrameSize)
 		}
 
@@ -59,7 +64,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		}
 
 		frame = joinFragments(d.fragments, d.fragmentsSize)
-		d.fragments = d.fragments[:0]
+		d.resetFragments()
 	}
 
 	return frame, nil

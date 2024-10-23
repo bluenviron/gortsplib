@@ -45,38 +45,38 @@ func (d *Decoder) Init() error {
 	return nil
 }
 
+func (d *Decoder) resetFragments() {
+	d.fragments = d.fragments[:0]
+	d.fragmentsSize = 0
+}
+
 func (d *Decoder) decodeSlice(pkt *rtp.Packet) ([]byte, error) {
 	if len(pkt.Payload) < 4 {
-		d.fragments = d.fragments[:0] // discard pending fragments
-		d.fragmentsSize = 0
+		d.resetFragments()
 		return nil, fmt.Errorf("payload is too short")
 	}
 
 	mbz := pkt.Payload[0] >> 3
 	if mbz != 0 {
-		d.fragments = d.fragments[:0] // discard pending fragments
-		d.fragmentsSize = 0
+		d.resetFragments()
 		return nil, fmt.Errorf("invalid MBZ: %v", mbz)
 	}
 
 	t := (pkt.Payload[0] >> 2) & 0x01
 	if t != 0 {
-		d.fragments = d.fragments[:0] // discard pending fragments
-		d.fragmentsSize = 0
+		d.resetFragments()
 		return nil, fmt.Errorf("MPEG-2 video-specific header extension is not supported yet")
 	}
 
 	an := pkt.Payload[2] >> 7
 	if an != 0 {
-		d.fragments = d.fragments[:0] // discard pending fragments
-		d.fragmentsSize = 0
+		d.resetFragments()
 		return nil, fmt.Errorf("AN not supported yet")
 	}
 
 	n := (pkt.Payload[2] >> 6) & 0x01
 	if n != 0 {
-		d.fragments = d.fragments[:0] // discard pending fragments
-		d.fragmentsSize = 0
+		d.resetFragments()
 		return nil, fmt.Errorf("N not supported yet")
 	}
 
@@ -88,7 +88,7 @@ func (d *Decoder) decodeSlice(pkt *rtp.Packet) ([]byte, error) {
 		return pkt.Payload[4:], nil
 
 	case b == 1:
-		d.fragments = d.fragments[:0] // discard pending fragments
+		d.fragments = d.fragments[:0]
 		d.fragments = append(d.fragments, pkt.Payload[4:])
 		d.fragmentsSize = len(pkt.Payload[4:])
 		return nil, ErrMorePacketsNeeded
@@ -102,8 +102,7 @@ func (d *Decoder) decodeSlice(pkt *rtp.Packet) ([]byte, error) {
 		d.fragmentsSize += len(pkt.Payload[4:])
 
 		slice := joinFragments(d.fragments, d.fragmentsSize)
-		d.fragments = d.fragments[:0]
-		d.fragmentsSize = 0
+		d.resetFragments()
 		return slice, nil
 
 	default:
