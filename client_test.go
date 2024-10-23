@@ -541,3 +541,65 @@ func TestClientReplyToServerRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestClientRelativeContentBase(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		conn := conn.NewConn(nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Describe, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
+
+		medias := []*description.Media{testH264Media}
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
+				"Content-Base": base.HeaderValue{"/relative-content-base"},
+			},
+			Body: mediasToSDP(medias),
+		})
+		require.NoError(t, err2)
+	}()
+
+	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	c := Client{}
+
+	err = c.Start(u.Scheme, u.Host)
+	require.NoError(t, err)
+	defer c.Close()
+
+	desc, _, err := c.Describe(u)
+	require.NoError(t, err)
+
+	require.Equal(t, "rtsp://localhost:8554/relative-content-base", desc.BaseURL.String())
+}
