@@ -45,8 +45,9 @@ type Decoder struct {
 	PacketizationMode int
 
 	firstPacketReceived bool
-	fragmentsSize       int
 	fragments           [][]byte
+	fragmentsSize       int
+	fragmentNextSeqNum  uint16
 	annexBMode          bool
 
 	// for Decode()
@@ -97,6 +98,7 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			typ := pkt.Payload[1] & 0x1F
 			d.fragmentsSize = len(pkt.Payload[1:])
 			d.fragments = append(d.fragments, []byte{(nri << 5) | typ}, pkt.Payload[2:])
+			d.fragmentNextSeqNum = pkt.SequenceNumber + 1
 			d.firstPacketReceived = true
 
 			return nil, ErrMorePacketsNeeded
@@ -110,6 +112,11 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, fmt.Errorf("invalid FU-A packet (non-starting)")
 		}
 
+		if pkt.SequenceNumber != d.fragmentNextSeqNum {
+			d.resetFragments()
+			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
+		}
+
 		d.fragmentsSize += len(pkt.Payload[2:])
 
 		if d.fragmentsSize > h264.MaxAccessUnitSize {
@@ -118,6 +125,7 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[2:])
+		d.fragmentNextSeqNum++
 
 		if end != 1 {
 			return nil, ErrMorePacketsNeeded

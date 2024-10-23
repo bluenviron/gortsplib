@@ -34,6 +34,7 @@ type Decoder struct {
 	firstPacketReceived bool
 	fragmentsSize       int
 	fragments           [][]byte
+	fragmentNextSeqNum  uint16
 }
 
 // Init initializes the decoder.
@@ -69,6 +70,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		if !pkt.Marker {
 			d.fragmentsSize = len(vpkt.Payload)
 			d.fragments = append(d.fragments, vpkt.Payload)
+			d.fragmentNextSeqNum = pkt.SequenceNumber + 1
 			return nil, ErrMorePacketsNeeded
 		}
 
@@ -82,6 +84,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 			return nil, fmt.Errorf("received a non-starting fragment")
 		}
 
+		if pkt.SequenceNumber != d.fragmentNextSeqNum {
+			d.resetFragments()
+			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
+		}
+
 		d.fragmentsSize += len(vpkt.Payload)
 
 		if d.fragmentsSize > vp8.MaxFrameSize {
@@ -90,6 +97,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		}
 
 		d.fragments = append(d.fragments, vpkt.Payload)
+		d.fragmentNextSeqNum++
 
 		if !pkt.Marker {
 			return nil, ErrMorePacketsNeeded

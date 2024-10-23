@@ -38,6 +38,8 @@ func (d *Decoder) decodeGeneric(pkt *rtp.Packet) ([][]byte, error) {
 	var aus [][]byte
 
 	if d.fragmentsSize == 0 {
+		d.resetFragments()
+
 		if pkt.Marker {
 			// AUs
 			aus = make([][]byte, len(dataLens))
@@ -60,6 +62,7 @@ func (d *Decoder) decodeGeneric(pkt *rtp.Packet) ([][]byte, error) {
 
 			d.fragmentsSize = int(dataLens[0])
 			d.fragments = append(d.fragments, payload[:dataLens[0]])
+			d.fragmentNextSeqNum = pkt.SequenceNumber + 1
 			return nil, ErrMorePacketsNeeded
 		}
 	} else {
@@ -74,7 +77,13 @@ func (d *Decoder) decodeGeneric(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, fmt.Errorf("payload is too short")
 		}
 
+		if pkt.SequenceNumber != d.fragmentNextSeqNum {
+			d.resetFragments()
+			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
+		}
+
 		d.fragmentsSize += int(dataLens[0])
+
 		if d.fragmentsSize > mpeg4audio.MaxAccessUnitSize {
 			d.resetFragments()
 			return nil, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
@@ -82,6 +91,7 @@ func (d *Decoder) decodeGeneric(pkt *rtp.Packet) ([][]byte, error) {
 		}
 
 		d.fragments = append(d.fragments, payload[:dataLens[0]])
+		d.fragmentNextSeqNum++
 
 		if !pkt.Marker {
 			return nil, ErrMorePacketsNeeded

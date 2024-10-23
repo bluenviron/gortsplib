@@ -33,11 +33,12 @@ type Decoder struct {
 	// The number of bits in which the AU-Index-delta field is encoded in any non-first AU-header.
 	IndexDeltaLength int
 
-	firstAUParsed     bool
-	adtsMode          bool
-	fragments         [][]byte
-	fragmentsSize     int
-	fragmentsExpected int
+	firstAUParsed      bool
+	adtsMode           bool
+	fragments          [][]byte
+	fragmentsSize      int
+	fragmentsExpected  int
+	fragmentNextSeqNum uint16
 }
 
 // Init initializes the decoder.
