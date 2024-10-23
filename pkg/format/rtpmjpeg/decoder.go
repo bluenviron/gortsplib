@@ -163,8 +163,8 @@ func joinFragments(fragments [][]byte, size int) []byte {
 // Specification: https://datatracker.ietf.org/doc/html/rfc2435
 type Decoder struct {
 	firstPacketReceived bool
-	fragmentsSize       int
 	fragments           [][]byte
+	fragmentsSize       int
 	firstJpegHeader     *headerJPEG
 	quantizationTables  [][]byte
 }
@@ -172,6 +172,11 @@ type Decoder struct {
 // Init initializes the decoder.
 func (d *Decoder) Init() error {
 	return nil
+}
+
+func (d *Decoder) resetFragments() {
+	d.fragments = d.fragments[:0]
+	d.fragmentsSize = 0
 }
 
 // Decode decodes an image from a RTP packet.
@@ -194,8 +199,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	}
 
 	if jh.FragmentOffset == 0 {
-		d.fragments = d.fragments[:0] // discard pending fragments
-		d.fragmentsSize = 0
+		d.resetFragments()
 		d.firstPacketReceived = true
 
 		if jh.Quantization >= 128 {
@@ -219,8 +223,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 				return nil, ErrNonStartingPacketAndNoPrevious
 			}
 
-			d.fragments = d.fragments[:0] // discard pending fragments
-			d.fragmentsSize = 0
+			d.resetFragments()
 			return nil, fmt.Errorf("received wrong fragment")
 		}
 
@@ -237,8 +240,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	}
 
 	data := joinFragments(d.fragments, d.fragmentsSize)
-	d.fragments = d.fragments[:0]
-	d.fragmentsSize = 0
+	d.resetFragments()
 
 	var buf []byte
 

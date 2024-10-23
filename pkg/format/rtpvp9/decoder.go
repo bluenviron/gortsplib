@@ -41,19 +41,24 @@ func (d *Decoder) Init() error {
 	return nil
 }
 
+func (d *Decoder) resetFragments() {
+	d.fragments = d.fragments[:0]
+	d.fragmentsSize = 0
+}
+
 // Decode decodes a VP9 frame from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	var vpkt codecs.VP9Packet
 	_, err := vpkt.Unmarshal(pkt.Payload)
 	if err != nil {
-		d.fragments = d.fragments[:0] // discard pending fragments
+		d.resetFragments()
 		return nil, err
 	}
 
 	var frame []byte
 
 	if vpkt.B {
-		d.fragments = d.fragments[:0] // discard pending fragments
+		d.resetFragments()
 		d.firstPacketReceived = true
 
 		if !vpkt.E {
@@ -64,7 +69,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 
 		frame = vpkt.Payload
 	} else {
-		if len(d.fragments) == 0 {
+		if d.fragmentsSize == 0 {
 			if !d.firstPacketReceived {
 				return nil, ErrNonStartingPacketAndNoPrevious
 			}
@@ -75,7 +80,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		d.fragmentsSize += len(vpkt.Payload)
 
 		if d.fragmentsSize > vp9.MaxFrameSize {
-			d.fragments = d.fragments[:0] // discard pending fragments
+			d.resetFragments()
 			return nil, fmt.Errorf("frame size (%d) is too big, maximum is %d", d.fragmentsSize, vp9.MaxFrameSize)
 		}
 
@@ -86,7 +91,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		}
 
 		frame = joinFragments(d.fragments, d.fragmentsSize)
-		d.fragments = d.fragments[:0]
+		d.resetFragments()
 	}
 
 	return frame, nil

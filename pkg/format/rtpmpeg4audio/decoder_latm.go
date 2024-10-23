@@ -11,7 +11,7 @@ func (d *Decoder) decodeLATM(pkt *rtp.Packet) ([][]byte, error) {
 	var au []byte
 	buf := pkt.Payload
 
-	if len(d.fragments) == 0 {
+	if d.fragmentsSize == 0 {
 		pl, n, err := payloadLengthInfoDecode(buf)
 		if err != nil {
 			return nil, err
@@ -25,7 +25,7 @@ func (d *Decoder) decodeLATM(pkt *rtp.Packet) ([][]byte, error) {
 			// there could be other data, due to otherDataPresent. Ignore it.
 		} else {
 			if pl > mpeg4audio.MaxAccessUnitSize {
-				d.fragments = d.fragments[:0] // discard pending fragments
+				d.resetFragments()
 				return nil, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
 					pl, mpeg4audio.MaxAccessUnitSize)
 			}
@@ -48,7 +48,7 @@ func (d *Decoder) decodeLATM(pkt *rtp.Packet) ([][]byte, error) {
 		// there could be other data, due to otherDataPresent. Ignore it.
 
 		au = joinFragments(d.fragments, d.fragmentsSize)
-		d.fragments = d.fragments[:0]
+		d.resetFragments()
 	}
 
 	return [][]byte{au}, nil
