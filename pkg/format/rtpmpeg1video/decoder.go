@@ -33,8 +33,9 @@ func joinFragments(fragments [][]byte, size int) []byte {
 // Decoder is a RTP/MPEG-1/2 Video decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
 type Decoder struct {
-	fragments     [][]byte
-	fragmentsSize int
+	fragments          [][]byte
+	fragmentsSize      int
+	fragmentNextSeqNum uint16
 
 	sliceBuffer     [][]byte
 	sliceBufferSize int
@@ -91,11 +92,17 @@ func (d *Decoder) decodeSlice(pkt *rtp.Packet) ([]byte, error) {
 		d.fragments = d.fragments[:0]
 		d.fragments = append(d.fragments, pkt.Payload[4:])
 		d.fragmentsSize = len(pkt.Payload[4:])
+		d.fragmentNextSeqNum = pkt.SequenceNumber + 1
 		return nil, ErrMorePacketsNeeded
 
 	case e == 1:
 		if d.fragmentsSize == 0 {
 			return nil, ErrNonStartingPacketAndNoPrevious
+		}
+
+		if pkt.SequenceNumber != d.fragmentNextSeqNum {
+			d.resetFragments()
+			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[4:])
@@ -110,8 +117,14 @@ func (d *Decoder) decodeSlice(pkt *rtp.Packet) ([]byte, error) {
 			return nil, ErrNonStartingPacketAndNoPrevious
 		}
 
+		if pkt.SequenceNumber != d.fragmentNextSeqNum {
+			d.resetFragments()
+			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
+		}
+
 		d.fragments = append(d.fragments, pkt.Payload[4:])
 		d.fragmentsSize += len(pkt.Payload[4:])
+		d.fragmentNextSeqNum++
 		return nil, ErrMorePacketsNeeded
 	}
 }

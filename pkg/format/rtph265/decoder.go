@@ -37,6 +37,7 @@ type Decoder struct {
 	firstPacketReceived bool
 	fragments           [][]byte
 	fragmentsSize       int
+	fragmentNextSeqNum  uint16
 
 	// for Decode()
 	frameBuffer     [][]byte
@@ -118,6 +119,7 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			head := uint16(pkt.Payload[0]&0b10000001)<<8 | uint16(typ)<<9 | uint16(pkt.Payload[1])
 			d.fragmentsSize = len(pkt.Payload[1:])
 			d.fragments = append(d.fragments, []byte{byte(head >> 8), byte(head)}, pkt.Payload[3:])
+			d.fragmentNextSeqNum = pkt.SequenceNumber + 1
 			d.firstPacketReceived = true
 
 			return nil, ErrMorePacketsNeeded
@@ -131,13 +133,20 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, fmt.Errorf("invalid fragmentation unit (non-starting)")
 		}
 
+		if pkt.SequenceNumber != d.fragmentNextSeqNum {
+			d.resetFragments()
+			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
+		}
+
 		d.fragmentsSize += len(pkt.Payload[3:])
+
 		if d.fragmentsSize > h265.MaxAccessUnitSize {
 			d.resetFragments()
 			return nil, fmt.Errorf("NALU size (%d) is too big, maximum is %d", d.fragmentsSize, h265.MaxAccessUnitSize)
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[3:])
+		d.fragmentNextSeqNum++
 
 		if end != 1 {
 			return nil, ErrMorePacketsNeeded

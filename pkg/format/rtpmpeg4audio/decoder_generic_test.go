@@ -1,6 +1,7 @@
 package rtpmpeg4audio
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
@@ -68,6 +69,46 @@ func TestDecodeGenericADTS(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, [][]byte{{0xaa, 0xbb}}, aus)
 	}
+}
+
+func TestDecodeGenericErrorMissingPacket(t *testing.T) {
+	d := &Decoder{
+		SizeLength:       13,
+		IndexLength:      3,
+		IndexDeltaLength: 3,
+	}
+	err := d.Init()
+	require.NoError(t, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17645,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: mergeBytes(
+			[]byte{0x0, 0x10, 0x2d, 0x80},
+			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+		),
+	})
+	require.Equal(t, ErrMorePacketsNeeded, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17647,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: mergeBytes(
+			[]byte{0x00, 0x10, 0x2d, 0x80},
+			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+		),
+	})
+	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
 }
 
 func FuzzDecoderGeneric(f *testing.F) {

@@ -26,6 +26,36 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+func TestDecodeErrorMissingPacket(t *testing.T) {
+	d := &Decoder{}
+	err := d.Init()
+	require.NoError(t, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17645,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0, 0, 0x10, 0, 0, 0, 1},
+	})
+	require.Equal(t, ErrMorePacketsNeeded, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17647,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0, 0, 0x08, 0},
+	})
+	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
+}
+
 func FuzzDecoder(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, a []byte, b []byte) {
 		d := &Decoder{}

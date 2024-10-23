@@ -35,6 +35,7 @@ type Decoder struct {
 	fragments           [][]byte
 	fragmentsSize       int
 	fragmentsExpected   int
+	fragmentNextSeqNum  uint16
 }
 
 // Init initializes the decoder.
@@ -106,6 +107,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 		d.fragmentsSize = le
 		d.fragmentsExpected = size - le
 		d.fragments = append(d.fragments, pkt.Payload[2:])
+		d.fragmentNextSeqNum = pkt.SequenceNumber + 1
 		d.firstPacketReceived = true
 
 		return nil, ErrMorePacketsNeeded
@@ -118,6 +120,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, fmt.Errorf("received a subsequent fragment without previous fragments")
 		}
 
+		if pkt.SequenceNumber != d.fragmentNextSeqNum {
+			d.resetFragments()
+			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
+		}
+
 		le := len(pkt.Payload[2:])
 		d.fragmentsSize += le
 		d.fragmentsExpected -= le
@@ -128,6 +135,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[2:])
+		d.fragmentNextSeqNum++
 
 		if d.fragmentsExpected > 0 {
 			return nil, ErrMorePacketsNeeded

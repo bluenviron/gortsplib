@@ -1,6 +1,7 @@
 package rtpmpeg4audio
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
@@ -61,6 +62,45 @@ func TestDecodeLATMOtherData(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, []byte{1, 2, 3, 4}, aus[0])
+}
+
+func TestDecodeLATMErrorMissingPacket(t *testing.T) {
+	d := &Decoder{LATM: true}
+	err := d.Init()
+	require.NoError(t, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17645,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: mergeBytes(
+			bytes.Repeat([]byte{0xff}, 16),
+			[]byte{0x10},
+			bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 180),
+			[]byte{0, 1, 2},
+		),
+	})
+	require.Equal(t, ErrMorePacketsNeeded, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17647,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: mergeBytes(
+			[]byte{3, 4, 5, 6, 7},
+			bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 181),
+			[]byte{0, 1, 2, 3, 4, 5, 6},
+		),
+	})
+	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
 }
 
 func FuzzDecoderLATM(f *testing.F) {

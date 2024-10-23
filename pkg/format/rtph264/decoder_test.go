@@ -212,6 +212,36 @@ func TestDecoderErrorLimit(t *testing.T) {
 	require.EqualError(t, err, "NALU count exceeds maximum allowed (25)")
 }
 
+func TestDecodeErrorMissingPacket(t *testing.T) {
+	d := &Decoder{}
+	err := d.Init()
+	require.NoError(t, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17645,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x1c, 0x85, 0x01, 0x02},
+	})
+	require.Equal(t, ErrMorePacketsNeeded, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17647,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x1c, 0x05, 0x01, 0x02},
+	})
+	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
+}
+
 func FuzzDecoder(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, a []byte, b []byte) {
 		d := &Decoder{}

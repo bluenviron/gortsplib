@@ -32,8 +32,9 @@ func joinFragments(fragments [][]byte, size int) []byte {
 // Specification: https://aomediacodec.github.io/av1-rtp-spec/
 type Decoder struct {
 	firstPacketReceived bool
-	fragmentsSize       int
 	fragments           [][]byte
+	fragmentsSize       int
+	fragmentNextSeqNum  uint16
 
 	// for Decode()
 	frameBuffer     [][]byte
@@ -68,14 +69,21 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, fmt.Errorf("received a subsequent fragment without previous fragments")
 		}
 
+		if pkt.SequenceNumber != d.fragmentNextSeqNum {
+			d.resetFragments()
+			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
+		}
+
 		d.fragmentsSize += len(av1header.OBUElements[0])
+
 		if d.fragmentsSize > av1.MaxTemporalUnitSize {
 			d.resetFragments()
-			return nil, fmt.Errorf("OBU size (%d) is too big, maximum is %d", d.fragmentsSize, av1.MaxTemporalUnitSize)
+			return nil, fmt.Errorf("temporal unit size (%d) is too big, maximum is %d", d.fragmentsSize, av1.MaxTemporalUnitSize)
 		}
 
 		d.fragments = append(d.fragments, av1header.OBUElements[0])
 		av1header.OBUElements = av1header.OBUElements[1:]
+		d.fragmentNextSeqNum++
 	}
 
 	d.firstPacketReceived = true
@@ -95,11 +103,12 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 
 			if d.fragmentsSize > av1.MaxTemporalUnitSize {
 				d.resetFragments()
-				return nil, fmt.Errorf("OBU size (%d) is too big, maximum is %d", d.fragmentsSize, av1.MaxTemporalUnitSize)
+				return nil, fmt.Errorf("temporal unit size (%d) is too big, maximum is %d", d.fragmentsSize, av1.MaxTemporalUnitSize)
 			}
 
 			d.fragments = append(d.fragments, av1header.OBUElements[elementCount-1])
 			av1header.OBUElements = av1header.OBUElements[:elementCount-1]
+			d.fragmentNextSeqNum = pkt.SequenceNumber + 1
 		}
 
 		obus = append(obus, av1header.OBUElements...)
