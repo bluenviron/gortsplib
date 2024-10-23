@@ -75,6 +75,19 @@ func findBaseURL(sd *sdp.SessionDescription, res *base.Response, u *base.URL) (*
 			return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
 		}
 
+		if strings.HasPrefix(cb[0], "/") {
+			// parse as a relative path
+			ret, err := base.ParseURL(u.Scheme + "://" + u.Host + cb[0])
+			if err != nil {
+				return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
+			}
+
+			// add credentials
+			ret.User = u.User
+
+			return ret, nil
+		}
+
 		ret, err := base.ParseURL(cb[0])
 		if err != nil {
 			return nil, fmt.Errorf("invalid Content-Base: '%v'", cb)
