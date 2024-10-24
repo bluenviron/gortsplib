@@ -161,20 +161,20 @@ func (sm *serverSessionMedia) writePacketRTCP(payload []byte) error {
 	return nil
 }
 
-func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) {
+func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) bool {
 	plen := len(payload)
 
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
 		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
-		return
+		return false
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		sm.ss.onDecodeError(err)
-		return
+		return false
 	}
 
 	now := sm.ss.s.timeNow()
@@ -183,51 +183,55 @@ func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) {
 	for _, pkt := range packets {
 		sm.onPacketRTCP(pkt)
 	}
+
+	return true
 }
 
-func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) {
+func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) bool {
 	plen := len(payload)
 
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
 		sm.ss.onDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
-		return
+		return false
 	}
 
 	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		sm.ss.onDecodeError(err)
-		return
+		return false
 	}
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
 		sm.ss.onDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: pkt.PayloadType})
-		return
+		return false
 	}
 
 	now := sm.ss.s.timeNow()
 	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
 
 	forma.readRTPUDP(pkt, now)
+
+	return true
 }
 
-func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) {
+func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) bool {
 	plen := len(payload)
 
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
 		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
-		return
+		return false
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		sm.ss.onDecodeError(err)
-		return
+		return false
 	}
 
 	now := sm.ss.s.timeNow()
@@ -243,55 +247,62 @@ func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) {
 
 		sm.onPacketRTCP(pkt)
 	}
+
+	return true
 }
 
-func (sm *serverSessionMedia) readRTPTCPPlay(_ []byte) {
+func (sm *serverSessionMedia) readRTPTCPPlay(_ []byte) bool {
+	return false
 }
 
-func (sm *serverSessionMedia) readRTCPTCPPlay(payload []byte) {
+func (sm *serverSessionMedia) readRTCPTCPPlay(payload []byte) bool {
 	if len(payload) > udpMaxPayloadSize {
 		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
-		return
+		return false
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		sm.ss.onDecodeError(err)
-		return
+		return false
 	}
 
 	for _, pkt := range packets {
 		sm.onPacketRTCP(pkt)
 	}
+
+	return true
 }
 
-func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) {
+func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) bool {
 	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
 		sm.ss.onDecodeError(err)
-		return
+		return false
 	}
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
 		sm.ss.onDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: pkt.PayloadType})
-		return
+		return false
 	}
 
 	forma.readRTPTCP(pkt)
+
+	return true
 }
 
-func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) {
+func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) bool {
 	if len(payload) > udpMaxPayloadSize {
 		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
-		return
+		return false
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
 		sm.ss.onDecodeError(err)
-		return
+		return false
 	}
 
 	now := sm.ss.s.timeNow()
@@ -306,4 +317,6 @@ func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) {
 
 		sm.onPacketRTCP(pkt)
 	}
+
+	return true
 }
