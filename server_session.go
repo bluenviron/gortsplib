@@ -23,7 +23,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
-type readFunc func([]byte)
+type readFunc func([]byte) bool
 
 func stringsReverseIndex(s, substr string) int {
 	for i := len(s) - 1 - len(substr); i >= 0; i-- {

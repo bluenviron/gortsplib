@@ -142,8 +142,15 @@ func (u *clientUDPListener) stop() {
 func (u *clientUDPListener) run() {
 	defer close(u.done)
 
+	var buf []byte
+
+	createNewBuffer := func() {
+		buf = make([]byte, udpMaxPayloadSize+1)
+	}
+
+	createNewBuffer()
+
 	for {
-		buf := make([]byte, udpMaxPayloadSize+1)
 		n, addr, err := u.pc.ReadFrom(buf)
 		if err != nil {
 			return
@@ -166,7 +173,9 @@ func (u *clientUDPListener) run() {
 		now := u.c.timeNow()
 		atomic.StoreInt64(u.lastPacketTime, now.Unix())
 
-		u.readFunc(buf[:n])
+		if u.readFunc(buf[:n]) {
+			createNewBuffer()
+		}
 	}
 }
 
