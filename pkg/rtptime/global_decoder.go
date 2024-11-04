@@ -1,7 +1,6 @@
 package rtptime
 
 import (
-	"sync"
 	"time"
 
 	"github.com/pion/rtp"
@@ -45,6 +44,8 @@ func (d *globalDecoderTrackData) decode(ts uint32) time.Duration {
 }
 
 // GlobalDecoderTrack is a track (RTSP format or WebRTC track) of a GlobalDecoder.
+//
+// Deprecated: replaced by GlobalDecoderTrack2
 type GlobalDecoderTrack interface {
 	ClockRate() int
 	PTSEqualsDTS(*rtp.Packet) bool
@@ -54,11 +55,7 @@ type GlobalDecoderTrack interface {
 //
 // Deprecated: replaced by GlobalDecoder2.
 type GlobalDecoder struct {
-	mutex        sync.Mutex
-	leadingTrack GlobalDecoderTrack
-	startNTP     time.Time
-	startPTS     time.Duration
-	tracks       map[GlobalDecoderTrack]*globalDecoderTrackData
+	wrapped *GlobalDecoder2
 }
 
 // NewGlobalDecoder allocates a GlobalDecoder.
@@ -66,7 +63,7 @@ type GlobalDecoder struct {
 // Deprecated: replaced by NewGlobalDecoder2.
 func NewGlobalDecoder() *GlobalDecoder {
 	return &GlobalDecoder{
-		tracks: make(map[GlobalDecoderTrack]*globalDecoderTrackData),
+		wrapped: NewGlobalDecoder2(),
 	}
 }
 
@@ -75,47 +72,10 @@ func (d *GlobalDecoder) Decode(
 	track GlobalDecoderTrack,
 	pkt *rtp.Packet,
 ) (time.Duration, bool) {
-	if track.ClockRate() == 0 {
+	v, ok := d.wrapped.Decode(track, pkt)
+	if !ok {
 		return 0, false
 	}
 
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
-
-	df, ok := d.tracks[track]
-
-	// track never seen before
-	if !ok {
-		if !track.PTSEqualsDTS(pkt) {
-			return 0, false
-		}
-
-		now := timeNow()
-
-		if d.leadingTrack == nil {
-			d.leadingTrack = track
-			d.startNTP = now
-			d.startPTS = 0
-		}
-
-		df = newGlobalDecoderTrackData(
-			d.startPTS+now.Sub(d.startNTP),
-			track.ClockRate(),
-			pkt.Timestamp)
-
-		d.tracks[track] = df
-
-		return df.startPTS, true
-	}
-
-	pts := df.decode(pkt.Timestamp)
-
-	// update startNTP / startPTS
-	if d.leadingTrack == track && track.PTSEqualsDTS(pkt) {
-		now := timeNow()
-		d.startNTP = now
-		d.startPTS = pts
-	}
-
-	return pts, true
+	return multiplyAndDivide(time.Duration(v), time.Second, time.Duration(track.ClockRate())), true
 }

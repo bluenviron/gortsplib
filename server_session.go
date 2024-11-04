@@ -247,8 +247,7 @@ type ServerSession struct {
 	udpLastPacketTime     *int64               // publish
 	udpCheckStreamTimer   *time.Timer
 	writer                asyncProcessor
-	timeDecoder           *rtptime.GlobalDecoder
-	timeDecoder2          *rtptime.GlobalDecoder2
+	timeDecoder           *rtptime.GlobalDecoder2
 
 	// in
 	chHandleRequest chan sessionRequestReq
@@ -952,8 +951,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		v := ss.s.timeNow().Unix()
 		ss.udpLastPacketTime = &v
 
-		ss.timeDecoder = rtptime.NewGlobalDecoder()
-		ss.timeDecoder2 = rtptime.NewGlobalDecoder2()
+		ss.timeDecoder = rtptime.NewGlobalDecoder2()
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
@@ -1039,8 +1037,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		v := ss.s.timeNow().Unix()
 		ss.udpLastPacketTime = &v
 
-		ss.timeDecoder = rtptime.NewGlobalDecoder()
-		ss.timeDecoder2 = rtptime.NewGlobalDecoder2()
+		ss.timeDecoder = rtptime.NewGlobalDecoder2()
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
@@ -1095,7 +1092,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		ss.timeDecoder = nil
-		ss.timeDecoder2 = nil
 
 		switch ss.state {
 		case ServerSessionStatePlay:
@@ -1268,7 +1264,13 @@ func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packe
 func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Duration, bool) {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[pkt.PayloadType]
-	return ss.timeDecoder.Decode(sf.format, pkt)
+
+	v, ok := ss.timeDecoder.Decode(sf.format, pkt)
+	if !ok {
+		return 0, false
+	}
+
+	return multiplyAndDivide(time.Duration(v), time.Second, time.Duration(sf.format.ClockRate())), true
 }
 
 // PacketPTS2 returns the PTS of an incoming RTP packet.
@@ -1276,7 +1278,7 @@ func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (ti
 func (ss *ServerSession) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[pkt.PayloadType]
-	return ss.timeDecoder2.Decode(sf.format, pkt)
+	return ss.timeDecoder.Decode(sf.format, pkt)
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.

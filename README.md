@@ -103,7 +103,7 @@ Features:
 
 ## RTP Payload Formats
 
-In RTSP, media streams are routed between server and clients by using RTP packets, which are encoded in a specific, codec-dependent, format. This library supports formats for the following codecs:
+In RTSP, media streams are transmitted by using RTP packets, which are encoded in a specific, codec-dependent, format. This library supports formats for the following codecs:
 
 ### Video
 

@@ -31,6 +31,14 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
+// avoid an int64 overflow and preserve resolution by splitting division into two parts:
+// first add the integer part, then the decimal part.
+func multiplyAndDivide(v, m, d time.Duration) time.Duration {
+	secs := v / d
+	dec := v % d
+	return (secs*m + dec*m/d)
+}
+
 // convert an URL into an address, in particular:
 // * add default port
 // * handle IPv6 with or without square brackets.
@@ -329,8 +337,7 @@ type Client struct {
 	closeError           error
 	writer               asyncProcessor
 	reader               *clientReader
-	timeDecoder          *rtptime.GlobalDecoder
-	timeDecoder2         *rtptime.GlobalDecoder2
+	timeDecoder          *rtptime.GlobalDecoder2
 	mustClose            bool
 
 	// in
@@ -812,8 +819,7 @@ func (c *Client) startReadRoutines() {
 		c.writer.allocateBuffer(8)
 	}
 
-	c.timeDecoder = rtptime.NewGlobalDecoder()
-	c.timeDecoder2 = rtptime.NewGlobalDecoder2()
+	c.timeDecoder = rtptime.NewGlobalDecoder2()
 
 	for _, cm := range c.medias {
 		cm.start()
@@ -855,7 +861,6 @@ func (c *Client) stopReadRoutines() {
 	}
 
 	c.timeDecoder = nil
-	c.timeDecoder2 = nil
 }
 
 func (c *Client) startWriter() {
@@ -1900,7 +1905,13 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Duration, bool) {
 	cm := c.medias[medi]
 	ct := cm.formats[pkt.PayloadType]
-	return c.timeDecoder.Decode(ct.format, pkt)
+
+	v, ok := c.timeDecoder.Decode(ct.format, pkt)
+	if !ok {
+		return 0, false
+	}
+
+	return multiplyAndDivide(time.Duration(v), time.Second, time.Duration(ct.format.ClockRate())), true
 }
 
 // PacketPTS returns the PTS of an incoming RTP packet.
@@ -1908,7 +1919,7 @@ func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Durat
 func (c *Client) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
 	cm := c.medias[medi]
 	ct := cm.formats[pkt.PayloadType]
-	return c.timeDecoder2.Decode(ct.format, pkt)
+	return c.timeDecoder.Decode(ct.format, pkt)
 }
 
 // PacketNTP returns the NTP timestamp of an incoming RTP packet.
