@@ -855,6 +855,7 @@ func (c *Client) stopReadRoutines() {
 	}
 
 	c.timeDecoder = nil
+	c.timeDecoder2 = nil
 }
 
 func (c *Client) startWriter() {
