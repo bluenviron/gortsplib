@@ -86,8 +86,8 @@ func (e *Encoder) writeGenericFragmented(au []byte, timestamp uint32) ([]*rtp.Pa
 
 		// AU-headers
 		pos := 0
-		bits.WriteBits(payload[2:], &pos, uint64(le), e.SizeLength)
-		bits.WriteBits(payload[2:], &pos, 0, e.IndexLength)
+		bits.WriteBitsUnsafe(payload[2:], &pos, uint64(le), e.SizeLength)
+		bits.WriteBitsUnsafe(payload[2:], &pos, 0, e.IndexLength)
 
 		// AU
 		copy(payload[2+auHeadersLenBytes:], au)
@@ -153,13 +153,13 @@ func (e *Encoder) writeGenericAggregated(aus [][]byte, timestamp uint32) ([]*rtp
 	written := 0
 	pos := 0
 	for i, au := range aus {
-		bits.WriteBits(payload[2:], &pos, uint64(len(au)), e.SizeLength)
+		bits.WriteBitsUnsafe(payload[2:], &pos, uint64(len(au)), e.SizeLength)
 		written += e.SizeLength
 		if i == 0 {
-			bits.WriteBits(payload[2:], &pos, 0, e.IndexLength)
+			bits.WriteBitsUnsafe(payload[2:], &pos, 0, e.IndexLength)
 			written += e.IndexLength
 		} else {
-			bits.WriteBits(payload[2:], &pos, 0, e.IndexDeltaLength)
+			bits.WriteBitsUnsafe(payload[2:], &pos, 0, e.IndexDeltaLength)
 			written += e.IndexDeltaLength
 		}
 	}

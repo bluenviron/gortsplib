@@ -189,8 +189,8 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 			if v != "" {
 				ip := net.ParseIP(v)
 				if ip == nil {
-					addrs, err := net.LookupHost(v)
-					if err != nil {
+					addrs, err2 := net.LookupHost(v)
+					if err2 != nil {
 						return fmt.Errorf("invalid source (%v)", v)
 					}
 					ip = net.ParseIP(addrs[0])
@@ -211,38 +211,38 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 			}
 
 		case "interleaved":
-			ports, err := parsePorts(v)
-			if err != nil {
-				return err
+			ports, err2 := parsePorts(v)
+			if err2 != nil {
+				return err2
 			}
 			h.InterleavedIDs = ports
 
 		case "ttl":
-			tmp, err := strconv.ParseUint(v, 10, 32)
-			if err != nil {
-				return err
+			tmp, err2 := strconv.ParseUint(v, 10, 32)
+			if err2 != nil {
+				return err2
 			}
 			vu := uint(tmp)
 			h.TTL = &vu
 
 		case "port":
-			ports, err := parsePorts(v)
-			if err != nil {
-				return err
+			ports, err2 := parsePorts(v)
+			if err2 != nil {
+				return err2
 			}
 			h.Ports = ports
 
 		case "client_port":
-			ports, err := parsePorts(v)
-			if err != nil {
-				return err
+			ports, err2 := parsePorts(v)
+			if err2 != nil {
+				return err2
 			}
 			h.ClientPorts = ports
 
 		case "server_port":
-			ports, err := parsePorts(v)
-			if err != nil {
-				return err
+			ports, err2 := parsePorts(v)
+			if err2 != nil {
+				return err2
 			}
 			h.ServerPorts = ports
 
@@ -253,7 +253,7 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 				v = "0" + v
 			}
 
-			if tmp, err := hex.DecodeString(v); err == nil && len(tmp) <= 4 {
+			if tmp, err2 := hex.DecodeString(v); err2 == nil && len(tmp) <= 4 {
 				var ssrc [4]byte
 				copy(ssrc[4-len(tmp):], tmp)
 				v := uint32(ssrc[0])<<24 | uint32(ssrc[1])<<16 | uint32(ssrc[2])<<8 | uint32(ssrc[3])

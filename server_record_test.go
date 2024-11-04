@@ -206,8 +206,7 @@ func TestServerRecordErrorSetup(t *testing.T) {
 
 			var inTH *headers.Transport
 
-			switch ca.name {
-			case "invalid transport":
+			if ca.name == "invalid transport" {
 				inTH = &headers.Transport{
 					Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
 					Mode:        nil,

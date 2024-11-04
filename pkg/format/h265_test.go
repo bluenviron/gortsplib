@@ -72,7 +72,7 @@ func TestH265DecEncoder(t *testing.T) {
 }
 
 func FuzzH265PTSEqualsDTS(f *testing.F) {
-	f.Fuzz(func(t *testing.T, b []byte) {
+	f.Fuzz(func(_ *testing.T, b []byte) {
 		(&H265{}).PTSEqualsDTS(&rtp.Packet{Payload: b})
 	})
 }
