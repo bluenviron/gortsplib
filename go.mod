@@ -8,7 +8,7 @@ require (
 	github.com/pion/rtcp v1.2.14
 	github.com/pion/rtp v1.8.7-0.20240429002300-bc5124c9d0d0
 	github.com/pion/sdp/v3 v3.0.9
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.31.0
 )
 
