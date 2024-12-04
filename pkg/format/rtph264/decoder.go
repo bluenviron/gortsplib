@@ -90,16 +90,26 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 		if start == 1 {
 			d.resetFragments()
 
-			if end != 0 {
-				return nil, fmt.Errorf("invalid FU-A packet (can't contain both a start and end bit)")
-			}
-
 			nri := (pkt.Payload[0] >> 5) & 0x03
 			typ := pkt.Payload[1] & 0x1F
 			d.fragmentsSize = len(pkt.Payload[1:])
 			d.fragments = append(d.fragments, []byte{(nri << 5) | typ}, pkt.Payload[2:])
 			d.fragmentNextSeqNum = pkt.SequenceNumber + 1
 			d.firstPacketReceived = true
+
+			// RFC 6184 clearly states:
+			//
+			//   A fragmented NAL unit MUST NOT be transmitted in one FU; that is, the
+			//   Start bit and End bit MUST NOT both be set to one in the same FU
+			//   header.
+			//
+			// However, some vendors camera (e.g. CostarHD) have been observed to nevertheless
+			// emit one fragmented NAL unit for sufficiently small P-frames.
+			if end != 0 {
+				nalus = [][]byte{joinFragments(d.fragments, d.fragmentsSize)}
+				d.resetFragments()
+				break
+			}
 
 			return nil, ErrMorePacketsNeeded
 		}

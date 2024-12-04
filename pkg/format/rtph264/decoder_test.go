@@ -79,6 +79,38 @@ func TestDecodeCorruptedFragment(t *testing.T) {
 	require.Equal(t, [][]byte{{0x01, 0x00}}, nalus)
 }
 
+func TestDecodeNoncompliantFragment(t *testing.T) {
+	d := &Decoder{}
+	err := d.Init()
+	require.NoError(t, err)
+
+	nalus, err := d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 18853,
+			Timestamp:      1731630255,
+			SSRC:           0x466b0000,
+		},
+
+		// FU-A with both start and end bit intentionally set
+		// While not compliant with RFC 6184, IP cameras from some vendors
+		// (e.g. CostarHD) have been observed to produce such FU-A payloads for
+		// sufficiently small P-frames.
+		Payload: mergeBytes(
+			[]byte{
+				0x3c,       // FU indicator
+				0xc1,       // FU header (start and end bit both intentionally set)
+				0xe7, 0x00, // DON
+				0xca, 0xfe, // Payload
+			},
+		),
+	})
+	require.NoError(t, err)
+	require.Equal(t, [][]byte{{0x21, 0xe7, 0x00, 0xca, 0xfe}}, nalus)
+}
+
 func TestDecodeSTAPAWithPadding(t *testing.T) {
 	d := &Decoder{}
 	err := d.Init()
