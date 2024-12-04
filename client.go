@@ -272,6 +272,8 @@ type Client struct {
 	BytesReceived *uint64
 	// pointer to a variable that stores sent bytes.
 	BytesSent *uint64
+	// enable reuse of buffers for incoming packets.
+	BufferReuseEnable bool
 
 	//
 	// system functions (all optional)
@@ -904,7 +906,11 @@ func (c *Client) connOpen() error {
 
 	c.nconn = nconn
 	bc := bytecounter.New(c.nconn, c.BytesReceived, c.BytesSent)
-	c.conn = conn.NewConn(bc)
+	if c.BufferReuseEnable {
+		c.conn = conn.NewConn(bc, conn.ConnOptionFrameBufferReuseEnable(true))
+	} else {
+		c.conn = conn.NewConn(bc)
+	}
 	c.reader = &clientReader{
 		c: c,
 	}
