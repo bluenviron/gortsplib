@@ -174,38 +174,38 @@ func TestServerPlayPath(t *testing.T) {
 		path     string
 	}{
 		{
-			"normal",
+			"standard",
 			"rtsp://localhost:8554/teststream[control]",
 			"rtsp://localhost:8554/teststream/",
 			"/teststream",
 		},
 		{
-			"with query, ffmpeg format",
+			"no query, ffmpeg format",
 			"rtsp://localhost:8554/teststream?testing=123[control]",
 			"rtsp://localhost:8554/teststream/",
 			"/teststream",
 		},
 		{
-			"with query, gstreamer format",
+			"no query, gstreamer format",
 			"rtsp://localhost:8554/teststream[control]?testing=123",
 			"rtsp://localhost:8554/teststream/",
 			"/teststream",
 		},
 		{
 			// this is needed to support reading mpegts with ffmpeg
-			"without media id",
+			"no control",
 			"rtsp://localhost:8554/teststream/",
 			"rtsp://localhost:8554/teststream/",
 			"/teststream",
 		},
 		{
-			"without media id, query, ffmpeg",
+			"no control, query, ffmpeg",
 			"rtsp://localhost:8554/teststream?testing=123/",
 			"rtsp://localhost:8554/teststream/",
 			"/teststream",
 		},
 		{
-			"without media id, query, gstreamer",
+			"no control, query, gstreamer",
 			"rtsp://localhost:8554/teststream/?testing=123",
 			"rtsp://localhost:8554/teststream/",
 			"/teststream",
@@ -217,7 +217,7 @@ func TestServerPlayPath(t *testing.T) {
 			"/test/stream",
 		},
 		{
-			"subpath without media id",
+			"subpath, no control",
 			"rtsp://localhost:8554/test/stream/",
 			"rtsp://localhost:8554/test/stream/",
 			"/test/stream",
@@ -235,7 +235,7 @@ func TestServerPlayPath(t *testing.T) {
 			"/test/stream",
 		},
 		{
-			"no slash",
+			"no path, no slash",
 			"rtsp://localhost:8554[control]",
 			"rtsp://localhost:8554",
 			"",
@@ -245,6 +245,18 @@ func TestServerPlayPath(t *testing.T) {
 			"rtsp://localhost:8554/[control]",
 			"rtsp://localhost:8554//",
 			"/",
+		},
+		{
+			"no control, no path",
+			"rtsp://localhost:8554/",
+			"rtsp://localhost:8554/",
+			"/",
+		},
+		{
+			"no control, no path, no slash",
+			"rtsp://localhost:8554",
+			"rtsp://localhost:8554",
+			"",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -316,9 +328,10 @@ func TestServerPlayPath(t *testing.T) {
 
 func TestServerPlaySetupErrors(t *testing.T) {
 	for _, ca := range []string{
+		"invalid path",
+		"closed stream",
 		"different paths",
 		"double setup",
-		"closed stream",
 		"different protocols",
 	} {
 		t.Run(ca, func(t *testing.T) {
@@ -329,14 +342,18 @@ func TestServerPlaySetupErrors(t *testing.T) {
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						switch ca {
+						case "invalid path":
+							require.EqualError(t, ctx.Error, "invalid SETUP path. "+
+								"This typically happens when VLC fails a request, and then switches to an unsupported RTSP dialect")
+
+						case "closed stream":
+							require.EqualError(t, ctx.Error, "stream is closed")
+
 						case "different paths":
 							require.EqualError(t, ctx.Error, "can't setup medias with different paths")
 
 						case "double setup":
 							require.EqualError(t, ctx.Error, "media has already been setup")
-
-						case "closed stream":
-							require.EqualError(t, ctx.Error, "stream is closed")
 
 						case "different protocols":
 							require.EqualError(t, ctx.Error, "can't setup medias with different protocols")
@@ -375,30 +392,64 @@ func TestServerPlaySetupErrors(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			var desc *description.Session
+			var th *headers.Transport
+			var res *base.Response
 
-			th := &headers.Transport{
-				Protocol:    headers.TransportProtocolUDP,
-				Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
-				Mode:        transportModePtr(headers.TransportModePlay),
-				ClientPorts: &[2]int{35466, 35467},
-			}
+			switch ca {
+			case "invalid path":
+				th = &headers.Transport{
+					Protocol:    headers.TransportProtocolUDP,
+					Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+					Mode:        transportModePtr(headers.TransportModePlay),
+					ClientPorts: &[2]int{35466, 35467},
+				}
 
-			res, err := writeReqReadRes(conn, base.Request{
-				Method: base.Setup,
-				URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
-				Header: base.Header{
-					"CSeq":      base.HeaderValue{"2"},
-					"Transport": th.Marshal(),
-				},
-			})
+				res, err = writeReqReadRes(conn, base.Request{
+					Method: base.Setup,
+					URL: &base.URL{
+						Scheme: "rtsp",
+						Path:   "/invalid",
+					},
+					Header: base.Header{
+						"CSeq":      base.HeaderValue{"2"},
+						"Transport": th.Marshal(),
+					},
+				})
 
-			if ca != "closed stream" {
 				require.NoError(t, err)
-				require.Equal(t, base.StatusOK, res.StatusCode)
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
+			default:
+				desc = doDescribe(t, conn)
+
+				th = &headers.Transport{
+					Protocol:    headers.TransportProtocolUDP,
+					Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
+					Mode:        transportModePtr(headers.TransportModePlay),
+					ClientPorts: &[2]int{35466, 35467},
+				}
+
+				res, err = writeReqReadRes(conn, base.Request{
+					Method: base.Setup,
+					URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
+					Header: base.Header{
+						"CSeq":      base.HeaderValue{"2"},
+						"Transport": th.Marshal(),
+					},
+				})
+
+				if ca != "closed stream" {
+					require.NoError(t, err)
+					require.Equal(t, base.StatusOK, res.StatusCode)
+				}
 			}
 
 			switch ca {
+			case "closed stream":
+				require.NoError(t, err)
+				require.Equal(t, base.StatusBadRequest, res.StatusCode)
+
 			case "different paths":
 				session := readSession(t, res)
 
@@ -430,10 +481,6 @@ func TestServerPlaySetupErrors(t *testing.T) {
 						"Session":   base.HeaderValue{session},
 					},
 				})
-				require.NoError(t, err)
-				require.Equal(t, base.StatusBadRequest, res.StatusCode)
-
-			case "closed stream":
 				require.NoError(t, err)
 				require.Equal(t, base.StatusBadRequest, res.StatusCode)
 

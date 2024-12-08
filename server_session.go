@@ -76,11 +76,17 @@ func getPathAndQueryAndTrackID(u *base.URL) (string, string, string, error) {
 	if strings.HasSuffix(u.RawQuery, "/") {
 		return u.Path, u.RawQuery[:len(u.RawQuery)-1], "0", nil
 	}
-	if strings.HasSuffix(u.Path[1:], "/") {
+	if len(u.Path) >= 1 && strings.HasSuffix(u.Path[1:], "/") {
 		return u.Path[:len(u.Path)-1], u.RawQuery, "0", nil
 	}
 
-	return "", "", "", liberrors.ErrServerPathNoSlash{}
+	// special case for empty path
+	if u.Path == "" || u.Path == "/" {
+		return u.Path, u.RawQuery, "0", nil
+	}
+
+	// no slash at the end of the path.
+	return "", "", "", liberrors.ErrServerInvalidSetupPath{}
 }
 
 // used for SETUP when recording
