@@ -31,20 +31,36 @@ func NewConn(rw io.ReadWriter) *Conn {
 
 // Read reads a Request, a Response or an Interleaved frame.
 func (c *Conn) Read() (interface{}, error) {
-	byts, err := c.br.Peek(2)
-	if err != nil {
-		return nil, err
-	}
+	for {
+		byts, err := c.br.Peek(2)
+		if err != nil {
+			return nil, err
+		}
 
-	if byts[0] == base.InterleavedFrameMagicByte {
-		return c.ReadInterleavedFrame()
-	}
+		if byts[0] == base.InterleavedFrameMagicByte {
+			return c.ReadInterleavedFrame()
+		}
 
-	if byts[0] == 'R' && byts[1] == 'T' {
-		return c.ReadResponse()
-	}
+		if byts[0] == 'R' && byts[1] == 'T' {
+			return c.ReadResponse()
+		}
 
-	return c.ReadRequest()
+		if (byts[0] == 'A' && byts[1] == 'N') ||
+			(byts[0] == 'D' && byts[1] == 'E') ||
+			(byts[0] == 'G' && byts[1] == 'E') ||
+			(byts[0] == 'O' && byts[1] == 'P') ||
+			(byts[0] == 'P' && byts[1] == 'A') ||
+			(byts[0] == 'P' && byts[1] == 'L') ||
+			(byts[0] == 'R' && byts[1] == 'E') ||
+			(byts[0] == 'S' && byts[1] == 'E') ||
+			(byts[0] == 'T' && byts[1] == 'E') {
+			return c.ReadRequest()
+		}
+
+		if _, err := c.br.Discard(1); err != nil {
+			return nil, err
+		}
+	}
 }
 
 // ReadRequest reads a Request.

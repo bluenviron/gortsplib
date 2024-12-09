@@ -76,6 +76,32 @@ func TestRead(t *testing.T) {
 	}
 }
 
+func TestReadConsecutiveFrameMagicBytes(t *testing.T) {
+	buf := bytes.NewBuffer([]byte{
+		// interleaved frame
+		0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4,
+		// random bytes
+		0x00, 0x00, 0x00,
+		// another interleaved frame
+		0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4,
+	})
+	conn := NewConn(buf)
+	dec1, err := conn.Read()
+	require.NoError(t, err)
+	require.Equal(t,
+		&base.InterleavedFrame{
+			Channel: 6,
+			Payload: []byte{0x01, 0x02, 0x03, 0x04},
+		}, dec1)
+	dec2, err := conn.Read()
+	require.NoError(t, err)
+	require.Equal(t,
+		&base.InterleavedFrame{
+			Channel: 6,
+			Payload: []byte{0x01, 0x02, 0x03, 0x04},
+		}, dec2)
+}
+
 func TestReadError(t *testing.T) {
 	var buf bytes.Buffer
 	conn := NewConn(&buf)
