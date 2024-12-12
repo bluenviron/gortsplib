@@ -18,7 +18,7 @@ func New() *LossDetector {
 
 // Process processes a RTP packet.
 // It returns the number of lost packets.
-func (r *LossDetector) Process(pkt *rtp.Packet) int {
+func (r *LossDetector) Process(pkt *rtp.Packet) uint {
 	if !r.initialized {
 		r.initialized = true
 		r.expectedSeqNum = pkt.SequenceNumber + 1
@@ -28,7 +28,7 @@ func (r *LossDetector) Process(pkt *rtp.Packet) int {
 	if pkt.SequenceNumber != r.expectedSeqNum {
 		diff := pkt.SequenceNumber - r.expectedSeqNum
 		r.expectedSeqNum = pkt.SequenceNumber + 1
-		return int(diff)
+		return uint(diff)
 	}
 
 	r.expectedSeqNum = pkt.SequenceNumber + 1

@@ -61,7 +61,7 @@ func TestRTCPSender(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	rs.ProcessPacket(&rtpPkt, ts, true)
+	rs.ProcessRTPPacket(&rtpPkt, ts, true)
 
 	setCurTime(time.Date(2008, 5, 20, 22, 16, 22, 0, time.UTC))
 	rtpPkt = rtp.Packet{
@@ -76,7 +76,7 @@ func TestRTCPSender(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	rs.ProcessPacket(&rtpPkt, ts, true)
+	rs.ProcessRTPPacket(&rtpPkt, ts, true)
 
 	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
@@ -90,7 +90,7 @@ func TestRTCPSender(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
-	rs.ProcessPacket(&rtpPkt, ts, false)
+	rs.ProcessRTPPacket(&rtpPkt, ts, false)
 
 	setCurTime(time.Date(2008, 5, 20, 22, 16, 24, 0, time.UTC))
 

@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -58,16 +59,19 @@ func (sf *serverSessionFormat) stop() {
 func (sf *serverSessionFormat) readRTPUDP(pkt *rtp.Packet, now time.Time) {
 	packets, lost := sf.udpReorderer.Process(pkt)
 	if lost != 0 {
+		atomic.AddUint64(sf.sm.rtpPacketsLost, uint64(lost))
 		sf.sm.ss.onPacketLost(liberrors.ErrServerRTPPacketsLost{Lost: lost})
 		// do not return
 	}
 
 	for _, pkt := range packets {
-		err := sf.rtcpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
+		err := sf.rtcpReceiver.ProcessRTPPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
 		if err != nil {
-			sf.sm.ss.onDecodeError(err)
+			sf.sm.onRTPDecodeError(err)
 			continue
 		}
+
+		atomic.AddUint64(sf.sm.rtpPacketsReceived, 1)
 
 		sf.onPacketRTP(pkt)
 	}
@@ -76,17 +80,20 @@ func (sf *serverSessionFormat) readRTPUDP(pkt *rtp.Packet, now time.Time) {
 func (sf *serverSessionFormat) readRTPTCP(pkt *rtp.Packet) {
 	lost := sf.tcpLossDetector.Process(pkt)
 	if lost != 0 {
+		atomic.AddUint64(sf.sm.rtpPacketsLost, uint64(lost))
 		sf.sm.ss.onPacketLost(liberrors.ErrServerRTPPacketsLost{Lost: lost})
 		// do not return
 	}
 
 	now := sf.sm.ss.s.timeNow()
 
-	err := sf.rtcpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
+	err := sf.rtcpReceiver.ProcessRTPPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
 	if err != nil {
-		sf.sm.ss.onDecodeError(err)
+		sf.sm.onRTPDecodeError(err)
 		return
 	}
+
+	atomic.AddUint64(sf.sm.rtpPacketsReceived, 1)
 
 	sf.onPacketRTP(pkt)
 }
