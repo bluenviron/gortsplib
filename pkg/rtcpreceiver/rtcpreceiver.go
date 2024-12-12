@@ -24,7 +24,7 @@ func New(
 ) (*RTCPReceiver, error) {
 	rr := &rtcpreceiver.RTCPReceiver{
 		ClockRate:       clockRate,
-		ReceiverSSRC:    receiverSSRC,
+		LocalSSRC:       receiverSSRC,
 		Period:          period,
 		TimeNow:         timeNow,
 		WritePacketRTCP: writePacketRTCP,
@@ -44,7 +44,7 @@ func (rr *RTCPReceiver) Close() {
 
 // ProcessPacket extracts the needed data from RTP packets.
 func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqualsDTS bool) error {
-	return (*rtcpreceiver.RTCPReceiver)(rr).ProcessPacket(pkt, system, ptsEqualsDTS)
+	return (*rtcpreceiver.RTCPReceiver)(rr).ProcessPacketRTP(pkt, system, ptsEqualsDTS)
 }
 
 // ProcessSenderReport extracts the needed data from RTCP sender reports.
@@ -59,5 +59,9 @@ func (rr *RTCPReceiver) PacketNTP(ts uint32) (time.Time, bool) {
 
 // SenderSSRC returns the SSRC of outgoing RTP packets.
 func (rr *RTCPReceiver) SenderSSRC() (uint32, bool) {
-	return (*rtcpreceiver.RTCPReceiver)(rr).SenderSSRC()
+	stats := (*rtcpreceiver.RTCPReceiver)(rr).Stats()
+	if stats == nil {
+		return 0, false
+	}
+	return stats.RemoteSSRC, true
 }

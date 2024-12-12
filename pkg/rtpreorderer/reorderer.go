@@ -22,6 +22,6 @@ func New() *Reorderer {
 
 // Process processes a RTP packet.
 // It returns a sequence of ordered packets and the number of lost packets.
-func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, int) {
+func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, uint) {
 	return (*rtpreorderer.Reorderer)(r).Process(pkt)
 }

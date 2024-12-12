@@ -30,7 +30,7 @@ func randUint32() (uint32, error) {
 // RTCPReceiver is a utility to generate RTCP receiver reports.
 type RTCPReceiver struct {
 	ClockRate       int
-	ReceiverSSRC    *uint32
+	LocalSSRC       *uint32
 	Period          time.Duration
 	TimeNow         func() time.Time
 	WritePacketRTCP func(rtcp.Packet)
@@ -42,7 +42,7 @@ type RTCPReceiver struct {
 	timeInitialized        bool
 	sequenceNumberCycles   uint16
 	lastSequenceNumber     uint16
-	senderSSRC             uint32
+	remoteSSRC             uint32
 	lastTimeRTP            uint32
 	lastTimeSystem         time.Time
 	totalLost              uint32
@@ -62,12 +62,12 @@ type RTCPReceiver struct {
 
 // Initialize initializes RTCPReceiver.
 func (rr *RTCPReceiver) Initialize() error {
-	if rr.ReceiverSSRC == nil {
+	if rr.LocalSSRC == nil {
 		v, err := randUint32()
 		if err != nil {
 			return err
 		}
-		rr.ReceiverSSRC = &v
+		rr.LocalSSRC = &v
 	}
 
 	if rr.TimeNow == nil {
@@ -119,10 +119,10 @@ func (rr *RTCPReceiver) report() rtcp.Packet {
 	system := rr.TimeNow()
 
 	report := &rtcp.ReceiverReport{
-		SSRC: *rr.ReceiverSSRC,
+		SSRC: *rr.LocalSSRC,
 		Reports: []rtcp.ReceptionReport{
 			{
-				SSRC:               rr.senderSSRC,
+				SSRC:               rr.remoteSSRC,
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
 				// equivalent to taking the integer part after multiplying the
 				// loss fraction by 256
@@ -149,8 +149,8 @@ func (rr *RTCPReceiver) report() rtcp.Packet {
 	return report
 }
 
-// ProcessPacket extracts the needed data from RTP packets.
-func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqualsDTS bool) error {
+// ProcessPacketRTP extracts the needed data from RTP packets.
+func (rr *RTCPReceiver) ProcessPacketRTP(pkt *rtp.Packet, system time.Time, ptsEqualsDTS bool) error {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
@@ -159,7 +159,7 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 		rr.firstRTPPacketReceived = true
 		rr.totalSinceReport = 1
 		rr.lastSequenceNumber = pkt.SequenceNumber
-		rr.senderSSRC = pkt.SSRC
+		rr.remoteSSRC = pkt.SSRC
 
 		if ptsEqualsDTS {
 			rr.timeInitialized = true
@@ -169,8 +169,8 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 
 		// subsequent packets
 	} else {
-		if pkt.SSRC != rr.senderSSRC {
-			return fmt.Errorf("received packet with wrong SSRC %d, expected %d", pkt.SSRC, rr.senderSSRC)
+		if pkt.SSRC != rr.remoteSSRC {
+			return fmt.Errorf("received packet with wrong SSRC %d, expected %d", pkt.SSRC, rr.remoteSSRC)
 		}
 
 		diff := int32(pkt.SequenceNumber) - int32(rr.lastSequenceNumber)
@@ -229,11 +229,7 @@ func (rr *RTCPReceiver) ProcessSenderReport(sr *rtcp.SenderReport, system time.T
 	rr.lastSenderReportTimeSystem = system
 }
 
-// PacketNTP returns the NTP timestamp of the packet.
-func (rr *RTCPReceiver) PacketNTP(ts uint32) (time.Time, bool) {
-	rr.mutex.Lock()
-	defer rr.mutex.Unlock()
-
+func (rr *RTCPReceiver) packetNTPUnsafe(ts uint32) (time.Time, bool) {
 	if !rr.firstSenderReportReceived {
 		return time.Time{}, false
 	}
@@ -244,9 +240,39 @@ func (rr *RTCPReceiver) PacketNTP(ts uint32) (time.Time, bool) {
 	return ntpTimeRTCPToGo(rr.lastSenderReportTimeNTP).Add(timeDiffGo), true
 }
 
-// SenderSSRC returns the SSRC of outgoing RTP packets.
-func (rr *RTCPReceiver) SenderSSRC() (uint32, bool) {
+// PacketNTP returns the NTP timestamp of the packet.
+func (rr *RTCPReceiver) PacketNTP(ts uint32) (time.Time, bool) {
+	rr.mutex.Lock()
+	defer rr.mutex.Unlock()
+
+	return rr.packetNTPUnsafe(ts)
+}
+
+// Stats are statistics.
+type Stats struct {
+	RemoteSSRC         uint32
+	LastSequenceNumber uint16
+	LastRTP            uint32
+	LastNTP            time.Time
+	Jitter             float64
+}
+
+// Stats returns statistics.
+func (rr *RTCPReceiver) Stats() *Stats {
 	rr.mutex.RLock()
 	defer rr.mutex.RUnlock()
-	return rr.senderSSRC, rr.firstRTPPacketReceived
+
+	if !rr.firstRTPPacketReceived {
+		return nil
+	}
+
+	ntp, _ := rr.packetNTPUnsafe(rr.lastTimeRTP)
+
+	return &Stats{
+		RemoteSSRC:         rr.remoteSSRC,
+		LastSequenceNumber: rr.lastSequenceNumber,
+		LastRTP:            rr.lastTimeRTP,
+		LastNTP:            ntp,
+		Jitter:             rr.jitter,
+	}
 }

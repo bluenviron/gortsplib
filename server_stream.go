@@ -9,6 +9,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
@@ -36,9 +37,8 @@ type ServerStream struct {
 	readers              map[*ServerSession]struct{}
 	multicastReaderCount int
 	activeUnicastReaders map[*ServerSession]struct{}
-	streamMedias         map[*description.Media]*serverStreamMedia
+	medias               map[*description.Media]*serverStreamMedia
 	closed               bool
-	bytesSent            *uint64
 }
 
 // NewServerStream allocates a ServerStream.
@@ -48,10 +48,9 @@ func NewServerStream(s *Server, desc *description.Session) *ServerStream {
 		desc:                 desc,
 		readers:              make(map[*ServerSession]struct{}),
 		activeUnicastReaders: make(map[*ServerSession]struct{}),
-		bytesSent:            new(uint64),
 	}
 
-	st.streamMedias = make(map[*description.Media]*serverStreamMedia, len(desc.Medias))
+	st.medias = make(map[*description.Media]*serverStreamMedia, len(desc.Medias))
 	for i, medi := range desc.Medias {
 		sm := &serverStreamMedia{
 			st:      st,
@@ -59,7 +58,7 @@ func NewServerStream(s *Server, desc *description.Session) *ServerStream {
 			trackID: i,
 		}
 		sm.initialize()
-		st.streamMedias[medi] = sm
+		st.medias[medi] = sm
 	}
 
 	return st
@@ -75,14 +74,20 @@ func (st *ServerStream) Close() {
 		ss.Close()
 	}
 
-	for _, sm := range st.streamMedias {
+	for _, sm := range st.medias {
 		sm.close()
 	}
 }
 
 // BytesSent returns the number of written bytes.
+//
+// Deprecated: replaced by Stats()
 func (st *ServerStream) BytesSent() uint64 {
-	return atomic.LoadUint64(st.bytesSent)
+	v := uint64(0)
+	for _, me := range st.medias {
+		v += atomic.LoadUint64(me.bytesSent)
+	}
+	return v
 }
 
 // Description returns the description of the stream.
@@ -90,27 +95,84 @@ func (st *ServerStream) Description() *description.Session {
 	return st.desc
 }
 
-func (st *ServerStream) senderSSRC(medi *description.Media) (uint32, bool) {
+// Stats returns stream statistics.
+func (st *ServerStream) Stats() *ServerStreamStats {
+	return &ServerStreamStats{
+		BytesSent: func() uint64 {
+			v := uint64(0)
+			for _, me := range st.medias {
+				v += atomic.LoadUint64(me.bytesSent)
+			}
+			return v
+		}(),
+		RTPPacketsSent: func() uint64 {
+			v := uint64(0)
+			for _, me := range st.medias {
+				for _, f := range me.formats {
+					v += atomic.LoadUint64(f.rtpPacketsSent)
+				}
+			}
+			return v
+		}(),
+		RTCPPacketsSent: func() uint64 {
+			v := uint64(0)
+			for _, me := range st.medias {
+				v += atomic.LoadUint64(me.rtcpPacketsSent)
+			}
+			return v
+		}(),
+		Medias: func() map[*description.Media]ServerStreamStatsMedia {
+			ret := make(map[*description.Media]ServerStreamStatsMedia, len(st.medias))
+
+			for med, sm := range st.medias {
+				ret[med] = ServerStreamStatsMedia{
+					BytesSent:       atomic.LoadUint64(sm.bytesSent),
+					RTCPPacketsSent: atomic.LoadUint64(sm.rtcpPacketsSent),
+					Formats: func() map[format.Format]ServerStreamStatsFormat {
+						ret := make(map[format.Format]ServerStreamStatsFormat)
+
+						for _, fo := range sm.formats {
+							ret[fo.format] = ServerStreamStatsFormat{
+								RTPPacketsSent: atomic.LoadUint64(fo.rtpPacketsSent),
+							}
+						}
+
+						return ret
+					}(),
+				}
+			}
+
+			return ret
+		}(),
+	}
+}
+
+func (st *ServerStream) localSSRC(medi *description.Media) (uint32, bool) {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
-	sm := st.streamMedias[medi]
+	sm := st.medias[medi]
 
-	// senderSSRC() is used to fill SSRC inside the Transport header.
+	// localSSRC() is used to fill SSRC inside the Transport header.
 	// if there are multiple formats inside a single media stream,
 	// do not return anything, since Transport headers don't support multiple SSRCs.
 	if len(sm.formats) > 1 {
 		return 0, false
 	}
 
-	return firstFormat(sm.formats).rtcpSender.SenderSSRC()
+	stats := firstFormat(sm.formats).rtcpSender.Stats()
+	if stats == nil {
+		return 0, false
+	}
+
+	return stats.LocalSSRC, true
 }
 
 func (st *ServerStream) rtpInfoEntry(medi *description.Media, now time.Time) *headers.RTPInfoEntry {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
 
-	sm := st.streamMedias[medi]
+	sm := st.medias[medi]
 
 	// if there are multiple formats inside a single media stream,
 	// do not generate a RTP-Info entry, since RTP-Info doesn't support
@@ -121,8 +183,8 @@ func (st *ServerStream) rtpInfoEntry(medi *description.Media, now time.Time) *he
 
 	format := firstFormat(sm.formats)
 
-	lastSeqNum, lastTimeRTP, lastTimeNTP, ok := format.rtcpSender.LastPacketData()
-	if !ok {
+	stats := format.rtcpSender.Stats()
+	if stats == nil {
 		return nil
 	}
 
@@ -132,13 +194,13 @@ func (st *ServerStream) rtpInfoEntry(medi *description.Media, now time.Time) *he
 	}
 
 	// sequence number of the first packet of the stream
-	seqNum := lastSeqNum + 1
+	seqNum := stats.LastSequenceNumber + 1
 
 	// RTP timestamp corresponding to the time value in
 	// the Range response header.
 	// remove a small quantity in order to avoid DTS > PTS
-	ts := uint32(uint64(lastTimeRTP) +
-		uint64(now.Sub(lastTimeNTP).Seconds()*float64(clockRate)) -
+	ts := uint32(uint64(stats.LastRTP) +
+		uint64(now.Sub(stats.LastNTP).Seconds()*float64(clockRate)) -
 		uint64(clockRate)/10)
 
 	return &headers.RTPInfoEntry{
@@ -175,7 +237,7 @@ func (st *ServerStream) readerAdd(
 
 	case TransportUDPMulticast:
 		if st.multicastReaderCount == 0 {
-			for _, media := range st.streamMedias {
+			for _, media := range st.medias {
 				mw := &serverMulticastWriter{
 					s: st.s,
 				}
@@ -207,7 +269,7 @@ func (st *ServerStream) readerRemove(ss *ServerSession) {
 	if *ss.setuppedTransport == TransportUDPMulticast {
 		st.multicastReaderCount--
 		if st.multicastReaderCount == 0 {
-			for _, media := range st.streamMedias {
+			for _, media := range st.medias {
 				media.multicastWriter.close()
 				media.multicastWriter = nil
 			}
@@ -225,9 +287,9 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 
 	if *ss.setuppedTransport == TransportUDPMulticast {
 		for medi, sm := range ss.setuppedMedias {
-			streamMedia := st.streamMedias[medi]
+			streamMedia := st.medias[medi]
 			streamMedia.multicastWriter.rtcpl.addClient(
-				ss.author.ip(), streamMedia.multicastWriter.rtcpl.port(), sm.readRTCPUDPPlay)
+				ss.author.ip(), streamMedia.multicastWriter.rtcpl.port(), sm.readPacketRTCPUDPPlay)
 		}
 	} else {
 		st.activeUnicastReaders[ss] = struct{}{}
@@ -244,7 +306,7 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 
 	if *ss.setuppedTransport == TransportUDPMulticast {
 		for medi := range ss.setuppedMedias {
-			streamMedia := st.streamMedias[medi]
+			streamMedia := st.medias[medi]
 			streamMedia.multicastWriter.rtcpl.removeClient(ss.author.ip(), streamMedia.multicastWriter.rtcpl.port())
 		}
 	} else {
@@ -274,7 +336,7 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.
 		return liberrors.ErrServerStreamClosed{}
 	}
 
-	sm := st.streamMedias[medi]
+	sm := st.medias[medi]
 	sf := sm.formats[pkt.PayloadType]
 	return sf.writePacketRTP(byts, pkt, ntp)
 }
@@ -293,6 +355,6 @@ func (st *ServerStream) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet
 		return liberrors.ErrServerStreamClosed{}
 	}
 
-	sm := st.streamMedias[medi]
+	sm := st.medias[medi]
 	return sm.writePacketRTCP(byts)
 }

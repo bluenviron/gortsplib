@@ -18,6 +18,6 @@ func New() *LossDetector {
 
 // Process processes a RTP packet.
 // It returns the number of lost packets.
-func (r *LossDetector) Process(pkt *rtp.Packet) int {
+func (r *LossDetector) Process(pkt *rtp.Packet) uint {
 	return (*rtplossdetector.LossDetector)(r).Process(pkt)
 }

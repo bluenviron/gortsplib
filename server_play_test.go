@@ -609,10 +609,11 @@ func TestServerPlay(t *testing.T) {
 						close(nconnOpened)
 					},
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-						require.Greater(t, ctx.Conn.BytesSent(), uint64(810))
-						require.Less(t, ctx.Conn.BytesSent(), uint64(1150))
-						require.Greater(t, ctx.Conn.BytesReceived(), uint64(440))
-						require.Less(t, ctx.Conn.BytesReceived(), uint64(660))
+						s := ctx.Conn.Stats()
+						require.Greater(t, s.BytesSent, uint64(810))
+						require.Less(t, s.BytesSent, uint64(1150))
+						require.Greater(t, s.BytesReceived, uint64(440))
+						require.Less(t, s.BytesReceived, uint64(660))
 
 						close(nconnClosed)
 					},
@@ -621,10 +622,11 @@ func TestServerPlay(t *testing.T) {
 					},
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
 						if transport != "multicast" {
-							require.Greater(t, ctx.Session.BytesSent(), uint64(50))
-							require.Less(t, ctx.Session.BytesSent(), uint64(60))
-							require.Greater(t, ctx.Session.BytesReceived(), uint64(15))
-							require.Less(t, ctx.Session.BytesReceived(), uint64(25))
+							s := ctx.Session.Stats()
+							require.Greater(t, s.BytesSent, uint64(50))
+							require.Less(t, s.BytesSent, uint64(60))
+							require.Greater(t, s.BytesReceived, uint64(15))
+							require.Less(t, s.BytesReceived, uint64(25))
 						}
 
 						close(sessionClosed)
@@ -2325,7 +2327,7 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 	}
 }
 
-func TestServerPlayBytesSent(t *testing.T) {
+func TestServerPlayStreamStats(t *testing.T) {
 	var stream *ServerStream
 
 	s := &Server{
@@ -2355,7 +2357,6 @@ func TestServerPlayBytesSent(t *testing.T) {
 	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
-
 	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
 	defer stream.Close()
 
@@ -2393,5 +2394,6 @@ func TestServerPlayBytesSent(t *testing.T) {
 	err = stream.WritePacketRTP(stream.Description().Medias[0], &testRTPPacket)
 	require.NoError(t, err)
 
-	require.Equal(t, uint64(16*2), stream.BytesSent())
+	st := stream.Stats()
+	require.Equal(t, uint64(16*2), st.BytesSent)
 }
