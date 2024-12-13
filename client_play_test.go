@@ -544,6 +544,11 @@ func TestClientPlay(t *testing.T) {
 			require.NoError(t, err)
 
 			<-packetRecv
+
+			require.Greater(t, atomic.LoadUint64(c.BytesSent), uint64(620))
+			require.Less(t, atomic.LoadUint64(c.BytesSent), uint64(850))
+			require.Greater(t, atomic.LoadUint64(c.BytesReceived), uint64(580))
+			require.Less(t, atomic.LoadUint64(c.BytesReceived), uint64(650))
 		})
 	}
 }

@@ -588,9 +588,9 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 func TestServerPlay(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
+		"multicast",
 		"tcp",
 		"tls",
-		"multicast",
 	} {
 		t.Run(transport, func(t *testing.T) {
 			var stream *ServerStream
@@ -608,13 +608,25 @@ func TestServerPlay(t *testing.T) {
 					onConnOpen: func(_ *ServerHandlerOnConnOpenCtx) {
 						close(nconnOpened)
 					},
-					onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+						require.Greater(t, ctx.Conn.BytesSent(), uint64(810))
+						require.Less(t, ctx.Conn.BytesSent(), uint64(1150))
+						require.Greater(t, ctx.Conn.BytesReceived(), uint64(440))
+						require.Less(t, ctx.Conn.BytesReceived(), uint64(660))
+
 						close(nconnClosed)
 					},
 					onSessionOpen: func(_ *ServerHandlerOnSessionOpenCtx) {
 						close(sessionOpened)
 					},
-					onSessionClose: func(_ *ServerHandlerOnSessionCloseCtx) {
+					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+						if transport != "multicast" {
+							require.Greater(t, ctx.Session.BytesSent(), uint64(50))
+							require.Less(t, ctx.Session.BytesSent(), uint64(60))
+							require.Greater(t, ctx.Session.BytesReceived(), uint64(15))
+							require.Less(t, ctx.Session.BytesReceived(), uint64(25))
+						}
+
 						close(sessionClosed)
 					},
 					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
