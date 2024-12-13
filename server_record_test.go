@@ -544,13 +544,23 @@ func TestServerRecord(t *testing.T) {
 					onConnOpen: func(_ *ServerHandlerOnConnOpenCtx) {
 						close(nconnOpened)
 					},
-					onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+						require.Greater(t, ctx.Conn.BytesSent(), uint64(510))
+						require.Less(t, ctx.Conn.BytesSent(), uint64(560))
+						require.Greater(t, ctx.Conn.BytesReceived(), uint64(1000))
+						require.Less(t, ctx.Conn.BytesReceived(), uint64(1200))
+
 						close(nconnClosed)
 					},
 					onSessionOpen: func(_ *ServerHandlerOnSessionOpenCtx) {
 						close(sessionOpened)
 					},
-					onSessionClose: func(_ *ServerHandlerOnSessionCloseCtx) {
+					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+						require.Greater(t, ctx.Session.BytesSent(), uint64(75))
+						require.Less(t, ctx.Session.BytesSent(), uint64(130))
+						require.Greater(t, ctx.Session.BytesReceived(), uint64(70))
+						require.Less(t, ctx.Session.BytesReceived(), uint64(80))
+
 						close(sessionClosed)
 					},
 					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {

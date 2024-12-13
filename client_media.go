@@ -153,24 +153,20 @@ func (cm *clientMedia) findFormatWithSSRC(ssrc uint32) *clientFormat {
 }
 
 func (cm *clientMedia) writePacketRTPInQueueUDP(payload []byte) {
-	atomic.AddUint64(cm.c.BytesSent, uint64(len(payload)))
 	cm.udpRTPListener.write(payload) //nolint:errcheck
 }
 
 func (cm *clientMedia) writePacketRTCPInQueueUDP(payload []byte) {
-	atomic.AddUint64(cm.c.BytesSent, uint64(len(payload)))
 	cm.udpRTCPListener.write(payload) //nolint:errcheck
 }
 
 func (cm *clientMedia) writePacketRTPInQueueTCP(payload []byte) {
-	atomic.AddUint64(cm.c.BytesSent, uint64(len(payload)))
 	cm.tcpRTPFrame.Payload = payload
 	cm.c.nconn.SetWriteDeadline(time.Now().Add(cm.c.WriteTimeout))
 	cm.c.conn.WriteInterleavedFrame(cm.tcpRTPFrame, cm.tcpBuffer) //nolint:errcheck
 }
 
 func (cm *clientMedia) writePacketRTCPInQueueTCP(payload []byte) {
-	atomic.AddUint64(cm.c.BytesSent, uint64(len(payload)))
 	cm.tcpRTCPFrame.Payload = payload
 	cm.c.nconn.SetWriteDeadline(time.Now().Add(cm.c.WriteTimeout))
 	cm.c.conn.WriteInterleavedFrame(cm.tcpRTCPFrame, cm.tcpBuffer) //nolint:errcheck
@@ -264,8 +260,6 @@ func (cm *clientMedia) readRTCPTCPRecord(payload []byte) bool {
 func (cm *clientMedia) readRTPUDPPlay(payload []byte) bool {
 	plen := len(payload)
 
-	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
-
 	if plen == (udpMaxPayloadSize + 1) {
 		cm.c.OnDecodeError(liberrors.ErrClientRTPPacketTooBigUDP{})
 		return false
@@ -292,8 +286,6 @@ func (cm *clientMedia) readRTPUDPPlay(payload []byte) bool {
 func (cm *clientMedia) readRTCPUDPPlay(payload []byte) bool {
 	now := cm.c.timeNow()
 	plen := len(payload)
-
-	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
 		cm.c.OnDecodeError(liberrors.ErrClientRTCPPacketTooBigUDP{})
@@ -326,8 +318,6 @@ func (cm *clientMedia) readRTPUDPRecord(_ []byte) bool {
 
 func (cm *clientMedia) readRTCPUDPRecord(payload []byte) bool {
 	plen := len(payload)
-
-	atomic.AddUint64(cm.c.BytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
 		cm.c.OnDecodeError(liberrors.ErrClientRTCPPacketTooBigUDP{})

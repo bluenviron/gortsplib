@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -334,6 +335,12 @@ func TestClientRecordSerial(t *testing.T) {
 			require.NoError(t, err)
 
 			<-recvDone
+
+			require.Greater(t, atomic.LoadUint64(c.BytesSent), uint64(730))
+			require.Less(t, atomic.LoadUint64(c.BytesSent), uint64(760))
+			require.Greater(t, atomic.LoadUint64(c.BytesReceived), uint64(180))
+			require.Less(t, atomic.LoadUint64(c.BytesReceived), uint64(210))
+
 			c.Close()
 			<-done
 

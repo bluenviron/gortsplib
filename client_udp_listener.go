@@ -173,6 +173,8 @@ func (u *clientUDPListener) run() {
 		now := u.c.timeNow()
 		atomic.StoreInt64(u.lastPacketTime, now.Unix())
 
+		atomic.AddUint64(u.c.BytesReceived, uint64(n))
+
 		if u.readFunc(buf[:n]) {
 			createNewBuffer()
 		}
@@ -180,6 +182,8 @@ func (u *clientUDPListener) run() {
 }
 
 func (u *clientUDPListener) write(payload []byte) error {
+	atomic.AddUint64(u.c.BytesSent, uint64(len(payload)))
+
 	// no mutex is needed here since Write() has an internal lock.
 	// https://github.com/golang/go/issues/27203#issuecomment-534386117
 	u.pc.SetWriteDeadline(time.Now().Add(u.c.WriteTimeout))
