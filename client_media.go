@@ -25,8 +25,8 @@ type clientMedia struct {
 	tcpRTPFrame            *base.InterleavedFrame
 	tcpRTCPFrame           *base.InterleavedFrame
 	tcpBuffer              []byte
-	writePacketRTPInQueue  func([]byte)
-	writePacketRTCPInQueue func([]byte)
+	writePacketRTPInQueue  func([]byte) error
+	writePacketRTCPInQueue func([]byte) error
 }
 
 func (cm *clientMedia) close() {
@@ -152,29 +152,29 @@ func (cm *clientMedia) findFormatWithSSRC(ssrc uint32) *clientFormat {
 	return nil
 }
 
-func (cm *clientMedia) writePacketRTPInQueueUDP(payload []byte) {
-	cm.udpRTPListener.write(payload) //nolint:errcheck
+func (cm *clientMedia) writePacketRTPInQueueUDP(payload []byte) error {
+	return cm.udpRTPListener.write(payload)
 }
 
-func (cm *clientMedia) writePacketRTCPInQueueUDP(payload []byte) {
-	cm.udpRTCPListener.write(payload) //nolint:errcheck
+func (cm *clientMedia) writePacketRTCPInQueueUDP(payload []byte) error {
+	return cm.udpRTCPListener.write(payload)
 }
 
-func (cm *clientMedia) writePacketRTPInQueueTCP(payload []byte) {
+func (cm *clientMedia) writePacketRTPInQueueTCP(payload []byte) error {
 	cm.tcpRTPFrame.Payload = payload
 	cm.c.nconn.SetWriteDeadline(time.Now().Add(cm.c.WriteTimeout))
-	cm.c.conn.WriteInterleavedFrame(cm.tcpRTPFrame, cm.tcpBuffer) //nolint:errcheck
+	return cm.c.conn.WriteInterleavedFrame(cm.tcpRTPFrame, cm.tcpBuffer)
 }
 
-func (cm *clientMedia) writePacketRTCPInQueueTCP(payload []byte) {
+func (cm *clientMedia) writePacketRTCPInQueueTCP(payload []byte) error {
 	cm.tcpRTCPFrame.Payload = payload
 	cm.c.nconn.SetWriteDeadline(time.Now().Add(cm.c.WriteTimeout))
-	cm.c.conn.WriteInterleavedFrame(cm.tcpRTCPFrame, cm.tcpBuffer) //nolint:errcheck
+	return cm.c.conn.WriteInterleavedFrame(cm.tcpRTCPFrame, cm.tcpBuffer)
 }
 
 func (cm *clientMedia) writePacketRTCP(byts []byte) error {
-	ok := cm.c.writer.push(func() {
-		cm.writePacketRTCPInQueue(byts)
+	ok := cm.c.writer.push(func() error {
+		return cm.writePacketRTCPInQueue(byts)
 	})
 	if !ok {
 		return liberrors.ErrClientWriteQueueFull{}

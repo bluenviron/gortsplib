@@ -765,7 +765,7 @@ func TestServerPlay(t *testing.T) {
 			var l1 net.PacketConn
 			var l2 net.PacketConn
 
-			switch transport {
+			switch transport { //nolint:dupl
 			case "udp":
 				require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
 				require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
@@ -938,6 +938,186 @@ func TestServerPlay(t *testing.T) {
 
 			nconn.Close()
 			<-nconnClosed
+		})
+	}
+}
+
+func TestServerPlaySocketError(t *testing.T) {
+	for _, transport := range []string{
+		"udp",
+		"multicast",
+		"tcp",
+		"tls",
+	} {
+		t.Run(transport, func(t *testing.T) {
+			var stream *ServerStream
+			connClosed := make(chan struct{})
+			writeDone := make(chan struct{})
+			listenIP := multicastCapableIP(t)
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onConnClose: func(_ *ServerHandlerOnConnCloseCtx) {
+						close(connClosed)
+					},
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+					onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						go func() {
+							defer close(writeDone)
+
+							t := time.NewTicker(50 * time.Millisecond)
+							defer t.Stop()
+
+							for range t.C {
+								err := stream.WritePacketRTP(stream.Description().Medias[0], &testRTPPacket)
+								if err != nil {
+									return
+								}
+							}
+						}()
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+				},
+				RTSPAddress: listenIP + ":8554",
+			}
+
+			switch transport {
+			case "udp":
+				s.UDPRTPAddress = "127.0.0.1:8000"
+				s.UDPRTCPAddress = "127.0.0.1:8001"
+
+			case "multicast":
+				s.MulticastIPRange = "224.1.0.0/16"
+				s.MulticastRTPPort = 8000
+				s.MulticastRTCPPort = 8001
+
+			case "tls":
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+
+			func() {
+				nconn, err := net.Dial("tcp", listenIP+":8554")
+				require.NoError(t, err)
+				defer nconn.Close()
+
+				nconn = func() net.Conn {
+					if transport == "tls" {
+						return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
+					}
+					return nconn
+				}()
+				conn := conn.NewConn(nconn)
+
+				desc := doDescribe(t, conn)
+
+				inTH := &headers.Transport{
+					Mode: transportModePtr(headers.TransportModePlay),
+				}
+
+				switch transport {
+				case "udp":
+					v := headers.TransportDeliveryUnicast
+					inTH.Delivery = &v
+					inTH.Protocol = headers.TransportProtocolUDP
+					inTH.ClientPorts = &[2]int{35466, 35467}
+
+				case "multicast":
+					v := headers.TransportDeliveryMulticast
+					inTH.Delivery = &v
+					inTH.Protocol = headers.TransportProtocolUDP
+
+				default:
+					v := headers.TransportDeliveryUnicast
+					inTH.Delivery = &v
+					inTH.Protocol = headers.TransportProtocolTCP
+					inTH.InterleavedIDs = &[2]int{5, 6} // odd value
+				}
+
+				res, th := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
+
+				var l1 net.PacketConn
+				var l2 net.PacketConn
+
+				switch transport { //nolint:dupl
+				case "udp":
+					require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
+					require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
+
+					l1, err = net.ListenPacket("udp", listenIP+":35466")
+					require.NoError(t, err)
+					defer l1.Close()
+
+					l2, err = net.ListenPacket("udp", listenIP+":35467")
+					require.NoError(t, err)
+					defer l2.Close()
+
+				case "multicast":
+					require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
+					require.Equal(t, headers.TransportDeliveryMulticast, *th.Delivery)
+
+					l1, err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
+					require.NoError(t, err)
+					defer l1.Close()
+
+					p := ipv4.NewPacketConn(l1)
+
+					var intfs []net.Interface
+					intfs, err = net.Interfaces()
+					require.NoError(t, err)
+
+					for _, intf := range intfs {
+						err = p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
+						require.NoError(t, err)
+					}
+
+					l2, err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[1]), 10))
+					require.NoError(t, err)
+					defer l2.Close()
+
+					p = ipv4.NewPacketConn(l2)
+
+					intfs, err = net.Interfaces()
+					require.NoError(t, err)
+
+					for _, intf := range intfs {
+						err = p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
+						require.NoError(t, err)
+					}
+
+				default:
+					require.Equal(t, headers.TransportProtocolTCP, th.Protocol)
+					require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
+				}
+
+				session := readSession(t, res)
+
+				doPlay(t, conn, "rtsp://"+listenIP+":8554/teststream", session)
+			}()
+
+			<-connClosed
+
+			stream.Close()
+			<-writeDone
 		})
 	}
 }

@@ -63,10 +63,9 @@ type ServerConn struct {
 	bc         *bytecounter.ByteCounter
 	conn       *conn.Conn
 	session    *ServerSession
+	reader     *serverConnReader
 
 	// in
-	chReadRequest   chan readReq
-	chReadError     chan error
 	chRemoveSession chan *ServerSession
 
 	// out
@@ -84,8 +83,6 @@ func (sc *ServerConn) initialize() {
 	sc.ctx = ctx
 	sc.ctxCancel = ctxCancel
 	sc.remoteAddr = sc.nconn.RemoteAddr().(*net.TCPAddr)
-	sc.chReadRequest = make(chan readReq)
-	sc.chReadError = make(chan error)
 	sc.chRemoveSession = make(chan *ServerSession)
 	sc.done = make(chan struct{})
 
@@ -142,10 +139,10 @@ func (sc *ServerConn) run() {
 	}
 
 	sc.conn = conn.NewConn(sc.bc)
-	cr := &serverConnReader{
+	sc.reader = &serverConnReader{
 		sc: sc,
 	}
-	cr.initialize()
+	sc.reader.initialize()
 
 	err := sc.runInner()
 
@@ -153,7 +150,9 @@ func (sc *ServerConn) run() {
 
 	sc.nconn.Close()
 
-	cr.wait()
+	if sc.reader != nil {
+		sc.reader.wait()
+	}
 
 	if sc.session != nil {
 		sc.session.removeConn(sc)
@@ -172,10 +171,11 @@ func (sc *ServerConn) run() {
 func (sc *ServerConn) runInner() error {
 	for {
 		select {
-		case req := <-sc.chReadRequest:
+		case req := <-sc.reader.chRequest:
 			req.res <- sc.handleRequestOuter(req.req)
 
-		case err := <-sc.chReadError:
+		case err := <-sc.reader.chError:
+			sc.reader = nil
 			return err
 
 		case ss := <-sc.chRemoveSession:
@@ -443,23 +443,6 @@ func (sc *ServerConn) handleRequestInSession(
 func (sc *ServerConn) removeSession(ss *ServerSession) {
 	select {
 	case sc.chRemoveSession <- ss:
-	case <-sc.ctx.Done():
-	}
-}
-
-func (sc *ServerConn) readRequest(req readReq) error {
-	select {
-	case sc.chReadRequest <- req:
-		return <-req.res
-
-	case <-sc.ctx.Done():
-		return liberrors.ErrServerTerminated{}
-	}
-}
-
-func (sc *ServerConn) readError(err error) {
-	select {
-	case sc.chReadError <- err:
 	case <-sc.ctx.Done():
 	}
 }

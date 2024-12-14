@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -25,26 +26,35 @@ func isSwitchReadFuncError(err error) bool {
 type serverConnReader struct {
 	sc *ServerConn
 
-	chReadDone chan struct{}
+	chRequest chan readReq
+	chError   chan error
 }
 
 func (cr *serverConnReader) initialize() {
-	cr.chReadDone = make(chan struct{})
+	cr.chRequest = make(chan readReq)
+	cr.chError = make(chan error)
 
 	go cr.run()
 }
 
 func (cr *serverConnReader) wait() {
-	<-cr.chReadDone
+	for {
+		select {
+		case <-cr.chError:
+			return
+
+		case req := <-cr.chRequest:
+			req.res <- fmt.Errorf("terminated")
+		}
+	}
 }
 
 func (cr *serverConnReader) run() {
-	defer close(cr.chReadDone)
-
 	readFunc := cr.readFuncStandard
 
 	for {
 		err := readFunc()
+
 		var eerr switchReadFuncError
 		if errors.As(err, &eerr) {
 			if eerr.tcp {
@@ -55,7 +65,7 @@ func (cr *serverConnReader) run() {
 			continue
 		}
 
-		cr.sc.readError(err)
+		cr.chError <- err
 		break
 	}
 }
@@ -74,7 +84,9 @@ func (cr *serverConnReader) readFuncStandard() error {
 		case *base.Request:
 			cres := make(chan error)
 			req := readReq{req: what, res: cres}
-			err := cr.sc.readRequest(req)
+			cr.chRequest <- req
+
+			err := <-cres
 			if err != nil {
 				return err
 			}
@@ -108,7 +120,9 @@ func (cr *serverConnReader) readFuncTCP() error {
 		case *base.Request:
 			cres := make(chan error)
 			req := readReq{req: what, res: cres}
-			err := cr.sc.readRequest(req)
+			cr.chRequest <- req
+
+			err := <-cres
 			if err != nil {
 				return err
 			}
