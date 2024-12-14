@@ -252,7 +252,7 @@ type ServerSession struct {
 	announcedDesc         *description.Session // publish
 	udpLastPacketTime     *int64               // publish
 	udpCheckStreamTimer   *time.Timer
-	writer                asyncProcessor
+	writer                *asyncProcessor
 	timeDecoder           *rtptime.GlobalDecoder2
 
 	// in
@@ -425,10 +425,12 @@ func (ss *ServerSession) run() {
 		ss.setuppedStream.readerRemove(ss)
 	}
 
-	ss.writer.stop()
-
 	for _, sm := range ss.setuppedMedias {
 		sm.stop()
+	}
+
+	if ss.writer != nil {
+		ss.writer.stop()
 	}
 
 	ss.s.closeSession(ss)
@@ -443,6 +445,13 @@ func (ss *ServerSession) run() {
 
 func (ss *ServerSession) runInner() error {
 	for {
+		chWriterError := func() chan error {
+			if ss.writer != nil {
+				return ss.writer.chError
+			}
+			return nil
+		}()
+
 		select {
 		case req := <-ss.chHandleRequest:
 			ss.lastRequestTime = ss.s.timeNow()
@@ -538,6 +547,9 @@ func (ss *ServerSession) runInner() error {
 			}
 
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
+
+		case err := <-chWriterError:
+			return err
 
 		case <-ss.ctx.Done():
 			return liberrors.ErrServerTerminated{}
@@ -930,7 +942,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		// inside the callback.
 		if ss.state != ServerSessionStatePlay &&
 			*ss.setuppedTransport != TransportUDPMulticast {
-			ss.writer.allocateBuffer(ss.s.WriteQueueSize)
+			ss.writer = &asyncProcessor{
+				bufferSize: ss.s.WriteQueueSize,
+			}
+			ss.writer.initialize()
 		}
 
 		res, err := sc.s.Handler.(ServerHandlerOnPlay).OnPlay(&ServerHandlerOnPlayCtx{
@@ -1023,7 +1038,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		// when recording, writeBuffer is only used to send RTCP receiver reports,
 		// that are much smaller than RTP packets and are sent at a fixed interval.
 		// decrease RAM consumption by allocating less buffers.
-		ss.writer.allocateBuffer(8)
+		ss.writer = &asyncProcessor{
+			bufferSize: 8,
+		}
+		ss.writer.initialize()
 
 		res, err := ss.s.Handler.(ServerHandlerOnRecord).OnRecord(&ServerHandlerOnRecordCtx{
 			Session: ss,
@@ -1087,45 +1105,48 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			return res, err
 		}
 
-		if ss.setuppedStream != nil {
-			ss.setuppedStream.readerSetInactive(ss)
-		}
-
-		ss.writer.stop()
-
-		for _, sm := range ss.setuppedMedias {
-			sm.stop()
-		}
-
-		ss.timeDecoder = nil
-
-		switch ss.state {
-		case ServerSessionStatePlay:
-			ss.state = ServerSessionStatePrePlay
-
-			switch *ss.setuppedTransport {
-			case TransportUDP:
-				ss.udpCheckStreamTimer = emptyTimer()
-
-			case TransportUDPMulticast:
-				ss.udpCheckStreamTimer = emptyTimer()
-
-			default: // TCP
-				err = switchReadFuncError{false}
-				ss.tcpConn = nil
+		if ss.state == ServerSessionStatePlay || ss.state == ServerSessionStateRecord {
+			if ss.setuppedStream != nil {
+				ss.setuppedStream.readerSetInactive(ss)
 			}
 
-		case ServerSessionStateRecord:
-			switch *ss.setuppedTransport {
-			case TransportUDP:
-				ss.udpCheckStreamTimer = emptyTimer()
-
-			default: // TCP
-				err = switchReadFuncError{false}
-				ss.tcpConn = nil
+			for _, sm := range ss.setuppedMedias {
+				sm.stop()
 			}
 
-			ss.state = ServerSessionStatePreRecord
+			ss.writer.stop()
+			ss.writer = nil
+
+			ss.timeDecoder = nil
+
+			switch ss.state {
+			case ServerSessionStatePlay:
+				ss.state = ServerSessionStatePrePlay
+
+				switch *ss.setuppedTransport {
+				case TransportUDP:
+					ss.udpCheckStreamTimer = emptyTimer()
+
+				case TransportUDPMulticast:
+					ss.udpCheckStreamTimer = emptyTimer()
+
+				default: // TCP
+					err = switchReadFuncError{false}
+					ss.tcpConn = nil
+				}
+
+			case ServerSessionStateRecord:
+				switch *ss.setuppedTransport {
+				case TransportUDP:
+					ss.udpCheckStreamTimer = emptyTimer()
+
+				default: // TCP
+					err = switchReadFuncError{false}
+					ss.tcpConn = nil
+				}
+
+				ss.state = ServerSessionStatePreRecord
+			}
 		}
 
 		return res, err

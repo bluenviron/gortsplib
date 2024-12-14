@@ -11,7 +11,7 @@ type serverMulticastWriter struct {
 
 	rtpl     *serverUDPListener
 	rtcpl    *serverUDPListener
-	writer   asyncProcessor
+	writer   *asyncProcessor
 	rtpAddr  *net.UDPAddr
 	rtcpAddr *net.UDPAddr
 }
@@ -48,7 +48,10 @@ func (h *serverMulticastWriter) initialize() error {
 	h.rtpAddr = rtpAddr
 	h.rtcpAddr = rtcpAddr
 
-	h.writer.allocateBuffer(h.s.WriteQueueSize)
+	h.writer = &asyncProcessor{
+		bufferSize: h.s.WriteQueueSize,
+	}
+	h.writer.initialize()
 	h.writer.start()
 
 	return nil
@@ -65,8 +68,8 @@ func (h *serverMulticastWriter) ip() net.IP {
 }
 
 func (h *serverMulticastWriter) writePacketRTP(payload []byte) error {
-	ok := h.writer.push(func() {
-		h.rtpl.write(payload, h.rtpAddr) //nolint:errcheck
+	ok := h.writer.push(func() error {
+		return h.rtpl.write(payload, h.rtpAddr)
 	})
 	if !ok {
 		return liberrors.ErrServerWriteQueueFull{}
@@ -76,8 +79,8 @@ func (h *serverMulticastWriter) writePacketRTP(payload []byte) error {
 }
 
 func (h *serverMulticastWriter) writePacketRTCP(payload []byte) error {
-	ok := h.writer.push(func() {
-		h.rtcpl.write(payload, h.rtcpAddr) //nolint:errcheck
+	ok := h.writer.push(func() error {
+		return h.rtcpl.write(payload, h.rtcpAddr)
 	})
 	if !ok {
 		return liberrors.ErrServerWriteQueueFull{}
