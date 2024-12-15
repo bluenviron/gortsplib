@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"log"
 	"net"
 	"sync/atomic"
 	"time"
@@ -29,9 +30,24 @@ type serverSessionMedia struct {
 	formats                map[uint8]*serverSessionFormat // record only
 	writePacketRTPInQueue  func([]byte) error
 	writePacketRTCPInQueue func([]byte) error
+	rtpPacketsReceived     *uint64
+	rtpPacketsSent         *uint64
+	rtpPacketsLost         *uint64
+	rtpPacketsInError      *uint64
+	rtcpPacketsReceived    *uint64
+	rtcpPacketsSent        *uint64
+	rtcpPacketsInError     *uint64
 }
 
 func (sm *serverSessionMedia) initialize() {
+	sm.rtpPacketsReceived = new(uint64)
+	sm.rtpPacketsSent = new(uint64)
+	sm.rtpPacketsLost = new(uint64)
+	sm.rtpPacketsInError = new(uint64)
+	sm.rtcpPacketsReceived = new(uint64)
+	sm.rtcpPacketsSent = new(uint64)
+	sm.rtcpPacketsInError = new(uint64)
+
 	if sm.ss.state == ServerSessionStatePreRecord {
 		sm.formats = make(map[uint8]*serverSessionFormat)
 		for _, forma := range sm.media.Formats {
@@ -107,8 +123,8 @@ func (sm *serverSessionMedia) stop() {
 
 func (sm *serverSessionMedia) findFormatWithSSRC(ssrc uint32) *serverSessionFormat {
 	for _, format := range sm.formats {
-		tssrc, ok := format.rtcpReceiver.SenderSSRC()
-		if ok && tssrc == ssrc {
+		stats := format.rtcpReceiver.Stats()
+		if stats != nil && stats.RemoteSSRC == ssrc {
 			return format
 		}
 	}
@@ -116,27 +132,51 @@ func (sm *serverSessionMedia) findFormatWithSSRC(ssrc uint32) *serverSessionForm
 }
 
 func (sm *serverSessionMedia) writePacketRTPInQueueUDP(payload []byte) error {
+	err := sm.ss.s.udpRTPListener.write(payload, sm.udpRTPWriteAddr)
+	if err != nil {
+		return err
+	}
+
 	atomic.AddUint64(sm.ss.bytesSent, uint64(len(payload)))
-	return sm.ss.s.udpRTPListener.write(payload, sm.udpRTPWriteAddr)
+	atomic.AddUint64(sm.rtpPacketsSent, 1)
+	return nil
 }
 
 func (sm *serverSessionMedia) writePacketRTCPInQueueUDP(payload []byte) error {
+	err := sm.ss.s.udpRTCPListener.write(payload, sm.udpRTCPWriteAddr)
+	if err != nil {
+		return err
+	}
+
 	atomic.AddUint64(sm.ss.bytesSent, uint64(len(payload)))
-	return sm.ss.s.udpRTCPListener.write(payload, sm.udpRTCPWriteAddr)
+	atomic.AddUint64(sm.rtcpPacketsSent, 1)
+	return nil
 }
 
 func (sm *serverSessionMedia) writePacketRTPInQueueTCP(payload []byte) error {
-	atomic.AddUint64(sm.ss.bytesSent, uint64(len(payload)))
 	sm.tcpRTPFrame.Payload = payload
 	sm.ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(sm.ss.s.WriteTimeout))
-	return sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.tcpRTPFrame, sm.tcpBuffer)
+	err := sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.tcpRTPFrame, sm.tcpBuffer)
+	if err != nil {
+		return err
+	}
+
+	atomic.AddUint64(sm.ss.bytesSent, uint64(len(payload)))
+	atomic.AddUint64(sm.rtpPacketsSent, 1)
+	return nil
 }
 
 func (sm *serverSessionMedia) writePacketRTCPInQueueTCP(payload []byte) error {
-	atomic.AddUint64(sm.ss.bytesSent, uint64(len(payload)))
 	sm.tcpRTCPFrame.Payload = payload
 	sm.ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(sm.ss.s.WriteTimeout))
-	return sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.tcpRTCPFrame, sm.tcpBuffer)
+	err := sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.tcpRTCPFrame, sm.tcpBuffer)
+	if err != nil {
+		return err
+	}
+
+	atomic.AddUint64(sm.ss.bytesSent, uint64(len(payload)))
+	atomic.AddUint64(sm.rtcpPacketsSent, 1)
+	return nil
 }
 
 func (sm *serverSessionMedia) writePacketRTP(payload []byte) error {
@@ -167,18 +207,19 @@ func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) bool {
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
-		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
+		sm.onRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
 		return false
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		sm.ss.onDecodeError(err)
+		sm.onRTCPDecodeError(err)
 		return false
 	}
 
 	now := sm.ss.s.timeNow()
 	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
+	atomic.AddUint64(sm.rtcpPacketsReceived, uint64(len(packets)))
 
 	for _, pkt := range packets {
 		sm.onPacketRTCP(pkt)
@@ -193,20 +234,20 @@ func (sm *serverSessionMedia) readRTPUDPRecord(payload []byte) bool {
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
-		sm.ss.onDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
+		sm.onRTPDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
 		return false
 	}
 
 	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
-		sm.ss.onDecodeError(err)
+		sm.onRTPDecodeError(err)
 		return false
 	}
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
-		sm.ss.onDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: pkt.PayloadType})
+		sm.onRTPDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: pkt.PayloadType})
 		return false
 	}
 
@@ -224,18 +265,19 @@ func (sm *serverSessionMedia) readRTCPUDPRecord(payload []byte) bool {
 	atomic.AddUint64(sm.ss.bytesReceived, uint64(plen))
 
 	if plen == (udpMaxPayloadSize + 1) {
-		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
+		sm.onRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
 		return false
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		sm.ss.onDecodeError(err)
+		sm.onRTCPDecodeError(err)
 		return false
 	}
 
 	now := sm.ss.s.timeNow()
 	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
+	atomic.AddUint64(sm.rtcpPacketsReceived, uint64(len(packets)))
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
@@ -257,15 +299,17 @@ func (sm *serverSessionMedia) readRTPTCPPlay(_ []byte) bool {
 
 func (sm *serverSessionMedia) readRTCPTCPPlay(payload []byte) bool {
 	if len(payload) > udpMaxPayloadSize {
-		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
+		sm.onRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
 		return false
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		sm.ss.onDecodeError(err)
+		sm.onRTCPDecodeError(err)
 		return false
 	}
+
+	atomic.AddUint64(sm.rtcpPacketsReceived, uint64(len(packets)))
 
 	for _, pkt := range packets {
 		sm.onPacketRTCP(pkt)
@@ -278,13 +322,13 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) bool {
 	pkt := &rtp.Packet{}
 	err := pkt.Unmarshal(payload)
 	if err != nil {
-		sm.ss.onDecodeError(err)
+		sm.onRTPDecodeError(err)
 		return false
 	}
 
 	forma, ok := sm.formats[pkt.PayloadType]
 	if !ok {
-		sm.ss.onDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: pkt.PayloadType})
+		sm.onRTPDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: pkt.PayloadType})
 		return false
 	}
 
@@ -295,17 +339,18 @@ func (sm *serverSessionMedia) readRTPTCPRecord(payload []byte) bool {
 
 func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) bool {
 	if len(payload) > udpMaxPayloadSize {
-		sm.ss.onDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
+		sm.onRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
 		return false
 	}
 
 	packets, err := rtcp.Unmarshal(payload)
 	if err != nil {
-		sm.ss.onDecodeError(err)
+		sm.onRTCPDecodeError(err)
 		return false
 	}
 
 	now := sm.ss.s.timeNow()
+	atomic.AddUint64(sm.rtcpPacketsReceived, uint64(len(packets)))
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
@@ -319,4 +364,30 @@ func (sm *serverSessionMedia) readRTCPTCPRecord(payload []byte) bool {
 	}
 
 	return true
+}
+
+func (sm *serverSessionMedia) onRTPDecodeError(err error) {
+	atomic.AddUint64(sm.rtpPacketsInError, 1)
+
+	if h, ok := sm.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
+			Session: sm.ss,
+			Error:   err,
+		})
+	} else {
+		log.Println(err.Error())
+	}
+}
+
+func (sm *serverSessionMedia) onRTCPDecodeError(err error) {
+	atomic.AddUint64(sm.rtcpPacketsInError, 1)
+
+	if h, ok := sm.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
+			Session: sm.ss,
+			Error:   err,
+		})
+	} else {
+		log.Println(err.Error())
+	}
 }

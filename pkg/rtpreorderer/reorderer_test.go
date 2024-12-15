@@ -163,7 +163,7 @@ func TestReorder(t *testing.T) {
 	for _, entry := range sequence {
 		out, missing := r.Process(entry.in)
 		require.Equal(t, entry.out, out)
-		require.Equal(t, 0, missing)
+		require.Equal(t, uint(0), missing)
 	}
 }
 
@@ -171,7 +171,7 @@ func TestBufferIsFull(t *testing.T) {
 	r := New()
 	r.absPos = 25
 	sn := uint16(1564)
-	toMiss := 34
+	toMiss := uint(34)
 
 	out, missing := r.Process(&rtp.Packet{
 		Header: rtp.Header{
@@ -183,19 +183,19 @@ func TestBufferIsFull(t *testing.T) {
 			SequenceNumber: sn,
 		},
 	}}, out)
-	require.Equal(t, 0, missing)
+	require.Equal(t, uint(0), missing)
 	sn++
 
 	var expected []*rtp.Packet
 
-	for i := 0; i < 64-toMiss; i++ {
+	for i := uint(0); i < 64-toMiss; i++ {
 		out, missing = r.Process(&rtp.Packet{
 			Header: rtp.Header{
 				SequenceNumber: sn + uint16(toMiss),
 			},
 		})
 		require.Equal(t, []*rtp.Packet(nil), out)
-		require.Equal(t, 0, missing)
+		require.Equal(t, uint(0), missing)
 
 		expected = append(expected, &rtp.Packet{
 			Header: rtp.Header{
@@ -239,7 +239,7 @@ func TestReset(t *testing.T) {
 			},
 		})
 		require.Equal(t, []*rtp.Packet(nil), out)
-		require.Equal(t, 0, missing)
+		require.Equal(t, uint(0), missing)
 		sn++
 	}
 
@@ -253,5 +253,5 @@ func TestReset(t *testing.T) {
 			SequenceNumber: sn,
 		},
 	}}, out)
-	require.Equal(t, 0, missing)
+	require.Equal(t, uint(0), missing)
 }

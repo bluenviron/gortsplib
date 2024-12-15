@@ -545,10 +545,11 @@ func TestServerRecord(t *testing.T) {
 						close(nconnOpened)
 					},
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-						require.Greater(t, ctx.Conn.BytesSent(), uint64(510))
-						require.Less(t, ctx.Conn.BytesSent(), uint64(560))
-						require.Greater(t, ctx.Conn.BytesReceived(), uint64(1000))
-						require.Less(t, ctx.Conn.BytesReceived(), uint64(1200))
+						s := ctx.Conn.Stats()
+						require.Greater(t, s.BytesSent, uint64(510))
+						require.Less(t, s.BytesSent, uint64(560))
+						require.Greater(t, s.BytesReceived, uint64(1000))
+						require.Less(t, s.BytesReceived, uint64(1200))
 
 						close(nconnClosed)
 					},
@@ -556,10 +557,11 @@ func TestServerRecord(t *testing.T) {
 						close(sessionOpened)
 					},
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
-						require.Greater(t, ctx.Session.BytesSent(), uint64(75))
-						require.Less(t, ctx.Session.BytesSent(), uint64(130))
-						require.Greater(t, ctx.Session.BytesReceived(), uint64(70))
-						require.Less(t, ctx.Session.BytesReceived(), uint64(80))
+						s := ctx.Session.Stats()
+						require.Greater(t, s.BytesSent, uint64(75))
+						require.Less(t, s.BytesSent, uint64(130))
+						require.Greater(t, s.BytesReceived, uint64(70))
+						require.Less(t, s.BytesReceived, uint64(80))
 
 						close(sessionClosed)
 					},
