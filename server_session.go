@@ -186,7 +186,7 @@ func generateRTPInfo(
 			Scheme: u.Scheme,
 			Host:   u.Host,
 			Path: setuppedPath + "/trackID=" +
-				strconv.FormatInt(int64(setuppedStream.streamMedias[sm.media].trackID), 10),
+				strconv.FormatInt(int64(setuppedStream.medias[sm.media].trackID), 10),
 		}).String()
 		ri = append(ri, entry)
 	}
@@ -235,8 +235,6 @@ type ServerSession struct {
 	secretID              string // must not be shared, allows to take ownership of the session
 	ctx                   context.Context
 	ctxCancel             func()
-	bytesReceived         *uint64
-	bytesSent             *uint64
 	userData              interface{}
 	conns                 map[*ServerConn]struct{}
 	state                 ServerSessionState
@@ -254,6 +252,8 @@ type ServerSession struct {
 	udpCheckStreamTimer   *time.Timer
 	writer                *asyncProcessor
 	timeDecoder           *rtptime.GlobalDecoder2
+	bytesReceived         *uint64
+	bytesSent             *uint64
 
 	// in
 	chHandleRequest chan sessionRequestReq
@@ -270,11 +270,12 @@ func (ss *ServerSession) initialize() {
 	ss.secretID = secretID
 	ss.ctx = ctx
 	ss.ctxCancel = ctxCancel
-	ss.bytesReceived = new(uint64)
-	ss.bytesSent = new(uint64)
 	ss.conns = make(map[*ServerConn]struct{})
 	ss.lastRequestTime = ss.s.timeNow()
 	ss.udpCheckStreamTimer = emptyTimer()
+	ss.bytesReceived = new(uint64)
+	ss.bytesSent = new(uint64)
+
 	ss.chHandleRequest = make(chan sessionRequestReq)
 	ss.chRemoveConn = make(chan *ServerConn)
 	ss.chStartWriter = make(chan struct{})
@@ -289,11 +290,15 @@ func (ss *ServerSession) Close() {
 }
 
 // BytesReceived returns the number of read bytes.
+//
+// Deprecated: replaced by Stats()
 func (ss *ServerSession) BytesReceived() uint64 {
 	return atomic.LoadUint64(ss.bytesReceived)
 }
 
 // BytesSent returns the number of written bytes.
+//
+// Deprecated: replaced by Stats()
 func (ss *ServerSession) BytesSent() uint64 {
 	return atomic.LoadUint64(ss.bytesSent)
 }
@@ -347,20 +352,82 @@ func (ss *ServerSession) UserData() interface{} {
 	return ss.userData
 }
 
-func (ss *ServerSession) onPacketLost(err error) {
-	if h, ok := ss.s.Handler.(ServerHandlerOnPacketLost); ok {
-		h.OnPacketLost(&ServerHandlerOnPacketLostCtx{
-			Session: ss,
-			Error:   err,
-		})
-	} else {
-		log.Println(err.Error())
+// Stats returns server session statistics.
+func (ss *ServerSession) Stats() *ServerSessionStats { //nolint:dupl
+	return &ServerSessionStats{
+		BytesReceived: atomic.LoadUint64(ss.bytesReceived),
+		BytesSent:     atomic.LoadUint64(ss.bytesSent),
+		RTPPacketsReceived: func() uint64 {
+			v := uint64(0)
+			for _, sm := range ss.setuppedMedias {
+				v += atomic.LoadUint64(sm.rtpPacketsReceived)
+			}
+			return v
+		}(),
+		RTPPacketsSent: func() uint64 {
+			v := uint64(0)
+			for _, sm := range ss.setuppedMedias {
+				v += atomic.LoadUint64(sm.rtpPacketsSent)
+			}
+			return v
+		}(),
+		RTPPacketsLost: func() uint64 {
+			v := uint64(0)
+			for _, sm := range ss.setuppedMedias {
+				v += atomic.LoadUint64(sm.rtpPacketsLost)
+			}
+			return v
+		}(),
+		RTPPacketsInError: func() uint64 {
+			v := uint64(0)
+			for _, sm := range ss.setuppedMedias {
+				v += atomic.LoadUint64(sm.rtpPacketsInError)
+			}
+			return v
+		}(),
+		RTPJitter: func() float64 {
+			v := float64(0)
+			n := float64(0)
+			for _, sm := range ss.setuppedMedias {
+				for _, fo := range sm.formats {
+					if fo.rtcpReceiver != nil {
+						stats := fo.rtcpReceiver.Stats()
+						if stats != nil {
+							v += stats.Jitter
+							n++
+						}
+					}
+				}
+			}
+			return v / n
+		}(),
+		RTCPPacketsReceived: func() uint64 {
+			v := uint64(0)
+			for _, sm := range ss.setuppedMedias {
+				v += atomic.LoadUint64(sm.rtcpPacketsReceived)
+			}
+			return v
+		}(),
+		RTCPPacketsSent: func() uint64 {
+			v := uint64(0)
+			for _, sm := range ss.setuppedMedias {
+				v += atomic.LoadUint64(sm.rtcpPacketsSent)
+			}
+			return v
+		}(),
+		RTCPPacketsInError: func() uint64 {
+			v := uint64(0)
+			for _, sm := range ss.setuppedMedias {
+				v += atomic.LoadUint64(sm.rtcpPacketsInError)
+			}
+			return v
+		}(),
 	}
 }
 
-func (ss *ServerSession) onDecodeError(err error) {
-	if h, ok := ss.s.Handler.(ServerHandlerOnDecodeError); ok {
-		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
+func (ss *ServerSession) onPacketLost(err error) {
+	if h, ok := ss.s.Handler.(ServerHandlerOnPacketLost); ok {
+		h.OnPacketLost(&ServerHandlerOnPacketLostCtx{
 			Session: ss,
 			Error:   err,
 		})
@@ -846,7 +913,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		th := headers.Transport{}
 
 		if ss.state == ServerSessionStatePrePlay {
-			ssrc, ok := stream.senderSSRC(medi)
+			ssrc, ok := stream.localSSRC(medi)
 			if ok {
 				th.SSRC = &ssrc
 			}
@@ -892,7 +959,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			th.Delivery = &de
 			v := uint(127)
 			th.TTL = &v
-			d := stream.streamMedias[medi].multicastWriter.ip()
+			d := stream.medias[medi].multicastWriter.ip()
 			th.Destination = &d
 			th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 
@@ -1217,7 +1284,7 @@ func (ss *ServerSession) findFreeChannelPair() int {
 	}
 }
 
-// OnPacketRTPAny sets the callback that is called when a RTP packet is read from any setupped media.
+// OnPacketRTPAny sets a callback that is called when a RTP packet is read from any setupped media.
 func (ss *ServerSession) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
 	for _, sm := range ss.setuppedMedias {
 		cmedia := sm.media
@@ -1229,7 +1296,7 @@ func (ss *ServerSession) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
 	}
 }
 
-// OnPacketRTCPAny sets the callback that is called when a RTCP packet is read from any setupped media.
+// OnPacketRTCPAny sets a callback that is called when a RTCP packet is read from any setupped media.
 func (ss *ServerSession) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 	for _, sm := range ss.setuppedMedias {
 		cmedia := sm.media
@@ -1239,14 +1306,14 @@ func (ss *ServerSession) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 	}
 }
 
-// OnPacketRTP sets the callback that is called when a RTP packet is read.
+// OnPacketRTP sets a callback that is called when a RTP packet is read.
 func (ss *ServerSession) OnPacketRTP(medi *description.Media, forma format.Format, cb OnPacketRTPFunc) {
 	sm := ss.setuppedMedias[medi]
 	st := sm.formats[forma.PayloadType()]
 	st.onPacketRTP = cb
 }
 
-// OnPacketRTCP sets the callback that is called when a RTCP packet is read.
+// OnPacketRTCP sets a callback that is called when a RTCP packet is read.
 func (ss *ServerSession) OnPacketRTCP(medi *description.Media, cb OnPacketRTCPFunc) {
 	sm := ss.setuppedMedias[medi]
 	sm.onPacketRTCP = cb

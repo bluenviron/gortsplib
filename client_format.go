@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -72,7 +73,7 @@ func (cf *clientFormat) stop() {
 }
 
 func (cf *clientFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
-	cf.rtcpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
+	cf.rtcpSender.ProcessRTPPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
 
 	ok := cf.cm.c.writer.push(func() error {
 		return cf.cm.writePacketRTPInQueue(byts)
@@ -87,6 +88,7 @@ func (cf *clientFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Ti
 func (cf *clientFormat) readRTPUDP(pkt *rtp.Packet) {
 	packets, lost := cf.udpReorderer.Process(pkt)
 	if lost != 0 {
+		atomic.AddUint64(cf.cm.rtpPacketsLost, uint64(lost))
 		cf.cm.c.OnPacketLost(liberrors.ErrClientRTPPacketsLost{Lost: lost})
 		// do not return
 	}
@@ -94,11 +96,13 @@ func (cf *clientFormat) readRTPUDP(pkt *rtp.Packet) {
 	now := cf.cm.c.timeNow()
 
 	for _, pkt := range packets {
-		err := cf.rtcpReceiver.ProcessPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
+		err := cf.rtcpReceiver.ProcessRTPPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
 		if err != nil {
-			cf.cm.c.OnDecodeError(err)
+			cf.cm.onRTPDecodeError(err)
 			continue
 		}
+
+		atomic.AddUint64(cf.cm.rtpPacketsReceived, 1)
 
 		cf.onPacketRTP(pkt)
 	}
@@ -107,17 +111,20 @@ func (cf *clientFormat) readRTPUDP(pkt *rtp.Packet) {
 func (cf *clientFormat) readRTPTCP(pkt *rtp.Packet) {
 	lost := cf.tcpLossDetector.Process(pkt)
 	if lost != 0 {
+		atomic.AddUint64(cf.cm.rtpPacketsLost, uint64(lost))
 		cf.cm.c.OnPacketLost(liberrors.ErrClientRTPPacketsLost{Lost: lost})
 		// do not return
 	}
 
 	now := cf.cm.c.timeNow()
 
-	err := cf.rtcpReceiver.ProcessPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
+	err := cf.rtcpReceiver.ProcessRTPPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
 	if err != nil {
-		cf.cm.c.OnDecodeError(err)
+		cf.cm.onRTPDecodeError(err)
 		return
 	}
+
+	atomic.AddUint64(cf.cm.rtpPacketsReceived, 1)
 
 	cf.onPacketRTP(pkt)
 }

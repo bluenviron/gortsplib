@@ -7,7 +7,6 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -336,10 +335,11 @@ func TestClientRecord(t *testing.T) {
 
 			<-recvDone
 
-			require.Greater(t, atomic.LoadUint64(c.BytesSent), uint64(730))
-			require.Less(t, atomic.LoadUint64(c.BytesSent), uint64(760))
-			require.Greater(t, atomic.LoadUint64(c.BytesReceived), uint64(180))
-			require.Less(t, atomic.LoadUint64(c.BytesReceived), uint64(210))
+			s := c.Stats()
+			require.Greater(t, s.BytesSent, uint64(730))
+			require.Less(t, s.BytesSent, uint64(760))
+			require.Greater(t, s.BytesReceived, uint64(180))
+			require.Less(t, s.BytesReceived, uint64(210))
 
 			c.Close()
 			<-done

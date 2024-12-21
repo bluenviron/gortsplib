@@ -15,19 +15,19 @@ func TestLossDetector(t *testing.T) {
 			SequenceNumber: 65530,
 		},
 	})
-	require.Equal(t, 0, c)
+	require.Equal(t, uint(0), c)
 
 	c = d.Process(&rtp.Packet{
 		Header: rtp.Header{
 			SequenceNumber: 65531,
 		},
 	})
-	require.Equal(t, 0, c)
+	require.Equal(t, uint(0), c)
 
 	c = d.Process(&rtp.Packet{
 		Header: rtp.Header{
 			SequenceNumber: 65535,
 		},
 	})
-	require.Equal(t, 3, c)
+	require.Equal(t, uint(3), c)
 }

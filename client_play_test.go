@@ -545,10 +545,11 @@ func TestClientPlay(t *testing.T) {
 
 			<-packetRecv
 
-			require.Greater(t, atomic.LoadUint64(c.BytesSent), uint64(620))
-			require.Less(t, atomic.LoadUint64(c.BytesSent), uint64(850))
-			require.Greater(t, atomic.LoadUint64(c.BytesReceived), uint64(580))
-			require.Less(t, atomic.LoadUint64(c.BytesReceived), uint64(650))
+			s := c.Stats()
+			require.Greater(t, s.BytesSent, uint64(620))
+			require.Less(t, s.BytesSent, uint64(850))
+			require.Greater(t, s.BytesReceived, uint64(580))
+			require.Less(t, s.BytesReceived, uint64(650))
 		})
 	}
 }
