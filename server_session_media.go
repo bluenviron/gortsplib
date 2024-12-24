@@ -60,8 +60,11 @@ func (sm *serverSessionMedia) start() {
 				sm.ss.s.udpRTCPListener.addClient(sm.ss.author.ip(), sm.udpRTCPReadPort, sm.readRTCPUDPPlay)
 			} else {
 				// open the firewall by sending empty packets to the counterpart.
-				sm.ss.WritePacketRTP(sm.media, &rtp.Packet{Header: rtp.Header{Version: 2}}) //nolint:errcheck
-				sm.ss.WritePacketRTCP(sm.media, &rtcp.ReceiverReport{})                     //nolint:errcheck
+				byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
+				sm.ss.s.udpRTPListener.write(byts, sm.udpRTPWriteAddr) //nolint:errcheck
+
+				byts, _ = (&rtcp.ReceiverReport{}).Marshal()
+				sm.ss.s.udpRTCPListener.write(byts, sm.udpRTCPWriteAddr) //nolint:errcheck
 
 				sm.ss.s.udpRTPListener.addClient(sm.ss.author.ip(), sm.udpRTPReadPort, sm.readRTPUDPRecord)
 				sm.ss.s.udpRTCPListener.addClient(sm.ss.author.ip(), sm.udpRTCPReadPort, sm.readRTCPUDPRecord)
