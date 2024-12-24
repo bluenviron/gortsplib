@@ -339,6 +339,8 @@ type Client struct {
 	reader               *clientReader
 	timeDecoder          *rtptime.GlobalDecoder2
 	mustClose            bool
+	tcpFrame             *base.InterleavedFrame
+	tcpBuffer            []byte
 
 	// in
 	chOptions  chan optionsReq
@@ -854,6 +856,11 @@ func (c *Client) startTransportRoutines() {
 
 	for _, cm := range c.medias {
 		cm.start()
+	}
+
+	if *c.effectiveTransport == TransportTCP {
+		c.tcpFrame = &base.InterleavedFrame{}
+		c.tcpBuffer = make([]byte, c.MaxPacketSize+4)
 	}
 
 	if c.state == clientStatePlay && c.stdChannelSetupped {
@@ -1902,8 +1909,18 @@ func (c *Client) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet,
 	}
 
 	cm := c.medias[medi]
-	ct := cm.formats[pkt.PayloadType]
-	return ct.writePacketRTP(byts, pkt, ntp)
+	cf := cm.formats[pkt.PayloadType]
+
+	cf.rtcpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
+
+	ok := c.writer.push(func() error {
+		return cm.writePacketRTPInQueue(byts)
+	})
+	if !ok {
+		return liberrors.ErrClientWriteQueueFull{}
+	}
+
+	return nil
 }
 
 // WritePacketRTCP writes a RTCP packet to the server.
@@ -1920,7 +1937,15 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 	}
 
 	cm := c.medias[medi]
-	return cm.writePacketRTCP(byts)
+
+	ok := c.writer.push(func() error {
+		return cm.writePacketRTCPInQueue(byts)
+	})
+	if !ok {
+		return liberrors.ErrClientWriteQueueFull{}
+	}
+
+	return nil
 }
 
 // PacketPTS returns the PTS of an incoming RTP packet.

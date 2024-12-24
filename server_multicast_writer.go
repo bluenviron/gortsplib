@@ -67,9 +67,9 @@ func (h *serverMulticastWriter) ip() net.IP {
 	return h.rtpl.ip()
 }
 
-func (h *serverMulticastWriter) writePacketRTP(payload []byte) error {
+func (h *serverMulticastWriter) writePacketRTP(byts []byte) error {
 	ok := h.writer.push(func() error {
-		return h.rtpl.write(payload, h.rtpAddr)
+		return h.rtpl.write(byts, h.rtpAddr)
 	})
 	if !ok {
 		return liberrors.ErrServerWriteQueueFull{}
@@ -78,9 +78,9 @@ func (h *serverMulticastWriter) writePacketRTP(payload []byte) error {
 	return nil
 }
 
-func (h *serverMulticastWriter) writePacketRTCP(payload []byte) error {
+func (h *serverMulticastWriter) writePacketRTCP(byts []byte) error {
 	ok := h.writer.push(func() error {
-		return h.rtcpl.write(payload, h.rtcpAddr)
+		return h.rtcpl.write(byts, h.rtcpAddr)
 	})
 	if !ok {
 		return liberrors.ErrServerWriteQueueFull{}
