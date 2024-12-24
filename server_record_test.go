@@ -713,6 +713,13 @@ func TestServerRecord(t *testing.T) {
 			doRecord(t, conn, "rtsp://localhost:8554/teststream", session)
 
 			for i := 0; i < 2; i++ {
+				// skip firewall opening
+				if transport == "udp" {
+					buf := make([]byte, 2048)
+					_, _, err = l2s[i].ReadFrom(buf)
+					require.NoError(t, err)
+				}
+
 				// server -> client (direct)
 				if transport == "udp" {
 					buf := make([]byte, 2048)
@@ -726,13 +733,6 @@ func TestServerRecord(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, 3+i*2, f.Channel)
 					require.Equal(t, testRTCPPacketMarshaled, f.Payload)
-				}
-
-				// skip firewall opening
-				if transport == "udp" {
-					buf := make([]byte, 2048)
-					_, _, err = l2s[i].ReadFrom(buf)
-					require.NoError(t, err)
 				}
 
 				// client -> server
