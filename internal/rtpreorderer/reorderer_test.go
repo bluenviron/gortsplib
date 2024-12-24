@@ -157,7 +157,8 @@ func TestReorder(t *testing.T) {
 		},
 	}
 
-	r := New()
+	r := &Reorderer{}
+	r.Initialize()
 	r.absPos = 40
 
 	for _, entry := range sequence {
@@ -168,7 +169,8 @@ func TestReorder(t *testing.T) {
 }
 
 func TestBufferIsFull(t *testing.T) {
-	r := New()
+	r := &Reorderer{}
+	r.Initialize()
 	r.absPos = 25
 	sn := uint16(1564)
 	toMiss := 34
@@ -222,7 +224,8 @@ func TestBufferIsFull(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
-	r := New()
+	r := &Reorderer{}
+	r.Initialize()
 	sn := uint16(1234)
 
 	r.Process(&rtp.Packet{
