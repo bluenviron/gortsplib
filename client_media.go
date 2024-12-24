@@ -8,7 +8,6 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
@@ -22,9 +21,6 @@ type clientMedia struct {
 	tcpChannel             int
 	udpRTPListener         *clientUDPListener
 	udpRTCPListener        *clientUDPListener
-	tcpRTPFrame            *base.InterleavedFrame
-	tcpRTCPFrame           *base.InterleavedFrame
-	tcpBuffer              []byte
 	writePacketRTPInQueue  func([]byte) error
 	writePacketRTCPInQueue func([]byte) error
 }
@@ -115,10 +111,6 @@ func (cm *clientMedia) start() {
 			cm.c.tcpCallbackByChannel[cm.tcpChannel] = cm.readRTPTCPPlay
 			cm.c.tcpCallbackByChannel[cm.tcpChannel+1] = cm.readRTCPTCPPlay
 		}
-
-		cm.tcpRTPFrame = &base.InterleavedFrame{Channel: cm.tcpChannel}
-		cm.tcpRTCPFrame = &base.InterleavedFrame{Channel: cm.tcpChannel + 1}
-		cm.tcpBuffer = make([]byte, cm.c.MaxPacketSize+4)
 	}
 
 	for _, ct := range cm.formats {
@@ -161,26 +153,17 @@ func (cm *clientMedia) writePacketRTCPInQueueUDP(payload []byte) error {
 }
 
 func (cm *clientMedia) writePacketRTPInQueueTCP(payload []byte) error {
-	cm.tcpRTPFrame.Payload = payload
+	cm.c.tcpFrame.Channel = cm.tcpChannel
+	cm.c.tcpFrame.Payload = payload
 	cm.c.nconn.SetWriteDeadline(time.Now().Add(cm.c.WriteTimeout))
-	return cm.c.conn.WriteInterleavedFrame(cm.tcpRTPFrame, cm.tcpBuffer)
+	return cm.c.conn.WriteInterleavedFrame(cm.c.tcpFrame, cm.c.tcpBuffer)
 }
 
 func (cm *clientMedia) writePacketRTCPInQueueTCP(payload []byte) error {
-	cm.tcpRTCPFrame.Payload = payload
+	cm.c.tcpFrame.Channel = cm.tcpChannel + 1
+	cm.c.tcpFrame.Payload = payload
 	cm.c.nconn.SetWriteDeadline(time.Now().Add(cm.c.WriteTimeout))
-	return cm.c.conn.WriteInterleavedFrame(cm.tcpRTCPFrame, cm.tcpBuffer)
-}
-
-func (cm *clientMedia) writePacketRTCP(byts []byte) error {
-	ok := cm.c.writer.push(func() error {
-		return cm.writePacketRTCPInQueue(byts)
-	})
-	if !ok {
-		return liberrors.ErrClientWriteQueueFull{}
-	}
-
-	return nil
+	return cm.c.conn.WriteInterleavedFrame(cm.c.tcpFrame, cm.c.tcpBuffer)
 }
 
 func (cm *clientMedia) readRTPTCPPlay(payload []byte) bool {

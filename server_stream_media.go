@@ -40,9 +40,8 @@ func (sm *serverStreamMedia) close() {
 func (sm *serverStreamMedia) writePacketRTCP(byts []byte) error {
 	// send unicast
 	for r := range sm.st.activeUnicastReaders {
-		sm, ok := r.setuppedMedias[sm.media]
-		if ok {
-			err := sm.writePacketRTCP(byts)
+		if _, ok := r.setuppedMedias[sm.media]; ok {
+			err := r.writePacketRTCP(sm.media, byts)
 			if err != nil {
 				r.onStreamWriteError(err)
 			}

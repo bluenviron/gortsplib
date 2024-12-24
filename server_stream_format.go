@@ -38,9 +38,8 @@ func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp t
 
 	// send unicast
 	for r := range sf.sm.st.activeUnicastReaders {
-		sm, ok := r.setuppedMedias[sf.sm.media]
-		if ok {
-			err := sm.writePacketRTP(byts)
+		if _, ok := r.setuppedMedias[sf.sm.media]; ok {
+			err := r.writePacketRTP(sf.sm.media, byts)
 			if err != nil {
 				r.onStreamWriteError(err)
 			} else {

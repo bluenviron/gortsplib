@@ -1,8 +1,6 @@
 package gortsplib
 
 import (
-	"time"
-
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
@@ -69,19 +67,6 @@ func (cf *clientFormat) stop() {
 	if cf.rtcpSender != nil {
 		cf.rtcpSender.Close()
 	}
-}
-
-func (cf *clientFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
-	cf.rtcpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
-
-	ok := cf.cm.c.writer.push(func() error {
-		return cf.cm.writePacketRTPInQueue(byts)
-	})
-	if !ok {
-		return liberrors.ErrClientWriteQueueFull{}
-	}
-
-	return nil
 }
 
 func (cf *clientFormat) readRTPUDP(pkt *rtp.Packet) {
