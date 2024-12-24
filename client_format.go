@@ -4,12 +4,12 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/bluenviron/gortsplib/v4/internal/rtcpreceiver"
+	"github.com/bluenviron/gortsplib/v4/internal/rtcpsender"
+	"github.com/bluenviron/gortsplib/v4/internal/rtplossdetector"
+	"github.com/bluenviron/gortsplib/v4/internal/rtpreorderer"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtplossdetector"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 )
 
 type clientFormat struct {
@@ -25,33 +25,36 @@ type clientFormat struct {
 
 func (cf *clientFormat) start() {
 	if cf.cm.c.state == clientStateRecord || cf.cm.media.IsBackChannel {
-		cf.rtcpSender = rtcpsender.New(
-			cf.format.ClockRate(),
-			cf.cm.c.senderReportPeriod,
-			cf.cm.c.timeNow,
-			func(pkt rtcp.Packet) {
+		cf.rtcpSender = &rtcpsender.RTCPSender{
+			ClockRate: cf.format.ClockRate(),
+			Period:    cf.cm.c.senderReportPeriod,
+			TimeNow:   cf.cm.c.timeNow,
+			WritePacketRTCP: func(pkt rtcp.Packet) {
 				if !cf.cm.c.DisableRTCPSenderReports {
 					cf.cm.c.WritePacketRTCP(cf.cm.media, pkt) //nolint:errcheck
 				}
-			})
+			},
+		}
+		cf.rtcpSender.Initialize()
 	} else {
 		if cf.cm.udpRTPListener != nil {
-			cf.udpReorderer = rtpreorderer.New()
+			cf.udpReorderer = &rtpreorderer.Reorderer{}
+			cf.udpReorderer.Initialize()
 		} else {
-			cf.tcpLossDetector = rtplossdetector.New()
+			cf.tcpLossDetector = &rtplossdetector.LossDetector{}
 		}
 
-		var err error
-		cf.rtcpReceiver, err = rtcpreceiver.New(
-			cf.format.ClockRate(),
-			nil,
-			cf.cm.c.receiverReportPeriod,
-			cf.cm.c.timeNow,
-			func(pkt rtcp.Packet) {
+		cf.rtcpReceiver = &rtcpreceiver.RTCPReceiver{
+			ClockRate: cf.format.ClockRate(),
+			Period:    cf.cm.c.receiverReportPeriod,
+			TimeNow:   cf.cm.c.timeNow,
+			WritePacketRTCP: func(pkt rtcp.Packet) {
 				if cf.cm.udpRTPListener != nil {
 					cf.cm.c.WritePacketRTCP(cf.cm.media, pkt) //nolint:errcheck
 				}
-			})
+			},
+		}
+		err := cf.rtcpReceiver.Initialize()
 		if err != nil {
 			panic(err)
 		}

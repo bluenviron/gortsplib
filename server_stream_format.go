@@ -7,8 +7,8 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/bluenviron/gortsplib/v4/internal/rtcpsender"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
 )
 
 type serverStreamFormat struct {
@@ -19,16 +19,17 @@ type serverStreamFormat struct {
 }
 
 func (sf *serverStreamFormat) initialize() {
-	sf.rtcpSender = rtcpsender.New(
-		sf.format.ClockRate(),
-		sf.sm.st.s.senderReportPeriod,
-		sf.sm.st.s.timeNow,
-		func(pkt rtcp.Packet) {
+	sf.rtcpSender = &rtcpsender.RTCPSender{
+		ClockRate: sf.format.ClockRate(),
+		Period:    sf.sm.st.s.senderReportPeriod,
+		TimeNow:   sf.sm.st.s.timeNow,
+		WritePacketRTCP: func(pkt rtcp.Packet) {
 			if !sf.sm.st.s.DisableRTCPSenderReports {
 				sf.sm.st.WritePacketRTCP(sf.sm.media, pkt) //nolint:errcheck
 			}
 		},
-	)
+	}
+	sf.rtcpSender.Initialize()
 }
 
 func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
