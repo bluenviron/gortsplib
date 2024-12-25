@@ -124,6 +124,11 @@ func (sc *ServerConn) UserData() interface{} {
 	return sc.userData
 }
 
+// Session returns associated session.
+func (sc *ServerConn) Session() *ServerSession {
+	return sc.session
+}
+
 // Stats returns connection statistics.
 func (sc *ServerConn) Stats() *StatsConn {
 	return &StatsConn{

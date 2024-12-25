@@ -642,6 +642,8 @@ func TestServerPlay(t *testing.T) {
 						}, stream, nil
 					},
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						require.NotNil(t, ctx.Conn.Session())
+
 						switch transport {
 						case "udp":
 							v := TransportUDP
