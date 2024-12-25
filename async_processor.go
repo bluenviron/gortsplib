@@ -27,12 +27,11 @@ func (w *asyncProcessor) start() {
 }
 
 func (w *asyncProcessor) stop() {
-	if !w.running {
-		panic("should not happen")
+	if w.running {
+		w.buffer.Close()
+		<-w.chError
+		w.running = false
 	}
-	w.buffer.Close()
-	<-w.chError
-	w.running = false
 }
 
 func (w *asyncProcessor) run() {
