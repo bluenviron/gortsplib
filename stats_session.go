@@ -16,7 +16,7 @@ type StatsSessionFormat struct {
 	// number of lost RTP packets
 	RTPPacketsLost uint64
 	// mean jitter of received RTP packets
-	RTPJitter float64
+	RTPPacketsJitter float64
 	// local SSRC
 	LocalSSRC uint32
 	// remote SSRC
@@ -63,7 +63,7 @@ type StatsSession struct {
 	// number of RTP packets that could not be processed
 	RTPPacketsInError uint64
 	// mean jitter of received RTP packets
-	RTPJitter float64
+	RTPPacketsJitter float64
 	// number of RTCP packets correctly received and processed
 	RTCPPacketsReceived uint64
 	// number of sent RTCP packets

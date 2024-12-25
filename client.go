@@ -2048,7 +2048,7 @@ func (c *Client) Stats() *ClientStats {
 				}
 				return v
 			}(),
-			RTPJitter: func() float64 {
+			RTPPacketsJitter: func() float64 {
 				v := float64(0)
 				n := float64(0)
 				for _, sm := range c.setuppedMedias {
@@ -2159,7 +2159,7 @@ func (c *Client) Stats() *ClientStats {
 										}
 										return time.Time{}
 									}(),
-									RTPJitter: func() float64 {
+									RTPPacketsJitter: func() float64 {
 										if recvStats != nil {
 											return recvStats.Jitter
 										}
