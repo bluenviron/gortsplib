@@ -258,6 +258,8 @@ type ServerSession struct {
 	udpCheckStreamTimer   *time.Timer
 	writer                *asyncProcessor
 	timeDecoder           *rtptime.GlobalDecoder2
+	tcpFrame              *base.InterleavedFrame
+	tcpBuffer             []byte
 
 	// in
 	chHandleRequest chan sessionRequestReq
@@ -982,6 +984,11 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			sm.start()
 		}
 
+		if *ss.setuppedTransport == TransportTCP {
+			ss.tcpFrame = &base.InterleavedFrame{}
+			ss.tcpBuffer = make([]byte, ss.s.MaxPacketSize+4)
+		}
+
 		switch *ss.setuppedTransport {
 		case TransportUDP:
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
@@ -1069,6 +1076,11 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
+		}
+
+		if *ss.setuppedTransport == TransportTCP {
+			ss.tcpFrame = &base.InterleavedFrame{}
+			ss.tcpBuffer = make([]byte, ss.s.MaxPacketSize+4)
 		}
 
 		switch *ss.setuppedTransport {
@@ -1258,7 +1270,15 @@ func (ss *ServerSession) OnPacketRTCP(medi *description.Media, cb OnPacketRTCPFu
 
 func (ss *ServerSession) writePacketRTP(medi *description.Media, byts []byte) error {
 	sm := ss.setuppedMedias[medi]
-	return sm.writePacketRTP(byts)
+
+	ok := sm.ss.writer.push(func() error {
+		return sm.writePacketRTPInQueue(byts)
+	})
+	if !ok {
+		return liberrors.ErrServerWriteQueueFull{}
+	}
+
+	return nil
 }
 
 // WritePacketRTP writes a RTP packet to the session.
@@ -1275,7 +1295,15 @@ func (ss *ServerSession) WritePacketRTP(medi *description.Media, pkt *rtp.Packet
 
 func (ss *ServerSession) writePacketRTCP(medi *description.Media, byts []byte) error {
 	sm := ss.setuppedMedias[medi]
-	return sm.writePacketRTCP(byts)
+
+	ok := ss.writer.push(func() error {
+		return sm.writePacketRTCPInQueue(byts)
+	})
+	if !ok {
+		return liberrors.ErrServerWriteQueueFull{}
+	}
+
+	return nil
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.

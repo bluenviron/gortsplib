@@ -8,7 +8,6 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
@@ -23,9 +22,6 @@ type serverSessionMedia struct {
 	udpRTPWriteAddr        *net.UDPAddr
 	udpRTCPReadPort        int
 	udpRTCPWriteAddr       *net.UDPAddr
-	tcpRTPFrame            *base.InterleavedFrame
-	tcpRTCPFrame           *base.InterleavedFrame
-	tcpBuffer              []byte
 	formats                map[uint8]*serverSessionFormat // record only
 	writePacketRTPInQueue  func([]byte) error
 	writePacketRTCPInQueue func([]byte) error
@@ -64,8 +60,11 @@ func (sm *serverSessionMedia) start() {
 				sm.ss.s.udpRTCPListener.addClient(sm.ss.author.ip(), sm.udpRTCPReadPort, sm.readRTCPUDPPlay)
 			} else {
 				// open the firewall by sending empty packets to the counterpart.
-				sm.ss.WritePacketRTP(sm.media, &rtp.Packet{Header: rtp.Header{Version: 2}}) //nolint:errcheck
-				sm.ss.WritePacketRTCP(sm.media, &rtcp.ReceiverReport{})                     //nolint:errcheck
+				byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
+				sm.ss.s.udpRTPListener.write(byts, sm.udpRTPWriteAddr) //nolint:errcheck
+
+				byts, _ = (&rtcp.ReceiverReport{}).Marshal()
+				sm.ss.s.udpRTCPListener.write(byts, sm.udpRTCPWriteAddr) //nolint:errcheck
 
 				sm.ss.s.udpRTPListener.addClient(sm.ss.author.ip(), sm.udpRTPReadPort, sm.readRTPUDPRecord)
 				sm.ss.s.udpRTCPListener.addClient(sm.ss.author.ip(), sm.udpRTCPReadPort, sm.readRTCPUDPRecord)
@@ -87,10 +86,6 @@ func (sm *serverSessionMedia) start() {
 			sm.ss.tcpCallbackByChannel[sm.tcpChannel] = sm.readRTPTCPRecord
 			sm.ss.tcpCallbackByChannel[sm.tcpChannel+1] = sm.readRTCPTCPRecord
 		}
-
-		sm.tcpRTPFrame = &base.InterleavedFrame{Channel: sm.tcpChannel}
-		sm.tcpRTCPFrame = &base.InterleavedFrame{Channel: sm.tcpChannel + 1}
-		sm.tcpBuffer = make([]byte, sm.ss.s.MaxPacketSize+4)
 	}
 }
 
@@ -127,38 +122,18 @@ func (sm *serverSessionMedia) writePacketRTCPInQueueUDP(payload []byte) error {
 
 func (sm *serverSessionMedia) writePacketRTPInQueueTCP(payload []byte) error {
 	atomic.AddUint64(sm.ss.bytesSent, uint64(len(payload)))
-	sm.tcpRTPFrame.Payload = payload
+	sm.ss.tcpFrame.Channel = sm.tcpChannel
+	sm.ss.tcpFrame.Payload = payload
 	sm.ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(sm.ss.s.WriteTimeout))
-	return sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.tcpRTPFrame, sm.tcpBuffer)
+	return sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.ss.tcpFrame, sm.ss.tcpBuffer)
 }
 
 func (sm *serverSessionMedia) writePacketRTCPInQueueTCP(payload []byte) error {
 	atomic.AddUint64(sm.ss.bytesSent, uint64(len(payload)))
-	sm.tcpRTCPFrame.Payload = payload
+	sm.ss.tcpFrame.Channel = sm.tcpChannel + 1
+	sm.ss.tcpFrame.Payload = payload
 	sm.ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(sm.ss.s.WriteTimeout))
-	return sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.tcpRTCPFrame, sm.tcpBuffer)
-}
-
-func (sm *serverSessionMedia) writePacketRTP(payload []byte) error {
-	ok := sm.ss.writer.push(func() error {
-		return sm.writePacketRTPInQueue(payload)
-	})
-	if !ok {
-		return liberrors.ErrServerWriteQueueFull{}
-	}
-
-	return nil
-}
-
-func (sm *serverSessionMedia) writePacketRTCP(payload []byte) error {
-	ok := sm.ss.writer.push(func() error {
-		return sm.writePacketRTCPInQueue(payload)
-	})
-	if !ok {
-		return liberrors.ErrServerWriteQueueFull{}
-	}
-
-	return nil
+	return sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.ss.tcpFrame, sm.ss.tcpBuffer)
 }
 
 func (sm *serverSessionMedia) readRTCPUDPPlay(payload []byte) bool {
