@@ -425,7 +425,10 @@ func (ss *ServerSession) Stats() *StatsSession {
 					}
 				}
 			}
-			return v / n
+			if n != 0 {
+				return v / n
+			}
+			return 0
 		}(),
 		RTCPPacketsReceived: func() uint64 {
 			v := uint64(0)
