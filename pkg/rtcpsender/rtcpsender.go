@@ -39,15 +39,25 @@ func (rs *RTCPSender) Close() {
 
 // ProcessPacket extracts data from RTP packets.
 func (rs *RTCPSender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS bool) {
-	(*rtcpsender.RTCPSender)(rs).ProcessPacket(pkt, ntp, ptsEqualsDTS)
+	(*rtcpsender.RTCPSender)(rs).ProcessPacketRTP(pkt, ntp, ptsEqualsDTS)
 }
 
 // SenderSSRC returns the SSRC of outgoing RTP packets.
 func (rs *RTCPSender) SenderSSRC() (uint32, bool) {
-	return (*rtcpsender.RTCPSender)(rs).SenderSSRC()
+	stats := (*rtcpsender.RTCPSender)(rs).Stats()
+	if stats == nil {
+		return 0, false
+	}
+
+	return stats.LocalSSRC, true
 }
 
 // LastPacketData returns metadata of the last RTP packet.
 func (rs *RTCPSender) LastPacketData() (uint16, uint32, time.Time, bool) {
-	return (*rtcpsender.RTCPSender)(rs).LastPacketData()
+	stats := (*rtcpsender.RTCPSender)(rs).Stats()
+	if stats == nil {
+		return 0, 0, time.Time{}, false
+	}
+
+	return stats.LastSequenceNumber, stats.LastRTP, stats.LastNTP, true
 }

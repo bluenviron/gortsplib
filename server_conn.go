@@ -101,11 +101,15 @@ func (sc *ServerConn) NetConn() net.Conn {
 }
 
 // BytesReceived returns the number of read bytes.
+//
+// Deprecated: replaced by Stats()
 func (sc *ServerConn) BytesReceived() uint64 {
 	return sc.bc.BytesReceived()
 }
 
 // BytesSent returns the number of written bytes.
+//
+// Deprecated: replaced by Stats()
 func (sc *ServerConn) BytesSent() uint64 {
 	return sc.bc.BytesSent()
 }
@@ -118,6 +122,14 @@ func (sc *ServerConn) SetUserData(v interface{}) {
 // UserData returns some user data associated with the connection.
 func (sc *ServerConn) UserData() interface{} {
 	return sc.userData
+}
+
+// Stats returns connection statistics.
+func (sc *ServerConn) Stats() *StatsConn {
+	return &StatsConn{
+		BytesReceived: sc.bc.BytesReceived(),
+		BytesSent:     sc.bc.BytesSent(),
+	}
 }
 
 func (sc *ServerConn) ip() net.IP {

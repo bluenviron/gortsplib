@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"errors"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
@@ -131,8 +130,6 @@ func (cr *serverConnReader) readFuncTCP() error {
 			return liberrors.ErrServerUnexpectedResponse{}
 
 		case *base.InterleavedFrame:
-			atomic.AddUint64(cr.sc.session.bytesReceived, uint64(len(what.Payload)))
-
 			if cb, ok := cr.sc.session.tcpCallbackByChannel[what.Channel]; ok {
 				cb(what.Payload)
 			}

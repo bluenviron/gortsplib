@@ -15,10 +15,13 @@ type serverStreamFormat struct {
 	sm     *serverStreamMedia
 	format format.Format
 
-	rtcpSender *rtcpsender.RTCPSender
+	rtcpSender     *rtcpsender.RTCPSender
+	rtpPacketsSent *uint64
 }
 
 func (sf *serverStreamFormat) initialize() {
+	sf.rtpPacketsSent = new(uint64)
+
 	sf.rtcpSender = &rtcpsender.RTCPSender{
 		ClockRate: sf.format.ClockRate(),
 		Period:    sf.sm.st.s.senderReportPeriod,
@@ -33,19 +36,21 @@ func (sf *serverStreamFormat) initialize() {
 }
 
 func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
-	sf.rtcpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
+	sf.rtcpSender.ProcessPacketRTP(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
 
 	le := uint64(len(byts))
 
 	// send unicast
 	for r := range sf.sm.st.activeUnicastReaders {
 		if _, ok := r.setuppedMedias[sf.sm.media]; ok {
-			err := r.writePacketRTP(sf.sm.media, byts)
+			err := r.writePacketRTP(sf.sm.media, pkt.PayloadType, byts)
 			if err != nil {
 				r.onStreamWriteError(err)
-			} else {
-				atomic.AddUint64(sf.sm.st.bytesSent, le)
+				continue
 			}
+
+			atomic.AddUint64(sf.sm.bytesSent, le)
+			atomic.AddUint64(sf.rtpPacketsSent, 1)
 		}
 	}
 
@@ -55,7 +60,9 @@ func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp t
 		if err != nil {
 			return err
 		}
-		atomic.AddUint64(sf.sm.st.bytesSent, le)
+
+		atomic.AddUint64(sf.sm.bytesSent, le)
+		atomic.AddUint64(sf.rtpPacketsSent, 1)
 	}
 
 	return nil

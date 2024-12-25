@@ -26,11 +26,11 @@ type RTCPSender struct {
 	mutex sync.RWMutex
 
 	// data from RTP packets
-	initialized        bool
+	firstRTPPacketSent bool
 	lastTimeRTP        uint32
 	lastTimeNTP        time.Time
 	lastTimeSystem     time.Time
-	senderSSRC         uint32
+	localSSRC          uint32
 	lastSequenceNumber uint16
 	packetCount        uint32
 	octetCount         uint32
@@ -81,7 +81,7 @@ func (rs *RTCPSender) report() rtcp.Packet {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
-	if !rs.initialized {
+	if !rs.firstRTPPacketSent {
 		return nil
 	}
 
@@ -90,7 +90,7 @@ func (rs *RTCPSender) report() rtcp.Packet {
 	rtpTime := rs.lastTimeRTP + uint32(systemTimeDiff.Seconds()*float64(rs.ClockRate))
 
 	return &rtcp.SenderReport{
-		SSRC:        rs.senderSSRC,
+		SSRC:        rs.localSSRC,
 		NTPTime:     ntpTimeGoToRTCP(ntpTime),
 		RTPTime:     rtpTime,
 		PacketCount: rs.packetCount,
@@ -98,17 +98,17 @@ func (rs *RTCPSender) report() rtcp.Packet {
 	}
 }
 
-// ProcessPacket extracts data from RTP packets.
-func (rs *RTCPSender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS bool) {
+// ProcessPacketRTP extracts data from RTP packets.
+func (rs *RTCPSender) ProcessPacketRTP(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS bool) {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
 	if ptsEqualsDTS {
-		rs.initialized = true
+		rs.firstRTPPacketSent = true
 		rs.lastTimeRTP = pkt.Timestamp
 		rs.lastTimeNTP = ntp
 		rs.lastTimeSystem = rs.TimeNow()
-		rs.senderSSRC = pkt.SSRC
+		rs.localSSRC = pkt.SSRC
 	}
 
 	rs.lastSequenceNumber = pkt.SequenceNumber
@@ -117,16 +117,27 @@ func (rs *RTCPSender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS
 	rs.octetCount += uint32(len(pkt.Payload))
 }
 
-// SenderSSRC returns the SSRC of outgoing RTP packets.
-func (rs *RTCPSender) SenderSSRC() (uint32, bool) {
-	rs.mutex.RLock()
-	defer rs.mutex.RUnlock()
-	return rs.senderSSRC, rs.initialized
+// Stats are statistics.
+type Stats struct {
+	LocalSSRC          uint32
+	LastSequenceNumber uint16
+	LastRTP            uint32
+	LastNTP            time.Time
 }
 
-// LastPacketData returns metadata of the last RTP packet.
-func (rs *RTCPSender) LastPacketData() (uint16, uint32, time.Time, bool) {
+// Stats returns statistics.
+func (rs *RTCPSender) Stats() *Stats {
 	rs.mutex.RLock()
 	defer rs.mutex.RUnlock()
-	return rs.lastSequenceNumber, rs.lastTimeRTP, rs.lastTimeNTP, rs.initialized
+
+	if !rs.firstRTPPacketSent {
+		return nil
+	}
+
+	return &Stats{
+		LocalSSRC:          rs.localSSRC,
+		LastSequenceNumber: rs.lastSequenceNumber,
+		LastRTP:            rs.lastTimeRTP,
+		LastNTP:            rs.lastTimeNTP,
+	}
 }
