@@ -8,7 +8,12 @@ import (
 
 // MPEG1Audio is the RTP format for a MPEG-1/2 Audio codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
-type MPEG1Audio struct{}
+type MPEG1Audio struct {
+	// in Go, empty structs share the same pointer,
+	// therefore they cannot be used as map keys
+	// or in equality operations. Prevent this.
+	unused int //nolint:unused
+}
 
 func (f *MPEG1Audio) unmarshal(_ *unmarshalContext) error {
 	return nil

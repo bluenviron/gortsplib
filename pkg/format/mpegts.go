@@ -6,7 +6,12 @@ import (
 
 // MPEGTS is the RTP format for MPEG-TS.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
-type MPEGTS struct{}
+type MPEGTS struct {
+	// in Go, empty structs share the same pointer,
+	// therefore they cannot be used as map keys
+	// or in equality operations. Prevent this.
+	unused int //nolint:unused
+}
 
 func (f *MPEGTS) unmarshal(_ *unmarshalContext) error {
 	return nil

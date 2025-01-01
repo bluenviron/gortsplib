@@ -8,7 +8,12 @@ import (
 
 // G722 is the RTP format for the G722 codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc3551
-type G722 struct{}
+type G722 struct {
+	// in Go, empty structs share the same pointer,
+	// therefore they cannot be used as map keys
+	// or in equality operations. Prevent this.
+	unused int //nolint:unused
+}
 
 func (f *G722) unmarshal(_ *unmarshalContext) error {
 	return nil

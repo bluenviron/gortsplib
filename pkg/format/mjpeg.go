@@ -8,7 +8,12 @@ import (
 
 // MJPEG is the RTP format for the Motion-JPEG codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2435
-type MJPEG struct{}
+type MJPEG struct {
+	// in Go, empty structs share the same pointer,
+	// therefore they cannot be used as map keys
+	// or in equality operations. Prevent this.
+	unused int //nolint:unused
+}
 
 func (f *MJPEG) unmarshal(_ *unmarshalContext) error {
 	return nil

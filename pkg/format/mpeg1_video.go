@@ -8,7 +8,12 @@ import (
 
 // MPEG1Video is the RTP format for a MPEG-1/2 Video codec.
 // Specification: https://datatracker.ietf.org/doc/html/rfc2250
-type MPEG1Video struct{}
+type MPEG1Video struct {
+	// in Go, empty structs share the same pointer,
+	// therefore they cannot be used as map keys
+	// or in equality operations. Prevent this.
+	unused int //nolint:unused
+}
 
 func (f *MPEG1Video) unmarshal(_ *unmarshalContext) error {
 	return nil
