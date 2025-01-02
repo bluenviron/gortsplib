@@ -112,8 +112,9 @@ func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 			needed := obuLen + 2
 
 			if needed <= avail {
-				buf := make([]byte, av1.LEB128MarshalSize(uint(obuLen)))
-				av1.LEB128MarshalTo(uint(obuLen), buf)
+				obuLenLEB := av1.LEB128(obuLen)
+				buf := make([]byte, obuLenLEB.MarshalSize())
+				obuLenLEB.MarshalTo(buf)
 				curPacket.Payload = append(curPacket.Payload, buf...)
 				curPacket.Payload = append(curPacket.Payload, obu...)
 				curPayloadLen += len(buf) + obuLen
@@ -122,8 +123,9 @@ func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 
 			if avail > 2 {
 				fragmentLen := avail - 2
-				buf := make([]byte, av1.LEB128MarshalSize(uint(fragmentLen)))
-				av1.LEB128MarshalTo(uint(fragmentLen), buf)
+				fragmentLenLEB := av1.LEB128(fragmentLen)
+				buf := make([]byte, fragmentLenLEB.MarshalSize())
+				fragmentLenLEB.MarshalTo(buf)
 				curPacket.Payload = append(curPacket.Payload, buf...)
 				curPacket.Payload = append(curPacket.Payload, obu[:fragmentLen]...)
 				obu = obu[fragmentLen:]
