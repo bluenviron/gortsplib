@@ -911,8 +911,6 @@ func (c *Client) stopTransportRoutines() {
 	}
 
 	c.timeDecoder = nil
-
-	c.writer = nil
 }
 
 func (c *Client) connOpen() error {
