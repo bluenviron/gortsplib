@@ -124,11 +124,67 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 
 	rtpMap := getFormatAttribute(md.Attributes, payloadType, "rtpmap")
 	fmtp := decodeFMTP(getFormatAttribute(md.Attributes, payloadType, "fmtp"))
-
 	codec, clock := getCodecAndClock(rtpMap)
 
 	format := func() Format {
 		switch {
+		/*
+		* dynamic payload types
+		**/
+
+		// video
+
+		case codec == "av1" && clock == "90000" && payloadType >= 96 && payloadType <= 127:
+			return &AV1{}
+
+		case codec == "vp9" && clock == "90000" && payloadType >= 96 && payloadType <= 127:
+			return &VP9{}
+
+		case codec == "vp8" && clock == "90000" && payloadType >= 96 && payloadType <= 127:
+			return &VP8{}
+
+		case codec == "h265" && clock == "90000" && payloadType >= 96 && payloadType <= 127:
+			return &H265{}
+
+		case codec == "h264" && clock == "90000" && ((payloadType >= 96 && payloadType <= 127) || payloadType == 35):
+			return &H264{}
+
+		case codec == "mp4v-es" && clock == "90000" && payloadType >= 96 && payloadType <= 127:
+			return &MPEG4Video{}
+
+		// audio
+
+		case codec == "opus", codec == "multiopus" && payloadType >= 96 && payloadType <= 127:
+			return &Opus{}
+
+		case codec == "vorbis" && payloadType >= 96 && payloadType <= 127:
+			return &Vorbis{}
+
+		case (codec == "mpeg4-generic" || codec == "mp4a-latm") && payloadType >= 96 && payloadType <= 127:
+			return &MPEG4Audio{}
+
+		case codec == "ac3" && payloadType >= 96 && payloadType <= 127:
+			return &AC3{}
+
+		case codec == "speex" && payloadType >= 96 && payloadType <= 127:
+			return &Speex{}
+
+		case (codec == "g726-16" ||
+			codec == "g726-24" ||
+			codec == "g726-32" ||
+			codec == "g726-40" ||
+			codec == "aal2-g726-16" ||
+			codec == "aal2-g726-24" ||
+			codec == "aal2-g726-32" ||
+			codec == "aal2-g726-40") && clock == "8000" && payloadType >= 96 && payloadType <= 127:
+			return &G726{}
+
+		case codec == "pcma", codec == "pcmu" && payloadType >= 96 && payloadType <= 127:
+			return &G711{}
+
+		case codec == "l8", codec == "l16", codec == "l24" && payloadType >= 96 && payloadType <= 127:
+			return &LPCM{}
+
 		/*
 		* static payload types
 		**/
@@ -144,9 +200,6 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 		case payloadType == 33:
 			return &MPEGTS{}
 
-		case payloadType == 35 && codec == "h264" && clock == "90000": // Bosch cameras
-			return &H264{}
-
 		// audio
 
 		case payloadType == 14:
@@ -160,66 +213,6 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 
 		case payloadType == 10, payloadType == 11:
 			return &LPCM{}
-
-		/*
-		* dynamic payload types
-		**/
-
-		case payloadType >= 96 && payloadType <= 127:
-			switch {
-			// video
-
-			case codec == "av1" && clock == "90000":
-				return &AV1{}
-
-			case codec == "vp9" && clock == "90000":
-				return &VP9{}
-
-			case codec == "vp8" && clock == "90000":
-				return &VP8{}
-
-			case codec == "h265" && clock == "90000":
-				return &H265{}
-
-			case codec == "h264" && clock == "90000":
-				return &H264{}
-
-			case codec == "mp4v-es" && clock == "90000":
-				return &MPEG4Video{}
-
-			// audio
-
-			case codec == "opus", codec == "multiopus":
-				return &Opus{}
-
-			case codec == "vorbis":
-				return &Vorbis{}
-
-			case codec == "mpeg4-generic", codec == "mp4a-latm":
-				return &MPEG4Audio{}
-
-			case codec == "ac3":
-				return &AC3{}
-
-			case codec == "speex":
-				return &Speex{}
-
-			case (codec == "g726-16" ||
-				codec == "g726-24" ||
-				codec == "g726-32" ||
-				codec == "g726-40" ||
-				codec == "aal2-g726-16" ||
-				codec == "aal2-g726-24" ||
-				codec == "aal2-g726-32" ||
-				codec == "aal2-g726-40") && clock == "8000":
-				return &G726{}
-
-			case codec == "pcma", codec == "pcmu":
-				return &G711{}
-
-			case codec == "l8", codec == "l16", codec == "l24":
-				return &LPCM{}
-			}
 		}
 
 		return &Generic{}
