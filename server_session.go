@@ -1139,7 +1139,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		if res.StatusCode != base.StatusOK {
 			if ss.state != ServerSessionStatePlay {
-				ss.writer.buffer = nil
+				ss.writer = nil
 			}
 			return res, err
 		}
@@ -1238,7 +1238,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		})
 
 		if res.StatusCode != base.StatusOK {
-			ss.writer.buffer = nil
+			ss.writer = nil
 			return res, err
 		}
 
