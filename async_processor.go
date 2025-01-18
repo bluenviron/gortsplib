@@ -10,10 +10,11 @@ import (
 type asyncProcessor struct {
 	bufferSize int
 
-	running bool
-	buffer  *ringbuffer.RingBuffer
+	running   bool
+	buffer    *ringbuffer.RingBuffer
+	stopError error
 
-	chError chan error
+	stopped chan struct{}
 }
 
 func (w *asyncProcessor) initialize() {
@@ -22,22 +23,21 @@ func (w *asyncProcessor) initialize() {
 
 func (w *asyncProcessor) start() {
 	w.running = true
-	w.chError = make(chan error)
+	w.stopped = make(chan struct{})
 	go w.run()
 }
 
 func (w *asyncProcessor) stop() {
 	if w.running {
 		w.buffer.Close()
-		<-w.chError
+		<-w.stopped
 		w.running = false
 	}
 }
 
 func (w *asyncProcessor) run() {
-	err := w.runInner()
-	w.chError <- err
-	close(w.chError)
+	w.stopError = w.runInner()
+	close(w.stopped)
 }
 
 func (w *asyncProcessor) runInner() error {

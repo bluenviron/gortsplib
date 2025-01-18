@@ -1961,8 +1961,8 @@ func TestClientPlayPause(t *testing.T) {
 				})
 				require.NoError(t, err2)
 
-				req, err = conn.ReadRequest()
-				require.NoError(t, err)
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
 				require.Equal(t, base.Play, req.Method)
 
 				err2 = conn.WriteResponse(&base.Response{
