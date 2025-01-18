@@ -559,9 +559,9 @@ func (c *Client) runInner() error {
 			return nil
 		}()
 
-		chWriterError := func() chan error {
-			if c.writer != nil {
-				return c.writer.chError
+		chWriterError := func() chan struct{} {
+			if c.writer != nil && c.writer.running {
+				return c.writer.stopped
 			}
 			return nil
 		}()
@@ -637,8 +637,8 @@ func (c *Client) runInner() error {
 			}
 			c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
 
-		case err := <-chWriterError:
-			return err
+		case <-chWriterError:
+			return c.writer.stopError
 
 		case err := <-chReaderError:
 			c.reader = nil

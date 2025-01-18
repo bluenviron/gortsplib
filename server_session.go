@@ -626,9 +626,9 @@ func (ss *ServerSession) run() {
 
 func (ss *ServerSession) runInner() error {
 	for {
-		chWriterError := func() chan error {
-			if ss.writer != nil {
-				return ss.writer.chError
+		chWriterError := func() chan struct{} {
+			if ss.writer != nil && ss.writer.running {
+				return ss.writer.stopped
 			}
 			return nil
 		}()
@@ -729,8 +729,8 @@ func (ss *ServerSession) runInner() error {
 
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 
-		case err := <-chWriterError:
-			return err
+		case <-chWriterError:
+			return ss.writer.stopError
 
 		case <-ss.ctx.Done():
 			return liberrors.ErrServerTerminated{}
@@ -1306,7 +1306,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 
 			ss.writer.stop()
-			ss.writer = nil
 
 			ss.timeDecoder = nil
 
