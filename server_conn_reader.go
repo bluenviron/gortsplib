@@ -103,7 +103,7 @@ func (cr *serverConnReader) readFuncTCP() error {
 	// reset deadline
 	cr.sc.nconn.SetReadDeadline(time.Time{})
 
-	cr.sc.session.startWriter()
+	cr.sc.session.asyncStartWriter()
 
 	for {
 		if cr.sc.session.state == ServerSessionStateRecord {

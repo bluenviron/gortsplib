@@ -1813,7 +1813,7 @@ func TestClientPlayRedirect(t *testing.T) {
 	}
 }
 
-func TestClientPlayPause(t *testing.T) {
+func TestClientPlayPausePlay(t *testing.T) {
 	writeFrames := func(inTH *headers.Transport, conn *conn.Conn) (chan struct{}, chan struct{}) {
 		writerTerminate := make(chan struct{})
 		writerDone := make(chan struct{})

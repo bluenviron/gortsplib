@@ -59,7 +59,7 @@ func (cm *clientMedia) close() {
 	}
 }
 
-func (cm *clientMedia) allocateUDPListeners(
+func (cm *clientMedia) createUDPListeners(
 	multicastEnable bool,
 	multicastSourceIP net.IP,
 	rtpAddress string,
@@ -94,7 +94,7 @@ func (cm *clientMedia) allocateUDPListeners(
 	}
 
 	var err error
-	cm.udpRTPListener, cm.udpRTCPListener, err = allocateUDPListenerPair(cm.c)
+	cm.udpRTPListener, cm.udpRTCPListener, err = createUDPListenerPair(cm.c)
 	return err
 }
 
