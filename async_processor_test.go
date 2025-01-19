@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAsyncProcessorStopAfterError(t *testing.T) {
+func TestAsyncProcessorCloseAfterError(t *testing.T) {
 	p := &asyncProcessor{bufferSize: 8}
 	p.initialize()
 
@@ -17,8 +17,8 @@ func TestAsyncProcessorStopAfterError(t *testing.T) {
 
 	p.start()
 
-	<-p.stopped
+	<-p.chStopped
 	require.EqualError(t, p.stopError, "ok")
 
-	p.stop()
+	p.close()
 }

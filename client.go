@@ -13,6 +13,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -340,6 +341,7 @@ type Client struct {
 	keepaliveTimer       *time.Timer
 	closeError           error
 	writer               *asyncProcessor
+	writerMutex          sync.RWMutex
 	reader               *clientReader
 	timeDecoder          *rtptime.GlobalDecoder2
 	mustClose            bool
@@ -560,8 +562,8 @@ func (c *Client) runInner() error {
 		}()
 
 		chWriterError := func() chan struct{} {
-			if c.writer != nil && c.writer.running {
-				return c.writer.stopped
+			if c.writer != nil {
+				return c.writer.chStopped
 			}
 			return nil
 		}()
@@ -721,7 +723,7 @@ func (c *Client) handleServerRequest(req *base.Request) error {
 
 func (c *Client) doClose() {
 	if c.state == clientStatePlay || c.state == clientStateRecord {
-		c.writer.stop()
+		c.destroyWriter()
 		c.stopTransportRoutines()
 	}
 
@@ -848,22 +850,6 @@ func (c *Client) trySwitchingProtocol2(medi *description.Media, baseURL *base.UR
 }
 
 func (c *Client) startTransportRoutines() {
-	// allocate writer here because it's needed by RTCP receiver / sender
-	if c.state == clientStateRecord || c.backChannelSetupped {
-		c.writer = &asyncProcessor{
-			bufferSize: c.WriteQueueSize,
-		}
-		c.writer.initialize()
-	} else {
-		// when reading, buffer is only used to send RTCP receiver reports,
-		// that are much smaller than RTP packets and are sent at a fixed interval.
-		// decrease RAM consumption by allocating less buffers.
-		c.writer = &asyncProcessor{
-			bufferSize: 8,
-		}
-		c.writer.initialize()
-	}
-
 	c.timeDecoder = rtptime.NewGlobalDecoder2()
 
 	for _, cm := range c.setuppedMedias {
@@ -911,6 +897,39 @@ func (c *Client) stopTransportRoutines() {
 	}
 
 	c.timeDecoder = nil
+}
+
+func (c *Client) createWriter() {
+	c.writerMutex.Lock()
+
+	c.writer = &asyncProcessor{
+		bufferSize: func() int {
+			if c.state == clientStateRecord || c.backChannelSetupped {
+				return c.WriteQueueSize
+			}
+
+			// when reading, buffer is only used to send RTCP receiver reports,
+			// that are much smaller than RTP packets and are sent at a fixed interval.
+			// decrease RAM consumption by allocating less buffers.
+			return 8
+		}(),
+	}
+
+	c.writer.initialize()
+
+	c.writerMutex.Unlock()
+}
+
+func (c *Client) startWriter() {
+	c.writer.start()
+}
+
+func (c *Client) destroyWriter() {
+	c.writer.close()
+
+	c.writerMutex.Lock()
+	c.writer = nil
+	c.writerMutex.Unlock()
 }
 
 func (c *Client) connOpen() error {
@@ -1389,7 +1408,7 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientUDPPortsNotConsecutive{}
 		}
 
-		err = cm.allocateUDPListeners(
+		err = cm.createUDPListeners(
 			false,
 			nil,
 			net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
@@ -1544,7 +1563,7 @@ func (c *Client) doSetup(
 			readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 
-		err = cm.allocateUDPListeners(
+		err = cm.createUDPListeners(
 			true,
 			readIP,
 			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[0]), 10)),
@@ -1680,6 +1699,7 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 
 	c.state = clientStatePlay
 	c.startTransportRoutines()
+	c.createWriter()
 
 	// Range is mandatory in Parrot Streaming Server
 	if ra == nil {
@@ -1704,12 +1724,14 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 		Header: header,
 	}, false)
 	if err != nil {
+		c.destroyWriter()
 		c.stopTransportRoutines()
 		c.state = clientStatePrePlay
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
+		c.destroyWriter()
 		c.stopTransportRoutines()
 		c.state = clientStatePrePlay
 		return nil, liberrors.ErrClientBadStatusCode{
@@ -1731,7 +1753,8 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 		}
 	}
 
-	c.writer.start()
+	c.startWriter()
+
 	c.lastRange = ra
 
 	return res, nil
@@ -1761,18 +1784,21 @@ func (c *Client) doRecord() (*base.Response, error) {
 
 	c.state = clientStateRecord
 	c.startTransportRoutines()
+	c.createWriter()
 
 	res, err := c.do(&base.Request{
 		Method: base.Record,
 		URL:    c.baseURL,
 	}, false)
 	if err != nil {
+		c.destroyWriter()
 		c.stopTransportRoutines()
 		c.state = clientStatePreRecord
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
+		c.destroyWriter()
 		c.stopTransportRoutines()
 		c.state = clientStatePreRecord
 		return nil, liberrors.ErrClientBadStatusCode{
@@ -1780,7 +1806,7 @@ func (c *Client) doRecord() (*base.Response, error) {
 		}
 	}
 
-	c.writer.start()
+	c.startWriter()
 
 	return nil, nil
 }
@@ -1808,19 +1834,21 @@ func (c *Client) doPause() (*base.Response, error) {
 		return nil, err
 	}
 
-	c.writer.stop()
+	c.destroyWriter()
 
 	res, err := c.do(&base.Request{
 		Method: base.Pause,
 		URL:    c.baseURL,
 	}, false)
 	if err != nil {
-		c.writer.start()
+		c.createWriter()
+		c.startWriter()
 		return nil, err
 	}
 
 	if res.StatusCode != base.StatusOK {
-		c.writer.start()
+		c.createWriter()
+		c.startWriter()
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
 		}
@@ -1918,6 +1946,13 @@ func (c *Client) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet,
 	default:
 	}
 
+	c.writerMutex.RLock()
+	defer c.writerMutex.RUnlock()
+
+	if c.writer == nil {
+		return nil
+	}
+
 	cm := c.setuppedMedias[medi]
 	cf := cm.formats[pkt.PayloadType]
 
@@ -1944,6 +1979,13 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 	case <-c.done:
 		return c.closeError
 	default:
+	}
+
+	c.writerMutex.RLock()
+	defer c.writerMutex.RUnlock()
+
+	if c.writer == nil {
+		return nil
 	}
 
 	cm := c.setuppedMedias[medi]

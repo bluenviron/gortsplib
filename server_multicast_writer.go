@@ -22,7 +22,7 @@ func (h *serverMulticastWriter) initialize() error {
 		return err
 	}
 
-	rtpl, rtcpl, err := allocateUDPListenerMulticastPair(
+	rtpl, rtcpl, err := createUDPListenerMulticastPair(
 		h.s.ListenPacket,
 		h.s.WriteTimeout,
 		h.s.MulticastRTPPort,
@@ -60,7 +60,7 @@ func (h *serverMulticastWriter) initialize() error {
 func (h *serverMulticastWriter) close() {
 	h.rtpl.close()
 	h.rtcpl.close()
-	h.writer.stop()
+	h.writer.close()
 }
 
 func (h *serverMulticastWriter) ip() net.IP {

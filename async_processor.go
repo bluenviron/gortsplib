@@ -14,30 +14,29 @@ type asyncProcessor struct {
 	buffer    *ringbuffer.RingBuffer
 	stopError error
 
-	stopped chan struct{}
+	chStopped chan struct{}
 }
 
 func (w *asyncProcessor) initialize() {
 	w.buffer, _ = ringbuffer.New(uint64(w.bufferSize))
 }
 
-func (w *asyncProcessor) start() {
-	w.running = true
-	w.stopped = make(chan struct{})
-	go w.run()
-}
-
-func (w *asyncProcessor) stop() {
+func (w *asyncProcessor) close() {
 	if w.running {
 		w.buffer.Close()
-		<-w.stopped
-		w.running = false
+		<-w.chStopped
 	}
+}
+
+func (w *asyncProcessor) start() {
+	w.running = true
+	w.chStopped = make(chan struct{})
+	go w.run()
 }
 
 func (w *asyncProcessor) run() {
 	w.stopError = w.runInner()
-	close(w.stopped)
+	close(w.chStopped)
 }
 
 func (w *asyncProcessor) runInner() error {
