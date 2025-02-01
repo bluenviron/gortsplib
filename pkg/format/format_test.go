@@ -1194,6 +1194,46 @@ var casesFormat = []struct {
 		"TP-LINK/90000",
 		nil,
 	},
+	{
+		"audio aac from AVOIP (issue mediamtx/4183)",
+		"v=0\r\n" +
+			"o=- 1634883673031268 1 IN IP4 127.0.0.1\r\n" +
+			"s=H265 Video, streamed by the LIVE555 Media Server\r\n" +
+			"i=test.265\r\n" +
+			"t=0 0\r\n" +
+			"a=tool:LIVE555 Streaming Media v2016.10.11\r\n" +
+			"a=type:broadcast\r\n" +
+			"a=control:*\r\n" +
+			"a=range:npt=0-\r\n" +
+			"a=x-qt-text-nam:H.265 Video, streamed by the LIVE555 Media Server\r\n" +
+			"a=x-qt-text-inf:test.265\r\n" +
+			"m=audio 0 RTP/AVP 100\r\n" +
+			"a=rtpmap:100 mpeg4-generic/48000/2\r\n" +
+			"a=fmtp:100 streamtype=5; sizeLength=13; indexLength=3; indexDeltaLength=3; mode=AAC_hbr; config=1190\r\n" +
+			"a=control:track1\r\n",
+		&MPEG4Audio{
+			PayloadTyp: 100,
+			Config: &mpeg4audio.AudioSpecificConfig{
+				Type:         2,
+				SampleRate:   48000,
+				ChannelCount: 2,
+			},
+			SizeLength:       13,
+			IndexLength:      3,
+			IndexDeltaLength: 3,
+		},
+		100,
+		"mpeg4-generic/48000/2",
+		map[string]string{
+			"config":           "1190",
+			"indexdeltalength": "3",
+			"indexlength":      "3",
+			"mode":             "AAC-hbr",
+			"profile-level-id": "1",
+			"sizelength":       "13",
+			"streamtype":       "5",
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
