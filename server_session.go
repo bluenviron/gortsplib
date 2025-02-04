@@ -1475,6 +1475,11 @@ func (ss *ServerSession) writePacketRTP(medi *description.Media, payloadType uin
 	}
 
 	ok := ss.writer.push(func() error {
+		ss.writerMutex.RLock()
+		defer ss.writerMutex.RUnlock()
+		if ss.writer == nil {
+			return nil
+		}
 		return sf.writePacketRTPInQueue(byts)
 	})
 	if !ok {
