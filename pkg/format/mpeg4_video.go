@@ -17,6 +17,7 @@ import (
 // Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.1
 type MPEG4Video struct {
 	PayloadTyp     uint8
+	SampleRate     int
 	ProfileLevelID int
 	Config         []byte
 
@@ -61,7 +62,7 @@ func (f *MPEG4Video) Codec() string {
 
 // ClockRate implements Format.
 func (f *MPEG4Video) ClockRate() int {
-	return 90000
+	return f.SampleRate
 }
 
 // PayloadType implements Format.
@@ -71,7 +72,7 @@ func (f *MPEG4Video) PayloadType() uint8 {
 
 // RTPMap implements Format.
 func (f *MPEG4Video) RTPMap() string {
-	return "MP4V-ES/90000"
+	return "MP4V-ES/" + strconv.FormatInt(int64(f.SampleRate), 10)
 }
 
 // FMTP implements Format.
