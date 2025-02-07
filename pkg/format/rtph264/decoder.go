@@ -262,7 +262,9 @@ func (d *Decoder) removeAnnexB(nalus [][]byte) ([][]byte, error) {
 				nalu = append([]byte{0x00, 0x00, 0x00, 0x01}, nalu...)
 			}
 
-			return h264.AnnexBUnmarshal(nalu)
+			var annexb h264.AnnexB
+			err := annexb.Unmarshal(nalu)
+			return annexb, err
 		}
 	}
 
