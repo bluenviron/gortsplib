@@ -603,6 +603,8 @@ func (ss *ServerSession) startWriter() {
 }
 
 func (ss *ServerSession) destroyWriter() {
+	ss.writer.close()
+
 	ss.writerMutex.Lock()
 	ss.writer = nil
 	ss.writerMutex.Unlock()
