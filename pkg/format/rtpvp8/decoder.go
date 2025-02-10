@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/vp8"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/vp8"
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
 )

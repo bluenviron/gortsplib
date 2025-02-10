@@ -3,8 +3,8 @@ package rtpmpeg4audio
 import (
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/mediacommon/pkg/bits"
-	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg4audio"
+	"github.com/bluenviron/mediacommon/v2/pkg/bits"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
 func packetCountGeneric(avail, le int) int {

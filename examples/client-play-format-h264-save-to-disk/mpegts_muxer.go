@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"os"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
-	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
+	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 )
 
 // mpegtsMuxer allows to save a H264 stream into a MPEG-TS file.
@@ -18,7 +18,7 @@ type mpegtsMuxer struct {
 	b            *bufio.Writer
 	w            *mpegts.Writer
 	track        *mpegts.Track
-	dtsExtractor *h264.DTSExtractor2
+	dtsExtractor *h264.DTSExtractor
 }
 
 // initialize initializes a mpegtsMuxer.
@@ -92,7 +92,7 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 		if !idrPresent {
 			return nil
 		}
-		e.dtsExtractor = h264.NewDTSExtractor2()
+		e.dtsExtractor = h264.NewDTSExtractor()
 	}
 
 	dts, err := e.dtsExtractor.Extract(au, pts)
@@ -101,5 +101,5 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 	}
 
 	// encode into MPEG-TS
-	return e.w.WriteH264(e.track, pts, dts, idrPresent, au)
+	return e.w.WriteH264(e.track, pts, dts, au)
 }

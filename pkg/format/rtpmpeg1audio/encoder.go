@@ -3,7 +3,7 @@ package rtpmpeg1audio
 import (
 	"crypto/rand"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg1audio"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg1audio"
 	"github.com/pion/rtp"
 )
 
