@@ -10,7 +10,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
+	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 )
 
 // This example shows how to
@@ -88,7 +88,7 @@ func main() {
 		panic(err)
 	}
 
-	timeDecoder := mpegts.NewTimeDecoder2()
+	timeDecoder := mpegts.NewTimeDecoder()
 	var firstDTS *int64
 	var startTime time.Time
 

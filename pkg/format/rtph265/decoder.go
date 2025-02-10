@@ -6,7 +6,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/h265"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.

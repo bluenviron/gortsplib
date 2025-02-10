@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
+	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 )
 
 func multiplyAndDivide(v, m, d int64) int64 {

@@ -14,7 +14,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
-	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/pion/rtp"
 )
 
@@ -117,7 +117,7 @@ func main() {
 
 		// wait for an I-frame
 		if !iframeReceived {
-			if !h264.IDRPresent(au) {
+			if !h264.IsRandomAccess(au) {
 				log.Printf("waiting for an I-frame")
 				return
 			}

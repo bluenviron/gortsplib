@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/mediacommon/pkg/codecs/h264"
-	"github.com/bluenviron/mediacommon/pkg/formats/mpegts"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
+	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 )
 
 func multiplyAndDivide(v, m, d int64) int64 {
@@ -27,7 +27,7 @@ type mpegtsMuxer struct {
 	w               *mpegts.Writer
 	h264Track       *mpegts.Track
 	mpeg4AudioTrack *mpegts.Track
-	dtsExtractor    *h264.DTSExtractor2
+	dtsExtractor    *h264.DTSExtractor
 	mutex           sync.Mutex
 }
 
@@ -111,7 +111,7 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 		if !idrPresent {
 			return nil
 		}
-		e.dtsExtractor = h264.NewDTSExtractor2()
+		e.dtsExtractor = h264.NewDTSExtractor()
 	}
 
 	dts, err := e.dtsExtractor.Extract(au, pts)
@@ -120,7 +120,7 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 	}
 
 	// encode into MPEG-TS
-	return e.w.WriteH264(e.h264Track, pts, dts, idrPresent, au)
+	return e.w.WriteH264(e.h264Track, pts, dts, au)
 }
 
 // writeMPEG4Audio writes MPEG-4 audio access units into MPEG-TS.

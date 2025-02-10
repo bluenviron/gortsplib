@@ -3,7 +3,7 @@ package rtpav1
 import (
 	"crypto/rand"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/av1"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/av1"
 	"github.com/pion/rtp"
 )
 
@@ -69,7 +69,7 @@ func (e *Encoder) Init() error {
 
 // Encode encodes OBUs into RTP packets.
 func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
-	isKeyFrame, err := av1.ContainsKeyFrame(obus)
+	isKeyFrame, err := av1.IsRandomAccess(obus)
 	if err != nil {
 		return nil, err
 	}

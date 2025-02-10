@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bluenviron/mediacommon/pkg/codecs/mpeg1audio"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg1audio"
 	"github.com/pion/rtp"
 )
 
