@@ -19,7 +19,7 @@ func main() {
 	reader := gortsplib.Client{}
 
 	// parse source URL
-	sourceURL, err := base.ParseURL("rtsp://localhost:8554/mystream")
+	sourceURL, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
@@ -48,7 +48,7 @@ func main() {
 
 	// connect to the server and start recording the same medias
 	publisher := gortsplib.Client{}
-	err = publisher.StartRecording("rtsp://localhost:8554/mystream2", desc)
+	err = publisher.StartRecording("rtsp://myuser:mypass@localhost:8554/mystream2", desc)
 	if err != nil {
 		panic(err)
 	}

@@ -48,7 +48,7 @@ func main() {
 
 	// connect to the server and start recording
 	c := gortsplib.Client{}
-	err = c.StartRecording("rtsp://localhost:8554/mystream", desc)
+	err = c.StartRecording("rtsp://myuser:mypass@localhost:8554/mystream", desc)
 	if err != nil {
 		panic(err)
 	}

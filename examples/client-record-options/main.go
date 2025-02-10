@@ -59,7 +59,7 @@ func main() {
 	}
 
 	// connect to the server and start recording
-	err = c.StartRecording("rtsp://localhost:8554/mystream", desc)
+	err = c.StartRecording("rtsp://myuser:mypass@localhost:8554/mystream", desc)
 	if err != nil {
 		panic(err)
 	}

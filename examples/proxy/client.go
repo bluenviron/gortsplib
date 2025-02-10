@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	existingStream = "rtsp://x.x.x.x:8554/mystream"
+	existingStream = "rtsp://myuser:mypass@x.x.x.x:8554/mystream"
 	reconnectPause = 2 * time.Second
 )
 

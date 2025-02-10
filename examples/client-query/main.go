@@ -14,7 +14,7 @@ import (
 func main() {
 	c := gortsplib.Client{}
 
-	u, err := base.ParseURL("rtsp://localhost:8554/mypath")
+	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/mypath")
 	if err != nil {
 		panic(err)
 	}
