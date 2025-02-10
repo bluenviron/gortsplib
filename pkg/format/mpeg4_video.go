@@ -28,6 +28,11 @@ func (f *MPEG4Video) unmarshal(ctx *unmarshalContext) error {
 	f.PayloadTyp = ctx.payloadType
 	f.ProfileLevelID = 1 // default value imposed by specification
 
+	var err error
+	if f.SampleRate, err = strconv.Atoi(ctx.clock); err != nil {
+		return fmt.Errorf("could not parse clock rate: %v", err)
+	}
+
 	for key, val := range ctx.fmtp {
 		switch key {
 		case "profile-level-id":
