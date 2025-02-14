@@ -287,7 +287,7 @@ func TestClientAuth(t *testing.T) {
 		require.NoError(t, err2)
 		require.Equal(t, base.Describe, req.Method)
 
-		err2 = auth.Validate(req, "myuser", "mypass", nil, "IPCAM", nonce)
+		err2 = auth.Verify(req, "myuser", "mypass", nil, "IPCAM", nonce)
 		require.NoError(t, err2)
 
 		medias := []*description.Media{testH264Media}

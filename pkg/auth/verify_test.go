@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var casesValidate = []struct {
+var casesVerify = []struct {
 	name          string
 	authorization base.HeaderValue
 }{
@@ -50,11 +50,11 @@ var casesValidate = []struct {
 	},
 }
 
-func TestValidate(t *testing.T) {
-	for _, ca := range casesValidate {
+func TestVerify(t *testing.T) {
+	for _, ca := range casesVerify {
 		t.Run(ca.name, func(t *testing.T) {
 			se, err := NewSender(
-				GenerateWWWAuthenticate([]ValidateMethod{ValidateMethodDigestMD5}, "myrealm", "f49ac6dd0ba708d4becddc9692d1f2ce"),
+				GenerateWWWAuthenticate([]VerifyMethod{VerifyMethodDigestMD5}, "myrealm", "f49ac6dd0ba708d4becddc9692d1f2ce"),
 				"myuser",
 				"mypass")
 			require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestValidate(t *testing.T) {
 					"Authorization": ca.authorization,
 				},
 			}
-			err = Validate(
+			err = Verify(
 				req,
 				"myuser",
 				"mypass",
@@ -83,13 +83,13 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-func FuzzValidate(f *testing.F) {
-	for _, ca := range casesValidate {
+func FuzzVerify(f *testing.F) {
+	for _, ca := range casesVerify {
 		f.Add(ca.authorization[0])
 	}
 
 	f.Fuzz(func(_ *testing.T, a string) {
-		Validate( //nolint:errcheck
+		Verify( //nolint:errcheck
 			&base.Request{
 				Method: base.Describe,
 				URL:    nil,
