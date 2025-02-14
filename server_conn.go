@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 	gourl "net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
 	"github.com/bluenviron/gortsplib/v4/pkg/conn"
@@ -56,14 +58,16 @@ type ServerConn struct {
 	s     *Server
 	nconn net.Conn
 
-	ctx        context.Context
-	ctxCancel  func()
-	userData   interface{}
-	remoteAddr *net.TCPAddr
-	bc         *bytecounter.ByteCounter
-	conn       *conn.Conn
-	session    *ServerSession
-	reader     *serverConnReader
+	ctx          context.Context
+	ctxCancel    func()
+	userData     interface{}
+	remoteAddr   *net.TCPAddr
+	bc           *bytecounter.ByteCounter
+	conn         *conn.Conn
+	session      *ServerSession
+	reader       *serverConnReader
+	authNonce    string
+	authFailures int
 
 	// in
 	chRemoveSession chan *ServerSession
@@ -135,6 +139,60 @@ func (sc *ServerConn) Stats() *StatsConn {
 		BytesReceived: sc.bc.BytesReceived(),
 		BytesSent:     sc.bc.BytesSent(),
 	}
+}
+
+// VerifyCredentials validates credentials provided by the user.
+func (sc *ServerConn) VerifyCredentials(
+	req *base.Request,
+	expectedUser string,
+	expectedPass string,
+) (*base.Response, error) {
+	if sc.authNonce == "" {
+		n, err := auth.GenerateNonce()
+		if err != nil {
+			return &base.Response{
+				StatusCode: base.StatusInternalServerError,
+			}, fmt.Errorf("unable to generate nonce")
+		}
+		sc.authNonce = n
+	}
+
+	// TODO: allow to choose which auth methods are allowed
+	var methods []auth.ValidateMethod
+
+	err := auth.Validate(
+		req,
+		expectedUser,
+		expectedPass,
+		methods,
+		sc.s.authRealm,
+		sc.authNonce)
+	if err != nil {
+		sc.authFailures++
+
+		// VLC with login prompt sends 4 requests:
+		// 1) without credentials
+		// 2) with password but without username
+		// 3) without credentials
+		// 4) with password and username
+		// therefore we must allow up to 3 failures
+		if sc.authFailures > 3 {
+			return &base.Response{
+				StatusCode: base.StatusUnauthorized,
+			}, liberrors.ErrServerFatalAuth{}
+		}
+
+		return &base.Response{
+			StatusCode: base.StatusUnauthorized,
+			Header: base.Header{
+				"WWW-Authenticate": auth.GenerateWWWAuthenticate(methods, sc.s.authRealm, sc.authNonce),
+			},
+		}, liberrors.ErrServerNonFatalAuth{}
+	}
+
+	sc.authFailures = 0
+
+	return nil, nil
 }
 
 func (sc *ServerConn) ip() net.IP {
@@ -382,13 +440,18 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 
 	res, err := sc.handleRequestInner(req)
 
+	var eerr1 liberrors.ErrServerNonFatalAuth
+	if errors.As(err, &eerr1) {
+		err = nil
+	}
+
 	if res.Header == nil {
 		res.Header = make(base.Header)
 	}
 
 	// add cseq
-	var eerr liberrors.ErrServerCSeqMissing
-	if !errors.As(err, &eerr) {
+	var eerr2 liberrors.ErrServerCSeqMissing
+	if !errors.As(err, &eerr2) {
 		res.Header["CSeq"] = req.Header["CSeq"]
 	}
 

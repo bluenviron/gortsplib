@@ -270,3 +270,19 @@ func (ErrServerInvalidSetupPath) Error() string {
 		"This typically happens when VLC fails a request, and then switches to an " +
 		"unsupported RTSP dialect"
 }
+
+// ErrServerFatalAuth is an error that can be returned by a server.
+type ErrServerFatalAuth struct{}
+
+// Error implements the error interface.
+func (e ErrServerFatalAuth) Error() string {
+	return "authentication error"
+}
+
+// ErrServerNonFatalAuth is an error that can be returned by a server.
+type ErrServerNonFatalAuth struct{}
+
+// Error implements the error interface.
+func (e ErrServerNonFatalAuth) Error() string {
+	return "non-fatal authentication error"
+}

@@ -115,6 +115,7 @@ type Server struct {
 	receiverReportPeriod time.Duration
 	sessionTimeout       time.Duration
 	checkStreamPeriod    time.Duration
+	authRealm            string
 
 	ctx             context.Context
 	ctxCancel       func()
@@ -180,6 +181,9 @@ func (s *Server) Start() error {
 	}
 	if s.checkStreamPeriod == 0 {
 		s.checkStreamPeriod = 1 * time.Second
+	}
+	if s.authRealm == "" {
+		s.authRealm = "ipcam"
 	}
 
 	if s.TLSConfig != nil && s.UDPRTPAddress != "" {
