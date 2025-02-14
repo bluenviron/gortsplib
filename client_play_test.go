@@ -1328,7 +1328,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				require.NoError(t, err2)
 				require.Equal(t, base.Describe, req.Method)
 
-				err2 = auth.Validate(req, "myuser", "mypass", nil, "IPCAM", nonce)
+				err2 = auth.Verify(req, "myuser", "mypass", nil, "IPCAM", nonce)
 				require.NoError(t, err2)
 
 				err2 = conn.WriteResponse(&base.Response{
@@ -1440,7 +1440,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				require.Equal(t, base.Setup, req.Method)
 				require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
-				err2 = auth.Validate(req, "myuser", "mypass", nil, "IPCAM", nonce)
+				err2 = auth.Verify(req, "myuser", "mypass", nil, "IPCAM", nonce)
 				require.NoError(t, err2)
 
 				var inTH headers.Transport
