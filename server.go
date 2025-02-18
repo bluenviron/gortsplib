@@ -9,8 +9,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
+)
+
+const (
+	serverHeader    = "gortsplib"
+	serverAuthRealm = "ipcam"
 )
 
 func extractPort(address string) (int, error) {
@@ -88,6 +94,9 @@ type Server struct {
 	MaxPacketSize int
 	// disable automatic RTCP sender reports.
 	DisableRTCPSenderReports bool
+	// authentication methods.
+	// It defaults to plain and digest+MD5.
+	AuthMethods []auth.VerifyMethod
 
 	//
 	// handler (optional)
@@ -155,6 +164,11 @@ func (s *Server) Start() error {
 		s.MaxPacketSize = udpMaxPayloadSize
 	} else if s.MaxPacketSize > udpMaxPayloadSize {
 		return fmt.Errorf("MaxPacketSize must be less than %d", udpMaxPayloadSize)
+	}
+	if len(s.AuthMethods) == 0 {
+		// disable VerifyMethodDigestSHA256 unless explicitly set
+		// since it prevents FFmpeg from authenticating
+		s.AuthMethods = []auth.VerifyMethod{auth.VerifyMethodBasic, auth.VerifyMethodDigestMD5}
 	}
 
 	// system functions
