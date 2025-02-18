@@ -53,17 +53,6 @@ var casesVerify = []struct {
 func TestVerify(t *testing.T) {
 	for _, ca := range casesVerify {
 		t.Run(ca.name, func(t *testing.T) {
-			se, err := NewSender(
-				GenerateWWWAuthenticate([]VerifyMethod{VerifyMethodDigestMD5}, "myrealm", "f49ac6dd0ba708d4becddc9692d1f2ce"),
-				"myuser",
-				"mypass")
-			require.NoError(t, err)
-			req1 := &base.Request{
-				Method: base.Setup,
-				URL:    mustParseURL("rtsp://myhost/mypath?key=val/"),
-			}
-			se.AddAuthorization(req1)
-
 			req := &base.Request{
 				Method: base.Setup,
 				URL:    mustParseURL("rtsp://myhost/mypath?key=val/trackID=3"),
@@ -71,7 +60,8 @@ func TestVerify(t *testing.T) {
 					"Authorization": ca.authorization,
 				},
 			}
-			err = Verify(
+
+			err := Verify(
 				req,
 				"myuser",
 				"mypass",
