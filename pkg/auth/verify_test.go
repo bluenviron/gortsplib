@@ -65,7 +65,7 @@ func TestVerify(t *testing.T) {
 				req,
 				"myuser",
 				"mypass",
-				nil,
+				[]VerifyMethod{VerifyMethodBasic, VerifyMethodDigestMD5, VerifyMethodDigestSHA256},
 				"myrealm",
 				"f49ac6dd0ba708d4becddc9692d1f2ce")
 			require.NoError(t, err)

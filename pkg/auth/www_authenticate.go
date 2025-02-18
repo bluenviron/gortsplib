@@ -8,7 +8,9 @@ import (
 // GenerateWWWAuthenticate generates a WWW-Authenticate header.
 func GenerateWWWAuthenticate(methods []ValidateMethod, realm string, nonce string) base.HeaderValue {
 	if methods == nil {
-		methods = []ValidateMethod{ValidateMethodBasic, ValidateMethodDigestMD5, ValidateMethodSHA256}
+		// disable VerifyMethodDigestSHA256 unless explicitly set
+		// since it prevents FFmpeg from authenticating
+		methods = []VerifyMethod{VerifyMethodBasic, VerifyMethodDigestMD5}
 	}
 
 	var ret base.HeaderValue
