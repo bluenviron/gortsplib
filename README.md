@@ -14,8 +14,8 @@ Features:
 
 * Client
   * Query servers about available media streams
-  * Play (read)
-    * Read media streams from servers with the UDP, UDP-multicast or TCP transport protocol
+  * Read media streams from a server ("play")
+    * Read streams with the UDP, UDP-multicast or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
     * Read selected media streams
@@ -23,20 +23,20 @@ Features:
     * Write to ONVIF back channels
     * Get PTS (relative) timestamp of incoming packets
     * Get NTP (absolute) timestamp of incoming packets
-  * Record (write)
-    * Write media streams to servers with the UDP or TCP transport protocol
+  * Write media streams to a server ("record")
+    * Write streams with the UDP or TCP transport protocol
     * Write TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
     * Pause without disconnecting from the server
 * Server
   * Handle requests from clients
-  * Record (read)
-    * Read media streams from clients with the UDP or TCP transport protocol
+  * Read media streams from clients ("record")
+    * Read streams with the UDP or TCP transport protocol
     * Read TLS-encrypted streams (TCP only)
     * Get PTS (relative) timestamp of incoming packets
     * Get NTP (absolute) timestamp of incoming packets
-  * Play (write)
-    * Write media streams to clients with the UDP, UDP-multicast or TCP transport protocol
+  * Serve media streams to clients ("play")
+    * Write streams with the UDP, UDP-multicast or TCP transport protocol
     * Write TLS-encrypted streams (TCP only)
     * Compute and provide SSRC, RTP-Info to clients
 * Utilities
