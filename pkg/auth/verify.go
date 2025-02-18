@@ -71,7 +71,9 @@ func Verify(
 	nonce string,
 ) error {
 	if methods == nil {
-		methods = []VerifyMethod{VerifyMethodBasic, VerifyMethodDigestMD5, VerifyMethodDigestSHA256}
+		// disable VerifyMethodDigestSHA256 unless explicitly set
+		// since it prevents FFmpeg from authenticating
+		methods = []VerifyMethod{VerifyMethodBasic, VerifyMethodDigestMD5}
 	}
 
 	var auth headers.Authorization
