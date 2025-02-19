@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/av1"
 )
 
 // #cgo pkg-config: libavcodec libavutil libswscale
@@ -23,8 +23,8 @@ func frameLineSize(frame *C.AVFrame) *C.int {
 	return (*C.int)(unsafe.Pointer(&frame.linesize[0]))
 }
 
-// h264Decoder is a wrapper around FFmpeg's H264 decoder.
-type h264Decoder struct {
+// av1Decoder is a wrapper around FFmpeg's AV1 decoder.
+type av1Decoder struct {
 	codecCtx     *C.AVCodecContext
 	yuv420Frame  *C.AVFrame
 	rgbaFrame    *C.AVFrame
@@ -32,9 +32,9 @@ type h264Decoder struct {
 	swsCtx       *C.struct_SwsContext
 }
 
-// initialize initializes a h264Decoder.
-func (d *h264Decoder) initialize() error {
-	codec := C.avcodec_find_decoder(C.AV_CODEC_ID_H264)
+// initialize initializes a av1Decoder.
+func (d *av1Decoder) initialize() error {
+	codec := C.avcodec_find_decoder(C.AV_CODEC_ID_AV1)
 	if codec == nil {
 		return fmt.Errorf("avcodec_find_decoder() failed")
 	}
@@ -60,7 +60,7 @@ func (d *h264Decoder) initialize() error {
 }
 
 // close closes the decoder.
-func (d *h264Decoder) close() {
+func (d *av1Decoder) close() {
 	if d.swsCtx != nil {
 		C.sws_freeContext(d.swsCtx)
 	}
@@ -73,21 +73,21 @@ func (d *h264Decoder) close() {
 	C.avcodec_close(d.codecCtx)
 }
 
-// decode decodes a RGBA image from H264.
-func (d *h264Decoder) decode(au [][]byte) (*image.RGBA, error) {
-	// encode access unit into Annex-B
-	annexb, err := h264.AnnexB(au).Marshal()
+// decode decodes a RGBA image from AV1.
+func (d *av1Decoder) decode(tu [][]byte) (*image.RGBA, error) {
+	// encode temporal unit into bytestream
+	bs, err := av1.Bitstream(tu).Marshal()
 	if err != nil {
 		panic(err)
 	}
 
 	// send access unit to decoder
 	var pkt C.AVPacket
-	ptr := &annexb[0]
+	ptr := &bs[0]
 	var p runtime.Pinner
 	p.Pin(ptr)
 	pkt.data = (*C.uint8_t)(ptr)
-	pkt.size = (C.int)(len(annexb))
+	pkt.size = (C.int)(len(bs))
 	res := C.avcodec_send_packet(d.codecCtx, &pkt)
 	p.Unpin()
 	if res < 0 {
