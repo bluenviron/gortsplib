@@ -69,11 +69,6 @@ func (e *Encoder) Init() error {
 
 // Encode encodes OBUs into RTP packets.
 func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
-	isKeyFrame, err := av1.IsRandomAccess(obus)
-	if err != nil {
-		return nil, err
-	}
-
 	var curPacket *rtp.Packet
 	var packets []*rtp.Packet
 	curPayloadLen := 0
@@ -138,7 +133,7 @@ func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 
 	finalizeCurPacket(false)
 
-	if isKeyFrame {
+	if av1.IsRandomAccess2(obus) {
 		packets[0].Payload[0] |= 1 << 3
 	}
 

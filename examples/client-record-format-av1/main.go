@@ -1,11 +1,12 @@
+//go:build cgo
+
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"image"
 	"image/color"
-	"image/jpeg"
+	"log"
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4"
@@ -14,11 +15,14 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server, announce a M-JPEG format
-// 2. generate an image
-// 3. encode the image with JPEG
-// 4. generate RTP packets from the JPEG image
-// 5. write packets to the server
+// 1. connect to a RTSP server, announce an AV1 format
+// 2. generate dummy RGBA images
+// 3. encode images with AV1
+// 4. generate RTP packets from AV1
+// 5. write RTP packets to the server
+
+// This example requires the FFmpeg libraries, that can be installed with this command:
+// apt install -y libavformat-dev libswscale-dev gcc pkg-config
 
 func multiplyAndDivide(v, m, d int64) int64 {
 	secs := v / d
@@ -35,7 +39,7 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
-func createRandomImage(i int) *image.RGBA {
+func createDummyImage(i int) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, 640, 480))
 
 	var cl color.RGBA
@@ -58,8 +62,10 @@ func createRandomImage(i int) *image.RGBA {
 }
 
 func main() {
-	// create a description that contains a M-JPEG format
-	forma := &format.MJPEG{}
+	// create a stream description that contains a AV1 format
+	forma := &format.AV1{
+		PayloadTyp: 96,
+	}
 	desc := &description.Session{
 		Medias: []*description.Media{{
 			Type:    description.MediaTypeVideo,
@@ -75,7 +81,19 @@ func main() {
 	}
 	defer c.Close()
 
-	// setup JPEG -> RTP encoder
+	// setup RGBA -> AV1 encoder
+	av1enc := &av1Encoder{
+		Width:  640,
+		Height: 480,
+		FPS:    5,
+	}
+	err = av1enc.initialize()
+	if err != nil {
+		panic(err)
+	}
+	defer av1enc.close()
+
+	// setup AV1 -> RTP encoder
 	rtpEnc, err := forma.CreateEncoder()
 	if err != nil {
 		panic(err)
@@ -95,29 +113,35 @@ func main() {
 	i := 0
 
 	for range ticker.C {
-		// create a random image
-		img := createRandomImage(i)
+		// create a dummy image
+		img := createDummyImage(i)
 		i = (i + 1) % 3
 
-		// encode the image with JPEG
-		var buf bytes.Buffer
-		err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80})
-		if err != nil {
-			panic(err)
-		}
-
-		// generate RTP packets from the JPEG image
-		pkts, err := rtpEnc.Encode(buf.Bytes())
-		if err != nil {
-			panic(err)
-		}
-
 		// get current timestamp
-		pts := uint32(multiplyAndDivide(int64(time.Since(start)), int64(forma.ClockRate()), int64(time.Second)))
+		pts := multiplyAndDivide(int64(time.Since(start)), int64(forma.ClockRate()), int64(time.Second))
 
-		// write packets to the server
+		// encode the image with AV1
+		au, pts, err := av1enc.encode(img, pts)
+		if err != nil {
+			panic(err)
+		}
+
+		// wait for a AV1 access unit
+		if au == nil {
+			continue
+		}
+
+		// generate RTP packets from the AV1 access unit
+		pkts, err := rtpEnc.Encode(au)
+		if err != nil {
+			panic(err)
+		}
+
+		log.Printf("writing RTP packets with PTS=%d, au=%d, pkts=%d", pts, len(au), len(pkts))
+
+		// write RTP packets to the server
 		for _, pkt := range pkts {
-			pkt.Timestamp = randomStart + pts
+			pkt.Timestamp = uint32(int64(randomStart) + pts)
 
 			err = c.WritePacketRTP(desc.Medias[0], pkt)
 			if err != nil {

@@ -13,16 +13,16 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
+	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph265"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a H264 format
-// 3. decode the H264 format into RGBA frames
-// 4. convert frames to JPEG images and save them on disk
+// 2. check if there's a H265 format
+// 3. decode the H265 stream into RGBA frames
+// 4. convert RGBA frames to JPEG images and save them on disk
 
 // This example requires the FFmpeg libraries, that can be installed with this command:
 // apt install -y libavformat-dev libswscale-dev gcc pkg-config
@@ -66,33 +66,36 @@ func main() {
 		panic(err)
 	}
 
-	// find the H264 media and format
-	var forma *format.H264
+	// find the H265 media and format
+	var forma *format.H265
 	medi := desc.FindFormat(&forma)
 	if medi == nil {
 		panic("media not found")
 	}
 
-	// setup RTP -> H264 decoder
+	// setup RTP -> H265 decoder
 	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)
 	}
 
-	// setup H264 -> raw frames decoder
-	frameDec := &h264Decoder{}
-	err = frameDec.initialize()
+	// setup H265 -> RGBA decoder
+	h265Dec := &h265Decoder{}
+	err = h265Dec.initialize()
 	if err != nil {
 		panic(err)
 	}
-	defer frameDec.close()
+	defer h265Dec.close()
 
-	// if SPS and PPS are present into the SDP, send them to the decoder
+	// if VPS, SPS and PPS are present into the SDP, send them to the decoder
+	if forma.VPS != nil {
+		h265Dec.decode([][]byte{forma.VPS})
+	}
 	if forma.SPS != nil {
-		frameDec.decode(forma.SPS)
+		h265Dec.decode([][]byte{forma.SPS})
 	}
 	if forma.PPS != nil {
-		frameDec.decode(forma.PPS)
+		h265Dec.decode([][]byte{forma.PPS})
 	}
 
 	// setup a single media
@@ -101,7 +104,7 @@ func main() {
 		panic(err)
 	}
 
-	iframeReceived := false
+	firstRandomAccess := false
 	saveCount := 0
 
 	// called when a RTP packet arrives
@@ -109,44 +112,40 @@ func main() {
 		// extract access units from RTP packets
 		au, err := rtpDec.Decode(pkt)
 		if err != nil {
-			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
+			if err != rtph265.ErrNonStartingPacketAndNoPrevious && err != rtph265.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
 			}
 			return
 		}
 
-		// wait for an I-frame
-		if !iframeReceived {
-			if !h264.IsRandomAccess(au) {
-				log.Printf("waiting for an I-frame")
-				return
-			}
-			iframeReceived = true
+		// wait for a random access unit
+		if !firstRandomAccess && !h265.IsRandomAccess(au) {
+			log.Printf("waiting for a random access unit")
+			return
+		}
+		firstRandomAccess = true
+
+		// convert H265 access units into RGBA frames
+		img, err := h265Dec.decode(au)
+		if err != nil {
+			panic(err)
 		}
 
-		for _, nalu := range au {
-			// convert NALUs into RGBA frames
-			img, err := frameDec.decode(nalu)
-			if err != nil {
-				panic(err)
-			}
+		// wait for a frame
+		if img == nil {
+			return
+		}
 
-			// wait for a frame
-			if img == nil {
-				continue
-			}
+		// convert frame to JPEG and save to file
+		err = saveToFile(img)
+		if err != nil {
+			panic(err)
+		}
 
-			// convert frame to JPEG and save to file
-			err = saveToFile(img)
-			if err != nil {
-				panic(err)
-			}
-
-			saveCount++
-			if saveCount == 5 {
-				log.Printf("saved 5 images, exiting")
-				os.Exit(1)
-			}
+		saveCount++
+		if saveCount == 5 {
+			log.Printf("saved 5 images, exiting")
+			os.Exit(1)
 		}
 	})
 

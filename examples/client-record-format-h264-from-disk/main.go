@@ -17,7 +17,7 @@ import (
 // 1. read H264 frames from a video file in MPEG-TS format
 // 2. connect to a RTSP server, announce a H264 format
 // 3. wrap frames into RTP packets
-// 4. write packets to the server
+// 4. write RTP packets to the server
 
 func findTrack(r *mpegts.Reader) (*mpegts.Track, error) {
 	for _, track := range r.Tracks() {
@@ -46,7 +46,8 @@ func main() {
 	defer f.Close()
 
 	// setup MPEG-TS parser
-	r, err := mpegts.NewReader(f)
+	r := &mpegts.Reader{R: f}
+	err = r.Initialize()
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +89,9 @@ func main() {
 		panic(err)
 	}
 
-	timeDecoder := mpegts.NewTimeDecoder()
+	timeDecoder := mpegts.TimeDecoder{}
+	timeDecoder.Initialize()
+
 	var firstDTS *int64
 	var startTime time.Time
 
@@ -120,10 +123,10 @@ func main() {
 		// we don't have to perform any conversion
 		// since H264 clock rate is the same in both MPEG-TS and RTSP
 		for _, packet := range packets {
-			packet.Timestamp = randomStart + uint32(pts)
+			packet.Timestamp = uint32(int64(randomStart) + pts)
 		}
 
-		// write packets to the server
+		// write RTP packets to the server
 		for _, packet := range packets {
 			err := c.WritePacketRTP(desc.Medias[0], packet)
 			if err != nil {
