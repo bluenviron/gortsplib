@@ -1,3 +1,5 @@
+//go:build cgo
+
 package main
 
 import (
@@ -12,8 +14,11 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a VP8 format
-// 3. get access units of that format
+// 2. check if there's an VP8 format
+// 3. decode the VP8 stream into RGBA frames
+
+// This example requires the FFmpeg libraries, that can be installed with this command:
+// apt install -y libavformat-dev libswscale-dev gcc pkg-config
 
 func main() {
 	c := gortsplib.Client{}
@@ -44,11 +49,19 @@ func main() {
 		panic("media not found")
 	}
 
-	// create decoder
+	// setup RTP -> VP8 decoder
 	rtpDec, err := forma.CreateDecoder()
 	if err != nil {
 		panic(err)
 	}
+
+	// setup VP8 -> RGBA decoder
+	vp8Dec := &vp8Decoder{}
+	err = vp8Dec.initialize()
+	if err != nil {
+		panic(err)
+	}
+	defer vp8Dec.close()
 
 	// setup a single media
 	_, err = c.Setup(desc.BaseURL, medi, 0, 0)
@@ -65,8 +78,8 @@ func main() {
 			return
 		}
 
-		// extract VP8 frames from RTP packets
-		vf, err := rtpDec.Decode(pkt)
+		// extract access units from RTP packets
+		au, err := rtpDec.Decode(pkt)
 		if err != nil {
 			if err != rtpvp8.ErrNonStartingPacketAndNoPrevious && err != rtpvp8.ErrMorePacketsNeeded {
 				log.Printf("ERR: %v", err)
@@ -74,7 +87,18 @@ func main() {
 			return
 		}
 
-		log.Printf("received frame with PTS %v size %d\n", pts, len(vf))
+		// convert VP8 access units into RGBA frames
+		img, err := vp8Dec.decode(au)
+		if err != nil {
+			panic(err)
+		}
+
+		// wait for a frame
+		if img == nil {
+			return
+		}
+
+		log.Printf("decoded frame with PTS %v and size %v", pts, img.Bounds().Max)
 	})
 
 	// start playing

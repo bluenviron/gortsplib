@@ -60,8 +60,8 @@ func (d *h265Encoder) initialize() error {
 	C.av_opt_set(d.codecCtx.priv_data, key, val, 0)
 
 	d.codecCtx.pix_fmt = C.AV_PIX_FMT_YUV420P
-	d.codecCtx.width = (C.int)(d.Height)
-	d.codecCtx.height = (C.int)(d.Width)
+	d.codecCtx.width = (C.int)(d.Width)
+	d.codecCtx.height = (C.int)(d.Height)
 	d.codecCtx.time_base.num = 1
 	d.codecCtx.time_base.den = (C.int)(d.FPS)
 	d.codecCtx.gop_size = 10
