@@ -3,10 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
-	"log"
 	"unsafe"
-
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/av1"
 )
 
 // #cgo pkg-config: libavcodec libavutil libswscale
@@ -23,8 +20,8 @@ func frameLineSize(frame *C.AVFrame) *C.int {
 	return (*C.int)(unsafe.Pointer(&frame.linesize[0]))
 }
 
-// av1Encoder is a wrapper around FFmpeg's AV1 encoder.
-type av1Encoder struct {
+// vp8Encoder is a wrapper around FFmpeg's VP8 encoder.
+type vp8Encoder struct {
 	Width  int
 	Height int
 	FPS    int
@@ -36,21 +33,9 @@ type av1Encoder struct {
 	pkt         *C.AVPacket
 }
 
-// initialize initializes a av1Encoder.
-func (d *av1Encoder) initialize() error {
-	// prefer svtav1 over libaom-av1
-	var codec *C.AVCodec
-	for _, lib := range []string{"libsvtav1", "libaom-av1"} {
-		str := C.CString(lib)
-		defer C.free(unsafe.Pointer(str))
-		codec = C.avcodec_find_encoder_by_name(str)
-		if codec != nil {
-			if lib == "libaom-av1" {
-				log.Println("WARNING: using libaom-av1 - encoding will be very slow. Compile FFmpeg against libsvtav1 to speed things up.")
-			}
-			break
-		}
-	}
+// initialize initializes a vp8Encoder.
+func (d *vp8Encoder) initialize() error {
+	codec := C.avcodec_find_encoder(C.AV_CODEC_ID_VP8)
 	if codec == nil {
 		return fmt.Errorf("avcodec_find_encoder_by_name() failed")
 	}
@@ -59,12 +44,6 @@ func (d *av1Encoder) initialize() error {
 	if d.codecCtx == nil {
 		return fmt.Errorf("avcodec_alloc_context3() failed")
 	}
-
-	key := C.CString("preset")
-	defer C.free(unsafe.Pointer(key))
-	val := C.CString("8")
-	defer C.free(unsafe.Pointer(val))
-	C.av_opt_set(d.codecCtx.priv_data, key, val, 0)
 
 	d.codecCtx.pix_fmt = C.AV_PIX_FMT_YUV420P
 	d.codecCtx.width = (C.int)(d.Width)
@@ -134,7 +113,7 @@ func (d *av1Encoder) initialize() error {
 }
 
 // close closes the decoder.
-func (d *av1Encoder) close() {
+func (d *vp8Encoder) close() {
 	C.av_packet_free(&d.pkt)
 	C.sws_freeContext(d.swsCtx)
 	C.av_frame_free(&d.yuv420Frame)
@@ -142,8 +121,8 @@ func (d *av1Encoder) close() {
 	C.avcodec_close(d.codecCtx)
 }
 
-// encode encodes a RGBA image into AV1.
-func (d *av1Encoder) encode(img *image.RGBA, pts int64) ([][]byte, int64, error) {
+// encode encodes a RGBA image into VP8.
+func (d *vp8Encoder) encode(img *image.RGBA, pts int64) ([]byte, int64, error) {
 	// pass image pointer to frame
 	d.rgbaFrame.data[0] = (*C.uint8_t)(&img.Pix[0])
 
@@ -175,12 +154,5 @@ func (d *av1Encoder) encode(img *image.RGBA, pts int64) ([][]byte, int64, error)
 	pts = (int64)(d.pkt.pts)
 	C.av_packet_unref(d.pkt)
 
-	// decompress
-	var bs av1.Bitstream
-	err := bs.Unmarshal(data)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return bs, pts, nil
+	return data, pts, nil
 }

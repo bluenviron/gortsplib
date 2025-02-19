@@ -16,7 +16,7 @@ import (
 // 1. connect to a RTSP server
 // 2. check if there's a M-JPEG format
 // 3. get JPEG images of that format
-// 4. decode JPEG images into raw images
+// 4. decode JPEG images into RGBA frames
 
 func main() {
 	c := gortsplib.Client{}
@@ -77,7 +77,7 @@ func main() {
 			return
 		}
 
-		// convert JPEG images into raw images
+		// convert JPEG images into RGBA frames
 		image, err := jpeg.Decode(bytes.NewReader(enc))
 		if err != nil {
 			panic(err)
