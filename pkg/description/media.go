@@ -193,17 +193,12 @@ func (m Media) URL(contentBase *base.URL) (*base.URL, error) {
 		return ur, nil
 	}
 
-	// control attribute contains a relative control attribute
-	// insert the control attribute at the end of the URL
-	// if there's a query, insert it after the query
-	// otherwise insert it after the path
-	strURL := contentBase.String()
-	if m.Control[0] != '?' && m.Control[0] != '/' && !strings.HasSuffix(strURL, "/") {
-		strURL += "/"
+	if m.Control[0] == '?' {
+		contentBase.RawQuery += "&" + m.Control[1:]
+		return contentBase, nil
 	}
 
-	ur, _ := base.ParseURL(strURL + m.Control)
-	return ur, nil
+	return contentBase.JoinPath(m.Control), nil
 }
 
 // FindFormat finds a certain format among all the formats in the media.
