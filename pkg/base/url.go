@@ -105,3 +105,8 @@ func (u *URL) Hostname() string {
 func (u *URL) Port() string {
 	return (*url.URL)(u).Port()
 }
+
+// JoinPath joins a path to the URL.
+func (u *URL) JoinPath(elem ...string) *URL {
+	return (*URL)((*url.URL)(u).JoinPath(elem...))
+}
