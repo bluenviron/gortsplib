@@ -3,9 +3,8 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
-	"image"
-	"image/color"
 	"image/jpeg"
+	"log"
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4"
@@ -33,28 +32,6 @@ func randUint32() (uint32, error) {
 		return 0, err
 	}
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
-}
-
-func createDummyImage(i int) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, 640, 480))
-
-	var cl color.RGBA
-	switch i {
-	case 0:
-		cl = color.RGBA{255, 0, 0, 0}
-	case 1:
-		cl = color.RGBA{0, 255, 0, 0}
-	case 2:
-		cl = color.RGBA{0, 0, 255, 0}
-	}
-
-	for y := 0; y < img.Rect.Dy(); y++ {
-		for x := 0; x < img.Rect.Dx(); x++ {
-			img.SetRGBA(x, y, cl)
-		}
-	}
-
-	return img
 }
 
 func main() {
@@ -92,12 +69,12 @@ func main() {
 	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 
-	i := 0
-
 	for range ticker.C {
+		// get current timestamp
+		pts := multiplyAndDivide(int64(time.Since(start)), int64(forma.ClockRate()), int64(time.Second))
+
 		// create a dummy image
-		img := createDummyImage(i)
-		i = (i + 1) % 3
+		img := createDummyImage()
 
 		// encode the image with JPEG
 		var buf bytes.Buffer
@@ -112,12 +89,11 @@ func main() {
 			panic(err)
 		}
 
-		// get current timestamp
-		pts := multiplyAndDivide(int64(time.Since(start)), int64(forma.ClockRate()), int64(time.Second))
+		log.Printf("writing RTP packets with PTS=%d, jpeg size=%d, pkt count=%d", pts, buf.Len(), len(pkts))
 
 		// write RTP packets to the server
 		for _, pkt := range pkts {
-			pkt.Timestamp = uint32(int64(randomStart) + pts)
+			pkt.Timestamp += uint32(int64(randomStart) + pts)
 
 			err = c.WritePacketRTP(desc.Medias[0], pkt)
 			if err != nil {

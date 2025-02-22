@@ -6,13 +6,14 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/g711"
 	"github.com/pion/rtp"
 )
 
 // This example shows how to
 // 1. connect to a RTSP server
 // 2. check if there's a G711 format
-// 3. get G711 frames of that format
+// 3. decode the G711 stream into audio samples
 
 func main() {
 	c := gortsplib.Client{}
@@ -64,15 +65,26 @@ func main() {
 			return
 		}
 
-		// extract G711 frames from RTP packets
-		op, err := rtpDec.Decode(pkt)
+		// extract G711 samples from RTP packets
+		samples, err := rtpDec.Decode(pkt)
 		if err != nil {
 			log.Printf("ERR: %v", err)
 			return
 		}
 
+		// decode samples (these are 16-bit, big endian LPCM samples)
+		if forma.MULaw {
+			var raw g711.Mulaw
+			raw.Unmarshal(samples)
+			samples = raw
+		} else {
+			var raw g711.Alaw
+			raw.Unmarshal(samples)
+			samples = raw
+		}
+
 		// print
-		log.Printf("received G711 frame with PTS %v and size %d\n", pts, len(op))
+		log.Printf("decoded audio samples with PTS %v and size %d\n", pts, len(samples))
 	})
 
 	// start playing
