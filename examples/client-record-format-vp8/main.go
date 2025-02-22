@@ -4,8 +4,6 @@ package main
 
 import (
 	"crypto/rand"
-	"image"
-	"image/color"
 	"log"
 	"time"
 
@@ -22,7 +20,7 @@ import (
 // 5. write RTP packets to the server
 
 // This example requires the FFmpeg libraries, that can be installed with this command:
-// apt install -y libavformat-dev libswscale-dev gcc pkg-config
+// apt install -y libavcodec-dev libswscale-dev gcc pkg-config
 
 func multiplyAndDivide(v, m, d int64) int64 {
 	secs := v / d
@@ -37,28 +35,6 @@ func randUint32() (uint32, error) {
 		return 0, err
 	}
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
-}
-
-func createDummyImage(i int) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, 640, 480))
-
-	var cl color.RGBA
-	switch i {
-	case 0:
-		cl = color.RGBA{255, 0, 0, 0}
-	case 1:
-		cl = color.RGBA{0, 255, 0, 0}
-	case 2:
-		cl = color.RGBA{0, 0, 255, 0}
-	}
-
-	for y := 0; y < img.Rect.Dy(); y++ {
-		for x := 0; x < img.Rect.Dx(); x++ {
-			img.SetRGBA(x, y, cl)
-		}
-	}
-
-	return img
 }
 
 func main() {
@@ -110,38 +86,35 @@ func main() {
 	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 
-	i := 0
-
 	for range ticker.C {
-		// create a dummy image
-		img := createDummyImage(i)
-		i = (i + 1) % 3
-
 		// get current timestamp
 		pts := multiplyAndDivide(int64(time.Since(start)), int64(forma.ClockRate()), int64(time.Second))
 
+		// create a dummy image
+		img := createDummyImage()
+
 		// encode the image with VP8
-		au, pts, err := vp8enc.encode(img, pts)
+		frame, pts, err := vp8enc.encode(img, pts)
 		if err != nil {
 			panic(err)
 		}
 
-		// wait for a VP8 access unit
-		if au == nil {
+		// wait for a VP8 frame
+		if frame == nil {
 			continue
 		}
 
-		// generate RTP packets from the VP8 access unit
-		pkts, err := rtpEnc.Encode(au)
+		// generate RTP packets from the VP8 frame
+		pkts, err := rtpEnc.Encode(frame)
 		if err != nil {
 			panic(err)
 		}
 
-		log.Printf("writing RTP packets with PTS=%d, au=%d, pkts=%d", pts, len(au), len(pkts))
+		log.Printf("writing RTP packets with PTS=%d, frame size=%d, pkt count=%d", pts, len(frame), len(pkts))
 
 		// write RTP packets to the server
 		for _, pkt := range pkts {
-			pkt.Timestamp = uint32(int64(randomStart) + pts)
+			pkt.Timestamp += uint32(int64(randomStart) + pts)
 
 			err = c.WritePacketRTP(desc.Medias[0], pkt)
 			if err != nil {

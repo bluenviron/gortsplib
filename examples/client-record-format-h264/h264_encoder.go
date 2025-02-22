@@ -86,6 +86,8 @@ func (d *h264Encoder) initialize() error {
 
 	res = C.av_frame_get_buffer(d.rgbaFrame, 0)
 	if res < 0 {
+		C.av_frame_free(&d.rgbaFrame)
+		C.avcodec_close(d.codecCtx)
 		return fmt.Errorf("av_frame_get_buffer() failed")
 	}
 
@@ -102,6 +104,9 @@ func (d *h264Encoder) initialize() error {
 
 	res = C.av_frame_get_buffer(d.yuv420Frame, 0)
 	if res < 0 {
+		C.av_frame_free(&d.yuv420Frame)
+		C.av_frame_free(&d.rgbaFrame)
+		C.avcodec_close(d.codecCtx)
 		return fmt.Errorf("av_frame_get_buffer() failed")
 	}
 
@@ -116,7 +121,6 @@ func (d *h264Encoder) initialize() error {
 
 	d.pkt = C.av_packet_alloc()
 	if d.pkt == nil {
-		C.av_packet_free(&d.pkt)
 		C.av_frame_free(&d.yuv420Frame)
 		C.av_frame_free(&d.rgbaFrame)
 		C.avcodec_close(d.codecCtx)

@@ -71,6 +71,41 @@ func (d *vp9Decoder) close() {
 	C.avcodec_close(d.codecCtx)
 }
 
+func (d *vp9Decoder) reinitDynamicStuff() error {
+	if d.swsCtx != nil {
+		C.sws_freeContext(d.swsCtx)
+	}
+
+	if d.rgbaFrame != nil {
+		C.av_frame_free(&d.rgbaFrame)
+	}
+
+	d.rgbaFrame = C.av_frame_alloc()
+	if d.rgbaFrame == nil {
+		return fmt.Errorf("av_frame_alloc() failed")
+	}
+
+	d.rgbaFrame.format = C.AV_PIX_FMT_RGBA
+	d.rgbaFrame.width = d.yuv420Frame.width
+	d.rgbaFrame.height = d.yuv420Frame.height
+	d.rgbaFrame.color_range = C.AVCOL_RANGE_JPEG
+
+	res := C.av_frame_get_buffer(d.rgbaFrame, 1)
+	if res < 0 {
+		return fmt.Errorf("av_frame_get_buffer() failed")
+	}
+
+	d.swsCtx = C.sws_getContext(d.yuv420Frame.width, d.yuv420Frame.height, int32(d.yuv420Frame.format),
+		d.rgbaFrame.width, d.rgbaFrame.height, (int32)(d.rgbaFrame.format), C.SWS_BILINEAR, nil, nil, nil)
+	if d.swsCtx == nil {
+		return fmt.Errorf("sws_getContext() failed")
+	}
+
+	rgbaFrameSize := C.av_image_get_buffer_size((int32)(d.rgbaFrame.format), d.rgbaFrame.width, d.rgbaFrame.height, 1)
+	d.rgbaFramePtr = (*[1 << 30]uint8)(unsafe.Pointer(d.rgbaFrame.data[0]))[:rgbaFrameSize:rgbaFrameSize]
+	return nil
+}
+
 // decode decodes a RGBA image from VP9.
 func (d *vp9Decoder) decode(au []byte) (*image.RGBA, error) {
 	// send access unit to decoder
@@ -94,37 +129,10 @@ func (d *vp9Decoder) decode(au []byte) (*image.RGBA, error) {
 
 	// if frame size has changed, allocate needed objects
 	if d.rgbaFrame == nil || d.rgbaFrame.width != d.yuv420Frame.width || d.rgbaFrame.height != d.yuv420Frame.height {
-		if d.swsCtx != nil {
-			C.sws_freeContext(d.swsCtx)
+		err := d.reinitDynamicStuff()
+		if err != nil {
+			return nil, err
 		}
-
-		if d.rgbaFrame != nil {
-			C.av_frame_free(&d.rgbaFrame)
-		}
-
-		d.rgbaFrame = C.av_frame_alloc()
-		if d.rgbaFrame == nil {
-			return nil, fmt.Errorf("av_frame_alloc() failed")
-		}
-
-		d.rgbaFrame.format = C.AV_PIX_FMT_RGBA
-		d.rgbaFrame.width = d.yuv420Frame.width
-		d.rgbaFrame.height = d.yuv420Frame.height
-		d.rgbaFrame.color_range = C.AVCOL_RANGE_JPEG
-
-		res = C.av_frame_get_buffer(d.rgbaFrame, 1)
-		if res < 0 {
-			return nil, fmt.Errorf("av_frame_get_buffer() failed")
-		}
-
-		d.swsCtx = C.sws_getContext(d.yuv420Frame.width, d.yuv420Frame.height, int32(d.yuv420Frame.format),
-			d.rgbaFrame.width, d.rgbaFrame.height, (int32)(d.rgbaFrame.format), C.SWS_BILINEAR, nil, nil, nil)
-		if d.swsCtx == nil {
-			return nil, fmt.Errorf("sws_getContext() failed")
-		}
-
-		rgbaFrameSize := C.av_image_get_buffer_size((int32)(d.rgbaFrame.format), d.rgbaFrame.width, d.rgbaFrame.height, 1)
-		d.rgbaFramePtr = (*[1 << 30]uint8)(unsafe.Pointer(d.rgbaFrame.data[0]))[:rgbaFrameSize:rgbaFrameSize]
 	}
 
 	// convert color space from YUV420 to RGBA
