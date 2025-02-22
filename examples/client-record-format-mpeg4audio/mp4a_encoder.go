@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"runtime"
+	"math"
 	"unsafe"
 )
 
-// #cgo pkg-config: libavcodec libavutil libswresample
+// #cgo pkg-config: libavcodec libavutil
 // #include <libavcodec/avcodec.h>
-// #include <libswresample/swresample.h>
 // #include <libavutil/opt.h>
 // #include <libavutil/channel_layout.h>
 import "C"
@@ -21,30 +20,19 @@ func frameLineSize(frame *C.AVFrame) *C.int {
 	return (*C.int)(unsafe.Pointer(&frame.linesize[0]))
 }
 
-func switchEndianness16(samples []byte) []byte {
-	ls := len(samples)
-	for i := 0; i < ls; i += 2 {
-		samples[i], samples[i+1] = samples[i+1], samples[i]
-	}
-	return samples
-}
-
-func littleEndianToFloat(swrCtx *C.struct_SwrContext, samples []byte) ([]byte, error) {
+func bigEndianS16ToFloat32(samples []byte) ([]byte, error) {
 	sampleCount := len(samples) / 2
 	outSize := len(samples) * 2
 	outSamples := make([]byte, outSize)
 
-	var p runtime.Pinner
-	p.Pin(&outSamples[0])
-	p.Pin(&samples[0])
-	defer p.Unpin()
-
-	outBufs := (*C.uint8_t)(&outSamples[0])
-	inBufs := (*C.uint8_t)(&samples[0])
-
-	res := C.swr_convert(swrCtx, &outBufs, (C.int)(sampleCount), &inBufs, (C.int)(sampleCount))
-	if res < 0 {
-		return nil, fmt.Errorf("swr_convert() failed")
+	for i := 0; i < sampleCount; i++ {
+		s := (int16(samples[(i*2)]) << 8) | int16(samples[(i*2)+1])
+		f := float32(s) / 32767
+		b := math.Float32bits(f)
+		outSamples[(i * 4)] = byte(b)
+		outSamples[(i*4)+1] = byte(b >> 8)
+		outSamples[(i*4)+2] = byte(b >> 16)
+		outSamples[(i*4)+3] = byte(b >> 24)
 	}
 
 	return outSamples, nil
@@ -58,7 +46,6 @@ type mp4aEncoder struct {
 
 	codecCtx         *C.AVCodecContext
 	frame            *C.AVFrame
-	swrCtx           *C.struct_SwrContext
 	pkt              *C.AVPacket
 	samplesBuffer    []byte
 	samplesBufferPTS int64
@@ -105,48 +92,8 @@ func (d *mp4aEncoder) initialize() error {
 		return fmt.Errorf("av_frame_get_buffer() failed")
 	}
 
-	d.swrCtx = C.swr_alloc()
-	if d.swrCtx == nil {
-		C.av_frame_free(&d.frame)
-		C.avcodec_close(d.codecCtx)
-		return fmt.Errorf("swr_alloc() failed")
-	}
-
-	cstr := C.CString("out_channel_layout")
-	defer C.free(unsafe.Pointer(cstr))
-	C.av_opt_set_channel_layout(unsafe.Pointer(d.swrCtx), cstr, (C.int64_t)(d.codecCtx.channel_layout), 0)
-
-	cstr = C.CString("out_sample_fmt")
-	defer C.free(unsafe.Pointer(cstr))
-	C.av_opt_set_int(unsafe.Pointer(d.swrCtx), cstr, C.AV_SAMPLE_FMT_FLTP, 0)
-
-	cstr = C.CString("out_sample_rate")
-	defer C.free(unsafe.Pointer(cstr))
-	C.av_opt_set_int(unsafe.Pointer(d.swrCtx), cstr, 48000, 0)
-
-	cstr = C.CString("in_channel_layout")
-	defer C.free(unsafe.Pointer(cstr))
-	C.av_opt_set_channel_layout(unsafe.Pointer(d.swrCtx), cstr, (C.int64_t)(d.codecCtx.channel_layout), 0)
-
-	cstr = C.CString("in_sample_fmt")
-	defer C.free(unsafe.Pointer(cstr))
-	C.av_opt_set_int(unsafe.Pointer(d.swrCtx), cstr, C.AV_SAMPLE_FMT_S16, 0)
-
-	cstr = C.CString("in_sample_rate")
-	defer C.free(unsafe.Pointer(cstr))
-	C.av_opt_set_int(unsafe.Pointer(d.swrCtx), cstr, 48000, 0)
-
-	res = C.swr_init(d.swrCtx)
-	if res < 0 {
-		C.swr_free(&d.swrCtx)
-		C.av_frame_free(&d.frame)
-		C.avcodec_close(d.codecCtx)
-		return fmt.Errorf("swr_init() failed")
-	}
-
 	d.pkt = C.av_packet_alloc()
 	if d.pkt == nil {
-		C.swr_free(&d.swrCtx)
 		C.av_frame_free(&d.frame)
 		C.avcodec_close(d.codecCtx)
 		return fmt.Errorf("av_packet_alloc() failed")
@@ -158,18 +105,14 @@ func (d *mp4aEncoder) initialize() error {
 // close closes the decoder.
 func (d *mp4aEncoder) close() {
 	C.av_packet_free(&d.pkt)
-	C.swr_free(&d.swrCtx)
 	C.av_frame_free(&d.frame)
 	C.avcodec_close(d.codecCtx)
 }
 
 // encode encodes LPCM samples into Opus packets.
 func (d *mp4aEncoder) encode(samples []byte) ([][]byte, int64, error) {
-	// convert from big-endian to little-endian
-	samples = switchEndianness16(samples)
-
-	// convert from little-endian to float
-	samples, err := littleEndianToFloat(d.swrCtx, samples)
+	// convert from big-endian signed 16-bit integer to float32
+	samples, err := bigEndianS16ToFloat32(samples)
 	if err != nil {
 		return nil, 0, err
 	}
