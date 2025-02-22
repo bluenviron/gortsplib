@@ -14,7 +14,7 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a M-JPEG format
+// 2. check if there's a M-JPEG stream
 // 3. get JPEG images of that format
 // 4. decode JPEG images into RGBA frames
 

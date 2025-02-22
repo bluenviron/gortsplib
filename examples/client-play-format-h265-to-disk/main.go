@@ -12,7 +12,7 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's a H265 format
+// 2. check if there's a H265 stream
 // 3. save the content of the format in a file in MPEG-TS format
 
 func main() {

@@ -21,7 +21,7 @@ import (
 // 4. write RTP packets to the server
 
 // This example requires the FFmpeg libraries, that can be installed with this command:
-// apt install -y libavcodec-dev libswresample-dev gcc pkg-config
+// apt install -y libavcodec-dev gcc pkg-config
 
 func multiplyAndDivide(v, m, d int64) int64 {
 	secs := v / d
@@ -45,7 +45,7 @@ func main() {
 		Config: &mpeg4audio.Config{
 			Type:         mpeg4audio.ObjectTypeAACLC,
 			SampleRate:   48000,
-			ChannelCount: 2,
+			ChannelCount: 1,
 		},
 		SizeLength:       13,
 		IndexLength:      3,
