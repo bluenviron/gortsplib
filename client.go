@@ -2032,116 +2032,122 @@ func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time,
 	return ct.rtcpReceiver.PacketNTP(pkt.Timestamp)
 }
 
+// -- Birdseye: safeLoadUint64 returns 0 if p is nil; otherwise it atomically loads the value.
+func safeLoadUint64(p *uint64) uint64 {
+	if p == nil {
+		return 0
+	}
+	return atomic.LoadUint64(p)
+}
+
 // Stats returns client statistics.
-func (c *Client) Stats() *ClientStats {
+func (c *Client) Stats() *ClientStats { // -- Birdseye: safeLoadUnit64 instead of atomic.LoadUint64
 	return &ClientStats{
 		Conn: StatsConn{
-			BytesReceived: atomic.LoadUint64(c.bytesReceived),
-			BytesSent:     atomic.LoadUint64(c.bytesSent),
+			BytesReceived: safeLoadUint64(c.bytesReceived),
+			BytesSent:     safeLoadUint64(c.bytesSent),
 		},
 		Session: StatsSession{
 			BytesReceived: func() uint64 {
-				v := uint64(0)
+				var v uint64
 				for _, sm := range c.setuppedMedias {
-					v += atomic.LoadUint64(sm.bytesReceived)
+					v += safeLoadUint64(sm.bytesReceived)
 				}
 				return v
 			}(),
 			BytesSent: func() uint64 {
-				v := uint64(0)
+				var v uint64
 				for _, sm := range c.setuppedMedias {
-					v += atomic.LoadUint64(sm.bytesSent)
+					v += safeLoadUint64(sm.bytesSent)
 				}
 				return v
 			}(),
 			RTPPacketsReceived: func() uint64 {
-				v := uint64(0)
+				var v uint64
 				for _, sm := range c.setuppedMedias {
 					for _, f := range sm.formats {
-						v += atomic.LoadUint64(f.rtpPacketsReceived)
+						v += safeLoadUint64(f.rtpPacketsReceived)
 					}
 				}
 				return v
 			}(),
 			RTPPacketsSent: func() uint64 {
-				v := uint64(0)
+				var v uint64
 				for _, sm := range c.setuppedMedias {
 					for _, f := range sm.formats {
-						v += atomic.LoadUint64(f.rtpPacketsSent)
+						v += safeLoadUint64(f.rtpPacketsSent)
 					}
 				}
 				return v
 			}(),
 			RTPPacketsLost: func() uint64 {
-				v := uint64(0)
+				var v uint64
 				for _, sm := range c.setuppedMedias {
 					for _, f := range sm.formats {
-						v += atomic.LoadUint64(f.rtpPacketsLost)
+						v += safeLoadUint64(f.rtpPacketsLost)
 					}
 				}
 				return v
 			}(),
 			RTPPacketsInError: func() uint64 {
-				v := uint64(0)
+				var v uint64
 				for _, sm := range c.setuppedMedias {
-					v += atomic.LoadUint64(sm.rtpPacketsInError)
+					v += safeLoadUint64(sm.rtpPacketsInError)
 				}
 				return v
 			}(),
 			RTPPacketsJitter: func() float64 {
-				v := float64(0)
-				n := float64(0)
+				var total float64
+				var count float64
 				for _, sm := range c.setuppedMedias {
 					for _, fo := range sm.formats {
 						if fo.rtcpReceiver != nil {
 							stats := fo.rtcpReceiver.Stats()
 							if stats != nil {
-								v += stats.Jitter
-								n++
+								total += stats.Jitter
+								count++
 							}
 						}
 					}
 				}
-				if n != 0 {
-					return v / n
+				if count != 0 {
+					return total / count
 				}
 				return 0
 			}(),
 			RTCPPacketsReceived: func() uint64 {
-				v := uint64(0)
+				var v uint64
 				for _, sm := range c.setuppedMedias {
-					v += atomic.LoadUint64(sm.rtcpPacketsReceived)
+					v += safeLoadUint64(sm.rtcpPacketsReceived)
 				}
 				return v
 			}(),
 			RTCPPacketsSent: func() uint64 {
-				v := uint64(0)
+				var v uint64
 				for _, sm := range c.setuppedMedias {
-					v += atomic.LoadUint64(sm.rtcpPacketsSent)
+					v += safeLoadUint64(sm.rtcpPacketsSent)
 				}
 				return v
 			}(),
 			RTCPPacketsInError: func() uint64 {
-				v := uint64(0)
+				var v uint64
 				for _, sm := range c.setuppedMedias {
-					v += atomic.LoadUint64(sm.rtcpPacketsInError)
+					v += safeLoadUint64(sm.rtcpPacketsInError)
 				}
 				return v
 			}(),
 			Medias: func() map[*description.Media]StatsSessionMedia { //nolint:dupl
 				ret := make(map[*description.Media]StatsSessionMedia, len(c.setuppedMedias))
-
 				for med, sm := range c.setuppedMedias {
 					ret[med] = StatsSessionMedia{
-						BytesReceived:       atomic.LoadUint64(sm.bytesReceived),
-						BytesSent:           atomic.LoadUint64(sm.bytesSent),
-						RTPPacketsInError:   atomic.LoadUint64(sm.rtpPacketsInError),
-						RTCPPacketsReceived: atomic.LoadUint64(sm.rtcpPacketsReceived),
-						RTCPPacketsSent:     atomic.LoadUint64(sm.rtcpPacketsSent),
-						RTCPPacketsInError:  atomic.LoadUint64(sm.rtcpPacketsInError),
+						BytesReceived:       safeLoadUint64(sm.bytesReceived),
+						BytesSent:           safeLoadUint64(sm.bytesSent),
+						RTPPacketsInError:   safeLoadUint64(sm.rtpPacketsInError),
+						RTCPPacketsReceived: safeLoadUint64(sm.rtcpPacketsReceived),
+						RTCPPacketsSent:     safeLoadUint64(sm.rtcpPacketsSent),
+						RTCPPacketsInError:  safeLoadUint64(sm.rtcpPacketsInError),
 						Formats: func() map[format.Format]StatsSessionFormat {
 							ret := make(map[format.Format]StatsSessionFormat, len(sm.formats))
-
 							for _, fo := range sm.formats {
 								recvStats := func() *rtcpreceiver.Stats {
 									if fo.rtcpReceiver != nil {
@@ -2155,13 +2161,12 @@ func (c *Client) Stats() *ClientStats {
 									}
 									return nil
 								}()
-
 								ret[fo.format] = StatsSessionFormat{ //nolint:dupl
-									RTPPacketsReceived: atomic.LoadUint64(fo.rtpPacketsReceived),
-									RTPPacketsSent:     atomic.LoadUint64(fo.rtpPacketsSent),
-									RTPPacketsLost:     atomic.LoadUint64(fo.rtpPacketsLost),
+									RTPPacketsReceived: safeLoadUint64(fo.rtpPacketsReceived),
+									RTPPacketsSent:     safeLoadUint64(fo.rtpPacketsSent),
+									RTPPacketsLost:     safeLoadUint64(fo.rtpPacketsLost),
 									LocalSSRC: func() uint32 {
-										if fo.rtcpReceiver != nil {
+										if fo.rtcpReceiver != nil && fo.rtcpReceiver.LocalSSRC != nil { // -- Birdseye: Check both the receiver and its LocalSSRC pointer
 											return *fo.rtcpReceiver.LocalSSRC
 										}
 										if sentStats != nil {
@@ -2210,12 +2215,10 @@ func (c *Client) Stats() *ClientStats {
 									}(),
 								}
 							}
-
 							return ret
 						}(),
 					}
 				}
-
 				return ret
 			}(),
 		},
