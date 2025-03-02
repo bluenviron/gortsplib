@@ -8,7 +8,7 @@
 
 RTSP 1.0 client and server library for the Go programming language, written for [MediaMTX](https://github.com/bluenviron/mediamtx).
 
-Go &ge; 1.22 is required.
+Go &ge; 1.21 is required.
 
 Features:
 
