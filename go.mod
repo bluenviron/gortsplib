@@ -1,6 +1,7 @@
 module github.com/bluenviron/gortsplib/v4
 
 go 1.21.0
+toolchain go1.23.7
 
 require (
 	github.com/bluenviron/mediacommon/v2 v2.0.1-0.20250222132106-205c4f7f3850
@@ -9,7 +10,7 @@ require (
 	github.com/pion/rtp v1.8.12
 	github.com/pion/sdp/v3 v3.0.10
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/net v0.35.0
+	golang.org/x/net v0.36.0
 )
 
 require (
