@@ -1,7 +1,7 @@
 # gortsplib
 
-[![Test](https://github.com/bluenviron/gortsplib/workflows/test/badge.svg)](https://github.com/bluenviron/gortsplib/actions?query=workflow:test)
-[![Lint](https://github.com/bluenviron/gortsplib/workflows/lint/badge.svg)](https://github.com/bluenviron/gortsplib/actions?query=workflow:lint)
+[![Test](https://github.com/bluenviron/gortsplib/actions/workflows/test.yml/badge.svg)](https://github.com/bluenviron/gortsplib/actions/workflows/test.yml)
+[![Lint](https://github.com/bluenviron/gortsplib/actions/workflows/lint.yml/badge.svg)](https://github.com/bluenviron/gortsplib/actions/workflows/lint.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/bluenviron/gortsplib)](https://goreportcard.com/report/github.com/bluenviron/gortsplib)
 [![CodeCov](https://codecov.io/gh/bluenviron/gortsplib/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bluenviron/gortsplib/tree/main)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/bluenviron/gortsplib/v4)](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4#pkg-index)
