@@ -253,6 +253,14 @@ type Client struct {
 	// This can be a security issue.
 	// It defaults to false.
 	AnyPortEnable bool
+	// Use fixed UDP port for RTP on client side.
+	// If zero, random ports will be used.
+	// It defaults to 0.
+	ClientRTPPort int
+	// Use fixed UDP port for RTCP on client side.
+	// If zero, random ports will be used.
+	// It defaults to 0.
+	ClientRTCPPort int
 	// transport protocol (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.

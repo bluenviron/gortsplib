@@ -103,11 +103,21 @@ func (cm *clientMedia) start() {
 		cm.writePacketRTCPInQueue = cm.writePacketRTCPInQueueUDP
 
 		if cm.c.state == clientStateRecord || cm.media.IsBackChannel {
-			cm.udpRTPListener.readFunc = cm.readPacketRTPUDPRecord
-			cm.udpRTCPListener.readFunc = cm.readPacketRTCPUDPRecord
+			if cm.c.ClientRTPPort != 0 && cm.c.ClientRTCPPort != 0 {
+				cm.udpRTPListener.addServer(cm.udpRTPListener.readIP, cm.udpRTPListener.readPort, cm.readPacketRTPUDPRecord)
+				cm.udpRTCPListener.addServer(cm.udpRTCPListener.readIP, cm.udpRTCPListener.readPort, cm.readPacketRTCPUDPRecord)
+			} else {
+				cm.udpRTPListener.readFunc = cm.readPacketRTPUDPRecord
+				cm.udpRTCPListener.readFunc = cm.readPacketRTCPUDPRecord
+			}
 		} else {
-			cm.udpRTPListener.readFunc = cm.readPacketRTPUDPPlay
-			cm.udpRTCPListener.readFunc = cm.readPacketRTCPUDPPlay
+			if cm.c.ClientRTPPort != 0 && cm.c.ClientRTCPPort != 0 {
+				cm.udpRTPListener.addServer(cm.udpRTPListener.readIP, cm.udpRTPListener.readPort, cm.readPacketRTPUDPPlay)
+				cm.udpRTCPListener.addServer(cm.udpRTCPListener.readIP, cm.udpRTCPListener.readPort, cm.readPacketRTCPUDPPlay)
+			} else {
+				cm.udpRTPListener.readFunc = cm.readPacketRTPUDPPlay
+				cm.udpRTCPListener.readFunc = cm.readPacketRTCPUDPPlay
+			}
 		}
 	} else {
 		cm.writePacketRTCPInQueue = cm.writePacketRTCPInQueueTCP
@@ -137,6 +147,11 @@ func (cm *clientMedia) start() {
 
 func (cm *clientMedia) stop() {
 	if cm.udpRTPListener != nil {
+		if cm.c.ClientRTPPort != 0 && cm.c.ClientRTCPPort != 0 {
+			cm.udpRTPListener.removeServer(cm.udpRTPListener.readIP, cm.udpRTPListener.readPort)
+			cm.udpRTCPListener.removeServer(cm.udpRTCPListener.readIP, cm.udpRTCPListener.readPort)
+		}
+
 		cm.udpRTPListener.stop()
 		cm.udpRTCPListener.stop()
 	}
