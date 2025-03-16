@@ -14,7 +14,7 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an VP9 format
+// 2. check if there's a VP9 stream
 // 3. decode the VP9 stream into RGBA frames
 
 // This example requires the FFmpeg libraries, that can be installed with this command:

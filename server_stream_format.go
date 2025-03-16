@@ -24,10 +24,10 @@ func (sf *serverStreamFormat) initialize() {
 
 	sf.rtcpSender = &rtcpsender.RTCPSender{
 		ClockRate: sf.format.ClockRate(),
-		Period:    sf.sm.st.s.senderReportPeriod,
-		TimeNow:   sf.sm.st.s.timeNow,
+		Period:    sf.sm.st.Server.senderReportPeriod,
+		TimeNow:   sf.sm.st.Server.timeNow,
 		WritePacketRTCP: func(pkt rtcp.Packet) {
-			if !sf.sm.st.s.DisableRTCPSenderReports {
+			if !sf.sm.st.Server.DisableRTCPSenderReports {
 				sf.sm.st.WritePacketRTCP(sf.sm.media, pkt) //nolint:errcheck
 			}
 		},

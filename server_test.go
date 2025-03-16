@@ -388,7 +388,11 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream := NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream := &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			h.stream = stream
@@ -481,7 +485,11 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn1, err := net.Dial("tcp", "localhost:8554")
@@ -562,7 +570,11 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -625,7 +637,11 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -721,7 +737,11 @@ func TestServerGetSetParameter(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -865,7 +885,11 @@ func TestServerSessionClose(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -940,7 +964,11 @@ func TestServerSessionAutoClose(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1002,7 +1030,11 @@ func TestServerSessionTeardown(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1095,7 +1127,12 @@ func TestServerAuth(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, base.StatusUnauthorized, res.StatusCode)
 
-			sender, err := auth.NewSender(res.Header["WWW-Authenticate"], "myuser", "mypass")
+			sender := &auth.Sender{
+				WWWAuth: res.Header["WWW-Authenticate"],
+				User:    "myuser",
+				Pass:    "mypass",
+			}
+			err = sender.Initialize()
 			require.NoError(t, err)
 
 			sender.AddAuthorization(&req)
@@ -1153,7 +1190,12 @@ func TestServerAuthFail(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, base.StatusUnauthorized, res.StatusCode)
 
-	sender, err := auth.NewSender(res.Header["WWW-Authenticate"], "myuser", "mypass")
+	sender := &auth.Sender{
+		WWWAuth: res.Header["WWW-Authenticate"],
+		User:    "myuser",
+		Pass:    "mypass",
+	}
+	err = sender.Initialize()
 	require.NoError(t, err)
 
 	sender.AddAuthorization(&req)

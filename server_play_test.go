@@ -291,14 +291,18 @@ func TestServerPlayPath(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{
-				Medias: []*description.Media{
-					testH264Media,
-					testH264Media,
-					testH264Media,
-					testH264Media,
+			stream = &ServerStream{
+				Server: s,
+				Desc: &description.Session{
+					Medias: []*description.Media{
+						testH264Media,
+						testH264Media,
+						testH264Media,
+						testH264Media,
+					},
 				},
-			})
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -380,7 +384,12 @@ func TestServerPlaySetupErrors(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
+
 			if ca == "closed stream" {
 				stream.Close()
 			} else {
@@ -547,7 +556,11 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	for i := 0; i < 2; i++ {
@@ -723,7 +736,11 @@ func TestServerPlay(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", listenIP+":8554")
@@ -1017,7 +1034,11 @@ func TestServerPlaySocketError(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 
 			func() {
 				nconn, err := net.Dial("tcp", listenIP+":8554")
@@ -1183,7 +1204,11 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1301,7 +1326,11 @@ func TestServerPlayRTCPReport(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1420,7 +1449,11 @@ func TestServerPlayVLCMulticast(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", listenIP+":8554")
@@ -1501,7 +1534,11 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1588,7 +1625,11 @@ func TestServerPlayPause(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1681,7 +1722,11 @@ func TestServerPlayPlayPausePausePlay(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1764,7 +1809,11 @@ func TestServerPlayTimeout(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1850,7 +1899,11 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 			require.NoError(t, err)
 			defer s.Close()
 
-			stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+			stream = &ServerStream{
+				Server: s,
+				Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+			}
+			stream.Initialize()
 			defer stream.Close()
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
@@ -1922,7 +1975,11 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	sxID := ""
@@ -2006,7 +2063,11 @@ func TestServerPlayPartialMedias(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media, testH264Media}})
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media, testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -2112,18 +2173,22 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{
-		Medias: []*description.Media{
-			{
-				Type:    "application",
-				Formats: []format.Format{forma},
-			},
-			{
-				Type:    "application",
-				Formats: []format.Format{forma},
+	stream = &ServerStream{
+		Server: s,
+		Desc: &description.Session{
+			Medias: []*description.Media{
+				{
+					Type:    "application",
+					Formats: []format.Format{forma},
+				},
+				{
+					Type:    "application",
+					Formats: []format.Format{forma},
+				},
 			},
 		},
-	})
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	err = stream.WritePacketRTP(stream.Description().Medias[0], &rtp.Packet{
@@ -2238,18 +2303,22 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	stream = NewServerStream(s, &description.Session{
-		Medias: []*description.Media{
-			{
-				Type:    "application",
-				Formats: []format.Format{forma},
-			},
-			{
-				Type:    "application",
-				Formats: []format.Format{forma},
+	stream = &ServerStream{
+		Server: s,
+		Desc: &description.Session{
+			Medias: []*description.Media{
+				{
+					Type:    "application",
+					Formats: []format.Format{forma},
+				},
+				{
+					Type:    "application",
+					Formats: []format.Format{forma},
+				},
 			},
 		},
-	})
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	nconn, err := net.Dial("tcp", "localhost:8554")
@@ -2318,7 +2387,12 @@ func TestServerPlayStreamStats(t *testing.T) {
 	err := s.Start()
 	require.NoError(t, err)
 	defer s.Close()
-	stream = NewServerStream(s, &description.Session{Medias: []*description.Media{testH264Media}})
+
+	stream = &ServerStream{
+		Server: s,
+		Desc:   &description.Session{Medias: []*description.Media{testH264Media}},
+	}
+	stream.Initialize()
 	defer stream.Close()
 
 	for _, transport := range []string{"tcp", "multicast"} {

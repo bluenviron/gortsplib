@@ -854,7 +854,8 @@ func (c *Client) trySwitchingProtocol2(medi *description.Media, baseURL *base.UR
 }
 
 func (c *Client) startTransportRoutines() {
-	c.timeDecoder = rtptime.NewGlobalDecoder2()
+	c.timeDecoder = &rtptime.GlobalDecoder2{}
+	c.timeDecoder.Initialize()
 
 	for _, cm := range c.setuppedMedias {
 		cm.start()
@@ -1025,7 +1026,7 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 	// get session from response
 	if v, ok := res.Header["Session"]; ok {
 		var sx headers.Session
-		err := sx.Unmarshal(v)
+		err = sx.Unmarshal(v)
 		if err != nil {
 			return nil, liberrors.ErrClientSessionHeaderInvalid{Err: err}
 		}
@@ -1041,7 +1042,12 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		pass, _ := req.URL.User.Password()
 		user := req.URL.User.Username()
 
-		sender, err := auth.NewSender(res.Header["WWW-Authenticate"], user, pass)
+		sender := &auth.Sender{
+			WWWAuth: res.Header["WWW-Authenticate"],
+			User:    user,
+			Pass:    pass,
+		}
+		err = sender.Initialize()
 		if err != nil {
 			return nil, liberrors.ErrClientAuthSetup{Err: err}
 		}

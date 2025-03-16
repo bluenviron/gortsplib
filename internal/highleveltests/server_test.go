@@ -328,7 +328,11 @@ func TestServerRecordRead(t *testing.T) {
 							}, fmt.Errorf("someone is already publishing")
 						}
 
-						stream = gortsplib.NewServerStream(s, ctx.Description)
+						stream = &gortsplib.ServerStream{
+							Server: s,
+							Desc:   ctx.Description,
+						}
+						stream.Initialize()
 						publisher = ctx.Session
 
 						return &base.Response{
