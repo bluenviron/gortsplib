@@ -32,6 +32,15 @@ type GlobalDecoder2Track interface {
 	PTSEqualsDTS(*rtp.Packet) bool
 }
 
+// NewGlobalDecoder2 allocates a GlobalDecoder.
+//
+// Deprecated: replaced by GlobalDecoder2.Initialize().
+func NewGlobalDecoder2() *GlobalDecoder2 {
+	d := &GlobalDecoder2{}
+	d.Initialize()
+	return d
+}
+
 // GlobalDecoder2 is a RTP timestamp decoder.
 type GlobalDecoder2 struct {
 	mutex             sync.Mutex
@@ -42,11 +51,9 @@ type GlobalDecoder2 struct {
 	tracks            map[GlobalDecoder2Track]*globalDecoder2TrackData
 }
 
-// NewGlobalDecoder2 allocates a GlobalDecoder.
-func NewGlobalDecoder2() *GlobalDecoder2 {
-	return &GlobalDecoder2{
-		tracks: make(map[GlobalDecoder2Track]*globalDecoder2TrackData),
-	}
+// Initialize initializes a GlobalDecoder2.
+func (d *GlobalDecoder2) Initialize() {
+	d.tracks = make(map[GlobalDecoder2Track]*globalDecoder2TrackData)
 }
 
 // Decode decodes a timestamp.

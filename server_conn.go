@@ -348,7 +348,7 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 				}
 
 				if stream != nil {
-					byts, _ := serverSideDescription(stream.desc).Marshal(multicast)
+					byts, _ := serverSideDescription(stream.Desc).Marshal(multicast)
 					res.Body = byts
 				}
 			}

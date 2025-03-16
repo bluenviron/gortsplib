@@ -98,7 +98,11 @@ func (s *server) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, 
 func (s *server) setStreamReady(desc *description.Session) *gortsplib.ServerStream {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.stream = gortsplib.NewServerStream(s.s, desc)
+	s.stream = &gortsplib.ServerStream{
+		Server: s.s,
+		Desc:   desc,
+	}
+	s.stream.Initialize()
 	return s.stream
 }
 

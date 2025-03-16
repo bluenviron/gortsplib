@@ -1024,7 +1024,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		var medi *description.Media
 		switch ss.state {
 		case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
-			medi = findMediaByTrackID(stream.desc.Medias, trackID)
+			medi = findMediaByTrackID(stream.Desc.Medias, trackID)
 		default: // record
 			medi = findMediaByURL(ss.announcedDesc.Medias, path, query, req.URL)
 		}
@@ -1183,7 +1183,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		v := ss.s.timeNow().Unix()
 		ss.udpLastPacketTime = &v
 
-		ss.timeDecoder = rtptime.NewGlobalDecoder2()
+		ss.timeDecoder = &rtptime.GlobalDecoder2{}
+		ss.timeDecoder.Initialize()
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()
@@ -1269,7 +1270,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		v := ss.s.timeNow().Unix()
 		ss.udpLastPacketTime = &v
 
-		ss.timeDecoder = rtptime.NewGlobalDecoder2()
+		ss.timeDecoder = &rtptime.GlobalDecoder2{}
+		ss.timeDecoder.Initialize()
 
 		for _, sm := range ss.setuppedMedias {
 			sm.start()

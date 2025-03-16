@@ -11,7 +11,7 @@ import (
 
 // This example shows how to
 // 1. connect to a RTSP server
-// 2. check if there's an LPCM format
+// 2. check if there's a LPCM stream
 // 3. get LPCM samples of that format
 
 func main() {

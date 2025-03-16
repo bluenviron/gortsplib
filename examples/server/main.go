@@ -88,7 +88,11 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// create the stream and save the publisher
-	sh.stream = gortsplib.NewServerStream(sh.s, ctx.Description)
+	sh.stream = &gortsplib.ServerStream{
+		Server: sh.s,
+		Desc:   ctx.Description,
+	}
+	sh.stream.Initialize()
 	sh.publisher = ctx.Session
 
 	return &base.Response{
