@@ -101,5 +101,5 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 	}
 
 	// encode into MPEG-TS
-	return e.w.WriteH265(e.track, pts, dts, au)
+	return e.w.WriteH264(e.track, pts, dts, au)
 }
