@@ -81,7 +81,7 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			size := uint16(payload[0])<<8 | uint16(payload[1])
 			payload = payload[2:]
 
-			if int(size) > len(payload) {
+			if size == 0 || int(size) > len(payload) {
 				return nil, fmt.Errorf("invalid aggregation unit (invalid size)")
 			}
 
@@ -91,10 +91,6 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			if len(payload) == 0 {
 				break
 			}
-		}
-
-		if nalus == nil {
-			return nil, fmt.Errorf("aggregation unit doesn't contain any NALU")
 		}
 
 		d.firstPacketReceived = true
