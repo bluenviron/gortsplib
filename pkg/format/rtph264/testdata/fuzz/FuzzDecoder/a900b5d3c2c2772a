@@ -1,5 +1,5 @@
 go test fuzz v1
-[]byte("\xd00")
+[]byte("\xdc0")
 bool(false)
-[]byte("")
+[]byte("0")
 bool(false)

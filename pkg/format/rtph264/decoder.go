@@ -157,9 +157,13 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			size := uint16(payload[0])<<8 | uint16(payload[1])
 			payload = payload[2:]
 
-			// discard padding
-			if size == 0 && isAllZero(payload) {
-				break
+			if size == 0 {
+				// discard padding
+				if isAllZero(payload) {
+					break
+				}
+
+				return nil, fmt.Errorf("invalid STAP-A packet (invalid size)")
 			}
 
 			if int(size) > len(payload) {
