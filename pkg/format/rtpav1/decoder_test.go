@@ -295,32 +295,39 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 }
 
 func FuzzDecoder(f *testing.F) {
-	f.Fuzz(func(_ *testing.T, a []byte, am bool, b []byte, bm bool) {
+	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
 		d := &Decoder{}
-		d.Init() //nolint:errcheck
+		err := d.Init()
+		require.NoError(t, err)
 
-		d.Decode(&rtp.Packet{ //nolint:errcheck
+		tu, err := d.Decode(&rtp.Packet{
 			Header: rtp.Header{
-				Version:        2,
 				Marker:         am,
-				PayloadType:    96,
 				SequenceNumber: 17645,
-				Timestamp:      2289527317,
-				SSRC:           0x9dbb7812,
 			},
 			Payload: a,
 		})
 
-		d.Decode(&rtp.Packet{ //nolint:errcheck
-			Header: rtp.Header{
-				Version:        2,
-				Marker:         bm,
-				PayloadType:    96,
-				SequenceNumber: 17646,
-				Timestamp:      2289527317,
-				SSRC:           0x9dbb7812,
-			},
-			Payload: b,
-		})
+		if errors.Is(err, ErrMorePacketsNeeded) {
+			tu, err = d.Decode(&rtp.Packet{
+				Header: rtp.Header{
+					Marker:         bm,
+					SequenceNumber: 17646,
+				},
+				Payload: b,
+			})
+		}
+
+		if err == nil {
+			if len(tu) == 0 {
+				t.Errorf("should not happen")
+			}
+
+			for _, nalu := range tu {
+				if len(nalu) == 0 {
+					t.Errorf("should not happen")
+				}
+			}
+		}
 	})
 }

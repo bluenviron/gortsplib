@@ -60,6 +60,12 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 		return nil, fmt.Errorf("invalid header: %w", err)
 	}
 
+	for _, obu := range av1header.OBUElements {
+		if len(obu) == 0 {
+			return nil, fmt.Errorf("invalid OBU size")
+		}
+	}
+
 	if av1header.Z {
 		if d.fragmentsSize == 0 {
 			if !d.firstPacketReceived {
