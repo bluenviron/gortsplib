@@ -102,7 +102,10 @@ func (s *server) setStreamReady(desc *description.Session) *gortsplib.ServerStre
 		Server: s.s,
 		Desc:   desc,
 	}
-	s.stream.Initialize()
+	err := s.stream.Initialize()
+	if err != nil {
+		panic(err)
+	}
 	return s.stream
 }
 

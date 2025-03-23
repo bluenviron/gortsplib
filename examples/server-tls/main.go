@@ -93,7 +93,10 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		Server: sh.s,
 		Desc:   ctx.Description,
 	}
-	sh.stream.Initialize()
+	err := sh.stream.Initialize()
+	if err != nil {
+		panic(err)
+	}
 	sh.publisher = ctx.Session
 
 	return &base.Response{
