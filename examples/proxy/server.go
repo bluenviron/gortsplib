@@ -11,7 +11,7 @@ import (
 
 type server struct {
 	s      *gortsplib.Server
-	mutex  sync.Mutex
+	mutex  sync.RWMutex
 	stream *gortsplib.ServerStream
 }
 
@@ -52,8 +52,8 @@ func (s *server) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
 func (s *server) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("describe request")
 
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 
 	// stream is not available yet
 	if s.stream == nil {
@@ -71,8 +71,8 @@ func (s *server) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Re
 func (s *server) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 
 	// stream is not available yet
 	if s.stream == nil {
