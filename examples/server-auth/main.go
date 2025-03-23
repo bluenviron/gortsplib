@@ -67,7 +67,7 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 
 // called when receiving a DESCRIBE request.
 func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
-	log.Printf("describe request")
+	log.Printf("DESCRIBE request")
 
 	// Verify reader credentials.
 	// In case of readers, credentials have to be verified during DESCRIBE and SETUP.
@@ -96,7 +96,7 @@ func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (
 
 // called when receiving an ANNOUNCE request.
 func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-	log.Printf("announce request")
+	log.Printf("ANNOUNCE request")
 
 	// Verify publisher credentials.
 	// In case of publishers, credentials have to be verified during ANNOUNCE.
@@ -134,7 +134,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 // called when receiving a SETUP request.
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
-	log.Printf("setup request")
+	log.Printf("SETUP request")
 
 	// SETUP is used by both readers and publishers. In case of publishers, just return StatusOK.
 	if ctx.Session.State() == gortsplib.ServerSessionStatePreRecord {
@@ -169,7 +169,7 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 
 // called when receiving a PLAY request.
 func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
-	log.Printf("play request")
+	log.Printf("PLAY request")
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
@@ -178,7 +178,7 @@ func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Re
 
 // called when receiving a RECORD request.
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
-	log.Printf("record request")
+	log.Printf("RECORD request")
 
 	// called when receiving a RTP packet
 	ctx.Session.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {

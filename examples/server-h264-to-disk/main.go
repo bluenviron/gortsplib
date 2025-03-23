@@ -57,7 +57,7 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 
 // called when receiving an ANNOUNCE request.
 func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (*base.Response, error) {
-	log.Printf("announce request")
+	log.Printf("ANNOUNCE request")
 
 	sh.mutex.Lock()
 	defer sh.mutex.Unlock()
@@ -115,7 +115,7 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 		}, nil, nil
 	}
 
-	log.Printf("setup request")
+	log.Printf("SETUP request")
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
@@ -124,7 +124,7 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 
 // called when receiving a RECORD request.
 func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base.Response, error) {
-	log.Printf("record request")
+	log.Printf("RECORD request")
 
 	// called when receiving a RTP packet
 	ctx.Session.OnPacketRTP(sh.media, sh.format, func(pkt *rtp.Packet) {

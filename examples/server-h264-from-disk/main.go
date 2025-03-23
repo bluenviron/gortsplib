@@ -2,12 +2,15 @@ package main
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/asticode/go-astits"
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
@@ -38,6 +41,107 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
+func routeFrames(f *os.File, stream *gortsplib.ServerStream) {
+	// setup H264 -> RTP encoder
+	rtpEnc, err := stream.Desc.Medias[0].Formats[0].(*format.H264).CreateEncoder()
+	if err != nil {
+		panic(err)
+	}
+
+	randomStart, err := randUint32()
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		// setup MPEG-TS parser
+		r := &mpegts.Reader{R: f}
+		err = r.Initialize()
+		if err != nil {
+			panic(err)
+		}
+
+		// find the H264 track inside the file
+		track, err := findTrack(r)
+		if err != nil {
+			panic(err)
+		}
+
+		timeDecoder := mpegts.TimeDecoder{}
+		timeDecoder.Initialize()
+
+		var firstDTS *int64
+		var firstTime time.Time
+		var lastRTPTime uint32
+
+		// setup a callback that is called when a H264 access unit is read from the file
+		r.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
+			dts = timeDecoder.Decode(dts)
+			pts = timeDecoder.Decode(pts)
+
+			// sleep between access units
+			if firstDTS != nil {
+				timeDrift := time.Duration(dts-*firstDTS)*time.Second/90000 - time.Since(firstTime)
+				if timeDrift > 0 {
+					time.Sleep(timeDrift)
+				}
+			} else {
+				firstTime = time.Now()
+				firstDTS = &dts
+			}
+
+			log.Printf("writing access unit with pts=%d dts=%d", pts, dts)
+
+			// wrap the access unit into RTP packets
+			packets, err := rtpEnc.Encode(au)
+			if err != nil {
+				return err
+			}
+
+			// set packet timestamp
+			// we don't have to perform any conversion
+			// since H264 clock rate is the same in both MPEG-TS and RTSP
+			lastRTPTime = uint32(int64(randomStart) + pts)
+			for _, packet := range packets {
+				packet.Timestamp = lastRTPTime
+			}
+
+			// write RTP packets to the server
+			for _, packet := range packets {
+				err := stream.WritePacketRTP(stream.Desc.Medias[0], packet)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+
+		// read the file
+		for {
+			err := r.Read()
+			if err != nil {
+				// file has ended
+				if errors.Is(err, astits.ErrNoMorePackets) {
+					log.Printf("file has ended, rewinding")
+
+					// rewind to start position
+					_, err = f.Seek(0, io.SeekStart)
+					if err != nil {
+						panic(err)
+					}
+
+					// keep current timestamp
+					randomStart = lastRTPTime + 1
+
+					break
+				}
+				panic(err)
+			}
+		}
+	}
+}
+
 type serverHandler struct {
 	server *gortsplib.Server
 	stream *gortsplib.ServerStream
@@ -66,7 +170,7 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 
 // called when receiving a DESCRIBE request.
 func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
-	log.Printf("describe request")
+	log.Printf("DESCRIBE request")
 
 	sh.mutex.RLock()
 	defer sh.mutex.RUnlock()
@@ -78,7 +182,7 @@ func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (
 
 // called when receiving a SETUP request.
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
-	log.Printf("setup request")
+	log.Printf("SETUP request")
 
 	sh.mutex.RLock()
 	defer sh.mutex.RUnlock()
@@ -90,99 +194,11 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 
 // called when receiving a PLAY request.
 func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
-	log.Printf("play request")
+	log.Printf("PLAY request")
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
 	}, nil
-}
-
-func readVideoFile(stream *gortsplib.ServerStream, media *description.Media, forma *format.H264) {
-	// open a file in MPEG-TS format
-	f, err := os.Open("myvideo.ts")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	// setup MPEG-TS parser
-	r := &mpegts.Reader{R: f}
-	err = r.Initialize()
-	if err != nil {
-		panic(err)
-	}
-
-	// find the H264 track inside the file
-	track, err := findTrack(r)
-	if err != nil {
-		panic(err)
-	}
-
-	// setup H264 -> RTP encoder
-	rtpEnc, err := forma.CreateEncoder()
-	if err != nil {
-		panic(err)
-	}
-
-	randomStart, err := randUint32()
-	if err != nil {
-		panic(err)
-	}
-
-	timeDecoder := mpegts.TimeDecoder{}
-	timeDecoder.Initialize()
-
-	var firstDTS *int64
-	var startTime time.Time
-
-	// setup a callback that is called whenever a H264 access unit is read from the file
-	r.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
-		dts = timeDecoder.Decode(dts)
-		pts = timeDecoder.Decode(pts)
-
-		// sleep between access units
-		if firstDTS != nil {
-			timeDrift := time.Duration(dts-*firstDTS)*time.Second/90000 - time.Since(startTime)
-			if timeDrift > 0 {
-				time.Sleep(timeDrift)
-			}
-		} else {
-			startTime = time.Now()
-			firstDTS = &dts
-		}
-
-		log.Printf("writing access unit with pts=%d dts=%d", pts, dts)
-
-		// wrap the access unit into RTP packets
-		packets, err := rtpEnc.Encode(au)
-		if err != nil {
-			return err
-		}
-
-		// set packet timestamp
-		// we don't have to perform any conversion
-		// since H264 clock rate is the same in both MPEG-TS and RTSP
-		for _, packet := range packets {
-			packet.Timestamp = uint32(int64(randomStart) + pts)
-		}
-
-		// write RTP packets to the server
-		for _, packet := range packets {
-			err := stream.WritePacketRTP(media, packet)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	for {
-		err := r.Read()
-		if err != nil {
-			panic(err)
-		}
-	}
 }
 
 func main() {
@@ -207,16 +223,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer h.server.Close()
 
 	// create a RTSP description that contains a H264 format
-	forma := &format.H264{
-		PayloadTyp:        96,
-		PacketizationMode: 1,
-	}
 	desc := &description.Session{
 		Medias: []*description.Media{{
-			Type:    description.MediaTypeVideo,
-			Formats: []format.Format{forma},
+			Type: description.MediaTypeVideo,
+			Formats: []format.Format{&format.H264{
+				PayloadTyp:        96,
+				PacketizationMode: 1,
+			}},
 		}},
 	}
 
@@ -229,9 +245,17 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer h.stream.Close()
 
-	// in a separate routine, read the MPEG-TS file
-	go readVideoFile(h.stream, desc.Medias[0], forma)
+	// open a file in MPEG-TS format
+	f, err := os.Open("myvideo.ts")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	// in a separate routine, route frames from file to ServerStream
+	go routeFrames(f, h.stream)
 
 	// allow clients to connect
 	h.mutex.Unlock()
