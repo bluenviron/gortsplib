@@ -328,6 +328,10 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 			})
 
 			if res.StatusCode == base.StatusOK {
+				if stream == nil {
+					panic("stream cannot be nil when StatusCode is StatusOK")
+				}
+
 				if res.Header == nil {
 					res.Header = make(base.Header)
 				}
@@ -347,10 +351,8 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 					}
 				}
 
-				if stream != nil {
-					byts, _ := serverSideDescription(stream.Desc).Marshal(multicast)
-					res.Body = byts
-				}
+				byts, _ := serverSideDescription(stream.Desc).Marshal(multicast)
+				res.Body = byts
 			}
 
 			return res, err
