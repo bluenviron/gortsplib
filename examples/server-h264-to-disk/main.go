@@ -20,7 +20,7 @@ import (
 // 3. save the content of the H264 media in a file in MPEG-TS format
 
 type serverHandler struct {
-	s           *gortsplib.Server
+	server      *gortsplib.Server
 	mutex       sync.Mutex
 	publisher   *gortsplib.ServerSession
 	media       *description.Media
@@ -151,7 +151,7 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 func main() {
 	// configure the server
 	h := &serverHandler{}
-	h.s = &gortsplib.Server{
+	h.server = &gortsplib.Server{
 		Handler:           h,
 		RTSPAddress:       ":8554",
 		UDPRTPAddress:     ":8000",
@@ -162,6 +162,6 @@ func main() {
 	}
 
 	// start server and wait until a fatal error
-	log.Printf("server is ready")
-	panic(h.s.StartAndWait())
+	log.Printf("server is ready on %s", h.server.RTSPAddress)
+	panic(h.server.StartAndWait())
 }

@@ -10,14 +10,14 @@ import (
 )
 
 type server struct {
-	s      *gortsplib.Server
+	server *gortsplib.Server
 	mutex  sync.RWMutex
 	stream *gortsplib.ServerStream
 }
 
 func (s *server) initialize() {
 	// configure the server
-	s.s = &gortsplib.Server{
+	s.server = &gortsplib.Server{
 		Handler:           s,
 		RTSPAddress:       ":8554",
 		UDPRTPAddress:     ":8000",
@@ -99,7 +99,7 @@ func (s *server) setStreamReady(desc *description.Session) *gortsplib.ServerStre
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.stream = &gortsplib.ServerStream{
-		Server: s.s,
+		Server: s.server,
 		Desc:   desc,
 	}
 	err := s.stream.Initialize()

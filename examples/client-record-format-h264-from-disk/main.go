@@ -137,7 +137,7 @@ func main() {
 		return nil
 	})
 
-	// start reading the MPEG-TS file
+	// read the MPEG-TS file
 	for {
 		err := r.Read()
 		if err != nil {

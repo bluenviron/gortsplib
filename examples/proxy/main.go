@@ -14,10 +14,10 @@ func main() {
 
 	// allocate the client.
 	// give client access to the server.
-	c := &client{s: s}
+	c := &client{server: s}
 	c.initialize()
 
 	// start server and wait until a fatal error
-	log.Printf("server is ready")
-	s.s.StartAndWait()
+	log.Printf("server is ready on %s", s.server.RTSPAddress)
+	s.server.StartAndWait()
 }
