@@ -352,6 +352,12 @@ func TestServerRecordRead(t *testing.T) {
 							}, nil, fmt.Errorf("invalid query (%s)", ctx.Query)
 						}
 
+						if ctx.Session.State() == gortsplib.ServerSessionStatePreRecord {
+							return &base.Response{
+								StatusCode: base.StatusOK,
+							}, nil, nil
+						}
+
 						if stream == nil {
 							return &base.Response{
 								StatusCode: base.StatusNotFound,
