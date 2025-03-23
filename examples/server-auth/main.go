@@ -136,15 +136,20 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
+	// SETUP is used by both readers and publishers. In case of publishers, just return StatusOK.
+	if ctx.Session.State() == gortsplib.ServerSessionStatePreRecord {
+		return &base.Response{
+			StatusCode: base.StatusOK,
+		}, nil, nil
+	}
+
 	// Verify reader credentials.
 	// In case of readers, credentials have to be verified during DESCRIBE and SETUP.
-	if ctx.Session.State() == gortsplib.ServerSessionStateInitial {
-		ok := ctx.Conn.VerifyCredentials(ctx.Request, readUser, readPass)
-		if !ok {
-			return &base.Response{
-				StatusCode: base.StatusUnauthorized,
-			}, nil, liberrors.ErrServerAuth{}
-		}
+	ok := ctx.Conn.VerifyCredentials(ctx.Request, readUser, readPass)
+	if !ok {
+		return &base.Response{
+			StatusCode: base.StatusUnauthorized,
+		}, nil, liberrors.ErrServerAuth{}
 	}
 
 	sh.mutex.RLock()
