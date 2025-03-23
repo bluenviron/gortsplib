@@ -50,7 +50,7 @@ func (s *server) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
 
 // called when receiving a DESCRIBE request.
 func (s *server) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
-	log.Printf("describe request")
+	log.Printf("DESCRIBE request")
 
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -69,7 +69,7 @@ func (s *server) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Re
 
 // called when receiving a SETUP request.
 func (s *server) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
-	log.Printf("setup request")
+	log.Printf("SETUP request")
 
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -88,7 +88,7 @@ func (s *server) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response
 
 // called when receiving a PLAY request.
 func (s *server) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
-	log.Printf("play request")
+	log.Printf("PLAY request")
 
 	return &base.Response{
 		StatusCode: base.StatusOK,
