@@ -474,6 +474,7 @@ func (s *Server) StartAndWait() error {
 	if err != nil {
 		return err
 	}
+	defer s.Close()
 
 	return s.Wait()
 }
