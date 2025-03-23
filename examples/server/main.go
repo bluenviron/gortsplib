@@ -107,6 +107,9 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
+	sh.mutex.Lock()
+	defer sh.mutex.Unlock()
+
 	// no one is publishing yet
 	if sh.stream == nil {
 		return &base.Response{

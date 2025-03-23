@@ -147,6 +147,9 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 		}
 	}
 
+	sh.mutex.Lock()
+	defer sh.mutex.Unlock()
+
 	// no one is publishing yet
 	if sh.stream == nil {
 		return &base.Response{
