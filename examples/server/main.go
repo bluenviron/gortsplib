@@ -18,7 +18,7 @@ import (
 // 3. allow multiple clients to read that stream with TCP, UDP or UDP-multicast
 
 type serverHandler struct {
-	s         *gortsplib.Server
+	server    *gortsplib.Server
 	mutex     sync.RWMutex
 	stream    *gortsplib.ServerStream
 	publisher *gortsplib.ServerSession
@@ -89,7 +89,7 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 	// create the stream and save the publisher
 	sh.stream = &gortsplib.ServerStream{
-		Server: sh.s,
+		Server: sh.server,
 		Desc:   ctx.Description,
 	}
 	err := sh.stream.Initialize()
@@ -156,7 +156,7 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 func main() {
 	// configure the server
 	h := &serverHandler{}
-	h.s = &gortsplib.Server{
+	h.server = &gortsplib.Server{
 		Handler:           h,
 		RTSPAddress:       ":8554",
 		UDPRTPAddress:     ":8000",
@@ -167,6 +167,6 @@ func main() {
 	}
 
 	// start server and wait until a fatal error
-	log.Printf("server is ready")
-	panic(h.s.StartAndWait())
+	log.Printf("server is ready on %s", h.server.RTSPAddress)
+	panic(h.server.StartAndWait())
 }
