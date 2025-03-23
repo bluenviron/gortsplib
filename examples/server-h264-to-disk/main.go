@@ -108,6 +108,13 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 
 // called when receiving a SETUP request.
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
+	// prevent readers from using the server.
+	if ctx.Session.State() == gortsplib.ServerSessionStateInitial {
+		return &base.Response{
+			StatusCode: base.StatusNotImplemented,
+		}, nil, nil
+	}
+
 	log.Printf("setup request")
 
 	return &base.Response{

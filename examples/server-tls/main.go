@@ -108,6 +108,13 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("setup request")
 
+	// SETUP is used by both readers and publishers. In case of publishers, just return StatusOK.
+	if ctx.Session.State() == gortsplib.ServerSessionStatePreRecord {
+		return &base.Response{
+			StatusCode: base.StatusOK,
+		}, nil, nil
+	}
+
 	sh.mutex.RLock()
 	defer sh.mutex.RUnlock()
 
