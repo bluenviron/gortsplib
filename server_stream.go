@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,7 +33,10 @@ func NewServerStream(s *Server, desc *description.Session) *ServerStream {
 		Server: s,
 		Desc:   desc,
 	}
-	st.Initialize()
+	err := st.Initialize()
+	if err != nil {
+		panic(err)
+	}
 	return st
 }
 
@@ -54,7 +58,11 @@ type ServerStream struct {
 }
 
 // Initialize initializes a ServerStream.
-func (st *ServerStream) Initialize() {
+func (st *ServerStream) Initialize() error {
+	if st.Server == nil || st.Server.sessions == nil {
+		return fmt.Errorf("server not present or not initialized")
+	}
+
 	st.readers = make(map[*ServerSession]struct{})
 	st.activeUnicastReaders = make(map[*ServerSession]struct{})
 
@@ -68,6 +76,8 @@ func (st *ServerStream) Initialize() {
 		sm.initialize()
 		st.medias[medi] = sm
 	}
+
+	return nil
 }
 
 // Close closes a ServerStream.

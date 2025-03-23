@@ -297,7 +297,8 @@ func TestServerRecordPath(t *testing.T) {
 							Server: s,
 							Desc:   ctx.Description,
 						}
-						stream.Initialize()
+						err := stream.Initialize()
+						require.NoError(t, err)
 						defer stream.Close()
 
 						return &base.Response{
