@@ -30,7 +30,7 @@ const (
 
 type serverHandler struct {
 	s         *gortsplib.Server
-	mutex     sync.Mutex
+	mutex     sync.RWMutex
 	stream    *gortsplib.ServerStream
 	publisher *gortsplib.ServerSession
 }
@@ -78,8 +78,8 @@ func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (
 		}, nil, liberrors.ErrServerAuth{}
 	}
 
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
+	sh.mutex.RLock()
+	defer sh.mutex.RUnlock()
 
 	// no one is publishing yet
 	if sh.stream == nil {
@@ -147,8 +147,8 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 		}
 	}
 
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
+	sh.mutex.RLock()
+	defer sh.mutex.RUnlock()
 
 	// no one is publishing yet
 	if sh.stream == nil {
