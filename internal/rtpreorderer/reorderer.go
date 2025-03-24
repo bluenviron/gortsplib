@@ -27,7 +27,7 @@ func (r *Reorderer) Initialize() {
 
 // Process processes a RTP packet.
 // It returns a sequence of ordered packets and the number of lost packets.
-func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, uint) {
+func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, uint64) {
 	if !r.initialized {
 		r.initialized = true
 		r.expectedSeqNum = pkt.SequenceNumber + 1
@@ -86,7 +86,7 @@ func (r *Reorderer) Process(pkt *rtp.Packet) ([]*rtp.Packet, uint) {
 		ret[pos] = pkt
 
 		r.expectedSeqNum = pkt.SequenceNumber + 1
-		return ret, uint(int(relPos) - n + 1)
+		return ret, uint64(int(relPos) - n + 1)
 	}
 
 	// there's a missing packet

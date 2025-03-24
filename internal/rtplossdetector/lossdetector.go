@@ -13,7 +13,7 @@ type LossDetector struct {
 
 // Process processes a RTP packet.
 // It returns the number of lost packets.
-func (r *LossDetector) Process(pkt *rtp.Packet) uint {
+func (r *LossDetector) Process(pkt *rtp.Packet) uint64 {
 	if !r.initialized {
 		r.initialized = true
 		r.expectedSeqNum = pkt.SequenceNumber + 1
@@ -23,7 +23,7 @@ func (r *LossDetector) Process(pkt *rtp.Packet) uint {
 	if pkt.SequenceNumber != r.expectedSeqNum {
 		diff := pkt.SequenceNumber - r.expectedSeqNum
 		r.expectedSeqNum = pkt.SequenceNumber + 1
-		return uint(diff)
+		return uint64(diff)
 	}
 
 	r.expectedSeqNum = pkt.SequenceNumber + 1
