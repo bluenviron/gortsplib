@@ -3144,8 +3144,8 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 					v := TransportTCP
 					return &v
 				}(),
-				OnPacketLost: func(err error) {
-					require.EqualError(t, err, "69 RTP packets lost")
+				OnPacketsLost: func(lost uint64) {
+					require.Equal(t, uint64(69), lost)
 					close(errorRecv)
 				},
 				OnDecodeError: func(err error) {

@@ -1259,8 +1259,8 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, nil
 					},
-					onPacketLost: func(ctx *ServerHandlerOnPacketLostCtx) {
-						require.EqualError(t, ctx.Error, "69 RTP packets lost")
+					onPacketsLost: func(ctx *ServerHandlerOnPacketsLostCtx) {
+						require.Equal(t, uint64(69), ctx.Lost)
 						close(errorRecv)
 					},
 					onDecodeError: func(ctx *ServerHandlerOnDecodeErrorCtx) {
