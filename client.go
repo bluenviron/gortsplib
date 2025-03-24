@@ -218,11 +218,11 @@ type ClientOnTransportSwitchFunc func(err error)
 
 // ClientOnPacketLostFunc is the prototype of Client.OnPacketLost.
 //
-// Deprecated: replaced by ClientOnPacketLost2Func
+// Deprecated: replaced by ClientOnPacketsLostFunc
 type ClientOnPacketLostFunc func(err error)
 
-// ClientOnPacketLost2Func is the prototype of Client.OnPacketLost2.
-type ClientOnPacketLost2Func func(lost uint64)
+// ClientOnPacketsLostFunc is the prototype of Client.OnPacketsLost.
+type ClientOnPacketsLostFunc func(lost uint64)
 
 // ClientOnDecodeErrorFunc is the prototype of Client.OnDecodeError.
 type ClientOnDecodeErrorFunc func(err error)
@@ -314,10 +314,10 @@ type Client struct {
 	OnTransportSwitch ClientOnTransportSwitchFunc
 	// called when the client detects lost packets.
 	//
-	// Deprecated: replaced by OnPacketLost2.
+	// Deprecated: replaced by OnPacketsLost
 	OnPacketLost ClientOnPacketLostFunc
 	// called when the client detects lost packets.
-	OnPacketLost2 ClientOnPacketLost2Func
+	OnPacketsLost ClientOnPacketsLostFunc
 	// called when a non-fatal decode error occurs.
 	OnDecodeError ClientOnDecodeErrorFunc
 
@@ -435,12 +435,12 @@ func (c *Client) Start(scheme string, host string) error {
 		}
 	}
 	if c.OnPacketLost != nil {
-		c.OnPacketLost2 = func(lost uint64) {
+		c.OnPacketsLost = func(lost uint64) {
 			c.OnPacketLost(liberrors.ErrClientRTPPacketsLost{Lost: uint(lost)}) //nolint:staticcheck
 		}
 	}
-	if c.OnPacketLost2 == nil {
-		c.OnPacketLost2 = func(lost uint64) {
+	if c.OnPacketsLost == nil {
+		c.OnPacketsLost = func(lost uint64) {
 			log.Printf("%d RTP %s lost",
 				lost,
 				func() string {

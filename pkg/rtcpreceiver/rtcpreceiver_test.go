@@ -155,7 +155,7 @@ func TestRTCPReceiverOverflow(t *testing.T) {
 	<-done
 }
 
-func TestRTCPReceiverPacketLost(t *testing.T) {
+func TestRTCPReceiverPacketsLost(t *testing.T) {
 	done := make(chan struct{})
 
 	rr, err := New(
@@ -230,7 +230,7 @@ func TestRTCPReceiverPacketLost(t *testing.T) {
 	<-done
 }
 
-func TestRTCPReceiverOverflowPacketLost(t *testing.T) {
+func TestRTCPReceiverOverflowPacketsLost(t *testing.T) {
 	done := make(chan struct{})
 
 	rr, err := New(

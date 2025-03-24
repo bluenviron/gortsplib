@@ -193,19 +193,31 @@ type ServerHandlerOnSetParameter interface {
 }
 
 // ServerHandlerOnPacketLostCtx is the context of OnPacketLost.
+//
+// Deprecated: replaced by ServerHandlerOnPacketsLostCtx
 type ServerHandlerOnPacketLostCtx struct {
 	Session *ServerSession
-	Lost    uint64
-
-	//
-	// Deprecated: replaced by Lost
-	Error error
+	Error   error
 }
 
 // ServerHandlerOnPacketLost can be implemented by a ServerHandler.
+//
+// Deprecated: replaced by ServerHandlerOnPacketsLost
 type ServerHandlerOnPacketLost interface {
 	// called when the server detects lost packets.
 	OnPacketLost(*ServerHandlerOnPacketLostCtx)
+}
+
+// ServerHandlerOnPacketsLostCtx is the context of OnPacketsLost.
+type ServerHandlerOnPacketsLostCtx struct {
+	Session *ServerSession
+	Lost    uint64
+}
+
+// ServerHandlerOnPacketsLost can be implemented by a ServerHandler.
+type ServerHandlerOnPacketsLost interface {
+	// called when the server detects lost packets.
+	OnPacketsLost(*ServerHandlerOnPacketsLostCtx)
 }
 
 // ServerHandlerOnDecodeErrorCtx is the context of OnDecodeError.
