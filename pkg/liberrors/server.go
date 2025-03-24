@@ -239,6 +239,8 @@ func (e ErrServerUnexpectedResponse) Error() string {
 type ErrServerWriteQueueFull = ErrClientWriteQueueFull
 
 // ErrServerRTPPacketsLost is an error that can be returned by a server.
+//
+// Deprecated: will be removed in next version.
 type ErrServerRTPPacketsLost = ErrClientRTPPacketsLost
 
 // ErrServerRTPPacketUnknownPayloadType is an error that can be returned by a server.

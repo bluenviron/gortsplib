@@ -195,7 +195,11 @@ type ServerHandlerOnSetParameter interface {
 // ServerHandlerOnPacketLostCtx is the context of OnPacketLost.
 type ServerHandlerOnPacketLostCtx struct {
 	Session *ServerSession
-	Error   error
+	Lost    uint64
+
+	//
+	// Deprecated: replaced by Lost
+	Error error
 }
 
 // ServerHandlerOnPacketLost can be implemented by a ServerHandler.

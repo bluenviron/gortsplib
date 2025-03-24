@@ -17,6 +17,7 @@ type Opus struct {
 	PayloadTyp   uint8
 	ChannelCount int
 
+	//
 	// Deprecated: replaced by ChannelCount.
 	IsStereo bool
 }

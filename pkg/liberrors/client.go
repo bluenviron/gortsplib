@@ -250,6 +250,8 @@ func (e ErrClientWriteQueueFull) Error() string {
 }
 
 // ErrClientRTPPacketsLost is an error that can be returned by a client.
+//
+// Deprecated: will be removed in next version.
 type ErrClientRTPPacketsLost struct {
 	Lost uint
 }

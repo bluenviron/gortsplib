@@ -112,16 +112,24 @@ func (sf *serverSessionFormat) handlePacketRTP(pkt *rtp.Packet, now time.Time) {
 	sf.onPacketRTP(pkt)
 }
 
-func (sf *serverSessionFormat) onPacketRTPLost(lost uint) {
-	atomic.AddUint64(sf.rtpPacketsLost, uint64(lost))
+func (sf *serverSessionFormat) onPacketRTPLost(lost uint64) {
+	atomic.AddUint64(sf.rtpPacketsLost, lost)
 
 	if h, ok := sf.sm.ss.s.Handler.(ServerHandlerOnPacketLost); ok {
 		h.OnPacketLost(&ServerHandlerOnPacketLostCtx{
 			Session: sf.sm.ss,
-			Error:   liberrors.ErrServerRTPPacketsLost{Lost: lost},
+			Lost:    lost,
+			Error:   liberrors.ErrServerRTPPacketsLost{Lost: uint(lost)}, //nolint:staticcheck
 		})
 	} else {
-		log.Println(liberrors.ErrServerRTPPacketsLost{Lost: lost}.Error())
+		log.Printf("%d RTP %s lost",
+			lost,
+			func() string {
+				if lost == 1 {
+					return "packet"
+				}
+				return "packets"
+			}())
 	}
 }
 
