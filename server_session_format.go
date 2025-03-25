@@ -12,6 +12,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/internal/rtplossdetector"
 	"github.com/bluenviron/gortsplib/v4/internal/rtpreorderer"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
 type serverSessionFormat struct {
@@ -118,6 +119,11 @@ func (sf *serverSessionFormat) onPacketRTPLost(lost uint64) {
 		h.OnPacketsLost(&ServerHandlerOnPacketsLostCtx{
 			Session: sf.sm.ss,
 			Lost:    lost,
+		})
+	} else if h, ok := sf.sm.ss.s.Handler.(ServerHandlerOnPacketLost); ok {
+		h.OnPacketLost(&ServerHandlerOnPacketLostCtx{
+			Session: sf.sm.ss,
+			Error:   liberrors.ErrServerRTPPacketsLost{Lost: uint(lost)}, //nolint:staticcheck
 		})
 	} else {
 		log.Printf("%d RTP %s lost",
