@@ -33,7 +33,7 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func TestDecoderErrorLimit(t *testing.T) {
+func TestDecoderErrorOBUCount(t *testing.T) {
 	d := &Decoder{}
 	err := d.Init()
 	require.NoError(t, err)
