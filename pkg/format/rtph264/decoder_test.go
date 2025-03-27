@@ -222,7 +222,43 @@ func TestDecodeAccessUnit(t *testing.T) {
 	require.Equal(t, [][]byte{{0x01, 0x02}, {0x01, 0x02}}, nalus)
 }
 
-func TestDecoderErrorLimit(t *testing.T) {
+func TestDecoderErrorNALUSize(t *testing.T) {
+	d := &Decoder{}
+	err := d.Init()
+	require.NoError(t, err)
+
+	size := 0
+	i := uint16(0)
+
+	for size < h264.MaxAccessUnitSize {
+		flags := byte(0)
+		if size == 0 {
+			flags = 0b10000000
+		}
+
+		_, err = d.Decode(&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17645 + i,
+				Timestamp:      2289527317,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: append(
+				[]byte{byte(h264.NALUTypeFUA), flags},
+				bytes.Repeat([]byte{1, 2, 3, 4}, 1400/4)...,
+			),
+		})
+
+		size += 1400
+		i++
+	}
+
+	require.EqualError(t, err, "NALU size (8388801) is too big, maximum is 8388608")
+}
+
+func TestDecoderErrorNALUCount(t *testing.T) {
 	d := &Decoder{}
 	err := d.Init()
 	require.NoError(t, err)
