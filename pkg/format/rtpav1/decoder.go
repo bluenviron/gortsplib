@@ -83,8 +83,10 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 		d.fragmentsSize += len(av1header.OBUElements[0])
 
 		if d.fragmentsSize > av1.MaxTemporalUnitSize {
+			errSize := d.fragmentsSize
 			d.resetFragments()
-			return nil, fmt.Errorf("temporal unit size (%d) is too big, maximum is %d", d.fragmentsSize, av1.MaxTemporalUnitSize)
+			return nil, fmt.Errorf("temporal unit size (%d) is too big, maximum is %d",
+				errSize, av1.MaxTemporalUnitSize)
 		}
 
 		d.fragments = append(d.fragments, av1header.OBUElements[0])
@@ -108,9 +110,10 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 			d.fragmentsSize += len(av1header.OBUElements[elementCount-1])
 
 			if d.fragmentsSize > av1.MaxTemporalUnitSize {
+				errSize := d.fragmentsSize
 				d.resetFragments()
 				return nil, fmt.Errorf("temporal unit size (%d) is too big, maximum is %d",
-					d.fragmentsSize, av1.MaxTemporalUnitSize)
+					errSize, av1.MaxTemporalUnitSize)
 			}
 
 			d.fragments = append(d.fragments, av1header.OBUElements[elementCount-1])
@@ -154,11 +157,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	}
 
 	if (d.frameBufferSize + addSize) > av1.MaxTemporalUnitSize {
+		errSize := d.frameBufferSize + addSize
 		d.frameBuffer = nil
 		d.frameBufferLen = 0
 		d.frameBufferSize = 0
 		return nil, fmt.Errorf("temporal unit size (%d) is too big, maximum is %d",
-			d.frameBufferSize+addSize, av1.MaxOBUsPerTemporalUnit)
+			errSize, av1.MaxOBUsPerTemporalUnit)
 	}
 
 	d.frameBuffer = append(d.frameBuffer, obus...)

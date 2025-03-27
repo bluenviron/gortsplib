@@ -137,8 +137,10 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 		d.fragmentsSize += len(pkt.Payload[3:])
 
 		if d.fragmentsSize > h265.MaxAccessUnitSize {
+			errSize := d.fragmentsSize
 			d.resetFragments()
-			return nil, fmt.Errorf("NALU size (%d) is too big, maximum is %d", d.fragmentsSize, h265.MaxAccessUnitSize)
+			return nil, fmt.Errorf("NALU size (%d) is too big, maximum is %d",
+				errSize, h265.MaxAccessUnitSize)
 		}
 
 		d.fragments = append(d.fragments, pkt.Payload[3:])
@@ -186,11 +188,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	}
 
 	if (d.frameBufferSize + addSize) > h265.MaxAccessUnitSize {
+		errSize := d.frameBufferSize + addSize
 		d.frameBuffer = nil
 		d.frameBufferLen = 0
 		d.frameBufferSize = 0
 		return nil, fmt.Errorf("access unit size (%d) is too big, maximum is %d",
-			d.frameBufferSize+addSize, h265.MaxAccessUnitSize)
+			errSize, h265.MaxAccessUnitSize)
 	}
 
 	d.frameBuffer = append(d.frameBuffer, nalus...)
