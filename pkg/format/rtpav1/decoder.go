@@ -28,6 +28,14 @@ func joinFragments(fragments [][]byte, size int) []byte {
 	return ret
 }
 
+func tuSize(tu [][]byte) int {
+	s := 0
+	for _, obu := range tu {
+		s += len(obu)
+	}
+	return s
+}
+
 // Decoder is a RTP/AV1 decoder.
 // Specification: https://aomediacodec.github.io/av1-rtp-spec/
 type Decoder struct {
@@ -107,15 +115,7 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 		if av1header.Y {
 			elementCount := len(av1header.OBUElements)
 
-			d.fragmentsSize += len(av1header.OBUElements[elementCount-1])
-
-			if d.fragmentsSize > av1.MaxTemporalUnitSize {
-				errSize := d.fragmentsSize
-				d.resetFragments()
-				return nil, fmt.Errorf("temporal unit size (%d) is too big, maximum is %d",
-					errSize, av1.MaxTemporalUnitSize)
-			}
-
+			d.fragmentsSize = len(av1header.OBUElements[elementCount-1])
 			d.fragments = append(d.fragments, av1header.OBUElements[elementCount-1])
 			av1header.OBUElements = av1header.OBUElements[:elementCount-1]
 			d.fragmentNextSeqNum = pkt.SequenceNumber + 1
@@ -151,11 +151,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 			errCount, av1.MaxOBUsPerTemporalUnit)
 	}
 
-	addSize := 0
-
-	for _, obu := range obus {
-		addSize += len(obu)
-	}
+	addSize := tuSize(obus)
 
 	if (d.frameBufferSize + addSize) > av1.MaxTemporalUnitSize {
 		errSize := d.frameBufferSize + addSize

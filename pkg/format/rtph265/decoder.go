@@ -28,6 +28,14 @@ func joinFragments(fragments [][]byte, size int) []byte {
 	return ret
 }
 
+func auSize(au [][]byte) int {
+	s := 0
+	for _, nalu := range au {
+		s += len(nalu)
+	}
+	return s
+}
+
 // Decoder is a RTP/H265 decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc7798
 type Decoder struct {
@@ -182,11 +190,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 			errCount, h265.MaxNALUsPerAccessUnit)
 	}
 
-	addSize := 0
-
-	for _, nalu := range nalus {
-		addSize += len(nalu)
-	}
+	addSize := auSize(nalus)
 
 	if (d.frameBufferSize + addSize) > h265.MaxAccessUnitSize {
 		errSize := d.frameBufferSize + addSize
