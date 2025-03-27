@@ -71,7 +71,7 @@ func (e *Encoder) Init() error {
 func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 	var curPacket *rtp.Packet
 	var packets []*rtp.Packet
-	curPayloadLen := 0
+	obusInPacket := 0
 
 	createNewPacket := func(z bool) {
 		curPacket = &rtp.Packet{
@@ -85,7 +85,7 @@ func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 		}
 		e.sequenceNumber++
 		packets = append(packets, curPacket)
-		curPayloadLen = 1
+		obusInPacket = 0
 
 		if z {
 			curPacket.Payload[0] |= 1 << 7
@@ -100,30 +100,58 @@ func (e *Encoder) Encode(obus [][]byte) ([]*rtp.Packet, error) {
 
 	createNewPacket(false)
 
-	for _, obu := range obus {
+	maxFragmentedLEBSize := av1.LEB128(e.PayloadMaxSize).MarshalSize()
+
+	for i, obu := range obus {
 		for {
-			avail := e.PayloadMaxSize - curPayloadLen
+			avail := e.PayloadMaxSize - len(curPacket.Payload)
 			obuLen := len(obu)
-			needed := obuLen + 2
+			omitSize := (i == (len(obus)-1) && obusInPacket < 3)
+
+			var obuLenLEB av1.LEB128
+			var obuLenLEBSize int
+			var needed int
+
+			if omitSize {
+				needed = obuLen
+			} else {
+				obuLenLEB = av1.LEB128(obuLen)
+				obuLenLEBSize = obuLenLEB.MarshalSize()
+				needed = obuLen + obuLenLEBSize
+			}
 
 			if needed <= avail {
-				obuLenLEB := av1.LEB128(obuLen)
-				buf := make([]byte, obuLenLEB.MarshalSize())
-				obuLenLEB.MarshalTo(buf)
-				curPacket.Payload = append(curPacket.Payload, buf...)
-				curPacket.Payload = append(curPacket.Payload, obu...)
-				curPayloadLen += len(buf) + obuLen
+				if omitSize {
+					curPacket.Payload[0] |= byte((obusInPacket + 1) << 4) // W
+					curPacket.Payload = append(curPacket.Payload, obu...)
+				} else {
+					buf := make([]byte, obuLenLEBSize)
+					obuLenLEB.MarshalTo(buf)
+					curPacket.Payload = append(curPacket.Payload, buf...)
+					curPacket.Payload = append(curPacket.Payload, obu...)
+					obusInPacket++
+				}
 				break
 			}
 
-			if avail > 2 {
-				fragmentLen := avail - 2
-				fragmentLenLEB := av1.LEB128(fragmentLen)
-				buf := make([]byte, fragmentLenLEB.MarshalSize())
-				fragmentLenLEB.MarshalTo(buf)
-				curPacket.Payload = append(curPacket.Payload, buf...)
-				curPacket.Payload = append(curPacket.Payload, obu[:fragmentLen]...)
-				obu = obu[fragmentLen:]
+			if omitSize {
+				if avail > 0 {
+					curPacket.Payload[0] |= byte((obusInPacket + 1) << 4) // W
+					curPacket.Payload = append(curPacket.Payload, obu[:avail]...)
+					obu = obu[avail:]
+				}
+			} else {
+				if avail > maxFragmentedLEBSize {
+					fragmentLen := avail - maxFragmentedLEBSize
+					fragmentLenLEB := av1.LEB128(fragmentLen)
+					fragmentLenLEBSize := fragmentLenLEB.MarshalSize()
+
+					buf := make([]byte, fragmentLenLEBSize)
+					fragmentLenLEB.MarshalTo(buf)
+					curPacket.Payload = append(curPacket.Payload, buf...)
+					curPacket.Payload = append(curPacket.Payload, obu[:fragmentLen]...)
+					obu = obu[fragmentLen:]
+				}
 			}
 
 			finalizeCurPacket(true)
