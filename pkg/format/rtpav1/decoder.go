@@ -66,25 +66,37 @@ func (d *Decoder) decodeOBUs(pkt *rtp.Packet) ([][]byte, error) {
 
 	z := (pkt.Payload[0] & 0b10000000) != 0
 	y := (pkt.Payload[0] & 0b01000000) != 0
+	w := (pkt.Payload[0] >> 4) & 0b11
 	payload := pkt.Payload[1:]
 	var obus [][]byte
 
 	for len(payload) > 0 {
-		var size av1.LEB128
-		n, err := size.Unmarshal(payload)
-		if err != nil {
-			d.resetFragments()
-			return nil, err
-		}
-		payload = payload[n:]
-
-		if size == 0 || len(payload) < int(size) {
-			return nil, fmt.Errorf("invalid fragmented OBU (invalid size)")
-		}
-
 		var obu []byte
-		obu, payload = payload[:size], payload[size:]
+
+		if w == 0 || byte(len(obus)) < (w-1) {
+			var size av1.LEB128
+			n, err := size.Unmarshal(payload)
+			if err != nil {
+				d.resetFragments()
+				return nil, err
+			}
+			payload = payload[n:]
+
+			if size == 0 || len(payload) < int(size) {
+				d.resetFragments()
+				return nil, fmt.Errorf("invalid OBU size")
+			}
+
+			obu, payload = payload[:size], payload[size:]
+		} else {
+			obu, payload = payload, nil
+		}
+
 		obus = append(obus, obu)
+	}
+
+	if w != 0 && len(obus) != int(w) {
+		return nil, fmt.Errorf("invalid W field")
 	}
 
 	// first OBU is continuation of previous one
