@@ -1,6 +1,7 @@
 package rtpav1
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
@@ -31,6 +32,48 @@ func TestDecode(t *testing.T) {
 			require.Equal(t, ca.obus, obus)
 		})
 	}
+}
+
+func TestDecoderErrorTUSize(t *testing.T) {
+	d := &Decoder{}
+	err := d.Init()
+	require.NoError(t, err)
+
+	size := 0
+	i := uint16(0)
+
+	for size < av1.MaxTemporalUnitSize {
+		var header byte
+		if i == 0 {
+			header = 0b01000000
+		} else {
+			header = 0b11000000
+		}
+
+		fragmentLenLEB := av1.LEB128(1400)
+		buf := make([]byte, fragmentLenLEB.MarshalSize())
+		fragmentLenLEB.MarshalTo(buf)
+
+		payload := append([]byte{header}, buf...)
+		payload = append(payload, bytes.Repeat([]byte{1, 2, 3, 4}, 1400/4)...)
+
+		_, err = d.Decode(&rtp.Packet{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17645 + i,
+				Timestamp:      2289527317,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: payload,
+		})
+
+		size += 1400
+		i++
+	}
+
+	require.EqualError(t, err, "temporal unit size (3145800) is too big, maximum is 3145728")
 }
 
 func TestDecoderErrorOBUCount(t *testing.T) {

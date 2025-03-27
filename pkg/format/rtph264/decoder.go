@@ -38,6 +38,14 @@ func isAllZero(buf []byte) bool {
 	return true
 }
 
+func auSize(au [][]byte) int {
+	s := 0
+	for _, nalu := range au {
+		s += len(nalu)
+	}
+	return s
+}
+
 // Decoder is a RTP/H264 decoder.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6184
 type Decoder struct {
@@ -223,11 +231,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 			errCount, h264.MaxNALUsPerAccessUnit)
 	}
 
-	addSize := 0
-
-	for _, nalu := range nalus {
-		addSize += len(nalu)
-	}
+	addSize := auSize(nalus)
 
 	if (d.frameBufferSize + addSize) > h264.MaxAccessUnitSize {
 		errSize := d.frameBufferSize + addSize
