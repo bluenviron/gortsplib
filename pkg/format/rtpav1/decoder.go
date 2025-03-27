@@ -143,11 +143,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	l := len(obus)
 
 	if (d.frameBufferLen + l) > av1.MaxOBUsPerTemporalUnit {
+		errCount := d.frameBufferLen + l
 		d.frameBuffer = nil
 		d.frameBufferLen = 0
 		d.frameBufferSize = 0
-		return nil, fmt.Errorf("OBU count exceeds maximum allowed (%d)",
-			av1.MaxOBUsPerTemporalUnit)
+		return nil, fmt.Errorf("OBU count (%d) exceeds maximum allowed (%d)",
+			errCount, av1.MaxOBUsPerTemporalUnit)
 	}
 
 	addSize := 0
