@@ -213,11 +213,12 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	l := len(nalus)
 
 	if (d.frameBufferLen + l) > h264.MaxNALUsPerAccessUnit {
+		errCount := d.frameBufferLen + l
 		d.frameBuffer = nil
 		d.frameBufferLen = 0
 		d.frameBufferSize = 0
-		return nil, fmt.Errorf("NALU count exceeds maximum allowed (%d)",
-			h264.MaxNALUsPerAccessUnit)
+		return nil, fmt.Errorf("NALU count (%d) exceeds maximum allowed (%d)",
+			errCount, h264.MaxNALUsPerAccessUnit)
 	}
 
 	addSize := 0

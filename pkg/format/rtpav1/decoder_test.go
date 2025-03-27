@@ -52,7 +52,7 @@ func TestDecoderErrorLimit(t *testing.T) {
 		})
 	}
 
-	require.EqualError(t, err, "OBU count exceeds maximum allowed (10)")
+	require.EqualError(t, err, "OBU count (11) exceeds maximum allowed (10)")
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
