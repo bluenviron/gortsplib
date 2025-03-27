@@ -92,8 +92,10 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		d.fragmentsSize += len(vpkt.Payload)
 
 		if d.fragmentsSize > vp8.MaxFrameSize {
+			errSize := d.fragmentsSize
 			d.resetFragments()
-			return nil, fmt.Errorf("frame size (%d) is too big, maximum is %d", d.fragmentsSize, vp8.MaxFrameSize)
+			return nil, fmt.Errorf("frame size (%d) is too big, maximum is %d",
+				errSize, vp8.MaxFrameSize)
 		}
 
 		d.fragments = append(d.fragments, vpkt.Payload)

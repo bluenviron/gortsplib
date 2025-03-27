@@ -139,10 +139,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	addSize := len(slice)
 
 	if (d.sliceBufferSize + addSize) > maxFrameSize {
+		errSize := d.sliceBufferSize + addSize
 		d.sliceBuffer = nil
 		d.sliceBufferSize = 0
 		return nil, fmt.Errorf("frame size (%d) is too big, maximum is %d",
-			d.sliceBufferSize+addSize, maxFrameSize)
+			errSize, maxFrameSize)
 	}
 
 	d.sliceBuffer = append(d.sliceBuffer, slice)
