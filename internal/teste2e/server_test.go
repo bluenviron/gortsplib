@@ -1,6 +1,6 @@
-//go:build enable_highlevel_tests
+//go:build enable_e2e_tests
 
-package highleveltests
+package e2etests
 
 import (
 	"crypto/tls"

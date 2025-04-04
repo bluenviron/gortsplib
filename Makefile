@@ -12,7 +12,7 @@ help:
 	@echo "  format          format source files"
 	@echo "  test            run tests"
 	@echo "  test32          run tests on a 32-bit system"
-	@echo "  test-highlevel  run high-level tests"
+	@echo "  test-e2e        run end-to-end tests"
 	@echo "  lint            run linter"
 	@echo "  bench           run benchmarks"
 	@echo ""
