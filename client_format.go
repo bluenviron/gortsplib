@@ -7,11 +7,11 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/internal/rtcpreceiver"
-	"github.com/bluenviron/gortsplib/v4/internal/rtcpsender"
-	"github.com/bluenviron/gortsplib/v4/internal/rtplossdetector"
-	"github.com/bluenviron/gortsplib/v4/internal/rtpreorderer"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtplossdetector"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 )
 
 type clientFormat struct {
@@ -93,7 +93,7 @@ func (cf *clientFormat) stop() {
 func (cf *clientFormat) readPacketRTPUDP(pkt *rtp.Packet) {
 	packets, lost := cf.udpReorderer.Process(pkt)
 	if lost != 0 {
-		cf.handlePacketsLost(lost)
+		cf.handlePacketsLost(uint64(lost))
 		// do not return
 	}
 
@@ -107,7 +107,7 @@ func (cf *clientFormat) readPacketRTPUDP(pkt *rtp.Packet) {
 func (cf *clientFormat) readPacketRTPTCP(pkt *rtp.Packet) {
 	lost := cf.tcpLossDetector.Process(pkt)
 	if lost != 0 {
-		cf.handlePacketsLost(lost)
+		cf.handlePacketsLost(uint64(lost))
 		// do not return
 	}
 
@@ -117,7 +117,7 @@ func (cf *clientFormat) readPacketRTPTCP(pkt *rtp.Packet) {
 }
 
 func (cf *clientFormat) handlePacketRTP(pkt *rtp.Packet, now time.Time) {
-	err := cf.rtcpReceiver.ProcessPacketRTP(pkt, now, cf.format.PTSEqualsDTS(pkt))
+	err := cf.rtcpReceiver.ProcessPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		cf.cm.onPacketRTPDecodeError(err)
 		return

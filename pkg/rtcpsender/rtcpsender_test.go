@@ -22,15 +22,15 @@ func TestRTCPSender(t *testing.T) {
 
 	sent := make(chan struct{})
 
-	rs := New(
-		90000,
-		100*time.Millisecond,
-		func() time.Time {
+	rs := &RTCPSender{
+		ClockRate: 90000,
+		Period:    100 * time.Millisecond,
+		TimeNow: func() time.Time {
 			mutex.Lock()
 			defer mutex.Unlock()
 			return curTime
 		},
-		func(pkt rtcp.Packet) {
+		WritePacketRTCP: func(pkt rtcp.Packet) {
 			require.Equal(t, &rtcp.SenderReport{
 				SSRC: 0xba9da416,
 				NTPTime: func() uint64 {
@@ -45,7 +45,9 @@ func TestRTCPSender(t *testing.T) {
 				OctetCount:  6,
 			}, pkt)
 			close(sent)
-		})
+		},
+	}
+	rs.Initialize()
 	defer rs.Close()
 
 	setCurTime(time.Date(2008, 5, 20, 22, 16, 20, 0, time.UTC))

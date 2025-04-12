@@ -20,8 +20,6 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/internal/rtcpreceiver"
-	"github.com/bluenviron/gortsplib/v4/internal/rtcpsender"
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
@@ -30,6 +28,8 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
@@ -1989,7 +1989,7 @@ func (c *Client) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet,
 	cm := c.setuppedMedias[medi]
 	cf := cm.formats[pkt.PayloadType]
 
-	cf.rtcpSender.ProcessPacketRTP(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
+	cf.rtcpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
 
 	ok := c.writer.push(func() error {
 		return cf.writePacketRTPInQueue(byts)
