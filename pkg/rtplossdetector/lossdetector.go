@@ -2,16 +2,18 @@
 package rtplossdetector
 
 import (
-	"github.com/bluenviron/gortsplib/v4/internal/rtplossdetector"
 	"github.com/pion/rtp"
 )
 
 // LossDetector detects lost packets.
-//
-// Deprecated: will be removed in the next version.
-type LossDetector rtplossdetector.LossDetector
+type LossDetector struct {
+	initialized    bool
+	expectedSeqNum uint16
+}
 
 // New allocates a LossDetector.
+//
+// Deprecated: Useless.
 func New() *LossDetector {
 	return &LossDetector{}
 }
@@ -19,5 +21,18 @@ func New() *LossDetector {
 // Process processes a RTP packet.
 // It returns the number of lost packets.
 func (r *LossDetector) Process(pkt *rtp.Packet) uint {
-	return uint((*rtplossdetector.LossDetector)(r).Process(pkt))
+	if !r.initialized {
+		r.initialized = true
+		r.expectedSeqNum = pkt.SequenceNumber + 1
+		return 0
+	}
+
+	if pkt.SequenceNumber != r.expectedSeqNum {
+		diff := pkt.SequenceNumber - r.expectedSeqNum
+		r.expectedSeqNum = pkt.SequenceNumber + 1
+		return uint(diff)
+	}
+
+	r.expectedSeqNum = pkt.SequenceNumber + 1
+	return 0
 }

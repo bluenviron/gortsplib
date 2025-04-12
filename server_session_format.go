@@ -8,11 +8,11 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/internal/rtcpreceiver"
-	"github.com/bluenviron/gortsplib/v4/internal/rtplossdetector"
-	"github.com/bluenviron/gortsplib/v4/internal/rtpreorderer"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtplossdetector"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 )
 
 type serverSessionFormat struct {
@@ -79,7 +79,7 @@ func (sf *serverSessionFormat) stop() {
 func (sf *serverSessionFormat) readPacketRTPUDP(pkt *rtp.Packet, now time.Time) {
 	packets, lost := sf.udpReorderer.Process(pkt)
 	if lost != 0 {
-		sf.onPacketRTPLost(lost)
+		sf.onPacketRTPLost(uint64(lost))
 		// do not return
 	}
 
@@ -91,7 +91,7 @@ func (sf *serverSessionFormat) readPacketRTPUDP(pkt *rtp.Packet, now time.Time) 
 func (sf *serverSessionFormat) readPacketRTPTCP(pkt *rtp.Packet) {
 	lost := sf.tcpLossDetector.Process(pkt)
 	if lost != 0 {
-		sf.onPacketRTPLost(lost)
+		sf.onPacketRTPLost(uint64(lost))
 		// do not return
 	}
 
@@ -101,7 +101,7 @@ func (sf *serverSessionFormat) readPacketRTPTCP(pkt *rtp.Packet) {
 }
 
 func (sf *serverSessionFormat) handlePacketRTP(pkt *rtp.Packet, now time.Time) {
-	err := sf.rtcpReceiver.ProcessPacketRTP(pkt, now, sf.format.PTSEqualsDTS(pkt))
+	err := sf.rtcpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		sf.sm.onPacketRTPDecodeError(err)
 		return
