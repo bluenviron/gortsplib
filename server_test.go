@@ -354,6 +354,41 @@ func TestServerErrorNilURL(t *testing.T) {
 	<-nconnClosed
 }
 
+func TestServerDescribeNonNilBody(t *testing.T) {
+	sdpBody := []byte("foo-sdp")
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+					Body:       sdpBody,
+				}, nil, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(nconn)
+
+	res, err := writeReqReadRes(conn, base.Request{
+		Method: base.Describe,
+		URL:    mustParseURL("rtsp://localhost:8554/"),
+		Header: base.Header{
+			"CSeq": base.HeaderValue{"1"},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+	require.Equal(t, sdpBody, res.Body)
+}
+
 type testServerErrMethodNotImplemented struct {
 	stream *ServerStream
 }
