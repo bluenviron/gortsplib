@@ -189,37 +189,86 @@ func TestDecodeAnnexB(t *testing.T) {
 }
 
 func TestDecodeAccessUnit(t *testing.T) {
-	d := &Decoder{}
-	err := d.Init()
-	require.NoError(t, err)
-
-	nalus, err := d.Decode(&rtp.Packet{
-		Header: rtp.Header{
-			Version:        2,
-			Marker:         false,
-			PayloadType:    96,
-			SequenceNumber: 17647,
-			Timestamp:      2289531307,
-			SSRC:           0x9dbb7812,
+	for _, ca := range []struct {
+		name string
+		pkts []*rtp.Packet
+		au   [][]byte
+	}{
+		{
+			"marker-splitted",
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17647,
+						Timestamp:      2289531307,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{1, 2},
+				},
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 17647,
+						Timestamp:      2289531307,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{3, 4},
+				},
+			},
+			[][]byte{{1, 2}, {3, 4}},
 		},
-		Payload: []byte{0x01, 0x02},
-	})
-	require.Equal(t, ErrMorePacketsNeeded, err)
-	require.Equal(t, [][]byte(nil), nalus)
-
-	nalus, err = d.Decode(&rtp.Packet{
-		Header: rtp.Header{
-			Version:        2,
-			Marker:         true,
-			PayloadType:    96,
-			SequenceNumber: 17647,
-			Timestamp:      2289531307,
-			SSRC:           0x9dbb7812,
+		{
+			"timestamp-splitted (FLIR M400)",
+			[]*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17647,
+						Timestamp:      2289531307,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{1, 2},
+				},
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 17647,
+						Timestamp:      2289531308,
+						SSRC:           0x9dbb7812,
+					},
+					Payload: []byte{3, 4},
+				},
+			},
+			[][]byte{{1, 2}},
 		},
-		Payload: []byte{0x01, 0x02},
-	})
-	require.NoError(t, err)
-	require.Equal(t, [][]byte{{0x01, 0x02}, {0x01, 0x02}}, nalus)
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			d := &Decoder{}
+			err := d.Init()
+			require.NoError(t, err)
+
+			var au [][]byte
+
+			for i, pkt := range ca.pkts {
+				au, err = d.Decode(pkt)
+				if i != len(ca.pkts)-1 {
+					require.Equal(t, ErrMorePacketsNeeded, err)
+				} else {
+					require.NoError(t, err)
+					require.Equal(t, ca.au, au)
+				}
+			}
+		})
+	}
 }
 
 func TestDecoderErrorNALUSize(t *testing.T) {
