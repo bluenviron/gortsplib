@@ -328,8 +328,8 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 			})
 
 			if res.StatusCode == base.StatusOK {
-				if stream == nil {
-					panic("stream cannot be nil when StatusCode is StatusOK")
+				if stream == nil && len(res.Body) == 0 {
+					panic("stream should be not nil or response body should be nonempty when StatusCode is StatusOK")
 				}
 
 				if res.Header == nil {
@@ -338,6 +338,10 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 
 				res.Header["Content-Base"] = base.HeaderValue{req.URL.String() + "/"}
 				res.Header["Content-Type"] = base.HeaderValue{"application/sdp"}
+
+				if stream == nil {
+					return res, err
+				}
 
 				// VLC uses multicast if the SDP contains a multicast address.
 				// therefore, we introduce a special query (vlcmulticast) that allows
