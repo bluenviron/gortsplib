@@ -258,3 +258,46 @@ func TestReset(t *testing.T) {
 	}}, out)
 	require.Equal(t, uint(0), missing)
 }
+
+func TestCustomBufferSize(t *testing.T) {
+	customSize := 128
+	r := &Reorderer{
+		BufferSize: customSize,
+	}
+	r.Initialize()
+
+	// Set absPos to an arbitrary value.
+	r.absPos = 10
+
+	// Process first packet; behaves as usual.
+	firstSeq := uint16(50)
+	out, missing := r.Process(&rtp.Packet{
+		Header: rtp.Header{
+			SequenceNumber: firstSeq,
+		},
+	})
+	require.Equal(t, []*rtp.Packet{{
+		Header: rtp.Header{
+			SequenceNumber: firstSeq,
+		},
+	}}, out)
+	require.Equal(t, uint(0), missing)
+
+	// At this point, expectedSeqNum == firstSeq + 1 (i.e. 51).
+	// Now, send a packet with a gap larger than the custom buffer size.
+	// For BufferSize = 128, let's send a packet with SequenceNumber = 51 + 130 = 181.
+	nextSeq := uint16(181)
+	out, missing = r.Process(&rtp.Packet{
+		Header: rtp.Header{
+			SequenceNumber: nextSeq,
+		},
+	})
+	// Since there are no packets buffered, n remains 1.
+	// relPos = 181 - 51 = 130; so missing should be 130
+	require.Equal(t, uint(130), missing)
+	require.Equal(t, []*rtp.Packet{{
+		Header: rtp.Header{
+			SequenceNumber: nextSeq,
+		},
+	}}, out)
+}
