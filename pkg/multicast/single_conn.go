@@ -15,15 +15,15 @@ const (
 	multicastTTL = 16
 )
 
-// SingleConn is a multicast connection
+// singleConn is a multicast connection
 // that works on a single interface.
-type SingleConn struct {
+type singleConn struct {
 	addr   *net.UDPAddr
 	conn   *net.UDPConn
 	connIP *ipv4.PacketConn
 }
 
-// NewSingleConn allocates a SingleConn.
+// NewSingleConn allocates a single-interface multicast connection.
 func NewSingleConn(
 	intf *net.Interface,
 	address string,
@@ -60,7 +60,7 @@ func NewSingleConn(
 		return nil, err
 	}
 
-	return &SingleConn{
+	return &singleConn{
 		addr:   addr,
 		conn:   conn,
 		connIP: connIP,
@@ -68,41 +68,41 @@ func NewSingleConn(
 }
 
 // Close implements Conn.
-func (c *SingleConn) Close() error {
+func (c *singleConn) Close() error {
 	return c.conn.Close()
 }
 
 // SetReadBuffer implements Conn.
-func (c *SingleConn) SetReadBuffer(bytes int) error {
+func (c *singleConn) SetReadBuffer(bytes int) error {
 	return c.conn.SetReadBuffer(bytes)
 }
 
 // LocalAddr implements Conn.
-func (c *SingleConn) LocalAddr() net.Addr {
+func (c *singleConn) LocalAddr() net.Addr {
 	return c.conn.LocalAddr()
 }
 
 // SetDeadline implements Conn.
-func (c *SingleConn) SetDeadline(_ time.Time) error {
+func (c *singleConn) SetDeadline(_ time.Time) error {
 	panic("unimplemented")
 }
 
 // SetReadDeadline implements Conn.
-func (c *SingleConn) SetReadDeadline(t time.Time) error {
+func (c *singleConn) SetReadDeadline(t time.Time) error {
 	return c.conn.SetReadDeadline(t)
 }
 
 // SetWriteDeadline implements Conn.
-func (c *SingleConn) SetWriteDeadline(t time.Time) error {
+func (c *singleConn) SetWriteDeadline(t time.Time) error {
 	return c.conn.SetWriteDeadline(t)
 }
 
 // WriteTo implements Conn.
-func (c *SingleConn) WriteTo(b []byte, addr net.Addr) (int, error) {
+func (c *singleConn) WriteTo(b []byte, addr net.Addr) (int, error) {
 	return c.conn.WriteTo(b, addr)
 }
 
 // ReadFrom implements Conn.
-func (c *SingleConn) ReadFrom(b []byte) (int, net.Addr, error) {
+func (c *singleConn) ReadFrom(b []byte) (int, net.Addr, error) {
 	return c.conn.ReadFrom(b)
 }

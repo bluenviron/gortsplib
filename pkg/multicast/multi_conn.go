@@ -11,9 +11,9 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-// MultiConn is a multicast connection
+// multiConn is a multicast connection
 // that works in parallel on all interfaces.
-type MultiConn struct {
+type multiConn struct {
 	addr         *net.UDPAddr
 	readConn     *net.UDPConn
 	readConnIP   *ipv4.PacketConn
@@ -21,7 +21,7 @@ type MultiConn struct {
 	writeConnIPs []*ipv4.PacketConn
 }
 
-// NewMultiConn allocates a MultiConn.
+// NewMultiConn allocates a multi-interface multicast connection.
 func NewMultiConn(
 	address string,
 	readOnly bool,
@@ -110,7 +110,7 @@ func NewMultiConn(
 		}
 	}
 
-	return &MultiConn{
+	return &multiConn{
 		addr:         addr,
 		readConn:     readConn,
 		readConnIP:   readConnIP,
@@ -120,7 +120,7 @@ func NewMultiConn(
 }
 
 // Close implements Conn.
-func (c *MultiConn) Close() error {
+func (c *multiConn) Close() error {
 	for _, c := range c.writeConns {
 		c.Close() //nolint:errcheck
 	}
@@ -129,27 +129,27 @@ func (c *MultiConn) Close() error {
 }
 
 // SetReadBuffer implements Conn.
-func (c *MultiConn) SetReadBuffer(bytes int) error {
+func (c *multiConn) SetReadBuffer(bytes int) error {
 	return c.readConn.SetReadBuffer(bytes)
 }
 
 // LocalAddr implements Conn.
-func (c *MultiConn) LocalAddr() net.Addr {
+func (c *multiConn) LocalAddr() net.Addr {
 	return c.readConn.LocalAddr()
 }
 
 // SetDeadline implements Conn.
-func (c *MultiConn) SetDeadline(_ time.Time) error {
+func (c *multiConn) SetDeadline(_ time.Time) error {
 	panic("unimplemented")
 }
 
 // SetReadDeadline implements Conn.
-func (c *MultiConn) SetReadDeadline(t time.Time) error {
+func (c *multiConn) SetReadDeadline(t time.Time) error {
 	return c.readConn.SetReadDeadline(t)
 }
 
 // SetWriteDeadline implements Conn.
-func (c *MultiConn) SetWriteDeadline(t time.Time) error {
+func (c *multiConn) SetWriteDeadline(t time.Time) error {
 	var err error
 	for _, c := range c.writeConns {
 		err2 := c.SetWriteDeadline(t)
@@ -161,7 +161,7 @@ func (c *MultiConn) SetWriteDeadline(t time.Time) error {
 }
 
 // WriteTo implements Conn.
-func (c *MultiConn) WriteTo(b []byte, addr net.Addr) (int, error) {
+func (c *multiConn) WriteTo(b []byte, addr net.Addr) (int, error) {
 	var n int
 	var err error
 	for _, c := range c.writeConns {
@@ -175,6 +175,6 @@ func (c *MultiConn) WriteTo(b []byte, addr net.Addr) (int, error) {
 }
 
 // ReadFrom implements Conn.
-func (c *MultiConn) ReadFrom(b []byte) (int, net.Addr, error) {
+func (c *multiConn) ReadFrom(b []byte) (int, net.Addr, error) {
 	return c.readConn.ReadFrom(b)
 }
