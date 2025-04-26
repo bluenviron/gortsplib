@@ -89,6 +89,10 @@ func stringsReverseIndexByte(s string, b byte) int {
 func (s *SessionDescription) unmarshalOrigin(value string) error {
 	value = strings.Replace(value, " IN IPV4 ", " IN IP4 ", 1)
 
+	if strings.HasSuffix(value, " IN") {
+		value += " IP4"
+	}
+
 	if strings.HasSuffix(value, "IN IP4") {
 		value += " "
 	}
@@ -187,6 +191,10 @@ func (s *SessionDescription) unmarshalPhone(value string) error {
 }
 
 func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, error) {
+	if value == "IN" {
+		return nil, nil
+	}
+
 	value = strings.Replace(value, "IN IPV4 ", "IN IP4 ", 1)
 
 	if strings.HasPrefix(value, "IN c=IN") {
