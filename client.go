@@ -56,10 +56,18 @@ func canonicalAddr(u *base.URL) string {
 
 	port := u.Port()
 	if port == "" {
-		if u.Scheme == "rtsp" {
+		switch u.Scheme {
+		case "rtsp":
 			port = "554"
-		} else { // rtsps
+		case "rtsps":
 			port = "322"
+		case "http":
+			port = "80"
+		case "https":
+			port = "443"
+		default:
+			// Default to RTSP port for backward compatibility
+			port = "554"
 		}
 	}
 
@@ -965,14 +973,54 @@ func (c *Client) connOpen() error {
 		return nil
 	}
 
-	if c.connURL.Scheme != "rtsp" && c.connURL.Scheme != "rtsps" {
+	// Check if HTTP transport is explicitly requested
+	useHTTP := c.Transport != nil && *c.Transport == TransportHTTP
+
+	// Validate URL scheme
+	if !useHTTP && c.connURL.Scheme != "rtsp" && c.connURL.Scheme != "rtsps" {
 		return liberrors.ErrClientUnsupportedScheme{Scheme: c.connURL.Scheme}
 	}
 
-	if c.connURL.Scheme == "rtsps" && c.Transport != nil && *c.Transport != TransportTCP {
+	if c.connURL.Scheme == "rtsps" && c.Transport != nil && *c.Transport != TransportTCP && !useHTTP {
 		return liberrors.ErrClientRTSPSTCP{}
 	}
 
+	// Handle HTTP tunneling
+	if useHTTP {
+		// Determine the HTTP scheme based on RTSP scheme
+		httpScheme := "http"
+		if c.connURL.Scheme == "rtsps" {
+			httpScheme = "https"
+		}
+
+		// Create and connect HTTP tunnel
+		tunnel, err := newClientHTTPTunnel(c, httpScheme, c.connURL.Host)
+		if err != nil {
+			return err
+		}
+
+		err = tunnel.connect()
+		if err != nil {
+			return err
+		}
+
+		// Use tunnel as the underlying connection
+		c.nconn = tunnel
+		bc := bytecounter.New(c.nconn, c.bytesReceived, c.bytesSent)
+		c.conn = conn.NewConn(bc)
+		c.reader = &clientReader{
+			c: c,
+		}
+		c.reader.start()
+
+		// Force TCP interleaved mode for HTTP tunnel
+		v := TransportTCP
+		c.effectiveTransport = &v
+
+		return nil
+	}
+
+	// Standard RTSP connection (non-HTTP)
 	dialCtx, dialCtxCancel := context.WithTimeout(c.ctx, c.ReadTimeout)
 	defer dialCtxCancel()
 
@@ -1461,7 +1509,7 @@ func (c *Client) doSetup(
 		th.Delivery = &v1
 		th.Protocol = headers.TransportProtocolUDP
 
-	case TransportTCP:
+	case TransportTCP, TransportHTTP:
 		v1 := headers.TransportDeliveryUnicast
 		th.Delivery = &v1
 		th.Protocol = headers.TransportProtocolTCP
@@ -1620,7 +1668,7 @@ func (c *Client) doSetup(
 			Port: thRes.Ports[1],
 		}
 
-	case TransportTCP:
+	case TransportTCP, TransportHTTP:
 		if thRes.Protocol != headers.TransportProtocolTCP {
 			return nil, liberrors.ErrClientServerRequestedUDP{}
 		}

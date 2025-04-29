@@ -1,6 +1,8 @@
 module github.com/bluenviron/gortsplib/v4
 
-go 1.21.0
+go 1.23.0
+
+toolchain go1.23.4
 
 require (
 	github.com/asticode/go-astits v1.13.0
@@ -18,6 +20,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
