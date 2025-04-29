@@ -1,6 +1,6 @@
 module github.com/bluenviron/gortsplib/v4
 
-go 1.21.0
+go 1.23.0
 
 require (
 	github.com/asticode/go-astits v1.13.0
