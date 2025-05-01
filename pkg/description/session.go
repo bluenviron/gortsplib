@@ -74,6 +74,10 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 		d.Title = ""
 	}
 
+	if len(ssd.MediaDescriptions) == 0 {
+		return fmt.Errorf("no media streams are present in SDP")
+	}
+
 	d.Medias = make([]*Media, len(ssd.MediaDescriptions))
 
 	for i, md := range ssd.MediaDescriptions {
