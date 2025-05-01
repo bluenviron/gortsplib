@@ -13,8 +13,8 @@ func uint32Ptr(v uint32) *uint32 {
 	return &v
 }
 
-func TestRTCPReceiverBase(t *testing.T) {
-	done := make(chan struct{})
+func TestRTCPReceiver(t *testing.T) {
+	pktGenerated := make(chan rtcp.Packet)
 
 	rr := &RTCPReceiver{
 		ClockRate: 90000,
@@ -24,23 +24,154 @@ func TestRTCPReceiverBase(t *testing.T) {
 			return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
 		},
 		WritePacketRTCP: func(pkt rtcp.Packet) {
-			require.Equal(t, &rtcp.ReceiverReport{
-				SSRC: 0x65f83afb,
-				Reports: []rtcp.ReceptionReport{
-					{
-						SSRC:               0xba9da416,
-						LastSequenceNumber: 947,
-						LastSenderReport:   0x887a17ce,
-						Delay:              2 * 65536,
-					},
-				},
-			}, pkt)
-			close(done)
+			pktGenerated <- pkt
 		},
 	}
 	err := rr.Initialize()
 	require.NoError(t, err)
 	defer rr.Close()
+
+	stats := rr.Stats()
+	require.Nil(t, stats)
+
+	rtpPkt := rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 945,
+			Timestamp:      0xafb45733,
+			SSRC:           0xba9da416,
+		},
+		Payload: []byte("\x00\x00"),
+	}
+	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
+
+	stats = rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0xba9da416,
+		LastRTP:            0xafb45733,
+		LastSequenceNumber: 945,
+	}, stats)
+
+	srPkt := rtcp.SenderReport{
+		SSRC: 0xba9da416,
+		NTPTime: func() uint64 {
+			d := time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)
+			s := uint64(d.UnixNano()) + 2208988800*1000000000
+			return (s/1000000000)<<32 | (s % 1000000000)
+		}(),
+		RTPTime:     0xafb45733,
+		PacketCount: 714,
+		OctetCount:  859127,
+	}
+	ts = time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)
+	rr.ProcessSenderReport(&srPkt, ts)
+
+	stats = rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0xba9da416,
+		LastRTP:            0xafb45733,
+		LastSequenceNumber: 945,
+		LastNTP:            time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC).Local(),
+	}, stats)
+
+	rtpPkt = rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 946,
+			Timestamp:      0xafb45733,
+			SSRC:           0xba9da416,
+		},
+		Payload: []byte("\x00\x00"),
+	}
+	ts = time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
+
+	rtpPkt = rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 947,
+			Timestamp:      0xafb45733 + 90000,
+			SSRC:           0xba9da416,
+		},
+		Payload: []byte("\x00\x00"),
+	}
+	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
+
+	pkt := <-pktGenerated
+	require.Equal(t, &rtcp.ReceiverReport{
+		SSRC: 0x65f83afb,
+		Reports: []rtcp.ReceptionReport{
+			{
+				SSRC:               0xba9da416,
+				LastSequenceNumber: 947,
+				LastSenderReport:   3422027776,
+				Delay:              2 * 65536,
+			},
+		},
+	}, pkt)
+
+	stats = rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0xba9da416,
+		LastRTP:            2947921603,
+		LastSequenceNumber: 947,
+		LastNTP:            time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC).Local(),
+	}, stats)
+}
+
+func TestRTCPReceiverZeroClockRate(t *testing.T) {
+	pktGenerated := make(chan rtcp.Packet)
+
+	rr := &RTCPReceiver{
+		ClockRate: 0,
+		LocalSSRC: uint32Ptr(0x65f83afb),
+		Period:    500 * time.Millisecond,
+		TimeNow: func() time.Time {
+			return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
+		},
+		WritePacketRTCP: func(pkt rtcp.Packet) {
+			pktGenerated <- pkt
+		},
+	}
+	err := rr.Initialize()
+	require.NoError(t, err)
+	defer rr.Close()
+
+	stats := rr.Stats()
+	require.Nil(t, stats)
+
+	rtpPkt := rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 945,
+			Timestamp:      0xafb45733,
+			SSRC:           0xba9da416,
+		},
+		Payload: []byte("\x00\x00"),
+	}
+	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
+	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
+
+	stats = rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0xba9da416,
+		LastRTP:            0xafb45733,
+		LastSequenceNumber: 945,
+	}, stats)
 
 	srPkt := rtcp.SenderReport{
 		SSRC:        0xba9da416,
@@ -49,10 +180,17 @@ func TestRTCPReceiverBase(t *testing.T) {
 		PacketCount: 714,
 		OctetCount:  859127,
 	}
-	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
+	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
 	rr.ProcessSenderReport(&srPkt, ts)
 
-	rtpPkt := rtp.Packet{
+	stats = rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0xba9da416,
+		LastRTP:            0xafb45733,
+		LastSequenceNumber: 945,
+	}, stats)
+
+	rtpPkt = rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
 			Marker:         true,
@@ -82,7 +220,18 @@ func TestRTCPReceiverBase(t *testing.T) {
 	err = rr.ProcessPacket(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
-	<-done
+	select {
+	case <-pktGenerated:
+		t.Error("should not happen")
+	case <-time.After(500 * time.Millisecond):
+	}
+
+	stats = rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0xba9da416,
+		LastRTP:            2947921603,
+		LastSequenceNumber: 947,
+	}, stats)
 }
 
 func TestRTCPReceiverOverflow(t *testing.T) {
