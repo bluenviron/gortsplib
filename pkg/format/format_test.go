@@ -1271,8 +1271,15 @@ func FuzzUnmarshal(f *testing.F) {
 		var desc sdp.SessionDescription
 		err := desc.Unmarshal([]byte(in))
 
-		if err == nil && len(desc.MediaDescriptions) == 1 && len(desc.MediaDescriptions[0].MediaName.Formats) == 1 {
-			Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0]) //nolint:errcheck
+		if err == nil && len(desc.MediaDescriptions) >= 1 && len(desc.MediaDescriptions[0].MediaName.Formats) >= 1 {
+			f, err := Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0])
+			if err == nil {
+				f.Codec()
+				f.ClockRate()
+				f.PayloadType()
+				f.RTPMap()
+				f.FMTP()
+			}
 		}
 	})
 }
