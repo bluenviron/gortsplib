@@ -71,6 +71,12 @@ func (rs *RTCPSender) Initialize() {
 	go rs.run()
 }
 
+// Close closes the RTCPSender.
+func (rs *RTCPSender) Close() {
+	close(rs.terminate)
+	<-rs.done
+}
+
 func (rs *RTCPSender) run() {
 	defer close(rs.done)
 
@@ -95,7 +101,7 @@ func (rs *RTCPSender) report() rtcp.Packet {
 	rs.mutex.Lock()
 	defer rs.mutex.Unlock()
 
-	if !rs.firstRTPPacketSent {
+	if !rs.firstRTPPacketSent || rs.ClockRate == 0 {
 		return nil
 	}
 
@@ -110,12 +116,6 @@ func (rs *RTCPSender) report() rtcp.Packet {
 		PacketCount: rs.packetCount,
 		OctetCount:  rs.octetCount,
 	}
-}
-
-// Close closes the RTCPSender.
-func (rs *RTCPSender) Close() {
-	close(rs.terminate)
-	<-rs.done
 }
 
 // ProcessPacket extracts data from RTP packets.
