@@ -65,10 +65,9 @@ func (f *Opus) unmarshal(ctx *unmarshalContext) error {
 		}
 
 		channelCount, err := strconv.ParseUint(tmp[1], 10, 31)
-		if err != nil {
+		if err != nil || channelCount == 0 {
 			return fmt.Errorf("invalid channel count: '%s'", tmp[1])
 		}
-
 		f.ChannelCount = int(channelCount)
 	}
 

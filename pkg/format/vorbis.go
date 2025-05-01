@@ -27,14 +27,14 @@ func (f *Vorbis) unmarshal(ctx *unmarshalContext) error {
 	}
 
 	sampleRate, err := strconv.ParseUint(tmp[0], 10, 31)
-	if err != nil {
-		return err
+	if err != nil || sampleRate == 0 {
+		return fmt.Errorf("invalid sample rate: '%s'", tmp[0])
 	}
 	f.SampleRate = int(sampleRate)
 
 	channelCount, err := strconv.ParseUint(tmp[1], 10, 31)
-	if err != nil {
-		return err
+	if err != nil || channelCount == 0 {
+		return fmt.Errorf("invalid channel count: '%s'", tmp[1])
 	}
 	f.ChannelCount = int(channelCount)
 

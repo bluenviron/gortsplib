@@ -1,6 +1,7 @@
 package format
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -40,15 +41,15 @@ func (f *G711) unmarshal(ctx *unmarshalContext) error {
 	tmp := strings.SplitN(ctx.clock, "/", 2)
 
 	tmp1, err := strconv.ParseUint(tmp[0], 10, 31)
-	if err != nil {
-		return err
+	if err != nil || tmp1 == 0 {
+		return fmt.Errorf("invalid sample rate: '%s'", tmp[0])
 	}
 	f.SampleRate = int(tmp1)
 
 	if len(tmp) >= 2 {
 		tmp1, err := strconv.ParseUint(tmp[1], 10, 31)
-		if err != nil {
-			return err
+		if err != nil || tmp1 == 0 {
+			return fmt.Errorf("invalid channel count: '%s'", tmp[1])
 		}
 		f.ChannelCount = int(tmp1)
 	} else {
