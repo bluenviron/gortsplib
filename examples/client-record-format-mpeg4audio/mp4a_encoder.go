@@ -153,7 +153,6 @@ func (d *mp4aEncoder) encode(samples []byte) ([][]byte, int64, error) {
 			return nil, 0, nil
 		}
 		if res < 0 {
-			fmt.Println(res)
 			return nil, 0, fmt.Errorf("avcodec_receive_packet() failed")
 		}
 
