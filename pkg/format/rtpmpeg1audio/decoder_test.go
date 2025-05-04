@@ -27,9 +27,10 @@ func TestDecode(t *testing.T) {
 }
 
 func FuzzDecoder(f *testing.F) {
-	f.Fuzz(func(_ *testing.T, a []byte, b []byte) {
+	f.Fuzz(func(t *testing.T, a []byte, b []byte) {
 		d := &Decoder{}
-		d.Init() //nolint:errcheck
+		err := d.Init()
+		require.NoError(t, err)
 
 		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{

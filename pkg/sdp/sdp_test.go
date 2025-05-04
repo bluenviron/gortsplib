@@ -3226,11 +3226,14 @@ func FuzzUnmarshal(f *testing.F) {
 		f.Add(string(c.enc))
 	}
 
-	f.Fuzz(func(_ *testing.T, b string) {
+	f.Fuzz(func(t *testing.T, b string) {
 		var desc SessionDescription
 		err := desc.Unmarshal([]byte(b))
-		if err == nil {
-			desc.Marshal() //nolint:errcheck
+		if err != nil {
+			return
 		}
+
+		_, err = desc.Marshal()
+		require.NoError(t, err)
 	})
 }

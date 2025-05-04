@@ -186,11 +186,14 @@ func FuzzRequestUnmarshal(f *testing.F) {
 		f.Add(ca.byts)
 	}
 
-	f.Fuzz(func(_ *testing.T, b []byte) {
+	f.Fuzz(func(t *testing.T, b []byte) {
 		var req Request
 		err := req.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
-		if err == nil {
-			req.Marshal() //nolint:errcheck
+		if err != nil {
+			return
 		}
+
+		_, err = req.Marshal()
+		require.NoError(t, err)
 	})
 }
