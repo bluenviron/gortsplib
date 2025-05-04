@@ -2609,7 +2609,7 @@ func TestClientPlaySeek(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestClientPlayKeepalive(t *testing.T) {
+func TestClientPlayKeepAlive(t *testing.T) {
 	for _, ca := range []string{"response before frame", "response after frame", "no response"} {
 		t.Run(ca, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
@@ -3436,6 +3436,10 @@ func TestClientPlayBackChannel(t *testing.T) {
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
+				"Session": headers.Session{
+					Session: "ABCDE",
+					Timeout: uintPtr(1),
+				}.Marshal(),
 			},
 		})
 		require.NoError(t, err2)
@@ -3458,6 +3462,10 @@ func TestClientPlayBackChannel(t *testing.T) {
 			StatusCode: base.StatusOK,
 			Header: base.Header{
 				"Transport": th.Marshal(),
+				"Session": headers.Session{
+					Session: "ABCDE",
+					Timeout: uintPtr(1),
+				}.Marshal(),
 			},
 		})
 		require.NoError(t, err2)
@@ -3488,6 +3496,20 @@ func TestClientPlayBackChannel(t *testing.T) {
 		require.Equal(t, uint32(0x38F27A2F), sr.SSRC)
 		require.Equal(t, uint32(1), sr.PacketCount)
 		require.Equal(t, uint32(4), sr.OctetCount)
+
+		recv := make(chan struct{})
+		go func() {
+			defer close(recv)
+			req, err2 = conn.ReadRequest()
+			require.NoError(t, err2)
+			require.Equal(t, base.Options, req.Method)
+		}()
+
+		select {
+		case <-recv:
+		case <-time.After(2 * time.Second):
+			t.Errorf("should not happen")
+		}
 
 		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 			Channel: 0,
