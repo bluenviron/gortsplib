@@ -1781,11 +1781,13 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 	// to all listeners, including us, messing up the stream.
 	if *c.effectiveTransport == TransportUDP {
 		for _, cm := range c.setuppedMedias {
-			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
-			cm.udpRTPListener.write(byts) //nolint:errcheck
+			if !cm.media.IsBackChannel {
+				byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
+				cm.udpRTPListener.write(byts) //nolint:errcheck
 
-			byts, _ = (&rtcp.ReceiverReport{}).Marshal()
-			cm.udpRTCPListener.write(byts) //nolint:errcheck
+				byts, _ = (&rtcp.ReceiverReport{}).Marshal()
+				cm.udpRTCPListener.write(byts) //nolint:errcheck
+			}
 		}
 	}
 
