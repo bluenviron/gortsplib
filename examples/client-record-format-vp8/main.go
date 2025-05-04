@@ -13,11 +13,11 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server, announce a VP8 format
-// 2. generate dummy RGBA images
-// 3. encode images with VP8
-// 4. generate RTP packets from VP8
-// 5. write RTP packets to the server
+// 1. connect to a RTSP server, announce a VP8 format.
+// 2. generate dummy RGBA images.
+// 3. encode images with VP8.
+// 4. generate RTP packets from VP8.
+// 5. write RTP packets to the server.
 
 // This example requires the FFmpeg libraries, that can be installed with this command:
 // apt install -y libavcodec-dev libswscale-dev gcc pkg-config

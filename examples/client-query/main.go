@@ -8,7 +8,7 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server
+// 1. connect to a RTSP server.
 // 2. get and print informations about medias published on a path.
 
 func main() {

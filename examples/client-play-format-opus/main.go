@@ -10,9 +10,9 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server
-// 2. check if there's an Opus stream
-// 3. get Opus packets of that format
+// 1. connect to a RTSP server.
+// 2. check if there's an Opus stream.
+// 3. get Opus packets of that format.
 
 func main() {
 	c := gortsplib.Client{}

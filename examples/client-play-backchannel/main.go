@@ -13,9 +13,9 @@ import (
 )
 
 // This example shows how to
-// 1. generate a dummy G711 audio stream
-// 2. connect to a RTSP server, find a back channel that supports G711
-// 3. route the G711 stream to the channel
+// 1. generate a dummy G711 audio stream.
+// 2. connect to a RTSP server, find a back channel that supports G711.
+// 3. route the G711 stream to the channel.
 
 func multiplyAndDivide(v, m, d int64) int64 {
 	secs := v / d
@@ -72,7 +72,7 @@ func main() {
 	// find the back channel
 	medi, forma := findG711BackChannel(desc)
 	if medi == nil {
-		panic("media not found")
+		panic("back channel not found")
 	}
 
 	// setup a single media
@@ -137,7 +137,7 @@ func main() {
 		for _, pkt := range pkts {
 			pkt.Timestamp += uint32(int64(randomStart) + prevPTS)
 
-			err = c.WritePacketRTP(desc.Medias[0], pkt)
+			err = c.WritePacketRTP(medi, pkt)
 			if err != nil {
 				panic(err)
 			}

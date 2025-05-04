@@ -19,9 +19,9 @@ func (s *server) initialize() {
 	// configure the server
 	s.server = &gortsplib.Server{
 		Handler:           s,
-		RTSPAddress:       ":8554",
-		UDPRTPAddress:     ":8000",
-		UDPRTCPAddress:    ":8001",
+		RTSPAddress:       ":8556",
+		UDPRTPAddress:     ":8002",
+		UDPRTCPAddress:    ":8003",
 		MulticastIPRange:  "224.1.0.0/16",
 		MulticastRTPPort:  8002,
 		MulticastRTCPPort: 8003,
@@ -98,20 +98,24 @@ func (s *server) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, 
 func (s *server) setStreamReady(desc *description.Session) *gortsplib.ServerStream {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	s.stream = &gortsplib.ServerStream{
 		Server: s.server,
 		Desc:   desc,
 	}
+
 	err := s.stream.Initialize()
 	if err != nil {
 		panic(err)
 	}
+
 	return s.stream
 }
 
 func (s *server) setStreamUnready() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	s.stream.Close()
 	s.stream = nil
 }

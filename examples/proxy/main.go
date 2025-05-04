@@ -4,8 +4,8 @@ import "log"
 
 // This example shows how to
 // 1. create a server that serves a single stream.
-// 2. create a client, read an existing stream from an external server or camera,
-//    pass the stream to the server in order to serve it.
+// 2. create a client, that reads an existing stream from another server or camera.
+// 3. route the stream from the client to the server, and from the server to all connected readers.
 
 func main() {
 	// allocate the server.
@@ -13,11 +13,11 @@ func main() {
 	s.initialize()
 
 	// allocate the client.
-	// give client access to the server.
+	// allow client to use the server.
 	c := &client{server: s}
 	c.initialize()
 
 	// start server and wait until a fatal error
 	log.Printf("server is ready on %s", s.server.RTSPAddress)
-	s.server.StartAndWait()
+	panic(s.server.StartAndWait())
 }

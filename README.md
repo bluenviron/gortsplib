@@ -95,8 +95,8 @@ Features:
 * [server](examples/server/main.go)
 * [server-tls](examples/server-tls/main.go)
 * [server-auth](examples/server-auth/main.go)
-* [server-h264-to-disk](examples/server-h264-to-disk/main.go)
-* [server-h264-from-disk](examples/server-h264-from-disk/main.go)
+* [server-record-format-h264-to-disk](examples/server-record-format-h264-to-disk/main.go)
+* [server-play-format-h264-from-disk](examples/server-play-format-h264-from-disk/main.go)
 * [proxy](examples/proxy/main.go)
 
 ## API Documentation

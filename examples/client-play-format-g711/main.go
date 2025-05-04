@@ -11,9 +11,9 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server
-// 2. check if there's a G711 stream
-// 3. decode the G711 stream into audio samples
+// 1. connect to a RTSP server.
+// 2. check if there's a G711 stream.
+// 3. decode the G711 stream into audio samples.
 
 func main() {
 	c := gortsplib.Client{}

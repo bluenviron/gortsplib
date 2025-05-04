@@ -11,8 +11,8 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server
-// 2. read all medias on a path
+// 1. connect to a RTSP server.
+// 2. read all medias on a path.
 // 3. re-publish all medias on another path.
 
 func main() {

@@ -35,7 +35,11 @@ func (e *mpegtsMuxer) initialize() error {
 		Codec: &mpegts.CodecH265{},
 	}
 
-	e.w = mpegts.NewWriter(e.b, []*mpegts.Track{e.track})
+	e.w = &mpegts.Writer{W: e.b, Tracks: []*mpegts.Track{e.track}}
+	err = e.w.Initialize()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

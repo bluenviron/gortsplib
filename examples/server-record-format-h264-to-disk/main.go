@@ -15,9 +15,9 @@ import (
 )
 
 // This example shows how to
-// 1. create a RTSP server which accepts plain connections
-// 2. allow a single client to publish a stream, containing a H264 media, with TCP or UDP
-// 3. save the content of the H264 media in a file in MPEG-TS format
+// 1. create a RTSP server which accepts plain connections.
+// 2. allow a single client to publish a stream, containing a H264 format.
+// 3. save the content of the H264 media in a file in MPEG-TS format.
 
 type serverHandler struct {
 	server      *gortsplib.Server
