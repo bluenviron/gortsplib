@@ -432,7 +432,8 @@ func TestClientPlay(t *testing.T) {
 				require.NoError(t, err2)
 
 				for i := 0; i < 2; i++ {
-					// server -> client (RTP)
+					// server -> client RTP packet
+
 					switch transport {
 					case "udp":
 						_, err2 = l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
@@ -456,7 +457,8 @@ func TestClientPlay(t *testing.T) {
 						require.NoError(t, err2)
 					}
 
-					// client -> server (RTCP)
+					// client -> server RTCP packet
+
 					switch transport {
 					case "udp", "multicast":
 						// skip firewall opening
@@ -2874,7 +2876,6 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		})
 		require.NoError(t, err2)
 
-		// server -> client (RTP)
 		_, err2 = l1.WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 			IP:   net.ParseIP("127.0.0.1"),
 			Port: th.ClientPorts[0],

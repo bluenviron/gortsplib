@@ -235,6 +235,10 @@ func TestClientRecord(t *testing.T) {
 					StatusCode: base.StatusOK,
 					Header: base.Header{
 						"Transport": th.Marshal(),
+						"Session": headers.Session{
+							Session: "ABCDE",
+							Timeout: uintPtr(1),
+						}.Marshal(),
 					},
 				})
 				require.NoError(t, err2)
@@ -249,30 +253,49 @@ func TestClientRecord(t *testing.T) {
 				})
 				require.NoError(t, err2)
 
-				// client -> server (RTP)
+				var pl []byte
+
+				// client -> server RTP packet
+
 				if transport == "udp" {
 					buf := make([]byte, 2048)
 					var n int
 					n, _, err2 = l1.ReadFrom(buf)
 					require.NoError(t, err2)
-
-					var pkt rtp.Packet
-					err2 = pkt.Unmarshal(buf[:n])
-					require.NoError(t, err2)
-					require.Equal(t, testRTPPacket, pkt)
+					pl = buf[:n]
 				} else {
 					var f *base.InterleavedFrame
 					f, err2 = conn.ReadInterleavedFrame()
 					require.NoError(t, err2)
 					require.Equal(t, 0, f.Channel)
-
-					var pkt rtp.Packet
-					err2 = pkt.Unmarshal(f.Payload)
-					require.NoError(t, err2)
-					require.Equal(t, testRTPPacket, pkt)
+					pl = f.Payload
 				}
 
-				// server -> client (RTCP)
+				var pkt rtp.Packet
+				err2 = pkt.Unmarshal(pl)
+				require.NoError(t, err2)
+				require.Equal(t, testRTPPacket, pkt)
+
+				// client -> server keepalive (UDP only)
+
+				if transport == "udp" {
+					recv := make(chan struct{})
+					go func() {
+						defer close(recv)
+						req, err2 = conn.ReadRequest()
+						require.NoError(t, err2)
+						require.Equal(t, base.Options, req.Method)
+					}()
+
+					select {
+					case <-recv:
+					case <-time.After(2 * time.Second):
+						t.Errorf("should not happen")
+					}
+				}
+
+				// server -> client RTCP packet
+
 				if transport == "udp" {
 					_, err2 = l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),

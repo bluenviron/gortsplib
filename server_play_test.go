@@ -848,6 +848,7 @@ func TestServerPlay(t *testing.T) {
 			doPlay(t, conn, "rtsp://"+listenIP+":8554/teststream", session)
 
 			// server -> client (direct)
+
 			switch transport {
 			case "udp":
 				buf := make([]byte, 2048)
@@ -874,6 +875,7 @@ func TestServerPlay(t *testing.T) {
 			}
 
 			// server -> client (through stream)
+
 			if transport == "udp" || transport == "multicast" {
 				buf := make([]byte, 2048)
 				var n int
@@ -904,7 +906,8 @@ func TestServerPlay(t *testing.T) {
 				}
 			}
 
-			// client -> server (RTCP)
+			// client -> server RTCP packet
+
 			switch transport {
 			case "udp":
 				_, err = l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{

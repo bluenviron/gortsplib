@@ -889,7 +889,8 @@ func (c *Client) startTransportRoutines() {
 		c.tcpBuffer = make([]byte, c.MaxPacketSize+4)
 	}
 
-	if c.state == clientStatePlay {
+	// always enable keepalives unless we are recording with TCP
+	if c.state == clientStatePlay || *c.effectiveTransport != TransportTCP {
 		c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 	}
 
