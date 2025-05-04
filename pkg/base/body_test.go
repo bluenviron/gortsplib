@@ -54,8 +54,10 @@ func FuzzBodyUnmarshal(f *testing.F) {
 				"Content-Length": HeaderValue{a},
 			},
 			bufio.NewReader(bytes.NewReader(b)))
-		if err == nil {
-			p.marshal()
+		if err != nil {
+			return
 		}
+
+		p.marshal()
 	})
 }

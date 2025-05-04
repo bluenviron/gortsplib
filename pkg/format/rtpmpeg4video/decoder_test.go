@@ -62,9 +62,10 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 }
 
 func FuzzDecoder(f *testing.F) {
-	f.Fuzz(func(_ *testing.T, a []byte, am bool, b []byte, bm bool) {
+	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
 		d := &Decoder{}
-		d.Init() //nolint:errcheck
+		err := d.Init()
+		require.NoError(t, err)
 
 		d.Decode(&rtp.Packet{ //nolint:errcheck
 			Header: rtp.Header{

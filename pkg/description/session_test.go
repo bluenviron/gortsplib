@@ -783,6 +783,7 @@ func FuzzSessionUnmarshal(f *testing.F) {
 
 		require.NotZero(t, len(desc.Medias))
 
-		desc.Marshal(false) //nolint:errcheck
+		_, err = desc.Marshal(false)
+		require.NoError(t, err)
 	})
 }

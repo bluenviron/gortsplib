@@ -159,9 +159,11 @@ func FuzzRTPInfoUnmarshal(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, b string) {
 		var h RTPInfo
 		err := h.Unmarshal(base.HeaderValue{b})
-		if err == nil {
-			h.Marshal()
+		if err != nil {
+			return
 		}
+
+		h.Marshal()
 	})
 }
 
