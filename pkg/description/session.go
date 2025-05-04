@@ -48,6 +48,9 @@ type Session struct {
 	// Title of the stream (optional).
 	Title string
 
+	// Whether to use multicast.
+	Multicast bool
+
 	// FEC groups (RFC5109).
 	FECGroups []SessionFECGroup
 
@@ -115,8 +118,9 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 	return nil
 }
 
-// Marshal encodes the description in SDP.
-func (d Session) Marshal(multicast bool) ([]byte, error) {
+// Marshal encodes the description in SDP format.
+// The argument is deprecated and has no effect. Set Session.Multicast to enable multicast.
+func (d Session) Marshal(_ bool) ([]byte, error) {
 	var sessionName psdp.SessionName
 	if d.Title != "" {
 		sessionName = psdp.SessionName(d.Title)
@@ -127,7 +131,7 @@ func (d Session) Marshal(multicast bool) ([]byte, error) {
 	}
 
 	var address string
-	if multicast {
+	if d.Multicast {
 		address = "224.1.0.0"
 	} else {
 		address = "0.0.0.0"
@@ -150,11 +154,6 @@ func (d Session) Marshal(multicast bool) ([]byte, error) {
 		TimeDescriptions: []psdp.TimeDescription{
 			{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
 		},
-		MediaDescriptions: make([]*psdp.MediaDescription, len(d.Medias)),
-	}
-
-	for i, media := range d.Medias {
-		sout.MediaDescriptions[i] = media.Marshal()
 	}
 
 	for _, group := range d.FECGroups {
@@ -162,6 +161,12 @@ func (d Session) Marshal(multicast bool) ([]byte, error) {
 			Key:   "group",
 			Value: "FEC " + strings.Join(group, " "),
 		})
+	}
+
+	sout.MediaDescriptions = make([]*psdp.MediaDescription, len(d.Medias))
+
+	for i, media := range d.Medias {
+		sout.MediaDescriptions[i] = media.Marshal()
 	}
 
 	return sout.Marshal()

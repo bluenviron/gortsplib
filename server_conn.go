@@ -26,22 +26,49 @@ func getSessionID(header base.Header) string {
 	return ""
 }
 
-func serverSideDescription(d *description.Session) *description.Session {
+func checkMulticastEnabled(multicastIPRange string, query string) bool {
+	// VLC uses multicast if the SDP contains a multicast address.
+	// therefore, we introduce a special query (vlcmulticast) that allows
+	// to return a SDP that contains a multicast address.
+	if multicastIPRange != "" {
+		if q, err2 := gourl.ParseQuery(query); err2 == nil {
+			if _, ok := q["vlcmulticast"]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func checkBackChannelsEnabled(header base.Header) bool {
+	if vals, ok := header["Require"]; ok {
+		for _, val := range vals {
+			if val == "www.onvif.org/ver20/backchannel" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func prepareForDescribe(d *description.Session, multicast bool, backChannels bool) *description.Session {
 	out := &description.Session{
 		Title:     d.Title,
+		Multicast: multicast,
 		FECGroups: d.FECGroups,
-		Medias:    make([]*description.Media, len(d.Medias)),
 	}
 
 	for i, medi := range d.Medias {
-		out.Medias[i] = &description.Media{
-			Type:          medi.Type,
-			ID:            medi.ID,
-			IsBackChannel: medi.IsBackChannel,
-			// we have to use trackID=number in order to support clients
-			// like the Grandstream GXV3500.
-			Control: "trackID=" + strconv.FormatInt(int64(i), 10),
-			Formats: medi.Formats,
+		if !medi.IsBackChannel || backChannels {
+			out.Medias = append(out.Medias, &description.Media{
+				Type:          medi.Type,
+				ID:            medi.ID,
+				IsBackChannel: medi.IsBackChannel,
+				// we have to use trackID=number in order to support clients
+				// like the Grandstream GXV3500.
+				Control: "trackID=" + strconv.FormatInt(int64(i), 10),
+				Formats: medi.Formats,
+			})
 		}
 	}
 
@@ -343,19 +370,13 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 					return res, err
 				}
 
-				// VLC uses multicast if the SDP contains a multicast address.
-				// therefore, we introduce a special query (vlcmulticast) that allows
-				// to return a SDP that contains a multicast address.
-				multicast := false
-				if sc.s.MulticastIPRange != "" {
-					if q, err2 := gourl.ParseQuery(query); err2 == nil {
-						if _, ok := q["vlcmulticast"]; ok {
-							multicast = true
-						}
-					}
-				}
+				desc := prepareForDescribe(
+					stream.Desc,
+					checkMulticastEnabled(sc.s.MulticastIPRange, query),
+					checkBackChannelsEnabled(req.Header),
+				)
 
-				byts, _ := serverSideDescription(stream.Desc).Marshal(multicast)
+				byts, _ := desc.Marshal(false)
 				res.Body = byts
 			}
 

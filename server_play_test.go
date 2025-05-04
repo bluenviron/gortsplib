@@ -68,30 +68,6 @@ func mediaURL(t *testing.T, baseURL *base.URL, media *description.Media) *base.U
 	return u
 }
 
-func doDescribe(t *testing.T, conn *conn.Conn) *description.Session {
-	res, err := writeReqReadRes(conn, base.Request{
-		Method: base.Describe,
-		URL:    mustParseURL("rtsp://localhost:8554/teststream?param=value"),
-		Header: base.Header{
-			"CSeq": base.HeaderValue{"1"},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, base.StatusOK, res.StatusCode)
-
-	var desc sdp.SessionDescription
-	err = desc.Unmarshal(res.Body)
-	require.NoError(t, err)
-
-	var desc2 description.Session
-	err = desc2.Unmarshal(&desc)
-	require.NoError(t, err)
-
-	desc2.BaseURL = mustParseURL(res.Header["Content-Base"][0])
-
-	return &desc2
-}
-
 func doSetup(t *testing.T, conn *conn.Conn, u string,
 	inTH *headers.Transport, session string,
 ) (*base.Response, *headers.Transport) {
@@ -311,7 +287,7 @@ func TestServerPlayPath(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			th := &headers.Transport{
 				Protocol:       headers.TransportProtocolTCP,
@@ -432,7 +408,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 				require.Equal(t, base.StatusBadRequest, res.StatusCode)
 
 			default:
-				desc = doDescribe(t, conn)
+				desc = doDescribe(t, conn, false)
 
 				th = &headers.Transport{
 					Protocol:    headers.TransportProtocolUDP,
@@ -579,7 +555,7 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 			ClientPorts: &[2]int{35466, 35467},
 		}
 
-		desc := doDescribe(t, conn)
+		desc := doDescribe(t, conn, false)
 
 		res, err := writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
@@ -760,7 +736,7 @@ func TestServerPlay(t *testing.T) {
 
 			<-nconnOpened
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			inTH := &headers.Transport{
 				Mode: transportModePtr(headers.TransportModePlay),
@@ -1061,7 +1037,7 @@ func TestServerPlaySocketError(t *testing.T) {
 				}()
 				conn := conn.NewConn(nconn)
 
-				desc := doDescribe(t, conn)
+				desc := doDescribe(t, conn, false)
 
 				inTH := &headers.Transport{
 					Mode: transportModePtr(headers.TransportModePlay),
@@ -1225,7 +1201,7 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			inTH := &headers.Transport{
 				Mode:     transportModePtr(headers.TransportModePlay),
@@ -1348,7 +1324,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			inTH := &headers.Transport{
 				Mode:     transportModePtr(headers.TransportModePlay),
@@ -1558,7 +1534,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc := doDescribe(t, conn)
+	desc := doDescribe(t, conn, false)
 
 	inTH := &headers.Transport{
 		Protocol:       headers.TransportProtocolTCP,
@@ -1650,7 +1626,7 @@ func TestServerPlayPause(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc := doDescribe(t, conn)
+	desc := doDescribe(t, conn, false)
 
 	inTH := &headers.Transport{
 		Protocol:       headers.TransportProtocolTCP,
@@ -1748,7 +1724,7 @@ func TestServerPlayPlayPausePausePlay(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			inTH := &headers.Transport{
 				Protocol:       headers.TransportProtocolTCP,
@@ -1836,7 +1812,7 @@ func TestServerPlayTimeout(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			inTH := &headers.Transport{
 				Mode: transportModePtr(headers.TransportModePlay),
@@ -1927,7 +1903,7 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			inTH := &headers.Transport{
 				Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2007,7 +1983,7 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		desc := doDescribe(t, conn)
+		desc := doDescribe(t, conn, false)
 
 		inTH := &headers.Transport{
 			Delivery:    deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2093,7 +2069,7 @@ func TestServerPlayPartialMedias(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc := doDescribe(t, conn)
+	desc := doDescribe(t, conn, false)
 
 	inTH := &headers.Transport{
 		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2121,7 +2097,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		desc := doDescribe(t, conn)
+		desc := doDescribe(t, conn, false)
 
 		inTH := &headers.Transport{
 			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2346,7 +2322,7 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc := doDescribe(t, conn)
+	desc := doDescribe(t, conn, false)
 
 	inTH := &headers.Transport{
 		Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
@@ -2423,7 +2399,7 @@ func TestServerPlayStreamStats(t *testing.T) {
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		desc := doDescribe(t, conn)
+		desc := doDescribe(t, conn, false)
 
 		inTH := &headers.Transport{
 			Mode: transportModePtr(headers.TransportModePlay),
@@ -2452,4 +2428,149 @@ func TestServerPlayStreamStats(t *testing.T) {
 
 	st := stream.Stats()
 	require.Equal(t, uint64(16*2), st.BytesSent)
+}
+
+func TestServerPlayBackChannel(t *testing.T) {
+	for _, transport := range []string{
+		"udp",
+		"tcp",
+	} {
+		t.Run(transport, func(t *testing.T) {
+			serverOk := make(chan struct{})
+			var stream *ServerStream
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, stream, nil
+					},
+					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+						ctx.Session.OnPacketRTPAny(func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
+							close(serverOk)
+						})
+
+						return &base.Response{
+							StatusCode: base.StatusOK,
+						}, nil
+					},
+				},
+				RTSPAddress: "127.0.0.1:8554",
+			}
+
+			if transport == "udp" {
+				s.UDPRTPAddress = "127.0.0.1:8000"
+				s.UDPRTCPAddress = "127.0.0.1:8001"
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			stream = &ServerStream{
+				Server: s,
+				Desc: &description.Session{Medias: []*description.Media{
+					testH264Media,
+					{
+						Type:          description.MediaTypeAudio,
+						IsBackChannel: true,
+						Formats: []format.Format{&format.G711{
+							PayloadTyp:   8,
+							MULaw:        false,
+							SampleRate:   8000,
+							ChannelCount: 1,
+						}},
+					},
+				}},
+			}
+			err = stream.Initialize()
+			require.NoError(t, err)
+			defer stream.Close()
+
+			nconn, err := net.Dial("tcp", "127.0.0.1:8554")
+			require.NoError(t, err)
+			defer nconn.Close()
+
+			conn := conn.NewConn(nconn)
+
+			desc := doDescribe(t, conn, true)
+
+			var session string
+			var serverPorts [2]*[2]int
+			var l1s [2]net.PacketConn
+			var l2s [2]net.PacketConn
+
+			for i := 0; i < 2; i++ {
+				inTH := &headers.Transport{
+					Mode: transportModePtr(headers.TransportModePlay),
+				}
+
+				if transport == "udp" {
+					v := headers.TransportDeliveryUnicast
+					inTH.Delivery = &v
+					inTH.Protocol = headers.TransportProtocolUDP
+					inTH.ClientPorts = &[2]int{35466 + i*2, 35467 + i*2}
+				} else {
+					v := headers.TransportDeliveryUnicast
+					inTH.Delivery = &v
+					inTH.Protocol = headers.TransportProtocolTCP
+					inTH.InterleavedIDs = &[2]int{0 + i*2, 1 + i*2}
+				}
+
+				res, th := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[i]).String(), inTH, "")
+
+				if transport == "udp" {
+					serverPorts[i] = th.ServerPorts
+
+					l1s[i], err = net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", strconv.FormatInt(int64(35466+i*2), 10)))
+					require.NoError(t, err)
+					defer l1s[i].Close()
+
+					l2s[i], err = net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", strconv.FormatInt(int64(35467+i*2), 10)))
+					require.NoError(t, err)
+					defer l2s[i].Close()
+				}
+
+				session = readSession(t, res)
+			}
+
+			doPlay(t, conn, "rtsp://127.0.0.1:8554/teststream", session)
+
+			// client -> server RTP packet
+
+			pkt := &rtp.Packet{
+				Header: rtp.Header{
+					Version:     2,
+					PayloadType: 8,
+				},
+				Payload: []byte{1, 2, 3, 4},
+			}
+			buf, err := pkt.Marshal()
+			require.NoError(t, err)
+
+			if transport == "udp" {
+				_, err = l1s[1].WriteTo(buf, &net.UDPAddr{
+					IP:   net.ParseIP("127.0.0.1"),
+					Port: serverPorts[1][0],
+				})
+				require.NoError(t, err)
+			} else {
+				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+					Channel: 2,
+					Payload: buf,
+				}, make([]byte, 1024))
+				require.NoError(t, err)
+			}
+
+			<-serverOk
+
+			doTeardown(t, conn, "rtsp://127.0.0.1:8554/teststream", session)
+		})
+	}
 }

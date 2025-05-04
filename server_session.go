@@ -37,6 +37,15 @@ func stringsReverseIndex(s, substr string) int {
 	return -1
 }
 
+func hasBackChannel(desc description.Session) bool {
+	for _, medi := range desc.Medias {
+		if medi.IsBackChannel {
+			return true
+		}
+	}
+	return false
+}
+
 // used for all methods except SETUP
 func getPathAndQuery(u *base.URL, isAnnounce bool) (string, string) {
 	if !isAnnounce {
@@ -245,13 +254,13 @@ type ServerSession struct {
 	setuppedMediasOrdered []*serverSessionMedia
 	tcpCallbackByChannel  map[int]readFunc
 	setuppedTransport     *Transport
-	setuppedStream        *ServerStream // read
+	setuppedStream        *ServerStream // play
 	setuppedPath          string
 	setuppedQuery         string
 	lastRequestTime       time.Time
 	tcpConn               *ServerConn
-	announcedDesc         *description.Session // publish
-	udpLastPacketTime     *int64               // publish
+	announcedDesc         *description.Session // record
+	udpLastPacketTime     *int64               // record
 	udpCheckStreamTimer   *time.Timer
 	writer                *asyncProcessor
 	writerMutex           sync.RWMutex
@@ -861,6 +870,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerSDPInvalid{Err: err}
+		}
+
+		if hasBackChannel(desc) {
+			return &base.Response{
+				StatusCode: base.StatusBadRequest,
+			}, liberrors.ErrServerSDPInvalid{Err: fmt.Errorf("back channels cannot be recorded")}
 		}
 
 		res, err := ss.s.Handler.(ServerHandlerOnAnnounce).OnAnnounce(&ServerHandlerOnAnnounceCtx{
