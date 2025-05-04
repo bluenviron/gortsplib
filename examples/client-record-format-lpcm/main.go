@@ -11,10 +11,10 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server, announce an LPCM format
-// 2. generate dummy LPCM audio samples
-// 3. generate RTP packets from LPCM audio samples
-// 4. write RTP packets to the server
+// 1. connect to a RTSP server, announce an LPCM format.
+// 2. generate dummy LPCM audio samples.
+// 3. generate RTP packets from LPCM audio samples.
+// 4. write RTP packets to the server.
 
 func multiplyAndDivide(v, m, d int64) int64 {
 	secs := v / d

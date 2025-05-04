@@ -16,11 +16,11 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server, announce a Opus format
-// 2. generate dummy LPCM audio samples
-// 3. encode audio samples with Opus
-// 3. generate RTP packets from Opus packets
-// 4. write RTP packets to the server
+// 1. connect to a RTSP server, announce a Opus format.
+// 2. generate dummy LPCM audio samples.
+// 3. encode audio samples with Opus.
+// 3. generate RTP packets from Opus packets.
+// 4. write RTP packets to the server.
 
 // This example requires the FFmpeg libraries, that can be installed with this command:
 // apt install -y libavcodec-dev gcc pkg-config

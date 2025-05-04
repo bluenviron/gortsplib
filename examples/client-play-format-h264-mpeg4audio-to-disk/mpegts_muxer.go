@@ -50,7 +50,11 @@ func (e *mpegtsMuxer) initialize() error {
 		},
 	}
 
-	e.w = mpegts.NewWriter(e.b, []*mpegts.Track{e.h264Track, e.mpeg4AudioTrack})
+	e.w = &mpegts.Writer{W: e.b, Tracks: []*mpegts.Track{e.h264Track, e.mpeg4AudioTrack}}
+	err = e.w.Initialize()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -11,25 +11,9 @@ import (
 
 	"github.com/asticode/go-astits"
 	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 )
-
-// This example shows how to
-// 1. read H264 frames from a video file in MPEG-TS format.
-// 2. connect to a RTSP server, announce a H264 format.
-// 3. wrap frames into RTP packets.
-// 4. write RTP packets to the server.
-
-func findTrack(r *mpegts.Reader) (*mpegts.Track, error) {
-	for _, track := range r.Tracks() {
-		if _, ok := track.Codec.(*mpegts.CodecH264); ok {
-			return track, nil
-		}
-	}
-	return nil, fmt.Errorf("H264 track not found")
-}
 
 func randUint32() (uint32, error) {
 	var b [4]byte
@@ -40,36 +24,42 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
-func main() {
-	// create a RTSP description that contains a H264 format
-	forma := &format.H264{
-		PayloadTyp:        96,
-		PacketizationMode: 1,
+func findTrack(r *mpegts.Reader) (*mpegts.Track, error) {
+	for _, track := range r.Tracks() {
+		if _, ok := track.Codec.(*mpegts.CodecH264); ok {
+			return track, nil
+		}
 	}
-	desc := &description.Session{
-		Medias: []*description.Media{{
-			Type:    description.MediaTypeVideo,
-			Formats: []format.Format{forma},
-		}},
-	}
+	return nil, fmt.Errorf("H264 track not found")
+}
 
-	// connect to the server, announce the format and start recording
-	c := gortsplib.Client{}
-	err := c.StartRecording("rtsp://myuser:mypass@localhost:8554/mystream", desc)
-	if err != nil {
-		panic(err)
-	}
-	defer c.Close()
+type fileStreamer struct {
+	stream *gortsplib.ServerStream
 
+	f *os.File
+}
+
+func (r *fileStreamer) initialize() error {
 	// open a file in MPEG-TS format
-	f, err := os.Open("myvideo.ts")
+	var err error
+	r.f, err = os.Open("myvideo.ts")
 	if err != nil {
-		panic(err)
+		return err
 	}
-	defer f.Close()
 
+	// in a separate routine, route frames from file to ServerStream
+	go r.run()
+
+	return nil
+}
+
+func (r *fileStreamer) close() {
+	r.f.Close()
+}
+
+func (r *fileStreamer) run() {
 	// setup H264 -> RTP encoder
-	rtpEnc, err := forma.CreateEncoder()
+	rtpEnc, err := r.stream.Desc.Medias[0].Formats[0].(*format.H264).CreateEncoder()
 	if err != nil {
 		panic(err)
 	}
@@ -81,14 +71,14 @@ func main() {
 
 	for {
 		// setup MPEG-TS parser
-		r := &mpegts.Reader{R: f}
-		err = r.Initialize()
+		mr := &mpegts.Reader{R: r.f}
+		err = mr.Initialize()
 		if err != nil {
 			panic(err)
 		}
 
 		// find the H264 track inside the file
-		track, err := findTrack(r)
+		track, err := findTrack(mr)
 		if err != nil {
 			panic(err)
 		}
@@ -97,22 +87,22 @@ func main() {
 		timeDecoder.Initialize()
 
 		var firstDTS *int64
-		var startTime time.Time
+		var firstTime time.Time
 		var lastRTPTime uint32
 
 		// setup a callback that is called when a H264 access unit is read from the file
-		r.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
+		mr.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
 			dts = timeDecoder.Decode(dts)
 			pts = timeDecoder.Decode(pts)
 
 			// sleep between access units
 			if firstDTS != nil {
-				timeDrift := time.Duration(dts-*firstDTS)*time.Second/90000 - time.Since(startTime)
+				timeDrift := time.Duration(dts-*firstDTS)*time.Second/90000 - time.Since(firstTime)
 				if timeDrift > 0 {
 					time.Sleep(timeDrift)
 				}
 			} else {
-				startTime = time.Now()
+				firstTime = time.Now()
 				firstDTS = &dts
 			}
 
@@ -134,7 +124,7 @@ func main() {
 
 			// write RTP packets to the server
 			for _, packet := range packets {
-				err := c.WritePacketRTP(desc.Medias[0], packet)
+				err := r.stream.WritePacketRTP(r.stream.Desc.Medias[0], packet)
 				if err != nil {
 					return err
 				}
@@ -145,14 +135,14 @@ func main() {
 
 		// read the file
 		for {
-			err := r.Read()
+			err := mr.Read()
 			if err != nil {
 				// file has ended
 				if errors.Is(err, astits.ErrNoMorePackets) {
 					log.Printf("file has ended, rewinding")
 
 					// rewind to start position
-					_, err = f.Seek(0, io.SeekStart)
+					_, err = r.f.Seek(0, io.SeekStart)
 					if err != nil {
 						panic(err)
 					}
@@ -162,7 +152,6 @@ func main() {
 
 					break
 				}
-
 				panic(err)
 			}
 		}

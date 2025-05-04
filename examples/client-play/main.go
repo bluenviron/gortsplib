@@ -12,7 +12,7 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server
+// 1. connect to a RTSP server.
 // 2. read all media streams on a path.
 
 func main() {

@@ -13,13 +13,13 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server, announce an H264 format
-// 2. generate dummy RGBA images
-// 3. encode images with H264
-// 4. generate RTP packets from H264
-// 5. write RTP packets to the server for 5 seconds
-// 6. pause for 5 seconds
-// 7. repeat
+// 1. connect to a RTSP server, announce an H264 format.
+// 2. generate dummy RGBA images.
+// 3. encode images with H264.
+// 4. generate RTP packets from H264.
+// 5. write RTP packets to the server for 5 seconds.
+// 6. pause for 5 seconds.
+// 7. repeat.
 
 // This example requires the FFmpeg libraries, that can be installed with this command:
 // apt install -y libavcodec-dev libswscale-dev gcc pkg-config

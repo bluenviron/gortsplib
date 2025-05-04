@@ -11,9 +11,9 @@ import (
 )
 
 // This example shows how to
-// 1. connect to a RTSP server
-// 2. read all media streams on a path
-// 3. Get the PTS and NTP timestamp of incoming RTP packets
+// 1. connect to a RTSP server.
+// 2. read all media streams on a path.
+// 3. Get the PTS and NTP timestamp of incoming RTP packets.
 
 func main() {
 	c := gortsplib.Client{}
