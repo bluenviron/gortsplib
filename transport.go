@@ -8,12 +8,14 @@ const (
 	TransportUDP Transport = iota
 	TransportUDPMulticast
 	TransportTCP
+	TransportHTTP
 )
 
 var transportLabels = map[Transport]string{
 	TransportUDP:          "UDP",
 	TransportUDPMulticast: "UDP-multicast",
 	TransportTCP:          "TCP",
+	TransportHTTP:         "HTTP",
 }
 
 // String implements fmt.Stringer.
