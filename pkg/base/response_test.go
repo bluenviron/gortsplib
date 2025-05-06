@@ -160,11 +160,14 @@ func FuzzResponseUnmarshal(f *testing.F) {
 		f.Add(ca.byts)
 	}
 
-	f.Fuzz(func(_ *testing.T, b []byte) {
+	f.Fuzz(func(t *testing.T, b []byte) {
 		var res Response
 		err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
-		if err == nil {
-			res.Marshal() //nolint:errcheck
+		if err != nil {
+			return
 		}
+
+		_, err = res.Marshal()
+		require.NoError(t, err)
 	})
 }

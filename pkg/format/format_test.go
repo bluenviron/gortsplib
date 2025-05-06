@@ -1267,12 +1267,45 @@ func FuzzUnmarshal(f *testing.F) {
 		f.Add(ca.in)
 	}
 
-	f.Fuzz(func(_ *testing.T, in string) {
+	f.Fuzz(func(t *testing.T, in string) {
 		var desc sdp.SessionDescription
 		err := desc.Unmarshal([]byte(in))
+		if err != nil || len(desc.MediaDescriptions) == 0 || len(desc.MediaDescriptions[0].MediaName.Formats) == 0 {
+			return
+		}
 
-		if err == nil && len(desc.MediaDescriptions) == 1 && len(desc.MediaDescriptions[0].MediaName.Formats) == 1 {
-			Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0]) //nolint:errcheck
+		f, err := Unmarshal(desc.MediaDescriptions[0], desc.MediaDescriptions[0].MediaName.Formats[0])
+		if err != nil {
+			return
+		}
+
+		// only Generic can return zero ClockRate
+		if _, ok := f.(*Generic); !ok {
+			require.NotZero(t, f.ClockRate())
+		} else {
+			f.ClockRate()
+		}
+
+		f.Codec()
+		f.PayloadType()
+		f.RTPMap()
+		f.FMTP()
+
+		switch f := f.(type) {
+		case *AC3:
+			require.NotZero(t, f.ChannelCount)
+
+		case *G711:
+			require.NotZero(t, f.ChannelCount)
+
+		case *LPCM:
+			require.NotZero(t, f.ChannelCount)
+
+		case *Opus:
+			require.NotZero(t, f.ChannelCount)
+
+		case *Vorbis:
+			require.NotZero(t, f.ChannelCount)
 		}
 	})
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
 var serverCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -81,6 +82,36 @@ func writeReqReadRes(
 	}
 
 	return conn.ReadResponse()
+}
+
+func doDescribe(t *testing.T, conn *conn.Conn, backChannels bool) *description.Session {
+	header := base.Header{
+		"CSeq": base.HeaderValue{"1"},
+	}
+
+	if backChannels {
+		header["Require"] = base.HeaderValue{"www.onvif.org/ver20/backchannel"}
+	}
+
+	res, err := writeReqReadRes(conn, base.Request{
+		Method: base.Describe,
+		URL:    mustParseURL("rtsp://localhost:8554/teststream?param=value"),
+		Header: header,
+	})
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+
+	var desc sdp.SessionDescription
+	err = desc.Unmarshal(res.Body)
+	require.NoError(t, err)
+
+	var desc2 description.Session
+	err = desc2.Unmarshal(&desc)
+	require.NoError(t, err)
+
+	desc2.BaseURL = mustParseURL(res.Header["Content-Base"][0])
+
+	return &desc2
 }
 
 type testServerHandler struct {
@@ -438,7 +469,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			var session string
 
@@ -534,7 +565,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	defer nconn1.Close()
 	conn1 := conn.NewConn(nconn1)
 
-	desc1 := doDescribe(t, conn1)
+	desc1 := doDescribe(t, conn1, false)
 
 	inTH := &headers.Transport{
 		Protocol:       headers.TransportProtocolTCP,
@@ -554,7 +585,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	defer nconn2.Close()
 	conn2 := conn.NewConn(nconn2)
 
-	desc2 := doDescribe(t, conn2)
+	desc2 := doDescribe(t, conn2, false)
 
 	res, err = writeReqReadRes(conn2, base.Request{
 		Method: base.Setup,
@@ -620,7 +651,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc := doDescribe(t, conn)
+	desc := doDescribe(t, conn, false)
 
 	inTH := &headers.Transport{
 		Protocol:       headers.TransportProtocolTCP,
@@ -688,7 +719,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc := doDescribe(t, conn)
+	desc := doDescribe(t, conn, false)
 
 	inTHS := headers.Transports{
 		{
@@ -789,7 +820,7 @@ func TestServerGetSetParameter(t *testing.T) {
 			defer nconn.Close()
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			var session string
 
@@ -1078,7 +1109,7 @@ func TestServerSessionClose(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc := doDescribe(t, conn)
+	desc := doDescribe(t, conn, false)
 
 	inTH := &headers.Transport{
 		Protocol:       headers.TransportProtocolTCP,
@@ -1157,7 +1188,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 			require.NoError(t, err)
 			conn := conn.NewConn(nconn)
 
-			desc := doDescribe(t, conn)
+			desc := doDescribe(t, conn, false)
 
 			inTH := &headers.Transport{
 				Protocol:       headers.TransportProtocolTCP,
@@ -1225,7 +1256,7 @@ func TestServerSessionTeardown(t *testing.T) {
 	defer nconn.Close()
 	conn := conn.NewConn(nconn)
 
-	desc := doDescribe(t, conn)
+	desc := doDescribe(t, conn, false)
 
 	inTH := &headers.Transport{
 		Protocol:       headers.TransportProtocolTCP,

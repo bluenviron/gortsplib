@@ -20,7 +20,7 @@ type serverSessionFormat struct {
 	format      format.Format
 	onPacketRTP OnPacketRTPFunc
 
-	udpReorderer          *rtpreorderer.Reorderer
+	udpReorderer          *rtpreorderer.Reorderer // publish or back channel
 	tcpLossDetector       *rtplossdetector.LossDetector
 	rtcpReceiver          *rtcpreceiver.RTCPReceiver
 	writePacketRTPInQueue func([]byte) error
@@ -44,7 +44,7 @@ func (sf *serverSessionFormat) start() {
 		sf.writePacketRTPInQueue = sf.writePacketRTPInQueueTCP
 	}
 
-	if sf.sm.ss.state != ServerSessionStatePlay {
+	if sf.sm.ss.state == ServerSessionStateRecord || sf.sm.media.IsBackChannel {
 		if *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast {
 			sf.udpReorderer = &rtpreorderer.Reorderer{}
 			sf.udpReorderer.Initialize()

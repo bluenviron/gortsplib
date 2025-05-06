@@ -19,8 +19,8 @@ func (f *Speex) unmarshal(ctx *unmarshalContext) error {
 	f.PayloadTyp = ctx.payloadType
 
 	sampleRate, err := strconv.ParseUint(ctx.clock, 10, 31)
-	if err != nil {
-		return err
+	if err != nil || sampleRate == 0 {
+		return fmt.Errorf("invalid sample rate: '%s'", ctx.clock)
 	}
 	f.SampleRate = int(sampleRate)
 

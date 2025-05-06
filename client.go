@@ -360,8 +360,8 @@ type Client struct {
 	checkTimeoutTimer    *time.Timer
 	checkTimeoutInitial  bool
 	tcpLastFrameTime     *int64
-	keepalivePeriod      time.Duration
-	keepaliveTimer       *time.Timer
+	keepAlivePeriod      time.Duration
+	keepAliveTimer       *time.Timer
 	closeError           error
 	writer               *asyncProcessor
 	writerMutex          sync.RWMutex
@@ -489,8 +489,8 @@ func (c *Client) Start(scheme string, host string) error {
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
 	c.checkTimeoutTimer = emptyTimer()
-	c.keepalivePeriod = 30 * time.Second
-	c.keepaliveTimer = emptyTimer()
+	c.keepAlivePeriod = 30 * time.Second
+	c.keepAliveTimer = emptyTimer()
 
 	if c.BytesReceived != nil {
 		c.bytesReceived = c.BytesReceived
@@ -667,12 +667,12 @@ func (c *Client) runInner() error {
 			}
 			c.checkTimeoutTimer = time.NewTimer(c.checkTimeoutPeriod)
 
-		case <-c.keepaliveTimer.C:
+		case <-c.keepAliveTimer.C:
 			err := c.doKeepAlive()
 			if err != nil {
 				return err
 			}
-			c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
+			c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 
 		case <-chWriterError:
 			return c.writer.stopError
@@ -897,9 +897,12 @@ func (c *Client) startTransportRoutines() {
 		c.tcpBuffer = make([]byte, c.MaxPacketSize+4)
 	}
 
-	if c.state == clientStatePlay && c.stdChannelSetupped {
-		c.keepaliveTimer = time.NewTimer(c.keepalivePeriod)
+	// always enable keepalives unless we are recording with TCP
+	if c.state == clientStatePlay || *c.effectiveTransport != TransportTCP {
+		c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
+	}
 
+	if c.state == clientStatePlay && c.stdChannelSetupped {
 		switch *c.effectiveTransport {
 		case TransportUDP:
 			c.checkTimeoutTimer = time.NewTimer(c.InitialUDPReadTimeout)
@@ -926,7 +929,7 @@ func (c *Client) stopTransportRoutines() {
 	}
 
 	c.checkTimeoutTimer = emptyTimer()
-	c.keepaliveTimer = emptyTimer()
+	c.keepAliveTimer = emptyTimer()
 
 	for _, cm := range c.setuppedMedias {
 		cm.stop()
@@ -1104,7 +1107,7 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		c.session = sx.Session
 
 		if sx.Timeout != nil && *sx.Timeout > 0 {
-			c.keepalivePeriod = time.Duration(*sx.Timeout) * time.Second * 8 / 10
+			c.keepAlivePeriod = time.Duration(*sx.Timeout) * time.Second * 8 / 10
 		}
 	}
 
@@ -1826,11 +1829,13 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 	// to all listeners, including us, messing up the stream.
 	if *c.effectiveTransport == TransportUDP {
 		for _, cm := range c.setuppedMedias {
-			byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
-			cm.udpRTPListener.write(byts) //nolint:errcheck
+			if !cm.media.IsBackChannel {
+				byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
+				cm.udpRTPListener.write(byts) //nolint:errcheck
 
-			byts, _ = (&rtcp.ReceiverReport{}).Marshal()
-			cm.udpRTCPListener.write(byts) //nolint:errcheck
+				byts, _ = (&rtcp.ReceiverReport{}).Marshal()
+				cm.udpRTCPListener.write(byts) //nolint:errcheck
+			}
 		}
 	}
 

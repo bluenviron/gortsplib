@@ -107,6 +107,12 @@ func (rr *RTCPReceiver) Initialize() error {
 	return nil
 }
 
+// Close closes the RTCPReceiver.
+func (rr *RTCPReceiver) Close() {
+	close(rr.terminate)
+	<-rr.done
+}
+
 func (rr *RTCPReceiver) run() {
 	defer close(rr.done)
 
@@ -131,7 +137,7 @@ func (rr *RTCPReceiver) report() rtcp.Packet {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
-	if !rr.firstRTPPacketReceived {
+	if !rr.firstRTPPacketReceived || rr.ClockRate == 0 {
 		return nil
 	}
 
@@ -166,12 +172,6 @@ func (rr *RTCPReceiver) report() rtcp.Packet {
 	rr.totalSinceReport = 0
 
 	return report
-}
-
-// Close closes the RTCPReceiver.
-func (rr *RTCPReceiver) Close() {
-	close(rr.terminate)
-	<-rr.done
 }
 
 // ProcessPacket extracts the needed data from RTP packets.
@@ -223,7 +223,7 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 		rr.lastSequenceNumber = pkt.SequenceNumber
 
 		if ptsEqualsDTS {
-			if rr.timeInitialized {
+			if rr.timeInitialized && rr.ClockRate != 0 {
 				// update jitter
 				// https://tools.ietf.org/html/rfc3550#page-39
 				D := system.Sub(rr.lastTimeSystem).Seconds()*float64(rr.ClockRate) -
@@ -255,7 +255,7 @@ func (rr *RTCPReceiver) ProcessSenderReport(sr *rtcp.SenderReport, system time.T
 }
 
 func (rr *RTCPReceiver) packetNTPUnsafe(ts uint32) (time.Time, bool) {
-	if !rr.firstSenderReportReceived {
+	if !rr.firstSenderReportReceived || rr.ClockRate == 0 {
 		return time.Time{}, false
 	}
 

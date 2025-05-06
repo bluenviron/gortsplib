@@ -17,10 +17,10 @@ import (
 )
 
 // This example shows how to
-// 1. read H264 frames from a video file in MPEG-TS format
-// 2. connect to a RTSP server, announce a H264 format
-// 3. wrap frames into RTP packets
-// 4. write RTP packets to the server
+// 1. read H264 frames from a video file in MPEG-TS format.
+// 2. connect to a RTSP server, announce a H264 format.
+// 3. wrap frames into RTP packets.
+// 4. write RTP packets to the server.
 
 func findTrack(r *mpegts.Reader) (*mpegts.Track, error) {
 	for _, track := range r.Tracks() {

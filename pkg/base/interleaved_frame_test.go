@@ -58,11 +58,14 @@ func FuzzInterleavedFrameUnmarshal(f *testing.F) {
 	for _, ca := range casesInterleavedFrame {
 		f.Add(ca.enc)
 	}
-	f.Fuzz(func(_ *testing.T, b []byte) {
+	f.Fuzz(func(t *testing.T, b []byte) {
 		var f InterleavedFrame
 		err := f.Unmarshal(bufio.NewReader(bytes.NewBuffer(b)))
-		if err == nil {
-			f.Marshal() //nolint:errcheck
+		if err != nil {
+			return
 		}
+
+		_, err = f.Marshal()
+		require.NoError(t, err)
 	})
 }

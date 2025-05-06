@@ -13,9 +13,9 @@ import (
 )
 
 // This example shows how to
-// 1. create a RTSP server which accepts plain connections
-// 2. allow a single client to publish a stream with TCP or UDP
-// 3. allow multiple clients to read that stream with TCP, UDP or UDP-multicast
+// 1. create a RTSP server which accepts plain connections.
+// 2. allow a single client to publish a stream with TCP or UDP.
+// 3. allow multiple clients to read the stream with TCP, UDP or UDP-multicast.
 
 type serverHandler struct {
 	server    *gortsplib.Server

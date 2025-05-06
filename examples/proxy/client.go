@@ -62,6 +62,7 @@ func (c *client) read() error {
 		return err
 	}
 
+	// notify the server that we are ready
 	stream := c.server.setStreamReady(desc)
 	defer c.server.setStreamUnready()
 

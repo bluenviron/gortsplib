@@ -14,9 +14,9 @@ import (
 )
 
 // This example shows how to
-// 1. create a RTSP server which accepts plain connections
-// 2. allow a single client to publish a stream with TCP or UDP, if it provides credentials
-// 3. allow multiple clients to read that stream with TCP, UDP or UDP-multicast, if they provide credentials
+// 1. create a RTSP server which accepts plain connections.
+// 2. allow a single client to publish a stream with TCP or UDP, if it provides credentials.
+// 3. allow multiple clients to read the stream with TCP, UDP or UDP-multicast, if they provide credentials.
 
 const (
 	// credentials required to publish the stream
