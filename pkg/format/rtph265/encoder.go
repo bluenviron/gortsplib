@@ -217,16 +217,18 @@ func (e *Encoder) writeAggregationUnit(nalus [][]byte, marker bool) ([]*rtp.Pack
 	pos := 2
 
 	for _, nalu := range nalus {
-		if len(nalu) >= 2 {
-			// select lowest layerID & temporalID
-			nalLayerID := ((nalu[0] & 0x01) << 5) | ((nalu[1] >> 3) & 0x1F)
-			nalTemporalID := nalu[1] & 0x07
-			if nalLayerID < layerID {
-				layerID = nalLayerID
-			}
-			if nalTemporalID < temporalID {
-				temporalID = nalTemporalID
-			}
+		if len(nalu) < 2 {
+			return nil, fmt.Errorf("invalid NALU")
+		}
+
+		// select lowest layerID & temporalID
+		nalLayerID := ((nalu[0] & 0x01) << 5) | ((nalu[1] >> 3) & 0x1F)
+		nalTemporalID := nalu[1] & 0x07
+		if nalLayerID < layerID {
+			layerID = nalLayerID
+		}
+		if nalTemporalID < temporalID {
+			temporalID = nalTemporalID
 		}
 
 		// size
