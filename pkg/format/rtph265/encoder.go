@@ -212,13 +212,25 @@ func (e *Encoder) lenAggregationUnit(nalus [][]byte, addNALU []byte) int {
 func (e *Encoder) writeAggregationUnit(nalus [][]byte, marker bool) ([]*rtp.Packet, error) {
 	payload := make([]byte, e.lenAggregationUnit(nalus, nil))
 
-	// header
-	h := uint16(48) << 9
-	payload[0] = byte(h >> 8)
-	payload[1] = byte(h)
+	layerID := byte(0xFF)
+	temporalID := byte(0xFF)
 	pos := 2
 
 	for _, nalu := range nalus {
+		if len(nalu) < 2 {
+			return nil, fmt.Errorf("invalid NALU")
+		}
+
+		// select lowest layerID & temporalID
+		nalLayerID := ((nalu[0] & 0x01) << 5) | ((nalu[1] >> 3) & 0x1F)
+		nalTemporalID := nalu[1] & 0x07
+		if nalLayerID < layerID {
+			layerID = nalLayerID
+		}
+		if nalTemporalID < temporalID {
+			temporalID = nalTemporalID
+		}
+
 		// size
 		naluLen := len(nalu)
 		payload[pos] = uint8(naluLen >> 8)
@@ -229,6 +241,10 @@ func (e *Encoder) writeAggregationUnit(nalus [][]byte, marker bool) ([]*rtp.Pack
 		copy(payload[pos:], nalu)
 		pos += naluLen
 	}
+
+	// header
+	payload[0] = (48 << 1) | (layerID & 0x20)
+	payload[1] = ((layerID & 0x1F) << 3) | (temporalID & 0x07)
 
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
