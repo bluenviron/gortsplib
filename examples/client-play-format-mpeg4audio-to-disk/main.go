@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -82,16 +83,16 @@ func main() {
 		}
 
 		// extract access units from RTP packets
-		aus, err := rtpDec.Decode(pkt)
-		if err != nil {
-			log.Printf("ERR: %v", err)
+		aus, err2 := rtpDec.Decode(pkt)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
 			return
 		}
 
 		// encode access units into MPEG-TS
-		err = mpegtsMuxer.writeMPEG4Audio(aus, pts)
-		if err != nil {
-			log.Printf("ERR: %v", err)
+		err2 = mpegtsMuxer.writeMPEG4Audio(aus, pts)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
 			return
 		}
 

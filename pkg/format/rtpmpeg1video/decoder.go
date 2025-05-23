@@ -72,13 +72,13 @@ func (d *Decoder) decodeSlice(pkt *rtp.Packet) ([]byte, error) {
 	an := pkt.Payload[2] >> 7
 	if an != 0 {
 		d.resetFragments()
-		return nil, fmt.Errorf("AN not supported yet")
+		return nil, fmt.Errorf("'AN' not supported yet")
 	}
 
 	n := (pkt.Payload[2] >> 6) & 0x01
 	if n != 0 {
 		d.resetFragments()
-		return nil, fmt.Errorf("N not supported yet")
+		return nil, fmt.Errorf("'N' not supported yet")
 	}
 
 	b := (pkt.Payload[2] >> 4) & 0x01

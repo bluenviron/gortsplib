@@ -45,7 +45,7 @@ func (e *mpegtsMuxer) initialize() error {
 
 // close closes all the mpegtsMuxer resources.
 func (e *mpegtsMuxer) close() {
-	e.b.Flush()
+	e.b.Flush() //nolint:errcheck
 	e.f.Close()
 }
 

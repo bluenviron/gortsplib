@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -30,7 +31,7 @@ type serverHandler struct {
 }
 
 // called when a connection is opened.
-func (sh *serverHandler) OnConnOpen(ctx *gortsplib.ServerHandlerOnConnOpenCtx) {
+func (sh *serverHandler) OnConnOpen(_ *gortsplib.ServerHandlerOnConnOpenCtx) {
 	log.Printf("conn opened")
 }
 
@@ -40,12 +41,12 @@ func (sh *serverHandler) OnConnClose(ctx *gortsplib.ServerHandlerOnConnCloseCtx)
 }
 
 // called when a session is opened.
-func (sh *serverHandler) OnSessionOpen(ctx *gortsplib.ServerHandlerOnSessionOpenCtx) {
+func (sh *serverHandler) OnSessionOpen(_ *gortsplib.ServerHandlerOnSessionOpenCtx) {
 	log.Printf("session opened")
 }
 
 // called when a session is closed.
-func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
+func (sh *serverHandler) OnSessionClose(_ *gortsplib.ServerHandlerOnSessionCloseCtx) {
 	log.Printf("session closed")
 
 	sh.mutex.Lock()
@@ -107,7 +108,9 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 }
 
 // called when receiving a SETUP request.
-func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
+func (sh *serverHandler) OnSetup(
+	ctx *gortsplib.ServerHandlerOnSetupCtx,
+) (*base.Response, *gortsplib.ServerStream, error) {
 	// prevent readers from using the server.
 	if ctx.Session.State() == gortsplib.ServerSessionStateInitial {
 		return &base.Response{
@@ -140,7 +143,7 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 		}
 
 		// encode H264 access unit into MPEG-TS
-		sh.mpegtsMuxer.writeH264(au, pts)
+		sh.mpegtsMuxer.writeH264(au, pts) //nolint:errcheck
 	})
 
 	return &base.Response{

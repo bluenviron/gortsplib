@@ -81,11 +81,7 @@ func (e *Encoder) Encode(image []byte) ([]*rtp.Packet, error) {
 	var data []byte
 
 outer:
-	for {
-		if len(image) < 2 {
-			break
-		}
-
+	for len(image) >= 2 {
 		h0, h1 := image[0], image[1]
 		image = image[2:]
 

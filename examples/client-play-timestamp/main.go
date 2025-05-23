@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -44,7 +45,7 @@ func main() {
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+	c.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 		// get the PTS timestamp of the packet, i.e. timestamp relative to the start of the session
 		pts, ptsAvailable := c.PacketPTS2(medi, pkt)
 		log.Printf("PTS: available=%v, value=%v\n", ptsAvailable, pts)

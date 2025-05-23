@@ -20,9 +20,9 @@ jobs:
       with:
         go-version: "1.24"
 
-    - uses: golangci/golangci-lint-action@v3
+    - uses: golangci/golangci-lint-action@v8
       with:
-        version: v1.64.5
+        version: v2.1.6
 
   go-mod-tidy:
     runs-on: ubuntu-22.04

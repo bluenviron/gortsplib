@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -22,7 +23,7 @@ type serverHandler struct {
 }
 
 // called when a connection is opened.
-func (sh *serverHandler) OnConnOpen(ctx *gortsplib.ServerHandlerOnConnOpenCtx) {
+func (sh *serverHandler) OnConnOpen(_ *gortsplib.ServerHandlerOnConnOpenCtx) {
 	log.Printf("conn opened")
 }
 
@@ -32,17 +33,19 @@ func (sh *serverHandler) OnConnClose(ctx *gortsplib.ServerHandlerOnConnCloseCtx)
 }
 
 // called when a session is opened.
-func (sh *serverHandler) OnSessionOpen(ctx *gortsplib.ServerHandlerOnSessionOpenCtx) {
+func (sh *serverHandler) OnSessionOpen(_ *gortsplib.ServerHandlerOnSessionOpenCtx) {
 	log.Printf("session opened")
 }
 
 // called when a session is closed.
-func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
+func (sh *serverHandler) OnSessionClose(_ *gortsplib.ServerHandlerOnSessionCloseCtx) {
 	log.Printf("session closed")
 }
 
 // called when receiving a DESCRIBE request.
-func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
+func (sh *serverHandler) OnDescribe(
+	_ *gortsplib.ServerHandlerOnDescribeCtx,
+) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("DESCRIBE request")
 
 	sh.mutex.RLock()
@@ -54,7 +57,9 @@ func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (
 }
 
 // called when receiving a SETUP request.
-func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
+func (sh *serverHandler) OnSetup(
+	_ *gortsplib.ServerHandlerOnSetupCtx,
+) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("SETUP request")
 
 	sh.mutex.RLock()
@@ -66,7 +71,7 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 }
 
 // called when receiving a PLAY request.
-func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
+func (sh *serverHandler) OnPlay(_ *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
 	log.Printf("PLAY request")
 
 	return &base.Response{
