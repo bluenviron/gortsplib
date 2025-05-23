@@ -1,5 +1,6 @@
 //go:build cgo
 
+// Package main contains an example.
 package main
 
 import (

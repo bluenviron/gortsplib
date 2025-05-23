@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -65,9 +66,9 @@ func main() {
 		}
 
 		// extract access units from RTP packets
-		aus, err := rtpDec.Decode(pkt)
-		if err != nil {
-			log.Printf("ERR: %v", err)
+		aus, err2 := rtpDec.Decode(pkt)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
 			return
 		}
 

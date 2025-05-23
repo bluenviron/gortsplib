@@ -2,14 +2,12 @@ package main
 
 import (
 	"crypto/rand"
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/g711"
-	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 )
 
 func multiplyAndDivide(v, m, d int64) int64 {
@@ -25,15 +23,6 @@ func randUint32() (uint32, error) {
 		return 0, err
 	}
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
-}
-
-func findTrack(r *mpegts.Reader) (*mpegts.Track, error) {
-	for _, track := range r.Tracks() {
-		if _, ok := track.Codec.(*mpegts.CodecH264); ok {
-			return track, nil
-		}
-	}
-	return nil, fmt.Errorf("H264 track not found")
 }
 
 type audioStreamer struct {
@@ -68,7 +57,8 @@ func (r *audioStreamer) run() {
 
 	for range ticker.C {
 		// get current timestamp
-		pts := multiplyAndDivide(int64(time.Since(start)), int64(r.stream.Desc.Medias[0].Formats[0].ClockRate()), int64(time.Second))
+		pts := multiplyAndDivide(int64(time.Since(start)),
+			int64(r.stream.Desc.Medias[0].Formats[0].ClockRate()), int64(time.Second))
 
 		// generate dummy LPCM audio samples
 		samples := createDummyAudio(pts, prevPTS)
@@ -98,6 +88,5 @@ func (r *audioStreamer) run() {
 		}
 
 		prevPTS = pts
-
 	}
 }

@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -25,7 +26,7 @@ type serverHandler struct {
 }
 
 // called when a connection is opened.
-func (sh *serverHandler) OnConnOpen(ctx *gortsplib.ServerHandlerOnConnOpenCtx) {
+func (sh *serverHandler) OnConnOpen(_ *gortsplib.ServerHandlerOnConnOpenCtx) {
 	log.Printf("conn opened")
 }
 
@@ -35,7 +36,7 @@ func (sh *serverHandler) OnConnClose(ctx *gortsplib.ServerHandlerOnConnCloseCtx)
 }
 
 // called when a session is opened.
-func (sh *serverHandler) OnSessionOpen(ctx *gortsplib.ServerHandlerOnSessionOpenCtx) {
+func (sh *serverHandler) OnSessionOpen(_ *gortsplib.ServerHandlerOnSessionOpenCtx) {
 	log.Printf("session opened")
 }
 
@@ -55,7 +56,9 @@ func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionClo
 }
 
 // called when receiving a DESCRIBE request.
-func (sh *serverHandler) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
+func (sh *serverHandler) OnDescribe(
+	_ *gortsplib.ServerHandlerOnDescribeCtx,
+) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("DESCRIBE request")
 
 	sh.mutex.RLock()
@@ -104,7 +107,9 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 }
 
 // called when receiving a SETUP request.
-func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
+func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (
+	*base.Response, *gortsplib.ServerStream, error,
+) {
 	log.Printf("SETUP request")
 
 	// SETUP is used by both readers and publishers. In case of publishers, just return StatusOK.
@@ -130,7 +135,7 @@ func (sh *serverHandler) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.
 }
 
 // called when receiving a PLAY request.
-func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
+func (sh *serverHandler) OnPlay(_ *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
 	log.Printf("PLAY request")
 
 	return &base.Response{
@@ -143,9 +148,9 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 	log.Printf("RECORD request")
 
 	// called when receiving a RTP packet
-	ctx.Session.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+	ctx.Session.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 		// route the RTP packet to all readers
-		sh.stream.WritePacketRTP(medi, pkt)
+		sh.stream.WritePacketRTP(medi, pkt) //nolint:errcheck
 	})
 
 	return &base.Response{

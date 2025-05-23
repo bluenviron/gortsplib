@@ -29,7 +29,7 @@ func (s *server) initialize() {
 }
 
 // called when a connection is opened.
-func (s *server) OnConnOpen(ctx *gortsplib.ServerHandlerOnConnOpenCtx) {
+func (s *server) OnConnOpen(_ *gortsplib.ServerHandlerOnConnOpenCtx) {
 	log.Printf("conn opened")
 }
 
@@ -39,17 +39,17 @@ func (s *server) OnConnClose(ctx *gortsplib.ServerHandlerOnConnCloseCtx) {
 }
 
 // called when a session is opened.
-func (s *server) OnSessionOpen(ctx *gortsplib.ServerHandlerOnSessionOpenCtx) {
+func (s *server) OnSessionOpen(_ *gortsplib.ServerHandlerOnSessionOpenCtx) {
 	log.Printf("session opened")
 }
 
 // called when a session is closed.
-func (s *server) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
+func (s *server) OnSessionClose(_ *gortsplib.ServerHandlerOnSessionCloseCtx) {
 	log.Printf("session closed")
 }
 
 // called when receiving a DESCRIBE request.
-func (s *server) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
+func (s *server) OnDescribe(_ *gortsplib.ServerHandlerOnDescribeCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("DESCRIBE request")
 
 	s.mutex.RLock()
@@ -68,7 +68,7 @@ func (s *server) OnDescribe(ctx *gortsplib.ServerHandlerOnDescribeCtx) (*base.Re
 }
 
 // called when receiving a SETUP request.
-func (s *server) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
+func (s *server) OnSetup(_ *gortsplib.ServerHandlerOnSetupCtx) (*base.Response, *gortsplib.ServerStream, error) {
 	log.Printf("SETUP request")
 
 	s.mutex.RLock()
@@ -87,7 +87,7 @@ func (s *server) OnSetup(ctx *gortsplib.ServerHandlerOnSetupCtx) (*base.Response
 }
 
 // called when receiving a PLAY request.
-func (s *server) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
+func (s *server) OnPlay(_ *gortsplib.ServerHandlerOnPlayCtx) (*base.Response, error) {
 	log.Printf("PLAY request")
 
 	return &base.Response{

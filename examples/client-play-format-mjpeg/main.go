@@ -1,7 +1,9 @@
+// Package main contains an example.
 package main
 
 import (
 	"bytes"
+	"errors"
 	"image/jpeg"
 	"log"
 
@@ -69,18 +71,18 @@ func main() {
 		}
 
 		// extract JPEG images from RTP packets
-		enc, err := rtpDec.Decode(pkt)
-		if err != nil {
-			if err != rtpmjpeg.ErrNonStartingPacketAndNoPrevious && err != rtpmjpeg.ErrMorePacketsNeeded {
-				log.Printf("ERR: %v", err)
+		enc, err2 := rtpDec.Decode(pkt)
+		if err2 != nil {
+			if !errors.Is(err2, rtpmjpeg.ErrNonStartingPacketAndNoPrevious) && !errors.Is(err2, rtpmjpeg.ErrMorePacketsNeeded) {
+				log.Printf("ERR: %v", err2)
 			}
 			return
 		}
 
 		// convert JPEG images into RGBA frames
-		image, err := jpeg.Decode(bytes.NewReader(enc))
-		if err != nil {
-			panic(err)
+		image, err2 := jpeg.Decode(bytes.NewReader(enc))
+		if err2 != nil {
+			panic(err2)
 		}
 
 		log.Printf("decoded image with PTS %v and size %v", pts, image.Bounds().Max)

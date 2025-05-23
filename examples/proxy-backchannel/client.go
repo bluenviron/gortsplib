@@ -78,7 +78,7 @@ func (c *client) read() error {
 	}
 
 	writeToClient := func(pkt *rtp.Packet) {
-		rc.WritePacketRTP(backChannelMedia, pkt)
+		rc.WritePacketRTP(backChannelMedia, pkt) //nolint:errcheck
 	}
 
 	// setup all medias
@@ -94,11 +94,11 @@ func (c *client) read() error {
 	log.Printf("stream is ready and can be read from the server at rtsp://localhost:8554/stream\n")
 
 	// called when a RTP packet arrives
-	rc.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+	rc.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 		log.Printf("received RTP packet from the client, routing to readers")
 
 		// route incoming packets to the server stream
-		stream.WritePacketRTP(medi, pkt)
+		stream.WritePacketRTP(medi, pkt) //nolint:errcheck
 	})
 
 	// start playing

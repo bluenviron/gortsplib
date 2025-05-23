@@ -6,11 +6,7 @@ import (
 
 func readKey(str string, separator byte) (string, string) {
 	i := 0
-	for {
-		if i >= len(str) || str[i] == '=' || str[i] == separator {
-			break
-		}
-
+	for i < len(str) && str[i] != '=' && str[i] != separator {
 		i++
 	}
 	return str[:i], str[i:]

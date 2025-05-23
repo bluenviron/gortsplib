@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -66,9 +67,9 @@ func main() {
 		}
 
 		// extract G711 samples from RTP packets
-		samples, err := rtpDec.Decode(pkt)
-		if err != nil {
-			log.Printf("ERR: %v", err)
+		samples, err2 := rtpDec.Decode(pkt)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
 			return
 		}
 

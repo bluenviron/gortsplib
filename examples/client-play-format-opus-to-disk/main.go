@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -82,16 +83,16 @@ func main() {
 		}
 
 		// extract Opus packets from RTP packets
-		opkt, err := rtpDec.Decode(pkt)
-		if err != nil {
-			log.Printf("ERR: %v", err)
+		opkt, err2 := rtpDec.Decode(pkt)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
 			return
 		}
 
 		// encode Opus packets into MPEG-TS
-		err = mpegtsMuxer.writeOpus(opkt, pts)
-		if err != nil {
-			log.Printf("ERR: %v", err)
+		err2 = mpegtsMuxer.writeOpus(opkt, pts)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
 			return
 		}
 

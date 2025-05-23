@@ -61,7 +61,7 @@ func (e *mpegtsMuxer) initialize() error {
 
 // close closes all the mpegtsMuxer resources.
 func (e *mpegtsMuxer) close() {
-	e.b.Flush()
+	e.b.Flush() //nolint:errcheck
 	e.f.Close()
 }
 
@@ -70,7 +70,7 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	var filteredAU [][]byte
+	var filteredAU [][]byte //nolint:prealloc
 
 	nonIDRPresent := false
 	idrPresent := false
@@ -115,7 +115,8 @@ func (e *mpegtsMuxer) writeH264(au [][]byte, pts int64) error {
 		if !idrPresent {
 			return nil
 		}
-		e.dtsExtractor = h264.NewDTSExtractor()
+		e.dtsExtractor = &h264.DTSExtractor{}
+		e.dtsExtractor.Initialize()
 	}
 
 	dts, err := e.dtsExtractor.Extract(au, pts)
@@ -132,5 +133,6 @@ func (e *mpegtsMuxer) writeMPEG4Audio(aus [][]byte, pts int64) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	return e.w.WriteMPEG4Audio(e.mpeg4AudioTrack, multiplyAndDivide(pts, 90000, int64(e.mpeg4AudioFormat.ClockRate())), aus)
+	return e.w.WriteMPEG4Audio(e.mpeg4AudioTrack,
+		multiplyAndDivide(pts, 90000, int64(e.mpeg4AudioFormat.ClockRate())), aus)
 }

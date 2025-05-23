@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -55,8 +56,8 @@ func main() {
 	defer publisher.Close()
 
 	// read RTP packets from the reader and route them to the publisher
-	reader.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
-		publisher.WritePacketRTP(desc.Medias[0], pkt)
+	reader.OnPacketRTPAny(func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
+		publisher.WritePacketRTP(desc.Medias[0], pkt) //nolint:errcheck
 	})
 
 	// start playing

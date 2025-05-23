@@ -46,13 +46,13 @@ func (e *mpegtsMuxer) initialize() error {
 
 // close closes all the mpegtsMuxer resources.
 func (e *mpegtsMuxer) close() {
-	e.b.Flush()
+	e.b.Flush() //nolint:errcheck
 	e.f.Close()
 }
 
 // writeH265 writes a H265 access unit into MPEG-TS.
 func (e *mpegtsMuxer) writeH265(au [][]byte, pts int64) error {
-	var filteredAU [][]byte
+	var filteredAU [][]byte //nolint:prealloc
 
 	isRandomAccess := false
 
@@ -97,7 +97,8 @@ func (e *mpegtsMuxer) writeH265(au [][]byte, pts int64) error {
 		if !isRandomAccess {
 			return nil
 		}
-		e.dtsExtractor = h265.NewDTSExtractor()
+		e.dtsExtractor = &h265.DTSExtractor{}
+		e.dtsExtractor.Initialize()
 	}
 
 	dts, err := e.dtsExtractor.Extract(au, pts)

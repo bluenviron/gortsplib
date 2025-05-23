@@ -1,6 +1,8 @@
+// Package main contains an example.
 package main
 
 import (
+	"errors"
 	"log"
 
 	"github.com/bluenviron/gortsplib/v4"
@@ -78,18 +80,18 @@ func main() {
 		}
 
 		// extract access unit from RTP packets
-		au, err := rtpDec.Decode(pkt)
-		if err != nil {
-			if err != rtph264.ErrNonStartingPacketAndNoPrevious && err != rtph264.ErrMorePacketsNeeded {
-				log.Printf("ERR: %v", err)
+		au, err2 := rtpDec.Decode(pkt)
+		if err2 != nil {
+			if !errors.Is(err2, rtph264.ErrNonStartingPacketAndNoPrevious) && !errors.Is(err2, rtph264.ErrMorePacketsNeeded) {
+				log.Printf("ERR: %v", err2)
 			}
 			return
 		}
 
 		// encode the access unit into MPEG-TS
-		err = mpegtsMuxer.writeH264(au, pts)
-		if err != nil {
-			log.Printf("ERR: %v", err)
+		err2 = mpegtsMuxer.writeH264(au, pts)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
 			return
 		}
 

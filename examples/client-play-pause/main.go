@@ -1,3 +1,4 @@
+// Package main contains an example.
 package main
 
 import (
@@ -47,7 +48,7 @@ func main() {
 	}
 
 	// called when a RTP packet arrives
-	c.OnPacketRTPAny(func(medi *description.Media, forma format.Format, pkt *rtp.Packet) {
+	c.OnPacketRTPAny(func(medi *description.Media, _ format.Format, _ *rtp.Packet) {
 		log.Printf("RTP packet from media %v\n", medi)
 	})
 
