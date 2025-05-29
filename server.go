@@ -336,7 +336,7 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Close closes all the server resources and waits for them to close.
+// Close closes all the server resources and waits for them to exit.
 func (s *Server) Close() {
 	s.ctxCancel()
 	s.wg.Wait()

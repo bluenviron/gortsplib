@@ -542,7 +542,7 @@ func (c *Client) StartRecording(address string, desc *description.Session) error
 	return nil
 }
 
-// Close closes all client resources and waits for them to close.
+// Close closes all client resources and waits for them to exit.
 func (c *Client) Close() {
 	c.ctxCancel()
 	<-c.done
