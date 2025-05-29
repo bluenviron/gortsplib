@@ -341,3 +341,34 @@ type ErrClientSDPInvalid struct {
 func (e ErrClientSDPInvalid) Error() string {
 	return fmt.Sprintf("invalid SDP: %v", e.Err)
 }
+
+// ErrClientHTTPTunnelSetupFailed is an error that can be returned by a client.
+type ErrClientHTTPTunnelSetupFailed struct {
+	Err error
+}
+
+// Error implements the error interface.
+func (e ErrClientHTTPTunnelSetupFailed) Error() string {
+	return fmt.Sprintf("HTTP tunnel setup failed: %v", e.Err)
+}
+
+// ErrClientHTTPTunnelConnectionFailed is an error that can be returned by a client.
+type ErrClientHTTPTunnelConnectionFailed struct {
+	Err error
+}
+
+// Error implements the error interface.
+func (e ErrClientHTTPTunnelConnectionFailed) Error() string {
+	return fmt.Sprintf("HTTP tunnel connection failed: %v", e.Err)
+}
+
+// ErrClientHTTPTunnelRequestFailed is an error that can be returned by a client.
+type ErrClientHTTPTunnelRequestFailed struct {
+	StatusCode int
+	Status     string
+}
+
+// Error implements the error interface.
+func (e ErrClientHTTPTunnelRequestFailed) Error() string {
+	return fmt.Sprintf("HTTP tunnel request failed: %d %s", e.StatusCode, e.Status)
+}
