@@ -53,8 +53,8 @@ func TestURLParseErrors(t *testing.T) {
 		},
 		{
 			"unsupported scheme",
-			"http://testing",
-			"unsupported scheme 'http'",
+			"ftp://testing",
+			"unsupported scheme 'ftp'",
 		},
 		{
 			"with opaque data",
