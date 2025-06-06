@@ -10,7 +10,7 @@ require (
 	github.com/pion/rtp v1.8.17
 	github.com/pion/sdp/v3 v3.0.13
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/net v0.40.0
+	golang.org/x/net v0.41.0
 )
 
 require (
