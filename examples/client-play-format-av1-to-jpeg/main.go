@@ -121,8 +121,9 @@ func main() {
 			panic(err)
 		}
 
-		// wait for a frame
+		// check for frame presence
 		if img == nil {
+			log.Printf("ERR: frame cannot be decoded")
 			return
 		}
 
