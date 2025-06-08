@@ -67,7 +67,7 @@ func (cf *clientFormat) start() {
 			Period:    cf.cm.c.receiverReportPeriod,
 			TimeNow:   cf.cm.c.timeNow,
 			WritePacketRTCP: func(pkt rtcp.Packet) {
-				if cf.cm.udpRTPListener != nil {
+				if cf.cm.udpRTPListener != nil && cf.cm.udpRTCPListener.writeAddr != nil {
 					cf.cm.c.WritePacketRTCP(cf.cm.media, pkt) //nolint:errcheck
 				}
 			},
