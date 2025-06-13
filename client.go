@@ -331,6 +331,7 @@ type Client struct {
 	checkTimeoutPeriod   time.Duration
 
 	connURL              *base.URL
+	ParentCtx            context.Context
 	ctx                  context.Context
 	ctxCancel            func()
 	state                clientState
@@ -472,7 +473,14 @@ func (c *Client) Start(scheme string, host string) error {
 		c.checkTimeoutPeriod = 1 * time.Second
 	}
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
+	var parentCtx context.Context
+	if c.ParentCtx == nil {
+		parentCtx = context.Background()
+	} else {
+		parentCtx = c.ParentCtx
+	}
+
+	ctx, ctxCancel := context.WithCancel(parentCtx)
 
 	c.connURL = &base.URL{
 		Scheme: scheme,
