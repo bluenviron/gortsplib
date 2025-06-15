@@ -87,39 +87,77 @@ func (sf *serverStreamFormat) close() {
 func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 	pkt.SSRC = sf.localSSRC
 
-	byts := make([]byte, sf.sm.st.Server.MaxPacketSize)
-	n, err := pkt.MarshalTo(byts)
+	sf.rtcpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
+
+	maxPlainPacketSize := sf.sm.st.Server.MaxPacketSize
+	if sf.sm.srtpOutCtx != nil {
+		maxPlainPacketSize -= srtpOverhead
+	}
+
+	plain := make([]byte, maxPlainPacketSize)
+	n, err := pkt.MarshalTo(plain)
 	if err != nil {
 		return err
 	}
-	byts = byts[:n]
+	plain = plain[:n]
 
-	sf.rtcpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
+	var encr []byte
+	if sf.sm.srtpOutCtx != nil {
+		encr = make([]byte, sf.sm.st.Server.MaxPacketSize)
+		encr, err = sf.sm.srtpOutCtx.EncryptRTP(encr, plain, &pkt.Header)
+		if err != nil {
+			return err
+		}
+	}
 
-	le := uint64(len(byts))
+	encrLen := uint64(len(encr))
+	plainLen := uint64(len(plain))
 
 	// send unicast
 	for r := range sf.sm.st.activeUnicastReaders {
-		if _, ok := r.setuppedMedias[sf.sm.media]; ok {
-			err := r.writePacketRTPEncoded(sf.sm.media, pkt.PayloadType, byts)
-			if err != nil {
-				r.onStreamWriteError(err)
-				continue
+		if sm, ok := r.setuppedMedias[sf.sm.media]; ok {
+			sf := sm.formats[pkt.PayloadType]
+
+			if r.setuppedSecure {
+				err := sf.writePacketRTPEncoded(encr)
+				if err != nil {
+					r.onStreamWriteError(err)
+					continue
+				}
+
+				atomic.AddUint64(sf.sm.bytesSent, encrLen)
+			} else {
+				err := sf.writePacketRTPEncoded(plain)
+				if err != nil {
+					r.onStreamWriteError(err)
+					continue
+				}
+
+				atomic.AddUint64(sf.sm.bytesSent, plainLen)
 			}
 
-			atomic.AddUint64(sf.sm.bytesSent, le)
 			atomic.AddUint64(sf.rtpPacketsSent, 1)
 		}
 	}
 
 	// send multicast
 	if sf.sm.multicastWriter != nil {
-		err := sf.sm.multicastWriter.writePacketRTP(byts)
-		if err != nil {
-			return err
+		if sf.sm.srtpOutCtx != nil {
+			err := sf.sm.multicastWriter.writePacketRTP(encr)
+			if err != nil {
+				return err
+			}
+
+			atomic.AddUint64(sf.sm.bytesSent, encrLen)
+		} else {
+			err := sf.sm.multicastWriter.writePacketRTP(plain)
+			if err != nil {
+				return err
+			}
+
+			atomic.AddUint64(sf.sm.bytesSent, plainLen)
 		}
 
-		atomic.AddUint64(sf.sm.bytesSent, le)
 		atomic.AddUint64(sf.rtpPacketsSent, 1)
 	}
 

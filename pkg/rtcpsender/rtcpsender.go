@@ -182,7 +182,7 @@ func (rs *RTCPSender) Stats() *Stats {
 	}
 
 	return &Stats{
-		LocalSSRC:          rs.localSSRC,
+		// LocalSSRC:          rs.localSSRC,
 		LastSequenceNumber: rs.lastSequenceNumber,
 		LastRTP:            rs.lastTimeRTP,
 		LastNTP:            rs.lastTimeNTP,

@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"errors"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
 )
 
 func getSessionID(header base.Header) string {
@@ -51,7 +53,98 @@ func checkBackChannelsEnabled(header base.Header) bool {
 	return false
 }
 
-func prepareForDescribe(d *description.Session, multicast bool, backChannels bool) *description.Session {
+func mikeyGenerate(ssrcs []uint32, key []byte) (*mikey.Message, error) {
+	csbID, err := randUint32()
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &mikey.Message{
+		Header: mikey.Header{
+			Version: 1,
+			CSBID:   csbID,
+		},
+	}
+
+	msg.Header.NumCS = uint8(len(ssrcs))
+	msg.Header.CSIDMapInfo = make([]mikey.SRTPIDEntry, msg.Header.NumCS)
+
+	n := 0
+	for _, ssrc := range ssrcs {
+		msg.Header.CSIDMapInfo[n] = mikey.SRTPIDEntry{
+			PolicyNo: 0,
+			SSRC:     ssrc,
+			ROC:      0,
+		}
+		n++
+	}
+
+	randData := make([]byte, 16)
+	_, err = rand.Read(randData)
+	if err != nil {
+		return nil, err
+	}
+
+	msg.Payloads = []mikey.Payload{
+		&mikey.PayloadT{
+			TSType:  0,
+			TSValue: mikeyEncodeTime(time.Now()),
+		},
+		&mikey.PayloadRAND{
+			Data: randData,
+		},
+		&mikey.PayloadSP{
+			PolicyParams: []mikey.PayloadSPPolicyParam{
+				{
+					Type:  mikey.PayloadSPPolicyParamTypeEncrAlg,
+					Value: []byte{1},
+				},
+				{
+					Type:  mikey.PayloadSPPolicyParamTypeSessionEncrKeyLen,
+					Value: []byte{0x10},
+				},
+				{
+					Type:  mikey.PayloadSPPolicyParamTypeAuthAlg,
+					Value: []byte{1},
+				},
+				{
+					Type:  mikey.PayloadSPPolicyParamTypeSessionAuthKeyLen,
+					Value: []byte{0x0a},
+				},
+				{
+					Type:  mikey.PayloadSPPolicyParamTypeSRTPEncrOffOn,
+					Value: []byte{1},
+				},
+				{
+					Type:  mikey.PayloadSPPolicyParamTypeSRTCPEncrOffOn,
+					Value: []byte{1},
+				},
+				{
+					Type:  mikey.PayloadSPPolicyParamTypeSRTPAuthOffOn,
+					Value: []byte{1},
+				},
+			},
+		},
+		&mikey.PayloadKEMAC{
+			SubPayloads: []*mikey.SubPayloadKeyData{
+				{
+					Type:    mikey.SubPayloadKeyDataKeyTypeTEK,
+					KeyData: key,
+				},
+			},
+		},
+	}
+
+	return msg, nil
+}
+
+func prepareForDescribe(
+	d *description.Session,
+	multicast bool,
+	backChannels bool,
+	secure bool,
+	medias map[*description.Media]*serverStreamMedia,
+) (*description.Session, error) {
 	out := &description.Session{
 		Title:     d.Title,
 		Multicast: multicast,
@@ -60,19 +153,39 @@ func prepareForDescribe(d *description.Session, multicast bool, backChannels boo
 
 	for i, medi := range d.Medias {
 		if !medi.IsBackChannel || backChannels {
+			var keyMgmtMikey *mikey.Message
+			if secure {
+				sm := medias[medi]
+
+				ssrcs := make([]uint32, len(sm.formats))
+				n := 0
+				for _, sf := range sm.formats {
+					ssrcs[n] = sf.localSSRC
+					n++
+				}
+
+				var err error
+				keyMgmtMikey, err = mikeyGenerate(ssrcs, sm.srtpOutKey)
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			out.Medias = append(out.Medias, &description.Media{
 				Type:          medi.Type,
 				ID:            medi.ID,
 				IsBackChannel: medi.IsBackChannel,
 				// we have to use trackID=number in order to support clients
 				// like the Grandstream GXV3500.
-				Control: "trackID=" + strconv.FormatInt(int64(i), 10),
-				Formats: medi.Formats,
+				Control:      "trackID=" + strconv.FormatInt(int64(i), 10),
+				Secure:       secure,
+				KeyMgmtMikey: keyMgmtMikey,
+				Formats:      medi.Formats,
 			})
 		}
 	}
 
-	return out
+	return out, nil
 }
 
 func credentialsProvided(req *base.Request) bool {
@@ -160,7 +273,7 @@ func (sc *ServerConn) UserData() interface{} {
 	return sc.userData
 }
 
-// Session returns associated session.
+// Session returns the associated session.
 func (sc *ServerConn) Session() *ServerSession {
 	return sc.session
 }
@@ -370,13 +483,28 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 					return res, err
 				}
 
-				desc := prepareForDescribe(
+				var desc *description.Session
+				desc, err = prepareForDescribe(
 					stream.Desc,
 					checkMulticastEnabled(sc.s.MulticastIPRange, query),
 					checkBackChannelsEnabled(req.Header),
+					sc.s.TLSConfig != nil,
+					stream.medias,
 				)
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusInternalServerError,
+					}, err
+				}
 
-				byts, _ := desc.Marshal(false)
+				var byts []byte
+				byts, err = desc.Marshal(false)
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusInternalServerError,
+					}, err
+				}
+
 				res.Body = byts
 			}
 

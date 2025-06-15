@@ -1,6 +1,8 @@
 package gortsplib
 
 import (
+	"crypto/rand"
+	"fmt"
 	"log"
 	"net"
 	"sync/atomic"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	"github.com/pion/srtp/v3"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
@@ -16,8 +19,11 @@ import (
 type serverSessionMedia struct {
 	ss           *ServerSession
 	media        *description.Media
+	srtpInCtx    *srtp.Context
 	onPacketRTCP OnPacketRTCPFunc
 
+	srtpOutKey             []byte
+	srtpOutCtx             *srtp.Context
 	tcpChannel             int
 	udpRTPReadPort         int
 	udpRTPWriteAddr        *net.UDPAddr
@@ -34,6 +40,22 @@ type serverSessionMedia struct {
 }
 
 func (sm *serverSessionMedia) initialize() error {
+	if sm.ss.state == ServerSessionStatePreRecord || sm.media.IsBackChannel {
+		sm.srtpOutKey = make([]byte, srtpKeyLength)
+		_, err := rand.Read(sm.srtpOutKey)
+		if err != nil {
+			return err
+		}
+
+		sm.srtpOutCtx, err = srtp.CreateContext(sm.srtpOutKey[:16],
+			sm.srtpOutKey[16:], srtp.ProtectionProfileAes128CmHmacSha1_80)
+		if err != nil {
+			return err
+		}
+	} else {
+		sm.srtpOutCtx = sm.ss.setuppedStream.medias[sm.media].srtpOutCtx
+	}
+
 	sm.bytesReceived = new(uint64)
 	sm.bytesSent = new(uint64)
 	sm.rtpPacketsInError = new(uint64)
@@ -61,7 +83,7 @@ func (sm *serverSessionMedia) initialize() error {
 
 func (sm *serverSessionMedia) start() {
 	// allocate udpRTCPReceiver before udpRTCPListener
-	// otherwise udpRTCPReceiver.LastSSRC() can't be called.
+	// otherwise udpRTCPReceiver.LastSSRC() cannot be called.
 	for _, sf := range sm.formats {
 		sf.start()
 	}
@@ -129,6 +151,37 @@ func (sm *serverSessionMedia) findFormatByRemoteSSRC(ssrc uint32) *serverSession
 	return nil
 }
 
+func (sm *serverSessionMedia) decodeRTP(payload []byte) (*rtp.Packet, error) {
+	if sm.srtpInCtx != nil {
+		var err error
+		payload, err = sm.srtpInCtx.DecryptRTP(payload, payload, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var pkt rtp.Packet
+	err := pkt.Unmarshal(payload)
+	return &pkt, err
+}
+
+func (sm *serverSessionMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error) {
+	if sm.srtpInCtx != nil {
+		var err error
+		payload, err = sm.srtpInCtx.DecryptRTCP(payload, payload, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	pkts, err := rtcp.Unmarshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return pkts, nil
+}
+
 func (sm *serverSessionMedia) readPacketRTPUDPPlay(payload []byte) bool {
 	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
 
@@ -137,8 +190,7 @@ func (sm *serverSessionMedia) readPacketRTPUDPPlay(payload []byte) bool {
 		return false
 	}
 
-	pkt := &rtp.Packet{}
-	err := pkt.Unmarshal(payload)
+	pkt, err := sm.decodeRTP(payload)
 	if err != nil {
 		sm.onPacketRTPDecodeError(err)
 		return false
@@ -165,7 +217,7 @@ func (sm *serverSessionMedia) readPacketRTCPUDPPlay(payload []byte) bool {
 		return false
 	}
 
-	packets, err := rtcp.Unmarshal(payload)
+	packets, err := sm.decodeRTCP(payload)
 	if err != nil {
 		sm.onPacketRTCPDecodeError(err)
 		return false
@@ -191,8 +243,7 @@ func (sm *serverSessionMedia) readPacketRTPUDPRecord(payload []byte) bool {
 		return false
 	}
 
-	pkt := &rtp.Packet{}
-	err := pkt.Unmarshal(payload)
+	pkt, err := sm.decodeRTP(payload)
 	if err != nil {
 		sm.onPacketRTPDecodeError(err)
 		return false
@@ -220,7 +271,7 @@ func (sm *serverSessionMedia) readPacketRTCPUDPRecord(payload []byte) bool {
 		return false
 	}
 
-	packets, err := rtcp.Unmarshal(payload)
+	packets, err := sm.decodeRTCP(payload)
 	if err != nil {
 		sm.onPacketRTCPDecodeError(err)
 		return false
@@ -252,8 +303,7 @@ func (sm *serverSessionMedia) readPacketRTPTCPPlay(payload []byte) bool {
 
 	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
 
-	pkt := &rtp.Packet{}
-	err := pkt.Unmarshal(payload)
+	pkt, err := sm.decodeRTP(payload)
 	if err != nil {
 		sm.onPacketRTPDecodeError(err)
 		return false
@@ -278,7 +328,7 @@ func (sm *serverSessionMedia) readPacketRTCPTCPPlay(payload []byte) bool {
 		return false
 	}
 
-	packets, err := rtcp.Unmarshal(payload)
+	packets, err := sm.decodeRTCP(payload)
 	if err != nil {
 		sm.onPacketRTCPDecodeError(err)
 		return false
@@ -296,8 +346,7 @@ func (sm *serverSessionMedia) readPacketRTCPTCPPlay(payload []byte) bool {
 func (sm *serverSessionMedia) readPacketRTPTCPRecord(payload []byte) bool {
 	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
 
-	pkt := &rtp.Packet{}
-	err := pkt.Unmarshal(payload)
+	pkt, err := sm.decodeRTP(payload)
 	if err != nil {
 		sm.onPacketRTPDecodeError(err)
 		return false
@@ -322,7 +371,7 @@ func (sm *serverSessionMedia) readPacketRTCPTCPRecord(payload []byte) bool {
 		return false
 	}
 
-	packets, err := rtcp.Unmarshal(payload)
+	packets, err := sm.decodeRTCP(payload)
 	if err != nil {
 		sm.onPacketRTCPDecodeError(err)
 		return false
@@ -370,6 +419,36 @@ func (sm *serverSessionMedia) onPacketRTCPDecodeError(err error) {
 	} else {
 		log.Println(err.Error())
 	}
+}
+
+func (sm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
+	plain, err := pkt.Marshal()
+	if err != nil {
+		return err
+	}
+
+	maxPlainPacketSize := sm.ss.s.MaxPacketSize
+	if sm.srtpOutCtx != nil {
+		maxPlainPacketSize -= srtcpOverhead
+	}
+
+	if len(plain) > maxPlainPacketSize {
+		return fmt.Errorf("packet is too big")
+	}
+
+	var encr []byte
+	if sm.srtpOutCtx != nil {
+		encr = make([]byte, sm.ss.s.MaxPacketSize)
+		encr, err = sm.srtpOutCtx.EncryptRTCP(encr, plain, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	if sm.srtpOutCtx != nil {
+		return sm.writePacketRTCPEncoded(encr)
+	}
+	return sm.writePacketRTCPEncoded(plain)
 }
 
 func (sm *serverSessionMedia) writePacketRTCPEncoded(payload []byte) error {

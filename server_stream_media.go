@@ -1,10 +1,13 @@
 package gortsplib
 
 import (
+	"crypto/rand"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/pion/rtcp"
+	"github.com/pion/srtp/v3"
 )
 
 type serverStreamMedia struct {
@@ -12,6 +15,8 @@ type serverStreamMedia struct {
 	media   *description.Media
 	trackID int
 
+	srtpOutKey      []byte
+	srtpOutCtx      *srtp.Context
 	formats         map[uint8]*serverStreamFormat
 	multicastWriter *serverMulticastWriter
 	bytesSent       *uint64
@@ -19,6 +24,20 @@ type serverStreamMedia struct {
 }
 
 func (sm *serverStreamMedia) initialize() error {
+	if sm.st.Server.TLSConfig != nil {
+		sm.srtpOutKey = make([]byte, srtpKeyLength)
+		_, err := rand.Read(sm.srtpOutKey)
+		if err != nil {
+			return err
+		}
+
+		sm.srtpOutCtx, err = srtp.CreateContext(sm.srtpOutKey[:16],
+			sm.srtpOutKey[16:], srtp.ProtectionProfileAes128CmHmacSha1_80)
+		if err != nil {
+			return err
+		}
+	}
+
 	sm.bytesSent = new(uint64)
 	sm.rtcpPacketsSent = new(uint64)
 
@@ -54,35 +73,75 @@ func (sm *serverStreamMedia) close() {
 }
 
 func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
-	byts, err := pkt.Marshal()
+	plain, err := pkt.Marshal()
 	if err != nil {
 		return err
 	}
 
-	le := len(byts)
+	maxPlainPacketSize := sm.st.Server.MaxPacketSize
+	if sm.srtpOutCtx != nil {
+		maxPlainPacketSize -= srtcpOverhead
+	}
+
+	if len(plain) > maxPlainPacketSize {
+		return fmt.Errorf("packet is too big")
+	}
+
+	var encr []byte
+	if sm.srtpOutCtx != nil {
+		encr = make([]byte, sm.st.Server.MaxPacketSize)
+		encr, err = sm.srtpOutCtx.EncryptRTCP(encr, plain, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	encrLen := uint64(len(encr))
+	plainLen := uint64(len(plain))
 
 	// send unicast
 	for r := range sm.st.activeUnicastReaders {
-		if _, ok := r.setuppedMedias[sm.media]; ok {
-			err := r.writePacketRTCPEncoded(sm.media, byts)
-			if err != nil {
-				r.onStreamWriteError(err)
-				continue
+		if sm, ok := r.setuppedMedias[sm.media]; ok {
+			if r.setuppedSecure {
+				err := sm.writePacketRTCPEncoded(encr)
+				if err != nil {
+					r.onStreamWriteError(err)
+					continue
+				}
+
+				atomic.AddUint64(sm.bytesSent, encrLen)
+			} else {
+				err := sm.writePacketRTCPEncoded(plain)
+				if err != nil {
+					r.onStreamWriteError(err)
+					continue
+				}
+
+				atomic.AddUint64(sm.bytesSent, plainLen)
 			}
 
-			atomic.AddUint64(sm.bytesSent, uint64(le))
 			atomic.AddUint64(sm.rtcpPacketsSent, 1)
 		}
 	}
 
 	// send multicast
 	if sm.multicastWriter != nil {
-		err := sm.multicastWriter.writePacketRTCP(byts)
-		if err != nil {
-			return err
+		if sm.srtpOutCtx != nil {
+			err := sm.multicastWriter.writePacketRTCP(encr)
+			if err != nil {
+				return err
+			}
+
+			atomic.AddUint64(sm.bytesSent, encrLen)
+		} else {
+			err := sm.multicastWriter.writePacketRTCP(plain)
+			if err != nil {
+				return err
+			}
+
+			atomic.AddUint64(sm.bytesSent, plainLen)
 		}
 
-		atomic.AddUint64(sm.bytesSent, uint64(le))
 		atomic.AddUint64(sm.rtcpPacketsSent, 1)
 	}
 

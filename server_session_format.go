@@ -188,14 +188,31 @@ func (sf *serverSessionFormat) onPacketRTPLost(lost uint64) {
 func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
 	pkt.SSRC = sf.localSSRC
 
-	byts := make([]byte, sf.sm.ss.s.MaxPacketSize)
-	n, err := pkt.MarshalTo(byts)
+	maxPlainPacketSize := sf.sm.ss.s.MaxPacketSize
+	if sf.sm.srtpOutCtx != nil {
+		maxPlainPacketSize -= srtpOverhead
+	}
+
+	plain := make([]byte, maxPlainPacketSize)
+	n, err := pkt.MarshalTo(plain)
 	if err != nil {
 		return err
 	}
-	byts = byts[:n]
+	plain = plain[:n]
 
-	return sf.writePacketRTPEncoded(byts)
+	var encr []byte
+	if sf.sm.srtpOutCtx != nil {
+		encr = make([]byte, sf.sm.ss.s.MaxPacketSize)
+		encr, err = sf.sm.srtpOutCtx.EncryptRTP(encr, plain, &pkt.Header)
+		if err != nil {
+			return err
+		}
+	}
+
+	if sf.sm.srtpOutCtx != nil {
+		return sf.writePacketRTPEncoded(encr)
+	}
+	return sf.writePacketRTPEncoded(plain)
 }
 
 func (sf *serverSessionFormat) writePacketRTPEncoded(payload []byte) error {

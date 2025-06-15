@@ -1,5 +1,5 @@
 /*
-Package gortsplib is a RTSP 1.0 library for the Go programming language.
+Package gortsplib is a RTSP library for the Go programming language.
 
 Examples are available at https://github.com/bluenviron/gortsplib/tree/main/examples
 */
@@ -2013,7 +2013,7 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 	return cm.writePacketRTCP(pkt)
 }
 
-// PacketPTS returns the PTS of an incoming RTP packet.
+// PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
 //
 // Deprecated: replaced by PacketPTS2.
@@ -2029,7 +2029,7 @@ func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Durat
 	return multiplyAndDivide(time.Duration(v), time.Second, time.Duration(ct.format.ClockRate())), true
 }
 
-// PacketPTS2 returns the PTS of an incoming RTP packet.
+// PacketPTS2 returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
 func (c *Client) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
 	cm := c.setuppedMedias[medi]
@@ -2037,8 +2037,8 @@ func (c *Client) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bo
 	return c.timeDecoder.Decode(ct.format, pkt)
 }
 
-// PacketNTP returns the NTP timestamp of an incoming RTP packet.
-// The NTP timestamp is computed from RTCP sender reports.
+// PacketNTP returns the NTP (absolute timestamp) of an incoming RTP packet.
+// The NTP is computed from RTCP sender reports.
 func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
 	cm := c.setuppedMedias[medi]
 	ct := cm.formats[pkt.PayloadType]

@@ -337,6 +337,9 @@ func TestServerRecordPath(t *testing.T) {
 			media := testH264Media
 			media.Control = ca.control
 
+			enc, err := media.Marshal2()
+			require.NoError(t, err)
+
 			sout := &sdp.SessionDescription{
 				SessionName: psdp.SessionName("Stream"),
 				Origin: psdp.Origin{
@@ -348,7 +351,7 @@ func TestServerRecordPath(t *testing.T) {
 				TimeDescriptions: []psdp.TimeDescription{
 					{Timing: psdp.Timing{}},
 				},
-				MediaDescriptions: []*psdp.MediaDescription{media.Marshal()},
+				MediaDescriptions: []*psdp.MediaDescription{enc},
 			}
 
 			byts, _ := sout.Marshal()

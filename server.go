@@ -196,14 +196,6 @@ func (s *Server) Start() error {
 		s.checkStreamPeriod = 1 * time.Second
 	}
 
-	if s.TLSConfig != nil && s.UDPRTPAddress != "" {
-		return fmt.Errorf("TLS can't be used with UDP")
-	}
-
-	if s.TLSConfig != nil && s.MulticastIPRange != "" {
-		return fmt.Errorf("TLS can't be used with UDP-multicast")
-	}
-
 	if s.RTSPAddress == "" {
 		return fmt.Errorf("RTSPAddress not provided")
 	}

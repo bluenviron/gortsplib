@@ -161,7 +161,7 @@ func (rr *RTCPReceiver) report() rtcp.Packet {
 	}
 
 	if rr.firstSenderReportReceived {
-		// middle 32 bits out of 64 in the NTP timestamp of last sender report
+		// middle 32 bits out of 64 in the NTP of last sender report
 		report.Reports[0].LastSenderReport = uint32(rr.lastSenderReportTimeNTP >> 16)
 
 		// delay, expressed in units of 1/65536 seconds, between
@@ -267,7 +267,7 @@ func (rr *RTCPReceiver) packetNTPUnsafe(ts uint32) (time.Time, bool) {
 	return ntpTimeRTCPToGo(rr.lastSenderReportTimeNTP).Add(timeDiffGo), true
 }
 
-// PacketNTP returns the NTP timestamp of the packet.
+// PacketNTP returns the NTP (absolute timestamp) of the packet.
 func (rr *RTCPReceiver) PacketNTP(ts uint32) (time.Time, bool) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
