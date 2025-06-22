@@ -33,7 +33,7 @@ type serverSessionMedia struct {
 	rtcpPacketsInError     *uint64
 }
 
-func (sm *serverSessionMedia) initialize() {
+func (sm *serverSessionMedia) initialize() error {
 	sm.bytesReceived = new(uint64)
 	sm.bytesSent = new(uint64)
 	sm.rtpPacketsInError = new(uint64)
@@ -49,9 +49,14 @@ func (sm *serverSessionMedia) initialize() {
 			format:      forma,
 			onPacketRTP: func(*rtp.Packet) {},
 		}
-		f.initialize()
+		err := f.initialize()
+		if err != nil {
+			return err
+		}
 		sm.formats[forma.PayloadType()] = f
 	}
+
+	return nil
 }
 
 func (sm *serverSessionMedia) start() {
@@ -114,38 +119,13 @@ func (sm *serverSessionMedia) stop() {
 	}
 }
 
-func (sm *serverSessionMedia) findFormatBySSRC(ssrc uint32) *serverSessionFormat {
+func (sm *serverSessionMedia) findFormatByRemoteSSRC(ssrc uint32) *serverSessionFormat {
 	for _, format := range sm.formats {
 		stats := format.rtcpReceiver.Stats()
 		if stats != nil && stats.RemoteSSRC == ssrc {
 			return format
 		}
 	}
-	return nil
-}
-
-func (sm *serverSessionMedia) writePacketRTCPInQueueUDP(payload []byte) error {
-	err := sm.ss.s.udpRTCPListener.write(payload, sm.udpRTCPWriteAddr)
-	if err != nil {
-		return err
-	}
-
-	atomic.AddUint64(sm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(sm.rtcpPacketsSent, 1)
-	return nil
-}
-
-func (sm *serverSessionMedia) writePacketRTCPInQueueTCP(payload []byte) error {
-	sm.ss.tcpFrame.Channel = sm.tcpChannel + 1
-	sm.ss.tcpFrame.Payload = payload
-	sm.ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(sm.ss.s.WriteTimeout))
-	err := sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.ss.tcpFrame, sm.ss.tcpBuffer)
-	if err != nil {
-		return err
-	}
-
-	atomic.AddUint64(sm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(sm.rtcpPacketsSent, 1)
 	return nil
 }
 
@@ -253,7 +233,7 @@ func (sm *serverSessionMedia) readPacketRTCPUDPRecord(payload []byte) bool {
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
-			format := sm.findFormatBySSRC(sr.SSRC)
+			format := sm.findFormatByRemoteSSRC(sr.SSRC)
 			if format != nil {
 				format.rtcpReceiver.ProcessSenderReport(sr, now)
 			}
@@ -354,7 +334,7 @@ func (sm *serverSessionMedia) readPacketRTCPTCPRecord(payload []byte) bool {
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
-			format := sm.findFormatBySSRC(sr.SSRC)
+			format := sm.findFormatByRemoteSSRC(sr.SSRC)
 			if format != nil {
 				format.rtcpReceiver.ProcessSenderReport(sr, now)
 			}
@@ -390,4 +370,47 @@ func (sm *serverSessionMedia) onPacketRTCPDecodeError(err error) {
 	} else {
 		log.Println(err.Error())
 	}
+}
+
+func (sm *serverSessionMedia) writePacketRTCPEncoded(payload []byte) error {
+	sm.ss.writerMutex.RLock()
+	defer sm.ss.writerMutex.RUnlock()
+
+	if sm.ss.writer == nil {
+		return nil
+	}
+
+	ok := sm.ss.writer.push(func() error {
+		return sm.writePacketRTCPInQueue(payload)
+	})
+	if !ok {
+		return liberrors.ErrServerWriteQueueFull{}
+	}
+
+	return nil
+}
+
+func (sm *serverSessionMedia) writePacketRTCPInQueueUDP(payload []byte) error {
+	err := sm.ss.s.udpRTCPListener.write(payload, sm.udpRTCPWriteAddr)
+	if err != nil {
+		return err
+	}
+
+	atomic.AddUint64(sm.bytesSent, uint64(len(payload)))
+	atomic.AddUint64(sm.rtcpPacketsSent, 1)
+	return nil
+}
+
+func (sm *serverSessionMedia) writePacketRTCPInQueueTCP(payload []byte) error {
+	sm.ss.tcpFrame.Channel = sm.tcpChannel + 1
+	sm.ss.tcpFrame.Payload = payload
+	sm.ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(sm.ss.s.WriteTimeout))
+	err := sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.ss.tcpFrame, sm.ss.tcpBuffer)
+	if err != nil {
+		return err
+	}
+
+	atomic.AddUint64(sm.bytesSent, uint64(len(payload)))
+	atomic.AddUint64(sm.rtcpPacketsSent, 1)
+	return nil
 }

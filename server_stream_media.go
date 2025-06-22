@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/pion/rtcp"
 )
 
 type serverStreamMedia struct {
@@ -17,26 +18,34 @@ type serverStreamMedia struct {
 	rtcpPacketsSent *uint64
 }
 
-func (sm *serverStreamMedia) initialize() {
+func (sm *serverStreamMedia) initialize() error {
 	sm.bytesSent = new(uint64)
 	sm.rtcpPacketsSent = new(uint64)
 
 	sm.formats = make(map[uint8]*serverStreamFormat)
-	for _, forma := range sm.media.Formats {
+
+	for i, forma := range sm.media.Formats {
 		sf := &serverStreamFormat{
 			sm:     sm,
 			format: forma,
 		}
-		sf.initialize()
+		err := sf.initialize()
+		if err != nil {
+			for _, forma := range sm.media.Formats[:i] {
+				sm.formats[forma.PayloadType()].close()
+			}
+			return err
+		}
+
 		sm.formats[forma.PayloadType()] = sf
 	}
+
+	return nil
 }
 
 func (sm *serverStreamMedia) close() {
-	for _, tr := range sm.formats {
-		if tr.rtcpSender != nil {
-			tr.rtcpSender.Close()
-		}
+	for _, sf := range sm.formats {
+		sf.close()
 	}
 
 	if sm.multicastWriter != nil {
@@ -44,13 +53,18 @@ func (sm *serverStreamMedia) close() {
 	}
 }
 
-func (sm *serverStreamMedia) writePacketRTCP(byts []byte) error {
+func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
+	byts, err := pkt.Marshal()
+	if err != nil {
+		return err
+	}
+
 	le := len(byts)
 
 	// send unicast
 	for r := range sm.st.activeUnicastReaders {
 		if _, ok := r.setuppedMedias[sm.media]; ok {
-			err := r.writePacketRTCP(sm.media, byts)
+			err := r.writePacketRTCPEncoded(sm.media, byts)
 			if err != nil {
 				r.onStreamWriteError(err)
 				continue

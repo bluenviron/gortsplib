@@ -11,19 +11,8 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
-
-func firstFormat(formats map[uint8]*serverStreamFormat) *serverStreamFormat {
-	var firstKey uint8
-	for key := range formats {
-		firstKey = key
-		break
-	}
-
-	return formats[firstKey]
-}
 
 // NewServerStream allocates a ServerStream.
 //
@@ -42,9 +31,9 @@ func NewServerStream(s *Server, desc *description.Session) *ServerStream {
 
 // ServerStream represents a data stream.
 // This is in charge of
+// - storing stream description and statistics
 // - distributing the stream to each reader
 // - allocating multicast listeners
-// - gathering infos about the stream in order to generate SSRC and RTP-Info
 type ServerStream struct {
 	Server *Server
 	Desc   *description.Session
@@ -73,7 +62,14 @@ func (st *ServerStream) Initialize() error {
 			media:   medi,
 			trackID: i,
 		}
-		sm.initialize()
+		err := sm.initialize()
+		if err != nil {
+			for _, medi := range st.Desc.Medias[:i] {
+				st.medias[medi].close()
+			}
+			return err
+		}
+
 		st.medias[medi] = sm
 	}
 
@@ -152,12 +148,7 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 						for _, fo := range sm.formats {
 							ret[fo.format] = ServerStreamStatsFormat{
 								RTPPacketsSent: atomic.LoadUint64(fo.rtpPacketsSent),
-								LocalSSRC: func() uint32 {
-									if v, ok := fo.localSSRC(); ok {
-										return v
-									}
-									return 0
-								}(),
+								LocalSSRC:      fo.localSSRC,
 							}
 						}
 
@@ -168,47 +159,6 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 
 			return ret
 		}(),
-	}
-}
-
-func (st *ServerStream) rtpInfoEntry(medi *description.Media, now time.Time) *headers.RTPInfoEntry {
-	st.mutex.Lock()
-	defer st.mutex.Unlock()
-
-	sm := st.medias[medi]
-
-	// if there are multiple formats inside a single media stream,
-	// do not generate a RTP-Info entry, since RTP-Info doesn't support
-	// multiple sequence numbers / timestamps.
-	if len(sm.formats) > 1 {
-		return nil
-	}
-
-	format := firstFormat(sm.formats)
-
-	stats := format.rtcpSender.Stats()
-	if stats == nil {
-		return nil
-	}
-
-	clockRate := format.format.ClockRate()
-	if clockRate == 0 {
-		return nil
-	}
-
-	// sequence number of the first packet of the stream
-	seqNum := stats.LastSequenceNumber + 1
-
-	// RTP timestamp corresponding to the time value in
-	// the Range response header.
-	// remove a small quantity in order to avoid DTS > PTS
-	ts := uint32(uint64(stats.LastRTP) +
-		uint64(now.Sub(stats.LastNTP).Seconds()*float64(clockRate)) -
-		uint64(clockRate)/10)
-
-	return &headers.RTPInfoEntry{
-		SequenceNumber: &seqNum,
-		Timestamp:      &ts,
 	}
 }
 
@@ -325,13 +275,6 @@ func (st *ServerStream) WritePacketRTP(medi *description.Media, pkt *rtp.Packet)
 // WritePacketRTPWithNTP writes a RTP packet to all the readers of the stream.
 // ntp is the absolute time of the packet, and is sent with periodic RTCP sender reports.
 func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet, ntp time.Time) error {
-	byts := make([]byte, st.Server.MaxPacketSize)
-	n, err := pkt.MarshalTo(byts)
-	if err != nil {
-		return err
-	}
-	byts = byts[:n]
-
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 
@@ -341,16 +284,11 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.
 
 	sm := st.medias[medi]
 	sf := sm.formats[pkt.PayloadType]
-	return sf.writePacketRTP(byts, pkt, ntp)
+	return sf.writePacketRTP(pkt, ntp)
 }
 
 // WritePacketRTCP writes a RTCP packet to all the readers of the stream.
 func (st *ServerStream) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error {
-	byts, err := pkt.Marshal()
-	if err != nil {
-		return err
-	}
-
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()
 
@@ -359,5 +297,5 @@ func (st *ServerStream) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet
 	}
 
 	sm := st.medias[medi]
-	return sm.writePacketRTCP(byts)
+	return sm.writePacketRTCP(pkt)
 }
