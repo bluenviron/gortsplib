@@ -558,6 +558,48 @@ func TestClientPlay(t *testing.T) {
 			<-packetRecv
 
 			s := c.Stats()
+			require.Equal(t, &ClientStats{
+				Conn: StatsConn{
+					BytesReceived: s.Conn.BytesReceived,
+					BytesSent:     s.Conn.BytesSent,
+				},
+				Session: StatsSession{
+					BytesReceived:       s.Session.BytesReceived,
+					BytesSent:           s.Session.BytesSent,
+					RTPPacketsReceived:  s.Session.RTPPacketsReceived,
+					RTCPPacketsReceived: s.Session.RTCPPacketsReceived,
+					RTCPPacketsSent:     s.Session.RTCPPacketsSent,
+					Medias: map[*description.Media]StatsSessionMedia{
+						sd.Medias[0]: { //nolint:dupl
+							BytesReceived:       s.Session.Medias[sd.Medias[0]].BytesReceived,
+							BytesSent:           s.Session.Medias[sd.Medias[0]].BytesSent,
+							RTCPPacketsReceived: s.Session.Medias[sd.Medias[0]].RTCPPacketsReceived,
+							RTCPPacketsSent:     s.Session.Medias[sd.Medias[0]].RTCPPacketsSent,
+							Formats: map[format.Format]StatsSessionFormat{
+								sd.Medias[0].Formats[0]: {
+									RTPPacketsReceived: s.Session.Medias[sd.Medias[0]].Formats[sd.Medias[0].Formats[0]].RTPPacketsReceived,
+									LocalSSRC:          s.Session.Medias[sd.Medias[0]].Formats[sd.Medias[0].Formats[0]].LocalSSRC,
+									RemoteSSRC:         s.Session.Medias[sd.Medias[0]].Formats[sd.Medias[0].Formats[0]].RemoteSSRC,
+								},
+							},
+						},
+						sd.Medias[1]: { //nolint:dupl
+							BytesReceived:       s.Session.Medias[sd.Medias[1]].BytesReceived,
+							BytesSent:           s.Session.Medias[sd.Medias[1]].BytesSent,
+							RTCPPacketsReceived: s.Session.Medias[sd.Medias[1]].RTCPPacketsReceived,
+							RTCPPacketsSent:     s.Session.Medias[sd.Medias[1]].RTCPPacketsSent,
+							Formats: map[format.Format]StatsSessionFormat{
+								sd.Medias[1].Formats[0]: {
+									RTPPacketsReceived: s.Session.Medias[sd.Medias[1]].Formats[sd.Medias[1].Formats[0]].RTPPacketsReceived,
+									LocalSSRC:          s.Session.Medias[sd.Medias[1]].Formats[sd.Medias[1].Formats[0]].LocalSSRC,
+									RemoteSSRC:         s.Session.Medias[sd.Medias[1]].Formats[sd.Medias[1].Formats[0]].RemoteSSRC,
+								},
+							},
+						},
+					},
+				},
+			}, s)
+
 			require.Greater(t, s.Session.BytesSent, uint64(19))
 			require.Less(t, s.Session.BytesSent, uint64(41))
 			require.Greater(t, s.Session.BytesReceived, uint64(31))

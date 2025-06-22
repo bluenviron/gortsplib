@@ -364,6 +364,38 @@ func TestClientRecord(t *testing.T) {
 			<-recvDone
 
 			s := c.Stats()
+			require.Equal(t, &ClientStats{
+				Conn: StatsConn{
+					BytesReceived: s.Conn.BytesReceived,
+					BytesSent:     s.Conn.BytesSent,
+				},
+				Session: StatsSession{
+					BytesReceived:       s.Session.BytesReceived,
+					BytesSent:           s.Session.BytesSent,
+					RTPPacketsSent:      s.Session.RTPPacketsSent,
+					RTPPacketsReceived:  s.Session.RTPPacketsReceived,
+					RTCPPacketsReceived: s.Session.RTCPPacketsReceived,
+					RTCPPacketsSent:     s.Session.RTCPPacketsSent,
+					Medias: map[*description.Media]StatsSessionMedia{
+						medias[0]: {
+							BytesReceived:       s.Session.Medias[medias[0]].BytesReceived,
+							BytesSent:           s.Session.Medias[medias[0]].BytesSent,
+							RTCPPacketsReceived: s.Session.Medias[medias[0]].RTCPPacketsReceived,
+							RTCPPacketsSent:     s.Session.Medias[medias[0]].RTCPPacketsSent,
+							Formats: map[format.Format]StatsSessionFormat{
+								medias[0].Formats[0]: {
+									RTPPacketsSent:     s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RTPPacketsSent,
+									RTPPacketsReceived: s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RTPPacketsReceived,
+									LocalSSRC:          s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].LocalSSRC,
+									RemoteSSRC:         s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RemoteSSRC,
+									RTPPacketsLastNTP:  s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RTPPacketsLastNTP,
+								},
+							},
+						},
+					},
+				},
+			}, s)
+
 			require.Greater(t, s.Session.BytesSent, uint64(15))
 			require.Less(t, s.Session.BytesSent, uint64(17))
 			require.Greater(t, s.Session.BytesReceived, uint64(19))
@@ -1256,13 +1288,15 @@ func TestClientRecordRTCPReport(t *testing.T) {
 
 				packets, err2 := rtcp.Unmarshal(buf)
 				require.NoError(t, err2)
-				require.Equal(t, &rtcp.SenderReport{
-					SSRC:        0x38F27A2F,
-					NTPTime:     ntpTimeGoToRTCP(time.Date(1996, 2, 13, 14, 33, 5, 0, time.UTC)),
-					RTPTime:     1300000 + 60*90000,
-					PacketCount: 1,
-					OctetCount:  1,
-				}, packets[0])
+				require.Equal(t, []rtcp.Packet{
+					&rtcp.SenderReport{
+						SSRC:        packets[0].(*rtcp.SenderReport).SSRC,
+						NTPTime:     ntpTimeGoToRTCP(time.Date(1996, 2, 13, 14, 33, 5, 0, time.UTC)),
+						RTPTime:     1300000 + 60*90000,
+						PacketCount: 1,
+						OctetCount:  1,
+					},
+				}, packets)
 
 				close(reportReceived)
 

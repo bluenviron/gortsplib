@@ -163,7 +163,10 @@ func (rs *RTCPSender) LastPacketData() (uint16, uint32, time.Time, bool) {
 
 // Stats are statistics.
 type Stats struct {
-	LocalSSRC          uint32
+	// Deprecated: this is not a statistics anymore but a fixed parameter.
+	// it will be removed in next version.
+	LocalSSRC uint32
+
 	LastSequenceNumber uint16
 	LastRTP            uint32
 	LastNTP            time.Time
