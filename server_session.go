@@ -1085,9 +1085,14 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					panic("stream cannot be different than the one returned in previous OnSetup call")
 				}
 
-				ssrc, ok := stream.localSSRC(medi)
-				if ok {
-					th.SSRC = &ssrc
+				// Fill SSRC if there is a single SSRC only
+				// since the Transport header does not support multiple SSRCs.
+				if len(stream.medias[medi].formats) == 1 {
+					format := stream.medias[medi].formats[medi.Formats[0].PayloadType()]
+					ssrc, ok := format.localSSRC()
+					if ok {
+						th.SSRC = &ssrc
+					}
 				}
 			}
 

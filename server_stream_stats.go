@@ -9,6 +9,8 @@ import (
 type ServerStreamStatsFormat struct {
 	// number of sent RTP packets
 	RTPPacketsSent uint64
+	// local SSRC
+	LocalSSRC uint32
 }
 
 // ServerStreamStatsMedia are stream media statistics.

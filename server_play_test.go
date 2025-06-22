@@ -2427,7 +2427,22 @@ func TestServerPlayStreamStats(t *testing.T) {
 	require.NoError(t, err)
 
 	st := stream.Stats()
-	require.Equal(t, uint64(16*2), st.BytesSent)
+	require.Equal(t, &ServerStreamStats{
+		BytesSent:      32,
+		RTPPacketsSent: 2,
+		Medias: map[*description.Media]ServerStreamStatsMedia{
+			stream.Description().Medias[0]: {
+				BytesSent:       32,
+				RTCPPacketsSent: 0,
+				Formats: map[format.Format]ServerStreamStatsFormat{
+					stream.Description().Medias[0].Formats[0]: {
+						RTPPacketsSent: 2,
+						LocalSSRC:      955415087,
+					},
+				},
+			},
+		},
+	}, st)
 }
 
 func TestServerPlayBackChannel(t *testing.T) {

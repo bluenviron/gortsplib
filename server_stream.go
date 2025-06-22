@@ -152,6 +152,12 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 						for _, fo := range sm.formats {
 							ret[fo.format] = ServerStreamStatsFormat{
 								RTPPacketsSent: atomic.LoadUint64(fo.rtpPacketsSent),
+								LocalSSRC: func() uint32 {
+									if v, ok := fo.localSSRC(); ok {
+										return v
+									}
+									return 0
+								}(),
 							}
 						}
 
@@ -163,27 +169,6 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 			return ret
 		}(),
 	}
-}
-
-func (st *ServerStream) localSSRC(medi *description.Media) (uint32, bool) {
-	st.mutex.Lock()
-	defer st.mutex.Unlock()
-
-	sm := st.medias[medi]
-
-	// localSSRC() is used to fill SSRC inside the Transport header.
-	// if there are multiple formats inside a single media stream,
-	// do not return anything, since Transport headers don't support multiple SSRCs.
-	if len(sm.formats) > 1 {
-		return 0, false
-	}
-
-	stats := firstFormat(sm.formats).rtcpSender.Stats()
-	if stats == nil {
-		return 0, false
-	}
-
-	return stats.LocalSSRC, true
 }
 
 func (st *ServerStream) rtpInfoEntry(medi *description.Media, now time.Time) *headers.RTPInfoEntry {
