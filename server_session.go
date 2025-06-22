@@ -180,26 +180,65 @@ func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *heade
 	return nil
 }
 
+func generateRTPInfoEntry(ssm *serverStreamMedia, now time.Time) *headers.RTPInfoEntry {
+	// do not generate a RTP-Info entry when
+	// there are multiple formats inside a single media stream,
+	// since RTP-Info does not support multiple sequence numbers / timestamps.
+	if len(ssm.media.Formats) > 1 {
+		return nil
+	}
+
+	format := ssm.formats[ssm.media.Formats[0].PayloadType()]
+
+	stats := format.rtcpSender.Stats()
+	if stats == nil {
+		return nil
+	}
+
+	clockRate := format.format.ClockRate()
+	if clockRate == 0 {
+		return nil
+	}
+
+	// sequence number of the first packet of the stream
+	seqNum := stats.LastSequenceNumber + 1
+
+	// RTP timestamp corresponding to the time value in
+	// the Range response header.
+	// remove a small quantity in order to avoid DTS > PTS
+	ts := uint32(uint64(stats.LastRTP) +
+		uint64(now.Sub(stats.LastNTP).Seconds()*float64(clockRate)) -
+		uint64(clockRate)/10)
+
+	return &headers.RTPInfoEntry{
+		SequenceNumber: &seqNum,
+		Timestamp:      &ts,
+	}
+}
+
 func generateRTPInfo(
 	now time.Time,
-	setuppedMediasOrdered []*serverSessionMedia,
-	setuppedStream *ServerStream,
-	setuppedPath string,
+	mediasOrdered []*serverSessionMedia,
+	stream *ServerStream,
+	path string,
 	u *base.URL,
 ) (headers.RTPInfo, bool) {
 	var ri headers.RTPInfo
 
-	for _, sm := range setuppedMediasOrdered {
-		entry := setuppedStream.rtpInfoEntry(sm.media, now)
+	for _, sm := range mediasOrdered {
+		ssm := stream.medias[sm.media]
+		entry := generateRTPInfoEntry(ssm, now)
 		if entry == nil {
 			entry = &headers.RTPInfoEntry{}
 		}
+
 		entry.URL = (&base.URL{
 			Scheme: u.Scheme,
 			Host:   u.Host,
-			Path: setuppedPath + "/trackID=" +
-				strconv.FormatInt(int64(setuppedStream.medias[sm.media].trackID), 10),
+			Path: path + "/trackID=" +
+				strconv.FormatInt(int64(ssm.trackID), 10),
 		}).String()
+
 		ri = append(ri, entry)
 	}
 
@@ -500,18 +539,10 @@ func (ss *ServerSession) Stats() *StatsSession {
 								RTPPacketsReceived: atomic.LoadUint64(fo.rtpPacketsReceived),
 								RTPPacketsSent:     atomic.LoadUint64(fo.rtpPacketsSent),
 								RTPPacketsLost:     atomic.LoadUint64(fo.rtpPacketsLost),
-								LocalSSRC: func() uint32 {
-									if fo.rtcpReceiver != nil {
-										return *fo.rtcpReceiver.LocalSSRC
-									}
-									if sentStats != nil {
-										return sentStats.LocalSSRC
-									}
-									return 0
-								}(),
+								LocalSSRC:          fo.localSSRC,
 								RemoteSSRC: func() uint32 {
-									if recvStats != nil {
-										return recvStats.RemoteSSRC
+									if v, ok := fo.remoteSSRC(); ok {
+										return v
 									}
 									return 0
 								}(),
@@ -1089,10 +1120,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				// since the Transport header does not support multiple SSRCs.
 				if len(stream.medias[medi].formats) == 1 {
 					format := stream.medias[medi].formats[medi.Formats[0].PayloadType()]
-					ssrc, ok := format.localSSRC()
-					if ok {
-						th.SSRC = &ssrc
-					}
+					th.SSRC = &format.localSSRC
 				}
 			}
 
@@ -1105,7 +1133,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				media:        medi,
 				onPacketRTCP: func(_ rtcp.Packet) {},
 			}
-			sm.initialize()
+			err = sm.initialize()
+			if err != nil {
+				return &base.Response{
+					StatusCode: base.StatusInternalServerError,
+				}, err
+			}
 
 			switch transport {
 			case TransportUDP:
@@ -1490,57 +1523,22 @@ func (ss *ServerSession) OnPacketRTCP(medi *description.Media, cb OnPacketRTCPFu
 	sm.onPacketRTCP = cb
 }
 
-func (ss *ServerSession) writePacketRTP(medi *description.Media, payloadType uint8, byts []byte) error {
+func (ss *ServerSession) writePacketRTPEncoded(medi *description.Media, payloadType uint8, byts []byte) error {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[payloadType]
-
-	ss.writerMutex.RLock()
-	defer ss.writerMutex.RUnlock()
-
-	if ss.writer == nil {
-		return nil
-	}
-
-	ok := ss.writer.push(func() error {
-		return sf.writePacketRTPInQueue(byts)
-	})
-	if !ok {
-		return liberrors.ErrServerWriteQueueFull{}
-	}
-
-	return nil
+	return sf.writePacketRTPEncoded(byts)
 }
 
 // WritePacketRTP writes a RTP packet to the session.
 func (ss *ServerSession) WritePacketRTP(medi *description.Media, pkt *rtp.Packet) error {
-	byts := make([]byte, ss.s.MaxPacketSize)
-	n, err := pkt.MarshalTo(byts)
-	if err != nil {
-		return err
-	}
-	byts = byts[:n]
-
-	return ss.writePacketRTP(medi, pkt.PayloadType, byts)
+	sm := ss.setuppedMedias[medi]
+	sf := sm.formats[pkt.PayloadType]
+	return sf.writePacketRTP(pkt)
 }
 
-func (ss *ServerSession) writePacketRTCP(medi *description.Media, byts []byte) error {
+func (ss *ServerSession) writePacketRTCPEncoded(medi *description.Media, byts []byte) error {
 	sm := ss.setuppedMedias[medi]
-
-	ss.writerMutex.RLock()
-	defer ss.writerMutex.RUnlock()
-
-	if ss.writer == nil {
-		return nil
-	}
-
-	ok := ss.writer.push(func() error {
-		return sm.writePacketRTCPInQueue(byts)
-	})
-	if !ok {
-		return liberrors.ErrServerWriteQueueFull{}
-	}
-
-	return nil
+	return sm.writePacketRTCPEncoded(byts)
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.
@@ -1550,7 +1548,7 @@ func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packe
 		return err
 	}
 
-	return ss.writePacketRTCP(medi, byts)
+	return ss.writePacketRTCPEncoded(medi, byts)
 }
 
 // PacketPTS returns the PTS of an incoming RTP packet.

@@ -15,11 +15,36 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 )
 
+func isServerSessionLocalSSRCTaken(ssrc uint32, ss *ServerSession, exclude *serverSessionFormat) bool {
+	for _, sm := range ss.setuppedMedias {
+		for _, sf := range sm.formats {
+			if sf != exclude && sf.localSSRC == ssrc {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func serverSessionPickLocalSSRC(sf *serverSessionFormat) (uint32, error) {
+	for {
+		ssrc, err := randUint32()
+		if err != nil {
+			return 0, err
+		}
+
+		if ssrc != 0 && !isServerSessionLocalSSRCTaken(ssrc, sf.sm.ss, sf) {
+			return ssrc, nil
+		}
+	}
+}
+
 type serverSessionFormat struct {
 	sm          *serverSessionMedia
 	format      format.Format
 	onPacketRTP OnPacketRTPFunc
 
+	localSSRC             uint32
 	udpReorderer          *rtpreorderer.Reorderer // publish or back channel
 	tcpLossDetector       *rtplossdetector.LossDetector
 	rtcpReceiver          *rtcpreceiver.RTCPReceiver
@@ -29,10 +54,22 @@ type serverSessionFormat struct {
 	rtpPacketsLost        *uint64
 }
 
-func (sf *serverSessionFormat) initialize() {
+func (sf *serverSessionFormat) initialize() error {
+	if sf.sm.ss.state == ServerSessionStatePreRecord || sf.sm.media.IsBackChannel {
+		var err error
+		sf.localSSRC, err = serverSessionPickLocalSSRC(sf)
+		if err != nil {
+			return err
+		}
+	} else {
+		sf.localSSRC = sf.sm.ss.setuppedStream.medias[sf.sm.media].formats[sf.format.PayloadType()].localSSRC
+	}
+
 	sf.rtpPacketsReceived = new(uint64)
 	sf.rtpPacketsSent = new(uint64)
 	sf.rtpPacketsLost = new(uint64)
+
+	return nil
 }
 
 func (sf *serverSessionFormat) start() {
@@ -54,6 +91,7 @@ func (sf *serverSessionFormat) start() {
 
 		sf.rtcpReceiver = &rtcpreceiver.RTCPReceiver{
 			ClockRate: sf.format.ClockRate(),
+			LocalSSRC: &sf.localSSRC,
 			Period:    sf.sm.ss.s.receiverReportPeriod,
 			TimeNow:   sf.sm.ss.s.timeNow,
 			WritePacketRTCP: func(pkt rtcp.Packet) {
@@ -74,6 +112,16 @@ func (sf *serverSessionFormat) stop() {
 		sf.rtcpReceiver.Close()
 		sf.rtcpReceiver = nil
 	}
+}
+
+func (sf *serverSessionFormat) remoteSSRC() (uint32, bool) {
+	if sf.rtcpReceiver != nil {
+		stats := sf.rtcpReceiver.Stats()
+		if stats != nil {
+			return stats.RemoteSSRC, true
+		}
+	}
+	return 0, false
 }
 
 func (sf *serverSessionFormat) readPacketRTPUDP(pkt *rtp.Packet, now time.Time) {
@@ -135,6 +183,37 @@ func (sf *serverSessionFormat) onPacketRTPLost(lost uint64) {
 				return "packets"
 			}())
 	}
+}
+
+func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
+	pkt.SSRC = sf.localSSRC
+
+	byts := make([]byte, sf.sm.ss.s.MaxPacketSize)
+	n, err := pkt.MarshalTo(byts)
+	if err != nil {
+		return err
+	}
+	byts = byts[:n]
+
+	return sf.writePacketRTPEncoded(byts)
+}
+
+func (sf *serverSessionFormat) writePacketRTPEncoded(payload []byte) error {
+	sf.sm.ss.writerMutex.RLock()
+	defer sf.sm.ss.writerMutex.RUnlock()
+
+	if sf.sm.ss.writer == nil {
+		return nil
+	}
+
+	ok := sf.sm.ss.writer.push(func() error {
+		return sf.writePacketRTPInQueue(payload)
+	})
+	if !ok {
+		return liberrors.ErrServerWriteQueueFull{}
+	}
+
+	return nil
 }
 
 func (sf *serverSessionFormat) writePacketRTPInQueueUDP(payload []byte) error {

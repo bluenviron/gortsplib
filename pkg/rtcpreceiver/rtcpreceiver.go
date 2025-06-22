@@ -87,6 +87,8 @@ func New(
 
 // Initialize initializes RTCPReceiver.
 func (rr *RTCPReceiver) Initialize() error {
+	// Deprecated: passing a nil LocalSSRC will be deprecated from next version.
+	// Please use a fixed LocalSSRC.
 	if rr.LocalSSRC == nil {
 		v, err := randUint32()
 		if err != nil {

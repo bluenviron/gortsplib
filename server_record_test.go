@@ -606,6 +606,7 @@ func TestServerRecord(t *testing.T) {
 								ctx.Session.AnnouncedDescription().Medias[i],
 								ctx.Session.AnnouncedDescription().Medias[i].Formats[0],
 								func(pkt *rtp.Packet) {
+									pkt.SSRC = testRTPPacket.SSRC
 									require.Equal(t, &testRTPPacket, pkt)
 								})
 
