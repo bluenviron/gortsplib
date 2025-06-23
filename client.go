@@ -242,6 +242,14 @@ type OnPacketRTCPAnyFunc func(*description.Media, rtcp.Packet)
 // Client is a RTSP client.
 type Client struct {
 	//
+	// Target
+	//
+	// Scheme. Either "rtsp" or "rtsps".
+	Scheme string
+	// Host and port.
+	Host string
+
+	//
 	// RTSP parameters (all optional)
 	//
 	// timeout of read operations.
@@ -379,7 +387,15 @@ type Client struct {
 }
 
 // Start initializes the connection to a server.
+//
+// Deprecated: replaced by Start2.
 func (c *Client) Start(scheme string, host string) error {
+	c.Scheme = scheme
+	c.Host = host
+	return c.Start2()
+}
+
+func (c *Client) Start2() error {
 	// RTSP parameters
 	if c.ReadTimeout == 0 {
 		c.ReadTimeout = 10 * time.Second
@@ -475,8 +491,8 @@ func (c *Client) Start(scheme string, host string) error {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	c.connURL = &base.URL{
-		Scheme: scheme,
-		Host:   host,
+		Scheme: c.Scheme,
+		Host:   c.Host,
 	}
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
@@ -516,7 +532,10 @@ func (c *Client) StartRecording(address string, desc *description.Session) error
 		return err
 	}
 
-	err = c.Start(u.Scheme, u.Host)
+	c.Scheme = u.Scheme
+	c.Host = u.Host
+
+	err = c.Start2()
 	if err != nil {
 		return err
 	}

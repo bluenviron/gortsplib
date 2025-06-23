@@ -46,16 +46,19 @@ func saveToFile(img image.Image) error {
 }
 
 func main() {
-	c := gortsplib.Client{}
-
 	// parse URL
 	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
 
+	c := gortsplib.Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
+
 	// connect to the server
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	if err != nil {
 		panic(err)
 	}
