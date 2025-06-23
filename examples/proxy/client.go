@@ -35,16 +35,19 @@ func (c *client) run() {
 }
 
 func (c *client) read() error {
-	rc := gortsplib.Client{}
-
 	// parse URL
 	u, err := base.ParseURL(existingStream)
 	if err != nil {
 		return err
 	}
 
+	rc := gortsplib.Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
+
 	// connect to the server
-	err = rc.Start(u.Scheme, u.Host)
+	err = rc.Start2()
 	if err != nil {
 		return err
 	}

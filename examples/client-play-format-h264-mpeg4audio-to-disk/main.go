@@ -18,16 +18,19 @@ import (
 // 3. save the content of these streams in a file in MPEG-TS format.
 
 func main() {
-	c := gortsplib.Client{}
-
 	// parse URL
 	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/stream")
 	if err != nil {
 		panic(err)
 	}
 
+	c := gortsplib.Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
+
 	// connect to the server
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	if err != nil {
 		panic(err)
 	}

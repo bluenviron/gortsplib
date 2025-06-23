@@ -86,10 +86,12 @@ func TestClientTLSSetServerName(t *testing.T) {
 	require.NoError(t, err)
 
 	c := Client{
+		Scheme:    u.Scheme,
+		Host:      u.Host,
 		TLSConfig: &tls.Config{},
 	}
 
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -103,9 +105,12 @@ func TestClientClose(t *testing.T) {
 	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	c := Client{}
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
 
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	require.NoError(t, err)
 
 	c.Close()
@@ -162,9 +167,12 @@ func TestClientCloseDuringRequest(t *testing.T) {
 	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	c := Client{}
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
 
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	require.NoError(t, err)
 
 	optionsDone := make(chan struct{})
@@ -232,9 +240,12 @@ func TestClientSession(t *testing.T) {
 	u, err := base.ParseURL("rtsp://localhost:8554/stream")
 	require.NoError(t, err)
 
-	c := Client{}
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
 
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -309,9 +320,12 @@ func TestClientAuth(t *testing.T) {
 	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/stream")
 	require.NoError(t, err)
 
-	c := Client{}
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
 
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -385,9 +399,12 @@ func TestClientCSeq(t *testing.T) {
 			u, err := base.ParseURL("rtsp://localhost:8554/teststream")
 			require.NoError(t, err)
 
-			c := Client{}
+			c := Client{
+				Scheme: u.Scheme,
+				Host:   u.Host,
+			}
 
-			err = c.Start(u.Scheme, u.Host)
+			err = c.Start2()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -448,9 +465,12 @@ func TestClientDescribeCharset(t *testing.T) {
 	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	c := Client{}
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
 
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -534,9 +554,12 @@ func TestClientReplyToServerRequest(t *testing.T) {
 			u, err := base.ParseURL("rtsp://localhost:8554/stream")
 			require.NoError(t, err)
 
-			c := Client{}
+			c := Client{
+				Scheme: u.Scheme,
+				Host:   u.Host,
+			}
 
-			err = c.Start(u.Scheme, u.Host)
+			err = c.Start2()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -599,9 +622,12 @@ func TestClientRelativeContentBase(t *testing.T) {
 	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
 	require.NoError(t, err)
 
-	c := Client{}
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
 
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	require.NoError(t, err)
 	defer c.Close()
 

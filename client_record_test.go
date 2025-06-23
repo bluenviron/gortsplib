@@ -80,7 +80,10 @@ func record(c *Client, ur string, medias []*description.Media, cb func(*descript
 		return err
 	}
 
-	err = c.Start(u.Scheme, u.Host)
+	c.Scheme = u.Scheme
+	c.Host = u.Host
+
+	err = c.Start2()
 	if err != nil {
 		return err
 	}
