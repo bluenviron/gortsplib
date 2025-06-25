@@ -189,8 +189,8 @@ type setupReq struct {
 }
 
 type playReq struct {
-	ra  *headers.Range
-	res chan clientRes
+	header base.Header
+	res    chan clientRes
 }
 
 type recordReq struct {
@@ -348,7 +348,7 @@ type Client struct {
 	stdChannelSetupped   bool
 	setuppedMedias       map[*description.Media]*clientMedia
 	tcpCallbackByChannel map[int]readFunc
-	lastRange            *headers.Range
+	lastHeader           base.Header
 	checkTimeoutTimer    *time.Timer
 	checkTimeoutInitial  bool
 	tcpLastFrameTime     *int64
@@ -629,7 +629,7 @@ func (c *Client) runInner() error {
 			}
 
 		case req := <-c.chPlay:
-			res, err := c.doPlay(req.ra)
+			res, err := c.doPlay(req.header)
 			req.res <- clientRes{res: res, err: err}
 
 			if c.mustClose {
@@ -848,7 +848,7 @@ func (c *Client) trySwitchingProtocol() error {
 		}
 	}
 
-	_, err = c.doPlay(c.lastRange)
+	_, err = c.doPlay(c.lastHeader)
 	if err != nil {
 		return err
 	}
@@ -1725,7 +1725,7 @@ func (c *Client) SetupAll(baseURL *base.URL, medias []*description.Media) error 
 	return nil
 }
 
-func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
+func (c *Client) doPlay(header base.Header) (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStatePrePlay: {},
 	})
@@ -1737,17 +1737,17 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 	c.startTransportRoutines()
 	c.createWriter()
 
+	if header == nil {
+		header = base.Header{}
+	}
+
 	// Range is mandatory in Parrot Streaming Server
-	if ra == nil {
-		ra = &headers.Range{
+	if _, ok := header["Range"]; !ok {
+		header["Range"] = headers.Range{
 			Value: &headers.RangeNPT{
 				Start: 0,
 			},
-		}
-	}
-
-	header := base.Header{
-		"Range": ra.Marshal(),
+		}.Marshal()
 	}
 
 	if c.backChannelSetupped {
@@ -1793,7 +1793,7 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 
 	c.startWriter()
 
-	c.lastRange = ra
+	c.lastHeader = header
 
 	return res, nil
 }
@@ -1801,9 +1801,22 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 // Play sends a PLAY request.
 // This can be called only after Setup().
 func (c *Client) Play(ra *headers.Range) (*base.Response, error) {
+	var header base.Header
+	if ra != nil {
+		header = base.Header{
+			"Range": ra.Marshal(),
+		}
+	}
+
+	return c.PlayWithHeader(header)
+}
+
+// PlayWithHeader sends a PLAY request, with dedicated header
+// This can be called only after Setup().
+func (c *Client) PlayWithHeader(header base.Header) (*base.Response, error) {
 	cres := make(chan clientRes)
 	select {
-	case c.chPlay <- playReq{ra: ra, res: cres}:
+	case c.chPlay <- playReq{header: header, res: cres}:
 		res := <-cres
 		return res.res, res.err
 
@@ -1926,6 +1939,16 @@ func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
 	}
 
 	return c.Play(ra)
+}
+
+// SeekWithHeader asks the server to re-start the stream from a specific timestamp.
+func (c *Client) SeekWithHeader(header base.Header) (*base.Response, error) {
+	_, err := c.Pause()
+	if err != nil {
+		return nil, err
+	}
+
+	return c.PlayWithHeader(header)
 }
 
 // OnPacketRTPAny sets a callback that is called when a RTP packet is read from any setupped media.

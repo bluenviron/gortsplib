@@ -2634,6 +2634,177 @@ func TestClientPlaySeek(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestClientPlayWithHeader(t *testing.T) {
+	start := time.Date(2025, 6, 25, 15, 30, 0, 0, time.UTC)
+
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		conn := conn.NewConn(nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Describe, req.Method)
+
+		medias := []*description.Media{testH264Media}
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+			},
+			Body: mediasToSDP(medias),
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Setup, req.Method)
+
+		var inTH headers.Transport
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
+
+		th := headers.Transport{
+			Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
+			Protocol:       headers.TransportProtocolTCP,
+			InterleavedIDs: inTH.InterleavedIDs,
+		}
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Marshal(),
+			},
+		})
+		require.NoError(t, err2)
+
+		// Read the Play request
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Play, req.Method)
+
+		var ra headers.Range
+		err2 = ra.Unmarshal(req.Header["Range"])
+		require.NoError(t, err2)
+		require.Equal(t, headers.Range{
+			Value: &headers.RangeUTC{
+				Start: start,
+			},
+		}, ra)
+		require.Equal(t, base.HeaderValue{"1.0"}, req.Header["Scale"])
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err2)
+
+		// Read the Pause request
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Pause, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err2)
+
+		// Read the Play request again
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Play, req.Method)
+
+		err2 = ra.Unmarshal(req.Header["Range"])
+		require.NoError(t, err2)
+		require.Equal(t, headers.Range{
+			Value: &headers.RangeUTC{
+				Start: start.Add(1 * time.Hour),
+			},
+		}, ra)
+		require.Equal(t, base.HeaderValue{"2.0"}, req.Header["Scale"])
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Teardown, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err2)
+	}()
+
+	c := Client{
+		Transport: transportPtr(TransportTCP),
+	}
+
+	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	err = c.Start(u.Scheme, u.Host)
+	require.NoError(t, err)
+	defer c.Close()
+
+	sd, _, err := c.Describe(u)
+	require.NoError(t, err)
+
+	err = c.SetupAll(sd.BaseURL, sd.Medias)
+	require.NoError(t, err)
+
+	header := base.Header{
+		"Range": headers.Range{
+			Value: &headers.RangeUTC{
+				Start: start,
+			},
+		}.Marshal(),
+		"Scale": base.HeaderValue{"1.0"},
+	}
+
+	_, err = c.PlayWithHeader(header)
+	require.NoError(t, err)
+
+	// Seek of 1 hour and change Scale
+	header["Range"] = headers.Range{
+		Value: &headers.RangeUTC{
+			Start: start.Add(1 * time.Hour),
+		},
+	}.Marshal()
+	header["Scale"] = base.HeaderValue{"2.0"}
+
+	_, err = c.SeekWithHeader(header)
+	require.NoError(t, err)
+}
+
 func TestClientPlayKeepAlive(t *testing.T) {
 	for _, ca := range []string{"response before frame", "response after frame", "no response"} {
 		t.Run(ca, func(t *testing.T) {
