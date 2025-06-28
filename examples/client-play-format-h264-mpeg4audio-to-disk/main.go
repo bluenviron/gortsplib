@@ -15,7 +15,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server.
 // 2. check if there's a H264 stream and a MPEG-4 audio stream.
-// 3. save the content of those formats in a file in MPEG-TS format.
+// 3. save the content of these streams in a file in MPEG-TS format.
 
 func main() {
 	c := gortsplib.Client{}

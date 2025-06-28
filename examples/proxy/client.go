@@ -71,7 +71,10 @@ func (c *client) read() error {
 	// called when a RTP packet arrives
 	rc.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 		// route incoming packets to the server stream
-		stream.WritePacketRTP(medi, pkt) //nolint:errcheck
+		err2 := stream.WritePacketRTP(medi, pkt)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
+		}
 	})
 
 	// start playing

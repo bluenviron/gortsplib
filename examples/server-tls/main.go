@@ -15,9 +15,9 @@ import (
 )
 
 // This example shows how to
-// 1. create a RTSP server which accepts only connections encrypted with TLS (RTSPS).
-// 2. allow a single client to publish a stream with TCP.
-// 3. allow multiple clients to read the stream with TCP.
+// 1. create a RTSP server which uses secure protocols only (RTSPS, TLS).
+// 2. allow a single client to publish a stream.
+// 3. allow several clients to read the stream.
 
 type serverHandler struct {
 	server    *gortsplib.Server
@@ -151,7 +151,10 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 	// called when receiving a RTP packet
 	ctx.Session.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 		// route the RTP packet to all readers
-		sh.stream.WritePacketRTP(medi, pkt) //nolint:errcheck
+		err := sh.stream.WritePacketRTP(medi, pkt)
+		if err != nil {
+			log.Printf("ERR: %v", err)
+		}
 	})
 
 	return &base.Response{
@@ -160,7 +163,7 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 }
 
 func main() {
-	// setup certificates - they can be generated with
+	// load certificates - they can be generated with
 	// openssl genrsa -out server.key 2048
 	// openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
 	cert, err := tls.LoadX509KeyPair("server.crt", "server.key")
@@ -168,7 +171,8 @@ func main() {
 		panic(err)
 	}
 
-	// configure the server
+	// configure the server.
+	// when TLSConfig is set, only secure protocols are used.
 	h := &serverHandler{}
 	h.server = &gortsplib.Server{
 		Handler:     h,
