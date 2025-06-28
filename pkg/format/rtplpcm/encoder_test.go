@@ -39,7 +39,7 @@ var cases = []struct {
 	},
 	{
 		"splitted",
-		bytes.Repeat([]byte{0x41, 0x42, 0x43}, 680),
+		bytes.Repeat([]byte{0x41, 0x42, 0x43}, 400),
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -49,7 +49,7 @@ var cases = []struct {
 					SequenceNumber: 17645,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: bytes.Repeat([]byte{0x41, 0x42, 0x43}, 486),
+				Payload: bytes.Repeat([]byte{0x41, 0x42, 0x43}, 332),
 			},
 			{
 				Header: rtp.Header{
@@ -57,10 +57,10 @@ var cases = []struct {
 					Marker:         false,
 					PayloadType:    96,
 					SequenceNumber: 17646,
-					Timestamp:      243,
+					Timestamp:      166,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: bytes.Repeat([]byte{0x41, 0x42, 0x43}, 194),
+				Payload: bytes.Repeat([]byte{0x41, 0x42, 0x43}, 68),
 			},
 		},
 	},
@@ -75,6 +75,7 @@ func TestEncode(t *testing.T) {
 				InitialSequenceNumber: uint16Ptr(0x44ed),
 				BitDepth:              24,
 				ChannelCount:          2,
+				PayloadMaxSize:        1000,
 			}
 			err := e.Init()
 			require.NoError(t, err)

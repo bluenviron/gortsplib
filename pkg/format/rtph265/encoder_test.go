@@ -79,7 +79,7 @@ var cases = []struct {
 	{
 		"fragmented",
 		[][]byte{
-			bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 1024),
+			bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 375),
 		},
 		[]*rtp.Packet{
 			{
@@ -92,21 +92,8 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x63, 0x02, 0x80, 0x03, 0x04},
-					bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 363),
+					bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 248),
 					[]byte{0x01, 0x02, 0x03},
-				),
-			},
-			{
-				Header: rtp.Header{
-					Version:        2,
-					Marker:         false,
-					PayloadType:    96,
-					SequenceNumber: 17646,
-					SSRC:           0x9dbb7812,
-				},
-				Payload: mergeBytes(
-					[]byte{0x63, 0x02, 0x00, 0x04},
-					bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 364),
 				),
 			},
 			{
@@ -114,19 +101,19 @@ var cases = []struct {
 					Version:        2,
 					Marker:         true,
 					PayloadType:    96,
-					SequenceNumber: 17647,
+					SequenceNumber: 17646,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x63, 0x02, 0x40},
-					bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 295),
+					[]byte{0x63, 0x02, 0x40, 0x04},
+					bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 125),
 				),
 			},
 		},
 	},
 	{
 		"fragmented to the limit",
-		[][]byte{bytes.Repeat([]byte{1}, 2916)},
+		[][]byte{bytes.Repeat([]byte{1}, 1996)},
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -138,7 +125,7 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x63, 0x01, 0x80},
-					bytes.Repeat([]byte{1}, 1457),
+					bytes.Repeat([]byte{1}, 997),
 				),
 			},
 			{
@@ -151,7 +138,7 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x63, 0x01, 0x40},
-					bytes.Repeat([]byte{1}, 1457),
+					bytes.Repeat([]byte{1}, 997),
 				),
 			},
 		},
@@ -165,6 +152,7 @@ func TestEncode(t *testing.T) {
 				PayloadType:           96,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
+				PayloadMaxSize:        1000,
 			}
 			err := e.Init()
 			require.NoError(t, err)

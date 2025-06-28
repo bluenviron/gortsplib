@@ -2,7 +2,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/bluenviron/gortsplib/v4"
@@ -60,7 +59,7 @@ func main() {
 	reader.OnPacketRTPAny(func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
 		err2 := publisher.WritePacketRTP(desc.Medias[0], pkt)
 		if err2 != nil {
-			fmt.Printf("ERR: %v", err2)
+			log.Printf("ERR: %v", err2)
 		}
 	})
 
