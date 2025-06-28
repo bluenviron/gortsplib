@@ -78,7 +78,10 @@ func (c *client) read() error {
 	}
 
 	writeToClient := func(pkt *rtp.Packet) {
-		rc.WritePacketRTP(backChannelMedia, pkt) //nolint:errcheck
+		err2 := rc.WritePacketRTP(backChannelMedia, pkt)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
+		}
 	}
 
 	// setup all medias
@@ -98,7 +101,10 @@ func (c *client) read() error {
 		log.Printf("received RTP packet from the client, routing to readers")
 
 		// route incoming packets to the server stream
-		stream.WritePacketRTP(medi, pkt) //nolint:errcheck
+		err2 := stream.WritePacketRTP(medi, pkt)
+		if err2 != nil {
+			log.Printf("ERR: %v", err2)
+		}
 	})
 
 	// start playing

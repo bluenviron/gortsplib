@@ -16,8 +16,8 @@ import (
 
 // This example shows how to
 // 1. create a RTSP server which accepts plain connections.
-// 2. allow a single client to publish a stream with TCP or UDP, if it provides credentials.
-// 3. allow multiple clients to read the stream with TCP, UDP or UDP-multicast, if they provide credentials.
+// 2. allow a single client to publish a stream, if it provides credentials.
+// 3. allow several clients to read the stream, if they provide credentials.
 
 const (
 	// credentials required to publish the stream
@@ -188,7 +188,10 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 	// called when receiving a RTP packet
 	ctx.Session.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 		// route the RTP packet to all readers
-		sh.stream.WritePacketRTP(medi, pkt) //nolint:errcheck
+		err := sh.stream.WritePacketRTP(medi, pkt)
+		if err != nil {
+			log.Printf("ERR: %v", err)
+		}
 	})
 
 	return &base.Response{

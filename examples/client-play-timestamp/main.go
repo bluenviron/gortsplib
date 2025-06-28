@@ -14,7 +14,7 @@ import (
 // This example shows how to
 // 1. connect to a RTSP server.
 // 2. read all media streams on a path.
-// 3. Get the PTS and NTP timestamp of incoming RTP packets.
+// 3. Get PTS and NTP of incoming RTP packets.
 
 func main() {
 	c := gortsplib.Client{}
@@ -46,11 +46,11 @@ func main() {
 
 	// called when a RTP packet arrives
 	c.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
-		// get the PTS timestamp of the packet, i.e. timestamp relative to the start of the session
+		// get the PTS (presentation timestamp) of the packet
 		pts, ptsAvailable := c.PacketPTS2(medi, pkt)
 		log.Printf("PTS: available=%v, value=%v\n", ptsAvailable, pts)
 
-		// get the NTP timestamp of the packet, i.e. the absolute timestamp
+		// get the NTP (absolute timestamp) of the packet
 		ntp, ntpAvailable := c.PacketNTP(medi, pkt)
 		log.Printf("NTP: available=%v, value=%v\n", ntpAvailable, ntp)
 	})
