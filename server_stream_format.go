@@ -35,6 +35,15 @@ func (sf *serverStreamFormat) initialize() {
 	sf.rtcpSender.Initialize()
 }
 
+func (sf *serverStreamFormat) localSSRC() (uint32, bool) {
+	stats := sf.rtcpSender.Stats()
+	if stats != nil {
+		return stats.LocalSSRC, true
+	}
+
+	return 0, false
+}
+
 func (sf *serverStreamFormat) writePacketRTP(byts []byte, pkt *rtp.Packet, ntp time.Time) error {
 	sf.rtcpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
 

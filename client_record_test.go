@@ -46,7 +46,7 @@ var testRTPPacket = rtp.Packet{
 		CSRC:        []uint32{},
 		SSRC:        0x38F27A2F,
 	},
-	Payload: []byte{1, 2, 3, 4},
+	Payload: []byte{5, 2, 3, 4},
 }
 
 var testRTPPacketMarshaled = mustMarshalPacketRTP(&testRTPPacket)
