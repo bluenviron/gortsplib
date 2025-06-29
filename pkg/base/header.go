@@ -24,6 +24,9 @@ func headerKeyNormalize(in string) string {
 
 	case "cseq":
 		return "CSeq"
+
+	case "keymgmt":
+		return "KeyMgmt"
 	}
 	return http.CanonicalHeaderKey(in)
 }
