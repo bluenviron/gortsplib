@@ -43,6 +43,7 @@ func TestEncode(t *testing.T) {
 				PayloadType:           0,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
+				PayloadMaxSize:        1000,
 			}
 			err := e.Init()
 			require.NoError(t, err)

@@ -42,7 +42,7 @@ var cases = []struct {
 		[][]byte{
 			mergeBytes(
 				[]byte{0x05},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
+				bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 8),
 			),
 		},
 		[]*rtp.Packet{
@@ -56,7 +56,7 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x05},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 8),
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 8),
 				),
 			},
 		},
@@ -66,7 +66,7 @@ var cases = []struct {
 		[][]byte{
 			mergeBytes(
 				[]byte{0x05},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 512),
+				bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 187),
 			),
 		},
 		[]*rtp.Packet{
@@ -80,23 +80,8 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x1c, 0x85},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					[]byte{0x00, 0x01},
-				),
-			},
-			{
-				Header: rtp.Header{
-					Version:        2,
-					Marker:         false,
-					PayloadType:    96,
-					SequenceNumber: 17646,
-					SSRC:           0x9dbb7812,
-				},
-				Payload: mergeBytes(
-					[]byte{0x1c, 0x05},
-					[]byte{0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 181),
-					[]byte{0x00, 0x01, 0x02, 0x03},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 124),
+					[]byte{0, 1, 2, 3, 4, 5},
 				),
 			},
 			{
@@ -104,20 +89,20 @@ var cases = []struct {
 					Version:        2,
 					Marker:         true,
 					PayloadType:    96,
-					SequenceNumber: 17647,
+					SequenceNumber: 17646,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
 					[]byte{0x1c, 0x45},
-					[]byte{0x04, 0x05, 0x06, 0x07},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 147),
+					[]byte{6, 7},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 62),
 				),
 			},
 		},
 	},
 	{
 		"fragmented to the limit",
-		[][]byte{bytes.Repeat([]byte{1}, 2917)},
+		[][]byte{bytes.Repeat([]byte{1}, 1997)},
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -129,7 +114,7 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x1c, 0x81},
-					bytes.Repeat([]byte{1}, 1458),
+					bytes.Repeat([]byte{1}, 998),
 				),
 			},
 			{
@@ -142,7 +127,7 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x1c, 0x41},
-					bytes.Repeat([]byte{1}, 1458),
+					bytes.Repeat([]byte{1}, 998),
 				),
 			},
 		},
@@ -204,7 +189,7 @@ var cases = []struct {
 			},
 			mergeBytes(
 				[]byte{0x08},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 175),
+				bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 120),
 			),
 		},
 		[]*rtp.Packet{
@@ -239,7 +224,7 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x08},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 175),
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 120),
 				),
 			},
 		},
@@ -249,7 +234,7 @@ var cases = []struct {
 		[][]byte{
 			mergeBytes(
 				[]byte{0x05},
-				bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 256),
+				bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 187),
 			),
 			{0x09, 0xF0},
 			{0x09, 0xF0},
@@ -265,8 +250,8 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x1c, 0x85},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-					[]byte{0x00, 0x01},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 124),
+					[]byte{0, 1, 2, 3, 4, 5},
 				),
 			},
 			{
@@ -279,8 +264,8 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0x1c, 0x45},
-					[]byte{0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 73),
+					[]byte{6, 7},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 62),
 				),
 			},
 			{
@@ -307,6 +292,7 @@ func TestEncode(t *testing.T) {
 				PayloadType:           96,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
+				PayloadMaxSize:        1000,
 			}
 			err := e.Init()
 			require.NoError(t, err)

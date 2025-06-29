@@ -185,7 +185,7 @@ var casesGeneric = []struct {
 		3,
 		3,
 		[][]byte{
-			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 512),
+			bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 187),
 		},
 		[]*rtp.Packet{ //nolint:dupl
 			{
@@ -197,21 +197,9 @@ var casesGeneric = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x10, 0x2d, 0x80},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
-				),
-			},
-			{
-				Header: rtp.Header{
-					Version:        2,
-					Marker:         false,
-					PayloadType:    96,
-					SequenceNumber: 17646,
-					SSRC:           0x9dbb7812,
-				},
-				Payload: mergeBytes(
-					[]byte{0x00, 0x10, 0x2d, 0x80},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+					[]byte{0x0, 0x10, 0x1f, 0x20},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 124),
+					[]byte{0, 1, 2, 3},
 				),
 			},
 			{
@@ -219,12 +207,13 @@ var casesGeneric = []struct {
 					Version:        2,
 					Marker:         true,
 					PayloadType:    96,
-					SequenceNumber: 17647,
+					SequenceNumber: 17646,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x00, 0x10, 0x25, 0x00},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 148),
+					[]byte{0x00, 0x10, 0x0f, 0xa0},
+					[]byte{4, 5, 6, 7},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 62),
 				),
 			},
 		},
@@ -234,7 +223,7 @@ var casesGeneric = []struct {
 		13,
 		3,
 		3,
-		[][]byte{bytes.Repeat([]byte{1}, 2912)},
+		[][]byte{bytes.Repeat([]byte{1}, 1992)},
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -245,8 +234,8 @@ var casesGeneric = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x10, 0x2d, 0x80},
-					bytes.Repeat([]byte{1}, 1456),
+					[]byte{0x0, 0x10, 0x1f, 0x20},
+					bytes.Repeat([]byte{1}, 996),
 				),
 			},
 			{
@@ -258,8 +247,8 @@ var casesGeneric = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x10, 0x2d, 0x80},
-					bytes.Repeat([]byte{1}, 1456),
+					[]byte{0x0, 0x10, 0x1f, 0x20},
+					bytes.Repeat([]byte{1}, 996),
 				),
 			},
 		},
@@ -273,7 +262,7 @@ var casesGeneric = []struct {
 			{0x00, 0x01, 0x02, 0x03},
 			{0x04, 0x05, 0x06, 0x07},
 			{0x08, 0x09, 0x0A, 0x0B},
-			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 256),
+			bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 187),
 		},
 		[]*rtp.Packet{
 			{
@@ -300,8 +289,9 @@ var casesGeneric = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x10, 0x2d, 0x80},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 182),
+					[]byte{0x0, 0x10, 0x1f, 0x20},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 124),
+					[]byte{0, 1, 2, 3},
 				),
 			},
 			{
@@ -314,8 +304,9 @@ var casesGeneric = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x00, 0x10, 0x12, 0x80},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 74),
+					[]byte{0x00, 0x10, 0x0f, 0xa0},
+					[]byte{4, 5, 6, 7},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 62),
 				),
 			},
 		},
@@ -400,7 +391,7 @@ var casesGeneric = []struct {
 		3,
 		3,
 		[][]byte{
-			bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 512),
+			bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 187),
 		},
 		[]*rtp.Packet{
 			{
@@ -412,23 +403,9 @@ var casesGeneric = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x18, 0x00, 0x2d, 0x78},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 181),
-					[]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
-				),
-			},
-			{
-				Header: rtp.Header{
-					Version:        2,
-					Marker:         false,
-					PayloadType:    96,
-					SequenceNumber: 17646,
-					SSRC:           0x9dbb7812,
-				},
-				Payload: mergeBytes(
-					[]byte{0x00, 0x18, 0x00, 0x2d, 0x78, 0x07},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 181),
-					[]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05},
+					[]byte{0x0, 0x18, 0x00, 0x1f, 0x18},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 124),
+					[]byte{0, 1, 2},
 				),
 			},
 			{
@@ -436,12 +413,13 @@ var casesGeneric = []struct {
 					Version:        2,
 					Marker:         true,
 					PayloadType:    96,
-					SequenceNumber: 17647,
+					SequenceNumber: 17646,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x00, 0x18, 0x00, 0x25, 0x10, 0x06, 0x07},
-					bytes.Repeat([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, 148),
+					[]byte{0x00, 0x18, 0x00, 0x0f, 0xa8},
+					[]byte{3, 4, 5, 6, 7},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 62),
 				),
 			},
 		},
@@ -452,7 +430,7 @@ var casesGeneric = []struct {
 		0,
 		0,
 		[][]byte{
-			bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 512),
+			bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 187),
 		},
 		[]*rtp.Packet{ //nolint:dupl
 			{
@@ -464,21 +442,9 @@ var casesGeneric = []struct {
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x0, 0x0d, 0x2d, 0x80},
-					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 182),
-				),
-			},
-			{
-				Header: rtp.Header{
-					Version:        2,
-					Marker:         false,
-					PayloadType:    96,
-					SequenceNumber: 17646,
-					SSRC:           0x9dbb7812,
-				},
-				Payload: mergeBytes(
-					[]byte{0x0, 0x0d, 0x2d, 0x80},
-					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 182),
+					[]byte{0x0, 0x0d, 0x1f, 0x20},
+					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 124),
+					[]byte{0x08, 0x09, 0x0A, 0x0B},
 				),
 			},
 			{
@@ -486,12 +452,13 @@ var casesGeneric = []struct {
 					Version:        2,
 					Marker:         true,
 					PayloadType:    96,
-					SequenceNumber: 17647,
+					SequenceNumber: 17646,
 					SSRC:           0x9dbb7812,
 				},
 				Payload: mergeBytes(
-					[]byte{0x00, 0x0d, 0x25, 0x00},
-					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 148),
+					[]byte{0x0, 0x0d, 0x0f, 0xa0},
+					[]byte{0x0C, 0x0D, 0x0E, 0x0F},
+					bytes.Repeat([]byte{0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}, 62),
 				),
 			},
 		},
@@ -508,6 +475,7 @@ func TestEncodeGeneric(t *testing.T) {
 				SizeLength:            ca.sizeLength,
 				IndexLength:           ca.indexLength,
 				IndexDeltaLength:      ca.indexDeltaLength,
+				PayloadMaxSize:        1000,
 			}
 			err := e.Init()
 			require.NoError(t, err)

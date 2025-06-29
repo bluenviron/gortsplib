@@ -33,7 +33,7 @@ var casesLATM = []struct {
 	},
 	{
 		"fragmented",
-		bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 512),
+		bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 187),
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -44,24 +44,10 @@ var casesLATM = []struct {
 					SSRC:           2646308882,
 				},
 				Payload: mergeBytes(
-					bytes.Repeat([]byte{0xff}, 16),
-					[]byte{0x10},
-					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 180),
-					[]byte{0, 1, 2},
-				),
-			},
-			{
-				Header: rtp.Header{
-					Version:        2,
-					Marker:         false,
-					PayloadType:    96,
-					SequenceNumber: 17646,
-					SSRC:           2646308882,
-				},
-				Payload: mergeBytes(
-					[]byte{3, 4, 5, 6, 7},
-					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 181),
-					[]byte{0, 1, 2, 3, 4, 5, 6},
+					bytes.Repeat([]byte{0xff}, 5),
+					[]byte{0xdd},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 124),
+					[]byte{0, 1},
 				),
 			},
 			{
@@ -69,19 +55,19 @@ var casesLATM = []struct {
 					Version:        2,
 					Marker:         true,
 					PayloadType:    96,
-					SequenceNumber: 17647,
+					SequenceNumber: 17646,
 					SSRC:           2646308882,
 				},
 				Payload: mergeBytes(
-					[]byte{7},
-					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 149),
+					[]byte{2, 3, 4, 5, 6, 7},
+					bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 62),
 				),
 			},
 		},
 	},
 	{
 		"fragmented to the limit",
-		bytes.Repeat([]byte{1}, 2908),
+		bytes.Repeat([]byte{1}, 1992),
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -92,9 +78,9 @@ var casesLATM = []struct {
 					SSRC:           2646308882,
 				},
 				Payload: mergeBytes(
-					bytes.Repeat([]byte{0xff}, 11),
-					[]byte{0x67},
-					bytes.Repeat([]byte{1}, 1448),
+					bytes.Repeat([]byte{0xff}, 7),
+					[]byte{0xcf},
+					bytes.Repeat([]byte{1}, 992),
 				),
 			},
 			{
@@ -106,7 +92,7 @@ var casesLATM = []struct {
 					SSRC:           2646308882,
 				},
 				Payload: mergeBytes(
-					bytes.Repeat([]byte{1}, 1460),
+					bytes.Repeat([]byte{1}, 1000),
 				),
 			},
 		},
@@ -121,6 +107,7 @@ func TestEncodeLATM(t *testing.T) {
 				PayloadType:           96,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
+				PayloadMaxSize:        1000,
 			}
 			err := e.Init()
 			require.NoError(t, err)

@@ -83,7 +83,7 @@ var cases = []struct {
 		"fragmented",
 		mergeBytes(
 			[]byte{0, 0, 1},
-			bytes.Repeat([]byte{1}, 2000),
+			bytes.Repeat([]byte{2}, 1500),
 		),
 		[]*rtp.Packet{
 			{
@@ -97,7 +97,7 @@ var cases = []struct {
 				Payload: mergeBytes(
 					[]byte{0, 0, 0x10, 0},
 					[]byte{0, 0, 1},
-					bytes.Repeat([]byte{1}, 1453),
+					bytes.Repeat([]byte{2}, 993),
 				),
 			},
 			{
@@ -110,7 +110,7 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0, 0, 0x08, 0},
-					bytes.Repeat([]byte{1}, 547),
+					bytes.Repeat([]byte{2}, 507),
 				),
 			},
 		},
@@ -119,7 +119,7 @@ var cases = []struct {
 		"fragmented to the limit",
 		mergeBytes(
 			[]byte{0, 0, 1},
-			bytes.Repeat([]byte{1}, 2909),
+			bytes.Repeat([]byte{2}, 1989),
 		),
 		[]*rtp.Packet{
 			{
@@ -133,7 +133,7 @@ var cases = []struct {
 				Payload: mergeBytes(
 					[]byte{0, 0, 0x10, 0},
 					[]byte{0, 0, 1},
-					bytes.Repeat([]byte{1}, 1453),
+					bytes.Repeat([]byte{2}, 993),
 				),
 			},
 			{
@@ -146,7 +146,7 @@ var cases = []struct {
 				},
 				Payload: mergeBytes(
 					[]byte{0, 0, 0x08, 0},
-					bytes.Repeat([]byte{1}, 1456),
+					bytes.Repeat([]byte{2}, 996),
 				),
 			},
 		},
@@ -159,6 +159,7 @@ func TestEncode(t *testing.T) {
 			e := &Encoder{
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
+				PayloadMaxSize:        1000,
 			}
 			err := e.Init()
 			require.NoError(t, err)

@@ -39,7 +39,7 @@ var cases = []struct {
 }{
 	{
 		"single",
-		[]byte{0x01, 0x02, 0x03, 0x04},
+		[]byte{1, 2, 3, 4},
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -49,13 +49,13 @@ var cases = []struct {
 					SequenceNumber: 17645,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: []byte{0x10, 0x01, 0x02, 0x03, 0x04},
+				Payload: []byte{0x10, 1, 2, 3, 4},
 			},
 		},
 	},
 	{
 		"fragmented",
-		bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 4096/4),
+		bytes.Repeat([]byte{1, 2, 3, 4}, 350),
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -65,7 +65,7 @@ var cases = []struct {
 					SequenceNumber: 17645,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: mergeBytes([]byte{0x10}, bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 364), []byte{0x01, 0x02, 0x03}),
+				Payload: mergeBytes([]byte{0x10}, bytes.Repeat([]byte{1, 2, 3, 4}, 124), []byte{1, 2, 3}),
 			},
 			{
 				Header: rtp.Header{
@@ -75,7 +75,7 @@ var cases = []struct {
 					SequenceNumber: 17646,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: mergeBytes([]byte{0x00, 0x04}, bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 364), []byte{0x01, 0x02}),
+				Payload: mergeBytes([]byte{0x00, 0x04}, bytes.Repeat([]byte{1, 2, 3, 4}, 124), []byte{1, 2}),
 			},
 			{
 				Header: rtp.Header{
@@ -85,7 +85,7 @@ var cases = []struct {
 					SequenceNumber: 17647,
 					SSRC:           0x9dbb7812,
 				},
-				Payload: mergeBytes([]byte{0x00, 0x03, 0x04}, bytes.Repeat([]byte{0x01, 0x02, 0x03, 0x04}, 294)),
+				Payload: mergeBytes([]byte{0, 3, 4}, bytes.Repeat([]byte{1, 2, 3, 4}, 100)),
 			},
 		},
 	},
@@ -98,6 +98,7 @@ func TestEncode(t *testing.T) {
 				PayloadType:           96,
 				SSRC:                  uint32Ptr(0x9dbb7812),
 				InitialSequenceNumber: uint16Ptr(0x44ed),
+				PayloadMaxSize:        500,
 			}
 			err := e.Init()
 			require.NoError(t, err)
