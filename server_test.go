@@ -754,6 +754,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 		Delivery:       deliveryPtr(headers.TransportDeliveryUnicast),
 		Protocol:       headers.TransportProtocolTCP,
 		InterleavedIDs: &[2]int{0, 1},
+		SSRC:           th.SSRC,
 	}, th)
 }
 

@@ -166,8 +166,14 @@ func (d Session) Marshal(_ bool) ([]byte, error) {
 	sout.MediaDescriptions = make([]*psdp.MediaDescription, len(d.Medias))
 
 	for i, media := range d.Medias {
-		sout.MediaDescriptions[i] = media.Marshal()
+		med, err := media.Marshal2()
+		if err != nil {
+			return nil, err
+		}
+		sout.MediaDescriptions[i] = med
 	}
 
-	return sout.Marshal()
+	out, _ := sout.Marshal()
+
+	return out, nil
 }

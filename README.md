@@ -6,39 +6,37 @@
 [![CodeCov](https://codecov.io/gh/bluenviron/gortsplib/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bluenviron/gortsplib/tree/main)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/bluenviron/gortsplib/v4)](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4#pkg-index)
 
-RTSP 1.0 client and server library for the Go programming language, written for [MediaMTX](https://github.com/bluenviron/mediamtx).
+RTSP client and server library for the Go programming language, written for [MediaMTX](https://github.com/bluenviron/mediamtx).
 
 Go &ge; 1.23 is required.
 
 Features:
 
 * Client
+  * Support secure protocol variants (RTSPS, TLS, SRTP, MIKEY)
   * Query servers about available media streams
   * Read media streams from a server ("play")
     * Read streams with the UDP, UDP-multicast or TCP transport protocol
-    * Read TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
     * Read selected media streams
     * Pause or seek without disconnecting from the server
     * Write to ONVIF back channels
-    * Get PTS (relative) timestamp of incoming packets
-    * Get NTP (absolute) timestamp of incoming packets
+    * Get PTS (presentation timestamp) of incoming packets
+    * Get NTP (absolute timestamp) of incoming packets
   * Write media streams to a server ("record")
     * Write streams with the UDP or TCP transport protocol
-    * Write TLS-encrypted streams (TCP only)
     * Switch transport protocol automatically
     * Pause without disconnecting from the server
 * Server
+  * Support secure protocol variants (RTSPS, TLS, SRTP, MIKEY)
   * Handle requests from clients
   * Validate client credentials
   * Read media streams from clients ("record")
     * Read streams with the UDP or TCP transport protocol
-    * Read TLS-encrypted streams (TCP only)
-    * Get PTS (relative) timestamp of incoming packets
-    * Get NTP (absolute) timestamp of incoming packets
+    * Get PTS (presentation timestamp) of incoming packets
+    * Get NTP (absolute timestamp) of incoming packets
   * Serve media streams to clients ("play")
     * Write streams with the UDP, UDP-multicast or TCP transport protocol
-    * Write TLS-encrypted streams (TCP only)
     * Compute and provide SSRC, RTP-Info to clients
     * Read ONVIF back channels
 * Utilities
@@ -94,7 +92,7 @@ Features:
 * [client-record-format-vp8](examples/client-record-format-vp8/main.go)
 * [client-record-format-vp9](examples/client-record-format-vp9/main.go)
 * [server](examples/server/main.go)
-* [server-tls](examples/server-tls/main.go)
+* [server-secure](examples/server-secure/main.go)
 * [server-auth](examples/server-auth/main.go)
 * [server-record-format-h264-to-disk](examples/server-record-format-h264-to-disk/main.go)
 * [server-play-format-h264-from-disk](examples/server-play-format-h264-from-disk/main.go)
@@ -150,7 +148,10 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 |----|----|
 |[RFC2326, RTSP 1.0](https://datatracker.ietf.org/doc/html/rfc2326)|protocol|
 |[RFC7826, RTSP 2.0](https://datatracker.ietf.org/doc/html/rfc7826)|protocol|
+|[ONVIF Streaming Specification 23.06](https://www.onvif.org/specs/stream/ONVIF-Streaming-Spec.pdf)|protocol|
 |[RFC8866, SDP: Session Description Protocol](https://datatracker.ietf.org/doc/html/rfc8866)|SDP|
+|[RFC4567, Key Management Extensions for Session Description Protocol (SDP) and Real Time Streaming Protocol (RTSP)](https://datatracker.ietf.org/doc/html/rfc4567)|secure variants|
+|[RFC3830, MIKEY: Multimedia Internet KEYing](https://datatracker.ietf.org/doc/html/rfc3830)|secure variants|
 |[RTP Payload Format For AV1 (v1.0)](https://aomediacodec.github.io/av1-rtp-spec/)|payload formats / AV1|
 |[RTP Payload Format for VP9 Video](https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16)|payload formats / VP9|
 |[RFC7741, RTP Payload Format for VP8 Video](https://datatracker.ietf.org/doc/html/rfc7741)|payload formats / VP8|
@@ -178,3 +179,4 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 * [pion/sdp (SDP library used internally)](https://github.com/pion/sdp)
 * [pion/rtp (RTP library used internally)](https://github.com/pion/rtp)
 * [pion/rtcp (RTCP library used internally)](https://github.com/pion/rtcp)
+* [pion/srtp (SRTP library used internally)](https://github.com/pion/srtp)

@@ -92,8 +92,10 @@ var cases = []struct {
 		[]byte("www-authenticate: value\r\n" +
 			"cseq: value\r\n" +
 			"rtp-info: value\r\n" +
+			"keymgmt: value\r\n" +
 			"\r\n"),
 		[]byte("CSeq: value\r\n" +
+			"KeyMgmt: value\r\n" +
 			"RTP-Info: value\r\n" +
 			"WWW-Authenticate: value\r\n" +
 			"\r\n"),
@@ -101,6 +103,7 @@ var cases = []struct {
 			"CSeq":             HeaderValue{"value"},
 			"RTP-Info":         HeaderValue{"value"},
 			"WWW-Authenticate": HeaderValue{"value"},
+			"KeyMgmt":          HeaderValue{"value"},
 		},
 	},
 }

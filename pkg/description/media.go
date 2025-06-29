@@ -2,6 +2,7 @@
 package description
 
 import (
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"sort"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
 )
 
 func getAttribute(attributes []psdp.Attribute, key string) string {
@@ -78,6 +80,12 @@ type Media struct {
 	// Control attribute.
 	Control string
 
+	// Whether the transport is secure.
+	Secure bool
+
+	// key-mgmt attribute.
+	KeyMgmtMikey *mikey.Message
+
 	// Formats contained into the media.
 	Formats []format.Format
 }
@@ -113,11 +121,26 @@ func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 }
 
 // Marshal encodes the media in SDP format.
+//
+// Deprecated: replaced by Marshal2.
 func (m Media) Marshal() *psdp.MediaDescription {
+	ret, _ := m.Marshal2()
+	return ret
+}
+
+// Marshal2 encodes the media in SDP format.
+func (m Media) Marshal2() (*psdp.MediaDescription, error) {
+	var protos []string
+	if !m.Secure {
+		protos = []string{"RTP", "AVP"}
+	} else {
+		protos = []string{"RTP", "SAVP"}
+	}
+
 	md := &psdp.MediaDescription{
 		MediaName: psdp.MediaName{
 			Media:  string(m.Type),
-			Protos: []string{"RTP", "AVP"},
+			Protos: protos,
 		},
 	}
 
@@ -131,6 +154,18 @@ func (m Media) Marshal() *psdp.MediaDescription {
 	if m.IsBackChannel {
 		md.Attributes = append(md.Attributes, psdp.Attribute{
 			Key: "sendonly",
+		})
+	}
+
+	if m.KeyMgmtMikey != nil {
+		keyEnc, err := m.KeyMgmtMikey.Marshal()
+		if err != nil {
+			return nil, err
+		}
+
+		md.Attributes = append(md.Attributes, psdp.Attribute{
+			Key:   "key-mgmt",
+			Value: "mikey " + base64.StdEncoding.EncodeToString(keyEnc),
 		})
 	}
 
@@ -165,7 +200,7 @@ func (m Media) Marshal() *psdp.MediaDescription {
 		}
 	}
 
-	return md
+	return md, nil
 }
 
 // URL returns the absolute URL of the media.

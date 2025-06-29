@@ -13,7 +13,7 @@ type Session struct {
 	// session id
 	Session string
 
-	// (optional) a timeout
+	// (optional) timeout
 	Timeout *uint
 }
 

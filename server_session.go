@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -14,12 +15,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	"github.com/pion/srtp/v3"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
@@ -165,41 +168,203 @@ func findMediaByTrackID(medias []*description.Media, trackID string) *descriptio
 	return medias[id]
 }
 
-func findFirstSupportedTransportHeader(s *Server, tsh headers.Transports) *headers.Transport {
-	// Per RFC2326 section 12.39, client specifies transports in order of preference.
-	// Filter out the ones we don't support and then pick first supported transport.
-	for _, tr := range tsh {
+func isTransportSupported(s *Server, tr *headers.Transport) bool {
+	switch tr.Protocol {
+	case headers.TransportProtocolUDP, headers.TransportProtocolSecureUDP:
 		isMulticast := tr.Delivery != nil && *tr.Delivery == headers.TransportDeliveryMulticast
-		if tr.Protocol == headers.TransportProtocolUDP &&
-			((!isMulticast && s.udpRTPListener == nil) ||
-				(isMulticast && s.MulticastIPRange == "")) {
-			continue
+		if !isMulticast && s.udpRTPListener == nil {
+			return false
 		}
-		return &tr
+		if isMulticast && s.MulticastIPRange == "" {
+			return false
+		}
+	}
+
+	switch tr.Protocol {
+	case headers.TransportProtocolUDP:
+		if s.TLSConfig != nil { // prevent using unsecure UDP with RTSPS
+			return false
+		}
+
+	case headers.TransportProtocolSecureUDP, headers.TransportProtocolSecureTCP:
+		if s.TLSConfig == nil { // prevent using secure protocols with plain RTSP, since keys are in plain
+			return false
+		}
+	}
+
+	return true
+}
+
+func pickFirstSupportedTransport(s *Server, tsh headers.Transports) *headers.Transport {
+	for _, tr := range tsh {
+		if isTransportSupported(s, &tr) {
+			return &tr
+		}
 	}
 	return nil
 }
 
+func mikeyDecodeTime(t uint64) time.Time {
+	sec := t >> 32
+	dec := t & 0xFFFFFFFF
+	sec -= 2208988800
+	return time.Unix(int64(sec), int64(dec))
+}
+
+func mikeyEncodeTime(n time.Time) uint64 {
+	nano := uint64(n.UnixNano())
+	sec := nano / 1000000000
+	dec := nano % 1000000000
+	sec += 2208988800
+	return sec<<32 | dec
+}
+
+func mikeyGetPayload[T mikey.Payload](mikeyMsg *mikey.Message) (T, bool) {
+	var zero T
+	for _, wrapped := range mikeyMsg.Payloads {
+		if val, ok := wrapped.(T); ok {
+			return val, true
+		}
+	}
+	return zero, false
+}
+
+func mikeyGetSPPolicy(spPayload *mikey.PayloadSP, typ mikey.PayloadSPPolicyParamType) ([]byte, bool) {
+	for _, pl := range spPayload.PolicyParams {
+		if pl.Type == typ {
+			return pl.Value, true
+		}
+	}
+	return nil, false
+}
+
+func mikeyCheckAndExtractKey(mikeyMsg *mikey.Message) ([]byte, error) {
+	timePayload, ok := mikeyGetPayload[*mikey.PayloadT](mikeyMsg)
+	if !ok {
+		return nil, fmt.Errorf("time payload not present")
+	}
+
+	ts := mikeyDecodeTime(timePayload.TSValue)
+	diff := time.Since(ts)
+	if diff < -time.Hour || diff > time.Hour {
+		return nil, fmt.Errorf("NTP difference is too high")
+	}
+
+	spPayload, ok := mikeyGetPayload[*mikey.PayloadSP](mikeyMsg)
+	if !ok {
+		return nil, fmt.Errorf("SP payload not present")
+	}
+
+	v, ok := mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeEncrAlg)
+	if !ok || !bytes.Equal(v, []byte{1}) {
+		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeEncrAlg")
+	}
+
+	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSessionEncrKeyLen)
+	if !ok || !bytes.Equal(v, []byte{0x10}) {
+		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSessionEncrKeyLen")
+	}
+
+	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeAuthAlg)
+	if !ok || !bytes.Equal(v, []byte{1}) {
+		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeAuthAlg")
+	}
+
+	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSessionAuthKeyLen)
+	if !ok || !bytes.Equal(v, []byte{0x0a}) {
+		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSessionAuthKeyLen")
+	}
+
+	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSRTPEncrOffOn)
+	if !ok || !bytes.Equal(v, []byte{1}) {
+		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSRTPEncrOffOn")
+	}
+
+	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSRTCPEncrOffOn)
+	if !ok || !bytes.Equal(v, []byte{1}) {
+		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSRTCPEncrOffOn")
+	}
+
+	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSRTPAuthOffOn)
+	if !ok || !bytes.Equal(v, []byte{1}) {
+		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSRTPAuthOffOn")
+	}
+
+	kemacPayload, ok := mikeyGetPayload[*mikey.PayloadKEMAC](mikeyMsg)
+	if !ok {
+		return nil, fmt.Errorf("KEMAC payload not present")
+	}
+
+	if len(kemacPayload.SubPayloads) != 1 {
+		return nil, fmt.Errorf("multiple keys are present")
+	}
+
+	if len(kemacPayload.SubPayloads[0].KeyData) != srtpKeyLength {
+		return nil, fmt.Errorf("unexpected key size: %d", len(kemacPayload.SubPayloads[0].KeyData))
+	}
+
+	return kemacPayload.SubPayloads[0].KeyData, nil
+}
+
+func generateRTPInfoEntry(ssm *serverStreamMedia, now time.Time) *headers.RTPInfoEntry {
+	// do not generate a RTP-Info entry when
+	// there are multiple formats inside a single media stream,
+	// since RTP-Info does not support multiple sequence numbers / timestamps.
+	if len(ssm.media.Formats) > 1 {
+		return nil
+	}
+
+	format := ssm.formats[ssm.media.Formats[0].PayloadType()]
+
+	stats := format.rtcpSender.Stats()
+	if stats == nil {
+		return nil
+	}
+
+	clockRate := format.format.ClockRate()
+	if clockRate == 0 {
+		return nil
+	}
+
+	// sequence number of the first packet of the stream
+	seqNum := stats.LastSequenceNumber + 1
+
+	// RTP timestamp corresponding to the time value in
+	// the Range response header.
+	// remove a small quantity in order to avoid DTS > PTS
+	ts := uint32(uint64(stats.LastRTP) +
+		uint64(now.Sub(stats.LastNTP).Seconds()*float64(clockRate)) -
+		uint64(clockRate)/10)
+
+	return &headers.RTPInfoEntry{
+		SequenceNumber: &seqNum,
+		Timestamp:      &ts,
+	}
+}
+
 func generateRTPInfo(
 	now time.Time,
-	setuppedMediasOrdered []*serverSessionMedia,
-	setuppedStream *ServerStream,
-	setuppedPath string,
+	mediasOrdered []*serverSessionMedia,
+	stream *ServerStream,
+	path string,
 	u *base.URL,
 ) (headers.RTPInfo, bool) {
 	var ri headers.RTPInfo
 
-	for _, sm := range setuppedMediasOrdered {
-		entry := setuppedStream.rtpInfoEntry(sm.media, now)
+	for _, sm := range mediasOrdered {
+		ssm := stream.medias[sm.media]
+		entry := generateRTPInfoEntry(ssm, now)
 		if entry == nil {
 			entry = &headers.RTPInfoEntry{}
 		}
+
 		entry.URL = (&base.URL{
 			Scheme: u.Scheme,
 			Host:   u.Host,
-			Path: setuppedPath + "/trackID=" +
-				strconv.FormatInt(int64(setuppedStream.medias[sm.media].trackID), 10),
+			Path: path + "/trackID=" +
+				strconv.FormatInt(int64(ssm.trackID), 10),
 		}).String()
+
 		ri = append(ri, entry)
 	}
 
@@ -254,6 +419,7 @@ type ServerSession struct {
 	setuppedMediasOrdered []*serverSessionMedia
 	tcpCallbackByChannel  map[int]readFunc
 	setuppedTransport     *Transport
+	setuppedSecure        bool
 	setuppedStream        *ServerStream // play
 	setuppedPath          string
 	setuppedQuery         string
@@ -330,6 +496,13 @@ func (ss *ServerSession) State() ServerSessionState {
 // SetuppedTransport returns the transport negotiated during SETUP.
 func (ss *ServerSession) SetuppedTransport() *Transport {
 	return ss.setuppedTransport
+}
+
+// SetuppedSecure returns whether a secure profile (SAVP) is in use.
+// If this is false, it does not mean that the stream is not secure, since
+// there are some combinations that are secure nonetheless, like RTSPS+TCP+AVP.
+func (ss *ServerSession) SetuppedSecure() bool {
+	return ss.setuppedSecure
 }
 
 // SetuppedStream returns the stream associated with the session.
@@ -500,18 +673,10 @@ func (ss *ServerSession) Stats() *StatsSession {
 								RTPPacketsReceived: atomic.LoadUint64(fo.rtpPacketsReceived),
 								RTPPacketsSent:     atomic.LoadUint64(fo.rtpPacketsSent),
 								RTPPacketsLost:     atomic.LoadUint64(fo.rtpPacketsLost),
-								LocalSSRC: func() uint32 {
-									if fo.rtcpReceiver != nil {
-										return *fo.rtcpReceiver.LocalSSRC
-									}
-									if sentStats != nil {
-										return sentStats.LocalSSRC
-									}
-									return 0
-								}(),
+								LocalSSRC:          fo.localSSRC,
 								RemoteSSRC: func() uint32 {
-									if recvStats != nil {
-										return recvStats.RemoteSSRC
+									if v, ok := fo.remoteSSRC(); ok {
+										return v
 									}
 									return 0
 								}(),
@@ -916,7 +1081,9 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, liberrors.ErrServerTransportHeaderInvalid{Err: err}
 		}
 
-		inTH := findFirstSupportedTransportHeader(ss.s, transportHeaders)
+		// Per RFC2326 section 12.39, client specifies transports in order of preference.
+		// pick the first supported one.
+		inTH := pickFirstSupportedTransport(ss.s, transportHeaders)
 		if inTH == nil {
 			return &base.Response{
 				StatusCode: base.StatusUnsupportedTransport,
@@ -946,18 +1113,48 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		var transport Transport
+		var secure bool
 
-		if inTH.Protocol == headers.TransportProtocolUDP {
+		switch inTH.Protocol {
+		case headers.TransportProtocolUDP, headers.TransportProtocolSecureUDP:
 			if inTH.Delivery != nil && *inTH.Delivery == headers.TransportDeliveryMulticast {
 				transport = TransportUDPMulticast
 			} else {
 				transport = TransportUDP
 			}
-		} else {
+			secure = (inTH.Protocol == headers.TransportProtocolSecureUDP)
+
+		case headers.TransportProtocolTCP, headers.TransportProtocolSecureTCP:
 			transport = TransportTCP
+			secure = (inTH.Protocol == headers.TransportProtocolSecureTCP)
 		}
 
-		if ss.setuppedTransport != nil && *ss.setuppedTransport != transport {
+		var srtpInCtx *srtp.Context
+
+		if secure {
+			var keyMgmtHeader headers.KeyMgmt
+			err = keyMgmtHeader.Unmarshal(req.Header["KeyMgmt"])
+			if err != nil {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerInvalidKeyMgmtHeader{Wrapped: err}
+			}
+
+			var key []byte
+			key, err = mikeyCheckAndExtractKey(keyMgmtHeader.MikeyMessage)
+			if err != nil {
+				return nil, err
+			}
+
+			srtpInCtx, err = srtp.CreateContext(key[:16], key[16:], srtp.ProtectionProfileAes128CmHmacSha1_80)
+			if err != nil {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerInvalidKeyMgmtHeader{Wrapped: err}
+			}
+		}
+
+		if ss.setuppedTransport != nil && (*ss.setuppedTransport != transport || ss.setuppedSecure != secure) {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerMediasDifferentProtocols{}
@@ -1021,7 +1218,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		// workaround to prevent a bug in rtspclientsink
 		// that makes impossible for the client to receive the response
 		// and send frames.
-		// this was causing problems during unit tests.
+		// this was causing problems during E2E tests.
 		if ua, ok := req.Header["User-Agent"]; ok && len(ua) == 1 &&
 			strings.HasPrefix(ua[0], "GStreamer") {
 			select {
@@ -1061,6 +1258,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 
 			ss.setuppedTransport = &transport
+			ss.setuppedSecure = secure
 
 			if ss.state == ServerSessionStateInitial {
 				err = stream.readerAdd(ss,
@@ -1089,10 +1287,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				// since the Transport header does not support multiple SSRCs.
 				if len(stream.medias[medi].formats) == 1 {
 					format := stream.medias[medi].formats[medi.Formats[0].PayloadType()]
-					ssrc, ok := format.localSSRC()
-					if ok {
-						th.SSRC = &ssrc
-					}
+					th.SSRC = &format.localSSRC
 				}
 			}
 
@@ -1103,51 +1298,67 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			sm := &serverSessionMedia{
 				ss:           ss,
 				media:        medi,
+				srtpInCtx:    srtpInCtx,
 				onPacketRTCP: func(_ rtcp.Packet) {},
 			}
-			sm.initialize()
+			err = sm.initialize()
+			if err != nil {
+				return &base.Response{
+					StatusCode: base.StatusInternalServerError,
+				}, err
+			}
 
 			switch transport {
-			case TransportUDP:
-				sm.udpRTPReadPort = inTH.ClientPorts[0]
-				sm.udpRTCPReadPort = inTH.ClientPorts[1]
-
-				sm.udpRTPWriteAddr = &net.UDPAddr{
-					IP:   ss.author.ip(),
-					Zone: ss.author.zone(),
-					Port: sm.udpRTPReadPort,
+			case TransportUDP, TransportUDPMulticast:
+				if !secure {
+					th.Protocol = headers.TransportProtocolUDP
+				} else {
+					th.Protocol = headers.TransportProtocolSecureUDP
 				}
 
-				sm.udpRTCPWriteAddr = &net.UDPAddr{
-					IP:   ss.author.ip(),
-					Zone: ss.author.zone(),
-					Port: sm.udpRTCPReadPort,
+				if transport == TransportUDP {
+					sm.udpRTPReadPort = inTH.ClientPorts[0]
+					sm.udpRTCPReadPort = inTH.ClientPorts[1]
+
+					sm.udpRTPWriteAddr = &net.UDPAddr{
+						IP:   ss.author.ip(),
+						Zone: ss.author.zone(),
+						Port: sm.udpRTPReadPort,
+					}
+
+					sm.udpRTCPWriteAddr = &net.UDPAddr{
+						IP:   ss.author.ip(),
+						Zone: ss.author.zone(),
+						Port: sm.udpRTCPReadPort,
+					}
+
+					de := headers.TransportDeliveryUnicast
+					th.Delivery = &de
+					th.ClientPorts = inTH.ClientPorts
+					th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
+				} else {
+					de := headers.TransportDeliveryMulticast
+					th.Delivery = &de
+					v := uint(127)
+					th.TTL = &v
+					d := stream.medias[medi].multicastWriter.ip()
+					th.Destination = &d
+					th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 				}
-
-				th.Protocol = headers.TransportProtocolUDP
-				de := headers.TransportDeliveryUnicast
-				th.Delivery = &de
-				th.ClientPorts = inTH.ClientPorts
-				th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
-
-			case TransportUDPMulticast:
-				th.Protocol = headers.TransportProtocolUDP
-				de := headers.TransportDeliveryMulticast
-				th.Delivery = &de
-				v := uint(127)
-				th.TTL = &v
-				d := stream.medias[medi].multicastWriter.ip()
-				th.Destination = &d
-				th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 
 			default: // TCP
+				if !secure {
+					th.Protocol = headers.TransportProtocolTCP
+				} else {
+					th.Protocol = headers.TransportProtocolSecureTCP
+				}
+
 				if inTH.InterleavedIDs != nil {
 					sm.tcpChannel = inTH.InterleavedIDs[0]
 				} else {
 					sm.tcpChannel = ss.findFreeChannelPair()
 				}
 
-				th.Protocol = headers.TransportProtocolTCP
 				de := headers.TransportDeliveryUnicast
 				th.Delivery = &de
 				th.InterleavedIDs = &[2]int{sm.tcpChannel, sm.tcpChannel + 1}
@@ -1160,6 +1371,36 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			ss.setuppedMediasOrdered = append(ss.setuppedMediasOrdered, sm)
 
 			res.Header["Transport"] = th.Marshal()
+
+			if secure && ss.state == ServerSessionStatePreRecord {
+				ssrcs := make([]uint32, len(sm.formats))
+				n := 0
+				for _, sf := range sm.formats {
+					ssrcs[n] = sf.localSSRC
+					n++
+				}
+
+				var mk *mikey.Message
+				mk, err = mikeyGenerate(ssrcs, sm.srtpOutKey)
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusInternalServerError,
+					}, err
+				}
+
+				var enc base.HeaderValue
+				enc, err = headers.KeyMgmt{
+					URI:          req.URL.String(),
+					MikeyMessage: mk,
+				}.Marshal()
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusInternalServerError,
+					}, err
+				}
+
+				res.Header["KeyMgmt"] = enc
+			}
 		}
 
 		return res, err
@@ -1490,70 +1731,20 @@ func (ss *ServerSession) OnPacketRTCP(medi *description.Media, cb OnPacketRTCPFu
 	sm.onPacketRTCP = cb
 }
 
-func (ss *ServerSession) writePacketRTP(medi *description.Media, payloadType uint8, byts []byte) error {
-	sm := ss.setuppedMedias[medi]
-	sf := sm.formats[payloadType]
-
-	ss.writerMutex.RLock()
-	defer ss.writerMutex.RUnlock()
-
-	if ss.writer == nil {
-		return nil
-	}
-
-	ok := ss.writer.push(func() error {
-		return sf.writePacketRTPInQueue(byts)
-	})
-	if !ok {
-		return liberrors.ErrServerWriteQueueFull{}
-	}
-
-	return nil
-}
-
 // WritePacketRTP writes a RTP packet to the session.
 func (ss *ServerSession) WritePacketRTP(medi *description.Media, pkt *rtp.Packet) error {
-	byts := make([]byte, ss.s.MaxPacketSize)
-	n, err := pkt.MarshalTo(byts)
-	if err != nil {
-		return err
-	}
-	byts = byts[:n]
-
-	return ss.writePacketRTP(medi, pkt.PayloadType, byts)
-}
-
-func (ss *ServerSession) writePacketRTCP(medi *description.Media, byts []byte) error {
 	sm := ss.setuppedMedias[medi]
-
-	ss.writerMutex.RLock()
-	defer ss.writerMutex.RUnlock()
-
-	if ss.writer == nil {
-		return nil
-	}
-
-	ok := ss.writer.push(func() error {
-		return sm.writePacketRTCPInQueue(byts)
-	})
-	if !ok {
-		return liberrors.ErrServerWriteQueueFull{}
-	}
-
-	return nil
+	sf := sm.formats[pkt.PayloadType]
+	return sf.writePacketRTP(pkt)
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.
 func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error {
-	byts, err := pkt.Marshal()
-	if err != nil {
-		return err
-	}
-
-	return ss.writePacketRTCP(medi, byts)
+	sm := ss.setuppedMedias[medi]
+	return sm.writePacketRTCP(pkt)
 }
 
-// PacketPTS returns the PTS of an incoming RTP packet.
+// PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
 //
 // Deprecated: replaced by PacketPTS2.
@@ -1569,7 +1760,7 @@ func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (ti
 	return multiplyAndDivide(time.Duration(v), time.Second, time.Duration(sf.format.ClockRate())), true
 }
 
-// PacketPTS2 returns the PTS of an incoming RTP packet.
+// PacketPTS2 returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
 func (ss *ServerSession) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
 	sm := ss.setuppedMedias[medi]
@@ -1577,8 +1768,8 @@ func (ss *ServerSession) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (i
 	return ss.timeDecoder.Decode(sf.format, pkt)
 }
 
-// PacketNTP returns the NTP timestamp of an incoming RTP packet.
-// The NTP timestamp is computed from RTCP sender reports.
+// PacketNTP returns the NTP (absolute timestamp) of an incoming RTP packet.
+// The NTP is computed from RTCP sender reports.
 func (ss *ServerSession) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[pkt.PayloadType]
