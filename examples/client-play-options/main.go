@@ -18,8 +18,16 @@ import (
 // 2. connect to a RTSP server and read all medias on a path.
 
 func main() {
+	// parse URL
+	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/mystream")
+	if err != nil {
+		panic(err)
+	}
+
 	// Client allows to set additional client options
-	c := &gortsplib.Client{
+	c := gortsplib.Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
 		// transport protocol (UDP, Multicast or TCP). If nil, it is chosen automatically
 		Transport: nil,
 		// timeout of read operations
@@ -28,14 +36,8 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
-	// parse URL
-	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/mystream")
-	if err != nil {
-		panic(err)
-	}
-
 	// connect to the server
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	if err != nil {
 		panic(err)
 	}

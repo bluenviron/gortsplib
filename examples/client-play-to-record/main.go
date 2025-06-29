@@ -17,16 +17,19 @@ import (
 // 3. re-publish all medias on another path.
 
 func main() {
-	reader := gortsplib.Client{}
-
 	// parse source URL
 	sourceURL, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
 
+	reader := gortsplib.Client{
+		Scheme: sourceURL.Scheme,
+		Host:   sourceURL.Host,
+	}
+
 	// connect to the server
-	err = reader.Start(sourceURL.Scheme, sourceURL.Host)
+	err = reader.Start2()
 	if err != nil {
 		panic(err)
 	}
