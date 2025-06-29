@@ -1919,6 +1919,8 @@ func (c *Client) Pause() (*base.Response, error) {
 }
 
 // Seek asks the server to re-start the stream from a specific timestamp.
+//
+// Deprecated: will be removed in next version. Equivalent to using Pause() followed by Play().
 func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
 	_, err := c.Pause()
 	if err != nil {
