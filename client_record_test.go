@@ -132,9 +132,8 @@ func TestClientRecord(t *testing.T) {
 		"tls",
 	} {
 		t.Run(transport, func(t *testing.T) {
-			l, err := net.Listen("tcp", "localhost:8554")
-			require.NoError(t, err)
-			defer l.Close()
+			var l net.Listener
+			var err error
 
 			var scheme string
 			if transport == "tls" {
@@ -144,9 +143,15 @@ func TestClientRecord(t *testing.T) {
 				cert, err = tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 
-				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
+				l, err = tls.Listen("tcp", "localhost:8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+				require.NoError(t, err)
+				defer l.Close()
 			} else {
 				scheme = "rtsp"
+
+				l, err = net.Listen("tcp", "localhost:8554")
+				require.NoError(t, err)
+				defer l.Close()
 			}
 
 			serverDone := make(chan struct{})
@@ -380,9 +385,8 @@ func TestClientRecordSocketError(t *testing.T) {
 		"tls",
 	} {
 		t.Run(transport, func(t *testing.T) {
-			l, err := net.Listen("tcp", "localhost:8554")
-			require.NoError(t, err)
-			defer l.Close()
+			var l net.Listener
+			var err error
 
 			var scheme string
 			if transport == "tls" {
@@ -392,9 +396,15 @@ func TestClientRecordSocketError(t *testing.T) {
 				cert, err = tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 
-				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
+				l, err = tls.Listen("tcp", "localhost:8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+				require.NoError(t, err)
+				defer l.Close()
 			} else {
 				scheme = "rtsp"
+
+				l, err = net.Listen("tcp", "localhost:8554")
+				require.NoError(t, err)
+				defer l.Close()
 			}
 
 			serverDone := make(chan struct{})

@@ -252,9 +252,8 @@ func TestClientPlay(t *testing.T) {
 			packetRecv := make(chan struct{})
 
 			listenIP := multicastCapableIP(t)
-			l, err := net.Listen("tcp", listenIP+":8554")
-			require.NoError(t, err)
-			defer l.Close()
+			var l net.Listener
+			var err error
 
 			var scheme string
 			if transport == "tls" {
@@ -264,9 +263,15 @@ func TestClientPlay(t *testing.T) {
 				cert, err = tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 
-				l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
+				l, err = tls.Listen("tcp", listenIP+":8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+				require.NoError(t, err)
+				defer l.Close()
 			} else {
 				scheme = "rtsp"
+
+				l, err = net.Listen("tcp", listenIP+":8554")
+				require.NoError(t, err)
+				defer l.Close()
 			}
 
 			serverDone := make(chan struct{})
@@ -1650,12 +1655,11 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 }
 
 func TestClientPlayRedirect(t *testing.T) {
-	for _, withCredentials := range []bool{false, true} {
-		runName := "WithoutCredentials"
-		if withCredentials {
-			runName = "WithCredentials"
-		}
-		t.Run(runName, func(t *testing.T) {
+	for _, ca := range []string{
+		"without credentials",
+		"with credentials",
+	} {
+		t.Run(ca, func(t *testing.T) {
 			l, err := net.Listen("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer l.Close()
@@ -1728,7 +1732,7 @@ func TestClientPlayRedirect(t *testing.T) {
 					require.NoError(t, err2)
 					require.Equal(t, base.Describe, req.Method)
 
-					if withCredentials {
+					if ca == "with credentials" {
 						if _, exists := req.Header["Authorization"]; !exists {
 							authRealm := "example@localhost"
 							authNonce := "exampleNonce"
@@ -1823,7 +1827,7 @@ func TestClientPlayRedirect(t *testing.T) {
 			c := Client{}
 
 			ru := "rtsp://localhost:8554/path1"
-			if withCredentials {
+			if ca == "with credentials" {
 				ru = "rtsp://testusr:testpwd@localhost:8554/path1"
 			}
 			err = readAll(&c, ru,
@@ -1836,6 +1840,61 @@ func TestClientPlayRedirect(t *testing.T) {
 			<-packetRecv
 		})
 	}
+}
+
+func TestClientPlayRedirectPreventDecrypt(t *testing.T) {
+	cert, err := tls.X509KeyPair(serverCert, serverKey)
+	require.NoError(t, err)
+
+	l, err := tls.Listen("tcp", "localhost:8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+
+		var nconn net.Conn
+		nconn, err = l.Accept()
+		require.NoError(t, err)
+		defer nconn.Close()
+		conn := conn.NewConn(nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Describe, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusMovedPermanently,
+			Header: base.Header{
+				"Location": base.HeaderValue{"rtsp://localhost:8554/test"},
+			},
+		})
+		require.NoError(t, err2)
+	}()
+
+	c := Client{TLSConfig: &tls.Config{InsecureSkipVerify: true}}
+	err = readAll(&c, "rtsps://localhost:8554/test", nil)
+	require.EqualError(t, err, "connection cannot be downgraded from RTSPS to RTSP")
+	defer c.Close()
 }
 
 func TestClientPlayPausePlay(t *testing.T) {
