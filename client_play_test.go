@@ -432,7 +432,7 @@ func TestClientPlay(t *testing.T) {
 				require.NoError(t, err2)
 
 				for i := 0; i < 2; i++ {
-					// server -> client RTP packet
+					// server -> client
 
 					switch transport {
 					case "udp":
@@ -457,7 +457,7 @@ func TestClientPlay(t *testing.T) {
 						require.NoError(t, err2)
 					}
 
-					// client -> server RTCP packet
+					// client -> server
 
 					switch transport {
 					case "udp", "multicast":
@@ -3363,7 +3363,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 
 				var pl []byte
 
-				// client -> server RTP packet
+				// client -> server
 
 				if transport == "udp" {
 					buf := make([]byte, 2048)
@@ -3392,7 +3392,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 					Payload: []byte{1, 2, 3, 4},
 				}, pkt)
 
-				// server -> client RTP packet
+				// server -> client
 
 				if transport == "udp" {
 					_, err = l1s[0].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
@@ -3452,7 +3452,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 					}}, packets)
 				}
 
-				// client -> server Keepalive
+				// client -> server keepalive
 
 				recv := make(chan struct{})
 				go func() {

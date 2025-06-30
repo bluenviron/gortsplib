@@ -727,7 +727,7 @@ func TestServerRecord(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				// server -> client (direct)
+				// server -> client
 
 				if transport == "udp" {
 					buf := make([]byte, 2048)
@@ -743,7 +743,7 @@ func TestServerRecord(t *testing.T) {
 					require.Equal(t, testRTCPPacketMarshaled, f.Payload)
 				}
 
-				// client -> server RTP+RTCP packets
+				// client -> server
 
 				if transport == "udp" {
 					_, err = l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
@@ -773,7 +773,7 @@ func TestServerRecord(t *testing.T) {
 			}
 
 			for i := 0; i < 2; i++ {
-				// server -> client RTCP packet
+				// server -> client
 
 				if transport == "udp" {
 					buf := make([]byte, 2048)
