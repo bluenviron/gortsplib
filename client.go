@@ -1331,6 +1331,10 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
+	if c.Transport != nil && *c.Transport == TransportUDPMulticast {
+		return nil, fmt.Errorf("recording with UDP multicast is not supported")
+	}
+
 	err = c.connOpen()
 	if err != nil {
 		return nil, err
@@ -1596,16 +1600,16 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderNoDestination{}
 		}
 
-		var readIP net.IP
+		var remoteIP net.IP
 		if thRes.Source != nil {
-			readIP = *thRes.Source
+			remoteIP = *thRes.Source
 		} else {
-			readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+			remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 
 		err = cm.createUDPListeners(
 			true,
-			readIP,
+			remoteIP,
 			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[0]), 10)),
 			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[1]), 10)),
 		)
@@ -1613,17 +1617,17 @@ func (c *Client) doSetup(
 			return nil, err
 		}
 
-		cm.udpRTPListener.readIP = readIP
+		cm.udpRTPListener.readIP = remoteIP
 		cm.udpRTPListener.readPort = thRes.Ports[0]
 		cm.udpRTPListener.writeAddr = &net.UDPAddr{
-			IP:   *thRes.Destination,
+			IP:   remoteIP,
 			Port: thRes.Ports[0],
 		}
 
-		cm.udpRTCPListener.readIP = readIP
+		cm.udpRTCPListener.readIP = remoteIP
 		cm.udpRTCPListener.readPort = thRes.Ports[1]
 		cm.udpRTCPListener.writeAddr = &net.UDPAddr{
-			IP:   *thRes.Destination,
+			IP:   remoteIP,
 			Port: thRes.Ports[1],
 		}
 
