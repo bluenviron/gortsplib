@@ -1556,11 +1556,11 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientServerPortsNotProvided{}
 		}
 
-		var readIP net.IP
+		var remoteIP net.IP
 		if thRes.Source != nil {
-			readIP = *thRes.Source
+			remoteIP = *thRes.Source
 		} else {
-			readIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+			remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 
 		if serverPortsValid {
@@ -1568,24 +1568,24 @@ func (c *Client) doSetup(
 				cm.udpRTPListener.readPort = thRes.ServerPorts[0]
 			}
 			cm.udpRTPListener.writeAddr = &net.UDPAddr{
-				IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
+				IP:   remoteIP,
 				Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
 				Port: thRes.ServerPorts[0],
 			}
 		}
-		cm.udpRTPListener.readIP = readIP
+		cm.udpRTPListener.readIP = remoteIP
 
 		if serverPortsValid {
 			if !c.AnyPortEnable {
 				cm.udpRTCPListener.readPort = thRes.ServerPorts[1]
 			}
 			cm.udpRTCPListener.writeAddr = &net.UDPAddr{
-				IP:   c.nconn.RemoteAddr().(*net.TCPAddr).IP,
+				IP:   remoteIP,
 				Zone: c.nconn.RemoteAddr().(*net.TCPAddr).Zone,
 				Port: thRes.ServerPorts[1],
 			}
 		}
-		cm.udpRTCPListener.readIP = readIP
+		cm.udpRTCPListener.readIP = remoteIP
 
 	case TransportUDPMulticast:
 		if thRes.Delivery == nil || *thRes.Delivery != headers.TransportDeliveryMulticast {
