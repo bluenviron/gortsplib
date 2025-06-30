@@ -255,7 +255,7 @@ func TestClientRecord(t *testing.T) {
 
 				var pl []byte
 
-				// client -> server RTP packet
+				// client -> server
 
 				if transport == "udp" {
 					buf := make([]byte, 2048)
@@ -276,7 +276,7 @@ func TestClientRecord(t *testing.T) {
 				require.NoError(t, err2)
 				require.Equal(t, testRTPPacket, pkt)
 
-				// client -> server keepalive (UDP only)
+				// client -> server keepalive
 
 				if transport == "udp" {
 					recv := make(chan struct{})
@@ -294,7 +294,7 @@ func TestClientRecord(t *testing.T) {
 					}
 				}
 
-				// server -> client RTCP packet
+				// server -> client
 
 				if transport == "udp" {
 					_, err2 = l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{

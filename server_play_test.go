@@ -837,17 +837,8 @@ func TestServerPlay(t *testing.T) {
 				var f *base.InterleavedFrame
 				f, err = conn.ReadInterleavedFrame()
 				require.NoError(t, err)
-
-				switch f.Channel {
-				case 5:
-					require.Equal(t, testRTPPacketMarshaled, f.Payload)
-
-				case 6:
-					require.Equal(t, testRTCPPacketMarshaled, f.Payload)
-
-				default:
-					t.Errorf("should not happen")
-				}
+				require.Equal(t, 6, f.Channel)
+				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
 			}
 
 			// server -> client (through stream)
@@ -864,25 +855,19 @@ func TestServerPlay(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
 			} else {
-				for i := 0; i < 2; i++ {
-					var f *base.InterleavedFrame
-					f, err = conn.ReadInterleavedFrame()
-					require.NoError(t, err)
+				var f *base.InterleavedFrame
+				f, err = conn.ReadInterleavedFrame()
+				require.NoError(t, err)
+				require.Equal(t, 6, f.Channel)
+				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
 
-					switch f.Channel {
-					case 5:
-						require.Equal(t, testRTPPacketMarshaled, f.Payload)
-
-					case 6:
-						require.Equal(t, testRTCPPacketMarshaled, f.Payload)
-
-					default:
-						t.Errorf("should not happen")
-					}
-				}
+				f, err = conn.ReadInterleavedFrame()
+				require.NoError(t, err)
+				require.Equal(t, 5, f.Channel)
+				require.Equal(t, testRTPPacketMarshaled, f.Payload)
 			}
 
-			// client -> server RTCP packet
+			// client -> server
 
 			switch transport {
 			case "udp":
@@ -2557,7 +2542,7 @@ func TestServerPlayBackChannel(t *testing.T) {
 
 			doPlay(t, conn, "rtsp://127.0.0.1:8554/teststream", session)
 
-			// client -> server RTP packet
+			// client -> server
 
 			pkt := &rtp.Packet{
 				Header: rtp.Header{
