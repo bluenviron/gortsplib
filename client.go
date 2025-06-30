@@ -1256,6 +1256,10 @@ func (c *Client) doDescribe(u *base.URL) (*description.Session, *base.Response, 
 				return nil, nil, err
 			}
 
+			if c.connURL.Scheme == "rtsps" && ru.Scheme != "rtsps" {
+				return nil, nil, fmt.Errorf("connection cannot be downgraded from RTSPS to RTSP")
+			}
+
 			if u.User != nil {
 				ru.User = u.User
 			}
