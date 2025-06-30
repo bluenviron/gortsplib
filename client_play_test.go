@@ -380,7 +380,7 @@ func TestClientPlay(t *testing.T) {
 						th.Destination = &v2
 						th.Ports = &[2]int{25000 + i*2, 25001 + i*2}
 
-						l1s[i], err2 = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
+						l1s[i], err2 = net.ListenPacket("udp", net.JoinHostPort("224.0.0.0", strconv.FormatInt(int64(th.Ports[0]), 10)))
 						require.NoError(t, err2)
 						defer l1s[i].Close()
 
@@ -395,7 +395,7 @@ func TestClientPlay(t *testing.T) {
 							require.NoError(t, err2)
 						}
 
-						l2s[i], err2 = net.ListenPacket("udp", "224.0.0.0:25001")
+						l2s[i], err2 = net.ListenPacket("udp", net.JoinHostPort("224.0.0.0", strconv.FormatInt(int64(th.Ports[1]), 10)))
 						require.NoError(t, err2)
 						defer l2s[i].Close()
 
@@ -436,9 +436,9 @@ func TestClientPlay(t *testing.T) {
 				})
 				require.NoError(t, err2)
 
-				for i := 0; i < 2; i++ {
-					// server -> client
+				// server -> client
 
+				for i := 0; i < 2; i++ {
 					switch transport {
 					case "udp":
 						_, err2 = l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
@@ -450,7 +450,7 @@ func TestClientPlay(t *testing.T) {
 					case "multicast":
 						_, err2 = l1s[i].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 							IP:   net.ParseIP("224.1.0.1"),
-							Port: 25000,
+							Port: 25000 + i*2,
 						})
 						require.NoError(t, err2)
 
@@ -461,18 +461,23 @@ func TestClientPlay(t *testing.T) {
 						}, make([]byte, 1024))
 						require.NoError(t, err2)
 					}
+				}
 
-					// client -> server
+				// skip firewall opening
 
+				if transport == "udp" {
+					for i := 0; i < 2; i++ {
+						buf := make([]byte, 2048)
+						_, _, err2 = l2s[i].ReadFrom(buf)
+						require.NoError(t, err2)
+					}
+				}
+
+				// client -> server
+
+				for i := 0; i < 2; i++ {
 					switch transport {
 					case "udp", "multicast":
-						// skip firewall opening
-						if transport == "udp" {
-							buf := make([]byte, 2048)
-							_, _, err2 = l2s[i].ReadFrom(buf)
-							require.NoError(t, err2)
-						}
-
 						buf := make([]byte, 2048)
 						var n int
 						n, _, err2 = l2s[i].ReadFrom(buf)
