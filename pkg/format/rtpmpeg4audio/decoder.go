@@ -52,8 +52,6 @@ func (d *Decoder) resetFragments() {
 }
 
 // Decode decodes AUs from a RTP packet.
-// It returns the AUs and the PTS of the first AU.
-// The PTS of subsequent AUs can be calculated by adding time.Second*mpeg4audio.SamplesPerAccessUnit/clockRate.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	if !d.LATM {
 		return d.decodeGeneric(pkt)

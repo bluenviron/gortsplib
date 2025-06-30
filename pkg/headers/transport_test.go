@@ -168,6 +168,28 @@ var casesTransport = []struct {
 			ServerPorts: &[2]int{56002, 56003},
 		},
 	},
+	{
+		"secure udp unicast play request",
+		base.HeaderValue{`RTP/SAVP;unicast;client_port=3456-3457;mode="PLAY"`},
+		base.HeaderValue{`RTP/SAVP;unicast;client_port=3456-3457;mode=play`},
+		Transport{
+			Protocol:    TransportProtocolUDP,
+			Secure:      true,
+			Delivery:    deliveryPtr(TransportDeliveryUnicast),
+			ClientPorts: &[2]int{3456, 3457},
+			Mode:        transportModePtr(TransportModePlay),
+		},
+	},
+	{
+		"secure tcp play request / response",
+		base.HeaderValue{`RTP/SAVP/TCP;interleaved=0-1`},
+		base.HeaderValue{`RTP/SAVP/TCP;interleaved=0-1`},
+		Transport{
+			Protocol:       TransportProtocolTCP,
+			Secure:         true,
+			InterleavedIDs: &[2]int{0, 1},
+		},
+	},
 }
 
 func TestTransportUnmarshal(t *testing.T) {
@@ -188,81 +210,6 @@ func TestTransportMarshal(t *testing.T) {
 			require.Equal(t, ca.vout, req)
 		})
 	}
-}
-
-var casesTransports = []struct {
-	name string
-	vin  base.HeaderValue
-	vout base.HeaderValue
-	h    Transports
-}{
-	{
-		"a",
-		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode="PLAY", RTP/AVP/TCP;unicast;interleaved=0-1`},
-		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play,RTP/AVP/TCP;unicast;interleaved=0-1`},
-		Transports{
-			{
-				Protocol:    TransportProtocolUDP,
-				Delivery:    deliveryPtr(TransportDeliveryUnicast),
-				ClientPorts: &[2]int{3456, 3457},
-				Mode:        transportModePtr(TransportModePlay),
-			},
-			Transport{
-				Protocol:       TransportProtocolTCP,
-				Delivery:       deliveryPtr(TransportDeliveryUnicast),
-				InterleavedIDs: &[2]int{0, 1},
-			},
-		},
-	},
-}
-
-func TestTransportsUnmarshal(t *testing.T) {
-	for _, ca := range casesTransports {
-		t.Run(ca.name, func(t *testing.T) {
-			var h Transports
-			err := h.Unmarshal(ca.vin)
-			require.NoError(t, err)
-			require.Equal(t, ca.h, h)
-		})
-	}
-}
-
-func TestTransportsMarshal(t *testing.T) {
-	for _, ca := range casesTransports {
-		t.Run(ca.name, func(t *testing.T) {
-			req := ca.h.Marshal()
-			require.Equal(t, ca.vout, req)
-		})
-	}
-}
-
-func FuzzTransportsUnmarshal(f *testing.F) {
-	for _, ca := range casesTransports {
-		f.Add(ca.vin[0])
-	}
-
-	for _, ca := range casesTransport {
-		f.Add(ca.vin[0])
-	}
-
-	f.Add("source=aa-14187")
-	f.Add("destination=aa")
-	f.Add("interleaved=")
-	f.Add("ttl=")
-	f.Add("port=")
-	f.Add("client_port=")
-	f.Add("server_port=")
-	f.Add("mode=")
-
-	f.Fuzz(func(_ *testing.T, b string) {
-		var h Transports
-		err := h.Unmarshal(base.HeaderValue{b})
-		if err != nil {
-			return
-		}
-
-		h.Marshal()
-	})
 }
 
 func TestTransportAdditionalErrors(t *testing.T) {

@@ -15,7 +15,7 @@ import (
 )
 
 // This example shows how to
-// 1. create a RTSP server which uses secure protocols only (RTSPS, TLS).
+// 1. create a RTSP server which uses secure protocols only (RTSPS, TLS, SRTP).
 // 2. allow a single client to publish a stream.
 // 3. allow several clients to read the stream.
 
@@ -175,9 +175,14 @@ func main() {
 	// when TLSConfig is set, only secure protocols are used.
 	h := &serverHandler{}
 	h.server = &gortsplib.Server{
-		Handler:     h,
-		TLSConfig:   &tls.Config{Certificates: []tls.Certificate{cert}},
-		RTSPAddress: ":8322",
+		Handler:           h,
+		TLSConfig:         &tls.Config{Certificates: []tls.Certificate{cert}},
+		RTSPAddress:       ":8322",
+		UDPRTPAddress:     ":8004",
+		UDPRTCPAddress:    ":8005",
+		MulticastIPRange:  "224.1.0.0/16",
+		MulticastRTPPort:  8006,
+		MulticastRTCPPort: 8007,
 	}
 
 	// start server and wait until a fatal error

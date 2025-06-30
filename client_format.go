@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -15,25 +16,26 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 )
 
-func isClientLocalSSRCTaken(ssrc uint32, c *Client, exclude *clientFormat) bool {
-	for _, cm := range c.setuppedMedias {
+func clientPickLocalSSRC(cf *clientFormat) (uint32, error) {
+	var takenSSRCs []uint32 //nolint:prealloc
+
+	for _, cm := range cf.cm.c.setuppedMedias {
 		for _, cf := range cm.formats {
-			if cf != exclude && cf.localSSRC == ssrc {
-				return true
-			}
+			takenSSRCs = append(takenSSRCs, cf.localSSRC)
 		}
 	}
-	return false
-}
 
-func clientPickLocalSSRC(cf *clientFormat) (uint32, error) {
+	for _, cf := range cf.cm.formats {
+		takenSSRCs = append(takenSSRCs, cf.localSSRC)
+	}
+
 	for {
 		ssrc, err := randUint32()
 		if err != nil {
 			return 0, err
 		}
 
-		if ssrc != 0 && !isClientLocalSSRCTaken(ssrc, cf.cm.c, cf) {
+		if ssrc != 0 && !slices.Contains(takenSSRCs, ssrc) {
 			return ssrc, nil
 		}
 	}
@@ -56,10 +58,14 @@ type clientFormat struct {
 }
 
 func (cf *clientFormat) initialize() error {
-	var err error
-	cf.localSSRC, err = clientPickLocalSSRC(cf)
-	if err != nil {
-		return err
+	if cf.cm.c.state == clientStatePreRecord {
+		cf.localSSRC = cf.cm.c.announceData[cf.cm.media].formats[cf.format.PayloadType()].localSSRC
+	} else {
+		var err error
+		cf.localSSRC, err = clientPickLocalSSRC(cf)
+		if err != nil {
+			return err
+		}
 	}
 
 	cf.rtpPacketsReceived = new(uint64)
@@ -181,17 +187,31 @@ func (cf *clientFormat) handlePacketsLost(lost uint64) {
 func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 	pkt.SSRC = cf.localSSRC
 
-	byts := make([]byte, cf.cm.c.MaxPacketSize)
-	n, err := pkt.MarshalTo(byts)
+	cf.rtcpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
+
+	maxPlainPacketSize := cf.cm.c.MaxPacketSize
+	if cf.cm.srtpOutCtx != nil {
+		maxPlainPacketSize -= srtpOverhead
+	}
+
+	buf := make([]byte, maxPlainPacketSize)
+	n, err := pkt.MarshalTo(buf)
 	if err != nil {
 		return err
 	}
-	byts = byts[:n]
+	buf = buf[:n]
 
-	cf.rtcpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
+	if cf.cm.srtpOutCtx != nil {
+		encr := make([]byte, cf.cm.c.MaxPacketSize)
+		encr, err = cf.cm.srtpOutCtx.encryptRTP(encr, buf, &pkt.Header)
+		if err != nil {
+			return err
+		}
+		buf = encr
+	}
 
 	ok := cf.cm.c.writer.push(func() error {
-		return cf.writePacketRTPInQueue(byts)
+		return cf.writePacketRTPInQueue(buf)
 	})
 	if !ok {
 		return liberrors.ErrClientWriteQueueFull{}

@@ -1,12 +1,14 @@
 package description
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 
 	psdp "github.com/pion/sdp/v3"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
@@ -51,6 +53,9 @@ type Session struct {
 	// Whether to use multicast.
 	Multicast bool
 
+	// key-mgmt attribute.
+	KeyMgmtMikey *mikey.Message
+
 	// FEC groups (RFC5109).
 	FECGroups []SessionFECGroup
 
@@ -75,6 +80,23 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 	d.Title = string(ssd.SessionName)
 	if d.Title == " " {
 		d.Title = ""
+	}
+
+	if enc := getAttribute(ssd.Attributes, "key-mgmt"); enc != "" {
+		if !strings.HasPrefix(enc, "mikey ") {
+			return fmt.Errorf("unsupported key-mgmt: %v", enc)
+		}
+
+		enc2, err := base64.StdEncoding.DecodeString(enc[len("mikey "):])
+		if err != nil {
+			return err
+		}
+
+		d.KeyMgmtMikey = &mikey.Message{}
+		err = d.KeyMgmtMikey.Unmarshal(enc2)
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(ssd.MediaDescriptions) == 0 {
@@ -163,11 +185,29 @@ func (d Session) Marshal(_ bool) ([]byte, error) {
 		})
 	}
 
+	if d.KeyMgmtMikey != nil {
+		keyEnc, err := d.KeyMgmtMikey.Marshal()
+		if err != nil {
+			return nil, err
+		}
+
+		sout.Attributes = append(sout.Attributes, psdp.Attribute{
+			Key:   "key-mgmt",
+			Value: "mikey " + base64.StdEncoding.EncodeToString(keyEnc),
+		})
+	}
+
 	sout.MediaDescriptions = make([]*psdp.MediaDescription, len(d.Medias))
 
 	for i, media := range d.Medias {
-		sout.MediaDescriptions[i] = media.Marshal()
+		med, err := media.Marshal2()
+		if err != nil {
+			return nil, err
+		}
+		sout.MediaDescriptions[i] = med
 	}
 
-	return sout.Marshal()
+	out, _ := sout.Marshal()
+
+	return out, nil
 }

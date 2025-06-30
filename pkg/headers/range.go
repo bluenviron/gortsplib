@@ -268,7 +268,7 @@ func rangeValueUnmarshal(s RangeValue, v string) error {
 
 // Range is a Range header.
 type Range struct {
-	// range expressed in a certain unit.
+	// range expressed in some measurement units.
 	Value RangeValue
 
 	// time at which the operation is to be made effective.
@@ -285,9 +285,7 @@ func (h *Range) Unmarshal(v base.HeaderValue) error {
 		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	v0 := v[0]
-
-	kvs, err := keyValParse(v0, ';')
+	kvs, err := keyValParse(v[0], ';')
 	if err != nil {
 		return err
 	}

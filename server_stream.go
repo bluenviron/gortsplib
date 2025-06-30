@@ -273,7 +273,7 @@ func (st *ServerStream) WritePacketRTP(medi *description.Media, pkt *rtp.Packet)
 }
 
 // WritePacketRTPWithNTP writes a RTP packet to all the readers of the stream.
-// ntp is the absolute time of the packet, and is sent with periodic RTCP sender reports.
+// ntp is the absolute timestamp of the packet, and is sent with periodic RTCP sender reports.
 func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet, ntp time.Time) error {
 	st.mutex.RLock()
 	defer st.mutex.RUnlock()

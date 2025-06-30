@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"log"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -15,25 +16,26 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 )
 
-func isServerSessionLocalSSRCTaken(ssrc uint32, ss *ServerSession, exclude *serverSessionFormat) bool {
-	for _, sm := range ss.setuppedMedias {
+func serverSessionPickLocalSSRC(sf *serverSessionFormat) (uint32, error) {
+	var takenSSRCs []uint32 //nolint:prealloc
+
+	for _, sm := range sf.sm.ss.setuppedMedias {
 		for _, sf := range sm.formats {
-			if sf != exclude && sf.localSSRC == ssrc {
-				return true
-			}
+			takenSSRCs = append(takenSSRCs, sf.localSSRC)
 		}
 	}
-	return false
-}
 
-func serverSessionPickLocalSSRC(sf *serverSessionFormat) (uint32, error) {
+	for _, sf := range sf.sm.formats {
+		takenSSRCs = append(takenSSRCs, sf.localSSRC)
+	}
+
 	for {
 		ssrc, err := randUint32()
 		if err != nil {
 			return 0, err
 		}
 
-		if ssrc != 0 && !isServerSessionLocalSSRCTaken(ssrc, sf.sm.ss, sf) {
+		if ssrc != 0 && !slices.Contains(takenSSRCs, ssrc) {
 			return ssrc, nil
 		}
 	}
@@ -188,14 +190,31 @@ func (sf *serverSessionFormat) onPacketRTPLost(lost uint64) {
 func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
 	pkt.SSRC = sf.localSSRC
 
-	byts := make([]byte, sf.sm.ss.s.MaxPacketSize)
-	n, err := pkt.MarshalTo(byts)
+	maxPlainPacketSize := sf.sm.ss.s.MaxPacketSize
+	if sf.sm.ss.setuppedSecure {
+		maxPlainPacketSize -= srtpOverhead
+	}
+
+	plain := make([]byte, maxPlainPacketSize)
+	n, err := pkt.MarshalTo(plain)
 	if err != nil {
 		return err
 	}
-	byts = byts[:n]
+	plain = plain[:n]
 
-	return sf.writePacketRTPEncoded(byts)
+	var encr []byte
+	if sf.sm.ss.setuppedSecure {
+		encr = make([]byte, sf.sm.ss.s.MaxPacketSize)
+		encr, err = sf.sm.srtpOutCtx.encryptRTP(encr, plain, &pkt.Header)
+		if err != nil {
+			return err
+		}
+	}
+
+	if sf.sm.ss.setuppedSecure {
+		return sf.writePacketRTPEncoded(encr)
+	}
+	return sf.writePacketRTPEncoded(plain)
 }
 
 func (sf *serverSessionFormat) writePacketRTPEncoded(payload []byte) error {

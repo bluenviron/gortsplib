@@ -22,7 +22,6 @@ func (d *Decoder) Init() error {
 }
 
 // Decode decodes audio samples from a RTP packet.
-// It returns audio samples and PTS of the first sample.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	plen := len(pkt.Payload)
 	if (plen % d.sampleSize) != 0 {

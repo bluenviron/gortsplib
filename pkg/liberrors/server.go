@@ -128,12 +128,27 @@ func (e ErrServerMediasDifferentPaths) Error() string {
 	return "can't setup medias with different paths"
 }
 
+// ErrServerInvalidKeyMgmtHeader is an error that can be returned by a server.
+type ErrServerInvalidKeyMgmtHeader struct {
+	Wrapped error
+}
+
+// Error implements the error interface.
+func (e ErrServerInvalidKeyMgmtHeader) Error() string {
+	return fmt.Sprintf("invalid KeyMgmt header: %s", e.Wrapped.Error())
+}
+
 // ErrServerMediasDifferentProtocols is an error that can be returned by a server.
-type ErrServerMediasDifferentProtocols struct{}
+//
+// Deprecated: replaced by ErrServerMediasDifferentTransports.
+type ErrServerMediasDifferentProtocols = ErrServerMediasDifferentTransports
+
+// ErrServerMediasDifferentTransports is an error that can be returned by a server.
+type ErrServerMediasDifferentTransports struct{}
 
 // Error implements the error interface.
 func (e ErrServerMediasDifferentProtocols) Error() string {
-	return "can't setup medias with different protocols"
+	return "can't setup medias with different transports"
 }
 
 // ErrServerNoMediasSetup is an error that can be returned by a server.
