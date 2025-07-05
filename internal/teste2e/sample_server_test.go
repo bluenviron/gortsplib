@@ -223,17 +223,14 @@ func (sh *sampleServer) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*base
 
 func (sh *sampleServer) initialize() error {
 	sh.s = &gortsplib.Server{
-		Handler:     sh,
-		TLSConfig:   sh.tlsConfig,
-		RTSPAddress: "0.0.0.0:8554",
-	}
-
-	if sh.tlsConfig == nil {
-		sh.s.UDPRTPAddress = "0.0.0.0:8000"
-		sh.s.UDPRTCPAddress = "0.0.0.0:8001"
-		sh.s.MulticastIPRange = "224.1.0.0/16"
-		sh.s.MulticastRTPPort = 8002
-		sh.s.MulticastRTCPPort = 8003
+		Handler:           sh,
+		TLSConfig:         sh.tlsConfig,
+		RTSPAddress:       "0.0.0.0:8554",
+		UDPRTPAddress:     "0.0.0.0:8000",
+		UDPRTCPAddress:    "0.0.0.0:8001",
+		MulticastIPRange:  "224.1.0.0/16",
+		MulticastRTPPort:  8002,
+		MulticastRTCPPort: 8003,
 	}
 
 	err := sh.s.Start()

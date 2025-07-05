@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
@@ -23,15 +24,6 @@ func sha256Hex(in string) string {
 	h := sha256.New()
 	h.Write([]byte(in))
 	return hex.EncodeToString(h.Sum(nil))
-}
-
-func contains(list []VerifyMethod, item VerifyMethod) bool {
-	for _, i := range list {
-		if i == item {
-			return true
-		}
-	}
-	return false
 }
 
 func urlMatches(expected string, received string, isSetup bool) bool {
@@ -84,9 +76,9 @@ func Verify(
 
 	switch {
 	case auth.Method == headers.AuthMethodDigest &&
-		(contains(methods, VerifyMethodDigestMD5) &&
+		(slices.Contains(methods, VerifyMethodDigestMD5) &&
 			(auth.Algorithm == nil || *auth.Algorithm == headers.AuthAlgorithmMD5) ||
-			contains(methods, VerifyMethodDigestSHA256) &&
+			slices.Contains(methods, VerifyMethodDigestSHA256) &&
 				auth.Algorithm != nil && *auth.Algorithm == headers.AuthAlgorithmSHA256):
 		if auth.Nonce != nonce {
 			return fmt.Errorf("wrong nonce")
@@ -118,7 +110,7 @@ func Verify(
 			return fmt.Errorf("authentication failed")
 		}
 
-	case auth.Method == headers.AuthMethodBasic && contains(methods, VerifyMethodBasic):
+	case auth.Method == headers.AuthMethodBasic && slices.Contains(methods, VerifyMethodBasic):
 		if auth.Username != user {
 			return fmt.Errorf("authentication failed")
 		}

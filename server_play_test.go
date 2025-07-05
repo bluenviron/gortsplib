@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/tls"
 	"net"
 	"strconv"
@@ -21,6 +22,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
+	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
@@ -333,7 +335,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 							require.EqualError(t, ctx.Error, "media has already been setup")
 
 						case "different protocols":
-							require.EqualError(t, ctx.Error, "can't setup medias with different protocols")
+							require.EqualError(t, ctx.Error, "can't setup medias with different transports")
 						}
 						close(nconnClosed)
 					},
@@ -574,13 +576,48 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 }
 
 func TestServerPlay(t *testing.T) {
-	for _, transport := range []string{
-		"udp",
-		"multicast",
-		"tcp",
-		"tls",
+	for _, ca := range []struct {
+		scheme    string
+		transport string
+		secure    string
+	}{
+		{
+			"rtsp",
+			"udp",
+			"unsecure",
+		},
+		{
+			"rtsp",
+			"multicast",
+			"unsecure",
+		},
+		{
+			"rtsp",
+			"tcp",
+			"unsecure",
+		},
+		{
+			"rtsps",
+			"tcp",
+			"unsecure",
+		},
+		{
+			"rtsps",
+			"udp",
+			"secure",
+		},
+		{
+			"rtsps",
+			"multicast",
+			"secure",
+		},
+		{
+			"rtsps",
+			"tcp",
+			"secure",
+		},
 	} {
-		t.Run(transport, func(t *testing.T) {
+		t.Run(ca.scheme+"_"+ca.transport+"_"+ca.secure, func(t *testing.T) {
 			var stream *ServerStream
 			nconnOpened := make(chan struct{})
 			nconnClosed := make(chan struct{})
@@ -598,10 +635,10 @@ func TestServerPlay(t *testing.T) {
 					},
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						s := ctx.Conn.Stats()
-						require.Greater(t, s.BytesSent, uint64(810))
-						require.Less(t, s.BytesSent, uint64(1150))
-						require.Greater(t, s.BytesReceived, uint64(440))
-						require.Less(t, s.BytesReceived, uint64(660))
+						require.Greater(t, s.BytesSent, uint64(800))
+						require.Less(t, s.BytesSent, uint64(1600))
+						require.Greater(t, s.BytesReceived, uint64(400))
+						require.Less(t, s.BytesReceived, uint64(950))
 
 						close(nconnClosed)
 					},
@@ -609,12 +646,12 @@ func TestServerPlay(t *testing.T) {
 						close(sessionOpened)
 					},
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
-						if transport != "multicast" {
+						if ca.transport != "multicast" {
 							s := ctx.Session.Stats()
 							require.Greater(t, s.BytesSent, uint64(50))
-							require.Less(t, s.BytesSent, uint64(60))
+							require.Less(t, s.BytesSent, uint64(130))
 							require.Greater(t, s.BytesReceived, uint64(15))
-							require.Less(t, s.BytesReceived, uint64(25))
+							require.Less(t, s.BytesReceived, uint64(35))
 						}
 
 						close(sessionClosed)
@@ -632,12 +669,12 @@ func TestServerPlay(t *testing.T) {
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						require.NotNil(t, ctx.Conn.Session())
 
-						switch transport {
+						switch ca.transport {
 						case "udp":
 							v := TransportUDP
 							require.Equal(t, &v, ctx.Session.SetuppedTransport())
 
-						case "tcp", "tls":
+						case "tcp":
 							v := TransportTCP
 							require.Equal(t, &v, ctx.Session.SetuppedTransport())
 
@@ -651,14 +688,14 @@ func TestServerPlay(t *testing.T) {
 
 						// send RTCP packets directly to the session.
 						// these are sent after the response, only if onPlay returns StatusOK.
-						if transport != "multicast" {
+						if ca.transport != "multicast" {
 							err := ctx.Session.WritePacketRTCP(stream.Description().Medias[0], &testRTCPPacket)
 							require.NoError(t, err)
 						}
 
 						ctx.Session.OnPacketRTCPAny(func(medi *description.Media, pkt rtcp.Packet) {
 							// ignore multicast loopback
-							if transport == "multicast" && atomic.AddUint64(&counter, 1) <= 1 {
+							if ca.secure == "unsecure" && ca.transport == "multicast" && atomic.AddUint64(&counter, 1) <= 1 {
 								return
 							}
 
@@ -691,7 +728,7 @@ func TestServerPlay(t *testing.T) {
 				RTSPAddress: listenIP + ":8554",
 			}
 
-			switch transport {
+			switch ca.transport {
 			case "udp":
 				s.UDPRTPAddress = "127.0.0.1:8000"
 				s.UDPRTCPAddress = "127.0.0.1:8001"
@@ -700,8 +737,9 @@ func TestServerPlay(t *testing.T) {
 				s.MulticastIPRange = "224.1.0.0/16"
 				s.MulticastRTPPort = 8000
 				s.MulticastRTCPPort = 8001
+			}
 
-			case "tls":
+			if ca.scheme == "rtsps" {
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
@@ -723,7 +761,7 @@ func TestServerPlay(t *testing.T) {
 			require.NoError(t, err)
 
 			nconn = func() net.Conn {
-				if transport == "tls" {
+				if ca.scheme == "rtsps" {
 					return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
 				}
 				return nconn
@@ -734,11 +772,16 @@ func TestServerPlay(t *testing.T) {
 
 			desc := doDescribe(t, conn, false)
 
+			if ca.secure == "secure" {
+				require.True(t, desc.Medias[0].Secure)
+				require.NotEmpty(t, desc.Medias[0].KeyMgmtMikey)
+			}
+
 			inTH := &headers.Transport{
 				Mode: transportModePtr(headers.TransportModePlay),
 			}
 
-			switch transport {
+			switch ca.transport {
 			case "udp":
 				v := headers.TransportDeliveryUnicast
 				inTH.Delivery = &v
@@ -750,19 +793,81 @@ func TestServerPlay(t *testing.T) {
 				inTH.Delivery = &v
 				inTH.Protocol = headers.TransportProtocolUDP
 
-			default:
+			case "tcp":
 				v := headers.TransportDeliveryUnicast
 				inTH.Delivery = &v
 				inTH.Protocol = headers.TransportProtocolTCP
 				inTH.InterleavedIDs = &[2]int{5, 6} // odd value
 			}
 
-			res, th := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
+			h := base.Header{
+				"CSeq": base.HeaderValue{"1"},
+			}
+
+			var srtpOutCtx *wrappedSRTPContext
+
+			if ca.secure == "secure" {
+				inTH.Secure = true
+
+				key := make([]byte, srtpKeyLength)
+				_, err = rand.Read(key)
+				require.NoError(t, err)
+
+				srtpOutCtx = &wrappedSRTPContext{
+					key:   key,
+					ssrcs: []uint32{2345423},
+				}
+				err = srtpOutCtx.initialize()
+				require.NoError(t, err)
+
+				var mikeyMsg *mikey.Message
+				mikeyMsg, err = mikeyGenerate(srtpOutCtx)
+				require.NoError(t, err)
+
+				var enc base.HeaderValue
+				enc, err = headers.KeyMgmt{
+					URL:          mediaURL(t, desc.BaseURL, desc.Medias[0]).String(),
+					MikeyMessage: mikeyMsg,
+				}.Marshal()
+				require.NoError(t, err)
+				h["KeyMgmt"] = enc
+			}
+
+			h["Transport"] = inTH.Marshal()
+
+			res, err := writeReqReadRes(conn, base.Request{
+				Method: base.Setup,
+				URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
+				Header: h,
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+
+			var th headers.Transport
+			err = th.Unmarshal(res.Header["Transport"])
+			require.NoError(t, err)
+
+			var srtpInCtx *wrappedSRTPContext
+
+			if ca.secure == "secure" {
+				require.True(t, th.Secure)
+
+				var keyMgmt headers.KeyMgmt
+				err = keyMgmt.Unmarshal(res.Header["KeyMgmt"])
+				require.NoError(t, err)
+
+				pl1, _ := mikeyGetPayload[*mikey.PayloadKEMAC](keyMgmt.MikeyMessage)
+				pl2, _ := mikeyGetPayload[*mikey.PayloadKEMAC](desc.Medias[0].KeyMgmtMikey)
+				require.Equal(t, pl1, pl2)
+
+				srtpInCtx, err = mikeyToContext(keyMgmt.MikeyMessage)
+				require.NoError(t, err)
+			}
 
 			var l1 net.PacketConn
 			var l2 net.PacketConn
 
-			switch transport { //nolint:dupl
+			switch ca.transport {
 			case "udp":
 				require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
 				require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
@@ -775,7 +880,7 @@ func TestServerPlay(t *testing.T) {
 				require.NoError(t, err)
 				defer l2.Close()
 
-			case "multicast":
+			case "multicast": //nolint:dupl
 				require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
 				require.Equal(t, headers.TransportDeliveryMulticast, *th.Delivery)
 
@@ -808,7 +913,7 @@ func TestServerPlay(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-			default:
+			case "tcp":
 				require.Equal(t, headers.TransportProtocolTCP, th.Protocol)
 				require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
 			}
@@ -821,86 +926,122 @@ func TestServerPlay(t *testing.T) {
 
 			// server -> client (direct)
 
-			switch transport {
-			case "udp":
-				buf := make([]byte, 2048)
-				var n int
-				n, _, err = l2.ReadFrom(buf)
-				require.NoError(t, err)
-				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
+			if ca.transport != "multicast" {
+				var buf []byte
 
-			case "tcp", "tls":
-				var f *base.InterleavedFrame
-				f, err = conn.ReadInterleavedFrame()
-				require.NoError(t, err)
-				require.Equal(t, 6, f.Channel)
-				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+				switch ca.transport {
+				case "udp":
+					buf = make([]byte, 2048)
+					var n int
+					n, _, err = l2.ReadFrom(buf)
+					require.NoError(t, err)
+					buf = buf[:n]
+
+				case "tcp":
+					var f *base.InterleavedFrame
+					f, err = conn.ReadInterleavedFrame()
+					require.NoError(t, err)
+					require.Equal(t, 6, f.Channel)
+					buf = f.Payload
+				}
+
+				if ca.secure == "secure" {
+					buf, err = srtpInCtx.decryptRTCP(buf, buf, nil)
+					require.NoError(t, err)
+				}
+
+				require.Equal(t, testRTCPPacketMarshaled, buf)
 			}
 
 			// server -> client (through stream)
 
-			if transport == "udp" || transport == "multicast" {
-				buf := make([]byte, 2048)
+			var buf1 []byte
+			var buf2 []byte
+
+			switch ca.transport {
+			case "udp", "multicast":
+				buf1 = make([]byte, 2048)
 				var n int
-				n, _, err = l1.ReadFrom(buf)
+				n, _, err = l1.ReadFrom(buf1)
 				require.NoError(t, err)
+				buf1 = buf1[:n]
 
-				var pkt rtp.Packet
-				err = pkt.Unmarshal(buf[:n])
+				buf2 = make([]byte, 2048)
+				n, _, err = l2.ReadFrom(buf2)
 				require.NoError(t, err)
-				pkt.SSRC = testRTPPacket.SSRC
-				require.Equal(t, testRTPPacket, pkt)
+				buf2 = buf2[:n]
 
-				buf = make([]byte, 2048)
-				n, _, err = l2.ReadFrom(buf)
-				require.NoError(t, err)
-				require.Equal(t, testRTCPPacketMarshaled, buf[:n])
-			} else {
+			case "tcp":
 				var f *base.InterleavedFrame
 				f, err = conn.ReadInterleavedFrame()
 				require.NoError(t, err)
 				require.Equal(t, 6, f.Channel)
-				require.Equal(t, testRTCPPacketMarshaled, f.Payload)
+				buf2 = f.Payload
 
 				f, err = conn.ReadInterleavedFrame()
 				require.NoError(t, err)
 				require.Equal(t, 5, f.Channel)
-				var pkt rtp.Packet
-				err = pkt.Unmarshal(f.Payload)
-				require.NoError(t, err)
-				pkt.SSRC = testRTPPacket.SSRC
-				require.Equal(t, testRTPPacket, pkt)
+				buf1 = f.Payload
 			}
+
+			if ca.secure == "secure" {
+				buf1, err = srtpInCtx.decryptRTP(buf1, buf1, nil)
+				require.NoError(t, err)
+			}
+
+			var pkt rtp.Packet
+			err = pkt.Unmarshal(buf1)
+			require.NoError(t, err)
+			pkt.SSRC = testRTPPacket.SSRC
+			require.Equal(t, testRTPPacket, pkt)
+
+			if ca.secure == "secure" {
+				buf2, err = srtpInCtx.decryptRTCP(buf2, buf2, nil)
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, testRTCPPacketMarshaled, buf2)
 
 			// client -> server
 
-			switch transport {
+			buf := testRTCPPacketMarshaled
+
+			if ca.secure == "secure" {
+				encr := make([]byte, 2000)
+				encr, err = srtpOutCtx.encryptRTCP(encr, buf, nil)
+				require.NoError(t, err)
+				buf = encr
+			}
+
+			switch ca.transport {
 			case "udp":
-				_, err = l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+				_, err = l2.WriteTo(buf, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: th.ServerPorts[1],
 				})
 				require.NoError(t, err)
-				<-framesReceived
 
 			case "multicast":
-				_, err = l2.WriteTo(testRTCPPacketMarshaled, &net.UDPAddr{
+				_, err = l2.WriteTo(buf, &net.UDPAddr{
 					IP:   *th.Destination,
 					Port: th.Ports[1],
 				})
 				require.NoError(t, err)
-				<-framesReceived
 
-			default:
+			case "tcp":
 				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 6,
-					Payload: testRTCPPacketMarshaled,
+					Payload: buf,
 				}, make([]byte, 1024))
 				require.NoError(t, err)
-				<-framesReceived
 			}
 
-			if transport == "udp" || transport == "multicast" {
+			<-framesReceived
+
+			// ping
+
+			switch ca.transport {
+			case "udp", "multicast":
 				// ping with OPTIONS
 				res, err = writeReqReadRes(conn, base.Request{
 					Method: base.Options,
@@ -941,7 +1082,6 @@ func TestServerPlaySocketError(t *testing.T) {
 		"udp",
 		"multicast",
 		"tcp",
-		"tls",
 	} {
 		t.Run(transport, func(t *testing.T) {
 			var stream *ServerStream
@@ -996,11 +1136,6 @@ func TestServerPlaySocketError(t *testing.T) {
 				s.MulticastIPRange = "224.1.0.0/16"
 				s.MulticastRTPPort = 8000
 				s.MulticastRTCPPort = 8001
-
-			case "tls":
-				cert, err := tls.X509KeyPair(serverCert, serverKey)
-				require.NoError(t, err)
-				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 			}
 
 			err := s.Start()
@@ -1019,12 +1154,6 @@ func TestServerPlaySocketError(t *testing.T) {
 				require.NoError(t, err)
 				defer nconn.Close()
 
-				nconn = func() net.Conn {
-					if transport == "tls" {
-						return tls.Client(nconn, &tls.Config{InsecureSkipVerify: true})
-					}
-					return nconn
-				}()
 				conn := conn.NewConn(nconn)
 
 				desc := doDescribe(t, conn, false)
@@ -1057,7 +1186,7 @@ func TestServerPlaySocketError(t *testing.T) {
 				var l1 net.PacketConn
 				var l2 net.PacketConn
 
-				switch transport { //nolint:dupl
+				switch transport {
 				case "udp":
 					require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
 					require.Equal(t, headers.TransportDeliveryUnicast, *th.Delivery)
@@ -1070,7 +1199,7 @@ func TestServerPlaySocketError(t *testing.T) {
 					require.NoError(t, err)
 					defer l2.Close()
 
-				case "multicast":
+				case "multicast": //nolint:dupl
 					require.Equal(t, headers.TransportProtocolUDP, th.Protocol)
 					require.Equal(t, headers.TransportDeliveryMulticast, *th.Delivery)
 

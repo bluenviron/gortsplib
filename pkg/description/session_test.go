@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
@@ -633,6 +634,194 @@ var casesSession = []struct {
 						PayloadTyp: 101,
 						RTPMa:      "ulpfec/8000",
 						ClockRat:   8000,
+					}},
+				},
+			},
+		},
+	},
+	{
+		"key-mgmt in session",
+		"v=0\n" +
+			"o=actionmovie 2891092738 2891092738 IN IP4 movie.example.com\n" +
+			"s=Action Movie\n" +
+			"t=0 0\n" +
+			"c=IN IP4 movie.example.com\n" +
+			"a=key-mgmt:mikey AQAFAHojKV4BAACVjCMnAAAAAAsA6/mdTLBeokwKEGwcAuPrxj6/enyb+" +
+			"A2+rNcBAAAAFQABAQEBEAIBAQMBCgcBAQgBAQoBAQAAACIAIAAeX8XvOCzIMh0JTOWivWLxEflTUSp1fjj2i8xG7D9DAA==\r\n" +
+			"m=video 0 RTP/SAVP 96\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=control:trackID=0\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=Action Movie\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"a=key-mgmt:mikey AQAFAHojKV4BAACVjCMnAAAAAAsA6/mdTLBeokwKEGwcAuPrxj6/enyb+" +
+			"A2+rNcBAAAAFQABAQEBEAIBAQMBCgcBAQgBAQoBAQAAACIAIAAeX8XvOCzIMh0JTOWivWLxEflTUSp1fjj2i8xG7D9DAA==\r\n" +
+			"m=video 0 RTP/SAVP 96\r\n" +
+			"a=control:trackID=0\r\n" +
+			"a=rtpmap:96 H264/90000\r\n",
+		Session{
+			Title: "Action Movie",
+			KeyMgmtMikey: &mikey.Message{ //nolint:dupl
+				Header: mikey.Header{
+					Version: 1,
+					CSBID:   2049124702,
+					CSIDMapInfo: []mikey.SRTPIDEntry{{
+						SSRC: 2508989223,
+					}},
+				},
+				Payloads: []mikey.Payload{
+					&mikey.PayloadT{
+						TSValue: 17003794820816085580,
+					},
+					&mikey.PayloadRAND{
+						Data: []byte{
+							0x6c, 0x1c, 0x02, 0xe3, 0xeb, 0xc6, 0x3e, 0xbf,
+							0x7a, 0x7c, 0x9b, 0xf8, 0x0d, 0xbe, 0xac, 0xd7,
+						},
+					},
+					&mikey.PayloadSP{
+						PolicyParams: []mikey.PayloadSPPolicyParam{
+							{
+								Type: 0, Value: []byte{1},
+							},
+							{
+								Type: 1, Value: []byte{0x10},
+							},
+							{
+								Type: 2, Value: []byte{1},
+							},
+							{
+								Type: 3, Value: []byte{0x0a},
+							},
+							{
+								Type: 7, Value: []byte{1},
+							},
+							{
+								Type: 8, Value: []byte{1},
+							},
+							{
+								Type: 10, Value: []byte{1},
+							},
+						},
+					},
+					&mikey.PayloadKEMAC{
+						SubPayloads: []*mikey.SubPayloadKeyData{
+							{
+								Type: 2,
+								KeyData: []byte{
+									0x5f, 0xc5, 0xef, 0x38, 0x2c, 0xc8, 0x32, 0x1d,
+									0x09, 0x4c, 0xe5, 0xa2, 0xbd, 0x62, 0xf1, 0x11,
+									0xf9, 0x53, 0x51, 0x2a, 0x75, 0x7e, 0x38, 0xf6,
+									0x8b, 0xcc, 0x46, 0xec, 0x3f, 0x43,
+								},
+							},
+						},
+					},
+				},
+			},
+			Medias: []*Media{
+				{
+					Type:    "video",
+					Control: "trackID=0",
+					Secure:  true,
+					Formats: []format.Format{&format.H264{
+						PayloadTyp: 96,
+					}},
+				},
+			},
+		},
+	},
+	{
+		"key-mgmt in media",
+		"v=0\n" +
+			"o=actionmovie 2891092738 2891092738 IN IP4 movie.example.com\n" +
+			"s=Action Movie\n" +
+			"t=0 0\n" +
+			"c=IN IP4 movie.example.com\n" +
+			"m=video 0 RTP/SAVP 96\n" +
+			"a=key-mgmt:mikey AQAFAHojKV4BAACVjCMnAAAAAAsA6/mdTLBeokwKEGwcAuPrxj6/enyb+" +
+			"A2+rNcBAAAAFQABAQEBEAIBAQMBCgcBAQgBAQoBAQAAACIAIAAeX8XvOCzIMh0JTOWivWLxEflTUSp1fjj2i8xG7D9DAA==\r\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=control:trackID=0\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=Action Movie\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/SAVP 96\r\n" +
+			"a=key-mgmt:mikey AQAFAHojKV4BAACVjCMnAAAAAAsA6/mdTLBeokwKEGwcAuPrxj6/enyb+" +
+			"A2+rNcBAAAAFQABAQEBEAIBAQMBCgcBAQgBAQoBAQAAACIAIAAeX8XvOCzIMh0JTOWivWLxEflTUSp1fjj2i8xG7D9DAA==\r\n" +
+			"a=control:trackID=0\r\n" +
+			"a=rtpmap:96 H264/90000\r\n",
+		Session{
+			Title: "Action Movie",
+			Medias: []*Media{
+				{
+					Type:    "video",
+					Control: "trackID=0",
+					Secure:  true,
+					KeyMgmtMikey: &mikey.Message{ //nolint:dupl
+						Header: mikey.Header{
+							Version: 1,
+							CSBID:   2049124702,
+							CSIDMapInfo: []mikey.SRTPIDEntry{{
+								SSRC: 2508989223,
+							}},
+						},
+						Payloads: []mikey.Payload{
+							&mikey.PayloadT{
+								TSValue: 17003794820816085580,
+							},
+							&mikey.PayloadRAND{
+								Data: []byte{
+									0x6c, 0x1c, 0x02, 0xe3, 0xeb, 0xc6, 0x3e, 0xbf,
+									0x7a, 0x7c, 0x9b, 0xf8, 0x0d, 0xbe, 0xac, 0xd7,
+								},
+							},
+							&mikey.PayloadSP{
+								PolicyParams: []mikey.PayloadSPPolicyParam{
+									{
+										Type: 0, Value: []byte{1},
+									},
+									{
+										Type: 1, Value: []byte{0x10},
+									},
+									{
+										Type: 2, Value: []byte{1},
+									},
+									{
+										Type: 3, Value: []byte{0x0a},
+									},
+									{
+										Type: 7, Value: []byte{1},
+									},
+									{
+										Type: 8, Value: []byte{1},
+									},
+									{
+										Type: 10, Value: []byte{1},
+									},
+								},
+							},
+							&mikey.PayloadKEMAC{
+								SubPayloads: []*mikey.SubPayloadKeyData{
+									{
+										Type: 2,
+										KeyData: []byte{
+											0x5f, 0xc5, 0xef, 0x38, 0x2c, 0xc8, 0x32, 0x1d,
+											0x09, 0x4c, 0xe5, 0xa2, 0xbd, 0x62, 0xf1, 0x11,
+											0xf9, 0x53, 0x51, 0x2a, 0x75, 0x7e, 0x38, 0xf6,
+											0x8b, 0xcc, 0x46, 0xec, 0x3f, 0x43,
+										},
+									},
+								},
+							},
+						},
+					},
+					Formats: []format.Format{&format.H264{
+						PayloadTyp: 96,
 					}},
 				},
 			},

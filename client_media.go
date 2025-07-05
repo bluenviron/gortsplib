@@ -1,7 +1,10 @@
 package gortsplib
 
 import (
+	"crypto/rand"
+	"fmt"
 	"net"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -13,9 +16,12 @@ import (
 )
 
 type clientMedia struct {
-	c     *Client
-	media *description.Media
+	c      *Client
+	media  *description.Media
+	secure bool
 
+	srtpOutCtx             *wrappedSRTPContext
+	srtpInCtx              *wrappedSRTPContext
 	onPacketRTCP           OnPacketRTCPFunc
 	formats                map[uint8]*clientFormat
 	tcpChannel             int
@@ -53,6 +59,35 @@ func (cm *clientMedia) initialize() error {
 		}
 
 		cm.formats[forma.PayloadType()] = f
+	}
+
+	if cm.secure {
+		var srtpOutKey []byte
+		if cm.c.state == clientStatePreRecord {
+			srtpOutKey = cm.c.announceData[cm.media].srtpOutKey
+		} else {
+			srtpOutKey = make([]byte, srtpKeyLength)
+			_, err := rand.Read(srtpOutKey)
+			if err != nil {
+				return err
+			}
+		}
+
+		ssrcs := make([]uint32, len(cm.formats))
+		n := 0
+		for _, cf := range cm.formats {
+			ssrcs[n] = cf.localSSRC
+			n++
+		}
+
+		cm.srtpOutCtx = &wrappedSRTPContext{
+			key:   srtpOutKey,
+			ssrcs: ssrcs,
+		}
+		err := cm.srtpOutCtx.initialize()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -99,9 +134,45 @@ func (cm *clientMedia) createUDPListeners(
 		return nil
 	}
 
-	var err error
-	cm.udpRTPListener, cm.udpRTCPListener, err = createUDPListenerPair(cm.c)
-	return err
+	// pick two consecutive ports in range 65535-10000
+	// RTP port must be even and RTCP port odd
+	for {
+		v, err := randInRange((65535 - 10000) / 2)
+		if err != nil {
+			return err
+		}
+
+		rtpPort := v*2 + 10000
+		rtcpPort := rtpPort + 1
+
+		cm.udpRTPListener = &clientUDPListener{
+			c:                 cm.c,
+			multicastEnable:   false,
+			multicastSourceIP: nil,
+			address:           net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
+		}
+		err = cm.udpRTPListener.initialize()
+		if err != nil {
+			cm.udpRTPListener = nil
+			continue
+		}
+
+		cm.udpRTCPListener = &clientUDPListener{
+			c:                 cm.c,
+			multicastEnable:   false,
+			multicastSourceIP: nil,
+			address:           net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
+		}
+		err = cm.udpRTCPListener.initialize()
+		if err != nil {
+			cm.udpRTPListener.close()
+			cm.udpRTPListener = nil
+			cm.udpRTCPListener = nil
+			continue
+		}
+
+		return nil
+	}
 }
 
 func (cm *clientMedia) start() {
@@ -161,14 +232,44 @@ func (cm *clientMedia) findFormatByRemoteSSRC(ssrc uint32) *clientFormat {
 	return nil
 }
 
+func (cm *clientMedia) decodeRTP(payload []byte) (*rtp.Packet, error) {
+	if cm.srtpInCtx != nil {
+		var err error
+		payload, err = cm.srtpInCtx.decryptRTP(payload, payload, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var pkt rtp.Packet
+	err := pkt.Unmarshal(payload)
+	return &pkt, err
+}
+
+func (cm *clientMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error) {
+	if cm.srtpInCtx != nil {
+		var err error
+		payload, err = cm.srtpInCtx.decryptRTCP(payload, payload, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	pkts, err := rtcp.Unmarshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return pkts, nil
+}
+
 func (cm *clientMedia) readPacketRTPTCPPlay(payload []byte) bool {
 	atomic.AddUint64(cm.bytesReceived, uint64(len(payload)))
 
 	now := cm.c.timeNow()
 	atomic.StoreInt64(cm.c.tcpLastFrameTime, now.Unix())
 
-	pkt := &rtp.Packet{}
-	err := pkt.Unmarshal(payload)
+	pkt, err := cm.decodeRTP(payload)
 	if err != nil {
 		cm.onPacketRTPDecodeError(err)
 		return false
@@ -196,7 +297,7 @@ func (cm *clientMedia) readPacketRTCPTCPPlay(payload []byte) bool {
 		return false
 	}
 
-	packets, err := rtcp.Unmarshal(payload)
+	packets, err := cm.decodeRTCP(payload)
 	if err != nil {
 		cm.onPacketRTCPDecodeError(err)
 		return false
@@ -230,7 +331,7 @@ func (cm *clientMedia) readPacketRTCPTCPRecord(payload []byte) bool {
 		return false
 	}
 
-	packets, err := rtcp.Unmarshal(payload)
+	packets, err := cm.decodeRTCP(payload)
 	if err != nil {
 		cm.onPacketRTCPDecodeError(err)
 		return false
@@ -253,8 +354,7 @@ func (cm *clientMedia) readPacketRTPUDPPlay(payload []byte) bool {
 		return false
 	}
 
-	pkt := &rtp.Packet{}
-	err := pkt.Unmarshal(payload)
+	pkt, err := cm.decodeRTP(payload)
 	if err != nil {
 		cm.onPacketRTPDecodeError(err)
 		return false
@@ -279,7 +379,7 @@ func (cm *clientMedia) readPacketRTCPUDPPlay(payload []byte) bool {
 		return false
 	}
 
-	packets, err := rtcp.Unmarshal(payload)
+	packets, err := cm.decodeRTCP(payload)
 	if err != nil {
 		cm.onPacketRTCPDecodeError(err)
 		return false
@@ -315,7 +415,7 @@ func (cm *clientMedia) readPacketRTCPUDPRecord(payload []byte) bool {
 		return false
 	}
 
-	packets, err := rtcp.Unmarshal(payload)
+	packets, err := cm.decodeRTCP(payload)
 	if err != nil {
 		cm.onPacketRTCPDecodeError(err)
 		return false
@@ -341,13 +441,31 @@ func (cm *clientMedia) onPacketRTCPDecodeError(err error) {
 }
 
 func (cm *clientMedia) writePacketRTCP(pkt rtcp.Packet) error {
-	byts, err := pkt.Marshal()
+	buf, err := pkt.Marshal()
 	if err != nil {
 		return err
 	}
 
+	maxPlainPacketSize := cm.c.MaxPacketSize
+	if cm.srtpOutCtx != nil {
+		maxPlainPacketSize -= srtcpOverhead
+	}
+
+	if len(buf) > maxPlainPacketSize {
+		return fmt.Errorf("packet is too big")
+	}
+
+	if cm.srtpOutCtx != nil {
+		encr := make([]byte, cm.c.MaxPacketSize)
+		encr, err = cm.srtpOutCtx.encryptRTCP(encr, buf, nil)
+		if err != nil {
+			return err
+		}
+		buf = encr
+	}
+
 	ok := cm.c.writer.push(func() error {
-		return cm.writePacketRTCPInQueue(byts)
+		return cm.writePacketRTCPInQueue(buf)
 	})
 	if !ok {
 		return liberrors.ErrClientWriteQueueFull{}

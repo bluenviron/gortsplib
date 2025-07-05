@@ -224,6 +224,8 @@ func (e ErrClientUnsupportedScheme) Error() string {
 }
 
 // ErrClientRTSPSTCP is an error that can be returned by a client.
+//
+// Deprecated: not used anymore.
 type ErrClientRTSPSTCP struct{}
 
 // Error implements the error interface.

@@ -58,6 +58,7 @@ func TestClientTLSSetServerName(t *testing.T) {
 
 	serverDone := make(chan struct{})
 	defer func() { <-serverDone }()
+
 	go func() {
 		defer close(serverDone)
 
@@ -141,6 +142,7 @@ func TestClientCloseDuringRequest(t *testing.T) {
 
 	serverDone := make(chan struct{})
 	defer func() { <-serverDone }()
+
 	go func() {
 		defer close(serverDone)
 
@@ -185,6 +187,7 @@ func TestClientSession(t *testing.T) {
 
 	serverDone := make(chan struct{})
 	defer func() { <-serverDone }()
+
 	go func() {
 		defer close(serverDone)
 
@@ -246,6 +249,7 @@ func TestClientAuth(t *testing.T) {
 
 	serverDone := make(chan struct{})
 	defer func() { <-serverDone }()
+
 	go func() {
 		defer close(serverDone)
 
@@ -327,6 +331,7 @@ func TestClientCSeq(t *testing.T) {
 
 			serverDone := make(chan struct{})
 			defer func() { <-serverDone }()
+
 			go func() {
 				defer close(serverDone)
 
@@ -399,6 +404,7 @@ func TestClientDescribeCharset(t *testing.T) {
 
 	serverDone := make(chan struct{})
 	defer func() { <-serverDone }()
+
 	go func() {
 		defer close(serverDone)
 
@@ -549,6 +555,7 @@ func TestClientRelativeContentBase(t *testing.T) {
 
 	serverDone := make(chan struct{})
 	defer func() { <-serverDone }()
+
 	go func() {
 		defer close(serverDone)
 

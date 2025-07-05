@@ -49,7 +49,6 @@ func (d *Decoder) resetFragments() {
 }
 
 // Decode decodes frames from a RTP packet.
-// It returns the frames and the PTS of the first frame.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	if len(pkt.Payload) < 2 {
 		d.resetFragments()

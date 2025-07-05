@@ -48,6 +48,8 @@ const (
 )
 
 // String implements fmt.Stringer.
+//
+// Deprecated: not used anymore.
 func (p TransportProtocol) String() string {
 	if p == TransportProtocolUDP {
 		return "RTP/AVP"
@@ -65,6 +67,8 @@ const (
 )
 
 // String implements fmt.Stringer.
+//
+// Deprecated: not used anymore.
 func (d TransportDelivery) String() string {
 	if d == TransportDeliveryUnicast {
 		return "unicast"
@@ -112,37 +116,40 @@ func (m TransportMode) String() string {
 
 // Transport is a Transport header.
 type Transport struct {
-	// protocol of the stream
+	// protocol of the stream.
 	Protocol TransportProtocol
 
-	// (optional) delivery method of the stream
+	// Whether the secure variant is active.
+	Secure bool
+
+	// (optional) delivery method of the stream.
 	Delivery *TransportDelivery
 
-	// (optional) Source IP
+	// (optional) Source IP.
 	Source *net.IP
 
-	// (optional) destination IP
+	// (optional) destination IP.
 	Destination *net.IP
 
-	// (optional) interleaved frame ids
+	// (optional) interleaved frame IDs.
 	InterleavedIDs *[2]int
 
-	// (optional) TTL
+	// (optional) TTL.
 	TTL *uint
 
-	// (optional) ports
+	// (optional) ports.
 	Ports *[2]int
 
-	// (optional) client ports
+	// (optional) client ports.
 	ClientPorts *[2]int
 
-	// (optional) server ports
+	// (optional) server ports.
 	ServerPorts *[2]int
 
-	// (optional) SSRC of the packets of the stream
+	// (optional) SSRC of the packets of the stream.
 	SSRC *uint32
 
-	// (optional) mode
+	// (optional) mode.
 	Mode *TransportMode
 }
 
@@ -156,14 +163,12 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	v0 := v[0]
-
-	kvs, err := keyValParse(v0, ';')
+	kvs, err := keyValParse(v[0], ';')
 	if err != nil {
 		return err
 	}
 
-	protocolFound := false
+	profileFound := false
 
 	for k, rv := range kvs {
 		v := rv
@@ -171,11 +176,21 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 		switch k {
 		case "RTP/AVP", "RTP/AVP/UDP":
 			h.Protocol = TransportProtocolUDP
-			protocolFound = true
+			profileFound = true
 
 		case "RTP/AVP/TCP":
 			h.Protocol = TransportProtocolTCP
-			protocolFound = true
+			profileFound = true
+
+		case "RTP/SAVP", "RTP/SAVP/UDP":
+			h.Protocol = TransportProtocolUDP
+			h.Secure = true
+			profileFound = true
+
+		case "RTP/SAVP/TCP":
+			h.Protocol = TransportProtocolTCP
+			h.Secure = true
+			profileFound = true
 
 		case "unicast":
 			v := TransportDeliveryUnicast
@@ -273,8 +288,8 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 		}
 	}
 
-	if !protocolFound {
-		return fmt.Errorf("protocol not found (%v)", v[0])
+	if !profileFound {
+		return fmt.Errorf("profile is missing: %v", v[0])
 	}
 
 	return nil
@@ -284,10 +299,33 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 func (h Transport) Marshal() base.HeaderValue {
 	var rets []string
 
-	rets = append(rets, h.Protocol.String())
+	var profile string
+
+	switch {
+	case h.Protocol == TransportProtocolUDP && !h.Secure:
+		profile = "RTP/AVP"
+	case h.Protocol == TransportProtocolTCP && !h.Secure:
+		profile = "RTP/AVP/TCP"
+	case h.Protocol == TransportProtocolUDP && h.Secure:
+		profile = "RTP/SAVP"
+	case h.Protocol == TransportProtocolTCP && h.Secure:
+		profile = "RTP/SAVP/TCP"
+	}
+
+	rets = append(rets, profile)
 
 	if h.Delivery != nil {
-		rets = append(rets, h.Delivery.String())
+		var delivery string
+
+		switch *h.Delivery {
+		case TransportDeliveryUnicast:
+			delivery = "unicast"
+
+		case TransportDeliveryMulticast:
+			delivery = "multicast"
+		}
+
+		rets = append(rets, delivery)
 	}
 
 	if h.Source != nil {
@@ -336,44 +374,4 @@ func (h Transport) Marshal() base.HeaderValue {
 	}
 
 	return base.HeaderValue{strings.Join(rets, ";")}
-}
-
-// Transports is a Transport header with multiple transports.
-type Transports []Transport
-
-// Unmarshal decodes a Transport header.
-func (ts *Transports) Unmarshal(v base.HeaderValue) error {
-	if len(v) == 0 {
-		return fmt.Errorf("value not provided")
-	}
-
-	if len(v) > 1 {
-		return fmt.Errorf("value provided multiple times (%v)", v)
-	}
-
-	v0 := v[0]
-	transports := strings.Split(v0, ",") // , separated per RFC2326 section 12.39
-	*ts = make([]Transport, len(transports))
-
-	for i, transport := range transports {
-		var tr Transport
-		err := tr.Unmarshal(base.HeaderValue{strings.TrimLeft(transport, " ")})
-		if err != nil {
-			return err
-		}
-		(*ts)[i] = tr
-	}
-
-	return nil
-}
-
-// Marshal encodes a Transport header.
-func (ts Transports) Marshal() base.HeaderValue {
-	vals := make([]string, len(ts))
-
-	for i, th := range ts {
-		vals[i] = th.Marshal()[0]
-	}
-
-	return base.HeaderValue{strings.Join(vals, ",")}
 }

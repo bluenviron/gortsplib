@@ -85,6 +85,18 @@ func TestClientVsServer(t *testing.T) {
 			readerScheme:    "rtsps",
 			readerProto:     "tcp",
 		},
+		{
+			publisherScheme: "rtsps",
+			publisherProto:  "udp",
+			readerScheme:    "rtsps",
+			readerProto:     "tcp",
+		},
+		{
+			publisherScheme: "rtsps",
+			publisherProto:  "udp",
+			readerScheme:    "rtsps",
+			readerProto:     "multicast",
+		},
 	} {
 		t.Run(ca.publisherScheme+"_"+ca.publisherProto+"_"+
 			ca.readerScheme+"_"+ca.readerProto, func(t *testing.T) {

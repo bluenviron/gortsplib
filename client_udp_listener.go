@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"math/big"
 	"net"
-	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -22,45 +21,6 @@ func randInRange(maxVal int) (int, error) {
 		return 0, err
 	}
 	return int(n.Int64()), nil
-}
-
-func createUDPListenerPair(c *Client) (*clientUDPListener, *clientUDPListener, error) {
-	// choose two consecutive ports in range 65535-10000
-	// RTP port must be even and RTCP port odd
-	for {
-		v, err := randInRange((65535 - 10000) / 2)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		rtpPort := v*2 + 10000
-		rtcpPort := rtpPort + 1
-
-		rtpListener := &clientUDPListener{
-			c:                 c,
-			multicastEnable:   false,
-			multicastSourceIP: nil,
-			address:           net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
-		}
-		err = rtpListener.initialize()
-		if err != nil {
-			continue
-		}
-
-		rtcpListener := &clientUDPListener{
-			c:                 c,
-			multicastEnable:   false,
-			multicastSourceIP: nil,
-			address:           net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
-		}
-		err = rtcpListener.initialize()
-		if err != nil {
-			rtpListener.close()
-			continue
-		}
-
-		return rtpListener, rtcpListener, nil
-	}
 }
 
 type packetConn interface {

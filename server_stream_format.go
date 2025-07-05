@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"crypto/rand"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -21,25 +22,26 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
-func isServerStreamLocalSSRCTaken(ssrc uint32, stream *ServerStream, exclude *serverStreamFormat) bool {
-	for _, sm := range stream.medias {
+func serverStreamPickLocalSSRC(sf *serverStreamFormat) (uint32, error) {
+	var takenSSRCs []uint32 //nolint:prealloc
+
+	for _, sm := range sf.sm.st.medias {
 		for _, sf := range sm.formats {
-			if sf != exclude && sf.localSSRC == ssrc {
-				return true
-			}
+			takenSSRCs = append(takenSSRCs, sf.localSSRC)
 		}
 	}
-	return false
-}
 
-func serverStreamPickLocalSSRC(sf *serverStreamFormat) (uint32, error) {
+	for _, sf := range sf.sm.formats {
+		takenSSRCs = append(takenSSRCs, sf.localSSRC)
+	}
+
 	for {
 		ssrc, err := randUint32()
 		if err != nil {
 			return 0, err
 		}
 
-		if ssrc != 0 && !isServerStreamLocalSSRCTaken(ssrc, sf.sm.st, sf) {
+		if ssrc != 0 && !slices.Contains(takenSSRCs, ssrc) {
 			return ssrc, nil
 		}
 	}
@@ -87,39 +89,77 @@ func (sf *serverStreamFormat) close() {
 func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 	pkt.SSRC = sf.localSSRC
 
-	byts := make([]byte, sf.sm.st.Server.MaxPacketSize)
-	n, err := pkt.MarshalTo(byts)
+	sf.rtcpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
+
+	maxPlainPacketSize := sf.sm.st.Server.MaxPacketSize
+	if sf.sm.srtpOutCtx != nil {
+		maxPlainPacketSize -= srtpOverhead
+	}
+
+	plain := make([]byte, maxPlainPacketSize)
+	n, err := pkt.MarshalTo(plain)
 	if err != nil {
 		return err
 	}
-	byts = byts[:n]
+	plain = plain[:n]
 
-	sf.rtcpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
+	var encr []byte
+	if sf.sm.srtpOutCtx != nil {
+		encr = make([]byte, sf.sm.st.Server.MaxPacketSize)
+		encr, err = sf.sm.srtpOutCtx.encryptRTP(encr, plain, &pkt.Header)
+		if err != nil {
+			return err
+		}
+	}
 
-	le := uint64(len(byts))
+	encrLen := uint64(len(encr))
+	plainLen := uint64(len(plain))
 
 	// send unicast
 	for r := range sf.sm.st.activeUnicastReaders {
-		if _, ok := r.setuppedMedias[sf.sm.media]; ok {
-			err := r.writePacketRTPEncoded(sf.sm.media, pkt.PayloadType, byts)
-			if err != nil {
-				r.onStreamWriteError(err)
-				continue
+		if rsm, ok := r.setuppedMedias[sf.sm.media]; ok {
+			rsf := rsm.formats[pkt.PayloadType]
+
+			if r.setuppedSecure {
+				err := rsf.writePacketRTPEncoded(encr)
+				if err != nil {
+					r.onStreamWriteError(err)
+					continue
+				}
+
+				atomic.AddUint64(sf.sm.bytesSent, encrLen)
+			} else {
+				err := rsf.writePacketRTPEncoded(plain)
+				if err != nil {
+					r.onStreamWriteError(err)
+					continue
+				}
+
+				atomic.AddUint64(sf.sm.bytesSent, plainLen)
 			}
 
-			atomic.AddUint64(sf.sm.bytesSent, le)
 			atomic.AddUint64(sf.rtpPacketsSent, 1)
 		}
 	}
 
 	// send multicast
 	if sf.sm.multicastWriter != nil {
-		err := sf.sm.multicastWriter.writePacketRTP(byts)
-		if err != nil {
-			return err
+		if sf.sm.srtpOutCtx != nil {
+			err := sf.sm.multicastWriter.writePacketRTP(encr)
+			if err != nil {
+				return err
+			}
+
+			atomic.AddUint64(sf.sm.bytesSent, encrLen)
+		} else {
+			err := sf.sm.multicastWriter.writePacketRTP(plain)
+			if err != nil {
+				return err
+			}
+
+			atomic.AddUint64(sf.sm.bytesSent, plainLen)
 		}
 
-		atomic.AddUint64(sf.sm.bytesSent, le)
 		atomic.AddUint64(sf.rtpPacketsSent, 1)
 	}
 
