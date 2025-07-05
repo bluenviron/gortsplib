@@ -1765,6 +1765,21 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 		header["Require"] = base.HeaderValue{"www.onvif.org/ver20/backchannel"}
 	}
 
+	// when protocol is UDP,
+	// open the firewall by sending empty packets to the remote part.
+	// do this before sending the PLAY request.
+	if *c.effectiveTransport == TransportUDP {
+		for _, cm := range c.setuppedMedias {
+			if !cm.media.IsBackChannel {
+				byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
+				cm.udpRTPListener.write(byts) //nolint:errcheck
+
+				byts, _ = (&rtcp.ReceiverReport{}).Marshal()
+				cm.udpRTCPListener.write(byts) //nolint:errcheck
+			}
+		}
+	}
+
 	res, err := c.do(&base.Request{
 		Method: base.Play,
 		URL:    c.baseURL,
@@ -1783,22 +1798,6 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 		c.state = clientStatePrePlay
 		return nil, liberrors.ErrClientBadStatusCode{
 			Code: res.StatusCode, Message: res.StatusMessage,
-		}
-	}
-
-	// open the firewall by sending empty packets to the counterpart.
-	// do this before sending the request.
-	// don't do this with multicast, otherwise the RTP packet is going to be broadcasted
-	// to all listeners, including us, messing up the stream.
-	if *c.effectiveTransport == TransportUDP {
-		for _, cm := range c.setuppedMedias {
-			if !cm.media.IsBackChannel {
-				byts, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
-				cm.udpRTPListener.write(byts) //nolint:errcheck
-
-				byts, _ = (&rtcp.ReceiverReport{}).Marshal()
-				cm.udpRTCPListener.write(byts) //nolint:errcheck
-			}
 		}
 	}
 
