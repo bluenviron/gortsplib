@@ -32,10 +32,6 @@ func uint16Ptr(v uint16) *uint16 {
 	return &v
 }
 
-func uint32Ptr(v uint32) *uint32 {
-	return &v
-}
-
 func multicastCapableIP(t *testing.T) string {
 	intfs, err := net.Interfaces()
 	require.NoError(t, err)
@@ -848,7 +844,12 @@ func TestServerPlay(t *testing.T) {
 				var n int
 				n, _, err = l1.ReadFrom(buf)
 				require.NoError(t, err)
-				require.Equal(t, testRTPPacketMarshaled, buf[:n])
+
+				var pkt rtp.Packet
+				err = pkt.Unmarshal(buf[:n])
+				require.NoError(t, err)
+				pkt.SSRC = testRTPPacket.SSRC
+				require.Equal(t, testRTPPacket, pkt)
 
 				buf = make([]byte, 2048)
 				n, _, err = l2.ReadFrom(buf)
@@ -864,7 +865,11 @@ func TestServerPlay(t *testing.T) {
 				f, err = conn.ReadInterleavedFrame()
 				require.NoError(t, err)
 				require.Equal(t, 5, f.Channel)
-				require.Equal(t, testRTPPacketMarshaled, f.Payload)
+				var pkt rtp.Packet
+				err = pkt.Unmarshal(f.Payload)
+				require.NoError(t, err)
+				pkt.SSRC = testRTPPacket.SSRC
+				require.Equal(t, testRTPPacket, pkt)
 			}
 
 			// client -> server
@@ -1385,13 +1390,15 @@ func TestServerPlayRTCPReport(t *testing.T) {
 
 			packets, err := rtcp.Unmarshal(buf)
 			require.NoError(t, err)
-			require.Equal(t, &rtcp.SenderReport{
-				SSRC:        0x38F27A2F,
-				NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 10, 12, 22, 30, 0, time.UTC)),
-				RTPTime:     240000 + 90000*30,
-				PacketCount: 1,
-				OctetCount:  1,
-			}, packets[0])
+			require.Equal(t, []rtcp.Packet{
+				&rtcp.SenderReport{
+					SSRC:        packets[0].(*rtcp.SenderReport).SSRC,
+					NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 10, 12, 22, 30, 0, time.UTC)),
+					RTPTime:     240000 + 90000*30,
+					PacketCount: 1,
+					OctetCount:  1,
+				},
+			}, packets)
 
 			doTeardown(t, conn, "rtsp://localhost:8554/teststream", session)
 		})
@@ -2072,7 +2079,12 @@ func TestServerPlayPartialMedias(t *testing.T) {
 	f, err := conn.ReadInterleavedFrame()
 	require.NoError(t, err)
 	require.Equal(t, 4, f.Channel)
-	require.Equal(t, testRTPPacketMarshaled, f.Payload)
+
+	var pkt rtp.Packet
+	err = pkt.Unmarshal(f.Payload)
+	require.NoError(t, err)
+	pkt.SSRC = testRTPPacket.SSRC
+	require.Equal(t, testRTPPacket, pkt)
 }
 
 func TestServerPlayAdditionalInfos(t *testing.T) {
@@ -2203,10 +2215,9 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			}).String(),
 		},
 	}, rtpInfo)
-	require.Equal(t, []*uint32{
-		uint32Ptr(96342362),
-		nil,
-	}, ssrcs)
+	require.Len(t, ssrcs, 2)
+	require.NotNil(t, ssrcs[0])
+	require.NotNil(t, ssrcs[1])
 
 	err = stream.WritePacketRTP(stream.Description().Medias[1], &rtp.Packet{
 		Header: rtp.Header{
@@ -2242,10 +2253,9 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 			Timestamp:      (*rtpInfo)[1].Timestamp,
 		},
 	}, rtpInfo)
-	require.Equal(t, []*uint32{
-		uint32Ptr(96342362),
-		uint32Ptr(536474323),
-	}, ssrcs)
+	require.Len(t, ssrcs, 2)
+	require.NotNil(t, ssrcs[0])
+	require.NotNil(t, ssrcs[1])
 }
 
 func TestServerPlayNoInterleavedIDs(t *testing.T) {
@@ -2327,14 +2337,19 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 
 	doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		err := stream.WritePacketRTP(stream.Description().Medias[i], &testRTPPacket)
 		require.NoError(t, err)
 
 		f, err := conn.ReadInterleavedFrame()
 		require.NoError(t, err)
 		require.Equal(t, i*2, f.Channel)
-		require.Equal(t, testRTPPacketMarshaled, f.Payload)
+
+		var pkt rtp.Packet
+		err = pkt.Unmarshal(f.Payload)
+		require.NoError(t, err)
+		pkt.SSRC = testRTPPacket.SSRC
+		require.Equal(t, testRTPPacket, pkt)
 	}
 }
 
@@ -2422,7 +2437,8 @@ func TestServerPlayStreamStats(t *testing.T) {
 				Formats: map[format.Format]ServerStreamStatsFormat{
 					stream.Description().Medias[0].Formats[0]: {
 						RTPPacketsSent: 2,
-						LocalSSRC:      955415087,
+						LocalSSRC: st.Medias[stream.Description().Medias[0]].
+							Formats[stream.Description().Medias[0].Formats[0]].LocalSSRC,
 					},
 				},
 			},

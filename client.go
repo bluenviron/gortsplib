@@ -1423,7 +1423,10 @@ func (c *Client) doSetup(
 		c:     c,
 		media: medi,
 	}
-	cm.initialize()
+	err = cm.initialize()
+	if err != nil {
+		return nil, err
+	}
 
 	if c.effectiveTransport == nil {
 		if c.connURL.Scheme == "rtsps" { // always use TCP if encrypted
@@ -1981,13 +1984,6 @@ func (c *Client) WritePacketRTP(medi *description.Media, pkt *rtp.Packet) error 
 // WritePacketRTPWithNTP writes a RTP packet to the server.
 // ntp is the absolute time of the packet, and is sent with periodic RTCP sender reports.
 func (c *Client) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet, ntp time.Time) error {
-	byts := make([]byte, c.MaxPacketSize)
-	n, err := pkt.MarshalTo(byts)
-	if err != nil {
-		return err
-	}
-	byts = byts[:n]
-
 	select {
 	case <-c.done:
 		return c.closeError
@@ -2003,26 +1999,11 @@ func (c *Client) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet,
 
 	cm := c.setuppedMedias[medi]
 	cf := cm.formats[pkt.PayloadType]
-
-	cf.rtcpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
-
-	ok := c.writer.push(func() error {
-		return cf.writePacketRTPInQueue(byts)
-	})
-	if !ok {
-		return liberrors.ErrClientWriteQueueFull{}
-	}
-
-	return nil
+	return cf.writePacketRTP(pkt, ntp)
 }
 
 // WritePacketRTCP writes a RTCP packet to the server.
 func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error {
-	byts, err := pkt.Marshal()
-	if err != nil {
-		return err
-	}
-
 	select {
 	case <-c.done:
 		return c.closeError
@@ -2037,15 +2018,7 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 	}
 
 	cm := c.setuppedMedias[medi]
-
-	ok := c.writer.push(func() error {
-		return cm.writePacketRTCPInQueue(byts)
-	})
-	if !ok {
-		return liberrors.ErrClientWriteQueueFull{}
-	}
-
-	return nil
+	return cm.writePacketRTCP(pkt)
 }
 
 // PacketPTS returns the PTS of an incoming RTP packet.
@@ -2208,18 +2181,10 @@ func (c *Client) Stats() *ClientStats {
 									RTPPacketsReceived: atomic.LoadUint64(fo.rtpPacketsReceived),
 									RTPPacketsSent:     atomic.LoadUint64(fo.rtpPacketsSent),
 									RTPPacketsLost:     atomic.LoadUint64(fo.rtpPacketsLost),
-									LocalSSRC: func() uint32 {
-										if fo.rtcpReceiver != nil {
-											return *fo.rtcpReceiver.LocalSSRC
-										}
-										if sentStats != nil {
-											return sentStats.LocalSSRC
-										}
-										return 0
-									}(),
+									LocalSSRC:          fo.localSSRC,
 									RemoteSSRC: func() uint32 {
-										if recvStats != nil {
-											return recvStats.RemoteSSRC
+										if v, ok := fo.remoteSSRC(); ok {
+											return v
 										}
 										return 0
 									}(),
