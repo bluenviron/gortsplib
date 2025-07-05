@@ -47,18 +47,20 @@ func findG711BackChannel(desc *description.Session) (*description.Media, *format
 }
 
 func main() {
-	c := gortsplib.Client{
-		RequestBackChannels: true,
-	}
-
 	// parse URL
 	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/mystream")
 	if err != nil {
 		panic(err)
 	}
 
+	c := gortsplib.Client{
+		Scheme:              u.Scheme,
+		Host:                u.Host,
+		RequestBackChannels: true,
+	}
+
 	// connect to the server
-	err = c.Start(u.Scheme, u.Host)
+	err = c.Start2()
 	if err != nil {
 		panic(err)
 	}

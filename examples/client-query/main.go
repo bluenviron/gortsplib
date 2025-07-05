@@ -13,14 +13,17 @@ import (
 // 2. get and print informations about medias published on a path.
 
 func main() {
-	c := gortsplib.Client{}
-
 	u, err := base.ParseURL("rtsp://myuser:mypass@localhost:8554/mypath")
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.Start(u.Scheme, u.Host)
+	c := gortsplib.Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
+
+	err = c.Start2()
 	if err != nil {
 		panic(err)
 	}

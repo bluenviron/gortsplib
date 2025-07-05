@@ -156,10 +156,12 @@ func TestClientVsServer(t *testing.T) {
 			require.NoError(t, err)
 
 			reader := &gortsplib.Client{
+				Scheme:    u.Scheme,
+				Host:      u.Host,
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
 				Transport: &readerProto,
 			}
-			err = reader.Start(u.Scheme, u.Host)
+			err = reader.Start2()
 			require.NoError(t, err)
 			defer reader.Close()
 

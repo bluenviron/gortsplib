@@ -356,6 +356,14 @@ type OnPacketRTCPAnyFunc func(*description.Media, rtcp.Packet)
 // Client is a RTSP client.
 type Client struct {
 	//
+	// Target
+	//
+	// Scheme. Either "rtsp" or "rtsps".
+	Scheme string
+	// Host and port.
+	Host string
+
+	//
 	// RTSP parameters (all optional)
 	//
 	// timeout of read operations.
@@ -444,8 +452,6 @@ type Client struct {
 	receiverReportPeriod time.Duration
 	checkTimeoutPeriod   time.Duration
 
-	scheme               string
-	host                 string
 	ctx                  context.Context
 	ctxCancel            func()
 	state                clientState
@@ -497,7 +503,16 @@ type Client struct {
 }
 
 // Start initializes the connection to a server.
+//
+// Deprecated: replaced by Start2.
 func (c *Client) Start(scheme string, host string) error {
+	c.Scheme = scheme
+	c.Host = host
+	return c.Start2()
+}
+
+// Start2 initializes the connection to a server.
+func (c *Client) Start2() error {
 	// RTSP parameters
 	if c.ReadTimeout == 0 {
 		c.ReadTimeout = 10 * time.Second
@@ -592,8 +607,6 @@ func (c *Client) Start(scheme string, host string) error {
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
-	c.scheme = scheme
-	c.host = host
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
 	c.checkTimeoutTimer = emptyTimer()
@@ -632,7 +645,10 @@ func (c *Client) StartRecording(address string, desc *description.Session) error
 		return err
 	}
 
-	err = c.Start(u.Scheme, u.Host)
+	c.Scheme = u.Scheme
+	c.Host = u.Host
+
+	err = c.Start2()
 	if err != nil {
 		return err
 	}
@@ -1062,29 +1078,29 @@ func (c *Client) connOpen() error {
 		return nil
 	}
 
-	if c.scheme != "rtsp" && c.scheme != "rtsps" {
-		return liberrors.ErrClientUnsupportedScheme{Scheme: c.scheme}
+	if c.Scheme != "rtsp" && c.Scheme != "rtsps" {
+		return liberrors.ErrClientUnsupportedScheme{Scheme: c.Scheme}
 	}
 
 	dialCtx, dialCtxCancel := context.WithTimeout(c.ctx, c.ReadTimeout)
 	defer dialCtxCancel()
 
 	nconn, err := c.DialContext(dialCtx, "tcp", canonicalAddr(&base.URL{
-		Scheme: c.scheme,
-		Host:   c.host,
+		Scheme: c.Scheme,
+		Host:   c.Host,
 	}))
 	if err != nil {
 		return err
 	}
 
-	if c.scheme == "rtsps" {
+	if c.Scheme == "rtsps" {
 		tlsConfig := c.TLSConfig
 		if tlsConfig == nil {
 			tlsConfig = &tls.Config{}
 		}
 		tlsConfig.ServerName = (&base.URL{
-			Scheme: c.scheme,
-			Host:   c.host,
+			Scheme: c.Scheme,
+			Host:   c.Host,
 		}).Hostname()
 
 		nconn = tls.Client(nconn, tlsConfig)
@@ -1352,7 +1368,7 @@ func (c *Client) doDescribe(u *base.URL) (*description.Session, *base.Response, 
 				return nil, nil, err
 			}
 
-			if c.scheme == "rtsps" && ru.Scheme != "rtsps" {
+			if c.Scheme == "rtsps" && ru.Scheme != "rtsps" {
 				return nil, nil, fmt.Errorf("connection cannot be downgraded from RTSPS to RTSP")
 			}
 
@@ -1360,8 +1376,8 @@ func (c *Client) doDescribe(u *base.URL) (*description.Session, *base.Response, 
 				ru.User = u.User
 			}
 
-			c.scheme = ru.Scheme
-			c.host = ru.Host
+			c.Scheme = ru.Scheme
+			c.Host = ru.Host
 
 			return c.doDescribe(ru)
 		}
@@ -1435,12 +1451,12 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
-	announceData, err := generateAnnounceData(desc, c.scheme == "rtsps")
+	announceData, err := generateAnnounceData(desc, c.Scheme == "rtsps")
 	if err != nil {
 		return nil, err
 	}
 
-	err = prepareForAnnounce(desc, announceData, c.scheme == "rtsps")
+	err = prepareForAnnounce(desc, announceData, c.Scheme == "rtsps")
 	if err != nil {
 		return nil, err
 	}
@@ -1535,13 +1551,13 @@ func (c *Client) doSetup(
 	// use transport from config, secure flag from server
 	case c.Transport != nil:
 		transport = *c.Transport
-		th.Secure = medi.Secure && c.scheme == "rtsps"
+		th.Secure = medi.Secure && c.Scheme == "rtsps"
 
 	// try UDP if unencrypted or secure is supported by server, otherwise try TCP
 	default:
-		th.Secure = medi.Secure && c.scheme == "rtsps"
+		th.Secure = medi.Secure && c.Scheme == "rtsps"
 
-		if th.Secure || c.scheme == "rtsp" {
+		if th.Secure || c.Scheme == "rtsp" {
 			transport = TransportUDP
 		} else {
 			transport = TransportTCP
@@ -1560,7 +1576,7 @@ func (c *Client) doSetup(
 
 	switch transport {
 	case TransportUDP, TransportUDPMulticast:
-		if c.scheme == "rtsps" && !medi.Secure {
+		if c.Scheme == "rtsps" && !medi.Secure {
 			cm.close()
 			return nil, fmt.Errorf("server does not support secure UDP")
 		}

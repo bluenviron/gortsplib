@@ -82,7 +82,10 @@ func readAll(c *Client, ur string, cb func(*description.Media, format.Format, *r
 		return err
 	}
 
-	err = c.Start(u.Scheme, u.Host)
+	c.Scheme = u.Scheme
+	c.Host = u.Host
+
+	err = c.Start2()
 	if err != nil {
 		return err
 	}
@@ -604,7 +607,12 @@ func TestClientPlay(t *testing.T) {
 				require.NoError(t, err2)
 			}()
 
+			u, err := base.ParseURL(ca.scheme + "://" + listenIP + ":8554/test/stream?param=value")
+			require.NoError(t, err)
+
 			c := Client{
+				Scheme:    u.Scheme,
+				Host:      u.Host,
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
 				Transport: func() *Transport {
 					switch ca.transport {
@@ -623,10 +631,7 @@ func TestClientPlay(t *testing.T) {
 				}(),
 			}
 
-			u, err := base.ParseURL(ca.scheme + "://" + listenIP + ":8554/test/stream?param=value")
-			require.NoError(t, err)
-
-			err = c.Start(u.Scheme, u.Host)
+			err = c.Start2()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1029,14 +1034,16 @@ func TestClientPlayPartial(t *testing.T) {
 
 	packetRecv := make(chan struct{})
 
-	c := Client{
-		Transport: transportPtr(TransportTCP),
-	}
-
 	u, err := base.ParseURL("rtsp://" + listenIP + ":8554/teststream")
 	require.NoError(t, err)
 
-	err = c.Start(u.Scheme, u.Host)
+	c := Client{
+		Scheme:    u.Scheme,
+		Host:      u.Host,
+		Transport: transportPtr(TransportTCP),
+	}
+
+	err = c.Start2()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -3904,7 +3911,12 @@ func TestClientPlayBackChannel(t *testing.T) {
 				require.NoError(t, err2)
 			}()
 
+			u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+			require.NoError(t, err)
+
 			c := Client{
+				Scheme:              u.Scheme,
+				Host:                u.Host,
 				RequestBackChannels: true,
 				Transport: func() *Transport {
 					if transport == "tcp" {
@@ -3916,10 +3928,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 				receiverReportPeriod: 750 * time.Millisecond,
 			}
 
-			u, err := base.ParseURL("rtsp://localhost:8554/teststream")
-			require.NoError(t, err)
-
-			err = c.Start(u.Scheme, u.Host)
+			err = c.Start2()
 			require.NoError(t, err)
 			defer c.Close()
 
