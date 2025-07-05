@@ -217,7 +217,7 @@ func (s *Server) Start() error {
 		}
 
 		if (rtpPort % 2) != 0 {
-			return fmt.Errorf("RTP (%d) port must be even", rtpPort)
+			return fmt.Errorf("RTP port (%d) must be even", rtpPort)
 		}
 
 		if rtcpPort != (rtpPort + 1) {
