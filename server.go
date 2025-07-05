@@ -278,7 +278,8 @@ func (s *Server) Start() error {
 			if s.udpRTCPListener != nil {
 				s.udpRTCPListener.close()
 			}
-			return fmt.Errorf("Multicast RTP (%d) and RTCP (%d) ports must be consecutive", s.MulticastRTPPort, s.MulticastRTCPPort)
+			return fmt.Errorf("multicast RTP (%d) and RTCP (%d) ports must be consecutive",
+				s.MulticastRTPPort, s.MulticastRTCPPort)
 		}
 
 		var err error
