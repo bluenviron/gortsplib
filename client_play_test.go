@@ -416,8 +416,9 @@ func TestClientPlay(t *testing.T) {
 						require.NoError(t, err2)
 
 						srtpOutCtx[i] = &wrappedSRTPContext{
-							key:   outKey,
-							ssrcs: []uint32{2345423},
+							key:       outKey,
+							ssrcs:     []uint32{0x38F27A2F},
+							startROCs: []uint32{10},
 						}
 						err2 = srtpOutCtx[i].initialize()
 						require.NoError(t, err2)
