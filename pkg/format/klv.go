@@ -39,13 +39,12 @@ func (f *KLV) RTPMap() string {
 
 // FMTP implements Format.
 func (f *KLV) FMTP() map[string]string {
-	fmtp := make(map[string]string)
-	return fmtp
+	return nil
 }
 
 // PTSEqualsDTS implements Format.
 func (f *KLV) PTSEqualsDTS(*rtp.Packet) bool {
-	return false
+	return true
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
