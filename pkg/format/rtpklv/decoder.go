@@ -51,36 +51,33 @@ func (d *Decoder) reset() {
 
 // parseKLVLength parses the KLV length field according to SMPTE ST 336.
 // Returns the length value and the number of bytes consumed for the length field.
-func parseKLVLength(data []byte, offset int) (length int, lengthSize int, err error) {
-	if offset >= len(data) {
-		return 0, 0, fmt.Errorf("insufficient data for length field")
+func parseKLVLength(data []byte) (uint, uint, error) {
+	if len(data) < 1 {
+		return 0, 0, fmt.Errorf("buffer is too short")
 	}
 
-	firstByte := data[offset]
+	firstByte := data[0]
 
 	// Short form: if bit 7 is 0, the length is in the lower 7 bits
 	if (firstByte & 0x80) == 0 {
-		return int(firstByte & 0x7f), 1, nil
+		return uint(firstByte & 0x7f), 1, nil
 	}
 
 	// Long form: bit 7 is 1, lower 7 bits indicate number of subsequent length bytes
-	lengthBytes := int(firstByte & 0x7f)
-	if lengthBytes == 0 {
-		return 0, 0, fmt.Errorf("indefinite length not supported")
-	}
-	if lengthBytes > 8 {
-		return 0, 0, fmt.Errorf("length field too long: %d bytes", lengthBytes)
+	lengthBytes := uint(firstByte & 0x7f)
+	if lengthBytes == 0 || lengthBytes > 8 {
+		return 0, 0, fmt.Errorf("invalid length field: %d bytes", lengthBytes)
 	}
 
 	totalLengthSize := 1 + lengthBytes
-	if offset+totalLengthSize > len(data) {
+	if int(totalLengthSize) > len(data) {
 		return 0, 0, fmt.Errorf("insufficient data for length field")
 	}
 
 	// Parse the length value from the subsequent bytes
-	var lengthValue int
-	for i := 0; i < lengthBytes; i++ {
-		lengthValue = (lengthValue << 8) | int(data[offset+1+i])
+	var lengthValue uint
+	for i := range lengthBytes {
+		lengthValue = (lengthValue << 8) | uint(data[1+i])
 	}
 
 	return lengthValue, totalLengthSize, nil
@@ -98,14 +95,18 @@ func isKLVStart(payload []byte) bool {
 func splitKLVUnit(buf []byte) ([][]byte, error) {
 	var klvUnit [][]byte
 	for {
-		n := 16
-		le, leSize, err := parseKLVLength(buf, n)
+		if len(buf) < 16 {
+			return nil, fmt.Errorf("buffer is too short")
+		}
+
+		n := uint(16)
+		le, leSize, err := parseKLVLength(buf[n:])
 		if err != nil {
 			return nil, err
 		}
 		n += leSize
 
-		if len(buf[n:]) < le {
+		if uint(len(buf[n:])) < le {
 			return nil, fmt.Errorf("buffer is too short")
 		}
 		n += le
@@ -157,9 +158,9 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 
 		// Try to determine the expected size if we have enough data
 		if len(payload) >= 17 { // 16 bytes for Universal Label Key + at least 1 byte for length
-			valueLength, lengthSize, err := parseKLVLength(payload, 16)
+			valueLength, lengthSize, err := parseKLVLength(payload[16:])
 			if err == nil {
-				d.expectedSize = 16 + lengthSize + valueLength
+				d.expectedSize = 16 + int(lengthSize) + int(valueLength)
 			}
 		}
 	} else {
