@@ -4,14 +4,12 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpklv"
-	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 )
 
 // KLV is a RTP format for KLV data, defined in SMPTE-336M.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6597
 type KLV struct {
 	PayloadTyp uint8
-	KLVCodec   *mpegts.CodecKLV
 }
 
 func (f *KLV) unmarshal(ctx *unmarshalContext) error {
