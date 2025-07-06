@@ -6,7 +6,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpklv"
 )
 
-// KLV is a RTP format for KLV data, defined in SMPTE-336M.
+// KLV is the RTP format for KLV data.
 // Specification: https://datatracker.ietf.org/doc/html/rfc6597
 type KLV struct {
 	PayloadTyp uint8
