@@ -158,12 +158,12 @@ func (s *Server) Start() error {
 	if s.WriteQueueSize == 0 {
 		s.WriteQueueSize = 256
 	} else if (s.WriteQueueSize & (s.WriteQueueSize - 1)) != 0 {
-		return fmt.Errorf("WriteQueueSize must be a power of two")
+		return fmt.Errorf("WriteQueueSize (%d) must be a power of two", s.WriteQueueSize)
 	}
 	if s.MaxPacketSize == 0 {
 		s.MaxPacketSize = udpMaxPayloadSize
 	} else if s.MaxPacketSize > udpMaxPayloadSize {
-		return fmt.Errorf("MaxPacketSize must be less than %d", udpMaxPayloadSize)
+		return fmt.Errorf("MaxPacketSize (%d) must be less than %d", s.MaxPacketSize, udpMaxPayloadSize)
 	}
 	if len(s.AuthMethods) == 0 {
 		// disable VerifyMethodDigestSHA256 unless explicitly set
@@ -217,11 +217,11 @@ func (s *Server) Start() error {
 		}
 
 		if (rtpPort % 2) != 0 {
-			return fmt.Errorf("RTP port must be even")
+			return fmt.Errorf("RTP port (%d) must be even", rtpPort)
 		}
 
 		if rtcpPort != (rtpPort + 1) {
-			return fmt.Errorf("RTP and RTCP ports must be consecutive")
+			return fmt.Errorf("RTP (%d) and RTCP (%d) ports must be consecutive", rtpPort, rtcpPort)
 		}
 
 		s.udpRTPListener = &serverUDPListener{
@@ -268,7 +268,7 @@ func (s *Server) Start() error {
 			if s.udpRTCPListener != nil {
 				s.udpRTCPListener.close()
 			}
-			return fmt.Errorf("RTP port must be even")
+			return fmt.Errorf("RTP port (%d) must be even", s.MulticastRTPPort)
 		}
 
 		if s.MulticastRTCPPort != (s.MulticastRTPPort + 1) {
@@ -278,7 +278,8 @@ func (s *Server) Start() error {
 			if s.udpRTCPListener != nil {
 				s.udpRTCPListener.close()
 			}
-			return fmt.Errorf("RTP and RTCP ports must be consecutive")
+			return fmt.Errorf("multicast RTP (%d) and RTCP (%d) ports must be consecutive",
+				s.MulticastRTPPort, s.MulticastRTCPPort)
 		}
 
 		var err error
