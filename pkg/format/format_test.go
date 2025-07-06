@@ -1195,6 +1195,19 @@ var casesFormat = []struct {
 		nil,
 	},
 	{
+		"application klv",
+		"v=0\n" +
+			"s=\n" +
+			"m=application 0 RTP/AVP 97\n" +
+			"a=rtpmap:97 smtpe336m/90000\n",
+		&KLV{
+			PayloadTyp: 97,
+		},
+		97,
+		"smtpe336m/90000",
+		nil,
+	},
+	{
 		"audio aac from AVOIP (issue mediamtx/4183)",
 		"v=0\r\n" +
 			"o=- 1634883673031268 1 IN IP4 127.0.0.1\r\n" +

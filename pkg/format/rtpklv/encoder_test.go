@@ -1,0 +1,156 @@
+package rtpklv
+
+import (
+	"bytes"
+	"testing"
+
+	"github.com/pion/rtp"
+	"github.com/stretchr/testify/require"
+)
+
+func uint32Ptr(v uint32) *uint32 {
+	return &v
+}
+
+func uint16Ptr(v uint16) *uint16 {
+	return &v
+}
+
+func mergeBytes(vals ...[]byte) []byte {
+	size := 0
+	for _, v := range vals {
+		size += len(v)
+	}
+	res := make([]byte, size)
+
+	pos := 0
+	for _, v := range vals {
+		n := copy(res[pos:], v)
+		pos += n
+	}
+
+	return res
+}
+
+var cases = []struct {
+	name    string
+	klvUnit [][]byte
+	pkts    []*rtp.Packet
+}{
+	{
+		"single",
+		[][]byte{
+			{
+				0x06, 0x0e, 0x2b, 0x34, 0x01, 0x01, 0x01, 0x01,
+				0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+				0x03,             // Length = 3
+				0x41, 0x42, 0x43, // "ABC"
+			},
+			{
+				0x06, 0x0e, 0x2b, 0x34, 0x02, 0x02, 0x02, 0x02,
+				0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+				0x03,             // Length = 3
+				0x44, 0x45, 0x46, // "DEF"
+			},
+		},
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{
+					0x06, 0x0e, 0x2b, 0x34, 0x01, 0x01, 0x01, 0x01,
+					0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+					0x03, 0x41, 0x42, 0x43, 0x06, 0x0e, 0x2b, 0x34,
+					0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+					0x02, 0x02, 0x02, 0x02, 0x03, 0x44, 0x45, 0x46,
+				},
+			},
+		},
+	},
+	{
+		"fragmented",
+		[][]byte{
+			append(
+				[]byte{
+					0x06, 0x0e, 0x2b, 0x34, 0x02, 0x02, 0x02, 0x02,
+					0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+					0b10000001, 240, // Length = 240
+				},
+				bytes.Repeat([]byte{1, 2, 3, 4}, 240/4)...,
+			),
+		},
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         false,
+					PayloadType:    96,
+					SequenceNumber: 17645,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: mergeBytes(
+					[]byte{
+						0x06, 0x0e, 0x2b, 0x34, 0x02, 0x02, 0x02, 0x02,
+						0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+						0x81, 0xf0,
+					},
+					bytes.Repeat([]byte{1, 2, 3, 4}, 182/4),
+					[]byte{1, 2},
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					Marker:         true,
+					PayloadType:    96,
+					SequenceNumber: 17646,
+					SSRC:           0x9dbb7812,
+				},
+				Payload: []byte{
+					0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02,
+					0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02,
+					0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02,
+					0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02,
+					0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02,
+					0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02,
+					0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02,
+					0x03, 0x04,
+				},
+			},
+		},
+	},
+}
+
+func TestEncode(t *testing.T) {
+	for _, ca := range cases {
+		t.Run(ca.name, func(t *testing.T) {
+			e := &Encoder{
+				PayloadType:           96,
+				SSRC:                  uint32Ptr(0x9dbb7812),
+				InitialSequenceNumber: uint16Ptr(0x44ed),
+				PayloadMaxSize:        200,
+			}
+			err := e.Init()
+			require.NoError(t, err)
+
+			pkts, err := e.Encode(ca.klvUnit)
+			require.NoError(t, err)
+			require.Equal(t, ca.pkts, pkts)
+		})
+	}
+}
+
+func TestEncodeRandomInitialState(t *testing.T) {
+	e := &Encoder{
+		PayloadType: 96,
+	}
+	err := e.Init()
+	require.NoError(t, err)
+	require.NotEqual(t, nil, e.SSRC)
+	require.NotEqual(t, nil, e.InitialSequenceNumber)
+}

@@ -141,6 +141,7 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 |codec|documentation|encoder and decoder available|
 |------|-------------|-----------------------------|
 |MPEG-TS|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEGTS)||
+|KLV|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#KLV)|:heavy_check_mark:|
 
 ## Specifications
 
@@ -168,6 +169,7 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 |[RFC5574, RTP Payload Format for the Speex Codec](https://datatracker.ietf.org/doc/html/rfc5574)|payload formats / Speex|
 |[RFC3551, RTP Profile for Audio and Video Conferences with Minimal Control](https://datatracker.ietf.org/doc/html/rfc3551)|payload formats / G726, G722, G711, LPCM|
 |[RFC3190, RTP Payload Format for 12-bit DAT Audio and 20- and 24-bit Linear Sampled Audio](https://datatracker.ietf.org/doc/html/rfc3190)|payload formats / LPCM|
+|[RFC6597, RTP Payload Format for Society of Motion Picture and Television Engineers (SMPTE) ST 336 Encoded Data](https://datatracker.ietf.org/doc/html/rfc6597)|payload formats / KLV|
 |[Codec specifications](https://github.com/bluenviron/mediacommon#specifications)|codecs|
 |[Golang project layout](https://github.com/golang-standards/project-layout)|project layout|
 
