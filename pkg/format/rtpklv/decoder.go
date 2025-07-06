@@ -177,17 +177,14 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 
 	// Check if we have a complete KLV unit
 	if marker {
-		// Marker bit indicates this is the last packet of the KLV unit
-		result := make([]byte, len(d.buffer))
-		copy(result, d.buffer)
+		result := d.buffer
 		d.reset()
 		return splitKLVUnit(result)
 	}
 
 	// If we know the expected size and have reached it, return the complete unit
 	if d.expectedSize > 0 && len(d.buffer) >= d.expectedSize {
-		result := make([]byte, d.expectedSize)
-		copy(result, d.buffer[:d.expectedSize])
+		result := d.buffer[:d.expectedSize]
 		d.reset()
 		return splitKLVUnit(result)
 	}
