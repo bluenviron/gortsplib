@@ -92,41 +92,10 @@ func isKLVStart(payload []byte) bool {
 	return payload[0] == 0x06 && payload[1] == 0x0e && payload[2] == 0x2b && payload[3] == 0x34
 }
 
-func splitKLVUnit(buf []byte) ([][]byte, error) {
-	var klvUnit [][]byte
-	for {
-		if len(buf) < 16 {
-			return nil, fmt.Errorf("buffer is too short")
-		}
-
-		n := uint(16)
-		le, leSize, err := parseKLVLength(buf[n:])
-		if err != nil {
-			return nil, err
-		}
-		n += leSize
-
-		if uint(len(buf[n:])) < le {
-			return nil, fmt.Errorf("buffer is too short")
-		}
-		n += le
-
-		klv := buf[:n]
-		buf = buf[n:]
-		klvUnit = append(klvUnit, klv)
-
-		if len(buf) == 0 {
-			break
-		}
-	}
-
-	return klvUnit, nil
-}
-
 // Decode decodes a KLV unit from RTP packets.
 // It returns the complete KLV unit when all packets have been received,
 // or ErrMorePacketsNeeded if more packets are needed.
-func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
+func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	payload := pkt.Payload
 	marker := pkt.Marker
 	timestamp := pkt.Timestamp
@@ -180,14 +149,14 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	if marker {
 		result := d.buffer
 		d.reset()
-		return splitKLVUnit(result)
+		return result, nil
 	}
 
 	// If we know the expected size and have reached it, return the complete unit
 	if d.expectedSize > 0 && len(d.buffer) >= d.expectedSize {
 		result := d.buffer[:d.expectedSize]
 		d.reset()
-		return splitKLVUnit(result)
+		return result, nil
 	}
 
 	// Need more packets

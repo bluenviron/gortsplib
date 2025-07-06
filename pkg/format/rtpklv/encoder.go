@@ -67,21 +67,10 @@ func (e *Encoder) Init() error {
 }
 
 // Encode encodes a KLV unit into RTP packets.
-func (e *Encoder) Encode(unit [][]byte) ([]*rtp.Packet, error) {
-	size := 0
-	for _, item := range unit {
-		size += len(item)
-	}
-
-	encodedUnit := make([]byte, size)
-	n := 0
-	for _, item := range unit {
-		n += copy(encodedUnit[n:], item)
-	}
-
+func (e *Encoder) Encode(unit []byte) ([]*rtp.Packet, error) {
 	var packets []*rtp.Packet
 
-	if len(encodedUnit) <= e.PayloadMaxSize {
+	if len(unit) <= e.PayloadMaxSize {
 		pkt := &rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
@@ -90,7 +79,7 @@ func (e *Encoder) Encode(unit [][]byte) ([]*rtp.Packet, error) {
 				SSRC:           *e.SSRC,
 				Marker:         true, // Single packet, so this is the last (and only) packet
 			},
-			Payload: encodedUnit,
+			Payload: unit,
 		}
 		e.sequenceNumber++
 		return []*rtp.Packet{pkt}, nil
@@ -98,15 +87,15 @@ func (e *Encoder) Encode(unit [][]byte) ([]*rtp.Packet, error) {
 
 	// KLV unit needs to be fragmented across multiple packets
 	offset := 0
-	for offset < len(encodedUnit) {
+	for offset < len(unit) {
 		// Calculate payload size for this packet
 		payloadSize := e.PayloadMaxSize
-		if offset+payloadSize > len(encodedUnit) {
-			payloadSize = len(encodedUnit) - offset
+		if offset+payloadSize > len(unit) {
+			payloadSize = len(unit) - offset
 		}
 
 		// Determine if this is the last packet
-		isLast := (offset + payloadSize) >= len(encodedUnit)
+		isLast := (offset + payloadSize) >= len(unit)
 
 		// Create the packet
 		pkt := &rtp.Packet{
@@ -117,7 +106,7 @@ func (e *Encoder) Encode(unit [][]byte) ([]*rtp.Packet, error) {
 				SSRC:           *e.SSRC,
 				Marker:         isLast, // Set marker bit only on the last packet
 			},
-			Payload: encodedUnit[offset : offset+payloadSize],
+			Payload: unit[offset : offset+payloadSize],
 		}
 
 		packets = append(packets, pkt)
