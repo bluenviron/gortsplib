@@ -15,7 +15,7 @@ func TestDecode(t *testing.T) {
 			err := d.Init()
 			require.NoError(t, err)
 
-			var klvUnit [][]byte
+			var klvUnit []byte
 
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
@@ -65,12 +65,6 @@ func FuzzDecoder(f *testing.F) {
 		if err == nil {
 			if len(klvUnit) == 0 {
 				t.Errorf("should not happen")
-			}
-
-			for _, nalu := range klvUnit {
-				if len(nalu) == 0 {
-					t.Errorf("should not happen")
-				}
 			}
 		}
 	})
