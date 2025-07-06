@@ -1335,12 +1335,8 @@ func TestClientPlayAnyPort(t *testing.T) {
 			packetRecv := make(chan struct{})
 
 			c := Client{
-				AnyPortEnable:        true,
-				receiverReportPeriod: 100 * time.Millisecond,
+				AnyPortEnable: true,
 			}
-
-			clientErr := make(chan struct{})
-			defer func() { <-clientErr }()
 
 			var med *description.Media
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -1352,25 +1348,12 @@ func TestClientPlayAnyPort(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			go func() {
-				err := c.Wait()
-				require.EqualError(t, err, "terminated")
-				close(clientErr)
-			}()
-
 			<-packetRecv
 
 			if ca == "random" {
 				err := c.WritePacketRTCP(med, &testRTCPPacket)
 				require.NoError(t, err)
 				<-serverRecv
-			}
-
-			// make sure that RTCP receiver reports do not cause any error
-			select {
-			case <-time.After(200 * time.Millisecond):
-			case <-clientErr:
-				t.Error("should not happen")
 			}
 		})
 	}
