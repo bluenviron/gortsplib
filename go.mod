@@ -11,7 +11,7 @@ require (
 	github.com/pion/sdp/v3 v3.0.14
 	github.com/pion/srtp/v3 v3.0.6
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/net v0.41.0
+	golang.org/x/net v0.42.0
 )
 
 require (
@@ -21,6 +21,6 @@ require (
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
