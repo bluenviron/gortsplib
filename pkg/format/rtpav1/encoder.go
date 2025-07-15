@@ -22,7 +22,7 @@ func randUint32() (uint32, error) {
 }
 
 // Encoder is a RTP/AV1 encoder.
-// Specification: https://aomediacodec.github.io/av1-rtp-spec/
+// Specification: RTP Payload Format For AV1 (v1.0)
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8

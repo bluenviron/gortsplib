@@ -11,8 +11,8 @@ import (
 )
 
 // Opus is the RTP format for the Opus codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc7587
-// Specification: https://webrtc-review.googlesource.com/c/src/+/129768
+// Specification: RFC7587
+// Specification: Multiopus in libwebrtc
 type Opus struct {
 	PayloadTyp   uint8
 	ChannelCount int

@@ -10,7 +10,7 @@ import (
 )
 
 // AV1 is the RTP format for the AV1 codec.
-// Specification: https://aomediacodec.github.io/av1-rtp-spec/
+// Specification: RTP Payload Format For AV1 (v1.0)
 type AV1 struct {
 	PayloadTyp uint8
 	LevelIdx   *int

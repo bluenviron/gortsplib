@@ -31,7 +31,7 @@ func packetCount(avail, le int) int {
 }
 
 // Encoder is a AC-3 encoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc4184
+// Specification: RFC4184
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8

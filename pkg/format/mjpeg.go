@@ -7,7 +7,7 @@ import (
 )
 
 // MJPEG is the RTP format for the Motion-JPEG codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc2435
+// Specification: RFC2435
 type MJPEG struct {
 	// in Go, empty structs share the same pointer,
 	// therefore they cannot be used as map keys

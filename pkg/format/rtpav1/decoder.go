@@ -36,7 +36,7 @@ func tuSize(tu [][]byte) int {
 }
 
 // Decoder is a RTP/AV1 decoder.
-// Specification: https://aomediacodec.github.io/av1-rtp-spec/
+// Specification: RTP Payload Format For AV1 (v1.0)
 type Decoder struct {
 	firstPacketReceived bool
 	fragments           [][]byte

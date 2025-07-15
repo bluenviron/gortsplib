@@ -38,7 +38,7 @@ func packetCount(avail, le int) int {
 }
 
 // Encoder is a RTP/MPEG-1/2 Audio encoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc2250
+// Specification: RFC2250
 type Encoder struct {
 	// SSRC of packets (optional).
 	// It defaults to a random value.

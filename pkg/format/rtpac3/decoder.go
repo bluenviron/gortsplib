@@ -29,7 +29,7 @@ func joinFragments(fragments [][]byte, size int) []byte {
 }
 
 // Decoder is a AC-3 decoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc4184
+// Specification: RFC4184
 type Decoder struct {
 	firstPacketReceived bool
 	fragments           [][]byte

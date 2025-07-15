@@ -10,7 +10,7 @@ import (
 )
 
 // Vorbis is the RTP format for the Vorbis codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc5215
+// Specification: RFC5215
 type Vorbis struct {
 	PayloadTyp    uint8
 	SampleRate    int

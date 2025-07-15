@@ -47,7 +47,7 @@ func auSize(au [][]byte) int {
 }
 
 // Decoder is a RTP/H264 decoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc6184
+// Specification: RFC6184
 type Decoder struct {
 	// indicates the packetization mode.
 	PacketizationMode int

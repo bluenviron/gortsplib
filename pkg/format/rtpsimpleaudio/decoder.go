@@ -4,7 +4,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// Decoder is a RTP/simple audio decoder.
+// Decoder is a RTP decoder for audio codecs that fit in a single packet.
 type Decoder struct{}
 
 // Init initializes the decoder.

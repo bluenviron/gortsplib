@@ -19,8 +19,8 @@ func joinFragments(fragments [][]byte, size int) []byte {
 }
 
 // Decoder is a RTP/MPEG-4 Audio decoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc3640
-// Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.3
+// Specification: RFC3640
+// Specification: RFC6416, section 7.3
 type Decoder struct {
 	// use RFC6416 (LATM) instead of RFC3640 (generic).
 	LATM bool

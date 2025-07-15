@@ -11,7 +11,7 @@ import (
 )
 
 // G711 is the RTP format for the G711 codec, encoded with mu-law or A-law.
-// Specification: https://datatracker.ietf.org/doc/html/rfc3551
+// Specification: RFC3551
 type G711 struct {
 	PayloadTyp   uint8
 	MULaw        bool

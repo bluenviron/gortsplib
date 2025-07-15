@@ -22,7 +22,7 @@ func joinFragments(fragments [][]byte, size int) []byte {
 }
 
 // Decoder is a RTP/MPEG-4 Video decoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc6416
+// Specification: RFC6416
 type Decoder struct {
 	fragments          [][]byte
 	fragmentsSize      int

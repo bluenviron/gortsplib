@@ -21,8 +21,8 @@ func randUint32() (uint32, error) {
 }
 
 // Encoder is a RTP/MPEG-4 audio encoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc3640
-// Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.3
+// Specification: RFC3640
+// Specification: RFC6416, section 7.3
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8
@@ -79,7 +79,7 @@ func (e *Encoder) Init() error {
 	return nil
 }
 
-// Encode encodes AUs into RTP packets.
+// Encode encodes AUs (non-LATM) or AudioMuxElements (LATM) into RTP packets.
 func (e *Encoder) Encode(aus [][]byte) ([]*rtp.Packet, error) {
 	if !e.LATM {
 		return e.encodeGeneric(aus)

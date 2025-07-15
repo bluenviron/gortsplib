@@ -7,7 +7,7 @@ import (
 )
 
 // G722 is the RTP format for the G722 codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc3551
+// Specification: RFC3551
 type G722 struct {
 	// in Go, empty structs share the same pointer,
 	// therefore they cannot be used as map keys

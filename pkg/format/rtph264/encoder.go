@@ -48,7 +48,7 @@ func packetCount(avail, le int) int {
 }
 
 // Encoder is a RTP/H264 encoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc6184
+// Specification: RFC6184
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8

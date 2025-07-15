@@ -37,7 +37,7 @@ func auSize(au [][]byte) int {
 }
 
 // Decoder is a RTP/H265 decoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc7798
+// Specification: RFC7798
 type Decoder struct {
 	// indicates that NALUs have an additional field that specifies the decoding order.
 	MaxDONDiff int

@@ -8,7 +8,7 @@ import (
 )
 
 // G726 is the RTP format for the G726 codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc3551
+// Specification: RFC3551
 type G726 struct {
 	PayloadTyp uint8
 	BitRate    int
