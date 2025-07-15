@@ -8,7 +8,7 @@ import (
 )
 
 // Speex is the RTP format for the Speex codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc5574
+// Specification: RFC5574
 type Speex struct {
 	PayloadTyp uint8
 	SampleRate int

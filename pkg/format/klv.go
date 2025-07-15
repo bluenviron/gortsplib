@@ -7,7 +7,7 @@ import (
 )
 
 // KLV is the RTP format for KLV data.
-// Specification: https://datatracker.ietf.org/doc/html/rfc6597
+// Specification: RFC6597
 type KLV struct {
 	PayloadTyp uint8
 }

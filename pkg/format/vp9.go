@@ -10,7 +10,7 @@ import (
 )
 
 // VP9 is the RTP format for the VP9 codec.
-// Specification: https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16
+// Specification: RFC9628
 type VP9 struct {
 	PayloadTyp uint8
 	MaxFR      *int

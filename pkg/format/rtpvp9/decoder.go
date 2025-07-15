@@ -29,7 +29,7 @@ func joinFragments(fragments [][]byte, size int) []byte {
 }
 
 // Decoder is a RTP/VP9 decoder.
-// Specification: https://datatracker.ietf.org/doc/html/draft-ietf-payload-vp9-16
+// Specification: RFC9628
 type Decoder struct {
 	firstPacketReceived bool
 	fragmentsSize       int

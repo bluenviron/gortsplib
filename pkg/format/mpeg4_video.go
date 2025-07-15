@@ -14,7 +14,7 @@ import (
 )
 
 // MPEG4Video is the RTP format for a MPEG-4 Video codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.1
+// Specification: RFC6416, section 7.1
 type MPEG4Video struct {
 	PayloadTyp     uint8
 	ProfileLevelID int

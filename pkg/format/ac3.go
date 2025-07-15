@@ -11,7 +11,7 @@ import (
 )
 
 // AC3 is the RTP format for the AC-3 codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc4184
+// Specification: RFC4184
 type AC3 struct {
 	PayloadTyp   uint8
 	SampleRate   int

@@ -16,7 +16,7 @@ import (
 )
 
 // H264 is the RTP format for the H264 codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc6184
+// Specification: RFC6184
 type H264 struct {
 	PayloadTyp        uint8
 	SPS               []byte

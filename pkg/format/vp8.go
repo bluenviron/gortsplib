@@ -10,7 +10,7 @@ import (
 )
 
 // VP8 is the RTP format for the VP8 codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc7741
+// Specification: RFC7741
 type VP8 struct {
 	PayloadTyp uint8
 	MaxFR      *int

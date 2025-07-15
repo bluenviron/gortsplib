@@ -11,8 +11,8 @@ import (
 )
 
 // LPCM is the RTP format for the LPCM codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc3190
-// Specification: https://datatracker.ietf.org/doc/html/rfc3551
+// Specification: RFC3190
+// Specification: RFC3551
 type LPCM struct {
 	PayloadTyp   uint8
 	BitDepth     int

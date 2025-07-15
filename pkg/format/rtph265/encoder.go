@@ -30,7 +30,7 @@ func packetCount(avail, le int) int {
 }
 
 // Encoder is a RTP/H265 encoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc7798
+// Specification: RFC7798
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8

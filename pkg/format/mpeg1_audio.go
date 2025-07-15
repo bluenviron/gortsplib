@@ -7,7 +7,7 @@ import (
 )
 
 // MPEG1Audio is the RTP format for a MPEG-1/2 Audio codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc2250
+// Specification: RFC2250
 type MPEG1Audio struct {
 	// in Go, empty structs share the same pointer,
 	// therefore they cannot be used as map keys

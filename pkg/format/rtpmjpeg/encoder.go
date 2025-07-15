@@ -25,7 +25,7 @@ func randUint32() (uint32, error) {
 }
 
 // Encoder is a RTP/M-JPEG encoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc2435
+// Specification: RFC2435
 type Encoder struct {
 	// SSRC of packets (optional).
 	// It defaults to a random value.

@@ -160,7 +160,7 @@ func joinFragments(fragments [][]byte, size int) []byte {
 }
 
 // Decoder is a RTP/M-JPEG decoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc2435
+// Specification: RFC2435
 type Decoder struct {
 	firstPacketReceived bool
 	fragments           [][]byte

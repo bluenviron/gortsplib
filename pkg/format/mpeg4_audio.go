@@ -13,8 +13,8 @@ import (
 )
 
 // MPEG4Audio is the RTP format for a MPEG-4 Audio codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc3640
-// Specification: https://datatracker.ietf.org/doc/html/rfc6416#section-7.3
+// Specification: RFC3640
+// Specification: RFC6416, section 7.3
 type MPEG4Audio struct {
 	// payload type of packets.
 	PayloadTyp uint8

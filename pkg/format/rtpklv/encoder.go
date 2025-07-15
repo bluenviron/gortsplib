@@ -21,7 +21,7 @@ func randUint32() (uint32, error) {
 }
 
 // Encoder is a RTP/KLV encoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc6597
+// Specification: RFC6597
 type Encoder struct {
 	// payload type of packets.
 	PayloadType uint8

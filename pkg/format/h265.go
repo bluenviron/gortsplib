@@ -14,7 +14,7 @@ import (
 )
 
 // H265 is the RTP format for the H265 codec.
-// Specification: https://datatracker.ietf.org/doc/html/rfc7798
+// Specification: RFC7798
 type H265 struct {
 	PayloadTyp uint8
 	VPS        []byte

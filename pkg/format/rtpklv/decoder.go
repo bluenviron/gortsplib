@@ -18,7 +18,7 @@ var ErrNonStartingPacketAndNoPrevious = errors.New(
 	"received a non-starting fragment without any previous starting fragment")
 
 // Decoder is a RTP/KLV decoder.
-// Specification: https://datatracker.ietf.org/doc/html/rfc6597
+// Specification: RFC6597
 type Decoder struct {
 	// buffer for accumulating KLV unit data across multiple packets
 	buffer []byte
