@@ -1,7 +1,6 @@
-package rtpmpeg4audio
+package rtpfragmented
 
 import (
-	"bytes"
 	"errors"
 	"testing"
 
@@ -9,25 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecodeLATM(t *testing.T) {
-	for _, ca := range casesLATM {
+func TestDecode(t *testing.T) {
+	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{
-				LATM: true,
-			}
+			d := &Decoder{}
 			err := d.Init()
 			require.NoError(t, err)
 
-			var aus [][]byte
+			var frame []byte
 
 			for _, pkt := range ca.pkts {
-				clone := pkt.Clone()
-
-				aus, err = d.Decode(pkt)
-
-				// test input integrity
-				require.Equal(t, clone, pkt)
-
+				frame, err = d.Decode(pkt)
 				if errors.Is(err, ErrMorePacketsNeeded) {
 					continue
 				}
@@ -35,37 +26,13 @@ func TestDecodeLATM(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			require.Equal(t, ca.au, aus[0])
+			require.Equal(t, ca.frame, frame)
 		})
 	}
 }
 
-func TestDecodeLATMOtherData(t *testing.T) {
-	d := &Decoder{
-		LATM: true,
-	}
-	err := d.Init()
-	require.NoError(t, err)
-
-	aus, err := d.Decode(&rtp.Packet{
-		Header: rtp.Header{
-			Version:        2,
-			Marker:         true,
-			PayloadType:    96,
-			SequenceNumber: 17645,
-			SSRC:           2646308882,
-		},
-		Payload: []byte{
-			0x04, 0x01, 0x02, 0x03, 0x04, 5, 6,
-		},
-	})
-	require.NoError(t, err)
-
-	require.Equal(t, []byte{1, 2, 3, 4}, aus[0])
-}
-
-func TestDecodeLATMErrorMissingPacket(t *testing.T) {
-	d := &Decoder{LATM: true}
+func TestDecodeErrorMissingPacket(t *testing.T) {
+	d := &Decoder{}
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -77,12 +44,7 @@ func TestDecodeLATMErrorMissingPacket(t *testing.T) {
 			SequenceNumber: 17645,
 			SSRC:           0x9dbb7812,
 		},
-		Payload: mergeBytes(
-			bytes.Repeat([]byte{0xff}, 16),
-			[]byte{0x10},
-			bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 180),
-			[]byte{0, 1, 2},
-		),
+		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	})
 	require.Equal(t, ErrMorePacketsNeeded, err)
 
@@ -94,20 +56,14 @@ func TestDecodeLATMErrorMissingPacket(t *testing.T) {
 			SequenceNumber: 17647,
 			SSRC:           0x9dbb7812,
 		},
-		Payload: mergeBytes(
-			[]byte{3, 4, 5, 6, 7},
-			bytes.Repeat([]byte{0, 1, 2, 3, 4, 5, 6, 7}, 181),
-			[]byte{0, 1, 2, 3, 4, 5, 6},
-		),
+		Payload: []byte{0x01, 0x02, 0x03, 0x04},
 	})
 	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
 }
 
-func FuzzDecoderLATM(f *testing.F) {
+func FuzzDecoder(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
-		d := &Decoder{
-			LATM: true,
-		}
+		d := &Decoder{}
 		err := d.Init()
 		require.NoError(t, err)
 

@@ -401,8 +401,7 @@ var casesFormat = []struct {
 			"a=rtpmap:96 MP4A-LATM/24000/2\n" +
 			"a=fmtp:96 profile-level-id=1; " +
 			"bitrate=64000; cpresent=0; object=2; config=400026203fc0\n",
-		&MPEG4Audio{
-			LATM:           true,
+		&MPEG4AudioLATM{
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
 			Bitrate:        intPtr(64000),
@@ -438,8 +437,7 @@ var casesFormat = []struct {
 			"a=rtpmap:110 MP4A-LATM/24000/1\n" +
 			"a=fmtp:110 profile-level-id=15; " +
 			"cpresent=0; object=2; config=400026103fc0; sbr-enabled=1\n",
-		&MPEG4Audio{
-			LATM:           true,
+		&MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 15,
 			CPresent:       false,
@@ -475,8 +473,7 @@ var casesFormat = []struct {
 			"a=rtpmap:110 MP4A-LATM/48000/2\n" +
 			"a=fmtp:110 profile-level-id=44; " +
 			"bitrate=64000; cpresent=0; config=40005623101fe0; sbr-enabled=1\n",
-		&MPEG4Audio{
-			LATM:           true,
+		&MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 44,
 			CPresent:       false,
@@ -516,8 +513,7 @@ var casesFormat = []struct {
 			"a=rtpmap:110 MP4A-LATM/48000/2\n" +
 			"a=fmtp:110 profile-level-id=48; " +
 			"bitrate=64000; cpresent=0; config=4001d613101fe0\n",
-		&MPEG4Audio{
-			LATM:           true,
+		&MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 48,
 			Bitrate:        intPtr(64000),
@@ -555,8 +551,7 @@ var casesFormat = []struct {
 			"a=rtpmap:110 MP4A-LATM/48000\n" +
 			"a=fmtp:110 profile-level-id=30; " +
 			"cpresent=0; config=40002310\n",
-		&MPEG4Audio{
-			LATM:           true,
+		&MPEG4AudioLATM{
 			PayloadTyp:     110,
 			ProfileLevelID: 30,
 			CPresent:       false,
@@ -589,9 +584,8 @@ var casesFormat = []struct {
 			"m=audio 0 RTP/AVP 96\n" +
 			"a=rtpmap:96 MP4A-LATM/48000/2\n" +
 			"a=fmtp:96 cpresent=1\n",
-		&MPEG4Audio{
+		&MPEG4AudioLATM{
 			PayloadTyp:     96,
-			LATM:           true,
 			ProfileLevelID: 30,
 			CPresent:       true,
 		},

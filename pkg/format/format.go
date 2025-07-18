@@ -160,8 +160,11 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 		case codec == "vorbis" && payloadType >= 96 && payloadType <= 127:
 			return &Vorbis{}
 
-		case (codec == "mpeg4-generic" || codec == "mp4a-latm") && payloadType >= 96 && payloadType <= 127:
+		case codec == "mpeg4-generic" && payloadType >= 96 && payloadType <= 127:
 			return &MPEG4Audio{}
+
+		case codec == "mp4a-latm" && payloadType >= 96 && payloadType <= 127:
+			return &MPEG4AudioLATM{}
 
 		case codec == "ac3" && payloadType >= 96 && payloadType <= 127:
 			return &AC3{}
