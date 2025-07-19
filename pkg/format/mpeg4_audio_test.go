@@ -13,7 +13,7 @@ func TestMPEG4AudioAttributes(t *testing.T) {
 	t.Run("generic", func(t *testing.T) {
 		format := &MPEG4Audio{
 			PayloadTyp: 96,
-			Config: &mpeg4audio.Config{
+			Config: &mpeg4audio.AudioSpecificConfig{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   48000,
 				ChannelCount: 2,
@@ -25,7 +25,7 @@ func TestMPEG4AudioAttributes(t *testing.T) {
 		require.Equal(t, "MPEG-4 Audio", format.Codec())
 		require.Equal(t, 48000, format.ClockRate())
 		require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
-		require.Equal(t, &mpeg4audio.Config{
+		require.Equal(t, &mpeg4audio.AudioSpecificConfig{
 			Type:         mpeg4audio.ObjectTypeAACLC,
 			SampleRate:   48000,
 			ChannelCount: 2,
@@ -40,7 +40,7 @@ func TestMPEG4AudioAttributes(t *testing.T) {
 			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
-						AudioSpecificConfig: &mpeg4audio.Config{
+						AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
 							Type:         2,
 							SampleRate:   44100,
 							ChannelCount: 2,
@@ -53,7 +53,7 @@ func TestMPEG4AudioAttributes(t *testing.T) {
 		require.Equal(t, "MPEG-4 Audio", format.Codec())
 		require.Equal(t, 44100, format.ClockRate())
 		require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
-		require.Equal(t, &mpeg4audio.Config{
+		require.Equal(t, &mpeg4audio.AudioSpecificConfig{
 			Type:         2,
 			SampleRate:   44100,
 			ChannelCount: 2,
@@ -65,7 +65,7 @@ func TestMPEG4AudioDecEncoder(t *testing.T) {
 	t.Run("generic", func(t *testing.T) {
 		format := &MPEG4Audio{
 			PayloadTyp: 96,
-			Config: &mpeg4audio.Config{
+			Config: &mpeg4audio.AudioSpecificConfig{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   48000,
 				ChannelCount: 2,
@@ -98,7 +98,7 @@ func TestMPEG4AudioDecEncoder(t *testing.T) {
 			StreamMuxConfig: &mpeg4audio.StreamMuxConfig{
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
-						AudioSpecificConfig: &mpeg4audio.Config{
+						AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
 							Type:         2,
 							SampleRate:   48000,
 							ChannelCount: 2,

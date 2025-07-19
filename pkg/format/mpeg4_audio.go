@@ -26,7 +26,7 @@ type MPEG4Audio struct {
 	ProfileLevelID int
 
 	// generic only
-	Config           *mpeg4audio.Config
+	Config           *mpeg4audio.AudioSpecificConfig
 	SizeLength       int
 	IndexLength      int
 	IndexDeltaLength int
@@ -69,7 +69,7 @@ func (f *MPEG4Audio) unmarshal(ctx *unmarshalContext) error {
 					return fmt.Errorf("invalid AAC config: %w", err)
 				}
 
-				f.Config = &mpeg4audio.Config{}
+				f.Config = &mpeg4audio.AudioSpecificConfig{}
 				err = f.Config.Unmarshal(enc)
 				if err != nil {
 					return fmt.Errorf("invalid AAC config: %w", err)
@@ -332,7 +332,7 @@ func (f *MPEG4Audio) CreateEncoder() (*rtpmpeg4audio.Encoder, error) {
 }
 
 // GetConfig returns the MPEG-4 Audio configuration.
-func (f *MPEG4Audio) GetConfig() *mpeg4audio.Config {
+func (f *MPEG4Audio) GetConfig() *mpeg4audio.AudioSpecificConfig {
 	if !f.LATM {
 		return f.Config
 	}

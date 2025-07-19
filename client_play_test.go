@@ -122,7 +122,7 @@ func TestClientPlayFormats(t *testing.T) {
 		Type: description.MediaTypeAudio,
 		Formats: []format.Format{&format.MPEG4Audio{
 			PayloadTyp: 96,
-			Config: &mpeg4audio.Config{
+			Config: &mpeg4audio.AudioSpecificConfig{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   44100,
 				ChannelCount: 2,
@@ -137,7 +137,7 @@ func TestClientPlayFormats(t *testing.T) {
 		Type: description.MediaTypeAudio,
 		Formats: []format.Format{&format.MPEG4Audio{
 			PayloadTyp: 96,
-			Config: &mpeg4audio.Config{
+			Config: &mpeg4audio.AudioSpecificConfig{
 				Type:         mpeg4audio.ObjectTypeAACLC,
 				SampleRate:   96000,
 				ChannelCount: 2,
