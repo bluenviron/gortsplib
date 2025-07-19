@@ -10,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/asticode/go-astits"
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
@@ -149,7 +148,7 @@ func main() {
 			err := r.Read()
 			if err != nil {
 				// file has ended
-				if errors.Is(err, astits.ErrNoMorePackets) {
+				if errors.Is(err, io.EOF) {
 					log.Printf("file has ended, rewinding")
 
 					// rewind to start position
