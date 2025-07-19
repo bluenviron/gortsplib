@@ -66,13 +66,13 @@ func (f *MPEG4Audio) unmarshal(ctx *unmarshalContext) error {
 			case "config":
 				enc, err := hex.DecodeString(val)
 				if err != nil {
-					return fmt.Errorf("invalid AAC config: %v", val)
+					return fmt.Errorf("invalid AAC config: %w", err)
 				}
 
 				f.Config = &mpeg4audio.Config{}
 				err = f.Config.Unmarshal(enc)
 				if err != nil {
-					return fmt.Errorf("invalid AAC config: %v", val)
+					return fmt.Errorf("invalid AAC config: %w", err)
 				}
 
 			case "sizelength":
@@ -135,7 +135,7 @@ func (f *MPEG4Audio) unmarshal(ctx *unmarshalContext) error {
 			case "config":
 				enc, err := hex.DecodeString(val)
 				if err != nil {
-					return fmt.Errorf("invalid AAC config: %v", val)
+					return fmt.Errorf("invalid AAC config: %w", err)
 				}
 
 				f.StreamMuxConfig = &mpeg4audio.StreamMuxConfig{}
