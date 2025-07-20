@@ -10,7 +10,7 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4video"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpmpeg4video"
+	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpfragmented"
 )
 
 // MPEG4Video is the RTP format for a MPEG-4 Video codec.
@@ -93,8 +93,8 @@ func (f *MPEG4Video) PTSEqualsDTS(*rtp.Packet) bool {
 }
 
 // CreateDecoder creates a decoder able to decode the content of the format.
-func (f *MPEG4Video) CreateDecoder() (*rtpmpeg4video.Decoder, error) {
-	d := &rtpmpeg4video.Decoder{}
+func (f *MPEG4Video) CreateDecoder() (*rtpfragmented.Decoder, error) {
+	d := &rtpfragmented.Decoder{}
 
 	err := d.Init()
 	if err != nil {
@@ -105,8 +105,8 @@ func (f *MPEG4Video) CreateDecoder() (*rtpmpeg4video.Decoder, error) {
 }
 
 // CreateEncoder creates an encoder able to encode the content of the format.
-func (f *MPEG4Video) CreateEncoder() (*rtpmpeg4video.Encoder, error) {
-	e := &rtpmpeg4video.Encoder{
+func (f *MPEG4Video) CreateEncoder() (*rtpfragmented.Encoder, error) {
+	e := &rtpfragmented.Encoder{
 		PayloadType: f.PayloadTyp,
 	}
 

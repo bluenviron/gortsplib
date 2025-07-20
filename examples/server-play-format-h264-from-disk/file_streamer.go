@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/asticode/go-astits"
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
@@ -138,7 +137,7 @@ func (r *fileStreamer) run() {
 			err := mr.Read()
 			if err != nil {
 				// file has ended
-				if errors.Is(err, astits.ErrNoMorePackets) {
+				if errors.Is(err, io.EOF) {
 					log.Printf("file has ended, rewinding")
 
 					// rewind to start position

@@ -106,11 +106,11 @@ Features:
 
 ## RTP Payload Formats
 
-In RTSP, media streams are transmitted by using RTP packets, which are encoded in a specific, codec-dependent, format. This library supports formats for the following codecs:
+In RTSP, media streams are transmitted by using RTP packets, which are encoded in a specific, codec-dependent, format. This library supports the following formats:
 
 ### Video
 
-|codec|documentation|encoder and decoder available|
+|format|documentation|encoder and decoder available|
 |------|-------------|-----------------------------|
 |AV1|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#AV1)|:heavy_check_mark:|
 |VP9|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#VP9)|:heavy_check_mark:|
@@ -123,11 +123,12 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 
 ### Audio
 
-|codec|documentation|encoder and decoder available|
+|format|documentation|encoder and decoder available|
 |------|-------------|-----------------------------|
 |Opus|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#Opus)|:heavy_check_mark:|
 |Vorbis|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#Vorbis)||
 |MPEG-4 Audio (AAC)|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEG4Audio)|:heavy_check_mark:|
+|MPEG-4 Audio LATM (AAC-LATM)|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEG4AudioLATM)|:heavy_check_mark:|
 |MPEG-1/2 Audio (MP3)|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEG1Audio)|:heavy_check_mark:|
 |AC-3|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#AC3)|:heavy_check_mark:|
 |Speex|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#Speex)||
@@ -138,7 +139,7 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 
 ### Other
 
-|codec|documentation|encoder and decoder available|
+|format|documentation|encoder and decoder available|
 |------|-------------|-----------------------------|
 |MPEG-TS|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#MPEGTS)||
 |KLV|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v4/pkg/format#KLV)|:heavy_check_mark:|
@@ -165,7 +166,7 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 |[Multiopus in libwebrtc](https://webrtc-review.googlesource.com/c/src/+/129768)|payload formats / Opus|
 |[RFC5215, RTP Payload Format for Vorbis Encoded Audio](https://datatracker.ietf.org/doc/html/rfc5215)|payload formats / Vorbis|
 |[RFC4184, RTP Payload Format for AC-3 Audio](https://datatracker.ietf.org/doc/html/rfc4184)|payload formats / AC-3|
-|[RFC6416, RTP Payload Format for MPEG-4 Audio/Visual Streams](https://datatracker.ietf.org/doc/html/rfc6416)|payload formats / MPEG-4 audio|
+|[RFC6416, RTP Payload Format for MPEG-4 Audio/Visual Streams](https://datatracker.ietf.org/doc/html/rfc6416)|payload formats / MPEG-4 audio LATM|
 |[RFC5574, RTP Payload Format for the Speex Codec](https://datatracker.ietf.org/doc/html/rfc5574)|payload formats / Speex|
 |[RFC3551, RTP Profile for Audio and Video Conferences with Minimal Control](https://datatracker.ietf.org/doc/html/rfc3551)|payload formats / G726, G722, G711, LPCM|
 |[RFC3190, RTP Payload Format for 12-bit DAT Audio and 20- and 24-bit Linear Sampled Audio](https://datatracker.ietf.org/doc/html/rfc3190)|payload formats / LPCM|
