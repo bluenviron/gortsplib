@@ -30,7 +30,7 @@ func (f *AC3) unmarshal(ctx *unmarshalContext) error {
 	f.SampleRate = int(tmp1)
 
 	if len(tmp) >= 2 {
-		tmp1, err := strconv.ParseUint(tmp[1], 10, 31)
+		tmp1, err = strconv.ParseUint(tmp[1], 10, 31)
 		if err != nil || tmp1 == 0 {
 			return fmt.Errorf("invalid channel count: '%s'", tmp[1])
 		}

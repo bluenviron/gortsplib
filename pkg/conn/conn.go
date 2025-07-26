@@ -57,7 +57,7 @@ func (c *Conn) Read() (interface{}, error) {
 			return c.ReadRequest()
 		}
 
-		if _, err := c.br.Discard(1); err != nil {
+		if _, err = c.br.Discard(1); err != nil {
 			return nil, err
 		}
 	}

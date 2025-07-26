@@ -146,7 +146,7 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 	case strings.ContainsAny(tmp, "abcdefABCDEF"):
 		s.Origin.SessionID, err = strconv.ParseUint(tmp, 16, 64)
 	default:
-		if i := strings.Index(tmp, "."); i >= 0 {
+		if i = strings.Index(tmp, "."); i >= 0 {
 			tmp = tmp[:i]
 		}
 		tmp = strings.TrimPrefix(tmp, "-")
@@ -412,7 +412,8 @@ func (s *SessionDescription) unmarshalRepeatTimes(value string) error {
 	}
 
 	for i := 2; i < len(fields); i++ {
-		offset, err := parseTimeUnits(fields[i])
+		var offset int64
+		offset, err = parseTimeUnits(fields[i])
 		if err != nil {
 			return fmt.Errorf("%w `%v`", errSDPInvalidValue, fields)
 		}
@@ -453,7 +454,8 @@ func (s *SessionDescription) unmarshalMediaDescription(value string) error {
 	}
 
 	if len(parts) > 1 {
-		portRange, err := strconv.Atoi(parts[1])
+		var portRange int
+		portRange, err = strconv.Atoi(parts[1])
 		if err != nil {
 			return fmt.Errorf("%w `%v`", errSDPInvalidValue, parts)
 		}

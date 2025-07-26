@@ -32,7 +32,8 @@ func (m *Message) Unmarshal(buf []byte) error {
 			return fmt.Errorf("unsupported payload type: %d", nextPayloadType)
 		}
 
-		payloadLen, err := payload.unmarshal(buf[n:])
+		var payloadLen int
+		payloadLen, err = payload.unmarshal(buf[n:])
 		if err != nil {
 			return fmt.Errorf("unable to parse payload %d: %w", nextPayloadType, err)
 		}
@@ -80,7 +81,8 @@ func (m *Message) Marshal() ([]byte, error) {
 
 		buf[n] = byte(nextPayloadType)
 
-		n2, err := pl.marshalTo(buf[n:])
+		var n2 int
+		n2, err = pl.marshalTo(buf[n:])
 		if err != nil {
 			return nil, err
 		}

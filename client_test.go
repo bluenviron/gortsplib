@@ -178,8 +178,8 @@ func TestClientCloseDuringRequest(t *testing.T) {
 	optionsDone := make(chan struct{})
 	go func() {
 		defer close(optionsDone)
-		_, err := c.Options(u)
-		require.Error(t, err)
+		_, err2 := c.Options(u)
+		require.Error(t, err2)
 	}()
 
 	<-requestReceived
@@ -534,7 +534,8 @@ func TestClientReplyToServerRequest(t *testing.T) {
 					})
 					require.NoError(t, err2)
 
-					res, err2 := conn.ReadResponse()
+					var res *base.Response
+					res, err2 = conn.ReadResponse()
 					require.NoError(t, err2)
 					require.Equal(t, base.StatusOK, res.StatusCode)
 					require.Equal(t, "4", res.Header["CSeq"][0])

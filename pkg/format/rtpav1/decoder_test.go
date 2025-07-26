@@ -20,7 +20,8 @@ func TestDecode(t *testing.T) {
 			var obus [][]byte
 
 			for _, pkt := range ca.pkts {
-				addOBUs, err := d.Decode(pkt)
+				var addOBUs [][]byte
+				addOBUs, err = d.Decode(pkt)
 				if errors.Is(err, ErrMorePacketsNeeded) {
 					continue
 				}

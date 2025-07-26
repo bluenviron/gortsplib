@@ -48,7 +48,8 @@ func (h *RTPInfo) Unmarshal(v base.HeaderValue) error {
 				urlReceived = true
 
 			case "seq":
-				vi, err := strconv.ParseUint(v, 10, 16)
+				var vi uint64
+				vi, err = strconv.ParseUint(v, 10, 16)
 				if err != nil {
 					return err
 				}
@@ -56,7 +57,8 @@ func (h *RTPInfo) Unmarshal(v base.HeaderValue) error {
 				e.SequenceNumber = &vi2
 
 			case "rtptime":
-				vi, err := strconv.ParseUint(v, 10, 32)
+				var vi uint64
+				vi, err = strconv.ParseUint(v, 10, 32)
 				if err != nil {
 					return err
 				}

@@ -92,7 +92,8 @@ func NewMultiConn(
 		writeSocks := make([]int, len(enabledInterfaces))
 
 		for i, intf := range enabledInterfaces {
-			writeSock, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
+			var writeSock int
+			writeSock, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 			if err != nil {
 				for j := 0; j < i; j++ {
 					syscall.Close(writeSocks[j]) //nolint:errcheck
@@ -111,7 +112,6 @@ func NewMultiConn(
 				return nil, err
 			}
 
-			var lsa syscall.SockaddrInet4
 			lsa.Port = addr.Port
 			copy(lsa.Addr[:], addr.IP.To4())
 			err = syscall.Bind(writeSock, &lsa)

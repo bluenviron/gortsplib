@@ -71,7 +71,7 @@ func main() {
 		time.Sleep(5 * time.Second)
 
 		// pause
-		_, err := c.Pause()
+		_, err = c.Pause()
 		if err != nil {
 			panic(err)
 		}

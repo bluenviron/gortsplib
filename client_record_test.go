@@ -613,7 +613,7 @@ func TestClientRecordSocketError(t *testing.T) {
 			defer ti.Stop()
 
 			for range ti.C {
-				err := c.WritePacketRTP(medi, &testRTPPacket)
+				err = c.WritePacketRTP(medi, &testRTPPacket)
 				if err != nil {
 					break
 				}

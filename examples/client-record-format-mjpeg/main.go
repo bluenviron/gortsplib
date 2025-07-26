@@ -11,6 +11,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -79,13 +80,14 @@ func main() {
 
 		// encode the image with JPEG
 		var buf bytes.Buffer
-		err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80})
+		err = jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80})
 		if err != nil {
 			panic(err)
 		}
 
 		// generate RTP packets from the JPEG image
-		pkts, err := rtpEnc.Encode(buf.Bytes())
+		var pkts []*rtp.Packet
+		pkts, err = rtpEnc.Encode(buf.Bytes())
 		if err != nil {
 			panic(err)
 		}

@@ -28,10 +28,12 @@ func InterfaceForSource(ip net.IP) (*net.Interface, error) {
 			continue
 		}
 
-		addrs, err := intf.Addrs()
+		var addrs []net.Addr
+		addrs, err = intf.Addrs()
 		if err == nil {
 			for _, addr := range addrs {
-				_, ipnet, err := net.ParseCIDR(addr.String())
+				var ipnet *net.IPNet
+				_, ipnet, err = net.ParseCIDR(addr.String())
 				if err == nil && ipnet.Contains(ip) {
 					return &intf, nil
 				}

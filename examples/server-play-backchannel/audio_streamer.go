@@ -8,6 +8,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/g711"
+	"github.com/pion/rtp"
 )
 
 func multiplyAndDivide(v, m, d int64) int64 {
@@ -70,7 +71,8 @@ func (r *audioStreamer) run() {
 		}
 
 		// generate RTP packets from G711 samples
-		pkts, err := rtpEnc.Encode(samples)
+		var pkts []*rtp.Packet
+		pkts, err = rtpEnc.Encode(samples)
 		if err != nil {
 			panic(err)
 		}

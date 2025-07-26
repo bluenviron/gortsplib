@@ -141,7 +141,8 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 				h.Stale = &v
 
 			case "algorithm":
-				a, err := parseAuthAlgorithm(v)
+				var a AuthAlgorithm
+				a, err = parseAuthAlgorithm(v)
 				if err != nil {
 					return err
 				}

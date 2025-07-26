@@ -415,7 +415,7 @@ func (s *Server) runInner() error {
 					continue
 				}
 
-				ss := &ServerSession{
+				ss = &ServerSession{
 					s:      s,
 					author: req.sc,
 				}

@@ -172,7 +172,7 @@ func (f *H264) PTSEqualsDTS(pkt *rtp.Packet) bool {
 			return false
 		}
 
-		typ := h264.NALUType(pkt.Payload[1] & 0x1F)
+		typ = h264.NALUType(pkt.Payload[1] & 0x1F)
 		switch typ {
 		case h264.NALUTypeIDR, h264.NALUTypeSPS, h264.NALUTypePPS:
 			return true

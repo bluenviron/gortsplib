@@ -111,7 +111,7 @@ func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	for r := range sm.st.activeUnicastReaders {
 		if sm, ok := r.setuppedMedias[sm.media]; ok {
 			if r.setuppedSecure {
-				err := sm.writePacketRTCPEncoded(encr)
+				err = sm.writePacketRTCPEncoded(encr)
 				if err != nil {
 					r.onStreamWriteError(err)
 					continue
@@ -119,7 +119,7 @@ func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 
 				atomic.AddUint64(sm.bytesSent, encrLen)
 			} else {
-				err := sm.writePacketRTCPEncoded(plain)
+				err = sm.writePacketRTCPEncoded(plain)
 				if err != nil {
 					r.onStreamWriteError(err)
 					continue
@@ -135,14 +135,14 @@ func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	// send multicast
 	if sm.multicastWriter != nil {
 		if sm.srtpOutCtx != nil {
-			err := sm.multicastWriter.writePacketRTCP(encr)
+			err = sm.multicastWriter.writePacketRTCP(encr)
 			if err != nil {
 				return err
 			}
 
 			atomic.AddUint64(sm.bytesSent, encrLen)
 		} else {
-			err := sm.multicastWriter.writePacketRTCP(plain)
+			err = sm.multicastWriter.writePacketRTCP(plain)
 			if err != nil {
 				return err
 			}

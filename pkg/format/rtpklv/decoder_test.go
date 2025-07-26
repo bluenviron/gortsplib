@@ -20,7 +20,8 @@ func TestDecode(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				addUnits, err := d.Decode(pkt)
+				var addUnits []byte
+				addUnits, err = d.Decode(pkt)
 
 				// test input integrity
 				require.Equal(t, clone, pkt)
