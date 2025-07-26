@@ -111,54 +111,56 @@ func (st *ServerStream) Description() *description.Session {
 
 // Stats returns stream statistics.
 func (st *ServerStream) Stats() *ServerStreamStats {
+	mediaStats := func() map[*description.Media]ServerStreamStatsMedia {
+		ret := make(map[*description.Media]ServerStreamStatsMedia, len(st.medias))
+
+		for med, sm := range st.medias {
+			ret[med] = ServerStreamStatsMedia{
+				BytesSent:       atomic.LoadUint64(sm.bytesSent),
+				RTCPPacketsSent: atomic.LoadUint64(sm.rtcpPacketsSent),
+				Formats: func() map[format.Format]ServerStreamStatsFormat {
+					ret := make(map[format.Format]ServerStreamStatsFormat)
+
+					for _, fo := range sm.formats {
+						ret[fo.format] = ServerStreamStatsFormat{
+							RTPPacketsSent: atomic.LoadUint64(fo.rtpPacketsSent),
+							LocalSSRC:      fo.localSSRC,
+						}
+					}
+
+					return ret
+				}(),
+			}
+		}
+
+		return ret
+	}()
+
 	return &ServerStreamStats{
 		BytesSent: func() uint64 {
 			v := uint64(0)
-			for _, me := range st.medias {
-				v += atomic.LoadUint64(me.bytesSent)
+			for _, ms := range mediaStats {
+				v += ms.BytesSent
 			}
 			return v
 		}(),
 		RTPPacketsSent: func() uint64 {
 			v := uint64(0)
-			for _, me := range st.medias {
-				for _, f := range me.formats {
-					v += atomic.LoadUint64(f.rtpPacketsSent)
+			for _, ms := range mediaStats {
+				for _, f := range ms.Formats {
+					v += f.RTPPacketsSent
 				}
 			}
 			return v
 		}(),
 		RTCPPacketsSent: func() uint64 {
 			v := uint64(0)
-			for _, me := range st.medias {
-				v += atomic.LoadUint64(me.rtcpPacketsSent)
+			for _, ms := range mediaStats {
+				v += ms.RTCPPacketsSent
 			}
 			return v
 		}(),
-		Medias: func() map[*description.Media]ServerStreamStatsMedia {
-			ret := make(map[*description.Media]ServerStreamStatsMedia, len(st.medias))
-
-			for med, sm := range st.medias {
-				ret[med] = ServerStreamStatsMedia{
-					BytesSent:       atomic.LoadUint64(sm.bytesSent),
-					RTCPPacketsSent: atomic.LoadUint64(sm.rtcpPacketsSent),
-					Formats: func() map[format.Format]ServerStreamStatsFormat {
-						ret := make(map[format.Format]ServerStreamStatsFormat)
-
-						for _, fo := range sm.formats {
-							ret[fo.format] = ServerStreamStatsFormat{
-								RTPPacketsSent: atomic.LoadUint64(fo.rtpPacketsSent),
-								LocalSSRC:      fo.localSSRC,
-							}
-						}
-
-						return ret
-					}(),
-				}
-			}
-
-			return ret
-		}(),
+		Medias: mediaStats,
 	}
 }
 
