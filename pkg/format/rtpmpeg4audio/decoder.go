@@ -178,7 +178,8 @@ func (d *Decoder) readAUHeaders(buf []byte, headersLen int) ([]uint64, error) {
 		if !firstRead {
 			firstRead = true
 			if d.IndexLength > 0 {
-				auIndex, err := bits.ReadBits(buf, &pos, d.IndexLength)
+				var auIndex uint64
+				auIndex, err = bits.ReadBits(buf, &pos, d.IndexLength)
 				if err != nil {
 					return nil, err
 				}
@@ -189,7 +190,8 @@ func (d *Decoder) readAUHeaders(buf []byte, headersLen int) ([]uint64, error) {
 				}
 			}
 		} else if d.IndexDeltaLength > 0 {
-			auIndexDelta, err := bits.ReadBits(buf, &pos, d.IndexDeltaLength)
+			var auIndexDelta uint64
+			auIndexDelta, err = bits.ReadBits(buf, &pos, d.IndexDeltaLength)
 			if err != nil {
 				return nil, err
 			}

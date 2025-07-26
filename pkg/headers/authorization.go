@@ -133,7 +133,8 @@ func (h *Authorization) Unmarshal(v base.HeaderValue) error {
 				h.Opaque = &v
 
 			case "algorithm":
-				a, err := parseAuthAlgorithm(v)
+				var a AuthAlgorithm
+				a, err = parseAuthAlgorithm(v)
 				if err != nil {
 					return err
 				}

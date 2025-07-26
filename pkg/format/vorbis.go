@@ -40,7 +40,8 @@ func (f *Vorbis) unmarshal(ctx *unmarshalContext) error {
 
 	for key, val := range ctx.fmtp {
 		if key == "configuration" {
-			conf, err := base64.StdEncoding.DecodeString(val)
+			var conf []byte
+			conf, err = base64.StdEncoding.DecodeString(val)
 			if err != nil {
 				return fmt.Errorf("invalid config: %v", val)
 			}

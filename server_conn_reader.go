@@ -85,7 +85,7 @@ func (cr *serverConnReader) readFuncStandard() error {
 			req := readReq{req: what, res: cres}
 			cr.chRequest <- req
 
-			err := <-cres
+			err = <-cres
 			if err != nil {
 				return err
 			}
@@ -121,7 +121,7 @@ func (cr *serverConnReader) readFuncTCP() error {
 			req := readReq{req: what, res: cres}
 			cr.chRequest <- req
 
-			err := <-cres
+			err = <-cres
 			if err != nil {
 				return err
 			}

@@ -14,6 +14,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -88,7 +89,8 @@ func main() {
 		}
 
 		// find the H264 track inside the file
-		track, err := findTrack(r)
+		var track *mpegts.Track
+		track, err = findTrack(r)
 		if err != nil {
 			panic(err)
 		}
@@ -119,7 +121,8 @@ func main() {
 			log.Printf("writing access unit with pts=%d dts=%d", pts, dts)
 
 			// wrap the access unit into RTP packets
-			packets, err := rtpEnc.Encode(au)
+			var packets []*rtp.Packet
+			packets, err = rtpEnc.Encode(au)
 			if err != nil {
 				return err
 			}
@@ -134,7 +137,7 @@ func main() {
 
 			// write RTP packets to the server
 			for _, packet := range packets {
-				err := c.WritePacketRTP(desc.Medias[0], packet)
+				err = c.WritePacketRTP(desc.Medias[0], packet)
 				if err != nil {
 					return err
 				}
@@ -145,7 +148,7 @@ func main() {
 
 		// read the file
 		for {
-			err := r.Read()
+			err = r.Read()
 			if err != nil {
 				// file has ended
 				if errors.Is(err, io.EOF) {

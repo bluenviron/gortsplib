@@ -47,7 +47,8 @@ func (h *Session) Unmarshal(v base.HeaderValue) error {
 
 	for k, v := range kvs {
 		if k == "timeout" {
-			iv, err := strconv.ParseUint(v, 10, 32)
+			var iv uint64
+			iv, err = strconv.ParseUint(v, 10, 32)
 			if err != nil {
 				return err
 			}

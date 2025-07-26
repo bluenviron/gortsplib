@@ -22,7 +22,8 @@ func TestDecode(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				addNALUs, err := d.Decode(pkt)
+				var addNALUs [][]byte
+				addNALUs, err = d.Decode(pkt)
 
 				// test input integrity
 				require.Equal(t, clone, pkt)
@@ -164,7 +165,7 @@ func TestDecodeAnnexB(t *testing.T) {
 	}, nalus)
 
 	for i := 0; i < 2; i++ {
-		nalus, err := d.Decode(&rtp.Packet{
+		nalus, err = d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         true,

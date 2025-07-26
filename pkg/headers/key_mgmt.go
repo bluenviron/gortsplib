@@ -45,7 +45,8 @@ func (h *KeyMgmt) Unmarshal(v base.HeaderValue) error {
 			uriProvided = true
 
 		case "data":
-			byts, err := base64.StdEncoding.DecodeString(v)
+			var byts []byte
+			byts, err = base64.StdEncoding.DecodeString(v)
 			if err != nil {
 				return fmt.Errorf("invalid data: %w", err)
 			}

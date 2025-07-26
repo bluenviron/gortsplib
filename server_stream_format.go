@@ -121,7 +121,7 @@ func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) err
 			rsf := rsm.formats[pkt.PayloadType]
 
 			if r.setuppedSecure {
-				err := rsf.writePacketRTPEncoded(encr)
+				err = rsf.writePacketRTPEncoded(encr)
 				if err != nil {
 					r.onStreamWriteError(err)
 					continue
@@ -129,7 +129,7 @@ func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) err
 
 				atomic.AddUint64(sf.sm.bytesSent, encrLen)
 			} else {
-				err := rsf.writePacketRTPEncoded(plain)
+				err = rsf.writePacketRTPEncoded(plain)
 				if err != nil {
 					r.onStreamWriteError(err)
 					continue
@@ -145,14 +145,14 @@ func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) err
 	// send multicast
 	if sf.sm.multicastWriter != nil {
 		if sf.sm.srtpOutCtx != nil {
-			err := sf.sm.multicastWriter.writePacketRTP(encr)
+			err = sf.sm.multicastWriter.writePacketRTP(encr)
 			if err != nil {
 				return err
 			}
 
 			atomic.AddUint64(sf.sm.bytesSent, encrLen)
 		} else {
-			err := sf.sm.multicastWriter.writePacketRTP(plain)
+			err = sf.sm.multicastWriter.writePacketRTP(plain)
 			if err != nil {
 				return err
 			}

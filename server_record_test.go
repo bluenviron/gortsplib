@@ -646,8 +646,8 @@ func TestServerRecord(t *testing.T) {
 								ctx.Session.AnnouncedDescription().Medias[i],
 								func(pkt rtcp.Packet) {
 									require.Equal(t, &testRTCPPacket, pkt)
-									err := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedDescription().Medias[ci], &testRTCPPacket)
-									require.NoError(t, err)
+									err2 := ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedDescription().Medias[ci], &testRTCPPacket)
+									require.NoError(t, err2)
 								})
 						}
 
@@ -1316,7 +1316,8 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 	sxID := ""
 
 	func() {
-		nconn, err := net.Dial("tcp", "localhost:8554")
+		var nconn net.Conn
+		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
@@ -1342,12 +1343,14 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 	}()
 
 	func() {
-		nconn, err := net.Dial("tcp", "localhost:8554")
+		var nconn net.Conn
+		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		res, err := writeReqReadRes(conn, base.Request{
+		var res *base.Response
+		res, err = writeReqReadRes(conn, base.Request{
 			Method: base.GetParameter,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
 			Header: base.Header{
@@ -1574,7 +1577,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 				}))
 
 			case ca.proto == "udp" && ca.name == "rtp too big":
-				_, err := l1.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+				_, err = l1.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[0],
 				})

@@ -87,7 +87,8 @@ func TestOverflow(t *testing.T) {
 	require.Equal(t, false, ok)
 
 	for i := 0; i < 32; i++ {
-		data, ok := r.Pull()
+		var data interface{}
+		data, ok = r.Pull()
 		require.Equal(t, true, ok)
 		require.Equal(t, []byte{1, 2, 3, 4}, data)
 	}

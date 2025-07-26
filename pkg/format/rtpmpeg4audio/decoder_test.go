@@ -25,7 +25,8 @@ func TestDecodeGeneric(t *testing.T) {
 			for _, pkt := range ca.pkts {
 				clone := pkt.Clone()
 
-				addAUs, err := d.Decode(pkt)
+				var addAUs [][]byte
+				addAUs, err = d.Decode(pkt)
 
 				// test input integrity
 				require.Equal(t, clone, pkt)
@@ -53,7 +54,8 @@ func TestDecodeGenericADTS(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < 2; i++ {
-		aus, err := d.Decode(&rtp.Packet{
+		var aus [][]byte
+		aus, err = d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,
 				Marker:         true,

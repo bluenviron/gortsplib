@@ -1315,16 +1315,16 @@ func TestClientPlayAnyPort(t *testing.T) {
 				if ca == "random" {
 					// skip firewall opening
 					buf := make([]byte, 2048)
-					_, _, err = l1b.ReadFrom(buf)
-					require.NoError(t, err)
+					_, _, err2 = l1b.ReadFrom(buf)
+					require.NoError(t, err2)
 
 					buf = make([]byte, 2048)
 					var n int
-					n, _, err = l1b.ReadFrom(buf)
-					require.NoError(t, err)
+					n, _, err2 = l1b.ReadFrom(buf)
+					require.NoError(t, err2)
 					var packets []rtcp.Packet
-					packets, err = rtcp.Unmarshal(buf[:n])
-					require.NoError(t, err)
+					packets, err2 = rtcp.Unmarshal(buf[:n])
+					require.NoError(t, err2)
 					require.Equal(t, &testRTCPPacket, packets[0])
 					close(serverRecv)
 				}
@@ -1351,7 +1351,7 @@ func TestClientPlayAnyPort(t *testing.T) {
 			<-packetRecv
 
 			if ca == "random" {
-				err := c.WritePacketRTCP(med, &testRTCPPacket)
+				err = c.WritePacketRTCP(med, &testRTCPPacket)
 				require.NoError(t, err)
 				<-serverRecv
 			}

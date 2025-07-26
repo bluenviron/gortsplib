@@ -20,7 +20,8 @@ func TestDecode(t *testing.T) {
 			var samples []byte
 
 			for _, pkt := range ca.pkts {
-				partial, err := d.Decode(pkt)
+				var partial []byte
+				partial, err = d.Decode(pkt)
 				require.NoError(t, err)
 				samples = append(samples, partial...)
 			}

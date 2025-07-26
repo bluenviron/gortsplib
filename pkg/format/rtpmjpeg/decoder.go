@@ -204,7 +204,7 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 
 		if jh.Quantization >= 128 {
 			var hqt headerQuantizationTable
-			n, err := hqt.unmarshal(byts)
+			n, err = hqt.unmarshal(byts)
 			if err != nil {
 				return nil, err
 			}

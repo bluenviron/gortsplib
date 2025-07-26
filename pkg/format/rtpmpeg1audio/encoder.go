@@ -100,7 +100,7 @@ func (e *Encoder) Encode(frames [][]byte) ([]*rtp.Packet, error) {
 
 				for _, frame := range batch {
 					var h mpeg1audio.FrameHeader
-					err := h.Unmarshal(frame)
+					err = h.Unmarshal(frame)
 					if err != nil {
 						return nil, err
 					}

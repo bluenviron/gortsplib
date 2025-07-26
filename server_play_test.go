@@ -40,7 +40,8 @@ func multicastCapableIP(t *testing.T) string {
 
 	for _, intf := range intfs {
 		if (intf.Flags & net.FlagMulticast) != 0 {
-			addrs, err := intf.Addrs()
+			var addrs []net.Addr
+			addrs, err = intf.Addrs()
 			if err != nil {
 				continue
 			}
@@ -541,7 +542,8 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 	defer stream.Close()
 
 	for i := 0; i < 2; i++ {
-		nconn, err := net.Dial("tcp", "localhost:8554")
+		var nconn net.Conn
+		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
@@ -555,7 +557,8 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 
 		desc := doDescribe(t, conn, false)
 
-		res, err := writeReqReadRes(conn, base.Request{
+		var res *base.Response
+		res, err = writeReqReadRes(conn, base.Request{
 			Method: base.Setup,
 			URL:    mediaURL(t, desc.BaseURL, desc.Medias[0]),
 			Header: base.Header{
@@ -1150,7 +1153,8 @@ func TestServerPlaySocketError(t *testing.T) {
 			require.NoError(t, err)
 
 			func() {
-				nconn, err := net.Dial("tcp", listenIP+":8554")
+				var nconn net.Conn
+				nconn, err = net.Dial("tcp", listenIP+":8554")
 				require.NoError(t, err)
 				defer nconn.Close()
 
@@ -1356,28 +1360,28 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 
 			switch { //nolint:dupl
 			case ca.proto == "udp" && ca.name == "rtcp invalid":
-				_, err := l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
+				_, err = l2.WriteTo([]byte{0x01, 0x02}, &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[1],
 				})
 				require.NoError(t, err)
 
 			case ca.proto == "udp" && ca.name == "rtcp too big":
-				_, err := l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
+				_, err = l2.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 					IP:   net.ParseIP("127.0.0.1"),
 					Port: resTH.ServerPorts[1],
 				})
 				require.NoError(t, err)
 
 			case ca.proto == "tcp" && ca.name == "rtcp invalid":
-				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 1,
 					Payload: []byte{0x01, 0x02},
 				}, make([]byte, 2048))
 				require.NoError(t, err)
 
 			case ca.proto == "tcp" && ca.name == "rtcp too big":
-				err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
+				err = conn.WriteInterleavedFrame(&base.InterleavedFrame{
 					Channel: 1,
 					Payload: bytes.Repeat([]byte{0x01, 0x02}, 2000/2),
 				}, make([]byte, 2048))
@@ -1621,7 +1625,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 					for {
 						select {
 						case <-ti.C:
-							err := stream.WritePacketRTP(stream.Description().Medias[0], &testRTPPacket)
+							err = stream.WritePacketRTP(stream.Description().Medias[0], &testRTPPacket)
 							require.NoError(t, err)
 						case <-writerTerminate:
 							return
@@ -2099,7 +2103,8 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 	sxID := ""
 
 	func() {
-		nconn, err := net.Dial("tcp", "localhost:8554")
+		var nconn net.Conn
+		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
@@ -2123,12 +2128,14 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 	}()
 
 	func() {
-		nconn, err := net.Dial("tcp", "localhost:8554")
+		var nconn net.Conn
+		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
 		conn := conn.NewConn(nconn)
 
-		res, err := writeReqReadRes(conn, base.Request{
+		var res *base.Response
+		res, err = writeReqReadRes(conn, base.Request{
 			Method: base.GetParameter,
 			URL:    mustParseURL("rtsp://localhost:8554/teststream/"),
 			Header: base.Header{
@@ -2467,10 +2474,11 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 	doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
 
 	for i := range 2 {
-		err := stream.WritePacketRTP(stream.Description().Medias[i], &testRTPPacket)
+		err = stream.WritePacketRTP(stream.Description().Medias[i], &testRTPPacket)
 		require.NoError(t, err)
 
-		f, err := conn.ReadInterleavedFrame()
+		var f *base.InterleavedFrame
+		f, err = conn.ReadInterleavedFrame()
 		require.NoError(t, err)
 		require.Equal(t, i*2, f.Channel)
 

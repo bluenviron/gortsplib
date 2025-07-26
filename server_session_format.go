@@ -170,7 +170,7 @@ func (sf *serverSessionFormat) onPacketRTPLost(lost uint64) {
 			Session: sf.sm.ss,
 			Lost:    lost,
 		})
-	} else if h, ok := sf.sm.ss.s.Handler.(ServerHandlerOnPacketLost); ok {
+	} else if h, ok2 := sf.sm.ss.s.Handler.(ServerHandlerOnPacketLost); ok2 {
 		h.OnPacketLost(&ServerHandlerOnPacketLostCtx{
 			Session: sf.sm.ss,
 			Error:   liberrors.ErrServerRTPPacketsLost{Lost: uint(lost)}, //nolint:staticcheck

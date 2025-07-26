@@ -9,6 +9,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/pion/rtp"
 )
 
 // This example shows how to
@@ -81,7 +82,8 @@ func main() {
 		samples := createDummyAudio(pts, prevPTS)
 
 		// generate RTP packets from LPCM samples
-		pkts, err := rtpEnc.Encode(samples)
+		var pkts []*rtp.Packet
+		pkts, err = rtpEnc.Encode(samples)
 		if err != nil {
 			panic(err)
 		}

@@ -54,7 +54,7 @@ func (t *RangeSMPTETime) unmarshal(s string) error {
 	if len(parts) == 4 {
 		parts = strings.Split(parts[3], ".")
 		if len(parts) == 2 {
-			tmp, err := strconv.ParseUint(parts[0], 10, 64)
+			tmp, err = strconv.ParseUint(parts[0], 10, 64)
 			if err != nil {
 				return err
 			}
@@ -66,7 +66,7 @@ func (t *RangeSMPTETime) unmarshal(s string) error {
 			}
 			t.Subframe = uint(tmp)
 		} else {
-			tmp, err := strconv.ParseUint(parts[0], 10, 64)
+			tmp, err = strconv.ParseUint(parts[0], 10, 64)
 			if err != nil {
 				return err
 			}
@@ -111,7 +111,7 @@ func (r *RangeSMPTE) unmarshal(start string, end string) error {
 
 	if end != "" {
 		var v RangeSMPTETime
-		err := v.unmarshal(end)
+		err = v.unmarshal(end)
 		if err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func (r *RangeNPT) unmarshal(start string, end string) error {
 
 	if end != "" {
 		var v time.Duration
-		err := unmarshalRangeNPTTime(&v, end)
+		err = unmarshalRangeNPTTime(&v, end)
 		if err != nil {
 			return err
 		}
@@ -230,7 +230,7 @@ func (r *RangeUTC) unmarshal(start string, end string) error {
 
 	if end != "" {
 		var v time.Time
-		err := unmarshalRangeUTCTime(&v, end)
+		err = unmarshalRangeUTCTime(&v, end)
 		if err != nil {
 			return err
 		}
@@ -296,7 +296,7 @@ func (h *Range) Unmarshal(v base.HeaderValue) error {
 		switch k {
 		case "smpte":
 			s := &RangeSMPTE{}
-			err := rangeValueUnmarshal(s, v)
+			err = rangeValueUnmarshal(s, v)
 			if err != nil {
 				return err
 			}
@@ -306,7 +306,7 @@ func (h *Range) Unmarshal(v base.HeaderValue) error {
 
 		case "npt":
 			s := &RangeNPT{}
-			err := rangeValueUnmarshal(s, v)
+			err = rangeValueUnmarshal(s, v)
 			if err != nil {
 				return err
 			}
@@ -316,7 +316,7 @@ func (h *Range) Unmarshal(v base.HeaderValue) error {
 
 		case "clock":
 			s := &RangeUTC{}
-			err := rangeValueUnmarshal(s, v)
+			err = rangeValueUnmarshal(s, v)
 			if err != nil {
 				return err
 			}
@@ -326,7 +326,7 @@ func (h *Range) Unmarshal(v base.HeaderValue) error {
 
 		case "time":
 			var t time.Time
-			err := unmarshalRangeUTCTime(&t, v)
+			err = unmarshalRangeUTCTime(&t, v)
 			if err != nil {
 				return err
 			}
