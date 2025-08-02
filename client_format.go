@@ -12,8 +12,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtplossdetector"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 )
 
 func clientPickLocalSSRC(cf *clientFormat) (uint32, error) {
@@ -47,10 +45,8 @@ type clientFormat struct {
 	onPacketRTP OnPacketRTPFunc
 
 	localSSRC             uint32
-	udpReorderer          *rtpreorderer.Reorderer       // play
-	tcpLossDetector       *rtplossdetector.LossDetector // play
-	rtcpReceiver          *rtcpreceiver.RTCPReceiver    // play
-	rtcpSender            *rtcpsender.RTCPSender        // record or back channel
+	rtcpReceiver          *rtcpreceiver.RTCPReceiver // play
+	rtcpSender            *rtcpsender.RTCPSender     // record or back channel
 	writePacketRTPInQueue func([]byte) error
 	rtpPacketsReceived    *uint64
 	rtpPacketsSent        *uint64
@@ -95,18 +91,12 @@ func (cf *clientFormat) start() {
 		}
 		cf.rtcpSender.Initialize()
 	} else {
-		if cf.cm.udpRTPListener != nil {
-			cf.udpReorderer = &rtpreorderer.Reorderer{}
-			cf.udpReorderer.Initialize()
-		} else {
-			cf.tcpLossDetector = &rtplossdetector.LossDetector{}
-		}
-
 		cf.rtcpReceiver = &rtcpreceiver.RTCPReceiver{
-			ClockRate: cf.format.ClockRate(),
-			LocalSSRC: &cf.localSSRC,
-			Period:    cf.cm.c.receiverReportPeriod,
-			TimeNow:   cf.cm.c.timeNow,
+			ClockRate:            cf.format.ClockRate(),
+			LocalSSRC:            &cf.localSSRC,
+			UnrealiableTransport: (cf.cm.udpRTPListener != nil),
+			Period:               cf.cm.c.receiverReportPeriod,
+			TimeNow:              cf.cm.c.timeNow,
 			WritePacketRTCP: func(pkt rtcp.Packet) {
 				if cf.cm.udpRTPListener != nil && cf.cm.udpRTCPListener.writeAddr != nil {
 					cf.cm.c.WritePacketRTCP(cf.cm.media, pkt) //nolint:errcheck
@@ -142,46 +132,32 @@ func (cf *clientFormat) remoteSSRC() (uint32, bool) {
 }
 
 func (cf *clientFormat) readPacketRTPUDP(pkt *rtp.Packet) {
-	packets, lost := cf.udpReorderer.Process(pkt)
-	if lost != 0 {
-		cf.handlePacketsLost(uint64(lost))
-		// do not return
-	}
-
 	now := cf.cm.c.timeNow()
-
-	for _, pkt := range packets {
-		cf.handlePacketRTP(pkt, now)
-	}
+	cf.handlePacketRTP(pkt, now)
 }
 
 func (cf *clientFormat) readPacketRTPTCP(pkt *rtp.Packet) {
-	lost := cf.tcpLossDetector.Process(pkt)
-	if lost != 0 {
-		cf.handlePacketsLost(uint64(lost))
-		// do not return
-	}
-
 	now := cf.cm.c.timeNow()
-
 	cf.handlePacketRTP(pkt, now)
 }
 
 func (cf *clientFormat) handlePacketRTP(pkt *rtp.Packet, now time.Time) {
-	err := cf.rtcpReceiver.ProcessPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
+	pkts, lost, err := cf.rtcpReceiver.ProcessPacket2(pkt, now, cf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		cf.cm.onPacketRTPDecodeError(err)
 		return
 	}
 
-	atomic.AddUint64(cf.rtpPacketsReceived, 1)
+	if lost != 0 {
+		atomic.AddUint64(cf.rtpPacketsLost, lost)
+		cf.cm.c.OnPacketsLost(lost)
+	}
 
-	cf.onPacketRTP(pkt)
-}
+	atomic.AddUint64(cf.rtpPacketsReceived, uint64(len(pkts)))
 
-func (cf *clientFormat) handlePacketsLost(lost uint64) {
-	atomic.AddUint64(cf.rtpPacketsLost, lost)
-	cf.cm.c.OnPacketsLost(lost)
+	for _, pkt := range pkts {
+		cf.onPacketRTP(pkt)
+	}
 }
 
 func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {

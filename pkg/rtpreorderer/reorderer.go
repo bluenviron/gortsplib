@@ -12,6 +12,8 @@ const (
 // Reorderer filters incoming RTP packets, in order to
 // - order packets
 // - remove duplicate packets
+//
+// Deprecated: merged into rtcpreceiver.Receiver.
 type Reorderer struct {
 	initialized    bool
 	expectedSeqNum uint16
