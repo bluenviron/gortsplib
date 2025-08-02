@@ -27,12 +27,34 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
-// RTCPReceiver is a utility to generate RTCP receiver reports.
+// RTCPReceiver is a utility to receive RTP packets. It is in charge of:
+// - removing packets with wrong SSRC
+// - removing duplicate packets (when transport is unreliable)
+// - reordering packets (when transport is unrealiable)
+// - counting lost packets
+// - generating RTCP receiver reports
 type RTCPReceiver struct {
-	ClockRate       int
-	LocalSSRC       *uint32
-	Period          time.Duration
-	TimeNow         func() time.Time
+	// Track clock rate.
+	ClockRate int
+
+	// Local SSRC
+	LocalSSRC *uint32
+
+	// Whether the transport is unrealiable.
+	// This enables removing duplicate packets and reordering packets.
+	UnrealiableTransport bool
+
+	// size of the buffer for reordering packets.
+	// It defaults to 64.
+	BufferSize int
+
+	// Period of RTCP receiver reports.
+	Period time.Duration
+
+	// time.Now function.
+	TimeNow func() time.Time
+
+	// Called when a RTCP receiver report is ready to be written.
 	WritePacketRTCP func(rtcp.Packet)
 
 	mutex sync.RWMutex
@@ -40,8 +62,11 @@ type RTCPReceiver struct {
 	// data from RTP packets
 	firstRTPPacketReceived bool
 	timeInitialized        bool
+	buffer                 []*rtp.Packet
+	absPos                 uint16
+	negativeCount          int
 	sequenceNumberCycles   uint16
-	lastSequenceNumber     uint16
+	lastValidSeqNum        uint16
 	remoteSSRC             uint32
 	lastTimeRTP            uint32
 	lastTimeSystem         time.Time
@@ -97,8 +122,20 @@ func (rr *RTCPReceiver) Initialize() error {
 		rr.LocalSSRC = &v
 	}
 
+	if rr.BufferSize == 0 {
+		rr.BufferSize = 64
+	}
+
+	if rr.Period == 0 {
+		return fmt.Errorf("invalid Period")
+	}
+
 	if rr.TimeNow == nil {
 		rr.TimeNow = time.Now
+	}
+
+	if rr.UnrealiableTransport {
+		rr.buffer = make([]*rtp.Packet, rr.BufferSize)
 	}
 
 	rr.terminate = make(chan struct{})
@@ -136,8 +173,8 @@ func (rr *RTCPReceiver) run() {
 }
 
 func (rr *RTCPReceiver) report() rtcp.Packet {
-	rr.mutex.Lock()
-	defer rr.mutex.Unlock()
+	rr.mutex.RLock()
+	defer rr.mutex.RUnlock()
 
 	if !rr.firstRTPPacketReceived || rr.ClockRate == 0 {
 		return nil
@@ -150,7 +187,7 @@ func (rr *RTCPReceiver) report() rtcp.Packet {
 		Reports: []rtcp.ReceptionReport{
 			{
 				SSRC:               rr.remoteSSRC,
-				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
+				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastValidSeqNum),
 				// equivalent to taking the integer part after multiplying the
 				// loss fraction by 256
 				FractionLost: uint8(float64(rr.totalLostSinceReport*256) / float64(rr.totalSinceReport)),
@@ -177,7 +214,20 @@ func (rr *RTCPReceiver) report() rtcp.Packet {
 }
 
 // ProcessPacket extracts the needed data from RTP packets.
+//
+// Deprecated: replaced by ProcessPacket2.
 func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqualsDTS bool) error {
+	_, _, err := rr.ProcessPacket2(pkt, system, ptsEqualsDTS)
+	return err
+}
+
+// ProcessPacket2 processes an incoming RTP packet.
+// It returns reordered packets and number of lost packets.
+func (rr *RTCPReceiver) ProcessPacket2(
+	pkt *rtp.Packet,
+	system time.Time,
+	ptsEqualsDTS bool,
+) ([]*rtp.Packet, uint64, error) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
@@ -185,7 +235,7 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 	if !rr.firstRTPPacketReceived {
 		rr.firstRTPPacketReceived = true
 		rr.totalSinceReport = 1
-		rr.lastSequenceNumber = pkt.SequenceNumber
+		rr.lastValidSeqNum = pkt.SequenceNumber
 		rr.remoteSSRC = pkt.SSRC
 
 		if ptsEqualsDTS {
@@ -194,35 +244,44 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 			rr.lastTimeSystem = system
 		}
 
-		// subsequent packets
-	} else {
-		if pkt.SSRC != rr.remoteSSRC {
-			return fmt.Errorf("received packet with wrong SSRC %d, expected %d", pkt.SSRC, rr.remoteSSRC)
-		}
+		return []*rtp.Packet{pkt}, 0, nil
+	}
 
-		diff := int32(pkt.SequenceNumber) - int32(rr.lastSequenceNumber)
+	if pkt.SSRC != rr.remoteSSRC {
+		return nil, 0, fmt.Errorf("received packet with wrong SSRC %d, expected %d", pkt.SSRC, rr.remoteSSRC)
+	}
+
+	var pkts []*rtp.Packet
+	var lost uint64
+
+	if rr.UnrealiableTransport {
+		pkts, lost = rr.reorder(pkt)
+	} else {
+		pkts = []*rtp.Packet{pkt}
+		lost = uint64(pkt.SequenceNumber - rr.lastValidSeqNum - 1)
+	}
+
+	rr.totalLost += uint32(lost)
+	rr.totalLostSinceReport += uint32(lost)
+
+	// allow up to 24 bits
+	if rr.totalLost > 0xFFFFFF {
+		rr.totalLost = 0xFFFFFF
+	}
+	if rr.totalLostSinceReport > 0xFFFFFF {
+		rr.totalLostSinceReport = 0xFFFFFF
+	}
+
+	for _, pkt := range pkts {
+		diff := int32(pkt.SequenceNumber) - int32(rr.lastValidSeqNum)
 
 		// overflow
 		if diff < -0x0FFF {
 			rr.sequenceNumberCycles++
 		}
 
-		// detect lost packets
-		if pkt.SequenceNumber != (rr.lastSequenceNumber + 1) {
-			rr.totalLost += uint32(uint16(diff) - 1)
-			rr.totalLostSinceReport += uint32(uint16(diff) - 1)
-
-			// allow up to 24 bits
-			if rr.totalLost > 0xFFFFFF {
-				rr.totalLost = 0xFFFFFF
-			}
-			if rr.totalLostSinceReport > 0xFFFFFF {
-				rr.totalLostSinceReport = 0xFFFFFF
-			}
-		}
-
 		rr.totalSinceReport += uint32(uint16(diff))
-		rr.lastSequenceNumber = pkt.SequenceNumber
+		rr.lastValidSeqNum = pkt.SequenceNumber
 
 		if ptsEqualsDTS {
 			if rr.timeInitialized && rr.ClockRate != 0 {
@@ -242,10 +301,105 @@ func (rr *RTCPReceiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqua
 		}
 	}
 
-	return nil
+	return pkts, lost, nil
 }
 
-// ProcessSenderReport extracts the needed data from RTCP sender reports.
+func (rr *RTCPReceiver) reorder(pkt *rtp.Packet) ([]*rtp.Packet, uint64) {
+	relPos := int16(pkt.SequenceNumber - rr.lastValidSeqNum - 1) // rr.expectedSeqNum)
+
+	// packet is a duplicate or has been sent
+	// before the first packet processed by Reorderer.
+	// discard.
+	if relPos < 0 {
+		rr.negativeCount++
+
+		// stream has been resetted, therefore reset reorderer too
+		if rr.negativeCount > len(rr.buffer) {
+			rr.negativeCount = 0
+
+			// clear buffer
+			for i := uint16(0); i < uint16(len(rr.buffer)); i++ {
+				p := (rr.absPos + i) & (uint16(len(rr.buffer)) - 1)
+				rr.buffer[p] = nil
+			}
+
+			// reset position.
+			return []*rtp.Packet{pkt}, 0
+		}
+
+		return nil, 0
+	}
+
+	rr.negativeCount = 0
+
+	// there's a missing packet and buffer is full.
+	// return entire buffer and clear it.
+	if relPos >= int16(len(rr.buffer)) {
+		n := 1
+		for i := uint16(0); i < uint16(len(rr.buffer)); i++ {
+			p := (rr.absPos + i) & (uint16(len(rr.buffer)) - 1)
+			if rr.buffer[p] != nil {
+				n++
+			}
+		}
+
+		ret := make([]*rtp.Packet, n)
+		pos := 0
+
+		for i := uint16(0); i < uint16(len(rr.buffer)); i++ {
+			p := (rr.absPos + i) & (uint16(len(rr.buffer)) - 1)
+			if rr.buffer[p] != nil {
+				ret[pos], rr.buffer[p] = rr.buffer[p], nil
+				pos++
+			}
+		}
+
+		ret[pos] = pkt
+
+		return ret, uint64(int(relPos) - n + 1)
+	}
+
+	// there's a missing packet
+	if relPos != 0 {
+		p := (rr.absPos + uint16(relPos)) & (uint16(len(rr.buffer)) - 1)
+
+		// current packet is a duplicate. discard
+		if rr.buffer[p] != nil {
+			return nil, 0
+		}
+
+		// put current packet in buffer
+		rr.buffer[p] = pkt
+		return nil, 0
+	}
+
+	// all packets have been received correctly.
+	// return them.
+
+	n := uint16(1)
+	for {
+		p := (rr.absPos + n) & (uint16(len(rr.buffer)) - 1)
+		if rr.buffer[p] == nil {
+			break
+		}
+		n++
+	}
+
+	ret := make([]*rtp.Packet, n)
+	ret[0] = pkt
+	rr.absPos++
+	rr.absPos &= (uint16(len(rr.buffer)) - 1)
+
+	for i := uint16(1); i < n; i++ {
+		ret[i], rr.buffer[rr.absPos] = rr.buffer[rr.absPos], nil
+		rr.absPos++
+		rr.absPos &= (uint16(len(rr.buffer)) - 1)
+	}
+
+	return ret, 0
+}
+
+// ProcessSenderReport processes an incoming RTCP sender report.
 func (rr *RTCPReceiver) ProcessSenderReport(sr *rtcp.SenderReport, system time.Time) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
@@ -269,13 +423,13 @@ func (rr *RTCPReceiver) packetNTPUnsafe(ts uint32) (time.Time, bool) {
 
 // PacketNTP returns the NTP (absolute timestamp) of the packet.
 func (rr *RTCPReceiver) PacketNTP(ts uint32) (time.Time, bool) {
-	rr.mutex.Lock()
-	defer rr.mutex.Unlock()
+	rr.mutex.RLock()
+	defer rr.mutex.RUnlock()
 
 	return rr.packetNTPUnsafe(ts)
 }
 
-// SenderSSRC returns the SSRC of outgoing RTP packets.
+// SenderSSRC returns the SSRC of incoming RTP packets.
 //
 // Deprecated: replaced by Stats().
 func (rr *RTCPReceiver) SenderSSRC() (uint32, bool) {
@@ -308,7 +462,7 @@ func (rr *RTCPReceiver) Stats() *Stats {
 
 	return &Stats{
 		RemoteSSRC:         rr.remoteSSRC,
-		LastSequenceNumber: rr.lastSequenceNumber,
+		LastSequenceNumber: rr.lastValidSeqNum,
 		LastRTP:            rr.lastTimeRTP,
 		LastNTP:            ntp,
 		Jitter:             rr.jitter,

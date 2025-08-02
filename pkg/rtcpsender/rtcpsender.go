@@ -16,7 +16,8 @@ func ntpTimeGoToRTCP(v time.Time) uint64 {
 	return (s/1000000000)<<32 | (s % 1000000000)
 }
 
-// RTCPSender is a utility to generate RTCP sender reports.
+// RTCPSender is a utility to send RTP packets.
+// It is in charge of generating RTCP sender reports.
 type RTCPSender struct {
 	ClockRate       int
 	Period          time.Duration

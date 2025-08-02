@@ -6,6 +6,8 @@ import (
 )
 
 // LossDetector detects lost packets.
+//
+// Deprecated: merged into rtcpreceiver.Receiver.
 type LossDetector struct {
 	initialized    bool
 	expectedSeqNum uint16
