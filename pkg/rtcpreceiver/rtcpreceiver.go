@@ -173,8 +173,8 @@ func (rr *RTCPReceiver) run() {
 }
 
 func (rr *RTCPReceiver) report() rtcp.Packet {
-	rr.mutex.RLock()
-	defer rr.mutex.RUnlock()
+	rr.mutex.Lock()
+	defer rr.mutex.Unlock()
 
 	if !rr.firstRTPPacketReceived || rr.ClockRate == 0 {
 		return nil

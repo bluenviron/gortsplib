@@ -99,8 +99,8 @@ func (rs *RTCPSender) run() {
 }
 
 func (rs *RTCPSender) report() rtcp.Packet {
-	rs.mutex.Lock()
-	defer rs.mutex.Unlock()
+	rs.mutex.RLock()
+	defer rs.mutex.RUnlock()
 
 	if !rs.firstRTPPacketSent || rs.ClockRate == 0 {
 		return nil
