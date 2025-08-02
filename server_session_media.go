@@ -235,9 +235,7 @@ func (sm *serverSessionMedia) readPacketRTPUDPPlay(payload []byte) bool {
 		return false
 	}
 
-	now := sm.ss.s.timeNow()
-
-	forma.readPacketRTPUDP(pkt, now)
+	forma.readPacketRTP(pkt, sm.ss.s.timeNow())
 
 	return true
 }
@@ -291,7 +289,7 @@ func (sm *serverSessionMedia) readPacketRTPUDPRecord(payload []byte) bool {
 	now := sm.ss.s.timeNow()
 	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
 
-	forma.readPacketRTPUDP(pkt, now)
+	forma.readPacketRTP(pkt, now)
 
 	return true
 }
@@ -348,7 +346,7 @@ func (sm *serverSessionMedia) readPacketRTPTCPPlay(payload []byte) bool {
 		return false
 	}
 
-	forma.readPacketRTPTCP(pkt)
+	forma.readPacketRTP(pkt, sm.ss.s.timeNow())
 
 	return true
 }
@@ -391,7 +389,7 @@ func (sm *serverSessionMedia) readPacketRTPTCPRecord(payload []byte) bool {
 		return false
 	}
 
-	forma.readPacketRTPTCP(pkt)
+	forma.readPacketRTP(pkt, sm.ss.s.timeNow())
 
 	return true
 }

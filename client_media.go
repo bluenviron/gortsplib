@@ -281,7 +281,7 @@ func (cm *clientMedia) readPacketRTPTCPPlay(payload []byte) bool {
 		return false
 	}
 
-	forma.readPacketRTPTCP(pkt)
+	forma.readPacketRTP(pkt)
 
 	return true
 }
@@ -366,7 +366,7 @@ func (cm *clientMedia) readPacketRTPUDPPlay(payload []byte) bool {
 		return false
 	}
 
-	forma.readPacketRTPUDP(pkt)
+	forma.readPacketRTP(pkt)
 
 	return true
 }
