@@ -131,17 +131,9 @@ func (cf *clientFormat) remoteSSRC() (uint32, bool) {
 	return 0, false
 }
 
-func (cf *clientFormat) readPacketRTPUDP(pkt *rtp.Packet) {
+func (cf *clientFormat) readPacketRTP(pkt *rtp.Packet) {
 	now := cf.cm.c.timeNow()
-	cf.handlePacketRTP(pkt, now)
-}
 
-func (cf *clientFormat) readPacketRTPTCP(pkt *rtp.Packet) {
-	now := cf.cm.c.timeNow()
-	cf.handlePacketRTP(pkt, now)
-}
-
-func (cf *clientFormat) handlePacketRTP(pkt *rtp.Packet, now time.Time) {
 	pkts, lost, err := cf.rtcpReceiver.ProcessPacket2(pkt, now, cf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		cf.cm.onPacketRTPDecodeError(err)

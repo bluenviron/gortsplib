@@ -116,16 +116,7 @@ func (sf *serverSessionFormat) remoteSSRC() (uint32, bool) {
 	return 0, false
 }
 
-func (sf *serverSessionFormat) readPacketRTPUDP(pkt *rtp.Packet, now time.Time) {
-	sf.handlePacketRTP(pkt, now)
-}
-
-func (sf *serverSessionFormat) readPacketRTPTCP(pkt *rtp.Packet) {
-	now := sf.sm.ss.s.timeNow()
-	sf.handlePacketRTP(pkt, now)
-}
-
-func (sf *serverSessionFormat) handlePacketRTP(pkt *rtp.Packet, now time.Time) {
+func (sf *serverSessionFormat) readPacketRTP(pkt *rtp.Packet, now time.Time) {
 	pkts, lost, err := sf.rtcpReceiver.ProcessPacket2(pkt, now, sf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		sf.sm.onPacketRTPDecodeError(err)
