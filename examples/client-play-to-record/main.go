@@ -59,8 +59,8 @@ func main() {
 	defer publisher.Close()
 
 	// read RTP packets from the reader and route them to the publisher
-	reader.OnPacketRTPAny(func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
-		err2 := publisher.WritePacketRTP(desc.Medias[0], pkt)
+	reader.OnPacketRTPAny(func(media *description.Media, _ format.Format, pkt *rtp.Packet) {
+		err2 := publisher.WritePacketRTP(media, pkt)
 		if err2 != nil {
 			log.Printf("ERR: %v", err2)
 		}
