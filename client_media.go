@@ -101,17 +101,17 @@ func (cm *clientMedia) close() {
 }
 
 func (cm *clientMedia) createUDPListeners(
-	multicastEnable bool,
-	multicastSourceIP net.IP,
+	multicast bool,
+	multicastInterface *net.Interface,
 	rtpAddress string,
 	rtcpAddress string,
 ) error {
 	if rtpAddress != ":0" {
 		l1 := &clientUDPListener{
-			c:                 cm.c,
-			multicastEnable:   multicastEnable,
-			multicastSourceIP: multicastSourceIP,
-			address:           rtpAddress,
+			c:                  cm.c,
+			multicast:          multicast,
+			multicastInterface: multicastInterface,
+			address:            rtpAddress,
 		}
 		err := l1.initialize()
 		if err != nil {
@@ -119,10 +119,10 @@ func (cm *clientMedia) createUDPListeners(
 		}
 
 		l2 := &clientUDPListener{
-			c:                 cm.c,
-			multicastEnable:   multicastEnable,
-			multicastSourceIP: multicastSourceIP,
-			address:           rtcpAddress,
+			c:                  cm.c,
+			multicast:          multicast,
+			multicastInterface: multicastInterface,
+			address:            rtcpAddress,
 		}
 		err = l2.initialize()
 		if err != nil {
@@ -146,10 +146,8 @@ func (cm *clientMedia) createUDPListeners(
 		rtcpPort := rtpPort + 1
 
 		cm.udpRTPListener = &clientUDPListener{
-			c:                 cm.c,
-			multicastEnable:   false,
-			multicastSourceIP: nil,
-			address:           net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
+			c:       cm.c,
+			address: net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
 		}
 		err = cm.udpRTPListener.initialize()
 		if err != nil {
@@ -158,10 +156,8 @@ func (cm *clientMedia) createUDPListeners(
 		}
 
 		cm.udpRTCPListener = &clientUDPListener{
-			c:                 cm.c,
-			multicastEnable:   false,
-			multicastSourceIP: nil,
-			address:           net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
+			c:       cm.c,
+			address: net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
 		}
 		err = cm.udpRTCPListener.initialize()
 		if err != nil {

@@ -29,10 +29,10 @@ type packetConn interface {
 }
 
 type clientUDPListener struct {
-	c                 *Client
-	multicastEnable   bool
-	multicastSourceIP net.IP
-	address           string
+	c                  *Client
+	multicast          bool
+	multicastInterface *net.Interface
+	address            string
 
 	pc        packetConn
 	readFunc  readFunc
@@ -47,13 +47,9 @@ type clientUDPListener struct {
 }
 
 func (u *clientUDPListener) initialize() error {
-	if u.multicastEnable {
-		intf, err := multicast.InterfaceForSource(u.multicastSourceIP)
-		if err != nil {
-			return err
-		}
-
-		u.pc, err = multicast.NewSingleConn(intf, u.address, u.c.ListenPacket)
+	if u.multicast {
+		var err error
+		u.pc, err = multicast.NewSingleConn(u.multicastInterface, u.address, u.c.ListenPacket)
 		if err != nil {
 			return err
 		}

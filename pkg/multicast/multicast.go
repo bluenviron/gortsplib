@@ -13,6 +13,8 @@ type Conn interface {
 }
 
 // InterfaceForSource returns a multicast-capable interface that can communicate with given IP.
+//
+// Deprecated: not used anymore.
 func InterfaceForSource(ip net.IP) (*net.Interface, error) {
 	if ip.Equal(net.ParseIP("127.0.0.1")) {
 		return nil, fmt.Errorf("IP 127.0.0.1 can't be used as source of a multicast stream. Use the LAN IP of your PC")

@@ -252,6 +252,48 @@ func supportsGetParameter(header base.Header) bool {
 	return false
 }
 
+func interfaceOfConn(c net.Conn) (*net.Interface, error) {
+	var localIP net.IP
+
+	switch addr := c.LocalAddr().(type) {
+	case *net.TCPAddr:
+		localIP = addr.IP
+	case *net.UDPAddr:
+		localIP = addr.IP
+	default:
+		return nil, fmt.Errorf("unknown connection type: %T", c.LocalAddr())
+	}
+
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, iface := range interfaces {
+		var addrs []net.Addr
+		addrs, err = iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+
+			if ip != nil && ip.Equal(localIP) {
+				return &iface, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no interface found for IP %s", localIP)
+}
+
 type clientState int
 
 const (
@@ -1796,9 +1838,16 @@ func (c *Client) doSetup(
 			remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
 
+		var intf *net.Interface
+		intf, err = interfaceOfConn(c.nconn)
+		if err != nil {
+			cm.close()
+			return nil, err
+		}
+
 		err = cm.createUDPListeners(
 			true,
-			remoteIP,
+			intf,
 			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[0]), 10)),
 			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[1]), 10)),
 		)
