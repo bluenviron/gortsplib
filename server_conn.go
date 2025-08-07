@@ -276,9 +276,14 @@ func (sc *ServerConn) Session() *ServerSession {
 	return sc.session
 }
 
+// Transport returns transport details.
+func (sc *ServerConn) Transport() *ConnTransport {
+	return &ConnTransport{}
+}
+
 // Stats returns connection statistics.
-func (sc *ServerConn) Stats() *StatsConn {
-	return &StatsConn{
+func (sc *ServerConn) Stats() *ConnStats {
+	return &ConnStats{
 		BytesReceived: sc.bc.BytesReceived(),
 		BytesSent:     sc.bc.BytesSent(),
 	}

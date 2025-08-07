@@ -1,7 +1,12 @@
 package gortsplib
 
 // StatsConn are connection statistics.
-type StatsConn struct {
+//
+// Deprecated: renamed into ConnStats.
+type StatsConn = ConnStats
+
+// ConnStats are connection statistics.
+type ConnStats struct {
 	// received bytes
 	BytesReceived uint64
 	// sent bytes

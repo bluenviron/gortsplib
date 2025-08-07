@@ -58,7 +58,7 @@ func (sm *serverSessionMedia) initialize() {
 		sm.formats[forma.PayloadType()] = f
 	}
 
-	switch *sm.ss.setuppedTransport {
+	switch sm.ss.setuppedTransport.Protocol {
 	case TransportUDP, TransportUDPMulticast:
 		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueUDP
 
@@ -88,9 +88,9 @@ func (sm *serverSessionMedia) close() {
 }
 
 func (sm *serverSessionMedia) start() error {
-	switch *sm.ss.setuppedTransport {
+	switch sm.ss.setuppedTransport.Protocol {
 	case TransportUDP, TransportUDPMulticast:
-		if *sm.ss.setuppedTransport == TransportUDP {
+		if sm.ss.setuppedTransport.Protocol == TransportUDP {
 			if sm.ss.state == ServerSessionStatePlay {
 				if sm.media.IsBackChannel {
 					sm.ss.s.udpRTPListener.addClient(sm.ss.author.ip(), sm.udpRTPReadPort, sm.readPacketRTPUDPPlay)
@@ -136,7 +136,7 @@ func (sm *serverSessionMedia) start() error {
 }
 
 func (sm *serverSessionMedia) stop() {
-	if *sm.ss.setuppedTransport == TransportUDP {
+	if sm.ss.setuppedTransport.Protocol == TransportUDP {
 		sm.ss.s.udpRTPListener.removeClient(sm.ss.author.ip(), sm.udpRTPReadPort)
 		sm.ss.s.udpRTCPListener.removeClient(sm.ss.author.ip(), sm.udpRTCPReadPort)
 	}
@@ -427,7 +427,7 @@ func (sm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	}
 
 	maxPlainPacketSize := sm.ss.s.MaxPacketSize
-	if isSecure(sm.ss.setuppedProfile) {
+	if isSecure(sm.ss.setuppedTransport.Profile) {
 		maxPlainPacketSize -= srtcpOverhead
 	}
 
@@ -436,7 +436,7 @@ func (sm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	}
 
 	var encr []byte
-	if isSecure(sm.ss.setuppedProfile) {
+	if isSecure(sm.ss.setuppedTransport.Profile) {
 		encr = make([]byte, sm.ss.s.MaxPacketSize)
 		encr, err = sm.srtpOutCtx.encryptRTCP(encr, plain, nil)
 		if err != nil {
@@ -444,7 +444,7 @@ func (sm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
 		}
 	}
 
-	if isSecure(sm.ss.setuppedProfile) {
+	if isSecure(sm.ss.setuppedTransport.Profile) {
 		return sm.writePacketRTCPEncoded(encr)
 	}
 	return sm.writePacketRTCPEncoded(plain)

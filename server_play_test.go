@@ -678,6 +678,7 @@ func TestServerPlay(t *testing.T) {
 							ctx.Session.Stream()
 							ctx.Session.SetuppedTransport()
 							ctx.Session.SetuppedSecure()
+							ctx.Session.Transport()
 						}()
 
 						return &base.Response{
