@@ -425,7 +425,7 @@ type Client struct {
 	// transport protocol (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
-	Transport *Transport
+	Transport *TransportProtocol
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout, otherwise it switches to TCP.
 	// It defaults to 3 seconds.
@@ -508,8 +508,8 @@ type Client struct {
 	lastDescribeDesc     *description.Session
 	baseURL              *base.URL
 	announceData         map[*description.Media]*clientAnnounceDataMedia // record
-	effectiveTransport   *Transport
-	effectiveSecure      bool
+	setuppedProtocol     *TransportProtocol
+	setuppedSecure       bool
 	backChannelSetupped  bool
 	stdChannelSetupped   bool
 	setuppedMedias       map[*description.Media]*clientMedia
@@ -969,7 +969,7 @@ func (c *Client) reset() {
 	c.optionsSent = false
 	c.useGetParameter = false
 	c.baseURL = nil
-	c.effectiveTransport = nil
+	c.setuppedProtocol = nil
 	c.backChannelSetupped = false
 	c.stdChannelSetupped = false
 	c.setuppedMedias = nil
@@ -1000,7 +1000,7 @@ func (c *Client) trySwitchingProtocol() error {
 	c.reset()
 
 	v := TransportTCP
-	c.effectiveTransport = &v
+	c.setuppedProtocol = &v
 
 	// some Hikvision cameras require a describe before a setup
 	_, _, err := c.doDescribe(c.lastDescribeURL)
@@ -1036,18 +1036,18 @@ func (c *Client) startTransportRoutines() {
 		cm.start()
 	}
 
-	if *c.effectiveTransport == TransportTCP {
+	if *c.setuppedProtocol == TransportTCP {
 		c.tcpFrame = &base.InterleavedFrame{}
 		c.tcpBuffer = make([]byte, c.MaxPacketSize+4)
 	}
 
 	// always enable keepalives unless we are recording with TCP
-	if c.state == clientStatePlay || *c.effectiveTransport != TransportTCP {
+	if c.state == clientStatePlay || *c.setuppedProtocol != TransportTCP {
 		c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 	}
 
 	if c.state == clientStatePlay && c.stdChannelSetupped {
-		switch *c.effectiveTransport {
+		switch *c.setuppedProtocol {
 		case TransportUDP:
 			c.checkTimeoutTimer = time.NewTimer(c.InitialUDPReadTimeout)
 			c.checkTimeoutInitial = true
@@ -1062,7 +1062,7 @@ func (c *Client) startTransportRoutines() {
 		}
 	}
 
-	if *c.effectiveTransport == TransportTCP {
+	if *c.setuppedProtocol == TransportTCP {
 		c.reader.setAllowInterleavedFrames(true)
 	}
 }
@@ -1277,8 +1277,8 @@ func (c *Client) isInTCPTimeout() bool {
 }
 
 func (c *Client) doCheckTimeout() error {
-	if *c.effectiveTransport == TransportUDP ||
-		*c.effectiveTransport == TransportUDPMulticast {
+	if *c.setuppedProtocol == TransportUDP ||
+		*c.setuppedProtocol == TransportUDPMulticast {
 		if c.checkTimeoutInitial && !c.backChannelSetupped && c.Transport == nil {
 			c.checkTimeoutInitial = false
 
@@ -1578,17 +1578,17 @@ func (c *Client) doSetup(
 		th.Mode = &v
 	}
 
-	var transport Transport
+	var protocol TransportProtocol
 
 	switch {
 	// use transport from previous SETUP calls
-	case c.effectiveTransport != nil:
-		transport = *c.effectiveTransport
-		th.Secure = c.effectiveSecure
+	case c.setuppedProtocol != nil:
+		protocol = *c.setuppedProtocol
+		th.Secure = c.setuppedSecure
 
 	// use transport from config, secure flag from server
 	case c.Transport != nil:
-		transport = *c.Transport
+		protocol = *c.Transport
 		th.Secure = medi.Secure && c.Scheme == "rtsps"
 
 	// try UDP if unencrypted or secure is supported by server, otherwise try TCP
@@ -1596,9 +1596,9 @@ func (c *Client) doSetup(
 		th.Secure = medi.Secure && c.Scheme == "rtsps"
 
 		if th.Secure || c.Scheme == "rtsp" {
-			transport = TransportUDP
+			protocol = TransportUDP
 		} else {
-			transport = TransportTCP
+			protocol = TransportTCP
 		}
 	}
 
@@ -1612,7 +1612,7 @@ func (c *Client) doSetup(
 		return nil, err
 	}
 
-	switch transport {
+	switch protocol {
 	case TransportUDP, TransportUDPMulticast:
 		if c.Scheme == "rtsps" && !th.Secure {
 			cm.close()
@@ -1621,7 +1621,7 @@ func (c *Client) doSetup(
 
 		th.Protocol = headers.TransportProtocolUDP
 
-		if transport == TransportUDP {
+		if protocol == TransportUDP {
 			if (rtpPort == 0 && rtcpPort != 0) ||
 				(rtpPort != 0 && rtcpPort == 0) {
 				cm.close()
@@ -1717,11 +1717,11 @@ func (c *Client) doSetup(
 
 		// switch transport automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
-			c.effectiveTransport == nil && c.Transport == nil {
+			c.setuppedProtocol == nil && c.Transport == nil {
 			c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 			v := TransportTCP
-			c.effectiveTransport = &v
-			c.effectiveSecure = th.Secure
+			c.setuppedProtocol = &v
+			c.setuppedSecure = th.Secure
 
 			return c.doSetup(baseURL, medi, 0, 0)
 		}
@@ -1736,13 +1736,13 @@ func (c *Client) doSetup(
 		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
 	}
 
-	switch transport {
+	switch protocol {
 	case TransportUDP, TransportUDPMulticast:
 		if thRes.Protocol == headers.TransportProtocolTCP {
 			cm.close()
 
 			// switch transport automatically
-			if c.effectiveTransport == nil && c.Transport == nil {
+			if c.setuppedProtocol == nil && c.Transport == nil {
 				c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 
 				c.baseURL = baseURL
@@ -1750,8 +1750,8 @@ func (c *Client) doSetup(
 				c.reset()
 
 				v := TransportTCP
-				c.effectiveTransport = &v
-				c.effectiveSecure = th.Secure
+				c.setuppedProtocol = &v
+				c.setuppedSecure = th.Secure
 
 				// some Hikvision cameras require a describe before a setup
 				_, _, err = c.doDescribe(c.lastDescribeURL)
@@ -1766,7 +1766,7 @@ func (c *Client) doSetup(
 		}
 	}
 
-	switch transport {
+	switch protocol {
 	case TransportUDP:
 		if thRes.Delivery != nil && *thRes.Delivery != headers.TransportDeliveryUnicast {
 			cm.close()
@@ -1946,8 +1946,8 @@ func (c *Client) doSetup(
 	c.setuppedMedias[medi] = cm
 
 	c.baseURL = baseURL
-	c.effectiveTransport = &transport
-	c.effectiveSecure = th.Secure
+	c.setuppedProtocol = &protocol
+	c.setuppedSecure = th.Secure
 
 	if medi.IsBackChannel {
 		c.backChannelSetupped = true
@@ -2048,7 +2048,7 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 	// when protocol is UDP,
 	// open the firewall by sending empty packets to the remote part.
 	// do this before sending the PLAY request.
-	if *c.effectiveTransport == TransportUDP {
+	if *c.setuppedProtocol == TransportUDP {
 		for _, cm := range c.setuppedMedias {
 			if !cm.media.IsBackChannel && cm.udpRTPListener.writeAddr != nil {
 				buf, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()

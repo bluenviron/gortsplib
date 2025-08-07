@@ -433,7 +433,7 @@ type ServerSession struct {
 	setuppedMedias        map[*description.Media]*serverSessionMedia
 	setuppedMediasOrdered []*serverSessionMedia
 	tcpCallbackByChannel  map[int]readFunc
-	setuppedTransport     *Transport
+	setuppedProtocol      *TransportProtocol
 	setuppedSecure        bool
 	setuppedStream        *ServerStream // play
 	setuppedPath          string
@@ -509,8 +509,8 @@ func (ss *ServerSession) State() ServerSessionState {
 }
 
 // SetuppedTransport returns the transport negotiated during SETUP.
-func (ss *ServerSession) SetuppedTransport() *Transport {
-	return ss.setuppedTransport
+func (ss *ServerSession) SetuppedTransport() *TransportProtocol {
+	return ss.setuppedProtocol
 }
 
 // SetuppedSecure returns whether a secure profile is in use.
@@ -882,8 +882,8 @@ func (ss *ServerSession) runInner() error {
 							// and transport is UDP or UDP-multicast.
 							if (ss.state == ServerSessionStatePrePlay ||
 								ss.state == ServerSessionStatePlay) &&
-								(*ss.setuppedTransport == TransportUDP ||
-									*ss.setuppedTransport == TransportUDPMulticast) {
+								(*ss.setuppedProtocol == TransportUDP ||
+									*ss.setuppedProtocol == TransportUDPMulticast) {
 								v := uint(ss.s.sessionTimeout / time.Second)
 								return &v
 							}
@@ -919,7 +919,7 @@ func (ss *ServerSession) runInner() error {
 			// close the session.
 			if ((ss.state != ServerSessionStateRecord &&
 				ss.state != ServerSessionStatePlay) ||
-				*ss.setuppedTransport == TransportTCP) &&
+				*ss.setuppedProtocol == TransportTCP) &&
 				len(ss.conns) == 0 {
 				return liberrors.ErrServerSessionNotInUse{}
 			}
@@ -927,7 +927,7 @@ func (ss *ServerSession) runInner() error {
 		case <-ss.chAsyncStartWriter:
 			if (ss.state == ServerSessionStateRecord ||
 				ss.state == ServerSessionStatePlay) &&
-				*ss.setuppedTransport == TransportTCP {
+				*ss.setuppedProtocol == TransportTCP {
 				ss.startWriter()
 			}
 
@@ -1124,18 +1124,18 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			query = ss.setuppedQuery
 		}
 
-		var transport Transport
+		var protocol TransportProtocol
 
 		switch inTH.Protocol {
 		case headers.TransportProtocolUDP:
 			if inTH.Delivery != nil && *inTH.Delivery == headers.TransportDeliveryMulticast {
-				transport = TransportUDPMulticast
+				protocol = TransportUDPMulticast
 			} else {
-				transport = TransportUDP
+				protocol = TransportUDP
 			}
 
 		case headers.TransportProtocolTCP:
-			transport = TransportTCP
+			protocol = TransportTCP
 		}
 
 		var srtpInCtx *wrappedSRTPContext
@@ -1157,13 +1157,13 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 		}
 
-		if ss.setuppedTransport != nil && (*ss.setuppedTransport != transport || ss.setuppedSecure != inTH.Secure) {
+		if ss.setuppedProtocol != nil && (*ss.setuppedProtocol != protocol || ss.setuppedSecure != inTH.Secure) {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerMediasDifferentTransports{}
 		}
 
-		switch transport {
+		switch protocol {
 		case TransportUDP:
 			if inTH.ClientPorts == nil {
 				return &base.Response{
@@ -1196,7 +1196,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 
 		default: // record
-			if transport == TransportUDPMulticast {
+			if protocol == TransportUDPMulticast {
 				return &base.Response{
 					StatusCode: base.StatusUnsupportedTransport,
 				}, nil
@@ -1215,7 +1215,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			Request:   req,
 			Path:      path,
 			Query:     query,
-			Transport: transport,
+			Transport: protocol,
 		})
 
 		// workaround to prevent a bug in rtspclientsink
@@ -1260,7 +1260,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}, liberrors.ErrServerMediaAlreadySetup{}
 			}
 
-			ss.setuppedTransport = &transport
+			ss.setuppedProtocol = &protocol
 			ss.setuppedSecure = inTH.Secure
 
 			if ss.state == ServerSessionStateInitial {
@@ -1313,11 +1313,11 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}, err
 			}
 
-			switch transport {
+			switch protocol {
 			case TransportUDP, TransportUDPMulticast:
 				th.Protocol = headers.TransportProtocolUDP
 
-				if transport == TransportUDP {
+				if protocol == TransportUDP {
 					sm.udpRTPReadPort = inTH.ClientPorts[0]
 					sm.udpRTCPReadPort = inTH.ClientPorts[1]
 
@@ -1423,7 +1423,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		if ss.state != ServerSessionStatePlay &&
-			*ss.setuppedTransport != TransportUDPMulticast {
+			*ss.setuppedProtocol != TransportUDPMulticast {
 			ss.createWriter()
 		}
 
@@ -1454,12 +1454,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					}
 				}
 
-				if *ss.setuppedTransport == TransportTCP {
+				if *ss.setuppedProtocol == TransportTCP {
 					ss.tcpFrame = &base.InterleavedFrame{}
 					ss.tcpBuffer = make([]byte, ss.s.MaxPacketSize+4)
 				}
 
-				switch *ss.setuppedTransport {
+				switch *ss.setuppedProtocol {
 				case TransportUDP:
 					ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 					ss.startWriter()
@@ -1492,7 +1492,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 		} else {
 			if ss.state != ServerSessionStatePlay &&
-				*ss.setuppedTransport != TransportUDPMulticast {
+				*ss.setuppedProtocol != TransportUDPMulticast {
 				ss.destroyWriter()
 			}
 		}
@@ -1549,12 +1549,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}
 			}
 
-			if *ss.setuppedTransport == TransportTCP {
+			if *ss.setuppedProtocol == TransportTCP {
 				ss.tcpFrame = &base.InterleavedFrame{}
 				ss.tcpBuffer = make([]byte, ss.s.MaxPacketSize+4)
 			}
 
-			switch *ss.setuppedTransport {
+			switch *ss.setuppedProtocol {
 			case TransportUDP:
 				ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 				ss.startWriter()
@@ -1610,7 +1610,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				case ServerSessionStatePlay:
 					ss.state = ServerSessionStatePrePlay
 
-					switch *ss.setuppedTransport {
+					switch *ss.setuppedProtocol {
 					case TransportUDP:
 						ss.udpCheckStreamTimer = emptyTimer()
 
@@ -1623,7 +1623,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					}
 
 				case ServerSessionStateRecord:
-					switch *ss.setuppedTransport {
+					switch *ss.setuppedProtocol {
 					case TransportUDP:
 						ss.udpCheckStreamTimer = emptyTimer()
 
@@ -1642,7 +1642,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 	case base.Teardown:
 		var err error
 		if (ss.state == ServerSessionStatePlay || ss.state == ServerSessionStateRecord) &&
-			*ss.setuppedTransport == TransportTCP {
+			*ss.setuppedProtocol == TransportTCP {
 			err = switchReadFuncError{false}
 		}
 
