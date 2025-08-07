@@ -188,7 +188,7 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 		case codec == "l8", codec == "l16", codec == "l24" && payloadType >= 96 && payloadType <= 127:
 			return &LPCM{}
 
-		// application
+		// other
 
 		case codec == "smtpe336m" && payloadType >= 96 && payloadType <= 127:
 			return &KLV{}
@@ -205,9 +205,6 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 		case payloadType == 26:
 			return &MJPEG{}
 
-		case payloadType == 33:
-			return &MPEGTS{}
-
 		// audio
 
 		case payloadType == 14:
@@ -221,6 +218,11 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 
 		case payloadType == 10, payloadType == 11:
 			return &LPCM{}
+
+		// other
+
+		case payloadType == 33:
+			return &MPEGTS{}
 		}
 
 		return &Generic{}
