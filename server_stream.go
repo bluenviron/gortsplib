@@ -175,11 +175,11 @@ func (st *ServerStream) readerAdd(
 		return liberrors.ErrServerStreamClosed{}
 	}
 
-	switch *ss.setuppedTransport {
+	switch *ss.setuppedProtocol {
 	case TransportUDP:
 		// check whether UDP ports and IP are already assigned to another reader
 		for r := range st.readers {
-			if *r.setuppedTransport == TransportUDP &&
+			if *r.setuppedProtocol == TransportUDP &&
 				r.author.ip().Equal(ss.author.ip()) &&
 				r.author.zone() == ss.author.zone() {
 				for _, rt := range r.setuppedMedias {
@@ -221,7 +221,7 @@ func (st *ServerStream) readerRemove(ss *ServerSession) {
 
 	delete(st.readers, ss)
 
-	if *ss.setuppedTransport == TransportUDPMulticast {
+	if *ss.setuppedProtocol == TransportUDPMulticast {
 		st.multicastReaderCount--
 		if st.multicastReaderCount == 0 {
 			for _, media := range st.medias {
@@ -240,7 +240,7 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 		return
 	}
 
-	if *ss.setuppedTransport == TransportUDPMulticast {
+	if *ss.setuppedProtocol == TransportUDPMulticast {
 		for medi, sm := range ss.setuppedMedias {
 			streamMedia := st.medias[medi]
 			streamMedia.multicastWriter.rtcpl.addClient(
@@ -259,7 +259,7 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 		return
 	}
 
-	if *ss.setuppedTransport == TransportUDPMulticast {
+	if *ss.setuppedProtocol == TransportUDPMulticast {
 		for medi := range ss.setuppedMedias {
 			streamMedia := st.medias[medi]
 			streamMedia.multicastWriter.rtcpl.removeClient(ss.author.ip(), streamMedia.multicastWriter.rtcpl.port())

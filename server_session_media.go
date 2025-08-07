@@ -99,11 +99,11 @@ func (sm *serverSessionMedia) start() error {
 		sf.start()
 	}
 
-	switch *sm.ss.setuppedTransport {
+	switch *sm.ss.setuppedProtocol {
 	case TransportUDP, TransportUDPMulticast:
 		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueUDP
 
-		if *sm.ss.setuppedTransport == TransportUDP {
+		if *sm.ss.setuppedProtocol == TransportUDP {
 			if sm.ss.state == ServerSessionStatePlay {
 				if sm.media.IsBackChannel {
 					sm.ss.s.udpRTPListener.addClient(sm.ss.author.ip(), sm.udpRTPReadPort, sm.readPacketRTPUDPPlay)
@@ -164,7 +164,7 @@ func (sm *serverSessionMedia) start() error {
 }
 
 func (sm *serverSessionMedia) stop() {
-	if *sm.ss.setuppedTransport == TransportUDP {
+	if *sm.ss.setuppedProtocol == TransportUDP {
 		sm.ss.s.udpRTPListener.removeClient(sm.ss.author.ip(), sm.udpRTPReadPort)
 		sm.ss.s.udpRTCPListener.removeClient(sm.ss.author.ip(), sm.udpRTCPReadPort)
 	}
