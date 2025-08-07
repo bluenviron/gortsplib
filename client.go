@@ -1586,10 +1586,6 @@ func (c *Client) doSetup(
 		transport = *c.effectiveTransport
 		th.Secure = c.effectiveSecure
 
-		if th.Secure && !medi.Secure {
-			return nil, fmt.Errorf("previous media was setupped securely but current cannot")
-		}
-
 	// use transport from config, secure flag from server
 	case c.Transport != nil:
 		transport = *c.Transport
@@ -1618,9 +1614,9 @@ func (c *Client) doSetup(
 
 	switch transport {
 	case TransportUDP, TransportUDPMulticast:
-		if c.Scheme == "rtsps" && !medi.Secure {
+		if c.Scheme == "rtsps" && !th.Secure {
 			cm.close()
-			return nil, fmt.Errorf("server does not support secure UDP")
+			return nil, fmt.Errorf("unable to setup secure UDP")
 		}
 
 		th.Protocol = headers.TransportProtocolUDP
