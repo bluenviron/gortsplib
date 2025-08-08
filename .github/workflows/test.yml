@@ -25,7 +25,7 @@ jobs:
     - run: make test-nodocker
 
     - if: matrix.go == '1.24'
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
 
