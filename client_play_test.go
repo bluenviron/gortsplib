@@ -3947,3 +3947,40 @@ func TestClientPlayBackChannel(t *testing.T) {
 		})
 	}
 }
+
+func TestClientPlaySetupErrorBackChannel(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+	}()
+
+	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
+
+	err = c.Start2()
+	require.NoError(t, err)
+	defer c.Close()
+
+	_, err = c.Setup(&base.URL{
+		Path: "baseurl",
+	}, &description.Media{
+		Type:          description.MediaTypeVideo,
+		IsBackChannel: true,
+		Control:       "testcontrol",
+	}, 0, 0)
+	require.EqualError(t, err, "we are setupping a back channel but we did not request back channels")
+}

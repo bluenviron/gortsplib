@@ -1671,6 +1671,11 @@ func (c *Client) doSetup(
 	}
 
 	if medi.IsBackChannel {
+		if !c.RequestBackChannels {
+			cm.close()
+			return nil, fmt.Errorf("we are setupping a back channel but we did not request back channels")
+		}
+
 		header["Require"] = base.HeaderValue{"www.onvif.org/ver20/backchannel"}
 	}
 
