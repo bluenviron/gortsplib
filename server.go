@@ -85,6 +85,10 @@ type Server struct {
 	WriteTimeout time.Duration
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
+	// Size of the UDP read buffer.
+	// This can be increased to reduce packet losses.
+	// It defaults to the operating system default value.
+	UDPReadBufferSize int
 	// Size of the queue of outgoing packets.
 	// It defaults to 256.
 	WriteQueueSize int
@@ -225,6 +229,7 @@ func (s *Server) Start() error {
 		}
 
 		s.udpRTPListener = &serverUDPListener{
+			readBufferSize:  s.UDPReadBufferSize,
 			listenPacket:    s.ListenPacket,
 			writeTimeout:    s.WriteTimeout,
 			multicastEnable: false,
@@ -236,6 +241,7 @@ func (s *Server) Start() error {
 		}
 
 		s.udpRTCPListener = &serverUDPListener{
+			readBufferSize:  s.UDPReadBufferSize,
 			listenPacket:    s.ListenPacket,
 			writeTimeout:    s.WriteTimeout,
 			multicastEnable: false,

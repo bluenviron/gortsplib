@@ -2,9 +2,11 @@ package gortsplib
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
 	"net"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/multicast"
@@ -25,7 +27,43 @@ func randInRange(maxVal int) (int, error) {
 
 type packetConn interface {
 	net.PacketConn
-	SetReadBuffer(int) error
+	SyscallConn() (syscall.RawConn, error)
+}
+
+func setAndVerifyReadBufferSize(pc packetConn, v int) error {
+	rawConn, err := pc.SyscallConn()
+	if err != nil {
+		panic(err)
+	}
+
+	var err2 error
+
+	err = rawConn.Control(func(fd uintptr) {
+		err2 = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF, v)
+		if err2 != nil {
+			return
+		}
+
+		var v2 int
+		v2, err2 = syscall.GetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF)
+		if err2 != nil {
+			return
+		}
+
+		if v2 != (v * 2) {
+			err2 = fmt.Errorf("unable to set read buffer size to %v - check that net.core.rmem_max is greater than %v", v, v)
+			return
+		}
+	})
+	if err != nil {
+		return err
+	}
+
+	if err2 != nil {
+		return err2
+	}
+
+	return nil
 }
 
 type clientUDPListener struct {
@@ -61,10 +99,12 @@ func (u *clientUDPListener) initialize() error {
 		u.pc = tmp.(*net.UDPConn)
 	}
 
-	err := u.pc.SetReadBuffer(udpKernelReadBufferSize)
-	if err != nil {
-		u.pc.Close()
-		return err
+	if u.c.UDPReadBufferSize != 0 {
+		err := setAndVerifyReadBufferSize(u.pc, u.c.UDPReadBufferSize)
+		if err != nil {
+			u.pc.Close()
+			return err
+		}
 	}
 
 	u.lastPacketTime = int64Ptr(0)

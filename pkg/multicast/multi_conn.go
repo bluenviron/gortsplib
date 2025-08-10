@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"syscall"
 	"time"
 
 	"golang.org/x/net/ipv4"
@@ -131,6 +132,11 @@ func (c *multiConn) Close() error {
 // SetReadBuffer implements Conn.
 func (c *multiConn) SetReadBuffer(bytes int) error {
 	return c.readConn.SetReadBuffer(bytes)
+}
+
+// SyscallConn implements Conn.
+func (c *multiConn) SyscallConn() (syscall.RawConn, error) {
+	return c.readConn.SyscallConn()
 }
 
 // LocalAddr implements Conn.

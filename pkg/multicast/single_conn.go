@@ -5,6 +5,7 @@ package multicast
 import (
 	"net"
 	"strconv"
+	"syscall"
 	"time"
 
 	"golang.org/x/net/ipv4"
@@ -75,6 +76,11 @@ func (c *singleConn) Close() error {
 // SetReadBuffer implements Conn.
 func (c *singleConn) SetReadBuffer(bytes int) error {
 	return c.conn.SetReadBuffer(bytes)
+}
+
+// SyscallConn implements Conn.
+func (c *singleConn) SyscallConn() (syscall.RawConn, error) {
+	return c.conn.SyscallConn()
 }
 
 // LocalAddr implements Conn.

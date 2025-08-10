@@ -430,6 +430,10 @@ type Client struct {
 	// at least a packet within this timeout, otherwise it switches to TCP.
 	// It defaults to 3 seconds.
 	InitialUDPReadTimeout time.Duration
+	// Size of the UDP read buffer.
+	// This can be increased to reduce packet losses.
+	// It defaults to the operating system default value.
+	UDPReadBufferSize int
 	// Size of the queue of outgoing packets.
 	// It defaults to 256.
 	WriteQueueSize int
