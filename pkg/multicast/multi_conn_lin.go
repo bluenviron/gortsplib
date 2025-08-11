@@ -187,6 +187,11 @@ func (c *multiConn) SetReadBuffer(bytes int) error {
 	return syscall.SetsockoptInt(int(c.readFile.Fd()), syscall.SOL_SOCKET, syscall.SO_RCVBUF, bytes)
 }
 
+// SyscallConn implements Conn.
+func (c *multiConn) SyscallConn() (syscall.RawConn, error) {
+	return &rawConn{fd: c.readFile.Fd()}, nil
+}
+
 // LocalAddr implements Conn.
 func (c *multiConn) LocalAddr() net.Addr {
 	return c.readConn.LocalAddr()

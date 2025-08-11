@@ -26,6 +26,7 @@ func (p *clientAddr) fill(ip net.IP, port int) {
 }
 
 func createUDPListenerMulticastPair(
+	readBufferSize int,
 	listenPacket func(network, address string) (net.PacketConn, error),
 	writeTimeout time.Duration,
 	multicastRTPPort int,
@@ -33,6 +34,7 @@ func createUDPListenerMulticastPair(
 	ip net.IP,
 ) (*serverUDPListener, *serverUDPListener, error) {
 	rtpl := &serverUDPListener{
+		readBufferSize:  readBufferSize,
 		listenPacket:    listenPacket,
 		writeTimeout:    writeTimeout,
 		multicastEnable: true,
@@ -44,6 +46,7 @@ func createUDPListenerMulticastPair(
 	}
 
 	rtcpl := &serverUDPListener{
+		readBufferSize:  readBufferSize,
 		listenPacket:    listenPacket,
 		writeTimeout:    writeTimeout,
 		multicastEnable: true,
@@ -59,6 +62,7 @@ func createUDPListenerMulticastPair(
 }
 
 type serverUDPListener struct {
+	readBufferSize  int
 	listenPacket    func(network, address string) (net.PacketConn, error)
 	writeTimeout    time.Duration
 	multicastEnable bool
@@ -94,10 +98,12 @@ func (u *serverUDPListener) initialize() error {
 		u.listenIP = tmp.LocalAddr().(*net.UDPAddr).IP
 	}
 
-	err := u.pc.SetReadBuffer(udpKernelReadBufferSize)
-	if err != nil {
-		u.pc.Close()
-		return err
+	if u.readBufferSize != 0 {
+		err := setAndVerifyReadBufferSize(u.pc, u.readBufferSize)
+		if err != nil {
+			u.pc.Close()
+			return err
+		}
 	}
 
 	u.clients = make(map[clientAddr]readFunc)

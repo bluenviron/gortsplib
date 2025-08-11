@@ -23,6 +23,7 @@ func (h *serverMulticastWriter) initialize() error {
 	}
 
 	rtpl, rtcpl, err := createUDPListenerMulticastPair(
+		h.s.UDPReadBufferSize,
 		h.s.ListenPacket,
 		h.s.WriteTimeout,
 		h.s.MulticastRTPPort,

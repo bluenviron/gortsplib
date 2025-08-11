@@ -41,6 +41,26 @@ func setIPMreqInterface(mreq *syscall.IPMreq, ifi *net.Interface) error {
 	return fmt.Errorf("no such interface")
 }
 
+type rawConn struct {
+	fd uintptr
+}
+
+// Control implements syscall.RawConn.
+func (c *rawConn) Control(f func(fd uintptr)) error {
+	f(c.fd)
+	return nil
+}
+
+// Read implements syscall.RawConn.
+func (*rawConn) Read(_ func(fd uintptr) (done bool)) error {
+	panic("unimplemented")
+}
+
+// Write implements syscall.RawConn.
+func (*rawConn) Write(_ func(fd uintptr) (done bool)) error {
+	panic("unimplemented")
+}
+
 // singleConn is a multicast connection
 // that works on a single interface.
 type singleConn struct {
@@ -139,6 +159,11 @@ func (c *singleConn) Close() error {
 // SetReadBuffer implements Conn.
 func (c *singleConn) SetReadBuffer(bytes int) error {
 	return syscall.SetsockoptInt(int(c.file.Fd()), syscall.SOL_SOCKET, syscall.SO_RCVBUF, bytes)
+}
+
+// SyscallConn implements Conn.
+func (c *singleConn) SyscallConn() (syscall.RawConn, error) {
+	return &rawConn{fd: c.file.Fd()}, nil
 }
 
 // LocalAddr implements Conn.

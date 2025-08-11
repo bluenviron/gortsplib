@@ -4,12 +4,14 @@ package multicast
 import (
 	"fmt"
 	"net"
+	"syscall"
 )
 
 // Conn is a Multicast connection.
 type Conn interface {
 	net.PacketConn
 	SetReadBuffer(int) error
+	SyscallConn() (syscall.RawConn, error)
 }
 
 // InterfaceForSource returns a multicast-capable interface that can communicate with given IP.
