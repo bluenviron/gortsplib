@@ -1,12 +1,14 @@
 package gortsplib
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/multicast"
+	"github.com/bluenviron/gortsplib/v4/pkg/readbuffer"
 )
 
 type clientAddr struct {
@@ -99,10 +101,22 @@ func (u *serverUDPListener) initialize() error {
 	}
 
 	if u.readBufferSize != 0 {
-		err := setAndVerifyReadBufferSize(u.pc, u.readBufferSize)
+		err := u.pc.SetReadBuffer(u.readBufferSize)
 		if err != nil {
 			u.pc.Close()
 			return err
+		}
+
+		v, err := readbuffer.ReadBuffer(u.pc)
+		if err != nil {
+			u.pc.Close()
+			return err
+		}
+
+		if v != u.readBufferSize {
+			u.pc.Close()
+			return fmt.Errorf("unable to set read buffer size to %v, check that the operating system allows that",
+				u.readBufferSize)
 		}
 	}
 
