@@ -33,6 +33,7 @@ type Sender struct {
 
 // Initialize initializes a Sender.
 func (se *Sender) Initialize() error {
+	var md5Auth, sha256Auth *headers.Authenticate
 	for _, v := range se.WWWAuth {
 		var auth headers.Authenticate
 		err := auth.Unmarshal(base.HeaderValue{v})
@@ -40,11 +41,28 @@ func (se *Sender) Initialize() error {
 			continue // ignore unrecognized headers
 		}
 
-		if se.authHeader == nil ||
-			(auth.Algorithm != nil && *auth.Algorithm == headers.AuthAlgorithmSHA256) ||
-			(se.authHeader.Method == headers.AuthMethodBasic) {
-			se.authHeader = &auth
+		switch auth.Method {
+		case headers.AuthMethodDigest:
+			if auth.Algorithm == nil || *auth.Algorithm == headers.AuthAlgorithmMD5 {
+				if md5Auth == nil {
+					md5Auth = &auth
+				}
+			} else if *auth.Algorithm == headers.AuthAlgorithmSHA256 {
+				if sha256Auth == nil {
+					sha256Auth = &auth
+				}
+			}
+		case headers.AuthMethodBasic:
+			if se.authHeader == nil {
+				se.authHeader = &auth
+			}
 		}
+	}
+
+	if md5Auth != nil {
+		se.authHeader = md5Auth
+	} else if sha256Auth != nil {
+		se.authHeader = sha256Auth
 	}
 
 	if se.authHeader == nil {
