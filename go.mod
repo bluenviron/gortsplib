@@ -1,6 +1,6 @@
 module github.com/bluenviron/gortsplib/v4
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/bluenviron/mediacommon/v2 v2.4.1

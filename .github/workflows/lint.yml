@@ -18,7 +18,7 @@ jobs:
 
     - uses: actions/setup-go@v5
       with:
-        go-version: "1.24"
+        go-version: "1.25"
 
     - uses: golangci/golangci-lint-action@v8
       with:
@@ -32,7 +32,7 @@ jobs:
 
     - uses: actions/setup-go@v5
       with:
-        go-version: "1.24"
+        go-version: "1.25"
 
     - run: |
         go mod tidy
