@@ -422,7 +422,7 @@ func TestClientRecord(t *testing.T) {
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if ca.transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -592,7 +592,7 @@ func TestClientRecordSocketError(t *testing.T) {
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -736,7 +736,7 @@ func TestClientRecordPauseRecordSerial(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -895,7 +895,7 @@ func TestClientRecordPauseRecordParallel(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -1220,7 +1220,7 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if ca.proto == "udp" {
 						v := TransportUDP
 						return &v
@@ -1394,7 +1394,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 			var curTimeMutex sync.Mutex
 
 			c := Client{
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if ca == "udp" {
 						v := TransportUDP
 						return &v

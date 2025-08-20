@@ -104,7 +104,7 @@ type ServerHandlerOnSetupCtx struct {
 	Request   *base.Request
 	Path      string
 	Query     string
-	Transport Transport
+	Transport TransportProtocol
 }
 
 // ServerHandlerOnSetup can be implemented by a ServerHandler.

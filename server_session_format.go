@@ -71,7 +71,7 @@ func (sf *serverSessionFormat) initialize() error {
 }
 
 func (sf *serverSessionFormat) start() {
-	udp := *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast
+	udp := *sf.sm.ss.setuppedProtocol == TransportUDP || *sf.sm.ss.setuppedProtocol == TransportUDPMulticast
 
 	if udp {
 		sf.writePacketRTPInQueue = sf.writePacketRTPInQueueUDP
