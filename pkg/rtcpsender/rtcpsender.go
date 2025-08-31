@@ -5,16 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 )
-
-// seconds since 1st January 1900
-// higher 32 bits are the integer part, lower 32 bits are the fractional part
-func ntpTimeGoToRTCP(v time.Time) uint64 {
-	s := uint64(v.UnixNano()) + 2208988800*1000000000
-	return (s/1000000000)<<32 | (s % 1000000000)
-}
 
 // RTCPSender is a utility to send RTP packets.
 // It is in charge of generating RTCP sender reports.
@@ -112,7 +106,7 @@ func (rs *RTCPSender) report() rtcp.Packet {
 
 	return &rtcp.SenderReport{
 		SSRC:        rs.localSSRC,
-		NTPTime:     ntpTimeGoToRTCP(ntpTime),
+		NTPTime:     ntp.Encode(ntpTime),
 		RTPTime:     rtpTime,
 		PacketCount: rs.packetCount,
 		OctetCount:  rs.octetCount,

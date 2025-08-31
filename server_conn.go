@@ -19,6 +19,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
 )
 
 func getSessionID(header base.Header) string {
@@ -87,7 +88,7 @@ func mikeyGenerate(ctx *wrappedSRTPContext) (*mikey.Message, error) {
 	msg.Payloads = []mikey.Payload{
 		&mikey.PayloadT{
 			TSType:  0,
-			TSValue: mikeyEncodeTime(time.Now()),
+			TSValue: ntp.Encode(time.Now()),
 		},
 		&mikey.PayloadRAND{
 			Data: randData,

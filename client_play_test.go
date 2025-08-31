@@ -24,6 +24,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
@@ -2570,7 +2571,7 @@ func TestClientPlayRTCPReport(t *testing.T) {
 
 		_, err2 = l2.WriteTo(mustMarshalPacketRTCP(&rtcp.SenderReport{
 			SSRC:        753621,
-			NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 12, 15, 30, 0, 0, time.UTC)),
+			NTPTime:     ntp.Encode(time.Date(2017, 8, 12, 15, 30, 0, 0, time.UTC)),
 			RTPTime:     54352,
 			PacketCount: 1,
 			OctetCount:  4,
@@ -3581,7 +3582,7 @@ func TestClientPlayPacketNTP(t *testing.T) {
 
 		_, err2 = l2.WriteTo(mustMarshalPacketRTCP(&rtcp.SenderReport{
 			SSRC:        753621,
-			NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 12, 15, 30, 0, 0, time.UTC)),
+			NTPTime:     ntp.Encode(time.Date(2017, 8, 12, 15, 30, 0, 0, time.UTC)),
 			RTPTime:     54352,
 			PacketCount: 1,
 			OctetCount:  4,

@@ -20,6 +20,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
@@ -1079,7 +1080,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 
 	_, err = l2.WriteTo(mustMarshalPacketRTCP(&rtcp.SenderReport{
 		SSRC:        753621,
-		NTPTime:     ntpTimeGoToRTCP(time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC)),
+		NTPTime:     ntp.Encode(time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC)),
 		RTPTime:     54352,
 		PacketCount: 1,
 		OctetCount:  4,
@@ -1682,7 +1683,7 @@ func TestServerRecordPacketNTP(t *testing.T) {
 
 	_, err = l2.WriteTo(mustMarshalPacketRTCP(&rtcp.SenderReport{
 		SSRC:        753621,
-		NTPTime:     ntpTimeGoToRTCP(time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC)),
+		NTPTime:     ntp.Encode(time.Date(2018, 2, 20, 19, 0, 0, 0, time.UTC)),
 		RTPTime:     54352,
 		PacketCount: 1,
 		OctetCount:  4,

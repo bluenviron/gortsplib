@@ -7,16 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 )
-
-// seconds since 1st January 1900
-// higher 32 bits are the integer part, lower 32 bits are the fractional part
-func ntpTimeRTCPToGo(v uint64) time.Time {
-	nano := int64((v>>32)*1000000000+(v&0xFFFFFFFF)) - 2208988800*1000000000
-	return time.Unix(0, nano)
-}
 
 func randUint32() (uint32, error) {
 	var b [4]byte
@@ -418,7 +412,7 @@ func (rr *RTCPReceiver) packetNTPUnsafe(ts uint32) (time.Time, bool) {
 	timeDiff := int32(ts - rr.lastSenderReportTimeRTP)
 	timeDiffGo := (time.Duration(timeDiff) * time.Second) / time.Duration(rr.ClockRate)
 
-	return ntpTimeRTCPToGo(rr.lastSenderReportTimeNTP).Add(timeDiffGo), true
+	return ntp.Decode(rr.lastSenderReportTimeNTP).Add(timeDiffGo), true
 }
 
 // PacketNTP returns the NTP (absolute timestamp) of the packet.
