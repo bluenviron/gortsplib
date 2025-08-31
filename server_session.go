@@ -22,6 +22,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
@@ -201,21 +202,6 @@ func pickFirstSupportedTransport(s *Server, tsh headers.Transports) *headers.Tra
 	return nil
 }
 
-func mikeyDecodeTime(t uint64) time.Time {
-	sec := t >> 32
-	dec := t & 0xFFFFFFFF
-	sec -= 2208988800
-	return time.Unix(int64(sec), int64(dec))
-}
-
-func mikeyEncodeTime(n time.Time) uint64 {
-	nano := uint64(n.UnixNano())
-	sec := nano / 1000000000
-	dec := nano % 1000000000
-	sec += 2208988800
-	return sec<<32 | dec
-}
-
 func mikeyGetPayload[T mikey.Payload](mikeyMsg *mikey.Message) (T, bool) {
 	var zero T
 	for _, wrapped := range mikeyMsg.Payloads {
@@ -241,7 +227,7 @@ func mikeyToContext(mikeyMsg *mikey.Message) (*wrappedSRTPContext, error) {
 		return nil, fmt.Errorf("time payload not present")
 	}
 
-	ts := mikeyDecodeTime(timePayload.TSValue)
+	ts := ntp.Decode(timePayload.TSValue)
 	diff := time.Since(ts)
 	if diff < -time.Hour || diff > time.Hour {
 		return nil, fmt.Errorf("NTP difference is too high")

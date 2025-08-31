@@ -23,6 +23,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
@@ -1526,7 +1527,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 			require.Equal(t, []rtcp.Packet{
 				&rtcp.SenderReport{
 					SSRC:        packets[0].(*rtcp.SenderReport).SSRC,
-					NTPTime:     ntpTimeGoToRTCP(time.Date(2017, 8, 10, 12, 22, 30, 0, time.UTC)),
+					NTPTime:     ntp.Encode(time.Date(2017, 8, 10, 12, 22, 30, 0, time.UTC)),
 					RTPTime:     240000 + 90000*30,
 					PacketCount: 1,
 					OctetCount:  1,
