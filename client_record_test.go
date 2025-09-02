@@ -21,6 +21,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
 
@@ -68,11 +69,6 @@ var testRTCPPacket = rtcp.SourceDescription{
 }
 
 var testRTCPPacketMarshaled = mustMarshalPacketRTCP(&testRTCPPacket)
-
-func ntpTimeGoToRTCP(v time.Time) uint64 {
-	s := uint64(v.UnixNano()) + 2208988800*1000000000
-	return (s/1000000000)<<32 | (s % 1000000000)
-}
 
 func record(c *Client, ur string, medias []*description.Media, cb func(*description.Media, rtcp.Packet)) error {
 	u, err := base.ParseURL(ur)
@@ -1371,7 +1367,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 				require.Equal(t, []rtcp.Packet{
 					&rtcp.SenderReport{
 						SSRC:        packets[0].(*rtcp.SenderReport).SSRC,
-						NTPTime:     ntpTimeGoToRTCP(time.Date(1996, 2, 13, 14, 33, 5, 0, time.UTC)),
+						NTPTime:     ntp.Encode(time.Date(1996, 2, 13, 14, 33, 5, 0, time.UTC)),
 						RTPTime:     1300000 + 60*90000,
 						PacketCount: 1,
 						OctetCount:  1,
