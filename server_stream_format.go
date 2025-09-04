@@ -10,7 +10,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpsender"
 )
 
 func randUint32() (uint32, error) {
@@ -52,7 +52,7 @@ type serverStreamFormat struct {
 	format format.Format
 
 	localSSRC      uint32
-	rtcpSender     *rtcpsender.RTCPSender
+	rtpSender      *rtpsender.Sender
 	rtpPacketsSent *uint64
 }
 
@@ -65,7 +65,7 @@ func (sf *serverStreamFormat) initialize() error {
 
 	sf.rtpPacketsSent = new(uint64)
 
-	sf.rtcpSender = &rtcpsender.RTCPSender{
+	sf.rtpSender = &rtpsender.Sender{
 		ClockRate: sf.format.ClockRate(),
 		Period:    sf.sm.st.Server.senderReportPeriod,
 		TimeNow:   sf.sm.st.Server.timeNow,
@@ -75,21 +75,21 @@ func (sf *serverStreamFormat) initialize() error {
 			}
 		},
 	}
-	sf.rtcpSender.Initialize()
+	sf.rtpSender.Initialize()
 
 	return nil
 }
 
 func (sf *serverStreamFormat) close() {
-	if sf.rtcpSender != nil {
-		sf.rtcpSender.Close()
+	if sf.rtpSender != nil {
+		sf.rtpSender.Close()
 	}
 }
 
 func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 	pkt.SSRC = sf.localSSRC
 
-	sf.rtcpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
+	sf.rtpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
 
 	maxPlainPacketSize := sf.sm.st.Server.MaxPacketSize
 	if sf.sm.srtpOutCtx != nil {

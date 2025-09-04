@@ -31,8 +31,8 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpreceiver"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpsender"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
@@ -2369,7 +2369,7 @@ func (c *Client) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bo
 func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
 	cm := c.setuppedMedias[medi]
 	ct := cm.formats[pkt.PayloadType]
-	return ct.rtcpReceiver.PacketNTP(pkt.Timestamp)
+	return ct.rtpReceiver.PacketNTP(pkt.Timestamp)
 }
 
 // Stats returns client statistics.
@@ -2389,15 +2389,15 @@ func (c *Client) Stats() *ClientStats {
 					ret := make(map[format.Format]StatsSessionFormat, len(sm.formats))
 
 					for _, fo := range sm.formats {
-						recvStats := func() *rtcpreceiver.Stats {
-							if fo.rtcpReceiver != nil {
-								return fo.rtcpReceiver.Stats()
+						recvStats := func() *rtpreceiver.Stats {
+							if fo.rtpReceiver != nil {
+								return fo.rtpReceiver.Stats()
 							}
 							return nil
 						}()
-						sentStats := func() *rtcpsender.Stats {
-							if fo.rtcpSender != nil {
-								return fo.rtcpSender.Stats()
+						sentStats := func() *rtpsender.Stats {
+							if fo.rtpSender != nil {
+								return fo.rtpSender.Stats()
 							}
 							return nil
 						}()

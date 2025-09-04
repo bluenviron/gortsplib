@@ -1,4 +1,4 @@
-package rtcpreceiver
+package rtpreceiver
 
 import (
 	"testing"
@@ -14,7 +14,7 @@ func uint32Ptr(v uint32) *uint32 {
 }
 
 func TestErrorInvalidPeriod(t *testing.T) {
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate: 90000,
 		LocalSSRC: uint32Ptr(0x65f83afb),
 	}
@@ -23,7 +23,7 @@ func TestErrorInvalidPeriod(t *testing.T) {
 }
 
 func TestErrorDifferentSSRC(t *testing.T) {
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate: 90000,
 		LocalSSRC: uint32Ptr(0x65f83afb),
 		Period:    500 * time.Millisecond,
@@ -64,7 +64,7 @@ func TestErrorDifferentSSRC(t *testing.T) {
 }
 
 func TestStatsBeforeData(t *testing.T) {
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate: 90000,
 		LocalSSRC: uint32Ptr(0x65f83afb),
 		Period:    500 * time.Millisecond,
@@ -85,7 +85,7 @@ func TestStandard(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			pktGenerated := make(chan rtcp.Packet)
 
-			rr := &RTCPReceiver{
+			rr := &Receiver{
 				ClockRate:            90000,
 				LocalSSRC:            uint32Ptr(0x65f83afb),
 				UnrealiableTransport: ca == "unrealiable",
@@ -202,7 +202,7 @@ func TestStandard(t *testing.T) {
 func TestZeroClockRate(t *testing.T) {
 	pktGenerated := make(chan rtcp.Packet)
 
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate: 0,
 		LocalSSRC: uint32Ptr(0x65f83afb),
 		Period:    500 * time.Millisecond,
@@ -306,7 +306,7 @@ func TestZeroClockRate(t *testing.T) {
 func TestSequenceNumberOverflow(t *testing.T) {
 	rtcpGenerated := make(chan struct{})
 
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate: 90000,
 		LocalSSRC: uint32Ptr(0x65f83afb),
 		Period:    250 * time.Millisecond,
@@ -380,7 +380,7 @@ func TestSequenceNumberOverflow(t *testing.T) {
 func TestJitter(t *testing.T) {
 	rtcpGenerated := make(chan struct{})
 
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate: 90000,
 		LocalSSRC: uint32Ptr(0x65f83afb),
 		Period:    500 * time.Millisecond,
@@ -468,7 +468,7 @@ func TestJitter(t *testing.T) {
 func TestReliablePacketsLost(t *testing.T) {
 	done := make(chan struct{})
 
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate: 90000,
 		LocalSSRC: uint32Ptr(0x65f83afb),
 		Period:    500 * time.Millisecond,
@@ -545,7 +545,7 @@ func TestReliablePacketsLost(t *testing.T) {
 func TestReliableOverflowAndPacketsLost(t *testing.T) {
 	done := make(chan struct{})
 
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate: 90000,
 		LocalSSRC: uint32Ptr(0x65f83afb),
 		Period:    500 * time.Millisecond,
@@ -769,7 +769,7 @@ func TestUnrealiableReorder(t *testing.T) {
 		},
 	}
 
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate:            90000,
 		LocalSSRC:            uint32Ptr(0x65f83afb),
 		UnrealiableTransport: true,
@@ -794,7 +794,7 @@ func TestUnrealiableReorder(t *testing.T) {
 func TestUnrealiableBufferFull(t *testing.T) {
 	rtcpReceived := make(chan struct{})
 
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate:            90000,
 		LocalSSRC:            uint32Ptr(0x65f83afb),
 		UnrealiableTransport: true,
@@ -878,7 +878,7 @@ func TestUnrealiableBufferFull(t *testing.T) {
 func TestUnrealiableReset(t *testing.T) {
 	rtcpGenerated := make(chan struct{})
 
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate:            90000,
 		LocalSSRC:            uint32Ptr(0x65f83afb),
 		UnrealiableTransport: true,
@@ -940,7 +940,7 @@ func TestUnrealiableReset(t *testing.T) {
 func TestUnrealiableCustomBufferSize(t *testing.T) {
 	customSize := 128
 
-	rr := &RTCPReceiver{
+	rr := &Receiver{
 		ClockRate:            90000,
 		LocalSSRC:            uint32Ptr(0x65f83afb),
 		UnrealiableTransport: true,
