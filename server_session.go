@@ -31,6 +31,10 @@ import (
 
 type readFunc func([]byte) bool
 
+func isSecure(profile headers.TransportProfile) bool {
+	return profile == headers.TransportProfileSAVP
+}
+
 func stringsReverseIndex(s, substr string) int {
 	for i := len(s) - 1 - len(substr); i >= 0; i-- {
 		if s[i:i+len(substr)] == substr {
@@ -181,12 +185,12 @@ func isTransportSupported(s *Server, tr *headers.Transport) bool {
 	}
 
 	// prevent using unsecure UDP with RTSPS
-	if tr.Protocol == headers.TransportProtocolUDP && !tr.Secure && s.TLSConfig != nil {
+	if tr.Protocol == headers.TransportProtocolUDP && !isSecure(tr.Profile) && s.TLSConfig != nil {
 		return false
 	}
 
 	// prevent using secure profiles with plain RTSP, since keys are in plain
-	if tr.Secure && s.TLSConfig == nil {
+	if isSecure(tr.Profile) && s.TLSConfig == nil {
 		return false
 	}
 
@@ -420,7 +424,7 @@ type ServerSession struct {
 	setuppedMediasOrdered []*serverSessionMedia
 	tcpCallbackByChannel  map[int]readFunc
 	setuppedTransport     *Transport
-	setuppedSecure        bool
+	setuppedProfile       headers.TransportProfile
 	setuppedStream        *ServerStream // play
 	setuppedPath          string
 	setuppedQuery         string
@@ -503,7 +507,7 @@ func (ss *ServerSession) SetuppedTransport() *Transport {
 // If this is false, it does not mean that the stream is not secure, since
 // there are some combinations that are secure nonetheless, like RTSPS+TCP+unsecure.
 func (ss *ServerSession) SetuppedSecure() bool {
-	return ss.setuppedSecure
+	return isSecure(ss.setuppedProfile)
 }
 
 // SetuppedStream returns the stream associated with the session.
@@ -1126,7 +1130,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		var srtpInCtx *wrappedSRTPContext
 
-		if inTH.Secure {
+		if isSecure(inTH.Profile) {
 			var keyMgmt headers.KeyMgmt
 			err = keyMgmt.Unmarshal(req.Header["KeyMgmt"])
 			if err != nil {
@@ -1143,7 +1147,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 		}
 
-		if ss.setuppedTransport != nil && (*ss.setuppedTransport != transport || ss.setuppedSecure != inTH.Secure) {
+		if ss.setuppedTransport != nil && (*ss.setuppedTransport != transport || ss.setuppedProfile != inTH.Profile) {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerMediasDifferentTransports{}
@@ -1247,7 +1251,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 
 			ss.setuppedTransport = &transport
-			ss.setuppedSecure = inTH.Secure
+			ss.setuppedProfile = inTH.Profile
 
 			if ss.state == ServerSessionStateInitial {
 				err = stream.readerAdd(ss,
@@ -1266,7 +1270,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 
 			th := headers.Transport{
-				Secure: inTH.Secure,
+				Profile: inTH.Profile,
 			}
 
 			if ss.state == ServerSessionStatePrePlay {
@@ -1355,7 +1359,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 			res.Header["Transport"] = th.Marshal()
 
-			if inTH.Secure {
+			if isSecure(inTH.Profile) {
 				ssrcs := make([]uint32, len(sm.formats))
 				n := 0
 				for _, sf := range sm.formats {

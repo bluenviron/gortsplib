@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
@@ -726,6 +727,7 @@ var casesSession = []struct {
 					Type:    "video",
 					Control: "trackID=0",
 					Secure:  true,
+					Profile: headers.TransportProfileSAVP,
 					Formats: []format.Format{&format.H264{
 						PayloadTyp: 96,
 					}},
@@ -762,6 +764,7 @@ var casesSession = []struct {
 					Type:    "video",
 					Control: "trackID=0",
 					Secure:  true,
+					Profile: headers.TransportProfileSAVP,
 					KeyMgmtMikey: &mikey.Message{ //nolint:dupl
 						Header: mikey.Header{
 							Version: 1,

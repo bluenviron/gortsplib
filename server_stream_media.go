@@ -110,7 +110,7 @@ func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	// send unicast
 	for r := range sm.st.activeUnicastReaders {
 		if sm, ok := r.setuppedMedias[sm.media]; ok {
-			if r.setuppedSecure {
+			if isSecure(r.setuppedProfile) {
 				err = sm.writePacketRTCPEncoded(encr)
 				if err != nil {
 					r.onStreamWriteError(err)

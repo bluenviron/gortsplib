@@ -159,7 +159,7 @@ func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
 	pkt.SSRC = sf.localSSRC
 
 	maxPlainPacketSize := sf.sm.ss.s.MaxPacketSize
-	if sf.sm.ss.setuppedSecure {
+	if isSecure(sf.sm.ss.setuppedProfile) {
 		maxPlainPacketSize -= srtpOverhead
 	}
 
@@ -171,7 +171,7 @@ func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
 	plain = plain[:n]
 
 	var encr []byte
-	if sf.sm.ss.setuppedSecure {
+	if isSecure(sf.sm.ss.setuppedProfile) {
 		encr = make([]byte, sf.sm.ss.s.MaxPacketSize)
 		encr, err = sf.sm.srtpOutCtx.encryptRTP(encr, plain, &pkt.Header)
 		if err != nil {
@@ -179,7 +179,7 @@ func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
 		}
 	}
 
-	if sf.sm.ss.setuppedSecure {
+	if isSecure(sf.sm.ss.setuppedProfile) {
 		return sf.writePacketRTPEncoded(encr)
 	}
 	return sf.writePacketRTPEncoded(plain)
