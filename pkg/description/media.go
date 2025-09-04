@@ -15,6 +15,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
 )
 
@@ -78,14 +79,19 @@ type Media struct {
 	// Whether this media is a back channel.
 	IsBackChannel bool
 
-	// Control attribute.
-	Control string
-
 	// Whether the transport is secure.
+	//
+	// Deprecated: replaced by Profile
 	Secure bool
+
+	// RTP Profile.
+	Profile headers.TransportProfile
 
 	// key-mgmt attribute.
 	KeyMgmtMikey *mikey.Message
+
+	// Control attribute.
+	Control string
 
 	// Formats contained into the media.
 	Formats []format.Format
@@ -101,8 +107,14 @@ func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 	}
 
 	m.IsBackChannel = isBackChannel(md.Attributes)
-	m.Control = getAttribute(md.Attributes, "control")
-	m.Secure = slices.Contains(md.MediaName.Protos, "SAVP")
+
+	if slices.Contains(md.MediaName.Protos, "SAVP") {
+		m.Secure = true
+		m.Profile = headers.TransportProfileSAVP
+	} else {
+		m.Secure = false
+		m.Profile = headers.TransportProfileAVP
+	}
 
 	if enc := getAttribute(md.Attributes, "key-mgmt"); enc != "" {
 		if !strings.HasPrefix(enc, "mikey ") {
@@ -120,6 +132,8 @@ func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 			return err
 		}
 	}
+
+	m.Control = getAttribute(md.Attributes, "control")
 
 	m.Formats = nil
 
@@ -152,11 +166,16 @@ func (m Media) Marshal() *psdp.MediaDescription {
 
 // Marshal2 encodes the media in SDP format.
 func (m Media) Marshal2() (*psdp.MediaDescription, error) {
+	if m.Secure {
+		m.Profile = headers.TransportProfileSAVP
+	}
+
 	var protos []string
-	if !m.Secure {
-		protos = []string{"RTP", "AVP"}
-	} else {
+
+	if m.Profile == headers.TransportProfileSAVP {
 		protos = []string{"RTP", "SAVP"}
+	} else {
+		protos = []string{"RTP", "AVP"}
 	}
 
 	md := &psdp.MediaDescription{

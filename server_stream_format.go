@@ -120,7 +120,7 @@ func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) err
 		if rsm, ok := r.setuppedMedias[sf.sm.media]; ok {
 			rsf := rsm.formats[pkt.PayloadType]
 
-			if r.setuppedSecure {
+			if isSecure(r.setuppedProfile) {
 				err = rsf.writePacketRTPEncoded(encr)
 				if err != nil {
 					r.onStreamWriteError(err)

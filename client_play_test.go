@@ -399,11 +399,11 @@ func TestClientPlay(t *testing.T) {
 					h := base.Header{}
 
 					th := headers.Transport{
-						Secure: inTH.Secure,
+						Profile: inTH.Profile,
 					}
 
 					if ca.secure == "secure" {
-						require.True(t, inTH.Secure)
+						require.Equal(t, headers.TransportProfileSAVP, inTH.Profile)
 
 						var keyMgmt headers.KeyMgmt
 						err2 = keyMgmt.Unmarshal(req.Header["KeyMgmt"])

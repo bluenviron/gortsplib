@@ -752,7 +752,7 @@ func TestServerRecord(t *testing.T) {
 				}
 
 				if ca.secure == "secure" {
-					inTH.Secure = true
+					inTH.Profile = headers.TransportProfileSAVP
 
 					key := make([]byte, srtpKeyLength)
 					_, err = rand.Read(key)
@@ -800,7 +800,7 @@ func TestServerRecord(t *testing.T) {
 				}
 
 				if ca.secure == "secure" {
-					require.True(t, th.Secure)
+					require.Equal(t, headers.TransportProfileSAVP, th.Profile)
 
 					var keyMgmt headers.KeyMgmt
 					err = keyMgmt.Unmarshal(res.Header["KeyMgmt"])

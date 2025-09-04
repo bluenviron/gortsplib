@@ -213,7 +213,7 @@ func TestClientRecord(t *testing.T) {
 				require.NoError(t, err2)
 
 				if ca.secure == "secure" {
-					require.True(t, desc2.Medias[0].Secure)
+					require.Equal(t, headers.TransportProfileSAVP, desc2.Medias[0].Profile)
 
 					_, err = mikeyToContext(desc2.Medias[0].KeyMgmtMikey)
 					require.NoError(t, err)
@@ -257,16 +257,14 @@ func TestClientRecord(t *testing.T) {
 
 				th := headers.Transport{
 					Delivery: deliveryPtr(headers.TransportDeliveryUnicast),
-					Secure:   inTH.Secure,
+					Profile:  inTH.Profile,
 				}
 
 				var srtpInCtx *wrappedSRTPContext
 				var srtpOutCtx *wrappedSRTPContext
 
 				if ca.secure == "secure" {
-					th.Secure = true
-
-					require.True(t, th.Secure)
+					require.Equal(t, inTH.Profile, headers.TransportProfileSAVP)
 
 					var keyMgmt headers.KeyMgmt
 					err = keyMgmt.Unmarshal(req.Header["KeyMgmt"])

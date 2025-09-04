@@ -202,9 +202,9 @@ func prepareForAnnounce(
 ) error {
 	for i, m := range desc.Medias {
 		m.Control = "trackID=" + strconv.FormatInt(int64(i), 10)
-		m.Secure = secure
 
 		if secure {
+			m.Profile = headers.TransportProfileSAVP
 			announceDataMedia := announceData[m]
 
 			ssrcs := make([]uint32, len(m.Formats))
@@ -232,6 +232,8 @@ func prepareForAnnounce(
 			}
 
 			m.KeyMgmtMikey = mikeyMsg
+		} else {
+			m.Profile = headers.TransportProfileAVP
 		}
 	}
 
@@ -512,8 +514,8 @@ type Client struct {
 	lastDescribeDesc     *description.Session
 	baseURL              *base.URL
 	announceData         map[*description.Media]*clientAnnounceDataMedia // record
-	effectiveTransport   *Transport
-	effectiveSecure      bool
+	setuppedTransport    *Transport
+	setuppedProfile      headers.TransportProfile
 	backChannelSetupped  bool
 	stdChannelSetupped   bool
 	setuppedMedias       map[*description.Media]*clientMedia
@@ -973,7 +975,7 @@ func (c *Client) reset() {
 	c.optionsSent = false
 	c.useGetParameter = false
 	c.baseURL = nil
-	c.effectiveTransport = nil
+	c.setuppedTransport = nil
 	c.backChannelSetupped = false
 	c.stdChannelSetupped = false
 	c.setuppedMedias = nil
@@ -1004,7 +1006,7 @@ func (c *Client) trySwitchingProtocol() error {
 	c.reset()
 
 	v := TransportTCP
-	c.effectiveTransport = &v
+	c.setuppedTransport = &v
 
 	// some Hikvision cameras require a describe before a setup
 	_, _, err := c.doDescribe(c.lastDescribeURL)
@@ -1040,18 +1042,18 @@ func (c *Client) startTransportRoutines() {
 		cm.start()
 	}
 
-	if *c.effectiveTransport == TransportTCP {
+	if *c.setuppedTransport == TransportTCP {
 		c.tcpFrame = &base.InterleavedFrame{}
 		c.tcpBuffer = make([]byte, c.MaxPacketSize+4)
 	}
 
 	// always enable keepalives unless we are recording with TCP
-	if c.state == clientStatePlay || *c.effectiveTransport != TransportTCP {
+	if c.state == clientStatePlay || *c.setuppedTransport != TransportTCP {
 		c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 	}
 
 	if c.state == clientStatePlay && c.stdChannelSetupped {
-		switch *c.effectiveTransport {
+		switch *c.setuppedTransport {
 		case TransportUDP:
 			c.checkTimeoutTimer = time.NewTimer(c.InitialUDPReadTimeout)
 			c.checkTimeoutInitial = true
@@ -1066,7 +1068,7 @@ func (c *Client) startTransportRoutines() {
 		}
 	}
 
-	if *c.effectiveTransport == TransportTCP {
+	if *c.setuppedTransport == TransportTCP {
 		c.reader.setAllowInterleavedFrames(true)
 	}
 }
@@ -1281,8 +1283,8 @@ func (c *Client) isInTCPTimeout() bool {
 }
 
 func (c *Client) doCheckTimeout() error {
-	if *c.effectiveTransport == TransportUDP ||
-		*c.effectiveTransport == TransportUDPMulticast {
+	if *c.setuppedTransport == TransportUDP ||
+		*c.setuppedTransport == TransportUDPMulticast {
 		if c.checkTimeoutInitial && !c.backChannelSetupped && c.Transport == nil {
 			c.checkTimeoutInitial = false
 
@@ -1586,20 +1588,30 @@ func (c *Client) doSetup(
 
 	switch {
 	// use transport from previous SETUP calls
-	case c.effectiveTransport != nil:
-		transport = *c.effectiveTransport
-		th.Secure = c.effectiveSecure
+	case c.setuppedTransport != nil:
+		transport = *c.setuppedTransport
+		th.Profile = c.setuppedProfile
 
 	// use transport from config, secure flag from server
 	case c.Transport != nil:
 		transport = *c.Transport
-		th.Secure = medi.Secure && c.Scheme == "rtsps"
+		if isSecure(medi.Profile) && c.Scheme == "rtsps" {
+			th.Profile = headers.TransportProfileSAVP
+		} else {
+			th.Profile = headers.TransportProfileAVP
+		}
 
-	// try UDP if unencrypted or secure is supported by server, otherwise try TCP
+	// try
+	// - UDP if unencrypted or secure is supported by server
+	// - otherwise, TCP
 	default:
-		th.Secure = medi.Secure && c.Scheme == "rtsps"
+		if isSecure(medi.Profile) && c.Scheme == "rtsps" {
+			th.Profile = headers.TransportProfileSAVP
+		} else {
+			th.Profile = headers.TransportProfileAVP
+		}
 
-		if th.Secure || c.Scheme == "rtsp" {
+		if th.Profile == headers.TransportProfileSAVP || c.Scheme == "rtsp" {
 			transport = TransportUDP
 		} else {
 			transport = TransportTCP
@@ -1609,7 +1621,7 @@ func (c *Client) doSetup(
 	cm := &clientMedia{
 		c:      c,
 		media:  medi,
-		secure: th.Secure,
+		secure: isSecure(th.Profile),
 	}
 	err = cm.initialize()
 	if err != nil {
@@ -1618,7 +1630,7 @@ func (c *Client) doSetup(
 
 	switch transport {
 	case TransportUDP, TransportUDPMulticast:
-		if c.Scheme == "rtsps" && !th.Secure {
+		if c.Scheme == "rtsps" && !isSecure(th.Profile) {
 			cm.close()
 			return nil, fmt.Errorf("unable to setup secure UDP")
 		}
@@ -1683,7 +1695,7 @@ func (c *Client) doSetup(
 		header["Require"] = base.HeaderValue{"www.onvif.org/ver20/backchannel"}
 	}
 
-	if th.Secure {
+	if isSecure(th.Profile) {
 		ssrcs := make([]uint32, len(cm.formats))
 		n := 0
 		for _, cf := range cm.formats {
@@ -1726,11 +1738,11 @@ func (c *Client) doSetup(
 
 		// switch transport automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
-			c.effectiveTransport == nil && c.Transport == nil {
+			c.setuppedTransport == nil && c.Transport == nil {
 			c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 			v := TransportTCP
-			c.effectiveTransport = &v
-			c.effectiveSecure = th.Secure
+			c.setuppedTransport = &v
+			c.setuppedProfile = th.Profile
 
 			return c.doSetup(baseURL, medi, 0, 0)
 		}
@@ -1751,7 +1763,7 @@ func (c *Client) doSetup(
 			cm.close()
 
 			// switch transport automatically
-			if c.effectiveTransport == nil && c.Transport == nil {
+			if c.setuppedTransport == nil && c.Transport == nil {
 				c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 
 				c.baseURL = baseURL
@@ -1759,8 +1771,8 @@ func (c *Client) doSetup(
 				c.reset()
 
 				v := TransportTCP
-				c.effectiveTransport = &v
-				c.effectiveSecure = th.Secure
+				c.setuppedTransport = &v
+				c.setuppedProfile = th.Profile
 
 				// some Hikvision cameras require a describe before a setup
 				_, _, err = c.doDescribe(c.lastDescribeURL)
@@ -1906,12 +1918,12 @@ func (c *Client) doSetup(
 		cm.tcpChannel = thRes.InterleavedIDs[0]
 	}
 
-	if cm.secure {
-		if !thRes.Secure {
-			cm.close()
-			return nil, fmt.Errorf("transport was not setupped securely")
-		}
+	if thRes.Profile != th.Profile {
+		cm.close()
+		return nil, fmt.Errorf("returned profile does not match requested profile")
+	}
 
+	if cm.secure {
 		var mikeyMsg *mikey.Message
 
 		// extract key-mgmt from (in order of priority):
@@ -1943,9 +1955,6 @@ func (c *Client) doSetup(
 			cm.close()
 			return nil, err
 		}
-	} else if thRes.Secure {
-		cm.close()
-		return nil, fmt.Errorf("received unexpected secure profile")
 	}
 
 	if c.setuppedMedias == nil {
@@ -1955,8 +1964,8 @@ func (c *Client) doSetup(
 	c.setuppedMedias[medi] = cm
 
 	c.baseURL = baseURL
-	c.effectiveTransport = &transport
-	c.effectiveSecure = th.Secure
+	c.setuppedTransport = &transport
+	c.setuppedProfile = th.Profile
 
 	if medi.IsBackChannel {
 		c.backChannelSetupped = true
@@ -2057,7 +2066,7 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 	// when protocol is UDP,
 	// open the firewall by sending empty packets to the remote part.
 	// do this before sending the PLAY request.
-	if *c.effectiveTransport == TransportUDP {
+	if *c.setuppedTransport == TransportUDP {
 		for _, cm := range c.setuppedMedias {
 			if !cm.media.IsBackChannel && cm.udpRTPListener.writeAddr != nil {
 				buf, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()

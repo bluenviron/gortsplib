@@ -175,6 +175,7 @@ var casesTransport = []struct {
 		Transport{
 			Protocol:    TransportProtocolUDP,
 			Secure:      true,
+			Profile:     TransportProfileSAVP,
 			Delivery:    deliveryPtr(TransportDeliveryUnicast),
 			ClientPorts: &[2]int{3456, 3457},
 			Mode:        transportModePtr(TransportModePlay),
@@ -187,6 +188,7 @@ var casesTransport = []struct {
 		Transport{
 			Protocol:       TransportProtocolTCP,
 			Secure:         true,
+			Profile:        TransportProfileSAVP,
 			InterleavedIDs: &[2]int{0, 1},
 		},
 	},

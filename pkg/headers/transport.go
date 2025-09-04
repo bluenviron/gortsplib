@@ -38,6 +38,15 @@ func parsePorts(val string) (*[2]int, error) {
 	return &[2]int{0, 0}, fmt.Errorf("invalid ports (%v)", val)
 }
 
+// TransportProfile is a transport profile.
+type TransportProfile int
+
+// transport profiles.
+const (
+	TransportProfileAVP TransportProfile = iota
+	TransportProfileSAVP
+)
+
 // TransportProtocol is a transport protocol.
 type TransportProtocol int
 
@@ -116,13 +125,18 @@ func (m TransportMode) String() string {
 
 // Transport is a Transport header.
 type Transport struct {
-	// protocol of the stream.
-	Protocol TransportProtocol
-
 	// Whether the secure variant is active.
+	//
+	// Deprecated: replaced by Profile.
 	Secure bool
 
-	// (optional) delivery method of the stream.
+	// profile.
+	Profile TransportProfile
+
+	// protocol.
+	Protocol TransportProtocol
+
+	// (optional) delivery method.
 	Delivery *TransportDelivery
 
 	// (optional) Source IP.
@@ -146,7 +160,7 @@ type Transport struct {
 	// (optional) server ports.
 	ServerPorts *[2]int
 
-	// (optional) SSRC of the packets of the stream.
+	// (optional) SSRC of packets.
 	SSRC *uint32
 
 	// (optional) mode.
@@ -175,21 +189,25 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 
 		switch k {
 		case "RTP/AVP", "RTP/AVP/UDP":
+			h.Profile = TransportProfileAVP
 			h.Protocol = TransportProtocolUDP
 			profileFound = true
 
 		case "RTP/AVP/TCP":
+			h.Profile = TransportProfileAVP
 			h.Protocol = TransportProtocolTCP
 			profileFound = true
 
 		case "RTP/SAVP", "RTP/SAVP/UDP":
 			h.Protocol = TransportProtocolUDP
 			h.Secure = true
+			h.Profile = TransportProfileSAVP
 			profileFound = true
 
 		case "RTP/SAVP/TCP":
-			h.Protocol = TransportProtocolTCP
 			h.Secure = true
+			h.Profile = TransportProfileSAVP
+			h.Protocol = TransportProtocolTCP
 			profileFound = true
 
 		case "unicast":
@@ -299,16 +317,20 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 func (h Transport) Marshal() base.HeaderValue {
 	var rets []string
 
+	if h.Secure {
+		h.Profile = TransportProfileSAVP
+	}
+
 	var profile string
 
 	switch {
-	case h.Protocol == TransportProtocolUDP && !h.Secure:
+	case h.Protocol == TransportProtocolUDP && h.Profile == TransportProfileAVP:
 		profile = "RTP/AVP"
-	case h.Protocol == TransportProtocolTCP && !h.Secure:
+	case h.Protocol == TransportProtocolTCP && h.Profile == TransportProfileAVP:
 		profile = "RTP/AVP/TCP"
-	case h.Protocol == TransportProtocolUDP && h.Secure:
+	case h.Protocol == TransportProtocolUDP && h.Profile == TransportProfileSAVP:
 		profile = "RTP/SAVP"
-	case h.Protocol == TransportProtocolTCP && h.Secure:
+	case h.Protocol == TransportProtocolTCP && h.Profile == TransportProfileSAVP:
 		profile = "RTP/SAVP/TCP"
 	}
 
