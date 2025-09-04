@@ -305,7 +305,7 @@ func (cm *clientMedia) readPacketRTCPTCPPlay(payload []byte) bool {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
 			format := cm.findFormatByRemoteSSRC(sr.SSRC)
 			if format != nil {
-				format.rtcpReceiver.ProcessSenderReport(sr, now)
+				format.rtpReceiver.ProcessSenderReport(sr, now)
 			}
 		}
 
@@ -389,7 +389,7 @@ func (cm *clientMedia) readPacketRTCPUDPPlay(payload []byte) bool {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
 			format := cm.findFormatByRemoteSSRC(sr.SSRC)
 			if format != nil {
-				format.rtcpReceiver.ProcessSenderReport(sr, now)
+				format.rtpReceiver.ProcessSenderReport(sr, now)
 			}
 		}
 

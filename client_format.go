@@ -10,8 +10,8 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpreceiver"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpsender"
 )
 
 func clientPickLocalSSRC(cf *clientFormat) (uint32, error) {
@@ -45,8 +45,8 @@ type clientFormat struct {
 	onPacketRTP OnPacketRTPFunc
 
 	localSSRC             uint32
-	rtcpReceiver          *rtcpreceiver.RTCPReceiver // play
-	rtcpSender            *rtcpsender.RTCPSender     // record or back channel
+	rtpReceiver           *rtpreceiver.Receiver // play
+	rtpSender             *rtpsender.Sender     // record or back channel
 	writePacketRTPInQueue func([]byte) error
 	rtpPacketsReceived    *uint64
 	rtpPacketsSent        *uint64
@@ -79,7 +79,7 @@ func (cf *clientFormat) start() {
 	}
 
 	if cf.cm.c.state == clientStateRecord || cf.cm.media.IsBackChannel {
-		cf.rtcpSender = &rtcpsender.RTCPSender{
+		cf.rtpSender = &rtpsender.Sender{
 			ClockRate: cf.format.ClockRate(),
 			Period:    cf.cm.c.senderReportPeriod,
 			TimeNow:   cf.cm.c.timeNow,
@@ -89,9 +89,9 @@ func (cf *clientFormat) start() {
 				}
 			},
 		}
-		cf.rtcpSender.Initialize()
+		cf.rtpSender.Initialize()
 	} else {
-		cf.rtcpReceiver = &rtcpreceiver.RTCPReceiver{
+		cf.rtpReceiver = &rtpreceiver.Receiver{
 			ClockRate:            cf.format.ClockRate(),
 			LocalSSRC:            &cf.localSSRC,
 			UnrealiableTransport: (cf.cm.udpRTPListener != nil),
@@ -103,7 +103,7 @@ func (cf *clientFormat) start() {
 				}
 			},
 		}
-		err := cf.rtcpReceiver.Initialize()
+		err := cf.rtpReceiver.Initialize()
 		if err != nil {
 			panic(err)
 		}
@@ -111,19 +111,19 @@ func (cf *clientFormat) start() {
 }
 
 func (cf *clientFormat) stop() {
-	if cf.rtcpReceiver != nil {
-		cf.rtcpReceiver.Close()
-		cf.rtcpReceiver = nil
+	if cf.rtpReceiver != nil {
+		cf.rtpReceiver.Close()
+		cf.rtpReceiver = nil
 	}
 
-	if cf.rtcpSender != nil {
-		cf.rtcpSender.Close()
+	if cf.rtpSender != nil {
+		cf.rtpSender.Close()
 	}
 }
 
 func (cf *clientFormat) remoteSSRC() (uint32, bool) {
-	if cf.rtcpReceiver != nil {
-		stats := cf.rtcpReceiver.Stats()
+	if cf.rtpReceiver != nil {
+		stats := cf.rtpReceiver.Stats()
 		if stats != nil {
 			return stats.RemoteSSRC, true
 		}
@@ -134,7 +134,7 @@ func (cf *clientFormat) remoteSSRC() (uint32, bool) {
 func (cf *clientFormat) readPacketRTP(pkt *rtp.Packet) {
 	now := cf.cm.c.timeNow()
 
-	pkts, lost, err := cf.rtcpReceiver.ProcessPacket2(pkt, now, cf.format.PTSEqualsDTS(pkt))
+	pkts, lost, err := cf.rtpReceiver.ProcessPacket2(pkt, now, cf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		cf.cm.onPacketRTPDecodeError(err)
 		return
@@ -155,7 +155,7 @@ func (cf *clientFormat) readPacketRTP(pkt *rtp.Packet) {
 func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 	pkt.SSRC = cf.localSSRC
 
-	cf.rtcpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
+	cf.rtpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
 
 	maxPlainPacketSize := cf.cm.c.MaxPacketSize
 	if cf.cm.srtpOutCtx != nil {

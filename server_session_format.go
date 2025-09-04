@@ -11,7 +11,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpreceiver"
 )
 
 func serverSessionPickLocalSSRC(sf *serverSessionFormat) (uint32, error) {
@@ -45,7 +45,7 @@ type serverSessionFormat struct {
 	onPacketRTP OnPacketRTPFunc
 
 	localSSRC             uint32
-	rtcpReceiver          *rtcpreceiver.RTCPReceiver
+	rtpReceiver           *rtpreceiver.Receiver
 	writePacketRTPInQueue func([]byte) error
 	rtpPacketsReceived    *uint64
 	rtpPacketsSent        *uint64
@@ -80,7 +80,7 @@ func (sf *serverSessionFormat) start() {
 	}
 
 	if sf.sm.ss.state == ServerSessionStateRecord || sf.sm.media.IsBackChannel {
-		sf.rtcpReceiver = &rtcpreceiver.RTCPReceiver{
+		sf.rtpReceiver = &rtpreceiver.Receiver{
 			ClockRate:            sf.format.ClockRate(),
 			LocalSSRC:            &sf.localSSRC,
 			UnrealiableTransport: udp,
@@ -92,7 +92,7 @@ func (sf *serverSessionFormat) start() {
 				}
 			},
 		}
-		err := sf.rtcpReceiver.Initialize()
+		err := sf.rtpReceiver.Initialize()
 		if err != nil {
 			panic(err)
 		}
@@ -100,15 +100,15 @@ func (sf *serverSessionFormat) start() {
 }
 
 func (sf *serverSessionFormat) stop() {
-	if sf.rtcpReceiver != nil {
-		sf.rtcpReceiver.Close()
-		sf.rtcpReceiver = nil
+	if sf.rtpReceiver != nil {
+		sf.rtpReceiver.Close()
+		sf.rtpReceiver = nil
 	}
 }
 
 func (sf *serverSessionFormat) remoteSSRC() (uint32, bool) {
-	if sf.rtcpReceiver != nil {
-		stats := sf.rtcpReceiver.Stats()
+	if sf.rtpReceiver != nil {
+		stats := sf.rtpReceiver.Stats()
 		if stats != nil {
 			return stats.RemoteSSRC, true
 		}
@@ -117,7 +117,7 @@ func (sf *serverSessionFormat) remoteSSRC() (uint32, bool) {
 }
 
 func (sf *serverSessionFormat) readPacketRTP(pkt *rtp.Packet, now time.Time) {
-	pkts, lost, err := sf.rtcpReceiver.ProcessPacket2(pkt, now, sf.format.PTSEqualsDTS(pkt))
+	pkts, lost, err := sf.rtpReceiver.ProcessPacket2(pkt, now, sf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		sf.sm.onPacketRTPDecodeError(err)
 		return

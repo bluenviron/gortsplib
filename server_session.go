@@ -23,8 +23,8 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpsender"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpreceiver"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpsender"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
 	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
 )
@@ -321,7 +321,7 @@ func generateRTPInfoEntry(ssm *serverStreamMedia, now time.Time) *headers.RTPInf
 
 	format := ssm.formats[ssm.media.Formats[0].PayloadType()]
 
-	stats := format.rtcpSender.Stats()
+	stats := format.rtpSender.Stats()
 	if stats == nil {
 		return nil
 	}
@@ -566,19 +566,19 @@ func (ss *ServerSession) Stats() *StatsSession {
 					ret := make(map[format.Format]StatsSessionFormat, len(sm.formats))
 
 					for _, fo := range sm.formats {
-						recvStats := func() *rtcpreceiver.Stats {
-							if fo.rtcpReceiver != nil {
-								return fo.rtcpReceiver.Stats()
+						recvStats := func() *rtpreceiver.Stats {
+							if fo.rtpReceiver != nil {
+								return fo.rtpReceiver.Stats()
 							}
 							return nil
 						}()
-						rtcpSender := func() *rtcpsender.RTCPSender {
+						rtcpSender := func() *rtpsender.Sender {
 							if ss.setuppedStream != nil {
-								return ss.setuppedStream.medias[med].formats[fo.format.PayloadType()].rtcpSender
+								return ss.setuppedStream.medias[med].formats[fo.format.PayloadType()].rtpSender
 							}
 							return nil
 						}()
-						sentStats := func() *rtcpsender.Stats {
+						sentStats := func() *rtpsender.Stats {
 							if rtcpSender != nil {
 								return rtcpSender.Stats()
 							}
@@ -1772,7 +1772,7 @@ func (ss *ServerSession) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (i
 func (ss *ServerSession) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[pkt.PayloadType]
-	return sf.rtcpReceiver.PacketNTP(pkt.Timestamp)
+	return sf.rtpReceiver.PacketNTP(pkt.Timestamp)
 }
 
 func (ss *ServerSession) handleRequest(req sessionRequestReq) (*base.Response, *ServerSession, error) {

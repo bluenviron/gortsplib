@@ -1,4 +1,4 @@
-package rtcpsender
+package rtpsender
 
 import (
 	"sync"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRTCPSender(t *testing.T) {
+func TestSender(t *testing.T) {
 	var curTime time.Time
 	var mutex sync.Mutex
 
@@ -22,7 +22,7 @@ func TestRTCPSender(t *testing.T) {
 
 	pktGenerated := make(chan rtcp.Packet)
 
-	rs := &RTCPSender{
+	rs := &Sender{
 		ClockRate: 90000,
 		Period:    100 * time.Millisecond,
 		TimeNow: func() time.Time {
@@ -108,7 +108,7 @@ func TestRTCPSender(t *testing.T) {
 	}, stats)
 }
 
-func TestRTCPSenderZeroClockRate(t *testing.T) {
+func TestSenderZeroClockRate(t *testing.T) {
 	var curTime time.Time
 	var mutex sync.Mutex
 
@@ -120,7 +120,7 @@ func TestRTCPSenderZeroClockRate(t *testing.T) {
 
 	pktGenerated := make(chan rtcp.Packet)
 
-	rs := &RTCPSender{
+	rs := &Sender{
 		ClockRate: 0,
 		Period:    100 * time.Millisecond,
 		TimeNow: func() time.Time {

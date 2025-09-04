@@ -176,7 +176,7 @@ func (sm *serverSessionMedia) stop() {
 
 func (sm *serverSessionMedia) findFormatByRemoteSSRC(ssrc uint32) *serverSessionFormat {
 	for _, format := range sm.formats {
-		stats := format.rtcpReceiver.Stats()
+		stats := format.rtpReceiver.Stats()
 		if stats != nil && stats.RemoteSSRC == ssrc {
 			return format
 		}
@@ -317,7 +317,7 @@ func (sm *serverSessionMedia) readPacketRTCPUDPRecord(payload []byte) bool {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
 			format := sm.findFormatByRemoteSSRC(sr.SSRC)
 			if format != nil {
-				format.rtcpReceiver.ProcessSenderReport(sr, now)
+				format.rtpReceiver.ProcessSenderReport(sr, now)
 			}
 		}
 
@@ -416,7 +416,7 @@ func (sm *serverSessionMedia) readPacketRTCPTCPRecord(payload []byte) bool {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
 			format := sm.findFormatByRemoteSSRC(sr.SSRC)
 			if format != nil {
-				format.rtcpReceiver.ProcessSenderReport(sr, now)
+				format.rtpReceiver.ProcessSenderReport(sr, now)
 			}
 		}
 
