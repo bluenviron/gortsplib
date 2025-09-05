@@ -138,6 +138,13 @@ func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 		buf = encr
 	}
 
+	cf.cm.c.writerMutex.RLock()
+	defer cf.cm.c.writerMutex.RUnlock()
+
+	if cf.cm.c.writer == nil {
+		return nil
+	}
+
 	ok := cf.cm.c.writer.push(func() error {
 		return cf.writePacketRTPInQueue(buf)
 	})

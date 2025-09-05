@@ -444,8 +444,8 @@ type ServerSession struct {
 	announcedDesc         *description.Session // record
 	udpLastPacketTime     *int64               // record
 	udpCheckStreamTimer   *time.Timer
-	writer                *asyncProcessor
 	writerMutex           sync.RWMutex
+	writer                *asyncProcessor
 	timeDecoder           *rtptime.GlobalDecoder2
 	tcpFrame              *base.InterleavedFrame
 	tcpBuffer             []byte

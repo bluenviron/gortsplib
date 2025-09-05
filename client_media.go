@@ -416,6 +416,13 @@ func (cm *clientMedia) writePacketRTCP(pkt rtcp.Packet) error {
 		buf = encr
 	}
 
+	cm.c.writerMutex.RLock()
+	defer cm.c.writerMutex.RUnlock()
+
+	if cm.c.writer == nil {
+		return nil
+	}
+
 	ok := cm.c.writer.push(func() error {
 		return cm.writePacketRTCPInQueue(buf)
 	})

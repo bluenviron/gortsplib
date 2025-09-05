@@ -568,8 +568,8 @@ type Client struct {
 	keepAlivePeriod      time.Duration
 	keepAliveTimer       *time.Timer
 	closeError           error
-	writer               *asyncProcessor
 	writerMutex          sync.RWMutex
+	writer               *asyncProcessor
 	reader               *clientReader
 	timeDecoder          *rtptime.GlobalDecoder2
 	mustClose            bool
@@ -2375,13 +2375,6 @@ func (c *Client) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet,
 	default:
 	}
 
-	c.writerMutex.RLock()
-	defer c.writerMutex.RUnlock()
-
-	if c.writer == nil {
-		return nil
-	}
-
 	cm := c.setuppedMedias[medi]
 	cf := cm.formats[pkt.PayloadType]
 	return cf.writePacketRTP(pkt, ntp)
@@ -2393,13 +2386,6 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 	case <-c.done:
 		return c.closeError
 	default:
-	}
-
-	c.writerMutex.RLock()
-	defer c.writerMutex.RUnlock()
-
-	if c.writer == nil {
-		return nil
 	}
 
 	cm := c.setuppedMedias[medi]
