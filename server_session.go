@@ -522,17 +522,38 @@ func (ss *ServerSession) SetuppedSecure() bool {
 }
 
 // SetuppedStream returns the stream associated with the session.
+//
+// Deprecated: replaced by Stream
 func (ss *ServerSession) SetuppedStream() *ServerStream {
+	return ss.Stream()
+}
+
+// Stream returns the stream associated with the session.
+func (ss *ServerSession) Stream() *ServerStream {
 	return ss.setuppedStream
 }
 
 // SetuppedPath returns the path sent during SETUP or ANNOUNCE.
+//
+// Deprecated: replaced by Path
 func (ss *ServerSession) SetuppedPath() string {
+	return ss.Path()
+}
+
+// Path returns the path sent during SETUP or ANNOUNCE.
+func (ss *ServerSession) Path() string {
 	return ss.setuppedPath
 }
 
 // SetuppedQuery returns the query sent during SETUP or ANNOUNCE.
+//
+// Deprecated: replaced by Medias.
 func (ss *ServerSession) SetuppedQuery() string {
+	return ss.Query()
+}
+
+// Query returns the query sent during SETUP or ANNOUNCE.
+func (ss *ServerSession) Query() string {
 	return ss.setuppedQuery
 }
 
@@ -542,7 +563,14 @@ func (ss *ServerSession) AnnouncedDescription() *description.Session {
 }
 
 // SetuppedMedias returns the setupped medias.
+//
+// Deprecated: replaced by Medias.
 func (ss *ServerSession) SetuppedMedias() []*description.Media {
+	return ss.Medias()
+}
+
+// Medias returns setupped medias.
+func (ss *ServerSession) Medias() []*description.Media {
 	ret := make([]*description.Media, len(ss.setuppedMedias))
 	for i, sm := range ss.setuppedMediasOrdered {
 		ret[i] = sm.media
