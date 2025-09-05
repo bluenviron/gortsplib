@@ -128,9 +128,10 @@ func (cm *clientMedia) initialize() {
 }
 
 func (cm *clientMedia) close() {
-	if cm.udpRTPListener != nil {
-		cm.udpRTPListener.close()
-		cm.udpRTCPListener.close()
+	cm.stop()
+
+	for _, ct := range cm.formats {
+		ct.close()
 	}
 }
 
@@ -161,10 +162,6 @@ func (cm *clientMedia) start() {
 		}
 	}
 
-	for _, ct := range cm.formats {
-		ct.start()
-	}
-
 	if cm.udpRTPListener != nil {
 		cm.udpRTPListener.start()
 		cm.udpRTCPListener.start()
@@ -175,10 +172,6 @@ func (cm *clientMedia) stop() {
 	if cm.udpRTPListener != nil {
 		cm.udpRTPListener.stop()
 		cm.udpRTCPListener.stop()
-	}
-
-	for _, ct := range cm.formats {
-		ct.stop()
 	}
 }
 

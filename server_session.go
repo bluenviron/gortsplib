@@ -829,7 +829,7 @@ func (ss *ServerSession) run() {
 	}
 
 	for _, sm := range ss.setuppedMedias {
-		sm.stop()
+		sm.close()
 	}
 
 	if ss.writer != nil {

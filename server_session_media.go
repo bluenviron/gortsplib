@@ -59,13 +59,15 @@ func (sm *serverSessionMedia) initialize() {
 	}
 }
 
-func (sm *serverSessionMedia) start() error {
-	// allocate udpRTCPReceiver before udpRTCPListener
-	// otherwise udpRTCPReceiver.LastSSRC() cannot be called.
-	for _, sf := range sm.formats {
-		sf.start()
-	}
+func (sm *serverSessionMedia) close() {
+	sm.stop()
 
+	for _, forma := range sm.formats {
+		forma.close()
+	}
+}
+
+func (sm *serverSessionMedia) start() error {
 	switch *sm.ss.setuppedTransport {
 	case TransportUDP, TransportUDPMulticast:
 		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueUDP
@@ -134,10 +136,6 @@ func (sm *serverSessionMedia) stop() {
 	if *sm.ss.setuppedTransport == TransportUDP {
 		sm.ss.s.udpRTPListener.removeClient(sm.ss.author.ip(), sm.udpRTPReadPort)
 		sm.ss.s.udpRTCPListener.removeClient(sm.ss.author.ip(), sm.udpRTCPReadPort)
-	}
-
-	for _, sf := range sm.formats {
-		sf.stop()
 	}
 }
 

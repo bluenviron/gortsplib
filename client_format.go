@@ -31,16 +31,14 @@ func (cf *clientFormat) initialize() {
 	cf.rtpPacketsReceived = new(uint64)
 	cf.rtpPacketsSent = new(uint64)
 	cf.rtpPacketsLost = new(uint64)
-}
 
-func (cf *clientFormat) start() {
 	if cf.cm.udpRTPListener != nil {
 		cf.writePacketRTPInQueue = cf.writePacketRTPInQueueUDP
 	} else {
 		cf.writePacketRTPInQueue = cf.writePacketRTPInQueueTCP
 	}
 
-	if cf.cm.c.state == clientStateRecord || cf.cm.media.IsBackChannel {
+	if cf.cm.c.state == clientStatePreRecord || cf.cm.media.IsBackChannel {
 		cf.rtpSender = &rtpsender.Sender{
 			ClockRate: cf.format.ClockRate(),
 			Period:    cf.cm.c.senderReportPeriod,
@@ -72,7 +70,7 @@ func (cf *clientFormat) start() {
 	}
 }
 
-func (cf *clientFormat) stop() {
+func (cf *clientFormat) close() {
 	if cf.rtpReceiver != nil {
 		cf.rtpReceiver.Close()
 		cf.rtpReceiver = nil

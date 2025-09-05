@@ -30,9 +30,7 @@ func (sf *serverSessionFormat) initialize() {
 	sf.rtpPacketsReceived = new(uint64)
 	sf.rtpPacketsSent = new(uint64)
 	sf.rtpPacketsLost = new(uint64)
-}
 
-func (sf *serverSessionFormat) start() {
 	udp := *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast
 
 	if udp {
@@ -41,7 +39,7 @@ func (sf *serverSessionFormat) start() {
 		sf.writePacketRTPInQueue = sf.writePacketRTPInQueueTCP
 	}
 
-	if sf.sm.ss.state == ServerSessionStateRecord || sf.sm.media.IsBackChannel {
+	if sf.sm.ss.state == ServerSessionStatePreRecord || sf.sm.media.IsBackChannel {
 		sf.rtpReceiver = &rtpreceiver.Receiver{
 			ClockRate:            sf.format.ClockRate(),
 			LocalSSRC:            &sf.localSSRC,
@@ -61,7 +59,7 @@ func (sf *serverSessionFormat) start() {
 	}
 }
 
-func (sf *serverSessionFormat) stop() {
+func (sf *serverSessionFormat) close() {
 	if sf.rtpReceiver != nil {
 		sf.rtpReceiver.Close()
 		sf.rtpReceiver = nil
