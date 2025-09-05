@@ -393,7 +393,7 @@ func parseTimeUnits(value string) (int64, error) {
 
 func (s *SessionDescription) unmarshalRepeatTimes(value string) error {
 	fields := strings.Fields(value)
-	if len(fields) < 3 {
+	if len(fields) < 2 {
 		return fmt.Errorf("%w `r=%v`", errSDPInvalidSyntax, value)
 	}
 
