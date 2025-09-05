@@ -1360,13 +1360,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			res.Header["Transport"] = th.Marshal()
 
 			if isSecure(inTH.Profile) {
-				ssrcs := make([]uint32, len(sm.formats))
-				n := 0
-				for _, sf := range sm.formats {
-					ssrcs[n] = sf.localSSRC
-					n++
-				}
-
 				var mk *mikey.Message
 				mk, err = mikeyGenerate(sm.srtpOutCtx)
 				if err != nil {

@@ -1696,12 +1696,6 @@ func (c *Client) doSetup(
 	}
 
 	if isSecure(th.Profile) {
-		ssrcs := make([]uint32, len(cm.formats))
-		n := 0
-		for _, cf := range cm.formats {
-			ssrcs[n] = cf.localSSRC
-			n++
-		}
 
 		var mikeyMsg *mikey.Message
 		mikeyMsg, err = mikeyGenerate(cm.srtpOutCtx)
