@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"crypto/rand"
 	"fmt"
 	"sync/atomic"
 
@@ -10,64 +9,33 @@ import (
 )
 
 type serverStreamMedia struct {
-	st      *ServerStream
-	media   *description.Media
-	trackID int
+	st         *ServerStream
+	media      *description.Media
+	trackID    int
+	localSSRCs map[uint8]uint32
+	srtpOutCtx *wrappedSRTPContext
 
-	srtpOutCtx      *wrappedSRTPContext
 	formats         map[uint8]*serverStreamFormat
 	multicastWriter *serverMulticastWriter
 	bytesSent       *uint64
 	rtcpPacketsSent *uint64
 }
 
-func (sm *serverStreamMedia) initialize() error {
+func (sm *serverStreamMedia) initialize() {
 	sm.bytesSent = new(uint64)
 	sm.rtcpPacketsSent = new(uint64)
 
 	sm.formats = make(map[uint8]*serverStreamFormat)
 
-	for i, forma := range sm.media.Formats {
+	for _, forma := range sm.media.Formats {
 		sf := &serverStreamFormat{
-			sm:     sm,
-			format: forma,
+			sm:        sm,
+			format:    forma,
+			localSSRC: sm.localSSRCs[forma.PayloadType()],
 		}
-		err := sf.initialize()
-		if err != nil {
-			for _, forma := range sm.media.Formats[:i] {
-				sm.formats[forma.PayloadType()].close()
-			}
-			return err
-		}
-
+		sf.initialize()
 		sm.formats[forma.PayloadType()] = sf
 	}
-
-	if sm.st.Server.TLSConfig != nil {
-		srtpOutKey := make([]byte, srtpKeyLength)
-		_, err := rand.Read(srtpOutKey)
-		if err != nil {
-			return err
-		}
-
-		ssrcs := make([]uint32, len(sm.formats))
-		n := 0
-		for _, cf := range sm.formats {
-			ssrcs[n] = cf.localSSRC
-			n++
-		}
-
-		sm.srtpOutCtx = &wrappedSRTPContext{
-			key:   srtpOutKey,
-			ssrcs: ssrcs,
-		}
-		err = sm.srtpOutCtx.initialize()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (sm *serverStreamMedia) close() {

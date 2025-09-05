@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"slices"
 	"sync/atomic"
 	"time"
 
@@ -14,37 +13,12 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/rtpsender"
 )
 
-func clientPickLocalSSRC(cf *clientFormat) (uint32, error) {
-	var takenSSRCs []uint32 //nolint:prealloc
-
-	for _, cm := range cf.cm.c.setuppedMedias {
-		for _, cf := range cm.formats {
-			takenSSRCs = append(takenSSRCs, cf.localSSRC)
-		}
-	}
-
-	for _, cf := range cf.cm.formats {
-		takenSSRCs = append(takenSSRCs, cf.localSSRC)
-	}
-
-	for {
-		ssrc, err := randUint32()
-		if err != nil {
-			return 0, err
-		}
-
-		if ssrc != 0 && !slices.Contains(takenSSRCs, ssrc) {
-			return ssrc, nil
-		}
-	}
-}
-
 type clientFormat struct {
 	cm          *clientMedia
 	format      format.Format
+	localSSRC   uint32
 	onPacketRTP OnPacketRTPFunc
 
-	localSSRC             uint32
 	rtpReceiver           *rtpreceiver.Receiver // play
 	rtpSender             *rtpsender.Sender     // record or back channel
 	writePacketRTPInQueue func([]byte) error
@@ -53,32 +27,18 @@ type clientFormat struct {
 	rtpPacketsLost        *uint64
 }
 
-func (cf *clientFormat) initialize() error {
-	if cf.cm.c.state == clientStatePreRecord {
-		cf.localSSRC = cf.cm.c.announceData[cf.cm.media].formats[cf.format.PayloadType()].localSSRC
-	} else {
-		var err error
-		cf.localSSRC, err = clientPickLocalSSRC(cf)
-		if err != nil {
-			return err
-		}
-	}
-
+func (cf *clientFormat) initialize() {
 	cf.rtpPacketsReceived = new(uint64)
 	cf.rtpPacketsSent = new(uint64)
 	cf.rtpPacketsLost = new(uint64)
 
-	return nil
-}
-
-func (cf *clientFormat) start() {
 	if cf.cm.udpRTPListener != nil {
 		cf.writePacketRTPInQueue = cf.writePacketRTPInQueueUDP
 	} else {
 		cf.writePacketRTPInQueue = cf.writePacketRTPInQueueTCP
 	}
 
-	if cf.cm.c.state == clientStateRecord || cf.cm.media.IsBackChannel {
+	if cf.cm.c.state == clientStatePreRecord || cf.cm.media.IsBackChannel {
 		cf.rtpSender = &rtpsender.Sender{
 			ClockRate: cf.format.ClockRate(),
 			Period:    cf.cm.c.senderReportPeriod,
@@ -110,7 +70,7 @@ func (cf *clientFormat) start() {
 	}
 }
 
-func (cf *clientFormat) stop() {
+func (cf *clientFormat) close() {
 	if cf.rtpReceiver != nil {
 		cf.rtpReceiver.Close()
 		cf.rtpReceiver = nil
@@ -176,6 +136,13 @@ func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 			return err
 		}
 		buf = encr
+	}
+
+	cf.cm.c.writerMutex.RLock()
+	defer cf.cm.c.writerMutex.RUnlock()
+
+	if cf.cm.c.writer == nil {
+		return nil
 	}
 
 	ok := cf.cm.c.writer.push(func() error {

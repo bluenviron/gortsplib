@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"crypto/rand"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -13,6 +14,16 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
+
+func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStreamMedia) []uint32 {
+	var ret []uint32
+	for _, media := range medias {
+		for _, forma := range media.formats {
+			ret = append(ret, forma.localSSRC)
+		}
+	}
+	return ret
+}
 
 // NewServerStream allocates a ServerStream.
 //
@@ -56,19 +67,52 @@ func (st *ServerStream) Initialize() error {
 	st.activeUnicastReaders = make(map[*ServerSession]struct{})
 
 	st.medias = make(map[*description.Media]*serverStreamMedia, len(st.Desc.Medias))
+
 	for i, medi := range st.Desc.Medias {
-		sm := &serverStreamMedia{
-			st:      st,
-			media:   medi,
-			trackID: i,
-		}
-		err := sm.initialize()
+		localSSRCs, err := generateLocalSSRCs(
+			serverStreamExtractExistingSSRCs(st.medias),
+			medi.Formats,
+		)
 		if err != nil {
-			for _, medi := range st.Desc.Medias[:i] {
-				st.medias[medi].close()
+			for _, sm := range st.medias {
+				sm.close()
 			}
 			return err
 		}
+
+		var srtpOutCtx *wrappedSRTPContext
+
+		if st.Server.TLSConfig != nil {
+			srtpOutKey := make([]byte, srtpKeyLength)
+			_, err = rand.Read(srtpOutKey)
+			if err != nil {
+				for _, sm := range st.medias {
+					sm.close()
+				}
+				return err
+			}
+
+			srtpOutCtx = &wrappedSRTPContext{
+				key:   srtpOutKey,
+				ssrcs: ssrcsMapToList(localSSRCs),
+			}
+			err = srtpOutCtx.initialize()
+			if err != nil {
+				for _, sm := range st.medias {
+					sm.close()
+				}
+				return err
+			}
+		}
+
+		sm := &serverStreamMedia{
+			st:         st,
+			media:      medi,
+			trackID:    i,
+			localSSRCs: localSSRCs,
+			srtpOutCtx: srtpOutCtx,
+		}
+		sm.initialize()
 
 		st.medias[medi] = sm
 	}

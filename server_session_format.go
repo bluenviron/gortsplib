@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"log"
-	"slices"
 	"sync/atomic"
 	"time"
 
@@ -14,37 +13,12 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/rtpreceiver"
 )
 
-func serverSessionPickLocalSSRC(sf *serverSessionFormat) (uint32, error) {
-	var takenSSRCs []uint32 //nolint:prealloc
-
-	for _, sm := range sf.sm.ss.setuppedMedias {
-		for _, sf := range sm.formats {
-			takenSSRCs = append(takenSSRCs, sf.localSSRC)
-		}
-	}
-
-	for _, sf := range sf.sm.formats {
-		takenSSRCs = append(takenSSRCs, sf.localSSRC)
-	}
-
-	for {
-		ssrc, err := randUint32()
-		if err != nil {
-			return 0, err
-		}
-
-		if ssrc != 0 && !slices.Contains(takenSSRCs, ssrc) {
-			return ssrc, nil
-		}
-	}
-}
-
 type serverSessionFormat struct {
 	sm          *serverSessionMedia
 	format      format.Format
+	localSSRC   uint32
 	onPacketRTP OnPacketRTPFunc
 
-	localSSRC             uint32
 	rtpReceiver           *rtpreceiver.Receiver
 	writePacketRTPInQueue func([]byte) error
 	rtpPacketsReceived    *uint64
@@ -52,25 +26,11 @@ type serverSessionFormat struct {
 	rtpPacketsLost        *uint64
 }
 
-func (sf *serverSessionFormat) initialize() error {
-	if sf.sm.ss.state == ServerSessionStatePreRecord || sf.sm.media.IsBackChannel {
-		var err error
-		sf.localSSRC, err = serverSessionPickLocalSSRC(sf)
-		if err != nil {
-			return err
-		}
-	} else {
-		sf.localSSRC = sf.sm.ss.setuppedStream.medias[sf.sm.media].formats[sf.format.PayloadType()].localSSRC
-	}
-
+func (sf *serverSessionFormat) initialize() {
 	sf.rtpPacketsReceived = new(uint64)
 	sf.rtpPacketsSent = new(uint64)
 	sf.rtpPacketsLost = new(uint64)
 
-	return nil
-}
-
-func (sf *serverSessionFormat) start() {
 	udp := *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast
 
 	if udp {
@@ -79,7 +39,7 @@ func (sf *serverSessionFormat) start() {
 		sf.writePacketRTPInQueue = sf.writePacketRTPInQueueTCP
 	}
 
-	if sf.sm.ss.state == ServerSessionStateRecord || sf.sm.media.IsBackChannel {
+	if sf.sm.ss.state == ServerSessionStatePreRecord || sf.sm.media.IsBackChannel {
 		sf.rtpReceiver = &rtpreceiver.Receiver{
 			ClockRate:            sf.format.ClockRate(),
 			LocalSSRC:            &sf.localSSRC,
@@ -99,7 +59,7 @@ func (sf *serverSessionFormat) start() {
 	}
 }
 
-func (sf *serverSessionFormat) stop() {
+func (sf *serverSessionFormat) close() {
 	if sf.rtpReceiver != nil {
 		sf.rtpReceiver.Close()
 		sf.rtpReceiver = nil

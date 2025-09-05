@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"crypto/rand"
 	"fmt"
 	"net"
 	"strconv"
@@ -15,18 +14,87 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
-type clientMedia struct {
-	c      *Client
-	media  *description.Media
-	secure bool
+func createUDPListenerPair(
+	c *Client,
+	multicast bool,
+	multicastInterface *net.Interface,
+	rtpAddress string,
+	rtcpAddress string,
+) (*clientUDPListener, *clientUDPListener, error) {
+	if rtpAddress != ":0" {
+		l1 := &clientUDPListener{
+			c:                  c,
+			multicast:          multicast,
+			multicastInterface: multicastInterface,
+			address:            rtpAddress,
+		}
+		err := l1.initialize()
+		if err != nil {
+			return nil, nil, err
+		}
 
-	srtpOutCtx             *wrappedSRTPContext
-	srtpInCtx              *wrappedSRTPContext
+		l2 := &clientUDPListener{
+			c:                  c,
+			multicast:          multicast,
+			multicastInterface: multicastInterface,
+			address:            rtcpAddress,
+		}
+		err = l2.initialize()
+		if err != nil {
+			l1.close()
+			return nil, nil, err
+		}
+
+		return l1, l2, nil
+	}
+
+	// pick two consecutive ports in range 65535-10000
+	// RTP port must be even and RTCP port odd
+	for {
+		v, err := randInRange((65535 - 10000) / 2)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rtpPort := v*2 + 10000
+		rtcpPort := rtpPort + 1
+
+		l1 := &clientUDPListener{
+			c:       c,
+			address: net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
+		}
+		err = l1.initialize()
+		if err != nil {
+			continue
+		}
+
+		l2 := &clientUDPListener{
+			c:       c,
+			address: net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
+		}
+		err = l2.initialize()
+		if err != nil {
+			l2.close()
+			continue
+		}
+
+		return l1, l2, nil
+	}
+}
+
+type clientMedia struct {
+	c               *Client
+	media           *description.Media
+	secure          bool
+	udpRTPListener  *clientUDPListener
+	udpRTCPListener *clientUDPListener
+	tcpChannel      int
+	localSSRCs      map[uint8]uint32
+	srtpInCtx       *wrappedSRTPContext
+	srtpOutCtx      *wrappedSRTPContext
+
 	onPacketRTCP           OnPacketRTCPFunc
 	formats                map[uint8]*clientFormat
-	tcpChannel             int
-	udpRTPListener         *clientUDPListener
-	udpRTCPListener        *clientUDPListener
 	writePacketRTCPInQueue func([]byte) error
 	bytesReceived          *uint64
 	bytesSent              *uint64
@@ -36,7 +104,7 @@ type clientMedia struct {
 	rtcpPacketsInError     *uint64
 }
 
-func (cm *clientMedia) initialize() error {
+func (cm *clientMedia) initialize() {
 	cm.onPacketRTCP = func(rtcp.Packet) {}
 	cm.bytesReceived = new(uint64)
 	cm.bytesSent = new(uint64)
@@ -51,123 +119,19 @@ func (cm *clientMedia) initialize() error {
 		f := &clientFormat{
 			cm:          cm,
 			format:      forma,
+			localSSRC:   cm.localSSRCs[forma.PayloadType()],
 			onPacketRTP: func(*rtp.Packet) {},
 		}
-		err := f.initialize()
-		if err != nil {
-			return err
-		}
-
+		f.initialize()
 		cm.formats[forma.PayloadType()] = f
 	}
-
-	if cm.secure {
-		var srtpOutKey []byte
-		if cm.c.state == clientStatePreRecord {
-			srtpOutKey = cm.c.announceData[cm.media].srtpOutKey
-		} else {
-			srtpOutKey = make([]byte, srtpKeyLength)
-			_, err := rand.Read(srtpOutKey)
-			if err != nil {
-				return err
-			}
-		}
-
-		ssrcs := make([]uint32, len(cm.formats))
-		n := 0
-		for _, cf := range cm.formats {
-			ssrcs[n] = cf.localSSRC
-			n++
-		}
-
-		cm.srtpOutCtx = &wrappedSRTPContext{
-			key:   srtpOutKey,
-			ssrcs: ssrcs,
-		}
-		err := cm.srtpOutCtx.initialize()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (cm *clientMedia) close() {
-	if cm.udpRTPListener != nil {
-		cm.udpRTPListener.close()
-		cm.udpRTCPListener.close()
-	}
-}
+	cm.stop()
 
-func (cm *clientMedia) createUDPListeners(
-	multicast bool,
-	multicastInterface *net.Interface,
-	rtpAddress string,
-	rtcpAddress string,
-) error {
-	if rtpAddress != ":0" {
-		l1 := &clientUDPListener{
-			c:                  cm.c,
-			multicast:          multicast,
-			multicastInterface: multicastInterface,
-			address:            rtpAddress,
-		}
-		err := l1.initialize()
-		if err != nil {
-			return err
-		}
-
-		l2 := &clientUDPListener{
-			c:                  cm.c,
-			multicast:          multicast,
-			multicastInterface: multicastInterface,
-			address:            rtcpAddress,
-		}
-		err = l2.initialize()
-		if err != nil {
-			l1.close()
-			return err
-		}
-
-		cm.udpRTPListener, cm.udpRTCPListener = l1, l2
-		return nil
-	}
-
-	// pick two consecutive ports in range 65535-10000
-	// RTP port must be even and RTCP port odd
-	for {
-		v, err := randInRange((65535 - 10000) / 2)
-		if err != nil {
-			return err
-		}
-
-		rtpPort := v*2 + 10000
-		rtcpPort := rtpPort + 1
-
-		cm.udpRTPListener = &clientUDPListener{
-			c:       cm.c,
-			address: net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
-		}
-		err = cm.udpRTPListener.initialize()
-		if err != nil {
-			cm.udpRTPListener = nil
-			continue
-		}
-
-		cm.udpRTCPListener = &clientUDPListener{
-			c:       cm.c,
-			address: net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
-		}
-		err = cm.udpRTCPListener.initialize()
-		if err != nil {
-			cm.udpRTPListener.close()
-			cm.udpRTPListener = nil
-			cm.udpRTCPListener = nil
-			continue
-		}
-
-		return nil
+	for _, ct := range cm.formats {
+		ct.close()
 	}
 }
 
@@ -198,10 +162,6 @@ func (cm *clientMedia) start() {
 		}
 	}
 
-	for _, ct := range cm.formats {
-		ct.start()
-	}
-
 	if cm.udpRTPListener != nil {
 		cm.udpRTPListener.start()
 		cm.udpRTCPListener.start()
@@ -212,10 +172,6 @@ func (cm *clientMedia) stop() {
 	if cm.udpRTPListener != nil {
 		cm.udpRTPListener.stop()
 		cm.udpRTCPListener.stop()
-	}
-
-	for _, ct := range cm.formats {
-		ct.stop()
 	}
 }
 
@@ -458,6 +414,13 @@ func (cm *clientMedia) writePacketRTCP(pkt rtcp.Packet) error {
 			return err
 		}
 		buf = encr
+	}
+
+	cm.c.writerMutex.RLock()
+	defer cm.c.writerMutex.RUnlock()
+
+	if cm.c.writer == nil {
+		return nil
 	}
 
 	ok := cm.c.writer.push(func() error {

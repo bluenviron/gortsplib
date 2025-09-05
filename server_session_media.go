@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"crypto/rand"
 	"fmt"
 	"log"
 	"net"
@@ -16,17 +15,18 @@ import (
 )
 
 type serverSessionMedia struct {
-	ss           *ServerSession
-	media        *description.Media
-	srtpInCtx    *wrappedSRTPContext
-	onPacketRTCP OnPacketRTCPFunc
+	ss               *ServerSession
+	media            *description.Media
+	localSSRCs       map[uint8]uint32
+	srtpInCtx        *wrappedSRTPContext
+	srtpOutCtx       *wrappedSRTPContext
+	udpRTPReadPort   int
+	udpRTPWriteAddr  *net.UDPAddr
+	udpRTCPReadPort  int
+	udpRTCPWriteAddr *net.UDPAddr
+	tcpChannel       int
+	onPacketRTCP     OnPacketRTCPFunc
 
-	srtpOutCtx             *wrappedSRTPContext
-	tcpChannel             int
-	udpRTPReadPort         int
-	udpRTPWriteAddr        *net.UDPAddr
-	udpRTCPReadPort        int
-	udpRTCPWriteAddr       *net.UDPAddr
 	formats                map[uint8]*serverSessionFormat // record only
 	writePacketRTCPInQueue func([]byte) error
 	bytesReceived          *uint64
@@ -37,7 +37,7 @@ type serverSessionMedia struct {
 	rtcpPacketsInError     *uint64
 }
 
-func (sm *serverSessionMedia) initialize() error {
+func (sm *serverSessionMedia) initialize() {
 	sm.bytesReceived = new(uint64)
 	sm.bytesSent = new(uint64)
 	sm.rtpPacketsInError = new(uint64)
@@ -51,54 +51,23 @@ func (sm *serverSessionMedia) initialize() error {
 		f := &serverSessionFormat{
 			sm:          sm,
 			format:      forma,
+			localSSRC:   sm.localSSRCs[forma.PayloadType()],
 			onPacketRTP: func(*rtp.Packet) {},
 		}
-		err := f.initialize()
-		if err != nil {
-			return err
-		}
+		f.initialize()
 		sm.formats[forma.PayloadType()] = f
 	}
+}
 
-	if sm.ss.s.TLSConfig != nil {
-		if sm.ss.state == ServerSessionStatePreRecord || sm.media.IsBackChannel {
-			srtpOutKey := make([]byte, srtpKeyLength)
-			_, err := rand.Read(srtpOutKey)
-			if err != nil {
-				return err
-			}
+func (sm *serverSessionMedia) close() {
+	sm.stop()
 
-			ssrcs := make([]uint32, len(sm.formats))
-			n := 0
-			for _, cf := range sm.formats {
-				ssrcs[n] = cf.localSSRC
-				n++
-			}
-
-			sm.srtpOutCtx = &wrappedSRTPContext{
-				key:   srtpOutKey,
-				ssrcs: ssrcs,
-			}
-			err = sm.srtpOutCtx.initialize()
-			if err != nil {
-				return err
-			}
-		} else {
-			streamMedia := sm.ss.setuppedStream.medias[sm.media]
-			sm.srtpOutCtx = streamMedia.srtpOutCtx
-		}
+	for _, forma := range sm.formats {
+		forma.close()
 	}
-
-	return nil
 }
 
 func (sm *serverSessionMedia) start() error {
-	// allocate udpRTCPReceiver before udpRTCPListener
-	// otherwise udpRTCPReceiver.LastSSRC() cannot be called.
-	for _, sf := range sm.formats {
-		sf.start()
-	}
-
 	switch *sm.ss.setuppedTransport {
 	case TransportUDP, TransportUDPMulticast:
 		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueUDP
@@ -167,10 +136,6 @@ func (sm *serverSessionMedia) stop() {
 	if *sm.ss.setuppedTransport == TransportUDP {
 		sm.ss.s.udpRTPListener.removeClient(sm.ss.author.ip(), sm.udpRTPReadPort)
 		sm.ss.s.udpRTCPListener.removeClient(sm.ss.author.ip(), sm.udpRTCPReadPort)
-	}
-
-	for _, sf := range sm.formats {
-		sf.stop()
 	}
 }
 
