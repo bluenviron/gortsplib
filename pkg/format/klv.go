@@ -34,7 +34,7 @@ func (f *KLV) PayloadType() uint8 {
 
 // RTPMap implements Format.
 func (f *KLV) RTPMap() string {
-	return "smtpe336m/90000"
+	return "SMPTE336M/90000"
 }
 
 // FMTP implements Format.
