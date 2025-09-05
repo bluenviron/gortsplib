@@ -1193,12 +1193,12 @@ var casesFormat = []struct {
 		"v=0\n" +
 			"s=\n" +
 			"m=application 0 RTP/AVP 97\n" +
-			"a=rtpmap:97 smtpe336m/90000\n",
+			"a=rtpmap:97 SMPTE336M/90000\n",
 		&KLV{
 			PayloadTyp: 97,
 		},
 		97,
-		"smtpe336m/90000",
+		"SMPTE336M/90000",
 		nil,
 	},
 	{

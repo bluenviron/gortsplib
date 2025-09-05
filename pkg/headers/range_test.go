@@ -145,7 +145,7 @@ func FuzzRangeUnmarshal(f *testing.F) {
 		f.Add(ca.vin[0])
 	}
 
-	f.Add("smtpe=")
+	f.Add("smpte=")
 	f.Add("npt=")
 	f.Add("clock=")
 

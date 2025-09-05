@@ -190,7 +190,7 @@ func Unmarshal(md *psdp.MediaDescription, payloadTypeStr string) (Format, error)
 
 		// other
 
-		case codec == "smtpe336m" && payloadType >= 96 && payloadType <= 127:
+		case codec == "smpte336m" && payloadType >= 96 && payloadType <= 127:
 			return &KLV{}
 
 		/*
