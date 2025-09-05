@@ -3198,6 +3198,57 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"AJA encoder with repeat time r=0 0",
+		[]byte("v=0\r\n" +
+			"o=VNSDK 0 0 IN IP4 10.0.8.133\r\n" +
+			"s=aja.sdp\r\n" +
+			"c=IN IP4 10.0.8.133\r\n" +
+			"t=0 0\r\n" +
+			"r=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n"),
+		[]byte("v=0\r\n" +
+			"o=VNSDK 0 0 IN IP4 10.0.8.133\r\n" +
+			"s=aja.sdp\r\n" +
+			"c=IN IP4 10.0.8.133\r\n" +
+			"t=0 0\r\n" +
+			"r=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "VNSDK",
+				SessionID:      0,
+				SessionVersion: 0,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "10.0.8.133",
+			},
+			SessionName: "aja.sdp",
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "10.0.8.133",
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{
+				{
+					Timing:      psdp.Timing{StartTime: 0, StopTime: 0},
+					RepeatTimes: []psdp.RepeatTime{{Interval: 0, Duration: 0, Offsets: nil}},
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
