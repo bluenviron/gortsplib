@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"net"
@@ -30,6 +31,16 @@ import (
 )
 
 type readFunc func([]byte) bool
+
+func serverSessionExtractExistingSSRCs(medias map[*description.Media]*serverSessionMedia) []uint32 {
+	var ret []uint32
+	for _, media := range medias {
+		for _, forma := range media.formats {
+			ret = append(ret, forma.localSSRC)
+		}
+	}
+	return ret
+}
 
 func isSecure(profile headers.TransportProfile) bool {
 	return profile == headers.TransportProfileSAVP
@@ -1290,37 +1301,76 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				res.Header = make(base.Header)
 			}
 
-			sm := &serverSessionMedia{
-				ss:           ss,
-				media:        medi,
-				srtpInCtx:    srtpInCtx,
-				onPacketRTCP: func(_ rtcp.Packet) {},
+			var localSSRCs map[uint8]uint32
+
+			if ss.state == ServerSessionStatePreRecord || medi.IsBackChannel {
+				localSSRCs, err = generateLocalSSRCs(
+					serverSessionExtractExistingSSRCs(ss.setuppedMedias),
+					medi.Formats,
+				)
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusInternalServerError,
+					}, err
+				}
+			} else {
+				localSSRCs = make(map[uint8]uint32)
+				for forma, data := range ss.setuppedStream.medias[medi].formats {
+					localSSRCs[forma] = data.localSSRC
+				}
 			}
-			err = sm.initialize()
-			if err != nil {
-				return &base.Response{
-					StatusCode: base.StatusInternalServerError,
-				}, err
+
+			var srtpOutCtx *wrappedSRTPContext
+
+			if ss.s.TLSConfig != nil {
+				if ss.state == ServerSessionStatePreRecord || medi.IsBackChannel {
+					srtpOutKey := make([]byte, srtpKeyLength)
+					_, err = rand.Read(srtpOutKey)
+					if err != nil {
+						return &base.Response{
+							StatusCode: base.StatusInternalServerError,
+						}, err
+					}
+
+					srtpOutCtx = &wrappedSRTPContext{
+						key:   srtpOutKey,
+						ssrcs: ssrcsMapToList(localSSRCs),
+					}
+					err = srtpOutCtx.initialize()
+					if err != nil {
+						return &base.Response{
+							StatusCode: base.StatusInternalServerError,
+						}, err
+					}
+				} else {
+					srtpOutCtx = ss.setuppedStream.medias[medi].srtpOutCtx
+				}
 			}
+
+			var udpRTPReadPort int
+			var udpRTPWriteAddr *net.UDPAddr
+			var udpRTCPReadPort int
+			var udpRTCPWriteAddr *net.UDPAddr
+			var tcpChannel int
 
 			switch transport {
 			case TransportUDP, TransportUDPMulticast:
 				th.Protocol = headers.TransportProtocolUDP
 
 				if transport == TransportUDP {
-					sm.udpRTPReadPort = inTH.ClientPorts[0]
-					sm.udpRTCPReadPort = inTH.ClientPorts[1]
+					udpRTPReadPort = inTH.ClientPorts[0]
+					udpRTCPReadPort = inTH.ClientPorts[1]
 
-					sm.udpRTPWriteAddr = &net.UDPAddr{
+					udpRTPWriteAddr = &net.UDPAddr{
 						IP:   ss.author.ip(),
 						Zone: ss.author.zone(),
-						Port: sm.udpRTPReadPort,
+						Port: udpRTPReadPort,
 					}
 
-					sm.udpRTCPWriteAddr = &net.UDPAddr{
+					udpRTCPWriteAddr = &net.UDPAddr{
 						IP:   ss.author.ip(),
 						Zone: ss.author.zone(),
-						Port: sm.udpRTCPReadPort,
+						Port: udpRTCPReadPort,
 					}
 
 					de := headers.TransportDeliveryUnicast
@@ -1341,19 +1391,35 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				th.Protocol = headers.TransportProtocolTCP
 
 				if inTH.InterleavedIDs != nil {
-					sm.tcpChannel = inTH.InterleavedIDs[0]
+					tcpChannel = inTH.InterleavedIDs[0]
 				} else {
-					sm.tcpChannel = ss.findFreeChannelPair()
+					tcpChannel = ss.findFreeChannelPair()
 				}
 
 				de := headers.TransportDeliveryUnicast
 				th.Delivery = &de
-				th.InterleavedIDs = &[2]int{sm.tcpChannel, sm.tcpChannel + 1}
+				th.InterleavedIDs = &[2]int{tcpChannel, tcpChannel + 1}
 			}
+
+			sm := &serverSessionMedia{
+				ss:               ss,
+				media:            medi,
+				localSSRCs:       localSSRCs,
+				srtpInCtx:        srtpInCtx,
+				srtpOutCtx:       srtpOutCtx,
+				udpRTPReadPort:   udpRTPReadPort,
+				udpRTPWriteAddr:  udpRTPWriteAddr,
+				udpRTCPReadPort:  udpRTCPReadPort,
+				udpRTCPWriteAddr: udpRTCPWriteAddr,
+				tcpChannel:       tcpChannel,
+				onPacketRTCP:     func(_ rtcp.Packet) {},
+			}
+			sm.initialize()
 
 			if ss.setuppedMedias == nil {
 				ss.setuppedMedias = make(map[*description.Media]*serverSessionMedia)
 			}
+
 			ss.setuppedMedias[medi] = sm
 			ss.setuppedMediasOrdered = append(ss.setuppedMediasOrdered, sm)
 

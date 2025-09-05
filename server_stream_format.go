@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"crypto/rand"
-	"slices"
 	"sync/atomic"
 	"time"
 
@@ -22,47 +21,16 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
-func serverStreamPickLocalSSRC(sf *serverStreamFormat) (uint32, error) {
-	var takenSSRCs []uint32 //nolint:prealloc
-
-	for _, sm := range sf.sm.st.medias {
-		for _, sf := range sm.formats {
-			takenSSRCs = append(takenSSRCs, sf.localSSRC)
-		}
-	}
-
-	for _, sf := range sf.sm.formats {
-		takenSSRCs = append(takenSSRCs, sf.localSSRC)
-	}
-
-	for {
-		ssrc, err := randUint32()
-		if err != nil {
-			return 0, err
-		}
-
-		if ssrc != 0 && !slices.Contains(takenSSRCs, ssrc) {
-			return ssrc, nil
-		}
-	}
-}
-
 type serverStreamFormat struct {
-	sm     *serverStreamMedia
-	format format.Format
+	sm        *serverStreamMedia
+	format    format.Format
+	localSSRC uint32
 
-	localSSRC      uint32
 	rtpSender      *rtpsender.Sender
 	rtpPacketsSent *uint64
 }
 
-func (sf *serverStreamFormat) initialize() error {
-	var err error
-	sf.localSSRC, err = serverStreamPickLocalSSRC(sf)
-	if err != nil {
-		return err
-	}
-
+func (sf *serverStreamFormat) initialize() {
 	sf.rtpPacketsSent = new(uint64)
 
 	sf.rtpSender = &rtpsender.Sender{
@@ -76,8 +44,6 @@ func (sf *serverStreamFormat) initialize() error {
 		},
 	}
 	sf.rtpSender.Initialize()
-
-	return nil
 }
 
 func (sf *serverStreamFormat) close() {
