@@ -416,7 +416,7 @@ func TestClientRecord(t *testing.T) {
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if ca.transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -449,24 +449,24 @@ func TestClientRecord(t *testing.T) {
 
 			s := c.Stats()
 			require.Equal(t, &ClientStats{
-				Conn: StatsConn{
+				Conn: ConnStats{
 					BytesReceived: s.Conn.BytesReceived,
 					BytesSent:     s.Conn.BytesSent,
 				},
-				Session: StatsSession{
+				Session: SessionStats{
 					BytesReceived:       s.Session.BytesReceived,
 					BytesSent:           s.Session.BytesSent,
 					RTPPacketsSent:      s.Session.RTPPacketsSent,
 					RTPPacketsReceived:  s.Session.RTPPacketsReceived,
 					RTCPPacketsReceived: s.Session.RTCPPacketsReceived,
 					RTCPPacketsSent:     s.Session.RTCPPacketsSent,
-					Medias: map[*description.Media]StatsSessionMedia{
+					Medias: map[*description.Media]SessionStatsMedia{
 						medias[0]: {
 							BytesReceived:       s.Session.Medias[medias[0]].BytesReceived,
 							BytesSent:           s.Session.Medias[medias[0]].BytesSent,
 							RTCPPacketsReceived: s.Session.Medias[medias[0]].RTCPPacketsReceived,
 							RTCPPacketsSent:     s.Session.Medias[medias[0]].RTCPPacketsSent,
-							Formats: map[format.Format]StatsSessionFormat{
+							Formats: map[format.Format]SessionStatsFormat{
 								medias[0].Formats[0]: {
 									RTPPacketsSent:     s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RTPPacketsSent,
 									RTPPacketsReceived: s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RTPPacketsReceived,
@@ -586,7 +586,7 @@ func TestClientRecordSocketError(t *testing.T) {
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -730,7 +730,7 @@ func TestClientRecordPauseRecordSerial(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -889,7 +889,7 @@ func TestClientRecordPauseRecordParallel(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -1214,7 +1214,7 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if ca.proto == "udp" {
 						v := TransportUDP
 						return &v
@@ -1388,7 +1388,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 			var curTimeMutex sync.Mutex
 
 			c := Client{
-				Transport: func() *Transport {
+				Transport: func() *TransportProtocol {
 					if ca == "udp" {
 						v := TransportUDP
 						return &v

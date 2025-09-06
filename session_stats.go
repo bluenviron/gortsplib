@@ -8,7 +8,22 @@ import (
 )
 
 // StatsSessionFormat are session format statistics.
-type StatsSessionFormat struct {
+//
+// Deprecated: replaced by SessionStatsFormat
+type StatsSessionFormat = SessionStatsFormat
+
+// StatsSessionMedia are session media statistics.
+//
+// Deprecated: replaced by SessionStatsMedia
+type StatsSessionMedia = SessionStatsMedia
+
+// StatsSession are session statistics.
+//
+// Deprecated: replaced by SessionStats.
+type StatsSession = SessionStats
+
+// SessionStatsFormat are session format statistics.
+type SessionStatsFormat struct {
 	// number of RTP packets correctly received and processed
 	RTPPacketsReceived uint64
 	// number of sent RTP packets
@@ -29,8 +44,8 @@ type StatsSessionFormat struct {
 	RTPPacketsLastNTP time.Time
 }
 
-// StatsSessionMedia are session media statistics.
-type StatsSessionMedia struct {
+// SessionStatsMedia are session media statistics.
+type SessionStatsMedia struct {
 	// received bytes
 	BytesReceived uint64
 	// sent bytes
@@ -45,11 +60,11 @@ type StatsSessionMedia struct {
 	RTCPPacketsInError uint64
 
 	// format statistics
-	Formats map[format.Format]StatsSessionFormat
+	Formats map[format.Format]SessionStatsFormat
 }
 
-// StatsSession are session statistics.
-type StatsSession struct {
+// SessionStats are session statistics.
+type SessionStats struct {
 	// received bytes
 	BytesReceived uint64
 	// sent bytes
@@ -72,5 +87,5 @@ type StatsSession struct {
 	RTCPPacketsInError uint64
 
 	// media statistics
-	Medias map[*description.Media]StatsSessionMedia
+	Medias map[*description.Media]SessionStatsMedia
 }

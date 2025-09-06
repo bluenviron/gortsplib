@@ -1,23 +1,28 @@
 package gortsplib
 
 // Transport is a RTSP transport protocol.
-type Transport int
+//
+// Deprecated: renamed into TransportProtocol.
+type Transport = TransportProtocol
+
+// TransportProtocol is a RTSP transport protocol.
+type TransportProtocol int
 
 // transport protocols.
 const (
-	TransportUDP Transport = iota
+	TransportUDP TransportProtocol = iota
 	TransportUDPMulticast
 	TransportTCP
 )
 
-var transportLabels = map[Transport]string{
+var transportLabels = map[TransportProtocol]string{
 	TransportUDP:          "UDP",
 	TransportUDPMulticast: "UDP-multicast",
 	TransportTCP:          "TCP",
 }
 
 // String implements fmt.Stringer.
-func (t Transport) String() string {
+func (t TransportProtocol) String() string {
 	if l, ok := transportLabels[t]; ok {
 		return l
 	}

@@ -211,7 +211,7 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 func (st *ServerStream) readerAdd(
 	ss *ServerSession,
 	clientPorts *[2]int,
-	protocol Transport,
+	protocol TransportProtocol,
 ) error {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
@@ -266,7 +266,7 @@ func (st *ServerStream) readerRemove(ss *ServerSession) {
 
 	delete(st.readers, ss)
 
-	if *ss.setuppedTransport == TransportUDPMulticast {
+	if ss.setuppedTransport.Protocol == TransportUDPMulticast {
 		st.multicastReaderCount--
 		if st.multicastReaderCount == 0 {
 			for _, media := range st.medias {
@@ -285,7 +285,7 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 		return
 	}
 
-	if *ss.setuppedTransport == TransportUDPMulticast {
+	if ss.setuppedTransport.Protocol == TransportUDPMulticast {
 		for medi, sm := range ss.setuppedMedias {
 			streamMedia := st.medias[medi]
 			streamMedia.multicastWriter.rtcpl.addClient(
@@ -304,7 +304,7 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 		return
 	}
 
-	if *ss.setuppedTransport == TransportUDPMulticast {
+	if ss.setuppedTransport.Protocol == TransportUDPMulticast {
 		for medi := range ss.setuppedMedias {
 			streamMedia := st.medias[medi]
 			streamMedia.multicastWriter.rtcpl.removeClient(ss.author.ip(), streamMedia.multicastWriter.rtcpl.port())

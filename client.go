@@ -468,7 +468,7 @@ type Client struct {
 	// transport protocol (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
-	Transport *Transport
+	Transport *TransportProtocol
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout, otherwise it switches to TCP.
 	// It defaults to 3 seconds.
@@ -556,8 +556,7 @@ type Client struct {
 	lastDescribeDesc     *description.Session
 	baseURL              *base.URL
 	announceData         map[*description.Media]*clientAnnounceDataMedia // record
-	setuppedTransport    *Transport
-	setuppedProfile      headers.TransportProfile
+	setuppedTransport    *SessionTransport
 	backChannelSetupped  bool
 	stdChannelSetupped   bool
 	setuppedMedias       map[*description.Media]*clientMedia
@@ -1047,8 +1046,9 @@ func (c *Client) trySwitchingProtocol() error {
 
 	c.reset()
 
-	v := TransportTCP
-	c.setuppedTransport = &v
+	c.setuppedTransport = &SessionTransport{
+		Protocol: TransportTCP,
+	}
 
 	// some Hikvision cameras require a describe before a setup
 	_, _, err := c.doDescribe(c.lastDescribeURL)
@@ -1084,18 +1084,18 @@ func (c *Client) startTransportRoutines() {
 		cm.start()
 	}
 
-	if *c.setuppedTransport == TransportTCP {
+	if c.setuppedTransport.Protocol == TransportTCP {
 		c.tcpFrame = &base.InterleavedFrame{}
 		c.tcpBuffer = make([]byte, c.MaxPacketSize+4)
 	}
 
 	// always enable keepalives unless we are recording with TCP
-	if c.state == clientStatePlay || *c.setuppedTransport != TransportTCP {
+	if c.state == clientStatePlay || c.setuppedTransport.Protocol != TransportTCP {
 		c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 	}
 
 	if c.state == clientStatePlay && c.stdChannelSetupped {
-		switch *c.setuppedTransport {
+		switch c.setuppedTransport.Protocol {
 		case TransportUDP:
 			c.checkTimeoutTimer = time.NewTimer(c.InitialUDPReadTimeout)
 			c.checkTimeoutInitial = true
@@ -1110,7 +1110,7 @@ func (c *Client) startTransportRoutines() {
 		}
 	}
 
-	if *c.setuppedTransport == TransportTCP {
+	if c.setuppedTransport.Protocol == TransportTCP {
 		c.reader.setAllowInterleavedFrames(true)
 	}
 }
@@ -1325,8 +1325,8 @@ func (c *Client) isInTCPTimeout() bool {
 }
 
 func (c *Client) doCheckTimeout() error {
-	if *c.setuppedTransport == TransportUDP ||
-		*c.setuppedTransport == TransportUDPMulticast {
+	if c.setuppedTransport.Protocol == TransportUDP ||
+		c.setuppedTransport.Protocol == TransportUDPMulticast {
 		if c.checkTimeoutInitial && !c.backChannelSetupped && c.Transport == nil {
 			c.checkTimeoutInitial = false
 
@@ -1626,17 +1626,17 @@ func (c *Client) doSetup(
 		th.Mode = &v
 	}
 
-	var transport Transport
+	var protocol TransportProtocol
 
 	switch {
 	// use transport from previous SETUP calls
 	case c.setuppedTransport != nil:
-		transport = *c.setuppedTransport
-		th.Profile = c.setuppedProfile
+		protocol = c.setuppedTransport.Protocol
+		th.Profile = c.setuppedTransport.Profile
 
 	// use transport from config, secure flag from server
 	case c.Transport != nil:
-		transport = *c.Transport
+		protocol = *c.Transport
 		if isSecure(medi.Profile) && c.Scheme == "rtsps" {
 			th.Profile = headers.TransportProfileSAVP
 		} else {
@@ -1654,9 +1654,9 @@ func (c *Client) doSetup(
 		}
 
 		if th.Profile == headers.TransportProfileSAVP || c.Scheme == "rtsp" {
-			transport = TransportUDP
+			protocol = TransportUDP
 		} else {
-			transport = TransportTCP
+			protocol = TransportTCP
 		}
 	}
 
@@ -1692,7 +1692,7 @@ func (c *Client) doSetup(
 		}
 	}()
 
-	switch transport {
+	switch protocol {
 	case TransportUDP, TransportUDPMulticast:
 		if c.Scheme == "rtsps" && !isSecure(th.Profile) {
 			return nil, fmt.Errorf("unable to setup secure UDP")
@@ -1700,7 +1700,7 @@ func (c *Client) doSetup(
 
 		th.Protocol = headers.TransportProtocolUDP
 
-		if transport == TransportUDP {
+		if protocol == TransportUDP {
 			if (rtpPort == 0 && rtcpPort != 0) ||
 				(rtpPort != 0 && rtcpPort == 0) {
 				return nil, liberrors.ErrClientUDPPortsZero{}
@@ -1808,9 +1808,10 @@ func (c *Client) doSetup(
 		if res.StatusCode == base.StatusUnsupportedTransport &&
 			c.setuppedTransport == nil && c.Transport == nil {
 			c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
-			v := TransportTCP
-			c.setuppedTransport = &v
-			c.setuppedProfile = th.Profile
+			c.setuppedTransport = &SessionTransport{
+				Protocol: TransportTCP,
+				Profile:  th.Profile,
+			}
 
 			return c.doSetup(baseURL, medi, 0, 0)
 		}
@@ -1824,7 +1825,7 @@ func (c *Client) doSetup(
 		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
 	}
 
-	switch transport {
+	switch protocol {
 	case TransportUDP, TransportUDPMulticast:
 		if thRes.Protocol == headers.TransportProtocolTCP {
 			// switch transport automatically
@@ -1835,9 +1836,10 @@ func (c *Client) doSetup(
 
 				c.reset()
 
-				v := TransportTCP
-				c.setuppedTransport = &v
-				c.setuppedProfile = th.Profile
+				c.setuppedTransport = &SessionTransport{
+					Protocol: TransportTCP,
+					Profile:  th.Profile,
+				}
 
 				// some Hikvision cameras require a describe before a setup
 				_, _, err = c.doDescribe(c.lastDescribeURL)
@@ -1852,7 +1854,7 @@ func (c *Client) doSetup(
 		}
 	}
 
-	switch transport {
+	switch protocol {
 	case TransportUDP:
 		if thRes.Delivery != nil && *thRes.Delivery != headers.TransportDeliveryUnicast {
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
@@ -2032,8 +2034,10 @@ func (c *Client) doSetup(
 	c.setuppedMedias[medi] = cm
 
 	c.baseURL = baseURL
-	c.setuppedTransport = &transport
-	c.setuppedProfile = th.Profile
+	c.setuppedTransport = &SessionTransport{
+		Protocol: protocol,
+		Profile:  th.Profile,
+	}
 
 	c.propsMutex.Unlock()
 
@@ -2136,7 +2140,7 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 	// when protocol is UDP,
 	// open the firewall by sending empty packets to the remote part.
 	// do this before sending the PLAY request.
-	if *c.setuppedTransport == TransportUDP {
+	if c.setuppedTransport.Protocol == TransportUDP {
 		for _, cm := range c.setuppedMedias {
 			if !cm.media.IsBackChannel && cm.udpRTPListener.writeAddr != nil {
 				buf, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
@@ -2428,6 +2432,17 @@ func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time,
 	return ct.rtpReceiver.PacketNTP(pkt.Timestamp)
 }
 
+// Transport2 returns transport details.
+func (c *Client) Transport2() *ClientTransport {
+	c.propsMutex.RLock()
+	defer c.propsMutex.RUnlock()
+
+	return &ClientTransport{
+		Conn:    ConnTransport{},
+		Session: c.setuppedTransport,
+	}
+}
+
 // Stats returns client statistics.
 func (c *Client) Stats() *ClientStats {
 	c.propsMutex.RLock()
@@ -2437,15 +2452,15 @@ func (c *Client) Stats() *ClientStats {
 		ret := make(map[*description.Media]StatsSessionMedia, len(c.setuppedMedias))
 
 		for med, sm := range c.setuppedMedias {
-			ret[med] = StatsSessionMedia{
+			ret[med] = SessionStatsMedia{
 				BytesReceived:       atomic.LoadUint64(sm.bytesReceived),
 				BytesSent:           atomic.LoadUint64(sm.bytesSent),
 				RTPPacketsInError:   atomic.LoadUint64(sm.rtpPacketsInError),
 				RTCPPacketsReceived: atomic.LoadUint64(sm.rtcpPacketsReceived),
 				RTCPPacketsSent:     atomic.LoadUint64(sm.rtcpPacketsSent),
 				RTCPPacketsInError:  atomic.LoadUint64(sm.rtcpPacketsInError),
-				Formats: func() map[format.Format]StatsSessionFormat {
-					ret := make(map[format.Format]StatsSessionFormat, len(sm.formats))
+				Formats: func() map[format.Format]SessionStatsFormat {
+					ret := make(map[format.Format]SessionStatsFormat, len(sm.formats))
 
 					for _, fo := range sm.formats {
 						recvStats := func() *rtpreceiver.Stats {
@@ -2461,7 +2476,7 @@ func (c *Client) Stats() *ClientStats {
 							return nil
 						}()
 
-						ret[fo.format] = StatsSessionFormat{ //nolint:dupl
+						ret[fo.format] = SessionStatsFormat{ //nolint:dupl
 							RTPPacketsReceived: atomic.LoadUint64(fo.rtpPacketsReceived),
 							RTPPacketsSent:     atomic.LoadUint64(fo.rtpPacketsSent),
 							RTPPacketsLost:     atomic.LoadUint64(fo.rtpPacketsLost),
@@ -2517,11 +2532,11 @@ func (c *Client) Stats() *ClientStats {
 	}()
 
 	return &ClientStats{
-		Conn: StatsConn{
+		Conn: ConnStats{
 			BytesReceived: atomic.LoadUint64(c.bytesReceived),
 			BytesSent:     atomic.LoadUint64(c.bytesSent),
 		},
-		Session: StatsSession{ //nolint:dupl
+		Session: SessionStats{ //nolint:dupl
 			BytesReceived: func() uint64 {
 				v := uint64(0)
 				for _, ms := range mediaStats {

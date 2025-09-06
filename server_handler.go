@@ -99,12 +99,16 @@ type ServerHandlerOnAnnounce interface {
 
 // ServerHandlerOnSetupCtx is the context of OnSetup.
 type ServerHandlerOnSetupCtx struct {
-	Session   *ServerSession
-	Conn      *ServerConn
-	Request   *base.Request
-	Path      string
-	Query     string
-	Transport Transport
+	Session *ServerSession
+	Conn    *ServerConn
+	Request *base.Request
+	Path    string
+	Query   string
+
+	// Deprecated: replaced by Transport2.
+	Transport TransportProtocol
+
+	Transport2 *SessionTransport
 }
 
 // ServerHandlerOnSetup can be implemented by a ServerHandler.

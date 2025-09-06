@@ -31,7 +31,8 @@ func (sf *serverSessionFormat) initialize() {
 	sf.rtpPacketsSent = new(uint64)
 	sf.rtpPacketsLost = new(uint64)
 
-	udp := *sf.sm.ss.setuppedTransport == TransportUDP || *sf.sm.ss.setuppedTransport == TransportUDPMulticast
+	udp := sf.sm.ss.setuppedTransport.Protocol == TransportUDP ||
+		sf.sm.ss.setuppedTransport.Protocol == TransportUDPMulticast
 
 	if udp {
 		sf.writePacketRTPInQueue = sf.writePacketRTPInQueueUDP
@@ -119,7 +120,7 @@ func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
 	pkt.SSRC = sf.localSSRC
 
 	maxPlainPacketSize := sf.sm.ss.s.MaxPacketSize
-	if isSecure(sf.sm.ss.setuppedProfile) {
+	if isSecure(sf.sm.ss.setuppedTransport.Profile) {
 		maxPlainPacketSize -= srtpOverhead
 	}
 
@@ -131,7 +132,7 @@ func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
 	plain = plain[:n]
 
 	var encr []byte
-	if isSecure(sf.sm.ss.setuppedProfile) {
+	if isSecure(sf.sm.ss.setuppedTransport.Profile) {
 		encr = make([]byte, sf.sm.ss.s.MaxPacketSize)
 		encr, err = sf.sm.srtpOutCtx.encryptRTP(encr, plain, &pkt.Header)
 		if err != nil {
@@ -139,7 +140,7 @@ func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
 		}
 	}
 
-	if isSecure(sf.sm.ss.setuppedProfile) {
+	if isSecure(sf.sm.ss.setuppedTransport.Profile) {
 		return sf.writePacketRTPEncoded(encr)
 	}
 	return sf.writePacketRTPEncoded(plain)
