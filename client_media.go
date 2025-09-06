@@ -125,21 +125,11 @@ func (cm *clientMedia) initialize() {
 		f.initialize()
 		cm.formats[forma.PayloadType()] = f
 	}
-}
 
-func (cm *clientMedia) close() {
-	cm.stop()
-
-	for _, ct := range cm.formats {
-		ct.close()
-	}
-}
-
-func (cm *clientMedia) start() {
 	if cm.udpRTPListener != nil {
 		cm.writePacketRTCPInQueue = cm.writePacketRTCPInQueueUDP
 
-		if cm.c.state == clientStateRecord || cm.media.IsBackChannel {
+		if cm.c.state == clientStatePreRecord || cm.media.IsBackChannel {
 			cm.udpRTPListener.readFunc = cm.readPacketRTPUDPRecord
 			cm.udpRTCPListener.readFunc = cm.readPacketRTCPUDPRecord
 		} else {
@@ -153,7 +143,7 @@ func (cm *clientMedia) start() {
 			cm.c.tcpCallbackByChannel = make(map[int]readFunc)
 		}
 
-		if cm.c.state == clientStateRecord || cm.media.IsBackChannel {
+		if cm.c.state == clientStatePreRecord || cm.media.IsBackChannel {
 			cm.c.tcpCallbackByChannel[cm.tcpChannel] = cm.readPacketRTPTCPRecord
 			cm.c.tcpCallbackByChannel[cm.tcpChannel+1] = cm.readPacketRTCPTCPRecord
 		} else {
@@ -161,7 +151,17 @@ func (cm *clientMedia) start() {
 			cm.c.tcpCallbackByChannel[cm.tcpChannel+1] = cm.readPacketRTCPTCPPlay
 		}
 	}
+}
 
+func (cm *clientMedia) close() {
+	cm.stop()
+
+	for _, ct := range cm.formats {
+		ct.close()
+	}
+}
+
+func (cm *clientMedia) start() {
 	if cm.udpRTPListener != nil {
 		cm.udpRTPListener.start()
 		cm.udpRTCPListener.start()

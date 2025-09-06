@@ -57,6 +57,26 @@ func (sm *serverSessionMedia) initialize() {
 		f.initialize()
 		sm.formats[forma.PayloadType()] = f
 	}
+
+	switch *sm.ss.setuppedTransport {
+	case TransportUDP, TransportUDPMulticast:
+		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueUDP
+
+	case TransportTCP:
+		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueTCP
+
+		if sm.ss.tcpCallbackByChannel == nil {
+			sm.ss.tcpCallbackByChannel = make(map[int]readFunc)
+		}
+
+		if sm.ss.state == ServerSessionStateInitial || sm.ss.state == ServerSessionStatePrePlay {
+			sm.ss.tcpCallbackByChannel[sm.tcpChannel] = sm.readPacketRTPTCPPlay
+			sm.ss.tcpCallbackByChannel[sm.tcpChannel+1] = sm.readPacketRTCPTCPPlay
+		} else {
+			sm.ss.tcpCallbackByChannel[sm.tcpChannel] = sm.readPacketRTPTCPRecord
+			sm.ss.tcpCallbackByChannel[sm.tcpChannel+1] = sm.readPacketRTCPTCPRecord
+		}
+	}
 }
 
 func (sm *serverSessionMedia) close() {
@@ -70,8 +90,6 @@ func (sm *serverSessionMedia) close() {
 func (sm *serverSessionMedia) start() error {
 	switch *sm.ss.setuppedTransport {
 	case TransportUDP, TransportUDPMulticast:
-		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueUDP
-
 		if *sm.ss.setuppedTransport == TransportUDP {
 			if sm.ss.state == ServerSessionStatePlay {
 				if sm.media.IsBackChannel {
@@ -111,21 +129,6 @@ func (sm *serverSessionMedia) start() error {
 				sm.ss.s.udpRTPListener.addClient(sm.ss.author.ip(), sm.udpRTPReadPort, sm.readPacketRTPUDPRecord)
 				sm.ss.s.udpRTCPListener.addClient(sm.ss.author.ip(), sm.udpRTCPReadPort, sm.readPacketRTCPUDPRecord)
 			}
-		}
-
-	case TransportTCP:
-		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueTCP
-
-		if sm.ss.tcpCallbackByChannel == nil {
-			sm.ss.tcpCallbackByChannel = make(map[int]readFunc)
-		}
-
-		if sm.ss.state == ServerSessionStatePlay {
-			sm.ss.tcpCallbackByChannel[sm.tcpChannel] = sm.readPacketRTPTCPPlay
-			sm.ss.tcpCallbackByChannel[sm.tcpChannel+1] = sm.readPacketRTCPTCPPlay
-		} else {
-			sm.ss.tcpCallbackByChannel[sm.tcpChannel] = sm.readPacketRTPTCPRecord
-			sm.ss.tcpCallbackByChannel[sm.tcpChannel+1] = sm.readPacketRTCPTCPRecord
 		}
 	}
 

@@ -9,6 +9,7 @@ import (
 	gourl "net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
@@ -199,6 +200,7 @@ type ServerConn struct {
 
 	ctx        context.Context
 	ctxCancel  func()
+	propsMutex sync.RWMutex
 	userData   interface{}
 	remoteAddr *net.TCPAddr
 	bc         *bytecounter.ByteCounter
@@ -268,6 +270,9 @@ func (sc *ServerConn) UserData() interface{} {
 
 // Session returns the associated session.
 func (sc *ServerConn) Session() *ServerSession {
+	sc.propsMutex.RLock()
+	defer sc.propsMutex.RUnlock()
+
 	return sc.session
 }
 
@@ -658,7 +663,11 @@ func (sc *ServerConn) handleRequestInSession(
 	}
 
 	res, session, err := sc.s.handleRequest(sreq)
+
+	sc.propsMutex.Lock()
 	sc.session = session
+	sc.propsMutex.Unlock()
+
 	return res, err
 }
 

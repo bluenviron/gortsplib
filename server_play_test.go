@@ -665,7 +665,21 @@ func TestServerPlay(t *testing.T) {
 							StatusCode: base.StatusOK,
 						}, stream, nil
 					},
-					onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+					onSetup: func(ctx *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+						// test that properties can be accessed in parallel
+						go func() {
+							ctx.Conn.Session()
+							ctx.Conn.Stats()
+							ctx.Session.State()
+							ctx.Session.Stats()
+							ctx.Session.Medias()
+							ctx.Session.Path()
+							ctx.Session.Query()
+							ctx.Session.Stream()
+							ctx.Session.SetuppedTransport()
+							ctx.Session.SetuppedSecure()
+						}()
+
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, stream, nil
@@ -1726,7 +1740,13 @@ func TestServerPlayPause(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onPause: func(_ *ServerHandlerOnPauseCtx) (*base.Response, error) {
+			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+				// test that properties can be accessed in parallel
+				go func() {
+					ctx.Session.State()
+					ctx.Session.Stats()
+				}()
+
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil

@@ -428,8 +428,9 @@ type ServerSession struct {
 	secretID              string // must not be shared, allows to take ownership of the session
 	ctx                   context.Context
 	ctxCancel             func()
-	userData              interface{}
+	propsMutex            sync.RWMutex
 	conns                 map[*ServerConn]struct{}
+	userData              interface{}
 	state                 ServerSessionState
 	setuppedMedias        map[*description.Media]*serverSessionMedia
 	setuppedMediasOrdered []*serverSessionMedia
@@ -506,11 +507,17 @@ func (ss *ServerSession) BytesSent() uint64 {
 
 // State returns the state of the session.
 func (ss *ServerSession) State() ServerSessionState {
+	ss.propsMutex.RLock()
+	defer ss.propsMutex.RUnlock()
+
 	return ss.state
 }
 
 // SetuppedTransport returns the transport negotiated during SETUP.
 func (ss *ServerSession) SetuppedTransport() *Transport {
+	ss.propsMutex.RLock()
+	defer ss.propsMutex.RUnlock()
+
 	return ss.setuppedTransport
 }
 
@@ -518,47 +525,62 @@ func (ss *ServerSession) SetuppedTransport() *Transport {
 // If this is false, it does not mean that the stream is not secure, since
 // there are some combinations that are secure nonetheless, like RTSPS+TCP+unsecure.
 func (ss *ServerSession) SetuppedSecure() bool {
+	ss.propsMutex.RLock()
+	defer ss.propsMutex.RUnlock()
+
 	return isSecure(ss.setuppedProfile)
 }
 
 // SetuppedStream returns the stream associated with the session.
 //
-// Deprecated: replaced by Stream
+// Deprecated: replaced by Stream.
 func (ss *ServerSession) SetuppedStream() *ServerStream {
 	return ss.Stream()
 }
 
 // Stream returns the stream associated with the session.
 func (ss *ServerSession) Stream() *ServerStream {
+	ss.propsMutex.RLock()
+	defer ss.propsMutex.RUnlock()
+
 	return ss.setuppedStream
 }
 
 // SetuppedPath returns the path sent during SETUP or ANNOUNCE.
 //
-// Deprecated: replaced by Path
+// Deprecated: replaced by Path.
 func (ss *ServerSession) SetuppedPath() string {
 	return ss.Path()
 }
 
 // Path returns the path sent during SETUP or ANNOUNCE.
 func (ss *ServerSession) Path() string {
+	ss.propsMutex.RLock()
+	defer ss.propsMutex.RUnlock()
+
 	return ss.setuppedPath
 }
 
 // SetuppedQuery returns the query sent during SETUP or ANNOUNCE.
 //
-// Deprecated: replaced by Medias.
+// Deprecated: replaced by Query.
 func (ss *ServerSession) SetuppedQuery() string {
 	return ss.Query()
 }
 
 // Query returns the query sent during SETUP or ANNOUNCE.
 func (ss *ServerSession) Query() string {
+	ss.propsMutex.RLock()
+	defer ss.propsMutex.RUnlock()
+
 	return ss.setuppedQuery
 }
 
 // AnnouncedDescription returns the announced stream description.
 func (ss *ServerSession) AnnouncedDescription() *description.Session {
+	ss.propsMutex.RLock()
+	defer ss.propsMutex.RUnlock()
+
 	return ss.announcedDesc
 }
 
@@ -571,6 +593,9 @@ func (ss *ServerSession) SetuppedMedias() []*description.Media {
 
 // Medias returns setupped medias.
 func (ss *ServerSession) Medias() []*description.Media {
+	ss.propsMutex.RLock()
+	defer ss.propsMutex.RUnlock()
+
 	ret := make([]*description.Media, len(ss.setuppedMedias))
 	for i, sm := range ss.setuppedMediasOrdered {
 		ret[i] = sm.media
@@ -590,6 +615,9 @@ func (ss *ServerSession) UserData() interface{} {
 
 // Stats returns server session statistics.
 func (ss *ServerSession) Stats() *StatsSession {
+	ss.propsMutex.RLock()
+	defer ss.propsMutex.RUnlock()
+
 	mediaStats := func() map[*description.Media]StatsSessionMedia { //nolint:dupl
 		ret := make(map[*description.Media]StatsSessionMedia, len(ss.setuppedMedias))
 
@@ -856,9 +884,13 @@ func (ss *ServerSession) run() {
 		ss.setuppedStream.readerRemove(ss)
 	}
 
+	ss.propsMutex.Lock()
+
 	for _, sm := range ss.setuppedMedias {
 		sm.close()
 	}
+
+	ss.propsMutex.Unlock()
 
 	if ss.writer != nil {
 		ss.destroyWriter()
@@ -1094,10 +1126,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		})
 
 		if res.StatusCode == base.StatusOK {
+			ss.propsMutex.Lock()
 			ss.state = ServerSessionStatePreRecord
 			ss.setuppedPath = path
 			ss.setuppedQuery = query
 			ss.announcedDesc = &desc
+			ss.propsMutex.Unlock()
 		}
 
 		return res, err
@@ -1272,6 +1306,12 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					panic("stream cannot be nil when StatusCode is StatusOK")
 				}
 
+				if ss.state == ServerSessionStatePrePlay {
+					if stream != ss.setuppedStream {
+						panic("stream cannot be different than the one returned in previous OnSetup call")
+					}
+				}
+
 				medi = findMediaByTrackID(stream.Desc.Medias, trackID)
 			default: // record
 				medi = findMediaByURL(ss.announcedDesc.Medias, path, query, req.URL)
@@ -1289,34 +1329,23 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}, liberrors.ErrServerMediaAlreadySetup{}
 			}
 
-			ss.setuppedTransport = &transport
-			ss.setuppedProfile = inTH.Profile
-
 			if ss.state == ServerSessionStateInitial {
 				err = stream.readerAdd(ss,
 					inTH.ClientPorts,
+					transport,
 				)
 				if err != nil {
 					return &base.Response{
 						StatusCode: base.StatusBadRequest,
 					}, err
 				}
-
-				ss.state = ServerSessionStatePrePlay
-				ss.setuppedPath = path
-				ss.setuppedQuery = query
-				ss.setuppedStream = stream
 			}
 
 			th := headers.Transport{
 				Profile: inTH.Profile,
 			}
 
-			if ss.state == ServerSessionStatePrePlay {
-				if stream != ss.setuppedStream {
-					panic("stream cannot be different than the one returned in previous OnSetup call")
-				}
-
+			if ss.state == ServerSessionStateInitial || ss.state == ServerSessionStatePrePlay {
 				// Fill SSRC if there is a single SSRC only
 				// since the Transport header does not support multiple SSRCs.
 				if len(stream.medias[medi].formats) == 1 {
@@ -1343,7 +1372,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}
 			} else {
 				localSSRCs = make(map[uint8]uint32)
-				for forma, data := range ss.setuppedStream.medias[medi].formats {
+				for forma, data := range stream.medias[medi].formats {
 					localSSRCs[forma] = data.localSSRC
 				}
 			}
@@ -1371,7 +1400,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 						}, err
 					}
 				} else {
-					srtpOutCtx = ss.setuppedStream.medias[medi].srtpOutCtx
+					srtpOutCtx = stream.medias[medi].srtpOutCtx
 				}
 			}
 
@@ -1429,6 +1458,11 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				th.InterleavedIDs = &[2]int{tcpChannel, tcpChannel + 1}
 			}
 
+			ss.propsMutex.Lock()
+
+			ss.setuppedTransport = &transport
+			ss.setuppedProfile = inTH.Profile
+
 			sm := &serverSessionMedia{
 				ss:               ss,
 				media:            medi,
@@ -1447,9 +1481,17 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			if ss.setuppedMedias == nil {
 				ss.setuppedMedias = make(map[*description.Media]*serverSessionMedia)
 			}
-
 			ss.setuppedMedias[medi] = sm
 			ss.setuppedMediasOrdered = append(ss.setuppedMediasOrdered, sm)
+
+			if ss.state == ServerSessionStateInitial {
+				ss.state = ServerSessionStatePrePlay
+				ss.setuppedPath = path
+				ss.setuppedQuery = query
+				ss.setuppedStream = stream
+			}
+
+			ss.propsMutex.Unlock()
 
 			res.Header["Transport"] = th.Marshal()
 
@@ -1514,7 +1556,9 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		if res.StatusCode == base.StatusOK {
 			if ss.state != ServerSessionStatePlay {
+				ss.propsMutex.Lock()
 				ss.state = ServerSessionStatePlay
+				ss.propsMutex.Unlock()
 
 				v := ss.s.timeNow().Unix()
 				ss.udpLastPacketTime = &v
@@ -1685,7 +1729,9 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 				switch ss.state {
 				case ServerSessionStatePlay:
+					ss.propsMutex.Lock()
 					ss.state = ServerSessionStatePrePlay
+					ss.propsMutex.Unlock()
 
 					switch *ss.setuppedTransport {
 					case TransportUDP:
@@ -1709,7 +1755,9 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 						ss.tcpConn = nil
 					}
 
+					ss.propsMutex.Lock()
 					ss.state = ServerSessionStatePreRecord
+					ss.propsMutex.Unlock()
 				}
 			}
 		}

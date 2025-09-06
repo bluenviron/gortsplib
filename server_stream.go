@@ -211,6 +211,7 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 func (st *ServerStream) readerAdd(
 	ss *ServerSession,
 	clientPorts *[2]int,
+	protocol Transport,
 ) error {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()
@@ -219,11 +220,11 @@ func (st *ServerStream) readerAdd(
 		return liberrors.ErrServerStreamClosed{}
 	}
 
-	switch *ss.setuppedTransport {
+	switch protocol {
 	case TransportUDP:
 		// check whether UDP ports and IP are already assigned to another reader
 		for r := range st.readers {
-			if *r.setuppedTransport == TransportUDP &&
+			if protocol == TransportUDP &&
 				r.author.ip().Equal(ss.author.ip()) &&
 				r.author.zone() == ss.author.zone() {
 				for _, rt := range r.setuppedMedias {

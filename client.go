@@ -543,6 +543,7 @@ type Client struct {
 
 	ctx                  context.Context
 	ctxCancel            func()
+	propsMutex           sync.RWMutex
 	state                clientState
 	nconn                net.Conn
 	conn                 *conn.Conn
@@ -2023,15 +2024,18 @@ func (c *Client) doSetup(
 	udpRTPListener = nil
 	udpRTCPListener = nil
 
+	c.propsMutex.Lock()
+
 	if c.setuppedMedias == nil {
 		c.setuppedMedias = make(map[*description.Media]*clientMedia)
 	}
-
 	c.setuppedMedias[medi] = cm
 
 	c.baseURL = baseURL
 	c.setuppedTransport = &transport
 	c.setuppedProfile = th.Profile
+
+	c.propsMutex.Unlock()
 
 	if medi.IsBackChannel {
 		c.backChannelSetupped = true
@@ -2426,6 +2430,9 @@ func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time,
 
 // Stats returns client statistics.
 func (c *Client) Stats() *ClientStats {
+	c.propsMutex.RLock()
+	defer c.propsMutex.RUnlock()
+
 	mediaStats := func() map[*description.Media]StatsSessionMedia { //nolint:dupl
 		ret := make(map[*description.Media]StatsSessionMedia, len(c.setuppedMedias))
 
