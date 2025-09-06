@@ -640,6 +640,11 @@ func TestClientPlay(t *testing.T) {
 			sd, _, err := c.Describe(u)
 			require.NoError(t, err)
 
+			// test that properties can be accessed in parallel
+			go func() {
+				c.Stats()
+			}()
+
 			err = c.SetupAll(sd.BaseURL, sd.Medias)
 			require.NoError(t, err)
 

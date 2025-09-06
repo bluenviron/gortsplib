@@ -602,7 +602,14 @@ func TestServerRecord(t *testing.T) {
 
 						close(sessionClosed)
 					},
-					onAnnounce: func(_ *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+					onAnnounce: func(ctx *ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+						// test that properties can be accessed in parallel
+						go func() {
+							ctx.Session.State()
+							ctx.Session.Stats()
+							ctx.Session.AnnouncedDescription()
+						}()
+
 						return &base.Response{
 							StatusCode: base.StatusOK,
 						}, nil
@@ -1732,7 +1739,13 @@ func TestServerRecordPausePause(t *testing.T) {
 					StatusCode: base.StatusOK,
 				}, nil
 			},
-			onPause: func(_ *ServerHandlerOnPauseCtx) (*base.Response, error) {
+			onPause: func(ctx *ServerHandlerOnPauseCtx) (*base.Response, error) {
+				// test that properties can be accessed in parallel
+				go func() {
+					ctx.Session.State()
+					ctx.Session.Stats()
+				}()
+
 				return &base.Response{
 					StatusCode: base.StatusOK,
 				}, nil
