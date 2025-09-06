@@ -108,9 +108,11 @@ func (u *clientUDPListener) start() {
 }
 
 func (u *clientUDPListener) stop() {
-	u.pc.SetReadDeadline(time.Now())
-	<-u.done
-	u.running = false
+	if u.running {
+		u.pc.SetReadDeadline(time.Now())
+		<-u.done
+		u.running = false
+	}
 }
 
 func (u *clientUDPListener) run() {
