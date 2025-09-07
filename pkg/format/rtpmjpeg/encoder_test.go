@@ -7,11 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func uint16Ptr(v uint16) *uint16 {
-	return &v
-}
-
-func uint32Ptr(v uint32) *uint32 {
+func ptrOf[T any](v T) *T {
 	return &v
 }
 
@@ -515,8 +511,8 @@ func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
-				SSRC:                  uint32Ptr(0x9dbb7812),
-				InitialSequenceNumber: uint16Ptr(0x44ed),
+				SSRC:                  ptrOf(uint32(0x9dbb7812)),
+				InitialSequenceNumber: ptrOf(uint16(0x44ed)),
 				PayloadMaxSize:        1000,
 			}
 			err := e.Init()

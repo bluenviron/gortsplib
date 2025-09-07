@@ -8,15 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func sessionInformationPtr(v psdp.Information) *psdp.Information {
-	return &v
-}
-
-func emailAddressPtr(v psdp.EmailAddress) *psdp.EmailAddress {
-	return &v
-}
-
-func mediaTitlePtr(v psdp.Information) *psdp.Information {
+func ptrOf[T any](v T) *T {
 	return &v
 }
 
@@ -49,7 +41,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
+			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -77,7 +69,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
+			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -109,7 +101,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
+			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -177,12 +169,12 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
+			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
 			URI: func() *url.URL {
 				u, _ := url.Parse("http://www.example.com/seminars/sdp.pdf")
 				return u
 			}(),
-			EmailAddress: emailAddressPtr("j.doe@example.com (Jane Doe)"),
+			EmailAddress: ptrOf(psdp.EmailAddress("j.doe@example.com (Jane Doe)")),
 			PhoneNumber: func() *psdp.PhoneNumber {
 				v := psdp.PhoneNumber("+1 617 555-6011")
 				return &v
@@ -236,7 +228,7 @@ var cases = []struct {
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"0"},
 					},
-					MediaTitle: mediaTitlePtr("Vivamus a posuere nisl"),
+					MediaTitle: ptrOf(psdp.Information("Vivamus a posuere nisl")),
 					ConnectionInformation: &psdp.ConnectionInformation{
 						NetworkType: "IN",
 						AddressType: "IP4",
@@ -807,7 +799,7 @@ var cases = []struct {
 				UnicastAddress: "5c2b68da",
 			},
 			SessionName:        psdp.SessionName("Unnamed"),
-			SessionInformation: sessionInformationPtr("N/A"),
+			SessionInformation: ptrOf(psdp.Information("N/A")),
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -990,7 +982,7 @@ var cases = []struct {
 				UnicastAddress: "",
 			},
 			SessionName:      psdp.SessionName("RTSP Server"),
-			EmailAddress:     emailAddressPtr("NONE"),
+			EmailAddress:     ptrOf(psdp.EmailAddress("NONE")),
 			TimeDescriptions: []psdp.TimeDescription{{}},
 			Attributes: []psdp.Attribute{
 				{Key: "recvonly"},
@@ -1314,8 +1306,8 @@ var cases = []struct {
 				UnicastAddress: "0.0.0.0",
 			},
 			SessionName:        psdp.SessionName("HIK Media Server V3.1.3"),
-			SessionInformation: sessionInformationPtr("HIK Media Server Session Description : standard"),
-			EmailAddress:       emailAddressPtr("NONE"),
+			SessionInformation: ptrOf(psdp.Information("HIK Media Server Session Description : standard")),
+			EmailAddress:       ptrOf(psdp.EmailAddress("NONE")),
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",
@@ -1343,7 +1335,7 @@ var cases = []struct {
 						Protos:  []string{"RTP", "AVP"},
 						Formats: []string{"96"},
 					},
-					MediaTitle: mediaTitlePtr("Video Media"),
+					MediaTitle: ptrOf(psdp.Information("Video Media")),
 					Attributes: []psdp.Attribute{
 						{
 							Key:   "rtpmap",
@@ -1394,7 +1386,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
+			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -1460,7 +1452,7 @@ var cases = []struct {
 				UnicastAddress: "172.16.2.20",
 			},
 			SessionName:        "IR stream",
-			SessionInformation: sessionInformationPtr("Live infrared"),
+			SessionInformation: ptrOf(psdp.Information("Live infrared")),
 			TimeDescriptions:   []psdp.TimeDescription{{}},
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
@@ -1587,7 +1579,7 @@ var cases = []struct {
 			},
 			SessionName:      "RTP session",
 			TimeDescriptions: []psdp.TimeDescription{{}},
-			EmailAddress:     emailAddressPtr("NONE"),
+			EmailAddress:     ptrOf(psdp.EmailAddress("NONE")),
 			MediaDescriptions: []*psdp.MediaDescription{
 				{
 					MediaName: psdp.MediaName{
@@ -1647,7 +1639,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
+			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -1675,7 +1667,7 @@ var cases = []struct {
 				UnicastAddress: "10.47.16.5",
 			},
 			SessionName:        "SDP Seminar",
-			SessionInformation: sessionInformationPtr("A Seminar on the session description protocol"),
+			SessionInformation: ptrOf(psdp.Information("A Seminar on the session description protocol")),
 			TimeDescriptions: []psdp.TimeDescription{
 				{Timing: psdp.Timing{StartTime: 3034423619, StopTime: 3042462419}},
 			},
@@ -2935,7 +2927,7 @@ var cases = []struct {
 				UnicastAddress: "192.168.221.104",
 			},
 			SessionName:  "Media Presentation",
-			EmailAddress: emailAddressPtr("NONE"),
+			EmailAddress: ptrOf(psdp.EmailAddress("NONE")),
 			ConnectionInformation: &psdp.ConnectionInformation{
 				NetworkType: "IN",
 				AddressType: "IP4",

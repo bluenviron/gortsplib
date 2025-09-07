@@ -8,7 +8,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
-func stringPtr(v string) *string {
+func ptrOf[T any](v T) *T {
 	return &v
 }
 
@@ -36,7 +36,7 @@ var casesAuthenticate = []struct {
 			Method: AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
-			Stale:  stringPtr("FALSE"),
+			Stale:  ptrOf("FALSE"),
 		},
 	},
 	{
@@ -48,7 +48,7 @@ var casesAuthenticate = []struct {
 			Method: AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "8b84a3b789283a8bea8da7fa7d41f08b",
-			Stale:  stringPtr("FALSE"),
+			Stale:  ptrOf("FALSE"),
 		},
 	},
 	{
@@ -60,7 +60,7 @@ var casesAuthenticate = []struct {
 			Method: AuthMethodDigest,
 			Realm:  "4419b63f5e51",
 			Nonce:  "133767111917411116111311118211673010032",
-			Stale:  stringPtr("FALSE"),
+			Stale:  ptrOf("FALSE"),
 		},
 	},
 	{
@@ -73,8 +73,8 @@ var casesAuthenticate = []struct {
 			Method: AuthMethodDigest,
 			Realm:  "Please log in with a valid username",
 			Nonce:  "752a62306daf32b401a41004555c7663",
-			Opaque: stringPtr(""),
-			Stale:  stringPtr("FALSE"),
+			Opaque: ptrOf(""),
+			Stale:  ptrOf("FALSE"),
 		},
 	},
 	{
@@ -87,8 +87,8 @@ var casesAuthenticate = []struct {
 			Method:    AuthMethodDigest,
 			Realm:     "4419b63f5e51",
 			Nonce:     "8b84a3b789283a8bea8da7fa7d41f08b",
-			Stale:     stringPtr("FALSE"),
-			Algorithm: algorithmPtr(AuthAlgorithmMD5),
+			Stale:     ptrOf("FALSE"),
+			Algorithm: ptrOf(AuthAlgorithmMD5),
 		},
 	},
 	{
@@ -101,8 +101,8 @@ var casesAuthenticate = []struct {
 			Method:    AuthMethodDigest,
 			Realm:     "IP Camera(AB705)",
 			Nonce:     "fcc86deace979a488b2bfb89f4d0812c",
-			Stale:     stringPtr("FALSE"),
-			Algorithm: algorithmPtr(AuthAlgorithmSHA256),
+			Stale:     ptrOf("FALSE"),
+			Algorithm: ptrOf(AuthAlgorithmSHA256),
 		},
 	},
 }

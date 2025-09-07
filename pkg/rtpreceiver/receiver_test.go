@@ -9,14 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func uint32Ptr(v uint32) *uint32 {
+func ptrOf[T any](v T) *T {
 	return &v
 }
 
 func TestErrorInvalidPeriod(t *testing.T) {
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: uint32Ptr(0x65f83afb),
+		LocalSSRC: ptrOf(uint32(0x65f83afb)),
 	}
 	err := rr.Initialize()
 	require.EqualError(t, err, "invalid Period")
@@ -25,7 +25,7 @@ func TestErrorInvalidPeriod(t *testing.T) {
 func TestErrorDifferentSSRC(t *testing.T) {
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: uint32Ptr(0x65f83afb),
+		LocalSSRC: ptrOf(uint32(0x65f83afb)),
 		Period:    500 * time.Millisecond,
 	}
 	err := rr.Initialize()
@@ -66,7 +66,7 @@ func TestErrorDifferentSSRC(t *testing.T) {
 func TestStatsBeforeData(t *testing.T) {
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: uint32Ptr(0x65f83afb),
+		LocalSSRC: ptrOf(uint32(0x65f83afb)),
 		Period:    500 * time.Millisecond,
 	}
 	err := rr.Initialize()
@@ -87,7 +87,7 @@ func TestStandard(t *testing.T) {
 
 			rr := &Receiver{
 				ClockRate:            90000,
-				LocalSSRC:            uint32Ptr(0x65f83afb),
+				LocalSSRC:            ptrOf(uint32(0x65f83afb)),
 				UnrealiableTransport: ca == "unrealiable",
 				Period:               500 * time.Millisecond,
 				TimeNow: func() time.Time {
@@ -204,7 +204,7 @@ func TestZeroClockRate(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 0,
-		LocalSSRC: uint32Ptr(0x65f83afb),
+		LocalSSRC: ptrOf(uint32(0x65f83afb)),
 		Period:    500 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
@@ -308,7 +308,7 @@ func TestSequenceNumberOverflow(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: uint32Ptr(0x65f83afb),
+		LocalSSRC: ptrOf(uint32(0x65f83afb)),
 		Period:    250 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
@@ -382,7 +382,7 @@ func TestJitter(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: uint32Ptr(0x65f83afb),
+		LocalSSRC: ptrOf(uint32(0x65f83afb)),
 		Period:    500 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
@@ -470,7 +470,7 @@ func TestReliablePacketsLost(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: uint32Ptr(0x65f83afb),
+		LocalSSRC: ptrOf(uint32(0x65f83afb)),
 		Period:    500 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
@@ -547,7 +547,7 @@ func TestReliableOverflowAndPacketsLost(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: uint32Ptr(0x65f83afb),
+		LocalSSRC: ptrOf(uint32(0x65f83afb)),
 		Period:    500 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
@@ -771,7 +771,7 @@ func TestUnrealiableReorder(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate:            90000,
-		LocalSSRC:            uint32Ptr(0x65f83afb),
+		LocalSSRC:            ptrOf(uint32(0x65f83afb)),
 		UnrealiableTransport: true,
 		Period:               500 * time.Millisecond,
 	}
@@ -796,7 +796,7 @@ func TestUnrealiableBufferFull(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate:            90000,
-		LocalSSRC:            uint32Ptr(0x65f83afb),
+		LocalSSRC:            ptrOf(uint32(0x65f83afb)),
 		UnrealiableTransport: true,
 		Period:               500 * time.Millisecond,
 		WritePacketRTCP: func(p rtcp.Packet) {
@@ -880,7 +880,7 @@ func TestUnrealiableReset(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate:            90000,
-		LocalSSRC:            uint32Ptr(0x65f83afb),
+		LocalSSRC:            ptrOf(uint32(0x65f83afb)),
 		UnrealiableTransport: true,
 		Period:               500 * time.Millisecond,
 		WritePacketRTCP: func(p rtcp.Packet) {
@@ -942,7 +942,7 @@ func TestUnrealiableCustomBufferSize(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate:            90000,
-		LocalSSRC:            uint32Ptr(0x65f83afb),
+		LocalSSRC:            ptrOf(uint32(0x65f83afb)),
 		UnrealiableTransport: true,
 		BufferSize:           customSize,
 		Period:               500 * time.Millisecond,

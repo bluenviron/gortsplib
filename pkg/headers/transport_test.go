@@ -9,18 +9,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
-func ipPtr(v net.IP) *net.IP {
-	return &v
-}
-
-func deliveryPtr(v TransportDelivery) *TransportDelivery {
-	return &v
-}
-
-func transportModePtr(v TransportMode) *TransportMode {
-	return &v
-}
-
 var casesTransport = []struct {
 	name string
 	vin  base.HeaderValue
@@ -33,9 +21,9 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
 			ClientPorts: &[2]int{3456, 3457},
-			Mode:        transportModePtr(TransportModePlay),
+			Mode:        ptrOf(TransportModePlay),
 		},
 	},
 	{
@@ -44,7 +32,7 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3056-3057;server_port=5000-5001`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
 			ClientPorts: &[2]int{3056, 3057},
 			ServerPorts: &[2]int{5000, 5001},
 		},
@@ -55,10 +43,10 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
 		Transport{
 			Protocol:     TransportProtocolUDP,
-			Delivery:     deliveryPtr(TransportDeliveryMulticast),
-			Destination:  ipPtr(net.ParseIP("225.219.201.15")),
-			Destination2: stringPtr("225.219.201.15"),
-			TTL:          uintPtr(127),
+			Delivery:     ptrOf(TransportDeliveryMulticast),
+			Destination:  ptrOf(net.ParseIP("225.219.201.15")),
+			Destination2: ptrOf("225.219.201.15"),
+			TTL:          ptrOf(uint(127)),
 			Ports:        &[2]int{7000, 7001},
 		},
 	},
@@ -77,11 +65,11 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0B6020AD;mode=play`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
-			Mode:        transportModePtr(TransportModePlay),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
+			Mode:        ptrOf(TransportModePlay),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
-			SSRC:        uint32Ptr(0x0B6020AD),
+			SSRC:        ptrOf(uint32(0x0B6020AD)),
 		},
 	},
 	{
@@ -90,12 +78,12 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;source=127.0.0.1;client_port=14186-14187;server_port=5000-5001;mode=record`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
-			Mode:        transportModePtr(TransportModeRecord),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
+			Mode:        ptrOf(TransportModeRecord),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{5000, 5001},
-			Source:      ipPtr(net.ParseIP("127.0.0.1")),
-			Source2:     stringPtr("127.0.0.1"),
+			Source:      ptrOf(net.ParseIP("127.0.0.1")),
+			Source2:     ptrOf("127.0.0.1"),
 		},
 	},
 	{
@@ -104,9 +92,9 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=3456-3457;mode=play`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
 			ClientPorts: &[2]int{3456, 3457},
-			Mode:        transportModePtr(TransportModePlay),
+			Mode:        ptrOf(TransportModePlay),
 		},
 	},
 	{
@@ -115,11 +103,11 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0004317F;mode=play`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
-			Mode:        transportModePtr(TransportModePlay),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
+			Mode:        ptrOf(TransportModePlay),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
-			SSRC:        uint32Ptr(0x04317f),
+			SSRC:        ptrOf(uint32(0x04317f)),
 		},
 	},
 	{
@@ -128,11 +116,11 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=14186-14187;server_port=8052-8053;ssrc=0004317F;mode=play`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
-			Mode:        transportModePtr(TransportModePlay),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
+			Mode:        ptrOf(TransportModePlay),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{8052, 8053},
-			SSRC:        uint32Ptr(0x04317f),
+			SSRC:        ptrOf(uint32(0x04317f)),
 		},
 	},
 	{
@@ -141,9 +129,9 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP/TCP;unicast;interleaved=0-1;ssrc=000D93FF`},
 		Transport{
 			Protocol:       TransportProtocolTCP,
-			Delivery:       deliveryPtr(TransportDeliveryUnicast),
+			Delivery:       ptrOf(TransportDeliveryUnicast),
 			InterleavedIDs: &[2]int{0, 1},
-			SSRC:           uint32Ptr(0xD93FF),
+			SSRC:           ptrOf(uint32(0xD93FF)),
 		},
 	},
 	{
@@ -152,8 +140,8 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;client_port=32560-32561;server_port=3046-3047;ssrc=45DCB578`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
-			SSRC:        uint32Ptr(0x45dcb578),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
+			SSRC:        ptrOf(uint32(0x45dcb578)),
 			ClientPorts: &[2]int{32560, 32561},
 			ServerPorts: &[2]int{3046, 3047},
 		},
@@ -164,9 +152,9 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;unicast;source=172.16.8.2;client_port=14236-14237;server_port=56002-56003`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
-			Source:      ipPtr(net.ParseIP("172.16.8.2")),
-			Source2:     stringPtr("172.16.8.2"),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
+			Source:      ptrOf(net.ParseIP("172.16.8.2")),
+			Source2:     ptrOf("172.16.8.2"),
 			ClientPorts: &[2]int{14236, 14237},
 			ServerPorts: &[2]int{56002, 56003},
 		},
@@ -179,9 +167,9 @@ var casesTransport = []struct {
 			Protocol:    TransportProtocolUDP,
 			Secure:      true,
 			Profile:     TransportProfileSAVP,
-			Delivery:    deliveryPtr(TransportDeliveryUnicast),
+			Delivery:    ptrOf(TransportDeliveryUnicast),
 			ClientPorts: &[2]int{3456, 3457},
-			Mode:        transportModePtr(TransportModePlay),
+			Mode:        ptrOf(TransportModePlay),
 		},
 	},
 	{
