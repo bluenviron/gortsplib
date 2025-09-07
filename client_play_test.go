@@ -28,6 +28,10 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
+func stringPtr(v string) *string {
+	return &v
+}
+
 func ipPtr(v net.IP) *net.IP {
 	return &v
 }
@@ -461,8 +465,7 @@ func TestClientPlay(t *testing.T) {
 						v := headers.TransportDeliveryMulticast
 						th.Delivery = &v
 						th.Protocol = headers.TransportProtocolUDP
-						v2 := net.ParseIP("224.1.0.1")
-						th.Destination = &v2
+						th.Destination2 = stringPtr("224.1.0.1")
 						th.Ports = &[2]int{25000 + i*2, 25001 + i*2}
 
 						l1s[i], err2 = net.ListenPacket("udp", net.JoinHostPort("224.0.0.0", strconv.FormatInt(int64(th.Ports[0]), 10)))
