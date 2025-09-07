@@ -7,14 +7,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func uint32Ptr(v uint32) *uint32 {
+func ptrOf[T any](v T) *T {
 	return &v
 }
 
 func TestEncoder(t *testing.T) {
 	e := &Encoder{
 		ClockRate:        90000,
-		InitialTimestamp: uint32Ptr(12345),
+		InitialTimestamp: ptrOf(uint32(12345)),
 	}
 	err := e.Initialize()
 	require.NoError(t, err)
@@ -29,7 +29,7 @@ func TestEncoder(t *testing.T) {
 func BenchmarkEncoder(b *testing.B) {
 	e := &Encoder{
 		ClockRate:        90000,
-		InitialTimestamp: uint32Ptr(12345),
+		InitialTimestamp: ptrOf(uint32(12345)),
 	}
 	e.Initialize() //nolint:errcheck
 

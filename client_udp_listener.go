@@ -13,7 +13,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/readbuffer"
 )
 
-func int64Ptr(v int64) *int64 {
+func ptrOf[T any](v T) *T {
 	return &v
 }
 
@@ -85,7 +85,7 @@ func (u *clientUDPListener) initialize() error {
 		}
 	}
 
-	u.lastPacketTime = int64Ptr(0)
+	u.lastPacketTime = ptrOf(int64(0))
 	return nil
 }
 

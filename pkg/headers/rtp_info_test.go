@@ -8,18 +8,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
-func uint16Ptr(v uint16) *uint16 {
-	return &v
-}
-
-func uint32Ptr(v uint32) *uint32 {
-	return &v
-}
-
-func uintPtr(v uint) *uint {
-	return &v
-}
-
 var casesRTPInfo = []struct {
 	name string
 	vin  base.HeaderValue
@@ -33,8 +21,8 @@ var casesRTPInfo = []struct {
 		RTPInfo{
 			{
 				URL:            "rtsp://127.0.0.1/test.mkv/track1",
-				SequenceNumber: uint16Ptr(35243),
-				Timestamp:      uint32Ptr(717574556),
+				SequenceNumber: ptrOf(uint16(35243)),
+				Timestamp:      ptrOf(uint32(717574556)),
 			},
 		},
 	},
@@ -47,13 +35,13 @@ var casesRTPInfo = []struct {
 		RTPInfo{
 			{
 				URL:            "rtsp://127.0.0.1/test.mkv/track1",
-				SequenceNumber: uint16Ptr(35243),
-				Timestamp:      uint32Ptr(717574556),
+				SequenceNumber: ptrOf(uint16(35243)),
+				Timestamp:      ptrOf(uint32(717574556)),
 			},
 			{
 				URL:            "rtsp://127.0.0.1/test.mkv/track2",
-				SequenceNumber: uint16Ptr(13655),
-				Timestamp:      uint32Ptr(2848846950),
+				SequenceNumber: ptrOf(uint16(13655)),
+				Timestamp:      ptrOf(uint32(2848846950)),
 			},
 		},
 	},
@@ -64,7 +52,7 @@ var casesRTPInfo = []struct {
 		RTPInfo{
 			{
 				URL:            "rtsp://127.0.0.1/test.mkv/track1",
-				SequenceNumber: uint16Ptr(35243),
+				SequenceNumber: ptrOf(uint16(35243)),
 			},
 		},
 	},
@@ -75,7 +63,7 @@ var casesRTPInfo = []struct {
 		RTPInfo{
 			{
 				URL:       "rtsp://127.0.0.1/test.mkv/track1",
-				Timestamp: uint32Ptr(717574556),
+				Timestamp: ptrOf(uint32(717574556)),
 			},
 		},
 	},
@@ -86,8 +74,8 @@ var casesRTPInfo = []struct {
 		RTPInfo{
 			{
 				URL:            "trackID=0",
-				SequenceNumber: uint16Ptr(12447),
-				Timestamp:      uint32Ptr(12447),
+				SequenceNumber: ptrOf(uint16(12447)),
+				Timestamp:      ptrOf(uint32(12447)),
 			},
 		},
 	},
@@ -100,13 +88,13 @@ var casesRTPInfo = []struct {
 		RTPInfo{
 			{
 				URL:            "rtsp://10.13.146.53/axis-media/media.amp/trackID=1",
-				SequenceNumber: uint16Ptr(58477),
-				Timestamp:      uint32Ptr(1020884293),
+				SequenceNumber: ptrOf(uint16(58477)),
+				Timestamp:      ptrOf(uint32(1020884293)),
 			},
 			{
 				URL:            "rtsp://10.13.146.53/axis-media/media.amp/trackID=2",
-				SequenceNumber: uint16Ptr(15727),
-				Timestamp:      uint32Ptr(1171661503),
+				SequenceNumber: ptrOf(uint16(15727)),
+				Timestamp:      ptrOf(uint32(1171661503)),
 			},
 		},
 	},
@@ -119,13 +107,13 @@ var casesRTPInfo = []struct {
 		RTPInfo{
 			{
 				URL:            "trackID=1",
-				SequenceNumber: uint16Ptr(55664),
-				Timestamp:      uint32Ptr(254718369),
+				SequenceNumber: ptrOf(uint16(55664)),
+				Timestamp:      ptrOf(uint32(254718369)),
 			},
 			{
 				URL:            "trackID=2",
-				SequenceNumber: uint16Ptr(43807),
-				Timestamp:      uint32Ptr(1702259566),
+				SequenceNumber: ptrOf(uint16(43807)),
+				Timestamp:      ptrOf(uint32(1702259566)),
 			},
 		},
 	},

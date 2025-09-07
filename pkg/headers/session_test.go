@@ -28,7 +28,7 @@ var casesSession = []struct {
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
 		Session{
 			Session: "A3eqwsafq3rFASqew",
-			Timeout: uintPtr(47),
+			Timeout: ptrOf(uint(47)),
 		},
 	},
 	{
@@ -37,7 +37,7 @@ var casesSession = []struct {
 		base.HeaderValue{`A3eqwsafq3rFASqew;timeout=47`},
 		Session{
 			Session: "A3eqwsafq3rFASqew",
-			Timeout: uintPtr(47),
+			Timeout: ptrOf(uint(47)),
 		},
 	},
 }
