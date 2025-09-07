@@ -140,10 +140,20 @@ type Transport struct {
 	Delivery *TransportDelivery
 
 	// (optional) Source IP.
+	//
+	// Deprecated: replaced by Source2
 	Source *net.IP
 
+	// (optional) Source IP/host.
+	Source2 *string
+
 	// (optional) destination IP.
+	//
+	// Deprecated: replaced by Destination2
 	Destination *net.IP
+
+	// (optional) destination IP/host.
+	Destination2 *string
 
 	// (optional) interleaved frame IDs.
 	InterleavedIDs *[2]int
@@ -220,27 +230,18 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 
 		case "source":
 			if v != "" {
-				ip := net.ParseIP(v)
-				if ip == nil {
-					addrs, err2 := net.LookupHost(v)
-					if err2 != nil {
-						return fmt.Errorf("invalid source (%v)", v)
-					}
-					ip = net.ParseIP(addrs[0])
-					if ip == nil {
-						return fmt.Errorf("invalid source (%v)", v)
-					}
+				if ip := net.ParseIP(v); ip != nil {
+					h.Source = &ip
 				}
-				h.Source = &ip
+				h.Source2 = &v
 			}
 
 		case "destination":
 			if v != "" {
-				ip := net.ParseIP(v)
-				if ip == nil {
-					return fmt.Errorf("invalid destination (%v)", v)
+				if ip := net.ParseIP(v); ip != nil {
+					h.Destination = &ip
 				}
-				h.Destination = &ip
+				h.Destination2 = &v
 			}
 
 		case "interleaved":
@@ -351,11 +352,21 @@ func (h Transport) Marshal() base.HeaderValue {
 	}
 
 	if h.Source != nil {
-		rets = append(rets, "source="+h.Source.String())
+		v := h.Source.String()
+		h.Source2 = &v
+	}
+
+	if h.Source2 != nil {
+		rets = append(rets, "source="+*h.Source2)
 	}
 
 	if h.Destination != nil {
-		rets = append(rets, "destination="+h.Destination.String())
+		v := h.Destination.String()
+		h.Destination2 = &v
+	}
+
+	if h.Destination2 != nil {
+		rets = append(rets, "destination="+*h.Destination2)
 	}
 
 	if h.InterleavedIDs != nil {

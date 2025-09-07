@@ -914,7 +914,7 @@ func TestServerPlay(t *testing.T) {
 				require.NoError(t, err)
 
 				for _, intf := range intfs {
-					err = p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
+					err = p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination2)})
 					require.NoError(t, err)
 				}
 
@@ -928,7 +928,7 @@ func TestServerPlay(t *testing.T) {
 				require.NoError(t, err)
 
 				for _, intf := range intfs {
-					err = p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
+					err = p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination2)})
 					require.NoError(t, err)
 				}
 
@@ -1042,7 +1042,7 @@ func TestServerPlay(t *testing.T) {
 
 			case "multicast":
 				_, err = l2.WriteTo(buf, &net.UDPAddr{
-					IP:   *th.Destination,
+					IP:   net.ParseIP(*th.Destination2),
 					Port: th.Ports[1],
 				})
 				require.NoError(t, err)
@@ -1234,7 +1234,7 @@ func TestServerPlaySocketError(t *testing.T) {
 					require.NoError(t, err)
 
 					for _, intf := range intfs {
-						err = p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
+						err = p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination2)})
 						require.NoError(t, err)
 					}
 
@@ -1248,7 +1248,7 @@ func TestServerPlaySocketError(t *testing.T) {
 					require.NoError(t, err)
 
 					for _, intf := range intfs {
-						err = p.JoinGroup(&intf, &net.UDPAddr{IP: *th.Destination})
+						err = p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination2)})
 						require.NoError(t, err)
 					}
 

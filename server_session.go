@@ -1468,8 +1468,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					th.Delivery = &de
 					v := uint(127)
 					th.TTL = &v
-					d := stream.medias[medi].multicastWriter.ip()
-					th.Destination = &d
+					dest := stream.medias[medi].multicastWriter.ip().String()
+					th.Destination2 = &dest
 					th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 				}
 

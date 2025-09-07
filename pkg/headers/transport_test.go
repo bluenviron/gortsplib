@@ -54,11 +54,12 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
 		base.HeaderValue{`RTP/AVP;multicast;destination=225.219.201.15;port=7000-7001;ttl=127`},
 		Transport{
-			Protocol:    TransportProtocolUDP,
-			Delivery:    deliveryPtr(TransportDeliveryMulticast),
-			Destination: ipPtr(net.ParseIP("225.219.201.15")),
-			TTL:         uintPtr(127),
-			Ports:       &[2]int{7000, 7001},
+			Protocol:     TransportProtocolUDP,
+			Delivery:     deliveryPtr(TransportDeliveryMulticast),
+			Destination:  ipPtr(net.ParseIP("225.219.201.15")),
+			Destination2: stringPtr("225.219.201.15"),
+			TTL:          uintPtr(127),
+			Ports:        &[2]int{7000, 7001},
 		},
 	},
 	{
@@ -94,6 +95,7 @@ var casesTransport = []struct {
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{5000, 5001},
 			Source:      ipPtr(net.ParseIP("127.0.0.1")),
+			Source2:     stringPtr("127.0.0.1"),
 		},
 	},
 	{
@@ -164,6 +166,7 @@ var casesTransport = []struct {
 			Protocol:    TransportProtocolUDP,
 			Delivery:    deliveryPtr(TransportDeliveryUnicast),
 			Source:      ipPtr(net.ParseIP("172.16.8.2")),
+			Source2:     stringPtr("172.16.8.2"),
 			ClientPorts: &[2]int{14236, 14237},
 			ServerPorts: &[2]int{56002, 56003},
 		},

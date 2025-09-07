@@ -1867,8 +1867,17 @@ func (c *Client) doSetup(
 		}
 
 		var remoteIP net.IP
-		if thRes.Source != nil {
-			remoteIP = *thRes.Source
+		if thRes.Source2 != nil {
+			if ip := net.ParseIP(*thRes.Source2); ip != nil {
+				remoteIP = ip
+			} else {
+				var addr *net.UDPAddr
+				addr, err = net.ResolveUDPAddr("udp", *thRes.Source2)
+				if err != nil {
+					return nil, fmt.Errorf("unable to solve source host: %w", err)
+				}
+				remoteIP = addr.IP
+			}
 		} else {
 			remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
 		}
@@ -1902,19 +1911,39 @@ func (c *Client) doSetup(
 			return nil, liberrors.ErrClientTransportHeaderInvalidDelivery{}
 		}
 
-		if thRes.Ports == nil {
-			return nil, liberrors.ErrClientTransportHeaderNoPorts{}
-		}
-
-		if thRes.Destination == nil {
-			return nil, liberrors.ErrClientTransportHeaderNoDestination{}
-		}
-
 		var remoteIP net.IP
-		if thRes.Source != nil {
-			remoteIP = *thRes.Source
+		if thRes.Source2 != nil {
+			if ip := net.ParseIP(*thRes.Source2); ip != nil {
+				remoteIP = ip
+			} else {
+				var addr *net.UDPAddr
+				addr, err = net.ResolveUDPAddr("udp", *thRes.Source2)
+				if err != nil {
+					return nil, fmt.Errorf("unable to solve source host: %w", err)
+				}
+				remoteIP = addr.IP
+			}
 		} else {
 			remoteIP = c.nconn.RemoteAddr().(*net.TCPAddr).IP
+		}
+
+		var destIP net.IP
+		if thRes.Destination2 == nil {
+			return nil, liberrors.ErrClientTransportHeaderNoDestination{}
+		}
+		if ip := net.ParseIP(*thRes.Destination2); ip != nil {
+			destIP = ip
+		} else {
+			var addr *net.UDPAddr
+			addr, err = net.ResolveUDPAddr("udp", *thRes.Destination2)
+			if err != nil {
+				return nil, fmt.Errorf("unable to solve destination host: %w", err)
+			}
+			destIP = addr.IP
+		}
+
+		if thRes.Ports == nil {
+			return nil, liberrors.ErrClientTransportHeaderNoPorts{}
 		}
 
 		var intf *net.Interface
@@ -1927,8 +1956,8 @@ func (c *Client) doSetup(
 			c,
 			true,
 			intf,
-			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[0]), 10)),
-			net.JoinHostPort(thRes.Destination.String(), strconv.FormatInt(int64(thRes.Ports[1]), 10)),
+			net.JoinHostPort(destIP.String(), strconv.FormatInt(int64(thRes.Ports[0]), 10)),
+			net.JoinHostPort(destIP.String(), strconv.FormatInt(int64(thRes.Ports[1]), 10)),
 		)
 		if err != nil {
 			return nil, err
