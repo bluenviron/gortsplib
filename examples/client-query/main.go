@@ -8,7 +8,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server.
 // 2. get and print informations about medias published on a path.
 

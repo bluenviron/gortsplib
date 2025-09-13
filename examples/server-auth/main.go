@@ -14,7 +14,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. create a RTSP server which accepts plain connections.
 // 2. allow a single client to publish a stream, if it provides credentials.
 // 3. allow several clients to read the stream, if they provide credentials.

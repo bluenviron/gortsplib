@@ -12,7 +12,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server, announce an LPCM format.
 // 2. generate dummy LPCM audio samples.
 // 3. generate RTP packets from LPCM audio samples.

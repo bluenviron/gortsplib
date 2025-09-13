@@ -11,7 +11,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server.
 // 2. read all media streams on a path.
 // 3. Get PTS and NTP of incoming RTP packets.

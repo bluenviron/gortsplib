@@ -13,7 +13,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. set additional client options.
 // 2. connect to a RTSP server and read all medias on a path.
 

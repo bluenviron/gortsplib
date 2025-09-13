@@ -14,7 +14,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. generate a dummy G711 audio stream.
 // 2. connect to a RTSP server, find a back channel that supports G711.
 // 3. route the G711 stream to the channel.

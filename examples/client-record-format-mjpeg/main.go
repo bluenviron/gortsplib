@@ -14,7 +14,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server, announce a M-JPEG format.
 // 2. generate dummy RGBA images.
 // 3. encode images with JPEG.

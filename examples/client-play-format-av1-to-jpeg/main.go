@@ -19,7 +19,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server.
 // 2. check if there's a AV1 stream.
 // 3. decode the AV1 stream into RGBA frames.

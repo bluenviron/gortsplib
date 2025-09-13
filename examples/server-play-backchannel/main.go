@@ -12,7 +12,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. create a RTSP server which accepts plain connections.
 // 2. create a stream with an audio direct channel and an audio back channel.
 // 3. write the audio direct channel to readers, read the back channel from readers.
