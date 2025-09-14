@@ -12,17 +12,9 @@ type clientReader struct {
 
 	mutex                  sync.Mutex
 	allowInterleavedFrames bool
-
-	chResponse chan *base.Response
-	chRequest  chan *base.Request
-	chError    chan error
 }
 
 func (r *clientReader) start() {
-	r.chResponse = make(chan *base.Response)
-	r.chRequest = make(chan *base.Request)
-	r.chError = make(chan error)
-
 	go r.run()
 }
 
@@ -35,17 +27,16 @@ func (r *clientReader) setAllowInterleavedFrames(v bool) {
 func (r *clientReader) wait() {
 	for {
 		select {
-		case <-r.chError:
+		case <-r.c.chResponse:
+		case <-r.c.chRequest:
+		case <-r.c.chReadError:
 			return
-
-		case <-r.chResponse:
-		case <-r.chRequest:
 		}
 	}
 }
 
 func (r *clientReader) run() {
-	r.chError <- r.runInner()
+	r.c.chReadError <- r.runInner()
 }
 
 func (r *clientReader) runInner() error {
@@ -57,10 +48,10 @@ func (r *clientReader) runInner() error {
 
 		switch what := what.(type) {
 		case *base.Response:
-			r.chResponse <- what
+			r.c.chResponse <- what
 
 		case *base.Request:
-			r.chRequest <- what
+			r.c.chRequest <- what
 
 		case *base.InterleavedFrame:
 			r.mutex.Lock()

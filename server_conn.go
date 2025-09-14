@@ -211,6 +211,8 @@ type ServerConn struct {
 	authNonce  string
 
 	// in
+	chRequest       chan readReq
+	chReadError     chan error
 	chRemoveSession chan *ServerSession
 
 	// out
@@ -228,6 +230,8 @@ func (sc *ServerConn) initialize() {
 	sc.ctx = ctx
 	sc.ctxCancel = ctxCancel
 	sc.remoteAddr = sc.nconn.RemoteAddr().(*net.TCPAddr)
+	sc.chRequest = make(chan readReq)
+	sc.chReadError = make(chan error)
 	sc.chRemoveSession = make(chan *ServerSession)
 	sc.done = make(chan struct{})
 
@@ -383,10 +387,10 @@ func (sc *ServerConn) run() {
 func (sc *ServerConn) runInner() error {
 	for {
 		select {
-		case req := <-sc.reader.chRequest:
+		case req := <-sc.chRequest:
 			req.res <- sc.handleRequestOuter(req.req)
 
-		case err := <-sc.reader.chError:
+		case err := <-sc.chReadError:
 			sc.reader = nil
 			return err
 

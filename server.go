@@ -314,9 +314,7 @@ func (s *Server) Start() error {
 	s.chCloseSession = make(chan *ServerSession)
 	s.chGetMulticastIP = make(chan chGetMulticastIPReq)
 
-	s.tcpListener = &serverTCPListener{
-		s: s,
-	}
+	s.tcpListener = &serverTCPListener{s: s}
 	err := s.tcpListener.initialize()
 	if err != nil {
 		if s.udpRTPListener != nil {
@@ -355,6 +353,8 @@ func (s *Server) run() {
 
 	s.ctxCancel()
 
+	s.tcpListener.close()
+
 	if s.udpRTCPListener != nil {
 		s.udpRTCPListener.close()
 	}
@@ -362,8 +362,6 @@ func (s *Server) run() {
 	if s.udpRTPListener != nil {
 		s.udpRTPListener.close()
 	}
-
-	s.tcpListener.close()
 }
 
 func (s *Server) runInner() error {

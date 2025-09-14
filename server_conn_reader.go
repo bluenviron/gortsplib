@@ -24,25 +24,19 @@ func isSwitchReadFuncError(err error) bool {
 
 type serverConnReader struct {
 	sc *ServerConn
-
-	chRequest chan readReq
-	chError   chan error
 }
 
 func (cr *serverConnReader) initialize() {
-	cr.chRequest = make(chan readReq)
-	cr.chError = make(chan error)
-
 	go cr.run()
 }
 
 func (cr *serverConnReader) wait() {
 	for {
 		select {
-		case <-cr.chError:
+		case <-cr.sc.chReadError:
 			return
 
-		case req := <-cr.chRequest:
+		case req := <-cr.sc.chRequest:
 			req.res <- fmt.Errorf("terminated")
 		}
 	}
@@ -64,7 +58,7 @@ func (cr *serverConnReader) run() {
 			continue
 		}
 
-		cr.chError <- err
+		cr.sc.chReadError <- err
 		break
 	}
 }
@@ -83,7 +77,7 @@ func (cr *serverConnReader) readFuncStandard() error {
 		case *base.Request:
 			cres := make(chan error)
 			req := readReq{req: what, res: cres}
-			cr.chRequest <- req
+			cr.sc.chRequest <- req
 
 			err = <-cres
 			if err != nil {
@@ -119,7 +113,7 @@ func (cr *serverConnReader) readFuncTCP() error {
 		case *base.Request:
 			cres := make(chan error)
 			req := readReq{req: what, res: cres}
-			cr.chRequest <- req
+			cr.sc.chRequest <- req
 
 			err = <-cres
 			if err != nil {

@@ -588,6 +588,9 @@ type Client struct {
 	chPlay        chan playReq
 	chRecord      chan recordReq
 	chPause       chan pauseReq
+	chResponse    chan *base.Response
+	chRequest     chan *base.Request
+	chReadError   chan error
 	chWriterError chan error
 
 	// out
@@ -723,6 +726,9 @@ func (c *Client) Start2() error {
 	c.chPlay = make(chan playReq)
 	c.chRecord = make(chan recordReq)
 	c.chPause = make(chan pauseReq)
+	c.chResponse = make(chan *base.Response)
+	c.chRequest = make(chan *base.Request)
+	c.chReadError = make(chan error)
 	c.chWriterError = make(chan error)
 	c.done = make(chan struct{})
 
@@ -792,27 +798,6 @@ func (c *Client) run() {
 
 func (c *Client) runInner() error {
 	for {
-		chReaderResponse := func() chan *base.Response {
-			if c.reader != nil {
-				return c.reader.chResponse
-			}
-			return nil
-		}()
-
-		chReaderRequest := func() chan *base.Request {
-			if c.reader != nil {
-				return c.reader.chRequest
-			}
-			return nil
-		}()
-
-		chReaderError := func() chan error {
-			if c.reader != nil {
-				return c.reader.chError
-			}
-			return nil
-		}()
-
 		select {
 		case req := <-c.chOptions:
 			res, err := c.doOptions(req.url)
@@ -884,19 +869,19 @@ func (c *Client) runInner() error {
 			}
 			c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 
-		case err := <-chReaderError:
-			c.reader = nil
-			return err
-
-		case res := <-chReaderResponse:
+		case res := <-c.chResponse:
 			c.OnResponse(res)
 			// these are responses to keepalives, ignore them.
 
-		case req := <-chReaderRequest:
+		case req := <-c.chRequest:
 			err := c.handleServerRequest(req)
 			if err != nil {
 				return err
 			}
+
+		case err := <-c.chReadError:
+			c.reader = nil
+			return err
 
 		case err := <-c.chWriterError:
 			return err
@@ -916,11 +901,13 @@ func (c *Client) waitResponse(requestCseqStr string) (*base.Response, error) {
 		case <-t.C:
 			return nil, liberrors.ErrClientRequestTimedOut{}
 
-		case err := <-c.reader.chError:
-			c.reader = nil
-			return nil, err
+		case req := <-c.chRequest:
+			err := c.handleServerRequest(req)
+			if err != nil {
+				return nil, err
+			}
 
-		case res := <-c.reader.chResponse:
+		case res := <-c.chResponse:
 			c.OnResponse(res)
 
 			// accept response if CSeq equals request CSeq, or if CSeq is not present
@@ -928,11 +915,9 @@ func (c *Client) waitResponse(requestCseqStr string) (*base.Response, error) {
 				return res, nil
 			}
 
-		case req := <-c.reader.chRequest:
-			err := c.handleServerRequest(req)
-			if err != nil {
-				return nil, err
-			}
+		case err := <-c.chReadError:
+			c.reader = nil
+			return nil, err
 
 		case <-c.ctx.Done():
 			return nil, liberrors.ErrClientTerminated{}
