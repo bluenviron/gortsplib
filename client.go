@@ -23,6 +23,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/bluenviron/gortsplib/v4/internal/asyncprocessor"
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
@@ -570,7 +571,7 @@ type Client struct {
 	keepAliveTimer       *time.Timer
 	closeError           error
 	writerMutex          sync.RWMutex
-	writer               *asyncProcessor
+	writer               *asyncprocessor.Processor
 	reader               *clientReader
 	timeDecoder          *rtptime.GlobalDecoder2
 	mustClose            bool
@@ -580,13 +581,14 @@ type Client struct {
 	bytesSent            *uint64
 
 	// in
-	chOptions  chan optionsReq
-	chDescribe chan describeReq
-	chAnnounce chan announceReq
-	chSetup    chan setupReq
-	chPlay     chan playReq
-	chRecord   chan recordReq
-	chPause    chan pauseReq
+	chOptions     chan optionsReq
+	chDescribe    chan describeReq
+	chAnnounce    chan announceReq
+	chSetup       chan setupReq
+	chPlay        chan playReq
+	chRecord      chan recordReq
+	chPause       chan pauseReq
+	chWriterError chan error
 
 	// out
 	done chan struct{}
@@ -721,6 +723,7 @@ func (c *Client) Start2() error {
 	c.chPlay = make(chan playReq)
 	c.chRecord = make(chan recordReq)
 	c.chPause = make(chan pauseReq)
+	c.chWriterError = make(chan error)
 	c.done = make(chan struct{})
 
 	go c.run()
@@ -810,13 +813,6 @@ func (c *Client) runInner() error {
 			return nil
 		}()
 
-		chWriterError := func() chan struct{} {
-			if c.writer != nil {
-				return c.writer.chStopped
-			}
-			return nil
-		}()
-
 		select {
 		case req := <-c.chOptions:
 			res, err := c.doOptions(req.url)
@@ -888,9 +884,6 @@ func (c *Client) runInner() error {
 			}
 			c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 
-		case <-chWriterError:
-			return c.writer.stopError
-
 		case err := <-chReaderError:
 			c.reader = nil
 			return err
@@ -904,6 +897,9 @@ func (c *Client) runInner() error {
 			if err != nil {
 				return err
 			}
+
+		case err := <-c.chWriterError:
+			return err
 
 		case <-c.ctx.Done():
 			return liberrors.ErrClientTerminated{}
@@ -1134,8 +1130,8 @@ func (c *Client) stopTransportRoutines() {
 func (c *Client) createWriter() {
 	c.writerMutex.Lock()
 
-	c.writer = &asyncProcessor{
-		bufferSize: func() int {
+	c.writer = &asyncprocessor.Processor{
+		BufferSize: func() int {
 			if c.state == clientStateRecord || c.backChannelSetupped {
 				return c.WriteQueueSize
 			}
@@ -1145,19 +1141,25 @@ func (c *Client) createWriter() {
 			// decrease RAM consumption by allocating less buffers.
 			return 8
 		}(),
+		OnError: func(ctx context.Context, err error) {
+			select {
+			case <-ctx.Done():
+			case <-c.ctx.Done():
+			case c.chWriterError <- err:
+			}
+		},
 	}
-
-	c.writer.initialize()
+	c.writer.Initialize()
 
 	c.writerMutex.Unlock()
 }
 
 func (c *Client) startWriter() {
-	c.writer.start()
+	c.writer.Start()
 }
 
 func (c *Client) destroyWriter() {
-	c.writer.close()
+	c.writer.Close()
 
 	c.writerMutex.Lock()
 	c.writer = nil

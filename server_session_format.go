@@ -154,7 +154,7 @@ func (sf *serverSessionFormat) writePacketRTPEncoded(payload []byte) error {
 		return nil
 	}
 
-	ok := sf.sm.ss.writer.push(func() error {
+	ok := sf.sm.ss.writer.Push(func() error {
 		return sf.writePacketRTPInQueue(payload)
 	})
 	if !ok {

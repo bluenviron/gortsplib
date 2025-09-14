@@ -458,7 +458,7 @@ func (sm *serverSessionMedia) writePacketRTCPEncoded(payload []byte) error {
 		return nil
 	}
 
-	ok := sm.ss.writer.push(func() error {
+	ok := sm.ss.writer.Push(func() error {
 		return sm.writePacketRTCPInQueue(payload)
 	})
 	if !ok {

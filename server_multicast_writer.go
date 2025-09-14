@@ -1,8 +1,10 @@
 package gortsplib
 
 import (
+	"context"
 	"net"
 
+	"github.com/bluenviron/gortsplib/v4/internal/asyncprocessor"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
 )
 
@@ -11,7 +13,7 @@ type serverMulticastWriter struct {
 
 	rtpl     *serverUDPListener
 	rtcpl    *serverUDPListener
-	writer   *asyncProcessor
+	writer   *asyncprocessor.Processor
 	rtpAddr  *net.UDPAddr
 	rtcpAddr *net.UDPAddr
 }
@@ -49,11 +51,12 @@ func (h *serverMulticastWriter) initialize() error {
 	h.rtpAddr = rtpAddr
 	h.rtcpAddr = rtcpAddr
 
-	h.writer = &asyncProcessor{
-		bufferSize: h.s.WriteQueueSize,
+	h.writer = &asyncprocessor.Processor{
+		BufferSize: h.s.WriteQueueSize,
+		OnError:    func(_ context.Context, _ error) {},
 	}
-	h.writer.initialize()
-	h.writer.start()
+	h.writer.Initialize()
+	h.writer.Start()
 
 	return nil
 }
@@ -61,7 +64,7 @@ func (h *serverMulticastWriter) initialize() error {
 func (h *serverMulticastWriter) close() {
 	h.rtpl.close()
 	h.rtcpl.close()
-	h.writer.close()
+	h.writer.Close()
 }
 
 func (h *serverMulticastWriter) ip() net.IP {
@@ -69,7 +72,7 @@ func (h *serverMulticastWriter) ip() net.IP {
 }
 
 func (h *serverMulticastWriter) writePacketRTP(byts []byte) error {
-	ok := h.writer.push(func() error {
+	ok := h.writer.Push(func() error {
 		return h.rtpl.write(byts, h.rtpAddr)
 	})
 	if !ok {
@@ -80,7 +83,7 @@ func (h *serverMulticastWriter) writePacketRTP(byts []byte) error {
 }
 
 func (h *serverMulticastWriter) writePacketRTCP(byts []byte) error {
-	ok := h.writer.push(func() error {
+	ok := h.writer.Push(func() error {
 		return h.rtcpl.write(byts, h.rtcpAddr)
 	})
 	if !ok {

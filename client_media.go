@@ -423,7 +423,7 @@ func (cm *clientMedia) writePacketRTCP(pkt rtcp.Packet) error {
 		return nil
 	}
 
-	ok := cm.c.writer.push(func() error {
+	ok := cm.c.writer.Push(func() error {
 		return cm.writePacketRTCPInQueue(buf)
 	})
 	if !ok {
