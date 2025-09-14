@@ -5,6 +5,7 @@ package teste2e
 import (
 	"crypto/tls"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,60 +47,100 @@ func TestClientVsServer(t *testing.T) {
 	for _, ca := range []struct {
 		publisherScheme string
 		publisherProto  string
+		publisherTunnel string
 		readerScheme    string
 		readerProto     string
+		readerTunnel    string
 	}{
 		{
 			publisherScheme: "rtsp",
 			publisherProto:  "udp",
+			publisherTunnel: "none",
 			readerScheme:    "rtsp",
 			readerProto:     "udp",
+			readerTunnel:    "none",
 		},
 		{
 			publisherScheme: "rtsp",
 			publisherProto:  "tcp",
+			publisherTunnel: "none",
 			readerScheme:    "rtsp",
 			readerProto:     "udp",
+			readerTunnel:    "none",
 		},
 		{
 			publisherScheme: "rtsp",
 			publisherProto:  "tcp",
+			publisherTunnel: "none",
 			readerScheme:    "rtsp",
 			readerProto:     "tcp",
+			readerTunnel:    "none",
 		},
 		{
 			publisherScheme: "rtsp",
 			publisherProto:  "udp",
+			publisherTunnel: "none",
 			readerScheme:    "rtsp",
 			readerProto:     "tcp",
+			readerTunnel:    "none",
 		},
 		{
 			publisherScheme: "rtsp",
 			publisherProto:  "udp",
+			publisherTunnel: "none",
 			readerScheme:    "rtsp",
 			readerProto:     "multicast",
+			readerTunnel:    "none",
 		},
 		{
 			publisherScheme: "rtsps",
 			publisherProto:  "tcp",
+			publisherTunnel: "none",
 			readerScheme:    "rtsps",
 			readerProto:     "tcp",
+			readerTunnel:    "none",
 		},
 		{
 			publisherScheme: "rtsps",
 			publisherProto:  "udp",
+			publisherTunnel: "none",
 			readerScheme:    "rtsps",
 			readerProto:     "tcp",
+			readerTunnel:    "none",
 		},
 		{
 			publisherScheme: "rtsps",
 			publisherProto:  "udp",
+			publisherTunnel: "none",
 			readerScheme:    "rtsps",
 			readerProto:     "multicast",
+			readerTunnel:    "none",
+		},
+		{
+			publisherScheme: "rtsp",
+			publisherProto:  "tcp",
+			publisherTunnel: "http",
+			readerScheme:    "rtsp",
+			readerProto:     "udp",
+			readerTunnel:    "none",
+		},
+		{
+			publisherScheme: "rtsp",
+			publisherProto:  "tcp",
+			publisherTunnel: "none",
+			readerScheme:    "rtsp",
+			readerProto:     "tcp",
+			readerTunnel:    "http",
 		},
 	} {
-		t.Run(ca.publisherScheme+"_"+ca.publisherProto+"_"+
-			ca.readerScheme+"_"+ca.readerProto, func(t *testing.T) {
+		t.Run(strings.Join([]string{
+			ca.publisherScheme,
+			ca.publisherProto,
+			ca.publisherTunnel,
+			ca.readerScheme,
+			ca.readerProto,
+			ca.readerTunnel,
+		}, "_"), func(t *testing.T) {
 			ss := &sampleServer{}
 
 			if ca.publisherScheme == "rtsps" {
@@ -124,6 +165,13 @@ func TestClientVsServer(t *testing.T) {
 				},
 			}
 
+			var publisherTunnel gortsplib.Tunnel
+			if ca.publisherTunnel == "http" {
+				publisherTunnel = gortsplib.TunnelHTTP
+			} else {
+				publisherTunnel = gortsplib.TunnelNone
+			}
+
 			var publisherProto gortsplib.Transport
 			switch ca.publisherProto {
 			case "udp":
@@ -134,6 +182,7 @@ func TestClientVsServer(t *testing.T) {
 
 			publisher := &gortsplib.Client{
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
+				Tunnel:    publisherTunnel,
 				Transport: &publisherProto,
 			}
 			err = publisher.StartRecording(ca.publisherScheme+"://127.0.0.1:8554/test/stream?key=val", desc)
@@ -141,6 +190,13 @@ func TestClientVsServer(t *testing.T) {
 			defer publisher.Close()
 
 			time.Sleep(1 * time.Second)
+
+			var readerTunnel gortsplib.Tunnel
+			if ca.readerTunnel == "http" {
+				readerTunnel = gortsplib.TunnelHTTP
+			} else {
+				readerTunnel = gortsplib.TunnelNone
+			}
 
 			var readerProto gortsplib.Transport
 			switch ca.readerProto {
@@ -159,6 +215,7 @@ func TestClientVsServer(t *testing.T) {
 				Scheme:    u.Scheme,
 				Host:      u.Host,
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
+				Tunnel:    readerTunnel,
 				Transport: &readerProto,
 			}
 			err = reader.Start2()

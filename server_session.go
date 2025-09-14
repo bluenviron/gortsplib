@@ -1956,6 +1956,19 @@ func (ss *ServerSession) handleRequest(req sessionRequestReq) (*base.Response, *
 	}
 }
 
+func (ss *ServerSession) handleRequestNoWait(req sessionRequestReq) {
+	select {
+	case ss.chHandleRequest <- req:
+	case <-ss.ctx.Done():
+		req.res <- sessionRequestRes{
+			res: &base.Response{
+				StatusCode: base.StatusBadRequest,
+			},
+			err: liberrors.ErrServerTerminated{},
+		}
+	}
+}
+
 func (ss *ServerSession) removeConn(sc *ServerConn) {
 	select {
 	case ss.chRemoveConn <- sc:

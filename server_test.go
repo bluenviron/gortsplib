@@ -2,9 +2,12 @@ package gortsplib
 
 import (
 	"bufio"
+	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1290,4 +1293,136 @@ func TestServerStreamErrorNoServer(t *testing.T) {
 	stream := &ServerStream{Server: s}
 	err := stream.Initialize()
 	require.Error(t, err)
+}
+
+func TestServerHTTPTunnel(t *testing.T) {
+	for _, ca := range []string{"http", "https"} {
+		t.Run(ca, func(t *testing.T) {
+			done := make(chan struct{})
+			n := new(uint64)
+
+			s := &Server{
+				Handler: &testServerHandler{
+					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
+						switch atomic.AddUint64(n, 1) {
+						case 1:
+							require.EqualError(t, ctx.Error, "upgraded to HTTP conn")
+
+						case 2:
+							require.EqualError(t, ctx.Error, "upgraded to HTTP conn")
+							close(done)
+						}
+					},
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusNotFound,
+						}, nil, nil
+					},
+				},
+				RTSPAddress: "localhost:8554",
+			}
+
+			if ca == "https" {
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			nconn1, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn1.Close()
+
+			if ca == "https" {
+				nconn1 = tls.Client(nconn1, &tls.Config{InsecureSkipVerify: true})
+			}
+
+			_, err = nconn1.Write([]byte(
+				"GET / HTTP/1.1\r\n" +
+					"Host: localhost:8554\r\n" +
+					"X-Sessioncookie: testtunid\r\n" +
+					"Accept: application/x-rtsp-tunnelled\r\n" +
+					"Content-Length: 30000\r\n" +
+					"\r\n",
+			))
+			require.NoError(t, err)
+
+			buf1 := bufio.NewReader(nconn1)
+			res, err := http.ReadResponse(buf1, nil)
+			require.NoError(t, err)
+			res.Body.Close()
+
+			require.Equal(t, &http.Response{
+				Status:        "200 OK",
+				StatusCode:    http.StatusOK,
+				Proto:         "HTTP/1.1",
+				ProtoMajor:    1,
+				ProtoMinor:    1,
+				ContentLength: -1,
+				Close:         true,
+				Header: http.Header{
+					"Cache-Control": []string{"no-cache"},
+					"Content-Type":  []string{"application/x-rtsp-tunnelled"},
+					"Pragma":        []string{"no-cache"},
+				},
+				Body: res.Body,
+			}, res)
+
+			nconn2, err := net.Dial("tcp", "localhost:8554")
+			require.NoError(t, err)
+			defer nconn2.Close()
+
+			if ca == "https" {
+				nconn2 = tls.Client(nconn2, &tls.Config{InsecureSkipVerify: true})
+			}
+
+			_, err = nconn2.Write([]byte(
+				"POST / HTTP/1.1\r\n" +
+					"Host: localhost:8554\r\n" +
+					"X-Sessioncookie: testtunid\r\n" +
+					"Content-Type: application/x-rtsp-tunnelled\r\n" +
+					"Content-Length: 30000\r\n" +
+					"\r\n",
+			))
+			require.NoError(t, err)
+
+			buf2 := bufio.NewReader(nconn2)
+			res, err = http.ReadResponse(buf2, nil)
+			require.NoError(t, err)
+			res.Body.Close()
+
+			require.Equal(t, &http.Response{
+				Status:        "200 OK",
+				StatusCode:    http.StatusOK,
+				Proto:         "HTTP/1.1",
+				ProtoMajor:    1,
+				ProtoMinor:    1,
+				ContentLength: -1,
+				Close:         true,
+				Header: http.Header{
+					"Cache-Control": []string{"no-cache"},
+					"Content-Type":  []string{"application/x-rtsp-tunnelled"},
+					"Pragma":        []string{"no-cache"},
+				},
+				Body: res.Body,
+			}, res)
+
+			conn := conn.NewConn(bufio.NewReader(buf1), base64.NewEncoder(base64.StdEncoding, nconn2))
+
+			rres, err := writeReqReadRes(conn, base.Request{
+				Method: base.Describe,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream?param=value"),
+				Header: base.Header{
+					"CSeq": base.HeaderValue{"1"},
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusNotFound, rres.StatusCode)
+
+			<-done
+		})
+	}
 }

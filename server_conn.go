@@ -16,7 +16,6 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
-	"github.com/bluenviron/gortsplib/v4/pkg/conn"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
@@ -196,19 +195,21 @@ type readReq struct {
 
 // ServerConn is a server-side RTSP connection.
 type ServerConn struct {
-	s     *Server
-	nconn net.Conn
+	s      *Server
+	nconn  net.Conn
+	isHTTP bool
 
-	ctx        context.Context
-	ctxCancel  func()
-	propsMutex sync.RWMutex
-	userData   interface{}
-	remoteAddr *net.TCPAddr
-	bc         *bytecounter.ByteCounter
-	conn       *conn.Conn
-	session    *ServerSession
-	reader     *serverConnReader
-	authNonce  string
+	ctx              context.Context
+	ctxCancel        func()
+	propsMutex       sync.RWMutex
+	userData         interface{}
+	remoteAddr       *net.TCPAddr
+	bc               *bytecounter.ByteCounter
+	session          *ServerSession
+	reader           *serverConnReader
+	authNonce        string
+	httpReadBuf      *bufio.Reader
+	httpReadTunnelID string
 
 	// in
 	chRequest       chan readReq
@@ -222,7 +223,7 @@ type ServerConn struct {
 func (sc *ServerConn) initialize() {
 	ctx, ctxCancel := context.WithCancel(sc.s.ctx)
 
-	if sc.s.TLSConfig != nil {
+	if sc.s.TLSConfig != nil && !sc.isHTTP {
 		sc.nconn = tls.Server(sc.nconn, sc.s.TLSConfig)
 	}
 
@@ -283,7 +284,14 @@ func (sc *ServerConn) Session() *ServerSession {
 
 // Transport returns transport details.
 func (sc *ServerConn) Transport() *ConnTransport {
-	return &ConnTransport{}
+	return &ConnTransport{
+		Tunnel: func() Tunnel {
+			if sc.isHTTP {
+				return TunnelHTTP
+			}
+			return TunnelNone
+		}(),
+	}
 }
 
 // Stats returns connection statistics.
@@ -354,7 +362,6 @@ func (sc *ServerConn) run() {
 		})
 	}
 
-	sc.conn = conn.NewConn(bufio.NewReader(sc.bc), sc.bc)
 	sc.reader = &serverConnReader{
 		sc: sc,
 	}
@@ -364,7 +371,9 @@ func (sc *ServerConn) run() {
 
 	sc.ctxCancel()
 
-	sc.nconn.Close()
+	if !errors.Is(err, errHTTPUpgraded) {
+		sc.nconn.Close()
+	}
 
 	if sc.reader != nil {
 		sc.reader.wait()
@@ -620,7 +629,7 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	}
 
 	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-	err2 := sc.conn.WriteResponse(res)
+	err2 := sc.reader.conn.WriteResponse(res)
 	if err == nil && err2 != nil {
 		err = err2
 	}

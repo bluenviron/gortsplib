@@ -462,15 +462,17 @@ type Client struct {
 	// a TLS configuration to connect to TLS (RTSPS) servers.
 	// It defaults to nil.
 	TLSConfig *tls.Config
+	// tunnel.
+	Tunnel Tunnel
+	// transport protocol (UDP, Multicast or TCP).
+	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
+	// It defaults to nil.
+	Transport *TransportProtocol
 	// enable communication with servers which don't provide UDP server ports
 	// or use different server ports than the announced ones.
 	// This can be a security issue.
 	// It defaults to false.
 	AnyPortEnable bool
-	// transport protocol (UDP, Multicast or TCP).
-	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
-	// It defaults to nil.
-	Transport *TransportProtocol
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout, otherwise it switches to TCP.
 	// It defaults to 3 seconds.
@@ -1163,20 +1165,40 @@ func (c *Client) connOpen() error {
 	dialCtx, dialCtxCancel := context.WithTimeout(c.ctx, c.ReadTimeout)
 	defer dialCtxCancel()
 
-	nconn, err := c.DialContext(dialCtx, "tcp", canonicalAddr(&base.URL{
+	addr := canonicalAddr(&base.URL{
 		Scheme: c.Scheme,
 		Host:   c.Host,
-	}))
-	if err != nil {
-		return err
+	})
+
+	var tlsConfig *tls.Config
+	if c.Scheme == "rtsps" {
+		tlsConfig = c.TLSConfig
+		if tlsConfig == nil {
+			host, _, _ := net.SplitHostPort(addr)
+			tlsConfig = &tls.Config{
+				ServerName: host,
+			}
+		}
 	}
 
-	if c.Scheme == "rtsps" {
-		tlsConfig := c.TLSConfig
-		if tlsConfig == nil {
-			tlsConfig = &tls.Config{}
+	var nconn net.Conn
+
+	if c.Tunnel == TunnelHTTP {
+		var err error
+		nconn, err = newClientHTTPTunnel(dialCtx, c.DialContext, addr, tlsConfig)
+		if err != nil {
+			return err
 		}
-		nconn = tls.Client(nconn, tlsConfig)
+	} else {
+		var err error
+		nconn, err = c.DialContext(dialCtx, "tcp", addr)
+		if err != nil {
+			return err
+		}
+
+		if tlsConfig != nil {
+			nconn = tls.Client(nconn, tlsConfig)
+		}
 	}
 
 	c.nconn = nconn
@@ -1636,7 +1658,7 @@ func (c *Client) doSetup(
 			th.Profile = headers.TransportProfileAVP
 		}
 
-		if th.Profile == headers.TransportProfileSAVP || c.Scheme == "rtsp" {
+		if c.Tunnel == TunnelNone && (th.Profile == headers.TransportProfileSAVP || c.Scheme == "rtsp") {
 			protocol = TransportUDP
 		} else {
 			protocol = TransportTCP
@@ -2450,7 +2472,9 @@ func (c *Client) Transport2() *ClientTransport {
 	defer c.propsMutex.RUnlock()
 
 	return &ClientTransport{
-		Conn:    ConnTransport{},
+		Conn: ConnTransport{
+			Tunnel: c.Tunnel,
+		},
 		Session: c.setuppedTransport,
 	}
 }
