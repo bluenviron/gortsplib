@@ -141,8 +141,7 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 }
 
 // Marshal encodes the description in SDP format.
-// The argument is deprecated and has no effect. Set Session.Multicast to enable multicast.
-func (d Session) Marshal(_ bool) ([]byte, error) {
+func (d Session) Marshal() ([]byte, error) {
 	var sessionName psdp.SessionName
 	if d.Title != "" {
 		sessionName = psdp.SessionName(d.Title)

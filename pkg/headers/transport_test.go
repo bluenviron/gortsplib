@@ -1,7 +1,6 @@
 package headers
 
 import (
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -44,7 +43,6 @@ var casesTransport = []struct {
 		Transport{
 			Protocol:     TransportProtocolUDP,
 			Delivery:     ptrOf(TransportDeliveryMulticast),
-			Destination:  ptrOf(net.ParseIP("225.219.201.15")),
 			Destination2: ptrOf("225.219.201.15"),
 			TTL:          ptrOf(uint(127)),
 			Ports:        &[2]int{7000, 7001},
@@ -82,7 +80,6 @@ var casesTransport = []struct {
 			Mode:        ptrOf(TransportModeRecord),
 			ClientPorts: &[2]int{14186, 14187},
 			ServerPorts: &[2]int{5000, 5001},
-			Source:      ptrOf(net.ParseIP("127.0.0.1")),
 			Source2:     ptrOf("127.0.0.1"),
 		},
 	},
@@ -153,7 +150,6 @@ var casesTransport = []struct {
 		Transport{
 			Protocol:    TransportProtocolUDP,
 			Delivery:    ptrOf(TransportDeliveryUnicast),
-			Source:      ptrOf(net.ParseIP("172.16.8.2")),
 			Source2:     ptrOf("172.16.8.2"),
 			ClientPorts: &[2]int{14236, 14237},
 			ServerPorts: &[2]int{56002, 56003},
@@ -165,7 +161,6 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/SAVP;unicast;client_port=3456-3457;mode=play`},
 		Transport{
 			Protocol:    TransportProtocolUDP,
-			Secure:      true,
 			Profile:     TransportProfileSAVP,
 			Delivery:    ptrOf(TransportDeliveryUnicast),
 			ClientPorts: &[2]int{3456, 3457},
@@ -178,7 +173,6 @@ var casesTransport = []struct {
 		base.HeaderValue{`RTP/SAVP/TCP;interleaved=0-1`},
 		Transport{
 			Protocol:       TransportProtocolTCP,
-			Secure:         true,
 			Profile:        TransportProfileSAVP,
 			InterleavedIDs: &[2]int{0, 1},
 		},

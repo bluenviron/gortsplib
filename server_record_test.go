@@ -621,18 +621,29 @@ func TestServerRecord(t *testing.T) {
 						}, nil, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+						var proto TransportProtocol
 						switch ca.transport {
 						case "udp":
-							v := TransportUDP
-							require.Equal(t, &v, ctx.Session.SetuppedTransport())
+							proto = TransportUDP
 
 						case "tcp":
-							v := TransportTCP
-							require.Equal(t, &v, ctx.Session.SetuppedTransport())
+							proto = TransportTCP
 						}
 
-						require.Equal(t, "param=value", ctx.Session.SetuppedQuery())
-						require.Equal(t, ctx.Session.AnnouncedDescription().Medias, ctx.Session.SetuppedMedias())
+						var profile headers.TransportProfile
+						if ca.secure == "secure" {
+							profile = headers.TransportProfileSAVP
+						} else {
+							profile = headers.TransportProfileAVP
+						}
+
+						require.Equal(t, &SessionTransport{
+							Protocol: proto,
+							Profile:  profile,
+						}, ctx.Session.Transport())
+
+						require.Equal(t, "param=value", ctx.Session.Query())
+						require.Equal(t, ctx.Session.AnnouncedDescription().Medias, ctx.Session.Medias())
 
 						// queue sending of RTCP packets.
 						// these are sent after the response, only if onRecord returns StatusOK.

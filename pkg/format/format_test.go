@@ -638,7 +638,6 @@ var casesFormat = []struct {
 			"a=fmtp:96 sprop-stereo=1\n",
 		&Opus{
 			PayloadTyp:   96,
-			IsStereo:     true,
 			ChannelCount: 2,
 		},
 		96,

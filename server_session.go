@@ -485,69 +485,12 @@ func (ss *ServerSession) Close() {
 	ss.ctxCancel()
 }
 
-// BytesReceived returns the number of read bytes.
-//
-// Deprecated: replaced by Stats()
-func (ss *ServerSession) BytesReceived() uint64 {
-	v := uint64(0)
-	for _, sm := range ss.setuppedMedias {
-		v += atomic.LoadUint64(sm.bytesReceived)
-	}
-	return v
-}
-
-// BytesSent returns the number of written bytes.
-//
-// Deprecated: replaced by Stats()
-func (ss *ServerSession) BytesSent() uint64 {
-	v := uint64(0)
-	for _, sm := range ss.setuppedMedias {
-		v += atomic.LoadUint64(sm.bytesSent)
-	}
-	return v
-}
-
 // State returns the state of the session.
 func (ss *ServerSession) State() ServerSessionState {
 	ss.propsMutex.RLock()
 	defer ss.propsMutex.RUnlock()
 
 	return ss.state
-}
-
-// SetuppedTransport returns the transport negotiated during SETUP.
-//
-// Deprecated: replaced by Transport.
-func (ss *ServerSession) SetuppedTransport() *TransportProtocol {
-	ss.propsMutex.RLock()
-	defer ss.propsMutex.RUnlock()
-
-	if ss.setuppedTransport == nil {
-		return nil
-	}
-	return &ss.setuppedTransport.Protocol
-}
-
-// SetuppedSecure returns whether a secure profile is in use.
-// If this is false, it does not mean that the stream is not secure, since
-// there are some combinations that are secure nonetheless, like RTSPS+TCP+unsecure.
-//
-// Deprecated: replaced by Transport.
-func (ss *ServerSession) SetuppedSecure() bool {
-	ss.propsMutex.RLock()
-	defer ss.propsMutex.RUnlock()
-
-	if ss.setuppedTransport == nil {
-		return false
-	}
-	return isSecure(ss.setuppedTransport.Profile)
-}
-
-// SetuppedStream returns the stream associated with the session.
-//
-// Deprecated: replaced by Stream.
-func (ss *ServerSession) SetuppedStream() *ServerStream {
-	return ss.Stream()
 }
 
 // Stream returns the stream associated with the session.
@@ -558,26 +501,12 @@ func (ss *ServerSession) Stream() *ServerStream {
 	return ss.setuppedStream
 }
 
-// SetuppedPath returns the path sent during SETUP or ANNOUNCE.
-//
-// Deprecated: replaced by Path.
-func (ss *ServerSession) SetuppedPath() string {
-	return ss.Path()
-}
-
 // Path returns the path sent during SETUP or ANNOUNCE.
 func (ss *ServerSession) Path() string {
 	ss.propsMutex.RLock()
 	defer ss.propsMutex.RUnlock()
 
 	return ss.setuppedPath
-}
-
-// SetuppedQuery returns the query sent during SETUP or ANNOUNCE.
-//
-// Deprecated: replaced by Query.
-func (ss *ServerSession) SetuppedQuery() string {
-	return ss.Query()
 }
 
 // Query returns the query sent during SETUP or ANNOUNCE.
@@ -594,13 +523,6 @@ func (ss *ServerSession) AnnouncedDescription() *description.Session {
 	defer ss.propsMutex.RUnlock()
 
 	return ss.announcedDesc
-}
-
-// SetuppedMedias returns the setupped medias.
-//
-// Deprecated: replaced by Medias.
-func (ss *ServerSession) SetuppedMedias() []*description.Media {
-	return ss.Medias()
 }
 
 // Medias returns setupped medias.
@@ -635,12 +557,12 @@ func (ss *ServerSession) Transport() *SessionTransport {
 }
 
 // Stats returns server session statistics.
-func (ss *ServerSession) Stats() *StatsSession {
+func (ss *ServerSession) Stats() *SessionStats {
 	ss.propsMutex.RLock()
 	defer ss.propsMutex.RUnlock()
 
-	mediaStats := func() map[*description.Media]StatsSessionMedia { //nolint:dupl
-		ret := make(map[*description.Media]StatsSessionMedia, len(ss.setuppedMedias))
+	mediaStats := func() map[*description.Media]SessionStatsMedia { //nolint:dupl
+		ret := make(map[*description.Media]SessionStatsMedia, len(ss.setuppedMedias))
 
 		for med, sm := range ss.setuppedMedias {
 			ret[med] = SessionStatsMedia{
@@ -1300,12 +1222,11 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		res, stream, err := ss.s.Handler.(ServerHandlerOnSetup).OnSetup(&ServerHandlerOnSetupCtx{
-			Session:   ss,
-			Conn:      sc,
-			Request:   req,
-			Path:      path,
-			Query:     query,
-			Transport: protocol,
+			Session: ss,
+			Conn:    sc,
+			Request: req,
+			Path:    path,
+			Query:   query,
 			Transport2: &SessionTransport{
 				Protocol: protocol,
 				Profile:  inTH.Profile,
@@ -1909,22 +1830,6 @@ func (ss *ServerSession) WritePacketRTP(medi *description.Media, pkt *rtp.Packet
 func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error {
 	sm := ss.setuppedMedias[medi]
 	return sm.writePacketRTCP(pkt)
-}
-
-// PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
-// It is computed by decoding the packet timestamp and sychronizing it with other tracks.
-//
-// Deprecated: replaced by PacketPTS2.
-func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Duration, bool) {
-	sm := ss.setuppedMedias[medi]
-	sf := sm.formats[pkt.PayloadType]
-
-	v, ok := ss.timeDecoder.Decode(sf.format, pkt)
-	if !ok {
-		return 0, false
-	}
-
-	return multiplyAndDivide(time.Duration(v), time.Second, time.Duration(sf.format.ClockRate())), true
 }
 
 // PacketPTS2 returns the PTS (presentation timestamp) of an incoming RTP packet.

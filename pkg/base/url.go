@@ -74,23 +74,6 @@ func (u *URL) CloneWithoutCredentials() *URL {
 	})
 }
 
-// RTSPPathAndQuery returns the path and query of a RTSP URL.
-//
-// Deprecated: not useful anymore.
-func (u *URL) RTSPPathAndQuery() (string, bool) {
-	var pathAndQuery string
-	if u.RawPath != "" {
-		pathAndQuery = u.RawPath
-	} else {
-		pathAndQuery = u.Path
-	}
-	if u.RawQuery != "" {
-		pathAndQuery += "?" + u.RawQuery
-	}
-
-	return pathAndQuery, true
-}
-
 // Hostname returns u.Host, stripping any valid port number if present.
 //
 // If the result is enclosed in square brackets, as literal IPv6 addresses are,

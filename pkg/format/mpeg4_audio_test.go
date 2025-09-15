@@ -24,11 +24,6 @@ func TestMPEG4AudioAttributes(t *testing.T) {
 	require.Equal(t, "MPEG-4 Audio", format.Codec())
 	require.Equal(t, 48000, format.ClockRate())
 	require.Equal(t, true, format.PTSEqualsDTS(&rtp.Packet{}))
-	require.Equal(t, &mpeg4audio.AudioSpecificConfig{
-		Type:         mpeg4audio.ObjectTypeAACLC,
-		SampleRate:   48000,
-		ChannelCount: 2,
-	}, format.GetConfig())
 }
 
 func TestMPEG4AudioDecEncoder(t *testing.T) {

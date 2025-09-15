@@ -43,7 +43,7 @@ func (sf *serverSessionFormat) initialize() {
 	if sf.sm.ss.state == ServerSessionStatePreRecord || sf.sm.media.IsBackChannel {
 		sf.rtpReceiver = &rtpreceiver.Receiver{
 			ClockRate:            sf.format.ClockRate(),
-			LocalSSRC:            &sf.localSSRC,
+			LocalSSRC:            sf.localSSRC,
 			UnrealiableTransport: udp,
 			Period:               sf.sm.ss.s.receiverReportPeriod,
 			TimeNow:              sf.sm.ss.s.timeNow,
@@ -91,11 +91,6 @@ func (sf *serverSessionFormat) readPacketRTP(pkt *rtp.Packet, now time.Time) {
 			h.OnPacketsLost(&ServerHandlerOnPacketsLostCtx{
 				Session: sf.sm.ss,
 				Lost:    lost,
-			})
-		} else if h, ok2 := sf.sm.ss.s.Handler.(ServerHandlerOnPacketLost); ok2 {
-			h.OnPacketLost(&ServerHandlerOnPacketLostCtx{
-				Session: sf.sm.ss,
-				Error:   liberrors.ErrServerRTPPacketsLost{Lost: uint(lost)}, //nolint:staticcheck
 			})
 		} else {
 			log.Printf("%d RTP %s lost",

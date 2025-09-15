@@ -9,14 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ptrOf[T any](v T) *T {
-	return &v
-}
-
 func TestErrorInvalidPeriod(t *testing.T) {
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: ptrOf(uint32(0x65f83afb)),
+		LocalSSRC: 0x65f83afb,
 	}
 	err := rr.Initialize()
 	require.EqualError(t, err, "invalid Period")
@@ -25,7 +21,7 @@ func TestErrorInvalidPeriod(t *testing.T) {
 func TestErrorDifferentSSRC(t *testing.T) {
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: ptrOf(uint32(0x65f83afb)),
+		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
 	}
 	err := rr.Initialize()
@@ -44,7 +40,7 @@ func TestErrorDifferentSSRC(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
@@ -59,14 +55,14 @@ func TestErrorDifferentSSRC(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.EqualError(t, err, "received packet with wrong SSRC 754623214, expected 1434523")
 }
 
 func TestStatsBeforeData(t *testing.T) {
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: ptrOf(uint32(0x65f83afb)),
+		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
 	}
 	err := rr.Initialize()
@@ -87,7 +83,7 @@ func TestStandard(t *testing.T) {
 
 			rr := &Receiver{
 				ClockRate:            90000,
-				LocalSSRC:            ptrOf(uint32(0x65f83afb)),
+				LocalSSRC:            0x65f83afb,
 				UnrealiableTransport: ca == "unrealiable",
 				Period:               500 * time.Millisecond,
 				TimeNow: func() time.Time {
@@ -113,7 +109,7 @@ func TestStandard(t *testing.T) {
 				Payload: []byte("\x00\x00"),
 			}
 			ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-			err = rr.ProcessPacket(&rtpPkt, ts, true)
+			_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 			require.NoError(t, err)
 
 			stats := rr.Stats()
@@ -157,7 +153,7 @@ func TestStandard(t *testing.T) {
 				Payload: []byte("\x00\x00"),
 			}
 			ts = time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC)
-			err = rr.ProcessPacket(&rtpPkt, ts, true)
+			_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 			require.NoError(t, err)
 
 			rtpPkt = rtp.Packet{
@@ -172,7 +168,7 @@ func TestStandard(t *testing.T) {
 				Payload: []byte("\x00\x00"),
 			}
 			ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-			err = rr.ProcessPacket(&rtpPkt, ts, true)
+			_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 			require.NoError(t, err)
 
 			pkt := <-pktGenerated
@@ -204,7 +200,7 @@ func TestZeroClockRate(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 0,
-		LocalSSRC: ptrOf(uint32(0x65f83afb)),
+		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
@@ -232,7 +228,7 @@ func TestZeroClockRate(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	stats = rr.Stats()
@@ -271,7 +267,7 @@ func TestZeroClockRate(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
@@ -286,7 +282,7 @@ func TestZeroClockRate(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	select {
@@ -308,7 +304,7 @@ func TestSequenceNumberOverflow(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: ptrOf(uint32(0x65f83afb)),
+		LocalSSRC: 0x65f83afb,
 		Period:    250 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
@@ -356,7 +352,7 @@ func TestSequenceNumberOverflow(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
@@ -371,7 +367,7 @@ func TestSequenceNumberOverflow(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	<-rtcpGenerated
@@ -382,7 +378,7 @@ func TestJitter(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: ptrOf(uint32(0x65f83afb)),
+		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
@@ -429,7 +425,7 @@ func TestJitter(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
@@ -444,7 +440,7 @@ func TestJitter(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
@@ -459,7 +455,7 @@ func TestJitter(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, false)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, false)
 	require.NoError(t, err)
 
 	<-rtcpGenerated
@@ -470,7 +466,7 @@ func TestReliablePacketsLost(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: ptrOf(uint32(0x65f83afb)),
+		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
@@ -521,7 +517,7 @@ func TestReliablePacketsLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
@@ -536,7 +532,7 @@ func TestReliablePacketsLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	<-done
@@ -547,7 +543,7 @@ func TestReliableOverflowAndPacketsLost(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate: 90000,
-		LocalSSRC: ptrOf(uint32(0x65f83afb)),
+		LocalSSRC: 0x65f83afb,
 		Period:    500 * time.Millisecond,
 		TimeNow: func() time.Time {
 			return time.Date(2008, 0o5, 20, 22, 15, 21, 0, time.UTC)
@@ -598,7 +594,7 @@ func TestReliableOverflowAndPacketsLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	rtpPkt = rtp.Packet{
@@ -613,7 +609,7 @@ func TestReliableOverflowAndPacketsLost(t *testing.T) {
 		Payload: []byte("\x00\x00"),
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
-	err = rr.ProcessPacket(&rtpPkt, ts, true)
+	_, _, err = rr.ProcessPacket2(&rtpPkt, ts, true)
 	require.NoError(t, err)
 
 	<-done
@@ -771,7 +767,7 @@ func TestUnrealiableReorder(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate:            90000,
-		LocalSSRC:            ptrOf(uint32(0x65f83afb)),
+		LocalSSRC:            0x65f83afb,
 		UnrealiableTransport: true,
 		Period:               500 * time.Millisecond,
 	}
@@ -796,7 +792,7 @@ func TestUnrealiableBufferFull(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate:            90000,
-		LocalSSRC:            ptrOf(uint32(0x65f83afb)),
+		LocalSSRC:            0x65f83afb,
 		UnrealiableTransport: true,
 		Period:               500 * time.Millisecond,
 		WritePacketRTCP: func(p rtcp.Packet) {
@@ -880,7 +876,7 @@ func TestUnrealiableReset(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate:            90000,
-		LocalSSRC:            ptrOf(uint32(0x65f83afb)),
+		LocalSSRC:            0x65f83afb,
 		UnrealiableTransport: true,
 		Period:               500 * time.Millisecond,
 		WritePacketRTCP: func(p rtcp.Packet) {
@@ -942,7 +938,7 @@ func TestUnrealiableCustomBufferSize(t *testing.T) {
 
 	rr := &Receiver{
 		ClockRate:            90000,
-		LocalSSRC:            ptrOf(uint32(0x65f83afb)),
+		LocalSSRC:            0x65f83afb,
 		UnrealiableTransport: true,
 		BufferSize:           customSize,
 		Period:               500 * time.Millisecond,

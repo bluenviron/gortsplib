@@ -138,16 +138,11 @@ func (e ErrServerInvalidKeyMgmtHeader) Error() string {
 	return fmt.Sprintf("invalid KeyMgmt header: %s", e.Wrapped.Error())
 }
 
-// ErrServerMediasDifferentProtocols is an error that can be returned by a server.
-//
-// Deprecated: replaced by ErrServerMediasDifferentTransports.
-type ErrServerMediasDifferentProtocols = ErrServerMediasDifferentTransports
-
 // ErrServerMediasDifferentTransports is an error that can be returned by a server.
 type ErrServerMediasDifferentTransports struct{}
 
 // Error implements the error interface.
-func (e ErrServerMediasDifferentProtocols) Error() string {
+func (e ErrServerMediasDifferentTransports) Error() string {
 	return "can't setup medias with different transports"
 }
 
@@ -252,11 +247,6 @@ func (e ErrServerUnexpectedResponse) Error() string {
 
 // ErrServerWriteQueueFull is an error that can be returned by a server.
 type ErrServerWriteQueueFull = ErrClientWriteQueueFull
-
-// ErrServerRTPPacketsLost is an error that can be returned by a server.
-//
-// Deprecated: will be removed in next version.
-type ErrServerRTPPacketsLost = ErrClientRTPPacketsLost
 
 // ErrServerRTPPacketUnknownPayloadType is an error that can be returned by a server.
 type ErrServerRTPPacketUnknownPayloadType = ErrClientRTPPacketUnknownPayloadType

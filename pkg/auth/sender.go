@@ -7,19 +7,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
-// NewSender allocates a Sender.
-//
-// Deprecated: replaced by Sender.Initialize().
-func NewSender(wwwAuth base.HeaderValue, user string, pass string) (*Sender, error) {
-	s := &Sender{
-		WWWAuth: wwwAuth,
-		User:    user,
-		Pass:    pass,
-	}
-	err := s.Initialize()
-	return s, err
-}
-
 // Sender allows to send credentials.
 // It requires a WWW-Authenticate header (provided by the server)
 // and a set of credentials.

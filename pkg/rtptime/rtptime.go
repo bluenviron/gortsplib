@@ -1,2 +1,2 @@
-// Package rtptime contains a time decoder and encoder.
+// Package rtptime contains a time decoder.
 package rtptime

@@ -7,6 +7,8 @@ import (
 	"github.com/pion/rtp"
 )
 
+var timeNow = time.Now
+
 // avoid an int64 overflow and preserve resolution by splitting division into two parts:
 // first add the integer part, then the decimal part.
 func multiplyAndDivide2(v, m, d int64) int64 {
@@ -32,19 +34,10 @@ type GlobalDecoder2Track interface {
 	PTSEqualsDTS(*rtp.Packet) bool
 }
 
-// NewGlobalDecoder2 allocates a GlobalDecoder.
-//
-// Deprecated: replaced by GlobalDecoder2.Initialize().
-func NewGlobalDecoder2() *GlobalDecoder2 {
-	d := &GlobalDecoder2{}
-	d.Initialize()
-	return d
-}
-
 // GlobalDecoder2 is a RTP timestamp decoder.
 type GlobalDecoder2 struct {
 	mutex             sync.Mutex
-	leadingTrack      GlobalDecoderTrack
+	leadingTrack      GlobalDecoder2Track
 	startNTP          time.Time
 	startPTS          int64
 	startPTSClockRate int64

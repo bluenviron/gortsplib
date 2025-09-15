@@ -38,7 +38,7 @@ func mediasToSDP(medias []*description.Media) []byte {
 		m.Control = "trackID=" + strconv.FormatInt(int64(i), 10)
 	}
 
-	byts, err := desc.Marshal(false)
+	byts, err := desc.Marshal()
 	if err != nil {
 		panic(err)
 	}
@@ -339,16 +339,23 @@ func TestClientPlay(t *testing.T) {
 				err2 = forma.Init()
 				require.NoError(t, err2)
 
+				var profile headers.TransportProfile
+				if ca.secure == "secure" {
+					profile = headers.TransportProfileSAVP
+				} else {
+					profile = headers.TransportProfileAVP
+				}
+
 				medias := []*description.Media{
 					{
 						Type:    "application",
 						Formats: []format.Format{forma},
-						Secure:  ca.secure == "secure",
+						Profile: profile,
 					},
 					{
 						Type:    "application",
 						Formats: []format.Format{forma},
-						Secure:  ca.secure == "secure",
+						Profile: profile,
 					},
 				}
 
@@ -814,7 +821,7 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 				require.Equal(t, (*headers.TransportMode)(nil), inTH.Mode)
 
 				th := headers.Transport{
-					Secure: true,
+					Profile: headers.TransportProfileSAVP,
 				}
 
 				v := headers.TransportDeliveryUnicast
@@ -876,14 +883,16 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 				require.Equal(t, base.Teardown, req.Method)
 			}()
 
-			c := Client{
-				TLSConfig: &tls.Config{InsecureSkipVerify: true},
-			}
-
 			u, err := base.ParseURL("rtsps://127.0.0.1:8554/stream")
 			require.NoError(t, err)
 
-			err = c.Start(u.Scheme, u.Host)
+			c := Client{
+				Scheme:    u.Scheme,
+				Host:      u.Host,
+				TLSConfig: &tls.Config{InsecureSkipVerify: true},
+			}
+
+			err = c.Start2()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -3118,7 +3127,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 			Protocol:    headers.TransportProtocolUDP,
 			ClientPorts: inTH.ClientPorts,
 			ServerPorts: &[2]int{34556, 34557},
-			Source:      ptrOf(net.ParseIP("127.0.1.1")),
+			Source2:     ptrOf("127.0.1.1"),
 		}
 
 		l1, err2 := net.ListenPacket("udp", "127.0.1.1:34556")

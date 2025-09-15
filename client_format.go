@@ -53,7 +53,7 @@ func (cf *clientFormat) initialize() {
 	} else {
 		cf.rtpReceiver = &rtpreceiver.Receiver{
 			ClockRate:            cf.format.ClockRate(),
-			LocalSSRC:            &cf.localSSRC,
+			LocalSSRC:            cf.localSSRC,
 			UnrealiableTransport: (cf.cm.udpRTPListener != nil),
 			Period:               cf.cm.c.receiverReportPeriod,
 			TimeNow:              cf.cm.c.timeNow,

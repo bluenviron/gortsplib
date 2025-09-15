@@ -84,7 +84,12 @@ var casesSender = []struct {
 func TestSender(t *testing.T) {
 	for _, ca := range casesSender {
 		t.Run(ca.name, func(t *testing.T) {
-			se, err := NewSender(ca.wwwAuthenticate, "myuser", "mypass")
+			se := &Sender{
+				WWWAuth: ca.wwwAuthenticate,
+				User:    "myuser",
+				Pass:    "mypass",
+			}
+			err := se.Initialize()
 			require.NoError(t, err)
 
 			req := &base.Request{
@@ -104,7 +109,12 @@ func FuzzSender(f *testing.F) {
 	}
 
 	f.Fuzz(func(_ *testing.T, a string) {
-		se, err := NewSender(base.HeaderValue{a}, "myuser", "mypass")
+		se := &Sender{
+			WWWAuth: base.HeaderValue{a},
+			User:    "myuser",
+			Pass:    "mypass",
+		}
+		err := se.Initialize()
 		if err != nil {
 			return
 		}

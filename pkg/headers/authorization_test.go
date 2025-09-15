@@ -21,7 +21,6 @@ var casesAuthorization = []struct {
 		Authorization{
 			Method:    AuthMethodBasic,
 			Username:  "myuser",
-			BasicUser: "myuser",
 			BasicPass: "mypass",
 		},
 	},

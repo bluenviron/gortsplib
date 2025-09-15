@@ -197,10 +197,3 @@ func (f *MPEG4Audio) CreateEncoder() (*rtpmpeg4audio.Encoder, error) {
 
 	return e, nil
 }
-
-// GetConfig returns the MPEG-4 Audio configuration.
-//
-// Deprecated: redundant. Use f.Config.
-func (f *MPEG4Audio) GetConfig() *mpeg4audio.Config {
-	return f.Config
-}

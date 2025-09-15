@@ -84,14 +84,6 @@ func clientExtractExistingSSRCs(setuppedMedias map[*description.Media]*clientMed
 	return ret
 }
 
-// avoid an int64 overflow and preserve resolution by splitting division into two parts:
-// first add the integer part, then the decimal part.
-func multiplyAndDivide(v, m, d time.Duration) time.Duration {
-	secs := v / d
-	dec := v % d
-	return (secs*m + dec*m/d)
-}
-
 // convert an URL into an address, in particular:
 // * add default port
 // * handle IPv6 with or without square brackets.
@@ -417,11 +409,6 @@ type ClientOnResponseFunc func(*base.Response)
 // ClientOnTransportSwitchFunc is the prototype of Client.OnTransportSwitch.
 type ClientOnTransportSwitchFunc func(err error)
 
-// ClientOnPacketLostFunc is the prototype of Client.OnPacketLost.
-//
-// Deprecated: replaced by ClientOnPacketsLostFunc
-type ClientOnPacketLostFunc func(err error)
-
 // ClientOnPacketsLostFunc is the prototype of Client.OnPacketsLost.
 type ClientOnPacketsLostFunc func(lost uint64)
 
@@ -495,14 +482,6 @@ type Client struct {
 	DisableRTCPSenderReports bool
 	// explicitly request back channels to the server.
 	RequestBackChannels bool
-	// pointer to a variable that stores received bytes.
-	//
-	// Deprecated: use Client.Stats()
-	BytesReceived *uint64
-	// pointer to a variable that stores sent bytes.
-	//
-	// Deprecated: use Client.Stats()
-	BytesSent *uint64
 
 	//
 	// system functions (all optional)
@@ -527,10 +506,6 @@ type Client struct {
 	OnServerResponse ClientOnResponseFunc
 	// called when the transport protocol changes.
 	OnTransportSwitch ClientOnTransportSwitchFunc
-	// called when the client detects lost packets.
-	//
-	// Deprecated: replaced by OnPacketsLost
-	OnPacketLost ClientOnPacketLostFunc
 	// called when the client detects lost packets.
 	OnPacketsLost ClientOnPacketsLostFunc
 	// called when a non-fatal decode error occurs.
@@ -599,15 +574,6 @@ type Client struct {
 	done chan struct{}
 }
 
-// Start initializes the connection to a server.
-//
-// Deprecated: replaced by Start2.
-func (c *Client) Start(scheme string, host string) error {
-	c.Scheme = scheme
-	c.Host = host
-	return c.Start2()
-}
-
 // Start2 initializes the connection to a server.
 func (c *Client) Start2() error {
 	// RTSP parameters
@@ -664,11 +630,6 @@ func (c *Client) Start2() error {
 			log.Println(err.Error())
 		}
 	}
-	if c.OnPacketLost != nil {
-		c.OnPacketsLost = func(lost uint64) {
-			c.OnPacketLost(liberrors.ErrClientRTPPacketsLost{Lost: uint(lost)}) //nolint:staticcheck
-		}
-	}
 	if c.OnPacketsLost == nil {
 		c.OnPacketsLost = func(lost uint64) {
 			log.Printf("%d RTP %s lost",
@@ -709,17 +670,8 @@ func (c *Client) Start2() error {
 	c.checkTimeoutTimer = emptyTimer()
 	c.keepAlivePeriod = 30 * time.Second
 	c.keepAliveTimer = emptyTimer()
-
-	if c.BytesReceived != nil {
-		c.bytesReceived = c.BytesReceived
-	} else {
-		c.bytesReceived = new(uint64)
-	}
-	if c.BytesSent != nil {
-		c.bytesSent = c.BytesSent
-	} else {
-		c.bytesSent = new(uint64)
-	}
+	c.bytesReceived = new(uint64)
+	c.bytesSent = new(uint64)
 
 	c.chOptions = make(chan optionsReq)
 	c.chDescribe = make(chan describeReq)
@@ -1558,7 +1510,7 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
-	byts, err := desc.Marshal(false)
+	byts, err := desc.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -2358,18 +2310,6 @@ func (c *Client) Pause() (*base.Response, error) {
 	}
 }
 
-// Seek asks the server to re-start the stream from a specific timestamp.
-//
-// Deprecated: will be removed in next version. Equivalent to using Pause() followed by Play().
-func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
-	_, err := c.Pause()
-	if err != nil {
-		return nil, err
-	}
-
-	return c.Play(ra)
-}
-
 // OnPacketRTPAny sets a callback that is called when a RTP packet is read from any setupped media.
 func (c *Client) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
 	for _, cm := range c.setuppedMedias {
@@ -2436,22 +2376,6 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 	return cm.writePacketRTCP(pkt)
 }
 
-// PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
-// It is computed by decoding the packet timestamp and sychronizing it with other tracks.
-//
-// Deprecated: replaced by PacketPTS2.
-func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Duration, bool) {
-	cm := c.setuppedMedias[medi]
-	ct := cm.formats[pkt.PayloadType]
-
-	v, ok := c.timeDecoder.Decode(ct.format, pkt)
-	if !ok {
-		return 0, false
-	}
-
-	return multiplyAndDivide(time.Duration(v), time.Second, time.Duration(ct.format.ClockRate())), true
-}
-
 // PacketPTS2 returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
 func (c *Client) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
@@ -2486,8 +2410,8 @@ func (c *Client) Stats() *ClientStats {
 	c.propsMutex.RLock()
 	defer c.propsMutex.RUnlock()
 
-	mediaStats := func() map[*description.Media]StatsSessionMedia { //nolint:dupl
-		ret := make(map[*description.Media]StatsSessionMedia, len(c.setuppedMedias))
+	mediaStats := func() map[*description.Media]SessionStatsMedia { //nolint:dupl
+		ret := make(map[*description.Media]SessionStatsMedia, len(c.setuppedMedias))
 
 		for med, sm := range c.setuppedMedias {
 			ret[med] = SessionStatsMedia{

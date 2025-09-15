@@ -1,10 +1,5 @@
 package gortsplib
 
-// Transport is a RTSP transport protocol.
-//
-// Deprecated: renamed into TransportProtocol.
-type Transport = TransportProtocol
-
 // TransportProtocol is a RTSP transport protocol.
 type TransportProtocol int
 

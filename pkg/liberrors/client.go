@@ -223,16 +223,6 @@ func (e ErrClientUnsupportedScheme) Error() string {
 	return fmt.Sprintf("unsupported scheme: %v", e.Scheme)
 }
 
-// ErrClientRTSPSTCP is an error that can be returned by a client.
-//
-// Deprecated: not used anymore.
-type ErrClientRTSPSTCP struct{}
-
-// Error implements the error interface.
-func (e ErrClientRTSPSTCP) Error() string {
-	return "RTSPS can be used only with TCP"
-}
-
 // ErrClientUnhandledMethod is an error that can be returned by a client.
 type ErrClientUnhandledMethod struct {
 	Method base.Method
@@ -249,25 +239,6 @@ type ErrClientWriteQueueFull struct{}
 // Error implements the error interface.
 func (e ErrClientWriteQueueFull) Error() string {
 	return "write queue is full"
-}
-
-// ErrClientRTPPacketsLost is an error that can be returned by a client.
-//
-// Deprecated: will be removed in next version.
-type ErrClientRTPPacketsLost struct {
-	Lost uint
-}
-
-// Error implements the error interface.
-func (e ErrClientRTPPacketsLost) Error() string {
-	return fmt.Sprintf("%d RTP %s lost",
-		e.Lost,
-		func() string {
-			if e.Lost == 1 {
-				return "packet"
-			}
-			return "packets"
-		}())
 }
 
 // ErrClientRTPPacketUnknownPayloadType is an error that can be returned by a client.

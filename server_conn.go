@@ -166,6 +166,13 @@ func prepareForDescribe(
 				}
 			}
 
+			var profile headers.TransportProfile
+			if secure {
+				profile = headers.TransportProfileSAVP
+			} else {
+				profile = headers.TransportProfileAVP
+			}
+
 			out.Medias = append(out.Medias, &description.Media{
 				Type:          medi.Type,
 				ID:            medi.ID,
@@ -173,7 +180,7 @@ func prepareForDescribe(
 				// we have to use trackID=number in order to support clients
 				// like the Grandstream GXV3500.
 				Control:      "trackID=" + strconv.FormatInt(int64(i), 10),
-				Secure:       secure,
+				Profile:      profile,
 				KeyMgmtMikey: keyMgmtMikey,
 				Formats:      medi.Formats,
 			})
@@ -249,20 +256,6 @@ func (sc *ServerConn) Close() {
 // NetConn returns the underlying net.Conn.
 func (sc *ServerConn) NetConn() net.Conn {
 	return sc.nconn
-}
-
-// BytesReceived returns the number of read bytes.
-//
-// Deprecated: replaced by Stats()
-func (sc *ServerConn) BytesReceived() uint64 {
-	return sc.bc.BytesReceived()
-}
-
-// BytesSent returns the number of written bytes.
-//
-// Deprecated: replaced by Stats()
-func (sc *ServerConn) BytesSent() uint64 {
-	return sc.bc.BytesSent()
 }
 
 // SetUserData sets some user data associated with the connection.
@@ -513,7 +506,7 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 				}
 
 				var byts []byte
-				byts, err = desc.Marshal(false)
+				byts, err = desc.Marshal()
 				if err != nil {
 					return &base.Response{
 						StatusCode: base.StatusInternalServerError,

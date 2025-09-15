@@ -79,11 +79,6 @@ type Media struct {
 	// Whether this media is a back channel.
 	IsBackChannel bool
 
-	// Whether the transport is secure.
-	//
-	// Deprecated: replaced by Profile
-	Secure bool
-
 	// RTP Profile.
 	Profile headers.TransportProfile
 
@@ -109,10 +104,8 @@ func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 	m.IsBackChannel = isBackChannel(md.Attributes)
 
 	if slices.Contains(md.MediaName.Protos, "SAVP") {
-		m.Secure = true
 		m.Profile = headers.TransportProfileSAVP
 	} else {
-		m.Secure = false
 		m.Profile = headers.TransportProfileAVP
 	}
 
@@ -153,23 +146,8 @@ func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 	return nil
 }
 
-// Marshal encodes the media in SDP format.
-//
-// Deprecated: replaced by Marshal2.
-func (m Media) Marshal() *psdp.MediaDescription {
-	ret, err := m.Marshal2()
-	if err != nil {
-		panic(err)
-	}
-	return ret
-}
-
 // Marshal2 encodes the media in SDP format.
 func (m Media) Marshal2() (*psdp.MediaDescription, error) {
-	if m.Secure {
-		m.Profile = headers.TransportProfileSAVP
-	}
-
 	var protos []string
 
 	if m.Profile == headers.TransportProfileSAVP {

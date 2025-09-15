@@ -25,21 +25,6 @@ func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStrea
 	return ret
 }
 
-// NewServerStream allocates a ServerStream.
-//
-// Deprecated: replaced by ServerStream.Initialize().
-func NewServerStream(s *Server, desc *description.Session) *ServerStream {
-	st := &ServerStream{
-		Server: s,
-		Desc:   desc,
-	}
-	err := st.Initialize()
-	if err != nil {
-		panic(err)
-	}
-	return st
-}
-
 // ServerStream represents a data stream.
 // This is in charge of
 // - storing stream description and statistics
@@ -133,24 +118,6 @@ func (st *ServerStream) Close() {
 	for _, sm := range st.medias {
 		sm.close()
 	}
-}
-
-// BytesSent returns the number of written bytes.
-//
-// Deprecated: replaced by Stats()
-func (st *ServerStream) BytesSent() uint64 {
-	v := uint64(0)
-	for _, me := range st.medias {
-		v += atomic.LoadUint64(me.bytesSent)
-	}
-	return v
-}
-
-// Description returns the description of the stream.
-//
-// Deprecated: use ServerStream.Desc.
-func (st *ServerStream) Description() *description.Session {
-	return st.Desc
 }
 
 // Stats returns stream statistics.

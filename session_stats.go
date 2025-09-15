@@ -7,21 +7,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
-// StatsSessionFormat are session format statistics.
-//
-// Deprecated: replaced by SessionStatsFormat
-type StatsSessionFormat = SessionStatsFormat
-
-// StatsSessionMedia are session media statistics.
-//
-// Deprecated: replaced by SessionStatsMedia
-type StatsSessionMedia = SessionStatsMedia
-
-// StatsSession are session statistics.
-//
-// Deprecated: replaced by SessionStats.
-type StatsSession = SessionStats
-
 // SessionStatsFormat are session format statistics.
 type SessionStatsFormat struct {
 	// number of RTP packets correctly received and processed
