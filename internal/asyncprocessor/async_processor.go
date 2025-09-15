@@ -4,7 +4,7 @@ package asyncprocessor
 import (
 	"context"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/ringbuffer"
+	"github.com/bluenviron/gortsplib/v5/pkg/ringbuffer"
 )
 
 // Processor is an asynchronous queue processor

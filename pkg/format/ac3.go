@@ -7,7 +7,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpac3"
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpac3"
 )
 
 // AC3 is the RTP format for the AC-3 codec.

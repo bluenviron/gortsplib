@@ -3,8 +3,8 @@ package headers
 import (
 	"testing"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/stretchr/testify/require"
 )
 

@@ -10,7 +10,7 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph265"
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtph265"
 )
 
 // H265 is the RTP format for the H265 codec.

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
+	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 )

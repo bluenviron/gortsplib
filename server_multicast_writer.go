@@ -4,8 +4,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/bluenviron/gortsplib/v4/internal/asyncprocessor"
-	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v5/internal/asyncprocessor"
+	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
 type serverMulticastWriter struct {

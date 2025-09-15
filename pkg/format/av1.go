@@ -6,7 +6,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpav1"
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpav1"
 )
 
 // AV1 is the RTP format for the AV1 codec.

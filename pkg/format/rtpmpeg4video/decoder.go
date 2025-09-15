@@ -1,7 +1,7 @@
 package rtpmpeg4video
 
 import (
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpfragmented"
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpfragmented"
 )
 
 // ErrMorePacketsNeeded is returned when more packets are needed.

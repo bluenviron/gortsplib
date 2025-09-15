@@ -8,7 +8,7 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpfragmented"
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpfragmented"
 )
 
 func allLayersHaveSameTypeRateChannelsExtType(c *mpeg4audio.StreamMuxConfig) bool {
