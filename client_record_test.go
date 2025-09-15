@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/rand"
 	"crypto/tls"
@@ -180,7 +181,7 @@ func TestClientRecord(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -516,7 +517,7 @@ func TestClientRecordSocketError(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -635,7 +636,7 @@ func TestClientRecordPauseRecordSerial(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -784,7 +785,7 @@ func TestClientRecordPauseRecordParallel(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -963,7 +964,7 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -1095,7 +1096,7 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -1266,7 +1267,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -1452,7 +1453,7 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)

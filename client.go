@@ -6,6 +6,7 @@ Examples are available at https://github.com/bluenviron/gortsplib/tree/main/exam
 package gortsplib
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -1193,7 +1194,7 @@ func (c *Client) connOpen() error {
 
 	c.nconn = nconn
 	bc := bytecounter.New(c.nconn, c.bytesReceived, c.bytesSent)
-	c.conn = conn.NewConn(bc)
+	c.conn = conn.NewConn(bufio.NewReader(bc), bc)
 	c.reader = &clientReader{
 		c: c,
 	}

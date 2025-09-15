@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"net/http"
@@ -280,7 +281,7 @@ func TestServerConnClose(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	<-nconnClosed
 
@@ -305,7 +306,7 @@ func TestServerCSeq(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Options,
@@ -339,7 +340,7 @@ func TestServerErrorCSeqMissing(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Options,
@@ -370,7 +371,7 @@ func TestServerErrorNilURL(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Describe,
@@ -406,7 +407,7 @@ func TestServerDescribeNonNilBody(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Describe,
@@ -467,7 +468,7 @@ func TestServerErrorMethodNotImplemented(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, false)
 
@@ -563,7 +564,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	nconn1, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn1.Close()
-	conn1 := conn.NewConn(nconn1)
+	conn1 := conn.NewConn(bufio.NewReader(nconn1), nconn1)
 
 	desc1 := doDescribe(t, conn1, false)
 
@@ -583,7 +584,7 @@ func TestServerErrorTCPTwoConnOneSession(t *testing.T) {
 	nconn2, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn2.Close()
-	conn2 := conn.NewConn(nconn2)
+	conn2 := conn.NewConn(bufio.NewReader(nconn2), nconn2)
 
 	desc2 := doDescribe(t, conn2, false)
 
@@ -649,7 +650,7 @@ func TestServerErrorTCPOneConnTwoSessions(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	desc := doDescribe(t, conn, false)
 
@@ -717,7 +718,7 @@ func TestServerSetupMultipleTransports(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	desc := doDescribe(t, conn, false)
 
@@ -819,7 +820,7 @@ func TestServerGetSetParameter(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, false)
 
@@ -910,7 +911,7 @@ func TestServerErrorInvalidSession(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			res, err := writeReqReadRes(conn, base.Request{
 				Method: method,
@@ -967,7 +968,7 @@ func TestServerAuth(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			medias := []*description.Media{testH264Media}
 
@@ -1030,7 +1031,7 @@ func TestServerAuthFail(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	medias := []*description.Media{testH264Media}
 
@@ -1108,7 +1109,7 @@ func TestServerSessionClose(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	desc := doDescribe(t, conn, false)
 
@@ -1187,7 +1188,7 @@ func TestServerSessionAutoClose(t *testing.T) {
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, false)
 
@@ -1255,7 +1256,7 @@ func TestServerSessionTeardown(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	desc := doDescribe(t, conn, false)
 

@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/rand"
 	"crypto/tls"
@@ -146,7 +147,7 @@ func TestClientPlayFormats(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -307,7 +308,7 @@ func TestClientPlay(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -717,7 +718,7 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -921,7 +922,7 @@ func TestClientPlayPartial(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -1076,7 +1077,7 @@ func TestClientPlayContentBase(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -1207,7 +1208,7 @@ func TestClientPlayAnyPort(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -1364,7 +1365,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 			nconn, err2 := l.Accept()
 			require.NoError(t, err2)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			req, err2 := conn.ReadRequest()
 			require.NoError(t, err2)
@@ -1482,7 +1483,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				co := conn.NewConn(nconn)
+				co := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := co.ReadRequest()
 				require.NoError(t, err2)
@@ -1548,7 +1549,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				co := conn.NewConn(nconn)
+				co := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := co.ReadRequest()
 				require.NoError(t, err2)
@@ -1656,7 +1657,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -1753,7 +1754,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -1889,7 +1890,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -2011,7 +2012,7 @@ func TestClientPlayRedirect(t *testing.T) {
 					nconn, err = l.Accept()
 					require.NoError(t, err)
 					defer nconn.Close()
-					conn := conn.NewConn(nconn)
+					conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 					req, err2 := conn.ReadRequest()
 					require.NoError(t, err2)
@@ -2046,7 +2047,7 @@ func TestClientPlayRedirect(t *testing.T) {
 					nconn, err2 := l.Accept()
 					require.NoError(t, err2)
 					defer nconn.Close()
-					conn := conn.NewConn(nconn)
+					conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 					req, err2 := conn.ReadRequest()
 					require.NoError(t, err2)
@@ -2197,7 +2198,7 @@ func TestClientPlayRedirectPreventDecrypt(t *testing.T) {
 		nconn, err = l.Accept()
 		require.NoError(t, err)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -2297,7 +2298,7 @@ func TestClientPlayPausePlay(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -2462,7 +2463,7 @@ func TestClientPlayRTCPReport(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -2633,7 +2634,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -2776,7 +2777,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -2895,7 +2896,7 @@ func TestClientPlayKeepAlive(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -3067,7 +3068,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -3212,7 +3213,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -3473,7 +3474,7 @@ func TestClientPlayPacketNTP(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -3652,7 +3653,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)

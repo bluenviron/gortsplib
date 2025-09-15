@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bufio"
 	"net"
 	"strings"
 	"testing"
@@ -103,7 +104,7 @@ func TestClientCloseDuringRequest(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -150,7 +151,7 @@ func TestClientSession(t *testing.T) {
 
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 		defer nconn.Close()
 
 		req, err2 := conn.ReadRequest()
@@ -215,7 +216,7 @@ func TestClientAuth(t *testing.T) {
 
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 		defer nconn.Close()
 
 		req, err2 := conn.ReadRequest()
@@ -301,7 +302,7 @@ func TestClientCSeq(t *testing.T) {
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
 				defer nconn.Close()
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -377,7 +378,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -441,7 +442,7 @@ func TestClientReplyToServerRequest(t *testing.T) {
 
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 				defer nconn.Close()
 
 				req, err2 := conn.ReadRequest()
@@ -535,7 +536,7 @@ func TestClientRelativeContentBase(t *testing.T) {
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)

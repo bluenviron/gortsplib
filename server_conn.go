@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -349,7 +350,7 @@ func (sc *ServerConn) run() {
 		})
 	}
 
-	sc.conn = conn.NewConn(sc.bc)
+	sc.conn = conn.NewConn(bufio.NewReader(sc.bc), sc.bc)
 	sc.reader = &serverConnReader{
 		sc: sc,
 	}
