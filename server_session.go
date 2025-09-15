@@ -17,6 +17,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/bluenviron/gortsplib/v4/internal/asyncprocessor"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
@@ -445,7 +446,7 @@ type ServerSession struct {
 	udpLastPacketTime     *int64               // record
 	udpCheckStreamTimer   *time.Timer
 	writerMutex           sync.RWMutex
-	writer                *asyncProcessor
+	writer                *asyncprocessor.Processor
 	timeDecoder           *rtptime.GlobalDecoder2
 	tcpFrame              *base.InterleavedFrame
 	tcpBuffer             []byte
@@ -454,6 +455,7 @@ type ServerSession struct {
 	chHandleRequest    chan sessionRequestReq
 	chRemoveConn       chan *ServerConn
 	chAsyncStartWriter chan struct{}
+	chWriterError      chan error
 }
 
 func (ss *ServerSession) initialize() {
@@ -472,6 +474,7 @@ func (ss *ServerSession) initialize() {
 	ss.chHandleRequest = make(chan sessionRequestReq)
 	ss.chRemoveConn = make(chan *ServerConn)
 	ss.chAsyncStartWriter = make(chan struct{})
+	ss.chWriterError = make(chan error)
 
 	ss.s.wg.Add(1)
 	go ss.run()
@@ -841,8 +844,8 @@ func (ss *ServerSession) checkState(allowed map[ServerSessionState]struct{}) err
 func (ss *ServerSession) createWriter() {
 	ss.writerMutex.Lock()
 
-	ss.writer = &asyncProcessor{
-		bufferSize: func() int {
+	ss.writer = &asyncprocessor.Processor{
+		BufferSize: func() int {
 			if ss.state == ServerSessionStatePrePlay {
 				return ss.s.WriteQueueSize
 			}
@@ -852,19 +855,25 @@ func (ss *ServerSession) createWriter() {
 			// decrease RAM consumption by allocating less buffers.
 			return 8
 		}(),
+		OnError: func(ctx context.Context, err error) {
+			select {
+			case <-ctx.Done():
+			case <-ss.ctx.Done():
+			case ss.chWriterError <- err:
+			}
+		},
 	}
-
-	ss.writer.initialize()
+	ss.writer.Initialize()
 
 	ss.writerMutex.Unlock()
 }
 
 func (ss *ServerSession) startWriter() {
-	ss.writer.start()
+	ss.writer.Start()
 }
 
 func (ss *ServerSession) destroyWriter() {
-	ss.writer.close()
+	ss.writer.Close()
 
 	ss.writerMutex.Lock()
 	ss.writer = nil
@@ -926,13 +935,6 @@ func (ss *ServerSession) run() {
 
 func (ss *ServerSession) runInner() error {
 	for {
-		chWriterError := func() chan struct{} {
-			if ss.writer != nil {
-				return ss.writer.chStopped
-			}
-			return nil
-		}()
-
 		select {
 		case req := <-ss.chHandleRequest:
 			ss.lastRequestTime = ss.s.timeNow()
@@ -1029,8 +1031,8 @@ func (ss *ServerSession) runInner() error {
 
 			ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 
-		case <-chWriterError:
-			return ss.writer.stopError
+		case err := <-ss.chWriterError:
+			return err
 
 		case <-ss.ctx.Done():
 			return liberrors.ErrServerTerminated{}
@@ -1951,6 +1953,19 @@ func (ss *ServerSession) handleRequest(req sessionRequestReq) (*base.Response, *
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
 		}, req.sc.session, liberrors.ErrServerTerminated{}
+	}
+}
+
+func (ss *ServerSession) handleRequestNoWait(req sessionRequestReq) {
+	select {
+	case ss.chHandleRequest <- req:
+	case <-ss.ctx.Done():
+		req.res <- sessionRequestRes{
+			res: &base.Response{
+				StatusCode: base.StatusBadRequest,
+			},
+			err: liberrors.ErrServerTerminated{},
+		}
 	}
 }
 

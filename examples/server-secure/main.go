@@ -14,7 +14,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. create a RTSP server which uses secure protocols only (RTSPS, TLS, SRTP).
 // 2. allow a single client to publish a stream.
 // 3. allow several clients to read the stream.

@@ -3,6 +3,8 @@ package multibuffer
 
 // MultiBuffer implements software multi buffering, that allows to reuse
 // existing buffers without creating new ones, improving performance.
+//
+// Deprecated: not used anymore, will be removed in next version.
 type MultiBuffer struct {
 	count   uint64
 	buffers [][]byte

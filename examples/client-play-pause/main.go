@@ -13,7 +13,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server and read all medias on a path.
 // 2. wait for 5 seconds.
 // 3. pause for 5 seconds.

@@ -8,24 +8,20 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 )
 
-const (
-	readBufferSize = 4096
-)
-
 // Conn is a RTSP connection.
 type Conn struct {
-	w  io.Writer
 	br *bufio.Reader
+	w  io.Writer
 
 	// reuse interleaved frames. they should never be passed to secondary routines
 	fr base.InterleavedFrame
 }
 
 // NewConn allocates a Conn.
-func NewConn(rw io.ReadWriter) *Conn {
+func NewConn(br *bufio.Reader, w io.Writer) *Conn {
 	return &Conn{
-		w:  rw,
-		br: bufio.NewReaderSize(rw, readBufferSize),
+		br: br,
+		w:  w,
 	}
 }
 

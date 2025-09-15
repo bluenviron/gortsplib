@@ -15,7 +15,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. create a RTSP server which accepts plain connections.
 // 2. allow a single client to publish a stream, containing a H264 format.
 // 3. save the content of the H264 media in a file in MPEG-TS format.

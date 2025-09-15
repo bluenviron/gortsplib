@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/rand"
 	"crypto/tls"
@@ -142,7 +143,7 @@ func TestServerRecordErrorAnnounce(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			_, err = writeReqReadRes(conn, ca.req)
 			require.NoError(t, err)
@@ -201,7 +202,7 @@ func TestServerRecordErrorSetup(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			medias := []*description.Media{testH264Media}
 
@@ -335,7 +336,7 @@ func TestServerRecordPath(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			media := testH264Media
 			media.Control = ca.control
@@ -416,7 +417,7 @@ func TestServerRecordErrorSetupMediaTwice(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	medias := []*description.Media{testH264Media}
 
@@ -490,7 +491,7 @@ func TestServerRecordErrorRecordPartialMedias(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	forma := &format.Generic{
 		PayloadTyp: 96,
@@ -692,7 +693,7 @@ func TestServerRecord(t *testing.T) {
 				}
 				return nconn
 			}()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			<-nconnOpened
 
@@ -979,7 +980,7 @@ func TestServerRecordErrorInvalidProtocol(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	medias := []*description.Media{testH264Media}
 
@@ -1039,7 +1040,7 @@ func TestServerRecordRTCPReport(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	medias := []*description.Media{testH264Media}
 
@@ -1173,7 +1174,7 @@ func TestServerRecordTimeout(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			medias := []*description.Media{testH264Media}
 
@@ -1255,7 +1256,7 @@ func TestServerRecordWithoutTeardown(t *testing.T) {
 
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			medias := []*description.Media{testH264Media}
 
@@ -1328,7 +1329,7 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		medias := []*description.Media{testH264Media}
 
@@ -1355,7 +1356,7 @@ func TestServerRecordUDPChangeConn(t *testing.T) {
 		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		var res *base.Response
 		res, err = writeReqReadRes(conn, base.Request{
@@ -1454,7 +1455,7 @@ func TestServerRecordDecodeErrors(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			medias := []*description.Media{{
 				Type: description.MediaTypeApplication,
@@ -1642,7 +1643,7 @@ func TestServerRecordPacketNTP(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	medias := []*description.Media{testH264Media}
 
@@ -1763,7 +1764,7 @@ func TestServerRecordPausePause(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	medias := []*description.Media{{
 		Type: description.MediaTypeApplication,

@@ -11,7 +11,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. create a RTSP server which accepts plain connections.
 // 2. read from disk a MPEG-TS file which contains a H264 track.
 // 3. serve the content of the file to all connected readers.

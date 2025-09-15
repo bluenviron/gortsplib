@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -89,208 +90,294 @@ func TestServerVsExternal(t *testing.T) {
 	wg.Wait()
 
 	for _, ca := range []struct {
-		publisherSoft   string
-		publisherScheme string
-		publisherProto  string
-		publisherSecure string
-		readerSoft      string
-		readerScheme    string
-		readerProto     string
-		readerSecure    string
+		publisherSoft    string
+		publisherScheme  string
+		publisherProto   string
+		publisherProfile string
+		publisherTunnel  string
+		readerSoft       string
+		readerScheme     string
+		readerProto      string
+		readerProfile    string
+		readerTunnel     string
 	}{
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsp",
-			publisherProto:  "udp",
-			publisherSecure: "unsecure",
-			readerSoft:      "ffmpeg",
-			readerScheme:    "rtsp",
-			readerProto:     "udp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsp",
+			publisherProto:   "udp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsp",
+			readerProto:      "udp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsp",
-			publisherProto:  "udp",
-			publisherSecure: "unsecure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsp",
-			readerProto:     "udp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsp",
+			publisherProto:   "udp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsp",
+			readerProto:      "udp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "gstreamer",
-			publisherScheme: "rtsp",
-			publisherProto:  "udp",
-			publisherSecure: "unsecure",
-			readerSoft:      "ffmpeg",
-			readerScheme:    "rtsp",
-			readerProto:     "udp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsp",
+			publisherProto:   "udp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsp",
+			readerProto:      "udp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "gstreamer",
-			publisherScheme: "rtsp",
-			publisherProto:  "udp",
-			publisherSecure: "unsecure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsp",
-			readerProto:     "udp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsp",
+			publisherProto:   "udp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsp",
+			readerProto:      "udp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsp",
-			publisherProto:  "udp",
-			publisherSecure: "unsecure",
-			readerSoft:      "ffmpeg",
-			readerScheme:    "rtsp",
-			readerProto:     "multicast",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsp",
+			publisherProto:   "udp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsp",
+			readerProto:      "multicast",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsp",
-			publisherProto:  "udp",
-			publisherSecure: "unsecure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsp",
-			readerProto:     "multicast",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsp",
+			publisherProto:   "udp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsp",
+			readerProto:      "multicast",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsp",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "ffmpeg",
-			readerScheme:    "rtsp",
-			readerProto:     "tcp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsp",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsp",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsp",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsp",
-			readerProto:     "tcp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsp",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsp",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "gstreamer",
-			publisherScheme: "rtsp",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "ffmpeg",
-			readerScheme:    "rtsp",
-			readerProto:     "tcp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsp",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsp",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "gstreamer",
-			publisherScheme: "rtsp",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsp",
-			readerProto:     "tcp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsp",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsp",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsp",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "ffmpeg",
-			readerScheme:    "rtsp",
-			readerProto:     "udp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsp",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsp",
+			readerProto:      "udp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsp",
-			publisherProto:  "udp",
-			publisherSecure: "unsecure",
-			readerSoft:      "ffmpeg",
-			readerScheme:    "rtsp",
-			readerProto:     "tcp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsp",
+			publisherProto:   "udp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsp",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsps",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "ffmpeg",
-			readerScheme:    "rtsps",
-			readerProto:     "tcp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsps",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsps",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsps",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsps",
-			readerProto:     "tcp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsps",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsps",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "gstreamer",
-			publisherScheme: "rtsps",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "ffmpeg",
-			readerScheme:    "rtsps",
-			readerProto:     "tcp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsps",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsps",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "gstreamer",
-			publisherScheme: "rtsps",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsps",
-			readerProto:     "tcp",
-			readerSecure:    "unsecure",
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsps",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsps",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "ffmpeg",
-			publisherScheme: "rtsps",
-			publisherProto:  "tcp",
-			publisherSecure: "unsecure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsps",
-			readerProto:     "udp",
-			readerSecure:    "secure",
+			publisherSoft:    "ffmpeg",
+			publisherScheme:  "rtsps",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsps",
+			readerProto:      "udp",
+			readerProfile:    "savp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "gstreamer",
-			publisherScheme: "rtsps",
-			publisherProto:  "udp",
-			publisherSecure: "secure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsps",
-			readerProto:     "udp",
-			readerSecure:    "secure",
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsps",
+			publisherProto:   "udp",
+			publisherProfile: "savp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsps",
+			readerProto:      "udp",
+			readerProfile:    "savp",
+			readerTunnel:     "none",
 		},
 		{
-			publisherSoft:   "gstreamer",
-			publisherScheme: "rtsps",
-			publisherProto:  "udp",
-			publisherSecure: "secure",
-			readerSoft:      "gstreamer",
-			readerScheme:    "rtsps",
-			readerProto:     "multicast",
-			readerSecure:    "secure",
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsps",
+			publisherProto:   "udp",
+			publisherProfile: "savp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsps",
+			readerProto:      "multicast",
+			readerProfile:    "savp",
+			readerTunnel:     "none",
+		},
+		{
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsp",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "http",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsp",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "none",
+		},
+		{
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsp",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "ffmpeg",
+			readerScheme:     "rtsp",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "http",
+		},
+		{
+			publisherSoft:    "gstreamer",
+			publisherScheme:  "rtsp",
+			publisherProto:   "tcp",
+			publisherProfile: "avp",
+			publisherTunnel:  "none",
+			readerSoft:       "gstreamer",
+			readerScheme:     "rtsp",
+			readerProto:      "tcp",
+			readerProfile:    "avp",
+			readerTunnel:     "http",
 		},
 	} {
-		t.Run(ca.publisherSoft+"_"+ca.publisherScheme+"_"+ca.publisherProto+"_"+ca.publisherSecure+"_"+
-			ca.readerSoft+"_"+ca.readerScheme+"_"+ca.readerProto+"_"+ca.readerSecure, func(t *testing.T) {
+		t.Run(strings.Join([]string{
+			ca.publisherSoft,
+			ca.publisherScheme,
+			ca.publisherProto,
+			ca.publisherProfile,
+			ca.publisherTunnel,
+			ca.readerSoft,
+			ca.readerScheme,
+			ca.readerProto,
+			ca.readerProfile,
+			ca.readerTunnel,
+		}, "_"), func(t *testing.T) {
 			ss := &sampleServer{}
 
 			if ca.publisherScheme == "rtsps" {
@@ -318,8 +405,15 @@ func TestServerVsExternal(t *testing.T) {
 				defer cnt1.close()
 
 			case "gstreamer":
+				var scheme string
+				if ca.publisherTunnel == "http" {
+					scheme = "rtsph"
+				} else {
+					scheme = ca.publisherScheme
+				}
+
 				var profile string
-				if ca.publisherSecure == "secure" {
+				if ca.publisherProfile == "savp" {
 					profile = "GST_RTSP_PROFILE_SAVP"
 				} else {
 					profile = "GST_RTSP_PROFILE_AVP"
@@ -327,7 +421,7 @@ func TestServerVsExternal(t *testing.T) {
 
 				cnt1, err := newContainer("gstreamer", "publish", []string{
 					"filesrc location=emptyvideo.mkv ! matroskademux ! video/x-h264 ! rtspclientsink " +
-						"location=" + ca.publisherScheme + "://127.0.0.1:8554/test/stream?key=val" +
+						"location=" + scheme + "://127.0.0.1:8554/test/stream?key=val" +
 						" protocols=" + ca.publisherProto +
 						" profiles=" + profile +
 						" tls-validation-flags=0 latency=0 timeout=0 rtx-time=0",
@@ -343,9 +437,14 @@ func TestServerVsExternal(t *testing.T) {
 			switch ca.readerSoft {
 			case "ffmpeg":
 				var proto string
-				if ca.readerProto == "multicast" {
+				switch {
+				case ca.readerTunnel == "http":
+					proto = "http"
+
+				case ca.readerProto == "multicast":
 					proto = "udp_multicast"
-				} else {
+
+				default:
 					proto = ca.readerProto
 				}
 
@@ -361,6 +460,13 @@ func TestServerVsExternal(t *testing.T) {
 				require.Equal(t, 0, cnt2.wait())
 
 			case "gstreamer":
+				var scheme string
+				if ca.readerTunnel == "http" {
+					scheme = "rtsph"
+				} else {
+					scheme = ca.readerScheme
+				}
+
 				var proto string
 				if ca.readerProto == "multicast" {
 					proto = "udp-mcast"
@@ -369,7 +475,7 @@ func TestServerVsExternal(t *testing.T) {
 				}
 
 				cnt2, err := newContainer("gstreamer", "read", []string{
-					"rtspsrc location=" + ca.readerScheme + "://127.0.0.1:8554/test/stream?key=val" +
+					"rtspsrc location=" + scheme + "://127.0.0.1:8554/test/stream?key=val" +
 						" protocols=" + proto +
 						" tls-validation-flags=0 latency=0 " +
 						"! application/x-rtp,media=video ! decodebin ! video/x-raw ! fakesink num-buffers=1",

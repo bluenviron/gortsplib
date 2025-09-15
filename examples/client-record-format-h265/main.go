@@ -13,7 +13,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server, announce an H265 format.
 // 2. generate dummy RGBA images.
 // 3. encode images with H265.

@@ -14,6 +14,7 @@ Features:
 
 * Client
   * Support secure protocol variants (RTSPS, TLS, SRTP, MIKEY)
+  * Support RTSP-over-HTTP, RTSP-over-HTTPS
   * Query servers about available media streams
   * Read media streams from a server ("play")
     * Read streams with the UDP, UDP-multicast or TCP transport protocol
@@ -29,6 +30,7 @@ Features:
     * Pause without disconnecting from the server
 * Server
   * Support secure protocol variants (RTSPS, TLS, SRTP, MIKEY)
+  * Support RTSP-over-HTTP, RTSP-over-HTTPS
   * Handle requests from clients
   * Validate client credentials
   * Read media streams from clients ("record")
@@ -178,6 +180,7 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 
 * [MediaMTX](https://github.com/bluenviron/mediamtx)
 * [gohlslib](https://github.com/bluenviron/gohlslib)
+* [gortmplib](https://github.com/bluenviron/gortmplib)
 * [mediacommon](https://github.com/bluenviron/mediacommon)
 * [pion/sdp (SDP library used internally)](https://github.com/pion/sdp)
 * [pion/rtp (RTP library used internally)](https://github.com/pion/rtp)

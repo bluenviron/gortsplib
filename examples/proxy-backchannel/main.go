@@ -3,7 +3,7 @@ package main
 
 import "log"
 
-// This example shows how to
+// This example shows how to:
 // 1. create a server that serves a single stream.
 // 2. create a client, that reads an existing stream from another server or camera, containing a back channel.
 // 3. route the stream from the client to the server, and from the server to all connected readers.

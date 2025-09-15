@@ -6,6 +6,7 @@ Examples are available at https://github.com/bluenviron/gortsplib/tree/main/exam
 package gortsplib
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -22,6 +23,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
+	"github.com/bluenviron/gortsplib/v4/internal/asyncprocessor"
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
@@ -460,15 +462,17 @@ type Client struct {
 	// a TLS configuration to connect to TLS (RTSPS) servers.
 	// It defaults to nil.
 	TLSConfig *tls.Config
+	// tunnel.
+	Tunnel Tunnel
+	// transport protocol (UDP, Multicast or TCP).
+	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
+	// It defaults to nil.
+	Transport *TransportProtocol
 	// enable communication with servers which don't provide UDP server ports
 	// or use different server ports than the announced ones.
 	// This can be a security issue.
 	// It defaults to false.
 	AnyPortEnable bool
-	// transport protocol (UDP, Multicast or TCP).
-	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
-	// It defaults to nil.
-	Transport *TransportProtocol
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout, otherwise it switches to TCP.
 	// It defaults to 3 seconds.
@@ -569,7 +573,7 @@ type Client struct {
 	keepAliveTimer       *time.Timer
 	closeError           error
 	writerMutex          sync.RWMutex
-	writer               *asyncProcessor
+	writer               *asyncprocessor.Processor
 	reader               *clientReader
 	timeDecoder          *rtptime.GlobalDecoder2
 	mustClose            bool
@@ -579,13 +583,17 @@ type Client struct {
 	bytesSent            *uint64
 
 	// in
-	chOptions  chan optionsReq
-	chDescribe chan describeReq
-	chAnnounce chan announceReq
-	chSetup    chan setupReq
-	chPlay     chan playReq
-	chRecord   chan recordReq
-	chPause    chan pauseReq
+	chOptions     chan optionsReq
+	chDescribe    chan describeReq
+	chAnnounce    chan announceReq
+	chSetup       chan setupReq
+	chPlay        chan playReq
+	chRecord      chan recordReq
+	chPause       chan pauseReq
+	chResponse    chan *base.Response
+	chRequest     chan *base.Request
+	chReadError   chan error
+	chWriterError chan error
 
 	// out
 	done chan struct{}
@@ -720,6 +728,10 @@ func (c *Client) Start2() error {
 	c.chPlay = make(chan playReq)
 	c.chRecord = make(chan recordReq)
 	c.chPause = make(chan pauseReq)
+	c.chResponse = make(chan *base.Response)
+	c.chRequest = make(chan *base.Request)
+	c.chReadError = make(chan error)
+	c.chWriterError = make(chan error)
 	c.done = make(chan struct{})
 
 	go c.run()
@@ -788,34 +800,6 @@ func (c *Client) run() {
 
 func (c *Client) runInner() error {
 	for {
-		chReaderResponse := func() chan *base.Response {
-			if c.reader != nil {
-				return c.reader.chResponse
-			}
-			return nil
-		}()
-
-		chReaderRequest := func() chan *base.Request {
-			if c.reader != nil {
-				return c.reader.chRequest
-			}
-			return nil
-		}()
-
-		chReaderError := func() chan error {
-			if c.reader != nil {
-				return c.reader.chError
-			}
-			return nil
-		}()
-
-		chWriterError := func() chan struct{} {
-			if c.writer != nil {
-				return c.writer.chStopped
-			}
-			return nil
-		}()
-
 		select {
 		case req := <-c.chOptions:
 			res, err := c.doOptions(req.url)
@@ -887,22 +871,22 @@ func (c *Client) runInner() error {
 			}
 			c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 
-		case <-chWriterError:
-			return c.writer.stopError
-
-		case err := <-chReaderError:
-			c.reader = nil
-			return err
-
-		case res := <-chReaderResponse:
+		case res := <-c.chResponse:
 			c.OnResponse(res)
 			// these are responses to keepalives, ignore them.
 
-		case req := <-chReaderRequest:
+		case req := <-c.chRequest:
 			err := c.handleServerRequest(req)
 			if err != nil {
 				return err
 			}
+
+		case err := <-c.chReadError:
+			c.reader = nil
+			return err
+
+		case err := <-c.chWriterError:
+			return err
 
 		case <-c.ctx.Done():
 			return liberrors.ErrClientTerminated{}
@@ -919,11 +903,13 @@ func (c *Client) waitResponse(requestCseqStr string) (*base.Response, error) {
 		case <-t.C:
 			return nil, liberrors.ErrClientRequestTimedOut{}
 
-		case err := <-c.reader.chError:
-			c.reader = nil
-			return nil, err
+		case req := <-c.chRequest:
+			err := c.handleServerRequest(req)
+			if err != nil {
+				return nil, err
+			}
 
-		case res := <-c.reader.chResponse:
+		case res := <-c.chResponse:
 			c.OnResponse(res)
 
 			// accept response if CSeq equals request CSeq, or if CSeq is not present
@@ -931,11 +917,9 @@ func (c *Client) waitResponse(requestCseqStr string) (*base.Response, error) {
 				return res, nil
 			}
 
-		case req := <-c.reader.chRequest:
-			err := c.handleServerRequest(req)
-			if err != nil {
-				return nil, err
-			}
+		case err := <-c.chReadError:
+			c.reader = nil
+			return nil, err
 
 		case <-c.ctx.Done():
 			return nil, liberrors.ErrClientTerminated{}
@@ -1133,8 +1117,8 @@ func (c *Client) stopTransportRoutines() {
 func (c *Client) createWriter() {
 	c.writerMutex.Lock()
 
-	c.writer = &asyncProcessor{
-		bufferSize: func() int {
+	c.writer = &asyncprocessor.Processor{
+		BufferSize: func() int {
 			if c.state == clientStateRecord || c.backChannelSetupped {
 				return c.WriteQueueSize
 			}
@@ -1144,19 +1128,25 @@ func (c *Client) createWriter() {
 			// decrease RAM consumption by allocating less buffers.
 			return 8
 		}(),
+		OnError: func(ctx context.Context, err error) {
+			select {
+			case <-ctx.Done():
+			case <-c.ctx.Done():
+			case c.chWriterError <- err:
+			}
+		},
 	}
-
-	c.writer.initialize()
+	c.writer.Initialize()
 
 	c.writerMutex.Unlock()
 }
 
 func (c *Client) startWriter() {
-	c.writer.start()
+	c.writer.Start()
 }
 
 func (c *Client) destroyWriter() {
-	c.writer.close()
+	c.writer.Close()
 
 	c.writerMutex.Lock()
 	c.writer = nil
@@ -1175,25 +1165,45 @@ func (c *Client) connOpen() error {
 	dialCtx, dialCtxCancel := context.WithTimeout(c.ctx, c.ReadTimeout)
 	defer dialCtxCancel()
 
-	nconn, err := c.DialContext(dialCtx, "tcp", canonicalAddr(&base.URL{
+	addr := canonicalAddr(&base.URL{
 		Scheme: c.Scheme,
 		Host:   c.Host,
-	}))
-	if err != nil {
-		return err
+	})
+
+	var tlsConfig *tls.Config
+	if c.Scheme == "rtsps" {
+		tlsConfig = c.TLSConfig
+		if tlsConfig == nil {
+			host, _, _ := net.SplitHostPort(addr)
+			tlsConfig = &tls.Config{
+				ServerName: host,
+			}
+		}
 	}
 
-	if c.Scheme == "rtsps" {
-		tlsConfig := c.TLSConfig
-		if tlsConfig == nil {
-			tlsConfig = &tls.Config{}
+	var nconn net.Conn
+
+	if c.Tunnel == TunnelHTTP {
+		var err error
+		nconn, err = newClientHTTPTunnel(dialCtx, c.DialContext, addr, tlsConfig)
+		if err != nil {
+			return err
 		}
-		nconn = tls.Client(nconn, tlsConfig)
+	} else {
+		var err error
+		nconn, err = c.DialContext(dialCtx, "tcp", addr)
+		if err != nil {
+			return err
+		}
+
+		if tlsConfig != nil {
+			nconn = tls.Client(nconn, tlsConfig)
+		}
 	}
 
 	c.nconn = nconn
 	bc := bytecounter.New(c.nconn, c.bytesReceived, c.bytesSent)
-	c.conn = conn.NewConn(bc)
+	c.conn = conn.NewConn(bufio.NewReader(bc), bc)
 	c.reader = &clientReader{
 		c: c,
 	}
@@ -1648,7 +1658,7 @@ func (c *Client) doSetup(
 			th.Profile = headers.TransportProfileAVP
 		}
 
-		if th.Profile == headers.TransportProfileSAVP || c.Scheme == "rtsp" {
+		if c.Tunnel == TunnelNone && (th.Profile == headers.TransportProfileSAVP || c.Scheme == "rtsp") {
 			protocol = TransportUDP
 		} else {
 			protocol = TransportTCP
@@ -2462,7 +2472,9 @@ func (c *Client) Transport2() *ClientTransport {
 	defer c.propsMutex.RUnlock()
 
 	return &ClientTransport{
-		Conn:    ConnTransport{},
+		Conn: ConnTransport{
+			Tunnel: c.Tunnel,
+		},
 		Session: c.setuppedTransport,
 	}
 }

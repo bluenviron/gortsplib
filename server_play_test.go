@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/rand"
 	"crypto/tls"
@@ -277,7 +278,7 @@ func TestServerPlayPath(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, false)
 
@@ -369,7 +370,7 @@ func TestServerPlaySetupErrors(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			var desc *description.Session
 			var th *headers.Transport
@@ -539,7 +540,7 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		inTH := &headers.Transport{
 			Delivery:    ptrOf(headers.TransportDeliveryUnicast),
@@ -777,7 +778,7 @@ func TestServerPlay(t *testing.T) {
 				}
 				return nconn
 			}()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			<-nconnOpened
 
@@ -1166,7 +1167,7 @@ func TestServerPlaySocketError(t *testing.T) {
 				require.NoError(t, err)
 				defer nconn.Close()
 
-				conn := conn.NewConn(nconn)
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				desc := doDescribe(t, conn, false)
 
@@ -1330,7 +1331,7 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, false)
 
@@ -1453,7 +1454,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, false)
 
@@ -1578,7 +1579,7 @@ func TestServerPlayVLCMulticast(t *testing.T) {
 
 	nconn, err := net.Dial("tcp", listenIP+":8554")
 	require.NoError(t, err)
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 	defer nconn.Close()
 
 	res, err := writeReqReadRes(conn, base.Request{
@@ -1665,7 +1666,7 @@ func TestServerPlayTCPResponseBeforeFrames(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	desc := doDescribe(t, conn, false)
 
@@ -1763,7 +1764,7 @@ func TestServerPlayPause(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	desc := doDescribe(t, conn, false)
 
@@ -1861,7 +1862,7 @@ func TestServerPlayPlayPausePausePlay(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, false)
 
@@ -1949,7 +1950,7 @@ func TestServerPlayTimeout(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, false)
 
@@ -2040,7 +2041,7 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 			nconn, err := net.Dial("tcp", "localhost:8554")
 			require.NoError(t, err)
 			defer nconn.Close()
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, false)
 
@@ -2121,7 +2122,7 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		desc := doDescribe(t, conn, false)
 
@@ -2146,7 +2147,7 @@ func TestServerPlayUDPChangeConn(t *testing.T) {
 		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		var res *base.Response
 		res, err = writeReqReadRes(conn, base.Request{
@@ -2209,7 +2210,7 @@ func TestServerPlayPartialMedias(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	desc := doDescribe(t, conn, false)
 
@@ -2242,7 +2243,7 @@ func TestServerPlayAdditionalInfos(t *testing.T) {
 		nconn, err := net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		desc := doDescribe(t, conn, false)
 
@@ -2465,7 +2466,7 @@ func TestServerPlayNoInterleavedIDs(t *testing.T) {
 	nconn, err := net.Dial("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer nconn.Close()
-	conn := conn.NewConn(nconn)
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	desc := doDescribe(t, conn, false)
 
@@ -2548,7 +2549,7 @@ func TestServerPlayStreamStats(t *testing.T) {
 		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
 		defer nconn.Close()
-		conn := conn.NewConn(nconn)
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		desc := doDescribe(t, conn, false)
 
@@ -2664,7 +2665,7 @@ func TestServerPlayBackChannel(t *testing.T) {
 			require.NoError(t, err)
 			defer nconn.Close()
 
-			conn := conn.NewConn(nconn)
+			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 			desc := doDescribe(t, conn, true)
 

@@ -16,7 +16,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server, announce a Opus format.
 // 2. generate dummy LPCM audio samples.
 // 3. encode audio samples with Opus.

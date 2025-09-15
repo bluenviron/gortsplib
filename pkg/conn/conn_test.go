@@ -1,6 +1,7 @@
 package conn
 
 import (
+	"bufio"
 	"bytes"
 	"testing"
 
@@ -68,7 +69,7 @@ func TestRead(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			buf := bytes.NewBuffer(ca.enc)
-			conn := NewConn(buf)
+			conn := NewConn(bufio.NewReader(buf), buf)
 			dec, err := conn.Read()
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
@@ -85,7 +86,7 @@ func TestReadConsecutiveFrameMagicBytes(t *testing.T) {
 		// another interleaved frame
 		0x24, 0x6, 0x0, 0x4, 0x1, 0x2, 0x3, 0x4,
 	})
-	conn := NewConn(buf)
+	conn := NewConn(bufio.NewReader(buf), buf)
 	dec1, err := conn.Read()
 	require.NoError(t, err)
 	require.Equal(t,
@@ -104,14 +105,14 @@ func TestReadConsecutiveFrameMagicBytes(t *testing.T) {
 
 func TestReadError(t *testing.T) {
 	var buf bytes.Buffer
-	conn := NewConn(&buf)
+	conn := NewConn(bufio.NewReader(&buf), &buf)
 	_, err := conn.Read()
 	require.Error(t, err)
 }
 
 func TestWriteRequest(t *testing.T) {
 	var buf bytes.Buffer
-	conn := NewConn(&buf)
+	conn := NewConn(bufio.NewReader(&buf), &buf)
 	err := conn.WriteRequest(&base.Request{
 		Method: "OPTIONS",
 		URL:    mustParseURL("rtsp://example.com/media.mp4"),
@@ -126,7 +127,7 @@ func TestWriteRequest(t *testing.T) {
 
 func TestWriteResponse(t *testing.T) {
 	var buf bytes.Buffer
-	conn := NewConn(&buf)
+	conn := NewConn(bufio.NewReader(&buf), &buf)
 	err := conn.WriteResponse(&base.Response{
 		StatusCode:    base.StatusOK,
 		StatusMessage: "OK",
@@ -145,7 +146,7 @@ func TestWriteResponse(t *testing.T) {
 
 func TestWriteInterleavedFrame(t *testing.T) {
 	var buf bytes.Buffer
-	conn := NewConn(&buf)
+	conn := NewConn(bufio.NewReader(&buf), &buf)
 	err := conn.WriteInterleavedFrame(&base.InterleavedFrame{
 		Channel: 6,
 		Payload: []byte{0x01, 0x02, 0x03, 0x04},

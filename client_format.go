@@ -145,7 +145,7 @@ func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 		return nil
 	}
 
-	ok := cf.cm.c.writer.push(func() error {
+	ok := cf.cm.c.writer.Push(func() error {
 		return cf.writePacketRTPInQueue(buf)
 	})
 	if !ok {

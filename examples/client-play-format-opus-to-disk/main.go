@@ -11,7 +11,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server.
 // 2. check if there's a Opus stream.
 // 3. save the content of the format in a file in MPEG-TS format.

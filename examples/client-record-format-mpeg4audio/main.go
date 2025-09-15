@@ -14,7 +14,7 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server, announce a MPEG-4 Audio (AAC) format.
 // 2. generate dummy LPCM audio samples.
 // 3. encode audio samples with MPEG-4 Audio (AAC).

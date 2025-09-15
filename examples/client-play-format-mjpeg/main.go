@@ -14,7 +14,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// This example shows how to
+// This example shows how to:
 // 1. connect to a RTSP server.
 // 2. check if there's a M-JPEG stream.
 // 3. get JPEG images of that format.
