@@ -1188,11 +1188,6 @@ func (c *Client) connOpen() error {
 		if tlsConfig == nil {
 			tlsConfig = &tls.Config{}
 		}
-		tlsConfig.ServerName = (&base.URL{
-			Scheme: c.Scheme,
-			Host:   c.Host,
-		}).Hostname()
-
 		nconn = tls.Client(nconn, tlsConfig)
 	}
 
