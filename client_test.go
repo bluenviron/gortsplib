@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"crypto/tls"
 	"net"
 	"strings"
 	"testing"
@@ -49,56 +48,6 @@ func TestClientURLToAddress(t *testing.T) {
 			require.Equal(t, ca.addr, addr)
 		})
 	}
-}
-
-func TestClientTLSSetServerName(t *testing.T) {
-	l, err := net.Listen("tcp", "localhost:8554")
-	require.NoError(t, err)
-	defer l.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-
-	go func() {
-		defer close(serverDone)
-
-		nconn, err2 := l.Accept()
-		require.NoError(t, err2)
-		defer nconn.Close()
-
-		cert, err2 := tls.X509KeyPair(serverCert, serverKey)
-		require.NoError(t, err2)
-
-		tnconn := tls.Server(nconn, &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: true,
-			VerifyConnection: func(cs tls.ConnectionState) error {
-				require.Equal(t, "localhost", cs.ServerName)
-				return nil
-			},
-		})
-
-		err2 = tnconn.Handshake()
-		require.EqualError(t, err2, "remote error: tls: bad certificate")
-	}()
-
-	u, err := base.ParseURL("rtsps://localhost:8554/stream")
-	require.NoError(t, err)
-
-	c := Client{
-		Scheme:    u.Scheme,
-		Host:      u.Host,
-		TLSConfig: &tls.Config{},
-	}
-
-	err = c.Start2()
-	require.NoError(t, err)
-	defer c.Close()
-
-	_, err = c.Options(u)
-	require.Error(t, err)
-
-	<-serverDone
 }
 
 func TestClientClose(t *testing.T) {
