@@ -16,6 +16,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
+	"github.com/bluenviron/gortsplib/v4/pkg/conn"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
 	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
@@ -205,8 +206,8 @@ type ServerConn struct {
 	userData         interface{}
 	remoteAddr       *net.TCPAddr
 	bc               *bytecounter.ByteCounter
+	conn             *conn.Conn
 	session          *ServerSession
-	reader           *serverConnReader
 	authNonce        string
 	httpReadBuf      *bufio.Reader
 	httpReadTunnelID string
@@ -362,10 +363,10 @@ func (sc *ServerConn) run() {
 		})
 	}
 
-	sc.reader = &serverConnReader{
+	reader := &serverConnReader{
 		sc: sc,
 	}
-	sc.reader.initialize()
+	reader.initialize()
 
 	err := sc.runInner()
 
@@ -375,9 +376,7 @@ func (sc *ServerConn) run() {
 		sc.nconn.Close()
 	}
 
-	if sc.reader != nil {
-		sc.reader.wait()
-	}
+	reader.wait()
 
 	if sc.session != nil {
 		sc.session.removeConn(sc)
@@ -400,7 +399,6 @@ func (sc *ServerConn) runInner() error {
 			req.res <- sc.handleRequestOuter(req.req)
 
 		case err := <-sc.chReadError:
-			sc.reader = nil
 			return err
 
 		case ss := <-sc.chRemoveSession:
@@ -629,7 +627,7 @@ func (sc *ServerConn) handleRequestOuter(req *base.Request) error {
 	}
 
 	sc.nconn.SetWriteDeadline(time.Now().Add(sc.s.WriteTimeout))
-	err2 := sc.reader.conn.WriteResponse(res)
+	err2 := sc.conn.WriteResponse(res)
 	if err == nil && err2 != nil {
 		err = err2
 	}
