@@ -401,6 +401,9 @@ func (s *Server) runInner() error {
 			sc.Close()
 
 		case req := <-s.chHandleHTTPChannel:
+			if _, ok := s.conns[req.sc]; !ok {
+				continue
+			}
 			if !req.write {
 				req.sc.httpReadTunnelID = req.tunnelID
 				s.httpReadChannels[req.sc] = req.res
@@ -551,8 +554,6 @@ func (s *Server) handleHTTPChannel(req sessionHandleHTTPChannelReq) error {
 
 	select {
 	case s.chHandleHTTPChannel <- req:
-	case <-req.sc.ctx.Done():
-		return fmt.Errorf("terminated")
 	case <-s.ctx.Done():
 		return fmt.Errorf("terminated")
 	}

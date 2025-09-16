@@ -36,28 +36,30 @@ func isSwitchReadFuncError(err error) bool {
 }
 
 type serverConnReader struct {
-	sc   *ServerConn
-	conn *conn.Conn
+	sc *ServerConn
+
+	done chan struct{}
 }
 
 func (cr *serverConnReader) initialize() {
+	cr.done = make(chan struct{})
+
 	go cr.run()
 }
 
 func (cr *serverConnReader) wait() {
-	for {
-		select {
-		case <-cr.sc.chReadError:
-			return
-
-		case req := <-cr.sc.chRequest:
-			req.res <- fmt.Errorf("terminated")
-		}
-	}
+	<-cr.done
 }
 
 func (cr *serverConnReader) run() {
-	cr.sc.chReadError <- cr.runInner()
+	defer close(cr.done)
+
+	err := cr.runInner()
+
+	select {
+	case cr.sc.chReadError <- err:
+	case <-cr.sc.ctx.Done():
+	}
 }
 
 func (cr *serverConnReader) runInner() error {
@@ -71,7 +73,7 @@ func (cr *serverConnReader) runInner() error {
 		}
 	}
 
-	cr.conn = conn.NewConn(bufio.NewReader(rw), rw)
+	cr.sc.conn = conn.NewConn(bufio.NewReader(rw), rw)
 
 	readFunc := cr.readFuncStandard
 
@@ -171,7 +173,7 @@ func (cr *serverConnReader) readFuncStandard() error {
 	cr.sc.nconn.SetReadDeadline(time.Time{})
 
 	for {
-		what, err := cr.conn.Read()
+		what, err := cr.sc.conn.Read()
 		if err != nil {
 			return err
 		}
@@ -180,7 +182,12 @@ func (cr *serverConnReader) readFuncStandard() error {
 		case *base.Request:
 			cres := make(chan error)
 			req := readReq{req: what, res: cres}
-			cr.sc.chRequest <- req
+
+			select {
+			case cr.sc.chRequest <- req:
+			case <-cr.sc.ctx.Done():
+				return fmt.Errorf("terminated")
+			}
 
 			err = <-cres
 			if err != nil {
@@ -207,7 +214,7 @@ func (cr *serverConnReader) readFuncTCP() error {
 			cr.sc.nconn.SetReadDeadline(time.Now().Add(cr.sc.s.ReadTimeout))
 		}
 
-		what, err := cr.conn.Read()
+		what, err := cr.sc.conn.Read()
 		if err != nil {
 			return err
 		}
@@ -216,7 +223,12 @@ func (cr *serverConnReader) readFuncTCP() error {
 		case *base.Request:
 			cres := make(chan error)
 			req := readReq{req: what, res: cres}
-			cr.sc.chRequest <- req
+
+			select {
+			case cr.sc.chRequest <- req:
+			case <-cr.sc.ctx.Done():
+				return fmt.Errorf("terminated")
+			}
 
 			err = <-cres
 			if err != nil {

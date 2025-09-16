@@ -882,6 +882,7 @@ func (c *Client) runInner() error {
 			}
 
 		case err := <-c.chReadError:
+			c.reader.close()
 			c.reader = nil
 			return err
 
@@ -918,6 +919,7 @@ func (c *Client) waitResponse(requestCseqStr string) (*base.Response, error) {
 			}
 
 		case err := <-c.chReadError:
+			c.reader.close()
 			c.reader = nil
 			return nil, err
 
@@ -975,7 +977,7 @@ func (c *Client) doClose() {
 
 	if c.reader != nil {
 		c.nconn.Close()
-		c.reader.wait()
+		c.reader.close()
 		c.reader = nil
 		c.nconn = nil
 		c.conn = nil
