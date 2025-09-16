@@ -1,8 +1,8 @@
 package gortsplib
 
 import (
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
 )
 
 // ServerHandler is the interface implemented by all the server handlers.
@@ -99,15 +99,11 @@ type ServerHandlerOnAnnounce interface {
 
 // ServerHandlerOnSetupCtx is the context of OnSetup.
 type ServerHandlerOnSetupCtx struct {
-	Session *ServerSession
-	Conn    *ServerConn
-	Request *base.Request
-	Path    string
-	Query   string
-
-	// Deprecated: replaced by Transport2.
-	Transport TransportProtocol
-
+	Session    *ServerSession
+	Conn       *ServerConn
+	Request    *base.Request
+	Path       string
+	Query      string
 	Transport2 *SessionTransport
 }
 
@@ -194,22 +190,6 @@ type ServerHandlerOnSetParameterCtx struct {
 type ServerHandlerOnSetParameter interface {
 	// called when receiving a SET_PARAMETER request.
 	OnSetParameter(*ServerHandlerOnSetParameterCtx) (*base.Response, error)
-}
-
-// ServerHandlerOnPacketLostCtx is the context of OnPacketLost.
-//
-// Deprecated: replaced by ServerHandlerOnPacketsLostCtx
-type ServerHandlerOnPacketLostCtx struct {
-	Session *ServerSession
-	Error   error
-}
-
-// ServerHandlerOnPacketLost can be implemented by a ServerHandler.
-//
-// Deprecated: replaced by ServerHandlerOnPacketsLost
-type ServerHandlerOnPacketLost interface {
-	// called when the server detects lost packets.
-	OnPacketLost(*ServerHandlerOnPacketLostCtx)
 }
 
 // ServerHandlerOnPacketsLostCtx is the context of OnPacketsLost.

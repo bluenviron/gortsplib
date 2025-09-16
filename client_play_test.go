@@ -18,14 +18,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/ipv4"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/auth"
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/conn"
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
+	"github.com/bluenviron/gortsplib/v5/pkg/auth"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/conn"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
+	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
@@ -38,7 +38,7 @@ func mediasToSDP(medias []*description.Media) []byte {
 		m.Control = "trackID=" + strconv.FormatInt(int64(i), 10)
 	}
 
-	byts, err := desc.Marshal(false)
+	byts, err := desc.Marshal()
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +71,7 @@ func readAll(c *Client, ur string, cb func(*description.Media, format.Format, *r
 	c.Scheme = u.Scheme
 	c.Host = u.Host
 
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		return err
 	}
@@ -339,16 +339,23 @@ func TestClientPlay(t *testing.T) {
 				err2 = forma.Init()
 				require.NoError(t, err2)
 
+				var profile headers.TransportProfile
+				if ca.secure == "secure" {
+					profile = headers.TransportProfileSAVP
+				} else {
+					profile = headers.TransportProfileAVP
+				}
+
 				medias := []*description.Media{
 					{
 						Type:    "application",
 						Formats: []format.Format{forma},
-						Secure:  ca.secure == "secure",
+						Profile: profile,
 					},
 					{
 						Type:    "application",
 						Formats: []format.Format{forma},
-						Secure:  ca.secure == "secure",
+						Profile: profile,
 					},
 				}
 
@@ -600,7 +607,7 @@ func TestClientPlay(t *testing.T) {
 				Scheme:    u.Scheme,
 				Host:      u.Host,
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
-				Transport: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					switch ca.transport {
 					case "udp":
 						v := TransportUDP
@@ -617,7 +624,7 @@ func TestClientPlay(t *testing.T) {
 				}(),
 			}
 
-			err = c.Start2()
+			err = c.Start()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -627,7 +634,7 @@ func TestClientPlay(t *testing.T) {
 			// test that properties can be accessed in parallel
 			go func() {
 				c.Stats()
-				c.Transport2()
+				c.Transport()
 			}()
 
 			err = c.SetupAll(sd.BaseURL, sd.Medias)
@@ -814,7 +821,7 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 				require.Equal(t, (*headers.TransportMode)(nil), inTH.Mode)
 
 				th := headers.Transport{
-					Secure: true,
+					Profile: headers.TransportProfileSAVP,
 				}
 
 				v := headers.TransportDeliveryUnicast
@@ -876,14 +883,16 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 				require.Equal(t, base.Teardown, req.Method)
 			}()
 
-			c := Client{
-				TLSConfig: &tls.Config{InsecureSkipVerify: true},
-			}
-
 			u, err := base.ParseURL("rtsps://127.0.0.1:8554/stream")
 			require.NoError(t, err)
 
-			err = c.Start(u.Scheme, u.Host)
+			c := Client{
+				Scheme:    u.Scheme,
+				Host:      u.Host,
+				TLSConfig: &tls.Config{InsecureSkipVerify: true},
+			}
+
+			err = c.Start()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1030,12 +1039,12 @@ func TestClientPlayPartial(t *testing.T) {
 	require.NoError(t, err)
 
 	c := Client{
-		Scheme:    u.Scheme,
-		Host:      u.Host,
-		Transport: ptrOf(TransportTCP),
+		Scheme:   u.Scheme,
+		Host:     u.Host,
+		Protocol: ptrOf(TransportTCP),
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -1978,7 +1987,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	packetRecv := make(chan struct{})
 
 	c := Client{
-		Transport: ptrOf(TransportTCP),
+		Protocol: ptrOf(TransportTCP),
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -2412,7 +2421,7 @@ func TestClientPlayPausePlay(t *testing.T) {
 			packetRecv := make(chan struct{})
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -2731,7 +2740,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					switch transport {
 					case "udp":
 						v := TransportUDP
@@ -2867,7 +2876,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 	recv := make(chan struct{})
 
 	c := Client{
-		Transport: ptrOf(TransportTCP),
+		Protocol: ptrOf(TransportTCP),
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -3020,7 +3029,7 @@ func TestClientPlayKeepAlive(t *testing.T) {
 
 			v := TransportTCP
 			c := Client{
-				Transport: &v,
+				Protocol: &v,
 				OnResponse: func(_ *base.Response) {
 					m++
 					if ca != "no response" {
@@ -3118,7 +3127,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 			Protocol:    headers.TransportProtocolUDP,
 			ClientPorts: inTH.ClientPorts,
 			ServerPorts: &[2]int{34556, 34557},
-			Source:      ptrOf(net.ParseIP("127.0.1.1")),
+			Source2:     ptrOf("127.0.1.1"),
 		}
 
 		l1, err2 := net.ListenPacket("udp", "127.0.1.1:34556")
@@ -3165,7 +3174,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 	}()
 
 	c := Client{
-		Transport: ptrOf(TransportUDP),
+		Protocol: ptrOf(TransportUDP),
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/test/stream?param=value",
@@ -3409,7 +3418,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					if ca.proto == "udp" {
 						v := TransportUDP
 						return &v
@@ -3893,7 +3902,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 				Scheme:              u.Scheme,
 				Host:                u.Host,
 				RequestBackChannels: true,
-				Transport: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					if transport == "tcp" {
 						return ptrOf(TransportTCP)
 					}
@@ -3903,7 +3912,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 				receiverReportPeriod: 750 * time.Millisecond,
 			}
 
-			err = c.Start2()
+			err = c.Start()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -3962,7 +3971,7 @@ func TestClientPlaySetupErrorBackChannel(t *testing.T) {
 		Host:   u.Host,
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 	defer c.Close()
 

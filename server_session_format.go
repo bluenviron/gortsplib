@@ -8,9 +8,9 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtpreceiver"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v5/pkg/rtpreceiver"
 )
 
 type serverSessionFormat struct {
@@ -43,7 +43,7 @@ func (sf *serverSessionFormat) initialize() {
 	if sf.sm.ss.state == ServerSessionStatePreRecord || sf.sm.media.IsBackChannel {
 		sf.rtpReceiver = &rtpreceiver.Receiver{
 			ClockRate:            sf.format.ClockRate(),
-			LocalSSRC:            &sf.localSSRC,
+			LocalSSRC:            sf.localSSRC,
 			UnrealiableTransport: udp,
 			Period:               sf.sm.ss.s.receiverReportPeriod,
 			TimeNow:              sf.sm.ss.s.timeNow,
@@ -78,7 +78,7 @@ func (sf *serverSessionFormat) remoteSSRC() (uint32, bool) {
 }
 
 func (sf *serverSessionFormat) readPacketRTP(pkt *rtp.Packet, now time.Time) {
-	pkts, lost, err := sf.rtpReceiver.ProcessPacket2(pkt, now, sf.format.PTSEqualsDTS(pkt))
+	pkts, lost, err := sf.rtpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		sf.sm.onPacketRTPDecodeError(err)
 		return
@@ -91,11 +91,6 @@ func (sf *serverSessionFormat) readPacketRTP(pkt *rtp.Packet, now time.Time) {
 			h.OnPacketsLost(&ServerHandlerOnPacketsLostCtx{
 				Session: sf.sm.ss,
 				Lost:    lost,
-			})
-		} else if h, ok2 := sf.sm.ss.s.Handler.(ServerHandlerOnPacketLost); ok2 {
-			h.OnPacketLost(&ServerHandlerOnPacketLostCtx{
-				Session: sf.sm.ss,
-				Error:   liberrors.ErrServerRTPPacketsLost{Lost: uint(lost)}, //nolint:staticcheck
 			})
 		} else {
 			log.Printf("%d RTP %s lost",

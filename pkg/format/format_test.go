@@ -3,7 +3,7 @@ package format
 import (
 	"testing"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/stretchr/testify/require"
 )
@@ -638,7 +638,6 @@ var casesFormat = []struct {
 			"a=fmtp:96 sprop-stereo=1\n",
 		&Opus{
 			PayloadTyp:   96,
-			IsStereo:     true,
 			ChannelCount: 2,
 		},
 		96,

@@ -10,9 +10,9 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
 func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStreamMedia) []uint32 {
@@ -23,21 +23,6 @@ func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStrea
 		}
 	}
 	return ret
-}
-
-// NewServerStream allocates a ServerStream.
-//
-// Deprecated: replaced by ServerStream.Initialize().
-func NewServerStream(s *Server, desc *description.Session) *ServerStream {
-	st := &ServerStream{
-		Server: s,
-		Desc:   desc,
-	}
-	err := st.Initialize()
-	if err != nil {
-		panic(err)
-	}
-	return st
 }
 
 // ServerStream represents a data stream.
@@ -135,24 +120,6 @@ func (st *ServerStream) Close() {
 	}
 }
 
-// BytesSent returns the number of written bytes.
-//
-// Deprecated: replaced by Stats()
-func (st *ServerStream) BytesSent() uint64 {
-	v := uint64(0)
-	for _, me := range st.medias {
-		v += atomic.LoadUint64(me.bytesSent)
-	}
-	return v
-}
-
-// Description returns the description of the stream.
-//
-// Deprecated: use ServerStream.Desc.
-func (st *ServerStream) Description() *description.Session {
-	return st.Desc
-}
-
 // Stats returns stream statistics.
 func (st *ServerStream) Stats() *ServerStreamStats {
 	mediaStats := func() map[*description.Media]ServerStreamStatsMedia {
@@ -211,7 +178,7 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 func (st *ServerStream) readerAdd(
 	ss *ServerSession,
 	clientPorts *[2]int,
-	protocol TransportProtocol,
+	protocol Protocol,
 ) error {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()

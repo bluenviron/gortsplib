@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/conn"
-	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/conn"
+	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/mediacommon/v2/pkg/rewindablereader"
 )
 

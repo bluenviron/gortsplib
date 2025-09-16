@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
+	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 )
@@ -32,26 +32,6 @@ type Sender struct {
 
 	terminate chan struct{}
 	done      chan struct{}
-}
-
-// New allocates a Sender.
-//
-// Deprecated: replaced by Initialize().
-func New(
-	clockRate int,
-	period time.Duration,
-	timeNow func() time.Time,
-	writePacketRTCP func(rtcp.Packet),
-) *Sender {
-	rs := &Sender{
-		ClockRate:       clockRate,
-		Period:          period,
-		TimeNow:         timeNow,
-		WritePacketRTCP: writePacketRTCP,
-	}
-	rs.Initialize()
-
-	return rs
 }
 
 // Initialize initializes a Sender.
@@ -132,36 +112,8 @@ func (rs *Sender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS boo
 	rs.octetCount += uint32(len(pkt.Payload))
 }
 
-// SenderSSRC returns the SSRC of outgoing RTP packets.
-//
-// Deprecated: replaced by Stats().
-func (rs *Sender) SenderSSRC() (uint32, bool) {
-	stats := rs.Stats()
-	if stats == nil {
-		return 0, false
-	}
-
-	return stats.LocalSSRC, true
-}
-
-// LastPacketData returns metadata of the last RTP packet.
-//
-// Deprecated: replaced by Stats().
-func (rs *Sender) LastPacketData() (uint16, uint32, time.Time, bool) {
-	stats := rs.Stats()
-	if stats == nil {
-		return 0, 0, time.Time{}, false
-	}
-
-	return stats.LastSequenceNumber, stats.LastRTP, stats.LastNTP, true
-}
-
 // Stats are statistics.
 type Stats struct {
-	// Deprecated: this is not a statistics anymore but a fixed parameter.
-	// it will be removed in next version.
-	LocalSSRC uint32
-
 	LastSequenceNumber uint16
 	LastRTP            uint32
 	LastNTP            time.Time
@@ -177,7 +129,6 @@ func (rs *Sender) Stats() *Stats {
 	}
 
 	return &Stats{
-		LocalSSRC:          rs.localSSRC,
 		LastSequenceNumber: rs.lastSequenceNumber,
 		LastRTP:            rs.lastTimeRTP,
 		LastNTP:            rs.lastTimeNTP,

@@ -9,8 +9,8 @@ import (
 
 func TestOpusAttributes(t *testing.T) {
 	format := &Opus{
-		PayloadTyp: 96,
-		IsStereo:   true,
+		PayloadTyp:   96,
+		ChannelCount: 2,
 	}
 	require.Equal(t, "Opus", format.Codec())
 	require.Equal(t, 48000, format.ClockRate())

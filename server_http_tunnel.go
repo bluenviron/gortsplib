@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/bluenviron/gortsplib/v4/internal/base64streamreader"
+	"github.com/bluenviron/gortsplib/v5/internal/base64streamreader"
 )
 
 type serverHTTPTunnel struct {

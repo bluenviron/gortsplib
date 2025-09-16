@@ -23,20 +23,20 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/internal/asyncprocessor"
-	"github.com/bluenviron/gortsplib/v4/pkg/auth"
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/bytecounter"
-	"github.com/bluenviron/gortsplib/v4/pkg/conn"
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtpreceiver"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtpsender"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtptime"
-	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/internal/asyncprocessor"
+	"github.com/bluenviron/gortsplib/v5/pkg/auth"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/bytecounter"
+	"github.com/bluenviron/gortsplib/v5/pkg/conn"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
+	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v5/pkg/rtpreceiver"
+	"github.com/bluenviron/gortsplib/v5/pkg/rtpsender"
+	"github.com/bluenviron/gortsplib/v5/pkg/rtptime"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
 )
 
 const (
@@ -82,14 +82,6 @@ func clientExtractExistingSSRCs(setuppedMedias map[*description.Media]*clientMed
 		}
 	}
 	return ret
-}
-
-// avoid an int64 overflow and preserve resolution by splitting division into two parts:
-// first add the integer part, then the decimal part.
-func multiplyAndDivide(v, m, d time.Duration) time.Duration {
-	secs := v / d
-	dec := v % d
-	return (secs*m + dec*m/d)
 }
 
 // convert an URL into an address, in particular:
@@ -417,11 +409,6 @@ type ClientOnResponseFunc func(*base.Response)
 // ClientOnTransportSwitchFunc is the prototype of Client.OnTransportSwitch.
 type ClientOnTransportSwitchFunc func(err error)
 
-// ClientOnPacketLostFunc is the prototype of Client.OnPacketLost.
-//
-// Deprecated: replaced by ClientOnPacketsLostFunc
-type ClientOnPacketLostFunc func(err error)
-
 // ClientOnPacketsLostFunc is the prototype of Client.OnPacketsLost.
 type ClientOnPacketsLostFunc func(lost uint64)
 
@@ -467,7 +454,7 @@ type Client struct {
 	// transport protocol (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
-	Transport *TransportProtocol
+	Protocol *Protocol
 	// enable communication with servers which don't provide UDP server ports
 	// or use different server ports than the announced ones.
 	// This can be a security issue.
@@ -495,14 +482,6 @@ type Client struct {
 	DisableRTCPSenderReports bool
 	// explicitly request back channels to the server.
 	RequestBackChannels bool
-	// pointer to a variable that stores received bytes.
-	//
-	// Deprecated: use Client.Stats()
-	BytesReceived *uint64
-	// pointer to a variable that stores sent bytes.
-	//
-	// Deprecated: use Client.Stats()
-	BytesSent *uint64
 
 	//
 	// system functions (all optional)
@@ -527,10 +506,6 @@ type Client struct {
 	OnServerResponse ClientOnResponseFunc
 	// called when the transport protocol changes.
 	OnTransportSwitch ClientOnTransportSwitchFunc
-	// called when the client detects lost packets.
-	//
-	// Deprecated: replaced by OnPacketsLost
-	OnPacketLost ClientOnPacketLostFunc
 	// called when the client detects lost packets.
 	OnPacketsLost ClientOnPacketsLostFunc
 	// called when a non-fatal decode error occurs.
@@ -575,7 +550,7 @@ type Client struct {
 	writerMutex          sync.RWMutex
 	writer               *asyncprocessor.Processor
 	reader               *clientReader
-	timeDecoder          *rtptime.GlobalDecoder2
+	timeDecoder          *rtptime.GlobalDecoder
 	mustClose            bool
 	tcpFrame             *base.InterleavedFrame
 	tcpBuffer            []byte
@@ -600,16 +575,7 @@ type Client struct {
 }
 
 // Start initializes the connection to a server.
-//
-// Deprecated: replaced by Start2.
-func (c *Client) Start(scheme string, host string) error {
-	c.Scheme = scheme
-	c.Host = host
-	return c.Start2()
-}
-
-// Start2 initializes the connection to a server.
-func (c *Client) Start2() error {
+func (c *Client) Start() error {
 	// RTSP parameters
 	if c.ReadTimeout == 0 {
 		c.ReadTimeout = 10 * time.Second
@@ -664,11 +630,6 @@ func (c *Client) Start2() error {
 			log.Println(err.Error())
 		}
 	}
-	if c.OnPacketLost != nil {
-		c.OnPacketsLost = func(lost uint64) {
-			c.OnPacketLost(liberrors.ErrClientRTPPacketsLost{Lost: uint(lost)}) //nolint:staticcheck
-		}
-	}
 	if c.OnPacketsLost == nil {
 		c.OnPacketsLost = func(lost uint64) {
 			log.Printf("%d RTP %s lost",
@@ -709,17 +670,8 @@ func (c *Client) Start2() error {
 	c.checkTimeoutTimer = emptyTimer()
 	c.keepAlivePeriod = 30 * time.Second
 	c.keepAliveTimer = emptyTimer()
-
-	if c.BytesReceived != nil {
-		c.bytesReceived = c.BytesReceived
-	} else {
-		c.bytesReceived = new(uint64)
-	}
-	if c.BytesSent != nil {
-		c.bytesSent = c.BytesSent
-	} else {
-		c.bytesSent = new(uint64)
-	}
+	c.bytesReceived = new(uint64)
+	c.bytesSent = new(uint64)
 
 	c.chOptions = make(chan optionsReq)
 	c.chDescribe = make(chan describeReq)
@@ -749,7 +701,7 @@ func (c *Client) StartRecording(address string, desc *description.Session) error
 	c.Scheme = u.Scheme
 	c.Host = u.Host
 
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		return err
 	}
@@ -1063,7 +1015,7 @@ func (c *Client) trySwitchingProtocol() error {
 }
 
 func (c *Client) startTransportRoutines() {
-	c.timeDecoder = &rtptime.GlobalDecoder2{}
+	c.timeDecoder = &rtptime.GlobalDecoder{}
 	c.timeDecoder.Initialize()
 
 	for _, cm := range c.setuppedMedias {
@@ -1334,7 +1286,7 @@ func (c *Client) isInTCPTimeout() bool {
 func (c *Client) doCheckTimeout() error {
 	if c.setuppedTransport.Protocol == TransportUDP ||
 		c.setuppedTransport.Protocol == TransportUDPMulticast {
-		if c.checkTimeoutInitial && !c.backChannelSetupped && c.Transport == nil {
+		if c.checkTimeoutInitial && !c.backChannelSetupped && c.Protocol == nil {
 			c.checkTimeoutInitial = false
 
 			if !c.atLeastOneUDPPacketHasBeenReceived() {
@@ -1539,7 +1491,7 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
-	if c.Transport != nil && *c.Transport == TransportUDPMulticast {
+	if c.Protocol != nil && *c.Protocol == TransportUDPMulticast {
 		return nil, fmt.Errorf("recording with UDP multicast is not supported")
 	}
 
@@ -1558,7 +1510,7 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
-	byts, err := desc.Marshal(false)
+	byts, err := desc.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -1633,7 +1585,7 @@ func (c *Client) doSetup(
 		th.Mode = &v
 	}
 
-	var protocol TransportProtocol
+	var protocol Protocol
 
 	switch {
 	// use transport from previous SETUP calls
@@ -1642,8 +1594,8 @@ func (c *Client) doSetup(
 		th.Profile = c.setuppedTransport.Profile
 
 	// use transport from config, secure flag from server
-	case c.Transport != nil:
-		protocol = *c.Transport
+	case c.Protocol != nil:
+		protocol = *c.Protocol
 		if isSecure(medi.Profile) && c.Scheme == "rtsps" {
 			th.Profile = headers.TransportProfileSAVP
 		} else {
@@ -1813,7 +1765,7 @@ func (c *Client) doSetup(
 	if res.StatusCode != base.StatusOK {
 		// switch transport automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
-			c.setuppedTransport == nil && c.Transport == nil {
+			c.setuppedTransport == nil && c.Protocol == nil {
 			c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 			c.setuppedTransport = &SessionTransport{
 				Protocol: TransportTCP,
@@ -1836,7 +1788,7 @@ func (c *Client) doSetup(
 	case TransportUDP, TransportUDPMulticast:
 		if thRes.Protocol == headers.TransportProtocolTCP {
 			// switch transport automatically
-			if c.setuppedTransport == nil && c.Transport == nil {
+			if c.setuppedTransport == nil && c.Protocol == nil {
 				c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 
 				c.baseURL = baseURL
@@ -2358,18 +2310,6 @@ func (c *Client) Pause() (*base.Response, error) {
 	}
 }
 
-// Seek asks the server to re-start the stream from a specific timestamp.
-//
-// Deprecated: will be removed in next version. Equivalent to using Pause() followed by Play().
-func (c *Client) Seek(ra *headers.Range) (*base.Response, error) {
-	_, err := c.Pause()
-	if err != nil {
-		return nil, err
-	}
-
-	return c.Play(ra)
-}
-
 // OnPacketRTPAny sets a callback that is called when a RTP packet is read from any setupped media.
 func (c *Client) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
 	for _, cm := range c.setuppedMedias {
@@ -2438,23 +2378,7 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 
 // PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
-//
-// Deprecated: replaced by PacketPTS2.
-func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (time.Duration, bool) {
-	cm := c.setuppedMedias[medi]
-	ct := cm.formats[pkt.PayloadType]
-
-	v, ok := c.timeDecoder.Decode(ct.format, pkt)
-	if !ok {
-		return 0, false
-	}
-
-	return multiplyAndDivide(time.Duration(v), time.Second, time.Duration(ct.format.ClockRate())), true
-}
-
-// PacketPTS2 returns the PTS (presentation timestamp) of an incoming RTP packet.
-// It is computed by decoding the packet timestamp and sychronizing it with other tracks.
-func (c *Client) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
+func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
 	cm := c.setuppedMedias[medi]
 	ct := cm.formats[pkt.PayloadType]
 	return c.timeDecoder.Decode(ct.format, pkt)
@@ -2468,8 +2392,8 @@ func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time,
 	return ct.rtpReceiver.PacketNTP(pkt.Timestamp)
 }
 
-// Transport2 returns transport details.
-func (c *Client) Transport2() *ClientTransport {
+// Transport returns transport details.
+func (c *Client) Transport() *ClientTransport {
 	c.propsMutex.RLock()
 	defer c.propsMutex.RUnlock()
 
@@ -2486,8 +2410,8 @@ func (c *Client) Stats() *ClientStats {
 	c.propsMutex.RLock()
 	defer c.propsMutex.RUnlock()
 
-	mediaStats := func() map[*description.Media]StatsSessionMedia { //nolint:dupl
-		ret := make(map[*description.Media]StatsSessionMedia, len(c.setuppedMedias))
+	mediaStats := func() map[*description.Media]SessionStatsMedia { //nolint:dupl
+		ret := make(map[*description.Media]SessionStatsMedia, len(c.setuppedMedias))
 
 		for med, sm := range c.setuppedMedias {
 			ret[med] = SessionStatsMedia{

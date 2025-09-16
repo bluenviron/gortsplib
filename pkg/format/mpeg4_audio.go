@@ -9,7 +9,7 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpmpeg4audio"
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpmpeg4audio"
 )
 
 // MPEG4Audio is the RTP format for a MPEG-4 Audio codec.
@@ -196,11 +196,4 @@ func (f *MPEG4Audio) CreateEncoder() (*rtpmpeg4audio.Encoder, error) {
 	}
 
 	return e, nil
-}
-
-// GetConfig returns the MPEG-4 Audio configuration.
-//
-// Deprecated: redundant. Use f.Config.
-func (f *MPEG4Audio) GetConfig() *mpeg4audio.Config {
-	return f.Config
 }

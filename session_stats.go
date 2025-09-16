@@ -3,24 +3,9 @@ package gortsplib
 import (
 	"time"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
-
-// StatsSessionFormat are session format statistics.
-//
-// Deprecated: replaced by SessionStatsFormat
-type StatsSessionFormat = SessionStatsFormat
-
-// StatsSessionMedia are session media statistics.
-//
-// Deprecated: replaced by SessionStatsMedia
-type StatsSessionMedia = SessionStatsMedia
-
-// StatsSession are session statistics.
-//
-// Deprecated: replaced by SessionStats.
-type StatsSession = SessionStats
 
 // SessionStatsFormat are session format statistics.
 type SessionStatsFormat struct {

@@ -12,11 +12,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bluenviron/gortsplib/v4/internal/base64streamreader"
-	"github.com/bluenviron/gortsplib/v4/pkg/auth"
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/conn"
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/internal/base64streamreader"
+	"github.com/bluenviron/gortsplib/v5/pkg/auth"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/conn"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
 )
 
 func mustParseURL(s string) *base.URL {
@@ -65,7 +65,7 @@ func TestClientClose(t *testing.T) {
 		Host:   u.Host,
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 
 	c.Close()
@@ -127,7 +127,7 @@ func TestClientCloseDuringRequest(t *testing.T) {
 		Host:   u.Host,
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 
 	optionsDone := make(chan struct{})
@@ -200,7 +200,7 @@ func TestClientSession(t *testing.T) {
 		Host:   u.Host,
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -280,7 +280,7 @@ func TestClientAuth(t *testing.T) {
 		Host:   u.Host,
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -359,7 +359,7 @@ func TestClientCSeq(t *testing.T) {
 				Host:   u.Host,
 			}
 
-			err = c.Start2()
+			err = c.Start()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -425,7 +425,7 @@ func TestClientDescribeCharset(t *testing.T) {
 		Host:   u.Host,
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -515,7 +515,7 @@ func TestClientReplyToServerRequest(t *testing.T) {
 				Host:   u.Host,
 			}
 
-			err = c.Start2()
+			err = c.Start()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -583,7 +583,7 @@ func TestClientRelativeContentBase(t *testing.T) {
 		Host:   u.Host,
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -764,7 +764,7 @@ func TestClientHTTPTunnel(t *testing.T) {
 				},
 			}
 
-			err = c.Start2()
+			err = c.Start()
 			require.NoError(t, err)
 			defer c.Close()
 

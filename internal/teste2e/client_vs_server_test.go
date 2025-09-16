@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v5"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
@@ -172,7 +172,7 @@ func TestClientVsServer(t *testing.T) {
 				publisherTunnel = gortsplib.TunnelNone
 			}
 
-			var publisherProto gortsplib.Transport
+			var publisherProto gortsplib.Protocol
 			switch ca.publisherProto {
 			case "udp":
 				publisherProto = gortsplib.TransportUDP
@@ -183,7 +183,7 @@ func TestClientVsServer(t *testing.T) {
 			publisher := &gortsplib.Client{
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
 				Tunnel:    publisherTunnel,
-				Transport: &publisherProto,
+				Protocol:  &publisherProto,
 			}
 			err = publisher.StartRecording(ca.publisherScheme+"://127.0.0.1:8554/test/stream?key=val", desc)
 			require.NoError(t, err)
@@ -198,7 +198,7 @@ func TestClientVsServer(t *testing.T) {
 				readerTunnel = gortsplib.TunnelNone
 			}
 
-			var readerProto gortsplib.Transport
+			var readerProto gortsplib.Protocol
 			switch ca.readerProto {
 			case "udp":
 				readerProto = gortsplib.TransportUDP
@@ -216,9 +216,9 @@ func TestClientVsServer(t *testing.T) {
 				Host:      u.Host,
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
 				Tunnel:    readerTunnel,
-				Transport: &readerProto,
+				Protocol:  &readerProto,
 			}
-			err = reader.Start2()
+			err = reader.Start()
 			require.NoError(t, err)
 			defer reader.Close()
 

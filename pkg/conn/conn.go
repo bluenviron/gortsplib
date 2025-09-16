@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"io"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
 // Conn is a RTSP connection.

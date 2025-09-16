@@ -7,9 +7,9 @@ import (
 
 	psdp "github.com/pion/sdp/v3"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
 )
 
 func atLeastOneHasMID(medias []*Media) bool {
@@ -141,8 +141,7 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 }
 
 // Marshal encodes the description in SDP format.
-// The argument is deprecated and has no effect. Set Session.Multicast to enable multicast.
-func (d Session) Marshal(_ bool) ([]byte, error) {
+func (d Session) Marshal() ([]byte, error) {
 	var sessionName psdp.SessionName
 	if d.Title != "" {
 		sessionName = psdp.SessionName(d.Title)
@@ -200,7 +199,7 @@ func (d Session) Marshal(_ bool) ([]byte, error) {
 	sout.MediaDescriptions = make([]*psdp.MediaDescription, len(d.Medias))
 
 	for i, media := range d.Medias {
-		med, err := media.Marshal2()
+		med, err := media.Marshal()
 		if err != nil {
 			return nil, err
 		}

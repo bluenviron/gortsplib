@@ -8,11 +8,11 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
+	"github.com/bluenviron/gortsplib/v5"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtph264"
 )
 
 // This example shows how to:
@@ -132,7 +132,7 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 	// called when receiving a RTP packet
 	ctx.Session.OnPacketRTP(sh.media, sh.format, func(pkt *rtp.Packet) {
 		// decode timestamp
-		pts, ok := ctx.Session.PacketPTS2(sh.media, pkt)
+		pts, ok := ctx.Session.PacketPTS(sh.media, pkt)
 		if !ok {
 			return
 		}

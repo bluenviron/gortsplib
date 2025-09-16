@@ -3,11 +3,10 @@ package headers
 import (
 	"encoding/hex"
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
 func parsePorts(val string) (*[2]int, error) {
@@ -56,16 +55,6 @@ const (
 	TransportProtocolTCP
 )
 
-// String implements fmt.Stringer.
-//
-// Deprecated: not used anymore.
-func (p TransportProtocol) String() string {
-	if p == TransportProtocolUDP {
-		return "RTP/AVP"
-	}
-	return "RTP/AVP/TCP"
-}
-
 // TransportDelivery is a delivery method.
 type TransportDelivery int
 
@@ -74,16 +63,6 @@ const (
 	TransportDeliveryUnicast TransportDelivery = iota
 	TransportDeliveryMulticast
 )
-
-// String implements fmt.Stringer.
-//
-// Deprecated: not used anymore.
-func (d TransportDelivery) String() string {
-	if d == TransportDeliveryUnicast {
-		return "unicast"
-	}
-	return "multicast"
-}
 
 // TransportMode is a transport mode.
 type TransportMode int
@@ -125,11 +104,6 @@ func (m TransportMode) String() string {
 
 // Transport is a Transport header.
 type Transport struct {
-	// Whether the secure variant is active.
-	//
-	// Deprecated: replaced by Profile.
-	Secure bool
-
 	// profile.
 	Profile TransportProfile
 
@@ -139,18 +113,8 @@ type Transport struct {
 	// (optional) delivery method.
 	Delivery *TransportDelivery
 
-	// (optional) Source IP.
-	//
-	// Deprecated: replaced by Source2
-	Source *net.IP
-
 	// (optional) Source IP/host.
 	Source2 *string
-
-	// (optional) destination IP.
-	//
-	// Deprecated: replaced by Destination2
-	Destination *net.IP
 
 	// (optional) destination IP/host.
 	Destination2 *string
@@ -210,12 +174,10 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 
 		case "RTP/SAVP", "RTP/SAVP/UDP":
 			h.Protocol = TransportProtocolUDP
-			h.Secure = true
 			h.Profile = TransportProfileSAVP
 			profileFound = true
 
 		case "RTP/SAVP/TCP":
-			h.Secure = true
 			h.Profile = TransportProfileSAVP
 			h.Protocol = TransportProtocolTCP
 			profileFound = true
@@ -230,17 +192,11 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 
 		case "source":
 			if v != "" {
-				if ip := net.ParseIP(v); ip != nil {
-					h.Source = &ip
-				}
 				h.Source2 = &v
 			}
 
 		case "destination":
 			if v != "" {
-				if ip := net.ParseIP(v); ip != nil {
-					h.Destination = &ip
-				}
 				h.Destination2 = &v
 			}
 
@@ -318,10 +274,6 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 func (h Transport) Marshal() base.HeaderValue {
 	var rets []string
 
-	if h.Secure {
-		h.Profile = TransportProfileSAVP
-	}
-
 	var profile string
 
 	switch {
@@ -351,18 +303,8 @@ func (h Transport) Marshal() base.HeaderValue {
 		rets = append(rets, delivery)
 	}
 
-	if h.Source != nil {
-		v := h.Source.String()
-		h.Source2 = &v
-	}
-
 	if h.Source2 != nil {
 		rets = append(rets, "source="+*h.Source2)
-	}
-
-	if h.Destination != nil {
-		v := h.Destination.String()
-		h.Destination2 = &v
 	}
 
 	if h.Destination2 != nil {

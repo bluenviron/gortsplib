@@ -2,24 +2,14 @@
 package rtpreceiver
 
 import (
-	"crypto/rand"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/ntp"
+	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 )
-
-func randUint32() (uint32, error) {
-	var b [4]byte
-	_, err := rand.Read(b[:])
-	if err != nil {
-		return 0, err
-	}
-	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
-}
 
 // Receiver is a utility to receive RTP packets. It is in charge of:
 // - removing packets with wrong SSRC
@@ -32,7 +22,7 @@ type Receiver struct {
 	ClockRate int
 
 	// Local SSRC
-	LocalSSRC *uint32
+	LocalSSRC uint32
 
 	// Whether the transport is unrealiable.
 	// This enables removing duplicate packets and reordering packets.
@@ -79,43 +69,8 @@ type Receiver struct {
 	done      chan struct{}
 }
 
-// New allocates a Receiver.
-//
-// Deprecated: replaced by Initialize().
-func New(
-	clockRate int,
-	receiverSSRC *uint32,
-	period time.Duration,
-	timeNow func() time.Time,
-	writePacketRTCP func(rtcp.Packet),
-) (*Receiver, error) {
-	rr := &Receiver{
-		ClockRate:       clockRate,
-		LocalSSRC:       receiverSSRC,
-		Period:          period,
-		TimeNow:         timeNow,
-		WritePacketRTCP: writePacketRTCP,
-	}
-	err := rr.Initialize()
-	if err != nil {
-		return nil, err
-	}
-
-	return rr, nil
-}
-
 // Initialize initializes Receiver.
 func (rr *Receiver) Initialize() error {
-	// Deprecated: passing a nil LocalSSRC will be deprecated from next version.
-	// Please use a fixed LocalSSRC.
-	if rr.LocalSSRC == nil {
-		v, err := randUint32()
-		if err != nil {
-			return err
-		}
-		rr.LocalSSRC = &v
-	}
-
 	if rr.BufferSize == 0 {
 		rr.BufferSize = 64
 	}
@@ -177,7 +132,7 @@ func (rr *Receiver) report() rtcp.Packet {
 	system := rr.TimeNow()
 
 	report := &rtcp.ReceiverReport{
-		SSRC: *rr.LocalSSRC,
+		SSRC: rr.LocalSSRC,
 		Reports: []rtcp.ReceptionReport{
 			{
 				SSRC:               rr.remoteSSRC,
@@ -207,17 +162,9 @@ func (rr *Receiver) report() rtcp.Packet {
 	return report
 }
 
-// ProcessPacket extracts the needed data from RTP packets.
-//
-// Deprecated: replaced by ProcessPacket2.
-func (rr *Receiver) ProcessPacket(pkt *rtp.Packet, system time.Time, ptsEqualsDTS bool) error {
-	_, _, err := rr.ProcessPacket2(pkt, system, ptsEqualsDTS)
-	return err
-}
-
-// ProcessPacket2 processes an incoming RTP packet.
+// ProcessPacket processes an incoming RTP packet.
 // It returns reordered packets and number of lost packets.
-func (rr *Receiver) ProcessPacket2(
+func (rr *Receiver) ProcessPacket(
 	pkt *rtp.Packet,
 	system time.Time,
 	ptsEqualsDTS bool,
@@ -421,17 +368,6 @@ func (rr *Receiver) PacketNTP(ts uint32) (time.Time, bool) {
 	defer rr.mutex.RUnlock()
 
 	return rr.packetNTPUnsafe(ts)
-}
-
-// SenderSSRC returns the SSRC of incoming RTP packets.
-//
-// Deprecated: replaced by Stats().
-func (rr *Receiver) SenderSSRC() (uint32, bool) {
-	stats := rr.Stats()
-	if stats == nil {
-		return 0, false
-	}
-	return stats.RemoteSSRC, true
 }
 
 // Stats are statistics.

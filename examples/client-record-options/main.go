@@ -8,9 +8,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v5"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 )
 
 // This example shows how to:
@@ -55,7 +55,7 @@ func main() {
 	// Client allows to set additional client options
 	c := &gortsplib.Client{
 		// transport protocol (UDP or TCP). If nil, it is chosen automatically
-		Transport: nil,
+		Protocol: nil,
 		// timeout of read operations
 		ReadTimeout: 10 * time.Second,
 		// timeout of write operations

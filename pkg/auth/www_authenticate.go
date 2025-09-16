@@ -1,12 +1,12 @@
 package auth
 
 import (
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/headers"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
 // GenerateWWWAuthenticate generates a WWW-Authenticate header.
-func GenerateWWWAuthenticate(methods []ValidateMethod, realm string, nonce string) base.HeaderValue {
+func GenerateWWWAuthenticate(methods []VerifyMethod, realm string, nonce string) base.HeaderValue {
 	if methods == nil {
 		// disable VerifyMethodDigestSHA256 unless explicitly set
 		// since it prevents FFmpeg from authenticating
@@ -19,13 +19,13 @@ func GenerateWWWAuthenticate(methods []ValidateMethod, realm string, nonce strin
 		var a base.HeaderValue
 
 		switch m {
-		case ValidateMethodBasic:
+		case VerifyMethodBasic:
 			a = headers.Authenticate{
 				Method: headers.AuthMethodBasic,
 				Realm:  realm,
 			}.Marshal()
 
-		case ValidateMethodDigestMD5:
+		case VerifyMethodDigestMD5:
 			aa := headers.AuthAlgorithmMD5
 			a = headers.Authenticate{
 				Method:    headers.AuthMethodDigest,

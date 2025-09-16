@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/gortsplib/v4/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v4/pkg/sdp"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
+	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
+	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
 )
 
 var casesSession = []struct {
@@ -313,7 +313,6 @@ var casesSession = []struct {
 					Formats: []format.Format{
 						&format.Opus{
 							PayloadTyp:   111,
-							IsStereo:     false,
 							ChannelCount: 1,
 						},
 						&format.Generic{
@@ -726,7 +725,6 @@ var casesSession = []struct {
 				{
 					Type:    "video",
 					Control: "trackID=0",
-					Secure:  true,
 					Profile: headers.TransportProfileSAVP,
 					Formats: []format.Format{&format.H264{
 						PayloadTyp: 96,
@@ -763,7 +761,6 @@ var casesSession = []struct {
 				{
 					Type:    "video",
 					Control: "trackID=0",
-					Secure:  true,
 					Profile: headers.TransportProfileSAVP,
 					KeyMgmtMikey: &mikey.Message{ //nolint:dupl
 						Header: mikey.Header{
@@ -850,7 +847,7 @@ func TestSessionUnmarshal(t *testing.T) {
 func TestSessionMarshal(t *testing.T) {
 	for _, ca := range casesSession {
 		t.Run(ca.name, func(t *testing.T) {
-			byts, err := ca.desc.Marshal(false)
+			byts, err := ca.desc.Marshal()
 			require.NoError(t, err)
 			require.Equal(t, ca.out, string(byts))
 		})
@@ -887,7 +884,6 @@ func TestSessionFindFormat(t *testing.T) {
 				Formats: []format.Format{
 					&format.Opus{
 						PayloadTyp:   111,
-						IsStereo:     true,
 						ChannelCount: 2,
 					},
 				},
@@ -975,7 +971,7 @@ func FuzzSessionUnmarshal(f *testing.F) {
 
 		require.NotZero(t, len(desc.Medias))
 
-		_, err = desc.Marshal(false)
+		_, err = desc.Marshal()
 		require.NoError(t, err)
 	})
 }

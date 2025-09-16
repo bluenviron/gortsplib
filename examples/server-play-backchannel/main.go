@@ -5,10 +5,10 @@ import (
 	"log"
 	"sync"
 
-	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v5"
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/pion/rtp"
 )
 
@@ -78,7 +78,7 @@ func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Re
 	// called when receiving a RTP packet
 	ctx.Session.OnPacketRTPAny(func(m *description.Media, _ format.Format, pkt *rtp.Packet) {
 		// decode timestamp
-		pts, ok := ctx.Session.PacketPTS2(m, pkt)
+		pts, ok := ctx.Session.PacketPTS(m, pkt)
 		if !ok {
 			return
 		}

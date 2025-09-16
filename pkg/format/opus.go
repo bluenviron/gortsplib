@@ -7,7 +7,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/gortsplib/v4/pkg/format/rtpsimpleaudio"
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpsimpleaudio"
 )
 
 // Opus is the RTP format for the Opus codec.
@@ -16,10 +16,6 @@ import (
 type Opus struct {
 	PayloadTyp   uint8
 	ChannelCount int
-
-	//
-	// Deprecated: replaced by ChannelCount.
-	IsStereo bool
 }
 
 func (f *Opus) unmarshal(ctx *unmarshalContext) error {
@@ -43,13 +39,11 @@ func (f *Opus) unmarshal(ctx *unmarshalContext) error {
 
 		// assume mono
 		f.ChannelCount = 1
-		f.IsStereo = false
 
 		for key, val := range ctx.fmtp {
 			if key == "sprop-stereo" {
 				if val == "1" {
 					f.ChannelCount = 2
-					f.IsStereo = true
 				}
 			}
 		}
@@ -107,7 +101,7 @@ func (f *Opus) FMTP() map[string]string {
 	if f.ChannelCount <= 2 {
 		return map[string]string{
 			"sprop-stereo": func() string {
-				if f.ChannelCount == 2 || (f.ChannelCount == 0 && f.IsStereo) {
+				if f.ChannelCount == 2 {
 					return "1"
 				}
 				return "0"
