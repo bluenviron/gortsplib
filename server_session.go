@@ -184,34 +184,39 @@ func findMediaByTrackID(medias []*description.Media, trackID string) *descriptio
 	return medias[id]
 }
 
-func isTransportSupported(s *Server, tr *headers.Transport) bool {
-	// prevent using UDP/UDP-multicast when listeners are disabled
+func isTransportSupported(sc *ServerConn, tr *headers.Transport) bool {
 	if tr.Protocol == headers.TransportProtocolUDP {
+		// prevent using UDP/UDP-multicast when listeners are disabled
 		isMulticast := tr.Delivery != nil && *tr.Delivery == headers.TransportDeliveryMulticast
-		if !isMulticast && s.udpRTPListener == nil {
+		if !isMulticast && sc.s.udpRTPListener == nil {
 			return false
 		}
-		if isMulticast && s.MulticastIPRange == "" {
+		if isMulticast && sc.s.MulticastIPRange == "" {
 			return false
 		}
-	}
 
-	// prevent using unsecure UDP with RTSPS
-	if tr.Protocol == headers.TransportProtocolUDP && !isSecure(tr.Profile) && s.TLSConfig != nil {
-		return false
+		// prevent using UDP with tunneling
+		if sc.isHTTP {
+			return false
+		}
+
+		// prevent using unsecure UDP with RTSPS
+		if !isSecure(tr.Profile) && sc.s.TLSConfig != nil {
+			return false
+		}
 	}
 
 	// prevent using secure profiles with plain RTSP, since keys are in plain
-	if isSecure(tr.Profile) && s.TLSConfig == nil {
+	if isSecure(tr.Profile) && sc.s.TLSConfig == nil {
 		return false
 	}
 
 	return true
 }
 
-func pickFirstSupportedTransport(s *Server, tsh headers.Transports) *headers.Transport {
+func pickFirstSupportedTransport(sc *ServerConn, tsh headers.Transports) *headers.Transport {
 	for _, tr := range tsh {
-		if isTransportSupported(s, &tr) {
+		if isTransportSupported(sc, &tr) {
 			return &tr
 		}
 	}
@@ -1100,7 +1105,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		// Per RFC2326 section 12.39, client specifies transports in order of preference.
 		// pick the first supported one.
-		inTH := pickFirstSupportedTransport(ss.s, transportHeaders)
+		inTH := pickFirstSupportedTransport(sc, transportHeaders)
 		if inTH == nil {
 			return &base.Response{
 				StatusCode: base.StatusUnsupportedTransport,
