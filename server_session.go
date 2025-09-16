@@ -1232,7 +1232,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			Request: req,
 			Path:    path,
 			Query:   query,
-			Transport2: &SessionTransport{
+			Transport: &SessionTransport{
 				Protocol: protocol,
 				Profile:  inTH.Profile,
 			},
