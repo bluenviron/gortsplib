@@ -28,6 +28,8 @@ func main() {
 	c := gortsplib.Client{
 		Scheme: u.Scheme,
 		Host:   u.Host,
+		// tunneling method.
+		Tunnel: gortsplib.TunnelNone,
 		// transport protocol (UDP, Multicast or TCP). If nil, it is chosen automatically
 		Protocol: nil,
 		// timeout of read operations

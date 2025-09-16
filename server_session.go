@@ -885,8 +885,8 @@ func (ss *ServerSession) runInner() error {
 							// and transport is UDP or UDP-multicast.
 							if (ss.state == ServerSessionStatePrePlay ||
 								ss.state == ServerSessionStatePlay) &&
-								(ss.setuppedTransport.Protocol == TransportUDP ||
-									ss.setuppedTransport.Protocol == TransportUDPMulticast) {
+								(ss.setuppedTransport.Protocol == ProtocolUDP ||
+									ss.setuppedTransport.Protocol == ProtocolUDPMulticast) {
 								v := uint(ss.s.sessionTimeout / time.Second)
 								return &v
 							}
@@ -922,7 +922,7 @@ func (ss *ServerSession) runInner() error {
 			// close the session.
 			if ((ss.state != ServerSessionStateRecord &&
 				ss.state != ServerSessionStatePlay) ||
-				ss.setuppedTransport.Protocol == TransportTCP) &&
+				ss.setuppedTransport.Protocol == ProtocolTCP) &&
 				len(ss.conns) == 0 {
 				return liberrors.ErrServerSessionNotInUse{}
 			}
@@ -930,7 +930,7 @@ func (ss *ServerSession) runInner() error {
 		case <-ss.chAsyncStartWriter:
 			if (ss.state == ServerSessionStateRecord ||
 				ss.state == ServerSessionStatePlay) &&
-				ss.setuppedTransport.Protocol == TransportTCP {
+				ss.setuppedTransport.Protocol == ProtocolTCP {
 				ss.startWriter()
 			}
 
@@ -1134,13 +1134,13 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		switch inTH.Protocol {
 		case headers.TransportProtocolUDP:
 			if inTH.Delivery != nil && *inTH.Delivery == headers.TransportDeliveryMulticast {
-				protocol = TransportUDPMulticast
+				protocol = ProtocolUDPMulticast
 			} else {
-				protocol = TransportUDP
+				protocol = ProtocolUDP
 			}
 
 		case headers.TransportProtocolTCP:
-			protocol = TransportTCP
+			protocol = ProtocolTCP
 		}
 
 		var srtpInCtx *wrappedSRTPContext
@@ -1176,14 +1176,14 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		switch protocol {
-		case TransportUDP:
+		case ProtocolUDP:
 			if inTH.ClientPorts == nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerTransportHeaderNoClientPorts{}
 			}
 
-		case TransportTCP:
+		case ProtocolTCP:
 			if inTH.InterleavedIDs != nil {
 				if (inTH.InterleavedIDs[0] + 1) != inTH.InterleavedIDs[1] {
 					return &base.Response{
@@ -1208,7 +1208,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 
 		default: // record
-			if protocol == TransportUDPMulticast {
+			if protocol == ProtocolUDPMulticast {
 				return &base.Response{
 					StatusCode: base.StatusUnsupportedTransport,
 				}, nil
@@ -1363,10 +1363,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			var tcpChannel int
 
 			switch protocol {
-			case TransportUDP, TransportUDPMulticast:
+			case ProtocolUDP, ProtocolUDPMulticast:
 				th.Protocol = headers.TransportProtocolUDP
 
-				if protocol == TransportUDP {
+				if protocol == ProtocolUDP {
 					udpRTPReadPort = inTH.ClientPorts[0]
 					udpRTCPReadPort = inTH.ClientPorts[1]
 
@@ -1496,7 +1496,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		if ss.state != ServerSessionStatePlay &&
-			ss.setuppedTransport.Protocol != TransportUDPMulticast {
+			ss.setuppedTransport.Protocol != ProtocolUDPMulticast {
 			ss.createWriter()
 		}
 
@@ -1529,17 +1529,17 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					}
 				}
 
-				if ss.setuppedTransport.Protocol == TransportTCP {
+				if ss.setuppedTransport.Protocol == ProtocolTCP {
 					ss.tcpFrame = &base.InterleavedFrame{}
 					ss.tcpBuffer = make([]byte, ss.s.MaxPacketSize+4)
 				}
 
 				switch ss.setuppedTransport.Protocol {
-				case TransportUDP:
+				case ProtocolUDP:
 					ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 					ss.startWriter()
 
-				case TransportUDPMulticast:
+				case ProtocolUDPMulticast:
 					ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 
 				default: // TCP
@@ -1567,7 +1567,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 		} else {
 			if ss.state != ServerSessionStatePlay &&
-				ss.setuppedTransport.Protocol != TransportUDPMulticast {
+				ss.setuppedTransport.Protocol != ProtocolUDPMulticast {
 				ss.destroyWriter()
 			}
 		}
@@ -1624,13 +1624,13 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}
 			}
 
-			if ss.setuppedTransport.Protocol == TransportTCP {
+			if ss.setuppedTransport.Protocol == ProtocolTCP {
 				ss.tcpFrame = &base.InterleavedFrame{}
 				ss.tcpBuffer = make([]byte, ss.s.MaxPacketSize+4)
 			}
 
 			switch ss.setuppedTransport.Protocol {
-			case TransportUDP:
+			case ProtocolUDP:
 				ss.udpCheckStreamTimer = time.NewTimer(ss.s.checkStreamPeriod)
 				ss.startWriter()
 
@@ -1688,10 +1688,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					ss.propsMutex.Unlock()
 
 					switch ss.setuppedTransport.Protocol {
-					case TransportUDP:
+					case ProtocolUDP:
 						ss.udpCheckStreamTimer = emptyTimer()
 
-					case TransportUDPMulticast:
+					case ProtocolUDPMulticast:
 						ss.udpCheckStreamTimer = emptyTimer()
 
 					default: // TCP
@@ -1701,7 +1701,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 				case ServerSessionStateRecord:
 					switch ss.setuppedTransport.Protocol {
-					case TransportUDP:
+					case ProtocolUDP:
 						ss.udpCheckStreamTimer = emptyTimer()
 
 					default: // TCP
@@ -1721,7 +1721,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 	case base.Teardown:
 		var err error
 		if (ss.state == ServerSessionStatePlay || ss.state == ServerSessionStateRecord) &&
-			ss.setuppedTransport.Protocol == TransportTCP {
+			ss.setuppedTransport.Protocol == ProtocolTCP {
 			err = switchReadFuncError{false}
 		}
 

@@ -610,15 +610,15 @@ func TestClientPlay(t *testing.T) {
 				Protocol: func() *Protocol {
 					switch ca.transport {
 					case "udp":
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 
 					case "multicast":
-						v := TransportUDPMulticast
+						v := ProtocolUDPMulticast
 						return &v
 
 					default: // tcp
-						v := TransportTCP
+						v := ProtocolTCP
 						return &v
 					}
 				}(),
@@ -1041,7 +1041,7 @@ func TestClientPlayPartial(t *testing.T) {
 	c := Client{
 		Scheme:   u.Scheme,
 		Host:     u.Host,
-		Protocol: ptrOf(TransportTCP),
+		Protocol: ptrOf(ProtocolTCP),
 	}
 
 	err = c.Start()
@@ -1987,7 +1987,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	packetRecv := make(chan struct{})
 
 	c := Client{
-		Protocol: ptrOf(TransportTCP),
+		Protocol: ptrOf(ProtocolTCP),
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -2423,10 +2423,10 @@ func TestClientPlayPausePlay(t *testing.T) {
 			c := Client{
 				Protocol: func() *Protocol {
 					if transport == "udp" {
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 					}
-					v := TransportTCP
+					v := ProtocolTCP
 					return &v
 				}(),
 			}
@@ -2743,11 +2743,11 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 				Protocol: func() *Protocol {
 					switch transport {
 					case "udp":
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 
 					case "tcp":
-						v := TransportTCP
+						v := ProtocolTCP
 						return &v
 					}
 					return nil
@@ -2876,7 +2876,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 	recv := make(chan struct{})
 
 	c := Client{
-		Protocol: ptrOf(TransportTCP),
+		Protocol: ptrOf(ProtocolTCP),
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -3027,7 +3027,7 @@ func TestClientPlayKeepAlive(t *testing.T) {
 			n := 0
 			m := 0
 
-			v := TransportTCP
+			v := ProtocolTCP
 			c := Client{
 				Protocol: &v,
 				OnResponse: func(_ *base.Response) {
@@ -3174,7 +3174,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 	}()
 
 	c := Client{
-		Protocol: ptrOf(TransportUDP),
+		Protocol: ptrOf(ProtocolUDP),
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/test/stream?param=value",
@@ -3420,10 +3420,10 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 			c := Client{
 				Protocol: func() *Protocol {
 					if ca.proto == "udp" {
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 					}
-					v := TransportTCP
+					v := ProtocolTCP
 					return &v
 				}(),
 				OnPacketsLost: func(lost uint64) {
@@ -3904,9 +3904,9 @@ func TestClientPlayBackChannel(t *testing.T) {
 				RequestBackChannels: true,
 				Protocol: func() *Protocol {
 					if transport == "tcp" {
-						return ptrOf(TransportTCP)
+						return ptrOf(ProtocolTCP)
 					}
-					return ptrOf(TransportUDP)
+					return ptrOf(ProtocolUDP)
 				}(),
 				senderReportPeriod:   500 * time.Millisecond,
 				receiverReportPeriod: 750 * time.Millisecond,

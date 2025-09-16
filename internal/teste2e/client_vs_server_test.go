@@ -175,9 +175,9 @@ func TestClientVsServer(t *testing.T) {
 			var publisherProto gortsplib.Protocol
 			switch ca.publisherProto {
 			case "udp":
-				publisherProto = gortsplib.TransportUDP
+				publisherProto = gortsplib.ProtocolUDP
 			case "tcp":
-				publisherProto = gortsplib.TransportTCP
+				publisherProto = gortsplib.ProtocolTCP
 			}
 
 			publisher := &gortsplib.Client{
@@ -201,11 +201,11 @@ func TestClientVsServer(t *testing.T) {
 			var readerProto gortsplib.Protocol
 			switch ca.readerProto {
 			case "udp":
-				readerProto = gortsplib.TransportUDP
+				readerProto = gortsplib.ProtocolUDP
 			case "tcp":
-				readerProto = gortsplib.TransportTCP
+				readerProto = gortsplib.ProtocolTCP
 			case "multicast":
-				readerProto = gortsplib.TransportUDPMulticast
+				readerProto = gortsplib.ProtocolUDPMulticast
 			}
 
 			u, err := base.ParseURL(ca.readerScheme + "://" + multicastCapableIP(t) + ":8554/test/stream?key=val")

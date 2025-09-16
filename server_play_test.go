@@ -682,13 +682,13 @@ func TestServerPlay(t *testing.T) {
 						var proto Protocol
 						switch ca.transport {
 						case "udp":
-							proto = TransportUDP
+							proto = ProtocolUDP
 
 						case "tcp":
-							proto = TransportTCP
+							proto = ProtocolTCP
 
 						case "multicast":
-							proto = TransportUDPMulticast
+							proto = ProtocolUDPMulticast
 						}
 
 						var profile headers.TransportProfile
