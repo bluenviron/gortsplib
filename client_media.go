@@ -74,7 +74,7 @@ func createUDPListenerPair(
 		}
 		err = l2.initialize()
 		if err != nil {
-			l2.close()
+			l1.close()
 			continue
 		}
 
