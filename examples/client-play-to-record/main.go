@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// connect to the server
-	err = reader.Start2()
+	err = reader.Start()
 	if err != nil {
 		panic(err)
 	}

@@ -47,7 +47,7 @@ func (c *client) read() error {
 	}
 
 	// connect to the server
-	err = rc.Start2()
+	err = rc.Start()
 	if err != nil {
 		return err
 	}

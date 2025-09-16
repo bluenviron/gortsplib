@@ -54,7 +54,7 @@ func encodeMultiple(rtpEnc *rtpsimpleaudio.Encoder, opusPkts [][]byte) ([]*rtp.P
 
 		ret[i].Timestamp += pts
 
-		pts += uint32(opus.PacketDuration2(opusPkt))
+		pts += uint32(opus.PacketDuration(opusPkt))
 	}
 	return ret, nil
 }

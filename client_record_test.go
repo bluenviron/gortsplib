@@ -80,7 +80,7 @@ func record(c *Client, ur string, medias []*description.Media, cb func(*descript
 	c.Scheme = u.Scheme
 	c.Host = u.Host
 
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		return err
 	}
@@ -417,7 +417,7 @@ func TestClientRecord(t *testing.T) {
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					if ca.transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -587,7 +587,7 @@ func TestClientRecordSocketError(t *testing.T) {
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -731,7 +731,7 @@ func TestClientRecordPauseRecordSerial(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -890,7 +890,7 @@ func TestClientRecordPauseRecordParallel(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -1215,7 +1215,7 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					if ca.proto == "udp" {
 						v := TransportUDP
 						return &v
@@ -1389,7 +1389,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 			var curTimeMutex sync.Mutex
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					if ca == "udp" {
 						v := TransportUDP
 						return &v
@@ -1536,7 +1536,7 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 	rtcpReceived := make(chan struct{})
 
 	c := Client{
-		Transport: ptrOf(TransportTCP),
+		Protocol: ptrOf(TransportTCP),
 	}
 
 	medias := []*description.Media{testH264Media}

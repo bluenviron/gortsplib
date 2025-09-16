@@ -454,7 +454,7 @@ type Client struct {
 	// transport protocol (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
-	Transport *TransportProtocol
+	Protocol *TransportProtocol
 	// enable communication with servers which don't provide UDP server ports
 	// or use different server ports than the announced ones.
 	// This can be a security issue.
@@ -550,7 +550,7 @@ type Client struct {
 	writerMutex          sync.RWMutex
 	writer               *asyncprocessor.Processor
 	reader               *clientReader
-	timeDecoder          *rtptime.GlobalDecoder2
+	timeDecoder          *rtptime.GlobalDecoder
 	mustClose            bool
 	tcpFrame             *base.InterleavedFrame
 	tcpBuffer            []byte
@@ -574,8 +574,8 @@ type Client struct {
 	done chan struct{}
 }
 
-// Start2 initializes the connection to a server.
-func (c *Client) Start2() error {
+// Start initializes the connection to a server.
+func (c *Client) Start() error {
 	// RTSP parameters
 	if c.ReadTimeout == 0 {
 		c.ReadTimeout = 10 * time.Second
@@ -701,7 +701,7 @@ func (c *Client) StartRecording(address string, desc *description.Session) error
 	c.Scheme = u.Scheme
 	c.Host = u.Host
 
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		return err
 	}
@@ -1015,7 +1015,7 @@ func (c *Client) trySwitchingProtocol() error {
 }
 
 func (c *Client) startTransportRoutines() {
-	c.timeDecoder = &rtptime.GlobalDecoder2{}
+	c.timeDecoder = &rtptime.GlobalDecoder{}
 	c.timeDecoder.Initialize()
 
 	for _, cm := range c.setuppedMedias {
@@ -1286,7 +1286,7 @@ func (c *Client) isInTCPTimeout() bool {
 func (c *Client) doCheckTimeout() error {
 	if c.setuppedTransport.Protocol == TransportUDP ||
 		c.setuppedTransport.Protocol == TransportUDPMulticast {
-		if c.checkTimeoutInitial && !c.backChannelSetupped && c.Transport == nil {
+		if c.checkTimeoutInitial && !c.backChannelSetupped && c.Protocol == nil {
 			c.checkTimeoutInitial = false
 
 			if !c.atLeastOneUDPPacketHasBeenReceived() {
@@ -1491,7 +1491,7 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
-	if c.Transport != nil && *c.Transport == TransportUDPMulticast {
+	if c.Protocol != nil && *c.Protocol == TransportUDPMulticast {
 		return nil, fmt.Errorf("recording with UDP multicast is not supported")
 	}
 
@@ -1594,8 +1594,8 @@ func (c *Client) doSetup(
 		th.Profile = c.setuppedTransport.Profile
 
 	// use transport from config, secure flag from server
-	case c.Transport != nil:
-		protocol = *c.Transport
+	case c.Protocol != nil:
+		protocol = *c.Protocol
 		if isSecure(medi.Profile) && c.Scheme == "rtsps" {
 			th.Profile = headers.TransportProfileSAVP
 		} else {
@@ -1765,7 +1765,7 @@ func (c *Client) doSetup(
 	if res.StatusCode != base.StatusOK {
 		// switch transport automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
-			c.setuppedTransport == nil && c.Transport == nil {
+			c.setuppedTransport == nil && c.Protocol == nil {
 			c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 			c.setuppedTransport = &SessionTransport{
 				Protocol: TransportTCP,
@@ -1788,7 +1788,7 @@ func (c *Client) doSetup(
 	case TransportUDP, TransportUDPMulticast:
 		if thRes.Protocol == headers.TransportProtocolTCP {
 			// switch transport automatically
-			if c.setuppedTransport == nil && c.Transport == nil {
+			if c.setuppedTransport == nil && c.Protocol == nil {
 				c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 
 				c.baseURL = baseURL
@@ -2376,9 +2376,9 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 	return cm.writePacketRTCP(pkt)
 }
 
-// PacketPTS2 returns the PTS (presentation timestamp) of an incoming RTP packet.
+// PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
-func (c *Client) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
+func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
 	cm := c.setuppedMedias[medi]
 	ct := cm.formats[pkt.PayloadType]
 	return c.timeDecoder.Decode(ct.format, pkt)
@@ -2392,8 +2392,8 @@ func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time,
 	return ct.rtpReceiver.PacketNTP(pkt.Timestamp)
 }
 
-// Transport2 returns transport details.
-func (c *Client) Transport2() *ClientTransport {
+// Transport returns transport details.
+func (c *Client) Transport() *ClientTransport {
 	c.propsMutex.RLock()
 	defer c.propsMutex.RUnlock()
 

@@ -29,7 +29,7 @@ func main() {
 		Scheme: u.Scheme,
 		Host:   u.Host,
 		// transport protocol (UDP, Multicast or TCP). If nil, it is chosen automatically
-		Transport: nil,
+		Protocol: nil,
 		// timeout of read operations
 		ReadTimeout: 10 * time.Second,
 		// timeout of write operations
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	// connect to the server
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		panic(err)
 	}

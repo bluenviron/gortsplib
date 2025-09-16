@@ -162,9 +162,9 @@ func (rr *Receiver) report() rtcp.Packet {
 	return report
 }
 
-// ProcessPacket2 processes an incoming RTP packet.
+// ProcessPacket processes an incoming RTP packet.
 // It returns reordered packets and number of lost packets.
-func (rr *Receiver) ProcessPacket2(
+func (rr *Receiver) ProcessPacket(
 	pkt *rtp.Packet,
 	system time.Time,
 	ptsEqualsDTS bool,

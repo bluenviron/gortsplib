@@ -78,7 +78,7 @@ func (sf *serverSessionFormat) remoteSSRC() (uint32, bool) {
 }
 
 func (sf *serverSessionFormat) readPacketRTP(pkt *rtp.Packet, now time.Time) {
-	pkts, lost, err := sf.rtpReceiver.ProcessPacket2(pkt, now, sf.format.PTSEqualsDTS(pkt))
+	pkts, lost, err := sf.rtpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		sf.sm.onPacketRTPDecodeError(err)
 		return

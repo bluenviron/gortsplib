@@ -1,3 +1,4 @@
+// Package rtptime contains a time decoder.
 package rtptime
 
 import (
@@ -11,47 +12,47 @@ var timeNow = time.Now
 
 // avoid an int64 overflow and preserve resolution by splitting division into two parts:
 // first add the integer part, then the decimal part.
-func multiplyAndDivide2(v, m, d int64) int64 {
+func multiplyAndDivide(v, m, d int64) int64 {
 	secs := v / d
 	dec := v % d
 	return (secs*m + dec*m/d)
 }
 
-type globalDecoder2TrackData struct {
+type globalDecoderTrackData struct {
 	overall int64
 	prev    uint32
 }
 
-func (d *globalDecoder2TrackData) decode(ts uint32) int64 {
+func (d *globalDecoderTrackData) decode(ts uint32) int64 {
 	d.overall += int64(int32(ts - d.prev))
 	d.prev = ts
 	return d.overall
 }
 
-// GlobalDecoder2Track is a track (RTSP format or WebRTC track) of GlobalDecoder2.
-type GlobalDecoder2Track interface {
+// GlobalDecoderTrack is a track (RTSP format or WebRTC track) of GlobalDecoder.
+type GlobalDecoderTrack interface {
 	ClockRate() int
 	PTSEqualsDTS(*rtp.Packet) bool
 }
 
-// GlobalDecoder2 is a RTP timestamp decoder.
-type GlobalDecoder2 struct {
+// GlobalDecoder is a RTP timestamp decoder.
+type GlobalDecoder struct {
 	mutex             sync.Mutex
-	leadingTrack      GlobalDecoder2Track
+	leadingTrack      GlobalDecoderTrack
 	startNTP          time.Time
 	startPTS          int64
 	startPTSClockRate int64
-	tracks            map[GlobalDecoder2Track]*globalDecoder2TrackData
+	tracks            map[GlobalDecoderTrack]*globalDecoderTrackData
 }
 
-// Initialize initializes a GlobalDecoder2.
-func (d *GlobalDecoder2) Initialize() {
-	d.tracks = make(map[GlobalDecoder2Track]*globalDecoder2TrackData)
+// Initialize initializes a GlobalDecoder.
+func (d *GlobalDecoder) Initialize() {
+	d.tracks = make(map[GlobalDecoderTrack]*globalDecoderTrackData)
 }
 
 // Decode decodes a timestamp.
-func (d *GlobalDecoder2) Decode(
-	track GlobalDecoder2Track,
+func (d *GlobalDecoder) Decode(
+	track GlobalDecoderTrack,
 	pkt *rtp.Packet,
 ) (int64, bool) {
 	if track.ClockRate() == 0 {
@@ -79,10 +80,10 @@ func (d *GlobalDecoder2) Decode(
 		}
 
 		// start from the PTS of the leading track
-		startPTS := multiplyAndDivide2(d.startPTS, int64(track.ClockRate()), d.startPTSClockRate)
-		startPTS += multiplyAndDivide2(int64(now.Sub(d.startNTP)), int64(track.ClockRate()), int64(time.Second))
+		startPTS := multiplyAndDivide(d.startPTS, int64(track.ClockRate()), d.startPTSClockRate)
+		startPTS += multiplyAndDivide(int64(now.Sub(d.startNTP)), int64(track.ClockRate()), int64(time.Second))
 
-		d.tracks[track] = &globalDecoder2TrackData{
+		d.tracks[track] = &globalDecoderTrackData{
 			overall: startPTS,
 			prev:    pkt.Timestamp,
 		}

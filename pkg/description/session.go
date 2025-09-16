@@ -199,7 +199,7 @@ func (d Session) Marshal() ([]byte, error) {
 	sout.MediaDescriptions = make([]*psdp.MediaDescription, len(d.Medias))
 
 	for i, media := range d.Medias {
-		med, err := media.Marshal2()
+		med, err := media.Marshal()
 		if err != nil {
 			return nil, err
 		}

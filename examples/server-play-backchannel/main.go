@@ -78,7 +78,7 @@ func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Re
 	// called when receiving a RTP packet
 	ctx.Session.OnPacketRTPAny(func(m *description.Media, _ format.Format, pkt *rtp.Packet) {
 		// decode timestamp
-		pts, ok := ctx.Session.PacketPTS2(m, pkt)
+		pts, ok := ctx.Session.PacketPTS(m, pkt)
 		if !ok {
 			return
 		}

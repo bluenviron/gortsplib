@@ -447,7 +447,7 @@ type ServerSession struct {
 	udpCheckStreamTimer   *time.Timer
 	writerMutex           sync.RWMutex
 	writer                *asyncprocessor.Processor
-	timeDecoder           *rtptime.GlobalDecoder2
+	timeDecoder           *rtptime.GlobalDecoder
 	tcpFrame              *base.InterleavedFrame
 	tcpBuffer             []byte
 
@@ -1517,7 +1517,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				v := ss.s.timeNow().Unix()
 				ss.udpLastPacketTime = &v
 
-				ss.timeDecoder = &rtptime.GlobalDecoder2{}
+				ss.timeDecoder = &rtptime.GlobalDecoder{}
 				ss.timeDecoder.Initialize()
 
 				for _, sm := range ss.setuppedMedias {
@@ -1612,7 +1612,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			v := ss.s.timeNow().Unix()
 			ss.udpLastPacketTime = &v
 
-			ss.timeDecoder = &rtptime.GlobalDecoder2{}
+			ss.timeDecoder = &rtptime.GlobalDecoder{}
 			ss.timeDecoder.Initialize()
 
 			for _, sm := range ss.setuppedMedias {
@@ -1832,9 +1832,9 @@ func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packe
 	return sm.writePacketRTCP(pkt)
 }
 
-// PacketPTS2 returns the PTS (presentation timestamp) of an incoming RTP packet.
+// PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
-func (ss *ServerSession) PacketPTS2(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
+func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[pkt.PayloadType]
 	return ss.timeDecoder.Decode(sf.format, pkt)

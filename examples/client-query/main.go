@@ -23,7 +23,7 @@ func main() {
 		Host:   u.Host,
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		panic(err)
 	}

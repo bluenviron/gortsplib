@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// connect to the server
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		panic(err)
 	}
@@ -50,7 +50,7 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 		// get the PTS (presentation timestamp) of the packet
-		pts, ptsAvailable := c.PacketPTS2(medi, pkt)
+		pts, ptsAvailable := c.PacketPTS(medi, pkt)
 		log.Printf("PTS: available=%v, value=%v\n", ptsAvailable, pts)
 
 		// get the NTP (absolute timestamp) of the packet

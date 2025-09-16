@@ -183,7 +183,7 @@ func TestClientVsServer(t *testing.T) {
 			publisher := &gortsplib.Client{
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
 				Tunnel:    publisherTunnel,
-				Transport: &publisherProto,
+				Protocol:  &publisherProto,
 			}
 			err = publisher.StartRecording(ca.publisherScheme+"://127.0.0.1:8554/test/stream?key=val", desc)
 			require.NoError(t, err)
@@ -216,9 +216,9 @@ func TestClientVsServer(t *testing.T) {
 				Host:      u.Host,
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
 				Tunnel:    readerTunnel,
-				Transport: &readerProto,
+				Protocol:  &readerProto,
 			}
-			err = reader.Start2()
+			err = reader.Start()
 			require.NoError(t, err)
 			defer reader.Close()
 

@@ -341,7 +341,7 @@ func TestServerRecordPath(t *testing.T) {
 			media := testH264Media
 			media.Control = ca.control
 
-			enc, err := media.Marshal2()
+			enc, err := media.Marshal()
 			require.NoError(t, err)
 
 			sout := &sdp.SessionDescription{

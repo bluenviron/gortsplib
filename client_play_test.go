@@ -71,7 +71,7 @@ func readAll(c *Client, ur string, cb func(*description.Media, format.Format, *r
 	c.Scheme = u.Scheme
 	c.Host = u.Host
 
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		return err
 	}
@@ -607,7 +607,7 @@ func TestClientPlay(t *testing.T) {
 				Scheme:    u.Scheme,
 				Host:      u.Host,
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					switch ca.transport {
 					case "udp":
 						v := TransportUDP
@@ -624,7 +624,7 @@ func TestClientPlay(t *testing.T) {
 				}(),
 			}
 
-			err = c.Start2()
+			err = c.Start()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -634,7 +634,7 @@ func TestClientPlay(t *testing.T) {
 			// test that properties can be accessed in parallel
 			go func() {
 				c.Stats()
-				c.Transport2()
+				c.Transport()
 			}()
 
 			err = c.SetupAll(sd.BaseURL, sd.Medias)
@@ -892,7 +892,7 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
 			}
 
-			err = c.Start2()
+			err = c.Start()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -1039,12 +1039,12 @@ func TestClientPlayPartial(t *testing.T) {
 	require.NoError(t, err)
 
 	c := Client{
-		Scheme:    u.Scheme,
-		Host:      u.Host,
-		Transport: ptrOf(TransportTCP),
+		Scheme:   u.Scheme,
+		Host:     u.Host,
+		Protocol: ptrOf(TransportTCP),
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -1987,7 +1987,7 @@ func TestClientPlayDifferentInterleavedIDs(t *testing.T) {
 	packetRecv := make(chan struct{})
 
 	c := Client{
-		Transport: ptrOf(TransportTCP),
+		Protocol: ptrOf(TransportTCP),
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -2421,7 +2421,7 @@ func TestClientPlayPausePlay(t *testing.T) {
 			packetRecv := make(chan struct{})
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -2740,7 +2740,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					switch transport {
 					case "udp":
 						v := TransportUDP
@@ -2876,7 +2876,7 @@ func TestClientPlayIgnoreTCPInvalidMedia(t *testing.T) {
 	recv := make(chan struct{})
 
 	c := Client{
-		Transport: ptrOf(TransportTCP),
+		Protocol: ptrOf(TransportTCP),
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/teststream",
@@ -3029,7 +3029,7 @@ func TestClientPlayKeepAlive(t *testing.T) {
 
 			v := TransportTCP
 			c := Client{
-				Transport: &v,
+				Protocol: &v,
 				OnResponse: func(_ *base.Response) {
 					m++
 					if ca != "no response" {
@@ -3174,7 +3174,7 @@ func TestClientPlayDifferentSource(t *testing.T) {
 	}()
 
 	c := Client{
-		Transport: ptrOf(TransportUDP),
+		Protocol: ptrOf(TransportUDP),
 	}
 
 	err = readAll(&c, "rtsp://localhost:8554/test/stream?param=value",
@@ -3418,7 +3418,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 			}()
 
 			c := Client{
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					if ca.proto == "udp" {
 						v := TransportUDP
 						return &v
@@ -3902,7 +3902,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 				Scheme:              u.Scheme,
 				Host:                u.Host,
 				RequestBackChannels: true,
-				Transport: func() *TransportProtocol {
+				Protocol: func() *TransportProtocol {
 					if transport == "tcp" {
 						return ptrOf(TransportTCP)
 					}
@@ -3912,7 +3912,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 				receiverReportPeriod: 750 * time.Millisecond,
 			}
 
-			err = c.Start2()
+			err = c.Start()
 			require.NoError(t, err)
 			defer c.Close()
 
@@ -3971,7 +3971,7 @@ func TestClientPlaySetupErrorBackChannel(t *testing.T) {
 		Host:   u.Host,
 	}
 
-	err = c.Start2()
+	err = c.Start()
 	require.NoError(t, err)
 	defer c.Close()
 

@@ -20,7 +20,7 @@ func frameLineSize(frame *C.AVFrame) *C.int {
 	return (*C.int)(unsafe.Pointer(&frame.linesize[0]))
 }
 
-func bigEndianS16ToFloat32(samples []byte) ([]byte, error) {
+func bigEndianS16ToFloat3(samples []byte) ([]byte, error) {
 	sampleCount := len(samples) / 2
 	outSize := len(samples) * 2
 	outSamples := make([]byte, outSize)
@@ -112,7 +112,7 @@ func (d *mp4aEncoder) close() {
 // encode encodes LPCM samples into Opus packets.
 func (d *mp4aEncoder) encode(samples []byte) ([][]byte, int64, error) {
 	// convert from big-endian signed 16-bit integer to float32
-	samples, err := bigEndianS16ToFloat32(samples)
+	samples, err := bigEndianS16ToFloat3(samples)
 	if err != nil {
 		return nil, 0, err
 	}

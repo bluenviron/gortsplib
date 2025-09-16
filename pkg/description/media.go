@@ -146,8 +146,8 @@ func (m *Media) Unmarshal(md *psdp.MediaDescription) error {
 	return nil
 }
 
-// Marshal2 encodes the media in SDP format.
-func (m Media) Marshal2() (*psdp.MediaDescription, error) {
+// Marshal encodes the media in SDP format.
+func (m Media) Marshal() (*psdp.MediaDescription, error) {
 	var protos []string
 
 	if m.Profile == headers.TransportProfileSAVP {

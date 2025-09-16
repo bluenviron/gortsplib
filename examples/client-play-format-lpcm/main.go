@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// connect to the server
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func main() {
 	// called when a RTP packet arrives
 	c.OnPacketRTP(medi, forma, func(pkt *rtp.Packet) {
 		// decode timestamp
-		pts, ok := c.PacketPTS2(medi, pkt)
+		pts, ok := c.PacketPTS(medi, pkt)
 		if !ok {
 			log.Printf("waiting for timestamp")
 			return

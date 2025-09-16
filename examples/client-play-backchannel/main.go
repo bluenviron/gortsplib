@@ -61,7 +61,7 @@ func main() {
 	}
 
 	// connect to the server
-	err = c.Start2()
+	err = c.Start()
 	if err != nil {
 		panic(err)
 	}

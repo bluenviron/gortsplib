@@ -22,7 +22,7 @@ func (t *dummyTrack) PTSEqualsDTS(*rtp.Packet) bool {
 }
 
 func TestGlobalDecoder(t *testing.T) {
-	g := &GlobalDecoder2{}
+	g := &GlobalDecoder{}
 	g.Initialize()
 
 	t1 := &dummyTrack{clockRate: 90000}
@@ -62,7 +62,7 @@ func TestGlobalDecoder(t *testing.T) {
 }
 
 func TestGlobalDecoderInvalidClockRate(t *testing.T) {
-	g := &GlobalDecoder2{}
+	g := &GlobalDecoder{}
 	g.Initialize()
 
 	tr := &dummyTrack{clockRate: 0, ptsEqualsDTS: true}

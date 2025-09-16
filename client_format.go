@@ -94,7 +94,7 @@ func (cf *clientFormat) remoteSSRC() (uint32, bool) {
 func (cf *clientFormat) readPacketRTP(pkt *rtp.Packet) {
 	now := cf.cm.c.timeNow()
 
-	pkts, lost, err := cf.rtpReceiver.ProcessPacket2(pkt, now, cf.format.PTSEqualsDTS(pkt))
+	pkts, lost, err := cf.rtpReceiver.ProcessPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
 	if err != nil {
 		cf.cm.onPacketRTPDecodeError(err)
 		return
