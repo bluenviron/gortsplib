@@ -707,7 +707,7 @@ func TestServerPlay(t *testing.T) {
 
 						ctx.Session.OnPacketRTCPAny(func(medi *description.Media, pkt rtcp.Packet) {
 							// ignore multicast loopback
-							if ca.secure == "unsecure" && ca.transport == "multicast" && atomic.AddUint64(&counter, 1) <= 1 {
+							if ca.secure == "unsecure" && ca.transport == "multicast" && atomic.AddUint64(&counter, 1) > 1 {
 								return
 							}
 
