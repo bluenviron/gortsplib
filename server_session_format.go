@@ -31,8 +31,8 @@ func (sf *serverSessionFormat) initialize() {
 	sf.rtpPacketsSent = new(uint64)
 	sf.rtpPacketsLost = new(uint64)
 
-	udp := sf.sm.ss.setuppedTransport.Protocol == TransportUDP ||
-		sf.sm.ss.setuppedTransport.Protocol == TransportUDPMulticast
+	udp := sf.sm.ss.setuppedTransport.Protocol == ProtocolUDP ||
+		sf.sm.ss.setuppedTransport.Protocol == ProtocolUDPMulticast
 
 	if udp {
 		sf.writePacketRTPInQueue = sf.writePacketRTPInQueueUDP

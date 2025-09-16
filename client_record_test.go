@@ -419,10 +419,10 @@ func TestClientRecord(t *testing.T) {
 				},
 				Protocol: func() *Protocol {
 					if ca.transport == "udp" {
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 					}
-					v := TransportTCP
+					v := ProtocolTCP
 					return &v
 				}(),
 			}
@@ -589,10 +589,10 @@ func TestClientRecordSocketError(t *testing.T) {
 				},
 				Protocol: func() *Protocol {
 					if transport == "udp" {
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 					}
-					v := TransportTCP
+					v := ProtocolTCP
 					return &v
 				}(),
 			}
@@ -733,10 +733,10 @@ func TestClientRecordPauseRecordSerial(t *testing.T) {
 			c := Client{
 				Protocol: func() *Protocol {
 					if transport == "udp" {
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 					}
-					v := TransportTCP
+					v := ProtocolTCP
 					return &v
 				}(),
 			}
@@ -892,10 +892,10 @@ func TestClientRecordPauseRecordParallel(t *testing.T) {
 			c := Client{
 				Protocol: func() *Protocol {
 					if transport == "udp" {
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 					}
-					v := TransportTCP
+					v := ProtocolTCP
 					return &v
 				}(),
 			}
@@ -1217,10 +1217,10 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 			c := Client{
 				Protocol: func() *Protocol {
 					if ca.proto == "udp" {
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 					}
-					v := TransportTCP
+					v := ProtocolTCP
 					return &v
 				}(),
 				OnDecodeError: func(err error) {
@@ -1391,10 +1391,10 @@ func TestClientRecordRTCPReport(t *testing.T) {
 			c := Client{
 				Protocol: func() *Protocol {
 					if ca == "udp" {
-						v := TransportUDP
+						v := ProtocolUDP
 						return &v
 					}
-					v := TransportTCP
+					v := ProtocolTCP
 					return &v
 				}(),
 				timeNow: func() time.Time {
@@ -1536,7 +1536,7 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 	rtcpReceived := make(chan struct{})
 
 	c := Client{
-		Protocol: ptrOf(TransportTCP),
+		Protocol: ptrOf(ProtocolTCP),
 	}
 
 	medias := []*description.Media{testH264Media}

@@ -7,7 +7,7 @@ import (
 )
 
 func TestProtocolString(t *testing.T) {
-	tr := TransportUDPMulticast
+	tr := ProtocolUDPMulticast
 	require.NotEqual(t, "unknown", tr.String())
 
 	tr = Protocol(15)

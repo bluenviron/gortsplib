@@ -7,15 +7,15 @@ type Protocol int
 
 // transport protocols.
 const (
-	TransportUDP Protocol = iota
-	TransportUDPMulticast
-	TransportTCP
+	ProtocolUDP Protocol = iota
+	ProtocolUDPMulticast
+	ProtocolTCP
 )
 
 var transportLabels = map[Protocol]string{
-	TransportUDP:          "UDP",
-	TransportUDPMulticast: "UDP-multicast",
-	TransportTCP:          "TCP",
+	ProtocolUDP:          "UDP",
+	ProtocolUDPMulticast: "UDP-multicast",
+	ProtocolTCP:          "TCP",
 }
 
 // String implements fmt.Stringer.

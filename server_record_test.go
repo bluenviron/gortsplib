@@ -624,10 +624,10 @@ func TestServerRecord(t *testing.T) {
 						var proto Protocol
 						switch ca.transport {
 						case "udp":
-							proto = TransportUDP
+							proto = ProtocolUDP
 
 						case "tcp":
-							proto = TransportTCP
+							proto = ProtocolTCP
 						}
 
 						var profile headers.TransportProfile

@@ -59,10 +59,10 @@ func (sm *serverSessionMedia) initialize() {
 	}
 
 	switch sm.ss.setuppedTransport.Protocol {
-	case TransportUDP, TransportUDPMulticast:
+	case ProtocolUDP, ProtocolUDPMulticast:
 		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueUDP
 
-	case TransportTCP:
+	case ProtocolTCP:
 		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueTCP
 
 		if sm.ss.tcpCallbackByChannel == nil {
@@ -89,8 +89,8 @@ func (sm *serverSessionMedia) close() {
 
 func (sm *serverSessionMedia) start() error {
 	switch sm.ss.setuppedTransport.Protocol {
-	case TransportUDP, TransportUDPMulticast:
-		if sm.ss.setuppedTransport.Protocol == TransportUDP {
+	case ProtocolUDP, ProtocolUDPMulticast:
+		if sm.ss.setuppedTransport.Protocol == ProtocolUDP {
 			if sm.ss.state == ServerSessionStatePlay {
 				if sm.media.IsBackChannel {
 					sm.ss.s.udpRTPListener.addClient(sm.ss.author.ip(), sm.udpRTPReadPort, sm.readPacketRTPUDPPlay)
@@ -136,7 +136,7 @@ func (sm *serverSessionMedia) start() error {
 }
 
 func (sm *serverSessionMedia) stop() {
-	if sm.ss.setuppedTransport.Protocol == TransportUDP {
+	if sm.ss.setuppedTransport.Protocol == ProtocolUDP {
 		sm.ss.s.udpRTPListener.removeClient(sm.ss.author.ip(), sm.udpRTPReadPort)
 		sm.ss.s.udpRTCPListener.removeClient(sm.ss.author.ip(), sm.udpRTCPReadPort)
 	}
