@@ -679,7 +679,7 @@ func TestServerPlay(t *testing.T) {
 					onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
 						require.NotNil(t, ctx.Conn.Session())
 
-						var proto TransportProtocol
+						var proto Protocol
 						switch ca.transport {
 						case "udp":
 							proto = TransportUDP

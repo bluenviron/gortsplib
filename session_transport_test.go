@@ -6,10 +6,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTransportProtocolString(t *testing.T) {
+func TestProtocolString(t *testing.T) {
 	tr := TransportUDPMulticast
 	require.NotEqual(t, "unknown", tr.String())
 
-	tr = TransportProtocol(15)
+	tr = Protocol(15)
 	require.Equal(t, "unknown", tr.String())
 }

@@ -1129,7 +1129,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			query = ss.setuppedQuery
 		}
 
-		var protocol TransportProtocol
+		var protocol Protocol
 
 		switch inTH.Protocol {
 		case headers.TransportProtocolUDP:

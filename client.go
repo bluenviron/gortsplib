@@ -454,7 +454,7 @@ type Client struct {
 	// transport protocol (UDP, Multicast or TCP).
 	// If nil, it is chosen automatically (first UDP, then, if it fails, TCP).
 	// It defaults to nil.
-	Protocol *TransportProtocol
+	Protocol *Protocol
 	// enable communication with servers which don't provide UDP server ports
 	// or use different server ports than the announced ones.
 	// This can be a security issue.
@@ -1585,7 +1585,7 @@ func (c *Client) doSetup(
 		th.Mode = &v
 	}
 
-	var protocol TransportProtocol
+	var protocol Protocol
 
 	switch {
 	// use transport from previous SETUP calls

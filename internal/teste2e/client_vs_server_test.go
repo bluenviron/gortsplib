@@ -172,7 +172,7 @@ func TestClientVsServer(t *testing.T) {
 				publisherTunnel = gortsplib.TunnelNone
 			}
 
-			var publisherProto gortsplib.TransportProtocol
+			var publisherProto gortsplib.Protocol
 			switch ca.publisherProto {
 			case "udp":
 				publisherProto = gortsplib.TransportUDP
@@ -198,7 +198,7 @@ func TestClientVsServer(t *testing.T) {
 				readerTunnel = gortsplib.TunnelNone
 			}
 
-			var readerProto gortsplib.TransportProtocol
+			var readerProto gortsplib.Protocol
 			switch ca.readerProto {
 			case "udp":
 				readerProto = gortsplib.TransportUDP

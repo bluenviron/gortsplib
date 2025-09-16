@@ -621,7 +621,7 @@ func TestServerRecord(t *testing.T) {
 						}, nil, nil
 					},
 					onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
-						var proto TransportProtocol
+						var proto Protocol
 						switch ca.transport {
 						case "udp":
 							proto = TransportUDP

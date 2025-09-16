@@ -178,7 +178,7 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 func (st *ServerStream) readerAdd(
 	ss *ServerSession,
 	clientPorts *[2]int,
-	protocol TransportProtocol,
+	protocol Protocol,
 ) error {
 	st.mutex.Lock()
 	defer st.mutex.Unlock()

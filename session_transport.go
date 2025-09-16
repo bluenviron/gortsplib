@@ -2,24 +2,24 @@ package gortsplib
 
 import "github.com/bluenviron/gortsplib/v5/pkg/headers"
 
-// TransportProtocol is a RTSP transport protocol.
-type TransportProtocol int
+// Protocol is a RTSP transport protocol.
+type Protocol int
 
 // transport protocols.
 const (
-	TransportUDP TransportProtocol = iota
+	TransportUDP Protocol = iota
 	TransportUDPMulticast
 	TransportTCP
 )
 
-var transportLabels = map[TransportProtocol]string{
+var transportLabels = map[Protocol]string{
 	TransportUDP:          "UDP",
 	TransportUDPMulticast: "UDP-multicast",
 	TransportTCP:          "TCP",
 }
 
 // String implements fmt.Stringer.
-func (t TransportProtocol) String() string {
+func (t Protocol) String() string {
 	if l, ok := transportLabels[t]; ok {
 		return l
 	}
@@ -28,6 +28,6 @@ func (t TransportProtocol) String() string {
 
 // SessionTransport contains details about the transport of a session.
 type SessionTransport struct {
-	Protocol TransportProtocol
+	Protocol Protocol
 	Profile  headers.TransportProfile
 }

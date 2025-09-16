@@ -607,7 +607,7 @@ func TestClientPlay(t *testing.T) {
 				Scheme:    u.Scheme,
 				Host:      u.Host,
 				TLSConfig: &tls.Config{InsecureSkipVerify: true},
-				Protocol: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					switch ca.transport {
 					case "udp":
 						v := TransportUDP
@@ -2421,7 +2421,7 @@ func TestClientPlayPausePlay(t *testing.T) {
 			packetRecv := make(chan struct{})
 
 			c := Client{
-				Protocol: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					if transport == "udp" {
 						v := TransportUDP
 						return &v
@@ -2740,7 +2740,7 @@ func TestClientPlayErrorTimeout(t *testing.T) {
 			}()
 
 			c := Client{
-				Protocol: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					switch transport {
 					case "udp":
 						v := TransportUDP
@@ -3418,7 +3418,7 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 			}()
 
 			c := Client{
-				Protocol: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					if ca.proto == "udp" {
 						v := TransportUDP
 						return &v
@@ -3902,7 +3902,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 				Scheme:              u.Scheme,
 				Host:                u.Host,
 				RequestBackChannels: true,
-				Protocol: func() *TransportProtocol {
+				Protocol: func() *Protocol {
 					if transport == "tcp" {
 						return ptrOf(TransportTCP)
 					}

@@ -1,9 +1,9 @@
 package gortsplib
 
-// Tunnel is a tunnel method.
+// Tunnel is a tunneling method.
 type Tunnel int
 
-// tunnel methods.
+// tunneling methods.
 const (
 	TunnelNone Tunnel = iota
 	TunnelHTTP
