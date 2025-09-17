@@ -13,7 +13,27 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/conn"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/mediacommon/v2/pkg/rewindablereader"
+	"github.com/gorilla/websocket"
 )
+
+func isHTTPTunnel(req *http.Request) bool {
+	return ((req.Method == http.MethodGet && req.Header.Get("Accept") == "application/x-rtsp-tunnelled") ||
+		(req.Method == http.MethodPost && req.Header.Get("Content-Type") == "application/x-rtsp-tunnelled")) &&
+		req.Header.Get("X-Sessioncookie") != ""
+}
+
+func isWebSocketTunnel(req *http.Request) bool {
+	return req.Method == http.MethodGet &&
+		req.Header.Get("Connection") == "Upgrade" &&
+		req.Header.Get("Upgrade") == "websocket" &&
+		req.Header.Get("Sec-WebSocket-Protocol") == "rtsp.onvif.org"
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(_ *http.Request) bool {
+		return true
+	},
+}
 
 func makeReadWriter(r io.Reader, w io.Writer) io.ReadWriter {
 	return struct {
@@ -65,9 +85,9 @@ func (cr *serverConnReader) run() {
 func (cr *serverConnReader) runInner() error {
 	var rw io.ReadWriter = cr.sc.bc
 
-	if !cr.sc.isHTTP {
+	if cr.sc.tunnel == TunnelNone {
 		var err error
-		rw, err = cr.upgradeToHTTP(rw)
+		rw, err = cr.handleTunneling(rw)
 		if err != nil {
 			return err
 		}
@@ -94,7 +114,7 @@ func (cr *serverConnReader) runInner() error {
 	}
 }
 
-func (cr *serverConnReader) upgradeToHTTP(in io.ReadWriter) (io.ReadWriter, error) {
+func (cr *serverConnReader) handleTunneling(in io.ReadWriter) (io.ReadWriter, error) {
 	rr := &rewindablereader.Reader{R: in}
 
 	buf := make([]byte, 4)
@@ -114,10 +134,53 @@ func (cr *serverConnReader) upgradeToHTTP(in io.ReadWriter) (io.ReadWriter, erro
 			return nil, err
 		}
 
-		if (req.Method != http.MethodGet && req.Method != http.MethodPost) ||
-			(req.Method == http.MethodGet && req.Header.Get("Accept") != "application/x-rtsp-tunnelled") ||
-			(req.Method == http.MethodPost && req.Header.Get("Content-Type") != "application/x-rtsp-tunnelled") ||
-			req.Header.Get("X-Sessioncookie") == "" {
+		switch {
+		case isHTTPTunnel(req):
+			h := http.Header{}
+			h.Set("Cache-Control", "no-cache")
+			h.Set("Connection", "close")
+			h.Set("Content-Type", "application/x-rtsp-tunnelled")
+			h.Set("Pragma", "no-cache")
+			res := http.Response{
+				StatusCode:    http.StatusOK,
+				ProtoMajor:    1,
+				ProtoMinor:    req.ProtoMinor,
+				Header:        h,
+				ContentLength: -1,
+			}
+			var buf2 bytes.Buffer
+			res.Write(&buf2) //nolint:errcheck
+			cr.sc.nconn.SetWriteDeadline(time.Now().Add(cr.sc.s.WriteTimeout))
+			_, err = in.Write(buf2.Bytes())
+			if err != nil {
+				return nil, err
+			}
+
+			cr.sc.httpReadBuf = buf
+
+			err = cr.sc.s.handleHTTPChannel(sessionHandleHTTPChannelReq{
+				sc:       cr.sc,
+				write:    (req.Method == http.MethodPost),
+				tunnelID: req.Header.Get("X-Sessioncookie"),
+			})
+			return nil, err
+
+		case isWebSocketTunnel(req):
+			resw := &wsResponseWriter{r: cr.sc.nconn, buf: buf, w: in, req: req}
+			resw.initialize()
+			var wconn *websocket.Conn
+			wconn, err = upgrader.Upgrade(resw, req, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			cr.sc.propsMutex.Lock()
+			cr.sc.tunnel = TunnelWebSocket
+			cr.sc.propsMutex.Unlock()
+
+			return makeReadWriter(&wsReader{wc: wconn}, &wsWriter{wc: wconn}), nil
+
+		default:
 			res := http.Response{
 				StatusCode: http.StatusBadRequest,
 				ProtoMajor: req.ProtoMajor,
@@ -134,35 +197,6 @@ func (cr *serverConnReader) upgradeToHTTP(in io.ReadWriter) (io.ReadWriter, erro
 
 			return nil, fmt.Errorf("invalid HTTP request")
 		}
-
-		h := http.Header{}
-		h.Set("Cache-Control", "no-cache")
-		h.Set("Connection", "close")
-		h.Set("Content-Type", "application/x-rtsp-tunnelled")
-		h.Set("Pragma", "no-cache")
-		res := http.Response{
-			StatusCode:    http.StatusOK,
-			ProtoMajor:    1,
-			ProtoMinor:    req.ProtoMinor,
-			Header:        h,
-			ContentLength: -1,
-		}
-		var buf2 bytes.Buffer
-		res.Write(&buf2) //nolint:errcheck
-		cr.sc.nconn.SetWriteDeadline(time.Now().Add(cr.sc.s.WriteTimeout))
-		_, err = in.Write(buf2.Bytes())
-		if err != nil {
-			return nil, err
-		}
-
-		cr.sc.httpReadBuf = buf
-
-		err = cr.sc.s.handleHTTPChannel(sessionHandleHTTPChannelReq{
-			sc:       cr.sc,
-			write:    (req.Method == http.MethodPost),
-			tunnelID: req.Header.Get("X-Sessioncookie"),
-		})
-		return nil, err
 	}
 
 	return makeReadWriter(rr, in), nil

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/auth"
@@ -1295,7 +1296,7 @@ func TestServerStreamErrorNoServer(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestServerHTTPTunnel(t *testing.T) {
+func TestServerTunnelHTTP(t *testing.T) {
 	for _, ca := range []string{"http", "https"} {
 		t.Run(ca, func(t *testing.T) {
 			done := make(chan struct{})
@@ -1423,6 +1424,53 @@ func TestServerHTTPTunnel(t *testing.T) {
 			require.Equal(t, base.StatusNotFound, rres.StatusCode)
 
 			<-done
+		})
+	}
+}
+
+func TestServerTunnelWebSocket(t *testing.T) {
+	for _, ca := range []string{"ws", "wss"} {
+		t.Run(ca, func(t *testing.T) {
+			s := &Server{
+				Handler: &testServerHandler{
+					onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+						return &base.Response{
+							StatusCode: base.StatusNotFound,
+						}, nil, nil
+					},
+				},
+				RTSPAddress: "localhost:8554",
+			}
+
+			if ca == "wss" {
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+				s.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
+			}
+
+			err := s.Start()
+			require.NoError(t, err)
+			defer s.Close()
+
+			h := http.Header{}
+			h.Set("Sec-WebSocket-Protocol", "rtsp.onvif.org")
+			c, _, err := (&websocket.Dialer{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			}).Dial(ca+"://localhost:8554", h) //nolint:bodyclose
+			require.NoError(t, err)
+			defer c.Close() //nolint:errcheck
+
+			conn := conn.NewConn(bufio.NewReader(&wsReader{wc: c}), &wsWriter{wc: c})
+
+			rres, err := writeReqReadRes(conn, base.Request{
+				Method: base.Describe,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream?param=value"),
+				Header: base.Header{
+					"CSeq": base.HeaderValue{"1"},
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, base.StatusNotFound, rres.StatusCode)
 		})
 	}
 }

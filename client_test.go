@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/tls"
 	"net"
 	"net/http"
@@ -593,7 +594,7 @@ func TestClientRelativeContentBase(t *testing.T) {
 	require.Equal(t, "rtsp://localhost:8554/relative-content-base", desc.BaseURL.String())
 }
 
-func TestClientHTTPTunnel(t *testing.T) {
+func TestClientTunnelHTTP(t *testing.T) {
 	for _, ca := range []string{"http", "https"} {
 		t.Run(ca, func(t *testing.T) {
 			var l net.Listener
@@ -768,8 +769,103 @@ func TestClientHTTPTunnel(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close()
 
-			_, _, err = c.Describe(u)
+			_, res, err := c.Describe(u)
 			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+		})
+	}
+}
+
+func TestClientTunnelWebSocket(t *testing.T) {
+	for _, ca := range []string{"ws", "wss"} {
+		t.Run(ca, func(t *testing.T) {
+			var scheme string
+			if ca == "ws" {
+				scheme = "rtsp"
+			} else {
+				scheme = "rtsps"
+			}
+
+			s := &http.Server{
+				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					require.Equal(t, r.Header.Get("Sec-WebSocket-Protocol"), "rtsp.onvif.org")
+
+					wconn, err := upgrader.Upgrade(w, r, nil)
+					require.NoError(t, err)
+					defer wconn.Close() //nolint:errcheck
+
+					conn := conn.NewConn(bufio.NewReader(&wsReader{wc: wconn}), &wsWriter{wc: wconn})
+
+					req, err2 := conn.ReadRequest()
+					require.NoError(t, err2)
+					require.Equal(t, base.Options, req.Method)
+
+					err2 = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Public": base.HeaderValue{strings.Join([]string{
+								string(base.Describe),
+							}, ", ")},
+						},
+					})
+					require.NoError(t, err2)
+
+					req, err2 = conn.ReadRequest()
+					require.NoError(t, err2)
+					require.Equal(t, base.Describe, req.Method)
+					require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
+
+					medias := []*description.Media{testH264Media}
+
+					err2 = conn.WriteResponse(&base.Response{
+						StatusCode: base.StatusOK,
+						Header: base.Header{
+							"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
+							"Content-Base": base.HeaderValue{"/relative-content-base"},
+						},
+						Body: mediasToSDP(medias),
+					})
+					require.NoError(t, err2)
+				}),
+			}
+
+			var ln net.Listener
+
+			if ca == "ws" {
+				var err error
+				ln, err = net.Listen("tcp", "localhost:8554")
+				require.NoError(t, err)
+			} else {
+				cert, err := tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+
+				ln, err = tls.Listen("tcp", "localhost:8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+				require.NoError(t, err)
+				defer ln.Close()
+			}
+
+			go s.Serve(ln)
+			defer s.Shutdown(context.Background())
+
+			u, err := base.ParseURL(scheme + "://localhost:8554/teststream")
+			require.NoError(t, err)
+
+			c := Client{
+				Scheme: u.Scheme,
+				Host:   u.Host,
+				Tunnel: TunnelWebSocket,
+				TLSConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			}
+
+			err = c.Start()
+			require.NoError(t, err)
+			defer c.Close()
+
+			_, res, err := c.Describe(u)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
 		})
 	}
 }

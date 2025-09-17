@@ -205,7 +205,7 @@ type readReq struct {
 type ServerConn struct {
 	s      *Server
 	nconn  net.Conn
-	isHTTP bool
+	tunnel Tunnel
 
 	ctx              context.Context
 	ctxCancel        func()
@@ -231,7 +231,7 @@ type ServerConn struct {
 func (sc *ServerConn) initialize() {
 	ctx, ctxCancel := context.WithCancel(sc.s.ctx)
 
-	if sc.s.TLSConfig != nil && !sc.isHTTP {
+	if sc.s.TLSConfig != nil && sc.tunnel == TunnelNone {
 		sc.nconn = tls.Server(sc.nconn, sc.s.TLSConfig)
 	}
 
@@ -278,13 +278,10 @@ func (sc *ServerConn) Session() *ServerSession {
 
 // Transport returns transport details.
 func (sc *ServerConn) Transport() *ConnTransport {
+	sc.propsMutex.RLock()
+	defer sc.propsMutex.RUnlock()
 	return &ConnTransport{
-		Tunnel: func() Tunnel {
-			if sc.isHTTP {
-				return TunnelHTTP
-			}
-			return TunnelNone
-		}(),
+		Tunnel: sc.tunnel,
 	}
 }
 

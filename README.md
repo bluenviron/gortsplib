@@ -14,7 +14,7 @@ Features:
 
 * Client
   * Support secure protocol variants (RTSPS, TLS, SRTP, MIKEY)
-  * Support RTSP-over-HTTP, RTSP-over-HTTPS
+  * Support tunneling (RTSP-over-HTTP, RTSP-over-WebSocket)
   * Query servers about available media streams
   * Read media streams from a server ("play")
     * Read streams with the UDP, UDP-multicast or TCP transport protocol
@@ -30,7 +30,7 @@ Features:
     * Pause without disconnecting from the server
 * Server
   * Support secure protocol variants (RTSPS, TLS, SRTP, MIKEY)
-  * Support RTSP-over-HTTP, RTSP-over-HTTPS
+  * Support tunneling (RTSP-over-HTTP, RTSP-over-WebSocket)
   * Handle requests from clients
   * Validate client credentials
   * Read media streams from clients ("record")
