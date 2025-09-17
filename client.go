@@ -1137,13 +1137,22 @@ func (c *Client) connOpen() error {
 
 	var nconn net.Conn
 
-	if c.Tunnel == TunnelHTTP {
+	switch c.Tunnel {
+	case TunnelHTTP:
 		var err error
-		nconn, err = newClientHTTPTunnel(dialCtx, c.DialContext, addr, tlsConfig)
+		nconn, err = newClientTunnelHTTP(dialCtx, c.DialContext, addr, tlsConfig)
 		if err != nil {
 			return err
 		}
-	} else {
+
+	case TunnelWebSocket:
+		var err error
+		nconn, err = newClientTunnelWebSocket(dialCtx, c.DialContext, addr, tlsConfig)
+		if err != nil {
+			return err
+		}
+
+	default:
 		var err error
 		nconn, err = c.DialContext(dialCtx, "tcp", addr)
 		if err != nil {

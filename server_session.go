@@ -196,7 +196,7 @@ func isTransportSupported(sc *ServerConn, tr *headers.Transport) bool {
 		}
 
 		// prevent using UDP with tunneling
-		if sc.isHTTP {
+		if sc.tunnel != TunnelNone {
 			return false
 		}
 

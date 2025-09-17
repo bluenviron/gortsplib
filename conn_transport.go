@@ -7,6 +7,7 @@ type Tunnel int
 const (
 	TunnelNone Tunnel = iota
 	TunnelHTTP
+	TunnelWebSocket
 )
 
 // ConnTransport contains details about the transport of a connection.

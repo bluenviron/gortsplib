@@ -14,53 +14,53 @@ import (
 	"github.com/google/uuid"
 )
 
-type clientHTTPTunnel struct {
+type clientTunnelHTTP struct {
 	readChan  net.Conn
 	readBuf   *bufio.Reader
 	writeChan net.Conn
 }
 
-func (c *clientHTTPTunnel) Read(p []byte) (n int, err error) {
+func (c *clientTunnelHTTP) Read(p []byte) (n int, err error) {
 	return c.readBuf.Read(p)
 }
 
-func (c *clientHTTPTunnel) Write(p []byte) (n int, err error) {
+func (c *clientTunnelHTTP) Write(p []byte) (n int, err error) {
 	return c.writeChan.Write([]byte(base64.StdEncoding.EncodeToString(p)))
 }
 
-func (c *clientHTTPTunnel) Close() error {
+func (c *clientTunnelHTTP) Close() error {
 	c.readChan.Close()
 	c.writeChan.Close()
 	return nil
 }
 
-func (c *clientHTTPTunnel) LocalAddr() net.Addr {
+func (c *clientTunnelHTTP) LocalAddr() net.Addr {
 	return c.readChan.LocalAddr()
 }
 
-func (c *clientHTTPTunnel) RemoteAddr() net.Addr {
+func (c *clientTunnelHTTP) RemoteAddr() net.Addr {
 	return c.readChan.RemoteAddr()
 }
 
-func (c *clientHTTPTunnel) SetDeadline(_ time.Time) error {
+func (c *clientTunnelHTTP) SetDeadline(_ time.Time) error {
 	panic("unimplemented")
 }
 
-func (c *clientHTTPTunnel) SetReadDeadline(t time.Time) error {
+func (c *clientTunnelHTTP) SetReadDeadline(t time.Time) error {
 	return c.readChan.SetReadDeadline(t)
 }
 
-func (c *clientHTTPTunnel) SetWriteDeadline(t time.Time) error {
+func (c *clientTunnelHTTP) SetWriteDeadline(t time.Time) error {
 	return c.writeChan.SetWriteDeadline(t)
 }
 
-func newClientHTTPTunnel(
+func newClientTunnelHTTP(
 	ctx context.Context,
 	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
 	addr string,
 	tlsConfig *tls.Config,
 ) (net.Conn, error) {
-	c := &clientHTTPTunnel{}
+	c := &clientTunnelHTTP{}
 
 	var err error
 	c.readChan, err = dialContext(ctx, "tcp", addr)

@@ -420,7 +420,7 @@ func (s *Server) runInner() error {
 					sc := &ServerConn{
 						s:      s,
 						nconn:  nconn,
-						isHTTP: true,
+						tunnel: TunnelHTTP,
 					}
 					sc.initialize()
 					s.conns[sc] = struct{}{}

@@ -132,6 +132,22 @@ func TestClientVsServer(t *testing.T) {
 			readerProto:     "tcp",
 			readerTunnel:    "http",
 		},
+		{
+			publisherScheme: "rtsp",
+			publisherProto:  "tcp",
+			publisherTunnel: "websocket",
+			readerScheme:    "rtsp",
+			readerProto:     "udp",
+			readerTunnel:    "none",
+		},
+		{
+			publisherScheme: "rtsp",
+			publisherProto:  "tcp",
+			publisherTunnel: "none",
+			readerScheme:    "rtsp",
+			readerProto:     "tcp",
+			readerTunnel:    "websocket",
+		},
 	} {
 		t.Run(strings.Join([]string{
 			ca.publisherScheme,
@@ -166,9 +182,12 @@ func TestClientVsServer(t *testing.T) {
 			}
 
 			var publisherTunnel gortsplib.Tunnel
-			if ca.publisherTunnel == "http" {
+			switch ca.publisherTunnel {
+			case "http":
 				publisherTunnel = gortsplib.TunnelHTTP
-			} else {
+			case "websocket":
+				publisherTunnel = gortsplib.TunnelWebSocket
+			default:
 				publisherTunnel = gortsplib.TunnelNone
 			}
 
@@ -192,9 +211,12 @@ func TestClientVsServer(t *testing.T) {
 			time.Sleep(1 * time.Second)
 
 			var readerTunnel gortsplib.Tunnel
-			if ca.readerTunnel == "http" {
+			switch ca.readerTunnel {
+			case "http":
 				readerTunnel = gortsplib.TunnelHTTP
-			} else {
+			case "websocket":
+				readerTunnel = gortsplib.TunnelWebSocket
+			default:
 				readerTunnel = gortsplib.TunnelNone
 			}
 
