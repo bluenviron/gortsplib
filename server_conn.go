@@ -280,6 +280,7 @@ func (sc *ServerConn) Session() *ServerSession {
 func (sc *ServerConn) Transport() *ConnTransport {
 	sc.propsMutex.RLock()
 	defer sc.propsMutex.RUnlock()
+
 	return &ConnTransport{
 		Tunnel: sc.tunnel,
 	}
