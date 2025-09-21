@@ -91,6 +91,8 @@ func (s *SessionDescription) unmarshalOrigin(value string) error {
 
 	if strings.HasSuffix(value, " IN") {
 		value += " IP4"
+	} else if strings.HasSuffix(value, " IN ") {
+		value += "IP4"
 	}
 
 	if strings.HasSuffix(value, "IN IP4") {
