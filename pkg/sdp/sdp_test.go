@@ -549,7 +549,99 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/75",
+		"onvif specification",
+		[]byte("v=0\r\n" +
+			"o= 2890842807 IN IP4 192.168.0.1\r\n" +
+			"s=RTSP Session with audiobackchannel\r\n" +
+			"m=video 0 RTP/AVP 26\r\n" +
+			"a=control:rtsp://192.168.0.1/video\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audio\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audioback\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=sendonly\r\n"),
+		[]byte("v=0\r\n" +
+			"o= 0 2890842807 IN IP4 192.168.0.1\r\n" +
+			"s=RTSP Session with audiobackchannel\r\n" +
+			"m=video 0 RTP/AVP 26\r\n" +
+			"a=control:rtsp://192.168.0.1/video\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audio\r\n" +
+			"a=recvonly\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:rtsp://192.168.0.1/audioback\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=sendonly\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				SessionVersion: 2890842807,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.0.1",
+			},
+			SessionName: "RTSP Session with audiobackchannel",
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"26"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.0.1/video",
+						},
+						{
+							Key: "recvonly",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.0.1/audio",
+						},
+						{
+							Key: "recvonly",
+						},
+					},
+				},
+				{
+					MediaName: psdp.MediaName{
+						Media:   "audio",
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"0"},
+					},
+					Attributes: []psdp.Attribute{
+						{
+							Key:   "control",
+							Value: "rtsp://192.168.0.1/audioback",
+						},
+						{
+							Key:   "rtpmap",
+							Value: "0 PCMU/8000",
+						},
+						{
+							Key: "sendonly",
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		"issue mediamtx/75 (LiveReporter App)",
 		[]byte("v=0\r\n" +
 			"o=-0 0 IN IP4 127.0.0.1\r\n" +
 			"s=No Name\r\n" +
@@ -665,7 +757,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/85",
+		"issue mediamtx/85 (SONY SNC-WR630)",
 		[]byte("v=0\r\n" +
 			"o=- 12345 1 IN IP4 10.21.61.139\r\n" +
 			"s=Sony RTSP Server\r\n" +
@@ -750,7 +842,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/115",
+		"issue mediamtx/115 (RR bitrate)",
 		[]byte("v=0\r\n" +
 			"o=- 16379793953309178445 16379793953309178445 IN IP4 5c2b68da\r\n" +
 			"s=Unnamed\r\n" +
@@ -873,7 +965,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/120",
+		"issue mediamtx/120 (MP2T in protocol)",
 		[]byte("v=0\r\n" +
 			"o=- 1702415089 4281335390 IN IP4 127.0.0.1\r\n" +
 			"s=live\r\n" +
@@ -931,7 +1023,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/121",
+		"issue mediamtx/121 (empty unicast address)",
 		[]byte("v=0\r\n" +
 			"o=RTSP 16381778200090761968 16381778200090839277 IN IP4 \r\n" +
 			"s=RTSP Server\r\n" +
@@ -1066,7 +1158,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/136",
+		"issue mediamtx/136 (RS bandwidth)",
 		[]byte("v=0\r\n" +
 			"o=- 200710060441230578 200710060441230578 IN IP4 127.0.0.1\r\n" +
 			"s=<No Title>\r\n" +
@@ -1242,7 +1334,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/127",
+		"issue mediamtx/127 (Amcrest cameras)",
 		[]byte("v=0\r\n" +
 			"o=RTSP Session 1 2 IN IP4 0.0.0.0\r\n" +
 			"s=Sony RTSP Server\r\n"),
@@ -1262,7 +1354,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/227",
+		"issue mediamtx/227 (Hik Media Server)",
 		[]byte("v=0\r\n" +
 			"o=- 1109162014219182 0 IN IP4 0.0.0.0\r\n" +
 			"s=HIK Media Server V3.1.3\r\n" +
@@ -1365,7 +1457,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue gortsplib/60",
+		"issue gortsplib/60 (Hex session)",
 		[]byte("v=0\r\n" +
 			"o=jdoe 0xAC4EC96E 2890842807 IN IP4 10.47.16.5\r\n" +
 			"s=SDP Seminar\r\n" +
@@ -1393,7 +1485,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue gortsplib/85",
+		"issue gortsplib/85 (FLIR timing)",
 		[]byte("v=0\r\n" +
 			"o=- 0 0 IN IP4 172.16.2.20\r\n" +
 			"s=IR stream\r\n" +
@@ -1543,7 +1635,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue gortsplib/116",
+		"issue gortsplib/116 (IOI trk-101)",
 		[]byte("v=0\r\n" +
 			"o=- 1 1 IN IP4 127.0.0.1 \r\n" +
 			"s=RTP session\r\n" +
@@ -1618,7 +1710,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue gortsplib/112 a",
+		"issue gortsplib/112 a (Hex session)",
 		[]byte("v=0\r\n" +
 			"o=jdoe 0XAC4EC96E 2890842807 IN IP4 10.47.16.5\r\n" +
 			"s=SDP Seminar\r\n" +
@@ -1646,7 +1738,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue gortsplib/112 b",
+		"issue gortsplib/112 b (Hex session)",
 		[]byte("v=0\r\n" +
 			"o=jdoe 103bdb6f 2890842807 IN IP4 10.47.16.5\r\n" +
 			"s=SDP Seminar\r\n" +
@@ -1674,7 +1766,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/948",
+		"issue mediamtx/948 (TIAS bitrate)",
 		[]byte("v=0\r\n" +
 			"o=- 1681692777 1681692777 IN IP4 127.0.0.1\r\n" +
 			"s=Video Stream\r\n" +
@@ -1788,7 +1880,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/990",
+		"issue mediamtx/990 (TP-Link)",
 		[]byte("v=0\r\n" +
 			"o=- 14665860 31787219 1 IN IP4 192.168.4.226\r\n" +
 			"s=Session streamed by \"TP-LINK RTSP Server\"\r\n" +
@@ -1914,7 +2006,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/1119",
+		"issue mediamtx/1119 (fritzbox 6660 Cable)",
 		[]byte("v=0\n" +
 			"o=- 224 1 IN IP4 192.168.178.1\n" +
 			"s=SatIPServer:1 0,0,4\n" +
@@ -1976,99 +2068,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"onvif specification",
-		[]byte("v=0\r\n" +
-			"o= 2890842807 IN IP4 192.168.0.1\r\n" +
-			"s=RTSP Session with audiobackchannel\r\n" +
-			"m=video 0 RTP/AVP 26\r\n" +
-			"a=control:rtsp://192.168.0.1/video\r\n" +
-			"a=recvonly\r\n" +
-			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=control:rtsp://192.168.0.1/audio\r\n" +
-			"a=recvonly\r\n" +
-			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=control:rtsp://192.168.0.1/audioback\r\n" +
-			"a=rtpmap:0 PCMU/8000\r\n" +
-			"a=sendonly\r\n"),
-		[]byte("v=0\r\n" +
-			"o= 0 2890842807 IN IP4 192.168.0.1\r\n" +
-			"s=RTSP Session with audiobackchannel\r\n" +
-			"m=video 0 RTP/AVP 26\r\n" +
-			"a=control:rtsp://192.168.0.1/video\r\n" +
-			"a=recvonly\r\n" +
-			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=control:rtsp://192.168.0.1/audio\r\n" +
-			"a=recvonly\r\n" +
-			"m=audio 0 RTP/AVP 0\r\n" +
-			"a=control:rtsp://192.168.0.1/audioback\r\n" +
-			"a=rtpmap:0 PCMU/8000\r\n" +
-			"a=sendonly\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
-				SessionVersion: 2890842807,
-				NetworkType:    "IN",
-				AddressType:    "IP4",
-				UnicastAddress: "192.168.0.1",
-			},
-			SessionName: "RTSP Session with audiobackchannel",
-			MediaDescriptions: []*psdp.MediaDescription{
-				{
-					MediaName: psdp.MediaName{
-						Media:   "video",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"26"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "control",
-							Value: "rtsp://192.168.0.1/video",
-						},
-						{
-							Key: "recvonly",
-						},
-					},
-				},
-				{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"0"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "control",
-							Value: "rtsp://192.168.0.1/audio",
-						},
-						{
-							Key: "recvonly",
-						},
-					},
-				},
-				{
-					MediaName: psdp.MediaName{
-						Media:   "audio",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"0"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "control",
-							Value: "rtsp://192.168.0.1/audioback",
-						},
-						{
-							Key:   "rtpmap",
-							Value: "0 PCMU/8000",
-						},
-						{
-							Key: "sendonly",
-						},
-					},
-				},
-			},
-		},
-	},
-	{
-		"issue gortsplib/201",
+		"issue gortsplib/201 (invalid origin)",
 		[]byte("v=0\n" +
 			"o=JefferyZhang Inno Fuzhou 0 0 IN IP4 127.0.0.1\n" +
 			"s=RbsLive\n" +
@@ -2166,7 +2166,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue gortsplib/271",
+		"issue gortsplib/271 (Mercury cameras)",
 		[]byte("v=0\n" +
 			"o=- 14665860 31787219 1 IN IP4 192.168.0.60\n" +
 			"s=Session streamed by \"MERCURY RTSP Server\"\n" +
@@ -2298,7 +2298,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/2128",
+		"issue mediamtx/2128 (Vurix NVR)",
 		[]byte("v=0\r\n" +
 			"o=- 1 1 IN IPV4 10.10.10.10\r\n" +
 			"s=Media Presentation\r\n" +
@@ -2384,7 +2384,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/2473",
+		"issue mediamtx/2473 (no session name)",
 		[]byte("v=0\r\n" +
 			"o=- 38990265062388 38990265062388 IN IP4 192.168.1.10\r\n" +
 			"a=range:npt=0-\r\n" +
@@ -2477,7 +2477,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue gortsplib/448",
+		"issue gortsplib/448 (no v=0 at start)",
 		[]byte("m=video 0 RTP/AVP 96\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
 			"a=control:trackID=0\r\n"),
@@ -2508,7 +2508,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/2558",
+		"issue mediamtx/2558 (decimal numbers in origin)",
 		[]byte("v=0\r\n" +
 			"o=- 1698210484.879535 1698210484.879535 IN IP4 46.242.10.231:12626\r\n" +
 			"s=Playout\r\n" +
@@ -2553,7 +2553,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue gortsplib/474",
+		"issue gortsplib/474 (UDP technology cameras)",
 		[]byte("m=metadata 0 RTP/AVP 98\r\n" +
 			"c=IN IP4 0.0.0.0\r\n" +
 			"b=AS:1000\r\n" +
@@ -2611,7 +2611,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/2762",
+		"issue mediamtx/2762 (Altasec NVR)",
 		[]byte("v=0\r\n" +
 			"o=Channel1 3910280086 3910366486 IN IP4\r\n" +
 			"s=Channel1\r\n" +
@@ -2749,7 +2749,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue gortsplib/501",
+		"issue gortsplib/501 (Avigilon cameras)",
 		[]byte("v=0\r\n" +
 			"o=- 1705180917694 1705180917694 IN IP4 192.168.1.63\r\n" +
 			"s=Live\r\n" +
@@ -2876,7 +2876,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/2708",
+		"issue mediamtx/2708 (Y-CAM Bullet HD)",
 		[]byte("v=0\r\n" +
 			"o=- -1962418793961427 -1962418793961418 IN IP4 192.168.221.104\r\n" +
 			"s=Media Presentation\r\n" +
@@ -2995,7 +2995,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"issue mediamtx/3583",
+		"issue mediamtx/3583 (Wisenet NVR)",
 		[]byte("v=0\r\n" +
 			"s=DWC-MV94WiAT\r\n" +
 			"c=IN IP4 10.1.10.178\r\n" +
@@ -3095,7 +3095,7 @@ var cases = []struct {
 	},
 
 	{
-		"issue gortsplib/618",
+		"issue gortsplib/618 (Uniview IPC2125LE-ADF28KM-H)",
 		[]byte("v=0\r\n" +
 			"o=- 1001 1 IN\r\n" +
 			"s=VCP IPC Realtime stream\r\n" +
@@ -3191,7 +3191,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"AJA encoder with repeat time r=0 0",
+		"issue gortsplib/879 (AJA encoder)",
 		[]byte("v=0\r\n" +
 			"o=VNSDK 0 0 IN IP4 10.0.8.133\r\n" +
 			"s=aja.sdp\r\n" +
