@@ -15,7 +15,7 @@ import (
 )
 
 // This example shows how to:
-// 1. create a RTSP server which uses secure protocols only (RTSPS, TLS, SRTP).
+// 1. create a RTSP server which uses secure protocols only (RTSPS, TLS, SRTP, SRTCP).
 // 2. allow a single client to publish a stream.
 // 3. allow several clients to read the stream.
 
