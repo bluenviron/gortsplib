@@ -3246,14 +3246,14 @@ var cases = []struct {
 			"o=- 1001 1 IN \r\n" +
 			"s=VCP IPC Realtime stream\r\n" +
 			"m=video 0 RTP/AVP 105\r\n" +
-			"c=IN\r\n" +
+			"c=IN \r\n" +
 			"a=control:rtsp://10.0.0.1/media/video1/video\r\n" +
 			"a=rtpmap:105 H264/90000\r\n" +
 			"a=fmtp:105 profile-level-id=640028; packetization-mode=1; " +
 			"sprop-parameter-sets=Z2QAKKw7UDwBE/LCAAAH0AAA6mEI,aOqPLA==\r\n" +
 			"a=recvonly\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
-			"c=IN\r\n" +
+			"c=IN \r\n" +
 			"a=control:rtsp://10.0.0.1/media/video1/metadata\r\n" +
 			"a=rtpmap:107 vnd.onvif.metadata/90000\r\n" +
 			"a=fmtp:107 DecoderTag=h3c-v3 RTCP=0\r\n" +
