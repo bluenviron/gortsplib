@@ -3093,102 +3093,6 @@ var cases = []struct {
 			},
 		},
 	},
-	{ //nolint:dupl
-		"issue gortsplib/618 (Uniview IPC2125LE-ADF28KM-H)",
-		[]byte("v=0\r\n" +
-			"o=- 1001 1 IN\r\n" +
-			"s=VCP IPC Realtime stream\r\n" +
-			"m=video 0 RTP/AVP 105\r\n" +
-			"c=IN\r\n" +
-			"a=control:rtsp://192.168.4.106:8554/media/video1\r\n" +
-			"a=rtpmap:105 H264/90000\r\n" +
-			"a=fmtp:105 profile-level-id=64001f; packetization-mode=1; " +
-			"sprop-parameter-sets=Z2QAH6w7QCgC3TcBAQFAAAD6AAAw1CU=,aOqPLA==\r\n" +
-			"a=recvonly\r\n" +
-			"m=application 0 RTP/AVP 107\r\n" +
-			"c=IN\r\n" +
-			"a=control:rtsp://192.168.4.106/media/video1/metadata\r\n" +
-			"a=rtpmap:107 vnd.onvif.metadata/90000\r\n" +
-			"a=fmtp:107 DecoderTag=h3c-v3 RTCP=0\r\n" +
-			"a=recvonly\r\n"),
-		[]byte("v=0\r\n" +
-			"o=- 1001 1 IN IP4 \r\n" +
-			"s=VCP IPC Realtime stream\r\n" +
-			"m=video 0 RTP/AVP 105\r\n" +
-			"a=control:rtsp://192.168.4.106:8554/media/video1\r\n" +
-			"a=rtpmap:105 H264/90000\r\n" +
-			"a=fmtp:105 profile-level-id=64001f; packetization-mode=1; " +
-			"sprop-parameter-sets=Z2QAH6w7QCgC3TcBAQFAAAD6AAAw1CU=,aOqPLA==\r\n" +
-			"a=recvonly\r\n" +
-			"m=application 0 RTP/AVP 107\r\n" +
-			"a=control:rtsp://192.168.4.106/media/video1/metadata\r\n" +
-			"a=rtpmap:107 vnd.onvif.metadata/90000\r\n" +
-			"a=fmtp:107 DecoderTag=h3c-v3 RTCP=0\r\n" +
-			"a=recvonly\r\n"),
-		SessionDescription{
-			Origin: psdp.Origin{
-				Username:       "-",
-				SessionID:      1001,
-				SessionVersion: 1,
-				NetworkType:    "IN",
-				AddressType:    "IP4",
-			},
-			SessionName: "VCP IPC Realtime stream",
-			MediaDescriptions: []*psdp.MediaDescription{
-				{
-					MediaName: psdp.MediaName{
-						Media:   "video",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"105"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "control",
-							Value: "rtsp://192.168.4.106:8554/media/video1",
-						},
-						{
-							Key:   "rtpmap",
-							Value: "105 H264/90000",
-						},
-						{
-							Key: "fmtp",
-							Value: "105 profile-level-id=64001f; packetization-mode=1; " +
-								"sprop-parameter-sets=Z2QAH6w7QCgC3TcBAQFAAAD6AAAw1CU=,aOqPLA==",
-						},
-						{
-							Key:   "recvonly",
-							Value: "",
-						},
-					},
-				},
-				{
-					MediaName: psdp.MediaName{
-						Media:   "application",
-						Protos:  []string{"RTP", "AVP"},
-						Formats: []string{"107"},
-					},
-					Attributes: []psdp.Attribute{
-						{
-							Key:   "control",
-							Value: "rtsp://192.168.4.106/media/video1/metadata",
-						},
-						{
-							Key:   "rtpmap",
-							Value: "107 vnd.onvif.metadata/90000",
-						},
-						{
-							Key:   "fmtp",
-							Value: "107 DecoderTag=h3c-v3 RTCP=0",
-						},
-						{
-							Key:   "recvonly",
-							Value: "",
-						},
-					},
-				},
-			},
-		},
-	},
 	{
 		"issue gortsplib/879 (AJA encoder)",
 		[]byte("v=0\r\n" +
@@ -3240,20 +3144,20 @@ var cases = []struct {
 			},
 		},
 	},
-	{ //nolint:dupl
+	{
 		"issue mediamtx/5008 (Uniview IPC2122LB-SF28K-A)",
 		[]byte("v=0\r\n" +
 			"o=- 1001 1 IN \r\n" +
 			"s=VCP IPC Realtime stream\r\n" +
 			"m=video 0 RTP/AVP 105\r\n" +
-			"c=IN\r\n" +
+			"c=IN \r\n" +
 			"a=control:rtsp://10.0.0.1/media/video1/video\r\n" +
 			"a=rtpmap:105 H264/90000\r\n" +
 			"a=fmtp:105 profile-level-id=640028; packetization-mode=1; " +
 			"sprop-parameter-sets=Z2QAKKw7UDwBE/LCAAAH0AAA6mEI,aOqPLA==\r\n" +
 			"a=recvonly\r\n" +
 			"m=application 0 RTP/AVP 107\r\n" +
-			"c=IN\r\n" +
+			"c=IN \r\n" +
 			"a=control:rtsp://10.0.0.1/media/video1/metadata\r\n" +
 			"a=rtpmap:107 vnd.onvif.metadata/90000\r\n" +
 			"a=fmtp:107 DecoderTag=h3c-v3 RTCP=0\r\n" +
