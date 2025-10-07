@@ -11,7 +11,7 @@ require (
 	github.com/pion/sdp/v3 v3.0.16
 	github.com/pion/srtp/v3 v3.0.8
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/net v0.44.0
+	golang.org/x/net v0.45.0
 )
 
 require (
