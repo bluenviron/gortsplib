@@ -1509,6 +1509,20 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
+	var secure bool
+	
+	// Check for all medias: if any media uses a secure profile
+	for _, medi := range desc.Medias {
+		if isSecure(medi.Profile) {
+			// Validate if the connection is RTSPS.
+			if c.Scheme != "rtsps" {
+				return nil, fmt.Errorf("secure profiles require RTSPS connection | Profile [%v] ID: [%s] Control [%s]", medi.Profile, medi.ID, medi.Control)
+			}
+			secure = true
+			break
+		}
+	}
+
 	announceData, err := generateAnnounceData(desc, c.Scheme == "rtsps")
 	if err != nil {
 		return nil, err
