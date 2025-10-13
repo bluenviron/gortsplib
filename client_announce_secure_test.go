@@ -24,7 +24,7 @@ func handleServerConnection(t *testing.T, serverDone chan struct{}, nconn net.Co
 		return
 	}
 	defer nconn.Close()
-	
+
 	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	req, err2 := conn.ReadRequest()
