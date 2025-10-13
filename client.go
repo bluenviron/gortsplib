@@ -1523,12 +1523,12 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		}
 	}
 
-	announceData, err := generateAnnounceData(desc, c.Scheme == "rtsps")
+	announceData, err := generateAnnounceData(desc, secure)
 	if err != nil {
 		return nil, err
 	}
 
-	err = prepareForAnnounce(desc, announceData, c.Scheme == "rtsps")
+	err = prepareForAnnounce(desc, announceData, secure)
 	if err != nil {
 		return nil, err
 	}
