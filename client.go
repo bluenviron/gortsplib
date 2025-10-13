@@ -1516,7 +1516,8 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		if isSecure(medi.Profile) {
 			// Validate if the connection is RTSPS.
 			if c.Scheme != "rtsps" {
-				return nil, fmt.Errorf("secure profiles require RTSPS connection | Profile [%v] ID: [%s] Control [%s]", medi.Profile, medi.ID, medi.Control)
+				return nil, fmt.Errorf("secure profiles require RTSPS connection | Profile [%v] ID: [%s] Control [%s]", 
+					medi.Profile, medi.ID, medi.Control)
 			}
 			secure = true
 			break
