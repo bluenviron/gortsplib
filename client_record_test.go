@@ -446,7 +446,8 @@ func TestClientRecord(t *testing.T) {
 				require.NoError(t, err)
 
 				// Generate MIKEY message
-				mikeyMsg, err := mikeyGenerate(srtpOutCtx)
+				var mikeyMsg *mikey.Message
+				mikeyMsg, err = mikeyGenerate(srtpOutCtx)
 				require.NoError(t, err)
 
 				secureMedi.KeyMgmtMikey = mikeyMsg
