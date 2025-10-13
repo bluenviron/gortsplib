@@ -428,6 +428,30 @@ func TestClientRecord(t *testing.T) {
 			}
 
 			medi := testH264Media
+			if ca.secure == "secure" {
+				// Create a copy of the media with secure profile
+				secureMedi := *medi
+				secureMedi.Profile = headers.TransportProfileSAVP
+				
+				// Initialize SRTP context
+				outKey := make([]byte, srtpKeyLength)
+				_, err = rand.Read(outKey)
+				require.NoError(t, err)
+				
+				srtpOutCtx := &wrappedSRTPContext{
+					key:   outKey,
+					ssrcs: []uint32{0x38F27A2F},
+				}
+				err = srtpOutCtx.initialize()
+				require.NoError(t, err)
+				
+				// Generate MIKEY message
+				mikeyMsg, err := mikeyGenerate(srtpOutCtx)
+				require.NoError(t, err)
+				
+				secureMedi.KeyMgmtMikey = mikeyMsg
+				medi = &secureMedi
+			}
 			medias := []*description.Media{medi}
 
 			err = record(&c, ca.scheme+"://localhost:8554/teststream", medias,
