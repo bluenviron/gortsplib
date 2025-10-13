@@ -1611,9 +1611,6 @@ func (c *Client) doSetup(
 			th.Profile = headers.TransportProfileAVP
 		}
 
-	// try
-	// - UDP if unencrypted or secure is supported by server
-	// - otherwise, TCP
 	default:
 		if isSecure(medi.Profile) && c.Scheme == "rtsps" {
 			th.Profile = headers.TransportProfileSAVP
@@ -1621,6 +1618,9 @@ func (c *Client) doSetup(
 			th.Profile = headers.TransportProfileAVP
 		}
 
+		// try
+		// - UDP if unencrypted or secure is supported by server
+		// - otherwise, TCP
 		if c.Tunnel == TunnelNone && (th.Profile == headers.TransportProfileSAVP || c.Scheme == "rtsp") {
 			protocol = ProtocolUDP
 		} else {
