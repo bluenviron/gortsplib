@@ -88,11 +88,14 @@ type Server struct {
 	// can support the UDP-multicast transport.
 	MulticastRTCPPort int
 	// timeout of read operations.
-	// It defaults to 10 seconds
+	// It defaults to 10 seconds.
 	ReadTimeout time.Duration
 	// timeout of write operations.
-	// It defaults to 10 seconds
+	// It defaults to 10 seconds.
 	WriteTimeout time.Duration
+	// read timeout of idle connections and sessions.
+	// It defaults to 60 seconds.
+	IdleTimeout time.Duration
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
 	// Size of the UDP read buffer.
@@ -136,7 +139,6 @@ type Server struct {
 	timeNow              func() time.Time
 	senderReportPeriod   time.Duration
 	receiverReportPeriod time.Duration
-	sessionTimeout       time.Duration
 	checkStreamPeriod    time.Duration
 
 	ctx              context.Context
@@ -171,6 +173,9 @@ func (s *Server) Start() error {
 	if s.WriteTimeout == 0 {
 		s.WriteTimeout = 10 * time.Second
 	}
+	if s.IdleTimeout == 0 {
+		s.IdleTimeout = 60 * time.Second
+	}
 	if s.WriteQueueSize == 0 {
 		s.WriteQueueSize = 256
 	} else if (s.WriteQueueSize & (s.WriteQueueSize - 1)) != 0 {
@@ -204,9 +209,6 @@ func (s *Server) Start() error {
 	}
 	if s.receiverReportPeriod == 0 {
 		s.receiverReportPeriod = 10 * time.Second
-	}
-	if s.sessionTimeout == 0 {
-		s.sessionTimeout = 1 * 60 * time.Second
 	}
 	if s.checkStreamPeriod == 0 {
 		s.checkStreamPeriod = 1 * time.Second

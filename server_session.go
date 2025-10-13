@@ -822,8 +822,8 @@ func (ss *ServerSession) run() {
 	ss.ctxCancel()
 
 	// close all associated connections, both UDP and TCP
-	// except for the ones that called TEARDOWN
-	// (that are detached from the session just after the request)
+	// except for the one that called TEARDOWN
+	// (that is detached from the session just after the request)
 	for sc := range ss.conns {
 		sc.Close()
 
@@ -892,7 +892,7 @@ func (ss *ServerSession) runInner() error {
 								ss.state == ServerSessionStatePlay) &&
 								(ss.setuppedTransport.Protocol == ProtocolUDP ||
 									ss.setuppedTransport.Protocol == ProtocolUDPMulticast) {
-								v := uint(ss.s.sessionTimeout / time.Second)
+								v := uint(ss.s.IdleTimeout / time.Second)
 								return &v
 							}
 							return nil
@@ -951,8 +951,8 @@ func (ss *ServerSession) runInner() error {
 				}
 
 				// in case of PLAY, timeout happens when no RTSP keepalives and no RTCP packets are being received
-			} else if now.Sub(ss.lastRequestTime) >= ss.s.sessionTimeout &&
-				now.Sub(time.Unix(lft, 0)) >= ss.s.sessionTimeout {
+			} else if now.Sub(ss.lastRequestTime) >= ss.s.IdleTimeout &&
+				now.Sub(time.Unix(lft, 0)) >= ss.s.IdleTimeout {
 				return liberrors.ErrServerSessionTimedOut{}
 			}
 
