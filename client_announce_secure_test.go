@@ -16,6 +16,43 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
+// handleServerConnection handles the common server-side connection logic for the security profile tests
+func handleServerConnection(t *testing.T, serverDone chan struct{}, nconn net.Conn) {
+	defer close(serverDone)
+
+	if nconn == nil {
+		return
+	}
+	defer nconn.Close()
+	
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+	req, err2 := conn.ReadRequest()
+	require.NoError(t, err2)
+	require.Equal(t, base.Options, req.Method)
+
+	err2 = conn.WriteResponse(&base.Response{
+		StatusCode: base.StatusOK,
+		Header: base.Header{
+			"Public": base.HeaderValue{strings.Join([]string{
+				string(base.Announce),
+				string(base.Setup),
+				string(base.Record),
+			}, ", ")},
+		},
+	})
+	require.NoError(t, err2)
+
+	req, err2 = conn.ReadRequest()
+	require.NoError(t, err2)
+	require.Equal(t, base.Announce, req.Method)
+
+	err2 = conn.WriteResponse(&base.Response{
+		StatusCode: base.StatusOK,
+	})
+	require.NoError(t, err2)
+}
+
 func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 	// Test that secure profiles (SAVP) require RTSPS connection
 	t.Run("secure profile with rtsp scheme should fail", func(t *testing.T) {
@@ -116,37 +153,9 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 		defer func() { <-serverDone }()
 
 		go func() {
-			defer close(serverDone)
-
 			nconn, err2 := l.Accept()
 			require.NoError(t, err2)
-			defer nconn.Close()
-			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
-
-			req, err2 := conn.ReadRequest()
-			require.NoError(t, err2)
-			require.Equal(t, base.Options, req.Method)
-
-			err2 = conn.WriteResponse(&base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Public": base.HeaderValue{strings.Join([]string{
-						string(base.Announce),
-						string(base.Setup),
-						string(base.Record),
-					}, ", ")},
-				},
-			})
-			require.NoError(t, err2)
-
-			req, err2 = conn.ReadRequest()
-			require.NoError(t, err2)
-			require.Equal(t, base.Announce, req.Method)
-
-			err2 = conn.WriteResponse(&base.Response{
-				StatusCode: base.StatusOK,
-			})
-			require.NoError(t, err2)
+			handleServerConnection(t, serverDone, nconn)
 		}()
 
 		// Create a media with secure profile (SAVP)
@@ -201,37 +210,9 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 		defer func() { <-serverDone }()
 
 		go func() {
-			defer close(serverDone)
-
 			nconn, err2 := l.Accept()
 			require.NoError(t, err2)
-			defer nconn.Close()
-			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
-
-			req, err2 := conn.ReadRequest()
-			require.NoError(t, err2)
-			require.Equal(t, base.Options, req.Method)
-
-			err2 = conn.WriteResponse(&base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Public": base.HeaderValue{strings.Join([]string{
-						string(base.Announce),
-						string(base.Setup),
-						string(base.Record),
-					}, ", ")},
-				},
-			})
-			require.NoError(t, err2)
-
-			req, err2 = conn.ReadRequest()
-			require.NoError(t, err2)
-			require.Equal(t, base.Announce, req.Method)
-
-			err2 = conn.WriteResponse(&base.Response{
-				StatusCode: base.StatusOK,
-			})
-			require.NoError(t, err2)
+			handleServerConnection(t, serverDone, nconn)
 		}()
 
 		// Create a media with regular profile (RTP/AVP - not secure)

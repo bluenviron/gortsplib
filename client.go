@@ -1510,13 +1510,13 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 	}
 
 	var secure bool
-	
+
 	// Check for all medias: if any media uses a secure profile
 	for _, medi := range desc.Medias {
 		if isSecure(medi.Profile) {
 			// Validate if the connection is RTSPS.
 			if c.Scheme != "rtsps" {
-				return nil, fmt.Errorf("secure profiles require RTSPS connection | Profile [%v] ID: [%s] Control [%s]", 
+				return nil, fmt.Errorf("secure profiles require RTSPS connection | Profile [%v] ID: [%s] Control [%s]",
 					medi.Profile, medi.ID, medi.Control)
 			}
 			secure = true
