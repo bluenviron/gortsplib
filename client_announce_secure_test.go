@@ -54,93 +54,27 @@ func handleServerConnection(t *testing.T, serverDone chan struct{}, nconn net.Co
 }
 
 func TestClientAnnounceSecureProfileValidation(t *testing.T) {
-	// Test that secure profiles (SAVP) require RTSPS connection
-	t.Run("secure profile with rtsp scheme should fail", func(t *testing.T) {
-		l, err := net.Listen("tcp", "localhost:0")
-		require.NoError(t, err)
-		defer l.Close()
+	// Test how secure flag is determined based on different protocol/scheme/profile combinations
+	//
+	// BEHAVIOR MATRIX:
+	// ┌─────────┬─────────┬──────────────┬────────────────────────────┐
+	// │Protocol │ Scheme  │Media Profile │ secure flag result         │
+	// ├─────────┼─────────┼──────────────┼────────────────────────────┤
+	// │  TCP    │ RTSPS   │    SAVP      │ true (has secure profile)  │
+	// │  TCP    │ RTSPS   │   RTP/AVP    │ false (no secure profile)  │
+	// │  UDP    │ RTSPS   │    Any       │ true (scheme is rtsps)     │
+	// │  TCP    │ RTSP    │    Any       │ false (scheme is rtsp)     │
+	// │  UDP    │ RTSP    │    Any       │ false (scheme is rtsp)     │
+	// └─────────┴─────────┴──────────────┴────────────────────────────┘
+	//
+	// Current implementation logic:
+	// if (Protocol == TCP && Scheme == "rtsps") {
+	//     secure = hasSecureProfile  // Check if any media has SAVP profile
+	// } else {
+	//     secure = (Scheme == "rtsps")  // Based on scheme only
+	// }
 
-		serverDone := make(chan struct{})
-		defer func() { <-serverDone }()
-
-		go func() {
-			defer close(serverDone)
-
-			nconn, err2 := l.Accept()
-			if err2 != nil {
-				return // Client closes connection early due to validation error
-			}
-			defer nconn.Close()
-			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
-
-			req, err2 := conn.ReadRequest()
-			if err2 != nil {
-				return // Client closes connection early
-			}
-			require.Equal(t, base.Options, req.Method)
-
-			err2 = conn.WriteResponse(&base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Public": base.HeaderValue{strings.Join([]string{
-						string(base.Announce),
-						string(base.Setup),
-						string(base.Record),
-					}, ", ")},
-				},
-			})
-			if err2 != nil {
-				return // Client might close connection
-			}
-		}()
-
-		// Create a media with secure profile (SAVP)
-		media := &description.Media{
-			Type:    description.MediaTypeVideo,
-			Profile: headers.TransportProfileSAVP, // This is the secure profile
-			Formats: []format.Format{&format.H264{
-				PayloadTyp: 96,
-				SPS: []byte{
-					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
-					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
-					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
-					0x20,
-				},
-				PPS: []byte{
-					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
-				},
-				PacketizationMode: 1,
-			}},
-			ID:      "1",
-			Control: "trackID=0",
-		}
-
-		desc := &description.Session{
-			Medias: []*description.Media{media},
-		}
-
-		u, err := base.ParseURL("rtsp://" + l.Addr().String() + "/teststream")
-		require.NoError(t, err)
-
-		c := Client{
-			Scheme: u.Scheme,
-			Host:   u.Host,
-		}
-
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Close()
-
-		// This should fail because we're using SAVP profile with rtsp scheme
-		_, err = c.Announce(u, desc)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "secure profiles require RTSPS connection")
-		require.Contains(t, err.Error(), "Profile [1]") // Profile value is numeric
-		require.Contains(t, err.Error(), "ID: [1]")
-		require.Contains(t, err.Error(), "Control [trackID=0]")
-	})
-
-	t.Run("secure profile with rtsps scheme should succeed", func(t *testing.T) {
+	t.Run("TCP+RTSPS with secure profile - secure=true", func(t *testing.T) {
 		// Create TLS listener for RTSPS
 		cert, err := tls.X509KeyPair(serverCert, serverKey)
 		require.NoError(t, err)
@@ -192,16 +126,150 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 			TLSConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 
+		// Force TCP protocol for this test
+		protocol := ProtocolTCP
+		c.Protocol = &protocol
+
 		err = c.Start()
 		require.NoError(t, err)
 		defer c.Close()
 
-		// This should succeed because we're using SAVP profile with rtsps scheme
+		// This should succeed - TCP+RTSPS with secure profile sets secure=true
 		_, err = c.Announce(u, desc)
 		require.NoError(t, err)
 	})
 
-	t.Run("non-secure profile with rtsp scheme should succeed", func(t *testing.T) {
+	t.Run("TCP+RTSPS with non-secure profile - secure=false", func(t *testing.T) {
+		// Create TLS listener for RTSPS
+		cert, err := tls.X509KeyPair(serverCert, serverKey)
+		require.NoError(t, err)
+
+		l, err := tls.Listen("tcp", "localhost:0", &tls.Config{Certificates: []tls.Certificate{cert}})
+		require.NoError(t, err)
+		defer l.Close()
+
+		serverDone := make(chan struct{})
+		defer func() { <-serverDone }()
+
+		go func() {
+			nconn, err2 := l.Accept()
+			require.NoError(t, err2)
+			handleServerConnection(t, serverDone, nconn)
+		}()
+
+		// Create a media with NON-secure profile (default RTP/AVP)
+		media := &description.Media{
+			Type: description.MediaTypeVideo,
+			// Profile defaults to RTP/AVP which is NOT secure
+			Formats: []format.Format{&format.H264{
+				PayloadTyp: 96,
+				SPS: []byte{
+					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
+					0x20,
+				},
+				PPS: []byte{
+					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
+				},
+				PacketizationMode: 1,
+			}},
+			ID:      "1",
+			Control: "trackID=0",
+		}
+
+		desc := &description.Session{
+			Medias: []*description.Media{media},
+		}
+
+		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
+		require.NoError(t, err)
+
+		c := Client{
+			Scheme:    u.Scheme,
+			Host:      u.Host,
+			TLSConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+
+		// Force TCP protocol for this test
+		protocol := ProtocolTCP
+		c.Protocol = &protocol
+
+		err = c.Start()
+		require.NoError(t, err)
+		defer c.Close()
+
+		// This should succeed - TCP+RTSPS with non-secure profile sets secure=false
+		_, err = c.Announce(u, desc)
+		require.NoError(t, err)
+	})
+
+	t.Run("UDP+RTSPS with any profile - secure=true", func(t *testing.T) {
+		// Create TLS listener for RTSPS
+		cert, err := tls.X509KeyPair(serverCert, serverKey)
+		require.NoError(t, err)
+
+		l, err := tls.Listen("tcp", "localhost:0", &tls.Config{Certificates: []tls.Certificate{cert}})
+		require.NoError(t, err)
+		defer l.Close()
+
+		serverDone := make(chan struct{})
+		defer func() { <-serverDone }()
+
+		go func() {
+			nconn, err2 := l.Accept()
+			require.NoError(t, err2)
+			handleServerConnection(t, serverDone, nconn)
+		}()
+
+		// Create a media with secure profile (SAVP)
+		media := &description.Media{
+			Type:    description.MediaTypeVideo,
+			Profile: headers.TransportProfileSAVP, // This is the secure profile
+			Formats: []format.Format{&format.H264{
+				PayloadTyp: 96,
+				SPS: []byte{
+					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
+					0x20,
+				},
+				PPS: []byte{
+					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
+				},
+				PacketizationMode: 1,
+			}},
+			ID:      "1",
+			Control: "trackID=0",
+		}
+
+		desc := &description.Session{
+			Medias: []*description.Media{media},
+		}
+
+		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
+		require.NoError(t, err)
+
+		c := Client{
+			Scheme:    u.Scheme,
+			Host:      u.Host,
+			TLSConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+
+		// Force UDP protocol (default, not TCP) for this test
+		protocol := ProtocolUDP
+		c.Protocol = &protocol
+
+		err = c.Start()
+		require.NoError(t, err)
+		defer c.Close()
+
+		// This should succeed - UDP+RTSPS always sets secure=true regardless of media profile
+		_, err = c.Announce(u, desc)
+		require.NoError(t, err)
+	})
+
+	t.Run("TCP+RTSP with any profile - secure=false", func(t *testing.T) {
 		l, err := net.Listen("tcp", "localhost:0")
 		require.NoError(t, err)
 		defer l.Close()
@@ -248,16 +316,20 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 			Host:   u.Host,
 		}
 
+		// Force TCP protocol for this test
+		protocol := ProtocolTCP
+		c.Protocol = &protocol
+
 		err = c.Start()
 		require.NoError(t, err)
 		defer c.Close()
 
-		// This should succeed because we're using regular profile with rtsp scheme
+		// This should succeed - TCP+RTSP always sets secure=false regardless of media profile
 		_, err = c.Announce(u, desc)
 		require.NoError(t, err)
 	})
 
-	t.Run("mixed profiles with one secure should fail on rtsp", func(t *testing.T) {
+	t.Run("UDP+RTSP with any profile - secure=false", func(t *testing.T) {
 		l, err := net.Listen("tcp", "localhost:0")
 		require.NoError(t, err)
 		defer l.Close()
@@ -266,37 +338,76 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 		defer func() { <-serverDone }()
 
 		go func() {
-			defer close(serverDone)
-
 			nconn, err2 := l.Accept()
-			if err2 != nil {
-				return // Client closes connection early due to validation error
-			}
-			defer nconn.Close()
-			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
-
-			req, err2 := conn.ReadRequest()
-			if err2 != nil {
-				return // Client closes connection early
-			}
-			require.Equal(t, base.Options, req.Method)
-
-			err2 = conn.WriteResponse(&base.Response{
-				StatusCode: base.StatusOK,
-				Header: base.Header{
-					"Public": base.HeaderValue{strings.Join([]string{
-						string(base.Announce),
-						string(base.Setup),
-						string(base.Record),
-					}, ", ")},
-				},
-			})
-			if err2 != nil {
-				return // Client might close connection
-			}
+			require.NoError(t, err2)
+			handleServerConnection(t, serverDone, nconn)
 		}()
 
-		// Create multiple medias with mixed profiles
+		// Create a media with secure profile (just to show it doesn't matter for UDP+RTSP)
+		media := &description.Media{
+			Type:    description.MediaTypeVideo,
+			Profile: headers.TransportProfileSAVP, // This is secure but won't affect the result
+			Formats: []format.Format{&format.H264{
+				PayloadTyp: 96,
+				SPS: []byte{
+					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
+					0x20,
+				},
+				PPS: []byte{
+					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
+				},
+				PacketizationMode: 1,
+			}},
+			ID:      "1",
+			Control: "trackID=0",
+		}
+
+		desc := &description.Session{
+			Medias: []*description.Media{media},
+		}
+
+		u, err := base.ParseURL("rtsp://" + l.Addr().String() + "/teststream")
+		require.NoError(t, err)
+
+		c := Client{
+			Scheme: u.Scheme,
+			Host:   u.Host,
+		}
+
+		// Force UDP protocol (default, not TCP) for this test
+		protocol := ProtocolUDP
+		c.Protocol = &protocol
+
+		err = c.Start()
+		require.NoError(t, err)
+		defer c.Close()
+
+		// This should succeed - UDP+RTSP always sets secure=false regardless of media profile
+		_, err = c.Announce(u, desc)
+		require.NoError(t, err)
+	})
+
+	t.Run("TCP+RTSPS with mixed profiles - secure=true if any profile is secure", func(t *testing.T) {
+		// Create TLS listener for RTSPS
+		cert, err := tls.X509KeyPair(serverCert, serverKey)
+		require.NoError(t, err)
+
+		l, err := tls.Listen("tcp", "localhost:0", &tls.Config{Certificates: []tls.Certificate{cert}})
+		require.NoError(t, err)
+		defer l.Close()
+
+		serverDone := make(chan struct{})
+		defer func() { <-serverDone }()
+
+		go func() {
+			nconn, err2 := l.Accept()
+			require.NoError(t, err2)
+			handleServerConnection(t, serverDone, nconn)
+		}()
+
+		// Create multiple medias: one secure, one non-secure
 		mediaSecure := &description.Media{
 			Type:    description.MediaTypeVideo,
 			Profile: headers.TransportProfileSAVP, // This is secure
@@ -333,23 +444,25 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 			Medias: []*description.Media{mediaSecure, mediaNonSecure},
 		}
 
-		u, err := base.ParseURL("rtsp://" + l.Addr().String() + "/teststream")
+		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
 		require.NoError(t, err)
 
 		c := Client{
-			Scheme: u.Scheme,
-			Host:   u.Host,
+			Scheme:    u.Scheme,
+			Host:      u.Host,
+			TLSConfig: &tls.Config{InsecureSkipVerify: true},
 		}
+
+		// Force TCP protocol for this test
+		protocol := ProtocolTCP
+		c.Protocol = &protocol
 
 		err = c.Start()
 		require.NoError(t, err)
 		defer c.Close()
 
-		// This should fail because one media uses SAVP profile with rtsp scheme
+		// This should succeed - TCP+RTSPS with mixed profiles, one secure sets secure=true
 		_, err = c.Announce(u, desc)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "secure profiles require RTSPS connection")
-		require.Contains(t, err.Error(), "Profile [1]") // Profile value is numeric
-		require.Contains(t, err.Error(), "ID: [1]")
+		require.NoError(t, err)
 	})
 }

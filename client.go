@@ -1509,19 +1509,20 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
+	// Determine secure flag: TCP+RTSPS depends on media profile, others depend on scheme
 	var secure bool
 
-	// Check for all medias: if any media uses a secure profile
-	for _, medi := range desc.Medias {
-		if isSecure(medi.Profile) {
-			// Validate if the connection is RTSPS.
-			if c.Scheme != "rtsps" {
-				return nil, fmt.Errorf("secure profiles require RTSPS connection | Profile [%v] ID: [%s] Control [%s]",
-					medi.Profile, medi.ID, medi.Control)
+	// Determine secure flag: TCP+RTSPS depends on media profile, others depend on scheme
+	if c.Protocol != nil && *c.Protocol == ProtocolTCP && c.Scheme == "rtsps" {
+		// Check for all medias: if any media uses a secure profile, then secure is true
+		for _, medi := range desc.Medias {
+			if isSecure(medi.Profile) {
+				secure = true
+				break
 			}
-			secure = true
-			break
 		}
+	} else {
+		secure = c.Scheme == "rtsps"
 	}
 
 	announceData, err := generateAnnounceData(desc, secure)
