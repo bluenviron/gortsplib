@@ -151,6 +151,48 @@ func createTLSClientWithProtocol(addr string, protocol Protocol) *Client {
 	return c
 }
 
+// testRTSPAnnounceWithProtocol is a helper function that tests RTSP announce with a specific protocol and media
+func testRTSPAnnounceWithProtocol(t *testing.T, protocol Protocol, mediaFactory func() *description.Media) {
+	l, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		handleServerConnection(t, serverDone, nconn)
+	}()
+
+	// Create media using the provided factory
+	media := mediaFactory()
+
+	desc := &description.Session{
+		Medias: []*description.Media{media},
+	}
+
+	u, err := base.ParseURL("rtsp://" + l.Addr().String() + "/teststream")
+	require.NoError(t, err)
+
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+	}
+
+	// Set the protocol for this test
+	c.Protocol = &protocol
+
+	err = c.Start()
+	require.NoError(t, err)
+	defer c.Close()
+
+	// This should succeed - RTSP always sets secure=false regardless of media profile
+	_, err = c.Announce(u, desc)
+	require.NoError(t, err)
+}
+
 func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 	// Test how secure flag is determined based on different protocol/scheme/profile combinations
 	//
@@ -236,87 +278,13 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 	})
 
 	t.Run("TCP+RTSP with any profile - secure=false", func(t *testing.T) {
-		l, err := net.Listen("tcp", "localhost:0")
-		require.NoError(t, err)
-		defer l.Close()
-
-		serverDone := make(chan struct{})
-		defer func() { <-serverDone }()
-
-		go func() {
-			nconn, err2 := l.Accept()
-			require.NoError(t, err2)
-			handleServerConnection(t, serverDone, nconn)
-		}()
-
 		// Create a media with regular profile (RTP/AVP - not secure)
-		media := createNonSecureMedia()
-
-		desc := &description.Session{
-			Medias: []*description.Media{media},
-		}
-
-		u, err := base.ParseURL("rtsp://" + l.Addr().String() + "/teststream")
-		require.NoError(t, err)
-
-		c := Client{
-			Scheme: u.Scheme,
-			Host:   u.Host,
-		}
-
-		// Force TCP protocol for this test
-		protocol := ProtocolTCP
-		c.Protocol = &protocol
-
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Close()
-
-		// This should succeed - TCP+RTSP always sets secure=false regardless of media profile
-		_, err = c.Announce(u, desc)
-		require.NoError(t, err)
+		testRTSPAnnounceWithProtocol(t, ProtocolTCP, createNonSecureMedia)
 	})
 
 	t.Run("UDP+RTSP with any profile - secure=false", func(t *testing.T) {
-		l, err := net.Listen("tcp", "localhost:0")
-		require.NoError(t, err)
-		defer l.Close()
-
-		serverDone := make(chan struct{})
-		defer func() { <-serverDone }()
-
-		go func() {
-			nconn, err2 := l.Accept()
-			require.NoError(t, err2)
-			handleServerConnection(t, serverDone, nconn)
-		}()
-
 		// Create a media with secure profile (just to show it doesn't matter for UDP+RTSP)
-		media := createSecureMedia()
-
-		desc := &description.Session{
-			Medias: []*description.Media{media},
-		}
-
-		u, err := base.ParseURL("rtsp://" + l.Addr().String() + "/teststream")
-		require.NoError(t, err)
-
-		c := Client{
-			Scheme: u.Scheme,
-			Host:   u.Host,
-		}
-
-		// Force UDP protocol (default, not TCP) for this test
-		protocol := ProtocolUDP
-		c.Protocol = &protocol
-
-		err = c.Start()
-		require.NoError(t, err)
-		defer c.Close()
-
-		// This should succeed - UDP+RTSP always sets secure=false regardless of media profile
-		_, err = c.Announce(u, desc)
-		require.NoError(t, err)
+		testRTSPAnnounceWithProtocol(t, ProtocolUDP, createSecureMedia)
 	})
 
 	t.Run("TCP+RTSPS with mixed profiles - secure=true if any profile is secure", func(t *testing.T) {
