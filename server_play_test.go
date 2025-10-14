@@ -1927,7 +1927,7 @@ func TestServerPlayTimeout(t *testing.T) {
 					},
 				},
 				ReadTimeout:       1 * time.Second,
-				sessionTimeout:    1 * time.Second,
+				IdleTimeout:       1 * time.Second,
 				RTSPAddress:       "localhost:8554",
 				checkStreamPeriod: 500 * time.Millisecond,
 			}
@@ -2024,9 +2024,9 @@ func TestServerPlayWithoutTeardown(t *testing.T) {
 						}, nil
 					},
 				},
-				ReadTimeout:    1 * time.Second,
-				sessionTimeout: 1 * time.Second,
-				RTSPAddress:    "localhost:8554",
+				ReadTimeout: 1 * time.Second,
+				IdleTimeout: 1 * time.Second,
+				RTSPAddress: "localhost:8554",
 			}
 
 			if transport == "udp" {

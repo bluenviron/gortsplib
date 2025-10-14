@@ -203,10 +203,9 @@ func (cr *serverConnReader) handleTunneling(in io.ReadWriter) (io.ReadWriter, er
 }
 
 func (cr *serverConnReader) readFuncStandard() error {
-	// reset deadline
-	cr.sc.nconn.SetReadDeadline(time.Time{})
-
 	for {
+		cr.sc.nconn.SetReadDeadline(time.Now().Add(cr.sc.s.IdleTimeout))
+
 		what, err := cr.sc.conn.Read()
 		if err != nil {
 			return err
@@ -238,14 +237,13 @@ func (cr *serverConnReader) readFuncStandard() error {
 }
 
 func (cr *serverConnReader) readFuncTCP() error {
-	// reset deadline
-	cr.sc.nconn.SetReadDeadline(time.Time{})
-
 	cr.sc.session.asyncStartWriter()
 
 	for {
 		if cr.sc.session.state == ServerSessionStateRecord {
 			cr.sc.nconn.SetReadDeadline(time.Now().Add(cr.sc.s.ReadTimeout))
+		} else {
+			cr.sc.nconn.SetReadDeadline(time.Now().Add(cr.sc.s.IdleTimeout))
 		}
 
 		what, err := cr.sc.conn.Read()
