@@ -53,6 +53,67 @@ func handleServerConnection(t *testing.T, serverDone chan struct{}, nconn net.Co
 	require.NoError(t, err2)
 }
 
+// createSecureMedia creates a media description with secure profile (SAVP)
+func createSecureMedia() *description.Media {
+	return &description.Media{
+		Type:    description.MediaTypeVideo,
+		Profile: headers.TransportProfileSAVP, // This is the secure profile
+		Formats: []format.Format{&format.H264{
+			PayloadTyp: 96,
+			SPS: []byte{
+				0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+				0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+				0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
+				0x20,
+			},
+			PPS: []byte{
+				0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
+			},
+			PacketizationMode: 1,
+		}},
+		ID:      "1",
+		Control: "trackID=0",
+	}
+}
+
+// createNonSecureMedia creates a media description with non-secure profile (RTP/AVP)
+func createNonSecureMedia() *description.Media {
+	return &description.Media{
+		Type: description.MediaTypeVideo,
+		// Profile defaults to RTP/AVP which is not secure
+		Formats: []format.Format{&format.H264{
+			PayloadTyp: 96,
+			SPS: []byte{
+				0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+				0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+				0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
+				0x20,
+			},
+			PPS: []byte{
+				0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
+			},
+			PacketizationMode: 1,
+		}},
+		ID:      "1",
+		Control: "trackID=0",
+	}
+}
+
+// createAudioMedia creates a non-secure audio media description
+func createAudioMedia() *description.Media {
+	return &description.Media{
+		Type: description.MediaTypeAudio,
+		// Profile defaults to RTP/AVP which is not secure
+		Formats: []format.Format{&format.G711{
+			PayloadTyp:   0,
+			SampleRate:   8000,
+			ChannelCount: 1,
+		}},
+		ID:      "2",
+		Control: "trackID=1",
+	}
+}
+
 func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 	// Test how secure flag is determined based on different protocol/scheme/profile combinations
 	//
@@ -93,25 +154,7 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 		}()
 
 		// Create a media with secure profile (SAVP)
-		media := &description.Media{
-			Type:    description.MediaTypeVideo,
-			Profile: headers.TransportProfileSAVP, // This is the secure profile
-			Formats: []format.Format{&format.H264{
-				PayloadTyp: 96,
-				SPS: []byte{
-					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
-					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
-					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
-					0x20,
-				},
-				PPS: []byte{
-					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
-				},
-				PacketizationMode: 1,
-			}},
-			ID:      "1",
-			Control: "trackID=0",
-		}
+		media := createSecureMedia()
 
 		desc := &description.Session{
 			Medias: []*description.Media{media},
@@ -158,25 +201,7 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 		}()
 
 		// Create a media with NON-secure profile (default RTP/AVP)
-		media := &description.Media{
-			Type: description.MediaTypeVideo,
-			// Profile defaults to RTP/AVP which is NOT secure
-			Formats: []format.Format{&format.H264{
-				PayloadTyp: 96,
-				SPS: []byte{
-					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
-					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
-					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
-					0x20,
-				},
-				PPS: []byte{
-					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
-				},
-				PacketizationMode: 1,
-			}},
-			ID:      "1",
-			Control: "trackID=0",
-		}
+		media := createNonSecureMedia()
 
 		desc := &description.Session{
 			Medias: []*description.Media{media},
@@ -223,25 +248,7 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 		}()
 
 		// Create a media with secure profile (SAVP)
-		media := &description.Media{
-			Type:    description.MediaTypeVideo,
-			Profile: headers.TransportProfileSAVP, // This is the secure profile
-			Formats: []format.Format{&format.H264{
-				PayloadTyp: 96,
-				SPS: []byte{
-					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
-					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
-					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
-					0x20,
-				},
-				PPS: []byte{
-					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
-				},
-				PacketizationMode: 1,
-			}},
-			ID:      "1",
-			Control: "trackID=0",
-		}
+		media := createSecureMedia()
 
 		desc := &description.Session{
 			Medias: []*description.Media{media},
@@ -284,25 +291,7 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 		}()
 
 		// Create a media with regular profile (RTP/AVP - not secure)
-		media := &description.Media{
-			Type: description.MediaTypeVideo,
-			// Profile defaults to RTP/AVP which is not secure
-			Formats: []format.Format{&format.H264{
-				PayloadTyp: 96,
-				SPS: []byte{
-					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
-					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
-					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
-					0x20,
-				},
-				PPS: []byte{
-					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
-				},
-				PacketizationMode: 1,
-			}},
-			ID:      "1",
-			Control: "trackID=0",
-		}
+		media := createNonSecureMedia()
 
 		desc := &description.Session{
 			Medias: []*description.Media{media},
@@ -344,25 +333,7 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 		}()
 
 		// Create a media with secure profile (just to show it doesn't matter for UDP+RTSP)
-		media := &description.Media{
-			Type:    description.MediaTypeVideo,
-			Profile: headers.TransportProfileSAVP, // This is secure but won't affect the result
-			Formats: []format.Format{&format.H264{
-				PayloadTyp: 96,
-				SPS: []byte{
-					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
-					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
-					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
-					0x20,
-				},
-				PPS: []byte{
-					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
-				},
-				PacketizationMode: 1,
-			}},
-			ID:      "1",
-			Control: "trackID=0",
-		}
+		media := createSecureMedia()
 
 		desc := &description.Session{
 			Medias: []*description.Media{media},
@@ -408,37 +379,8 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 		}()
 
 		// Create multiple medias: one secure, one non-secure
-		mediaSecure := &description.Media{
-			Type:    description.MediaTypeVideo,
-			Profile: headers.TransportProfileSAVP, // This is secure
-			Formats: []format.Format{&format.H264{
-				PayloadTyp: 96,
-				SPS: []byte{
-					0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
-					0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
-					0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
-					0x20,
-				},
-				PPS: []byte{
-					0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
-				},
-				PacketizationMode: 1,
-			}},
-			ID:      "1",
-			Control: "trackID=0",
-		}
-
-		mediaNonSecure := &description.Media{
-			Type: description.MediaTypeAudio,
-			// Profile defaults to RTP/AVP which is not secure
-			Formats: []format.Format{&format.G711{
-				PayloadTyp:   0,
-				SampleRate:   8000,
-				ChannelCount: 1,
-			}},
-			ID:      "2",
-			Control: "trackID=1",
-		}
+		mediaSecure := createSecureMedia()
+		mediaNonSecure := createAudioMedia()
 
 		desc := &description.Session{
 			Medias: []*description.Media{mediaSecure, mediaNonSecure},
