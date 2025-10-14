@@ -114,6 +114,43 @@ func createAudioMedia() *description.Media {
 	}
 }
 
+// setupTLSTestServer creates a TLS listener and server goroutine for RTSPS testing
+func setupTLSTestServer(t *testing.T) (net.Listener, chan struct{}) {
+	// Create TLS listener for RTSPS
+	cert, err := tls.X509KeyPair(serverCert, serverKey)
+	require.NoError(t, err)
+
+	l, err := tls.Listen("tcp", "localhost:0", &tls.Config{Certificates: []tls.Certificate{cert}})
+	require.NoError(t, err)
+
+	serverDone := make(chan struct{})
+
+	go func() {
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		handleServerConnection(t, serverDone, nconn)
+	}()
+
+	return l, serverDone
+}
+
+// createTLSClientWithProtocol creates a configured RTSP client for RTSPS testing
+func createTLSClientWithProtocol(addr string, protocol Protocol) *Client {
+	u, err := base.ParseURL("rtsps://" + addr + "/teststream")
+	if err != nil {
+		panic(err) // This should never happen in tests
+	}
+
+	c := &Client{
+		Scheme:    u.Scheme,
+		Host:      u.Host,
+		TLSConfig: &tls.Config{InsecureSkipVerify: true},
+		Protocol:  &protocol,
+	}
+
+	return c
+}
+
 func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 	// Test how secure flag is determined based on different protocol/scheme/profile combinations
 	//
@@ -136,142 +173,64 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 	// }
 
 	t.Run("TCP+RTSPS with secure profile - secure=true", func(t *testing.T) {
-		// Create TLS listener for RTSPS
-		cert, err := tls.X509KeyPair(serverCert, serverKey)
-		require.NoError(t, err)
-
-		l, err := tls.Listen("tcp", "localhost:0", &tls.Config{Certificates: []tls.Certificate{cert}})
-		require.NoError(t, err)
+		l, serverDone := setupTLSTestServer(t)
 		defer l.Close()
-
-		serverDone := make(chan struct{})
 		defer func() { <-serverDone }()
-
-		go func() {
-			nconn, err2 := l.Accept()
-			require.NoError(t, err2)
-			handleServerConnection(t, serverDone, nconn)
-		}()
 
 		// Create a media with secure profile (SAVP)
 		media := createSecureMedia()
+		desc := &description.Session{Medias: []*description.Media{media}}
 
-		desc := &description.Session{
-			Medias: []*description.Media{media},
-		}
-
-		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
-		require.NoError(t, err)
-
-		c := Client{
-			Scheme:    u.Scheme,
-			Host:      u.Host,
-			TLSConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-
-		// Force TCP protocol for this test
-		protocol := ProtocolTCP
-		c.Protocol = &protocol
-
-		err = c.Start()
+		c := createTLSClientWithProtocol(l.Addr().String(), ProtocolTCP)
+		err := c.Start()
 		require.NoError(t, err)
 		defer c.Close()
 
 		// This should succeed - TCP+RTSPS with secure profile sets secure=true
+		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
+		require.NoError(t, err)
 		_, err = c.Announce(u, desc)
 		require.NoError(t, err)
 	})
 
 	t.Run("TCP+RTSPS with non-secure profile - secure=false", func(t *testing.T) {
-		// Create TLS listener for RTSPS
-		cert, err := tls.X509KeyPair(serverCert, serverKey)
-		require.NoError(t, err)
-
-		l, err := tls.Listen("tcp", "localhost:0", &tls.Config{Certificates: []tls.Certificate{cert}})
-		require.NoError(t, err)
+		l, serverDone := setupTLSTestServer(t)
 		defer l.Close()
-
-		serverDone := make(chan struct{})
 		defer func() { <-serverDone }()
-
-		go func() {
-			nconn, err2 := l.Accept()
-			require.NoError(t, err2)
-			handleServerConnection(t, serverDone, nconn)
-		}()
 
 		// Create a media with NON-secure profile (default RTP/AVP)
 		media := createNonSecureMedia()
+		desc := &description.Session{Medias: []*description.Media{media}}
 
-		desc := &description.Session{
-			Medias: []*description.Media{media},
-		}
-
-		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
-		require.NoError(t, err)
-
-		c := Client{
-			Scheme:    u.Scheme,
-			Host:      u.Host,
-			TLSConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-
-		// Force TCP protocol for this test
-		protocol := ProtocolTCP
-		c.Protocol = &protocol
-
-		err = c.Start()
+		c := createTLSClientWithProtocol(l.Addr().String(), ProtocolTCP)
+		err := c.Start()
 		require.NoError(t, err)
 		defer c.Close()
 
 		// This should succeed - TCP+RTSPS with non-secure profile sets secure=false
+		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
+		require.NoError(t, err)
 		_, err = c.Announce(u, desc)
 		require.NoError(t, err)
 	})
 
 	t.Run("UDP+RTSPS with any profile - secure=true", func(t *testing.T) {
-		// Create TLS listener for RTSPS
-		cert, err := tls.X509KeyPair(serverCert, serverKey)
-		require.NoError(t, err)
-
-		l, err := tls.Listen("tcp", "localhost:0", &tls.Config{Certificates: []tls.Certificate{cert}})
-		require.NoError(t, err)
+		l, serverDone := setupTLSTestServer(t)
 		defer l.Close()
-
-		serverDone := make(chan struct{})
 		defer func() { <-serverDone }()
-
-		go func() {
-			nconn, err2 := l.Accept()
-			require.NoError(t, err2)
-			handleServerConnection(t, serverDone, nconn)
-		}()
 
 		// Create a media with secure profile (SAVP)
 		media := createSecureMedia()
+		desc := &description.Session{Medias: []*description.Media{media}}
 
-		desc := &description.Session{
-			Medias: []*description.Media{media},
-		}
-
-		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
-		require.NoError(t, err)
-
-		c := Client{
-			Scheme:    u.Scheme,
-			Host:      u.Host,
-			TLSConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-
-		// Force UDP protocol (default, not TCP) for this test
-		protocol := ProtocolUDP
-		c.Protocol = &protocol
-
-		err = c.Start()
+		c := createTLSClientWithProtocol(l.Addr().String(), ProtocolUDP)
+		err := c.Start()
 		require.NoError(t, err)
 		defer c.Close()
 
 		// This should succeed - UDP+RTSPS always sets secure=true regardless of media profile
+		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
+		require.NoError(t, err)
 		_, err = c.Announce(u, desc)
 		require.NoError(t, err)
 	})
@@ -361,49 +320,23 @@ func TestClientAnnounceSecureProfileValidation(t *testing.T) {
 	})
 
 	t.Run("TCP+RTSPS with mixed profiles - secure=true if any profile is secure", func(t *testing.T) {
-		// Create TLS listener for RTSPS
-		cert, err := tls.X509KeyPair(serverCert, serverKey)
-		require.NoError(t, err)
-
-		l, err := tls.Listen("tcp", "localhost:0", &tls.Config{Certificates: []tls.Certificate{cert}})
-		require.NoError(t, err)
+		l, serverDone := setupTLSTestServer(t)
 		defer l.Close()
-
-		serverDone := make(chan struct{})
 		defer func() { <-serverDone }()
-
-		go func() {
-			nconn, err2 := l.Accept()
-			require.NoError(t, err2)
-			handleServerConnection(t, serverDone, nconn)
-		}()
 
 		// Create multiple medias: one secure, one non-secure
 		mediaSecure := createSecureMedia()
 		mediaNonSecure := createAudioMedia()
+		desc := &description.Session{Medias: []*description.Media{mediaSecure, mediaNonSecure}}
 
-		desc := &description.Session{
-			Medias: []*description.Media{mediaSecure, mediaNonSecure},
-		}
-
-		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
-		require.NoError(t, err)
-
-		c := Client{
-			Scheme:    u.Scheme,
-			Host:      u.Host,
-			TLSConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-
-		// Force TCP protocol for this test
-		protocol := ProtocolTCP
-		c.Protocol = &protocol
-
-		err = c.Start()
+		c := createTLSClientWithProtocol(l.Addr().String(), ProtocolTCP)
+		err := c.Start()
 		require.NoError(t, err)
 		defer c.Close()
 
 		// This should succeed - TCP+RTSPS with mixed profiles, one secure sets secure=true
+		u, err := base.ParseURL("rtsps://" + l.Addr().String() + "/teststream")
+		require.NoError(t, err)
 		_, err = c.Announce(u, desc)
 		require.NoError(t, err)
 	})
