@@ -22,7 +22,7 @@ func TestRead(t *testing.T) {
 	for _, ca := range []struct {
 		name string
 		enc  []byte
-		dec  interface{}
+		dec  any
 	}{
 		{
 			"request",
