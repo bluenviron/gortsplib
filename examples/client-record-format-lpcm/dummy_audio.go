@@ -13,7 +13,7 @@ func createDummyAudio(pts int64, prevPTS int64) []byte {
 	n := 0
 	ret := make([]byte, sampleCount*2)
 
-	for i := int64(0); i < sampleCount; i++ {
+	for i := range sampleCount {
 		v := int16(amplitude * math.Sin((float64(prevPTS+i)*frequency*math.Pi*2)/sampleRate))
 		ret[n] = byte(v >> 8)
 		ret[n+1] = byte(v)
