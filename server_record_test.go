@@ -652,7 +652,7 @@ func TestServerRecord(t *testing.T) {
 						err = ctx.Session.WritePacketRTCP(ctx.Session.AnnouncedDescription().Medias[1], &testRTCPPacket)
 						require.NoError(t, err)
 
-						for i := 0; i < 2; i++ {
+						for i := range 2 {
 							ctx.Session.OnPacketRTP(
 								ctx.Session.AnnouncedDescription().Medias[i],
 								ctx.Session.AnnouncedDescription().Medias[i].Formats[0],
@@ -740,7 +740,7 @@ func TestServerRecord(t *testing.T) {
 			var srtpOutCtx [2]*wrappedSRTPContext
 			var srtpInCtx [2]*wrappedSRTPContext
 
-			for i := 0; i < 2; i++ {
+			for i := range 2 {
 				inTH := &headers.Transport{
 					Delivery: ptrOf(headers.TransportDeliveryUnicast),
 					Mode:     ptrOf(headers.TransportModeRecord),
@@ -835,7 +835,7 @@ func TestServerRecord(t *testing.T) {
 			// skip firewall opening
 
 			if ca.transport == "udp" {
-				for i := 0; i < 2; i++ {
+				for i := range 2 {
 					buf := make([]byte, 2048)
 					_, _, err = l2s[i].ReadFrom(buf)
 					require.NoError(t, err)
@@ -844,7 +844,7 @@ func TestServerRecord(t *testing.T) {
 
 			// server -> client
 
-			for i := 0; i < 2; i++ {
+			for i := range 2 {
 				var buf []byte
 
 				if ca.transport == "udp" {
@@ -871,7 +871,7 @@ func TestServerRecord(t *testing.T) {
 
 			// client -> server
 
-			for i := 0; i < 2; i++ {
+			for i := range 2 {
 				buf1 := testRTPPacketMarshaled
 
 				if ca.secure == "secure" {
@@ -919,7 +919,7 @@ func TestServerRecord(t *testing.T) {
 
 			// server -> client
 
-			for i := 0; i < 2; i++ {
+			for i := range 2 {
 				var buf []byte
 
 				if ca.transport == "udp" {

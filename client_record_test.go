@@ -1349,7 +1349,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 					require.NoError(t, err2)
 					buf = buf[:n]
 				} else {
-					for i := 0; i < 2; i++ {
+					for range 2 {
 						_, err2 = conn.ReadInterleavedFrame()
 						require.NoError(t, err2)
 					}

@@ -436,7 +436,7 @@ type ServerSession struct {
 	ctxCancel             func()
 	propsMutex            sync.RWMutex
 	conns                 map[*ServerConn]struct{}
-	userData              interface{}
+	userData              any
 	state                 ServerSessionState
 	setuppedMedias        map[*description.Media]*serverSessionMedia
 	setuppedMediasOrdered []*serverSessionMedia
@@ -543,12 +543,12 @@ func (ss *ServerSession) Medias() []*description.Media {
 }
 
 // SetUserData sets some user data associated with the session.
-func (ss *ServerSession) SetUserData(v interface{}) {
+func (ss *ServerSession) SetUserData(v any) {
 	ss.userData = v
 }
 
 // UserData returns some user data associated with the session.
-func (ss *ServerSession) UserData() interface{} {
+func (ss *ServerSession) UserData() any {
 	return ss.userData
 }
 
