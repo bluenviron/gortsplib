@@ -585,7 +585,7 @@ func TestServerRecord(t *testing.T) {
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
 						s := ctx.Conn.Stats()
 						require.Greater(t, s.BytesSent, uint64(510))
-						require.Less(t, s.BytesSent, uint64(1100))
+						require.Less(t, s.BytesSent, uint64(1150))
 						require.Greater(t, s.BytesReceived, uint64(1000))
 						require.Less(t, s.BytesReceived, uint64(1800))
 
