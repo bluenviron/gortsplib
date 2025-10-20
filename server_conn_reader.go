@@ -204,7 +204,13 @@ func (cr *serverConnReader) handleTunneling(in io.ReadWriter) (io.ReadWriter, er
 
 func (cr *serverConnReader) readFuncStandard() error {
 	for {
-		cr.sc.nconn.SetReadDeadline(time.Now().Add(cr.sc.s.IdleTimeout))
+		// when FFmpeg is recording with UDP, it does not send keepalives, no matter what.
+		// disable read deadline.
+		if cr.sc.session != nil && cr.sc.session.state == ServerSessionStateRecord {
+			cr.sc.nconn.SetReadDeadline(time.Time{})
+		} else {
+			cr.sc.nconn.SetReadDeadline(time.Now().Add(cr.sc.s.IdleTimeout))
+		}
 
 		what, err := cr.sc.conn.Read()
 		if err != nil {

@@ -884,19 +884,7 @@ func (ss *ServerSession) runInner() error {
 
 					res.Header["Session"] = headers.Session{
 						Session: ss.secretID,
-						Timeout: func() *uint {
-							// timeout controls the sending of RTCP keepalives.
-							// these are needed only when the client is playing
-							// and transport is UDP or UDP-multicast.
-							if (ss.state == ServerSessionStatePrePlay ||
-								ss.state == ServerSessionStatePlay) &&
-								(ss.setuppedTransport.Protocol == ProtocolUDP ||
-									ss.setuppedTransport.Protocol == ProtocolUDPMulticast) {
-								v := uint(ss.s.IdleTimeout / time.Second)
-								return &v
-							}
-							return nil
-						}(),
+						Timeout: ptrOf(uint(ss.s.IdleTimeout / time.Second)),
 					}.Marshal()
 				}
 
