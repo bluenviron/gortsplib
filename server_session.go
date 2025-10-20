@@ -1662,7 +1662,9 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		if res.StatusCode == base.StatusOK {
 			if ss.state == ServerSessionStatePlay || ss.state == ServerSessionStateRecord {
-				ss.destroyWriter()
+				if ss.setuppedTransport.Protocol != ProtocolUDPMulticast {
+					ss.destroyWriter()
+				}
 
 				if ss.setuppedStream != nil {
 					ss.setuppedStream.readerSetInactive(ss)
