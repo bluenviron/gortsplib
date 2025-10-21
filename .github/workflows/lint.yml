@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  golangci-lint:
+  go:
     runs-on: ubuntu-22.04
 
     env:
@@ -24,7 +24,7 @@ jobs:
       with:
         version: v2.5.0
 
-  go-mod-tidy:
+  go_mod:
     runs-on: ubuntu-22.04
 
     steps:
