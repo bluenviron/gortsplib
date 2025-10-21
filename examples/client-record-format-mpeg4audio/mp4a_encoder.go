@@ -109,7 +109,7 @@ func (d *mp4aEncoder) close() {
 	C.avcodec_close(d.codecCtx)
 }
 
-// encode encodes LPCM samples into Opus packets.
+// encode encodes LPCM samples into MPEG-4 Audio access units.
 func (d *mp4aEncoder) encode(samples []byte) ([][]byte, int64, error) {
 	// convert from big-endian signed 16-bit integer to float32
 	samples, err := bigEndianS16ToFloat3(samples)
