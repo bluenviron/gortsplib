@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -41,12 +42,7 @@ func indexOf(element string, data []string) int {
 }
 
 func anyOf(element string, data ...string) bool {
-	for _, v := range data {
-		if element == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(data, element)
 }
 
 func parsePort(value string) (int, error) {
@@ -467,7 +463,7 @@ func (s *SessionDescription) unmarshalMediaDescription(value string) error {
 	// <proto>
 	// Set according to currently registered with IANA
 	// https://tools.ietf.org/html/rfc4566#section-5.14
-	for _, proto := range strings.Split(fields[2], "/") {
+	for proto := range strings.SplitSeq(fields[2], "/") {
 		if i := indexOf(proto, []string{
 			"UDP", "RTP", "AVP", "SAVP", "SAVPF",
 			"MP2T", "TLS", "DTLS", "SCTP", "AVPF", "TCP",
@@ -691,7 +687,7 @@ func (s *SessionDescription) Unmarshal(byts []byte) error {
 
 	state := stateInitial
 
-	for _, line := range strings.Split(strings.ReplaceAll(str, "\r", ""), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(str, "\r", ""), "\n") {
 		if line == "" {
 			continue
 		}

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net"
 	gourl "net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -47,10 +48,8 @@ func checkMulticastEnabled(multicastIPRange string, query string) bool {
 
 func checkBackChannelsEnabled(header base.Header) bool {
 	if vals, ok := header["Require"]; ok {
-		for _, val := range vals {
-			if val == "www.onvif.org/ver20/backchannel" {
-				return true
-			}
+		if slices.Contains(vals, "www.onvif.org/ver20/backchannel") {
+			return true
 		}
 	}
 	return false
@@ -210,7 +209,7 @@ type ServerConn struct {
 	ctx              context.Context
 	ctxCancel        func()
 	propsMutex       sync.RWMutex
-	userData         interface{}
+	userData         any
 	remoteAddr       *net.TCPAddr
 	bc               *bytecounter.ByteCounter
 	conn             *conn.Conn
@@ -259,12 +258,12 @@ func (sc *ServerConn) NetConn() net.Conn {
 }
 
 // SetUserData sets some user data associated with the connection.
-func (sc *ServerConn) SetUserData(v interface{}) {
+func (sc *ServerConn) SetUserData(v any) {
 	sc.userData = v
 }
 
 // UserData returns some user data associated with the connection.
-func (sc *ServerConn) UserData() interface{} {
+func (sc *ServerConn) UserData() any {
 	return sc.userData
 }
 

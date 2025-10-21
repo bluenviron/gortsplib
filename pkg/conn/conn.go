@@ -26,7 +26,7 @@ func NewConn(br *bufio.Reader, w io.Writer) *Conn {
 }
 
 // Read reads a Request, a Response or an Interleaved frame.
-func (c *Conn) Read() (interface{}, error) {
+func (c *Conn) Read() (any, error) {
 	for {
 		byts, err := c.br.Peek(2)
 		if err != nil {

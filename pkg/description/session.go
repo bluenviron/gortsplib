@@ -65,7 +65,7 @@ type Session struct {
 
 // FindFormat finds a certain format among all the formats in all the medias of the stream.
 // If the format is found, it is inserted into forma, and its media is returned.
-func (d *Session) FindFormat(forma interface{}) *Media {
+func (d *Session) FindFormat(forma any) *Media {
 	for _, media := range d.Medias {
 		ok := media.FindFormat(forma)
 		if ok {
