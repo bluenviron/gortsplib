@@ -73,6 +73,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer mp4aEnc.close()
 
 	// setup MPEG-4 Audio -> RTP encoder
 	rtpEnc, err := forma.CreateEncoder()
