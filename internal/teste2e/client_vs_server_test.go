@@ -13,7 +13,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
-	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
@@ -178,11 +177,6 @@ func TestClientVsServer(t *testing.T) {
 					PayloadTyp:        96,
 					PacketizationMode: 1,
 				}},
-			}
-
-			// Set secure profile for RTSPS schemes
-			if ca.publisherScheme == "rtsps" || ca.readerScheme == "rtsps" {
-				media.Profile = headers.TransportProfileSAVP
 			}
 
 			desc.Medias = []*description.Media{media}
