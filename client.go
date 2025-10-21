@@ -1509,12 +1509,28 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
-	announceData, err := generateAnnounceData(desc, c.Scheme == "rtsps")
+	// Determine secure flag: TCP+RTSPS depends on media profile, others depend on scheme
+	var secure bool
+
+	// Determine secure flag: TCP+RTSPS depends on media profile, others depend on scheme
+	if c.Protocol != nil && *c.Protocol == ProtocolTCP && c.Scheme == "rtsps" {
+		// Check for all medias: if any media uses a secure profile, then secure is true
+		for _, medi := range desc.Medias {
+			if isSecure(medi.Profile) {
+				secure = true
+				break
+			}
+		}
+	} else {
+		secure = c.Scheme == "rtsps"
+	}
+
+	announceData, err := generateAnnounceData(desc, secure)
 	if err != nil {
 		return nil, err
 	}
 
-	err = prepareForAnnounce(desc, announceData, c.Scheme == "rtsps")
+	err = prepareForAnnounce(desc, announceData, secure)
 	if err != nil {
 		return nil, err
 	}
