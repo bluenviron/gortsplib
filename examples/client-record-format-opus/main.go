@@ -86,6 +86,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer opusEnc.close()
 
 	// setup Opus -> RTP encoder
 	rtpEnc, err := forma.CreateEncoder()
