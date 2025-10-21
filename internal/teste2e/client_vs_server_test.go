@@ -169,17 +169,17 @@ func TestClientVsServer(t *testing.T) {
 			require.NoError(t, err)
 			defer ss.close()
 
-			desc := &description.Session{}
-
-			media := &description.Media{
-				Type: description.MediaTypeVideo,
-				Formats: []format.Format{&format.H264{
-					PayloadTyp:        96,
-					PacketizationMode: 1,
-				}},
+			desc := &description.Session{
+				Medias: []*description.Media{
+					{
+						Type: description.MediaTypeVideo,
+						Formats: []format.Format{&format.H264{
+							PayloadTyp:        96,
+							PacketizationMode: 1,
+						}},
+					},
+				},
 			}
-
-			desc.Medias = []*description.Media{media}
 
 			var publisherTunnel gortsplib.Tunnel
 			switch ca.publisherTunnel {
