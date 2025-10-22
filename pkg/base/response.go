@@ -162,10 +162,6 @@ func (res *Response) Unmarshal(br *bufio.Reader) error {
 	}
 	res.StatusMessage = string(byts[:len(byts)-1])
 
-	if len(res.StatusMessage) == 0 {
-		return fmt.Errorf("empty status message")
-	}
-
 	err = readByteEqual(br, '\n')
 	if err != nil {
 		return err
