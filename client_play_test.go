@@ -3772,7 +3772,6 @@ func TestClientPlayBackChannel(t *testing.T) {
 				require.Equal(t, rtp.Packet{
 					Header: rtp.Header{
 						Version:     2,
-						CSRC:        []uint32{},
 						PayloadType: 8,
 						SSRC:        pkt.SSRC,
 					},
@@ -3908,7 +3907,6 @@ func TestClientPlayBackChannel(t *testing.T) {
 				Header: rtp.Header{
 					Version:     2,
 					PayloadType: 8,
-					CSRC:        []uint32{},
 					SSRC:        0x38F27A2F,
 				},
 				Payload: []byte{1, 2, 3, 4},
@@ -4105,7 +4103,6 @@ func TestClientPlayDifferentSSRCs(t *testing.T) {
 							Header: rtp.Header{
 								Version:        2,
 								PayloadType:    96,
-								CSRC:           []uint32{},
 								SSRC:           4326234,
 								SequenceNumber: 1,
 							},
@@ -4116,7 +4113,6 @@ func TestClientPlayDifferentSSRCs(t *testing.T) {
 							Header: rtp.Header{
 								Version:        2,
 								PayloadType:    96,
-								CSRC:           []uint32{},
 								SSRC:           1235762,
 								SequenceNumber: 2,
 							},
@@ -4197,7 +4193,6 @@ func TestClientPlayDifferentSSRCs(t *testing.T) {
 						Header: rtp.Header{
 							Version:        2,
 							PayloadType:    96,
-							CSRC:           []uint32{},
 							SSRC:           4326234,
 							SequenceNumber: 1,
 						},
@@ -4213,7 +4208,6 @@ func TestClientPlayDifferentSSRCs(t *testing.T) {
 						Header: rtp.Header{
 							Version:        2,
 							PayloadType:    96,
-							CSRC:           []uint32{},
 							SSRC:           1235762,
 							SequenceNumber: 2,
 						},
