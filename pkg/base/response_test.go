@@ -10,8 +10,9 @@ import (
 
 var casesResponse = []struct {
 	name string
-	byts []byte
+	in   []byte
 	res  Response
+	out  []byte
 }{
 	{
 		"ok",
@@ -36,6 +37,14 @@ var casesResponse = []struct {
 				"Date": HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
 			},
 		},
+		[]byte("RTSP/1.0 200 OK\r\n" +
+			"CSeq: 2\r\n" +
+			"Date: Sat, Aug 16 2014 02:22:28 GMT\r\n" +
+			"Session: 645252166\r\n" +
+			"WWW-Authenticate: Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"\r\n" +
+			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
+			"\r\n",
+		),
 	},
 	{
 		"ok with payload",
@@ -89,6 +98,38 @@ var casesResponse = []struct {
 				"a=StreamName:string;\"hinted audio track\"\n",
 			),
 		},
+		[]byte("RTSP/1.0 200 OK\r\n" +
+			"CSeq: 2\r\n" +
+			"Content-Base: rtsp://example.com/media.mp4\r\n" +
+			"Content-Length: 444\r\n" +
+			"Content-Type: application/sdp\r\n" +
+			"\r\n" +
+			"m=video 0 RTP/AVP 96\n" +
+			"a=control:streamid=0\n" +
+			"a=range:npt=0-7.741000\n" +
+			"a=length:npt=7.741000\n" +
+			"a=rtpmap:96 MP4V-ES/5544\n" +
+			"a=mimetype:string;\"video/MP4V-ES\"\n" +
+			"a=AvgBitRate:integer;304018\n" +
+			"a=StreamName:string;\"hinted video track\"\n" +
+			"m=audio 0 RTP/AVP 97\n" +
+			"a=control:streamid=1\n" +
+			"a=range:npt=0-7.712000\n" +
+			"a=length:npt=7.712000\n" +
+			"a=rtpmap:97 mpeg4-generic/32000/2\n" +
+			"a=mimetype:string;\"audio/mpeg4-generic\"\n" +
+			"a=AvgBitRate:integer;65790\n" +
+			"a=StreamName:string;\"hinted audio track\"\n",
+		),
+	},
+	{
+		"empty status message",
+		[]byte("RTSP/1.0 200 \r\n\r\n"),
+		Response{
+			StatusCode: 200,
+			Header:     Header{},
+		},
+		[]byte("RTSP/1.0 200 OK\r\n\r\n"),
 	},
 }
 
@@ -98,7 +139,7 @@ func TestResponseUnmarshal(t *testing.T) {
 
 	for _, c := range casesResponse {
 		t.Run(c.name, func(t *testing.T) {
-			err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(c.byts)))
+			err := res.Unmarshal(bufio.NewReader(bytes.NewBuffer(c.in)))
 			require.NoError(t, err)
 			require.Equal(t, c.res, res)
 		})
@@ -110,7 +151,7 @@ func TestResponseMarshal(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			buf, err := c.res.Marshal()
 			require.NoError(t, err)
-			require.Equal(t, c.byts, buf)
+			require.Equal(t, c.out, buf)
 		})
 	}
 }
@@ -157,7 +198,7 @@ func TestResponseString(t *testing.T) {
 
 func FuzzResponseUnmarshal(f *testing.F) {
 	for _, ca := range casesResponse {
-		f.Add(ca.byts)
+		f.Add(ca.in)
 	}
 
 	f.Fuzz(func(t *testing.T, b []byte) {
