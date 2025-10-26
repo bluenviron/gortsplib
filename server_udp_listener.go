@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 	"sync"
@@ -101,22 +100,10 @@ func (u *serverUDPListener) initialize() error {
 	}
 
 	if u.readBufferSize != 0 {
-		err := u.pc.SetReadBuffer(u.readBufferSize)
+		err := readbuffer.SetReadBuffer(u.pc, u.readBufferSize)
 		if err != nil {
 			u.pc.Close()
 			return err
-		}
-
-		v, err := readbuffer.ReadBuffer(u.pc)
-		if err != nil {
-			u.pc.Close()
-			return err
-		}
-
-		if v != u.readBufferSize {
-			u.pc.Close()
-			return fmt.Errorf("unable to set read buffer size to %v, check that the operating system allows that",
-				u.readBufferSize)
 		}
 	}
 

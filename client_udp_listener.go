@@ -2,7 +2,6 @@ package gortsplib
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
 	"net"
 	"sync/atomic"
@@ -66,22 +65,10 @@ func (u *clientUDPListener) initialize() error {
 	}
 
 	if u.c.UDPReadBufferSize != 0 {
-		err := u.pc.SetReadBuffer(u.c.UDPReadBufferSize)
+		err := readbuffer.SetReadBuffer(u.pc, u.c.UDPReadBufferSize)
 		if err != nil {
 			u.pc.Close()
 			return err
-		}
-
-		v, err := readbuffer.ReadBuffer(u.pc)
-		if err != nil {
-			u.pc.Close()
-			return err
-		}
-
-		if v != u.c.UDPReadBufferSize {
-			u.pc.Close()
-			return fmt.Errorf("unable to set read buffer size to %v, check that the operating system allows that",
-				u.c.UDPReadBufferSize)
 		}
 	}
 
