@@ -882,9 +882,14 @@ func (ss *ServerSession) runInner() error {
 						res.Header = make(base.Header)
 					}
 
+					// Media Foundation-based software, like Windows Media Player,
+					// send keepalives at an interval equal the timeout value.
+					// prevent timeouts by subtracting 5 seconds from the value.
+					timeout := max(int(ss.s.IdleTimeout/time.Second)-5, 1)
+
 					res.Header["Session"] = headers.Session{
 						Session: ss.secretID,
-						Timeout: ptrOf(uint(ss.s.IdleTimeout / time.Second)),
+						Timeout: ptrOf(uint(timeout)),
 					}.Marshal()
 				}
 
