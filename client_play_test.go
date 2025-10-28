@@ -3908,7 +3908,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 					}
 					return ptrOf(ProtocolUDP)
 				}(),
-				senderReportPeriod:   500 * time.Millisecond,
+				senderReportPeriod:   750 * time.Millisecond,
 				receiverReportPeriod: 750 * time.Millisecond,
 			}
 
