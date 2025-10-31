@@ -79,12 +79,10 @@ func TestServerVsExternal(t *testing.T) {
 
 	for _, file := range files {
 		cfile := file
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			err := buildImage(cfile.Name())
 			require.NoError(t, err)
-			wg.Done()
-		}()
+		})
 	}
 
 	wg.Wait()

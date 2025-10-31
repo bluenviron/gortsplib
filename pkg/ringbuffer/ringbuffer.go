@@ -11,7 +11,7 @@ type RingBuffer struct {
 	size       uint64
 	mutex      sync.Mutex
 	cond       *sync.Cond
-	buffer     []interface{}
+	buffer     []any
 	readIndex  uint64
 	writeIndex uint64
 	closed     bool
@@ -27,7 +27,7 @@ func New(size uint64) (*RingBuffer, error) {
 
 	r := &RingBuffer{
 		size:   size,
-		buffer: make([]interface{}, size),
+		buffer: make([]any, size),
 	}
 
 	r.cond = sync.NewCond(&r.mutex)
@@ -62,7 +62,7 @@ func (r *RingBuffer) Reset() {
 }
 
 // Push pushes data at the end of the buffer.
-func (r *RingBuffer) Push(data interface{}) bool {
+func (r *RingBuffer) Push(data any) bool {
 	r.mutex.Lock()
 
 	if r.buffer[r.writeIndex] != nil {
@@ -81,7 +81,7 @@ func (r *RingBuffer) Push(data interface{}) bool {
 }
 
 // Pull pulls data from the beginning of the buffer.
-func (r *RingBuffer) Pull() (interface{}, bool) {
+func (r *RingBuffer) Pull() (any, bool) {
 	for {
 		r.mutex.Lock()
 

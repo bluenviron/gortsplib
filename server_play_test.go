@@ -535,7 +535,7 @@ func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 	require.NoError(t, err)
 	defer stream.Close()
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		var nconn net.Conn
 		nconn, err = net.Dial("tcp", "localhost:8554")
 		require.NoError(t, err)
@@ -2738,7 +2738,7 @@ func TestServerPlayBackChannel(t *testing.T) {
 			var l1s [2]net.PacketConn
 			var l2s [2]net.PacketConn
 
-			for i := 0; i < 2; i++ {
+			for i := range 2 {
 				inTH := &headers.Transport{
 					Mode: ptrOf(headers.TransportModePlay),
 				}

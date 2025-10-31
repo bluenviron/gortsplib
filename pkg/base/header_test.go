@@ -134,7 +134,7 @@ func FuzzHeaderUnmarshal(f *testing.F) {
 	}
 
 	str := ""
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		str += "Key: val\r\n"
 	}
 	f.Add([]byte(str))

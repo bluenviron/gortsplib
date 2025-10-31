@@ -182,7 +182,7 @@ func TestClientPlayFormats(t *testing.T) {
 		})
 		require.NoError(t, err2)
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			req, err2 = conn.ReadRequest()
 			require.NoError(t, err2)
 			require.Equal(t, base.Setup, req.Method)
@@ -375,7 +375,7 @@ func TestClientPlay(t *testing.T) {
 				var srtpInCtx [2]*wrappedSRTPContext
 				var srtpOutCtx [2]*wrappedSRTPContext
 
-				for i := 0; i < 2; i++ {
+				for i := range 2 {
 					req, err2 = conn.ReadRequest()
 					require.NoError(t, err2)
 					require.Equal(t, base.Setup, req.Method)
@@ -514,7 +514,7 @@ func TestClientPlay(t *testing.T) {
 
 				// server -> client
 
-				for i := 0; i < 2; i++ {
+				for i := range 2 {
 					buf := testRTPPacketMarshaled
 
 					if ca.secure == "secure" {
@@ -551,7 +551,7 @@ func TestClientPlay(t *testing.T) {
 				// skip firewall opening
 
 				if ca.transport == "udp" {
-					for i := 0; i < 2; i++ {
+					for i := range 2 {
 						buf := make([]byte, 2048)
 						_, _, err2 = l2s[i].ReadFrom(buf)
 						require.NoError(t, err2)
@@ -560,7 +560,7 @@ func TestClientPlay(t *testing.T) {
 
 				// client -> server
 
-				for i := 0; i < 2; i++ {
+				for i := range 2 {
 					var buf []byte
 
 					switch ca.transport {
@@ -3711,7 +3711,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 				var l2s [2]net.PacketConn
 				var clientPorts [2]*[2]int
 
-				for i := 0; i < 2; i++ {
+				for i := range 2 {
 					req, err2 = conn.ReadRequest()
 					require.NoError(t, err2)
 					require.Equal(t, base.Setup, req.Method)

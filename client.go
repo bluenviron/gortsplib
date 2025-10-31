@@ -281,7 +281,7 @@ func supportsGetParameter(header base.Header) bool {
 		return false
 	}
 
-	for _, m := range strings.Split(pub[0], ",") {
+	for m := range strings.SplitSeq(pub[0], ",") {
 		if base.Method(strings.Trim(m, " ")) == base.GetParameter {
 			return true
 		}

@@ -28,7 +28,7 @@ func (h *RTPInfo) Unmarshal(v base.HeaderValue) error {
 		return fmt.Errorf("value provided multiple times (%v)", v)
 	}
 
-	for _, part := range strings.Split(v[0], ",") {
+	for part := range strings.SplitSeq(v[0], ",") {
 		e := &RTPInfoEntry{}
 
 		// remove leading spaces

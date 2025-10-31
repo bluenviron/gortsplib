@@ -79,15 +79,15 @@ func TestOverflow(t *testing.T) {
 	r, err := New(32)
 	require.NoError(t, err)
 
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		r.Push([]byte{1, 2, 3, 4})
 	}
 
 	ok := r.Push([]byte{5, 6, 7, 8})
 	require.Equal(t, false, ok)
 
-	for i := 0; i < 32; i++ {
-		var data interface{}
+	for range 32 {
+		var data any
 		data, ok = r.Pull()
 		require.Equal(t, true, ok)
 		require.Equal(t, []byte{1, 2, 3, 4}, data)
@@ -100,16 +100,16 @@ func BenchmarkPushPullContinuous(b *testing.B) {
 
 	data := make([]byte, 1024)
 
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			for i := 0; i < 1024*8; i++ {
+			for range 1024 * 8 {
 				r.Push(data)
 			}
 		}()
 
-		for i := 0; i < 1024*8; i++ {
+		for range 1024 * 8 {
 			r.Pull()
 		}
 
@@ -123,17 +123,17 @@ func BenchmarkPushPullPaused5(b *testing.B) {
 
 	data := make([]byte, 1024)
 
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			for i := 0; i < 128; i++ {
+			for range 128 {
 				r.Push(data)
 				time.Sleep(5 * time.Millisecond)
 			}
 		}()
 
-		for i := 0; i < 128; i++ {
+		for range 128 {
 			r.Pull()
 		}
 
@@ -147,17 +147,17 @@ func BenchmarkPushPullPaused10(b *testing.B) {
 
 	data := make([]byte, 1024)
 
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			for i := 0; i < 128; i++ {
+			for range 128 {
 				r.Push(data)
 				time.Sleep(10 * time.Millisecond)
 			}
 		}()
 
-		for i := 0; i < 128; i++ {
+		for range 128 {
 			r.Pull()
 		}
 
