@@ -240,6 +240,20 @@ func TestServerClose(t *testing.T) {
 	s.Close()
 }
 
+func TestServerNetListener(t *testing.T) {
+	s := &Server{
+		Handler:     &testServerHandler{},
+		RTSPAddress: "127.0.0.1:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	ln := s.NetListener()
+	require.Equal(t, "127.0.0.1:8554", ln.Addr().String())
+}
+
 func TestServerErrorInvalidUDPPorts(t *testing.T) {
 	t.Run("non consecutive", func(t *testing.T) {
 		s := &Server{

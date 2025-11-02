@@ -362,6 +362,11 @@ func (s *Server) Wait() error {
 	return s.closeError
 }
 
+// NetListener returns the underlying net.Listener
+func (s *Server) NetListener() net.Listener {
+	return s.tcpListener.ln
+}
+
 func (s *Server) run() {
 	defer s.wg.Done()
 
