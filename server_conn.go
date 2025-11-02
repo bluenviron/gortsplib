@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bufio"
 	"context"
-	"crypto/rand"
 	"crypto/tls"
 	"errors"
 	"net"
@@ -22,7 +21,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 )
 
 func getSessionID(header base.Header) string {
@@ -53,90 +51,6 @@ func checkBackChannelsEnabled(header base.Header) bool {
 		}
 	}
 	return false
-}
-
-func mikeyGenerate(ctx *wrappedSRTPContext) (*mikey.Message, error) {
-	csbID, err := randUint32()
-	if err != nil {
-		return nil, err
-	}
-
-	msg := &mikey.Message{
-		Header: mikey.Header{
-			Version: 1,
-			CSBID:   csbID,
-		},
-	}
-
-	msg.Header.CSIDMapInfo = make([]mikey.SRTPIDEntry, len(ctx.ssrcs))
-
-	n := 0
-	for _, ssrc := range ctx.ssrcs {
-		msg.Header.CSIDMapInfo[n] = mikey.SRTPIDEntry{
-			PolicyNo: 0,
-			SSRC:     ssrc,
-			ROC:      ctx.roc(ssrc),
-		}
-		n++
-	}
-
-	randData := make([]byte, 16)
-	_, err = rand.Read(randData)
-	if err != nil {
-		return nil, err
-	}
-
-	msg.Payloads = []mikey.Payload{
-		&mikey.PayloadT{
-			TSType:  0,
-			TSValue: ntp.Encode(time.Now()),
-		},
-		&mikey.PayloadRAND{
-			Data: randData,
-		},
-		&mikey.PayloadSP{
-			PolicyParams: []mikey.PayloadSPPolicyParam{
-				{
-					Type:  mikey.PayloadSPPolicyParamTypeEncrAlg,
-					Value: []byte{1},
-				},
-				{
-					Type:  mikey.PayloadSPPolicyParamTypeSessionEncrKeyLen,
-					Value: []byte{0x10},
-				},
-				{
-					Type:  mikey.PayloadSPPolicyParamTypeAuthAlg,
-					Value: []byte{1},
-				},
-				{
-					Type:  mikey.PayloadSPPolicyParamTypeSessionAuthKeyLen,
-					Value: []byte{0x0a},
-				},
-				{
-					Type:  mikey.PayloadSPPolicyParamTypeSRTPEncrOffOn,
-					Value: []byte{1},
-				},
-				{
-					Type:  mikey.PayloadSPPolicyParamTypeSRTCPEncrOffOn,
-					Value: []byte{1},
-				},
-				{
-					Type:  mikey.PayloadSPPolicyParamTypeSRTPAuthOffOn,
-					Value: []byte{1},
-				},
-			},
-		},
-		&mikey.PayloadKEMAC{
-			SubPayloads: []*mikey.SubPayloadKeyData{
-				{
-					Type:    mikey.SubPayloadKeyDataKeyTypeTEK,
-					KeyData: ctx.key,
-				},
-			},
-		},
-	}
-
-	return msg, nil
 }
 
 func prepareForDescribe(

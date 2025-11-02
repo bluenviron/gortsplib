@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
@@ -24,7 +23,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtpreceiver"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtpsender"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtptime"
@@ -221,111 +219,6 @@ func pickFirstSupportedTransport(sc *ServerConn, tsh headers.Transports) *header
 		}
 	}
 	return nil
-}
-
-func mikeyGetPayload[T mikey.Payload](mikeyMsg *mikey.Message) (T, bool) {
-	var zero T
-	for _, wrapped := range mikeyMsg.Payloads {
-		if val, ok := wrapped.(T); ok {
-			return val, true
-		}
-	}
-	return zero, false
-}
-
-func mikeyGetSPPolicy(spPayload *mikey.PayloadSP, typ mikey.PayloadSPPolicyParamType) ([]byte, bool) {
-	for _, pl := range spPayload.PolicyParams {
-		if pl.Type == typ {
-			return pl.Value, true
-		}
-	}
-	return nil, false
-}
-
-func mikeyToContext(mikeyMsg *mikey.Message) (*wrappedSRTPContext, error) {
-	timePayload, ok := mikeyGetPayload[*mikey.PayloadT](mikeyMsg)
-	if !ok {
-		return nil, fmt.Errorf("time payload not present")
-	}
-
-	ts := ntp.Decode(timePayload.TSValue)
-	diff := time.Since(ts)
-	if diff < -time.Hour || diff > time.Hour {
-		return nil, fmt.Errorf("NTP difference is too high")
-	}
-
-	spPayload, ok := mikeyGetPayload[*mikey.PayloadSP](mikeyMsg)
-	if !ok {
-		return nil, fmt.Errorf("SP payload not present")
-	}
-
-	v, ok := mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeEncrAlg)
-	if !ok || !bytes.Equal(v, []byte{1}) {
-		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeEncrAlg")
-	}
-
-	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSessionEncrKeyLen)
-	if !ok || !bytes.Equal(v, []byte{0x10}) {
-		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSessionEncrKeyLen")
-	}
-
-	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeAuthAlg)
-	if !ok || !bytes.Equal(v, []byte{1}) {
-		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeAuthAlg")
-	}
-
-	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSessionAuthKeyLen)
-	if !ok || !bytes.Equal(v, []byte{0x0a}) {
-		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSessionAuthKeyLen")
-	}
-
-	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSRTPEncrOffOn)
-	if !ok || !bytes.Equal(v, []byte{1}) {
-		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSRTPEncrOffOn")
-	}
-
-	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSRTCPEncrOffOn)
-	if !ok || !bytes.Equal(v, []byte{1}) {
-		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSRTCPEncrOffOn")
-	}
-
-	v, ok = mikeyGetSPPolicy(spPayload, mikey.PayloadSPPolicyParamTypeSRTPAuthOffOn)
-	if !ok || !bytes.Equal(v, []byte{1}) {
-		return nil, fmt.Errorf("missing or unsupported policy: PayloadSPPolicyParamTypeSRTPAuthOffOn")
-	}
-
-	kemacPayload, ok := mikeyGetPayload[*mikey.PayloadKEMAC](mikeyMsg)
-	if !ok {
-		return nil, fmt.Errorf("KEMAC payload not present")
-	}
-
-	if len(kemacPayload.SubPayloads) != 1 {
-		return nil, fmt.Errorf("multiple keys are present")
-	}
-
-	if len(kemacPayload.SubPayloads[0].KeyData) != srtpKeyLength {
-		return nil, fmt.Errorf("unexpected key size: %d", len(kemacPayload.SubPayloads[0].KeyData))
-	}
-
-	ssrcs := make([]uint32, len(mikeyMsg.Header.CSIDMapInfo))
-	startROCs := make([]uint32, len(mikeyMsg.Header.CSIDMapInfo))
-
-	for i, entry := range mikeyMsg.Header.CSIDMapInfo {
-		ssrcs[i] = entry.SSRC
-		startROCs[i] = entry.ROC
-	}
-
-	srtpCtx := &wrappedSRTPContext{
-		key:       kemacPayload.SubPayloads[0].KeyData,
-		ssrcs:     ssrcs,
-		startROCs: startROCs,
-	}
-	err := srtpCtx.initialize()
-	if err != nil {
-		return nil, err
-	}
-
-	return srtpCtx, nil
 }
 
 func generateRTPInfoEntry(ssm *serverStreamMedia, now time.Time) *headers.RTPInfoEntry {
