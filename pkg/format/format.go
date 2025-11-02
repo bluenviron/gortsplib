@@ -60,7 +60,7 @@ func decodeFMTP(enc string) map[string]string {
 
 	ret := make(map[string]string)
 
-	for _, kv := range strings.Split(enc, ";") {
+	for kv := range strings.SplitSeq(enc, ";") {
 		kv = strings.Trim(kv, " ")
 
 		if len(kv) == 0 {

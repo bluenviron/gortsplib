@@ -6,7 +6,7 @@ import (
 )
 
 // ServerHandler is the interface implemented by all the server handlers.
-type ServerHandler interface{}
+type ServerHandler any
 
 // ServerHandlerOnConnOpenCtx is the context of OnConnOpen.
 type ServerHandlerOnConnOpenCtx struct {

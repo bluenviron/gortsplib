@@ -261,7 +261,7 @@ func (m Media) URL(contentBase *base.URL) (*base.URL, error) {
 }
 
 // FindFormat finds a certain format among all the formats in the media.
-func (m Media) FindFormat(forma interface{}) bool {
+func (m Media) FindFormat(forma any) bool {
 	for _, formak := range m.Formats {
 		if reflect.TypeOf(formak) == reflect.TypeOf(forma).Elem() {
 			reflect.ValueOf(forma).Elem().Set(reflect.ValueOf(formak))
