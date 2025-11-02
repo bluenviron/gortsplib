@@ -1229,7 +1229,10 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		c.session = sx.Session
 
 		if sx.Timeout != nil && *sx.Timeout > 0 {
-			c.keepAlivePeriod = time.Duration(*sx.Timeout) * time.Second * 8 / 10
+			c.keepAlivePeriod = max(
+				(time.Duration(*sx.Timeout)*time.Second)-5*time.Second,
+				1*time.Second,
+			)
 		}
 	}
 
