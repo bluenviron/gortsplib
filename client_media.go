@@ -14,6 +14,35 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
+// this is rtp.Packet.Unmarshal without header unmarshaling, since it has already been performed.
+// https://github.com/pion/rtp/blob/9e1aa3d64c356ed24c1b0bc7bb4d7d50182e1fcc/packet.go#L230
+func fastRTPUnmarshal(payload []byte, header *rtp.Header, headerSize int) (*rtp.Packet, error) {
+	p := &rtp.Packet{
+		Header: *header,
+	}
+	n := headerSize
+	buf := payload
+
+	end := len(buf)
+	if p.Padding {
+		if end <= n {
+			return nil, fmt.Errorf("buffer is too small")
+		}
+		p.Header.PaddingSize = buf[end-1]
+		end -= int(p.Header.PaddingSize)
+	} else {
+		p.Header.PaddingSize = 0
+	}
+	p.PaddingSize = p.Header.PaddingSize
+	if end < n {
+		return nil, fmt.Errorf("buffer is too small")
+	}
+
+	p.Payload = buf[n:end]
+
+	return p, nil
+}
+
 func createUDPListenerPair(
 	c *Client,
 	multicast bool,
@@ -184,7 +213,7 @@ func (cm *clientMedia) findFormatByRemoteSSRC(ssrc uint32) *clientFormat {
 	return nil
 }
 
-func (cm *clientMedia) decodeRTP(payload []byte, header *rtp.Header) (*rtp.Packet, error) {
+func (cm *clientMedia) decodeRTP(payload []byte, header *rtp.Header, headerSize int) (*rtp.Packet, error) {
 	if cm.srtpInCtx != nil {
 		var err error
 		payload, err = cm.srtpInCtx.decryptRTP(payload, payload, header)
@@ -193,9 +222,7 @@ func (cm *clientMedia) decodeRTP(payload []byte, header *rtp.Header) (*rtp.Packe
 		}
 	}
 
-	var pkt rtp.Packet
-	err := pkt.Unmarshal(payload)
-	return &pkt, err
+	return fastRTPUnmarshal(payload, header, headerSize)
 }
 
 func (cm *clientMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error) {
@@ -217,7 +244,7 @@ func (cm *clientMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error) {
 
 func (cm *clientMedia) readPacketRTP(payload []byte, now time.Time) bool {
 	var header rtp.Header
-	_, err := header.Unmarshal(payload)
+	headerSize, err := header.Unmarshal(payload)
 	if err != nil {
 		cm.onPacketRTPDecodeError(err)
 		return false
@@ -229,7 +256,7 @@ func (cm *clientMedia) readPacketRTP(payload []byte, now time.Time) bool {
 		return false
 	}
 
-	return forma.readPacketRTP(payload, &header, now)
+	return forma.readPacketRTP(payload, &header, headerSize, now)
 }
 
 func (cm *clientMedia) readPacketRTCPPlay(payload []byte) bool {

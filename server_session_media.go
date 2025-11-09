@@ -151,7 +151,7 @@ func (sm *serverSessionMedia) findFormatByRemoteSSRC(ssrc uint32) *serverSession
 	return nil
 }
 
-func (sm *serverSessionMedia) decodeRTP(payload []byte, header *rtp.Header) (*rtp.Packet, error) {
+func (sm *serverSessionMedia) decodeRTP(payload []byte, header *rtp.Header, headerSize int) (*rtp.Packet, error) {
 	if sm.srtpInCtx != nil {
 		var err error
 		payload, err = sm.srtpInCtx.decryptRTP(payload, payload, header)
@@ -160,9 +160,7 @@ func (sm *serverSessionMedia) decodeRTP(payload []byte, header *rtp.Header) (*rt
 		}
 	}
 
-	var pkt rtp.Packet
-	err := pkt.Unmarshal(payload)
-	return &pkt, err
+	return fastRTPUnmarshal(payload, header, headerSize)
 }
 
 func (sm *serverSessionMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error) {
@@ -184,7 +182,7 @@ func (sm *serverSessionMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error) 
 
 func (sm *serverSessionMedia) readPacketRTP(payload []byte, now time.Time) bool {
 	var header rtp.Header
-	_, err := header.Unmarshal(payload)
+	headerSize, err := header.Unmarshal(payload)
 	if err != nil {
 		sm.onPacketRTPDecodeError(err)
 		return false
@@ -196,7 +194,7 @@ func (sm *serverSessionMedia) readPacketRTP(payload []byte, now time.Time) bool 
 		return false
 	}
 
-	return forma.readPacketRTP(payload, &header, now)
+	return forma.readPacketRTP(payload, &header, headerSize, now)
 }
 
 func (sm *serverSessionMedia) readPacketRTCPPlay(payload []byte) bool {
