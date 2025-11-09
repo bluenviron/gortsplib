@@ -12,7 +12,6 @@ import (
 )
 
 // Receiver is a utility to receive RTP packets. It is in charge of:
-// - removing packets with wrong SSRC
 // - removing duplicate packets (when transport is unreliable)
 // - reordering packets (when transport is unrealiable)
 // - counting lost packets
@@ -164,11 +163,24 @@ func (rr *Receiver) report() rtcp.Packet {
 
 // ProcessPacket processes an incoming RTP packet.
 // It returns reordered packets and number of lost packets.
+//
+// Deprecated: replaced by ProcessPacket2.
 func (rr *Receiver) ProcessPacket(
 	pkt *rtp.Packet,
 	system time.Time,
 	ptsEqualsDTS bool,
 ) ([]*rtp.Packet, uint64, error) {
+	pkts, lost := rr.ProcessPacket2(pkt, system, ptsEqualsDTS)
+	return pkts, lost, nil
+}
+
+// ProcessPacket2 processes an incoming RTP packet.
+// It returns reordered packets and number of lost packets.
+func (rr *Receiver) ProcessPacket2(
+	pkt *rtp.Packet,
+	system time.Time,
+	ptsEqualsDTS bool,
+) ([]*rtp.Packet, uint64) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
 
@@ -185,11 +197,7 @@ func (rr *Receiver) ProcessPacket(
 			rr.lastTimeSystem = system
 		}
 
-		return []*rtp.Packet{pkt}, 0, nil
-	}
-
-	if pkt.SSRC != rr.remoteSSRC {
-		return nil, 0, fmt.Errorf("received packet with wrong SSRC %d, expected %d", pkt.SSRC, rr.remoteSSRC)
+		return []*rtp.Packet{pkt}, 0
 	}
 
 	var pkts []*rtp.Packet
@@ -242,7 +250,7 @@ func (rr *Receiver) ProcessPacket(
 		}
 	}
 
-	return pkts, lost, nil
+	return pkts, lost
 }
 
 func (rr *Receiver) reorder(pkt *rtp.Packet) ([]*rtp.Packet, uint64) {
@@ -372,7 +380,9 @@ func (rr *Receiver) PacketNTP(ts uint32) (time.Time, bool) {
 
 // Stats are statistics.
 type Stats struct {
-	RemoteSSRC         uint32
+	// Deprecated: will be removed in next version.
+	RemoteSSRC uint32
+
 	LastSequenceNumber uint16
 	LastRTP            uint32
 	LastNTP            time.Time

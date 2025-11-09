@@ -1,7 +1,9 @@
 package gortsplib
 
 import (
+	"fmt"
 	"log"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -19,7 +21,10 @@ type serverSessionFormat struct {
 	localSSRC   uint32
 	onPacketRTP OnPacketRTPFunc
 
-	rtpReceiver           *rtpreceiver.Receiver
+	remoteSSRCMutex       sync.RWMutex          // record
+	remoteSSRCFilled      bool                  // record
+	remoteSSRCValue       uint32                // record
+	rtpReceiver           *rtpreceiver.Receiver // record
 	writePacketRTPInQueue func([]byte) error
 	rtpPacketsReceived    *uint64
 	rtpPacketsSent        *uint64
@@ -68,21 +73,33 @@ func (sf *serverSessionFormat) close() {
 }
 
 func (sf *serverSessionFormat) remoteSSRC() (uint32, bool) {
-	if sf.rtpReceiver != nil {
-		stats := sf.rtpReceiver.Stats()
-		if stats != nil {
-			return stats.RemoteSSRC, true
-		}
-	}
-	return 0, false
+	sf.remoteSSRCMutex.RLock()
+	defer sf.remoteSSRCMutex.RUnlock()
+	return sf.remoteSSRCValue, sf.remoteSSRCFilled
 }
 
-func (sf *serverSessionFormat) readPacketRTP(pkt *rtp.Packet, now time.Time) {
-	pkts, lost, err := sf.rtpReceiver.ProcessPacket(pkt, now, sf.format.PTSEqualsDTS(pkt))
+func (sf *serverSessionFormat) readPacketRTP(payload []byte, header *rtp.Header, now time.Time) bool {
+	if !sf.remoteSSRCFilled {
+		sf.remoteSSRCMutex.Lock()
+		sf.remoteSSRCFilled = true
+		sf.remoteSSRCValue = header.SSRC
+		sf.remoteSSRCMutex.Unlock()
+
+		// a wrong SSRC is an issue only when encryption is enabled, since it spams srtp.Context.DecryptRTP.
+	} else if sf.sm.srtpInCtx != nil &&
+		header.SSRC != sf.remoteSSRCValue {
+		sf.sm.onPacketRTPDecodeError(fmt.Errorf("received packet with wrong SSRC %d, expected %d",
+			header.SSRC, sf.remoteSSRCValue))
+		return false
+	}
+
+	pkt, err := sf.sm.decodeRTP(payload, header)
 	if err != nil {
 		sf.sm.onPacketRTPDecodeError(err)
-		return
+		return false
 	}
+
+	pkts, lost := sf.rtpReceiver.ProcessPacket2(pkt, now, sf.format.PTSEqualsDTS(pkt))
 
 	if lost != 0 {
 		atomic.AddUint64(sf.rtpPacketsLost, lost)
@@ -109,6 +126,8 @@ func (sf *serverSessionFormat) readPacketRTP(pkt *rtp.Packet, now time.Time) {
 	for _, pkt := range pkts {
 		sf.onPacketRTP(pkt)
 	}
+
+	return true
 }
 
 func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {

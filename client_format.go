@@ -1,6 +1,8 @@
 package gortsplib
 
 import (
+	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -19,6 +21,9 @@ type clientFormat struct {
 	localSSRC   uint32
 	onPacketRTP OnPacketRTPFunc
 
+	remoteSSRCMutex       sync.RWMutex          // play
+	remoteSSRCFilled      bool                  // play
+	remoteSSRCValue       uint32                // play
 	rtpReceiver           *rtpreceiver.Receiver // play
 	rtpSender             *rtpsender.Sender     // record or back channel
 	writePacketRTPInQueue func([]byte) error
@@ -82,23 +87,33 @@ func (cf *clientFormat) close() {
 }
 
 func (cf *clientFormat) remoteSSRC() (uint32, bool) {
-	if cf.rtpReceiver != nil {
-		stats := cf.rtpReceiver.Stats()
-		if stats != nil {
-			return stats.RemoteSSRC, true
-		}
-	}
-	return 0, false
+	cf.remoteSSRCMutex.RLock()
+	defer cf.remoteSSRCMutex.RUnlock()
+	return cf.remoteSSRCValue, cf.remoteSSRCFilled
 }
 
-func (cf *clientFormat) readPacketRTP(pkt *rtp.Packet) {
-	now := cf.cm.c.timeNow()
+func (cf *clientFormat) readPacketRTP(payload []byte, header *rtp.Header, now time.Time) bool {
+	if !cf.remoteSSRCFilled {
+		cf.remoteSSRCMutex.Lock()
+		cf.remoteSSRCFilled = true
+		cf.remoteSSRCValue = header.SSRC
+		cf.remoteSSRCMutex.Unlock()
 
-	pkts, lost, err := cf.rtpReceiver.ProcessPacket(pkt, now, cf.format.PTSEqualsDTS(pkt))
+		// a wrong SSRC is an issue only when encryption is enabled, since it spams srtp.Context.DecryptRTP.
+	} else if cf.cm.srtpInCtx != nil &&
+		header.SSRC != cf.remoteSSRCValue {
+		cf.cm.onPacketRTPDecodeError(fmt.Errorf("received packet with wrong SSRC %d, expected %d",
+			header.SSRC, cf.remoteSSRCValue))
+		return false
+	}
+
+	pkt, err := cf.cm.decodeRTP(payload, header)
 	if err != nil {
 		cf.cm.onPacketRTPDecodeError(err)
-		return
+		return false
 	}
+
+	pkts, lost := cf.rtpReceiver.ProcessPacket2(pkt, now, cf.format.PTSEqualsDTS(pkt))
 
 	if lost != 0 {
 		atomic.AddUint64(cf.rtpPacketsLost, lost)
@@ -110,6 +125,8 @@ func (cf *clientFormat) readPacketRTP(pkt *rtp.Packet) {
 	for _, pkt := range pkts {
 		cf.onPacketRTP(pkt)
 	}
+
+	return true
 }
 
 func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
