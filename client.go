@@ -1043,8 +1043,7 @@ func (c *Client) startTransportRoutines() {
 
 		default: // TCP
 			c.checkTimeoutTimer = time.NewTimer(c.checkTimeoutPeriod)
-			v := c.timeNow().Unix()
-			c.tcpLastFrameTime = &v
+			c.tcpLastFrameTime = ptrOf(c.timeNow().Unix())
 		}
 	}
 
@@ -1609,8 +1608,7 @@ func (c *Client) doSetup(
 
 	// when playing, omit mode, since it causes errors with some servers.
 	if c.state == clientStatePreRecord {
-		v := headers.TransportModeRecord
-		th.Mode = &v
+		th.Mode = ptrOf(headers.TransportModeRecord)
 	}
 
 	var protocol Protocol
@@ -1708,17 +1706,14 @@ func (c *Client) doSetup(
 				return nil, err
 			}
 
-			v1 := headers.TransportDeliveryUnicast
-			th.Delivery = &v1
+			th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 			th.ClientPorts = &[2]int{udpRTPListener.port(), udpRTCPListener.port()}
 		} else {
-			v1 := headers.TransportDeliveryMulticast
-			th.Delivery = &v1
+			th.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 		}
 
 	case ProtocolTCP:
-		v1 := headers.TransportDeliveryUnicast
-		th.Delivery = &v1
+		th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 		th.Protocol = headers.TransportProtocolTCP
 		ch := c.findFreeChannelPair()
 		th.InterleavedIDs = &[2]int{ch, ch + 1}

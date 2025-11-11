@@ -432,8 +432,7 @@ func TestClientPlay(t *testing.T) {
 
 					switch ca.transport {
 					case "udp":
-						v := headers.TransportDeliveryUnicast
-						th.Delivery = &v
+						th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 						th.Protocol = headers.TransportProtocolUDP
 						th.ClientPorts = inTH.ClientPorts
 						clientPorts[i] = inTH.ClientPorts
@@ -450,8 +449,7 @@ func TestClientPlay(t *testing.T) {
 						defer l2s[i].Close()
 
 					case "multicast":
-						v := headers.TransportDeliveryMulticast
-						th.Delivery = &v
+						th.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 						th.Protocol = headers.TransportProtocolUDP
 						th.Destination2 = ptrOf("224.1.0.1")
 						th.Ports = &[2]int{25000 + i*2, 25001 + i*2}
@@ -486,8 +484,7 @@ func TestClientPlay(t *testing.T) {
 						}
 
 					case "tcp":
-						v := headers.TransportDeliveryUnicast
-						th.Delivery = &v
+						th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 						th.Protocol = headers.TransportProtocolTCP
 						th.InterleavedIDs = &[2]int{0 + i*2, 1 + i*2}
 					}
@@ -824,8 +821,7 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 					Profile: headers.TransportProfileSAVP,
 				}
 
-				v := headers.TransportDeliveryUnicast
-				th.Delivery = &v
+				th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 				th.Protocol = headers.TransportProtocolUDP
 				th.ClientPorts = inTH.ClientPorts
 				th.ServerPorts = &[2]int{34556, 34557}
@@ -3727,8 +3723,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 					require.NoError(t, err2)
 
 					var th headers.Transport
-					v := headers.TransportDeliveryUnicast
-					th.Delivery = &v
+					th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 
 					switch transport {
 					case "udp":

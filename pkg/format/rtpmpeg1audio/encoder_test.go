@@ -7,10 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ptrOf[T any](v T) *T {
-	return &v
-}
-
 var cases = []struct {
 	name   string
 	frames [][]byte

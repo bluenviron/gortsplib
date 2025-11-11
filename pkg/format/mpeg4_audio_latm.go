@@ -71,8 +71,7 @@ func (f *MPEG4AudioLATM) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid bitrate: %v", val)
 			}
 
-			v := int(tmp)
-			f.Bitrate = &v
+			f.Bitrate = ptrOf(int(tmp))
 
 		case "cpresent":
 			f.CPresent = (val == "1")
@@ -90,8 +89,7 @@ func (f *MPEG4AudioLATM) unmarshal(ctx *unmarshalContext) error {
 			}
 
 		case "sbr-enabled":
-			v := (val == "1")
-			f.SBREnabled = &v
+			f.SBREnabled = ptrOf((val == "1"))
 		}
 	}
 

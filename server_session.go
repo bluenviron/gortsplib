@@ -1273,17 +1273,13 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 						Port: udpRTCPReadPort,
 					}
 
-					de := headers.TransportDeliveryUnicast
-					th.Delivery = &de
+					th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 					th.ClientPorts = inTH.ClientPorts
 					th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
 				} else {
-					de := headers.TransportDeliveryMulticast
-					th.Delivery = &de
-					v := uint(127)
-					th.TTL = &v
-					dest := stream.medias[medi].multicastWriter.ip().String()
-					th.Destination2 = &dest
+					th.Delivery = ptrOf(headers.TransportDeliveryMulticast)
+					th.TTL = ptrOf(uint(127))
+					th.Destination2 = ptrOf(stream.medias[medi].multicastWriter.ip().String())
 					th.Ports = &[2]int{ss.s.MulticastRTPPort, ss.s.MulticastRTCPPort}
 				}
 
@@ -1296,8 +1292,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					tcpChannel = ss.findFreeChannelPair()
 				}
 
-				de := headers.TransportDeliveryUnicast
-				th.Delivery = &de
+				th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 				th.InterleavedIDs = &[2]int{tcpChannel, tcpChannel + 1}
 			}
 
@@ -1405,8 +1400,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				ss.state = ServerSessionStatePlay
 				ss.propsMutex.Unlock()
 
-				v := ss.s.timeNow().Unix()
-				ss.udpLastPacketTime = &v
+				ss.udpLastPacketTime = ptrOf(ss.s.timeNow().Unix())
 
 				ss.timeDecoder = &rtptime.GlobalDecoder{}
 				ss.timeDecoder.Initialize()
@@ -1500,8 +1494,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		if res.StatusCode == base.StatusOK {
 			ss.state = ServerSessionStateRecord
 
-			v := ss.s.timeNow().Unix()
-			ss.udpLastPacketTime = &v
+			ss.udpLastPacketTime = ptrOf(ss.s.timeNow().Unix())
 
 			ss.timeDecoder = &rtptime.GlobalDecoder{}
 			ss.timeDecoder.Initialize()

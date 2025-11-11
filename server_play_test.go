@@ -803,19 +803,16 @@ func TestServerPlay(t *testing.T) {
 
 			switch ca.transport {
 			case "udp":
-				v := headers.TransportDeliveryUnicast
-				inTH.Delivery = &v
+				inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 				inTH.Protocol = headers.TransportProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 
 			case "multicast":
-				v := headers.TransportDeliveryMulticast
-				inTH.Delivery = &v
+				inTH.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 				inTH.Protocol = headers.TransportProtocolUDP
 
 			case "tcp":
-				v := headers.TransportDeliveryUnicast
-				inTH.Delivery = &v
+				inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 				inTH.Protocol = headers.TransportProtocolTCP
 				inTH.InterleavedIDs = &[2]int{5, 6} // odd value
 			}
@@ -1185,19 +1182,16 @@ func TestServerPlaySocketError(t *testing.T) {
 
 				switch transport {
 				case "udp":
-					v := headers.TransportDeliveryUnicast
-					inTH.Delivery = &v
+					inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 					inTH.Protocol = headers.TransportProtocolUDP
 					inTH.ClientPorts = &[2]int{35466, 35467}
 
 				case "multicast":
-					v := headers.TransportDeliveryMulticast
-					inTH.Delivery = &v
+					inTH.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 					inTH.Protocol = headers.TransportProtocolUDP
 
 				default:
-					v := headers.TransportDeliveryUnicast
-					inTH.Delivery = &v
+					inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 					inTH.Protocol = headers.TransportProtocolTCP
 					inTH.InterleavedIDs = &[2]int{5, 6} // odd value
 				}
@@ -1793,20 +1787,17 @@ func TestServerPlayPause(t *testing.T) {
 
 			switch protocol {
 			case "tcp":
-				v := headers.TransportDeliveryUnicast
-				inTH.Delivery = &v
+				inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 				inTH.Protocol = headers.TransportProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
 
 			case "udp":
-				v := headers.TransportDeliveryUnicast
-				inTH.Delivery = &v
+				inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 				inTH.Protocol = headers.TransportProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 
 			case "multicast":
-				v := headers.TransportDeliveryMulticast
-				inTH.Delivery = &v
+				inTH.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 				inTH.Protocol = headers.TransportProtocolUDP
 			}
 
@@ -1919,20 +1910,17 @@ func TestServerPlayPlayPausePausePlay(t *testing.T) {
 
 				switch protocol {
 				case "tcp":
-					v := headers.TransportDeliveryUnicast
-					inTH.Delivery = &v
+					inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 					inTH.Protocol = headers.TransportProtocolTCP
 					inTH.InterleavedIDs = &[2]int{0, 1}
 
 				case "udp":
-					v := headers.TransportDeliveryUnicast
-					inTH.Delivery = &v
+					inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 					inTH.Protocol = headers.TransportProtocolUDP
 					inTH.ClientPorts = &[2]int{35466, 35467}
 
 				case "multicast":
-					v := headers.TransportDeliveryMulticast
-					inTH.Delivery = &v
+					inTH.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 					inTH.Protocol = headers.TransportProtocolUDP
 				}
 
@@ -2024,14 +2012,12 @@ func TestServerPlayTimeout(t *testing.T) {
 
 			switch transport {
 			case "udp":
-				v := headers.TransportDeliveryUnicast
-				inTH.Delivery = &v
+				inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 				inTH.Protocol = headers.TransportProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
 
 			case "multicast":
-				v := headers.TransportDeliveryMulticast
-				inTH.Delivery = &v
+				inTH.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 				inTH.Protocol = headers.TransportProtocolUDP
 			}
 
@@ -2622,12 +2608,10 @@ func TestServerPlayStreamStats(t *testing.T) {
 		}
 
 		if transport == "multicast" {
-			v := headers.TransportDeliveryMulticast
-			inTH.Delivery = &v
+			inTH.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 			inTH.Protocol = headers.TransportProtocolUDP
 		} else {
-			v := headers.TransportDeliveryUnicast
-			inTH.Delivery = &v
+			inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 			inTH.Protocol = headers.TransportProtocolTCP
 			inTH.InterleavedIDs = &[2]int{0, 1}
 		}
@@ -2744,13 +2728,11 @@ func TestServerPlayBackChannel(t *testing.T) {
 				}
 
 				if transport == "udp" {
-					v := headers.TransportDeliveryUnicast
-					inTH.Delivery = &v
+					inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 					inTH.Protocol = headers.TransportProtocolUDP
 					inTH.ClientPorts = &[2]int{35466 + i*2, 35467 + i*2}
 				} else {
-					v := headers.TransportDeliveryUnicast
-					inTH.Delivery = &v
+					inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 					inTH.Protocol = headers.TransportProtocolTCP
 					inTH.InterleavedIDs = &[2]int{0 + i*2, 1 + i*2}
 				}

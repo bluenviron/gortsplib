@@ -8,6 +8,10 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
+func ptrOf[T any](v T) *T {
+	return &v
+}
+
 // RTPInfoEntry is an entry of a RTP-Info header.
 type RTPInfoEntry struct {
 	URL            string
@@ -53,8 +57,7 @@ func (h *RTPInfo) Unmarshal(v base.HeaderValue) error {
 				if err != nil {
 					return err
 				}
-				vi2 := uint16(vi)
-				e.SequenceNumber = &vi2
+				e.SequenceNumber = ptrOf(uint16(vi))
 
 			case "rtptime":
 				var vi uint64
@@ -62,8 +65,7 @@ func (h *RTPInfo) Unmarshal(v base.HeaderValue) error {
 				if err != nil {
 					return err
 				}
-				vi2 := uint32(vi)
-				e.Timestamp = &vi2
+				e.Timestamp = ptrOf(uint32(vi))
 
 			default:
 				// ignore non-standard keys
