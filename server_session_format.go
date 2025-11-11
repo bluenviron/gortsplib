@@ -78,7 +78,7 @@ func (sf *serverSessionFormat) remoteSSRC() (uint32, bool) {
 	return sf.remoteSSRCValue, sf.remoteSSRCFilled
 }
 
-func (sf *serverSessionFormat) readPacketRTP(payload []byte, header *rtp.Header, now time.Time) bool {
+func (sf *serverSessionFormat) readPacketRTP(payload []byte, header *rtp.Header, headerSize int, now time.Time) bool {
 	if !sf.remoteSSRCFilled {
 		sf.remoteSSRCMutex.Lock()
 		sf.remoteSSRCFilled = true
@@ -93,7 +93,7 @@ func (sf *serverSessionFormat) readPacketRTP(payload []byte, header *rtp.Header,
 		return false
 	}
 
-	pkt, err := sf.sm.decodeRTP(payload, header)
+	pkt, err := sf.sm.decodeRTP(payload, header, headerSize)
 	if err != nil {
 		sf.sm.onPacketRTPDecodeError(err)
 		return false

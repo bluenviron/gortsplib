@@ -92,7 +92,7 @@ func (cf *clientFormat) remoteSSRC() (uint32, bool) {
 	return cf.remoteSSRCValue, cf.remoteSSRCFilled
 }
 
-func (cf *clientFormat) readPacketRTP(payload []byte, header *rtp.Header, now time.Time) bool {
+func (cf *clientFormat) readPacketRTP(payload []byte, header *rtp.Header, headerSize int, now time.Time) bool {
 	if !cf.remoteSSRCFilled {
 		cf.remoteSSRCMutex.Lock()
 		cf.remoteSSRCFilled = true
@@ -107,7 +107,7 @@ func (cf *clientFormat) readPacketRTP(payload []byte, header *rtp.Header, now ti
 		return false
 	}
 
-	pkt, err := cf.cm.decodeRTP(payload, header)
+	pkt, err := cf.cm.decodeRTP(payload, header, headerSize)
 	if err != nil {
 		cf.cm.onPacketRTPDecodeError(err)
 		return false
