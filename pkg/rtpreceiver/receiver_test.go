@@ -56,7 +56,7 @@ func TestErrorDifferentSSRC(t *testing.T) {
 	}
 	ts = time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
 	_, _, err = rr.ProcessPacket(&rtpPkt, ts, true)
-	require.EqualError(t, err, "received packet with wrong SSRC 754623214, expected 1434523")
+	require.NoError(t, err)
 }
 
 func TestStatsBeforeData(t *testing.T) {

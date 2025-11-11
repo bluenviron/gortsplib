@@ -3193,13 +3193,11 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 		{"udp", "rtcp invalid"},
 		{"udp", "rtp packets lost"},
 		{"udp", "rtp unknown payload type"},
-		{"udp", "wrong ssrc"},
 		{"udp", "rtcp too big"},
 		{"udp", "rtp too big"},
 		{"tcp", "rtp invalid"},
 		{"tcp", "rtcp invalid"},
 		{"tcp", "rtp unknown payload type"},
-		{"tcp", "wrong ssrc"},
 		{"tcp", "rtcp too big"},
 	} {
 		t.Run(ca.proto+" "+ca.name, func(t *testing.T) {
@@ -3378,23 +3376,6 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 						},
 					}))
 
-				case ca.name == "wrong ssrc":
-					writeRTP(mustMarshalPacketRTP(&rtp.Packet{
-						Header: rtp.Header{
-							PayloadType:    97,
-							SequenceNumber: 1,
-							SSRC:           123,
-						},
-					}))
-
-					writeRTP(mustMarshalPacketRTP(&rtp.Packet{
-						Header: rtp.Header{
-							PayloadType:    97,
-							SequenceNumber: 2,
-							SSRC:           456,
-						},
-					}))
-
 				case ca.proto == "udp" && ca.name == "rtp too big":
 					_, err2 = l1.WriteTo(bytes.Repeat([]byte{0x01, 0x02}, 2000/2), &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
@@ -3436,9 +3417,6 @@ func TestClientPlayDecodeErrors(t *testing.T) {
 
 					case ca.name == "rtp unknown payload type":
 						require.EqualError(t, err, "received RTP packet with unknown payload type: 111")
-
-					case ca.name == "wrong ssrc":
-						require.EqualError(t, err, "received packet with wrong SSRC 456, expected 123")
 
 					case ca.proto == "udp" && ca.name == "rtcp too big":
 						require.EqualError(t, err, "RTCP packet is too big to be read with UDP")
@@ -3978,4 +3956,281 @@ func TestClientPlaySetupErrorBackChannel(t *testing.T) {
 		Control:       "testcontrol",
 	}, 0, 0)
 	require.EqualError(t, err, "we are setupping a back channel but we did not request back channels")
+}
+
+func TestClientPlayDifferentSSRCs(t *testing.T) {
+	for _, ca := range []string{
+		"unsecure",
+		"secure",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			cert, err := tls.X509KeyPair(serverCert, serverKey)
+			require.NoError(t, err)
+
+			l, err := tls.Listen("tcp", "127.0.0.1:8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+			require.NoError(t, err)
+			defer l.Close()
+
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+
+			go func() {
+				defer close(serverDone)
+
+				nconn, err2 := l.Accept()
+				require.NoError(t, err2)
+				defer nconn.Close()
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Options, req.Method)
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+							string(base.Setup),
+							string(base.Play),
+						}, ", ")},
+					},
+				})
+				require.NoError(t, err2)
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Describe, req.Method)
+
+				forma := &format.Generic{
+					PayloadTyp: 96,
+					RTPMa:      "private/90000",
+				}
+				err2 = forma.Init()
+				require.NoError(t, err2)
+
+				var profile headers.TransportProfile
+				if ca == "secure" {
+					profile = headers.TransportProfileSAVP
+				} else {
+					profile = headers.TransportProfileAVP
+				}
+
+				medias := []*description.Media{{
+					Type:    "application",
+					Formats: []format.Format{forma},
+					Profile: profile,
+				}}
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Content-Type": base.HeaderValue{"application/sdp"},
+						"Content-Base": base.HeaderValue{"rtsps://127.0.0.1:8554/test/stream/"},
+					},
+					Body: mediasToSDP(medias),
+				})
+				require.NoError(t, err2)
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Setup, req.Method)
+
+				var inTH headers.Transport
+				err2 = inTH.Unmarshal(req.Header["Transport"])
+				require.NoError(t, err2)
+
+				require.Equal(t, (*headers.TransportMode)(nil), inTH.Mode)
+
+				h := base.Header{}
+
+				th := headers.Transport{
+					Profile:        inTH.Profile,
+					Delivery:       ptrOf(headers.TransportDeliveryUnicast),
+					Protocol:       headers.TransportProtocolTCP,
+					InterleavedIDs: &[2]int{0, 1},
+				}
+
+				var srtpOutCtx *wrappedSRTPContext
+
+				if ca == "secure" {
+					outKey := make([]byte, srtpKeyLength)
+					_, err2 = rand.Read(outKey)
+					require.NoError(t, err2)
+
+					srtpOutCtx = &wrappedSRTPContext{
+						key:       outKey,
+						ssrcs:     []uint32{0x38F27A2F},
+						startROCs: []uint32{10},
+					}
+					err2 = srtpOutCtx.initialize()
+					require.NoError(t, err2)
+
+					var mikeyMsg *mikey.Message
+					mikeyMsg, err = mikeyGenerate(srtpOutCtx)
+					require.NoError(t, err)
+
+					var enc base.HeaderValue
+					enc, err = headers.KeyMgmt{
+						URL:          req.URL.String(),
+						MikeyMessage: mikeyMsg,
+					}.Marshal()
+					require.NoError(t, err)
+
+					h["KeyMgmt"] = enc
+				}
+
+				h["Transport"] = th.Marshal()
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header:     h,
+				})
+				require.NoError(t, err2)
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Play, req.Method)
+				require.Equal(t, base.HeaderValue{"npt=0-"}, req.Header["Range"])
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err2)
+
+				for i := range 2 { //nolint:dupl
+					var buf []byte
+					if i == 0 {
+						buf = mustMarshalPacketRTP(&rtp.Packet{
+							Header: rtp.Header{
+								Version:        2,
+								PayloadType:    96,
+								CSRC:           []uint32{},
+								SSRC:           4326234,
+								SequenceNumber: 1,
+							},
+							Payload: []byte{1, 2, 3, 4},
+						})
+					} else {
+						buf = mustMarshalPacketRTP(&rtp.Packet{
+							Header: rtp.Header{
+								Version:        2,
+								PayloadType:    96,
+								CSRC:           []uint32{},
+								SSRC:           1235762,
+								SequenceNumber: 2,
+							},
+							Payload: []byte{5, 6, 7, 8},
+						})
+					}
+
+					if ca == "secure" {
+						encr := make([]byte, 2000)
+						encr, err2 = srtpOutCtx.encryptRTP(encr, buf, nil)
+						require.NoError(t, err2)
+						buf = encr
+					}
+
+					err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+						Channel: 0,
+						Payload: buf,
+					}, make([]byte, 1024))
+					require.NoError(t, err2)
+				}
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Teardown, req.Method)
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+				})
+				require.NoError(t, err2)
+			}()
+
+			u, err := base.ParseURL("rtsps://127.0.0.1:8554/test/stream")
+			require.NoError(t, err)
+
+			c := Client{
+				Scheme:    u.Scheme,
+				Host:      u.Host,
+				TLSConfig: &tls.Config{InsecureSkipVerify: true},
+				Protocol:  ptrOf(ProtocolTCP),
+			}
+
+			err = c.Start()
+			require.NoError(t, err)
+			defer c.Close()
+
+			sd, _, err := c.Describe(u)
+			require.NoError(t, err)
+
+			// test that properties can be accessed in parallel
+			go func() {
+				c.Stats()
+				c.Transport()
+			}()
+
+			err = c.SetupAll(sd.BaseURL, sd.Medias)
+			require.NoError(t, err)
+
+			n := 0
+			done := make(chan struct{})
+
+			c.OnDecodeError = func(err error) {
+				n++
+				if ca == "unsecure" {
+					t.Errorf("should not happen")
+				} else {
+					require.Equal(t, 2, n)
+					require.EqualError(t, err, "received packet with wrong SSRC 1235762, expected 4326234")
+					close(done)
+				}
+			}
+
+			c.OnPacketRTPAny(func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
+				n++
+
+				switch n {
+				case 1:
+					require.Equal(t, &rtp.Packet{
+						Header: rtp.Header{
+							Version:        2,
+							PayloadType:    96,
+							CSRC:           []uint32{},
+							SSRC:           4326234,
+							SequenceNumber: 1,
+						},
+						Payload: []byte{1, 2, 3, 4},
+					}, pkt)
+
+				case 2:
+					if ca == "secure" {
+						t.Errorf("should not happen")
+					}
+
+					require.Equal(t, &rtp.Packet{
+						Header: rtp.Header{
+							Version:        2,
+							PayloadType:    96,
+							CSRC:           []uint32{},
+							SSRC:           1235762,
+							SequenceNumber: 2,
+						},
+						Payload: []byte{5, 6, 7, 8},
+					}, pkt)
+
+					close(done)
+
+				default:
+					t.Errorf("should not happen")
+				}
+			})
+
+			_, err = c.Play(nil)
+			require.NoError(t, err)
+
+			<-done
+		})
+	}
 }
