@@ -53,7 +53,7 @@ func TestDecodeGenericADTS(t *testing.T) {
 	err := d.Init()
 	require.NoError(t, err)
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		var aus [][]byte
 		aus, err = d.Decode(&rtp.Packet{
 			Header: rtp.Header{

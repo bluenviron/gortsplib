@@ -164,7 +164,7 @@ func TestDecodeAnnexB(t *testing.T) {
 		{0x01, 0x02, 0x03, 0x04},
 	}, nalus)
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		nalus, err = d.Decode(&rtp.Packet{
 			Header: rtp.Header{
 				Version:        2,

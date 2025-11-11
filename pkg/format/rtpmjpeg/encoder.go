@@ -3,7 +3,7 @@ package rtpmjpeg
 import (
 	"crypto/rand"
 	"fmt"
-	"sort"
+	"slices"
 
 	"github.com/pion/rtp"
 
@@ -235,9 +235,7 @@ outer:
 				ids[i] = id
 				i++
 			}
-			sort.Slice(ids, func(i, j int) bool {
-				return ids[i] < ids[j]
-			})
+			slices.Sort(ids)
 
 			// add tables sorted by ID
 			for _, id := range ids {
