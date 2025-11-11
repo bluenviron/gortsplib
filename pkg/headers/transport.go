@@ -183,12 +183,10 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 			profileFound = true
 
 		case "unicast":
-			v := TransportDeliveryUnicast
-			h.Delivery = &v
+			h.Delivery = ptrOf(TransportDeliveryUnicast)
 
 		case "multicast":
-			v := TransportDeliveryMulticast
-			h.Delivery = &v
+			h.Delivery = ptrOf(TransportDeliveryMulticast)
 
 		case "source":
 			if v != "" {
@@ -212,8 +210,7 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 			if err2 != nil {
 				return err2
 			}
-			vu := uint(tmp)
-			h.TTL = &vu
+			h.TTL = ptrOf(uint(tmp))
 
 		case "port":
 			ports, err2 := parsePorts(v)
@@ -246,8 +243,7 @@ func (h *Transport) Unmarshal(v base.HeaderValue) error {
 			if tmp, err2 := hex.DecodeString(v); err2 == nil && len(tmp) <= 4 {
 				var ssrc [4]byte
 				copy(ssrc[4-len(tmp):], tmp)
-				v := uint32(ssrc[0])<<24 | uint32(ssrc[1])<<16 | uint32(ssrc[2])<<8 | uint32(ssrc[3])
-				h.SSRC = &v
+				h.SSRC = ptrOf(uint32(ssrc[0])<<24 | uint32(ssrc[1])<<16 | uint32(ssrc[2])<<8 | uint32(ssrc[3]))
 			}
 
 		case "mode":

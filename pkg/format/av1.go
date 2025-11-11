@@ -29,8 +29,7 @@ func (f *AV1) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid level-idx: %v", val)
 			}
 
-			v2 := int(n)
-			f.LevelIdx = &v2
+			f.LevelIdx = ptrOf(int(n))
 
 		case "profile":
 			n, err := strconv.ParseUint(val, 10, 31)
@@ -38,8 +37,7 @@ func (f *AV1) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid profile: %v", val)
 			}
 
-			v2 := int(n)
-			f.Profile = &v2
+			f.Profile = ptrOf(int(n))
 
 		case "tier":
 			n, err := strconv.ParseUint(val, 10, 31)
@@ -47,8 +45,7 @@ func (f *AV1) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid tier: %v", val)
 			}
 
-			v2 := int(n)
-			f.Tier = &v2
+			f.Tier = ptrOf(int(n))
 		}
 	}
 

@@ -8,10 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ptrOf[T any](v T) *T {
-	return &v
-}
-
 func mergeBytes(vals ...[]byte) []byte {
 	size := 0
 	for _, v := range vals {

@@ -8,10 +8,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
-func ptrOf[T any](v T) *T {
-	return &v
-}
-
 var casesAuthenticate = []struct {
 	name string
 	vin  base.HeaderValue
