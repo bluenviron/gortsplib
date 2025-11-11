@@ -36,7 +36,7 @@ func (h *headerQuantizationTable) unmarshal(byts []byte) (int, error) {
 	h.Tables = make([][]byte, tableCount)
 	n := 0
 
-	for i := 0; i < tableCount; i++ {
+	for i := range tableCount {
 		h.Tables[i] = byts[4+n : 4+64+n]
 		n += 64
 	}

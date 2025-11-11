@@ -95,7 +95,7 @@ func NewMultiConn(
 			var writeSock int
 			writeSock, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 			if err != nil {
-				for j := 0; j < i; j++ {
+				for j := range i {
 					syscall.Close(writeSocks[j]) //nolint:errcheck
 				}
 				syscall.Close(readSock) //nolint:errcheck
@@ -105,7 +105,7 @@ func NewMultiConn(
 			err = syscall.SetsockoptInt(writeSock, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
 			if err != nil {
 				syscall.Close(writeSock) //nolint:errcheck
-				for j := 0; j < i; j++ {
+				for j := range i {
 					syscall.Close(writeSocks[j]) //nolint:errcheck
 				}
 				syscall.Close(readSock) //nolint:errcheck
@@ -117,7 +117,7 @@ func NewMultiConn(
 			err = syscall.Bind(writeSock, &lsa)
 			if err != nil {
 				syscall.Close(writeSock) //nolint:errcheck
-				for j := 0; j < i; j++ {
+				for j := range i {
 					syscall.Close(writeSocks[j]) //nolint:errcheck
 				}
 				syscall.Close(readSock) //nolint:errcheck
@@ -130,7 +130,7 @@ func NewMultiConn(
 			err = syscall.SetsockoptIPMreqn(writeSock, syscall.IPPROTO_IP, syscall.IP_MULTICAST_IF, &mreqn)
 			if err != nil {
 				syscall.Close(writeSock) //nolint:errcheck
-				for j := 0; j < i; j++ {
+				for j := range i {
 					syscall.Close(writeSocks[j]) //nolint:errcheck
 				}
 				syscall.Close(readSock) //nolint:errcheck
@@ -140,7 +140,7 @@ func NewMultiConn(
 			err = syscall.SetsockoptInt(writeSock, syscall.IPPROTO_IP, syscall.IP_MULTICAST_TTL, multicastTTL)
 			if err != nil {
 				syscall.Close(writeSock) //nolint:errcheck
-				for j := 0; j < i; j++ {
+				for j := range i {
 					syscall.Close(writeSocks[j]) //nolint:errcheck
 				}
 				syscall.Close(readSock) //nolint:errcheck

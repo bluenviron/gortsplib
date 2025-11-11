@@ -3,6 +3,7 @@ package base
 import (
 	"bufio"
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -133,11 +134,11 @@ func FuzzHeaderUnmarshal(f *testing.F) {
 		f.Add(ca.enc)
 	}
 
-	str := ""
+	var str strings.Builder
 	for range 300 {
-		str += "Key: val\r\n"
+		str.WriteString("Key: val\r\n")
 	}
-	f.Add([]byte(str))
+	f.Add([]byte(str.String()))
 
 	f.Fuzz(func(_ *testing.T, b []byte) {
 		var h Header

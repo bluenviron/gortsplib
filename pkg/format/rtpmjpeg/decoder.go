@@ -125,7 +125,7 @@ func makeQuantizationTables(q uint8) [][]byte {
 
 	tables[0] = make([]byte, 64)
 
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		v := (lumaQuantizers[i]*scale + 50) / 100
 		if v > 255 {
 			v = 255
@@ -137,7 +137,7 @@ func makeQuantizationTables(q uint8) [][]byte {
 
 	tables[1] = make([]byte, 64)
 
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		v := (chromaQuantizers[i]*scale + 50) / 100
 		if v > 255 {
 			v = 255
