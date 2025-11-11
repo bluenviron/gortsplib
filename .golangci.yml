@@ -76,6 +76,7 @@ linters:
       disable:
       - reflecttypefor
       - stringsbuilder
+      - testingcontext
 
 formatters:
   enable:
