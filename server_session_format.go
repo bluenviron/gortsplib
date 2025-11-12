@@ -26,15 +26,11 @@ type serverSessionFormat struct {
 	remoteSSRCValue       uint32                // record
 	rtpReceiver           *rtpreceiver.Receiver // record
 	writePacketRTPInQueue func([]byte) error
-	rtpPacketsReceived    *uint64
 	rtpPacketsSent        *uint64
-	rtpPacketsLost        *uint64
 }
 
 func (sf *serverSessionFormat) initialize() {
-	sf.rtpPacketsReceived = new(uint64)
 	sf.rtpPacketsSent = new(uint64)
-	sf.rtpPacketsLost = new(uint64)
 
 	udp := sf.sm.ss.setuppedTransport.Protocol == ProtocolUDP ||
 		sf.sm.ss.setuppedTransport.Protocol == ProtocolUDPMulticast
@@ -102,8 +98,6 @@ func (sf *serverSessionFormat) readPacketRTP(payload []byte, header *rtp.Header,
 	pkts, lost := sf.rtpReceiver.ProcessPacket2(pkt, now, sf.format.PTSEqualsDTS(pkt))
 
 	if lost != 0 {
-		atomic.AddUint64(sf.rtpPacketsLost, lost)
-
 		if h, ok := sf.sm.ss.s.Handler.(ServerHandlerOnPacketsLost); ok {
 			h.OnPacketsLost(&ServerHandlerOnPacketsLostCtx{
 				Session: sf.sm.ss,
@@ -120,8 +114,6 @@ func (sf *serverSessionFormat) readPacketRTP(payload []byte, header *rtp.Header,
 				}())
 		}
 	}
-
-	atomic.AddUint64(sf.rtpPacketsReceived, uint64(len(pkts)))
 
 	for _, pkt := range pkts {
 		sf.onPacketRTP(pkt)
@@ -161,6 +153,9 @@ func (sf *serverSessionFormat) writePacketRTP(pkt *rtp.Packet) error {
 }
 
 func (sf *serverSessionFormat) writePacketRTPEncoded(payload []byte) error {
+	atomic.AddUint64(sf.sm.bytesSent, uint64(len(payload)))
+	atomic.AddUint64(sf.rtpPacketsSent, 1)
+
 	sf.sm.ss.writerMutex.RLock()
 	defer sf.sm.ss.writerMutex.RUnlock()
 
@@ -179,26 +174,12 @@ func (sf *serverSessionFormat) writePacketRTPEncoded(payload []byte) error {
 }
 
 func (sf *serverSessionFormat) writePacketRTPInQueueUDP(payload []byte) error {
-	err := sf.sm.ss.s.udpRTPListener.write(payload, sf.sm.udpRTPWriteAddr)
-	if err != nil {
-		return err
-	}
-
-	atomic.AddUint64(sf.sm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(sf.rtpPacketsSent, 1)
-	return nil
+	return sf.sm.ss.s.udpRTPListener.write(payload, sf.sm.udpRTPWriteAddr)
 }
 
 func (sf *serverSessionFormat) writePacketRTPInQueueTCP(payload []byte) error {
 	sf.sm.ss.tcpFrame.Channel = sf.sm.tcpChannel
 	sf.sm.ss.tcpFrame.Payload = payload
 	sf.sm.ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(sf.sm.ss.s.WriteTimeout))
-	err := sf.sm.ss.tcpConn.conn.WriteInterleavedFrame(sf.sm.ss.tcpFrame, sf.sm.ss.tcpBuffer)
-	if err != nil {
-		return err
-	}
-
-	atomic.AddUint64(sf.sm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(sf.rtpPacketsSent, 1)
-	return nil
+	return sf.sm.ss.tcpConn.conn.WriteInterleavedFrame(sf.sm.ss.tcpFrame, sf.sm.ss.tcpBuffer)
 }

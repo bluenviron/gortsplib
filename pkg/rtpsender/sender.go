@@ -11,7 +11,9 @@ import (
 )
 
 // Sender is a utility to send RTP packets.
-// It is in charge of generating RTCP sender reports.
+// It is in charge of
+// - counting sent packets
+// - generating RTCP sender reports.
 type Sender struct {
 	ClockRate       int
 	Period          time.Duration
@@ -28,6 +30,7 @@ type Sender struct {
 	localSSRC          uint32
 	lastSequenceNumber uint16
 	packetCount        uint32
+	packetCount2       uint64
 	octetCount         uint32
 
 	terminate chan struct{}
@@ -109,6 +112,7 @@ func (rs *Sender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS boo
 	rs.lastSequenceNumber = pkt.SequenceNumber
 
 	rs.packetCount++
+	rs.packetCount2++
 	rs.octetCount += uint32(len(pkt.Payload))
 }
 
@@ -117,6 +121,7 @@ type Stats struct {
 	LastSequenceNumber uint16
 	LastRTP            uint32
 	LastNTP            time.Time
+	TotalSent          uint64
 }
 
 // Stats returns statistics.
@@ -132,5 +137,6 @@ func (rs *Sender) Stats() *Stats {
 		LastSequenceNumber: rs.lastSequenceNumber,
 		LastRTP:            rs.lastTimeRTP,
 		LastNTP:            rs.lastTimeNTP,
+		TotalSent:          rs.packetCount2,
 	}
 }

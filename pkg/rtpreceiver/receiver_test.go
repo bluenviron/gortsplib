@@ -190,6 +190,7 @@ func TestStandard(t *testing.T) {
 				LastRTP:            2947921603,
 				LastSequenceNumber: 947,
 				LastNTP:            time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC).Local(),
+				TotalReceived:      2,
 			}, stats)
 		})
 	}
@@ -296,6 +297,7 @@ func TestZeroClockRate(t *testing.T) {
 		RemoteSSRC:         0xba9da416,
 		LastRTP:            2947921603,
 		LastSequenceNumber: 947,
+		TotalReceived:      2,
 	}, stats)
 }
 
@@ -510,7 +512,7 @@ func TestReliablePacketsLost(t *testing.T) {
 			Version:        2,
 			Marker:         true,
 			PayloadType:    96,
-			SequenceNumber: 0x0120,
+			SequenceNumber: 288,
 			Timestamp:      0xafb45733,
 			SSRC:           0xba9da416,
 		},
@@ -525,7 +527,7 @@ func TestReliablePacketsLost(t *testing.T) {
 			Version:        2,
 			Marker:         true,
 			PayloadType:    96,
-			SequenceNumber: 0x0122,
+			SequenceNumber: 290,
 			Timestamp:      0xafb45733,
 			SSRC:           0xba9da416,
 		},
@@ -536,6 +538,16 @@ func TestReliablePacketsLost(t *testing.T) {
 	require.NoError(t, err)
 
 	<-done
+
+	stats := rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0xba9da416,
+		LastRTP:            0xafb45733,
+		LastSequenceNumber: 290,
+		LastNTP:            time.Date(2020, 11, 21, 17, 44, 36, 869277776, time.UTC).Local(),
+		TotalReceived:      1,
+		TotalLost:          1,
+	}, stats)
 }
 
 func TestReliableOverflowAndPacketsLost(t *testing.T) {
@@ -613,6 +625,16 @@ func TestReliableOverflowAndPacketsLost(t *testing.T) {
 	require.NoError(t, err)
 
 	<-done
+
+	stats := rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0xba9da416,
+		LastRTP:            0xafb45733,
+		LastSequenceNumber: 2,
+		LastNTP:            time.Date(2020, 11, 21, 17, 44, 36, 869277776, time.UTC).Local(),
+		TotalReceived:      1,
+		TotalLost:          2,
+	}, stats)
 }
 
 func TestUnrealiableReorder(t *testing.T) {
@@ -785,6 +807,14 @@ func TestUnrealiableReorder(t *testing.T) {
 		require.Equal(t, entry.out, out)
 		require.Equal(t, uint64(0), missing)
 	}
+
+	stats := rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0,
+		LastRTP:            0,
+		LastSequenceNumber: 1,
+		TotalReceived:      7,
+	}, stats)
 }
 
 func TestUnrealiableBufferFull(t *testing.T) {
@@ -869,6 +899,15 @@ func TestUnrealiableBufferFull(t *testing.T) {
 	require.Equal(t, expected, out)
 
 	<-rtcpReceived
+
+	stats := rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0,
+		LastRTP:            0,
+		LastSequenceNumber: 1629,
+		TotalReceived:      31,
+		TotalLost:          34,
+	}, stats)
 }
 
 func TestUnrealiableReset(t *testing.T) {
@@ -931,6 +970,14 @@ func TestUnrealiableReset(t *testing.T) {
 	require.Equal(t, uint64(0), missing)
 
 	<-rtcpGenerated
+
+	stats := rr.Stats()
+	require.Equal(t, &Stats{
+		RemoteSSRC:         0,
+		LastRTP:            0,
+		LastSequenceNumber: 40064,
+		TotalReceived:      1,
+	}, stats)
 }
 
 func TestUnrealiableCustomBufferSize(t *testing.T) {
