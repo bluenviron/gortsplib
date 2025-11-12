@@ -494,10 +494,20 @@ func (ss *ServerSession) Stats() *SessionStats {
 						}()
 
 						ret[fo.format] = SessionStatsFormat{ //nolint:dupl
-							RTPPacketsReceived: atomic.LoadUint64(fo.rtpPacketsReceived),
-							RTPPacketsSent:     atomic.LoadUint64(fo.rtpPacketsSent),
-							RTPPacketsLost:     atomic.LoadUint64(fo.rtpPacketsLost),
-							LocalSSRC:          fo.localSSRC,
+							RTPPacketsReceived: func() uint64 {
+								if recvStats != nil {
+									return recvStats.TotalReceived
+								}
+								return 0
+							}(),
+							RTPPacketsSent: atomic.LoadUint64(fo.rtpPacketsSent),
+							RTPPacketsLost: func() uint64 {
+								if recvStats != nil {
+									return recvStats.TotalLost
+								}
+								return 0
+							}(),
+							LocalSSRC: fo.localSSRC,
 							RemoteSSRC: func() uint32 {
 								if v, ok := fo.remoteSSRC(); ok {
 									return v

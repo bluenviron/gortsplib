@@ -104,6 +104,7 @@ func TestSender(t *testing.T) {
 		LastSequenceNumber: 948,
 		LastRTP:            1287987768,
 		LastNTP:            time.Date(2008, time.May, 20, 22, 15, 21, 0, time.UTC),
+		TotalSent:          3,
 	}, stats)
 }
 
@@ -163,5 +164,6 @@ func TestSenderZeroClockRate(t *testing.T) {
 		LastSequenceNumber: 946,
 		LastRTP:            1287987768,
 		LastNTP:            time.Date(2008, time.May, 20, 22, 15, 20, 0, time.UTC),
+		TotalSent:          1,
 	}, stats)
 }

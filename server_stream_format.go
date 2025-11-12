@@ -78,55 +78,45 @@ func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) err
 		}
 	}
 
-	encrLen := uint64(len(encr))
-	plainLen := uint64(len(plain))
-
 	// send unicast
 	for r := range sf.sm.st.activeUnicastReaders {
 		if rsm, ok := r.setuppedMedias[sf.sm.media]; ok {
 			rsf := rsm.formats[pkt.PayloadType]
 
+			var buf []byte
 			if isSecure(r.setuppedTransport.Profile) {
-				err = rsf.writePacketRTPEncoded(encr)
-				if err != nil {
-					r.onStreamWriteError(err)
-					continue
-				}
-
-				atomic.AddUint64(sf.sm.bytesSent, encrLen)
+				buf = encr
 			} else {
-				err = rsf.writePacketRTPEncoded(plain)
-				if err != nil {
-					r.onStreamWriteError(err)
-					continue
-				}
-
-				atomic.AddUint64(sf.sm.bytesSent, plainLen)
+				buf = plain
 			}
 
+			atomic.AddUint64(sf.sm.bytesSent, uint64(len(buf)))
 			atomic.AddUint64(sf.rtpPacketsSent, 1)
+
+			err = rsf.writePacketRTPEncoded(buf)
+			if err != nil {
+				r.onStreamWriteError(err)
+				continue
+			}
 		}
 	}
 
 	// send multicast
 	if sf.sm.multicastWriter != nil {
+		var buf []byte
 		if sf.sm.srtpOutCtx != nil {
-			err = sf.sm.multicastWriter.writePacketRTP(encr)
-			if err != nil {
-				return err
-			}
-
-			atomic.AddUint64(sf.sm.bytesSent, encrLen)
+			buf = encr
 		} else {
-			err = sf.sm.multicastWriter.writePacketRTP(plain)
-			if err != nil {
-				return err
-			}
-
-			atomic.AddUint64(sf.sm.bytesSent, plainLen)
+			buf = plain
 		}
 
+		atomic.AddUint64(sf.sm.bytesSent, uint64(len(buf)))
 		atomic.AddUint64(sf.rtpPacketsSent, 1)
+
+		err = sf.sm.multicastWriter.writePacketRTP(buf)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

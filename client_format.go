@@ -27,16 +27,9 @@ type clientFormat struct {
 	rtpReceiver           *rtpreceiver.Receiver // play
 	rtpSender             *rtpsender.Sender     // record or back channel
 	writePacketRTPInQueue func([]byte) error
-	rtpPacketsReceived    *uint64
-	rtpPacketsSent        *uint64
-	rtpPacketsLost        *uint64
 }
 
 func (cf *clientFormat) initialize() {
-	cf.rtpPacketsReceived = new(uint64)
-	cf.rtpPacketsSent = new(uint64)
-	cf.rtpPacketsLost = new(uint64)
-
 	if cf.cm.udpRTPListener != nil {
 		cf.writePacketRTPInQueue = cf.writePacketRTPInQueueUDP
 	} else {
@@ -116,11 +109,8 @@ func (cf *clientFormat) readPacketRTP(payload []byte, header *rtp.Header, header
 	pkts, lost := cf.rtpReceiver.ProcessPacket2(pkt, now, cf.format.PTSEqualsDTS(pkt))
 
 	if lost != 0 {
-		atomic.AddUint64(cf.rtpPacketsLost, lost)
 		cf.cm.c.OnPacketsLost(lost)
 	}
-
-	atomic.AddUint64(cf.rtpPacketsReceived, uint64(len(pkts)))
 
 	for _, pkt := range pkts {
 		cf.onPacketRTP(pkt)
@@ -155,6 +145,8 @@ func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 		buf = encr
 	}
 
+	atomic.AddUint64(cf.cm.bytesSent, uint64(len(buf)))
+
 	cf.cm.c.writerMutex.RLock()
 	defer cf.cm.c.writerMutex.RUnlock()
 
@@ -173,26 +165,12 @@ func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 }
 
 func (cf *clientFormat) writePacketRTPInQueueUDP(payload []byte) error {
-	err := cf.cm.udpRTPListener.write(payload)
-	if err != nil {
-		return err
-	}
-
-	atomic.AddUint64(cf.cm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(cf.rtpPacketsSent, 1)
-	return nil
+	return cf.cm.udpRTPListener.write(payload)
 }
 
 func (cf *clientFormat) writePacketRTPInQueueTCP(payload []byte) error {
 	cf.cm.c.tcpFrame.Channel = cf.cm.tcpChannel
 	cf.cm.c.tcpFrame.Payload = payload
 	cf.cm.c.nconn.SetWriteDeadline(time.Now().Add(cf.cm.c.WriteTimeout))
-	err := cf.cm.c.conn.WriteInterleavedFrame(cf.cm.c.tcpFrame, cf.cm.c.tcpBuffer)
-	if err != nil {
-		return err
-	}
-
-	atomic.AddUint64(cf.cm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(cf.rtpPacketsSent, 1)
-	return nil
+	return cf.cm.c.conn.WriteInterleavedFrame(cf.cm.c.tcpFrame, cf.cm.c.tcpBuffer)
 }

@@ -14,7 +14,7 @@ import (
 // Receiver is a utility to receive RTP packets. It is in charge of:
 // - removing duplicate packets (when transport is unreliable)
 // - reordering packets (when transport is unrealiable)
-// - counting lost packets
+// - counting received and lost packets
 // - generating RTCP receiver reports
 type Receiver struct {
 	// Track clock rate.
@@ -24,10 +24,10 @@ type Receiver struct {
 	LocalSSRC uint32
 
 	// Whether the transport is unrealiable.
-	// This enables removing duplicate packets and reordering packets.
+	// When this is enabled, duplicate packets are removed, and packets are reordered.
 	UnrealiableTransport bool
 
-	// size of the buffer for reordering packets.
+	// Size of the buffer for reordering packets.
 	// It defaults to 64.
 	BufferSize int
 
@@ -56,9 +56,11 @@ type Receiver struct {
 	totalLost              uint32
 	totalLostSinceReport   uint32
 	totalSinceReport       uint32
+	totalReceived          uint64
+	totalLost2             uint64
 	jitter                 float64
 
-	// data from RTCP packets
+	// data from RTCP sender reports
 	firstSenderReportReceived  bool
 	lastSenderReportTimeNTP    uint64
 	lastSenderReportTimeRTP    uint32
@@ -212,6 +214,8 @@ func (rr *Receiver) ProcessPacket2(
 
 	rr.totalLost += uint32(lost)
 	rr.totalLostSinceReport += uint32(lost)
+	rr.totalLost2 += lost
+	rr.totalReceived += uint64(len(pkts))
 
 	// allow up to 24 bits
 	if rr.totalLost > 0xFFFFFF {
@@ -387,6 +391,8 @@ type Stats struct {
 	LastRTP            uint32
 	LastNTP            time.Time
 	Jitter             float64
+	TotalReceived      uint64
+	TotalLost          uint64
 }
 
 // Stats returns statistics.
@@ -406,5 +412,7 @@ func (rr *Receiver) Stats() *Stats {
 		LastRTP:            rr.lastTimeRTP,
 		LastNTP:            ntp,
 		Jitter:             rr.jitter,
+		TotalReceived:      rr.totalReceived,
+		TotalLost:          rr.totalLost2,
 	}
 }
