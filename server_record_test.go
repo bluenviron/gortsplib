@@ -1827,7 +1827,6 @@ func TestServerRecordDifferentSSRCs(t *testing.T) {
 										Header: rtp.Header{
 											Version:        2,
 											PayloadType:    96,
-											CSRC:           []uint32{},
 											SSRC:           4326234,
 											SequenceNumber: 1,
 										},
@@ -1843,7 +1842,6 @@ func TestServerRecordDifferentSSRCs(t *testing.T) {
 										Header: rtp.Header{
 											Version:        2,
 											PayloadType:    96,
-											CSRC:           []uint32{},
 											SSRC:           1235762,
 											SequenceNumber: 2,
 										},
@@ -1958,7 +1956,6 @@ func TestServerRecordDifferentSSRCs(t *testing.T) {
 						Header: rtp.Header{
 							Version:        2,
 							PayloadType:    96,
-							CSRC:           []uint32{},
 							SSRC:           4326234,
 							SequenceNumber: 1,
 						},
@@ -1969,7 +1966,6 @@ func TestServerRecordDifferentSSRCs(t *testing.T) {
 						Header: rtp.Header{
 							Version:        2,
 							PayloadType:    96,
-							CSRC:           []uint32{},
 							SSRC:           1235762,
 							SequenceNumber: 2,
 						},
