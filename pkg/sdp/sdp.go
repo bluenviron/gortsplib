@@ -191,7 +191,7 @@ func (s *SessionDescription) unmarshalPhone(value string) error {
 }
 
 func unmarshalConnectionInformation(value string) (*psdp.ConnectionInformation, error) {
-	if value == "IN" {
+	if strings.TrimSpace(value) == "IN" {
 		return nil, nil
 	}
 
