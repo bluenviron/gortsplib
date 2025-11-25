@@ -53,6 +53,17 @@ func checkBackChannelsEnabled(header base.Header) bool {
 	return false
 }
 
+func getTransportProfile(s *Server) headers.TransportProfile {
+	if s.TransportProfile != nil {
+		return *s.TransportProfile
+	}
+	// Default behavior: use SAVP when TLSConfig is set, otherwise AVP
+	if s.TLSConfig != nil {
+		return headers.TransportProfileSAVP
+	}
+	return headers.TransportProfileAVP
+}
+
 func prepareForDescribe(
 	d *description.Session,
 	multicast bool,
@@ -407,7 +418,7 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 					stream.Desc,
 					checkMulticastEnabled(sc.s.MulticastIPRange, query),
 					checkBackChannelsEnabled(req.Header),
-					sc.s.TLSConfig != nil,
+					getTransportProfile(sc.s) == headers.TransportProfileSAVP,
 					stream.medias,
 				)
 				if err != nil {

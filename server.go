@@ -12,6 +12,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v5/pkg/auth"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
@@ -98,6 +99,13 @@ type Server struct {
 	IdleTimeout time.Duration
 	// a TLS configuration to accept TLS (RTSPS) connections.
 	TLSConfig *tls.Config
+	// Transport profile to use in SDP session descriptions and transport negotiation.
+	// When nil (default), the profile is automatically determined:
+	//   - TransportProfileSAVP when TLSConfig is set (traditional RTSPS behavior with SRTP)
+	//   - TransportProfileAVP when TLSConfig is nil
+	// Set to headers.TransportProfileAVP to force AVP even with TLS (useful for TLS tunneling with TCP transport).
+	// Set to headers.TransportProfileSAVP to force SAVP regardless of TLS configuration.
+	TransportProfile *headers.TransportProfile
 	// Size of the UDP read buffer.
 	// This can be increased to reduce packet losses.
 	// It defaults to the operating system default value.

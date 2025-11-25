@@ -12,6 +12,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
@@ -67,7 +68,7 @@ func (st *ServerStream) Initialize() error {
 
 		var srtpOutCtx *wrappedSRTPContext
 
-		if st.Server.TLSConfig != nil {
+		if getTransportProfile(st.Server) == headers.TransportProfileSAVP {
 			srtpOutKey := make([]byte, srtpKeyLength)
 			_, err = rand.Read(srtpOutKey)
 			if err != nil {

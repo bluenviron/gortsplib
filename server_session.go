@@ -198,8 +198,8 @@ func isTransportSupported(sc *ServerConn, tr *headers.Transport) bool {
 			return false
 		}
 
-		// prevent using unsecure UDP with RTSPS
-		if !isSecure(tr.Profile) && sc.s.TLSConfig != nil {
+		// prevent using unsecure UDP with RTSPS (only when SAVP is required)
+		if !isSecure(tr.Profile) && getTransportProfile(sc.s) == headers.TransportProfileSAVP {
 			return false
 		}
 	}
@@ -1232,7 +1232,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 			var srtpOutCtx *wrappedSRTPContext
 
-			if ss.s.TLSConfig != nil {
+			if getTransportProfile(ss.s) == headers.TransportProfileSAVP {
 				if ss.state == ServerSessionStatePreRecord || medi.IsBackChannel {
 					srtpOutKey := make([]byte, srtpKeyLength)
 					_, err = rand.Read(srtpOutKey)
