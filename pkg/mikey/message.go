@@ -43,7 +43,9 @@ func (m *Message) Unmarshal(buf []byte) error {
 		m.Payloads = append(m.Payloads, payload)
 	}
 
-	if n < len(buf) {
+	// Some implementations (e.g., Milestone XProtect) add 1 byte of padding (0x00)
+	// at the end. Even though this is not part of RFC 3830, allow it.
+	if len(buf)-n > 1 && buf[n] != 0x00 {
 		return fmt.Errorf("detected %d unparsed bytes", len(buf)-n)
 	}
 
