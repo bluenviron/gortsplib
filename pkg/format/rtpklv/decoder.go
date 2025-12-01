@@ -52,10 +52,6 @@ func (d *Decoder) reset() {
 // parseKLVLength parses the KLV length field according to SMPTE ST 336.
 // Returns the length value and the number of bytes consumed for the length field.
 func parseKLVLength(data []byte) (uint, uint, error) {
-	if len(data) < 1 {
-		return 0, 0, fmt.Errorf("buffer is too short")
-	}
-
 	firstByte := data[0]
 
 	// Short form: if bit 7 is 0, the length is in the lower 7 bits

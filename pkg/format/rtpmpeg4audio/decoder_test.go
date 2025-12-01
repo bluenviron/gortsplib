@@ -2,6 +2,7 @@ package rtpmpeg4audio
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"testing"
 
@@ -9,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecodeGeneric(t *testing.T) {
-	for _, ca := range casesGeneric {
+func TestDecode(t *testing.T) {
+	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			d := &Decoder{
 				SizeLength:       ca.sizeLength,
@@ -44,7 +45,7 @@ func TestDecodeGeneric(t *testing.T) {
 	}
 }
 
-func TestDecodeGenericADTS(t *testing.T) {
+func TestDecodeADTS(t *testing.T) {
 	d := &Decoder{
 		SizeLength:       13,
 		IndexLength:      3,
@@ -73,7 +74,7 @@ func TestDecodeGenericADTS(t *testing.T) {
 	}
 }
 
-func TestDecodeGenericErrorMissingPacket(t *testing.T) {
+func TestDecodeErrorMissingPacket(t *testing.T) {
 	d := &Decoder{
 		SizeLength:       13,
 		IndexLength:      3,
@@ -113,38 +114,93 @@ func TestDecodeGenericErrorMissingPacket(t *testing.T) {
 	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
 }
 
-func FuzzDecoderGeneric(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
+func serializePackets(packets []*rtp.Packet) ([]byte, error) {
+	var buf []byte
+
+	for _, pkt := range packets {
+		buf2, err := pkt.Marshal()
+		if err != nil {
+			return nil, err
+		}
+
+		tmp := make([]byte, 4)
+		binary.LittleEndian.PutUint32(tmp, uint32(len(buf2)))
+		buf = append(buf, tmp...)
+		buf = append(buf, buf2...)
+	}
+
+	return buf, nil
+}
+
+func unserializePackets(data []byte) ([]*rtp.Packet, error) {
+	var packets []*rtp.Packet
+	buf := data
+
+	for {
+		if len(buf) < 4 {
+			return nil, errors.New("not enough bits")
+		}
+
+		size := binary.LittleEndian.Uint32(buf[:4])
+		buf = buf[4:]
+
+		if uint32(len(buf)) < size {
+			return nil, errors.New("not enough bits")
+		}
+
+		var pkt rtp.Packet
+		err := pkt.Unmarshal(buf[:size])
+		if err != nil {
+			return nil, err
+		}
+
+		packets = append(packets, &pkt)
+		buf = buf[size:]
+
+		if len(buf) == 0 {
+			break
+		}
+	}
+
+	return packets, nil
+}
+
+func FuzzDecoder(f *testing.F) {
+	for _, ca := range cases {
+		buf, err := serializePackets(ca.pkts)
+		if err != nil {
+			panic(err)
+		}
+		f.Add(buf)
+	}
+
+	f.Fuzz(func(t *testing.T, buf []byte) {
+		packets, err := unserializePackets(buf)
+		if err != nil {
+			t.Skip()
+			return
+		}
+
 		d := &Decoder{
 			SizeLength:       13,
 			IndexLength:      3,
 			IndexDeltaLength: 3,
 		}
-		err := d.Init()
+		err = d.Init()
 		require.NoError(t, err)
 
-		d.Decode(&rtp.Packet{ //nolint:errcheck
-			Header: rtp.Header{
-				Version:        2,
-				Marker:         am,
-				PayloadType:    96,
-				SequenceNumber: 17645,
-				Timestamp:      2289527317,
-				SSRC:           0x9dbb7812,
-			},
-			Payload: a,
-		})
+		for _, pkt := range packets {
+			if aus, err2 := d.Decode(pkt); err2 == nil {
+				if len(aus) == 0 {
+					t.Errorf("should not happen")
+				}
 
-		d.Decode(&rtp.Packet{ //nolint:errcheck
-			Header: rtp.Header{
-				Version:        2,
-				Marker:         bm,
-				PayloadType:    96,
-				SequenceNumber: 17646,
-				Timestamp:      2289527317,
-				SSRC:           0x9dbb7812,
-			},
-			Payload: b,
-		})
+				for _, au := range aus {
+					if len(au) == 0 {
+						t.Errorf("should not happen")
+					}
+				}
+			}
+		}
 	})
 }

@@ -190,14 +190,6 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 	}
 	byts = byts[n:]
 
-	if jh.Width > maxDimension {
-		return nil, fmt.Errorf("width of %d is not supported", jh.Width)
-	}
-
-	if jh.Height > maxDimension {
-		return nil, fmt.Errorf("height of %d is not supported", jh.Height)
-	}
-
 	if jh.FragmentOffset == 0 {
 		d.resetFragments()
 		d.firstPacketReceived = true

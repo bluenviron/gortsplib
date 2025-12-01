@@ -26,7 +26,7 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
-func packetCountGeneric(avail, le int) int {
+func packetCount(avail, le int) int {
 	n := le / avail
 	if (le % avail) != 0 {
 		n++
@@ -96,13 +96,13 @@ func (e *Encoder) Encode(aus [][]byte) ([]*rtp.Packet, error) {
 
 	// split AUs into batches
 	for _, au := range aus {
-		if e.lenGenericAggregated(batch, au) <= e.PayloadMaxSize {
+		if e.lenAggregated(batch, au) <= e.PayloadMaxSize {
 			// add to existing batch
 			batch = append(batch, au)
 		} else {
 			// write current batch
 			if batch != nil {
-				pkts, err := e.writeGenericBatch(batch, timestamp)
+				pkts, err := e.writeBatch(batch, timestamp)
 				if err != nil {
 					return nil, err
 				}
@@ -116,7 +116,7 @@ func (e *Encoder) Encode(aus [][]byte) ([]*rtp.Packet, error) {
 	}
 
 	// write last batch
-	pkts, err := e.writeGenericBatch(batch, timestamp)
+	pkts, err := e.writeBatch(batch, timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -125,15 +125,15 @@ func (e *Encoder) Encode(aus [][]byte) ([]*rtp.Packet, error) {
 	return rets, nil
 }
 
-func (e *Encoder) writeGenericBatch(aus [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
-	if len(aus) != 1 || e.lenGenericAggregated(aus, nil) < e.PayloadMaxSize {
-		return e.writeGenericAggregated(aus, timestamp)
+func (e *Encoder) writeBatch(aus [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
+	if len(aus) != 1 || e.lenAggregated(aus, nil) < e.PayloadMaxSize {
+		return e.writeAggregated(aus, timestamp)
 	}
 
-	return e.writeGenericFragmented(aus[0], timestamp)
+	return e.writeFragmented(aus[0], timestamp)
 }
 
-func (e *Encoder) writeGenericFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, error) {
+func (e *Encoder) writeFragmented(au []byte, timestamp uint32) ([]*rtp.Packet, error) {
 	auHeadersLen := e.SizeLength + e.IndexLength
 	auHeadersLenBytes := auHeadersLen / 8
 	if (auHeadersLen % 8) != 0 {
@@ -142,7 +142,7 @@ func (e *Encoder) writeGenericFragmented(au []byte, timestamp uint32) ([]*rtp.Pa
 
 	avail := e.PayloadMaxSize - 2 - auHeadersLenBytes
 	le := len(au)
-	packetCount := packetCountGeneric(avail, le)
+	packetCount := packetCount(avail, le)
 
 	ret := make([]*rtp.Packet, packetCount)
 	le = avail
@@ -185,7 +185,7 @@ func (e *Encoder) writeGenericFragmented(au []byte, timestamp uint32) ([]*rtp.Pa
 	return ret, nil
 }
 
-func (e *Encoder) lenGenericAggregated(aus [][]byte, addAU []byte) int {
+func (e *Encoder) lenAggregated(aus [][]byte, addAU []byte) int {
 	n := 2 // AU-headers-length
 
 	// AU-headers
@@ -220,8 +220,8 @@ func (e *Encoder) lenGenericAggregated(aus [][]byte, addAU []byte) int {
 	return n
 }
 
-func (e *Encoder) writeGenericAggregated(aus [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
-	payload := make([]byte, e.lenGenericAggregated(aus, nil))
+func (e *Encoder) writeAggregated(aus [][]byte, timestamp uint32) ([]*rtp.Packet, error) {
+	payload := make([]byte, e.lenAggregated(aus, nil))
 
 	// AU-headers
 	written := 0

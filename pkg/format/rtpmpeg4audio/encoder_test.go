@@ -37,7 +37,7 @@ func mergeBytes(vals ...[]byte) []byte {
 	return res
 }
 
-var casesGeneric = []struct {
+var cases = []struct {
 	name             string
 	sizeLength       int
 	indexLength      int
@@ -470,8 +470,8 @@ var casesGeneric = []struct {
 	},
 }
 
-func TestEncodeGeneric(t *testing.T) {
-	for _, ca := range casesGeneric {
+func TestEncode(t *testing.T) {
+	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
 				PayloadType:           96,

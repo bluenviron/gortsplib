@@ -40,6 +40,10 @@ func (d *Decoder) resetFragments() {
 
 // Decode decodes a frame from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
+	if len(pkt.Payload) == 0 {
+		return nil, fmt.Errorf("payload is too short")
+	}
+
 	var frame []byte
 
 	if d.fragmentsSize == 0 {
