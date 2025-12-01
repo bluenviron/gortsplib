@@ -50,7 +50,7 @@ func (d *Decoder) resetFragments() {
 	d.fragmentsSize = 0
 }
 
-// Decode decodes AUs (non-LATM) or audioMuxElements (LATM) from a RTP packet.
+// Decode decodes access units from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	if len(pkt.Payload) < 2 {
 		d.resetFragments()
@@ -174,6 +174,10 @@ func (d *Decoder) readAUHeaders(buf []byte, headersLen int) ([]uint64, error) {
 			return nil, err
 		}
 		headersLen -= d.SizeLength
+
+		if dataLen == 0 {
+			return nil, fmt.Errorf("invalid data length")
+		}
 
 		if !firstRead {
 			firstRead = true

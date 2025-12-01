@@ -1,6 +1,7 @@
 package rtpklv
 
 import (
+	"encoding/binary"
 	"errors"
 	"testing"
 
@@ -39,33 +40,82 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func FuzzDecoder(f *testing.F) {
-	f.Fuzz(func(t *testing.T, a []byte, am bool, b []byte, bm bool) {
-		d := &Decoder{}
-		err := d.Init()
-		require.NoError(t, err)
+func serializePackets(packets []*rtp.Packet) ([]byte, error) {
+	var buf []byte
 
-		klvUnit, err := d.Decode(&rtp.Packet{
-			Header: rtp.Header{
-				Marker:         am,
-				SequenceNumber: 17645,
-			},
-			Payload: a,
-		})
-
-		if errors.Is(err, ErrMorePacketsNeeded) {
-			klvUnit, err = d.Decode(&rtp.Packet{
-				Header: rtp.Header{
-					Marker:         bm,
-					SequenceNumber: 17646,
-				},
-				Payload: b,
-			})
+	for _, pkt := range packets {
+		buf2, err := pkt.Marshal()
+		if err != nil {
+			return nil, err
 		}
 
-		if err == nil {
-			if len(klvUnit) == 0 {
-				t.Errorf("should not happen")
+		tmp := make([]byte, 4)
+		binary.LittleEndian.PutUint32(tmp, uint32(len(buf2)))
+		buf = append(buf, tmp...)
+		buf = append(buf, buf2...)
+	}
+
+	return buf, nil
+}
+
+func unserializePackets(data []byte) ([]*rtp.Packet, error) {
+	var packets []*rtp.Packet
+	buf := data
+
+	for {
+		if len(buf) < 4 {
+			return nil, errors.New("not enough bits")
+		}
+
+		size := binary.LittleEndian.Uint32(buf[:4])
+		buf = buf[4:]
+
+		if uint32(len(buf)) < size {
+			return nil, errors.New("not enough bits")
+		}
+
+		var pkt rtp.Packet
+		err := pkt.Unmarshal(buf[:size])
+		if err != nil {
+			return nil, err
+		}
+
+		packets = append(packets, &pkt)
+		buf = buf[size:]
+
+		if len(buf) == 0 {
+			break
+		}
+	}
+
+	return packets, nil
+}
+
+func FuzzDecoder(f *testing.F) {
+	for _, ca := range cases {
+		buf, err := serializePackets(ca.pkts)
+		if err != nil {
+			panic(err)
+		}
+		f.Add(buf)
+	}
+
+	f.Fuzz(func(t *testing.T, buf []byte) {
+		packets, err := unserializePackets(buf)
+		if err != nil {
+			t.Skip()
+			return
+		}
+
+		d := &Decoder{}
+		err = d.Init()
+		require.NoError(t, err)
+
+		for _, pkt := range packets {
+			if unit, err2 := d.Decode(pkt); err2 == nil {
+				if len(unit) == 0 {
+					t.Errorf("should not happen")
+				}
 			}
 		}
 	})

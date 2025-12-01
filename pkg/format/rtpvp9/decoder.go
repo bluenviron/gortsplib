@@ -56,6 +56,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		return nil, err
 	}
 
+	if len(vpkt.Payload) == 0 {
+		d.resetFragments()
+		return nil, fmt.Errorf("payload is empty")
+	}
+
 	var frame []byte
 
 	if vpkt.B {

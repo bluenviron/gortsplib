@@ -1,5 +1,0 @@
-go test fuzz v1
-[]byte("800")
-bool(false)
-[]byte("0")
-bool(true)

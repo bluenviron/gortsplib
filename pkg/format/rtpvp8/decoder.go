@@ -61,6 +61,11 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
 		return nil, fmt.Errorf("packets containing single partitions are not supported")
 	}
 
+	if len(vpkt.Payload) == 0 {
+		d.resetFragments()
+		return nil, fmt.Errorf("payload is empty")
+	}
+
 	var frame []byte
 
 	if vpkt.S == 1 {
