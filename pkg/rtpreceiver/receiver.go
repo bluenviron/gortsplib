@@ -51,8 +51,8 @@ type Receiver struct {
 	sequenceNumberCycles   uint16
 	lastValidSeqNum        uint16
 	remoteSSRC             uint32
-	lastTimeRTP            uint32
-	lastTimeSystem         time.Time
+	lastRTP                uint32
+	lastSystem             time.Time
 	totalLost              uint32
 	totalLostSinceReport   uint32
 	totalSinceReport       uint32
@@ -195,8 +195,8 @@ func (rr *Receiver) ProcessPacket2(
 
 		if ptsEqualsDTS {
 			rr.timeInitialized = true
-			rr.lastTimeRTP = pkt.Timestamp
-			rr.lastTimeSystem = system
+			rr.lastRTP = pkt.Timestamp
+			rr.lastSystem = system
 		}
 
 		return []*rtp.Packet{pkt}, 0
@@ -240,8 +240,8 @@ func (rr *Receiver) ProcessPacket2(
 			if rr.timeInitialized && rr.ClockRate != 0 {
 				// update jitter
 				// https://tools.ietf.org/html/rfc3550#page-39
-				D := system.Sub(rr.lastTimeSystem).Seconds()*float64(rr.ClockRate) -
-					(float64(pkt.Timestamp) - float64(rr.lastTimeRTP))
+				D := system.Sub(rr.lastSystem).Seconds()*float64(rr.ClockRate) -
+					(float64(pkt.Timestamp) - float64(rr.lastRTP))
 				if D < 0 {
 					D = -D
 				}
@@ -249,8 +249,8 @@ func (rr *Receiver) ProcessPacket2(
 			}
 
 			rr.timeInitialized = true
-			rr.lastTimeRTP = pkt.Timestamp
-			rr.lastTimeSystem = system
+			rr.lastRTP = pkt.Timestamp
+			rr.lastSystem = system
 		}
 	}
 
@@ -404,12 +404,12 @@ func (rr *Receiver) Stats() *Stats {
 		return nil
 	}
 
-	ntp, _ := rr.packetNTPUnsafe(rr.lastTimeRTP)
+	ntp, _ := rr.packetNTPUnsafe(rr.lastRTP)
 
 	return &Stats{
 		RemoteSSRC:         rr.remoteSSRC,
 		LastSequenceNumber: rr.lastValidSeqNum,
-		LastRTP:            rr.lastTimeRTP,
+		LastRTP:            rr.lastRTP,
 		LastNTP:            ntp,
 		Jitter:             rr.jitter,
 		TotalReceived:      rr.totalReceived,

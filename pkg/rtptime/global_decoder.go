@@ -39,7 +39,7 @@ type GlobalDecoderTrack interface {
 type GlobalDecoder struct {
 	mutex             sync.Mutex
 	leadingTrack      GlobalDecoderTrack
-	startNTP          time.Time
+	startSystem       time.Time
 	startPTS          int64
 	startPTSClockRate int64
 	tracks            map[GlobalDecoderTrack]*globalDecoderTrackData
@@ -74,14 +74,14 @@ func (d *GlobalDecoder) Decode(
 
 		if d.leadingTrack == nil {
 			d.leadingTrack = track
-			d.startNTP = now
+			d.startSystem = now
 			d.startPTS = 0
 			d.startPTSClockRate = int64(track.ClockRate())
 		}
 
 		// start from the PTS of the leading track
 		startPTS := multiplyAndDivide(d.startPTS, int64(track.ClockRate()), d.startPTSClockRate)
-		startPTS += multiplyAndDivide(int64(now.Sub(d.startNTP)), int64(track.ClockRate()), int64(time.Second))
+		startPTS += multiplyAndDivide(int64(now.Sub(d.startSystem)), int64(track.ClockRate()), int64(time.Second))
 
 		d.tracks[track] = &globalDecoderTrackData{
 			overall: startPTS,
@@ -93,10 +93,10 @@ func (d *GlobalDecoder) Decode(
 
 	pts := df.decode(pkt.Timestamp)
 
-	// update startNTP / startPTS
+	// update startSystem / startPTS
 	if d.leadingTrack == track && track.PTSEqualsDTS(pkt) {
 		now := timeNow()
-		d.startNTP = now
+		d.startSystem = now
 		d.startPTS = pts
 	}
 
