@@ -24,9 +24,9 @@ type Sender struct {
 
 	// data from RTP packets
 	firstRTPPacketSent bool
-	lastTimeRTP        uint32
-	lastTimeNTP        time.Time
-	lastTimeSystem     time.Time
+	lastRTP            uint32
+	lastNTP            time.Time
+	lastSystem         time.Time
 	localSSRC          uint32
 	lastSequenceNumber uint16
 	packetCount        uint32
@@ -83,9 +83,9 @@ func (rs *Sender) report() rtcp.Packet {
 		return nil
 	}
 
-	systemTimeDiff := rs.TimeNow().Sub(rs.lastTimeSystem)
-	ntpTime := rs.lastTimeNTP.Add(systemTimeDiff)
-	rtpTime := rs.lastTimeRTP + uint32(systemTimeDiff.Seconds()*float64(rs.ClockRate))
+	systemDiff := rs.TimeNow().Sub(rs.lastSystem)
+	ntpTime := rs.lastNTP.Add(systemDiff)
+	rtpTime := rs.lastRTP + uint32(systemDiff.Seconds()*float64(rs.ClockRate))
 
 	return &rtcp.SenderReport{
 		SSRC:        rs.localSSRC,
@@ -103,9 +103,9 @@ func (rs *Sender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS boo
 
 	if ptsEqualsDTS {
 		rs.firstRTPPacketSent = true
-		rs.lastTimeRTP = pkt.Timestamp
-		rs.lastTimeNTP = ntp
-		rs.lastTimeSystem = rs.TimeNow()
+		rs.lastRTP = pkt.Timestamp
+		rs.lastNTP = ntp
+		rs.lastSystem = rs.TimeNow()
 		rs.localSSRC = pkt.SSRC
 	}
 
@@ -135,8 +135,8 @@ func (rs *Sender) Stats() *Stats {
 
 	return &Stats{
 		LastSequenceNumber: rs.lastSequenceNumber,
-		LastRTP:            rs.lastTimeRTP,
-		LastNTP:            rs.lastTimeNTP,
+		LastRTP:            rs.lastRTP,
+		LastNTP:            rs.lastNTP,
 		TotalSent:          rs.packetCount2,
 	}
 }

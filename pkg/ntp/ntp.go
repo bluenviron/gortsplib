@@ -1,4 +1,4 @@
-// Package ntp contains functions to encode and decode timestamps to/from NTP format.
+// Package ntp contains functions to encode and decode timestamps to/from the NTP format.
 package ntp
 
 import (
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Encode encodes a timestamp in NTP format.
+// Encode encodes a timestamp in the NTP format.
 // Specification: RFC3550, section 4
 func Encode(t time.Time) uint64 {
 	ntp := uint64(t.UnixNano()) + 2208988800*1000000000
@@ -15,7 +15,7 @@ func Encode(t time.Time) uint64 {
 	return secs<<32 | fractional
 }
 
-// Decode decodes a timestamp from NTP format.
+// Decode decodes a timestamp from the NTP format.
 // Specification: RFC3550, section 4
 func Decode(v uint64) time.Time {
 	secs := int64((v >> 32) - 2208988800)
