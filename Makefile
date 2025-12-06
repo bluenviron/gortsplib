@@ -1,5 +1,5 @@
 BASE_IMAGE = golang:1.25-alpine3.22
-LINT_IMAGE = golangci/golangci-lint:v2.6.2
+LINT_IMAGE = golangci/golangci-lint:v2.7.1
 
 .PHONY: $(shell ls)
 
