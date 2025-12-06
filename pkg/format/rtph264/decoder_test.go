@@ -328,7 +328,7 @@ func TestDecoderErrorNALUCount(t *testing.T) {
 		})
 	}
 
-	require.EqualError(t, err, "NALU count (26) exceeds maximum allowed (25)")
+	require.EqualError(t, err, "NALU count (51) exceeds maximum allowed (50)")
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
