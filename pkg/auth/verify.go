@@ -35,7 +35,7 @@ func urlMatches(expected string, received string, isSetup bool) bool {
 	// instead of the URL of the track (some with and some without final slash).
 	// Strip the control attribute to obtain the URL of the stream.
 	if isSetup {
-		if m := reControlAttribute.FindStringSubmatch(expected); m != nil && (received == m[1] || (received + "/") == m[1]) {
+		if m := reControlAttribute.FindStringSubmatch(expected); m != nil && (received == m[1] || (received+"/") == m[1]) {
 			return true
 		}
 	}
