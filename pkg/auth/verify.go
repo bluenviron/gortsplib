@@ -31,11 +31,11 @@ func urlMatches(expected string, received string, isSetup bool) bool {
 		return true
 	}
 
-	// in SETUP requests, VLC uses the base URL of the stream
-	// instead of the URL of the track.
-	// Strip the control attribute to obtain the URL of the stream.
+	// in SETUP requests, some clients do not use the track URL:
+	// - VLC uses the stream base URL (with trailing slash)
+	// - HappyTime NVR uses the stream URL (without trailing slash)
 	if isSetup {
-		if m := reControlAttribute.FindStringSubmatch(expected); m != nil && received == m[1] {
+		if m := reControlAttribute.FindStringSubmatch(expected); m != nil && (received == m[1] || (received+"/") == m[1]) {
 			return true
 		}
 	}
