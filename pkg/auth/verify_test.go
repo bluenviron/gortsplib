@@ -48,6 +48,13 @@ var casesVerify = []struct {
 				"uri=\"rtsp://myhost/mypath?key=val/\", response=\"5ca5ceeca20a05e9a3f49ecde4b42655\"",
 		},
 	},
+	{
+		"digest happytime",
+		base.HeaderValue{
+			`Digest username="myuser", realm="myrealm", nonce="f49ac6dd0ba708d4becddc9692d1f2ce", ` +
+				`uri="rtsp://myhost/mypath?key=val", response="c11a6e92b449f221dabf494a7a837ee3"`,
+		},
+	},
 }
 
 func TestVerify(t *testing.T) {
