@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/rtcp v1.2.16
 	github.com/pion/rtp v1.8.27
-	github.com/pion/sdp/v3 v3.0.16
+	github.com/pion/sdp/v3 v3.0.17
 	github.com/pion/srtp/v3 v3.0.9
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.48.0
