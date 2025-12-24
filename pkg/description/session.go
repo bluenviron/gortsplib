@@ -21,9 +21,18 @@ func atLeastOneHasMID(medias []*Media) bool {
 	return false
 }
 
-func atLeastOneDoesntHaveMID(medias []*Media) bool {
+func atLeastOneDoesNotHaveMID(medias []*Media) bool {
 	for _, media := range medias {
 		if media.ID == "" {
+			return true
+		}
+	}
+	return false
+}
+
+func atLeastOneIsNotBackChannel(medias []*Media) bool {
+	for _, media := range medias {
+		if !media.IsBackChannel {
 			return true
 		}
 	}
@@ -119,8 +128,17 @@ func (d *Session) Unmarshal(ssd *sdp.SessionDescription) error {
 		d.Medias[i] = &m
 	}
 
-	if atLeastOneHasMID(d.Medias) && atLeastOneDoesntHaveMID(d.Medias) {
+	if atLeastOneHasMID(d.Medias) && atLeastOneDoesNotHaveMID(d.Medias) {
 		return fmt.Errorf("media IDs sent partially")
+	}
+
+	// Some cameras mark medias as back channels even though they are not.
+	// Try to detect this by checking whether in the full SDP there are both
+	// back channels and standard channels, unmarking back channels otherwise.
+	if !atLeastOneIsNotBackChannel(d.Medias) {
+		for _, m := range d.Medias {
+			m.IsBackChannel = false
+		}
 	}
 
 	for _, attr := range ssd.Attributes {
