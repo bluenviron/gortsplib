@@ -508,9 +508,11 @@ var casesSession = []struct {
 			"m=video 0 RTP/AVP 26\r\n" +
 			"a=control:rtsp://192.168.0.1/video\r\n" +
 			"a=rtpmap:26 JPEG/90000\r\n" +
+			"a=recvonly\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
 			"a=control:rtsp://192.168.0.1/audio\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=recvonly\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
 			"a=sendonly\r\n" +
 			"a=control:rtsp://192.168.0.1/audioback\r\n" +
@@ -912,16 +914,19 @@ var casesSession = []struct {
 			"a=control:video\r\n" +
 			"a=rtpmap:96 H264/90000\r\n" +
 			"a=fmtp:96 profile-level-id=42001E; sprop-parameter-sets=Z0IAHp2oKAv+WbgICAgQ,aM48gA==\r\n" +
+			"a=recvonly\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
 			"a=control:audio\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=recvonly\r\n" +
 			"m=audio 0 RTP/AVP 0\r\n" +
 			"a=sendonly\r\n" +
 			"a=control:backchannel\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"m=application 0 RTP/AVP 98\r\n" +
 			"a=control:meta\r\n" +
-			"a=rtpmap:98 vnd.onvif.metadata/90000\r\n",
+			"a=rtpmap:98 vnd.onvif.metadata/90000\r\n" +
+			"a=recvonly\r\n",
 		Session{
 			Title: `L10013/video1 - ACES Server(SSDRTSPServer)`,
 			Medias: []*Media{

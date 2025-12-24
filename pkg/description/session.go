@@ -39,6 +39,15 @@ func atLeastOneIsNotBackChannel(medias []*Media) bool {
 	return false
 }
 
+func atLeastOneIsBackChannel(medias []*Media) bool {
+	for _, media := range medias {
+		if media.IsBackChannel {
+			return true
+		}
+	}
+	return false
+}
+
 func hasMediaWithID(medias []*Media, id string) bool {
 	for _, media := range medias {
 		if media.ID == id {
@@ -215,12 +224,20 @@ func (d Session) Marshal() ([]byte, error) {
 	}
 
 	sout.MediaDescriptions = make([]*psdp.MediaDescription, len(d.Medias))
+	atLeastOneIsBackChannel := atLeastOneIsBackChannel(d.Medias)
 
 	for i, media := range d.Medias {
 		med, err := media.Marshal()
 		if err != nil {
 			return nil, err
 		}
+
+		if !media.IsBackChannel && atLeastOneIsBackChannel {
+			med.Attributes = append(med.Attributes, psdp.Attribute{
+				Key: "recvonly",
+			})
+		}
+
 		sout.MediaDescriptions[i] = med
 	}
 
