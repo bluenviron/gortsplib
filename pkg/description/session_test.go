@@ -269,7 +269,6 @@ var casesSession = []struct {
 			"t=0 0\r\n" +
 			"m=audio 0 RTP/AVP 111 103 104 9 102 0 8 106 105 13 110 112 113 126\r\n" +
 			"a=mid:audio\r\n" +
-			"a=sendonly\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:111 opus/48000/2\r\n" +
 			"a=fmtp:111 sprop-stereo=0\r\n" +
@@ -288,7 +287,6 @@ var casesSession = []struct {
 			"a=rtpmap:126 telephone-event/8000\r\n" +
 			"m=video 0 RTP/AVP 96 97 98 99 100 101 127 124 125\r\n" +
 			"a=mid:video\r\n" +
-			"a=sendonly\r\n" +
 			"a=control\r\n" +
 			"a=rtpmap:96 VP8/90000\r\n" +
 			"a=rtpmap:97 rtx/90000\r\n" +
@@ -307,9 +305,8 @@ var casesSession = []struct {
 			Title: ``,
 			Medias: []*Media{
 				{
-					ID:            "audio",
-					Type:          MediaTypeAudio,
-					IsBackChannel: true,
+					ID:   "audio",
+					Type: MediaTypeAudio,
 					Formats: []format.Format{
 						&format.Opus{
 							PayloadTyp:   111,
@@ -381,9 +378,8 @@ var casesSession = []struct {
 					},
 				},
 				{
-					ID:            "video",
-					Type:          MediaTypeVideo,
-					IsBackChannel: true,
+					ID:   "video",
+					Type: MediaTypeVideo,
 					Formats: []format.Format{
 						&format.VP8{
 							PayloadTyp: 96,
@@ -822,6 +818,153 @@ var casesSession = []struct {
 					},
 					Formats: []format.Format{&format.H264{
 						PayloadTyp: 96,
+					}},
+				},
+			},
+		},
+	},
+	{
+		"issue mediamtx/5074 (fake back channel)",
+		"v=0\n" +
+			"o=- 1645677566 1 IN IP4 *****\n" +
+			"s=Streamed by \"IDS uEye Live RTSP Server\"\n" +
+			"i=session information\n" +
+			"t=0 0\n" +
+			"a=tool:IDS uEye Live RTSP Server:Jul 17 2025 - 13:23:42\n" +
+			"a=type:broadcast\n" +
+			"a=control:*\n" +
+			"a=range:npt=0-\n" +
+			"m=video 0 RTP/AVP 96\n" +
+			"c=IN IP4 *****\n" +
+			"a=sendonly\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=4D4028; " +
+			"sprop-parameter-sets=Z01AKI2NQDwBE/LgLcBAQFAAAD6AAARlDoYAUVAABfXgu8uNDACioAAL68F3lwo=,aO44gA==;\n" +
+			"a=cliprect:0,0,1080,1920\n" +
+			"a=control:rtsp://*****/video=video1\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=Streamed by \"IDS uEye Live RTSP Server\"\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=control:rtsp://*****/video=video1\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 packetization-mode=1; profile-level-id=4D4028; " +
+			"sprop-parameter-sets=Z01AKI2NQDwBE/LgLcBAQFAAAD6AAARlDoYAUVAABfXgu8uNDACioAAL68F3lwo=,aO44gA==\r\n",
+		Session{
+			Title: `Streamed by "IDS uEye Live RTSP Server"`,
+			Medias: []*Media{
+				{
+					Type:    "video",
+					Control: "rtsp://*****/video=video1",
+					Formats: []format.Format{&format.H264{
+						PayloadTyp:        96,
+						PacketizationMode: 1,
+						// ProfileLevelID:    "4D4028",
+						SPS: []byte{
+							0x67, 0x4d, 0x40, 0x28, 0x8d, 0x8d, 0x40, 0x3c,
+							0x01, 0x13, 0xf2, 0xe0, 0x2d, 0xc0, 0x40, 0x40,
+							0x50, 0x00, 0x00, 0x3e, 0x80, 0x00, 0x04, 0x65,
+							0x0e, 0x86, 0x00, 0x51, 0x50, 0x00, 0x05, 0xf5,
+							0xe0, 0xbb, 0xcb, 0x8d, 0x0c, 0x00, 0xa2, 0xa0,
+							0x00, 0x0b, 0xeb, 0xc1, 0x77, 0x97, 0x0a,
+						},
+						PPS: []byte{0x68, 0xee, 0x38, 0x80},
+					}},
+				},
+			},
+		},
+	},
+	{
+		"issue mediamtx/5074 (real back channel)",
+		"v=0\n" +
+			"o=- 1 1 IN IP4 192.168.81.194:554\n" +
+			"s=L10013/video1 - ACES Server(SSDRTSPServer)\n" +
+			"t=0 0\n" +
+			"c=IN IP4 0.0.0.0\n" +
+			"a=control:*\n" +
+			"a=range:npt=now-\n" +
+			"m=video 0 RTP/AVP 96\n" +
+			"a=control:video\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=fmtp:96 sprop-parameter-sets=Z0IAHp2oKAv+WbgICAgQ,aM48gA==\n" +
+			"a=framerate:30\n" +
+			"a=recvonly\n" +
+			"m=audio 0 RTP/AVP 0\n" +
+			"a=control:audio\n" +
+			"a=rtpmap:0 PCMU/8000\n" +
+			"a=recvonly\n" +
+			"m=audio 0 RTP/AVP 0\n" +
+			"a=control:backchannel\n" +
+			"a=rtpmap:0 PCMU/8000\n" +
+			"a=sendonly\n" +
+			"m=application 0 RTP/AVP 98\n" +
+			"a=control:meta\n" +
+			"a=rtpmap:98 vnd.onvif.metadata/90000\n" +
+			"a=recvonly\n",
+		"v=0\r\n" +
+			"o=- 0 0 IN IP4 127.0.0.1\r\n" +
+			"s=L10013/video1 - ACES Server(SSDRTSPServer)\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n" +
+			"a=control:video\r\n" +
+			"a=rtpmap:96 H264/90000\r\n" +
+			"a=fmtp:96 profile-level-id=42001E; sprop-parameter-sets=Z0IAHp2oKAv+WbgICAgQ,aM48gA==\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=control:audio\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"m=audio 0 RTP/AVP 0\r\n" +
+			"a=sendonly\r\n" +
+			"a=control:backchannel\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"m=application 0 RTP/AVP 98\r\n" +
+			"a=control:meta\r\n" +
+			"a=rtpmap:98 vnd.onvif.metadata/90000\r\n",
+		Session{
+			Title: `L10013/video1 - ACES Server(SSDRTSPServer)`,
+			Medias: []*Media{
+				{
+					Type:    "video",
+					Control: "video",
+					Formats: []format.Format{&format.H264{
+						PayloadTyp: 96,
+						SPS: []byte{
+							0x67, 0x42, 0x00, 0x1e, 0x9d, 0xa8, 0x28, 0x0b,
+							0xfe, 0x59, 0xb8, 0x08, 0x08, 0x08, 0x10,
+						},
+						PPS: []byte{0x68, 0xce, 0x3c, 0x80},
+					}},
+				},
+				{
+					Type:    "audio",
+					Control: "audio",
+					Formats: []format.Format{&format.G711{
+						PayloadTyp:   0,
+						MULaw:        true,
+						SampleRate:   8000,
+						ChannelCount: 1,
+					}},
+				},
+				{
+					Type:          "audio",
+					IsBackChannel: true,
+					Control:       "backchannel",
+					Formats: []format.Format{&format.G711{
+						PayloadTyp:   0,
+						MULaw:        true,
+						SampleRate:   8000,
+						ChannelCount: 1,
+					}},
+				},
+				{
+					Type:    "application",
+					Control: "meta",
+					Formats: []format.Format{&format.Generic{
+						PayloadTyp: 98,
+						RTPMa:      "vnd.onvif.metadata/90000",
+						ClockRat:   90000,
 					}},
 				},
 			},
