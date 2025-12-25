@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"crypto/rand"
 	"fmt"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,6 +34,10 @@ func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStrea
 type ServerStream struct {
 	Server *Server
 	Desc   *description.Session
+	// Stream-specific Multicast settings (optional, will use main Server settings if not present)
+	MulticastIP       *net.IP
+	MulticastRTPPort  *int
+	MulticastRTCPPort *int
 
 	mutex                sync.RWMutex
 	readers              map[*ServerSession]struct{}
@@ -205,8 +210,12 @@ func (st *ServerStream) readerAdd(
 	case ProtocolUDPMulticast:
 		if st.multicastReaderCount == 0 {
 			for _, media := range st.medias {
+				// tell MulticastWriter if we have any stream-specific Multicast IP / Port settings
 				mw := &serverMulticastWriter{
-					s: st.Server,
+					s:                 st.Server,
+					requestedIP:       st.MulticastIP,
+					requestedRTPPort:  st.MulticastRTPPort,
+					requestedRTCPPort: st.MulticastRTCPPort,
 				}
 				err := mw.initialize()
 				if err != nil {
