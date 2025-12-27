@@ -8,6 +8,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
+	tscodecs "github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/codecs"
 )
 
 func multiplyAndDivide(v, m, d int64) int64 {
@@ -41,11 +42,11 @@ func (e *mpegtsMuxer) initialize() error {
 	e.b = bufio.NewWriter(e.f)
 
 	e.h264Track = &mpegts.Track{
-		Codec: &mpegts.CodecH264{},
+		Codec: &tscodecs.H264{},
 	}
 
 	e.mpeg4AudioTrack = &mpegts.Track{
-		Codec: &mpegts.CodecMPEG4Audio{
+		Codec: &tscodecs.MPEG4Audio{
 			Config: *e.mpeg4AudioFormat.Config,
 		},
 	}
