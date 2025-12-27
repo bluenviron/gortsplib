@@ -14,6 +14,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
+	tscodecs "github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/codecs"
 	"github.com/pion/rtp"
 )
 
@@ -25,7 +26,7 @@ import (
 
 func findTrack(r *mpegts.Reader) (*mpegts.Track, error) {
 	for _, track := range r.Tracks() {
-		if _, ok := track.Codec.(*mpegts.CodecH264); ok {
+		if _, ok := track.Codec.(*tscodecs.H264); ok {
 			return track, nil
 		}
 	}

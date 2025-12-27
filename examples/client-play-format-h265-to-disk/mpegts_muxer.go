@@ -6,6 +6,7 @@ import (
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
+	tscodecs "github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/codecs"
 )
 
 // mpegtsMuxer allows to save a H265 stream into a MPEG-TS file.
@@ -32,7 +33,7 @@ func (e *mpegtsMuxer) initialize() error {
 	e.b = bufio.NewWriter(e.f)
 
 	e.track = &mpegts.Track{
-		Codec: &mpegts.CodecH265{},
+		Codec: &tscodecs.H265{},
 	}
 
 	e.w = &mpegts.Writer{W: e.b, Tracks: []*mpegts.Track{e.track}}

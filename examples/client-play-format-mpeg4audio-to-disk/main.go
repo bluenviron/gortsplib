@@ -8,6 +8,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
+	tscodecs "github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/codecs"
 	"github.com/pion/rtp"
 )
 
@@ -59,7 +60,7 @@ func main() {
 		fileName: "mystream.ts",
 		format:   forma,
 		track: &mpegts.Track{
-			Codec: &mpegts.CodecMPEG4Audio{
+			Codec: &tscodecs.MPEG4Audio{
 				Config: *forma.Config,
 			},
 		},
