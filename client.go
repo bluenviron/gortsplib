@@ -470,6 +470,14 @@ type Client struct {
 	UDPReadBufferSize int
 	// Size of the queue of outgoing packets.
 	// It defaults to 256.
+
+	UDPMinClientPort uint16
+	// Minimum UDP Client port for SETUP with Random ports
+	// It defaults to 10000
+
+	UDPMaxClientPort uint16
+	// Maximum UDP Client port for SETUP with Random ports
+	// It defaults to 2^16-1
 	WriteQueueSize int
 	// maximum size of outgoing RTP / RTCP packets.
 	// This must be less than the UDP MTU (1472 bytes).
@@ -586,6 +594,14 @@ func (c *Client) Start() error {
 	if c.InitialUDPReadTimeout == 0 {
 		c.InitialUDPReadTimeout = 3 * time.Second
 	}
+
+	if c.UDPMinClientPort == 0 {
+		c.UDPMinClientPort = 10000
+	}
+	if c.UDPMaxClientPort == 0 {
+		c.UDPMaxClientPort = 65535
+	}
+
 	if c.WriteQueueSize == 0 {
 		c.WriteQueueSize = 256
 	} else if (c.WriteQueueSize & (c.WriteQueueSize - 1)) != 0 {
@@ -778,7 +794,7 @@ func (c *Client) runInner() error {
 			}
 
 		case req := <-c.chSetup:
-			res, err := c.doSetup(req.baseURL, req.media, req.rtpPort, req.rtcpPort)
+			res, err := c.doSetup(req.baseURL, req.media, req.rtpPort, req.rtcpPort, c.UDPMinClientPort, c.UDPMaxClientPort)
 			req.res <- clientRes{res: res, err: err}
 
 			if c.mustClose {
@@ -995,7 +1011,7 @@ func (c *Client) trySwitchingProtocol() error {
 	}
 
 	for i, cm := range prevMedias {
-		_, err = c.doSetup(prevBaseURL, cm.media, 0, 0)
+		_, err = c.doSetup(prevBaseURL, cm.media, 0, 0, c.UDPMinClientPort, c.UDPMaxClientPort)
 		if err != nil {
 			return err
 		}
@@ -1585,6 +1601,8 @@ func (c *Client) doSetup(
 	medi *description.Media,
 	rtpPort int,
 	rtcpPort int,
+	udpMinPort uint16,
+	udpMaxPort uint16,
 ) (*base.Response, error) {
 	err := c.checkState(map[clientState]struct{}{
 		clientStateInitial:   {},
@@ -1701,6 +1719,8 @@ func (c *Client) doSetup(
 				nil,
 				net.JoinHostPort("", strconv.FormatInt(int64(rtpPort), 10)),
 				net.JoinHostPort("", strconv.FormatInt(int64(rtcpPort), 10)),
+				udpMinPort,
+				udpMaxPort,
 			)
 			if err != nil {
 				return nil, err
@@ -1795,7 +1815,7 @@ func (c *Client) doSetup(
 				Profile:  th.Profile,
 			}
 
-			return c.doSetup(baseURL, medi, 0, 0)
+			return c.doSetup(baseURL, medi, 0, 0, c.UDPMinClientPort, c.UDPMaxClientPort)
 		}
 
 		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
@@ -1829,7 +1849,7 @@ func (c *Client) doSetup(
 					return nil, err
 				}
 
-				return c.doSetup(baseURL, medi, 0, 0)
+				return c.doSetup(baseURL, medi, 0, 0, c.UDPMinClientPort, c.UDPMaxClientPort)
 			}
 
 			return nil, liberrors.ErrClientServerRequestedTCP{}
@@ -1940,6 +1960,8 @@ func (c *Client) doSetup(
 			intf,
 			net.JoinHostPort(destIP.String(), strconv.FormatInt(int64(thRes.Ports[0]), 10)),
 			net.JoinHostPort(destIP.String(), strconv.FormatInt(int64(thRes.Ports[1]), 10)),
+			udpMinPort,
+			udpMaxPort,
 		)
 		if err != nil {
 			return nil, err

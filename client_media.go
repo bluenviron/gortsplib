@@ -49,6 +49,8 @@ func createUDPListenerPair(
 	multicastInterface *net.Interface,
 	rtpAddress string,
 	rtcpAddress string,
+	udpMinPort uint16,
+	udpMaxPort uint16,
 ) (*clientUDPListener, *clientUDPListener, error) {
 	if rtpAddress != ":0" {
 		l1 := &clientUDPListener{
@@ -80,12 +82,12 @@ func createUDPListenerPair(
 	// pick two consecutive ports in range 65535-10000
 	// RTP port must be even and RTCP port odd
 	for {
-		v, err := randInRange((65535 - 10000) / 2)
+		v, err := randInRange(int((udpMaxPort - udpMinPort) / 2))
 		if err != nil {
 			return nil, nil, err
 		}
 
-		rtpPort := v*2 + 10000
+		rtpPort := v*2 + int(udpMinPort)
 		rtcpPort := rtpPort + 1
 
 		l1 := &clientUDPListener{
