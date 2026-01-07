@@ -3,12 +3,12 @@ module github.com/bluenviron/gortsplib/v5
 go 1.24.0
 
 require (
-	github.com/bluenviron/mediacommon/v2 v2.5.3
+	github.com/bluenviron/mediacommon/v2 v2.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/rtcp v1.2.16
-	github.com/pion/rtp v1.8.26
-	github.com/pion/sdp/v3 v3.0.16
+	github.com/pion/rtp v1.9.0
+	github.com/pion/sdp/v3 v3.0.17
 	github.com/pion/srtp/v3 v3.0.9
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.48.0
