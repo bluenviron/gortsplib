@@ -94,6 +94,14 @@ func (h *serverMulticastWriter) ip() net.IP {
 	return h.rtpl.ip()
 }
 
+func (h *serverMulticastWriter) rtpPort() int {
+	return h.rtpl.port()
+}
+
+func (h *serverMulticastWriter) rtcpPort() int {
+	return h.rtcpl.port()
+}
+
 func (h *serverMulticastWriter) writePacketRTP(byts []byte) error {
 	ok := h.writer.Push(func() error {
 		return h.rtpl.write(byts, h.rtpAddr)

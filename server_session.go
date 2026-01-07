@@ -1290,16 +1290,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					th.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 					th.TTL = ptrOf(uint(127))
 					th.Destination2 = ptrOf(stream.medias[medi].multicastWriter.ip().String())
-					// use global server multicast port setting unless the stream has specific ports
-					multicastRTPPort := ss.s.MulticastRTPPort
-					multicastRTCPPort := ss.s.MulticastRTCPPort
-					if stream.MulticastRTPPort != nil {
-						multicastRTPPort = *stream.MulticastRTPPort
-					}
-					if stream.MulticastRTCPPort != nil {
-						multicastRTCPPort = *stream.MulticastRTCPPort
-					}
-					th.Ports = &[2]int{multicastRTPPort, multicastRTCPPort}
+					th.Ports = &[2]int{stream.medias[medi].multicastWriter.rtpPort(), stream.medias[medi].multicastWriter.rtcpPort()}
 				}
 
 			default: // TCP

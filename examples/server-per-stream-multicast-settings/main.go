@@ -91,18 +91,40 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 		sh.publisher.Close()
 	}
 
-	// use stream-specific IP address and ports
-	multicastIP := net.ParseIP("224.1.0.99")
-	multicastRTPPort := int(8006)
-	multicastRTCPPort := int(8007)
+	// Use stream-specific IP address and ports (one for each media)
+	medi_video := &description.Media{
+		Type: description.MediaTypeVideo,
+	}
+	medi_audio := &description.Media{
+		Type: description.MediaTypeAudio,
+	}
+	medi_application := &description.Media{
+		Type: description.MediaTypeApplication,
+	}
+
+	multicastParams := map[*description.Media]gortsplib.StreamMediaMulticastParams{
+		medi_video: {
+			IP:       net.ParseIP("224.1.0.99"),
+			RTPPort:  8006,
+			RTCPPort: 8007,
+		},
+		medi_audio: {
+			IP:       net.ParseIP("224.0.0.100"),
+			RTPPort:  8008,
+			RTCPPort: 8009,
+		},
+		medi_application: {
+			IP:       net.ParseIP("224.0.0.101"),
+			RTPPort:  8010,
+			RTCPPort: 8011,
+		},
+	}
 
 	// create the stream and save the publisher
 	sh.stream = &gortsplib.ServerStream{
-		Server:            sh.server,
-		Desc:              ctx.Description,
-		MulticastIP:       &multicastIP,
-		MulticastRTPPort:  &multicastRTPPort,
-		MulticastRTCPPort: &multicastRTCPPort,
+		Server:          sh.server,
+		Desc:            ctx.Description,
+		MulticastParams: multicastParams,
 	}
 	err := sh.stream.Initialize()
 	if err != nil {
