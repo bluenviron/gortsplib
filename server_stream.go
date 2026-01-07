@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"crypto/rand"
 	"fmt"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,6 +26,13 @@ func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStrea
 	return ret
 }
 
+// StreamMediaMulticastParams used to request specific Multicast configuration for each media in a stream
+type StreamMediaMulticastParams struct {
+	IP       net.IP
+	RTPPort  int
+	RTCPPort int
+}
+
 // ServerStream represents a data stream.
 // This is in charge of
 // - storing stream description and statistics
@@ -33,6 +41,8 @@ func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStrea
 type ServerStream struct {
 	Server *Server
 	Desc   *description.Session
+	// Stream-specific Multicast settings (optional, will use main Server settings if not present)
+	MulticastParams map[*description.Media]StreamMediaMulticastParams
 
 	mutex                sync.RWMutex
 	readers              map[*ServerSession]struct{}
@@ -205,8 +215,22 @@ func (st *ServerStream) readerAdd(
 	case ProtocolUDPMulticast:
 		if st.multicastReaderCount == 0 {
 			for _, media := range st.medias {
+				// check whether we have any stream-specific Multicast IP / Port settings for this media type
+				var multicastIP *net.IP
+				var multicastRTPPort *int
+				var multicastRTCPPort *int
+				for paramsMedia, params := range st.MulticastParams {
+					if paramsMedia.Type == media.media.Type {
+						multicastIP = &params.IP
+						multicastRTPPort = &params.RTPPort
+						multicastRTCPPort = &params.RTCPPort
+					}
+				}
 				mw := &serverMulticastWriter{
-					s: st.Server,
+					s:                 st.Server,
+					requestedIP:       multicastIP,
+					requestedRTPPort:  multicastRTPPort,
+					requestedRTCPPort: multicastRTCPPort,
 				}
 				err := mw.initialize()
 				if err != nil {

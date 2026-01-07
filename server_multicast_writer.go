@@ -9,7 +9,10 @@ import (
 )
 
 type serverMulticastWriter struct {
-	s *Server
+	s                 *Server
+	requestedIP       *net.IP
+	requestedRTPPort  *int
+	requestedRTCPPort *int
 
 	rtpl     *serverUDPListener
 	rtcpl    *serverUDPListener
@@ -19,17 +22,37 @@ type serverMulticastWriter struct {
 }
 
 func (h *serverMulticastWriter) initialize() error {
-	ip, err := h.s.getMulticastIP()
-	if err != nil {
-		return err
+	var ip net.IP
+	var rtpPort int
+	var rtcpPort int
+	var err error
+
+	// override global server multicast settings if requested for this particular stream
+	if h.requestedIP != nil {
+		ip = *h.requestedIP
+	} else {
+		ip, err = h.s.getMulticastIP()
+		if err != nil {
+			return err
+		}
+	}
+	if h.requestedRTPPort != nil {
+		rtpPort = *h.requestedRTPPort
+	} else {
+		rtpPort = h.s.MulticastRTPPort
+	}
+	if h.requestedRTCPPort != nil {
+		rtcpPort = *h.requestedRTCPPort
+	} else {
+		rtcpPort = h.s.MulticastRTCPPort
 	}
 
 	rtpl, rtcpl, err := createUDPListenerMulticastPair(
 		h.s.UDPReadBufferSize,
 		h.s.ListenPacket,
 		h.s.WriteTimeout,
-		h.s.MulticastRTPPort,
-		h.s.MulticastRTCPPort,
+		rtpPort,
+		rtcpPort,
 		ip,
 	)
 	if err != nil {
@@ -69,6 +92,14 @@ func (h *serverMulticastWriter) close() {
 
 func (h *serverMulticastWriter) ip() net.IP {
 	return h.rtpl.ip()
+}
+
+func (h *serverMulticastWriter) rtpPort() int {
+	return h.rtpl.port()
+}
+
+func (h *serverMulticastWriter) rtcpPort() int {
+	return h.rtcpl.port()
 }
 
 func (h *serverMulticastWriter) writePacketRTP(byts []byte) error {
