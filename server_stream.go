@@ -26,7 +26,7 @@ func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStrea
 	return ret
 }
 
-// Optionally request specific Multicast configuration for each media in a stream
+// StreamMediaMulticastParams used to request specific Multicast configuration for each media in a stream
 type StreamMediaMulticastParams struct {
 	IP       net.IP
 	RTPPort  int
@@ -216,11 +216,11 @@ func (st *ServerStream) readerAdd(
 		if st.multicastReaderCount == 0 {
 			for _, media := range st.medias {
 				// check whether we have any stream-specific Multicast IP / Port settings for this media type
-				var multicastIP *net.IP = nil
-				var multicastRTPPort *int = nil
-				var multicastRTCPPort *int = nil
-				for params_media, params := range st.MulticastParams {
-					if params_media.Type == media.media.Type {
+				var multicastIP *net.IP
+				var multicastRTPPort *int
+				var multicastRTCPPort *int
+				for paramsMedia, params := range st.MulticastParams {
+					if paramsMedia.Type == media.media.Type {
 						multicastIP = &params.IP
 						multicastRTPPort = &params.RTPPort
 						multicastRTCPPort = &params.RTCPPort

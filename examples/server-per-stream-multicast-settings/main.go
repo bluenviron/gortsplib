@@ -92,28 +92,28 @@ func (sh *serverHandler) OnAnnounce(ctx *gortsplib.ServerHandlerOnAnnounceCtx) (
 	}
 
 	// Use stream-specific IP address and ports (one for each media)
-	medi_video := &description.Media{
+	mediVideo := &description.Media{
 		Type: description.MediaTypeVideo,
 	}
-	medi_audio := &description.Media{
+	mediAudio := &description.Media{
 		Type: description.MediaTypeAudio,
 	}
-	medi_application := &description.Media{
+	mediApplication := &description.Media{
 		Type: description.MediaTypeApplication,
 	}
 
 	multicastParams := map[*description.Media]gortsplib.StreamMediaMulticastParams{
-		medi_video: {
+		mediVideo: {
 			IP:       net.ParseIP("224.1.0.99"),
 			RTPPort:  8006,
 			RTCPPort: 8007,
 		},
-		medi_audio: {
+		mediAudio: {
 			IP:       net.ParseIP("224.0.0.100"),
 			RTPPort:  8008,
 			RTCPPort: 8009,
 		},
-		medi_application: {
+		mediApplication: {
 			IP:       net.ParseIP("224.0.0.101"),
 			RTPPort:  8010,
 			RTCPPort: 8011,
