@@ -10,6 +10,7 @@ import (
 const (
 	rtpVersion            = 2
 	defaultPayloadMaxSize = 1450 // 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header) - 12 (RTP header) - 10 (SRTP overhead)
+	payloadType           = 32
 )
 
 func ptrOf[T any](v T) *T {
@@ -194,7 +195,7 @@ func (e *Encoder) writeFragmented(
 		ret[i] = &rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
-				PayloadType:    32,
+				PayloadType:    payloadType,
 				SequenceNumber: e.sequenceNumber,
 				SSRC:           *e.SSRC,
 			},
@@ -229,7 +230,7 @@ func (e *Encoder) writeAggregated(
 	pkt := &rtp.Packet{
 		Header: rtp.Header{
 			Version:        rtpVersion,
-			PayloadType:    32,
+			PayloadType:    payloadType,
 			SequenceNumber: e.sequenceNumber,
 			SSRC:           *e.SSRC,
 		},
