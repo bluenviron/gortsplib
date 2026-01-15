@@ -76,11 +76,10 @@ func (h *Authenticate) Unmarshal(v base.HeaderValue) error {
 
 	v0 := v[0]
 
-	i := strings.IndexByte(v0, ' ')
-	if i < 0 {
+	method, v0, found := strings.Cut(v0, " ")
+	if !found {
 		return fmt.Errorf("unable to split between method and keys (%v)", v0)
 	}
-	method, v0 := v0[:i], v0[i+1:]
 
 	switch method {
 	case "Basic":
