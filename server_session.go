@@ -32,12 +32,27 @@ import (
 type readFunc func([]byte) bool
 
 func serverSessionExtractExistingSSRCs(medias map[*description.Media]*serverSessionMedia) []uint32 {
-	var ret []uint32
+	n := 0
 	for _, media := range medias {
-		for _, forma := range media.formats {
-			ret = append(ret, forma.localSSRC)
+		for range media.formats {
+			n++
 		}
 	}
+
+	if n == 0 {
+		return nil
+	}
+
+	ret := make([]uint32, n)
+	n = 0
+
+	for _, media := range medias {
+		for _, forma := range media.formats {
+			ret[n] = forma.localSSRC
+			n++
+		}
+	}
+
 	return ret
 }
 

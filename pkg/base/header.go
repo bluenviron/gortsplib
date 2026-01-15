@@ -104,8 +104,10 @@ func (h Header) marshalSize() int {
 	// sort headers by key
 	// in order to obtain deterministic results
 	keys := make([]string, len(h))
+	i := 0
 	for key := range h {
-		keys = append(keys, key)
+		keys[i] = key
+		i++
 	}
 	sort.Strings(keys)
 
@@ -126,8 +128,10 @@ func (h Header) marshalTo(buf []byte) int {
 	// sort headers by key
 	// in order to obtain deterministic results
 	keys := make([]string, len(h))
+	i := 0
 	for key := range h {
-		keys = append(keys, key)
+		keys[i] = key
+		i++
 	}
 	sort.Strings(keys)
 
