@@ -39,9 +39,13 @@ type StreamMediaMulticastParams struct {
 // - distributing the stream to each reader
 // - allocating multicast listeners
 type ServerStream struct {
+	// Parent server.
 	Server *Server
-	Desc   *description.Session
-	// Stream-specific Multicast settings (optional, will use main Server settings if not present)
+
+	// Stream description.
+	Desc *description.Session
+
+	// (optional) Stream-specific Multicast settings.
 	MulticastParams map[*description.Media]StreamMediaMulticastParams
 
 	mutex                sync.RWMutex
