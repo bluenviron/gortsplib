@@ -93,6 +93,7 @@ Features:
 * [client-record-format-opus](examples/client-record-format-opus/main.go)
 * [client-record-format-vp8](examples/client-record-format-vp8/main.go)
 * [client-record-format-vp9](examples/client-record-format-vp9/main.go)
+* [client-record-format-klv](examples/client-record-format-klv/main.go)
 * [server](examples/server/main.go)
 * [server-secure](examples/server-secure/main.go)
 * [server-auth](examples/server-auth/main.go)
