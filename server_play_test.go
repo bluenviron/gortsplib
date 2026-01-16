@@ -26,6 +26,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
 func multicastCapableIP(t *testing.T) string {
@@ -2787,4 +2788,128 @@ func TestServerPlayBackChannel(t *testing.T) {
 			doTeardown(t, conn, "rtsp://127.0.0.1:8554/teststream", session)
 		})
 	}
+}
+
+func TestServerPlayMulticastParams(t *testing.T) {
+	listenIP := multicastCapableIP(t)
+
+	var stream *ServerStream
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onSetup: func(_ *ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+			onPlay: func(_ *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, nil
+			},
+		},
+		RTSPAddress:       listenIP + ":8554",
+		MulticastIPRange:  "224.1.0.0/16",
+		MulticastRTPPort:  8000,
+		MulticastRTCPPort: 8001,
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	media1 := &description.Media{
+		Type: description.MediaTypeVideo,
+		Formats: []format.Format{&format.H264{
+			PayloadTyp: 96,
+			SPS: []byte{
+				0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+				0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+				0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
+				0x20,
+			},
+			PPS: []byte{
+				0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
+			},
+			PacketizationMode: 1,
+		}},
+	}
+
+	media2 := &description.Media{
+		Type: description.MediaTypeAudio,
+		Formats: []format.Format{&format.MPEG4Audio{
+			PayloadTyp: 97,
+			Config: &mpeg4audio.AudioSpecificConfig{
+				Type:         mpeg4audio.ObjectTypeAACLC,
+				SampleRate:   48000,
+				ChannelCount: 2,
+			},
+			SizeLength:       13,
+			IndexLength:      3,
+			IndexDeltaLength: 3,
+		}},
+	}
+
+	multicastParams := map[*description.Media]StreamMediaMulticastParams{
+		media1: {
+			IP:       net.ParseIP("224.2.0.50"),
+			RTPPort:  9000,
+			RTCPPort: 9001,
+		},
+		media2: {
+			IP:       net.ParseIP("224.2.0.51"),
+			RTPPort:  9002,
+			RTCPPort: 9003,
+		},
+	}
+
+	stream = &ServerStream{
+		Server: s,
+		Desc: &description.Session{
+			Medias: []*description.Media{media1, media2},
+		},
+		MulticastParams: multicastParams,
+	}
+	err = stream.Initialize()
+	require.NoError(t, err)
+	defer stream.Close()
+
+	nconn, err := net.Dial("tcp", listenIP+":8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+	desc := doDescribe(t, conn, false)
+
+	inTH1 := &headers.Transport{
+		Delivery: ptrOf(headers.TransportDeliveryMulticast),
+		Protocol: headers.TransportProtocolUDP,
+		Mode:     ptrOf(headers.TransportModePlay),
+	}
+
+	res1, th1 := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH1, "")
+	session := readSession(t, res1)
+
+	require.Equal(t, headers.TransportProtocolUDP, th1.Protocol)
+	require.Equal(t, headers.TransportDeliveryMulticast, *th1.Delivery)
+	require.Equal(t, "224.2.0.50", *th1.Destination2)
+	require.Equal(t, [2]int{9000, 9001}, *th1.Ports)
+
+	inTH2 := &headers.Transport{
+		Delivery: ptrOf(headers.TransportDeliveryMulticast),
+		Protocol: headers.TransportProtocolUDP,
+		Mode:     ptrOf(headers.TransportModePlay),
+	}
+
+	_, th2 := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[1]).String(), inTH2, session)
+
+	require.Equal(t, headers.TransportProtocolUDP, th2.Protocol)
+	require.Equal(t, headers.TransportDeliveryMulticast, *th2.Delivery)
+	require.Equal(t, "224.2.0.51", *th2.Destination2)
+	require.Equal(t, [2]int{9002, 9003}, *th2.Ports)
 }

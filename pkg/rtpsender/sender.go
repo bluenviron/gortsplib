@@ -11,7 +11,7 @@ import (
 )
 
 // Sender is a utility to send RTP packets.
-// It is in charge of
+// It is in charge of:
 // - counting sent packets
 // - generating RTCP sender reports.
 type Sender struct {

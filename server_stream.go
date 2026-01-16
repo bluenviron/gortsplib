@@ -33,7 +33,7 @@ type StreamMediaMulticastParams struct {
 	RTCPPort int
 }
 
-// ServerStream represents a data stream.
+// ServerStream represents a media stream.
 // This is in charge of
 // - storing stream description and statistics
 // - distributing the stream to each reader
