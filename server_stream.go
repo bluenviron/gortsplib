@@ -219,20 +219,33 @@ func (st *ServerStream) readerAdd(
 	case ProtocolUDPMulticast:
 		if st.multicastReaderCount == 0 {
 			for _, media := range st.medias {
-				var multicastIP *net.IP
-				var multicastRTPPort *int
-				var multicastRTCPPort *int
+				var ip net.IP
+				var rtpPort int
+				var rtcpPort int
+
 				if params, ok := st.MulticastParams[media.media]; ok {
-					multicastIP = &params.IP
-					multicastRTPPort = &params.RTPPort
-					multicastRTCPPort = &params.RTCPPort
+					ip = params.IP
+					rtpPort = params.RTPPort
+					rtcpPort = params.RTCPPort
+				} else {
+					var err error
+					ip, err = st.Server.getMulticastIP()
+					if err != nil {
+						return err
+					}
+
+					rtpPort = st.Server.MulticastRTPPort
+					rtcpPort = st.Server.MulticastRTCPPort
 				}
 
 				mw := &serverMulticastWriter{
-					s:                 st.Server,
-					requestedIP:       multicastIP,
-					requestedRTPPort:  multicastRTPPort,
-					requestedRTCPPort: multicastRTCPPort,
+					udpReadBufferSize: st.Server.UDPReadBufferSize,
+					listenPacket:      st.Server.ListenPacket,
+					writeQueueSize:    st.Server.WriteQueueSize,
+					writeTimeout:      st.Server.WriteTimeout,
+					ip:                ip,
+					rtpPort:           rtpPort,
+					rtcpPort:          rtcpPort,
 				}
 				err := mw.initialize()
 				if err != nil {
