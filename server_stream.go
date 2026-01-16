@@ -215,17 +215,15 @@ func (st *ServerStream) readerAdd(
 	case ProtocolUDPMulticast:
 		if st.multicastReaderCount == 0 {
 			for _, media := range st.medias {
-				// check whether we have any stream-specific Multicast IP / Port settings for this media type
 				var multicastIP *net.IP
 				var multicastRTPPort *int
 				var multicastRTCPPort *int
-				for paramsMedia, params := range st.MulticastParams {
-					if paramsMedia.Type == media.media.Type {
-						multicastIP = &params.IP
-						multicastRTPPort = &params.RTPPort
-						multicastRTCPPort = &params.RTCPPort
-					}
+				if params, ok := st.MulticastParams[media.media]; ok {
+					multicastIP = &params.IP
+					multicastRTPPort = &params.RTPPort
+					multicastRTCPPort = &params.RTCPPort
 				}
+
 				mw := &serverMulticastWriter{
 					s:                 st.Server,
 					requestedIP:       multicastIP,
