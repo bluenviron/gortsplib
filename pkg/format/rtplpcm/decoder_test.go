@@ -19,7 +19,7 @@ func TestDecode(t *testing.T) {
 			err := d.Init()
 			require.NoError(t, err)
 
-			var samples []byte
+			var samples []byte //nolint:prealloc
 
 			for _, pkt := range ca.pkts {
 				var partial []byte

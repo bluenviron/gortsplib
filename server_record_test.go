@@ -117,6 +117,32 @@ func TestServerRecordErrorAnnounce(t *testing.T) {
 			},
 			"invalid SDP: media 1 is invalid: clock rate not found",
 		},
+		{
+			"back channel",
+			base.Request{
+				Method: base.Announce,
+				URL:    mustParseURL("rtsp://localhost:8554/teststream"),
+				Header: base.Header{
+					"CSeq":         base.HeaderValue{"1"},
+					"Content-Type": base.HeaderValue{"application/sdp"},
+				},
+				Body: []byte("v=0\r\n" +
+					"o= 2890842807 IN IP4 192.168.0.1\r\n" +
+					"s=RTSP Session with audiobackchannel\r\n" +
+					"m=video 0 RTP/AVP 26\r\n" +
+					"a=control:rtsp://192.168.0.1/video\r\n" +
+					"a=recvonly\r\n" +
+					"m=audio 0 RTP/AVP 0\r\n" +
+					"a=control:rtsp://192.168.0.1/audio\r\n" +
+					"a=recvonly\r\n" +
+					"m=audio 0 RTP/AVP 0\r\n" +
+					"a=control:rtsp://192.168.0.1/audioback\r\n" +
+					"a=rtpmap:0 PCMU/8000\r\n" +
+					"a=sendonly\r\n",
+				),
+			},
+			"invalid SDP: back channels cannot be recorded",
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			nconnClosed := make(chan struct{})

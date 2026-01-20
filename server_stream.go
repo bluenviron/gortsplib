@@ -3,6 +3,7 @@ package gortsplib
 import (
 	"crypto/rand"
 	"fmt"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,23 +17,51 @@ import (
 )
 
 func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStreamMedia) []uint32 {
-	var ret []uint32
+	n := 0
 	for _, media := range medias {
-		for _, forma := range media.formats {
-			ret = append(ret, forma.localSSRC)
+		for range media.formats {
+			n++
 		}
 	}
+
+	if n == 0 {
+		return nil
+	}
+
+	ret := make([]uint32, n)
+	n = 0
+
+	for _, media := range medias {
+		for _, forma := range media.formats {
+			ret[n] = forma.localSSRC
+			n++
+		}
+	}
+
 	return ret
 }
 
-// ServerStream represents a data stream.
+// StreamMediaMulticastParams used to request specific Multicast configuration for each media in a stream
+type StreamMediaMulticastParams struct {
+	IP       net.IP
+	RTPPort  int
+	RTCPPort int
+}
+
+// ServerStream represents a media stream.
 // This is in charge of
 // - storing stream description and statistics
 // - distributing the stream to each reader
 // - allocating multicast listeners
 type ServerStream struct {
+	// Parent server.
 	Server *Server
-	Desc   *description.Session
+
+	// Stream description.
+	Desc *description.Session
+
+	// (optional) Stream-specific Multicast settings.
+	MulticastParams map[*description.Media]StreamMediaMulticastParams
 
 	mutex                sync.RWMutex
 	readers              map[*ServerSession]struct{}
@@ -205,8 +234,33 @@ func (st *ServerStream) readerAdd(
 	case ProtocolUDPMulticast:
 		if st.multicastReaderCount == 0 {
 			for _, media := range st.medias {
+				var ip net.IP
+				var rtpPort int
+				var rtcpPort int
+
+				if params, ok := st.MulticastParams[media.media]; ok {
+					ip = params.IP
+					rtpPort = params.RTPPort
+					rtcpPort = params.RTCPPort
+				} else {
+					var err error
+					ip, err = st.Server.getMulticastIP()
+					if err != nil {
+						return err
+					}
+
+					rtpPort = st.Server.MulticastRTPPort
+					rtcpPort = st.Server.MulticastRTCPPort
+				}
+
 				mw := &serverMulticastWriter{
-					s: st.Server,
+					udpReadBufferSize: st.Server.UDPReadBufferSize,
+					listenPacket:      st.Server.ListenPacket,
+					writeQueueSize:    st.Server.WriteQueueSize,
+					writeTimeout:      st.Server.WriteTimeout,
+					ip:                ip,
+					rtpPort:           rtpPort,
+					rtcpPort:          rtcpPort,
 				}
 				err := mw.initialize()
 				if err != nil {

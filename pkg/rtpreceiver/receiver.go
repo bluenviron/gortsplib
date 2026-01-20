@@ -11,7 +11,8 @@ import (
 	"github.com/pion/rtp"
 )
 
-// Receiver is a utility to receive RTP packets. It is in charge of:
+// Receiver is a utility to receive RTP packets.
+// It is in charge of:
 // - removing duplicate packets (when transport is unreliable)
 // - reordering packets (when transport is unrealiable)
 // - counting received and lost packets

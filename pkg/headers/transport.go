@@ -114,9 +114,11 @@ type Transport struct {
 	Delivery *TransportDelivery
 
 	// (optional) Source IP/host.
+	// TODO: rename into Source
 	Source2 *string
 
 	// (optional) destination IP/host.
+	// TODO: rename into Destination
 	Destination2 *string
 
 	// (optional) interleaved frame IDs.

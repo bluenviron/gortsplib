@@ -120,10 +120,6 @@ func (u *serverUDPListener) close() {
 	<-u.done
 }
 
-func (u *serverUDPListener) ip() net.IP {
-	return u.listenIP
-}
-
 func (u *serverUDPListener) port() int {
 	return u.pc.LocalAddr().(*net.UDPAddr).Port
 }

@@ -1,7 +1,7 @@
 # gortsplib
 
-[![Test](https://github.com/bluenviron/gortsplib/actions/workflows/test.yml/badge.svg)](https://github.com/bluenviron/gortsplib/actions/workflows/test.yml)
-[![Lint](https://github.com/bluenviron/gortsplib/actions/workflows/lint.yml/badge.svg)](https://github.com/bluenviron/gortsplib/actions/workflows/lint.yml)
+[![Test](https://github.com/bluenviron/gortsplib/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/bluenviron/gortsplib/actions/workflows/test.yml?query=branch%3Amain)
+[![Lint](https://github.com/bluenviron/gortsplib/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/bluenviron/gortsplib/actions/workflows/lint.yml?query=branch%3Amain)
 [![Go Report Card](https://goreportcard.com/badge/github.com/bluenviron/gortsplib)](https://goreportcard.com/report/github.com/bluenviron/gortsplib)
 [![CodeCov](https://codecov.io/gh/bluenviron/gortsplib/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bluenviron/gortsplib/tree/main)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/bluenviron/gortsplib/v5)](https://pkg.go.dev/github.com/bluenviron/gortsplib/v5#pkg-index)
@@ -93,6 +93,7 @@ Features:
 * [client-record-format-opus](examples/client-record-format-opus/main.go)
 * [client-record-format-vp8](examples/client-record-format-vp8/main.go)
 * [client-record-format-vp9](examples/client-record-format-vp9/main.go)
+* [client-record-format-klv](examples/client-record-format-klv/main.go)
 * [server](examples/server/main.go)
 * [server-secure](examples/server-secure/main.go)
 * [server-auth](examples/server-auth/main.go)
