@@ -44,22 +44,21 @@ type Receiver struct {
 	mutex sync.RWMutex
 
 	// data from RTP packets
-	firstRTPPacketReceived bool
-	timeInitialized        bool
-	buffer                 []*rtp.Packet
-	absPos                 uint16
-	negativeCount          int
-	sequenceNumberCycles   uint16
-	lastValidSeqNum        uint16
-	remoteSSRC             uint32
-	lastRTP                uint32
-	lastSystem             time.Time
-	totalLost              uint32
-	totalLostSinceReport   uint32
-	totalSinceReport       uint32
-	totalReceived          uint64
-	totalLost2             uint64
-	jitter                 float64
+	firstRTPPacketReceived          bool
+	timeInitialized                 bool
+	buffer                          []*rtp.Packet
+	absPos                          uint16
+	negativeCount                   int
+	sequenceNumberCycles            uint16
+	lastValidSeqNum                 uint16
+	remoteSSRC                      uint32
+	lastRTP                         uint32
+	lastSystem                      time.Time
+	totalLost                       uint64
+	totalLostSinceReport            uint64
+	totalReceived                   uint64
+	totalReceivedAndLostSinceReport uint64
+	jitter                          float64
 
 	// data from RTCP sender reports
 	firstSenderReportReceived  bool
@@ -141,8 +140,8 @@ func (rr *Receiver) report() rtcp.Packet {
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastValidSeqNum),
 				// equivalent to taking the integer part after multiplying the
 				// loss fraction by 256
-				FractionLost: uint8(float64(rr.totalLostSinceReport*256) / float64(rr.totalSinceReport)),
-				TotalLost:    rr.totalLost,
+				FractionLost: uint8((min(rr.totalLostSinceReport, 0xFFFFFF) * 256) / rr.totalReceivedAndLostSinceReport),
+				TotalLost:    uint32(min(rr.totalLost, 0xFFFFFF)), // allow up to 24 bits
 				Jitter:       uint32(rr.jitter),
 			},
 		},
@@ -159,7 +158,7 @@ func (rr *Receiver) report() rtcp.Packet {
 	}
 
 	rr.totalLostSinceReport = 0
-	rr.totalSinceReport = 0
+	rr.totalReceivedAndLostSinceReport = 0
 
 	return report
 }
@@ -190,7 +189,7 @@ func (rr *Receiver) ProcessPacket2(
 	// first packet
 	if !rr.firstRTPPacketReceived {
 		rr.firstRTPPacketReceived = true
-		rr.totalSinceReport = 1
+		rr.totalReceivedAndLostSinceReport = 1
 		rr.lastValidSeqNum = pkt.SequenceNumber
 		rr.remoteSSRC = pkt.SSRC
 
@@ -213,18 +212,9 @@ func (rr *Receiver) ProcessPacket2(
 		lost = uint64(pkt.SequenceNumber - rr.lastValidSeqNum - 1)
 	}
 
-	rr.totalLost += uint32(lost)
-	rr.totalLostSinceReport += uint32(lost)
-	rr.totalLost2 += lost
+	rr.totalLost += lost
+	rr.totalLostSinceReport += lost
 	rr.totalReceived += uint64(len(pkts))
-
-	// allow up to 24 bits
-	if rr.totalLost > 0xFFFFFF {
-		rr.totalLost = 0xFFFFFF
-	}
-	if rr.totalLostSinceReport > 0xFFFFFF {
-		rr.totalLostSinceReport = 0xFFFFFF
-	}
 
 	for _, pkt := range pkts {
 		diff := int32(pkt.SequenceNumber) - int32(rr.lastValidSeqNum)
@@ -234,7 +224,7 @@ func (rr *Receiver) ProcessPacket2(
 			rr.sequenceNumberCycles++
 		}
 
-		rr.totalSinceReport += uint32(uint16(diff))
+		rr.totalReceivedAndLostSinceReport += uint64(uint16(diff))
 		rr.lastValidSeqNum = pkt.SequenceNumber
 
 		if ptsEqualsDTS {
@@ -414,6 +404,6 @@ func (rr *Receiver) Stats() *Stats {
 		LastNTP:            ntp,
 		Jitter:             rr.jitter,
 		TotalReceived:      rr.totalReceived,
-		TotalLost:          rr.totalLost2,
+		TotalLost:          rr.totalLost,
 	}
 }
