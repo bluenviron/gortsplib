@@ -461,7 +461,7 @@ type Client struct {
 	// timeout of write operations.
 	// It defaults to 10 seconds.
 	WriteTimeout time.Duration
-	// a TLS configuration to connect to TLS/RTSPS servers.
+	// a TLS configuration to connect to RTSPS servers.
 	// It defaults to nil.
 	TLSConfig *tls.Config
 	// tunneling method.

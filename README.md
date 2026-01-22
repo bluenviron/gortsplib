@@ -13,7 +13,7 @@ Go &ge; 1.24 is required.
 Features:
 
 * Client
-  * Support secure protocol variants (RTSPS, TLS, SRTP, SRTCP)
+  * Support secure protocol variants (RTSPS, SRTP, SRTCP)
   * Support tunneling (RTSP-over-HTTP, RTSP-over-WebSocket)
   * Query servers about available media streams
   * Read media streams from a server ("play")
@@ -29,7 +29,7 @@ Features:
     * Switch transport protocol automatically
     * Pause without disconnecting from the server
 * Server
-  * Support secure protocol variants (RTSPS, TLS, SRTP, SRTCP)
+  * Support secure protocol variants (RTSPS, SRTP, SRTCP)
   * Support tunneling (RTSP-over-HTTP, RTSP-over-WebSocket)
   * Handle requests from clients
   * Validate client credentials
