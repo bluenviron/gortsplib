@@ -497,6 +497,9 @@ type Client struct {
 	DisableRTCPSenderReports bool
 	// explicitly request back channels to the server.
 	RequestBackChannels bool
+	// Range of ports used as source port in outgoing UDP packets.
+	// It defaults to [10000, 65535].
+	UDPSourcePortRange [2]uint16
 
 	//
 	// system functions (all optional)
@@ -613,6 +616,9 @@ func (c *Client) Start() error {
 	}
 	if c.UserAgent == "" {
 		c.UserAgent = clientUserAgent
+	}
+	if c.UDPSourcePortRange == [2]uint16{0, 0} {
+		c.UDPSourcePortRange = [2]uint16{10000, 65535}
 	}
 
 	// system functions

@@ -77,15 +77,15 @@ func createUDPListenerPair(
 		return l1, l2, nil
 	}
 
-	// pick two consecutive ports in range 65535-10000
-	// RTP port must be even and RTCP port odd
+	// pick two consecutive ports.
+	// RTP port must be even and RTCP port odd.
 	for {
-		v, err := randInRange((65535 - 10000) / 2)
+		v, err := randInRange(int((c.UDPSourcePortRange[1] - c.UDPSourcePortRange[0]) / 2))
 		if err != nil {
 			return nil, nil, err
 		}
 
-		rtpPort := v*2 + 10000
+		rtpPort := v*2 + int(c.UDPSourcePortRange[0])
 		rtcpPort := rtpPort + 1
 
 		l1 := &clientUDPListener{
