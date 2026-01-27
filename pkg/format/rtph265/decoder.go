@@ -26,6 +26,8 @@ func joinFragments(fragments [][]byte, size int) [][]byte {
 	for _, p := range fragments {
 		n += copy(b[n:], p)
 	}
+	// Even though fragments must contain only
+	// one NAL unit, some vendors put multiple anyway.
 	startCode := []byte{0x00, 0x00, 0x01}
 	nalus := make([][]byte, 0, 1)
 	for {
