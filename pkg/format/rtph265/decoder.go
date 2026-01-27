@@ -1,6 +1,7 @@
 package rtph265
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -19,13 +20,33 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 var ErrNonStartingPacketAndNoPrevious = errors.New(
 	"received a non-starting fragment without any previous starting fragment")
 
-func joinFragments(fragments [][]byte, size int) []byte {
-	ret := make([]byte, size)
+func joinFragments(fragments [][]byte, size int) [][]byte {
+	b := make([]byte, size)
 	n := 0
 	for _, p := range fragments {
-		n += copy(ret[n:], p)
+		n += copy(b[n:], p)
 	}
-	return ret
+	startCode := []byte{0x00, 0x00, 0x01}
+	nalus := make([][]byte, 0, 1)
+	for {
+		idx := bytes.Index(b, startCode)
+		if idx == -1 {
+			nalus = append(nalus, b)
+			break
+		}
+		sz := 3
+		if idx > 0 && b[idx-1] == 0x00 {
+			idx--
+			sz++
+		}
+		if idx == 0 {
+			b = b[sz:]
+			continue
+		}
+		nalus = append(nalus, b[:idx])
+		b = b[idx+sz:]
+	}
+	return nalus
 }
 
 func auSize(au [][]byte) int {
@@ -158,7 +179,7 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, ErrMorePacketsNeeded
 		}
 
-		nalus = [][]byte{joinFragments(d.fragments, d.fragmentsSize)}
+		nalus = joinFragments(d.fragments, d.fragmentsSize)
 		d.resetFragments()
 
 	case h265.NALUType_PACI:
