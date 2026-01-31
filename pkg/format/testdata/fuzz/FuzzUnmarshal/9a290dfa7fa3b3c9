@@ -1,2 +1,0 @@
-go test fuzz v1
-string("m=video 0 AVP 96\na=fmtp:96 ;")

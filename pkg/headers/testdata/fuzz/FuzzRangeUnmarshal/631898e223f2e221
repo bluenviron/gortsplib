@@ -1,2 +1,0 @@
-go test fuzz v1
-string("clock=00000101T000000Z-0")

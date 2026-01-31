@@ -1,5 +1,0 @@
-go test fuzz v1
-[]byte("\x06\x0e+4")
-bool(true)
-[]byte("0")
-bool(true)
