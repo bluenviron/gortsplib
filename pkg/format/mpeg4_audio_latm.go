@@ -14,7 +14,7 @@ import (
 func allLayersHaveSameTypeRateChannelsExtType(c *mpeg4audio.StreamMuxConfig) bool {
 	typ := c.Programs[0].Layers[0].AudioSpecificConfig.Type
 	rate := c.Programs[0].Layers[0].AudioSpecificConfig.SampleRate
-	channels := c.Programs[0].Layers[0].AudioSpecificConfig.ChannelCount
+	channelConfig := c.Programs[0].Layers[0].AudioSpecificConfig.ChannelConfig
 	extensionType := c.Programs[0].Layers[0].AudioSpecificConfig.ExtensionType
 
 	for i, p := range c.Programs {
@@ -25,7 +25,7 @@ func allLayersHaveSameTypeRateChannelsExtType(c *mpeg4audio.StreamMuxConfig) boo
 
 			if l.AudioSpecificConfig.Type != typ ||
 				l.AudioSpecificConfig.SampleRate != rate ||
-				l.AudioSpecificConfig.ChannelCount != channels ||
+				l.AudioSpecificConfig.ChannelConfig != channelConfig ||
 				l.AudioSpecificConfig.ExtensionType != extensionType {
 				return false
 			}
@@ -145,9 +145,20 @@ func (f *MPEG4AudioLATM) RTPMap() string {
 		sampleRate = aoc.ExtensionSampleRate
 	}
 
-	channelCount := aoc.ChannelCount
-	if aoc.ExtensionType == mpeg4audio.ObjectTypePS {
+	var channelCount int
+
+	switch {
+	case aoc.ExtensionType == mpeg4audio.ObjectTypePS:
 		channelCount = 2
+
+	case aoc.ChannelConfig == 7:
+		channelCount = 8
+
+	case aoc.ChannelConfig >= 1 && aoc.ChannelConfig <= 6:
+		channelCount = int(aoc.ChannelConfig)
+
+	default:
+		channelCount = 1
 	}
 
 	return "MP4A-LATM/" + strconv.FormatInt(int64(sampleRate), 10) +

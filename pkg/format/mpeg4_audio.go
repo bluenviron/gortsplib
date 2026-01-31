@@ -116,9 +116,20 @@ func (f *MPEG4Audio) RTPMap() string {
 		sampleRate = f.Config.ExtensionSampleRate
 	}
 
-	channelCount := f.Config.ChannelCount
-	if f.Config.ExtensionType == mpeg4audio.ObjectTypePS {
+	var channelCount int
+
+	switch {
+	case f.Config.ExtensionType == mpeg4audio.ObjectTypePS:
 		channelCount = 2
+
+	case f.Config.ChannelConfig == 7:
+		channelCount = 8
+
+	case f.Config.ChannelConfig >= 1 && f.Config.ChannelConfig <= 6:
+		channelCount = int(f.Config.ChannelConfig)
+
+	default:
+		channelCount = 1
 	}
 
 	return "mpeg4-generic/" + strconv.FormatInt(int64(sampleRate), 10) +
