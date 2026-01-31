@@ -1,5 +1,0 @@
-go test fuzz v1
-[]byte("0")
-bool(true)
-[]byte("\x00\x1000")
-bool(true)
