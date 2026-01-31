@@ -16,9 +16,10 @@ func TestMPEG4AudioLATMAttributes(t *testing.T) {
 			Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 				Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 					AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   44100,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 					LatmBufferFullness: 255,
 				}},
@@ -38,9 +39,10 @@ func TestMPEG4AudioLATMDecEncoder(t *testing.T) {
 			Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 				Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 					AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   48000,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    48000,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 					LatmBufferFullness: 255,
 				}},

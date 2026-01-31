@@ -13,9 +13,10 @@ func TestMPEG4AudioAttributes(t *testing.T) {
 	format := &MPEG4Audio{
 		PayloadTyp: 96,
 		Config: &mpeg4audio.AudioSpecificConfig{
-			Type:         mpeg4audio.ObjectTypeAACLC,
-			SampleRate:   48000,
-			ChannelCount: 2,
+			Type:          mpeg4audio.ObjectTypeAACLC,
+			SampleRate:    48000,
+			ChannelConfig: 2,
+			ChannelCount:  2,
 		},
 		SizeLength:       13,
 		IndexLength:      3,
@@ -30,9 +31,10 @@ func TestMPEG4AudioDecEncoder(t *testing.T) {
 	format := &MPEG4Audio{
 		PayloadTyp: 96,
 		Config: &mpeg4audio.AudioSpecificConfig{
-			Type:         mpeg4audio.ObjectTypeAACLC,
-			SampleRate:   48000,
-			ChannelCount: 2,
+			Type:          mpeg4audio.ObjectTypeAACLC,
+			SampleRate:    48000,
+			ChannelConfig: 2,
+			ChannelCount:  2,
 		},
 		SizeLength:       13,
 		IndexLength:      3,

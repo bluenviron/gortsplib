@@ -2845,9 +2845,10 @@ func TestServerPlayMulticastParams(t *testing.T) {
 		Formats: []format.Format{&format.MPEG4Audio{
 			PayloadTyp: 97,
 			Config: &mpeg4audio.AudioSpecificConfig{
-				Type:         mpeg4audio.ObjectTypeAACLC,
-				SampleRate:   48000,
-				ChannelCount: 2,
+				Type:          mpeg4audio.ObjectTypeAACLC,
+				SampleRate:    48000,
+				ChannelConfig: 2,
+				ChannelCount:  2,
 			},
 			SizeLength:       13,
 			IndexLength:      3,

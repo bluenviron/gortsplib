@@ -275,9 +275,10 @@ var casesFormat = []struct {
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
 			Config: &mpeg4audio.AudioSpecificConfig{
-				Type:         mpeg4audio.ObjectTypeAACLC,
-				SampleRate:   48000,
-				ChannelCount: 2,
+				Type:          mpeg4audio.ObjectTypeAACLC,
+				SampleRate:    48000,
+				ChannelConfig: 2,
+				ChannelCount:  2,
 			},
 			SizeLength:       13,
 			IndexLength:      3,
@@ -307,9 +308,10 @@ var casesFormat = []struct {
 			PayloadTyp:     96,
 			ProfileLevelID: 1,
 			Config: &mpeg4audio.AudioSpecificConfig{
-				Type:         mpeg4audio.ObjectTypeAACLC,
-				SampleRate:   48000,
-				ChannelCount: 2,
+				Type:          mpeg4audio.ObjectTypeAACLC,
+				SampleRate:    48000,
+				ChannelConfig: 2,
+				ChannelCount:  2,
 			},
 			SizeLength:       13,
 			IndexLength:      3,
@@ -339,9 +341,10 @@ var casesFormat = []struct {
 			PayloadTyp:     96,
 			ProfileLevelID: 14,
 			Config: &mpeg4audio.AudioSpecificConfig{
-				Type:         mpeg4audio.ObjectTypeAACLC,
-				SampleRate:   48000,
-				ChannelCount: 2,
+				Type:          mpeg4audio.ObjectTypeAACLC,
+				SampleRate:    48000,
+				ChannelConfig: 2,
+				ChannelCount:  2,
 			},
 			SizeLength: 13,
 		},
@@ -371,6 +374,7 @@ var casesFormat = []struct {
 				ExtensionType:       29,
 				ExtensionSampleRate: 48000,
 				SampleRate:          24000,
+				ChannelConfig:       1,
 				ChannelCount:        1,
 			},
 			SizeLength: 13,
@@ -402,9 +406,10 @@ var casesFormat = []struct {
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 						AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
-							Type:         2,
-							SampleRate:   24000,
-							ChannelCount: 2,
+							Type:          2,
+							SampleRate:    24000,
+							ChannelConfig: 2,
+							ChannelCount:  2,
 						},
 						LatmBufferFullness: 255,
 					}},
@@ -438,9 +443,10 @@ var casesFormat = []struct {
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 						AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
-							Type:         2,
-							SampleRate:   24000,
-							ChannelCount: 1,
+							Type:          2,
+							SampleRate:    24000,
+							ChannelConfig: 1,
+							ChannelCount:  1,
 						},
 						LatmBufferFullness: 255,
 					}},
@@ -479,6 +485,7 @@ var casesFormat = []struct {
 							ExtensionType:       5,
 							ExtensionSampleRate: 48000,
 							SampleRate:          24000,
+							ChannelConfig:       2,
 							ChannelCount:        2,
 						},
 						LatmBufferFullness: 255,
@@ -518,6 +525,7 @@ var casesFormat = []struct {
 							ExtensionType:       29,
 							ExtensionSampleRate: 48000,
 							SampleRate:          24000,
+							ChannelConfig:       1,
 							ChannelCount:        1,
 						},
 						LatmBufferFullness: 255,
@@ -551,9 +559,10 @@ var casesFormat = []struct {
 				Programs: []*mpeg4audio.StreamMuxConfigProgram{{
 					Layers: []*mpeg4audio.StreamMuxConfigLayer{{
 						AudioSpecificConfig: &mpeg4audio.AudioSpecificConfig{
-							Type:         2,
-							SampleRate:   48000,
-							ChannelCount: 1,
+							Type:          2,
+							SampleRate:    48000,
+							ChannelConfig: 1,
+							ChannelCount:  1,
 						},
 						LatmBufferFullness: 255,
 					}},
@@ -1212,9 +1221,10 @@ var casesFormat = []struct {
 		&MPEG4Audio{
 			PayloadTyp: 100,
 			Config: &mpeg4audio.AudioSpecificConfig{
-				Type:         2,
-				SampleRate:   48000,
-				ChannelCount: 2,
+				Type:          2,
+				SampleRate:    48000,
+				ChannelConfig: 2,
+				ChannelCount:  2,
 			},
 			SizeLength:       13,
 			IndexLength:      3,
