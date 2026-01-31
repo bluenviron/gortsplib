@@ -1,2 +1,0 @@
-go test fuzz v1
-string("v=0\nu=%\xf3\x96\x830")

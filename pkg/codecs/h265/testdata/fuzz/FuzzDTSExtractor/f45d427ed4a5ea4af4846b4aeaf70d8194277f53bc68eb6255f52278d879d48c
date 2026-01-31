@@ -1,3 +1,0 @@
-go test fuzz v1
-[]byte("*00000000000")
-uint64(6)
