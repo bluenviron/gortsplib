@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
@@ -359,6 +360,41 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 		Payload: []byte{0x1c, 0x05, 0x01, 0x02},
 	})
 	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
+}
+
+func TestDecodeMultipleNALUsInFU(t *testing.T) {
+	data, err := os.ReadFile("testdata/multiple-nalus-in-fu.rtp")
+	require.NoError(t, err)
+
+	pkts, err := unserializePackets(data)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(pkts), "must be 2 packets")
+
+	d := &Decoder{}
+	err = d.Init()
+	require.NoError(t, err)
+
+	_, err = d.Decode(pkts[0])
+	require.Equal(t, ErrMorePacketsNeeded, err)
+
+	nalus, err := d.Decode(pkts[1])
+	require.NoError(t, err)
+	require.Equal(t, 3, len(nalus), "must be 3 NALUs")
+
+	expectedNALUs := []struct {
+		typ  h264.NALUType
+		size int
+	}{
+		{h264.NALUTypeSPS, 20},
+		{h264.NALUTypePPS, 4},
+		{h264.NALUTypeIDR, 2768},
+	}
+
+	for i, nalu := range nalus {
+		typ := h264.NALUType(nalu[0] & 0x1F)
+		require.Equal(t, expectedNALUs[i].typ, typ, "nalu types don't match")
+		require.Equal(t, expectedNALUs[i].size, len(nalu), "nalu sizes don't match")
+	}
 }
 
 func serializePackets(packets []*rtp.Packet) ([]byte, error) {
