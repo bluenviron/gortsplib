@@ -106,7 +106,7 @@ type Server struct {
 	// It defaults to 256.
 	WriteQueueSize int
 	// maximum size of outgoing RTP / RTCP packets.
-	// This must be less than the UDP MTU (1472 bytes).
+	// This must be less than the IPv4/UDP MTU (1472 bytes).
 	// It defaults to 1472.
 	MaxPacketSize int
 	// disable automatic RTCP sender reports.
