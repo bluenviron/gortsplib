@@ -48,6 +48,19 @@ func (tu *clientTunnelWebSocket) SetWriteDeadline(t time.Time) error {
 	return tu.wconn.SetWriteDeadline(t)
 }
 
+// MakeWebSoketDial make a dialer from WebSocket connection.
+func MakeWebSoketDial(
+	conn *websocket.Conn,
+) func(ctx context.Context, network, address string) (net.Conn, error) {
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		return &clientTunnelWebSocket{
+			wconn: conn,
+			r:     &wsReader{wc: conn},
+			w:     &wsWriter{wc: conn},
+		}, nil
+	}
+}
+
 func newClientTunnelWebSocket(
 	ctx context.Context,
 	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
