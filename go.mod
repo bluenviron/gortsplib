@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/rtcp v1.2.16
-	github.com/pion/rtp v1.10.0
+	github.com/pion/rtp v1.10.1
 	github.com/pion/sdp/v3 v3.0.17
 	github.com/pion/srtp/v3 v3.0.10
 	github.com/stretchr/testify v1.11.1
