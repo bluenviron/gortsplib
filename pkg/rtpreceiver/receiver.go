@@ -132,17 +132,22 @@ func (rr *Receiver) report() rtcp.Packet {
 
 	system := rr.TimeNow()
 
+	var fractionLost uint8
+	if rr.totalReceivedAndLostSinceReport != 0 {
+		// equivalent to taking the integer part after multiplying the
+		// loss fraction by 256
+		fractionLost = uint8((min(rr.totalLostSinceReport, 0xFFFFFF) * 256) / rr.totalReceivedAndLostSinceReport)
+	}
+
 	report := &rtcp.ReceiverReport{
 		SSRC: rr.LocalSSRC,
 		Reports: []rtcp.ReceptionReport{
 			{
 				SSRC:               rr.remoteSSRC,
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastValidSeqNum),
-				// equivalent to taking the integer part after multiplying the
-				// loss fraction by 256
-				FractionLost: uint8((min(rr.totalLostSinceReport, 0xFFFFFF) * 256) / rr.totalReceivedAndLostSinceReport),
-				TotalLost:    uint32(min(rr.totalLost, 0xFFFFFF)), // allow up to 24 bits
-				Jitter:       uint32(rr.jitter),
+				FractionLost:       fractionLost,
+				TotalLost:          uint32(min(rr.totalLost, 0xFFFFFF)), // allow up to 24 bits
+				Jitter:             uint32(rr.jitter),
 			},
 		},
 	}
