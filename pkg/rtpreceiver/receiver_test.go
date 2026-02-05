@@ -196,6 +196,46 @@ func TestStandard(t *testing.T) {
 	}
 }
 
+func TestNoPackets(t *testing.T) {
+	pktGenerated := make(chan rtcp.Packet)
+
+	rr := &Receiver{
+		ClockRate: 90000,
+		LocalSSRC: 0x65f83afb,
+		Period:    500 * time.Millisecond,
+		TimeNow: func() time.Time {
+			return time.Date(2008, 0o5, 20, 22, 15, 22, 0, time.UTC)
+		},
+		WritePacketRTCP: func(pkt rtcp.Packet) {
+			pktGenerated <- pkt
+		},
+	}
+	err := rr.Initialize()
+	require.NoError(t, err)
+	defer rr.Close()
+
+	rtpPkt := rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 945,
+			Timestamp:      0xafb45733,
+			SSRC:           0xba9da416,
+		},
+		Payload: []byte("\x00\x00"),
+	}
+	ts := time.Date(2008, 0o5, 20, 22, 15, 20, 0, time.UTC)
+	_, _, err = rr.ProcessPacket(&rtpPkt, ts, true)
+	require.NoError(t, err)
+
+	<-pktGenerated
+
+	// do not send any packet here
+
+	<-pktGenerated
+}
+
 func TestZeroClockRate(t *testing.T) {
 	pktGenerated := make(chan rtcp.Packet)
 
