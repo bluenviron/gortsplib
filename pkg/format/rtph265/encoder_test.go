@@ -25,9 +25,9 @@ func mergeBytes(vals ...[]byte) []byte {
 }
 
 var cases = []struct {
-	name  string
-	nalus [][]byte
-	pkts  []*rtp.Packet
+	name string
+	au   [][]byte
+	pkts []*rtp.Packet
 }{
 	{
 		"single",
@@ -149,7 +149,7 @@ func TestEncode(t *testing.T) {
 			err := e.Init()
 			require.NoError(t, err)
 
-			pkts, err := e.Encode(ca.nalus)
+			pkts, err := e.Encode(ca.au)
 			require.NoError(t, err)
 			require.Equal(t, ca.pkts, pkts)
 		})

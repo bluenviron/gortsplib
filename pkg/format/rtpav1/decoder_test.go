@@ -36,7 +36,7 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func TestDecoderErrorTUSize(t *testing.T) {
+func TestDecodeErrorTUSize(t *testing.T) {
 	d := &Decoder{}
 	err := d.Init()
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestDecoderErrorTUSize(t *testing.T) {
 	require.EqualError(t, err, "temporal unit size (3145800) is too big, maximum is 3145728")
 }
 
-func TestDecoderErrorOBUCount(t *testing.T) {
+func TestDecodeErrorOBUCount(t *testing.T) {
 	d := &Decoder{}
 	err := d.Init()
 	require.NoError(t, err)
