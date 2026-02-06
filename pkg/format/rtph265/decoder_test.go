@@ -235,7 +235,7 @@ func TestDecodeMultipleNALUsInFU(t *testing.T) {
 			},
 		},
 		{
-			name: "leading and trailing start code",
+			name: "leading and trailing start codes",
 			pkts: []*rtp.Packet{
 				{
 					Header: rtp.Header{
