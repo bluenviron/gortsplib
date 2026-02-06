@@ -1,7 +1,7 @@
 package gortsplib
 
 const (
-	// 1500 (UDP MTU) - 20 (IP header) - 8 (UDP header)
+	// 1500 (ethernet MTU) - 20 (IPv4 header) - 8 (UDP header)
 	udpMaxPayloadSize = 1472
 
 	// 16 master key + 14 master salt
