@@ -20,14 +20,18 @@ var ErrMorePacketsNeeded = errors.New("need more packets")
 var ErrNonStartingPacketAndNoPrevious = errors.New(
 	"received a non-starting fragment without any previous starting fragment")
 
-func joinFragments(fragments [][]byte, size int) [][]byte {
-	b := make([]byte, size)
+func joinFragments(fragments [][]byte, size int) []byte {
+	ret := make([]byte, size)
 	n := 0
 	for _, p := range fragments {
-		n += copy(b[n:], p)
+		n += copy(ret[n:], p)
 	}
-	// Even though fragments must contain only
-	// one NAL unit, some vendors put multiple anyway.
+	return ret
+}
+
+// Even though fragments must contain only
+// one NAL unit, some vendors put multiple anyway.
+func splitNALUs(b []byte) [][]byte {
 	startCode := []byte{0x00, 0x00, 0x01}
 	nalus := make([][]byte, 0, 1)
 	for len(b) > 0 {
@@ -137,7 +141,7 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			// However, some vendors camera (e.g. CostarHD) have been observed to nevertheless
 			// emit one fragmented NAL unit for sufficiently small P-frames.
 			if end != 0 {
-				nalus = joinFragments(d.fragments, d.fragmentsSize)
+				nalus = splitNALUs(joinFragments(d.fragments, d.fragmentsSize))
 				d.resetFragments()
 				break
 			}
@@ -174,7 +178,7 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 			return nil, ErrMorePacketsNeeded
 		}
 
-		nalus = joinFragments(d.fragments, d.fragmentsSize)
+		nalus = splitNALUs(joinFragments(d.fragments, d.fragmentsSize))
 		d.resetFragments()
 
 	case h264.NALUTypeSTAPA:
