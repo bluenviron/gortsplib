@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"os"
 	"testing"
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
@@ -363,37 +362,136 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 }
 
 func TestDecodeMultipleNALUsInFU(t *testing.T) {
-	data, err := os.ReadFile("testdata/multiple-nalus-in-fu.rtp")
-	require.NoError(t, err)
-
-	pkts, err := unserializePackets(data)
-	require.NoError(t, err)
-	require.Equal(t, 2, len(pkts), "must be 2 packets")
-
-	d := &Decoder{}
-	err = d.Init()
-	require.NoError(t, err)
-
-	_, err = d.Decode(pkts[0])
-	require.Equal(t, ErrMorePacketsNeeded, err)
-
-	nalus, err := d.Decode(pkts[1])
-	require.NoError(t, err)
-	require.Equal(t, 3, len(nalus), "must be 3 NALUs")
-
-	expectedNALUs := []struct {
-		typ  h264.NALUType
-		size int
+	tests := []struct {
+		name string
+		pkts []*rtp.Packet
 	}{
-		{h264.NALUTypeSPS, 20},
-		{h264.NALUTypePPS, 4},
-		{h264.NALUTypeIDR, 2768},
+		{
+			name: "basic",
+			pkts: []*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 54972,
+						SSRC:           0xda182e65,
+					},
+					Payload: []byte{
+						0x7c, 0x87, 0x4d, 0x00, 0x33, 0x8a, 0x8a, 0x50,
+						0x28, 0x02, 0xdd, 0x34, 0x40, 0x00, 0x00, 0xfa,
+						0x00, 0x00, 0x30, 0xd4,
+					},
+				},
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 54973,
+						SSRC:           0xda182e65,
+					},
+					Payload: []byte{
+						0x7c, 0x47, 0x01, 0x00, 0x00, 0x00, 0x01, 0x68,
+						0xee, 0x3c, 0x80,
+					},
+				},
+			},
+		},
+		{
+			name: "leading start code",
+			pkts: []*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 54972,
+						SSRC:           0xda182e65,
+					},
+					Payload: []byte{
+						0x1c, 0x80, 0x00, 0x01, 0x67, 0x4d, 0x00, 0x33,
+						0x8a, 0x8a, 0x50, 0x28, 0x02, 0xdd, 0x34, 0x40,
+						0x00, 0x00, 0xfa, 0x00,
+					},
+				},
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 54973,
+						SSRC:           0xda182e65,
+					},
+					Payload: []byte{
+						0x1c, 0x40, 0x00, 0x30, 0xd4, 0x01, 0x00, 0x00,
+						0x01, 0x68, 0xee, 0x3c, 0x80,
+					},
+				},
+			},
+		},
+		{
+			name: "leading and trailing start code",
+			pkts: []*rtp.Packet{
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         false,
+						PayloadType:    96,
+						SequenceNumber: 54972,
+						SSRC:           0xda182e65,
+					},
+					Payload: []byte{
+						0x1c, 0x80, 0x00, 0x01, 0x67, 0x4d, 0x00, 0x33,
+						0x8a, 0x8a, 0x50, 0x28, 0x02, 0xdd, 0x34, 0x40,
+						0x00, 0x00, 0xfa, 0x00,
+					},
+				},
+				{
+					Header: rtp.Header{
+						Version:        2,
+						Marker:         true,
+						PayloadType:    96,
+						SequenceNumber: 54973,
+						SSRC:           0xda182e65,
+					},
+					Payload: []byte{
+						0x1c, 0x40, 0x00, 0x30, 0xd4, 0x01, 0x00, 0x00,
+						0x01, 0x68, 0xee, 0x3c, 0x80, 0x00, 0x00, 0x00,
+						0x01,
+					},
+				},
+			},
+		},
 	}
 
-	for i, nalu := range nalus {
-		typ := h264.NALUType(nalu[0] & 0x1F)
-		require.Equal(t, expectedNALUs[i].typ, typ, "nalu types don't match")
-		require.Equal(t, expectedNALUs[i].size, len(nalu), "nalu sizes don't match")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &Decoder{}
+			err := d.Init()
+			require.NoError(t, err)
+
+			_, err = d.Decode(tc.pkts[0])
+			require.Equal(t, ErrMorePacketsNeeded, err)
+
+			nalus, err := d.Decode(tc.pkts[1])
+			require.NoError(t, err)
+			require.Equal(t, 2, len(nalus), "must be 2 NALUs")
+
+			expectedNALUs := []struct {
+				typ  h264.NALUType
+				size int
+			}{
+				{h264.NALUTypeSPS, 20},
+				{h264.NALUTypePPS, 4},
+			}
+
+			for i, nalu := range nalus {
+				typ := h264.NALUType(nalu[0] & 0x1F)
+				require.Equal(t, expectedNALUs[i].typ, typ, "nalu types don't match")
+				require.Equal(t, expectedNALUs[i].size, len(nalu), "nalu sizes don't match")
+			}
+		})
 	}
 }
 
