@@ -117,6 +117,7 @@ func TestStandard(t *testing.T) {
 				RemoteSSRC:         0xba9da416,
 				LastRTP:            0xafb45733,
 				LastSequenceNumber: 945,
+				TotalReceived:      1,
 			}, stats)
 
 			srPkt := rtcp.SenderReport{
@@ -139,6 +140,7 @@ func TestStandard(t *testing.T) {
 				LastRTP:            0xafb45733,
 				LastSequenceNumber: 945,
 				LastNTP:            time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC).Local(),
+				TotalReceived:      1,
 			}, stats)
 
 			rtpPkt = rtp.Packet{
@@ -190,7 +192,7 @@ func TestStandard(t *testing.T) {
 				LastRTP:            2947921603,
 				LastSequenceNumber: 947,
 				LastNTP:            time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC).Local(),
-				TotalReceived:      2,
+				TotalReceived:      3,
 			}, stats)
 		})
 	}
@@ -277,6 +279,7 @@ func TestZeroClockRate(t *testing.T) {
 		RemoteSSRC:         0xba9da416,
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 945,
+		TotalReceived:      1,
 	}, stats)
 
 	srPkt := rtcp.SenderReport{
@@ -294,6 +297,7 @@ func TestZeroClockRate(t *testing.T) {
 		RemoteSSRC:         0xba9da416,
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 945,
+		TotalReceived:      1,
 	}, stats)
 
 	rtpPkt = rtp.Packet{
@@ -337,7 +341,7 @@ func TestZeroClockRate(t *testing.T) {
 		RemoteSSRC:         0xba9da416,
 		LastRTP:            2947921603,
 		LastSequenceNumber: 947,
-		TotalReceived:      2,
+		TotalReceived:      3,
 	}, stats)
 }
 
@@ -585,7 +589,7 @@ func TestReliablePacketsLost(t *testing.T) {
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 290,
 		LastNTP:            time.Date(2020, 11, 21, 17, 44, 36, 869277776, time.UTC).Local(),
-		TotalReceived:      1,
+		TotalReceived:      2,
 		TotalLost:          1,
 	}, stats)
 }
@@ -672,7 +676,7 @@ func TestReliableOverflowAndPacketsLost(t *testing.T) {
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 2,
 		LastNTP:            time.Date(2020, 11, 21, 17, 44, 36, 869277776, time.UTC).Local(),
-		TotalReceived:      1,
+		TotalReceived:      2,
 		TotalLost:          2,
 	}, stats)
 }
@@ -853,7 +857,7 @@ func TestUnrealiableReorder(t *testing.T) {
 		RemoteSSRC:         0,
 		LastRTP:            0,
 		LastSequenceNumber: 1,
-		TotalReceived:      7,
+		TotalReceived:      8,
 	}, stats)
 }
 
@@ -945,7 +949,7 @@ func TestUnrealiableBufferFull(t *testing.T) {
 		RemoteSSRC:         0,
 		LastRTP:            0,
 		LastSequenceNumber: 1629,
-		TotalReceived:      31,
+		TotalReceived:      32,
 		TotalLost:          34,
 	}, stats)
 }
@@ -1016,7 +1020,7 @@ func TestUnrealiableReset(t *testing.T) {
 		RemoteSSRC:         0,
 		LastRTP:            0,
 		LastSequenceNumber: 40064,
-		TotalReceived:      1,
+		TotalReceived:      2,
 	}, stats)
 }
 
@@ -1071,4 +1075,11 @@ func TestUnrealiableCustomBufferSize(t *testing.T) {
 			SequenceNumber: nextSeq,
 		},
 	}}, out)
+
+	stats := rr.Stats()
+	require.Equal(t, &Stats{
+		LastSequenceNumber: 181,
+		TotalReceived:      2,
+		TotalLost:          130,
+	}, stats)
 }
