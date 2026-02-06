@@ -30,7 +30,7 @@ func joinFragments(fragments [][]byte, size int) [][]byte {
 	// one NAL unit, some vendors put multiple anyway.
 	startCode := []byte{0x00, 0x00, 0x01}
 	nalus := make([][]byte, 0, 1)
-	for {
+	for len(b) > 0 {
 		idx := bytes.Index(b, startCode)
 		if idx == -1 {
 			nalus = append(nalus, b)
