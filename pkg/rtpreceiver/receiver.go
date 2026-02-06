@@ -194,6 +194,7 @@ func (rr *Receiver) ProcessPacket2(
 	// first packet
 	if !rr.firstRTPPacketReceived {
 		rr.firstRTPPacketReceived = true
+		rr.totalReceived = 1
 		rr.totalReceivedAndLostSinceReport = 1
 		rr.lastValidSeqNum = pkt.SequenceNumber
 		rr.remoteSSRC = pkt.SSRC
@@ -220,16 +221,15 @@ func (rr *Receiver) ProcessPacket2(
 	rr.totalLost += lost
 	rr.totalLostSinceReport += lost
 	rr.totalReceived += uint64(len(pkts))
+	rr.totalReceivedAndLostSinceReport += uint64(len(pkts)) + lost
 
 	for _, pkt := range pkts {
-		diff := int32(pkt.SequenceNumber) - int32(rr.lastValidSeqNum)
-
 		// overflow
+		diff := int32(pkt.SequenceNumber) - int32(rr.lastValidSeqNum)
 		if diff < -0x0FFF {
 			rr.sequenceNumberCycles++
 		}
 
-		rr.totalReceivedAndLostSinceReport += uint64(uint16(diff))
 		rr.lastValidSeqNum = pkt.SequenceNumber
 
 		if ptsEqualsDTS {
@@ -254,7 +254,7 @@ func (rr *Receiver) ProcessPacket2(
 }
 
 func (rr *Receiver) reorder(pkt *rtp.Packet) ([]*rtp.Packet, uint64) {
-	relPos := int16(pkt.SequenceNumber - rr.lastValidSeqNum - 1) // rr.expectedSeqNum)
+	relPos := int16(pkt.SequenceNumber - rr.lastValidSeqNum - 1)
 
 	// packet is a duplicate or has been sent
 	// before the first packet processed by Reorderer.
