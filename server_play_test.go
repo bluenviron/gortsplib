@@ -640,7 +640,14 @@ func TestServerPlay(t *testing.T) {
 
 						close(nconnClosed)
 					},
-					onSessionOpen: func(_ *ServerHandlerOnSessionOpenCtx) {
+					onSessionOpen: func(ctx *ServerHandlerOnSessionOpenCtx) {
+						require.NotEmpty(t, ctx.Session.Conns())
+
+						// test that properties can be accessed in parallel
+						go func() {
+							ctx.Session.Conns()
+						}()
+
 						close(sessionOpened)
 					},
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
