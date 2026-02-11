@@ -500,6 +500,9 @@ type Client struct {
 	// Range of ports used as source port in outgoing UDP packets.
 	// It defaults to [10000, 65535].
 	UDPSourcePortRange [2]uint16
+	// Explicitly override the interval at which keep-alive requests are sent.
+	// If not configured, it will default to 30 seconds or the time-out sent by the camera in the session.
+	KeepAlivePeriod time.Duration
 
 	//
 	// system functions (all optional)
@@ -685,12 +688,16 @@ func (c *Client) Start() error {
 		c.checkTimeoutPeriod = 1 * time.Second
 	}
 
+	c.keepAlivePeriod = 30 * time.Second
+	if c.KeepAlivePeriod != 0 {
+		c.keepAlivePeriod = c.KeepAlivePeriod
+	}
+
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	c.ctx = ctx
 	c.ctxCancel = ctxCancel
 	c.checkTimeoutTimer = emptyTimer()
-	c.keepAlivePeriod = 30 * time.Second
 	c.keepAliveTimer = emptyTimer()
 	c.bytesReceived = new(uint64)
 	c.bytesSent = new(uint64)
@@ -1252,7 +1259,8 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		}
 		c.session = sx.Session
 
-		if sx.Timeout != nil && *sx.Timeout > 0 {
+		// Configure keep-alive interval if present in session and not explicitly configured by user
+		if sx.Timeout != nil && *sx.Timeout > 0 && c.KeepAlivePeriod == 0 {
 			c.keepAlivePeriod = max(
 				(time.Duration(*sx.Timeout)*time.Second)-5*time.Second,
 				1*time.Second,
