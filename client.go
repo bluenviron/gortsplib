@@ -501,6 +501,10 @@ type Client struct {
 	// Range of ports used as source port in outbound UDP packets.
 	// It defaults to [10000, 65535].
 	UDPSourcePortRange [2]uint16
+	// Enables using keep-alive responses to check whether the stream has timed out, as a fallback to checking whether
+	// RTP data is received.
+	// Useful for RTSP streams that infrequently send data, such as ONVIF metadata streams.
+	UseKeepAliveForTimeout bool
 
 	//
 	// System functions (all optional)
@@ -583,6 +587,8 @@ type Client struct {
 	tcpBuffer             []byte
 	bytesReceived         atomic.Uint64
 	bytesSent             atomic.Uint64
+	lastKeepAliveTime     atomic.Int64
+	keepAliveTimeout      time.Duration
 
 	// in
 	chOptions     chan optionsReq
@@ -702,6 +708,7 @@ func (c *Client) Start() error {
 	c.ctxCancel = ctxCancel
 	c.checkTimeoutTimer = emptyTimer()
 	c.keepAlivePeriod = 30 * time.Second
+	c.keepAliveTimeout = 35 * time.Second
 	c.keepAliveTimer = emptyTimer()
 
 	c.chOptions = make(chan optionsReq)
@@ -855,6 +862,7 @@ func (c *Client) runInner() error {
 			c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 
 		case res := <-c.chResponse:
+			c.lastKeepAliveTime.Store(c.timeNow().Unix())
 			c.OnResponse(res)
 			// these are responses to keepalives, ignore them.
 
@@ -1080,6 +1088,8 @@ func (c *Client) startTransportRoutines() {
 		}
 	}
 
+	c.lastKeepAliveTime.Store(c.timeNow().Unix())
+
 	if c.setuppedTransport.Protocol == ProtocolTCP {
 		c.reader.setAllowInterleavedFrames(true)
 	}
@@ -1277,10 +1287,9 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 		c.session = sx.Session
 
 		if sx.Timeout != nil && *sx.Timeout > 0 {
-			c.keepAlivePeriod = max(
-				(time.Duration(*sx.Timeout)*time.Second)-5*time.Second,
-				1*time.Second,
-			)
+			// Set the keep-alive timeout if specified in the session and set the keep-alive period slightly lower
+			c.keepAliveTimeout = max(time.Duration(*sx.Timeout)*time.Second, 3*time.Second)
+			c.keepAlivePeriod = max(c.keepAliveTimeout-5*time.Second, 1*time.Second)
 		}
 	}
 
@@ -1333,6 +1342,11 @@ func (c *Client) isInUDPTimeout() bool {
 		if now.Sub(lft) < c.ReadTimeout {
 			return false
 		}
+
+		lkt := time.Unix(c.lastKeepAliveTime.Load(), 0)
+		if c.UseKeepAliveForTimeout && now.Sub(lkt) < c.keepAliveTimeout {
+			return false
+		}
 	}
 	return true
 }
@@ -1340,7 +1354,16 @@ func (c *Client) isInUDPTimeout() bool {
 func (c *Client) isInTCPTimeout() bool {
 	now := c.timeNow()
 	lft := time.Unix(c.tcpLastFrameTime.Load(), 0)
-	return now.Sub(lft) >= c.ReadTimeout
+	if now.Sub(lft) < c.ReadTimeout {
+		return false
+	}
+
+	lkt := time.Unix(c.lastKeepAliveTime.Load(), 0)
+	if c.UseKeepAliveForTimeout && now.Sub(lkt) < c.keepAliveTimeout {
+		return false
+	}
+
+	return true
 }
 
 func (c *Client) doCheckTimeout() error {
