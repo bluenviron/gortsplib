@@ -575,6 +575,7 @@ type Client struct {
 	tcpBuffer            []byte
 	bytesReceived        *uint64
 	bytesSent            *uint64
+	lastKeepAliveTime    *int64
 
 	// in
 	chOptions     chan optionsReq
@@ -849,6 +850,7 @@ func (c *Client) runInner() error {
 			c.keepAliveTimer = time.NewTimer(c.keepAlivePeriod)
 
 		case res := <-c.chResponse:
+			atomic.StoreInt64(c.lastKeepAliveTime, time.Now().Unix())
 			c.OnResponse(res)
 			// these are responses to keepalives, ignore them.
 
@@ -1071,6 +1073,8 @@ func (c *Client) startTransportRoutines() {
 			c.tcpLastFrameTime = ptrOf(c.timeNow().Unix())
 		}
 	}
+
+	c.lastKeepAliveTime = ptrOf(c.timeNow().Unix())
 
 	if c.setuppedTransport.Protocol == ProtocolTCP {
 		c.reader.setAllowInterleavedFrames(true)
@@ -1309,6 +1313,11 @@ func (c *Client) isInUDPTimeout() bool {
 		if now.Sub(lft) < c.ReadTimeout {
 			return false
 		}
+
+		lkt := time.Unix(atomic.LoadInt64(c.lastKeepAliveTime), 0)
+		if now.Sub(lkt) < c.ReadTimeout {
+			return false
+		}
 	}
 	return true
 }
@@ -1316,7 +1325,16 @@ func (c *Client) isInUDPTimeout() bool {
 func (c *Client) isInTCPTimeout() bool {
 	now := c.timeNow()
 	lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
-	return now.Sub(lft) >= c.ReadTimeout
+	if now.Sub(lft) < c.ReadTimeout {
+		return false
+	}
+
+	lkt := time.Unix(atomic.LoadInt64(c.lastKeepAliveTime), 0)
+	if now.Sub(lkt) < c.ReadTimeout {
+		return false
+	}
+
+	return true
 }
 
 func (c *Client) doCheckTimeout() error {
