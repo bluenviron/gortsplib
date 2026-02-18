@@ -1,4 +1,4 @@
-package format //nolint:dupl
+package format //nolint:revive,dupl
 
 import (
 	"fmt"

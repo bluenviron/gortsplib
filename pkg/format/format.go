@@ -1,5 +1,5 @@
 // Package format contains RTP format definitions, decoders and encoders.
-package format
+package format //nolint:revive
 
 import (
 	"regexp"
