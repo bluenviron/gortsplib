@@ -116,14 +116,14 @@ type Server struct {
 	AuthMethods []auth.VerifyMethod
 
 	//
-	// handler (optional)
+	// Handler (optional)
 	//
 	// an handler to handle server events.
 	// It may implement one or more of the ServerHandler* interfaces.
 	Handler ServerHandler
 
 	//
-	// system functions (all optional)
+	// System functions (all optional)
 	//
 	// function used to initialize the TCP listener.
 	// It defaults to net.Listen.

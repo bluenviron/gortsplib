@@ -502,7 +502,7 @@ type Client struct {
 	UDPSourcePortRange [2]uint16
 
 	//
-	// system functions (all optional)
+	// System functions (all optional)
 	//
 	// function used to initialize the TCP client.
 	// It defaults to (&net.Dialer{}).DialContext.
@@ -512,7 +512,7 @@ type Client struct {
 	ListenPacket func(network, address string) (net.PacketConn, error)
 
 	//
-	// callbacks (all optional)
+	// Callbacks (all optional)
 	//
 	// called when sending a request to the server.
 	OnRequest ClientOnRequestFunc
