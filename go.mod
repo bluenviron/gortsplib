@@ -3,7 +3,7 @@ module github.com/bluenviron/gortsplib/v5
 go 1.25.0
 
 require (
-	github.com/bluenviron/mediacommon/v2 v2.7.2
+	github.com/bluenviron/mediacommon/v2 v2.8.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/rtcp v1.2.16
