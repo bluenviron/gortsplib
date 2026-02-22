@@ -71,7 +71,7 @@ func (e *Encoder) Init() error {
 	return nil
 }
 
-// Encode encodes frames into RTP packets.
+// Encode encodes MPEG-TS packets into RTP packets.
 func (e *Encoder) Encode(tsData []byte) ([]*rtp.Packet, error) {
 	if len(tsData) == 0 {
 		return nil, fmt.Errorf("tsData is empty")
