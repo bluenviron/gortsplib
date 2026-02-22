@@ -16,7 +16,7 @@ import (
 // that works in parallel on all interfaces.
 type multiConn struct {
 	addr         *net.UDPAddr
-	readConn     *net.UDPConn
+	readConn     Conn
 	readConnIP   *ipv4.PacketConn
 	writeConns   []*net.UDPConn
 	writeConnIPs []*ipv4.PacketConn
@@ -37,7 +37,7 @@ func NewMultiConn(
 	if err != nil {
 		return nil, err
 	}
-	readConn := tmp.(*net.UDPConn)
+	readConn := tmp.(Conn)
 
 	intfs, err := net.Interfaces()
 	if err != nil {
