@@ -61,7 +61,7 @@ func (u *clientUDPListener) initialize() error {
 		if err != nil {
 			return err
 		}
-		u.pc = tmp.(*net.UDPConn)
+		u.pc = tmp.(packetConn)
 	}
 
 	if u.c.UDPReadBufferSize != 0 {
