@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	MPEGTSPacketSize = 188
-	SyncByte         = 0x47
+	mpegtsPacketSize = 188
+	syncByte         = 0x47
 )
 
-// Decoder is a RTP decoder MPEG-TS.
+// Decoder is a RTP/MPEG-TS decoder.
+// Specification: RFC2250
 type Decoder struct{}
 
 // Init initializes the decoder.
@@ -26,22 +27,22 @@ func (d *Decoder) Decode(pkt *rtp.Packet) ([][]byte, error) {
 	}
 
 	packetLen := len(pkt.Payload)
-	if (packetLen % MPEGTSPacketSize) != 0 {
-		return nil, fmt.Errorf("payload length %d is not a multiple of %d", packetLen, MPEGTSPacketSize)
+	if (packetLen % mpegtsPacketSize) != 0 {
+		return nil, fmt.Errorf("payload length %d is not a multiple of %d", packetLen, mpegtsPacketSize)
 	}
 
-	tsPacketCount := packetLen / MPEGTSPacketSize
+	tsPacketCount := packetLen / mpegtsPacketSize
 	ret := make([][]byte, tsPacketCount)
 
 	// validate sync byte at each 188-byte boundary
 	for i := range ret {
-		j := i * MPEGTSPacketSize
+		j := i * mpegtsPacketSize
 
-		if pkt.Payload[j] != SyncByte {
+		if pkt.Payload[j] != syncByte {
 			return nil, fmt.Errorf("missing sync byte at offset %d: got 0x%02x", j, pkt.Payload[j])
 		}
 
-		ret[i] = pkt.Payload[j : j+MPEGTSPacketSize]
+		ret[i] = pkt.Payload[j : j+mpegtsPacketSize]
 	}
 
 	return ret, nil

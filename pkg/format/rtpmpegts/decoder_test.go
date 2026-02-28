@@ -26,8 +26,8 @@ func mergeBytes(vals ...[]byte) []byte {
 }
 
 func makeTSPacket(pid byte) []byte {
-	pkt := make([]byte, MPEGTSPacketSize)
-	pkt[0] = SyncByte
+	pkt := make([]byte, mpegtsPacketSize)
+	pkt[0] = syncByte
 	pkt[1] = 0x00
 	pkt[2] = pid
 	return pkt
@@ -70,8 +70,10 @@ var cases = []struct {
 	},
 	{
 		"seven TS packets",
-		[][]byte{makeTSPacket(0x01), makeTSPacket(0x02), makeTSPacket(0x03), makeTSPacket(0x04),
-			makeTSPacket(0x05), makeTSPacket(0x06), makeTSPacket(0x07)},
+		[][]byte{
+			makeTSPacket(0x01), makeTSPacket(0x02), makeTSPacket(0x03), makeTSPacket(0x04),
+			makeTSPacket(0x05), makeTSPacket(0x06), makeTSPacket(0x07),
+		},
 		[]*rtp.Packet{
 			{
 				Header: rtp.Header{
@@ -114,7 +116,8 @@ func TestDecode(t *testing.T) {
 			var ts [][]byte
 
 			for _, pkt := range ca.rtp {
-				partialTS, err := d.Decode(pkt)
+				var partialTS [][]byte
+				partialTS, err = d.Decode(pkt)
 				require.NoError(t, err)
 				ts = append(ts, partialTS...)
 			}

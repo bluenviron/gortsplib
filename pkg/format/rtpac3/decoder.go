@@ -28,7 +28,7 @@ func joinFragments(fragments [][]byte, size int) []byte {
 	return ret
 }
 
-// Decoder is a AC-3 decoder.
+// Decoder is a RTP/AC-3 decoder.
 // Specification: RFC4184
 type Decoder struct {
 	firstPacketReceived bool

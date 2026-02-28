@@ -34,7 +34,7 @@ func packetCount(avail, le int) int {
 	return n
 }
 
-// Encoder is a AC-3 encoder.
+// Encoder is a RTP/AC-3 encoder.
 // Specification: RFC4184
 type Encoder struct {
 	// payload type of packets.

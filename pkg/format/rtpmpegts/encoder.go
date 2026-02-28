@@ -71,13 +71,13 @@ func (e *Encoder) Init() error {
 // Encode encodes MPEG-TS packets into RTP packets.
 func (e *Encoder) Encode(tsPackets [][]byte) ([]*rtp.Packet, error) {
 	for _, pkt := range tsPackets {
-		if len(pkt) != MPEGTSPacketSize {
+		if len(pkt) != mpegtsPacketSize {
 			return nil, fmt.Errorf("invalid MPEG-TS packet size: %d", len(pkt))
 		}
 	}
 
 	tsPacketCount := len(tsPackets)
-	maxTSPacketsPerRTPPacket := e.PayloadMaxSize / MPEGTSPacketSize
+	maxTSPacketsPerRTPPacket := e.PayloadMaxSize / mpegtsPacketSize
 	rtpPacketCount := tsPacketCount / maxTSPacketsPerRTPPacket
 	if tsPacketCount%maxTSPacketsPerRTPPacket != 0 {
 		rtpPacketCount++
@@ -92,7 +92,7 @@ func (e *Encoder) Encode(tsPackets [][]byte) ([]*rtp.Packet, error) {
 			tsPacketCount = maxTSPacketsPerRTPPacket
 		}
 
-		payload := make([]byte, tsPacketCount*MPEGTSPacketSize)
+		payload := make([]byte, tsPacketCount*mpegtsPacketSize)
 		n := 0
 
 		for range tsPacketCount {
