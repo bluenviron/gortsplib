@@ -144,7 +144,7 @@ In RTSP, media streams are transmitted by using RTP packets, which are encoded i
 
 |format|documentation|encoder and decoder available|
 |------|-------------|-----------------------------|
-|MPEG-TS|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v5/pkg/format#MPEGTS)||
+|MPEG-TS|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v5/pkg/format#MPEGTS)|:heavy_check_mark:|
 |KLV|[link](https://pkg.go.dev/github.com/bluenviron/gortsplib/v5/pkg/format#KLV)|:heavy_check_mark:|
 
 ## Specifications

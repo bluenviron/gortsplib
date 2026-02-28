@@ -2,6 +2,8 @@ package format //nolint:revive,dupl
 
 import (
 	"github.com/pion/rtp"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpmpegts"
 )
 
 // MPEGTS is the RTP format for MPEG-TS.
@@ -45,4 +47,28 @@ func (f *MPEGTS) FMTP() map[string]string {
 // PTSEqualsDTS implements Format.
 func (f *MPEGTS) PTSEqualsDTS(*rtp.Packet) bool {
 	return true
+}
+
+// CreateDecoder creates a decoder able to decode the content of the format.
+func (f *MPEGTS) CreateDecoder() (*rtpmpegts.Decoder, error) {
+	d := &rtpmpegts.Decoder{}
+
+	err := d.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
+// CreateEncoder creates an encoder able to encode the content of the format.
+func (f *MPEGTS) CreateEncoder() (*rtpmpegts.Encoder, error) {
+	e := &rtpmpegts.Encoder{}
+
+	err := e.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }
