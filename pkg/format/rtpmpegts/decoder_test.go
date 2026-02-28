@@ -1,6 +1,8 @@
 package rtpmpegts
 
 import (
+	"encoding/binary"
+	"errors"
 	"testing"
 
 	"github.com/pion/rtp"
@@ -122,56 +124,89 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-/*func TestDecodeErrorEmpty(t *testing.T) {
-	d := &Decoder{}
-	err := d.Init()
-	require.NoError(t, err)
+func serializePackets(packets []*rtp.Packet) ([]byte, error) {
+	var buf []byte
 
-	_, err = d.Decode(&rtp.Packet{
-		Header:  rtp.Header{Version: 2},
-		Payload: []byte{},
-	})
-	require.EqualError(t, err, "empty MPEG-TS payload")
+	for _, pkt := range packets {
+		buf2, err := pkt.Marshal()
+		if err != nil {
+			return nil, err
+		}
+
+		tmp := make([]byte, 4)
+		binary.LittleEndian.PutUint32(tmp, uint32(len(buf2)))
+		buf = append(buf, tmp...)
+		buf = append(buf, buf2...)
+	}
+
+	return buf, nil
 }
 
-func TestDecodeErrorNotAligned(t *testing.T) {
-	d := &Decoder{}
-	err := d.Init()
-	require.NoError(t, err)
+func unserializePackets(data []byte) ([]*rtp.Packet, error) {
+	var packets []*rtp.Packet
+	buf := data
 
-	_, err = d.Decode(&rtp.Packet{
-		Header:  rtp.Header{Version: 2},
-		Payload: make([]byte, 100),
-	})
-	require.EqualError(t, err, "payload length 100 is not a multiple of 188")
+	for {
+		if len(buf) < 4 {
+			return nil, errors.New("not enough bits")
+		}
+
+		size := binary.LittleEndian.Uint32(buf[:4])
+		buf = buf[4:]
+
+		if uint32(len(buf)) < size {
+			return nil, errors.New("not enough bits")
+		}
+
+		var pkt rtp.Packet
+		err := pkt.Unmarshal(buf[:size])
+		if err != nil {
+			return nil, err
+		}
+
+		packets = append(packets, &pkt)
+		buf = buf[size:]
+
+		if len(buf) == 0 {
+			break
+		}
+	}
+
+	return packets, nil
 }
 
-func TestDecodeErrorMissingSyncByteFirst(t *testing.T) {
-	d := &Decoder{}
-	err := d.Init()
-	require.NoError(t, err)
+func FuzzDecoder(f *testing.F) {
+	for _, ca := range cases {
+		buf, err := serializePackets(ca.rtp)
+		if err != nil {
+			panic(err)
+		}
+		f.Add(buf)
+	}
 
-	payload := make([]byte, MPEGTSPacketSize)
-	payload[0] = 0x00 // wrong sync byte
+	f.Fuzz(func(t *testing.T, buf []byte) {
+		packets, err := unserializePackets(buf)
+		if err != nil {
+			t.Skip()
+			return
+		}
 
-	_, err = d.Decode(&rtp.Packet{
-		Header:  rtp.Header{Version: 2},
-		Payload: payload,
+		d := &Decoder{}
+		err = d.Init()
+		require.NoError(t, err)
+
+		for _, pkt := range packets {
+			if ts, err2 := d.Decode(pkt); err2 == nil {
+				if len(ts) == 0 {
+					t.Errorf("should not happen")
+				}
+
+				for _, tsPacket := range ts {
+					if len(tsPacket) == 0 {
+						t.Errorf("should not happen")
+					}
+				}
+			}
+		}
 	})
-	require.EqualError(t, err, "missing sync byte at offset 0: got 0x00")
 }
-
-func TestDecodeErrorMissingSyncByteSecond(t *testing.T) {
-	d := &Decoder{}
-	err := d.Init()
-	require.NoError(t, err)
-
-	payload := append(makeTSPacket(0x01), make([]byte, MPEGTSPacketSize)...)
-	payload[MPEGTSPacketSize] = 0xFF // wrong sync byte on second packet
-
-	_, err = d.Decode(&rtp.Packet{
-		Header:  rtp.Header{Version: 2},
-		Payload: payload,
-	})
-	require.EqualError(t, err, "missing sync byte at offset 188: got 0xff")
-}*/
