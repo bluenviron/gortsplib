@@ -24,7 +24,7 @@ func TestMPEGTSDecEncoder(t *testing.T) {
 	tsData := make([]byte, 188)
 	tsData[0] = 0x47
 
-	pkts, err := enc.Encode(tsData)
+	pkts, err := enc.Encode([][]byte{tsData})
 	require.NoError(t, err)
 	require.Equal(t, format.PayloadType(), pkts[0].PayloadType)
 
@@ -33,5 +33,5 @@ func TestMPEGTSDecEncoder(t *testing.T) {
 
 	byts, err := dec.Decode(pkts[0])
 	require.NoError(t, err)
-	require.Equal(t, tsData, byts)
+	require.Equal(t, [][]byte{tsData}, byts)
 }

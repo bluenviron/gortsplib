@@ -63,39 +63,52 @@ func (e *Encoder) Init() error {
 	if e.PayloadMaxSize == 0 {
 		e.PayloadMaxSize = defaultPayloadMaxSize
 	}
-	if e.PayloadMaxSize%MPEGTSPacketSize != 0 {
-		return fmt.Errorf("PayloadMaxSize %d is not a multiple of %d", e.PayloadMaxSize, MPEGTSPacketSize)
-	}
 
 	e.sequenceNumber = *e.InitialSequenceNumber
 	return nil
 }
 
 // Encode encodes MPEG-TS packets into RTP packets.
-func (e *Encoder) Encode(tsData []byte) ([]*rtp.Packet, error) {
-	if len(tsData) == 0 {
-		return nil, fmt.Errorf("tsData is empty")
+func (e *Encoder) Encode(tsPackets [][]byte) ([]*rtp.Packet, error) {
+	for _, pkt := range tsPackets {
+		if len(pkt) != MPEGTSPacketSize {
+			return nil, fmt.Errorf("invalid MPEG-TS packet size: %d", len(pkt))
+		}
 	}
 
-	dataLen := len(tsData)
-	if dataLen%MPEGTSPacketSize != 0 {
-		return nil, fmt.Errorf("tsData length %d is not a multiple of %d", dataLen, MPEGTSPacketSize)
+	tsPacketCount := len(tsPackets)
+	maxTSPacketsPerRTPPacket := e.PayloadMaxSize / MPEGTSPacketSize
+	rtpPacketCount := tsPacketCount / maxTSPacketsPerRTPPacket
+	if tsPacketCount%maxTSPacketsPerRTPPacket != 0 {
+		rtpPacketCount++
 	}
 
-	var rets []*rtp.Packet
-	for i := 0; i < dataLen; i += e.PayloadMaxSize {
-		end := min(i+e.PayloadMaxSize, dataLen)
-		chunk := tsData[i:end]
-		pkt := &rtp.Packet{
+	rets := make([]*rtp.Packet, rtpPacketCount)
+
+	for i := range rtpPacketCount {
+		if i == (rtpPacketCount - 1) {
+			tsPacketCount = len(tsPackets)
+		} else {
+			tsPacketCount = maxTSPacketsPerRTPPacket
+		}
+
+		payload := make([]byte, tsPacketCount*MPEGTSPacketSize)
+		n := 0
+
+		for range tsPacketCount {
+			n += copy(payload[n:], tsPackets[0])
+			tsPackets = tsPackets[1:]
+		}
+
+		rets[i] = &rtp.Packet{
 			Header: rtp.Header{
 				Version:        rtpVersion,
 				PayloadType:    payloadType,
 				SequenceNumber: e.sequenceNumber,
 				SSRC:           *e.SSRC,
 			},
-			Payload: chunk,
+			Payload: payload,
 		}
-		rets = append(rets, pkt)
 		e.sequenceNumber++
 	}
 

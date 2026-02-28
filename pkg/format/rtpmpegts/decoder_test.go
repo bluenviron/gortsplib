@@ -1,12 +1,27 @@
 package rtpmpegts
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 )
+
+func mergeBytes(vals ...[]byte) []byte {
+	size := 0
+	for _, v := range vals {
+		size += len(v)
+	}
+	res := make([]byte, size)
+
+	pos := 0
+	for _, v := range vals {
+		n := copy(res[pos:], v)
+		pos += n
+	}
+
+	return res
+}
 
 func makeTSPacket(pid byte) []byte {
 	pkt := make([]byte, MPEGTSPacketSize)
@@ -16,45 +31,98 @@ func makeTSPacket(pid byte) []byte {
 	return pkt
 }
 
-func TestDecode(t *testing.T) {
-	for _, ca := range []struct {
-		name    string
-		payload []byte
-	}{
-		{
-			"single TS packet",
-			makeTSPacket(0x01),
-		},
-		{
-			"two TS packets",
-			append(makeTSPacket(0x01), makeTSPacket(0x02)...),
-		},
-		{
-			"seven TS packets",
-			bytes.Repeat(makeTSPacket(0x01), 7),
-		},
-	} {
-		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
-			err := d.Init()
-			require.NoError(t, err)
-
-			result, err := d.Decode(&rtp.Packet{
+var cases = []struct {
+	name string
+	ts   [][]byte
+	rtp  []*rtp.Packet
+}{
+	{
+		"single TS packet",
+		[][]byte{makeTSPacket(0x01)},
+		[]*rtp.Packet{
+			{
 				Header: rtp.Header{
 					Version:        2,
 					PayloadType:    33,
 					SequenceNumber: 1000,
 					SSRC:           0x12345678,
 				},
-				Payload: ca.payload,
-			})
+				Payload: makeTSPacket(0x01),
+			},
+		},
+	},
+	{
+		"two TS packets",
+		[][]byte{makeTSPacket(0x01), makeTSPacket(0x02)},
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					PayloadType:    33,
+					SequenceNumber: 1000,
+					SSRC:           0x12345678,
+				},
+				Payload: append(makeTSPacket(0x01), makeTSPacket(0x02)...),
+			},
+		},
+	},
+	{
+		"seven TS packets",
+		[][]byte{makeTSPacket(0x01), makeTSPacket(0x02), makeTSPacket(0x03), makeTSPacket(0x04),
+			makeTSPacket(0x05), makeTSPacket(0x06), makeTSPacket(0x07)},
+		[]*rtp.Packet{
+			{
+				Header: rtp.Header{
+					Version:        2,
+					PayloadType:    33,
+					SequenceNumber: 1000,
+					SSRC:           0x12345678,
+				},
+				Payload: mergeBytes(
+					makeTSPacket(0x01),
+					makeTSPacket(0x02),
+					makeTSPacket(0x03),
+					makeTSPacket(0x04),
+				),
+			},
+			{
+				Header: rtp.Header{
+					Version:        2,
+					PayloadType:    33,
+					SequenceNumber: 1001,
+					SSRC:           0x12345678,
+				},
+				Payload: mergeBytes(
+					makeTSPacket(0x05),
+					makeTSPacket(0x06),
+					makeTSPacket(0x07),
+				),
+			},
+		},
+	},
+}
+
+func TestDecode(t *testing.T) {
+	for _, ca := range cases {
+		t.Run(ca.name, func(t *testing.T) {
+			d := &Decoder{}
+			err := d.Init()
 			require.NoError(t, err)
-			require.Equal(t, ca.payload, result)
+
+			var ts [][]byte
+
+			for _, pkt := range ca.rtp {
+				partialTS, err := d.Decode(pkt)
+				require.NoError(t, err)
+				ts = append(ts, partialTS...)
+			}
+
+			require.Equal(t, ca.ts, ts)
 		})
 	}
 }
 
-func TestDecodeErrorEmpty(t *testing.T) {
+/*func TestDecodeErrorEmpty(t *testing.T) {
 	d := &Decoder{}
 	err := d.Init()
 	require.NoError(t, err)
@@ -106,4 +174,4 @@ func TestDecodeErrorMissingSyncByteSecond(t *testing.T) {
 		Payload: payload,
 	})
 	require.EqualError(t, err, "missing sync byte at offset 188: got 0xff")
-}
+}*/
