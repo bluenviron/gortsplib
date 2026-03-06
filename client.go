@@ -510,6 +510,9 @@ type Client struct {
 	// function used to initialize UDP listeners.
 	// It defaults to net.ListenPacket.
 	ListenPacket func(network, address string) (net.PacketConn, error)
+	// function used to resolve IP addresses.
+	// It defaults to net.ResolveIPAddr.
+	ResolveIPAddr func(network, address string) (*net.IPAddr, error)
 
 	//
 	// Callbacks (all optional)
@@ -627,6 +630,9 @@ func (c *Client) Start() error {
 	}
 	if c.ListenPacket == nil {
 		c.ListenPacket = net.ListenPacket
+	}
+	if c.ResolveIPAddr == nil {
+		c.ResolveIPAddr = net.ResolveIPAddr
 	}
 
 	// callbacks
@@ -1874,8 +1880,8 @@ func (c *Client) doSetup(
 			if ip := net.ParseIP(*thRes.Source2); ip != nil {
 				remoteIP = ip
 			} else {
-				var addr *net.UDPAddr
-				addr, err = net.ResolveUDPAddr("udp", *thRes.Source2)
+				var addr *net.IPAddr
+				addr, err = c.ResolveIPAddr("ip", *thRes.Source2)
 				if err != nil {
 					return nil, fmt.Errorf("unable to solve source host: %w", err)
 				}
@@ -1919,8 +1925,8 @@ func (c *Client) doSetup(
 			if ip := net.ParseIP(*thRes.Source2); ip != nil {
 				remoteIP = ip
 			} else {
-				var addr *net.UDPAddr
-				addr, err = net.ResolveUDPAddr("udp", *thRes.Source2)
+				var addr *net.IPAddr
+				addr, err = c.ResolveIPAddr("ip", *thRes.Source2)
 				if err != nil {
 					return nil, fmt.Errorf("unable to solve source host: %w", err)
 				}
@@ -1937,8 +1943,8 @@ func (c *Client) doSetup(
 		if ip := net.ParseIP(*thRes.Destination2); ip != nil {
 			destIP = ip
 		} else {
-			var addr *net.UDPAddr
-			addr, err = net.ResolveUDPAddr("udp", *thRes.Destination2)
+			var addr *net.IPAddr
+			addr, err = c.ResolveIPAddr("ip", *thRes.Destination2)
 			if err != nil {
 				return nil, fmt.Errorf("unable to solve destination host: %w", err)
 			}
