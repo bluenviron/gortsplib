@@ -2038,7 +2038,7 @@ func TestClientPlayAutomaticProtocol(t *testing.T) {
 		c := Client{
 			AnyPortUseTCP: true,
 			OnTransportSwitch: func(err error) {
-				require.EqualError(t, err, "switching to TCP because server requested it")
+				require.EqualError(t, err, "no UDP server ports provided, switching to TCP")
 				close(msgRecv)
 			},
 		}
