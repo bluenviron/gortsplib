@@ -476,6 +476,10 @@ type Client struct {
 	// This can be a security issue.
 	// It defaults to false.
 	AnyPortEnable bool
+	// If transport protocol is chosen automatically,
+	// switch to TCP transport protocol if a server doesn't provide UDP server ports.
+	// It defaults to false.
+	AnyPortUseTCP bool
 	// If the client is reading with UDP, it must receive
 	// at least a packet within this timeout, otherwise it switches to TCP.
 	// It defaults to 3 seconds.
@@ -1855,7 +1859,6 @@ func (c *Client) doSetup(
 				Protocol: ProtocolTCP,
 				Profile:  th.Profile,
 			}
-
 			return c.doSetup(baseURL, medi, 0, 0)
 		}
 
@@ -1875,31 +1878,29 @@ func (c *Client) doSetup(
 		return nil, liberrors.ErrClientTransportHeaderInvalid{Err: err}
 	}
 
+	switchToTCP := func(switchErr error) (*base.Response, error) {
+		c.OnTransportSwitch(switchErr)
+		c.baseURL = baseURL
+		c.reset()
+		c.setuppedTransport = &SessionTransport{
+			Protocol: ProtocolTCP,
+			Profile:  th.Profile,
+		}
+		// some Hikvision cameras require a describe before a setup
+		_, _, err = c.doDescribe(c.lastDescribeURL)
+		if err != nil {
+			return nil, err
+		}
+		return c.doSetup(baseURL, medi, 0, 0)
+	}
+
 	switch protocol {
 	case ProtocolUDP, ProtocolUDPMulticast:
 		if thRes.Protocol == headers.TransportProtocolTCP {
 			// switch transport automatically
 			if c.setuppedTransport == nil && c.Protocol == nil {
-				c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
-
-				c.baseURL = baseURL
-
-				c.reset()
-
-				c.setuppedTransport = &SessionTransport{
-					Protocol: ProtocolTCP,
-					Profile:  th.Profile,
-				}
-
-				// some Hikvision cameras require a describe before a setup
-				_, _, err = c.doDescribe(c.lastDescribeURL)
-				if err != nil {
-					return nil, err
-				}
-
-				return c.doSetup(baseURL, medi, 0, 0)
+				return switchToTCP(liberrors.ErrClientSwitchToTCP2{})
 			}
-
 			return nil, liberrors.ErrClientServerRequestedTCP{}
 		}
 	}
@@ -1911,9 +1912,13 @@ func (c *Client) doSetup(
 		}
 
 		serverPortsValid := thRes.ServerPorts != nil && !isAnyPort(thRes.ServerPorts[0]) && !isAnyPort(thRes.ServerPorts[1])
-
-		if (c.state == clientStatePreRecord || !c.AnyPortEnable) && !serverPortsValid {
-			return nil, liberrors.ErrClientServerPortsNotProvided{}
+		if !serverPortsValid {
+			if c.AnyPortUseTCP && c.setuppedTransport == nil && c.Protocol == nil {
+				return switchToTCP(liberrors.ErrClientSwitchToTCP3{})
+			}
+			if c.state == clientStatePreRecord || !c.AnyPortEnable {
+				return nil, liberrors.ErrClientServerPortsNotProvided{}
+			}
 		}
 
 		var remoteIP net.IP
