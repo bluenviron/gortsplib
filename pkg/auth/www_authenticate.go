@@ -13,7 +13,7 @@ func GenerateWWWAuthenticate(methods []VerifyMethod, realm string, nonce string)
 		methods = []VerifyMethod{VerifyMethodBasic, VerifyMethodDigestMD5}
 	}
 
-	var ret base.HeaderValue
+	var ret base.HeaderValue //nolint:prealloc
 
 	for _, m := range methods {
 		var a base.HeaderValue

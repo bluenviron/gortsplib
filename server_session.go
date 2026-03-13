@@ -278,10 +278,10 @@ func generateRTPInfo(
 	stream *ServerStream,
 	path string,
 	u *base.URL,
-) (headers.RTPInfo, bool) {
-	var ri headers.RTPInfo
+) headers.RTPInfo {
+	ri := make(headers.RTPInfo, len(mediasOrdered))
 
-	for _, sm := range mediasOrdered {
+	for i, sm := range mediasOrdered {
 		ssm := stream.medias[sm.media]
 		entry := generateRTPInfoEntry(ssm, now)
 		if entry == nil {
@@ -295,14 +295,10 @@ func generateRTPInfo(
 				strconv.FormatInt(int64(ssm.trackID), 10),
 		}).String()
 
-		ri = append(ri, entry)
+		ri[i] = entry
 	}
 
-	if len(ri) == 0 {
-		return nil, false
-	}
-
-	return ri, true
+	return ri
 }
 
 // ServerSessionState is a state of a ServerSession.
@@ -1484,19 +1480,17 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 				ss.setuppedStream.readerSetActive(ss)
 
-				rtpInfo, ok := generateRTPInfo(
+				rtpInfo := generateRTPInfo(
 					ss.s.timeNow(),
 					ss.setuppedMediasOrdered,
 					ss.setuppedStream,
 					ss.setuppedPath,
 					req.URL)
 
-				if ok {
-					if res.Header == nil {
-						res.Header = make(base.Header)
-					}
-					res.Header["RTP-Info"] = rtpInfo.Marshal()
+				if res.Header == nil {
+					res.Header = make(base.Header)
 				}
+				res.Header["RTP-Info"] = rtpInfo.Marshal()
 			}
 		} else {
 			if ss.state != ServerSessionStatePlay &&
