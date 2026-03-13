@@ -295,6 +295,14 @@ func (e ErrClientSwitchToTCP2) Error() string {
 	return "switching to TCP because server requested it"
 }
 
+// ErrClientSwitchToTCP3 is an error that can be returned by a client.
+type ErrClientSwitchToTCP3 struct{}
+
+// Error implements the error interface.
+func (e ErrClientSwitchToTCP3) Error() string {
+	return "no UDP server ports provided, switching to TCP"
+}
+
 // ErrClientAuthSetup is an error that can be returned by a client.
 type ErrClientAuthSetup struct {
 	Err error
