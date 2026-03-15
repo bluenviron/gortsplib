@@ -58,7 +58,7 @@ func prepareForDescribe(
 	multicast bool,
 	backChannels bool,
 	secure bool,
-	medias map[*description.Media]*serverStreamMedia,
+	medias []*serverStreamMedia,
 ) (*description.Session, error) {
 	out := &description.Session{
 		Title:     d.Title,
@@ -70,7 +70,7 @@ func prepareForDescribe(
 		if !medi.IsBackChannel || backChannels {
 			var keyMgmtMikey *mikey.Message
 			if secure {
-				sm := medias[medi]
+				sm := medias[i]
 
 				var err error
 				keyMgmtMikey, err = mikeyGenerate(sm.srtpOutCtx)

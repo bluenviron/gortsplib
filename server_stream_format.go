@@ -80,7 +80,11 @@ func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) err
 
 	// send unicast
 	for r := range sf.sm.st.activeUnicastReaders {
-		if rsm, ok := r.setuppedMedias[sf.sm.media]; ok {
+		if sf.sm.mediaIndex < len(r.setuppedMedias) {
+			rsm := r.setuppedMedias[sf.sm.mediaIndex]
+			if rsm == nil {
+				continue
+			}
 			rsf := rsm.formats[pkt.PayloadType]
 
 			var buf []byte

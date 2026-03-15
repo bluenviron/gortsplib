@@ -16,9 +16,12 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
-func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStreamMedia) []uint32 {
+func serverStreamExtractExistingSSRCs(medias []*serverStreamMedia) []uint32 {
 	n := 0
 	for _, media := range medias {
+		if media == nil {
+			continue
+		}
 		for range media.formats {
 			n++
 		}
@@ -32,6 +35,9 @@ func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStrea
 	n = 0
 
 	for _, media := range medias {
+		if media == nil {
+			continue
+		}
 		for _, forma := range media.formats {
 			ret[n] = forma.localSSRC
 			n++
@@ -67,7 +73,8 @@ type ServerStream struct {
 	readers              map[*ServerSession]struct{}
 	multicastReaderCount int
 	activeUnicastReaders map[*ServerSession]struct{}
-	medias               map[*description.Media]*serverStreamMedia
+	medias               []*serverStreamMedia
+	mediaIndexByPtr      map[*description.Media]int
 	closed               bool
 }
 
@@ -79,8 +86,8 @@ func (st *ServerStream) Initialize() error {
 
 	st.readers = make(map[*ServerSession]struct{})
 	st.activeUnicastReaders = make(map[*ServerSession]struct{})
-
-	st.medias = make(map[*description.Media]*serverStreamMedia, len(st.Desc.Medias))
+	st.medias = make([]*serverStreamMedia, len(st.Desc.Medias))
+	st.mediaIndexByPtr = make(map[*description.Media]int, len(st.Desc.Medias))
 
 	for i, medi := range st.Desc.Medias {
 		localSSRCs, err := generateLocalSSRCs(
@@ -121,14 +128,15 @@ func (st *ServerStream) Initialize() error {
 
 		sm := &serverStreamMedia{
 			st:         st,
+			mediaIndex: i,
 			media:      medi,
-			trackID:    i,
 			localSSRCs: localSSRCs,
 			srtpOutCtx: srtpOutCtx,
 		}
 		sm.initialize()
 
-		st.medias[medi] = sm
+		st.medias[i] = sm
+		st.mediaIndexByPtr[medi] = i
 	}
 
 	return nil
@@ -154,8 +162,8 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 	mediaStats := func() map[*description.Media]ServerStreamStatsMedia {
 		ret := make(map[*description.Media]ServerStreamStatsMedia, len(st.medias))
 
-		for med, sm := range st.medias {
-			ret[med] = ServerStreamStatsMedia{
+		for _, sm := range st.medias {
+			ret[sm.media] = ServerStreamStatsMedia{
 				BytesSent:       atomic.LoadUint64(sm.bytesSent),
 				RTCPPacketsSent: atomic.LoadUint64(sm.rtcpPacketsSent),
 				Formats: func() map[format.Format]ServerStreamStatsFormat {
@@ -307,8 +315,8 @@ func (st *ServerStream) readerSetActive(ss *ServerSession) {
 	}
 
 	if ss.setuppedTransport.Protocol == ProtocolUDPMulticast {
-		for medi, sm := range ss.setuppedMedias {
-			streamMedia := st.medias[medi]
+		for _, sm := range ss.setuppedMediasOrdered {
+			streamMedia := st.medias[sm.mediaIndex]
 			streamMedia.multicastWriter.rtcpl.addClient(
 				ss.author.ip(), streamMedia.multicastWriter.rtcpl.port(), sm.readPacketRTCPUDPPlay)
 		}
@@ -326,8 +334,8 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 	}
 
 	if ss.setuppedTransport.Protocol == ProtocolUDPMulticast {
-		for medi := range ss.setuppedMedias {
-			streamMedia := st.medias[medi]
+		for _, sm := range ss.setuppedMediasOrdered {
+			streamMedia := st.medias[sm.mediaIndex]
 			streamMedia.multicastWriter.rtcpl.removeClient(ss.author.ip(), streamMedia.multicastWriter.rtcpl.port())
 		}
 	} else {
@@ -350,7 +358,12 @@ func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.
 		return liberrors.ErrServerStreamClosed{}
 	}
 
-	sm := st.medias[medi]
+	mediaIndex, ok := st.mediaIndexByPtr[medi]
+	if !ok {
+		return liberrors.ErrServerMediaNotFound{}
+	}
+
+	sm := st.medias[mediaIndex]
 	sf := sm.formats[pkt.PayloadType]
 	return sf.writePacketRTP(pkt, ntp)
 }
@@ -364,6 +377,11 @@ func (st *ServerStream) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet
 		return liberrors.ErrServerStreamClosed{}
 	}
 
-	sm := st.medias[medi]
+	mediaIndex, ok := st.mediaIndexByPtr[medi]
+	if !ok {
+		return liberrors.ErrServerMediaNotFound{}
+	}
+
+	sm := st.medias[mediaIndex]
 	return sm.writePacketRTCP(pkt)
 }

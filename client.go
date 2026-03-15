@@ -74,9 +74,12 @@ func ssrcsMapToList(m map[uint8]uint32) []uint32 {
 	return ret
 }
 
-func clientExtractExistingSSRCs(setuppedMedias map[*description.Media]*clientMedia) []uint32 {
+func clientExtractExistingSSRCs(setuppedMedias []*clientMedia) []uint32 {
 	n := 0
 	for _, media := range setuppedMedias {
+		if media == nil {
+			continue
+		}
 		for range media.formats {
 			n++
 		}
@@ -90,6 +93,9 @@ func clientExtractExistingSSRCs(setuppedMedias map[*description.Media]*clientMed
 	n = 0
 
 	for _, media := range setuppedMedias {
+		if media == nil {
+			continue
+		}
 		for _, forma := range media.formats {
 			ret[n] = forma.localSSRC
 			n++
@@ -97,6 +103,43 @@ func clientExtractExistingSSRCs(setuppedMedias map[*description.Media]*clientMed
 	}
 
 	return ret
+}
+
+func findMediaIndexByPointer(medias []*description.Media, target *description.Media) (int, bool) {
+	for i, medi := range medias {
+		if medi == target {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+func findMediaIndexForSetup(
+	medias []*description.Media,
+	target *description.Media,
+	baseURL *base.URL,
+) (int, bool, error) {
+	if i, ok := findMediaIndexByPointer(medias, target); ok {
+		return i, true, nil
+	}
+
+	targetURL, err := target.URL(baseURL)
+	if err != nil {
+		return 0, false, err
+	}
+
+	for i, medi := range medias {
+		mediaURL, err := medi.URL(baseURL)
+		if err != nil {
+			return 0, false, err
+		}
+
+		if mediaURL.String() == targetURL.String() {
+			return i, true, nil
+		}
+	}
+
+	return 0, false, nil
 }
 
 // convert an URL into an address, in particular:
@@ -182,11 +225,14 @@ type clientAnnounceDataMedia struct {
 
 func announceDataPickLocalSSRC(
 	am *clientAnnounceDataMedia,
-	data map[*description.Media]*clientAnnounceDataMedia,
+	data []*clientAnnounceDataMedia,
 ) (uint32, error) {
 	var existing []uint32 //nolint:prealloc
 
 	for _, am := range data {
+		if am == nil {
+			continue
+		}
 		for _, af := range am.formats {
 			existing = append(existing, af.localSSRC)
 		}
@@ -211,10 +257,10 @@ func announceDataPickLocalSSRC(
 func generateAnnounceData(
 	desc *description.Session,
 	secure bool,
-) (map[*description.Media]*clientAnnounceDataMedia, error) {
-	data := make(map[*description.Media]*clientAnnounceDataMedia)
+) ([]*clientAnnounceDataMedia, error) {
+	data := make([]*clientAnnounceDataMedia, len(desc.Medias))
 
-	for _, medi := range desc.Medias {
+	for i, medi := range desc.Medias {
 		am := &clientAnnounceDataMedia{
 			formats: make(map[uint8]*clientAnnounceDataFormat),
 		}
@@ -239,7 +285,7 @@ func generateAnnounceData(
 			}
 		}
 
-		data[medi] = am
+		data[i] = am
 	}
 
 	return data, nil
@@ -247,7 +293,7 @@ func generateAnnounceData(
 
 func prepareForAnnounce(
 	desc *description.Session,
-	announceData map[*description.Media]*clientAnnounceDataMedia,
+	announceData []*clientAnnounceDataMedia,
 	secure bool,
 ) error {
 	for i, m := range desc.Medias {
@@ -255,7 +301,7 @@ func prepareForAnnounce(
 
 		if secure {
 			m.Profile = headers.TransportProfileSAVP
-			announceDataMedia := announceData[m]
+			announceDataMedia := announceData[i]
 
 			ssrcs := make([]uint32, len(m.Formats))
 			n := 0
@@ -541,42 +587,44 @@ type Client struct {
 	receiverReportPeriod time.Duration
 	checkTimeoutPeriod   time.Duration
 
-	ctx                  context.Context
-	ctxCancel            func()
-	propsMutex           sync.RWMutex
-	state                clientState
-	nconn                net.Conn
-	conn                 *conn.Conn
-	session              string
-	sender               *auth.Sender
-	cseq                 int
-	optionsSent          bool
-	useGetParameter      bool
-	lastDescribeURL      *base.URL
-	lastDescribeDesc     *description.Session
-	baseURL              *base.URL
-	announceData         map[*description.Media]*clientAnnounceDataMedia // record
-	setuppedTransport    *SessionTransport
-	backChannelSetupped  bool
-	stdChannelSetupped   bool
-	setuppedMedias       map[*description.Media]*clientMedia
-	tcpCallbackByChannel map[int]readFunc
-	lastRange            *headers.Range
-	checkTimeoutTimer    *time.Timer
-	checkTimeoutInitial  bool
-	tcpLastFrameTime     *int64
-	keepAlivePeriod      time.Duration
-	keepAliveTimer       *time.Timer
-	closeError           error
-	writerMutex          sync.RWMutex
-	writer               *asyncprocessor.Processor
-	reader               *clientReader
-	timeDecoder          *rtptime.GlobalDecoder
-	mustClose            bool
-	tcpFrame             *base.InterleavedFrame
-	tcpBuffer            []byte
-	bytesReceived        *uint64
-	bytesSent            *uint64
+	ctx                     context.Context
+	ctxCancel               func()
+	propsMutex              sync.RWMutex
+	state                   clientState
+	nconn                   net.Conn
+	conn                    *conn.Conn
+	session                 string
+	sender                  *auth.Sender
+	cseq                    int
+	optionsSent             bool
+	useGetParameter         bool
+	lastDescribeURL         *base.URL
+	lastDescribeDesc        *description.Session
+	baseURL                 *base.URL
+	announceData            []*clientAnnounceDataMedia // record
+	announceDataIndexByPtr  map[*description.Media]int // record
+	setuppedTransport       *SessionTransport
+	backChannelSetupped     bool
+	stdChannelSetupped      bool
+	setuppedMedias          []*clientMedia
+	setuppedMediaIndexByPtr map[*description.Media]int
+	tcpCallbackByChannel    map[int]readFunc
+	lastRange               *headers.Range
+	checkTimeoutTimer       *time.Timer
+	checkTimeoutInitial     bool
+	tcpLastFrameTime        *int64
+	keepAlivePeriod         time.Duration
+	keepAliveTimer          *time.Timer
+	closeError              error
+	writerMutex             sync.RWMutex
+	writer                  *asyncprocessor.Processor
+	reader                  *clientReader
+	timeDecoder             *rtptime.GlobalDecoder
+	mustClose               bool
+	tcpFrame                *base.InterleavedFrame
+	tcpBuffer               []byte
+	bytesReceived           *uint64
+	bytesSent               *uint64
 
 	// in
 	chOptions     chan optionsReq
@@ -967,6 +1015,9 @@ func (c *Client) doClose() {
 	}
 
 	for _, cm := range c.setuppedMedias {
+		if cm == nil {
+			continue
+		}
 		cm.close()
 	}
 }
@@ -981,10 +1032,13 @@ func (c *Client) reset() {
 	c.optionsSent = false
 	c.useGetParameter = false
 	c.baseURL = nil
+	c.announceData = nil
+	c.announceDataIndexByPtr = nil
 	c.setuppedTransport = nil
 	c.backChannelSetupped = false
 	c.stdChannelSetupped = false
 	c.setuppedMedias = nil
+	c.setuppedMediaIndexByPtr = nil
 	c.tcpCallbackByChannel = nil
 }
 
@@ -1022,6 +1076,10 @@ func (c *Client) trySwitchingProtocol() error {
 	}
 
 	for i, cm := range prevMedias {
+		if cm == nil {
+			continue
+		}
+
 		_, err = c.doSetup(prevBaseURL, cm.media, 0, 0)
 		if err != nil {
 			return err
@@ -1046,6 +1104,9 @@ func (c *Client) startTransportRoutines() {
 	c.timeDecoder.Initialize()
 
 	for _, cm := range c.setuppedMedias {
+		if cm == nil {
+			continue
+		}
 		cm.start()
 	}
 
@@ -1088,6 +1149,9 @@ func (c *Client) stopTransportRoutines() {
 	c.keepAliveTimer = emptyTimer()
 
 	for _, cm := range c.setuppedMedias {
+		if cm == nil {
+			continue
+		}
 		cm.stop()
 	}
 
@@ -1559,6 +1623,11 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, err
 	}
 
+	announceDataIndexByPtr := make(map[*description.Media]int, len(desc.Medias))
+	for i, medi := range desc.Medias {
+		announceDataIndexByPtr[medi] = i
+	}
+
 	err = prepareForAnnounce(desc, announceData, secure)
 	if err != nil {
 		return nil, err
@@ -1590,6 +1659,7 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 	c.baseURL = u.Clone()
 	c.state = clientStatePreRecord
 	c.announceData = announceData
+	c.announceDataIndexByPtr = announceDataIndexByPtr
 
 	return res, nil
 }
@@ -1673,13 +1743,28 @@ func (c *Client) doSetup(
 	}
 
 	var localSSRCs map[uint8]uint32
+	var mediaIndex int
+	var ok bool
 
 	if c.state == clientStatePreRecord {
+		mediaIndex, ok = c.announceDataIndexByPtr[medi]
+		if !ok {
+			return nil, fmt.Errorf("media not found")
+		}
+
 		localSSRCs = make(map[uint8]uint32)
-		for forma, data := range c.announceData[medi].formats {
+		for forma, data := range c.announceData[mediaIndex].formats {
 			localSSRCs[forma] = data.localSSRC
 		}
 	} else {
+		mediaIndex, ok, err = findMediaIndexForSetup(c.lastDescribeDesc.Medias, medi, baseURL)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, fmt.Errorf("media not found")
+		}
+
 		localSSRCs, err = generateLocalSSRCs(
 			clientExtractExistingSSRCs(c.setuppedMedias),
 			medi.Formats,
@@ -1767,7 +1852,7 @@ func (c *Client) doSetup(
 		var srtpOutKey []byte
 
 		if c.state == clientStatePreRecord {
-			srtpOutKey = c.announceData[medi].srtpOutKey
+			srtpOutKey = c.announceData[mediaIndex].srtpOutKey
 		} else {
 			srtpOutKey = make([]byte, srtpKeyLength)
 			_, err = rand.Read(srtpOutKey)
@@ -2050,6 +2135,7 @@ func (c *Client) doSetup(
 
 	cm := &clientMedia{
 		c:               c,
+		mediaIndex:      mediaIndex,
 		media:           medi,
 		secure:          isSecure(th.Profile),
 		udpRTPListener:  udpRTPListener,
@@ -2067,9 +2153,15 @@ func (c *Client) doSetup(
 	c.propsMutex.Lock()
 
 	if c.setuppedMedias == nil {
-		c.setuppedMedias = make(map[*description.Media]*clientMedia)
+		mediaCount := len(c.lastDescribeDesc.Medias)
+		if c.state == clientStatePreRecord {
+			mediaCount = len(c.announceData)
+		}
+		c.setuppedMedias = make([]*clientMedia, mediaCount)
+		c.setuppedMediaIndexByPtr = make(map[*description.Media]int, mediaCount)
 	}
-	c.setuppedMedias[medi] = cm
+	c.setuppedMedias[mediaIndex] = cm
+	c.setuppedMediaIndexByPtr[medi] = mediaIndex
 
 	c.baseURL = baseURL
 	c.setuppedTransport = &SessionTransport{
@@ -2094,6 +2186,9 @@ func (c *Client) doSetup(
 
 func (c *Client) isChannelPairInUse(channel int) bool {
 	for _, cm := range c.setuppedMedias {
+		if cm == nil {
+			continue
+		}
 		if (cm.tcpChannel+1) == channel || cm.tcpChannel == channel || cm.tcpChannel == (channel+1) {
 			return true
 		}
@@ -2180,6 +2275,10 @@ func (c *Client) doPlay(ra *headers.Range) (*base.Response, error) {
 	// do this before sending the PLAY request.
 	if c.setuppedTransport.Protocol == ProtocolUDP {
 		for _, cm := range c.setuppedMedias {
+			if cm == nil {
+				continue
+			}
+
 			if !cm.media.IsBackChannel && cm.udpRTPListener.writeAddr != nil {
 				buf, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
 				if cm.srtpOutCtx != nil {
@@ -2363,6 +2462,9 @@ func (c *Client) Pause() (*base.Response, error) {
 // OnPacketRTPAny sets a callback that is called when a RTP packet is read from any setupped media.
 func (c *Client) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
 	for _, cm := range c.setuppedMedias {
+		if cm == nil {
+			continue
+		}
 		cmedia := cm.media
 		for _, forma := range cm.media.Formats {
 			c.OnPacketRTP(cm.media, forma, func(pkt *rtp.Packet) {
@@ -2375,6 +2477,9 @@ func (c *Client) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
 // OnPacketRTCPAny sets a callback that is called when a RTCP packet is read from any setupped media.
 func (c *Client) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 	for _, cm := range c.setuppedMedias {
+		if cm == nil {
+			continue
+		}
 		cmedia := cm.media
 		c.OnPacketRTCP(cm.media, func(pkt rtcp.Packet) {
 			cb(cmedia, pkt)
@@ -2384,14 +2489,28 @@ func (c *Client) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 
 // OnPacketRTP sets a callback that is called when a RTP packet is read.
 func (c *Client) OnPacketRTP(medi *description.Media, forma format.Format, cb OnPacketRTPFunc) {
-	cm := c.setuppedMedias[medi]
+	mediaIndex, ok := c.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(c.setuppedMedias) {
+		return
+	}
+	cm := c.setuppedMedias[mediaIndex]
+	if cm == nil {
+		return
+	}
 	ct := cm.formats[forma.PayloadType()]
 	ct.onPacketRTP = cb
 }
 
 // OnPacketRTCP sets a callback that is called when a RTCP packet is read.
 func (c *Client) OnPacketRTCP(medi *description.Media, cb OnPacketRTCPFunc) {
-	cm := c.setuppedMedias[medi]
+	mediaIndex, ok := c.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(c.setuppedMedias) {
+		return
+	}
+	cm := c.setuppedMedias[mediaIndex]
+	if cm == nil {
+		return
+	}
 	cm.onPacketRTCP = cb
 }
 
@@ -2409,7 +2528,14 @@ func (c *Client) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet,
 	default:
 	}
 
-	cm := c.setuppedMedias[medi]
+	mediaIndex, ok := c.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(c.setuppedMedias) {
+		return fmt.Errorf("media not found")
+	}
+	cm := c.setuppedMedias[mediaIndex]
+	if cm == nil {
+		return fmt.Errorf("media not found")
+	}
 	cf := cm.formats[pkt.PayloadType]
 	return cf.writePacketRTP(pkt, ntp)
 }
@@ -2422,14 +2548,28 @@ func (c *Client) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error
 	default:
 	}
 
-	cm := c.setuppedMedias[medi]
+	mediaIndex, ok := c.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(c.setuppedMedias) {
+		return fmt.Errorf("media not found")
+	}
+	cm := c.setuppedMedias[mediaIndex]
+	if cm == nil {
+		return fmt.Errorf("media not found")
+	}
 	return cm.writePacketRTCP(pkt)
 }
 
 // PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
 func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
-	cm := c.setuppedMedias[medi]
+	mediaIndex, ok := c.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(c.setuppedMedias) {
+		return 0, false
+	}
+	cm := c.setuppedMedias[mediaIndex]
+	if cm == nil {
+		return 0, false
+	}
 	ct := cm.formats[pkt.PayloadType]
 	return c.timeDecoder.Decode(ct.format, pkt)
 }
@@ -2437,7 +2577,14 @@ func (c *Client) PacketPTS(medi *description.Media, pkt *rtp.Packet) (int64, boo
 // PacketNTP returns the NTP (absolute timestamp) of an incoming RTP packet.
 // The NTP is computed from RTCP sender reports.
 func (c *Client) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
-	cm := c.setuppedMedias[medi]
+	mediaIndex, ok := c.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(c.setuppedMedias) {
+		return time.Time{}, false
+	}
+	cm := c.setuppedMedias[mediaIndex]
+	if cm == nil {
+		return time.Time{}, false
+	}
 	ct := cm.formats[pkt.PayloadType]
 	return ct.rtpReceiver.PacketNTP(pkt.Timestamp)
 }
@@ -2463,8 +2610,12 @@ func (c *Client) Stats() *ClientStats {
 	mediaStats := func() map[*description.Media]SessionStatsMedia { //nolint:dupl
 		ret := make(map[*description.Media]SessionStatsMedia, len(c.setuppedMedias))
 
-		for med, sm := range c.setuppedMedias {
-			ret[med] = SessionStatsMedia{
+		for _, sm := range c.setuppedMedias {
+			if sm == nil {
+				continue
+			}
+
+			ret[sm.media] = SessionStatsMedia{
 				BytesReceived:       atomic.LoadUint64(sm.bytesReceived),
 				BytesSent:           atomic.LoadUint64(sm.bytesSent),
 				RTPPacketsInError:   atomic.LoadUint64(sm.rtpPacketsInError),

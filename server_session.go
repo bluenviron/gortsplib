@@ -31,9 +31,12 @@ import (
 
 type readFunc func([]byte) bool
 
-func serverSessionExtractExistingSSRCs(medias map[*description.Media]*serverSessionMedia) []uint32 {
+func serverSessionExtractExistingSSRCs(medias []*serverSessionMedia) []uint32 {
 	n := 0
 	for _, media := range medias {
+		if media == nil {
+			continue
+		}
 		for range media.formats {
 			n++
 		}
@@ -47,6 +50,9 @@ func serverSessionExtractExistingSSRCs(medias map[*description.Media]*serverSess
 	n = 0
 
 	for _, media := range medias {
+		if media == nil {
+			continue
+		}
 		for _, forma := range media.formats {
 			ret[n] = forma.localSSRC
 			n++
@@ -133,21 +139,40 @@ func getPathAndQueryAndTrackID(u *base.URL) (string, string, string, error) {
 	return "", "", "", liberrors.ErrServerInvalidSetupPath{}
 }
 
-// used for SETUP when recording
-func findMediaByURL(
+func findMediaIndexByTrackID(medias []*description.Media, trackID string) (int, bool) {
+	if trackID == "" {
+		if len(medias) == 0 {
+			return 0, false
+		}
+		return 0, true
+	}
+
+	tmp, err := strconv.ParseUint(trackID, 10, 31)
+	if err != nil {
+		return 0, false
+	}
+	id := int(tmp)
+
+	if len(medias) <= id {
+		return 0, false
+	}
+
+	return id, true
+}
+
+func findMediaIndexByURL(
 	medias []*description.Media,
 	path string,
 	query string,
 	u *base.URL,
-) *description.Media {
-	for _, media := range medias {
+) int {
+	for i, media := range medias {
 		if strings.HasPrefix(media.Control, "rtsp://") ||
 			strings.HasPrefix(media.Control, "rtsps://") {
 			if media.Control == u.String() {
-				return media
+				return i
 			}
 		} else {
-			// FFmpeg format
 			u1 := &base.URL{
 				Scheme:   u.Scheme,
 				Host:     u.Host,
@@ -160,10 +185,9 @@ func findMediaByURL(
 				u1.Path += "/" + media.Control
 			}
 			if u1.String() == u.String() {
-				return media
+				return i
 			}
 
-			// GStreamer format
 			u2 := &base.URL{
 				Scheme:   u.Scheme,
 				Host:     u.Host,
@@ -171,30 +195,12 @@ func findMediaByURL(
 				RawQuery: query,
 			}
 			if u2.String() == u.String() {
-				return media
+				return i
 			}
 		}
 	}
 
-	return nil
-}
-
-func findMediaByTrackID(medias []*description.Media, trackID string) *description.Media {
-	if trackID == "" {
-		return medias[0]
-	}
-
-	tmp, err := strconv.ParseUint(trackID, 10, 31)
-	if err != nil {
-		return nil
-	}
-	id := int(tmp)
-
-	if len(medias) <= id {
-		return nil
-	}
-
-	return medias[id]
+	return -1
 }
 
 func isTransportSupported(sc *ServerConn, tr *headers.Transport) bool {
@@ -282,7 +288,7 @@ func generateRTPInfo(
 	ri := make(headers.RTPInfo, len(mediasOrdered))
 
 	for i, sm := range mediasOrdered {
-		ssm := stream.medias[sm.media]
+		ssm := stream.medias[sm.mediaIndex]
 		entry := generateRTPInfoEntry(ssm, now)
 		if entry == nil {
 			entry = &headers.RTPInfoEntry{}
@@ -292,7 +298,7 @@ func generateRTPInfo(
 			Scheme: u.Scheme,
 			Host:   u.Host,
 			Path: path + "/trackID=" +
-				strconv.FormatInt(int64(ssm.trackID), 10),
+				strconv.FormatInt(int64(ssm.mediaIndex), 10),
 		}).String()
 
 		ri[i] = entry
@@ -335,30 +341,31 @@ type ServerSession struct {
 	s      *Server
 	author *ServerConn
 
-	secretID              string // must not be shared, allows to take ownership of the session
-	ctx                   context.Context
-	ctxCancel             func()
-	propsMutex            sync.RWMutex
-	conns                 map[*ServerConn]struct{}
-	userData              any
-	state                 ServerSessionState
-	setuppedMedias        map[*description.Media]*serverSessionMedia
-	setuppedMediasOrdered []*serverSessionMedia
-	tcpCallbackByChannel  map[int]readFunc
-	setuppedTransport     *SessionTransport
-	setuppedStream        *ServerStream // play
-	setuppedPath          string
-	setuppedQuery         string
-	lastRequestTime       time.Time
-	tcpConn               *ServerConn
-	announcedDesc         *description.Session // record
-	udpLastPacketTime     *int64               // record
-	udpCheckStreamTimer   *time.Timer
-	writerMutex           sync.RWMutex
-	writer                *asyncprocessor.Processor
-	timeDecoder           *rtptime.GlobalDecoder
-	tcpFrame              *base.InterleavedFrame
-	tcpBuffer             []byte
+	secretID                string // must not be shared, allows to take ownership of the session
+	ctx                     context.Context
+	ctxCancel               func()
+	propsMutex              sync.RWMutex
+	conns                   map[*ServerConn]struct{}
+	userData                any
+	state                   ServerSessionState
+	setuppedMedias          []*serverSessionMedia
+	setuppedMediaIndexByPtr map[*description.Media]int
+	setuppedMediasOrdered   []*serverSessionMedia
+	tcpCallbackByChannel    map[int]readFunc
+	setuppedTransport       *SessionTransport
+	setuppedStream          *ServerStream // play
+	setuppedPath            string
+	setuppedQuery           string
+	lastRequestTime         time.Time
+	tcpConn                 *ServerConn
+	announcedDesc           *description.Session // record
+	udpLastPacketTime       *int64               // record
+	udpCheckStreamTimer     *time.Timer
+	writerMutex             sync.RWMutex
+	writer                  *asyncprocessor.Processor
+	timeDecoder             *rtptime.GlobalDecoder
+	tcpFrame                *base.InterleavedFrame
+	tcpBuffer               []byte
 
 	// in
 	chHandleRequest    chan sessionRequestReq
@@ -441,7 +448,7 @@ func (ss *ServerSession) Medias() []*description.Media {
 	ss.propsMutex.RLock()
 	defer ss.propsMutex.RUnlock()
 
-	ret := make([]*description.Media, len(ss.setuppedMedias))
+	ret := make([]*description.Media, len(ss.setuppedMediasOrdered))
 	for i, sm := range ss.setuppedMediasOrdered {
 		ret[i] = sm.media
 	}
@@ -488,10 +495,10 @@ func (ss *ServerSession) Stats() *SessionStats {
 	defer ss.propsMutex.RUnlock()
 
 	mediaStats := func() map[*description.Media]SessionStatsMedia { //nolint:dupl
-		ret := make(map[*description.Media]SessionStatsMedia, len(ss.setuppedMedias))
+		ret := make(map[*description.Media]SessionStatsMedia, len(ss.setuppedMediasOrdered))
 
-		for med, sm := range ss.setuppedMedias {
-			ret[med] = SessionStatsMedia{
+		for _, sm := range ss.setuppedMediasOrdered {
+			ret[sm.media] = SessionStatsMedia{
 				BytesReceived:       atomic.LoadUint64(sm.bytesReceived),
 				BytesSent:           atomic.LoadUint64(sm.bytesSent),
 				RTPPacketsInError:   atomic.LoadUint64(sm.rtpPacketsInError),
@@ -510,7 +517,7 @@ func (ss *ServerSession) Stats() *SessionStats {
 						}()
 						rtcpSender := func() *rtpsender.Sender {
 							if ss.setuppedStream != nil {
-								return ss.setuppedStream.medias[med].formats[fo.format.PayloadType()].rtpSender
+								return ss.setuppedStream.medias[sm.mediaIndex].formats[fo.format.PayloadType()].rtpSender
 							}
 							return nil
 						}()
@@ -771,7 +778,7 @@ func (ss *ServerSession) run() {
 
 	ss.propsMutex.Lock()
 
-	for _, sm := range ss.setuppedMedias {
+	for _, sm := range ss.setuppedMediasOrdered {
 		sm.close()
 	}
 
@@ -1186,6 +1193,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 		if res.StatusCode == base.StatusOK {
 			var medi *description.Media
+			mediaIndex := -1
 
 			switch ss.state {
 			case ServerSessionStateInitial, ServerSessionStatePrePlay: // play
@@ -1199,9 +1207,16 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					}
 				}
 
-				medi = findMediaByTrackID(stream.Desc.Medias, trackID)
+				var ok bool
+				mediaIndex, ok = findMediaIndexByTrackID(stream.Desc.Medias, trackID)
+				if ok {
+					medi = stream.Desc.Medias[mediaIndex]
+				}
 			default: // record
-				medi = findMediaByURL(ss.announcedDesc.Medias, path, query, req.URL)
+				mediaIndex = findMediaIndexByURL(ss.announcedDesc.Medias, path, query, req.URL)
+				if mediaIndex >= 0 {
+					medi = ss.announcedDesc.Medias[mediaIndex]
+				}
 			}
 
 			if medi == nil {
@@ -1210,7 +1225,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}, liberrors.ErrServerMediaNotFound{}
 			}
 
-			if _, ok := ss.setuppedMedias[medi]; ok {
+			if ss.setuppedMedias != nil && mediaIndex < len(ss.setuppedMedias) && ss.setuppedMedias[mediaIndex] != nil {
 				return &base.Response{
 					StatusCode: base.StatusBadRequest,
 				}, liberrors.ErrServerMediaAlreadySetup{}
@@ -1235,8 +1250,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			if ss.state == ServerSessionStateInitial || ss.state == ServerSessionStatePrePlay {
 				// Fill SSRC if there is a single SSRC only
 				// since the Transport header does not support multiple SSRCs.
-				if len(stream.medias[medi].formats) == 1 {
-					format := stream.medias[medi].formats[medi.Formats[0].PayloadType()]
+				if len(stream.medias[mediaIndex].formats) == 1 {
+					format := stream.medias[mediaIndex].formats[medi.Formats[0].PayloadType()]
 					th.SSRC = &format.localSSRC
 				}
 			}
@@ -1259,7 +1274,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}
 			} else {
 				localSSRCs = make(map[uint8]uint32)
-				for forma, data := range stream.medias[medi].formats {
+				for forma, data := range stream.medias[mediaIndex].formats {
 					localSSRCs[forma] = data.localSSRC
 				}
 			}
@@ -1287,7 +1302,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 						}, err
 					}
 				} else {
-					srtpOutCtx = stream.medias[medi].srtpOutCtx
+					srtpOutCtx = stream.medias[mediaIndex].srtpOutCtx
 				}
 			}
 
@@ -1323,8 +1338,8 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				} else {
 					th.Delivery = ptrOf(headers.TransportDeliveryMulticast)
 					th.TTL = ptrOf(uint(127))
-					th.Destination2 = ptrOf(stream.medias[medi].multicastWriter.ip.String())
-					th.Ports = &[2]int{stream.medias[medi].multicastWriter.rtpPort, stream.medias[medi].multicastWriter.rtcpPort}
+					th.Destination2 = ptrOf(stream.medias[mediaIndex].multicastWriter.ip.String())
+					th.Ports = &[2]int{stream.medias[mediaIndex].multicastWriter.rtpPort, stream.medias[mediaIndex].multicastWriter.rtcpPort}
 				}
 
 			default: // TCP
@@ -1349,6 +1364,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 			sm := &serverSessionMedia{
 				ss:               ss,
+				mediaIndex:       mediaIndex,
 				media:            medi,
 				localSSRCs:       localSSRCs,
 				srtpInCtx:        srtpInCtx,
@@ -1363,9 +1379,15 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			sm.initialize()
 
 			if ss.setuppedMedias == nil {
-				ss.setuppedMedias = make(map[*description.Media]*serverSessionMedia)
+				mediaCount := len(ss.announcedDesc.Medias)
+				if stream != nil {
+					mediaCount = len(stream.medias)
+				}
+				ss.setuppedMedias = make([]*serverSessionMedia, mediaCount)
+				ss.setuppedMediaIndexByPtr = make(map[*description.Media]int, mediaCount)
 			}
-			ss.setuppedMedias[medi] = sm
+			ss.setuppedMedias[mediaIndex] = sm
+			ss.setuppedMediaIndexByPtr[medi] = mediaIndex
 			ss.setuppedMediasOrdered = append(ss.setuppedMediasOrdered, sm)
 
 			if ss.state == ServerSessionStateInitial {
@@ -1449,7 +1471,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				ss.timeDecoder = &rtptime.GlobalDecoder{}
 				ss.timeDecoder.Initialize()
 
-				for _, sm := range ss.setuppedMedias {
+				for _, sm := range ss.setuppedMediasOrdered {
 					err = sm.start()
 					if err != nil {
 						return &base.Response{
@@ -1511,7 +1533,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, err
 		}
 
-		if len(ss.setuppedMedias) != len(ss.announcedDesc.Medias) {
+		if len(ss.setuppedMediasOrdered) != len(ss.announcedDesc.Medias) {
 			return &base.Response{
 				StatusCode: base.StatusBadRequest,
 			}, liberrors.ErrServerNotAllAnnouncedMediasSetup{}
@@ -1541,7 +1563,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			ss.timeDecoder = &rtptime.GlobalDecoder{}
 			ss.timeDecoder.Initialize()
 
-			for _, sm := range ss.setuppedMedias {
+			for _, sm := range ss.setuppedMediasOrdered {
 				err = sm.start()
 				if err != nil {
 					return &base.Response{
@@ -1603,7 +1625,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					ss.setuppedStream.readerSetInactive(ss)
 				}
 
-				for _, sm := range ss.setuppedMedias {
+				for _, sm := range ss.setuppedMediasOrdered {
 					sm.stop()
 				}
 
@@ -1697,6 +1719,9 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 func (ss *ServerSession) isChannelPairInUse(channel int) bool {
 	for _, sm := range ss.setuppedMedias {
+		if sm == nil {
+			continue
+		}
 		if (sm.tcpChannel+1) == channel || sm.tcpChannel == channel || sm.tcpChannel == (channel+1) {
 			return true
 		}
@@ -1714,7 +1739,7 @@ func (ss *ServerSession) findFreeChannelPair() int {
 
 // OnPacketRTPAny sets a callback that is called when a RTP packet is read from any setupped media.
 func (ss *ServerSession) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
-	for _, sm := range ss.setuppedMedias {
+	for _, sm := range ss.setuppedMediasOrdered {
 		cmedia := sm.media
 		for _, forma := range sm.media.Formats {
 			ss.OnPacketRTP(sm.media, forma, func(pkt *rtp.Packet) {
@@ -1726,7 +1751,7 @@ func (ss *ServerSession) OnPacketRTPAny(cb OnPacketRTPAnyFunc) {
 
 // OnPacketRTCPAny sets a callback that is called when a RTCP packet is read from any setupped media.
 func (ss *ServerSession) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
-	for _, sm := range ss.setuppedMedias {
+	for _, sm := range ss.setuppedMediasOrdered {
 		cmedia := sm.media
 		ss.OnPacketRTCP(sm.media, func(pkt rtcp.Packet) {
 			cb(cmedia, pkt)
@@ -1736,34 +1761,69 @@ func (ss *ServerSession) OnPacketRTCPAny(cb OnPacketRTCPAnyFunc) {
 
 // OnPacketRTP sets a callback that is called when a RTP packet is read.
 func (ss *ServerSession) OnPacketRTP(medi *description.Media, forma format.Format, cb OnPacketRTPFunc) {
-	sm := ss.setuppedMedias[medi]
+	mediaIndex, ok := ss.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(ss.setuppedMedias) {
+		return
+	}
+	sm := ss.setuppedMedias[mediaIndex]
+	if sm == nil {
+		return
+	}
 	st := sm.formats[forma.PayloadType()]
 	st.onPacketRTP = cb
 }
 
 // OnPacketRTCP sets a callback that is called when a RTCP packet is read.
 func (ss *ServerSession) OnPacketRTCP(medi *description.Media, cb OnPacketRTCPFunc) {
-	sm := ss.setuppedMedias[medi]
+	mediaIndex, ok := ss.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(ss.setuppedMedias) {
+		return
+	}
+	sm := ss.setuppedMedias[mediaIndex]
+	if sm == nil {
+		return
+	}
 	sm.onPacketRTCP = cb
 }
 
 // WritePacketRTP writes a RTP packet to the session.
 func (ss *ServerSession) WritePacketRTP(medi *description.Media, pkt *rtp.Packet) error {
-	sm := ss.setuppedMedias[medi]
+	mediaIndex, ok := ss.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(ss.setuppedMedias) {
+		return liberrors.ErrServerMediaNotFound{}
+	}
+	sm := ss.setuppedMedias[mediaIndex]
+	if sm == nil {
+		return liberrors.ErrServerMediaNotFound{}
+	}
 	sf := sm.formats[pkt.PayloadType]
 	return sf.writePacketRTP(pkt)
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.
 func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error {
-	sm := ss.setuppedMedias[medi]
+	mediaIndex, ok := ss.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(ss.setuppedMedias) {
+		return liberrors.ErrServerMediaNotFound{}
+	}
+	sm := ss.setuppedMedias[mediaIndex]
+	if sm == nil {
+		return liberrors.ErrServerMediaNotFound{}
+	}
 	return sm.writePacketRTCP(pkt)
 }
 
 // PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
 func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
-	sm := ss.setuppedMedias[medi]
+	mediaIndex, ok := ss.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(ss.setuppedMedias) {
+		return 0, false
+	}
+	sm := ss.setuppedMedias[mediaIndex]
+	if sm == nil {
+		return 0, false
+	}
 	sf := sm.formats[pkt.PayloadType]
 	return ss.timeDecoder.Decode(sf.format, pkt)
 }
@@ -1771,7 +1831,14 @@ func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (in
 // PacketNTP returns the NTP (absolute timestamp) of an incoming RTP packet.
 // The NTP is computed from RTCP sender reports.
 func (ss *ServerSession) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
-	sm := ss.setuppedMedias[medi]
+	mediaIndex, ok := ss.setuppedMediaIndexByPtr[medi]
+	if !ok || mediaIndex >= len(ss.setuppedMedias) {
+		return time.Time{}, false
+	}
+	sm := ss.setuppedMedias[mediaIndex]
+	if sm == nil {
+		return time.Time{}, false
+	}
 	sf := sm.formats[pkt.PayloadType]
 	return sf.rtpReceiver.PacketNTP(pkt.Timestamp)
 }

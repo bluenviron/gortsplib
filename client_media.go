@@ -113,6 +113,7 @@ func createUDPListenerPair(
 
 type clientMedia struct {
 	c               *Client
+	mediaIndex      int
 	media           *description.Media
 	secure          bool
 	udpRTPListener  *clientUDPListener

@@ -10,8 +10,8 @@ import (
 
 type serverStreamMedia struct {
 	st         *ServerStream
+	mediaIndex int
 	media      *description.Media
-	trackID    int
 	localSSRCs map[uint8]uint32
 	srtpOutCtx *wrappedSRTPContext
 
@@ -77,26 +77,31 @@ func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 
 	// send unicast
 	for r := range sm.st.activeUnicastReaders {
-		if sm, ok := r.setuppedMedias[sm.media]; ok {
-			if isSecure(r.setuppedTransport.Profile) {
-				err = sm.writePacketRTCPEncoded(encr)
-				if err != nil {
-					r.onStreamWriteError(err)
-					continue
-				}
-
-				atomic.AddUint64(sm.bytesSent, encrLen)
-			} else {
-				err = sm.writePacketRTCPEncoded(plain)
-				if err != nil {
-					r.onStreamWriteError(err)
-					continue
-				}
-
-				atomic.AddUint64(sm.bytesSent, plainLen)
+		if sm.mediaIndex < len(r.setuppedMedias) {
+			rsm := r.setuppedMedias[sm.mediaIndex]
+			if rsm == nil {
+				continue
 			}
 
-			atomic.AddUint64(sm.rtcpPacketsSent, 1)
+			if isSecure(r.setuppedTransport.Profile) {
+				err = rsm.writePacketRTCPEncoded(encr)
+				if err != nil {
+					r.onStreamWriteError(err)
+					continue
+				}
+
+				atomic.AddUint64(rsm.bytesSent, encrLen)
+			} else {
+				err = rsm.writePacketRTCPEncoded(plain)
+				if err != nil {
+					r.onStreamWriteError(err)
+					continue
+				}
+
+				atomic.AddUint64(rsm.bytesSent, plainLen)
+			}
+
+			atomic.AddUint64(rsm.rtcpPacketsSent, 1)
 		}
 	}
 

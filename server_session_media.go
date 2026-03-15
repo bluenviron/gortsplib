@@ -16,6 +16,7 @@ import (
 
 type serverSessionMedia struct {
 	ss               *ServerSession
+	mediaIndex       int
 	media            *description.Media
 	localSSRCs       map[uint8]uint32
 	srtpInCtx        *wrappedSRTPContext
