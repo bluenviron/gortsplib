@@ -29,8 +29,7 @@ type Sender struct {
 	lastSystem         time.Time
 	localSSRC          uint32
 	lastSequenceNumber uint16
-	packetCount        uint32
-	packetCount2       uint64
+	totalSent          uint64
 	octetCount         uint32
 
 	terminate chan struct{}
@@ -91,7 +90,7 @@ func (rs *Sender) report() rtcp.Packet {
 		SSRC:        rs.localSSRC,
 		NTPTime:     ntp.Encode(ntpTime),
 		RTPTime:     rtpTime,
-		PacketCount: rs.packetCount,
+		PacketCount: uint32(rs.totalSent),
 		OctetCount:  rs.octetCount,
 	}
 }
@@ -111,8 +110,7 @@ func (rs *Sender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS boo
 
 	rs.lastSequenceNumber = pkt.SequenceNumber
 
-	rs.packetCount++
-	rs.packetCount2++
+	rs.totalSent++
 	rs.octetCount += uint32(len(pkt.Payload))
 }
 
@@ -137,6 +135,6 @@ func (rs *Sender) Stats() *Stats {
 		LastSequenceNumber: rs.lastSequenceNumber,
 		LastRTP:            rs.lastRTP,
 		LastNTP:            rs.lastNTP,
-		TotalSent:          rs.packetCount2,
+		TotalSent:          rs.totalSent,
 	}
 }
