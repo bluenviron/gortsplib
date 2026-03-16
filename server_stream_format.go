@@ -2,14 +2,14 @@ package gortsplib
 
 import (
 	"crypto/rand"
+	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
-	"github.com/bluenviron/gortsplib/v5/pkg/rtpsender"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 )
 
 func randUint32() (uint32, error) {
@@ -22,43 +22,66 @@ func randUint32() (uint32, error) {
 }
 
 type serverStreamFormat struct {
-	sm        *serverStreamMedia
+	ssm       *serverStreamMedia
 	format    format.Format
 	localSSRC uint32
 
-	rtpSender      *rtpsender.Sender
-	rtpPacketsSent *uint64
+	multicastWriter    *serverMulticastWriterFormat
+	mutex              sync.RWMutex
+	firstSent          bool
+	rtpPacketsSent     uint64
+	lastSequenceNumber uint16
+	lastRTP            uint32
+	lastNTP            time.Time
 }
 
-func (sf *serverStreamFormat) initialize() {
-	sf.rtpPacketsSent = new(uint64)
+func (ssf *serverStreamFormat) initialize() {
+}
 
-	sf.rtpSender = &rtpsender.Sender{
-		ClockRate: sf.format.ClockRate(),
-		Period:    sf.sm.st.Server.senderReportPeriod,
-		TimeNow:   sf.sm.st.Server.timeNow,
-		WritePacketRTCP: func(pkt rtcp.Packet) {
-			if !sf.sm.st.Server.DisableRTCPSenderReports {
-				sf.sm.st.WritePacketRTCP(sf.sm.media, pkt) //nolint:errcheck
-			}
-		},
+func (ssf *serverStreamFormat) rtpInfoEntry(now time.Time) *headers.RTPInfoEntry {
+	clockRate := ssf.format.ClockRate()
+	if clockRate == 0 {
+		return nil
 	}
-	sf.rtpSender.Initialize()
-}
 
-func (sf *serverStreamFormat) close() {
-	if sf.rtpSender != nil {
-		sf.rtpSender.Close()
+	ssf.mutex.RLock()
+	defer ssf.mutex.RUnlock()
+
+	if !ssf.firstSent {
+		return nil
+	}
+
+	// sequence number of the first packet of the stream
+	seqNum := ssf.lastSequenceNumber + 1
+
+	// RTP timestamp corresponding to the time value in
+	// the Range response header.
+	// remove a small quantity in order to avoid DTS > PTS
+	ts := uint32(uint64(ssf.lastRTP) +
+		uint64(now.Sub(ssf.lastNTP).Seconds()*float64(clockRate)) -
+		uint64(clockRate)/10)
+
+	return &headers.RTPInfoEntry{
+		SequenceNumber: &seqNum,
+		Timestamp:      &ts,
 	}
 }
 
-func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
-	pkt.SSRC = sf.localSSRC
+func (ssf *serverStreamFormat) stats() ServerStreamStatsFormat {
+	ssf.mutex.RLock()
+	defer ssf.mutex.RUnlock()
 
-	sf.rtpSender.ProcessPacket(pkt, ntp, sf.format.PTSEqualsDTS(pkt))
+	return ServerStreamStatsFormat{
+		RTPPacketsSent: ssf.rtpPacketsSent,
+		LocalSSRC:      ssf.localSSRC,
+	}
+}
 
-	maxPlainPacketSize := sf.sm.st.Server.MaxPacketSize
-	if sf.sm.srtpOutCtx != nil {
+func (ssf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
+	pkt.SSRC = ssf.localSSRC
+
+	maxPlainPacketSize := ssf.ssm.st.Server.MaxPacketSize
+	if ssf.ssm.srtpOutCtx != nil {
 		maxPlainPacketSize -= srtpOverhead
 	}
 
@@ -70,30 +93,32 @@ func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) err
 	plain = plain[:n]
 
 	var encr []byte
-	if sf.sm.srtpOutCtx != nil {
-		encr = make([]byte, sf.sm.st.Server.MaxPacketSize)
-		encr, err = sf.sm.srtpOutCtx.encryptRTP(encr, plain, &pkt.Header)
+	if ssf.ssm.srtpOutCtx != nil {
+		encr = make([]byte, ssf.ssm.st.Server.MaxPacketSize)
+		encr, err = ssf.ssm.srtpOutCtx.encryptRTP(encr, plain, &pkt.Header)
 		if err != nil {
 			return err
 		}
 	}
 
+	ptsEqualsDTS := ssf.format.PTSEqualsDTS(pkt)
+	encrReaders := uint64(0)
+	plainReaders := uint64(0)
+
 	// send unicast
-	for r := range sf.sm.st.activeUnicastReaders {
-		if rsm, ok := r.setuppedMedias[sf.sm.media]; ok {
+	for r := range ssf.ssm.st.activeUnicastReaders {
+		if rsm, ok := r.setuppedMedias[ssf.ssm.media]; ok {
 			rsf := rsm.formats[pkt.PayloadType]
 
 			var buf []byte
 			if rsm.srtpOutCtx != nil {
 				buf = encr
+				encrReaders++
 			} else {
 				buf = plain
+				plainReaders++
 			}
-
-			atomic.AddUint64(sf.sm.bytesSent, uint64(len(buf)))
-			atomic.AddUint64(sf.rtpPacketsSent, 1)
-
-			err = rsf.writePacketRTPEncoded(buf)
+			err = rsf.writePacketRTPEncoded(pkt, ntp, ptsEqualsDTS, buf)
 			if err != nil {
 				r.onStreamWriteError(err)
 				continue
@@ -102,22 +127,31 @@ func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) err
 	}
 
 	// send multicast
-	if sf.sm.multicastWriter != nil {
+	if ssf.ssm.multicastWriter != nil {
 		var buf []byte
-		if sf.sm.srtpOutCtx != nil {
+		if ssf.ssm.srtpOutCtx != nil {
 			buf = encr
+			encrReaders++
 		} else {
 			buf = plain
+			plainReaders++
 		}
 
-		atomic.AddUint64(sf.sm.bytesSent, uint64(len(buf)))
-		atomic.AddUint64(sf.rtpPacketsSent, 1)
-
-		err = sf.sm.multicastWriter.writePacketRTP(buf)
+		err = ssf.multicastWriter.writePacketRTPEncoded(pkt, ntp, ptsEqualsDTS, buf)
 		if err != nil {
 			return err
 		}
 	}
+
+	atomic.AddUint64(ssf.ssm.bytesSent, uint64(len(encr))*encrReaders+uint64(len(plain))*plainReaders)
+
+	ssf.mutex.Lock()
+	ssf.firstSent = true
+	ssf.rtpPacketsSent += encrReaders + plainReaders
+	ssf.lastSequenceNumber = pkt.SequenceNumber
+	ssf.lastRTP = pkt.Timestamp
+	ssf.lastNTP = ntp
+	ssf.mutex.Unlock()
 
 	return nil
 }

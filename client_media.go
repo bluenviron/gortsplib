@@ -11,6 +11,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
@@ -201,6 +202,24 @@ func (cm *clientMedia) stop() {
 	if cm.udpRTPListener != nil {
 		cm.udpRTPListener.stop()
 		cm.udpRTCPListener.stop()
+	}
+}
+
+func (cm *clientMedia) stats() SessionStatsMedia {
+	return SessionStatsMedia{
+		BytesReceived:       atomic.LoadUint64(cm.bytesReceived),
+		BytesSent:           atomic.LoadUint64(cm.bytesSent),
+		RTPPacketsInError:   atomic.LoadUint64(cm.rtpPacketsInError),
+		RTCPPacketsReceived: atomic.LoadUint64(cm.rtcpPacketsReceived),
+		RTCPPacketsSent:     atomic.LoadUint64(cm.rtcpPacketsSent),
+		RTCPPacketsInError:  atomic.LoadUint64(cm.rtcpPacketsInError),
+		Formats: func() map[format.Format]SessionStatsFormat {
+			ret := make(map[format.Format]SessionStatsFormat, len(cm.formats))
+			for _, fo := range cm.formats {
+				ret[fo.format] = fo.stats()
+			}
+			return ret
+		}(),
 	}
 }
 

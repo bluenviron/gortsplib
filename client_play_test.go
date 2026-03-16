@@ -648,6 +648,9 @@ func TestClientPlay(t *testing.T) {
 
 			<-packetRecv
 
+			c.Close()
+
+			// test that stats are available after client is closed
 			s := c.Stats()
 			require.Equal(t, &ClientStats{
 				Conn: ConnStats{

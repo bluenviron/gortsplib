@@ -11,6 +11,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
@@ -37,97 +38,97 @@ type serverSessionMedia struct {
 	rtcpPacketsInError     *uint64
 }
 
-func (sm *serverSessionMedia) initialize() {
-	sm.bytesReceived = new(uint64)
-	sm.bytesSent = new(uint64)
-	sm.rtpPacketsInError = new(uint64)
-	sm.rtcpPacketsReceived = new(uint64)
-	sm.rtcpPacketsSent = new(uint64)
-	sm.rtcpPacketsInError = new(uint64)
+func (ssm *serverSessionMedia) initialize() {
+	ssm.bytesReceived = new(uint64)
+	ssm.bytesSent = new(uint64)
+	ssm.rtpPacketsInError = new(uint64)
+	ssm.rtcpPacketsReceived = new(uint64)
+	ssm.rtcpPacketsSent = new(uint64)
+	ssm.rtcpPacketsInError = new(uint64)
 
-	sm.formats = make(map[uint8]*serverSessionFormat)
+	ssm.formats = make(map[uint8]*serverSessionFormat)
 
-	for _, forma := range sm.media.Formats {
+	for _, forma := range ssm.media.Formats {
 		f := &serverSessionFormat{
-			sm:          sm,
+			ssm:         ssm,
 			format:      forma,
-			localSSRC:   sm.localSSRCs[forma.PayloadType()],
+			localSSRC:   ssm.localSSRCs[forma.PayloadType()],
 			onPacketRTP: func(*rtp.Packet) {},
 		}
 		f.initialize()
-		sm.formats[forma.PayloadType()] = f
+		ssm.formats[forma.PayloadType()] = f
 	}
 
-	switch sm.ss.setuppedTransport.Protocol {
+	switch ssm.ss.setuppedTransport.Protocol {
 	case ProtocolUDP, ProtocolUDPMulticast:
-		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueUDP
+		ssm.writePacketRTCPInQueue = ssm.writePacketRTCPInQueueUDP
 
 	case ProtocolTCP:
-		sm.writePacketRTCPInQueue = sm.writePacketRTCPInQueueTCP
+		ssm.writePacketRTCPInQueue = ssm.writePacketRTCPInQueueTCP
 
-		if sm.ss.tcpCallbackByChannel == nil {
-			sm.ss.tcpCallbackByChannel = make(map[int]readFunc)
+		if ssm.ss.tcpCallbackByChannel == nil {
+			ssm.ss.tcpCallbackByChannel = make(map[int]readFunc)
 		}
 
-		if sm.ss.state == ServerSessionStateInitial || sm.ss.state == ServerSessionStatePrePlay {
-			sm.ss.tcpCallbackByChannel[sm.tcpChannel] = sm.readPacketRTPTCPPlay
-			sm.ss.tcpCallbackByChannel[sm.tcpChannel+1] = sm.readPacketRTCPTCPPlay
+		if ssm.ss.state == ServerSessionStateInitial || ssm.ss.state == ServerSessionStatePrePlay {
+			ssm.ss.tcpCallbackByChannel[ssm.tcpChannel] = ssm.readPacketRTPTCPPlay
+			ssm.ss.tcpCallbackByChannel[ssm.tcpChannel+1] = ssm.readPacketRTCPTCPPlay
 		} else {
-			sm.ss.tcpCallbackByChannel[sm.tcpChannel] = sm.readPacketRTPTCPRecord
-			sm.ss.tcpCallbackByChannel[sm.tcpChannel+1] = sm.readPacketRTCPTCPRecord
+			ssm.ss.tcpCallbackByChannel[ssm.tcpChannel] = ssm.readPacketRTPTCPRecord
+			ssm.ss.tcpCallbackByChannel[ssm.tcpChannel+1] = ssm.readPacketRTCPTCPRecord
 		}
 	}
 }
 
-func (sm *serverSessionMedia) close() {
-	sm.stop()
+func (ssm *serverSessionMedia) close() {
+	ssm.stop()
 
-	for _, forma := range sm.formats {
+	for _, forma := range ssm.formats {
 		forma.close()
 	}
 }
 
-func (sm *serverSessionMedia) start() error {
-	switch sm.ss.setuppedTransport.Protocol {
+func (ssm *serverSessionMedia) start() error {
+	switch ssm.ss.setuppedTransport.Protocol {
 	case ProtocolUDP, ProtocolUDPMulticast:
-		if sm.ss.setuppedTransport.Protocol == ProtocolUDP {
-			if sm.ss.state == ServerSessionStatePlay {
-				if sm.media.IsBackChannel {
-					sm.ss.s.udpRTPListener.addClient(sm.ss.author.ip(), sm.udpRTPReadPort, sm.readPacketRTPUDPPlay)
+		if ssm.ss.setuppedTransport.Protocol == ProtocolUDP {
+			if ssm.ss.state == ServerSessionStatePlay {
+				if ssm.media.IsBackChannel {
+					ssm.ss.s.udpRTPListener.addClient(ssm.ss.author.ip(), ssm.udpRTPReadPort, ssm.readPacketRTPUDPPlay)
 				}
-				sm.ss.s.udpRTCPListener.addClient(sm.ss.author.ip(), sm.udpRTCPReadPort, sm.readPacketRTCPUDPPlay)
+				ssm.ss.s.udpRTCPListener.addClient(ssm.ss.author.ip(), ssm.udpRTCPReadPort, ssm.readPacketRTCPUDPPlay)
 			} else {
 				// open the firewall by sending empty packets to the remote part.
 				buf, _ := (&rtp.Packet{Header: rtp.Header{Version: 2}}).Marshal()
-				if sm.srtpOutCtx != nil {
-					encr := make([]byte, sm.ss.s.MaxPacketSize)
-					encr, err := sm.srtpOutCtx.encryptRTP(encr, buf, nil)
+				if ssm.srtpOutCtx != nil {
+					encr := make([]byte, ssm.ss.s.MaxPacketSize)
+					encr, err := ssm.srtpOutCtx.encryptRTP(encr, buf, nil)
 					if err != nil {
 						return err
 					}
 					buf = encr
 				}
-				err := sm.ss.s.udpRTPListener.write(buf, sm.udpRTPWriteAddr)
+				err := ssm.ss.s.udpRTPListener.write(buf, ssm.udpRTPWriteAddr)
 				if err != nil {
 					return err
 				}
 
 				buf, _ = (&rtcp.ReceiverReport{}).Marshal()
-				if sm.srtpOutCtx != nil {
-					encr := make([]byte, sm.ss.s.MaxPacketSize)
-					encr, err = sm.srtpOutCtx.encryptRTCP(encr, buf, nil)
+				if ssm.srtpOutCtx != nil {
+					encr := make([]byte, ssm.ss.s.MaxPacketSize)
+					encr, err = ssm.srtpOutCtx.encryptRTCP(encr, buf, nil)
 					if err != nil {
 						return err
 					}
 					buf = encr
 				}
-				err = sm.ss.s.udpRTCPListener.write(buf, sm.udpRTCPWriteAddr)
+				err = ssm.ss.s.udpRTCPListener.write(buf, ssm.udpRTCPWriteAddr)
 				if err != nil {
 					return err
 				}
 
-				sm.ss.s.udpRTPListener.addClient(sm.ss.author.ip(), sm.udpRTPReadPort, sm.readPacketRTPUDPRecord)
-				sm.ss.s.udpRTCPListener.addClient(sm.ss.author.ip(), sm.udpRTCPReadPort, sm.readPacketRTCPUDPRecord)
+				ssm.ss.s.udpRTPListener.addClient(ssm.ss.author.ip(), ssm.udpRTPReadPort, ssm.readPacketRTPUDPRecord)
+				ssm.ss.s.udpRTCPListener.addClient(ssm.ss.author.ip(), ssm.udpRTCPReadPort, ssm.readPacketRTCPUDPRecord)
 			}
 		}
 	}
@@ -135,15 +136,33 @@ func (sm *serverSessionMedia) start() error {
 	return nil
 }
 
-func (sm *serverSessionMedia) stop() {
-	if sm.ss.setuppedTransport.Protocol == ProtocolUDP {
-		sm.ss.s.udpRTPListener.removeClient(sm.ss.author.ip(), sm.udpRTPReadPort)
-		sm.ss.s.udpRTCPListener.removeClient(sm.ss.author.ip(), sm.udpRTCPReadPort)
+func (ssm *serverSessionMedia) stop() {
+	if ssm.ss.setuppedTransport.Protocol == ProtocolUDP {
+		ssm.ss.s.udpRTPListener.removeClient(ssm.ss.author.ip(), ssm.udpRTPReadPort)
+		ssm.ss.s.udpRTCPListener.removeClient(ssm.ss.author.ip(), ssm.udpRTCPReadPort)
 	}
 }
 
-func (sm *serverSessionMedia) findFormatByRemoteSSRC(ssrc uint32) *serverSessionFormat {
-	for _, sf := range sm.formats {
+func (ssm *serverSessionMedia) stats() SessionStatsMedia {
+	return SessionStatsMedia{
+		BytesReceived:       atomic.LoadUint64(ssm.bytesReceived),
+		BytesSent:           atomic.LoadUint64(ssm.bytesSent),
+		RTPPacketsInError:   atomic.LoadUint64(ssm.rtpPacketsInError),
+		RTCPPacketsReceived: atomic.LoadUint64(ssm.rtcpPacketsReceived),
+		RTCPPacketsSent:     atomic.LoadUint64(ssm.rtcpPacketsSent),
+		RTCPPacketsInError:  atomic.LoadUint64(ssm.rtcpPacketsInError),
+		Formats: func() map[format.Format]SessionStatsFormat {
+			ret := make(map[format.Format]SessionStatsFormat, len(ssm.formats))
+			for _, ssf := range ssm.formats {
+				ret[ssf.format] = ssf.stats()
+			}
+			return ret
+		}(),
+	}
+}
+
+func (ssm *serverSessionMedia) findFormatByRemoteSSRC(ssrc uint32) *serverSessionFormat {
+	for _, sf := range ssm.formats {
 		if v, ok := sf.remoteSSRC(); ok && v == ssrc {
 			return sf
 		}
@@ -151,10 +170,10 @@ func (sm *serverSessionMedia) findFormatByRemoteSSRC(ssrc uint32) *serverSession
 	return nil
 }
 
-func (sm *serverSessionMedia) decodeRTP(payload []byte, header *rtp.Header, headerSize int) (*rtp.Packet, error) {
-	if sm.srtpInCtx != nil {
+func (ssm *serverSessionMedia) decodeRTP(payload []byte, header *rtp.Header, headerSize int) (*rtp.Packet, error) {
+	if ssm.srtpInCtx != nil {
 		var err error
-		payload, err = sm.srtpInCtx.decryptRTP(payload, payload, header)
+		payload, err = ssm.srtpInCtx.decryptRTP(payload, payload, header)
 		if err != nil {
 			return nil, err
 		}
@@ -163,10 +182,10 @@ func (sm *serverSessionMedia) decodeRTP(payload []byte, header *rtp.Header, head
 	return fastRTPUnmarshal(payload, header, headerSize)
 }
 
-func (sm *serverSessionMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error) {
-	if sm.srtpInCtx != nil {
+func (ssm *serverSessionMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error) {
+	if ssm.srtpInCtx != nil {
 		var err error
-		payload, err = sm.srtpInCtx.decryptRTCP(payload, payload, nil)
+		payload, err = ssm.srtpInCtx.decryptRTCP(payload, payload, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -180,164 +199,164 @@ func (sm *serverSessionMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error) 
 	return pkts, nil
 }
 
-func (sm *serverSessionMedia) readPacketRTP(payload []byte, now time.Time) bool {
+func (ssm *serverSessionMedia) readPacketRTP(payload []byte, now time.Time) bool {
 	var header rtp.Header
 	headerSize, err := header.Unmarshal(payload)
 	if err != nil {
-		sm.onPacketRTPDecodeError(err)
+		ssm.onPacketRTPDecodeError(err)
 		return false
 	}
 
-	forma, ok := sm.formats[header.PayloadType]
+	forma, ok := ssm.formats[header.PayloadType]
 	if !ok {
-		sm.onPacketRTPDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: header.PayloadType})
+		ssm.onPacketRTPDecodeError(liberrors.ErrServerRTPPacketUnknownPayloadType{PayloadType: header.PayloadType})
 		return false
 	}
 
 	return forma.readPacketRTP(payload, &header, headerSize, now)
 }
 
-func (sm *serverSessionMedia) readPacketRTCPPlay(payload []byte) bool {
-	packets, err := sm.decodeRTCP(payload)
+func (ssm *serverSessionMedia) readPacketRTCPPlay(payload []byte) bool {
+	packets, err := ssm.decodeRTCP(payload)
 	if err != nil {
-		sm.onPacketRTCPDecodeError(err)
+		ssm.onPacketRTCPDecodeError(err)
 		return false
 	}
 
-	atomic.AddUint64(sm.rtcpPacketsReceived, uint64(len(packets)))
+	atomic.AddUint64(ssm.rtcpPacketsReceived, uint64(len(packets)))
 
 	for _, pkt := range packets {
-		sm.onPacketRTCP(pkt)
+		ssm.onPacketRTCP(pkt)
 	}
 
 	return true
 }
 
-func (sm *serverSessionMedia) readPacketRTCPRecord(payload []byte) bool {
-	packets, err := sm.decodeRTCP(payload)
+func (ssm *serverSessionMedia) readPacketRTCPRecord(payload []byte) bool {
+	packets, err := ssm.decodeRTCP(payload)
 	if err != nil {
-		sm.onPacketRTCPDecodeError(err)
+		ssm.onPacketRTCPDecodeError(err)
 		return false
 	}
 
-	now := sm.ss.s.timeNow()
+	now := ssm.ss.s.timeNow()
 
-	atomic.AddUint64(sm.rtcpPacketsReceived, uint64(len(packets)))
+	atomic.AddUint64(ssm.rtcpPacketsReceived, uint64(len(packets)))
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
-			format := sm.findFormatByRemoteSSRC(sr.SSRC)
+			format := ssm.findFormatByRemoteSSRC(sr.SSRC)
 			if format != nil {
 				format.rtpReceiver.ProcessSenderReport(sr, now)
 			}
 		}
 
-		sm.onPacketRTCP(pkt)
+		ssm.onPacketRTCP(pkt)
 	}
 
 	return true
 }
 
-func (sm *serverSessionMedia) readPacketRTPUDPPlay(payload []byte) bool {
-	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
+func (ssm *serverSessionMedia) readPacketRTPUDPPlay(payload []byte) bool {
+	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
 
-	now := sm.ss.s.timeNow()
-	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
-
-	if len(payload) == (udpMaxPayloadSize + 1) {
-		sm.onPacketRTPDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
-		return false
-	}
-
-	return sm.readPacketRTP(payload, sm.ss.s.timeNow())
-}
-
-func (sm *serverSessionMedia) readPacketRTCPUDPPlay(payload []byte) bool {
-	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
-
-	now := sm.ss.s.timeNow()
-	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
+	now := ssm.ss.s.timeNow()
+	atomic.StoreInt64(ssm.ss.udpLastPacketTime, now.Unix())
 
 	if len(payload) == (udpMaxPayloadSize + 1) {
-		sm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
+		ssm.onPacketRTPDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
 		return false
 	}
 
-	return sm.readPacketRTCPPlay(payload)
+	return ssm.readPacketRTP(payload, ssm.ss.s.timeNow())
 }
 
-func (sm *serverSessionMedia) readPacketRTPUDPRecord(payload []byte) bool {
-	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
+func (ssm *serverSessionMedia) readPacketRTCPUDPPlay(payload []byte) bool {
+	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
 
-	now := sm.ss.s.timeNow()
-	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
+	now := ssm.ss.s.timeNow()
+	atomic.StoreInt64(ssm.ss.udpLastPacketTime, now.Unix())
 
 	if len(payload) == (udpMaxPayloadSize + 1) {
-		sm.onPacketRTPDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
+		ssm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
 		return false
 	}
 
-	return sm.readPacketRTP(payload, sm.ss.s.timeNow())
+	return ssm.readPacketRTCPPlay(payload)
 }
 
-func (sm *serverSessionMedia) readPacketRTCPUDPRecord(payload []byte) bool {
-	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
+func (ssm *serverSessionMedia) readPacketRTPUDPRecord(payload []byte) bool {
+	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
 
-	now := sm.ss.s.timeNow()
-	atomic.StoreInt64(sm.ss.udpLastPacketTime, now.Unix())
+	now := ssm.ss.s.timeNow()
+	atomic.StoreInt64(ssm.ss.udpLastPacketTime, now.Unix())
 
 	if len(payload) == (udpMaxPayloadSize + 1) {
-		sm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
+		ssm.onPacketRTPDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
 		return false
 	}
 
-	return sm.readPacketRTCPRecord(payload)
+	return ssm.readPacketRTP(payload, ssm.ss.s.timeNow())
 }
 
-func (sm *serverSessionMedia) readPacketRTPTCPPlay(payload []byte) bool {
-	if !sm.media.IsBackChannel {
+func (ssm *serverSessionMedia) readPacketRTCPUDPRecord(payload []byte) bool {
+	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+
+	now := ssm.ss.s.timeNow()
+	atomic.StoreInt64(ssm.ss.udpLastPacketTime, now.Unix())
+
+	if len(payload) == (udpMaxPayloadSize + 1) {
+		ssm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
 		return false
 	}
 
-	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
-
-	return sm.readPacketRTP(payload, sm.ss.s.timeNow())
+	return ssm.readPacketRTCPRecord(payload)
 }
 
-func (sm *serverSessionMedia) readPacketRTCPTCPPlay(payload []byte) bool {
-	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
+func (ssm *serverSessionMedia) readPacketRTPTCPPlay(payload []byte) bool {
+	if !ssm.media.IsBackChannel {
+		return false
+	}
+
+	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+
+	return ssm.readPacketRTP(payload, ssm.ss.s.timeNow())
+}
+
+func (ssm *serverSessionMedia) readPacketRTCPTCPPlay(payload []byte) bool {
+	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
 
 	if len(payload) > udpMaxPayloadSize {
-		sm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
+		ssm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
 		return false
 	}
 
-	return sm.readPacketRTCPPlay(payload)
+	return ssm.readPacketRTCPPlay(payload)
 }
 
-func (sm *serverSessionMedia) readPacketRTPTCPRecord(payload []byte) bool {
-	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
+func (ssm *serverSessionMedia) readPacketRTPTCPRecord(payload []byte) bool {
+	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
 
-	return sm.readPacketRTP(payload, sm.ss.s.timeNow())
+	return ssm.readPacketRTP(payload, ssm.ss.s.timeNow())
 }
 
-func (sm *serverSessionMedia) readPacketRTCPTCPRecord(payload []byte) bool {
-	atomic.AddUint64(sm.bytesReceived, uint64(len(payload)))
+func (ssm *serverSessionMedia) readPacketRTCPTCPRecord(payload []byte) bool {
+	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
 
 	if len(payload) > udpMaxPayloadSize {
-		sm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
+		ssm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
 		return false
 	}
 
-	return sm.readPacketRTCPRecord(payload)
+	return ssm.readPacketRTCPRecord(payload)
 }
 
-func (sm *serverSessionMedia) onPacketRTPDecodeError(err error) {
-	atomic.AddUint64(sm.rtpPacketsInError, 1)
+func (ssm *serverSessionMedia) onPacketRTPDecodeError(err error) {
+	atomic.AddUint64(ssm.rtpPacketsInError, 1)
 
-	if h, ok := sm.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+	if h, ok := ssm.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
 		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-			Session: sm.ss,
+			Session: ssm.ss,
 			Error:   err,
 		})
 	} else {
@@ -345,12 +364,12 @@ func (sm *serverSessionMedia) onPacketRTPDecodeError(err error) {
 	}
 }
 
-func (sm *serverSessionMedia) onPacketRTCPDecodeError(err error) {
-	atomic.AddUint64(sm.rtcpPacketsInError, 1)
+func (ssm *serverSessionMedia) onPacketRTCPDecodeError(err error) {
+	atomic.AddUint64(ssm.rtcpPacketsInError, 1)
 
-	if h, ok := sm.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
+	if h, ok := ssm.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
 		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
-			Session: sm.ss,
+			Session: ssm.ss,
 			Error:   err,
 		})
 	} else {
@@ -358,14 +377,14 @@ func (sm *serverSessionMedia) onPacketRTCPDecodeError(err error) {
 	}
 }
 
-func (sm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
+func (ssm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	plain, err := pkt.Marshal()
 	if err != nil {
 		return err
 	}
 
-	maxPlainPacketSize := sm.ss.s.MaxPacketSize
-	if sm.srtpOutCtx != nil {
+	maxPlainPacketSize := ssm.ss.s.MaxPacketSize
+	if ssm.srtpOutCtx != nil {
 		maxPlainPacketSize -= srtcpOverhead
 	}
 
@@ -374,30 +393,30 @@ func (sm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	}
 
 	var encr []byte
-	if sm.srtpOutCtx != nil {
-		encr = make([]byte, sm.ss.s.MaxPacketSize)
-		encr, err = sm.srtpOutCtx.encryptRTCP(encr, plain, nil)
+	if ssm.srtpOutCtx != nil {
+		encr = make([]byte, ssm.ss.s.MaxPacketSize)
+		encr, err = ssm.srtpOutCtx.encryptRTCP(encr, plain, nil)
 		if err != nil {
 			return err
 		}
 	}
 
-	if sm.srtpOutCtx != nil {
-		return sm.writePacketRTCPEncoded(encr)
+	if ssm.srtpOutCtx != nil {
+		return ssm.writePacketRTCPEncoded(encr)
 	}
-	return sm.writePacketRTCPEncoded(plain)
+	return ssm.writePacketRTCPEncoded(plain)
 }
 
-func (sm *serverSessionMedia) writePacketRTCPEncoded(payload []byte) error {
-	sm.ss.writerMutex.RLock()
-	defer sm.ss.writerMutex.RUnlock()
+func (ssm *serverSessionMedia) writePacketRTCPEncoded(payload []byte) error {
+	ssm.ss.writerMutex.RLock()
+	defer ssm.ss.writerMutex.RUnlock()
 
-	if sm.ss.writer == nil {
+	if ssm.ss.writer == nil {
 		return nil
 	}
 
-	ok := sm.ss.writer.Push(func() error {
-		return sm.writePacketRTCPInQueue(payload)
+	ok := ssm.ss.writer.Push(func() error {
+		return ssm.writePacketRTCPInQueue(payload)
 	})
 	if !ok {
 		return liberrors.ErrServerWriteQueueFull{}
@@ -406,27 +425,27 @@ func (sm *serverSessionMedia) writePacketRTCPEncoded(payload []byte) error {
 	return nil
 }
 
-func (sm *serverSessionMedia) writePacketRTCPInQueueUDP(payload []byte) error {
-	err := sm.ss.s.udpRTCPListener.write(payload, sm.udpRTCPWriteAddr)
+func (ssm *serverSessionMedia) writePacketRTCPInQueueUDP(payload []byte) error {
+	err := ssm.ss.s.udpRTCPListener.write(payload, ssm.udpRTCPWriteAddr)
 	if err != nil {
 		return err
 	}
 
-	atomic.AddUint64(sm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(sm.rtcpPacketsSent, 1)
+	atomic.AddUint64(ssm.bytesSent, uint64(len(payload)))
+	atomic.AddUint64(ssm.rtcpPacketsSent, 1)
 	return nil
 }
 
-func (sm *serverSessionMedia) writePacketRTCPInQueueTCP(payload []byte) error {
-	sm.ss.tcpFrame.Channel = sm.tcpChannel + 1
-	sm.ss.tcpFrame.Payload = payload
-	sm.ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(sm.ss.s.WriteTimeout))
-	err := sm.ss.tcpConn.conn.WriteInterleavedFrame(sm.ss.tcpFrame, sm.ss.tcpBuffer)
+func (ssm *serverSessionMedia) writePacketRTCPInQueueTCP(payload []byte) error {
+	ssm.ss.tcpFrame.Channel = ssm.tcpChannel + 1
+	ssm.ss.tcpFrame.Payload = payload
+	ssm.ss.tcpConn.nconn.SetWriteDeadline(time.Now().Add(ssm.ss.s.WriteTimeout))
+	err := ssm.ss.tcpConn.conn.WriteInterleavedFrame(ssm.ss.tcpFrame, ssm.ss.tcpBuffer)
 	if err != nil {
 		return err
 	}
 
-	atomic.AddUint64(sm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(sm.rtcpPacketsSent, 1)
+	atomic.AddUint64(ssm.bytesSent, uint64(len(payload)))
+	atomic.AddUint64(ssm.rtcpPacketsSent, 1)
 	return nil
 }

@@ -447,6 +447,9 @@ func TestClientRecord(t *testing.T) {
 
 			<-recvDone
 
+			c.Close()
+
+			// test that stats are available after client is closed
 			s := c.Stats()
 			require.Equal(t, &ClientStats{
 				Conn: ConnStats{
@@ -485,7 +488,6 @@ func TestClientRecord(t *testing.T) {
 			require.Greater(t, s.Session.BytesReceived, uint64(19))
 			require.Less(t, s.Session.BytesReceived, uint64(40))
 
-			c.Close()
 			<-done
 
 			err = c.WritePacketRTP(medi, &testRTPPacket)
