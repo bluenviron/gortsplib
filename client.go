@@ -33,8 +33,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v5/pkg/rtpreceiver"
-	"github.com/bluenviron/gortsplib/v5/pkg/rtpsender"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtptime"
 	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
 )
@@ -2462,99 +2460,9 @@ func (c *Client) Stats() *ClientStats {
 
 	mediaStats := func() map[*description.Media]SessionStatsMedia { //nolint:dupl
 		ret := make(map[*description.Media]SessionStatsMedia, len(c.setuppedMedias))
-
 		for med, sm := range c.setuppedMedias {
-			ret[med] = SessionStatsMedia{
-				BytesReceived:       atomic.LoadUint64(sm.bytesReceived),
-				BytesSent:           atomic.LoadUint64(sm.bytesSent),
-				RTPPacketsInError:   atomic.LoadUint64(sm.rtpPacketsInError),
-				RTCPPacketsReceived: atomic.LoadUint64(sm.rtcpPacketsReceived),
-				RTCPPacketsSent:     atomic.LoadUint64(sm.rtcpPacketsSent),
-				RTCPPacketsInError:  atomic.LoadUint64(sm.rtcpPacketsInError),
-				Formats: func() map[format.Format]SessionStatsFormat {
-					ret := make(map[format.Format]SessionStatsFormat, len(sm.formats))
-
-					for _, fo := range sm.formats {
-						recvStats := func() *rtpreceiver.Stats {
-							if fo.rtpReceiver != nil {
-								return fo.rtpReceiver.Stats()
-							}
-							return nil
-						}()
-						sentStats := func() *rtpsender.Stats {
-							if fo.rtpSender != nil {
-								return fo.rtpSender.Stats()
-							}
-							return nil
-						}()
-
-						ret[fo.format] = SessionStatsFormat{ //nolint:dupl
-							RTPPacketsReceived: func() uint64 {
-								if recvStats != nil {
-									return recvStats.TotalReceived
-								}
-								return 0
-							}(),
-							RTPPacketsSent: func() uint64 {
-								if sentStats != nil {
-									return sentStats.TotalSent
-								}
-								return 0
-							}(),
-							RTPPacketsLost: func() uint64 {
-								if recvStats != nil {
-									return recvStats.TotalLost
-								}
-								return 0
-							}(),
-							LocalSSRC: fo.localSSRC,
-							RemoteSSRC: func() uint32 {
-								if v, ok := fo.remoteSSRC(); ok {
-									return v
-								}
-								return 0
-							}(),
-							RTPPacketsLastSequenceNumber: func() uint16 {
-								if recvStats != nil {
-									return recvStats.LastSequenceNumber
-								}
-								if sentStats != nil {
-									return sentStats.LastSequenceNumber
-								}
-								return 0
-							}(),
-							RTPPacketsLastRTP: func() uint32 {
-								if recvStats != nil {
-									return recvStats.LastRTP
-								}
-								if sentStats != nil {
-									return sentStats.LastRTP
-								}
-								return 0
-							}(),
-							RTPPacketsLastNTP: func() time.Time {
-								if recvStats != nil {
-									return recvStats.LastNTP
-								}
-								if sentStats != nil {
-									return sentStats.LastNTP
-								}
-								return time.Time{}
-							}(),
-							RTPPacketsJitter: func() float64 {
-								if recvStats != nil {
-									return recvStats.Jitter
-								}
-								return 0
-							}(),
-						}
-					}
-
-					return ret
-				}(),
-			}
+			ret[med] = sm.stats()
 		}
-
 		return ret
 	}()
 

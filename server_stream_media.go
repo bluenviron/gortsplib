@@ -3,8 +3,11 @@ package gortsplib
 import (
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/pion/rtcp"
 )
 
@@ -16,46 +19,61 @@ type serverStreamMedia struct {
 	srtpOutCtx *wrappedSRTPContext
 
 	formats         map[uint8]*serverStreamFormat
-	multicastWriter *serverMulticastWriter
+	multicastWriter *serverMulticastWriterMedia
 	bytesSent       *uint64
 	rtcpPacketsSent *uint64
 }
 
-func (sm *serverStreamMedia) initialize() {
-	sm.bytesSent = new(uint64)
-	sm.rtcpPacketsSent = new(uint64)
+func (ssm *serverStreamMedia) initialize() {
+	ssm.bytesSent = new(uint64)
+	ssm.rtcpPacketsSent = new(uint64)
 
-	sm.formats = make(map[uint8]*serverStreamFormat)
+	ssm.formats = make(map[uint8]*serverStreamFormat)
 
-	for _, forma := range sm.media.Formats {
+	for _, forma := range ssm.media.Formats {
 		sf := &serverStreamFormat{
-			sm:        sm,
+			ssm:       ssm,
 			format:    forma,
-			localSSRC: sm.localSSRCs[forma.PayloadType()],
+			localSSRC: ssm.localSSRCs[forma.PayloadType()],
 		}
 		sf.initialize()
-		sm.formats[forma.PayloadType()] = sf
+		ssm.formats[forma.PayloadType()] = sf
 	}
 }
 
-func (sm *serverStreamMedia) close() {
-	for _, sf := range sm.formats {
-		sf.close()
+func (ssm *serverStreamMedia) rtpInfoEntry(now time.Time) *headers.RTPInfoEntry {
+	// do not generate a RTP-Info entry when
+	// there are multiple formats inside a single media stream,
+	// since RTP-Info does not support multiple sequence numbers / timestamps.
+	if len(ssm.media.Formats) > 1 {
+		return nil
 	}
 
-	if sm.multicastWriter != nil {
-		sm.multicastWriter.close()
+	return ssm.formats[ssm.media.Formats[0].PayloadType()].rtpInfoEntry(now)
+}
+
+func (ssm *serverStreamMedia) stats() ServerStreamStatsMedia {
+	return ServerStreamStatsMedia{
+		BytesSent:       atomic.LoadUint64(ssm.bytesSent),
+		RTCPPacketsSent: atomic.LoadUint64(ssm.rtcpPacketsSent),
+		Formats: func() map[format.Format]ServerStreamStatsFormat {
+			ret := make(map[format.Format]ServerStreamStatsFormat)
+			for _, ssf := range ssm.formats {
+				ret[ssf.format] = ssf.stats()
+			}
+			return ret
+		}(),
 	}
 }
 
-func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
+func (ssm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	plain, err := pkt.Marshal()
 	if err != nil {
 		return err
 	}
 
-	maxPlainPacketSize := sm.st.Server.MaxPacketSize
-	if sm.srtpOutCtx != nil {
+	maxPlainPacketSize := ssm.st.Server.MaxPacketSize
+	if ssm.srtpOutCtx != nil {
 		maxPlainPacketSize -= srtcpOverhead
 	}
 
@@ -64,9 +82,9 @@ func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	}
 
 	var encr []byte
-	if sm.srtpOutCtx != nil {
-		encr = make([]byte, sm.st.Server.MaxPacketSize)
-		encr, err = sm.srtpOutCtx.encryptRTCP(encr, plain, nil)
+	if ssm.srtpOutCtx != nil {
+		encr = make([]byte, ssm.st.Server.MaxPacketSize)
+		encr, err = ssm.srtpOutCtx.encryptRTCP(encr, plain, nil)
 		if err != nil {
 			return err
 		}
@@ -76,16 +94,16 @@ func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	plainLen := uint64(len(plain))
 
 	// send unicast
-	for r := range sm.st.activeUnicastReaders {
-		if sm, ok := r.setuppedMedias[sm.media]; ok {
-			if isSecure(r.setuppedTransport.Profile) {
+	for r := range ssm.st.activeUnicastReaders {
+		if sm, ok := r.setuppedMedias[ssm.media]; ok {
+			if sm.srtpOutCtx != nil {
 				err = sm.writePacketRTCPEncoded(encr)
 				if err != nil {
 					r.onStreamWriteError(err)
 					continue
 				}
 
-				atomic.AddUint64(sm.bytesSent, encrLen)
+				atomic.AddUint64(ssm.bytesSent, encrLen)
 			} else {
 				err = sm.writePacketRTCPEncoded(plain)
 				if err != nil {
@@ -93,32 +111,32 @@ func (sm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 					continue
 				}
 
-				atomic.AddUint64(sm.bytesSent, plainLen)
+				atomic.AddUint64(ssm.bytesSent, plainLen)
 			}
 
-			atomic.AddUint64(sm.rtcpPacketsSent, 1)
+			atomic.AddUint64(ssm.rtcpPacketsSent, 1)
 		}
 	}
 
 	// send multicast
-	if sm.multicastWriter != nil {
-		if sm.srtpOutCtx != nil {
-			err = sm.multicastWriter.writePacketRTCP(encr)
+	if ssm.multicastWriter != nil {
+		if ssm.srtpOutCtx != nil {
+			err = ssm.multicastWriter.writePacketRTCPEncoded(encr)
 			if err != nil {
 				return err
 			}
 
-			atomic.AddUint64(sm.bytesSent, encrLen)
+			atomic.AddUint64(ssm.bytesSent, encrLen)
 		} else {
-			err = sm.multicastWriter.writePacketRTCP(plain)
+			err = ssm.multicastWriter.writePacketRTCPEncoded(plain)
 			if err != nil {
 				return err
 			}
 
-			atomic.AddUint64(sm.bytesSent, plainLen)
+			atomic.AddUint64(ssm.bytesSent, plainLen)
 		}
 
-		atomic.AddUint64(sm.rtcpPacketsSent, 1)
+		atomic.AddUint64(ssm.rtcpPacketsSent, 1)
 	}
 
 	return nil

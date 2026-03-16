@@ -73,9 +73,82 @@ func (cf *clientFormat) close() {
 		cf.rtpReceiver.Close()
 		cf.rtpReceiver = nil
 	}
-
 	if cf.rtpSender != nil {
 		cf.rtpSender.Close()
+		// do not set rtpSender to nil in order to preserve stats
+	}
+}
+
+func (cf *clientFormat) stats() SessionStatsFormat { //nolint:dupl
+	var recvStats *rtpreceiver.Stats
+	if cf.rtpReceiver != nil {
+		recvStats = cf.rtpReceiver.Stats()
+	}
+
+	var sentStats *rtpsender.Stats
+	if cf.rtpSender != nil {
+		sentStats = cf.rtpSender.Stats()
+	}
+
+	return SessionStatsFormat{
+		RTPPacketsReceived: func() uint64 {
+			if recvStats != nil {
+				return recvStats.TotalReceived
+			}
+			return 0
+		}(),
+		RTPPacketsSent: func() uint64 {
+			if sentStats != nil {
+				return sentStats.TotalSent
+			}
+			return 0
+		}(),
+		RTPPacketsLost: func() uint64 {
+			if recvStats != nil {
+				return recvStats.TotalLost
+			}
+			return 0
+		}(),
+		LocalSSRC: cf.localSSRC,
+		RemoteSSRC: func() uint32 {
+			if v, ok := cf.remoteSSRC(); ok {
+				return v
+			}
+			return 0
+		}(),
+		RTPPacketsLastSequenceNumber: func() uint16 {
+			if recvStats != nil {
+				return recvStats.LastSequenceNumber
+			}
+			if sentStats != nil {
+				return sentStats.LastSequenceNumber
+			}
+			return 0
+		}(),
+		RTPPacketsLastRTP: func() uint32 {
+			if recvStats != nil {
+				return recvStats.LastRTP
+			}
+			if sentStats != nil {
+				return sentStats.LastRTP
+			}
+			return 0
+		}(),
+		RTPPacketsLastNTP: func() time.Time {
+			if recvStats != nil {
+				return recvStats.LastNTP
+			}
+			if sentStats != nil {
+				return sentStats.LastNTP
+			}
+			return time.Time{}
+		}(),
+		RTPPacketsJitter: func() float64 {
+			if recvStats != nil {
+				return recvStats.Jitter
+			}
+			return 0
+		}(),
 	}
 }
 
@@ -122,30 +195,44 @@ func (cf *clientFormat) readPacketRTP(payload []byte, header *rtp.Header, header
 func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 	pkt.SSRC = cf.localSSRC
 
-	cf.rtpSender.ProcessPacket(pkt, ntp, cf.format.PTSEqualsDTS(pkt))
-
 	maxPlainPacketSize := cf.cm.c.MaxPacketSize
 	if cf.cm.srtpOutCtx != nil {
 		maxPlainPacketSize -= srtpOverhead
 	}
 
-	buf := make([]byte, maxPlainPacketSize)
-	n, err := pkt.MarshalTo(buf)
+	plain := make([]byte, maxPlainPacketSize)
+	n, err := pkt.MarshalTo(plain)
 	if err != nil {
 		return err
 	}
-	buf = buf[:n]
+	plain = plain[:n]
 
+	var encr []byte
 	if cf.cm.srtpOutCtx != nil {
-		encr := make([]byte, cf.cm.c.MaxPacketSize)
-		encr, err = cf.cm.srtpOutCtx.encryptRTP(encr, buf, &pkt.Header)
+		encr = make([]byte, cf.cm.c.MaxPacketSize)
+		encr, err = cf.cm.srtpOutCtx.encryptRTP(encr, plain, &pkt.Header)
 		if err != nil {
 			return err
 		}
-		buf = encr
 	}
 
-	atomic.AddUint64(cf.cm.bytesSent, uint64(len(buf)))
+	ptsEqualsDTS := cf.format.PTSEqualsDTS(pkt)
+
+	if cf.cm.srtpOutCtx != nil {
+		return cf.writePacketRTPEncoded(pkt, ntp, ptsEqualsDTS, encr)
+	}
+	return cf.writePacketRTPEncoded(pkt, ntp, ptsEqualsDTS, plain)
+}
+
+func (cf *clientFormat) writePacketRTPEncoded(
+	pkt *rtp.Packet,
+	ntp time.Time,
+	ptsEqualsDTS bool,
+	payload []byte,
+) error {
+	cf.rtpSender.ProcessPacket(pkt, ntp, ptsEqualsDTS)
+
+	atomic.AddUint64(cf.cm.bytesSent, uint64(len(payload)))
 
 	cf.cm.c.writerMutex.RLock()
 	defer cf.cm.c.writerMutex.RUnlock()
@@ -155,7 +242,7 @@ func (cf *clientFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) error {
 	}
 
 	ok := cf.cm.c.writer.Push(func() error {
-		return cf.writePacketRTPInQueue(buf)
+		return cf.writePacketRTPInQueue(payload)
 	})
 	if !ok {
 		return liberrors.ErrClientWriteQueueFull{}

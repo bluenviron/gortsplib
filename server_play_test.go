@@ -651,12 +651,23 @@ func TestServerPlay(t *testing.T) {
 						close(sessionOpened)
 					},
 					onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+						// test that stats are available after session is closed
 						if ca.transport != "multicast" {
 							s := ctx.Session.Stats()
 							require.Greater(t, s.BytesSent, uint64(50))
 							require.Less(t, s.BytesSent, uint64(130))
 							require.Greater(t, s.BytesReceived, uint64(15))
 							require.Less(t, s.BytesReceived, uint64(35))
+
+							require.Equal(t, uint64(1), s.RTPPacketsSent)
+
+							mediaStats := s.Medias[stream.Desc.Medias[0]]
+							formatStats := mediaStats.Formats[stream.Desc.Medias[0].Formats[0]]
+
+							require.Equal(t, uint64(1), mediaStats.Formats[stream.Desc.Medias[0].Formats[0]].RTPPacketsSent)
+							require.Equal(t, testRTPPacket.SequenceNumber, formatStats.RTPPacketsLastSequenceNumber)
+							require.Equal(t, testRTPPacket.Timestamp, formatStats.RTPPacketsLastRTP)
+							require.False(t, formatStats.RTPPacketsLastNTP.IsZero())
 						}
 
 						close(sessionClosed)

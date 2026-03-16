@@ -23,8 +23,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
-	"github.com/bluenviron/gortsplib/v5/pkg/rtpreceiver"
-	"github.com/bluenviron/gortsplib/v5/pkg/rtpsender"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtptime"
 	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
 )
@@ -236,42 +234,6 @@ func pickFirstSupportedTransport(sc *ServerConn, tsh headers.Transports) *header
 	return nil
 }
 
-func generateRTPInfoEntry(ssm *serverStreamMedia, now time.Time) *headers.RTPInfoEntry {
-	// do not generate a RTP-Info entry when
-	// there are multiple formats inside a single media stream,
-	// since RTP-Info does not support multiple sequence numbers / timestamps.
-	if len(ssm.media.Formats) > 1 {
-		return nil
-	}
-
-	format := ssm.formats[ssm.media.Formats[0].PayloadType()]
-
-	stats := format.rtpSender.Stats()
-	if stats == nil {
-		return nil
-	}
-
-	clockRate := format.format.ClockRate()
-	if clockRate == 0 {
-		return nil
-	}
-
-	// sequence number of the first packet of the stream
-	seqNum := stats.LastSequenceNumber + 1
-
-	// RTP timestamp corresponding to the time value in
-	// the Range response header.
-	// remove a small quantity in order to avoid DTS > PTS
-	ts := uint32(uint64(stats.LastRTP) +
-		uint64(now.Sub(stats.LastNTP).Seconds()*float64(clockRate)) -
-		uint64(clockRate)/10)
-
-	return &headers.RTPInfoEntry{
-		SequenceNumber: &seqNum,
-		Timestamp:      &ts,
-	}
-}
-
 func generateRTPInfo(
 	now time.Time,
 	mediasOrdered []*serverSessionMedia,
@@ -283,7 +245,7 @@ func generateRTPInfo(
 
 	for i, sm := range mediasOrdered {
 		ssm := stream.medias[sm.media]
-		entry := generateRTPInfoEntry(ssm, now)
+		entry := ssm.rtpInfoEntry(now)
 		if entry == nil {
 			entry = &headers.RTPInfoEntry{}
 		}
@@ -489,100 +451,9 @@ func (ss *ServerSession) Stats() *SessionStats {
 
 	mediaStats := func() map[*description.Media]SessionStatsMedia { //nolint:dupl
 		ret := make(map[*description.Media]SessionStatsMedia, len(ss.setuppedMedias))
-
 		for med, sm := range ss.setuppedMedias {
-			ret[med] = SessionStatsMedia{
-				BytesReceived:       atomic.LoadUint64(sm.bytesReceived),
-				BytesSent:           atomic.LoadUint64(sm.bytesSent),
-				RTPPacketsInError:   atomic.LoadUint64(sm.rtpPacketsInError),
-				RTCPPacketsReceived: atomic.LoadUint64(sm.rtcpPacketsReceived),
-				RTCPPacketsSent:     atomic.LoadUint64(sm.rtcpPacketsSent),
-				RTCPPacketsInError:  atomic.LoadUint64(sm.rtcpPacketsInError),
-				Formats: func() map[format.Format]SessionStatsFormat {
-					ret := make(map[format.Format]SessionStatsFormat, len(sm.formats))
-
-					for _, fo := range sm.formats {
-						recvStats := func() *rtpreceiver.Stats {
-							if fo.rtpReceiver != nil {
-								return fo.rtpReceiver.Stats()
-							}
-							return nil
-						}()
-						rtcpSender := func() *rtpsender.Sender {
-							if ss.setuppedStream != nil {
-								return ss.setuppedStream.medias[med].formats[fo.format.PayloadType()].rtpSender
-							}
-							return nil
-						}()
-						sentStats := func() *rtpsender.Stats {
-							if rtcpSender != nil {
-								return rtcpSender.Stats()
-							}
-							return nil
-						}()
-
-						ret[fo.format] = SessionStatsFormat{ //nolint:dupl
-							RTPPacketsReceived: func() uint64 {
-								if recvStats != nil {
-									return recvStats.TotalReceived
-								}
-								return 0
-							}(),
-							RTPPacketsSent: atomic.LoadUint64(fo.rtpPacketsSent),
-							RTPPacketsLost: func() uint64 {
-								if recvStats != nil {
-									return recvStats.TotalLost
-								}
-								return 0
-							}(),
-							LocalSSRC: fo.localSSRC,
-							RemoteSSRC: func() uint32 {
-								if v, ok := fo.remoteSSRC(); ok {
-									return v
-								}
-								return 0
-							}(),
-							RTPPacketsLastSequenceNumber: func() uint16 {
-								if recvStats != nil {
-									return recvStats.LastSequenceNumber
-								}
-								if sentStats != nil {
-									return sentStats.LastSequenceNumber
-								}
-								return 0
-							}(),
-							RTPPacketsLastRTP: func() uint32 {
-								if recvStats != nil {
-									return recvStats.LastRTP
-								}
-								if sentStats != nil {
-									return sentStats.LastRTP
-								}
-								return 0
-							}(),
-							RTPPacketsLastNTP: func() time.Time {
-								if recvStats != nil {
-									return recvStats.LastNTP
-								}
-								if sentStats != nil {
-									return sentStats.LastNTP
-								}
-								return time.Time{}
-							}(),
-							RTPPacketsJitter: func() float64 {
-								if recvStats != nil {
-									return recvStats.Jitter
-								}
-								return 0
-							}(),
-						}
-					}
-
-					return ret
-				}(),
-			}
+			ret[med] = sm.stats()
 		}
-
 		return ret
 	}()
 
@@ -1266,7 +1137,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 			var srtpOutCtx *wrappedSRTPContext
 
-			if ss.s.TLSConfig != nil {
+			if isSecure(inTH.Profile) {
 				if ss.state == ServerSessionStatePreRecord || medi.IsBackChannel {
 					srtpOutKey := make([]byte, srtpKeyLength)
 					_, err = rand.Read(srtpOutKey)
@@ -1286,7 +1157,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 							StatusCode: base.StatusInternalServerError,
 						}, err
 					}
-				} else {
+				} else if isSecure(inTH.Profile) {
 					srtpOutCtx = stream.medias[medi].srtpOutCtx
 				}
 			}
@@ -1749,9 +1620,14 @@ func (ss *ServerSession) OnPacketRTCP(medi *description.Media, cb OnPacketRTCPFu
 
 // WritePacketRTP writes a RTP packet to the session.
 func (ss *ServerSession) WritePacketRTP(medi *description.Media, pkt *rtp.Packet) error {
+	return ss.WritePacketRTPWithNTP(medi, pkt, ss.s.timeNow())
+}
+
+// WritePacketRTPWithNTP writes a RTP packet to the session, using the provided NTP as timestamp.
+func (ss *ServerSession) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet, ntp time.Time) error {
 	sm := ss.setuppedMedias[medi]
 	sf := sm.formats[pkt.PayloadType]
-	return sf.writePacketRTP(pkt)
+	return sf.writePacketRTP(pkt, ntp)
 }
 
 // WritePacketRTCP writes a RTCP packet to the session.
