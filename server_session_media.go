@@ -365,7 +365,7 @@ func (sm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	}
 
 	maxPlainPacketSize := sm.ss.s.MaxPacketSize
-	if isSecure(sm.ss.setuppedTransport.Profile) {
+	if sm.srtpOutCtx != nil {
 		maxPlainPacketSize -= srtcpOverhead
 	}
 
@@ -374,7 +374,7 @@ func (sm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
 	}
 
 	var encr []byte
-	if isSecure(sm.ss.setuppedTransport.Profile) {
+	if sm.srtpOutCtx != nil {
 		encr = make([]byte, sm.ss.s.MaxPacketSize)
 		encr, err = sm.srtpOutCtx.encryptRTCP(encr, plain, nil)
 		if err != nil {
@@ -382,7 +382,7 @@ func (sm *serverSessionMedia) writePacketRTCP(pkt rtcp.Packet) error {
 		}
 	}
 
-	if isSecure(sm.ss.setuppedTransport.Profile) {
+	if sm.srtpOutCtx != nil {
 		return sm.writePacketRTCPEncoded(encr)
 	}
 	return sm.writePacketRTCPEncoded(plain)

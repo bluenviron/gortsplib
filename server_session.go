@@ -1266,7 +1266,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 			var srtpOutCtx *wrappedSRTPContext
 
-			if ss.s.TLSConfig != nil {
+			if isSecure(inTH.Profile) {
 				if ss.state == ServerSessionStatePreRecord || medi.IsBackChannel {
 					srtpOutKey := make([]byte, srtpKeyLength)
 					_, err = rand.Read(srtpOutKey)

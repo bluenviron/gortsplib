@@ -84,7 +84,7 @@ func (sf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) err
 			rsf := rsm.formats[pkt.PayloadType]
 
 			var buf []byte
-			if isSecure(r.setuppedTransport.Profile) {
+			if rsm.srtpOutCtx != nil {
 				buf = encr
 			} else {
 				buf = plain
