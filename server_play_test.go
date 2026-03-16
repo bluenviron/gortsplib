@@ -1424,9 +1424,13 @@ func TestServerPlayDecodeErrors(t *testing.T) {
 }
 
 func TestServerPlayRTCPReport(t *testing.T) {
-	for _, ca := range []string{"udp", "tcp"} {
+	for _, ca := range []string{"udp", "tcp", "multicast"} {
 		t.Run(ca, func(t *testing.T) {
 			var stream *ServerStream
+			listenIP := "localhost"
+			if ca == "multicast" {
+				listenIP = multicastCapableIP(t)
+			}
 
 			var curTime time.Time
 			var curTimeMutex sync.Mutex
@@ -1449,15 +1453,22 @@ func TestServerPlayRTCPReport(t *testing.T) {
 						}, nil
 					},
 				},
-				RTSPAddress:    "localhost:8554",
-				UDPRTPAddress:  "127.0.0.1:8000",
-				UDPRTCPAddress: "127.0.0.1:8001",
+				RTSPAddress: listenIP + ":8554",
 				timeNow: func() time.Time {
 					curTimeMutex.Lock()
 					defer curTimeMutex.Unlock()
 					return curTime
 				},
 				senderReportPeriod: 100 * time.Millisecond,
+			}
+
+			if ca == "multicast" {
+				s.MulticastIPRange = "224.1.0.0/16"
+				s.MulticastRTPPort = 8000
+				s.MulticastRTCPPort = 8001
+			} else {
+				s.UDPRTPAddress = "127.0.0.1:8000"
+				s.UDPRTCPAddress = "127.0.0.1:8001"
 			}
 
 			err := s.Start()
@@ -1472,7 +1483,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 			require.NoError(t, err)
 			defer stream.Close()
 
-			nconn, err := net.Dial("tcp", "localhost:8554")
+			nconn, err := net.Dial("tcp", listenIP+":8554")
 			require.NoError(t, err)
 			defer nconn.Close()
 			conn := conn.NewConn(bufio.NewReader(nconn), nconn)
@@ -1480,23 +1491,29 @@ func TestServerPlayRTCPReport(t *testing.T) {
 			desc := doDescribe(t, conn, false)
 
 			inTH := &headers.Transport{
-				Mode:     ptrOf(headers.TransportModePlay),
-				Delivery: ptrOf(headers.TransportDeliveryUnicast),
+				Mode: ptrOf(headers.TransportModePlay),
 			}
 
-			if ca == "udp" {
+			switch ca {
+			case "udp":
+				inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 				inTH.Protocol = headers.TransportProtocolUDP
 				inTH.ClientPorts = &[2]int{35466, 35467}
-			} else {
+			case "tcp":
+				inTH.Delivery = ptrOf(headers.TransportDeliveryUnicast)
 				inTH.Protocol = headers.TransportProtocolTCP
 				inTH.InterleavedIDs = &[2]int{0, 1}
+			default:
+				inTH.Delivery = ptrOf(headers.TransportDeliveryMulticast)
+				inTH.Protocol = headers.TransportProtocolUDP
 			}
 
-			res, _ := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
+			res, th := doSetup(t, conn, mediaURL(t, desc.BaseURL, desc.Medias[0]).String(), inTH, "")
 
 			var l1 net.PacketConn
 			var l2 net.PacketConn
-			if ca == "udp" {
+			switch ca {
+			case "udp":
 				l1, err = net.ListenPacket("udp", "localhost:35466")
 				require.NoError(t, err)
 				defer l1.Close()
@@ -1504,11 +1521,40 @@ func TestServerPlayRTCPReport(t *testing.T) {
 				l2, err = net.ListenPacket("udp", "localhost:35467")
 				require.NoError(t, err)
 				defer l2.Close()
+			case "multicast":
+				l1, err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[0]), 10))
+				require.NoError(t, err)
+				defer l1.Close()
+
+				p := ipv4.NewPacketConn(l1)
+
+				var intfs []net.Interface
+				intfs, err = net.Interfaces()
+				require.NoError(t, err)
+
+				for _, intf := range intfs {
+					err = p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination2)})
+					require.NoError(t, err)
+				}
+
+				l2, err = net.ListenPacket("udp", "224.0.0.0:"+strconv.FormatInt(int64(th.Ports[1]), 10))
+				require.NoError(t, err)
+				defer l2.Close()
+
+				p = ipv4.NewPacketConn(l2)
+
+				intfs, err = net.Interfaces()
+				require.NoError(t, err)
+
+				for _, intf := range intfs {
+					err = p.JoinGroup(&intf, &net.UDPAddr{IP: net.ParseIP(*th.Destination2)})
+					require.NoError(t, err)
+				}
 			}
 
 			session := readSession(t, res)
 
-			doPlay(t, conn, "rtsp://localhost:8554/teststream", session)
+			doPlay(t, conn, "rtsp://"+listenIP+":8554/teststream", session)
 
 			curTimeMutex.Lock()
 			curTime = time.Date(2014, 6, 7, 15, 0, 0, 0, time.UTC)
@@ -1534,7 +1580,7 @@ func TestServerPlayRTCPReport(t *testing.T) {
 
 			var buf []byte
 
-			if ca == "udp" {
+			if ca == "udp" || ca == "multicast" {
 				buf = make([]byte, 2048)
 				var n int
 				n, _, err = l2.ReadFrom(buf)
