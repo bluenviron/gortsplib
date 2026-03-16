@@ -114,10 +114,11 @@ func TestStandard(t *testing.T) {
 
 			stats := rr.Stats()
 			require.Equal(t, &Stats{
-				RemoteSSRC:         0xba9da416,
+				Received:           1,
 				LastRTP:            0xafb45733,
 				LastSequenceNumber: 945,
 				TotalReceived:      1,
+				RemoteSSRC:         0xba9da416,
 			}, stats)
 
 			srPkt := rtcp.SenderReport{
@@ -136,11 +137,12 @@ func TestStandard(t *testing.T) {
 
 			stats = rr.Stats()
 			require.Equal(t, &Stats{
-				RemoteSSRC:         0xba9da416,
+				Received:           1,
 				LastRTP:            0xafb45733,
 				LastSequenceNumber: 945,
 				LastNTP:            time.Date(2008, 5, 20, 22, 15, 20, 0, time.UTC).Local(),
 				TotalReceived:      1,
+				RemoteSSRC:         0xba9da416,
 			}, stats)
 
 			rtpPkt = rtp.Packet{
@@ -188,11 +190,12 @@ func TestStandard(t *testing.T) {
 
 			stats = rr.Stats()
 			require.Equal(t, &Stats{
-				RemoteSSRC:         0xba9da416,
+				Received:           3,
 				LastRTP:            2947921603,
 				LastSequenceNumber: 947,
 				LastNTP:            time.Date(2008, 5, 20, 22, 15, 21, 0, time.UTC).Local(),
 				TotalReceived:      3,
+				RemoteSSRC:         0xba9da416,
 			}, stats)
 		})
 	}
@@ -276,10 +279,11 @@ func TestZeroClockRate(t *testing.T) {
 
 	stats = rr.Stats()
 	require.Equal(t, &Stats{
-		RemoteSSRC:         0xba9da416,
+		Received:           1,
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 945,
 		TotalReceived:      1,
+		RemoteSSRC:         0xba9da416,
 	}, stats)
 
 	srPkt := rtcp.SenderReport{
@@ -294,10 +298,11 @@ func TestZeroClockRate(t *testing.T) {
 
 	stats = rr.Stats()
 	require.Equal(t, &Stats{
-		RemoteSSRC:         0xba9da416,
+		Received:           1,
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 945,
 		TotalReceived:      1,
+		RemoteSSRC:         0xba9da416,
 	}, stats)
 
 	rtpPkt = rtp.Packet{
@@ -338,10 +343,11 @@ func TestZeroClockRate(t *testing.T) {
 
 	stats = rr.Stats()
 	require.Equal(t, &Stats{
-		RemoteSSRC:         0xba9da416,
+		Received:           3,
 		LastRTP:            2947921603,
 		LastSequenceNumber: 947,
 		TotalReceived:      3,
+		RemoteSSRC:         0xba9da416,
 	}, stats)
 }
 
@@ -585,12 +591,14 @@ func TestReliablePacketsLost(t *testing.T) {
 
 	stats := rr.Stats()
 	require.Equal(t, &Stats{
-		RemoteSSRC:         0xba9da416,
+		Received:           2,
+		Lost:               1,
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 290,
 		LastNTP:            time.Date(2020, 11, 21, 17, 44, 36, 869277776, time.UTC).Local(),
 		TotalReceived:      2,
 		TotalLost:          1,
+		RemoteSSRC:         0xba9da416,
 	}, stats)
 }
 
@@ -672,12 +680,14 @@ func TestReliableOverflowAndPacketsLost(t *testing.T) {
 
 	stats := rr.Stats()
 	require.Equal(t, &Stats{
-		RemoteSSRC:         0xba9da416,
+		Received:           2,
+		Lost:               2,
 		LastRTP:            0xafb45733,
 		LastSequenceNumber: 2,
 		LastNTP:            time.Date(2020, 11, 21, 17, 44, 36, 869277776, time.UTC).Local(),
 		TotalReceived:      2,
 		TotalLost:          2,
+		RemoteSSRC:         stats.RemoteSSRC,
 	}, stats)
 }
 
@@ -854,7 +864,7 @@ func TestUnrealiableReorder(t *testing.T) {
 
 	stats := rr.Stats()
 	require.Equal(t, &Stats{
-		RemoteSSRC:         0,
+		Received:           8,
 		LastRTP:            0,
 		LastSequenceNumber: 1,
 		TotalReceived:      8,
@@ -946,7 +956,8 @@ func TestUnrealiableBufferFull(t *testing.T) {
 
 	stats := rr.Stats()
 	require.Equal(t, &Stats{
-		RemoteSSRC:         0,
+		Received:           32,
+		Lost:               34,
 		LastRTP:            0,
 		LastSequenceNumber: 1629,
 		TotalReceived:      32,
@@ -1017,7 +1028,7 @@ func TestUnrealiableReset(t *testing.T) {
 
 	stats := rr.Stats()
 	require.Equal(t, &Stats{
-		RemoteSSRC:         0,
+		Received:           2,
 		LastRTP:            0,
 		LastSequenceNumber: 40064,
 		TotalReceived:      2,
@@ -1078,6 +1089,8 @@ func TestUnrealiableCustomBufferSize(t *testing.T) {
 
 	stats := rr.Stats()
 	require.Equal(t, &Stats{
+		Received:           2,
+		Lost:               130,
 		LastSequenceNumber: 181,
 		TotalReceived:      2,
 		TotalLost:          130,

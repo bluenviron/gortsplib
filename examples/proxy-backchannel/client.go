@@ -102,7 +102,7 @@ func (c *client) read() error {
 	rc.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 		log.Printf("received RTP packet from the client, routing to readers")
 
-		// route incoming packets to the server stream
+		// route inbound packets to the server stream
 		err2 := stream.WritePacketRTP(medi, pkt)
 		if err2 != nil {
 			log.Printf("ERR: %v", err2)

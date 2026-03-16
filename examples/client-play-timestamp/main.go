@@ -14,7 +14,7 @@ import (
 // This example shows how to:
 // 1. connect to a RTSP server.
 // 2. read all media streams on a path.
-// 3. Get PTS and NTP of incoming RTP packets.
+// 3. Get PTS and NTP of inbound RTP packets.
 
 func main() {
 	// parse URL

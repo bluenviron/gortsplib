@@ -149,10 +149,35 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 	}()
 
 	return &ServerStreamStats{
+		OutboundBytes: func() uint64 {
+			v := uint64(0)
+			for _, ms := range mediaStats {
+				v += ms.OutboundBytes
+			}
+			return v
+		}(),
+		OutboundRTPPackets: func() uint64 {
+			v := uint64(0)
+			for _, ms := range mediaStats {
+				for _, f := range ms.Formats {
+					v += f.OutboundRTPPackets
+				}
+			}
+			return v
+		}(),
+		OutboundRTCPPackets: func() uint64 {
+			v := uint64(0)
+			for _, ms := range mediaStats {
+				v += ms.OutboundRTCPPackets
+			}
+			return v
+		}(),
+		Medias: mediaStats,
+		// deprecated
 		BytesSent: func() uint64 {
 			v := uint64(0)
 			for _, ms := range mediaStats {
-				v += ms.BytesSent
+				v += ms.OutboundBytes
 			}
 			return v
 		}(),
@@ -160,7 +185,7 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 			v := uint64(0)
 			for _, ms := range mediaStats {
 				for _, f := range ms.Formats {
-					v += f.RTPPacketsSent
+					v += f.OutboundRTPPackets
 				}
 			}
 			return v
@@ -168,11 +193,10 @@ func (st *ServerStream) Stats() *ServerStreamStats {
 		RTCPPacketsSent: func() uint64 {
 			v := uint64(0)
 			for _, ms := range mediaStats {
-				v += ms.RTCPPacketsSent
+				v += ms.OutboundRTCPPackets
 			}
 			return v
 		}(),
-		Medias: mediaStats,
 	}
 }
 

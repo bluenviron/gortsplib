@@ -451,37 +451,29 @@ func TestClientRecord(t *testing.T) {
 
 			// test that stats are available after client is closed
 			s := c.Stats()
-			require.Equal(t, &ClientStats{
-				Conn: ConnStats{
-					BytesReceived: s.Conn.BytesReceived,
-					BytesSent:     s.Conn.BytesSent,
-				},
-				Session: SessionStats{
-					BytesReceived:       s.Session.BytesReceived,
-					BytesSent:           s.Session.BytesSent,
-					RTPPacketsSent:      s.Session.RTPPacketsSent,
-					RTPPacketsReceived:  s.Session.RTPPacketsReceived,
-					RTCPPacketsReceived: s.Session.RTCPPacketsReceived,
-					RTCPPacketsSent:     s.Session.RTCPPacketsSent,
-					Medias: map[*description.Media]SessionStatsMedia{
-						medias[0]: {
-							BytesReceived:       s.Session.Medias[medias[0]].BytesReceived,
-							BytesSent:           s.Session.Medias[medias[0]].BytesSent,
-							RTCPPacketsReceived: s.Session.Medias[medias[0]].RTCPPacketsReceived,
-							RTCPPacketsSent:     s.Session.Medias[medias[0]].RTCPPacketsSent,
-							Formats: map[format.Format]SessionStatsFormat{
-								medias[0].Formats[0]: {
-									RTPPacketsSent:     s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RTPPacketsSent,
-									RTPPacketsReceived: s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RTPPacketsReceived,
-									LocalSSRC:          s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].LocalSSRC,
-									RemoteSSRC:         s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RemoteSSRC,
-									RTPPacketsLastNTP:  s.Session.Medias[medias[0]].Formats[medias[0].Formats[0]].RTPPacketsLastNTP,
-								},
-							},
-						},
-					},
-				},
-			}, s)
+			require.Equal(t, s.Conn.InboundBytes, s.Conn.BytesReceived)
+			require.Equal(t, s.Conn.OutboundBytes, s.Conn.BytesSent)
+			require.Equal(t, s.Session.InboundBytes, s.Session.BytesReceived)
+			require.Equal(t, s.Session.OutboundBytes, s.Session.BytesSent)
+			require.Equal(t, s.Session.InboundRTPPackets, s.Session.RTPPacketsReceived)
+			require.Equal(t, s.Session.OutboundRTPPackets, s.Session.RTPPacketsSent)
+			require.Equal(t, s.Session.InboundRTCPPackets, s.Session.RTCPPacketsReceived)
+			require.Equal(t, s.Session.OutboundRTCPPackets, s.Session.RTCPPacketsSent)
+			require.Len(t, s.Session.Medias, 1)
+
+			mediaStats := s.Session.Medias[medias[0]]
+			require.Equal(t, mediaStats.InboundBytes, mediaStats.BytesReceived)
+			require.Equal(t, mediaStats.OutboundBytes, mediaStats.BytesSent)
+			require.Equal(t, mediaStats.InboundRTCPPackets, mediaStats.RTCPPacketsReceived)
+			require.Equal(t, mediaStats.OutboundRTCPPackets, mediaStats.RTCPPacketsSent)
+
+			formatStats := mediaStats.Formats[medias[0].Formats[0]]
+			require.Equal(t, formatStats.InboundRTPPackets, formatStats.RTPPacketsReceived)
+			require.Equal(t, formatStats.OutboundRTPPackets, formatStats.RTPPacketsSent)
+			require.Equal(t, formatStats.InboundRTPPacketsLost, formatStats.RTPPacketsLost)
+			require.Equal(t, formatStats.InboundRTPPacketsJitter, formatStats.RTPPacketsJitter)
+			require.Equal(t, formatStats.InboundRTPPacketsLastSequenceNumber, formatStats.RTPPacketsLastSequenceNumber)
+			require.Equal(t, formatStats.OutboundRTPPacketsLastNTP, formatStats.RTPPacketsLastNTP)
 
 			require.Greater(t, s.Session.BytesSent, uint64(15))
 			require.Less(t, s.Session.BytesSent, uint64(30))

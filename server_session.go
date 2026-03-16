@@ -457,92 +457,8 @@ func (ss *ServerSession) Stats() *SessionStats {
 		return ret
 	}()
 
-	return &SessionStats{ //nolint:dupl
-		BytesReceived: func() uint64 {
-			v := uint64(0)
-			for _, ms := range mediaStats {
-				v += ms.BytesReceived
-			}
-			return v
-		}(),
-		BytesSent: func() uint64 {
-			v := uint64(0)
-			for _, ms := range mediaStats {
-				v += ms.BytesSent
-			}
-			return v
-		}(),
-		RTPPacketsReceived: func() uint64 {
-			v := uint64(0)
-			for _, ms := range mediaStats {
-				for _, f := range ms.Formats {
-					v += f.RTPPacketsReceived
-				}
-			}
-			return v
-		}(),
-		RTPPacketsSent: func() uint64 {
-			v := uint64(0)
-			for _, ms := range mediaStats {
-				for _, f := range ms.Formats {
-					v += f.RTPPacketsSent
-				}
-			}
-			return v
-		}(),
-		RTPPacketsLost: func() uint64 {
-			v := uint64(0)
-			for _, ms := range mediaStats {
-				for _, f := range ms.Formats {
-					v += f.RTPPacketsLost
-				}
-			}
-			return v
-		}(),
-		RTPPacketsInError: func() uint64 {
-			v := uint64(0)
-			for _, ms := range mediaStats {
-				v += ms.RTPPacketsInError
-			}
-			return v
-		}(),
-		RTPPacketsJitter: func() float64 {
-			v := float64(0)
-			n := float64(0)
-			for _, ms := range mediaStats {
-				for _, f := range ms.Formats {
-					v += f.RTPPacketsJitter
-					n++
-				}
-			}
-			if n != 0 {
-				return v / n
-			}
-			return 0
-		}(),
-		RTCPPacketsReceived: func() uint64 {
-			v := uint64(0)
-			for _, ms := range mediaStats {
-				v += ms.RTCPPacketsReceived
-			}
-			return v
-		}(),
-		RTCPPacketsSent: func() uint64 {
-			v := uint64(0)
-			for _, ms := range mediaStats {
-				v += ms.RTCPPacketsSent
-			}
-			return v
-		}(),
-		RTCPPacketsInError: func() uint64 {
-			v := uint64(0)
-			for _, ms := range mediaStats {
-				v += ms.RTCPPacketsInError
-			}
-			return v
-		}(),
-		Medias: mediaStats,
-	}
+	stats := sessionStatsFromMedias(mediaStats)
+	return &stats
 }
 
 func (ss *ServerSession) onStreamWriteError(err error) {
@@ -1636,7 +1552,7 @@ func (ss *ServerSession) WritePacketRTCP(medi *description.Media, pkt rtcp.Packe
 	return sm.writePacketRTCP(pkt)
 }
 
-// PacketPTS returns the PTS (presentation timestamp) of an incoming RTP packet.
+// PacketPTS returns the PTS (presentation timestamp) of an inbound RTP packet.
 // It is computed by decoding the packet timestamp and sychronizing it with other tracks.
 func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (int64, bool) {
 	sm := ss.setuppedMedias[medi]
@@ -1644,7 +1560,7 @@ func (ss *ServerSession) PacketPTS(medi *description.Media, pkt *rtp.Packet) (in
 	return ss.timeDecoder.Decode(sf.format, pkt)
 }
 
-// PacketNTP returns the NTP (absolute timestamp) of an incoming RTP packet.
+// PacketNTP returns the NTP (absolute timestamp) of an inbound RTP packet.
 // The NTP is computed from RTCP sender reports.
 func (ss *ServerSession) PacketNTP(medi *description.Media, pkt *rtp.Packet) (time.Time, bool) {
 	sm := ss.setuppedMedias[medi]

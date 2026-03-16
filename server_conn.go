@@ -202,6 +202,8 @@ func (sc *ServerConn) Transport() *ConnTransport {
 // Stats returns connection statistics.
 func (sc *ServerConn) Stats() *ConnStats {
 	return &ConnStats{
+		InboundBytes:  sc.bc.BytesReceived(),
+		OutboundBytes: sc.bc.BytesSent(),
 		BytesReceived: sc.bc.BytesReceived(),
 		BytesSent:     sc.bc.BytesSent(),
 	}

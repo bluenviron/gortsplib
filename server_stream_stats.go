@@ -7,32 +7,47 @@ import (
 
 // ServerStreamStatsFormat are stream format statistics.
 type ServerStreamStatsFormat struct {
-	// number of sent RTP packets
-	RTPPacketsSent uint64
+	// number of outbound RTP packets
+	OutboundRTPPackets uint64
 	// local SSRC
 	LocalSSRC uint32
+
+	// Deprecated: use OutboundRTPPackets.
+	RTPPacketsSent uint64
 }
 
 // ServerStreamStatsMedia are stream media statistics.
 type ServerStreamStatsMedia struct {
-	// sent bytes
-	BytesSent uint64
-	// number of sent RTCP packets
-	RTCPPacketsSent uint64
+	// outbound bytes
+	OutboundBytes uint64
+	// number of outbound RTCP packets
+	OutboundRTCPPackets uint64
 
 	// format statistics
 	Formats map[format.Format]ServerStreamStatsFormat
+
+	// Deprecated: use OutboundBytes.
+	BytesSent uint64
+	// Deprecated: use OutboundRTCPPackets.
+	RTCPPacketsSent uint64
 }
 
 // ServerStreamStats are stream statistics.
 type ServerStreamStats struct {
-	// sent bytes
-	BytesSent uint64
-	// number of sent RTP packets
-	RTPPacketsSent uint64
-	// number of sent RTCP packets
-	RTCPPacketsSent uint64
+	// outbound bytes
+	OutboundBytes uint64
+	// number of outbound RTP packets
+	OutboundRTPPackets uint64
+	// number of outbound RTCP packets
+	OutboundRTCPPackets uint64
 
 	// media statistics
 	Medias map[*description.Media]ServerStreamStatsMedia
+
+	// Deprecated: use OutboundBytes.
+	BytesSent uint64
+	// Deprecated: use OutboundRTPPackets.
+	RTPPacketsSent uint64
+	// Deprecated: use OutboundRTCPPackets.
+	RTCPPacketsSent uint64
 }

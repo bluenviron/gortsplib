@@ -652,47 +652,36 @@ func TestClientPlay(t *testing.T) {
 
 			// test that stats are available after client is closed
 			s := c.Stats()
-			require.Equal(t, &ClientStats{
-				Conn: ConnStats{
-					BytesReceived: s.Conn.BytesReceived,
-					BytesSent:     s.Conn.BytesSent,
-				},
-				Session: SessionStats{
-					BytesReceived:       s.Session.BytesReceived,
-					BytesSent:           s.Session.BytesSent,
-					RTPPacketsReceived:  s.Session.RTPPacketsReceived,
-					RTCPPacketsReceived: s.Session.RTCPPacketsReceived,
-					RTCPPacketsSent:     s.Session.RTCPPacketsSent,
-					Medias: map[*description.Media]SessionStatsMedia{
-						sd.Medias[0]: { //nolint:dupl
-							BytesReceived:       s.Session.Medias[sd.Medias[0]].BytesReceived,
-							BytesSent:           s.Session.Medias[sd.Medias[0]].BytesSent,
-							RTCPPacketsReceived: s.Session.Medias[sd.Medias[0]].RTCPPacketsReceived,
-							RTCPPacketsSent:     s.Session.Medias[sd.Medias[0]].RTCPPacketsSent,
-							Formats: map[format.Format]SessionStatsFormat{
-								sd.Medias[0].Formats[0]: {
-									RTPPacketsReceived: s.Session.Medias[sd.Medias[0]].Formats[sd.Medias[0].Formats[0]].RTPPacketsReceived,
-									LocalSSRC:          s.Session.Medias[sd.Medias[0]].Formats[sd.Medias[0].Formats[0]].LocalSSRC,
-									RemoteSSRC:         s.Session.Medias[sd.Medias[0]].Formats[sd.Medias[0].Formats[0]].RemoteSSRC,
-								},
-							},
-						},
-						sd.Medias[1]: { //nolint:dupl
-							BytesReceived:       s.Session.Medias[sd.Medias[1]].BytesReceived,
-							BytesSent:           s.Session.Medias[sd.Medias[1]].BytesSent,
-							RTCPPacketsReceived: s.Session.Medias[sd.Medias[1]].RTCPPacketsReceived,
-							RTCPPacketsSent:     s.Session.Medias[sd.Medias[1]].RTCPPacketsSent,
-							Formats: map[format.Format]SessionStatsFormat{
-								sd.Medias[1].Formats[0]: {
-									RTPPacketsReceived: s.Session.Medias[sd.Medias[1]].Formats[sd.Medias[1].Formats[0]].RTPPacketsReceived,
-									LocalSSRC:          s.Session.Medias[sd.Medias[1]].Formats[sd.Medias[1].Formats[0]].LocalSSRC,
-									RemoteSSRC:         s.Session.Medias[sd.Medias[1]].Formats[sd.Medias[1].Formats[0]].RemoteSSRC,
-								},
-							},
-						},
-					},
-				},
-			}, s)
+			require.Equal(t, s.Conn.InboundBytes, s.Conn.BytesReceived)
+			require.Equal(t, s.Conn.OutboundBytes, s.Conn.BytesSent)
+			require.Equal(t, s.Session.InboundBytes, s.Session.BytesReceived)
+			require.Equal(t, s.Session.OutboundBytes, s.Session.BytesSent)
+			require.Equal(t, s.Session.InboundRTPPackets, s.Session.RTPPacketsReceived)
+			require.Equal(t, s.Session.InboundRTCPPackets, s.Session.RTCPPacketsReceived)
+			require.Equal(t, s.Session.OutboundRTCPPackets, s.Session.RTCPPacketsSent)
+			require.Len(t, s.Session.Medias, 2)
+
+			media0 := s.Session.Medias[sd.Medias[0]]
+			require.Equal(t, media0.InboundBytes, media0.BytesReceived)
+			require.Equal(t, media0.OutboundBytes, media0.BytesSent)
+			require.Equal(t, media0.InboundRTCPPackets, media0.RTCPPacketsReceived)
+			require.Equal(t, media0.OutboundRTCPPackets, media0.RTCPPacketsSent)
+			format0 := media0.Formats[sd.Medias[0].Formats[0]]
+			require.Equal(t, format0.InboundRTPPackets, format0.RTPPacketsReceived)
+			require.Equal(t, format0.InboundRTPPacketsLost, format0.RTPPacketsLost)
+			require.Equal(t, format0.InboundRTPPacketsJitter, format0.RTPPacketsJitter)
+			require.Equal(t, format0.InboundRTPPacketsLastSequenceNumber, format0.RTPPacketsLastSequenceNumber)
+
+			media1 := s.Session.Medias[sd.Medias[1]]
+			require.Equal(t, media1.InboundBytes, media1.BytesReceived)
+			require.Equal(t, media1.OutboundBytes, media1.BytesSent)
+			require.Equal(t, media1.InboundRTCPPackets, media1.RTCPPacketsReceived)
+			require.Equal(t, media1.OutboundRTCPPackets, media1.RTCPPacketsSent)
+			format1 := media1.Formats[sd.Medias[1].Formats[0]]
+			require.Equal(t, format1.InboundRTPPackets, format1.RTPPacketsReceived)
+			require.Equal(t, format1.InboundRTPPacketsLost, format1.RTPPacketsLost)
+			require.Equal(t, format1.InboundRTPPacketsJitter, format1.RTPPacketsJitter)
+			require.Equal(t, format1.InboundRTPPacketsLastSequenceNumber, format1.RTPPacketsLastSequenceNumber)
 
 			require.Greater(t, s.Session.BytesSent, uint64(19))
 			require.Less(t, s.Session.BytesSent, uint64(70))

@@ -2647,21 +2647,28 @@ func TestServerPlayStreamStats(t *testing.T) {
 
 	st := stream.Stats()
 	require.Equal(t, &ServerStreamStats{
-		BytesSent:      32,
-		RTPPacketsSent: 2,
+		OutboundBytes:       32,
+		OutboundRTPPackets:  2,
+		OutboundRTCPPackets: 0,
 		Medias: map[*description.Media]ServerStreamStatsMedia{
 			stream.Desc.Medias[0]: {
-				BytesSent:       32,
-				RTCPPacketsSent: 0,
+				OutboundBytes:       32,
+				OutboundRTCPPackets: 0,
 				Formats: map[format.Format]ServerStreamStatsFormat{
 					stream.Desc.Medias[0].Formats[0]: {
-						RTPPacketsSent: 2,
+						OutboundRTPPackets: 2,
 						LocalSSRC: st.Medias[stream.Desc.Medias[0]].
 							Formats[stream.Desc.Medias[0].Formats[0]].LocalSSRC,
+						RTPPacketsSent: 2,
 					},
 				},
+				BytesSent:       32,
+				RTCPPacketsSent: 0,
 			},
 		},
+		BytesSent:       32,
+		RTPPacketsSent:  2,
+		RTCPPacketsSent: 0,
 	}, st)
 }
 

@@ -91,28 +91,89 @@ func (cf *clientFormat) stats() SessionStatsFormat { //nolint:dupl
 	}
 
 	return SessionStatsFormat{
-		RTPPacketsReceived: func() uint64 {
+		InboundRTPPackets: func() uint64 {
 			if recvStats != nil {
-				return recvStats.TotalReceived
+				return recvStats.Received
 			}
 			return 0
 		}(),
-		RTPPacketsSent: func() uint64 {
+		InboundRTPPacketsLost: func() uint64 {
+			if recvStats != nil {
+				return recvStats.Lost
+			}
+			return 0
+		}(),
+		InboundRTPPacketsJitter: func() float64 {
+			if recvStats != nil {
+				return recvStats.Jitter
+			}
+			return 0
+		}(),
+		InboundRTPPacketsLastSequenceNumber: func() uint16 {
+			if recvStats != nil {
+				return recvStats.LastSequenceNumber
+			}
+			return 0
+		}(),
+		InboundRTPPacketsLastRTP: func() uint32 {
+			if recvStats != nil {
+				return recvStats.LastRTP
+			}
+			return 0
+		}(),
+		InboundRTPPacketsLastNTP: func() time.Time {
+			if recvStats != nil {
+				return recvStats.LastNTP
+			}
+			return time.Time{}
+		}(),
+		OutboundRTPPackets: func() uint64 {
 			if sentStats != nil {
-				return sentStats.TotalSent
+				return sentStats.Sent
 			}
 			return 0
 		}(),
-		RTPPacketsLost: func() uint64 {
-			if recvStats != nil {
-				return recvStats.TotalLost
+		OutboundRTPPacketsLastSequenceNumber: func() uint16 {
+			if sentStats != nil {
+				return sentStats.LastSequenceNumber
 			}
 			return 0
+		}(),
+		OutboundRTPPacketsLastRTP: func() uint32 {
+			if sentStats != nil {
+				return sentStats.LastRTP
+			}
+			return 0
+		}(),
+		OutboundRTPPacketsLastNTP: func() time.Time {
+			if sentStats != nil {
+				return sentStats.LastNTP
+			}
+			return time.Time{}
 		}(),
 		LocalSSRC: cf.localSSRC,
 		RemoteSSRC: func() uint32 {
 			if v, ok := cf.remoteSSRC(); ok {
 				return v
+			}
+			return 0
+		}(),
+		// deprecated
+		RTPPacketsReceived: func() uint64 {
+			if recvStats != nil {
+				return recvStats.Received
+			}
+			return 0
+		}(),
+		RTPPacketsSent: func() uint64 {
+			if sentStats != nil {
+				return sentStats.Sent
+			}
+			return 0
+		}(),
+		RTPPacketsLost: func() uint64 {
+			if recvStats != nil {
+				return recvStats.Lost
 			}
 			return 0
 		}(),
