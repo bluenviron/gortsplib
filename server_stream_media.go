@@ -53,9 +53,12 @@ func (ssm *serverStreamMedia) rtpInfoEntry(now time.Time) *headers.RTPInfoEntry 
 }
 
 func (ssm *serverStreamMedia) stats() ServerStreamStatsMedia {
+	bytesSent := atomic.LoadUint64(ssm.bytesSent)
+	rtcpPacketsSent := atomic.LoadUint64(ssm.rtcpPacketsSent)
+
 	return ServerStreamStatsMedia{
-		BytesSent:       atomic.LoadUint64(ssm.bytesSent),
-		RTCPPacketsSent: atomic.LoadUint64(ssm.rtcpPacketsSent),
+		OutboundBytes:       bytesSent,
+		OutboundRTCPPackets: rtcpPacketsSent,
 		Formats: func() map[format.Format]ServerStreamStatsFormat {
 			ret := make(map[format.Format]ServerStreamStatsFormat)
 			for _, ssf := range ssm.formats {
@@ -63,6 +66,9 @@ func (ssm *serverStreamMedia) stats() ServerStreamStatsMedia {
 			}
 			return ret
 		}(),
+		// deprecated
+		BytesSent:       bytesSent,
+		RTCPPacketsSent: rtcpPacketsSent,
 	}
 }
 

@@ -44,21 +44,21 @@ type Receiver struct {
 	mutex sync.RWMutex
 
 	// data from RTP packets
-	firstRTPPacketReceived          bool
-	timeInitialized                 bool
-	buffer                          []*rtp.Packet
-	absPos                          uint16
-	negativeCount                   int
-	sequenceNumberCycles            uint16
-	lastValidSeqNum                 uint16
-	remoteSSRC                      uint32
-	lastRTP                         uint32
-	lastSystem                      time.Time
-	totalLost                       uint64
-	totalLostSinceReport            uint64
-	totalReceived                   uint64
-	totalReceivedAndLostSinceReport uint64
-	jitter                          float64
+	firstRTPPacketReceived     bool
+	timeInitialized            bool
+	buffer                     []*rtp.Packet
+	absPos                     uint16
+	negativeCount              int
+	sequenceNumberCycles       uint16
+	lastValidSeqNum            uint16
+	remoteSSRC                 uint32
+	lastRTP                    uint32
+	lastSystem                 time.Time
+	lost                       uint64
+	lostSinceReport            uint64
+	received                   uint64
+	receivedAndLostSinceReport uint64
+	jitter                     float64
 
 	// data from RTCP sender reports
 	firstSenderReportReceived  bool
@@ -133,10 +133,10 @@ func (rr *Receiver) report() rtcp.Packet {
 	system := rr.TimeNow()
 
 	var fractionLost uint8
-	if rr.totalReceivedAndLostSinceReport != 0 {
+	if rr.receivedAndLostSinceReport != 0 {
 		// equivalent to taking the integer part after multiplying the
 		// loss fraction by 256
-		fractionLost = uint8((min(rr.totalLostSinceReport, 0xFFFFFF) * 256) / rr.totalReceivedAndLostSinceReport)
+		fractionLost = uint8((min(rr.lostSinceReport, 0xFFFFFF) * 256) / rr.receivedAndLostSinceReport)
 	}
 
 	report := &rtcp.ReceiverReport{
@@ -146,7 +146,7 @@ func (rr *Receiver) report() rtcp.Packet {
 				SSRC:               rr.remoteSSRC,
 				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastValidSeqNum),
 				FractionLost:       fractionLost,
-				TotalLost:          uint32(min(rr.totalLost, 0xFFFFFF)), // allow up to 24 bits
+				TotalLost:          uint32(min(rr.lost, 0xFFFFFF)), // allow up to 24 bits
 				Jitter:             uint32(rr.jitter),
 			},
 		},
@@ -162,13 +162,13 @@ func (rr *Receiver) report() rtcp.Packet {
 		report.Reports[0].Delay = uint32(system.Sub(rr.lastSenderReportTimeSystem).Seconds() * 65536)
 	}
 
-	rr.totalLostSinceReport = 0
-	rr.totalReceivedAndLostSinceReport = 0
+	rr.lostSinceReport = 0
+	rr.receivedAndLostSinceReport = 0
 
 	return report
 }
 
-// ProcessPacket processes an incoming RTP packet.
+// ProcessPacket processes an inbound RTP packet.
 // It returns reordered packets and number of lost packets.
 //
 // Deprecated: replaced by ProcessPacket2.
@@ -181,7 +181,7 @@ func (rr *Receiver) ProcessPacket(
 	return pkts, lost, nil
 }
 
-// ProcessPacket2 processes an incoming RTP packet.
+// ProcessPacket2 processes an inbound RTP packet.
 // It returns reordered packets and number of lost packets.
 func (rr *Receiver) ProcessPacket2(
 	pkt *rtp.Packet,
@@ -194,8 +194,8 @@ func (rr *Receiver) ProcessPacket2(
 	// first packet
 	if !rr.firstRTPPacketReceived {
 		rr.firstRTPPacketReceived = true
-		rr.totalReceived = 1
-		rr.totalReceivedAndLostSinceReport = 1
+		rr.received = 1
+		rr.receivedAndLostSinceReport = 1
 		rr.lastValidSeqNum = pkt.SequenceNumber
 		rr.remoteSSRC = pkt.SSRC
 
@@ -218,10 +218,10 @@ func (rr *Receiver) ProcessPacket2(
 		lost = uint64(pkt.SequenceNumber - rr.lastValidSeqNum - 1)
 	}
 
-	rr.totalLost += lost
-	rr.totalLostSinceReport += lost
-	rr.totalReceived += uint64(len(pkts))
-	rr.totalReceivedAndLostSinceReport += uint64(len(pkts)) + lost
+	rr.lost += lost
+	rr.lostSinceReport += lost
+	rr.received += uint64(len(pkts))
+	rr.receivedAndLostSinceReport += uint64(len(pkts)) + lost
 
 	for _, pkt := range pkts {
 		// overflow
@@ -348,7 +348,7 @@ func (rr *Receiver) reorder(pkt *rtp.Packet) ([]*rtp.Packet, uint64) {
 	return ret, 0
 }
 
-// ProcessSenderReport processes an incoming RTCP sender report.
+// ProcessSenderReport processes an inbound RTCP sender report.
 func (rr *Receiver) ProcessSenderReport(sr *rtcp.SenderReport, system time.Time) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
@@ -380,15 +380,25 @@ func (rr *Receiver) PacketNTP(ts uint32) (time.Time, bool) {
 
 // Stats are statistics.
 type Stats struct {
+	// number of inbound RTP packets correctly received and processed.
+	Received uint64
+	// number of lost inbound RTP packets.
+	Lost uint64
+	// Jitter of inbound RTP packets.
+	Jitter float64
+	// Last sequence number of inbound RTP packets.
+	LastSequenceNumber uint16
+	// Last RTP time of inbound RTP packets.
+	LastRTP uint32
+	// Last NTP time of inbound RTP packets.
+	LastNTP time.Time
+
+	// Deprecated: use Received.
+	TotalReceived uint64
+	// Deprecated: use Lost.
+	TotalLost uint64
 	// Deprecated: will be removed in next version.
 	RemoteSSRC uint32
-
-	LastSequenceNumber uint16
-	LastRTP            uint32
-	LastNTP            time.Time
-	Jitter             float64
-	TotalReceived      uint64
-	TotalLost          uint64
 }
 
 // Stats returns statistics.
@@ -403,12 +413,15 @@ func (rr *Receiver) Stats() *Stats {
 	ntp, _ := rr.packetNTPUnsafe(rr.lastRTP)
 
 	return &Stats{
-		RemoteSSRC:         rr.remoteSSRC,
+		Received:           rr.received,
+		Lost:               rr.lost,
+		Jitter:             rr.jitter,
 		LastSequenceNumber: rr.lastValidSeqNum,
 		LastRTP:            rr.lastRTP,
 		LastNTP:            ntp,
-		Jitter:             rr.jitter,
-		TotalReceived:      rr.totalReceived,
-		TotalLost:          rr.totalLost,
+		// deprecated
+		TotalReceived: rr.received,
+		TotalLost:     rr.lost,
+		RemoteSSRC:    rr.remoteSSRC,
 	}
 }

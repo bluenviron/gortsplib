@@ -71,9 +71,12 @@ func (ssf *serverStreamFormat) stats() ServerStreamStatsFormat {
 	ssf.mutex.RLock()
 	defer ssf.mutex.RUnlock()
 
+	rtpPacketsSent := ssf.rtpPacketsSent
+
 	return ServerStreamStatsFormat{
-		RTPPacketsSent: ssf.rtpPacketsSent,
-		LocalSSRC:      ssf.localSSRC,
+		OutboundRTPPackets: rtpPacketsSent,
+		LocalSSRC:          ssf.localSSRC,
+		RTPPacketsSent:     rtpPacketsSent,
 	}
 }
 

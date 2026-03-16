@@ -102,10 +102,10 @@ type Server struct {
 	// This can be increased to reduce packet losses.
 	// It defaults to the operating system default value.
 	UDPReadBufferSize int
-	// Size of the queue of outgoing packets.
+	// Size of the queue of outbound packets.
 	// It defaults to 256.
 	WriteQueueSize int
-	// maximum size of outgoing RTP / RTCP packets.
+	// maximum size of outbound RTP / RTCP packets.
 	// This must be less than the IPv4/UDP MTU (1472 bytes).
 	// It defaults to 1472.
 	MaxPacketSize int

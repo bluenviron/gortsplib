@@ -101,6 +101,7 @@ func TestSender(t *testing.T) {
 
 	stats = rs.Stats()
 	require.Equal(t, &Stats{
+		Sent:               3,
 		LastSequenceNumber: 948,
 		LastRTP:            1287987768,
 		LastNTP:            time.Date(2008, time.May, 20, 22, 15, 21, 0, time.UTC),
@@ -161,6 +162,7 @@ func TestSenderZeroClockRate(t *testing.T) {
 
 	stats = rs.Stats()
 	require.Equal(t, &Stats{
+		Sent:               1,
 		LastSequenceNumber: 946,
 		LastRTP:            1287987768,
 		LastNTP:            time.Date(2008, time.May, 20, 22, 15, 20, 0, time.UTC),

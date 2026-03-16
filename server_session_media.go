@@ -143,14 +143,14 @@ func (ssm *serverSessionMedia) stop() {
 	}
 }
 
-func (ssm *serverSessionMedia) stats() SessionStatsMedia {
+func (ssm *serverSessionMedia) stats() SessionStatsMedia { //nolint:dupl
 	return SessionStatsMedia{
-		BytesReceived:       atomic.LoadUint64(ssm.bytesReceived),
-		BytesSent:           atomic.LoadUint64(ssm.bytesSent),
-		RTPPacketsInError:   atomic.LoadUint64(ssm.rtpPacketsInError),
-		RTCPPacketsReceived: atomic.LoadUint64(ssm.rtcpPacketsReceived),
-		RTCPPacketsSent:     atomic.LoadUint64(ssm.rtcpPacketsSent),
-		RTCPPacketsInError:  atomic.LoadUint64(ssm.rtcpPacketsInError),
+		InboundBytes:              atomic.LoadUint64(ssm.bytesReceived),
+		InboundRTPPacketsInError:  atomic.LoadUint64(ssm.rtpPacketsInError),
+		InboundRTCPPackets:        atomic.LoadUint64(ssm.rtcpPacketsReceived),
+		InboundRTCPPacketsInError: atomic.LoadUint64(ssm.rtcpPacketsInError),
+		OutboundBytes:             atomic.LoadUint64(ssm.bytesSent),
+		OutboundRTCPPackets:       atomic.LoadUint64(ssm.rtcpPacketsSent),
 		Formats: func() map[format.Format]SessionStatsFormat {
 			ret := make(map[format.Format]SessionStatsFormat, len(ssm.formats))
 			for _, ssf := range ssm.formats {
@@ -158,6 +158,13 @@ func (ssm *serverSessionMedia) stats() SessionStatsMedia {
 			}
 			return ret
 		}(),
+		// deprecated
+		BytesReceived:       atomic.LoadUint64(ssm.bytesReceived),
+		BytesSent:           atomic.LoadUint64(ssm.bytesSent),
+		RTPPacketsInError:   atomic.LoadUint64(ssm.rtpPacketsInError),
+		RTCPPacketsReceived: atomic.LoadUint64(ssm.rtcpPacketsReceived),
+		RTCPPacketsSent:     atomic.LoadUint64(ssm.rtcpPacketsSent),
+		RTCPPacketsInError:  atomic.LoadUint64(ssm.rtcpPacketsInError),
 	}
 }
 

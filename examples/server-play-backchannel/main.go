@@ -83,7 +83,7 @@ func (sh *serverHandler) OnPlay(ctx *gortsplib.ServerHandlerOnPlayCtx) (*base.Re
 			return
 		}
 
-		log.Printf("incoming RTP packet with PTS=%v size=%v", pts, len(pkt.Payload))
+		log.Printf("inbound RTP packet with PTS=%v size=%v", pts, len(pkt.Payload))
 	})
 
 	return &base.Response{
