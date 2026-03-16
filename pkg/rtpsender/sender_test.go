@@ -102,6 +102,22 @@ func TestSender(t *testing.T) {
 	stats = rs.Stats()
 	require.Equal(t, &Stats{
 		Sent:               3,
+		ReportedLost:       0,
+		LastSequenceNumber: 948,
+		LastRTP:            1287987768,
+		LastNTP:            time.Date(2008, time.May, 20, 22, 15, 21, 0, time.UTC),
+		TotalSent:          3,
+	}, stats)
+
+	rs.ProcessReceptionReport(&rtcp.ReceptionReport{
+		SSRC:      0xba9da416,
+		TotalLost: 7,
+	})
+
+	stats = rs.Stats()
+	require.Equal(t, &Stats{
+		Sent:               3,
+		ReportedLost:       7,
 		LastSequenceNumber: 948,
 		LastRTP:            1287987768,
 		LastNTP:            time.Date(2008, time.May, 20, 22, 15, 21, 0, time.UTC),
@@ -163,6 +179,7 @@ func TestSenderZeroClockRate(t *testing.T) {
 	stats = rs.Stats()
 	require.Equal(t, &Stats{
 		Sent:               1,
+		ReportedLost:       0,
 		LastSequenceNumber: 946,
 		LastRTP:            1287987768,
 		LastNTP:            time.Date(2008, time.May, 20, 22, 15, 20, 0, time.UTC),

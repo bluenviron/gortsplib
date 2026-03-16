@@ -177,6 +177,15 @@ func (ssm *serverSessionMedia) findFormatByRemoteSSRC(ssrc uint32) *serverSessio
 	return nil
 }
 
+func (ssm *serverSessionMedia) findFormatByLocalSSRC(ssrc uint32) *serverSessionFormat {
+	for _, sf := range ssm.formats {
+		if sf.localSSRC == ssrc {
+			return sf
+		}
+	}
+	return nil
+}
+
 func (ssm *serverSessionMedia) decodeRTP(payload []byte, header *rtp.Header, headerSize int) (*rtp.Packet, error) {
 	if ssm.srtpInCtx != nil {
 		var err error
@@ -233,6 +242,15 @@ func (ssm *serverSessionMedia) readPacketRTCPPlay(payload []byte) bool {
 	atomic.AddUint64(ssm.rtcpPacketsReceived, uint64(len(packets)))
 
 	for _, pkt := range packets {
+		if rr, ok := pkt.(*rtcp.ReceiverReport); ok {
+			for _, report := range rr.Reports {
+				format := ssm.findFormatByLocalSSRC(report.SSRC)
+				if format != nil {
+					format.rtpSender.ProcessReceptionReport(&report)
+				}
+			}
+		}
+
 		ssm.onPacketRTCP(pkt)
 	}
 

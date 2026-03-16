@@ -2861,6 +2861,107 @@ func TestServerPlayBackChannel(t *testing.T) {
 	}
 }
 
+func TestServerPlayBackChannelReportedLostStats(t *testing.T) {
+	var stream *ServerStream
+
+	sessionClosed := make(chan *SessionStats)
+	receiverReportProcessed := make(chan struct{})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
+				select {
+				case sessionClosed <- ctx.Session.Stats():
+				default:
+				}
+			},
+			onDescribe: func(*ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{StatusCode: base.StatusOK}, stream, nil
+			},
+			onSetup: func(*ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{StatusCode: base.StatusOK}, stream, nil
+			},
+			onPlay: func(ctx *ServerHandlerOnPlayCtx) (*base.Response, error) {
+				ctx.Session.OnPacketRTCPAny(func(_ *description.Media, pkt rtcp.Packet) {
+					if _, ok := pkt.(*rtcp.ReceiverReport); ok {
+						select {
+						case <-receiverReportProcessed:
+						default:
+							close(receiverReportProcessed)
+						}
+					}
+				})
+
+				return &base.Response{StatusCode: base.StatusOK}, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	stream = &ServerStream{
+		Server: s,
+		Desc: &description.Session{
+			Medias: []*description.Media{testH264Media},
+		},
+	}
+	err = stream.Initialize()
+	require.NoError(t, err)
+	defer stream.Close()
+
+	u := mustParseURL("rtsp://localhost:8554/teststream")
+
+	c := Client{Protocol: ptrOf(ProtocolTCP)}
+	c.Scheme = u.Scheme
+	c.Host = u.Host
+	err = c.Start()
+	require.NoError(t, err)
+	sd, _, err := c.Describe(u)
+	require.NoError(t, err)
+
+	err = c.SetupAll(sd.BaseURL, sd.Medias)
+	require.NoError(t, err)
+
+	rtpReceived := make(chan struct{})
+	c.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
+		err2 := c.WritePacketRTCP(medi, &rtcp.ReceiverReport{
+			Reports: []rtcp.ReceptionReport{{
+				SSRC:      pkt.SSRC,
+				TotalLost: 9,
+			}},
+		})
+		require.NoError(t, err2)
+
+		select {
+		case <-rtpReceived:
+		default:
+			close(rtpReceived)
+		}
+	})
+
+	_, err = c.Play(nil)
+	require.NoError(t, err)
+
+	err = stream.WritePacketRTP(testH264Media, &testRTPPacket)
+	require.NoError(t, err)
+
+	<-rtpReceived
+	<-receiverReportProcessed
+
+	c.Close()
+
+	stats := <-sessionClosed
+	require.Equal(t, uint64(9), stats.OutboundRTPPacketsReportedLost)
+	require.Equal(t, uint64(9), stats.RTPPacketsReportedLost)
+
+	formatStats := stats.Medias[testH264Media].Formats[testH264Media.Formats[0]]
+	require.Equal(t, uint64(9), formatStats.OutboundRTPPacketsReportedLost)
+	require.Equal(t, uint64(9), formatStats.RTPPacketsReportedLost)
+}
+
 func TestServerPlayMulticastParams(t *testing.T) {
 	listenIP := multicastCapableIP(t)
 

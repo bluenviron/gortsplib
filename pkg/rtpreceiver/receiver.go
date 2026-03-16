@@ -380,9 +380,9 @@ func (rr *Receiver) PacketNTP(ts uint32) (time.Time, bool) {
 
 // Stats are statistics.
 type Stats struct {
-	// number of inbound RTP packets correctly received and processed.
+	// inbound RTP packets correctly received and processed.
 	Received uint64
-	// number of lost inbound RTP packets.
+	// lost inbound RTP packets.
 	Lost uint64
 	// Jitter of inbound RTP packets.
 	Jitter float64

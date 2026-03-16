@@ -7,7 +7,7 @@ import (
 
 // ServerStreamStatsFormat are stream format statistics.
 type ServerStreamStatsFormat struct {
-	// number of outbound RTP packets
+	// outbound RTP packets
 	OutboundRTPPackets uint64
 	// local SSRC
 	LocalSSRC uint32
@@ -20,7 +20,7 @@ type ServerStreamStatsFormat struct {
 type ServerStreamStatsMedia struct {
 	// outbound bytes
 	OutboundBytes uint64
-	// number of outbound RTCP packets
+	// outbound RTCP packets
 	OutboundRTCPPackets uint64
 
 	// format statistics
@@ -36,9 +36,9 @@ type ServerStreamStatsMedia struct {
 type ServerStreamStats struct {
 	// outbound bytes
 	OutboundBytes uint64
-	// number of outbound RTP packets
+	// outbound RTP packets
 	OutboundRTPPackets uint64
-	// number of outbound RTCP packets
+	// outbound RTCP packets
 	OutboundRTCPPackets uint64
 
 	// media statistics

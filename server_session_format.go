@@ -137,6 +137,12 @@ func (ssf *serverSessionFormat) stats() SessionStatsFormat { //nolint:dupl
 			}
 			return 0
 		}(),
+		OutboundRTPPacketsReportedLost: func() uint64 {
+			if sentStats != nil {
+				return sentStats.ReportedLost
+			}
+			return 0
+		}(),
 		OutboundRTPPacketsLastSequenceNumber: func() uint16 {
 			if sentStats != nil {
 				return sentStats.LastSequenceNumber
@@ -172,6 +178,12 @@ func (ssf *serverSessionFormat) stats() SessionStatsFormat { //nolint:dupl
 		RTPPacketsSent: func() uint64 {
 			if sentStats != nil {
 				return sentStats.Sent
+			}
+			return 0
+		}(),
+		RTPPacketsReportedLost: func() uint64 {
+			if sentStats != nil {
+				return sentStats.ReportedLost
 			}
 			return 0
 		}(),

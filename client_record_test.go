@@ -759,6 +759,68 @@ func TestClientRecordPauseRecordSerial(t *testing.T) {
 	}
 }
 
+func TestClientRecordReportedLostStats(t *testing.T) {
+	receiverReportReceived := make(chan struct{})
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onAnnounce: func(*ServerHandlerOnAnnounceCtx) (*base.Response, error) {
+				return &base.Response{StatusCode: base.StatusOK}, nil
+			},
+			onSetup: func(*ServerHandlerOnSetupCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{StatusCode: base.StatusOK}, nil, nil
+			},
+			onRecord: func(ctx *ServerHandlerOnRecordCtx) (*base.Response, error) {
+				ctx.Session.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
+					err := ctx.Session.WritePacketRTCP(medi, &rtcp.ReceiverReport{
+						Reports: []rtcp.ReceptionReport{{
+							SSRC:      pkt.SSRC,
+							TotalLost: 7,
+						}},
+					})
+					require.NoError(t, err)
+				})
+
+				return &base.Response{StatusCode: base.StatusOK}, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	c := Client{Protocol: ptrOf(ProtocolTCP)}
+	err = record(&c, "rtsp://localhost:8554/teststream", []*description.Media{testH264Media},
+		func(_ *description.Media, pkt rtcp.Packet) {
+			if rr, ok := pkt.(*rtcp.ReceiverReport); ok {
+				require.Equal(t, uint32(7), rr.Reports[0].TotalLost)
+				select {
+				case <-receiverReportReceived:
+				default:
+					close(receiverReportReceived)
+				}
+			}
+		})
+	require.NoError(t, err)
+
+	err = c.WritePacketRTP(testH264Media, &testRTPPacket)
+	require.NoError(t, err)
+
+	<-receiverReportReceived
+
+	c.Close()
+
+	stats := c.Stats()
+	require.Equal(t, uint64(7), stats.Session.OutboundRTPPacketsReportedLost)
+	require.Equal(t, uint64(7), stats.Session.RTPPacketsReportedLost)
+
+	formatStats := stats.Session.Medias[testH264Media].Formats[testH264Media.Formats[0]]
+	require.Equal(t, uint64(7), formatStats.OutboundRTPPacketsReportedLost)
+	require.Equal(t, uint64(7), formatStats.RTPPacketsReportedLost)
+}
+
 func TestClientRecordPauseRecordParallel(t *testing.T) {
 	for _, transport := range []string{
 		"udp",
