@@ -9,9 +9,9 @@ import (
 
 // SessionStatsFormat are session format statistics.
 type SessionStatsFormat struct {
-	// number of inbound RTP packets correctly received and processed
+	// inbound RTP packets correctly received and processed
 	InboundRTPPackets uint64
-	// number of lost inbound RTP packets
+	// lost inbound RTP packets
 	InboundRTPPacketsLost uint64
 	// mean jitter of inbound RTP packets
 	InboundRTPPacketsJitter float64
@@ -22,8 +22,10 @@ type SessionStatsFormat struct {
 	// last NTP time of inbound RTP packets
 	InboundRTPPacketsLastNTP time.Time
 
-	// number of outbound RTP packets
+	// outbound RTP packets
 	OutboundRTPPackets uint64
+	// outbound RTP packets reported as lost by the remote receiver
+	OutboundRTPPacketsReportedLost uint64
 	// last sequence number of outbound RTP packets
 	OutboundRTPPacketsLastSequenceNumber uint16
 	// last RTP time of outbound RTP packets
@@ -46,6 +48,8 @@ type SessionStatsFormat struct {
 	RTPPacketsReceived uint64
 	// Deprecated: use OutboundRTPPackets.
 	RTPPacketsSent uint64
+	// Deprecated: use OutboundRTPPacketsReportedLost.
+	RTPPacketsReportedLost uint64
 	// Deprecated: use InboundRTPPacketsLost.
 	RTPPacketsLost uint64
 	// Deprecated: use InboundRTPPacketsJitter.
@@ -56,16 +60,16 @@ type SessionStatsFormat struct {
 type SessionStatsMedia struct {
 	// inbound bytes
 	InboundBytes uint64
-	// number of inbound RTP packets that could not be processed
+	// inbound RTP packets that could not be processed
 	InboundRTPPacketsInError uint64
-	// number of inbound RTCP packets correctly received and processed
+	// inbound RTCP packets correctly received and processed
 	InboundRTCPPackets uint64
-	// number of inbound RTCP packets that could not be processed
+	// inbound RTCP packets that could not be processed
 	InboundRTCPPacketsInError uint64
 
 	// outbound bytes
 	OutboundBytes uint64
-	// number of outbound RTCP packets
+	// outbound RTCP packets
 	OutboundRTCPPackets uint64
 
 	// format statistics
@@ -89,24 +93,26 @@ type SessionStatsMedia struct {
 type SessionStats struct {
 	// inbound bytes
 	InboundBytes uint64
-	// number of inbound RTP packets correctly received and processed
+	// inbound RTP packets correctly received and processed
 	InboundRTPPackets uint64
-	// number of lost inbound RTP packets
+	// lost inbound RTP packets
 	InboundRTPPacketsLost uint64
-	// number of inbound RTP packets that could not be processed
+	// inbound RTP packets that could not be processed
 	InboundRTPPacketsInError uint64
 	// mean jitter of inbound RTP packets
 	InboundRTPPacketsJitter float64
-	// number of inbound RTCP packets correctly received and processed
+	// inbound RTCP packets correctly received and processed
 	InboundRTCPPackets uint64
-	// number of inbound RTCP packets that could not be processed
+	// inbound RTCP packets that could not be processed
 	InboundRTCPPacketsInError uint64
 
 	// outbound bytes
 	OutboundBytes uint64
-	// number of outbound RTP packets
+	// outbound RTP packets
 	OutboundRTPPackets uint64
-	// number of outbound RTCP packets
+	// outbound RTP packets reported as lost by the remote receiver
+	OutboundRTPPacketsReportedLost uint64
+	// outbound RTCP packets
 	OutboundRTCPPackets uint64
 
 	// media statistics
@@ -120,6 +126,8 @@ type SessionStats struct {
 	RTPPacketsReceived uint64
 	// Deprecated: use OutboundRTPPackets.
 	RTPPacketsSent uint64
+	// Deprecated: use OutboundRTPPacketsReportedLost.
+	RTPPacketsReportedLost uint64
 	// Deprecated: use InboundRTPPacketsLost.
 	RTPPacketsLost uint64
 	// Deprecated: use InboundRTPPacketsInError.
@@ -139,6 +147,7 @@ func sessionStatsFromMedias(mediaStats map[*description.Media]SessionStatsMedia)
 	outboundBytes := uint64(0)
 	inboundRTPPackets := uint64(0)
 	outboundRTPPackets := uint64(0)
+	outboundRTPPacketsReportedLost := uint64(0)
 	inboundRTPPacketsLost := uint64(0)
 	inboundRTPPacketsInError := uint64(0)
 	inboundRTPPacketsJitter := float64(0)
@@ -158,6 +167,7 @@ func sessionStatsFromMedias(mediaStats map[*description.Media]SessionStatsMedia)
 		for _, fs := range ms.Formats {
 			inboundRTPPackets += fs.InboundRTPPackets
 			outboundRTPPackets += fs.OutboundRTPPackets
+			outboundRTPPacketsReportedLost += fs.OutboundRTPPacketsReportedLost
 			inboundRTPPacketsLost += fs.InboundRTPPacketsLost
 			inboundRTPPacketsJitter += fs.InboundRTPPacketsJitter
 			inboundRTPPacketsJitterCount++
@@ -169,27 +179,29 @@ func sessionStatsFromMedias(mediaStats map[*description.Media]SessionStatsMedia)
 	}
 
 	return SessionStats{
-		InboundBytes:              inboundBytes,
-		InboundRTPPackets:         inboundRTPPackets,
-		InboundRTPPacketsLost:     inboundRTPPacketsLost,
-		InboundRTPPacketsInError:  inboundRTPPacketsInError,
-		InboundRTPPacketsJitter:   inboundRTPPacketsJitter,
-		InboundRTCPPackets:        inboundRTCPPackets,
-		InboundRTCPPacketsInError: inboundRTCPPacketsInError,
-		OutboundBytes:             outboundBytes,
-		OutboundRTPPackets:        outboundRTPPackets,
-		OutboundRTCPPackets:       outboundRTCPPackets,
-		Medias:                    mediaStats,
+		InboundBytes:                   inboundBytes,
+		InboundRTPPackets:              inboundRTPPackets,
+		InboundRTPPacketsLost:          inboundRTPPacketsLost,
+		InboundRTPPacketsInError:       inboundRTPPacketsInError,
+		InboundRTPPacketsJitter:        inboundRTPPacketsJitter,
+		InboundRTCPPackets:             inboundRTCPPackets,
+		InboundRTCPPacketsInError:      inboundRTCPPacketsInError,
+		OutboundBytes:                  outboundBytes,
+		OutboundRTPPackets:             outboundRTPPackets,
+		OutboundRTPPacketsReportedLost: outboundRTPPacketsReportedLost,
+		OutboundRTCPPackets:            outboundRTCPPackets,
+		Medias:                         mediaStats,
 		// deprecated
-		BytesReceived:       inboundBytes,
-		BytesSent:           outboundBytes,
-		RTPPacketsReceived:  inboundRTPPackets,
-		RTPPacketsSent:      outboundRTPPackets,
-		RTPPacketsLost:      inboundRTPPacketsLost,
-		RTPPacketsInError:   inboundRTPPacketsInError,
-		RTPPacketsJitter:    inboundRTPPacketsJitter,
-		RTCPPacketsReceived: inboundRTCPPackets,
-		RTCPPacketsSent:     outboundRTCPPackets,
-		RTCPPacketsInError:  inboundRTCPPacketsInError,
+		BytesReceived:          inboundBytes,
+		BytesSent:              outboundBytes,
+		RTPPacketsReceived:     inboundRTPPackets,
+		RTPPacketsSent:         outboundRTPPackets,
+		RTPPacketsReportedLost: outboundRTPPacketsReportedLost,
+		RTPPacketsLost:         inboundRTPPacketsLost,
+		RTPPacketsInError:      inboundRTPPacketsInError,
+		RTPPacketsJitter:       inboundRTPPacketsJitter,
+		RTCPPacketsReceived:    inboundRTCPPackets,
+		RTCPPacketsSent:        outboundRTCPPackets,
+		RTCPPacketsInError:     inboundRTCPPacketsInError,
 	}
 }

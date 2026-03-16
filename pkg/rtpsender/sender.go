@@ -14,6 +14,7 @@ import (
 // It is in charge of:
 // - counting sent packets
 // - generating RTCP sender reports.
+// - parsing incoming RTCP receiver reports.
 type Sender struct {
 	ClockRate       int
 	Period          time.Duration
@@ -30,6 +31,7 @@ type Sender struct {
 	localSSRC          uint32
 	lastSequenceNumber uint16
 	sent               uint64
+	reportedLost       uint64
 	octetCount         uint32
 
 	terminate chan struct{}
@@ -114,9 +116,17 @@ func (rs *Sender) ProcessPacket(pkt *rtp.Packet, ntp time.Time, ptsEqualsDTS boo
 	rs.octetCount += uint32(len(pkt.Payload))
 }
 
+// ProcessReceptionReport extracts data from RTCP receiver reports.
+func (rs *Sender) ProcessReceptionReport(report *rtcp.ReceptionReport) {
+	rs.mutex.Lock()
+	defer rs.mutex.Unlock()
+
+	rs.reportedLost = uint64(report.TotalLost)
+}
+
 // Stats are statistics.
 type Stats struct {
-	// number of outbound RTP packets.
+	// outbound RTP packets.
 	Sent uint64
 	// last sequence number of outbound RTP packets.
 	LastSequenceNumber uint16
@@ -124,6 +134,8 @@ type Stats struct {
 	LastRTP uint32
 	// last NTP time of outbound RTP packets.
 	LastNTP time.Time
+	// outbound RTP packets reported as lost by the remote receiver.
+	ReportedLost uint64
 
 	// Deprecated: use Sent.
 	TotalSent uint64
@@ -143,6 +155,7 @@ func (rs *Sender) Stats() *Stats {
 		LastSequenceNumber: rs.lastSequenceNumber,
 		LastRTP:            rs.lastRTP,
 		LastNTP:            rs.lastNTP,
+		ReportedLost:       rs.reportedLost,
 		// deprecated
 		TotalSent: rs.sent,
 	}
