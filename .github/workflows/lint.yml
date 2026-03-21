@@ -35,5 +35,4 @@ jobs:
         go-version: "1.26"
 
     - run: |
-        go mod tidy
-        git diff --exit-code
+        go mod tidy -diff
