@@ -388,6 +388,108 @@ var cases = []struct {
 		},
 	},
 	{
+		"missing c= address type ipv4",
+		[]byte("v=0\r\n" +
+			"o=test 123 456 IN IP4 192.0.2.1\r\n" +
+			"s=Test SDP\r\n" +
+			"c=IN 198.51.100.1\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n"),
+		[]byte("v=0\r\n" +
+			"o=test 123 456 IN IP4 192.0.2.1\r\n" +
+			"s=Test SDP\r\n" +
+			"c=IN IP4 198.51.100.1\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "test",
+				SessionID:      123,
+				SessionVersion: 456,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.0.2.1",
+			},
+			SessionName: "Test SDP",
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP4",
+				Address: &psdp.Address{
+					Address: "198.51.100.1",
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{
+				{
+					Timing: psdp.Timing{
+						StartTime: 0,
+						StopTime:  0,
+					},
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+				},
+			},
+		},
+	},
+	{
+		"missing c= address type ipv6",
+		[]byte("v=0\r\n" +
+			"o=test 123 456 IN IP6 2001:db8::1\r\n" +
+			"s=Test SDP\r\n" +
+			"c=IN 2001:db8::2\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n"),
+		[]byte("v=0\r\n" +
+			"o=test 123 456 IN IP6 2001:db8::1\r\n" +
+			"s=Test SDP\r\n" +
+			"c=IN IP6 2001:db8::2\r\n" +
+			"t=0 0\r\n" +
+			"m=video 0 RTP/AVP 96\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "test",
+				SessionID:      123,
+				SessionVersion: 456,
+				NetworkType:    "IN",
+				AddressType:    "IP6",
+				UnicastAddress: "2001:db8::1",
+			},
+			SessionName: "Test SDP",
+			ConnectionInformation: &psdp.ConnectionInformation{
+				NetworkType: "IN",
+				AddressType: "IP6",
+				Address: &psdp.Address{
+					Address: "2001:db8::2",
+				},
+			},
+			TimeDescriptions: []psdp.TimeDescription{
+				{
+					Timing: psdp.Timing{
+						StartTime: 0,
+						StopTime:  0,
+					},
+				},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"96"},
+					},
+				},
+			},
+		},
+	},
+	{
 		"no timing",
 		[]byte("v=0\r\n" +
 			"o=jdoe 2890844526 2890842807 IN IP4 10.47.16.5\r\n" +
