@@ -37,6 +37,8 @@ func (f *G726) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *G726) Codec() string {
 	return "G726"
 }

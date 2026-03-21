@@ -81,6 +81,8 @@ func (f *Generic) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *Generic) Codec() string {
 	return "Generic"
 }

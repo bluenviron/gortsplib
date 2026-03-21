@@ -57,6 +57,8 @@ func (f *VP9) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *VP9) Codec() string {
 	return "VP9"
 }

@@ -74,6 +74,8 @@ func (f *H264) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *H264) Codec() string {
 	return "H264"
 }

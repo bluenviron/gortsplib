@@ -92,9 +92,6 @@ type unmarshalContext struct {
 type Format interface {
 	unmarshal(ctx *unmarshalContext) error
 
-	// Codec returns the codec name.
-	Codec() string
-
 	// ClockRate returns the clock rate.
 	ClockRate() int
 
@@ -109,6 +106,9 @@ type Format interface {
 
 	// PTSEqualsDTS checks whether PTS is equal to DTS in RTP packets.
 	PTSEqualsDTS(*rtp.Packet) bool
+
+	// Deprecated: arbitrary. Will be removed in the next version.
+	Codec() string
 }
 
 // Unmarshal decodes a format from a media description.

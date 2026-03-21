@@ -53,6 +53,8 @@ func (f *AV1) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *AV1) Codec() string {
 	return "AV1"
 }

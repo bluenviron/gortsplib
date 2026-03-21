@@ -20,6 +20,8 @@ func (f *MPEGTS) unmarshal(_ *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *MPEGTS) Codec() string {
 	return "MPEG-TS"
 }

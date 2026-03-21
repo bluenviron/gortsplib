@@ -20,6 +20,8 @@ func (f *MPEG1Video) unmarshal(_ *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *MPEG1Video) Codec() string {
 	return "MPEG-1/2 Video"
 }

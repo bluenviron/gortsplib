@@ -55,6 +55,8 @@ func (f *MPEG4Video) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *MPEG4Video) Codec() string {
 	return "MPEG-4 Video"
 }
