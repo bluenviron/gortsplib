@@ -85,6 +85,8 @@ func (f *H265) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *H265) Codec() string {
 	return "H265"
 }

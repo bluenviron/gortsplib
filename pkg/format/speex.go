@@ -38,6 +38,8 @@ func (f *Speex) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *Speex) Codec() string {
 	return "Speex"
 }

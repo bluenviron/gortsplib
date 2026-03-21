@@ -18,6 +18,8 @@ func (f *KLV) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *KLV) Codec() string {
 	return "KLV"
 }

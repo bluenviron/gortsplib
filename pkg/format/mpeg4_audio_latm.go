@@ -114,6 +114,8 @@ func (f *MPEG4AudioLATM) unmarshal(ctx *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *MPEG4AudioLATM) Codec() string {
 	return "MPEG-4 Audio LATM"
 }

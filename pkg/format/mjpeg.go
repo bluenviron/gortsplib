@@ -20,6 +20,8 @@ func (f *MJPEG) unmarshal(_ *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *MJPEG) Codec() string {
 	return "M-JPEG"
 }

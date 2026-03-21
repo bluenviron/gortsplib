@@ -20,6 +20,8 @@ func (f *G722) unmarshal(_ *unmarshalContext) error {
 }
 
 // Codec implements Format.
+//
+// Deprecated: will be removed in the next version.
 func (f *G722) Codec() string {
 	return "G722"
 }
