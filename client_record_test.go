@@ -205,18 +205,18 @@ func TestClientRecord(t *testing.T) {
 				require.Equal(t, mustParseURL(ca.scheme+"://localhost:8554/teststream"), req.URL)
 
 				var desc sdp.SessionDescription
-				err = desc.Unmarshal(req.Body)
+				err2 = desc.Unmarshal(req.Body)
 				require.NoError(t, err2)
 
 				var desc2 description.Session
-				err = desc2.Unmarshal(&desc)
+				err2 = desc2.Unmarshal(&desc)
 				require.NoError(t, err2)
 
 				if ca.secure == "secure" {
 					require.Equal(t, headers.TransportProfileSAVP, desc2.Medias[0].Profile)
 
-					_, err = mikeyToContext(desc2.Medias[0].KeyMgmtMikey)
-					require.NoError(t, err)
+					_, err2 = mikeyToContext(desc2.Medias[0].KeyMgmtMikey)
+					require.NoError(t, err2)
 				}
 
 				err2 = conn.WriteResponse(&base.Response{
@@ -267,37 +267,37 @@ func TestClientRecord(t *testing.T) {
 					require.Equal(t, inTH.Profile, headers.TransportProfileSAVP)
 
 					var keyMgmt headers.KeyMgmt
-					err = keyMgmt.Unmarshal(req.Header["KeyMgmt"])
-					require.NoError(t, err)
+					err2 = keyMgmt.Unmarshal(req.Header["KeyMgmt"])
+					require.NoError(t, err2)
 
 					pl1, _ := mikeyGetPayload[*mikey.PayloadKEMAC](keyMgmt.MikeyMessage)
 					pl2, _ := mikeyGetPayload[*mikey.PayloadKEMAC](desc2.Medias[0].KeyMgmtMikey)
 					require.Equal(t, pl1, pl2)
 
-					srtpInCtx, err = mikeyToContext(keyMgmt.MikeyMessage)
-					require.NoError(t, err)
+					srtpInCtx, err2 = mikeyToContext(keyMgmt.MikeyMessage)
+					require.NoError(t, err2)
 
 					outKey := make([]byte, srtpKeyLength)
-					_, err = rand.Read(outKey)
-					require.NoError(t, err)
+					_, err2 = rand.Read(outKey)
+					require.NoError(t, err2)
 
 					srtpOutCtx = &wrappedSRTPContext{
 						key:   outKey,
 						ssrcs: []uint32{2345423},
 					}
-					err = srtpOutCtx.initialize()
-					require.NoError(t, err)
+					err2 = srtpOutCtx.initialize()
+					require.NoError(t, err2)
 
 					var mikeyMsg *mikey.Message
-					mikeyMsg, err = mikeyGenerate(srtpOutCtx)
-					require.NoError(t, err)
+					mikeyMsg, err2 = mikeyGenerate(srtpOutCtx)
+					require.NoError(t, err2)
 
 					var enc base.HeaderValue
-					enc, err = headers.KeyMgmt{
+					enc, err2 = headers.KeyMgmt{
 						URL:          req.URL.String(),
 						MikeyMessage: mikeyMsg,
 					}.Marshal()
-					require.NoError(t, err)
+					require.NoError(t, err2)
 					h["KeyMgmt"] = enc
 				}
 
@@ -362,9 +362,11 @@ func TestClientRecord(t *testing.T) {
 					recv := make(chan struct{})
 					go func() {
 						defer close(recv)
-						req, err2 = conn.ReadRequest()
-						require.NoError(t, err2)
-						require.Equal(t, base.Options, req.Method)
+						var req2 *base.Request
+						var err3 error
+						req2, err3 = conn.ReadRequest()
+						require.NoError(t, err3)
+						require.Equal(t, base.Options, req2.Method)
 					}()
 
 					select {

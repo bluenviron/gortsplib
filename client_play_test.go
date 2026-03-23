@@ -2969,9 +2969,11 @@ func TestClientPlayKeepAlive(t *testing.T) {
 				recv := make(chan struct{})
 				go func() {
 					defer close(recv)
-					req, err2 = conn.ReadRequest()
-					require.NoError(t, err2)
-					require.Equal(t, base.Options, req.Method)
+					var req2 *base.Request
+					var err3 error
+					req2, err3 = conn.ReadRequest()
+					require.NoError(t, err3)
+					require.Equal(t, base.Options, req2.Method)
 				}()
 
 				select {
@@ -3773,7 +3775,7 @@ func TestClientPlayBackChannel(t *testing.T) {
 				// server -> client
 
 				if transport == "udp" {
-					_, err = l1s[0].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
+					_, err2 = l1s[0].WriteTo(testRTPPacketMarshaled, &net.UDPAddr{
 						IP:   net.ParseIP("127.0.0.1"),
 						Port: clientPorts[0][0],
 					})
@@ -3835,9 +3837,11 @@ func TestClientPlayBackChannel(t *testing.T) {
 				recv := make(chan struct{})
 				go func() {
 					defer close(recv)
-					req, err2 = conn.ReadRequest()
-					require.NoError(t, err2)
-					require.Equal(t, base.Options, req.Method)
+					var req2 *base.Request
+					var err3 error
+					req2, err3 = conn.ReadRequest()
+					require.NoError(t, err3)
+					require.Equal(t, base.Options, req2.Method)
 				}()
 
 				select {
