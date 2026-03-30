@@ -131,6 +131,10 @@ type Server struct {
 	// function used to initialize UDP listeners.
 	// It defaults to net.ListenPacket.
 	ListenPacket func(network, address string) (net.PacketConn, error)
+	// function used to initialize a TLS listener.
+	// When nil, Listen and tls.NewListener are used in its place.
+	// It defaults to nil.
+	TLSListen func(network string, laddr string, config *tls.Config) (net.Listener, error)
 
 	//
 	// private

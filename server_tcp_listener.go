@@ -1,6 +1,7 @@
 package gortsplib
 
 import (
+	"crypto/tls"
 	"net"
 )
 
@@ -11,10 +12,23 @@ type serverTCPListener struct {
 }
 
 func (sl *serverTCPListener) initialize() error {
-	var err error
-	sl.ln, err = sl.s.Listen(restrictNetwork("tcp", sl.s.RTSPAddress))
-	if err != nil {
-		return err
+	if sl.s.TLSConfig != nil && sl.s.TLSListen != nil {
+		var err error
+		net, addr := restrictNetwork("tcp", sl.s.RTSPAddress)
+		sl.ln, err = sl.s.TLSListen(net, addr, sl.s.TLSConfig)
+		if err != nil {
+			return err
+		}
+	} else {
+		var err error
+		sl.ln, err = sl.s.Listen(restrictNetwork("tcp", sl.s.RTSPAddress))
+		if err != nil {
+			return err
+		}
+
+		if sl.s.TLSConfig != nil {
+			sl.ln = tls.NewListener(sl.ln, sl.s.TLSConfig)
+		}
 	}
 
 	sl.s.wg.Add(1)
