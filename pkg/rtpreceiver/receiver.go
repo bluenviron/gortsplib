@@ -50,7 +50,7 @@ type Receiver struct {
 	absPos                     uint16
 	negativeCount              int
 	sequenceNumberCycles       uint16
-	lastValidSeqNum            uint16
+	lastSequenceNumber         uint16
 	remoteSSRC                 uint32
 	lastRTP                    uint32
 	lastSystem                 time.Time
@@ -144,7 +144,7 @@ func (rr *Receiver) report() rtcp.Packet {
 		Reports: []rtcp.ReceptionReport{
 			{
 				SSRC:               rr.remoteSSRC,
-				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastValidSeqNum),
+				LastSequenceNumber: uint32(rr.sequenceNumberCycles)<<16 | uint32(rr.lastSequenceNumber),
 				FractionLost:       fractionLost,
 				TotalLost:          uint32(min(rr.lost, 0xFFFFFF)), // allow up to 24 bits
 				Jitter:             uint32(rr.jitter),
@@ -196,7 +196,7 @@ func (rr *Receiver) ProcessPacket2(
 		rr.firstRTPPacketReceived = true
 		rr.received = 1
 		rr.receivedAndLostSinceReport = 1
-		rr.lastValidSeqNum = pkt.SequenceNumber
+		rr.lastSequenceNumber = pkt.SequenceNumber
 		rr.remoteSSRC = pkt.SSRC
 
 		if ptsEqualsDTS {
@@ -215,7 +215,7 @@ func (rr *Receiver) ProcessPacket2(
 		pkts, lost = rr.reorder(pkt)
 	} else {
 		pkts = []*rtp.Packet{pkt}
-		lost = uint64(pkt.SequenceNumber - rr.lastValidSeqNum - 1)
+		lost = uint64(pkt.SequenceNumber - rr.lastSequenceNumber - 1)
 	}
 
 	rr.lost += lost
@@ -225,12 +225,12 @@ func (rr *Receiver) ProcessPacket2(
 
 	for _, pkt := range pkts {
 		// overflow
-		diff := int32(pkt.SequenceNumber) - int32(rr.lastValidSeqNum)
+		diff := int32(pkt.SequenceNumber) - int32(rr.lastSequenceNumber)
 		if diff < -0x0FFF {
 			rr.sequenceNumberCycles++
 		}
 
-		rr.lastValidSeqNum = pkt.SequenceNumber
+		rr.lastSequenceNumber = pkt.SequenceNumber
 
 		if ptsEqualsDTS {
 			if rr.timeInitialized && rr.ClockRate != 0 {
@@ -254,7 +254,7 @@ func (rr *Receiver) ProcessPacket2(
 }
 
 func (rr *Receiver) reorder(pkt *rtp.Packet) ([]*rtp.Packet, uint64) {
-	relPos := int16(pkt.SequenceNumber - rr.lastValidSeqNum - 1)
+	relPos := int16(pkt.SequenceNumber - rr.lastSequenceNumber - 1)
 
 	// packet is a duplicate or has been sent
 	// before the first packet processed by Reorderer.
@@ -416,7 +416,7 @@ func (rr *Receiver) Stats() *Stats {
 		Received:           rr.received,
 		Lost:               rr.lost,
 		Jitter:             rr.jitter,
-		LastSequenceNumber: rr.lastValidSeqNum,
+		LastSequenceNumber: rr.lastSequenceNumber,
 		LastRTP:            rr.lastRTP,
 		LastNTP:            ntp,
 		// deprecated
