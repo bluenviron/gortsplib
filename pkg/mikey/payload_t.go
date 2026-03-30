@@ -34,15 +34,15 @@ func (p *PayloadT) unmarshal(buf []byte) (int, error) {
 	return n, nil
 }
 
-func (*PayloadT) typ() payloadType {
+func (PayloadT) typ() payloadType {
 	return payloadTypeT
 }
 
-func (p *PayloadT) marshalSize() int {
+func (p PayloadT) marshalSize() int {
 	return 10
 }
 
-func (p *PayloadT) marshalTo(buf []byte) (int, error) {
+func (p PayloadT) marshalTo(buf []byte) (int, error) {
 	buf[1] = p.TSType
 	buf[2] = byte(p.TSValue >> 56)
 	buf[3] = byte(p.TSValue >> 48)

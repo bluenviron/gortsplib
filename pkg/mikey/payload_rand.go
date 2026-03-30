@@ -30,15 +30,15 @@ func (p *PayloadRAND) unmarshal(buf []byte) (int, error) {
 	return n, nil
 }
 
-func (*PayloadRAND) typ() payloadType {
+func (PayloadRAND) typ() payloadType {
 	return payloadTypeRAND
 }
 
-func (p *PayloadRAND) marshalSize() int {
+func (p PayloadRAND) marshalSize() int {
 	return 2 + len(p.Data)
 }
 
-func (p *PayloadRAND) marshalTo(buf []byte) (int, error) {
+func (p PayloadRAND) marshalTo(buf []byte) (int, error) {
 	buf[1] = uint8(len(p.Data))
 	n := 2
 	n += copy(buf[2:], p.Data)

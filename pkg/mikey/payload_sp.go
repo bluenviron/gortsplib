@@ -94,11 +94,11 @@ func (p *PayloadSP) unmarshal(buf []byte) (int, error) {
 	return n, nil
 }
 
-func (*PayloadSP) typ() payloadType {
+func (PayloadSP) typ() payloadType {
 	return payloadTypeSP
 }
 
-func (p *PayloadSP) marshalSize() int {
+func (p PayloadSP) marshalSize() int {
 	n := 5 + 2*len(p.PolicyParams)
 	for _, pp := range p.PolicyParams {
 		n += len(pp.Value)
@@ -106,7 +106,7 @@ func (p *PayloadSP) marshalSize() int {
 	return n
 }
 
-func (p *PayloadSP) marshalTo(buf []byte) (int, error) {
+func (p PayloadSP) marshalTo(buf []byte) (int, error) {
 	buf[1] = p.PolicyNo
 	buf[2] = byte(p.ProtType)
 

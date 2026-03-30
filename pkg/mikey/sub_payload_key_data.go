@@ -48,11 +48,11 @@ func (p *SubPayloadKeyData) unmarshal(buf []byte) (int, error) {
 	return n, nil
 }
 
-func (p *SubPayloadKeyData) marshalSize() int {
+func (p SubPayloadKeyData) marshalSize() int {
 	return 4 + len(p.KeyData)
 }
 
-func (p *SubPayloadKeyData) marshalTo(buf []byte) (int, error) {
+func (p SubPayloadKeyData) marshalTo(buf []byte) (int, error) {
 	buf[1] = byte(p.Type)<<4 | p.KV
 
 	keyDataLen := len(p.KeyData)
