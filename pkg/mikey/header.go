@@ -109,11 +109,11 @@ func (h *Header) unmarshal(buf []byte) (int, payloadType, error) {
 	return n, nextPayload, nil
 }
 
-func (h *Header) marshalSize() int {
+func (h Header) marshalSize() int {
 	return 10 + len(h.CSIDMapInfo)*9
 }
 
-func (h *Header) marshalTo(buf []byte, nextPayload payloadType) (int, error) {
+func (h Header) marshalTo(buf []byte, nextPayload payloadType) (int, error) {
 	buf[0] = h.Version
 	buf[1] = byte(h.DataType)
 	buf[2] = byte(nextPayload)

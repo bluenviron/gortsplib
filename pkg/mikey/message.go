@@ -52,7 +52,7 @@ func (m *Message) Unmarshal(buf []byte) error {
 	return nil
 }
 
-func (m *Message) marshalSize() int {
+func (m Message) marshalSize() int {
 	n := m.Header.marshalSize()
 	for _, pl := range m.Payloads {
 		n += pl.marshalSize()
@@ -61,7 +61,7 @@ func (m *Message) marshalSize() int {
 }
 
 // Marshal encodes a Message.
-func (m *Message) Marshal() ([]byte, error) {
+func (m Message) Marshal() ([]byte, error) {
 	buf := make([]byte, m.marshalSize())
 
 	var nextPayloadType payloadType

@@ -83,11 +83,11 @@ func (p *PayloadKEMAC) unmarshal(buf []byte) (int, error) {
 	return n, nil
 }
 
-func (*PayloadKEMAC) typ() payloadType {
+func (PayloadKEMAC) typ() payloadType {
 	return payloadTypeKEMAC
 }
 
-func (p *PayloadKEMAC) marshalSize() int {
+func (p PayloadKEMAC) marshalSize() int {
 	n := 5
 	for _, sp := range p.SubPayloads {
 		n += sp.marshalSize()
@@ -95,7 +95,7 @@ func (p *PayloadKEMAC) marshalSize() int {
 	return n
 }
 
-func (p *PayloadKEMAC) marshalTo(buf []byte) (int, error) {
+func (p PayloadKEMAC) marshalTo(buf []byte) (int, error) {
 	buf[1] = byte(p.EncrAlg)
 
 	encrDataLen := 0
