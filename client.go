@@ -107,7 +107,7 @@ func canonicalAddr(u *base.URL) string {
 
 	port := u.Port()
 	if port == "" {
-		if u.Scheme == "rtsp" {
+		if u.Scheme == schemeRTSP {
 			port = "554"
 		} else { // rtsps
 			port = "322"
@@ -1136,7 +1136,7 @@ func (c *Client) connOpen() error {
 		return nil
 	}
 
-	if c.Scheme != "rtsp" && c.Scheme != "rtsps" {
+	if c.Scheme != schemeRTSP && c.Scheme != schemeRTSPS {
 		return liberrors.ErrClientUnsupportedScheme{Scheme: c.Scheme}
 	}
 
@@ -1149,7 +1149,7 @@ func (c *Client) connOpen() error {
 	})
 
 	var tlsConfig *tls.Config
-	if c.Scheme == "rtsps" {
+	if c.Scheme == schemeRTSPS {
 		tlsConfig = c.TLSConfig
 		if tlsConfig == nil {
 			host, _, _ := net.SplitHostPort(addr)
@@ -1453,7 +1453,7 @@ func (c *Client) doDescribe(u *base.URL) (*description.Session, *base.Response, 
 				return nil, nil, err
 			}
 
-			if c.Scheme == "rtsps" && ru.Scheme != "rtsps" {
+			if c.Scheme == schemeRTSPS && ru.Scheme != schemeRTSPS {
 				return nil, nil, fmt.Errorf("connection cannot be downgraded from RTSPS to RTSP")
 			}
 
@@ -1540,7 +1540,7 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 	var secure bool
 
 	// Determine secure flag: TCP+RTSPS depends on media profile, others depend on scheme
-	if c.Protocol != nil && *c.Protocol == ProtocolTCP && c.Scheme == "rtsps" {
+	if c.Protocol != nil && *c.Protocol == ProtocolTCP && c.Scheme == schemeRTSPS {
 		// Check for all medias: if any media uses a secure profile, then secure is true
 		for _, medi := range desc.Medias {
 			if isSecure(medi.Profile) {
@@ -1549,7 +1549,7 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 			}
 		}
 	} else {
-		secure = c.Scheme == "rtsps"
+		secure = (c.Scheme == schemeRTSPS)
 	}
 
 	announceData, err := generateAnnounceData(desc, secure)
@@ -1647,14 +1647,14 @@ func (c *Client) doSetup(
 	// use transport from config, secure flag from server
 	case c.Protocol != nil:
 		protocol = *c.Protocol
-		if isSecure(medi.Profile) && c.Scheme == "rtsps" {
+		if isSecure(medi.Profile) && c.Scheme == schemeRTSPS {
 			th.Profile = headers.TransportProfileSAVP
 		} else {
 			th.Profile = headers.TransportProfileAVP
 		}
 
 	default:
-		if isSecure(medi.Profile) && c.Scheme == "rtsps" {
+		if isSecure(medi.Profile) && c.Scheme == schemeRTSPS {
 			th.Profile = headers.TransportProfileSAVP
 		} else {
 			th.Profile = headers.TransportProfileAVP
@@ -1663,7 +1663,7 @@ func (c *Client) doSetup(
 		// try
 		// - UDP if unencrypted or secure is supported by server
 		// - otherwise, TCP
-		if c.Tunnel == TunnelNone && (th.Profile == headers.TransportProfileSAVP || c.Scheme == "rtsp") {
+		if c.Tunnel == TunnelNone && (th.Profile == headers.TransportProfileSAVP || c.Scheme == schemeRTSP) {
 			protocol = ProtocolUDP
 		} else {
 			protocol = ProtocolTCP
@@ -1704,7 +1704,7 @@ func (c *Client) doSetup(
 
 	switch protocol {
 	case ProtocolUDP, ProtocolUDPMulticast:
-		if c.Scheme == "rtsps" && !isSecure(th.Profile) {
+		if c.Scheme == schemeRTSPS && !isSecure(th.Profile) {
 			return nil, fmt.Errorf("unable to setup secure UDP")
 		}
 

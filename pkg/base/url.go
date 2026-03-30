@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+// supported schemas
+const (
+	schemeRTSP  = "rtsp"
+	schemeRTSPS = "rtsps"
+)
+
 // URL is a RTSP URL.
 // This is basically an HTTP URL with some additional functions to handle
 // control attributes.
@@ -29,7 +35,7 @@ func ParseURL(s string) (*URL, error) {
 		return nil, err
 	}
 
-	if u.Scheme != "rtsp" && u.Scheme != "rtsps" {
+	if u.Scheme != schemeRTSP && u.Scheme != schemeRTSPS {
 		return nil, fmt.Errorf("unsupported scheme '%s'", u.Scheme)
 	}
 
