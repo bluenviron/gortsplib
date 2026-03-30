@@ -1,6 +1,10 @@
 package gortsplib
 
 const (
+	// supported schemas
+	schemeRTSP  = "rtsp"
+	schemeRTSPS = "rtsps"
+
 	// 1500 (ethernet MTU) - 20 (IPv4 header) - 8 (UDP header)
 	udpMaxPayloadSize = 1472
 
