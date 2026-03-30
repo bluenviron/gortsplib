@@ -72,7 +72,7 @@ func prepareForDescribe(
 				sm := medias[medi]
 
 				var err error
-				keyMgmtMikey, err = mikeyGenerate(sm.srtpOutCtx)
+				keyMgmtMikey, err = contextToMikey(sm.srtpOutCtx)
 				if err != nil {
 					return nil, err
 				}

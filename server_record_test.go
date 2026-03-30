@@ -811,7 +811,7 @@ func TestServerRecord(t *testing.T) {
 					require.NoError(t, err)
 
 					var mikeyMsg *mikey.Message
-					mikeyMsg, err = mikeyGenerate(srtpOutCtx[i])
+					mikeyMsg, err = contextToMikey(srtpOutCtx[i])
 					require.NoError(t, err)
 
 					var enc base.HeaderValue
@@ -1944,7 +1944,7 @@ func TestServerRecordDifferentSSRCs(t *testing.T) {
 				require.NoError(t, err)
 
 				var mikeyMsg *mikey.Message
-				mikeyMsg, err = mikeyGenerate(srtpOutCtx)
+				mikeyMsg, err = contextToMikey(srtpOutCtx)
 				require.NoError(t, err)
 
 				var enc base.HeaderValue

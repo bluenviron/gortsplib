@@ -16,4 +16,7 @@ const (
 
 	// 10 (HMAC SHA1 authentication tag) + 4 (sequence number)
 	srtcpOverhead = 14
+
+	// Axis requires a 4-byte MKI
+	mkiLength = 4
 )

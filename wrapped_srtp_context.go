@@ -103,6 +103,7 @@ func mikeyToContext(mikeyMsg *mikey.Message) (*wrappedSRTPContext, error) {
 
 	srtpCtx := &wrappedSRTPContext{
 		key:       kemacPayload.SubPayloads[0].KeyData,
+		mki:       kemacPayload.SubPayloads[0].SPI,
 		ssrcs:     ssrcs,
 		startROCs: startROCs,
 	}
@@ -114,7 +115,7 @@ func mikeyToContext(mikeyMsg *mikey.Message) (*wrappedSRTPContext, error) {
 	return srtpCtx, nil
 }
 
-func mikeyGenerate(ctx *wrappedSRTPContext) (*mikey.Message, error) {
+func contextToMikey(ctx *wrappedSRTPContext) (*mikey.Message, error) {
 	csbID, err := randUint32()
 	if err != nil {
 		return nil, err
@@ -145,19 +146,28 @@ func mikeyGenerate(ctx *wrappedSRTPContext) (*mikey.Message, error) {
 		return nil, err
 	}
 
-	keyLen, err := ctx.profile.KeyLen()
+	profile := srtp.ProtectionProfileAes128CmHmacSha1_80
+
+	keyLen, err := profile.KeyLen()
 	if err != nil {
 		return nil, err
 	}
 
-	authKeyLen, err := ctx.profile.AuthKeyLen()
+	authKeyLen, err := profile.AuthKeyLen()
 	if err != nil {
 		return nil, err
 	}
 
-	authTagLen, err := ctx.profile.AuthTagRTPLen()
+	authTagLen, err := profile.AuthTagRTPLen()
 	if err != nil {
 		return nil, err
+	}
+
+	var kv mikey.SubPayloadKeyDataKV
+	if len(ctx.mki) != 0 {
+		kv = mikey.SubPayloadKeyDataKVSPI
+	} else {
+		kv = mikey.SubPayloadKeyDataKVNull
 	}
 
 	msg.Payloads = []mikey.Payload{
@@ -207,8 +217,10 @@ func mikeyGenerate(ctx *wrappedSRTPContext) (*mikey.Message, error) {
 		&mikey.PayloadKEMAC{
 			SubPayloads: []*mikey.SubPayloadKeyData{
 				{
-					Type:    mikey.SubPayloadKeyDataKeyTypeTEK,
+					Type:    mikey.SubPayloadKeyDataTypeTEK,
+					KV:      kv,
 					KeyData: ctx.key,
+					SPI:     ctx.mki,
 				},
 			},
 		},
@@ -223,19 +235,22 @@ func mikeyGenerate(ctx *wrappedSRTPContext) (*mikey.Message, error) {
 // - mutex around Encrypt*, ROC*
 type wrappedSRTPContext struct {
 	key       []byte
+	mki       []byte
 	ssrcs     []uint32
 	startROCs []uint32
 
-	profile srtp.ProtectionProfile
-	w       *srtp.Context
-	mutex   sync.RWMutex
+	w     *srtp.Context
+	mutex sync.RWMutex
 }
 
 func (ctx *wrappedSRTPContext) initialize() error {
-	ctx.profile = srtp.ProtectionProfileAes128CmHmacSha1_80
+	opts := make([]srtp.ContextOption, 0, 1)
+	if len(ctx.mki) != 0 {
+		opts = append(opts, srtp.MasterKeyIndicator(ctx.mki))
+	}
 
 	var err error
-	ctx.w, err = srtp.CreateContext(ctx.key[:16], ctx.key[16:], ctx.profile)
+	ctx.w, err = srtp.CreateContext(ctx.key[:16], ctx.key[16:], srtp.ProtectionProfileAes128CmHmacSha1_80, opts...)
 	if err != nil {
 		return err
 	}

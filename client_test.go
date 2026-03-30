@@ -684,9 +684,9 @@ func TestClientTunnelHTTP(t *testing.T) {
 
 			var scheme string
 			if ca == "http" {
-				scheme = "rtsp"
+				scheme = schemeRTSP
 			} else {
-				scheme = "rtsps"
+				scheme = schemeRTSPS
 			}
 
 			serverDone := make(chan struct{})
@@ -849,9 +849,9 @@ func TestClientTunnelWebSocket(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			var scheme string
 			if ca == "ws" {
-				scheme = "rtsp"
+				scheme = schemeRTSP
 			} else {
-				scheme = "rtsps"
+				scheme = schemeRTSPS
 			}
 
 			s := &http.Server{

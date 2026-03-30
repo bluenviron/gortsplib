@@ -858,7 +858,7 @@ func TestServerPlay(t *testing.T) {
 				require.NoError(t, err)
 
 				var mikeyMsg *mikey.Message
-				mikeyMsg, err = mikeyGenerate(srtpOutCtx)
+				mikeyMsg, err = contextToMikey(srtpOutCtx)
 				require.NoError(t, err)
 
 				var enc base.HeaderValue

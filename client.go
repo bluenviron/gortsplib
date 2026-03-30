@@ -243,6 +243,16 @@ func generateAnnounceData(
 	return data, nil
 }
 
+func announceDataFormatSSRCs(formats map[uint8]*clientAnnounceDataFormat) []uint32 {
+	ssrcs := make([]uint32, len(formats))
+	n := 0
+	for _, af := range formats {
+		ssrcs[n] = af.localSSRC
+		n++
+	}
+	return ssrcs
+}
+
 func prepareForAnnounce(
 	desc *description.Session,
 	announceData map[*description.Media]*clientAnnounceDataMedia,
@@ -255,26 +265,19 @@ func prepareForAnnounce(
 			m.Profile = headers.TransportProfileSAVP
 			announceDataMedia := announceData[m]
 
-			ssrcs := make([]uint32, len(m.Formats))
-			n := 0
-			for _, af := range announceDataMedia.formats {
-				ssrcs[n] = af.localSSRC
-				n++
-			}
-
 			// create a temporary Context.
 			// Context is needed to extract ROC, but since client has not started streaming,
 			// ROC is always zero, therefore a temporary Context can be used.
 			srtpCtx := &wrappedSRTPContext{
 				key:   announceDataMedia.srtpOutKey,
-				ssrcs: ssrcs,
+				ssrcs: announceDataFormatSSRCs(announceDataMedia.formats),
 			}
 			err := srtpCtx.initialize()
 			if err != nil {
 				return err
 			}
 
-			mikeyMsg, err := mikeyGenerate(srtpCtx)
+			mikeyMsg, err := contextToMikey(srtpCtx)
 			if err != nil {
 				return err
 			}
@@ -543,42 +546,43 @@ type Client struct {
 	receiverReportPeriod time.Duration
 	checkTimeoutPeriod   time.Duration
 
-	ctx                  context.Context
-	ctxCancel            func()
-	propsMutex           sync.RWMutex
-	state                clientState
-	nconn                net.Conn
-	conn                 *conn.Conn
-	session              string
-	sender               *auth.Sender
-	cseq                 int
-	optionsSent          bool
-	useGetParameter      bool
-	lastDescribeURL      *base.URL
-	lastDescribeDesc     *description.Session
-	baseURL              *base.URL
-	announceData         map[*description.Media]*clientAnnounceDataMedia // record
-	setuppedTransport    *SessionTransport
-	backChannelSetupped  bool
-	stdChannelSetupped   bool
-	setuppedMedias       map[*description.Media]*clientMedia
-	tcpCallbackByChannel map[int]readFunc
-	lastRange            *headers.Range
-	checkTimeoutTimer    *time.Timer
-	checkTimeoutInitial  bool
-	tcpLastFrameTime     atomic.Int64
-	keepAlivePeriod      time.Duration
-	keepAliveTimer       *time.Timer
-	closeError           error
-	writerMutex          sync.RWMutex
-	writer               *asyncprocessor.Processor
-	reader               *clientReader
-	timeDecoder          *rtptime.GlobalDecoder
-	mustClose            bool
-	tcpFrame             *base.InterleavedFrame
-	tcpBuffer            []byte
-	bytesReceived        atomic.Uint64
-	bytesSent            atomic.Uint64
+	ctx                   context.Context
+	ctxCancel             func()
+	propsMutex            sync.RWMutex
+	state                 clientState
+	nconn                 net.Conn
+	conn                  *conn.Conn
+	session               string
+	sender                *auth.Sender
+	cseq                  int
+	optionsSent           bool
+	useGetParameter       bool
+	lastDescribeURL       *base.URL
+	lastDescribeDesc      *description.Session
+	baseURL               *base.URL
+	announceData          map[*description.Media]*clientAnnounceDataMedia // record
+	setuppedTransport     *SessionTransport
+	axisClientManagedKeys bool
+	backChannelSetupped   bool
+	stdChannelSetupped    bool
+	setuppedMedias        map[*description.Media]*clientMedia
+	tcpCallbackByChannel  map[int]readFunc
+	lastRange             *headers.Range
+	checkTimeoutTimer     *time.Timer
+	checkTimeoutInitial   bool
+	tcpLastFrameTime      atomic.Int64
+	keepAlivePeriod       time.Duration
+	keepAliveTimer        *time.Timer
+	closeError            error
+	writerMutex           sync.RWMutex
+	writer                *asyncprocessor.Processor
+	reader                *clientReader
+	timeDecoder           *rtptime.GlobalDecoder
+	mustClose             bool
+	tcpFrame              *base.InterleavedFrame
+	tcpBuffer             []byte
+	bytesReceived         atomic.Uint64
+	bytesSent             atomic.Uint64
 
 	// in
 	chOptions     chan optionsReq
@@ -1008,11 +1012,13 @@ func (c *Client) trySwitchingProtocol() error {
 
 	prevBaseURL := c.baseURL
 	prevMedias := c.setuppedMedias
+	prevProfile := c.setuppedTransport.Profile
 
 	c.reset()
 
 	c.setuppedTransport = &SessionTransport{
 		Protocol: ProtocolTCP,
+		Profile:  prevProfile,
 	}
 
 	// some Hikvision cameras require a describe before a setup
@@ -1792,8 +1798,19 @@ func (c *Client) doSetup(
 			}
 		}
 
+		var srtpOutMki []byte
+
+		if c.axisClientManagedKeys {
+			srtpOutMki = make([]byte, mkiLength)
+			_, err = rand.Read(srtpOutMki)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		srtpOutCtx = &wrappedSRTPContext{
 			key:   srtpOutKey,
+			mki:   srtpOutMki,
 			ssrcs: ssrcsMapToList(localSSRCs),
 		}
 		err = srtpOutCtx.initialize()
@@ -1802,7 +1819,7 @@ func (c *Client) doSetup(
 		}
 
 		var mikeyMsg *mikey.Message
-		mikeyMsg, err = mikeyGenerate(srtpOutCtx)
+		mikeyMsg, err = contextToMikey(srtpOutCtx)
 		if err != nil {
 			return nil, err
 		}
@@ -1831,7 +1848,8 @@ func (c *Client) doSetup(
 	if res.StatusCode != base.StatusOK {
 		// switch transport automatically
 		if res.StatusCode == base.StatusUnsupportedTransport &&
-			c.setuppedTransport == nil && c.Protocol == nil {
+			c.setuppedTransport == nil &&
+			c.Protocol == nil {
 			c.OnTransportSwitch(liberrors.ErrClientSwitchToTCP2{})
 			c.setuppedTransport = &SessionTransport{
 				Protocol: ProtocolTCP,
@@ -1839,6 +1857,13 @@ func (c *Client) doSetup(
 			}
 
 			return c.doSetup(baseURL, medi, 0, 0)
+		}
+
+		if res.StatusCode == base.StatusKeyManagementFailure &&
+			strings.ToLower(res.StatusMessage) == "key management failure" &&
+			!c.axisClientManagedKeys {
+			c.axisClientManagedKeys = true
+			return c.doSetup(baseURL, medi, rtpPort, rtcpPort)
 		}
 
 		return nil, liberrors.ErrClientBadStatusCode{Code: res.StatusCode, Message: res.StatusMessage}
@@ -2033,34 +2058,45 @@ func (c *Client) doSetup(
 	}
 
 	if isSecure(th.Profile) {
-		var mikeyMsg *mikey.Message
-
-		// extract key-mgmt from (in order of priority):
-		// - response
-		// - media SDP attributes
-		// - session SDP attributes
-		switch {
-		case res.Header["KeyMgmt"] != nil:
-			var keyMgmt headers.KeyMgmt
-			err = keyMgmt.Unmarshal(res.Header["KeyMgmt"])
+		if c.axisClientManagedKeys {
+			srtpInCtx = &wrappedSRTPContext{
+				key: srtpOutCtx.key,
+				mki: srtpOutCtx.mki,
+			}
+			err = srtpInCtx.initialize()
 			if err != nil {
 				return nil, err
 			}
-			mikeyMsg = keyMgmt.MikeyMessage
+		} else {
+			var mikeyMsg *mikey.Message
 
-		case medi.KeyMgmtMikey != nil:
-			mikeyMsg = medi.KeyMgmtMikey
+			// extract key-mgmt from (in order of priority):
+			// - response
+			// - media SDP attributes
+			// - session SDP attributes
+			switch {
+			case res.Header["KeyMgmt"] != nil:
+				var keyMgmt headers.KeyMgmt
+				err = keyMgmt.Unmarshal(res.Header["KeyMgmt"])
+				if err != nil {
+					return nil, err
+				}
+				mikeyMsg = keyMgmt.MikeyMessage
 
-		case c.lastDescribeDesc.KeyMgmtMikey != nil:
-			mikeyMsg = c.lastDescribeDesc.KeyMgmtMikey
+			case medi.KeyMgmtMikey != nil:
+				mikeyMsg = medi.KeyMgmtMikey
 
-		default:
-			return nil, fmt.Errorf("server did not provide key-mgmt data in any supported way")
-		}
+			case c.lastDescribeDesc.KeyMgmtMikey != nil:
+				mikeyMsg = c.lastDescribeDesc.KeyMgmtMikey
 
-		srtpInCtx, err = mikeyToContext(mikeyMsg)
-		if err != nil {
-			return nil, err
+			default:
+				return nil, fmt.Errorf("server did not provide key-mgmt data in any supported way")
+			}
+
+			srtpInCtx, err = mikeyToContext(mikeyMsg)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

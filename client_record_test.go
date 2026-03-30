@@ -289,7 +289,7 @@ func TestClientRecord(t *testing.T) {
 					require.NoError(t, err2)
 
 					var mikeyMsg *mikey.Message
-					mikeyMsg, err2 = mikeyGenerate(srtpOutCtx)
+					mikeyMsg, err2 = contextToMikey(srtpOutCtx)
 					require.NoError(t, err2)
 
 					var enc base.HeaderValue

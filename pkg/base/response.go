@@ -44,6 +44,7 @@ const (
 	StatusUnsupportedTransport               StatusCode = 461
 	StatusDestinationUnreachable             StatusCode = 462
 	StatusDestinationProhibited              StatusCode = 463
+	StatusKeyManagementFailure               StatusCode = 463
 	StatusDataTransportNotReadyYet           StatusCode = 464
 	StatusNotificationReasonUnknown          StatusCode = 465
 	StatusKeyManagementError                 StatusCode = 466

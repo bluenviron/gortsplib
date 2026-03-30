@@ -417,7 +417,7 @@ func TestClientPlay(t *testing.T) {
 						require.NoError(t, err2)
 
 						var mikeyMsg *mikey.Message
-						mikeyMsg, err = mikeyGenerate(srtpOutCtx[i])
+						mikeyMsg, err = contextToMikey(srtpOutCtx[i])
 						require.NoError(t, err)
 
 						var enc base.HeaderValue
@@ -747,7 +747,7 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 				err2 = srtpOutCtx.initialize()
 				require.NoError(t, err2)
 
-				mikeyMsg, err2 := mikeyGenerate(srtpOutCtx)
+				mikeyMsg, err2 := contextToMikey(srtpOutCtx)
 				require.NoError(t, err2)
 
 				enc, err2 := mikeyMsg.Marshal()
@@ -892,7 +892,15 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 
 			packetRecv := make(chan struct{})
 
-			c.OnPacketRTPAny(func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
+			c.OnPacketRTPAny(func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
+				require.Equal(t, &rtp.Packet{
+					Header: rtp.Header{
+						Version:     2,
+						PayloadType: 96,
+						SSRC:        pkt.SSRC,
+					},
+					Payload: testRTPPacket.Payload,
+				}, pkt)
 				close(packetRecv)
 			})
 
@@ -902,6 +910,253 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 			<-packetRecv
 		})
 	}
+}
+
+func TestClientPlayAxisClientManagedKeys(t *testing.T) {
+	cert, err := tls.X509KeyPair(serverCert, serverKey)
+	require.NoError(t, err)
+
+	l, err := tls.Listen("tcp", "127.0.0.1:8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	rtcpRecv := make(chan struct{})
+
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Describe, req.Method)
+
+		sdp := "v=0\n" +
+			"o=actionmovie 2891092738 2891092738 IN IP4 movie.example.com\n" +
+			"s=Action Movie\n" +
+			"t=0 0\n" +
+			"c=IN IP4 movie.example.com\n" +
+			"m=video 0 RTP/SAVP 96\n" +
+			"a=rtpmap:96 H264/90000\n" +
+			"a=control:trackID=0\n"
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsps://127.0.0.1:8554/stream/"},
+			},
+			Body: []byte(sdp),
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Setup, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode:    base.StatusKeyManagementFailure,
+			StatusMessage: "Key management failure",
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Setup, req.Method)
+
+		var inTH headers.Transport
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
+		require.Equal(t, (*headers.TransportMode)(nil), inTH.Mode)
+
+		var reqKeyMgmt headers.KeyMgmt
+		err2 = reqKeyMgmt.Unmarshal(req.Header["KeyMgmt"])
+		require.NoError(t, err2)
+		require.Equal(t, req.URL.String(), reqKeyMgmt.URL)
+
+		reqKEMAC, ok := mikeyGetPayload[*mikey.PayloadKEMAC](reqKeyMgmt.MikeyMessage)
+		require.True(t, ok)
+		require.Len(t, reqKEMAC.SubPayloads, 1)
+		require.Len(t, reqKEMAC.SubPayloads[0].KeyData, srtpKeyLength)
+		require.Equal(t, mikey.SubPayloadKeyDataKVSPI, reqKEMAC.SubPayloads[0].KV)
+		require.Len(t, reqKEMAC.SubPayloads[0].SPI, mkiLength)
+
+		serverOutCtx, err2 := mikeyToContext(reqKeyMgmt.MikeyMessage)
+		require.NoError(t, err2)
+
+		responseKey := make([]byte, srtpKeyLength)
+		_, err2 = rand.Read(responseKey)
+		require.NoError(t, err2)
+
+		responseMKI := make([]byte, mkiLength)
+		_, err2 = rand.Read(responseMKI)
+		require.NoError(t, err2)
+
+		responseCtx := &wrappedSRTPContext{
+			key:   responseKey,
+			mki:   responseMKI,
+			ssrcs: []uint32{845234432},
+		}
+		err2 = responseCtx.initialize()
+		require.NoError(t, err2)
+
+		responseMikey, err2 := contextToMikey(responseCtx)
+		require.NoError(t, err2)
+
+		responseKEMAC, ok := mikeyGetPayload[*mikey.PayloadKEMAC](responseMikey)
+		require.True(t, ok)
+		require.Len(t, responseKEMAC.SubPayloads, 1)
+		require.NotEqual(t, reqKEMAC.SubPayloads[0].KeyData, responseKEMAC.SubPayloads[0].KeyData)
+		require.NotEqual(t, reqKEMAC.SubPayloads[0].SPI, responseKEMAC.SubPayloads[0].SPI)
+
+		th := headers.Transport{
+			Profile: headers.TransportProfileSAVP,
+		}
+		th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
+		th.Protocol = headers.TransportProtocolUDP
+		th.ClientPorts = inTH.ClientPorts
+		th.ServerPorts = &[2]int{34556, 34557}
+
+		responseKeyMgmt, err2 := headers.KeyMgmt{
+			URL:          req.URL.String(),
+			MikeyMessage: responseMikey,
+		}.Marshal()
+		require.NoError(t, err2)
+
+		l1, err2 := net.ListenPacket(
+			"udp", net.JoinHostPort("127.0.0.1", strconv.FormatInt(int64(th.ServerPorts[0]), 10)))
+		require.NoError(t, err2)
+		defer l1.Close()
+
+		l2, err2 := net.ListenPacket(
+			"udp", net.JoinHostPort("127.0.0.1", strconv.FormatInt(int64(th.ServerPorts[1]), 10)))
+		require.NoError(t, err2)
+		defer l2.Close()
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Marshal(),
+				"KeyMgmt":   responseKeyMgmt,
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Play, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err2)
+
+		buf := make([]byte, 2048)
+		_, _, err2 = l2.ReadFrom(buf)
+		require.NoError(t, err2)
+
+		encr, err2 := serverOutCtx.encryptRTP(buf, testRTPPacketMarshaled, nil)
+		require.NoError(t, err2)
+
+		_, err2 = l1.WriteTo(encr, &net.UDPAddr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: inTH.ClientPorts[0],
+		})
+		require.NoError(t, err2)
+
+		buf = make([]byte, 2048)
+		n, _, err2 := l2.ReadFrom(buf)
+		require.NoError(t, err2)
+
+		decr, err2 := serverOutCtx.decryptRTCP(buf[:n], buf[:n], nil)
+		require.NoError(t, err2)
+
+		packets, err2 := rtcp.Unmarshal(decr)
+		require.NoError(t, err2)
+
+		rr, ok := packets[0].(*rtcp.ReceiverReport)
+		require.True(t, ok)
+
+		require.Equal(t, &rtcp.ReceiverReport{
+			SSRC: rr.SSRC,
+			Reports: []rtcp.ReceptionReport{{
+				SSRC:               rr.Reports[0].SSRC,
+				LastSequenceNumber: uint32(testRTPPacket.SequenceNumber),
+				Delay:              rr.Reports[0].Delay,
+			}},
+			ProfileExtensions: []uint8{},
+		}, rr)
+
+		close(rtcpRecv)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Teardown, req.Method)
+	}()
+
+	u, err := base.ParseURL("rtsps://127.0.0.1:8554/stream")
+	require.NoError(t, err)
+
+	c := Client{
+		Scheme:               u.Scheme,
+		Host:                 u.Host,
+		TLSConfig:            &tls.Config{InsecureSkipVerify: true},
+		receiverReportPeriod: 500 * time.Millisecond,
+		Protocol:             ptrOf(ProtocolUDP),
+	}
+
+	err = c.Start()
+	require.NoError(t, err)
+	defer c.Close()
+
+	sd, _, err := c.Describe(u)
+	require.NoError(t, err)
+
+	err = c.SetupAll(sd.BaseURL, sd.Medias)
+	require.NoError(t, err)
+
+	packetRecv := make(chan struct{})
+
+	c.OnPacketRTPAny(func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
+		require.Equal(t, &rtp.Packet{
+			Header: rtp.Header{
+				Version:     2,
+				PayloadType: 96,
+				SSRC:        pkt.SSRC,
+			},
+			Payload: pkt.Payload,
+		}, pkt)
+		close(packetRecv)
+	})
+
+	_, err = c.Play(nil)
+	require.NoError(t, err)
+
+	<-packetRecv
+
+	<-rtcpRecv
 }
 
 func TestClientPlayPartial(t *testing.T) {
@@ -1310,10 +1565,12 @@ func TestClientPlayAnyPort(t *testing.T) {
 					var n int
 					n, _, err2 = l1b.ReadFrom(buf)
 					require.NoError(t, err2)
+
 					var packets []rtcp.Packet
 					packets, err2 = rtcp.Unmarshal(buf[:n])
 					require.NoError(t, err2)
 					require.Equal(t, &testRTCPPacket, packets[0])
+
 					close(serverRecv)
 				}
 
@@ -2571,10 +2828,13 @@ func TestClientPlayRTCPReport(t *testing.T) {
 		buf = make([]byte, 2048)
 		n, _, err2 := l2.ReadFrom(buf)
 		require.NoError(t, err2)
+
 		packets, err2 := rtcp.Unmarshal(buf[:n])
 		require.NoError(t, err2)
+
 		rr, ok := packets[0].(*rtcp.ReceiverReport)
 		require.True(t, ok)
+
 		require.Equal(t, &rtcp.ReceiverReport{
 			SSRC: rr.SSRC,
 			Reports: []rtcp.ReceptionReport{
@@ -4061,7 +4321,7 @@ func TestClientPlayDifferentSSRCs(t *testing.T) {
 					require.NoError(t, err2)
 
 					var mikeyMsg *mikey.Message
-					mikeyMsg, err = mikeyGenerate(srtpOutCtx)
+					mikeyMsg, err = contextToMikey(srtpOutCtx)
 					require.NoError(t, err)
 
 					var enc base.HeaderValue

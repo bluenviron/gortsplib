@@ -371,6 +371,42 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"KEMAC key data with SPI",
+		[]byte{
+			0x01, 0x00, 0x01, 0x00, 0x12, 0x34, 0x56, 0x78,
+			0x01, 0x00,
+			0x03, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
+			0x00, 0x00, 0x00, 0x0a,
+			0x00, 0x21, 0x00, 0x03, 0xaa, 0xbb, 0xcc, 0x02, 0x11, 0x22,
+			0x00,
+		},
+		Message{
+			Header: Header{
+				Version: 1,
+				CSBID:   0x12345678,
+				CSIDMapInfo: []SRTPIDEntry{
+					{
+						PolicyNo: 0x03,
+						SSRC:     0x11223344,
+						ROC:      0x55667788,
+					},
+				},
+			},
+			Payloads: []Payload{
+				&PayloadKEMAC{
+					SubPayloads: []*SubPayloadKeyData{
+						{
+							Type:    SubPayloadKeyDataTypeTEK,
+							KV:      SubPayloadKeyDataKVSPI,
+							KeyData: []byte{0xaa, 0xbb, 0xcc},
+							SPI:     []byte{0x11, 0x22},
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
