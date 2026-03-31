@@ -116,7 +116,6 @@ func createAudioMedia() *description.Media {
 
 // setupTLSTestServer creates a TLS listener and server goroutine for RTSPS testing
 func setupTLSTestServer(t *testing.T) (net.Listener, chan struct{}) {
-	// Create TLS listener for RTSPS
 	cert, err := tls.X509KeyPair(serverCert, serverKey)
 	require.NoError(t, err)
 

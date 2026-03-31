@@ -1647,8 +1647,8 @@ func TestServerPlayVLCMulticast(t *testing.T) {
 
 	nconn, err := net.Dial("tcp", listenIP+":8554")
 	require.NoError(t, err)
-	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 	defer nconn.Close()
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 	res, err := writeReqReadRes(conn, base.Request{
 		Method: base.Describe,

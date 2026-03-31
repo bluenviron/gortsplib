@@ -56,11 +56,29 @@ func (c *clientTunnelHTTP) SetWriteDeadline(t time.Time) error {
 
 func newClientTunnelHTTP(
 	ctx context.Context,
-	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
 	addr string,
+	secure bool,
 	tlsConfig *tls.Config,
+	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
 ) (net.Conn, error) {
 	c := &clientTunnelHTTP{}
+
+	if secure {
+		// clone TLS config and fill ServerName if empty.
+		// this is the same behavior of http.Client.
+		// https://cs.opensource.google/go/go/+/master:src/net/http/transport.go;l=1754;drc=a4b534f5e42fe58d58c0ff0562d76680cedb0466
+
+		if tlsConfig == nil {
+			tlsConfig = &tls.Config{}
+		} else {
+			tlsConfig = tlsConfig.Clone()
+		}
+
+		if tlsConfig.ServerName == "" {
+			host, _, _ := net.SplitHostPort(addr)
+			tlsConfig.ServerName = host
+		}
+	}
 
 	var err error
 	c.readChan, err = dialContext(ctx, "tcp", addr)
@@ -68,7 +86,7 @@ func newClientTunnelHTTP(
 		return nil, err
 	}
 
-	if tlsConfig != nil {
+	if secure {
 		c.readChan = tls.Client(c.readChan, tlsConfig)
 	}
 
@@ -127,7 +145,7 @@ func newClientTunnelHTTP(
 		return nil, err
 	}
 
-	if tlsConfig != nil {
+	if secure {
 		c.writeChan = tls.Client(c.writeChan, tlsConfig)
 	}
 
