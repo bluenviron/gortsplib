@@ -2865,16 +2865,21 @@ func TestServerPlayBackChannel(t *testing.T) {
 func TestServerPlayBackChannelReportedLostStats(t *testing.T) {
 	var stream *ServerStream
 
-	sessionClosed := make(chan *SessionStats)
+	sessionClosed := make(chan struct{})
 	receiverReportProcessed := make(chan struct{})
 
 	s := &Server{
 		Handler: &testServerHandler{
 			onSessionClose: func(ctx *ServerHandlerOnSessionCloseCtx) {
-				select {
-				case sessionClosed <- ctx.Session.Stats():
-				default:
-				}
+				stats := ctx.Session.Stats()
+				require.Equal(t, uint64(9), stats.OutboundRTPPacketsReportedLost)
+				require.Equal(t, uint64(9), stats.RTPPacketsReportedLost)
+
+				formatStats := stats.Medias[testH264Media].Formats[testH264Media.Formats[0]]
+				require.Equal(t, uint64(9), formatStats.OutboundRTPPacketsReportedLost)
+				require.Equal(t, uint64(9), formatStats.RTPPacketsReportedLost)
+
+				close(sessionClosed)
 			},
 			onDescribe: func(*ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
 				return &base.Response{StatusCode: base.StatusOK}, stream, nil
@@ -2927,6 +2932,7 @@ func TestServerPlayBackChannelReportedLostStats(t *testing.T) {
 	require.NoError(t, err)
 
 	rtpReceived := make(chan struct{})
+
 	c.OnPacketRTPAny(func(medi *description.Media, _ format.Format, pkt *rtp.Packet) {
 		err2 := c.WritePacketRTCP(medi, &rtcp.ReceiverReport{
 			Reports: []rtcp.ReceptionReport{{
@@ -2954,13 +2960,7 @@ func TestServerPlayBackChannelReportedLostStats(t *testing.T) {
 
 	c.Close()
 
-	stats := <-sessionClosed
-	require.Equal(t, uint64(9), stats.OutboundRTPPacketsReportedLost)
-	require.Equal(t, uint64(9), stats.RTPPacketsReportedLost)
-
-	formatStats := stats.Medias[testH264Media].Formats[testH264Media.Formats[0]]
-	require.Equal(t, uint64(9), formatStats.OutboundRTPPacketsReportedLost)
-	require.Equal(t, uint64(9), formatStats.RTPPacketsReportedLost)
+	<-sessionClosed
 }
 
 func TestServerPlayMulticastParams(t *testing.T) {
