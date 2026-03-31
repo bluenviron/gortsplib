@@ -20,14 +20,11 @@ type serverStreamMedia struct {
 
 	formats         map[uint8]*serverStreamFormat
 	multicastWriter *serverMulticastWriterMedia
-	bytesSent       *uint64
-	rtcpPacketsSent *uint64
+	bytesSent       atomic.Uint64
+	rtcpPacketsSent atomic.Uint64
 }
 
 func (ssm *serverStreamMedia) initialize() {
-	ssm.bytesSent = new(uint64)
-	ssm.rtcpPacketsSent = new(uint64)
-
 	ssm.formats = make(map[uint8]*serverStreamFormat)
 
 	for _, forma := range ssm.media.Formats {
@@ -53,8 +50,8 @@ func (ssm *serverStreamMedia) rtpInfoEntry(now time.Time) *headers.RTPInfoEntry 
 }
 
 func (ssm *serverStreamMedia) stats() ServerStreamStatsMedia {
-	bytesSent := atomic.LoadUint64(ssm.bytesSent)
-	rtcpPacketsSent := atomic.LoadUint64(ssm.rtcpPacketsSent)
+	bytesSent := ssm.bytesSent.Load()
+	rtcpPacketsSent := ssm.rtcpPacketsSent.Load()
 
 	return ServerStreamStatsMedia{
 		OutboundBytes:       bytesSent,
@@ -109,7 +106,7 @@ func (ssm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 					continue
 				}
 
-				atomic.AddUint64(ssm.bytesSent, encrLen)
+				ssm.bytesSent.Add(encrLen)
 			} else {
 				err = sm.writePacketRTCPEncoded(plain)
 				if err != nil {
@@ -117,10 +114,10 @@ func (ssm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 					continue
 				}
 
-				atomic.AddUint64(ssm.bytesSent, plainLen)
+				ssm.bytesSent.Add(plainLen)
 			}
 
-			atomic.AddUint64(ssm.rtcpPacketsSent, 1)
+			ssm.rtcpPacketsSent.Add(1)
 		}
 	}
 
@@ -132,17 +129,17 @@ func (ssm *serverStreamMedia) writePacketRTCP(pkt rtcp.Packet) error {
 				return err
 			}
 
-			atomic.AddUint64(ssm.bytesSent, encrLen)
+			ssm.bytesSent.Add(encrLen)
 		} else {
 			err = ssm.multicastWriter.writePacketRTCPEncoded(plain)
 			if err != nil {
 				return err
 			}
 
-			atomic.AddUint64(ssm.bytesSent, plainLen)
+			ssm.bytesSent.Add(plainLen)
 		}
 
-		atomic.AddUint64(ssm.rtcpPacketsSent, 1)
+		ssm.rtcpPacketsSent.Add(1)
 	}
 
 	return nil

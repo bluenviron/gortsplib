@@ -24,9 +24,9 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v5/internal/asyncprocessor"
+	"github.com/bluenviron/gortsplib/v5/internal/bytecounter"
 	"github.com/bluenviron/gortsplib/v5/pkg/auth"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
-	"github.com/bluenviron/gortsplib/v5/pkg/bytecounter"
 	"github.com/bluenviron/gortsplib/v5/pkg/conn"
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
@@ -562,7 +562,7 @@ type Client struct {
 	lastRange            *headers.Range
 	checkTimeoutTimer    *time.Timer
 	checkTimeoutInitial  bool
-	tcpLastFrameTime     *int64
+	tcpLastFrameTime     atomic.Int64
 	keepAlivePeriod      time.Duration
 	keepAliveTimer       *time.Timer
 	closeError           error
@@ -573,8 +573,8 @@ type Client struct {
 	mustClose            bool
 	tcpFrame             *base.InterleavedFrame
 	tcpBuffer            []byte
-	bytesReceived        *uint64
-	bytesSent            *uint64
+	bytesReceived        atomic.Uint64
+	bytesSent            atomic.Uint64
 
 	// in
 	chOptions     chan optionsReq
@@ -695,8 +695,6 @@ func (c *Client) Start() error {
 	c.checkTimeoutTimer = emptyTimer()
 	c.keepAlivePeriod = 30 * time.Second
 	c.keepAliveTimer = emptyTimer()
-	c.bytesReceived = new(uint64)
-	c.bytesSent = new(uint64)
 
 	c.chOptions = make(chan optionsReq)
 	c.chDescribe = make(chan describeReq)
@@ -1068,7 +1066,7 @@ func (c *Client) startTransportRoutines() {
 
 		default: // TCP
 			c.checkTimeoutTimer = time.NewTimer(c.checkTimeoutPeriod)
-			c.tcpLastFrameTime = ptrOf(c.timeNow().Unix())
+			c.tcpLastFrameTime.Store(c.timeNow().Unix())
 		}
 	}
 
@@ -1189,7 +1187,7 @@ func (c *Client) connOpen() error {
 	}
 
 	c.nconn = nconn
-	bc := bytecounter.New(c.nconn, c.bytesReceived, c.bytesSent)
+	bc := bytecounter.New(c.nconn, &c.bytesReceived, &c.bytesSent)
 	c.conn = conn.NewConn(bufio.NewReader(bc), bc)
 	c.reader = &clientReader{
 		c: c,
@@ -1284,12 +1282,12 @@ func (c *Client) do(req *base.Request, skipResponse bool) (*base.Response, error
 
 func (c *Client) atLeastOneUDPPacketHasBeenReceived() bool {
 	for _, ct := range c.setuppedMedias {
-		lft := atomic.LoadInt64(ct.udpRTPListener.lastPacketTime)
+		lft := ct.udpRTPListener.lastPacketTime.Load()
 		if lft != 0 {
 			return true
 		}
 
-		lft = atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime)
+		lft = ct.udpRTCPListener.lastPacketTime.Load()
 		if lft != 0 {
 			return true
 		}
@@ -1300,12 +1298,12 @@ func (c *Client) atLeastOneUDPPacketHasBeenReceived() bool {
 func (c *Client) isInUDPTimeout() bool {
 	now := c.timeNow()
 	for _, ct := range c.setuppedMedias {
-		lft := time.Unix(atomic.LoadInt64(ct.udpRTPListener.lastPacketTime), 0)
+		lft := time.Unix(ct.udpRTPListener.lastPacketTime.Load(), 0)
 		if now.Sub(lft) < c.ReadTimeout {
 			return false
 		}
 
-		lft = time.Unix(atomic.LoadInt64(ct.udpRTCPListener.lastPacketTime), 0)
+		lft = time.Unix(ct.udpRTCPListener.lastPacketTime.Load(), 0)
 		if now.Sub(lft) < c.ReadTimeout {
 			return false
 		}
@@ -1315,7 +1313,7 @@ func (c *Client) isInUDPTimeout() bool {
 
 func (c *Client) isInTCPTimeout() bool {
 	now := c.timeNow()
-	lft := time.Unix(atomic.LoadInt64(c.tcpLastFrameTime), 0)
+	lft := time.Unix(c.tcpLastFrameTime.Load(), 0)
 	return now.Sub(lft) >= c.ReadTimeout
 }
 
@@ -2468,10 +2466,10 @@ func (c *Client) Stats() *ClientStats {
 
 	return &ClientStats{
 		Conn: ConnStats{
-			InboundBytes:  atomic.LoadUint64(c.bytesReceived),
-			OutboundBytes: atomic.LoadUint64(c.bytesSent),
-			BytesReceived: atomic.LoadUint64(c.bytesReceived),
-			BytesSent:     atomic.LoadUint64(c.bytesSent),
+			InboundBytes:  c.bytesReceived.Load(),
+			OutboundBytes: c.bytesSent.Load(),
+			BytesReceived: c.bytesReceived.Load(),
+			BytesSent:     c.bytesSent.Load(),
 		},
 		Session: sessionStatsFromMedias(mediaStats),
 	}

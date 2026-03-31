@@ -314,7 +314,7 @@ type ServerSession struct {
 	lastRequestTime       time.Time
 	tcpConn               *ServerConn
 	announcedDesc         *description.Session // record
-	udpLastPacketTime     *int64               // record
+	udpLastPacketTime     atomic.Int64         // record
 	udpCheckStreamTimer   *time.Timer
 	writerMutex           sync.RWMutex
 	writer                *asyncprocessor.Processor
@@ -659,7 +659,7 @@ func (ss *ServerSession) runInner() error {
 		case <-ss.udpCheckStreamTimer.C:
 			now := ss.s.timeNow()
 
-			lft := atomic.LoadInt64(ss.udpLastPacketTime)
+			lft := ss.udpLastPacketTime.Load()
 
 			// in case of RECORD, timeout happens when no RTP or RTCP packets are being received
 			if ss.state == ServerSessionStateRecord {
@@ -1231,7 +1231,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				ss.state = ServerSessionStatePlay
 				ss.propsMutex.Unlock()
 
-				ss.udpLastPacketTime = ptrOf(ss.s.timeNow().Unix())
+				ss.udpLastPacketTime.Store(ss.s.timeNow().Unix())
 
 				ss.timeDecoder = &rtptime.GlobalDecoder{}
 				ss.timeDecoder.Initialize()
@@ -1323,7 +1323,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		if res.StatusCode == base.StatusOK {
 			ss.state = ServerSessionStateRecord
 
-			ss.udpLastPacketTime = ptrOf(ss.s.timeNow().Unix())
+			ss.udpLastPacketTime.Store(ss.s.timeNow().Unix())
 
 			ss.timeDecoder = &rtptime.GlobalDecoder{}
 			ss.timeDecoder.Initialize()

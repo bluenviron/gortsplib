@@ -44,7 +44,7 @@ type clientUDPListener struct {
 	writeAddr *net.UDPAddr
 
 	running        bool
-	lastPacketTime *int64
+	lastPacketTime atomic.Int64
 
 	done chan struct{}
 }
@@ -72,7 +72,6 @@ func (u *clientUDPListener) initialize() error {
 		}
 	}
 
-	u.lastPacketTime = ptrOf(int64(0))
 	return nil
 }
 
@@ -134,7 +133,7 @@ func (u *clientUDPListener) run() {
 		}
 
 		now := u.c.timeNow()
-		atomic.StoreInt64(u.lastPacketTime, now.Unix())
+		u.lastPacketTime.Store(now.Unix())
 
 		if u.readFunc(buf[:n]) {
 			createNewBuffer()

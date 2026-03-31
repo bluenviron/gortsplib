@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -305,7 +304,7 @@ func (cf *clientFormat) writePacketRTPEncoded(
 ) error {
 	cf.rtpSender.ProcessPacket(pkt, ntp, ptsEqualsDTS)
 
-	atomic.AddUint64(cf.cm.bytesSent, uint64(len(payload)))
+	cf.cm.bytesSent.Add(uint64(len(payload)))
 
 	cf.cm.c.writerMutex.RLock()
 	defer cf.cm.c.writerMutex.RUnlock()

@@ -491,13 +491,14 @@ func TestServerPlaySetupErrors(t *testing.T) {
 
 func TestServerPlaySetupErrorSameUDPPortsAndIP(t *testing.T) {
 	var stream *ServerStream
-	first := int32(1)
+	var first atomic.Int32
+	first.Store(1)
 	errorRecv := make(chan struct{})
 
 	s := &Server{
 		Handler: &testServerHandler{
 			onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-				if atomic.SwapInt32(&first, 0) == 1 {
+				if first.Swap(0) == 1 {
 					require.EqualError(t, ctx.Error,
 						"UDP ports 35466 and 35467 are already assigned to another reader with the same IP")
 					close(errorRecv)
@@ -622,7 +623,7 @@ func TestServerPlay(t *testing.T) {
 			sessionOpened := make(chan struct{})
 			sessionClosed := make(chan struct{})
 			framesReceived := make(chan struct{})
-			counter := uint64(0)
+			var counter atomic.Uint64
 
 			listenIP := multicastCapableIP(t)
 
@@ -734,7 +735,7 @@ func TestServerPlay(t *testing.T) {
 
 						ctx.Session.OnPacketRTCPAny(func(medi *description.Media, pkt rtcp.Packet) {
 							// ignore multicast loopback
-							if ca.secure == "unsecure" && ca.transport == "multicast" && atomic.AddUint64(&counter, 1) > 1 {
+							if ca.secure == "unsecure" && ca.transport == "multicast" && counter.Add(1) > 1 {
 								return
 							}
 
