@@ -1133,7 +1133,7 @@ func (c *Client) destroyWriter() {
 	c.writerMutex.Unlock()
 }
 
-func (c *Client) connOpen() error {
+func (c *Client) connOpen(u *base.URL) error {
 	if c.nconn != nil {
 		return nil
 	}
@@ -1156,7 +1156,7 @@ func (c *Client) connOpen() error {
 	case TunnelHTTP:
 		var err error
 		nconn, err = newClientTunnelHTTP(dialCtx, addr, (c.Scheme == schemeRTSPS),
-			c.TLSConfig, c.DialContext, c.DialTLSContext)
+			c.TLSConfig, c.DialContext, c.DialTLSContext, u)
 		if err != nil {
 			return err
 		}
@@ -1385,7 +1385,7 @@ func (c *Client) doOptions(u *base.URL) (*base.Response, error) {
 		return nil, err
 	}
 
-	err = c.connOpen()
+	err = c.connOpen(u)
 	if err != nil {
 		return nil, err
 	}
@@ -1436,7 +1436,7 @@ func (c *Client) doDescribe(u *base.URL) (*description.Session, *base.Response, 
 		return nil, nil, err
 	}
 
-	err = c.connOpen()
+	err = c.connOpen(u)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1549,7 +1549,7 @@ func (c *Client) doAnnounce(u *base.URL, desc *description.Session) (*base.Respo
 		return nil, fmt.Errorf("recording with UDP multicast is not supported")
 	}
 
-	err = c.connOpen()
+	err = c.connOpen(u)
 	if err != nil {
 		return nil, err
 	}
@@ -1638,7 +1638,7 @@ func (c *Client) doSetup(
 		return nil, err
 	}
 
-	err = c.connOpen()
+	err = c.connOpen(baseURL)
 	if err != nil {
 		return nil, err
 	}

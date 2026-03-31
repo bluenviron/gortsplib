@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/base"
 )
 
 type clientTunnelHTTP struct {
@@ -61,6 +63,7 @@ func newClientTunnelHTTP(
 	tlsConfig *tls.Config,
 	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
 	dialTLSContext func(ctx context.Context, network string, addr string) (net.Conn, error),
+	u *base.URL,
 ) (net.Conn, error) {
 	c := &clientTunnelHTTP{}
 
@@ -123,11 +126,12 @@ func newClientTunnelHTTP(
 	}()
 
 	tunnelID := strings.ReplaceAll(uuid.New().String(), "-", "")
+	requestTarget := clientTunnelHTTPRequestTarget(u)
 
 	// do not use http.Request
 	// since Content-Length requires a Body of same size
 	_, err := c.readChan.Write([]byte(
-		"GET / HTTP/1.1\r\n" +
+		"GET " + requestTarget + " HTTP/1.1\r\n" +
 			"Host: " + addr + "\r\n" +
 			"X-Sessioncookie: " + tunnelID + "\r\n" +
 			"Accept: application/x-rtsp-tunnelled\r\n" +
@@ -189,7 +193,7 @@ func newClientTunnelHTTP(
 	// do not use http.Request
 	// since Content-Length requires a Body of same size
 	_, err = c.writeChan.Write([]byte(
-		"POST / HTTP/1.1\r\n" +
+		"POST " + requestTarget + " HTTP/1.1\r\n" +
 			"Host: " + addr + "\r\n" +
 			"X-Sessioncookie: " + tunnelID + "\r\n" +
 			"Content-Type: application/x-rtsp-tunnelled\r\n" +
@@ -213,4 +217,21 @@ func newClientTunnelHTTP(
 
 	ok = true
 	return c, nil
+}
+
+func clientTunnelHTTPRequestTarget(u *base.URL) string {
+	if u == nil {
+		return "/"
+	}
+
+	ret := u.Path
+	if ret == "" {
+		ret = "/"
+	}
+
+	if u.RawQuery != "" {
+		ret += "?" + u.RawQuery
+	}
+
+	return ret
 }
