@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bluenviron/gortsplib/v5/internal/bytecounter"
 	"github.com/bluenviron/gortsplib/v5/pkg/auth"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
-	"github.com/bluenviron/gortsplib/v5/pkg/bytecounter"
 	"github.com/bluenviron/gortsplib/v5/pkg/conn"
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"

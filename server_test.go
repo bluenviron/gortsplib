@@ -1314,12 +1314,12 @@ func TestServerTunnelHTTP(t *testing.T) {
 	for _, ca := range []string{"http", "https"} {
 		t.Run(ca, func(t *testing.T) {
 			done := make(chan struct{})
-			n := new(uint64)
+			var n atomic.Uint64
 
 			s := &Server{
 				Handler: &testServerHandler{
 					onConnClose: func(ctx *ServerHandlerOnConnCloseCtx) {
-						switch atomic.AddUint64(n, 1) {
+						switch n.Add(1) {
 						case 1:
 							require.EqualError(t, ctx.Error, "upgraded to HTTP conn")
 

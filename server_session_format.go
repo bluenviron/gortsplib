@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -323,7 +322,7 @@ func (ssf *serverSessionFormat) writePacketRTPEncoded(
 ) error {
 	ssf.rtpSender.ProcessPacket(pkt, ntp, ptsEqualsDTS)
 
-	atomic.AddUint64(ssf.ssm.bytesSent, uint64(len(payload)))
+	ssf.ssm.bytesSent.Add(uint64(len(payload)))
 
 	ssf.ssm.ss.writerMutex.RLock()
 	defer ssf.ssm.ss.writerMutex.RUnlock()

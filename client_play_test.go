@@ -2405,7 +2405,7 @@ func TestClientPlayPausePlay(t *testing.T) {
 				require.NoError(t, err2)
 			}()
 
-			firstFrame := int32(0)
+			var firstFrame atomic.Int32
 			packetRecv := make(chan struct{})
 
 			c := Client{
@@ -2421,7 +2421,7 @@ func TestClientPlayPausePlay(t *testing.T) {
 
 			err = readAll(&c, "rtsp://localhost:8554/teststream",
 				func(_ *description.Media, _ format.Format, _ *rtp.Packet) {
-					if atomic.SwapInt32(&firstFrame, 1) == 0 {
+					if firstFrame.Swap(1) == 0 {
 						close(packetRecv)
 					}
 				})
@@ -2433,7 +2433,7 @@ func TestClientPlayPausePlay(t *testing.T) {
 			_, err = c.Pause()
 			require.NoError(t, err)
 
-			firstFrame = int32(0)
+			firstFrame.Store(0)
 			packetRecv = make(chan struct{})
 
 			_, err = c.Play(nil)

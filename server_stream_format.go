@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"crypto/rand"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtp"
@@ -146,7 +145,7 @@ func (ssf *serverStreamFormat) writePacketRTP(pkt *rtp.Packet, ntp time.Time) er
 		}
 	}
 
-	atomic.AddUint64(ssf.ssm.bytesSent, uint64(len(encr))*encrReaders+uint64(len(plain))*plainReaders)
+	ssf.ssm.bytesSent.Add(uint64(len(encr))*encrReaders + uint64(len(plain))*plainReaders)
 
 	ssf.mutex.Lock()
 	ssf.firstSent = true

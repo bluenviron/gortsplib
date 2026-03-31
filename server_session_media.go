@@ -30,22 +30,15 @@ type serverSessionMedia struct {
 
 	formats                map[uint8]*serverSessionFormat // record only
 	writePacketRTCPInQueue func([]byte) error
-	bytesReceived          *uint64
-	bytesSent              *uint64
-	rtpPacketsInError      *uint64
-	rtcpPacketsReceived    *uint64
-	rtcpPacketsSent        *uint64
-	rtcpPacketsInError     *uint64
+	bytesReceived          atomic.Uint64
+	bytesSent              atomic.Uint64
+	rtpPacketsInError      atomic.Uint64
+	rtcpPacketsReceived    atomic.Uint64
+	rtcpPacketsSent        atomic.Uint64
+	rtcpPacketsInError     atomic.Uint64
 }
 
 func (ssm *serverSessionMedia) initialize() {
-	ssm.bytesReceived = new(uint64)
-	ssm.bytesSent = new(uint64)
-	ssm.rtpPacketsInError = new(uint64)
-	ssm.rtcpPacketsReceived = new(uint64)
-	ssm.rtcpPacketsSent = new(uint64)
-	ssm.rtcpPacketsInError = new(uint64)
-
 	ssm.formats = make(map[uint8]*serverSessionFormat)
 
 	for _, forma := range ssm.media.Formats {
@@ -145,12 +138,12 @@ func (ssm *serverSessionMedia) stop() {
 
 func (ssm *serverSessionMedia) stats() SessionStatsMedia { //nolint:dupl
 	return SessionStatsMedia{
-		InboundBytes:              atomic.LoadUint64(ssm.bytesReceived),
-		InboundRTPPacketsInError:  atomic.LoadUint64(ssm.rtpPacketsInError),
-		InboundRTCPPackets:        atomic.LoadUint64(ssm.rtcpPacketsReceived),
-		InboundRTCPPacketsInError: atomic.LoadUint64(ssm.rtcpPacketsInError),
-		OutboundBytes:             atomic.LoadUint64(ssm.bytesSent),
-		OutboundRTCPPackets:       atomic.LoadUint64(ssm.rtcpPacketsSent),
+		InboundBytes:              ssm.bytesReceived.Load(),
+		InboundRTPPacketsInError:  ssm.rtpPacketsInError.Load(),
+		InboundRTCPPackets:        ssm.rtcpPacketsReceived.Load(),
+		InboundRTCPPacketsInError: ssm.rtcpPacketsInError.Load(),
+		OutboundBytes:             ssm.bytesSent.Load(),
+		OutboundRTCPPackets:       ssm.rtcpPacketsSent.Load(),
 		Formats: func() map[format.Format]SessionStatsFormat {
 			ret := make(map[format.Format]SessionStatsFormat, len(ssm.formats))
 			for _, ssf := range ssm.formats {
@@ -159,12 +152,12 @@ func (ssm *serverSessionMedia) stats() SessionStatsMedia { //nolint:dupl
 			return ret
 		}(),
 		// deprecated
-		BytesReceived:       atomic.LoadUint64(ssm.bytesReceived),
-		BytesSent:           atomic.LoadUint64(ssm.bytesSent),
-		RTPPacketsInError:   atomic.LoadUint64(ssm.rtpPacketsInError),
-		RTCPPacketsReceived: atomic.LoadUint64(ssm.rtcpPacketsReceived),
-		RTCPPacketsSent:     atomic.LoadUint64(ssm.rtcpPacketsSent),
-		RTCPPacketsInError:  atomic.LoadUint64(ssm.rtcpPacketsInError),
+		BytesReceived:       ssm.bytesReceived.Load(),
+		BytesSent:           ssm.bytesSent.Load(),
+		RTPPacketsInError:   ssm.rtpPacketsInError.Load(),
+		RTCPPacketsReceived: ssm.rtcpPacketsReceived.Load(),
+		RTCPPacketsSent:     ssm.rtcpPacketsSent.Load(),
+		RTCPPacketsInError:  ssm.rtcpPacketsInError.Load(),
 	}
 }
 
@@ -239,7 +232,7 @@ func (ssm *serverSessionMedia) readPacketRTCPPlay(payload []byte) bool {
 		return false
 	}
 
-	atomic.AddUint64(ssm.rtcpPacketsReceived, uint64(len(packets)))
+	ssm.rtcpPacketsReceived.Add(uint64(len(packets)))
 
 	for _, pkt := range packets {
 		if rr, ok := pkt.(*rtcp.ReceiverReport); ok {
@@ -266,7 +259,7 @@ func (ssm *serverSessionMedia) readPacketRTCPRecord(payload []byte) bool {
 
 	now := ssm.ss.s.timeNow()
 
-	atomic.AddUint64(ssm.rtcpPacketsReceived, uint64(len(packets)))
+	ssm.rtcpPacketsReceived.Add(uint64(len(packets)))
 
 	for _, pkt := range packets {
 		if sr, ok := pkt.(*rtcp.SenderReport); ok {
@@ -283,10 +276,10 @@ func (ssm *serverSessionMedia) readPacketRTCPRecord(payload []byte) bool {
 }
 
 func (ssm *serverSessionMedia) readPacketRTPUDPPlay(payload []byte) bool {
-	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+	ssm.bytesReceived.Add(uint64(len(payload)))
 
 	now := ssm.ss.s.timeNow()
-	atomic.StoreInt64(ssm.ss.udpLastPacketTime, now.Unix())
+	ssm.ss.udpLastPacketTime.Store(now.Unix())
 
 	if len(payload) == (udpMaxPayloadSize + 1) {
 		ssm.onPacketRTPDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
@@ -297,10 +290,10 @@ func (ssm *serverSessionMedia) readPacketRTPUDPPlay(payload []byte) bool {
 }
 
 func (ssm *serverSessionMedia) readPacketRTCPUDPPlay(payload []byte) bool {
-	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+	ssm.bytesReceived.Add(uint64(len(payload)))
 
 	now := ssm.ss.s.timeNow()
-	atomic.StoreInt64(ssm.ss.udpLastPacketTime, now.Unix())
+	ssm.ss.udpLastPacketTime.Store(now.Unix())
 
 	if len(payload) == (udpMaxPayloadSize + 1) {
 		ssm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
@@ -311,10 +304,10 @@ func (ssm *serverSessionMedia) readPacketRTCPUDPPlay(payload []byte) bool {
 }
 
 func (ssm *serverSessionMedia) readPacketRTPUDPRecord(payload []byte) bool {
-	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+	ssm.bytesReceived.Add(uint64(len(payload)))
 
 	now := ssm.ss.s.timeNow()
-	atomic.StoreInt64(ssm.ss.udpLastPacketTime, now.Unix())
+	ssm.ss.udpLastPacketTime.Store(now.Unix())
 
 	if len(payload) == (udpMaxPayloadSize + 1) {
 		ssm.onPacketRTPDecodeError(liberrors.ErrServerRTPPacketTooBigUDP{})
@@ -325,10 +318,10 @@ func (ssm *serverSessionMedia) readPacketRTPUDPRecord(payload []byte) bool {
 }
 
 func (ssm *serverSessionMedia) readPacketRTCPUDPRecord(payload []byte) bool {
-	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+	ssm.bytesReceived.Add(uint64(len(payload)))
 
 	now := ssm.ss.s.timeNow()
-	atomic.StoreInt64(ssm.ss.udpLastPacketTime, now.Unix())
+	ssm.ss.udpLastPacketTime.Store(now.Unix())
 
 	if len(payload) == (udpMaxPayloadSize + 1) {
 		ssm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBigUDP{})
@@ -343,13 +336,13 @@ func (ssm *serverSessionMedia) readPacketRTPTCPPlay(payload []byte) bool {
 		return false
 	}
 
-	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+	ssm.bytesReceived.Add(uint64(len(payload)))
 
 	return ssm.readPacketRTP(payload, ssm.ss.s.timeNow())
 }
 
 func (ssm *serverSessionMedia) readPacketRTCPTCPPlay(payload []byte) bool {
-	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+	ssm.bytesReceived.Add(uint64(len(payload)))
 
 	if len(payload) > udpMaxPayloadSize {
 		ssm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
@@ -360,13 +353,13 @@ func (ssm *serverSessionMedia) readPacketRTCPTCPPlay(payload []byte) bool {
 }
 
 func (ssm *serverSessionMedia) readPacketRTPTCPRecord(payload []byte) bool {
-	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+	ssm.bytesReceived.Add(uint64(len(payload)))
 
 	return ssm.readPacketRTP(payload, ssm.ss.s.timeNow())
 }
 
 func (ssm *serverSessionMedia) readPacketRTCPTCPRecord(payload []byte) bool {
-	atomic.AddUint64(ssm.bytesReceived, uint64(len(payload)))
+	ssm.bytesReceived.Add(uint64(len(payload)))
 
 	if len(payload) > udpMaxPayloadSize {
 		ssm.onPacketRTCPDecodeError(liberrors.ErrServerRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
@@ -377,7 +370,7 @@ func (ssm *serverSessionMedia) readPacketRTCPTCPRecord(payload []byte) bool {
 }
 
 func (ssm *serverSessionMedia) onPacketRTPDecodeError(err error) {
-	atomic.AddUint64(ssm.rtpPacketsInError, 1)
+	ssm.rtpPacketsInError.Add(1)
 
 	if h, ok := ssm.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
 		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
@@ -390,7 +383,7 @@ func (ssm *serverSessionMedia) onPacketRTPDecodeError(err error) {
 }
 
 func (ssm *serverSessionMedia) onPacketRTCPDecodeError(err error) {
-	atomic.AddUint64(ssm.rtcpPacketsInError, 1)
+	ssm.rtcpPacketsInError.Add(1)
 
 	if h, ok := ssm.ss.s.Handler.(ServerHandlerOnDecodeError); ok {
 		h.OnDecodeError(&ServerHandlerOnDecodeErrorCtx{
@@ -456,8 +449,8 @@ func (ssm *serverSessionMedia) writePacketRTCPInQueueUDP(payload []byte) error {
 		return err
 	}
 
-	atomic.AddUint64(ssm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(ssm.rtcpPacketsSent, 1)
+	ssm.bytesSent.Add(uint64(len(payload)))
+	ssm.rtcpPacketsSent.Add(1)
 	return nil
 }
 
@@ -470,7 +463,7 @@ func (ssm *serverSessionMedia) writePacketRTCPInQueueTCP(payload []byte) error {
 		return err
 	}
 
-	atomic.AddUint64(ssm.bytesSent, uint64(len(payload)))
-	atomic.AddUint64(ssm.rtcpPacketsSent, 1)
+	ssm.bytesSent.Add(uint64(len(payload)))
+	ssm.rtcpPacketsSent.Add(1)
 	return nil
 }
