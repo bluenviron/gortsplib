@@ -511,6 +511,10 @@ type Client struct {
 	// function used to resolve IP addresses.
 	// It defaults to net.ResolveIPAddr.
 	ResolveIPAddr func(network, address string) (*net.IPAddr, error)
+	// function used to initialize a TLS connection.
+	// When nil, DialContext and tls.Client are used in its place.
+	// It defaults to nil.
+	DialTLSContext func(ctx context.Context, network string, addr string) (net.Conn, error)
 
 	//
 	// Callbacks (all optional)
@@ -1151,44 +1155,54 @@ func (c *Client) connOpen() error {
 	switch c.Tunnel {
 	case TunnelHTTP:
 		var err error
-		nconn, err = newClientTunnelHTTP(dialCtx, addr, (c.Scheme == schemeRTSPS), c.TLSConfig, c.DialContext)
+		nconn, err = newClientTunnelHTTP(dialCtx, addr, (c.Scheme == schemeRTSPS),
+			c.TLSConfig, c.DialContext, c.DialTLSContext)
 		if err != nil {
 			return err
 		}
 
 	case TunnelWebSocket:
 		var err error
-		nconn, err = newClientTunnelWebSocket(dialCtx, addr, (c.Scheme == schemeRTSPS), c.TLSConfig, c.DialContext)
+		nconn, err = newClientTunnelWebSocket(dialCtx, addr, (c.Scheme == schemeRTSPS),
+			c.TLSConfig, c.DialContext, c.DialTLSContext)
 		if err != nil {
 			return err
 		}
 
 	default:
-		var err error
-		nconn, err = c.DialContext(dialCtx, "tcp", addr)
-		if err != nil {
-			return err
-		}
-
-		if c.Scheme == schemeRTSPS {
-			// clone TLS config and fill ServerName if empty.
-			// this is the same behavior of http.Client.
-			// https://cs.opensource.google/go/go/+/master:src/net/http/transport.go;l=1754;drc=a4b534f5e42fe58d58c0ff0562d76680cedb0466
-
-			tlsConfig := c.TLSConfig
-
-			if tlsConfig == nil {
-				tlsConfig = &tls.Config{}
-			} else {
-				tlsConfig = tlsConfig.Clone()
+		if c.Scheme == schemeRTSPS && c.DialTLSContext != nil {
+			var err error
+			nconn, err = c.DialTLSContext(dialCtx, "tcp", addr)
+			if err != nil {
+				return err
+			}
+		} else {
+			var err error
+			nconn, err = c.DialContext(dialCtx, "tcp", addr)
+			if err != nil {
+				return err
 			}
 
-			if tlsConfig.ServerName == "" {
-				host, _, _ := net.SplitHostPort(addr)
-				tlsConfig.ServerName = host
-			}
+			if c.Scheme == schemeRTSPS {
+				// clone TLS config and fill ServerName if empty.
+				// this is the same behavior of http.Client.
+				// https://cs.opensource.google/go/go/+/master:src/net/http/transport.go;l=1754;drc=a4b534f5e42fe58d58c0ff0562d76680cedb0466
 
-			nconn = tls.Client(nconn, tlsConfig)
+				tlsConfig := c.TLSConfig
+
+				if tlsConfig == nil {
+					tlsConfig = &tls.Config{}
+				} else {
+					tlsConfig = tlsConfig.Clone()
+				}
+
+				if tlsConfig.ServerName == "" {
+					host, _, _ := net.SplitHostPort(addr)
+					tlsConfig.ServerName = host
+				}
+
+				nconn = tls.Client(nconn, tlsConfig)
+			}
 		}
 	}
 

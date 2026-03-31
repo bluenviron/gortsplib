@@ -60,6 +60,7 @@ func newClientTunnelHTTP(
 	secure bool,
 	tlsConfig *tls.Config,
 	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
+	dialTLSContext func(ctx context.Context, network string, addr string) (net.Conn, error),
 ) (net.Conn, error) {
 	c := &clientTunnelHTTP{}
 
@@ -80,14 +81,22 @@ func newClientTunnelHTTP(
 		}
 	}
 
-	var err error
-	c.readChan, err = dialContext(ctx, "tcp", addr)
-	if err != nil {
-		return nil, err
-	}
+	if secure && dialTLSContext != nil {
+		var err error
+		c.readChan, err = dialTLSContext(ctx, "tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		c.readChan, err = dialContext(ctx, "tcp", addr)
+		if err != nil {
+			return nil, err
+		}
 
-	if secure {
-		c.readChan = tls.Client(c.readChan, tlsConfig)
+		if secure {
+			c.readChan = tls.Client(c.readChan, tlsConfig)
+		}
 	}
 
 	ok := false
@@ -117,7 +126,7 @@ func newClientTunnelHTTP(
 
 	// do not use http.Request
 	// since Content-Length requires a Body of same size
-	_, err = c.readChan.Write([]byte(
+	_, err := c.readChan.Write([]byte(
 		"GET / HTTP/1.1\r\n" +
 			"Host: " + addr + "\r\n" +
 			"X-Sessioncookie: " + tunnelID + "\r\n" +
@@ -140,13 +149,20 @@ func newClientTunnelHTTP(
 		return nil, fmt.Errorf("bad status code: %v", res.StatusCode)
 	}
 
-	c.writeChan, err = dialContext(ctx, "tcp", addr)
-	if err != nil {
-		return nil, err
-	}
+	if secure && dialTLSContext != nil {
+		c.writeChan, err = dialTLSContext(ctx, "tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		c.writeChan, err = dialContext(ctx, "tcp", addr)
+		if err != nil {
+			return nil, err
+		}
 
-	if secure {
-		c.writeChan = tls.Client(c.writeChan, tlsConfig)
+		if secure {
+			c.writeChan = tls.Client(c.writeChan, tlsConfig)
+		}
 	}
 
 	defer func() {

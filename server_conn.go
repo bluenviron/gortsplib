@@ -3,7 +3,6 @@ package gortsplib
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"errors"
 	"net"
 	gourl "net/url"
@@ -143,10 +142,6 @@ type ServerConn struct {
 
 func (sc *ServerConn) initialize() {
 	ctx, ctxCancel := context.WithCancel(sc.s.ctx)
-
-	if sc.s.TLSConfig != nil && sc.tunnel == TunnelNone {
-		sc.nconn = tls.Server(sc.nconn, sc.s.TLSConfig)
-	}
 
 	sc.bc = bytecounter.New(sc.nconn, nil, nil)
 	sc.ctx = ctx
