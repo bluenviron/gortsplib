@@ -1146,30 +1146,19 @@ func (c *Client) connOpen() error {
 		Host:   c.Host,
 	})
 
-	var tlsConfig *tls.Config
-	if c.Scheme == schemeRTSPS {
-		tlsConfig = c.TLSConfig
-		if tlsConfig == nil {
-			host, _, _ := net.SplitHostPort(addr)
-			tlsConfig = &tls.Config{
-				ServerName: host,
-			}
-		}
-	}
-
 	var nconn net.Conn
 
 	switch c.Tunnel {
 	case TunnelHTTP:
 		var err error
-		nconn, err = newClientTunnelHTTP(dialCtx, c.DialContext, addr, tlsConfig)
+		nconn, err = newClientTunnelHTTP(dialCtx, addr, (c.Scheme == schemeRTSPS), c.TLSConfig, c.DialContext)
 		if err != nil {
 			return err
 		}
 
 	case TunnelWebSocket:
 		var err error
-		nconn, err = newClientTunnelWebSocket(dialCtx, c.DialContext, addr, tlsConfig)
+		nconn, err = newClientTunnelWebSocket(dialCtx, addr, (c.Scheme == schemeRTSPS), c.TLSConfig, c.DialContext)
 		if err != nil {
 			return err
 		}
@@ -1181,7 +1170,24 @@ func (c *Client) connOpen() error {
 			return err
 		}
 
-		if tlsConfig != nil {
+		if c.Scheme == schemeRTSPS {
+			// clone TLS config and fill ServerName if empty.
+			// this is the same behavior of http.Client.
+			// https://cs.opensource.google/go/go/+/master:src/net/http/transport.go;l=1754;drc=a4b534f5e42fe58d58c0ff0562d76680cedb0466
+
+			tlsConfig := c.TLSConfig
+
+			if tlsConfig == nil {
+				tlsConfig = &tls.Config{}
+			} else {
+				tlsConfig = tlsConfig.Clone()
+			}
+
+			if tlsConfig.ServerName == "" {
+				host, _, _ := net.SplitHostPort(addr)
+				tlsConfig.ServerName = host
+			}
+
 			nconn = tls.Client(nconn, tlsConfig)
 		}
 	}

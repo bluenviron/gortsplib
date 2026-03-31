@@ -157,8 +157,8 @@ func TestClientSession(t *testing.T) {
 
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
-		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 		defer nconn.Close()
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -222,8 +222,8 @@ func TestClientAuth(t *testing.T) {
 
 		nconn, err2 := l.Accept()
 		require.NoError(t, err2)
-		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 		defer nconn.Close()
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 		req, err2 := conn.ReadRequest()
 		require.NoError(t, err2)
@@ -448,8 +448,8 @@ func TestClientReplyToServerRequest(t *testing.T) {
 
 				nconn, err2 := l.Accept()
 				require.NoError(t, err2)
-				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 				defer nconn.Close()
+				conn := conn.NewConn(bufio.NewReader(nconn), nconn)
 
 				req, err2 := conn.ReadRequest()
 				require.NoError(t, err2)
@@ -594,6 +594,67 @@ func TestClientRelativeContentBase(t *testing.T) {
 	require.Equal(t, "rtsp://localhost:8554/relative-content-base", desc.BaseURL.String())
 }
 
+func TestClientRTSPS(t *testing.T) {
+	cert, err := tls.X509KeyPair(serverCert, serverKey)
+	require.NoError(t, err)
+
+	l, err := tls.Listen("tcp", "localhost:8554", &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			// check that SNI is correctly filled by client
+			require.Equal(t, "localhost", cs.ServerName)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+	}()
+
+	u, err := base.ParseURL("rtsps://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	c := Client{
+		Scheme: u.Scheme,
+		Host:   u.Host,
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	err = c.Start()
+	require.NoError(t, err)
+	defer c.Close()
+
+	res, err := c.Options(u)
+	require.NoError(t, err)
+	require.Equal(t, base.StatusOK, res.StatusCode)
+}
+
 func TestClientTunnelHTTP(t *testing.T) {
 	for _, ca := range []string{"http", "https"} {
 		t.Run(ca, func(t *testing.T) {
@@ -609,7 +670,14 @@ func TestClientTunnelHTTP(t *testing.T) {
 				cert, err = tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 
-				l, err = tls.Listen("tcp", "localhost:8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+				l, err = tls.Listen("tcp", "localhost:8554", &tls.Config{
+					Certificates: []tls.Certificate{cert},
+					VerifyConnection: func(cs tls.ConnectionState) error {
+						// check that SNI is correctly filled by client
+						require.Equal(t, "localhost", cs.ServerName)
+						return nil
+					},
+				})
 				require.NoError(t, err)
 				defer l.Close()
 			}
@@ -839,7 +907,14 @@ func TestClientTunnelWebSocket(t *testing.T) {
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
 				require.NoError(t, err)
 
-				ln, err = tls.Listen("tcp", "localhost:8554", &tls.Config{Certificates: []tls.Certificate{cert}})
+				ln, err = tls.Listen("tcp", "localhost:8554", &tls.Config{
+					Certificates: []tls.Certificate{cert},
+					VerifyConnection: func(cs tls.ConnectionState) error {
+						// check that SNI is correctly filled by client
+						require.Equal(t, "localhost", cs.ServerName)
+						return nil
+					},
+				})
 				require.NoError(t, err)
 				defer ln.Close()
 			}

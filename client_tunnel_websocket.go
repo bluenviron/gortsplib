@@ -50,14 +50,15 @@ func (tu *clientTunnelWebSocket) SetWriteDeadline(t time.Time) error {
 
 func newClientTunnelWebSocket(
 	ctx context.Context,
-	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
 	addr string,
+	secure bool,
 	tlsConfig *tls.Config,
+	dialContext func(ctx context.Context, network, address string) (net.Conn, error),
 ) (net.Conn, error) {
 	c := &clientTunnelWebSocket{}
 
 	var ur string
-	if tlsConfig != nil {
+	if secure {
 		ur = "wss"
 	} else {
 		ur = "ws"
