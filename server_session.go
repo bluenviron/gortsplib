@@ -1168,7 +1168,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 
 			if isSecure(inTH.Profile) {
 				var mk *mikey.Message
-				mk, err = mikeyGenerate(sm.srtpOutCtx)
+				mk, err = contextToMikey(sm.srtpOutCtx)
 				if err != nil {
 					return &base.Response{
 						StatusCode: base.StatusInternalServerError,
