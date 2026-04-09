@@ -15,8 +15,9 @@ var casesResponse = []struct {
 	out  []byte
 }{
 	{
+		// test for missing Status-Message in Status-Line
 		"ok",
-		[]byte("RTSP/1.0 200 OK\r\n" +
+		[]byte("RTSP/1.0 200\r\n" +
 			"CSeq: 2\r\n" +
 			"Date: Sat, Aug 16 2014 02:22:28 GMT\r\n" +
 			"Session: 645252166\r\n" +
@@ -26,7 +27,7 @@ var casesResponse = []struct {
 		),
 		Response{
 			StatusCode:    StatusOK,
-			StatusMessage: "OK",
+			StatusMessage: "",
 			Header: Header{
 				"CSeq":    HeaderValue{"2"},
 				"Session": HeaderValue{"645252166"},
