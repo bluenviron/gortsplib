@@ -29,6 +29,13 @@ func readBytesLimited(rb *bufio.Reader, delim byte, n int) ([]byte, error) {
 			rb.Discard(len(byts)) //nolint:errcheck
 			return byts, nil
 		}
+
+		// check for end of line, e.g. when the Status-Message is missing
+		if byts[len(byts)-1] == '\r' {
+			rb.Discard(len(byts)-1) //nolint:errcheck
+			return byts, nil
+		}
+
 	}
 	return nil, fmt.Errorf("buffer length exceeds %d", n)
 }
