@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -828,6 +829,199 @@ func TestClientTunnelHTTP(t *testing.T) {
 				Scheme: u.Scheme,
 				Host:   u.Host,
 				Tunnel: TunnelHTTP,
+				TLSConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			}
+
+			err = c.Start()
+			require.NoError(t, err)
+			defer c.Close()
+
+			_, res, err := c.Describe(u)
+			require.NoError(t, err)
+			require.Equal(t, base.StatusOK, res.StatusCode)
+		})
+	}
+}
+
+func TestClientTunnelHTTPPostResponseAfterRTSPRequest(t *testing.T) {
+	for _, ca := range []string{"http", "https"} {
+		t.Run(ca, func(t *testing.T) {
+			var l net.Listener
+			var err error
+
+			if ca == "http" {
+				l, err = net.Listen("tcp", "localhost:8554")
+				require.NoError(t, err)
+				defer l.Close()
+			} else {
+				var cert tls.Certificate
+				cert, err = tls.X509KeyPair(serverCert, serverKey)
+				require.NoError(t, err)
+
+				l, err = tls.Listen("tcp", "localhost:8554", &tls.Config{
+					Certificates: []tls.Certificate{cert},
+					VerifyConnection: func(cs tls.ConnectionState) error {
+						require.Equal(t, "localhost", cs.ServerName)
+						return nil
+					},
+				})
+				require.NoError(t, err)
+				defer l.Close()
+			}
+
+			var scheme string
+			if ca == "http" {
+				scheme = schemeRTSP
+			} else {
+				scheme = schemeRTSPS
+			}
+
+			writePostResponse := func(nconn net.Conn, protoMinor int) {
+				h := http.Header{}
+				h.Set("Cache-Control", "no-cache")
+				h.Set("Connection", "close")
+				h.Set("Content-Type", "application/x-rtsp-tunnelled")
+				h.Set("Pragma", "no-cache")
+				res := http.Response{
+					StatusCode:    http.StatusOK,
+					ProtoMajor:    1,
+					ProtoMinor:    protoMinor,
+					Header:        h,
+					ContentLength: -1,
+				}
+				var resBuf bytes.Buffer
+				res.Write(&resBuf) //nolint:errcheck
+				_, err2 := nconn.Write(resBuf.Bytes())
+				require.NoError(t, err2)
+			}
+
+			serverDone := make(chan struct{})
+			defer func() { <-serverDone }()
+
+			go func() {
+				defer close(serverDone)
+
+				nconn1, err2 := l.Accept()
+				require.NoError(t, err2)
+				defer nconn1.Close()
+
+				buf1 := bufio.NewReader(nconn1)
+				req1, err2 := http.ReadRequest(buf1)
+				require.NoError(t, err2)
+
+				require.Equal(t, &http.Request{
+					Method:     http.MethodGet,
+					Proto:      "HTTP/1.1",
+					ProtoMajor: 1,
+					ProtoMinor: 1,
+					URL: &url.URL{
+						Path: "/teststream",
+					},
+					Host:       "localhost:8554",
+					RequestURI: "/teststream",
+					Header: http.Header{
+						"Accept":          []string{"application/x-rtsp-tunnelled"},
+						"Content-Length":  []string{"30000"},
+						"X-Sessioncookie": req1.Header["X-Sessioncookie"],
+					},
+					ContentLength: 30000,
+					Body:          req1.Body,
+				}, req1)
+
+				require.NotEmpty(t, req1.Header.Get("X-Sessioncookie"))
+
+				h := http.Header{}
+				h.Set("Cache-Control", "no-cache")
+				h.Set("Connection", "close")
+				h.Set("Content-Type", "application/x-rtsp-tunnelled")
+				h.Set("Pragma", "no-cache")
+				res := http.Response{
+					StatusCode:    http.StatusOK,
+					ProtoMajor:    1,
+					ProtoMinor:    req1.ProtoMinor,
+					Header:        h,
+					ContentLength: -1,
+				}
+				var resBuf bytes.Buffer
+				res.Write(&resBuf) //nolint:errcheck
+				_, err = nconn1.Write(resBuf.Bytes())
+				require.NoError(t, err)
+
+				nconn2, err2 := l.Accept()
+				require.NoError(t, err2)
+				defer nconn2.Close()
+
+				buf2 := bufio.NewReader(nconn2)
+				req2, err2 := http.ReadRequest(buf2)
+				require.NoError(t, err2)
+
+				require.Equal(t, &http.Request{
+					Method:     http.MethodPost,
+					Proto:      "HTTP/1.1",
+					ProtoMajor: 1,
+					ProtoMinor: 1,
+					URL: &url.URL{
+						Path: "/teststream",
+					},
+					Host:       "localhost:8554",
+					RequestURI: "/teststream",
+					Header: http.Header{
+						"Content-Type":    []string{"application/x-rtsp-tunnelled"},
+						"Content-Length":  []string{"30000"},
+						"X-Sessioncookie": req2.Header["X-Sessioncookie"],
+					},
+					ContentLength: 30000,
+					Body:          req2.Body,
+				}, req2)
+
+				require.Equal(t, req1.Header.Get("X-Sessioncookie"), req2.Header.Get("X-Sessioncookie"))
+
+				conn := conn.NewConn(bufio.NewReader(base64streamreader.New(buf2)), nconn1)
+
+				req, err2 := conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Options, req.Method)
+
+				writePostResponse(nconn2, req1.ProtoMinor)
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Public": base.HeaderValue{strings.Join([]string{
+							string(base.Describe),
+						}, ", ")},
+					},
+				})
+				require.NoError(t, err2)
+
+				req, err2 = conn.ReadRequest()
+				require.NoError(t, err2)
+				require.Equal(t, base.Describe, req.Method)
+				require.Equal(t, mustParseURL(scheme+"://localhost:8554/teststream"), req.URL)
+
+				medias := []*description.Media{testH264Media}
+
+				err2 = conn.WriteResponse(&base.Response{
+					StatusCode: base.StatusOK,
+					Header: base.Header{
+						"Content-Type": base.HeaderValue{"application/sdp; charset=utf-8"},
+						"Content-Base": base.HeaderValue{"/relative-content-base"},
+					},
+					Body: mediasToSDP(medias),
+				})
+				require.NoError(t, err2)
+			}()
+
+			u, err := base.ParseURL(scheme + "://localhost:8554/teststream")
+			require.NoError(t, err)
+
+			c := Client{
+				Scheme:      u.Scheme,
+				Host:        u.Host,
+				Tunnel:      TunnelHTTP,
+				ReadTimeout: time.Second,
 				TLSConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
