@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	rtspMaxContentLength = 128 * 1024
+	rtspMaxBodySize = 128 * 1024
 )
 
 type body []byte
@@ -25,9 +25,9 @@ func (b *body) unmarshal(header Header, rb *bufio.Reader) error {
 		return fmt.Errorf("invalid Content-Length")
 	}
 
-	if cl > rtspMaxContentLength {
+	if cl > rtspMaxBodySize {
 		return fmt.Errorf("Content-Length exceeds %d (it's %d)",
-			rtspMaxContentLength, cl)
+			rtspMaxBodySize, cl)
 	}
 
 	*b = make([]byte, cl)
