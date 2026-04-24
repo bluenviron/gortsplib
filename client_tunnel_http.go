@@ -204,16 +204,7 @@ func newClientTunnelHTTP(
 		return nil, err
 	}
 
-	writeBuf := bufio.NewReader(c.writeChan)
-	res, err = http.ReadResponse(writeBuf, nil)
-	if err != nil {
-		return nil, err
-	}
-	res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("bad status code: %v", res.StatusCode)
-	}
+	// do not wait for writeChan response, since some servers don't send it.
 
 	ok = true
 	return c, nil
