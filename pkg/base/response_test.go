@@ -131,6 +131,38 @@ var casesResponse = []struct {
 		},
 		[]byte("RTSP/1.0 200 OK\r\n\r\n"),
 	},
+	{
+		"missing status message",
+		[]byte("RTSP/1.0 200\r\n" +
+			"CSeq: 2\r\n" +
+			"Date: Sat, Aug 16 2014 02:22:28 GMT\r\n" +
+			"Session: 645252166\r\n" +
+			"WWW-Authenticate: Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"\r\n" +
+			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
+			"\r\n",
+		),
+		Response{
+			StatusCode:    StatusOK,
+			StatusMessage: "",
+			Header: Header{
+				"CSeq":    HeaderValue{"2"},
+				"Session": HeaderValue{"645252166"},
+				"WWW-Authenticate": HeaderValue{
+					"Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"",
+					"Basic realm=\"4419b63f5e51\"",
+				},
+				"Date": HeaderValue{"Sat, Aug 16 2014 02:22:28 GMT"},
+			},
+		},
+		[]byte("RTSP/1.0 200 OK\r\n" +
+			"CSeq: 2\r\n" +
+			"Date: Sat, Aug 16 2014 02:22:28 GMT\r\n" +
+			"Session: 645252166\r\n" +
+			"WWW-Authenticate: Digest realm=\"4419b63f5e51\", nonce=\"8b84a3b789283a8bea8da7fa7d41f08b\", stale=\"FALSE\"\r\n" +
+			"WWW-Authenticate: Basic realm=\"4419b63f5e51\"\r\n" +
+			"\r\n",
+		),
+	},
 }
 
 func TestResponseUnmarshal(t *testing.T) {
