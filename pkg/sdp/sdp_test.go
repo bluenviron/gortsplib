@@ -3342,6 +3342,77 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"issue mediamtx/5292 (Verint cameras, IP instead of IN in origin)",
+		[]byte("v=0\r\n" +
+			"o=- 1329416390 1329416390 IP IP4 192.168.1.1\r\n" +
+			"s=EWR 52B\r\n" +
+			"a=control:rtsp://192.168.1.1:554/c266233d-e0e5-414f-9c57-9ed9d187c969\r\n" +
+			"t=0 0\r\n" +
+			"a=range:npt=now-\r\n" +
+			"a=length:npt=0\r\n" +
+			"m=video 0 RTP/AVP 105\r\n" +
+			"a=rtpmap:105 H264/90000\r\n" +
+			"a=fmtp:105 packetization-mode=1; profile-level-id=640033; " +
+			"sprop-parameter-sets=Z2QAM6zTAPABD7AWoCAgKAABd2AAHUwEeEQiiw==," +
+			"KHuPOIJIUgwkSMLGFCsgiEMIFwgWEChxEEkyFyFkKJkEQhhAuECwgUOIhU0nSIcxTEdFMjFRyjh" +
+			"JHRRAgWmiijDeMEDzmGGD8NCw6GhsREKtdevruxgv4pC+xUXxRBrQpBWEChEcJmw=\r\n" +
+			"a=request-iframe-allowed:1000\r\n" +
+			"a=control:rtsp://192.168.1.1:554/c266233d-e0e5-414f-9c57-9ed9d187c969/Video\r\n"),
+		[]byte("v=0\r\n" +
+			"o=- 1329416390 1329416390 IN IP4 192.168.1.1\r\n" +
+			"s=EWR 52B\r\n" +
+			"t=0 0\r\n" +
+			"a=control:rtsp://192.168.1.1:554/c266233d-e0e5-414f-9c57-9ed9d187c969\r\n" +
+			"a=range:npt=now-\r\n" +
+			"a=length:npt=0\r\n" +
+			"m=video 0 RTP/AVP 105\r\n" +
+			"a=rtpmap:105 H264/90000\r\n" +
+			"a=fmtp:105 packetization-mode=1; profile-level-id=640033; " +
+			"sprop-parameter-sets=Z2QAM6zTAPABD7AWoCAgKAABd2AAHUwEeEQiiw==," +
+			"KHuPOIJIUgwkSMLGFCsgiEMIFwgWEChxEEkyFyFkKJkEQhhAuECwgUOIhU0nSIcx" +
+			"TEdFMjFRyjhJHRRAgWmiijDeMEDzmGGD8NCw6GhsREKtdevruxgv4pC+xUXxRBrQpBWEChEcJmw=\r\n" +
+			"a=request-iframe-allowed:1000\r\n" +
+			"a=control:rtsp://192.168.1.1:554/c266233d-e0e5-414f-9c57-9ed9d187c969/Video\r\n"),
+		SessionDescription{
+			Origin: psdp.Origin{
+				Username:       "-",
+				SessionID:      1329416390,
+				SessionVersion: 1329416390,
+				NetworkType:    "IN",
+				AddressType:    "IP4",
+				UnicastAddress: "192.168.1.1",
+			},
+			SessionName: "EWR 52B",
+			TimeDescriptions: []psdp.TimeDescription{
+				{Timing: psdp.Timing{StartTime: 0, StopTime: 0}},
+			},
+			Attributes: []psdp.Attribute{
+				{Key: "control", Value: "rtsp://192.168.1.1:554/c266233d-e0e5-414f-9c57-9ed9d187c969"},
+				{Key: "range", Value: "npt=now-"},
+				{Key: "length", Value: "npt=0"},
+			},
+			MediaDescriptions: []*psdp.MediaDescription{
+				{
+					MediaName: psdp.MediaName{
+						Media:   "video",
+						Port:    psdp.RangedPort{Value: 0},
+						Protos:  []string{"RTP", "AVP"},
+						Formats: []string{"105"},
+					},
+					Attributes: []psdp.Attribute{
+						{Key: "rtpmap", Value: "105 H264/90000"},
+						{Key: "fmtp", Value: "105 packetization-mode=1; profile-level-id=640033; " +
+							"sprop-parameter-sets=Z2QAM6zTAPABD7AWoCAgKAABd2AAHUwEeEQiiw==," +
+							"KHuPOIJIUgwkSMLGFCsgiEMIFwgWEChxEEkyFyFkKJkEQhhAuECwgUOIhU0nSIcxTEd" +
+							"FMjFRyjhJHRRAgWmiijDeMEDzmGGD8NCw6GhsREKtdevruxgv4pC+xUXxRBrQpBWEChEcJmw="},
+						{Key: "request-iframe-allowed", Value: "1000"},
+						{Key: "control", Value: "rtsp://192.168.1.1:554/c266233d-e0e5-414f-9c57-9ed9d187c969/Video"},
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {

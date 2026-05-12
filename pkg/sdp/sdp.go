@@ -85,6 +85,8 @@ func stringsReverseIndexByte(s string, b byte) int {
 // implementations.
 func (s *SessionDescription) unmarshalOrigin(value string) error {
 	value = strings.Replace(value, " IN IPV4 ", " IN IP4 ", 1)
+	value = strings.Replace(value, " IP IP4 ", " IN IP4 ", 1)
+	value = strings.Replace(value, " IP IP6 ", " IN IP6 ", 1)
 
 	if strings.HasSuffix(value, " IN") {
 		value += " IP4"
