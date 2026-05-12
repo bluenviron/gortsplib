@@ -303,6 +303,10 @@ func (st *ServerStream) readerRemove(ss *ServerSession) {
 func (st *ServerStream) readerRemoveUnsafe(ss *ServerSession) {
 	delete(st.readers, ss)
 
+	if ss.setuppedTransport == nil {
+		return
+	}
+
 	if ss.setuppedTransport.Protocol == ProtocolUDPMulticast {
 		st.multicastReaderCount--
 		if st.multicastReaderCount == 0 {
@@ -345,6 +349,10 @@ func (st *ServerStream) readerSetInactive(ss *ServerSession) {
 }
 
 func (st *ServerStream) readerSetInactiveUnsafe(ss *ServerSession) {
+	if ss.setuppedTransport == nil {
+		return
+	}
+
 	if ss.setuppedTransport.Protocol == ProtocolUDPMulticast {
 		for medi := range ss.setuppedMedias {
 			streamMedia := st.medias[medi]
