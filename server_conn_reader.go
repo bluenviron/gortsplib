@@ -158,7 +158,7 @@ func (cr *serverConnReader) handleTunneling(in io.ReadWriter) (io.ReadWriter, er
 
 			cr.sc.httpReadBuf = buf
 
-			err = cr.sc.s.handleHTTPChannel(sessionHandleHTTPChannelReq{
+			err = cr.sc.s.handleHTTPChannel(serverHandleHTTPChannelReq{
 				sc:       cr.sc,
 				write:    (req.Method == http.MethodPost),
 				tunnelID: req.Header.Get("X-Sessioncookie"),

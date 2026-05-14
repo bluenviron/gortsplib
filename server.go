@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/auth"
-	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
@@ -36,28 +35,26 @@ func extractPort(address string) (int, error) {
 	return int(tmp2), nil
 }
 
-type sessionRequestRes struct {
+type serverFindOrCreateSessionRes struct {
 	ss  *ServerSession
-	res *base.Response
 	err error
 }
 
-type sessionRequestReq struct {
+type serverFindOrCreateSessionReq struct {
 	sc     *ServerConn
-	req    *base.Request
 	id     string
 	create bool
-	res    chan sessionRequestRes
+	res    chan serverFindOrCreateSessionRes
 }
 
-type sessionHandleHTTPChannelReq struct {
+type serverHandleHTTPChannelReq struct {
 	sc       *ServerConn
 	write    bool
 	tunnelID string
 	res      chan error
 }
 
-type chGetMulticastIPReq struct {
+type serverGetMulticastIPReq struct {
 	res chan net.IP
 }
 
@@ -159,13 +156,13 @@ type Server struct {
 	closeError       error
 
 	// in
-	chNewConn           chan net.Conn
-	chAcceptErr         chan error
-	chCloseConn         chan *ServerConn
-	chHandleHTTPChannel chan sessionHandleHTTPChannelReq
-	chHandleRequest     chan sessionRequestReq
-	chCloseSession      chan *ServerSession
-	chGetMulticastIP    chan chGetMulticastIPReq
+	chNewConn             chan net.Conn
+	chAcceptErr           chan error
+	chCloseConn           chan *ServerConn
+	chHandleHTTPChannel   chan serverHandleHTTPChannelReq
+	chFindOrCreateSession chan serverFindOrCreateSessionReq
+	chCloseSession        chan *ServerSession
+	chGetMulticastIP      chan serverGetMulticastIPReq
 }
 
 // Start starts the server.
@@ -329,10 +326,10 @@ func (s *Server) Start() error {
 	s.chNewConn = make(chan net.Conn)
 	s.chAcceptErr = make(chan error)
 	s.chCloseConn = make(chan *ServerConn)
-	s.chHandleHTTPChannel = make(chan sessionHandleHTTPChannelReq)
-	s.chHandleRequest = make(chan sessionRequestReq)
+	s.chHandleHTTPChannel = make(chan serverHandleHTTPChannelReq)
+	s.chFindOrCreateSession = make(chan serverFindOrCreateSessionReq)
 	s.chCloseSession = make(chan *ServerSession)
-	s.chGetMulticastIP = make(chan chGetMulticastIPReq)
+	s.chGetMulticastIP = make(chan serverGetMulticastIPReq)
 
 	s.tcpListener = &serverTCPListener{s: s}
 	err := s.tcpListener.initialize()
@@ -438,25 +435,19 @@ func (s *Server) runInner() error {
 				}
 			}
 
-		case req := <-s.chHandleRequest:
+		case req := <-s.chFindOrCreateSession:
 			ss, ok := s.sessions[req.id]
 			if ok {
 				if !req.sc.ip().Equal(ss.author.ip()) ||
 					req.sc.zone() != ss.author.zone() {
-					req.res <- sessionRequestRes{
-						res: &base.Response{
-							StatusCode: base.StatusBadRequest,
-						},
+					req.res <- serverFindOrCreateSessionRes{
 						err: liberrors.ErrServerCannotUseSessionCreatedByOtherIP{},
 					}
 					continue
 				}
 			} else {
 				if !req.create {
-					req.res <- sessionRequestRes{
-						res: &base.Response{
-							StatusCode: base.StatusSessionNotFound,
-						},
+					req.res <- serverFindOrCreateSessionRes{
 						err: liberrors.ErrServerSessionNotFound{},
 					}
 					continue
@@ -470,7 +461,7 @@ func (s *Server) runInner() error {
 				s.sessions[ss.secretID] = ss
 			}
 
-			ss.handleRequestNoWait(req)
+			req.res <- serverFindOrCreateSessionRes{ss: ss}
 
 		case ss := <-s.chCloseSession:
 			if sss, ok := s.sessions[ss.secretID]; !ok || sss != ss {
@@ -523,7 +514,7 @@ func (s *Server) findHTTPReadChannel(writeChan *ServerConn, tunnelID string) (*S
 func (s *Server) getMulticastIP() (net.IP, error) {
 	res := make(chan net.IP)
 	select {
-	case s.chGetMulticastIP <- chGetMulticastIPReq{res: res}:
+	case s.chGetMulticastIP <- serverGetMulticastIPReq{res: res}:
 		return <-res, nil
 
 	case <-s.ctx.Done():
@@ -560,7 +551,7 @@ func (s *Server) closeSession(ss *ServerSession) {
 	}
 }
 
-func (s *Server) handleHTTPChannel(req sessionHandleHTTPChannelReq) error {
+func (s *Server) handleHTTPChannel(req serverHandleHTTPChannelReq) error {
 	req.res = make(chan error)
 
 	select {
@@ -586,15 +577,15 @@ func (s *Server) handleHTTPChannel(req sessionHandleHTTPChannelReq) error {
 	return <-req.res
 }
 
-func (s *Server) handleRequest(req sessionRequestReq) (*base.Response, *ServerSession, error) {
+func (s *Server) findOrCreateSession(req serverFindOrCreateSessionReq) (*ServerSession, error) {
+	req.res = make(chan serverFindOrCreateSessionRes)
+
 	select {
-	case s.chHandleRequest <- req:
+	case s.chFindOrCreateSession <- req:
 		res := <-req.res
-		return res.res, res.ss, res.err
+		return res.ss, res.err
 
 	case <-s.ctx.Done():
-		return &base.Response{
-			StatusCode: base.StatusBadRequest,
-		}, req.sc.session, liberrors.ErrServerTerminated{}
+		return nil, liberrors.ErrServerTerminated{}
 	}
 }
