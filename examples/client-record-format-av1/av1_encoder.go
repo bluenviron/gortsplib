@@ -77,13 +77,13 @@ func (d *av1Encoder) initialize() error {
 
 	res := C.avcodec_open2(d.codecCtx, codec, nil)
 	if res < 0 {
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("avcodec_open2() failed")
 	}
 
 	d.rgbaFrame = C.av_frame_alloc()
 	if d.rgbaFrame == nil {
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("av_frame_alloc() failed")
 	}
 
@@ -94,14 +94,14 @@ func (d *av1Encoder) initialize() error {
 	res = C.av_frame_get_buffer(d.rgbaFrame, 0)
 	if res < 0 {
 		C.av_frame_free(&d.rgbaFrame)
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("av_frame_get_buffer() failed")
 	}
 
 	d.yuv420Frame = C.av_frame_alloc()
 	if d.rgbaFrame == nil {
 		C.av_frame_free(&d.rgbaFrame)
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("av_frame_alloc() failed")
 	}
 
@@ -113,7 +113,7 @@ func (d *av1Encoder) initialize() error {
 	if res < 0 {
 		C.av_frame_free(&d.yuv420Frame)
 		C.av_frame_free(&d.rgbaFrame)
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("av_frame_get_buffer() failed")
 	}
 
@@ -122,7 +122,7 @@ func (d *av1Encoder) initialize() error {
 	if d.swsCtx == nil {
 		C.av_frame_free(&d.yuv420Frame)
 		C.av_frame_free(&d.rgbaFrame)
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("sws_getContext() failed")
 	}
 
@@ -130,7 +130,7 @@ func (d *av1Encoder) initialize() error {
 	if d.pkt == nil {
 		C.av_frame_free(&d.yuv420Frame)
 		C.av_frame_free(&d.rgbaFrame)
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("av_packet_alloc() failed")
 	}
 
@@ -143,7 +143,7 @@ func (d *av1Encoder) close() {
 	C.sws_freeContext(d.swsCtx)
 	C.av_frame_free(&d.yuv420Frame)
 	C.av_frame_free(&d.rgbaFrame)
-	C.avcodec_close(d.codecCtx)
+	C.avcodec_free_context(&d.codecCtx)
 }
 
 // encode encodes a RGBA image into AV1.
