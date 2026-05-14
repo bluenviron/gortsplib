@@ -292,6 +292,18 @@ func (s ServerSessionState) String() string {
 	return "unknown"
 }
 
+type sessionRequestRes struct {
+	ss  *ServerSession
+	res *base.Response
+	err error
+}
+
+type sessionRequestReq struct {
+	sc  *ServerConn
+	req *base.Request
+	res chan sessionRequestRes
+}
+
 // ServerSession is a server-side RTSP session.
 type ServerSession struct {
 	s      *Server
@@ -1569,6 +1581,8 @@ func (ss *ServerSession) PacketNTP(medi *description.Media, pkt *rtp.Packet) (ti
 }
 
 func (ss *ServerSession) handleRequest(req sessionRequestReq) (*base.Response, *ServerSession, error) {
+	req.res = make(chan sessionRequestRes)
+
 	select {
 	case ss.chHandleRequest <- req:
 		res := <-req.res
@@ -1578,19 +1592,6 @@ func (ss *ServerSession) handleRequest(req sessionRequestReq) (*base.Response, *
 		return &base.Response{
 			StatusCode: base.StatusBadRequest,
 		}, req.sc.session, liberrors.ErrServerTerminated{}
-	}
-}
-
-func (ss *ServerSession) handleRequestNoWait(req sessionRequestReq) {
-	select {
-	case ss.chHandleRequest <- req:
-	case <-ss.ctx.Done():
-		req.res <- sessionRequestRes{
-			res: &base.Response{
-				StatusCode: base.StatusBadRequest,
-			},
-			err: liberrors.ErrServerTerminated{},
-		}
 	}
 }
 
