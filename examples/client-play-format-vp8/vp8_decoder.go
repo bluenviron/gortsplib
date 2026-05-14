@@ -44,13 +44,13 @@ func (d *vp8Decoder) initialize() error {
 
 	res := C.avcodec_open2(d.codecCtx, codec, nil)
 	if res < 0 {
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("avcodec_open2() failed")
 	}
 
 	d.yuv420Frame = C.av_frame_alloc()
 	if d.yuv420Frame == nil {
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("av_frame_alloc() failed")
 	}
 
@@ -68,7 +68,7 @@ func (d *vp8Decoder) close() {
 	}
 
 	C.av_frame_free(&d.yuv420Frame)
-	C.avcodec_close(d.codecCtx)
+	C.avcodec_free_context(&d.codecCtx)
 }
 
 func (d *vp8Decoder) reinitDynamicStuff() error {

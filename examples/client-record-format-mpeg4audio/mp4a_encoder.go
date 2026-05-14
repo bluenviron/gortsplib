@@ -66,36 +66,35 @@ func (d *mp4aEncoder) initialize() error {
 	d.codecCtx.bit_rate = 64000
 	d.codecCtx.sample_fmt = C.AV_SAMPLE_FMT_FLT
 	d.codecCtx.sample_rate = 48000
-	d.codecCtx.channel_layout = C.AV_CH_LAYOUT_MONO
-	d.codecCtx.channels = C.av_get_channel_layout_nb_channels(d.codecCtx.channel_layout)
+	C.av_channel_layout_default(&d.codecCtx.ch_layout, 1)
 
 	res := C.avcodec_open2(d.codecCtx, codec, nil)
 	if res < 0 {
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("avcodec_open2() failed")
 	}
 
 	d.frame = C.av_frame_alloc()
 	if d.frame == nil {
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("av_frame_alloc() failed")
 	}
 
 	d.frame.nb_samples = d.codecCtx.frame_size
 	d.frame.format = (C.int)(d.codecCtx.sample_fmt)
-	d.frame.channel_layout = d.codecCtx.channel_layout
+	C.av_channel_layout_copy(&d.frame.ch_layout, &d.codecCtx.ch_layout)
 
 	res = C.av_frame_get_buffer(d.frame, 0)
 	if res < 0 {
 		C.av_frame_free(&d.frame)
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("av_frame_get_buffer() failed")
 	}
 
 	d.pkt = C.av_packet_alloc()
 	if d.pkt == nil {
 		C.av_frame_free(&d.frame)
-		C.avcodec_close(d.codecCtx)
+		C.avcodec_free_context(&d.codecCtx)
 		return fmt.Errorf("av_packet_alloc() failed")
 	}
 
@@ -106,7 +105,7 @@ func (d *mp4aEncoder) initialize() error {
 func (d *mp4aEncoder) close() {
 	C.av_packet_free(&d.pkt)
 	C.av_frame_free(&d.frame)
-	C.avcodec_close(d.codecCtx)
+	C.avcodec_free_context(&d.codecCtx)
 }
 
 // encode encodes LPCM samples into MPEG-4 Audio access units.
