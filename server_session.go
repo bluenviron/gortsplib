@@ -1003,18 +1003,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				}, liberrors.ErrServerMediaAlreadySetup{}
 			}
 
-			if ss.state == ServerSessionStateInitial {
-				err = stream.readerAdd(ss,
-					inTH.ClientPorts,
-					protocol,
-				)
-				if err != nil {
-					return &base.Response{
-						StatusCode: base.StatusBadRequest,
-					}, err
-				}
-			}
-
 			th := headers.Transport{
 				Profile: inTH.Profile,
 			}
@@ -1076,6 +1064,50 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				} else if isSecure(inTH.Profile) {
 					srtpOutCtx = stream.medias[medi].srtpOutCtx
 				}
+
+				var mk *mikey.Message
+				mk, err = contextToMikey(srtpOutCtx)
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusInternalServerError,
+					}, err
+				}
+
+				var enc base.HeaderValue
+				enc, err = headers.KeyMgmt{
+					URL:          req.URL.String(),
+					MikeyMessage: mk,
+				}.Marshal()
+				if err != nil {
+					return &base.Response{
+						StatusCode: base.StatusInternalServerError,
+					}, err
+				}
+
+				// always return KeyMgmt even if redundant when playing
+				// (since it's already present in the SDP)
+				res.Header["KeyMgmt"] = enc
+			}
+
+			ss.propsMutex.Lock()
+
+			ss.setuppedTransport = &SessionTransport{
+				Protocol: protocol,
+				Profile:  inTH.Profile,
+			}
+
+			if ss.state == ServerSessionStateInitial {
+				err = stream.readerAdd(ss,
+					inTH.ClientPorts,
+				)
+				if err != nil {
+					ss.setuppedTransport = nil
+					ss.propsMutex.Unlock()
+
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, err
+				}
 			}
 
 			var udpRTPReadPort int
@@ -1127,12 +1159,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 				th.InterleavedIDs = &[2]int{tcpChannel, tcpChannel + 1}
 			}
 
-			ss.propsMutex.Lock()
-
-			ss.setuppedTransport = &SessionTransport{
-				Protocol: protocol,
-				Profile:  inTH.Profile,
-			}
+			res.Header["Transport"] = th.Marshal()
 
 			sm := &serverSessionMedia{
 				ss:               ss,
@@ -1163,33 +1190,6 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}
 
 			ss.propsMutex.Unlock()
-
-			res.Header["Transport"] = th.Marshal()
-
-			if isSecure(inTH.Profile) {
-				var mk *mikey.Message
-				mk, err = contextToMikey(sm.srtpOutCtx)
-				if err != nil {
-					return &base.Response{
-						StatusCode: base.StatusInternalServerError,
-					}, err
-				}
-
-				var enc base.HeaderValue
-				enc, err = headers.KeyMgmt{
-					URL:          req.URL.String(),
-					MikeyMessage: mk,
-				}.Marshal()
-				if err != nil {
-					return &base.Response{
-						StatusCode: base.StatusInternalServerError,
-					}, err
-				}
-
-				// always return KeyMgmt even if redundant when playing
-				// (since it's already present in the SDP)
-				res.Header["KeyMgmt"] = enc
-			}
 		}
 
 		return res, err
