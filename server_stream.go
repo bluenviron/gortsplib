@@ -228,7 +228,9 @@ func (st *ServerStream) readerAdd(
 
 	case ProtocolUDPMulticast:
 		if st.multicastReaderCount == 0 {
-			for _, ssm := range st.medias {
+			for i, medi := range st.Desc.Medias {
+				ssm := st.medias[medi]
+
 				var ip net.IP
 				var rtpPort int
 				var rtcpPort int
@@ -241,6 +243,11 @@ func (st *ServerStream) readerAdd(
 					var err error
 					ip, err = st.Server.getMulticastIP()
 					if err != nil {
+						for _, prev := range st.Desc.Medias[:i] {
+							prevMedia := st.medias[prev]
+							prevMedia.multicastWriter.close()
+							prevMedia.multicastWriter = nil
+						}
 						return err
 					}
 
@@ -262,6 +269,11 @@ func (st *ServerStream) readerAdd(
 				}
 				err := smm.initialize()
 				if err != nil {
+					for _, prev := range st.Desc.Medias[:i] {
+						prevMedia := st.medias[prev]
+						prevMedia.multicastWriter.close()
+						prevMedia.multicastWriter = nil
+					}
 					return err
 				}
 				ssm.multicastWriter = smm
