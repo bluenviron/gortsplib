@@ -570,7 +570,7 @@ type Client struct {
 	lastRange             *headers.Range
 	checkTimeoutTimer     *time.Timer
 	checkTimeoutInitial   bool
-	tcpLastFrameTime      atomic.Int64
+	tcpLastInboundTime    atomic.Int64
 	keepAlivePeriod       time.Duration
 	keepAliveTimer        *time.Timer
 	closeError            error
@@ -1076,7 +1076,6 @@ func (c *Client) startTransportRoutines() {
 
 		default: // TCP
 			c.checkTimeoutTimer = time.NewTimer(c.checkTimeoutPeriod)
-			c.tcpLastFrameTime.Store(c.timeNow().Unix())
 		}
 	}
 
@@ -1339,7 +1338,7 @@ func (c *Client) isInUDPTimeout() bool {
 
 func (c *Client) isInTCPTimeout() bool {
 	now := c.timeNow()
-	lft := time.Unix(c.tcpLastFrameTime.Load(), 0)
+	lft := time.Unix(c.tcpLastInboundTime.Load(), 0)
 	return now.Sub(lft) >= c.ReadTimeout
 }
 

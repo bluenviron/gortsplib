@@ -54,6 +54,9 @@ func (r *clientReader) runInner() error {
 			return err
 		}
 
+		now := r.c.timeNow()
+		r.c.tcpLastInboundTime.Store(now.Unix())
+
 		switch what := what.(type) {
 		case *base.Response:
 			select {

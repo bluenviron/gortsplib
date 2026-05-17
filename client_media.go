@@ -342,16 +342,12 @@ func (cm *clientMedia) readPacketRTPTCPPlay(payload []byte) bool {
 	cm.bytesReceived.Add(uint64(len(payload)))
 
 	now := cm.c.timeNow()
-	cm.c.tcpLastFrameTime.Store(now.Unix())
 
 	return cm.readPacketRTP(payload, now)
 }
 
 func (cm *clientMedia) readPacketRTCPTCPPlay(payload []byte) bool {
 	cm.bytesReceived.Add(uint64(len(payload)))
-
-	now := cm.c.timeNow()
-	cm.c.tcpLastFrameTime.Store(now.Unix())
 
 	if len(payload) > udpMaxPayloadSize {
 		cm.onPacketRTCPDecodeError(liberrors.ErrClientRTCPPacketTooBig{L: len(payload), Max: udpMaxPayloadSize})
