@@ -454,6 +454,7 @@ func (s *SessionDescription) unmarshalMediaDescription(value string) error {
 		fields[0] != "application" &&
 		!strings.HasPrefix(fields[0], "application/") &&
 		fields[0] != "metadata" &&
+		fields[0] != "meta" &&
 		fields[0] != "text" {
 		return fmt.Errorf("%w `%v`", errSDPInvalidValue, fields[0])
 	}
