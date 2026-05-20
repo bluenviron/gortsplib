@@ -2611,7 +2611,7 @@ var cases = []struct {
 		},
 	},
 	{
-		"BZBGEAR BG-VPTZ-10HSU3",
+		"issue gortsplib/1068 (BZBGEAR BG-VPTZ-10HSU3)",
 		[]byte("m=meta 0 RTP/AVP 123\r\n" +
 			"b=AS:0\r\n" +
 			"a=rtpmap:123 META /0\r\n" +
