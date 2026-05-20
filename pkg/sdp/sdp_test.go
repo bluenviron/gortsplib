@@ -3413,6 +3413,43 @@ var cases = []struct {
 			},
 		},
 	},
+	{
+		"issue gortsplib/1068 (BZBGEAR BG-VPTZ-10HSU3)",
+		[]byte("m=meta 0 RTP/AVP 123\r\n" +
+			"b=AS:0\r\n" +
+			"a=rtpmap:123 META /0\r\n" +
+			"a=control:track=2\r\n"),
+		[]byte("v=0\r\n" +
+			"o= 0 0   \r\n" +
+			"s=\r\n" +
+			"m=meta 0 RTP/AVP 123\r\n" +
+			"b=AS:0\r\n" +
+			"a=rtpmap:123 META /0\r\n" +
+			"a=control:track=2\r\n"),
+		SessionDescription{
+			MediaDescriptions: []*psdp.MediaDescription{{
+				MediaName: psdp.MediaName{
+					Media:   "meta",
+					Protos:  []string{"RTP", "AVP"},
+					Formats: []string{"123"},
+				},
+				Bandwidth: []psdp.Bandwidth{{
+					Type:      "AS",
+					Bandwidth: 0,
+				}},
+				Attributes: []psdp.Attribute{
+					{
+						Key:   "rtpmap",
+						Value: "123 META /0",
+					},
+					{
+						Key:   "control",
+						Value: "track=2",
+					},
+				},
+			}},
+		},
+	},
 }
 
 func TestUnmarshal(t *testing.T) {
