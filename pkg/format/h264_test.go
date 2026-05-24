@@ -45,7 +45,7 @@ func TestH264PTSEqualsDTS(t *testing.T) {
 }
 
 func TestH264DecEncoder(t *testing.T) {
-	format := &H264{}
+	format := &H264{PacketizationMode: 1}
 
 	enc, err := format.CreateEncoder()
 	require.NoError(t, err)

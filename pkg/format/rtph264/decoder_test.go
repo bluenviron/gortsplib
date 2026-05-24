@@ -14,7 +14,7 @@ import (
 func TestDecode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
+			d := &Decoder{PacketizationMode: 1}
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -363,7 +363,7 @@ var casesDecodeOnly = []struct {
 func TestDecodeOnly(t *testing.T) {
 	for _, ca := range casesDecodeOnly {
 		t.Run(ca.name, func(t *testing.T) {
-			d := &Decoder{}
+			d := &Decoder{PacketizationMode: 1}
 			err := d.Init()
 			require.NoError(t, err)
 
@@ -385,7 +385,7 @@ func TestDecodeOnly(t *testing.T) {
 }
 
 func TestDecodeErrorNALUSize(t *testing.T) {
-	d := &Decoder{}
+	d := &Decoder{PacketizationMode: 1}
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -421,7 +421,7 @@ func TestDecodeErrorNALUSize(t *testing.T) {
 }
 
 func TestDecodeErrorNALUCount(t *testing.T) {
-	d := &Decoder{}
+	d := &Decoder{PacketizationMode: 1}
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -443,7 +443,7 @@ func TestDecodeErrorNALUCount(t *testing.T) {
 }
 
 func TestDecodeErrorMissingPacket(t *testing.T) {
-	d := &Decoder{}
+	d := &Decoder{PacketizationMode: 1}
 	err := d.Init()
 	require.NoError(t, err)
 
@@ -547,7 +547,7 @@ func FuzzDecoder(f *testing.F) {
 			return
 		}
 
-		d := &Decoder{}
+		d := &Decoder{PacketizationMode: 1}
 		err = d.Init()
 		require.NoError(t, err)
 

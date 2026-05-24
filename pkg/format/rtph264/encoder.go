@@ -76,8 +76,8 @@ type Encoder struct {
 
 // Init initializes the encoder.
 func (e *Encoder) Init() error {
-	if e.PacketizationMode >= 2 {
-		return fmt.Errorf("PacketizationMode >= 2 is not supported")
+	if e.PacketizationMode != 1 {
+		return fmt.Errorf("unsupported packetization mode: %d", e.PacketizationMode)
 	}
 
 	if e.SSRC == nil {
