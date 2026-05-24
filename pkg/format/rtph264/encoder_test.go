@@ -281,6 +281,7 @@ func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
+				PacketizationMode:     1,
 				PayloadType:           96,
 				SSRC:                  ptrOf(uint32(0x9dbb7812)),
 				InitialSequenceNumber: ptrOf(uint16(0x44ed)),
@@ -298,7 +299,8 @@ func TestEncode(t *testing.T) {
 
 func TestEncodeRandomInitialState(t *testing.T) {
 	e := &Encoder{
-		PayloadType: 96,
+		PacketizationMode: 1,
+		PayloadType:       96,
 	}
 	err := e.Init()
 	require.NoError(t, err)

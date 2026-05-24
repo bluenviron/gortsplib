@@ -93,8 +93,8 @@ type Decoder struct {
 
 // Init initializes the decoder.
 func (d *Decoder) Init() error {
-	if d.PacketizationMode >= 2 {
-		return fmt.Errorf("PacketizationMode >= 2 is not supported")
+	if d.PacketizationMode != 1 {
+		return fmt.Errorf("unsupported packetization mode: %d", d.PacketizationMode)
 	}
 	return nil
 }
