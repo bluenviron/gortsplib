@@ -9,10 +9,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/format/rtpvp9"
 )
 
-func ptrOf[T any](v T) *T {
-	return &v
-}
-
 // VP9 is the RTP format for the VP9 codec.
 // Specification: RFC9628
 type VP9 struct {
@@ -33,7 +29,7 @@ func (f *VP9) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid max-fr: %v", val)
 			}
 
-			f.MaxFR = ptrOf(int(n))
+			f.MaxFR = new(int(n))
 
 		case "max-fs":
 			n, err := strconv.ParseUint(val, 10, 31)
@@ -41,7 +37,7 @@ func (f *VP9) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid max-fs: %v", val)
 			}
 
-			f.MaxFS = ptrOf(int(n))
+			f.MaxFS = new(int(n))
 
 		case "profile-id":
 			n, err := strconv.ParseUint(val, 10, 31)
@@ -49,7 +45,7 @@ func (f *VP9) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid profile-id: %v", val)
 			}
 
-			f.ProfileID = ptrOf(int(n))
+			f.ProfileID = new(int(n))
 		}
 	}
 

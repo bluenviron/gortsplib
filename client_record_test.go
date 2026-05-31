@@ -544,12 +544,12 @@ func TestClientRecord(t *testing.T) {
 				h := base.Header{
 					"Session": headers.Session{
 						Session: "ABCDE",
-						Timeout: ptrOf(uint(1)),
+						Timeout: new(uint(1)),
 					}.Marshal(),
 				}
 
 				th := headers.Transport{
-					Delivery: ptrOf(headers.TransportDeliveryUnicast),
+					Delivery: new(headers.TransportDeliveryUnicast),
 					Profile:  inTH.Profile,
 				}
 
@@ -841,7 +841,7 @@ func TestClientRecordSocketError(t *testing.T) {
 				require.NoError(t, err2)
 
 				th := headers.Transport{
-					Delivery: ptrOf(headers.TransportDeliveryUnicast),
+					Delivery: new(headers.TransportDeliveryUnicast),
 				}
 
 				if transport == "udp" {
@@ -961,7 +961,7 @@ func TestClientRecordPauseRecordSerial(t *testing.T) {
 				require.NoError(t, err2)
 
 				th := headers.Transport{
-					Delivery: ptrOf(headers.TransportDeliveryUnicast),
+					Delivery: new(headers.TransportDeliveryUnicast),
 				}
 
 				if transport == "udp" {
@@ -1086,7 +1086,7 @@ func TestClientRecordReportedLostStats(t *testing.T) {
 	require.NoError(t, err)
 	defer s.Close()
 
-	c := Client{Protocol: ptrOf(ProtocolTCP)}
+	c := Client{Protocol: new(ProtocolTCP)}
 	err = record(&c, "rtsp://localhost:8554/teststream", []*description.Media{testH264Media},
 		func(_ *description.Media, pkt rtcp.Packet) {
 			if rr, ok := pkt.(*rtcp.ReceiverReport); ok {
@@ -1172,7 +1172,7 @@ func TestClientRecordPauseRecordParallel(t *testing.T) {
 				require.NoError(t, err2)
 
 				th := headers.Transport{
-					Delivery: ptrOf(headers.TransportDeliveryUnicast),
+					Delivery: new(headers.TransportDeliveryUnicast),
 				}
 
 				if transport == "udp" {
@@ -1362,7 +1362,7 @@ func TestClientRecordAutomaticProtocol(t *testing.T) {
 		require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
 
 		th := headers.Transport{
-			Delivery:       ptrOf(headers.TransportDeliveryUnicast),
+			Delivery:       new(headers.TransportDeliveryUnicast),
 			Protocol:       headers.TransportProtocolTCP,
 			InterleavedIDs: &[2]int{0, 1},
 		}
@@ -1482,7 +1482,7 @@ func TestClientRecordDecodeErrors(t *testing.T) {
 				require.NoError(t, err2)
 
 				th := headers.Transport{
-					Delivery: ptrOf(headers.TransportDeliveryUnicast),
+					Delivery: new(headers.TransportDeliveryUnicast),
 				}
 
 				if ca.proto == "udp" {
@@ -1653,7 +1653,7 @@ func TestClientRecordRTCPReport(t *testing.T) {
 				require.NoError(t, err2)
 
 				th := headers.Transport{
-					Delivery: ptrOf(headers.TransportDeliveryUnicast),
+					Delivery: new(headers.TransportDeliveryUnicast),
 				}
 
 				if ca == "udp" {
@@ -1839,7 +1839,7 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 		require.NoError(t, err2)
 
 		th := headers.Transport{
-			Delivery:       ptrOf(headers.TransportDeliveryUnicast),
+			Delivery:       new(headers.TransportDeliveryUnicast),
 			Protocol:       headers.TransportProtocolTCP,
 			InterleavedIDs: inTH.InterleavedIDs,
 		}
@@ -1886,7 +1886,7 @@ func TestClientRecordIgnoreTCPRTPPackets(t *testing.T) {
 	rtcpReceived := make(chan struct{})
 
 	c := Client{
-		Protocol: ptrOf(ProtocolTCP),
+		Protocol: new(ProtocolTCP),
 	}
 
 	medias := []*description.Media{testH264Media}

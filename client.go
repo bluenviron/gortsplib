@@ -1656,7 +1656,7 @@ func (c *Client) doSetup(
 
 	// when playing, omit mode, since it causes errors with some servers.
 	if c.state == clientStatePreRecord {
-		th.Mode = ptrOf(headers.TransportModeRecord)
+		th.Mode = new(headers.TransportModeRecord)
 	}
 
 	var protocol Protocol
@@ -1754,14 +1754,14 @@ func (c *Client) doSetup(
 				return nil, err
 			}
 
-			th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
+			th.Delivery = new(headers.TransportDeliveryUnicast)
 			th.ClientPorts = &[2]int{udpRTPListener.port(), udpRTCPListener.port()}
 		} else {
-			th.Delivery = ptrOf(headers.TransportDeliveryMulticast)
+			th.Delivery = new(headers.TransportDeliveryMulticast)
 		}
 
 	case ProtocolTCP:
-		th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
+		th.Delivery = new(headers.TransportDeliveryUnicast)
 		th.Protocol = headers.TransportProtocolTCP
 		ch := c.findFreeChannelPair()
 		th.InterleavedIDs = &[2]int{ch, ch + 1}
