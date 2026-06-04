@@ -20,13 +20,13 @@ var casesTransports = []struct {
 		Transports{
 			{
 				Protocol:    TransportProtocolUDP,
-				Delivery:    ptrOf(TransportDeliveryUnicast),
+				Delivery:    new(TransportDeliveryUnicast),
 				ClientPorts: &[2]int{3456, 3457},
-				Mode:        ptrOf(TransportModePlay),
+				Mode:        new(TransportModePlay),
 			},
 			Transport{
 				Protocol:       TransportProtocolTCP,
-				Delivery:       ptrOf(TransportDeliveryUnicast),
+				Delivery:       new(TransportDeliveryUnicast),
 				InterleavedIDs: &[2]int{0, 1},
 			},
 		},

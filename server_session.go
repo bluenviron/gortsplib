@@ -621,7 +621,7 @@ func (ss *ServerSession) runInner() error {
 
 					res.Header["Session"] = headers.Session{
 						Session: ss.secretID,
-						Timeout: ptrOf(uint(timeout)),
+						Timeout: new(uint(timeout)),
 					}.Marshal()
 				}
 
@@ -1148,13 +1148,13 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 						Port: udpRTCPReadPort,
 					}
 
-					th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
+					th.Delivery = new(headers.TransportDeliveryUnicast)
 					th.ClientPorts = inTH.ClientPorts
 					th.ServerPorts = &[2]int{sc.s.udpRTPListener.port(), sc.s.udpRTCPListener.port()}
 				} else {
-					th.Delivery = ptrOf(headers.TransportDeliveryMulticast)
-					th.TTL = ptrOf(uint(127))
-					th.Destination2 = ptrOf(stream.medias[medi].multicastWriter.ip.String())
+					th.Delivery = new(headers.TransportDeliveryMulticast)
+					th.TTL = new(uint(127))
+					th.Destination2 = new(stream.medias[medi].multicastWriter.ip.String())
 					th.Ports = &[2]int{stream.medias[medi].multicastWriter.rtpPort, stream.medias[medi].multicastWriter.rtcpPort}
 				}
 
@@ -1167,7 +1167,7 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 					tcpChannel = ss.findFreeChannelPair()
 				}
 
-				th.Delivery = ptrOf(headers.TransportDeliveryUnicast)
+				th.Delivery = new(headers.TransportDeliveryUnicast)
 				th.InterleavedIDs = &[2]int{tcpChannel, tcpChannel + 1}
 			}
 

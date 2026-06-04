@@ -507,8 +507,8 @@ func TestEncode(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
-				SSRC:                  ptrOf(uint32(0x9dbb7812)),
-				InitialSequenceNumber: ptrOf(uint16(0x44ed)),
+				SSRC:                  new(uint32(0x9dbb7812)),
+				InitialSequenceNumber: new(uint16(0x44ed)),
 				PayloadMaxSize:        1000,
 			}
 			err := e.Init()

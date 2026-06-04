@@ -28,7 +28,7 @@ func (f *VP8) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid max-fr: %v", val)
 			}
 
-			f.MaxFR = ptrOf(int(n))
+			f.MaxFR = new(int(n))
 
 		case "max-fs":
 			n, err := strconv.ParseUint(val, 10, 31)
@@ -36,7 +36,7 @@ func (f *VP8) unmarshal(ctx *unmarshalContext) error {
 				return fmt.Errorf("invalid max-fs: %v", val)
 			}
 
-			f.MaxFS = ptrOf(int(n))
+			f.MaxFS = new(int(n))
 		}
 	}
 

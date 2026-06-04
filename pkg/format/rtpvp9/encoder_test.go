@@ -108,9 +108,9 @@ func TestEncode(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			e := &Encoder{
 				PayloadType:           96,
-				SSRC:                  ptrOf(uint32(0x9dbb7812)),
-				InitialSequenceNumber: ptrOf(uint16(0x44ed)),
-				InitialPictureID:      ptrOf(uint16(0x35af)),
+				SSRC:                  new(uint32(0x9dbb7812)),
+				InitialSequenceNumber: new(uint16(0x44ed)),
+				InitialPictureID:      new(uint16(0x35af)),
 				PayloadMaxSize:        500,
 			}
 			err := e.Init()

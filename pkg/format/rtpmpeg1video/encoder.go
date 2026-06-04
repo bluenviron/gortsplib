@@ -13,10 +13,6 @@ const (
 	payloadType           = 32
 )
 
-func ptrOf[T any](v T) *T {
-	return &v
-}
-
 func randUint32() (uint32, error) {
 	var b [4]byte
 	_, err := rand.Read(b[:])
@@ -74,7 +70,7 @@ func (e *Encoder) Init() error {
 		if err != nil {
 			return err
 		}
-		e.InitialSequenceNumber = ptrOf(uint16(v))
+		e.InitialSequenceNumber = new(uint16(v))
 	}
 	if e.PayloadMaxSize == 0 {
 		e.PayloadMaxSize = defaultPayloadMaxSize
