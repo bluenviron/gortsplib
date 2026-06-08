@@ -10,6 +10,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
+	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 )
 
 func randUint32() (uint32, error) {
@@ -42,8 +43,14 @@ type serverStreamFormat struct {
 	lastNTP            time.Time
 }
 
-func (ssf *serverStreamFormat) initialize() {
+func (ssf *serverStreamFormat) initialize() error {
+	if h264Forma, ok := ssf.format.(*format.H264); ok && h264Forma.PacketizationMode == 0 {
+		return liberrors.ErrServerH264PacketizationMode0{}
+	}
+
 	ssf.formatForDesc = cloneFormatShallow(ssf.format)
+
+	return nil
 }
 
 func (ssf *serverStreamFormat) rtpInfoEntry(now time.Time) *headers.RTPInfoEntry {

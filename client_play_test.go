@@ -102,38 +102,6 @@ func readAll(c *Client, ur string, cb func(*description.Media, format.Format, *r
 }
 
 func TestClientPlayFormats(t *testing.T) {
-	media1 := testH264Media
-
-	media2 := &description.Media{
-		Type: description.MediaTypeAudio,
-		Formats: []format.Format{&format.MPEG4Audio{
-			PayloadTyp: 96,
-			Config: &mpeg4audio.AudioSpecificConfig{
-				Type:         mpeg4audio.ObjectTypeAACLC,
-				SampleRate:   44100,
-				ChannelCount: 2,
-			},
-			SizeLength:       13,
-			IndexLength:      3,
-			IndexDeltaLength: 3,
-		}},
-	}
-
-	media3 := &description.Media{
-		Type: description.MediaTypeAudio,
-		Formats: []format.Format{&format.MPEG4Audio{
-			PayloadTyp: 96,
-			Config: &mpeg4audio.AudioSpecificConfig{
-				Type:         mpeg4audio.ObjectTypeAACLC,
-				SampleRate:   96000,
-				ChannelCount: 2,
-			},
-			SizeLength:       13,
-			IndexLength:      3,
-			IndexDeltaLength: 3,
-		}},
-	}
-
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -170,7 +138,37 @@ func TestClientPlayFormats(t *testing.T) {
 		require.Equal(t, base.Describe, req.Method)
 		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream"), req.URL)
 
-		medias := []*description.Media{media1, media2, media3}
+		medias := []*description.Media{
+			testH264Media,
+			{
+				Type: description.MediaTypeAudio,
+				Formats: []format.Format{&format.MPEG4Audio{
+					PayloadTyp: 96,
+					Config: &mpeg4audio.AudioSpecificConfig{
+						Type:         mpeg4audio.ObjectTypeAACLC,
+						SampleRate:   44100,
+						ChannelCount: 2,
+					},
+					SizeLength:       13,
+					IndexLength:      3,
+					IndexDeltaLength: 3,
+				}},
+			},
+			{
+				Type: description.MediaTypeAudio,
+				Formats: []format.Format{&format.MPEG4Audio{
+					PayloadTyp: 96,
+					Config: &mpeg4audio.AudioSpecificConfig{
+						Type:         mpeg4audio.ObjectTypeAACLC,
+						SampleRate:   96000,
+						ChannelCount: 2,
+					},
+					SizeLength:       13,
+					IndexLength:      3,
+					IndexDeltaLength: 3,
+				}},
+			},
+		}
 
 		err2 = conn.WriteResponse(&base.Response{
 			StatusCode: base.StatusOK,
@@ -765,6 +763,7 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 						"a=key-mgmt:mikey " + base64.StdEncoding.EncodeToString(enc) + "\n" +
 						"m=video 0 RTP/SAVP 96\n" +
 						"a=rtpmap:96 H264/90000\n" +
+						"a=fmtp:96 packetization-mode=1\n" +
 						"a=control:trackID=0\n"
 
 				case "key-mgmt in sdp media":
@@ -776,6 +775,7 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 						"m=video 0 RTP/SAVP 96\n" +
 						"a=key-mgmt:mikey " + base64.StdEncoding.EncodeToString(enc) + "\n" +
 						"a=rtpmap:96 H264/90000\n" +
+						"a=fmtp:96 packetization-mode=1\n" +
 						"a=control:trackID=0\n"
 
 				case "key-mgmt in setup response":
@@ -786,6 +786,7 @@ func TestClientPlaySRTPVariants(t *testing.T) {
 						"c=IN IP4 movie.example.com\n" +
 						"m=video 0 RTP/SAVP 96\n" +
 						"a=rtpmap:96 H264/90000\n" +
+						"a=fmtp:96 packetization-mode=1\n" +
 						"a=control:trackID=0\n"
 				}
 
@@ -960,6 +961,7 @@ func TestClientPlayAxisClientManagedKeys(t *testing.T) {
 			"c=IN IP4 movie.example.com\n" +
 			"m=video 0 RTP/SAVP 96\n" +
 			"a=rtpmap:96 H264/90000\n" +
+			"a=fmtp:96 packetization-mode=1\n" +
 			"a=control:trackID=0\n"
 
 		err2 = conn.WriteResponse(&base.Response{
@@ -4483,4 +4485,123 @@ func TestClientPlayDifferentSSRCs(t *testing.T) {
 			<-done
 		})
 	}
+}
+
+func TestClientPlayH264PacketizationMode0TCP(t *testing.T) {
+	l, err := net.Listen("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+		req, err2 := conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Options, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Public": base.HeaderValue{strings.Join([]string{
+					string(base.Describe),
+					string(base.Setup),
+					string(base.Play),
+				}, ", ")},
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Describe, req.Method)
+
+		medias := []*description.Media{{
+			Type: description.MediaTypeVideo,
+			Formats: []format.Format{&format.H264{
+				PayloadTyp:        96,
+				PacketizationMode: 0,
+			}},
+		}}
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Content-Type": base.HeaderValue{"application/sdp"},
+				"Content-Base": base.HeaderValue{"rtsp://localhost:8554/teststream/"},
+			},
+			Body: mediasToSDP(medias),
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Setup, req.Method)
+
+		var inTH headers.Transport
+		err2 = inTH.Unmarshal(req.Header["Transport"])
+		require.NoError(t, err2)
+
+		th := headers.Transport{
+			Delivery:       ptrOf(headers.TransportDeliveryUnicast),
+			Protocol:       headers.TransportProtocolTCP,
+			InterleavedIDs: &[2]int{0, 1},
+		}
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+			Header: base.Header{
+				"Transport": th.Marshal(),
+			},
+		})
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Play, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err2)
+
+		err2 = conn.WriteInterleavedFrame(&base.InterleavedFrame{
+			Channel: 0,
+			Payload: testRTPPacketMarshaled,
+		}, make([]byte, 1024))
+		require.NoError(t, err2)
+
+		req, err2 = conn.ReadRequest()
+		require.NoError(t, err2)
+		require.Equal(t, base.Teardown, req.Method)
+
+		err2 = conn.WriteResponse(&base.Response{
+			StatusCode: base.StatusOK,
+		})
+		require.NoError(t, err2)
+	}()
+
+	v := ProtocolTCP
+
+	c := Client{
+		Protocol: &v,
+	}
+
+	packetRecv := make(chan struct{})
+
+	err = readAll(&c, "rtsp://localhost:8554/teststream", func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
+		require.Equal(t, &testRTPPacket, pkt)
+		close(packetRecv)
+	})
+	require.NoError(t, err)
+	defer c.Close()
+
+	<-packetRecv
 }

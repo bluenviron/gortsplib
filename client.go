@@ -2099,6 +2099,14 @@ func (c *Client) doSetup(
 		}
 	}
 
+	for _, forma := range medi.Formats {
+		if h264Forma, ok := forma.(*format.H264); ok && h264Forma.PacketizationMode == 0 {
+			if (c.state != clientStateInitial && c.state != clientStatePrePlay) || protocol != ProtocolTCP {
+				return nil, liberrors.ErrClientH264PacketizationMode0{}
+			}
+		}
+	}
+
 	cm := &clientMedia{
 		c:               c,
 		media:           medi,

@@ -1,7 +1,6 @@
 package gortsplib
 
 import (
-	"crypto/rand"
 	"fmt"
 	"net"
 	"strconv"
@@ -94,33 +93,17 @@ func (st *ServerStream) Initialize() error {
 			return err
 		}
 
-		var srtpOutCtx *wrappedSRTPContext
-
-		if st.Server.TLSConfig != nil {
-			srtpOutKey := make([]byte, srtpKeyLength)
-			_, err = rand.Read(srtpOutKey)
-			if err != nil {
-				return err
-			}
-
-			srtpOutCtx = &wrappedSRTPContext{
-				key:   srtpOutKey,
-				ssrcs: ssrcsMapToList(localSSRCs),
-			}
-			err = srtpOutCtx.initialize()
-			if err != nil {
-				return err
-			}
-		}
-
 		sm := &serverStreamMedia{
 			st:         st,
 			media:      medi,
 			trackID:    i,
 			localSSRCs: localSSRCs,
-			srtpOutCtx: srtpOutCtx,
+			tlsConfig:  st.Server.TLSConfig,
 		}
-		sm.initialize()
+		err = sm.initialize()
+		if err != nil {
+			return err
+		}
 
 		st.medias[medi] = sm
 	}

@@ -384,6 +384,27 @@ func TestDecodeOnly(t *testing.T) {
 	}
 }
 
+func TestDecodePacketizationMode0(t *testing.T) {
+	d := &Decoder{PacketizationMode: 0}
+	err := d.Init()
+	require.NoError(t, err)
+
+	// single NALU
+	au, err := d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 17645,
+			Timestamp:      2289527317,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x65, 0x88, 0x84, 0x00, 0x33},
+	})
+	require.NoError(t, err)
+	require.Equal(t, [][]byte{{0x65, 0x88, 0x84, 0x00, 0x33}}, au)
+}
+
 func TestDecodeErrorNALUSize(t *testing.T) {
 	d := &Decoder{PacketizationMode: 1}
 	err := d.Init()
