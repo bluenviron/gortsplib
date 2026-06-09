@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -11,7 +12,10 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 )
 
 func serverStreamExtractExistingSSRCs(medias map[*description.Media]*serverStreamMedia) []uint32 {
@@ -61,6 +65,7 @@ type ServerStream struct {
 	// (optional) Stream-specific Multicast settings.
 	MulticastParams map[*description.Media]StreamMediaMulticastParams
 
+	descMutex            sync.RWMutex
 	mutex                sync.RWMutex
 	readers              map[*ServerSession]struct{}
 	multicastReaderCount int
@@ -136,6 +141,56 @@ func (st *ServerStream) Close() {
 	}
 
 	st.mutex.Unlock()
+}
+
+// WritePacketRTP writes a RTP packet to all the readers of the stream.
+func (st *ServerStream) WritePacketRTP(medi *description.Media, pkt *rtp.Packet) error {
+	return st.WritePacketRTPWithNTP(medi, pkt, st.Server.timeNow())
+}
+
+// WritePacketRTPWithNTP writes a RTP packet to all the readers of the stream.
+// ntp is the absolute timestamp of the packet, and is sent with periodic RTCP sender reports.
+func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet, ntp time.Time) error {
+	st.mutex.RLock()
+	defer st.mutex.RUnlock()
+
+	if st.closed {
+		return liberrors.ErrServerStreamClosed{}
+	}
+
+	sm := st.medias[medi]
+	sf := sm.formats[pkt.PayloadType]
+	return sf.writePacketRTP(pkt, ntp)
+}
+
+// WritePacketRTCP writes a RTCP packet to all the readers of the stream.
+func (st *ServerStream) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error {
+	st.mutex.RLock()
+	defer st.mutex.RUnlock()
+
+	if st.closed {
+		return liberrors.ErrServerStreamClosed{}
+	}
+
+	sm := st.medias[medi]
+	return sm.writePacketRTCP(pkt)
+}
+
+// ReloadDesc reloads the stream description.
+// The updated description is sent to clients in DESCRIBE responses.
+// Currently, only the following parameters can be safely changed and reloaded:
+// - SPS and PPS of H264 formats
+// - VPS, SPS and PPS of H265 formats
+// - Config of MPEG4Video formats
+func (st *ServerStream) ReloadDesc() {
+	st.descMutex.Lock()
+	defer st.descMutex.Unlock()
+
+	for _, sm := range st.medias {
+		for _, sf := range sm.formats {
+			sf.formatForDesc = cloneFormatShallow(sf.format)
+		}
+	}
 }
 
 // Stats returns stream statistics.
@@ -366,35 +421,58 @@ func (st *ServerStream) readerSetInactiveUnsafe(ss *ServerSession) {
 	}
 }
 
-// WritePacketRTP writes a RTP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTP(medi *description.Media, pkt *rtp.Packet) error {
-	return st.WritePacketRTPWithNTP(medi, pkt, st.Server.timeNow())
-}
-
-// WritePacketRTPWithNTP writes a RTP packet to all the readers of the stream.
-// ntp is the absolute timestamp of the packet, and is sent with periodic RTCP sender reports.
-func (st *ServerStream) WritePacketRTPWithNTP(medi *description.Media, pkt *rtp.Packet, ntp time.Time) error {
-	st.mutex.RLock()
-	defer st.mutex.RUnlock()
-
-	if st.closed {
-		return liberrors.ErrServerStreamClosed{}
+func (st *ServerStream) descForDescribe(
+	multicast bool,
+	backChannels bool,
+) (*description.Session, error) {
+	out := &description.Session{
+		Title:     st.Desc.Title,
+		Multicast: multicast,
+		FECGroups: st.Desc.FECGroups,
 	}
 
-	sm := st.medias[medi]
-	sf := sm.formats[pkt.PayloadType]
-	return sf.writePacketRTP(pkt, ntp)
-}
+	st.descMutex.RLock()
+	defer st.descMutex.RUnlock()
 
-// WritePacketRTCP writes a RTCP packet to all the readers of the stream.
-func (st *ServerStream) WritePacketRTCP(medi *description.Media, pkt rtcp.Packet) error {
-	st.mutex.RLock()
-	defer st.mutex.RUnlock()
+	for i, medi := range st.Desc.Medias {
+		if !medi.IsBackChannel || backChannels {
+			sm := st.medias[medi]
 
-	if st.closed {
-		return liberrors.ErrServerStreamClosed{}
+			var keyMgmtMikey *mikey.Message
+			if st.Server.TLSConfig != nil {
+				var err error
+				keyMgmtMikey, err = contextToMikey(sm.srtpOutCtx)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			var profile headers.TransportProfile
+			if st.Server.TLSConfig != nil {
+				profile = headers.TransportProfileSAVP
+			} else {
+				profile = headers.TransportProfileAVP
+			}
+
+			formatsForDesc := make([]format.Format, len(medi.Formats))
+
+			for i, forma := range medi.Formats {
+				formatsForDesc[i] = cloneFormatShallow(sm.formats[forma.PayloadType()].formatForDesc)
+			}
+
+			out.Medias = append(out.Medias, &description.Media{
+				Type:          medi.Type,
+				ID:            medi.ID,
+				IsBackChannel: medi.IsBackChannel,
+				// we have to use trackID=number in order to support clients
+				// like the Grandstream GXV3500.
+				Control:      "trackID=" + strconv.FormatInt(int64(i), 10),
+				Profile:      profile,
+				KeyMgmtMikey: keyMgmtMikey,
+				Formats:      formatsForDesc,
+			})
+		}
 	}
 
-	sm := st.medias[medi]
-	return sm.writePacketRTCP(pkt)
+	return out, nil
 }

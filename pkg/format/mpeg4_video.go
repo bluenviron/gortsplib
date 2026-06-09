@@ -121,6 +121,8 @@ func (f *MPEG4Video) CreateEncoder() (*rtpfragmented.Encoder, error) {
 }
 
 // SafeSetParams sets the codec parameters.
+//
+// Deprecated: set parameters directly then use ServerStream.ReloadDesc() to reload them.
 func (f *MPEG4Video) SafeSetParams(config []byte) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
@@ -128,6 +130,8 @@ func (f *MPEG4Video) SafeSetParams(config []byte) {
 }
 
 // SafeParams returns the codec parameters.
+//
+// Deprecated: set parameters directly then use ServerStream.ReloadDesc() to reload them.
 func (f *MPEG4Video) SafeParams() []byte {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()

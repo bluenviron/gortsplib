@@ -2,6 +2,7 @@ package gortsplib
 
 import (
 	"crypto/rand"
+	"reflect"
 	"sync"
 	"time"
 
@@ -20,11 +21,18 @@ func randUint32() (uint32, error) {
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3]), nil
 }
 
+func cloneFormatShallow(forma format.Format) format.Format {
+	v := reflect.New(reflect.TypeOf(forma).Elem())
+	v.Elem().Set(reflect.ValueOf(forma).Elem())
+	return v.Interface().(format.Format)
+}
+
 type serverStreamFormat struct {
 	ssm       *serverStreamMedia
 	format    format.Format
 	localSSRC uint32
 
+	formatForDesc      format.Format
 	multicastWriter    *serverMulticastWriterFormat
 	mutex              sync.RWMutex
 	firstSent          bool
@@ -35,6 +43,7 @@ type serverStreamFormat struct {
 }
 
 func (ssf *serverStreamFormat) initialize() {
+	ssf.formatForDesc = cloneFormatShallow(ssf.format)
 }
 
 func (ssf *serverStreamFormat) rtpInfoEntry(now time.Time) *headers.RTPInfoEntry {

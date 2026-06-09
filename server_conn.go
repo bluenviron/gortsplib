@@ -7,7 +7,6 @@ import (
 	"net"
 	gourl "net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,7 +18,6 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
-	"github.com/bluenviron/gortsplib/v5/pkg/mikey"
 )
 
 func getSessionID(header base.Header) string {
@@ -50,56 +48,6 @@ func checkBackChannelsEnabled(header base.Header) bool {
 		}
 	}
 	return false
-}
-
-func prepareForDescribe(
-	d *description.Session,
-	multicast bool,
-	backChannels bool,
-	secure bool,
-	medias map[*description.Media]*serverStreamMedia,
-) (*description.Session, error) {
-	out := &description.Session{
-		Title:     d.Title,
-		Multicast: multicast,
-		FECGroups: d.FECGroups,
-	}
-
-	for i, medi := range d.Medias {
-		if !medi.IsBackChannel || backChannels {
-			var keyMgmtMikey *mikey.Message
-			if secure {
-				sm := medias[medi]
-
-				var err error
-				keyMgmtMikey, err = contextToMikey(sm.srtpOutCtx)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			var profile headers.TransportProfile
-			if secure {
-				profile = headers.TransportProfileSAVP
-			} else {
-				profile = headers.TransportProfileAVP
-			}
-
-			out.Medias = append(out.Medias, &description.Media{
-				Type:          medi.Type,
-				ID:            medi.ID,
-				IsBackChannel: medi.IsBackChannel,
-				// we have to use trackID=number in order to support clients
-				// like the Grandstream GXV3500.
-				Control:      "trackID=" + strconv.FormatInt(int64(i), 10),
-				Profile:      profile,
-				KeyMgmtMikey: keyMgmtMikey,
-				Formats:      medi.Formats,
-			})
-		}
-	}
-
-	return out, nil
 }
 
 func credentialsProvided(req *base.Request) bool {
@@ -402,12 +350,9 @@ func (sc *ServerConn) handleRequestInner(req *base.Request) (*base.Response, err
 				}
 
 				var desc *description.Session
-				desc, err = prepareForDescribe(
-					stream.Desc,
+				desc, err = stream.descForDescribe(
 					checkMulticastEnabled(sc.s.MulticastIPRange, query),
 					checkBackChannelsEnabled(req.Header),
-					sc.s.TLSConfig != nil,
-					stream.medias,
 				)
 				if err != nil {
 					return &base.Response{
