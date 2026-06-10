@@ -287,3 +287,11 @@ type ErrServerAuth struct{}
 func (e ErrServerAuth) Error() string {
 	return "authentication error"
 }
+
+// ErrServerH264PacketizationMode0 is an error that can be returned by a server.
+type ErrServerH264PacketizationMode0 struct{}
+
+// Error implements the error interface.
+func (e ErrServerH264PacketizationMode0) Error() string {
+	return "H264 packetization-mode=0 is not supported by the server"
+}

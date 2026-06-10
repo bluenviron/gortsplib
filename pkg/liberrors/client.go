@@ -314,3 +314,11 @@ type ErrClientSDPInvalid struct {
 func (e ErrClientSDPInvalid) Error() string {
 	return fmt.Sprintf("invalid SDP: %v", e.Err)
 }
+
+// ErrClientH264PacketizationMode0 is an error that can be returned by a client.
+type ErrClientH264PacketizationMode0 struct{}
+
+// Error implements the error interface.
+func (e ErrClientH264PacketizationMode0) Error() string {
+	return "H264 packetization-mode=0 is only supported when reading with TCP"
+}

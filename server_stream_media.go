@@ -1,6 +1,8 @@
 package gortsplib
 
 import (
+	"crypto/rand"
+	"crypto/tls"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -16,15 +18,33 @@ type serverStreamMedia struct {
 	media      *description.Media
 	trackID    int
 	localSSRCs map[uint8]uint32
-	srtpOutCtx *wrappedSRTPContext
+	tlsConfig  *tls.Config
 
+	srtpOutCtx      *wrappedSRTPContext
 	formats         map[uint8]*serverStreamFormat
 	multicastWriter *serverMulticastWriterMedia
 	bytesSent       atomic.Uint64
 	rtcpPacketsSent atomic.Uint64
 }
 
-func (ssm *serverStreamMedia) initialize() {
+func (ssm *serverStreamMedia) initialize() error {
+	if ssm.tlsConfig != nil {
+		srtpOutKey := make([]byte, srtpKeyLength)
+		_, err := rand.Read(srtpOutKey)
+		if err != nil {
+			return err
+		}
+
+		ssm.srtpOutCtx = &wrappedSRTPContext{
+			key:   srtpOutKey,
+			ssrcs: ssrcsMapToList(ssm.localSSRCs),
+		}
+		err = ssm.srtpOutCtx.initialize()
+		if err != nil {
+			return err
+		}
+	}
+
 	ssm.formats = make(map[uint8]*serverStreamFormat)
 
 	for _, forma := range ssm.media.Formats {
@@ -33,9 +53,15 @@ func (ssm *serverStreamMedia) initialize() {
 			format:    forma,
 			localSSRC: ssm.localSSRCs[forma.PayloadType()],
 		}
-		sf.initialize()
+		err := sf.initialize()
+		if err != nil {
+			return err
+		}
+
 		ssm.formats[forma.PayloadType()] = sf
 	}
+
+	return nil
 }
 
 func (ssm *serverStreamMedia) rtpInfoEntry(now time.Time) *headers.RTPInfoEntry {

@@ -792,6 +792,16 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 			}, liberrors.ErrServerSDPInvalid{Err: fmt.Errorf("back channels cannot be recorded")}
 		}
 
+		for _, media := range desc.Medias {
+			for _, forma := range media.Formats {
+				if h264Forma, ok2 := forma.(*format.H264); ok2 && h264Forma.PacketizationMode == 0 {
+					return &base.Response{
+						StatusCode: base.StatusBadRequest,
+					}, liberrors.ErrServerH264PacketizationMode0{}
+				}
+			}
+		}
+
 		res, err := ss.s.Handler.(ServerHandlerOnAnnounce).OnAnnounce(&ServerHandlerOnAnnounceCtx{
 			Session:     ss,
 			Conn:        sc,
