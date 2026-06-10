@@ -226,6 +226,8 @@ func (f *H265) CreateEncoder() (*rtph265.Encoder, error) {
 }
 
 // SafeSetParams sets the codec parameters.
+//
+// Deprecated: set parameters directly then use ServerStream.ReloadDesc() to reload them.
 func (f *H265) SafeSetParams(vps []byte, sps []byte, pps []byte) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
@@ -235,6 +237,8 @@ func (f *H265) SafeSetParams(vps []byte, sps []byte, pps []byte) {
 }
 
 // SafeParams returns the codec parameters.
+//
+// Deprecated: set parameters directly then use ServerStream.ReloadDesc() to reload them.
 func (f *H265) SafeParams() ([]byte, []byte, []byte) {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()

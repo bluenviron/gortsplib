@@ -18,6 +18,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/conn"
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
+	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/headers"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v5/pkg/sdp"
@@ -1487,4 +1488,115 @@ func TestServerTunnelWebSocket(t *testing.T) {
 			require.Equal(t, base.StatusNotFound, rres.StatusCode)
 		})
 	}
+}
+
+func TestServerReloadDesc(t *testing.T) {
+	var stream *ServerStream
+
+	s := &Server{
+		Handler: &testServerHandler{
+			onDescribe: func(_ *ServerHandlerOnDescribeCtx) (*base.Response, *ServerStream, error) {
+				return &base.Response{
+					StatusCode: base.StatusOK,
+				}, stream, nil
+			},
+		},
+		RTSPAddress: "localhost:8554",
+	}
+
+	err := s.Start()
+	require.NoError(t, err)
+	defer s.Close()
+
+	forma := &format.H264{
+		PayloadTyp: 96,
+		SPS: []byte{
+			0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+			0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+			0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
+			0x20,
+		},
+		PPS:               []byte{0x08},
+		PacketizationMode: 1,
+	}
+
+	stream = &ServerStream{
+		Server: s,
+		Desc: &description.Session{Medias: []*description.Media{{
+			Type:    description.MediaTypeVideo,
+			Formats: []format.Format{forma},
+		}}},
+	}
+	err = stream.Initialize()
+	require.NoError(t, err)
+	defer stream.Close()
+
+	nconn, err := net.Dial("tcp", "localhost:8554")
+	require.NoError(t, err)
+	defer nconn.Close()
+	conn := conn.NewConn(bufio.NewReader(nconn), nconn)
+
+	// first call
+	desc := doDescribe(t, conn, false)
+	require.Equal(t, []*description.Media{{
+		Control: "trackID=0",
+		Type:    description.MediaTypeVideo,
+		Formats: []format.Format{&format.H264{
+			PayloadTyp: 96,
+			SPS: []byte{
+				0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+				0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+				0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
+				0x20,
+			},
+			PPS:               []byte{0x08},
+			PacketizationMode: 1,
+		}},
+	}}, desc.Medias)
+
+	// change parameters
+	forma.SPS = []byte{
+		0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
+		0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
+		0x00, 0x03, 0x00, 0x3d, 0x08,
+	}
+	forma.PPS = []byte{0x08, 0x07, 0x08, 0x09}
+
+	// without calling ReloadDesc(), new parameters should not be passed to clients
+	desc = doDescribe(t, conn, false)
+	require.Equal(t, []*description.Media{{
+		Control: "trackID=0",
+		Type:    description.MediaTypeVideo,
+		Formats: []format.Format{&format.H264{
+			PayloadTyp: 96,
+			SPS: []byte{
+				0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+				0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+				0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
+				0x20,
+			},
+			PPS:               []byte{0x08},
+			PacketizationMode: 1,
+		}},
+	}}, desc.Medias)
+
+	// call ReloadDesc()
+	stream.ReloadDesc()
+
+	// new parameters should be visible now
+	desc = doDescribe(t, conn, false)
+	require.Equal(t, []*description.Media{{
+		Control: "trackID=0",
+		Type:    description.MediaTypeVideo,
+		Formats: []format.Format{&format.H264{
+			PayloadTyp: 96,
+			SPS: []byte{
+				0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
+				0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
+				0x00, 0x03, 0x00, 0x3d, 0x08,
+			},
+			PPS:               []byte{0x08, 0x07, 0x08, 0x09},
+			PacketizationMode: 1,
+		}},
+	}}, desc.Medias)
 }
