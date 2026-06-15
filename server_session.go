@@ -793,12 +793,10 @@ func (ss *ServerSession) handleRequestInner(sc *ServerConn, req *base.Request) (
 		}
 
 		for _, media := range desc.Medias {
-			for _, forma := range media.Formats {
-				if h264Forma, ok2 := forma.(*format.H264); ok2 && h264Forma.PacketizationMode == 0 {
-					return &base.Response{
-						StatusCode: base.StatusBadRequest,
-					}, liberrors.ErrServerH264PacketizationMode0{}
-				}
+			if hasH264PacketizationMode0(media.Formats) {
+				return &base.Response{
+					StatusCode: base.StatusBadRequest,
+				}, liberrors.ErrServerH264PacketizationMode0{}
 			}
 		}
 

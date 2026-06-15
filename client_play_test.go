@@ -4487,7 +4487,7 @@ func TestClientPlayDifferentSSRCs(t *testing.T) {
 	}
 }
 
-func TestClientPlayH264PacketizationMode0TCP(t *testing.T) {
+func TestClientPlayH264PacketizationMode0SwitchToTCP(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:8554")
 	require.NoError(t, err)
 	defer l.Close()
@@ -4544,15 +4544,18 @@ func TestClientPlayH264PacketizationMode0TCP(t *testing.T) {
 		req, err2 = conn.ReadRequest()
 		require.NoError(t, err2)
 		require.Equal(t, base.Setup, req.Method)
+		require.Equal(t, mustParseURL("rtsp://localhost:8554/teststream/"+medias[0].Control), req.URL)
 
 		var inTH headers.Transport
 		err2 = inTH.Unmarshal(req.Header["Transport"])
 		require.NoError(t, err2)
+		require.Equal(t, headers.TransportProtocolTCP, inTH.Protocol)
+		require.Equal(t, &[2]int{0, 1}, inTH.InterleavedIDs)
 
 		th := headers.Transport{
 			Delivery:       ptrOf(headers.TransportDeliveryUnicast),
 			Protocol:       headers.TransportProtocolTCP,
-			InterleavedIDs: &[2]int{0, 1},
+			InterleavedIDs: inTH.InterleavedIDs,
 		}
 
 		err2 = conn.WriteResponse(&base.Response{
@@ -4588,20 +4591,41 @@ func TestClientPlayH264PacketizationMode0TCP(t *testing.T) {
 		require.NoError(t, err2)
 	}()
 
-	v := ProtocolTCP
+	u, err := base.ParseURL("rtsp://localhost:8554/teststream")
+	require.NoError(t, err)
+
+	switchCalled := false
 
 	c := Client{
-		Protocol: &v,
+		Scheme: u.Scheme,
+		Host:   u.Host,
+		OnTransportSwitch: func(err error) {
+			switchCalled = true
+			require.EqualError(t, err, "switching to TCP to support H264 packetization-mode=0")
+		},
 	}
 
-	packetRecv := make(chan struct{})
+	err = c.Start()
+	require.NoError(t, err)
+	defer c.Close()
 
-	err = readAll(&c, "rtsp://localhost:8554/teststream", func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
+	sd, _, err := c.Describe(u)
+	require.NoError(t, err)
+
+	err = c.SetupAll(sd.BaseURL, sd.Medias)
+	require.NoError(t, err)
+
+	require.True(t, switchCalled)
+	require.Equal(t, ProtocolTCP, c.Transport().Session.Protocol)
+
+	packetRecv := make(chan struct{})
+	c.OnPacketRTPAny(func(_ *description.Media, _ format.Format, pkt *rtp.Packet) {
 		require.Equal(t, &testRTPPacket, pkt)
 		close(packetRecv)
 	})
+
+	_, err = c.Play(nil)
 	require.NoError(t, err)
-	defer c.Close()
 
 	<-packetRecv
 }
