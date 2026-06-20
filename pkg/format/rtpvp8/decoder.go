@@ -32,9 +32,9 @@ func joinFragments(fragments [][]byte, size int) []byte {
 // Specification: RFC7741
 type Decoder struct {
 	firstPacketReceived bool
-	fragmentsSize       int
-	fragments           [][]byte
-	fragmentNextSeqNum  uint16
+	frameBuffer         [][]byte
+	frameBufferSize     int
+	frameNextSeqNum     uint16
 }
 
 // Init initializes the decoder.
@@ -42,77 +42,76 @@ func (d *Decoder) Init() error {
 	return nil
 }
 
-func (d *Decoder) resetFragments() {
-	d.fragments = d.fragments[:0]
-	d.fragmentsSize = 0
+func (d *Decoder) resetFrameBuffer() {
+	d.frameBuffer = nil // do not reuse frameBuffer to avoid race conditions
+	d.frameBufferSize = 0
+	d.frameNextSeqNum = 0
+}
+
+func (d *Decoder) decodeFrameChunk(pkt *rtp.Packet) ([]byte, error) {
+	var vpkt codecs.VP8Packet
+	_, err := vpkt.Unmarshal(pkt.Payload)
+	if err != nil {
+		d.resetFrameBuffer()
+		return nil, err
+	}
+
+	if len(vpkt.Payload) == 0 {
+		d.resetFrameBuffer()
+		return nil, fmt.Errorf("payload is empty")
+	}
+
+	// VP8 frame restarts are identified by a packet that starts partition 0.
+	// Any previously buffered frame must be discarded in this case.
+	if vpkt.S == 1 && vpkt.PID == 0 {
+		d.resetFrameBuffer()
+		d.firstPacketReceived = true
+		d.frameNextSeqNum = pkt.SequenceNumber + 1
+		return vpkt.Payload, nil
+	}
+
+	if d.frameBufferSize == 0 {
+		if !d.firstPacketReceived {
+			return nil, ErrNonStartingPacketAndNoPrevious
+		}
+
+		return nil, fmt.Errorf("received a non-starting fragment")
+	}
+
+	if pkt.SequenceNumber != d.frameNextSeqNum {
+		d.resetFrameBuffer()
+		return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
+	}
+
+	d.firstPacketReceived = true
+	d.frameNextSeqNum++
+	return vpkt.Payload, nil
 }
 
 // Decode decodes a VP8 frame from a RTP packet.
 func (d *Decoder) Decode(pkt *rtp.Packet) ([]byte, error) {
-	var vpkt codecs.VP8Packet
-	_, err := vpkt.Unmarshal(pkt.Payload)
+	chunk, err := d.decodeFrameChunk(pkt)
 	if err != nil {
-		d.resetFragments()
 		return nil, err
 	}
 
-	if vpkt.PID != 0 {
-		d.resetFragments()
-		return nil, fmt.Errorf("packets containing single partitions are not supported")
+	newFrameBufferSize := d.frameBufferSize + len(chunk)
+	if newFrameBufferSize > vp8.MaxFrameSize {
+		errSize := newFrameBufferSize
+		d.resetFrameBuffer()
+		return nil, fmt.Errorf("frame size (%d) is too big, maximum is %d",
+			errSize, vp8.MaxFrameSize)
 	}
 
-	if len(vpkt.Payload) == 0 {
-		d.resetFragments()
-		return nil, fmt.Errorf("payload is empty")
+	d.frameBuffer = append(d.frameBuffer, chunk)
+	d.frameBufferSize = newFrameBufferSize
+
+	if !pkt.Marker {
+		return nil, ErrMorePacketsNeeded
 	}
 
-	var frame []byte
-
-	if vpkt.S == 1 {
-		d.resetFragments()
-		d.firstPacketReceived = true
-
-		if !pkt.Marker {
-			d.fragmentsSize = len(vpkt.Payload)
-			d.fragments = append(d.fragments, vpkt.Payload)
-			d.fragmentNextSeqNum = pkt.SequenceNumber + 1
-			return nil, ErrMorePacketsNeeded
-		}
-
-		frame = vpkt.Payload
-	} else {
-		if d.fragmentsSize == 0 {
-			if !d.firstPacketReceived {
-				return nil, ErrNonStartingPacketAndNoPrevious
-			}
-
-			return nil, fmt.Errorf("received a non-starting fragment")
-		}
-
-		if pkt.SequenceNumber != d.fragmentNextSeqNum {
-			d.resetFragments()
-			return nil, fmt.Errorf("discarding frame since a RTP packet is missing")
-		}
-
-		d.fragmentsSize += len(vpkt.Payload)
-
-		if d.fragmentsSize > vp8.MaxFrameSize {
-			errSize := d.fragmentsSize
-			d.resetFragments()
-			return nil, fmt.Errorf("frame size (%d) is too big, maximum is %d",
-				errSize, vp8.MaxFrameSize)
-		}
-
-		d.fragments = append(d.fragments, vpkt.Payload)
-		d.fragmentNextSeqNum++
-
-		if !pkt.Marker {
-			return nil, ErrMorePacketsNeeded
-		}
-
-		frame = joinFragments(d.fragments, d.fragmentsSize)
-		d.resetFragments()
-	}
+	frame := joinFragments(d.frameBuffer, d.frameBufferSize)
+	d.resetFrameBuffer()
 
 	return frame, nil
 }

@@ -59,6 +59,157 @@ func TestDecodeErrorMissingPacket(t *testing.T) {
 	require.EqualError(t, err, "discarding frame since a RTP packet is missing")
 }
 
+func TestDecodeMultiplePartitions(t *testing.T) {
+	d := &Decoder{}
+	err := d.Init()
+	require.NoError(t, err)
+
+	frame := mergeBytes([]byte{1, 2, 3}, []byte{4, 5}, []byte{6, 7, 8, 9})
+
+	pkts := []*rtp.Packet{
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17645,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x10, 1, 2, 3},
+		},
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17646,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x11, 4, 5},
+		},
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         true,
+				PayloadType:    96,
+				SequenceNumber: 17647,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x12, 6, 7, 8, 9},
+		},
+	}
+
+	var out []byte
+	for _, pkt := range pkts {
+		out, err = d.Decode(pkt)
+	}
+
+	require.NoError(t, err)
+	require.Equal(t, frame, out)
+}
+
+func TestDecodeFragmentedMultiplePartitions(t *testing.T) {
+	d := &Decoder{}
+	err := d.Init()
+	require.NoError(t, err)
+
+	frame := mergeBytes([]byte{1, 2, 3}, []byte{4, 5}, []byte{6, 7, 8, 9})
+
+	pkts := []*rtp.Packet{
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17645,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x10, 1, 2, 3},
+		},
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17646,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x11, 4, 5},
+		},
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         false,
+				PayloadType:    96,
+				SequenceNumber: 17647,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x02, 6, 7},
+		},
+		{
+			Header: rtp.Header{
+				Version:        2,
+				Marker:         true,
+				PayloadType:    96,
+				SequenceNumber: 17648,
+				SSRC:           0x9dbb7812,
+			},
+			Payload: []byte{0x02, 8, 9},
+		},
+	}
+
+	var out []byte
+	for _, pkt := range pkts {
+		out, err = d.Decode(pkt)
+	}
+
+	require.NoError(t, err)
+	require.Equal(t, frame, out)
+}
+
+func TestDecodeFrameRestart(t *testing.T) {
+	d := &Decoder{}
+	err := d.Init()
+	require.NoError(t, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17645,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x10, 1, 2, 3},
+	})
+	require.Equal(t, ErrMorePacketsNeeded, err)
+
+	_, err = d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         false,
+			PayloadType:    96,
+			SequenceNumber: 17646,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x00, 4, 5},
+	})
+	require.Equal(t, ErrMorePacketsNeeded, err)
+
+	frame, err := d.Decode(&rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Marker:         true,
+			PayloadType:    96,
+			SequenceNumber: 17647,
+			SSRC:           0x9dbb7812,
+		},
+		Payload: []byte{0x10, 6, 7, 8},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []byte{6, 7, 8}, frame)
+}
+
 func serializePackets(packets []*rtp.Packet) ([]byte, error) {
 	var buf []byte
 
