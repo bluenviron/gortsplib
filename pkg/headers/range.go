@@ -54,19 +54,19 @@ func (t *RangeSMPTETime) unmarshal(s string) error {
 	if len(parts) == 4 {
 		parts = strings.Split(parts[3], ".")
 		if len(parts) == 2 {
-			tmp, err = strconv.ParseUint(parts[0], 10, 64)
+			tmp, err = strconv.ParseUint(parts[0], 10, 32)
 			if err != nil {
 				return err
 			}
 			t.Frame = uint(tmp)
 
-			tmp, err = strconv.ParseUint(parts[1], 10, 64)
+			tmp, err = strconv.ParseUint(parts[1], 10, 32)
 			if err != nil {
 				return err
 			}
 			t.Subframe = uint(tmp)
 		} else {
-			tmp, err = strconv.ParseUint(parts[0], 10, 64)
+			tmp, err = strconv.ParseUint(parts[0], 10, 32)
 			if err != nil {
 				return err
 			}
