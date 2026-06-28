@@ -115,10 +115,6 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 
 	switch typ {
 	case h264.NALUTypeFUA:
-		if d.PacketizationMode == 0 {
-			return nil, fmt.Errorf("received FU-A packet in packetization mode 0")
-		}
-
 		if len(pkt.Payload) < 2 {
 			return nil, fmt.Errorf("invalid FU-A packet (invalid size)")
 		}
@@ -186,10 +182,6 @@ func (d *Decoder) decodeNALUs(pkt *rtp.Packet) ([][]byte, error) {
 		d.resetFragments()
 
 	case h264.NALUTypeSTAPA:
-		if d.PacketizationMode == 0 {
-			return nil, fmt.Errorf("received STAP-A packet in packetization mode 0")
-		}
-
 		d.resetFragments()
 
 		payload := pkt.Payload[1:]
