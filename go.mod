@@ -6,7 +6,7 @@ require (
 	github.com/bluenviron/mediacommon/v2 v2.9.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/pion/rtcp v1.2.16
+	github.com/pion/rtcp v1.2.17
 	github.com/pion/rtp v1.10.2
 	github.com/pion/sdp/v3 v3.0.19
 	github.com/pion/srtp/v3 v3.0.12
