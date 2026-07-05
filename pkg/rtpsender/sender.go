@@ -5,9 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+
+	"github.com/bluenviron/gortsplib/v5/pkg/ntp"
 )
 
 // Sender is a utility to send RTP packets.

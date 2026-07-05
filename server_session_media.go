@@ -13,6 +13,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
+	"github.com/bluenviron/gortsplib/v5/pkg/rtcpunmarshaler"
 )
 
 type serverSessionMedia struct {
@@ -200,7 +201,7 @@ func (ssm *serverSessionMedia) decodeRTCP(payload []byte) ([]rtcp.Packet, error)
 		}
 	}
 
-	pkts, err := rtcp.Unmarshal(payload)
+	pkts, err := rtcpunmarshaler.Unmarshal(payload)
 	if err != nil {
 		return nil, err
 	}
