@@ -3,11 +3,12 @@ package gortsplib
 import (
 	"time"
 
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/gortsplib/v5/pkg/liberrors"
 	"github.com/bluenviron/gortsplib/v5/pkg/rtpsender"
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 )
 
 type serverMulticastWriterFormat struct {
